@@ -171,7 +171,8 @@ pnpm dev:mp-weixin
 - `hotfix/紧急修复` - 紧急修复分支
 - `release/版本号` - 发布分支
 
-在功能、问题、修复描述前，建议加上`backend/`、`frontend-web/`、`frontend-miniapp/`、`fullstack/`等前缀以区分不同模块。
+在功能、问题、修复描述前，建议加上`backend/`、`web/`、`miniapp/`、`fullstack/`等前缀以区分不同模块。  
+`dev`后可加`/backend`、`/web`、`/miniapp`等表示不同范围的开发分支。
 
 ## 创建功能分支
 
