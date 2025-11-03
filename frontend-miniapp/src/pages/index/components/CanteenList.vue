@@ -16,9 +16,9 @@ import { ref } from 'vue';
 // API 暂时没有提供食堂列表，我们先根据原型硬编码
 // TODO: 后续应从 useCanteenStore 中获取
 const canteenList = ref([
-  { id: 'zijing', name: '紫荆园', image: '/static/images/canteen-zijing.png' },
-  { id: 'taoli', name: '桃李园', image: '/static/images/canteen-taoli.png' },
-  { id: 'guanchou', name: '观畴园', image: '/static/images/canteen-guanchou.png' },
+  { id: 'zijing', name: '紫荆园', image: '/static/images/canteen/zijing.png' },
+  { id: 'taoli', name: '桃李园', image: '/static/images/canteen/taoli.png' },
+  { id: 'guanchou', name: '观畴园', image: '/static/images/canteen/guanchou.png' },
 ]);
 
 const goToCanteen = (id: string) => {

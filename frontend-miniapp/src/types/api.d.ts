@@ -132,6 +132,33 @@ export interface Dish {
 }
 
 /**
+ * 窗口信息
+ */
+export interface Window {
+  id: string;
+  name: string;
+  number: string;           // 窗口号
+  position?: string;
+  description?: string;
+  tag?: string[];          // 特色标签
+}
+
+/**
+ * 食堂信息
+ */
+export interface Canteen {
+  id: string;
+  name: string;
+  position?: string;
+  description?: string;
+  images: string[];
+  operatingHours?: string;  // 营业时间
+  averageRating?: number;   // 平均评分
+  reviewCount?: number;     // 评论数
+  windowsList?: Window[];   // 窗口列表
+}
+
+/**
  * 评价模型
  */
 export interface Review {
@@ -262,6 +289,23 @@ export interface AdminLoginRequest {
 }
 
 /**
+ * 食堂列表响应数据
+ */
+export interface CanteenListData {
+  items: Canteen[];
+  meta: PaginationMeta;
+}
+
+/**
+ * 窗口列表响应数据
+ */
+export interface WindowListData {
+  items: Window[];
+  meta: PaginationMeta;
+}
+
+
+/**
  * 菜品列表请求
  */
 export interface GetDishesRequest {
@@ -370,6 +414,60 @@ export interface DishUpdateRequest {
     endDate: string;
   }>;
   status?: 'online' | 'offline';
+}
+
+/**
+ * 创建食堂请求
+ */
+export interface CanteenCreateRequest {
+  id: string;
+  name: string;
+  position?: string;
+  description?: string;
+  images?: string[];
+  operatingHours?: string;
+  averageRating?: number;
+  reviewCount?: number;
+  windowsList?: Window[];
+}
+
+/**
+ * 更新食堂请求
+ */
+export interface CanteenUpdateRequest {
+  id?: string;
+  name?: string;
+  position?: string;
+  description?: string;
+  images?: string[];
+  operatingHours?: string;
+  averageRating?: number;
+  reviewCount?: number;
+  windowsList?: Window[];
+}
+
+/**
+ * 创建窗口请求
+ */
+export interface WindowCreateRequest {
+  id: string;
+  name: string;
+  number: string;
+  position?: string;
+  description?: string;
+  tag?: string[];
+}
+
+/**
+ * 更新窗口请求
+ */
+export interface WindowUpdateRequest {
+  id?: string;
+  name?: string;
+  number?: string;
+  position?: string;
+  description?: string;
+  tag?: string[];
 }
 
 /**
@@ -620,3 +718,83 @@ export interface RequestOptions {
   header?: Record<string, string>;
   timeout?: number;
 }
+
+/**
+ * 获取食堂列表
+ */
+export function getCanteenList(params?: PaginationParams): Promise<ApiResponse<CanteenListData>>;
+
+/**
+ * 获取食堂详情
+ */
+export function getCanteenDetail(
+  canteenId: string,
+  params?: PaginationParams
+): Promise<ApiResponse<Canteen>>;
+
+/**
+ * 获取窗口列表（根据食堂ID）
+ */
+export function getWindowList(
+  canteenId: string,
+  params?: PaginationParams
+): Promise<ApiResponse<WindowListData>>;
+
+/**
+ * 获取窗口详情
+ */
+export function getWindowDetail(
+  windowId: string,
+  params?: PaginationParams
+): Promise<ApiResponse<Window>>;
+
+// ==================== 管理端 - 食堂接口 ====================
+
+/**
+ * 管理端获取食堂列表
+ */
+export function adminGetCanteenList(params?: PaginationParams): Promise<ApiResponse<CanteenListData>>;
+
+/**
+ * 管理端获取窗口列表
+ */
+export function adminGetWindowList(
+  canteenId: string,
+  params?: PaginationParams
+): Promise<ApiResponse<WindowListData>>;
+
+/**
+ * 新建食堂
+ */
+export function createCanteen(data: CanteenCreateRequest): Promise<ApiResponse<Canteen>>;
+
+/**
+ * 编辑食堂
+ */
+export function updateCanteen(
+  id: string,
+  data: CanteenUpdateRequest
+): Promise<ApiResponse<Canteen>>;
+
+/**
+ * 删除食堂
+ */
+export function deleteCanteen(id: string): Promise<ApiResponse<null>>;
+
+/**
+ * 新建窗口
+ */
+export function createWindow(data: WindowCreateRequest): Promise<ApiResponse<Window>>;
+
+/**
+ * 编辑窗口
+ */
+export function updateWindow(
+  id: string,
+  data: WindowUpdateRequest
+): Promise<ApiResponse<Window>>;
+
+/**
+ * 删除窗口
+ */
+export function deleteWindow(id: string): Promise<ApiResponse<null>>;
