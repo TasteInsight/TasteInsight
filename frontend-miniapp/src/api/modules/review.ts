@@ -6,6 +6,8 @@ import type {
   ReportRequest,
   PaginationParams,
   ReviewListData,
+  ApiResponse,
+  SuccessResponse,
 } from '@/types/api';
 
 /**
@@ -14,11 +16,10 @@ import type {
 export const getReviewsByDish = (
   dishId: string,
   params?: PaginationParams
-): Promise<ReviewListData> => {
-  return request<ReviewListData>({
+): Promise<ApiResponse<ReviewListData>> => {
+  return request<ApiResponse<ReviewListData>>({
     url: `/reviews/${dishId}`,
     method: 'GET',
-    data: params,
   });
 };
 
@@ -27,8 +28,8 @@ export const getReviewsByDish = (
  */
 export const createReview = (
   reviewData: ReviewCreateRequest
-): Promise<Review> => {
-  return request<Review>({
+): Promise<ApiResponse<Review>> => {
+  return request<ApiResponse<Review>>({
     url: '/reviews',
     method: 'POST',
     data: reviewData,
@@ -41,8 +42,8 @@ export const createReview = (
 export const reportReview = (
   reviewId: string,
   reportData: ReportRequest
-): Promise<null> => {
-  return request<null>({
+): Promise<SuccessResponse> => {
+  return request<SuccessResponse>({
     url: `/reviews/${reviewId}/report`,
     method: 'POST',
     data: reportData,

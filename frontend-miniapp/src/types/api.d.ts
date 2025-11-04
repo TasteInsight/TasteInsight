@@ -37,6 +37,16 @@ export interface ApiResponse<T = any> {
 }
 
 /**
+ * 成功响应包装器
+ */
+export interface SuccessResponse<T = any> {
+  code: 200;
+  message: string;
+  data: null | T;
+}
+
+
+/**
  * 分页数据响应
  */
 export interface PaginatedData<T> {
@@ -305,6 +315,8 @@ export interface WindowListData {
 }
 
 
+
+
 /**
  * 菜品列表请求
  */
@@ -530,6 +542,10 @@ export interface RecommendFeedbackRequest {
 }
 
 /**
+ * 食堂列表响应数据
+ */
+
+/**
  * 更新用户信息请求
  */
 export interface UserProfileUpdateRequest {
@@ -637,6 +653,21 @@ export interface MyUploadItem {
 export interface BrowseHistoryItem {
   dishId: string;
   viewedAt: string;
+}
+
+/**
+ * 用户信息项
+ */
+export interface MyUserProfileResponse {
+    code?: number;
+    data?: User;
+    message?: string;
+    [property: string]: any;
+}
+
+
+export interface UserInfoItem extends User {
+  preferenceSummary?: string;
 }
 
 /**

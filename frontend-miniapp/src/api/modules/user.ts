@@ -8,9 +8,11 @@ import type {
   PaginatedData,
   MyReviewItem,
   Favorite,
+  ApiResponse,
   BrowseHistoryItem,
   MyUploadItem,
   Report,
+  MyUserProfileResponse
 } from '@/types/api';
 
 /**
@@ -37,8 +39,9 @@ export const refreshToken = (): Promise<LoginData> => {
 /**
  * 获取用户信息
  */
-export const getUserProfile = (): Promise<User> => {
-  return request<User>({
+export const getUserProfile = (
+): Promise<ApiResponse<User>> => {
+  return request<ApiResponse<User>>({
     url: '/user/profile',
     method: 'GET',
   });
@@ -49,8 +52,8 @@ export const getUserProfile = (): Promise<User> => {
  */
 export const updateUserProfile = (
   profileData: UserProfileUpdateRequest
-): Promise<User> => {
-  return request<User>({
+): Promise<ApiResponse<User>> => {
+  return request<ApiResponse<User>>({
     url: '/user/profile',
     method: 'PUT',
     data: profileData,
@@ -62,11 +65,10 @@ export const updateUserProfile = (
  */
 export const getMyReviews = (
   params?: PaginationParams
-): Promise<PaginatedData<MyReviewItem>> => {
-  return request<PaginatedData<MyReviewItem>>({
+): Promise<ApiResponse<PaginatedData<MyReviewItem>>> => {
+  return request<ApiResponse<PaginatedData<MyReviewItem>>>({
     url: '/user/reviews',
-    method: 'GET',
-    data: params,
+    method: 'GET',   
   });
 };
 
@@ -75,11 +77,10 @@ export const getMyReviews = (
  */
 export const getMyFavorites = (
   params?: PaginationParams
-): Promise<PaginatedData<Favorite>> => {
-  return request<PaginatedData<Favorite>>({
+): Promise<ApiResponse<PaginatedData<Favorite>>> => {
+  return request<ApiResponse<PaginatedData<Favorite>>>({
     url: '/user/favorites',
     method: 'GET',
-    data: params,
   });
 };
 
@@ -88,11 +89,10 @@ export const getMyFavorites = (
  */
 export const getBrowseHistory = (
   params?: PaginationParams
-): Promise<PaginatedData<BrowseHistoryItem>> => {
-  return request<PaginatedData<BrowseHistoryItem>>({
+): Promise<ApiResponse<PaginatedData<BrowseHistoryItem>>> => {
+  return request<ApiResponse<PaginatedData<BrowseHistoryItem>>>({
     url: '/user/history',
     method: 'GET',
-    data: params,
   });
 };
 
@@ -111,11 +111,10 @@ export const clearBrowseHistory = (): Promise<null> => {
  */
 export const getMyUploads = (
   params?: PaginationParams
-): Promise<PaginatedData<MyUploadItem>> => {
-  return request<PaginatedData<MyUploadItem>>({
+): Promise<ApiResponse<PaginatedData<MyUploadItem>>> => {
+  return request<ApiResponse<PaginatedData<MyUploadItem>>>({
     url: '/user/uploads',
     method: 'GET',
-    data: params,
   });
 };
 
@@ -124,10 +123,9 @@ export const getMyUploads = (
  */
 export const getMyReports = (
   params?: PaginationParams
-): Promise<PaginatedData<Report>> => {
-  return request<PaginatedData<Report>>({
+): Promise<ApiResponse<PaginatedData<Report>>> => {
+  return request<ApiResponse<PaginatedData<Report>>>({
     url: '/user/reports',
     method: 'GET',
-    data: params,
   });
 };

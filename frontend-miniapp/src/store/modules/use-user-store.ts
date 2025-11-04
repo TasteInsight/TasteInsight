@@ -96,13 +96,35 @@ export const useUserStore = defineStore('user', {
       }
       
       try {
-        // getUserProfile 返回的直接是 User 对象，不是 { data: User }
-        const user = await getUserProfile();
+        const response = await getUserProfile();
+        
+        // 1. 检查响应状态码
+        if (response.code !== 200) {
+          throw new Error(response.message || '获取用户信息失败');
+        }
+        
+        // 2. 检查 data 是否存在
+        if (!response.data) {
+          throw new Error('用户数据为空');
+        }
+        
+        // 3. 安全地赋值和存储
+        const user = response.data;
         this.userInfo = user;
         uni.setStorageSync('userInfo', JSON.stringify(user));
+        
+        console.log('用户信息获取成功:', user);
       } catch (error) {
         console.error('获取用户信息失败:', error);
-        throw error;
+        
+        // 4. 给用户友好的提示
+        uni.showToast({
+          title: '获取用户信息失败',
+          icon: 'none',
+          duration: 2000
+        });
+        
+        throw error; // 继续抛出错误，让调用方处理
       }
     },
     

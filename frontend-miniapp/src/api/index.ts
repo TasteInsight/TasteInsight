@@ -13,7 +13,7 @@ export * from './modules/review';
 export * from './modules/comment';
 
 // 饮食计划
-export * from './modules/mealPlan';
+export * from './modules/meal-plan';
 
 // AI推荐
 export * from './modules/ai';

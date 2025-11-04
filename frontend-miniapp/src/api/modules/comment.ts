@@ -6,6 +6,8 @@ import type {
   ReportRequest,
   PaginationParams,
   PaginatedData,
+  ApiResponse,
+  SuccessResponse,
 } from '@/types/api';
 
 /**
@@ -14,8 +16,8 @@ import type {
 export const getCommentsByReview = (
   reviewId: string,
   params?: PaginationParams
-): Promise<PaginatedData<Comment>> => {
-  return request<PaginatedData<Comment>>({
+): Promise<ApiResponse<PaginatedData<Comment>>> => {
+  return request<ApiResponse<PaginatedData<Comment>>>({
     url: `/comments/${reviewId}`,
     method: 'GET',
     data: params,
@@ -27,8 +29,8 @@ export const getCommentsByReview = (
  */
 export const createComment = (
   commentData: CommentCreateRequest
-): Promise<Comment> => {
-  return request<Comment>({
+): Promise<ApiResponse<Comment>> => {
+  return request<ApiResponse<Comment>>({
     url: '/comments',
     method: 'POST',
     data: commentData,
@@ -41,8 +43,8 @@ export const createComment = (
 export const reportComment = (
   commentId: string,
   reportData: ReportRequest
-): Promise<null> => {
-  return request<null>({
+): Promise<SuccessResponse> => {
+  return request<SuccessResponse>({
     url: `/comments/${commentId}/report`,
     method: 'POST',
     data: reportData,

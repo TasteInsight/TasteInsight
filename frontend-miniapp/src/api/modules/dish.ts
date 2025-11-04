@@ -6,13 +6,17 @@ import type {
   PaginatedData,
   DishUserCreateRequest,
   DishUploadData,
+  ApiResponse,
+  SuccessResponse,
 } from '@/types/api';
 
 /**
  * 获取菜品详情
  */
-export const getDishById = (id: string): Promise<Dish> => {
-  return request<Dish>({
+export const getDishById = (
+  id: string
+): Promise<ApiResponse<Dish>> => {
+  return request<ApiResponse<Dish>>({
     url: `/dishes/${id}`,
     method: 'GET',
   });
@@ -23,8 +27,8 @@ export const getDishById = (id: string): Promise<Dish> => {
  */
 export const getDishes = (
   params: GetDishesRequest
-): Promise<PaginatedData<Dish>> => {
-  return request<PaginatedData<Dish>>({
+): Promise<ApiResponse<PaginatedData<Dish>>> => {
+  return request<ApiResponse<PaginatedData<Dish>>>({
     url: '/dishes',
     method: 'POST',
     data: params,
@@ -34,8 +38,10 @@ export const getDishes = (
 /**
  * 收藏菜品
  */
-export const favoriteDish = (dishId: string): Promise<null> => {
-  return request<null>({
+export const favoriteDish = (
+  dishId: string
+): Promise<SuccessResponse> => {
+  return request<SuccessResponse>({
     url: `/dishes/${dishId}/favorite`,
     method: 'POST',
   });
@@ -44,8 +50,8 @@ export const favoriteDish = (dishId: string): Promise<null> => {
 /**
  * 取消收藏菜品
  */
-export const unfavoriteDish = (dishId: string): Promise<null> => {
-  return request<null>({
+export const unfavoriteDish = (dishId: string): Promise<SuccessResponse> => {
+  return request<SuccessResponse>({
     url: `/dishes/${dishId}/favorite`,
     method: 'DELETE',
   });
@@ -56,8 +62,8 @@ export const unfavoriteDish = (dishId: string): Promise<null> => {
  */
 export const uploadDish = (
   dishData: DishUserCreateRequest
-): Promise<DishUploadData> => {
-  return request<DishUploadData>({
+): Promise<ApiResponse<DishUploadData>> => {
+  return request<ApiResponse<DishUploadData>>({
     url: '/dishes/upload',
     method: 'POST',
     data: dishData,
