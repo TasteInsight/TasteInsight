@@ -52,6 +52,7 @@
     "@dcloudio/uni-quickapp-webview": "3.0.0-4030620241128001",
     "@dcloudio/uni-ui": "^1.5.11",
     "@pinia/nuxt": "^0.11.2",
+    "dayjs": "^1.11.19",
     "pinia": "^3.0.3",
     "sass-loader": "~8.0.2",
     "vue": "^3.4.21",
