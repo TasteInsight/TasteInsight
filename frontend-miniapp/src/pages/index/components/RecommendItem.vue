@@ -1,90 +1,36 @@
+<!-- @/components/RecommendItem.vue -->
 <template>
-  <view class="dish-card" @click="goToDetail">
-    <image :src="displayImage" mode="aspectFill" class="dish-image" />
-    <view class="dish-info">
-      <text class="dish-name">{{ dish.name }}</text>
-      <text class="dish-location">{{ dish.canteenName }} · {{ dish.windowName }}</text>
-      <view class="dish-footer">
-        <text class="dish-price">¥{{ dish.price.toFixed(1) }}</text>
-        <view class="dish-rating">
-          <uni-icons type="star-filled" color="#FFA726" size="16"></uni-icons>
-          <text class="rating-text">{{ dish.averageRating.toFixed(1) }}</text>
-        </view>
-      </view>
-    </view>
-  </view>
+  <div class="dish-card" :data-allergen="dish.allergens?.join(',') || '无'">
+    <img :src="dish.images[0] || '/default-dish.png'" :alt="dish.name" class="w-20 h-20 rounded-lg mr-3" style="object-fit:cover" />
+    <div class="flex-grow">
+      <h3 class="font-medium">{{ dish.name }}</h3>
+      <p class="text-sm text-gray-500 mt-1">{{ dish.canteenName }} {{ dish.floor || '' }}-{{ dish.windowName }}</p>
+      <div class="flex justify-between items-center mt-2">
+        <span class="text-price font-bold">¥{{ dish.price.toFixed(1) }}</span>
+        <div class="flex items-center">
+          <span class="iconify text-rating" data-icon="mdi:star" data-width="16"></span>
+          <span class="text-rating ml-1">{{ dish.averageRating.toFixed(1) }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
 import type { Dish } from '@/types/api';
 
-const props = defineProps<{
+defineProps<{
   dish: Dish;
 }>();
-
-// computed 用于处理可能为空的字段，增加代码健壮性
-const displayImage = computed(() => {
-  return (props.dish.images && props.dish.images.length > 0)
-    ? props.dish.images[0]
-    : '/static/images/default-dish.png'; 
-});
-
-const goToDetail = () => {
-  uni.navigateTo({
-    // 假设菜品详情页在分包中
-    url: `/subPackages/canteen/dish-detail?id=${props.dish.id}`,
-  });
-};
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 .dish-card {
   display: flex;
   padding: 12px 0;
   border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
 }
-.dish-image {
-  width: 80px;
-  height: 80px;
-  border-radius: 8px;
-  margin-right: 12px;
-  flex-shrink: 0;
-  background-color: #f5f5f5;
-}
-.dish-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-.dish-name {
-  font-size: 16px;
-  font-weight: 500;
-  color: #333;
-}
-.dish-location {
-  font-size: 12px;
-  color: #999;
-  margin-top: 4px;
-}
-.dish-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.dish-price {
-  font-size: 16px;
-  font-weight: bold;
-  color: #FF6B35;
-}
-.dish-rating {
-  display: flex;
-  align-items: center;
-  color: #FFA726;
-  .rating-text {
-    margin-left: 4px;
-    font-size: 14px;
-  }
-}
+.text-price { color: #FF6B35; }
+.text-rating { color: #FFA726; }
 </style>

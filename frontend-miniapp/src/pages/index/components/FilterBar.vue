@@ -1,32 +1,29 @@
-<!-- @/pages/index/components/FilterBar.vue -->
+<!-- @/components/FilterBar.vue -->
 <template>
-  <view class="filter-bar">
-    <view class="tag active"><span>口味</span></view>
-    <view class="tag"><span>价格</span></view>
-    <view class="tag"><span>评分</span></view>
-  </view>
+  <div class="flex flex-wrap py-3">
+    <div class="tag active"><span>口味</span></div>
+    <div class="tag"><span>价格</span></div>
+    <div class="tag"><span>评分</span></div>
+    <div class="tag"><span>荤素</span></div>
+    <div class="tag"><span>过敏原</span></div>
+  </div>
 </template>
 
-<style lang="scss" scoped>
-.filter-bar { 
-  display: flex;
-  flex-wrap: wrap;
-  padding: 8px 0;
-}
+<style scoped>
 .tag {
   display: inline-flex;
   align-items: center;
-  background-color: #f5f5f5;
-  border-radius: 20px;
-  padding: 6px 14px;
-  margin-right: 12px;
-  margin-bottom: 8px;
+  background: white;
+  border: 1px solid #e5e5e5;
+  border-radius: 100px;
+  height: 32px;
+  padding: 0 12px;
   font-size: 14px;
-  
-  &.active {
-    background-color: #F3E5F5; // 紫色背景，来自原型
-    color: #82318E;
-    font-weight: 500;
-  }
+  margin-right: 8px;
+  cursor: pointer;
+}
+.tag.active {
+  border-color: #82318E;
+  background: #F3E5F5;
 }
 </style>

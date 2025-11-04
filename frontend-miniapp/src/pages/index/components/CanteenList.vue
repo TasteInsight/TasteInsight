@@ -1,60 +1,31 @@
-<!-- @/pages/index/components/CanteenList.vue -->
 <template>
-  <scroll-view scroll-x="true" class="canteen-scroll" :show-scrollbar="false">
-    <view class="canteen-list">
-      <view class="canteen-card" v-for="canteen in canteenList" :key="canteen.id" @click="goToCanteen(canteen.id)">
-        <image :src="canteen.image" class="canteen-image" mode="aspectFit" />
-        <text class="canteen-name">{{ canteen.name }}</text>
-      </view>
-    </view>
-  </scroll-view>
+  <div class="canteen-card">
+    <img :src="canteen.images[0] || '/default-canteen.png'" :alt="canteen.name" class="w-12 h-12" style="object-fit:contain" />
+    <span class="mt-2 font-medium">{{ canteen.name }}</span>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import type { Canteen } from '@/types/api';
 
-// API 暂时没有提供食堂列表，我们先根据原型硬编码
-// TODO: 后续应从 useCanteenStore 中获取
-const canteenList = ref([
-  { id: 'zijing', name: '紫荆园', image: '/static/images/canteen/zijing.png' },
-  { id: 'taoli', name: '桃李园', image: '/static/images/canteen/taoli.png' },
-  { id: 'guanchou', name: '观畴园', image: '/static/images/canteen/guanchou.png' },
-]);
-
-const goToCanteen = (id: string) => {
-  uni.navigateTo({
-    url: `/subPackages/canteen/detail?id=${id}`
-  });
-}
+defineProps<{
+  canteen: Canteen;
+}>();
 </script>
 
-<style lang="scss" scoped>
-.canteen-scroll {
-  white-space: nowrap;
-  .canteen-list {
-    display: flex;
-    padding-bottom: 16px;
-  }
-}
+<style scoped>
 .canteen-card {
-  display: inline-flex;
+  width: 100px;
+  height: 100px;
+  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 100px;
-  height: 100px;
-  background-color: #fff;
   border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
   margin-right: 12px;
-}
-.canteen-image {
-  width: 48px;
-  height: 48px;
-}
-.canteen-name {
-  margin-top: 8px;
-  font-size: 14px;
-  font-weight: 500;
+  background: white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  flex-shrink: 0; /* 防止在 flex 布局中被压缩 */
 }
 </style>
