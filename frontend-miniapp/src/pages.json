@@ -14,14 +14,24 @@
 				"enablePullDownRefresh": false
 			}
 		},
-		
+		{
+			"path": "pages/news/index",
+			"style": {
+				"navigationBarTitleText": "新闻"
+			}
+		},
 		{
 			"path": "pages/planning/index",
 			"style": {
 				"navigationBarTitleText": "规划"
 			}
 		},
-		
+		{
+			"path": "pages/ai-chat/index",
+			"style": {
+				"navigationBarTitleText": "问ai"
+			}
+		},
 		{
 			"path": "pages/my/index",
 			"style": {
@@ -42,14 +52,24 @@
 				"selectedIconPath": "static/tabbar/index-active.png",
 				"text": "首页"
 			},
-			
+			{
+				"pagePath": "pages/news/index",
+				"iconPath": "static/tabbar/news.png",
+				"selectedIconPath": "static/tabbar/news-active.png",
+				"text": "新闻"
+			},
 			{
 				"pagePath": "pages/planning/index",
 				"iconPath": "static/tabbar/planning.png",
 				"selectedIconPath": "static/tabbar/planning-active.png",
 				"text": "规划"
 			},
-			
+			{
+				"pagePath": "pages/ai-chat/index",
+				"iconPath": "static/tabbar/ai-chat.png",
+				"selectedIconPath": "static/tabbar/ai-chat-active.png",
+				"text": "问ai"
+			},
 			{
 				"pagePath": "pages/my/index",
 				"iconPath": "static/tabbar/profile.png",
