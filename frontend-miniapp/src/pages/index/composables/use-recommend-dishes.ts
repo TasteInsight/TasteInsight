@@ -25,7 +25,7 @@ export function useRecommendDishes() {
       };
       
       const paginatedData = await getDishes(requestParams);
-      dishes.value = paginatedData.items;
+      dishes.value = paginatedData.data.items;
 
     } catch (err) {
       console.error("获取推荐菜品失败:", err);

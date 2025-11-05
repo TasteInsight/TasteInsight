@@ -1,142 +1,125 @@
 import { defineStore } from 'pinia';
+import { ref, computed } from 'vue'; // 引入 ref 和 computed
 import { wechatLogin, getUserProfile } from '@/api/modules/user';
-import type { User } from '@/types/api';
+import type { User, UserProfileUpdateRequest } from '@/types/api';
 
-interface UserState {
-  token: string | null;
-  userInfo: User | null;
-}
-
-export const useUserStore = defineStore('user', {
-  // 状态：定义核心数据
-  state: (): UserState => ({
-    token: uni.getStorageSync('token') || null,
-    userInfo: (() => {
-      const userInfoStr = uni.getStorageSync('userInfo');
-      if (userInfoStr) {
-        try {
-          return JSON.parse(userInfoStr) as User;
-        } catch {
-          return null;
-        }
-      }
+export const useUserStore = defineStore('user', () => {
+  const token = ref<string | null>(uni.getStorageSync('token') || null);
+  
+  const initialUserInfo = (() => {
+    const info = uni.getStorageSync('userInfo');
+    try {
+      return info ? JSON.parse(info) as User : null;
+    } catch {
       return null;
-    })(),
-  }),
+    }
+  })();
+  const userInfo = ref<User | null>(initialUserInfo);
 
-  // 用于派生状态
-  getters: {
-    /**
-     * @description 是否已登录
-     * @returns {boolean}
-     */
-    isLoggedIn: (state): boolean => !!state.token,
-    
-    /**
-     * @description 用户头像，带默认值
-     * @returns {string}
-     */
-    avatar: (state): string => state.userInfo?.avatar || '/static/images/default-avatar.png',
-    
-    /**
-     * @description 用户昵称，带默认值
-     * @returns {string}
-     */
-    nickname: (state): string => state.userInfo?.nickname || '游客',
-  },
+  // ==================== Getters ====================
 
-  // Actions：定义修改 state 的方法
-  actions: {
-    /**
-     * @description 微信登录流程
-     * @param {string} code - uni.login 获取的 code
-     */
-    async loginAction(code: string): Promise<User> {
-      try {
-        // wechatLogin 返回的是 LoginData，包含 { token: string, user: User }
-        const loginData = await wechatLogin(code);
-        const { token, user } = loginData;
+  
+  /**
+   * 是否已登录
+   */
+  const isLoggedIn = computed(() => !!token.value);
+  
+  /**
+   * 用户头像，带默认值
+   */
+  const avatar = computed(() => userInfo.value?.avatar || '/static/images/default-avatar.png');
+  
+  /**
+   * 用户昵称，带默认值
+   */
+  const nickname = computed(() => userInfo.value?.nickname || '游客');
 
-        // 使用 this 来访问 state
-        this.token = token;
-        this.userInfo = user;
+  // ==================== Actions ====================
 
-        // 持久化存储
-        uni.setStorageSync('token', token);
-        uni.setStorageSync('userInfo', JSON.stringify(user)); // 对象转为字符串存储
-        
-        return user;
-      } catch (error) {
-        // 清理旧数据，以防万一
-        this.logoutAction();
-        throw error; 
-      }
-    },
+  /**
+   * 微信登录流程
+   */
+  async function loginAction(code: string): Promise<User> {
+    try {
+      const loginData = await wechatLogin(code);
+      const { token: newToken, user } = loginData;
 
-    /**
-     * @description 退出登录
-     */
-    logoutAction(): void {
-      this.token = null;
-      this.userInfo = null;
-      uni.removeStorageSync('token');
-      uni.removeStorageSync('userInfo');
+      // 直接修改 ref 的 .value
+      token.value = newToken;
+      userInfo.value = user;
+
+      uni.setStorageSync('token', newToken);
+      uni.setStorageSync('userInfo', JSON.stringify(user));
       
-      // 可以选择性地跳转到首页或登录页
-      // uni.reLaunch({ url: '/pages/index/index' });
-    },
+      return user;
+    } catch (error) {
+      logoutAction(); // 直接调用函数
+      throw error; 
+    }
+  }
+
+  /**
+   * 退出登录
+   */
+  function logoutAction(): void {
+    token.value = null;
+    userInfo.value = null;
+    uni.removeStorageSync('token');
+    uni.removeStorageSync('userInfo');
+  }
     
-    /**
-     * @description 从服务器刷新最新的用户信息
-     */
-    async fetchProfileAction(): Promise<void> {
-      if (!this.isLoggedIn) {
-        console.warn('用户未登录，无法获取用户信息');
-        return;
+  /**
+   * 从服务器刷新最新的用户信息
+   */
+  async function fetchProfileAction(): Promise<void> {
+    if (!isLoggedIn.value) { // 直接使用 computed getter
+      console.warn('用户未登录，无法获取用户信息');
+      return;
+    }
+    
+    try {
+      const response = await getUserProfile();
+      if (response.code !== 200 || !response.data) {
+        throw new Error(response.message || '获取用户信息失败');
       }
       
-      try {
-        const response = await getUserProfile();
-        
-        // 1. 检查响应状态码
-        if (response.code !== 200) {
-          throw new Error(response.message || '获取用户信息失败');
-        }
-        
-        // 2. 检查 data 是否存在
-        if (!response.data) {
-          throw new Error('用户数据为空');
-        }
-        
-        // 3. 安全地赋值和存储
-        const user = response.data;
-        this.userInfo = user;
-        uni.setStorageSync('userInfo', JSON.stringify(user));
-        
-        console.log('用户信息获取成功:', user);
-      } catch (error) {
-        console.error('获取用户信息失败:', error);
-        
-        // 4. 给用户友好的提示
-        uni.showToast({
-          title: '获取用户信息失败',
-          icon: 'none',
-          duration: 2000
-        });
-        
-        throw error; // 继续抛出错误，让调用方处理
-      }
-    },
+      const user = response.data;
+      userInfo.value = user;
+      uni.setStorageSync('userInfo', JSON.stringify(user));
+    } catch (error) {
+      console.error('获取用户信息失败:', error);
+      uni.showToast({
+        title: '用户信息刷新失败',
+        icon: 'none',
+      });
+      throw error;
+    }
+  }
     
-    /**
-     * @description 更新本地用户信息（不调用接口）
-     * @param {Partial<User>} userInfo - 部分用户信息
-     */
-    updateLocalUserInfo(userInfo: Partial<User>): void {
-      if (this.userInfo) {
-        this.userInfo = { ...this.userInfo, ...userInfo };
-        uni.setStorageSync('userInfo', JSON.stringify(this.userInfo));
-      }
-    },
-  },
+  /**
+   * 更新本地用户信息（不调用接口）
+   */
+  function updateLocalUserInfo(newInfo: Partial<User>): void {
+    if (userInfo.value) {
+      // 合并新旧信息
+      userInfo.value = { ...userInfo.value, ...newInfo };
+      uni.setStorageSync('userInfo', JSON.stringify(userInfo.value));
+    }
+  }
+
+  // **必须**返回所有需要暴露给外部的状态、getters 和 actions
+  return {
+    // State
+    token,
+    userInfo,
+    // Getters
+    isLoggedIn,
+    avatar,
+    nickname,
+    // Actions
+    loginAction,
+    logoutAction,
+    fetchProfileAction,
+    updateLocalUserInfo,
+  };
 });

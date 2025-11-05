@@ -10,10 +10,54 @@
 		{
 			"path": "pages/index/index",
 			"style": {
-				"navigationBarTitleText": "uni-app"
+				"navigationBarTitleText": "首页",
+				"enablePullDownRefresh": false
+			}
+		},
+		
+		{
+			"path": "pages/planning/index",
+			"style": {
+				"navigationBarTitleText": "规划"
+			}
+		},
+		
+		{
+			"path": "pages/my/index",
+			"style": {
+				"navigationBarTitleText": "我的"
 			}
 		}
 	],
+
+	"tabBar": {
+		"color": "#999999",
+		"selectedColor": "#82318E",
+		"backgroundColor": "#ffffff",
+		"borderStyle": "black",
+		"list": [
+			{
+				"pagePath": "pages/index/index",
+				"iconPath": "static/tabbar/index.png",
+				"selectedIconPath": "static/tabbar/index-active.png",
+				"text": "首页"
+			},
+			
+			{
+				"pagePath": "pages/planning/index",
+				"iconPath": "static/tabbar/planning.png",
+				"selectedIconPath": "static/tabbar/planning-active.png",
+				"text": "规划"
+			},
+			
+			{
+				"pagePath": "pages/my/index",
+				"iconPath": "static/tabbar/profile.png",
+				"selectedIconPath": "static/tabbar/profile-active.png",
+				"text": "我的"
+			}
+		]
+	},
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
 		"navigationBarTitleText": "uni-app",
