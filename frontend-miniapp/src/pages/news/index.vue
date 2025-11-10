@@ -70,8 +70,6 @@ const onRefresh = async () => {
 </script>
 
 <style scoped lang="scss">
-@import '@/styles/variables.scss'; 
-// @import '@/styles/common.scss';
 
 .news-page {
   display: flex;

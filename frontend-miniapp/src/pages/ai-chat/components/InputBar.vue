@@ -45,7 +45,6 @@ const sendMessage = async () => {
 </script>
 
 <style scoped lang="scss">
-@import '@/styles/variables.scss'; 
 
 .message-input-container {
   /* 模拟 prototype .message-input 样式 */

@@ -37,8 +37,6 @@ const goToDetail = (id) => {
 </script>
 
 <style scoped lang="scss">
-// 引入必要的 SCSS 文件，以获得 $spacing 等变量
-// @import '@/styles/variables.scss'; 
 
 .news-item-card {
   /* 模拟 prototype .card 样式 */

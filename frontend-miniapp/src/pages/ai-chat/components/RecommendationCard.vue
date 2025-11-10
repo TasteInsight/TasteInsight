@@ -54,7 +54,6 @@ const submitFeedback = (feedback: 'like' | 'dislike') => {
 </script>
 
 <style scoped lang="scss">
-@import '@/styles/variables.scss'; 
 
 .recommendation-card {
   /* 模拟 prototype card 样式 */

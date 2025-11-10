@@ -82,8 +82,7 @@ const handleScroll = (e : Event) => {
 </script>
 
 <style scoped lang="scss">
-@import '@/styles/common.scss';
-@import '@/styles/variables.scss'; 
+
 
 .ai-chat-page {
   /* 确保页面是全屏的 flex 容器 */
