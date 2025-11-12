@@ -1,16 +1,19 @@
 <template>
-  <div class="app-page">
-    <div class="content-container">
-      <!-- 1. 用户信息头部 -->
+  <view class="w-full min-h-screen bg-white overflow-hidden flex flex-col" style="max-width: 375px;">
+    <!-- 紫色背景头部区域，约占1/4空间 -->
+    <view class="bg-gradient-to-br from-purple-600 to-purple-800 pt-12 pb-8 px-6">
+      <!-- 用户信息头部 -->
       <UserHeader 
         :user-info="userInfo"
         :is-logged-in="isLoggedIn"
         :loading="loading"
         @login="handleLogin" 
       />
-      
-      <!-- 2. 功能菜单 -->
-      <div>
+    </view>
+    
+    <!-- 功能菜单区域 -->
+    <view class="flex-1 bg-gray-50 pt-6 relative">
+      <view class="space-y-4 px-4">
         <MenuItem
           v-for="item in menuItems"
           :key="item.id"
@@ -18,24 +21,27 @@
           :title="item.title"
           @click="navigateTo(item.path)"
         />
-      </div>
-
-      <!-- 3. 设置入口 -->
-      <div class="absolute bottom-0 left-0 right-0 flex justify-center py-5">
-        <button class="text-purple-700 flex items-center" @click="navigateTo('/pages/profile/settings')">
-          <span class="iconify" data-icon="mdi:cog" data-width="20"></span>
-          <span class="ml-2">设置</span>
-        </button>
-      </div>
-    </div>
-  </div>
+      </view>
+      
+      <!-- 设置按钮 -->
+      <view class="absolute bottom-8 left-0 right-0 flex justify-center">
+        <view 
+          class="bg-purple-600 text-white flex items-center justify-center py-3 px-8 rounded-full active:bg-purple-700 transition-colors shadow-lg"
+          hover-class="bg-purple-700"
+          @click="navigateTo('/pages/profile/settings')"
+        >
+          <text class="iconify" data-icon="mdi:cog" data-width="20"></text>
+          <text class="ml-2 font-medium">设置</text>
+        </view>
+      </view>
+    </view>
+  </view>
 </template>
 
 <script setup lang="ts">
-
 import UserHeader from './components/UserHeader.vue';
 import MenuItem from './components/MenuItem.vue';
-import { useProfile } from './composables/use-profile'; // 确保路径正确
+import { useProfile } from './composables/use-profile';
 
 // 从 use-profile 中获取所需的状态和方法
 const { userInfo, isLoggedIn, loading } = useProfile();
@@ -73,24 +79,3 @@ function handleLogin() {
   });
 }
 </script>
-
-<style scoped>
-/* 您的样式保持不变 */
-.app-page {
-  position: relative;
-  width: 375px;
-  height: 812px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-.content-container {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0 16px;
-  position: relative; 
-}
-</style>

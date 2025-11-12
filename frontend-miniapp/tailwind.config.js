@@ -1,12 +1,17 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    "./index.html",
-    "./{pages,components}/**/*.{vue,js,ts,jsx,tsx}",
+    "./src/pages/**/*.{vue,js,ts,jsx,tsx}",
+    "./src/components/**/*.{vue,js,ts,jsx,tsx}",
+    "./src/App.vue",
+    "./src/main.js"
   ],
   theme: {
     extend: {},
   },
   plugins: [],
+  corePlugins: {
+    preflight: false, // 禁用 Tailwind 的基础样式重置
+  }
 }
 
