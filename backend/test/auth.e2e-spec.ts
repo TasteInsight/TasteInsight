@@ -42,19 +42,27 @@ describe('/auth/wechat/login (POST)', () => {
         .expect(400);
     });
 
-    // 这个测试会【创建】一个新用户，属于“写”操作
+    // 这个测试会【创建】一个新用户，属于"写"操作
     it('should create a new user and return tokens for a new wechat code', async () => {
     const response = await request(app.getHttpServer())
         .post('/auth/wechat/login')
         .send({ code: 'a_valid_new_wechat_code' })
         .expect(200);
 
-    expect(response.body.user.nickname).toContain('微信用户_');
-    const dbUser = await prisma.user.findUnique({ where: { id: response.body.user.id } });
+    expect(response.body.code).toBe(200);
+    expect(response.body.message).toBe('登录成功');
+    expect(response.body.data).toBeDefined();
+    expect(response.body.data.token).toBeDefined();
+    expect(response.body.data.token.accessToken).toBeDefined();
+    expect(response.body.data.token.refreshToken).toBeDefined();
+    expect(response.body.data.user).toBeDefined();
+    expect(response.body.data.user.nickname).toContain('微信用户_');
+    
+    const dbUser = await prisma.user.findUnique({ where: { id: response.body.data.user.id } });
     expect(dbUser).not.toBeNull();
     });
 
-    // 这个测试依赖【已存在】的用户，属于“读”操作，我们用 seed 创建的基础用户
+    // 这个测试依赖【已存在】的用户，属于"读"操作，我们用 seed 创建的基础用户
     it('should return tokens for an existing user (from seed)', async () => {
         const response = await request(app.getHttpServer())
         .post('/auth/wechat/login')
@@ -62,7 +70,14 @@ describe('/auth/wechat/login (POST)', () => {
         .send({ code: 'baseline_user_code_placeholder' }) 
         .expect(200);
 
-        expect(response.body.user.nickname).toBe('Baseline User');
+        expect(response.body.code).toBe(200);
+        expect(response.body.message).toBe('登录成功');
+        expect(response.body.data).toBeDefined();
+        expect(response.body.data.token).toBeDefined();
+        expect(response.body.data.token.accessToken).toBeDefined();
+        expect(response.body.data.token.refreshToken).toBeDefined();
+        expect(response.body.data.user).toBeDefined();
+        expect(response.body.data.user.nickname).toBe('Baseline User');
     });
 });
 
@@ -82,8 +97,17 @@ describe('/auth/admin/login (POST)', () => {
         .send({ username: 'testadmin', password: 'password123' })
         .expect(200);
 
-    expect(response.body.admin.username).toBe('testadmin');
-    expect(response.body.admin).not.toHaveProperty('password');
+    expect(response.body.code).toBe(200);
+    expect(response.body.message).toBe('登录成功');
+    expect(response.body.data).toBeDefined();
+    expect(response.body.data.token).toBeDefined();
+    expect(response.body.data.token.accessToken).toBeDefined();
+    expect(response.body.data.token.refreshToken).toBeDefined();
+    expect(response.body.data.admin).toBeDefined();
+    expect(response.body.data.admin.username).toBe('testadmin');
+    expect(response.body.data.admin).not.toHaveProperty('password');
+    expect(response.body.data.permissions).toBeDefined();
+    expect(Array.isArray(response.body.data.permissions)).toBe(true);
     });
 
     it('should fail with 401 for non-existent username', () => {
@@ -118,7 +142,7 @@ describe('/auth/refresh (POST)', () => {
         const response = await request(app.getHttpServer())
         .post('/auth/admin/login')
         .send({ username: 'testadmin', password: 'password123' });
-    accessToken = response.body.accessToken;
+    accessToken = response.body.data.token.accessToken;
     });
 
     it('should return a new set of tokens for a valid token', async () => {
@@ -130,9 +154,14 @@ describe('/auth/refresh (POST)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
 
-    expect(response.body.accessToken).toBeDefined();
-    expect(response.body.refreshToken).toBeDefined();
-    // 新token应该存在，不再比较是否不同（因为可能在同一秒内生成）
+    expect(response.body.code).toBe(200);
+    expect(response.body.message).toBe('刷新成功');
+    expect(response.body.data).toBeDefined();
+    expect(response.body.data.token).toBeDefined();
+    expect(response.body.data.token.accessToken).toBeDefined();
+    expect(response.body.data.token.refreshToken).toBeDefined();
+    expect(response.body.data.user).toBeDefined();
+    // 新token应该存在
     });
 
     it('should fail with 401 if no token is provided', () => {

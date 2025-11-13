@@ -50,7 +50,7 @@ export class AuthService {
   }
 
   // --- 功能1: 微信登录 ---
-  async wechatLogin(code: string): Promise<{ accessToken: string; refreshToken: string; user: User }> {
+  async wechatLogin(code: string) {
     // 实际开发中，需要使用 code 调用微信API获取 openId
     // const { openid } = await this.getOpenIdFromWechat(code);
     // 此处为模拟
@@ -76,13 +76,27 @@ export class AuthService {
     }
     
     const tokens = await this._generateTokens({ sub: user.id, type: 'user' });
-    return { ...tokens, user };
+    
+    return {
+      code: 200,
+      message: '登录成功',
+      data: {
+        token: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+        },
+        user,
+      },
+    };
   }
 
   // --- 功能2: 管理员登录 ---
-  async adminLogin(username: string, pass: string): Promise<{ accessToken: string; refreshToken: string; admin: Omit<Admin, 'password'> }> {
+  async adminLogin(username: string, pass: string) {
     const admin = await this.prisma.admin.findUnique({
       where: { username },
+      include: {
+        permissions: true,
+      },
     });
 
     if (!admin) {
@@ -96,15 +110,60 @@ export class AuthService {
     }
     
     const tokens = await this._generateTokens({ sub: admin.id, type: 'admin' });
-    // 从返回结果中移除密码
-    const { password, ...result } = admin;
-    return { ...tokens, admin: result };
+    
+    // 从返回结果中移除密码和权限关联
+    const { password, permissions: permissionsRelation, ...adminData } = admin;
+    
+    // 提取权限字符串数组
+    const permissions = permissionsRelation.map(p => p.permission);
+    
+    return {
+      code: 200,
+      message: '登录成功',
+      data: {
+        token: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+        },
+        admin: adminData,
+        permissions,
+      },
+    };
   }
   
   // --- 功能3: 刷新Token ---
   async refreshToken(userId: string, userType: 'user' | 'admin') {
-     // Guard已经验证了用户的身份，我们只需要重新生成token即可
-     return this._generateTokens({ sub: userId, type: userType });
+    // Guard已经验证了用户的身份，我们只需要重新生成token即可
+    const tokens = await this._generateTokens({ sub: userId, type: userType });
+    
+    // 获取用户信息
+    let userData;
+    if (userType === 'user') {
+      userData = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+    } else {
+      const adminData = await this.prisma.admin.findUnique({
+        where: { id: userId },
+      });
+      // 移除密码字段
+      if (adminData) {
+        const { password, ...admin } = adminData;
+        userData = admin;
+      }
+    }
+    
+    return {
+      code: 200,
+      message: '刷新成功',
+      data: {
+        token: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+        },
+        user: userData,
+      },
+    };
   }
 
   // --- 辅助方法：验证用户 ---
