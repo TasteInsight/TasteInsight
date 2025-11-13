@@ -1,33 +1,40 @@
-<!-- UserHeader.vue 临时测试版本 -->
+<!-- UserHeader.vue - Tailwind CSS 版本 -->
 <template>
   <view class="user-header-wrapper">
-    <view v-if="loading" style="display: flex; flex-direction: column; align-items: center; padding: 16px 0;">
-      <view style="width: 96px; height: 96px; border-radius: 50%; background-color: #a78bfa;"></view>
-      <view style="margin-top: 16px;">
-        <view style="height: 24px; width: 128px; background-color: #a78bfa; border-radius: 4px;"></view>
+    <!-- 加载状态 -->
+    <view v-if="loading" class="flex flex-col items-center py-4">
+      <view class="w-24 h-24 rounded-full bg-purple-400"></view>
+      <view class="mt-4">
+        <view class="h-6 w-32 bg-purple-400 rounded"></view>
       </view>
     </view>
     
-    <view v-else style="display: flex; flex-direction: column; align-items: center;">
+    <!-- 正常状态 -->
+    <view v-else class="flex flex-col items-center">
       <!-- 头像区域 -->
-      <view style="width: 96px; height: 96px; border-radius: 50%; background-color: #d8b4fe; border: 4px solid rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
-        <image v-if="isLoggedIn && userInfo?.avatar" :src="userInfo.avatar" mode="aspectFill" style="width: 100%; height: 100%;" />
-        <text v-else style="color: white; font-size: 40px;">👤</text>
+      <view class="relative w-24 h-24 rounded-full bg-purple-300 border-4 border-white/30 flex items-center justify-center overflow-hidden shadow-lg">
+        <image 
+          v-if="isLoggedIn && userInfo?.avatar" 
+          :src="userInfo.avatar" 
+          mode="aspectFill" 
+          class="w-full h-full" 
+        />
+        <text v-else class="text-white text-4xl">👤</text>
       </view>
 
-      <!-- 用户信息 -->
-      <view v-if="isLoggedIn && userInfo" style="text-align: center; margin-top: 16px;">
-        <view style="font-size: 20px; font-weight: bold; color: white;">{{ userInfo.nickname }}</view>
-        <view style="color: #e9d5ff; font-size: 14px; margin-top: 4px;">ID: {{ userInfo.id }}</view>
+      <!-- 已登录用户信息 -->
+      <view v-if="isLoggedIn && userInfo" class="text-center mt-4">
+        <view class="text-xl font-bold text-ts-purple mb-2">{{ userInfo.nickname }}</view>
+        <view class="text-ts-purple text-sm mt-1">ID: {{ userInfo.id }}</view>
       </view>
       
       <!-- 未登录状态 -->
-      <view v-else style="text-align: center; margin-top: 16px;">
-        <view style="font-size: 20px; font-weight: bold; color: white; margin-bottom: 8px;">点击登录</view>
-        <view style="margin-top: 8px; display: flex; justify-content: center;">
+      <view v-else class="text-center mt-4">
+        <view class="text-xl font-medium text-ts-purple mb-2">请先点击登录</view>
+        <view class="mt-4 flex justify-center" >
           <view 
             @click="emit('login')" 
-            style="background-color: white; color: #9333ea; border-radius: 9999px; padding: 12px 32px; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); display: inline-block;"
+            class="bg-white border  border-ts-purple text-ts-purple font-medium  rounded-full px-8 py-3 shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
           >
             立即登录
           </view>

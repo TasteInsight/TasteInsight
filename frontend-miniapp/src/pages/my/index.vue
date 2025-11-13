@@ -1,7 +1,9 @@
+[file name]: index.vue
+[file content begin]
 <template>
-  <view class="w-full min-h-screen bg-white overflow-hidden flex flex-col" style="max-width: 375px;">
+  <view class="w-full h-[812px] bg-white overflow-hidden flex shadow-lg flex-col relative" style="max-width: 375px;">
     <!-- 紫色背景头部区域，约占1/4空间 -->
-    <view class="bg-gradient-to-br from-purple-600 to-purple-800 pt-12 pb-8 px-6">
+    <view class="bg-gradient-to-br from-white to-white pt-12 pb-8 px-6">
       <!-- 用户信息头部 -->
       <UserHeader 
         :user-info="userInfo"
@@ -12,7 +14,7 @@
     </view>
     
     <!-- 功能菜单区域 -->
-    <view class="flex-1 bg-gray-50 pt-6 relative">
+    <view class="flex-1 bg-white pt-8 overflow-hidden">
       <view class="space-y-4 px-4">
         <MenuItem
           v-for="item in menuItems"
@@ -24,10 +26,10 @@
       </view>
       
       <!-- 设置按钮 -->
-      <view class="absolute bottom-8 left-0 right-0 flex justify-center">
+      <view class="absolute bottom-12 left-0 right-0 flex justify-center px-4">
         <view 
-          class="bg-purple-600 text-white flex items-center justify-center py-3 px-8 rounded-full active:bg-purple-700 transition-colors shadow-lg"
-          hover-class="bg-purple-700"
+          class="bg-ts-purple text-white flex items-center justify-center py-3 px-8 rounded-full active:bg-purple-900 transition-colors shadow-lg w-full max-w-xs"
+          hover-class="bg-purple-800"
           @click="navigateTo('/pages/profile/settings')"
         >
           <text class="iconify" data-icon="mdi:cog" data-width="20"></text>
@@ -71,7 +73,6 @@ function navigateTo(path: string) {
 
 /**
  * 处理登录逻辑
- * 通常是跳转到专门的登录页面
  */
 function handleLogin() {
   uni.navigateTo({
@@ -79,3 +80,4 @@ function handleLogin() {
   });
 }
 </script>
+[file content end]

@@ -7,7 +7,12 @@ module.exports = {
     "./src/main.js"
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        'ts-purple': '#660874',
+      }
+
+    },
   },
   plugins: [],
   corePlugins: {
