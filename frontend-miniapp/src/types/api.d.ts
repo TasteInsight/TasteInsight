@@ -594,8 +594,17 @@ export interface AdminCreateRequest {
  * 登录响应数据
  */
 export interface LoginData {
-  token: string;
-  user: User;
+    token?: Token;
+    user?: User;
+    [property: string]: any;
+}
+
+/**
+ * JWT Token
+ */
+export interface Token {
+    accessToken?: string;
+    refreshToken?: string;
 }
 
 /**

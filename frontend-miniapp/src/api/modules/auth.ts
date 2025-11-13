@@ -1,3 +1,4 @@
+import type { ApiResponse , LoginData} from '@/types/api';
 import request from '@/utils/request';
 
 /**
@@ -6,8 +7,10 @@ import request from '@/utils/request';
  * @param {string} code - 微信授权码
  * @returns {Promise<LoginResponse>}
  */
-export const wechatLogin = (code : string) => {
-  return request({
+export const wechatLogin = (
+  code : string
+): Promise<ApiResponse<LoginData>> => {
+  return request<ApiResponse<LoginData>>({
     url: '/auth/wechat/login',
     method: 'POST',
     data: { code },
@@ -19,9 +22,11 @@ export const wechatLogin = (code : string) => {
  * @description 使用当前Token刷新获取新Token
  * @returns {Promise<LoginResponse>}
  */
-export const refreshToken = () => {
-  return request({
+export const refreshToken = (
+): Promise<ApiResponse<LoginData>> => {
+  return request<ApiResponse<LoginData>>({
     url: '/auth/refresh',
     method: 'POST',
+    data: { },
   });
 };
