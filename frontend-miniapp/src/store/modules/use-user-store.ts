@@ -41,11 +41,21 @@ export const useUserStore = defineStore('user', () => {
    */
   async function loginAction(code: string): Promise<User> {
     try {
-      const loginData = await wechatLogin(code);
+      const loginData = (await wechatLogin(code)).data;
       const { token: newToken, user } = loginData;
 
+      // 添加空值检查
+      if (!newToken?.accessToken || !user) {
+        throw new Error('登录失败：未获取到有效的 token 或用户信息');
+      }
+
+      // 确保用户信息完整
+      if (!user.id || !user.openId || !user.nickname || !user.avatar) {
+        throw new Error('用户信息不完整');
+      }
+
       // 直接修改 ref 的 .value
-      token.value = newToken;
+      token.value = newToken?.accessToken;
       userInfo.value = user;
 
       uni.setStorageSync('token', newToken);

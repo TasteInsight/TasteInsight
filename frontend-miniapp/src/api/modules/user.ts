@@ -15,11 +15,10 @@ import type {
   MyUserProfileResponse
 } from '@/types/api';
 
-/**
- * 微信登录
- */
-export const wechatLogin = (code: string): Promise<LoginData> => {
-  return request<LoginData>({
+export const wechatLogin = (
+  code : string
+): Promise<ApiResponse<LoginData>> => {
+  return request<ApiResponse<LoginData>>({
     url: '/auth/wechat/login',
     method: 'POST',
     data: { code },
@@ -27,15 +26,18 @@ export const wechatLogin = (code: string): Promise<LoginData> => {
 };
 
 /**
- * 刷新Token
+ * @summary 刷新Token
+ * @description 使用当前Token刷新获取新Token
+ * @returns {Promise<LoginResponse>}
  */
-export const refreshToken = (): Promise<LoginData> => {
-  return request<LoginData>({
+export const refreshToken = (
+): Promise<ApiResponse<LoginData>> => {
+  return request<ApiResponse<LoginData>>({
     url: '/auth/refresh',
     method: 'POST',
+    data: { },
   });
 };
-
 /**
  * 获取用户信息
  */

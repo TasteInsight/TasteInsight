@@ -596,7 +596,6 @@ export interface AdminCreateRequest {
 export interface LoginData {
     token?: Token;
     user?: User;
-    [property: string]: any;
 }
 
 /**
