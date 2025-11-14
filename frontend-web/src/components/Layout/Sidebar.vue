@@ -1,5 +1,5 @@
 <template>
-  <div class="w-[260px] h-full bg-tsinghua-purple text-white flex flex-col py-6">
+  <div class="w-[260px] min-h-screen bg-tsinghua-purple text-white flex flex-col py-6">
     <div class="px-6 mb-8">
       <div class="flex items-center space-x-3">
         <span class="iconify text-2xl" data-icon="noto-v1:pot-of-food"></span>
@@ -53,14 +53,26 @@
         <span class="iconify" data-icon="carbon:task-approved"></span>
         <span>菜品审核</span>
       </router-link>
+      <router-link 
+        to="/user-manage"
+        class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
+        :class="{ 'active': $route.path === '/user-manage' }"
+      >
+        <span class="iconify" data-icon="clarity:group-line"></span>
+        <span>人员权限管理</span>
+      </router-link>
     </div>
     
     <div class="px-6 py-4 text-sm flex items-center justify-between">
       <div class="flex items-center space-x-2 opacity-80">
         <span class="iconify" data-icon="mdi:user-circle-outline"></span>
-        <span>管理员：王老师</span>
+        <span>管理员：{{ userInfo.username || userInfo.name || '管理员' }}</span>
       </div>
-      <button class="opacity-70 hover:opacity-100">
+      <button 
+        class="opacity-70 hover:opacity-100 transition"
+        @click="handleLogout"
+        title="退出登录"
+      >
         <span class="iconify" data-icon="carbon:logout"></span>
       </button>
     </div>
@@ -68,19 +80,31 @@
 </template>
 
 <script>
-import { ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, watch, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '../../store/auth'
 
 export default {
   name: 'Sidebar',
   setup() {
     const route = useRoute()
+    const router = useRouter()
+    const authStore = useAuthStore()
     const showAddSubmenu = ref(false)
     const activeMenu = ref('')
+    
+    const userInfo = computed(() => authStore.user || { username: '管理员' })
     
     const toggleAddMenu = () => {
       showAddSubmenu.value = !showAddSubmenu.value
       activeMenu.value = showAddSubmenu.value ? 'add' : ''
+    }
+    
+    const handleLogout = () => {
+      if (confirm('确定要退出登录吗？')) {
+        authStore.logout()
+        router.push('/login')
+      }
     }
     
     // 监听路由变化，自动展开对应菜单
@@ -89,6 +113,7 @@ export default {
         showAddSubmenu.value = true
         activeMenu.value = 'add'
       } else {
+        showAddSubmenu.value = false
         activeMenu.value = ''
       }
     }, { immediate: true })
@@ -96,7 +121,9 @@ export default {
     return {
       showAddSubmenu,
       activeMenu,
-      toggleAddMenu
+      userInfo,
+      toggleAddMenu,
+      handleLogout
     }
   }
 }

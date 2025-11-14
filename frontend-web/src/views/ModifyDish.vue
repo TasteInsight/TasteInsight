@@ -1,5 +1,5 @@
 <template>
-  <div class="w-[1440px] h-[900px] flex container-shadow rounded-lg bg-white overflow-hidden">
+  <div class="w-full min-h-screen flex container-shadow rounded-lg bg-white overflow-hidden">
     <Sidebar />
     
     <div class="flex-1 h-full overflow-auto bg-tsinghua-light">

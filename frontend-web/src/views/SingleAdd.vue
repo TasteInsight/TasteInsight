@@ -1,9 +1,9 @@
 <template>
-  <div class="w-[1440px] h-[900px] flex container-shadow rounded-lg bg-white overflow-hidden">
+  <div class="w-full min-h-screen flex container-shadow rounded-lg bg-white overflow-hidden">
     <Sidebar />
     
-    <div class="flex-1 h-full overflow-auto bg-tsinghua-light">
-      <div class="p-8 h-full">
+    <div class="flex-1 min-h-screen overflow-auto bg-tsinghua-light">
+      <div class="p-8 min-h-screen">
         <div class="bg-white rounded-lg container-shadow p-8">
           <Header 
             title="添加新菜品" 
@@ -25,8 +25,19 @@
                         <option>紫荆园</option>
                         <option>桃李园</option>
                         <option>丁香园</option>
-                        <option>清芬园</option>
+                        <option>清芬园（清青快餐）</option>
                         <option>听涛园</option>
+                        <option>观畴园（清青咖啡）</option>
+                        <option>玉树园</option>
+                        <option>芝兰园</option>
+                        <option>澜园</option>
+                        <option>荷园</option>
+                        <option>寓园</option>
+                        <option>家园</option>
+                        <option>南园</option>
+                        <option>北园</option>
+                        <option>熙春园</option>
+                        <option>清青牛拉</option>
                       </select>
                     </div>
                     <div>
@@ -35,6 +46,7 @@
                         <option>一层</option>
                         <option>二层</option>
                         <option>三层</option>
+                        <option>四层</option>
                         <option>地下一层</option>
                       </select>
                     </div>
@@ -144,9 +156,34 @@
                         <option>川菜</option>
                         <option>粤菜</option>
                         <option>鲁菜</option>
+                        <option>苏菜</option>
+                        <option>闽菜</option>
+                        <option>徽菜</option>
                         <option>湘菜</option>
-                        <option>淮扬菜</option>
+                        <option>浙菜</option>
+                        <option>东北菜</option>
+                        <option>云贵菜</option>
+                        <option>沪菜</option>
+                        <option>京菜</option>
+                        <option>赣菜</option>
+                        <option>鄂菜</option>
+                        <option>豫菜</option>
+                        <option>港澳菜</option>
+                        <option>台湾菜</option>
+                        <option>琼菜</option>
+                        <option>天津菜</option>
+                        <option>冀菜</option>
+                        <option>桂菜</option>
+                        <option>晋菜</option>
+                        <option>西藏菜</option>
+                        <option>新疆菜</option>
                         <option>清真菜</option>
+                        <option>日本料理</option>
+                        <option>韩国料理</option>
+                        <option>东南亚菜</option>
+                        <option>墨西哥菜</option>
+                        <option>地中海菜</option>
+                        <option>印度菜</option>
                         <option>西餐</option>
                         <option>其他</option>
                       </select>

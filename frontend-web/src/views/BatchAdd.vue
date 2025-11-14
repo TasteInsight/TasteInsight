@@ -1,9 +1,9 @@
 <template>
-  <div class="w-[1440px] h-[900px] flex container-shadow rounded-lg bg-white overflow-hidden">
+  <div class="w-full min-h-screen flex container-shadow rounded-lg bg-white overflow-hidden">
     <Sidebar />
     
-    <div class="flex-1 h-full overflow-auto bg-tsinghua-light">
-      <div class="p-8 h-full">
+    <div class="flex-1 min-h-screen overflow-auto bg-tsinghua-light">
+      <div class="p-8 min-h-screen">
         <div class="bg-white rounded-lg container-shadow p-8">
           <Header 
             title="批量添加菜品" 
