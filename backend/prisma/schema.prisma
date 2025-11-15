@@ -425,6 +425,7 @@ model MealPlanDish {
 model AIRecommendation {
   id     String @id @default(cuid())
   userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   dishId String
   dish   Dish   @relation(fields: [dishId], references: [id], onDelete: Cascade)
 
@@ -448,6 +449,7 @@ model RecommendFeedback {
   createdAt DateTime @default(now())
 
   @@index([userId])
+  @@index([dishId])
   @@map("recommend_feedbacks")
 }
 
