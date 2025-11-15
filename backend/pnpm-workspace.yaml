@@ -1,0 +1,7 @@
+ignoredBuiltDependencies:
+  - '@nestjs/core'
+
+onlyBuiltDependencies:
+  - '@prisma/engines'
+  - prisma
+  - unrs-resolver

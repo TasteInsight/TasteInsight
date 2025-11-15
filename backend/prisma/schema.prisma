@@ -1,0 +1,476 @@
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // 或 "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== 用户相关模型 ====================
+
+model User {
+  id        String   @id @default(cuid())
+  openId    String   @unique
+  nickname  String
+  avatar    String?
+  allergens String[] // 过敏原列表
+
+  // 关联关系
+  preferences    UserPreference?
+  reviews        Review[]
+  comments       Comment[]
+  favoriteDishes FavoriteDish[]
+  mealPlans      MealPlan[]
+  browseHistory  BrowseHistory[]
+  uploads        DishUpload[]
+  reports        Report[]
+  feedbacks      RecommendFeedback[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model UserPreference {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // 基础偏好
+  spicyLevel Int @default(2) // 0-5 辣度等级
+  tagPreferences String[] // 菜系偏好
+  
+  // 价格偏好
+  priceMin Float @default(0)
+  priceMax Float @default(50)
+
+  // 肉类和食材偏好
+  meatPreference      String[]
+  avoidIngredients    String[] // 不喜欢的食材
+  favoriteIngredients String[] // 喜欢的食材
+
+  // 口味偏好
+  sweetness Int @default(2) // 0-5
+  saltiness Int @default(2) // 0-5
+  oiliness  Int @default(2) // 0-5
+
+  // 其他偏好
+  canteenPreferences String[] // 偏好食堂ID列表
+  portionSize        String   @default("medium") // small, medium, large
+
+  // 通知设置
+  newDishAlert         Boolean @default(true)
+  priceChangeAlert     Boolean @default(false)
+  reviewReplyAlert     Boolean @default(true)
+  weeklyRecommendation Boolean @default(true)
+
+  // 显示设置
+  showCalories   Boolean @default(true)
+  showNutrition  Boolean @default(false)
+  defaultSortBy  String  @default("rating") // rating, price_low, price_high, popularity, newest
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user_preferences")
+}
+
+// ==================== 管理员相关模型 ====================
+
+model Admin {
+  id        String  @id @default(cuid())
+  username  String  @unique
+  password  String // 应该存储哈希后的密码
+  role      String  @default("admin")
+  canteenId String?
+  canteen   Canteen? @relation(fields: [canteenId], references: [id])
+
+  createdBy String? // 创建者ID
+  creator   Admin?  @relation("AdminHierarchy", fields: [createdBy], references: [id])
+  subAdmins Admin[] @relation("AdminHierarchy")
+
+  // 权限
+  permissions AdminPermission[]
+
+  // 操作记录
+  operationLogs OperationLog[]
+  createdNews   News[]
+  handledReports Report[] @relation("ReportHandler")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("admins")
+}
+
+model AdminPermission {
+  id         String @id @default(cuid())
+  adminId    String
+  admin      Admin  @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  permission String // 如: "dish:view", "dish:create", "dish:edit", "dish:delete", "review:approve", 等
+
+  @@unique([adminId, permission])
+  @@map("admin_permissions")
+}
+
+model OperationLog {
+  id       String @id @default(cuid())
+  adminId  String
+  admin    Admin  @relation(fields: [adminId], references: [id])
+
+  action     String // 操作类型
+  targetType String // 操作对象类型
+  targetId   String // 操作对象ID
+  details    Json? // 操作详情
+  result     String // success, failure
+
+  createdAt DateTime @default(now())
+
+  @@index([adminId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("operation_logs")
+}
+
+// ==================== 食堂和窗口模型 ====================
+
+model Canteen {
+  id          String @id @default(cuid())
+  name        String
+  position    String?
+  description String?
+  images      String[]
+
+  // 营业时间
+  openingHours Json // 存储复杂的营业时间结构
+
+  // 统计信息
+  averageRating Float @default(0)
+  reviewCount   Int   @default(0)
+
+  // 关联关系
+  windows Window[]
+  dishes  Dish[]
+  news    News[]
+  admins  Admin[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("canteens")
+}
+
+model Window {
+  id          String  @id @default(cuid())
+  canteenId   String
+  canteen     Canteen @relation(fields: [canteenId], references: [id], onDelete: Cascade)
+  
+  name        String
+  number      String // 窗口号
+  position    String?
+  description String?
+  tags        String[] // 特色标签
+
+  // 关联关系
+  dishes Dish[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([canteenId])
+  @@map("windows")
+}
+
+// ==================== 菜品相关模型 ====================
+
+model Dish {
+  id          String  @id @default(cuid())
+  name        String
+  tags        String[]
+  price       Float
+  description String?
+  images      String[]
+
+  // 菜品层级关系
+  parentDishId String?
+  parentDish   Dish?   @relation("DishHierarchy", fields: [parentDishId], references: [id])
+  subDishes    Dish[]  @relation("DishHierarchy")
+
+  // 食材信息
+  ingredients String[]
+  allergens   String[]
+
+  // 位置信息
+  canteenId    String
+  canteen      Canteen @relation(fields: [canteenId], references: [id], onDelete: Cascade)
+  canteenName  String
+  floor        String?
+  windowId     String?
+  window       Window? @relation(fields: [windowId], references: [id])
+  windowNumber String?
+  windowName   String
+
+  // 供应时间
+  availableMealTime String[] // breakfast, lunch, dinner, nightsnack
+  availableDates    Json? // 可用日期范围数组
+
+  // 状态
+  status String @default("online") // online, offline
+
+  // 统计信息
+  averageRating Float @default(0)
+  reviewCount   Int   @default(0)
+
+  // 关联关系
+  reviews        Review[]
+  favoritedBy    FavoriteDish[]
+  mealPlans      MealPlanDish[]
+  browseHistory  BrowseHistory[]
+  recommendations AIRecommendation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([canteenId])
+  @@index([windowId])
+  @@index([status])
+  @@index([averageRating])
+  @@map("dishes")
+}
+
+model DishUpload {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+
+  // 菜品信息（与Dish模型类似）
+  name             String
+  tags             String[]
+  price            Float
+  description      String?
+  images           String[]
+  ingredients      String[]
+  allergens        String[]
+  canteenName      String
+  floor            String?
+  windowNumber     String?
+  windowName       String
+  availableMealTime String[]
+  availableDates   Json?
+
+  // 审核状态
+  status       String  @default("pending") // pending, approved, rejected
+  rejectReason String?
+  approvedDishId String? // 审核通过后对应的菜品ID
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@map("dish_uploads")
+}
+
+// ==================== 评价和评论模型 ====================
+
+model Review {
+  id       String @id @default(cuid())
+  dishId   String
+  dish     Dish   @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+
+  rating  Int // 1-5
+  content String?
+  images  String[]
+
+  status String @default("pending") // pending, approved, rejected
+  rejectReason String?
+
+  // 关联关系
+  comments Comment[]
+  reports  Report[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dishId])
+  @@index([userId])
+  @@index([status])
+  @@map("reviews")
+}
+
+model Comment {
+  id       String @id @default(cuid())
+  reviewId String
+  review   Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+
+  content String
+
+  status String @default("pending") // pending, approved, rejected
+  rejectReason String?
+
+  // 关联关系
+  reports Report[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([reviewId])
+  @@index([userId])
+  @@index([status])
+  @@map("comments")
+}
+
+model Report {
+  id         String @id @default(cuid())
+  reporterId String
+  reporter   User   @relation(fields: [reporterId], references: [id])
+
+  targetType String // review, comment
+  targetId   String
+
+  // 关联到具体目标（可选，用于方便查询）
+  reviewId  String?
+  review    Review? @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  commentId String?
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  type   String // inappropriate, spam, false_info, other
+  reason String
+
+  status       String  @default("pending") // pending, approved, rejected
+  handleResult String?
+  handledBy    String?
+  handler      Admin?  @relation("ReportHandler", fields: [handledBy], references: [id])
+  handledAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([reporterId])
+  @@index([targetType, targetId])
+  @@index([status])
+  @@map("reports")
+}
+
+// ==================== 用户行为模型 ====================
+
+model FavoriteDish {
+  id      String @id @default(cuid())
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dishId  String
+  dish    Dish   @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  addedAt DateTime @default(now())
+
+  @@unique([userId, dishId])
+  @@index([userId])
+  @@map("favorite_dishes")
+}
+
+model BrowseHistory {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dishId   String
+  dish     Dish     @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  viewedAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([viewedAt])
+  @@map("browse_history")
+}
+
+// ==================== 饮食规划模型 ====================
+
+model MealPlan {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  startDate DateTime
+  endDate   DateTime
+  mealTime  String // breakfast, lunch, dinner, nightsnack
+
+  // 关联关系
+  dishes MealPlanDish[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("meal_plans")
+}
+
+model MealPlanDish {
+  id         String   @id @default(cuid())
+  mealPlanId String
+  mealPlan   MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  dishId     String
+  dish       Dish     @relation(fields: [dishId], references: [id], onDelete: Cascade)
+
+  @@unique([mealPlanId, dishId])
+  @@map("meal_plan_dishes")
+}
+
+// ==================== AI推荐模型 ====================
+
+model AIRecommendation {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dishId String
+  dish   Dish   @relation(fields: [dishId], references: [id], onDelete: Cascade)
+
+  reason String // 推荐理由
+  score  Float // 推荐分数
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("ai_recommendations")
+}
+
+model RecommendFeedback {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dishId   String
+  feedback String // like, dislike
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([dishId])
+  @@map("recommend_feedbacks")
+}
+
+// ==================== 新闻模型 ====================
+
+model News {
+  id          String   @id @default(cuid())
+  title       String
+  content     String   @db.Text
+  summary     String?
+  canteenId   String?
+  canteen     Canteen? @relation(fields: [canteenId], references: [id])
+  canteenName String?
+  publishedAt DateTime
+  createdBy   String
+  creator     Admin    @relation(fields: [createdBy], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([canteenId])
+  @@index([publishedAt])
+  @@map("news")
+}
