@@ -62,7 +62,8 @@
                 <tr 
                   v-for="dish in filteredReviewDishes" 
                   :key="dish.id"
-                  class="table-row"
+                  class="table-row cursor-pointer hover:bg-gray-50"
+                  @click="viewDishDetail(dish)"
                 >
                   <td class="py-4 px-6">
                     <div class="flex items-center">
@@ -90,7 +91,7 @@
                       {{ statusText[dish.status] }}
                     </span>
                   </td>
-                  <td class="py-4 px-6 text-center">
+                  <td class="py-4 px-6 text-center" @click.stop>
                     <button 
                       class="px-3 py-1 bg-tsinghua-purple text-white rounded text-sm hover:bg-tsinghua-dark transition duration-200"
                       :class="{ 'bg-gray-200 text-gray-700 hover:bg-gray-300': dish.status === 'approved' }"
@@ -119,6 +120,7 @@
 
 <script>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import Sidebar from '../components/Layout/Sidebar.vue'
 import Header from '../components/Layout/Header.vue'
 import Pagination from '../components/Common/Pagination.vue'
@@ -131,6 +133,7 @@ export default {
     Pagination
   },
   setup() {
+    const router = useRouter()
     const searchQuery = ref('')
     const statusFilter = ref('')
     const canteenFilter = ref('')
@@ -216,16 +219,14 @@ export default {
       return filtered
     })
     
+    const viewDishDetail = (dish) => {
+      // 跳转到审核详情页面
+      router.push(`/review-dish/${dish.id}`)
+    }
+    
     const reviewDish = (dish) => {
-      if (dish.status === 'pending') {
-        // 模拟审核通过
-        dish.status = 'approved'
-        alert(`已通过菜品: ${dish.name}`)
-      } else if (dish.status === 'rejected') {
-        // 重新审核
-        dish.status = 'pending'
-        alert(`已将菜品 ${dish.name} 重新设为待审核状态`)
-      }
+      // 跳转到审核详情页面
+      router.push(`/review-dish/${dish.id}`)
     }
     
     const handlePageChange = (page) => {

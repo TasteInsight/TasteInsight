@@ -91,6 +91,7 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useDishStore } from '../store'
 import Sidebar from '../components/Layout/Sidebar.vue'
 import Header from '../components/Layout/Header.vue'
@@ -106,6 +107,7 @@ export default {
     Pagination
   },
   setup() {
+    const router = useRouter()
     const dishStore = useDishStore()
     const searchQuery = ref('')
     const showFilter = ref(false)
@@ -176,9 +178,8 @@ export default {
     })
     
     const editDish = (dish) => {
-      // 这里可以跳转到编辑页面或打开编辑模态框
-      console.log('编辑菜品:', dish)
-      alert(`编辑菜品: ${dish.name}`)
+      // 跳转到编辑页面
+      router.push(`/edit-dish/${dish.id}`)
     }
     
     const handlePageChange = (page) => {

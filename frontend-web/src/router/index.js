@@ -3,7 +3,9 @@ import { useAuthStore } from '../store/auth'
 import SingleAdd from '../views/SingleAdd.vue'
 import BatchAdd from '../views/BatchAdd.vue'
 import ModifyDish from '../views/ModifyDish.vue'
+import EditDish from '../views/EditDish.vue'
 import ReviewDish from '../views/ReviewDish.vue'
+import ReviewDishDetail from '../views/ReviewDishDetail.vue'
 import UserManage from '../views/UserManage.vue'
 import Login from '../views/Login.vue'
 
@@ -37,9 +39,21 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/edit-dish/:id',
+    name: 'EditDish',
+    component: EditDish,
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/review-dish',
     name: 'ReviewDish',
     component: ReviewDish,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/review-dish/:id',
+    name: 'ReviewDishDetail',
+    component: ReviewDishDetail,
     meta: { requiresAuth: true }
   },
   {
