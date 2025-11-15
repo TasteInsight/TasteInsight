@@ -2,7 +2,7 @@
   <div class="w-full min-h-screen flex container-shadow rounded-lg bg-white overflow-hidden">
     <Sidebar />
     
-    <div class="flex-1 min-h-screen overflow-auto bg-tsinghua-light">
+    <div class="flex-1 min-h-screen overflow-auto bg-tsinghua-light ml-[260px]">
       <div class="p-8 min-h-screen">
         <div class="bg-white rounded-lg container-shadow p-8">
           <Header 
@@ -73,6 +73,17 @@
                     class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
                     placeholder="例如：水煮肉片"
                   >
+                </div>
+                
+                <!-- 菜品描述 -->
+                <div class="mb-6">
+                  <label class="block text-gray-700 font-medium mb-2">菜品描述</label>
+                  <textarea 
+                    v-model="formData.description" 
+                    class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple resize-none"
+                    rows="4"
+                    placeholder="请输入菜品描述..."
+                  ></textarea>
                 </div>
                 
                 <!-- 菜品图片上传 -->
@@ -247,7 +258,7 @@
                 </div>
                 
                 <!-- 供应季节 -->
-                <div>
+                <div class="mb-6">
                   <label class="block text-gray-700 font-medium mb-2">供应季节</label>
                   <div class="grid grid-cols-4 gap-2">
                     <div class="flex items-center">
@@ -287,6 +298,28 @@
                       <label for="winter">冬季</label>
                     </div>
                   </div>
+                </div>
+                
+                <!-- 过敏原 -->
+                <div class="mb-6">
+                  <label class="block text-gray-700 font-medium mb-2">过敏原</label>
+                  <input 
+                    type="text" 
+                    v-model="formData.allergens" 
+                    class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
+                    placeholder="例如：花生、牛奶、鸡蛋等"
+                  >
+                </div>
+                
+                <!-- 原辅料 -->
+                <div>
+                  <label class="block text-gray-700 font-medium mb-2">原辅料</label>
+                  <input 
+                    type="text" 
+                    v-model="formData.ingredients" 
+                    class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
+                    placeholder="例如：猪肉、豆芽、辣椒、花椒等"
+                  >
                 </div>
               </div>
             </div>
@@ -335,6 +368,9 @@ export default {
       floor: '',
       window: '',
       name: '',
+      description: '',
+      allergens: '',
+      ingredients: '',
       image: null,
       subItems: [
         { name: '', price: '' }
@@ -402,6 +438,9 @@ export default {
         floor: '',
         window: '',
         name: '',
+        description: '',
+        allergens: '',
+        ingredients: '',
         image: null,
         subItems: [{ name: '', price: '' }],
         cuisine: '',

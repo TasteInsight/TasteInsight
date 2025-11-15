@@ -1,5 +1,5 @@
 <template>
-  <div class="w-[260px] min-h-screen bg-tsinghua-purple text-white flex flex-col py-6">
+  <div class="fixed left-0 top-0 w-[260px] h-screen bg-tsinghua-purple text-white flex flex-col py-6 z-50">
     <div class="px-6 mb-8">
       <div class="flex items-center space-x-3">
         <span class="iconify text-2xl" data-icon="noto-v1:pot-of-food"></span>
@@ -32,7 +32,7 @@
             class="sidebar-btn w-full py-2 px-3 text-left flex items-center space-x-2 text-base font-normal"
             :class="{ 'active': $route.path === '/batch-add' }"
           >
-            <span class="iconify" data-icon="carbon:document-multiple"></span>
+            <span class="iconify" data-icon="carbon:table"></span>
             <span>批量添加</span>
           </router-link>
         </div>
@@ -63,7 +63,7 @@
       </router-link>
     </div>
     
-    <div class="px-6 py-4 text-sm flex items-center justify-between">
+    <div class="px-6 py-4 text-sm flex items-center justify-between mt-auto border-t border-white/20">
       <div class="flex items-center space-x-2 opacity-80">
         <span class="iconify" data-icon="mdi:user-circle-outline"></span>
         <span>管理员：{{ userInfo.username || userInfo.name || '管理员' }}</span>

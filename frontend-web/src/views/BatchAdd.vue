@@ -2,7 +2,7 @@
   <div class="w-full min-h-screen flex container-shadow rounded-lg bg-white overflow-hidden">
     <Sidebar />
     
-    <div class="flex-1 min-h-screen overflow-auto bg-tsinghua-light">
+    <div class="flex-1 min-h-screen overflow-auto bg-tsinghua-light ml-[260px]">
       <div class="p-8 min-h-screen">
         <div class="bg-white rounded-lg container-shadow p-8">
           <Header 
