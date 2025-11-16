@@ -32,12 +32,13 @@
       <view v-else class="text-center mt-4">
         <view class="text-xl font-medium text-ts-purple mb-2">请先点击登录</view>
         <view class="mt-4 flex justify-center" >
-          <view 
-            @click="emit('login')" 
-            class="bg-white border  border-ts-purple text-ts-purple font-medium  rounded-full px-8 py-3 shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
-          >
-            立即登录
-          </view>
+            <view 
+              @tap="handleLoginClick"
+              @click="handleLoginClick"
+              class="bg-white border  border-ts-purple text-ts-purple font-medium  rounded-full px-8 py-3 shadow-lg hover:shadow-xl transition-shadow cursor-pointer"
+            >
+              立即登录
+            </view>
         </view>
       </view>
     </view>
@@ -54,4 +55,9 @@ defineProps<{
 }>();
 
 const emit = defineEmits(['login']);
+
+function handleLoginClick() {
+  console.log('UserHeader 登录按钮被点击');
+  emit('login');
+}
 </script>

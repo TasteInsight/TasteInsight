@@ -1,5 +1,3 @@
-[file name]: index.vue
-[file content begin]
 <template>
   <view class="w-full h-[812px] bg-white overflow-hidden flex shadow-lg flex-col relative" style="max-width: 375px;">
     <!-- 紫色背景头部区域，约占1/4空间 -->
@@ -80,4 +78,3 @@ function handleLogin() {
   });
 }
 </script>
-[file content end]
