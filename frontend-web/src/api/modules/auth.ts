@@ -1,5 +1,5 @@
-import request from './request'
-import type { LoginCredentials, LoginResponse } from './types'
+import request from '@/utils/request'
+import type { LoginCredentials, LoginResponse } from '@/types/api'
 
 /**
  * 认证相关 API
@@ -37,4 +37,3 @@ export const authApi = {
 }
 
 export default authApi
-

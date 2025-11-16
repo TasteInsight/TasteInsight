@@ -1,5 +1,4 @@
-import request from './request'
-import type { Dish, CreateDishData, UpdateDishData, PaginationParams, PaginationResponse } from './types'
+import type { Dish, CreateDishData, PaginationParams } from '@/types/api'
 
 /**
  * 菜品相关 API
@@ -10,7 +9,7 @@ export const dishApi = {
    * @param params 查询参数（可选）
    * @returns 菜品列表
    */
-  async getDishes(params?: PaginationParams): Promise<Dish[]> {
+  async getDishes(_params?: PaginationParams): Promise<Dish[]> {
     // 模拟 API 调用（保留原有接口）
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -89,4 +88,3 @@ export const dishApi = {
 }
 
 export default dishApi
-

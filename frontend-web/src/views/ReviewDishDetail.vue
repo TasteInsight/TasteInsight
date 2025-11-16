@@ -254,8 +254,8 @@
 <script>
 import { reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import Sidebar from '../components/Layout/Sidebar.vue'
-import Header from '../components/Layout/Header.vue'
+import Sidebar from '@/components/Layout/Sidebar.vue';
+import Header from '@/components/Layout/Header.vue';
 
 export default {
   name: 'ReviewDishDetail',

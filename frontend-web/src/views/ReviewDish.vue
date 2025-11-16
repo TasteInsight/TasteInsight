@@ -121,9 +121,9 @@
 <script>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import Sidebar from '../components/Layout/Sidebar.vue'
-import Header from '../components/Layout/Header.vue'
-import Pagination from '../components/Common/Pagination.vue'
+import Sidebar from '@/components/Layout/Sidebar.vue';
+import Header from '@/components/Layout/Header.vue';
+import Pagination from '@/components/Common/Pagination.vue'
 
 export default {
   name: 'ReviewDish',

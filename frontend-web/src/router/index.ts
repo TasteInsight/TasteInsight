@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '../store/auth'
+import { useAuthStore } from '@/store/modules/use-auth-store'
 import SingleAdd from '../views/SingleAdd.vue'
 import BatchAdd from '../views/BatchAdd.vue'
 import ModifyDish from '../views/ModifyDish.vue'

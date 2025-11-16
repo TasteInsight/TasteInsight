@@ -350,9 +350,9 @@
 
 <script>
 import { reactive } from 'vue'
-import { useDishStore } from '../store'
-import Sidebar from '../components/Layout/Sidebar.vue'
-import Header from '../components/Layout/Header.vue'
+import { useDishStore } from '@/store/modules/use-dish-store';
+import Sidebar from '@/components/Layout/Sidebar.vue';
+import Header from '@/components/Layout/Header.vue';
 
 export default {
   name: 'SingleAdd',

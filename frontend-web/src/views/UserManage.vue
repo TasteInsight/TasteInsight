@@ -322,9 +322,9 @@
 
 <script>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { api } from '../api'
-import Sidebar from '../components/Layout/Sidebar.vue'
-import Header from '../components/Layout/Header.vue'
+import { api } from '@/api';
+import Sidebar from '@/components/Layout/Sidebar.vue';
+import Header from '@/components/Layout/Header.vue'
 
 export default {
   name: 'UserManage',

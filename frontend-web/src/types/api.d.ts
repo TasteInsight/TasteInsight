@@ -147,4 +147,3 @@ export interface GetAdminsParams extends PaginationParams {
   status?: string
   keyword?: string
 }
-

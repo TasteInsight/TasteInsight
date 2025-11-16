@@ -111,66 +111,7 @@
 </template>
 
 <script>
-import { computed } from 'vue'
+import { computed } from 'vue';
 
-export default {
-  name: 'DishTable',
-  props: {
-    data: {
-      type: Array,
-      default: () => []
-    },
-    columns: {
-      type: Array,
-      required: true
-    },
-    actions: {
-      type: Array,
-      default: () => ['edit', 'delete']
-    },
-    currentPage: {
-      type: Number,
-      default: 1
-    },
-    pageSize: {
-      type: Number,
-      default: 10
-    }
-  },
-  emits: ['edit', 'delete', 'view'],
-  setup(props) {
-    const statusConfig = {
-      pending: { class: 'bg-yellow-100 text-yellow-800', text: '待审核' },
-      approved: { class: 'bg-green-100 text-green-800', text: '已通过' },
-      rejected: { class: 'bg-red-100 text-red-800', text: '已拒绝' },
-      active: { class: 'bg-blue-100 text-blue-800', text: '有效' },
-      inactive: { class: 'bg-gray-100 text-gray-800', text: '无效' }
-    }
-    
-    const paginatedData = computed(() => {
-      const start = (props.currentPage - 1) * props.pageSize
-      const end = start + props.pageSize
-      return props.data.slice(start, end)
-    })
-    
-    const getImageUrl = (url) => {
-      return url || '/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'
-    }
-    
-    const getStatusClass = (status) => {
-      return statusConfig[status]?.class || 'bg-gray-100 text-gray-800'
-    }
-    
-    const getStatusText = (status) => {
-      return statusConfig[status]?.text || status
-    }
-    
-    return {
-      paginatedData,
-      getImageUrl,
-      getStatusClass,
-      getStatusText
-    }
-  }
-}
+// ...existing code...
 </script>

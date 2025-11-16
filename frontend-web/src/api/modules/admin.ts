@@ -1,5 +1,5 @@
-import request from './request'
-import type { Admin, CreateAdminData, UpdateAdminPermissionsData, GetAdminsParams, PaginationResponse } from './types'
+import request from '@/utils/request'
+import type { Admin, CreateAdminData, GetAdminsParams, PaginationResponse } from '@/types/api'
 
 /**
  * 管理员相关 API
@@ -22,8 +22,7 @@ export const adminApi = {
       )
     })
     
-    const response = await request.get<PaginationResponse<Admin>>(`/admin/admins?${queryParams.toString()}`)
-    return response
+    return await request.get<PaginationResponse<Admin>>(`/admin/admins?${queryParams.toString()}`)
   },
 
   /**
@@ -32,13 +31,12 @@ export const adminApi = {
    * @returns 创建的管理员信息
    */
   async createAdmin(data: CreateAdminData): Promise<Admin> {
-    const response = await request.post<Admin>('/admin/admins', {
+    return await request.post<Admin>('/admin/admins', {
       username: data.username,
       password: data.password,
       canteenId: data.canteenId,
       permissions: data.permissions || []
     })
-    return response
   },
 
   /**
@@ -47,8 +45,7 @@ export const adminApi = {
    * @returns 删除结果
    */
   async deleteAdmin(adminId: string | number): Promise<{ success: boolean }> {
-    const response = await request.delete<{ success: boolean }>(`/admin/admins/${adminId}`)
-    return response
+    return await request.delete<{ success: boolean }>(`/admin/admins/${adminId}`)
   },
 
   /**
@@ -61,11 +58,10 @@ export const adminApi = {
     adminId: string | number, 
     permissions: string[]
   ): Promise<{ success: boolean }> {
-    const response = await request.put<{ success: boolean }>(
+    return await request.put<{ success: boolean }>(
       `/admin/admins/${adminId}/permissions`,
       { permissions }
     )
-    return response
   },
 
   /**
@@ -74,12 +70,10 @@ export const adminApi = {
    * @returns 重置结果
    */
   async resetAdminPassword(adminId: string | number): Promise<{ success: boolean; newPassword?: string }> {
-    const response = await request.post<{ success: boolean; newPassword?: string }>(
+    return await request.post<{ success: boolean; newPassword?: string }>(
       `/admin/admins/${adminId}/reset-password`
     )
-    return response
   }
 }
 
 export default adminApi
-

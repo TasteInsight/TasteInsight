@@ -8,9 +8,9 @@
  * import { authApi, dishApi, adminApi } from '@/api'
  */
 
-import { authApi } from './auth'
-import { dishApi } from './dish'
-import { adminApi } from './admin'
+import { authApi } from '@/api/modules/auth'
+import { dishApi } from '@/api/modules/dish'
+import { adminApi } from '@/api/modules/admin'
 
 /**
  * 统一 API 对象
@@ -45,7 +45,7 @@ export { authApi, dishApi, adminApi }
 /**
  * 导出类型
  */
-export type * from './types'
+export type * from '@/types/api'
 
 /**
  * 导出 axios 实例（如果需要直接使用）

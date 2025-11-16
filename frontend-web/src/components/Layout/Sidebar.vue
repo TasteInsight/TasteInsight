@@ -82,7 +82,7 @@
 <script>
 import { ref, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '../../store/auth'
+import { useAuthStore } from '@/store/modules/use-auth-store'
 
 export default {
   name: 'Sidebar',

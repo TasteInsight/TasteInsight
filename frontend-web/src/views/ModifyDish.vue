@@ -92,11 +92,11 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useDishStore } from '../store'
-import Sidebar from '../components/Layout/Sidebar.vue'
-import Header from '../components/Layout/Header.vue'
-import SearchBar from '../components/Common/SearchBar.vue'
-import Pagination from '../components/Common/Pagination.vue'
+import { useDishStore } from '@/store/modules/use-dish-store';
+import Sidebar from '@/components/Layout/Sidebar.vue';
+import Header from '@/components/Layout/Header.vue';
+import SearchBar from '@/components/Common/SearchBar.vue';
+import Pagination from '@/components/Common/Pagination.vue'
 
 export default {
   name: 'ModifyDish',
