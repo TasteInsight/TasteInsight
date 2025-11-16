@@ -1,13 +1,3 @@
-/**
- * API 统一导出
- * 
- * 使用方式：
- * import { api } from '@/api'
- * 
- * 或者按需导入：
- * import { authApi, dishApi, adminApi } from '@/api'
- */
-
 import { authApi } from '@/api/modules/auth'
 import { dishApi } from '@/api/modules/dish'
 import { adminApi } from '@/api/modules/admin'
@@ -19,22 +9,40 @@ import { adminApi } from '@/api/modules/admin'
 export const api = {
   // 认证相关
   adminLogin: authApi.adminLogin.bind(authApi),
-  adminLogout: authApi.adminLogout.bind(authApi),
   refreshToken: authApi.refreshToken.bind(authApi),
   
   // 菜品相关
   getDishes: dishApi.getDishes.bind(dishApi),
-  addDish: dishApi.addDish.bind(dishApi),
+  createDish: dishApi.createDish.bind(dishApi),
   updateDish: dishApi.updateDish.bind(dishApi),
   deleteDish: dishApi.deleteDish.bind(dishApi),
-  uploadExcel: dishApi.uploadExcel.bind(dishApi),
+  batchUpload: dishApi.batchUpload.bind(dishApi),
+  updateDishStatus: dishApi.updateDishStatus.bind(dishApi),
   
   // 管理员相关
   getAdmins: adminApi.getAdmins.bind(adminApi),
   createAdmin: adminApi.createAdmin.bind(adminApi),
   deleteAdmin: adminApi.deleteAdmin.bind(adminApi),
   updateAdminPermissions: adminApi.updateAdminPermissions.bind(adminApi),
-  resetAdminPassword: adminApi.resetAdminPassword.bind(adminApi)
+  
+  // 审核相关
+  getPendingReviews: adminApi.getPendingReviews.bind(adminApi),
+  approveReview: adminApi.approveReview.bind(adminApi),
+  rejectReview: adminApi.rejectReview.bind(adminApi),
+  getPendingComments: adminApi.getPendingComments.bind(adminApi),
+  approveComment: adminApi.approveComment.bind(adminApi),
+  rejectComment: adminApi.rejectComment.bind(adminApi),
+  getReports: adminApi.getReports.bind(adminApi),
+  handleReport: adminApi.handleReport.bind(adminApi),
+  getPendingUploads: adminApi.getPendingUploads.bind(adminApi),
+  approveUpload: adminApi.approveUpload.bind(adminApi),
+  rejectUpload: adminApi.rejectUpload.bind(adminApi),
+  
+  // 其他管理功能
+  getLogs: adminApi.getLogs.bind(adminApi),
+  getNews: adminApi.getNews.bind(adminApi),
+  getCanteens: adminApi.getCanteens.bind(adminApi),
+  getWindows: adminApi.getWindows.bind(adminApi),
 }
 
 /**
@@ -46,11 +54,4 @@ export { authApi, dishApi, adminApi }
  * 导出类型
  */
 export type * from '@/types/api'
-
-/**
- * 导出 axios 实例（如果需要直接使用）
- */
-export { default as request } from '@/utils/request'
-
-export default api
 

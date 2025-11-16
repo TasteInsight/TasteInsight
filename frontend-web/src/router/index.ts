@@ -73,8 +73,6 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
   
-  // 初始化认证状态
-  authStore.initAuth()
   
   // 检查路由是否需要认证
   if (to.meta.requiresAuth) {

@@ -1,12 +1,13 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import type { Dish } from '@/types/api';
 
 export const useDishStore = defineStore('dish', () => {
-  const dishes = ref<any[]>([]);
-  const currentDish = ref<any | null>(null);
+  const dishes = ref<Dish[]>([]);
+  const currentDish = ref<Dish | null>(null);
   const searchQuery = ref<string>('');
-  const filterOptions = ref<{ canteen: string; status: string }>({
-    canteen: '',
+  const filterOptions = ref<{ canteenId: string; status: string }>({
+    canteenId: '',
     status: ''
   });
 
@@ -16,13 +17,12 @@ export const useDishStore = defineStore('dish', () => {
     if (searchQuery.value) {
       filtered = filtered.filter(dish =>
         dish.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        dish.canteen.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        dish.window.toLowerCase().includes(searchQuery.value.toLowerCase())
+        dish.canteenId.toLowerCase().includes(searchQuery.value.toLowerCase())
       );
     }
 
-    if (filterOptions.value.canteen) {
-      filtered = filtered.filter(dish => dish.canteen === filterOptions.value.canteen);
+    if (filterOptions.value.canteenId) {
+      filtered = filtered.filter(dish => dish.canteenId === filterOptions.value.canteenId);
     }
 
     if (filterOptions.value.status) {
@@ -36,26 +36,8 @@ export const useDishStore = defineStore('dish', () => {
     searchQuery.value = query;
   };
 
-  const setFilterOptions = (options: Partial<{ canteen: string; status: string }>) => {
+  const setFilterOptions = (options: Partial<{ canteenId: string; status: string }>) => {
     filterOptions.value = { ...filterOptions.value, ...options };
-  };
-
-  const addDish = (dish: any) => {
-    dishes.value.push({
-      id: Date.now(),
-      ...dish
-    });
-  };
-
-  const updateDish = (id: string | number, updatedDish: any) => {
-    const index = dishes.value.findIndex(dish => dish.id === id);
-    if (index !== -1) {
-      dishes.value[index] = { ...dishes.value[index], ...updatedDish };
-    }
-  };
-
-  const deleteDish = (id: string | number) => {
-    dishes.value = dishes.value.filter(dish => dish.id !== id);
   };
 
   return {
@@ -65,9 +47,6 @@ export const useDishStore = defineStore('dish', () => {
     filterOptions,
     filteredDishes,
     setSearchQuery,
-    setFilterOptions,
-    addDish,
-    updateDish,
-    deleteDish
+    setFilterOptions
   };
 });

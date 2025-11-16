@@ -1,54 +1,47 @@
-import type { Dish, CreateDishData, PaginationParams } from '@/types/api'
+import request from '@/utils/request'
+import type { 
+  Dish, 
+  DishCreateRequest, 
+  DishUpdateRequest,
+  GetDishesParams,
+  PaginationResponse,
+  ApiResponse,
+  SuccessResponse
+} from '@/types/api'
 
 /**
  * 菜品相关 API
  */
 export const dishApi = {
   /**
-   * 获取菜品列表
-   * @param params 查询参数（可选）
-   * @returns 菜品列表
+   * 管理端获取菜品列表
+   * @param params 查询参数
+   * @returns 菜品列表（分页）
    */
-  async getDishes(_params?: PaginationParams): Promise<Dish[]> {
-    // 模拟 API 调用（保留原有接口）
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve([
-          { id: 1, name: '示例菜品', canteen: '紫荆园', status: 'active' }
-        ])
-      }, 500)
-    })
+  async getDishes(params?: GetDishesParams): Promise<ApiResponse<PaginationResponse<Dish>>> {
+    const response = await request.get<ApiResponse<PaginationResponse<Dish>>>('/admin/dishes', { params })
+    return response
   },
 
   /**
-   * 添加菜品
+   * 创建新菜品
    * @param dishData 菜品数据
-   * @returns 创建结果
+   * @returns 创建的菜品信息
    */
-  async addDish(dishData: CreateDishData): Promise<{ success: boolean; id: number | string }> {
-    console.log('添加菜品:', dishData)
-    // 模拟 API 调用（保留原有接口）
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({ success: true, id: Date.now() })
-      }, 500)
-    })
+  async createDish(dishData: DishCreateRequest): Promise<ApiResponse<Dish>> {
+    const response = await request.post<ApiResponse<Dish>>('/admin/dishes', dishData)
+    return response
   },
 
   /**
    * 更新菜品
    * @param id 菜品 ID
    * @param dishData 更新的菜品数据
-   * @returns 更新结果
+   * @returns 更新后的菜品信息
    */
-  async updateDish(id: string | number, dishData: Partial<CreateDishData>): Promise<{ success: boolean }> {
-    console.log('更新菜品:', id, dishData)
-    // 模拟 API 调用（保留原有接口）
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({ success: true })
-      }, 500)
-    })
+  async updateDish(id: string, dishData: DishUpdateRequest): Promise<ApiResponse<Dish>> {
+    const response = await request.put<ApiResponse<Dish>>(`/admin/dishes/${id}`, dishData)
+    return response
   },
 
   /**
@@ -56,34 +49,36 @@ export const dishApi = {
    * @param id 菜品 ID
    * @returns 删除结果
    */
-  async deleteDish(id: string | number): Promise<{ success: boolean }> {
-    console.log('删除菜品:', id)
-    // 模拟 API 调用（保留原有接口）
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({ success: true })
-      }, 500)
-    })
+  async deleteDish(id: string): Promise<ApiResponse<SuccessResponse>> {
+    const response = await request.delete<ApiResponse<SuccessResponse>>(`/admin/dishes/${id}`)
+    return response
   },
 
   /**
-   * 上传 Excel 文件
+   * 批量上传菜品
    * @param file Excel 文件
-   * @returns 解析结果
+   * @returns 上传结果
    */
-  async uploadExcel(file: File): Promise<{ success: boolean; data: any[] }> {
-    console.log('上传Excel文件:', file.name)
-    // 模拟 API 调用（保留原有接口）
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({ 
-          success: true, 
-          data: [
-            { id: 1, name: '麻婆豆腐', canteen: '紫荆园', status: '有效' }
-          ] 
-        })
-      }, 1000)
+  async batchUpload(file: File): Promise<ApiResponse<SuccessResponse>> {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await request.post<ApiResponse<SuccessResponse>>('/admin/dishes/batch', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
     })
+    return response
+  },
+
+  /**
+   * 修改菜品状态
+   * @param id 菜品 ID
+   * @param status 菜品状态（online 或 offline）
+   * @returns 修改结果
+   */
+  async updateDishStatus(id: string, status: 'online' | 'offline'): Promise<ApiResponse<SuccessResponse>> {
+    const response = await request.patch<ApiResponse<SuccessResponse>>(`/admin/dishes/${id}/status`, { status })
+    return response
   }
 }
 

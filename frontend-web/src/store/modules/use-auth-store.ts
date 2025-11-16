@@ -1,20 +1,23 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
+import type { LoginCredentials, Admin } from '@/types/api';
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem('admin_token'));
-  const user = ref<any>(JSON.parse(localStorage.getItem('admin_user') || 'null'));
+  const user = ref<Admin | null>(JSON.parse(localStorage.getItem('admin_user') || 'null'));
   const isAuthenticated = ref<boolean>(!!localStorage.getItem('admin_token'));
 
   const isLoggedIn = computed(() => !!token.value && isAuthenticated.value);
 
-  const login = async (credentials: any) => {
+  const login = async (credentials: LoginCredentials & { remember?: boolean }) => {
     token.value = 'mock_token_' + Date.now();
     user.value = {
-      username: credentials.username || '管理员',
-      name: credentials.username || '管理员',
-      id: Date.now()
-    };
+      username: credentials.username,
+      id: Date.now().toString(),
+      permissions: [],
+      role: 'admin',
+      createdAt: new Date().toISOString()
+    } as Admin;
     isAuthenticated.value = true;
 
     if (credentials.remember) {
@@ -37,29 +40,6 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null;
     user.value = null;
     isAuthenticated.value = false;
-
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_user');
-    sessionStorage.removeItem('admin_token');
-    sessionStorage.removeItem('admin_user');
-  };
-
-  const initAuth = () => {
-    const storedToken = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
-    const storedUser = localStorage.getItem('admin_user') || sessionStorage.getItem('admin_user');
-
-    if (storedToken) {
-      token.value = storedToken;
-      isAuthenticated.value = true;
-    }
-
-    if (storedUser) {
-      try {
-        user.value = JSON.parse(storedUser);
-      } catch (e) {
-        console.error('Failed to parse user data:', e);
-      }
-    }
   };
 
   return {
@@ -68,7 +48,6 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     isLoggedIn,
     login,
-    logout,
-    initAuth
+    logout
   };
 });
