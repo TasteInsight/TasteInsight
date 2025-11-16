@@ -50,7 +50,7 @@ export type * from '@/types/api'
 /**
  * 导出 axios 实例（如果需要直接使用）
  */
-export { default as request } from './request'
+export { default as request } from '@/utils/request'
 
 export default api
 
