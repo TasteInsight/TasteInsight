@@ -24,7 +24,8 @@ export class AuthGuard implements CanActivate {
       });
       // 将 payload 附加到请求对象，以便后续处理函数访问
       request['user'] = payload;
-    } catch {
+    } catch (error) {
+      console.error('JWT verification failed:', error);
       throw new UnauthorizedException();
     }
     return true;

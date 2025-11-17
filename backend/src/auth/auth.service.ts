@@ -15,7 +15,7 @@ export class AuthService {
 
   // --- 核心方法：生成 Access Token 和 Refresh Token ---
   private async _generateTokens(payload: { sub: string, type: 'user' | 'admin' }) {
-    // 终极修正：以 number 类型获取 expiresIn，并确保所有配置存在
+    // 以 number 类型获取 expiresIn，并确保所有配置存在
     const accessTokenSecret = this.configService.get<string>('JWT_SECRET');
     const refreshTokenSecret = this.configService.get<string>('JWT_REFRESH_SECRET');
 
@@ -34,12 +34,10 @@ export class AuthService {
     }
 
     const [accessToken, refreshToken] = await Promise.all([
-      // 明确传入 number 类型的 expiresIn
       this.jwtService.signAsync(payload, {
         secret: accessTokenSecret,
         expiresIn: accessTokenExpiresIn,
       }),
-      // 明确传入 number 类型的 expiresIn
       this.jwtService.signAsync(payload, {
         secret: refreshTokenSecret,
         expiresIn: refreshTokenExpiresIn,
@@ -64,7 +62,6 @@ export class AuthService {
     });
 
     if (!user) {
-      // 如果用户不存在，则创建新用户
       user = await this.prisma.user.create({
         data: {
           openId: openid,

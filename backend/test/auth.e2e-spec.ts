@@ -1,7 +1,7 @@
 // test/auth.e2e-spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import request from 'supertest';        // <-- 【最终修正】将 `import * as request` 改为 `import request`
+import request from 'supertest';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from '../src/prisma.service';
 import { JwtService } from '@nestjs/jwt';
@@ -19,8 +19,6 @@ beforeAll(async () => {
     prisma = app.get<PrismaService>(PrismaService);
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
-    // 注意：这里不再需要手动清空和创建数据
-    // 我们假设 `pnpm test` 已经为我们运行了 seed 脚本
 });
 
 afterAll(async () => {
@@ -42,7 +40,6 @@ describe('/auth/wechat/login (POST)', () => {
         .expect(400);
     });
 
-    // 这个测试会【创建】一个新用户，属于"写"操作
     it('should create a new user and return tokens for a new wechat code', async () => {
     const response = await request(app.getHttpServer())
         .post('/auth/wechat/login')
@@ -62,7 +59,6 @@ describe('/auth/wechat/login (POST)', () => {
     expect(dbUser).not.toBeNull();
     });
 
-    // 这个测试依赖【已存在】的用户，属于"读"操作，我们用 seed 创建的基础用户
     it('should return tokens for an existing user (from seed)', async () => {
         const response = await request(app.getHttpServer())
         .post('/auth/wechat/login')
@@ -82,7 +78,6 @@ describe('/auth/wechat/login (POST)', () => {
 });
 
 describe('/auth/admin/login (POST)', () => {
-    // 这个 describe 块的所有测试都只“读”由 seed 创建的管理员数据，无需清理
 
     it('should fail with 401 for wrong credentials', () => {
     return request(app.getHttpServer())
@@ -146,9 +141,9 @@ describe('/auth/refresh (POST)', () => {
     });
 
     it('should return a new set of tokens for a valid token', async () => {
-    // 等待1秒以确保新token的时间戳不同
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
+    // 等待20ms以确保新token的时间戳不同（JWT时间戳有毫秒精度，无需等待1秒）
+    await new Promise(resolve => setTimeout(resolve, 20));
+
     const response = await request(app.getHttpServer())
         .post('/auth/refresh')
         .set('Authorization', `Bearer ${accessToken}`)
