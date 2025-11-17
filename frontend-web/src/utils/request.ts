@@ -11,6 +11,7 @@ import config from '@/config'
  */
 const isMockMode = () => {
   return localStorage.getItem('mock_mode') === 'true' || !config.baseURL || config.baseURL.includes('localhost:0')
+  // return false;
 }
 
 /**
@@ -115,6 +116,46 @@ const mockResponse = {
           data: mockDish
         })
       }, 800)
+    })
+  },
+  
+  // ========== Mock 认证相关接口 ==========
+  // 注意：以下 Mock 接口仅在 mock_mode=true 时生效
+  // 要关闭 Mock，执行：localStorage.removeItem('mock_mode')
+  
+  // Mock 管理员登录
+  '/auth/admin/login': (data: any) => {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        // 模拟验证用户名和密码
+        if (data.username && data.password) {
+          const mockResponse = {
+            code: 200,
+            message: '登录成功',
+            data: {
+              token: {
+                accessToken: `mock_access_token_${Date.now()}`,
+                refreshToken: `mock_refresh_token_${Date.now()}`
+              },
+              admin: {
+                id: 'admin_001',
+                username: data.username,
+                role: 'admin',
+                permissions: ['dish:read', 'dish:write', 'dish:review', 'admin:read'],
+                createdAt: new Date().toISOString()
+              },
+              permissions: ['dish:read', 'dish:write', 'dish:review', 'admin:read']
+            }
+          }
+          console.log('[Mock] 管理员登录:', data.username)
+          resolve(mockResponse)
+        } else {
+          reject({
+            code: 400,
+            message: '用户名或密码不能为空'
+          })
+        }
+      }, 500)
     })
   },
   
