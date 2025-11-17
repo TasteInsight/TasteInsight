@@ -165,6 +165,10 @@ export interface DishCreateRequest {
   subDishId?: string[]
   ingredients?: string[]
   allergens?: string[]
+  spicyLevel?: number
+  sweetness?: number
+  saltiness?: number
+  oiliness?: number
   canteenId?: string
   canteenName: string
   floor?: string
@@ -188,6 +192,10 @@ export interface DishUpdateRequest {
   subDishId?: string[]
   ingredients?: string[]
   allergens?: string[]
+  spicyLevel?: number
+  sweetness?: number
+  saltiness?: number
+  oiliness?: number
   canteenId?: string
   canteenName?: string
   floor?: string

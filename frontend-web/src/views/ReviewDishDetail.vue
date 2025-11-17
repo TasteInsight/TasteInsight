@@ -29,11 +29,13 @@
                   <label class="block text-gray-700 font-medium mb-2">食堂信息</label>
                   <div class="grid grid-cols-2 gap-4">
                     <div>
+                      <label class="block text-sm text-gray-600 mb-1">食堂名称</label>
                       <div class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700">
                         {{ dishData.canteen || '未填写' }}
                       </div>
                     </div>
                     <div>
+                      <label class="block text-sm text-gray-600 mb-1">食堂楼层</label>
                       <div class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700">
                         {{ dishData.floor || '未填写' }}
                       </div>
@@ -43,9 +45,20 @@
                 
                 <!-- 窗口信息 -->
                 <div class="mb-6">
-                  <label class="block text-gray-700 font-medium mb-2">窗口名称/编号</label>
-                  <div class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700">
-                    {{ dishData.window || '未填写' }}
+                  <label class="block text-gray-700 font-medium mb-2">窗口信息</label>
+                  <div class="grid grid-cols-2 gap-4">
+                    <div>
+                      <label class="block text-sm text-gray-600 mb-1">窗口名称</label>
+                      <div class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700">
+                        {{ dishData.windowName || dishData.window || '未填写' }}
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-sm text-gray-600 mb-1">窗口编号</label>
+                      <div class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700">
+                        {{ dishData.windowNumber || '未填写' }}
+                      </div>
+                    </div>
                   </div>
                 </div>
                 
@@ -106,17 +119,49 @@
                 <!-- 供应信息组 -->
                 <div class="mb-6">
                   <label class="block text-gray-700 font-medium mb-2">供应信息</label>
-                  <div class="grid grid-cols-2 gap-4">
+                  <div class="space-y-4">
                     <div>
-                      <label class="block text-sm text-gray-600 mb-1">菜系分类</label>
-                      <div class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700">
-                        {{ dishData.cuisine || '未填写' }}
+                      <label class="block text-sm text-gray-600 mb-1">菜系TAG</label>
+                      <div v-if="dishData.tags && dishData.tags.length > 0" class="flex flex-wrap gap-2">
+                        <span 
+                          v-for="(tag, index) in dishData.tags" 
+                          :key="index"
+                          class="inline-flex items-center px-3 py-1 bg-tsinghua-purple/10 text-tsinghua-purple rounded-full text-sm"
+                        >
+                          #{{ tag }}
+                        </span>
+                      </div>
+                      <div v-else class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-500">
+                        未设置TAG
                       </div>
                     </div>
                     <div>
-                      <label class="block text-sm text-gray-600 mb-1">主要口味</label>
-                      <div class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700">
-                        {{ dishData.taste || '未填写' }}
+                      <label class="block text-sm text-gray-600 mb-1">口味指标</label>
+                      <div class="grid grid-cols-4 gap-3">
+                        <div>
+                          <label class="block text-xs text-gray-500 mb-1">辣度</label>
+                          <div class="w-full px-3 py-2 border rounded-lg bg-gray-50 text-gray-700 text-sm">
+                            {{ dishData.spicyLevel !== null && dishData.spicyLevel !== undefined ? dishData.spicyLevel : 0 }}
+                          </div>
+                        </div>
+                        <div>
+                          <label class="block text-xs text-gray-500 mb-1">咸度</label>
+                          <div class="w-full px-3 py-2 border rounded-lg bg-gray-50 text-gray-700 text-sm">
+                            {{ dishData.saltiness !== null && dishData.saltiness !== undefined ? dishData.saltiness : 0 }}
+                          </div>
+                        </div>
+                        <div>
+                          <label class="block text-xs text-gray-500 mb-1">甜度</label>
+                          <div class="w-full px-3 py-2 border rounded-lg bg-gray-50 text-gray-700 text-sm">
+                            {{ dishData.sweetness !== null && dishData.sweetness !== undefined ? dishData.sweetness : 0 }}
+                          </div>
+                        </div>
+                        <div>
+                          <label class="block text-xs text-gray-500 mb-1">油度</label>
+                          <div class="w-full px-3 py-2 border rounded-lg bg-gray-50 text-gray-700 text-sm">
+                            {{ dishData.oiliness !== null && dishData.oiliness !== undefined ? dishData.oiliness : 0 }}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -128,43 +173,37 @@
                   <div class="space-y-2">
                     <div class="flex items-center px-4 py-2 border rounded-lg bg-gray-50">
                       <span class="iconify mr-2" :class="dishData.servingTime?.breakfast ? 'text-green-500' : 'text-gray-300'" data-icon="carbon:checkmark"></span>
-                      <span :class="dishData.servingTime?.breakfast ? 'text-gray-700' : 'text-gray-400'">早餐（6:30-9:30）</span>
+                      <span :class="dishData.servingTime?.breakfast ? 'text-gray-700' : 'text-gray-400'">早餐</span>
                     </div>
                     <div class="flex items-center px-4 py-2 border rounded-lg bg-gray-50">
                       <span class="iconify mr-2" :class="dishData.servingTime?.lunch ? 'text-green-500' : 'text-gray-300'" data-icon="carbon:checkmark"></span>
-                      <span :class="dishData.servingTime?.lunch ? 'text-gray-700' : 'text-gray-400'">午餐（10:30-13:30）</span>
+                      <span :class="dishData.servingTime?.lunch ? 'text-gray-700' : 'text-gray-400'">午餐</span>
                     </div>
                     <div class="flex items-center px-4 py-2 border rounded-lg bg-gray-50">
                       <span class="iconify mr-2" :class="dishData.servingTime?.dinner ? 'text-green-500' : 'text-gray-300'" data-icon="carbon:checkmark"></span>
-                      <span :class="dishData.servingTime?.dinner ? 'text-gray-700' : 'text-gray-400'">晚餐（16:30-19:30）</span>
+                      <span :class="dishData.servingTime?.dinner ? 'text-gray-700' : 'text-gray-400'">晚餐</span>
                     </div>
                     <div class="flex items-center px-4 py-2 border rounded-lg bg-gray-50">
                       <span class="iconify mr-2" :class="dishData.servingTime?.night ? 'text-green-500' : 'text-gray-300'" data-icon="carbon:checkmark"></span>
-                      <span :class="dishData.servingTime?.night ? 'text-gray-700' : 'text-gray-400'">夜宵（19:40-22:00）</span>
+                      <span :class="dishData.servingTime?.night ? 'text-gray-700' : 'text-gray-400'">夜宵</span>
                     </div>
                   </div>
                 </div>
                 
-                <!-- 供应季节 -->
+                <!-- 供应日期段 -->
                 <div class="mb-6">
-                  <label class="block text-gray-700 font-medium mb-2">供应季节</label>
-                  <div class="grid grid-cols-4 gap-2">
-                    <div class="flex items-center px-4 py-2 border rounded-lg bg-gray-50">
-                      <span class="iconify mr-2" :class="dishData.seasons?.spring ? 'text-green-500' : 'text-gray-300'" data-icon="carbon:checkmark"></span>
-                      <span :class="dishData.seasons?.spring ? 'text-gray-700' : 'text-gray-400'">春季</span>
+                  <label class="block text-gray-700 font-medium mb-2">供应日期段</label>
+                  <div v-if="dishData.availableDates && dishData.availableDates.length > 0" class="space-y-2">
+                    <div 
+                      v-for="(dateRange, index) in dishData.availableDates" 
+                      :key="index"
+                      class="px-4 py-2 border rounded-lg bg-gray-50 text-gray-700"
+                    >
+                      {{ dateRange.startDate }} 至 {{ dateRange.endDate }}
                     </div>
-                    <div class="flex items-center px-4 py-2 border rounded-lg bg-gray-50">
-                      <span class="iconify mr-2" :class="dishData.seasons?.summer ? 'text-green-500' : 'text-gray-300'" data-icon="carbon:checkmark"></span>
-                      <span :class="dishData.seasons?.summer ? 'text-gray-700' : 'text-gray-400'">夏季</span>
-                    </div>
-                    <div class="flex items-center px-4 py-2 border rounded-lg bg-gray-50">
-                      <span class="iconify mr-2" :class="dishData.seasons?.autumn ? 'text-green-500' : 'text-gray-300'" data-icon="carbon:checkmark"></span>
-                      <span :class="dishData.seasons?.autumn ? 'text-gray-700' : 'text-gray-400'">秋季</span>
-                    </div>
-                    <div class="flex items-center px-4 py-2 border rounded-lg bg-gray-50">
-                      <span class="iconify mr-2" :class="dishData.seasons?.winter ? 'text-green-500' : 'text-gray-300'" data-icon="carbon:checkmark"></span>
-                      <span :class="dishData.seasons?.winter ? 'text-gray-700' : 'text-gray-400'">冬季</span>
-                    </div>
+                  </div>
+                  <div v-else class="px-4 py-2 border rounded-lg bg-gray-50 text-gray-500">
+                    未设置供应日期段
                   </div>
                 </div>
                 
@@ -274,27 +313,27 @@ export default {
       name: '',
       canteen: '',
       floor: '',
-      window: '',
+      windowName: '',
+      windowNumber: '',
+      window: '', // 保留用于兼容
       description: '',
       allergens: '',
       ingredients: '',
       image: '',
       imageUrl: '',
       subItems: [],
-      cuisine: '',
-      taste: '',
+      tags: [],
+      spicyLevel: 0,
+      saltiness: 0,
+      sweetness: 0,
+      oiliness: 0,
       servingTime: {
         breakfast: false,
         lunch: true,
         dinner: true,
         night: true
       },
-      seasons: {
-        spring: true,
-        summer: true,
-        autumn: true,
-        winter: true
-      },
+      availableDates: [],
       submitter: '',
       submitDate: '',
       submitTime: '',
@@ -332,8 +371,13 @@ export default {
           description: '经典川菜，选用优质猪肉，配以豆芽、辣椒等配菜，麻辣鲜香',
           allergens: '无',
           ingredients: '猪肉、豆芽、辣椒、花椒、蒜、姜',
-          cuisine: '川菜',
-          taste: '麻辣',
+          tags: ['川菜', '麻辣', '油腻'],
+          spicyLevel: 4,
+          saltiness: 3,
+          sweetness: 1,
+          oiliness: 4,
+          windowName: '自选菜',
+          windowNumber: '01',
           subItems: [
             { name: '小份', price: '15' },
             { name: '大份', price: '20' }
@@ -344,12 +388,9 @@ export default {
             dinner: true,
             night: false
           },
-          seasons: {
-            spring: true,
-            summer: true,
-            autumn: true,
-            winter: true
-          }
+          availableDates: [
+            { startDate: '2024-01-01', endDate: '2024-12-31' }
+          ]
         },
         {
           id: 2,
@@ -392,10 +433,18 @@ export default {
           description: '酸甜可口的经典粤菜',
           allergens: '无',
           ingredients: '猪肉、菠萝、青椒、红椒',
-          cuisine: '粤菜',
-          taste: '酸甜',
+          tags: ['粤菜', '酸甜'],
+          spicyLevel: 0,
+          saltiness: 2,
+          sweetness: 4,
+          oiliness: 2,
+          windowName: '自选菜',
+          windowNumber: '02',
           subItems: [
             { name: '标准份', price: '18' }
+          ],
+          availableDates: [
+            { startDate: '2024-01-01', endDate: '2024-12-31' }
           ]
         }
       ]
