@@ -28,7 +28,7 @@
         <view 
           class="bg-ts-purple text-white flex items-center justify-center py-3 px-8 rounded-full active:bg-purple-900 transition-colors shadow-lg w-full max-w-xs"
           hover-class="bg-purple-800"
-          @click="navigateTo('/pages/profile/settings')"
+          @click="navigateTo('/pages/settings/index')"
         >
           <text class="iconify" data-icon="mdi:cog" data-width="20"></text>
           <text class="ml-2 font-medium">设置</text>
