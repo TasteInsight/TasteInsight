@@ -2,8 +2,8 @@
   <div class="w-full min-h-screen flex container-shadow rounded-lg bg-white overflow-hidden">
     <Sidebar />
     
-    <div class="flex-1 h-full overflow-auto bg-tsinghua-light ml-[260px]">
-      <div class="p-8 h-full">
+    <div class="flex-1 min-h-screen overflow-auto bg-tsinghua-light ml-[260px]">
+      <div class="p-8 min-h-screen">
         <div class="bg-white rounded-lg container-shadow">
           <Header 
             title="菜品审核" 
@@ -95,7 +95,6 @@
                     <button 
                       class="px-3 py-1 bg-tsinghua-purple text-white rounded text-sm hover:bg-tsinghua-dark transition duration-200"
                       :class="{ 'bg-gray-200 text-gray-700 hover:bg-gray-300': dish.status === 'approved' }"
-                      :disabled="dish.status === 'approved'"
                       @click="reviewDish(dish)"
                     >
                       {{ dish.status === 'rejected' ? '重新审核' : dish.status === 'approved' ? '已审核' : '审核' }}

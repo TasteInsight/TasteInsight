@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed left-0 top-0 w-[260px] h-screen bg-tsinghua-purple text-white flex flex-col py-6 z-50">
+  <div class="fixed left-0 top-0 w-[260px] h-screen bg-tsinghua-purple text-white flex flex-col py-6 z-[9999] pointer-events-auto">
     <div class="px-6 mb-8">
       <div class="flex items-center space-x-3">
         <span class="iconify text-2xl" data-icon="noto-v1:pot-of-food"></span>

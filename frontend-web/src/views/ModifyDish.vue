@@ -2,8 +2,8 @@
   <div class="w-full min-h-screen flex container-shadow rounded-lg bg-white overflow-hidden">
     <Sidebar />
     
-    <div class="flex-1 h-full overflow-auto bg-tsinghua-light ml-[260px]">
-      <div class="p-8 h-full">
+    <div class="flex-1 min-h-screen overflow-auto bg-tsinghua-light ml-[260px] relative z-0">
+      <div class="p-8 min-h-screen">
         <div class="bg-white rounded-lg container-shadow">
           <Header 
             title="菜品管理" 
@@ -90,7 +90,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDishStore } from '@/store/modules/use-dish-store';
 import Sidebar from '@/components/Layout/Sidebar.vue';
@@ -188,9 +188,16 @@ export default {
     
     onMounted(() => {
       // 初始化时可以将示例数据添加到store
-      sampleDishes.forEach(dish => {
-        dishStore.addDish(dish)
-      })
+      // sampleDishes.forEach(dish => {
+      //   dishStore.addDish(dish)
+      // })
+    })
+
+    onBeforeUnmount(() => {
+      if (window.__modifyDish_clickLogger) {
+        window.removeEventListener('click', window.__modifyDish_clickLogger, true)
+        delete window.__modifyDish_clickLogger
+      }
     })
     
     return {
