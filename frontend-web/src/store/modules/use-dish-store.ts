@@ -40,6 +40,24 @@ export const useDishStore = defineStore('dish', () => {
     filterOptions.value = { ...filterOptions.value, ...options };
   };
 
+  const addDish = (dish: Dish) => {
+    dishes.value.push(dish);
+  };
+
+  const updateDish = (id: string, dish: Partial<Dish>) => {
+    const index = dishes.value.findIndex(d => d.id === id);
+    if (index !== -1) {
+      dishes.value[index] = { ...dishes.value[index], ...dish };
+    }
+  };
+
+  const removeDish = (id: string) => {
+    const index = dishes.value.findIndex(d => d.id === id);
+    if (index !== -1) {
+      dishes.value.splice(index, 1);
+    }
+  };
+
   return {
     dishes,
     currentDish,
@@ -47,6 +65,9 @@ export const useDishStore = defineStore('dish', () => {
     filterOptions,
     filteredDishes,
     setSearchQuery,
-    setFilterOptions
+    setFilterOptions,
+    addDish,
+    updateDish,
+    removeDish
   };
 });

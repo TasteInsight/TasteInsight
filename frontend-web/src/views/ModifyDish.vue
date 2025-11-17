@@ -2,8 +2,8 @@
   <div class="w-full min-h-screen flex container-shadow rounded-lg bg-white overflow-hidden">
     <Sidebar />
     
-    <div class="flex-1 min-h-screen overflow-auto bg-tsinghua-light ml-[260px] relative z-0">
-      <div class="p-8 min-h-screen">
+    <div class="flex-1 min-h-screen overflow-x-auto overflow-y-auto bg-tsinghua-light ml-[260px] relative z-0">
+      <div class="p-8 min-h-screen min-w-[1200px]">
         <div class="bg-white rounded-lg container-shadow">
           <Header 
             title="菜品管理" 

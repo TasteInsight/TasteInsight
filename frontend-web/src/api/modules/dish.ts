@@ -6,7 +6,8 @@ import type {
   GetDishesParams,
   PaginationResponse,
   ApiResponse,
-  SuccessResponse
+  SuccessResponse,
+  ImageUploadResponse
 } from '@/types/api'
 
 /**
@@ -78,6 +79,22 @@ export const dishApi = {
    */
   async updateDishStatus(id: string, status: 'online' | 'offline'): Promise<ApiResponse<SuccessResponse>> {
     const response = await request.patch<ApiResponse<SuccessResponse>>(`/admin/dishes/${id}/status`, { status })
+    return response
+  },
+
+  /**
+   * 上传图片
+   * @param file 图片文件
+   * @returns 上传后的图片 URL
+   */
+  async uploadImage(file: File): Promise<ApiResponse<ImageUploadResponse>> {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await request.post<ApiResponse<ImageUploadResponse>>('/upload/image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
     return response
   }
 }

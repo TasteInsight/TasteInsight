@@ -2,8 +2,8 @@
   <div class="w-full min-h-screen flex container-shadow rounded-lg bg-white overflow-hidden">
     <Sidebar />
     
-    <div class="flex-1 min-h-screen overflow-auto bg-tsinghua-light ml-[260px]">
-      <div class="p-8 min-h-screen">
+    <div class="flex-1 min-h-screen overflow-x-auto overflow-y-auto bg-tsinghua-light ml-[260px]">
+      <div class="p-8 min-h-screen min-w-[1200px]">
         <div class="bg-white rounded-lg container-shadow p-8">
           <Header 
             title="添加新菜品" 
@@ -66,12 +66,25 @@
                 
                 <!-- 菜品名称 -->
                 <div class="mb-6">
-                  <label class="block text-gray-700 font-medium mb-2">菜品名称</label>
+                  <label class="block text-gray-700 font-medium mb-2">菜品名称 <span class="text-red-500">*</span></label>
                   <input 
                     type="text" 
                     v-model="formData.name" 
                     class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
                     placeholder="例如：水煮肉片"
+                  >
+                </div>
+                
+                <!-- 菜品价格 -->
+                <div class="mb-6">
+                  <label class="block text-gray-700 font-medium mb-2">菜品价格（元） <span class="text-red-500">*</span></label>
+                  <input 
+                    type="number" 
+                    v-model="formData.price" 
+                    class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
+                    placeholder="例如：15.00"
+                    step="0.01"
+                    min="0"
                   >
                 </div>
                 
@@ -89,8 +102,14 @@
                 <!-- 菜品图片上传 -->
                 <div>
                   <label class="block text-gray-700 font-medium mb-2">菜品图片</label>
-                  <div class="border-2 border-dashed rounded-lg h-48 relative flex items-center justify-center bg-gray-50">
-                    <div class="text-center p-6">
+                  <div class="border-2 border-dashed rounded-lg aspect-square w-[40%] relative flex items-center justify-center bg-gray-50 overflow-hidden">
+                    <img 
+                      v-if="imagePreview" 
+                      :src="imagePreview" 
+                      alt="菜品图片预览"
+                      class="w-full h-full object-cover object-center"
+                    >
+                    <div v-else class="text-center p-6">
                       <span class="iconify text-4xl text-gray-400 mx-auto" data-icon="bi:image"></span>
                       <div class="mt-2">点击上传菜品图片</div>
                       <p class="text-sm text-gray-500 mt-1">建议尺寸800x800像素，小于2MB</p>
@@ -99,6 +118,7 @@
                       type="file" 
                       class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                       @change="handleImageUpload"
+                      accept="image/*"
                     >
                   </div>
                 </div>
@@ -106,13 +126,16 @@
               
               <!-- 右侧列 -->
               <div>
-                <!-- 菜品子项 -->
+                <!-- 菜品子项（可选） -->
                 <div class="mb-6">
                   <div class="flex justify-between items-center mb-2">
-                    <label class="block text-gray-700 font-medium">菜品子项</label>
+                    <label class="block text-gray-700 font-medium">
+                      菜品子项
+                      <span class="text-sm text-gray-500 font-normal ml-1">（可选，用于有多个规格的菜品）</span>
+                    </label>
                     <button 
                       type="button" 
-                      class="text-tsinghua-purple text-sm flex items-center"
+                      class="text-tsinghua-purple text-sm flex items-center hover:text-tsinghua-dark"
                       @click="addSubItem"
                     >
                       <span class="iconify" data-icon="carbon:add-alt"></span>
@@ -120,7 +143,7 @@
                     </button>
                   </div>
                   
-                  <div class="space-y-4">
+                  <div v-if="formData.subItems.length > 0" class="space-y-4">
                     <!-- 子项行 -->
                     <div 
                       v-for="(item, index) in formData.subItems" 
@@ -133,7 +156,7 @@
                             type="text" 
                             v-model="item.name" 
                             class="w-full px-4 py-2 border rounded-lg" 
-                            placeholder="子项名称"
+                            placeholder="子项名称（如：小份、中份、大份）"
                           >
                         </div>
                         <div class="w-32">
@@ -142,17 +165,23 @@
                             v-model="item.price" 
                             class="w-full px-4 py-2 border rounded-lg" 
                             placeholder="价格（元）"
+                            step="0.01"
+                            min="0"
                           >
                         </div>
                         <button 
                           type="button" 
-                          class="text-red-500 hover:text-red-700"
+                          class="text-red-500 hover:text-red-700 px-2"
                           @click="removeSubItem(index)"
+                          title="删除子项"
                         >
                           <span class="iconify" data-icon="carbon:trash-can"></span>
                         </button>
                       </div>
                     </div>
+                  </div>
+                  <div v-else class="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
+                    <p>如果菜品有多个规格、套餐或麻辣烫类型，可以添加子项。否则直接在上方输入价格即可。</p>
                   </div>
                 </div>
                 
@@ -328,10 +357,12 @@
             <div class="flex space-x-4 pt-6 border-t border-gray-200">
               <button 
                 type="button" 
-                class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center"
+                class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                 @click="submitForm"
+                :disabled="isSubmitting"
               >
-                <span class="iconify mr-1" data-icon="carbon:save"></span>保存菜品信息
+                <span class="iconify mr-1" data-icon="carbon:save"></span>
+                {{ isSubmitting ? '提交中...' : '保存菜品信息' }}
               </button>
               <button 
                 type="reset" 
@@ -349,8 +380,9 @@
 </template>
 
 <script>
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
 import { useDishStore } from '@/store/modules/use-dish-store';
+import { dishApi } from '@/api/modules/dish';
 import Sidebar from '@/components/Layout/Sidebar.vue';
 import Header from '@/components/Layout/Header.vue';
 
@@ -362,19 +394,20 @@ export default {
   },
   setup() {
     const dishStore = useDishStore()
+    const isSubmitting = ref(false)
+    const imagePreview = ref('')
     
     const formData = reactive({
       canteen: '',
       floor: '',
       window: '',
       name: '',
+      price: '',
       description: '',
       allergens: '',
       ingredients: '',
       image: null,
-      subItems: [
-        { name: '', price: '' }
-      ],
+      subItems: [],
       cuisine: '',
       taste: '',
       servingTime: {
@@ -396,40 +429,143 @@ export default {
     }
     
     const removeSubItem = (index) => {
-      if (formData.subItems.length > 1) {
-        formData.subItems.splice(index, 1)
-      }
+      formData.subItems.splice(index, 1)
     }
     
     const handleImageUpload = (event) => {
       const file = event.target.files[0]
       if (file) {
+        // 验证文件大小
+        if (file.size > 2 * 1024 * 1024) {
+          alert('图片大小不能超过2MB')
+          return
+        }
+        
         formData.image = file
-        // 这里可以添加图片预览逻辑
+        // 创建预览
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          imagePreview.value = e.target.result
+        }
+        reader.readAsDataURL(file)
       }
     }
     
-    const submitForm = () => {
+    const submitForm = async () => {
       // 表单验证
       if (!formData.name || !formData.canteen || !formData.window) {
-        alert('请填写必填字段')
+        alert('请填写必填字段：菜品名称、食堂、窗口')
         return
       }
       
-      // 添加到store
-      dishStore.addDish({
-        name: formData.name,
-        canteen: formData.canteen,
-        floor: formData.floor,
-        window: formData.window,
-        cuisine: formData.cuisine,
-        price: formData.subItems[0].price,
-        rating: 0,
-        status: 'pending'
-      })
+      // 验证价格：优先使用直接输入的价格，如果没有则使用第一个子项的价格
+      let dishPrice = null
       
-      alert('菜品添加成功！')
-      resetForm()
+      // 先检查直接输入的价格
+      if (formData.price) {
+        dishPrice = parseFloat(formData.price)
+        if (isNaN(dishPrice) || dishPrice <= 0) {
+          alert('请输入有效的价格')
+          return
+        }
+      } else {
+        // 如果没有直接输入价格，检查子项
+        const validSubItems = formData.subItems.filter(item => item.name && item.price)
+        if (validSubItems.length > 0) {
+          dishPrice = parseFloat(validSubItems[0].price)
+          if (isNaN(dishPrice) || dishPrice <= 0) {
+            alert('请输入有效的价格（在价格字段或子项中）')
+            return
+          }
+        } else {
+          alert('请输入菜品价格（在价格字段或添加子项）')
+          return
+        }
+      }
+      
+      if (isSubmitting.value) {
+        return
+      }
+      
+      isSubmitting.value = true
+      
+      try {
+        // 1. 上传图片（如果有）
+        let imageUrls = []
+        if (formData.image) {
+          try {
+            const uploadResponse = await dishApi.uploadImage(formData.image)
+            if (uploadResponse.code === 200 && uploadResponse.data) {
+              imageUrls = [uploadResponse.data.url]
+            } else {
+              throw new Error(uploadResponse.message || '图片上传失败')
+            }
+          } catch (error) {
+            console.error('图片上传失败:', error)
+            alert('图片上传失败，请重试')
+            isSubmitting.value = false
+            return
+          }
+        }
+        
+        // 2. 构建请求数据
+        const tags = []
+        if (formData.cuisine) tags.push(formData.cuisine)
+        if (formData.taste) tags.push(formData.taste)
+        
+        // 处理供应时间
+        const availableMealTime = []
+        if (formData.servingTime.breakfast) availableMealTime.push('breakfast')
+        if (formData.servingTime.lunch) availableMealTime.push('lunch')
+        if (formData.servingTime.dinner) availableMealTime.push('dinner')
+        if (formData.servingTime.night) availableMealTime.push('nightsnack')
+        
+        // 处理原辅料和过敏原（转换为数组）
+        const ingredients = formData.ingredients
+          ? formData.ingredients.split(/[，,、]/).map(item => item.trim()).filter(item => item)
+          : []
+        
+        const allergens = formData.allergens
+          ? formData.allergens.split(/[，,、]/).map(item => item.trim()).filter(item => item)
+          : []
+        
+        // 构建菜品创建请求
+        const dishData = {
+          name: formData.name,
+          canteenName: formData.canteen,
+          floor: formData.floor || undefined,
+          windowName: formData.window,
+          windowNumber: formData.window, // 如果后端需要单独的编号，可能需要调整
+          price: dishPrice,
+          description: formData.description || undefined,
+          images: imageUrls.length > 0 ? imageUrls : undefined,
+          tags: tags.length > 0 ? tags : undefined,
+          ingredients: ingredients.length > 0 ? ingredients : undefined,
+          allergens: allergens.length > 0 ? allergens : undefined,
+          availableMealTime: availableMealTime.length > 0 ? availableMealTime : undefined,
+          status: 'offline' // 新创建的菜品默认离线，等待审核
+        }
+        
+        // 3. 调用 API 创建菜品
+        const response = await dishApi.createDish(dishData)
+        
+        if (response.code === 200 || response.code === 201) {
+          // 4. 将创建的菜品添加到 store
+          if (response.data) {
+            dishStore.addDish(response.data)
+          }
+          
+          alert('菜品添加成功！')
+          resetForm()
+        } else {
+          throw new Error(response.message || '创建菜品失败')
+        }
+      } catch (error) {
+        console.error('创建菜品失败:', error)
+        alert(error instanceof Error ? error.message : '创建菜品失败，请重试')
+      } finally {
+        isSubmitting.value = false
+      }
     }
     
     const resetForm = () => {
@@ -438,11 +574,12 @@ export default {
         floor: '',
         window: '',
         name: '',
+        price: '',
         description: '',
         allergens: '',
         ingredients: '',
         image: null,
-        subItems: [{ name: '', price: '' }],
+        subItems: [],
         cuisine: '',
         taste: '',
         servingTime: {
@@ -458,10 +595,13 @@ export default {
           winter: true
         }
       })
+      imagePreview.value = ''
     }
     
     return {
       formData,
+      imagePreview,
+      isSubmitting,
       addSubItem,
       removeSubItem,
       handleImageUpload,

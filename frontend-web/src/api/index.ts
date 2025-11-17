@@ -18,6 +18,7 @@ export const api = {
   deleteDish: dishApi.deleteDish.bind(dishApi),
   batchUpload: dishApi.batchUpload.bind(dishApi),
   updateDishStatus: dishApi.updateDishStatus.bind(dishApi),
+  uploadImage: dishApi.uploadImage.bind(dishApi),
   
   // 管理员相关
   getAdmins: adminApi.getAdmins.bind(adminApi),
