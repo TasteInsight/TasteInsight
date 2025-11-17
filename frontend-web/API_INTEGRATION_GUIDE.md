@@ -1,5 +1,67 @@
 # API 集成指南
 
+## API 模块结构
+
+API 已按功能模块拆分，便于维护和使用：
+
+### 模块列表
+
+- **`auth.ts`** - 认证管理
+  - 管理员登录
+  - Token 刷新
+
+- **`dish.ts`** - 菜品管理
+  - 菜品 CRUD 操作
+  - 批量上传
+  - 状态管理
+  - 图片上传
+
+- **`review.ts`** - 审核管理
+  - 评价审核
+  - 评论审核
+  - 举报处理
+  - 用户上传菜品审核
+
+- **`permission.ts`** - 权限管理
+  - 子管理员管理
+  - 权限分配
+
+- **`log.ts`** - 日志管理
+  - 操作日志查询
+
+- **`news.ts`** - 新闻管理
+  - 新闻 CRUD 操作
+
+- **`canteen.ts`** - 食堂窗口管理
+  - 食堂 CRUD 操作
+  - 窗口 CRUD 操作
+
+### 使用方式
+
+#### 方式 1：分类导入（推荐）
+```typescript
+import { dishApi, reviewApi, canteenApi } from '@/api'
+
+// 使用菜品 API
+await dishApi.getDishes()
+
+// 使用审核 API
+await reviewApi.getPendingReviews()
+
+// 使用食堂 API
+await canteenApi.getCanteens()
+```
+
+#### 方式 2：统一导入（向后兼容）
+```typescript
+import { api } from '@/api'
+
+// 仍然可用，但不推荐
+await api.getDishes()
+await api.getPendingReviews()
+await api.getCanteens()
+```
+
 ## 当前实现状态
 
 ### ✅ 已完成的改进
@@ -232,11 +294,15 @@ import { dishApi } from '@/api'
 // 获取菜品列表
 const dishes = await dishApi.getDishes({ page: 1, pageSize: 10 })
 
+// 获取单个菜品
+const dish = await dishApi.getDishById('dish_id')
+
 // 创建菜品
 const newDish = await dishApi.createDish({
   name: '宫保鸡丁',
   price: 15,
   canteenId: 'canteen_1',
+  windowName: '川菜窗口',
   // ...
 })
 
@@ -246,41 +312,170 @@ await dishApi.updateDish('dish_id', { price: 18 })
 // 删除菜品
 await dishApi.deleteDish('dish_id')
 
+// 更新菜品状态
+await dishApi.updateDishStatus('dish_id', 'online')
+
 // 上传图片
 const imageResponse = await dishApi.uploadImage(file)
 const imageUrl = imageResponse.data.url
+
+// 批量上传
+await dishApi.batchUpload(excelFile)
 ```
 
-#### 管理员管理
+#### 权限管理
 ```typescript
-import { adminApi } from '@/api'
+import { permissionApi } from '@/api'
 
 // 获取管理员列表
-const admins = await adminApi.getAdmins({ page: 1, pageSize: 10 })
+const admins = await permissionApi.getAdmins({ page: 1, pageSize: 10 })
 
-// 创建管理员
-await adminApi.createAdmin({
+// 创建子管理员
+await permissionApi.createAdmin({
   username: 'editor1',
   password: 'password',
-  role: 'editor'
+  role: 'editor',
+  permissions: ['dish:read', 'dish:write']
 })
 
 // 更新权限
-await adminApi.updateAdminPermissions('admin_id', ['dish:read', 'dish:write'])
+await permissionApi.updateAdminPermissions('admin_id', ['dish:read', 'dish:write', 'review:manage'])
+
+// 删除管理员
+await permissionApi.deleteAdmin('admin_id')
 ```
 
 #### 审核管理
 ```typescript
-import { adminApi } from '@/api'
+import { reviewApi } from '@/api'
 
 // 获取待审核评价
-const reviews = await adminApi.getPendingReviews({ page: 1, pageSize: 20 })
+const reviews = await reviewApi.getPendingReviews({ page: 1, pageSize: 20 })
 
-// 通过审核
-await adminApi.approveReview('review_id')
+// 通过评价审核
+await reviewApi.approveReview('review_id')
 
-// 拒绝审核
-await adminApi.rejectReview('review_id', '内容不当')
+// 拒绝评价审核
+await reviewApi.rejectReview('review_id', '内容不当')
+
+// 获取待审核评论
+const comments = await reviewApi.getPendingComments({ page: 1, pageSize: 20 })
+
+// 通过评论审核
+await reviewApi.approveComment('comment_id')
+
+// 拒绝评论审核
+await reviewApi.rejectComment('comment_id', '包含不当内容')
+
+// 获取举报列表
+const reports = await reviewApi.getReports({ 
+  page: 1, 
+  pageSize: 20, 
+  status: 'pending' 
+})
+
+// 处理举报
+await reviewApi.handleReport('report_id', { 
+  action: 'approve', 
+  reason: '举报属实' 
+})
+
+// 获取待审核用户上传菜品
+const uploads = await reviewApi.getPendingUploads({ page: 1, pageSize: 20 })
+
+// 通过用户上传审核
+await reviewApi.approveUpload('upload_id')
+
+// 拒绝用户上传审核
+await reviewApi.rejectUpload('upload_id', '信息不完整')
+```
+
+#### 日志管理
+```typescript
+import { logApi } from '@/api'
+
+// 获取操作日志
+const logs = await logApi.getLogs({
+  page: 1,
+  pageSize: 50,
+  adminId: 'admin_id',
+  action: 'create',
+  startDate: '2025-01-01',
+  endDate: '2025-12-31'
+})
+```
+
+#### 新闻管理
+```typescript
+import { newsApi } from '@/api'
+
+// 获取新闻列表
+const news = await newsApi.getNews({ page: 1, pageSize: 10 })
+
+// 创建新闻
+await newsApi.createNews({
+  title: '食堂新菜品上线',
+  content: '本周推出多款新菜品...',
+  summary: '新菜品上线通知',
+  coverImage: 'https://example.com/image.jpg',
+  tags: ['新品', '推荐']
+})
+
+// 更新新闻
+await newsApi.updateNews('news_id', {
+  title: '更新后的标题'
+})
+
+// 删除新闻
+await newsApi.deleteNews('news_id')
+```
+
+#### 食堂窗口管理
+```typescript
+import { canteenApi } from '@/api'
+
+// 获取食堂列表
+const canteens = await canteenApi.getCanteens({ page: 1, pageSize: 10 })
+
+// 创建食堂
+await canteenApi.createCanteen({
+  name: '紫荆园',
+  position: '学校东侧',
+  description: '主要供应中餐和西餐',
+  images: ['https://example.com/canteen.jpg'],
+  openingHours: [
+    { day: '周一至周五', open: '07:00', close: '20:00' }
+  ]
+})
+
+// 更新食堂
+await canteenApi.updateCanteen('canteen_id', {
+  description: '新的描述'
+})
+
+// 删除食堂
+await canteenApi.deleteCanteen('canteen_id')
+
+// 获取窗口列表
+const windows = await canteenApi.getWindows('canteen_id', { page: 1, pageSize: 20 })
+
+// 创建窗口
+await canteenApi.createWindow({
+  name: '川菜窗口',
+  number: 'A-01',
+  canteenId: 'canteen_id',
+  position: '一楼东侧',
+  description: '提供各种川菜',
+  tags: ['川菜', '辣']
+})
+
+// 更新窗口
+await canteenApi.updateWindow('window_id', {
+  name: '新川菜窗口'
+})
+
+// 删除窗口
+await canteenApi.deleteWindow('window_id')
 ```
 
 ### ⚠️ 注意事项
@@ -335,7 +530,17 @@ watch(() => authStore.isAuthenticated, (isAuth) => {
 
 ### 📚 相关文件
 
-- API 定义：`src/api/modules/*.ts`
+#### API 模块
+- 认证：`src/api/modules/auth.ts`
+- 菜品：`src/api/modules/dish.ts`
+- 审核：`src/api/modules/review.ts`
+- 权限：`src/api/modules/permission.ts`
+- 日志：`src/api/modules/log.ts`
+- 新闻：`src/api/modules/news.ts`
+- 食堂：`src/api/modules/canteen.ts`
+- 统一入口：`src/api/index.ts`
+
+#### 其他
 - 类型定义：`src/types/api.d.ts`
 - 请求封装：`src/utils/request.ts`
 - 认证状态：`src/store/modules/use-auth-store.ts`

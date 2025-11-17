@@ -293,7 +293,7 @@
 <script>
 import { reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { adminApi } from '@/api/modules/admin'
+import { reviewApi } from '@/api/modules/review'
 import Sidebar from '@/components/Layout/Sidebar.vue';
 import Header from '@/components/Layout/Header.vue';
 
@@ -469,7 +469,7 @@ export default {
       }
       
       try {
-        const response = await adminApi.approveUpload(dishData.id.toString())
+        const response = await reviewApi.approveUpload(dishData.id.toString())
         if (response.code === 200 || response.code === 201) {
           dishData.status = 'approved'
           // 通过路由参数传递刷新标志
@@ -491,7 +491,7 @@ export default {
       }
       
       try {
-        const response = await adminApi.rejectUpload(dishData.id.toString(), reason || '')
+        const response = await reviewApi.rejectUpload(dishData.id.toString(), reason || '')
         if (response.code === 200 || response.code === 201) {
           dishData.status = 'rejected'
           // 通过路由参数传递刷新标志

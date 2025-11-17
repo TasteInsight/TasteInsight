@@ -245,57 +245,57 @@ export interface Canteen {
 }
 
 /**
+ * 营业时间
+ */
+export interface OpeningHours {
+  day: string
+  open: string
+  close: string
+}
+
+/**
  * 创建食堂请求
  */
 export interface CanteenCreateRequest {
-  id: string
   name: string
   position?: string
   description?: string
   images?: string[]
-  operatingHours?: string
-  averageRating?: number
-  reviewCount?: number
-  windowsList?: Window[]
+  openingHours?: OpeningHours[]
 }
 
 /**
  * 更新食堂请求
  */
 export interface CanteenUpdateRequest {
-  id?: string
   name?: string
   position?: string
   description?: string
   images?: string[]
-  operatingHours?: string
-  averageRating?: number
-  reviewCount?: number
-  windowsList?: Window[]
+  openingHours?: OpeningHours[]
 }
 
 /**
  * 创建窗口请求
  */
 export interface WindowCreateRequest {
-  id: string
   name: string
   number: string
+  canteenId: string
   position?: string
   description?: string
-  tag?: string[]
+  tags?: string[]
 }
 
 /**
  * 更新窗口请求
  */
 export interface WindowUpdateRequest {
-  id?: string
   name?: string
   number?: string
   position?: string
   description?: string
-  tag?: string[]
+  tags?: string[]
 }
 
 // ==================== 管理员相关类型 ====================
@@ -369,6 +369,38 @@ export interface Review {
 export interface PendingReview extends Review {
   dishName: string
   dishImage?: string
+}
+
+/**
+ * 评分统计详情
+ */
+export interface RatingDetail {
+  [rating: string]: number
+}
+
+/**
+ * 评分统计信息
+ */
+export interface RatingStatistics {
+  average: number
+  total: number
+  detail: RatingDetail
+}
+
+/**
+ * 菜品评价列表响应数据
+ */
+export interface DishReviewsData {
+  items: Review[]
+  meta: PaginationMeta
+  rating: RatingStatistics
+}
+
+/**
+ * 获取菜品评价列表参数
+ */
+export interface GetDishReviewsParams extends PaginationParams {
+  status?: 'pending' | 'approved' | 'rejected'
 }
 
 /**
@@ -476,24 +508,30 @@ export interface GetNewsParams extends PaginationParams {
 export interface OperationLog {
   id: string
   adminId: string
-  adminUsername: string
+  adminName: string
   action: string
-  targetType: string
-  targetId: string
+  resource: string
+  resourceId?: string
   details?: string
+  ipAddress?: string
+  userAgent?: string
   createdAt: string
 }
 
 /**
- * 获取日志列表参数
+ * 日志查询参数
  */
-export interface GetLogsParams extends PaginationParams {
+export interface LogQueryParams extends PaginationParams {
   adminId?: string
   action?: string
-  targetType?: string
   startDate?: string
   endDate?: string
 }
+
+/**
+ * 获取日志列表参数（别名）
+ */
+export type GetLogsParams = LogQueryParams
 
 // ==================== 图片上传相关类型 ====================
 

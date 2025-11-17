@@ -120,7 +120,7 @@
 <script>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { adminApi } from '@/api/modules/admin'
+import { reviewApi } from '@/api/modules/review'
 import Sidebar from '@/components/Layout/Sidebar.vue';
 import Header from '@/components/Layout/Header.vue';
 import Pagination from '@/components/Common/Pagination.vue'
@@ -240,7 +240,7 @@ export default {
       isLoading.value = true
       try {
         // 尝试从 API 获取数据
-        const response = await adminApi.getPendingUploads({
+        const response = await reviewApi.getPendingUploads({
           page: currentPage.value,
           pageSize: pageSize.value
         })
