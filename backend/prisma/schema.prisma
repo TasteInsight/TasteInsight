@@ -206,7 +206,7 @@ model Dish {
 
   // 位置信息
   canteenId    String
-  canteen      Canteen @relation(fields: [canteenId], references: [id])
+  canteen      Canteen @relation(fields: [canteenId], references: [id], onDelete: Cascade)
   canteenName  String
   floor        String?
   windowId     String?
