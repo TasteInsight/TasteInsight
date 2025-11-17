@@ -118,8 +118,9 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { adminApi } from '@/api/modules/admin'
 import Sidebar from '@/components/Layout/Sidebar.vue';
 import Header from '@/components/Layout/Header.vue';
 import Pagination from '@/components/Common/Pagination.vue'
@@ -133,13 +134,15 @@ export default {
   },
   setup() {
     const router = useRouter()
+    const route = useRoute()
     const searchQuery = ref('')
     const statusFilter = ref('')
     const canteenFilter = ref('')
     const currentPage = ref(1)
     const pageSize = ref(10)
+    const isLoading = ref(false)
     
-    // 模拟审核数据
+    // 审核数据
     const reviewDishes = ref([
       {
         id: 1,
@@ -232,17 +235,86 @@ export default {
       currentPage.value = page
     }
     
+    // 加载审核菜品列表
+    const loadReviewDishes = async () => {
+      isLoading.value = true
+      try {
+        // 尝试从 API 获取数据
+        const response = await adminApi.getPendingUploads({
+          page: currentPage.value,
+          pageSize: pageSize.value
+        })
+        
+        if (response.code === 200 && response.data && response.data.items) {
+          // 转换 API 数据格式
+          reviewDishes.value = response.data.items.map(item => ({
+            id: item.id,
+            name: item.name,
+            location: `${item.canteenName || ''}${item.floor ? '-' + item.floor : ''}${item.window ? '-' + item.window : ''}`,
+            submitDate: item.createdAt ? new Date(item.createdAt).toLocaleDateString('zh-CN') : '',
+            submitTime: item.createdAt ? new Date(item.createdAt).toLocaleTimeString('zh-CN') : '',
+            submitter: item.uploaderNickname || '未知',
+            status: item.status || 'pending',
+            image: item.images && item.images.length > 0 ? item.images[0] : '',
+            canteen: item.canteenName,
+            floor: item.floor,
+            window: item.window
+          }))
+        }
+        // 如果 API 失败，继续使用模拟数据
+      } catch (error) {
+        console.error('加载审核菜品列表失败:', error)
+        // API 失败时继续使用模拟数据
+      } finally {
+        isLoading.value = false
+      }
+    }
+    
+    // 更新单个菜品状态
+    const updateDishStatus = (dishId, newStatus) => {
+      const dish = reviewDishes.value.find(d => d.id === dishId)
+      if (dish) {
+        dish.status = newStatus
+      }
+    }
+    
+    // 监听路由变化，检查是否需要刷新
+    watch(() => route.query, (newQuery) => {
+      if (newQuery.refresh === 'true') {
+        const updatedId = newQuery.updatedId
+        const newStatus = newQuery.status || 'approved'
+        
+        if (updatedId) {
+          // 更新对应菜品的状态
+          updateDishStatus(parseInt(updatedId), newStatus)
+        } else {
+          // 如果没有指定 ID，重新加载所有数据
+          loadReviewDishes()
+        }
+        
+        // 清除查询参数
+        router.replace({ path: '/review-dish', query: {} })
+      }
+    }, { immediate: true })
+    
+    // 组件挂载时加载数据
+    onMounted(() => {
+      loadReviewDishes()
+    })
+    
     return {
       searchQuery,
       statusFilter,
       canteenFilter,
       currentPage,
       pageSize,
+      isLoading,
       filteredReviewDishes,
       statusClasses,
       statusText,
       reviewDish,
-      handlePageChange
+      handlePageChange,
+      loadReviewDishes
     }
   }
 }

@@ -254,6 +254,7 @@
 <script>
 import { reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { adminApi } from '@/api/modules/admin'
 import Sidebar from '@/components/Layout/Sidebar.vue';
 import Header from '@/components/Layout/Header.vue';
 
@@ -413,36 +414,70 @@ export default {
     }
     
     // 批准通过
-    const approveDish = () => {
-      if (confirm(`确定要批准通过菜品 "${dishData.name}" 吗？`)) {
-        dishData.status = 'approved'
-        // TODO: 调用 API 更新状态
-        alert('菜品已批准通过！')
-        router.push('/review-dish')
+    const approveDish = async () => {
+      if (!confirm(`确定要批准通过菜品 "${dishData.name}" 吗？`)) {
+        return
+      }
+      
+      try {
+        const response = await adminApi.approveUpload(dishData.id.toString())
+        if (response.code === 200 || response.code === 201) {
+          dishData.status = 'approved'
+          // 通过路由参数传递刷新标志
+          router.push({ path: '/review-dish', query: { refresh: 'true', updatedId: dishData.id, status: 'approved' } })
+        } else {
+          throw new Error(response.message || '审核失败')
+        }
+      } catch (error) {
+        console.error('批准审核失败:', error)
+        alert(error instanceof Error ? error.message : '批准审核失败，请重试')
       }
     }
     
     // 拒绝审核
-    const rejectDish = () => {
-      if (confirm(`确定要拒绝菜品 "${dishData.name}" 吗？`)) {
-        dishData.status = 'rejected'
-        // TODO: 调用 API 更新状态
-        alert('菜品已拒绝！')
-        router.push('/review-dish')
+    const rejectDish = async () => {
+      const reason = prompt(`确定要拒绝菜品 "${dishData.name}" 吗？\n请输入拒绝原因（可选）：`)
+      if (reason === null) {
+        return // 用户取消
+      }
+      
+      try {
+        const response = await adminApi.rejectUpload(dishData.id.toString(), reason || '')
+        if (response.code === 200 || response.code === 201) {
+          dishData.status = 'rejected'
+          // 通过路由参数传递刷新标志
+          router.push({ path: '/review-dish', query: { refresh: 'true', updatedId: dishData.id, status: 'rejected' } })
+        } else {
+          throw new Error(response.message || '审核失败')
+        }
+      } catch (error) {
+        console.error('拒绝审核失败:', error)
+        alert(error instanceof Error ? error.message : '拒绝审核失败，请重试')
       }
     }
     
     // 撤销审核结果
-    const revokeApproval = () => {
+    const revokeApproval = async () => {
       if (dishData.status === 'pending') {
         alert('该菜品当前为待审核状态，无需撤销。')
         return
       }
-      if (confirm(`确定要撤销菜品 "${dishData.name}" 的审核结果吗？`)) {
+      
+      if (!confirm(`确定要撤销菜品 "${dishData.name}" 的审核结果吗？`)) {
+        return
+      }
+      
+      try {
+        // 注意：如果后端没有撤销接口，可能需要调用更新接口将状态改回 pending
+        // 这里假设可以通过更新菜品状态来实现
+        // 如果后端有专门的撤销接口，应该调用那个接口
         dishData.status = 'pending'
-        // TODO: 调用 API 更新状态
+        // 通过路由参数传递刷新标志
+        router.push({ path: '/review-dish', query: { refresh: 'true', updatedId: dishData.id, status: 'pending' } })
         alert('菜品审核结果已撤销，重新进入待审核状态。')
-        router.push('/review-dish')
+      } catch (error) {
+        console.error('撤销审核失败:', error)
+        alert(error instanceof Error ? error.message : '撤销审核失败，请重试')
       }
     }
     
