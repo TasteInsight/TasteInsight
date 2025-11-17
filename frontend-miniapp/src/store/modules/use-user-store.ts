@@ -58,7 +58,8 @@ export const useUserStore = defineStore('user', () => {
       token.value = newToken?.accessToken;
       userInfo.value = user;
 
-      uni.setStorageSync('token', newToken);
+      // 只存储 accessToken 字符串，保持与初始化时的类型一致
+      uni.setStorageSync('token', newToken.accessToken);
       uni.setStorageSync('userInfo', JSON.stringify(user));
       
       return user;

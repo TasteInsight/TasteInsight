@@ -11,10 +11,10 @@ import type { RequestOptions, ApiResponse } from '@/types/api';
  * 封装的网络请求函数
  * @template T - API 响应中 data 字段的类型
  * @param {RequestOptions} options - 请求配置项
- * @returns {Promise<T>} 返回 Promise，resolve 的值是响应中的 data 部分
+ * @returns {Promise<ApiResponse<T>>} 返回 Promise，resolve 的值是完整的 ApiResponse 对象
  */
-function request<T = any>(options: RequestOptions): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
+function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>> {
+  return new Promise<ApiResponse<T>>((resolve, reject) => {
     
     // --- 阶段一: 请求拦截器 ---
     // 在这里，我们对即将发出的请求进行最后加工
@@ -53,12 +53,11 @@ function request<T = any>(options: RequestOptions): Promise<T> {
         // 2.1 HTTP 状态码判断
         if (statusCode >= 200 && statusCode < 300) {
           
-          // 2.2 业务状态码判断 (根据你的 API 文档)
+          // 2.2 业务状态码判断
           // 假设后端约定 code 为 200 或 201 代表业务成功
           if (responseData.code === 200 || responseData.code === 201) {
-            // ✅ 请求完全成功，我们只把最核心的 data 部分返回给页面
-            // 关键：使用类型断言确保返回值类型正确
-            resolve(responseData.data as T);
+            // ✅ 请求完全成功，返回完整的 ApiResponse 对象
+            resolve(responseData);
           } else {
             // 业务失败 (例如：参数错误、验证码错误等)
             // 统一弹出错误提示
@@ -66,7 +65,7 @@ function request<T = any>(options: RequestOptions): Promise<T> {
               title: responseData.message || '操作失败',
               icon: 'none',
             });
-            // 业务失败，也应该 reject Promise，让页面中的 .catch() 能捕获到
+            // 业务失败，也 reject Promise，让页面中的 .catch() 能捕获到
             reject(new Error(responseData.message || '操作失败'));
           }
         } else {
@@ -105,7 +104,7 @@ function handleHttpError(statusCode: number, responseData: any): void {
       userStore.logoutAction();
       // 跳转到登录页
       uni.reLaunch({
-        url: '/pages/login/index' // 你的登录页路径
+        url: '/pages/login/index' 
       });
       break;
     case 403:

@@ -14,7 +14,7 @@ import type {
 export const getAIRecommendation = (
   requestData: AIRecommendRequest
 ): Promise<ApiResponse<AIRecommendData>> => {
-  return request<ApiResponse<AIRecommendData>>({
+  return request<AIRecommendData>({
     url: '/ai/recommend',
     method: 'POST',
     data: requestData,
@@ -26,8 +26,8 @@ export const getAIRecommendation = (
  */
 export const submitRecommendFeedback = (
   feedbackData: RecommendFeedbackRequest
-): Promise<SuccessResponse> => {
-  return request<SuccessResponse>({
+): Promise<ApiResponse<null>> => {
+  return request<null>({
     url: '/ai/recommend/feedback',
     method: 'POST',
     data: feedbackData,

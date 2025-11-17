@@ -18,7 +18,7 @@ import type {
 export const wechatLogin = (
   code : string
 ): Promise<ApiResponse<LoginData>> => {
-  return request<ApiResponse<LoginData>>({
+  return request<LoginData>({
     url: '/auth/wechat/login',
     method: 'POST',
     data: { code },
@@ -32,7 +32,7 @@ export const wechatLogin = (
  */
 export const refreshToken = (
 ): Promise<ApiResponse<LoginData>> => {
-  return request<ApiResponse<LoginData>>({
+  return request<LoginData>({
     url: '/auth/refresh',
     method: 'POST',
     data: { },
@@ -43,7 +43,7 @@ export const refreshToken = (
  */
 export const getUserProfile = (
 ): Promise<ApiResponse<User>> => {
-  return request<ApiResponse<User>>({
+  return request<User>({
     url: '/user/profile',
     method: 'GET',
   });
@@ -55,7 +55,7 @@ export const getUserProfile = (
 export const updateUserProfile = (
   profileData: UserProfileUpdateRequest
 ): Promise<ApiResponse<User>> => {
-  return request<ApiResponse<User>>({
+  return request<User>({
     url: '/user/profile',
     method: 'PUT',
     data: profileData,
@@ -68,7 +68,7 @@ export const updateUserProfile = (
 export const getMyReviews = (
   params?: PaginationParams
 ): Promise<ApiResponse<PaginatedData<MyReviewItem>>> => {
-  return request<ApiResponse<PaginatedData<MyReviewItem>>>({
+  return request<PaginatedData<MyReviewItem>>({
     url: '/user/reviews',
     method: 'GET',   
   });
@@ -80,7 +80,7 @@ export const getMyReviews = (
 export const getMyFavorites = (
   params?: PaginationParams
 ): Promise<ApiResponse<PaginatedData<Favorite>>> => {
-  return request<ApiResponse<PaginatedData<Favorite>>>({
+  return request<PaginatedData<Favorite>>({
     url: '/user/favorites',
     method: 'GET',
   });
@@ -92,7 +92,7 @@ export const getMyFavorites = (
 export const getBrowseHistory = (
   params?: PaginationParams
 ): Promise<ApiResponse<PaginatedData<BrowseHistoryItem>>> => {
-  return request<ApiResponse<PaginatedData<BrowseHistoryItem>>>({
+  return request<PaginatedData<BrowseHistoryItem>>({
     url: '/user/history',
     method: 'GET',
   });
@@ -101,7 +101,7 @@ export const getBrowseHistory = (
 /**
  * 清空浏览历史
  */
-export const clearBrowseHistory = (): Promise<null> => {
+export const clearBrowseHistory = (): Promise<ApiResponse<null>> => {
   return request<null>({
     url: '/user/history',
     method: 'DELETE',
@@ -114,7 +114,7 @@ export const clearBrowseHistory = (): Promise<null> => {
 export const getMyUploads = (
   params?: PaginationParams
 ): Promise<ApiResponse<PaginatedData<MyUploadItem>>> => {
-  return request<ApiResponse<PaginatedData<MyUploadItem>>>({
+  return request<PaginatedData<MyUploadItem>>({
     url: '/user/uploads',
     method: 'GET',
   });
@@ -126,7 +126,7 @@ export const getMyUploads = (
 export const getMyReports = (
   params?: PaginationParams
 ): Promise<ApiResponse<PaginatedData<Report>>> => {
-  return request<ApiResponse<PaginatedData<Report>>>({
+  return request<PaginatedData<Report>>({
     url: '/user/reports',
     method: 'GET',
   });

@@ -17,7 +17,7 @@ export const getReviewsByDish = (
   dishId: string,
   params?: PaginationParams
 ): Promise<ApiResponse<ReviewListData>> => {
-  return request<ApiResponse<ReviewListData>>({
+  return request<ReviewListData>({
     url: `/reviews/${dishId}`,
     method: 'GET',
   });
@@ -29,7 +29,7 @@ export const getReviewsByDish = (
 export const createReview = (
   reviewData: ReviewCreateRequest
 ): Promise<ApiResponse<Review>> => {
-  return request<ApiResponse<Review>>({
+  return request<Review>({
     url: '/reviews',
     method: 'POST',
     data: reviewData,
@@ -42,8 +42,8 @@ export const createReview = (
 export const reportReview = (
   reviewId: string,
   reportData: ReportRequest
-): Promise<SuccessResponse> => {
-  return request<SuccessResponse>({
+): Promise<ApiResponse<null>> => {
+  return request<null>({
     url: `/reviews/${reviewId}/report`,
     method: 'POST',
     data: reportData,

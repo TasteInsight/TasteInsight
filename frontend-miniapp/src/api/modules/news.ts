@@ -10,7 +10,7 @@ export const getNewsList = (params?: {
   pageSize?: number;
   canteenId?: string;
 }): Promise<ApiResponse<PaginatedData<News>>> => {
-  return request<ApiResponse<PaginatedData<News>>>({
+  return request<PaginatedData<News>>({
     url: '/news',
     method: 'GET',
   });
@@ -22,7 +22,7 @@ export const getNewsList = (params?: {
 export const getNewsById = (
   id: string
 ): Promise<ApiResponse<News>> => {
-  return request<ApiResponse<News>>({
+  return request<News>({
     url: `/news/${id}`,
     method: 'GET',
   });

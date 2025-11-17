@@ -10,7 +10,7 @@ import request from '@/utils/request';
 export const wechatLogin = (
   code : string
 ): Promise<ApiResponse<LoginData>> => {
-  return request<ApiResponse<LoginData>>({
+  return request<LoginData>({
     url: '/auth/wechat/login',
     method: 'POST',
     data: { code },
@@ -24,7 +24,7 @@ export const wechatLogin = (
  */
 export const refreshToken = (
 ): Promise<ApiResponse<LoginData>> => {
-  return request<ApiResponse<LoginData>>({
+  return request<LoginData>({
     url: '/auth/refresh',
     method: 'POST',
     data: { },

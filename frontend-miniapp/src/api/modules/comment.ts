@@ -17,7 +17,7 @@ export const getCommentsByReview = (
   reviewId: string,
   params?: PaginationParams
 ): Promise<ApiResponse<PaginatedData<Comment>>> => {
-  return request<ApiResponse<PaginatedData<Comment>>>({
+  return request<PaginatedData<Comment>>({
     url: `/comments/${reviewId}`,
     method: 'GET',
     data: params,
@@ -30,7 +30,7 @@ export const getCommentsByReview = (
 export const createComment = (
   commentData: CommentCreateRequest
 ): Promise<ApiResponse<Comment>> => {
-  return request<ApiResponse<Comment>>({
+  return request<Comment>({
     url: '/comments',
     method: 'POST',
     data: commentData,
@@ -43,8 +43,8 @@ export const createComment = (
 export const reportComment = (
   commentId: string,
   reportData: ReportRequest
-): Promise<SuccessResponse> => {
-  return request<SuccessResponse>({
+): Promise<ApiResponse<null>> => {
+  return request<null>({
     url: `/comments/${commentId}/report`,
     method: 'POST',
     data: reportData,

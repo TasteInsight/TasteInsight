@@ -44,7 +44,7 @@ export const adminLogin = (
   username: string,
   password: string
 ): Promise<ApiResponse<AdminLoginData>> => {
-  return request<ApiResponse<AdminLoginData>>({
+  return request<AdminLoginData>({
     url: '/auth/admin/login',
     method: 'POST',
     data: { username, password },
@@ -65,7 +65,7 @@ export const adminGetDishes = (params?: {
   status?: 'online' | 'offline';
   keyword?: string;
 }): Promise<ApiResponse<PaginatedData<Dish>>> => {
-  return request<ApiResponse<PaginatedData<Dish>>>({
+  return request<PaginatedData<Dish>>({
     url: '/admin/dishes',
     method: 'GET',
   });
@@ -75,7 +75,7 @@ export const adminGetDishes = (params?: {
  * 新建菜品
  */
 export const adminCreateDish = (dishData: DishCreateRequest): Promise<ApiResponse<Dish>> => {
-  return request<ApiResponse<Dish>>({
+  return request<Dish>({
     url: '/admin/dishes',
     method: 'POST',
     data: dishData,
@@ -89,7 +89,7 @@ export const adminUpdateDish = (
   dishId: string,
   dishData: DishUpdateRequest
 ): Promise<ApiResponse<Dish>> => {
-  return request<ApiResponse<Dish>>({
+  return request<Dish>({
     url: `/admin/dishes/${dishId}`,
     method: 'PUT',
     data: dishData,
@@ -100,7 +100,7 @@ export const adminUpdateDish = (
  * 删除菜品
  */
 export const adminDeleteDish = (dishId: string): Promise<ApiResponse<null>> => {
-  return request<ApiResponse<null>>({
+  return request<null>({
     url: `/admin/dishes/${dishId}`,
     method: 'DELETE',
   });
@@ -114,7 +114,7 @@ export const adminUpdateDishStatus = (
   dishId: string,
   status: 'online' | 'offline'
 ): Promise<ApiResponse<null>> => {
-  return request<ApiResponse<null>>({
+  return request<null>({
     url: `/admin/dishes/${dishId}/status`,
     method: 'POST', // 实际应该是PATCH，但改用POST
     data: { status },
@@ -132,7 +132,7 @@ export const adminGetPendingReviews = (params?: {
   page?: number;
   pageSize?: number;
 }): Promise<ApiResponse<PaginatedData<PendingReviewItem>>> => {
-  return request<ApiResponse<PaginatedData<PendingReviewItem>>>({
+  return request<PaginatedData<PendingReviewItem>>({
     url: '/admin/reviews/pending',
     method: 'GET',
   });
@@ -142,7 +142,7 @@ export const adminGetPendingReviews = (params?: {
  * 通过评价审核
  */
 export const adminApproveReview = (reviewId: string): Promise<ApiResponse<null>> => {
-  return request<ApiResponse<null>>({
+  return request<null>({
     url: `/admin/reviews/${reviewId}/approve`,
     method: 'POST',
   });
@@ -155,7 +155,7 @@ export const adminRejectReview = (
   reviewId: string,
   reason: string
 ): Promise<ApiResponse<null>> => {
-  return request<ApiResponse<null>>({
+  return request<null>({
     url: `/admin/reviews/${reviewId}/reject`,
     method: 'POST',
     data: { reason },
@@ -169,7 +169,7 @@ export const adminGetPendingComments = (params?: {
   page?: number;
   pageSize?: number;
 }): Promise<ApiResponse<PaginatedData<PendingCommentItem>>> => {
-  return request<ApiResponse<PaginatedData<PendingCommentItem>>>({
+  return request<PaginatedData<PendingCommentItem>>({
     url: '/admin/comments/pending',
     method: 'GET',
   });
@@ -179,7 +179,7 @@ export const adminGetPendingComments = (params?: {
  * 通过评论审核
  */
 export const adminApproveComment = (commentId: string): Promise<ApiResponse<null>> => {
-  return request<ApiResponse<null>>({
+  return request<null>({
     url: `/admin/comments/${commentId}/approve`,
     method: 'POST',
   });
@@ -192,7 +192,7 @@ export const adminRejectComment = (
   commentId: string,
   reason: string
 ): Promise<ApiResponse<null>> => {
-  return request<ApiResponse<null>>({
+  return request<null>({
     url: `/admin/comments/${commentId}/reject`,
     method: 'POST',
     data: { reason },
@@ -207,7 +207,7 @@ export const adminGetReports = (params?: {
   pageSize?: number;
   status?: 'pending' | 'approved' | 'rejected';
 }): Promise<ApiResponse<PaginatedData<Report>>> => {
-  return request<ApiResponse<PaginatedData<Report>>>({
+  return request<PaginatedData<Report>>({
     url: '/admin/reports',
     method: 'GET',
   });
@@ -220,7 +220,7 @@ export const adminHandleReport = (
   reportId: string,
   handleData: ReportHandleRequest
 ): Promise<ApiResponse<null>> => {
-  return request<ApiResponse<null>>({
+  return request<null>({
     url: `/admin/reports/${reportId}/handle`,
     method: 'POST',
     data: handleData,
@@ -234,7 +234,7 @@ export const adminGetPendingUploads = (params?: {
   page?: number;
   pageSize?: number;
 }): Promise<ApiResponse<PaginatedData<PendingUploadItem>>> => {
-  return request<ApiResponse<PaginatedData<PendingUploadItem>>>({
+  return request<PaginatedData<PendingUploadItem>>({
     url: '/admin/dishes/uploads/pending',
     method: 'GET',
   });
@@ -244,7 +244,7 @@ export const adminGetPendingUploads = (params?: {
  * 通过用户上传菜品审核
  */
 export const adminApproveUpload = (uploadId: string): Promise<ApiResponse<null>> => {
-  return request<ApiResponse<null>>({
+  return request<null>({
     url: `/admin/dishes/uploads/${uploadId}/approve`,
     method: 'POST',
   });
@@ -257,7 +257,7 @@ export const adminRejectUpload = (
   uploadId: string,
   reason: string
 ): Promise<ApiResponse<null>> => {
-  return request<ApiResponse<null>>({
+  return request<null>({
     url: `/admin/dishes/uploads/${uploadId}/reject`,
     method: 'POST',
     data: { reason },
@@ -275,7 +275,7 @@ export const adminGetSubAdmins = (params?: {
   page?: number;
   pageSize?: number;
 }): Promise<ApiResponse<PaginatedData<AdminListItem>>> => {
-  return request<ApiResponse<PaginatedData<AdminListItem>>>({
+  return request<PaginatedData<AdminListItem>>({
     url: '/admin/admins',
     method: 'GET',
   });
@@ -287,7 +287,7 @@ export const adminGetSubAdmins = (params?: {
 export const adminCreateSubAdmin = (
   adminData: AdminCreateRequest
 ): Promise<ApiResponse<AdminListItem>> => {
-  return request<ApiResponse<AdminListItem>>({
+  return request<AdminListItem>({
     url: '/admin/admins',
     method: 'POST',
     data: adminData,
@@ -298,7 +298,7 @@ export const adminCreateSubAdmin = (
  * 删除子管理员
  */
 export const adminDeleteSubAdmin = (adminId: string): Promise<ApiResponse<null>> => {
-  return request<ApiResponse<null>>({
+  return request<null>({
     url: `/admin/admins/${adminId}`,
     method: 'DELETE',
   });
@@ -311,7 +311,7 @@ export const adminUpdatePermissions = (
   adminId: string,
   permissions: string[]
 ): Promise<ApiResponse<null>> => {
-  return request<ApiResponse<null>>({
+  return request<null>({
     url: `/admin/admins/${adminId}/permissions`,
     method: 'PUT',
     data: { permissions },
@@ -333,7 +333,7 @@ export const adminGetLogs = (params?: {
   startDate?: string;
   endDate?: string;
 }): Promise<ApiResponse<PaginatedData<OperationLog>>> => {
-  return request<ApiResponse<PaginatedData<OperationLog>>>({
+  return request<PaginatedData<OperationLog>>({
     url: '/admin/logs',
     method: 'GET',
   });
@@ -350,7 +350,7 @@ export const adminGetNews = (params?: {
   page?: number;
   pageSize?: number;
 }): Promise<ApiResponse<PaginatedData<News>>> => {
-  return request<ApiResponse<PaginatedData<News>>>({
+  return request<PaginatedData<News>>({
     url: '/admin/news',
     method: 'GET',
   });
@@ -360,7 +360,7 @@ export const adminGetNews = (params?: {
  * 创建新闻
  */
 export const adminCreateNews = (newsData: NewsCreateRequest): Promise<ApiResponse<News>> => {
-  return request<ApiResponse<News>>({
+  return request<News>({
     url: '/admin/news',
     method: 'POST',
     data: newsData,
@@ -374,7 +374,7 @@ export const adminUpdateNews = (
   newsId: string,
   newsData: NewsUpdateRequest
 ): Promise<ApiResponse<News>> => {
-  return request<ApiResponse<News>>({
+  return request<News>({
     url: `/admin/news/${newsId}`,
     method: 'PUT',
     data: newsData,
@@ -385,7 +385,7 @@ export const adminUpdateNews = (
  * 删除新闻
  */
 export const adminDeleteNews = (newsId: string): Promise<ApiResponse<null>> => {
-  return request<ApiResponse<null>>({
+  return request<null>({
     url: `/admin/news/${newsId}`,
     method: 'DELETE',
   });

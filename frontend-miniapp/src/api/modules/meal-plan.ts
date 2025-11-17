@@ -6,7 +6,7 @@ import type { MealPlan, MealPlanRequest, ApiResponse, SuccessResponse } from '@/
  * 获取饮食计划
  */
 export const getMealPlans = (): Promise<ApiResponse<{ items: MealPlan[] }>> => {
-  return request<ApiResponse<{ items: MealPlan[] }>>({
+  return request<{ items: MealPlan[] }>({
     url: '/meal-plans',
     method: 'GET',
   });
@@ -18,7 +18,7 @@ export const getMealPlans = (): Promise<ApiResponse<{ items: MealPlan[] }>> => {
 export const createOrUpdateMealPlan = (
   planData: MealPlanRequest
 ): Promise<ApiResponse<MealPlan>> => {
-  return request<ApiResponse<MealPlan>>({
+  return request<MealPlan>({
     url: '/meal-plans',
     method: 'POST',
     data: planData,
@@ -28,8 +28,8 @@ export const createOrUpdateMealPlan = (
 /**
  * 删除饮食计划
  */
-export const deleteMealPlan = (planId: string): Promise<SuccessResponse> => {
-  return request<SuccessResponse>({
+export const deleteMealPlan = (planId: string): Promise<ApiResponse<null>> => {
+  return request<null>({
     url: `/meal-plans/${planId}`,
     method: 'DELETE',
   });
