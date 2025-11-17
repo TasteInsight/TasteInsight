@@ -1,10 +1,8 @@
 <template>
   <view class="space-y-6">
-    <view class="rounded-3xl bg-white/90 p-6 shadow-2xl shadow-ts-purple/25 backdrop-blur">
-      <view class="flex items-center space-x-4">
+    <view class="flex items-center space-x-4">
         <view class="relative">
-          <view class="absolute inset-0 rounded-3xl bg-gradient-to-br from-ts-purple/30 to-transparent blur-sm" />
-          <view class="relative h-20 w-20 rounded-2xl border-2 border-ts-purple/30 bg-white p-1 shadow-md">
+          <view class="h-20 w-20 rounded-2xl border-2 border-ts-purple/30 bg-white p-1">
             <image class="h-full w-full rounded-xl bg-gray-100" :src="avatarPreview" mode="aspectFill" />
           </view>
         </view>
@@ -20,43 +18,37 @@
         </view>
       </view>
 
-      <view class="mt-8 space-y-6">
-        <view>
-          <text class="text-sm font-semibold tracking-wide text-ts-purple">昵称</text>
-          <input
-            class="mt-2 h-12 w-full rounded-2xl border-2 border-ts-purple/40 bg-white px-4 text-base text-ts-purple placeholder-purple-300 shadow-sm focus:border-ts-purple focus:shadow-md transition-all"
-            type="text"
-            maxlength="20"
-            placeholder="请输入昵称"
-            :value="props.form.nickname"
-            @input="onInput('nickname', $event)"
-          />
-        </view>
+      <view>
+        <text class="text-sm font-semibold tracking-wide text-ts-purple">昵称</text>
+        <input
+          class="mt-2 h-12 w-full rounded-2xl border-2 border-ts-purple/40 bg-white px-4 text-base text-ts-purple placeholder-purple-300 shadow-sm focus:border-ts-purple focus:shadow-md transition-all"
+          type="text"
+          maxlength="20"
+          placeholder="请输入昵称"
+          :value="props.form.nickname"
+          @input="onInput('nickname', $event)"
+        />
+      </view>
 
-        <view>
-          <view class="flex items-center justify-between">
-            <text class="text-sm font-semibold tracking-wide text-ts-purple">过敏食材</text>
-            <text class="text-xs text-purple-400">使用逗号或换行分隔</text>
-          </view>
-          <textarea
-            class="mt-2 min-h-[100px] w-full rounded-2xl border-2 border-ts-purple/40 bg-white px-4 py-3 text-base text-ts-purple placeholder-purple-300 shadow-sm focus:border-ts-purple focus:shadow-md transition-all"
-            placeholder="例如：花生, 芒果, 海鲜"
-            :value="props.form.allergensText"
-            @input="onInput('allergensText', $event)"
-          />
-        </view>
+      <view>
+        <text class="text-sm font-semibold tracking-wide text-ts-purple">过敏食材</text>
+        <textarea
+          class="mt-2 min-h-[80px] w-full rounded-2xl border-2 border-ts-purple/40 bg-white px-4 py-3 text-base text-ts-purple placeholder-purple-300 shadow-sm focus:border-ts-purple focus:shadow-md transition-all"
+          placeholder="例如：花生, 芒果, 海鲜"
+          :value="props.form.allergensText"
+          @input="onInput('allergensText', $event)"
+        />
+      </view>
 
-        <view class="grid grid-cols-1 gap-5 rounded-2xl bg-gradient-to-br from-purple-50 to-white p-5">
-          <view v-for="item in preferenceTextareas" :key="item.field" class="space-y-2">
-            <text class="text-sm font-semibold tracking-wide text-ts-purple">{{ item.label }}</text>
-            <textarea
-              class="min-h-[80px] w-full rounded-2xl border-2 border-ts-purple/40 bg-white px-4 py-3 text-base text-ts-purple placeholder-purple-300 shadow-sm focus:border-ts-purple focus:shadow-md transition-all"
-              :placeholder="item.placeholder"
-              :value="props.form[item.field]"
-              @input="onInput(item.field, $event)"
-            />
-          </view>
-        </view>
+      <view v-for="item in preferenceTextareas" :key="item.field">
+        <text class="text-sm font-semibold tracking-wide text-ts-purple">{{ item.label }}</text>
+        <textarea
+          class="mt-2 min-h-[80px] w-full rounded-2xl border-2 border-ts-purple/40 bg-white px-4 py-3 text-base text-ts-purple placeholder-purple-300 shadow-sm focus:border-ts-purple focus:shadow-md transition-all"
+          :placeholder="item.placeholder"
+          :value="props.form[item.field]"
+          @input="onInput(item.field, $event)"
+        />
+      </view>
 
         <view class="space-y-5 rounded-2xl bg-purple-50/70 p-5">
           <view v-for="slider in tasteSliders" :key="slider.field" class="space-y-2">
@@ -113,31 +105,29 @@
           </view>
         </view>
 
-        <view class="mt-4 rounded-2xl bg-purple-50/80 p-5 space-y-4">
-          <view
-            v-for="toggle in notificationToggles"
-            :key="toggle.field"
-            class="flex items-center justify-between rounded-xl bg-white/70 px-4 py-3.5"
-          >
-            <text class="text-base font-medium text-ts-purple">{{ toggle.label }}</text>
-            <switch :checked="props.form[toggle.field]" color="#660874" @change="onSwitchChange(toggle.field, $event)" />
-          </view>
-        </view>
-
-        <button
-          class="flex h-14 w-full items-center justify-center rounded-full bg-gradient-to-r from-ts-purple to-purple-600 text-base font-bold text-white shadow-lg shadow-ts-purple/40 transition-all duration-200 hover:translate-y-[-2px]"
-          :class="{ 'opacity-50': !canSubmit }"
-          :disabled="!canSubmit"
-          hover-class=""
-          @click="emit('save')"
-        >
-          <text class="tracking-wide">{{ saving ? '保存中…' : '保存设置' }}</text>
-        </button>
+    <view class="mt-4 rounded-2xl bg-purple-50/80 p-5 space-y-4">
+      <view
+        v-for="toggle in notificationToggles"
+        :key="toggle.field"
+        class="flex items-center justify-between rounded-xl bg-white/70 px-4 py-3.5"
+      >
+        <text class="text-base font-medium text-ts-purple">{{ toggle.label }}</text>
+        <switch :checked="props.form[toggle.field]" color="#660874" @change="onSwitchChange(toggle.field, $event)" />
       </view>
     </view>
 
     <button
-      class="flex h-14 w-full items-center justify-center rounded-full border-2 border-red-200 bg-white/90 text-base font-bold text-red-500 shadow transition hover:border-red-300 hover:bg-red-50"
+      class="flex h-14 w-full items-center justify-center rounded-full bg-gradient-to-r from-ts-purple to-purple-600 text-base font-bold text-black/90 shadow-lg shadow-ts-purple/40 transition-all duration-200 hover:translate-y-[-2px]"
+      :class="{ 'opacity-50': !canSubmit }"
+      :disabled="!canSubmit"
+      hover-class=""
+      @click="emit('save')"
+    >
+      <text class="tracking-wide text-black">{{ saving ? '保存中…' : '保存设置' }}</text>
+    </button>
+
+    <button
+      class="flex h-14 w-full mb-12 items-center justify-center rounded-full border-2 border-purple-200 bg-white/90 text-base font-bold text-purple-500 shadow transition hover:border-purple-300 hover:bg-purple-50"
       hover-class=""
       @click="emit('logout')"
     >
