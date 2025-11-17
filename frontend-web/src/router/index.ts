@@ -4,6 +4,7 @@ import SingleAdd from '../views/SingleAdd.vue'
 import BatchAdd from '../views/BatchAdd.vue'
 import ModifyDish from '../views/ModifyDish.vue'
 import EditDish from '../views/EditDish.vue'
+import AddSubDish from '../views/AddSubDish.vue'
 import ReviewDish from '../views/ReviewDish.vue'
 import ReviewDishDetail from '../views/ReviewDishDetail.vue'
 import UserManage from '../views/UserManage.vue'
@@ -42,6 +43,12 @@ const routes = [
     path: '/edit-dish/:id',
     name: 'EditDish',
     component: EditDish,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/add-sub-dish',
+    name: 'AddSubDish',
+    component: AddSubDish,
     meta: { requiresAuth: true }
   },
   {

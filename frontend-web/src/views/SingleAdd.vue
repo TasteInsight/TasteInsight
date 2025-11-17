@@ -148,32 +148,32 @@
                     </button>
                   </div>
                   
-                  <div v-if="formData.subItems.length > 0" class="space-y-4">
+                  <div v-if="formData.subItems.length > 0" class="space-y-3">
                     <!-- 子项行 -->
                     <div 
                       v-for="(item, index) in formData.subItems" 
                       :key="index"
-                      class="sub-item-row"
+                      class="flex items-center justify-between p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
                     >
-                      <div class="flex space-x-4">
-                        <div class="flex-1">
-                          <input 
-                            type="text" 
-                            v-model="item.name" 
-                            class="w-full px-4 py-2 border rounded-lg" 
-                            placeholder="子项名称（如：小份、中份、大份）"
-                          >
-                        </div>
-                        <div class="w-32">
-                          <input 
-                            type="number" 
-                            v-model="item.price" 
-                            class="w-full px-4 py-2 border rounded-lg" 
-                            placeholder="价格（元）"
-                            step="0.01"
-                            min="0"
-                          >
-                        </div>
+                      <div class="flex-1">
+                        <input 
+                          type="text" 
+                          v-model="item.name" 
+                          class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
+                          placeholder="子项名称（如：小份、中份、大份）"
+                          @blur="updateSubItemName(index, item.name)"
+                        >
+                      </div>
+                      <div class="flex items-center gap-2 ml-4">
+                        <button 
+                          type="button" 
+                          class="px-4 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center text-sm"
+                          @click="goToSubItemDetail(index)"
+                          :disabled="!item.name || !item.name.trim()"
+                        >
+                          <span class="iconify mr-1" data-icon="carbon:view"></span>
+                          填写详情
+                        </button>
                         <button 
                           type="button" 
                           class="text-red-500 hover:text-red-700 px-2"
@@ -186,7 +186,7 @@
                     </div>
                   </div>
                   <div v-else class="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
-                    <p>如果菜品有多个规格、套餐或麻辣烫类型，可以添加子项。否则直接在上方输入价格即可。</p>
+                    <p>如果菜品有多个规格、套餐或麻辣烫类型，可以添加子项。输入子项名称后，点击"填写详情"进入子项详情页面。</p>
                   </div>
                 </div>
                 
@@ -439,6 +439,7 @@
 
 <script>
 import { reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useDishStore } from '@/store/modules/use-dish-store';
 import { dishApi } from '@/api/modules/dish';
 import Sidebar from '@/components/Layout/Sidebar.vue';
@@ -451,9 +452,11 @@ export default {
     Header
   },
   setup() {
+    const router = useRouter()
     const dishStore = useDishStore()
     const isSubmitting = ref(false)
     const imagePreview = ref('')
+    const parentDishId = ref(null) // 用于存储父菜品ID（创建父菜品后）
     
     const newTag = ref('')
     
@@ -468,7 +471,7 @@ export default {
       allergens: '',
       ingredients: '',
       image: null,
-      subItems: [],
+      subItems: [], // 子项只存储名称和临时ID
       tags: [],
       spicyLevel: 0,
       saltiness: 0,
@@ -484,11 +487,49 @@ export default {
     })
     
     const addSubItem = () => {
-      formData.subItems.push({ name: '', price: '' })
+      formData.subItems.push({ 
+        name: '', 
+        tempId: `temp_${Date.now()}_${Math.random()}` // 临时ID用于标识
+      })
     }
     
     const removeSubItem = (index) => {
       formData.subItems.splice(index, 1)
+    }
+    
+    const updateSubItemName = (index, name) => {
+      if (formData.subItems[index]) {
+        formData.subItems[index].name = name
+      }
+    }
+    
+    const goToSubItemDetail = async (index) => {
+      const subItem = formData.subItems[index]
+      if (!subItem || !subItem.name || !subItem.name.trim()) {
+        alert('请先输入子项名称')
+        return
+      }
+      
+      // 如果父菜品还未创建，先创建父菜品
+      if (!parentDishId.value) {
+        // 先保存父菜品
+        await submitForm()
+        // 如果保存失败，submitForm 会显示错误，这里直接返回
+        if (!parentDishId.value) {
+          return
+        }
+      }
+      
+      // 跳转到子项详情页面，传递父菜品ID和子项信息
+      router.push({
+        path: '/add-sub-dish',
+        query: {
+          parentId: parentDishId.value,
+          subItemName: subItem.name,
+          subItemTempId: subItem.tempId,
+          subItemIndex: index
+        }
+      })
     }
     
     const addDateRange = () => {
@@ -551,18 +592,8 @@ export default {
           alert('价格必须为有效的数字（大于等于0）')
           return
         }
-      } else {
-        // 如果没有直接输入价格，检查子项
-        const validSubItems = formData.subItems.filter(item => item.name && item.price)
-        if (validSubItems.length > 0) {
-          dishPrice = parseFloat(validSubItems[0].price)
-          if (isNaN(dishPrice) || dishPrice < 0) {
-            alert('子项价格必须为有效的数字（大于等于0）')
-            return
-          }
-        }
-        // 如果都没有，使用默认值0
       }
+      // 如果都没有，使用默认值0
       
       if (isSubmitting.value) {
         return
@@ -648,10 +679,13 @@ export default {
           // 4. 将创建的菜品添加到 store
           if (response.data) {
             dishStore.addDish(response.data)
+            // 保存父菜品ID，用于后续创建子项
+            parentDishId.value = response.data.id
           }
           
-          alert('菜品添加成功！')
-          resetForm()
+          alert('父菜品保存成功！正在跳转到编辑页面，您可以在那里继续添加子项。')
+          // 跳转到编辑页面，方便继续添加子项
+          router.push(`/edit-dish/${parentDishId.value}`)
         } else {
           throw new Error(response.message || '创建菜品失败')
         }
@@ -698,8 +732,11 @@ export default {
       newTag,
       imagePreview,
       isSubmitting,
+      parentDishId,
       addSubItem,
       removeSubItem,
+      updateSubItemName,
+      goToSubItemDetail,
       addDateRange,
       removeDateRange,
       addTag,

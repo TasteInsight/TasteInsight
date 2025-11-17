@@ -6,26 +6,38 @@
       <div class="p-8 min-h-screen min-w-[1200px]">
         <div class="bg-white rounded-lg container-shadow p-8">
           <Header 
-            title="编辑菜品" 
-            description="修改菜品信息并提交审核"
-            header-icon="carbon:edit"
+            :title="`添加子项：${subItemName || '子项'}`" 
+            description="填写子项详情信息并上传图片"
+            header-icon="carbon:add"
           />
+          
+          <!-- 父项信息显示 -->
+          <div v-if="parentDishName" class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div class="flex items-center">
+              <span class="iconify text-blue-500 mr-2" data-icon="carbon:information"></span>
+              <div>
+                <span class="text-sm text-blue-700 font-medium">父项菜品：</span>
+                <span class="text-sm text-blue-800 font-semibold">{{ parentDishName }}</span>
+              </div>
+            </div>
+          </div>
           
           <form class="space-y-6">
             <div class="grid grid-cols-2 gap-6">
               <!-- 左侧列 -->
               <div>
-                <!-- 食堂信息组 -->
+                <!-- 食堂信息组（继承自父项，只读显示） -->
                 <div class="mb-6">
-                  <label class="block text-gray-700 font-medium mb-2">食堂信息 <span class="text-red-500">*</span></label>
+                  <label class="block text-gray-700 font-medium mb-2">食堂信息 <span class="text-red-500">*</span> <span class="text-xs text-gray-500 font-normal">（继承自父项）</span></label>
                   <div class="grid grid-cols-2 gap-4">
                     <div>
                       <label class="block text-sm text-gray-600 mb-1">食堂名称 <span class="text-red-500">*</span></label>
                       <input 
                         type="text" 
                         v-model="formData.canteen" 
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
+                        class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700" 
                         placeholder="例如：紫荆园"
+                        readonly
                         required
                       >
                     </div>
@@ -34,25 +46,27 @@
                       <input 
                         type="text" 
                         v-model="formData.floor" 
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
+                        class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700" 
                         placeholder="例如：一层、二层"
+                        readonly
                         required
                       >
                     </div>
                   </div>
                 </div>
                 
-                <!-- 窗口信息 -->
+                <!-- 窗口信息（继承自父项，只读显示） -->
                 <div class="mb-6">
-                  <label class="block text-gray-700 font-medium mb-2">窗口信息</label>
+                  <label class="block text-gray-700 font-medium mb-2">窗口信息 <span class="text-xs text-gray-500 font-normal">（继承自父项）</span></label>
                   <div class="grid grid-cols-2 gap-4">
                     <div>
                       <label class="block text-sm text-gray-600 mb-1">窗口名称 <span class="text-red-500">*</span></label>
                       <input 
                         type="text" 
                         v-model="formData.windowName" 
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
+                        class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700" 
                         placeholder="例如：川湘风味"
+                        readonly
                         required
                       >
                     </div>
@@ -61,8 +75,9 @@
                       <input 
                         type="text" 
                         v-model="formData.windowNumber" 
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
+                        class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700" 
                         placeholder="例如：01、A01（可选）"
+                        readonly
                       >
                     </div>
                   </div>
@@ -109,8 +124,8 @@
                   <label class="block text-gray-700 font-medium mb-2">菜品图片</label>
                   <div class="border-2 border-dashed rounded-lg aspect-square w-[40%] relative flex items-center justify-center bg-gray-50 overflow-hidden">
                     <img 
-                      v-if="formData.imageUrl" 
-                      :src="formData.imageUrl" 
+                      v-if="imagePreview" 
+                      :src="imagePreview" 
                       alt="菜品图片预览"
                       class="w-full h-full object-cover object-center"
                     >
@@ -131,61 +146,6 @@
               
               <!-- 右侧列 -->
               <div>
-                <!-- 菜品子项（仅父菜品显示） -->
-                <div v-if="!isSubDish" class="mb-6">
-                  <div class="flex justify-between items-center mb-2">
-                    <label class="block text-gray-700 font-medium">
-                      菜品子项
-                      <span class="text-sm text-gray-500 font-normal ml-1">（点击子项可进入编辑）</span>
-                    </label>
-                    <button 
-                      type="button" 
-                      class="text-tsinghua-purple text-sm flex items-center hover:text-tsinghua-dark"
-                      @click="addSubItem"
-                    >
-                      <span class="iconify" data-icon="carbon:add-alt"></span>
-                      添加子项
-                    </button>
-                  </div>
-                  
-                  <div v-if="subDishes.length > 0" class="space-y-3">
-                    <!-- 子项列表 -->
-                    <div 
-                      v-for="(subDish, index) in subDishes" 
-                      :key="subDish.id || index"
-                      class="flex items-center justify-between p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
-                      @click="editSubDish(subDish.id)"
-                    >
-                      <div class="flex items-center flex-1">
-                        <span class="iconify text-tsinghua-purple mr-2" data-icon="carbon:dot-mark"></span>
-                        <span class="text-gray-700 font-medium">{{ subDish.name || '未命名子项' }}</span>
-                        <span class="ml-3 text-sm text-gray-500">¥{{ subDish.price || 0 }}</span>
-                      </div>
-                      <button 
-                        type="button" 
-                        class="px-4 py-1.5 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center text-sm"
-                        @click.stop="editSubDish(subDish.id)"
-                      >
-                        <span class="iconify mr-1" data-icon="carbon:edit"></span>
-                        编辑
-                      </button>
-                    </div>
-                  </div>
-                  <div v-else class="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
-                    <p>暂无子项。点击"添加子项"可以添加新的子项。</p>
-                  </div>
-                </div>
-                
-                <!-- 子项提示（如果是子项，显示父菜品信息） -->
-                <div v-if="isSubDish" class="mb-6">
-                  <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div class="flex items-center">
-                      <span class="iconify text-blue-500 mr-2" data-icon="carbon:information"></span>
-                      <span class="text-sm text-blue-700">这是子项菜品，子项不能再添加子项。</span>
-                    </div>
-                  </div>
-                </div>
-                
                 <!-- 供应信息组 -->
                 <div class="mb-6">
                   <label class="block text-gray-700 font-medium mb-2">供应信息</label>
@@ -413,10 +373,10 @@
                 type="button" 
                 class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                 @click="submitForm"
-                :disabled="isSubmitting || isLoading"
+                :disabled="isSubmitting"
               >
                 <span class="iconify mr-1" data-icon="carbon:save"></span>
-                {{ isSubmitting ? '提交中...' : '提交审核' }}
+                {{ isSubmitting ? '提交中...' : '保存子项信息' }}
               </button>
               <button 
                 type="button" 
@@ -434,15 +394,15 @@
 </template>
 
 <script>
-import { reactive, onMounted, ref, watch } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { dishApi } from '@/api/modules/dish'
-import { useDishStore } from '@/store/modules/use-dish-store'
-import Sidebar from '@/components/Layout/Sidebar.vue'
-import Header from '@/components/Layout/Header.vue'
+import { useDishStore } from '@/store/modules/use-dish-store';
+import { dishApi } from '@/api/modules/dish';
+import Sidebar from '@/components/Layout/Sidebar.vue';
+import Header from '@/components/Layout/Header.vue';
 
 export default {
-  name: 'EditDish',
+  name: 'AddSubDish',
   components: {
     Sidebar,
     Header
@@ -451,25 +411,26 @@ export default {
     const router = useRouter()
     const route = useRoute()
     const dishStore = useDishStore()
-    const dishId = route.params.id
-    const isLoading = ref(false)
     const isSubmitting = ref(false)
+    const imagePreview = ref('')
+    
+    const parentDishId = ref(route.query.parentId || '')
+    const subItemName = ref(route.query.subItemName || '')
+    const parentDishName = ref('')
     
     const newTag = ref('')
     
     const formData = reactive({
-      id: '',
       canteen: '',
       floor: '',
       windowName: '',
       windowNumber: '',
-      name: '',
+      name: subItemName.value || '',
       price: 0,
       description: '',
       allergens: '',
       ingredients: '',
       image: null,
-      imageUrl: '',
       tags: [],
       spicyLevel: 0,
       saltiness: 0,
@@ -484,243 +445,26 @@ export default {
       availableDates: []
     })
     
-    const subDishes = ref([]) // 存储子项列表
-    
-    // 加载菜品信息
-    const loadDishData = async () => {
-      isLoading.value = true
-      try {
-        // 优先从 API 获取
-        const response = await dishApi.getDishById(dishId)
-        
-        if (response.code === 200 && response.data) {
-          const dish = response.data
-          fillFormData(dish)
-        } else {
-          throw new Error(response.message || '获取菜品信息失败')
-        }
-      } catch (error) {
-        console.error('从 API 获取菜品失败，尝试从 store 或 Mock 数据获取:', error)
-        
-        // 如果 API 失败，尝试从 store 获取
-        const dishes = dishStore.dishes || []
-        const dish = dishes.find(d => d.id === dishId)
-        
-        if (dish) {
-          fillFormData(dish)
-        } else {
-          // 最后尝试使用 Mock 数据（仅用于开发测试）
-          const mockDish = getMockDishById(dishId)
-          if (mockDish) {
-            fillFormData(mockDish)
-          } else {
-            alert('未找到该菜品信息')
-            router.push('/modify-dish')
+    // 从父菜品加载信息（如果有）
+    onMounted(async () => {
+      if (parentDishId.value) {
+        try {
+          const response = await dishApi.getDishById(parentDishId.value)
+          if (response.code === 200 && response.data) {
+            const parentDish = response.data
+            // 保存父菜品名称
+            parentDishName.value = parentDish.name || ''
+            // 继承父菜品的一些信息（食堂、楼层、窗口）
+            formData.canteen = parentDish.canteenName || ''
+            formData.floor = parentDish.floor || ''
+            formData.windowName = parentDish.windowName || ''
+            formData.windowNumber = parentDish.windowNumber || ''
           }
-        }
-      } finally {
-        isLoading.value = false
-      }
-    }
-    
-    // 判断是否为子项（有 parentDishId）
-    const isSubDish = ref(false)
-    
-    // 填充表单数据
-    const fillFormData = (dish) => {
-      formData.id = dish.id || dishId
-      formData.canteen = dish.canteenName || dish.canteen || ''
-      formData.floor = dish.floor || ''
-      formData.windowName = dish.windowName || dish.window || ''
-      formData.windowNumber = dish.windowNumber || ''
-      formData.name = dish.name || ''
-      formData.description = dish.description || ''
-      
-      // 判断是否为子项
-      isSubDish.value = !!dish.parentDishId
-      
-      // 处理过敏原（可能是数组或字符串）
-      if (Array.isArray(dish.allergens)) {
-        formData.allergens = dish.allergens.join('、')
-      } else {
-        formData.allergens = dish.allergens || ''
-      }
-      
-      // 处理原辅料（可能是数组或字符串）
-      if (Array.isArray(dish.ingredients)) {
-        formData.ingredients = dish.ingredients.join('、')
-      } else {
-        formData.ingredients = dish.ingredients || ''
-      }
-      
-      // 处理图片
-      if (dish.images && dish.images.length > 0) {
-        formData.imageUrl = dish.images[0]
-      } else if (dish.image) {
-        formData.imageUrl = dish.image
-      }
-      
-      // 处理标签（TAG）
-      if (dish.tags && Array.isArray(dish.tags) && dish.tags.length > 0) {
-        formData.tags = [...dish.tags]
-      } else {
-        formData.tags = []
-      }
-      
-      // 处理口味指标（默认为0）
-      formData.spicyLevel = dish.spicyLevel !== null && dish.spicyLevel !== undefined ? dish.spicyLevel : 0
-      formData.saltiness = dish.saltiness !== null && dish.saltiness !== undefined ? dish.saltiness : 0
-      formData.sweetness = dish.sweetness !== null && dish.sweetness !== undefined ? dish.sweetness : 0
-      formData.oiliness = dish.oiliness !== null && dish.oiliness !== undefined ? dish.oiliness : 0
-      
-      // 处理价格
-      if (dish.price !== null && dish.price !== undefined) {
-        const priceValue = typeof dish.price === 'number' ? dish.price : parseFloat(dish.price.toString().replace('¥', ''))
-        formData.price = isNaN(priceValue) ? 0 : priceValue
-      } else {
-        formData.price = 0
-      }
-      
-      // 加载子项列表（只有父菜品才显示子项列表）
-      if (!isSubDish.value && dish.subDishId && dish.subDishId.length > 0) {
-        loadSubDishes(dish.subDishId)
-      } else {
-        subDishes.value = []
-      }
-      
-      // 处理供应时间
-      if (dish.availableMealTime && Array.isArray(dish.availableMealTime)) {
-        formData.servingTime = {
-          breakfast: dish.availableMealTime.includes('breakfast'),
-          lunch: dish.availableMealTime.includes('lunch'),
-          dinner: dish.availableMealTime.includes('dinner'),
-          night: dish.availableMealTime.includes('nightsnack')
+        } catch (error) {
+          console.error('加载父菜品信息失败:', error)
         }
       }
-      
-      // 处理供应日期段
-      if (dish.availableDates && Array.isArray(dish.availableDates) && dish.availableDates.length > 0) {
-        formData.availableDates = dish.availableDates.map(range => ({
-          startDate: range.startDate || '',
-          endDate: range.endDate || ''
-        }))
-      } else {
-        formData.availableDates = []
-      }
-    }
-    
-    // Mock 数据（仅用于开发测试，当 API 不可用时）
-    const getMockDishById = (id) => {
-      const mockDishes = [
-        { 
-          id: 'FD0123', 
-          name: '海南椰子鸡', 
-          canteenName: '紫荆园', 
-          floor: '二层',
-          windowName: '海南鸡饭窗口',
-          tags: ['琼菜'],
-          price: 15,
-          images: ['/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'],
-          description: '选用新鲜椰子，配以优质鸡肉，口感鲜嫩',
-          allergens: [],
-          ingredients: ['鸡肉', '椰子', '姜', '蒜'],
-          spicyLevel: 0,
-          saltiness: 2,
-          sweetness: 1,
-          oiliness: 2,
-          availableMealTime: ['lunch', 'dinner'],
-          availableDates: [
-            { startDate: '2024-01-01', endDate: '2024-12-31' }
-          ]
-        },
-        { 
-          id: 'FD0124', 
-          name: '芹菜炒肉丝', 
-          canteenName: '桃李园', 
-          floor: '二层',
-          windowName: '自选菜',
-          tags: [],
-          price: 6,
-          images: ['/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'],
-          spicyLevel: 1,
-          saltiness: 3,
-          sweetness: 0,
-          oiliness: 3,
-          availableMealTime: ['lunch', 'dinner'],
-          availableDates: [
-            { startDate: '2024-01-01', endDate: '2024-12-31' }
-          ]
-        },
-        { 
-          id: 'FD0125', 
-          name: '辛拉面', 
-          canteenName: '桃李园', 
-          floor: '一层',
-          windowName: '韩式风味',
-          tags: ['韩国料理'],
-          price: 10,
-          images: ['/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'],
-          spicyLevel: 3,
-          saltiness: 3,
-          sweetness: 1,
-          oiliness: 2,
-          availableMealTime: ['lunch', 'dinner', 'nightsnack'],
-          availableDates: [
-            { startDate: '2024-01-01', endDate: '2024-12-31' }
-          ]
-        },
-        { 
-          id: 'FD0126', 
-          name: '红烧牛肉面', 
-          canteenName: '清青牛拉', 
-          floor: '二层',
-          windowName: '清青牛拉',
-          tags: ['陇菜'],
-          price: 22,
-          images: ['/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'],
-          spicyLevel: 2,
-          saltiness: 4,
-          sweetness: 1,
-          oiliness: 3,
-          availableMealTime: ['lunch', 'dinner'],
-          availableDates: [
-            { startDate: '2024-01-01', endDate: '2024-12-31' }
-          ]
-        }
-      ]
-      return mockDishes.find(d => d.id === id)
-    }
-    
-    // 加载子项列表
-    const loadSubDishes = async (subDishIds) => {
-      try {
-        const subDishPromises = subDishIds.map(id => dishApi.getDishById(id))
-        const responses = await Promise.all(subDishPromises)
-        subDishes.value = responses
-          .filter(res => res.code === 200 && res.data)
-          .map(res => res.data)
-      } catch (error) {
-        console.error('加载子项列表失败:', error)
-        subDishes.value = []
-      }
-    }
-    
-    const addSubItem = () => {
-      // 跳转到添加子项页面
-      router.push({
-        path: '/add-sub-dish',
-        query: {
-          parentId: formData.id,
-          subItemName: '',
-          fromEdit: 'true' // 标记来自编辑页面
-        }
-      })
-    }
-    
-    const editSubDish = (subDishId) => {
-      // 跳转到编辑子项页面（使用EditDish组件）
-      router.push(`/edit-dish/${subDishId}`)
-    }
+    })
     
     const addDateRange = () => {
       if (!formData.availableDates) {
@@ -750,11 +494,17 @@ export default {
     const handleImageUpload = (event) => {
       const file = event.target.files[0]
       if (file) {
+        // 验证文件大小
+        if (file.size > 2 * 1024 * 1024) {
+          alert('图片大小不能超过2MB')
+          return
+        }
+        
         formData.image = file
-        // 创建预览 URL
+        // 创建预览
         const reader = new FileReader()
         reader.onload = (e) => {
-          formData.imageUrl = e.target.result
+          imagePreview.value = e.target.result
         }
         reader.readAsDataURL(file)
       }
@@ -767,6 +517,11 @@ export default {
         return
       }
       
+      if (!parentDishId.value) {
+        alert('缺少父菜品ID，无法创建子项')
+        return
+      }
+      
       // 验证价格：必须为数字，默认为0
       let dishPrice = 0
       
@@ -776,17 +531,6 @@ export default {
           alert('价格必须为有效的数字（大于等于0）')
           return
         }
-      } else {
-        // 如果没有直接输入价格，检查子项
-        const validSubItems = formData.subItems.filter(item => item.name && item.price)
-        if (validSubItems.length > 0) {
-          dishPrice = parseFloat(validSubItems[0].price)
-          if (isNaN(dishPrice) || dishPrice < 0) {
-            alert('子项价格必须为有效的数字（大于等于0）')
-            return
-          }
-        }
-        // 如果都没有，使用默认值0
       }
       
       if (isSubmitting.value) {
@@ -796,9 +540,9 @@ export default {
       isSubmitting.value = true
       
       try {
-        // 1. 上传新图片（如果有）
+        // 1. 上传图片（如果有）
         let imageUrls = []
-        if (formData.image && formData.image instanceof File) {
+        if (formData.image) {
           try {
             const uploadResponse = await dishApi.uploadImage(formData.image)
             if (uploadResponse.code === 200 && uploadResponse.data) {
@@ -812,12 +556,9 @@ export default {
             isSubmitting.value = false
             return
           }
-        } else if (formData.imageUrl) {
-          // 如果已有图片 URL，直接使用
-          imageUrls = [formData.imageUrl]
         }
         
-        // 2. 构建更新数据
+        // 2. 构建请求数据
         // 处理TAG（使用formData.tags数组）
         const tags = formData.tags && formData.tags.length > 0 ? formData.tags : undefined
         
@@ -847,24 +588,13 @@ export default {
               }))
           : undefined
         
-        // 获取当前菜品信息，保留 subDishId 和 parentDishId
-        let currentDish = null
-        try {
-          const currentResponse = await dishApi.getDishById(formData.id)
-          if (currentResponse.code === 200 && currentResponse.data) {
-            currentDish = currentResponse.data
-          }
-        } catch (error) {
-          console.error('获取当前菜品信息失败:', error)
-        }
-        
-        // 构建菜品更新请求
-        const updateData = {
+        // 构建子项创建请求（设置 parentDishId）
+        const dishData = {
           name: formData.name,
           canteenName: formData.canteen,
           floor: formData.floor,
           windowName: formData.windowName,
-          windowNumber: formData.windowNumber || formData.windowName, // 如果没有编号，使用窗口名称
+          windowNumber: formData.windowNumber || formData.windowName,
           price: dishPrice,
           description: formData.description || undefined,
           images: imageUrls.length > 0 ? imageUrls : undefined,
@@ -877,59 +607,86 @@ export default {
           oiliness: formData.oiliness !== null && formData.oiliness !== undefined ? formData.oiliness : 0,
           availableMealTime: availableMealTime.length > 0 ? availableMealTime : undefined,
           availableDates: availableDates,
-          status: 'offline', // 修改后需要重新审核，状态设为 offline
-          // 保留原有的 subDishId 和 parentDishId
-          subDishId: currentDish?.subDishId || undefined,
-          parentDishId: currentDish?.parentDishId || undefined
+          parentDishId: parentDishId.value, // 设置父菜品ID
+          status: 'offline' // 新创建的菜品默认离线，等待审核
         }
         
-        // 3. 调用 API 更新菜品
-        const response = await dishApi.updateDish(formData.id, updateData)
+        // 3. 调用 API 创建子项（保存为dish）
+        const response = await dishApi.createDish(dishData)
         
-        if (response.code === 200 && response.data) {
-          // 4. 更新 store 中的菜品信息
-          dishStore.updateDish(formData.id, response.data)
+        if (response.code === 200 || response.code === 201) {
+          // 4. 将创建的子项添加到 store
+          if (response.data) {
+            dishStore.addDish(response.data)
+            
+            // 5. 更新父菜品的 subDishId 列表
+            if (parentDishId.value && response.data.id) {
+              try {
+                // 获取父菜品
+                const parentResponse = await dishApi.getDishById(parentDishId.value)
+                if (parentResponse.code === 200 && parentResponse.data) {
+                  const parentDish = parentResponse.data
+                  const subDishIds = parentDish.subDishId ? [...parentDish.subDishId] : []
+                  if (!subDishIds.includes(response.data.id)) {
+                    subDishIds.push(response.data.id)
+                    
+                    // 更新父菜品（只更新 subDishId，保留其他字段）
+                    await dishApi.updateDish(parentDishId.value, {
+                      subDishId: subDishIds
+                    })
+                    
+                    // 更新 store 中的父菜品
+                    dishStore.updateDish(parentDishId.value, {
+                      ...parentDish,
+                      subDishId: subDishIds
+                    })
+                  }
+                }
+              } catch (error) {
+                console.error('更新父菜品子项列表失败:', error)
+                // 即使更新失败，子项也已经创建成功
+              }
+            }
+          }
           
-          alert('菜品信息已更新，已提交审核！')
-          router.push('/modify-dish')
+          alert('子项添加成功！')
+          
+          // 保存完子项后，返回到父项的编辑页面
+          if (parentDishId.value) {
+            router.push({
+              path: `/edit-dish/${parentDishId.value}`,
+              query: { refreshSubDishes: 'true' }
+            })
+          } else {
+            goBack()
+          }
         } else {
-          throw new Error(response.message || '更新菜品失败')
+          throw new Error(response.message || '创建子项失败')
         }
       } catch (error) {
-        console.error('更新菜品失败:', error)
-        alert(error instanceof Error ? error.message : '更新菜品失败，请重试')
+        console.error('创建子项失败:', error)
+        alert(error instanceof Error ? error.message : '创建子项失败，请重试')
       } finally {
         isSubmitting.value = false
       }
     }
     
     const goBack = () => {
-      router.push('/modify-dish')
-    }
-    
-    onMounted(() => {
-      loadDishData()
-    })
-    
-    // 监听路由变化，如果从添加子项页面返回，刷新子项列表
-    watch(() => route.query, (newQuery) => {
-      if (newQuery.refreshSubDishes === 'true' && formData.id) {
-        // 重新加载菜品数据以获取最新的子项列表
-        loadDishData()
-        // 清除查询参数
-        router.replace({ path: route.path, query: {} })
+      // 保存完子项后，总是返回到父项的编辑页面
+      if (parentDishId.value) {
+        router.push(`/edit-dish/${parentDishId.value}`)
+      } else {
+        router.push('/single-add')
       }
-    })
+    }
     
     return {
       formData,
       newTag,
-      isLoading,
+      imagePreview,
       isSubmitting,
-      subDishes,
-      isSubDish,
-      addSubItem,
-      editSubDish,
+      subItemName,
+      parentDishName,
       addDateRange,
       removeDateRange,
       addTag,
