@@ -6,7 +6,6 @@ import type {
   GetDishesParams,
   PaginationResponse,
   ApiResponse,
-  SuccessResponse,
   ImageUploadResponse
 } from '@/types/api'
 
@@ -87,9 +86,9 @@ export const dishApi = {
    * @param id 菜品 ID
    * @returns 删除结果
    */
-  async deleteDish(id: string): Promise<ApiResponse<SuccessResponse>> {
-    const response = await request.delete<ApiResponse<SuccessResponse>>(`/admin/dishes/${id}`)
-    return response
+  async deleteDish(id: string): Promise<ApiResponse<void>> {
+    const response = await request.delete<ApiResponse<void>>(`/admin/dishes/${id}`);
+    return response;
   },
 
   /**
@@ -97,15 +96,15 @@ export const dishApi = {
    * @param file Excel 文件
    * @returns 上传结果
    */
-  async batchUpload(file: File): Promise<ApiResponse<SuccessResponse>> {
-    const formData = new FormData()
-    formData.append('file', file)
-    const response = await request.post<ApiResponse<SuccessResponse>>('/admin/dishes/batch', formData, {
+  async batchUpload(file: File): Promise<ApiResponse<void>> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await request.post<ApiResponse<void>>('/admin/dishes/batch', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
-    })
-    return response
+    });
+    return response;
   },
 
   /**
@@ -114,9 +113,9 @@ export const dishApi = {
    * @param status 菜品状态（online 或 offline）
    * @returns 修改结果
    */
-  async updateDishStatus(id: string, status: 'online' | 'offline'): Promise<ApiResponse<SuccessResponse>> {
-    const response = await request.patch<ApiResponse<SuccessResponse>>(`/admin/dishes/${id}/status`, { status })
-    return response
+  async updateDishStatus(id: string, status: 'online' | 'offline'): Promise<ApiResponse<void>> {
+    const response = await request.patch<ApiResponse<void>>(`/admin/dishes/${id}/status`, { status });
+    return response;
   },
 
   /**

@@ -5,7 +5,6 @@ import type {
   CreateAdminRequest,
   PaginationResponse,
   ApiResponse,
-  SuccessResponse,
   Report,
   News,
   Canteen,
@@ -52,8 +51,8 @@ export const adminApi = {
    * @param adminId 管理员 ID
    * @returns 删除结果
    */
-  async deleteAdmin(adminId: string): Promise<ApiResponse<SuccessResponse>> {
-    return await request.delete<ApiResponse<SuccessResponse>>(`/admin/admins/${adminId}`)
+  async deleteAdmin(adminId: string): Promise<ApiResponse<void>> {
+    return await request.delete<ApiResponse<void>>(`/admin/admins/${adminId}`);
   },
 
   /**
@@ -62,14 +61,8 @@ export const adminApi = {
    * @param permissions 权限列表
    * @returns 更新结果
    */
-  async updateAdminPermissions(
-    adminId: string, 
-    permissions: string[]
-  ): Promise<ApiResponse<SuccessResponse>> {
-    return await request.put<ApiResponse<SuccessResponse>>(
-      `/admin/admins/${adminId}/permissions`,
-      { permissions }
-    )
+  async updateAdminPermissions(adminId: string, permissions: string[]): Promise<ApiResponse<void>> {
+    return await request.put<ApiResponse<void>>(`/admin/admins/${adminId}/permissions`, { permissions });
   },
 
   /**
@@ -89,8 +82,8 @@ export const adminApi = {
    * @param id 评价 ID
    * @returns 审核结果
    */
-  async approveReview(id: string): Promise<ApiResponse<SuccessResponse>> {
-    return await request.post<ApiResponse<SuccessResponse>>(`/admin/reviews/${id}/approve`)
+  async approveReview(id: string): Promise<ApiResponse<void>> {
+    return await request.post<ApiResponse<void>>(`/admin/reviews/${id}/approve`);
   },
 
   /**
@@ -99,8 +92,8 @@ export const adminApi = {
    * @param reason 拒绝原因
    * @returns 审核结果
    */
-  async rejectReview(id: string, reason: string): Promise<ApiResponse<SuccessResponse>> {
-    return await request.post<ApiResponse<SuccessResponse>>(`/admin/reviews/${id}/reject`, { reason })
+  async rejectReview(id: string, reason: string): Promise<ApiResponse<void>> {
+    return await request.post<ApiResponse<void>>(`/admin/reviews/${id}/reject`, { reason });
   },
 
   /**
@@ -120,8 +113,8 @@ export const adminApi = {
    * @param id 评论 ID
    * @returns 审核结果
    */
-  async approveComment(id: string): Promise<ApiResponse<SuccessResponse>> {
-    return await request.post<ApiResponse<SuccessResponse>>(`/admin/comments/${id}/approve`)
+  async approveComment(id: string): Promise<ApiResponse<void>> {
+    return await request.post<ApiResponse<void>>(`/admin/comments/${id}/approve`);
   },
 
   /**
@@ -130,8 +123,8 @@ export const adminApi = {
    * @param reason 拒绝原因
    * @returns 审核结果
    */
-  async rejectComment(id: string, reason: string): Promise<ApiResponse<SuccessResponse>> {
-    return await request.post<ApiResponse<SuccessResponse>>(`/admin/comments/${id}/reject`, { reason })
+  async rejectComment(id: string, reason: string): Promise<ApiResponse<void>> {
+    return await request.post<ApiResponse<void>>(`/admin/comments/${id}/reject`, { reason });
   },
 
   /**
@@ -149,8 +142,8 @@ export const adminApi = {
    * @param data 处理数据
    * @returns 处理结果
    */
-  async handleReport(id: string, data: { action: 'approve' | 'reject'; reason?: string }): Promise<ApiResponse<SuccessResponse>> {
-    return await request.post<ApiResponse<SuccessResponse>>(`/admin/reports/${id}/handle`, data)
+  async handleReport(id: string, data: { action: 'approve' | 'reject'; reason?: string }): Promise<ApiResponse<void>> {
+    return await request.post<ApiResponse<void>>(`/admin/reports/${id}/handle`, data);
   },
 
   /**
@@ -203,8 +196,8 @@ export const adminApi = {
    * @param id 上传菜品 ID
    * @returns 审核结果
    */
-  async approveUpload(id: string): Promise<ApiResponse<SuccessResponse>> {
-    return await request.post<ApiResponse<SuccessResponse>>(`/admin/dishes/uploads/${id}/approve`)
+  async approveUpload(id: string): Promise<ApiResponse<void>> {
+    return await request.post<ApiResponse<void>>(`/admin/dishes/uploads/${id}/approve`);
   },
 
   /**
@@ -213,8 +206,8 @@ export const adminApi = {
    * @param reason 拒绝原因
    * @returns 审核结果
    */
-  async rejectUpload(id: string, reason: string): Promise<ApiResponse<SuccessResponse>> {
-    return await request.post<ApiResponse<SuccessResponse>>(`/admin/dishes/uploads/${id}/reject`, { reason })
+  async rejectUpload(id: string, reason: string): Promise<ApiResponse<void>> {
+    return await request.post<ApiResponse<void>>(`/admin/dishes/uploads/${id}/reject`, { reason });
   }
 }
 
