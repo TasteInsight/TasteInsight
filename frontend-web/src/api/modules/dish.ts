@@ -4,6 +4,8 @@ import type {
   DishCreateRequest, 
   DishUpdateRequest,
   GetDishesParams,
+  GetDishReviewsParams,
+  DishReviewsData,
   PaginationResponse,
   ApiResponse,
   ImageUploadResponse
@@ -132,6 +134,17 @@ export const dishApi = {
       }
     })
     return response
+  },
+
+  /**
+   * 获取菜品评价列表
+   * @param id 菜品 ID
+   * @param params 查询参数（分页、状态筛选）
+   * @returns 评价列表及统计信息
+   */
+  async getDishReviews(id: string, params?: GetDishReviewsParams): Promise<ApiResponse<DishReviewsData>> {
+    const response = await request.get<ApiResponse<DishReviewsData>>(`/admin/dishes/${id}/reviews`, { params });
+    return response;
   }
 }
 
