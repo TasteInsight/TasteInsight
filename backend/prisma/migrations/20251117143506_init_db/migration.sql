@@ -15,16 +15,16 @@ CREATE TABLE "users" (
 CREATE TABLE "user_preferences" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "spicyLevel" INTEGER NOT NULL DEFAULT 2,
     "tagPreferences" TEXT[],
     "priceMin" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "priceMax" DOUBLE PRECISION NOT NULL DEFAULT 50,
     "meatPreference" TEXT[],
     "avoidIngredients" TEXT[],
     "favoriteIngredients" TEXT[],
-    "sweetness" INTEGER NOT NULL DEFAULT 2,
-    "saltiness" INTEGER NOT NULL DEFAULT 2,
-    "oiliness" INTEGER NOT NULL DEFAULT 2,
+    "spicyLevel" INTEGER NOT NULL DEFAULT 0,
+    "sweetness" INTEGER NOT NULL DEFAULT 0,
+    "saltiness" INTEGER NOT NULL DEFAULT 0,
+    "oiliness" INTEGER NOT NULL DEFAULT 0,
     "canteenPreferences" TEXT[],
     "portionSize" TEXT NOT NULL DEFAULT 'medium',
     "newDishAlert" BOOLEAN NOT NULL DEFAULT true,
@@ -119,6 +119,10 @@ CREATE TABLE "dishes" (
     "parentDishId" TEXT,
     "ingredients" TEXT[],
     "allergens" TEXT[],
+    "spicyLevel" INTEGER NOT NULL DEFAULT 0,
+    "sweetness" INTEGER NOT NULL DEFAULT 0,
+    "saltiness" INTEGER NOT NULL DEFAULT 0,
+    "oiliness" INTEGER NOT NULL DEFAULT 0,
     "canteenId" TEXT NOT NULL,
     "canteenName" TEXT NOT NULL,
     "floor" TEXT,
@@ -147,6 +151,10 @@ CREATE TABLE "dish_uploads" (
     "images" TEXT[],
     "ingredients" TEXT[],
     "allergens" TEXT[],
+    "spicyLevel" INTEGER NOT NULL DEFAULT 0,
+    "sweetness" INTEGER NOT NULL DEFAULT 0,
+    "saltiness" INTEGER NOT NULL DEFAULT 0,
+    "oiliness" INTEGER NOT NULL DEFAULT 0,
     "canteenName" TEXT NOT NULL,
     "floor" TEXT,
     "windowNumber" TEXT,
@@ -390,6 +398,9 @@ CREATE INDEX "ai_recommendations_createdAt_idx" ON "ai_recommendations"("created
 CREATE INDEX "recommend_feedbacks_userId_idx" ON "recommend_feedbacks"("userId");
 
 -- CreateIndex
+CREATE INDEX "recommend_feedbacks_dishId_idx" ON "recommend_feedbacks"("dishId");
+
+-- CreateIndex
 CREATE INDEX "news_canteenId_idx" ON "news"("canteenId");
 
 -- CreateIndex
@@ -417,7 +428,7 @@ ALTER TABLE "windows" ADD CONSTRAINT "windows_canteenId_fkey" FOREIGN KEY ("cant
 ALTER TABLE "dishes" ADD CONSTRAINT "dishes_parentDishId_fkey" FOREIGN KEY ("parentDishId") REFERENCES "dishes"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "dishes" ADD CONSTRAINT "dishes_canteenId_fkey" FOREIGN KEY ("canteenId") REFERENCES "canteens"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "dishes" ADD CONSTRAINT "dishes_canteenId_fkey" FOREIGN KEY ("canteenId") REFERENCES "canteens"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "dishes" ADD CONSTRAINT "dishes_windowId_fkey" FOREIGN KEY ("windowId") REFERENCES "windows"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -471,10 +482,16 @@ ALTER TABLE "meal_plan_dishes" ADD CONSTRAINT "meal_plan_dishes_mealPlanId_fkey"
 ALTER TABLE "meal_plan_dishes" ADD CONSTRAINT "meal_plan_dishes_dishId_fkey" FOREIGN KEY ("dishId") REFERENCES "dishes"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "ai_recommendations" ADD CONSTRAINT "ai_recommendations_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "ai_recommendations" ADD CONSTRAINT "ai_recommendations_dishId_fkey" FOREIGN KEY ("dishId") REFERENCES "dishes"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "recommend_feedbacks" ADD CONSTRAINT "recommend_feedbacks_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "recommend_feedbacks" ADD CONSTRAINT "recommend_feedbacks_dishId_fkey" FOREIGN KEY ("dishId") REFERENCES "dishes"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "news" ADD CONSTRAINT "news_canteenId_fkey" FOREIGN KEY ("canteenId") REFERENCES "canteens"("id") ON DELETE SET NULL ON UPDATE CASCADE;
