@@ -8,9 +8,9 @@ export default {
     extend: {
       colors: {
         tsinghua: {
-          purple: '#660099',
+          purple: '#660874',
           light: '#F5F5F5',
-          dark: '#33004D'
+          dark: '#D93379'
         }
       },
       fontFamily: {
