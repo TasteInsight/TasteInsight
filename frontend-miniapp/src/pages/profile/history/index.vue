@@ -36,7 +36,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
 import DishCard from './components/DishCard.vue';
-import { useHistory } from './composables/use-history';
+import { useHistory } from '@/pages/profile/history/composables/use-history';
 
 const { dishes, loading, hasMore, fetchHistory, loadMore } = useHistory();
 
