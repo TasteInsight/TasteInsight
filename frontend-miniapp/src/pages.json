@@ -33,7 +33,7 @@
 			}
 		},
 		{
-			"path": "pages/my/index",
+			"path": "pages/profile/index",
 			"style": {
 				"navigationBarTitleText": "我的"
 			}
@@ -79,6 +79,24 @@
 			"style": {
 				"navigationBarTitleText": "通知设置"
 			}
+		},
+		{
+			"path": "pages/profile/my-reviews/index",
+			"style": {
+				"navigationBarTitleText": "我的评价"
+			}
+		},
+		{
+			"path": "pages/profile/history/index",
+			"style": {
+				"navigationBarTitleText": "历史浏览"
+			}
+		},
+		{
+			"path": "pages/profile/my-favorites/index",
+			"style": {
+				"navigationBarTitleText": "我的收藏"
+			}
 		}
 		
 	],
@@ -114,7 +132,7 @@
 				"text": "问ai"
 			},
 			{
-				"pagePath": "pages/my/index",
+				"pagePath": "pages/profile/index",
 				"iconPath": "static/tabbar/profile.png",
 				"selectedIconPath": "static/tabbar/profile-active.png",
 				"text": "我的"
