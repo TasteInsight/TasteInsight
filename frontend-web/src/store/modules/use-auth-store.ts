@@ -86,12 +86,21 @@ export const useAuthStore = defineStore('auth', () => {
     sessionStorage.removeItem('admin_permissions');
   };
 
+  // 获取权限列表
+  const getPermissions = (): string[] => {
+    const stored = localStorage.getItem('admin_permissions') || sessionStorage.getItem('admin_permissions');
+    return stored ? JSON.parse(stored) : [];
+  };
+
+  const permissions = computed(() => getPermissions());
+
   return {
     token,
     refreshToken,
     user,
     isAuthenticated,
     isLoggedIn,
+    permissions,
     login,
     logout
   };

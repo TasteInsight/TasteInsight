@@ -87,24 +87,87 @@
       </router-link>
     </div>
     
-    <div class="px-6 py-4 text-sm flex items-center justify-between mt-auto border-t border-white/20">
-      <div class="flex items-center space-x-2 opacity-80">
-        <span class="iconify" data-icon="mdi:user-circle-outline"></span>
-        <span>管理员：{{ userInfo.username || userInfo.name || '管理员' }}</span>
+    <div ref="userInfoSection" class="px-6 py-4 text-sm mt-auto border-t border-white/20 relative">
+      <div class="flex items-center justify-between">
+        <div 
+          class="flex items-center space-x-2 opacity-80 cursor-pointer hover:opacity-100 transition"
+          @click="togglePermissionsDropdown"
+        >
+          <span class="iconify" data-icon="mdi:user-circle-outline"></span>
+          <span>管理员：{{ userInfo.username || userInfo.name || '管理员' }}</span>
+          <span 
+            class="iconify text-xs transition-transform"
+            :class="{ 'rotate-180': showPermissionsDropdown }"
+            data-icon="carbon:chevron-down"
+          ></span>
+        </div>
+        <button 
+          class="opacity-70 hover:opacity-100 transition"
+          @click="handleLogout"
+          title="退出登录"
+        >
+          <span class="iconify" data-icon="carbon:logout"></span>
+        </button>
       </div>
-      <button 
-        class="opacity-70 hover:opacity-100 transition"
-        @click="handleLogout"
-        title="退出登录"
+      
+      <!-- 权限下拉框 -->
+      <div 
+        v-if="showPermissionsDropdown"
+        ref="permissionsDropdown"
+        class="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-lg shadow-xl border border-gray-200 max-h-[300px] overflow-y-auto z-50"
+        @click.stop
       >
-        <span class="iconify" data-icon="carbon:logout"></span>
-      </button>
+        <div class="p-4">
+          <div class="flex justify-between items-center mb-3">
+            <h4 class="text-sm font-medium text-gray-800">我的权限</h4>
+            <button 
+              class="text-gray-400 hover:text-gray-600"
+              @click="showPermissionsDropdown = false"
+            >
+              <span class="iconify text-sm" data-icon="carbon:close"></span>
+            </button>
+          </div>
+          
+          <div v-if="permissionGroups.length > 0" class="space-y-3">
+            <div 
+              v-for="group in permissionGroups" 
+              :key="group.id"
+              class="border-b border-gray-100 last:border-0 pb-3 last:pb-0"
+            >
+              <div class="flex items-center gap-2 mb-2">
+                <div class="w-1 h-4 bg-tsinghua-purple"></div>
+                <h5 class="text-xs font-medium text-gray-700">{{ group.name }}</h5>
+              </div>
+              <div class="ml-3 space-y-1">
+                <div 
+                  v-for="permission in group.permissions"
+                  :key="permission.id"
+                  class="flex items-center gap-2 text-xs"
+                >
+                  <span 
+                    class="iconify text-xs"
+                    :class="hasPermission(permission.id) ? 'text-green-500' : 'text-gray-300'"
+                    :data-icon="hasPermission(permission.id) ? 'carbon:checkmark-filled' : 'carbon:close'"
+                  ></span>
+                  <span :class="hasPermission(permission.id) ? 'text-gray-800' : 'text-gray-400 line-through'">
+                    {{ permission.label }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div v-else class="text-xs text-gray-500 text-center py-4">
+            <p>暂无权限信息</p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 
@@ -116,8 +179,85 @@ export default {
     const authStore = useAuthStore()
     const showAddSubmenu = ref(false)
     const activeMenu = ref('')
+    const showPermissionsDropdown = ref(false)
+    const userInfoSection = ref(null)
+    const permissionsDropdown = ref(null)
     
     const userInfo = computed(() => authStore.user || { username: '管理员' })
+    const userPermissions = computed(() => authStore.permissions || [])
+    
+    // 权限分组定义（与 UserManage 保持一致）
+    const permissionGroups = [
+      {
+        id: 'dishes',
+        name: '菜品管理',
+        permissions: [
+          { id: 'dishes-view', label: '浏览菜品列表' },
+          { id: 'dishes-create', label: '新建菜品' },
+          { id: 'dishes-edit', label: '编辑菜品' },
+          { id: 'dishes-delete', label: '删除菜品' },
+          { id: 'dishes-status', label: '修改菜品状态' }
+        ]
+      },
+      {
+        id: 'review',
+        name: '内容审核',
+        permissions: [
+          { id: 'review-dishes', label: '审核菜品评价' },
+          { id: 'review-comments', label: '审核评论' },
+          { id: 'review-reports', label: '处理举报' },
+          { id: 'review-user-dishes', label: '审核用户上传菜品' }
+        ]
+      },
+      {
+        id: 'admin',
+        name: '权限管理',
+        permissions: [
+          { id: 'admin-create', label: '创建子管理员' },
+          { id: 'admin-delete', label: '删除子管理员' },
+          { id: 'admin-permission', label: '权限分配与授予' }
+        ]
+      },
+      {
+        id: 'audit',
+        name: '操作审计',
+        permissions: [
+          { id: 'audit-log', label: '记录操作日志' },
+          { id: 'audit-view', label: '查看操作日志' }
+        ]
+      },
+      {
+        id: 'news',
+        name: '新闻管理',
+        permissions: [
+          { id: 'news-view', label: '浏览新闻列表' },
+          { id: 'news-create', label: '创建新闻' },
+          { id: 'news-edit', label: '编辑新闻' },
+          { id: 'news-delete', label: '删除新闻' }
+        ]
+      }
+    ]
+    
+    // 检查是否拥有某个权限
+    const hasPermission = (permissionId) => {
+      return userPermissions.value.includes(permissionId)
+    }
+    
+    // 切换权限下拉框
+    const togglePermissionsDropdown = () => {
+      showPermissionsDropdown.value = !showPermissionsDropdown.value
+    }
+    
+    // 点击外部关闭下拉框
+    const handleClickOutside = (event) => {
+      if (showPermissionsDropdown.value && 
+          userInfoSection.value && 
+          permissionsDropdown.value &&
+          !userInfoSection.value.contains(event.target) &&
+          !permissionsDropdown.value.contains(event.target)) {
+        showPermissionsDropdown.value = false
+      }
+    }
     
     const toggleAddMenu = () => {
       showAddSubmenu.value = !showAddSubmenu.value
@@ -142,10 +282,25 @@ export default {
       }
     }, { immediate: true })
     
+    onMounted(() => {
+      document.addEventListener('click', handleClickOutside)
+    })
+    
+    onUnmounted(() => {
+      document.removeEventListener('click', handleClickOutside)
+    })
+    
     return {
       showAddSubmenu,
       activeMenu,
       userInfo,
+      userPermissions,
+      permissionGroups,
+      showPermissionsDropdown,
+      userInfoSection,
+      permissionsDropdown,
+      hasPermission,
+      togglePermissionsDropdown,
       toggleAddMenu,
       handleLogout
     }
