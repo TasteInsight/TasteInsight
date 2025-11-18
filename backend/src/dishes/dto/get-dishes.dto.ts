@@ -1,6 +1,7 @@
-import { IsOptional, IsObject, IsArray, IsInt, IsString, IsBoolean, Min, Max, IsEnum, ValidateNested } from 'class-validator';
+import { IsOptional, IsArray, IsInt, IsString, IsBoolean, Min, Max, IsEnum, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { MealTime } from '@/common/enums';
+import { IsValidRange } from '@/common/validators/range.validator';
 
 // 评分范围
 class RatingRangeDto {
@@ -44,6 +45,7 @@ class FilterDto {
   @IsOptional()
   @ValidateNested()
   @Type(() => RatingRangeDto)
+  @IsValidRange({ message: '评分范围无效：min 必须小于或等于 max' })
   rating?: RatingRangeDto;
 
   @IsOptional()
@@ -54,6 +56,7 @@ class FilterDto {
   @IsOptional()
   @ValidateNested()
   @Type(() => PriceRangeDto)
+  @IsValidRange({ message: '价格范围无效：min 必须小于或等于 max' })
   price?: PriceRangeDto;
 
   @IsOptional()
@@ -74,6 +77,7 @@ class FilterDto {
   @IsOptional()
   @ValidateNested()
   @Type(() => FlavorRangeDto)
+  @IsValidRange({ message: '辣度范围无效：min 必须小于或等于 max' })
   spicyLevel?: FlavorRangeDto;
 
   @IsOptional()
@@ -94,16 +98,19 @@ class FilterDto {
   @IsOptional()
   @ValidateNested()
   @Type(() => FlavorRangeDto)
+  @IsValidRange({ message: '甜度范围无效：min 必须小于或等于 max' })
   sweetness?: FlavorRangeDto;
 
   @IsOptional()
   @ValidateNested()
   @Type(() => FlavorRangeDto)
+  @IsValidRange({ message: '咸度范围无效：min 必须小于或等于 max' })
   saltiness?: FlavorRangeDto;
 
   @IsOptional()
   @ValidateNested()
   @Type(() => FlavorRangeDto)
+  @IsValidRange({ message: '油度范围无效：min 必须小于或等于 max' })
   oiliness?: FlavorRangeDto;
 }
 
