@@ -5,314 +5,299 @@
     <div class="flex-1 min-h-screen overflow-x-auto overflow-y-auto bg-tsinghua-light ml-[260px]">
       <div class="p-8 min-h-screen min-w-[1200px]">
         <div class="bg-white rounded-lg container-shadow p-8">
-          <Header 
-            title="人员管理与权限配置" 
-            description="超级管理员账号：admin@mails.tsinghua.edu.cn"
-            header-icon="clarity:group-line"
-          />
-          
-          <!-- 统计卡片 -->
-          <div class="grid grid-cols-4 gap-6 mt-6">
-            <div class="bg-white border border-gray-200 rounded-lg p-5 text-center shadow-sm">
-              <div class="text-3xl font-bold text-tsinghua-purple mb-2">{{ stats.totalUsers }}</div>
-              <div class="text-sm text-gray-600">总用户数</div>
+          <!-- 列表视图 -->
+          <div v-if="viewMode === 'list'">
+            <div class="flex justify-between items-center mb-6">
+              <Header 
+                title="人员权限管理" 
+                description="管理子管理员账号和权限分配"
+                header-icon="clarity:group-line"
+              />
+              <button 
+                class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center"
+                @click="createNewAdmin"
+              >
+                <span class="iconify mr-1" data-icon="carbon:add"></span>
+                创建子管理员
+              </button>
             </div>
-            <div class="bg-white border border-gray-200 rounded-lg p-5 text-center shadow-sm">
-              <div class="text-3xl font-bold text-tsinghua-purple mb-2">{{ stats.activeUsers }}</div>
-              <div class="text-sm text-gray-600">活跃用户</div>
+            
+            <!-- 搜索栏 -->
+            <div class="mb-6">
+              <input 
+                type="text" 
+                v-model="searchQuery"
+                placeholder="搜索用户名、角色..."
+                class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+              >
             </div>
-            <div class="bg-white border border-gray-200 rounded-lg p-5 text-center shadow-sm">
-              <div class="text-3xl font-bold text-tsinghua-purple mb-2">{{ stats.pendingUsers }}</div>
-              <div class="text-sm text-gray-600">待激活用户</div>
+            
+            <!-- 管理员列表表格 -->
+            <div class="overflow-auto">
+              <table class="w-full">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">用户名</th>
+                    <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">角色</th>
+                    <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">管理范围</th>
+                    <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">创建时间</th>
+                    <th class="py-3 px-6 text-center text-sm font-medium text-gray-500">操作</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                  <tr 
+                    v-for="admin in filteredAdmins" 
+                    :key="admin.id"
+                    class="hover:bg-gray-50"
+                  >
+                    <td class="py-4 px-6">
+                      <div class="font-medium">{{ admin.username }}</div>
+                    </td>
+                    <td class="py-4 px-6">
+                      <span class="px-2 py-1 text-xs rounded-full bg-tsinghua-purple/10 text-tsinghua-purple">
+                        {{ getRoleLabel(admin.role) }}
+                      </span>
+                    </td>
+                    <td class="py-4 px-6 text-sm">{{ admin.canteenId || '全校食堂' }}</td>
+                    <td class="py-4 px-6 text-sm text-gray-500">{{ formatDate(admin.createdAt) }}</td>
+                    <td class="py-4 px-6 text-center" @click.stop>
+                      <div class="flex items-center justify-center gap-2">
+                        <button 
+                          class="p-2 rounded-full hover:bg-gray-200 text-tsinghua-purple"
+                          @click="editAdmin(admin)"
+                          title="编辑权限"
+                        >
+                          <span class="iconify" data-icon="carbon:edit"></span>
+                        </button>
+                        <button 
+                          class="p-2 rounded-full hover:bg-gray-200 text-red-500"
+                          @click="deleteAdmin(admin)"
+                          title="删除"
+                        >
+                          <span class="iconify" data-icon="carbon:trash-can"></span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-            <div class="bg-white border border-gray-200 rounded-lg p-5 text-center shadow-sm">
-              <div class="text-3xl font-bold text-tsinghua-purple mb-2">{{ stats.adminRoles }}</div>
-              <div class="text-sm text-gray-600">管理员角色</div>
+            
+            <!-- 空状态 -->
+            <div v-if="filteredAdmins.length === 0 && !loading" class="text-center py-12">
+              <span class="iconify text-6xl text-gray-300 mx-auto" data-icon="clarity:group-line"></span>
+              <p class="mt-4 text-gray-500">暂无子管理员</p>
+              <button 
+                class="mt-4 px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200"
+                @click="createNewAdmin"
+              >
+                创建第一个子管理员
+              </button>
+            </div>
+            
+            <!-- 分页 -->
+            <div v-if="totalPages > 1" class="flex justify-center gap-2 mt-6">
+              <button
+                @click="changePage(currentPage - 1)"
+                :disabled="currentPage === 1"
+                class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                上一页
+              </button>
+              <button
+                v-for="page in totalPages"
+                :key="page"
+                @click="changePage(page)"
+                class="px-4 py-2 border rounded-lg transition"
+                :class="currentPage === page ? 'bg-tsinghua-purple text-white border-tsinghua-purple' : 'border-gray-300 hover:bg-gray-50'"
+              >
+                {{ page }}
+              </button>
+              <button
+                @click="changePage(currentPage + 1)"
+                :disabled="currentPage === totalPages"
+                class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                下一页
+              </button>
             </div>
           </div>
           
-          <!-- 创建新用户表单 -->
-          <div class="bg-white border border-gray-200 rounded-lg p-6 mt-6 shadow-sm">
-            <h3 class="text-lg font-medium text-gray-800 mb-4">创建新用户账号</h3>
+          <!-- 创建/编辑视图 -->
+          <div v-else>
+            <div class="flex justify-between items-center mb-6">
+              <Header 
+                :title="editingAdmin ? '编辑子管理员' : '创建子管理员'" 
+                :description="editingAdmin ? '修改子管理员信息和权限' : '创建新的子管理员账号并分配权限'"
+                header-icon="clarity:group-line"
+              />
+              <button 
+                class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"
+                @click="backToList"
+              >
+                返回列表
+              </button>
+            </div>
             
-            <div class="grid grid-cols-2 gap-6">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">用户姓名</label>
-                <input
-                  v-model="newUserForm.name"
-                  type="text"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple focus:border-transparent outline-none"
-                  placeholder="请输入姓名"
-                />
-                
-                <label class="block text-sm font-medium text-gray-700 mb-2 mt-4">邮箱账号</label>
-                <input
-                  v-model="newUserForm.email"
-                  type="email"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple focus:border-transparent outline-none"
-                  placeholder="邮箱将作为登录账号"
-                />
-                
-                <label class="block text-sm font-medium text-gray-700 mb-2 mt-4">用户部门</label>
-                <input
-                  v-model="newUserForm.department"
-                  type="text"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple focus:border-transparent outline-none"
-                  placeholder="所在部门或食堂"
-                />
-              </div>
-              
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">联系方式</label>
-                <input
-                  v-model="newUserForm.phone"
-                  type="tel"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple focus:border-transparent outline-none"
-                  placeholder="手机号码"
-                />
-                
-                <label class="block text-sm font-medium text-gray-700 mb-2 mt-4">初始密码</label>
-                <div class="flex gap-2">
-                  <input
-                    v-model="newUserForm.password"
-                    type="text"
-                    class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple focus:border-transparent outline-none"
-                    placeholder="请输入密码"
-                  />
-                  <button
-                    @click="generatePassword"
-                    class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                  >
-                    随机生成
-                  </button>
-                </div>
-                <div class="h-1 bg-gray-200 rounded mt-2 overflow-hidden">
-                  <div
-                    class="h-full transition-all"
-                    :class="passwordStrengthClass"
-                    :style="{ width: passwordStrengthWidth }"
-                  ></div>
-                </div>
-                <div class="text-xs text-gray-500 mt-1">{{ passwordStrengthText }}</div>
-                
-                <label class="block text-sm font-medium text-gray-700 mb-2 mt-4">权限角色</label>
-                <div class="grid grid-cols-2 gap-3">
-                  <div
-                    v-for="role in roles"
-                    :key="role.value"
-                    @click="selectRole(role.value)"
-                    class="p-3 border rounded-lg cursor-pointer transition"
-                    :class="newUserForm.role === role.value ? 'border-tsinghua-purple bg-purple-50' : 'border-gray-200 hover:border-gray-300'"
-                  >
-                    <div class="flex items-center gap-2">
+            <form class="space-y-6">
+              <div class="grid grid-cols-2 gap-6">
+                <!-- 左侧列 -->
+                <div>
+                  <!-- 用户名 -->
+                  <div class="mb-6">
+                    <label class="block text-gray-700 font-medium mb-2">
+                      用户名 <span class="text-red-500">*</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      v-model="formData.username" 
+                      class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
+                      placeholder="例如：admin001"
+                      :disabled="!!editingAdmin"
+                      required
+                    >
+                    <p v-if="editingAdmin" class="mt-1 text-sm text-gray-500">用户名创建后不可修改</p>
+                  </div>
+                  
+                  <!-- 密码 -->
+                  <div v-if="!editingAdmin" class="mb-6">
+                    <label class="block text-gray-700 font-medium mb-2">
+                      初始密码 <span class="text-red-500">*</span>
+                    </label>
+                    <div class="flex gap-2">
                       <input
-                        type="radio"
-                        :value="role.value"
-                        v-model="newUserForm.role"
-                        class="text-tsinghua-purple"
+                        v-model="formData.password"
+                        type="text"
+                        class="flex-1 px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                        placeholder="请输入密码"
                       />
-                      <div>
-                        <div class="font-medium text-sm">{{ role.label }}</div>
-                        <div class="text-xs text-gray-500">{{ role.desc }}</div>
+                      <button
+                        type="button"
+                        @click="generatePassword"
+                        class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                      >
+                        随机生成
+                      </button>
+                    </div>
+                    <div class="h-1 bg-gray-200 rounded mt-2 overflow-hidden">
+                      <div
+                        class="h-full transition-all"
+                        :class="passwordStrengthClass"
+                        :style="{ width: passwordStrengthWidth }"
+                      ></div>
+                    </div>
+                    <div class="text-xs text-gray-500 mt-1">{{ passwordStrengthText }}</div>
+                  </div>
+                  
+                  <!-- 角色 -->
+                  <div class="mb-6">
+                    <label class="block text-gray-700 font-medium mb-2">
+                      角色 <span class="text-red-500">*</span>
+                    </label>
+                    <div class="grid grid-cols-2 gap-3">
+                      <div
+                        v-for="role in roles"
+                        :key="role.value"
+                        @click="selectRole(role.value)"
+                        class="p-3 border rounded-lg cursor-pointer transition"
+                        :class="formData.role === role.value ? 'border-tsinghua-purple bg-purple-50' : 'border-gray-200 hover:border-gray-300'"
+                      >
+                        <div class="flex items-center gap-2">
+                          <input
+                            type="radio"
+                            :value="role.value"
+                            v-model="formData.role"
+                            class="text-tsinghua-purple"
+                          />
+                          <div>
+                            <div class="font-medium text-sm">{{ role.label }}</div>
+                            <div class="text-xs text-gray-500">{{ role.desc }}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- 管理范围 -->
+                  <div class="mb-6">
+                    <label class="block text-gray-700 font-medium mb-2">管理范围（食堂ID）</label>
+                    <input 
+                      type="text" 
+                      v-model="formData.canteenId" 
+                      class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
+                      placeholder="留空表示管理全校食堂"
+                    >
+                    <p class="mt-1 text-sm text-gray-500">输入食堂ID，留空则管理所有食堂</p>
+                  </div>
+                </div>
+                
+                <!-- 右侧列 -->
+                <div>
+                  <!-- 权限配置 -->
+                  <div class="mb-6">
+                    <div class="flex justify-between items-center mb-2">
+                      <label class="block text-gray-700 font-medium">权限配置</label>
+                      <button 
+                        type="button" 
+                        class="text-tsinghua-purple text-sm flex items-center hover:text-tsinghua-dark"
+                        @click="selectAllPermissions"
+                      >
+                        <span class="iconify mr-1" data-icon="carbon:checkbox-checked"></span>
+                        全选
+                      </button>
+                    </div>
+                    
+                    <div class="space-y-4 max-h-[500px] overflow-y-auto border rounded-lg p-4">
+                      <div v-for="permissionGroup in permissionGroups" :key="permissionGroup.id" class="mb-4">
+                        <div class="flex items-center gap-2 mb-3">
+                          <div class="w-1 h-5 bg-tsinghua-purple"></div>
+                          <h4 class="text-sm font-medium text-gray-800">{{ permissionGroup.name }}</h4>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 gap-2 ml-3">
+                          <div
+                            v-for="permission in permissionGroup.permissions"
+                            :key="permission.id"
+                            class="flex items-center gap-2"
+                          >
+                            <input
+                              type="checkbox"
+                              :id="permission.id"
+                              :checked="isPermissionChecked(permission.id)"
+                              @change="togglePermission(permission.id)"
+                              class="w-4 h-4 text-tsinghua-purple border-gray-300 rounded focus:ring-tsinghua-purple"
+                            />
+                            <label :for="permission.id" class="text-sm text-gray-700 cursor-pointer">
+                              {{ permission.label }}
+                            </label>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-            
-            <div class="flex justify-end gap-3 mt-6">
-              <button
-                @click="resetNewUserForm"
-                class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-              >
-                取消
-              </button>
-              <button
-                @click="handleCreateUser"
-                class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition"
-              >
-                创建用户账号
-              </button>
-            </div>
-          </div>
-          
-          <!-- 用户列表和权限配置 -->
-          <div class="grid grid-cols-3 gap-6 mt-6">
-            <!-- 用户列表 -->
-            <div class="col-span-2 bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-              <h3 class="text-lg font-medium text-gray-800 mb-4">用户信息列表</h3>
               
-              <div class="overflow-x-auto">
-                <table class="w-full">
-                  <thead class="bg-gray-50">
-                    <tr>
-                      <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">用户名</th>
-                      <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">用户角色</th>
-                      <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">账号状态</th>
-                      <th class="px-4 py-3 text-left text-sm font-medium text-gray-700">管理范围</th>
-                      <th class="px-4 py-3 text-center text-sm font-medium text-gray-700">操作</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-gray-200">
-                    <tr v-for="user in adminList" :key="user.id" class="hover:bg-gray-50">
-                      <td class="px-4 py-3">
-                        <div class="font-medium">{{ user.name || user.username }}</div>
-                        <div class="text-xs text-gray-500">{{ user.email }}</div>
-                        <div class="text-xs text-gray-400">最后登录: {{ formatTime(user.lastLogin) }}</div>
-                      </td>
-                      <td class="px-4 py-3 text-sm">{{ user.role || '管理员' }}</td>
-                      <td class="px-4 py-3">
-                        <span
-                          class="px-2 py-1 text-xs rounded-full"
-                          :class="user.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'"
-                        >
-                          {{ user.status === 'active' ? '激活中' : '待激活' }}
-                        </span>
-                      </td>
-                      <td class="px-4 py-3 text-sm">{{ user.canteenName || '全校食堂' }}</td>
-                      <td class="px-4 py-3">
-                        <div class="flex justify-center gap-2">
-                          <button
-                            @click="editUser(user)"
-                            class="p-1 text-gray-600 hover:text-tsinghua-purple transition"
-                            title="编辑"
-                          >
-                            <span class="iconify" data-icon="mdi:pencil"></span>
-                          </button>
-                          <button
-                            @click="resetPassword(user)"
-                            class="p-1 text-gray-600 hover:text-tsinghua-purple transition"
-                            title="重置密码"
-                          >
-                            <span class="iconify" data-icon="mdi:lock-reset"></span>
-                          </button>
-                          <button
-                            @click="deleteUser(user)"
-                            class="p-1 text-gray-600 hover:text-red-600 transition"
-                            title="删除"
-                          >
-                            <span class="iconify" data-icon="mdi:trash-can-outline"></span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              
-              <!-- 分页 -->
-              <div class="flex justify-center gap-2 mt-6">
-                <button
-                  @click="changePage(currentPage - 1)"
-                  :disabled="currentPage === 1"
-                  class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              <!-- 表单按钮 -->
+              <div class="flex space-x-4 pt-6 border-t border-gray-200">
+                <button 
+                  type="button" 
+                  class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  @click="submitForm"
+                  :disabled="isSubmitting"
                 >
-                  上一页
+                  <span class="iconify mr-1" data-icon="carbon:save"></span>
+                  {{ isSubmitting ? '提交中...' : (editingAdmin ? '保存修改' : '创建子管理员') }}
                 </button>
-                <button
-                  v-for="page in totalPages"
-                  :key="page"
-                  @click="changePage(page)"
-                  class="px-4 py-2 border rounded-lg transition"
-                  :class="currentPage === page ? 'bg-tsinghua-purple text-white border-tsinghua-purple' : 'border-gray-300 hover:bg-gray-50'"
+                <button 
+                  type="button" 
+                  class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"
+                  @click="backToList"
                 >
-                  {{ page }}
-                </button>
-                <button
-                  @click="changePage(currentPage + 1)"
-                  :disabled="currentPage === totalPages"
-                  class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  下一页
+                  取消
                 </button>
               </div>
-            </div>
-            
-            <!-- 权限概览 -->
-            <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-              <h3 class="text-lg font-medium text-gray-800 mb-4">权限概览</h3>
-              
-              <div v-for="role in roleStats" :key="role.name" class="mb-4">
-                <div class="flex justify-between mb-2 text-sm">
-                  <span>{{ role.name }}</span>
-                  <span>{{ role.count }}人</span>
-                </div>
-                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    class="h-full transition-all"
-                    :style="{ width: role.percentage + '%', backgroundColor: role.color }"
-                  ></div>
-                </div>
-              </div>
-              
-              <div class="mt-6">
-                <h4 class="text-sm font-medium text-gray-700 mb-3">快速操作</h4>
-                <div class="space-y-2">
-                  <button class="w-full px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition text-left flex items-center gap-2 text-sm">
-                    <span class="iconify" data-icon="mdi:account-multiple-plus"></span>
-                    批量添加用户
-                  </button>
-                  <button class="w-full px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition text-left flex items-center gap-2 text-sm">
-                    <span class="iconify" data-icon="mdi:lock-reset"></span>
-                    批量重置密码
-                  </button>
-                  <button class="w-full px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition text-left flex items-center gap-2 text-sm">
-                    <span class="iconify" data-icon="mdi:download"></span>
-                    导出用户列表
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 权限配置 -->
-          <div v-if="selectedUser" class="bg-white border border-gray-200 rounded-lg p-6 mt-6 shadow-sm">
-            <h3 class="text-lg font-medium text-gray-800 mb-4">
-              权限配置 - <span class="text-tsinghua-purple">{{ selectedUser.name || selectedUser.username }}</span>
-            </h3>
-            
-            <div v-for="permissionGroup in permissionGroups" :key="permissionGroup.id" class="mb-6">
-              <div class="flex items-center gap-2 mb-4">
-                <div class="w-1 h-6 bg-tsinghua-purple"></div>
-                <h4 class="text-base font-medium text-gray-800">{{ permissionGroup.name }} ({{ permissionGroup.code }})</h4>
-              </div>
-              
-              <div class="grid grid-cols-3 gap-4">
-                <div
-                  v-for="permission in permissionGroup.permissions"
-                  :key="permission.id"
-                  class="flex items-center gap-2"
-                >
-                  <input
-                    type="checkbox"
-                    :id="permission.id"
-                    :checked="isPermissionChecked(permission.id)"
-                    @change="togglePermission(permission.id)"
-                    class="w-4 h-4 text-tsinghua-purple border-gray-300 rounded focus:ring-tsinghua-purple"
-                  />
-                  <label :for="permission.id" class="text-sm text-gray-700 cursor-pointer">
-                    {{ permission.label }}
-                  </label>
-                </div>
-              </div>
-            </div>
-            
-            <div class="flex gap-3 mt-6">
-              <button
-                @click="savePermissions"
-                class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2"
-              >
-                <span class="iconify" data-icon="mdi:check"></span>
-                保存权限配置
-              </button>
-              <button
-                @click="resetPermissions"
-                class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-              >
-                重置为默认方案
-              </button>
-            </div>
+            </form>
           </div>
         </div>
       </div>
@@ -321,9 +306,11 @@
 </template>
 
 <script>
-import { ref, reactive, computed, onMounted } from 'vue'
-import { api } from '@/api';
-import Sidebar from '@/components/Layout/Sidebar.vue';
+import { reactive, ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { permissionApi } from '@/api/modules/permission'
+import { useAuthStore } from '@/store/modules/use-auth-store'
+import Sidebar from '@/components/Layout/Sidebar.vue'
 import Header from '@/components/Layout/Header.vue'
 
 export default {
@@ -333,20 +320,24 @@ export default {
     Header
   },
   setup() {
-    const stats = reactive({
-      totalUsers: 24,
-      activeUsers: 18,
-      pendingUsers: 4,
-      adminRoles: 5
-    })
+    const router = useRouter()
+    const authStore = useAuthStore()
+    const isSubmitting = ref(false)
+    const loading = ref(false)
+    const viewMode = ref('list') // 'list' 或 'edit'
+    const editingAdmin = ref(null) // 当前编辑的管理员
+    const adminList = ref([]) // 子管理员列表
+    const searchQuery = ref('')
+    const currentPage = ref(1)
+    const pageSize = ref(10)
+    const totalPages = ref(1)
     
-    const newUserForm = reactive({
-      name: '',
-      email: '',
-      department: '',
-      phone: '',
-      password: 'Tsinghua@2025',
-      role: 'super_admin'
+    const formData = reactive({
+      username: '',
+      password: '',
+      role: 'canteen_manager',
+      canteenId: '',
+      permissions: []
     })
     
     const roles = [
@@ -355,29 +346,6 @@ export default {
       { value: 'restaurant_manager', label: '餐厅经理', desc: '单个食堂管理' },
       { value: 'kitchen_operator', label: '后厨操作员', desc: '菜品与库存管理' }
     ]
-    
-    const adminList = ref([])
-    const selectedUser = ref(null)
-    const selectedPermissions = ref([])
-    const currentPage = ref(1)
-    const pageSize = ref(10)
-    const totalPages = ref(1)
-    const loading = ref(false)
-    
-    const roleStats = computed(() => {
-      const counts = adminList.value.reduce((acc, user) => {
-        const role = user.role || 'other'
-        acc[role] = (acc[role] || 0) + 1
-        return acc
-      }, {})
-      
-      return [
-        { name: '超级管理员', count: counts.super_admin || 0, percentage: 10, color: '#660099' },
-        { name: '食堂主管', count: counts.canteen_manager || 0, percentage: 20, color: '#FF9500' },
-        { name: '餐厅经理', count: counts.restaurant_manager || 0, percentage: 40, color: '#34C759' },
-        { name: '后厨操作员', count: counts.kitchen_operator || 0, percentage: 50, color: '#007AFF' }
-      ]
-    })
     
     const permissionGroups = [
       {
@@ -435,16 +403,28 @@ export default {
       }
     ]
     
+    // 过滤后的管理员列表
+    const filteredAdmins = computed(() => {
+      if (!searchQuery.value) {
+        return adminList.value
+      }
+      const query = searchQuery.value.toLowerCase()
+      return adminList.value.filter(admin => 
+        admin.username.toLowerCase().includes(query) ||
+        (admin.role && admin.role.toLowerCase().includes(query))
+      )
+    })
+    
+    // 密码强度计算
     const passwordStrength = computed(() => {
-      const password = newUserForm.password
+      const password = formData.password
+      if (!password) return 0
       let strength = 0
-      
       if (password.length >= 8) strength++
       if (/[a-z]/.test(password)) strength++
       if (/[A-Z]/.test(password)) strength++
       if (/[0-9]/.test(password)) strength++
       if (/[^a-zA-Z0-9]/.test(password)) strength++
-      
       return strength
     })
     
@@ -464,72 +444,93 @@ export default {
       return '密码强度：强'
     })
     
-    // 获取管理员列表
-    const fetchAdmins = async () => {
+    // 获取角色标签
+    const getRoleLabel = (role) => {
+      const roleObj = roles.find(r => r.value === role)
+      return roleObj ? roleObj.label : role
+    }
+    
+    // 加载子管理员列表
+    const loadAdmins = async () => {
       loading.value = true
       try {
-        const response = await api.getAdmins({
+        const response = await permissionApi.getAdmins({
           page: currentPage.value,
           pageSize: pageSize.value
         })
         
-        // 根据实际接口返回格式调整
-        adminList.value = response.data || response.list || []
-        totalPages.value = response.totalPages || response.pages || 1
-        
-        // 模拟数据（如果接口未返回）
-        if (adminList.value.length === 0) {
-          adminList.value = [
-            {
-              id: '1',
-              name: '郑教授',
-              username: 'zheng',
-              email: 'zheng@tsinghua.edu.cn',
-              role: 'canteen_manager',
-              status: 'active',
-              canteenName: '全校食堂',
-              lastLogin: new Date(Date.now() - 10 * 60 * 60 * 1000)
-            },
-            {
-              id: '2',
-              name: '餐饮部李主任',
-              username: 'li',
-              email: 'li@tsinghua.edu.cn',
-              role: 'restaurant_manager',
-              status: 'active',
-              canteenName: '紫荆食堂',
-              lastLogin: new Date(Date.now() - 2 * 60 * 60 * 1000)
-            },
-            {
-              id: '3',
-              name: '周厨师长',
-              username: 'zhou',
-              email: 'zhou@tsinghua.edu.cn',
-              role: 'kitchen_operator',
-              status: 'active',
-              canteenName: '桃李食堂二层',
-              lastLogin: new Date(Date.now() - 5 * 60 * 60 * 1000)
-            }
-          ]
+        if (response.code === 200 && response.data) {
+          adminList.value = response.data.items || []
+          totalPages.value = response.data.meta?.totalPages || 1
+        } else {
+          throw new Error(response.message || '获取管理员列表失败')
         }
       } catch (error) {
-        console.error('获取管理员列表失败:', error)
-        // 使用模拟数据
-        adminList.value = [
-          {
-            id: '1',
-            name: '郑教授',
-            username: 'zheng',
-            email: 'zheng@tsinghua.edu.cn',
-            role: 'canteen_manager',
-            status: 'active',
-            canteenName: '全校食堂',
-            lastLogin: new Date(Date.now() - 10 * 60 * 60 * 1000)
-          }
-        ]
+        console.error('加载子管理员列表失败:', error)
+        alert('加载子管理员列表失败，请刷新重试')
+        adminList.value = []
       } finally {
         loading.value = false
       }
+    }
+    
+    // 创建新管理员
+    const createNewAdmin = () => {
+      editingAdmin.value = null
+      resetForm()
+      viewMode.value = 'edit'
+    }
+    
+    // 编辑管理员
+    const editAdmin = async (admin) => {
+      editingAdmin.value = admin
+      // 填充表单数据
+      formData.username = admin.username || ''
+      formData.role = admin.role || 'canteen_manager'
+      formData.canteenId = admin.canteenId || ''
+      
+      // 加载权限信息（如果接口支持）
+      // 注意：这里假设可以通过其他接口获取权限，如果没有，可能需要从其他地方获取
+      // 暂时使用空数组，用户需要重新选择权限
+      formData.permissions = []
+      
+      viewMode.value = 'edit'
+    }
+    
+    // 删除管理员
+    const deleteAdmin = async (admin) => {
+      if (!confirm(`确定要删除子管理员"${admin.username}"吗？此操作不可恢复！`)) {
+        return
+      }
+      
+      try {
+        const response = await permissionApi.deleteAdmin(admin.id)
+        if (response.code === 200) {
+          alert('删除成功！')
+          loadAdmins()
+        } else {
+          throw new Error(response.message || '删除失败')
+        }
+      } catch (error) {
+        console.error('删除子管理员失败:', error)
+        alert(error instanceof Error ? error.message : '删除子管理员失败，请重试')
+      }
+    }
+    
+    // 返回列表
+    const backToList = () => {
+      viewMode.value = 'list'
+      editingAdmin.value = null
+      resetForm()
+    }
+    
+    // 重置表单
+    const resetForm = () => {
+      formData.username = ''
+      formData.password = 'Tsinghua@2025'
+      formData.role = 'canteen_manager'
+      formData.canteenId = ''
+      formData.permissions = []
     }
     
     // 生成随机密码
@@ -539,35 +540,14 @@ export default {
       for (let i = 0; i < 12; i++) {
         password += chars.charAt(Math.floor(Math.random() * chars.length))
       }
-      newUserForm.password = password
+      formData.password = password
     }
     
     // 选择角色
     const selectRole = (role) => {
-      newUserForm.role = role
-    }
-    
-    // 创建用户
-    const handleCreateUser = async () => {
-      if (!newUserForm.name || !newUserForm.email || !newUserForm.password) {
-        alert('请填写完整信息')
-        return
-      }
-      
-      try {
-        await api.createAdmin({
-          username: newUserForm.email,
-          password: newUserForm.password,
-          canteenId: newUserForm.department,
-          permissions: getDefaultPermissionsByRole(newUserForm.role)
-        })
-        
-        alert('创建用户成功！')
-        resetNewUserForm()
-        fetchAdmins()
-      } catch (error) {
-        alert('创建用户失败：' + error.message)
-      }
+      formData.role = role
+      // 根据角色设置默认权限
+      formData.permissions = getDefaultPermissionsByRole(role)
     }
     
     // 根据角色获取默认权限
@@ -589,75 +569,86 @@ export default {
       return permissionMap[role] || []
     }
     
-    // 重置表单
-    const resetNewUserForm = () => {
-      newUserForm.name = ''
-      newUserForm.email = ''
-      newUserForm.department = ''
-      newUserForm.phone = ''
-      newUserForm.password = 'Tsinghua@2025'
-      newUserForm.role = 'super_admin'
-    }
-    
-    // 编辑用户
-    const editUser = (user) => {
-      selectedUser.value = user
-      selectedPermissions.value = user.permissions || []
-    }
-    
-    // 重置密码
-    const resetPassword = async (user) => {
-      if (confirm(`确定要重置用户 ${user.name || user.username} 的密码吗？`)) {
-        // TODO: 调用重置密码接口
-        alert('密码重置功能开发中...')
-      }
-    }
-    
-    // 删除用户
-    const deleteUser = async (user) => {
-      if (confirm(`确定要删除用户 ${user.name || user.username} 吗？`)) {
-        try {
-          await api.deleteAdmin(user.id)
-          alert('删除成功！')
-          fetchAdmins()
-        } catch (error) {
-          alert('删除失败：' + error.message)
-        }
-      }
-    }
-    
     // 切换权限
     const togglePermission = (permissionId) => {
-      const index = selectedPermissions.value.indexOf(permissionId)
+      const index = formData.permissions.indexOf(permissionId)
       if (index > -1) {
-        selectedPermissions.value.splice(index, 1)
+        formData.permissions.splice(index, 1)
       } else {
-        selectedPermissions.value.push(permissionId)
+        formData.permissions.push(permissionId)
       }
     }
     
     // 检查权限是否选中
     const isPermissionChecked = (permissionId) => {
-      return selectedPermissions.value.includes(permissionId)
+      return formData.permissions.includes(permissionId)
     }
     
-    // 保存权限
-    const savePermissions = async () => {
-      if (!selectedUser.value) return
+    // 全选权限
+    const selectAllPermissions = () => {
+      const allPermissions = permissionGroups.flatMap(g => g.permissions.map(p => p.id))
+      formData.permissions = [...allPermissions]
+    }
+    
+    // 提交表单
+    const submitForm = async () => {
+      // 表单验证
+      if (!formData.username || !formData.username.trim()) {
+        alert('请填写用户名')
+        return
+      }
+      
+      if (!editingAdmin.value && (!formData.password || !formData.password.trim())) {
+        alert('请填写初始密码')
+        return
+      }
+      
+      if (isSubmitting.value) {
+        return
+      }
+      
+      isSubmitting.value = true
       
       try {
-        await api.updateAdminPermissions(selectedUser.value.id, selectedPermissions.value)
-        alert('权限配置保存成功！')
-        fetchAdmins()
+        if (editingAdmin.value) {
+          // 更新管理员权限
+          const response = await permissionApi.updateAdminPermissions(
+            editingAdmin.value.id,
+            formData.permissions
+          )
+          
+          if (response.code === 200) {
+            alert('权限配置已更新！')
+            await loadAdmins()
+            backToList()
+          } else {
+            throw new Error(response.message || '更新权限失败')
+          }
+        } else {
+          // 创建新管理员
+          const createData = {
+            username: formData.username.trim(),
+            password: formData.password.trim(),
+            role: formData.role,
+            canteenId: formData.canteenId.trim() || undefined,
+            permissions: formData.permissions
+          }
+          
+          const response = await permissionApi.createAdmin(createData)
+          
+          if (response.code === 200 && response.data) {
+            alert('子管理员创建成功！')
+            await loadAdmins()
+            backToList()
+          } else {
+            throw new Error(response.message || '创建子管理员失败')
+          }
+        }
       } catch (error) {
-        alert('保存失败：' + error.message)
-      }
-    }
-    
-    // 重置权限
-    const resetPermissions = () => {
-      if (selectedUser.value && confirm('确定要重置权限配置为默认方案吗？')) {
-        selectedPermissions.value = getDefaultPermissionsByRole(selectedUser.value.role)
+        console.error('保存失败:', error)
+        alert(error instanceof Error ? error.message : '保存失败，请重试')
+      } finally {
+        isSubmitting.value = false
       }
     }
     
@@ -665,56 +656,56 @@ export default {
     const changePage = (page) => {
       if (page >= 1 && page <= totalPages.value) {
         currentPage.value = page
-        fetchAdmins()
+        loadAdmins()
       }
     }
     
-    // 格式化时间
-    const formatTime = (date) => {
-      if (!date) return '从未登录'
-      const d = new Date(date)
-      const now = new Date()
-      const diff = now - d
-      const hours = Math.floor(diff / (1000 * 60 * 60))
-      if (hours < 1) return '刚刚'
-      if (hours < 24) return `${hours}小时前`
-      const days = Math.floor(hours / 24)
-      return `${days}天前`
+    // 格式化日期
+    const formatDate = (dateString) => {
+      if (!dateString) return '-'
+      const date = new Date(dateString)
+      return date.toLocaleDateString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      })
     }
     
     onMounted(() => {
-      fetchAdmins()
+      loadAdmins()
     })
     
     return {
-      stats,
-      newUserForm,
-      roles,
+      viewMode,
+      editingAdmin,
       adminList,
-      selectedUser,
-      selectedPermissions,
+      searchQuery,
+      filteredAdmins,
+      formData,
+      roles,
+      permissionGroups,
+      isSubmitting,
+      loading,
       currentPage,
       totalPages,
-      roleStats,
-      permissionGroups,
       passwordStrengthClass,
       passwordStrengthWidth,
       passwordStrengthText,
+      loadAdmins,
+      createNewAdmin,
+      editAdmin,
+      deleteAdmin,
+      backToList,
       generatePassword,
       selectRole,
-      handleCreateUser,
-      resetNewUserForm,
-      editUser,
-      resetPassword,
-      deleteUser,
       togglePermission,
       isPermissionChecked,
-      savePermissions,
-      resetPermissions,
+      selectAllPermissions,
+      submitForm,
       changePage,
-      formatTime
+      formatDate,
+      getRoleLabel
     }
   }
 }
 </script>
-
