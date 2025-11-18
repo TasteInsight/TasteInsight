@@ -10,7 +10,7 @@
       <!-- 个人信息设置 -->
       <view
         class="flex items-center justify-between p-5 bg-white rounded-2xl shadow-sm active:bg-gray-50 transition-colors"
-        @click="navigateTo('/pages/settings/personal')"
+        @click="navigateTo('/pages/settings/components/personal')"
       >
         <view class="flex items-center">
           <view class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mr-4">
@@ -24,7 +24,7 @@
       <!-- 过敏原设置 -->
       <view
         class="flex items-center justify-between p-5 bg-white rounded-2xl shadow-sm active:bg-gray-50 transition-colors"
-        @click="navigateTo('/pages/settings/allergens')"
+        @click="navigateTo('/pages/settings/components/allergens')"
       >
         <view class="flex items-center">
           <view class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-4">
@@ -38,7 +38,7 @@
       <!-- 偏好设置 -->
       <view
         class="flex items-center justify-between p-5 bg-white rounded-2xl shadow-sm active:bg-gray-50 transition-colors"
-        @click="navigateTo('/pages/settings/preferences')"
+        @click="navigateTo('/pages/settings/components/preferences')"
       >
         <view class="flex items-center">
           <view class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mr-4">
@@ -52,7 +52,7 @@
       <!-- 显示设置 -->
       <view
         class="flex items-center justify-between p-5 bg-white rounded-2xl shadow-sm active:bg-gray-50 transition-colors"
-        @click="navigateTo('/pages/settings/display')"
+        @click="navigateTo('/pages/settings/components/display')"
       >
         <view class="flex items-center">
           <view class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-4">
@@ -66,7 +66,7 @@
       <!-- 通知设置 -->
       <view
         class="flex items-center justify-between p-5 bg-white rounded-2xl shadow-sm active:bg-gray-50 transition-colors"
-        @click="navigateTo('/pages/settings/notifications')"
+        @click="navigateTo('/pages/settings/components/notifications')"
       >
         <view class="flex items-center">
           <view class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-4">

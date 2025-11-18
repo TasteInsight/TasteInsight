@@ -51,31 +51,31 @@
 			}
 		},
 		{
-			"path": "pages/settings/personal",
+			"path": "pages/settings/components/personal",
 			"style": {
 				"navigationBarTitleText": "个人信息"
 			}
 		},
 		{
-			"path": "pages/settings/allergens",
+			"path": "pages/settings/components/allergens",
 			"style": {
 				"navigationBarTitleText": "过敏原设置"
 			}
 		},
 		{
-			"path": "pages/settings/preferences",
+			"path": "pages/settings/components/preferences",
 			"style": {
 				"navigationBarTitleText": "偏好设置"
 			}
 		},
 		{
-			"path": "pages/settings/display",
+			"path": "pages/settings/components/display",
 			"style": {
 				"navigationBarTitleText": "显示设置"
 			}
 		},
 		{
-			"path": "pages/settings/notifications",
+			"path": "pages/settings/components/notifications",
 			"style": {
 				"navigationBarTitleText": "通知设置"
 			}

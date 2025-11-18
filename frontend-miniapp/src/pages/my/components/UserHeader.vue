@@ -30,7 +30,6 @@
       
       <!-- 未登录状态 -->
       <view v-else class="text-center mt-4">
-        <view class="text-xl font-medium text-ts-purple mb-2">请先点击登录</view>
         <view class="mt-4 flex justify-center" >
             <view 
               @tap="handleLoginClick"
