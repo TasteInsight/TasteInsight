@@ -87,8 +87,9 @@ export interface UserPreference {
     min: number;
     max: number;
   };
-  meatPreference?: string[];
+  meatPreference?: string[]; // 修正为 meatPreferences
   tastePreferences?: {
+    spiciness?: number; // 添加辣度字段
     sweetness?: number;
     saltiness?: number;
     oiliness?: number;

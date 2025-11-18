@@ -49,7 +49,38 @@
 			"style": {
 				"navigationBarTitleText": "设置"
 			}
+		},
+		{
+			"path": "pages/settings/personal",
+			"style": {
+				"navigationBarTitleText": "个人信息"
+			}
+		},
+		{
+			"path": "pages/settings/allergens",
+			"style": {
+				"navigationBarTitleText": "过敏原设置"
+			}
+		},
+		{
+			"path": "pages/settings/preferences",
+			"style": {
+				"navigationBarTitleText": "偏好设置"
+			}
+		},
+		{
+			"path": "pages/settings/display",
+			"style": {
+				"navigationBarTitleText": "显示设置"
+			}
+		},
+		{
+			"path": "pages/settings/notifications",
+			"style": {
+				"navigationBarTitleText": "通知设置"
+			}
 		}
+		
 	],
 
 	"tabBar": {
