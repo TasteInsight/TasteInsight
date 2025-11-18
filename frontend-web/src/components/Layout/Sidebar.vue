@@ -77,6 +77,14 @@
         <span class="iconify" data-icon="carbon:license-draft"></span>
         <span>新闻管理</span>
       </router-link>
+      <router-link 
+        to="/log-view"
+        class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
+        :class="{ 'active': $route.path === '/log-view' }"
+      >
+        <span class="iconify" data-icon="carbon:document-view"></span>
+        <span>操作日志</span>
+      </router-link>
     </div>
     
     <div class="px-6 py-4 text-sm flex items-center justify-between mt-auto border-t border-white/20">
