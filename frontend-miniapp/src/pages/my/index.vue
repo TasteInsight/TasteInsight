@@ -12,8 +12,9 @@
     </view>
     
     <!-- 功能菜单区域 -->
-    <view class="flex-1 bg-white pt-8 overflow-hidden">
-      <view class="space-y-4 px-4">
+    <view class="flex-1 bg-white pt-8 px-4 flex flex-col">
+      <!-- 菜单项列表 -->
+      <view class="flex flex-col gap-5">
         <MenuItem
           v-for="item in menuItems"
           :key="item.id"
@@ -23,15 +24,27 @@
         />
       </view>
       
-      <!-- 设置按钮 -->
-      <view class="absolute bottom-12 left-0 right-0 flex justify-center px-4">
+      <!-- 按钮区域 -->
+      <view class="mt-8 space-y-3">
+        <!-- 设置按钮 -->
         <view 
-          class="bg-ts-purple text-white flex items-center justify-center py-3 px-8 rounded-full active:bg-purple-900 transition-colors shadow-lg w-full max-w-xs"
+          class="bg-ts-purple text-white flex items-center justify-center py-3 px-8 rounded-full active:bg-purple-900 transition-colors w-full"
           hover-class="bg-purple-800"
           @click="navigateTo('/pages/settings/index')"
         >
           <text class="iconify" data-icon="mdi:cog" data-width="20"></text>
           <text class="ml-2 font-medium">设置</text>
+        </view>
+        
+        <!-- 退出登录按钮 -->
+        <view 
+          v-if="isLoggedIn"
+          class="bg-white text-ts-purple border-2 border-ts-purple flex items-center justify-center py-3 px-8 rounded-full active:bg-purple-50 transition-colors w-full"
+          hover-class="bg-purple-50"
+          @click="handleLogout"
+        >
+          <text class="iconify" data-icon="mdi:logout" data-width="20"></text>
+          <text class="ml-2 font-medium">退出登录</text>
         </view>
       </view>
     </view>
@@ -44,7 +57,7 @@ import MenuItem from './components/MenuItem.vue';
 import { useProfile } from './composables/use-profile';
 
 // 从 use-profile 中获取所需的状态和方法
-const { userInfo, isLoggedIn, loading } = useProfile();
+const { userInfo, isLoggedIn, loading, handleLogout } = useProfile();
 
 const menuItems = [
   { id: 'reviews', icon: 'mdi:star', title: '我的评价', path: '/pages/profile/my-reviews' },

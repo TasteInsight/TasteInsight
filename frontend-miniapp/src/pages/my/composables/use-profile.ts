@@ -82,6 +82,27 @@ export function useProfile() {
     }
   });
 
+  /**
+   * 退出登录
+   */
+  const handleLogout = () => {
+    uni.showModal({
+      title: '提示',
+      content: '确定要退出登录吗？',
+      success: (res) => {
+        if (res.confirm) {
+          userStore.logoutAction();
+          uni.showToast({
+            title: '已退出登录',
+            icon: 'success'
+          });
+          // 可选：跳转到登录页面
+          // uni.reLaunch({ url: '/pages/login/index' });
+        }
+      }
+    });
+  };
+
   return {
     loading,
     error,
@@ -89,5 +110,6 @@ export function useProfile() {
     isLoggedIn,
     fetchProfile,
     updateProfile,
+    handleLogout,
   };
 }
