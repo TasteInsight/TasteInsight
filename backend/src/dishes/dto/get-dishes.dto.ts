@@ -1,5 +1,6 @@
 import { IsOptional, IsObject, IsArray, IsInt, IsString, IsBoolean, Min, Max, IsEnum, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
+import { MealTime } from '@/common/enums';
 
 // 评分范围
 class RatingRangeDto {
@@ -36,14 +37,6 @@ class FlavorRangeDto {
   @Min(0)
   @Max(5)
   max: number;
-}
-
-// 供应时间枚举
-export enum MealTime {
-  BREAKFAST = 'breakfast',
-  LUNCH = 'lunch',
-  DINNER = 'dinner',
-  NIGHTSNACK = 'nightsnack',
 }
 
 // 过滤条件

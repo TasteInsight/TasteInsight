@@ -1,17 +1,6 @@
 import { IsNotEmpty, IsString, IsArray, IsNumber, IsOptional, IsEnum, IsInt, Min, Max, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
-
-export enum DishStatus {
-  ONLINE = 'online',
-  OFFLINE = 'offline',
-}
-
-export enum MealTime {
-  BREAKFAST = 'breakfast',
-  LUNCH = 'lunch',
-  DINNER = 'dinner',
-  NIGHTSNACK = 'nightsnack',
-}
+import { DishStatus, MealTime } from '@/common/enums';
 
 class AvailableDateRangeDto {
   @IsNotEmpty()
