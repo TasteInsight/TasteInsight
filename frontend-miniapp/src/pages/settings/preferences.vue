@@ -102,13 +102,31 @@
     <!-- 喜好食材 -->
     <view class="bg-white rounded-2xl p-6 mb-4 shadow-sm">
       <text class="text-lg font-semibold text-gray-800 mb-4 block">喜好食材</text>
-      <textarea 
-        v-model="form.favoriteIngredients" 
-        class="w-full p-3 border border-gray-200 rounded-lg text-base min-h-[100px]"
-        placeholder="请输入您喜欢的食材，多个食材用逗号分隔&#10;例如：鸡肉, 牛肉, 西兰花, 番茄"
-        maxlength="200"
-      />
-      <text class="text-xs text-gray-400 mt-2 block">{{ form.favoriteIngredients.length }}/200</text>
+      <view class="flex items-center space-x-2">
+        <input 
+          v-model="newFavoriteIngredient" 
+          class="flex-1 p-3 border border-gray-200 rounded-lg text-base"
+          placeholder="请输入食材名称"
+          maxlength="20"
+          @confirm="addFavoriteIngredient"
+        />
+        <button 
+          class="px-4 py-3 bg-ts-purple text-white rounded-lg text-sm font-medium"
+          @click="addFavoriteIngredient"
+        >
+          添加
+        </button>
+      </view>
+      <view class="flex flex-wrap gap-2 mt-4" v-if="form.favoriteIngredients.length > 0">
+        <view 
+          v-for="(item, index) in form.favoriteIngredients" 
+          :key="index"
+          class="px-3 py-1 bg-purple-50 text-ts-purple rounded-full text-sm flex items-center space-x-1"
+        >
+          <text>{{ item }}</text>
+          <text class="ml-1 text-red-500" @click="removeFavoriteIngredient(index)">×</text>
+        </view>
+      </view>
     </view>
 
     <!-- 分量偏好 -->
@@ -122,12 +140,31 @@
     <!-- 肉类偏好 -->
     <view class="bg-white rounded-2xl p-6 mb-4 shadow-sm">
       <text class="text-lg font-semibold text-gray-800 mb-4 block">肉类偏好</text>
-      <textarea 
-        v-model="form.meatPreferences" 
-        class="w-full p-3 border border-gray-200 rounded-lg text-base min-h-[100px]"
-        placeholder="请输入您喜欢的肉类，多个肉类用逗号分隔，例如：鸡肉, 牛肉, 羊肉"
-        maxlength="200"
-      />
+      <view class="flex items-center space-x-2">
+        <input 
+          v-model="newMeatPreference" 
+          class="flex-1 p-3 border border-gray-200 rounded-lg text-base"
+          placeholder="请输入肉类名称"
+          maxlength="20"
+          @confirm="addMeatPreference"
+        />
+        <button 
+          class="px-4 py-3 bg-ts-purple text-white rounded-lg text-sm font-medium"
+          @click="addMeatPreference"
+        >
+          添加
+        </button>
+      </view>
+      <view class="flex flex-wrap gap-2 mt-4" v-if="form.meatPreferences.length > 0">
+        <view 
+          v-for="(item, index) in form.meatPreferences" 
+          :key="index"
+          class="px-3 py-1 bg-purple-50 text-ts-purple rounded-full text-sm flex items-center space-x-1"
+        >
+          <text>{{ item }}</text>
+          <text class="ml-1 text-red-500" @click="removeMeatPreference(index)">×</text>
+        </view>
+      </view>
     </view>
 
     <!-- 价格偏好范围 -->
@@ -155,23 +192,61 @@
     <!-- 食堂偏好 -->
     <view class="bg-white rounded-2xl p-6 mb-4 shadow-sm">
       <text class="text-lg font-semibold text-gray-800 mb-4 block">食堂偏好</text>
-      <textarea 
-        v-model="form.canteenPreferences" 
-        class="w-full p-3 border border-gray-200 rounded-lg text-base min-h-[100px]"
-        placeholder="请输入您喜欢的食堂，多个食堂用逗号分隔，例如：一食堂, 二食堂"
-        maxlength="200"
-      />
+      <view class="flex items-center space-x-2">
+        <input 
+          v-model="newCanteenPreference" 
+          class="flex-1 p-3 border border-gray-200 rounded-lg text-base"
+          placeholder="请输入食堂名称"
+          maxlength="20"
+          @confirm="addCanteenPreference"
+        />
+        <button 
+          class="px-4 py-3 bg-ts-purple text-white rounded-lg text-sm font-medium"
+          @click="addCanteenPreference"
+        >
+          添加
+        </button>
+      </view>
+      <view class="flex flex-wrap gap-2 mt-4" v-if="form.canteenPreferences.length > 0">
+        <view 
+          v-for="(item, index) in form.canteenPreferences" 
+          :key="index"
+          class="px-3 py-1 bg-purple-50 text-ts-purple rounded-full text-sm flex items-center space-x-1"
+        >
+          <text>{{ item }}</text>
+          <text class="ml-1 text-red-500" @click="removeCanteenPreference(index)">×</text>
+        </view>
+      </view>
     </view>
 
     <!-- 不喜欢的食材 -->
     <view class="bg-white rounded-2xl p-6 mb-4 shadow-sm">
       <text class="text-lg font-semibold text-gray-800 mb-4 block">不喜欢的食材</text>
-      <textarea 
-        v-model="form.avoidIngredients" 
-        class="w-full p-3 border border-gray-200 rounded-lg text-base min-h-[100px]"
-        placeholder="请输入您不喜欢的食材，多个食材用逗号分隔，例如：香菜, 洋葱"
-        maxlength="200"
-      />
+      <view class="flex items-center space-x-2">
+        <input 
+          v-model="newAvoidIngredient" 
+          class="flex-1 p-3 border border-gray-200 rounded-lg text-base"
+          placeholder="请输入食材名称"
+          maxlength="20"
+          @confirm="addAvoidIngredient"
+        />
+        <button 
+          class="px-4 py-3 bg-ts-purple text-white rounded-lg text-sm font-medium"
+          @click="addAvoidIngredient"
+        >
+          添加
+        </button>
+      </view>
+      <view class="flex flex-wrap gap-2 mt-4" v-if="form.avoidIngredients.length > 0">
+        <view 
+          v-for="(item, index) in form.avoidIngredients" 
+          :key="index"
+          class="px-3 py-1 bg-purple-50 text-ts-purple rounded-full text-sm flex items-center space-x-1"
+        >
+          <text>{{ item }}</text>
+          <text class="ml-1 text-red-500" @click="removeAvoidIngredient(index)">×</text>
+        </view>
+      </view>
     </view>
 
     <!-- 保存按钮 -->
@@ -201,12 +276,17 @@ const form = reactive({
   saltiness: 2,
   oiliness: 2,
   portionSize: 'medium' as 'small' | 'medium' | 'large',
-  meatPreferences: '',
+  meatPreferences: [] as string[],
   priceRange: { min: 20, max: 100 },
-  canteenPreferences: '',
-  avoidIngredients: '',
-  favoriteIngredients: ''
+  canteenPreferences: [] as string[],
+  avoidIngredients: [] as string[],
+  favoriteIngredients: [] as string[]
 });
+
+const newFavoriteIngredient = ref('');
+const newMeatPreference = ref('');
+const newCanteenPreference = ref('');
+const newAvoidIngredient = ref('');
 
 const tasteLabels = ['很淡', '清淡', '适中', '偏重', '很重'];
 const spicinessLabels = ['不辣', '微辣', '中辣', '重辣', '特辣'];
@@ -237,10 +317,11 @@ onMounted(async () => {
         form.oiliness = pref.tastePreferences.oiliness ?? 2;
       }
       form.portionSize = pref.portionSize ?? 'medium';
-      form.meatPreferences = (pref.meatPreference ?? []).join(', ');
+      form.meatPreferences = pref.meatPreference ?? [];
       form.priceRange = pref.priceRange ?? { min: 20, max: 100 };
-      form.canteenPreferences = (pref.canteenPreferences ?? []).join(', ');
-      form.favoriteIngredients = (pref.favoriteIngredients ?? []).join(', ');
+      form.canteenPreferences = pref.canteenPreferences ?? [];
+      form.avoidIngredients = pref.avoidIngredients ?? [];
+      form.favoriteIngredients = pref.favoriteIngredients ?? [];
     }
   } catch (error) {
     console.error('加载用户信息失败:', error);
@@ -250,13 +331,71 @@ onMounted(async () => {
 });
 
 /**
- * 解析列表
+ * 添加喜好食材
  */
-function parseList(text: string): string[] {
-  return text
-    .split(/[,，;；\n\r\s]+/)
-    .map((item) => item.trim())
-    .filter(Boolean);
+function addFavoriteIngredient() {
+  const value = newFavoriteIngredient.value.trim();
+  if (value && !form.favoriteIngredients.includes(value)) {
+    form.favoriteIngredients.push(value);
+    newFavoriteIngredient.value = '';
+  } else if (form.favoriteIngredients.includes(value)) {
+    uni.showToast({ title: '已存在该食材', icon: 'none' });
+  }
+}
+
+function removeFavoriteIngredient(index: number) {
+  form.favoriteIngredients.splice(index, 1);
+}
+
+/**
+ * 添加肉类偏好
+ */
+function addMeatPreference() {
+  const value = newMeatPreference.value.trim();
+  if (value && !form.meatPreferences.includes(value)) {
+    form.meatPreferences.push(value);
+    newMeatPreference.value = '';
+  } else if (form.meatPreferences.includes(value)) {
+    uni.showToast({ title: '已存在该肉类', icon: 'none' });
+  }
+}
+
+function removeMeatPreference(index: number) {
+  form.meatPreferences.splice(index, 1);
+}
+
+/**
+ * 添加食堂偏好
+ */
+function addCanteenPreference() {
+  const value = newCanteenPreference.value.trim();
+  if (value && !form.canteenPreferences.includes(value)) {
+    form.canteenPreferences.push(value);
+    newCanteenPreference.value = '';
+  } else if (form.canteenPreferences.includes(value)) {
+    uni.showToast({ title: '已存在该食堂', icon: 'none' });
+  }
+}
+
+function removeCanteenPreference(index: number) {
+  form.canteenPreferences.splice(index, 1);
+}
+
+/**
+ * 添加不喜欢的食材
+ */
+function addAvoidIngredient() {
+  const value = newAvoidIngredient.value.trim();
+  if (value && !form.avoidIngredients.includes(value)) {
+    form.avoidIngredients.push(value);
+    newAvoidIngredient.value = '';
+  } else if (form.avoidIngredients.includes(value)) {
+    uni.showToast({ title: '已存在该食材', icon: 'none' });
+  }
+}
+
+function removeAvoidIngredient(index: number) {
+  form.avoidIngredients.splice(index, 1);
 }
 
 /**
@@ -273,10 +412,11 @@ async function handleSave() {
         oiliness: form.oiliness
       },
       portionSize: form.portionSize,
-      meatPreference: parseList(form.meatPreferences),
+      meatPreference: form.meatPreferences,
       priceRange: form.priceRange,
-      canteenPreferences: parseList(form.canteenPreferences),
-      favoriteIngredients: parseList(form.favoriteIngredients)
+      canteenPreferences: form.canteenPreferences,
+      avoidIngredients: form.avoidIngredients,
+      favoriteIngredients: form.favoriteIngredients
     };
 
     const payload: UserProfileUpdateRequest = {

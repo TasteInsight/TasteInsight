@@ -1,5 +1,5 @@
 <template>
-  <view class="w-full min-h-screen bg-gradient-to-b from-white via-purple-50/20 to-white p-4" style="max-width: 375px;">
+  <view class="w-full min-h-screen p-4" style="max-width: 375px; background: linear-gradient(to bottom, white, rgba(131,49,142,0.05), white);">
     <!-- 说明文字 -->
     <view class="bg-blue-50 rounded-xl p-4 mb-4">
       <text class="text-sm text-blue-800">💡 设置您的过敏原信息，系统会为您过滤包含这些成分的菜品。</text>
@@ -10,8 +10,9 @@
       <text class="text-lg font-semibold text-gray-800 mb-4 block">过敏原列表</text>
       <textarea 
         v-model="form.allergens" 
-        class="w-full p-3 border border-gray-200 rounded-lg text-base min-h-[150px]"
-        placeholder="请输入过敏原，多个过敏原用逗号分隔&#10;例如：花生, 牛奶, 鸡蛋, 海鲜"
+        class="w-full p-3 border border-gray-200 rounded-lg text-base"
+        style="min-height:150px;"
+        placeholder="请输入过敏原，多个过敏原用逗号分隔，例如：花生, 牛奶, 鸡蛋, 海鲜"
         maxlength="200"
       />
       <text class="text-xs text-gray-400 mt-2 block">{{ form.allergens.length }}/200</text>
