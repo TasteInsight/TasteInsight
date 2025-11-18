@@ -5,8 +5,10 @@ import BatchAdd from '../views/BatchAdd.vue'
 import ModifyDish from '../views/ModifyDish.vue'
 import EditDish from '../views/EditDish.vue'
 import AddSubDish from '../views/AddSubDish.vue'
+import AddCanteen from '../views/AddCanteen.vue'
 import ReviewDish from '../views/ReviewDish.vue'
 import ReviewDishDetail from '../views/ReviewDishDetail.vue'
+import ViewDishDetail from '../views/ViewDishDetail.vue'
 import UserManage from '../views/UserManage.vue'
 import NewsManage from '../views/NewsManage.vue'
 import Login from '../views/Login.vue'
@@ -47,9 +49,21 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/view-dish/:id',
+    name: 'ViewDishDetail',
+    component: ViewDishDetail,
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/add-sub-dish',
     name: 'AddSubDish',
     component: AddSubDish,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/add-canteen',
+    name: 'AddCanteen',
+    component: AddCanteen,
     meta: { requiresAuth: true }
   },
   {

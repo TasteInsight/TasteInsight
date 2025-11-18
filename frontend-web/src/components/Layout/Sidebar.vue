@@ -54,6 +54,14 @@
         <span>菜品审核</span>
       </router-link>
       <router-link 
+        to="/add-canteen"
+        class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
+        :class="{ 'active': $route.path === '/add-canteen' }"
+      >
+        <span class="iconify" data-icon="carbon:building"></span>
+        <span>食堂信息管理</span>
+      </router-link>
+      <router-link 
         to="/user-manage"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ 'active': $route.path === '/user-manage' }"

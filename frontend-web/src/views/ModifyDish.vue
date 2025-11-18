@@ -65,12 +65,22 @@
                     </div>
                   </td>
                   <td class="py-4 px-6 text-center">
-                    <button 
-                      class="p-2 rounded-full hover:bg-gray-200 text-tsinghua-purple"
-                      @click="editDish(dish)"
-                    >
-                      <span class="iconify" data-icon="carbon:edit"></span>
-                    </button>
+                    <div class="flex items-center justify-center gap-2">
+                      <button 
+                        class="p-2 rounded-full hover:bg-gray-200 text-tsinghua-purple"
+                        @click="viewDish(dish)"
+                        title="查看"
+                      >
+                        <span class="iconify" data-icon="carbon:view"></span>
+                      </button>
+                      <button 
+                        class="p-2 rounded-full hover:bg-gray-200 text-tsinghua-purple"
+                        @click="editDish(dish)"
+                        title="编辑"
+                      >
+                        <span class="iconify" data-icon="carbon:edit"></span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -177,6 +187,11 @@ export default {
       return filtered
     })
     
+    const viewDish = (dish) => {
+      // 跳转到查看页面
+      router.push(`/view-dish/${dish.id}`)
+    }
+    
     const editDish = (dish) => {
       // 跳转到编辑页面
       router.push(`/edit-dish/${dish.id}`)
@@ -206,6 +221,7 @@ export default {
       currentPage,
       pageSize,
       filteredDishes,
+      viewDish,
       editDish,
       handlePageChange
     }
