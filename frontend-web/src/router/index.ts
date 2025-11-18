@@ -8,6 +8,7 @@ import AddSubDish from '../views/AddSubDish.vue'
 import ReviewDish from '../views/ReviewDish.vue'
 import ReviewDishDetail from '../views/ReviewDishDetail.vue'
 import UserManage from '../views/UserManage.vue'
+import NewsManage from '../views/NewsManage.vue'
 import Login from '../views/Login.vue'
 
 const routes = [
@@ -67,6 +68,12 @@ const routes = [
     path: '/user-manage',
     name: 'UserManage',
     component: UserManage,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/news-manage',
+    name: 'NewsManage',
+    component: NewsManage,
     meta: { requiresAuth: true }
   }
 ]

@@ -32,7 +32,7 @@
             class="sidebar-btn w-full py-2 px-3 text-left flex items-center space-x-2 text-base font-normal"
             :class="{ 'active': $route.path === '/batch-add' }"
           >
-            <span class="iconify" data-icon="carbon:table"></span>
+            <span class="iconify" data-icon="carbon:document-multiple-02"></span>
             <span>批量添加</span>
           </router-link>
         </div>
@@ -60,6 +60,14 @@
       >
         <span class="iconify" data-icon="clarity:group-line"></span>
         <span>人员权限管理</span>
+      </router-link>
+      <router-link 
+        to="/news-manage"
+        class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
+        :class="{ 'active': $route.path === '/news-manage' }"
+      >
+        <span class="iconify" data-icon="carbon:license-draft"></span>
+        <span>新闻管理</span>
       </router-link>
     </div>
     
