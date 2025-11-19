@@ -21,7 +21,7 @@
           @change="(e: any) => form.spiciness = e.detail.value"
         />
         <view class="flex justify-between mt-1">
-          <text class="text-xs text-gray-400">不辣</text>
+          <text class="text-xs text-gray-400">未设置</text>
           <text class="text-xs text-gray-400">微辣</text>
           <text class="text-xs text-gray-400">中辣</text>
           <text class="text-xs text-gray-400">重辣</text>
@@ -46,9 +46,11 @@
           @change="(e: any) => form.sweetness = e.detail.value"
         />
         <view class="flex justify-between mt-1">
+          <text class="text-xs text-gray-400">未设置</text>
           <text class="text-xs text-gray-400">清淡</text>
           <text class="text-xs text-gray-400">适中</text>
           <text class="text-xs text-gray-400">偏甜</text>
+          <text class="text-xs text-gray-400">很甜</text>
         </view>
       </view>
 
@@ -69,9 +71,11 @@
           @change="(e: any) => form.saltiness = e.detail.value"
         />
         <view class="flex justify-between mt-1">
+          <text class="text-xs text-gray-400">未设置</text>
           <text class="text-xs text-gray-400">清淡</text>
           <text class="text-xs text-gray-400">适中</text>
           <text class="text-xs text-gray-400">偏咸</text>
+          <text class="text-xs text-gray-400">很咸</text>
         </view>
       </view>
 
@@ -92,8 +96,10 @@
           @change="(e: any) => form.oiliness = e.detail.value"
         />
         <view class="flex justify-between mt-1">
+          <text class="text-xs text-gray-400">未设置</text>
           <text class="text-xs text-gray-400">清淡</text>
           <text class="text-xs text-gray-400">适中</text>
+          <text class="text-xs text-gray-400">偏油</text>
           <text class="text-xs text-gray-400">重油</text>
         </view>
       </view>
@@ -177,6 +183,7 @@
           class="w-1/2 p-3 border border-gray-200 rounded-lg text-base" 
           placeholder="最低价格"
           min="0"
+          @blur="validatePriceRange"
         />
         <input 
           v-model.number="form.priceRange.max" 
@@ -184,6 +191,7 @@
           class="w-1/2 p-3 border border-gray-200 rounded-lg text-base" 
           placeholder="最高价格"
           min="0"
+          @blur="validatePriceRange"
         />
       </view>
       <text class="text-sm text-gray-500 mt-2 block">请输入价格范围，单位为元</text>
@@ -271,10 +279,10 @@ const userStore = useUserStore();
 const saving = ref(false);
 const loading = ref(true);
 const form = reactive({
-  spiciness: 2,
-  sweetness: 2,
-  saltiness: 2,
-  oiliness: 2,
+  spiciness: 0,
+  sweetness: 0,
+  saltiness: 0,
+  oiliness: 0,
   portionSize: 'medium' as 'small' | 'medium' | 'large',
   meatPreferences: [] as string[],
   priceRange: { min: 20, max: 100 },
@@ -288,8 +296,8 @@ const newMeatPreference = ref('');
 const newCanteenPreference = ref('');
 const newAvoidIngredient = ref('');
 
-const tasteLabels = ['很淡', '清淡', '适中', '偏重', '很重'];
-const spicinessLabels = ['不辣', '微辣', '中辣', '重辣', '特辣'];
+const tasteLabels = ['未设置', '清淡', '适中', '偏重', '很重'];
+const spicinessLabels = ['未设置', '微辣', '中辣', '重辣', '特辣'];
 const portionLabels: Record<'small' | 'medium' | 'large', string> = {
   small: '小份',
   medium: '中份',
@@ -311,10 +319,10 @@ onMounted(async () => {
     if (userInfo && userInfo.preferences) {
       const pref = userInfo.preferences;
       if (pref.tastePreferences) {
-        form.spiciness = pref.tastePreferences.spiciness ?? 2;
-        form.sweetness = pref.tastePreferences.sweetness ?? 2;
-        form.saltiness = pref.tastePreferences.saltiness ?? 2;
-        form.oiliness = pref.tastePreferences.oiliness ?? 2;
+        form.spiciness = pref.tastePreferences.spiciness ?? 0;
+        form.sweetness = pref.tastePreferences.sweetness ?? 0;
+        form.saltiness = pref.tastePreferences.saltiness ?? 0;
+        form.oiliness = pref.tastePreferences.oiliness ?? 0;
       }
       form.portionSize = pref.portionSize ?? 'medium';
       form.meatPreferences = pref.meatPreference ?? [];
@@ -329,6 +337,21 @@ onMounted(async () => {
     loading.value = false;
   }
 });
+
+/**
+ * 验证价格范围
+ */
+function validatePriceRange() {
+  const { min, max } = form.priceRange;
+  if (min >= max) {
+    uni.showToast({
+      title: '最低价格必须小于最高价格',
+      icon: 'none'
+    });
+    // 重置为默认值
+    form.priceRange = { min: 20, max: 100 };
+  }
+}
 
 /**
  * 添加喜好食材
@@ -402,6 +425,16 @@ function removeAvoidIngredient(index: number) {
  * 保存设置
  */
 async function handleSave() {
+  // 验证价格范围
+  const { min, max } = form.priceRange;
+  if (min >= max) {
+    uni.showToast({
+      title: '最低价格必须小于最高价格',
+      icon: 'none'
+    });
+    return;
+  }
+
   saving.value = true;
   try {
     const preferences: Partial<UserPreference> = {
