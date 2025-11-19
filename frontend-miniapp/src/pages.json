@@ -1,12 +1,150 @@
 {
+	"easycom": {
+		"autoscan": true,
+		"custom": {
+			// uni-ui 规则如下配置
+			"^uni-(.*)": "@dcloudio/uni-ui/lib/uni-$1/uni-$1.vue"
+		}
+	},
 	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
 		{
 			"path": "pages/index/index",
 			"style": {
-				"navigationBarTitleText": "uni-app"
+				"navigationBarTitleText": "首页",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
+			"path": "pages/news/index",
+			"style": {
+				"navigationBarTitleText": "新闻"
+			}
+		},
+		{
+			"path": "pages/news/components/detail",
+			"style": {
+				"navigationBarTitleText": "新闻详情"
+			}
+		},
+		{
+			"path": "pages/planning/index",
+			"style": {
+				"navigationBarTitleText": "规划"
+			}
+		},
+		{
+			"path": "pages/ai-chat/index",
+			"style": {
+				"navigationBarTitleText": "问ai"
+			}
+		},
+		{
+			"path": "pages/profile/index",
+			"style": {
+				"navigationBarTitleText": "我的"
+			}
+		},
+		{
+			"path": "pages/login/index",
+			"style": {
+				"navigationBarTitleText": "登录"
+			}
+		},
+		{
+			"path": "pages/settings/index",
+			"style": {
+				"navigationBarTitleText": "设置"
+			}
+		},
+		{
+			"path": "pages/settings/components/personal",
+			"style": {
+				"navigationBarTitleText": "个人信息"
+			}
+		},
+		{
+			"path": "pages/settings/components/allergens",
+			"style": {
+				"navigationBarTitleText": "过敏原设置"
+			}
+		},
+		{
+			"path": "pages/settings/components/preferences",
+			"style": {
+				"navigationBarTitleText": "偏好设置"
+			}
+		},
+		{
+			"path": "pages/settings/components/display",
+			"style": {
+				"navigationBarTitleText": "显示设置"
+			}
+		},
+		{
+			"path": "pages/settings/components/notifications",
+			"style": {
+				"navigationBarTitleText": "通知设置"
+			}
+		},
+		{
+			"path": "pages/profile/my-reviews/index",
+			"style": {
+				"navigationBarTitleText": "我的评价"
+			}
+		},
+		{
+			"path": "pages/profile/history/index",
+			"style": {
+				"navigationBarTitleText": "历史浏览"
+			}
+		},
+		{
+			"path": "pages/profile/my-favorites/index",
+			"style": {
+				"navigationBarTitleText": "我的收藏"
 			}
 		}
+		
 	],
+
+	"tabBar": {
+		"color": "#999999",
+		"selectedColor": "#82318E",
+		"backgroundColor": "#ffffff",
+		"borderStyle": "black",
+		"list": [
+			{
+				"pagePath": "pages/index/index",
+				"iconPath": "static/tabbar/index.png",
+				"selectedIconPath": "static/tabbar/index-active.png",
+				"text": "首页"
+			},
+			{
+				"pagePath": "pages/news/index",
+				"iconPath": "static/tabbar/news.png",
+				"selectedIconPath": "static/tabbar/news-active.png",
+				"text": "新闻"
+			},
+			{
+				"pagePath": "pages/planning/index",
+				"iconPath": "static/tabbar/planning.png",
+				"selectedIconPath": "static/tabbar/planning-active.png",
+				"text": "规划"
+			},
+			{
+				"pagePath": "pages/ai-chat/index",
+				"iconPath": "static/tabbar/ai-chat.png",
+				"selectedIconPath": "static/tabbar/ai-chat-active.png",
+				"text": "问ai"
+			},
+			{
+				"pagePath": "pages/profile/index",
+				"iconPath": "static/tabbar/profile.png",
+				"selectedIconPath": "static/tabbar/profile-active.png",
+				"text": "我的"
+			}
+		]
+	},
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
 		"navigationBarTitleText": "uni-app",
