@@ -161,10 +161,23 @@ describe('DishesController (e2e)', () => {
 
       expect(response.body.code).toBe(200);
       expect(response.body.data.items).toBeInstanceOf(Array);
+      expect(response.body.data.items.length).toBeGreaterThan(0);
+      
+      // 新逻辑：结果应该包含辣度在 3-5 之间的菜品 + 辣度为 0（未设置）的菜品
       response.body.data.items.forEach((dish: any) => {
-        expect(dish.spicyLevel).toBeGreaterThanOrEqual(3);
-        expect(dish.spicyLevel).toBeLessThanOrEqual(5);
+        // 要么辣度为 0（未设置），要么在指定范围内
+        const isUnset = dish.spicyLevel === 0;
+        const isInRange = dish.spicyLevel >= 3 && dish.spicyLevel <= 5;
+        expect(isUnset || isInRange).toBe(true);
       });
+      
+      // 验证确实包含了辣度为 0 的菜品（如：清蒸鲈鱼、番茄炒蛋）
+      const hasUnsetSpicy = response.body.data.items.some((dish: any) => dish.spicyLevel === 0);
+      expect(hasUnsetSpicy).toBe(true);
+      
+      // 验证确实包含了辣度在范围内的菜品（如：宫保鸡丁 spicyLevel=3、麻婆豆腐 spicyLevel=4）
+      const hasInRangeSpicy = response.body.data.items.some((dish: any) => dish.spicyLevel >= 3 && dish.spicyLevel <= 5);
+      expect(hasInRangeSpicy).toBe(true);
     });
 
     it('should include offline dishes when includeOffline is true', async () => {

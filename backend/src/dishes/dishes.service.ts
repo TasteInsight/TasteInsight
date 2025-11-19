@@ -92,12 +92,18 @@ export class DishesService {
     }
 
     // 辣度筛选
+    // 注意：0 表示未设置，应该保留在结果中（不参与筛选）
     if (filter.spicyLevel) {
       andConditions.push({
-        spicyLevel: {
-          gte: filter.spicyLevel.min,
-          lte: filter.spicyLevel.max,
-        },
+        OR: [
+          { spicyLevel: 0 }, // 未设置的菜品保留
+          {
+            spicyLevel: {
+              gte: filter.spicyLevel.min,
+              lte: filter.spicyLevel.max,
+            },
+          },
+        ],
       });
     }
 
@@ -133,30 +139,45 @@ export class DishesService {
     // 甜度筛选
     if (filter.sweetness) {
       andConditions.push({
-        sweetness: {
-          gte: filter.sweetness.min,
-          lte: filter.sweetness.max,
-        },
+        OR: [
+          { sweetness: 0 }, // 未设置的菜品保留
+          {
+            sweetness: {
+              gte: filter.sweetness.min,
+              lte: filter.sweetness.max,
+            },
+          },
+        ],
       });
     }
 
     // 咸度筛选
     if (filter.saltiness) {
       andConditions.push({
-        saltiness: {
-          gte: filter.saltiness.min,
-          lte: filter.saltiness.max,
-        },
+        OR: [
+          { saltiness: 0 }, // 未设置的菜品保留
+          {
+            saltiness: {
+              gte: filter.saltiness.min,
+              lte: filter.saltiness.max,
+            },
+          },
+        ],
       });
     }
 
     // 油度筛选
     if (filter.oiliness) {
       andConditions.push({
-        oiliness: {
-          gte: filter.oiliness.min,
-          lte: filter.oiliness.max,
-        },
+        OR: [
+          { oiliness: 0 }, // 未设置的菜品保留
+          {
+            oiliness: {
+              gte: filter.oiliness.min,
+              lte: filter.oiliness.max,
+            },
+          },
+        ],
       });
     }
 
@@ -340,10 +361,10 @@ export class DishesService {
         images: uploadDishDto.images || [],
         ingredients: uploadDishDto.ingredients || [],
         allergens: uploadDishDto.allergens || [],
-        spicyLevel: uploadDishDto.spicyLevel ?? 2,
-        sweetness: uploadDishDto.sweetness ?? 2,
-        saltiness: uploadDishDto.saltiness ?? 2,
-        oiliness: uploadDishDto.oiliness ?? 2,
+        spicyLevel: uploadDishDto.spicyLevel ?? 0,
+        sweetness: uploadDishDto.sweetness ?? 0,
+        saltiness: uploadDishDto.saltiness ?? 0,
+        oiliness: uploadDishDto.oiliness ?? 0,
         canteenName: uploadDishDto.canteenName,
         floor: uploadDishDto.floor,
         windowNumber: uploadDishDto.windowNumber,
