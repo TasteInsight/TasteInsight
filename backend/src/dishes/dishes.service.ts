@@ -3,7 +3,6 @@ import { PrismaService } from '../prisma.service';
 import { GetDishesDto, SortOrder } from './dto/get-dishes.dto';
 import { UploadDishDto } from './dto/upload-dish.dto';
 import { Prisma } from '@prisma/client';
-import { DishSortField } from '@/common/enums';
 
 @Injectable()
 export class DishesService {

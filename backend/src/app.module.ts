@@ -5,12 +5,14 @@ import { AppService } from './app.service';
 import { PrismaService } from './prisma.service';
 import { AuthModule } from './auth/auth.module';
 import { DishesModule } from './dishes/dishes.module';
+import { AdminDishesModule } from './admin-dishes/admin-dishes.module';
 import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
     AuthModule,
     DishesModule,
+    AdminDishesModule,
     ConfigModule.forRoot({
       isGlobal: true,
     }),
