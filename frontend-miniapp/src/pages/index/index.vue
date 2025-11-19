@@ -1,7 +1,7 @@
 <template>
-  <div class="app-page">
+  <div class="min-h-screen bg-white rounded-lg overflow-hidden flex flex-col">
     <!-- 主内容区 -->
-    <div class="content-container">
+    <div class="flex-1 overflow-y-auto px-4 hide-scrollbar">
       <SearchBar @click="navigateTo('/pages/search/index')" />
 
       <!-- 食堂栏目 -->
@@ -20,7 +20,7 @@
       <FilterBar />
 
       <!-- 菜品列表 -->
-      <div class="section-title">今日推荐</div>
+      <div class="text-lg font-semibold text-gray-800 my-4">今日推荐</div>
       <div v-if="dishesStore.loading" class="text-center py-4 text-gray-500">正在加载推荐菜品...</div>
       <div v-else-if="dishesStore.error" class="text-center py-4 text-red-500">{{ dishesStore.error }}</div>
       <div v-else-if="topThreeDishes.length > 0">
@@ -37,7 +37,7 @@
     </div>
 
     <!-- 底部导航栏 -->
-    <div class="nav-bar">
+    <div class="h-20 bg-white flex border-t border-gray-200 flex-shrink-0">
       <!-- ... (这部分保持不变) ... -->
     </div>
   </div>
@@ -95,56 +95,21 @@ onMounted(() => {
 
 
 <style scoped>
-/* 复制 test.html 中的核心样式 */
-.app-page {
-  position: relative;
-  width: 375px;
-  height: 812px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-.content-container {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0 16px;
-}
+/* 仅保留在小程序与浏览器中隐藏滚动条的必要样式 */
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-.section-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #333;
-  margin: 16px 0 12px;
-}
-.nav-bar {
-  height: 80px;
-  background: white;
-  display: flex;
-  border-top: 1px solid #eee;
-  flex-shrink: 0;
-}
+/* 兼容旧类名的最小 CSS（使用普通 CSS 避免 @apply 编译问题） */
 .nav-item {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #999;
+  color: #9CA3AF; /* text-gray-400 */
   cursor: pointer;
 }
-.nav-item.active {
-  color: #82318E;
-}
-.nav-icon {
-  font-size: 20px;
-  margin-bottom: 4px;
-}
-.nav-text {
-  font-size: 11px;
-}
+.nav-item.active { color: #6B21A8; } /* text-purple-600 */
+.nav-icon { font-size: 1.25rem; margin-bottom: 0.25rem; } /* text-xl mb-1 */
+.nav-text { font-size: 0.6875rem; } /* text-xs */
 </style>
