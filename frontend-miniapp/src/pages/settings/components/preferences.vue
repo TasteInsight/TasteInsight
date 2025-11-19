@@ -161,9 +161,9 @@
           添加
         </button>
       </view>
-      <view class="flex flex-wrap gap-2 mt-4" v-if="form.meatPreferences.length > 0">
+      <view class="flex flex-wrap gap-2 mt-4" v-if="form.meatPreference.length > 0">
         <view 
-          v-for="(item, index) in form.meatPreferences" 
+          v-for="(item, index) in form.meatPreference" 
           :key="index"
           class="px-3 py-1 bg-purple-50 text-ts-purple rounded-full text-sm flex items-center space-x-1"
         >
@@ -284,7 +284,7 @@ const form = reactive({
   saltiness: 0,
   oiliness: 0,
   portionSize: 'medium' as 'small' | 'medium' | 'large',
-  meatPreferences: [] as string[],
+  meatPreference: [] as string[],
   priceRange: { min: 20, max: 100 },
   canteenPreferences: [] as string[],
   avoidIngredients: [] as string[],
@@ -325,7 +325,7 @@ onMounted(async () => {
         form.oiliness = pref.tastePreferences.oiliness ?? 0;
       }
       form.portionSize = pref.portionSize ?? 'medium';
-      form.meatPreferences = pref.meatPreference ?? [];
+      form.meatPreference = pref.meatPreference ?? [];
       form.priceRange = pref.priceRange ?? { min: 20, max: 100 };
       form.canteenPreferences = pref.canteenPreferences ?? [];
       form.avoidIngredients = pref.avoidIngredients ?? [];
@@ -375,16 +375,16 @@ function removeFavoriteIngredient(index: number) {
  */
 function addMeatPreference() {
   const value = newMeatPreference.value.trim();
-  if (value && !form.meatPreferences.includes(value)) {
-    form.meatPreferences.push(value);
+  if (value && !form.meatPreference.includes(value)) {
+    form.meatPreference.push(value);
     newMeatPreference.value = '';
-  } else if (form.meatPreferences.includes(value)) {
+  } else if (form.meatPreference.includes(value)) {
     uni.showToast({ title: '已存在该肉类', icon: 'none' });
   }
 }
 
 function removeMeatPreference(index: number) {
-  form.meatPreferences.splice(index, 1);
+  form.meatPreference.splice(index, 1);
 }
 
 /**
@@ -445,7 +445,7 @@ async function handleSave() {
         oiliness: form.oiliness
       },
       portionSize: form.portionSize,
-      meatPreference: form.meatPreferences,
+      meatPreference: form.meatPreference,
       priceRange: form.priceRange,
       canteenPreferences: form.canteenPreferences,
       avoidIngredients: form.avoidIngredients,
