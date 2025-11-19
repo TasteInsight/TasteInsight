@@ -59,7 +59,19 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200">
+                <tr v-if="isLoading">
+                  <td colspan="5" class="py-8 text-center text-gray-500">
+                    <span class="iconify inline-block text-2xl animate-spin" data-icon="mdi:loading"></span>
+                    <span class="ml-2">加载中...</span>
+                  </td>
+                </tr>
+                <tr v-else-if="filteredReviewDishes.length === 0">
+                  <td colspan="5" class="py-8 text-center text-gray-500">
+                    暂无待审核菜品
+                  </td>
+                </tr>
                 <tr 
+                  v-else
                   v-for="dish in filteredReviewDishes" 
                   :key="dish.id"
                   class="table-row cursor-pointer hover:bg-gray-50"
@@ -108,7 +120,7 @@
           <Pagination 
             :current-page="currentPage"
             :page-size="pageSize"
-            :total="filteredReviewDishes.length"
+            :total="totalDishes"
             @page-change="handlePageChange"
           />
         </div>
@@ -141,50 +153,10 @@ export default {
     const currentPage = ref(1)
     const pageSize = ref(10)
     const isLoading = ref(false)
+    const totalDishes = ref(0)
     
     // 审核数据
-    const reviewDishes = ref([
-      {
-        id: 1,
-        name: '水煮肉片',
-        location: '观畴园-二层-自选菜',
-        submitDate: '2025-10-20',
-        submitTime: '14:23:45',
-        submitter: '张师傅',
-        status: 'pending',
-        image: '/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'
-      },
-      {
-        id: 2,
-        name: '辛拉面',
-        location: '桃李园-一层-韩国风味',
-        submitDate: '2025-10-20',
-        submitTime: '11:15:32',
-        submitter: 'NoraexX',
-        status: 'approved',
-        image: '/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'
-      },
-      {
-        id: 3,
-        name: '宜宾燃面',
-        location: '清芬园一层',
-        submitDate: '2025-10-20',
-        submitTime: '16:45:21',
-        submitter: '某不愿透露姓名的曾姓男子',
-        status: 'rejected',
-        image: '/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'
-      },
-      {
-        id: 4,
-        name: '菠萝咕咾肉',
-        location: '观畴园-二层-自选菜',
-        submitDate: '2025-10-20',
-        submitTime: '09:32:17',
-        submitter: 'ljx666',
-        status: 'pending',
-        image: '/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'
-      }
-    ])
+    const reviewDishes = ref([])
     
     const statusClasses = {
       pending: 'bg-yellow-100 text-yellow-800',
@@ -199,8 +171,10 @@ export default {
     }
     
     const filteredReviewDishes = computed(() => {
+      // 由于API已经支持分页和筛选，这里主要做客户端筛选（如果需要）
       let filtered = reviewDishes.value
       
+      // 如果API不支持这些筛选，则在客户端进行筛选
       if (searchQuery.value) {
         const query = searchQuery.value.toLowerCase()
         filtered = filtered.filter(dish => 
@@ -233,13 +207,14 @@ export default {
     
     const handlePageChange = (page) => {
       currentPage.value = page
+      loadReviewDishes()
     }
     
     // 加载审核菜品列表
     const loadReviewDishes = async () => {
       isLoading.value = true
       try {
-        // 尝试从 API 获取数据
+        // 从 API 获取数据
         const response = await reviewApi.getPendingUploads({
           page: currentPage.value,
           pageSize: pageSize.value
@@ -250,7 +225,7 @@ export default {
           reviewDishes.value = response.data.items.map(item => ({
             id: item.id,
             name: item.name,
-            location: `${item.canteenName || ''}${item.floor ? '-' + item.floor : ''}${item.window ? '-' + item.window : ''}`,
+            location: `${item.canteenName || ''}${item.floor ? '-' + item.floor : ''}${item.windowName || item.window || ''}`,
             submitDate: item.createdAt ? new Date(item.createdAt).toLocaleDateString('zh-CN') : '',
             submitTime: item.createdAt ? new Date(item.createdAt).toLocaleTimeString('zh-CN') : '',
             submitter: item.uploaderNickname || '未知',
@@ -258,13 +233,20 @@ export default {
             image: item.images && item.images.length > 0 ? item.images[0] : '',
             canteen: item.canteenName,
             floor: item.floor,
-            window: item.window
+            window: item.windowName || item.window
           }))
+          // 更新总数
+          totalDishes.value = response.data.meta?.total || 0
+        } else {
+          // API返回失败，使用空数组
+          reviewDishes.value = []
+          totalDishes.value = 0
         }
-        // 如果 API 失败，继续使用模拟数据
       } catch (error) {
         console.error('加载审核菜品列表失败:', error)
-        // API 失败时继续使用模拟数据
+        // API 失败时使用空数组
+        reviewDishes.value = []
+        totalDishes.value = 0
       } finally {
         isLoading.value = false
       }
@@ -309,6 +291,7 @@ export default {
       currentPage,
       pageSize,
       isLoading,
+      totalDishes,
       filteredReviewDishes,
       statusClasses,
       statusText,

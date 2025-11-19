@@ -16,6 +16,7 @@
             placeholder="搜索菜品名称、食堂、窗口..."
             :show-filter="true"
             @filter="showFilter = true"
+            @input="handleSearchChange"
           />
           
           <!-- 菜品表格 -->
@@ -33,7 +34,19 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200">
+                <tr v-if="isLoading">
+                  <td colspan="7" class="py-8 text-center text-gray-500">
+                    <span class="iconify inline-block text-2xl animate-spin" data-icon="mdi:loading"></span>
+                    <span class="ml-2">加载中...</span>
+                  </td>
+                </tr>
+                <tr v-else-if="filteredDishes.length === 0">
+                  <td colspan="7" class="py-8 text-center text-gray-500">
+                    暂无菜品数据
+                  </td>
+                </tr>
                 <tr 
+                  v-else
                   v-for="dish in filteredDishes" 
                   :key="dish.id"
                   class="table-row"
@@ -90,7 +103,7 @@
           <Pagination 
             :current-page="currentPage"
             :page-size="pageSize"
-            :total="filteredDishes.length"
+            :total="totalDishes"
             @page-change="handlePageChange"
           />
         </div>
@@ -102,6 +115,7 @@
 <script>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
+import { dishApi } from '@/api/modules/dish'
 import { useDishStore } from '@/store/modules/use-dish-store';
 import Sidebar from '@/components/Layout/Sidebar.vue';
 import Header from '@/components/Layout/Header.vue';
@@ -123,64 +137,60 @@ export default {
     const showFilter = ref(false)
     const currentPage = ref(1)
     const pageSize = ref(10)
+    const isLoading = ref(false)
+    const dishes = ref([])
+    const totalDishes = ref(0)
     
-    // 模拟数据
-    const sampleDishes = [
-      { 
-        id: 'FD0123', 
-        name: '海南椰子鸡', 
-        canteen: '紫荆园', 
-        floor: '二层',
-        window: '海南鸡饭窗口',
-        cuisine: '琼菜',
-        price: '¥15',
-        rating: 4.7,
-        image: '/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'
-      },
-      { 
-        id: 'FD0124', 
-        name: '芹菜炒肉丝', 
-        canteen: '桃李园', 
-        floor: '二层',
-        window: '自选菜',
-        cuisine: '无',
-        price: '¥6',
-        rating: 4.5,
-        image: '/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'
-      },
-      { 
-        id: 'FD0125', 
-        name: '辛拉面', 
-        canteen: '桃李园', 
-        floor: '一层',
-        window: '韩式风味',
-        cuisine: '韩国菜',
-        price: '¥10',
-        rating: 4.8,
-        image: '/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'
-      },
-      { 
-        id: 'FD0126', 
-        name: '红烧牛肉面', 
-        canteen: '清青牛拉', 
-        floor: '二层',
-        window: '清青牛拉',
-        cuisine: '陇菜',
-        price: '¥22',
-        rating: 4.6,
-        image: '/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'
+    // 加载菜品列表
+    const loadDishes = async () => {
+      isLoading.value = true
+      try {
+        const response = await dishApi.getDishes({
+          page: currentPage.value,
+          pageSize: pageSize.value,
+          keyword: searchQuery.value || undefined,
+          status: undefined // 获取所有状态的菜品
+        })
+        
+        if (response.code === 200 && response.data) {
+          // 转换API数据格式
+          dishes.value = response.data.items.map(item => ({
+            id: item.id,
+            name: item.name || '',
+            canteen: item.canteenName || '',
+            floor: item.floor || '',
+            window: item.windowName || item.windowNumber || '',
+            cuisine: item.tags && item.tags.length > 0 ? item.tags.join(', ') : '无',
+            price: item.price ? `¥${item.price}` : '¥0',
+            rating: item.averageRating || 0,
+            image: item.images && item.images.length > 0 ? item.images[0] : ''
+          }))
+          totalDishes.value = response.data.meta?.total || 0
+        } else {
+          // API失败时使用空数组
+          dishes.value = []
+          totalDishes.value = 0
+        }
+      } catch (error) {
+        console.error('加载菜品列表失败:', error)
+        // API失败时使用空数组
+        dishes.value = []
+        totalDishes.value = 0
+      } finally {
+        isLoading.value = false
       }
-    ]
+    }
     
     const filteredDishes = computed(() => {
-      let filtered = sampleDishes
+      let filtered = dishes.value
       
       if (searchQuery.value) {
         const query = searchQuery.value.toLowerCase()
         filtered = filtered.filter(dish => 
           dish.name.toLowerCase().includes(query) ||
           dish.canteen.toLowerCase().includes(query) ||
-          dish.window.toLowerCase().includes(query)
+          dish.window.toLowerCase().includes(query) ||
+          dish.cuisine.toLowerCase().includes(query)
         )
       }
       
@@ -199,13 +209,23 @@ export default {
     
     const handlePageChange = (page) => {
       currentPage.value = page
+      loadDishes()
+    }
+    
+    // 监听搜索查询变化，延迟加载
+    let searchTimeout = null
+    const handleSearchChange = () => {
+      if (searchTimeout) {
+        clearTimeout(searchTimeout)
+      }
+      searchTimeout = setTimeout(() => {
+        currentPage.value = 1 // 重置到第一页
+        loadDishes()
+      }, 500) // 500ms防抖
     }
     
     onMounted(() => {
-      // 初始化时可以将示例数据添加到store
-      // sampleDishes.forEach(dish => {
-      //   dishStore.addDish(dish)
-      // })
+      loadDishes()
     })
 
     onBeforeUnmount(() => {
@@ -220,10 +240,14 @@ export default {
       showFilter,
       currentPage,
       pageSize,
+      isLoading,
       filteredDishes,
+      totalDishes,
       viewDish,
       editDish,
-      handlePageChange
+      handlePageChange,
+      handleSearchChange,
+      loadDishes
     }
   }
 }
