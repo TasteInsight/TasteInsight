@@ -1,5 +1,5 @@
 <template>
-  <view class="w-full h-[812px] bg-white overflow-hidden flex shadow-lg flex-col relative" style="max-width: 375px;">
+  <view class="w-full h-[812px] bg-white overflow-hidden flex shadow-lg flex-col relative" >
     <!-- 紫色背景头部区域，约占1/4空间 -->
     <view class="bg-gradient-to-br from-white to-white pt-12 pb-8 px-6">
       <!-- 用户信息头部 -->

@@ -1,5 +1,5 @@
 <template>
-  <view class="w-full min-h-screen bg-gradient-to-b from-white via-purple-50/20 to-white" style="max-width: 375px;">
+  <view class="w-full min-h-screen bg-gradient-to-b from-white via-purple-50/20 to-white">
     <!-- 标题区域 -->
     <view class="px-6 pt-12 pb-6">
       <text class="text-2xl font-bold text-gray-800">设置</text>
