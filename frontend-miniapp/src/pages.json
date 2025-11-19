@@ -21,6 +21,12 @@
 			}
 		},
 		{
+			"path": "pages/news/components/detail",
+			"style": {
+				"navigationBarTitleText": "新闻详情"
+			}
+		},
+		{
 			"path": "pages/planning/index",
 			"style": {
 				"navigationBarTitleText": "规划"

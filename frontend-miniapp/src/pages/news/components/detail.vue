@@ -1,29 +1,29 @@
 <template>
-  <view class="news-detail-page">
+  <view class="min-h-screen flex flex-col bg-gray-100">
     <!-- 顶部导航栏，假设使用了 CustomNavbar 组件 -->
     <!-- <CustomNavbar :title="newsDetail.title || '新闻详情'" :show-back="true" /> -->
     
-    <scroll-view scroll-y class="detail-container">
-      <view v-if="loading" class="loading-state">
+    <scroll-view scroll-y class="flex-1 bg-white p-4">
+      <view v-if="loading" class="text-center py-12.5 text-gray-500">
         <text>加载中...</text>
       </view>
 
-      <view v-else-if="newsDetail.id" class="detail-content">
-        <h1 class="title">{{ newsDetail.title }}</h1>
-        <view class="meta-info">
-          <text class="canteen-name">{{ newsDetail.canteenName || '全校公告' }}</text>
-          <text class="published-at">{{ newsDetail.publishedAt ? formatTime(newsDetail.publishedAt) : '' }}</text>
+      <view v-else-if="newsDetail.id" class="pb-5">
+        <view class="text-2xl font-bold mb-2.5 leading-relaxed">{{ newsDetail.title }}</view>
+        <view class="flex justify-between text-gray-500 text-sm mb-5 pb-2.5 border-b border-gray-200">
+          <text>{{ newsDetail.canteenName || '全校公告' }}</text>
+          <text>{{ newsDetail.publishedAt ? formatTime(newsDetail.publishedAt) : '' }}</text>
         </view>
-        <view class="content">
+        <view class="text-base leading-relaxed text-gray-800">
           <!-- 这里使用 uni-rich-text 处理富文本内容，如果 content 可能是 HTML -->
           <rich-text :nodes="newsDetail.content"></rich-text>
         </view>
-        <view class="footer">
+        <view class="mt-7.5 pt-2.5 border-t border-dashed border-gray-200 text-gray-500 text-xs text-right">
           <text>发布人：{{ newsDetail.createdBy || '管理员' }}</text>
         </view>
       </view>
 
-      <view v-else class="empty-state">
+      <view v-else class="text-center py-12.5 text-gray-500">
         <text>新闻内容加载失败或不存在</text>
       </view>
     </scroll-view>
@@ -70,60 +70,6 @@ const formatTime = (time) => {
 };
 </script>
 
-<style scoped lang="scss">
-.news-detail-page {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background-color: #f5f5f5;
-}
-
-.detail-container {
-  flex: 1;
-  background: white;
-  padding: 16px;
-}
-
-.detail-content {
-  padding-bottom: 20px;
-}
-
-.title {
-  font-size: 24px;
-  font-weight: bold;
-  margin-bottom: 10px;
-  line-height: 1.4;
-  /* UniApp 需注意 h1 标签兼容性，可能需要用 view/text 模拟 */
-}
-
-.meta-info {
-  display: flex;
-  justify-content: space-between;
-  color: #999;
-  font-size: 13px;
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #eee;
-}
-
-.content {
-  font-size: 16px;
-  line-height: 1.6;
-  color: #333;
-}
-
-.footer {
-  margin-top: 30px;
-  padding-top: 10px;
-  border-top: 1px dashed #eee;
-  color: #999;
-  font-size: 12px;
-  text-align: right;
-}
-
-.loading-state, .empty-state {
-  text-align: center;
-  padding: 50px 0;
-  color: #999;
-}
+<style scoped>
+/* 移除原有SCSS样式，使用Tailwind CSS */
 </style>
