@@ -6,9 +6,7 @@ import { AdminGetDishesDto, AdminCreateDishDto, AdminUpdateDishDto } from './dto
 export class AdminDishesService {
   constructor(private prisma: PrismaService) {}
 
-  /**
-   * 管理端获取菜品列表
-   */
+  // 管理端获取菜品列表
   async getAdminDishes(query: AdminGetDishesDto, adminInfo: any) {
     const { page = 1, pageSize = 20, canteenId, status, keyword } = query;
 

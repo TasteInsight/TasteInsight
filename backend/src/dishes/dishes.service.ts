@@ -91,7 +91,7 @@ export class DishesService {
     }
 
     // 辣度筛选
-    // 注意：0 表示未设置，应该保留在结果中（不参与筛选）
+    // 0 表示未设置，应该保留在结果中（不参与筛选）
     if (filter.spicyLevel) {
       andConditions.push({
         OR: [
@@ -204,7 +204,7 @@ export class DishesService {
     const where: Prisma.DishWhereInput = andConditions.length > 0 ? { AND: andConditions } : {};
 
     // 排序
-    // 注意：sort.field 已通过 DishSortField 枚举在 DTO 层进行白名单验证，防止字段注入攻击
+    // sort.field 已通过 DishSortField 枚举在 DTO 层进行白名单验证，防止字段注入攻击
     const orderBy: Prisma.DishOrderByWithRelationInput = {};
     if (sort.field) {
       orderBy[sort.field] = sort.order || SortOrder.ASC;
