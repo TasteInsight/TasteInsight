@@ -291,9 +291,10 @@
 </template>
 
 <script>
-import { reactive, onMounted } from 'vue'
+import { reactive, onMounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { reviewApi } from '@/api/modules/review'
+import { dishApi } from '@/api/modules/dish'
 import Sidebar from '@/components/Layout/Sidebar.vue';
 import Header from '@/components/Layout/Header.vue';
 
@@ -307,6 +308,7 @@ export default {
     const router = useRouter()
     const route = useRoute()
     const dishId = route.params.id
+    const isLoading = ref(false)
     
     const dishData = reactive({
       id: '',
@@ -353,112 +355,114 @@ export default {
     }
     
     // 加载菜品信息
-    const loadDishData = () => {
-      // 模拟数据 - 实际应该从 API 或 store 获取
-      const sampleDishes = [
-        {
-          id: 1,
-          name: '水煮肉片',
-          canteen: '观畴园',
-          floor: '二层',
-          window: '自选菜',
-          location: '观畴园-二层-自选菜',
-          submitDate: '2025-10-20',
-          submitTime: '14:23:45',
-          submitter: '张师傅',
-          status: 'pending',
-          image: '/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg',
-          description: '经典川菜，选用优质猪肉，配以豆芽、辣椒等配菜，麻辣鲜香',
-          allergens: '无',
-          ingredients: '猪肉、豆芽、辣椒、花椒、蒜、姜',
-          tags: ['川菜', '麻辣', '油腻'],
-          spicyLevel: 4,
-          saltiness: 3,
-          sweetness: 1,
-          oiliness: 4,
-          windowName: '自选菜',
-          windowNumber: '01',
-          subItems: [
-            { name: '小份', price: '15' },
-            { name: '大份', price: '20' }
-          ],
-          servingTime: {
-            breakfast: false,
-            lunch: true,
-            dinner: true,
-            night: false
-          },
-          availableDates: [
-            { startDate: '2024-01-01', endDate: '2024-12-31' }
-          ]
-        },
-        {
-          id: 2,
-          name: '辛拉面',
-          canteen: '桃李园',
-          floor: '一层',
-          window: '韩国风味',
-          location: '桃李园-一层-韩国风味',
-          submitDate: '2025-10-20',
-          submitTime: '11:15:32',
-          submitter: 'NoraexX',
-          status: 'approved',
-          image: '/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'
-        },
-        {
-          id: 3,
-          name: '宜宾燃面',
-          canteen: '清芬园',
-          floor: '一层',
-          window: '面食窗口',
-          location: '清芬园一层',
-          submitDate: '2025-10-20',
-          submitTime: '16:45:21',
-          submitter: '某不愿透露姓名的曾姓男子',
-          status: 'rejected',
-          image: '/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'
-        },
-        {
-          id: 4,
-          name: '菠萝咕咾肉',
-          canteen: '观畴园',
-          floor: '二层',
-          window: '自选菜',
-          location: '观畴园-二层-自选菜',
-          submitDate: '2025-10-20',
-          submitTime: '09:32:17',
-          submitter: 'ljx666',
-          status: 'pending',
-          image: '/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg',
-          description: '酸甜可口的经典粤菜',
-          allergens: '无',
-          ingredients: '猪肉、菠萝、青椒、红椒',
-          tags: ['粤菜', '酸甜'],
-          spicyLevel: 0,
-          saltiness: 2,
-          sweetness: 4,
-          oiliness: 2,
-          windowName: '自选菜',
-          windowNumber: '02',
-          subItems: [
-            { name: '标准份', price: '18' }
-          ],
-          availableDates: [
-            { startDate: '2024-01-01', endDate: '2024-12-31' }
-          ]
+    const loadDishData = async () => {
+      isLoading.value = true
+      try {
+        // 先尝试从待审核列表获取
+        let dish = null
+        try {
+          const pendingResponse = await reviewApi.getPendingUploads({ page: 1, pageSize: 100 })
+          if (pendingResponse.code === 200 && pendingResponse.data?.items) {
+            dish = pendingResponse.data.items.find((d) => d.id === dishId || d.id === dishId.toString())
+          }
+        } catch (error) {
+          console.error('从待审核列表获取失败:', error)
         }
-      ]
-      
-      const dish = sampleDishes.find(d => d.id === parseInt(dishId))
-      
-      if (dish) {
-        Object.assign(dishData, {
-          ...dish,
-          imageUrl: dish.image || dish.imageUrl || ''
-        })
-      } else {
-        alert('未找到该菜品信息')
+        
+        // 如果待审核列表中没有，尝试从菜品详情接口获取
+        if (!dish) {
+          try {
+            const dishResponse = await dishApi.getDishById(dishId)
+            if (dishResponse.code === 200 && dishResponse.data) {
+              dish = dishResponse.data
+            }
+          } catch (error) {
+            console.error('从菜品详情接口获取失败:', error)
+          }
+        }
+        
+        if (dish) {
+          // 填充数据
+          dishData.id = dish.id || dishId
+          dishData.name = dish.name || ''
+          dishData.canteen = dish.canteenName || dish.canteen || ''
+          dishData.floor = dish.floor || ''
+          dishData.windowName = dish.windowName || dish.window || ''
+          dishData.windowNumber = dish.windowNumber || ''
+          dishData.window = dish.window || dish.windowName || ''
+          dishData.description = dish.description || ''
+          
+          // 处理过敏原
+          if (Array.isArray(dish.allergens)) {
+            dishData.allergens = dish.allergens.join('、')
+          } else {
+            dishData.allergens = dish.allergens || ''
+          }
+          
+          // 处理原辅料
+          if (Array.isArray(dish.ingredients)) {
+            dishData.ingredients = dish.ingredients.join('、')
+          } else {
+            dishData.ingredients = dish.ingredients || ''
+          }
+          
+          // 处理图片
+          if (dish.images && dish.images.length > 0) {
+            dishData.imageUrl = dish.images[0]
+            dishData.image = dish.images[0]
+          } else if (dish.image) {
+            dishData.imageUrl = dish.image
+            dishData.image = dish.image
+          }
+          
+          // 处理标签
+          dishData.tags = dish.tags || []
+          
+          // 处理口味指标
+          dishData.spicyLevel = dish.spicyLevel !== null && dish.spicyLevel !== undefined ? dish.spicyLevel : 0
+          dishData.saltiness = dish.saltiness !== null && dish.saltiness !== undefined ? dish.saltiness : 0
+          dishData.sweetness = dish.sweetness !== null && dish.sweetness !== undefined ? dish.sweetness : 0
+          dishData.oiliness = dish.oiliness !== null && dish.oiliness !== undefined ? dish.oiliness : 0
+          
+          // 处理供应时间
+          if (dish.availableMealTime && Array.isArray(dish.availableMealTime)) {
+            dishData.servingTime = {
+              breakfast: dish.availableMealTime.includes('breakfast'),
+              lunch: dish.availableMealTime.includes('lunch'),
+              dinner: dish.availableMealTime.includes('dinner'),
+              night: dish.availableMealTime.includes('nightsnack')
+            }
+          }
+          
+          // 处理供应日期段
+          dishData.availableDates = dish.availableDates || []
+          
+          // 处理子项
+          dishData.subItems = dish.subItems || []
+          
+          // 处理提交信息
+          dishData.submitter = dish.uploaderNickname || dish.submitter || ''
+          if (dish.createdAt) {
+            const date = new Date(dish.createdAt)
+            dishData.submitDate = date.toISOString().split('T')[0]
+            dishData.submitTime = date.toTimeString().split(' ')[0]
+          } else {
+            dishData.submitDate = dish.submitDate || ''
+            dishData.submitTime = dish.submitTime || ''
+          }
+          
+          // 处理状态
+          dishData.status = dish.status || 'pending'
+        } else {
+          alert('未找到该菜品信息')
+          router.push('/review-dish')
+        }
+      } catch (error) {
+        console.error('加载菜品信息失败:', error)
+        alert('获取菜品信息失败，请重试')
         router.push('/review-dish')
+      } finally {
+        isLoading.value = false
       }
     }
     
@@ -541,6 +545,7 @@ export default {
     
     return {
       dishData,
+      isLoading,
       statusClasses,
       statusText,
       approveDish,

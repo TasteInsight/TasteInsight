@@ -27,114 +27,9 @@ const isMockMode = () => {
 }
 
 /**
- * Mock 数据生成器
+ * Mock 数据生成器 - 仅保留登录功能
  */
 const mockResponse = {
-  // Mock 图片上传
-  '/upload/image': (data: any) => {
-    const file = data instanceof FormData ? data.get('file') : null
-    if (!file) {
-      return Promise.reject(new Error('请选择图片文件'))
-    }
-    
-    // 模拟上传延迟
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // 生成模拟的图片 URL（使用 base64 或占位符）
-        const mockUrl = file instanceof File 
-          ? URL.createObjectURL(file) 
-          : 'https://via.placeholder.com/800x800?text=Mock+Image'
-        
-        resolve({
-          code: 200,
-          message: '上传成功',
-          data: {
-            url: mockUrl,
-            filename: file instanceof File ? file.name : 'mock-image.jpg'
-          }
-        })
-      }, 500)
-    })
-  },
-  
-  // Mock 创建菜品
-  '/admin/dishes': (data: any, url: string, method?: string) => {
-    // 如果是 PUT 请求（更新菜品），处理更新逻辑
-    if (method === 'put' || url.includes('/admin/dishes/') && !url.includes('/status') && !url.includes('/batch')) {
-      const idMatch = url.match(/\/admin\/dishes\/([^/]+)/)
-      const dishId = idMatch ? idMatch[1] : `DISH_${Date.now()}`
-      
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          const mockDish = {
-            id: dishId,
-            name: data.name || '更新后的菜品',
-            price: data.price || 0,
-            description: data.description || '',
-            images: data.images || [],
-            tags: data.tags || [],
-            ingredients: data.ingredients || [],
-            allergens: data.allergens || [],
-            canteenId: data.canteenId || '',
-            canteenName: data.canteenName || '',
-            floor: data.floor || '',
-            windowNumber: data.windowNumber || '',
-            windowName: data.windowName || '',
-            availableMealTime: data.availableMealTime || [],
-            status: data.status || 'offline',
-            averageRating: 0,
-            reviewCount: 0,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-          
-          resolve({
-            code: 200,
-            message: '更新成功',
-            data: mockDish
-          })
-        }, 600)
-      })
-    }
-    
-    // POST 请求（创建菜品）
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const mockDish = {
-          id: `DISH_${Date.now()}`,
-          name: data.name,
-          price: data.price,
-          description: data.description || '',
-          images: data.images || [],
-          tags: data.tags || [],
-          ingredients: data.ingredients || [],
-          allergens: data.allergens || [],
-          canteenId: data.canteenId || '',
-          canteenName: data.canteenName,
-          floor: data.floor || '',
-          windowNumber: data.windowNumber || '',
-          windowName: data.windowName,
-          availableMealTime: data.availableMealTime || [],
-          status: data.status || 'offline',
-          averageRating: 0,
-          reviewCount: 0,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-        
-        resolve({
-          code: 201,
-          message: '创建成功',
-          data: mockDish
-        })
-      }, 800)
-    })
-  },
-  
-  // ========== Mock 认证相关接口 ==========
-  // 注意：以下 Mock 接口仅在 mock_mode=true 时生效
-  // 要关闭 Mock，执行：localStorage.removeItem('mock_mode')
-  
   // Mock 管理员登录
   '/auth/admin/login': (data: any) => {
     return new Promise((resolve, reject) => {
@@ -169,126 +64,6 @@ const mockResponse = {
         }
       }, 500)
     })
-  },
-  
-  // ========== Mock 审核相关接口 ==========
-  // 注意：以下 Mock 接口仅在 mock_mode=true 时生效
-  // 要关闭 Mock，执行：localStorage.removeItem('mock_mode')
-  
-  // Mock 获取待审核菜品列表
-  '/admin/dishes/uploads/pending': (params: any) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // 模拟待审核菜品数据
-        const mockItems = [
-          {
-            id: '1',
-            name: '水煮肉片',
-            canteenName: '观畴园',
-            floor: '二层',
-            window: '自选菜',
-            price: 15,
-            images: ['/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'],
-            ingredients: ['猪肉', '豆芽', '辣椒', '花椒'],
-            allergens: [],
-            uploaderId: 'user1',
-            uploaderNickname: '张师傅',
-            status: 'pending',
-            createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() // 2小时前
-          },
-          {
-            id: '2',
-            name: '辛拉面',
-            canteenName: '桃李园',
-            floor: '一层',
-            window: '韩国风味',
-            price: 10,
-            images: ['/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'],
-            ingredients: ['拉面', '鸡蛋', '海苔'],
-            allergens: ['鸡蛋'],
-            uploaderId: 'user2',
-            uploaderNickname: 'NoraexX',
-            status: 'pending',
-            createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() // 5小时前
-          },
-          {
-            id: '3',
-            name: '宜宾燃面',
-            canteenName: '清芬园',
-            floor: '一层',
-            window: '面食窗口',
-            price: 12,
-            images: ['/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'],
-            ingredients: ['面条', '花生', '芽菜'],
-            allergens: ['花生'],
-            uploaderId: 'user3',
-            uploaderNickname: '某不愿透露姓名的曾姓男子',
-            status: 'pending',
-            createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() // 1天前
-          },
-          {
-            id: '4',
-            name: '菠萝咕咾肉',
-            canteenName: '观畴园',
-            floor: '二层',
-            window: '自选菜',
-            price: 18,
-            images: ['/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'],
-            ingredients: ['猪肉', '菠萝', '青椒', '红椒'],
-            allergens: [],
-            uploaderId: 'user4',
-            uploaderNickname: 'ljx666',
-            status: 'pending',
-            createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString() // 3小时前
-          }
-        ]
-        
-        resolve({
-          code: 200,
-          message: '获取成功',
-          data: {
-            items: mockItems,
-            meta: {
-              page: params?.page || 1,
-              pageSize: params?.pageSize || 10,
-              total: mockItems.length,
-              totalPages: 1
-            }
-          }
-        })
-      }, 500)
-    })
-  },
-  
-  // Mock 批准审核（动态匹配 URL）
-  '/admin/dishes/uploads/': (data: any, url: string) => {
-    // 检查是否是 approve 或 reject 请求
-    if (url.includes('/approve')) {
-      const id = url.match(/\/uploads\/([^/]+)\/approve/)?.[1]
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          console.log('[Mock] 批准审核:', id)
-          resolve({
-            code: 200,
-            message: '审核已通过',
-            data: { success: true }
-          })
-        }, 300)
-      })
-    } else if (url.includes('/reject')) {
-      const id = url.match(/\/uploads\/([^/]+)\/reject/)?.[1]
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          console.log('[Mock] 拒绝审核:', id, '原因:', data?.reason)
-          resolve({
-            code: 200,
-            message: '审核已拒绝',
-            data: { success: true }
-          })
-        }, 300)
-      })
-    }
-    return Promise.reject(new Error('未知的审核操作'))
   }
 }
 
@@ -346,24 +121,6 @@ service.interceptors.response.use(
     return response.data as any
   },
   async (error) => {
-    // 如果是网络错误且启用了 Mock 模式，尝试使用 Mock 数据
-    if (isMockMode() && error.request && !error.response) {
-      const config = error.config as any
-      const url = config?.url || ''
-      const method = config?.method?.toLowerCase() || 'get'
-      
-      if (method === 'post' && mockResponse[url as keyof typeof mockResponse]) {
-        const mockHandler = mockResponse[url as keyof typeof mockResponse]
-        try {
-          const mockData = await (mockHandler as any)(config.data, url, method)
-          console.log('[Mock]', url, mockData)
-          return mockData as any
-        } catch (mockError) {
-          return Promise.reject(mockError)
-        }
-      }
-    }
-    
     const originalRequest = error.config
     
     if (error.response) {
@@ -462,155 +219,29 @@ service.interceptors.response.use(
   }
 )
 
-// 封装请求方法，确保返回正确的类型，并支持 Mock
+// 封装请求方法，确保返回正确的类型，并支持 Mock（仅登录）
 const request = {
   async get<T = any>(url: string, config?: any): Promise<T> {
-    // Mock 模式处理 GET 请求
-    if (isMockMode()) {
-      // 检查精确匹配
-      if (mockResponse[url as keyof typeof mockResponse]) {
-        const mockHandler = mockResponse[url as keyof typeof mockResponse]
-        try {
-          const params = config?.params || {}
-          const mockData = await (mockHandler as any)(params, url)
-          console.log('[Mock GET]', url, mockData)
-          return mockData as T
-        } catch (error) {
-          return Promise.reject(error)
-        }
-      }
-      
-      // 检查获取单个菜品（GET /admin/dishes/{id}）
-      if (url.match(/^\/admin\/dishes\/[^/]+$/) && !url.includes('/status') && !url.includes('/batch')) {
-        const idMatch = url.match(/\/admin\/dishes\/([^/]+)/)
-        const dishId = idMatch ? idMatch[1] : ''
-        
-        try {
-          // 返回模拟的单个菜品数据
-          const mockDish = {
-            id: dishId,
-            name: '模拟菜品',
-            canteenName: '紫荆园',
-            canteenId: 'canteen1',
-            floor: '二层',
-            windowName: '自选菜',
-            windowNumber: '01',
-            price: 15,
-            description: '这是一个模拟的菜品数据，用于测试编辑功能',
-            images: ['/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'],
-            tags: ['川菜', '微辣'],
-            ingredients: ['猪肉', '豆芽', '辣椒', '花椒'],
-            allergens: [],
-            availableMealTime: ['lunch', 'dinner'],
-            status: 'offline',
-            createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-          
-          const mockData = {
-            code: 200,
-            message: '获取成功',
-            data: mockDish
-          }
-          console.log('[Mock GET]', url, mockData)
-          return mockData as T
-        } catch (error) {
-          return Promise.reject(error)
-        }
-      }
-      
-      // 检查获取菜品列表（通过列表接口模拟）
-      if (url === '/admin/dishes' && config?.params?.keyword) {
-        const mockHandler = mockResponse['/admin/dishes' as keyof typeof mockResponse]
-        if (typeof mockHandler === 'function') {
-          try {
-            // 返回模拟的菜品列表，包含匹配的菜品
-            const mockData = {
-              code: 200,
-              message: '获取成功',
-              data: {
-                items: [
-                  {
-                    id: config.params.keyword,
-                    name: '模拟菜品',
-                    canteenName: '紫荆园',
-                    floor: '二层',
-                    windowName: '自选菜',
-                    windowNumber: '01',
-                    price: 15,
-                    description: '这是一个模拟的菜品数据',
-                    images: ['/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'],
-                    tags: ['川菜', '微辣'],
-                    ingredients: ['猪肉', '豆芽'],
-                    allergens: [],
-                    availableMealTime: ['lunch', 'dinner'],
-                    status: 'offline',
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
-                  }
-                ],
-                meta: {
-                  page: 1,
-                  pageSize: 10,
-                  total: 1,
-                  totalPages: 1
-                }
-              }
-            }
-            console.log('[Mock GET]', url, mockData)
-            return mockData as T
-          } catch (error) {
-            return Promise.reject(error)
-          }
-        }
-      }
-    }
     return service.get(url, config)
   },
   async post<T = any>(url: string, data?: any, config?: any): Promise<T> {
-    // Mock 模式处理 POST 请求
+    // Mock 模式处理 POST 请求（仅登录）
     if (isMockMode()) {
-      // 先检查精确匹配
-      if (mockResponse[url as keyof typeof mockResponse]) {
+      // 只处理登录接口
+      if (url === '/auth/admin/login' && mockResponse[url as keyof typeof mockResponse]) {
         const mockHandler = mockResponse[url as keyof typeof mockResponse]
         try {
-          const mockData = await (mockHandler as any)(data, url, 'post')
-          console.log('[Mock POST]', url, mockData)
+          const mockData = await (mockHandler as any)(data)
+          console.log('[Mock POST]', url, '登录成功')
           return mockData as T
         } catch (error) {
           return Promise.reject(error)
-        }
-      }
-      // 检查动态匹配（用于审核接口）
-      if (url.includes('/admin/dishes/uploads/')) {
-        const mockHandler = mockResponse['/admin/dishes/uploads/' as keyof typeof mockResponse]
-        if (mockHandler) {
-          try {
-            const mockData = await (mockHandler as any)(data, url)
-            console.log('[Mock POST]', url, mockData)
-            return mockData as T
-          } catch (error) {
-            return Promise.reject(error)
-          }
         }
       }
     }
     return service.post(url, data, config)
   },
   async put<T = any>(url: string, data?: any, config?: any): Promise<T> {
-    // Mock 模式处理 PUT 请求（更新菜品）
-    if (isMockMode() && url.includes('/admin/dishes/') && !url.includes('/status')) {
-      const mockHandler = mockResponse['/admin/dishes' as keyof typeof mockResponse]
-      if (mockHandler) {
-        try {
-          const mockData = await (mockHandler as any)(data, url, 'put')
-          console.log('[Mock PUT]', url, mockData)
-          return mockData as T
-        } catch (error) {
-          return Promise.reject(error)
-        }
-      }
-    }
     return service.put(url, data, config)
   },
   delete<T = any>(url: string, config?: any): Promise<T> {

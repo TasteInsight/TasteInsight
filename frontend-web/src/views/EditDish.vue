@@ -500,24 +500,9 @@ export default {
           throw new Error(response.message || '获取菜品信息失败')
         }
       } catch (error) {
-        console.error('从 API 获取菜品失败，尝试从 store 或 Mock 数据获取:', error)
-        
-        // 如果 API 失败，尝试从 store 获取
-        const dishes = dishStore.dishes || []
-        const dish = dishes.find(d => d.id === dishId)
-        
-        if (dish) {
-          fillFormData(dish)
-        } else {
-          // 最后尝试使用 Mock 数据（仅用于开发测试）
-          const mockDish = getMockDishById(dishId)
-          if (mockDish) {
-            fillFormData(mockDish)
-          } else {
-            alert('未找到该菜品信息')
-            router.push('/modify-dish')
-          }
-        }
+        console.error('从 API 获取菜品失败:', error)
+        alert('获取菜品信息失败，请重试')
+        router.push('/modify-dish')
       } finally {
         isLoading.value = false
       }
@@ -607,88 +592,6 @@ export default {
       } else {
         formData.availableDates = []
       }
-    }
-    
-    // Mock 数据（仅用于开发测试，当 API 不可用时）
-    const getMockDishById = (id) => {
-      const mockDishes = [
-        { 
-          id: 'FD0123', 
-          name: '海南椰子鸡', 
-          canteenName: '紫荆园', 
-          floor: '二层',
-          windowName: '海南鸡饭窗口',
-          tags: ['琼菜'],
-          price: 15,
-          images: ['/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'],
-          description: '选用新鲜椰子，配以优质鸡肉，口感鲜嫩',
-          allergens: [],
-          ingredients: ['鸡肉', '椰子', '姜', '蒜'],
-          spicyLevel: 0,
-          saltiness: 2,
-          sweetness: 1,
-          oiliness: 2,
-          availableMealTime: ['lunch', 'dinner'],
-          availableDates: [
-            { startDate: '2024-01-01', endDate: '2024-12-31' }
-          ]
-        },
-        { 
-          id: 'FD0124', 
-          name: '芹菜炒肉丝', 
-          canteenName: '桃李园', 
-          floor: '二层',
-          windowName: '自选菜',
-          tags: [],
-          price: 6,
-          images: ['/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'],
-          spicyLevel: 1,
-          saltiness: 3,
-          sweetness: 0,
-          oiliness: 3,
-          availableMealTime: ['lunch', 'dinner'],
-          availableDates: [
-            { startDate: '2024-01-01', endDate: '2024-12-31' }
-          ]
-        },
-        { 
-          id: 'FD0125', 
-          name: '辛拉面', 
-          canteenName: '桃李园', 
-          floor: '一层',
-          windowName: '韩式风味',
-          tags: ['韩国料理'],
-          price: 10,
-          images: ['/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'],
-          spicyLevel: 3,
-          saltiness: 3,
-          sweetness: 1,
-          oiliness: 2,
-          availableMealTime: ['lunch', 'dinner', 'nightsnack'],
-          availableDates: [
-            { startDate: '2024-01-01', endDate: '2024-12-31' }
-          ]
-        },
-        { 
-          id: 'FD0126', 
-          name: '红烧牛肉面', 
-          canteenName: '清青牛拉', 
-          floor: '二层',
-          windowName: '清青牛拉',
-          tags: ['陇菜'],
-          price: 22,
-          images: ['/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'],
-          spicyLevel: 2,
-          saltiness: 4,
-          sweetness: 1,
-          oiliness: 3,
-          availableMealTime: ['lunch', 'dinner'],
-          availableDates: [
-            { startDate: '2024-01-01', endDate: '2024-12-31' }
-          ]
-        }
-      ]
-      return mockDishes.find(d => d.id === id)
     }
     
     // 加载子项列表
