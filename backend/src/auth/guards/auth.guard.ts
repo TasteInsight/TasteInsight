@@ -1,10 +1,12 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
+  private readonly logger = new Logger(AuthGuard.name);
+
   constructor(
     private jwtService: JwtService,
     private configService: ConfigService,
@@ -25,7 +27,13 @@ export class AuthGuard implements CanActivate {
       // 将 payload 附加到请求对象，以便后续处理函数访问
       request['user'] = payload;
     } catch (error) {
-      console.error('JWT verification failed:', error);
+      const errorName = (error as Error)?.name ?? 'UnknownError';
+      const isExpectedJwtError = ['JsonWebTokenError', 'TokenExpiredError'].includes(errorName);
+
+      if (!isExpectedJwtError) {
+        this.logger.error(`JWT verification failed: ${errorName}`, (error as Error)?.stack);
+      }
+
       throw new UnauthorizedException();
     }
     return true;

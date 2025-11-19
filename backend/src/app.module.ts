@@ -4,11 +4,13 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaService } from './prisma.service';
 import { AuthModule } from './auth/auth.module';
+import { DishesModule } from './dishes/dishes.module';
 import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
     AuthModule,
+    DishesModule,
     ConfigModule.forRoot({
       isGlobal: true,
     }),
