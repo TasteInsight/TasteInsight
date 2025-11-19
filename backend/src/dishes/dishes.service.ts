@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma.service';
 import { GetDishesDto, SortOrder } from './dto/get-dishes.dto';
 import { UploadDishDto } from './dto/upload-dish.dto';
 import { Prisma } from '@prisma/client';
+import { DishSortField } from '@/common/enums';
 
 @Injectable()
 export class DishesService {
@@ -183,6 +184,7 @@ export class DishesService {
     const where: Prisma.DishWhereInput = andConditions.length > 0 ? { AND: andConditions } : {};
 
     // 排序
+    // 注意：sort.field 已通过 DishSortField 枚举在 DTO 层进行白名单验证，防止字段注入攻击
     const orderBy: Prisma.DishOrderByWithRelationInput = {};
     if (sort.field) {
       orderBy[sort.field] = sort.order || SortOrder.ASC;

@@ -1,6 +1,6 @@
 import { IsOptional, IsArray, IsInt, IsString, IsBoolean, Min, Max, IsEnum, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
-import { MealTime } from '@/common/enums';
+import { MealTime, DishSortField } from '@/common/enums';
 import { IsValidRange } from '@/common/validators/range.validator';
 
 // 评分范围
@@ -133,8 +133,8 @@ export enum SortOrder {
 
 class SortDto {
   @IsOptional()
-  @IsString()
-  field?: string;
+  @IsEnum(DishSortField, { message: '排序字段不合法，只允许: price, averageRating, reviewCount, createdAt, updatedAt' })
+  field?: DishSortField;
 
   @IsOptional()
   @IsEnum(SortOrder)
