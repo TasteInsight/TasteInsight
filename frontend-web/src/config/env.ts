@@ -10,7 +10,7 @@ export const env = {
   VITE_API_BASE_URL: 'http://localhost:3002/',
 
   /** APIfox 本地 Mock 配置 - 已禁用，改用真实后端 */
-  VITE_APIFOX_LOCAL_MOCK_ENABLED: true,
+  VITE_APIFOX_LOCAL_MOCK_ENABLED: false,
   VITE_APIFOX_LOCAL_MOCK_URL: '',
 
   /** 开发环境 */
