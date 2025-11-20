@@ -1,0 +1,17 @@
+node_modules
+dist
+coverage
+coverage-e2e
+.env
+.env.test
+.git
+.gitignore
+*.md
+!README.md
+.vscode
+.idea
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*

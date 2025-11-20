@@ -21,7 +21,6 @@ test_output*.txt
 /.nyc_output
 /coverage-e2e
 
-
 # IDEs and editors
 /.idea
 .project
@@ -45,6 +44,7 @@ test_output*.txt
 .env.test.local
 .env.production.local
 .env.local
+.env.docker
 
 # temp directory
 .temp
@@ -64,3 +64,11 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 # Prisma temporary migration files
 /prisma/*.sqlite
 /prisma/*.sqlite-journal
+
+# tar
+*.tar
+*.tgz
+*.tar.gz
+
+# .md
+*.md
