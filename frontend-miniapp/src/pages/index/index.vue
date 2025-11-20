@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-white rounded-lg overflow-hidden flex flex-col">
     <!-- 主内容区 -->
     <div class="flex-1 overflow-y-auto px-4 hide-scrollbar">
-      <SearchBar @click="navigateTo('/pages/search/index')" />
+      <SearchBar />
 
       <!-- 食堂栏目 -->
       <div v-if="canteenStore.loading" class="text-center py-4 text-gray-500">正在加载食堂...</div>
