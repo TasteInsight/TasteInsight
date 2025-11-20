@@ -9,7 +9,6 @@ import { AuthGuard } from '../auth/guards/auth.guard';
 export class DishesController {
   constructor(private readonly dishesService: DishesService) {}
 
-  // 注意：具体路由要放在参数路由之前，避免被 :id 匹配
   @Post('upload')
   @HttpCode(HttpStatus.CREATED)
   uploadDish(@Body() uploadDishDto: UploadDishDto, @Request() req) {
