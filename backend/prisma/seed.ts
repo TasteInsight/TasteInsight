@@ -9,6 +9,7 @@ async function main() {
 
   // 1. 清空所有数据，确保幂等性
   // 注意删除顺序，防止外键约束失败
+  await prisma.adminPermission.deleteMany({});
   await prisma.favoriteDish.deleteMany({});
   await prisma.dish.deleteMany({});
   await prisma.window.deleteMany({});
@@ -17,7 +18,7 @@ async function main() {
   await prisma.user.deleteMany({});
   await prisma.admin.deleteMany({});
 
-  // 2. 创建一个可用于所有测试的【基础管理员】
+  // 2. 创建一个可用于所有测试的【基础管理员】(superadmin)
   const hashedPassword = await bcrypt.hash('password123', 10);
   const admin = await prisma.admin.create({
     data: {
@@ -28,6 +29,52 @@ async function main() {
   });
   console.log(`Created baseline admin: ${admin.username}`);
 
+  // 创建一个普通管理员用于测试权限
+  const normalAdminPassword = await bcrypt.hash('admin123', 10);
+  const normalAdmin = await prisma.admin.create({
+    data: {
+      username: 'normaladmin',
+      password: normalAdminPassword,
+      role: 'admin',
+    },
+  });
+  console.log(`Created normal admin: ${normalAdmin.username}`);
+
+  // 为普通管理员添加查看权限
+  await prisma.adminPermission.create({
+    data: {
+      adminId: normalAdmin.id,
+      permission: 'dish:view',
+    },
+  });
+  console.log(`Added dish:view permission to normaladmin`);
+
+  // 创建一个仅有部分权限的管理员
+  const limitedAdminPassword = await bcrypt.hash('limited123', 10);
+  const limitedAdmin = await prisma.admin.create({
+    data: {
+      username: 'limitedadmin',
+      password: limitedAdminPassword,
+      role: 'admin',
+    },
+  });
+  console.log(`Created limited admin: ${limitedAdmin.username}`);
+
+  // 为限制管理员添加查看和编辑权限
+  await prisma.adminPermission.createMany({
+    data: [
+      {
+        adminId: limitedAdmin.id,
+        permission: 'dish:view',
+      },
+      {
+        adminId: limitedAdmin.id,
+        permission: 'dish:edit',
+      },
+    ],
+  });
+  console.log(`Added dish:view and dish:edit permissions to limitedadmin`);
+
   // 3. 创建一个可用于测试的【基础用户】
   const user = await prisma.user.create({
     data: {
@@ -37,6 +84,42 @@ async function main() {
     }
   });
   console.log(`Created baseline user: ${user.nickname}`);
+
+  // 创建一个绑定到食堂的管理员
+  const canteenAdminPassword = await bcrypt.hash('canteen123', 10);
+  // 注意：这里我们暂时不设置 canteenId，等食堂创建后再更新
+  // 我们先创建一个占位的管理员
+  let canteenAdmin = await prisma.admin.create({
+    data: {
+      username: 'canteenadmin',
+      password: canteenAdminPassword,
+      role: 'admin',
+    },
+  });
+  console.log(`Created canteen admin: ${canteenAdmin.username}`);
+
+  // 为食堂管理员添加所有菜品权限
+  await prisma.adminPermission.createMany({
+    data: [
+      {
+        adminId: canteenAdmin.id,
+        permission: 'dish:view',
+      },
+      {
+        adminId: canteenAdmin.id,
+        permission: 'dish:create',
+      },
+      {
+        adminId: canteenAdmin.id,
+        permission: 'dish:edit',
+      },
+      {
+        adminId: canteenAdmin.id,
+        permission: 'dish:delete',
+      },
+    ],
+  });
+  console.log(`Added all dish permissions to canteenadmin`);
 
   // 4. 创建测试食堂
   const canteen1 = await prisma.canteen.create({
@@ -68,6 +151,13 @@ async function main() {
     },
   });
   console.log(`Created canteen: ${canteen2.name}`);
+
+  // 更新食堂管理员，绑定到第一食堂
+  canteenAdmin = await prisma.admin.update({
+    where: { id: canteenAdmin.id },
+    data: { canteenId: canteen1.id },
+  });
+  console.log(`Updated canteenadmin with canteenId: ${canteen1.id}`);
 
   // 5. 创建测试窗口
   const window1 = await prisma.window.create({
