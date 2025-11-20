@@ -48,7 +48,9 @@ test_output*.txt
 
 # temp directory
 .temp
-.tmp
+
+# database data
+postgres-data/
 
 # Runtime data
 pids
