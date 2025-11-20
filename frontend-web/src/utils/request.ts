@@ -14,60 +14,6 @@ const getAuthStore = () => {
 }
 
 /**
- * Mock 模式开关（通过 localStorage 控制，设置 'mock_mode=true' 启用）
- * 
- * 如何启用/关闭 Mock 模式：
- * 1. 在浏览器控制台执行：localStorage.setItem('mock_mode', 'true') 启用
- * 2. 在浏览器控制台执行：localStorage.removeItem('mock_mode') 关闭
- * 3. 或者设置环境变量 VITE_API_BASE_URL 为空或无效值会自动启用
- */
-const isMockMode = () => {
-  return localStorage.getItem('mock_mode') === 'true' || !config.baseURL || config.baseURL.includes('localhost:0')
-  // return false;
-}
-
-/**
- * Mock 数据生成器 - 仅保留登录功能
- */
-const mockResponse = {
-  // Mock 管理员登录
-  '/auth/admin/login': (data: any) => {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        // 模拟验证用户名和密码
-        if (data.username && data.password) {
-          const mockResponse = {
-            code: 200,
-            message: '登录成功',
-            data: {
-              token: {
-                accessToken: `mock_access_token_${Date.now()}`,
-                refreshToken: `mock_refresh_token_${Date.now()}`
-              },
-              admin: {
-                id: 'admin_001',
-                username: data.username,
-                role: 'admin',
-                permissions: ['dish:read', 'dish:write', 'dish:review', 'admin:read'],
-                createdAt: new Date().toISOString()
-              },
-              permissions: ['dish:read', 'dish:write', 'dish:review', 'admin:read']
-            }
-          }
-          console.log('[Mock] 管理员登录:', data.username)
-          resolve(mockResponse)
-        } else {
-          reject({
-            code: 400,
-            message: '用户名或密码不能为空'
-          })
-        }
-      }, 500)
-    })
-  }
-}
-
-/**
  * 创建 axios 实例
  */
 const service: AxiosInstance = axios.create({
@@ -81,13 +27,15 @@ const service: AxiosInstance = axios.create({
  */
 service.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    // 添加认证 token
     // 优先从 auth store 获取 token，如果 store 未初始化则从 storage 获取
     const store = getAuthStore()
     const token = store?.token || localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token')
-    
+
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`
     }
+
     return config
   },
   (error) => {
@@ -113,7 +61,7 @@ const processQueue = (error: any, token: string | null = null) => {
 }
 
 /**
- * 响应拦截器 - 处理错误和 Mock
+ * 响应拦截器 - 处理错误和认证
  */
 service.interceptors.response.use(
   (response: AxiosResponse) => {
@@ -219,26 +167,12 @@ service.interceptors.response.use(
   }
 )
 
-// 封装请求方法，确保返回正确的类型，并支持 Mock（仅登录）
+// 封装请求方法，确保返回正确的类型
 const request = {
   async get<T = any>(url: string, config?: any): Promise<T> {
     return service.get(url, config)
   },
   async post<T = any>(url: string, data?: any, config?: any): Promise<T> {
-    // Mock 模式处理 POST 请求（仅登录）
-    if (isMockMode()) {
-      // 只处理登录接口
-      if (url === '/auth/admin/login' && mockResponse[url as keyof typeof mockResponse]) {
-        const mockHandler = mockResponse[url as keyof typeof mockResponse]
-        try {
-          const mockData = await (mockHandler as any)(data)
-          console.log('[Mock POST]', url, '登录成功')
-          return mockData as T
-        } catch (error) {
-          return Promise.reject(error)
-        }
-      }
-    }
     return service.post(url, data, config)
   },
   async put<T = any>(url: string, data?: any, config?: any): Promise<T> {
