@@ -18,6 +18,7 @@ lerna-debug.log*
 # Tests
 /coverage
 /.nyc_output
+/coverage-e2e
 
 # IDEs and editors
 /.idea
@@ -42,6 +43,7 @@ lerna-debug.log*
 .env.test.local
 .env.production.local
 .env.local
+.env.docker
 
 # temp directory
 .temp
@@ -61,3 +63,11 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 # Prisma temporary migration files
 /prisma/*.sqlite
 /prisma/*.sqlite-journal
+
+# tar
+*.tar
+*.tgz
+*.tar.gz
+
+# .md
+*.md
