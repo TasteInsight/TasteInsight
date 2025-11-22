@@ -322,20 +322,32 @@ export interface WindowListData {
  * 菜品列表请求
  */
 export interface GetDishesRequest {
-  filter?: {
+ filter?: {
+    // --- 基础筛选 ---
+    includeOffline?: boolean;
+    canteenId?: string[];
+    tag?: string[];
+
+    // --- 范围筛选 ---
     rating?: {
       min: number;
       max: number;
     };
-    mealTime?: ('breakfast' | 'lunch' | 'dinner' | 'nightsnack')[];
     price?: {
       min: number;
       max: number;
     };
-    flavor?: Record<string, any>;
-    tag?: string[];
-    includeOffline?: boolean;
-    canteenId?: string[];
+    
+    mealTime?: string[]; 
+
+    oiliness?: number;    // 油腻程度
+    saltiness?: number;   // 咸度
+    spicyLevel?: number;  // 辣度
+    sweetness?: number;   // 甜度
+
+    meatPreference?: string[];      // 肉类偏好
+    avoidIngredients?: string[];    // 忌口
+    favoriteIngredients?: string[]; // 喜好食材
   };
   search?: {
     keyword: string;

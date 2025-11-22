@@ -60,7 +60,7 @@ function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>> {
 
         // 调试输出响应（开发时可用）
         // eslint-disable-next-line no-console
-        console.log('[response] <-', statusCode, responseData);
+        console.log('[response] <-', statusCode, responseData, fullUrl);
 
         // 2.1 HTTP 状态码判断
         if (statusCode >= 200 && statusCode < 300) {
