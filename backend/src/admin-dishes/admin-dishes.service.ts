@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { AdminGetDishesDto, AdminCreateDishDto, AdminUpdateDishDto } from './dto/admin-dish.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class AdminDishesService {
@@ -182,7 +183,7 @@ export class AdminDishesService {
         windowNumber: window?.number || createDto.windowNumber,
         windowName: createDto.windowName,
         availableMealTime: createDto.availableMealTime || [],
-        availableDates: createDto.availableDates as any,
+        availableDates: createDto.availableDates ? (createDto.availableDates as unknown as Prisma.InputJsonArray) : undefined,
         status: createDto.status || 'offline',
       },
       include: {

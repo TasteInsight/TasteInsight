@@ -7,7 +7,7 @@ async function bootstrap() {
 
   // 启用 CORS
   app.enableCors({
-    origin: true, // 允许所有来源，或者设置为具体的前端地址如 'http://localhost:5173'
+    origin: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });

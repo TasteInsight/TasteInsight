@@ -75,9 +75,6 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 # .md
 *.md
 
-# .idea
-/.idea
-
 # postgres data
 /postgres-data
 
