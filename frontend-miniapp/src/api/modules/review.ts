@@ -20,6 +20,7 @@ export const getReviewsByDish = (
   return request<ReviewListData>({
     url: `/reviews/${dishId}`,
     method: 'GET',
+    data: params,
   });
 };
 

@@ -17,8 +17,13 @@
 		{
 			"path": "pages/search/index",
 			"style": {
-				"navigationBarTitleText": "搜索",
-				"navigationStyle": "custom"
+				"navigationBarTitleText": "搜索"
+			}
+		},
+		{
+			"path": "pages/dish/index",
+			"style": {
+				"navigationBarTitleText": "菜品详情"
 			}
 		},
 		{
