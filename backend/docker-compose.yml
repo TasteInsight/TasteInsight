@@ -8,10 +8,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    # Wait for DB to be healthy, then run migrations, seed, and start the app
+    # Wait for DB to be healthy, then run migrations, optionally seed, and start the app
     command: >
       sh -c "npx prisma migrate deploy &&
-             pnpm exec ts-node prisma/seed.ts &&
+             if [ \"$RUN_SEED\" = \"true\" ]; then echo 'Running seed...' && pnpm exec ts-node prisma/seed.ts; else echo 'Skipping seed...'; fi &&
              node dist/src/main"
     networks:
       - taste-insight-net
