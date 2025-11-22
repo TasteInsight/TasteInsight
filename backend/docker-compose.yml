@@ -1,0 +1,41 @@
+services:
+  backend:
+    build: .
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.docker
+    depends_on:
+      db:
+        condition: service_healthy
+    # Wait for DB to be healthy, then run migrations, optionally seed, and start the app
+    command: >
+      sh -c "npx prisma migrate deploy &&
+             if [ \"$RUN_SEED\" = \"true\" ]; then echo 'Running seed...' && pnpm exec ts-node prisma/seed.ts; else echo 'Skipping seed...'; fi &&
+             node dist/src/main"
+    networks:
+      - taste-insight-net
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: taste_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: taste_insight_db
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - taste-insight-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taste_user -d taste_insight_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db-data:
+
+networks:
+  taste-insight-net:

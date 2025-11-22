@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { AdminGetDishesDto, AdminCreateDishDto, AdminUpdateDishDto } from './dto/admin-dish.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class AdminDishesService {
@@ -133,15 +134,19 @@ export class AdminDishesService {
     }
 
     // 查找窗口（如果存在）
-    let window = null;
+    let window: any = null;
     if (createDto.windowNumber || createDto.windowName) {
+      const orConditions: any[] = [];
+      if (createDto.windowNumber) {
+        orConditions.push({ number: createDto.windowNumber });
+      }
+      if (createDto.windowName) {
+        orConditions.push({ name: createDto.windowName });
+      }
       window = await this.prisma.window.findFirst({
         where: {
           canteenId: canteen.id,
-          OR: [
-            createDto.windowNumber ? { number: createDto.windowNumber } : undefined,
-            { name: createDto.windowName },
-          ].filter(Boolean),
+          OR: orConditions,
         },
       });
     }
@@ -178,7 +183,7 @@ export class AdminDishesService {
         windowNumber: window?.number || createDto.windowNumber,
         windowName: createDto.windowName,
         availableMealTime: createDto.availableMealTime || [],
-        availableDates: createDto.availableDates || [],
+        availableDates: createDto.availableDates ? (createDto.availableDates as unknown as Prisma.InputJsonArray) : undefined,
         status: createDto.status || 'offline',
       },
       include: {
@@ -234,7 +239,7 @@ export class AdminDishesService {
     if (updateDto.windowNumber !== undefined) updateData.windowNumber = updateDto.windowNumber;
     if (updateDto.windowName !== undefined) updateData.windowName = updateDto.windowName;
     if (updateDto.availableMealTime !== undefined) updateData.availableMealTime = updateDto.availableMealTime;
-    if (updateDto.availableDates !== undefined) updateData.availableDates = updateDto.availableDates;
+    if (updateDto.availableDates !== undefined) updateData.availableDates = updateDto.availableDates as any;
     if (updateDto.status !== undefined) updateData.status = updateDto.status;
 
     // 处理食堂ID和名称的更新
