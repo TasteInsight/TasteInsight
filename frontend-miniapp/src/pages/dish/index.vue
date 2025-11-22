@@ -1,5 +1,5 @@
 <template>
-  <view class="min-h-screen bg-gradient-to-b from-purple-50 to-white">
+  <view class="min-h-screen bg-gradient-to-b from-purple-50 to-white pt-16">
     <!-- 加载状态 -->
     <view v-if="loading" class="flex items-center justify-center min-h-screen">
       <text class="text-purple-500">加载中...</text>
@@ -111,7 +111,7 @@
         <view class="flex justify-between items-center mb-6">
           <h2 class="text-xl font-semibold text-gray-800">用户评价</h2>
           <button 
-            class="px-6 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white text-sm rounded-full shadow-lg hover:from-purple-600 hover:to-purple-700 transition-all"
+            class="px-6 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-ts-purple text-sm rounded-full shadow-lg hover:from-purple-600 hover:to-purple-700 transition-all"
             @click="showReviewForm"
           >
             ✍️ 写评价

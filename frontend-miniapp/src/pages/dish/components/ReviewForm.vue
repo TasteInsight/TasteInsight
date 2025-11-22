@@ -1,40 +1,42 @@
 <template>
-  <view class="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-50" @click.self="handleClose">
-    <view class="w-full bg-white rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto shadow-2xl">
+  <view class="fixed inset-0 z-50 flex items-end justify-center" @tap="handleClose" style="background-color: rgba(0, 0, 0, 0.4);">
+    <view class="w-full bg-white rounded-t-3xl p-6 shadow-2xl animate-slide-up" style="max-height: 75vh; overflow-y: auto;" @tap.stop catchtouchmove="true">
       <!-- 标题栏 -->
       <view class="flex justify-between items-center mb-6">
-        <h2 class="text-xl font-bold text-gray-800">评价 {{ dishName }}</h2>
+        <h2 class="text-lg font-bold text-gray-800">写评价</h2>
         <button 
           class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
-          @click="handleClose"
+          @tap="handleClose"
         >
-          <text class="iconify" data-icon="mdi:close"></text>
+          <text>✕</text>
         </button>
       </view>
 
-      <!-- 评分 -->
+      <!-- 评分选择 -->
       <view class="mb-6">
-        <view class="text-sm font-medium text-gray-700 mb-3">评分</view>
-        <view class="flex items-center gap-2 bg-purple-50 p-4 rounded-xl">
+        <view class="text-sm font-medium text-gray-700 mb-3">选择评分</view>
+        <view class="flex items-center justify-center gap-3 py-4">
           <text 
             v-for="star in 5" 
             :key="star"
-            class="iconify text-4xl cursor-pointer transition-all"
-            :class="star <= rating ? 'text-yellow-400' : 'text-gray-300'"
-            data-icon="mdi:star"
-            @click="setRating(star)"
-          ></text>
-          <span class="ml-3 text-lg font-semibold text-purple-600">{{ ratingText }}</span>
+            class="star-icon cursor-pointer transition-all"
+            :class="star <= rating ? 'text-purple-500' : 'text-gray-300'"
+            :style="{
+              fontSize: star <= rating ? '48px' : '44px'
+            }"
+            @tap="setRating(star)"
+          >{{ star <= rating ? '★' : '☆' }}</text>
         </view>
+        <view class="text-center text-sm text-gray-500">{{ ratingText }}</view>
       </view>
 
       <!-- 评价内容 -->
       <view class="mb-6">
-        <view class="text-sm font-medium text-gray-700 mb-3">评价内容（至少5个字）</view>
+        <view class="text-sm font-medium text-gray-700 mb-3">评价内容</view>
         <textarea
           v-model="content"
-          class="w-full h-32 p-4 border-2 border-purple-100 rounded-xl resize-none focus:outline-none focus:border-purple-400 transition-colors"
-          placeholder="分享你的用餐体验吧~（至少5个字）"
+          class="w-full h-32 p-4 border border-gray-200 rounded-lg resize-none focus:outline-none focus:border-purple-400 transition-colors"
+          placeholder="分享你的用餐体验吧~"
           maxlength="500"
         ></textarea>
         <view class="text-xs text-gray-400 text-right mt-2">
@@ -44,7 +46,7 @@
 
       <!-- 提交按钮 -->
       <button 
-        class="w-full py-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-semibold rounded-xl shadow-lg disabled:from-gray-300 disabled:to-gray-300 disabled:cursor-not-allowed transition-all hover:from-purple-600 hover:to-purple-700"
+        class="w-full py-4 bg-gradient-to-r from-purple-500 to-purple-600 text-black font-semibold rounded-xl shadow-lg disabled:from-gray-300 disabled:to-gray-300 disabled:cursor-not-allowed transition-all hover:from-purple-600 hover:to-purple-700"
         :disabled="!canSubmit || submitting"
         @click="handleSubmit"
       >
@@ -142,5 +144,26 @@ textarea {
 
 .z-50 {
   z-index: 50;
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+.star-icon {
+  display: inline-block;
+  line-height: 1;
+  user-select: none;
 }
 </style>

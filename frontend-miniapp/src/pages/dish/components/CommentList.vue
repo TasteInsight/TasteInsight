@@ -8,10 +8,6 @@
         class="border-l-2 border-purple-200 pl-4 py-2 mb-2"
       >
         <view class="flex items-start bg-purple-50 rounded-lg p-3">
-          <img 
-            :src="comment.userAvatar || '/default-avatar.png'" 
-            class="w-7 h-7 rounded-full mr-2 border border-purple-100"
-          />
           <view class="flex-1">
             <view class="flex items-center">
               <text class="text-xs font-semibold text-purple-700">{{ comment.userNickname }}</text>
@@ -39,7 +35,7 @@
         class="text-purple-600 text-sm font-medium hover:text-purple-700 bg-purple-50 px-4 py-2 rounded-full"
         @click="showCommentInput"
       >
-        💬 添加评论
+         添加评论
       </button>
     </view>
 
@@ -52,7 +48,7 @@
         @confirm="submitComment"
       />
       <button 
-        class="px-5 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition-colors"
+        class="px-5 py-2 bg-purple-600 text-ts-purple text-sm rounded-lg hover:bg-purple-700 transition-colors"
         @click="submitComment"
       >
         发送

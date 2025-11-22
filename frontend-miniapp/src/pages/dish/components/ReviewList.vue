@@ -10,31 +10,38 @@
       <view 
         v-for="review in reviews" 
         :key="review.id"
-        class="border-b border-purple-50 py-5 last:border-b-0"
+        class="border-b border-gray-100 py-4 last:border-b-0"
       >
         <!-- 用户信息 -->
-        <view class="flex items-center mb-3">
+        <view class="flex items-start">
+          <!-- 左侧头像 -->
           <img 
             :src="review.userAvatar || '/default-avatar.png'" 
-            class="w-12 h-12 rounded-full mr-3 border-2 border-purple-100"
+            class="w-10 h-10 rounded-full mr-3 flex-shrink-0"
           />
+          
+          <!-- 右侧内容 -->
           <view class="flex-1">
-            <view class="font-semibold text-gray-800">{{ review.userNickname }}</view>
-            <view class="text-xs text-gray-400 mt-1">{{ formatDate(review.createdAt) }}</view>
-          </view>
-          <view class="flex items-center bg-purple-50 px-3 py-1 rounded-full">
-            <text 
-              v-for="star in 5" 
-              :key="star"
-              class="iconify text-sm"
-              :class="star <= review.rating ? 'text-yellow-400' : 'text-gray-300'"
-              data-icon="mdi:star"
-            ></text>
+            <!-- 昵称 -->
+            <view class="font-medium text-gray-800 text-sm">{{ review.userNickname }}</view>
+            
+            <!-- 星级评分 -->
+            <view class="flex items-center mt-1">
+              <text 
+                v-for="star in 5" 
+                :key="star"
+                class="star-icon text-base"
+                :class="star <= review.rating ? 'text-yellow-400' : 'text-gray-300'"
+              >{{ star <= review.rating ? '★' : '☆' }}</text>
+            </view>
+            
+            <!-- 评论内容 -->
+            <view class="text-sm text-gray-700 leading-relaxed mt-2">{{ review.content }}</view>
+            
+            <!-- 时间 -->
+            <view class="text-xs text-gray-400 mt-2">{{ formatDate(review.createdAt) }}</view>
           </view>
         </view>
-
-        <!-- 评论内容 -->
-        <view class="text-sm text-gray-700 leading-relaxed mb-2">{{ review.content }}</view>
 
         <!-- 评论列表 -->
         <CommentList 
@@ -152,5 +159,11 @@ const handleCommentAdded = () => {
 <style scoped>
 .review-list {
   min-height: 200px;
+}
+
+.star-icon {
+  display: inline-block;
+  line-height: 1;
+  margin-right: 2px;
 }
 </style>
