@@ -44,25 +44,61 @@ export const useUserStore = defineStore('user', () => {
       const loginData = (await wechatLogin(code)).data;
       const { token: newToken, user } = loginData;
 
-      // 添加空值检查
-      if (!newToken?.accessToken || !user) {
-        throw new Error('登录失败：未获取到有效的 token 或用户信息');
+      // 最低要求：必须拿到 accessToken
+      if (!newToken?.accessToken) {
+        throw new Error('登录失败：未获取到有效的 token');
       }
 
-      // 确保用户信息完整
-      if (!user.id || !user.openId || !user.nickname || !user.avatar) {
-        throw new Error('用户信息不完整');
-      }
-
-      // 直接修改 ref 的 .value
-      token.value = newToken?.accessToken;
-      userInfo.value = user;
-
-      // 只存储 accessToken 字符串，保持与初始化时的类型一致
+      // 先保存 token（以便后续请求能够携带 token 拉取 profile）
+      token.value = newToken.accessToken;
       uni.setStorageSync('token', newToken.accessToken);
-      uni.setStorageSync('userInfo', JSON.stringify(user));
-      
-      return user;
+
+      // 情况1：后端同时返回用户信息，直接做容错处理
+      if (user) {
+        // 若后端返回的用户信息缺少昵称或头像，使用默认值
+        const safeUser: User = {
+          id: user.id || '',
+          openId: user.openId || '',
+          nickname: user.nickname || '微信用户',
+          avatar: user.avatar || '/static/images/default-avatar.png',
+          preferences: user.preferences || {},
+          allergens: user.allergens || [],
+          myFavoriteDishes: user.myFavoriteDishes || [],
+          myReviews: user.myReviews || [],
+          myComments: user.myComments || [],
+          createdAt: user.createdAt || new Date().toISOString(),
+          updatedAt: user.updatedAt || new Date().toISOString(),
+        } as User;
+
+        // 若缺少关键标识（id 或 openId），尝试通过 profile 接口补全
+        if (!safeUser.id || !safeUser.openId) {
+          try {
+            await fetchProfileAction();
+            if (userInfo.value) {
+              return userInfo.value;
+            }
+          } catch (err) {
+            throw new Error('用户信息不完整');
+          }
+        }
+
+        userInfo.value = safeUser;
+        uni.setStorageSync('userInfo', JSON.stringify(safeUser));
+        return safeUser;
+      }
+
+      // 情况2：后端未返回用户信息，仅返回 token，则使用 profile 接口获取
+      try {
+        await fetchProfileAction();
+        if (userInfo.value) {
+          return userInfo.value;
+        }
+        throw new Error('登录失败：未能获取到用户信息');
+      } catch (err) {
+        // 清理已存 token
+        logoutAction();
+        throw err;
+      }
     } catch (error) {
       logoutAction(); // 直接调用函数
       throw error; 

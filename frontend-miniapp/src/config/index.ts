@@ -17,7 +17,7 @@ if (process.env.NODE_ENV === 'mock') {
 }
 else if (process.env.NODE_ENV === 'development') {
   // 开发环境
-  config = mock;
+  config = development;
 } else {
   // 生产环境
   config = production;
