@@ -46,7 +46,7 @@ const props = defineProps<Props>();
 
 const handleClick = () => {
   uni.navigateTo({
-    url: `/pages/canteen/dish-detail?id=${props.dish.id}`
+    url: `/pages/dish/detail?id=${props.dish.id}`
   });
 };
 </script>

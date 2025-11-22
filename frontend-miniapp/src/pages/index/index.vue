@@ -1,13 +1,13 @@
 <template>
-  <div class="min-h-screen bg-white rounded-lg overflow-hidden flex flex-col">
+  <view class="min-h-screen bg-white rounded-lg overflow-hidden flex flex-col">
     <!-- 主内容区 -->
-    <div class="flex-1 overflow-y-auto px-4 hide-scrollbar">
+    <view class="flex-1 overflow-y-auto px-4 hide-scrollbar">
       <SearchBar />
 
       <!-- 食堂栏目 -->
-      <div v-if="canteenStore.loading" class="text-center py-4 text-gray-500">正在加载食堂...</div>
-      <div v-else-if="canteenStore.error" class="text-center py-4 text-red-500">{{ canteenStore.error }}</div>
-      <div v-else class="flex overflow-x-auto pb-4 hide-scrollbar">
+      <view v-if="canteenStore.loading" class="text-center py-4 text-gray-500">正在加载食堂...</view>
+      <view v-else-if="canteenStore.error" class="text-center py-4 text-red-500">{{ canteenStore.error }}</view>
+      <view v-else class="flex overflow-x-auto pb-4 hide-scrollbar">
         <!-- 修正: 直接访问 canteenStore.canteenList -->
         <CanteenItem
           v-for="canteen in canteenStore.canteenList"
@@ -15,32 +15,32 @@
           :canteen="canteen"
           @click="navigateTo(`/pages/canteen/detail?id=${canteen.id}`)"
         />
-      </div>
+      </view>
 
       <FilterBar />
 
       <!-- 菜品列表 -->
-      <div class="text-lg font-semibold text-gray-800 my-4">今日推荐</div>
-      <div v-if="dishesStore.loading" class="text-center py-4 text-gray-500">正在加载推荐菜品...</div>
-      <div v-else-if="dishesStore.error" class="text-center py-4 text-red-500">{{ dishesStore.error }}</div>
-      <div v-else-if="topThreeDishes.length > 0">
+      <view class="text-lg font-semibold text-gray-800 my-4">今日推荐</view>
+      <view v-if="dishesStore.loading" class="text-center py-4 text-gray-500">正在加载推荐菜品...</view>
+      <view v-else-if="dishesStore.error" class="text-center py-4 text-red-500">{{ dishesStore.error }}</view>
+      <view v-else-if="topThreeDishes.length > 0">
         <RecommendItem
           v-for="dish in topThreeDishes"
           :key="dish.id"
           :dish="dish"
           @click="navigateTo(`/pages/canteen/dish-detail?id=${dish.id}`)"
         />
-      </div>
-      <div v-else class="text-center py-10 text-gray-500">
+      </view>
+      <view v-else class="text-center py-10 text-gray-500">
         今天好像没有推荐菜品哦
-      </div>
-    </div>
+      </view>
+    </view>
 
     <!-- 底部导航栏 -->
-    <div class="h-20 bg-white flex border-t border-gray-200 flex-shrink-0">
+    <view class="h-20 bg-white flex border-t border-gray-200 flex-shrink-0">
       <!-- ... (这部分保持不变) ... -->
-    </div>
-  </div>
+    </view>
+  </view>
 </template>
 
 <script setup lang="ts">
