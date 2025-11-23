@@ -1,7 +1,6 @@
 <template>
   <view class="min-h-screen flex flex-col bg-gray-100">
-    <!-- 顶部导航栏，假设使用了 CustomNavbar 组件 -->
-    <!-- <CustomNavbar :title="newsDetail.title || '新闻详情'" :show-back="true" /> -->
+    
     
     <scroll-view scroll-y class="flex-1 bg-white p-4">
       <view v-if="loading" class="text-center py-12.5 text-gray-500">
@@ -35,7 +34,7 @@ import { ref } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { getNewsById } from '@/api/modules/news';
 // import CustomNavbar from '@/components/common/CustomNavbar.vue'; 
-import dayjs from 'dayjs'; // 假设 dayjs 可用
+import dayjs from 'dayjs'; 
 
 const newsDetail = ref({});
 const loading = ref(false);
@@ -70,6 +69,3 @@ const formatTime = (time) => {
 };
 </script>
 
-<style scoped>
-/* 移除原有SCSS样式，使用Tailwind CSS */
-</style>

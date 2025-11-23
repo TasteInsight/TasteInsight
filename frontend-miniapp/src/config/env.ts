@@ -4,7 +4,7 @@ interface EnvConfig {
 
 export const development: EnvConfig = {
   // 开发环境
-  baseUrl: 'http://127.0.0.1:8080/api/v1',
+  baseUrl: 'http://localhost:3000',
 };
 
 export const production: EnvConfig = {

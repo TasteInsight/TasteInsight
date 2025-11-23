@@ -13,4 +13,4 @@ export { mockGetMealPlans } from './services/meal-plan';
 
 
 // Mock 配置
-export const USE_MOCK = true; // 全局 Mock 开关
+export const USE_MOCK = false; // 全局 Mock 开关

@@ -36,9 +36,14 @@ function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>> {
     }
 
     // --- 阶段二: 发起 uniapp 网络请求 ---
+    // 打印请求信息以便调试（可在开发时查看实际请求 URL）
+    const fullUrl = config.baseUrl + options.url;
+    // eslint-disable-next-line no-console
+    console.log('[request] ->', options.method || 'GET', fullUrl, options.data || {});
+
     uni.request({
       // 1. 基础配置
-      url: config.baseUrl + options.url, // 自动拼接完整的请求地址
+      url: fullUrl, // 自动拼接完整的请求地址
       method: options.method || 'GET',
       data: options.data || {},
       header: header,
@@ -52,6 +57,10 @@ function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>> {
         const statusCode = res.statusCode;
         // 类型断言：告诉 TypeScript 响应数据的结构
         const responseData = res.data as ApiResponse<T>;
+
+        // 调试输出响应（开发时可用）
+        // eslint-disable-next-line no-console
+        console.log('[response] <-', statusCode, responseData, fullUrl);
 
         // 2.1 HTTP 状态码判断
         if (statusCode >= 200 && statusCode < 300) {
