@@ -12,6 +12,8 @@ export function useRecommendDishes() {
     
     try {
       const requestParams: GetDishesRequest = {
+        filter: {},
+        search: { keyword: '' },
         sort: {
           field: 'averageRating',
           order: 'desc',
@@ -20,8 +22,6 @@ export function useRecommendDishes() {
           page: 1,
           pageSize: 10,
         },
-        filter: {}, 
-        search: { keyword: '' },
       };
       
       const paginatedData = await getDishes(requestParams);

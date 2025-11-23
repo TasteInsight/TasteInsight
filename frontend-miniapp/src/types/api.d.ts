@@ -322,7 +322,7 @@ export interface WindowListData {
  * 菜品列表请求
  */
 export interface GetDishesRequest {
- filter?: {
+  filter: {
     // --- 基础筛选 ---
     includeOffline?: boolean;
     canteenId?: string[];
@@ -340,22 +340,35 @@ export interface GetDishesRequest {
     
     mealTime?: string[]; 
 
-    oiliness?: number;    // 油腻程度
-    saltiness?: number;   // 咸度
-    spicyLevel?: number;  // 辣度
-    sweetness?: number;   // 甜度
+    // 口味范围筛选（必须是范围对象，不能是单个数字）
+    oiliness?: {
+      min: number;
+      max: number;
+    };
+    saltiness?: {
+      min: number;
+      max: number;
+    };
+    spicyLevel?: {
+      min: number;
+      max: number;
+    };
+    sweetness?: {
+      min: number;
+      max: number;
+    };
 
     meatPreference?: string[];      // 肉类偏好
     avoidIngredients?: string[];    // 忌口
     favoriteIngredients?: string[]; // 喜好食材
   };
-  search?: {
+  search: {
     keyword: string;
     fields?: string[];
   };
-  sort?: {
-    field: string;
-    order: 'asc' | 'desc';
+  sort: {
+    field?: string;
+    order?: 'asc' | 'desc';
   };
   pagination: {
     page: number;
