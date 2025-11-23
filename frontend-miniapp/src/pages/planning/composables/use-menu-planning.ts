@@ -46,8 +46,9 @@ export function useMenuPlanning() {
     try {
       const requestParams: GetDishesRequest = {
         filter: { canteenId: Array.from(dishIds) }, // 假设 API 支持按 ID 列表过滤
+        search: { keyword: '' },
+        sort: {},
         pagination: { page: 1, pageSize: dishIds.size },
-        search: { keyword: '' }
       };
       const response = await getDishes(requestParams);
       const newDishMap: Record<string, Dish> = {};
