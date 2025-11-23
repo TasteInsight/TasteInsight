@@ -28,7 +28,7 @@
           v-for="dish in topThreeDishes"
           :key="dish.id"
           :dish="dish"
-          @click="navigateTo(`/pages/canteen/dish-detail?id=${dish.id}`)"
+          @click="navigateTo(`/pages/dish/index?id=${dish.id}`)"
         />
       </view>
       <view v-else class="text-center py-10 text-gray-500">
