@@ -328,7 +328,7 @@ export class AdminDishesService {
   /**
    * 管理端修改菜品状态
    */
-  async updateDishStatus(id: string, status: string, adminInfo: any) {
+  async updateDishStatus(id: string, status: DishStatus, adminInfo: any) {
     const dish = await this.prisma.dish.findUnique({
       where: { id },
     });
