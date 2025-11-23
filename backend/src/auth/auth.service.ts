@@ -7,6 +7,14 @@ import { firstValueFrom } from 'rxjs';
 import * as bcrypt from 'bcrypt';
 import { Admin, User } from '@prisma/client';
 
+interface WechatAuthResponse {
+  openid?: string;
+  session_key?: string;
+  unionid?: string;
+  errcode?: number;
+  errmsg?: string;
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -63,8 +71,8 @@ export class AuthService {
     } else {
       // 生产环境：调用微信接口获取 openid
       const wechatData = await this.getOpenIdFromWechat(code);
-      if (wechatData.errcode) {
-        throw new UnauthorizedException(`WeChat Login Failed: ${wechatData.errmsg}`);
+      if (wechatData.errcode || !wechatData.openid) {
+        throw new UnauthorizedException(`WeChat Login Failed: ${wechatData.errmsg || 'Unknown error, openid missing'}`);
       }
       openid = wechatData.openid;
     }
@@ -99,7 +107,7 @@ export class AuthService {
     };
   }
 
-  private async getOpenIdFromWechat(code: string): Promise<any> {
+  private async getOpenIdFromWechat(code: string): Promise<WechatAuthResponse> {
     const appId = this.configService.get<string>('WECHAT_APPID');
     const secret = this.configService.get<string>('WECHAT_SECRET');
 
@@ -107,10 +115,10 @@ export class AuthService {
       throw new InternalServerErrorException('WeChat configuration is missing (WECHAT_APPID or WECHAT_SECRET).');
     }
 
-    const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${secret}&js_code=${code}&grant_type=authorization_code`;
+    const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${encodeURIComponent(appId)}&secret=${encodeURIComponent(secret)}&js_code=${encodeURIComponent(code)}&grant_type=authorization_code`;
 
     try {
-      const { data } = await firstValueFrom(this.httpService.get(url));
+      const { data } = await firstValueFrom(this.httpService.get<WechatAuthResponse>(url));
       return data;
     } catch (error) {
       throw new InternalServerErrorException('Failed to connect to WeChat API');
