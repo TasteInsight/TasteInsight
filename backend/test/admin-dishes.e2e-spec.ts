@@ -591,4 +591,46 @@ describe('AdminDishesController (e2e)', () => {
       await prisma.dish.delete({ where: { id: parentDish.id } });
     });
   });
+
+  describe('/admin/dishes/:id/status (PATCH)', () => {
+    it('should update dish status for super admin', async () => {
+      const response = await request(app.getHttpServer())
+        .patch(`/admin/dishes/${testDishId}/status`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({ status: 'offline' })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.message).toBe('状态修改成功');
+
+      // Verify in DB
+      const updatedDish = await prisma.dish.findUnique({
+        where: { id: testDishId },
+      });
+      expect(updatedDish?.status).toBe('offline');
+      
+      // Restore status
+      await prisma.dish.update({
+        where: { id: testDishId },
+        data: { status: 'online' },
+      });
+    });
+
+    it('should fail with invalid status', async () => {
+      await request(app.getHttpServer())
+        .patch(`/admin/dishes/${testDishId}/status`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({ status: 'invalid_status' })
+        .expect(400);
+    });
+
+    it('should fail for normal admin without edit permission', async () => {
+      // normalAdmin has only view permission
+      await request(app.getHttpServer())
+        .patch(`/admin/dishes/${testDishId}/status`)
+        .set('Authorization', `Bearer ${normalAdminToken}`)
+        .send({ status: 'offline' })
+        .expect(403);
+    });
+  });
 });

@@ -264,3 +264,9 @@ export class AdminUpdateDishDto {
   @IsEnum(DishStatus)
   status?: DishStatus;
 }
+
+export class AdminUpdateDishStatusDto {
+  @IsNotEmpty()
+  @IsEnum(DishStatus)
+  status: DishStatus;
+}
