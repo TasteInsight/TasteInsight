@@ -3,6 +3,7 @@ import {
   Get, 
   Post, 
   Put, 
+  Patch,
   Delete, 
   Body, 
   Param, 
@@ -13,7 +14,7 @@ import {
   HttpStatus
 } from '@nestjs/common';
 import { AdminDishesService } from './admin-dishes.service';
-import { AdminGetDishesDto, AdminCreateDishDto, AdminUpdateDishDto } from './dto/admin-dish.dto';
+import { AdminGetDishesDto, AdminCreateDishDto, AdminUpdateDishDto, AdminUpdateDishStatusDto } from './dto/admin-dish.dto';
 import { AdminAuthGuard } from '../auth/guards/admin-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
@@ -53,6 +54,17 @@ export class AdminDishesController {
     @Request() req
   ) {
     return this.adminDishesService.updateAdminDish(id, updateDto, req.admin);
+  }
+
+  @Patch(':id/status')
+  @RequirePermissions('dish:edit')
+  @HttpCode(HttpStatus.OK)
+  async updateDishStatus(
+    @Param('id') id: string,
+    @Body() updateStatusDto: AdminUpdateDishStatusDto,
+    @Request() req
+  ) {
+    return this.adminDishesService.updateDishStatus(id, updateStatusDto.status, req.admin);
   }
 
   @Delete(':id')

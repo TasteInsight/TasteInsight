@@ -324,4 +324,33 @@ export class AdminDishesService {
       data: null,
     };
   }
+
+  /**
+   * 管理端修改菜品状态
+   */
+  async updateDishStatus(id: string, status: string, adminInfo: any) {
+    const dish = await this.prisma.dish.findUnique({
+      where: { id },
+    });
+
+    if (!dish) {
+      throw new NotFoundException('菜品不存在');
+    }
+
+    // 检查权限：如果管理员有食堂限制，必须匹配
+    if (adminInfo.canteenId && dish.canteenId !== adminInfo.canteenId) {
+      throw new ForbiddenException('权限不足');
+    }
+
+    await this.prisma.dish.update({
+      where: { id },
+      data: { status },
+    });
+
+    return {
+      code: 200,
+      message: '状态修改成功',
+      data: null,
+    };
+  }
 }
