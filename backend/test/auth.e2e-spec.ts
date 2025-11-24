@@ -175,6 +175,9 @@ describe('AuthController (e2e)', () => {
       const admin = await prisma.admin.findUnique({
         where: { username: 'testadmin' },
       });
+      if (!admin) {
+        throw new Error('Seeded admin user not found');
+      }
       const expiredToken = await jwtService.signAsync(
         { sub: admin.id, type: 'admin' },
         // 故意签发一个立即过期的 token
