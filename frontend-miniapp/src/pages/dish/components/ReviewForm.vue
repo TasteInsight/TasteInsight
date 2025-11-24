@@ -20,7 +20,7 @@
             v-for="star in 5"
             :key="star"
             class="star-icon cursor-pointer transition-all"
-            :class="star <= rating ? 'text-purple-500' : 'text-gray-300'"
+            :class="star <= rating ? 'text-yellow-500' : 'text-gray-300'"
             :style="{
               fontSize: star <= rating ? '42px' : '38px'
             }"

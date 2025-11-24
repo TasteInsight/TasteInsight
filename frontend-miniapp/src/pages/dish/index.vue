@@ -43,89 +43,93 @@
 
       <!-- 基本信息 -->
       <view class="bg-white p-4 mb-2 rounded-2xl shadow-sm mx-4 mt-2">
-        <view class="flex justify-between items-start">
+        <view class="flex justify-between items-start mb-2">
           <view class="flex-1">
             <h1 class="text-xl font-bold text-gray-800">{{ dish.name }}</h1>
-            <view class="text-sm text-purple-600 mt-1 flex items-center">
+            <view class="text-sm text-red-600 mt-1 flex items-center">
               <text class="iconify" data-icon="mdi:store"></text>
               <text class="ml-1">{{ dish.canteenName }} · {{ dish.windowName }}</text>
             </view>
           </view>
-          <view class="text-right ml-4">
-            <view class="text-2xl font-bold text-purple-600">¥{{ dish.price }}</view>
-          </view>
-        </view>
-
-        <!-- 评分信息 -->
-        <view class="flex items-center mt-3 py-3 border-t border-purple-100">
-          <view class="flex items-center bg-purple-50 px-4 py-2 rounded-full">
-            <text class="iconify text-yellow-500 text-xl" data-icon="mdi:star"></text>
-            <span class="text-lg font-bold text-gray-800 ml-2">{{ dish.averageRating.toFixed(1) }}</span>
-          </view>
-          <view class="ml-4 text-sm text-gray-600">
-            {{ dish.reviewCount }} 条评价
+          <view class="text-right mt-2">
+            <view class="text-lg font-bold text-red-600">¥{{ dish.price }}</view>
           </view>
         </view>
 
         <!-- 标签 -->
-        <view v-if="dish.tags?.length" class="flex flex-wrap gap-2 mt-2">
-          <span 
-            v-for="tag in dish.tags" 
+        <view v-if="dish.tags?.length" class="flex flex-wrap gap-2">
+          <span
+            v-for="tag in dish.tags"
             :key="tag"
-            class="px-3 py-1 bg-purple-100 text-purple-700 text-sm rounded-full font-medium"
+            class="px-3 py-1 bg-purple-100 text-purple-700 text-xs rounded-md font-medium"
           >
-            {{ tag }}
+            #{{ tag }}
           </span>
+        </view>
+
+        <!-- 评分信息 -->
+        <view class="mt-3 py-3 border-t border-purple-100">
+          <view class="flex justify-between items-start">
+            <!-- 左侧评分和评价数量 -->
+            <view class="flex flex-col mt-6">
+              <view class="text-xl font-bold text-purple-600">
+                {{ dish.averageRating.toFixed(1) }}分
+              </view>
+              <view class="text-xs text-gray-500 mt-1">
+                {{ dish.reviewCount }} 条评价
+              </view>
+            </view>
+
+            <!-- 右侧评分比例条状图 -->
+            <RatingBars />
+          </view>
         </view>
       </view>
 
       <!-- 详细信息 -->
-      <view class="bg-white p-4 mb-2 rounded-2xl shadow-sm mx-4">
+      <view class="bg-white p-4 mb-2 rounded-xl shadow-sm mx-4">
         <view class="flex justify-between items-center mb-3 cursor-pointer" @click="toggleDetailExpansion">
-          <h2 class="text-lg font-semibold text-gray-800">详细信息</h2>
-          <text class="iconify text-purple-600 text-xl transition-transform duration-300" :class="isDetailExpanded ? 'rotate-180' : ''" data-icon="mdi:chevron-down"></text>
+          <h2 class="text-lg font-semibold text-gray-800">详细信息 ...</h2>
+          <text class="iconify text-red-600 text-xl transition-transform duration-300" :class="isDetailExpanded ? 'rotate-180' : ''" data-icon="mdi:chevron-down"></text>
         </view>
 
         <view v-show="isDetailExpanded" class="transition-all duration-300 ease-in-out">
-          <view v-if="dish.description" class="mb-2">
-            <view class="text-sm text-gray-600 font-medium mb-1">菜品介绍</view>
-            <view class="text-sm text-gray-700">{{ dish.description }}</view>
+          <!-- 菜品介绍 -->
+          <view v-if="dish.description" class="detail-section">
+            <text class="detail-label">菜品介绍：</text>
+            <text class="detail-text">{{ dish.description }}</text>
           </view>
 
-          <view v-if="dish.ingredients?.length" class="mb-2">
-            <view class="text-sm text-gray-600 font-medium mb-1">主要食材</view>
-            <view class="text-sm text-gray-700">{{ dish.ingredients.join('、') }}</view>
+          <!-- 主要食材 -->
+          <view v-if="dish.ingredients?.length" class="detail-section">
+            <text class="detail-label">主要食材：</text>
+            <text class="detail-text">{{ dish.ingredients.join('、') }}</text>
           </view>
 
-          <view v-if="dish.allergens?.length" class="mb-2">
-            <view class="text-sm text-gray-600 font-medium mb-1">过敏原信息</view>
-            <view class="text-sm text-red-500">⚠️ {{ dish.allergens.join('、') }}</view>
+          <!-- 过敏原信息 -->
+          <view v-if="dish.allergens?.length" class="detail-section">
+            <text class="detail-label">过敏原信息：</text>
+            <text class="detail-text text-red-600">{{ dish.allergens.join('、') }}</text>
           </view>
 
-          <view class="mb-2">
-            <view class="text-sm text-gray-600 font-medium mb-1">供应时间</view>
-            <view class="text-sm text-gray-700">
-              {{ formatMealTime(dish.availableMealTime) }}
-            </view>
+          <!-- 供应时间 -->
+          <view class="detail-section">
+            <text class="detail-label">供应时间：</text>
+            <text class="detail-text">{{ formatMealTime(dish.availableMealTime) }}</text>
           </view>
         </view>
       </view>
 
       <!-- 评价列表 -->
-      <view class="bg-white p-4 mb-2 rounded-2xl shadow-sm mx-4">
-        <view class="flex justify-between items-center mb-4">
+      <view class="bg-white p-4 mb-2 rounded-xl shadow-sm mx-4">
+        <view class="mb-4">
           <h2 class="text-lg font-semibold text-gray-800">用户评价</h2>
-          <button 
-            class="px-6 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-ts-purple text-sm rounded-full shadow-lg hover:from-purple-600 hover:to-purple-700 transition-all"
-            @click="showReviewForm"
-          >
-            ✍️ 写评价
-          </button>
         </view>
 
-        <ReviewList 
-          :dish-id="dishId" 
+        <ReviewList
+          :dish-id="dishId"
           :key="reviewListKey"
+          @view-all-comments="showAllCommentsPanel"
         />
       </view>
     </view>
@@ -137,6 +141,15 @@
       :dish-name="dish?.name || ''"
       @close="hideReviewForm"
       @success="handleReviewSuccess"
+    />
+
+    <!-- 全部评论面板 -->
+    <AllCommentsPanel
+      v-if="isAllCommentsPanelVisible"
+      :review-id="currentCommentsReviewId"
+      :is-visible="isAllCommentsPanelVisible"
+      @close="hideAllCommentsPanel"
+      @comment-added="handleCommentAdded"
     />
 
     <!-- 底部评价输入框 -->
@@ -154,12 +167,16 @@ import { useDishDetail } from '@/pages/dish/composables/use-dish-detail';
 import ReviewList from './components/ReviewList.vue';
 import ReviewForm from './components/ReviewForm.vue';
 import BottomReviewInput from './components/BottomReviewInput.vue';
+import AllCommentsPanel from './components/AllCommentsPanel.vue';
+import RatingBars from './components/RatingBars.vue';
 
 const dishId = ref('');
 const { dish, loading, error, fetchDishDetail } = useDishDetail();
 const isReviewFormVisible = ref(false);
 const reviewListKey = ref(0);
 const isDetailExpanded = ref(false);
+const isAllCommentsPanelVisible = ref(false);
+const currentCommentsReviewId = ref('');
 
 onLoad((options: any) => {
   if (options.id) {
@@ -215,6 +232,21 @@ const toggleDetailExpansion = () => {
 const showQuickReviewForm = () => {
   showReviewForm();
 };
+
+const showAllCommentsPanel = (reviewId: string) => {
+  currentCommentsReviewId.value = reviewId;
+  isAllCommentsPanelVisible.value = true;
+};
+
+const hideAllCommentsPanel = () => {
+  isAllCommentsPanelVisible.value = false;
+  currentCommentsReviewId.value = '';
+};
+
+const handleCommentAdded = () => {
+  // 刷新评论列表
+  reviewListKey.value++;
+};
 </script>
 
 <style scoped>
@@ -244,6 +276,24 @@ swiper-item {
 
 .transition-all {
   transition: all 0.3s ease-in-out;
+}
+
+/* 详细信息展开内容样式 */
+.detail-section {
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.detail-label {
+  font-size: 14px;
+  font-weight: normal;
+  color: #7c3aed;
+  margin-right: 4px;
+}
+
+.detail-text {
+  font-size: 14px;
+  color: #000000;
 }
 
 </style>
