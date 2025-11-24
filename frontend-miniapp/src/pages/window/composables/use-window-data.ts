@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue';
 import { getDishes } from '@/api/modules/dish';
-import { getWindowDetail } from '@/api/modules/canteen';
+import { useCanteenStore } from '@/store/modules/use-canteen-store';
 import type { Dish, GetDishesRequest, Window } from '@/types/api';
 
 const filters = [
@@ -12,7 +12,8 @@ const filters = [
 ];
 
 export function useWindowData() {
-  const windowInfo = ref<Window | null>(null);
+  const canteenStore = useCanteenStore();
+  const windowInfo = computed(() => canteenStore.currentWindow);
   const dishes = ref<Dish[]>([]);
   const loading = ref(false);
   const error = ref('');
@@ -20,10 +21,9 @@ export function useWindowData() {
 
   const fetchWindow = async (windowId: string) => {
     try {
-      const response = await getWindowDetail(windowId);
-      windowInfo.value = response.data || null;
+      await canteenStore.fetchWindowDetail(windowId);
     } catch (err) {
-      console.error('获取窗口详情失败:', err);
+      console.error('通过 store 获取窗口详情失败:', err);
       error.value = '获取窗口信息失败';
     }
   };
@@ -33,7 +33,7 @@ export function useWindowData() {
     error.value = '';
     
     try {
-      // 先获取窗口信息,以便通过窗口名称筛选菜品
+      // 先确保 store 中有窗口信息,以便通过窗口名称筛选菜品
       if (!windowInfo.value) {
         return;
       }

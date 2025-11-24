@@ -151,12 +151,32 @@ export const useCanteenStore = defineStore('canteen', () => {
     error.value = null;
     
     try {
+      console.log('[store] fetchWindowDetail ->', windowId, params);
       const response = await getWindowDetail(windowId, params);
-      
-      if (response.code === 200 && response.data) {
-        currentWindow.value = response.data;
+      console.log('[store] fetchWindowDetail response ->', response);
+
+      if (!(response && response.code === 200)) {
+        throw new Error(response?.message || '获取窗口详情失败');
+      }
+
+      const payload = response.data;
+      // 后端可能在这个接口返回分页列表（{ items: [...] }），也可能直接返回单个对象
+      if (payload && (payload as any).items && Array.isArray((payload as any).items)) {
+        const items = (payload as any).items as Window[];
+        const found = items.find(w => String(w.id) === String(windowId));
+        if (found) {
+          currentWindow.value = found;
+        } else if (items.length === 1) {
+          // 有时后端会把单个对象也放在 items 中
+          currentWindow.value = items[0];
+        } else {
+          throw new Error('未在返回的窗口列表中找到对应窗口');
+        }
+      } else if (payload && (payload as any).id) {
+        // 直接返回单个窗口对象
+        currentWindow.value = payload as Window;
       } else {
-        throw new Error(response.message || '获取窗口详情失败');
+        throw new Error('返回的数据格式不符合预期');
       }
     } catch (err) {
       error.value = err instanceof Error ? err.message : '未知错误';
