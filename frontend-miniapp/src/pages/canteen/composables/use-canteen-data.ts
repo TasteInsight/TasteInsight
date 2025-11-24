@@ -9,6 +9,7 @@ export function useCanteenData() {
   const canteenInfo = computed(() => canteenStore.currentCanteen);
   const loading = computed(() => canteenStore.loading);
   const error = computed(() => canteenStore.error);
+  const windows = computed(() => canteenStore.windowList);
 
   const dishes = ref<Dish[]>([]);
 
@@ -23,6 +24,10 @@ export function useCanteenData() {
 
   const fetchCanteen = async (canteenId: string) => {
     await canteenStore.fetchCanteenDetail(canteenId).catch(() => {});
+  };
+
+  const fetchWindows = async (canteenId: string) => {
+    await canteenStore.fetchWindowList(canteenId).catch(() => {});
   };
 
   const fetchDishes = async (canteenId: string) => {
@@ -45,6 +50,7 @@ export function useCanteenData() {
 
   const init = async (canteenId: string) => {
     await fetchCanteen(canteenId);
+    await fetchWindows(canteenId);
     await fetchDishes(canteenId);
   };
 
@@ -57,6 +63,7 @@ export function useCanteenData() {
     canteenInfo,
     loading,
     error,
+    windows,
     // local
     dishes,
     filters,
@@ -65,6 +72,7 @@ export function useCanteenData() {
     init,
     fetchDishes,
     fetchCanteen,
+    fetchWindows,
     toggleFilter,
   };
 }
