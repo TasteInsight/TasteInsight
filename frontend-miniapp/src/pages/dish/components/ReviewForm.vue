@@ -1,28 +1,28 @@
 <template>
-  <view class="fixed inset-0 z-50 flex items-end justify-center" @tap="handleClose" style="background-color: rgba(0, 0, 0, 0.4);">
-    <view class="w-full bg-white rounded-t-3xl p-6 shadow-2xl animate-slide-up" style="max-height: 75vh; overflow-y: auto;" @tap.stop catchtouchmove="true">
+  <view class="review-form-overlay" @tap="handleClose">
+    <view class="review-form-container" @tap.stop catchtouchmove="true">
       <!-- 标题栏 -->
-      <view class="flex justify-between items-center mb-6">
+      <view class="flex justify-between items-center mb-4 pb-4 border-b border-gray-100">
         <h2 class="text-lg font-bold text-gray-800">写评价</h2>
-        <button 
-          class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+        <button
+          class="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
           @tap="handleClose"
         >
-          <text>✕</text>
+          <text class="text-xl">✕</text>
         </button>
       </view>
 
       <!-- 评分选择 -->
-      <view class="mb-6">
+      <view class="mb-5">
         <view class="text-sm font-medium text-gray-700 mb-3">选择评分</view>
-        <view class="flex items-center justify-center gap-3 py-4">
-          <text 
-            v-for="star in 5" 
+        <view class="flex items-center justify-center gap-3 py-3">
+          <text
+            v-for="star in 5"
             :key="star"
             class="star-icon cursor-pointer transition-all"
             :class="star <= rating ? 'text-purple-500' : 'text-gray-300'"
             :style="{
-              fontSize: star <= rating ? '48px' : '44px'
+              fontSize: star <= rating ? '42px' : '38px'
             }"
             @tap="setRating(star)"
           >{{ star <= rating ? '★' : '☆' }}</text>
@@ -31,11 +31,11 @@
       </view>
 
       <!-- 评价内容 -->
-      <view class="mb-6">
+      <view class="mb-5">
         <view class="text-sm font-medium text-gray-700 mb-3">评价内容</view>
         <textarea
           v-model="content"
-          class="w-full h-32 p-4 border border-gray-200 rounded-lg resize-none focus:outline-none focus:border-purple-400 transition-colors"
+          class="w-full h-28 p-3 border border-gray-200 rounded-lg resize-none focus:outline-none focus:border-purple-400 transition-colors"
           placeholder="分享你的用餐体验吧~"
           maxlength="500"
         ></textarea>
@@ -45,12 +45,12 @@
       </view>
 
       <!-- 提交按钮 -->
-      <button 
-        class="w-full py-4 bg-gradient-to-r from-purple-500 to-purple-600 text-black font-semibold rounded-xl shadow-lg disabled:from-gray-300 disabled:to-gray-300 disabled:cursor-not-allowed transition-all hover:from-purple-600 hover:to-purple-700"
+      <button
+        class="w-full py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-semibold rounded-lg shadow-lg disabled:from-gray-300 disabled:to-gray-300 disabled:cursor-not-allowed transition-all hover:from-purple-600 hover:to-purple-700 active:scale-95"
         :disabled="!canSubmit || submitting"
         @click="handleSubmit"
       >
-        {{ submitting ? '提交中...' : '✨ 提交评价' }}
+        {{ submitting ? '提交中...' : '提交评价' }}
       </button>
     </view>
   </view>
@@ -131,22 +131,37 @@ textarea {
   font-family: inherit;
 }
 
-.fixed {
+/* 背景遮罩 */
+.review-form-overlay {
   position: fixed;
-}
-
-.inset-0 {
   top: 0;
+  left: 0;
   right: 0;
   bottom: 0;
-  left: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
 }
 
-.z-50 {
-  z-index: 50;
+/* 弹窗容器 */
+.review-form-container {
+  width: 100%;
+  max-height: 80vh;
+  background-color: #ffffff;
+  border-radius: 12px 12px 0 0;
+  padding: 20px 16px;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
+  transform: translateY(100%);
+  opacity: 0;
+  animation: slide-up-from-bottom 0.3s ease-out forwards;
+  overflow-y: auto;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
 }
 
-@keyframes slide-up {
+/* 从底部滑入动画 */
+@keyframes slide-up-from-bottom {
   from {
     transform: translateY(100%);
     opacity: 0;
@@ -155,10 +170,6 @@ textarea {
     transform: translateY(0);
     opacity: 1;
   }
-}
-
-.animate-slide-up {
-  animation: slide-up 0.3s ease-out;
 }
 
 .star-icon {
