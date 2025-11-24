@@ -1,6 +1,6 @@
 <template>
-  <view v-if="visible" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-5" @tap="handleClose">
-    <view class="bg-white rounded-2xl w-full max-w-2xl max-h-screen-80 flex flex-col" @tap.stop>
+  <view v-if="visible" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-5" @tap="handleClose">
+    <view class="bg-white rounded-2xl w-full box-border max-w-[90vw] max-h-[80vh] flex flex-col" @tap.stop>
       <view class="p-5 border-b border-gray-100 flex justify-between items-center">
         <text class="text-xl font-bold">{{ isEdit ? '编辑规划' : '新建规划' }}</text>
         <view @tap="handleClose" class="w-6 h-6 flex items-center justify-center">
@@ -77,8 +77,8 @@
     </view>
 
     <!-- 菜品选择器 -->
-    <view v-if="showDishSelector" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-5" @tap="showDishSelector = false">
-      <view class="bg-white rounded-2xl w-full max-w-md p-5" @tap.stop>
+    <view v-if="showDishSelector" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-5" @tap="showDishSelector = false">
+      <view class="bg-white rounded-2xl w-full box-border max-w-md p-5" @tap.stop>
         <view class="mb-4">
           <text class="text-lg font-bold">选择菜品</text>
         </view>

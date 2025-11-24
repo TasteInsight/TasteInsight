@@ -32,12 +32,18 @@ export function useMenuPlanning() {
 
   // 查看规划详情
   const viewPlanDetail = (plan: EnrichedMealPlan) => {
+    // ensure only one dialog is open
+    showCreateDialog.value = false;
+    showEditDialog.value = false;
     planStore.setSelectedPlan(plan);
     showDetailDialog.value = true;
   };
 
   // 编辑规划
   const editPlan = (plan: EnrichedMealPlan) => {
+    // ensure only one dialog is open
+    showCreateDialog.value = false;
+    showDetailDialog.value = false;
     planStore.setSelectedPlan(plan);
     showEditDialog.value = true;
   };
@@ -69,6 +75,9 @@ export function useMenuPlanning() {
 
   // 创建新规划
   const createNewPlan = () => {
+    // ensure only one dialog is open
+    showDetailDialog.value = false;
+    showEditDialog.value = false;
     planStore.setSelectedPlan(null);
     showCreateDialog.value = true;
   };
@@ -114,6 +123,11 @@ export function useMenuPlanning() {
 
   // 切换标签页
   const switchTab = (tab: 'current' | 'history') => {
+    // close any open dialogs when switching tabs
+    showDetailDialog.value = false;
+    showEditDialog.value = false;
+    showCreateDialog.value = false;
+    planStore.setSelectedPlan(null);
     activeTab.value = tab;
   };
 
