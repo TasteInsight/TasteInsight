@@ -7,10 +7,7 @@ import { PrismaService } from '@/prisma.service';
 import { PermissionsGuard } from '@/auth/guards/permissions.guard';
 
 @Module({
-  imports: [
-    JwtModule.register({}),
-    ConfigModule,
-  ],
+  imports: [JwtModule.register({}), ConfigModule],
   controllers: [AdminDishesController],
   providers: [AdminDishesService, PrismaService, PermissionsGuard],
 })

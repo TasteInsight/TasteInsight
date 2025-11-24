@@ -27,7 +27,10 @@ export class AdminReviewsController {
     @Query('page') page: number = 1,
     @Query('pageSize') pageSize: number = 20,
   ) {
-    return this.adminReviewsService.getPendingReviews(Number(page), Number(pageSize));
+    return this.adminReviewsService.getPendingReviews(
+      Number(page),
+      Number(pageSize),
+    );
   }
 
   @Post(':id/approve')

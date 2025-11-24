@@ -41,9 +41,11 @@ describe('AdminReviewsController (e2e)', () => {
       .post('/auth/wechat/login')
       .send({ code: 'baseline_user_code_placeholder' });
     userToken = userLogin.body.data.token.accessToken;
-    
+
     // 获取用户ID
-    const user = await prisma.user.findFirst({ where: { openId: 'baseline_user_openid' } });
+    const user = await prisma.user.findFirst({
+      where: { openId: 'baseline_user_openid' },
+    });
     testUserId = user?.id || '';
 
     // 获取菜品ID
@@ -80,7 +82,9 @@ describe('AdminReviewsController (e2e)', () => {
 
       expect(response.body.code).toBe(200);
       expect(response.body.data.items).toBeInstanceOf(Array);
-      const found = response.body.data.items.find((r: any) => r.id === testReviewId);
+      const found = response.body.data.items.find(
+        (r: any) => r.id === testReviewId,
+      );
       expect(found).toBeDefined();
       expect(found.status).toBe('pending');
     });
@@ -124,7 +128,9 @@ describe('AdminReviewsController (e2e)', () => {
       expect(response.body.code).toBe(200);
       expect(response.body.message).toBe('审核通过');
 
-      const updatedReview = await prisma.review.findUnique({ where: { id: reviewToApproveId } });
+      const updatedReview = await prisma.review.findUnique({
+        where: { id: reviewToApproveId },
+      });
       expect(updatedReview?.status).toBe('approved');
     });
 
@@ -169,7 +175,9 @@ describe('AdminReviewsController (e2e)', () => {
       expect(response.body.code).toBe(200);
       expect(response.body.message).toBe('已拒绝');
 
-      const updatedReview = await prisma.review.findUnique({ where: { id: reviewToRejectId } });
+      const updatedReview = await prisma.review.findUnique({
+        where: { id: reviewToRejectId },
+      });
       expect(updatedReview?.status).toBe('rejected');
       expect(updatedReview?.rejectReason).toBe(reason);
     });

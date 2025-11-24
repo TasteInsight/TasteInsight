@@ -1,5 +1,11 @@
 import { Dish } from '@prisma/client';
-import { BaseResponseDto, ErrorDetail, ErrorResponseDto, PaginationMeta, SuccessResponseDto } from '@/common/dto/response.dto';
+import {
+  BaseResponseDto,
+  ErrorDetail,
+  ErrorResponseDto,
+  PaginationMeta,
+  SuccessResponseDto,
+} from '@/common/dto/response.dto';
 
 // 菜品详情响应
 export class DishResponseDto extends BaseResponseDto<Dish> {}

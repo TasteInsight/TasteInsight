@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '@/prisma.service';
 import { ConfigService } from '@nestjs/config';
@@ -25,23 +29,29 @@ export class AuthService {
   ) {}
 
   // --- 核心方法：生成 Access Token 和 Refresh Token ---
-  private async _generateTokens(payload: { sub: string, type: 'user' | 'admin' }) {
+  private async _generateTokens(payload: {
+    sub: string;
+    type: 'user' | 'admin';
+  }) {
     // 以 number 类型获取 expiresIn，并确保所有配置存在
     const accessTokenSecret = this.configService.get<string>('JWT_SECRET');
-    const refreshTokenSecret = this.configService.get<string>('JWT_REFRESH_SECRET');
+    const refreshTokenSecret =
+      this.configService.get<string>('JWT_REFRESH_SECRET');
 
     // 将时间从 .env (可能是 string) 解析为 number
     const accessTokenExpiresIn = parseInt(
       this.configService.get<string>('JWT_EXPIRATION_TIME', '3600'),
-      10
+      10,
     );
     const refreshTokenExpiresIn = parseInt(
       this.configService.get<string>('JWT_REFRESH_EXPIRATION_TIME', '604800'),
-      10
+      10,
     );
 
     if (!accessTokenSecret || !refreshTokenSecret) {
-      throw new InternalServerErrorException('JWT secret configuration is missing.');
+      throw new InternalServerErrorException(
+        'JWT secret configuration is missing.',
+      );
     }
 
     const [accessToken, refreshToken] = await Promise.all([
@@ -72,7 +82,9 @@ export class AuthService {
       // 生产环境：调用微信接口获取 openid
       const wechatData = await this.getOpenIdFromWechat(code);
       if (wechatData.errcode || !wechatData.openid) {
-        throw new UnauthorizedException(`WeChat Login Failed: ${wechatData.errmsg || 'Unknown error, openid missing'}`);
+        throw new UnauthorizedException(
+          `WeChat Login Failed: ${wechatData.errmsg || 'Unknown error, openid missing'}`,
+        );
       }
       openid = wechatData.openid;
     }
@@ -91,9 +103,9 @@ export class AuthService {
         },
       });
     }
-    
+
     const tokens = await this._generateTokens({ sub: user.id, type: 'user' });
-    
+
     return {
       code: 200,
       message: '登录成功',
@@ -112,13 +124,17 @@ export class AuthService {
     const secret = this.configService.get<string>('WECHAT_SECRET');
 
     if (!appId || !secret) {
-      throw new InternalServerErrorException('WeChat configuration is missing (WECHAT_APPID or WECHAT_SECRET).');
+      throw new InternalServerErrorException(
+        'WeChat configuration is missing (WECHAT_APPID or WECHAT_SECRET).',
+      );
     }
 
     const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${encodeURIComponent(appId)}&secret=${encodeURIComponent(secret)}&js_code=${encodeURIComponent(code)}&grant_type=authorization_code`;
 
     try {
-      const { data } = await firstValueFrom(this.httpService.get<WechatAuthResponse>(url));
+      const { data } = await firstValueFrom(
+        this.httpService.get<WechatAuthResponse>(url),
+      );
       return data;
     } catch (error) {
       throw new InternalServerErrorException('Failed to connect to WeChat API');
@@ -143,15 +159,15 @@ export class AuthService {
     if (!isPasswordMatching) {
       throw new UnauthorizedException('用户名或密码错误');
     }
-    
+
     const tokens = await this._generateTokens({ sub: admin.id, type: 'admin' });
-    
+
     // 从返回结果中移除密码和权限关联
     const { password, permissions: permissionsRelation, ...adminData } = admin;
-    
+
     // 提取权限字符串数组
-    const permissions = permissionsRelation.map(p => p.permission);
-    
+    const permissions = permissionsRelation.map((p) => p.permission);
+
     return {
       code: 200,
       message: '登录成功',
@@ -165,12 +181,12 @@ export class AuthService {
       },
     };
   }
-  
+
   // --- 功能3: 刷新Token ---
   async refreshToken(userId: string, userType: 'user' | 'admin') {
     // Guard已经验证了用户的身份，我们只需要重新生成token即可
     const tokens = await this._generateTokens({ sub: userId, type: userType });
-    
+
     // 获取用户信息
     let userData;
     if (userType === 'user') {
@@ -187,7 +203,7 @@ export class AuthService {
         userData = admin;
       }
     }
-    
+
     return {
       code: 200,
       message: '刷新成功',

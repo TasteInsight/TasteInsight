@@ -14,7 +14,7 @@ export class IsValidRangeConstraint implements ValidatorConstraintInterface {
   validate(value: any, args: ValidationArguments) {
     if (!value) return true; // 如果值为空（可选字段），跳过验证
     if (typeof value !== 'object') return false;
-    
+
     const { min, max } = value;
     if (typeof min !== 'number' || typeof max !== 'number') {
       return false;

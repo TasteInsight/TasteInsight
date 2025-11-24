@@ -13,7 +13,7 @@ export class ReviewItemData {
   rejectReason: string | null;
   createdAt: Date;
   updatedAt: Date;
-  
+
   dishName: string;
   dishImage: string | null;
 }
