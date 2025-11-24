@@ -4,7 +4,7 @@
     <view class="all-comments-container" @tap.stop catchtouchmove="true">
       <!-- 头部 -->
       <view class="panel-header">
-        <h2 class="panel-title">全部评论</h2>
+        <h2 class="panel-title">全部回复</h2>
         <button
           class="close-btn"
           @tap="handleClose"
@@ -25,26 +25,33 @@
 
         <view v-else class="comments-list">
           <view
-            v-for="comment in comments"
+            v-for="(comment, index) in comments"
             :key="comment.id"
             class="comment-item"
           >
-            <view class="comment-main">
+            <!-- 评论内容区域 -->
+            <view class="comment-content-area">
+              <!-- 用户头像和信息 -->
+              <view class="comment-header">
+                <img
+                  :src="comment.userAvatar || '/default-avatar.png'"
+                  class="comment-avatar"
+                  alt="用户头像"
+                />
+                <view class="comment-info">
+                  <text class="comment-author">{{ comment.userNickname }}</text>
+                  <text class="comment-date">{{ formatDate(comment.createdAt) }}</text>
+                </view>
+              </view>
+
+              <!-- 评论内容 -->
               <view class="comment-content">
-                <text class="comment-author">{{ comment.userNickname }}:</text>
                 {{ comment.content }}
               </view>
             </view>
 
-            <!-- 回复按钮 -->
-            <view class="comment-actions">
-              <button
-                class="reply-btn"
-                @tap="selectCommentForReply(comment)"
-              >
-                回复
-              </button>
-            </view>
+            <!-- 分隔线 -->
+            <view v-if="index < comments.length - 1" class="comment-divider"></view>
           </view>
 
           <!-- 加载更多 -->
@@ -79,7 +86,8 @@
               />
               <button
                 class="send-btn"
-                :disabled="!replyContent.trim()"
+                :class="{ 'send-btn-active': canSendReply }"
+                :disabled="!canSendReply"
                 @tap="submitReply"
               >
                 发送
@@ -93,7 +101,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import { getCommentsByReview, createComment } from '@/api/modules/comment';
 import type { Comment } from '@/types/api';
 import dayjs from 'dayjs';
@@ -119,6 +127,11 @@ const pageSize = 10;
 
 const replyContent = ref('');
 const replyingTo = ref<Comment | null>(null);
+
+// 计算属性：判断是否可以发送
+const canSendReply = computed(() => {
+  return replyContent.value.trim().length > 0;
+});
 
 // 监听面板显示状态
 watch(() => props.isVisible, (visible: boolean) => {
@@ -278,11 +291,12 @@ const formatDate = (dateString: string) => {
 /* 头部 */
 .panel-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   padding: 16px 20px;
   border-bottom: 1px solid #e5e5e5;
   flex-shrink: 0;
+  position: relative;
 }
 
 .panel-title {
@@ -292,6 +306,10 @@ const formatDate = (dateString: string) => {
 }
 
 .close-btn {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
   width: 32px;
   height: 32px;
   display: flex;
@@ -330,32 +348,48 @@ const formatDate = (dateString: string) => {
 }
 
 .comment-item {
-  margin-bottom: 16px;
-  padding: 12px;
-  background-color: #f9fafb;
-  border-radius: 8px;
-  border-left: 3px solid #a855f7;
+  margin-bottom: 0;
+}
+
+.comment-content-area {
+  padding: 12px 0;
+}
+
+/* 评论头部区域 */
+.comment-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+/* 用户头像 */
+.comment-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  margin-right: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+/* 评论信息 */
+.comment-info {
+  flex: 1;
 }
 
 .comment-author {
   font-size: 14px;
-  font-weight: normal; /* 不加粗 */
-  color: #7c3aed; /* 紫色 */
+  font-weight: 600;
+  color: #7c3aed;
+  display: block;
+  margin-bottom: 2px;
 }
 
-.comment-content {
-  font-size: 14px;
-  color: #374151;
-  line-height: 1.5;
+.comment-date {
+  font-size: 12px;
+  color: #9ca3af;
 }
 
-/* 评论操作 */
-.comment-actions {
-  margin-top: 8px;
-  display: flex;
-  justify-content: flex-end;
-}
-
+/* 回复按钮 */
 .reply-btn {
   font-size: 12px;
   color: #7c3aed;
@@ -363,6 +397,25 @@ const formatDate = (dateString: string) => {
   border: none;
   padding: 4px 8px;
   border-radius: 4px;
+}
+
+.reply-btn:hover {
+  background-color: #f3f4f6;
+}
+
+/* 评论内容 */
+.comment-content {
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.6;
+  margin-left: 44px; /* 头像宽度 + 间距 */
+}
+
+/* 分隔线 */
+.comment-divider {
+  height: 1px;
+  background-color: #e5e7eb;
+  margin: 12px 0;
 }
 
 .reply-btn:hover {
@@ -445,6 +498,7 @@ const formatDate = (dateString: string) => {
 
 .reply-input {
   flex: 1;
+  max-width: 280px; /* 稍微变窄一点 */
   padding: 8px 12px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
@@ -459,22 +513,22 @@ const formatDate = (dateString: string) => {
 
 .send-btn {
   padding: 8px 16px;
-  background: linear-gradient(135deg, #a855f7, #7c3aed);
-  color: white;
+  background: #d1d5db; /* 默认灰色背景 */
+  color: #9ca3af; /* 默认灰色文字 */
   border: none;
   border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
   min-width: 60px;
+  transition: all 0.2s ease;
 }
 
-.send-btn:disabled {
-  background: #d1d5db;
-  color: #9ca3af;
-  cursor: not-allowed;
+.send-btn-active {
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%); /* 紫色背景 */
+  color: white; /* 白色文字 */
 }
 
-.send-btn:not(:disabled):hover {
+.send-btn-active:hover {
   background: linear-gradient(135deg, #9333ea, #6d28d9);
 }
 </style>

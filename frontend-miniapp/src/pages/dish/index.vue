@@ -61,7 +61,7 @@
           <span
             v-for="tag in dish.tags"
             :key="tag"
-            class="px-3 py-1 bg-purple-100 text-purple-700 text-xs rounded-md font-medium"
+            class="px-3 py-1 bg-blue-50 text-purple-100 text-xs rounded-md font-medium"
           >
             #{{ tag }}
           </span>
@@ -71,7 +71,7 @@
         <view class="mt-3 py-3 border-t border-purple-100">
           <view class="flex justify-between items-start">
             <!-- 左侧评分和评价数量 -->
-            <view class="flex flex-col mt-6">
+            <view class="flex flex-col mt-8">
               <view class="text-xl font-bold text-purple-600">
                 {{ dish.averageRating.toFixed(1) }}分
               </view>
@@ -85,7 +85,7 @@
           </view>
         </view>
       </view>
-
+      
       <!-- 详细信息 -->
       <view class="bg-white p-4 mb-2 rounded-xl shadow-sm mx-4">
         <view class="flex justify-between items-center mb-3 cursor-pointer" @click="toggleDetailExpansion">
