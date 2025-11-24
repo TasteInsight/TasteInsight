@@ -1,53 +1,135 @@
-<!-- @/pages/planning/index.vue -->
 <template>
-  <div class="app-page">
-    <div class="content-container">
-      <!-- Tab 切换 -->
-      <div class="flex py-4 border-b border-gray-100 justify-center">
-        <div 
-          class="mx-4 cursor-pointer" 
-          :class="activeTab === 'current' ? 'font-bold text-purple-700' : 'text-gray-500'"
-          @click="activeTab = 'current'">
-          现有规划
-        </div>
-        <div 
-          class="mx-4 cursor-pointer" 
-          :class="activeTab === 'history' ? 'font-bold text-purple-700' : 'text-gray-500'"
-          @click="activeTab = 'history'">
-          历史记录
-        </div>
-      </div>
+  <view class="min-h-screen bg-gray-50 pb-safe">
+    <!-- 页面头部 -->
+    <view class="bg-white px-5 py-4 flex justify-between items-center border-b border-gray-100">
+      <text class="text-2xl font-bold text-gray-900">饮食规划</text>
+      <view @tap="createNewPlan" class="flex items-center gap-1.5 bg-purple-700 py-2.5 px-5 rounded-lg">
+        <text class="text-gray-100 text-xl">+</text>
+        <text class="text-gray-100">新建规划</text>
+      </view>
+    </view>
 
-      <!-- 内容区 -->
-      <div v-if="loading" class="text-center py-10 text-gray-500">正在加载规划...</div>
-      <div v-else-if="error" class="text-center py-10 text-red-500">{{ error }}</div>
-      
-      <div v-else>
-        <!-- 现有规划 -->
-        <div v-show="activeTab === 'current'">
-          <div v-if="currentPlans.length > 0">
-            <PlanCard v-for="plan in currentPlans" :key="plan.id" :plan="plan" />
-          </div>
-          <div v-else class="text-center py-10 text-gray-500">暂无现有规划</div>
-        </div>
+    <!-- 标签页 -->
+    <view class="bg-white flex border-b-2 border-gray-100">
+      <view 
+        :class="['flex-1 py-3 text-center border-b-2', activeTab === 'current' ? 'border-purple-700 text-purple-700 font-semibold' : 'border-transparent text-gray-600']"
+        @tap="switchTab('current')"
+      >
+        <text>当前规划 ({{ currentPlans.length }})</text>
+      </view>
+      <view 
+        :class="['flex-1 py-3 text-center border-b-2', activeTab === 'history' ? 'border-purple-700 text-purple-700 font-semibold' : 'border-transparent text-gray-600']"
+        @tap="switchTab('history')"
+      >
+        <text>历史规划 ({{ historyPlans.length }})</text>
+      </view>
+    </view>
 
-        <!-- 历史记录 -->
-        <div v-show="activeTab === 'history'">
-          <div v-if="historyPlans.length > 0">
-            <PlanCard v-for="plan in historyPlans" :key="plan.id" :plan="plan" is-history />
-          </div>
-          <div v-else class="text-center py-10 text-gray-500">暂无历史记录</div>
-        </div>
-      </div>
-    </div>
-  </div>
+    <!-- 加载状态 -->
+    <view v-if="loading" class="flex flex-col items-center justify-center py-20">
+      <view class="w-10 h-10 border-4 border-gray-200 border-t-purple-700 rounded-full animate-spin mb-4"></view>
+      <text class="text-gray-500">加载中...</text>
+    </view>
+
+    <!-- 错误状态 -->
+    <view v-else-if="error" class="flex flex-col items-center justify-center py-20 px-5">
+      <text class="text-red-500 mb-4">{{ error }}</text>
+      <view @tap="refreshPlans" class="py-2 px-6 bg-purple-700 rounded-lg">
+        <text class="text-white">重试</text>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view v-else-if="displayPlans.length === 0" class="flex flex-col items-center justify-center py-20 px-5">
+      <text class="text-6xl text-gray-300 mb-4">📅</text>
+      <text class="text-gray-400 text-lg mb-5">{{ activeTab === 'current' ? '暂无当前规划' : '暂无历史规划' }}</text>
+      <view v-if="activeTab === 'current'" @tap="createNewPlan" class="py-2.5 px-6 bg-purple-700 rounded-lg">
+        <text class="text-gray-100">创建第一个规划</text>
+      </view>
+    </view>
+
+    <!-- 规划列表 -->
+    <scroll-view v-else scroll-y class="px-5 pt-5">
+      <PlanCard
+        v-for="plan in displayPlans"
+        :key="plan.id"
+        :plan="plan"
+        :is-history="activeTab === 'history'"
+        @view="viewPlanDetail(plan)"
+        @edit="editPlan(plan)"
+        @delete="deletePlan(plan.id)"
+        @execute="handleExecutePlan(plan)"
+      />
+      <view class="h-5"></view>
+    </scroll-view>
+
+    <!-- 详情对话框 -->
+    <PlanDetailDialog
+      :visible="showDetailDialog"
+      :plan="selectedPlan"
+      @close="closeDetailDialog"
+    />
+
+    <!-- 编辑对话框 -->
+    <PlanEditDialog
+      :visible="showEditDialog"
+      :plan="selectedPlan"
+      @close="closeEditDialog"
+      @submit="submitEdit"
+    />
+
+    <!-- 创建对话框 -->
+    <PlanEditDialog
+      :visible="showCreateDialog"
+      :plan="null"
+      @close="closeCreateDialog"
+      @submit="submitCreate"
+    />
+  </view>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import PlanCard from './components/PlanCard.vue';
 import { useMenuPlanning } from './composables/use-menu-planning';
+import type { EnrichedMealPlan } from './composables/use-menu-planning';
+import PlanCard from './components/PlanCard.vue';
+import PlanDetailDialog from './components/PlanDetailDialog.vue';
+import PlanEditDialog from './components/PlanEditDialog.vue';
 
-const activeTab = ref('current');
-const { loading, error, currentPlans, historyPlans } = useMenuPlanning();
+const {
+  loading,
+  error,
+  currentPlans,
+  historyPlans,
+  selectedPlan,
+  displayPlans,
+  activeTab,
+  showDetailDialog,
+  showEditDialog,
+  showCreateDialog,
+  viewPlanDetail,
+  editPlan,
+  deletePlan,
+  createNewPlan,
+  submitCreate,
+  submitEdit,
+  closeDetailDialog,
+  closeEditDialog,
+  closeCreateDialog,
+  switchTab,
+  refreshPlans,
+} = useMenuPlanning();
+
+const handleExecutePlan = (plan: EnrichedMealPlan) => {
+  console.log('执行规划:', plan);
+  uni.showToast({
+    title: '执行规划功能待实现',
+    icon: 'none',
+  });
+};
 </script>
+
+<style>
+page {
+  background-color: #f8f9fa;
+}
+</style>
