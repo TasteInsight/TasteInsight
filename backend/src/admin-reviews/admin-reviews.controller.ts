@@ -11,9 +11,9 @@ import {
 } from '@nestjs/common';
 import { AdminReviewsService } from './admin-reviews.service';
 import { RejectReviewDto } from './dto/reject-review.dto';
-import { AdminAuthGuard } from '../auth/guards/admin-auth.guard';
-import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { AdminAuthGuard } from '@/auth/guards/admin-auth.guard';
+import { PermissionsGuard } from '@/auth/guards/permissions.guard';
+import { RequirePermissions } from '@/auth/decorators/permissions.decorator';
 
 @Controller('admin/reviews')
 @UseGuards(AdminAuthGuard, PermissionsGuard)

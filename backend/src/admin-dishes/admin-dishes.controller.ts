@@ -15,9 +15,9 @@ import {
 } from '@nestjs/common';
 import { AdminDishesService } from './admin-dishes.service';
 import { AdminGetDishesDto, AdminCreateDishDto, AdminUpdateDishDto, AdminUpdateDishStatusDto } from './dto/admin-dish.dto';
-import { AdminAuthGuard } from '../auth/guards/admin-auth.guard';
-import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { AdminAuthGuard } from '@/auth/guards/admin-auth.guard';
+import { PermissionsGuard } from '@/auth/guards/permissions.guard';
+import { RequirePermissions } from '@/auth/decorators/permissions.decorator';
 
 @Controller('admin/dishes')
 @UseGuards(AdminAuthGuard, PermissionsGuard)

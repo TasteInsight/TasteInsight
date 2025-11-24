@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma.service';
+import { PrismaService } from '@/prisma.service';
 import { RejectReviewDto } from './dto/reject-review.dto';
 import { PendingReviewListResponseDto, SuccessResponseDto, ReviewItemData } from './dto/review-response.dto';
 

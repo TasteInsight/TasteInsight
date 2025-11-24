@@ -3,8 +3,8 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
 import { AdminDishesController } from './admin-dishes.controller';
 import { AdminDishesService } from './admin-dishes.service';
-import { PrismaService } from '../prisma.service';
-import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { PrismaService } from '@/prisma.service';
+import { PermissionsGuard } from '@/auth/guards/permissions.guard';
 
 @Module({
   imports: [
