@@ -1,13 +1,6 @@
 <template>
   <view class="min-h-screen bg-gray-50 pb-safe">
-    <!-- 页面头部 -->
-    <view class="bg-white px-5 py-4 flex justify-between items-center border-b border-gray-100">
-      <text class="text-2xl font-bold text-gray-900">饮食规划</text>
-      <view @tap="createNewPlan" class="flex items-center gap-1.5 bg-purple-700 py-2.5 px-5 rounded-lg border border-purple-700">
-        <text class="text-gray-100 text-xl">+</text>
-        <text class="text-gray-100">新建规划</text>
-      </view>
-    </view>
+   
 
     <!-- 标签页 -->
     <view class="bg-white flex border-b-2 border-gray-100">
@@ -22,6 +15,14 @@
         @tap="switchTab('history')"
       >
         <text>历史规划 ({{ historyPlans.length }})</text>
+      </view>
+    </view>
+
+     <!-- 页面头部 -->
+    <view v-if="activeTab === 'current'" class="bg-white px-5 py-4 flex justify-end items-center border-b border-gray-100">
+      <view @tap="createNewPlan" class="flex items-center gap-1.5 bg-purple-700 py-2.5 px-5 rounded-lg border border-purple-700">
+        <text class="text-gray-100 text-xl">+</text>
+        <text class="text-gray-100">新建规划</text>
       </view>
     </view>
 

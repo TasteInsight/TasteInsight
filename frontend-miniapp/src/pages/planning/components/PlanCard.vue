@@ -2,10 +2,13 @@
   <view @tap="$emit('view')" class="bg-white rounded-xl shadow-sm p-4 mb-3 cursor-pointer">
     <view class="bg-purple-700 py-2 px-3 rounded-lg mb-3 flex justify-between items-center">
       <text class="font-bold text-gray-400">{{ formatDate(plan.startDate) }} | {{ mealTimeText }}</text>
-      <view class="flex gap-2">
-        <text @tap.stop="$emit('view')" class="text-gray-400 text-sm">查看</text>
-        <text v-if="!isHistory" @tap.stop="$emit('edit')" class="text-gray-400 text-sm">编辑</text>
-        <text @tap.stop="$emit('delete')" class="text-gray-400 text-sm">删除</text>
+      <view class="flex gap-3 items-center">
+        <view v-if="!isHistory" @tap.stop="$emit('edit')" class="p-1">
+          <text class="iconify text-gray-400" data-icon="mdi:pencil" data-width="20"></text>
+        </view>
+        <view @tap.stop="$emit('delete')" class="p-1">
+          <text class="iconify text-gray-400" data-icon="mdi:delete" data-width="20"></text>
+        </view>
       </view>
     </view>
 
