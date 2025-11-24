@@ -21,6 +21,7 @@
     "test:e2e:auth": "pnpm run test:setup && dotenv -e .env.test -- jest --config ./test/jest-e2e.json test/auth.e2e-spec.ts --collectCoverageFrom \"src/auth/**/*.ts\"",
     "test:e2e:dishes": "pnpm run test:setup && dotenv -e .env.test -- jest --config ./test/jest-e2e.json test/dishes.e2e-spec.ts --collectCoverageFrom \"src/dishes/**/*.ts\"",
     "test:e2e:admin-dishes": "pnpm run test:setup && dotenv -e .env.test -- jest --config ./test/jest-e2e.json test/admin-dishes.e2e-spec.ts --collectCoverageFrom \"src/admin-dishes/**/*.ts\"",
+    "test:e2e:admin-reviews": "pnpm run test:setup && dotenv -e .env.test -- jest --config ./test/jest-e2e.json test/admin-reviews.e2e-spec.ts --collectCoverageFrom \"src/admin-reviews/**/*.ts\"",
     "test": "pnpm run test:setup && pnpm run test:e2e"
   },
   "dependencies": {
@@ -30,6 +31,7 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/jwt": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/swagger": "^11.2.3",
     "@prisma/client": "^6.18.0",
     "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
@@ -37,7 +39,8 @@
     "class-validator": "^0.14.2",
     "dotenv": "^17.2.3",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
