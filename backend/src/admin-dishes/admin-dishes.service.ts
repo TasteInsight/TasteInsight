@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { AdminGetDishesDto, AdminCreateDishDto, AdminUpdateDishDto } from './dto/admin-dish.dto';
+import { AdminGetDishesDto, AdminCreateDishDto, AdminUpdateDishDto, DishStatus } from './dto/admin-dish.dto';
 import { Prisma } from '@prisma/client';
 
 @Injectable()

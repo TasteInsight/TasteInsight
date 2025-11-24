@@ -43,7 +43,7 @@ describe('/auth/wechat/login (POST)', () => {
     it('should create a new user and return tokens for a new wechat code', async () => {
     const response = await request(app.getHttpServer())
         .post('/auth/wechat/login')
-        .send({ code: 'a_valid_new_wechat_code' })
+        .send({ code: 'mock_valid_new_wechat_code' })
         .expect(200);
 
     expect(response.body.code).toBe(200);
