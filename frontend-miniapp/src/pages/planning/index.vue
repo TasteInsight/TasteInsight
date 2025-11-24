@@ -3,7 +3,7 @@
     <!-- 页面头部 -->
     <view class="bg-white px-5 py-4 flex justify-between items-center border-b border-gray-100">
       <text class="text-2xl font-bold text-gray-900">饮食规划</text>
-      <view @tap="createNewPlan" class="flex items-center gap-1.5 bg-purple-700 py-2.5 px-5 rounded-lg">
+      <view @tap="createNewPlan" class="flex items-center gap-1.5 bg-purple-700 py-2.5 px-5 rounded-lg border border-purple-700">
         <text class="text-gray-100 text-xl">+</text>
         <text class="text-gray-100">新建规划</text>
       </view>
@@ -43,7 +43,7 @@
     <view v-else-if="displayPlans.length === 0" class="flex flex-col items-center justify-center py-20 px-5">
       <text class="text-6xl text-gray-300 mb-4">📅</text>
       <text class="text-gray-400 text-lg mb-5">{{ activeTab === 'current' ? '暂无当前规划' : '暂无历史规划' }}</text>
-      <view v-if="activeTab === 'current'" @tap="createNewPlan" class="py-2.5 px-6 bg-purple-700 rounded-lg">
+      <view v-if="activeTab === 'current'" @tap="createNewPlan" class="py-2.5 px-6 bg-purple-700 rounded-lg border border-purple-700">
         <text class="text-gray-100">创建第一个规划</text>
       </view>
     </view>
