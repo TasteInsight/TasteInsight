@@ -1,13 +1,20 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma.service';
+import { PrismaService } from '@/prisma.service';
 import { RejectReviewDto } from './dto/reject-review.dto';
-import { PendingReviewListResponse, SuccessResponse, ReviewItem } from './dto/review-response.dto';
+import {
+  PendingReviewListResponseDto,
+  SuccessResponseDto,
+  ReviewItemData,
+} from './dto/review-response.dto';
 
 @Injectable()
 export class AdminReviewsService {
   constructor(private prisma: PrismaService) {}
 
-  async getPendingReviews(page: number = 1, pageSize: number = 20): Promise<PendingReviewListResponse> {
+  async getPendingReviews(
+    page: number = 1,
+    pageSize: number = 20,
+  ): Promise<PendingReviewListResponseDto> {
     const skip = (page - 1) * pageSize;
     const where = { status: 'pending' };
 
@@ -29,7 +36,7 @@ export class AdminReviewsService {
       }),
     ]);
 
-    const items: ReviewItem[] = reviews.map((review) => ({
+    const items: ReviewItemData[] = reviews.map((review) => ({
       id: review.id,
       dishId: review.dishId,
       userId: review.userId,
@@ -59,7 +66,7 @@ export class AdminReviewsService {
     };
   }
 
-  async approveReview(id: string): Promise<SuccessResponse> {
+  async approveReview(id: string): Promise<SuccessResponseDto> {
     const review = await this.prisma.review.findUnique({ where: { id } });
     if (!review) {
       throw new NotFoundException('评价不存在');
@@ -77,7 +84,10 @@ export class AdminReviewsService {
     };
   }
 
-  async rejectReview(id: string, dto: RejectReviewDto): Promise<SuccessResponse> {
+  async rejectReview(
+    id: string,
+    dto: RejectReviewDto,
+  ): Promise<SuccessResponseDto> {
     const review = await this.prisma.review.findUnique({ where: { id } });
     if (!review) {
       throw new NotFoundException('评价不存在');

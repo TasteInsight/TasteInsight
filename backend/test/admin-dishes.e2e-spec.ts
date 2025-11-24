@@ -2,8 +2,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { PrismaService } from '../src/prisma.service';
+import { AppModule } from '@/app.module';
+import { PrismaService } from '@/prisma.service';
 
 describe('AdminDishesController (e2e)', () => {
   let app: INestApplication;
@@ -145,9 +145,7 @@ describe('AdminDishesController (e2e)', () => {
     });
 
     it('should return 401 without auth token', async () => {
-      await request(app.getHttpServer())
-        .get('/admin/dishes')
-        .expect(401);
+      await request(app.getHttpServer()).get('/admin/dishes').expect(401);
     });
 
     it('should return 403 for user token (not admin)', async () => {
@@ -608,7 +606,7 @@ describe('AdminDishesController (e2e)', () => {
         where: { id: testDishId },
       });
       expect(updatedDish?.status).toBe('offline');
-      
+
       // Restore status
       await prisma.dish.update({
         where: { id: testDishId },

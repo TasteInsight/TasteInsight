@@ -1,7 +1,14 @@
-import { CanActivate, ExecutionContext, Injectable, Logger, UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../../prisma.service';
+import { PrismaService } from '@/prisma.service';
 import { Request } from 'express';
 
 @Injectable()
@@ -50,20 +57,29 @@ export class AdminAuthGuard implements CanActivate {
         username: admin.username,
         role: admin.role,
         canteenId: admin.canteenId,
-        permissions: admin.permissions.map(p => p.permission),
+        permissions: admin.permissions.map((p) => p.permission),
       };
     } catch (error) {
       const errorName = (error as Error)?.name ?? 'UnknownError';
-      
+
       // 如果是我们主动抛出的异常，直接传递
-      if (error instanceof ForbiddenException || error instanceof UnauthorizedException) {
+      if (
+        error instanceof ForbiddenException ||
+        error instanceof UnauthorizedException
+      ) {
         throw error;
       }
 
-      const isExpectedJwtError = ['JsonWebTokenError', 'TokenExpiredError'].includes(errorName);
+      const isExpectedJwtError = [
+        'JsonWebTokenError',
+        'TokenExpiredError',
+      ].includes(errorName);
 
       if (!isExpectedJwtError) {
-        this.logger.error(`JWT verification failed: ${errorName}`, (error as Error)?.stack);
+        this.logger.error(
+          `JWT verification failed: ${errorName}`,
+          (error as Error)?.stack,
+        );
       }
 
       throw new UnauthorizedException();

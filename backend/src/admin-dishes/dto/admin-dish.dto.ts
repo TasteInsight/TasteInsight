@@ -1,14 +1,14 @@
-import { 
-  IsString, 
-  IsNumber, 
-  IsOptional, 
-  IsArray, 
-  IsEnum, 
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsArray,
+  IsEnum,
   IsNotEmpty,
   Min,
   Max,
   ValidateNested,
-  ArrayNotEmpty
+  ArrayNotEmpty,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 

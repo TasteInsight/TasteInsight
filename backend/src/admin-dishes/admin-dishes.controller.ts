@@ -1,23 +1,28 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Put, 
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
   Patch,
-  Delete, 
-  Body, 
-  Param, 
-  Query, 
-  UseGuards, 
-  Request, 
-  HttpCode, 
-  HttpStatus
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { AdminDishesService } from './admin-dishes.service';
-import { AdminGetDishesDto, AdminCreateDishDto, AdminUpdateDishDto, AdminUpdateDishStatusDto } from './dto/admin-dish.dto';
-import { AdminAuthGuard } from '../auth/guards/admin-auth.guard';
-import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import {
+  AdminGetDishesDto,
+  AdminCreateDishDto,
+  AdminUpdateDishDto,
+  AdminUpdateDishStatusDto,
+} from './dto/admin-dish.dto';
+import { AdminAuthGuard } from '@/auth/guards/admin-auth.guard';
+import { PermissionsGuard } from '@/auth/guards/permissions.guard';
+import { RequirePermissions } from '@/auth/decorators/permissions.decorator';
 
 @Controller('admin/dishes')
 @UseGuards(AdminAuthGuard, PermissionsGuard)
@@ -49,9 +54,9 @@ export class AdminDishesController {
   @RequirePermissions('dish:edit')
   @HttpCode(HttpStatus.OK)
   async updateAdminDish(
-    @Param('id') id: string, 
-    @Body() updateDto: AdminUpdateDishDto, 
-    @Request() req
+    @Param('id') id: string,
+    @Body() updateDto: AdminUpdateDishDto,
+    @Request() req,
   ) {
     return this.adminDishesService.updateAdminDish(id, updateDto, req.admin);
   }
@@ -62,9 +67,13 @@ export class AdminDishesController {
   async updateDishStatus(
     @Param('id') id: string,
     @Body() updateStatusDto: AdminUpdateDishStatusDto,
-    @Request() req
+    @Request() req,
   ) {
-    return this.adminDishesService.updateDishStatus(id, updateStatusDto.status, req.admin);
+    return this.adminDishesService.updateDishStatus(
+      id,
+      updateStatusDto.status,
+      req.admin,
+    );
   }
 
   @Delete(':id')

@@ -1,4 +1,15 @@
-import { IsNotEmpty, IsString, IsArray, IsNumber, IsOptional, IsEnum, IsInt, Min, Max, ValidateNested } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsArray,
+  IsNumber,
+  IsOptional,
+  IsEnum,
+  IsInt,
+  Min,
+  Max,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { DishStatus, MealTime } from '@/common/enums';
 

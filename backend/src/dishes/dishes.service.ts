@@ -1,5 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../prisma.service';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
+import { PrismaService } from '@/prisma.service';
 import { GetDishesDto, SortOrder } from './dto/get-dishes.dto';
 import { UploadDishDto } from './dto/upload-dish.dto';
 import { Prisma } from '@prisma/client';
@@ -34,7 +38,7 @@ export class DishesService {
   // 获取菜品列表
   async getDishes(getDishesDto: GetDishesDto) {
     const { filter, search, sort, pagination } = getDishesDto;
-    
+
     // 构建 where 条件 - 使用数组来确保类型正确
     const andConditions: Prisma.DishWhereInput[] = [];
 
@@ -186,10 +190,14 @@ export class DishesService {
       const orConditions: Prisma.DishWhereInput[] = [];
 
       if (searchFields.includes('name')) {
-        orConditions.push({ name: { contains: search.keyword, mode: 'insensitive' } });
+        orConditions.push({
+          name: { contains: search.keyword, mode: 'insensitive' },
+        });
       }
       if (searchFields.includes('description')) {
-        orConditions.push({ description: { contains: search.keyword, mode: 'insensitive' } });
+        orConditions.push({
+          description: { contains: search.keyword, mode: 'insensitive' },
+        });
       }
       if (searchFields.includes('tags')) {
         orConditions.push({ tags: { has: search.keyword } });
@@ -201,7 +209,8 @@ export class DishesService {
     }
 
     // 构建最终的 where 条件
-    const where: Prisma.DishWhereInput = andConditions.length > 0 ? { AND: andConditions } : {};
+    const where: Prisma.DishWhereInput =
+      andConditions.length > 0 ? { AND: andConditions } : {};
 
     // 排序
     // sort.field 已通过 DishSortField 枚举在 DTO 层进行白名单验证，防止字段注入攻击
