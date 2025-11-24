@@ -7,17 +7,17 @@
         @tap="goToSearch"
       >
         <text style="color:#999; margin-right:8px; font-size: 20px;">🔍</text>
-        <text class="text-gray-500 text-sm">搜索食堂或菜品</text>
+        <text class="text-gray-500 text-sm">搜索菜品</text>
       </view>
     </view>
 
-    <!-- 窗口列表 -->
-    <CanteenWindowList :windows="windows" @click="goToWindow" />
+    <!-- 窗口信息 -->
+    <WindowHeader :window="windowInfo" />
 
-    <CanteenHeader :canteen="canteenInfo" />
-
+    <!-- 筛选栏 -->
     <CanteenFilterBar :filters="filters" :activeFilter="activeFilter" @toggle="handleToggle" />
 
+    <!-- 菜品列表 -->
     <view class="px-4">
       <view v-if="loading" class="text-center py-8 text-gray-500">
         加载中...
@@ -45,15 +45,13 @@
 
 <script setup lang="ts">
 import { onLoad } from '@dcloudio/uni-app';
-import { useCanteenData } from './composables/use-canteen-data';
-import CanteenHeader from './components/CanteenHeader.vue';
-import CanteenFilterBar from './components/CanteenFilterBar.vue';
-import CanteenDishCard from './components/CanteenDishCard.vue';
-import CanteenWindowList from './components/CanteenWindowList.vue';
+import { useWindowData } from '@/pages/window/composables/use-window-data';
+import WindowHeader from './components/WindowHeader.vue';
+import CanteenFilterBar from '../canteen/components/CanteenFilterBar.vue';
+import CanteenDishCard from '../canteen/components/CanteenDishCard.vue';
 
-const { canteenInfo, loading, error, windows, dishes, filters, activeFilter, init, toggleFilter } = useCanteenData();
+const { windowInfo, loading, error, dishes, filters, activeFilter, init, toggleFilter } = useWindowData();
 
-// 页面加载时获取参数并初始化
 onLoad((options: any) => {
   if (options.id) {
     init(options.id);
@@ -62,7 +60,6 @@ onLoad((options: any) => {
 
 const goToSearch = () => uni.navigateTo({ url: '/pages/search/index' });
 const goToDishDetail = (id: string) => uni.navigateTo({ url: `/pages/dish/index?id=${id}` });
-const goToWindow = (id: string) => uni.navigateTo({ url: `/pages/window/index?id=${id}` });
 
 const handleToggle = (key: string) => {
   toggleFilter(key);

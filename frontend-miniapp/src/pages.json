@@ -27,6 +27,12 @@
 			}
 		},
 		{
+			"path": "pages/window/index",
+			"style": {
+				"navigationBarTitleText": "窗口详情"
+			}
+		},
+		{
 			"path": "pages/dish/index",
 			"style": {
 				"navigationBarTitleText": "菜品详情"
