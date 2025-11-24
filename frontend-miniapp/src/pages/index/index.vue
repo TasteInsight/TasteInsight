@@ -76,7 +76,10 @@ const topThreeDishes = computed(() => {
 
 // --- 页面导航逻辑 (保持不变) ---
 function handleTabSwitch(item: { path: string }) { /* ... */ }
-function navigateTo(path: string) { /* ... */ }
+function navigateTo(path: string) {
+  if (!path) return;
+  uni.navigateTo({ url: path });
+}
 
 // --- 生命周期 ---
 onMounted(() => {

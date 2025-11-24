@@ -21,6 +21,12 @@
 			}
 		},
 		{
+			"path": "pages/canteen/index",
+			"style": {
+				"navigationBarTitleText": "食堂"
+			}
+		},
+		{
 			"path": "pages/dish/index",
 			"style": {
 				"navigationBarTitleText": "菜品详情"
