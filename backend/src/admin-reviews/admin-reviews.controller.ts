@@ -69,6 +69,7 @@ export class AdminReviewsController {
     type: SuccessResponse,
   })
   @ApiResponse({ status: 403, description: 'Forbidden', type: ErrorResponse })
+  @ApiResponse({ status: 404, description: 'Review not found', type: ErrorResponse })
   @RequirePermissions('review:approve')
   @HttpCode(HttpStatus.OK)
   async approveReview(@Param('id') id: string) {
@@ -86,7 +87,9 @@ export class AdminReviewsController {
     description: '已拒绝',
     type: SuccessResponse,
   })
+  @ApiResponse({ status: 400, description: 'Validation Error', type: ErrorResponse })
   @ApiResponse({ status: 403, description: 'Forbidden', type: ErrorResponse })
+  @ApiResponse({ status: 404, description: 'Review not found', type: ErrorResponse })
   @RequirePermissions('review:approve')
   @HttpCode(HttpStatus.OK)
   async rejectReview(@Param('id') id: string, @Body() dto: RejectReviewDto) {

@@ -96,7 +96,7 @@ describe('AdminReviewsController (e2e)', () => {
   describe('/admin/reviews/:id/approve (POST)', () => {
     let reviewToApproveId: string;
 
-    beforeAll(async () => {
+    beforeEach(async () => {
       const review = await prisma.review.create({
         data: {
           dishId: testDishId,
@@ -109,8 +109,10 @@ describe('AdminReviewsController (e2e)', () => {
       reviewToApproveId = review.id;
     });
 
-    afterAll(async () => {
-      await prisma.review.deleteMany({ where: { id: reviewToApproveId } });
+    afterEach(async () => {
+      if (reviewToApproveId) {
+        await prisma.review.deleteMany({ where: { id: reviewToApproveId } });
+      }
     });
 
     it('should approve review', async () => {
@@ -137,7 +139,7 @@ describe('AdminReviewsController (e2e)', () => {
   describe('/admin/reviews/:id/reject (POST)', () => {
     let reviewToRejectId: string;
 
-    beforeAll(async () => {
+    beforeEach(async () => {
       const review = await prisma.review.create({
         data: {
           dishId: testDishId,
@@ -150,8 +152,10 @@ describe('AdminReviewsController (e2e)', () => {
       reviewToRejectId = review.id;
     });
 
-    afterAll(async () => {
-      await prisma.review.deleteMany({ where: { id: reviewToRejectId } });
+    afterEach(async () => {
+      if (reviewToRejectId) {
+        await prisma.review.deleteMany({ where: { id: reviewToRejectId } });
+      }
     });
 
     it('should reject review with reason', async () => {

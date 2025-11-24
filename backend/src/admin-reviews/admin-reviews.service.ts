@@ -62,7 +62,7 @@ export class AdminReviewsService {
   async approveReview(id: string): Promise<SuccessResponse> {
     const review = await this.prisma.review.findUnique({ where: { id } });
     if (!review) {
-      throw new NotFoundException('Review not found');
+      throw new NotFoundException('评价不存在');
     }
 
     await this.prisma.review.update({
@@ -80,7 +80,7 @@ export class AdminReviewsService {
   async rejectReview(id: string, dto: RejectReviewDto): Promise<SuccessResponse> {
     const review = await this.prisma.review.findUnique({ where: { id } });
     if (!review) {
-      throw new NotFoundException('Review not found');
+      throw new NotFoundException('评价不存在');
     }
 
     await this.prisma.review.update({
