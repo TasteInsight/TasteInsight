@@ -59,9 +59,9 @@ export class AdminCommentsService {
       data: {
         items,
         meta: {
-          total,
           page,
           pageSize,
+          total,
           totalPages: Math.ceil(total / pageSize),
         },
       },
@@ -78,7 +78,6 @@ export class AdminCommentsService {
       where: { id },
       data: {
         status: 'approved',
-        rejectReason: null,
       },
     });
 
