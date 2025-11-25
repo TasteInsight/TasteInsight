@@ -9,7 +9,7 @@ import type {
   CanteenUpdateRequest,
   WindowCreateRequest,
   WindowUpdateRequest,
-
+  WindowDishesData
 } from '@/types/api';
 import type { ApiResponse } from '@/types/api';
 
@@ -43,11 +43,11 @@ export function getCanteenDetail(
  * 获取窗口列表（根据食堂ID）
  */
 export function getWindowList(
-  canteenId: string,
+  id: string,
   params?: PaginationParams
 ): Promise<ApiResponse<WindowListData>> {
   return request<WindowListData>({
-    url: `/windows/${canteenId}`,
+    url: `/canteens/${id}/windows`,
     method: 'GET',
   });
 }
@@ -60,98 +60,21 @@ export function getWindowDetail(
   params?: PaginationParams
 ): Promise<ApiResponse<Window>> {
   return request<Window>({
-    url: `/windows/${windowId}`,
+    url: `/canteens/windows/${windowId}`,
     method: 'GET',
   });
 }
 
-// ==================== 管理端 - 食堂接口 ====================
 
 /**
- * 管理端获取食堂列表
+ * 获取窗口菜品列表
  */
-export function adminGetCanteenList(params?: PaginationParams): Promise<ApiResponse<CanteenListData>> {
-  return request<CanteenListData>({
-    url: '/admin/canteens',
-    method: 'GET',
-    data:params,
-  });
-}
-
-/**
- * 管理端获取窗口列表
- */
-export function adminGetWindowList(
-  canteenId: string,
+export function getWindowDishes(
+  windowId: string,
   params?: PaginationParams
-): Promise<ApiResponse<WindowListData>> {
-  return request<WindowListData>({
-    url: `/admin/windows/${canteenId}`,
+): Promise<ApiResponse<WindowDishesData>> {
+  return request<WindowDishesData>({
+    url: `/canteens/windows/${windowId}/dishes`,
     method: 'GET',
-    data:params,
-  });
-}
-
-/**
- * 新建食堂
- */
-export function createCanteen(data: CanteenCreateRequest): Promise<ApiResponse<Canteen>> {
-  return request<Canteen>({
-    url: '/admin/canteens',
-    method: 'POST',
-    data,
-  });
-}
-
-/**
- * 编辑食堂
- */
-export function updateCanteen(id: string, data: CanteenUpdateRequest): Promise<ApiResponse<Canteen>> {
-  return request<Canteen>({
-    url: `/admin/canteens/${id}`,
-    method: 'PUT',
-    data,
-  });
-}
-
-/**
- * 删除食堂
- */
-export function deleteCanteen(id: string): Promise<ApiResponse<null>> {
-  return request<null>({
-    url: `/admin/canteens/${id}`,
-    method: 'DELETE',
-  });
-}
-
-/**
- * 新建窗口
- */
-export function createWindow(data: WindowCreateRequest): Promise<ApiResponse<Window>> {
-  return request<Window>({
-    url: '/admin/windows',
-    method: 'POST',
-    data,
-  });
-}
-
-/**
- * 编辑窗口
- */
-export function updateWindow(id: string, data: WindowUpdateRequest): Promise<ApiResponse<Window>> {
-  return request<Window>({
-    url: `/admin/windows/${id}`,
-    method: 'PUT',
-    data,
-  });
-}
-
-/**
- * 删除窗口
- */
-export function deleteWindow(id: string): Promise<ApiResponse<null>> {
-  return request<null>({
-    url: `/admin/windows/${id}`,
-    method: 'DELETE',
   });
 }

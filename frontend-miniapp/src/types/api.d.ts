@@ -315,7 +315,10 @@ export interface WindowListData {
   meta: PaginationMeta;
 }
 
-
+export interface WindowDishesData {
+  items: Dish[];
+  meta: PaginationMeta;
+}
 
 
 /**
@@ -326,6 +329,7 @@ export interface GetDishesRequest {
     // --- 基础筛选 ---
     includeOffline?: boolean;
     canteenId?: string[];
+    windowId?: string[];
     tag?: string[];
 
     // --- 范围筛选 ---
