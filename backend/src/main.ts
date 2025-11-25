@@ -17,6 +17,9 @@ async function bootstrap() {
     transformOptions: {
       enableImplicitConversion: true,
     },
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    forbidUnknownValues: true,
   }));
 
   await app.listen(process.env.PORT ?? 3000);
