@@ -40,7 +40,14 @@
       >
         <text class="text-gray-500">执行</text>
       </view>
-      <text v-else class="text-gray-500 text-sm">已完成</text>
+      <view v-else class="flex items-center gap-1">
+        <text 
+          :class="plan.isCompleted ? 'text-green-500' : 'text-orange-500'"
+          class="text-sm"
+        >
+          {{ plan.isCompleted ? '✓ 已完成' : '✗ 未完成' }}
+        </text>
+      </view>
     </view>
   </view>
 </template>

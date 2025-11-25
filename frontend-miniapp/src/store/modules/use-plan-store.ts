@@ -17,6 +17,8 @@ import dayjs from 'dayjs';
 
 export type EnrichedMealPlan = Omit<MealPlan, 'dishes'> & {
   dishes: Dish[];
+  isCompleted: boolean; // 是否已完成（手动执行为已完成，自动过期为未完成）
+  isExpired: boolean;   // 是否已过期
 };
 
 export const usePlanStore = defineStore('plan', () => {
@@ -26,25 +28,33 @@ export const usePlanStore = defineStore('plan', () => {
   const allPlans = ref<MealPlan[]>([]);
   const dishMap = ref<Record<string, Dish>>({});
   const selectedPlan = ref<EnrichedMealPlan | null>(null);
+  const completedPlanIds = ref<Set<string>>(new Set()); // 已手动执行完成的规划ID
 
   // 计算属性：富化后的规划列表
   const enrichedPlans = computed<EnrichedMealPlan[]>(() => {
-    return allPlans.value.map(plan => ({
-      ...plan,
-      dishes: plan.dishes
-        .map(id => dishMap.value[id])
-        .filter(Boolean) as Dish[],
-    }));
+    const now = dayjs();
+    return allPlans.value.map(plan => {
+      const isExpired = dayjs(plan.endDate).isBefore(now, 'day');
+      const isCompleted = completedPlanIds.value.has(plan.id);
+      return {
+        ...plan,
+        dishes: plan.dishes
+          .map(id => dishMap.value[id])
+          .filter(Boolean) as Dish[],
+        isCompleted,
+        isExpired,
+      };
+    });
   });
 
-  // 计算属性：当前规划（未过期）
+  // 计算属性：当前规划（未过期且未完成）
   const currentPlans = computed(() => 
-    enrichedPlans.value.filter(p => dayjs(p.endDate).isAfter(dayjs()))
+    enrichedPlans.value.filter(p => !p.isExpired && !p.isCompleted)
   );
 
-  // 计算属性：历史规划（已过期）
+  // 计算属性：历史规划（已过期或已完成）
   const historyPlans = computed(() => 
-    enrichedPlans.value.filter(p => dayjs(p.endDate).isBefore(dayjs()))
+    enrichedPlans.value.filter(p => p.isExpired || p.isCompleted)
   );
 
   // 获取所有规划
@@ -151,7 +161,7 @@ export const usePlanStore = defineStore('plan', () => {
     selectedPlan.value = plan;
   };
 
-  // 执行规划（将结束日期设为当前时间，使其移至历史）
+  // 执行规划（标记为已完成，移至历史）
   const executePlan = async (planId: string) => {
     loading.value = true;
     error.value = null;
@@ -161,16 +171,10 @@ export const usePlanStore = defineStore('plan', () => {
         throw new Error('规划不存在');
       }
       
-      // 将结束日期设为当前时间的前一天，使其成为历史规划
-      const updatedPlanData: MealPlanRequest = {
-        startDate: plan.startDate,
-        endDate: dayjs().subtract(1, 'day').format('YYYY-MM-DD'),
-        mealTime: plan.mealTime,
-        dishes: plan.dishes,
-      };
-      
-      await createOrUpdateMealPlan(updatedPlanData);
-      await fetchPlans(); // 重新获取列表
+      // 标记为已完成
+      completedPlanIds.value.add(planId);
+      // 持久化到本地存储
+      saveCompletedPlanIds();
     } catch (err) {
       error.value = err instanceof Error ? err.message : '执行规划失败';
       console.error('执行规划失败:', err);
@@ -179,6 +183,30 @@ export const usePlanStore = defineStore('plan', () => {
       loading.value = false;
     }
   };
+
+  // 保存已完成规划ID到本地存储
+  const saveCompletedPlanIds = () => {
+    try {
+      uni.setStorageSync('completedPlanIds', Array.from(completedPlanIds.value));
+    } catch (e) {
+      console.error('保存已完成规划失败:', e);
+    }
+  };
+
+  // 从本地存储加载已完成规划ID
+  const loadCompletedPlanIds = () => {
+    try {
+      const ids = uni.getStorageSync('completedPlanIds');
+      if (ids && Array.isArray(ids)) {
+        completedPlanIds.value = new Set(ids);
+      }
+    } catch (e) {
+      console.error('加载已完成规划失败:', e);
+    }
+  };
+
+  // 初始化时加载
+  loadCompletedPlanIds();
 
   // 根据ID获取富化后的规划
   const getPlanById = (planId: string): EnrichedMealPlan | undefined => {

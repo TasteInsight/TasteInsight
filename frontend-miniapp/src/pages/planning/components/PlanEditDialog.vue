@@ -330,7 +330,8 @@ watch(() => props.plan, (newPlan) => {
 // 监听 visible 变化重置选择器状态
 watch(() => props.visible, (newVisible, oldVisible) => {
   if (!newVisible) {
-    // 关闭时重置菜品选择器
+    // 关闭主对话框时同步关闭菜品选择器
+    showDishSelector.value = false;
     resetDishSelector();
   } else if (newVisible && !oldVisible && !props.plan) {
     // 打开新建对话框时重置表单
