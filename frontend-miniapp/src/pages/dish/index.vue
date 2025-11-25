@@ -22,7 +22,7 @@
     <view v-else-if="dish" class="pb-16">
       <!-- 图片轮播 -->
       <view class="relative" v-if="dish.images && dish.images.length > 0">
-        <swiper 
+        <swiper
           class="dish-swiper"
           :indicator-dots="dish.images.length > 1"
           :autoplay="true"
@@ -31,12 +31,38 @@
           indicator-color="rgba(255, 255, 255, 0.5)"
           indicator-active-color="#8B5CF6"
         >
-          <swiper-item v-for="(image, index) in dish.images" :key="index">
-            <image 
-              :src="image" 
-              class="w-full h-full"
+          <swiper-item v-for="(image, index) in dish.images" :key="index" class="relative overflow-hidden">
+            <!-- 背景模糊层 -->
+            <image
+              :src="image"
+              class="absolute inset-0 w-full h-full blur-bg"
               mode="aspectFill"
             />
+            <!-- 渐变遮罩层 - 优化边缘过渡 -->
+            <view class="absolute inset-0 bg-gradient-to-r from-black/10 via-transparent to-black/10 backdrop-blur-sm z-1"></view>
+
+            <!-- 强力边缘融合层：使用多重box-shadow模拟羽化效果 -->
+            <view class="absolute inset-0 z-5 pointer-events-none"
+                  style="box-shadow: inset 0 0 60px 40px rgba(255,255,255,0.5);">
+            </view>
+
+            <!-- 模糊遮罩层：进一步柔化边界 -->
+            <view class="absolute inset-0 z-6 pointer-events-none bg-gradient-to-r from-white/30 via-transparent to-white/30 backdrop-blur-md"></view>
+
+            <!-- 主体图片容器 -->
+            <view class="relative w-full h-full flex items-center justify-center z-10">
+              <image
+                :src="image"
+                class="w-full h-full"
+                mode="aspectFit"
+                style="-webkit-mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%); mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%);"
+              />
+            </view>
+            
+            <!-- 边缘融合遮罩 -->
+            <view class="absolute inset-0 z-20 pointer-events-none" 
+                  style="background: radial-gradient(circle, transparent 50%, rgba(255,255,255,0.4) 100%);">
+            </view>
           </swiper-item>
         </swiper>
       </view>
@@ -268,6 +294,13 @@ swiper-item {
 /* 旋转动画 */
 .rotate-180 {
   transform: rotate(180deg);
+}
+
+/* 背景模糊效果 */
+.blur-bg {
+  filter: blur(20px);
+  transform: scale(1.1); /* 稍微放大避免边缘露白 */
+  opacity: 0.8;
 }
 
 .transition-transform {
