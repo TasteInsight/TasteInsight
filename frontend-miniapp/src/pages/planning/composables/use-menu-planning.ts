@@ -121,6 +121,23 @@ export function useMenuPlanning() {
     showCreateDialog.value = false;
   };
 
+  // 执行规划（将规划移至历史）
+  const executePlan = async (planId: string) => {
+    try {
+      await planStore.executePlan(planId);
+      uni.showToast({
+        title: '规划已执行',
+        icon: 'success',
+      });
+    } catch (err) {
+      console.error('执行规划失败:', err);
+      uni.showToast({
+        title: '执行失败',
+        icon: 'none',
+      });
+    }
+  };
+
   // 切换标签页
   const switchTab = (tab: 'current' | 'history') => {
     // close any open dialogs when switching tabs
@@ -161,6 +178,7 @@ export function useMenuPlanning() {
     closeDetailDialog,
     closeEditDialog,
     closeCreateDialog,
+    executePlan,
     switchTab,
     refreshPlans,
   };

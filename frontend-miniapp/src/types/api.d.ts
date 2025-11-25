@@ -315,7 +315,10 @@ export interface WindowListData {
   meta: PaginationMeta;
 }
 
-
+export interface WindowDishesData {
+  items: Dish[];
+  meta: PaginationMeta;
+}
 
 
 /**
