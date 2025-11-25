@@ -8,7 +8,7 @@
         class="w-20 h-20 flex flex-col items-center justify-center rounded-lg mr-3 bg-white shadow-sm cursor-pointer flex-shrink-0 hover:shadow-md transition-shadow"
         @tap="() => handleClick(window.id)"
       >
-        <view class="text-2xl mb-1"></view>
+        <view class="text-2xl mb-1">🪟</view>
         <span class="text-xs font-medium text-gray-700 text-center">{{ window.name }}</span>
       </view>
     </view>

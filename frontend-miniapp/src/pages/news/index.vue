@@ -1,6 +1,9 @@
 <template>
   <view class="min-h-screen w-full flex flex-col bg-gray-100 overflow-hidden">
     <!-- 导航栏区域（在uni-app中通常由pages.json配置，或者使用自定义组件） -->
+    <view class="h-14 flex items-center justify-center px-4 bg-white border-b border-gray-200">
+      <text class="text-lg font-semibold text-gray-800">新闻</text>
+    </view>
 
     <!-- 列表内容区域，使用 scroll-view 适配下拉刷新和触底加载 -->
     <scroll-view

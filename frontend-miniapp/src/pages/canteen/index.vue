@@ -11,12 +11,11 @@
       </view>
     </view>
 
-    <CanteenHeader :canteen="canteenInfo" />
-
     <!-- 窗口列表 -->
     <CanteenWindowList :windows="windows" @click="goToWindow" />
 
-    
+    <CanteenHeader :canteen="canteenInfo" />
+
     <CanteenFilterBar :filters="filters" :activeFilter="activeFilter" @toggle="handleToggle" />
 
     <view class="px-4">

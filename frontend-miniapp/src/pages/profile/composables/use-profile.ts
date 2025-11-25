@@ -96,10 +96,8 @@ export function useProfile() {
             title: '已退出登录',
             icon: 'success'
           });
-          // 退出后跳转到登录页面
-          setTimeout(() => {
-            uni.reLaunch({ url: '/pages/login/index' });
-          }, 500);
+          // 可选：跳转到登录页面
+          // uni.reLaunch({ url: '/pages/login/index' });
         }
       }
     });
