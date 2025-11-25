@@ -13,7 +13,7 @@
           v-for="canteen in canteenStore.canteenList"
           :key="canteen.id"
           :canteen="canteen"
-          @click="navigateTo(`/pages/canteen/detail?id=${canteen.id}`)"
+          @click="navigateTo(`/pages/canteen/index?id=${canteen.id}`)"
         />
       </view>
 
@@ -70,13 +70,16 @@ const dishesStore = useDishesStore();
 // --- 计算属性 ---
 // 3. 计算属性直接从 store 实例中读取 state
 const topThreeDishes = computed(() => {
-  return dishesStore.dishes.slice(0, 3);
+  return dishesStore.dishes; // 显示所有返回的菜品
 });
 
 
 // --- 页面导航逻辑 (保持不变) ---
 function handleTabSwitch(item: { path: string }) { /* ... */ }
-function navigateTo(path: string) { /* ... */ }
+function navigateTo(path: string) {
+  if (!path) return;
+  uni.navigateTo({ url: path });
+}
 
 // --- 生命周期 ---
 onMounted(() => {

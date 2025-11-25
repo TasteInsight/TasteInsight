@@ -5,11 +5,13 @@ import {
   getCanteenDetail,
   getWindowList,
   getWindowDetail,
+  getWindowDishes,
 } from '@/api/modules/canteen';
 import type {
   Canteen,
   Window,
   PaginationParams,
+  Dish,
 } from '@/types/api';
 
 export const useCanteenStore = defineStore('canteen', () => {
@@ -26,6 +28,9 @@ export const useCanteenStore = defineStore('canteen', () => {
   
   // 当前窗口详情
   const currentWindow = ref<Window | null>(null);
+
+  // 当前窗口菜品
+  const currentWindowDishes = ref<Dish[]>([]);
   
   // 分页信息
   const pagination = ref({
@@ -151,16 +156,43 @@ export const useCanteenStore = defineStore('canteen', () => {
     error.value = null;
     
     try {
+      console.log('[store] fetchWindowDetail ->', windowId, params);
       const response = await getWindowDetail(windowId, params);
-      
-      if (response.code === 200 && response.data) {
-        currentWindow.value = response.data;
-      } else {
-        throw new Error(response.message || '获取窗口详情失败');
+      console.log('[store] fetchWindowDetail response ->', response);
+
+      if (!(response && response.code === 200 && response.data)) {
+        throw new Error(response?.message || '获取窗口详情失败');
       }
+
+      // 直接使用后端返回的窗口对象
+      currentWindow.value = response.data as Window;
     } catch (err) {
       error.value = err instanceof Error ? err.message : '未知错误';
       console.error('获取窗口详情失败:', err);
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /**
+   * 获取窗口菜品
+   */
+  async function fetchWindowDishes(windowId: string, params?: PaginationParams) {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const response = await getWindowDishes(windowId, params);
+      if (response.code === 200 && response.data) {
+        currentWindowDishes.value = response.data.items || [];
+        pagination.value = response.data.meta ?? pagination.value;
+      } else {
+        throw new Error(response.message || '获取窗口菜品失败');
+      }
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : '未知错误';
+      console.error('获取窗口菜品失败:', err);
       throw err;
     } finally {
       loading.value = false;
@@ -179,6 +211,7 @@ export const useCanteenStore = defineStore('canteen', () => {
    */
   function clearCurrentWindow() {
     currentWindow.value = null;
+    currentWindowDishes.value = [];
   }
 
   /**
@@ -204,6 +237,7 @@ export const useCanteenStore = defineStore('canteen', () => {
     currentCanteen,
     windowList,
     currentWindow,
+    currentWindowDishes,
     pagination,
     loading,
     error,
@@ -219,6 +253,7 @@ export const useCanteenStore = defineStore('canteen', () => {
     fetchCanteenDetail,
     fetchWindowList,
     fetchWindowDetail,
+    fetchWindowDishes,
     
     // Utilities
     clearCurrentCanteen,

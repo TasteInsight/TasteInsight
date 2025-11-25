@@ -41,10 +41,12 @@ export function useSearch() {
 
       // 2. 搜索菜品名称
       const dishByNameRequest: GetDishesRequest = {
+        filter: {},
         search: {
           keyword: keyword.value,
           fields: ['name'], // 优先搜索菜品名
         },
+        sort: {},
         pagination: {
           page: 1,
           pageSize: 50,
@@ -62,6 +64,10 @@ export function useSearch() {
           filter: {
             tag: [keyword.value], // 按标签搜索
           },
+          search: {
+            keyword: '',
+          },
+          sort: {},
           pagination: {
             page: 1,
             pageSize: 50,
