@@ -29,7 +29,6 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps } from 'vue';
 import { useChatStore } from '@/store/modules/use-chat-store';
 import type { RecommendationItem } from '@/types/api';
 
