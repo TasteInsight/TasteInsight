@@ -151,6 +151,35 @@ export const usePlanStore = defineStore('plan', () => {
     selectedPlan.value = plan;
   };
 
+  // 执行规划（将结束日期设为当前时间，使其移至历史）
+  const executePlan = async (planId: string) => {
+    loading.value = true;
+    error.value = null;
+    try {
+      const plan = allPlans.value.find(p => p.id === planId);
+      if (!plan) {
+        throw new Error('规划不存在');
+      }
+      
+      // 将结束日期设为当前时间的前一天，使其成为历史规划
+      const updatedPlanData: MealPlanRequest = {
+        startDate: plan.startDate,
+        endDate: dayjs().subtract(1, 'day').format('YYYY-MM-DD'),
+        mealTime: plan.mealTime,
+        dishes: plan.dishes,
+      };
+      
+      await createOrUpdateMealPlan(updatedPlanData);
+      await fetchPlans(); // 重新获取列表
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : '执行规划失败';
+      console.error('执行规划失败:', err);
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  };
+
   // 根据ID获取富化后的规划
   const getPlanById = (planId: string): EnrichedMealPlan | undefined => {
     return enrichedPlans.value.find(p => p.id === planId);
@@ -173,6 +202,7 @@ export const usePlanStore = defineStore('plan', () => {
     createPlan,
     updatePlan,
     removePlan,
+    executePlan,
     setSelectedPlan,
     getPlanById,
   };

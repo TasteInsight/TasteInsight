@@ -90,6 +90,7 @@
 </template>
 
 <script setup lang="ts">
+import { onHide } from '@dcloudio/uni-app';
 import { useMenuPlanning } from './composables/use-menu-planning';
 import type { EnrichedMealPlan } from './composables/use-menu-planning';
 import PlanCard from './components/PlanCard.vue';
@@ -118,14 +119,18 @@ const {
   closeCreateDialog,
   switchTab,
   refreshPlans,
+  executePlan,
 } = useMenuPlanning();
 
-const handleExecutePlan = (plan: EnrichedMealPlan) => {
-  console.log('执行规划:', plan);
-  uni.showToast({
-    title: '执行规划功能待实现',
-    icon: 'none',
-  });
+// 页面隐藏时关闭所有对话框
+onHide(() => {
+  closeDetailDialog();
+  closeEditDialog();
+  closeCreateDialog();
+});
+
+const handleExecutePlan = async (plan: EnrichedMealPlan) => {
+  await executePlan(plan.id);
 };
 </script>
 
