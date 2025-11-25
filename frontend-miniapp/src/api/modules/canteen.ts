@@ -36,6 +36,7 @@ export function getCanteenDetail(
   return request<Canteen>({
     url: `/canteens/${canteenId}`,
     method: 'GET',
+    data:params,
   });
 }
 
@@ -43,12 +44,13 @@ export function getCanteenDetail(
  * 获取窗口列表（根据食堂ID）
  */
 export function getWindowList(
-  id: string,
+  canteenId: string,
   params?: PaginationParams
 ): Promise<ApiResponse<WindowListData>> {
   return request<WindowListData>({
-    url: `/canteens/${id}/windows`,
+    url: `/canteens/${canteenId}/windows`,
     method: 'GET',
+    data:params,
   });
 }
 
@@ -62,6 +64,7 @@ export function getWindowDetail(
   return request<Window>({
     url: `/canteens/windows/${windowId}`,
     method: 'GET',
+    data:params,
   });
 }
 
