@@ -31,6 +31,13 @@ export function useLogin() {
         icon: 'success'
       });
 
+      // 3. 登录成功后跳转到主页
+      setTimeout(() => {
+        uni.switchTab({
+          url: '/pages/index/index'
+        });
+      }, 500);
+
     } catch (error: any) {
       console.error('微信登录失败:', error);
       

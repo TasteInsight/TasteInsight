@@ -58,7 +58,7 @@ export function useSearch() {
         results.push(...dishByNameResponse.data.items);
       }
 
-      // 3. 如果没有找到结果，从菜品标签中搜索
+      // 3. 如果没有找到结果,从菜品标签中搜索
       if (results.length === 0) {
         const dishByTagRequest: GetDishesRequest = {
           filter: {
