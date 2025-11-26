@@ -27,7 +27,12 @@
 
         <view class="mt-5">
           <text class="text-lg font-semibold mb-4 block">包含菜品</text>
-          <view v-for="dish in plan.dishes" :key="dish.id" class="flex gap-3 p-3 border border-gray-100 rounded-lg mb-3">
+          <view 
+            v-for="dish in plan.dishes" 
+            :key="dish.id" 
+            class="flex gap-3 p-3 border border-gray-100 rounded-lg mb-3 active:bg-gray-50"
+            @tap="goToDishDetail(dish.id)"
+          >
             <image 
               :src="dish.images[0] || '/default-dish.png'" 
               class="w-20 h-20 rounded-lg" 
@@ -87,6 +92,12 @@ const totalPrice = computed(() =>
 );
 
 const formatDate = (date: string) => dayjs(date).format('YYYY年MM月DD日');
+
+const goToDishDetail = (dishId: string) => {
+  uni.navigateTo({
+    url: `/pages/dish/index?id=${dishId}`
+  });
+};
 
 const handleClose = () => {
   emit('close');

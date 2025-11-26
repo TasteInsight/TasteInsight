@@ -125,6 +125,8 @@ export function useMenuPlanning() {
   const executePlan = async (planId: string) => {
     try {
       await planStore.executePlan(planId);
+      // 执行成功后关闭详情弹窗
+      showDetailDialog.value = false;
       uni.showToast({
         title: '规划已执行',
         icon: 'success',
