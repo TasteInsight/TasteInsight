@@ -31,8 +31,7 @@ export const mockGetDishes = async (params: GetDishesRequest): Promise<Paginated
 
   // 1. 筛选
   if (params.filter) {
-    const {canteenId, mealTime } = params.filter;
-
+    const { canteenId, mealTime, tag } = params.filter;
 
     if (canteenId && canteenId.length > 0) {
       dishes = dishes.filter(d => d.canteenId && canteenId.includes(d.canteenId));
@@ -41,6 +40,15 @@ export const mockGetDishes = async (params: GetDishesRequest): Promise<Paginated
     if (mealTime && mealTime.length > 0) {
       // @ts-ignore
       dishes = dishes.filter(d => d.availableMealTime && d.availableMealTime.some(t => mealTime.includes(t)));
+    }
+
+    // 按标签过滤
+    if (tag && tag.length > 0) {
+      dishes = dishes.filter(d => 
+        d.tags && d.tags.some(t => 
+          tag.some(filterTag => t.toLowerCase().includes(filterTag.toLowerCase()))
+        )
+      );
     }
   }
 
