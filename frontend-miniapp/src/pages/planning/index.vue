@@ -5,13 +5,13 @@
     <!-- 标签页 -->
     <view class="bg-white flex border-b-2 border-gray-100">
       <view 
-        :class="['flex-1 py-3 text-center border-b-2', activeTab === 'current' ? 'border-purple-700 text-purple-700 font-semibold' : 'border-transparent text-gray-600']"
+        :class="['flex-1 py-3 text-center border-b-2', activeTab === 'current' ? 'border-purple-700 text-ts-purple font-semibold' : 'border-transparent text-gray-600']"
         @tap="switchTab('current')"
       >
         <text>当前规划 ({{ currentPlans.length }})</text>
       </view>
       <view 
-        :class="['flex-1 py-3 text-center border-b-2', activeTab === 'history' ? 'border-purple-700 text-purple-700 font-semibold' : 'border-transparent text-gray-600']"
+        :class="['flex-1 py-3 text-center border-b-2', activeTab === 'history' ? 'border-purple-700 text-ts-purple font-semibold' : 'border-transparent text-gray-600']"
         @tap="switchTab('history')"
       >
         <text>历史规划 ({{ historyPlans.length }})</text>
@@ -20,7 +20,7 @@
 
      <!-- 页面头部 -->
     <view v-if="activeTab === 'current'" class="bg-white px-5 py-4 flex justify-end items-center border-b border-gray-100">
-      <view @tap="createNewPlan" class="flex items-center gap-1.5 bg-purple-700 py-2.5 px-5 rounded-lg border border-purple-700">
+      <view @tap="createNewPlan" class="flex items-center gap-1.5 bg-ts-purple py-2.5 px-5 rounded-lg border border-ts-purple">
         <text class="text-gray-100 text-xl">+</text>
         <text class="text-gray-100">新建规划</text>
       </view>
@@ -50,18 +50,21 @@
     </view>
 
     <!-- 规划列表 -->
-    <scroll-view v-else scroll-y class="px-5 pt-5">
-      <PlanCard
-        v-for="plan in displayPlans"
-        :key="plan.id"
-        :plan="plan"
-        :is-history="activeTab === 'history'"
-        @view="viewPlanDetail(plan)"
-        @edit="editPlan(plan)"
-        @delete="deletePlan(plan.id)"
-        @execute="handleExecutePlan(plan)"
-      />
-      <view class="h-5"></view>
+    <scroll-view v-else scroll-y class="box-border w-full px-5 pt-5">
+      <view class="flex flex-col items-center w-full">
+        <PlanCard
+          v-for="plan in displayPlans"
+          :key="plan.id"
+          :plan="plan"
+          :is-history="activeTab === 'history'"
+          @view="viewPlanDetail(plan)"
+          @edit="editPlan(plan)"
+          @delete="deletePlan(plan.id)"
+          @execute="handleExecutePlan(plan)"
+          class="w-full"
+        />
+        <view class="h-5"></view>
+      </view>
     </scroll-view>
 
     <!-- 详情对话框 -->

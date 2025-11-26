@@ -94,7 +94,7 @@
         </view>
         <view 
           class="flex-1 py-2 text-center rounded-xl"
-          :class="submitting ? 'bg-purple-300' : 'bg-purple-600'"
+          :class="submitting ? 'bg-purple-300' : 'bg-ts-purple'"
           @tap="handleSubmit"
         >
           <text class="text-white">{{ submitting ? '提交中...' : '确定' }}</text>

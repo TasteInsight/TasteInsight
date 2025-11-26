@@ -1,6 +1,6 @@
 <template>
-  <view @tap="$emit('view')" class="bg-white rounded-xl shadow-sm p-4 mb-3 cursor-pointer">
-    <view class="bg-purple-700 py-2 px-3 rounded-lg mb-3 flex justify-between items-center">
+  <view @tap="$emit('view')" class="bg-white rounded-xl shadow-sm p-4 mb-3 cursor-pointer w-full box-border">
+    <view class="bg-ts-purple py-2 px-3 rounded-lg mb-3 flex justify-between items-center">
       <text class="font-bold text-gray-400">{{ formatDate(plan.startDate) }} | {{ mealTimeText }}</text>
       <view class="flex gap-3 items-center">
         <view v-if="!isHistory" @tap.stop="$emit('edit')" class="p-1">
@@ -36,7 +36,7 @@
       <view 
         v-if="!isHistory" 
         @tap.stop="$emit('execute')"
-        class="bg-purple-700 text-gray-400 py-2 px-6 rounded-full"
+        class="bg-ts-purple text-gray-400 py-2 px-6 rounded-full"
       >
         <text class="text-gray-500">执行</text>
       </view>
