@@ -6,12 +6,11 @@ import {
   createOrUpdateMealPlan, 
   deleteMealPlan 
 } from '@/api/modules/meal-plan';
-import { getDishes } from '@/api/modules/dish';
+import { getDishById } from '@/api/modules/dish';
 import type { 
   MealPlan, 
   MealPlanRequest, 
-  Dish, 
-  GetDishesRequest 
+  Dish 
 } from '@/types/api';
 import dayjs from 'dayjs';
 
@@ -86,22 +85,17 @@ export const usePlanStore = defineStore('plan', () => {
     if (dishIds.size === 0) return;
 
     try {
-      // 注意：这里假设 API 支持按 ID 列表过滤
-      // 如果不支持，可能需要调整实现方式
-      const requestParams: GetDishesRequest = {
-        filter: {
-          ids: Array.from(dishIds),
-        },
-        search: { keyword: '' },
-        sort: {},
-        pagination: { page: 1, pageSize: dishIds.size },
-      };
+      // API 不支持按 ID 列表过滤，改为并行获取单个菜品详情
+      const promises = Array.from(dishIds).map(id => getDishById(id));
+      const responses = await Promise.all(promises);
       
-      const response = await getDishes(requestParams);
       const newDishMap: Record<string, Dish> = {};
-      response.data.items.forEach(dish => {
-        newDishMap[dish.id] = dish;
+      responses.forEach(response => {
+        if (response.code === 200 && response.data) {
+          newDishMap[response.data.id] = response.data;
+        }
       });
+      
       dishMap.value = { ...dishMap.value, ...newDishMap };
     } catch (err) {
       console.error('批量获取菜品详情失败:', err);
@@ -114,8 +108,14 @@ export const usePlanStore = defineStore('plan', () => {
     error.value = null;
     try {
       const response = await createOrUpdateMealPlan(planData);
-      await fetchPlans(); // 重新获取列表
-      return response.data;
+      const newPlan = response.data;
+      
+      // 更新本地列表
+      allPlans.value = [newPlan, ...allPlans.value];
+      // 获取新规划的菜品详情
+      await fetchAllDishDetails([newPlan]);
+      
+      return newPlan;
     } catch (err) {
       error.value = err instanceof Error ? err.message : '创建规划失败';
       console.error('创建规划失败:', err);
@@ -131,8 +131,22 @@ export const usePlanStore = defineStore('plan', () => {
     error.value = null;
     try {
       const response = await createOrUpdateMealPlan(planData);
-      await fetchPlans(); // 重新获取列表
-      return response.data;
+      const updatedPlan = response.data;
+      
+      // 更新本地列表
+      const index = allPlans.value.findIndex(p => p.id === updatedPlan.id);
+      if (index !== -1) {
+        allPlans.value[index] = updatedPlan;
+      } else {
+        // 如果 ID 变了（例如因为日期变化导致创建了新规划），移除旧的添加新的
+        allPlans.value = allPlans.value.filter(p => p.id !== planId);
+        allPlans.value = [updatedPlan, ...allPlans.value];
+      }
+      
+      // 获取更新后规划的菜品详情
+      await fetchAllDishDetails([updatedPlan]);
+      
+      return updatedPlan;
     } catch (err) {
       error.value = err instanceof Error ? err.message : '更新规划失败';
       console.error('更新规划失败:', err);

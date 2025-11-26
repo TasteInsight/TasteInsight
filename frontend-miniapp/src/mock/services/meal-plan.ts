@@ -27,9 +27,9 @@ export const mockGetMealPlans = async (): Promise<MealPlan[]> => {
   const plans = getMockPlanDatabase();
   console.log(`✅ [Mock] 返回 ${plans.length} 个饮食计划`);
   
-  // 按创建时间倒序排列
+  // 按开始日期倒序排列
   return [...plans].sort((a, b) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
   );
 };
 
