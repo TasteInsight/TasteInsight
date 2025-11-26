@@ -12,6 +12,7 @@
     </view>
 
     <CanteenHeader :canteen="canteenInfo" />
+
     
     <!-- 窗口列表 -->
     <CanteenWindowList :windows="windows" @click="goToWindow" />
