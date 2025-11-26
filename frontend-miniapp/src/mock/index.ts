@@ -15,7 +15,7 @@ export {
 } from './services/user';
 
 // Dish Service
-export { mockGetDishById } from './services/dish';
+export { mockGetDishById, mockGetDishes } from './services/dish';
 
 // News Service
 export { mockGetNewsList, mockGetNewsById } from './services/news';

@@ -89,7 +89,9 @@ export const usePlanStore = defineStore('plan', () => {
       // 注意：这里假设 API 支持按 ID 列表过滤
       // 如果不支持，可能需要调整实现方式
       const requestParams: GetDishesRequest = {
-        filter: {},
+        filter: {
+          ids: Array.from(dishIds),
+        },
         search: { keyword: '' },
         sort: {},
         pagination: { page: 1, pageSize: dishIds.size },

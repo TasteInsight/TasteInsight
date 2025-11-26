@@ -9,7 +9,7 @@ import type {
   ApiResponse,
   SuccessResponse,
 } from '@/types/api';
-import { USE_MOCK, mockGetDishById } from '@/mock';
+import { USE_MOCK, mockGetDishById, mockGetDishes } from '@/mock';
 
 /**
  * 获取菜品详情
@@ -44,9 +44,18 @@ export const getDishById = async (
 /**
  * 获取菜品列表
  */
-export const getDishes = (
+export const getDishes = async (
   params: GetDishesRequest
 ): Promise<ApiResponse<PaginatedData<Dish>>> => {
+  if (USE_MOCK) {
+    const data = await mockGetDishes(params);
+    return {
+      code: 200,
+      message: 'Success',
+      data,
+    };
+  }
+
   return request<PaginatedData<Dish>>({
     url: '/dishes',
     method: 'POST',
