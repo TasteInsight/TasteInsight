@@ -20,7 +20,7 @@ export class WindowDto {
   name: string;
   number: string;
   position?: string;
-  floor: FloorDto;
+  floor?: FloorDto;
   description?: string;
   tags: string[];
 }

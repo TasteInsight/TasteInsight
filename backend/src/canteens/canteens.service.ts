@@ -25,7 +25,11 @@ export class CanteensService {
         skip,
         take: pageSize,
         include: {
-          windows: true,
+          windows: {
+            include: {
+              floor: true,
+            },
+          },
         },
       }),
       this.prisma.canteen.count(),
@@ -53,7 +57,11 @@ export class CanteensService {
     const canteen = await this.prisma.canteen.findUnique({
       where: { id },
       include: {
-        windows: true,
+        windows: {
+          include: {
+            floor: true,
+          },
+        },
       },
     });
 
@@ -81,6 +89,7 @@ export class CanteensService {
         where: { canteenId },
         skip,
         take: pageSize,
+        include: { floor: true },
       }),
       this.prisma.window.count({ where: { canteenId } }),
     ]);
@@ -106,6 +115,7 @@ export class CanteensService {
   async getWindowById(id: string): Promise<WindowResponseDto> {
     const window = await this.prisma.window.findUnique({
       where: { id },
+      include: { floor: true },
     });
 
     if (!window) {
@@ -180,7 +190,7 @@ export class CanteensService {
       name: window.name,
       number: window.number,
       position: window.position,
-      floor: this.mapToFloorDto(window.floor),
+      floor: window.floor ? this.mapToFloorDto(window.floor) : undefined,
       description: window.description,
       tags: window.tags ?? [],
     };
