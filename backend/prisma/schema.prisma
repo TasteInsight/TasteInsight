@@ -31,7 +31,7 @@ model User {
 
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
-  AIRecommendation AIRecommendation[]
+  aIRecommendation AIRecommendation[]
 
   @@map("users")
 }
@@ -199,8 +199,8 @@ model Floor {
   level String // 楼层
   name  String? // 楼层名称
 
-  Dish   Dish[] // 该楼层的菜品（可选关联）
-  Window Window[] // 该楼层的窗口（可选关联）
+  dish   Dish[] // 该楼层的菜品（可选关联）
+  window Window[] // 该楼层的窗口（可选关联）
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

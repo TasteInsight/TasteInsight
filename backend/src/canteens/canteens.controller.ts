@@ -30,7 +30,7 @@ export class CanteensController {
   @Get('canteens/:id/windows')
   async getCanteenWindows(
     @Param('id') id: string,
-    @Query('page') page: number = 0,
+    @Query('page') page: number = 1,
     @Query('pageSize') pageSize: number = 10,
   ): Promise<WindowListResponseDto> {
     return this.canteensService.getCanteenWindows(id, page, pageSize);
@@ -44,7 +44,7 @@ export class CanteensController {
   @Get('windows/:id/dishes')
   async getWindowDishes(
     @Param('id') id: string,
-    @Query('page') page: number = 0,
+    @Query('page') page: number = 1,
     @Query('pageSize') pageSize: number = 10,
   ): Promise<DishListResponseDto> {
     return this.canteensService.getWindowDishes(id, page, pageSize);

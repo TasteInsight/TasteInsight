@@ -177,7 +177,7 @@ export class AdminCreateDishDto {
   @IsString()
   windowId?: string;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
   windowName?: string;
 

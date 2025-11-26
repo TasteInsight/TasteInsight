@@ -27,7 +27,7 @@ export class DishDto {
   oiliness: number;
   canteenId: string;
   canteenName: string;
-  floorLevel: string;
+  floorLevel?: string;
   floorName?: string;
   windowNumber?: string;
   windowName: string;
