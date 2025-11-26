@@ -8,11 +8,13 @@ import { DishesModule } from './dishes/dishes.module';
 import { AdminDishesModule } from './admin-dishes/admin-dishes.module';
 import { AdminReviewsModule } from './admin-reviews/admin-reviews.module';
 import { ConfigModule } from '@nestjs/config';
+import { CanteensModule } from './canteens/canteens.module';
 
 @Module({
   imports: [
     AuthModule,
     DishesModule,
+    CanteensModule,
     AdminDishesModule,
     AdminReviewsModule,
     ConfigModule.forRoot({

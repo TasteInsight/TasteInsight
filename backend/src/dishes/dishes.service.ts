@@ -6,14 +6,21 @@ import {
 import { PrismaService } from '@/prisma.service';
 import { GetDishesDto, SortOrder } from './dto/get-dishes.dto';
 import { UploadDishDto } from './dto/upload-dish.dto';
+import { DishDto } from './dto/dish.dto';
 import { Prisma } from '@prisma/client';
+import {
+  DishListResponseDto,
+  DishResponseDto,
+  DishUploadResponseDto,
+  FavoriteStatusResponseDto,
+} from './dto/dish-response.dto';
 
 @Injectable()
 export class DishesService {
   constructor(private prisma: PrismaService) {}
 
   // 获取菜品详情
-  async getDishById(id: string) {
+  async getDishById(id: string): Promise<DishResponseDto> {
     const dish = await this.prisma.dish.findUnique({
       where: { id },
       include: {
@@ -31,12 +38,12 @@ export class DishesService {
     return {
       code: 200,
       message: 'success',
-      data: dish,
+      data: DishDto.fromEntity(dish)
     };
   }
 
   // 获取菜品列表
-  async getDishes(getDishesDto: GetDishesDto) {
+  async getDishes(getDishesDto: GetDishesDto): Promise<DishListResponseDto> {
     const { filter, search, sort, pagination } = getDishesDto;
 
     // 构建 where 条件 - 使用数组来确保类型正确
@@ -247,7 +254,7 @@ export class DishesService {
       code: 200,
       message: 'success',
       data: {
-        items,
+        items: items.map((dish) => DishDto.fromEntity(dish)),
         meta: {
           page: pagination.page,
           pageSize: pagination.pageSize,
@@ -259,7 +266,10 @@ export class DishesService {
   }
 
   // 收藏菜品
-  async favoriteDish(dishId: string, userId: string) {
+  async favoriteDish(
+    dishId: string,
+    userId: string,
+  ): Promise<FavoriteStatusResponseDto> {
     // 检查菜品是否存在
     const dish = await this.prisma.dish.findUnique({
       where: { id: dishId },
@@ -307,7 +317,10 @@ export class DishesService {
   }
 
   // 取消收藏菜品
-  async unfavoriteDish(dishId: string, userId: string) {
+  async unfavoriteDish(
+    dishId: string,
+    userId: string,
+  ): Promise<FavoriteStatusResponseDto> {
     // 检查菜品是否存在
     const dish = await this.prisma.dish.findUnique({
       where: { id: dishId },
@@ -357,7 +370,10 @@ export class DishesService {
   }
 
   // 用户上传菜品
-  async uploadDish(uploadDishDto: UploadDishDto, userId: string) {
+  async uploadDish(
+    uploadDishDto: UploadDishDto,
+    userId: string,
+  ): Promise<DishUploadResponseDto> {
     // 创建 DishUpload 记录
     const dishUpload = await this.prisma.dishUpload.create({
       data: {

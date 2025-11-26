@@ -154,6 +154,7 @@ model Canteen {
   reviewCount   Int   @default(0)
 
   // 关联关系
+  floors  Floor[]
   windows Window[]
   dishes  Dish[]
   news    News[]
@@ -169,6 +170,8 @@ model Window {
   id        String  @id @default(cuid())
   canteenId String
   canteen   Canteen @relation(fields: [canteenId], references: [id], onDelete: Cascade)
+  floorId   String?
+  floor     Floor?  @relation(fields: [floorId], references: [id])
 
   name        String
   number      String // 窗口号
@@ -184,6 +187,24 @@ model Window {
 
   @@index([canteenId])
   @@map("windows")
+}
+
+model Floor {
+  id        String  @id @default(cuid())
+  canteenId String
+  canteen   Canteen @relation(fields: [canteenId], references: [id], onDelete: Cascade)
+
+  level String // 楼层
+  name  String? // 楼层名称
+
+  Dish   Dish[] // 该楼层的菜品（可选关联）
+  Window Window[] // 该楼层的窗口（可选关联）
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([canteenId])
+  @@map("floors")
 }
 
 // ==================== 菜品相关模型 ====================
@@ -215,7 +236,10 @@ model Dish {
   canteenId    String
   canteen      Canteen @relation(fields: [canteenId], references: [id], onDelete: Cascade)
   canteenName  String
-  floor        String?
+  floorId      String?
+  floor        Floor?  @relation(fields: [floorId], references: [id])
+  floorLevel   String?
+  floorName    String?
   windowId     String?
   window       Window? @relation(fields: [windowId], references: [id])
   windowNumber String?

@@ -9,12 +9,24 @@ async function main() {
 
   // 1. 清空所有数据，确保幂等性
   // 注意删除顺序，防止外键约束失败
-  await prisma.adminPermission.deleteMany({});
+  await prisma.aIRecommendationFeedback.deleteMany({});
+  await prisma.aIRecommendation.deleteMany({});
+  await prisma.mealPlanDish.deleteMany({});
+  await prisma.mealPlan.deleteMany({});
+  await prisma.browseHistory.deleteMany({});
   await prisma.favoriteDish.deleteMany({});
+  await prisma.report.deleteMany({});
+  await prisma.comment.deleteMany({});
+  await prisma.review.deleteMany({});
+  await prisma.dishUpload.deleteMany({});
+  await prisma.floor.deleteMany({});
+  await prisma.news.deleteMany({});
+  await prisma.operationLog.deleteMany({});
+  await prisma.userPreference.deleteMany({});
+  await prisma.adminPermission.deleteMany({});
   await prisma.dish.deleteMany({});
   await prisma.window.deleteMany({});
   await prisma.canteen.deleteMany({});
-  await prisma.dishUpload.deleteMany({});
   await prisma.user.deleteMany({});
   await prisma.admin.deleteMany({});
 
@@ -80,6 +92,7 @@ async function main() {
     data: {
         openId: 'baseline_user_openid',
         nickname: 'Baseline User',
+        avatar: 'https://example.com/avatar.jpg',
         allergens: ['芒果'],
     }
   });
@@ -159,10 +172,57 @@ async function main() {
   });
   console.log(`Updated canteenadmin with canteenId: ${canteen1.id}`);
 
+  // 4.5. 创建楼层
+  const floor1 = await prisma.floor.create({
+    data: {
+      canteenId: canteen1.id,
+      level: '1',
+      name: '一楼',
+    },
+  });
+  console.log(`Created floor: ${floor1.name} for ${canteen1.name}`);
+
+  const floor2 = await prisma.floor.create({
+    data: {
+      canteenId: canteen2.id,
+      level: '1',
+      name: '一楼',
+    },
+  });
+  console.log(`Created floor: ${floor2.name} for ${canteen2.name}`);
+
+  // 为用户创建偏好设置
+  await prisma.userPreference.create({
+    data: {
+      userId: user.id,
+      tagPreferences: ['川菜', '粤菜'],
+      priceMin: 5,
+      priceMax: 30,
+      meatPreference: ['鸡肉', '鱼'],
+      avoidIngredients: ['花生'],
+      favoriteIngredients: ['鸡肉', '蔬菜'],
+      spicyLevel: 2,
+      sweetness: 2,
+      saltiness: 2,
+      oiliness: 2,
+      canteenPreferences: [canteen1.id, canteen2.id],
+      portionSize: 'medium',
+      newDishAlert: true,
+      priceChangeAlert: false,
+      reviewReplyAlert: true,
+      weeklyRecommendation: true,
+      showCalories: true,
+      showNutrition: false,
+      defaultSortBy: 'rating',
+    },
+  });
+  console.log(`Created user preferences for ${user.nickname}`);
+
   // 5. 创建测试窗口
   const window1 = await prisma.window.create({
     data: {
       canteenId: canteen1.id,
+      floorId: floor1.id,
       name: '川菜窗口',
       number: 'A1',
       position: '一楼东侧',
@@ -175,6 +235,7 @@ async function main() {
   const window2 = await prisma.window.create({
     data: {
       canteenId: canteen1.id,
+      floorId: floor1.id,
       name: '粤菜窗口',
       number: 'A2',
       position: '一楼西侧',
@@ -187,6 +248,7 @@ async function main() {
   const window3 = await prisma.window.create({
     data: {
       canteenId: canteen2.id,
+      floorId: floor2.id,
       name: '面食窗口',
       number: 'B1',
       position: '一楼中央',
@@ -212,7 +274,9 @@ async function main() {
       oiliness: 3,
       canteenId: canteen1.id,
       canteenName: canteen1.name,
-      floor: '1F',
+      floorId: floor1.id,
+      floorLevel: floor1.level,
+      floorName: floor1.name,
       windowId: window1.id,
       windowNumber: window1.number,
       windowName: window1.name,
@@ -239,7 +303,9 @@ async function main() {
       oiliness: 1,
       canteenId: canteen1.id,
       canteenName: canteen1.name,
-      floor: '1F',
+      floorId: floor1.id,
+      floorLevel: floor1.level,
+      floorName: floor1.name,
       windowId: window2.id,
       windowNumber: window2.number,
       windowName: window2.name,
@@ -266,7 +332,9 @@ async function main() {
       oiliness: 3,
       canteenId: canteen2.id,
       canteenName: canteen2.name,
-      floor: '1F',
+      floorId: floor2.id,
+      floorLevel: floor2.level,
+      floorName: floor2.name,
       windowId: window3.id,
       windowNumber: window3.number,
       windowName: window3.name,
@@ -293,7 +361,9 @@ async function main() {
       oiliness: 4,
       canteenId: canteen1.id,
       canteenName: canteen1.name,
-      floor: '1F',
+      floorId: floor1.id,
+      floorLevel: floor1.level,
+      floorName: floor1.name,
       windowId: window1.id,
       windowNumber: window1.number,
       windowName: window1.name,
@@ -320,7 +390,9 @@ async function main() {
       oiliness: 2,
       canteenId: canteen1.id,
       canteenName: canteen1.name,
-      floor: '1F',
+      floorId: floor1.id,
+      floorLevel: floor1.level,
+      floorName: floor1.name,
       windowId: window2.id,
       windowNumber: window2.number,
       windowName: window2.name,
@@ -348,7 +420,9 @@ async function main() {
       oiliness: 4,
       canteenId: canteen2.id,
       canteenName: canteen2.name,
-      floor: '1F',
+      floorId: floor2.id,
+      floorLevel: floor2.level,
+      floorName: floor2.name,
       windowId: window3.id,
       windowNumber: window3.number,
       windowName: window3.name,
