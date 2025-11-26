@@ -35,7 +35,10 @@
 		{
 			"path": "pages/dish/index",
 			"style": {
-				"navigationBarTitleText": "菜品详情"
+				"navigationBarTitleText": "菜品详情",
+				"disableScroll": false,
+				"enablePullDownRefresh": false,
+				"navigationStyle": "default"
 			}
 		},
 		{

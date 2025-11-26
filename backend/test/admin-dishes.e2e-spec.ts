@@ -2,8 +2,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { PrismaService } from '../src/prisma.service';
+import { AppModule } from '@/app.module';
+import { PrismaService } from '@/prisma.service';
 
 describe('AdminDishesController (e2e)', () => {
   let app: INestApplication;
@@ -145,9 +145,7 @@ describe('AdminDishesController (e2e)', () => {
     });
 
     it('should return 401 without auth token', async () => {
-      await request(app.getHttpServer())
-        .get('/admin/dishes')
-        .expect(401);
+      await request(app.getHttpServer()).get('/admin/dishes').expect(401);
     });
 
     it('should return 403 for user token (not admin)', async () => {
@@ -589,6 +587,48 @@ describe('AdminDishesController (e2e)', () => {
       // 清理
       await prisma.dish.delete({ where: { id: childDish.id } });
       await prisma.dish.delete({ where: { id: parentDish.id } });
+    });
+  });
+
+  describe('/admin/dishes/:id/status (PATCH)', () => {
+    it('should update dish status for super admin', async () => {
+      const response = await request(app.getHttpServer())
+        .patch(`/admin/dishes/${testDishId}/status`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({ status: 'offline' })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.message).toBe('状态修改成功');
+
+      // Verify in DB
+      const updatedDish = await prisma.dish.findUnique({
+        where: { id: testDishId },
+      });
+      expect(updatedDish?.status).toBe('offline');
+
+      // Restore status
+      await prisma.dish.update({
+        where: { id: testDishId },
+        data: { status: 'online' },
+      });
+    });
+
+    it('should fail with invalid status', async () => {
+      await request(app.getHttpServer())
+        .patch(`/admin/dishes/${testDishId}/status`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({ status: 'invalid_status' })
+        .expect(400);
+    });
+
+    it('should fail for normal admin without edit permission', async () => {
+      // normalAdmin has only view permission
+      await request(app.getHttpServer())
+        .patch(`/admin/dishes/${testDishId}/status`)
+        .set('Authorization', `Bearer ${normalAdminToken}`)
+        .send({ status: 'offline' })
+        .expect(403);
     });
   });
 });

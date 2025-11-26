@@ -1,6 +1,16 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
-import { PrismaService } from '../prisma.service';
-import { AdminGetDishesDto, AdminCreateDishDto, AdminUpdateDishDto } from './dto/admin-dish.dto';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
+import { PrismaService } from '@/prisma.service';
+import {
+  AdminGetDishesDto,
+  AdminCreateDishDto,
+  AdminUpdateDishDto,
+  DishStatus,
+} from './dto/admin-dish.dto';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
@@ -183,7 +193,9 @@ export class AdminDishesService {
         windowNumber: window?.number || createDto.windowNumber,
         windowName: createDto.windowName,
         availableMealTime: createDto.availableMealTime || [],
-        availableDates: createDto.availableDates ? (createDto.availableDates as unknown as Prisma.InputJsonArray) : undefined,
+        availableDates: createDto.availableDates
+          ? (createDto.availableDates as unknown as Prisma.InputJsonArray)
+          : undefined,
         status: createDto.status || 'offline',
       },
       include: {
@@ -204,7 +216,11 @@ export class AdminDishesService {
   /**
    * 管理端更新菜品
    */
-  async updateAdminDish(id: string, updateDto: AdminUpdateDishDto, adminInfo: any) {
+  async updateAdminDish(
+    id: string,
+    updateDto: AdminUpdateDishDto,
+    adminInfo: any,
+  ) {
     // 检查菜品是否存在
     const existingDish = await this.prisma.dish.findUnique({
       where: { id },
@@ -226,20 +242,32 @@ export class AdminDishesService {
     if (updateDto.name !== undefined) updateData.name = updateDto.name;
     if (updateDto.tags !== undefined) updateData.tags = updateDto.tags;
     if (updateDto.price !== undefined) updateData.price = updateDto.price;
-    if (updateDto.description !== undefined) updateData.description = updateDto.description;
+    if (updateDto.description !== undefined)
+      updateData.description = updateDto.description;
     if (updateDto.images !== undefined) updateData.images = updateDto.images;
-    if (updateDto.parentDishId !== undefined) updateData.parentDishId = updateDto.parentDishId;
-    if (updateDto.ingredients !== undefined) updateData.ingredients = updateDto.ingredients;
-    if (updateDto.allergens !== undefined) updateData.allergens = updateDto.allergens;
-    if (updateDto.spicyLevel !== undefined) updateData.spicyLevel = updateDto.spicyLevel;
-    if (updateDto.sweetness !== undefined) updateData.sweetness = updateDto.sweetness;
-    if (updateDto.saltiness !== undefined) updateData.saltiness = updateDto.saltiness;
-    if (updateDto.oiliness !== undefined) updateData.oiliness = updateDto.oiliness;
+    if (updateDto.parentDishId !== undefined)
+      updateData.parentDishId = updateDto.parentDishId;
+    if (updateDto.ingredients !== undefined)
+      updateData.ingredients = updateDto.ingredients;
+    if (updateDto.allergens !== undefined)
+      updateData.allergens = updateDto.allergens;
+    if (updateDto.spicyLevel !== undefined)
+      updateData.spicyLevel = updateDto.spicyLevel;
+    if (updateDto.sweetness !== undefined)
+      updateData.sweetness = updateDto.sweetness;
+    if (updateDto.saltiness !== undefined)
+      updateData.saltiness = updateDto.saltiness;
+    if (updateDto.oiliness !== undefined)
+      updateData.oiliness = updateDto.oiliness;
     if (updateDto.floor !== undefined) updateData.floor = updateDto.floor;
-    if (updateDto.windowNumber !== undefined) updateData.windowNumber = updateDto.windowNumber;
-    if (updateDto.windowName !== undefined) updateData.windowName = updateDto.windowName;
-    if (updateDto.availableMealTime !== undefined) updateData.availableMealTime = updateDto.availableMealTime;
-    if (updateDto.availableDates !== undefined) updateData.availableDates = updateDto.availableDates as any;
+    if (updateDto.windowNumber !== undefined)
+      updateData.windowNumber = updateDto.windowNumber;
+    if (updateDto.windowName !== undefined)
+      updateData.windowName = updateDto.windowName;
+    if (updateDto.availableMealTime !== undefined)
+      updateData.availableMealTime = updateDto.availableMealTime;
+    if (updateDto.availableDates !== undefined)
+      updateData.availableDates = updateDto.availableDates as any;
     if (updateDto.status !== undefined) updateData.status = updateDto.status;
 
     // 处理食堂ID和名称的更新
@@ -321,6 +349,35 @@ export class AdminDishesService {
     return {
       code: 200,
       message: '删除成功',
+      data: null,
+    };
+  }
+
+  /**
+   * 管理端修改菜品状态
+   */
+  async updateDishStatus(id: string, status: DishStatus, adminInfo: any) {
+    const dish = await this.prisma.dish.findUnique({
+      where: { id },
+    });
+
+    if (!dish) {
+      throw new NotFoundException('菜品不存在');
+    }
+
+    // 检查权限：如果管理员有食堂限制，必须匹配
+    if (adminInfo.canteenId && dish.canteenId !== adminInfo.canteenId) {
+      throw new ForbiddenException('权限不足');
+    }
+
+    await this.prisma.dish.update({
+      where: { id },
+      data: { status },
+    });
+
+    return {
+      code: 200,
+      message: '状态修改成功',
       data: null,
     };
   }

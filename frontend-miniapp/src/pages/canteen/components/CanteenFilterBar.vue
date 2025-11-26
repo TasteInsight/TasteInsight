@@ -15,8 +15,6 @@
 </template>
 
 <script setup lang="ts">
-import { defineEmits, defineProps } from 'vue';
-
 const props = defineProps<{ filters: Array<{ key: string; label: string }>; activeFilter: string | null }>();
 const emit = defineEmits<{ (e: 'toggle', key: string): void }>();
 

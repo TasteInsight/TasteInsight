@@ -1,32 +1,11 @@
 import { Dish } from '@prisma/client';
-
-// 通用响应格式
-export class BaseResponseDto<T = any> {
-  code: number;
-  message: string;
-  data: T;
-}
-
-// 错误详情
-export class ErrorDetail {
-  field: string;
-  message: string;
-}
-
-// 错误响应
-export class ErrorResponseDto {
-  code: number;
-  message: string;
-  errors?: ErrorDetail[];
-}
-
-// 分页元数据
-export class PaginationMeta {
-  page: number;
-  pageSize: number;
-  total: number;
-  totalPages: number;
-}
+import {
+  BaseResponseDto,
+  ErrorDetail,
+  ErrorResponseDto,
+  PaginationMeta,
+  SuccessResponseDto,
+} from '@/common/dto/response.dto';
 
 // 菜品详情响应
 export class DishResponseDto extends BaseResponseDto<Dish> {}
@@ -41,7 +20,7 @@ export class DishListData {
 export class DishListResponseDto extends BaseResponseDto<DishListData> {}
 
 // 成功响应（用于收藏等操作）
-export class SuccessResponseDto extends BaseResponseDto<any> {}
+export { SuccessResponseDto };
 
 // 上传菜品响应数据
 export class DishUploadData {
@@ -57,3 +36,6 @@ export class FavoriteStatusData {
   isFavorited: boolean;
   favoriteCount: number;
 }
+
+// 收藏状态响应
+export class FavoriteStatusResponseDto extends BaseResponseDto<FavoriteStatusData> {}
