@@ -6,14 +6,21 @@ import {
 import { PrismaService } from '@/prisma.service';
 import { GetDishesDto, SortOrder } from './dto/get-dishes.dto';
 import { UploadDishDto } from './dto/upload-dish.dto';
+import { DishDto } from './dto/dish.dto';
 import { Prisma } from '@prisma/client';
+import {
+  DishListResponseDto,
+  DishResponseDto,
+  DishUploadResponseDto,
+  FavoriteStatusResponseDto,
+} from './dto/dish-response.dto';
 
 @Injectable()
 export class DishesService {
   constructor(private prisma: PrismaService) {}
 
   // 获取菜品详情
-  async getDishById(id: string) {
+  async getDishById(id: string): Promise<DishResponseDto> {
     const dish = await this.prisma.dish.findUnique({
       where: { id },
       include: {
@@ -31,12 +38,12 @@ export class DishesService {
     return {
       code: 200,
       message: 'success',
-      data: dish,
+      data: DishDto.fromEntity(dish),
     };
   }
 
   // 获取菜品列表
-  async getDishes(getDishesDto: GetDishesDto) {
+  async getDishes(getDishesDto: GetDishesDto): Promise<DishListResponseDto> {
     const { filter, search, sort, pagination } = getDishesDto;
 
     // 构建 where 条件 - 使用数组来确保类型正确
@@ -247,7 +254,7 @@ export class DishesService {
       code: 200,
       message: 'success',
       data: {
-        items,
+        items: items.map((dish) => DishDto.fromEntity(dish)),
         meta: {
           page: pagination.page,
           pageSize: pagination.pageSize,
@@ -259,7 +266,10 @@ export class DishesService {
   }
 
   // 收藏菜品
-  async favoriteDish(dishId: string, userId: string) {
+  async favoriteDish(
+    dishId: string,
+    userId: string,
+  ): Promise<FavoriteStatusResponseDto> {
     // 检查菜品是否存在
     const dish = await this.prisma.dish.findUnique({
       where: { id: dishId },
@@ -307,7 +317,10 @@ export class DishesService {
   }
 
   // 取消收藏菜品
-  async unfavoriteDish(dishId: string, userId: string) {
+  async unfavoriteDish(
+    dishId: string,
+    userId: string,
+  ): Promise<FavoriteStatusResponseDto> {
     // 检查菜品是否存在
     const dish = await this.prisma.dish.findUnique({
       where: { id: dishId },
@@ -357,7 +370,76 @@ export class DishesService {
   }
 
   // 用户上传菜品
-  async uploadDish(uploadDishDto: UploadDishDto, userId: string) {
+  async uploadDish(
+    uploadDishDto: UploadDishDto,
+    userId: string,
+  ): Promise<DishUploadResponseDto> {
+    // 1. 确定食堂
+    let canteenId = uploadDishDto.canteenId;
+    let canteenName = uploadDishDto.canteenName;
+
+    if (canteenId) {
+      const canteen = await this.prisma.canteen.findUnique({
+        where: { id: canteenId },
+      });
+      if (!canteen) {
+        throw new BadRequestException('指定的食堂不存在');
+      }
+      canteenName = canteen.name;
+    } else {
+      const canteen = await this.prisma.canteen.findFirst({
+        where: { name: canteenName },
+      });
+      if (!canteen) {
+        throw new BadRequestException('指定的食堂不存在');
+      }
+      canteenId = canteen.id;
+    }
+
+    // 2. 确定窗口（可选）
+    let windowId = uploadDishDto.windowId;
+    let windowName = uploadDishDto.windowName;
+    let windowNumber = uploadDishDto.windowNumber;
+
+    let window: any = null;
+
+    // 首先尝试按 ID 查找
+    if (windowId) {
+      window = await this.prisma.window.findUnique({
+        where: { id: windowId },
+      });
+      // 验证窗口是否属于该食堂
+      if (window && window.canteenId !== canteenId) {
+        throw new BadRequestException('指定的窗口不属于该食堂');
+      }
+    }
+
+    // 如果未通过 ID 找到（或未提供 ID），尝试按名称查找
+    if (!window && windowName) {
+      window = await this.prisma.window.findFirst({
+        where: { canteenId, name: windowName },
+      });
+    }
+
+    // 如果仍未找到，尝试按窗口号查找
+    if (!window && windowNumber) {
+      window = await this.prisma.window.findFirst({
+        where: { canteenId, number: windowNumber },
+      });
+    }
+
+    // 如果找到，使用权威信息
+    if (window) {
+      windowId = window.id;
+      windowName = window.name;
+      windowNumber = window.number;
+    } else {
+      // 如果未找到，说明用户提供的信息有误
+      if (windowId || windowName || windowNumber) {
+        throw new BadRequestException('指定的窗口不存在或信息不完整');
+      }
+    }
+
     // 创建 DishUpload 记录
     const dishUpload = await this.prisma.dishUpload.create({
       data: {
@@ -373,10 +455,11 @@ export class DishesService {
         sweetness: uploadDishDto.sweetness ?? 0,
         saltiness: uploadDishDto.saltiness ?? 0,
         oiliness: uploadDishDto.oiliness ?? 0,
-        canteenName: uploadDishDto.canteenName,
-        floor: uploadDishDto.floor,
-        windowNumber: uploadDishDto.windowNumber,
-        windowName: uploadDishDto.windowName,
+        canteenId: canteenId,
+        canteenName: canteenName,
+        windowId: windowId,
+        windowNumber: windowNumber,
+        windowName: windowName,
         availableMealTime: uploadDishDto.availableMealTime,
         availableDates: uploadDishDto.availableDates as any,
         status: 'pending', // 默认为待审核状态

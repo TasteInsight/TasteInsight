@@ -12,16 +12,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { DishStatus, MealTime } from '@/common/enums';
-
-class AvailableDateRangeDto {
-  @IsNotEmpty()
-  @IsString()
-  startDate: string;
-
-  @IsNotEmpty()
-  @IsString()
-  endDate: string;
-}
+import { AvailableDateRangeDto } from '@/dishes/dto/dish.dto';
 
 export class UploadDishDto {
   @IsOptional()
@@ -106,13 +97,17 @@ export class UploadDishDto {
   @Max(5)
   oiliness?: number;
 
+  @IsOptional()
+  @IsString()
+  canteenId?: string;
+
   @IsNotEmpty()
   @IsString()
   canteenName: string;
 
   @IsOptional()
   @IsString()
-  floor?: string;
+  windowId?: string;
 
   @IsOptional()
   @IsString()

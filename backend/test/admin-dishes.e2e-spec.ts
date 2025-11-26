@@ -16,6 +16,8 @@ describe('AdminDishesController (e2e)', () => {
   let testDishId: string;
   let canteen1Id: string;
   let canteen2Id: string;
+  let window1Id: string;
+  let window2Id: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -72,6 +74,16 @@ describe('AdminDishesController (e2e)', () => {
       where: { name: '第二食堂' },
     });
     canteen2Id = canteen2?.id || '';
+
+    const window1 = await prisma.window.findFirst({
+      where: { canteenId: canteen1Id },
+    });
+    window1Id = window1?.id || '';
+
+    const window2 = await prisma.window.findFirst({
+      where: { canteenId: canteen2Id },
+    });
+    window2Id = window2?.id || '';
   });
 
   afterAll(async () => {
@@ -244,7 +256,7 @@ describe('AdminDishesController (e2e)', () => {
           name: '测试菜品-创建',
           price: 20.0,
           canteenName: '第一食堂',
-          windowName: '川菜窗口',
+          windowId: window1Id,
           tags: ['测试'],
           description: '这是一个测试菜品',
           status: 'offline',
@@ -277,20 +289,20 @@ describe('AdminDishesController (e2e)', () => {
           name: '测试菜品',
           price: -10,
           canteenName: '第一食堂',
-          windowName: '川菜窗口',
+          windowId: window1Id,
         })
         .expect(400);
     });
 
-    it('should fail to create dish with non-existent canteen', async () => {
+    it('should fail to create dish with non-existent window', async () => {
       await request(app.getHttpServer())
         .post('/admin/dishes')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .send({
           name: '测试菜品',
           price: 20.0,
-          canteenName: '不存在的食堂',
-          windowName: '窗口',
+          canteenName: '第一食堂',
+          windowId: 'non-existent-window-id',
         })
         .expect(400);
     });
@@ -303,7 +315,7 @@ describe('AdminDishesController (e2e)', () => {
           name: '测试菜品',
           price: 20.0,
           canteenName: '第一食堂',
-          windowName: '川菜窗口',
+          windowId: window1Id,
         })
         .expect(403);
     });
@@ -316,7 +328,7 @@ describe('AdminDishesController (e2e)', () => {
           name: '测试菜品-食堂管理员创建',
           price: 25.0,
           canteenName: '第一食堂',
-          windowName: '川菜窗口',
+          windowId: window1Id,
         })
         .expect(201);
 
@@ -331,7 +343,7 @@ describe('AdminDishesController (e2e)', () => {
           name: '测试菜品',
           price: 25.0,
           canteenName: '第二食堂',
-          windowName: '面食窗口',
+          windowId: window2Id,
         })
         .expect(403);
     });
