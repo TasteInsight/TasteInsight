@@ -458,9 +458,31 @@ const handleClose = () => {
 
 // 提交表单
 const handleSubmit = async () => {
-  if (!formData.value.mealTime || formData.value.dishes.length === 0) {
+  if (
+    !formData.value.mealTime ||
+    formData.value.dishes.length === 0 ||
+    !formData.value.startDate ||
+    !formData.value.endDate
+  ) {
     uni.showToast({
       title: '请完整填写表单',
+      icon: 'none',
+    });
+    return;
+  }
+  // Check that endDate is not before startDate
+  const start = new Date(formData.value.startDate);
+  const end = new Date(formData.value.endDate);
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    uni.showToast({
+      title: '日期格式不正确',
+      icon: 'none',
+    });
+    return;
+  }
+  if (end < start) {
+    uni.showToast({
+      title: '结束日期不能早于开始日期',
       icon: 'none',
     });
     return;
