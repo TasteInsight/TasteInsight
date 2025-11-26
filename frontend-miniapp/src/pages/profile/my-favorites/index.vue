@@ -51,7 +51,7 @@ onMounted(() => {
  */
 function goToDishDetail(dishId: string) {
   uni.navigateTo({
-    url: `/pages/dishs/index?id=${dishId}`,
+    url: `/pages/dish/index?id=${dishId}`,
     fail: () => {
       uni.showToast({
         title: '页面跳转失败',
