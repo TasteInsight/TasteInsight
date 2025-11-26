@@ -38,7 +38,7 @@
         @tap.stop="$emit('execute')"
         class="bg-ts-purple text-gray-400 py-2 px-6 rounded-full"
       >
-        <text class="text-gray-500">执行</text>
+        <text class="text-white">执行</text>
       </view>
       <view v-else class="flex items-center gap-1">
         <text 
