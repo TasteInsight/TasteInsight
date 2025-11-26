@@ -1,6 +1,6 @@
 // Mock 菜品数据
-import type { Dish, Window } from '@/types/api';
-import { AvailableMealTime, Status } from '@/types/api';
+import type { Dish, Window } from '@/types/api.d';
+import { AvailableMealTime, Status } from '@/types/api.d';
 import { createMockWindows } from './canteen';
 
 // 窗口与菜品的映射关系（用于快速查询）
