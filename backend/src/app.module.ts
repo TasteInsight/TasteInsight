@@ -8,6 +8,7 @@ import { DishesModule } from './dishes/dishes.module';
 import { AdminDishesModule } from './admin-dishes/admin-dishes.module';
 import { AdminReviewsModule } from './admin-reviews/admin-reviews.module';
 import { AdminCommentsModule } from './admin-comments/admin-comments.module';
+import { AdminCanteensModule } from './admin-canteens/admin-canteens.module';
 import { ConfigModule } from '@nestjs/config';
 
 @Module({
@@ -17,6 +18,7 @@ import { ConfigModule } from '@nestjs/config';
     AdminDishesModule,
     AdminReviewsModule,
     AdminCommentsModule,
+    AdminCanteensModule,
     ConfigModule.forRoot({
       isGlobal: true,
     }),
