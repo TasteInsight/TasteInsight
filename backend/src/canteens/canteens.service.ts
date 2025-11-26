@@ -18,7 +18,6 @@ export class CanteensService {
     page: number,
     pageSize: number,
   ): Promise<CanteenListResponseDto> {
-
     const skip = (page - 1) * pageSize;
     const [canteens, total] = await Promise.all([
       this.prisma.canteen.findMany({
@@ -81,8 +80,7 @@ export class CanteensService {
     page: number,
     pageSize: number,
   ): Promise<WindowListResponseDto> {
-    if (page < 1)
-      page = 1;
+    if (page < 1) page = 1;
     const skip = (page - 1) * pageSize;
     const [windows, total] = await Promise.all([
       this.prisma.window.findMany({
@@ -134,8 +132,7 @@ export class CanteensService {
     page: number,
     pageSize: number,
   ): Promise<DishListResponseDto> {
-    if (page < 1)
-      page = 1;
+    if (page < 1) page = 1;
     const skip = (page - 1) * pageSize;
     const [dishes, total] = await Promise.all([
       this.prisma.dish.findMany({
@@ -200,6 +197,6 @@ export class CanteensService {
     return {
       level: floor.level,
       name: floor.name,
-    }
+    };
   }
 }

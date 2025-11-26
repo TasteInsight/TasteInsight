@@ -38,7 +38,7 @@ export class DishesService {
     return {
       code: 200,
       message: 'success',
-      data: DishDto.fromEntity(dish)
+      data: DishDto.fromEntity(dish),
     };
   }
 

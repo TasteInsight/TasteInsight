@@ -255,7 +255,7 @@ describe('CanteensService', () => {
         skip: 0,
         take: 10,
       });
-      
+
       fromEntitySpy.mockRestore();
     });
 
