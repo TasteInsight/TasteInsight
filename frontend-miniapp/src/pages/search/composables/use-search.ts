@@ -15,6 +15,10 @@ export interface SearchResults {
 /**
  * 搜索逻辑 Composable
  * 优先级：食堂名称 > 窗口名称 > 菜品名字 > 菜品tag
+ * 
+ * 注意：当前实现同时兼容 Mock 数据和真实接口
+ * - Mock 模式：前端过滤确保结果准确
+ * - 真实接口：依赖后端搜索，前端过滤作为保险
  */
 export function useSearch() {
   const keyword = ref('');
@@ -39,6 +43,20 @@ export function useSearch() {
   });
 
   /**
+   * 前端过滤 - 确保搜索结果准确性
+   * 无论后端返回什么，都在前端做一次过滤保证结果匹配搜索词
+   */
+  const filterByKeyword = <T extends { name: string }>(
+    items: T[],
+    searchTerm: string
+  ): T[] => {
+    if (!searchTerm) return items;
+    return items.filter(item => 
+      item.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  };
+
+  /**
    * 执行搜索
    */
   const search = async () => {
@@ -56,41 +74,18 @@ export function useSearch() {
     };
 
     try {
-      const searchTerm = keyword.value.toLowerCase().trim();
-      const matchedCanteens: Canteen[] = [];
-      const matchedWindows: Window[] = [];
-      const matchedDishes: Dish[] = [];
-
-      // 1. 搜索食堂名称
-      const canteenResponse = await getCanteenList({ page: 1, pageSize: 100 });
-      if (canteenResponse.code === 200 && canteenResponse.data) {
-        for (const canteen of canteenResponse.data.items) {
-          if (canteen.name.toLowerCase().includes(searchTerm)) {
-            matchedCanteens.push(canteen);
-          }
-          
-          // 2. 搜索窗口名称（窗口在食堂数据中）
-          if (canteen.windows) {
-            for (const window of canteen.windows) {
-              if (window.name.toLowerCase().includes(searchTerm)) {
-                // 给窗口添加食堂信息，方便跳转
-                matchedWindows.push({
-                  ...window,
-                  canteenId: canteen.id,
-                  canteenName: canteen.name,
-                } as Window & { canteenId: string; canteenName: string });
-              }
-            }
-          }
-        }
-      }
-
-      // 3. 搜索菜品名称 - 只有当食堂和窗口都没有匹配时才搜索菜品
-      if (matchedCanteens.length === 0 && matchedWindows.length === 0) {
-        const dishByNameRequest: GetDishesRequest = {
+      const searchTerm = keyword.value.trim();
+      const searchTermLower = searchTerm.toLowerCase();
+      
+      // 并行请求食堂列表和菜品列表，提高搜索效率
+      const [canteenResponse, dishResponse] = await Promise.all([
+        // 获取食堂列表（未来可改为带 keyword 参数的搜索接口）
+        getCanteenList({ page: 1, pageSize: 100 }),
+        // 搜索菜品（后端支持 keyword 搜索）
+        getDishes({
           filter: {},
           search: {
-            keyword: keyword.value,
+            keyword: searchTerm,
             fields: ['name'],
           },
           sort: {},
@@ -98,41 +93,65 @@ export function useSearch() {
             page: 1,
             pageSize: 50,
           },
-        };
+        } as GetDishesRequest),
+      ]);
 
-        const dishByNameResponse = await getDishes(dishByNameRequest);
-        if (dishByNameResponse.code === 200 && dishByNameResponse.data) {
-          // 过滤确保只返回名称匹配的菜品
-          const filteredDishes = dishByNameResponse.data.items.filter(dish => 
-            dish.name.toLowerCase().includes(searchTerm)
-          );
-          matchedDishes.push(...filteredDishes);
-        }
+      const matchedCanteens: Canteen[] = [];
+      const matchedWindows: (Window & { canteenId: string; canteenName: string })[] = [];
+      let matchedDishes: Dish[] = [];
 
-        // 4. 如果菜品名称没找到，搜索菜品标签
-        if (matchedDishes.length === 0) {
-          const dishByTagRequest: GetDishesRequest = {
-            filter: {
-              tag: [keyword.value],
-            },
-            search: {
-              keyword: '',
-            },
-            sort: {},
-            pagination: {
-              page: 1,
-              pageSize: 50,
-            },
-          };
-
-          const dishByTagResponse = await getDishes(dishByTagRequest);
-          if (dishByTagResponse.code === 200 && dishByTagResponse.data) {
-            // 过滤确保只返回标签匹配的菜品
-            const filteredDishes = dishByTagResponse.data.items.filter(dish =>
-              dish.tags?.some(tag => tag.toLowerCase().includes(searchTerm))
-            );
-            matchedDishes.push(...filteredDishes);
+      // 1. 处理食堂和窗口搜索结果
+      if (canteenResponse.code === 200 && canteenResponse.data) {
+        for (const canteen of canteenResponse.data.items) {
+          // 匹配食堂名称
+          if (canteen.name.toLowerCase().includes(searchTermLower)) {
+            matchedCanteens.push(canteen);
           }
+          
+          // 匹配窗口名称
+          if (canteen.windows) {
+            for (const window of canteen.windows) {
+              if (window.name.toLowerCase().includes(searchTermLower)) {
+                matchedWindows.push({
+                  ...window,
+                  canteenId: canteen.id,
+                  canteenName: canteen.name,
+                });
+              }
+            }
+          }
+        }
+      }
+
+      // 2. 处理菜品搜索结果
+      if (dishResponse.code === 200 && dishResponse.data) {
+        // 前端过滤确保结果准确（兼容 Mock 和真实接口）
+        matchedDishes = dishResponse.data.items.filter(dish => 
+          dish.name.toLowerCase().includes(searchTermLower)
+        );
+      }
+
+      // 3. 如果菜品名称没找到，尝试按标签搜索
+      if (matchedDishes.length === 0 && matchedCanteens.length === 0 && matchedWindows.length === 0) {
+        const tagResponse = await getDishes({
+          filter: {
+            tag: [searchTerm],
+          },
+          search: {
+            keyword: '',
+          },
+          sort: {},
+          pagination: {
+            page: 1,
+            pageSize: 50,
+          },
+        } as GetDishesRequest);
+
+        if (tagResponse.code === 200 && tagResponse.data) {
+          // 前端过滤确保标签匹配
+          matchedDishes = tagResponse.data.items.filter(dish =>
+            dish.tags?.some(tag => tag.toLowerCase().includes(searchTermLower))
+          );
         }
       }
 

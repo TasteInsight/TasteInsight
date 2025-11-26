@@ -19,12 +19,6 @@
         >
           搜索
         </button>
-        <button 
-          class="text-gray-500 text-sm px-2"
-          @click="navigateBack"
-        >
-          取消
-        </button>
       </div>
     </div>
 

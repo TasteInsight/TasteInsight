@@ -15,12 +15,19 @@ export const mockGetCanteenList = async (): Promise<CanteenListData> => {
   await mockDelay();
   
   const canteens = createMockCanteens();
-  console.log(`✅ [Mock] 返回 ${canteens.length} 个食堂`);
   
-  const total = canteens.length;
+  // 为每个食堂添加窗口信息
+  const canteensWithWindows = canteens.map(canteen => ({
+    ...canteen,
+    windows: getWindowsByCanteenId(canteen.id),
+  }));
+  
+  console.log(`✅ [Mock] 返回 ${canteensWithWindows.length} 个食堂`);
+  
+  const total = canteensWithWindows.length;
   const pageSize = 20;
   return {
-    items: canteens,
+    items: canteensWithWindows,
     meta: {
       total,
       page: 1,
