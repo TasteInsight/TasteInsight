@@ -107,7 +107,7 @@
             </view>
 
             <!-- 右侧评分比例条状图 -->
-            <RatingBars />
+            <RatingBars :dish-id="dish.id" />
           </view>
         </view>
       </view>
