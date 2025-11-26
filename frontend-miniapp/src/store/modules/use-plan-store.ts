@@ -87,15 +87,17 @@ export const usePlanStore = defineStore('plan', () => {
     try {
       // API 不支持按 ID 列表过滤，改为并行获取单个菜品详情
       const promises = Array.from(dishIds).map(id => getDishById(id));
-      const responses = await Promise.all(promises);
-      
+      const results = await Promise.allSettled(promises);
+
       const newDishMap: Record<string, Dish> = {};
-      responses.forEach(response => {
-        if (response.code === 200 && response.data) {
-          newDishMap[response.data.id] = response.data;
+      results.forEach(result => {
+        if (result.status === 'fulfilled' && result.value.code === 200 && result.value.data) {
+          newDishMap[result.value.data.id] = result.value.data;
+        } else if (result.status === 'rejected') {
+          console.error(`Failed to fetch dish:`, result.reason);
         }
       });
-      
+
       dishMap.value = { ...dishMap.value, ...newDishMap };
     } catch (err) {
       console.error('批量获取菜品详情失败:', err);
