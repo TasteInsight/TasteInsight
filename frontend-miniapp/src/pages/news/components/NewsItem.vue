@@ -11,7 +11,6 @@
 </template>
 
 <script setup>
-import { defineProps } from 'vue';
 // 假设 dayjs 插件可用，提供一个格式化函数
 import dayjs from 'dayjs'; // 假设 dayjs 已通过插件配置全局导入或此处引入
 

@@ -5,11 +5,13 @@ import {
   getCanteenDetail,
   getWindowList,
   getWindowDetail,
+  getWindowDishes,
 } from '@/api/modules/canteen';
 import type {
   Canteen,
   Window,
   PaginationParams,
+  Dish,
 } from '@/types/api';
 
 export const useCanteenStore = defineStore('canteen', () => {
@@ -26,6 +28,9 @@ export const useCanteenStore = defineStore('canteen', () => {
   
   // 当前窗口详情
   const currentWindow = ref<Window | null>(null);
+
+  // 当前窗口菜品
+  const currentWindowDishes = ref<Dish[]>([]);
   
   // 分页信息
   const pagination = ref({
@@ -155,32 +160,39 @@ export const useCanteenStore = defineStore('canteen', () => {
       const response = await getWindowDetail(windowId, params);
       console.log('[store] fetchWindowDetail response ->', response);
 
-      if (!(response && response.code === 200)) {
+      if (!(response && response.code === 200 && response.data)) {
         throw new Error(response?.message || '获取窗口详情失败');
       }
 
-      const payload = response.data;
-      // 后端可能在这个接口返回分页列表（{ items: [...] }），也可能直接返回单个对象
-      if (payload && (payload as any).items && Array.isArray((payload as any).items)) {
-        const items = (payload as any).items as Window[];
-        const found = items.find(w => String(w.id) === String(windowId));
-        if (found) {
-          currentWindow.value = found;
-        } else if (items.length === 1) {
-          // 有时后端会把单个对象也放在 items 中
-          currentWindow.value = items[0];
-        } else {
-          throw new Error('未在返回的窗口列表中找到对应窗口');
-        }
-      } else if (payload && (payload as any).id) {
-        // 直接返回单个窗口对象
-        currentWindow.value = payload as Window;
-      } else {
-        throw new Error('返回的数据格式不符合预期');
-      }
+      // 直接使用后端返回的窗口对象
+      currentWindow.value = response.data as Window;
     } catch (err) {
       error.value = err instanceof Error ? err.message : '未知错误';
       console.error('获取窗口详情失败:', err);
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /**
+   * 获取窗口菜品
+   */
+  async function fetchWindowDishes(windowId: string, params?: PaginationParams) {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const response = await getWindowDishes(windowId, params);
+      if (response.code === 200 && response.data) {
+        currentWindowDishes.value = response.data.items || [];
+        pagination.value = response.data.meta ?? pagination.value;
+      } else {
+        throw new Error(response.message || '获取窗口菜品失败');
+      }
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : '未知错误';
+      console.error('获取窗口菜品失败:', err);
       throw err;
     } finally {
       loading.value = false;
@@ -199,6 +211,7 @@ export const useCanteenStore = defineStore('canteen', () => {
    */
   function clearCurrentWindow() {
     currentWindow.value = null;
+    currentWindowDishes.value = [];
   }
 
   /**
@@ -224,6 +237,7 @@ export const useCanteenStore = defineStore('canteen', () => {
     currentCanteen,
     windowList,
     currentWindow,
+    currentWindowDishes,
     pagination,
     loading,
     error,
@@ -239,6 +253,7 @@ export const useCanteenStore = defineStore('canteen', () => {
     fetchCanteenDetail,
     fetchWindowList,
     fetchWindowDetail,
+    fetchWindowDishes,
     
     // Utilities
     clearCurrentCanteen,

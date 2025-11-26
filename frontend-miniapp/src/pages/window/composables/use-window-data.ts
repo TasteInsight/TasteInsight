@@ -1,7 +1,6 @@
 import { ref, computed } from 'vue';
-import { getDishes } from '@/api/modules/dish';
 import { useCanteenStore } from '@/store/modules/use-canteen-store';
-import type { Dish, GetDishesRequest, Window } from '@/types/api';
+import type { Dish } from '@/types/api';
 
 const filters = [
   { key: 'taste', label: '口味' },
@@ -14,56 +13,30 @@ const filters = [
 export function useWindowData() {
   const canteenStore = useCanteenStore();
   const windowInfo = computed(() => canteenStore.currentWindow);
-  const dishes = ref<Dish[]>([]);
-  const loading = ref(false);
-  const error = ref('');
+  const dishes = computed<Dish[]>(() => canteenStore.currentWindowDishes);
+  const loading = computed(() => canteenStore.loading);
+  const storeError = computed(() => canteenStore.error || '');
+  const localError = ref('');
+  const error = computed(() => localError.value || storeError.value);
   const activeFilter = ref('');
 
   const fetchWindow = async (windowId: string) => {
     try {
+      localError.value = '';
       await canteenStore.fetchWindowDetail(windowId);
     } catch (err) {
       console.error('通过 store 获取窗口详情失败:', err);
-      error.value = '获取窗口信息失败';
+      localError.value = err instanceof Error ? err.message : '获取窗口信息失败';
     }
   };
 
   const fetchDishes = async (windowId: string) => {
-    loading.value = true;
-    error.value = '';
-    
     try {
-      // 先确保 store 中有窗口信息,以便通过窗口名称筛选菜品
-      if (!windowInfo.value) {
-        return;
-      }
-      
-      const params: GetDishesRequest = {
-        filter: {
-          includeOffline: false,
-        },
-        search: {
-          keyword: '',
-        },
-        sort: {
-          field: 'rating',
-          order: 'desc',
-        },
-        pagination: {
-          page: 1,
-          pageSize: 100,
-        },
-      };
-      
-      const response = await getDishes(params);
-      // 从分页数据中获取items,并通过窗口名称筛选
-      const allDishes = response.data?.items || [];
-      dishes.value = allDishes.filter(dish => dish.windowName === windowInfo.value?.name);
+      localError.value = '';
+      await canteenStore.fetchWindowDishes(windowId);
     } catch (err) {
       console.error('获取窗口菜品失败:', err);
-      error.value = '获取菜品信息失败';
-    } finally {
-      loading.value = false;
+      localError.value = err instanceof Error ? err.message : '获取菜品信息失败';
     }
   };
 

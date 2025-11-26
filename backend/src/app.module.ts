@@ -6,6 +6,8 @@ import { PrismaService } from './prisma.service';
 import { AuthModule } from './auth/auth.module';
 import { DishesModule } from './dishes/dishes.module';
 import { AdminDishesModule } from './admin-dishes/admin-dishes.module';
+import { AdminReviewsModule } from './admin-reviews/admin-reviews.module';
+import { AdminCommentsModule } from './admin-comments/admin-comments.module';
 import { ConfigModule } from '@nestjs/config';
 
 @Module({
@@ -13,6 +15,8 @@ import { ConfigModule } from '@nestjs/config';
     AuthModule,
     DishesModule,
     AdminDishesModule,
+    AdminReviewsModule,
+    AdminCommentsModule,
     ConfigModule.forRoot({
       isGlobal: true,
     }),
@@ -20,5 +24,4 @@ import { ConfigModule } from '@nestjs/config';
   controllers: [AppController],
   providers: [AppService, PrismaService],
 })
-
 export class AppModule {}

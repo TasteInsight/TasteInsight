@@ -69,6 +69,7 @@ export async function getCanteenDetail(
   return request<Canteen>({
     url: `/canteens/${canteenId}`,
     method: 'GET',
+    data:params,
   });
 }
 
@@ -89,8 +90,9 @@ export async function getWindowList(
   }
   
   return request<WindowListData>({
-    url: `/windows/${canteenId}`,
+    url: `/canteens/${canteenId}/windows`,
     method: 'GET',
+    data:params,
   });
 }
 

@@ -23,7 +23,7 @@
           <!-- 右侧内容 -->
           <view class="flex-1">
             <!-- 昵称 -->
-            <view class="font-medium text-gray-800 text-sm">{{ review.userNickname }}</view>
+            <view class="font-medium text-red-600 text-sm">{{ review.userNickname }}</view>
             
             <!-- 星级评分 -->
             <view class="flex items-center mt-1">
@@ -31,7 +31,7 @@
                 v-for="star in 5" 
                 :key="star"
                 class="star-icon text-base"
-                :class="star <= review.rating ? 'text-yellow-400' : 'text-gray-300'"
+                :class="star <= review.rating ? 'text-yellow-500' : 'text-gray-300'"
               >{{ star <= review.rating ? '★' : '☆' }}</text>
             </view>
             
@@ -44,9 +44,10 @@
         </view>
 
         <!-- 评论列表 -->
-        <CommentList 
+        <CommentList
           :review-id="review.id"
           @comment-added="handleCommentAdded"
+          @view-all-comments="handleViewAllComments(review.id)"
         />
       </view>
 
@@ -54,12 +55,12 @@
       <view class="text-center py-4">
         <button 
           v-if="hasMore && !loading"
-          class="text-purple-600 text-sm font-medium hover:text-purple-700"
+          class="text-red-600 text-sm font-medium hover:text-red-700"
           @click="loadMore"
         >
           加载更多 ↓
         </button>
-        <view v-else-if="loading" class="text-purple-400 text-sm">
+        <view v-else-if="loading" class="text-red-400 text-sm">
           加载中...
         </view>
         <view v-else class="text-gray-400 text-sm">
@@ -92,7 +93,12 @@ interface Props {
   dishId: string;
 }
 
+interface Emits {
+  (e: 'viewAllComments', reviewId: string): void;
+}
+
 const props = defineProps<Props>();
+const emit = defineEmits<Emits>();
 
 const reviews = ref<Review[]>([]);
 const loading = ref(false);
@@ -153,6 +159,10 @@ const formatDate = (dateString: string) => {
 const handleCommentAdded = () => {
   // 评论添加成功后可以做一些处理，比如显示提示
   console.log('评论添加成功');
+};
+
+const handleViewAllComments = (reviewId: string) => {
+  emit('viewAllComments', reviewId);
 };
 </script>
 

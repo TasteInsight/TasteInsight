@@ -19,10 +19,10 @@
     </view>
 
     <!-- 菜品详情内容 -->
-    <view v-else-if="dish" class="pb-20">
+    <view v-else-if="dish" class="pb-16">
       <!-- 图片轮播 -->
       <view class="relative" v-if="dish.images && dish.images.length > 0">
-        <swiper 
+        <swiper
           class="dish-swiper"
           :indicator-dots="dish.images.length > 1"
           :autoplay="true"
@@ -31,107 +31,157 @@
           indicator-color="rgba(255, 255, 255, 0.5)"
           indicator-active-color="#8B5CF6"
         >
-          <swiper-item v-for="(image, index) in dish.images" :key="index">
-            <image 
-              :src="image" 
-              class="w-full h-full"
+          <swiper-item v-for="(image, index) in dish.images" :key="index" class="relative overflow-hidden">
+            <!-- 背景模糊层 -->
+            <image
+              :src="image"
+              class="absolute inset-0 w-full h-full blur-bg"
               mode="aspectFill"
             />
+            <!-- 渐变遮罩层 - 优化边缘过渡 -->
+            <view class="absolute inset-0 bg-gradient-to-r from-black/10 via-transparent to-black/10 backdrop-blur-sm z-1"></view>
+
+            <!-- 强力边缘融合层：使用多重box-shadow模拟羽化效果 -->
+            <view class="absolute inset-0 z-5 pointer-events-none"
+                  style="box-shadow: inset 0 0 60px 40px rgba(255,255,255,0.5);">
+            </view>
+
+            <!-- 模糊遮罩层：进一步柔化边界 -->
+            <view class="absolute inset-0 z-6 pointer-events-none bg-gradient-to-r from-white/30 via-transparent to-white/30 backdrop-blur-md"></view>
+
+            <!-- 主体图片容器 -->
+            <view class="relative w-full h-full flex items-center justify-center z-10">
+              <image
+                :src="image"
+                class="w-full h-full"
+                mode="aspectFit"
+                style="-webkit-mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%); mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%);"
+              />
+            </view>
+            
+            <!-- 边缘融合遮罩 -->
+            <view class="absolute inset-0 z-20 pointer-events-none" 
+                  style="background: radial-gradient(circle, transparent 50%, rgba(255,255,255,0.4) 100%);">
+            </view>
           </swiper-item>
         </swiper>
       </view>
 
       <!-- 基本信息 -->
-      <view class="bg-white p-6 mb-3 rounded-2xl shadow-sm mx-4 mt-4">
-        <view class="flex justify-between items-start">
+      <view class="bg-white p-4 mb-2 rounded-2xl shadow-sm mx-4 mt-2">
+        <view class="flex justify-between items-start mb-2">
           <view class="flex-1">
-            <h1 class="text-2xl font-bold text-gray-800">{{ dish.name }}</h1>
-            <view class="text-sm text-purple-600 mt-2 flex items-center">
+            <h1 class="text-xl font-bold text-gray-800">{{ dish.name }}</h1>
+            <view class="text-sm text-red-600 mt-1 flex items-center">
               <text class="iconify" data-icon="mdi:store"></text>
               <text class="ml-1">{{ dish.canteenName }} · {{ dish.windowName }}</text>
             </view>
           </view>
-          <view class="text-right ml-4">
-            <view class="text-3xl font-bold text-purple-600">¥{{ dish.price }}</view>
-          </view>
-        </view>
-
-        <!-- 评分信息 -->
-        <view class="flex items-center mt-4 py-4 border-t border-purple-100">
-          <view class="flex items-center bg-purple-50 px-4 py-2 rounded-full">
-            <text class="iconify text-yellow-500 text-xl" data-icon="mdi:star"></text>
-            <span class="text-xl font-bold text-gray-800 ml-2">{{ dish.averageRating.toFixed(1) }}</span>
-          </view>
-          <view class="ml-4 text-sm text-gray-600">
-            {{ dish.reviewCount }} 条评价
+          <view class="text-right mt-2">
+            <view class="text-lg font-bold text-red-600">¥{{ dish.price }}</view>
           </view>
         </view>
 
         <!-- 标签 -->
-        <view v-if="dish.tags?.length" class="flex flex-wrap gap-2 mt-3">
-          <span 
-            v-for="tag in dish.tags" 
+        <view v-if="dish.tags?.length" class="flex flex-wrap gap-2">
+          <span
+            v-for="tag in dish.tags"
             :key="tag"
-            class="px-3 py-1 bg-purple-100 text-purple-700 text-sm rounded-full font-medium"
+            class="px-3 py-1 bg-blue-50 text-purple-100 text-xs rounded-md font-medium"
           >
-            {{ tag }}
+            #{{ tag }}
           </span>
         </view>
+
+        <!-- 评分信息 -->
+        <view class="mt-3 py-3 border-t border-purple-100">
+          <view class="flex justify-between items-start">
+            <!-- 左侧评分和评价数量 -->
+            <view class="flex flex-col mt-8">
+              <view class="text-xl font-bold text-purple-600">
+                {{ dish.averageRating.toFixed(1) }}分
+              </view>
+              <view class="text-xs text-gray-500 mt-1">
+                {{ dish.reviewCount }} 条评价
+              </view>
+            </view>
+
+            <!-- 右侧评分比例条状图 -->
+            <RatingBars />
+          </view>
+        </view>
       </view>
-
+      
       <!-- 详细信息 -->
-      <view class="bg-white p-6 mb-3 rounded-2xl shadow-sm mx-4">
-        <h2 class="text-xl font-semibold text-gray-800 mb-4">详细信息</h2>
-        
-        <view v-if="dish.description" class="mb-3">
-          <view class="text-sm text-gray-600 font-medium mb-1">菜品介绍</view>
-          <view class="text-sm text-gray-700">{{ dish.description }}</view>
+      <view class="bg-white p-4 mb-2 rounded-xl shadow-sm mx-4">
+        <view class="flex justify-between items-center mb-3 cursor-pointer" @click="toggleDetailExpansion">
+          <h2 class="text-lg font-semibold text-gray-800">详细信息 ...</h2>
+          <text class="iconify text-red-600 text-xl transition-transform duration-300" :class="isDetailExpanded ? 'rotate-180' : ''" data-icon="mdi:chevron-down"></text>
         </view>
 
-        <view v-if="dish.ingredients?.length" class="mb-3">
-          <view class="text-sm text-gray-600 font-medium mb-1">主要食材</view>
-          <view class="text-sm text-gray-700">{{ dish.ingredients.join('、') }}</view>
-        </view>
+        <view v-show="isDetailExpanded" class="transition-all duration-300 ease-in-out">
+          <!-- 菜品介绍 -->
+          <view v-if="dish.description" class="detail-section">
+            <text class="detail-label">菜品介绍：</text>
+            <text class="detail-text">{{ dish.description }}</text>
+          </view>
 
-        <view v-if="dish.allergens?.length" class="mb-3">
-          <view class="text-sm text-gray-600 font-medium mb-1">过敏原信息</view>
-          <view class="text-sm text-red-500">⚠️ {{ dish.allergens.join('、') }}</view>
-        </view>
+          <!-- 主要食材 -->
+          <view v-if="dish.ingredients?.length" class="detail-section">
+            <text class="detail-label">主要食材：</text>
+            <text class="detail-text">{{ dish.ingredients.join('、') }}</text>
+          </view>
 
-        <view class="mb-3">
-          <view class="text-sm text-gray-600 font-medium mb-1">供应时间</view>
-          <view class="text-sm text-gray-700">
-            {{ formatMealTime(dish.availableMealTime) }}
+          <!-- 过敏原信息 -->
+          <view v-if="dish.allergens?.length" class="detail-section">
+            <text class="detail-label">过敏原信息：</text>
+            <text class="detail-text text-red-600">{{ dish.allergens.join('、') }}</text>
+          </view>
+
+          <!-- 供应时间 -->
+          <view class="detail-section">
+            <text class="detail-label">供应时间：</text>
+            <text class="detail-text">{{ formatMealTime(dish.availableMealTime) }}</text>
           </view>
         </view>
       </view>
 
       <!-- 评价列表 -->
-      <view class="bg-white p-6 mb-3 rounded-2xl shadow-sm mx-4">
-        <view class="flex justify-between items-center mb-6">
-          <h2 class="text-xl font-semibold text-gray-800">用户评价</h2>
-          <button 
-            class="px-6 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-ts-purple text-sm rounded-full shadow-lg hover:from-purple-600 hover:to-purple-700 transition-all"
-            @click="showReviewForm"
-          >
-            ✍️ 写评价
-          </button>
+      <view class="bg-white p-4 mb-2 rounded-xl shadow-sm mx-4">
+        <view class="mb-4">
+          <h2 class="text-lg font-semibold text-gray-800">用户评价</h2>
         </view>
 
-        <ReviewList 
-          :dish-id="dishId" 
+        <ReviewList
+          :dish-id="dishId"
           :key="reviewListKey"
+          @view-all-comments="showAllCommentsPanel"
         />
       </view>
     </view>
 
     <!-- 评价表单弹窗 -->
-    <ReviewForm 
+    <ReviewForm
       v-if="isReviewFormVisible"
       :dish-id="dishId"
       :dish-name="dish?.name || ''"
       @close="hideReviewForm"
       @success="handleReviewSuccess"
+    />
+
+    <!-- 全部评论面板 -->
+    <AllCommentsPanel
+      v-if="isAllCommentsPanelVisible"
+      :review-id="currentCommentsReviewId"
+      :is-visible="isAllCommentsPanelVisible"
+      @close="hideAllCommentsPanel"
+      @comment-added="handleCommentAdded"
+    />
+
+    <!-- 底部评价输入框 -->
+    <BottomReviewInput
+      v-if="dish"
+      @click="showQuickReviewForm"
     />
   </view>
 </template>
@@ -142,11 +192,17 @@ import { onLoad } from '@dcloudio/uni-app';
 import { useDishDetail } from '@/pages/dish/composables/use-dish-detail';
 import ReviewList from './components/ReviewList.vue';
 import ReviewForm from './components/ReviewForm.vue';
+import BottomReviewInput from './components/BottomReviewInput.vue';
+import AllCommentsPanel from './components/AllCommentsPanel.vue';
+import RatingBars from './components/RatingBars.vue';
 
 const dishId = ref('');
 const { dish, loading, error, fetchDishDetail } = useDishDetail();
 const isReviewFormVisible = ref(false);
 const reviewListKey = ref(0);
+const isDetailExpanded = ref(false);
+const isAllCommentsPanelVisible = ref(false);
+const currentCommentsReviewId = ref('');
 
 onLoad((options: any) => {
   if (options.id) {
@@ -194,12 +250,35 @@ const handleReviewSuccess = () => {
     icon: 'success',
   });
 };
+
+const toggleDetailExpansion = () => {
+  isDetailExpanded.value = !isDetailExpanded.value;
+};
+
+const showQuickReviewForm = () => {
+  showReviewForm();
+};
+
+const showAllCommentsPanel = (reviewId: string) => {
+  currentCommentsReviewId.value = reviewId;
+  isAllCommentsPanelVisible.value = true;
+};
+
+const hideAllCommentsPanel = () => {
+  isAllCommentsPanelVisible.value = false;
+  currentCommentsReviewId.value = '';
+};
+
+const handleCommentAdded = () => {
+  // 刷新评论列表
+  reviewListKey.value++;
+};
 </script>
 
 <style scoped>
 .dish-swiper {
   width: 100%;
-  height: 300px;
+  height: 200px;
 }
 
 swiper {
@@ -211,4 +290,43 @@ swiper-item {
   justify-content: center;
   align-items: center;
 }
+
+/* 旋转动画 */
+.rotate-180 {
+  transform: rotate(180deg);
+}
+
+/* 背景模糊效果 */
+.blur-bg {
+  filter: blur(20px);
+  transform: scale(1.1); /* 稍微放大避免边缘露白 */
+  opacity: 0.8;
+}
+
+.transition-transform {
+  transition: transform 0.3s ease;
+}
+
+.transition-all {
+  transition: all 0.3s ease-in-out;
+}
+
+/* 详细信息展开内容样式 */
+.detail-section {
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.detail-label {
+  font-size: 14px;
+  font-weight: normal;
+  color: #7c3aed;
+  margin-right: 4px;
+}
+
+.detail-text {
+  font-size: 14px;
+  color: #000000;
+}
+
 </style>

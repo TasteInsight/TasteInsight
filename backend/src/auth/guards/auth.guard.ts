@@ -1,4 +1,10 @@
-import { CanActivate, ExecutionContext, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
@@ -28,10 +34,16 @@ export class AuthGuard implements CanActivate {
       request['user'] = payload;
     } catch (error) {
       const errorName = (error as Error)?.name ?? 'UnknownError';
-      const isExpectedJwtError = ['JsonWebTokenError', 'TokenExpiredError'].includes(errorName);
+      const isExpectedJwtError = [
+        'JsonWebTokenError',
+        'TokenExpiredError',
+      ].includes(errorName);
 
       if (!isExpectedJwtError) {
-        this.logger.error(`JWT verification failed: ${errorName}`, (error as Error)?.stack);
+        this.logger.error(
+          `JWT verification failed: ${errorName}`,
+          (error as Error)?.stack,
+        );
       }
 
       throw new UnauthorizedException();
