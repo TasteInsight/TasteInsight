@@ -154,11 +154,12 @@ model Canteen {
   reviewCount   Int   @default(0)
 
   // 关联关系
-  floors  Floor[]
-  windows Window[]
-  dishes  Dish[]
-  news    News[]
-  admins  Admin[]
+  floors      Floor[]
+  windows     Window[]
+  dishes      Dish[]
+  dishUploads DishUpload[]
+  news        News[]
+  admins      Admin[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -180,7 +181,8 @@ model Window {
   tags        String[] // 特色标签
 
   // 关联关系
-  dishes Dish[]
+  dishes      Dish[]
+  dishUploads DishUpload[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -294,12 +296,19 @@ model DishUpload {
   saltiness  Int @default(0) // 0-5 咸度
   oiliness   Int @default(0) // 0-5 油度
 
-  canteenName       String
-  floor             String?
-  windowNumber      String?
-  windowName        String
-  availableMealTime String[]
-  availableDates    Json?
+  // 位置信息
+  canteenId    String
+  canteen      Canteen @relation(fields: [canteenId], references: [id], onDelete: Cascade)
+  canteenName  String
+  // 转正后填充 楼层
+  windowId     String?
+  window       Window? @relation(fields: [windowId], references: [id])
+  windowNumber String?
+  windowName   String
+
+  // 供应时间
+  availableMealTime String[] // breakfast, lunch, dinner, nightsnack
+  availableDates    Json? // 可用日期范围数组
 
   // 审核状态
   status         String  @default("pending") // pending, approved, rejected

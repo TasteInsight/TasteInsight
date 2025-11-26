@@ -97,13 +97,17 @@ export class UploadDishDto {
   @Max(5)
   oiliness?: number;
 
+  @IsOptional()
+  @IsString()
+  canteenId?: string;
+
   @IsNotEmpty()
   @IsString()
   canteenName: string;
 
   @IsOptional()
   @IsString()
-  floor?: string;
+  windowId?: string;
 
   @IsOptional()
   @IsString()
