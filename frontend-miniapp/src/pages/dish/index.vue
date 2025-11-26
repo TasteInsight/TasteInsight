@@ -221,7 +221,8 @@ const refresh = () => {
   }
 };
 
-const formatMealTime = (mealTimes: string[]) => {
+const formatMealTime = (mealTimes: string[] | undefined) => {
+  if (!mealTimes) return '';
   const timeMap: Record<string, string> = {
     breakfast: '早餐',
     lunch: '午餐',

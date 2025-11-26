@@ -97,11 +97,11 @@ const {
 
 // 分类搜索结果
 const canteenResults = computed(() => {
-  return searchResults.value.filter((item: Canteen | Dish) => 'windowsList' in item) as Canteen[];
+  return searchResults.value.filter((item: Canteen | Dish) => 'windows' in item) as Canteen[];
 });
 
 const dishResults = computed(() => {
-  return searchResults.value.filter((item: Canteen | Dish) => 'canteenId' in item && !('windowsList' in item)) as Dish[];
+  return searchResults.value.filter((item: Canteen | Dish) => 'canteenId' in item && !('windows' in item)) as Dish[];
 });
 
 // 执行搜索

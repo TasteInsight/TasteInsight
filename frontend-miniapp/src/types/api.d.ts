@@ -112,61 +112,211 @@ export interface UserPreference {
 }
 
 /**
- * 菜品模型
+ * Floor
  */
-export interface Dish {
-  id: string;
-  name: string;
-  tags: string[];
-  price: number;
-  description: string;
-  images: string[];
-  parentDishId?: string;
-  subDishId?: string[];
-  ingredients?: string[];
-  allergens?: string[];
-  canteenId: string;
-  canteenName: string;
-  floor?: string;
-  windowNumber?: string;
-  windowName: string;
-  availableMealTime: ('breakfast' | 'lunch' | 'dinner' | 'nightsnack')[];
-  availableDates?: Array<{
-    startDate: string;
-    endDate: string;
-  }>;
-  status: 'online' | 'offline';
-  averageRating: number;
-  reviewCount: number;
-  createdAt: string;
-  updatedAt: string;
+export interface Floor {
+    /**
+     * 楼层数
+     */
+    level: string;
+    /**
+     * 楼层名
+     */
+    name?: string;
+    [property: string]: any;
+}
+
+export interface OpeningHour {
+    /**
+     * 星期几
+     */
+    dayOfWeek: string;
+    /**
+     * 是否关闭
+     */
+    isClosed: boolean;
+    /**
+     * 当天的开放时段列表
+     */
+    slots: Slot[];
+    [property: string]: any;
+}
+
+export interface Slot {
+    /**
+     * 结束时间
+     */
+    closeTime: string;
+    /**
+     * 早/中/晚/夜宵
+     */
+    mealType: string;
+    /**
+     * 开始时间
+     */
+    openTime: string;
+    [property: string]: any;
 }
 
 /**
- * 窗口信息
+ * Window
  */
 export interface Window {
-  id: string;
-  name: string;
-  number: string;           // 窗口号
-  position?: string;
-  description?: string;
-  tag?: string[];          // 特色标签
+    description?: string;
+    floor: Floor;
+    id: string;
+    name: string;
+    /**
+     * 窗口号
+     */
+    number: string;
+    position?: string;
+    /**
+     * 特色
+     */
+    tags?: string[];
+    [property: string]: any;
 }
 
 /**
- * 食堂信息
+ * Canteen
  */
 export interface Canteen {
-  id: string;
-  name: string;
-  position?: string;
-  description?: string;
-  images: string[];
-  operatingHours?: string;  // 营业时间
-  averageRating?: number;   // 平均评分
-  reviewCount?: number;     // 评论数
-  windowsList?: Window[];   // 窗口列表
+    /**
+     * 平均评分
+     */
+    averageRating?: number;
+    description?: string;
+    floors: Floor[];
+    id: string;
+    images: string[];
+    name: string;
+    /**
+     * 营业时间
+     */
+    openingHours: OpeningHour[];
+    position?: string;
+    /**
+     * 评论数
+     */
+    reviewCount?: number;
+    /**
+     * 窗口列表
+     */
+    windows: Window[];
+    [property: string]: any;
+}
+
+export interface AvailableDate {
+    endDate: Date;
+    startDate: Date;
+    [property: string]: any;
+}
+
+export enum AvailableMealTime {
+    Breakfast = "breakfast",
+    Dinner = "dinner",
+    Lunch = "lunch",
+    Nightsnack = "nightsnack",
+}
+
+/**
+ * 菜品状态
+ */
+export enum Status {
+    Offline = "offline",
+    Online = "online",
+}
+
+/**
+ * Dish
+ */
+export interface Dish {
+    /**
+     * 过敏原
+     */
+    allergens?: string[];
+    availableDates?: AvailableDate[];
+    /**
+     * 供应时段
+     */
+    availableMealTime?: AvailableMealTime[];
+    /**
+     * 平均评分
+     */
+    averageRating: number;
+    /**
+     * 所属食堂ID
+     */
+    canteenId?: string;
+    /**
+     * 所属食堂名称
+     */
+    canteenName?: string;
+    createdAt?: Date;
+    /**
+     * 菜品描述
+     */
+    description?: string;
+    /**
+     * 楼层
+     */
+    floorLevel?: string;
+    /**
+     * 楼层名
+     */
+    floorName?: string;
+    id: string;
+    /**
+     * 图片URL列表
+     */
+    images: string[];
+    /**
+     * 原辅料
+     */
+    ingredients?: string[];
+    /**
+     * 菜品名称
+     */
+    name: string;
+    oiliness?: number;
+    /**
+     * 父项菜ID
+     */
+    parentDishId?: string;
+    /**
+     * 价格
+     */
+    price: number;
+    /**
+     * 评价数量
+     */
+    reviewCount?: number;
+    saltiness?: number;
+    spicyLevel?: number;
+    /**
+     * 菜品状态
+     */
+    status?: Status;
+    /**
+     * 菜品子项列表
+     */
+    subDishId?: string[];
+    sweetness?: number;
+    /**
+     * 菜品标签
+     */
+    tags?: string[];
+    updatedAt?: Date;
+    /**
+     * 窗口名
+     */
+    windowName?: string;
+    /**
+     * 窗口号
+     */
+    windowNumber?: string;
+    [property: string]: any;
 }
 
 /**

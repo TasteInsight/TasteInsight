@@ -35,12 +35,12 @@ export const mockGetDishes = async (params: GetDishesRequest): Promise<Paginated
 
 
     if (canteenId && canteenId.length > 0) {
-      dishes = dishes.filter(d => canteenId.includes(d.canteenId));
+      dishes = dishes.filter(d => d.canteenId && canteenId.includes(d.canteenId));
     }
 
     if (mealTime && mealTime.length > 0) {
       // @ts-ignore
-      dishes = dishes.filter(d => d.availableMealTime.some(t => mealTime.includes(t)));
+      dishes = dishes.filter(d => d.availableMealTime && d.availableMealTime.some(t => mealTime.includes(t)));
     }
   }
 
@@ -48,9 +48,9 @@ export const mockGetDishes = async (params: GetDishesRequest): Promise<Paginated
   if (params.search && params.search.keyword) {
     const keyword = params.search.keyword.toLowerCase();
     dishes = dishes.filter(d => 
-      d.name.toLowerCase().includes(keyword) || 
+      (d.name || '').toLowerCase().includes(keyword) || 
       (d.description && d.description.toLowerCase().includes(keyword)) ||
-      d.tags.some(t => t.toLowerCase().includes(keyword))
+      (d.tags || []).some(t => t.toLowerCase().includes(keyword))
     );
   }
 
