@@ -36,7 +36,7 @@ export class CanteensService {
 
     return {
       code: 200,
-      message: 'success',
+      message: '获取食堂列表成功',
       data: {
         items,
         meta: {
@@ -58,12 +58,12 @@ export class CanteensService {
     });
 
     if (!canteen) {
-      throw new NotFoundException('Canteen not found');
+      throw new NotFoundException('食堂未找到');
     }
 
     return {
       code: 200,
-      message: 'success',
+      message: '获取食堂详情成功',
       data: this.mapToCanteenDto(canteen),
     };
   }
@@ -90,7 +90,7 @@ export class CanteensService {
 
     return {
       code: 200,
-      message: 'success',
+      message: '获取食堂窗口列表成功',
       data: {
         items,
         meta: {
@@ -109,12 +109,12 @@ export class CanteensService {
     });
 
     if (!window) {
-      throw new NotFoundException('Window not found');
+      throw new NotFoundException('窗口未找到');
     }
 
     return {
       code: 200,
-      message: 'success',
+      message: '获取窗口详情成功',
       data: this.mapToWindowDto(window),
     };
   }
@@ -141,7 +141,7 @@ export class CanteensService {
 
     return {
       code: 200,
-      message: 'success',
+      message: '获取窗口菜品列表成功',
       data: {
         items,
         meta: {
