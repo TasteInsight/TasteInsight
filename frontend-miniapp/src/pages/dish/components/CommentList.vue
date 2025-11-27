@@ -10,7 +10,7 @@
           class="comment-item"
         >
           <view class="text-sm text-gray-700">
-            <text class="username">{{ comment.userNickname }}:</text>
+            <text class="text-purple-800 font-normal">{{ comment.userNickname }}:</text>
             {{ comment.content }}
           </view>
         </view>
@@ -18,10 +18,10 @@
         <!-- 查看全部回复按钮 -->
         <view class="view-all-replies-container">
           <button
-            class="view-all-replies-btn"
+            class="view-all-replies-btn text-purple-800 text-sm font-medium bg-transparent p-0 text-left w-full cursor-pointer after:border-none"
             @tap="emit('viewAllComments')"
           >
-            共{{ totalComments }}条回复 >
+            共{{ totalComments }}条回复 ...
           </button>
         </view>
       </view>
@@ -127,13 +127,6 @@ const formatDate = (dateString: string) => {
   margin-bottom: 12px; /* 最后一个评论项下面多一点间距 */
 }
 
-/* 用户名样式 - 紫色 */
-.username {
-  font-size: 14px;
-  font-weight: normal; /* 不加粗 */
-  color: #7c3aed; /* 紫色 */
-}
-
 /* 查看全部回复按钮容器 */
 .view-all-replies-container {
   padding-top: 4px;
@@ -141,16 +134,8 @@ const formatDate = (dateString: string) => {
 }
 
 /* 查看全部回复按钮 */
-.view-all-replies-btn {
-  color: #7c3aed; /* 紫色 */
-  font-size: 14px;
-  font-weight: 500;
-  background: transparent;
+.view-all-replies-btn::after {
   border: none;
-  padding: 0;
-  text-align: left;
-  width: 100%;
-  cursor: pointer;
 }
 
 .view-all-replies-btn:hover {
@@ -158,18 +143,7 @@ const formatDate = (dateString: string) => {
 }
 
 /* 添加评论按钮 */
-.add-comment-btn {
-  color: #7c3aed; /* 紫色 */
-  font-size: 14px;
-  font-weight: 500;
-  background: transparent;
+.add-comment-btn::after {
   border: none;
-  padding: 0;
-  text-align: left;
-  cursor: pointer;
-}
-
-.add-comment-btn:hover {
-  color: #6d28d9;
 }
 </style>

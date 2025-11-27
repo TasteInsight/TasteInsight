@@ -39,7 +39,7 @@
                   alt="用户头像"
                 />
                 <view class="comment-info">
-                  <text class="comment-author">{{ comment.userNickname }}</text>
+                  <text class="text-purple-600 font-semibold text-sm block mb-0.5">{{ comment.userNickname }}</text>
                   <text class="comment-date">{{ formatDate(comment.createdAt) }}</text>
                 </view>
               </view>
@@ -57,7 +57,7 @@
           <!-- 加载更多 -->
           <view v-if="hasMore && !loading" class="load-more">
             <button
-              class="load-more-btn"
+              class="load-more-btn text-gray-500 after:border-none"
               @tap="loadMoreComments"
             >
               加载更多评论
@@ -71,7 +71,7 @@
         <view class="reply-input-container">
           <view class="reply-input-wrapper">
             <view v-if="replyingTo" class="replying-indicator">
-              <text class="replying-text">回复 @{{ replyingTo.userNickname }}</text>
+              <text class="text-purple-600 text-xs font-medium">回复 @{{ replyingTo.userNickname }}</text>
               <button class="cancel-reply-btn" @tap="cancelReply">
                 <text>✕</text>
               </button>
@@ -376,14 +376,6 @@ const formatDate = (dateString: string) => {
   flex: 1;
 }
 
-.comment-author {
-  font-size: 14px;
-  font-weight: 600;
-  color: #7c3aed;
-  display: block;
-  margin-bottom: 2px;
-}
-
 .comment-date {
   font-size: 12px;
   color: #9ca3af;
@@ -429,7 +421,6 @@ const formatDate = (dateString: string) => {
 }
 
 .load-more-btn {
-  color: #7c3aed;
   font-size: 14px;
   background: transparent;
   border: none;
@@ -463,12 +454,6 @@ const formatDate = (dateString: string) => {
   padding: 8px 12px;
   background-color: #f3f4f6;
   border-bottom: 1px solid #e5e5e5;
-}
-
-.replying-text {
-  font-size: 12px;
-  color: #7c3aed;
-  font-weight: 500;
 }
 
 .cancel-reply-btn {
@@ -524,11 +509,11 @@ const formatDate = (dateString: string) => {
 }
 
 .send-btn-active {
-  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%); /* 紫色背景 */
+  background: linear-gradient(135deg, #7e22ce 0%, #9333ea 100%); /* 更深的紫色背景 */
   color: white; /* 白色文字 */
 }
 
 .send-btn-active:hover {
-  background: linear-gradient(135deg, #9333ea, #6d28d9);
+  background: linear-gradient(135deg, #6b21a8, #7e22ce);
 }
 </style>
