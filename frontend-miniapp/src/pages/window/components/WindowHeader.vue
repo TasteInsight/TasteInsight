@@ -13,9 +13,9 @@
       {{ window.description }}
     </text>
 
-    <view v-if="window.tag && window.tag.length" class="mt-3 flex flex-wrap gap-2">
+    <view v-if="window.tags && window.tags.length" class="mt-3 flex flex-wrap gap-2">
       <text class="text-sm text-gray-500 w-full">特色：</text>
-      <view v-for="(t, idx) in window.tag" :key="idx" class="px-2 py-1 bg-purple-50 text-purple-700 rounded-full text-sm">
+      <view v-for="(t, idx) in window.tags" :key="idx" class="px-2 py-1 bg-purple-50 text-purple-700 rounded-full text-sm">
         {{ t }}
       </view>
     </view>

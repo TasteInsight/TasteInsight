@@ -15,12 +15,19 @@ export const mockGetCanteenList = async (): Promise<CanteenListData> => {
   await mockDelay();
   
   const canteens = createMockCanteens();
-  console.log(`✅ [Mock] 返回 ${canteens.length} 个食堂`);
   
-  const total = canteens.length;
+  // 为每个食堂添加窗口信息
+  const canteensWithWindows = canteens.map(canteen => ({
+    ...canteen,
+    windows: getWindowsByCanteenId(canteen.id),
+  }));
+  
+  console.log(`✅ [Mock] 返回 ${canteensWithWindows.length} 个食堂`);
+  
+  const total = canteensWithWindows.length;
   const pageSize = 20;
   return {
-    items: canteens,
+    items: canteensWithWindows,
     meta: {
       total,
       page: 1,
@@ -45,7 +52,7 @@ export const mockGetCanteenDetail = async (canteenId: string): Promise<Canteen |
     const windows = getWindowsByCanteenId(canteenId);
     const enrichedCanteen = {
       ...canteen,
-      windowsList: windows,
+      windows: windows,
     };
     console.log(`✅ [Mock] 找到食堂: ${canteen.name}，包含 ${windows.length} 个窗口`);
     return enrichedCanteen;
@@ -141,8 +148,8 @@ export const mockSearchDishes = async (keyword: string, canteenId?: string): Pro
   const searchLower = keyword.toLowerCase();
   
   let filtered = allDishes.filter(dish => 
-    dish.name.toLowerCase().includes(searchLower) ||
-    dish.tags.some(tag => tag.toLowerCase().includes(searchLower)) ||
+    (dish.name || '').toLowerCase().includes(searchLower) ||
+    (dish.tags || []).some(tag => tag.toLowerCase().includes(searchLower)) ||
     dish.description?.toLowerCase().includes(searchLower)
   );
   
@@ -163,7 +170,7 @@ export const mockGetDishesByTag = async (tag: string): Promise<Dish[]> => {
   await mockDelay();
   
   const allDishes = createMockDishes();
-  const filtered = allDishes.filter(dish => dish.tags.includes(tag));
+  const filtered = allDishes.filter(dish => (dish.tags || []).includes(tag));
   
   console.log(`✅ [Mock] 返回 ${filtered.length} 个菜品`);
   return filtered;
@@ -180,7 +187,7 @@ export const mockGetDishesByMealTime = async (
   
   const allDishes = createMockDishes();
   const filtered = allDishes.filter(dish => 
-    dish.availableMealTime.includes(mealTime)
+    (dish.availableMealTime || []).includes(mealTime as any)
   );
   
   console.log(`✅ [Mock] 返回 ${filtered.length} 个 ${mealTime} 菜品`);
@@ -195,7 +202,7 @@ export const mockGetRecommendedDishes = async (limit = 10): Promise<Dish[]> => {
   await mockDelay();
   
   const allDishes = createMockDishes();
-  const sorted = [...allDishes].sort((a, b) => b.averageRating - a.averageRating);
+  const sorted = [...allDishes].sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0));
   const recommended = sorted.slice(0, limit);
   
   console.log(`✅ [Mock] 返回 ${recommended.length} 个推荐菜品`);
@@ -210,7 +217,7 @@ export const mockGetPopularDishes = async (limit = 10): Promise<Dish[]> => {
   await mockDelay();
   
   const allDishes = createMockDishes();
-  const sorted = [...allDishes].sort((a, b) => b.reviewCount - a.reviewCount);
+  const sorted = [...allDishes].sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0));
   const popular = sorted.slice(0, limit);
   
   console.log(`✅ [Mock] 返回 ${popular.length} 个热门菜品`);

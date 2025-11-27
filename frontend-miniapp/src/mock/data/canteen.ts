@@ -1,5 +1,21 @@
 // Mock 食堂数据
-import type { Canteen, Window } from '@/types/api';
+import type { Canteen, Window, Floor, OpeningHour } from '@/types/api';
+
+const createOpeningHours = (timeRange: string): OpeningHour[] => {
+  const [open, close] = timeRange.split('-');
+  return ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => ({
+    dayOfWeek: day,
+    isClosed: false,
+    slots: [{
+      mealType: 'all_day',
+      openTime: open,
+      closeTime: close
+    }]
+  }));
+};
+
+const defaultFloor: Floor = { level: '1', name: '一楼' };
+const secondFloor: Floor = { level: '2', name: '二楼' };
 
 export const createMockCanteens = (): Canteen[] => [
   {
@@ -8,9 +24,11 @@ export const createMockCanteens = (): Canteen[] => [
     position: '校园东区',
     description: '学校最大的综合性食堂，提供多种风味美食',
     images: ['https://via.placeholder.com/400x300'],
-    operatingHours: '06:30-21:00',
+    openingHours: createOpeningHours('06:30-21:00'),
     averageRating: 4.5,
     reviewCount: 1280,
+    floors: [defaultFloor, secondFloor],
+    windows: [],
   },
   {
     id: 'canteen_002',
@@ -18,9 +36,11 @@ export const createMockCanteens = (): Canteen[] => [
     position: '校园西区',
     description: '以特色小吃和地方风味为主',
     images: ['https://via.placeholder.com/400x300'],
-    operatingHours: '06:30-21:30',
+    openingHours: createOpeningHours('06:30-21:30'),
     averageRating: 4.3,
     reviewCount: 956,
+    floors: [defaultFloor, secondFloor],
+    windows: [],
   },
   {
     id: 'canteen_003',
@@ -28,9 +48,11 @@ export const createMockCanteens = (): Canteen[] => [
     position: '校园南区',
     description: '清真食堂，提供清真餐饮',
     images: ['https://via.placeholder.com/400x300'],
-    operatingHours: '07:00-20:30',
+    openingHours: createOpeningHours('07:00-20:30'),
     averageRating: 4.6,
     reviewCount: 623,
+    floors: [defaultFloor],
+    windows: [],
   },
   {
     id: 'canteen_004',
@@ -38,9 +60,11 @@ export const createMockCanteens = (): Canteen[] => [
     position: '校园北区',
     description: '集合各地特色美食的综合美食广场',
     images: ['https://via.placeholder.com/400x300'],
-    operatingHours: '07:00-22:00',
+    openingHours: createOpeningHours('07:00-22:00'),
     averageRating: 4.4,
     reviewCount: 1543,
+    floors: [defaultFloor, secondFloor],
+    windows: [],
   },
 ];
 
@@ -52,7 +76,8 @@ export const createMockWindows = (): Window[] => [
     number: '101',
     position: '一食堂1楼',
     description: '正宗川菜，麻辣鲜香',
-    tag: ['川菜', '辣味', '热门'],
+    tags: ['川菜', '辣味', '热门'],
+    floor: defaultFloor,
   },
   {
     id: 'window_002',
@@ -60,7 +85,8 @@ export const createMockWindows = (): Window[] => [
     number: '102',
     position: '一食堂1楼',
     description: '清淡爽口的粤式美食',
-    tag: ['粤菜', '清淡', '营养'],
+    tags: ['粤菜', '清淡', '营养'],
+    floor: defaultFloor,
   },
   {
     id: 'window_003',
@@ -68,7 +94,8 @@ export const createMockWindows = (): Window[] => [
     number: '103',
     position: '一食堂1楼',
     description: '各式早餐，粥品点心',
-    tag: ['早餐', '粥品', '包子'],
+    tags: ['早餐', '粥品', '包子'],
+    floor: defaultFloor,
   },
   {
     id: 'window_004',
@@ -76,7 +103,8 @@ export const createMockWindows = (): Window[] => [
     number: '104',
     position: '一食堂1楼',
     description: '各种面食，现做现卖',
-    tag: ['面条', '拉面', '刀削面'],
+    tags: ['面条', '拉面', '刀削面'],
+    floor: defaultFloor,
   },
   {
     id: 'window_005',
@@ -84,7 +112,8 @@ export const createMockWindows = (): Window[] => [
     number: '105',
     position: '一食堂2楼',
     description: '健康素食，营养均衡',
-    tag: ['素食', '健康', '低脂'],
+    tags: ['素食', '健康', '低脂'],
+    floor: secondFloor,
   },
   
   // 二食堂窗口
@@ -94,7 +123,8 @@ export const createMockWindows = (): Window[] => [
     number: '201',
     position: '二食堂1楼',
     description: '湖南特色菜品',
-    tag: ['湘菜', '辣味', '下饭'],
+    tags: ['湘菜', '辣味', '下饭'],
+    floor: defaultFloor,
   },
   {
     id: 'window_007',
@@ -102,7 +132,8 @@ export const createMockWindows = (): Window[] => [
     number: '202',
     position: '二食堂1楼',
     description: '经典家常菜，味道正宗',
-    tag: ['家常菜', '经典', '实惠'],
+    tags: ['家常菜', '经典', '实惠'],
+    floor: defaultFloor,
   },
   {
     id: 'window_008',
@@ -110,7 +141,8 @@ export const createMockWindows = (): Window[] => [
     number: '203',
     position: '二食堂1楼',
     description: '各种盖浇饭，快捷方便',
-    tag: ['盖饭', '快餐', '实惠'],
+    tags: ['盖饭', '快餐', '实惠'],
+    floor: defaultFloor,
   },
   {
     id: 'window_009',
@@ -118,7 +150,8 @@ export const createMockWindows = (): Window[] => [
     number: '204',
     position: '二食堂2楼',
     description: '夜宵烧烤，美味诱人',
-    tag: ['烧烤', '夜宵', '串串'],
+    tags: ['烧烤', '夜宵', '串串'],
+    floor: secondFloor,
   },
   
   // 三食堂窗口
@@ -128,7 +161,8 @@ export const createMockWindows = (): Window[] => [
     number: '301',
     position: '三食堂1楼',
     description: '正宗清真美食',
-    tag: ['清真', '牛羊肉', '特色'],
+    tags: ['清真', '牛羊肉', '特色'],
+    floor: defaultFloor,
   },
   {
     id: 'window_011',
@@ -136,7 +170,8 @@ export const createMockWindows = (): Window[] => [
     number: '302',
     position: '三食堂1楼',
     description: '新疆特色美食',
-    tag: ['新疆', '拌面', '抓饭'],
+    tags: ['新疆', '拌面', '抓饭'],
+    floor: defaultFloor,
   },
   
   // 美食广场窗口
@@ -146,7 +181,8 @@ export const createMockWindows = (): Window[] => [
     number: '401',
     position: '美食广场1楼',
     description: '东北特色菜品',
-    tag: ['东北菜', '分量足', '实惠'],
+    tags: ['东北菜', '分量足', '实惠'],
+    floor: defaultFloor,
   },
   {
     id: 'window_013',
@@ -154,7 +190,8 @@ export const createMockWindows = (): Window[] => [
     number: '402',
     position: '美食广场1楼',
     description: '汉堡披萨炸鸡',
-    tag: ['西餐', '快餐', '年轻'],
+    tags: ['西餐', '快餐', '年轻'],
+    floor: defaultFloor,
   },
   {
     id: 'window_014',
@@ -162,7 +199,8 @@ export const createMockWindows = (): Window[] => [
     number: '403',
     position: '美食广场2楼',
     description: '日式韩式料理',
-    tag: ['日料', '韩餐', '精致'],
+    tags: ['日料', '韩餐', '精致'],
+    floor: secondFloor,
   },
   {
     id: 'window_015',
@@ -170,7 +208,8 @@ export const createMockWindows = (): Window[] => [
     number: '404',
     position: '美食广场2楼',
     description: '各式甜品奶茶',
-    tag: ['甜品', '奶茶', '下午茶'],
+    tags: ['甜品', '奶茶', '下午茶'],
+    floor: secondFloor,
   },
 ];
 

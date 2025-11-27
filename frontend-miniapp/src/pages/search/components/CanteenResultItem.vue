@@ -34,7 +34,7 @@ const props = defineProps<Props>();
 
 const handleClick = () => {
   uni.navigateTo({
-    url: `/pages/canteen/detail?id=${props.canteen.id}`
+    url: `/pages/canteen/index?id=${props.canteen.id}`
   });
 };
 </script>

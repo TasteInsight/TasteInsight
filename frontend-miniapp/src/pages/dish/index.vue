@@ -87,7 +87,7 @@
           <span
             v-for="tag in dish.tags"
             :key="tag"
-            class="px-3 py-1 bg-blue-50 text-purple-100 text-xs rounded-md font-medium"
+            class="px-3 py-1 bg-blue-50 text-blue-500 text-xs rounded-md font-medium"
           >
             #{{ tag }}
           </span>
@@ -107,7 +107,7 @@
             </view>
 
             <!-- 右侧评分比例条状图 -->
-            <RatingBars />
+            <RatingBars :dish-id="dish.id" />
           </view>
         </view>
       </view>
@@ -142,6 +142,41 @@
           <view class="detail-section">
             <text class="detail-label">供应时间：</text>
             <text class="detail-text">{{ formatMealTime(dish.availableMealTime) }}</text>
+          </view>
+
+          <!-- 子菜品（如果有） -->
+          <view v-if="subDishes.length > 0" class="detail-section mt-3">
+            <text class="detail-label">子菜品：</text>
+            <view class="mt-2 space-y-3">
+              <view
+                v-for="sub in displayedSubDishes"
+                :key="sub.id"
+                class="bg-gray-50 p-3 rounded-lg flex items-center gap-3 cursor-pointer"
+                @click="goToSubDish(sub.id)"
+              >
+                <image v-if="sub.images?.[0]" :src="sub.images[0]" class="w-14 h-14 rounded-md object-cover" mode="aspectFill" />
+                <view v-else class="w-14 h-14 bg-gray-200 rounded-md flex items-center justify-center">
+                  <text class="iconify text-gray-400" data-icon="mdi:food"></text>
+                </view>
+                <view class="flex-1 min-w-0">
+                  <view class="font-medium text-sm text-gray-800 truncate">{{ sub.name }}</view>
+                  <view class="text-xs text-red-600 mt-1">¥{{ sub.price }}</view>
+                </view>
+                <text class="iconify text-gray-400" data-icon="mdi:chevron-right"></text>
+              </view>
+            </view>
+            <!-- 展开/收起按钮 -->
+            <view
+              v-if="subDishes.length > 3"
+              class="mt-3 text-center"
+            >
+              <button
+                class="text-sm text-purple-600 bg-purple-50 px-4 py-2 rounded-full"
+                @click="isSubDishesExpanded = !isSubDishesExpanded"
+              >
+                {{ isSubDishesExpanded ? '收起' : `展开全部 (${subDishes.length}个)` }}
+              </button>
+            </view>
           </view>
         </view>
       </view>
@@ -187,7 +222,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { useDishDetail } from '@/pages/dish/composables/use-dish-detail';
 import ReviewList from './components/ReviewList.vue';
@@ -195,6 +230,7 @@ import ReviewForm from './components/ReviewForm.vue';
 import BottomReviewInput from './components/BottomReviewInput.vue';
 import AllCommentsPanel from './components/AllCommentsPanel.vue';
 import RatingBars from './components/RatingBars.vue';
+import { getDishById } from '@/api/modules/dish';
 
 const dishId = ref('');
 const { dish, loading, error, fetchDishDetail } = useDishDetail();
@@ -203,6 +239,16 @@ const reviewListKey = ref(0);
 const isDetailExpanded = ref(false);
 const isAllCommentsPanelVisible = ref(false);
 const currentCommentsReviewId = ref('');
+const subDishes = ref<any[]>([]);
+const isSubDishesExpanded = ref(false);
+
+// 计算显示的子菜品（默认前3个，展开后全部）
+const displayedSubDishes = computed(() => {
+  if (isSubDishesExpanded.value) {
+    return subDishes.value;
+  }
+  return subDishes.value.slice(0, 3);
+});
 
 onLoad((options: any) => {
   if (options.id) {
@@ -210,6 +256,35 @@ onLoad((options: any) => {
     fetchDishDetail(options.id);
   }
 });
+
+// 加载子菜品（如果有）
+const loadSubDishes = async () => {
+  subDishes.value = [];
+  const ids = dish.value?.subDishId || [];
+  if (!ids || ids.length === 0) return;
+
+  try {
+    const promises = ids.map((id: string) => getDishById(id));
+    const results = await Promise.all(promises);
+    const items = results
+      .filter((r: any) => r && r.code === 200 && r.data)
+      .map((r: any) => r.data);
+    subDishes.value = items;
+  } catch (err) {
+    console.error('加载子菜品失败', err);
+  }
+};
+
+// 监听 dish 变化以加载子项
+watch(() => dish.value, (val) => {
+  if (val) loadSubDishes();
+});
+
+// 跳转到子菜品详情
+const goToSubDish = (id: string) => {
+  if (!id) return;
+  uni.navigateTo({ url: `/pages/dish/index?id=${id}` });
+};
 
 const goBack = () => {
   uni.navigateBack();
@@ -221,7 +296,8 @@ const refresh = () => {
   }
 };
 
-const formatMealTime = (mealTimes: string[]) => {
+const formatMealTime = (mealTimes: string[] | undefined) => {
+  if (!mealTimes) return '';
   const timeMap: Record<string, string> = {
     breakfast: '早餐',
     lunch: '午餐',
