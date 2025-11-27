@@ -1,9 +1,18 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { ReviewsService } from './reviews.service';
 import { AuthGuard } from '@/auth/guards/auth.guard';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { ReportReviewDto } from './dto/report-review.dto';
-import { ReviewListResponseDto, ReviewResponseDto  } from './dto/review.dto';
+import { ReviewListResponseDto, ReviewResponseDto } from './dto/review.dto';
 import { ReportReviewResponseDto } from './dto/report-review.dto';
 
 @Controller()
@@ -21,7 +30,10 @@ export class ReviewsController {
   }
 
   @Post('reviews')
-  async create(@Request() req, @Body() createReviewDto: CreateReviewDto): Promise<ReviewResponseDto> {
+  async create(
+    @Request() req,
+    @Body() createReviewDto: CreateReviewDto,
+  ): Promise<ReviewResponseDto> {
     const userId = req.user.sub;
     return this.reviewsService.createReview(userId, createReviewDto);
   }

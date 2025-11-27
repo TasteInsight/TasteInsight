@@ -18,4 +18,4 @@ export class ReportReviewDto {
   reason: string;
 }
 
-export class ReportReviewResponseDto extends BaseResponseDto<string>{}
+export class ReportReviewResponseDto extends BaseResponseDto<string> {}

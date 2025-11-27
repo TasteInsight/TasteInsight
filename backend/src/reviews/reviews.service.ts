@@ -2,14 +2,22 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { ReportReviewDto } from './dto/report-review.dto';
-import { ReviewListResponseDto, ReviewResponseDto, ReviewData, ReviewDetailData } from './dto/review.dto';
+import {
+  ReviewListResponseDto,
+  ReviewResponseDto,
+  ReviewData,
+  ReviewDetailData,
+} from './dto/review.dto';
 import { ReportReviewResponseDto } from './dto/report-review.dto';
 
 @Injectable()
 export class ReviewsService {
   constructor(private prisma: PrismaService) {}
 
-  async createReview(userId: string, createReviewDto: CreateReviewDto) : Promise<ReviewResponseDto> {
+  async createReview(
+    userId: string,
+    createReviewDto: CreateReviewDto,
+  ): Promise<ReviewResponseDto> {
     const dish = await this.prisma.dish.findUnique({
       where: { id: createReviewDto.dishId },
     });
@@ -32,18 +40,22 @@ export class ReviewsService {
             nickname: true,
             avatar: true,
           },
-        }
+        },
       },
     });
 
     return {
-      code : 201,
+      code: 201,
       message: '创建成功',
       data: this.mapToReviewDetailData(review),
     };
   }
 
-  async getReviews(dishId: string, page: number = 1, pageSize: number = 20): Promise<ReviewListResponseDto> {
+  async getReviews(
+    dishId: string,
+    page: number = 1,
+    pageSize: number = 20,
+  ): Promise<ReviewListResponseDto> {
     const skip = (page - 1) * pageSize;
 
     const [items, total] = await Promise.all([
@@ -104,11 +116,15 @@ export class ReviewsService {
           total: totalCount,
           detail: ratingDetail,
         },
-      }
+      },
     };
   }
 
-  async reportReview(userId: string, reviewId: string, reportReviewDto: ReportReviewDto): Promise<ReportReviewResponseDto> {
+  async reportReview(
+    userId: string,
+    reviewId: string,
+    reportReviewDto: ReportReviewDto,
+  ): Promise<ReportReviewResponseDto> {
     const review = await this.prisma.review.findUnique({
       where: { id: reviewId },
     });
