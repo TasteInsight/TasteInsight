@@ -20,10 +20,10 @@
       </view>
 
       <!-- 表单内容 -->
-      <scroll-view scroll-y class="flex-1 px-3 py-2 overflow-x-hidden">
+      <view scroll-y class="flex-1 px-4 py-3 overflow-x-hidden">
         <!-- 日期选择行 -->
-        <view class="mb-4">
-          <view class="flex gap-3">
+        <view class="mb-5">
+          <view class="flex gap-3 max-w-[420px] mx-auto">
             <view class="flex-1">
               <text class="block text-sm text-gray-500 mb-2">开始日期</text>
               <picker mode="date" :value="formData.startDate" @change="onStartDateChange">
@@ -46,8 +46,8 @@
         </view>
 
         <!-- 用餐时间 -->
-        <view class="mb-4">
-          <text class="block text-sm text-gray-500 mb-2">用餐时间</text>
+        <view class="mb-5">
+          <text class="block text-sm text-gray-500 mb-3 text-center">用餐时间</text>
           <view class="grid grid-cols-4 gap-3 max-w-[420px] w-full mx-auto">
             <view 
               v-for="option in mealTimeOptions" 
@@ -64,17 +64,17 @@
         </view>
 
         <!-- 已选菜品 -->
-        <view class="mb-4">
-          <view class="flex items-center justify-between mb-2">
+        <view class="mb-5">
+          <view class="flex items-center justify-between mb-3 max-w-[420px] mx-auto">
             <text class="text-sm text-gray-500">已选菜品</text>
             <text class="text-xs text-purple-600">{{ selectedDishes.length }} 个</text>
           </view>
           
-          <view v-if="selectedDishes.length === 0" class="py-6 text-center bg-gray-50 rounded-xl">
+          <view v-if="selectedDishes.length === 0" class="py-6 text-center bg-gray-50 rounded-xl max-w-[420px] mx-auto">
             <text class="text-sm text-gray-400">暂未选择菜品</text>
           </view>
           
-          <view v-else class="flex flex-wrap gap-2 mb-2.5">
+          <view v-else class="flex flex-wrap gap-2 mb-3 max-w-[420px] mx-auto">
             <view 
               v-for="dish in selectedDishes" 
               :key="dish.id"
@@ -94,10 +94,10 @@
             </view>
           </view>
         </view>
-      </scroll-view>
+      </view>
 
       <!-- 底部按钮 -->
-      <view class="flex gap-3 px-3 py-2 border-t border-gray-100 pb-safe">
+      <view class="flex gap-3 px-4 py-3 border-t border-gray-100 pb-safe max-w-[420px] mx-auto w-full">
         <view class="flex-1 py-2 text-center bg-gray-100 rounded-xl" @tap="handleClose">
           <text class="text-gray-500">取消</text>
         </view>
