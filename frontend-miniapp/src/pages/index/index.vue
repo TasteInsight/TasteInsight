@@ -17,11 +17,13 @@
         />
       </view>
 
-      <FilterBar />
+      <FilterBar @filter-change="handleFilterChange" />
 
       <!-- 菜品列表 -->
-      <view class="text-lg font-semibold text-gray-800 my-4">今日推荐</view>
-      <view v-if="dishesStore.loading" class="text-center py-4 text-gray-500">正在加载推荐菜品...</view>
+      <view class="text-lg font-semibold text-gray-800 my-4">
+        {{ hasActiveFilters ? '筛选结果' : '今日推荐' }}
+      </view>
+      <view v-if="dishesStore.loading" class="text-center py-4 text-gray-500">正在加载菜品...</view>
       <view v-else-if="dishesStore.error" class="text-center py-4 text-red-500">{{ dishesStore.error }}</view>
       <view v-else-if="topThreeDishes.length > 0">
         <RecommendItem
@@ -32,7 +34,7 @@
         />
       </view>
       <view v-else class="text-center py-10 text-gray-500">
-        今天好像没有推荐菜品哦
+        {{ hasActiveFilters ? '没有符合条件的菜品' : '今天好像没有推荐菜品哦' }}
       </view>
     </view>
 
@@ -44,8 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed } from 'vue';
-// import { storeToRefs } from 'pinia'; // <-- 1. 不再需要 storeToRefs
+import { onMounted, computed, ref } from 'vue';
 
 // ... 导入子组件 (保持不变) ...
 import SearchBar from './components/SearchBar.vue';
@@ -67,12 +68,33 @@ const navItems = [ /* ... */ ];
 const canteenStore = useCanteenStore();
 const dishesStore = useDishesStore();
 
+// 当前筛选条件
+const currentFilter = ref<GetDishesRequest['filter']>({});
+
+// 是否有激活的筛选条件
+const hasActiveFilters = computed(() => {
+  return Object.keys(currentFilter.value).length > 0;
+});
+
 // --- 计算属性 ---
 // 3. 计算属性直接从 store 实例中读取 state
 const topThreeDishes = computed(() => {
   return dishesStore.dishes; // 显示所有返回的菜品
 });
 
+// 处理筛选变化
+const handleFilterChange = (filter: GetDishesRequest['filter']) => {
+  currentFilter.value = filter;
+  
+  const dishRequestParams: GetDishesRequest = {
+    sort: { field: 'averageRating', order: 'desc' },
+    pagination: { page: 1, pageSize: 20 },
+    filter: filter,
+    search: { keyword: '' },
+  };
+  
+  dishesStore.fetchDishes(dishRequestParams);
+};
 
 // --- 页面导航逻辑 (保持不变) ---
 function handleTabSwitch(item: { path: string }) { /* ... */ }
