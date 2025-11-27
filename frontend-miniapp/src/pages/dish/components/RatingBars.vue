@@ -125,7 +125,7 @@ const ratingBars = computed(() => {
 
 .rating-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #8b5cf6 0%, #a855f7 100%);
+  background: linear-gradient(90deg, #facc15 0%, #eab308 100%);
   border-radius: 2px;
   transition: width 0.3s ease;
 }

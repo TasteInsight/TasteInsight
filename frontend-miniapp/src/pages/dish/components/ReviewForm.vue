@@ -45,7 +45,7 @@
 
       <!-- 提交按钮 -->
       <button
-        class="w-full py-0.5 font-medium rounded-md transition-all submit-btn"
+        class="w-full h-10 flex items-center justify-center font-medium rounded-md transition-all submit-btn shadow-lg shadow-purple-200 active:shadow-none"
         :disabled="submitting"
         @click="handleSubmit"
       >
@@ -258,7 +258,7 @@ textarea {
 }
 
 .submit-btn {
-  background-color: #a855f7 !important; /* purple-500 的颜色值，比原来的 purple-700 浅 */
+  background-color: #6b21a8 !important; /* purple-800 的颜色值，更深 */
   color: #ffffff !important;
 }
 

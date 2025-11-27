@@ -25,7 +25,7 @@
           <!-- 右侧内容 -->
           <view class="flex-1">
             <!-- 昵称 - 阻止冒泡 -->
-            <view class="font-medium text-red-600 text-sm" @tap.stop>{{ review.userNickname }}</view>
+            <view class="font-bold text-purple-900 text-sm" @tap.stop>{{ review.userNickname }}</view>
             
             <!-- 星级评分 -->
             <view class="flex items-center mt-1">
@@ -57,12 +57,12 @@
       <view class="text-center py-4">
         <button 
           v-if="hasMore && !loading"
-          class="text-red-600 text-sm font-medium hover:text-red-700"
+          class="text-gray-500 text-sm font-medium hover:text-gray-700 after:border-none"
           @tap.stop="loadMore"
         >
           加载更多 ↓
         </button>
-        <view v-else-if="loading" class="text-red-400 text-sm">
+        <view v-else-if="loading" class="text-gray-400 text-sm">
           加载中...
         </view>
         <view v-else class="text-gray-400 text-sm">

@@ -1,5 +1,5 @@
 <template>
-  <view class="min-h-screen bg-gradient-to-b from-purple-50 to-white pt-16">
+  <view class="min-h-screen bg-white pt-16">
     <!-- 加载状态 -->
     <view v-if="loading" class="flex items-center justify-center min-h-screen">
       <text class="text-purple-500">加载中...</text>
@@ -68,17 +68,17 @@
       </view>
 
       <!-- 基本信息 -->
-      <view class="bg-white p-4 mb-2 rounded-2xl shadow-sm mx-4 mt-2">
+      <view class="bg-white p-4">
         <view class="flex justify-between items-start mb-2">
           <view class="flex-1">
             <h1 class="text-xl font-bold text-gray-800">{{ dish.name }}</h1>
-            <view class="text-sm text-red-600 mt-1 flex items-center">
+            <view class="text-sm text-gray-500 mt-1 flex items-center">
               <text class="iconify" data-icon="mdi:store"></text>
               <text class="ml-1">{{ dish.canteenName }} · {{ dish.windowName }}</text>
             </view>
           </view>
           <view class="text-right mt-2">
-            <view class="text-lg font-bold text-red-600">¥{{ dish.price }}</view>
+            <view class="text-lg font-bold text-orange-500">¥{{ dish.price }}</view>
           </view>
         </view>
 
@@ -87,18 +87,18 @@
           <span
             v-for="tag in dish.tags"
             :key="tag"
-            class="px-3 py-1 bg-blue-50 text-blue-500 text-xs rounded-md font-medium"
+            class="px-3 py-1 bg-gray-100 text-blue-600 text-xs rounded-md"
           >
             #{{ tag }}
           </span>
         </view>
 
         <!-- 评分信息 -->
-        <view class="mt-3 py-3 border-t border-purple-100">
+        <view class="mt-3 py-3 border-t border-gray-100">
           <view class="flex justify-between items-start">
             <!-- 左侧评分和评价数量 -->
-            <view class="flex flex-col mt-8">
-              <view class="text-xl font-bold text-purple-600">
+            <view class="flex flex-col mt-8 ml-6">
+              <view class="text-xl font-bold text-yellow-500">
                 {{ dish.averageRating.toFixed(1) }}分
               </view>
               <view class="text-xs text-gray-500 mt-1">
@@ -112,8 +112,11 @@
         </view>
       </view>
       
+      <!-- 分隔线 -->
+      <view class="h-3 bg-gray-50 border-t border-b border-gray-100"></view>
+
       <!-- 详细信息 -->
-      <view class="bg-white p-4 mb-2 rounded-xl shadow-sm mx-4">
+      <view class="bg-white p-4">
         <view class="flex justify-between items-center mb-3 cursor-pointer" @click="toggleDetailExpansion">
           <h2 class="text-lg font-semibold text-gray-800">详细信息 ...</h2>
           <text class="iconify text-red-600 text-xl transition-transform duration-300" :class="isDetailExpanded ? 'rotate-180' : ''" data-icon="mdi:chevron-down"></text>
@@ -122,31 +125,31 @@
         <view v-show="isDetailExpanded" class="transition-all duration-300 ease-in-out">
           <!-- 菜品介绍 -->
           <view v-if="dish.description" class="detail-section">
-            <text class="detail-label">菜品介绍：</text>
+            <text class="font-bold text-black mr-1 text-sm">菜品介绍：</text>
             <text class="detail-text">{{ dish.description }}</text>
           </view>
 
           <!-- 主要食材 -->
           <view v-if="dish.ingredients?.length" class="detail-section">
-            <text class="detail-label">主要食材：</text>
+            <text class="font-bold text-black mr-1 text-sm">主要食材：</text>
             <text class="detail-text">{{ dish.ingredients.join('、') }}</text>
           </view>
 
           <!-- 过敏原信息 -->
           <view v-if="dish.allergens?.length" class="detail-section">
-            <text class="detail-label">过敏原信息：</text>
+            <text class="font-bold text-black mr-1 text-sm">过敏原信息：</text>
             <text class="detail-text text-red-600">{{ dish.allergens.join('、') }}</text>
           </view>
 
           <!-- 供应时间 -->
           <view class="detail-section">
-            <text class="detail-label">供应时间：</text>
+            <text class="font-bold text-black mr-1 text-sm">供应时间：</text>
             <text class="detail-text">{{ formatMealTime(dish.availableMealTime) }}</text>
           </view>
 
           <!-- 子菜品（如果有） -->
           <view v-if="subDishes.length > 0" class="detail-section mt-3">
-            <text class="detail-label">子菜品：</text>
+            <text class="font-bold text-black mr-1 text-sm">子菜品：</text>
             <view class="mt-2 space-y-3">
               <view
                 v-for="sub in displayedSubDishes"
@@ -171,7 +174,7 @@
               class="mt-3 text-center"
             >
               <button
-                class="text-sm text-purple-600 bg-purple-50 px-4 py-2 rounded-full"
+                class="text-sm text-gray-600 bg-gray-100 px-4 py-2 rounded-full"
                 @click="isSubDishesExpanded = !isSubDishesExpanded"
               >
                 {{ isSubDishesExpanded ? '收起' : `展开全部 (${subDishes.length}个)` }}
@@ -181,8 +184,11 @@
         </view>
       </view>
 
+      <!-- 分隔线 -->
+      <view class="h-3 bg-gray-50 border-t border-b border-gray-100"></view>
+
       <!-- 评价列表 -->
-      <view class="bg-white p-4 mb-2 rounded-xl shadow-sm mx-4">
+      <view class="bg-white p-4">
         <view class="mb-4">
           <h2 class="text-lg font-semibold text-gray-800">用户评价</h2>
         </view>
@@ -391,13 +397,6 @@ swiper-item {
 .detail-section {
   margin-bottom: 12px;
   line-height: 1.5;
-}
-
-.detail-label {
-  font-size: 14px;
-  font-weight: normal;
-  color: #7c3aed;
-  margin-right: 4px;
 }
 
 .detail-text {
