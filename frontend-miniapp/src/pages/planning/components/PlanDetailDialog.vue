@@ -1,14 +1,24 @@
 <template>
-  <view v-if="visible" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-5" @tap="handleClose">
-    <view class="bg-white rounded-2xl w-full max-w-2xl max-h-screen-80 flex flex-col overflow-hidden" @tap.stop>
-      <view class="p-5 border-b border-gray-100 flex justify-between items-center">
+  <view 
+    v-if="visible" 
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-5" 
+    @tap="handleClose"
+    @touchmove.stop.prevent
+  >
+    <view 
+      class="bg-white rounded-2xl w-full max-w-2xl flex flex-col overflow-hidden" 
+      style="max-height: 80vh;"
+      @tap.stop
+      @touchmove.stop
+    >
+      <view class="p-5 border-b border-gray-100 flex justify-between items-center shrink-0">
         <text class="text-xl font-bold">规划详情</text>
         <view @tap="handleClose" class="w-6 h-6 flex items-center justify-center">
           <text class="text-2xl text-gray-600">×</text>
         </view>
       </view>
 
-      <scroll-view v-if="plan" scroll-y class="flex-1 w-full">
+      <scroll-view v-if="plan" scroll-y class="flex-1" style="max-height: calc(80vh - 140px);">
         <view class="p-5">
           <view class="bg-gray-50 p-4 rounded-lg mb-5">
             <view class="flex mb-3 items-center">
