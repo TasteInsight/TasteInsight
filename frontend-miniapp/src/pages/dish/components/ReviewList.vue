@@ -10,20 +10,22 @@
       <view 
         v-for="review in reviews" 
         :key="review.id"
-        class="border-b border-gray-100 py-4 last:border-b-0"
+        class="border-b border-gray-100 py-4 last:border-b-0 review-item"
+        @tap="handleViewAllComments(review.id)"
       >
         <!-- 用户信息 -->
         <view class="flex items-start">
-          <!-- 左侧头像 -->
+          <!-- 左侧头像 - 阻止冒泡 -->
           <img 
             :src="review.userAvatar || '/default-avatar.png'" 
             class="w-10 h-10 rounded-full mr-3 flex-shrink-0"
+            @tap.stop
           />
           
           <!-- 右侧内容 -->
           <view class="flex-1">
-            <!-- 昵称 -->
-            <view class="font-medium text-red-600 text-sm">{{ review.userNickname }}</view>
+            <!-- 昵称 - 阻止冒泡 -->
+            <view class="font-medium text-red-600 text-sm" @tap.stop>{{ review.userNickname }}</view>
             
             <!-- 星级评分 -->
             <view class="flex items-center mt-1">
@@ -56,7 +58,7 @@
         <button 
           v-if="hasMore && !loading"
           class="text-red-600 text-sm font-medium hover:text-red-700"
-          @tap="loadMore"
+          @tap.stop="loadMore"
         >
           加载更多 ↓
         </button>

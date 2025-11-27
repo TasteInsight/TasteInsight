@@ -27,16 +27,6 @@
       </view>
     </view>
 
-    <!-- 没有评论时显示回复入口 -->
-    <view v-else class="ml-4 mt-3">
-      <button
-        class="add-comment-btn"
-        @tap="emit('viewAllComments')"
-      >
-        回复
-      </button>
-    </view>
-
   </view>
 </template>
 
