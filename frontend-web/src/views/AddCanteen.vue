@@ -638,14 +638,6 @@ export default {
 
         if (seenLevels.has(level)) {
            // 允许同名楼层？一般不允许不同名字映射到同一层级，或者允许但提示
-           // 这里我们假设每个输入对应一个楼层，如果层级重复，可能是别名，这里为了简单我们只存第一个或者都存
-           // 题目要求：把name存入floor信息中
-           // 我们允许重复level吗？ Canteen model floors is array of Floor.
-           // 如果用户输入 "一层/1F"，解析出 level 1 和 level 1。
-           // 为了避免混淆，我们建议去重或者允许。这里我们允许，但可能需要后端支持。
-           // 为了安全起见，如果检测到重复level，我们只保留第一个，或者都保留。
-           // 既然要求存name，那 "一层" 和 "1F" 可能是两个不同的展示名，但物理上是同一层。
-           // 我们都保留。
         }
         seenLevels.add(level)
         parsedFloors.push({
