@@ -171,8 +171,7 @@ export interface DishCreateRequest {
   oiliness?: number
   canteenId?: string
   canteenName: string
-  floor?: string
-  windowNumber: string
+  windowNumber?: string
   windowName: string
   availableMealTime?: ('breakfast' | 'lunch' | 'dinner' | 'nightsnack')[]
   availableDates?: AvailableDate[]
@@ -198,7 +197,6 @@ export interface DishUpdateRequest {
   oiliness?: number
   canteenId?: string
   canteenName?: string
-  floor?: string
   windowNumber?: string
   windowName?: string
   availableMealTime?: ('breakfast' | 'lunch' | 'dinner' | 'nightsnack')[]
@@ -218,12 +216,21 @@ export interface GetDishesParams extends PaginationParams {
 // ==================== 食堂相关类型 ====================
 
 /**
+ * 楼层信息
+ */
+export interface Floor {
+  level: string
+  name?: string
+}
+
+/**
  * 窗口信息
  */
 export interface Window {
   id: string
   name: string
   number: string
+  floor?: Floor
   position?: string
   description?: string
   tag?: string[]
@@ -238,19 +245,29 @@ export interface Canteen {
   position?: string
   description?: string
   images?: string[]
-  operatingHours?: string
+  openingHours?: OpeningHours[]
   averageRating?: number
   reviewCount?: number
-  windowsList?: Window[]
+  floors: Floor[]
+  windows?: Window[]
+}
+
+/**
+ * 营业时间槽
+ */
+export interface TimeSlot {
+  mealType?: string
+  openTime: string
+  closeTime: string
 }
 
 /**
  * 营业时间
  */
 export interface OpeningHours {
-  day: string
-  open: string
-  close: string
+  dayOfWeek: string
+  slots: TimeSlot[]
+  isClosed: boolean
 }
 
 /**
@@ -262,6 +279,7 @@ export interface CanteenCreateRequest {
   description?: string
   images?: string[]
   openingHours?: OpeningHours[]
+  floors: Floor[]
 }
 
 /**
@@ -273,6 +291,7 @@ export interface CanteenUpdateRequest {
   description?: string
   images?: string[]
   openingHours?: OpeningHours[]
+  floors?: Floor[]
 }
 
 /**
@@ -280,7 +299,8 @@ export interface CanteenUpdateRequest {
  */
 export interface WindowCreateRequest {
   name: string
-  number: string
+  number?: string
+  floor?: Floor
   canteenId: string
   position?: string
   description?: string
@@ -293,6 +313,7 @@ export interface WindowCreateRequest {
 export interface WindowUpdateRequest {
   name?: string
   number?: string
+  floor?: Floor
   position?: string
   description?: string
   tags?: string[]
