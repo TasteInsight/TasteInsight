@@ -54,11 +54,13 @@ export function getWindowList(
  * 获取窗口详情
  */
 export function getWindowDetail(
-  windowId: string
+  windowId: string,
+  params?: PaginationParams
 ): Promise<ApiResponse<Window>> {
   return request<Window>({
     url: `/windows/${windowId}`,
     method: 'GET',
+    data: params,
   });
 }
 
