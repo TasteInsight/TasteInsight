@@ -1,9 +1,11 @@
 // Mock 评价服务
-import type { ReviewListData, Comment, PaginationParams, PaginatedData } from '@/types/api';
+import type { ReviewListData, Comment, PaginationParams, PaginatedData, Review } from '@/types/api';
 import {
   getReviewsByDishId,
   getCommentsByReviewId,
   getRatingDetailByDishId,
+  addComment,
+  addReview,
 } from '../data/review';
 
 // 模拟网络延迟
@@ -87,14 +89,29 @@ export const mockCreateReview = async (data: {
   rating: number;
   content: string;
   images?: string[];
-}): Promise<{ id: string }> => {
+}): Promise<Review> => {
   await delay(500);
   
-  // 模拟创建成功，返回新ID
+  // 创建新评价对象
   const newId = `review_${Date.now()}`;
-  console.log('[Mock] 创建评价:', { ...data, id: newId });
+  const newReview: Review = {
+    id: newId,
+    dishId: data.dishId,
+    userId: 'mock_user',
+    userNickname: '当前用户',
+    userAvatar: 'https://via.placeholder.com/100',
+    rating: data.rating,
+    content: data.content,
+    images: data.images || [],
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+  };
   
-  return { id: newId };
+  // 保存到 mock 数据中
+  addReview(newReview);
+  console.log('[Mock] 创建评价:', newReview);
+  
+  return newReview;
 };
 
 /**
@@ -103,12 +120,25 @@ export const mockCreateReview = async (data: {
 export const mockCreateComment = async (data: {
   reviewId: string;
   content: string;
-}): Promise<{ id: string }> => {
+}): Promise<Comment> => {
   await delay(500);
   
-  // 模拟创建成功，返回新ID
+  // 创建新评论对象
   const newId = `comment_${Date.now()}`;
-  console.log('[Mock] 创建评论:', { ...data, id: newId });
+  const newComment: Comment = {
+    id: newId,
+    reviewId: data.reviewId,
+    userId: 'mock_user',
+    userNickname: '当前用户',
+    userAvatar: 'https://via.placeholder.com/100',
+    content: data.content,
+    status: 'approved',
+    createdAt: new Date().toISOString(),
+  };
   
-  return { id: newId };
+  // 保存到 mock 数据中
+  addComment(newComment);
+  console.log('[Mock] 创建评论:', newComment);
+  
+  return newComment;
 };

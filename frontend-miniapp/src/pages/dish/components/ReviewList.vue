@@ -56,7 +56,7 @@
         <button 
           v-if="hasMore && !loading"
           class="text-red-600 text-sm font-medium hover:text-red-700"
-          @click="loadMore"
+          @tap="loadMore"
         >
           加载更多 ↓
         </button>

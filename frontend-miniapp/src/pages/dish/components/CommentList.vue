@@ -19,12 +19,22 @@
         <view class="view-all-replies-container">
           <button
             class="view-all-replies-btn"
-            @click="emit('viewAllComments')"
+            @tap="emit('viewAllComments')"
           >
             共{{ totalComments }}条回复 >
           </button>
         </view>
       </view>
+    </view>
+
+    <!-- 没有评论时显示回复入口 -->
+    <view v-else class="ml-4 mt-3">
+      <button
+        class="add-comment-btn"
+        @tap="emit('viewAllComments')"
+      >
+        回复
+      </button>
     </view>
 
   </view>
@@ -154,6 +164,22 @@ const formatDate = (dateString: string) => {
 }
 
 .view-all-replies-btn:hover {
+  color: #6d28d9;
+}
+
+/* 添加评论按钮 */
+.add-comment-btn {
+  color: #7c3aed; /* 紫色 */
+  font-size: 14px;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.add-comment-btn:hover {
   color: #6d28d9;
 }
 </style>

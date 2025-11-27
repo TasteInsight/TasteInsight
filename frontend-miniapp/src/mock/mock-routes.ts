@@ -11,7 +11,7 @@ import type { RequestOptions, PaginationParams } from '@/types/api';
 // ============================================
 // 导入 Mock 数据服务
 // ============================================
-import { mockGetReviewsByDish, mockCreateReview } from './services/review';
+import { mockGetReviewsByDish, mockCreateReview, mockGetCommentsByReview, mockCreateComment } from './services/review';
 import { mockGetDishById, mockGetDishes } from './services/dish';
 import { mockGetCanteenList, mockGetCanteenDetail, mockGetWindowList, mockGetWindowDetail, mockGetWindowDishes, mockSearchDishes } from './services/canteen';
 import { mockGetNewsList, mockGetNewsById } from './services/news';
@@ -48,28 +48,47 @@ registerMockRoute('GET', '/dishes/:dishId/reviews', async (url, options) => {
 // POST /reviews - 创建评价
 registerMockRoute('POST', '/reviews', async (url, options) => {
   const reviewData = options.data as any;
-  const result = await mockCreateReview({
+  const review = await mockCreateReview({
     dishId: reviewData.dishId,
     rating: reviewData.rating,
     content: reviewData.content || '',
     images: reviewData.images,
   });
   
-  // 构造完整的 Review 对象返回
-  const mockReview = {
-    id: result.id,
-    dishId: reviewData.dishId,
-    userId: 'mock_user',
-    userNickname: '当前用户',
-    userAvatar: 'https://via.placeholder.com/100',
-    rating: reviewData.rating,
-    content: reviewData.content || '',
-    images: reviewData.images || [],
-    status: 'pending' as const,
-    createdAt: new Date().toISOString(),
-  };
+  return mockSuccess(review);
+});
+
+// ============================================
+// Comment 相关路由
+// ============================================
+
+// GET /comments/:reviewId - 获取评价的评论列表
+registerMockRoute('GET', '/comments/:reviewId', async (url, options) => {
+  const match = url.match(/\/comments\/([^/]+)$/);
+  const reviewId = match?.[1] || '';
+  const params = options.data as PaginationParams;
   
-  return mockSuccess(mockReview);
+  const data = await mockGetCommentsByReview(reviewId, params);
+  return mockSuccess({
+    items: data.items,
+    meta: {
+      page: data.page,
+      pageSize: data.pageSize,
+      total: data.total,
+      totalPages: Math.ceil(data.total / data.pageSize),
+    },
+  });
+});
+
+// POST /comments - 创建评论
+registerMockRoute('POST', '/comments', async (url, options) => {
+  const commentData = options.data as any;
+  const comment = await mockCreateComment({
+    reviewId: commentData.reviewId,
+    content: commentData.content,
+  });
+  
+  return mockSuccess(comment);
 });
 
 // ============================================

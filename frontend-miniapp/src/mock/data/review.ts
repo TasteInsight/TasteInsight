@@ -164,16 +164,54 @@ export const createMockComments = (): Comment[] => {
   return comments;
 };
 
+// ============================================
+// 持久化存储（模拟）
+// ============================================
+
+// 缓存生成的评价和评论，避免每次重新生成
+let cachedReviews: Review[] | null = null;
+let cachedComments: Comment[] | null = null;
+
+// 获取所有评价（单例）
+const getAllReviews = (): Review[] => {
+  if (!cachedReviews) {
+    cachedReviews = createMockReviews();
+  }
+  return cachedReviews;
+};
+
+// 获取所有评论（单例）
+const getAllComments = (): Comment[] => {
+  if (!cachedComments) {
+    cachedComments = createMockComments();
+  }
+  return cachedComments;
+};
+
 // 根据菜品ID获取评价列表
 export const getReviewsByDishId = (dishId: string): Review[] => {
-  const allReviews = createMockReviews();
+  const allReviews = getAllReviews();
   return allReviews.filter(r => r.dishId === dishId);
 };
 
 // 根据评价ID获取评论列表
 export const getCommentsByReviewId = (reviewId: string): Comment[] => {
-  const allComments = createMockComments();
+  const allComments = getAllComments();
   return allComments.filter(c => c.reviewId === reviewId);
+};
+
+// 添加新评论
+export const addComment = (comment: Comment): void => {
+  const allComments = getAllComments();
+  // 插入到数组开头（最新的在前）
+  allComments.unshift(comment);
+};
+
+// 添加新评价
+export const addReview = (review: Review): void => {
+  const allReviews = getAllReviews();
+  // 插入到数组开头（最新的在前）
+  allReviews.unshift(review);
 };
 
 // 计算菜品的评分详情
