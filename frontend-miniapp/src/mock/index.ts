@@ -50,7 +50,23 @@ export {
   mockGetPopularDishes,
 } from './services/canteen';
 
+// Review Service
+export {
+  mockGetReviewsByDish,
+  mockGetCommentsByReview,
+  mockCreateReview,
+  mockCreateComment,
+} from './services/review';
+
 // 导出 Mock 数据（用于测试）
 export { createMockMealPlans, getMockPlanDatabase, resetMockPlanDatabase } from './data/meal-plan';
 export { createMockDishes, getDishesByWindowId } from './data/dish';
 export { createMockCanteens, createMockWindows, getWindowsByCanteenId } from './data/canteen';
+export { 
+  createMockReviews, 
+  createMockComments, 
+  getReviewsByDishId, 
+  getCommentsByReviewId,
+  getRatingDetailByDishId,
+} from './data/review';
+
