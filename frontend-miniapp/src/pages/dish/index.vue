@@ -147,22 +147,35 @@
           <!-- 子菜品（如果有） -->
           <view v-if="subDishes.length > 0" class="detail-section mt-3">
             <text class="detail-label">子菜品：</text>
-            <view class="mt-2 grid grid-cols-2 gap-3">
+            <view class="mt-2 space-y-3">
               <view
-                v-for="sub in subDishes"
+                v-for="sub in displayedSubDishes"
                 :key="sub.id"
-                class="bg-white p-3 rounded-lg shadow-sm flex items-center gap-3 cursor-pointer"
+                class="bg-gray-50 p-3 rounded-lg flex items-center gap-3 cursor-pointer"
                 @click="goToSubDish(sub.id)"
               >
-                <image v-if="sub.images?.[0]" :src="sub.images[0]" class="w-16 h-16 rounded-md object-cover" />
-                <view v-else class="w-16 h-16 bg-gray-100 rounded-md flex items-center justify-center">
+                <image v-if="sub.images?.[0]" :src="sub.images[0]" class="w-14 h-14 rounded-md object-cover" mode="aspectFill" />
+                <view v-else class="w-14 h-14 bg-gray-200 rounded-md flex items-center justify-center">
                   <text class="iconify text-gray-400" data-icon="mdi:food"></text>
                 </view>
-                <view class="flex-1">
-                  <view class="font-medium text-sm text-gray-800">{{ sub.name }}</view>
+                <view class="flex-1 min-w-0">
+                  <view class="font-medium text-sm text-gray-800 truncate">{{ sub.name }}</view>
                   <view class="text-xs text-red-600 mt-1">¥{{ sub.price }}</view>
                 </view>
+                <text class="iconify text-gray-400" data-icon="mdi:chevron-right"></text>
               </view>
+            </view>
+            <!-- 展开/收起按钮 -->
+            <view
+              v-if="subDishes.length > 3"
+              class="mt-3 text-center"
+            >
+              <button
+                class="text-sm text-purple-600 bg-purple-50 px-4 py-2 rounded-full"
+                @click="isSubDishesExpanded = !isSubDishesExpanded"
+              >
+                {{ isSubDishesExpanded ? '收起' : `展开全部 (${subDishes.length}个)` }}
+              </button>
             </view>
           </view>
         </view>
@@ -209,7 +222,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { useDishDetail } from '@/pages/dish/composables/use-dish-detail';
 import ReviewList from './components/ReviewList.vue';
@@ -227,6 +240,15 @@ const isDetailExpanded = ref(false);
 const isAllCommentsPanelVisible = ref(false);
 const currentCommentsReviewId = ref('');
 const subDishes = ref<any[]>([]);
+const isSubDishesExpanded = ref(false);
+
+// 计算显示的子菜品（默认前3个，展开后全部）
+const displayedSubDishes = computed(() => {
+  if (isSubDishesExpanded.value) {
+    return subDishes.value;
+  }
+  return subDishes.value.slice(0, 3);
+});
 
 onLoad((options: any) => {
   if (options.id) {

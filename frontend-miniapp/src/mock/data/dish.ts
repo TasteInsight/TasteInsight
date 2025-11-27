@@ -111,7 +111,7 @@ export const createMockDishes = (): Dish[] => {
     status: Status.Online,
     averageRating: 4.8,
     reviewCount: 203,
-    subDishId: ['dish_006', 'dish_004'],
+    subDishId: ['dish_006', 'dish_004', 'dish_007', 'dish_008'],
     createdAt: new Date(),
     updatedAt: new Date(),
   },
