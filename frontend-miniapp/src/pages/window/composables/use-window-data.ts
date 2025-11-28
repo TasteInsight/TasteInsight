@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue';
 import { useCanteenStore } from '@/store/modules/use-canteen-store';
-import type { Dish } from '@/types/api';
+import { getDishes } from '@/api/modules/dish';
+import type { GetDishesRequest, Dish } from '@/types/api';
 
 const filters = [
   { key: 'taste', label: '口味' },
@@ -13,8 +14,9 @@ const filters = [
 export function useWindowData() {
   const canteenStore = useCanteenStore();
   const windowInfo = computed(() => canteenStore.currentWindow);
-  const dishes = computed<Dish[]>(() => canteenStore.currentWindowDishes);
-  const loading = computed(() => canteenStore.loading);
+  // dishes 现在通过 local ref 维护，支持筛选后更新
+  const dishes = ref<Dish[]>([]); 
+  const loading = ref(false);
   const storeError = computed(() => canteenStore.error || '');
   const localError = ref('');
   const error = computed(() => localError.value || storeError.value);
@@ -30,13 +32,29 @@ export function useWindowData() {
     }
   };
 
-  const fetchDishes = async (windowId: string) => {
+  const fetchDishes = async (windowId: string, extraFilters: GetDishesRequest['filter'] = {}) => {
+    loading.value = true;
     try {
       localError.value = '';
-      await canteenStore.fetchWindowDishes(windowId);
+      
+      const params: GetDishesRequest = {
+        filter: { windowId: [windowId], ...extraFilters },
+        sort: { field: 'averageRating', order: 'desc' },
+        pagination: { page: 1, pageSize: 20 },
+        search: { keyword: '' },
+      };
+
+      const res = await getDishes(params);
+      if (res.code === 200 && res.data) {
+        dishes.value = res.data.items || [];
+      } else {
+        throw new Error(res.message || '获取菜品列表失败');
+      }
     } catch (err) {
       console.error('获取窗口菜品失败:', err);
       localError.value = err instanceof Error ? err.message : '获取菜品信息失败';
+    } finally {
+      loading.value = false;
     }
   };
 

@@ -1,4 +1,4 @@
-<!-- @/pages/canteen/components/CanteenFilterBar.vue -->
+<!-- @/pages/window/components/WindowFilterBar.vue -->
 <template>
   <view class="filter-bar">
     <!-- 筛选标签栏 -->
