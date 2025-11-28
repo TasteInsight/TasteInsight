@@ -13,7 +13,7 @@
           <text>{{ newsDetail.canteenName || '全校公告' }}</text>
           <text>{{ newsDetail.publishedAt ? formatTime(newsDetail.publishedAt) : '' }}</text>
         </view>
-        <view class="text-base leading-relaxed text-gray-800">
+        <view class="text-base leading-relaxed text-gray-800 overflow-hidden break-words">
           <!-- 使用处理后的富文本内容，支持图片自适应 -->
           <rich-text :nodes="formattedContent"></rich-text>
         </view>
@@ -46,7 +46,15 @@ const formattedContent = computed(() => {
   let content = newsDetail.value.content;
   
   // 1. 给 img 标签添加 max-width: 100% 样式
-  content = content.replace(/\<img/gi, '<img style="max-width:100%;height:auto;display:block;margin:10px 0;"');
+  // 使用回调函数处理，避免产生重复的 style 属性
+  content = content.replace(/<img[^>]*>/gi, (match) => {
+    // 如果已经有 style 属性
+    if (match.indexOf('style="') > -1) {
+      return match.replace('style="', 'style="max-width:100%;height:auto;display:block;margin:10px 0;');
+    }
+    // 如果没有 style 属性
+    return match.replace('<img', '<img style="max-width:100%;height:auto;display:block;margin:10px 0;"');
+  });
   
   // 2. (可选) 处理 p 标签的行高，增加可读性
   // content = content.replace(/\<p/gi, '<p style="line-height:1.8;margin-bottom:10px;"');
