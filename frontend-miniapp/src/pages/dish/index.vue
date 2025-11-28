@@ -87,7 +87,7 @@
           <span
             v-for="tag in dish.tags"
             :key="tag"
-            class="px-3 py-1 bg-gray-100 text-blue-600 text-xs rounded-md"
+            class="px-3 py-1 bg-blue-50 text-blue-600 text-xs rounded-md"
           >
             #{{ tag }}
           </span>

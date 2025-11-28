@@ -10,8 +10,18 @@
       <view>
         <h3 class="font-semibold text-base text-gray-800">{{ dish.name }}</h3>
         <p class="text-xs text-gray-500 mt-1">{{ dish.canteenName }} · {{ dish.windowName }}</p>
+        <!-- Tags -->
+        <view v-if="dish.tags?.length" class="flex flex-wrap gap-1 mt-1.5 mb-2">
+          <span 
+            v-for="tag in dish.tags.slice(0, 3)" 
+            :key="tag" 
+            class="px-1.5 py-0.5 bg-blue-50 text-blue-600 text-xs rounded"
+          >
+            {{ tag }}
+          </span>
+        </view>
       </view>
-      <view class="flex justify-between items-center">
+      <view class="flex justify-between items-center mt-auto">
         <span class="text-orange-500 font-bold text-lg">¥{{ dish.price.toFixed(1) }}</span>
         <view class="flex items-center bg-yellow-50 px-2 py-1 rounded">
           <text class="text-yellow-500" style="font-size: 16px; line-height: 1;">★</text>

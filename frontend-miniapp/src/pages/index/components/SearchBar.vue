@@ -1,12 +1,13 @@
 <!-- @/components/SearchBar.vue -->
 <template>
   <view 
-    class="bg-white rounded-2xl h-12 border border-gray-300 flex items-center px-4 my-4 cursor-pointer"
+    class="flex items-center bg-gray-100 border border-gray-200 rounded-full px-4 h-10 my-4 cursor-pointer"
     @click="handleClick"
   >
-    <text class="iconify" data-icon="mdi:magnify" style="color:#999; margin-right:8px;"></text>
-    <text style="color:#999; margin-right:8px; font-size: 20px;">🔍</text>
-    <text class="text-gray-500 text-sm">搜索食堂或菜品</text>
+    <uni-icons type="search" size="18" color="#999"></uni-icons>
+    <view class="flex-1 text-sm text-gray-500 ml-2">
+      搜索食堂、窗口或菜品
+    </view>
   </view>
 </template>
 

@@ -10,4 +10,9 @@ onHide(() => {
   console.log("App Hide");
 });
 </script>
-<style></style>
+<style>
+/* 隐藏所有元素的点击高亮效果 */
+view, scroll-view, swiper-item, image, text, button, input, textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+</style>
