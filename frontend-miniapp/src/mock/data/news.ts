@@ -5,7 +5,7 @@ export const createMockNews = (): News[] => [
   {
     id: 'news_001',
     title: '一食堂新菜品上线通知',
-    content: '亲爱的同学们，一食堂特别推出川味特色小炒和养生炖汤系列菜品。川味特色小炒包括宫保鸡丁、麻婆豆腐等经典菜品，采用优质食材，口味正宗。养生炖汤系列选用新鲜食材，慢火炖煮，营养丰富。欢迎大家前来品尝！',
+    content: '<p>亲爱的同学们：</p><p>为了丰富大家的饮食选择，<strong>一食堂</strong>特别推出了一系列新菜品！</p><h3 style="margin-top: 15px; margin-bottom: 10px; color: #ff6b00;">🔥 川味特色小炒</h3><ul><li style="margin-bottom: 5px;"><strong>宫保鸡丁</strong>：选用优质鸡胸肉，搭配香脆花生米，酸甜微辣，开胃下饭。</li><li style="margin-bottom: 5px;"><strong>麻婆豆腐</strong>：麻辣鲜香，豆腐嫩滑，是米饭的最佳拍档。</li></ul><p><img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80" alt="美食图片"></p><h3 style="margin-top: 15px; margin-bottom: 10px; color: #ff6b00;">🍲 养生炖汤系列</h3><p>选用新鲜食材，慢火炖煮，营养丰富。包括：</p><ul><li>玉米排骨汤</li><li>山药乌鸡汤</li></ul><p style="margin-top: 15px;">欢迎大家前来品尝！</p>',
     summary: '一食堂推出川味特色小炒和养生炖汤系列',
     canteenId: 'canteen_001',
     canteenName: '一食堂',
