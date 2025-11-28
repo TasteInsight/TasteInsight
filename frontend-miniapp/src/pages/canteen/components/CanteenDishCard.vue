@@ -5,7 +5,19 @@
       <view>
         <h3 class="font-semibold text-base text-gray-800">{{ dish.name }}</h3>
         <p class="text-xs text-gray-500 mt-1">{{ dish.windowName }}</p>
+        
+        <!-- 标签展示 -->
+        <view v-if="dish.tags && dish.tags.length > 0" class="flex flex-wrap mt-2 mb-1">
+          <view
+            v-for="(tag, index) in dish.tags.slice(0, 3)"
+            :key="index"
+            class="bg-blue-50 text-blue-600 text-xs px-1.5 py-0.5 rounded mr-1.5 mb-1"
+          >
+            {{ tag }}
+          </view>
+        </view>
       </view>
+      
       <view class="flex justify-between items-center">
         <span class="text-orange-500 font-bold text-lg">¥{{ dish.price.toFixed(2) }}</span>
         <view class="flex items-center bg-yellow-50 px-2 py-1 rounded">

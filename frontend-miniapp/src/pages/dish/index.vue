@@ -173,12 +173,13 @@
               v-if="subDishes.length > 3"
               class="mt-3 text-center"
             >
-              <button
-                class="text-sm text-gray-600 bg-gray-100 px-4 py-2 rounded-full"
+              <view
+                class="inline-block text-sm text-gray-500 py-1 cursor-pointer"
                 @click="isSubDishesExpanded = !isSubDishesExpanded"
               >
                 {{ isSubDishesExpanded ? '收起' : `展开全部 (${subDishes.length}个)` }}
-              </button>
+                <text class="ml-1 text-xs">{{ isSubDishesExpanded ? '↑' : '↓' }}</text>
+              </view>
             </view>
           </view>
         </view>
