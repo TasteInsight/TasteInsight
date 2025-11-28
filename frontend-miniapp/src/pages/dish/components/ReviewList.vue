@@ -55,13 +55,13 @@
 
       <!-- 加载更多 -->
       <view class="text-center py-4">
-        <button 
+        <view 
           v-if="hasMore && !loading"
-          class="text-gray-500 text-sm font-medium hover:text-gray-700 after:border-none"
+          class="inline-block text-gray-500 text-sm font-medium hover:text-gray-700 cursor-pointer py-2 px-4"
           @tap.stop="loadMore"
         >
           加载更多 ↓
-        </button>
+        </view>
         <view v-else-if="loading" class="text-gray-400 text-sm">
           加载中...
         </view>

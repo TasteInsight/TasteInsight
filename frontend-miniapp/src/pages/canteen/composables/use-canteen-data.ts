@@ -30,9 +30,9 @@ export function useCanteenData() {
     await canteenStore.fetchWindowList(canteenId).catch(() => {});
   };
 
-  const fetchDishes = async (canteenId: string) => {
+  const fetchDishes = async (canteenId: string, extraFilters: GetDishesRequest['filter'] = {}) => {
     const params: GetDishesRequest = {
-      filter: { canteenId: [canteenId] },
+      filter: { canteenId: [canteenId], ...extraFilters },
       sort: { field: 'averageRating', order: 'desc' },
       pagination: { page: 1, pageSize: 20 },
       search: { keyword: '' },
