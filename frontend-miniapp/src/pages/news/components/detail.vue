@@ -46,6 +46,9 @@ const formattedContent = computed(() => {
   if (!newsDetail.value.content) return '';
   
   let content = newsDetail.value.content;
+
+  // 0. 移除 html 和 body 标签，防止 rich-text 解析异常
+  content = content.replace(/<\/?html[^>]*>/gi, '').replace(/<\/?body[^>]*>/gi, '');
   
   // 1. 给 img 标签添加 max-width: 100% 样式
   // 使用回调函数处理，避免产生重复的 style 属性
