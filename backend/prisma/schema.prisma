@@ -343,12 +343,15 @@ model Review {
   comments Comment[]
   reports  Report[]
 
+  deletedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([dishId])
   @@index([userId])
   @@index([status])
+  @@index([deletedAt])
   @@map("reviews")
 }
 

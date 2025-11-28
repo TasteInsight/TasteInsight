@@ -8,6 +8,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  Delete,
 } from '@nestjs/common';
 import { AdminReviewsService } from './admin-reviews.service';
 import { RejectReviewDto } from './dto/reject-review.dto';
@@ -45,5 +46,12 @@ export class AdminReviewsController {
   @HttpCode(HttpStatus.OK)
   async rejectReview(@Param('id') id: string, @Body() dto: RejectReviewDto) {
     return this.adminReviewsService.rejectReview(id, dto);
+  }
+
+  @Delete(':id')
+  @RequirePermissions('review:delete')
+  @HttpCode(HttpStatus.OK)
+  async deleteReview(@Param('id') id: string) {
+    return this.adminReviewsService.deleteReview(id);
   }
 }

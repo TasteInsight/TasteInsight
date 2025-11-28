@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { ReportReviewDto } from './dto/report-review.dto';
@@ -7,7 +11,8 @@ import {
   ReviewResponseDto,
   ReviewData,
   ReviewDetailData,
-} from './dto/review.dto';
+  DeleteReviewResponseDto,
+} from './dto/review-response.dto';
 import { ReportReviewResponseDto } from './dto/report-review.dto';
 
 @Injectable()
@@ -60,7 +65,7 @@ export class ReviewsService {
 
     const [items, total] = await Promise.all([
       this.prisma.review.findMany({
-        where: { dishId, status: 'approved' },
+        where: { dishId, status: 'approved', deletedAt: null },
         include: {
           user: {
             select: {
@@ -75,14 +80,14 @@ export class ReviewsService {
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.review.count({
-        where: { dishId, status: 'approved' },
+        where: { dishId, status: 'approved', deletedAt: null },
       }),
     ]);
 
     // 计算评分统计
     const ratings = await this.prisma.review.groupBy({
       by: ['rating'],
-      where: { dishId, status: 'approved' },
+      where: { dishId, status: 'approved', deletedAt: null },
       _count: {
         rating: true,
       },
@@ -126,7 +131,7 @@ export class ReviewsService {
     reportReviewDto: ReportReviewDto,
   ): Promise<ReportReviewResponseDto> {
     const review = await this.prisma.review.findUnique({
-      where: { id: reviewId },
+      where: { id: reviewId, deletedAt: null },
     });
     if (!review) {
       throw new NotFoundException('未找到对应的评论');
@@ -151,6 +156,32 @@ export class ReviewsService {
     };
   }
 
+  async deleteReview(
+    userId: string,
+    reviewId: string,
+  ): Promise<DeleteReviewResponseDto> {
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+    });
+    if (!review || review.deletedAt) {
+      throw new NotFoundException('评价不存在');
+    }
+    if (review.userId !== userId) {
+      throw new ForbiddenException('无权删除此评价');
+    }
+
+    await this.prisma.review.update({
+      where: { id: reviewId },
+      data: { deletedAt: new Date() },
+    });
+
+    return {
+      code: 200,
+      message: '删除成功',
+      data: null,
+    };
+  }
+
   private mapToReviewDetailData(review: any): ReviewDetailData {
     return {
       id: review.id,
@@ -162,7 +193,8 @@ export class ReviewsService {
       content: review.content,
       images: review.images,
       status: review.status, // 包含status字段
-      createdAt: review.createdAt,
+      createdAt: review.createdAt.toISOString(),
+      deletedAt: review.deletedAt?.toISOString() ?? null,
     };
   }
 
@@ -176,7 +208,8 @@ export class ReviewsService {
       rating: review.rating,
       content: review.content,
       images: review.images,
-      createdAt: review.createdAt,
+      createdAt: review.createdAt.toISOString(),
+      deletedAt: review.deletedAt?.toISOString() ?? null,
     };
   }
 }

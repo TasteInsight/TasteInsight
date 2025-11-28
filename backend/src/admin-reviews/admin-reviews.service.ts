@@ -16,7 +16,7 @@ export class AdminReviewsService {
     pageSize: number = 20,
   ): Promise<PendingReviewListResponseDto> {
     const skip = (page - 1) * pageSize;
-    const where = { status: 'pending' };
+    const where = { status: 'pending', deletedAt: null };
 
     const [total, reviews] = await Promise.all([
       this.prisma.review.count({ where }),
@@ -67,7 +67,9 @@ export class AdminReviewsService {
   }
 
   async approveReview(id: string): Promise<SuccessResponseDto> {
-    const review = await this.prisma.review.findUnique({ where: { id } });
+    const review = await this.prisma.review.findUnique({
+      where: { id, deletedAt: null },
+    });
     if (!review) {
       throw new NotFoundException('评价不存在');
     }
@@ -88,7 +90,9 @@ export class AdminReviewsService {
     id: string,
     dto: RejectReviewDto,
   ): Promise<SuccessResponseDto> {
-    const review = await this.prisma.review.findUnique({ where: { id } });
+    const review = await this.prisma.review.findUnique({
+      where: { id, deletedAt: null },
+    });
     if (!review) {
       throw new NotFoundException('评价不存在');
     }
@@ -104,6 +108,26 @@ export class AdminReviewsService {
     return {
       code: 200,
       message: '已拒绝',
+      data: null,
+    };
+  }
+
+  async deleteReview(id: string): Promise<SuccessResponseDto> {
+    const review = await this.prisma.review.findUnique({
+      where: { id, deletedAt: null },
+    });
+    if (!review) {
+      throw new NotFoundException('评价不存在');
+    }
+
+    await this.prisma.review.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+
+    return {
+      code: 200,
+      message: '删除成功',
       data: null,
     };
   }

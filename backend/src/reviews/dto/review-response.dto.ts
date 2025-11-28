@@ -11,12 +11,13 @@ export class ReviewData {
   content: string;
   images: string[];
   createdAt: string;
+  deletedAt?: string | null;
 }
 
 export class RatingDto {
   average: number;
   total: number;
-  detail: object;
+  detail: Record<number, number>;
 }
 
 export class ReviewListResponseDto extends BaseResponseDto<{
@@ -31,3 +32,5 @@ export class ReviewDetailData extends ReviewData {
 }
 
 export class ReviewResponseDto extends BaseResponseDto<ReviewDetailData> {}
+
+export class DeleteReviewResponseDto extends BaseResponseDto<null> {}

@@ -7,12 +7,17 @@ import {
   Query,
   UseGuards,
   Request,
+  Delete,
 } from '@nestjs/common';
 import { ReviewsService } from './reviews.service';
 import { AuthGuard } from '@/auth/guards/auth.guard';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { ReportReviewDto } from './dto/report-review.dto';
-import { ReviewListResponseDto, ReviewResponseDto } from './dto/review.dto';
+import {
+  ReviewListResponseDto,
+  ReviewResponseDto,
+  DeleteReviewResponseDto,
+} from './dto/review-response.dto';
 import { ReportReviewResponseDto } from './dto/report-review.dto';
 
 @Controller()
@@ -46,5 +51,14 @@ export class ReviewsController {
   ): Promise<ReportReviewResponseDto> {
     const userId = req.user.sub;
     return this.reviewsService.reportReview(userId, id, reportReviewDto);
+  }
+
+  @Delete('reviews/:id')
+  async remove(
+    @Request() req,
+    @Param('id') id: string,
+  ): Promise<DeleteReviewResponseDto> {
+    const userId = req.user.sub;
+    return this.reviewsService.deleteReview(userId, id);
   }
 }

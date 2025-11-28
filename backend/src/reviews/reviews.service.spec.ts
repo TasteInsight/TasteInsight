@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ReviewsService } from './reviews.service';
-import { PrismaService } from '../prisma.service';
-import { NotFoundException } from '@nestjs/common';
+import { PrismaService } from '@/prisma.service';
+import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ReportType } from './dto/report-review.dto';
 
 const mockPrisma = {
@@ -12,6 +12,7 @@ const mockPrisma = {
     count: jest.fn(),
     groupBy: jest.fn(),
     findUnique: jest.fn(),
+    update: jest.fn(),
   },
   report: { create: jest.fn() },
 };
@@ -63,6 +64,7 @@ describe('ReviewsService', () => {
         images: [],
         status: 'pending',
         createdAt: new Date(),
+        deletedAt: null,
         user: { id: 'u1', nickname: 'nick', avatar: 'a' },
       });
       const result = await service.createReview('u1', {
@@ -89,6 +91,7 @@ describe('ReviewsService', () => {
           content: 'c',
           images: [],
           createdAt: new Date(),
+          deletedAt: null,
           user: { id: 'u1', nickname: 'nick', avatar: 'a' },
         },
       ]);
@@ -141,6 +144,41 @@ describe('ReviewsService', () => {
       expect(prisma.report.create).toHaveBeenCalled();
       expect(result).toHaveProperty('code', 201);
       expect(result.data).toBe('rep1');
+    });
+  });
+
+  describe('deleteReview', () => {
+    it('should throw if review not found', async () => {
+      prisma.review.findUnique.mockResolvedValue(null);
+      await expect(service.deleteReview('u1', 'r1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw if user is not owner', async () => {
+      prisma.review.findUnique.mockResolvedValue({
+        id: 'r1',
+        userId: 'other',
+        deletedAt: null,
+      });
+      await expect(service.deleteReview('u1', 'r1')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('should soft delete review and return success', async () => {
+      prisma.review.findUnique.mockResolvedValue({
+        id: 'r1',
+        userId: 'u1',
+        deletedAt: null,
+      });
+      prisma.review.update.mockResolvedValue({});
+      const result = await service.deleteReview('u1', 'r1');
+      expect(prisma.review.update).toHaveBeenCalledWith({
+        where: { id: 'r1' },
+        data: expect.objectContaining({ deletedAt: expect.any(Date) }),
+      });
+      expect(result.code).toBe(200);
     });
   });
 });

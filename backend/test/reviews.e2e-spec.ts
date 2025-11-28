@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { AppModule } from '../src/app.module';
-import { PrismaService } from '../src/prisma.service';
+import { AppModule } from '@/app.module';
+import { PrismaService } from '@/prisma.service';
 
 describe('ReviewsController (e2e)', () => {
   let app: INestApplication;
@@ -263,6 +263,49 @@ describe('ReviewsController (e2e)', () => {
         .set('Authorization', `Bearer ${userAccessToken}`)
         .send(reportDto)
         .expect(400);
+    });
+  });
+
+  describe('/reviews/:id (DELETE)', () => {
+    let reviewIdToDelete: string;
+
+    beforeEach(async () => {
+      const createReviewDto = {
+        dishId: testDishId,
+        rating: 4,
+        content: '准备删除的评价',
+      };
+
+      const response = await request(app.getHttpServer())
+        .post('/reviews')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send(createReviewDto);
+
+      reviewIdToDelete = response.body.data.id;
+    });
+
+    it('should soft delete a review', async () => {
+      await request(app.getHttpServer())
+        .delete(`/reviews/${reviewIdToDelete}`)
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .expect(200);
+
+      const deleted = await prisma.review.findUnique({
+        where: { id: reviewIdToDelete },
+      });
+      expect(deleted?.deletedAt).toBeTruthy();
+    });
+
+    it('should forbid deleting others review', async () => {
+      const otherLogin = await request(app.getHttpServer())
+        .post('/auth/wechat/login')
+        .send({ code: 'secondary_user_code_placeholder' });
+      const otherToken = otherLogin.body.data.token.accessToken;
+
+      await request(app.getHttpServer())
+        .delete(`/reviews/${reviewIdToDelete}`)
+        .set('Authorization', `Bearer ${otherToken}`)
+        .expect(403);
     });
   });
 });

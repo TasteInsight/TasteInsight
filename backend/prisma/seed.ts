@@ -87,7 +87,7 @@ async function main() {
   });
   console.log(`Added dish:view and dish:edit permissions to limitedadmin`);
 
-  // 3. 创建一个可用于测试的【基础用户】
+  // 3. 创建两个可用于测试的【基础用户】
   const user = await prisma.user.create({
     data: {
         openId: 'baseline_user_openid',
@@ -97,6 +97,16 @@ async function main() {
     }
   });
   console.log(`Created baseline user: ${user.nickname}`);
+
+  const secondaryUser = await prisma.user.create({
+    data: {
+      openId: 'secondary_user_openid',
+      nickname: 'Secondary User',
+      avatar: 'https://example.com/avatar2.jpg',
+      allergens: [],
+    },
+  });
+  console.log(`Created secondary user: ${secondaryUser.nickname}`);
 
   // 创建一个绑定到食堂的管理员
   const canteenAdminPassword = await bcrypt.hash('canteen123', 10);
