@@ -1,11 +1,34 @@
 <template>
-  <view class="bg-white rounded-xl shadow-md p-4 mb-3 cursor-pointer" @click="goToDetail(news.id)">
-    <view class="font-semibold text-base text-gray-800 break-words">{{ news.title }}</view>
-    <view class="text-gray-600 mt-1.5 text-sm leading-relaxed line-clamp-2 break-words">{{ news.summary || news.content }}</view>
-    <view class="flex justify-between items-center mt-2 text-xs text-gray-500 flex-wrap">
-      <!-- 只有当有值时才显示，避免 '全校公告 / ' 的情况 -->
-      <text v-if="news.canteenName" class="mr-2 flex-shrink-0">{{ news.canteenName }}</text>
-      <text class="flex-shrink-0">{{ news.publishedAt ? formatTime(news.publishedAt) : '' }}</text>
+  <view 
+    class="bg-white rounded-xl p-4 mb-3 border border-gray-100 shadow-sm active:bg-gray-50 transition-all duration-200 cursor-pointer" 
+    @click="goToDetail(news.id)"
+  >
+    <!-- 头部：标题 -->
+    <view class="mb-2">
+      <text class="text-base font-bold text-gray-900 leading-snug line-clamp-2">{{ news.title }}</text>
+    </view>
+
+    <!-- 中部：摘要 -->
+    <view class="mb-3">
+      <text class="text-gray-500 text-sm leading-relaxed line-clamp-2 text-justify">
+        {{ news.summary || stripHtml(news.content) }}
+      </text>
+    </view>
+
+    <!-- 底部：标签和时间 -->
+    <view class="flex justify-between items-center">
+      <!-- 左侧标签 -->
+      <view 
+        class="px-2 py-1 rounded-md text-xs font-medium"
+        :class="news.canteenName ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600'"
+      >
+        {{ news.canteenName || '全校公告' }}
+      </view>
+      
+      <!-- 右侧时间 -->
+      <view class="text-gray-400 text-xs flex items-center">
+        <text>{{ news.publishedAt ? formatTime(news.publishedAt) : '' }}</text>
+      </view>
     </view>
   </view>
 </template>
@@ -26,6 +49,12 @@ const formatTime = (time) => {
   return dayjs(time).format('YYYY-MM-DD');
 };
 
+// 简单的去除 HTML 标签函数，用于摘要回退
+const stripHtml = (html) => {
+  if (!html) return '';
+  return html.replace(/<[^>]*>/g, '').substring(0, 60) + (html.length > 60 ? '...' : '');
+};
+
 const goToDetail = (id) => {
   if (id) {
     uni.navigateTo({
@@ -38,14 +67,6 @@ const goToDetail = (id) => {
 <style scoped>
 /* 移除原有SCSS样式，使用Tailwind CSS */
 view {
-  max-width: 100%;
   box-sizing: border-box;
-}
-
-/* 确保文本换行 */
-.break-words {
-  word-wrap: break-word;
-  word-break: break-word;
-  overflow-wrap: break-word;
 }
 </style>

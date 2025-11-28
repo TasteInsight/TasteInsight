@@ -1311,6 +1311,10 @@
   text-align: right
 }
 
+.text-justify {
+  text-align: justify
+}
+
 .text-2xl {
   font-size: 1.5rem;
   line-height: 2rem
@@ -1374,6 +1378,10 @@
 
 .leading-relaxed {
   line-height: 1.625
+}
+
+.leading-snug {
+  line-height: 1.375
 }
 
 .tracking-wide {
