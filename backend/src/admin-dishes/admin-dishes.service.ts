@@ -150,7 +150,7 @@ export class AdminDishesService {
           include: { canteen: true, floor: true },
         });
       }
-      
+
       if (!window && createDto.windowNumber) {
         window = await this.prisma.window.findFirst({
           where: {
@@ -163,7 +163,9 @@ export class AdminDishesService {
     }
 
     if (!window) {
-      throw new BadRequestException('指定的窗口不存在，请提供有效的窗口ID、名称或编号');
+      throw new BadRequestException(
+        '指定的窗口不存在，请提供有效的窗口ID、名称或编号',
+      );
     }
 
     // 3. 检查权限
@@ -294,8 +296,10 @@ export class AdminDishesService {
       // 如果提供了窗口名称或编号，则需要先确定食堂ID
       let canteenId = updateDto.canteenId;
       if (!canteenId && updateDto.canteenName) {
-         const canteen = await this.prisma.canteen.findFirst({ where: { name: updateDto.canteenName } });
-         if (canteen) canteenId = canteen.id;
+        const canteen = await this.prisma.canteen.findFirst({
+          where: { name: updateDto.canteenName },
+        });
+        if (canteen) canteenId = canteen.id;
       }
       if (!canteenId) {
         canteenId = existingDish.canteenId;
@@ -319,7 +323,9 @@ export class AdminDishesService {
 
     if (shouldUpdateWindow) {
       if (!window) {
-        throw new BadRequestException('指定的窗口不存在，请提供有效的窗口ID、名称或编号');
+        throw new BadRequestException(
+          '指定的窗口不存在，请提供有效的窗口ID、名称或编号',
+        );
       }
 
       if (adminInfo.canteenId && window.canteenId !== adminInfo.canteenId) {
