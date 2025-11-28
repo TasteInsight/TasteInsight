@@ -14,8 +14,8 @@
           <text>{{ newsDetail.publishedAt ? formatTime(newsDetail.publishedAt) : '' }}</text>
         </view>
         <view class="text-base leading-relaxed text-gray-800">
-          <!-- 这里使用 uni-rich-text 处理富文本内容，如果 content 可能是 HTML -->
-          <rich-text :nodes="newsDetail.content"></rich-text>
+          <!-- 使用处理后的富文本内容，支持图片自适应 -->
+          <rich-text :nodes="formattedContent"></rich-text>
         </view>
         <view class="mt-7.5 pt-2.5 border-t border-dashed border-gray-200 text-gray-500 text-xs text-right">
           <text>发布人：{{ newsDetail.createdBy || '管理员' }}</text>
@@ -30,7 +30,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { getNewsById } from '@/api/modules/news';
 // import CustomNavbar from '@/components/common/CustomNavbar.vue'; 
@@ -38,6 +38,21 @@ import dayjs from 'dayjs';
 
 const newsDetail = ref({});
 const loading = ref(false);
+
+// 处理富文本内容，主要是为了让图片自适应屏幕宽度
+const formattedContent = computed(() => {
+  if (!newsDetail.value.content) return '';
+  
+  let content = newsDetail.value.content;
+  
+  // 1. 给 img 标签添加 max-width: 100% 样式
+  content = content.replace(/\<img/gi, '<img style="max-width:100%;height:auto;display:block;margin:10px 0;"');
+  
+  // 2. (可选) 处理 p 标签的行高，增加可读性
+  // content = content.replace(/\<p/gi, '<p style="line-height:1.8;margin-bottom:10px;"');
+  
+  return content;
+});
 
 onLoad((options) => {
   if (options.id) {
