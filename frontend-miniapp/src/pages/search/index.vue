@@ -2,23 +2,21 @@
   <div class="min-h-screen bg-gray-50">
     <!-- 搜索栏 -->
     <div class="bg-white px-4 py-3 sticky top-0 z-10 shadow-sm">
-      <div class="flex items-center gap-2">
-        <div class="flex-1 bg-gray-100 rounded-2xl h-10 flex items-center px-4">
-          <text class="iconify" data-icon="mdi:magnify" style="color:#999; margin-right:8px;"></text>
-          <input
-            v-model="keyword"
-            type="text"
-            placeholder="搜索食堂、窗口或菜品"
-            class="flex-1 bg-transparent outline-none text-sm"
-            @confirm="handleSearch"
-          />
-        </div>
-        <button 
-          class="text-blue-500 text-sm px-2"
+      <div class="flex items-center border border-purple-500 rounded-full p-0.5 bg-white">
+        <uni-icons type="search" size="22" color="#999" class="ml-2"></uni-icons>
+        <input
+          v-model="keyword"
+          type="text"
+          placeholder="搜索食堂、窗口或菜品"
+          class="flex-1 bg-transparent outline-none text-sm px-2 h-9"
+          @confirm="handleSearch"
+        />
+        <div 
+          class="bg-purple-600 text-white text-sm px-6 h-9 flex items-center justify-center rounded-full ml-1 cursor-pointer"
           @click="handleSearch"
         >
           搜索
-        </button>
+        </div>
       </div>
     </div>
 

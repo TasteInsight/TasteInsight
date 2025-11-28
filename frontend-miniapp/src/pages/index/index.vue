@@ -7,14 +7,28 @@
       <!-- 食堂栏目 -->
       <view v-if="canteenStore.loading" class="text-center py-4 text-gray-500">正在加载食堂...</view>
       <view v-else-if="canteenStore.error" class="text-center py-4 text-red-500">{{ canteenStore.error }}</view>
-      <view v-else class="flex overflow-x-auto pb-4 hide-scrollbar">
-        <!-- 修正: 直接访问 canteenStore.canteenList -->
-        <CanteenItem
-          v-for="canteen in canteenStore.canteenList"
-          :key="canteen.id"
-          :canteen="canteen"
-          @click="navigateTo(`/pages/canteen/index?id=${canteen.id}`)"
-        />
+      <view v-else>
+        <swiper class="h-32" :current="currentSwiperIndex" @change="handleSwiperChange">
+          <swiper-item v-for="(chunk, index) in canteenChunks" :key="index">
+            <view class="flex items-center justify-between px-4 h-full">
+              <CanteenItem
+                v-for="canteen in chunk"
+                :key="canteen.id"
+                :canteen="canteen"
+                @click="navigateTo(`/pages/canteen/index?id=${canteen.id}`)"
+              />
+              <view v-if="chunk.length < 3" v-for="i in (3 - chunk.length)" :key="'placeholder-'+i" class="w-24"></view>
+            </view>
+          </swiper-item>
+        </swiper>
+        <view class="flex justify-center mt-1 mb-2 space-x-1.5" v-if="canteenChunks.length > 1">
+          <view
+            v-for="(_, index) in canteenChunks"
+            :key="index"
+            class="h-1.5 rounded-full transition-all duration-300"
+            :class="currentSwiperIndex === index ? 'w-1.5 bg-gray-600' : 'w-1.5 bg-gray-300'"
+          ></view>
+        </view>
       </view>
 
       <FilterBar @filter-change="handleFilterChange" />
@@ -81,6 +95,22 @@ const hasActiveFilters = computed(() => {
 const topThreeDishes = computed(() => {
   return dishesStore.dishes; // 显示所有返回的菜品
 });
+
+const canteenChunks = computed(() => {
+  const list = canteenStore.canteenList || [];
+  const size = 3;
+  const chunks = [];
+  for (let i = 0; i < list.length; i += size) {
+    chunks.push(list.slice(i, i + size));
+  }
+  return chunks;
+});
+
+const currentSwiperIndex = ref(0);
+
+const handleSwiperChange = (e: any) => {
+  currentSwiperIndex.value = e.detail.current;
+};
 
 // 处理筛选变化
 const handleFilterChange = (filter: GetDishesRequest['filter']) => {
