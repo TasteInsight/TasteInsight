@@ -158,7 +158,9 @@ CREATE TABLE "dishes" (
 -- CreateTable
 CREATE TABLE "dish_uploads" (
     "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
+    "userId" TEXT,
+    "adminId" TEXT,
+    "parentDishId" TEXT,
     "name" TEXT NOT NULL,
     "tags" TEXT[],
     "price" DOUBLE PRECISION NOT NULL,
@@ -196,6 +198,7 @@ CREATE TABLE "reviews" (
     "images" TEXT[],
     "status" TEXT NOT NULL DEFAULT 'pending',
     "rejectReason" TEXT,
+    "deletedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -360,6 +363,9 @@ CREATE INDEX "dishes_averageRating_idx" ON "dishes"("averageRating");
 CREATE INDEX "dish_uploads_userId_idx" ON "dish_uploads"("userId");
 
 -- CreateIndex
+CREATE INDEX "dish_uploads_adminId_idx" ON "dish_uploads"("adminId");
+
+-- CreateIndex
 CREATE INDEX "dish_uploads_status_idx" ON "dish_uploads"("status");
 
 -- CreateIndex
@@ -370,6 +376,9 @@ CREATE INDEX "reviews_userId_idx" ON "reviews"("userId");
 
 -- CreateIndex
 CREATE INDEX "reviews_status_idx" ON "reviews"("status");
+
+-- CreateIndex
+CREATE INDEX "reviews_deletedAt_idx" ON "reviews"("deletedAt");
 
 -- CreateIndex
 CREATE INDEX "comments_reviewId_idx" ON "comments"("reviewId");
@@ -462,7 +471,13 @@ ALTER TABLE "dishes" ADD CONSTRAINT "dishes_floorId_fkey" FOREIGN KEY ("floorId"
 ALTER TABLE "dishes" ADD CONSTRAINT "dishes_windowId_fkey" FOREIGN KEY ("windowId") REFERENCES "windows"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "dish_uploads" ADD CONSTRAINT "dish_uploads_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "dish_uploads" ADD CONSTRAINT "dish_uploads_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "dish_uploads" ADD CONSTRAINT "dish_uploads_adminId_fkey" FOREIGN KEY ("adminId") REFERENCES "admins"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "dish_uploads" ADD CONSTRAINT "dish_uploads_parentDishId_fkey" FOREIGN KEY ("parentDishId") REFERENCES "dishes"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "dish_uploads" ADD CONSTRAINT "dish_uploads_canteenId_fkey" FOREIGN KEY ("canteenId") REFERENCES "canteens"("id") ON DELETE CASCADE ON UPDATE CASCADE;
