@@ -52,7 +52,8 @@ const formatTime = (time) => {
 // 简单的去除 HTML 标签函数，用于摘要回退
 const stripHtml = (html) => {
   if (!html) return '';
-  return html.replace(/<[^>]*>/g, '').substring(0, 60) + (html.length > 60 ? '...' : '');
+  const stripped = html.replace(/<[^>]*>/g, '');
+  return stripped.substring(0, 60) + (stripped.length > 60 ? '...' : '');
 };
 
 const goToDetail = (id) => {
