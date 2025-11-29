@@ -84,32 +84,28 @@
 
       <!-- 底部回复输入框 -->
       <view class="bottom-reply-input">
-        <view class="reply-input-container">
-          <view class="reply-input-wrapper">
-            <view v-if="replyingTo" class="replying-indicator">
-              <text class="text-purple-600 text-xs font-medium">回复 @{{ replyingTo.userNickname }}</text>
-              <button class="cancel-reply-btn" @tap="cancelReply">
-                <text>✕</text>
-              </button>
-            </view>
+        <view v-if="replyingTo" class="replying-indicator">
+          <text class="text-purple-600 text-xs font-medium">回复 @{{ replyingTo.userNickname }}</text>
+          <button class="cancel-reply-btn" @tap="cancelReply">
+            <text>✕</text>
+          </button>
+        </view>
 
-            <view class="input-row">
-              <input
-                v-model="replyContent"
-                class="reply-input"
-                :placeholder="replyingTo ? `回复 @${replyingTo.userNickname}...` : '写下你的回复...'"
-                @confirm="submitReply"
-              />
-              <button
-                class="send-btn"
-                :class="{ 'send-btn-active': canSendReply }"
-                :disabled="!canSendReply"
-                @tap="submitReply"
-              >
-                发送
-              </button>
-            </view>
-          </view>
+        <view class="input-row">
+          <input
+            v-model="replyContent"
+            class="reply-input"
+            :placeholder="replyingTo ? `回复 @${replyingTo.userNickname}...` : '写下你的回复...'"
+            @confirm="submitReply"
+          />
+          <button
+            class="send-btn"
+            :class="{ 'send-btn-active': canSendReply }"
+            :disabled="!canSendReply"
+            @tap="submitReply"
+          >
+            发送
+          </button>
         </view>
       </view>
 
@@ -453,17 +449,6 @@ const formatDate = (dateString: string) => {
   flex-shrink: 0;
 }
 
-.reply-input-container {
-  max-width: 100%;
-}
-
-.reply-input-wrapper {
-  background-color: #f9fafb;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
 /* 回复对象指示器 */
 .replying-indicator {
   display: flex;
@@ -471,7 +456,8 @@ const formatDate = (dateString: string) => {
   align-items: center;
   padding: 8px 12px;
   background-color: #f3f4f6;
-  border-bottom: 1px solid #e5e5e5;
+  border-radius: 8px;
+  margin-bottom: 8px;
 }
 
 .cancel-reply-btn {
@@ -496,22 +482,21 @@ const formatDate = (dateString: string) => {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
 }
 
 .reply-input {
   flex: 1;
-  max-width: 280px; /* 稍微变窄一点 */
   padding: 8px 12px;
   border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border-radius: 20px;
   font-size: 14px;
-  background-color: #ffffff;
+  background-color: #f9fafb;
 }
 
 .reply-input:focus {
   outline: none;
   border-color: #a855f7;
+  background-color: #ffffff;
 }
 
 .send-btn {
