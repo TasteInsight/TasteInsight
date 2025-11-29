@@ -10,6 +10,7 @@ import {
   AdminCreateDishDto,
   AdminUpdateDishDto,
   DishStatus,
+  DishUploadStatus,
 } from './dto/admin-dish.dto';
 import { AdminDishDto } from './dto/admin-dish.dto';
 import { Prisma } from '@prisma/client';
@@ -181,9 +182,10 @@ export class AdminDishesService {
       }
     }
 
-    // 5. 创建菜品
-    const dish = await this.prisma.dish.create({
+    // 5. 创建菜品 (DishUpload)
+    const dishUpload = await this.prisma.dishUpload.create({
       data: {
+        adminId: adminInfo.id,
         name: createDto.name,
         tags: createDto.tags || [],
         price: createDto.price,
@@ -200,9 +202,6 @@ export class AdminDishesService {
         // 来自窗口的位置信息
         canteenId: window.canteenId,
         canteenName: window.canteen.name,
-        floorId: window.floorId,
-        floorLevel: window.floor?.level,
-        floorName: window.floor?.name,
         windowId: window.id,
         windowNumber: window.number,
         windowName: window.name,
@@ -211,20 +210,23 @@ export class AdminDishesService {
         availableDates: createDto.availableDates
           ? (createDto.availableDates as unknown as Prisma.InputJsonArray)
           : undefined,
-        status: createDto.status || 'offline',
+        status: DishUploadStatus.PENDING,
       },
       include: {
         canteen: true,
-        window: true,
+        window: {
+          include: {
+            floor: true,
+          },
+        },
         parentDish: true,
-        subDishes: true,
       },
     });
 
     return {
       code: 201,
-      message: '创建成功',
-      data: this.mapToAdminDishDto(dish),
+      message: '创建成功，已提交审核',
+      data: this.mapDishUploadToAdminDishDto(dishUpload),
     };
   }
 
@@ -450,6 +452,47 @@ export class AdminDishesService {
       reviewCount: dish.reviewCount,
       createdAt: dish.createdAt,
       updatedAt: dish.updatedAt,
+    };
+  }
+
+  private mapDishUploadToAdminDishDto(
+    dishUpload: Prisma.DishUploadGetPayload<{
+      include: {
+        canteen: true;
+        window: { include: { floor: true } };
+        parentDish: true;
+      };
+    }>,
+  ): AdminDishDto {
+    return {
+      id: dishUpload.id,
+      name: dishUpload.name,
+      tags: dishUpload.tags,
+      price: dishUpload.price,
+      description: dishUpload.description,
+      images: dishUpload.images,
+      ingredients: dishUpload.ingredients,
+      allergens: dishUpload.allergens,
+      spicyLevel: dishUpload.spicyLevel,
+      sweetness: dishUpload.sweetness,
+      saltiness: dishUpload.saltiness,
+      oiliness: dishUpload.oiliness,
+      canteenId: dishUpload.canteenId,
+      canteenName: dishUpload.canteenName,
+      // DishUpload 表中没有存储楼层信息，从关联的 window 获取
+      floorId: dishUpload.window?.floorId || null,
+      floorLevel: dishUpload.window?.floor?.level || null,
+      floorName: dishUpload.window?.floor?.name || null,
+      windowId: dishUpload.windowId,
+      windowNumber: dishUpload.windowNumber,
+      windowName: dishUpload.windowName,
+      availableMealTime: dishUpload.availableMealTime as any,
+      availableDates: dishUpload.availableDates as any,
+      status: dishUpload.status as DishUploadStatus,
+      averageRating: 0,
+      reviewCount: 0,
+      createdAt: dishUpload.createdAt,
+      updatedAt: dishUpload.updatedAt,
     };
   }
 }

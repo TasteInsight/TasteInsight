@@ -17,6 +17,12 @@ export enum DishStatus {
   OFFLINE = 'offline',
 }
 
+export enum DishUploadStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+}
+
 export enum MealTime {
   BREAKFAST = 'breakfast',
   LUNCH = 'lunch',
@@ -177,7 +183,7 @@ export class AdminCreateDishDto {
   @IsString()
   windowId?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   windowName?: string;
 

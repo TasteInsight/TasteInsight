@@ -91,6 +91,9 @@ describe('AdminDishesController (e2e)', () => {
     await prisma.dish.deleteMany({
       where: { name: { contains: '测试菜品' } },
     });
+    await prisma.dishUpload.deleteMany({
+      where: { name: { contains: '测试菜品' } },
+    });
     await app.close();
   });
 
@@ -264,10 +267,11 @@ describe('AdminDishesController (e2e)', () => {
         .expect(201);
 
       expect(response.body.code).toBe(201);
-      expect(response.body.message).toBe('创建成功');
+      expect(response.body.message).toBe('创建成功，已提交审核');
       expect(response.body.data).toBeDefined();
       expect(response.body.data.name).toBe('测试菜品-创建');
       expect(response.body.data.price).toBe(20.0);
+      expect(response.body.data.status).toBe('pending');
     });
 
     it('should fail to create dish without required fields', async () => {
