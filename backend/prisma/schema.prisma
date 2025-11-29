@@ -379,12 +379,15 @@ model Comment {
   // 关联关系
   reports Report[]
 
+  deletedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([reviewId])
   @@index([userId])
   @@index([status])
+  @@index([deletedAt])
   @@map("comments")
 }
 
