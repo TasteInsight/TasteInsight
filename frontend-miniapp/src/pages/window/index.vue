@@ -8,11 +8,6 @@
     <!-- 窗口信息 -->
     <WindowHeader :window="windowInfo" />
 
-    <!-- 筛选栏 -->
-    <view class="px-4">
-      <WindowFilterBar @filter-change="handleFilterChange" />
-    </view>
-
     <!-- 菜品列表 -->
     <view class="px-4">
       <view v-if="loading" class="text-center py-8 text-gray-500">
@@ -44,11 +39,9 @@ import { onLoad } from '@dcloudio/uni-app';
 import { useWindowData } from '@/pages/window/composables/use-window-data';
 import WindowHeader from './components/WindowHeader.vue';
 import CanteenSearchBar from '../canteen/components/CanteenSearchBar.vue';
-import WindowFilterBar from './components/WindowFilterBar.vue';
 import CanteenDishCard from '../canteen/components/CanteenDishCard.vue';
-import type { GetDishesRequest } from '@/types/api';
 
-const { windowInfo, loading, error, dishes, init, fetchDishes } = useWindowData();
+const { windowInfo, loading, error, dishes, init } = useWindowData();
 
 let currentWindowId = '';
 
@@ -61,10 +54,4 @@ onLoad((options: any) => {
 
 const goToSearch = () => uni.navigateTo({ url: '/pages/search/index' });
 const goToDishDetail = (id: string) => uni.navigateTo({ url: `/pages/dish/index?id=${id}` });
-
-const handleFilterChange = (filter: GetDishesRequest['filter']) => {
-  if (currentWindowId) {
-    fetchDishes(currentWindowId, filter);
-  }
-};
 </script>
