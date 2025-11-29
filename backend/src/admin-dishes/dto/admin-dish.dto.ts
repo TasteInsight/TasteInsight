@@ -15,6 +15,9 @@ import { Type } from 'class-transformer';
 export enum DishStatus {
   ONLINE = 'online',
   OFFLINE = 'offline',
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
 }
 
 export enum MealTime {

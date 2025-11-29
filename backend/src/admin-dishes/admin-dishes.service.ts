@@ -213,7 +213,11 @@ export class AdminDishesService {
       },
       include: {
         canteen: true,
-        window: true,
+        window: {
+          include: {
+            floor: true,
+          },
+        },
         parentDish: true,
       },
     });
@@ -221,7 +225,7 @@ export class AdminDishesService {
     return {
       code: 201,
       message: '创建成功，已提交审核',
-      data: this.mapDishUploadToAdminDishDto(dishUpload, window),
+      data: this.mapDishUploadToAdminDishDto(dishUpload),
     };
   }
 
@@ -451,8 +455,13 @@ export class AdminDishesService {
   }
 
   private mapDishUploadToAdminDishDto(
-    dishUpload: any,
-    window?: any,
+    dishUpload: Prisma.DishUploadGetPayload<{
+      include: {
+        canteen: true;
+        window: { include: { floor: true } };
+        parentDish: true;
+      };
+    }>,
   ): AdminDishDto {
     return {
       id: dishUpload.id,
@@ -469,16 +478,16 @@ export class AdminDishesService {
       oiliness: dishUpload.oiliness,
       canteenId: dishUpload.canteenId,
       canteenName: dishUpload.canteenName,
-      // DishUpload 表中没有存储楼层信息，如果提供了 window 对象则从 window 获取
-      floorId: window?.floorId || null,
-      floorLevel: window?.floor?.level || null,
-      floorName: window?.floor?.name || null,
+      // DishUpload 表中没有存储楼层信息，从关联的 window 获取
+      floorId: dishUpload.window?.floorId || null,
+      floorLevel: dishUpload.window?.floor?.level || null,
+      floorName: dishUpload.window?.floor?.name || null,
       windowId: dishUpload.windowId,
       windowNumber: dishUpload.windowNumber,
       windowName: dishUpload.windowName,
-      availableMealTime: dishUpload.availableMealTime,
-      availableDates: dishUpload.availableDates,
-      status: dishUpload.status as any, // 临时处理类型不匹配
+      availableMealTime: dishUpload.availableMealTime as any,
+      availableDates: dishUpload.availableDates as any,
+      status: dishUpload.status as DishStatus,
       averageRating: 0,
       reviewCount: 0,
       createdAt: dishUpload.createdAt,
