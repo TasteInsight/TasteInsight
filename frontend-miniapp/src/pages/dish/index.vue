@@ -87,7 +87,8 @@
           <span
             v-for="tag in dish.tags"
             :key="tag"
-            class="px-3 py-1 bg-blue-50 text-blue-600 text-xs rounded-md"
+            class="px-3 py-1 bg-blue-50 text-blue-600 text-xs rounded-md cursor-pointer active:bg-blue-100"
+            @click="goToTagDishes(tag)"
           >
             #{{ tag }}
           </span>
@@ -291,6 +292,14 @@ watch(() => dish.value, (val) => {
 const goToSubDish = (id: string) => {
   if (!id) return;
   uni.navigateTo({ url: `/pages/dish/index?id=${id}` });
+};
+
+// 跳转到标签菜品列表
+const goToTagDishes = (tag: string) => {
+  if (!tag || !dish.value?.canteenId) return;
+  uni.navigateTo({
+    url: `/pages/dish/tag-list?tag=${encodeURIComponent(tag)}&canteenId=${dish.value.canteenId}&canteenName=${encodeURIComponent(dish.value.canteenName || '')}`
+  });
 };
 
 const goBack = () => {

@@ -42,6 +42,13 @@
 			}
 		},
 		{
+			"path": "pages/dish/tag-list",
+			"style": {
+				"navigationBarTitleText": "标签菜品",
+				"enablePullDownRefresh": false
+			}
+		},
+		{
 			"path": "pages/news/index",
 			"style": {
 				"navigationBarTitleText": "新闻"
