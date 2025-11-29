@@ -271,6 +271,7 @@ describe('AdminDishesController (e2e)', () => {
       expect(response.body.data).toBeDefined();
       expect(response.body.data.name).toBe('测试菜品-创建');
       expect(response.body.data.price).toBe(20.0);
+      expect(response.body.data.status).toBe('pending');
     });
 
     it('should fail to create dish without required fields', async () => {
