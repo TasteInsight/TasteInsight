@@ -157,44 +157,47 @@ export class AdminUploadsService {
       throw new ForbiddenException('权限不足');
     }
 
-    // 创建正式菜品记录
-    const dish = await this.prisma.dish.create({
-      data: {
-        name: upload.name,
-        tags: upload.tags,
-        price: upload.price,
-        description: upload.description,
-        images: upload.images,
-        ingredients: upload.ingredients,
-        allergens: upload.allergens,
-        spicyLevel: upload.spicyLevel,
-        sweetness: upload.sweetness,
-        saltiness: upload.saltiness,
-        oiliness: upload.oiliness,
-        canteenId: upload.canteenId,
-        canteenName: upload.canteenName,
-        floorId: upload.window?.floorId || null,
-        floorLevel: upload.window?.floor?.level || null,
-        floorName: upload.window?.floor?.name || null,
-        windowId: upload.windowId,
-        windowNumber: upload.windowNumber,
-        windowName: upload.windowName,
-        availableMealTime: upload.availableMealTime,
-        availableDates: upload.availableDates || undefined,
-        parentDishId: upload.parentDishId,
-        status: 'online',
-        averageRating: 0,
-        reviewCount: 0,
-      },
-    });
+    // 使用事务确保菜品创建和状态更新的原子性
+    await this.prisma.$transaction(async (tx) => {
+      // 创建正式菜品记录
+      const dish = await tx.dish.create({
+        data: {
+          name: upload.name,
+          tags: upload.tags,
+          price: upload.price,
+          description: upload.description,
+          images: upload.images,
+          ingredients: upload.ingredients,
+          allergens: upload.allergens,
+          spicyLevel: upload.spicyLevel,
+          sweetness: upload.sweetness,
+          saltiness: upload.saltiness,
+          oiliness: upload.oiliness,
+          canteenId: upload.canteenId,
+          canteenName: upload.canteenName,
+          floorId: upload.window?.floorId || null,
+          floorLevel: upload.window?.floor?.level || null,
+          floorName: upload.window?.floor?.name || null,
+          windowId: upload.windowId,
+          windowNumber: upload.windowNumber,
+          windowName: upload.windowName,
+          availableMealTime: upload.availableMealTime,
+          availableDates: upload.availableDates || undefined,
+          parentDishId: upload.parentDishId,
+          status: 'online',
+          averageRating: 0,
+          reviewCount: 0,
+        },
+      });
 
-    // 更新上传记录状态
-    await this.prisma.dishUpload.update({
-      where: { id },
-      data: {
-        status: 'approved',
-        approvedDishId: dish.id,
-      },
+      // 更新上传记录状态
+      await tx.dishUpload.update({
+        where: { id },
+        data: {
+          status: 'approved',
+          approvedDishId: dish.id,
+        },
+      });
     });
 
     return {

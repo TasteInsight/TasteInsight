@@ -531,31 +531,27 @@ describe('AdminUploadsController (e2e)', () => {
     });
 
     it('should return 400 when reason is missing', async () => {
-      const pendingUpload = await prisma.dishUpload.findFirst({
-        where: { status: 'pending' },
-      });
+      // 使用已知存在的 pendingUploadId（在 beforeAll 中获取）
+      expect(pendingUploadId).toBeDefined();
+      expect(pendingUploadId).not.toBe('');
 
-      if (pendingUpload) {
-        await request(app.getHttpServer())
-          .post(`/admin/dishes/uploads/${pendingUpload.id}/reject`)
-          .set('Authorization', `Bearer ${superAdminToken}`)
-          .send({})
-          .expect(400);
-      }
+      await request(app.getHttpServer())
+        .post(`/admin/dishes/uploads/${pendingUploadId}/reject`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({})
+        .expect(400);
     });
 
     it('should return 400 when reason is empty string', async () => {
-      const pendingUpload = await prisma.dishUpload.findFirst({
-        where: { status: 'pending' },
-      });
+      // 使用已知存在的 pendingUploadId（在 beforeAll 中获取）
+      expect(pendingUploadId).toBeDefined();
+      expect(pendingUploadId).not.toBe('');
 
-      if (pendingUpload) {
-        await request(app.getHttpServer())
-          .post(`/admin/dishes/uploads/${pendingUpload.id}/reject`)
-          .set('Authorization', `Bearer ${superAdminToken}`)
-          .send({ reason: '' })
-          .expect(400);
-      }
+      await request(app.getHttpServer())
+        .post(`/admin/dishes/uploads/${pendingUploadId}/reject`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({ reason: '' })
+        .expect(400);
     });
 
     it('should return 404 for non-existent upload', async () => {
@@ -754,8 +750,12 @@ describe('AdminUploadsController (e2e)', () => {
     let reviewerRejectTestId: string;
 
     beforeAll(async () => {
-      const window = await prisma.window.findFirst({
+      // 分别获取两个食堂的窗口
+      const window1 = await prisma.window.findFirst({
         where: { canteenId: canteen1Id },
+      });
+      const window2 = await prisma.window.findFirst({
+        where: { canteenId: canteen2Id },
       });
       const user = await prisma.user.findFirst({
         where: { openId: 'baseline_user_openid' },
@@ -773,9 +773,9 @@ describe('AdminUploadsController (e2e)', () => {
           allergens: [],
           canteenId: canteen1Id,
           canteenName: '第一食堂',
-          windowId: window?.id || '',
-          windowNumber: window?.number || '',
-          windowName: window?.name || '',
+          windowId: window1?.id || '',
+          windowNumber: window1?.number || '',
+          windowName: window1?.name || '',
           availableMealTime: ['lunch'],
           status: 'pending',
         },
@@ -794,9 +794,9 @@ describe('AdminUploadsController (e2e)', () => {
           allergens: [],
           canteenId: canteen2Id,
           canteenName: '第二食堂',
-          windowId: window?.id || '',
-          windowNumber: window?.number || '',
-          windowName: window?.name || '',
+          windowId: window2?.id || '',
+          windowNumber: window2?.number || '',
+          windowName: window2?.name || '',
           availableMealTime: ['lunch'],
           status: 'pending',
         },
