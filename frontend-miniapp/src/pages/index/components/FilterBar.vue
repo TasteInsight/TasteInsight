@@ -17,6 +17,13 @@
       </view>
     </view>
 
+    <!-- 点击遮罩关闭筛选面板 -->
+    <view
+      v-if="activeFilter"
+      class="filter-overlay"
+      @tap="closeFilterPanel"
+    ></view>
+
     <!-- 筛选面板 -->
     <view v-if="activeFilter" class="filter-panel bg-white rounded-lg shadow-lg p-4 mb-4">
       <!-- 价格筛选 -->
@@ -617,6 +624,10 @@ const toggleFilter = (key: string) => {
   activeFilter.value = activeFilter.value === key ? '' : key;
 };
 
+const closeFilterPanel = () => {
+  activeFilter.value = '';
+};
+
 // 选择价格
 const selectPrice = (value: string) => {
   selectedPrice.value = selectedPrice.value === value ? '' : value;
@@ -833,6 +844,16 @@ defineExpose({
 <style scoped>
 .filter-bar {
   position: relative;
+}
+
+.filter-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.15);
+  z-index: 5;
 }
 
 .filter-panel {
