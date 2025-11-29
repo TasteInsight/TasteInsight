@@ -10,6 +10,7 @@ import {
   AdminCreateDishDto,
   AdminUpdateDishDto,
   DishStatus,
+  DishUploadStatus,
 } from './dto/admin-dish.dto';
 import { AdminDishDto } from './dto/admin-dish.dto';
 import { Prisma } from '@prisma/client';
@@ -209,7 +210,7 @@ export class AdminDishesService {
         availableDates: createDto.availableDates
           ? (createDto.availableDates as unknown as Prisma.InputJsonArray)
           : undefined,
-        status: 'pending',
+        status: DishUploadStatus.PENDING,
       },
       include: {
         canteen: true,
@@ -487,7 +488,7 @@ export class AdminDishesService {
       windowName: dishUpload.windowName,
       availableMealTime: dishUpload.availableMealTime as any,
       availableDates: dishUpload.availableDates as any,
-      status: dishUpload.status as DishStatus,
+      status: dishUpload.status as DishUploadStatus,
       averageRating: 0,
       reviewCount: 0,
       createdAt: dishUpload.createdAt,

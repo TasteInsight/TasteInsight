@@ -15,6 +15,9 @@ import { Type } from 'class-transformer';
 export enum DishStatus {
   ONLINE = 'online',
   OFFLINE = 'offline',
+}
+
+export enum DishUploadStatus {
   PENDING = 'pending',
   APPROVED = 'approved',
   REJECTED = 'rejected',
