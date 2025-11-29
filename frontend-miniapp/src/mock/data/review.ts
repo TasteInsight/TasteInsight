@@ -214,6 +214,28 @@ export const addReview = (review: Review): void => {
   allReviews.unshift(review);
 };
 
+// 删除评价
+export const removeReview = (reviewId: string): boolean => {
+  const allReviews = getAllReviews();
+  const index = allReviews.findIndex(r => r.id === reviewId);
+  if (index !== -1) {
+    allReviews.splice(index, 1);
+    return true;
+  }
+  return false;
+};
+
+// 删除评论
+export const removeComment = (commentId: string): boolean => {
+  const allComments = getAllComments();
+  const index = allComments.findIndex(c => c.id === commentId);
+  if (index !== -1) {
+    allComments.splice(index, 1);
+    return true;
+  }
+  return false;
+};
+
 // 计算菜品的评分详情
 export const getRatingDetailByDishId = (dishId: string): { average: number; total: number; detail: Record<string, number> } => {
   const reviews = getReviewsByDishId(dishId);

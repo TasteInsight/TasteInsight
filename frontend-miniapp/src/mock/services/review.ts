@@ -6,6 +6,8 @@ import {
   getRatingDetailByDishId,
   addComment,
   addReview,
+  removeReview,
+  removeComment,
 } from '../data/review';
 
 // 模拟网络延迟
@@ -97,8 +99,8 @@ export const mockCreateReview = async (data: {
   const newReview: Review = {
     id: newId,
     dishId: data.dishId,
-    userId: 'mock_user',
-    userNickname: '当前用户',
+    userId: 'mock_user_001',
+    userNickname: '测试用户',
     userAvatar: 'https://via.placeholder.com/100',
     rating: data.rating,
     content: data.content,
@@ -128,8 +130,8 @@ export const mockCreateComment = async (data: {
   const newComment: Comment = {
     id: newId,
     reviewId: data.reviewId,
-    userId: 'mock_user',
-    userNickname: '当前用户',
+    userId: 'mock_user_001',
+    userNickname: '测试用户',
     userAvatar: 'https://via.placeholder.com/100',
     content: data.content,
     status: 'approved',
@@ -142,3 +144,28 @@ export const mockCreateComment = async (data: {
   
   return newComment;
 };
+
+/**
+ * 删除评价（模拟）
+ */
+export const mockDeleteReview = async (reviewId: string): Promise<void> => {
+  await delay(300);
+  const success = removeReview(reviewId);
+  if (!success) {
+    throw new Error('评价不存在或删除失败');
+  }
+  console.log('[Mock] 删除评价:', reviewId);
+};
+
+/**
+ * 删除评论（模拟）
+ */
+export const mockDeleteComment = async (commentId: string): Promise<void> => {
+  await delay(300);
+  const success = removeComment(commentId);
+  if (!success) {
+    throw new Error('评论不存在或删除失败');
+  }
+  console.log('[Mock] 删除评论:', commentId);
+};
+
