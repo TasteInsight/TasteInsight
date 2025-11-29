@@ -300,16 +300,16 @@ describe('AdminReportsController (e2e)', () => {
         })
         .expect(200);
 
-      // 再次尝试处理
+      // 再次尝试处理，应该返回 400 错误
       const response = await request(app.getHttpServer())
         .post(`/admin/reports/${testReportId}/handle`)
         .set('Authorization', `Bearer ${superAdminToken}`)
         .send({
           action: 'warn_user',
         })
-        .expect(200);
+        .expect(400);
 
-      expect(response.body.code).toBe(400);
+      expect(response.body.statusCode).toBe(400);
       expect(response.body.message).toBe('该举报已被处理');
     });
 

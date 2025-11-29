@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { HandleReportDto } from './dto/handle-report.dto';
 import {
@@ -137,17 +137,13 @@ export class AdminReportsService {
     }
 
     if (report.status !== 'pending') {
-      return {
-        code: 400,
-        message: '该举报已被处理',
-        data: null,
-      };
+      throw new BadRequestException('该举报已被处理');
     }
 
     // 根据不同的 action 进行处理
     switch (dto.action) {
       case 'delete_content':
-        // 先更新举报状态为已通过（因为删除 comment 会级联删除 report）
+        // 先更新举报状态为已通过，然后软删除被举报的内容
         await this.prisma.report.update({
           where: { id },
           data: {
