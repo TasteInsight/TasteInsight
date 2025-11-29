@@ -243,21 +243,15 @@ describe('AdminWindowsController (e2e)', () => {
     });
 
     it('should update window with different floor level', async () => {
-      // First create a new floor
-      const newFloor = await prisma.floor.create({
-        data: {
-          canteenId: testCanteenId,
-          level: '3',
-          name: '三楼',
-        },
-      });
-
+      // Use a unique level that doesn't exist yet
+      const uniqueLevel = '99';
+      
       const updateDto = {
-        name: 'Window on 3rd Floor',
-        number: 'T1-3F',
+        name: 'Window on 99th Floor',
+        number: 'T1-99F',
         floor: {
-          level: '3',
-          name: '三楼',
+          level: uniqueLevel,
+          name: '九十九楼',
         },
         tags: [],
       };
@@ -269,18 +263,48 @@ describe('AdminWindowsController (e2e)', () => {
         .expect(200);
 
       expect(response.body.code).toBe(200);
-      expect(response.body.data.floor.level).toBe('3');
-      expect(response.body.data.floorId).toBe(newFloor.id);
+      expect(response.body.data.floor.level).toBe(uniqueLevel);
+      expect(response.body.data.floor.name).toBe('九十九楼');
+      
+      // Verify the floor was created
+      const createdFloor = await prisma.floor.findFirst({
+        where: { canteenId: testCanteenId, level: uniqueLevel },
+      });
+      expect(createdFloor).not.toBeNull();
+      expect(response.body.data.floorId).toBe(createdFloor?.id);
+    });
 
-      // Clean up the floor
-      // Note: Don't delete the floor now since window is still referencing it
+    it('should update window without changing floor when floor is not provided', async () => {
+      // Get current window state
+      const currentWindow = await prisma.window.findUnique({
+        where: { id: createdWindowId },
+        include: { floor: true },
+      });
+      const originalFloorId = currentWindow?.floorId;
+
+      const updateDto = {
+        name: 'Updated Name Only',
+        number: 'T1-NameOnly',
+        // floor is not provided - should keep existing floor
+      };
+
+      const response = await request(app.getHttpServer())
+        .put(`/admin/windows/${createdWindowId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send(updateDto)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.name).toBe(updateDto.name);
+      expect(response.body.data.number).toBe(updateDto.number);
+      // Floor should remain unchanged
+      expect(response.body.data.floorId).toBe(originalFloorId);
     });
 
     it('should return 404 for non-existent window', async () => {
       const updateDto = {
         name: 'Test',
         number: 'T1',
-        floor: { level: '1' },
       };
 
       const response = await request(app.getHttpServer())
