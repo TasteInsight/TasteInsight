@@ -239,7 +239,7 @@
 
     <!-- 底部评价输入框 -->
     <BottomReviewInput
-      v-if="dish"
+      v-if="dish && !isAllCommentsPanelVisible"
       @click="showQuickReviewForm"
     />
   </view>
