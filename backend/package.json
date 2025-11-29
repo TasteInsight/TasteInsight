@@ -28,6 +28,7 @@
     "test:e2e:admin-canteens": "pnpm run test:setup && dotenv -e .env.test -- jest --config ./test/jest-e2e.json test/admin-canteens.e2e-spec.ts --coverage --collectCoverageFrom \"src/admin-canteens/**/*.ts\"",
     "test:e2e:admin-comments": "pnpm run test:setup && dotenv -e .env.test -- jest --config ./test/jest-e2e.json test/admin-comments.e2e-spec.ts --coverage --collectCoverageFrom \"src/admin-comments/**/*.ts\"",
     "test:e2e:admin-reports": "pnpm run test:setup && dotenv -e .env.test -- jest --config ./test/jest-e2e.json test/admin-reports.e2e-spec.ts --coverage --collectCoverageFrom \"src/admin-reports/**/*.ts\"",
+    "test:e2e:admin-uploads": "pnpm run test:setup && dotenv -e .env.test -- jest --config ./test/jest-e2e.json test/admin-uploads.e2e-spec.ts --coverage --collectCoverageFrom \"src/admin-uploads/**/*.ts\"",
     "test:unit": "jest",
     "test:unit:canteens": "jest src/canteens/canteens.service.spec.ts",
     "test:unit:reviews": "jest src/reviews/reviews.service.spec.ts",

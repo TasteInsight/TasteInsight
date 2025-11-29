@@ -83,6 +83,36 @@ async function main() {
   });
   console.log(`Added dish:view and dish:edit permissions to limitedadmin`);
 
+  // 创建一个有审核权限的管理员
+  const reviewerAdminPassword = await bcrypt.hash('reviewer123', 10);
+  const reviewerAdmin = await prisma.admin.create({
+    data: {
+      username: 'revieweradmin',
+      password: reviewerAdminPassword,
+      role: 'admin',
+    },
+  });
+  console.log(`Created reviewer admin: ${reviewerAdmin.username}`);
+
+  // 为审核管理员添加审核权限
+  await prisma.adminPermission.createMany({
+    data: [
+      {
+        adminId: reviewerAdmin.id,
+        permission: 'upload:approve',
+      },
+      {
+        adminId: reviewerAdmin.id,
+        permission: 'review:approve',
+      },
+      {
+        adminId: reviewerAdmin.id,
+        permission: 'comment:approve',
+      },
+    ],
+  });
+  console.log(`Added upload:approve, review:approve and comment:approve permissions to revieweradmin`);
+
   // 3. 创建两个可用于测试的【基础用户】
   const user = await prisma.user.create({
     data: {
@@ -484,6 +514,74 @@ async function main() {
     },
   });
   console.log(`Created pending admin upload`);
+
+  // 第二食堂的用户上传（用于测试食堂限制）
+  await prisma.dishUpload.create({
+    data: {
+      userId: secondaryUser.id,
+      name: '第二食堂用户上传待审核菜品',
+      tags: ['待审核', '面食'],
+      price: 18.0,
+      description: '第二食堂的面食',
+      images: ['https://example.com/upload3.jpg'],
+      ingredients: ['面粉', '牛肉'],
+      allergens: ['面筋'],
+      canteenId: canteen2.id,
+      canteenName: canteen2.name,
+      windowId: window3.id,
+      windowNumber: window3.number,
+      windowName: window3.name,
+      availableMealTime: ['lunch', 'dinner'],
+      status: 'pending',
+    },
+  });
+  console.log(`Created pending user upload for canteen2`);
+
+  // 已审核通过的上传记录（用于测试状态筛选）
+  await prisma.dishUpload.create({
+    data: {
+      userId: user.id,
+      name: '已通过审核的菜品',
+      tags: ['已审核'],
+      price: 20.0,
+      description: '这道菜已经通过审核',
+      images: ['https://example.com/upload4.jpg'],
+      ingredients: ['蔬菜'],
+      allergens: [],
+      canteenId: canteen1.id,
+      canteenName: canteen1.name,
+      windowId: window2.id,
+      windowNumber: window2.number,
+      windowName: window2.name,
+      availableMealTime: ['lunch'],
+      status: 'approved',
+      approvedDishId: dish1.id,
+    },
+  });
+  console.log(`Created approved upload`);
+
+  // 已被拒绝的上传记录
+  await prisma.dishUpload.create({
+    data: {
+      userId: secondaryUser.id,
+      name: '被拒绝的菜品',
+      tags: ['拒绝'],
+      price: 30.0,
+      description: '这道菜被拒绝了',
+      images: ['https://example.com/upload5.jpg'],
+      ingredients: ['不明食材'],
+      allergens: [],
+      canteenId: canteen1.id,
+      canteenName: canteen1.name,
+      windowId: window1.id,
+      windowNumber: window1.number,
+      windowName: window1.name,
+      availableMealTime: ['dinner'],
+      status: 'rejected',
+      rejectReason: '菜品信息不完整',
+    },
+  });
+  console.log(`Created rejected upload`);
 
   // 9. 创建测试评价用于举报测试
   const testReviewForReport = await prisma.review.create({
