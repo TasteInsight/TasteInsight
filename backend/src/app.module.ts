@@ -9,6 +9,7 @@ import { AdminDishesModule } from './admin-dishes/admin-dishes.module';
 import { AdminReviewsModule } from './admin-reviews/admin-reviews.module';
 import { AdminCommentsModule } from './admin-comments/admin-comments.module';
 import { AdminCanteensModule } from './admin-canteens/admin-canteens.module';
+import { AdminWindowsModule } from './admin-windows/admin-windows.module';
 import { AdminReportsModule } from './admin-reports/admin-reports.module';
 import { AdminUploadsModule } from './admin-uploads/admin-uploads.module';
 import { ConfigModule } from '@nestjs/config';
@@ -25,6 +26,7 @@ import { ReviewsModule } from './reviews/reviews.module';
     AdminReviewsModule,
     AdminCommentsModule,
     AdminCanteensModule,
+    AdminWindowsModule,
     AdminReportsModule,
     AdminUploadsModule,
     ConfigModule.forRoot({
