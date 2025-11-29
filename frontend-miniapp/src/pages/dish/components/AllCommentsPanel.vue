@@ -42,6 +42,7 @@
                   <text class="text-purple-600 font-semibold text-sm block mb-0.5">{{ comment.userNickname }}</text>
                   <text class="comment-date">{{ formatDate(comment.createdAt) }}</text>
                 </view>
+                <view class="text-xs text-gray-400 ml-2 px-2 py-1" @tap.stop="emit('report', comment.id)">举报</view>
               </view>
 
               <!-- 评论内容 -->
@@ -114,6 +115,7 @@ interface Props {
 interface Emits {
   (e: 'close'): void;
   (e: 'commentAdded'): void;
+  (e: 'report', commentId: string): void;
 }
 
 const props = defineProps<Props>();

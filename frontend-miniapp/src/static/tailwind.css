@@ -192,6 +192,10 @@
   z-index: 1001
 }
 
+.m-0 {
+  margin: 0px
+}
+
 .mx-auto {
   margin-left: auto;
   margin-right: auto
@@ -535,6 +539,10 @@
 
 .w-full {
   width: 100%
+}
+
+.w-80 {
+  width: 20rem
 }
 
 .min-w-0 {

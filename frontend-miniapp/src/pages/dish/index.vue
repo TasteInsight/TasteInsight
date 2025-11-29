@@ -205,6 +205,7 @@
           :fetch-comments="fetchComments"
           @load-more="loadMoreReviews"
           @view-all-comments="showAllCommentsPanel"
+          @report="(id) => openReportModal('review', id)"
         />
       </view>
     </view>
@@ -225,6 +226,14 @@
       :is-visible="isAllCommentsPanelVisible"
       @close="hideAllCommentsPanel"
       @comment-added="handleCommentAdded"
+      @report="(id) => openReportModal('comment', id)"
+    />
+
+    <!-- 举报弹窗 -->
+    <ReportDialog
+      v-if="isReportVisible"
+      @close="closeReportModal"
+      @submit="submitReport"
     />
 
     <!-- 底部评价输入框 -->
@@ -244,6 +253,8 @@ import ReviewForm from './components/ReviewForm.vue';
 import BottomReviewInput from './components/BottomReviewInput.vue';
 import AllCommentsPanel from './components/AllCommentsPanel.vue';
 import RatingBars from './components/RatingBars.vue';
+import ReportDialog from './components/ReportDialog.vue';
+import { useReport } from '@/pages/dish/composables/use-report';
 
 const dishId = ref('');
 const { 
@@ -261,6 +272,13 @@ const {
   reviewComments,
   fetchComments
 } = useDishDetail();
+
+const {
+  isReportVisible,
+  openReportModal,
+  closeReportModal,
+  submitReport
+} = useReport();
 
 const isReviewFormVisible = ref(false);
 const isDetailExpanded = ref(false);

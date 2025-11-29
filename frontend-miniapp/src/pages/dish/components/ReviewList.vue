@@ -40,8 +40,11 @@
             <!-- 评论内容 -->
             <view class="text-sm text-gray-700 leading-relaxed mt-2">{{ review.content }}</view>
             
-            <!-- 时间 -->
-            <view class="text-xs text-gray-400 mt-2">{{ formatDate(review.createdAt) }}</view>
+            <!-- 时间和操作 -->
+            <view class="flex justify-between items-center mt-2">
+              <view class="text-xs text-gray-400">{{ formatDate(review.createdAt) }}</view>
+              <view class="text-xs text-gray-400 px-2 py-1" @tap.stop="handleReport(review.id)">举报</view>
+            </view>
           </view>
         </view>
 
@@ -105,6 +108,7 @@ interface Props {
 interface Emits {
   (e: 'viewAllComments', reviewId: string): void;
   (e: 'loadMore'): void;
+  (e: 'report', reviewId: string): void;
 }
 
 const props = defineProps<Props>();
@@ -127,6 +131,10 @@ const handleCommentAdded = () => {
 
 const handleViewAllComments = (reviewId: string) => {
   emit('viewAllComments', reviewId);
+};
+
+const handleReport = (reviewId: string) => {
+  emit('report', reviewId);
 };
 </script>
 
