@@ -298,7 +298,7 @@ const goToSubDish = (id: string) => {
 const goToTagDishes = (tag: string) => {
   if (!tag || !dish.value?.canteenId) return;
   uni.navigateTo({
-    url: `/pages/dish/tag-list?tag=${encodeURIComponent(tag)}&canteenId=${dish.value.canteenId}&canteenName=${encodeURIComponent(dish.value.canteenName || '')}`
+    url: `/pages/dish/components/TagList?tag=${encodeURIComponent(tag)}&canteenId=${dish.value.canteenId}&canteenName=${encodeURIComponent(dish.value.canteenName || '')}`
   });
 };
 

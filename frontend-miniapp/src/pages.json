@@ -42,7 +42,7 @@
 			}
 		},
 		{
-			"path": "pages/dish/tag-list",
+			"path": "pages/dish/components/TagList",
 			"style": {
 				"navigationBarTitleText": "标签菜品",
 				"enablePullDownRefresh": false
