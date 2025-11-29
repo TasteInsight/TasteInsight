@@ -50,3 +50,15 @@ export const reportComment = (
     data: reportData,
   });
 };
+
+/**
+ * 删除评论
+ */
+export const deleteComment = (
+  commentId: string
+): Promise<ApiResponse<null>> => {
+  return request<null>({
+    url: `/comments/${commentId}`,
+    method: 'DELETE',
+  });
+};

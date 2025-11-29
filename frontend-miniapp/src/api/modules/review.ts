@@ -49,3 +49,15 @@ export const reportReview = (
     data: reportData,
   });
 };
+
+/**
+ * 删除评价
+ */
+export const deleteReview = (
+  reviewId: string
+): Promise<ApiResponse<null>> => {
+  return request<null>({
+    url: `/reviews/${reviewId}`,
+    method: 'DELETE',
+  });
+};
