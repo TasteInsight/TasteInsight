@@ -100,26 +100,61 @@ export class AdminCanteensService {
 
     // Update windows if provided
     if (windows) {
-      // This is a simplified update: delete all and recreate, or update existing?
-      // For simplicity and since windows are sub-resources, we might want to handle them carefully.
-      // But usually PUT implies full replacement or specific logic.
-      // Given the complexity, I'll assume we might want to add/update.
-      // However, to keep it simple and consistent with "edit", let's just update the canteen fields for now
-      // and maybe handle windows separately or assume the user handles windows via separate APIs?
-      // But the request body includes windows.
-      // Let's try to update windows.
+      // 1. Get existing windows
+      const existingWindows = await this.prisma.window.findMany({
+        where: { canteenId: id },
+      });
+      const existingWindowIds = existingWindows.map((w) => w.id);
+
+      // 2. Identify windows to create, update, and delete
+      const windowsToUpdate = windows.filter((w) => w.id && existingWindowIds.includes(w.id));
+      const windowsToCreate = windows.filter((w) => !w.id);
+      // Note: Windows with IDs not in DB are treated as invalid or ignored, or could be created if we ignore the ID.
+      // Here we assume if ID is provided but not found, it's an error or we ignore it.
       
-      // Strategy: Delete existing windows and create new ones? Or update?
-      // Deleting might lose dish associations.
-      // So we should probably update existing ones by some key or just ignore windows update here if it's too complex without IDs.
-      // The DTO for windows in update doesn't have IDs.
-      // So it's hard to map.
-      // I will skip window updates for now or just create new ones?
-      // Let's assume for now we only update Canteen fields and ignore windows/floors in update
-      // UNLESS the user specifically wants to replace them.
-      // The prompt says "Edit Canteen".
-      // If I replace windows, I break relations.
-      // I will just update Canteen fields.
+      const providedIds = windows.map((w) => w.id).filter((id) => !!id) as string[];
+      const windowsToDelete = existingWindowIds.filter((id) => !providedIds.includes(id));
+
+      // 3. Execute updates
+      // Delete removed windows
+      if (windowsToDelete.length > 0) {
+        // Note: This might fail if dishes are linked and onDelete is not Cascade/SetNull.
+        // Assuming it's safe or we want it to fail if there are dependencies.
+        await this.prisma.window.deleteMany({
+          where: {
+            id: { in: windowsToDelete },
+            canteenId: id, // Safety check
+          },
+        });
+      }
+
+      // Update existing windows
+      for (const window of windowsToUpdate) {
+        await this.prisma.window.update({
+          where: { id: window.id },
+          data: {
+            name: window.name,
+            number: window.number,
+            position: window.position,
+            description: window.description,
+            tags: window.tags,
+          },
+        });
+      }
+
+      // Create new windows
+      if (windowsToCreate.length > 0) {
+        await this.prisma.window.createMany({
+          data: windowsToCreate.map((w) => ({
+            canteenId: id,
+            name: w.name,
+            number: w.number,
+            position: w.position,
+            description: w.description,
+            tags: w.tags || [],
+          })),
+        });
+      }
     }
 
     const updatedCanteen = await this.prisma.canteen.findUnique({
