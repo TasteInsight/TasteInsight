@@ -327,6 +327,7 @@ model DishUpload {
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+  @@index([adminId])
   @@index([status])
   @@map("dish_uploads")
 }
