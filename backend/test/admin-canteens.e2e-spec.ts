@@ -50,7 +50,7 @@ describe('AdminCanteensController (e2e)', () => {
             isClosed: false,
           },
         ],
-        floors: [{ name: '1F' }],
+        floors: [{ level: '1', name: '1F' }],
         windows: [
           {
             name: 'Test Window',
