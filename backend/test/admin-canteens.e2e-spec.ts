@@ -95,7 +95,7 @@ describe('AdminCanteensController (e2e)', () => {
   });
 
   describe('/admin/canteens/:id (PUT)', () => {
-    it('should update the canteen', async () => {
+    it('should update the canteen basic info', async () => {
       const updateDto = {
         name: 'Updated Canteen Name',
       };
@@ -109,9 +109,119 @@ describe('AdminCanteensController (e2e)', () => {
       expect(response.body.code).toBe(200);
       expect(response.body.data.name).toBe(updateDto.name);
     });
+
+    it('should update windows and floors (add, update, delete)', async () => {
+      // 1. Get current state to get IDs
+      const currentCanteen = await prisma.canteen.findUnique({
+        where: { id: createdCanteenId },
+        include: { windows: true, floors: true },
+      });
+      const windowId = currentCanteen.windows[0].id;
+      const floorId = currentCanteen.floors[0].id;
+
+      // 2. Test Update and Create
+      const updateDto = {
+        windows: [
+          {
+            id: windowId,
+            name: 'Updated Window',
+            number: 'W1-Up',
+            position: '1F-01',
+            description: 'Desc',
+            tags: [],
+          }, // Update
+          {
+            name: 'New Window',
+            number: 'W2',
+            position: '1F-02',
+            description: 'New Desc',
+            tags: [],
+          }, // Create
+        ],
+        floors: [
+          { id: floorId, level: '1', name: '1F Updated' }, // Update
+          { level: '2', name: '2F' }, // Create
+        ],
+      };
+
+      const response = await request(app.getHttpServer())
+        .put(`/admin/canteens/${createdCanteenId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send(updateDto)
+        .expect(200);
+
+      expect(response.body.data.windows).toHaveLength(2);
+      expect(response.body.data.floors).toHaveLength(2);
+
+      // Verify DB
+      const updated = await prisma.canteen.findUnique({
+        where: { id: createdCanteenId },
+        include: { windows: true, floors: true },
+      });
+      expect(updated.windows.find((w) => w.id === windowId).name).toBe(
+        'Updated Window',
+      );
+      expect(updated.floors.find((f) => f.id === floorId).name).toBe(
+        '1F Updated',
+      );
+      expect(
+        updated.windows.find((w) => w.name === 'New Window'),
+      ).toBeDefined();
+      expect(updated.floors.find((f) => f.name === '2F')).toBeDefined();
+
+      // 3. Test Delete
+      const newWindowId = updated.windows.find(
+        (w) => w.name === 'New Window',
+      ).id;
+      const newFloorId = updated.floors.find((f) => f.name === '2F').id;
+
+      const deleteDto = {
+        windows: [
+          {
+            id: newWindowId,
+            name: 'New Window',
+            number: 'W2',
+            position: '1F-02',
+            description: 'New Desc',
+            tags: [],
+          },
+        ], // Keep new, delete old (windowId)
+        floors: [{ id: newFloorId, level: '2', name: '2F' }], // Keep new, delete old (floorId)
+      };
+
+      await request(app.getHttpServer())
+        .put(`/admin/canteens/${createdCanteenId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send(deleteDto)
+        .expect(200);
+
+      const final = await prisma.canteen.findUnique({
+        where: { id: createdCanteenId },
+        include: { windows: true, floors: true },
+      });
+      expect(final.windows).toHaveLength(1);
+      expect(final.windows[0].id).toBe(newWindowId);
+      expect(final.floors).toHaveLength(1);
+      expect(final.floors[0].id).toBe(newFloorId);
+    });
+
+    it('should return 404 when updating non-existent canteen', async () => {
+      await request(app.getHttpServer())
+        .put('/admin/canteens/non-existent-id')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({ name: 'New Name' })
+        .expect(404);
+    });
   });
 
   describe('/admin/canteens/:id (DELETE)', () => {
+    it('should return 404 when deleting non-existent canteen', async () => {
+      await request(app.getHttpServer())
+        .delete('/admin/canteens/non-existent-id')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(404);
+    });
+
     it('should delete the canteen', async () => {
       await request(app.getHttpServer())
         .delete(`/admin/canteens/${createdCanteenId}`)
