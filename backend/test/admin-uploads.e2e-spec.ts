@@ -85,6 +85,35 @@ describe('AdminUploadsController (e2e)', () => {
       where: { name: '第二食堂用户上传待审核菜品', status: 'pending' },
     });
     canteen2PendingUploadId = canteen2Upload?.id || '';
+
+    // 为食堂管理员添加upload:approve权限（用于后续测试）
+    const canteenAdmin = await prisma.admin.findFirst({
+      where: { username: 'canteenadmin' },
+    });
+    
+    if (canteenAdmin) {
+      const existingPermission = await prisma.adminPermission.findFirst({
+        where: {
+          adminId: canteenAdmin.id,
+          permission: 'upload:approve',
+        },
+      });
+
+      if (!existingPermission) {
+        await prisma.adminPermission.create({
+          data: {
+            adminId: canteenAdmin.id,
+            permission: 'upload:approve',
+          },
+        });
+      }
+
+      // 重新获取食堂管理员token（确保权限生效）
+      const canteenAdminReLogin = await request(app.getHttpServer())
+        .post('/auth/admin/login')
+        .send({ username: 'canteenadmin', password: 'canteen123' });
+      canteenAdminToken = canteenAdminReLogin.body.data.token.accessToken;
+    }
   });
 
   afterAll(async () => {
@@ -316,36 +345,10 @@ describe('AdminUploadsController (e2e)', () => {
     });
 
     it('should allow canteen admin to view their canteen upload detail', async () => {
-      // 为食堂管理员添加upload:approve权限（如果没有的话）
-      const canteenAdmin = await prisma.admin.findFirst({
-        where: { username: 'canteenadmin' },
-      });
-      
-      const existingPermission = await prisma.adminPermission.findFirst({
-        where: {
-          adminId: canteenAdmin?.id,
-          permission: 'upload:approve',
-        },
-      });
-
-      if (!existingPermission && canteenAdmin) {
-        await prisma.adminPermission.create({
-          data: {
-            adminId: canteenAdmin.id,
-            permission: 'upload:approve',
-          },
-        });
-      }
-
-      // 重新获取token
-      const canteenAdminLogin = await request(app.getHttpServer())
-        .post('/auth/admin/login')
-        .send({ username: 'canteenadmin', password: 'canteen123' });
-      const canteenToken = canteenAdminLogin.body.data.token.accessToken;
-
+      // 权限已在 beforeAll 中设置，直接使用 canteenAdminToken
       const response = await request(app.getHttpServer())
         .get(`/admin/dishes/uploads/pending/${pendingUploadId}`)
-        .set('Authorization', `Bearer ${canteenToken}`)
+        .set('Authorization', `Bearer ${canteenAdminToken}`)
         .expect(200);
 
       expect(response.body.code).toBe(200);
@@ -600,27 +603,7 @@ describe('AdminUploadsController (e2e)', () => {
     let canteen2ApproveTestId: string;
 
     beforeAll(async () => {
-      // 为食堂管理员添加upload:approve权限
-      const canteenAdmin = await prisma.admin.findFirst({
-        where: { username: 'canteenadmin' },
-      });
-      
-      // 检查是否已有该权限
-      const existingPermission = await prisma.adminPermission.findFirst({
-        where: {
-          adminId: canteenAdmin?.id,
-          permission: 'upload:approve',
-        },
-      });
-
-      if (!existingPermission && canteenAdmin) {
-        await prisma.adminPermission.create({
-          data: {
-            adminId: canteenAdmin.id,
-            permission: 'upload:approve',
-          },
-        });
-      }
+      // 权限已在顶层 beforeAll 中设置，这里只需创建测试数据
 
       // 创建第一食堂的测试上传
       const window1 = await prisma.window.findFirst({
@@ -688,15 +671,10 @@ describe('AdminUploadsController (e2e)', () => {
     });
 
     it('should filter pending uploads for canteen admin', async () => {
-      // 重新获取token（确保权限更新生效）
-      const canteenAdminLogin = await request(app.getHttpServer())
-        .post('/auth/admin/login')
-        .send({ username: 'canteenadmin', password: 'canteen123' });
-      const canteenToken = canteenAdminLogin.body.data.token.accessToken;
-
+      // 使用顶层 beforeAll 中获取的 canteenAdminToken
       const response = await request(app.getHttpServer())
         .get('/admin/dishes/uploads/pending')
-        .set('Authorization', `Bearer ${canteenToken}`)
+        .set('Authorization', `Bearer ${canteenAdminToken}`)
         .expect(200);
 
       // 食堂管理员只能看到自己食堂的待审核上传
@@ -706,40 +684,25 @@ describe('AdminUploadsController (e2e)', () => {
     });
 
     it('should allow canteen admin to approve their canteen upload', async () => {
-      const canteenAdminLogin = await request(app.getHttpServer())
-        .post('/auth/admin/login')
-        .send({ username: 'canteenadmin', password: 'canteen123' });
-      const canteenToken = canteenAdminLogin.body.data.token.accessToken;
-
       const response = await request(app.getHttpServer())
         .post(`/admin/dishes/uploads/${canteen1ApproveTestId}/approve`)
-        .set('Authorization', `Bearer ${canteenToken}`)
+        .set('Authorization', `Bearer ${canteenAdminToken}`)
         .expect(200);
 
       expect(response.body.code).toBe(200);
     });
 
     it('should forbid canteen admin from approving other canteen upload', async () => {
-      const canteenAdminLogin = await request(app.getHttpServer())
-        .post('/auth/admin/login')
-        .send({ username: 'canteenadmin', password: 'canteen123' });
-      const canteenToken = canteenAdminLogin.body.data.token.accessToken;
-
       await request(app.getHttpServer())
         .post(`/admin/dishes/uploads/${canteen2ApproveTestId}/approve`)
-        .set('Authorization', `Bearer ${canteenToken}`)
+        .set('Authorization', `Bearer ${canteenAdminToken}`)
         .expect(403);
     });
 
     it('should forbid canteen admin from rejecting other canteen upload', async () => {
-      const canteenAdminLogin = await request(app.getHttpServer())
-        .post('/auth/admin/login')
-        .send({ username: 'canteenadmin', password: 'canteen123' });
-      const canteenToken = canteenAdminLogin.body.data.token.accessToken;
-
       await request(app.getHttpServer())
         .post(`/admin/dishes/uploads/${canteen2ApproveTestId}/reject`)
-        .set('Authorization', `Bearer ${canteenToken}`)
+        .set('Authorization', `Bearer ${canteenAdminToken}`)
         .send({ reason: '测试拒绝' })
         .expect(403);
     });

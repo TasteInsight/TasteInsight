@@ -147,58 +147,78 @@ export class AdminUploadsService {
       throw new NotFoundException('上传记录不存在');
     }
 
-    // 检查状态
-    if (upload.status !== 'pending') {
-      throw new BadRequestException('该上传已被处理');
-    }
-
     // 检查权限：如果管理员有食堂限制，必须匹配
     if (adminInfo.canteenId && upload.canteenId !== adminInfo.canteenId) {
       throw new ForbiddenException('权限不足');
     }
 
-    // 使用事务确保菜品创建和状态更新的原子性
-    await this.prisma.$transaction(async (tx) => {
-      // 创建正式菜品记录
-      const dish = await tx.dish.create({
-        data: {
-          name: upload.name,
-          tags: upload.tags,
-          price: upload.price,
-          description: upload.description,
-          images: upload.images,
-          ingredients: upload.ingredients,
-          allergens: upload.allergens,
-          spicyLevel: upload.spicyLevel,
-          sweetness: upload.sweetness,
-          saltiness: upload.saltiness,
-          oiliness: upload.oiliness,
-          canteenId: upload.canteenId,
-          canteenName: upload.canteenName,
-          floorId: upload.window?.floorId || null,
-          floorLevel: upload.window?.floor?.level || null,
-          floorName: upload.window?.floor?.name || null,
-          windowId: upload.windowId,
-          windowNumber: upload.windowNumber,
-          windowName: upload.windowName,
-          availableMealTime: upload.availableMealTime,
-          availableDates: upload.availableDates || undefined,
-          parentDishId: upload.parentDishId,
-          status: 'online',
-          averageRating: 0,
-          reviewCount: 0,
-        },
-      });
+    // 使用事务确保菜品创建和状态更新的原子性，并在事务内检查状态防止竞态条件
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        // 在事务内再次检查状态，使用条件更新防止竞态条件
+        const updateResult = await tx.dishUpload.updateMany({
+          where: {
+            id,
+            status: 'pending', // 只有 pending 状态才能被处理
+          },
+          data: {
+            status: 'processing', // 临时状态，防止并发处理
+          },
+        });
 
-      // 更新上传记录状态
-      await tx.dishUpload.update({
-        where: { id },
-        data: {
-          status: 'approved',
-          approvedDishId: dish.id,
-        },
+        // 如果没有更新任何记录，说明已被其他管理员处理
+        if (updateResult.count === 0) {
+          throw new BadRequestException('该上传已被处理');
+        }
+
+        // 创建正式菜品记录
+        const dish = await tx.dish.create({
+          data: {
+            name: upload.name,
+            tags: upload.tags,
+            price: upload.price,
+            description: upload.description,
+            images: upload.images,
+            ingredients: upload.ingredients,
+            allergens: upload.allergens,
+            spicyLevel: upload.spicyLevel,
+            sweetness: upload.sweetness,
+            saltiness: upload.saltiness,
+            oiliness: upload.oiliness,
+            canteenId: upload.canteenId,
+            canteenName: upload.canteenName,
+            floorId: upload.window?.floorId || null,
+            floorLevel: upload.window?.floor?.level || null,
+            floorName: upload.window?.floor?.name || null,
+            windowId: upload.windowId,
+            windowNumber: upload.windowNumber,
+            windowName: upload.windowName,
+            availableMealTime: upload.availableMealTime,
+            availableDates: upload.availableDates || undefined,
+            parentDishId: upload.parentDishId,
+            status: 'online',
+            averageRating: 0,
+            reviewCount: 0,
+          },
+        });
+
+        // 更新上传记录状态为 approved
+        await tx.dishUpload.update({
+          where: { id },
+          data: {
+            status: 'approved',
+            approvedDishId: dish.id,
+          },
+        });
       });
-    });
+    } catch (error) {
+      // 如果是我们抛出的 BadRequestException，直接重新抛出
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      // 其他错误可能是数据库错误，重新抛出
+      throw error;
+    }
 
     return {
       code: 200,
@@ -220,24 +240,27 @@ export class AdminUploadsService {
       throw new NotFoundException('上传记录不存在');
     }
 
-    // 检查状态
-    if (upload.status !== 'pending') {
-      throw new BadRequestException('该上传已被处理');
-    }
-
     // 检查权限：如果管理员有食堂限制，必须匹配
     if (adminInfo.canteenId && upload.canteenId !== adminInfo.canteenId) {
       throw new ForbiddenException('权限不足');
     }
 
-    // 更新上传记录状态
-    await this.prisma.dishUpload.update({
-      where: { id },
+    // 使用条件更新防止竞态条件：只有 pending 状态才能被拒绝
+    const updateResult = await this.prisma.dishUpload.updateMany({
+      where: {
+        id,
+        status: 'pending',
+      },
       data: {
         status: 'rejected',
         rejectReason: reason,
       },
     });
+
+    // 如果没有更新任何记录，说明已被其他管理员处理
+    if (updateResult.count === 0) {
+      throw new BadRequestException('该上传已被处理');
+    }
 
     return {
       code: 200,
