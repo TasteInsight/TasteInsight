@@ -11,7 +11,14 @@ import type { RequestOptions, PaginationParams } from '@/types/api';
 // ============================================
 // 导入 Mock 数据服务
 // ============================================
-import { mockGetReviewsByDish, mockCreateReview, mockGetCommentsByReview, mockCreateComment } from './services/review';
+import { 
+  mockGetReviewsByDish, 
+  mockCreateReview, 
+  mockGetCommentsByReview, 
+  mockCreateComment,
+  mockDeleteReview,
+  mockDeleteComment
+} from './services/review';
 import { mockGetDishById, mockGetDishes } from './services/dish';
 import { mockGetCanteenList, mockGetCanteenDetail, mockGetWindowList, mockGetWindowDetail, mockGetWindowDishes, mockSearchDishes } from './services/canteen';
 import { mockGetNewsList, mockGetNewsById } from './services/news';
@@ -58,6 +65,15 @@ registerMockRoute('POST', '/reviews', async (url, options) => {
   return mockSuccess(review);
 });
 
+// DELETE /reviews/:id - 删除评价
+registerMockRoute('DELETE', '/reviews/:id', async (url) => {
+  const match = url.match(/\/reviews\/([^/]+)$/);
+  const reviewId = match?.[1] || '';
+  
+  await mockDeleteReview(reviewId);
+  return mockSuccess(null);
+});
+
 // ============================================
 // Comment 相关路由
 // ============================================
@@ -89,6 +105,15 @@ registerMockRoute('POST', '/comments', async (url, options) => {
   });
   
   return mockSuccess(comment);
+});
+
+// DELETE /comments/:id - 删除评论
+registerMockRoute('DELETE', '/comments/:id', async (url) => {
+  const match = url.match(/\/comments\/([^/]+)$/);
+  const commentId = match?.[1] || '';
+  
+  await mockDeleteComment(commentId);
+  return mockSuccess(null);
 });
 
 // ============================================

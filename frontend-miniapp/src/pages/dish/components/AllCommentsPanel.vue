@@ -1,7 +1,15 @@
 <template>
   <!-- 全部评论面板 -->
-  <view class="all-comments-overlay" @tap="handleClose">
-    <view class="all-comments-container" @tap.stop catchtouchmove="true">
+  <page-container
+    :show="isVisible"
+    position="bottom"
+    :round="true"
+    :overlay="true"
+    custom-style="height: 85vh; background-color: #fff;"
+    @clickoverlay="handleClose"
+    @afterleave="handleClose"
+  >
+    <view class="all-comments-container">
       <!-- 头部 -->
       <view class="panel-header">
         <h2 class="panel-title">全部回复</h2>
@@ -42,6 +50,14 @@
                   <text class="text-purple-600 font-semibold text-sm block mb-0.5">{{ comment.userNickname }}</text>
                   <text class="comment-date">{{ formatDate(comment.createdAt) }}</text>
                 </view>
+                <view class="flex gap-2 ml-2">
+                  <view 
+                    v-if="userStore.userInfo?.id === comment.userId"
+                    class="text-xs text-gray-400 px-2 py-1" 
+                    @tap.stop="handleDelete(comment.id)"
+                  >删除</view>
+                  <view class="text-xs text-gray-400 px-2 py-1" @tap.stop="openReportModal('comment', comment.id)">举报</view>
+                </view>
               </view>
 
               <!-- 评论内容 -->
@@ -68,36 +84,39 @@
 
       <!-- 底部回复输入框 -->
       <view class="bottom-reply-input">
-        <view class="reply-input-container">
-          <view class="reply-input-wrapper">
-            <view v-if="replyingTo" class="replying-indicator">
-              <text class="text-purple-600 text-xs font-medium">回复 @{{ replyingTo.userNickname }}</text>
-              <button class="cancel-reply-btn" @tap="cancelReply">
-                <text>✕</text>
-              </button>
-            </view>
+        <view v-if="replyingTo" class="replying-indicator">
+          <text class="text-purple-600 text-xs font-medium">回复 @{{ replyingTo.userNickname }}</text>
+          <button class="cancel-reply-btn" @tap="cancelReply">
+            <text>✕</text>
+          </button>
+        </view>
 
-            <view class="input-row">
-              <input
-                v-model="replyContent"
-                class="reply-input"
-                :placeholder="replyingTo ? `回复 @${replyingTo.userNickname}...` : '写下你的回复...'"
-                @confirm="submitReply"
-              />
-              <button
-                class="send-btn"
-                :class="{ 'send-btn-active': canSendReply }"
-                :disabled="!canSendReply"
-                @tap="submitReply"
-              >
-                发送
-              </button>
-            </view>
-          </view>
+        <view class="input-row">
+          <input
+            v-model="replyContent"
+            class="reply-input"
+            :placeholder="replyingTo ? `回复 @${replyingTo.userNickname}...` : '写下你的回复...'"
+            @confirm="submitReply"
+          />
+          <button
+            class="send-btn"
+            :class="{ 'send-btn-active': canSendReply }"
+            :disabled="!canSendReply"
+            @tap="submitReply"
+          >
+            发送
+          </button>
         </view>
       </view>
+
+      <!-- 举报弹窗 (嵌套在 page-container 内部) -->
+      <ReportDialog
+        v-if="isReportVisible"
+        @close="closeReportModal"
+        @submit="submitReport"
+      />
     </view>
-  </view>
+  </page-container>
 </template>
 
 <script setup lang="ts">
@@ -105,6 +124,17 @@ import { ref, onMounted, watch, computed } from 'vue';
 import { getCommentsByReview, createComment } from '@/api/modules/comment';
 import type { Comment } from '@/types/api';
 import dayjs from 'dayjs';
+import { useUserStore } from '@/store/modules/use-user-store';
+import ReportDialog from './ReportDialog.vue';
+import { useReport } from '@/pages/dish/composables/use-report';
+
+const userStore = useUserStore();
+const {
+  isReportVisible,
+  openReportModal,
+  closeReportModal,
+  submitReport
+} = useReport();
 
 interface Props {
   reviewId: string;
@@ -114,6 +144,7 @@ interface Props {
 interface Emits {
   (e: 'close'): void;
   (e: 'commentAdded'): void;
+  (e: 'delete', commentId: string): void;
 }
 
 const props = defineProps<Props>();
@@ -243,49 +274,32 @@ const handleClose = () => {
   emit('close');
 };
 
+const handleDelete = (commentId: string) => {
+  uni.showModal({
+    title: '提示',
+    content: '确定要删除这条评论吗？',
+    success: (res) => {
+      if (res.confirm) {
+        emit('delete', commentId);
+        // 乐观更新：直接从列表中移除
+        comments.value = comments.value.filter(c => c.id !== commentId);
+      }
+    }
+  });
+};
+
 const formatDate = (dateString: string) => {
   return dayjs(dateString).format('MM-DD HH:mm');
 };
 </script>
 
 <style scoped>
-/* 背景遮罩 */
-.all-comments-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.4);
-  z-index: 1200;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-
 /* 面板容器 */
 .all-comments-container {
   width: 100%;
-  height: 85vh;
-  max-height: 85vh;
-  background-color: #ffffff;
-  border-radius: 12px 12px 0 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
-  animation: slide-up-from-bottom 0.3s ease-out;
-}
-
-/* 滑入动画 */
-@keyframes slide-up-from-bottom {
-  from {
-    transform: translateY(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
 }
 
 /* 头部 */
@@ -435,17 +449,6 @@ const formatDate = (dateString: string) => {
   flex-shrink: 0;
 }
 
-.reply-input-container {
-  max-width: 100%;
-}
-
-.reply-input-wrapper {
-  background-color: #f9fafb;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
 /* 回复对象指示器 */
 .replying-indicator {
   display: flex;
@@ -453,7 +456,8 @@ const formatDate = (dateString: string) => {
   align-items: center;
   padding: 8px 12px;
   background-color: #f3f4f6;
-  border-bottom: 1px solid #e5e5e5;
+  border-radius: 8px;
+  margin-bottom: 8px;
 }
 
 .cancel-reply-btn {
@@ -478,22 +482,21 @@ const formatDate = (dateString: string) => {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
 }
 
 .reply-input {
   flex: 1;
-  max-width: 280px; /* 稍微变窄一点 */
   padding: 8px 12px;
   border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border-radius: 20px;
   font-size: 14px;
-  background-color: #ffffff;
+  background-color: #f9fafb;
 }
 
 .reply-input:focus {
   outline: none;
   border-color: #a855f7;
+  background-color: #ffffff;
 }
 
 .send-btn {

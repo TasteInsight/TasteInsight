@@ -87,7 +87,8 @@
           <span
             v-for="tag in dish.tags"
             :key="tag"
-            class="px-3 py-1 bg-blue-50 text-blue-600 text-xs rounded-md"
+            class="px-3 py-1 bg-blue-50 text-blue-600 text-xs rounded-md cursor-pointer active:bg-blue-100"
+            @click="goToTagDishes(tag)"
           >
             #{{ tag }}
           </span>
@@ -196,8 +197,16 @@
 
         <ReviewList
           :dish-id="dishId"
-          :key="reviewListKey"
+          :reviews="reviews"
+          :loading="reviewsLoading"
+          :error="reviewsError"
+          :has-more="reviewsHasMore"
+          :review-comments="reviewComments"
+          :fetch-comments="fetchComments"
+          @load-more="loadMoreReviews"
           @view-all-comments="showAllCommentsPanel"
+          @report="(id) => openReportModal('review', id)"
+          @delete="removeReview"
         />
       </view>
     </view>
@@ -218,18 +227,26 @@
       :is-visible="isAllCommentsPanelVisible"
       @close="hideAllCommentsPanel"
       @comment-added="handleCommentAdded"
+      @delete="(id) => removeComment(id, currentCommentsReviewId)"
+    />
+
+    <!-- 举报弹窗 -->
+    <ReportDialog
+      v-if="isReportVisible"
+      @close="closeReportModal"
+      @submit="submitReport"
     />
 
     <!-- 底部评价输入框 -->
     <BottomReviewInput
-      v-if="dish"
+      v-if="dish && !isAllCommentsPanelVisible"
       @click="showQuickReviewForm"
     />
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue';
+import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { useDishDetail } from '@/pages/dish/composables/use-dish-detail';
 import ReviewList from './components/ReviewList.vue';
@@ -237,16 +254,39 @@ import ReviewForm from './components/ReviewForm.vue';
 import BottomReviewInput from './components/BottomReviewInput.vue';
 import AllCommentsPanel from './components/AllCommentsPanel.vue';
 import RatingBars from './components/RatingBars.vue';
-import { getDishById } from '@/api/modules/dish';
+import ReportDialog from './components/ReportDialog.vue';
+import { useReport } from '@/pages/dish/composables/use-report';
 
 const dishId = ref('');
-const { dish, loading, error, fetchDishDetail } = useDishDetail();
+const { 
+  dish, 
+  loading, 
+  error, 
+  fetchDishDetail,
+  subDishes,
+  reviews,
+  reviewsLoading,
+  reviewsError,
+  reviewsHasMore,
+  fetchReviews,
+  loadMoreReviews,
+  reviewComments,
+  fetchComments,
+  removeReview,
+  removeComment
+} = useDishDetail();
+
+const {
+  isReportVisible,
+  openReportModal,
+  closeReportModal,
+  submitReport
+} = useReport();
+
 const isReviewFormVisible = ref(false);
-const reviewListKey = ref(0);
 const isDetailExpanded = ref(false);
 const isAllCommentsPanelVisible = ref(false);
 const currentCommentsReviewId = ref('');
-const subDishes = ref<any[]>([]);
 const isSubDishesExpanded = ref(false);
 
 // 计算显示的子菜品（默认前3个，展开后全部）
@@ -264,33 +304,18 @@ onLoad((options: any) => {
   }
 });
 
-// 加载子菜品（如果有）
-const loadSubDishes = async () => {
-  subDishes.value = [];
-  const ids = dish.value?.subDishId || [];
-  if (!ids || ids.length === 0) return;
-
-  try {
-    const promises = ids.map((id: string) => getDishById(id));
-    const results = await Promise.all(promises);
-    const items = results
-      .filter((r: any) => r && r.code === 200 && r.data)
-      .map((r: any) => r.data);
-    subDishes.value = items;
-  } catch (err) {
-    console.error('加载子菜品失败', err);
-  }
-};
-
-// 监听 dish 变化以加载子项
-watch(() => dish.value, (val) => {
-  if (val) loadSubDishes();
-});
-
 // 跳转到子菜品详情
 const goToSubDish = (id: string) => {
   if (!id) return;
   uni.navigateTo({ url: `/pages/dish/index?id=${id}` });
+};
+
+// 跳转到标签菜品列表
+const goToTagDishes = (tag: string) => {
+  if (!tag || !dish.value?.canteenId) return;
+  uni.navigateTo({
+    url: `/pages/dish/components/TagList?tag=${encodeURIComponent(tag)}&canteenId=${dish.value.canteenId}&canteenName=${encodeURIComponent(dish.value.canteenName || '')}`
+  });
 };
 
 const goBack = () => {
@@ -325,9 +350,11 @@ const hideReviewForm = () => {
 const handleReviewSuccess = () => {
   hideReviewForm();
   // 刷新评价列表
-  reviewListKey.value++;
-  // 刷新菜品信息（更新评分）
-  refresh();
+  if (dishId.value) {
+    fetchReviews(dishId.value, true);
+    // 刷新菜品信息（更新评分）
+    fetchDishDetail(dishId.value);
+  }
   uni.showToast({
     title: '评价成功',
     icon: 'success',
@@ -353,8 +380,9 @@ const hideAllCommentsPanel = () => {
 };
 
 const handleCommentAdded = () => {
-  // 刷新评论列表
-  reviewListKey.value++;
+  // 刷新评论列表 - 这里可能需要更细粒度的更新，或者重新获取评价列表
+  // 目前简单处理：不刷新整个列表，因为评论是在 CommentList 内部管理的
+  // 如果需要更新评论数，可能需要刷新
 };
 </script>
 

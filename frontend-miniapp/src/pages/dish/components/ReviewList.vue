@@ -40,14 +40,26 @@
             <!-- 评论内容 -->
             <view class="text-sm text-gray-700 leading-relaxed mt-2">{{ review.content }}</view>
             
-            <!-- 时间 -->
-            <view class="text-xs text-gray-400 mt-2">{{ formatDate(review.createdAt) }}</view>
+            <!-- 时间和操作 -->
+            <view class="flex justify-between items-center mt-2">
+              <view class="text-xs text-gray-400">{{ formatDate(review.createdAt) }}</view>
+              <view class="flex gap-2">
+                <view 
+                  v-if="userStore.userInfo?.id === review.userId"
+                  class="text-xs text-gray-400 px-2 py-1" 
+                  @tap.stop="handleDelete(review.id)"
+                >删除</view>
+                <view class="text-xs text-gray-400 px-2 py-1" @tap.stop="handleReport(review.id)">举报</view>
+              </view>
+            </view>
           </view>
         </view>
 
         <!-- 评论列表 -->
         <CommentList
           :review-id="review.id"
+          :comments-data="reviewComments[review.id]"
+          :fetch-comments="fetchComments"
           @comment-added="handleCommentAdded"
           @view-all-comments="handleViewAllComments(review.id)"
         />
@@ -85,72 +97,37 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { getReviewsByDish } from '@/api/modules/review';
-import type { Review } from '@/types/api';
+import { ref } from 'vue';
+import type { Review, Comment } from '@/types/api';
 import dayjs from 'dayjs';
 import CommentList from './CommentList.vue';
+import { useUserStore } from '@/store/modules/use-user-store';
+
+const userStore = useUserStore();
 
 interface Props {
   dishId: string;
+  reviews: Review[];
+  loading: boolean;
+  error: string;
+  hasMore: boolean;
+  reviewComments: Record<string, { items: Comment[], total: number, loading: boolean }>;
+  fetchComments: (reviewId: string) => Promise<void>;
 }
 
 interface Emits {
   (e: 'viewAllComments', reviewId: string): void;
+  (e: 'loadMore'): void;
+  (e: 'report', reviewId: string): void;
+  (e: 'delete', reviewId: string): void;
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-const reviews = ref<Review[]>([]);
-const loading = ref(false);
-const error = ref('');
-const hasMore = ref(true);
-const currentPage = ref(1);
-const pageSize = 10;
-
-onMounted(() => {
-  fetchReviews();
-});
-
-const fetchReviews = async () => {
-  if (loading.value) return;
-
-  loading.value = true;
-  error.value = '';
-
-  try {
-    const response = await getReviewsByDish(props.dishId, {
-      page: currentPage.value,
-      pageSize,
-    });
-
-    if (response.code === 200 && response.data) {
-      const newReviews = response.data.items || [];
-      
-      if (currentPage.value === 1) {
-        reviews.value = newReviews;
-      } else {
-        reviews.value = [...reviews.value, ...newReviews];
-      }
-
-      // 判断是否还有更多数据
-      hasMore.value = newReviews.length === pageSize;
-    } else {
-      error.value = response.message || '获取评价失败';
-    }
-  } catch (err: any) {
-    console.error('获取评价失败:', err);
-    error.value = '网络错误，请稍后重试';
-  } finally {
-    loading.value = false;
-  }
-};
-
 const loadMore = () => {
-  if (hasMore.value && !loading.value) {
-    currentPage.value++;
-    fetchReviews();
+  if (props.hasMore && !props.loading) {
+    emit('loadMore');
   }
 };
 
@@ -165,6 +142,22 @@ const handleCommentAdded = () => {
 
 const handleViewAllComments = (reviewId: string) => {
   emit('viewAllComments', reviewId);
+};
+
+const handleReport = (reviewId: string) => {
+  emit('report', reviewId);
+};
+
+const handleDelete = (reviewId: string) => {
+  uni.showModal({
+    title: '提示',
+    content: '确定要删除这条评价吗？',
+    success: (res) => {
+      if (res.confirm) {
+        emit('delete', reviewId);
+      }
+    }
+  });
 };
 </script>
 
