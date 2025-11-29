@@ -430,6 +430,51 @@ async function main() {
   });
   console.log(`Created offline dish: ${dish6.name}`);
 
+  // 8. 创建待审核的菜品 (DishUpload)
+  // 用户上传
+  await prisma.dishUpload.create({
+    data: {
+      userId: user.id,
+      name: '用户上传待审核菜品',
+      tags: ['待审核'],
+      price: 15.0,
+      description: '用户觉得好吃的菜',
+      images: ['https://example.com/upload1.jpg'],
+      ingredients: ['未知'],
+      allergens: [],
+      canteenId: canteen1.id,
+      canteenName: canteen1.name,
+      windowId: window1.id,
+      windowNumber: window1.number,
+      windowName: window1.name,
+      availableMealTime: ['lunch'],
+      status: 'pending',
+    },
+  });
+  console.log(`Created pending user upload`);
+
+  // 管理员上传
+  await prisma.dishUpload.create({
+    data: {
+      adminId: admin.id,
+      name: '管理员上传待审核菜品',
+      tags: ['新品'],
+      price: 25.0,
+      description: '即将推出的新品',
+      images: ['https://example.com/upload2.jpg'],
+      ingredients: ['高级食材'],
+      allergens: [],
+      canteenId: canteen1.id,
+      canteenName: canteen1.name,
+      windowId: window1.id,
+      windowNumber: window1.number,
+      windowName: window1.name,
+      availableMealTime: ['dinner'],
+      status: 'pending',
+    },
+  });
+  console.log(`Created pending admin upload`);
+
   console.log(`Seeding finished.`);
 }
 

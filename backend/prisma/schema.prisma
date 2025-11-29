@@ -101,6 +101,7 @@ model Admin {
   operationLogs  OperationLog[]
   createdNews    News[]
   handledReports Report[]       @relation("ReportHandler")
+  dishUploads    DishUpload[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -223,6 +224,7 @@ model Dish {
   parentDishId String?
   parentDish   Dish?   @relation("DishHierarchy", fields: [parentDishId], references: [id])
   subDishes    Dish[]  @relation("DishHierarchy")
+  pendingSubDishes DishUpload[] @relation("DishParentToUpload")
 
   // 食材信息
   ingredients String[]
@@ -278,8 +280,14 @@ model Dish {
 
 model DishUpload {
   id     String @id @default(cuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  adminId String?
+  admin   Admin?  @relation(fields: [adminId], references: [id])
+
+  parentDishId String?
+  parentDish   Dish?   @relation("DishParentToUpload", fields: [parentDishId], references: [id])
 
   // 菜品信息（与Dish模型类似）
   name        String
