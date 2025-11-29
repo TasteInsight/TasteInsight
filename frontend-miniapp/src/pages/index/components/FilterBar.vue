@@ -7,7 +7,7 @@
         v-for="filter in filterOptions"
         :key="filter.key"
         class="inline-flex items-center border rounded-full h-8 px-3 text-sm cursor-pointer transition-all"
-        :class="activeFilter === filter.key 
+        :class="(activeFilter === filter.key || hasActiveValue(filter.key))
           ? 'bg-ts-purple text-white border-ts-purple' 
           : 'bg-white text-gray-700 border-gray-300'"
         @click="toggleFilter(filter.key)"
@@ -342,3 +342,4 @@ defineExpose({
   border: 1px solid #e5e7eb;
 }
 </style>
+

@@ -1,21 +1,17 @@
 <template>
   <view class="min-h-screen bg-white">
     <!-- 搜索栏 -->
-    <view class="px-4 pt-4">
-      <view 
-        class="bg-gray-50 rounded-2xl h-12 border border-gray-200 flex items-center px-4 cursor-pointer"
-        @tap="goToSearch"
-      >
-        <text style="color:#999; margin-right:8px; font-size: 20px;">🔍</text>
-        <text class="text-gray-500 text-sm">搜索菜品</text>
-      </view>
+    <view class="px-4">
+      <CanteenSearchBar />
     </view>
 
     <!-- 窗口信息 -->
     <WindowHeader :window="windowInfo" />
 
     <!-- 筛选栏 -->
-    <CanteenFilterBar :filters="filters" :activeFilter="activeFilter" @toggle="handleToggle" />
+    <view class="px-4">
+      <WindowFilterBar @filter-change="handleFilterChange" />
+    </view>
 
     <!-- 菜品列表 -->
     <view class="px-4">
@@ -47,13 +43,18 @@
 import { onLoad } from '@dcloudio/uni-app';
 import { useWindowData } from '@/pages/window/composables/use-window-data';
 import WindowHeader from './components/WindowHeader.vue';
-import CanteenFilterBar from '../canteen/components/CanteenFilterBar.vue';
+import CanteenSearchBar from '../canteen/components/CanteenSearchBar.vue';
+import WindowFilterBar from './components/WindowFilterBar.vue';
 import CanteenDishCard from '../canteen/components/CanteenDishCard.vue';
+import type { GetDishesRequest } from '@/types/api';
 
-const { windowInfo, loading, error, dishes, filters, activeFilter, init, toggleFilter } = useWindowData();
+const { windowInfo, loading, error, dishes, init, fetchDishes } = useWindowData();
+
+let currentWindowId = '';
 
 onLoad((options: any) => {
   if (options.id) {
+    currentWindowId = options.id;
     init(options.id);
   }
 });
@@ -61,8 +62,9 @@ onLoad((options: any) => {
 const goToSearch = () => uni.navigateTo({ url: '/pages/search/index' });
 const goToDishDetail = (id: string) => uni.navigateTo({ url: `/pages/dish/index?id=${id}` });
 
-const handleToggle = (key: string) => {
-  toggleFilter(key);
-  uni.showToast({ title: '筛选功能开发中', icon: 'none' });
+const handleFilterChange = (filter: GetDishesRequest['filter']) => {
+  if (currentWindowId) {
+    fetchDishes(currentWindowId, filter);
+  }
 };
 </script>
