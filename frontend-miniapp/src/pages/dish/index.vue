@@ -201,6 +201,8 @@
           :loading="reviewsLoading"
           :error="reviewsError"
           :has-more="reviewsHasMore"
+          :review-comments="reviewComments"
+          :fetch-comments="fetchComments"
           @load-more="loadMoreReviews"
           @view-all-comments="showAllCommentsPanel"
         />
@@ -255,7 +257,9 @@ const {
   reviewsError,
   reviewsHasMore,
   fetchReviews,
-  loadMoreReviews
+  loadMoreReviews,
+  reviewComments,
+  fetchComments
 } = useDishDetail();
 
 const isReviewFormVisible = ref(false);

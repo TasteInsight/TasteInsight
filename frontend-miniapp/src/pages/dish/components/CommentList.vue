@@ -31,13 +31,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { getCommentsByReview } from '@/api/modules/comment';
+import { computed, onMounted } from 'vue';
 import type { Comment } from '@/types/api';
-import dayjs from 'dayjs';
 
 interface Props {
   reviewId: string;
+  commentsData?: {
+    items: Comment[];
+    total: number;
+    loading: boolean;
+  };
+  fetchComments: (reviewId: string) => Promise<void>;
 }
 
 const props = defineProps<Props>();
@@ -46,63 +50,18 @@ const emit = defineEmits<{
   (e: 'viewAllComments'): void;
 }>();
 
-const comments = ref<Comment[]>([]);
-const loading = ref(false);
-const hasMore = ref(false);
-const currentPage = ref(1);
-const pageSize = 5;
-const totalComments = ref(0);
-
 // 只显示最多4个评论
 const displayComments = computed(() => {
-  return comments.value.slice(0, 4);
+  return props.commentsData?.items.slice(0, 4) || [];
+});
+
+const totalComments = computed(() => {
+  return props.commentsData?.total || 0;
 });
 
 onMounted(() => {
-  fetchComments();
+  props.fetchComments(props.reviewId);
 });
-
-const fetchComments = async () => {
-  if (loading.value) return;
-
-  loading.value = true;
-
-  try {
-    const response = await getCommentsByReview(props.reviewId, {
-      page: currentPage.value,
-      pageSize,
-    });
-
-    if (response.code === 200 && response.data) {
-      const newComments = response.data.items || [];
-
-      if (currentPage.value === 1) {
-        comments.value = newComments;
-        totalComments.value = response.data.meta?.total || 0;
-      } else {
-        comments.value = [...comments.value, ...newComments];
-      }
-
-      hasMore.value = newComments.length === pageSize;
-    }
-  } catch (err) {
-    console.error('获取评论失败:', err);
-  } finally {
-    loading.value = false;
-  }
-};
-
-const loadMore = () => {
-  if (hasMore.value && !loading.value) {
-    currentPage.value++;
-    fetchComments();
-  }
-};
-
-
-const formatDate = (dateString: string) => {
-  return dayjs(dateString).format('MM-DD HH:mm');
-};
 </script>
 
 <style scoped>

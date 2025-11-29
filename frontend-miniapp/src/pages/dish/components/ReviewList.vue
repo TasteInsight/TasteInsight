@@ -48,6 +48,8 @@
         <!-- 评论列表 -->
         <CommentList
           :review-id="review.id"
+          :comments-data="reviewComments[review.id]"
+          :fetch-comments="fetchComments"
           @comment-added="handleCommentAdded"
           @view-all-comments="handleViewAllComments(review.id)"
         />
@@ -86,7 +88,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import type { Review } from '@/types/api';
+import type { Review, Comment } from '@/types/api';
 import dayjs from 'dayjs';
 import CommentList from './CommentList.vue';
 
@@ -96,6 +98,8 @@ interface Props {
   loading: boolean;
   error: string;
   hasMore: boolean;
+  reviewComments: Record<string, { items: Comment[], total: number, loading: boolean }>;
+  fetchComments: (reviewId: string) => Promise<void>;
 }
 
 interface Emits {

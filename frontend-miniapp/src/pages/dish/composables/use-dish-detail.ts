@@ -1,7 +1,8 @@
 import { ref } from 'vue';
 import { getDishById } from '@/api/modules/dish';
 import { getReviewsByDish } from '@/api/modules/review';
-import type { Dish, Review } from '@/types/api';
+import { getCommentsByReview } from '@/api/modules/comment';
+import type { Dish, Review, Comment } from '@/types/api';
 
 /**
  * 菜品详情页面逻辑
@@ -24,6 +25,13 @@ export function useDishDetail() {
   const reviewsPage = ref(1);
   const reviewsPageSize = 10;
 
+  // --- 评论状态 (按 reviewId 存储) ---
+  const reviewComments = ref<Record<string, { 
+    items: Comment[], 
+    total: number, 
+    loading: boolean 
+  }>>({});
+
   /**
    * 获取菜品详情
    */
@@ -35,6 +43,7 @@ export function useDishDetail() {
     reviews.value = [];
     reviewsPage.value = 1;
     reviewsHasMore.value = true;
+    reviewComments.value = {}; // 重置评论缓存
 
     try {
       const response = await getDishById(dishId);
@@ -132,6 +141,36 @@ export function useDishDetail() {
   };
 
   /**
+   * 获取某条评价的评论
+   */
+  const fetchComments = async (reviewId: string) => {
+    // 如果正在加载，则跳过
+    if (reviewComments.value[reviewId]?.loading) return;
+
+    // 初始化状态
+    if (!reviewComments.value[reviewId]) {
+      reviewComments.value[reviewId] = { items: [], total: 0, loading: true };
+    } else {
+      reviewComments.value[reviewId].loading = true;
+    }
+
+    try {
+      // 列表页只展示前5条
+      const res = await getCommentsByReview(reviewId, { page: 1, pageSize: 5 });
+      if (res.code === 200 && res.data) {
+        reviewComments.value[reviewId] = {
+          items: res.data.items || [],
+          total: res.data.meta?.total || 0,
+          loading: false
+        };
+      }
+    } catch (e) {
+      console.error('获取评论失败', e);
+      reviewComments.value[reviewId].loading = false;
+    }
+  };
+
+  /**
    * 加载更多评价
    */
   const loadMoreReviews = () => {
@@ -154,6 +193,9 @@ export function useDishDetail() {
     reviewsError,
     reviewsHasMore,
     fetchReviews,
-    loadMoreReviews
+    loadMoreReviews,
+
+    reviewComments,
+    fetchComments
   };
 }
