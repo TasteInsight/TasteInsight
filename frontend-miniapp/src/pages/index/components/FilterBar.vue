@@ -861,20 +861,18 @@ defineExpose({
 .filter-chip {
   display: inline-flex;
   align-items: center;
-  border: 1px solid #d1d5db;
   border-radius: 12px;
   height: 34px;
-  padding: 0 12px;
+  padding: 0 14px;
   font-size: 14px;
   color: #374151;
-  background-color: #ffffff;
+  background-color: #f3f4f6;
   transition: all 0.2s ease;
   white-space: nowrap;
 }
 
 .filter-chip-active {
   background-color: #7c3aed;
-  border-color: #7c3aed;
   color: #ffffff;
 }
 
