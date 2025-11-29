@@ -27,8 +27,8 @@ export class UpdateWindowDto {
 
   @ValidateNested()
   @Type(() => FloorInputDto)
-  @IsNotEmpty()
-  floor: FloorInputDto;
+  @IsOptional()
+  floor?: FloorInputDto;
 
   @IsArray()
   @IsString({ each: true })
