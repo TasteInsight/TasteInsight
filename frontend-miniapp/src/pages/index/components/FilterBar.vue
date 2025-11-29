@@ -2,20 +2,22 @@
 <template>
   <view class="filter-bar">
     <!-- 筛选标签栏 -->
-    <view class="flex flex-wrap py-3 gap-2">
-      <view
-        v-for="filter in filterOptions"
-        :key="filter.key"
-        class="inline-flex items-center border rounded-full h-8 px-3 text-sm cursor-pointer transition-all"
-        :class="(activeFilter === filter.key || hasActiveValue(filter.key))
-          ? 'bg-ts-purple text-white border-ts-purple' 
-          : 'bg-white text-gray-700 border-gray-300'"
-        @click="toggleFilter(filter.key)"
-      >
-        <text>{{ filter.label }}</text>
-        <text v-if="hasActiveValue(filter.key)" class="ml-1 text-xs">✓</text>
+    <scroll-view scroll-x class="filter-tabs py-3">
+      <view class="filter-tabs-inner">
+        <view
+          v-for="filter in filterOptions"
+          :key="filter.key"
+          class="filter-chip"
+          :class="(activeFilter === filter.key || hasActiveValue(filter.key))
+            ? 'filter-chip-active'
+            : ''"
+          @click="toggleFilter(filter.key)"
+        >
+          <text>{{ filter.label }}</text>
+          <text v-if="hasActiveValue(filter.key)" class="ml-1 text-xs">✓</text>
+        </view>
       </view>
-    </view>
+    </scroll-view>
 
     <!-- 点击遮罩关闭筛选面板 -->
     <view
@@ -844,6 +846,36 @@ defineExpose({
 <style scoped>
 .filter-bar {
   position: relative;
+}
+
+.filter-tabs {
+  width: 100%;
+}
+
+.filter-tabs-inner {
+  display: flex;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  height: 34px;
+  padding: 0 12px;
+  font-size: 14px;
+  color: #374151;
+  background-color: #ffffff;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.filter-chip-active {
+  background-color: #7c3aed;
+  border-color: #7c3aed;
+  color: #ffffff;
 }
 
 .filter-overlay {
