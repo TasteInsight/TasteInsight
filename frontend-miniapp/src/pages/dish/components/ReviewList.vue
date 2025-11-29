@@ -85,72 +85,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { getReviewsByDish } from '@/api/modules/review';
+import { ref } from 'vue';
 import type { Review } from '@/types/api';
 import dayjs from 'dayjs';
 import CommentList from './CommentList.vue';
 
 interface Props {
   dishId: string;
+  reviews: Review[];
+  loading: boolean;
+  error: string;
+  hasMore: boolean;
 }
 
 interface Emits {
   (e: 'viewAllComments', reviewId: string): void;
+  (e: 'loadMore'): void;
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-const reviews = ref<Review[]>([]);
-const loading = ref(false);
-const error = ref('');
-const hasMore = ref(true);
-const currentPage = ref(1);
-const pageSize = 10;
-
-onMounted(() => {
-  fetchReviews();
-});
-
-const fetchReviews = async () => {
-  if (loading.value) return;
-
-  loading.value = true;
-  error.value = '';
-
-  try {
-    const response = await getReviewsByDish(props.dishId, {
-      page: currentPage.value,
-      pageSize,
-    });
-
-    if (response.code === 200 && response.data) {
-      const newReviews = response.data.items || [];
-      
-      if (currentPage.value === 1) {
-        reviews.value = newReviews;
-      } else {
-        reviews.value = [...reviews.value, ...newReviews];
-      }
-
-      // 判断是否还有更多数据
-      hasMore.value = newReviews.length === pageSize;
-    } else {
-      error.value = response.message || '获取评价失败';
-    }
-  } catch (err: any) {
-    console.error('获取评价失败:', err);
-    error.value = '网络错误，请稍后重试';
-  } finally {
-    loading.value = false;
-  }
-};
-
 const loadMore = () => {
-  if (hasMore.value && !loading.value) {
-    currentPage.value++;
-    fetchReviews();
+  if (props.hasMore && !props.loading) {
+    emit('loadMore');
   }
 };
 
