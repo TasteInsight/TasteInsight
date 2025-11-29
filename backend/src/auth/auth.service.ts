@@ -75,6 +75,8 @@ export class AuthService {
     // 特殊处理测试用的 code，使其能匹配 seed 创建的基础用户
     if (code === 'baseline_user_code_placeholder') {
       openid = 'baseline_user_openid';
+    } else if (code === 'secondary_user_code_placeholder') {
+      openid = 'secondary_user_openid';
     } else if (code.startsWith('mock_')) {
       // 保留 mock 前缀用于开发测试
       openid = `mock_openid_for_${code}`;

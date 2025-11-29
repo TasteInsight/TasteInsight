@@ -11,12 +11,14 @@ import { AdminCommentsModule } from './admin-comments/admin-comments.module';
 import { AdminCanteensModule } from './admin-canteens/admin-canteens.module';
 import { ConfigModule } from '@nestjs/config';
 import { CanteensModule } from './canteens/canteens.module';
+import { ReviewsModule } from './reviews/reviews.module';
 
 @Module({
   imports: [
     AuthModule,
     DishesModule,
     CanteensModule,
+    ReviewsModule,
     AdminDishesModule,
     AdminReviewsModule,
     AdminCommentsModule,
