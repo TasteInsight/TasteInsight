@@ -227,7 +227,6 @@
       :is-visible="isAllCommentsPanelVisible"
       @close="hideAllCommentsPanel"
       @comment-added="handleCommentAdded"
-      @report="(id) => openReportModal('comment', id)"
       @delete="(id) => removeComment(id, currentCommentsReviewId)"
     />
 

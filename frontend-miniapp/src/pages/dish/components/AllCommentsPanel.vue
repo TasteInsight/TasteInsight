@@ -1,7 +1,15 @@
 <template>
   <!-- 全部评论面板 -->
-  <view class="all-comments-overlay" @tap="handleClose">
-    <view class="all-comments-container" @tap.stop catchtouchmove="true">
+  <page-container
+    :show="isVisible"
+    position="bottom"
+    :round="true"
+    :overlay="true"
+    custom-style="height: 85vh; background-color: #fff;"
+    @clickoverlay="handleClose"
+    @afterleave="handleClose"
+  >
+    <view class="all-comments-container">
       <!-- 头部 -->
       <view class="panel-header">
         <h2 class="panel-title">全部回复</h2>
@@ -48,7 +56,7 @@
                     class="text-xs text-gray-400 px-2 py-1" 
                     @tap.stop="handleDelete(comment.id)"
                   >删除</view>
-                  <view class="text-xs text-gray-400 px-2 py-1" @tap.stop="emit('report', comment.id)">举报</view>
+                  <view class="text-xs text-gray-400 px-2 py-1" @tap.stop="openReportModal('comment', comment.id)">举报</view>
                 </view>
               </view>
 
@@ -104,8 +112,15 @@
           </view>
         </view>
       </view>
+
+      <!-- 举报弹窗 (嵌套在 page-container 内部) -->
+      <ReportDialog
+        v-if="isReportVisible"
+        @close="closeReportModal"
+        @submit="submitReport"
+      />
     </view>
-  </view>
+  </page-container>
 </template>
 
 <script setup lang="ts">
@@ -114,8 +129,16 @@ import { getCommentsByReview, createComment } from '@/api/modules/comment';
 import type { Comment } from '@/types/api';
 import dayjs from 'dayjs';
 import { useUserStore } from '@/store/modules/use-user-store';
+import ReportDialog from './ReportDialog.vue';
+import { useReport } from '@/pages/dish/composables/use-report';
 
 const userStore = useUserStore();
+const {
+  isReportVisible,
+  openReportModal,
+  closeReportModal,
+  submitReport
+} = useReport();
 
 interface Props {
   reviewId: string;
@@ -125,7 +148,6 @@ interface Props {
 interface Emits {
   (e: 'close'): void;
   (e: 'commentAdded'): void;
-  (e: 'report', commentId: string): void;
   (e: 'delete', commentId: string): void;
 }
 
@@ -276,43 +298,12 @@ const formatDate = (dateString: string) => {
 </script>
 
 <style scoped>
-/* 背景遮罩 */
-.all-comments-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.4);
-  z-index: 1200;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-
 /* 面板容器 */
 .all-comments-container {
   width: 100%;
-  height: 85vh;
-  max-height: 85vh;
-  background-color: #ffffff;
-  border-radius: 12px 12px 0 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
-  animation: slide-up-from-bottom 0.3s ease-out;
-}
-
-/* 滑入动画 */
-@keyframes slide-up-from-bottom {
-  from {
-    transform: translateY(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
 }
 
 /* 头部 */
