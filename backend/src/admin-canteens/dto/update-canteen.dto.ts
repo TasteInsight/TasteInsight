@@ -9,6 +9,12 @@ export class UpdateWindowDto extends WindowDto {
   id?: string;
 }
 
+export class UpdateFloorDto extends FloorDto {
+  @IsString()
+  @IsOptional()
+  id?: string;
+}
+
 export class UpdateCanteenDto extends PartialType(CreateCanteenDto) {
   @IsArray()
   @ValidateNested({ each: true })
@@ -18,9 +24,9 @@ export class UpdateCanteenDto extends PartialType(CreateCanteenDto) {
 
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => FloorDto)
+  @Type(() => UpdateFloorDto)
   @IsOptional()
-  floors?: FloorDto[];
+  floors?: UpdateFloorDto[];
   
   @IsArray()
   @ValidateNested({ each: true })

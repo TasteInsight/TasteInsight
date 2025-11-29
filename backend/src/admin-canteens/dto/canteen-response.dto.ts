@@ -9,7 +9,7 @@ export class CanteenDto {
   openingHours: any; // Json
   averageRating: number;
   reviewCount: number;
-  floors?: any[]; // Not in DB, but in API spec
+  floors?: any[];
   windows?: any[];
   createdAt: Date;
   updatedAt: Date;

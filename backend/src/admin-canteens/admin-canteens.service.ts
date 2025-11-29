@@ -19,6 +19,7 @@ export class AdminCanteensService {
         orderBy: { createdAt: 'desc' },
         include: {
           windows: true,
+          floors: true,
         },
       }),
     ]);
@@ -26,7 +27,7 @@ export class AdminCanteensService {
     const items: CanteenDto[] = canteens.map(canteen => ({
       ...canteen,
       openingHours: canteen.openingHours,
-      floors: [], // TODO: Floors are not stored in DB currently
+      floors: canteen.floors,
       windows: canteen.windows,
     }));
 
@@ -63,9 +64,16 @@ export class AdminCanteensService {
             tags: w.tags || [],
           })),
         },
+        floors: {
+          create: floors.map(f => ({
+            level: f.level,
+            name: f.name,
+          })),
+        },
       },
       include: {
         windows: true,
+        floors: true,
       },
     });
 
@@ -75,7 +83,7 @@ export class AdminCanteensService {
       data: {
         ...canteen,
         openingHours: canteen.openingHours,
-        floors: floors || [],
+        floors: canteen.floors,
         windows: canteen.windows,
       },
     };
@@ -157,9 +165,58 @@ export class AdminCanteensService {
       }
     }
 
+    // Update floors if provided
+    if (floors) {
+      // 1. Get existing floors
+      const existingFloors = await this.prisma.floor.findMany({
+        where: { canteenId: id },
+      });
+      const existingFloorIds = existingFloors.map((f) => f.id);
+
+      // 2. Identify floors to create, update, and delete
+      const floorsToUpdate = floors.filter((f) => f.id && existingFloorIds.includes(f.id));
+      const floorsToCreate = floors.filter((f) => !f.id);
+      
+      const providedIds = floors.map((f) => f.id).filter((id) => !!id) as string[];
+      const floorsToDelete = existingFloorIds.filter((id) => !providedIds.includes(id));
+
+      // 3. Execute updates
+      // Delete removed floors
+      if (floorsToDelete.length > 0) {
+        await this.prisma.floor.deleteMany({
+          where: {
+            id: { in: floorsToDelete },
+            canteenId: id,
+          },
+        });
+      }
+
+      // Update existing floors
+      for (const floor of floorsToUpdate) {
+        await this.prisma.floor.update({
+          where: { id: floor.id },
+          data: {
+            level: floor.level,
+            name: floor.name,
+          },
+        });
+      }
+
+      // Create new floors
+      if (floorsToCreate.length > 0) {
+        await this.prisma.floor.createMany({
+          data: floorsToCreate.map((f) => ({
+            canteenId: id,
+            level: f.level,
+            name: f.name,
+          })),
+        });
+      }
+    }
+
     const updatedCanteen = await this.prisma.canteen.findUnique({
       where: { id },
-      include: { windows: true },
+      include: { windows: true, floors: true },
     });
 
     return {
@@ -168,7 +225,7 @@ export class AdminCanteensService {
       data: {
         ...updatedCanteen!,
         openingHours: updatedCanteen!.openingHours,
-        floors: floors || [], // Return what was sent or empty
+        floors: updatedCanteen!.floors,
         windows: updatedCanteen!.windows,
       },
     };

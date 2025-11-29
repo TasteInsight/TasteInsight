@@ -97,6 +97,7 @@ CREATE TABLE "canteens" (
 CREATE TABLE "windows" (
     "id" TEXT NOT NULL,
     "canteenId" TEXT NOT NULL,
+    "floorId" TEXT,
     "name" TEXT NOT NULL,
     "number" TEXT NOT NULL,
     "position" TEXT,
@@ -106,6 +107,18 @@ CREATE TABLE "windows" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "windows_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "floors" (
+    "id" TEXT NOT NULL,
+    "canteenId" TEXT NOT NULL,
+    "level" TEXT NOT NULL,
+    "name" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "floors_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -125,7 +138,9 @@ CREATE TABLE "dishes" (
     "oiliness" INTEGER NOT NULL DEFAULT 0,
     "canteenId" TEXT NOT NULL,
     "canteenName" TEXT NOT NULL,
-    "floor" TEXT,
+    "floorId" TEXT,
+    "floorLevel" TEXT,
+    "floorName" TEXT,
     "windowId" TEXT,
     "windowNumber" TEXT,
     "windowName" TEXT NOT NULL,
@@ -155,8 +170,9 @@ CREATE TABLE "dish_uploads" (
     "sweetness" INTEGER NOT NULL DEFAULT 0,
     "saltiness" INTEGER NOT NULL DEFAULT 0,
     "oiliness" INTEGER NOT NULL DEFAULT 0,
+    "canteenId" TEXT NOT NULL,
     "canteenName" TEXT NOT NULL,
-    "floor" TEXT,
+    "windowId" TEXT,
     "windowNumber" TEXT,
     "windowName" TEXT NOT NULL,
     "availableMealTime" TEXT[],
@@ -326,6 +342,9 @@ CREATE INDEX "operation_logs_createdAt_idx" ON "operation_logs"("createdAt");
 CREATE INDEX "windows_canteenId_idx" ON "windows"("canteenId");
 
 -- CreateIndex
+CREATE INDEX "floors_canteenId_idx" ON "floors"("canteenId");
+
+-- CreateIndex
 CREATE INDEX "dishes_canteenId_idx" ON "dishes"("canteenId");
 
 -- CreateIndex
@@ -425,16 +444,31 @@ ALTER TABLE "operation_logs" ADD CONSTRAINT "operation_logs_adminId_fkey" FOREIG
 ALTER TABLE "windows" ADD CONSTRAINT "windows_canteenId_fkey" FOREIGN KEY ("canteenId") REFERENCES "canteens"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "windows" ADD CONSTRAINT "windows_floorId_fkey" FOREIGN KEY ("floorId") REFERENCES "floors"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "floors" ADD CONSTRAINT "floors_canteenId_fkey" FOREIGN KEY ("canteenId") REFERENCES "canteens"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "dishes" ADD CONSTRAINT "dishes_parentDishId_fkey" FOREIGN KEY ("parentDishId") REFERENCES "dishes"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "dishes" ADD CONSTRAINT "dishes_canteenId_fkey" FOREIGN KEY ("canteenId") REFERENCES "canteens"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "dishes" ADD CONSTRAINT "dishes_floorId_fkey" FOREIGN KEY ("floorId") REFERENCES "floors"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "dishes" ADD CONSTRAINT "dishes_windowId_fkey" FOREIGN KEY ("windowId") REFERENCES "windows"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "dish_uploads" ADD CONSTRAINT "dish_uploads_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "dish_uploads" ADD CONSTRAINT "dish_uploads_canteenId_fkey" FOREIGN KEY ("canteenId") REFERENCES "canteens"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "dish_uploads" ADD CONSTRAINT "dish_uploads_windowId_fkey" FOREIGN KEY ("windowId") REFERENCES "windows"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "reviews" ADD CONSTRAINT "reviews_dishId_fkey" FOREIGN KEY ("dishId") REFERENCES "dishes"("id") ON DELETE CASCADE ON UPDATE CASCADE;

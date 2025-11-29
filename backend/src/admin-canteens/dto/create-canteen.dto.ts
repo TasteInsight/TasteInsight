@@ -39,7 +39,11 @@ export class OpeningHours {
 export class FloorDto {
   @IsString()
   @IsNotEmpty()
-  name: string;
+  level: string;
+
+  @IsString()
+  @IsOptional()
+  name?: string;
 }
 
 export class WindowDto {
