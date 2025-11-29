@@ -1,5 +1,5 @@
 <template>
-  <view class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @tap="close">
+  <view class="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50" style="z-index: 2000;" @tap="close">
     <view class="bg-white rounded-lg w-80 p-4" @tap.stop>
       <view class="text-lg font-bold mb-4 text-center">举报</view>
       
