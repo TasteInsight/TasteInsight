@@ -11,6 +11,7 @@ import {
   AdminUpdateDishDto,
   DishStatus,
 } from './dto/admin-dish.dto';
+import { AdminDishDto } from './dto/admin-dish.dto';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
@@ -74,7 +75,7 @@ export class AdminDishesService {
       code: 200,
       message: 'success',
       data: {
-        items,
+        items: items.map((item) => this.mapToAdminDishDto(item)),
         meta: {
           page,
           pageSize,
@@ -111,7 +112,7 @@ export class AdminDishesService {
     return {
       code: 200,
       message: 'success',
-      data: dish,
+      data: this.mapToAdminDishDto(dish),
     };
   }
 
@@ -119,49 +120,58 @@ export class AdminDishesService {
    * 管理端创建菜品
    */
   async createAdminDish(createDto: AdminCreateDishDto, adminInfo: any) {
-    // 检查食堂是否存在
-    let canteen;
-    if (createDto.canteenId) {
-      canteen = await this.prisma.canteen.findUnique({
-        where: { id: createDto.canteenId },
-      });
-      if (!canteen) {
-        throw new BadRequestException('指定的食堂不存在');
-      }
-    } else {
-      // 如果没有提供canteenId，尝试根据canteenName查找
-      canteen = await this.prisma.canteen.findFirst({
+    // 1. 确定食堂
+    let canteenId = createDto.canteenId;
+    if (!canteenId && createDto.canteenName) {
+      const canteen = await this.prisma.canteen.findFirst({
         where: { name: createDto.canteenName },
       });
-      if (!canteen) {
-        throw new BadRequestException('指定的食堂不存在');
+      if (canteen) {
+        canteenId = canteen.id;
       }
     }
 
-    // 检查权限：如果管理员有食堂限制，只能创建该食堂的菜品
-    if (adminInfo.canteenId && canteen.id !== adminInfo.canteenId) {
+    // 2. 确定窗口，顺序：ID > 名称 > 编号
+    let window: any = null;
+
+    if (createDto.windowId) {
+      window = await this.prisma.window.findUnique({
+        where: { id: createDto.windowId },
+        include: { canteen: true, floor: true },
+      });
+    } else if (canteenId) {
+      // 如果未提供 windowId，则需要 canteenId 来按名称或编号查找
+      if (createDto.windowName) {
+        window = await this.prisma.window.findFirst({
+          where: {
+            canteenId: canteenId,
+            name: createDto.windowName,
+          },
+          include: { canteen: true, floor: true },
+        });
+      }
+      
+      if (!window && createDto.windowNumber) {
+        window = await this.prisma.window.findFirst({
+          where: {
+            canteenId: canteenId,
+            number: createDto.windowNumber,
+          },
+          include: { canteen: true, floor: true },
+        });
+      }
+    }
+
+    if (!window) {
+      throw new BadRequestException('指定的窗口不存在，请提供有效的窗口ID、名称或编号');
+    }
+
+    // 3. 检查权限
+    if (adminInfo.canteenId && window.canteenId !== adminInfo.canteenId) {
       throw new ForbiddenException('权限不足');
     }
 
-    // 查找窗口（如果存在）
-    let window: any = null;
-    if (createDto.windowNumber || createDto.windowName) {
-      const orConditions: any[] = [];
-      if (createDto.windowNumber) {
-        orConditions.push({ number: createDto.windowNumber });
-      }
-      if (createDto.windowName) {
-        orConditions.push({ name: createDto.windowName });
-      }
-      window = await this.prisma.window.findFirst({
-        where: {
-          canteenId: canteen.id,
-          OR: orConditions,
-        },
-      });
-    }
-
-    // 检查父菜品是否存在
+    // 4. 检查父菜品
     if (createDto.parentDishId) {
       const parentDish = await this.prisma.dish.findUnique({
         where: { id: createDto.parentDishId },
@@ -171,7 +181,7 @@ export class AdminDishesService {
       }
     }
 
-    // 创建菜品
+    // 5. 创建菜品
     const dish = await this.prisma.dish.create({
       data: {
         name: createDto.name,
@@ -186,12 +196,17 @@ export class AdminDishesService {
         sweetness: createDto.sweetness || 0,
         saltiness: createDto.saltiness || 0,
         oiliness: createDto.oiliness || 0,
-        canteenId: canteen.id,
-        canteenName: canteen.name,
-        floor: createDto.floor,
-        windowId: window?.id,
-        windowNumber: window?.number || createDto.windowNumber,
-        windowName: createDto.windowName,
+
+        // 来自窗口的位置信息
+        canteenId: window.canteenId,
+        canteenName: window.canteen.name,
+        floorId: window.floorId,
+        floorLevel: window.floor?.level,
+        floorName: window.floor?.name,
+        windowId: window.id,
+        windowNumber: window.number,
+        windowName: window.name,
+
         availableMealTime: createDto.availableMealTime || [],
         availableDates: createDto.availableDates
           ? (createDto.availableDates as unknown as Prisma.InputJsonArray)
@@ -209,7 +224,7 @@ export class AdminDishesService {
     return {
       code: 201,
       message: '创建成功',
-      data: dish,
+      data: this.mapToAdminDishDto(dish),
     };
   }
 
@@ -259,44 +274,68 @@ export class AdminDishesService {
       updateData.saltiness = updateDto.saltiness;
     if (updateDto.oiliness !== undefined)
       updateData.oiliness = updateDto.oiliness;
-    if (updateDto.floor !== undefined) updateData.floor = updateDto.floor;
-    if (updateDto.windowNumber !== undefined)
-      updateData.windowNumber = updateDto.windowNumber;
-    if (updateDto.windowName !== undefined)
-      updateData.windowName = updateDto.windowName;
     if (updateDto.availableMealTime !== undefined)
       updateData.availableMealTime = updateDto.availableMealTime;
     if (updateDto.availableDates !== undefined)
       updateData.availableDates = updateDto.availableDates as any;
     if (updateDto.status !== undefined) updateData.status = updateDto.status;
 
-    // 处理食堂ID和名称的更新
-    if (updateDto.canteenId || updateDto.canteenName) {
-      let canteen;
-      if (updateDto.canteenId) {
-        canteen = await this.prisma.canteen.findUnique({
-          where: { id: updateDto.canteenId },
+    // 位置相关信息（食堂/窗口）
+    let window: any = null;
+    let shouldUpdateWindow = false;
+
+    if (updateDto.windowId) {
+      window = await this.prisma.window.findUnique({
+        where: { id: updateDto.windowId },
+        include: { canteen: true, floor: true },
+      });
+      shouldUpdateWindow = true;
+    } else if (updateDto.windowName || updateDto.windowNumber) {
+      // 如果提供了窗口名称或编号，则需要先确定食堂ID
+      let canteenId = updateDto.canteenId;
+      if (!canteenId && updateDto.canteenName) {
+         const canteen = await this.prisma.canteen.findFirst({ where: { name: updateDto.canteenName } });
+         if (canteen) canteenId = canteen.id;
+      }
+      if (!canteenId) {
+        canteenId = existingDish.canteenId;
+      }
+
+      if (updateDto.windowName) {
+        window = await this.prisma.window.findFirst({
+          where: { canteenId, name: updateDto.windowName },
+          include: { canteen: true, floor: true },
         });
-      } else if (updateDto.canteenName) {
-        canteen = await this.prisma.canteen.findFirst({
-          where: { name: updateDto.canteenName },
+      }
+
+      if (!window && updateDto.windowNumber) {
+        window = await this.prisma.window.findFirst({
+          where: { canteenId, number: updateDto.windowNumber },
+          include: { canteen: true, floor: true },
         });
       }
-
-      if (!canteen) {
-        throw new BadRequestException('指定的食堂不存在');
-      }
-
-      // 检查权限：如果管理员有食堂限制，不能将菜品移到其他食堂
-      if (adminInfo.canteenId && canteen.id !== adminInfo.canteenId) {
-        throw new ForbiddenException('权限不足');
-      }
-
-      updateData.canteenId = canteen.id;
-      updateData.canteenName = canteen.name;
+      shouldUpdateWindow = true;
     }
 
-    // 更新菜品
+    if (shouldUpdateWindow) {
+      if (!window) {
+        throw new BadRequestException('指定的窗口不存在，请提供有效的窗口ID、名称或编号');
+      }
+
+      if (adminInfo.canteenId && window.canteenId !== adminInfo.canteenId) {
+        throw new ForbiddenException('不能将菜品移动到其他食堂');
+      }
+
+      updateData.canteenId = window.canteenId;
+      updateData.canteenName = window.canteen.name;
+      updateData.floorId = window.floorId;
+      updateData.floorLevel = window.floor?.level;
+      updateData.floorName = window.floor?.name;
+      updateData.windowId = window.id;
+      updateData.windowNumber = window.number;
+      updateData.windowName = window.name;
+    }
+
     const dish = await this.prisma.dish.update({
       where: { id },
       data: updateData,
@@ -311,7 +350,7 @@ export class AdminDishesService {
     return {
       code: 200,
       message: '更新成功',
-      data: dish,
+      data: this.mapToAdminDishDto(dish),
     };
   }
 
@@ -379,6 +418,38 @@ export class AdminDishesService {
       code: 200,
       message: '状态修改成功',
       data: null,
+    };
+  }
+
+  private mapToAdminDishDto(dish: any): AdminDishDto {
+    return {
+      id: dish.id,
+      name: dish.name,
+      tags: dish.tags,
+      price: dish.price,
+      description: dish.description,
+      images: dish.images,
+      ingredients: dish.ingredients,
+      allergens: dish.allergens,
+      spicyLevel: dish.spicyLevel,
+      sweetness: dish.sweetness,
+      saltiness: dish.saltiness,
+      oiliness: dish.oiliness,
+      canteenId: dish.canteenId,
+      canteenName: dish.canteenName,
+      floorId: dish.floorId,
+      floorLevel: dish.floorLevel,
+      floorName: dish.floorName,
+      windowId: dish.windowId,
+      windowNumber: dish.windowNumber,
+      windowName: dish.windowName,
+      availableMealTime: dish.availableMealTime,
+      availableDates: dish.availableDates,
+      status: dish.status,
+      averageRating: dish.averageRating,
+      reviewCount: dish.reviewCount,
+      createdAt: dish.createdAt,
+      updatedAt: dish.updatedAt,
     };
   }
 }

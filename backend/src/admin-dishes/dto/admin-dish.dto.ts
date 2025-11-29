@@ -24,6 +24,45 @@ export enum MealTime {
   NIGHTSNACK = 'nightsnack',
 }
 
+export class AdminDishDto {
+  id: string;
+  name: string;
+  tags: string[];
+  price: number;
+  description: string | null;
+  images: string[];
+
+  // Ingredients & Taste
+  ingredients: string[];
+  allergens: string[];
+  spicyLevel: number;
+  sweetness: number;
+  saltiness: number;
+  oiliness: number;
+
+  // Location
+  canteenId: string;
+  canteenName: string;
+  floorId: string | null;
+  floorLevel: string | null;
+  floorName: string | null;
+  windowId: string | null;
+  windowNumber: string | null;
+  windowName: string;
+
+  // Availability
+  availableMealTime: string[];
+  availableDates: any;
+  status: string;
+
+  // Stats
+  averageRating: number;
+  reviewCount: number;
+
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export class AvailableDateRange {
   @IsNotEmpty()
   startDate: string;
@@ -130,21 +169,21 @@ export class AdminCreateDishDto {
   @IsString()
   canteenId?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  canteenName: string;
+  canteenName?: string;
 
   @IsOptional()
   @IsString()
-  floor?: string;
+  windowId?: string;
+
+  @IsNotEmpty()
+  @IsString()
+  windowName?: string;
 
   @IsOptional()
   @IsString()
   windowNumber?: string;
-
-  @IsNotEmpty()
-  @IsString()
-  windowName: string;
 
   @IsOptional()
   @IsArray()
@@ -239,15 +278,15 @@ export class AdminUpdateDishDto {
 
   @IsOptional()
   @IsString()
-  floor?: string;
-
-  @IsOptional()
-  @IsString()
-  windowNumber?: string;
+  windowId?: string;
 
   @IsOptional()
   @IsString()
   windowName?: string;
+
+  @IsOptional()
+  @IsString()
+  windowNumber?: string;
 
   @IsOptional()
   @IsArray()

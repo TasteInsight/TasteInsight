@@ -1,5 +1,5 @@
 <template>
-  <view class="min-h-screen bg-gradient-to-b from-purple-50 to-white pt-16">
+  <view class="min-h-screen bg-white pt-16">
     <!-- 加载状态 -->
     <view v-if="loading" class="flex items-center justify-center min-h-screen">
       <text class="text-purple-500">加载中...</text>
@@ -68,17 +68,17 @@
       </view>
 
       <!-- 基本信息 -->
-      <view class="bg-white p-4 mb-2 rounded-2xl shadow-sm mx-4 mt-2">
+      <view class="bg-white p-4">
         <view class="flex justify-between items-start mb-2">
           <view class="flex-1">
             <h1 class="text-xl font-bold text-gray-800">{{ dish.name }}</h1>
-            <view class="text-sm text-red-600 mt-1 flex items-center">
+            <view class="text-sm text-gray-500 mt-1 flex items-center">
               <text class="iconify" data-icon="mdi:store"></text>
               <text class="ml-1">{{ dish.canteenName }} · {{ dish.windowName }}</text>
             </view>
           </view>
           <view class="text-right mt-2">
-            <view class="text-lg font-bold text-red-600">¥{{ dish.price }}</view>
+            <view class="text-lg font-bold text-orange-500">¥{{ dish.price }}</view>
           </view>
         </view>
 
@@ -87,18 +87,18 @@
           <span
             v-for="tag in dish.tags"
             :key="tag"
-            class="px-3 py-1 bg-blue-50 text-purple-100 text-xs rounded-md font-medium"
+            class="px-3 py-1 bg-blue-50 text-blue-600 text-xs rounded-md"
           >
             #{{ tag }}
           </span>
         </view>
 
         <!-- 评分信息 -->
-        <view class="mt-3 py-3 border-t border-purple-100">
+        <view class="mt-3 py-3 border-t border-gray-100">
           <view class="flex justify-between items-start">
             <!-- 左侧评分和评价数量 -->
-            <view class="flex flex-col mt-8">
-              <view class="text-xl font-bold text-purple-600">
+            <view class="flex flex-col mt-8 ml-6">
+              <view class="text-xl font-bold text-yellow-500">
                 {{ dish.averageRating.toFixed(1) }}分
               </view>
               <view class="text-xs text-gray-500 mt-1">
@@ -107,13 +107,16 @@
             </view>
 
             <!-- 右侧评分比例条状图 -->
-            <RatingBars />
+            <RatingBars :dish-id="dish.id" />
           </view>
         </view>
       </view>
       
+      <!-- 分隔线 -->
+      <view class="h-3 bg-gray-50 border-t border-b border-gray-100"></view>
+
       <!-- 详细信息 -->
-      <view class="bg-white p-4 mb-2 rounded-xl shadow-sm mx-4">
+      <view class="bg-white p-4">
         <view class="flex justify-between items-center mb-3 cursor-pointer" @click="toggleDetailExpansion">
           <h2 class="text-lg font-semibold text-gray-800">详细信息 ...</h2>
           <text class="iconify text-red-600 text-xl transition-transform duration-300" :class="isDetailExpanded ? 'rotate-180' : ''" data-icon="mdi:chevron-down"></text>
@@ -122,32 +125,71 @@
         <view v-show="isDetailExpanded" class="transition-all duration-300 ease-in-out">
           <!-- 菜品介绍 -->
           <view v-if="dish.description" class="detail-section">
-            <text class="detail-label">菜品介绍：</text>
+            <text class="font-bold text-black mr-1 text-sm">菜品介绍：</text>
             <text class="detail-text">{{ dish.description }}</text>
           </view>
 
           <!-- 主要食材 -->
           <view v-if="dish.ingredients?.length" class="detail-section">
-            <text class="detail-label">主要食材：</text>
+            <text class="font-bold text-black mr-1 text-sm">主要食材：</text>
             <text class="detail-text">{{ dish.ingredients.join('、') }}</text>
           </view>
 
           <!-- 过敏原信息 -->
           <view v-if="dish.allergens?.length" class="detail-section">
-            <text class="detail-label">过敏原信息：</text>
+            <text class="font-bold text-black mr-1 text-sm">过敏原信息：</text>
             <text class="detail-text text-red-600">{{ dish.allergens.join('、') }}</text>
           </view>
 
           <!-- 供应时间 -->
           <view class="detail-section">
-            <text class="detail-label">供应时间：</text>
+            <text class="font-bold text-black mr-1 text-sm">供应时间：</text>
             <text class="detail-text">{{ formatMealTime(dish.availableMealTime) }}</text>
+          </view>
+
+          <!-- 子菜品（如果有） -->
+          <view v-if="subDishes.length > 0" class="detail-section mt-3">
+            <text class="font-bold text-black mr-1 text-sm">子菜品：</text>
+            <view class="mt-2 space-y-3">
+              <view
+                v-for="sub in displayedSubDishes"
+                :key="sub.id"
+                class="bg-gray-50 p-3 rounded-lg flex items-center gap-3 cursor-pointer"
+                @click="goToSubDish(sub.id)"
+              >
+                <image v-if="sub.images?.[0]" :src="sub.images[0]" class="w-14 h-14 rounded-md object-cover" mode="aspectFill" />
+                <view v-else class="w-14 h-14 bg-gray-200 rounded-md flex items-center justify-center">
+                  <text class="iconify text-gray-400" data-icon="mdi:food"></text>
+                </view>
+                <view class="flex-1 min-w-0">
+                  <view class="font-medium text-sm text-gray-800 truncate">{{ sub.name }}</view>
+                  <view class="text-xs text-red-600 mt-1">¥{{ sub.price }}</view>
+                </view>
+                <text class="iconify text-gray-400" data-icon="mdi:chevron-right"></text>
+              </view>
+            </view>
+            <!-- 展开/收起按钮 -->
+            <view
+              v-if="subDishes.length > 3"
+              class="mt-3 text-center"
+            >
+              <view
+                class="inline-block text-sm text-gray-500 py-1 cursor-pointer"
+                @click="isSubDishesExpanded = !isSubDishesExpanded"
+              >
+                {{ isSubDishesExpanded ? '收起' : `展开全部 (${subDishes.length}个)` }}
+                <text class="ml-1 text-xs">{{ isSubDishesExpanded ? '↑' : '↓' }}</text>
+              </view>
+            </view>
           </view>
         </view>
       </view>
 
+      <!-- 分隔线 -->
+      <view class="h-3 bg-gray-50 border-t border-b border-gray-100"></view>
+
       <!-- 评价列表 -->
-      <view class="bg-white p-4 mb-2 rounded-xl shadow-sm mx-4">
+      <view class="bg-white p-4">
         <view class="mb-4">
           <h2 class="text-lg font-semibold text-gray-800">用户评价</h2>
         </view>
@@ -187,7 +229,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { useDishDetail } from '@/pages/dish/composables/use-dish-detail';
 import ReviewList from './components/ReviewList.vue';
@@ -195,6 +237,7 @@ import ReviewForm from './components/ReviewForm.vue';
 import BottomReviewInput from './components/BottomReviewInput.vue';
 import AllCommentsPanel from './components/AllCommentsPanel.vue';
 import RatingBars from './components/RatingBars.vue';
+import { getDishById } from '@/api/modules/dish';
 
 const dishId = ref('');
 const { dish, loading, error, fetchDishDetail } = useDishDetail();
@@ -203,6 +246,16 @@ const reviewListKey = ref(0);
 const isDetailExpanded = ref(false);
 const isAllCommentsPanelVisible = ref(false);
 const currentCommentsReviewId = ref('');
+const subDishes = ref<any[]>([]);
+const isSubDishesExpanded = ref(false);
+
+// 计算显示的子菜品（默认前3个，展开后全部）
+const displayedSubDishes = computed(() => {
+  if (isSubDishesExpanded.value) {
+    return subDishes.value;
+  }
+  return subDishes.value.slice(0, 3);
+});
 
 onLoad((options: any) => {
   if (options.id) {
@@ -210,6 +263,35 @@ onLoad((options: any) => {
     fetchDishDetail(options.id);
   }
 });
+
+// 加载子菜品（如果有）
+const loadSubDishes = async () => {
+  subDishes.value = [];
+  const ids = dish.value?.subDishId || [];
+  if (!ids || ids.length === 0) return;
+
+  try {
+    const promises = ids.map((id: string) => getDishById(id));
+    const results = await Promise.all(promises);
+    const items = results
+      .filter((r: any) => r && r.code === 200 && r.data)
+      .map((r: any) => r.data);
+    subDishes.value = items;
+  } catch (err) {
+    console.error('加载子菜品失败', err);
+  }
+};
+
+// 监听 dish 变化以加载子项
+watch(() => dish.value, (val) => {
+  if (val) loadSubDishes();
+});
+
+// 跳转到子菜品详情
+const goToSubDish = (id: string) => {
+  if (!id) return;
+  uni.navigateTo({ url: `/pages/dish/index?id=${id}` });
+};
 
 const goBack = () => {
   uni.navigateBack();
@@ -221,7 +303,8 @@ const refresh = () => {
   }
 };
 
-const formatMealTime = (mealTimes: string[]) => {
+const formatMealTime = (mealTimes: string[] | undefined) => {
+  if (!mealTimes) return '';
   const timeMap: Record<string, string> = {
     breakfast: '早餐',
     lunch: '午餐',
@@ -315,13 +398,6 @@ swiper-item {
 .detail-section {
   margin-bottom: 12px;
   line-height: 1.5;
-}
-
-.detail-label {
-  font-size: 14px;
-  font-weight: normal;
-  color: #7c3aed;
-  margin-right: 4px;
 }
 
 .detail-text {

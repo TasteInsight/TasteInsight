@@ -7,21 +7,37 @@
       <!-- 食堂栏目 -->
       <view v-if="canteenStore.loading" class="text-center py-4 text-gray-500">正在加载食堂...</view>
       <view v-else-if="canteenStore.error" class="text-center py-4 text-red-500">{{ canteenStore.error }}</view>
-      <view v-else class="flex overflow-x-auto pb-4 hide-scrollbar">
-        <!-- 修正: 直接访问 canteenStore.canteenList -->
-        <CanteenItem
-          v-for="canteen in canteenStore.canteenList"
-          :key="canteen.id"
-          :canteen="canteen"
-          @click="navigateTo(`/pages/canteen/index?id=${canteen.id}`)"
-        />
+      <view v-else>
+        <swiper class="h-32" :current="currentSwiperIndex" @change="handleSwiperChange">
+          <swiper-item v-for="(chunk, index) in canteenChunks" :key="index">
+            <view class="flex items-center justify-between px-4 h-full">
+              <CanteenItem
+                v-for="canteen in chunk"
+                :key="canteen.id"
+                :canteen="canteen"
+                @click="navigateTo(`/pages/canteen/index?id=${canteen.id}`)"
+              />
+              <view v-if="chunk.length < 3" v-for="i in (3 - chunk.length)" :key="'placeholder-'+i" class="w-24"></view>
+            </view>
+          </swiper-item>
+        </swiper>
+        <view class="flex justify-center mt-1 mb-2 space-x-1.5" v-if="canteenChunks.length > 1">
+          <view
+            v-for="(_, index) in canteenChunks"
+            :key="index"
+            class="h-1.5 rounded-full transition-all duration-300"
+            :class="currentSwiperIndex === index ? 'w-1.5 bg-gray-600' : 'w-1.5 bg-gray-300'"
+          ></view>
+        </view>
       </view>
 
-      <FilterBar />
+      <FilterBar @filter-change="handleFilterChange" />
 
       <!-- 菜品列表 -->
-      <view class="text-lg font-semibold text-gray-800 my-4">今日推荐</view>
-      <view v-if="dishesStore.loading" class="text-center py-4 text-gray-500">正在加载推荐菜品...</view>
+      <view class="text-lg font-semibold text-gray-800 my-4">
+        {{ hasActiveFilters ? '筛选结果' : '今日推荐' }}
+      </view>
+      <view v-if="dishesStore.loading" class="text-center py-4 text-gray-500">正在加载菜品...</view>
       <view v-else-if="dishesStore.error" class="text-center py-4 text-red-500">{{ dishesStore.error }}</view>
       <view v-else-if="topThreeDishes.length > 0">
         <RecommendItem
@@ -32,7 +48,7 @@
         />
       </view>
       <view v-else class="text-center py-10 text-gray-500">
-        今天好像没有推荐菜品哦
+        {{ hasActiveFilters ? '没有符合条件的菜品' : '今天好像没有推荐菜品哦' }}
       </view>
     </view>
 
@@ -44,8 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed } from 'vue';
-// import { storeToRefs } from 'pinia'; // <-- 1. 不再需要 storeToRefs
+import { onMounted, computed, ref } from 'vue';
 
 // ... 导入子组件 (保持不变) ...
 import SearchBar from './components/SearchBar.vue';
@@ -67,12 +82,49 @@ const navItems = [ /* ... */ ];
 const canteenStore = useCanteenStore();
 const dishesStore = useDishesStore();
 
+// 当前筛选条件
+const currentFilter = ref<GetDishesRequest['filter']>({});
+
+// 是否有激活的筛选条件
+const hasActiveFilters = computed(() => {
+  return Object.keys(currentFilter.value).length > 0;
+});
+
 // --- 计算属性 ---
 // 3. 计算属性直接从 store 实例中读取 state
 const topThreeDishes = computed(() => {
   return dishesStore.dishes; // 显示所有返回的菜品
 });
 
+const canteenChunks = computed(() => {
+  const list = canteenStore.canteenList || [];
+  const size = 3;
+  const chunks = [];
+  for (let i = 0; i < list.length; i += size) {
+    chunks.push(list.slice(i, i + size));
+  }
+  return chunks;
+});
+
+const currentSwiperIndex = ref(0);
+
+const handleSwiperChange = (e: any) => {
+  currentSwiperIndex.value = e.detail.current;
+};
+
+// 处理筛选变化
+const handleFilterChange = (filter: GetDishesRequest['filter']) => {
+  currentFilter.value = filter;
+  
+  const dishRequestParams: GetDishesRequest = {
+    sort: { field: 'averageRating', order: 'desc' },
+    pagination: { page: 1, pageSize: 20 },
+    filter: filter,
+    search: { keyword: '' },
+  };
+  
+  dishesStore.fetchDishes(dishRequestParams);
+};
 
 // --- 页面导航逻辑 (保持不变) ---
 function handleTabSwitch(item: { path: string }) { /* ... */ }

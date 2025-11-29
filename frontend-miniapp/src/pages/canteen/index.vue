@@ -1,25 +1,18 @@
 <template>
   <view class="min-h-screen bg-white">
     <!-- 搜索栏 -->
-    <view class="px-4 pt-4">
-      <view 
-        class="bg-gray-50 rounded-2xl h-12 border border-gray-200 flex items-center px-4 cursor-pointer"
-        @tap="goToSearch"
-      >
-        <text style="color:#999; margin-right:8px; font-size: 20px;">🔍</text>
-        <text class="text-gray-500 text-sm">搜索食堂或菜品</text>
-      </view>
+    <view class="px-4">
+      <CanteenSearchBar />
     </view>
 
     <CanteenHeader :canteen="canteenInfo" />
-
     
     <!-- 窗口列表 -->
     <CanteenWindowList :windows="windows" @click="goToWindow" />
 
-    
-
-    <CanteenFilterBar :filters="filters" :activeFilter="activeFilter" @toggle="handleToggle" />
+    <view class="px-4">
+      <CanteenFilterBar @filter-change="handleFilterChange" />
+    </view>
 
     <view class="px-4">
       <view v-if="loading" class="text-center py-8 text-gray-500">
@@ -47,28 +40,34 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { useCanteenData } from './composables/use-canteen-data';
-import CanteenHeader from './components/CanteenHeader.vue';
+import CanteenSearchBar from './components/CanteenSearchBar.vue';
 import CanteenFilterBar from './components/CanteenFilterBar.vue';
+import CanteenHeader from './components/CanteenHeader.vue';
 import CanteenDishCard from './components/CanteenDishCard.vue';
 import CanteenWindowList from './components/CanteenWindowList.vue';
+import type { GetDishesRequest } from '@/types/api';
 
-const { canteenInfo, loading, error, windows, dishes, filters, activeFilter, init, toggleFilter } = useCanteenData();
+const { canteenInfo, loading, error, windows, dishes, init, fetchDishes } = useCanteenData();
+
+const currentCanteenId = ref('');
 
 // 页面加载时获取参数并初始化
 onLoad((options: any) => {
   if (options.id) {
+    currentCanteenId.value = options.id;
     init(options.id);
   }
 });
 
-const goToSearch = () => uni.navigateTo({ url: '/pages/search/index' });
 const goToDishDetail = (id: string) => uni.navigateTo({ url: `/pages/dish/index?id=${id}` });
 const goToWindow = (id: string) => uni.navigateTo({ url: `/pages/window/index?id=${id}` });
 
-const handleToggle = (key: string) => {
-  toggleFilter(key);
-  uni.showToast({ title: '筛选功能开发中', icon: 'none' });
+const handleFilterChange = (filter: GetDishesRequest['filter']) => {
+  if (currentCanteenId.value) {
+    fetchDishes(currentCanteenId.value, filter);
+  }
 };
 </script>

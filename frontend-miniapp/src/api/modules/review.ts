@@ -7,7 +7,6 @@ import type {
   PaginationParams,
   ReviewListData,
   ApiResponse,
-  SuccessResponse,
 } from '@/types/api';
 
 /**
@@ -18,7 +17,7 @@ export const getReviewsByDish = (
   params?: PaginationParams
 ): Promise<ApiResponse<ReviewListData>> => {
   return request<ReviewListData>({
-    url: `/reviews/${dishId}`,
+    url: `/dishes/${dishId}/reviews`,
     method: 'GET',
     data: params,
   });

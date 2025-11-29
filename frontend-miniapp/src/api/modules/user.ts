@@ -12,30 +12,11 @@ import type {
   BrowseHistoryItem,
   MyUploadItem,
   Report,
-  MyUserProfileResponse
 } from '@/types/api';
-import { 
-  USE_MOCK,
-  mockWechatLogin,
-  mockGetUserProfile,
-  mockUpdateUserProfile,
-  mockGetMyReviews,
-  mockGetMyFavorites,
-  mockGetBrowseHistory,
-  mockClearBrowseHistory,
-} from '@/mock';
 
-export const wechatLogin = async (
-  code : string
+export const wechatLogin = (
+  code: string
 ): Promise<ApiResponse<LoginData>> => {
-  if (USE_MOCK) {
-    const data = await mockWechatLogin(code);
-    return {
-      code: 200,
-      message: '登录成功',
-      data,
-    };
-  }
   return request<LoginData>({
     url: '/auth/wechat/login',
     method: 'POST',
@@ -46,28 +27,19 @@ export const wechatLogin = async (
 /**
  * @summary 刷新Token
  * @description 使用当前Token刷新获取新Token
- * @returns {Promise<LoginResponse>}
  */
-export const refreshToken = (
-): Promise<ApiResponse<LoginData>> => {
+export const refreshToken = (): Promise<ApiResponse<LoginData>> => {
   return request<LoginData>({
     url: '/auth/refresh',
     method: 'POST',
-    data: { },
+    data: {},
   });
 };
+
 /**
  * 获取用户信息
  */
-export const getUserProfile = async (): Promise<ApiResponse<User>> => {
-  if (USE_MOCK) {
-    const data = await mockGetUserProfile();
-    return {
-      code: 200,
-      message: 'Success',
-      data,
-    };
-  }
+export const getUserProfile = (): Promise<ApiResponse<User>> => {
   return request<User>({
     url: '/user/profile',
     method: 'GET',
@@ -77,18 +49,9 @@ export const getUserProfile = async (): Promise<ApiResponse<User>> => {
 /**
  * 更新用户信息
  */
-export const updateUserProfile = async (
+export const updateUserProfile = (
   profileData: UserProfileUpdateRequest
 ): Promise<ApiResponse<User>> => {
-  if (USE_MOCK) {
-    const data = await mockUpdateUserProfile(profileData);
-    return {
-      code: 200,
-      message: 'Success',
-      data,
-    };
-  }
-  
   return request<User>({
     url: '/user/profile',
     method: 'PUT',
@@ -99,75 +62,46 @@ export const updateUserProfile = async (
 /**
  * 获取我的评价
  */
-export const getMyReviews = async (
+export const getMyReviews = (
   params?: PaginationParams
 ): Promise<ApiResponse<PaginatedData<MyReviewItem>>> => {
-  if (USE_MOCK) {
-    const data = await mockGetMyReviews(params);
-    return {
-      code: 200,
-      message: 'Success',
-      data,
-    };
-  }
   return request<PaginatedData<MyReviewItem>>({
     url: '/user/reviews',
-    method: 'GET',   
+    method: 'GET',
+    data: params,
   });
 };
 
 /**
  * 获取我的收藏
  */
-export const getMyFavorites = async (
+export const getMyFavorites = (
   params?: PaginationParams
 ): Promise<ApiResponse<PaginatedData<Favorite>>> => {
-  if (USE_MOCK) {
-    const data = await mockGetMyFavorites(params);
-    return {
-      code: 200,
-      message: 'Success',
-      data,
-    };
-  }
   return request<PaginatedData<Favorite>>({
     url: '/user/favorites',
     method: 'GET',
+    data: params,
   });
 };
 
 /**
  * 获取浏览历史
  */
-export const getBrowseHistory = async (
+export const getBrowseHistory = (
   params?: PaginationParams
 ): Promise<ApiResponse<PaginatedData<BrowseHistoryItem>>> => {
-  if (USE_MOCK) {
-    const data = await mockGetBrowseHistory(params);
-    return {
-      code: 200,
-      message: 'Success',
-      data,
-    };
-  }
   return request<PaginatedData<BrowseHistoryItem>>({
     url: '/user/history',
     method: 'GET',
+    data: params,
   });
 };
 
 /**
  * 清空浏览历史
  */
-export const clearBrowseHistory = async (): Promise<ApiResponse<null>> => {
-  if (USE_MOCK) {
-    await mockClearBrowseHistory();
-    return {
-      code: 200,
-      message: '清空成功',
-      data: null,
-    };
-  }
+export const clearBrowseHistory = (): Promise<ApiResponse<null>> => {
   return request<null>({
     url: '/user/history',
     method: 'DELETE',

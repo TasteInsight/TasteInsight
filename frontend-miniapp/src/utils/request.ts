@@ -6,8 +6,10 @@ import { useUserStore } from '@/store/modules/use-user-store';
 import config from '@/config';
 // 导入类型定义
 import type { RequestOptions, ApiResponse } from '@/types/api';
-
-
+// 导入 Mock 拦截器
+import { mockInterceptor } from '@/mock/mock-adapter';
+// 初始化 Mock 路由（副作用导入，确保路由被注册）
+import '@/mock/mock-routes';
 
 
 /**
@@ -16,7 +18,14 @@ import type { RequestOptions, ApiResponse } from '@/types/api';
  * @param {RequestOptions} options - 请求配置项
  * @returns {Promise<ApiResponse<T>>} 返回 Promise，resolve 的值是完整的 ApiResponse 对象
  */
-function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>> {
+async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>> {
+  // --- 阶段零: Mock 拦截 ---
+  // 如果开启了 Mock 且匹配到 Mock 路由，直接返回 Mock 数据
+  const mockResponse = await mockInterceptor<T>(options);
+  if (mockResponse !== null) {
+    return mockResponse;
+  }
+
   return new Promise<ApiResponse<T>>((resolve, reject) => {
     
     // --- 阶段一: 请求拦截器 ---

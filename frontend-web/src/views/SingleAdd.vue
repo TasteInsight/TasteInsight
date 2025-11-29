@@ -21,22 +21,26 @@
                   <div class="grid grid-cols-2 gap-4">
                     <div>
                       <label class="block text-sm text-gray-600 mb-1">食堂名称 <span class="text-red-500">*</span></label>
-                      <input 
-                        type="text" 
-                        v-model="formData.canteen" 
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
-                        placeholder="例如：紫荆园"
+                      <select 
+                        v-model="formData.canteenId" 
+                        @change="onCanteenChange"
+                        class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
                         required
                       >
+                        <option value="" disabled>选择食堂</option>
+                        <option v-for="canteen in canteens" :key="canteen.id" :value="canteen.id">
+                          {{ canteen.name }}
+                        </option>
+                      </select>
                     </div>
-                    <div>
-                      <label class="block text-sm text-gray-600 mb-1">食堂楼层 <span class="text-red-500">*</span></label>
+                    <div v-if="formData.floor">
+                      <label class="block text-sm text-gray-600 mb-1">食堂楼层</label>
                       <input 
                         type="text" 
                         v-model="formData.floor" 
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
-                        placeholder="例如：一层、二层"
-                        required
+                        class="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed" 
+                        placeholder="自动填充"
+                        readonly
                       >
                     </div>
                   </div>
@@ -48,21 +52,27 @@
                   <div class="grid grid-cols-2 gap-4">
                     <div>
                       <label class="block text-sm text-gray-600 mb-1">窗口名称 <span class="text-red-500">*</span></label>
-                      <input 
-                        type="text" 
-                        v-model="formData.windowName" 
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
-                        placeholder="例如：川湘风味"
+                      <select 
+                        v-model="formData.windowId" 
+                        @change="onWindowChange"
+                        class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                        :disabled="!formData.canteenId"
                         required
                       >
+                        <option value="" disabled>选择窗口</option>
+                        <option v-for="window in windows" :key="window.id" :value="window.id">
+                          {{ window.name }}
+                        </option>
+                      </select>
                     </div>
                     <div>
                       <label class="block text-sm text-gray-600 mb-1">窗口编号</label>
                       <input 
                         type="text" 
                         v-model="formData.windowNumber" 
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
-                        placeholder="例如：01、A01（可选）"
+                        class="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed" 
+                        placeholder="自动填充"
+                        readonly
                       >
                     </div>
                   </div>
@@ -438,10 +448,11 @@
 </template>
 
 <script>
-import { reactive, ref } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDishStore } from '@/store/modules/use-dish-store';
 import { dishApi } from '@/api/modules/dish';
+import { canteenApi } from '@/api/modules/canteen';
 import Sidebar from '@/components/Layout/Sidebar.vue';
 import Header from '@/components/Layout/Header.vue';
 
@@ -459,10 +470,14 @@ export default {
     const parentDishId = ref(null) // 用于存储父菜品ID（创建父菜品后）
     
     const newTag = ref('')
+    const canteens = ref([])
+    const windows = ref([])
     
     const formData = reactive({
+      canteenId: '',
       canteen: '',
       floor: '',
+      windowId: '',
       windowName: '',
       windowNumber: '',
       name: '',
@@ -484,6 +499,69 @@ export default {
         night: true
       },
       availableDates: []
+    })
+
+    const loadCanteens = async () => {
+      try {
+        const response = await canteenApi.getCanteens({ page: 1, pageSize: 100 })
+        if (response.code === 200 && response.data) {
+          canteens.value = response.data.items || []
+        }
+      } catch (error) {
+        console.error('加载食堂列表失败:', error)
+      }
+    }
+
+    const loadWindows = async (canteenId) => {
+      if (!canteenId) {
+        windows.value = []
+        return
+      }
+      try {
+        const response = await canteenApi.getWindows(canteenId, { page: 1, pageSize: 100 })
+        if (response.code === 200 && response.data) {
+          windows.value = response.data.items || []
+        }
+      } catch (error) {
+        console.error('加载窗口列表失败:', error)
+        windows.value = []
+      }
+    }
+
+    const onCanteenChange = () => {
+      const selectedCanteen = canteens.value.find(c => c.id === formData.canteenId)
+      if (selectedCanteen) {
+        formData.canteen = selectedCanteen.name
+        loadWindows(formData.canteenId)
+      } else {
+        formData.canteen = ''
+        windows.value = []
+      }
+      // 重置窗口选择
+      formData.windowId = ''
+      formData.windowName = ''
+      formData.windowNumber = ''
+      formData.floor = ''
+    }
+
+    const onWindowChange = () => {
+      const selectedWindow = windows.value.find(w => w.id === formData.windowId)
+      if (selectedWindow) {
+        formData.windowName = selectedWindow.name
+        formData.windowNumber = selectedWindow.number
+        // 如果窗口有楼层信息，自动填充（虽然不需要提交，但可能用于展示）
+        if (selectedWindow.floor) {
+           formData.floor = selectedWindow.floor.name || selectedWindow.floor.level || ''
+        }
+      } else {
+        formData.windowName = ''
+        formData.windowNumber = ''
+        formData.floor = ''
+      }
+    }
+
+    onMounted(() => {
+      loadCanteens()
     })
     
     const addSubItem = () => {
@@ -578,8 +656,8 @@ export default {
     
     const submitForm = async () => {
       // 表单验证
-      if (!formData.name || !formData.canteen || !formData.floor || !formData.windowName) {
-        alert('请填写必填字段：菜品名称、食堂名称、食堂楼层、窗口名称')
+      if (!formData.name || !formData.canteen || !formData.windowName) {
+        alert('请填写必填字段：菜品名称、食堂名称、窗口名称')
         return
       }
       
@@ -654,7 +732,6 @@ export default {
         const dishData = {
           name: formData.name,
           canteenName: formData.canteen,
-          floor: formData.floor,
           windowName: formData.windowName,
           windowNumber: formData.windowNumber || formData.windowName, // 如果没有编号，使用窗口名称
           price: dishPrice,
@@ -699,8 +776,10 @@ export default {
     
     const resetForm = () => {
       Object.assign(formData, {
+        canteenId: '',
         canteen: '',
         floor: '',
+        windowId: '',
         windowName: '',
         windowNumber: '',
         name: '',
@@ -725,14 +804,20 @@ export default {
       })
       newTag.value = ''
       imagePreview.value = ''
+      windows.value = [] // Reset windows list
     }
     
     return {
       formData,
+      canteens,
+      windows,
       newTag,
       imagePreview,
       isSubmitting,
       parentDishId,
+      loadCanteens,
+      onCanteenChange,
+      onWindowChange,
       addSubItem,
       removeSubItem,
       updateSubItemName,

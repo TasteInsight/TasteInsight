@@ -130,6 +130,12 @@
 			"style": {
 				"navigationBarTitleText": "我的收藏"
 			}
+		},
+		{
+			"path": "pages/add-dish/index",
+			"style": {
+				"navigationBarTitleText": "添加菜品"
+			}
 		}
 		
 	],

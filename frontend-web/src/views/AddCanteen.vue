@@ -157,6 +157,19 @@
                     >
                   </div>
                   
+                  <!-- 楼层信息 -->
+                  <div class="mb-6">
+                    <label class="block text-gray-700 font-medium mb-2">楼层信息 <span class="text-red-500">*</span></label>
+                    <input 
+                      type="text" 
+                      v-model="formData.floorInput" 
+                      class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
+                      placeholder="例如：一层/二层/B1/地下二层（用/分隔）"
+                      required
+                    >
+                    <p class="text-sm text-gray-500 mt-1">请输入楼层信息，支持格式：一层、1F、B1、地下二层等，多层用"/"分隔</p>
+                  </div>
+                  
                   <!-- 食堂描述 -->
                   <div class="mb-6">
                     <label class="block text-gray-700 font-medium mb-2">食堂描述</label>
@@ -272,7 +285,6 @@
                         type="button" 
                         class="text-tsinghua-purple text-sm flex items-center hover:text-tsinghua-dark"
                         @click="addWindow"
-                        :disabled="!editingCanteen"
                       >
                         <span class="iconify" data-icon="carbon:add-alt"></span>
                         添加窗口
@@ -285,7 +297,7 @@
                         :key="window.id || index"
                         class="flex items-center gap-3 p-3 border rounded-lg bg-gray-50"
                       >
-                        <div class="flex-1 grid grid-cols-2 gap-3">
+                        <div class="flex-1 grid grid-cols-3 gap-3">
                           <div>
                             <label class="block text-xs text-gray-500 mb-1">窗口名称 <span class="text-red-500">*</span></label>
                             <input 
@@ -296,12 +308,21 @@
                             >
                           </div>
                           <div>
+                            <label class="block text-xs text-gray-500 mb-1">窗口所在楼层 <span class="text-red-500">*</span></label>
+                            <input 
+                              type="text" 
+                              v-model="window.floor" 
+                              class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+                              placeholder="例如：一层"
+                            >
+                          </div>
+                          <div>
                             <label class="block text-xs text-gray-500 mb-1">窗口编号</label>
                             <input 
                               type="text" 
                               v-model="window.number" 
                               class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
-                              placeholder="例如：01、A01"
+                              placeholder="例如：01、A01（选填）"
                             >
                           </div>
                         </div>
@@ -315,11 +336,8 @@
                         </button>
                       </div>
                     </div>
-                    <div v-else-if="editingCanteen" class="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
-                      <p>暂无窗口，点击"添加窗口"可以添加新窗口</p>
-                    </div>
                     <div v-else class="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
-                      <p>保存食堂信息后，可以在此添加窗口</p>
+                      <p>点击"添加窗口"可以添加新窗口</p>
                     </div>
                   </div>
                 </div>
@@ -380,6 +398,7 @@ export default {
       description: '',
       image: null,
       imageUrl: '',
+      floorInput: '', // 添加楼层输入字段
       openingHours: []
     })
     
@@ -526,7 +545,7 @@ export default {
     
     // 添加窗口
     const addWindow = () => {
-      windows.value.push({ name: '', number: '', position: '', description: '', tags: [] })
+      windows.value.push({ name: '', number: '', floor: '', position: '', description: '', tags: [] })
     }
     
     // 删除窗口
@@ -554,10 +573,81 @@ export default {
       }
     }
     
+    // 解析楼层
+    const parseFloorLevel = (str) => {
+      const s = str.trim()
+      let multiplier = 1
+      
+      // 处理负数情况（B开头或包含地下）
+      if (s.toUpperCase().startsWith('B') || s.includes('地下')) {
+        multiplier = -1
+      }
+      
+      // 尝试匹配数字
+      const digitMatch = s.match(/\d+/)
+      if (digitMatch) {
+        return parseInt(digitMatch[0]) * multiplier
+      }
+      
+      // 中文数字映射
+      const chineseNumbers = {
+        '一': 1, '二': 2, '三': 3, '四': 4, '五': 5,
+        '1': 1, '2': 2, '3': 3, '4': 4, '5': 5
+      }
+      
+      // 尝试匹配中文数字
+      for (const [key, val] of Object.entries(chineseNumbers)) {
+        if (s.includes(key)) {
+          return val * multiplier
+        }
+      }
+      
+      return null
+    }
+
     const submitForm = async () => {
       // 表单验证
       if (!formData.name || !formData.name.trim()) {
         alert('请填写食堂名称')
+        return
+      }
+      
+      // 验证楼层输入
+      if (!formData.floorInput || !formData.floorInput.trim()) {
+        alert('请填写楼层信息')
+        return
+      }
+
+      // 解析楼层
+      const floorInputs = formData.floorInput.split('/').map(s => s.trim()).filter(s => s)
+      const parsedFloors = []
+      const seenLevels = new Set()
+
+      for (const floorStr of floorInputs) {
+        const level = parseFloorLevel(floorStr)
+        
+        if (level === null) {
+          alert(`无法解析楼层信息: "${floorStr}"`)
+          return
+        }
+        
+        if (level > 5 || level < -2) {
+          alert(`楼层范围必须在 -2 到 5 之间，"${floorStr}" 解析为 ${level} 层，超出范围`)
+          return
+        }
+
+        if (seenLevels.has(level)) {
+           // 允许同名楼层？一般不允许不同名字映射到同一层级，或者允许但提示
+        }
+        seenLevels.add(level)
+        parsedFloors.push({
+          level: level.toString(), // 转换为字符串存储
+          name: floorStr
+        })
+      }
+
+      if (parsedFloors.length === 0) {
+        alert('请至少输入一个有效的楼层')
         return
       }
       
@@ -592,6 +682,7 @@ export default {
         }
         
         // 2. 构建请求数据
+        // 使用解析出的楼层信息，不再从窗口推导
         const requestData = {
           name: formData.name.trim(),
           position: formData.position.trim() || undefined,
@@ -599,11 +690,17 @@ export default {
           images: imageUrls.length > 0 ? imageUrls : undefined,
           openingHours: formData.openingHours && formData.openingHours.length > 0 
             ? formData.openingHours.map(hours => ({
-                day: hours.day,
-                open: hours.open,
-                close: hours.close
+                dayOfWeek: hours.day,
+                slots: [
+                  {
+                    openTime: hours.open,
+                    closeTime: hours.close
+                  }
+                ],
+                isClosed: false
               }))
-            : undefined
+            : undefined,
+          floors: parsedFloors
         }
         
         // 3. 创建或更新食堂
@@ -635,12 +732,30 @@ export default {
               continue // 跳过未填写名称的窗口
             }
             
+            // 解析窗口楼层
+            let windowFloor = undefined
+            if (window.floor && window.floor.trim()) {
+               const level = parseFloorLevel(window.floor)
+               if (level !== null) {
+                 windowFloor = {
+                   level: level.toString(),
+                   name: window.floor.trim()
+                 }
+               }
+            }
+
+            if (!windowFloor) {
+               console.warn(`窗口"${window.name}"无法解析楼层信息"${window.floor}"，跳过保存`)
+               continue
+            }
+            
             try {
               if (window.id) {
                 // 更新窗口
                 await canteenApi.updateWindow(window.id, {
                   name: window.name.trim(),
-                  number: window.number.trim() || undefined,
+                  number: window.number ? window.number.trim() : undefined,
+                  floor: windowFloor,
                   position: window.position || undefined,
                   description: window.description || undefined,
                   tags: window.tags || undefined
@@ -649,7 +764,8 @@ export default {
                 // 创建窗口
                 await canteenApi.createWindow({
                   name: window.name.trim(),
-                  number: window.number.trim() || window.name.trim(),
+                  number: window.number ? window.number.trim() : undefined,
+                  floor: windowFloor,
                   canteenId: canteenId,
                   position: window.position || undefined,
                   description: window.description || undefined,

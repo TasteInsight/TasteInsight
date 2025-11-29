@@ -10,11 +10,13 @@ import { AdminReviewsModule } from './admin-reviews/admin-reviews.module';
 import { AdminCommentsModule } from './admin-comments/admin-comments.module';
 import { AdminCanteensModule } from './admin-canteens/admin-canteens.module';
 import { ConfigModule } from '@nestjs/config';
+import { CanteensModule } from './canteens/canteens.module';
 
 @Module({
   imports: [
     AuthModule,
     DishesModule,
+    CanteensModule,
     AdminDishesModule,
     AdminReviewsModule,
     AdminCommentsModule,

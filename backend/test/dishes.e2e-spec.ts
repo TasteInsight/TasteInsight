@@ -57,8 +57,8 @@ describe('DishesController (e2e)', () => {
       expect(response.body.data).toBeDefined();
       expect(response.body.data.id).toBe(testDishId);
       expect(response.body.data.name).toBe('宫保鸡丁');
-      expect(response.body.data.canteen).toBeDefined();
-      expect(response.body.data.window).toBeDefined();
+      expect(response.body.data.canteenId).toBeDefined();
+      expect(response.body.data.windowId).toBeDefined();
     });
 
     it('should return 404 for non-existent dish', async () => {

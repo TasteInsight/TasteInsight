@@ -1,26 +1,14 @@
-import { Dish } from '@prisma/client';
-import {
-  BaseResponseDto,
-  ErrorDetail,
-  ErrorResponseDto,
-  PaginationMeta,
-  SuccessResponseDto,
-} from '@/common/dto/response.dto';
+import { BaseResponseDto, PaginationMeta } from '@/common/dto/response.dto';
+import { DishDto } from './dish.dto';
 
 // 菜品详情响应
-export class DishResponseDto extends BaseResponseDto<Dish> {}
-
-// 菜品列表响应数据
-export class DishListData {
-  items: Dish[];
-  meta: PaginationMeta;
-}
+export class DishResponseDto extends BaseResponseDto<DishDto> {}
 
 // 菜品列表响应
-export class DishListResponseDto extends BaseResponseDto<DishListData> {}
-
-// 成功响应（用于收藏等操作）
-export { SuccessResponseDto };
+export class DishListResponseDto extends BaseResponseDto<{
+  items: DishDto[];
+  meta: PaginationMeta;
+}> {}
 
 // 上传菜品响应数据
 export class DishUploadData {
