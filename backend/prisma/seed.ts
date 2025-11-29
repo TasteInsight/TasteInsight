@@ -485,6 +485,92 @@ async function main() {
   });
   console.log(`Created pending admin upload`);
 
+  // 9. 创建测试评价用于举报测试
+  const testReviewForReport = await prisma.review.create({
+    data: {
+      dishId: dish1.id,
+      userId: secondaryUser.id,
+      rating: 1,
+      content: '这是一条待举报的评价内容',
+      status: 'approved',
+    },
+  });
+  console.log(`Created test review for report: ${testReviewForReport.id}`);
+
+  // 10. 创建测试评论用于举报测试
+  const testCommentForReport = await prisma.comment.create({
+    data: {
+      reviewId: testReviewForReport.id,
+      userId: secondaryUser.id,
+      content: '这是一条待举报的评论内容',
+      status: 'approved',
+    },
+  });
+  console.log(`Created test comment for report: ${testCommentForReport.id}`);
+
+  // 11. 创建测试举报数据
+  // 待处理的评价举报
+  await prisma.report.create({
+    data: {
+      reporterId: user.id,
+      targetType: 'review',
+      targetId: testReviewForReport.id,
+      reviewId: testReviewForReport.id,
+      type: 'inappropriate',
+      reason: '评价内容不当',
+      status: 'pending',
+    },
+  });
+  console.log(`Created pending review report`);
+
+  // 待处理的评论举报
+  await prisma.report.create({
+    data: {
+      reporterId: user.id,
+      targetType: 'comment',
+      targetId: testCommentForReport.id,
+      commentId: testCommentForReport.id,
+      type: 'spam',
+      reason: '评论为垃圾信息',
+      status: 'pending',
+    },
+  });
+  console.log(`Created pending comment report`);
+
+  // 已处理的举报（用于测试筛选）
+  await prisma.report.create({
+    data: {
+      reporterId: secondaryUser.id,
+      targetType: 'review',
+      targetId: testReviewForReport.id,
+      reviewId: testReviewForReport.id,
+      type: 'false_info',
+      reason: '虚假信息',
+      status: 'approved',
+      handleResult: '内容已删除',
+      handledBy: admin.id,
+      handledAt: new Date(),
+    },
+  });
+  console.log(`Created approved report`);
+
+  // 被拒绝的举报
+  await prisma.report.create({
+    data: {
+      reporterId: secondaryUser.id,
+      targetType: 'comment',
+      targetId: testCommentForReport.id,
+      commentId: testCommentForReport.id,
+      type: 'other',
+      reason: '无效举报',
+      status: 'rejected',
+      handleResult: '举报理由不充分',
+      handledBy: admin.id,
+      handledAt: new Date(),
+    },
+  });
+  console.log(`Created rejected report`);
+
   console.log(`Seeding finished.`);
 }
 
