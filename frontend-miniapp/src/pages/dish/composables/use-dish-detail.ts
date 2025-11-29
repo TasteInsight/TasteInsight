@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 import { getDishById } from '@/api/modules/dish';
-import { getReviewsByDish } from '@/api/modules/review';
-import { getCommentsByReview } from '@/api/modules/comment';
+import { getReviewsByDish, deleteReview } from '@/api/modules/review';
+import { getCommentsByReview, deleteComment } from '@/api/modules/comment';
 import type { Dish, Review, Comment } from '@/types/api';
 
 /**
@@ -179,6 +179,52 @@ export function useDishDetail() {
     }
   };
 
+  /**
+   * 删除评价
+   */
+  const removeReview = async (reviewId: string) => {
+    try {
+      const res = await deleteReview(reviewId);
+      if (res.code === 200) {
+        // 从列表中移除
+        reviews.value = reviews.value.filter(r => r.id !== reviewId);
+        // 更新菜品评价数
+        if (dish.value && dish.value.reviewCount) {
+          dish.value.reviewCount--;
+        }
+        uni.showToast({ title: '删除成功', icon: 'success' });
+      } else {
+        uni.showToast({ title: res.message || '删除失败', icon: 'none' });
+      }
+    } catch (err) {
+      console.error('删除评价失败', err);
+      uni.showToast({ title: '网络错误', icon: 'none' });
+    }
+  };
+
+  /**
+   * 删除评论
+   */
+  const removeComment = async (commentId: string, reviewId: string) => {
+    try {
+      const res = await deleteComment(commentId);
+      if (res.code === 200) {
+        // 从缓存中移除
+        if (reviewComments.value[reviewId]) {
+          const comments = reviewComments.value[reviewId];
+          comments.items = comments.items.filter(c => c.id !== commentId);
+          comments.total--;
+        }
+        uni.showToast({ title: '删除成功', icon: 'success' });
+      } else {
+        uni.showToast({ title: res.message || '删除失败', icon: 'none' });
+      }
+    } catch (err) {
+      console.error('删除评论失败', err);
+      uni.showToast({ title: '网络错误', icon: 'none' });
+    }
+  };
+
   return {
     dish,
     loading,
@@ -196,6 +242,10 @@ export function useDishDetail() {
     loadMoreReviews,
 
     reviewComments,
-    fetchComments
+    fetchComments,
+    
+    removeReview,
+    removeComment
   };
 }
+

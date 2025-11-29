@@ -43,7 +43,14 @@
             <!-- 时间和操作 -->
             <view class="flex justify-between items-center mt-2">
               <view class="text-xs text-gray-400">{{ formatDate(review.createdAt) }}</view>
-              <view class="text-xs text-gray-400 px-2 py-1" @tap.stop="handleReport(review.id)">举报</view>
+              <view class="flex gap-2">
+                <view 
+                  v-if="userStore.userInfo?.id === review.userId"
+                  class="text-xs text-gray-400 px-2 py-1" 
+                  @tap.stop="handleDelete(review.id)"
+                >删除</view>
+                <view class="text-xs text-gray-400 px-2 py-1" @tap.stop="handleReport(review.id)">举报</view>
+              </view>
             </view>
           </view>
         </view>
@@ -94,6 +101,9 @@ import { ref } from 'vue';
 import type { Review, Comment } from '@/types/api';
 import dayjs from 'dayjs';
 import CommentList from './CommentList.vue';
+import { useUserStore } from '@/store/modules/use-user-store';
+
+const userStore = useUserStore();
 
 interface Props {
   dishId: string;
@@ -109,6 +119,7 @@ interface Emits {
   (e: 'viewAllComments', reviewId: string): void;
   (e: 'loadMore'): void;
   (e: 'report', reviewId: string): void;
+  (e: 'delete', reviewId: string): void;
 }
 
 const props = defineProps<Props>();
@@ -135,6 +146,18 @@ const handleViewAllComments = (reviewId: string) => {
 
 const handleReport = (reviewId: string) => {
   emit('report', reviewId);
+};
+
+const handleDelete = (reviewId: string) => {
+  uni.showModal({
+    title: '提示',
+    content: '确定要删除这条评价吗？',
+    success: (res) => {
+      if (res.confirm) {
+        emit('delete', reviewId);
+      }
+    }
+  });
 };
 </script>
 

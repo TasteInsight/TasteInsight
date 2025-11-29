@@ -206,6 +206,7 @@
           @load-more="loadMoreReviews"
           @view-all-comments="showAllCommentsPanel"
           @report="(id) => openReportModal('review', id)"
+          @delete="removeReview"
         />
       </view>
     </view>
@@ -227,6 +228,7 @@
       @close="hideAllCommentsPanel"
       @comment-added="handleCommentAdded"
       @report="(id) => openReportModal('comment', id)"
+      @delete="(id) => removeComment(id, currentCommentsReviewId)"
     />
 
     <!-- 举报弹窗 -->
@@ -270,7 +272,9 @@ const {
   fetchReviews,
   loadMoreReviews,
   reviewComments,
-  fetchComments
+  fetchComments,
+  removeReview,
+  removeComment
 } = useDishDetail();
 
 const {

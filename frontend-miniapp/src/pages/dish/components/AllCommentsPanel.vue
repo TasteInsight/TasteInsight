@@ -42,7 +42,14 @@
                   <text class="text-purple-600 font-semibold text-sm block mb-0.5">{{ comment.userNickname }}</text>
                   <text class="comment-date">{{ formatDate(comment.createdAt) }}</text>
                 </view>
-                <view class="text-xs text-gray-400 ml-2 px-2 py-1" @tap.stop="emit('report', comment.id)">举报</view>
+                <view class="flex gap-2 ml-2">
+                  <view 
+                    v-if="userStore.userInfo?.id === comment.userId"
+                    class="text-xs text-gray-400 px-2 py-1" 
+                    @tap.stop="handleDelete(comment.id)"
+                  >删除</view>
+                  <view class="text-xs text-gray-400 px-2 py-1" @tap.stop="emit('report', comment.id)">举报</view>
+                </view>
               </view>
 
               <!-- 评论内容 -->
@@ -106,6 +113,9 @@ import { ref, onMounted, watch, computed } from 'vue';
 import { getCommentsByReview, createComment } from '@/api/modules/comment';
 import type { Comment } from '@/types/api';
 import dayjs from 'dayjs';
+import { useUserStore } from '@/store/modules/use-user-store';
+
+const userStore = useUserStore();
 
 interface Props {
   reviewId: string;
@@ -116,6 +126,7 @@ interface Emits {
   (e: 'close'): void;
   (e: 'commentAdded'): void;
   (e: 'report', commentId: string): void;
+  (e: 'delete', commentId: string): void;
 }
 
 const props = defineProps<Props>();
@@ -243,6 +254,20 @@ const submitReply = async () => {
 
 const handleClose = () => {
   emit('close');
+};
+
+const handleDelete = (commentId: string) => {
+  uni.showModal({
+    title: '提示',
+    content: '确定要删除这条评论吗？',
+    success: (res) => {
+      if (res.confirm) {
+        emit('delete', commentId);
+        // 乐观更新：直接从列表中移除
+        comments.value = comments.value.filter(c => c.id !== commentId);
+      }
+    }
+  });
 };
 
 const formatDate = (dateString: string) => {
