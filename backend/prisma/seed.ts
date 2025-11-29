@@ -19,13 +19,9 @@ async function main() {
   await prisma.comment.deleteMany({});
   await prisma.review.deleteMany({});
   await prisma.dishUpload.deleteMany({});
-  await prisma.floor.deleteMany({});
-  await prisma.news.deleteMany({});
-  await prisma.operationLog.deleteMany({});
-  await prisma.userPreference.deleteMany({});
-  await prisma.adminPermission.deleteMany({});
   await prisma.dish.deleteMany({});
   await prisma.window.deleteMany({});
+  await prisma.floor.deleteMany({});
   await prisma.canteen.deleteMany({});
   await prisma.user.deleteMany({});
   await prisma.admin.deleteMany({});
