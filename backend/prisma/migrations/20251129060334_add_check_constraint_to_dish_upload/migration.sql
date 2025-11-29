@@ -1,0 +1,2 @@
+-- Add check constraint to ensure either userId or adminId is present
+ALTER TABLE "dish_uploads" ADD CONSTRAINT "dish_uploads_user_or_admin_check" CHECK ("userId" IS NOT NULL OR "adminId" IS NOT NULL);
