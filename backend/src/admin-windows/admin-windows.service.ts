@@ -1,12 +1,85 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
-import { CreateWindowDto } from './dto/create-window.dto';
+import { CreateWindowDto, FloorInputDto } from './dto/create-window.dto';
 import { UpdateWindowDto } from './dto/update-window.dto';
 import { WindowListResponseDto, WindowResponseDto, WindowDto } from './dto/window-response.dto';
+
+// Window 类型定义，用于 mapWindowToDto
+type WindowWithFloor = {
+  id: string;
+  canteenId: string;
+  floorId: string | null;
+  name: string;
+  number: string;
+  position: string | null;
+  description: string | null;
+  tags: string[];
+  floor: {
+    id: string;
+    level: string;
+    name: string | null;
+  } | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 @Injectable()
 export class AdminWindowsService {
   constructor(private prisma: PrismaService) {}
+
+  /**
+   * 将 Window 实体映射为 WindowDto
+   */
+  private mapWindowToDto(window: WindowWithFloor): WindowDto {
+    return {
+      id: window.id,
+      canteenId: window.canteenId,
+      floorId: window.floorId,
+      name: window.name,
+      number: window.number,
+      position: window.position,
+      description: window.description,
+      tags: window.tags,
+      floor: window.floor
+        ? {
+            id: window.floor.id,
+            level: window.floor.level,
+            name: window.floor.name,
+          }
+        : null,
+      createdAt: window.createdAt,
+      updatedAt: window.updatedAt,
+    };
+  }
+
+  /**
+   * 查找或创建楼层
+   */
+  private async findOrCreateFloor(
+    canteenId: string,
+    floor: FloorInputDto,
+  ): Promise<string> {
+    const existingFloor = await this.prisma.floor.findFirst({
+      where: {
+        canteenId,
+        level: floor.level,
+      },
+    });
+
+    if (existingFloor) {
+      return existingFloor.id;
+    }
+
+    // 创建新楼层
+    const newFloor = await this.prisma.floor.create({
+      data: {
+        canteenId,
+        level: floor.level,
+        name: floor.name,
+      },
+    });
+    return newFloor.id;
+  }
 
   async findAllByCanteen(
     canteenId: string,
@@ -36,25 +109,7 @@ export class AdminWindowsService {
       }),
     ]);
 
-    const items: WindowDto[] = windows.map((window) => ({
-      id: window.id,
-      canteenId: window.canteenId,
-      floorId: window.floorId,
-      name: window.name,
-      number: window.number,
-      position: window.position,
-      description: window.description,
-      tags: window.tags,
-      floor: window.floor
-        ? {
-            id: window.floor.id,
-            level: window.floor.level,
-            name: window.floor.name,
-          }
-        : null,
-      createdAt: window.createdAt,
-      updatedAt: window.updatedAt,
-    }));
+    const items: WindowDto[] = windows.map((window) => this.mapWindowToDto(window));
 
     return {
       code: 200,
@@ -82,31 +137,8 @@ export class AdminWindowsService {
       throw new NotFoundException('食堂不存在');
     }
 
-    let floorId: string | null = null;
-
     // 如果提供了楼层信息，查找或创建楼层
-    if (floor) {
-      const existingFloor = await this.prisma.floor.findFirst({
-        where: {
-          canteenId,
-          level: floor.level,
-        },
-      });
-
-      if (existingFloor) {
-        floorId = existingFloor.id;
-      } else {
-        // 创建新楼层
-        const newFloor = await this.prisma.floor.create({
-          data: {
-            canteenId,
-            level: floor.level,
-            name: floor.name,
-          },
-        });
-        floorId = newFloor.id;
-      }
-    }
+    const floorId = floor ? await this.findOrCreateFloor(canteenId, floor) : null;
 
     const window = await this.prisma.window.create({
       data: {
@@ -126,25 +158,7 @@ export class AdminWindowsService {
     return {
       code: 200,
       message: 'success',
-      data: {
-        id: window.id,
-        canteenId: window.canteenId,
-        floorId: window.floorId,
-        name: window.name,
-        number: window.number,
-        position: window.position,
-        description: window.description,
-        tags: window.tags,
-        floor: window.floor
-          ? {
-              id: window.floor.id,
-              level: window.floor.level,
-              name: window.floor.name,
-            }
-          : null,
-        createdAt: window.createdAt,
-        updatedAt: window.updatedAt,
-      },
+      data: this.mapWindowToDto(window),
     };
   }
 
@@ -159,31 +173,10 @@ export class AdminWindowsService {
       throw new NotFoundException('窗口不存在');
     }
 
-    let floorId: string | null = existingWindow.floorId;
-
-    // 如果提供了楼层信息，查找或创建楼层
-    if (floor) {
-      const existingFloor = await this.prisma.floor.findFirst({
-        where: {
-          canteenId: existingWindow.canteenId,
-          level: floor.level,
-        },
-      });
-
-      if (existingFloor) {
-        floorId = existingFloor.id;
-      } else {
-        // 创建新楼层
-        const newFloor = await this.prisma.floor.create({
-          data: {
-            canteenId: existingWindow.canteenId,
-            level: floor.level,
-            name: floor.name,
-          },
-        });
-        floorId = newFloor.id;
-      }
-    }
+    // 如果提供了楼层信息，查找或创建楼层；否则保持原有楼层
+    const floorId = floor
+      ? await this.findOrCreateFloor(existingWindow.canteenId, floor)
+      : existingWindow.floorId;
 
     const window = await this.prisma.window.update({
       where: { id },
@@ -203,25 +196,7 @@ export class AdminWindowsService {
     return {
       code: 200,
       message: 'success',
-      data: {
-        id: window.id,
-        canteenId: window.canteenId,
-        floorId: window.floorId,
-        name: window.name,
-        number: window.number,
-        position: window.position,
-        description: window.description,
-        tags: window.tags,
-        floor: window.floor
-          ? {
-              id: window.floor.id,
-              level: window.floor.level,
-              name: window.floor.name,
-            }
-          : null,
-        createdAt: window.createdAt,
-        updatedAt: window.updatedAt,
-      },
+      data: this.mapWindowToDto(window),
     };
   }
 
