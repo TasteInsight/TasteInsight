@@ -219,6 +219,33 @@ describe('AdminReportsController (e2e)', () => {
       expect(deletedReview?.deletedAt).toBeDefined();
     });
 
+    it('should handle delete_content gracefully when content is already deleted', async () => {
+      // 先软删除评价
+      await prisma.review.update({
+        where: { id: testReviewId },
+        data: { deletedAt: new Date() },
+      });
+
+      // 然后尝试处理举报
+      const response = await request(app.getHttpServer())
+        .post(`/admin/reports/${testReportId}/handle`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          action: 'delete_content',
+          result: '内容已删除',
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.message).toBe('处理成功');
+
+      // 验证举报状态仍然被正确更新
+      const updatedReport = await prisma.report.findUnique({
+        where: { id: testReportId },
+      });
+      expect(updatedReport?.status).toBe('approved');
+    });
+
     it('should handle report with warn_user action', async () => {
       const response = await request(app.getHttpServer())
         .post(`/admin/reports/${testReportId}/handle`)

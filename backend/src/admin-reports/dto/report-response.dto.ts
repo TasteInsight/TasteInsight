@@ -29,6 +29,7 @@ export class ReportItemData {
     content: string | null;
     userId: string;
     userNickname: string;
+    isDeleted: boolean; // 标记内容是否已被软删除
   };
 }
 

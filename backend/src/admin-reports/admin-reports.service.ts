@@ -42,6 +42,7 @@ export class AdminReportsService {
             select: {
               content: true,
               userId: true,
+              deletedAt: true,
               user: {
                 select: {
                   nickname: true,
@@ -53,6 +54,7 @@ export class AdminReportsService {
             select: {
               content: true,
               userId: true,
+              deletedAt: true,
               user: {
                 select: {
                   nickname: true,
@@ -73,12 +75,14 @@ export class AdminReportsService {
           content: report.review.content,
           userId: report.review.userId,
           userNickname: report.review.user.nickname,
+          isDeleted: report.review.deletedAt !== null,
         };
       } else if (report.targetType === 'comment' && report.comment) {
         targetContent = {
           content: report.comment.content,
           userId: report.comment.userId,
           userNickname: report.comment.user.nickname,
+          isDeleted: report.comment.deletedAt !== null,
         };
       }
 
@@ -154,18 +158,27 @@ export class AdminReportsService {
           },
         });
 
-        // 软删除被举报的内容
+        // 软删除被举报的内容（如果尚未被删除）
         if (report.targetType === 'review' && report.reviewId) {
-          await this.prisma.review.update({
+          const review = await this.prisma.review.findUnique({
             where: { id: report.reviewId },
-            data: { deletedAt: new Date() },
           });
+          if (review && !review.deletedAt) {
+            await this.prisma.review.update({
+              where: { id: report.reviewId },
+              data: { deletedAt: new Date() },
+            });
+          }
         } else if (report.targetType === 'comment' && report.commentId) {
-          // 软删除评论
-          await this.prisma.comment.update({
+          const comment = await this.prisma.comment.findUnique({
             where: { id: report.commentId },
-            data: { deletedAt: new Date() },
           });
+          if (comment && !comment.deletedAt) {
+            await this.prisma.comment.update({
+              where: { id: report.commentId },
+              data: { deletedAt: new Date() },
+            });
+          }
         }
         break;
 
