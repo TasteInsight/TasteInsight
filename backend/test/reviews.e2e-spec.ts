@@ -3,6 +3,7 @@ import request from 'supertest';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '@/app.module';
 import { PrismaService } from '@/prisma.service';
+import { afterEach } from 'node:test';
 
 describe('ReviewsController (e2e)', () => {
   let app: INestApplication;
@@ -306,6 +307,17 @@ describe('ReviewsController (e2e)', () => {
         .delete(`/reviews/${reviewIdToDelete}`)
         .set('Authorization', `Bearer ${otherToken}`)
         .expect(403);
+    });
+    afterEach(async () => {
+      // 清理测试数据
+      if (reviewIdToDelete) {
+        await prisma.report.deleteMany({
+          where: { reviewId: reviewIdToDelete },
+        });
+        await prisma.review.deleteMany({
+          where: { id: reviewIdToDelete },
+        });
+      }
     });
   });
 });

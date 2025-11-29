@@ -5,13 +5,16 @@ import {
   Max,
   IsOptional,
   IsArray,
+  IsNotEmpty,
 } from 'class-validator';
 
 export class CreateReviewDto {
   @IsString()
+  @IsNotEmpty()
   dishId: string;
 
   @IsInt()
+  @IsNotEmpty()
   @Min(1)
   @Max(5)
   rating: number;
