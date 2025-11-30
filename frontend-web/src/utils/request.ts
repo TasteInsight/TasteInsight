@@ -75,7 +75,11 @@ service.interceptors.response.use(
       const { status, data } = error.response
       
       // 401 未授权 - 尝试刷新 token
-      if (status === 401 && !originalRequest._retry) {
+      // 排除登录接口，登录接口的 401 是账号密码错误，不需要刷新 token
+      // 检查 URL 是否包含 login，或者是否是 admin/login
+      const isLoginRequest = originalRequest.url?.includes('/login') || originalRequest.url?.includes('login');
+      
+      if (status === 401 && !originalRequest._retry && !isLoginRequest) {
         if (isRefreshing) {
           // 如果正在刷新 token，将请求放入队列
           return new Promise((resolve, reject) => {
