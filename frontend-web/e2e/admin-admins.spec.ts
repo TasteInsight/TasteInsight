@@ -14,17 +14,6 @@ function generateUsername(prefix: string = 'e2e'): string {
 }
 
 /**
- * Helper function to login with a specific account
- */
-async function loginWithAccount(page: any, username: string, password: string) {
-  await page.goto('/login');
-  await page.fill('input#username', username);
-  await page.fill('input#password', password);
-  await page.click('button[type="submit"]');
-  await page.waitForURL('**/single-add', { timeout: 10000 });
-}
-
-/**
  * Helper function to clean up test sub-admins created during tests
  */
 async function cleanupTestAdmins(apiRequest: APIRequestContext) {
@@ -43,9 +32,9 @@ async function cleanupTestAdmins(apiRequest: APIRequestContext) {
 
     if (response.ok()) {
       const data = await response.json();
-      // Match test usernames: e2e_XXXXXX, ui_XXXXXX, api_XXXXXX, mgr_XXXXXX
+      // Match test usernames with all prefixes used in tests
       const testAdmins = data.data.items.filter((a: any) =>
-        /^(e2e|ui|api|mgr|dup|del|upd|perm)_\d+$/.test(a.username)
+        /^(e2e|ui|api|mgr|dup|del|upd|perm|weak|unauth|delu|mown|ssub)_\d+$/.test(a.username)
       );
 
       for (const admin of testAdmins) {
