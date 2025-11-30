@@ -1,16 +1,32 @@
-import { Page, expect, APIRequestContext } from '@playwright/test';
+import { Page, APIRequestContext } from '@playwright/test';
 import dotenv from 'dotenv';
 
 // Load environment variables from .env file
 dotenv.config({ path: '.env' });
 
 // Test accounts from seed_docker.ts
+// Using environment variables with fallback to default test credentials
 export const TEST_ACCOUNTS = {
-  superAdmin: { username: 'testadmin', password: 'password123' },
-  normalAdmin: { username: 'normaladmin', password: 'admin123' },  // dish:view only
-  limitedAdmin: { username: 'limitedadmin', password: 'limited123' },  // dish:view + dish:edit
-  canteenAdmin: { username: 'canteenadmin', password: 'canteen123' },  // All dish perms but only for canteen1
-  reviewerAdmin: { username: 'revieweradmin', password: 'reviewer123' },  // upload:approve, review:approve, comment:approve
+  superAdmin: { 
+    username: process.env.TEST_SUPER_ADMIN_USER || 'testadmin', 
+    password: process.env.TEST_SUPER_ADMIN_PASS || 'password123' 
+  },
+  normalAdmin: { 
+    username: process.env.TEST_NORMAL_ADMIN_USER || 'normaladmin', 
+    password: process.env.TEST_NORMAL_ADMIN_PASS || 'admin123' 
+  },  // dish:view only
+  limitedAdmin: { 
+    username: process.env.TEST_LIMITED_ADMIN_USER || 'limitedadmin', 
+    password: process.env.TEST_LIMITED_ADMIN_PASS || 'limited123' 
+  },  // dish:view + dish:edit
+  canteenAdmin: { 
+    username: process.env.TEST_CANTEEN_ADMIN_USER || 'canteenadmin', 
+    password: process.env.TEST_CANTEEN_ADMIN_PASS || 'canteen123' 
+  },  // All dish perms but only for canteen1
+  reviewerAdmin: { 
+    username: process.env.TEST_REVIEWER_ADMIN_USER || 'revieweradmin', 
+    password: process.env.TEST_REVIEWER_ADMIN_PASS || 'reviewer123' 
+  },  // upload:approve, review:approve, comment:approve
 };
 
 export async function loginAsAdmin(page: Page) {
@@ -32,8 +48,8 @@ export async function loginWithAccount(page: Page, username: string, password: s
   await page.fill('input#username', username);
   await page.fill('input#password', password);
   await page.click('button[type="submit"]');
-  // Wait for redirect - may go to single-add or stay on login if failed
-  await page.waitForTimeout(2000);
+  // Wait for either success redirect or error message
+  await page.waitForURL(/\/(single-add|login)/, { timeout: 5000 });
 }
 
 /**
@@ -56,10 +72,10 @@ export async function getApiToken(request: APIRequestContext, username: string, 
 }
 
 /**
- * Logout current user
+ * Clear local authentication state (does not call logout API)
+ * This only clears browser storage and redirects to login page
  */
-export async function logout(page: Page) {
-  // Clear session storage
+export async function clearAuthState(page: Page) {
   await page.evaluate(() => {
     sessionStorage.clear();
     localStorage.clear();

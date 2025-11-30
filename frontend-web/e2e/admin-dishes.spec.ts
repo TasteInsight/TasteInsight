@@ -1,5 +1,8 @@
 import { test, expect, request } from '@playwright/test';
-import { loginAsAdmin, loginWithAccount, getApiToken, logout, TEST_ACCOUNTS } from './utils';
+import { loginAsAdmin, getApiToken, TEST_ACCOUNTS } from './utils';
+
+// API base URL for direct API calls
+const baseURL = process.env.VITE_API_BASE_URL || 'http://localhost:3000/';
 
 test.describe('Admin Dish Management', () => {
   let createdDishId: string;
@@ -11,7 +14,6 @@ test.describe('Admin Dish Management', () => {
   test.afterEach(async ({ request }) => {
     if (createdDishId) {
       try {
-        const baseURL = process.env.VITE_API_BASE_URL || 'http://localhost:3000/';
         // Login to get token
         const loginResponse = await request.post(`${baseURL}auth/admin/login`, {
           data: {
@@ -149,8 +151,6 @@ test.describe('Admin Dish Management', () => {
  * These tests verify that permission controls work correctly
  */
 test.describe('Admin Dish Permission Control (API)', () => {
-  const baseURL = process.env.VITE_API_BASE_URL || 'http://localhost:3000/';
-  
   test('normalAdmin (view only) should be able to GET dishes', async ({ request }) => {
     const token = await getApiToken(request, TEST_ACCOUNTS.normalAdmin.username, TEST_ACCOUNTS.normalAdmin.password);
     expect(token).toBeTruthy();
@@ -190,7 +190,12 @@ test.describe('Admin Dish Permission Control (API)', () => {
       headers: { 'Authorization': `Bearer ${superToken}` }
     });
     const dishes = await dishesResponse.json();
-    const testDishId = dishes.data.items[0]?.id;
+    
+    // Ensure test data exists - this test requires at least one dish in the database
+    if (!dishes.data.items || dishes.data.items.length === 0) {
+      throw new Error('Test requires at least one dish in seed data');
+    }
+    const testDishId = dishes.data.items[0].id;
     expect(testDishId).toBeTruthy();
 
     // Now try to edit with normalAdmin
@@ -340,8 +345,6 @@ test.describe('Admin Dish Permission Control (API)', () => {
  * Canteen Admin Permission Tests - Scoped access
  */
 test.describe('Canteen Admin Scoped Access (API)', () => {
-  const baseURL = process.env.VITE_API_BASE_URL || 'http://localhost:3000/';
-
   test('canteenAdmin should only see dishes from their canteen', async ({ request }) => {
     const token = await getApiToken(request, TEST_ACCOUNTS.canteenAdmin.username, TEST_ACCOUNTS.canteenAdmin.password);
     expect(token).toBeTruthy();
@@ -365,19 +368,10 @@ test.describe('Canteen Admin Scoped Access (API)', () => {
   });
 
   test('canteenAdmin should NOT be able to create dish for other canteen', async ({ request }) => {
-    // First get the canteen2 window ID using super admin
-    const superToken = await getApiToken(request, TEST_ACCOUNTS.superAdmin.username, TEST_ACCOUNTS.superAdmin.password);
+    // This test verifies that canteenAdmin (bound to 第一食堂) cannot create dishes for 第二食堂
+    // We test by specifying canteenName directly - no need to find existing canteen2 dishes
     
-    // Get dishes from canteen2 to find window info
-    const dishesResponse = await request.get(`${baseURL}admin/dishes`, {
-      headers: { 'Authorization': `Bearer ${superToken}` }
-    });
-    const dishes = await dishesResponse.json();
-    
-    // Find a dish from 第二食堂
-    const canteen2Dish = dishes.data.items.find((d: any) => d.canteenName === '第二食堂');
-    
-    // Now try to create with canteenAdmin (who is bound to 第一食堂)
+    // Try to create with canteenAdmin (who is bound to 第一食堂)
     const token = await getApiToken(request, TEST_ACCOUNTS.canteenAdmin.username, TEST_ACCOUNTS.canteenAdmin.password);
     expect(token).toBeTruthy();
     
@@ -432,8 +426,6 @@ test.describe('Canteen Admin Scoped Access (API)', () => {
  * Input Validation Tests
  */
 test.describe('Dish Creation Validation (API)', () => {
-  const baseURL = process.env.VITE_API_BASE_URL || 'http://localhost:3000/';
-
   test('should fail when creating dish without required fields', async ({ request }) => {
     const token = await getApiToken(request, TEST_ACCOUNTS.superAdmin.username, TEST_ACCOUNTS.superAdmin.password);
     expect(token).toBeTruthy();
@@ -488,8 +480,6 @@ test.describe('Dish Creation Validation (API)', () => {
  * Unauthorized Access Tests
  */
 test.describe('Unauthorized Access (API)', () => {
-  const baseURL = process.env.VITE_API_BASE_URL || 'http://localhost:3000/';
-
   test('should return 401 when accessing dishes without token', async ({ request }) => {
     const response = await request.get(`${baseURL}admin/dishes`);
     expect(response.status()).toBe(401);
