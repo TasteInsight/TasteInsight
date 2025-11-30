@@ -31,6 +31,9 @@ export const createMockUser = (): User => ({
     avoidIngredients: [],
     favoriteIngredients: [],
   },
+  myFavoriteDishes: ['dish_001', 'dish_003', 'dish_005'],
+  myReviews: [],
+  myComments: [],
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 });

@@ -225,3 +225,64 @@ export const mockClearBrowseHistory = async (): Promise<void> => {
     console.error('❌ [Mock] 清空历史失败:', e);
   }
 };
+
+// 添加收藏
+export const mockAddFavorite = async (dishId: string): Promise<void> => {
+  console.log('⭐ [Mock] 添加收藏:', dishId);
+  await mockDelay();
+  
+  try {
+    // 更新收藏列表
+    const storedFavorites = uni.getStorageSync(STORAGE_KEYS.FAVORITES) || [];
+    const exists = storedFavorites.some((f: Favorite) => f.dishId === dishId);
+    
+    if (!exists) {
+      const newFavorite: Favorite = {
+        dishId,
+        addedAt: new Date().toISOString(),
+      };
+      storedFavorites.unshift(newFavorite);
+      uni.setStorageSync(STORAGE_KEYS.FAVORITES, storedFavorites);
+    }
+    
+    // 同时更新用户信息中的 myFavoriteDishes
+    const user = getMockUserFromStorage();
+    if (!user.myFavoriteDishes) {
+      user.myFavoriteDishes = [];
+    }
+    if (!user.myFavoriteDishes.includes(dishId)) {
+      user.myFavoriteDishes.push(dishId);
+      saveMockUserToStorage(user);
+    }
+    
+    console.log('✅ [Mock] 收藏成功');
+  } catch (e) {
+    console.error('❌ [Mock] 添加收藏失败:', e);
+    throw e;
+  }
+};
+
+// 取消收藏
+export const mockRemoveFavorite = async (dishId: string): Promise<void> => {
+  console.log('⭐ [Mock] 取消收藏:', dishId);
+  await mockDelay();
+  
+  try {
+    // 更新收藏列表
+    const storedFavorites = uni.getStorageSync(STORAGE_KEYS.FAVORITES) || [];
+    const filteredFavorites = storedFavorites.filter((f: Favorite) => f.dishId !== dishId);
+    uni.setStorageSync(STORAGE_KEYS.FAVORITES, filteredFavorites);
+    
+    // 同时更新用户信息中的 myFavoriteDishes
+    const user = getMockUserFromStorage();
+    if (user.myFavoriteDishes) {
+      user.myFavoriteDishes = user.myFavoriteDishes.filter(id => id !== dishId);
+      saveMockUserToStorage(user);
+    }
+    
+    console.log('✅ [Mock] 取消收藏成功');
+  } catch (e) {
+    console.error('❌ [Mock] 取消收藏失败:', e);
+    throw e;
+  }
+};

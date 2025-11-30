@@ -35,6 +35,8 @@ import {
   mockGetMyReviews,
   mockGetMyFavorites,
   mockGetBrowseHistory,
+  mockAddFavorite,
+  mockRemoveFavorite,
 } from './services/user';
 
 // ============================================
@@ -141,6 +143,24 @@ registerMockRoute('POST', '/dishes', async (url, options) => {
   const params = options.data as any;
   const data = await mockGetDishes(params);
   return mockSuccess(data);
+});
+
+// POST /dishes/:dishId/favorite - 收藏菜品
+registerMockRoute('POST', '/dishes/:dishId/favorite', async (url) => {
+  const match = url.match(/\/dishes\/([^/]+)\/favorite/);
+  const dishId = match?.[1] || '';
+  
+  await mockAddFavorite(dishId);
+  return mockSuccess(null);
+});
+
+// DELETE /dishes/:dishId/favorite - 取消收藏菜品
+registerMockRoute('DELETE', '/dishes/:dishId/favorite', async (url) => {
+  const match = url.match(/\/dishes\/([^/]+)\/favorite/);
+  const dishId = match?.[1] || '';
+  
+  await mockRemoveFavorite(dishId);
+  return mockSuccess(null);
 });
 
 // ============================================

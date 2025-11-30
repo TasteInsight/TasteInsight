@@ -1,7 +1,8 @@
-import { ref } from 'vue';
-import { getDishById } from '@/api/modules/dish';
+import { ref, computed } from 'vue';
+import { getDishById, favoriteDish, unfavoriteDish } from '@/api/modules/dish';
 import { getReviewsByDish, deleteReview } from '@/api/modules/review';
 import { getCommentsByReview, deleteComment } from '@/api/modules/comment';
+import { useUserStore } from '@/store/modules/use-user-store';
 import type { Dish, Review, Comment } from '@/types/api';
 
 /**
@@ -31,6 +32,16 @@ export function useDishDetail() {
     total: number, 
     loading: boolean 
   }>>({});
+
+  // --- 收藏状态 ---
+  const userStore = useUserStore();
+  const favoriteLoading = ref(false);
+  
+  // 计算当前菜品是否已收藏
+  const isFavorited = computed(() => {
+    if (!dish.value?.id || !userStore.userInfo?.myFavoriteDishes) return false;
+    return userStore.userInfo.myFavoriteDishes.includes(dish.value.id);
+  });
 
   /**
    * 获取菜品详情
@@ -225,6 +236,52 @@ export function useDishDetail() {
     }
   };
 
+  /**
+   * 切换收藏状态
+   */
+  const toggleFavorite = async () => {
+    if (!dish.value?.id) return;
+    if (!userStore.isLoggedIn) {
+      uni.showToast({ title: '请先登录', icon: 'none' });
+      return;
+    }
+    if (favoriteLoading.value) return;
+
+    favoriteLoading.value = true;
+    const dishId = dish.value.id;
+
+    try {
+      if (isFavorited.value) {
+        // 取消收藏
+        const res = await unfavoriteDish(dishId);
+        if (res.code === 200) {
+          // 更新本地用户信息
+          const newFavorites = (userStore.userInfo?.myFavoriteDishes || []).filter(id => id !== dishId);
+          userStore.updateLocalUserInfo({ myFavoriteDishes: newFavorites });
+          uni.showToast({ title: '已取消收藏', icon: 'none' });
+        } else {
+          uni.showToast({ title: res.message || '操作失败', icon: 'none' });
+        }
+      } else {
+        // 添加收藏
+        const res = await favoriteDish(dishId);
+        if (res.code === 200) {
+          // 更新本地用户信息
+          const newFavorites = [...(userStore.userInfo?.myFavoriteDishes || []), dishId];
+          userStore.updateLocalUserInfo({ myFavoriteDishes: newFavorites });
+          uni.showToast({ title: '收藏成功', icon: 'success' });
+        } else {
+          uni.showToast({ title: res.message || '操作失败', icon: 'none' });
+        }
+      }
+    } catch (err) {
+      console.error('收藏操作失败', err);
+      uni.showToast({ title: '网络错误', icon: 'none' });
+    } finally {
+      favoriteLoading.value = false;
+    }
+  };
+
   return {
     dish,
     loading,
@@ -245,7 +302,11 @@ export function useDishDetail() {
     fetchComments,
     
     removeReview,
-    removeComment
+    removeComment,
+    
+    isFavorited,
+    favoriteLoading,
+    toggleFavorite
   };
 }
 

@@ -1,88 +1,67 @@
 <template>
-  <!-- 底部评价输入框，类似tabBar设计 -->
-  <view class="bottom-review-input">
-    <view class="review-input-container">
-      <view
-        class="review-input-box"
-        @click="handleInputClick"
+  <!-- 底部操作栏，包含评价和收藏两个功能 -->
+  <view class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[1000] shadow-[0_-2px_8px_rgba(0,0,0,0.1)]"
+    :style="{ paddingBottom: 'env(safe-area-inset-bottom)' }">
+    <view class="flex items-center justify-around h-[55px] px-4">
+      <!-- 写评价按钮 -->
+      <view 
+        role="button"
+        aria-label="写评价"
+        class="flex flex-col items-center justify-center flex-1 cursor-pointer transition-all duration-200 active:scale-95"
+        @click="handleReviewClick"
       >
-        <text class="input-placeholder">写下你的评价...</text>
+        <text class="text-xl text-gray-600" aria-hidden="true">✎</text>
+        <text class="text-xs text-gray-500">写评价</text>
+      </view>
+
+      <!-- 分隔线 -->
+      <view class="w-px h-8 bg-gray-200" aria-hidden="true"></view>
+
+      <!-- 收藏按钮 -->
+      <view 
+        role="button"
+        :aria-label="isFavorited ? '取消收藏' : '收藏此菜品'"
+        :aria-pressed="isFavorited"
+        class="flex flex-col items-center justify-center flex-1 cursor-pointer transition-all duration-200"
+        :class="favoriteLoading ? 'opacity-50' : 'active:scale-95'"
+        @click="handleFavoriteClick"
+      >
+        <text 
+          class="text-xl"
+          :class="isFavorited ? 'text-yellow-400' : 'text-gray-400'"
+          aria-hidden="true"
+        >{{ isFavorited ? '★' : '☆' }}</text>
+        <text class="text-xs" :class="isFavorited ? 'text-yellow-500' : 'text-gray-500'">
+          {{ isFavorited ? '已收藏' : '收藏' }}
+        </text>
       </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-interface Emits {
-  (e: 'click'): void;
+interface Props {
+  isFavorited: boolean;
+  favoriteLoading: boolean;
 }
 
+interface Emits {
+  (e: 'review'): void;
+  (e: 'favorite'): void;
+}
+
+defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-const handleInputClick = () => {
-  emit('click');
+const handleReviewClick = () => {
+  emit('review');
+};
+
+const handleFavoriteClick = () => {
+  emit('favorite');
 };
 </script>
 
 <style scoped>
-.bottom-review-input {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background-color: #ffffff;
-  border-top: 1px solid #e5e5e5;
-  padding: 8px 12px;
-  padding-bottom: calc(8px + env(safe-area-inset-bottom));
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
-}
-
-.review-input-container {
-  max-width: 100%;
-}
-
-.review-input-box {
-  display: flex;
-  align-items: center;
-  background-color: #f5f5f5;
-  border: 1px solid #e0e0e0;
-  border-radius: 3px;
-  padding: 8px 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.review-input-box:active {
-  background-color: #ebebeb;
-  transform: scale(0.98);
-}
-
-.input-placeholder {
-  flex: 1;
-  color: #999999;
-  font-size: 12px;
-  margin-right: 8px;
-}
-
-.input-icon {
-  font-size: 16px;
-  color: #666666;
-}
-
-/* 适配不同屏幕尺寸 */
-@media (max-width: 375px) {
-  .bottom-review-input {
-    padding: 6px 10px;
-    padding-bottom: calc(6px + env(safe-area-inset-bottom));
-  }
-
-  .review-input-box {
-    padding: 6px 10px;
-  }
-
-  .input-placeholder {
-    font-size: 13px;
-  }
-}
+/* Tailwind utilities are used for styling */
 </style>

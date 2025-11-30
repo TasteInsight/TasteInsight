@@ -78,7 +78,7 @@
             </view>
           </view>
           <view class="text-right mt-2">
-            <view class="text-lg font-bold text-orange-500">¥{{ dish.price }}</view>
+            <view class="text-lg font-bold text-orange-500">¥{{ dish.price }}{{ dish.priceUnit ? `/${dish.priceUnit}` : '' }}</view>
           </view>
         </view>
 
@@ -237,17 +237,20 @@
       @submit="submitReport"
     />
 
-    <!-- 底部评价输入框 -->
+    <!-- 底部操作栏 -->
     <BottomReviewInput
       v-if="dish && !isAllCommentsPanelVisible"
-      @click="showQuickReviewForm"
+      :is-favorited="isFavorited"
+      :favorite-loading="favoriteLoading"
+      @review="showQuickReviewForm"
+      @favorite="toggleFavorite"
     />
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { onLoad } from '@dcloudio/uni-app';
+import { onLoad, onBackPress } from '@dcloudio/uni-app';
 import { useDishDetail } from '@/pages/dish/composables/use-dish-detail';
 import ReviewList from './components/ReviewList.vue';
 import ReviewForm from './components/ReviewForm.vue';
@@ -273,7 +276,10 @@ const {
   reviewComments,
   fetchComments,
   removeReview,
-  removeComment
+  removeComment,
+  isFavorited,
+  favoriteLoading,
+  toggleFavorite
 } = useDishDetail();
 
 const {
@@ -288,6 +294,24 @@ const isDetailExpanded = ref(false);
 const isAllCommentsPanelVisible = ref(false);
 const currentCommentsReviewId = ref('');
 const isSubDishesExpanded = ref(false);
+
+// 拦截返回键，如果有弹窗打开则关闭弹窗而不是返回上一页
+onBackPress(() => {
+  if (isReviewFormVisible.value) {
+    isReviewFormVisible.value = false;
+    return true;
+  }
+  if (isAllCommentsPanelVisible.value) {
+    isAllCommentsPanelVisible.value = false;
+    currentCommentsReviewId.value = '';
+    return true;
+  }
+  if (isReportVisible.value) {
+    closeReportModal();
+    return true;
+  }
+  return false;
+});
 
 // 计算显示的子菜品（默认前3个，展开后全部）
 const displayedSubDishes = computed(() => {
