@@ -263,7 +263,7 @@ async function main() {
   console.log(`Created canteen: ${canteen2.name}`);
 
   // 更新食堂管理员，绑定到第一食堂
-  canteenAdmin = await prisma.admin.update({
+  await prisma.admin.update({
     where: { id: canteenAdmin.id },
     data: { canteenId: canteen1.id },
   });

@@ -344,8 +344,9 @@ export class AdminDishesService {
       updateData.windowName = window.name;
     }
 
-    // 楼层信息处理：如果前端传入了 floor 字段，单独更新楼层信息
-    if (updateDto.floor !== undefined) {
+    // 楼层信息处理：如果前端传入了 floor 字段，且没有更新窗口，则单独更新楼层信息
+    // 注意：如果更新了窗口，楼层信息必须跟随窗口，忽略前端传入的 floor 字段，防止数据不一致
+    if (!shouldUpdateWindow && updateDto.floor !== undefined) {
       // 确定食堂 ID（优先使用更新后的，否则使用现有的）
       const targetCanteenId = updateData.canteenId || existingDish.canteenId;
 
