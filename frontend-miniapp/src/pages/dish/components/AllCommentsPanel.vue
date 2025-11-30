@@ -9,12 +9,12 @@
     @clickoverlay="handleClose"
     @afterleave="handleClose"
   >
-    <view class="all-comments-container">
+    <view class="w-full h-full flex flex-col">
       <!-- 头部 -->
-      <view class="panel-header">
-        <h2 class="panel-title">全部回复</h2>
+      <view class="flex justify-center items-center py-4 px-5 border-b border-gray-200 shrink-0 relative">
+        <h2 class="text-lg font-semibold text-gray-800">全部回复</h2>
         <button
-          class="close-btn"
+          class="absolute right-5 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-gray-500 text-lg rounded-full bg-transparent border-none"
           @tap="handleClose"
         >
           <text>✕</text>
@@ -22,61 +22,60 @@
       </view>
 
       <!-- 评论列表 -->
-      <view class="comments-content">
-        <view v-if="loading && comments.length === 0" class="loading-state">
-          <text class="text-gray-500">加载中...</text>
+      <view class="flex-1 overflow-y-auto px-5">
+        <view v-if="loading && comments.length === 0" class="flex justify-center items-center h-48 text-gray-500">
+          <text>加载中...</text>
         </view>
 
-        <view v-else-if="comments.length === 0" class="empty-state">
-          <text class="text-gray-500">暂无评论</text>
+        <view v-else-if="comments.length === 0" class="flex justify-center items-center h-48 text-gray-500">
+          <text>暂无评论</text>
         </view>
 
-        <view v-else class="comments-list">
+        <view v-else class="py-4">
           <view
             v-for="(comment, index) in comments"
             :key="comment.id"
-            class="comment-item"
             @tap="selectCommentForReply(comment)"
             @longpress="(e: any) => handleLongPress(e, comment)"
           >
             <!-- 评论内容区域 -->
-            <view class="comment-content-area">
+            <view class="py-3">
               <!-- 用户头像和信息 -->
-              <view class="comment-header">
+              <view class="flex items-center mb-2">
                 <img
                   :src="comment.userAvatar || '/default-avatar.png'"
-                  class="comment-avatar"
+                  class="w-8 h-8 rounded-full mr-3 border border-gray-200"
                   alt="用户头像"
                 />
-                <view class="comment-info">
+                <view class="flex-1">
                   <text class="text-ts-purple font-semibold text-sm block mb-0.5">{{ comment.userNickname }}</text>
-                  <text class="comment-date">{{ formatDate(comment.createdAt) }}</text>
+                  <text class="text-xs text-gray-400">{{ formatDate(comment.createdAt) }}</text>
                 </view>
               </view>
 
               <!-- 回复目标显示 -->
-              <view v-if="comment.parentComment && !comment.parentComment.deleted" class="reply-target">
+              <view v-if="comment.parentComment && !comment.parentComment.deleted" class="ml-11">
                 <text class="text-gray-500 text-xs">回复</text>
                 <text class="text-ts-purple text-xs font-medium ml-1">@{{ comment.parentComment.userNickname }}</text>
               </view>
-              <view v-else-if="comment.parentComment?.deleted" class="reply-target">
+              <view v-else-if="comment.parentComment?.deleted" class="ml-11">
                 <text class="text-gray-400 text-xs">回复的评论已删除</text>
               </view>
 
               <!-- 评论内容 -->
-              <view class="comment-content">
+              <view class="text-sm text-gray-700 leading-relaxed ml-11">
                 {{ comment.content }}
               </view>
             </view>
 
             <!-- 分隔线 -->
-            <view v-if="index < comments.length - 1" class="comment-divider"></view>
+            <view v-if="index < comments.length - 1" class="h-px bg-gray-200 my-3"></view>
           </view>
 
           <!-- 加载更多 -->
-          <view v-if="hasMore && !loading" class="load-more">
+          <view v-if="hasMore && !loading" class="text-center py-4">
             <button
-              class="load-more-btn text-gray-500 after:border-none"
+              class="text-sm text-gray-500 bg-transparent border-none after:border-none"
               @tap="loadMoreComments"
             >
               加载更多评论
@@ -86,24 +85,24 @@
       </view>
 
       <!-- 底部回复输入框 -->
-      <view class="bottom-reply-input">
-        <view v-if="replyingTo" class="replying-indicator">
+      <view class="border-t border-gray-200 bg-white px-4 pt-3 pb-safe shrink-0">
+        <view v-if="replyingTo" class="flex justify-end items-center py-1 px-2 bg-gray-100 rounded-lg mb-2 gap-2">
           <text class="text-ts-purple text-xs font-medium">回复 @{{ replyingTo.userNickname }}</text>
-          <button class="cancel-reply-btn" @tap="cancelReply">
+          <button class="w-5 h-5 flex items-center justify-center text-gray-500 text-sm bg-transparent border-none rounded-full" @tap="cancelReply">
             <text>✕</text>
           </button>
         </view>
 
-        <view class="input-row">
+        <view class="flex items-center gap-2">
           <input
             v-model="replyContent"
-            class="reply-input"
+            class="flex-1 py-2 px-3 border border-gray-300 rounded-full text-sm bg-gray-50 focus:border-purple-400 focus:bg-white"
             :placeholder="replyingTo ? `回复 @${replyingTo.userNickname}...` : '写下你的回复...'"
             @confirm="submitReply"
           />
           <button
-            class="send-btn"
-            :class="{ 'send-btn-active': canSendReply }"
+            class="px-4 h-[34px] leading-[34px] border-none rounded-full text-sm font-medium min-w-[60px] transition-all duration-200"
+            :class="canSendReply ? 'bg-gradient-to-br from-purple-700 to-purple-600 text-white' : 'bg-gray-300 text-gray-400'"
             :disabled="!canSendReply"
             @tap="submitReply"
           >
@@ -375,232 +374,8 @@ const formatDate = (dateString: string) => {
 </script>
 
 <style scoped>
-/* 面板容器 */
-.all-comments-container {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-/* 头部 */
-.panel-header {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid #e5e5e5;
-  flex-shrink: 0;
-  position: relative;
-}
-
-.panel-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #1f2937;
-}
-
-.close-btn {
-  position: absolute;
-  right: 20px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #6b7280;
-  font-size: 18px;
-  border-radius: 50%;
-  background: transparent;
-  border: none;
-}
-
-.close-btn:hover {
-  background-color: #f3f4f6;
-}
-
-/* 内容区域 */
-.comments-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0 20px;
-}
-
-.loading-state,
-.empty-state {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 200px;
-  color: #6b7280;
-}
-
-/* 评论列表 */
-.comments-list {
-  padding: 16px 0;
-}
-
-.comment-item {
-  margin-bottom: 0;
-}
-
-.comment-content-area {
-  padding: 12px 0;
-}
-
-/* 评论头部区域 */
-.comment-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-/* 用户头像 */
-.comment-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  margin-right: 12px;
-  border: 1px solid #e5e7eb;
-}
-
-/* 评论信息 */
-.comment-info {
-  flex: 1;
-}
-
-.comment-date {
-  font-size: 12px;
-  color: #9ca3af;
-}
-
-/* 回复按钮 */
-.reply-btn {
-  font-size: 12px;
-  color: #7c3aed;
-  background: transparent;
-  border: none;
-  padding: 4px 8px;
-  border-radius: 4px;
-}
-
-.reply-btn:hover {
-  background-color: #f3f4f6;
-}
-
-/* 评论内容 */
-.comment-content {
-  font-size: 14px;
-  color: #374151;
-  line-height: 1.6;
-  margin-left: 44px; /* 头像宽度 + 间距 */
-}
-
-/* 分隔线 */
-.comment-divider {
-  height: 1px;
-  background-color: #e5e7eb;
-  margin: 12px 0;
-}
-
-.reply-btn:hover {
-  background-color: #f3f4f6;
-}
-
-/* 加载更多 */
-.load-more {
-  text-align: center;
-  padding: 16px 0;
-}
-
-.load-more-btn {
-  font-size: 14px;
-  background: transparent;
-  border: none;
-}
-
-/* 底部回复输入框 */
-.bottom-reply-input {
-  border-top: 1px solid #e5e5e5;
-  background-color: #ffffff;
-  padding: 12px 16px;
+/* 底部安全区域 padding */
+.pb-safe {
   padding-bottom: calc(12px + env(safe-area-inset-bottom));
-  flex-shrink: 0;
-}
-
-/* 回复对象指示器 */
-.replying-indicator {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding: 4px 8px;
-  background-color: #f3f4f6;
-  border-radius: 8px;
-  margin-bottom: 8px;
-  gap: 8px;
-}
-
-.cancel-reply-btn {
-  width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #6b7280;
-  font-size: 14px;
-  background: transparent;
-  border: none;
-  border-radius: 50%;
-}
-
-.cancel-reply-btn:hover {
-  background-color: #e5e7eb;
-}
-
-/* 输入行 */
-.input-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.reply-input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 20px;
-  font-size: 14px;
-  background-color: #f9fafb;
-}
-
-.reply-input:focus {
-  outline: none;
-  border-color: #a855f7;
-  background-color: #ffffff;
-}
-
-.send-btn {
-  padding: 0 16px;
-  height: 34px; /* 与输入框高度一致 */
-  line-height: 34px;
-  background: #d1d5db; /* 默认灰色背景 */
-  color: #9ca3af; /* 默认灰色文字 */
-  border: none;
-  border-radius: 17px; /* 与输入框圆角一致 */
-  font-size: 14px;
-  font-weight: 500;
-  min-width: 60px;
-  transition: all 0.2s ease;
-}
-
-.send-btn-active {
-  background: linear-gradient(135deg, #7e22ce 0%, #9333ea 100%); /* 更深的紫色背景 */
-  color: white; /* 白色文字 */
-}
-
-.send-btn-active:hover {
-  background: linear-gradient(135deg, #6b21a8, #7e22ce);
 }
 </style>
