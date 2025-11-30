@@ -602,24 +602,27 @@ describe('AdminDishesController (e2e)', () => {
     });
 
     it('should update dish window using windowId', async () => {
-      // 先获取粤菜窗口ID
+      // 获取粤菜窗口ID - seed数据中必须存在此窗口
       const yuecaiWindow = await prisma.window.findFirst({
         where: { canteenId: canteen1Id, name: '粤菜窗口' },
       });
 
-      if (yuecaiWindow) {
-        const response = await request(app.getHttpServer())
-          .put(`/admin/dishes/${editDishId}`)
-          .set('Authorization', `Bearer ${superAdminToken}`)
-          .send({
-            windowId: yuecaiWindow.id,
-          })
-          .expect(200);
-
-        expect(response.body.code).toBe(200);
-        expect(response.body.data.windowId).toBe(yuecaiWindow.id);
-        expect(response.body.data.windowName).toBe('粤菜窗口');
+      // Ensure test data exists
+      if (!yuecaiWindow) {
+        throw new Error('Test requires 粤菜窗口 to exist in seed data');
       }
+
+      const response = await request(app.getHttpServer())
+        .put(`/admin/dishes/${editDishId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          windowId: yuecaiWindow.id,
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.windowId).toBe(yuecaiWindow.id);
+      expect(response.body.data.windowName).toBe('粤菜窗口');
     });
 
     it('should update dish window using windowName', async () => {
@@ -710,6 +713,13 @@ describe('AdminDishesController (e2e)', () => {
     });
 
     it('should ignore invalid floor and keep existing floor info', async () => {
+      // Design note: The API intentionally ignores invalid floor values rather than
+      // returning an error. This is because:
+      // 1. Floor is optional metadata, not critical for dish functionality
+      // 2. It provides a more forgiving UX for bulk imports or partial updates
+      // 3. The window already determines the correct floor in most cases
+      // If stricter validation is needed, this behavior should be changed in the service.
+      
       // 先设置一个有效的楼层
       await request(app.getHttpServer())
         .put(`/admin/dishes/${editDishId}`)
