@@ -510,6 +510,7 @@ export interface GetDishesRequest {
       min: number;
       max: number;
     };
+    priceUnit?:string;
 
     meatPreference?: string[];      // 肉类偏好
     avoidIngredients?: string[];    // 忌口
