@@ -4,7 +4,7 @@
   "description": "清华大学食堂菜品管理系统",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --port 5173",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest",
@@ -17,6 +17,7 @@
     "vue-router": "^4.6.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@vitejs/plugin-vue": "^4.6.2",
     "autoprefixer": "^10.4.22",
     "cross-env": "^7.0.3",
