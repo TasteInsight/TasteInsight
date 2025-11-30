@@ -357,13 +357,24 @@ test.describe('Canteen Admin Scoped Access (API)', () => {
     const data = await response.json();
     expect(data.code).toBe(200);
     
-    // All dishes should be from the same canteen (第一食堂)
+    // Verify dishes exist and all belong to the same canteen (第一食堂)
     const dishes = data.data.items;
-    if (dishes.length > 0) {
-      const canteenId = dishes[0].canteenId;
-      dishes.forEach((dish: any) => {
-        expect(dish.canteenId).toBe(canteenId);
-      });
+    
+    // canteenAdmin should see at least one dish from their canteen
+    expect(dishes.length).toBeGreaterThan(0);
+    
+    // Get the canteenId from the first dish (should be 第一食堂)
+    const expectedCanteenId = dishes[0].canteenId;
+    expect(expectedCanteenId).toBeTruthy();
+    
+    // All dishes should belong to the same canteen
+    dishes.forEach((dish: any) => {
+      expect(dish.canteenId).toBe(expectedCanteenId);
+    });
+    
+    // Verify canteen name is 第一食堂 (if canteenName is available in response)
+    if (dishes[0].canteenName) {
+      expect(dishes[0].canteenName).toBe('第一食堂');
     }
   });
 

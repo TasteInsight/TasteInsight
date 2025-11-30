@@ -21,12 +21,8 @@ export const TEST_ACCOUNTS = {
   },  // dish:view + dish:edit
   canteenAdmin: { 
     username: process.env.TEST_CANTEEN_ADMIN_USER || 'canteenadmin', 
-    password: process.env.TEST_CANTEEN_ADMIN_PASS || 'canteen123' 
-  },  // All dish perms but only for canteen1
-  reviewerAdmin: { 
-    username: process.env.TEST_REVIEWER_ADMIN_USER || 'revieweradmin', 
-    password: process.env.TEST_REVIEWER_ADMIN_PASS || 'reviewer123' 
-  },  // upload:approve, review:approve, comment:approve
+    password: process.env.TEST_CANTEEN_ADMIN_PASS || 'canteen123'
+  },  // All dish perms but only for canteen1 (第一食堂)
 };
 
 export async function loginAsAdmin(page: Page) {
@@ -38,18 +34,6 @@ export async function loginAsAdmin(page: Page) {
   await page.fill('input#password', password);
   await page.click('button[type="submit"]');
   await page.waitForURL('**/single-add');
-}
-
-/**
- * Login with a specific account
- */
-export async function loginWithAccount(page: Page, username: string, password: string) {
-  await page.goto('/login');
-  await page.fill('input#username', username);
-  await page.fill('input#password', password);
-  await page.click('button[type="submit"]');
-  // Wait for either success redirect or error message
-  await page.waitForURL(/\/(single-add|login)/, { timeout: 5000 });
 }
 
 /**
@@ -69,16 +53,4 @@ export async function getApiToken(request: APIRequestContext, username: string, 
     console.error('Failed to get API token:', error);
   }
   return null;
-}
-
-/**
- * Clear local authentication state (does not call logout API)
- * This only clears browser storage and redirects to login page
- */
-export async function clearAuthState(page: Page) {
-  await page.evaluate(() => {
-    sessionStorage.clear();
-    localStorage.clear();
-  });
-  await page.goto('/login');
 }
