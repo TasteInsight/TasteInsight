@@ -6,6 +6,7 @@ import {
   MaxLength,
   MinLength,
   Matches,
+  ArrayMinSize,
 } from 'class-validator';
 
 export class CreateAdminDto {
@@ -32,6 +33,6 @@ export class CreateAdminDto {
 
   @IsArray()
   @IsString({ each: true })
-  @IsNotEmpty()
+  @ArrayMinSize(1, { message: '权限列表不能为空' })
   permissions: string[];
 }
