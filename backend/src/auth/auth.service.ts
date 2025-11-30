@@ -192,13 +192,9 @@ export class AuthService {
     // 获取用户信息
     let userData;
     if (userType === 'user') {
-      userData = await this.prisma.user.findUnique({
-        where: { id: userId },
-      });
+      userData = await this.validateUser(userId);
     } else {
-      const adminData = await this.prisma.admin.findUnique({
-        where: { id: userId },
-      });
+      const adminData = await this.validateAdmin(userId);
       // 移除密码字段
       if (adminData) {
         const { password, ...admin } = adminData;
