@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, APIRequestContext } from '@playwright/test';
 import { loginAsAdmin, getApiToken, TEST_ACCOUNTS } from './utils';
 
 // API base URL for direct API calls
@@ -7,7 +7,7 @@ const baseURL = process.env.VITE_API_BASE_URL || 'http://localhost:3000/';
 /**
  * Helper function to get a canteen with its ID
  */
-async function getTestCanteen(apiRequest: any, token: string) {
+async function getTestCanteen(apiRequest: APIRequestContext, token: string) {
   const response = await apiRequest.get(`${baseURL}admin/canteens`, {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -24,7 +24,7 @@ async function getTestCanteen(apiRequest: any, token: string) {
 /**
  * Helper function to clean up test windows created during tests
  */
-async function cleanupTestWindows(apiRequest: any) {
+async function cleanupTestWindows(apiRequest: APIRequestContext) {
   try {
     const token = await getApiToken(
       apiRequest,
@@ -92,7 +92,6 @@ test.describe('Admin Window Management', () => {
   
   let createdWindowId: string;
   let testCanteenId: string;
-  let testCanteenName: string;
 
   // Clean up any leftover test data before running tests
   test.beforeAll(async ({ request }) => {
@@ -108,7 +107,6 @@ test.describe('Admin Window Management', () => {
       const canteen = await getTestCanteen(request, token);
       if (canteen) {
         testCanteenId = canteen.id;
-        testCanteenName = canteen.name;
       }
     }
   });
