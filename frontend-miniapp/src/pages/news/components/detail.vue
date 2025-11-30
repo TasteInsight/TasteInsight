@@ -18,7 +18,7 @@
             <!-- 使用处理后的富文本内容，支持图片自适应 -->
             <rich-text :nodes="formattedContent"></rich-text>
           </view>
-          <view class="mt-7.5 pt-2.5 border-t border-dashed border-gray-200 text-gray-500 text-xs text-right">
+          <view class="mt-6 pt-2 border-t border-dashed border-gray-200 text-gray-500 text-xs text-right">
             <text>发布人：{{ newsDetail.createdBy || '管理员' }}</text>
           </view>
         </view>
