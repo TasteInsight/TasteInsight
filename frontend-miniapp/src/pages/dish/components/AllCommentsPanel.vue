@@ -86,9 +86,9 @@
 
       <!-- 底部回复输入框 -->
       <view class="border-t border-gray-200 bg-white px-4 pt-3 pb-safe shrink-0">
-        <view v-if="replyingTo" class="flex justify-end items-center py-1 px-2 bg-gray-100 rounded-lg mb-2 gap-2">
-          <text class="text-ts-purple text-xs font-medium">回复 @{{ replyingTo.userNickname }}</text>
-          <button class="w-5 h-5 flex items-center justify-center text-gray-500 text-sm bg-transparent border-none rounded-full" @tap="cancelReply">
+        <view v-if="replyingTo" class="flex items-center mb-2">
+          <text class="text-ts-purple text-xs font-medium flex-1">回复 @{{ replyingTo.userNickname }}</text>
+          <button class="w-5 h-5 flex items-center justify-center text-gray-500 text-sm bg-transparent border-none rounded-full after:border-none" @tap="cancelReply">
             <text>✕</text>
           </button>
         </view>
@@ -101,7 +101,7 @@
             @confirm="submitReply"
           />
           <button
-            class="px-4 h-[34px] leading-[34px] border-none rounded-full text-sm font-medium min-w-[60px] transition-all duration-200"
+            class="px-4 py-2 border-none rounded-full text-sm font-medium min-w-[60px] transition-all duration-200 after:border-none"
             :class="canSendReply ? 'bg-gradient-to-br from-purple-700 to-purple-600 text-white' : 'bg-gray-300 text-gray-400'"
             :disabled="!canSendReply"
             @tap="submitReply"
@@ -377,5 +377,10 @@ const formatDate = (dateString: string) => {
 /* 底部安全区域 padding */
 .pb-safe {
   padding-bottom: calc(12px + env(safe-area-inset-bottom));
+}
+
+/* 移除小程序按钮默认边框 */
+button::after {
+  border: none;
 }
 </style>
