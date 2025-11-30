@@ -118,18 +118,23 @@
 
       <!-- 详细信息 -->
       <view class="bg-white p-4">
+        <!-- 标题 - 始终显示 -->
+        <view class="flex justify-between items-center mb-3">
+          <h2 class="text-lg font-semibold text-gray-800">详细信息</h2>
+          <text 
+            v-if="!isDetailExpanded"
+            class="text-sm text-gray-500 cursor-pointer"
+            @click="toggleDetailExpansion"
+          >展开 ↓</text>
+        </view>
+
         <!-- 供应时间 - 始终显示 -->
         <view class="detail-section mb-3">
           <text class="font-bold text-black mr-1 text-sm">供应时间：</text>
           <text class="detail-text">{{ formatMealTime(dish.availableMealTime) }}</text>
         </view>
 
-        <view class="flex justify-between items-center py-2 cursor-pointer border-t border-gray-100" @click="toggleDetailExpansion">
-          <h2 class="text-base font-medium text-gray-700">{{ isDetailExpanded ? '收起详细信息' : '查看更多详细信息' }}</h2>
-          <text class="iconify text-gray-500 text-lg transition-transform duration-300" :class="isDetailExpanded ? 'rotate-180' : ''" data-icon="mdi:chevron-down"></text>
-        </view>
-
-        <view v-show="isDetailExpanded" class="transition-all duration-300 ease-in-out pt-3">
+        <view v-show="isDetailExpanded" class="transition-all duration-300 ease-in-out">
           <!-- 菜品介绍 -->
           <view v-if="dish.description" class="detail-section">
             <text class="font-bold text-black mr-1 text-sm">菜品介绍：</text>
@@ -188,19 +193,27 @@
                 <text class="iconify text-gray-400" data-icon="mdi:chevron-right"></text>
               </view>
             </view>
-            <!-- 展开/收起按钮 -->
+            <!-- 展开/收起子菜品按钮 -->
             <view
               v-if="subDishes.length > 3"
               class="mt-3 text-center"
             >
               <view
                 class="inline-block text-sm text-gray-500 py-1 cursor-pointer"
-                @click="isSubDishesExpanded = !isSubDishesExpanded"
+                @click.stop="isSubDishesExpanded = !isSubDishesExpanded"
               >
                 {{ isSubDishesExpanded ? '收起' : `展开全部 (${subDishes.length}个)` }}
                 <text class="ml-1 text-xs">{{ isSubDishesExpanded ? '↑' : '↓' }}</text>
               </view>
             </view>
+          </view>
+
+          <!-- 收起详细信息按钮 - 在最下面 -->
+          <view class="mt-4 pt-3 border-t border-gray-100 text-center">
+            <text 
+              class="text-sm text-gray-500 cursor-pointer"
+              @click="toggleDetailExpansion"
+            >收起详细信息 ↑</text>
           </view>
         </view>
       </view>
