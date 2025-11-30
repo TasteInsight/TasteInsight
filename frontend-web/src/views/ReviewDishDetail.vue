@@ -358,38 +358,28 @@ export default {
     const loadDishData = async () => {
       isLoading.value = true
       try {
-        // 先尝试从待审核列表获取
+        // 使用正确的 API 获取待审核菜品详情
         let dish = null
         try {
-          const pendingResponse = await reviewApi.getPendingUploads({ page: 1, pageSize: 100 })
-          if (pendingResponse.code === 200 && pendingResponse.data?.items) {
-            dish = pendingResponse.data.items.find((d) => d.id === dishId || d.id === dishId.toString())
+          const response = await reviewApi.getPendingUploadById(dishId.toString())
+          if (response.code === 200 && response.data) {
+            dish = response.data
           }
         } catch (error) {
-          console.error('从待审核列表获取失败:', error)
-        }
-        
-        // 如果待审核列表中没有，尝试从菜品详情接口获取
-        if (!dish) {
-          try {
-            const dishResponse = await dishApi.getDishById(dishId)
-            if (dishResponse.code === 200 && dishResponse.data) {
-              dish = dishResponse.data
-            }
-          } catch (error) {
-            console.error('从菜品详情接口获取失败:', error)
-          }
+          console.error('获取待审核菜品详情失败:', error)
         }
         
         if (dish) {
           // 填充数据
           dishData.id = dish.id || dishId
           dishData.name = dish.name || ''
-          dishData.canteen = dish.canteenName || dish.canteen || ''
-          dishData.floor = dish.floorName || dish.floor || ''
-          dishData.windowName = dish.windowName || dish.window || ''
+          dishData.canteen = dish.canteenName || ''
+          // 待审核详情接口可能不返回 floor，如果需要可以从 window 对象中获取（如果后端支持）
+          // 目前后端 DTO 没有 floor 字段，暂时置空或移除
+          dishData.floor = '' 
+          dishData.windowName = dish.windowName || ''
           dishData.windowNumber = dish.windowNumber || ''
-          dishData.window = dish.window || dish.windowName || ''
+          dishData.window = dish.windowName || ''
           dishData.description = dish.description || ''
           
           // 处理过敏原
@@ -437,11 +427,11 @@ export default {
           // 处理供应日期段
           dishData.availableDates = dish.availableDates || []
           
-          // 处理子项
-          dishData.subItems = dish.subItems || []
+          // 处理子项 (待审核 DTO 中没有 subItems，如果需要后端需添加)
+          dishData.subItems = []
           
           // 处理提交信息
-          dishData.submitter = dish.uploaderNickname || dish.submitter || ''
+          dishData.submitter = dish.uploaderName || ''
           if (dish.createdAt) {
             const date = new Date(dish.createdAt)
             dishData.submitDate = date.toISOString().split('T')[0]
