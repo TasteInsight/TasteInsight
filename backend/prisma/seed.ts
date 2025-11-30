@@ -644,7 +644,44 @@ async function main() {
   });
   console.log(`Created rejected upload`);
 
-  // 9. 创建测试评价用于举报测试
+  // 9. 创建待审核评价数据（用于评价审核测试）
+  const pendingReview1 = await prisma.review.create({
+    data: {
+      dishId: dish1.id,
+      userId: user.id,
+      rating: 5,
+      content: '这道宫保鸡丁真的很好吃，鸡肉鲜嫩，花生酥脆！',
+      images: ['https://example.com/review1.jpg'],
+      status: 'pending',
+    },
+  });
+  console.log(`Created pending review 1: ${pendingReview1.id}`);
+
+  const pendingReview2 = await prisma.review.create({
+    data: {
+      dishId: dish2.id,
+      userId: user.id,
+      rating: 4,
+      content: '清蒸鲈鱼很新鲜，就是价格有点贵。',
+      images: [],
+      status: 'pending',
+    },
+  });
+  console.log(`Created pending review 2: ${pendingReview2.id}`);
+
+  const pendingReview3 = await prisma.review.create({
+    data: {
+      dishId: dish3.id,
+      userId: secondaryUser.id,
+      rating: 3,
+      content: '牛肉面还行，面条有点软了。',
+      images: ['https://example.com/review3.jpg'],
+      status: 'pending',
+    },
+  });
+  console.log(`Created pending review 3: ${pendingReview3.id}`);
+
+  // 创建测试评价用于举报测试
   const testReviewForReport = await prisma.review.create({
     data: {
       dishId: dish1.id,
