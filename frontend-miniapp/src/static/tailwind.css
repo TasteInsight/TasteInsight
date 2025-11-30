@@ -668,6 +668,10 @@
   align-items: center
 }
 
+.justify-start {
+  justify-content: flex-start
+}
+
 .justify-end {
   justify-content: flex-end
 }
@@ -702,6 +706,10 @@
 
 .gap-5 {
   gap: 1.25rem
+}
+
+.gap-6 {
+  gap: 1.5rem
 }
 
 .space-x-1 > :not([hidden]) ~ :not([hidden]) {

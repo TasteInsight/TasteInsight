@@ -11,10 +11,10 @@
       :style="{ paddingBottom: 'env(safe-area-inset-bottom)' }"
       @tap.stop
     >
-      <view class="flex items-center justify-around h-[65px] px-4">
+      <view class="flex items-center justify-start h-[65px] px-4 gap-6">
         <!-- 举报选项 -->
         <view 
-          class="flex flex-col items-center justify-center flex-1 cursor-pointer transition-all duration-200 active:scale-95"
+          class="flex flex-col items-center justify-center w-16 cursor-pointer transition-all duration-200 active:scale-95"
           @tap="handleReport"
         >
           <text class="text-xl text-orange-500">⚠️</text>
@@ -23,11 +23,8 @@
 
         <!-- 删除选项 - 仅自己的内容显示 -->
         <template v-if="canDelete">
-          <!-- 分隔线 -->
-          <view class="w-px h-8 bg-gray-200"></view>
-          
           <view 
-            class="flex flex-col items-center justify-center flex-1 cursor-pointer transition-all duration-200 active:scale-95"
+            class="flex flex-col items-center justify-center w-16 cursor-pointer transition-all duration-200 active:scale-95"
             @tap="handleDelete"
           >
             <text class="text-xl text-red-500">🗑️</text>
