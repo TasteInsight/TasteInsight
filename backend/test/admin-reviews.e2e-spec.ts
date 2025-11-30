@@ -140,6 +140,14 @@ describe('AdminReviewsController (e2e)', () => {
         .set('Authorization', `Bearer ${normalAdminToken}`)
         .expect(403);
     });
+
+    it('should return 404 for non-existent review', async () => {
+      const nonExistentId = '00000000-0000-0000-0000-000000000000';
+      await request(app.getHttpServer())
+        .post(`/admin/reviews/${nonExistentId}/approve`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(404);
+    });
   });
 
   describe('/admin/reviews/:id/reject (POST)', () => {
@@ -196,16 +204,6 @@ describe('AdminReviewsController (e2e)', () => {
         .post(`/admin/reviews/${nonExistentId}/reject`)
         .set('Authorization', `Bearer ${superAdminToken}`)
         .send({ reason: '测试拒绝' })
-        .expect(404);
-    });
-  });
-
-  describe('/admin/reviews/:id/approve (POST) - not found', () => {
-    it('should return 404 for non-existent review', async () => {
-      const nonExistentId = '00000000-0000-0000-0000-000000000000';
-      await request(app.getHttpServer())
-        .post(`/admin/reviews/${nonExistentId}/approve`)
-        .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(404);
     });
   });
