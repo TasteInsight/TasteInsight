@@ -23,6 +23,10 @@ export const TEST_ACCOUNTS = {
     username: process.env.TEST_CANTEEN_ADMIN_USER || 'canteenadmin', 
     password: process.env.TEST_CANTEEN_ADMIN_PASS || 'canteen123'
   },  // All dish perms but only for canteen1 (第一食堂)
+  reviewerAdmin: {
+    username: process.env.TEST_REVIEWER_ADMIN_USER || 'revieweradmin',
+    password: process.env.TEST_REVIEWER_ADMIN_PASS || 'reviewer123'
+  },  // upload:approve, review:approve, comment:approve
 };
 
 export async function loginAsAdmin(page: Page) {
