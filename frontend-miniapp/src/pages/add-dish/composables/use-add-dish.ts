@@ -11,6 +11,7 @@ export function useAddDish() {
   const formData = reactive<DishUserCreateRequest>({
     name: '',
     price: 0,
+    priceUnit: '',
     description: '',
     images: [],
     tags: [],
@@ -228,6 +229,7 @@ export function useAddDish() {
   const resetForm = () => {
     formData.name = '';
     formData.price = 0;
+    formData.priceUnit = '';
     formData.description = '';
     formData.images = [];
     formData.tags = [];

@@ -30,15 +30,27 @@
           <div class="text-sm text-gray-600 mb-1">
             价格 <span class="text-red-500">*</span>
           </div>
-          <div class="flex items-center">
-            <span class="text-gray-500 mr-2">¥</span>
-            <input
-              v-model.number="formData.price"
-              type="digit"
-              placeholder="0.00"
-              class="flex-1 h-10 px-3 bg-gray-50 rounded-lg text-sm border-none outline-none"
-            />
+          <div class="flex items-center gap-3">
+            <div class="flex items-center flex-1">
+              <span class="text-gray-500 mr-2">￥</span>
+              <input
+                v-model.number="formData.price"
+                type="digit"
+                placeholder="0.00"
+                class="flex-1 h-10 px-3 bg-gray-50 rounded-lg text-sm border-none outline-none"
+              />
+            </div>
+            <div class="flex items-center">
+              <span class="text-gray-400 text-sm mr-2">/</span>
+              <input
+                v-model="formData.priceUnit"
+                type="text"
+                placeholder="两"
+                class="w-16 h-10 px-3 bg-gray-50 rounded-lg text-sm border-none outline-none text-center"
+              />
+            </div>
           </div>
+          <div class="text-xs text-gray-400 mt-1">价格单位选填，如：两、份、碗等</div>
         </div>
 
         <!-- 描述 -->
@@ -62,11 +74,11 @@
             所在食堂 <span class="text-red-500">*</span>
           </div>
           <div v-if="loading" class="text-gray-400 text-sm">加载中...</div>
-          <div v-else class="flex flex-wrap gap-2">
+          <div v-else class="grid grid-cols-3 gap-2">
             <button
               v-for="canteen in canteenList"
               :key="canteen.id"
-              class="px-3 py-2 rounded-lg text-sm transition-colors"
+              class="px-3 py-2 rounded-lg text-sm transition-colors text-left truncate"
               :class="selectedCanteen?.id === canteen.id 
                 ? 'bg-blue-500 text-white' 
                 : 'bg-gray-100 text-gray-600'"
@@ -82,11 +94,11 @@
           <div class="text-sm text-gray-600 mb-2">
             所在窗口 <span class="text-red-500">*</span>
           </div>
-          <div class="flex flex-wrap gap-2">
+          <div class="grid grid-cols-3 gap-2">
             <button
               v-for="window in windowList"
               :key="window.id"
-              class="px-3 py-2 rounded-lg text-sm transition-colors"
+              class="px-3 py-2 rounded-lg text-sm transition-colors text-left truncate"
               :class="formData.windowName === window.name 
                 ? 'bg-blue-500 text-white' 
                 : 'bg-gray-100 text-gray-600'"
