@@ -184,7 +184,6 @@ test.describe('Admin Uploads API Tests', () => {
   let superAdminToken: string;
   let normalAdminToken: string;
   let reviewerAdminToken: string;
-  let canteenAdminToken: string;
 
   test.beforeAll(async ({ request }) => {
     // Get tokens for different admin roles
@@ -205,15 +204,8 @@ test.describe('Admin Uploads API Tests', () => {
     // Get reviewer admin token (has upload:approve permission)
     reviewerAdminToken = (await getApiToken(
       request,
-      'revieweradmin',
-      'reviewer123'
-    )) || '';
-
-    // Get canteen admin token
-    canteenAdminToken = (await getApiToken(
-      request,
-      TEST_ACCOUNTS.canteenAdmin.username,
-      TEST_ACCOUNTS.canteenAdmin.password
+      TEST_ACCOUNTS.reviewerAdmin.username,
+      TEST_ACCOUNTS.reviewerAdmin.password
     )) || '';
 
     // Cleanup any leftover test data
@@ -413,14 +405,16 @@ test.describe('Admin Uploads API Tests', () => {
 
   test.describe('/admin/dishes/uploads/:id/approve (POST)', () => {
     let testUploadId: string | null = null;
+    let testUploadIdForAlreadyProcessed: string | null = null;
 
     test.beforeAll(async ({ request }) => {
-      // Create a test upload for approval testing
+      // Create test uploads for approval testing
       const canteens = await getCanteens(request, superAdminToken);
       if (canteens.length > 0) {
         const canteen = canteens.find(c => c.name === '第一食堂') || canteens[0];
         const windows = await getWindows(request, superAdminToken, canteen.id);
         if (windows.length > 0) {
+          // Create one for basic approve test
           const uniqueName = `${TEST_UPLOAD_PREFIX}APPROVE_${Date.now()}`;
           testUploadId = await createTestUpload(
             request, 
@@ -429,6 +423,22 @@ test.describe('Admin Uploads API Tests', () => {
             windows[0].name,
             uniqueName
           );
+          
+          // Create another for "already processed" test (approve it immediately)
+          const alreadyProcessedName = `${TEST_UPLOAD_PREFIX}APPROVE_PROCESSED_${Date.now()}`;
+          testUploadIdForAlreadyProcessed = await createTestUpload(
+            request, 
+            superAdminToken, 
+            canteen.name, 
+            windows[0].name,
+            alreadyProcessedName
+          );
+          // Pre-approve this upload so we can test the "already processed" case
+          if (testUploadIdForAlreadyProcessed) {
+            await request.post(`${baseURL}admin/dishes/uploads/${testUploadIdForAlreadyProcessed}/approve`, {
+              headers: { Authorization: `Bearer ${superAdminToken}` },
+            });
+          }
         }
       }
     });
@@ -461,10 +471,10 @@ test.describe('Admin Uploads API Tests', () => {
     });
 
     test('should return 400 for already processed upload', async ({ request }) => {
-      test.skip(!testUploadId, 'No test upload available');
+      test.skip(!testUploadIdForAlreadyProcessed, 'No pre-processed test upload available');
 
-      // The upload was already approved, so this should fail
-      const response = await request.post(`${baseURL}admin/dishes/uploads/${testUploadId}/approve`, {
+      // The upload was already approved in beforeAll, so this should fail
+      const response = await request.post(`${baseURL}admin/dishes/uploads/${testUploadIdForAlreadyProcessed}/approve`, {
         headers: { Authorization: `Bearer ${superAdminToken}` },
       });
 
@@ -490,14 +500,16 @@ test.describe('Admin Uploads API Tests', () => {
 
   test.describe('/admin/dishes/uploads/:id/reject (POST)', () => {
     let testUploadId: string | null = null;
+    let testUploadIdForAlreadyProcessed: string | null = null;
 
     test.beforeAll(async ({ request }) => {
-      // Create a test upload for rejection testing
+      // Create test uploads for rejection testing
       const canteens = await getCanteens(request, superAdminToken);
       if (canteens.length > 0) {
         const canteen = canteens.find(c => c.name === '第一食堂') || canteens[0];
         const windows = await getWindows(request, superAdminToken, canteen.id);
         if (windows.length > 0) {
+          // Create one for basic reject test
           const uniqueName = `${TEST_UPLOAD_PREFIX}REJECT_${Date.now()}`;
           testUploadId = await createTestUpload(
             request, 
@@ -506,6 +518,23 @@ test.describe('Admin Uploads API Tests', () => {
             windows[0].name,
             uniqueName
           );
+          
+          // Create another for "already processed" test (reject it immediately)
+          const alreadyProcessedName = `${TEST_UPLOAD_PREFIX}REJECT_PROCESSED_${Date.now()}`;
+          testUploadIdForAlreadyProcessed = await createTestUpload(
+            request, 
+            superAdminToken, 
+            canteen.name, 
+            windows[0].name,
+            alreadyProcessedName
+          );
+          // Pre-reject this upload so we can test the "already processed" case
+          if (testUploadIdForAlreadyProcessed) {
+            await request.post(`${baseURL}admin/dishes/uploads/${testUploadIdForAlreadyProcessed}/reject`, {
+              headers: { Authorization: `Bearer ${superAdminToken}` },
+              data: { reason: 'Pre-rejected for testing' },
+            });
+          }
         }
       }
     });
@@ -563,10 +592,10 @@ test.describe('Admin Uploads API Tests', () => {
     });
 
     test('should return 400 for already processed upload', async ({ request }) => {
-      test.skip(!testUploadId, 'No test upload available');
+      test.skip(!testUploadIdForAlreadyProcessed, 'No pre-processed test upload available');
 
-      // The upload was already rejected, so this should fail
-      const response = await request.post(`${baseURL}admin/dishes/uploads/${testUploadId}/reject`, {
+      // The upload was already rejected in beforeAll, so this should fail
+      const response = await request.post(`${baseURL}admin/dishes/uploads/${testUploadIdForAlreadyProcessed}/reject`, {
         headers: { Authorization: `Bearer ${superAdminToken}` },
         data: { reason: '再次拒绝' },
       });
@@ -730,16 +759,19 @@ test.describe('Admin Uploads UI Tests', () => {
   });
 
   test('should display review detail page with all sections', async ({ page, request }) => {
+    // Increase timeout for this test
+    test.setTimeout(60000);
+    
     // Get a pending upload ID
     const token = await getApiToken(request, TEST_ACCOUNTS.superAdmin.username, TEST_ACCOUNTS.superAdmin.password);
     const uploads = await getPendingUploads(request, token!);
     test.skip(uploads.length === 0, 'No pending uploads available for UI testing');
 
     const uploadId = uploads[0].id;
-    await page.goto(`/review-dish/${uploadId}`);
+    await page.goto(`/review-dish/${uploadId}`, { timeout: 30000 });
     
     // Wait for page to load
-    await page.waitForSelector('text=菜品审核详情', { state: 'visible' });
+    await page.waitForSelector('text=菜品审核详情', { state: 'visible', timeout: 15000 });
     
     // Verify main sections (use exact match or label selector to avoid matching sidebar links)
     await expect(page.getByText('食堂信息', { exact: true })).toBeVisible();
@@ -758,16 +790,19 @@ test.describe('Admin Uploads UI Tests', () => {
   });
 
   test('should go back to list when clicking cancel', async ({ page, request }) => {
+    // Increase timeout for this test
+    test.setTimeout(60000);
+    
     // Get a pending upload ID
     const token = await getApiToken(request, TEST_ACCOUNTS.superAdmin.username, TEST_ACCOUNTS.superAdmin.password);
     const uploads = await getPendingUploads(request, token!);
     test.skip(uploads.length === 0, 'No pending uploads available for UI testing');
 
     const uploadId = uploads[0].id;
-    await page.goto(`/review-dish/${uploadId}`);
+    await page.goto(`/review-dish/${uploadId}`, { timeout: 30000 });
     
     // Wait for page to load
-    await page.waitForSelector('button:has-text("取消")', { state: 'visible' });
+    await page.waitForSelector('button:has-text("取消")', { state: 'visible', timeout: 15000 });
     
     // Click cancel
     await page.click('button:has-text("取消")');
@@ -853,9 +888,6 @@ test.describe('Admin Uploads Workflow Tests', () => {
     
     // Should navigate back to list after approval
     await page.waitForURL(/\/review-dish(\?.*)?$/);
-    
-    // Mark as used so we don't try to use it again
-    testUploadIdForApproval = null;
   });
 
   test('should reject a dish upload through UI', async ({ page }) => {
@@ -877,37 +909,28 @@ test.describe('Admin Uploads Workflow Tests', () => {
     
     // Should navigate back to list after rejection
     await page.waitForURL(/\/review-dish(\?.*)?$/);
-    
-    // Mark as used
-    testUploadIdForRejection = null;
   });
 
   test('should search for uploads by name', async ({ page, request }) => {
+    // Increase timeout for this test as it may run after heavy UI tests
+    test.setTimeout(60000);
+    
     // Get pending uploads to have something to search for
     const token = await getApiToken(request, TEST_ACCOUNTS.superAdmin.username, TEST_ACCOUNTS.superAdmin.password);
     const uploads = await getPendingUploads(request, token!);
     test.skip(uploads.length === 0, 'No pending uploads available for search testing');
 
-    await page.goto('/review-dish');
+    await page.goto('/review-dish', { timeout: 30000 });
     
     // Wait for table to load
-    await page.waitForSelector('table', { state: 'visible' });
+    await page.waitForSelector('table', { state: 'visible', timeout: 15000 });
     
     // Search for a specific upload name
     const searchInput = page.locator('input[placeholder="搜索菜品名称..."]');
     await searchInput.fill(uploads[0].name);
     
-    // Wait for search to take effect (client-side filtering)
-    await page.waitForTimeout(500);
-    
-    // Verify the search results contain the searched item
-    const tableRows = page.locator('table tbody tr');
-    const rowCount = await tableRows.count();
-    
-    // Should have at least one result if the search matches
-    if (rowCount > 0) {
-      await expect(page.locator(`table:has-text("${uploads[0].name}")`)).toBeVisible();
-    }
+    // Wait for the table to contain the searched item (client-side filtering)
+    await expect(page.locator(`table:has-text("${uploads[0].name}")`)).toBeVisible({ timeout: 5000 });
   });
 
   test('should filter by status', async ({ page }) => {
@@ -920,8 +943,9 @@ test.describe('Admin Uploads Workflow Tests', () => {
     const statusFilter = page.locator('select').first();
     await statusFilter.selectOption('pending');
     
-    // Wait for filter to take effect
-    await page.waitForTimeout(500);
+    // Wait for filter to take effect by checking the table has updated
+    // We wait for either the status badge to appear or empty state
+    await expect(page.locator('table tbody')).toBeVisible();
     
     // All visible items should have "待审核" status
     const statusBadges = page.locator('span.bg-yellow-100.text-yellow-800');
