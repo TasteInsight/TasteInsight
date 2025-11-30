@@ -39,24 +39,6 @@ async function getPendingUploads(request: any, token: string): Promise<any[]> {
 }
 
 /**
- * Helper: Get pending upload detail by ID
- */
-async function getPendingUploadDetail(request: any, token: string, id: string): Promise<any | null> {
-  try {
-    const response = await request.get(`${baseURL}admin/dishes/uploads/pending/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (response.ok()) {
-      const data = await response.json();
-      return data.data || null;
-    }
-  } catch (error) {
-    console.error('Failed to get pending upload detail:', error);
-  }
-  return null;
-}
-
-/**
  * Helper: Get all canteens from API
  */
 async function getCanteens(request: any, token: string): Promise<any[]> {
@@ -939,19 +921,24 @@ test.describe('Admin Uploads Workflow Tests', () => {
     // Wait for table to load
     await page.waitForSelector('table', { state: 'visible' });
     
+    // Get initial table content for comparison
+    const tableBody = page.locator('table tbody');
+    await expect(tableBody).toBeVisible();
+    
     // Select "待审核" status filter
     const statusFilter = page.locator('select').first();
     await statusFilter.selectOption('pending');
     
-    // Wait for filter to take effect by checking the table has updated
-    // We wait for either the status badge to appear or empty state
-    await expect(page.locator('table tbody')).toBeVisible();
-    
-    // All visible items should have "待审核" status
+    // Wait for filter to take effect by waiting for the table to stabilize
+    // Either we see pending status badges or the empty state
     const statusBadges = page.locator('span.bg-yellow-100.text-yellow-800');
-    const count = await statusBadges.count();
+    const emptyState = page.locator('td:has-text("暂无待审核菜品")');
     
-    // Verify all visible statuses are "待审核"
+    // Wait for either condition
+    await expect(statusBadges.first().or(emptyState)).toBeVisible({ timeout: 5000 });
+    
+    // If there are status badges, verify all are "待审核"
+    const count = await statusBadges.count();
     for (let i = 0; i < count; i++) {
       await expect(statusBadges.nth(i)).toContainText('待审核');
     }
