@@ -82,14 +82,6 @@ export class AdminAdminsService {
   ): Promise<AdminResponseDto> {
     const { username, password, canteenId, permissions } = createAdminDto;
 
-    // 检查用户名是否已存在
-    const existingAdmin = await this.prisma.admin.findUnique({
-      where: { username },
-    });
-    if (existingAdmin) {
-      throw new BadRequestException('用户名已存在');
-    }
-
     // 如果传入了 canteenId，验证食堂是否存在
     if (canteenId) {
       const canteen = await this.prisma.canteen.findUnique({
@@ -103,37 +95,45 @@ export class AdminAdminsService {
     // 加密密码
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 创建管理员及其权限
-    const admin = await this.prisma.admin.create({
-      data: {
-        username,
-        password: hashedPassword,
-        role: 'admin',
-        canteenId: canteenId || null,
-        createdBy: creatorId,
-        permissions: {
-          create: permissions.map((permission) => ({ permission })),
+    // 创建管理员及其权限，通过捕获数据库唯一约束错误来处理竞态条件
+    try {
+      const admin = await this.prisma.admin.create({
+        data: {
+          username,
+          password: hashedPassword,
+          role: 'admin',
+          canteenId: canteenId || null,
+          createdBy: creatorId,
+          permissions: {
+            create: permissions.map((permission) => ({ permission })),
+          },
         },
-      },
-      include: {
-        permissions: true,
-      },
-    });
+        include: {
+          permissions: true,
+        },
+      });
 
-    return {
-      code: 200,
-      message: 'success',
-      data: {
-        id: admin.id,
-        username: admin.username,
-        role: admin.role,
-        canteenId: admin.canteenId,
-        createdBy: admin.createdBy,
-        permissions: admin.permissions.map((p) => p.permission),
-        createdAt: admin.createdAt,
-        updatedAt: admin.updatedAt,
-      },
-    };
+      return {
+        code: 200,
+        message: 'success',
+        data: {
+          id: admin.id,
+          username: admin.username,
+          role: admin.role,
+          canteenId: admin.canteenId,
+          createdBy: admin.createdBy,
+          permissions: admin.permissions.map((p) => p.permission),
+          createdAt: admin.createdAt,
+          updatedAt: admin.updatedAt,
+        },
+      };
+    } catch (error: any) {
+      // 处理 Prisma 唯一约束违规错误 (P2002)
+      if (error?.code === 'P2002') {
+        throw new BadRequestException('用户名已存在');
+      }
+      throw error;
+    }
   }
 
   /**
