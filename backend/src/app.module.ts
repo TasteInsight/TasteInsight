@@ -12,6 +12,7 @@ import { AdminCanteensModule } from './admin-canteens/admin-canteens.module';
 import { AdminWindowsModule } from './admin-windows/admin-windows.module';
 import { AdminReportsModule } from './admin-reports/admin-reports.module';
 import { AdminUploadsModule } from './admin-uploads/admin-uploads.module';
+import { AdminAdminsModule } from './admin-admins/admin-admins.module';
 import { ConfigModule } from '@nestjs/config';
 import { CanteensModule } from './canteens/canteens.module';
 import { ReviewsModule } from './reviews/reviews.module';
@@ -29,6 +30,7 @@ import { ReviewsModule } from './reviews/reviews.module';
     AdminWindowsModule,
     AdminReportsModule,
     AdminUploadsModule,
+    AdminAdminsModule,
     ConfigModule.forRoot({
       isGlobal: true,
     }),
