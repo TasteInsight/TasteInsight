@@ -7,7 +7,7 @@
         <view
           v-for="filter in filterOptions"
           :key="filter.key"
-          class="inline-flex items-center rounded-lg h-[38px] px-4 text-base text-gray-700 bg-gray-100 transition-all duration-200 whitespace-nowrap"
+          class="inline-flex items-center rounded-lg h-[48px] px-4 text-base text-gray-700 bg-gray-100 transition-all duration-200 whitespace-nowrap"
           :class="(activeFilter === filter.key || hasActiveValue(filter.key))
             ? 'bg-ts-purple !text-white'
             : ''"

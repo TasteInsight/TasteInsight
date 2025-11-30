@@ -77,19 +77,8 @@
               <text class="ml-1">{{ dish.canteenName }} · {{ dish.windowName }}</text>
             </view>
           </view>
-          <view class="text-right mt-2 flex items-center gap-3">
+          <view class="text-right mt-2">
             <view class="text-lg font-bold text-orange-500">¥{{ dish.price }}{{ dish.priceUnit ? '/' + dish.priceUnit : '' }}</view>
-            <!-- 收藏按钮 -->
-            <view 
-              class="w-10 h-10 flex items-center justify-center rounded-full cursor-pointer transition-all duration-200"
-              :class="favoriteLoading ? 'opacity-50' : 'active:scale-95'"
-              @click="toggleFavorite"
-            >
-              <text 
-                class="text-2xl"
-                :class="isFavorited ? 'text-yellow-400' : 'text-gray-300'"
-              >{{ isFavorited ? '★' : '☆' }}</text>
-            </view>
           </view>
         </view>
 
@@ -248,10 +237,13 @@
       @submit="submitReport"
     />
 
-    <!-- 底部评价输入框 -->
+    <!-- 底部操作栏 -->
     <BottomReviewInput
       v-if="dish && !isAllCommentsPanelVisible"
-      @click="showQuickReviewForm"
+      :is-favorited="isFavorited"
+      :favorite-loading="favoriteLoading"
+      @review="showQuickReviewForm"
+      @favorite="toggleFavorite"
     />
   </view>
 </template>
