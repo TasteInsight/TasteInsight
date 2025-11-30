@@ -201,6 +201,31 @@
             {{ tag }}
           </button>
         </div>
+        <div class="mt-3 flex items-center gap-2">
+          <input
+            v-model="customTagInput"
+            type="text"
+            placeholder="输入自定义标签"
+            class="flex-1 h-10 px-3 bg-gray-50 rounded-lg text-sm border-none outline-none"
+            @confirm="addCustomTag"
+          />
+          <button
+            class="px-3 py-2 bg-blue-500 text-white rounded-lg text-sm"
+            @click="addCustomTag"
+          >
+            添加
+          </button>
+        </div>
+        <div v-if="customTags.length" class="mt-3 flex flex-wrap gap-2">
+          <view
+            v-for="tag in customTags"
+            :key="tag"
+            class="px-3 py-1.5 rounded-full text-sm bg-blue-500 text-white flex items-center gap-1"
+          >
+            <text>{{ tag }}</text>
+            <text class="text-xs opacity-80" @tap="removeCustomTag(tag)">×</text>
+          </view>
+        </div>
       </div>
 
       <!-- 过敏原 -->
@@ -219,6 +244,31 @@
           >
             {{ allergen }}
           </button>
+        </div>
+        <div class="mt-3 flex items-center gap-2">
+          <input
+            v-model="customAllergenInput"
+            type="text"
+            placeholder="输入自定义过敏原"
+            class="flex-1 h-10 px-3 bg-gray-50 rounded-lg text-sm border-none outline-none"
+            @confirm="addCustomAllergen"
+          />
+          <button
+            class="px-3 py-2 bg-orange-500 text-white rounded-lg text-sm"
+            @click="addCustomAllergen"
+          >
+            添加
+          </button>
+        </div>
+        <div v-if="customAllergens.length" class="mt-3 flex flex-wrap gap-2">
+          <view
+            v-for="allergen in customAllergens"
+            :key="allergen"
+            class="px-3 py-1.5 rounded-full text-sm bg-orange-500 text-white flex items-center gap-1"
+          >
+            <text>{{ allergen }}</text>
+            <text class="text-xs opacity-80" @tap="removeCustomAllergen(allergen)">×</text>
+          </view>
         </div>
       </div>
     </div>
@@ -257,12 +307,20 @@ const {
   mealTimeOptions,
   commonTags,
   commonAllergens,
+  customTagInput,
+  customAllergenInput,
+  customTags,
+  customAllergens,
   loadCanteenList,
   selectCanteen,
   selectWindow,
   toggleMealTime,
   toggleTag,
+  addCustomTag,
+  removeCustomTag,
   toggleAllergen,
+  addCustomAllergen,
+  removeCustomAllergen,
   chooseImages,
   removeImage,
   submitForm,

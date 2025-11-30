@@ -26,6 +26,11 @@ export function useAddDish() {
     status: 'online',
   });
 
+  const customTagInput = ref('');
+  const customAllergenInput = ref('');
+  const customTags = ref<string[]>([]);
+  const customAllergens = ref<string[]>([]);
+
   // 食堂和窗口选项
   const canteenList = ref<Canteen[]>([]);
   const windowList = ref<Window[]>([]);
@@ -138,6 +143,32 @@ export function useAddDish() {
     }
   };
 
+  const addCustomTag = () => {
+    const tag = customTagInput.value.trim();
+    if (!tag) return;
+    if (!formData.tags) {
+      formData.tags = [];
+    }
+    if (!formData.tags.includes(tag)) {
+      formData.tags.push(tag);
+    }
+    customTagInput.value = '';
+    if (!customTags.value.includes(tag)) {
+      customTags.value.push(tag);
+    }
+  };
+
+  const removeCustomTag = (tag: string) => {
+    const idx = customTags.value.indexOf(tag);
+    if (idx > -1) {
+      customTags.value.splice(idx, 1);
+    }
+    if (formData.tags) {
+      const tagIdx = formData.tags.indexOf(tag);
+      if (tagIdx > -1) formData.tags.splice(tagIdx, 1);
+    }
+  };
+
   /**
    * 切换过敏原
    */
@@ -150,6 +181,32 @@ export function useAddDish() {
       formData.allergens.splice(index, 1);
     } else {
       formData.allergens.push(allergen);
+    }
+  };
+
+  const addCustomAllergen = () => {
+    const allergen = customAllergenInput.value.trim();
+    if (!allergen) return;
+    if (!formData.allergens) {
+      formData.allergens = [];
+    }
+    if (!formData.allergens.includes(allergen)) {
+      formData.allergens.push(allergen);
+    }
+    customAllergenInput.value = '';
+    if (!customAllergens.value.includes(allergen)) {
+      customAllergens.value.push(allergen);
+    }
+  };
+
+  const removeCustomAllergen = (item: string) => {
+    const idx = customAllergens.value.indexOf(item);
+    if (idx > -1) {
+      customAllergens.value.splice(idx, 1);
+    }
+    if (formData.allergens) {
+      const aIdx = formData.allergens.indexOf(item);
+      if (aIdx > -1) formData.allergens.splice(aIdx, 1);
     }
   };
 
@@ -244,6 +301,10 @@ export function useAddDish() {
     selectedCanteen.value = null;
     windowList.value = [];
     error.value = '';
+    customTags.value = [];
+    customAllergens.value = [];
+    customTagInput.value = '';
+    customAllergenInput.value = '';
   };
 
   return {
@@ -258,12 +319,20 @@ export function useAddDish() {
     mealTimeOptions,
     commonTags,
     commonAllergens,
+    customTagInput,
+    customAllergenInput,
+    customTags,
+    customAllergens,
     loadCanteenList,
     selectCanteen,
     selectWindow,
     toggleMealTime,
     toggleTag,
+    addCustomTag,
+    removeCustomTag,
     toggleAllergen,
+    addCustomAllergen,
+    removeCustomAllergen,
     chooseImages,
     removeImage,
     submitForm,
