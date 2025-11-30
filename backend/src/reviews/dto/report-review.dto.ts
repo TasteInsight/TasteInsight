@@ -1,12 +1,6 @@
 import { IsString, IsEnum, IsNotEmpty } from 'class-validator';
 import { BaseResponseDto } from '@/common/dto/response.dto';
-
-export enum ReportType {
-  INAPPROPRIATE = 'inappropriate',
-  SPAM = 'spam',
-  FALSE_INFO = 'false_info',
-  OTHER = 'other',
-}
+import { ReportType } from '@/common/enums';
 
 export class ReportReviewDto {
   @IsNotEmpty()

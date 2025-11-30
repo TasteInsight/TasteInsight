@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ReviewsService } from './reviews.service';
 import { PrismaService } from '@/prisma.service';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
-import { ReportType } from './dto/report-review.dto';
+import { ReportType } from '@/common/enums';
 
 const mockPrisma = {
   dish: { findUnique: jest.fn() },
