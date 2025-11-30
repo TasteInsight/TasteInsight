@@ -245,7 +245,7 @@ describe('AdminWindowsController (e2e)', () => {
     it('should update window with different floor level', async () => {
       // Use a unique level that doesn't exist yet
       const uniqueLevel = '99';
-      
+
       const updateDto = {
         name: 'Window on 99th Floor',
         number: 'T1-99F',
@@ -265,7 +265,7 @@ describe('AdminWindowsController (e2e)', () => {
       expect(response.body.code).toBe(200);
       expect(response.body.data.floor.level).toBe(uniqueLevel);
       expect(response.body.data.floor.name).toBe('九十九楼');
-      
+
       // Verify the floor was created
       const createdFloor = await prisma.floor.findFirst({
         where: { canteenId: testCanteenId, level: uniqueLevel },
