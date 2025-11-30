@@ -113,6 +113,67 @@ async function main() {
   });
   console.log(`Added upload:approve, review:approve and comment:approve permissions to revieweradmin`);
 
+  // 创建一个有子管理员管理权限的管理员
+  const adminManagerPassword = await bcrypt.hash('manager123', 10);
+  const adminManager = await prisma.admin.create({
+    data: {
+      username: 'adminmanager',
+      password: adminManagerPassword,
+      role: 'admin',
+    },
+  });
+  console.log(`Created admin manager: ${adminManager.username}`);
+
+  // 为管理员管理者添加子管理员相关权限
+  await prisma.adminPermission.createMany({
+    data: [
+      {
+        adminId: adminManager.id,
+        permission: 'admin:view',
+      },
+      {
+        adminId: adminManager.id,
+        permission: 'admin:create',
+      },
+      {
+        adminId: adminManager.id,
+        permission: 'admin:edit',
+      },
+      {
+        adminId: adminManager.id,
+        permission: 'admin:delete',
+      },
+    ],
+  });
+  console.log(`Added all admin management permissions to adminmanager`);
+
+  // 创建一个由 adminManager 创建的子管理员，用于测试
+  const subAdminPassword = await bcrypt.hash('subadmin123', 10);
+  const subAdmin = await prisma.admin.create({
+    data: {
+      username: 'subadmin',
+      password: subAdminPassword,
+      role: 'admin',
+      createdBy: adminManager.id,
+    },
+  });
+  console.log(`Created sub admin: ${subAdmin.username}`);
+
+  // 为子管理员添加一些基础权限
+  await prisma.adminPermission.createMany({
+    data: [
+      {
+        adminId: subAdmin.id,
+        permission: 'dish:view',
+      },
+      {
+        adminId: subAdmin.id,
+        permission: 'canteen:view',
+      },
+    ],
+  });
+  console.log(`Added dish:view and canteen:view permissions to subadmin`);
+
   // 3. 创建两个可用于测试的【基础用户】
   const user = await prisma.user.create({
     data: {
