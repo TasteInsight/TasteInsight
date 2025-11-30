@@ -32,21 +32,13 @@
         {{ error }}
       </div>
 
-      <!-- 无结果 - 显示添加菜品按钮 -->
+      <!-- 无结果 - 显示添加菜品提示 -->
       <div v-else-if="!loading && !hasResults && hasSearched" class="text-center py-10">
         <text class="iconify text-4xl mb-2 text-gray-300" data-icon="mdi:magnify"></text>
         <div class="text-gray-400">未找到"{{ keyword }}"相关结果</div>
-        <div class="text-sm text-gray-400 mt-1">试试搜索其他关键词</div>
-        
-        <!-- 添加菜品按钮 -->
-        <button 
-          class="mt-6 px-6 py-3 bg-blue-500 text-white rounded-full flex items-center gap-2 mx-auto shadow-md"
-          @click="goToAddDish"
-        >
-          <text class="iconify" data-icon="mdi:plus"></text>
-          <span>添加新菜品</span>
-        </button>
-        <div class="text-xs text-gray-400 mt-2">找不到？帮我们添加这道菜吧</div>
+        <div class="text-sm text-gray-400 mt-2">
+          找不到？帮我们<text class="text-blue-500" @click="goToAddDish">添加这道菜</text>吧
+        </div>
       </div>
 
       <!-- 搜索结果 -->

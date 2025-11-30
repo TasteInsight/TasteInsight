@@ -129,162 +129,163 @@
 
       <!-- 口味筛选 (范围选择) -->
       <view v-if="activeFilter === 'taste'" class="filter-content">
+        <view class="text-xs text-gray-400 mb-4">提示：0 表示不限，1-5 表示程度</view>
         <!-- 辣度 -->
-        <view class="mb-4">
-          <view class="flex justify-between items-center mb-2">
+        <view class="mb-6">
+          <view class="flex justify-between items-center mb-3">
             <text class="text-sm font-medium text-gray-700">辣度范围</text>
             <text class="text-xs text-gray-500">{{ getTasteRangeLabel('spicy', selectedSpicyMin, selectedSpicyMax) }}</text>
           </view>
-          <view class="flex items-center gap-2 mb-2">
-            <text class="text-xs text-gray-500 w-8">最小:</text>
-            <view class="flex gap-1 flex-1">
-              <view
-                v-for="level in 6"
-                :key="level - 1"
-                class="flex-1 h-8 rounded flex items-center justify-center text-xs cursor-pointer border"
-                :class="selectedSpicyMin === level - 1
-                  ? 'bg-red-500 text-white border-red-500'
-                  : 'bg-gray-100 text-gray-600 border-gray-200'"
-                @click="selectedSpicyMin = selectedSpicyMin === level - 1 ? -1 : level - 1"
-              >
-                {{ level - 1 === 0 ? '不限' : level - 1 }}
-              </view>
+          <view class="px-2">
+            <view class="flex items-center gap-3 mb-2">
+              <text class="text-xs text-gray-500 w-10 flex-shrink-0">最小</text>
+              <slider 
+                :value="selectedSpicyMin" 
+                :min="0" 
+                :max="5" 
+                :step="1"
+                activeColor="#ef4444"
+                backgroundColor="#e5e7eb"
+                block-size="20"
+                class="flex-1"
+                @change="(e: any) => selectedSpicyMin = e.detail.value"
+              />
+              <text class="text-xs text-gray-600 w-8 text-center">{{ selectedSpicyMin === 0 ? '不限' : selectedSpicyMin }}</text>
             </view>
-          </view>
-          <view class="flex items-center gap-2">
-            <text class="text-xs text-gray-500 w-8">最大:</text>
-            <view class="flex gap-1 flex-1">
-              <view
-                v-for="level in 6"
-                :key="level - 1"
-                class="flex-1 h-8 rounded flex items-center justify-center text-xs cursor-pointer border"
-                :class="selectedSpicyMax === level - 1
-                  ? 'bg-red-500 text-white border-red-500'
-                  : 'bg-gray-100 text-gray-600 border-gray-200'"
-                @click="selectedSpicyMax = selectedSpicyMax === level - 1 ? -1 : level - 1"
-              >
-                {{ level - 1 === 0 ? '不限' : level - 1 }}
-              </view>
+            <view class="flex items-center gap-3">
+              <text class="text-xs text-gray-500 w-10 flex-shrink-0">最大</text>
+              <slider 
+                :value="selectedSpicyMax" 
+                :min="0" 
+                :max="5" 
+                :step="1"
+                activeColor="#ef4444"
+                backgroundColor="#e5e7eb"
+                block-size="20"
+                class="flex-1"
+                @change="(e: any) => selectedSpicyMax = e.detail.value"
+              />
+              <text class="text-xs text-gray-600 w-8 text-center">{{ selectedSpicyMax === 0 ? '不限' : selectedSpicyMax }}</text>
             </view>
           </view>
         </view>
 
         <!-- 咸度 -->
-        <view class="mb-4">
-          <view class="flex justify-between items-center mb-2">
+        <view class="mb-6">
+          <view class="flex justify-between items-center mb-3">
             <text class="text-sm font-medium text-gray-700">咸度范围</text>
             <text class="text-xs text-gray-500">{{ getTasteRangeLabel('salty', selectedSaltyMin, selectedSaltyMax) }}</text>
           </view>
-          <view class="flex items-center gap-2 mb-2">
-            <text class="text-xs text-gray-500 w-8">最小:</text>
-            <view class="flex gap-1 flex-1">
-              <view
-                v-for="level in 6"
-                :key="level - 1"
-                class="flex-1 h-8 rounded flex items-center justify-center text-xs cursor-pointer border"
-                :class="selectedSaltyMin === level - 1
-                  ? 'bg-amber-500 text-white border-amber-500'
-                  : 'bg-gray-100 text-gray-600 border-gray-200'"
-                @click="selectedSaltyMin = selectedSaltyMin === level - 1 ? -1 : level - 1"
-              >
-                {{ level - 1 === 0 ? '不限' : level - 1 }}
-              </view>
+          <view class="px-2">
+            <view class="flex items-center gap-3 mb-2">
+              <text class="text-xs text-gray-500 w-10 flex-shrink-0">最小</text>
+              <slider 
+                :value="selectedSaltyMin" 
+                :min="0" 
+                :max="5" 
+                :step="1"
+                activeColor="#f59e0b"
+                backgroundColor="#e5e7eb"
+                block-size="20"
+                class="flex-1"
+                @change="(e: any) => selectedSaltyMin = e.detail.value"
+              />
+              <text class="text-xs text-gray-600 w-8 text-center">{{ selectedSaltyMin === 0 ? '不限' : selectedSaltyMin }}</text>
             </view>
-          </view>
-          <view class="flex items-center gap-2">
-            <text class="text-xs text-gray-500 w-8">最大:</text>
-            <view class="flex gap-1 flex-1">
-              <view
-                v-for="level in 6"
-                :key="level - 1"
-                class="flex-1 h-8 rounded flex items-center justify-center text-xs cursor-pointer border"
-                :class="selectedSaltyMax === level - 1
-                  ? 'bg-amber-500 text-white border-amber-500'
-                  : 'bg-gray-100 text-gray-600 border-gray-200'"
-                @click="selectedSaltyMax = selectedSaltyMax === level - 1 ? -1 : level - 1"
-              >
-                {{ level - 1 === 0 ? '不限' : level - 1 }}
-              </view>
+            <view class="flex items-center gap-3">
+              <text class="text-xs text-gray-500 w-10 flex-shrink-0">最大</text>
+              <slider 
+                :value="selectedSaltyMax" 
+                :min="0" 
+                :max="5" 
+                :step="1"
+                activeColor="#f59e0b"
+                backgroundColor="#e5e7eb"
+                block-size="20"
+                class="flex-1"
+                @change="(e: any) => selectedSaltyMax = e.detail.value"
+              />
+              <text class="text-xs text-gray-600 w-8 text-center">{{ selectedSaltyMax === 0 ? '不限' : selectedSaltyMax }}</text>
             </view>
           </view>
         </view>
 
         <!-- 甜度 -->
-        <view class="mb-4">
-          <view class="flex justify-between items-center mb-2">
+        <view class="mb-6">
+          <view class="flex justify-between items-center mb-3">
             <text class="text-sm font-medium text-gray-700">甜度范围</text>
             <text class="text-xs text-gray-500">{{ getTasteRangeLabel('sweet', selectedSweetMin, selectedSweetMax) }}</text>
           </view>
-          <view class="flex items-center gap-2 mb-2">
-            <text class="text-xs text-gray-500 w-8">最小:</text>
-            <view class="flex gap-1 flex-1">
-              <view
-                v-for="level in 6"
-                :key="level - 1"
-                class="flex-1 h-8 rounded flex items-center justify-center text-xs cursor-pointer border"
-                :class="selectedSweetMin === level - 1
-                  ? 'bg-pink-500 text-white border-pink-500'
-                  : 'bg-gray-100 text-gray-600 border-gray-200'"
-                @click="selectedSweetMin = selectedSweetMin === level - 1 ? -1 : level - 1"
-              >
-                {{ level - 1 === 0 ? '不限' : level - 1 }}
-              </view>
+          <view class="px-2">
+            <view class="flex items-center gap-3 mb-2">
+              <text class="text-xs text-gray-500 w-10 flex-shrink-0">最小</text>
+              <slider 
+                :value="selectedSweetMin" 
+                :min="0" 
+                :max="5" 
+                :step="1"
+                activeColor="#ec4899"
+                backgroundColor="#e5e7eb"
+                block-size="20"
+                class="flex-1"
+                @change="(e: any) => selectedSweetMin = e.detail.value"
+              />
+              <text class="text-xs text-gray-600 w-8 text-center">{{ selectedSweetMin === 0 ? '不限' : selectedSweetMin }}</text>
             </view>
-          </view>
-          <view class="flex items-center gap-2">
-            <text class="text-xs text-gray-500 w-8">最大:</text>
-            <view class="flex gap-1 flex-1">
-              <view
-                v-for="level in 6"
-                :key="level - 1"
-                class="flex-1 h-8 rounded flex items-center justify-center text-xs cursor-pointer border"
-                :class="selectedSweetMax === level - 1
-                  ? 'bg-pink-500 text-white border-pink-500'
-                  : 'bg-gray-100 text-gray-600 border-gray-200'"
-                @click="selectedSweetMax = selectedSweetMax === level - 1 ? -1 : level - 1"
-              >
-                {{ level - 1 === 0 ? '不限' : level - 1 }}
-              </view>
+            <view class="flex items-center gap-3">
+              <text class="text-xs text-gray-500 w-10 flex-shrink-0">最大</text>
+              <slider 
+                :value="selectedSweetMax" 
+                :min="0" 
+                :max="5" 
+                :step="1"
+                activeColor="#ec4899"
+                backgroundColor="#e5e7eb"
+                block-size="20"
+                class="flex-1"
+                @change="(e: any) => selectedSweetMax = e.detail.value"
+              />
+              <text class="text-xs text-gray-600 w-8 text-center">{{ selectedSweetMax === 0 ? '不限' : selectedSweetMax }}</text>
             </view>
           </view>
         </view>
 
         <!-- 油腻度 -->
         <view>
-          <view class="flex justify-between items-center mb-2">
+          <view class="flex justify-between items-center mb-3">
             <text class="text-sm font-medium text-gray-700">油腻度范围</text>
             <text class="text-xs text-gray-500">{{ getTasteRangeLabel('oily', selectedOilyMin, selectedOilyMax) }}</text>
           </view>
-          <view class="flex items-center gap-2 mb-2">
-            <text class="text-xs text-gray-500 w-8">最小:</text>
-            <view class="flex gap-1 flex-1">
-              <view
-                v-for="level in 6"
-                :key="level - 1"
-                class="flex-1 h-8 rounded flex items-center justify-center text-xs cursor-pointer border"
-                :class="selectedOilyMin === level - 1
-                  ? 'bg-yellow-600 text-white border-yellow-600'
-                  : 'bg-gray-100 text-gray-600 border-gray-200'"
-                @click="selectedOilyMin = selectedOilyMin === level - 1 ? -1 : level - 1"
-              >
-                {{ level - 1 === 0 ? '不限' : level - 1 }}
-              </view>
+          <view class="px-2">
+            <view class="flex items-center gap-3 mb-2">
+              <text class="text-xs text-gray-500 w-10 flex-shrink-0">最小</text>
+              <slider 
+                :value="selectedOilyMin" 
+                :min="0" 
+                :max="5" 
+                :step="1"
+                activeColor="#ca8a04"
+                backgroundColor="#e5e7eb"
+                block-size="20"
+                class="flex-1"
+                @change="(e: any) => selectedOilyMin = e.detail.value"
+              />
+              <text class="text-xs text-gray-600 w-8 text-center">{{ selectedOilyMin === 0 ? '不限' : selectedOilyMin }}</text>
             </view>
-          </view>
-          <view class="flex items-center gap-2">
-            <text class="text-xs text-gray-500 w-8">最大:</text>
-            <view class="flex gap-1 flex-1">
-              <view
-                v-for="level in 6"
-                :key="level - 1"
-                class="flex-1 h-8 rounded flex items-center justify-center text-xs cursor-pointer border"
-                :class="selectedOilyMax === level - 1
-                  ? 'bg-yellow-600 text-white border-yellow-600'
-                  : 'bg-gray-100 text-gray-600 border-gray-200'"
-                @click="selectedOilyMax = selectedOilyMax === level - 1 ? -1 : level - 1"
-              >
-                {{ level - 1 === 0 ? '不限' : level - 1 }}
-              </view>
+            <view class="flex items-center gap-3">
+              <text class="text-xs text-gray-500 w-10 flex-shrink-0">最大</text>
+              <slider 
+                :value="selectedOilyMax" 
+                :min="0" 
+                :max="5" 
+                :step="1"
+                activeColor="#ca8a04"
+                backgroundColor="#e5e7eb"
+                block-size="20"
+                class="flex-1"
+                @change="(e: any) => selectedOilyMax = e.detail.value"
+              />
+              <text class="text-xs text-gray-600 w-8 text-center">{{ selectedOilyMax === 0 ? '不限' : selectedOilyMax }}</text>
             </view>
           </view>
         </view>
@@ -523,32 +524,40 @@ const customTags = ref<string[]>([]);
 const customAvoidInput = ref<string>('');
 const customAvoid = ref<string[]>([]);
 
-// 口味范围 (-1 表示不限，0表示未设置/不限)
-const selectedSpicyMin = ref<number>(-1);
-const selectedSpicyMax = ref<number>(-1);
-const selectedSaltyMin = ref<number>(-1);
-const selectedSaltyMax = ref<number>(-1);
-const selectedSweetMin = ref<number>(-1);
-const selectedSweetMax = ref<number>(-1);
-const selectedOilyMin = ref<number>(-1);
-const selectedOilyMax = ref<number>(-1);
+// 口味范围 (0=未设置, 1-5=程度)
+const selectedSpicyMin = ref<number>(0);
+const selectedSpicyMax = ref<number>(0);
+const selectedSaltyMin = ref<number>(0);
+const selectedSaltyMax = ref<number>(0);
+const selectedSweetMin = ref<number>(0);
+const selectedSweetMax = ref<number>(0);
+const selectedOilyMin = ref<number>(0);
+const selectedOilyMax = ref<number>(0);
 
-// 获取口味范围标签描述
+// 口味是否已修改（用于判断是否激活）
+const isTasteModified = () => {
+  return selectedSpicyMin.value > 0 || selectedSpicyMax.value > 0 ||
+         selectedSaltyMin.value > 0 || selectedSaltyMax.value > 0 ||
+         selectedSweetMin.value > 0 || selectedSweetMax.value > 0 ||
+         selectedOilyMin.value > 0 || selectedOilyMax.value > 0;
+};
+
+// 获取口味范围标签描述 (0=未设置, 1-5=程度)
 const getTasteRangeLabel = (type: string, minVal: number, maxVal: number): string => {
   const labels: Record<string, string[]> = {
-    spicy: ['','不辣', '微辣', '中辣', '辣', '很辣'],
-    salty: ['','清淡', '微咸', '适中', '偏咸', '很咸'],
-    sweet: ['','不甜', '微甜', '适中', '偏甜', '很甜'],
-    oily: ['','清爽', '少油', '适中', '偏油', '较油'],
+    spicy: ['', '微辣', '中辣', '辣', '很辣', '超辣'],
+    salty: ['', '微咸', '适中', '偏咸', '很咸', '超咸'],
+    sweet: ['', '微甜', '适中', '偏甜', '很甜', '超甜'],
+    oily: ['', '少油', '适中', '偏油', '较油', '很油'],
   };
   
-  if (minVal <= 0 && maxVal <= 0) return '不限';
+  if (minVal === 0 && maxVal === 0) return '不限';
   
-  const minLabel = minVal <= 0 ? '不限' : (labels[type]?.[minVal] || String(minVal));
-  const maxLabel = maxVal <= 0 ? '不限' : (labels[type]?.[maxVal] || String(maxVal));
+  const minLabel = minVal === 0 ? '不限' : (labels[type]?.[minVal] || String(minVal));
+  const maxLabel = maxVal === 0 ? '不限' : (labels[type]?.[maxVal] || String(maxVal));
   
-  if (minVal <= 0) return `最高${maxLabel}`;
-  if (maxVal <= 0) return `最低${minLabel}`;
+  if (minVal === 0) return `最高${maxLabel}`;
+  if (maxVal === 0) return `最低${minLabel}`;
   return `${minLabel} - ${maxLabel}`;
 };
 
@@ -670,10 +679,7 @@ const hasActiveValue = (key: string): boolean => {
     case 'avoid':
       return selectedAvoid.value.length > 0 || customAvoid.value.length > 0;
     case 'taste':
-      return selectedSpicyMin.value >= 0 || selectedSpicyMax.value >= 0 ||
-             selectedSaltyMin.value >= 0 || selectedSaltyMax.value >= 0 ||
-             selectedSweetMin.value >= 0 || selectedSweetMax.value >= 0 ||
-             selectedOilyMin.value >= 0 || selectedOilyMax.value >= 0;
+      return isTasteModified();
     default:
       return false;
   }
@@ -780,14 +786,14 @@ const resetCurrentFilter = () => {
       customAvoidInput.value = '';
       break;
     case 'taste':
-      selectedSpicyMin.value = -1;
-      selectedSpicyMax.value = -1;
-      selectedSaltyMin.value = -1;
-      selectedSaltyMax.value = -1;
-      selectedSweetMin.value = -1;
-      selectedSweetMax.value = -1;
-      selectedOilyMin.value = -1;
-      selectedOilyMax.value = -1;
+      selectedSpicyMin.value = 0;
+      selectedSpicyMax.value = 0;
+      selectedSaltyMin.value = 0;
+      selectedSaltyMax.value = 0;
+      selectedSweetMin.value = 0;
+      selectedSweetMax.value = 0;
+      selectedOilyMin.value = 0;
+      selectedOilyMax.value = 0;
       break;
   }
 };
@@ -844,29 +850,29 @@ const applyFilter = () => {
     filter.avoidIngredients = allAvoid;
   }
 
-  // 口味范围筛选
-  if (selectedSpicyMin.value >= 0 || selectedSpicyMax.value >= 0) {
+  // 口味范围筛选（0表示未设置，只有设置了才添加到筛选条件）
+  if (selectedSpicyMin.value > 0 || selectedSpicyMax.value > 0) {
     filter.spicyLevel = {
-      min: selectedSpicyMin.value >= 0 ? selectedSpicyMin.value : 0,
-      max: selectedSpicyMax.value >= 0 ? selectedSpicyMax.value : 5
+      min: selectedSpicyMin.value > 0 ? selectedSpicyMin.value : 1,
+      max: selectedSpicyMax.value > 0 ? selectedSpicyMax.value : 5
     };
   }
-  if (selectedSaltyMin.value >= 0 || selectedSaltyMax.value >= 0) {
+  if (selectedSaltyMin.value > 0 || selectedSaltyMax.value > 0) {
     filter.saltiness = {
-      min: selectedSaltyMin.value >= 0 ? selectedSaltyMin.value : 0,
-      max: selectedSaltyMax.value >= 0 ? selectedSaltyMax.value : 5
+      min: selectedSaltyMin.value > 0 ? selectedSaltyMin.value : 1,
+      max: selectedSaltyMax.value > 0 ? selectedSaltyMax.value : 5
     };
   }
-  if (selectedSweetMin.value >= 0 || selectedSweetMax.value >= 0) {
+  if (selectedSweetMin.value > 0 || selectedSweetMax.value > 0) {
     filter.sweetness = {
-      min: selectedSweetMin.value >= 0 ? selectedSweetMin.value : 0,
-      max: selectedSweetMax.value >= 0 ? selectedSweetMax.value : 5
+      min: selectedSweetMin.value > 0 ? selectedSweetMin.value : 1,
+      max: selectedSweetMax.value > 0 ? selectedSweetMax.value : 5
     };
   }
-  if (selectedOilyMin.value >= 0 || selectedOilyMax.value >= 0) {
+  if (selectedOilyMin.value > 0 || selectedOilyMax.value > 0) {
     filter.oiliness = {
-      min: selectedOilyMin.value >= 0 ? selectedOilyMin.value : 0,
-      max: selectedOilyMax.value >= 0 ? selectedOilyMax.value : 5
+      min: selectedOilyMin.value > 0 ? selectedOilyMin.value : 1,
+      max: selectedOilyMax.value > 0 ? selectedOilyMax.value : 5
     };
   }
 
@@ -893,14 +899,14 @@ const resetAllFilters = () => {
   selectedAvoid.value = [];
   customAvoid.value = [];
   customAvoidInput.value = '';
-  selectedSpicyMin.value = -1;
-  selectedSpicyMax.value = -1;
-  selectedSaltyMin.value = -1;
-  selectedSaltyMax.value = -1;
-  selectedSweetMin.value = -1;
-  selectedSweetMax.value = -1;
-  selectedOilyMin.value = -1;
-  selectedOilyMax.value = -1;
+  selectedSpicyMin.value = 0;
+  selectedSpicyMax.value = 0;
+  selectedSaltyMin.value = 0;
+  selectedSaltyMax.value = 0;
+  selectedSweetMin.value = 0;
+  selectedSweetMax.value = 0;
+  selectedOilyMin.value = 0;
+  selectedOilyMax.value = 0;
   activeFilter.value = '';
   emit('filter-change', {});
 };
@@ -912,11 +918,11 @@ defineExpose({
 
 <style scoped>
 .filter-scrollbar::-webkit-scrollbar {
-  height: 1px;
+  height: 0.5px;
 }
 .filter-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.15);
-  border-radius: 2px;
+  background-color: rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
 }
 .filter-scrollbar::-webkit-scrollbar-track {
   background-color: transparent;

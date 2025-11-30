@@ -2,15 +2,8 @@
   <view class="min-h-screen w-full flex flex-col bg-gray-100 overflow-hidden">
     <!-- 导航栏区域（在uni-app中通常由pages.json配置，或者使用自定义组件） -->
 
-    <!-- 列表内容区域，使用 scroll-view 适配下拉刷新和触底加载 -->
-    <scroll-view
-      scroll-y
-      class="flex-1 px-4 box-border"
-      :refresher-enabled="true"
-      :refresher-triggered="isRefreshing"
-      @refresherrefresh="onRefresh"
-      @scrolltolower="loadMore"
-    >
+    <!-- 列表内容区域，使用页面自身的滚动 -->
+    <view class="flex-1 px-4 box-border pb-6">
       <view class="text-lg font-semibold text-gray-800 my-4">最新公告</view>
 
       <!-- 数据列表 -->
@@ -34,13 +27,14 @@
         </view>
       </view>
 
-    </scroll-view>
+    </view>
     
     <!-- 底部导航区（在pages.json中配置为tabBar，此处不需重复实现 nav-bar） -->
   </view>
 </template>
 
 <script setup>
+import { onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import { useNewsList } from './composables/use-news-list';
 import NewsItem from './components/NewsItem.vue';
 
@@ -55,15 +49,12 @@ const loadMore = () => {
 const onRefresh = async () => {
   // isRefreshing 已经在 useNewsList 中处理，这里只调用 refresh
   await refresh();
-  // uni.stopPullDownRefresh(); // 如果在pages.json中启用了原生下拉，需要在原生事件中调用
+  uni.stopPullDownRefresh();
 };
 
-// 如果在 pages.json 中未启用原生下拉刷新，可在这里监听生命周期
-// import { onPullDownRefresh } from '@dcloudio/uni-app';
-// onPullDownRefresh(async () => {
-//   await onRefresh();
-//   uni.stopPullDownRefresh();
-// });
+onReachBottom(loadMore);
+
+onPullDownRefresh(onRefresh);
 </script>
 
 <style scoped>

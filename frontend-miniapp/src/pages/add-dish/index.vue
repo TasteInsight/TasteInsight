@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50 pb-24">
+  <div class="min-h-screen bg-gray-50 pb-32">
     <!-- 顶部标题 -->
     <div class="bg-white px-4 py-4 mb-2">
       <div class="text-lg font-semibold text-gray-800">添加新菜品</div>
@@ -30,15 +30,27 @@
           <div class="text-sm text-gray-600 mb-1">
             价格 <span class="text-red-500">*</span>
           </div>
-          <div class="flex items-center">
-            <span class="text-gray-500 mr-2">¥</span>
-            <input
-              v-model.number="formData.price"
-              type="digit"
-              placeholder="0.00"
-              class="flex-1 h-10 px-3 bg-gray-50 rounded-lg text-sm border-none outline-none"
-            />
+          <div class="flex items-center gap-3">
+            <div class="flex items-center flex-1">
+              <span class="text-gray-500 mr-2">￥</span>
+              <input
+                v-model.number="formData.price"
+                type="digit"
+                placeholder="0.00"
+                class="flex-1 h-10 px-3 bg-gray-50 rounded-lg text-sm border-none outline-none"
+              />
+            </div>
+            <div class="flex items-center">
+              <span class="text-gray-400 text-sm mr-2">/</span>
+              <input
+                v-model="formData.priceUnit"
+                type="text"
+                placeholder="两"
+                class="w-16 h-10 px-3 bg-gray-50 rounded-lg text-sm border-none outline-none text-center"
+              />
+            </div>
           </div>
+          <div class="text-xs text-gray-400 mt-1">价格单位选填，如：两、份、碗等</div>
         </div>
 
         <!-- 描述 -->
@@ -62,11 +74,11 @@
             所在食堂 <span class="text-red-500">*</span>
           </div>
           <div v-if="loading" class="text-gray-400 text-sm">加载中...</div>
-          <div v-else class="flex flex-wrap gap-2">
+          <div v-else class="grid grid-cols-3 gap-2">
             <button
               v-for="canteen in canteenList"
               :key="canteen.id"
-              class="px-3 py-2 rounded-lg text-sm transition-colors"
+              class="w-full py-2 px-3 rounded-lg text-sm transition-colors text-left truncate"
               :class="selectedCanteen?.id === canteen.id 
                 ? 'bg-blue-500 text-white' 
                 : 'bg-gray-100 text-gray-600'"
@@ -82,11 +94,11 @@
           <div class="text-sm text-gray-600 mb-2">
             所在窗口 <span class="text-red-500">*</span>
           </div>
-          <div class="flex flex-wrap gap-2">
+          <div class="grid grid-cols-3 gap-2">
             <button
               v-for="window in windowList"
               :key="window.id"
-              class="px-3 py-2 rounded-lg text-sm transition-colors"
+              class="w-full py-2 px-3 rounded-lg text-sm transition-colors text-left truncate"
               :class="formData.windowName === window.name 
                 ? 'bg-blue-500 text-white' 
                 : 'bg-gray-100 text-gray-600'"
@@ -176,18 +188,43 @@
       <!-- 标签 -->
       <div class="bg-white px-4 py-4">
         <div class="text-sm font-semibold text-gray-700 mb-3">菜品标签</div>
-        <div class="flex flex-wrap gap-2">
+        <div class="grid grid-cols-3 gap-2">
           <button
             v-for="tag in commonTags"
             :key="tag"
-            class="px-3 py-1.5 rounded-full text-sm transition-colors"
+            class="w-full px-3 py-1.5 rounded-full text-sm transition-colors text-left truncate"
             :class="formData.tags?.includes(tag) 
-              ? 'bg-blue-100 text-blue-600 border border-blue-300' 
-              : 'bg-gray-50 text-gray-600 border border-gray-200'"
+              ? 'bg-blue-100 text-blue-600' 
+              : 'bg-gray-100 text-gray-600'"
             @click="toggleTag(tag)"
           >
             {{ tag }}
           </button>
+        </div>
+        <div class="mt-3 flex items-center gap-2">
+          <input
+            v-model="customTagInput"
+            type="text"
+            placeholder="输入自定义标签"
+            class="flex-1 h-10 px-3 bg-gray-50 rounded-lg text-sm border-none outline-none"
+            @confirm="addCustomTag"
+          />
+          <button
+            class="px-3 py-2 bg-blue-500 text-white rounded-lg text-sm"
+            @click="addCustomTag"
+          >
+            添加
+          </button>
+        </div>
+        <div v-if="customTags.length" class="mt-3 flex flex-wrap gap-2">
+          <view
+            v-for="tag in customTags"
+            :key="tag"
+            class="px-3 py-1.5 rounded-full text-sm bg-blue-500 text-white flex items-center gap-1"
+          >
+            <text>{{ tag }}</text>
+            <text class="text-xs opacity-80" @tap="removeCustomTag(tag)">×</text>
+          </view>
         </div>
       </div>
 
@@ -195,24 +232,52 @@
       <div class="bg-white px-4 py-4">
         <div class="text-sm font-semibold text-gray-700 mb-3">过敏原信息</div>
         <div class="text-xs text-gray-500 mb-2">选择该菜品可能含有的过敏原</div>
-        <div class="flex flex-wrap gap-2">
+        <div class="grid grid-cols-3 gap-2">
           <button
             v-for="allergen in commonAllergens"
             :key="allergen"
-            class="px-3 py-1.5 rounded-full text-sm transition-colors"
+            class="w-full px-3 py-1.5 rounded-full text-sm transition-colors text-left truncate"
             :class="formData.allergens?.includes(allergen) 
-              ? 'bg-orange-100 text-orange-600 border border-orange-300' 
-              : 'bg-gray-50 text-gray-600 border border-gray-200'"
+              ? 'bg-orange-100 text-orange-600' 
+              : 'bg-gray-100 text-gray-600'"
             @click="toggleAllergen(allergen)"
           >
             {{ allergen }}
           </button>
         </div>
+        <div class="mt-3 flex items-center gap-2">
+          <input
+            v-model="customAllergenInput"
+            type="text"
+            placeholder="输入自定义过敏原"
+            class="flex-1 h-10 px-3 bg-gray-50 rounded-lg text-sm border-none outline-none"
+            @confirm="addCustomAllergen"
+          />
+          <button
+            class="px-3 py-2 bg-orange-500 text-white rounded-lg text-sm"
+            @click="addCustomAllergen"
+          >
+            添加
+          </button>
+        </div>
+        <div v-if="customAllergens.length" class="mt-3 flex flex-wrap gap-2">
+          <view
+            v-for="allergen in customAllergens"
+            :key="allergen"
+            class="px-3 py-1.5 rounded-full text-sm bg-orange-500 text-white flex items-center gap-1"
+          >
+            <text>{{ allergen }}</text>
+            <text class="text-xs opacity-80" @tap="removeCustomAllergen(allergen)">×</text>
+          </view>
+        </div>
       </div>
     </div>
 
     <!-- 底部提交按钮 -->
-    <div class="fixed bottom-0 left-0 right-0 bg-white px-4 py-3 shadow-lg border-t">
+    <div
+      class="fixed bottom-0 left-0 right-0 bg-white px-4 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] z-[2000]"
+      :style="{ paddingBottom: 'env(safe-area-inset-bottom)' }"
+    >
       <button
         class="w-full h-12 rounded-lg text-white font-semibold transition-colors"
         :class="isFormValid && !submitting 
@@ -245,12 +310,20 @@ const {
   mealTimeOptions,
   commonTags,
   commonAllergens,
+  customTagInput,
+  customAllergenInput,
+  customTags,
+  customAllergens,
   loadCanteenList,
   selectCanteen,
   selectWindow,
   toggleMealTime,
   toggleTag,
+  addCustomTag,
+  removeCustomTag,
   toggleAllergen,
+  addCustomAllergen,
+  removeCustomAllergen,
   chooseImages,
   removeImage,
   submitForm,
@@ -275,5 +348,14 @@ onMounted(() => {
 input, textarea {
   border: none;
   outline: none;
+}
+
+button {
+  border: none;
+  outline: none;
+}
+
+button::after {
+  border: none;
 }
 </style>
