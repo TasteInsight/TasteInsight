@@ -36,6 +36,7 @@
             v-for="(comment, index) in comments"
             :key="comment.id"
             class="comment-item"
+            @tap="selectCommentForReply(comment)"
             @longpress="(e: any) => handleLongPress(e, comment)"
           >
             <!-- 评论内容区域 -->
@@ -48,10 +49,18 @@
                   alt="用户头像"
                 />
                 <view class="comment-info">
-                  <text class="text-purple-600 font-semibold text-sm block mb-0.5">{{ comment.userNickname }}</text>
+                  <text class="text-ts-purple font-semibold text-sm block mb-0.5">{{ comment.userNickname }}</text>
                   <text class="comment-date">{{ formatDate(comment.createdAt) }}</text>
                 </view>
-                <view class="text-xs text-gray-400 ml-2">长按更多</view>
+              </view>
+
+              <!-- 回复目标显示 -->
+              <view v-if="comment.parentComment && !comment.parentComment.deleted" class="reply-target">
+                <text class="text-gray-500 text-xs">回复</text>
+                <text class="text-ts-purple text-xs font-medium ml-1">@{{ comment.parentComment.userNickname }}</text>
+              </view>
+              <view v-else-if="comment.parentComment?.deleted" class="reply-target">
+                <text class="text-gray-400 text-xs">回复的评论已删除</text>
               </view>
 
               <!-- 评论内容 -->
@@ -79,7 +88,7 @@
       <!-- 底部回复输入框 -->
       <view class="bottom-reply-input">
         <view v-if="replyingTo" class="replying-indicator">
-          <text class="text-purple-600 text-xs font-medium">回复 @{{ replyingTo.userNickname }}</text>
+          <text class="text-ts-purple text-xs font-medium">回复 @{{ replyingTo.userNickname }}</text>
           <button class="cancel-reply-btn" @tap="cancelReply">
             <text>✕</text>
           </button>
@@ -279,24 +288,53 @@ const submitReply = async () => {
   }
 
   try {
-    const response = await createComment({
+    const requestData: { reviewId: string; content: string; parentCommentId?: string } = {
       reviewId: props.reviewId,
       content: replyContent.value.trim(),
-    });
+    };
+    
+    // 如果是回复某条评论，添加 parentCommentId
+    if (replyingTo.value) {
+      requestData.parentCommentId = replyingTo.value.id;
+    }
+    
+    const response = await createComment(requestData);
 
-    if (response.code === 200) {
+    if (response.code === 200 && response.data) {
       uni.showToast({
         title: '回复成功',
         icon: 'success',
       });
 
+      // 构建新评论对象，包含 parentComment 信息
+      const newComment: Comment = {
+        ...response.data,
+        // 如果后端没有返回 parentComment，手动构建
+        parentComment: replyingTo.value ? {
+          id: replyingTo.value.id,
+          userId: replyingTo.value.userId,
+          userNickname: replyingTo.value.userNickname,
+          deleted: false,
+        } : response.data.parentComment,
+      };
+
+      // 将新评论添加到列表开头
+      comments.value = [newComment, ...comments.value];
+
       replyContent.value = '';
       replyingTo.value = null;
 
-      // 刷新评论列表
+      emit('commentAdded');
+    } else if (response.code === 200) {
+      // 如果没有返回 data，则刷新列表
+      uni.showToast({
+        title: '回复成功',
+        icon: 'success',
+      });
+      replyContent.value = '';
+      replyingTo.value = null;
       currentPage.value = 1;
       await fetchComments();
-
       emit('commentAdded');
     } else {
       uni.showToast({
@@ -495,12 +533,13 @@ const formatDate = (dateString: string) => {
 /* 回复对象指示器 */
 .replying-indicator {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
-  padding: 8px 12px;
+  padding: 4px 8px;
   background-color: #f3f4f6;
   border-radius: 8px;
   margin-bottom: 8px;
+  gap: 8px;
 }
 
 .cancel-reply-btn {
@@ -543,11 +582,13 @@ const formatDate = (dateString: string) => {
 }
 
 .send-btn {
-  padding: 8px 16px;
+  padding: 0 16px;
+  height: 34px; /* 与输入框高度一致 */
+  line-height: 34px;
   background: #d1d5db; /* 默认灰色背景 */
   color: #9ca3af; /* 默认灰色文字 */
   border: none;
-  border-radius: 6px;
+  border-radius: 17px; /* 与输入框圆角一致 */
   font-size: 14px;
   font-weight: 500;
   min-width: 60px;

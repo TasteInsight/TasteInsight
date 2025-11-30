@@ -344,9 +344,20 @@ export interface Comment {
   userId: string;
   userNickname: string;
   userAvatar: string;
+  parentComment?: null | ParentComment;
   content: string;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
+}
+
+export interface ParentComment {
+    deleted?: boolean;
+    /**
+     * parentComment ID
+     */
+    id?: string;
+    userId?: string;
+    userNickname?: string;
 }
 
 /**
@@ -679,6 +690,7 @@ export interface ReviewCreateRequest {
 export interface CommentCreateRequest {
   reviewId: string;
   content: string;
+  parentCommentId?: string;
 }
 
 /**
