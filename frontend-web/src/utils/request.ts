@@ -76,8 +76,8 @@ service.interceptors.response.use(
       
       // 401 未授权 - 尝试刷新 token
       // 排除登录接口，登录接口的 401 是账号密码错误，不需要刷新 token
-      // 检查 URL 是否包含 login，或者是否是 admin/login
-      const isLoginRequest = originalRequest.url?.includes('/login') || originalRequest.url?.includes('login');
+      // 使用正则匹配 /auth/admin/login 或 /auth/wechat/login
+      const isLoginRequest = /\/auth\/(admin|wechat)\/login$/.test(originalRequest.url || '');
       
       if (status === 401 && !originalRequest._retry && !isLoginRequest) {
         if (isRefreshing) {
