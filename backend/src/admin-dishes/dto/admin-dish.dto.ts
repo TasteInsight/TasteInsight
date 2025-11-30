@@ -192,6 +192,10 @@ export class AdminCreateDishDto {
   windowNumber?: string;
 
   @IsOptional()
+  @IsString()
+  floor?: string; // 楼层名称或编号，用于查找 Floor
+
+  @IsOptional()
   @IsArray()
   @IsEnum(MealTime, { each: true })
   availableMealTime?: MealTime[];
@@ -293,6 +297,10 @@ export class AdminUpdateDishDto {
   @IsOptional()
   @IsString()
   windowNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  floor?: string; // 楼层名称或编号，用于查找 Floor
 
   @IsOptional()
   @IsArray()

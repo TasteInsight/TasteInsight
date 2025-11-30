@@ -140,7 +140,10 @@ export interface Dish {
   oiliness?: number
   canteenId: string
   canteenName: string
-  floor?: string
+  floorId?: string | null
+  floorLevel?: string | null
+  floorName?: string | null
+  windowId?: string | null
   windowNumber: string
   windowName: string
   availableMealTime?: ('breakfast' | 'lunch' | 'dinner' | 'nightsnack')[]
@@ -171,6 +174,7 @@ export interface DishCreateRequest {
   oiliness?: number
   canteenId?: string
   canteenName: string
+  floor?: string // 楼层名称或编号
   windowNumber?: string
   windowName: string
   availableMealTime?: ('breakfast' | 'lunch' | 'dinner' | 'nightsnack')[]
@@ -197,6 +201,7 @@ export interface DishUpdateRequest {
   oiliness?: number
   canteenId?: string
   canteenName?: string
+  floor?: string // 楼层名称或编号
   windowNumber?: string
   windowName?: string
   availableMealTime?: ('breakfast' | 'lunch' | 'dinner' | 'nightsnack')[]
