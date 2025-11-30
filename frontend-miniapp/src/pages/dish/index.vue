@@ -118,12 +118,18 @@
 
       <!-- 详细信息 -->
       <view class="bg-white p-4">
-        <view class="flex justify-between items-center mb-3 cursor-pointer" @click="toggleDetailExpansion">
-          <h2 class="text-lg font-semibold text-gray-800">详细信息 ...</h2>
-          <text class="iconify text-red-600 text-xl transition-transform duration-300" :class="isDetailExpanded ? 'rotate-180' : ''" data-icon="mdi:chevron-down"></text>
+        <!-- 供应时间 - 始终显示 -->
+        <view class="detail-section mb-3">
+          <text class="font-bold text-black mr-1 text-sm">供应时间：</text>
+          <text class="detail-text">{{ formatMealTime(dish.availableMealTime) }}</text>
         </view>
 
-        <view v-show="isDetailExpanded" class="transition-all duration-300 ease-in-out">
+        <view class="flex justify-between items-center py-2 cursor-pointer border-t border-gray-100" @click="toggleDetailExpansion">
+          <h2 class="text-base font-medium text-gray-700">{{ isDetailExpanded ? '收起详细信息' : '查看更多详细信息' }}</h2>
+          <text class="iconify text-gray-500 text-lg transition-transform duration-300" :class="isDetailExpanded ? 'rotate-180' : ''" data-icon="mdi:chevron-down"></text>
+        </view>
+
+        <view v-show="isDetailExpanded" class="transition-all duration-300 ease-in-out pt-3">
           <!-- 菜品介绍 -->
           <view v-if="dish.description" class="detail-section">
             <text class="font-bold text-black mr-1 text-sm">菜品介绍：</text>
@@ -142,10 +148,23 @@
             <text class="detail-text text-red-600">{{ dish.allergens.join('、') }}</text>
           </view>
 
-          <!-- 供应时间 -->
-          <view class="detail-section">
-            <text class="font-bold text-black mr-1 text-sm">供应时间：</text>
-            <text class="detail-text">{{ formatMealTime(dish.availableMealTime) }}</text>
+          <!-- 父菜品（如果有） -->
+          <view v-if="parentDish" class="detail-section mt-3">
+            <text class="font-bold text-black mr-1 text-sm">所属菜品：</text>
+            <view 
+              class="mt-2 bg-gray-50 p-3 rounded-lg flex items-center gap-3 cursor-pointer"
+              @click="goToParentDish"
+            >
+              <image v-if="parentDish.images?.[0]" :src="parentDish.images[0]" class="w-14 h-14 rounded-md object-cover" mode="aspectFill" />
+              <view v-else class="w-14 h-14 bg-gray-200 rounded-md flex items-center justify-center">
+                <text class="iconify text-gray-400" data-icon="mdi:food"></text>
+              </view>
+              <view class="flex-1 min-w-0">
+                <view class="font-medium text-sm text-gray-800 truncate">{{ parentDish.name }}</view>
+                <view class="text-xs text-red-600 mt-1">¥{{ parentDish.price }}</view>
+              </view>
+              <text class="iconify text-gray-400" data-icon="mdi:chevron-right"></text>
+            </view>
           </view>
 
           <!-- 子菜品（如果有） -->
@@ -267,6 +286,7 @@ const {
   error, 
   fetchDishDetail,
   subDishes,
+  parentDish,
   reviews,
   reviewsLoading,
   reviewsError,
@@ -332,6 +352,12 @@ onLoad((options: any) => {
 const goToSubDish = (id: string) => {
   if (!id) return;
   uni.navigateTo({ url: `/pages/dish/index?id=${id}` });
+};
+
+// 跳转到父菜品详情
+const goToParentDish = () => {
+  if (!parentDish.value?.id) return;
+  uni.navigateTo({ url: `/pages/dish/index?id=${parentDish.value.id}` });
 };
 
 // 跳转到标签菜品列表

@@ -18,6 +18,10 @@ export function useDishDetail() {
   const subDishes = ref<Dish[]>([]);
   const subDishesLoading = ref(false);
 
+  // --- 父菜品状态 ---
+  const parentDish = ref<Dish | null>(null);
+  const parentDishLoading = ref(false);
+
   // --- 评价列表状态 ---
   const reviews = ref<Review[]>([]);
   const reviewsLoading = ref(false);
@@ -51,6 +55,7 @@ export function useDishDetail() {
     error.value = '';
     // 重置其他状态
     subDishes.value = [];
+    parentDish.value = null;
     reviews.value = [];
     reviewsPage.value = 1;
     reviewsHasMore.value = true;
@@ -62,9 +67,10 @@ export function useDishDetail() {
       if (response.code === 200 && response.data) {
         dish.value = response.data;
         
-        // 获取详情成功后，并行获取子菜品和评价
+        // 获取详情成功后，并行获取子菜品、父菜品和评价
         await Promise.all([
           fetchSubDishes(),
+          fetchParentDish(),
           fetchReviews(dishId, true)
         ]);
       } else {
@@ -100,6 +106,29 @@ export function useDishDetail() {
       console.error('加载子菜品失败', err);
     } finally {
       subDishesLoading.value = false;
+    }
+  };
+
+  /**
+   * 获取父菜品
+   */
+  const fetchParentDish = async () => {
+    const parentId = dish.value?.parentDishId;
+    if (!parentId) {
+      parentDish.value = null;
+      return;
+    }
+
+    parentDishLoading.value = true;
+    try {
+      const response = await getDishById(parentId);
+      if (response.code === 200 && response.data) {
+        parentDish.value = response.data;
+      }
+    } catch (err) {
+      console.error('加载父菜品失败', err);
+    } finally {
+      parentDishLoading.value = false;
     }
   };
 
@@ -290,6 +319,9 @@ export function useDishDetail() {
     
     subDishes,
     subDishesLoading,
+    
+    parentDish,
+    parentDishLoading,
     
     reviews,
     reviewsLoading,
