@@ -1450,6 +1450,14 @@
   padding-top: 2rem
 }
 
+.pb-40 {
+  padding-bottom: 10rem
+}
+
+.pb-32 {
+  padding-bottom: 8rem
+}
+
 .text-left {
   text-align: left
 }
@@ -1765,6 +1773,12 @@
 .shadow-sm {
   --tw-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --tw-shadow-colored: 0 1px 2px 0 var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)
+}
+
+.shadow-\[0_-4px_12px_rgba\(0\2c 0\2c 0\2c 0\.08\)\] {
+  --tw-shadow: 0 -4px 12px rgba(0,0,0,0.08);
+  --tw-shadow-colored: 0 -4px 12px var(--tw-shadow-color);
   box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)
 }
 

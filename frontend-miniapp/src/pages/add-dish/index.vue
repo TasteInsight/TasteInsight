@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-50 pb-24">
+  <div class="min-h-screen bg-gray-50 pb-32">
     <!-- 顶部标题 -->
     <div class="bg-white px-4 py-4 mb-2">
       <div class="text-lg font-semibold text-gray-800">添加新菜品</div>
@@ -274,7 +274,10 @@
     </div>
 
     <!-- 底部提交按钮 -->
-    <div class="fixed bottom-0 left-0 right-0 bg-white px-4 py-3 shadow-lg border-t">
+    <div
+      class="fixed bottom-0 left-0 right-0 bg-white px-4 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] z-[2000]"
+      :style="{ paddingBottom: 'env(safe-area-inset-bottom)' }"
+    >
       <button
         class="w-full h-12 rounded-lg text-white font-semibold transition-colors"
         :class="isFormValid && !submitting 
