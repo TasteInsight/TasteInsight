@@ -52,7 +52,7 @@ export function useDishDetail() {
         dish.value = response.data;
         
         // 获取详情成功后，并行获取子菜品和评价
-        Promise.all([
+        await Promise.all([
           fetchSubDishes(),
           fetchReviews(dishId, true)
         ]);

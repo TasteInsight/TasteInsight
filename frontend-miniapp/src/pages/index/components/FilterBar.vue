@@ -1,15 +1,15 @@
 <!-- @/pages/index/components/FilterBar.vue -->
 <template>
-  <view class="filter-bar">
+  <view class="relative">
     <!-- 筛选标签栏 -->
-    <scroll-view scroll-x class="filter-tabs py-3">
-      <view class="filter-tabs-inner">
+    <scroll-view scroll-x class="w-full pb-2 py-3">
+      <view class="flex gap-3 px-1">
         <view
           v-for="filter in filterOptions"
           :key="filter.key"
-          class="filter-chip"
+          class="inline-flex items-center rounded-lg h-[34px] px-3.5 text-sm text-gray-700 bg-gray-100 transition-all duration-200 whitespace-nowrap"
           :class="(activeFilter === filter.key || hasActiveValue(filter.key))
-            ? 'filter-chip-active'
+            ? 'bg-ts-purple !text-white'
             : ''"
           @click="toggleFilter(filter.key)"
         >
@@ -22,12 +22,12 @@
     <!-- 点击遮罩关闭筛选面板 -->
     <view
       v-if="activeFilter"
-      class="filter-overlay"
+      class="fixed inset-0 bg-black/15 z-[5]"
       @tap="closeFilterPanel"
     ></view>
 
     <!-- 筛选面板 -->
-    <view v-if="activeFilter" class="filter-panel bg-white rounded-lg shadow-lg p-4 mb-4">
+    <view v-if="activeFilter" class="relative z-10 border border-gray-200 bg-white rounded-lg shadow-lg p-4 mb-4">
       <!-- 价格筛选 -->
       <view v-if="activeFilter === 'price'" class="filter-content">
         <view class="text-sm font-medium text-gray-700 mb-3">价格区间</view>
@@ -65,6 +65,7 @@
           />
           <text class="text-gray-500 text-sm">元</text>
         </view>
+        <view v-if="priceError" class="text-xs text-red-500 mt-1">{{ priceError }}</view>
       </view>
 
       <!-- 评分筛选 -->
@@ -105,6 +106,7 @@
           <text class="text-gray-500 text-sm">分</text>
         </view>
         <view class="text-xs text-gray-400 mt-1">评分范围：0-5分</view>
+        <view v-if="ratingError" class="text-xs text-red-500 mt-1">{{ ratingError }}</view>
       </view>
 
       <!-- 用餐时段筛选 -->
@@ -506,10 +508,12 @@ const selectedAvoid = ref<string[]>([]);
 // 自定义价格输入
 const customPriceMin = ref<string>('');
 const customPriceMax = ref<string>('');
+const priceError = ref<string>('');
 
 // 自定义评分输入
 const customRatingMin = ref<string>('');
 const customRatingMax = ref<string>('');
+const ratingError = ref<string>('');
 
 // 自定义标签
 const customTagInput = ref<string>('');
@@ -548,15 +552,69 @@ const getTasteRangeLabel = (type: string, minVal: number, maxVal: number): strin
   return `${minLabel} - ${maxLabel}`;
 };
 
+// 验证自定义价格输入
+const validatePriceInput = (): boolean => {
+  priceError.value = '';
+  const minStr = customPriceMin.value.trim();
+  const maxStr = customPriceMax.value.trim();
+  
+  if (!minStr && !maxStr) return true; // 没有自定义输入时跳过验证
+  
+  const min = minStr ? Number(minStr) : null;
+  const max = maxStr ? Number(maxStr) : null;
+  
+  if (minStr && (isNaN(min!) || min! < 0)) {
+    priceError.value = '最低价必须是非负数字';
+    return false;
+  }
+  if (maxStr && (isNaN(max!) || max! < 0)) {
+    priceError.value = '最高价必须是非负数字';
+    return false;
+  }
+  if (min !== null && max !== null && min > max) {
+    priceError.value = '最低价不能大于最高价';
+    return false;
+  }
+  return true;
+};
+
 // 自定义价格输入时清除预设选项
 const onCustomPriceInput = () => {
+  priceError.value = '';
   if (customPriceMin.value || customPriceMax.value) {
     selectedPrice.value = '';
   }
 };
 
+// 验证自定义评分输入
+const validateRatingInput = (): boolean => {
+  ratingError.value = '';
+  const minStr = customRatingMin.value.trim();
+  const maxStr = customRatingMax.value.trim();
+  
+  if (!minStr && !maxStr) return true;
+  
+  const min = minStr ? Number(minStr) : null;
+  const max = maxStr ? Number(maxStr) : null;
+  
+  if (minStr && (isNaN(min!) || min! < 0 || min! > 5)) {
+    ratingError.value = '最低分必须在 0-5 之间';
+    return false;
+  }
+  if (maxStr && (isNaN(max!) || max! < 0 || max! > 5)) {
+    ratingError.value = '最高分必须在 0-5 之间';
+    return false;
+  }
+  if (min !== null && max !== null && min > max) {
+    ratingError.value = '最低分不能大于最高分';
+    return false;
+  }
+  return true;
+};
+
 // 自定义评分输入时清除预设选项
 const onCustomRatingInput = () => {
+  ratingError.value = '';
   if (customRatingMin.value || customRatingMax.value) {
     selectedRating.value = 0;
   }
@@ -612,10 +670,10 @@ const hasActiveValue = (key: string): boolean => {
     case 'avoid':
       return selectedAvoid.value.length > 0 || customAvoid.value.length > 0;
     case 'taste':
-      return selectedSpicyMin.value > 0 || selectedSpicyMax.value > 0 ||
-             selectedSaltyMin.value > 0 || selectedSaltyMax.value > 0 ||
-             selectedSweetMin.value > 0 || selectedSweetMax.value > 0 ||
-             selectedOilyMin.value > 0 || selectedOilyMax.value > 0;
+      return selectedSpicyMin.value >= 0 || selectedSpicyMax.value >= 0 ||
+             selectedSaltyMin.value >= 0 || selectedSaltyMax.value >= 0 ||
+             selectedSweetMin.value >= 0 || selectedSweetMax.value >= 0 ||
+             selectedOilyMin.value >= 0 || selectedOilyMax.value >= 0;
     default:
       return false;
   }
@@ -697,11 +755,13 @@ const resetCurrentFilter = () => {
       selectedPrice.value = '';
       customPriceMin.value = '';
       customPriceMax.value = '';
+      priceError.value = '';
       break;
     case 'rating':
       selectedRating.value = 0;
       customRatingMin.value = '';
       customRatingMax.value = '';
+      ratingError.value = '';
       break;
     case 'mealTime':
       selectedMealTime.value = [];
@@ -734,6 +794,11 @@ const resetCurrentFilter = () => {
 
 // 构建并应用筛选条件
 const applyFilter = () => {
+  // 验证输入
+  if (!validatePriceInput() || !validateRatingInput()) {
+    return;
+  }
+
   const filter: GetDishesRequest['filter'] = {};
 
   // 价格筛选
@@ -780,28 +845,28 @@ const applyFilter = () => {
   }
 
   // 口味范围筛选
-  if (selectedSpicyMin.value > 0 || selectedSpicyMax.value > 0) {
+  if (selectedSpicyMin.value >= 0 || selectedSpicyMax.value >= 0) {
     filter.spicyLevel = {
-      min: selectedSpicyMin.value > 0 ? selectedSpicyMin.value : 0,
-      max: selectedSpicyMax.value > 0 ? selectedSpicyMax.value : 5
+      min: selectedSpicyMin.value >= 0 ? selectedSpicyMin.value : 0,
+      max: selectedSpicyMax.value >= 0 ? selectedSpicyMax.value : 5
     };
   }
-  if (selectedSaltyMin.value > 0 || selectedSaltyMax.value > 0) {
+  if (selectedSaltyMin.value >= 0 || selectedSaltyMax.value >= 0) {
     filter.saltiness = {
-      min: selectedSaltyMin.value > 0 ? selectedSaltyMin.value : 0,
-      max: selectedSaltyMax.value > 0 ? selectedSaltyMax.value : 5
+      min: selectedSaltyMin.value >= 0 ? selectedSaltyMin.value : 0,
+      max: selectedSaltyMax.value >= 0 ? selectedSaltyMax.value : 5
     };
   }
-  if (selectedSweetMin.value > 0 || selectedSweetMax.value > 0) {
+  if (selectedSweetMin.value >= 0 || selectedSweetMax.value >= 0) {
     filter.sweetness = {
-      min: selectedSweetMin.value > 0 ? selectedSweetMin.value : 0,
-      max: selectedSweetMax.value > 0 ? selectedSweetMax.value : 5
+      min: selectedSweetMin.value >= 0 ? selectedSweetMin.value : 0,
+      max: selectedSweetMax.value >= 0 ? selectedSweetMax.value : 5
     };
   }
-  if (selectedOilyMin.value > 0 || selectedOilyMax.value > 0) {
+  if (selectedOilyMin.value >= 0 || selectedOilyMax.value >= 0) {
     filter.oiliness = {
-      min: selectedOilyMin.value > 0 ? selectedOilyMin.value : 0,
-      max: selectedOilyMax.value > 0 ? selectedOilyMax.value : 5
+      min: selectedOilyMin.value >= 0 ? selectedOilyMin.value : 0,
+      max: selectedOilyMax.value >= 0 ? selectedOilyMax.value : 5
     };
   }
 
@@ -815,9 +880,11 @@ const resetAllFilters = () => {
   selectedPrice.value = '';
   customPriceMin.value = '';
   customPriceMax.value = '';
+  priceError.value = '';
   selectedRating.value = 0;
   customRatingMin.value = '';
   customRatingMax.value = '';
+  ratingError.value = '';
   selectedMealTime.value = [];
   selectedMeat.value = [];
   selectedTags.value = [];
@@ -843,52 +910,3 @@ defineExpose({
 });
 </script>
 
-<style scoped>
-.filter-bar {
-  position: relative;
-}
-
-.filter-tabs {
-  width: 100%;
-}
-
-.filter-tabs-inner {
-  display: flex;
-  gap: 8px;
-  padding: 0 4px;
-}
-
-.filter-chip {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 12px;
-  height: 34px;
-  padding: 0 14px;
-  font-size: 14px;
-  color: #374151;
-  background-color: #f3f4f6;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.filter-chip-active {
-  background-color: #7c3aed;
-  color: #ffffff;
-}
-
-.filter-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.15);
-  z-index: 5;
-}
-
-.filter-panel {
-  position: relative;
-  z-index: 10;
-  border: 1px solid #e5e7eb;
-}
-</style>

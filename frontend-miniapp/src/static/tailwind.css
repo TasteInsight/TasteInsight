@@ -196,6 +196,10 @@
   z-index: 2000
 }
 
+.z-\[5\] {
+  z-index: 5
+}
+
 .m-0 {
   margin: 0px
 }
@@ -467,6 +471,10 @@
 
 .h-full {
   height: 100%
+}
+
+.h-\[34px\] {
+  height: 34px
 }
 
 .max-h-\[72vh\] {
@@ -747,6 +755,10 @@
 .truncate {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap
+}
+
+.whitespace-nowrap {
   white-space: nowrap
 }
 
@@ -1079,6 +1091,10 @@
   background-color: rgb(202 138 4 / var(--tw-bg-opacity))
 }
 
+.bg-black\/15 {
+  background-color: rgb(0 0 0 / 0.15)
+}
+
 .bg-opacity-50 {
   --tw-bg-opacity: 0.5
 }
@@ -1318,6 +1334,11 @@
 .py-8 {
   padding-top: 2rem;
   padding-bottom: 2rem
+}
+
+.px-3\.5 {
+  padding-left: 0.875rem;
+  padding-right: 0.875rem
 }
 
 .pb-16 {
@@ -1623,6 +1644,11 @@
 .text-yellow-600 {
   --tw-text-opacity: 1;
   color: rgb(202 138 4 / var(--tw-text-opacity))
+}
+
+.\!text-white {
+  --tw-text-opacity: 1 !important;
+  color: rgb(255 255 255 / var(--tw-text-opacity)) !important
 }
 
 .placeholder-purple-300::-moz-placeholder {
