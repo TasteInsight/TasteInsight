@@ -2,12 +2,12 @@
 <template>
   <view class="relative">
     <!-- 筛选标签栏 -->
-    <scroll-view scroll-x class="w-full pb-2 py-3">
-      <view class="flex gap-3 px-1">
+    <scroll-view scroll-x class="w-full py-3 filter-scrollbar">
+      <view class="flex gap-3 px-1 mb-4">
         <view
           v-for="filter in filterOptions"
           :key="filter.key"
-          class="inline-flex items-center rounded-lg h-[34px] px-3.5 text-sm text-gray-700 bg-gray-100 transition-all duration-200 whitespace-nowrap"
+          class="inline-flex items-center rounded-lg h-[38px] px-4 text-base text-gray-700 bg-gray-100 transition-all duration-200 whitespace-nowrap"
           :class="(activeFilter === filter.key || hasActiveValue(filter.key))
             ? 'bg-ts-purple !text-white'
             : ''"
@@ -909,4 +909,17 @@ defineExpose({
   resetAllFilters,
 });
 </script>
+
+<style scoped>
+.filter-scrollbar::-webkit-scrollbar {
+  height: 1px;
+}
+.filter-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
+}
+.filter-scrollbar::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+</style>
 

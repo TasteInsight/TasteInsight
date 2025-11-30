@@ -477,6 +477,10 @@
   height: 34px
 }
 
+.h-\[38px\] {
+  height: 38px
+}
+
 .max-h-\[72vh\] {
   max-height: 72vh
 }
@@ -1403,6 +1407,14 @@
 
 .pt-8 {
   padding-top: 2rem
+}
+
+.pb-1 {
+  padding-bottom: 0.25rem
+}
+
+.pb-3 {
+  padding-bottom: 0.75rem
 }
 
 .text-left {
