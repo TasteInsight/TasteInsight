@@ -386,7 +386,7 @@ export default {
           dishData.id = dish.id || dishId
           dishData.name = dish.name || ''
           dishData.canteen = dish.canteenName || dish.canteen || ''
-          dishData.floor = dish.floor || ''
+          dishData.floor = dish.floorName || dish.floor || ''
           dishData.windowName = dish.windowName || dish.window || ''
           dishData.windowNumber = dish.windowNumber || ''
           dishData.window = dish.window || dish.windowName || ''

@@ -456,7 +456,7 @@ export default {
             parentDishName.value = parentDish.name || ''
             // 继承父菜品的一些信息（食堂、楼层、窗口）
             formData.canteen = parentDish.canteenName || ''
-            formData.floor = parentDish.floor || ''
+            formData.floor = parentDish.floorName || parentDish.floor || ''
             formData.windowName = parentDish.windowName || ''
             formData.windowNumber = parentDish.windowNumber || ''
           }
@@ -592,7 +592,7 @@ export default {
         const dishData = {
           name: formData.name,
           canteenName: formData.canteen,
-          floor: formData.floor,
+          floor: formData.floor, // 楼层信息
           windowName: formData.windowName,
           windowNumber: formData.windowNumber || formData.windowName,
           price: dishPrice,

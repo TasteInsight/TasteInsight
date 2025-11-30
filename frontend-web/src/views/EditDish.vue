@@ -515,7 +515,7 @@ export default {
     const fillFormData = (dish) => {
       formData.id = dish.id || dishId
       formData.canteen = dish.canteenName || dish.canteen || ''
-      formData.floor = dish.floor || ''
+      formData.floor = dish.floorName || dish.floor || ''
       formData.windowName = dish.windowName || dish.window || ''
       formData.windowNumber = dish.windowNumber || ''
       formData.name = dish.name || ''
@@ -765,7 +765,7 @@ export default {
         const updateData = {
           name: formData.name,
           canteenName: formData.canteen,
-          floor: formData.floor,
+          floor: formData.floor, // 楼层信息
           windowName: formData.windowName,
           windowNumber: formData.windowNumber || formData.windowName, // 如果没有编号，使用窗口名称
           price: dishPrice,

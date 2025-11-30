@@ -158,7 +158,7 @@ export default {
             id: item.id,
             name: item.name || '',
             canteen: item.canteenName || '',
-            floor: item.floor || '',
+            floor: item.floorName || item.floor || '',
             window: item.windowName || item.windowNumber || '',
             cuisine: item.tags && item.tags.length > 0 ? item.tags.join(', ') : '无',
             price: item.price ? `¥${item.price}` : '¥0',

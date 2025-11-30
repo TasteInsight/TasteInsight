@@ -485,7 +485,7 @@ export default {
             name: dish.name || '',
             canteenName: dish.canteenName || dish.canteen || '',
             canteen: dish.canteen || '',
-            floor: dish.floor || '',
+            floor: dish.floorName || dish.floor || '',
             windowName: dish.windowName || dish.window || '',
             window: dish.window || '',
             windowNumber: dish.windowNumber || '',
