@@ -165,7 +165,7 @@ describe('AdminAdminsController (e2e)', () => {
         .send(createDto)
         .expect(400);
 
-      expect(response.body.message).toContain('食堂不存在');
+      expect(response.body.message).toContain('指定的食堂不存在');
     });
 
     it('should return 403 for normal admin without permission', async () => {
