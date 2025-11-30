@@ -2,15 +2,22 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { CreateCanteenDto } from './dto/create-canteen.dto';
 import { UpdateCanteenDto } from './dto/update-canteen.dto';
-import { CanteenListResponseDto, CanteenResponseDto, CanteenDto } from './dto/canteen-response.dto';
+import {
+  CanteenListResponseDto,
+  CanteenResponseDto,
+  CanteenDto,
+} from './dto/canteen-response.dto';
 
 @Injectable()
 export class AdminCanteensService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(page: number = 1, pageSize: number = 20): Promise<CanteenListResponseDto> {
+  async findAll(
+    page: number = 1,
+    pageSize: number = 20,
+  ): Promise<CanteenListResponseDto> {
     const skip = (page - 1) * pageSize;
-    
+
     const [total, canteens] = await Promise.all([
       this.prisma.canteen.count(),
       this.prisma.canteen.findMany({
@@ -24,7 +31,7 @@ export class AdminCanteensService {
       }),
     ]);
 
-    const items: CanteenDto[] = canteens.map(canteen => ({
+    const items: CanteenDto[] = canteens.map((canteen) => ({
       ...canteen,
       openingHours: canteen.openingHours,
       floors: canteen.floors,
@@ -46,17 +53,19 @@ export class AdminCanteensService {
     };
   }
 
-  async create(createCanteenDto: CreateCanteenDto): Promise<CanteenResponseDto> {
+  async create(
+    createCanteenDto: CreateCanteenDto,
+  ): Promise<CanteenResponseDto> {
     const { windows, floors, ...canteenData } = createCanteenDto;
 
     // Note: floors are currently ignored as there is no field in Canteen model
-    
+
     const canteen = await this.prisma.canteen.create({
       data: {
         ...canteenData,
         openingHours: canteenData.openingHours as any,
         windows: {
-          create: windows.map(w => ({
+          create: windows.map((w) => ({
             name: w.name,
             number: w.number,
             position: w.position,
@@ -65,7 +74,7 @@ export class AdminCanteensService {
           })),
         },
         floors: {
-          create: floors.map(f => ({
+          create: floors.map((f) => ({
             level: f.level,
             name: f.name,
           })),
@@ -89,10 +98,15 @@ export class AdminCanteensService {
     };
   }
 
-  async update(id: string, updateCanteenDto: UpdateCanteenDto): Promise<CanteenResponseDto> {
+  async update(
+    id: string,
+    updateCanteenDto: UpdateCanteenDto,
+  ): Promise<CanteenResponseDto> {
     const { windows, floors, ...canteenData } = updateCanteenDto;
 
-    const existingCanteen = await this.prisma.canteen.findUnique({ where: { id } });
+    const existingCanteen = await this.prisma.canteen.findUnique({
+      where: { id },
+    });
     if (!existingCanteen) {
       throw new NotFoundException('食堂不存在');
     }
@@ -102,7 +116,9 @@ export class AdminCanteensService {
       where: { id },
       data: {
         ...canteenData,
-        openingHours: canteenData.openingHours ? (canteenData.openingHours as any) : undefined,
+        openingHours: canteenData.openingHours
+          ? (canteenData.openingHours as any)
+          : undefined,
       },
     });
 
@@ -115,13 +131,19 @@ export class AdminCanteensService {
       const existingWindowIds = existingWindows.map((w) => w.id);
 
       // 2. Identify windows to create, update, and delete
-      const windowsToUpdate = windows.filter((w) => w.id && existingWindowIds.includes(w.id));
+      const windowsToUpdate = windows.filter(
+        (w) => w.id && existingWindowIds.includes(w.id),
+      );
       const windowsToCreate = windows.filter((w) => !w.id);
       // Note: Windows with IDs not in DB are treated as invalid or ignored, or could be created if we ignore the ID.
       // Here we assume if ID is provided but not found, it's an error or we ignore it.
-      
-      const providedIds = windows.map((w) => w.id).filter((id) => !!id) as string[];
-      const windowsToDelete = existingWindowIds.filter((id) => !providedIds.includes(id));
+
+      const providedIds = windows
+        .map((w) => w.id)
+        .filter((id) => !!id) as string[];
+      const windowsToDelete = existingWindowIds.filter(
+        (id) => !providedIds.includes(id),
+      );
 
       // 3. Execute updates
       // Delete removed windows
@@ -174,11 +196,17 @@ export class AdminCanteensService {
       const existingFloorIds = existingFloors.map((f) => f.id);
 
       // 2. Identify floors to create, update, and delete
-      const floorsToUpdate = floors.filter((f) => f.id && existingFloorIds.includes(f.id));
+      const floorsToUpdate = floors.filter(
+        (f) => f.id && existingFloorIds.includes(f.id),
+      );
       const floorsToCreate = floors.filter((f) => !f.id);
-      
-      const providedIds = floors.map((f) => f.id).filter((id) => !!id) as string[];
-      const floorsToDelete = existingFloorIds.filter((id) => !providedIds.includes(id));
+
+      const providedIds = floors
+        .map((f) => f.id)
+        .filter((id) => !!id) as string[];
+      const floorsToDelete = existingFloorIds.filter(
+        (id) => !providedIds.includes(id),
+      );
 
       // 3. Execute updates
       // Delete removed floors

@@ -1,8 +1,16 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { CreateWindowDto, FloorInputDto } from './dto/create-window.dto';
 import { UpdateWindowDto } from './dto/update-window.dto';
-import { WindowListResponseDto, WindowResponseDto, WindowDto } from './dto/window-response.dto';
+import {
+  WindowListResponseDto,
+  WindowResponseDto,
+  WindowDto,
+} from './dto/window-response.dto';
 
 // Window 类型定义，用于 mapWindowToDto
 type WindowWithFloor = {
@@ -109,7 +117,9 @@ export class AdminWindowsService {
       }),
     ]);
 
-    const items: WindowDto[] = windows.map((window) => this.mapWindowToDto(window));
+    const items: WindowDto[] = windows.map((window) =>
+      this.mapWindowToDto(window),
+    );
 
     return {
       code: 200,
@@ -138,7 +148,9 @@ export class AdminWindowsService {
     }
 
     // 如果提供了楼层信息，查找或创建楼层
-    const floorId = floor ? await this.findOrCreateFloor(canteenId, floor) : null;
+    const floorId = floor
+      ? await this.findOrCreateFloor(canteenId, floor)
+      : null;
 
     const window = await this.prisma.window.create({
       data: {
@@ -162,7 +174,10 @@ export class AdminWindowsService {
     };
   }
 
-  async update(id: string, updateWindowDto: UpdateWindowDto): Promise<WindowResponseDto> {
+  async update(
+    id: string,
+    updateWindowDto: UpdateWindowDto,
+  ): Promise<WindowResponseDto> {
     const { floor, ...windowData } = updateWindowDto;
 
     // 验证窗口是否存在

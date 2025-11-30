@@ -437,7 +437,12 @@ export default {
       try {
         const response = await canteenApi.getWindows(canteenId, { page: 1, pageSize: 100 })
         if (response.code === 200 && response.data) {
-          windows.value = response.data.items || []
+          // 转换窗口数据，将 floor 对象转换为字符串供表单使用
+          windows.value = (response.data.items || []).map(w => ({
+            ...w,
+            // 将 floor 对象转换为字符串（用于表单显示）
+            floor: w.floor ? (w.floor.name || w.floor.level || '') : ''
+          }))
         }
       } catch (error) {
         console.error('加载窗口列表失败:', error)
@@ -462,9 +467,22 @@ export default {
       formData.imageUrl = canteen.images && canteen.images.length > 0 ? canteen.images[0] : ''
       formData.image = null
       
-      // 处理营业时间
+      // 处理楼层信息 - 从 canteen.floors 中恢复
+      if (canteen.floors && Array.isArray(canteen.floors) && canteen.floors.length > 0) {
+        formData.floorInput = canteen.floors.map(f => f.name || f.level).join('/')
+      } else {
+        formData.floorInput = ''
+      }
+      
+      // 处理营业时间 - 将 API 格式转换为表单格式
+      // API 格式: { dayOfWeek, slots: [{ mealType, openTime, closeTime }], isClosed }
+      // 表单格式: { day, open, close }
       if (canteen.openingHours && Array.isArray(canteen.openingHours)) {
-        formData.openingHours = canteen.openingHours.map(h => ({ ...h }))
+        formData.openingHours = canteen.openingHours.map(h => ({
+          day: h.dayOfWeek || h.day || '每天',
+          open: (h.slots && h.slots[0] && h.slots[0].openTime) || h.open || '06:30',
+          close: (h.slots && h.slots[0] && h.slots[0].closeTime) || h.close || '22:00'
+        }))
       } else {
         formData.openingHours = []
       }
@@ -509,6 +527,7 @@ export default {
       formData.description = ''
       formData.image = null
       formData.imageUrl = ''
+      formData.floorInput = ''
       formData.openingHours = []
       windows.value = []
     }
@@ -681,29 +700,45 @@ export default {
           imageUrls = [formData.imageUrl]
         }
         
-        // 2. 构建请求数据
+        // 2. 构建窗口数据（需要包含在创建请求中）
+        const windowsData = windows.value
+          .filter(w => w.name && w.name.trim())
+          .map(w => {
+            const level = parseFloorLevel(w.floor)
+            return {
+              name: w.name.trim(),
+              number: w.number ? w.number.trim() : 'W1', // 提供默认编号
+              position: w.position || undefined,
+              description: w.description || undefined,
+              tags: w.tags || []
+            }
+          })
+        
+        // 3. 构建请求数据
         // 使用解析出的楼层信息，不再从窗口推导
         const requestData = {
-          name: formData.name.trim(),
-          position: formData.position.trim() || undefined,
-          description: formData.description.trim() || undefined,
-          images: imageUrls.length > 0 ? imageUrls : undefined,
+          name: (formData.name || '').trim(),
+          position: (formData.position || '').trim() || undefined,
+          description: (formData.description || '').trim() || undefined,
+          images: imageUrls.length > 0 ? imageUrls : [], // 必须是数组
           openingHours: formData.openingHours && formData.openingHours.length > 0 
             ? formData.openingHours.map(hours => ({
                 dayOfWeek: hours.day,
                 slots: [
                   {
+                    mealType: 'default', // 添加必需的 mealType 字段
                     openTime: hours.open,
                     closeTime: hours.close
                   }
                 ],
                 isClosed: false
               }))
-            : undefined,
-          floors: parsedFloors
+            : [], // 必须是数组
+          floors: parsedFloors,
+          windows: windowsData // 必须是数组
         }
         
-        // 3. 创建或更新食堂
+        // 4. 创建或更新食堂
         let canteenId
         if (editingCanteen.value) {
           // 更新食堂
@@ -715,7 +750,7 @@ export default {
             throw new Error(response.message || '更新食堂失败')
           }
         } else {
-          // 创建食堂
+          // 创建食堂（窗口已包含在请求中）
           const response = await canteenApi.createCanteen(requestData)
           if (response.code === 200 && response.data) {
             canteenId = response.data.id
@@ -725,8 +760,8 @@ export default {
           }
         }
         
-        // 4. 保存窗口信息
-        if (canteenId && windows.value.length > 0) {
+        // 5. 仅在编辑模式下单独保存窗口信息（新建时窗口已包含在请求中）
+        if (editingCanteen.value && canteenId && windows.value.length > 0) {
           for (const window of windows.value) {
             if (!window.name || !window.name.trim()) {
               continue // 跳过未填写名称的窗口
