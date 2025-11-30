@@ -1692,6 +1692,11 @@
   color: rgb(202 138 4 / var(--tw-text-opacity))
 }
 
+.text-blue-500 {
+  --tw-text-opacity: 1;
+  color: rgb(59 130 246 / var(--tw-text-opacity))
+}
+
 .placeholder-purple-300::-moz-placeholder {
   --tw-placeholder-opacity: 1;
   color: rgb(216 180 254 / var(--tw-placeholder-opacity))
