@@ -41,15 +41,15 @@
             <!-- 评论内容区域 -->
             <view class="py-3">
               <!-- 用户头像和信息 -->
-              <view class="flex items-center mb-2">
+              <view class="flex mb-2">
                 <img
                   :src="comment.userAvatar || '/default-avatar.png'"
-                  class="w-8 h-8 rounded-full mr-3 border border-gray-200"
+                  class="w-8 h-8 rounded-full mr-3 border border-gray-200 shrink-0"
                   alt="用户头像"
                 />
                 <view class="flex-1">
-                  <view class="flex items-center mb-0.5">
-                    <text class="text-gray-400 text-sm mr-1">{{ getFloor(comment.id) }}楼</text>
+                  <!-- 第一行：用户名和回复目标 -->
+                  <view class="flex items-center mb-1">
                     <text class="text-ts-purple font-semibold text-sm">{{ comment.userNickname }}</text>
                     <!-- 回复目标显示 -->
                     <template v-if="comment.parentComment && !comment.parentComment.deleted">
@@ -58,13 +58,16 @@
                     </template>
                     <text v-else-if="comment.parentComment?.deleted" class="text-gray-400 text-sm ml-2">回复的评论已删除</text>
                   </view>
-                  <text class="text-xs text-gray-400">{{ formatDate(comment.createdAt) }}</text>
+                  <!-- 第二行：评论内容 -->
+                  <view class="text-sm text-gray-700 leading-relaxed mb-1">
+                    {{ comment.content }}
+                  </view>
+                  <!-- 第三行：楼层和日期 -->
+                  <view class="flex items-center">
+                    <text class="text-xs text-gray-400 mr-2">{{ getFloor(comment.id) }}楼</text>
+                    <text class="text-xs text-gray-400">{{ formatDate(comment.createdAt) }}</text>
+                  </view>
                 </view>
-              </view>
-
-              <!-- 评论内容 -->
-              <view class="text-sm text-gray-700 leading-relaxed ml-11">
-                {{ comment.content }}
               </view>
             </view>
 
