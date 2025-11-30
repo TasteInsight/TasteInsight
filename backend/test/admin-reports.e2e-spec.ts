@@ -142,9 +142,7 @@ describe('AdminReportsController (e2e)', () => {
     });
 
     it('should return 401 without token', async () => {
-      await request(app.getHttpServer())
-        .get('/admin/reports')
-        .expect(401);
+      await request(app.getHttpServer()).get('/admin/reports').expect(401);
     });
   });
 

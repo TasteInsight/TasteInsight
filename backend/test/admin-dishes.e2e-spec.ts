@@ -594,7 +594,9 @@ describe('AdminDishesController (e2e)', () => {
 
       expect(response.body.code).toBe(200);
       expect(response.body.data.tags).toEqual(['川菜', '更新后的标签']);
-      expect(response.body.data.images).toEqual(['https://example.com/updated.jpg']);
+      expect(response.body.data.images).toEqual([
+        'https://example.com/updated.jpg',
+      ]);
       expect(response.body.data.ingredients).toEqual(['更新后的食材']);
       expect(response.body.data.allergens).toEqual(['花生', '海鲜']);
       expect(response.body.data.spicyLevel).toBe(4);
@@ -721,7 +723,7 @@ describe('AdminDishesController (e2e)', () => {
       // 2. It provides a more forgiving UX for bulk imports or partial updates
       // 3. The window already determines the correct floor in most cases
       // If stricter validation is needed, this behavior should be changed in the service.
-      
+
       // 先设置一个有效的楼层
       await request(app.getHttpServer())
         .put(`/admin/dishes/${editDishId}`)

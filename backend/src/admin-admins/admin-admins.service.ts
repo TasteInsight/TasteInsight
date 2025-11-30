@@ -32,7 +32,9 @@ export class AdminAdminsService {
     // 根据角色决定查询条件
     // superadmin 可以看到所有子管理员，普通管理员只能看到自己创建的
     const whereCondition =
-      role === 'superadmin' ? { createdBy: { not: null } } : { createdBy: adminId };
+      role === 'superadmin'
+        ? { createdBy: { not: null } }
+        : { createdBy: adminId };
 
     const [total, admins] = await Promise.all([
       this.prisma.admin.count({ where: whereCondition }),
