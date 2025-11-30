@@ -56,6 +56,10 @@ export class AdminUploadsController {
     @Body() rejectDto: AdminRejectUploadDto,
     @Request() req,
   ) {
-    return this.adminUploadsService.rejectUpload(id, rejectDto.reason, req.admin);
+    return this.adminUploadsService.rejectUpload(
+      id,
+      rejectDto.reason,
+      req.admin,
+    );
   }
 }

@@ -71,8 +71,10 @@ describe('AdminCanteensController (e2e)', () => {
       expect(response.body.code).toBe(200);
       expect(response.body.data.name).toBe(createDto.name);
       expect(response.body.data.windows).toHaveLength(1);
-      expect(response.body.data.windows[0].name).toBe(createDto.windows[0].name);
-      
+      expect(response.body.data.windows[0].name).toBe(
+        createDto.windows[0].name,
+      );
+
       createdCanteenId = response.body.data.id;
     });
   });

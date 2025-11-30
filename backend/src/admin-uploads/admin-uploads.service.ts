@@ -5,7 +5,10 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
-import { AdminGetPendingUploadsDto, DishUploadDto } from './dto/admin-upload.dto';
+import {
+  AdminGetPendingUploadsDto,
+  DishUploadDto,
+} from './dto/admin-upload.dto';
 
 @Injectable()
 export class AdminUploadsService {
