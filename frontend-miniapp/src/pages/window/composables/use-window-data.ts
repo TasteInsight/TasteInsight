@@ -1,15 +1,7 @@
 import { ref, computed } from 'vue';
 import { useCanteenStore } from '@/store/modules/use-canteen-store';
-import { getDishes } from '@/api/modules/dish';
-import type { GetDishesRequest, Dish } from '@/types/api';
-
-const filters = [
-  { key: 'taste', label: '口味' },
-  { key: 'price', label: '价格' },
-  { key: 'rating', label: '评分' },
-  { key: 'type', label: '类型' },
-  { key: 'allergen', label: '过敏原' },
-];
+import { getWindowDishes } from '@/api/modules/canteen';
+import type { Dish, PaginationParams } from '@/types/api';
 
 export function useWindowData() {
   const canteenStore = useCanteenStore();
@@ -20,7 +12,6 @@ export function useWindowData() {
   const storeError = computed(() => canteenStore.error || '');
   const localError = ref('');
   const error = computed(() => localError.value || storeError.value);
-  const activeFilter = ref('');
 
   const fetchWindow = async (windowId: string) => {
     try {
@@ -32,19 +23,12 @@ export function useWindowData() {
     }
   };
 
-  const fetchDishes = async (windowId: string, extraFilters: GetDishesRequest['filter'] = {}) => {
+  const fetchDishes = async (windowId: string, pagination?: PaginationParams) => {
     loading.value = true;
     try {
       localError.value = '';
       
-      const params: GetDishesRequest = {
-        filter: { windowId: [windowId], ...extraFilters },
-        sort: { field: 'averageRating', order: 'desc' },
-        pagination: { page: 1, pageSize: 20 },
-        search: { keyword: '' },
-      };
-
-      const res = await getDishes(params);
+      const res = await getWindowDishes(windowId, pagination ?? { page: 1, pageSize: 20 });
       if (res.code === 200 && res.data) {
         dishes.value = res.data.items || [];
       } else {
@@ -63,20 +47,13 @@ export function useWindowData() {
     await fetchDishes(windowId);
   };
 
-  const toggleFilter = (key: string) => {
-    activeFilter.value = activeFilter.value === key ? '' : key;
-  };
-
   return {
     windowInfo,
     loading,
     error,
     dishes,
-    filters,
-    activeFilter,
     init,
     fetchDishes,
     fetchWindow,
-    toggleFilter,
   };
 };
