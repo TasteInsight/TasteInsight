@@ -1,4 +1,4 @@
-import { test, expect, request } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import { loginAsAdmin, getApiToken, TEST_ACCOUNTS } from './utils';
 
 // API base URL for direct API calls
