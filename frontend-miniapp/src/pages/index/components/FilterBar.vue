@@ -918,11 +918,11 @@ defineExpose({
 
 <style scoped>
 .filter-scrollbar::-webkit-scrollbar {
-  height: 1px;
+  height: 0.5px;
 }
 .filter-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgba(0, 0, 0, 0.15);
-  border-radius: 2px;
+  background-color: rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
 }
 .filter-scrollbar::-webkit-scrollbar-track {
   background-color: transparent;
