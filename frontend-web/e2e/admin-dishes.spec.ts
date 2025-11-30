@@ -37,7 +37,7 @@ test.describe('Admin Dish Management', () => {
     }
   });
 
-  test('Create, View, and Delete a Dish', async ({ page }) => {
+  test('Create, Approve, Edit, and Delete (API) Dish', async ({ page }) => {
     const dishName = `E2E Test Dish ${Date.now()}`;
     const dishPrice = '15.5';
     const dishDescription = 'This is a test dish created by Playwright E2E test.';
@@ -60,7 +60,13 @@ test.describe('Admin Dish Management', () => {
     // Select Window
     const windowSelect = page.locator('select').nth(1);
     await expect(windowSelect).toBeEnabled();
-    await windowSelect.selectOption({ index: 1 });
+    // Try to select "川菜窗口" if available (from seed), otherwise fallback to index
+    const windowOptions = await windowSelect.locator('option').allInnerTexts();
+    if (windowOptions.some(opt => opt.includes('川菜窗口'))) {
+        await windowSelect.selectOption({ label: '川菜窗口' });
+    } else {
+        await windowSelect.selectOption({ index: 1 });
+    }
 
     // Fill Name
     await page.fill('input[placeholder="例如：水煮肉片"]', dishName);
@@ -69,7 +75,7 @@ test.describe('Admin Dish Management', () => {
     await page.fill('input[type="number"][placeholder*="15.00"]', dishPrice);
 
     // Fill Description
-    await page.fill('textarea', dishDescription);
+    await page.fill('textarea[placeholder="请输入菜品描述..."]', dishDescription);
 
     // Handle success alert
     page.once('dialog', async dialog => {
