@@ -501,6 +501,10 @@
   height: 0.5px
 }
 
+.h-\[1px\] {
+  height: 1px
+}
+
 .max-h-\[72vh\] {
   max-height: 72vh
 }
