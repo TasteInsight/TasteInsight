@@ -102,6 +102,15 @@ export const reviewApi = {
   },
 
   /**
+   * 获取待审核上传菜品详情
+   * @param id 上传菜品 ID
+   * @returns 待审核菜品详情
+   */
+  async getPendingUploadById(id: string): Promise<ApiResponse<any>> {
+    return await request.get<ApiResponse<any>>(`/admin/dishes/uploads/pending/${id}`);
+  },
+
+  /**
    * 通过用户上传菜品审核
    * @param id 上传菜品 ID
    * @returns 审核结果

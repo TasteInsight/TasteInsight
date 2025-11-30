@@ -225,15 +225,14 @@ export default {
           reviewDishes.value = response.data.items.map(item => ({
             id: item.id,
             name: item.name,
-            location: `${item.canteenName || ''}${item.floor ? '-' + item.floor : ''}${item.windowName || item.window || ''}`,
+            location: `${item.canteenName || ''}${item.windowName ? '-' + item.windowName : ''}`,
             submitDate: item.createdAt ? new Date(item.createdAt).toLocaleDateString('zh-CN') : '',
             submitTime: item.createdAt ? new Date(item.createdAt).toLocaleTimeString('zh-CN') : '',
-            submitter: item.uploaderNickname || '未知',
+            submitter: item.uploaderName || '未知',
             status: item.status || 'pending',
             image: item.images && item.images.length > 0 ? item.images[0] : '',
             canteen: item.canteenName,
-            floor: item.floor,
-            window: item.windowName || item.window
+            window: item.windowName
           }))
           // 更新总数
           totalDishes.value = response.data.meta?.total || 0
