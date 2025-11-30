@@ -49,6 +49,7 @@
                 />
                 <view class="flex-1">
                   <view class="flex items-center mb-0.5">
+                    <text class="text-gray-400 text-sm mr-1">{{ getFloor(comment.id) }}楼</text>
                     <text class="text-ts-purple font-semibold text-sm">{{ comment.userNickname }}</text>
                     <!-- 回复目标显示 -->
                     <template v-if="comment.parentComment && !comment.parentComment.deleted">
@@ -208,6 +209,24 @@ const pageSize = 10;
 
 const replyContent = ref('');
 const replyingTo = ref<Comment | null>(null);
+
+// 楼层映射表：根据评论创建时间排序后生成楼层号
+const floorMap = computed(() => {
+  const map = new Map<string, number>();
+  // 复制数组并按时间升序排序（最早的是1楼）
+  const sorted = [...comments.value].sort((a, b) => 
+    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+  sorted.forEach((comment, index) => {
+    map.set(comment.id, index + 1);
+  });
+  return map;
+});
+
+// 获取评论的楼层号
+const getFloor = (commentId: string): number => {
+  return floorMap.value.get(commentId) || 0;
+};
 
 // 计算属性：判断是否可以发送
 const canSendReply = computed(() => {

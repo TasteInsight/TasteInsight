@@ -10,6 +10,7 @@
           class="comment-item"
         >
           <view class="text-sm text-gray-700">
+            <text class="text-gray-400 mr-1">{{ getFloor(comment.id) }}楼</text>
             <text class="text-purple-800 font-normal">{{ comment.userNickname }}:</text>
             {{ comment.content }}
           </view>
@@ -54,6 +55,25 @@ const emit = defineEmits<{
 const displayComments = computed(() => {
   return props.commentsData?.items.slice(0, 4) || [];
 });
+
+// 楼层映射表：根据评论创建时间排序后生成楼层号
+const floorMap = computed(() => {
+  const map = new Map<string, number>();
+  const allComments = props.commentsData?.items || [];
+  // 复制数组并按时间升序排序（最早的是1楼）
+  const sorted = [...allComments].sort((a, b) => 
+    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  );
+  sorted.forEach((comment, index) => {
+    map.set(comment.id, index + 1);
+  });
+  return map;
+});
+
+// 获取评论的楼层号
+const getFloor = (commentId: string): number => {
+  return floorMap.value.get(commentId) || 0;
+};
 
 const totalComments = computed(() => {
   return props.commentsData?.total || 0;
