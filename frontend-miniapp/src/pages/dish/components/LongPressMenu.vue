@@ -1,33 +1,39 @@
 <template>
-  <!-- 长按操作菜单 -->
+  <!-- 底部操作菜单 -->
   <view 
     v-if="visible" 
-    class="fixed inset-0 z-[1500]"
+    class="fixed inset-0 z-[1500] bg-black/40"
     @tap="handleClose"
   >
-    <!-- 菜单弹窗 -->
+    <!-- 底部弹出菜单 -->
     <view 
-      class="absolute bg-white rounded-lg shadow-lg overflow-hidden"
-      :style="{ top: `${position.y}px`, left: `${position.x}px` }"
+      class="absolute bottom-0 left-0 right-0 bg-white rounded-t-xl shadow-lg overflow-hidden"
+      :style="{ paddingBottom: 'env(safe-area-inset-bottom)' }"
       @tap.stop
     >
-      <!-- 删除选项 -->
-      <view 
-        class="flex items-center gap-3 px-4 py-3 border-b border-gray-100"
-        :class="canDelete ? 'cursor-pointer active:bg-gray-50' : 'opacity-40 cursor-not-allowed'"
-        @tap="handleDelete"
-      >
-        <text class="text-base" :class="canDelete ? 'text-red-500' : 'text-gray-400'">🗑️</text>
-        <text class="text-sm" :class="canDelete ? 'text-gray-700' : 'text-gray-400'">删除</text>
-      </view>
-      
-      <!-- 举报选项 -->
-      <view 
-        class="flex items-center gap-3 px-4 py-3 cursor-pointer active:bg-gray-50"
-        @tap="handleReport"
-      >
-        <text class="text-base text-orange-500">⚠️</text>
-        <text class="text-sm text-gray-700">举报</text>
+      <view class="flex items-center justify-around h-[65px] px-4">
+        <!-- 举报选项 -->
+        <view 
+          class="flex flex-col items-center justify-center flex-1 cursor-pointer transition-all duration-200 active:scale-95"
+          @tap="handleReport"
+        >
+          <text class="text-xl text-orange-500">⚠️</text>
+          <text class="text-xs text-gray-600 mt-1">举报</text>
+        </view>
+
+        <!-- 删除选项 - 仅自己的内容显示 -->
+        <template v-if="canDelete">
+          <!-- 分隔线 -->
+          <view class="w-px h-8 bg-gray-200"></view>
+          
+          <view 
+            class="flex flex-col items-center justify-center flex-1 cursor-pointer transition-all duration-200 active:scale-95"
+            @tap="handleDelete"
+          >
+            <text class="text-xl text-red-500">🗑️</text>
+            <text class="text-xs text-gray-600 mt-1">删除</text>
+          </view>
+        </template>
       </view>
     </view>
   </view>
@@ -36,7 +42,6 @@
 <script setup lang="ts">
 interface Props {
   visible: boolean;
-  position: { x: number; y: number };
   canDelete: boolean;
 }
 

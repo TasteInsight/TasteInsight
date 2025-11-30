@@ -106,7 +106,6 @@
       <!-- 长按菜单 -->
       <LongPressMenu
         :visible="menuVisible"
-        :position="menuPosition"
         :can-delete="canDeleteCurrent"
         @close="closeMenu"
         @delete="confirmDelete"
@@ -137,7 +136,6 @@ const userStore = useUserStore();
 
 // 长按菜单相关状态
 const menuVisible = ref(false);
-const menuPosition = ref({ x: 0, y: 0 });
 const currentCommentId = ref('');
 const currentComment = ref<Comment | null>(null);
 
@@ -148,18 +146,9 @@ const canDeleteCurrent = computed(() => {
 });
 
 // 长按处理
-const handleLongPress = (e: any, comment: Comment) => {
+const handleLongPress = (_e: any, comment: Comment) => {
   currentCommentId.value = comment.id;
   currentComment.value = comment;
-
-  // 获取点击位置
-  const touch = e.touches?.[0] || e.changedTouches?.[0];
-  if (touch) {
-    menuPosition.value = {
-      x: touch.clientX,
-      y: touch.clientY
-    };
-  }
   menuVisible.value = true;
 };
 

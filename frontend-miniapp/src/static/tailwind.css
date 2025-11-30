@@ -489,6 +489,10 @@
   height: 100%
 }
 
+.h-\[65px\] {
+  height: 65px
+}
+
 .max-h-\[72vh\] {
   max-height: 72vh
 }
@@ -815,6 +819,11 @@
   border-top-right-radius: 1.5rem
 }
 
+.rounded-t-xl {
+  border-top-left-radius: 0.75rem;
+  border-top-right-radius: 0.75rem
+}
+
 .border {
   border-width: 1px
 }
@@ -1113,6 +1122,10 @@
 .bg-yellow-600 {
   --tw-bg-opacity: 1;
   background-color: rgb(202 138 4 / var(--tw-bg-opacity))
+}
+
+.bg-black\/40 {
+  background-color: rgb(0 0 0 / 0.4)
 }
 
 .bg-opacity-50 {
