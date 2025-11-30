@@ -447,7 +447,9 @@ describe('AdminDishesController (e2e)', () => {
       expect(response.body.data.spicyLevel).toBe(3);
     });
 
-    it('should fail to create dish without canteenId when using windowName', async () => {
+    it('should fail to create dish when windowName does not exist and canteenId is missing', async () => {
+      // This test verifies that when using windowName lookup without canteenId,
+      // and the windowName doesn't exist, the request should fail with 400
       await request(app.getHttpServer())
         .post('/admin/dishes')
         .set('Authorization', `Bearer ${superAdminToken}`)
