@@ -180,6 +180,10 @@
   left: 3rem
 }
 
+.left-4 {
+  left: 1rem
+}
+
 .z-10 {
   z-index: 10
 }
@@ -354,6 +358,14 @@
   margin-bottom: auto
 }
 
+.mr-0 {
+  margin-right: 0px
+}
+
+.mr-0\.5 {
+  margin-right: 0.125rem
+}
+
 .box-border {
   box-sizing: border-box
 }
@@ -363,6 +375,13 @@
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2
+}
+
+.line-clamp-1 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1
 }
 
 .block {
@@ -515,6 +534,10 @@
 
 .min-h-screen {
   min-height: 100vh
+}
+
+.min-h-\[96px\] {
+  min-height: 96px
 }
 
 .w-1 {
@@ -1716,6 +1739,21 @@
 .text-yellow-600 {
   --tw-text-opacity: 1;
   color: rgb(202 138 4 / var(--tw-text-opacity))
+}
+
+.text-gray-200 {
+  --tw-text-opacity: 1;
+  color: rgb(229 231 235 / var(--tw-text-opacity))
+}
+
+.text-orange-400 {
+  --tw-text-opacity: 1;
+  color: rgb(251 146 60 / var(--tw-text-opacity))
+}
+
+.text-purple-300 {
+  --tw-text-opacity: 1;
+  color: rgb(216 180 254 / var(--tw-text-opacity))
 }
 
 .placeholder-purple-300::-moz-placeholder {

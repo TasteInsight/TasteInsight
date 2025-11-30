@@ -820,6 +820,8 @@ export interface ReviewListData extends PaginatedData<Review> {
 export interface MyReviewItem extends Review {
   dishName: string;
   dishImage: string;
+  reply?: string;
+  replyTime?: string;
 }
 
 /**
