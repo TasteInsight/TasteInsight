@@ -78,7 +78,7 @@
             <button
               v-for="canteen in canteenList"
               :key="canteen.id"
-              class="px-3 py-2 rounded-lg text-sm transition-colors text-left truncate"
+              class="w-full py-2 px-3 rounded-lg text-sm transition-colors text-left truncate"
               :class="selectedCanteen?.id === canteen.id 
                 ? 'bg-blue-500 text-white' 
                 : 'bg-gray-100 text-gray-600'"
@@ -98,7 +98,7 @@
             <button
               v-for="window in windowList"
               :key="window.id"
-              class="px-3 py-2 rounded-lg text-sm transition-colors text-left truncate"
+              class="w-full py-2 px-3 rounded-lg text-sm transition-colors text-left truncate"
               :class="formData.windowName === window.name 
                 ? 'bg-blue-500 text-white' 
                 : 'bg-gray-100 text-gray-600'"
@@ -188,14 +188,14 @@
       <!-- 标签 -->
       <div class="bg-white px-4 py-4">
         <div class="text-sm font-semibold text-gray-700 mb-3">菜品标签</div>
-        <div class="flex flex-wrap gap-2">
+        <div class="grid grid-cols-3 gap-2">
           <button
             v-for="tag in commonTags"
             :key="tag"
-            class="px-3 py-1.5 rounded-full text-sm transition-colors"
+            class="w-full px-3 py-1.5 rounded-full text-sm transition-colors text-left truncate"
             :class="formData.tags?.includes(tag) 
-              ? 'bg-blue-100 text-blue-600 border border-blue-300' 
-              : 'bg-gray-50 text-gray-600 border border-gray-200'"
+              ? 'bg-blue-100 text-blue-600' 
+              : 'bg-gray-100 text-gray-600'"
             @click="toggleTag(tag)"
           >
             {{ tag }}
@@ -207,14 +207,14 @@
       <div class="bg-white px-4 py-4">
         <div class="text-sm font-semibold text-gray-700 mb-3">过敏原信息</div>
         <div class="text-xs text-gray-500 mb-2">选择该菜品可能含有的过敏原</div>
-        <div class="flex flex-wrap gap-2">
+        <div class="grid grid-cols-3 gap-2">
           <button
             v-for="allergen in commonAllergens"
             :key="allergen"
-            class="px-3 py-1.5 rounded-full text-sm transition-colors"
+            class="w-full px-3 py-1.5 rounded-full text-sm transition-colors text-left truncate"
             :class="formData.allergens?.includes(allergen) 
-              ? 'bg-orange-100 text-orange-600 border border-orange-300' 
-              : 'bg-gray-50 text-gray-600 border border-gray-200'"
+              ? 'bg-orange-100 text-orange-600' 
+              : 'bg-gray-100 text-gray-600'"
             @click="toggleAllergen(allergen)"
           >
             {{ allergen }}
@@ -287,5 +287,14 @@ onMounted(() => {
 input, textarea {
   border: none;
   outline: none;
+}
+
+button {
+  border: none;
+  outline: none;
+}
+
+button::after {
+  border: none;
 }
 </style>
