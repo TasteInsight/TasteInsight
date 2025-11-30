@@ -78,7 +78,7 @@
             </view>
           </view>
           <view class="text-right mt-2 flex items-center gap-3">
-            <view class="text-lg font-bold text-orange-500">¥{{ dish.price }}</view>
+            <view class="text-lg font-bold text-orange-500">¥{{ dish.price }}{{ dish.priceUnit ? '/' + dish.priceUnit : '' }}</view>
             <!-- 收藏按钮 -->
             <view 
               class="w-10 h-10 flex items-center justify-center rounded-full cursor-pointer transition-all duration-200"
