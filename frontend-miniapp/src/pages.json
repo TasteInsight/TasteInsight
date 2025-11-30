@@ -121,6 +121,18 @@
 			}
 		},
 		{
+			"path": "pages/settings/privacy",
+			"style": {
+				"navigationBarTitleText": "用户协议与隐私政策"
+			}
+		},
+		{
+			"path": "pages/settings/about",
+			"style": {
+				"navigationBarTitleText": "关于食鉴"
+			}
+		},
+		{
 			"path": "pages/profile/my-reviews/index",
 			"style": {
 				"navigationBarTitleText": "我的评价"
