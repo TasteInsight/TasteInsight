@@ -1,20 +1,20 @@
 <template>
   <!-- 评分比例条状图 -->
-  <view class="rating-bars">
+  <view class="w-52">
     <view
       v-for="item in ratingBars"
       :key="item.stars"
-      class="rating-bar-item"
+      class="mb-1.5 last:mb-0"
     >
-      <view class="rating-bar-content">
-        <text class="rating-stars">{{ item.stars }}星</text>
-        <view class="rating-bar-container">
+      <view class="flex items-center gap-1.5">
+        <text class="text-[10px] text-gray-500 font-medium min-w-[20px] text-center">{{ item.stars }}星</text>
+        <view class="flex-1 h-1 bg-gray-100 rounded overflow-hidden">
           <view
-            class="rating-bar-fill"
+            class="h-full rounded bg-gradient-to-r from-yellow-300 to-yellow-400 transition-[width] duration-300"
             :style="{ width: item.percentage + '%' }"
           ></view>
         </view>
-        <text class="rating-percentage">{{ item.percentage }}%</text>
+        <text class="text-[10px] text-gray-400 font-medium min-w-[24px] text-right">{{ item.percentage }}%</text>
       </view>
     </view>
   </view>
@@ -87,54 +87,3 @@ const ratingBars = computed(() => {
   });
 });
 </script>
-
-<style scoped>
-.rating-bars {
-  width: 200px; /* 进一步增加宽度，让条状图更长 */
-}
-
-.rating-bar-item {
-  margin-bottom: 6px;
-}
-
-.rating-bar-item:last-child {
-  margin-bottom: 0;
-}
-
-.rating-bar-content {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.rating-stars {
-  font-size: 10px;
-  color: #6b7280;
-  font-weight: 500;
-  min-width: 20px;
-  text-align: center;
-}
-
-.rating-bar-container {
-  flex: 1;
-  height: 4px;
-  background-color: #f3f4f6;
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.rating-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #facc15 0%, #eab308 100%);
-  border-radius: 2px;
-  transition: width 0.3s ease;
-}
-
-.rating-percentage {
-  font-size: 10px;
-  color: #9ca3af;
-  font-weight: 500;
-  min-width: 24px;
-  text-align: right;
-}
-</style>
