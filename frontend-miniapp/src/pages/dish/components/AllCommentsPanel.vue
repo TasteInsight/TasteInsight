@@ -48,18 +48,17 @@
                   alt="用户头像"
                 />
                 <view class="flex-1">
-                  <text class="text-ts-purple font-semibold text-sm block mb-0.5">{{ comment.userNickname }}</text>
+                  <view class="flex items-center mb-0.5">
+                    <text class="text-ts-purple font-semibold text-sm">{{ comment.userNickname }}</text>
+                    <!-- 回复目标显示 -->
+                    <template v-if="comment.parentComment && !comment.parentComment.deleted">
+                      <text class="text-gray-500 text-sm ml-2">回复</text>
+                      <text class="text-ts-purple text-sm font-semibold ml-1">@{{ comment.parentComment.userNickname }}</text>
+                    </template>
+                    <text v-else-if="comment.parentComment?.deleted" class="text-gray-400 text-sm ml-2">回复的评论已删除</text>
+                  </view>
                   <text class="text-xs text-gray-400">{{ formatDate(comment.createdAt) }}</text>
                 </view>
-              </view>
-
-              <!-- 回复目标显示 -->
-              <view v-if="comment.parentComment && !comment.parentComment.deleted" class="ml-11">
-                <text class="text-gray-500 text-xs">回复</text>
-                <text class="text-ts-purple text-xs font-medium ml-1">@{{ comment.parentComment.userNickname }}</text>
-              </view>
-              <view v-else-if="comment.parentComment?.deleted" class="ml-11">
-                <text class="text-gray-400 text-xs">回复的评论已删除</text>
               </view>
 
               <!-- 评论内容 -->
@@ -376,7 +375,7 @@ const formatDate = (dateString: string) => {
 <style scoped>
 /* 底部安全区域 padding */
 .pb-safe {
-  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  padding-bottom: calc(32px + env(safe-area-inset-bottom));
 }
 
 /* 移除小程序按钮默认边框 */
