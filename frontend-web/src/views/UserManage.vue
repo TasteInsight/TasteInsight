@@ -626,10 +626,10 @@ export default {
           }
         } else {
           // 创建新管理员
+          // Note: 后端不接受role字段，子管理员的role固定为'admin'
           const createData = {
             username: formData.username.trim(),
             password: formData.password.trim(),
-            role: formData.role,
             canteenId: formData.canteenId.trim() || undefined,
             permissions: formData.permissions
           }
