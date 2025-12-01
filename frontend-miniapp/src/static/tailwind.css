@@ -523,6 +523,7 @@
 
 .h-\[55px\] {
   height: 55px
+}
 .h-\[48px\] {
   height: 48px
 }
@@ -549,6 +550,7 @@
 
 .h-full {
   height: 100%
+}
 .h-\[812px\] {
   height: 812px
 }
@@ -1595,6 +1597,7 @@
 
 .pt-6 {
   padding-top: 1.5rem
+}
 .pt-8 {
   padding-top: 2rem
 }
@@ -2224,4 +2227,5 @@
 
 .disabled\:opacity-50:disabled {
   opacity: 0.5
+}
 }
