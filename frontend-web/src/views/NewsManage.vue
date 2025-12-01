@@ -14,7 +14,7 @@
           <!-- 创建新闻按钮 -->
           <div class="mt-6 flex justify-end">
             <button
-              @click="showCreateModal = true"
+              @click="openCreateModal"
               class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center space-x-2"
             >
               <span class="iconify" data-icon="carbon:add"></span>
@@ -96,7 +96,7 @@
       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
       @click.self="closeModal"
     >
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto m-4">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[95vh] overflow-y-auto m-4">
         <div class="p-6 border-b border-gray-200 flex items-center justify-between">
           <h3 class="text-xl font-semibold text-gray-800">
             {{ showEditModal ? '编辑新闻' : '创建新闻' }}
@@ -111,8 +111,20 @@
         
         <div class="p-6">
           <form @submit.prevent="submitForm" class="space-y-6">
+            <!-- 发布人信息 -->
             <div>
-              <label class="block text-gray-700 font-medium mb-2">标题 *</label>
+              <label class="block text-gray-700 font-medium mb-2">发布人</label>
+              <input
+                :value="currentAdmin?.username || currentAdmin?.id || '未知'"
+                type="text"
+                disabled
+                class="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
+              />
+              <p class="mt-1 text-sm text-gray-500">发布人ID: {{ currentAdmin?.id || '未知' }} (自动填充)</p>
+            </div>
+
+            <div>
+              <label class="block text-gray-700 font-medium mb-2">标题 <span class="text-red-500">*</span></label>
               <input
                 v-model="newsForm.title"
                 type="text"
@@ -123,7 +135,7 @@
             </div>
             
             <div>
-              <label class="block text-gray-700 font-medium mb-2">摘要 *</label>
+              <label class="block text-gray-700 font-medium mb-2">摘要 <span class="text-red-500">*</span></label>
               <input
                 v-model="newsForm.summary"
                 type="text"
@@ -133,26 +145,35 @@
               />
             </div>
             
+            <!-- ================= 富文本编辑器区域 START ================= -->
             <div>
-              <label class="block text-gray-700 font-medium mb-2">内容 *</label>
-              <textarea
-                v-model="newsForm.content"
-                required
-                rows="10"
-                class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple resize-none"
-                placeholder="请输入新闻内容"
-              ></textarea>
+              <label class="block text-gray-700 font-medium mb-2">内容 <span class="text-red-500">*</span></label>
+              <div style="border: 1px solid #ccc; z-index: 100;" class="rounded-lg overflow-hidden">
+                <Toolbar
+                  style="border-bottom: 1px solid #ccc"
+                  :editor="editorRef"
+                  :defaultConfig="toolbarConfig"
+                  :mode="mode"
+                />
+                <Editor
+                  style="height: 400px; overflow-y: hidden;"
+                  v-model="valueHtml"
+                  :defaultConfig="editorConfig"
+                  :mode="mode"
+                  @onCreated="handleCreated"
+                />
+              </div>
             </div>
+            <!-- ================= 富文本编辑器区域 END ================= -->
             
             <div class="grid grid-cols-2 gap-6">
               <div>
-                <label class="block text-gray-700 font-medium mb-2">食堂 *</label>
+                <label class="block text-gray-700 font-medium mb-2">发布单位 <span class="text-red-500">*</span></label>
                 <select
                   v-model="newsForm.canteenId"
-                  required
                   class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
                 >
-                  <option value="" disabled>请选择食堂</option>
+                  <option value="">全校公告</option>
                   <option v-for="canteen in canteenList" :key="canteen.id" :value="canteen.id">
                     {{ canteen.name }}
                   </option>
@@ -160,7 +181,7 @@
               </div>
               
               <div>
-                <label class="block text-gray-700 font-medium mb-2">发布时间 *</label>
+                <label class="block text-gray-700 font-medium mb-2">发布时间 <span class="text-red-500">*</span></label>
                 <input
                   v-model="newsForm.publishedAt"
                   type="datetime-local"
@@ -193,9 +214,15 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted } from 'vue'
+// 1. 引入 Vue 核心功能，添加 shallowRef, onBeforeUnmount
+import { ref, reactive, onMounted, shallowRef, onBeforeUnmount, computed } from 'vue'
+// 2. 引入 wangEditor CSS 和组件
+import '@wangeditor/editor/dist/css/style.css'
+import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
+
 import { newsApi } from '@/api/modules/news'
 import { canteenApi } from '@/api/modules/canteen'
+import { useAuthStore } from '@/store/modules/use-auth-store'
 import Sidebar from '@/components/Layout/Sidebar.vue'
 import Header from '@/components/Layout/Header.vue'
 import Pagination from '@/components/Common/Pagination.vue'
@@ -205,7 +232,9 @@ export default {
   components: {
     Sidebar,
     Header,
-    Pagination
+    Pagination,
+    Editor, // 注册 Editor 组件
+    Toolbar // 注册 Toolbar 组件
   },
   setup() {
     const newsList = ref([])
@@ -213,7 +242,42 @@ export default {
     const showEditModal = ref(false)
     const editingNewsId = ref(null)
     const canteenList = ref([])
+    const authStore = useAuthStore()
+
+    // 获取当前登录管理员信息
+    const currentAdmin = computed(() => authStore.user)
     
+    // --- wangEditor 配置 START ---
+    // 编辑器实例，必须用 shallowRef
+    const editorRef = shallowRef()
+    
+    // 内容 HTML，直接绑定到 Editor
+    const valueHtml = ref('')
+    
+    const mode = 'default' // 或 'simple'
+    
+    const toolbarConfig = {}
+    
+    const editorConfig = { 
+      placeholder: '请输入新闻内容...',
+      MENU_CONF: {
+        // 如果需要上传图片，请在这里配置，例如：
+        // uploadImage: { server: '/api/upload', fieldName: 'file' }
+      }
+    }
+    
+    // 组件销毁时，也及时销毁编辑器
+    onBeforeUnmount(() => {
+      const editor = editorRef.value
+      if (editor == null) return
+      editor.destroy()
+    })
+    
+    const handleCreated = (editor) => {
+      editorRef.value = editor // 记录 editor 实例
+    }
+    // --- wangEditor 配置 END ---
+
     const pagination = reactive({
       page: 1,
       pageSize: 10,
@@ -238,7 +302,6 @@ export default {
         })
         
         if (response.code === 200 && response.data) {
-          // 处理分页响应格式
           if (response.data.items) {
             newsList.value = response.data.items
             if (response.data.meta) {
@@ -246,7 +309,6 @@ export default {
               pagination.totalPages = response.data.meta.totalPages || Math.ceil(response.data.meta.total / pagination.pageSize)
             }
           } else if (Array.isArray(response.data)) {
-            // 兼容非分页格式
             newsList.value = response.data
           }
         }
@@ -256,38 +318,30 @@ export default {
       }
     }
     
-    // 格式化日期
     const formatDate = (dateString) => {
       if (!dateString) return ''
       const date = new Date(dateString)
       return date.toLocaleString('zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit'
       })
     }
     
-    // 获取摘要
     const getSummary = (news) => {
-      if (news.summary) {
-        return news.summary
-      }
-      if (news.content) {
-        return news.content.length > 50 ? news.content.substring(0, 50) + '...' : news.content
-      }
-      return '无摘要'
+      // 简单处理：如果是富文本，可能包含HTML标签，这里简单截取
+      // 实际项目中建议后端返回纯文本摘要，或者前端用正则去掉HTML标签
+      let text = news.summary || news.content || '无摘要'
+      // 移除HTML标签仅用于列表展示（简单的正则）
+      text = text.replace(/<[^>]+>/g, '')
+      return text.length > 50 ? text.substring(0, 50) + '...' : text
     }
     
-    // 获取食堂名称
     const getCanteenName = (canteenId) => {
       if (!canteenId) return '未设置'
       const canteen = canteenList.value.find(c => c.id === canteenId)
       return canteen ? canteen.name : '未知食堂'
     }
     
-    // 加载食堂列表
     const loadCanteens = async () => {
       try {
         const response = await canteenApi.getCanteens({ page: 1, pageSize: 100 })
@@ -311,6 +365,15 @@ export default {
       newsForm.canteenId = ''
       newsForm.publishedAt = ''
       editingNewsId.value = null
+      
+      // 【关键】重置编辑器内容
+      valueHtml.value = ''
+    }
+    
+    // 打开创建模态框
+    const openCreateModal = () => {
+      resetForm()
+      showCreateModal.value = true
     }
     
     // 关闭模态框
@@ -328,14 +391,18 @@ export default {
       newsForm.summary = news.summary || ''
       newsForm.canteenId = news.canteenId || ''
       
-      // 处理发布时间，转换为 datetime-local 格式
+      // 【关键】将新闻内容赋值给编辑器
+      valueHtml.value = news.content || ''
+      
       if (news.publishedAt) {
         const date = new Date(news.publishedAt)
+        // 格式化为 datetime-local 所需格式 YYYY-MM-DDThh:mm
+        const pad = (n) => String(n).padStart(2, '0')
         const year = date.getFullYear()
-        const month = String(date.getMonth() + 1).padStart(2, '0')
-        const day = String(date.getDate()).padStart(2, '0')
-        const hours = String(date.getHours()).padStart(2, '0')
-        const minutes = String(date.getMinutes()).padStart(2, '0')
+        const month = pad(date.getMonth() + 1)
+        const day = pad(date.getDate())
+        const hours = pad(date.getHours())
+        const minutes = pad(date.getMinutes())
         newsForm.publishedAt = `${year}-${month}-${day}T${hours}:${minutes}`
       } else {
         newsForm.publishedAt = ''
@@ -347,17 +414,20 @@ export default {
     // 提交表单
     const submitForm = async () => {
       try {
-        // 构建请求数据
+        // 【关键】提交前，将编辑器中的 HTML 同步回 newsForm.content
+        newsForm.content = valueHtml.value
+
         const requestData = {
           title: newsForm.title,
           content: newsForm.content,
           summary: newsForm.summary,
-          canteenId: newsForm.canteenId,
-          publishedAt: newsForm.publishedAt ? new Date(newsForm.publishedAt).toISOString() : undefined
+          canteenId: newsForm.canteenId || null, // 如果是空字符串（全校公告），则传 null
+          publishedAt: newsForm.publishedAt ? new Date(newsForm.publishedAt).toISOString() : undefined,
+          createdBy: authStore.user?.id // 添加发布人 ID
         }
         
         if (showEditModal.value && editingNewsId.value) {
-          // 更新新闻
+          // 更新
           const response = await newsApi.updateNews(editingNewsId.value, requestData)
           if (response.code === 200 || response.code === 201) {
             alert('新闻更新成功！')
@@ -367,7 +437,7 @@ export default {
             throw new Error(response.message || '更新失败')
           }
         } else {
-          // 创建新闻
+          // 创建
           const response = await newsApi.createNews(requestData)
           if (response.code === 200 || response.code === 201) {
             alert('新闻创建成功！')
@@ -383,12 +453,8 @@ export default {
       }
     }
     
-    // 删除新闻
     const deleteNews = async (newsId) => {
-      if (!confirm('确定要删除这条新闻吗？')) {
-        return
-      }
-      
+      if (!confirm('确定要删除这条新闻吗？')) return
       try {
         const response = await newsApi.deleteNews(newsId)
         if (response.code === 200 || response.code === 201) {
@@ -403,7 +469,6 @@ export default {
       }
     }
     
-    // 分页变化
     const handlePageChange = (page) => {
       pagination.page = page
       loadNews()
@@ -414,17 +479,27 @@ export default {
       loadNews()
     })
     
-    return {
+      return {
       newsList,
       showCreateModal,
       showEditModal,
       newsForm,
       canteenList,
       pagination,
+      currentAdmin,
+      // 导出编辑器相关变量
+      editorRef,
+      valueHtml,
+      mode,
+      toolbarConfig,
+      editorConfig,
+      handleCreated,
+      // 导出其他方法
       formatDate,
       getSummary,
       getCanteenName,
       closeModal,
+      openCreateModal,
       editNews,
       submitForm,
       deleteNews,
@@ -433,4 +508,3 @@ export default {
   }
 }
 </script>
-
