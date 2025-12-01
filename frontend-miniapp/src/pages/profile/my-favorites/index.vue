@@ -1,5 +1,11 @@
 <template>
-  <view class="w-full min-h-screen bg-gray-50 pb-4">
+  <view class="w-full min-h-screen bg-white pb-4">
+    <!-- 标题栏 -->
+    <view class="text-base font-semibold text-gray-800 flex items-center px-4 py-3 border-b border-gray-100">
+      <view class="w-1 h-4 bg-ts-purple rounded-full mr-2"></view>
+      我的收藏
+    </view>
+
     <!-- 加载状态 -->
     <view v-if="loading && dishes.length === 0" class="flex justify-center items-center py-20">
       <text class="text-gray-500">加载中...</text>
@@ -12,7 +18,7 @@
     </view>
 
     <!-- 菜品列表 -->
-    <view v-else class="px-4 pt-4 space-y-4">
+    <view v-else class="px-4">
       <DishCard
         v-for="dish in dishes"
         :key="dish.id"
@@ -37,7 +43,7 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue';
-import DishCard from './components/DishCard.vue';
+import DishCard from '@/pages/profile/components/ProfileDishCard.vue';
 import { useFavorites } from '@/pages/profile/my-favorites/composables/use-favorites';
 
 const { dishes, loading, hasMore, fetchFavorites, loadMore, removeFavorite } = useFavorites();

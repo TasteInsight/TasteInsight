@@ -1,81 +1,68 @@
 <template>
-  <view class="w-full min-h-screen bg-gradient-to-b from-white via-purple-50/20 to-white">
+  <view class="w-full min-h-screen bg-gray-50">
     <!-- 标题区域 -->
-    <view class="px-6 pt-12 pb-6">
+    <view class="px-6 pt-12 pb-4 bg-white border-b border-gray-100 sticky top-0 z-10 flex items-center">
+      <view class="w-1.5 h-6 bg-ts-purple rounded-full mr-3 shadow-sm"></view>
       <text class="text-2xl font-bold text-gray-800">设置</text>
     </view>
 
     <!-- 设置条目列表 -->
-    <view class="px-4 space-y-3">
-      <!-- 个人信息设置 -->
-      <view
-        class="flex items-center justify-between p-5 bg-white rounded-2xl shadow-sm active:bg-gray-50 transition-colors"
-        @click="navigateTo('/pages/settings/components/personal')"
-      >
-        <view class="flex items-center">
-          <view class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mr-4">
-            <text class="text-xl">👤</text>
-          </view>
+    <view class="px-4 py-4 space-y-4">
+      
+      <!-- 分组 1: 个人与偏好 -->
+      <view class="bg-white rounded-lg shadow-sm overflow-hidden">
+        <!-- 个人信息设置 -->
+        <view
+          class="flex items-center justify-between p-4 active:bg-gray-50 transition-colors relative"
+          @click="navigateTo('/pages/settings/components/personal')"
+        >
           <text class="text-base font-medium text-gray-800">个人信息设置</text>
+          <text class="iconify text-purple-300" data-icon="mdi:chevron-right" data-width="24"></text>
+          <view class="absolute bottom-0 left-4 right-4 h-[1px] bg-gray-200"></view>
         </view>
-        <text class="text-gray-400 text-lg">›</text>
-      </view>
 
-      <!-- 过敏原设置 -->
-      <view
-        class="flex items-center justify-between p-5 bg-white rounded-2xl shadow-sm active:bg-gray-50 transition-colors"
-        @click="navigateTo('/pages/settings/components/allergens')"
-      >
-        <view class="flex items-center">
-          <view class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-4">
-            <text class="text-xl">⚠️</text>
-          </view>
+        <!-- 过敏原设置 -->
+        <view
+          class="flex items-center justify-between p-4 active:bg-gray-50 transition-colors relative"
+          @click="navigateTo('/pages/settings/components/allergens')"
+        >
           <text class="text-base font-medium text-gray-800">过敏原设置</text>
+          <text class="iconify text-purple-300" data-icon="mdi:chevron-right" data-width="24"></text>
+          <view class="absolute bottom-0 left-4 right-4 h-[1px] bg-gray-200"></view>
         </view>
-        <text class="text-gray-400 text-lg">›</text>
-      </view>
 
-      <!-- 偏好设置 -->
-      <view
-        class="flex items-center justify-between p-5 bg-white rounded-2xl shadow-sm active:bg-gray-50 transition-colors"
-        @click="navigateTo('/pages/settings/components/preferences')"
-      >
-        <view class="flex items-center">
-          <view class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mr-4">
-            <text class="text-xl">❤️</text>
-          </view>
+        <!-- 偏好设置 -->
+        <view
+          class="flex items-center justify-between p-4 active:bg-gray-50 transition-colors"
+          @click="navigateTo('/pages/settings/components/preferences')"
+        >
           <text class="text-base font-medium text-gray-800">偏好设置</text>
+          <text class="iconify text-purple-300" data-icon="mdi:chevron-right" data-width="24"></text>
         </view>
-        <text class="text-gray-400 text-lg">›</text>
       </view>
 
-      <!-- 显示设置 -->
-      <view
-        class="flex items-center justify-between p-5 bg-white rounded-2xl shadow-sm active:bg-gray-50 transition-colors"
-        @click="navigateTo('/pages/settings/components/display')"
-      >
-        <view class="flex items-center">
-          <view class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-4">
-            <text class="text-xl">🎨</text>
-          </view>
+      <!-- 分组 2: 系统设置 -->
+      <view class="bg-white rounded-lg shadow-sm overflow-hidden">
+        <!-- 显示设置 -->
+        <view
+          class="flex items-center justify-between p-4 active:bg-gray-50 transition-colors relative"
+          @click="navigateTo('/pages/settings/components/display')"
+        >
           <text class="text-base font-medium text-gray-800">显示设置</text>
+          <text class="iconify text-purple-300" data-icon="mdi:chevron-right" data-width="24"></text>
+          <view class="absolute bottom-0 left-4 right-4 h-[1px] bg-gray-200"></view>
         </view>
-        <text class="text-gray-400 text-lg">›</text>
+
+        <!-- 通知设置 -->
+        <view
+          class="flex items-center justify-between p-4 active:bg-gray-50 transition-colors"
+          @click="navigateTo('/pages/settings/components/notifications')"
+        >
+          <text class="text-base font-medium text-gray-800">通知设置</text>
+          <text class="iconify text-purple-300" data-icon="mdi:chevron-right" data-width="24"></text>
+        </view>
       </view>
 
-      <!-- 通知设置 -->
-      <view
-        class="flex items-center justify-between p-5 bg-white rounded-2xl shadow-sm active:bg-gray-50 transition-colors"
-        @click="navigateTo('/pages/settings/components/notifications')"
-      >
-        <view class="flex items-center">
-          <view class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-4">
-            <text class="text-xl">🔔</text>
-          </view>
-          <text class="text-base font-medium text-gray-800">通知设置</text>
-        </view>
-        <text class="text-gray-400 text-lg">›</text>
-      </view>
     </view>
   </view>
 </template>

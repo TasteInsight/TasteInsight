@@ -1,5 +1,11 @@
 <template>
   <view class="w-full min-h-screen bg-gray-50 pb-4">
+    <!-- 标题栏 -->
+    <view class="text-base font-semibold text-gray-800 flex items-center px-4 py-3 border-b border-gray-200 mb-3 bg-white">
+      <view class="w-1 h-4 bg-ts-purple rounded-full mr-2"></view>
+      我的评价
+    </view>
+
     <!-- 加载状态 -->
     <view v-if="loading && reviews.length === 0" class="flex justify-center items-center py-20">
       <text class="text-gray-500">加载中...</text>
@@ -12,13 +18,17 @@
     </view>
 
     <!-- 评价列表 -->
-    <view v-else class="px-4 pt-4 space-y-4">
-      <ReviewCard
-        v-for="review in reviews"
-        :key="review.id"
-        :review="review"
-        @click="goToDishDetail(review.dishId)"
-      />
+    <view v-else class="px-4 space-y-4">
+      <view 
+        v-for="review in reviews" 
+        :key="review.id" 
+        class="mb-4"
+      >
+        <ReviewCard
+          :review="review"
+          @click="goToDishDetail(review.dishId)"
+        />
+      </view>
     </view>
 
     <!-- 加载更多 -->

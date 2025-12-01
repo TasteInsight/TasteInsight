@@ -31,11 +31,18 @@ export function useLogin() {
         icon: 'success'
       });
 
-      // 3. 登录成功后跳转到主页
+      // 3. 登录成功后返回上一页或跳转到 Profile 页
       setTimeout(() => {
-        uni.switchTab({
-          url: '/pages/index/index'
-        });
+        // 获取页面栈
+        const pages = getCurrentPages();
+        if (pages.length > 1) {
+            uni.navigateBack();
+        } else {
+             uni.switchTab({
+                url: '/pages/profile/index'
+            });
+        }
+       
       }, 500);
 
     } catch (error: any) {
