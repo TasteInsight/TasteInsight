@@ -537,6 +537,7 @@ export interface DishUserCreateRequest {
   name?: string;
   tags?: string[];
   price: number;
+  priceUnit?: string;
   description?: string;
   images?: string[];
   parentDishId?: string;

@@ -8,6 +8,8 @@ describe('AdminCanteensController (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let superAdminToken: string;
+  let normalAdminToken: string; // 只有 dish:view 权限，无 canteen 权限
+  let subAdminToken: string; // 只有 dish:view + canteen:view 权限
   let createdCanteenId: string;
 
   beforeAll(async () => {
@@ -25,6 +27,18 @@ describe('AdminCanteensController (e2e)', () => {
       .post('/auth/admin/login')
       .send({ username: 'testadmin', password: 'password123' });
     superAdminToken = superAdminLogin.body.data.token.accessToken;
+
+    // Login as normal admin (只有 dish:view 权限，无 canteen 权限)
+    const normalAdminLogin = await request(app.getHttpServer())
+      .post('/auth/admin/login')
+      .send({ username: 'normaladmin', password: 'admin123' });
+    normalAdminToken = normalAdminLogin.body.data.token.accessToken;
+
+    // Login as sub admin (只有 dish:view + canteen:view 权限)
+    const subAdminLogin = await request(app.getHttpServer())
+      .post('/auth/admin/login')
+      .send({ username: 'subadmin', password: 'subadmin123' });
+    subAdminToken = subAdminLogin.body.data.token.accessToken;
   });
 
   afterAll(async () => {
@@ -236,6 +250,165 @@ describe('AdminCanteensController (e2e)', () => {
       });
       expect(check).toBeNull();
       createdCanteenId = ''; // Prevent cleanup failure
+    });
+  });
+
+  // ========================
+  // 权限控制测试
+  // ========================
+  describe('Permission Control', () => {
+    describe('Unauthorized Access (401)', () => {
+      it('should return 401 when accessing without token', async () => {
+        await request(app.getHttpServer()).get('/admin/canteens').expect(401);
+      });
+
+      it('should return 401 when creating without token', async () => {
+        await request(app.getHttpServer())
+          .post('/admin/canteens')
+          .send({ name: 'Test' })
+          .expect(401);
+      });
+
+      it('should return 401 when updating without token', async () => {
+        await request(app.getHttpServer())
+          .put('/admin/canteens/some-id')
+          .send({ name: 'Test' })
+          .expect(401);
+      });
+
+      it('should return 401 when deleting without token', async () => {
+        await request(app.getHttpServer())
+          .delete('/admin/canteens/some-id')
+          .expect(401);
+      });
+    });
+
+    describe('Forbidden Access for normalAdmin (403) - No canteen permissions', () => {
+      it('should return 403 when normalAdmin tries to list canteens', async () => {
+        await request(app.getHttpServer())
+          .get('/admin/canteens')
+          .set('Authorization', `Bearer ${normalAdminToken}`)
+          .expect(403);
+      });
+
+      it('should return 403 when normalAdmin tries to create canteen', async () => {
+        await request(app.getHttpServer())
+          .post('/admin/canteens')
+          .set('Authorization', `Bearer ${normalAdminToken}`)
+          .send({
+            name: 'Test Canteen',
+            position: 'Test Position',
+            images: [],
+            openingHours: [],
+            floors: [],
+            windows: [],
+          })
+          .expect(403);
+      });
+
+      it('should return 403 when normalAdmin tries to update canteen', async () => {
+        // 先创建一个食堂用于测试
+        const canteen = await prisma.canteen.create({
+          data: {
+            name: 'Permission Test Canteen',
+            position: 'Test',
+            images: [],
+            openingHours: [],
+          },
+        });
+
+        try {
+          await request(app.getHttpServer())
+            .put(`/admin/canteens/${canteen.id}`)
+            .set('Authorization', `Bearer ${normalAdminToken}`)
+            .send({ name: 'Updated Name' })
+            .expect(403);
+        } finally {
+          await prisma.canteen.delete({ where: { id: canteen.id } });
+        }
+      });
+
+      it('should return 403 when normalAdmin tries to delete canteen', async () => {
+        const canteen = await prisma.canteen.create({
+          data: {
+            name: 'Permission Test Canteen 2',
+            position: 'Test',
+            images: [],
+            openingHours: [],
+          },
+        });
+
+        try {
+          await request(app.getHttpServer())
+            .delete(`/admin/canteens/${canteen.id}`)
+            .set('Authorization', `Bearer ${normalAdminToken}`)
+            .expect(403);
+        } finally {
+          await prisma.canteen.delete({ where: { id: canteen.id } });
+        }
+      });
+    });
+
+    describe('Partial Access for subAdmin (canteen:view only)', () => {
+      let testCanteenId: string;
+
+      beforeAll(async () => {
+        const canteen = await prisma.canteen.create({
+          data: {
+            name: 'SubAdmin Test Canteen',
+            position: 'Test Position',
+            images: [],
+            openingHours: [],
+          },
+        });
+        testCanteenId = canteen.id;
+      });
+
+      afterAll(async () => {
+        if (testCanteenId) {
+          await prisma.canteen.deleteMany({ where: { id: testCanteenId } });
+        }
+      });
+
+      it('should allow subAdmin to list canteens (has canteen:view)', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/admin/canteens')
+          .set('Authorization', `Bearer ${subAdminToken}`)
+          .expect(200);
+
+        expect(response.body.code).toBe(200);
+        expect(response.body.data.items).toBeInstanceOf(Array);
+      });
+
+      it('should return 403 when subAdmin tries to create canteen (no canteen:create)', async () => {
+        await request(app.getHttpServer())
+          .post('/admin/canteens')
+          .set('Authorization', `Bearer ${subAdminToken}`)
+          .send({
+            name: 'SubAdmin Created Canteen',
+            position: 'Test Position',
+            images: [],
+            openingHours: [],
+            floors: [],
+            windows: [],
+          })
+          .expect(403);
+      });
+
+      it('should return 403 when subAdmin tries to update canteen (no canteen:edit)', async () => {
+        await request(app.getHttpServer())
+          .put(`/admin/canteens/${testCanteenId}`)
+          .set('Authorization', `Bearer ${subAdminToken}`)
+          .send({ name: 'SubAdmin Updated Name' })
+          .expect(403);
+      });
+
+      it('should return 403 when subAdmin tries to delete canteen (no canteen:delete)', async () => {
+        await request(app.getHttpServer())
+          .delete(`/admin/canteens/${testCanteenId}`)
+          .set('Authorization', `Bearer ${subAdminToken}`)
+          .expect(403);
+      });
     });
   });
 });

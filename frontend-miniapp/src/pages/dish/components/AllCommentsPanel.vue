@@ -36,6 +36,7 @@
             v-for="(comment, index) in comments"
             :key="comment.id"
             class="comment-item"
+            @longpress="(e: any) => handleLongPress(e, comment)"
           >
             <!-- 评论内容区域 -->
             <view class="comment-content-area">
@@ -50,14 +51,7 @@
                   <text class="text-purple-600 font-semibold text-sm block mb-0.5">{{ comment.userNickname }}</text>
                   <text class="comment-date">{{ formatDate(comment.createdAt) }}</text>
                 </view>
-                <view class="flex gap-2 ml-2">
-                  <view 
-                    v-if="userStore.userInfo?.id === comment.userId"
-                    class="text-xs text-gray-400 px-2 py-1" 
-                    @tap.stop="handleDelete(comment.id)"
-                  >删除</view>
-                  <view class="text-xs text-gray-400 px-2 py-1" @tap.stop="openReportModal('comment', comment.id)">举报</view>
-                </view>
+                <view class="text-xs text-gray-400 ml-2">长按更多</view>
               </view>
 
               <!-- 评论内容 -->
@@ -109,6 +103,15 @@
         </view>
       </view>
 
+      <!-- 长按菜单 -->
+      <LongPressMenu
+        :visible="menuVisible"
+        :can-delete="canDeleteCurrent"
+        @close="closeMenu"
+        @delete="confirmDelete"
+        @report="handleReportFromMenu"
+      />
+
       <!-- 举报弹窗 (嵌套在 page-container 内部) -->
       <ReportDialog
         v-if="isReportVisible"
@@ -126,9 +129,49 @@ import type { Comment } from '@/types/api';
 import dayjs from 'dayjs';
 import { useUserStore } from '@/store/modules/use-user-store';
 import ReportDialog from './ReportDialog.vue';
+import LongPressMenu from './LongPressMenu.vue';
 import { useReport } from '@/pages/dish/composables/use-report';
 
 const userStore = useUserStore();
+
+// 长按菜单相关状态
+const menuVisible = ref(false);
+const currentCommentId = ref('');
+const currentComment = ref<Comment | null>(null);
+
+// 计算当前评论是否可删除
+const canDeleteCurrent = computed(() => {
+  if (!currentComment.value) return false;
+  return currentComment.value.userId === userStore.userInfo?.id;
+});
+
+// 长按处理
+const handleLongPress = (_e: any, comment: Comment) => {
+  currentCommentId.value = comment.id;
+  currentComment.value = comment;
+  menuVisible.value = true;
+};
+
+// 关闭菜单
+const closeMenu = () => {
+  menuVisible.value = false;
+  currentCommentId.value = '';
+  currentComment.value = null;
+};
+
+// 确认删除
+const confirmDelete = () => {
+  if (!currentCommentId.value) return;
+  handleDelete(currentCommentId.value);
+  closeMenu();
+};
+
+// 从菜单打开举报
+const handleReportFromMenu = () => {
+  const commentId = currentCommentId.value;
+  closeMenu();
+  openReportModal('comment', commentId);
+};
 const {
   isReportVisible,
   openReportModal,

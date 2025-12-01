@@ -15,11 +15,13 @@
       
       <view class="mb-4">
         <view class="text-sm text-gray-600 mb-2">详细理由</view>
-        <textarea 
-          v-model="reason" 
-          class="border border-gray-300 rounded p-2 w-full h-24 text-sm" 
-          placeholder="请填写详细理由..."
-        />
+        <view class="border border-gray-300 rounded-lg p-1">
+          <textarea 
+            v-model="reason" 
+            class="w-full h-24 text-sm p-2 bg-gray-50 rounded" 
+            placeholder="请填写详细理由..."
+          />
+        </view>
       </view>
       
       <view class="flex justify-end gap-2">

@@ -351,6 +351,115 @@ describe('AdminDishesController (e2e)', () => {
         })
         .expect(403);
     });
+
+    it('should create a dish using windowName instead of windowId', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/admin/dishes')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          name: '测试菜品-窗口名称创建',
+          price: 18.0,
+          canteenId: canteen1Id,
+          windowName: '川菜窗口',
+          tags: ['测试'],
+          description: '使用窗口名称创建',
+        })
+        .expect(201);
+
+      expect(response.body.code).toBe(201);
+      expect(response.body.data.windowName).toBe('川菜窗口');
+    });
+
+    it('should create a dish using windowNumber instead of windowId', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/admin/dishes')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          name: '测试菜品-窗口编号创建',
+          price: 18.0,
+          canteenId: canteen1Id,
+          windowNumber: 'A1',
+          tags: ['测试'],
+        })
+        .expect(201);
+
+      expect(response.body.code).toBe(201);
+      expect(response.body.data.windowNumber).toBe('A1');
+    });
+
+    it('should fail to create dish with non-existent parentDishId', async () => {
+      await request(app.getHttpServer())
+        .post('/admin/dishes')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          name: '测试菜品-无效父菜品',
+          price: 18.0,
+          canteenId: canteen1Id,
+          windowId: window1Id,
+          parentDishId: 'non-existent-parent-id',
+        })
+        .expect(400);
+    });
+
+    it('should create a dish with valid parentDishId', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/admin/dishes')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          name: '测试菜品-子菜品创建',
+          price: 12.0,
+          canteenId: canteen1Id,
+          windowId: window1Id,
+          parentDishId: testDishId,
+        })
+        .expect(201);
+
+      expect(response.body.code).toBe(201);
+    });
+
+    it('should create a dish with all optional fields', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/admin/dishes')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          name: '测试菜品-完整字段',
+          price: 25.0,
+          canteenId: canteen1Id,
+          windowId: window1Id,
+          tags: ['川菜', '辣味'],
+          description: '这是一个完整的测试菜品',
+          images: ['https://example.com/test.jpg'],
+          ingredients: ['鸡肉', '花生'],
+          allergens: ['花生'],
+          spicyLevel: 3,
+          sweetness: 2,
+          saltiness: 2,
+          oiliness: 3,
+          availableMealTime: ['lunch', 'dinner'],
+          availableDates: [{ startDate: '2024-01-01', endDate: '2024-12-31' }],
+        })
+        .expect(201);
+
+      expect(response.body.code).toBe(201);
+      expect(response.body.data.tags).toEqual(['川菜', '辣味']);
+      expect(response.body.data.ingredients).toEqual(['鸡肉', '花生']);
+      expect(response.body.data.allergens).toEqual(['花生']);
+      expect(response.body.data.spicyLevel).toBe(3);
+    });
+
+    it('should fail to create dish when windowName does not exist and canteenId is missing', async () => {
+      // This test verifies that when using windowName lookup without canteenId,
+      // and the windowName doesn't exist, the request should fail with 400
+      await request(app.getHttpServer())
+        .post('/admin/dishes')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          name: '测试菜品',
+          price: 18.0,
+          windowName: '不存在的窗口',
+        })
+        .expect(400);
+    });
   });
 
   describe('/admin/dishes/:id (PUT)', () => {
@@ -462,6 +571,190 @@ describe('AdminDishesController (e2e)', () => {
           .send({ name: '测试' })
           .expect(403);
       }
+    });
+
+    it('should update dish with all optional fields', async () => {
+      const response = await request(app.getHttpServer())
+        .put(`/admin/dishes/${editDishId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          tags: ['川菜', '更新后的标签'],
+          images: ['https://example.com/updated.jpg'],
+          ingredients: ['更新后的食材'],
+          allergens: ['花生', '海鲜'],
+          spicyLevel: 4,
+          sweetness: 3,
+          saltiness: 2,
+          oiliness: 3,
+          availableMealTime: ['breakfast', 'lunch', 'dinner'],
+          availableDates: [{ startDate: '2024-01-01', endDate: '2024-12-31' }],
+          parentDishId: testDishId,
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.tags).toEqual(['川菜', '更新后的标签']);
+      expect(response.body.data.images).toEqual([
+        'https://example.com/updated.jpg',
+      ]);
+      expect(response.body.data.ingredients).toEqual(['更新后的食材']);
+      expect(response.body.data.allergens).toEqual(['花生', '海鲜']);
+      expect(response.body.data.spicyLevel).toBe(4);
+      expect(response.body.data.sweetness).toBe(3);
+      expect(response.body.data.saltiness).toBe(2);
+      expect(response.body.data.oiliness).toBe(3);
+    });
+
+    it('should update dish window using windowId', async () => {
+      // 获取粤菜窗口ID - seed数据中必须存在此窗口
+      const yuecaiWindow = await prisma.window.findFirst({
+        where: { canteenId: canteen1Id, name: '粤菜窗口' },
+      });
+
+      // Ensure test data exists
+      if (!yuecaiWindow) {
+        throw new Error('Test requires 粤菜窗口 to exist in seed data');
+      }
+
+      const response = await request(app.getHttpServer())
+        .put(`/admin/dishes/${editDishId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          windowId: yuecaiWindow.id,
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.windowId).toBe(yuecaiWindow.id);
+      expect(response.body.data.windowName).toBe('粤菜窗口');
+    });
+
+    it('should update dish window using windowName', async () => {
+      const response = await request(app.getHttpServer())
+        .put(`/admin/dishes/${editDishId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          windowName: '川菜窗口',
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.windowName).toBe('川菜窗口');
+    });
+
+    it('should update dish window using windowNumber', async () => {
+      const response = await request(app.getHttpServer())
+        .put(`/admin/dishes/${editDishId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          windowNumber: 'A2',
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.windowNumber).toBe('A2');
+    });
+
+    it('should update dish window using canteenName and windowName', async () => {
+      const response = await request(app.getHttpServer())
+        .put(`/admin/dishes/${editDishId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          canteenName: '第一食堂',
+          windowName: '川菜窗口',
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.windowName).toBe('川菜窗口');
+      expect(response.body.data.canteenName).toBe('第一食堂');
+    });
+
+    it('should fail to update dish with non-existent windowId', async () => {
+      await request(app.getHttpServer())
+        .put(`/admin/dishes/${editDishId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          windowId: 'non-existent-window-id',
+        })
+        .expect(400);
+    });
+
+    it('should fail to update dish with non-existent windowName', async () => {
+      await request(app.getHttpServer())
+        .put(`/admin/dishes/${editDishId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          windowName: '不存在的窗口',
+        })
+        .expect(400);
+    });
+
+    it('should update dish floor using floor name', async () => {
+      const response = await request(app.getHttpServer())
+        .put(`/admin/dishes/${editDishId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          floor: '一楼',
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.floorName).toBe('一楼');
+    });
+
+    it('should update dish floor using floor level', async () => {
+      const response = await request(app.getHttpServer())
+        .put(`/admin/dishes/${editDishId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          floor: '1',
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.floorLevel).toBe('1');
+    });
+
+    it('should ignore invalid floor and keep existing floor info', async () => {
+      // Design note: The API intentionally ignores invalid floor values rather than
+      // returning an error. This is because:
+      // 1. Floor is optional metadata, not critical for dish functionality
+      // 2. It provides a more forgiving UX for bulk imports or partial updates
+      // 3. The window already determines the correct floor in most cases
+      // If stricter validation is needed, this behavior should be changed in the service.
+
+      // 先设置一个有效的楼层
+      await request(app.getHttpServer())
+        .put(`/admin/dishes/${editDishId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          floor: '一楼',
+        })
+        .expect(200);
+
+      // 然后用一个不存在的楼层更新，应该保持原有楼层
+      const response = await request(app.getHttpServer())
+        .put(`/admin/dishes/${editDishId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          floor: '不存在的楼层',
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      // 楼层信息应该保持不变
+      expect(response.body.data.floorName).toBe('一楼');
+    });
+
+    it('should forbid canteen admin from moving dish to other canteen', async () => {
+      await request(app.getHttpServer())
+        .put(`/admin/dishes/${editDishId}`)
+        .set('Authorization', `Bearer ${canteenAdminToken}`)
+        .send({
+          windowId: window2Id,
+        })
+        .expect(403);
     });
   });
 
