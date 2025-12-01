@@ -29,6 +29,30 @@ export const usePlanStore = defineStore('plan', () => {
   const selectedPlan = ref<EnrichedMealPlan | null>(null);
   const completedPlanIds = ref<Set<string>>(new Set()); // 已手动执行完成的规划ID
 
+  // 餐时排序顺序
+  const mealTimeOrder = ['breakfast', 'lunch', 'dinner', 'nightsnack'];
+
+  // 规划排序函数
+  const sortPlans = (plans: EnrichedMealPlan[]) => {
+    return [...plans].sort((a, b) => {
+      const dateA = dayjs(a.startDate);
+      const dateB = dayjs(b.startDate);
+      
+      // 首先按日期升序排序
+      if (dateA.isBefore(dateB, 'day')) {
+        return -1;
+      }
+      if (dateA.isAfter(dateB, 'day')) {
+        return 1;
+      }
+      
+      // 日期相同，按餐时顺序排序
+      const orderA = mealTimeOrder.indexOf(a.mealTime) === -1 ? mealTimeOrder.length : mealTimeOrder.indexOf(a.mealTime);
+      const orderB = mealTimeOrder.indexOf(b.mealTime) === -1 ? mealTimeOrder.length : mealTimeOrder.indexOf(b.mealTime);
+      return orderA - orderB;
+    });
+  };
+
   // 计算属性：富化后的规划列表
   const enrichedPlans = computed<EnrichedMealPlan[]>(() => {
     const now = dayjs();
@@ -48,12 +72,12 @@ export const usePlanStore = defineStore('plan', () => {
 
   // 计算属性：当前规划（未过期且未完成）
   const currentPlans = computed(() => 
-    enrichedPlans.value.filter(p => !p.isExpired && !p.isCompleted)
+    sortPlans(enrichedPlans.value.filter(p => !p.isExpired && !p.isCompleted))
   );
 
   // 计算属性：历史规划（已过期或已完成）
   const historyPlans = computed(() => 
-    enrichedPlans.value.filter(p => p.isExpired || p.isCompleted)
+    sortPlans(enrichedPlans.value.filter(p => p.isExpired || p.isCompleted))
   );
 
   // 获取所有规划

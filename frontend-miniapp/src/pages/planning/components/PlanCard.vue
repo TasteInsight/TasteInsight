@@ -1,13 +1,13 @@
 <template>
   <view @tap="$emit('view')" class="bg-white rounded-xl shadow-sm p-4 mb-3 cursor-pointer w-full box-border">
     <view class="bg-ts-purple py-2 px-3 rounded-lg mb-3 flex justify-between items-center">
-      <text class="font-bold text-gray-400">{{ formatDate(plan.startDate) }} | {{ mealTimeText }}</text>
+      <text class="font-bold text-white">{{ formatDate(plan.startDate) }} | {{ mealTimeText }}</text>
       <view class="flex gap-3 items-center">
         <view v-if="!isHistory" @tap.stop="$emit('edit')" class="p-1">
-          <text class="text-gray-400 text-base">✏️</text>
+          <text class="text-white text-base">✏️</text>
         </view>
         <view @tap.stop="$emit('delete')" class="p-1">
-          <text class="text-gray-400 text-base">🗑️</text>
+          <text class="text-white text-base">🗑️</text>
         </view>
       </view>
     </view>
