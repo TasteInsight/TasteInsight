@@ -16,6 +16,7 @@ import { AdminAdminsModule } from './admin-admins/admin-admins.module';
 import { ConfigModule } from '@nestjs/config';
 import { CanteensModule } from './canteens/canteens.module';
 import { ReviewsModule } from './reviews/reviews.module';
+import { CommentsModule } from './comments/comments.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { ReviewsModule } from './reviews/reviews.module';
     DishesModule,
     CanteensModule,
     ReviewsModule,
+    CommentsModule,
     AdminDishesModule,
     AdminReviewsModule,
     AdminCommentsModule,
