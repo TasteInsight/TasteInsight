@@ -80,8 +80,9 @@ export class CommentsService {
   ): Promise<CommentResponseDto> {
     return this.prisma.$transaction(async (tx) => {
       // 使用悲观锁锁定 Review 记录，防止并发导致楼层号重复
-      const lockedReviews = await tx.$queryRaw`SELECT id FROM reviews WHERE id = ${dto.reviewId} FOR UPDATE`;
-      
+      const lockedReviews =
+        await tx.$queryRaw`SELECT id FROM reviews WHERE id = ${dto.reviewId} FOR UPDATE`;
+
       if (!Array.isArray(lockedReviews) || lockedReviews.length === 0) {
         throw new NotFoundException('评价不存在或未通过审核');
       }
