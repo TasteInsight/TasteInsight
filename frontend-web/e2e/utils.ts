@@ -27,6 +27,10 @@ export const TEST_ACCOUNTS = {
     username: process.env.TEST_REVIEWER_ADMIN_USER || 'revieweradmin',
     password: process.env.TEST_REVIEWER_ADMIN_PASS || 'reviewer123'
   },  // upload:approve, review:approve, comment:approve
+  adminManager: {
+    username: process.env.TEST_ADMIN_MANAGER_USER || 'adminmanager',
+    password: process.env.TEST_ADMIN_MANAGER_PASS || 'manager123'
+  },  // admin:view, admin:create, admin:edit, admin:delete
 };
 
 export async function loginAsAdmin(page: Page) {
