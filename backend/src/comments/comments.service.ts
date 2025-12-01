@@ -97,6 +97,11 @@ export class CommentsService {
       }
     }
 
+    const count = await this.prisma.comment.count({
+      where: { reviewId: dto.reviewId },
+    });
+    const floor = count + 1;
+
     const comment = await this.prisma.comment.create({
       data: {
         reviewId: dto.reviewId,
@@ -104,6 +109,7 @@ export class CommentsService {
         content: dto.content,
         parentCommentId: dto.parentCommentId,
         status: 'pending',
+        floor,
       },
       include: {
         user: {
@@ -200,6 +206,7 @@ export class CommentsService {
       userNickname: comment.user.nickname,
       userAvatar: comment.user?.avatar,
       content: comment.deletedAt ? '该评论已删除' : comment.content,
+      floor: comment.floor,
       createdAt: comment.createdAt.toISOString(),
       parentComment: comment.parentComment
         ? {
