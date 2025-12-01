@@ -592,7 +592,6 @@ export default {
         const dishData = {
           name: formData.name,
           canteenName: formData.canteen,
-          floor: formData.floor, // 楼层信息
           windowName: formData.windowName,
           windowNumber: formData.windowNumber || formData.windowName,
           price: dishPrice,

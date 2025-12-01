@@ -394,7 +394,11 @@ export default {
     
     const handleSubmit = () => {
       if (validateForm()) {
-        emit('submit', formData)
+        const payload = Object.assign({}, formData)
+        if (payload && Object.prototype.hasOwnProperty.call(payload, 'floor')) {
+          delete payload.floor
+        }
+        emit('submit', payload)
       }
     }
     
