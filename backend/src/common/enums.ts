@@ -26,3 +26,13 @@ export enum DishSortField {
   CREATED_AT = 'createdAt',
   UPDATED_AT = 'updatedAt',
 }
+
+/**
+ * 举报类型枚举
+ */
+export enum ReportType {
+  INAPPROPRIATE = 'inappropriate',
+  SPAM = 'spam',
+  FALSE_INFO = 'false_info',
+  OTHER = 'other',
+}

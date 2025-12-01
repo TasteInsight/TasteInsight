@@ -372,6 +372,11 @@ model Comment {
   user     User   @relation(fields: [userId], references: [id])
 
   content String
+  floor   Int     @default(1) // 楼层数
+
+  parentCommentId String?
+  parentComment   Comment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies         Comment[] @relation("CommentReplies")
 
   status       String  @default("pending") // pending, approved, rejected
   rejectReason String?
@@ -387,6 +392,7 @@ model Comment {
   @@index([reviewId])
   @@index([userId])
   @@index([status])
+  @@index([parentCommentId])
   @@index([deletedAt])
   @@map("comments")
 }

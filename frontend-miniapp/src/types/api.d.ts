@@ -343,10 +343,22 @@ export interface Comment {
   reviewId: string;
   userId: string;
   userNickname: string;
+  floor: number;
   userAvatar: string;
+  parentComment?: null | ParentComment;
   content: string;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
+}
+
+export interface ParentComment {
+    deleted?: boolean;
+    /**
+     * parentComment ID
+     */
+    id?: string;
+    userId?: string;
+    userNickname?: string;
 }
 
 /**
@@ -537,6 +549,7 @@ export interface DishUserCreateRequest {
   name?: string;
   tags?: string[];
   price: number;
+  priceUnit?: string;
   description?: string;
   images?: string[];
   parentDishId?: string;
@@ -678,6 +691,7 @@ export interface ReviewCreateRequest {
 export interface CommentCreateRequest {
   reviewId: string;
   content: string;
+  parentCommentId?: string;
 }
 
 /**

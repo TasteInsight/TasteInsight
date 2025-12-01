@@ -1,5 +1,10 @@
 import { PartialType } from '@nestjs/swagger';
-import { CreateCanteenDto, WindowDto, FloorDto, OpeningHours } from './create-canteen.dto';
+import {
+  CreateCanteenDto,
+  WindowDto,
+  FloorDto,
+  OpeningHours,
+} from './create-canteen.dto';
 import { IsArray, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -27,7 +32,7 @@ export class UpdateCanteenDto extends PartialType(CreateCanteenDto) {
   @Type(() => UpdateFloorDto)
   @IsOptional()
   floors?: UpdateFloorDto[];
-  
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => OpeningHours)

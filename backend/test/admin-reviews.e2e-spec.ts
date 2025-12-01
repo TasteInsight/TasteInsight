@@ -140,6 +140,14 @@ describe('AdminReviewsController (e2e)', () => {
         .set('Authorization', `Bearer ${normalAdminToken}`)
         .expect(403);
     });
+
+    it('should return 404 for non-existent review', async () => {
+      const nonExistentId = '00000000-0000-0000-0000-000000000000';
+      await request(app.getHttpServer())
+        .post(`/admin/reviews/${nonExistentId}/approve`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(404);
+    });
   });
 
   describe('/admin/reviews/:id/reject (POST)', () => {
@@ -188,6 +196,68 @@ describe('AdminReviewsController (e2e)', () => {
         .set('Authorization', `Bearer ${superAdminToken}`)
         .send({})
         .expect(400);
+    });
+
+    it('should return 404 for non-existent review', async () => {
+      const nonExistentId = '00000000-0000-0000-0000-000000000000';
+      await request(app.getHttpServer())
+        .post(`/admin/reviews/${nonExistentId}/reject`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({ reason: '测试拒绝' })
+        .expect(404);
+    });
+  });
+
+  describe('/admin/reviews/:id (DELETE)', () => {
+    let reviewToDeleteId: string;
+
+    beforeEach(async () => {
+      const review = await prisma.review.create({
+        data: {
+          dishId: testDishId,
+          userId: testUserId,
+          rating: 2,
+          content: '待删除评价',
+          status: 'pending',
+        },
+      });
+      reviewToDeleteId = review.id;
+    });
+
+    afterEach(async () => {
+      if (reviewToDeleteId) {
+        await prisma.review.deleteMany({ where: { id: reviewToDeleteId } });
+      }
+    });
+
+    it('should delete review (soft delete)', async () => {
+      const response = await request(app.getHttpServer())
+        .delete(`/admin/reviews/${reviewToDeleteId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.message).toBe('删除成功');
+
+      const deletedReview = await prisma.review.findUnique({
+        where: { id: reviewToDeleteId },
+      });
+      expect(deletedReview?.deletedAt).not.toBeNull();
+    });
+
+    it('should return 404 for non-existent review', async () => {
+      const nonExistentId = '00000000-0000-0000-0000-000000000000';
+      await request(app.getHttpServer())
+        .delete(`/admin/reviews/${nonExistentId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(404);
+    });
+
+    it('should return 403 for normal admin without permission', async () => {
+      await request(app.getHttpServer())
+        .delete(`/admin/reviews/${reviewToDeleteId}`)
+        .set('Authorization', `Bearer ${normalAdminToken}`)
+        .expect(403);
     });
   });
 });

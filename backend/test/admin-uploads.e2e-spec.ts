@@ -90,7 +90,7 @@ describe('AdminUploadsController (e2e)', () => {
     const canteenAdmin = await prisma.admin.findFirst({
       where: { username: 'canteenadmin' },
     });
-    
+
     if (canteenAdmin) {
       const existingPermission = await prisma.adminPermission.findFirst({
         where: {
@@ -123,12 +123,16 @@ describe('AdminUploadsController (e2e)', () => {
     });
     // 恢复被修改的上传记录状态
     await prisma.dishUpload.updateMany({
-      where: { 
-        name: { 
-          in: ['用户上传待审核菜品', '管理员上传待审核菜品', '第二食堂用户上传待审核菜品'] 
-        } 
+      where: {
+        name: {
+          in: [
+            '用户上传待审核菜品',
+            '管理员上传待审核菜品',
+            '第二食堂用户上传待审核菜品',
+          ],
+        },
       },
-      data: { 
+      data: {
         status: 'pending',
         rejectReason: null,
         approvedDishId: null,
@@ -151,7 +155,7 @@ describe('AdminUploadsController (e2e)', () => {
       expect(response.body.data.meta).toBeDefined();
       expect(response.body.data.meta.page).toBe(1);
       expect(response.body.data.meta.pageSize).toBe(20);
-      
+
       // 验证只返回pending状态的记录
       response.body.data.items.forEach((upload: any) => {
         expect(upload.status).toBe('pending');
@@ -379,7 +383,7 @@ describe('AdminUploadsController (e2e)', () => {
       const user = await prisma.user.findFirst({
         where: { openId: 'baseline_user_openid' },
       });
-      
+
       const testUpload = await prisma.dishUpload.create({
         data: {
           userId: user?.id,
@@ -485,7 +489,7 @@ describe('AdminUploadsController (e2e)', () => {
       const user = await prisma.user.findFirst({
         where: { openId: 'baseline_user_openid' },
       });
-      
+
       const testUpload = await prisma.dishUpload.create({
         data: {
           userId: user?.id,
@@ -612,7 +616,7 @@ describe('AdminUploadsController (e2e)', () => {
       const user = await prisma.user.findFirst({
         where: { openId: 'baseline_user_openid' },
       });
-      
+
       const testUpload1 = await prisma.dishUpload.create({
         data: {
           userId: user?.id,
@@ -638,7 +642,7 @@ describe('AdminUploadsController (e2e)', () => {
       const window2 = await prisma.window.findFirst({
         where: { canteenId: canteen2Id },
       });
-      
+
       const testUpload2 = await prisma.dishUpload.create({
         data: {
           userId: user?.id,
@@ -723,7 +727,7 @@ describe('AdminUploadsController (e2e)', () => {
       const user = await prisma.user.findFirst({
         where: { openId: 'baseline_user_openid' },
       });
-      
+
       const testUpload1 = await prisma.dishUpload.create({
         data: {
           userId: user?.id,

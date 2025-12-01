@@ -12,6 +12,7 @@
         :key="review.id"
         class="border-b border-gray-100 py-4 last:border-b-0 review-item"
         @tap="handleViewAllComments(review.id)"
+        @longpress="(e: any) => handleLongPress(e, review)"
       >
         <!-- 用户信息 -->
         <view class="flex items-start">
@@ -40,17 +41,9 @@
             <!-- 评论内容 -->
             <view class="text-sm text-gray-700 leading-relaxed mt-2">{{ review.content }}</view>
             
-            <!-- 时间和操作 -->
+            <!-- 时间 -->
             <view class="flex justify-between items-center mt-2">
               <view class="text-xs text-gray-400">{{ formatDate(review.createdAt) }}</view>
-              <view class="flex gap-2">
-                <view 
-                  v-if="userStore.userInfo?.id === review.userId"
-                  class="text-xs text-gray-400 px-2 py-1" 
-                  @tap.stop="handleDelete(review.id)"
-                >删除</view>
-                <view class="text-xs text-gray-400 px-2 py-1" @tap.stop="handleReport(review.id)">举报</view>
-              </view>
             </view>
           </view>
         </view>
@@ -93,6 +86,15 @@
     <view v-if="error" class="text-center py-4 text-red-500 text-sm">
       {{ error }}
     </view>
+
+    <!-- 长按菜单 -->
+    <LongPressMenu
+      :visible="menuVisible"
+      :can-delete="canDeleteCurrent"
+      @close="closeMenu"
+      @delete="confirmDelete"
+      @report="handleReportFromMenu"
+    />
   </view>
 </template>
 
@@ -101,6 +103,7 @@ import { ref } from 'vue';
 import type { Review, Comment } from '@/types/api';
 import dayjs from 'dayjs';
 import CommentList from './CommentList.vue';
+import LongPressMenu from './LongPressMenu.vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 
 const userStore = useUserStore();
@@ -125,6 +128,11 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
+// 长按菜单状态
+const menuVisible = ref(false);
+const currentReview = ref<Review | null>(null);
+const canDeleteCurrent = ref(false);
+
 const loadMore = () => {
   if (props.hasMore && !props.loading) {
     emit('loadMore');
@@ -136,19 +144,36 @@ const formatDate = (dateString: string) => {
 };
 
 const handleCommentAdded = () => {
-  // 评论添加成功后可以做一些处理，比如显示提示
   console.log('评论添加成功');
 };
 
 const handleViewAllComments = (reviewId: string) => {
-  emit('viewAllComments', reviewId);
+  if (!menuVisible.value) {
+    emit('viewAllComments', reviewId);
+  }
 };
 
-const handleReport = (reviewId: string) => {
-  emit('report', reviewId);
+// 长按处理
+const handleLongPress = (_e: any, review: Review) => {
+  currentReview.value = review;
+  canDeleteCurrent.value = userStore.userInfo?.id === review.userId;
+  menuVisible.value = true;
 };
 
-const handleDelete = (reviewId: string) => {
+const closeMenu = () => {
+  menuVisible.value = false;
+  currentReview.value = null;
+};
+
+const confirmDelete = () => {
+  if (!currentReview.value || !canDeleteCurrent.value) {
+    closeMenu();
+    return;
+  }
+  
+  const reviewId = currentReview.value.id;
+  closeMenu();
+  
   uni.showModal({
     title: '提示',
     content: '确定要删除这条评价吗？',
@@ -158,6 +183,17 @@ const handleDelete = (reviewId: string) => {
       }
     }
   });
+};
+
+const handleReportFromMenu = () => {
+  if (!currentReview.value) {
+    closeMenu();
+    return;
+  }
+  
+  const reviewId = currentReview.value.id;
+  closeMenu();
+  emit('report', reviewId);
 };
 </script>
 

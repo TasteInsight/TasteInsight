@@ -124,6 +124,23 @@ export const createMockReviews = (): Review[] => {
 };
 
 // 生成评论数据
+const assignFloorsByReview = (commentList: Comment[]) => {
+  const grouped = commentList.reduce<Record<string, Comment[]>>((acc, comment) => {
+    if (!acc[comment.reviewId]) {
+      acc[comment.reviewId] = [];
+    }
+    acc[comment.reviewId].push(comment);
+    return acc;
+  }, {});
+
+  Object.values(grouped).forEach(list => {
+    list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    list.forEach((comment, index) => {
+      comment.floor = index + 1;
+    });
+  });
+};
+
 export const createMockComments = (): Comment[] => {
   const comments: Comment[] = [];
   const reviews = createMockReviews();
@@ -135,6 +152,7 @@ export const createMockComments = (): Comment[] => {
     if (Math.random() > 0.6) {
       // 每条有评论的评价生成1-3条评论
       const commentCount = Math.floor(Math.random() * 3) + 1;
+      const reviewComments: Comment[] = [];
       
       for (let i = 0; i < commentCount; i++) {
         const user = mockUsers[Math.floor(Math.random() * mockUsers.length)];
@@ -142,17 +160,31 @@ export const createMockComments = (): Comment[] => {
         // 避免自己评论自己
         if (user.id === review.userId) continue;
         
-        comments.push({
+        const comment: Comment = {
           id: `comment_${String(commentId).padStart(3, '0')}`,
           reviewId: review.id,
           userId: user.id,
           userNickname: user.nickname,
           userAvatar: user.avatar,
+          floor: 0,
           content: commentContents[Math.floor(Math.random() * commentContents.length)],
           status: 'approved',
           createdAt: randomDate(15), // 评论在最近15天内
-        });
+        };
         
+        // 随机让一些评论成为回复（30%的概率）
+        if (reviewComments.length > 0 && Math.random() > 0.7) {
+          const parentComment = reviewComments[Math.floor(Math.random() * reviewComments.length)];
+          comment.parentComment = {
+            id: parentComment.id,
+            userId: parentComment.userId,
+            userNickname: parentComment.userNickname,
+            deleted: false,
+          };
+        }
+        
+        reviewComments.push(comment);
+        comments.push(comment);
         commentId++;
       }
     }
@@ -160,6 +192,8 @@ export const createMockComments = (): Comment[] => {
   
   // 按时间倒序排列
   comments.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  assignFloorsByReview(comments);
   
   return comments;
 };
@@ -188,6 +222,22 @@ const getAllComments = (): Comment[] => {
   return cachedComments;
 };
 
+const recalculateFloorsForReview = (reviewId: string) => {
+  const reviewComments = getAllComments().filter(comment => comment.reviewId === reviewId);
+  reviewComments
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    .forEach((comment, index) => {
+      comment.floor = index + 1;
+    });
+};
+
+// 获取某个评价下的最大楼层号
+const getMaxFloorForReview = (reviewId: string): number => {
+  const reviewComments = getAllComments().filter(comment => comment.reviewId === reviewId);
+  if (reviewComments.length === 0) return 0;
+  return Math.max(...reviewComments.map(c => c.floor));
+};
+
 // 根据菜品ID获取评价列表
 export const getReviewsByDishId = (dishId: string): Review[] => {
   const allReviews = getAllReviews();
@@ -203,6 +253,9 @@ export const getCommentsByReviewId = (reviewId: string): Comment[] => {
 // 添加新评论
 export const addComment = (comment: Comment): void => {
   const allComments = getAllComments();
+  // 给新评论分配楼层号（当前最大楼层号 + 1）
+  const maxFloor = getMaxFloorForReview(comment.reviewId);
+  comment.floor = maxFloor + 1;
   // 插入到数组开头（最新的在前）
   allComments.unshift(comment);
 };
@@ -231,6 +284,7 @@ export const removeComment = (commentId: string): boolean => {
   const index = allComments.findIndex(c => c.id === commentId);
   if (index !== -1) {
     allComments.splice(index, 1);
+    // 删除评论时不重新分配楼层号，保持原有楼层不变
     return true;
   }
   return false;

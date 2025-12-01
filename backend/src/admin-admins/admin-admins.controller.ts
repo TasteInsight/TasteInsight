@@ -54,7 +54,10 @@ export class AdminAdminsController {
   @Post()
   @RequirePermissions('admin:create')
   @HttpCode(HttpStatus.CREATED)
-  async create(@Req() req: AdminRequest, @Body() createAdminDto: CreateAdminDto) {
+  async create(
+    @Req() req: AdminRequest,
+    @Body() createAdminDto: CreateAdminDto,
+  ) {
     return this.adminAdminsService.create(req.admin.id, createAdminDto);
   }
 
