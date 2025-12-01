@@ -17,6 +17,7 @@ import { ConfigModule } from '@nestjs/config';
 import { CanteensModule } from './canteens/canteens.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { CommentsModule } from './comments/comments.module';
+import { NewsModule } from './news/news.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { CommentsModule } from './comments/comments.module';
     CanteensModule,
     ReviewsModule,
     CommentsModule,
+    NewsModule,
     AdminDishesModule,
     AdminReviewsModule,
     AdminCommentsModule,
