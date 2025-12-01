@@ -133,6 +133,7 @@ export const mockCreateComment = async (data: {
     userId: 'mock_user_001',
     userNickname: '测试用户',
     userAvatar: 'https://via.placeholder.com/100',
+    floor: 0,
     content: data.content,
     status: 'approved',
     createdAt: new Date().toISOString(),
