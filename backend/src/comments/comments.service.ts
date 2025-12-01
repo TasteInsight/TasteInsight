@@ -78,67 +78,76 @@ export class CommentsService {
     userId: string,
     dto: CreateCommentDto,
   ): Promise<CommentResponseDto> {
-    const review = await this.prisma.review.findUnique({
-      where: { id: dto.reviewId, status: 'approved', deletedAt: null },
-    });
-    if (!review) {
-      throw new NotFoundException('评价不存在或未通过审核');
-    }
+    return this.prisma.$transaction(async (tx) => {
+      // 使用悲观锁锁定 Review 记录，防止并发导致楼层号重复
+      const lockedReviews = await tx.$queryRaw`SELECT id FROM reviews WHERE id = ${dto.reviewId} FOR UPDATE`;
+      
+      if (!Array.isArray(lockedReviews) || lockedReviews.length === 0) {
+        throw new NotFoundException('评价不存在或未通过审核');
+      }
 
-    if (dto.parentCommentId) {
-      const parent = await this.prisma.comment.findUnique({
-        where: { id: dto.parentCommentId },
+      const review = await tx.review.findUnique({
+        where: { id: dto.reviewId, status: 'approved', deletedAt: null },
       });
-      if (!parent || parent.reviewId !== dto.reviewId) {
-        throw new NotFoundException('父评论不存在');
+      if (!review) {
+        throw new NotFoundException('评价不存在或未通过审核');
       }
-      if (parent.deletedAt) {
-        throw new BadRequestException('无法回复已删除的评论');
+
+      if (dto.parentCommentId) {
+        const parent = await tx.comment.findUnique({
+          where: { id: dto.parentCommentId },
+        });
+        if (!parent || parent.reviewId !== dto.reviewId) {
+          throw new NotFoundException('父评论不存在');
+        }
+        if (parent.deletedAt) {
+          throw new BadRequestException('无法回复已删除的评论');
+        }
       }
-    }
 
-    const count = await this.prisma.comment.count({
-      where: { reviewId: dto.reviewId },
-    });
-    const floor = count + 1;
+      const count = await tx.comment.count({
+        where: { reviewId: dto.reviewId },
+      });
+      const floor = count + 1;
 
-    const comment = await this.prisma.comment.create({
-      data: {
-        reviewId: dto.reviewId,
-        userId,
-        content: dto.content,
-        parentCommentId: dto.parentCommentId,
-        status: 'pending',
-        floor,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            nickname: true,
-            avatar: true,
-          },
+      const comment = await tx.comment.create({
+        data: {
+          reviewId: dto.reviewId,
+          userId,
+          content: dto.content,
+          parentCommentId: dto.parentCommentId,
+          status: 'pending',
+          floor,
         },
-        parentComment: {
-          select: {
-            id: true,
-            userId: true,
-            user: {
-              select: {
-                nickname: true,
-              },
+        include: {
+          user: {
+            select: {
+              id: true,
+              nickname: true,
+              avatar: true,
             },
-            deletedAt: true,
+          },
+          parentComment: {
+            select: {
+              id: true,
+              userId: true,
+              user: {
+                select: {
+                  nickname: true,
+                },
+              },
+              deletedAt: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    return {
-      code: 201,
-      message: '评论发布成功',
-      data: this.mapToCommentDetailData(comment),
-    };
+      return {
+        code: 201,
+        message: '评论发布成功',
+        data: this.mapToCommentDetailData(comment),
+      };
+    });
   }
 
   async reportComment(
