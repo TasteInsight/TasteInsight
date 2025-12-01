@@ -6,29 +6,10 @@ import {
   IsOptional,
   IsArray,
   IsNotEmpty,
+  ValidateNested,
 } from 'class-validator';
-
-export class RatingDetailsDto {
-  @IsInt()
-  @Min(1)
-  @Max(5)
-  spicyLevel: number;
-
-  @IsInt()
-  @Min(1)
-  @Max(5)
-  sweetness: number;
-
-  @IsInt()
-  @Min(1)
-  @Max(5)
-  saltiness: number;
-
-  @IsInt()
-  @Min(1)
-  @Max(5)
-  oiliness: number;
-}
+import { Type } from 'class-transformer';
+import { RatingDetailsDto } from './review.dto';
 
 export class CreateReviewDto {
   @IsString()
@@ -42,6 +23,8 @@ export class CreateReviewDto {
   rating: number;
 
   @IsOptional()
+  @ValidateNested()
+  @Type(() => RatingDetailsDto)
   ratingDetails?: RatingDetailsDto | null;
 
   @IsString()

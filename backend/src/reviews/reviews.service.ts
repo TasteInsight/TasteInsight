@@ -9,10 +9,9 @@ import { ReportReviewDto } from './dto/report-review.dto';
 import {
   ReviewListResponseDto,
   ReviewResponseDto,
-  ReviewData,
-  ReviewDetailData,
   DeleteReviewResponseDto,
 } from './dto/review-response.dto';
+import { ReviewData, ReviewDetailData } from './dto/review.dto';
 import { ReportReviewResponseDto } from './dto/report-review.dto';
 
 @Injectable()

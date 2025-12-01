@@ -146,6 +146,44 @@ describe('ReviewsController (e2e)', () => {
       testReviewId = response.body.data.id;
     });
 
+    it('should create a review without rating details', async () => {
+      const createReviewDto = {
+        dishId: testDishId,
+        rating: 4,
+        content: '没有详细评分',
+        images: [],
+      };
+
+      const response = await request(app.getHttpServer())
+        .post('/reviews')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send(createReviewDto)
+        .expect(201);
+
+      expect(response.body.data.ratingDetails).toBeNull();
+
+      // 清理
+      await prisma.review.delete({ where: { id: response.body.data.id } });
+    });
+
+    it('should fail to create a review with partial rating details', async () => {
+      const createReviewDto = {
+        dishId: testDishId,
+        rating: 4,
+        content: '部分详细评分',
+        ratingDetails: {
+          spicyLevel: 3,
+          // 缺少其他字段
+        },
+      };
+
+      await request(app.getHttpServer())
+        .post('/reviews')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send(createReviewDto)
+        .expect(400);
+    });
+
     it('should return 401 without authentication', async () => {
       const createReviewDto = {
         dishId: testDishId,
