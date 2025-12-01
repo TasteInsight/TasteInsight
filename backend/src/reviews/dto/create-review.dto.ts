@@ -8,6 +8,28 @@ import {
   IsNotEmpty,
 } from 'class-validator';
 
+export class RatingDetailsDto {
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  spicyLevel: number;
+
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  sweetness: number;
+
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  saltiness: number;
+
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  oiliness: number;
+}
+
 export class CreateReviewDto {
   @IsString()
   @IsNotEmpty()
@@ -18,6 +40,9 @@ export class CreateReviewDto {
   @Min(1)
   @Max(5)
   rating: number;
+
+  @IsOptional()
+  ratingDetails?: RatingDetailsDto | null;
 
   @IsString()
   @IsOptional()

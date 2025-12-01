@@ -107,12 +107,18 @@ describe('ReviewsController (e2e)', () => {
   });
 
   describe('/reviews (POST)', () => {
-    it('should create a review', async () => {
+    it('should create a review with detailed ratings', async () => {
       const createReviewDto = {
         dishId: testDishId,
         rating: 5,
         content: '很好吃！',
         images: ['https://example.com/image1.jpg'],
+        ratingDetails: {
+          spicyLevel: 3,
+          sweetness: 2,
+          saltiness: 3,
+          oiliness: 4,
+        },
       };
 
       const response = await request(app.getHttpServer())
@@ -129,6 +135,13 @@ describe('ReviewsController (e2e)', () => {
       expect(response.body.data.rating).toBe(5);
       expect(response.body.data.content).toBe('很好吃！');
       expect(response.body.data.status).toBe('pending');
+
+      // 验证详细评分
+      expect(response.body.data.ratingDetails).toBeDefined();
+      expect(response.body.data.ratingDetails.spicyLevel).toBe(3);
+      expect(response.body.data.ratingDetails.sweetness).toBe(2);
+      expect(response.body.data.ratingDetails.saltiness).toBe(3);
+      expect(response.body.data.ratingDetails.oiliness).toBe(4);
 
       testReviewId = response.body.data.id;
     });

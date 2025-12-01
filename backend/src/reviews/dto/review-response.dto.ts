@@ -1,5 +1,12 @@
 import { BaseResponseDto, PaginationMeta } from '@/common/dto/response.dto';
 
+export class ReviewRatingDetails {
+  spicyLevel?: number | null;
+  sweetness?: number | null;
+  saltiness?: number | null;
+  oiliness?: number | null;
+}
+
 export class ReviewData {
   // 用于列表返回，不包含status字段
   id: string;
@@ -8,6 +15,7 @@ export class ReviewData {
   userNickname: string;
   userAvatar: string;
   rating: number;
+  ratingDetails?: ReviewRatingDetails | null;
   content: string;
   images: string[];
   createdAt: string;
