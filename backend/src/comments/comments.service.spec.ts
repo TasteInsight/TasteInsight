@@ -35,7 +35,10 @@ describe('CommentsService', () => {
     prisma = createMockPrisma();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [CommentsService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        CommentsService,
+        { provide: PrismaService, useValue: prisma },
+      ],
     }).compile();
 
     service = module.get<CommentsService>(CommentsService);

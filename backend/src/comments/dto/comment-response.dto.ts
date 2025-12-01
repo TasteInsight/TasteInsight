@@ -18,8 +18,9 @@ export class CommentData {
   userNickname: string;
   userAvatar: string;
   content: string;
-  createdAt: string;
   parentComment?: ParentCommentData | null;
+  createdAt: string;
+  floor: number;
 }
 
 export class CommentListResponseDto extends BaseResponseDto<{
