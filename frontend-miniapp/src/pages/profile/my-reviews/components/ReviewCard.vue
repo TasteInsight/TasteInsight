@@ -1,6 +1,6 @@
 <template>
   <view 
-    class="bg-white rounded-xl p-4 border border-gray-200"
+    class="bg-white p-4 border border-gray-200"
     @click="$emit('click')"
   >
     <!-- 评价头部：时间 -->

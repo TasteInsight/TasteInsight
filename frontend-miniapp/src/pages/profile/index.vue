@@ -29,7 +29,7 @@
           <text class="iconify text-gray-400" data-icon="mdi:chevron-right" data-width="20"></text>
           
           <!-- 分隔线 (除了最后一项) -->
-          <view v-if="index < menuItems.length - 1" class="absolute bottom-0 left-12 right-0 h-[1px] bg-gray-200"></view>
+          <view v-if="index < menuItems.length - 1" class="absolute bottom-0 left-4 right-4 h-[1px] bg-gray-200"></view>
         </view>
       </view>
 
@@ -45,7 +45,7 @@
             <text class="text-gray-800 text-base font-medium">隐私</text>
           </view>
           <text class="iconify text-gray-400" data-icon="mdi:chevron-right" data-width="20"></text>
-          <view class="absolute bottom-0 left-12 right-0 h-[1px] bg-gray-200"></view>
+          <view class="absolute bottom-0 left-4 right-4 h-[1px] bg-gray-200"></view>
         </view>
 
         <!-- 关于食鉴 -->
@@ -70,7 +70,7 @@
          <!-- 既然用户没明确说删掉，先保留，但通常这种布局下设置可能会被整合。
               这里保留为底部按钮风格 -->
         <view 
-          class="bg-white text-gray-700 flex items-center justify-center py-3 px-8 rounded-full shadow-sm active:bg-gray-50 transition-colors w-full border border-gray-200"
+          class="bg-white text-gray-700 flex items-center justify-center py-3 px-8 rounded-lg shadow-sm active:bg-gray-50 transition-colors w-full border border-gray-200"
           @click="navigateTo('/pages/settings/index')"
         >
           <text class="iconify" data-icon="mdi:cog" data-width="20"></text>
@@ -79,7 +79,7 @@
         
         <!-- 退出登录按钮 -->
         <view 
-          class="bg-white text-red-500 border border-red-100 flex items-center justify-center py-3 px-8 rounded-full shadow-sm active:bg-red-50 transition-colors w-full"
+          class="bg-white text-red-500 border border-red-100 flex items-center justify-center py-3 px-8 rounded-lg shadow-sm active:bg-red-50 transition-colors w-full"
           @click="handleLogout"
         >
           <text class="iconify" data-icon="mdi:logout" data-width="20"></text>

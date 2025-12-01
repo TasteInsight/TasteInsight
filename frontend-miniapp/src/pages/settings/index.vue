@@ -18,7 +18,7 @@
         >
           <text class="text-base font-medium text-gray-800">个人信息设置</text>
           <text class="iconify text-purple-300" data-icon="mdi:chevron-right" data-width="24"></text>
-          <view class="absolute bottom-0 left-4 right-0 h-[1px] bg-gray-200"></view>
+          <view class="absolute bottom-0 left-4 right-4 h-[1px] bg-gray-200"></view>
         </view>
 
         <!-- 过敏原设置 -->
@@ -28,7 +28,7 @@
         >
           <text class="text-base font-medium text-gray-800">过敏原设置</text>
           <text class="iconify text-purple-300" data-icon="mdi:chevron-right" data-width="24"></text>
-          <view class="absolute bottom-0 left-4 right-0 h-[1px] bg-gray-200"></view>
+          <view class="absolute bottom-0 left-4 right-4 h-[1px] bg-gray-200"></view>
         </view>
 
         <!-- 偏好设置 -->
@@ -50,7 +50,7 @@
         >
           <text class="text-base font-medium text-gray-800">显示设置</text>
           <text class="iconify text-purple-300" data-icon="mdi:chevron-right" data-width="24"></text>
-          <view class="absolute bottom-0 left-4 right-0 h-[1px] bg-gray-200"></view>
+          <view class="absolute bottom-0 left-4 right-4 h-[1px] bg-gray-200"></view>
         </view>
 
         <!-- 通知设置 -->

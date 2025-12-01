@@ -2,7 +2,7 @@
   <view class="w-full min-h-screen p-4 bg-gray-50">
     <!-- 说明文字 -->
     <view class="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-4">
-      <text class="text-sm text-blue-700 leading-relaxed">💡 设置您的过敏原信息，系统会为您过滤包含这些成分的菜品。</text>
+      <text class="text-sm text-blue-700 leading-relaxed">设置您的过敏原信息，系统会为您过滤包含这些成分的菜品。</text>
     </view>
 
     <!-- 过敏原输入 -->

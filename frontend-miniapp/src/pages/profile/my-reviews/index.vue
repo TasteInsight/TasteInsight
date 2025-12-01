@@ -18,13 +18,17 @@
     </view>
 
     <!-- 评价列表 -->
-    <view v-else class="px-4 pt-4 space-y-4">
-      <ReviewCard
-        v-for="review in reviews"
-        :key="review.id"
-        :review="review"
-        @click="goToDishDetail(review.dishId)"
-      />
+    <view v-else class="px-4 space-y-4">
+      <view 
+        v-for="review in reviews" 
+        :key="review.id" 
+        class="mb-4"
+      >
+        <ReviewCard
+          :review="review"
+          @click="goToDishDetail(review.dishId)"
+        />
+      </view>
     </view>
 
     <!-- 加载更多 -->
