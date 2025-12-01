@@ -191,9 +191,6 @@ export class AdminCreateDishDto {
   @IsString()
   windowNumber?: string;
 
-  @IsOptional()
-  @IsString()
-  floor?: string; // 楼层名称或编号，用于查找 Floor
 
   @IsOptional()
   @IsArray()
@@ -298,9 +295,6 @@ export class AdminUpdateDishDto {
   @IsString()
   windowNumber?: string;
 
-  @IsOptional()
-  @IsString()
-  floor?: string; // 楼层名称或编号，用于查找 Floor
 
   @IsOptional()
   @IsArray()
