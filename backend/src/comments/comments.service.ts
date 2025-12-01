@@ -40,6 +40,7 @@ export class CommentsService {
           parentComment: {
             select: {
               id: true,
+              userId: true,
               user: {
                 select: {
                   nickname: true,
@@ -115,6 +116,7 @@ export class CommentsService {
         parentComment: {
           select: {
             id: true,
+            userId: true,
             user: {
               select: {
                 nickname: true,
@@ -178,29 +180,9 @@ export class CommentsService {
       throw new ForbiddenException('无权删除该评论');
     }
 
-    const updatedComment = await this.prisma.comment.update({
+    await this.prisma.comment.update({
       where: { id: commentId },
       data: { deletedAt: new Date() },
-      include: {
-        user: {
-          select: {
-            id: true,
-            nickname: true,
-            avatar: true,
-          },
-        },
-        parentComment: {
-          select: {
-            id: true,
-            user: {
-              select: {
-                nickname: true,
-              },
-            },
-            deletedAt: true,
-          },
-        },
-      },
     });
 
     return {

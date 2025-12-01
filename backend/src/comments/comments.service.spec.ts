@@ -94,15 +94,16 @@ describe('CommentsService', () => {
       expect(result.data.items[0].createdAt).toBe(createdAt.toISOString());
     });
 
-    it('masks deleted comments content', async () => {
+    it('returns comments without parent data when none exists', async () => {
+      const createdAt = new Date();
       prisma.comment.findMany.mockResolvedValue([
         {
           id: 'c2',
           reviewId: 'r1',
           userId: 'u1',
-          content: 'will be hidden',
-          createdAt: new Date(),
-          deletedAt: new Date(),
+          content: 'visible content',
+          createdAt,
+          deletedAt: null,
           user: { id: 'u1', nickname: 'nick', avatar: null },
           parentComment: null,
         },
@@ -111,8 +112,9 @@ describe('CommentsService', () => {
 
       const result = await service.getComments('r1', 1, 10);
 
-      expect(result.data.items[0].content).toBe('该评论已删除');
+      expect(result.data.items[0].content).toBe('visible content');
       expect(result.data.items[0].parentComment).toBeNull();
+      expect(result.data.items[0].createdAt).toBe(createdAt.toISOString());
     });
   });
 
@@ -164,11 +166,16 @@ describe('CommentsService', () => {
         reviewId: 'r1',
         userId: 'user',
         content: 'new comment',
-        createdAt: new Date('2024-01-01T00:00:00Z'),
+        createdAt: new Date('2025-01-01T00:00:00Z'),
         deletedAt: null,
         status: 'pending',
         user: { id: 'user', nickname: 'nick', avatar: 'ava' },
-        parentComment: null,
+        parentComment: {
+          id: 'p1',
+          userId: 'parent',
+          user: { nickname: 'parentNick' },
+          deletedAt: null,
+        },
       };
       prisma.comment.create.mockResolvedValue(created);
 
@@ -182,10 +189,29 @@ describe('CommentsService', () => {
           parentCommentId: undefined,
           status: 'pending',
         },
-        include: { user: { select: { id: true, nickname: true, avatar: true } } },
+        include: {
+          user: { select: { id: true, nickname: true, avatar: true } },
+          parentComment: {
+            select: {
+              id: true,
+              userId: true,
+              user: { select: { nickname: true } },
+              deletedAt: true,
+            },
+          },
+        },
       });
       expect(result.code).toBe(201);
-      expect(result.data).toMatchObject({ id: 'c1', status: 'pending' });
+      expect(result.data).toMatchObject({
+        id: 'c1',
+        status: 'pending',
+        parentComment: {
+          id: 'p1',
+          userId: 'parent',
+          userNickname: 'parentNick',
+          deleted: false,
+        },
+      });
     });
   });
 
@@ -267,16 +293,6 @@ describe('CommentsService', () => {
       expect(prisma.comment.update).toHaveBeenCalledWith({
         where: { id: 'c1' },
         data: { deletedAt: expect.any(Date) },
-        include: {
-          user: { select: { id: true, nickname: true, avatar: true } },
-          parentComment: {
-            select: {
-              id: true,
-              user: { select: { nickname: true } },
-              deletedAt: true,
-            },
-          },
-        },
       });
       expect(result.code).toBe(HttpStatus.OK);
     });
