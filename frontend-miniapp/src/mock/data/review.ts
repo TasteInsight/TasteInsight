@@ -152,6 +152,7 @@ export const createMockComments = (): Comment[] => {
     if (Math.random() > 0.6) {
       // 每条有评论的评价生成1-3条评论
       const commentCount = Math.floor(Math.random() * 3) + 1;
+      const reviewComments: Comment[] = [];
       
       for (let i = 0; i < commentCount; i++) {
         const user = mockUsers[Math.floor(Math.random() * mockUsers.length)];
@@ -159,7 +160,7 @@ export const createMockComments = (): Comment[] => {
         // 避免自己评论自己
         if (user.id === review.userId) continue;
         
-        comments.push({
+        const comment: Comment = {
           id: `comment_${String(commentId).padStart(3, '0')}`,
           reviewId: review.id,
           userId: user.id,
@@ -169,8 +170,21 @@ export const createMockComments = (): Comment[] => {
           content: commentContents[Math.floor(Math.random() * commentContents.length)],
           status: 'approved',
           createdAt: randomDate(15), // 评论在最近15天内
-        });
+        };
         
+        // 随机让一些评论成为回复（30%的概率）
+        if (reviewComments.length > 0 && Math.random() > 0.7) {
+          const parentComment = reviewComments[Math.floor(Math.random() * reviewComments.length)];
+          comment.parentComment = {
+            id: parentComment.id,
+            userId: parentComment.userId,
+            userNickname: parentComment.userNickname,
+            deleted: false,
+          };
+        }
+        
+        reviewComments.push(comment);
+        comments.push(comment);
         commentId++;
       }
     }

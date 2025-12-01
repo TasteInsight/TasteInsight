@@ -10,7 +10,14 @@
             :key="comment.id"
           >
             <view class="text-sm text-gray-700">
-              <text class="text-purple-800 font-normal">{{ comment.userNickname }}:</text>
+              <text class="text-purple-800 font-normal">{{ comment.userNickname }}</text>
+              <!-- 回复目标显示 -->
+              <template v-if="comment.parentComment && !comment.parentComment.deleted">
+                <text class="text-gray-500 text-sm"> 回复 </text>
+                <text class="text-purple-800 font-normal">@{{ comment.parentComment.userNickname }}</text>
+              </template>
+              <text v-else-if="comment.parentComment?.deleted" class="text-gray-400 text-sm"> 回复的评论已删除</text>
+              <text class="text-gray-700">:</text>
               {{ comment.content }}
             </view>
           </view>

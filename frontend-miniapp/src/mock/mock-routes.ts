@@ -104,6 +104,7 @@ registerMockRoute('POST', '/comments', async (url, options) => {
   const comment = await mockCreateComment({
     reviewId: commentData.reviewId,
     content: commentData.content,
+    parentCommentId: commentData.parentCommentId,
   });
   
   return mockSuccess(comment);

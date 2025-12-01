@@ -122,6 +122,7 @@ export const mockCreateReview = async (data: {
 export const mockCreateComment = async (data: {
   reviewId: string;
   content: string;
+  parentCommentId?: string;
 }): Promise<Comment> => {
   await delay(500);
   
@@ -138,6 +139,20 @@ export const mockCreateComment = async (data: {
     status: 'approved',
     createdAt: new Date().toISOString(),
   };
+  
+  // 如果有parentCommentId，设置parentComment
+  if (data.parentCommentId) {
+    const allComments = getCommentsByReviewId(data.reviewId);
+    const parentComment = allComments.find((c: Comment) => c.id === data.parentCommentId);
+    if (parentComment) {
+      newComment.parentComment = {
+        id: parentComment.id,
+        userId: parentComment.userId,
+        userNickname: parentComment.userNickname,
+        deleted: false,
+      };
+    }
+  }
   
   // 保存到 mock 数据中
   addComment(newComment);
