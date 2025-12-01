@@ -110,7 +110,9 @@ describe('CommentsController (e2e)', () => {
     await prisma.comment.deleteMany({ where: { userId: user2Id } });
     await prisma.review.deleteMany({ where: { userId: userId } });
     await prisma.dish.deleteMany({ where: { name: 'Test Dish For Comments' } });
-    await prisma.canteen.deleteMany({ where: { name: 'Test Canteen For Comments' } });
+    await prisma.canteen.deleteMany({
+      where: { name: 'Test Canteen For Comments' },
+    });
     await prisma.user.deleteMany({ where: { id: userId } });
     await prisma.user.deleteMany({ where: { id: user2Id } });
     await app.close();
@@ -129,6 +131,7 @@ describe('CommentsController (e2e)', () => {
 
       expect(response.body.code).toBe(201);
       expect(response.body.data.content).toBe('This is a test comment');
+      expect(response.body.data.floor).toBe(1);
       commentId = response.body.data.id;
     });
 
@@ -167,6 +170,7 @@ describe('CommentsController (e2e)', () => {
       expect(response.body.code).toBe(201);
       expect(response.body.data.parentComment).toBeDefined();
       expect(response.body.data.parentComment.id).toBe(commentId);
+      expect(response.body.data.floor).toBe(2);
     });
 
     it('should fail if parent comment does not exist', () => {
@@ -214,6 +218,70 @@ describe('CommentsController (e2e)', () => {
           parentCommentId: deletedComment.id,
         })
         .expect(400);
+    });
+
+    it('should assign correct floor number even if previous comments are deleted', async () => {
+      // Create a new review for this test to ensure clean state
+      const cleanReview = await prisma.review.create({
+        data: {
+          userId: userId,
+          dishId:
+            (
+              await prisma.dish.findFirst({
+                where: { name: 'Test Dish For Comments' },
+              })
+            )?.id ??
+            (() => {
+              throw new Error('Dish not found');
+            })(),
+          rating: 5,
+          content: 'Clean review for floor test',
+          status: 'approved',
+        },
+      });
+
+      // Create comment 1 (floor 1)
+      const comment1 = await request(app.getHttpServer())
+        .post('/comments')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          reviewId: cleanReview.id,
+          content: 'Comment 1',
+        })
+        .expect(201);
+
+      expect(comment1.body.data.floor).toBe(1);
+
+      // Create comment 2 (floor 2)
+      const comment2 = await request(app.getHttpServer())
+        .post('/comments')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          reviewId: cleanReview.id,
+          content: 'Comment 2',
+        })
+        .expect(201);
+
+      expect(comment2.body.data.floor).toBe(2);
+
+      // Delete comment 2
+      await prisma.comment.update({
+        where: { id: comment2.body.data.id },
+        data: { deletedAt: new Date() },
+      });
+
+      // Create comment 3 (should be floor 3)
+      const comment3 = await request(app.getHttpServer())
+        .post('/comments')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          reviewId: cleanReview.id,
+          content: 'Comment 3',
+        })
+        .expect(201);
+
+      // Should be floor 3, not 2
+      expect(comment3.body.data.floor).toBe(3);
     });
   });
 
