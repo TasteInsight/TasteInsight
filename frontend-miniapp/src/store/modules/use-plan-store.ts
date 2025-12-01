@@ -34,7 +34,7 @@ export const usePlanStore = defineStore('plan', () => {
 
   // 规划排序函数
   const sortPlans = (plans: EnrichedMealPlan[]) => {
-    return plans.sort((a, b) => {
+    return [...plans].sort((a, b) => {
       const dateA = dayjs(a.startDate);
       const dateB = dayjs(b.startDate);
       
@@ -47,8 +47,8 @@ export const usePlanStore = defineStore('plan', () => {
       }
       
       // 日期相同，按餐时顺序排序
-      const orderA = mealTimeOrder.indexOf(a.mealTime);
-      const orderB = mealTimeOrder.indexOf(b.mealTime);
+      const orderA = mealTimeOrder.indexOf(a.mealTime) === -1 ? mealTimeOrder.length : mealTimeOrder.indexOf(a.mealTime);
+      const orderB = mealTimeOrder.indexOf(b.mealTime) === -1 ? mealTimeOrder.length : mealTimeOrder.indexOf(b.mealTime);
       return orderA - orderB;
     });
   };
