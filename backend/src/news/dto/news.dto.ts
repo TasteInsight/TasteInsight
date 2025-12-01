@@ -5,7 +5,7 @@ export class NewsDto {
   summary: string;
   canteenId: string;
   canteenName: string;
-  publishedAt: string;
   createdBy: string;
+  publishedAt: string;
   createdAt: string;
 }

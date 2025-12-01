@@ -5,6 +5,7 @@ import {
   NewsListResponseDto,
   NewsResponseDto,
 } from '@/news/dto/news-response.dto';
+import { NewsDto } from '@/news/dto/news.dto';
 
 @Injectable()
 export class NewsService {
@@ -67,7 +68,7 @@ export class NewsService {
     };
   }
 
-  private mapToNewsDto(news: any) {
+  private mapToNewsDto(news: any): NewsDto {
     return {
       id: news.id,
       title: news.title,
@@ -75,9 +76,9 @@ export class NewsService {
       summary: news.summary,
       canteenId: news.canteenId,
       canteenName: news.canteenName,
-      publishedAt: news.publishedAt,
       createdBy: news.createdBy,
-      createdAt: news.createdAt,
+      publishedAt: news.publishedAt.toISOString(),
+      createdAt: news.createdAt.toISOString(),
     };
   }
 }

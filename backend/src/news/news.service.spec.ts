@@ -1,9 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NewsService } from './news.service';
-import { PrismaService } from '../prisma.service';
+import { PrismaService } from '@/prisma.service';
 import { NotFoundException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
 
 describe('NewsService', () => {
   let service: NewsService;
@@ -25,14 +23,6 @@ describe('NewsService', () => {
           provide: PrismaService,
           useValue: mockPrismaService,
         },
-        {
-          provide: JwtService,
-          useValue: { verify: jest.fn() },
-        },
-        {
-          provide: ConfigService,
-          useValue: { get: jest.fn() },
-        },
       ],
     }).compile();
 
@@ -46,6 +36,8 @@ describe('NewsService', () => {
 
   describe('findAll', () => {
     it('should return a list of news', async () => {
+      const publishedAt = new Date();
+      const createdAt = new Date();
       const mockNews = [
         {
           id: '1',
@@ -54,9 +46,9 @@ describe('NewsService', () => {
           summary: 'Summary 1',
           canteenId: 'c1',
           canteenName: 'Canteen 1',
-          publishedAt: new Date(),
+          publishedAt,
           createdBy: 'admin1',
-          createdAt: new Date(),
+          createdAt,
         },
       ];
       const total = 1;
@@ -70,7 +62,19 @@ describe('NewsService', () => {
         code: 200,
         message: '获取新闻列表成功',
         data: {
-          items: mockNews,
+          items: [
+            {
+              id: '1',
+              title: 'News 1',
+              content: 'Content 1',
+              summary: 'Summary 1',
+              canteenId: 'c1',
+              canteenName: 'Canteen 1',
+              publishedAt: publishedAt.toISOString(),
+              createdBy: 'admin1',
+              createdAt: createdAt.toISOString(),
+            },
+          ],
           meta: {
             page: 1,
             pageSize: 10,
@@ -88,12 +92,24 @@ describe('NewsService', () => {
         {
           id: '1',
           title: 'News 1',
+          content: 'Content 1',
+          summary: 'Summary 1',
           canteenId: 'c1',
+          canteenName: 'Canteen 1',
+          publishedAt: new Date(),
+          createdBy: 'admin1',
+          createdAt: new Date(),
         },
         {
           id: '2',
           title: 'News 2',
+          content: 'Content 2',
+          summary: 'Summary 2',
           canteenId: 'c2',
+          canteenName: 'Canteen 2',
+          publishedAt: new Date(),
+          createdBy: 'admin2',
+          createdAt: new Date(),
         },
       ];
       const total = 2;
@@ -117,6 +133,8 @@ describe('NewsService', () => {
 
     it('should filter by canteenId', async () => {
       const canteenId = 'c1';
+      mockPrismaService.news.findMany.mockResolvedValue([]);
+      mockPrismaService.news.count.mockResolvedValue(0);
       await service.findAll({ page: 1, pageSize: 10, canteenId });
 
       expect(mockPrismaService.news.findMany).toHaveBeenCalledWith(
@@ -134,10 +152,18 @@ describe('NewsService', () => {
 
   describe('findOne', () => {
     it('should return a single news', async () => {
+      const publishedAt = new Date();
+      const createdAt = new Date();
       const mockNews = {
         id: '1',
         title: 'News 1',
         content: 'Content 1',
+        summary: 'Summary 1',
+        canteenId: 'c1',
+        canteenName: 'Canteen 1',
+        publishedAt,
+        createdBy: 'admin1',
+        createdAt,
       };
 
       mockPrismaService.news.findUnique.mockResolvedValue(mockNews);
@@ -147,7 +173,17 @@ describe('NewsService', () => {
       expect(result).toEqual({
         code: 200,
         message: '获取新闻详情成功',
-        data: mockNews,
+        data: {
+          id: '1',
+          title: 'News 1',
+          content: 'Content 1',
+          summary: 'Summary 1',
+          canteenId: 'c1',
+          canteenName: 'Canteen 1',
+          publishedAt: publishedAt.toISOString(),
+          createdBy: 'admin1',
+          createdAt: createdAt.toISOString(),
+        },
       });
       expect(mockPrismaService.news.findUnique).toHaveBeenCalledWith({
         where: { id: '1' },
