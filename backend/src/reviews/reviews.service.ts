@@ -9,10 +9,9 @@ import { ReportReviewDto } from './dto/report-review.dto';
 import {
   ReviewListResponseDto,
   ReviewResponseDto,
-  ReviewData,
-  ReviewDetailData,
   DeleteReviewResponseDto,
 } from './dto/review-response.dto';
+import { ReviewData, ReviewDetailData } from './dto/review.dto';
 import { ReportReviewResponseDto } from './dto/report-review.dto';
 
 @Injectable()
@@ -29,6 +28,8 @@ export class ReviewsService {
     if (!dish) {
       throw new NotFoundException('未找到对应的菜品');
     }
+    const { ratingDetails } = createReviewDto;
+
     const review = await this.prisma.review.create({
       data: {
         dishId: createReviewDto.dishId,
@@ -37,6 +38,10 @@ export class ReviewsService {
         content: createReviewDto.content,
         images: createReviewDto.images,
         status: 'pending',
+        spicyLevel: ratingDetails?.spicyLevel,
+        sweetness: ratingDetails?.sweetness,
+        saltiness: ratingDetails?.saltiness,
+        oiliness: ratingDetails?.oiliness,
       },
       include: {
         user: {
@@ -182,7 +187,13 @@ export class ReviewsService {
     };
   }
 
-  private mapToReviewDetailData(review: any): ReviewDetailData {
+  private mapToReviewData(review: any): ReviewData {
+    const hasDetails =
+      review.spicyLevel ||
+      review.sweetness ||
+      review.saltiness ||
+      review.oiliness;
+
     return {
       id: review.id,
       dishId: review.dishId,
@@ -190,26 +201,25 @@ export class ReviewsService {
       userNickname: review.user.nickname,
       userAvatar: review.user.avatar,
       rating: review.rating,
+      ratingDetails: hasDetails
+        ? {
+            spicyLevel: review.spicyLevel,
+            sweetness: review.sweetness,
+            saltiness: review.saltiness,
+            oiliness: review.oiliness,
+          }
+        : null,
       content: review.content,
       images: review.images,
-      status: review.status, // 包含status字段
       createdAt: review.createdAt.toISOString(),
       deletedAt: review.deletedAt?.toISOString() ?? null,
     };
   }
 
-  private mapToReviewData(review: any): ReviewData {
+  private mapToReviewDetailData(review: any): ReviewDetailData {
     return {
-      id: review.id,
-      dishId: review.dishId,
-      userId: review.userId,
-      userNickname: review.user.nickname,
-      userAvatar: review.user.avatar,
-      rating: review.rating,
-      content: review.content,
-      images: review.images,
-      createdAt: review.createdAt.toISOString(),
-      deletedAt: review.deletedAt?.toISOString() ?? null,
+      ...this.mapToReviewData(review),
+      status: review.status,
     };
   }
 }

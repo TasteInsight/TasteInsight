@@ -345,6 +345,12 @@ model Review {
   content String?
   images  String[]
 
+  // 详细评分
+  spicyLevel Int? // 1-5
+  sweetness  Int? // 1-5
+  saltiness  Int? // 1-5
+  oiliness   Int? // 1-5
+
   status       String  @default("pending") // pending, approved, rejected
   rejectReason String?
 

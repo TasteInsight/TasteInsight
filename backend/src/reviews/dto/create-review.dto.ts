@@ -6,7 +6,10 @@ import {
   IsOptional,
   IsArray,
   IsNotEmpty,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import { RatingDetailsDto } from './review.dto';
 
 export class CreateReviewDto {
   @IsString()
@@ -18,6 +21,11 @@ export class CreateReviewDto {
   @Min(1)
   @Max(5)
   rating: number;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RatingDetailsDto)
+  ratingDetails?: RatingDetailsDto | null;
 
   @IsString()
   @IsOptional()

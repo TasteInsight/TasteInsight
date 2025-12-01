@@ -60,6 +60,10 @@ describe('AdminReviewsController (e2e)', () => {
         rating: 5,
         content: '待审核评价测试',
         status: 'pending',
+        spicyLevel: 3,
+        sweetness: 2,
+        saltiness: 3,
+        oiliness: 4,
       },
     });
     testReviewId = review.id;
@@ -87,6 +91,38 @@ describe('AdminReviewsController (e2e)', () => {
       );
       expect(found).toBeDefined();
       expect(found.status).toBe('pending');
+      expect(found.ratingDetails).toBeDefined();
+      expect(found.ratingDetails.spicyLevel).toBe(3);
+      expect(found.ratingDetails.sweetness).toBe(2);
+      expect(found.ratingDetails.saltiness).toBe(3);
+      expect(found.ratingDetails.oiliness).toBe(4);
+    });
+
+    it('should return pending reviews without rating details', async () => {
+      // 创建一个没有详细评分的待审核评价
+      const reviewNoDetails = await prisma.review.create({
+        data: {
+          dishId: testDishId,
+          userId: testUserId,
+          rating: 4,
+          content: '无详细评分测试',
+          status: 'pending',
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .get('/admin/reviews/pending')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      const found = response.body.data.items.find(
+        (r: any) => r.id === reviewNoDetails.id,
+      );
+      expect(found).toBeDefined();
+      expect(found.ratingDetails).toBeNull();
+
+      // 清理
+      await prisma.review.delete({ where: { id: reviewNoDetails.id } });
     });
 
     it('should return 403 for normal admin without permission', async () => {

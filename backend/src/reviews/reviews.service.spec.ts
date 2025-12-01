@@ -53,7 +53,7 @@ describe('ReviewsService', () => {
         }),
       ).rejects.toThrow(NotFoundException);
     });
-    it('should create review and return data', async () => {
+    it('should create review with detailed ratings and return data', async () => {
       prisma.dish.findUnique.mockResolvedValue({ id: 'd1' });
       prisma.review.create.mockResolvedValue({
         id: 'r1',
@@ -63,6 +63,10 @@ describe('ReviewsService', () => {
         content: 'c',
         images: [],
         status: 'pending',
+        spicyLevel: 3,
+        sweetness: 2,
+        saltiness: 3,
+        oiliness: 4,
         createdAt: new Date(),
         deletedAt: null,
         user: { id: 'u1', nickname: 'nick', avatar: 'a' },
@@ -72,16 +76,32 @@ describe('ReviewsService', () => {
         rating: 5,
         content: 'c',
         images: [],
+        ratingDetails: {
+          spicyLevel: 3,
+          sweetness: 2,
+          saltiness: 3,
+          oiliness: 4,
+        },
       });
       expect(prisma.dish.findUnique).toHaveBeenCalled();
-      expect(prisma.review.create).toHaveBeenCalled();
+      expect(prisma.review.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            spicyLevel: 3,
+            sweetness: 2,
+            saltiness: 3,
+            oiliness: 4,
+          }),
+        }),
+      );
       expect(result).toHaveProperty('code', 201);
       expect(result.data).toHaveProperty('id', 'r1');
+      expect(result.data.ratingDetails).toHaveProperty('spicyLevel', 3);
     });
   });
 
   describe('getReviews', () => {
-    it('should return reviews with rating stats', async () => {
+    it('should return reviews with rating stats and details', async () => {
       prisma.review.findMany.mockResolvedValue([
         {
           id: 'r1',
@@ -90,6 +110,10 @@ describe('ReviewsService', () => {
           rating: 5,
           content: 'c',
           images: [],
+          spicyLevel: 3,
+          sweetness: 2,
+          saltiness: 3,
+          oiliness: 4,
           createdAt: new Date(),
           deletedAt: null,
           user: { id: 'u1', nickname: 'nick', avatar: 'a' },
@@ -105,6 +129,10 @@ describe('ReviewsService', () => {
       expect(prisma.review.groupBy).toHaveBeenCalled();
       expect(result).toHaveProperty('code', 200);
       expect(result.data.items.length).toBe(1);
+      expect(result.data.items[0].ratingDetails).toHaveProperty(
+        'spicyLevel',
+        3,
+      );
       expect(result.data.rating.average).toBe(5);
     });
 

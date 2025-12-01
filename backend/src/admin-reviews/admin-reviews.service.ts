@@ -36,20 +36,36 @@ export class AdminReviewsService {
       }),
     ]);
 
-    const items: ReviewItemData[] = reviews.map((review) => ({
-      id: review.id,
-      dishId: review.dishId,
-      userId: review.userId,
-      rating: review.rating,
-      content: review.content,
-      images: review.images,
-      status: review.status,
-      rejectReason: review.rejectReason,
-      createdAt: review.createdAt,
-      updatedAt: review.updatedAt,
-      dishName: review.dish.name,
-      dishImage: review.dish.images.length > 0 ? review.dish.images[0] : null,
-    }));
+    const items: ReviewItemData[] = reviews.map((review) => {
+      const hasDetails =
+        review.spicyLevel ||
+        review.sweetness ||
+        review.saltiness ||
+        review.oiliness;
+
+      return {
+        id: review.id,
+        dishId: review.dishId,
+        userId: review.userId,
+        rating: review.rating,
+        ratingDetails: hasDetails
+          ? {
+              spicyLevel: review.spicyLevel,
+              sweetness: review.sweetness,
+              saltiness: review.saltiness,
+              oiliness: review.oiliness,
+            }
+          : null,
+        content: review.content,
+        images: review.images,
+        status: review.status,
+        rejectReason: review.rejectReason,
+        createdAt: review.createdAt,
+        updatedAt: review.updatedAt,
+        dishName: review.dish.name,
+        dishImage: review.dish.images.length > 0 ? review.dish.images[0] : null,
+      };
+    });
 
     return {
       code: 200,
