@@ -343,6 +343,7 @@ export interface Comment {
   reviewId: string;
   userId: string;
   userNickname: string;
+  floor: number;
   userAvatar: string;
   parentComment?: null | ParentComment;
   content: string;

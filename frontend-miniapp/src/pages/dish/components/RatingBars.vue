@@ -87,3 +87,7 @@ const ratingBars = computed(() => {
   });
 });
 </script>
+
+<style scoped>
+/* RatingBars component styles */
+</style>

@@ -443,9 +443,11 @@ const hideAllCommentsPanel = () => {
 };
 
 const handleCommentAdded = () => {
-  // 刷新评论列表 - 这里可能需要更细粒度的更新，或者重新获取评价列表
-  // 目前简单处理：不刷新整个列表，因为评论是在 CommentList 内部管理的
-  // 如果需要更新评论数，可能需要刷新
+  // 更新评论总数
+  const currentComments = reviewComments.value[currentCommentsReviewId.value];
+  if (currentComments) {
+    currentComments.total += 1;
+  }
 };
 </script>
 

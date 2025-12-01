@@ -64,7 +64,7 @@
                   </view>
                   <!-- 第三行：楼层和日期 -->
                   <view class="flex items-center">
-                    <text class="text-xs text-gray-400 mr-2">{{ getFloor(comment.id) }}楼</text>
+                    <text class="text-xs text-gray-400 mr-2">{{ comment.floor ?? '--' }}楼</text>
                     <text class="text-xs text-gray-400">{{ formatDate(comment.createdAt) }}</text>
                   </view>
                 </view>
@@ -209,27 +209,8 @@ const loading = ref(false);
 const hasMore = ref(false);
 const currentPage = ref(1);
 const pageSize = 10;
-
 const replyContent = ref('');
 const replyingTo = ref<Comment | null>(null);
-
-// 楼层映射表：根据评论创建时间排序后生成楼层号
-const floorMap = computed(() => {
-  const map = new Map<string, number>();
-  // 复制数组并按时间升序排序（最早的是1楼）
-  const sorted = [...comments.value].sort((a, b) => 
-    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-  );
-  sorted.forEach((comment, index) => {
-    map.set(comment.id, index + 1);
-  });
-  return map;
-});
-
-// 获取评论的楼层号
-const getFloor = (commentId: string): number => {
-  return floorMap.value.get(commentId) || 0;
-};
 
 // 计算属性：判断是否可以发送
 const canSendReply = computed(() => {
@@ -267,7 +248,7 @@ const fetchComments = async () => {
 
     if (response.code === 200 && response.data) {
       const newComments = response.data.items || [];
-
+      
       if (currentPage.value === 1) {
         comments.value = newComments;
       } else {
@@ -320,41 +301,19 @@ const submitReply = async () => {
     
     const response = await createComment(requestData);
 
-    if (response.code === 200 && response.data) {
+    if (response.code === 200) {
       uni.showToast({
         title: '回复成功',
         icon: 'success',
       });
 
-      // 构建新评论对象，包含 parentComment 信息
-      const newComment: Comment = {
-        ...response.data,
-        // 如果后端没有返回 parentComment，手动构建
-        parentComment: replyingTo.value ? {
-          id: replyingTo.value.id,
-          userId: replyingTo.value.userId,
-          userNickname: replyingTo.value.userNickname,
-          deleted: false,
-        } : response.data.parentComment,
-      };
-
-      // 将新评论添加到列表开头
-      comments.value = [newComment, ...comments.value];
-
       replyContent.value = '';
       replyingTo.value = null;
-
-      emit('commentAdded');
-    } else if (response.code === 200) {
-      // 如果没有返回 data，则刷新列表
-      uni.showToast({
-        title: '回复成功',
-        icon: 'success',
-      });
-      replyContent.value = '';
-      replyingTo.value = null;
+      
+      // 刷新评论列表以获取正确的楼层号
       currentPage.value = 1;
       await fetchComments();
+
       emit('commentAdded');
     } else {
       uni.showToast({
@@ -382,8 +341,9 @@ const handleDelete = (commentId: string) => {
     success: (res) => {
       if (res.confirm) {
         emit('delete', commentId);
-        // 乐观更新：直接从列表中移除
-        comments.value = comments.value.filter(c => c.id !== commentId);
+        // 刷新评论列表以获取正确的楼层号
+        currentPage.value = 1;
+        fetchComments();
       }
     }
   });
