@@ -26,6 +26,45 @@
         </view>
       </view>
 
+      <!-- 口味细节评分 -->
+      <view class="mb-5">
+        <view class="flex items-center justify-between mb-3">
+          <view>
+            <view class="text-sm font-medium text-gray-700">口味细节（可选）</view>
+            <text class="text-xs text-gray-400">若开始选择需补全全部口味</text>
+          </view>
+          <button
+            v-if="hasFlavorSelection"
+            class="text-xs text-ts-purple bg-transparent border-0 p-1"
+            @tap="resetFlavorRatings"
+          >清除选择</button>
+        </view>
+
+        <view
+          v-for="option in flavorOptions"
+          :key="option.key"
+          class="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0"
+        >
+          <view>
+            <text class="text-gray-700 text-sm font-medium">{{ option.label }}</text>
+            <text class="text-xs text-gray-400 ml-2">{{ option.hint }}</text>
+          </view>
+          <view class="flex items-center gap-2">
+            <text
+              v-for="star in 5"
+              :key="star"
+              class="cursor-pointer inline-block leading-none select-none transition-all duration-200"
+              :class="star <= flavorRatings[option.key] ? 'text-yellow-400 text-[22px]' : 'text-gray-300 text-[20px]'"
+              @tap="setFlavorRating(option.key, star)"
+            >{{ star <= flavorRatings[option.key] ? '★' : '☆' }}</text>
+          </view>
+        </view>
+
+        <view v-if="showFlavorError && !flavorSelectionComplete" class="text-xs text-red-500 mt-2">
+          请选择全部口味评分或全部留空
+        </view>
+      </view>
+
       <!-- 评价内容 -->
       <view class="mb-5">
         <view class="text-sm font-medium text-gray-700 mb-3">评价内容</view>
@@ -55,6 +94,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { createReview } from '@/api/modules/review';
+import type { ReviewCreateRequest } from '@/types/api';
 
 interface Props {
   dishId: string;
@@ -72,6 +112,31 @@ const emit = defineEmits<Emits>();
 const rating = ref(5);
 const content = ref('');
 const submitting = ref(false);
+const showFlavorError = ref(false);
+
+type FlavorKey = 'spicyLevel' | 'sweetness' | 'saltiness' | 'oiliness';
+
+const flavorOptions: Array<{ key: FlavorKey; label: string; hint: string }> = [
+  { key: 'spicyLevel', label: '辣度', hint: '辣味程度' },
+  { key: 'sweetness', label: '甜度', hint: '甜味浓淡' },
+  { key: 'saltiness', label: '咸度', hint: '咸味强度' },
+  { key: 'oiliness', label: '油腻程度', hint: '油脂感' },
+];
+
+const flavorRatings = ref<Record<FlavorKey, number>>({
+  spicyLevel: 0,
+  sweetness: 0,
+  saltiness: 0,
+  oiliness: 0,
+});
+
+const hasFlavorSelection = computed(() =>
+  Object.values(flavorRatings.value).some(value => value > 0)
+);
+
+const flavorSelectionComplete = computed(() =>
+  !hasFlavorSelection.value || Object.values(flavorRatings.value).every(value => value > 0)
+);
 
 // 隐藏tabbar
 onMounted(() => {
@@ -116,6 +181,21 @@ const setRating = (star: number) => {
   rating.value = star;
 };
 
+const setFlavorRating = (key: FlavorKey, value: number) => {
+  showFlavorError.value = false;
+  flavorRatings.value[key] = flavorRatings.value[key] === value ? 0 : value;
+};
+
+const resetFlavorRatings = () => {
+  flavorRatings.value = {
+    spicyLevel: 0,
+    sweetness: 0,
+    saltiness: 0,
+    oiliness: 0,
+  };
+  showFlavorError.value = false;
+};
+
 const handleClose = () => {
   emit('close');
 };
@@ -126,14 +206,31 @@ const handleSubmit = async () => {
   submitting.value = true;
 
   try {
-    const response = await createReview({
+    if (!flavorSelectionComplete.value) {
+      showFlavorError.value = true;
+      submitting.value = false;
+      uni.showToast({
+        title: '请选择全部口味评分或全部留空',
+        icon: 'none',
+      });
+      return;
+    }
+
+    const payload: ReviewCreateRequest = {
       dishId: props.dishId,
       rating: rating.value,
       content: content.value.trim(),
-    });
+    };
+
+    if (hasFlavorSelection.value) {
+      payload.ratingDetails = { ...flavorRatings.value };
+    }
+
+    const response = await createReview(payload);
 
     if (response.code === 200) {
       emit('success');
+      resetFlavorRatings();
     } else {
       uni.showToast({
         title: response.message || '提交失败',
