@@ -1,4 +1,4 @@
-import { test, expect, request } from '@playwright/test';
+import { test, expect, request, APIRequestContext } from '@playwright/test';
 import { loginAsAdmin, getApiToken, TEST_ACCOUNTS } from './utils';
 
 // API base URL for direct API calls
@@ -150,8 +150,20 @@ test.describe('Sub-item Creation and Display', () => {
   // Use a unique prefix for this test suite to avoid conflicts
   const TEST_PREFIX = 'E2E_SubItem_';
 
+  // Helper to get sub-item container from page
+  function getSubItemContainer(page: any) {
+    const subItemSection = page.locator('label:has-text("菜品子项")').locator('..').locator('..');
+    return subItemSection.locator('.space-y-3');
+  }
+
+  // Helper to get view sub-item container from page
+  function getViewSubItemContainer(page: any) {
+    const viewSubItemSection = page.locator('label:has-text("菜品子项")').locator('..');
+    return viewSubItemSection.locator('.space-y-2');
+  }
+
   // Helper to clean up test data by prefix
-  async function cleanupTestData(request: any, token: string, prefix: string) {
+  async function cleanupTestData(request: APIRequestContext, token: string, prefix: string) {
     try {
       // Clean up dishes
       const dishesResp = await request.get(`${baseURL}admin/dishes?pageSize=100`, {
@@ -301,8 +313,7 @@ test.describe('Sub-item Creation and Display', () => {
       
       // Look for the sub-item in the specific "菜品子项" section
       // The sub-item list container has class "space-y-3" and each item has the name in span.text-gray-700.font-medium
-      const subItemSection = page.locator('label:has-text("菜品子项")').locator('..').locator('..');
-      const subItemContainer = subItemSection.locator('.space-y-3');
+      const subItemContainer = getSubItemContainer(page);
       
       // Wait for the sub-item container to be visible (it only shows when there are sub-items)
       await expect(subItemContainer).toBeVisible({ timeout: 15000 });
@@ -323,8 +334,7 @@ test.describe('Sub-item Creation and Display', () => {
       await page.waitForLoadState('networkidle');
       
       // Look for the sub-item in the view page's "菜品子项" section
-      const viewSubItemSection = page.locator('label:has-text("菜品子项")').locator('..');
-      const viewSubItemContainer = viewSubItemSection.locator('.space-y-2');
+      const viewSubItemContainer = getViewSubItemContainer(page);
       
       // Wait for the sub-item container to be visible (it should show sub-items)
       await expect(viewSubItemContainer).toBeVisible({ timeout: 15000 });

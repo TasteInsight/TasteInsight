@@ -526,13 +526,13 @@ export default {
     const loadSubDishes = async (subDishIds) => {
       try {
         const subDishPromises = subDishIds.map(id => dishApi.getDishById(id))
-        const responses = await Promise.all(subDishPromises)
+        const responses = await Promise.allSettled(subDishPromises)
         dishData.subItems = responses
-          .filter(res => res.code === 200 && res.data)
-          .map(res => ({
-            id: res.data.id,
-            name: res.data.name || '未命名',
-            price: res.data.price || 0
+          .filter(result => result.status === 'fulfilled' && result.value.code === 200 && result.value.data)
+          .map(result => ({
+            id: result.value.data.id,
+            name: result.value.data.name || '未命名',
+            price: result.value.data.price || 0
           }))
       } catch (error) {
         console.error('加载子项列表失败:', error)
