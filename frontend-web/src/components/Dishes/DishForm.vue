@@ -394,7 +394,12 @@ export default {
     
     const handleSubmit = () => {
       if (validateForm()) {
-        emit('submit', formData)
+        // 使用深拷贝防止修改原始formData
+        const payload = JSON.parse(JSON.stringify(formData))
+        if (payload && Object.prototype.hasOwnProperty.call(payload, 'floor')) {
+          delete payload.floor
+        }
+        emit('submit', payload)
       }
     }
     

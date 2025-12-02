@@ -430,7 +430,8 @@ export default {
       oiliness: 0,
       availableMealTime: [],
       availableDates: [],
-      subItems: []
+      subItems: [],        // Populated with full sub-dish details after loading
+      subDishId: []        // Array of sub-dish IDs from the API response, used to fetch full details
     })
     
     const reviewsData = reactive({
@@ -501,8 +502,14 @@ export default {
             oiliness: dish.oiliness !== null && dish.oiliness !== undefined ? dish.oiliness : 0,
             availableMealTime: dish.availableMealTime || [],
             availableDates: dish.availableDates || [],
-            subItems: dish.subItems || []
+            subItems: [], // Will be populated by loadSubDishes() if subDishId exists
+            subDishId: dish.subDishId || []  // Store sub-dish IDs to load full details asynchronously
           })
+          
+          // 如果有子项ID，加载子项详细信息
+          if (dish.subDishId && dish.subDishId.length > 0) {
+            await loadSubDishes(dish.subDishId)
+          }
         } else {
           throw new Error(response.message || '获取菜品信息失败')
         }
@@ -512,6 +519,28 @@ export default {
         router.push('/modify-dish')
       } finally {
         isLoading.value = false
+      }
+    }
+    
+    /**
+     * Load full details for sub-dishes
+     * @param {string[]} subDishIds - Array of sub-dish IDs to load
+     * @returns {Promise<void>} Updates dishData.subItems with loaded data
+     */
+    const loadSubDishes = async (subDishIds) => {
+      try {
+        const subDishPromises = subDishIds.map(id => dishApi.getDishById(id))
+        const responses = await Promise.allSettled(subDishPromises)
+        dishData.subItems = responses
+          .filter(result => result.status === 'fulfilled' && result.value.code === 200 && result.value.data)
+          .map(result => ({
+            id: result.value.data.id,
+            name: result.value.data.name || '未命名',
+            price: result.value.data.price || 0
+          }))
+      } catch (error) {
+        console.error('加载子项列表失败:', error)
+        dishData.subItems = []
       }
     }
     

@@ -110,6 +110,16 @@ export class AdminDishesService {
       throw new ForbiddenException('权限不足');
     }
 
+    // 为了更稳健地确保返回的父菜品包含其子菜品 ID（有时关系加载可能未及时反映），
+    // 额外查询一次子菜品列表并注入到返回 DTO 中。
+    const childRows = await this.prisma.dish.findMany({
+      where: { parentDishId: id },
+      select: { id: true },
+    });
+
+    // 将子项 id 列表注入到 dish 对象，方便 mapToAdminDishDto 使用
+    (dish as any).subDishes = childRows.map((r) => ({ id: r.id }));
+
     return {
       code: 200,
       message: 'success',
@@ -344,38 +354,7 @@ export class AdminDishesService {
       updateData.windowName = window.name;
     }
 
-    // 楼层信息处理：如果前端传入了 floor 字段，且没有更新窗口，则单独更新楼层信息
-    // 注意：如果更新了窗口，楼层信息必须跟随窗口，忽略前端传入的 floor 字段，防止数据不一致
-    if (!shouldUpdateWindow && updateDto.floor !== undefined) {
-      // 确定食堂 ID（优先使用更新后的，否则使用现有的）
-      const targetCanteenId = updateData.canteenId || existingDish.canteenId;
 
-      // 先按 name 查找楼层
-      let floor = await this.prisma.floor.findFirst({
-        where: {
-          canteenId: targetCanteenId,
-          name: updateDto.floor,
-        },
-      });
-
-      // 如果按 name 找不到，再按 level 查找
-      if (!floor) {
-        floor = await this.prisma.floor.findFirst({
-          where: {
-            canteenId: targetCanteenId,
-            level: updateDto.floor,
-          },
-        });
-      }
-
-      if (floor) {
-        // 找到楼层，更新楼层信息
-        updateData.floorId = floor.id;
-        updateData.floorLevel = floor.level;
-        updateData.floorName = floor.name;
-      }
-      // 如果找不到对应的楼层，不报错，保持原有楼层信息或使用窗口关联的楼层
-    }
 
     const dish = await this.prisma.dish.update({
       where: { id },
@@ -470,6 +449,8 @@ export class AdminDishesService {
       price: dish.price,
       description: dish.description,
       images: dish.images,
+      parentDishId: dish.parentDishId,
+      subDishId: dish.subDishes?.map((s: any) => s.id) ?? [],
       ingredients: dish.ingredients,
       allergens: dish.allergens,
       spicyLevel: dish.spicyLevel,
@@ -510,6 +491,8 @@ export class AdminDishesService {
       price: dishUpload.price,
       description: dishUpload.description,
       images: dishUpload.images,
+      parentDishId: dishUpload.parentDishId,
+      subDishId: [],
       ingredients: dishUpload.ingredients,
       allergens: dishUpload.allergens,
       spicyLevel: dishUpload.spicyLevel,

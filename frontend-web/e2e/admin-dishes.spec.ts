@@ -1,4 +1,4 @@
-import { test, expect, request } from '@playwright/test';
+import { test, expect, request, APIRequestContext } from '@playwright/test';
 import { loginAsAdmin, getApiToken, TEST_ACCOUNTS } from './utils';
 
 // API base URL for direct API calls
@@ -146,6 +146,335 @@ test.describe('Admin Dish Management', () => {
   });
 });
 
+test.describe('Sub-item Creation and Display', () => {
+  // Use a unique prefix for this test suite to avoid conflicts
+  const TEST_PREFIX = 'E2E_SubItem_';
+
+  // Helper to get sub-item container from page
+  function getSubItemContainer(page: any) {
+    const subItemSection = page.locator('label:has-text("菜品子项")').locator('..').locator('..');
+    return subItemSection.locator('.space-y-3');
+  }
+
+  // Helper to get view sub-item container from page
+  function getViewSubItemContainer(page: any) {
+    const viewSubItemSection = page.locator('label:has-text("菜品子项")').locator('..');
+    return viewSubItemSection.locator('.space-y-2');
+  }
+
+  // Helper to clean up test data by prefix
+  async function cleanupTestData(request: APIRequestContext, token: string, prefix: string) {
+    try {
+      // Clean up dishes
+      const dishesResp = await request.get(`${baseURL}admin/dishes?pageSize=100`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (dishesResp.ok()) {
+        const dishes = await dishesResp.json();
+        const matches = dishes.data.items.filter((d: any) => d.name && d.name.startsWith(prefix));
+        for (const m of matches) {
+          await request.delete(`${baseURL}admin/dishes/${m.id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }).catch(() => {});
+        }
+      }
+    } catch (e) { /* ignore */ }
+
+    try {
+      // Clean up uploads (pending dishes)
+      const uploadsResp = await request.get(`${baseURL}admin/dishes/uploads/pending?pageSize=100`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (uploadsResp.ok()) {
+        const uploads = await uploadsResp.json();
+        const matches = uploads.data.items.filter((u: any) => u.name && u.name.startsWith(prefix));
+        for (const u of matches) {
+          // Reject or delete the upload - use reject with a reason
+          await request.post(`${baseURL}admin/dishes/uploads/${u.id}/reject`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+            data: { reason: 'E2E test cleanup' }
+          }).catch(() => {});
+        }
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  test('Add sub-item -> approve -> parent shows sub-item (UI flow)', async ({ page, request }) => {
+    // 1. Get auth token
+    const superToken = await getApiToken(request, TEST_ACCOUNTS.superAdmin.username, TEST_ACCOUNTS.superAdmin.password);
+    expect(superToken).toBeTruthy();
+
+    // Generate unique name with timestamp to avoid conflicts
+    const timestamp = Date.now();
+    const subName = `${TEST_PREFIX}${timestamp}`;
+
+    // 2. Clean up any residual test data before starting
+    await cleanupTestData(request, superToken!, TEST_PREFIX);
+
+    // 3. Find a suitable parent dish from seed data
+    const listResp = await request.get(`${baseURL}admin/dishes`, {
+      headers: { 'Authorization': `Bearer ${superToken}` }
+    });
+    expect(listResp.ok()).toBeTruthy();
+    const listData = await listResp.json();
+    const parentDish = listData.data.items.find((d: any) => !d.parentDishId && d.status === 'online');
+    if (!parentDish) {
+      test.skip();
+      return;
+    }
+
+    const parentId = parentDish.id;
+    let createdSubId: string | undefined;
+
+    try {
+      // 4. Login and navigate to add sub-item page
+      await loginAsAdmin(page);
+      await page.goto(`/add-sub-dish?parentId=${parentId}&subItemName=${encodeURIComponent(subName)}`);
+
+      // Ensure name is present
+      await expect(page.locator('input[placeholder="例如：水煮肉片"]')).toHaveValue(subName);
+
+      // Fill price and description
+      await page.fill('input[type="number"][placeholder*="15.00"]', '9.9');
+      await page.fill('textarea[placeholder="请输入菜品描述..."]', '子项测试说明');
+
+      // Handle alert dialog and submit
+      page.once('dialog', async dialog => { await dialog.accept(); });
+      await page.click('button:has-text("保存子项信息")');
+
+      // After creation, should redirect to parent edit
+      await page.waitForURL(new RegExp(`/edit-dish/${parentId}`));
+
+      // 5. Navigate to review page and approve the created sub-item
+      await page.goto('/review-dish');
+      
+      // Wait for the table to load (wait for loading spinner to disappear)
+      await page.waitForSelector('tr:not(:has-text("加载中"))', { timeout: 10000 });
+      
+      // Wait for network to be idle to ensure data is loaded
+      await page.waitForLoadState('networkidle');
+      
+      // Search for the item
+      await page.fill('input[placeholder="搜索菜品名称..."]', subName);
+      
+      // Wait for the search results to appear or table to update
+      await page.waitForSelector(`tr:has-text("${subName}")`, { timeout: 5000 });
+      
+      const reviewRow = page.locator('tr', { hasText: subName });
+      await expect(reviewRow).toBeVisible({ timeout: 10000 });
+
+      // Click 审核 button
+      await reviewRow.locator('button:has-text("审核")').click();
+      await page.waitForURL(/\/review-dish\/.*/);
+      
+      // Handle confirm dialog for approval
+      page.once('dialog', async dialog => { await dialog.accept(); });
+      await page.click('button:has-text("批准通过")');
+      await page.waitForURL(/\/review-dish/);
+
+      // 6. Poll for the created dish to appear in the dishes list
+      // Wait for the approval to be processed by monitoring network activity
+      await page.waitForLoadState('networkidle');
+
+      let found = false;
+      const maxRetries = 15;
+      const retryInterval = 1000;
+      
+      for (let i = 0; i < maxRetries && !found; i++) {
+        const dishesResp = await request.get(`${baseURL}admin/dishes?pageSize=100`, {
+          headers: { 'Authorization': `Bearer ${superToken}` }
+        });
+        if (dishesResp.ok()) {
+          const dishesJson = await dishesResp.json();
+          const created = dishesJson.data.items.find((d: any) => d.name === subName);
+          if (created) {
+            createdSubId = created.id;
+            found = true;
+            break;
+          }
+        }
+        if (i < maxRetries - 1) { // Don't wait after the last attempt
+          await new Promise((r) => setTimeout(r, retryInterval));
+        }
+      }
+
+      if (!found) {
+        throw new Error(`Sub-dish '${subName}' was not found after approval within ${maxRetries * retryInterval}ms timeout period`);
+      }
+      expect(createdSubId, `Expected sub-dish '${subName}' to be created`).toBeTruthy();      // 7. Verify via API that parent dish now has the sub-item in subDishId
+      const parentDetailResp = await request.get(`${baseURL}admin/dishes/${parentId}`, {
+        headers: { 'Authorization': `Bearer ${superToken}` }
+      });
+      expect(parentDetailResp.ok()).toBeTruthy();
+      const parentDetail = await parentDetailResp.json();
+      expect(parentDetail.data.subDishId).toBeDefined();
+      expect(Array.isArray(parentDetail.data.subDishId)).toBeTruthy();
+      expect(parentDetail.data.subDishId).toContain(createdSubId);
+
+      // 8. Visit parent edit page and verify sub-item is visible in the UI
+      await page.goto(`/edit-dish/${parentId}`);
+      
+      // Wait for page to load completely
+      await page.waitForLoadState('networkidle');
+      
+      // Look for the sub-item in the specific "菜品子项" section
+      // The sub-item list container has class "space-y-3" and each item has the name in span.text-gray-700.font-medium
+      const subItemContainer = getSubItemContainer(page);
+      
+      // Wait for the sub-item container to be visible (it only shows when there are sub-items)
+      await expect(subItemContainer).toBeVisible({ timeout: 15000 });
+      
+      // Find the specific sub-item by name - it should be in a span with specific classes
+      const subItemNameElement = subItemContainer.locator('span.text-gray-700.font-medium', { hasText: subName });
+      await expect(subItemNameElement).toBeVisible({ timeout: 10000 });
+      
+      // Additional verification: check that the price is displayed next to the name
+      // The parent div of the name span should also contain the price
+      const subItemRow = subItemContainer.locator('.border.rounded-lg', { hasText: subName });
+      await expect(subItemRow.locator('text=¥9.9')).toBeVisible();
+
+      // 9. Also verify sub-item is visible in the ViewDish page
+      await page.goto(`/view-dish/${parentId}`);
+      
+      // Wait for page to load completely
+      await page.waitForLoadState('networkidle');
+      
+      // Look for the sub-item in the view page's "菜品子项" section
+      const viewSubItemContainer = getViewSubItemContainer(page);
+      
+      // Wait for the sub-item container to be visible (it should show sub-items)
+      await expect(viewSubItemContainer).toBeVisible({ timeout: 15000 });
+      
+      // Find the specific sub-item by name in the view page
+      const viewSubItemNameElement = viewSubItemContainer.locator('span.text-gray-700', { hasText: subName });
+      await expect(viewSubItemNameElement).toBeVisible({ timeout: 10000 });
+      
+      // Verify the price is also displayed in the view page
+      const viewSubItemRow = viewSubItemContainer.locator('.border.rounded-lg', { hasText: subName });
+      await expect(viewSubItemRow.locator('text=¥9.9')).toBeVisible();
+
+    } finally {
+      // Cleanup: remove any created test data
+      await cleanupTestData(request, superToken!, TEST_PREFIX);
+    }
+  });
+
+  test('API verification: subDishId is correctly returned after approval', async ({ request }) => {
+    // This is a pure API test to verify the backend correctly returns subDishId
+    const superToken = await getApiToken(request, TEST_ACCOUNTS.superAdmin.username, TEST_ACCOUNTS.superAdmin.password);
+    console.log('Token obtained:', superToken ? 'yes' : 'no');
+    expect(superToken).toBeTruthy();
+
+    const timestamp = Date.now();
+    const subName = `${TEST_PREFIX}API_${timestamp}`;
+
+    // Clean up before test
+    await cleanupTestData(request, superToken!, TEST_PREFIX);
+
+    // Find a suitable parent dish
+    const listResp = await request.get(`${baseURL}admin/dishes`, {
+      headers: { 'Authorization': `Bearer ${superToken}` }
+    });
+    
+    console.log('List dishes response status:', listResp.status());
+    if (!listResp.ok()) {
+      const errText = await listResp.text();
+      console.error('List dishes failed:', errText);
+    }
+    
+    const listData = await listResp.json();
+    console.log('List dishes data structure:', JSON.stringify(listData).substring(0, 500));
+    
+    if (!listData.data || !listData.data.items) {
+      console.error('Unexpected list response:', JSON.stringify(listData));
+      throw new Error('API response missing data.items');
+    }
+    
+    const parentDish = listData.data.items.find((d: any) => !d.parentDishId && d.status === 'online');
+    if (!parentDish) {
+      console.log('No suitable parent dish found, skipping test');
+      test.skip();
+      return;
+    }
+    console.log('Found parent dish:', parentDish.id, parentDish.name);
+
+    const parentId = parentDish.id;
+
+    try {
+      // Create a sub-item via API
+      const createResp = await request.post(`${baseURL}admin/dishes`, {
+        headers: { 'Authorization': `Bearer ${superToken}` },
+        data: {
+          name: subName,
+          price: 12.5,
+          canteenName: parentDish.canteenName,
+          windowName: parentDish.windowName,
+          parentDishId: parentId,
+          description: 'API test sub-item'
+        }
+      });
+      expect(createResp.status()).toBe(201);
+      const createData = await createResp.json();
+      const uploadId = createData.data.id;
+
+      // Approve the upload
+      const approveResp = await request.post(`${baseURL}admin/dishes/uploads/${uploadId}/approve`, {
+        headers: { 'Authorization': `Bearer ${superToken}` }
+      });
+      
+      // Log response for debugging if approval fails
+      if (!approveResp.ok()) {
+        const errorBody = await approveResp.text();
+        console.error(`Approval failed with status ${approveResp.status()}: ${errorBody}`);
+      }
+      expect(approveResp.ok()).toBeTruthy();
+
+      // Wait a moment for the approval to process
+      await new Promise((r) => setTimeout(r, 1000));
+
+      // Verify the created dish exists and has correct parentDishId
+      const dishesResp = await request.get(`${baseURL}admin/dishes?pageSize=100`, {
+        headers: { 'Authorization': `Bearer ${superToken}` }
+      });
+      
+      // Debug: log response if not ok
+      if (!dishesResp.ok()) {
+        console.error(`Dishes API failed with status ${dishesResp.status()}`);
+        const errorText = await dishesResp.text();
+        console.error(`Response body: ${errorText}`);
+      }
+      expect(dishesResp.ok()).toBeTruthy();
+      
+      const dishesData = await dishesResp.json();
+      
+      // Debug: log if data structure is unexpected
+      if (!dishesData.data || !dishesData.data.items) {
+        console.error(`Unexpected API response structure: ${JSON.stringify(dishesData)}`);
+      }
+      expect(dishesData.data).toBeDefined();
+      expect(dishesData.data.items).toBeDefined();
+      
+      const createdDish = dishesData.data.items.find((d: any) => d.name === subName);
+      expect(createdDish).toBeTruthy();
+      expect(createdDish.parentDishId).toBe(parentId);
+
+      // Verify parent dish's subDishId contains the new sub-item
+      const parentDetailResp = await request.get(`${baseURL}admin/dishes/${parentId}`, {
+        headers: { 'Authorization': `Bearer ${superToken}` }
+      });
+      expect(parentDetailResp.ok()).toBeTruthy();
+      const parentDetail = await parentDetailResp.json();
+      
+      expect(parentDetail.data.subDishId).toBeDefined();
+      expect(Array.isArray(parentDetail.data.subDishId)).toBeTruthy();
+      expect(parentDetail.data.subDishId).toContain(createdDish.id);
+
+    } finally {
+      // Cleanup
+      await cleanupTestData(request, superToken!, TEST_PREFIX);
+    }
+  });
+});
 /**
  * Permission Control Tests - Using API directly
  * These tests verify that permission controls work correctly
