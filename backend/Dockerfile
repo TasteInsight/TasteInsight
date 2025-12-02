@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 # Use a fast Alpine mirror (Tsinghua) to speed up apk downloads
 RUN printf '%s\n' \
@@ -18,7 +18,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml* ./
 
 # Install dependencies (不使用frozen-lockfile，允许更新lockfile)
-RUN pnpm install
+RUN pnpm install --frozen-lockfile
 
 # Copy source code
 COPY . .
@@ -30,7 +30,7 @@ RUN npx prisma generate
 RUN pnpm run build
 
 # Production stage
-FROM node:20-alpine
+FROM node:22-alpine
 
 # Use the same fast Alpine mirror in the production stage as well
 RUN printf '%s\n' \

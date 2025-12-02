@@ -1,0 +1,31 @@
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    # Backend API
+    location / {
+        # 改为实际的提供路径， Standalone 或者 Docker 内部地址
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # Static Files (Uploads)
+    location /images/ {
+        # 注意：alias 路径末尾通常需要加 /
+        # 请将此处修改为服务器上实际的 uploads 目录绝对路径
+        # Docker 环境下请使用容器内路径
+        alias /var/www/uploads/;
+        expires 30d;
+        add_header Cache-Control "public, no-transform";
+        add_header X-Content-Type-Options "nosniff" always;
+        types { }
+        default_type application/octet-stream;
+        try_files $uri =404;
+        # 防止列出目录
+        autoindex off;
+    }
+}

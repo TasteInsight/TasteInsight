@@ -18,6 +18,9 @@ import { CanteensModule } from './canteens/canteens.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { CommentsModule } from './comments/comments.module';
 import { NewsModule } from './news/news.module';
+import { UploadModule } from './upload/upload.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 @Module({
   imports: [
@@ -35,8 +38,13 @@ import { NewsModule } from './news/news.module';
     AdminReportsModule,
     AdminUploadsModule,
     AdminAdminsModule,
+    UploadModule,
     ConfigModule.forRoot({
       isGlobal: true,
+    }),
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'uploads'),
+      serveRoot: '/images',
     }),
   ],
   controllers: [AppController],
