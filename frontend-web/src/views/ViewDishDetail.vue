@@ -430,8 +430,8 @@ export default {
       oiliness: 0,
       availableMealTime: [],
       availableDates: [],
-      subItems: [],
-      subDishId: [] // 添加subDishId字段
+      subItems: [],        // Populated with full sub-dish details after loading
+      subDishId: []        // Array of sub-dish IDs from the API response, used to fetch full details
     })
     
     const reviewsData = reactive({
@@ -502,8 +502,8 @@ export default {
             oiliness: dish.oiliness !== null && dish.oiliness !== undefined ? dish.oiliness : 0,
             availableMealTime: dish.availableMealTime || [],
             availableDates: dish.availableDates || [],
-            subItems: [], // 初始化为空数组
-            subDishId: dish.subDishId || [] // 保存subDishId数组
+            subItems: [], // Will be populated by loadSubDishes() if subDishId exists
+            subDishId: dish.subDishId || []  // Store sub-dish IDs to load full details asynchronously
           })
           
           // 如果有子项ID，加载子项详细信息
@@ -522,7 +522,11 @@ export default {
       }
     }
     
-    // 加载子项列表
+    /**
+     * Load full details for sub-dishes
+     * @param {string[]} subDishIds - Array of sub-dish IDs to load
+     * @returns {Promise<void>} Updates dishData.subItems with loaded data
+     */
     const loadSubDishes = async (subDishIds) => {
       try {
         const subDishPromises = subDishIds.map(id => dishApi.getDishById(id))
