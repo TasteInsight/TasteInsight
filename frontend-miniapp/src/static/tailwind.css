@@ -196,6 +196,10 @@
   top: 1rem
 }
 
+.left-1\/2 {
+  left: 50%
+}
+
 .z-10 {
   z-index: 10
 }
@@ -696,6 +700,11 @@
 
 .translate-y-3 {
   --tw-translate-y: 0.75rem;
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))
+}
+
+.-translate-x-1\/2 {
+  --tw-translate-x: -50%;
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))
 }
 
@@ -1640,6 +1649,34 @@
   font-size: 22px
 }
 
+.text-\[26px\] {
+  font-size: 26px
+}
+
+.text-\[30px\] {
+  font-size: 30px
+}
+
+.text-\[32px\] {
+  font-size: 32px
+}
+
+.text-\[40px\] {
+  font-size: 40px
+}
+
+.text-\[48px\] {
+  font-size: 48px
+}
+
+.text-\[56px\] {
+  font-size: 56px
+}
+
+.text-\[36px\] {
+  font-size: 36px
+}
+
 .font-bold {
   font-weight: 700
 }
@@ -2028,6 +2065,10 @@
 .after\:border-none::after {
   content: var(--tw-content);
   border-style: none
+}
+
+.first\:border-t-0:first-child {
+  border-top-width: 0px
 }
 
 .last\:mb-0:last-child {

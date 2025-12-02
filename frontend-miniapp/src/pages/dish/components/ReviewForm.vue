@@ -1,6 +1,6 @@
 <template>
-  <view class="fixed inset-0 bg-black/40 z-[9999] flex items-end justify-center" @tap="handleClose">
-    <view class="review-form-container" @tap.stop catchtouchmove="true">
+  <view class="fixed inset-0 bg-black/40 z-[9999] flex items-end justify-center" @tap="handleClose" @touchmove.stop.prevent>
+    <view class="review-form-container" @tap.stop @touchmove.stop>
       <!-- 标题栏 -->
       <view class="flex justify-center items-center mb-4 pb-4 border-b border-gray-100 relative">
         <h2 class="text-lg font-bold text-gray-800">写评价</h2>
@@ -26,13 +26,10 @@
         </view>
       </view>
 
-      <!-- 口味细节评分 -->
-      <view class="mb-5">
+      <!-- 口味细节评分 - 仿大众点评风格 -->
+      <view v-if="rating > 0" class="mb-5 flavor-section">
         <view class="flex items-center justify-between mb-3">
-          <view>
-            <view class="text-sm font-medium text-gray-700">口味细节（可选）</view>
-            <text class="text-xs text-gray-400">若开始选择需补全全部口味</text>
-          </view>
+          <view class="text-sm font-medium text-gray-700">口味细节（可选）</view>
           <button
             v-if="hasFlavorSelection"
             class="text-xs text-ts-purple bg-transparent border-0 p-1"
@@ -43,18 +40,15 @@
         <view
           v-for="option in flavorOptions"
           :key="option.key"
-          class="flex items-center justify-between py-2 border-b border-gray-100 last:border-b-0"
+          class="relative flex items-center py-4 border-t border-gray-100 first:border-t-0"
         >
-          <view>
-            <text class="text-gray-700 text-sm font-medium">{{ option.label }}</text>
-            <text class="text-xs text-gray-400 ml-2">{{ option.hint }}</text>
-          </view>
-          <view class="flex items-center gap-2">
+          <text class="text-gray-700 text-base font-medium">{{ option.label }}</text>
+          <view class="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-3">
             <text
               v-for="star in 5"
               :key="star"
               class="cursor-pointer inline-block leading-none select-none transition-all duration-200"
-              :class="star <= flavorRatings[option.key] ? 'text-yellow-400 text-[22px]' : 'text-gray-300 text-[20px]'"
+              :class="star <= flavorRatings[option.key] ? 'text-yellow-400 text-[36px]' : 'text-gray-300 text-[32px]'"
               @tap="setFlavorRating(option.key, star)"
             >{{ star <= flavorRatings[option.key] ? '★' : '☆' }}</text>
           </view>
@@ -92,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { createReview } from '@/api/modules/review';
 import type { ReviewCreateRequest } from '@/types/api';
 
@@ -109,7 +103,7 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-const rating = ref(5);
+const rating = ref(0);
 const content = ref('');
 const submitting = ref(false);
 const showFlavorError = ref(false);
@@ -172,8 +166,8 @@ onUnmounted(() => {
 });
 
 const ratingText = computed(() => {
-  const texts = ['', '非常差', '差', '一般', '好', '非常好'];
-  return texts[rating.value] || '';
+  const texts = ['请选择评分', '非常差', '差', '一般', '好', '非常好'];
+  return texts[rating.value] || texts[0];
 });
 
 
@@ -196,6 +190,13 @@ const resetFlavorRatings = () => {
   showFlavorError.value = false;
 };
 
+// 当主评分清空时重置口味评分
+watch(rating, (value) => {
+  if (value === 0) {
+    resetFlavorRatings();
+  }
+});
+
 const handleClose = () => {
   emit('close');
 };
@@ -206,6 +207,15 @@ const handleSubmit = async () => {
   submitting.value = true;
 
   try {
+    if (rating.value === 0) {
+      uni.showToast({
+        title: '请先选择总体评分',
+        icon: 'none',
+      });
+      submitting.value = false;
+      return;
+    }
+
     if (!flavorSelectionComplete.value) {
       showFlavorError.value = true;
       submitting.value = false;
@@ -256,7 +266,7 @@ textarea {
 
 .review-form-container {
   width: 100%;
-  max-height: 70vh;
+  max-height: 85vh;
   background-color: #ffffff;
   border-radius: 24px 24px 0 0;
   padding: 20px 16px;
@@ -265,8 +275,24 @@ textarea {
   opacity: 0;
   animation: slide-up-from-bottom 0.3s ease-out forwards;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding-bottom: calc(100px + env(safe-area-inset-bottom));
   margin-bottom: 80px;
+}
+
+.flavor-section {
+  animation: fade-in 0.3s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes slide-up-from-bottom {
