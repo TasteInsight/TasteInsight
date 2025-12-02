@@ -890,9 +890,6 @@ export default {
         
         // 5. 重新加载列表并返回
         await loadCanteens()
-        // 如果是更新操作，询问是否返回列表或者留下来继续编辑
-        // 或者简单的逻辑：如果是添加了窗口，可能希望继续留在页面看结果？
-        // 现在的逻辑：更新成功后返回列表
         backToList()
       } catch (error) {
         console.error('保存食堂失败:', error)
