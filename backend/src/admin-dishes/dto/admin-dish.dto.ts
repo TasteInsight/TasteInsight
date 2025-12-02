@@ -37,6 +37,8 @@ export class AdminDishDto {
   price: number;
   description: string | null;
   images: string[];
+  parentDishId?: string;
+  subDishId?: string[];
 
   // Ingredients & Taste
   ingredients: string[];

@@ -110,6 +110,16 @@ export class AdminDishesService {
       throw new ForbiddenException('权限不足');
     }
 
+    // 为了更稳健地确保返回的父菜品包含其子菜品 ID（有时关系加载可能未及时反映），
+    // 额外查询一次子菜品列表并注入到返回 DTO 中。
+    const childRows = await this.prisma.dish.findMany({
+      where: { parentDishId: id },
+      select: { id: true },
+    });
+
+    // 将子项 id 列表注入到 dish 对象，方便 mapToAdminDishDto 使用
+    (dish as any).subDishes = childRows.map((r) => ({ id: r.id }));
+
     return {
       code: 200,
       message: 'success',
@@ -439,6 +449,8 @@ export class AdminDishesService {
       price: dish.price,
       description: dish.description,
       images: dish.images,
+      parentDishId: dish.parentDishId,
+      subDishId: dish.subDishes?.map((s: any) => s.id) ?? [],
       ingredients: dish.ingredients,
       allergens: dish.allergens,
       spicyLevel: dish.spicyLevel,
@@ -479,6 +491,8 @@ export class AdminDishesService {
       price: dishUpload.price,
       description: dishUpload.description,
       images: dishUpload.images,
+      parentDishId: dishUpload.parentDishId ?? undefined,
+      subDishId: [],
       ingredients: dishUpload.ingredients,
       allergens: dishUpload.allergens,
       spicyLevel: dishUpload.spicyLevel,
