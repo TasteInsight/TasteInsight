@@ -1,6 +1,11 @@
 <template>
-  <view class="fixed inset-0 bg-black/40 z-[9999] flex items-end justify-center" @tap="handleClose" @touchmove.stop.prevent>
-    <view class="review-form-container" @tap.stop @touchmove.stop>
+  <view class="fixed inset-0 bg-black/40 z-[9999] flex items-end justify-center" @tap="handleClose">
+    <scroll-view 
+      class="review-form-container" 
+      scroll-y 
+      :scroll-with-animation="true"
+      @tap.stop
+    >
       <!-- 标题栏 -->
       <view class="flex justify-center items-center mb-4 pb-4 border-b border-gray-100 relative">
         <h2 class="text-lg font-bold text-gray-800">写评价</h2>
@@ -81,7 +86,7 @@
       >
         {{ submitting ? '提交中...' : '提交评价' }}
       </button>
-    </view>
+    </scroll-view>
   </view>
 </template>
 
