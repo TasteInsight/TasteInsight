@@ -8,7 +8,10 @@ import type {
   DishReviewsData,
   PaginationResponse,
   ApiResponse,
-  ImageUploadResponse
+  ImageUploadResponse,
+  BatchParseResponse,
+  BatchConfirmResponse,
+  BatchConfirmRequest
 } from '@/types/api'
 
 /**
@@ -145,7 +148,33 @@ export const dishApi = {
   async getDishReviews(id: string, params?: GetDishReviewsParams): Promise<ApiResponse<DishReviewsData>> {
     const response = await request.get<ApiResponse<DishReviewsData>>(`/admin/dishes/${id}/reviews`, { params });
     return response;
+  },
+
+    /**
+ * 1. 解析批量导入文件
+ * @param file Excel 文件
+ * @returns 解析后的数据列表供预览
+ */
+  async parseBatchExcel(file: File): Promise<ApiResponse<BatchParseResponse>> {
+    const formData = new FormData()
+    formData.append('file', file)
+    // 注意：需要后端实现对应的 /admin/dishes/batch/parse 接口
+    return request.post('/admin/dishes/batch/parse', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+
+  /**
+   * 2. 确认并提交批量导入数据
+   * @param data 确认后的菜品列表
+   * @returns 导入结果
+   */
+  async confirmBatchImport(data: BatchConfirmRequest): Promise<ApiResponse<BatchConfirmResponse>> {
+    // 注意：需要后端实现对应的 /admin/dishes/batch/confirm 接口
+    return request.post('/admin/dishes/batch/confirm', data)
   }
 }
+
+
 
 export default dishApi
