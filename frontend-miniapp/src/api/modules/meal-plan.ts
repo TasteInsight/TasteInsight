@@ -13,14 +13,28 @@ export const getMealPlans = (): Promise<ApiResponse<{ items: MealPlan[] }>> => {
 };
 
 /**
- * 创建/更新饮食计划
+ * 创建饮食计划
  */
-export const createOrUpdateMealPlan = (
+export const createMealPlan = (
   planData: MealPlanRequest
 ): Promise<ApiResponse<MealPlan>> => {
   return request<MealPlan>({
     url: '/meal-plans',
     method: 'POST',
+    data: planData,
+  });
+};
+
+/**
+ * 更新饮食计划
+ */
+export const updateMealPlan = (
+  planData: MealPlanRequest,
+  id: string
+): Promise<ApiResponse<MealPlan>> => {
+  return request<MealPlan>({
+    url: `/meal-plans/${id}`,
+    method: 'PATCH',
     data: planData,
   });
 };

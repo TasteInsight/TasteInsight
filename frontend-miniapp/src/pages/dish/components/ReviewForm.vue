@@ -1,6 +1,11 @@
 <template>
   <view class="fixed inset-0 bg-black/40 z-[9999] flex items-end justify-center" @tap="handleClose">
-    <view class="review-form-container" @tap.stop catchtouchmove="true">
+    <scroll-view 
+      class="review-form-container" 
+      scroll-y 
+      :scroll-with-animation="true"
+      @tap.stop
+    >
       <!-- 标题栏 -->
       <view class="flex justify-center items-center mb-4 pb-4 border-b border-gray-100 relative">
         <h2 class="text-lg font-bold text-gray-800">写评价</h2>
@@ -19,10 +24,43 @@
           <text
             v-for="star in 5"
             :key="star"
-            class="cursor-pointer inline-block leading-none select-none transition-all duration-200"
-            :class="star <= rating ? 'text-yellow-400 text-[42px] star-glow' : 'text-gray-300 text-[38px]'"
+            class="cursor-pointer inline-block leading-none select-none transition-all duration-200 star-glow"
+            :style="{ fontSize: star <= rating ? '48px' : '40px', color: star <= rating ? '#fbbf24' : '#d1d5db' }"
             @tap="setRating(star)"
           >{{ star <= rating ? '★' : '☆' }}</text>
+        </view>
+      </view>
+
+      <!-- 口味细节评分-->
+      <view v-if="rating > 0" class="mb-5 flavor-section">
+        <view class="flex items-center justify-between mb-3">
+          <view class="text-sm font-medium text-gray-700">口味细节（可选）</view>
+          <button
+            v-if="hasFlavorSelection"
+            class="px-3 py-1.5 text-sm font-medium text-ts-purple bg-purple-50 border border-purple-200 rounded-full hover:bg-purple-100 active:bg-purple-200 transition-colors duration-200"
+            @tap="resetFlavorRatings"
+          >清除选择</button>
+        </view>
+
+        <view
+          v-for="option in flavorOptions"
+          :key="option.key"
+          class="relative flex items-center py-4"
+        >
+          <text class="text-gray-700 text-base font-medium">{{ option.label }}</text>
+          <view class="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-3">
+            <text
+              v-for="star in 5"
+              :key="star"
+              class="cursor-pointer inline-block leading-none select-none transition-all duration-200"
+              :style="{ fontSize: star <= flavorRatings[option.key] ? '40px' : '32px', color: star <= flavorRatings[option.key] ? '#fbbf24' : '#d1d5db' }"
+              @tap="setFlavorRating(option.key, star)"
+            >{{ star <= flavorRatings[option.key] ? '★' : '☆' }}</text>
+          </view>
+        </view>
+
+        <view v-if="showFlavorError && !flavorSelectionComplete" class="text-xs text-red-500 mt-2">
+          请选择全部口味评分或全部留空
         </view>
       </view>
 
@@ -48,13 +86,14 @@
       >
         {{ submitting ? '提交中...' : '提交评价' }}
       </button>
-    </view>
+    </scroll-view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { createReview } from '@/api/modules/review';
+import type { ReviewCreateRequest } from '@/types/api';
 
 interface Props {
   dishId: string;
@@ -69,9 +108,34 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-const rating = ref(5);
+const rating = ref(0);
 const content = ref('');
 const submitting = ref(false);
+const showFlavorError = ref(false);
+
+type FlavorKey = 'spicyLevel' | 'sweetness' | 'saltiness' | 'oiliness';
+
+const flavorOptions: Array<{ key: FlavorKey; label: string; hint: string }> = [
+  { key: 'spicyLevel', label: '辣度', hint: '辣味程度' },
+  { key: 'sweetness', label: '甜度', hint: '甜味浓淡' },
+  { key: 'saltiness', label: '咸度', hint: '咸味强度' },
+  { key: 'oiliness', label: '油腻程度', hint: '油脂感' },
+];
+
+const flavorRatings = ref<Record<FlavorKey, number>>({
+  spicyLevel: 0,
+  sweetness: 0,
+  saltiness: 0,
+  oiliness: 0,
+});
+
+const hasFlavorSelection = computed(() =>
+  Object.values(flavorRatings.value).some(value => value > 0)
+);
+
+const flavorSelectionComplete = computed(() =>
+  !hasFlavorSelection.value || Object.values(flavorRatings.value).every(value => value > 0)
+);
 
 // 隐藏tabbar
 onMounted(() => {
@@ -107,14 +171,36 @@ onUnmounted(() => {
 });
 
 const ratingText = computed(() => {
-  const texts = ['', '非常差', '差', '一般', '好', '非常好'];
-  return texts[rating.value] || '';
+  const texts = ['请选择评分', '非常差', '差', '一般', '好', '非常好'];
+  return texts[rating.value] || texts[0];
 });
 
 
 const setRating = (star: number) => {
   rating.value = star;
 };
+
+const setFlavorRating = (key: FlavorKey, value: number) => {
+  showFlavorError.value = false;
+  flavorRatings.value[key] = flavorRatings.value[key] === value ? 0 : value;
+};
+
+const resetFlavorRatings = () => {
+  flavorRatings.value = {
+    spicyLevel: 0,
+    sweetness: 0,
+    saltiness: 0,
+    oiliness: 0,
+  };
+  showFlavorError.value = false;
+};
+
+// 当主评分清空时重置口味评分
+watch(rating, (value) => {
+  if (value === 0) {
+    resetFlavorRatings();
+  }
+});
 
 const handleClose = () => {
   emit('close');
@@ -126,14 +212,40 @@ const handleSubmit = async () => {
   submitting.value = true;
 
   try {
-    const response = await createReview({
+    if (rating.value === 0) {
+      uni.showToast({
+        title: '请先选择总体评分',
+        icon: 'none',
+      });
+      submitting.value = false;
+      return;
+    }
+
+    if (!flavorSelectionComplete.value) {
+      showFlavorError.value = true;
+      submitting.value = false;
+      uni.showToast({
+        title: '请选择全部口味评分或全部留空',
+        icon: 'none',
+      });
+      return;
+    }
+
+    const payload: ReviewCreateRequest = {
       dishId: props.dishId,
       rating: rating.value,
       content: content.value.trim(),
-    });
+    };
+
+    if (hasFlavorSelection.value) {
+      payload.ratingDetails = { ...flavorRatings.value };
+    }
+
+    const response = await createReview(payload);
 
     if (response.code === 200) {
       emit('success');
+      resetFlavorRatings();
     } else {
       uni.showToast({
         title: response.message || '提交失败',
@@ -159,7 +271,7 @@ textarea {
 
 .review-form-container {
   width: 100%;
-  max-height: 70vh;
+  max-height: 85vh;
   background-color: #ffffff;
   border-radius: 24px 24px 0 0;
   padding: 20px 16px;
@@ -168,8 +280,24 @@ textarea {
   opacity: 0;
   animation: slide-up-from-bottom 0.3s ease-out forwards;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding-bottom: calc(100px + env(safe-area-inset-bottom));
   margin-bottom: 80px;
+}
+
+.flavor-section {
+  animation: fade-in 0.3s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes slide-up-from-bottom {

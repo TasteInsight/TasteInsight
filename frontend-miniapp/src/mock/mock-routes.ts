@@ -24,7 +24,8 @@ import { mockGetCanteenList, mockGetCanteenDetail, mockGetWindowList, mockGetWin
 import { mockGetNewsList, mockGetNewsById } from './services/news';
 import { 
   mockGetMealPlans, 
-  mockCreateOrUpdateMealPlan, 
+  mockCreateMealPlan,
+  mockUpdateMealPlan,
   mockDeleteMealPlan,
   mockExecutePlan,
 } from './services/meal-plan';
@@ -249,11 +250,25 @@ registerMockRoute('POST', '/meal-plans/:id/execute', async (url) => {
   return mockSuccess(data);
 });
 
-// POST /meal-plans - 创建/更新用餐计划
+// POST /meal-plans - 创建用餐计划
 registerMockRoute('POST', '/meal-plans', async (url, options) => {
   const planData = options.data as any;
-  const data = await mockCreateOrUpdateMealPlan(planData);
+  const data = await mockCreateMealPlan(planData);
   return mockSuccess(data);
+});
+
+// PATCH /meal-plans/:id - 更新用餐计划
+registerMockRoute('PATCH', '/meal-plans/:id', async (url, options) => {
+  const match = url.match(/\/meal-plans\/([^/]+)$/);
+  const planId = match?.[1] || '';
+  const planData = options.data as any;
+  
+  const data = await mockUpdateMealPlan(planId, planData);
+  if (data) {
+    return mockSuccess(data);
+  } else {
+    return { code: 404, message: '规划不存在', data: null };
+  }
 });
 
 // DELETE /meal-plans/:id - 删除用餐计划

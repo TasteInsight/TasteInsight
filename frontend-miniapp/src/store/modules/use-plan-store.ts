@@ -3,7 +3,8 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { 
   getMealPlans, 
-  createOrUpdateMealPlan, 
+  createMealPlan, 
+  updateMealPlan,
   deleteMealPlan 
 } from '@/api/modules/meal-plan';
 import { getDishById } from '@/api/modules/dish';
@@ -133,7 +134,7 @@ export const usePlanStore = defineStore('plan', () => {
     loading.value = true;
     error.value = null;
     try {
-      const response = await createOrUpdateMealPlan(planData);
+      const response = await createMealPlan(planData);
       const newPlan = response.data;
       
       // 更新本地列表
@@ -152,11 +153,11 @@ export const usePlanStore = defineStore('plan', () => {
   };
 
   // 更新规划
-  const updatePlan = async (planId: string, planData: MealPlanRequest) => {
+  const updatePlanById = async (planId: string, planData: MealPlanRequest) => {
     loading.value = true;
     error.value = null;
     try {
-      const response = await createOrUpdateMealPlan(planData);
+      const response = await updateMealPlan(planData, planId);
       const updatedPlan = response.data;
       
       // 更新本地列表
@@ -270,7 +271,7 @@ export const usePlanStore = defineStore('plan', () => {
     // 方法
     fetchPlans,
     createPlan,
-    updatePlan,
+    updatePlan: updatePlanById,
     removePlan,
     executePlan,
     setSelectedPlan,

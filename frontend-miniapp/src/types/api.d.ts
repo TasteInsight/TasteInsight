@@ -7,7 +7,7 @@
 /**
  * HTTP 请求方法
  */
-export type RequestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+export type RequestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
 /**
  * 分页元信息
@@ -329,10 +329,18 @@ export interface Review {
   userNickname: string;
   userAvatar: string;
   rating: number;
+  ratingDetails?: RatingDetails | null;
   content: string;
   images: string[];
   status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
+}
+
+export interface RatingDetails {
+  spicyLevel: number;
+  sweetness: number;
+  saltiness: number;
+  oiliness: number;
 }
 
 /**
@@ -683,6 +691,7 @@ export interface ReviewCreateRequest {
   rating: number;
   content?: string;
   images?: string[];
+  ratingDetails?: RatingDetails;
 }
 
 /**
