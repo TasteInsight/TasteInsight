@@ -11,21 +11,27 @@ import { ReportType } from '@/common/enums';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { ReportCommentDto } from './dto/report-comment.dto';
 
-const createMockPrisma = () => ({
-  comment: {
-    findMany: jest.fn(),
-    count: jest.fn(),
-    findUnique: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-  },
-  review: {
-    findUnique: jest.fn(),
-  },
-  report: {
-    create: jest.fn(),
-  },
-});
+const createMockPrisma = () => {
+  const mock = {
+    comment: {
+      findMany: jest.fn(),
+      count: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+    },
+    review: {
+      findUnique: jest.fn(),
+    },
+    report: {
+      create: jest.fn(),
+    },
+    $queryRaw: jest.fn(),
+    $transaction: jest.fn(),
+  };
+  mock.$transaction.mockImplementation((cb) => cb(mock));
+  return mock;
+};
 
 describe('CommentsService', () => {
   let service: CommentsService;
@@ -136,6 +142,7 @@ describe('CommentsService', () => {
     });
 
     it('validates parent comment belongs to same review', async () => {
+      prisma.$queryRaw.mockResolvedValue([{ id: 'r1' }]);
       prisma.review.findUnique.mockResolvedValue({ id: 'r1' });
       prisma.comment.findUnique.mockResolvedValue({
         id: 'p1',
@@ -149,6 +156,7 @@ describe('CommentsService', () => {
     });
 
     it('rejects replying to deleted parent comment', async () => {
+      prisma.$queryRaw.mockResolvedValue([{ id: 'r1' }]);
       prisma.review.findUnique.mockResolvedValue({ id: 'r1' });
       prisma.comment.findUnique.mockResolvedValue({
         id: 'p1',
@@ -162,8 +170,10 @@ describe('CommentsService', () => {
     });
 
     it('creates comment and returns detail response', async () => {
+      prisma.$queryRaw.mockResolvedValue([{ id: 'r1' }]);
       prisma.review.findUnique.mockResolvedValue({ id: 'r1' });
       prisma.comment.findUnique.mockResolvedValue(null);
+      prisma.comment.count.mockResolvedValue(0);
       const created = {
         id: 'c1',
         reviewId: 'r1',
@@ -172,6 +182,7 @@ describe('CommentsService', () => {
         createdAt: new Date('2025-01-01T00:00:00Z'),
         deletedAt: null,
         status: 'pending',
+        floor: 1,
         user: { id: 'user', nickname: 'nick', avatar: 'ava' },
         parentComment: {
           id: 'p1',
@@ -191,6 +202,7 @@ describe('CommentsService', () => {
           content: 'new comment',
           parentCommentId: undefined,
           status: 'pending',
+          floor: 1,
         },
         include: {
           user: { select: { id: true, nickname: true, avatar: true } },
@@ -208,6 +220,7 @@ describe('CommentsService', () => {
       expect(result.data).toMatchObject({
         id: 'c1',
         status: 'pending',
+        floor: 1,
         parentComment: {
           id: 'p1',
           userId: 'parent',
