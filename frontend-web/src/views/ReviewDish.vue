@@ -255,14 +255,6 @@ export default {
       }
     }
     
-    // 更新单个菜品状态
-    const updateDishStatus = (dishId, newStatus) => {
-      const dish = reviewDishes.value.find(d => d.id === dishId)
-      if (dish) {
-        dish.status = newStatus
-      }
-    }
-    
     // 监听筛选条件变化，重新加载数据
     watch([statusFilter, canteenFilter], () => {
       currentPage.value = 1
