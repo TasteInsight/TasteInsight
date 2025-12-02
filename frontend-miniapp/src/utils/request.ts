@@ -53,7 +53,7 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
     uni.request({
       // 1. 基础配置
       url: fullUrl, // 自动拼接完整的请求地址
-      method: options.method || 'GET',
+      method: (options.method || 'GET') as 'GET' | 'POST' | 'PUT' | 'DELETE' | 'OPTIONS' | 'HEAD' | 'TRACE' | 'CONNECT',
       data: options.data || {},
       header: header,
       timeout: options.timeout || 15000, // 默认15秒超时

@@ -7,7 +7,7 @@
 /**
  * HTTP 请求方法
  */
-export type RequestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
+export type RequestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
 /**
  * 分页元信息
