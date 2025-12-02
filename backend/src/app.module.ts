@@ -18,6 +18,7 @@ import { CanteensModule } from './canteens/canteens.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { CommentsModule } from './comments/comments.module';
 import { NewsModule } from './news/news.module';
+import { MealPlansModule } from './meal-plans/meal-plans.module';
 import { UploadModule } from './upload/upload.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
@@ -30,6 +31,7 @@ import { join } from 'path';
     ReviewsModule,
     CommentsModule,
     NewsModule,
+    MealPlansModule,
     AdminDishesModule,
     AdminReviewsModule,
     AdminCommentsModule,
