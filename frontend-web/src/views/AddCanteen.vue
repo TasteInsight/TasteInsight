@@ -184,17 +184,17 @@
                   <!-- 食堂图片上传 -->
                   <div>
                     <label class="block text-gray-700 font-medium mb-2">食堂图片</label>
-                    <div class="border-2 border-dashed rounded-lg aspect-square w-[60%] relative flex items-center justify-center bg-gray-50 overflow-hidden">
+                    <div class="border-2 border-dashed rounded-lg w-[50%] aspect-video relative flex items-center justify-center bg-gray-50 overflow-hidden group">
                       <img 
                         v-if="formData.imageUrl" 
                         :src="formData.imageUrl" 
                         alt="食堂图片预览"
-                        class="w-full h-full object-cover object-center"
+                        class="w-full h-full object-contain object-center"
                       >
                       <div v-else class="text-center p-6">
                         <span class="iconify text-4xl text-gray-400 mx-auto" data-icon="bi:image"></span>
                         <div class="mt-2">点击上传食堂图片</div>
-                        <p class="text-sm text-gray-500 mt-1">建议尺寸800x800像素，小于2MB</p>
+                        <p class="text-sm text-gray-500 mt-1">建议上传清晰的图片，小于2MB</p>
                       </div>
                       <input 
                         type="file" 
@@ -202,6 +202,10 @@
                         @change="handleImageUpload"
                         accept="image/*"
                       >
+                      <!-- 悬浮提示 -->
+                      <div v-if="formData.imageUrl" class="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                        <span class="text-white font-medium">点击更换图片</span>
+                      </div>
                     </div>
                   </div>
                 </div>
