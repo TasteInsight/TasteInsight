@@ -24,20 +24,20 @@
           <text
             v-for="star in 5"
             :key="star"
-            class="cursor-pointer inline-block leading-none select-none transition-all duration-200"
-            :class="star <= rating ? 'text-yellow-400 text-[42px] star-glow' : 'text-gray-300 text-[38px]'"
+            class="cursor-pointer inline-block leading-none select-none transition-all duration-200 star-glow"
+            :style="{ fontSize: star <= rating ? '48px' : '40px', color: star <= rating ? '#fbbf24' : '#d1d5db' }"
             @tap="setRating(star)"
           >{{ star <= rating ? '★' : '☆' }}</text>
         </view>
       </view>
 
-      <!-- 口味细节评分 - 仿大众点评风格 -->
+      <!-- 口味细节评分-->
       <view v-if="rating > 0" class="mb-5 flavor-section">
         <view class="flex items-center justify-between mb-3">
           <view class="text-sm font-medium text-gray-700">口味细节（可选）</view>
           <button
             v-if="hasFlavorSelection"
-            class="text-xs text-ts-purple bg-transparent border-0 p-1"
+            class="px-3 py-1.5 text-sm font-medium text-ts-purple bg-purple-50 border border-purple-200 rounded-full hover:bg-purple-100 active:bg-purple-200 transition-colors duration-200"
             @tap="resetFlavorRatings"
           >清除选择</button>
         </view>
@@ -45,7 +45,7 @@
         <view
           v-for="option in flavorOptions"
           :key="option.key"
-          class="relative flex items-center py-4 border-t border-gray-100 first:border-t-0"
+          class="relative flex items-center py-4"
         >
           <text class="text-gray-700 text-base font-medium">{{ option.label }}</text>
           <view class="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-3">
@@ -53,7 +53,7 @@
               v-for="star in 5"
               :key="star"
               class="cursor-pointer inline-block leading-none select-none transition-all duration-200"
-              :class="star <= flavorRatings[option.key] ? 'text-yellow-400 text-[36px]' : 'text-gray-300 text-[32px]'"
+              :style="{ fontSize: star <= flavorRatings[option.key] ? '40px' : '32px', color: star <= flavorRatings[option.key] ? '#fbbf24' : '#d1d5db' }"
               @tap="setFlavorRating(option.key, star)"
             >{{ star <= flavorRatings[option.key] ? '★' : '☆' }}</text>
           </view>
