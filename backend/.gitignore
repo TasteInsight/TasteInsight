@@ -80,3 +80,6 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # .bak
 *.bak
+
+# Nginx Conf
+nginx.conf
