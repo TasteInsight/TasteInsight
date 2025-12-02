@@ -201,6 +201,7 @@ export class AdminDishesService {
         name: createDto.name,
         tags: createDto.tags || [],
         price: createDto.price,
+        priceUnit: createDto.priceUnit,
         description: createDto.description || '',
         images: createDto.images || [],
         parentDishId: createDto.parentDishId,
@@ -271,6 +272,7 @@ export class AdminDishesService {
     if (updateDto.name !== undefined) updateData.name = updateDto.name;
     if (updateDto.tags !== undefined) updateData.tags = updateDto.tags;
     if (updateDto.price !== undefined) updateData.price = updateDto.price;
+    if (updateDto.priceUnit !== undefined) updateData.priceUnit = updateDto.priceUnit;
     if (updateDto.description !== undefined)
       updateData.description = updateDto.description;
     if (updateDto.images !== undefined) updateData.images = updateDto.images;
@@ -447,6 +449,7 @@ export class AdminDishesService {
       name: dish.name,
       tags: dish.tags,
       price: dish.price,
+      priceUnit: dish.priceUnit,
       description: dish.description,
       images: dish.images,
       parentDishId: dish.parentDishId,
@@ -489,6 +492,7 @@ export class AdminDishesService {
       name: dishUpload.name,
       tags: dishUpload.tags,
       price: dishUpload.price,
+      priceUnit: dishUpload.priceUnit,
       description: dishUpload.description,
       images: dishUpload.images,
       parentDishId: dishUpload.parentDishId,

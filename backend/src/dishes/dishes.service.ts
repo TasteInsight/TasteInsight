@@ -447,6 +447,7 @@ export class DishesService {
         name: uploadDishDto.name || '未命名菜品',
         tags: uploadDishDto.tags || [],
         price: uploadDishDto.price,
+        priceUnit: uploadDishDto.priceUnit,
         description: uploadDishDto.description,
         images: uploadDishDto.images || [],
         ingredients: uploadDishDto.ingredients || [],

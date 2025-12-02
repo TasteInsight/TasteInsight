@@ -217,6 +217,7 @@ model Dish {
   name        String
   tags        String[]
   price       Float
+  priceUnit   String?
   description String?
   images      String[]
 
@@ -293,6 +294,7 @@ model DishUpload {
   name        String
   tags        String[]
   price       Float
+  priceUnit   String?
   description String?
   images      String[]
   ingredients String[]

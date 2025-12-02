@@ -15,6 +15,7 @@ export class DishDto {
   name: string;
   tags: string[];
   price: number;
+  priceUnit?: string;
   description?: string;
   images: string[];
   parentDishId?: string;
@@ -46,6 +47,7 @@ export class DishDto {
     dto.name = entity.name;
     dto.tags = entity.tags ?? [];
     dto.price = entity.price;
+    dto.priceUnit = entity.priceUnit;
     dto.description = entity.description;
     dto.images = entity.images ?? [];
     dto.parentDishId = entity.parentDishId;

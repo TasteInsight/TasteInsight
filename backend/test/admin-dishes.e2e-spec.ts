@@ -211,6 +211,7 @@ describe('AdminDishesController (e2e)', () => {
       expect(response.body.data).toBeDefined();
       expect(response.body.data.id).toBe(testDishId);
       expect(response.body.data.name).toBe('宫保鸡丁');
+      expect(response.body.data.priceUnit).toBeDefined(); // 验证priceUnit字段存在
     });
 
     it('should return 404 for non-existent dish', async () => {
@@ -258,6 +259,7 @@ describe('AdminDishesController (e2e)', () => {
         .send({
           name: '测试菜品-创建',
           price: 20.0,
+          priceUnit: '份',
           canteenName: '第一食堂',
           windowId: window1Id,
           tags: ['测试'],
@@ -271,6 +273,7 @@ describe('AdminDishesController (e2e)', () => {
       expect(response.body.data).toBeDefined();
       expect(response.body.data.name).toBe('测试菜品-创建');
       expect(response.body.data.price).toBe(20.0);
+      expect(response.body.data.priceUnit).toBe('份');
       expect(response.body.data.status).toBe('pending');
     });
 
@@ -424,6 +427,7 @@ describe('AdminDishesController (e2e)', () => {
         .send({
           name: '测试菜品-完整字段',
           price: 25.0,
+          priceUnit: '两',
           canteenId: canteen1Id,
           windowId: window1Id,
           tags: ['川菜', '辣味'],
@@ -445,20 +449,36 @@ describe('AdminDishesController (e2e)', () => {
       expect(response.body.data.ingredients).toEqual(['鸡肉', '花生']);
       expect(response.body.data.allergens).toEqual(['花生']);
       expect(response.body.data.spicyLevel).toBe(3);
+      expect(response.body.data.priceUnit).toBe('两');
     });
 
-    it('should fail to create dish when windowName does not exist and canteenId is missing', async () => {
-      // This test verifies that when using windowName lookup without canteenId,
-      // and the windowName doesn't exist, the request should fail with 400
-      await request(app.getHttpServer())
+    it('should create a dish with null priceUnit', async () => {
+      const response = await request(app.getHttpServer())
         .post('/admin/dishes')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .send({
-          name: '测试菜品',
-          price: 18.0,
-          windowName: '不存在的窗口',
+          name: '测试菜品-空价格单位',
+          price: 15.0,
+          priceUnit: null,
+          canteenName: '第一食堂',
+          windowId: window1Id,
+          tags: ['测试'],
         })
-        .expect(400);
+        .expect(201);
+
+      expect(response.body.code).toBe(201);
+      expect(response.body.data.priceUnit).toBeNull();
+
+      // 验证数据库中确实为null
+      const upload = await prisma.dishUpload.findUnique({
+        where: { id: response.body.data.id },
+      });
+      expect(upload?.priceUnit).toBeNull();
+
+      // 清理
+      await prisma.dishUpload.delete({
+        where: { id: response.body.data.id },
+      });
     });
   });
 
@@ -496,6 +516,7 @@ describe('AdminDishesController (e2e)', () => {
         .send({
           name: '测试菜品-已更新',
           price: 35.0,
+          priceUnit: '大份',
           description: '更新后的描述',
         })
         .expect(200);
@@ -504,6 +525,7 @@ describe('AdminDishesController (e2e)', () => {
       expect(response.body.message).toBe('更新成功');
       expect(response.body.data.name).toBe('测试菜品-已更新');
       expect(response.body.data.price).toBe(35.0);
+      expect(response.body.data.priceUnit).toBe('大份');
     });
 
     it('should update only specified fields', async () => {
@@ -579,6 +601,7 @@ describe('AdminDishesController (e2e)', () => {
         .set('Authorization', `Bearer ${superAdminToken}`)
         .send({
           tags: ['川菜', '更新后的标签'],
+          priceUnit: null,
           images: ['https://example.com/updated.jpg'],
           ingredients: ['更新后的食材'],
           allergens: ['花生', '海鲜'],
@@ -603,6 +626,7 @@ describe('AdminDishesController (e2e)', () => {
       expect(response.body.data.sweetness).toBe(3);
       expect(response.body.data.saltiness).toBe(2);
       expect(response.body.data.oiliness).toBe(3);
+      expect(response.body.data.priceUnit).toBeNull();
     });
 
     it('should update dish window using windowId', async () => {

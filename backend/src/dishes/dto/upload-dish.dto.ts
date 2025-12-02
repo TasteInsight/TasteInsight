@@ -31,6 +31,10 @@ export class UploadDishDto {
 
   @IsOptional()
   @IsString()
+  priceUnit?: string;
+
+  @IsOptional()
+  @IsString()
   description?: string;
 
   @IsOptional()
