@@ -59,6 +59,7 @@ describe('DishesController (e2e)', () => {
       expect(response.body.data.name).toBe('宫保鸡丁');
       expect(response.body.data.canteenId).toBeDefined();
       expect(response.body.data.windowId).toBeDefined();
+      expect(response.body.data.priceUnit).toBeDefined(); // 验证priceUnit字段存在
     });
 
     it('should return 404 for non-existent dish', async () => {
@@ -410,6 +411,7 @@ describe('DishesController (e2e)', () => {
           name: '用户上传测试菜品',
           tags: ['测试', '家常菜'],
           price: 15.5,
+          priceUnit: '份',
           description: '这是用户上传的测试菜品',
           images: ['https://example.com/test-dish.jpg'],
           ingredients: ['食材1', '食材2'],
@@ -438,6 +440,7 @@ describe('DishesController (e2e)', () => {
       expect(upload).not.toBeNull();
       expect(upload?.status).toBe('pending');
       expect(upload?.name).toBe('用户上传测试菜品');
+      expect(upload?.priceUnit).toBe('份');
 
       // 清理
       await prisma.dishUpload.delete({

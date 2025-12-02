@@ -35,6 +35,7 @@ export class AdminDishDto {
   name: string;
   tags: string[];
   price: number;
+  priceUnit: string | null;
   description: string | null;
   images: string[];
 
@@ -118,6 +119,10 @@ export class AdminCreateDishDto {
   @IsNumber()
   @Min(0)
   price: number;
+
+  @IsOptional()
+  @IsString()
+  priceUnit?: string;
 
   @IsOptional()
   @IsString()
@@ -225,6 +230,10 @@ export class AdminUpdateDishDto {
   @IsNumber()
   @Min(0)
   price?: number;
+
+  @IsOptional()
+  @IsString()
+  priceUnit?: string;
 
   @IsOptional()
   @IsString()
