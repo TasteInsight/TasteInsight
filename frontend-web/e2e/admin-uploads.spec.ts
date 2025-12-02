@@ -203,7 +203,7 @@ test.describe('Admin Uploads API Tests', () => {
     test('should return pending uploads for super admin', async ({ request }) => {
       const response = await request.get(`${baseURL}admin/dishes/uploads/pending`, {
         headers: { Authorization: `Bearer ${superAdminToken}` },
-        params: { page: 1, pageSize: 20 },
+        params: { page: 1, pageSize: 20, status: 'pending' },
       });
 
       expect(response.ok()).toBe(true);
@@ -297,6 +297,77 @@ test.describe('Admin Uploads API Tests', () => {
         expect(upload).toHaveProperty('status');
         expect(upload).toHaveProperty('createdAt');
       }
+    });
+
+    test('should filter uploads by status', async ({ request }) => {
+      // Create test uploads
+      const pendingUploadId = await createTestUpload(request, superAdminToken, '紫荆园', '一楼窗口', `${TEST_UPLOAD_PREFIX}FILTER_PENDING`);
+      const approveUploadId = await createTestUpload(request, superAdminToken, '紫荆园', '一楼窗口', `${TEST_UPLOAD_PREFIX}FILTER_APPROVE`);
+      const rejectUploadId = await createTestUpload(request, superAdminToken, '紫荆园', '一楼窗口', `${TEST_UPLOAD_PREFIX}FILTER_REJECT`);
+
+      test.skip(!pendingUploadId || !approveUploadId || !rejectUploadId, 'Failed to create test uploads');
+
+      // Approve one upload
+      await request.post(`${baseURL}admin/dishes/uploads/${approveUploadId}/approve`, {
+        headers: { Authorization: `Bearer ${superAdminToken}` },
+      });
+
+      // Reject one upload
+      await request.post(`${baseURL}admin/dishes/uploads/${rejectUploadId}/reject`, {
+        headers: { Authorization: `Bearer ${superAdminToken}` },
+        data: { reason: 'E2E test rejection' },
+      });
+
+      // Test filtering by pending
+      const pendingResponse = await request.get(`${baseURL}admin/dishes/uploads/pending`, {
+        headers: { Authorization: `Bearer ${superAdminToken}` },
+        params: { status: 'pending', pageSize: 100 },
+      });
+      expect(pendingResponse.ok()).toBe(true);
+      const pendingData = await pendingResponse.json();
+      const pendingUploads = pendingData.data?.items || [];
+      expect(pendingUploads.some(upload => upload.id === pendingUploadId)).toBe(true);
+      expect(pendingUploads.some(upload => upload.id === approveUploadId)).toBe(false);
+      expect(pendingUploads.some(upload => upload.id === rejectUploadId)).toBe(false);
+
+      // Test filtering by approved
+      const approvedResponse = await request.get(`${baseURL}admin/dishes/uploads/pending`, {
+        headers: { Authorization: `Bearer ${superAdminToken}` },
+        params: { status: 'approved', pageSize: 100 },
+      });
+      expect(approvedResponse.ok()).toBe(true);
+      const approvedData = await approvedResponse.json();
+      const approvedUploads = approvedData.data?.items || [];
+      expect(approvedUploads.some(upload => upload.id === approveUploadId)).toBe(true);
+      expect(approvedUploads.some(upload => upload.id === pendingUploadId)).toBe(false);
+      expect(approvedUploads.some(upload => upload.id === rejectUploadId)).toBe(false);
+
+      // Test filtering by rejected
+      const rejectedResponse = await request.get(`${baseURL}admin/dishes/uploads/pending`, {
+        headers: { Authorization: `Bearer ${superAdminToken}` },
+        params: { status: 'rejected', pageSize: 100 },
+      });
+      expect(rejectedResponse.ok()).toBe(true);
+      const rejectedData = await rejectedResponse.json();
+      const rejectedUploads = rejectedData.data?.items || [];
+      expect(rejectedUploads.some(upload => upload.id === rejectUploadId)).toBe(true);
+      expect(rejectedUploads.some(upload => upload.id === pendingUploadId)).toBe(false);
+      expect(rejectedUploads.some(upload => upload.id === approveUploadId)).toBe(false);
+
+      // Test no status filter (all)
+      const allResponse = await request.get(`${baseURL}admin/dishes/uploads/pending`, {
+        headers: { Authorization: `Bearer ${superAdminToken}` },
+        params: { pageSize: 100 },
+      });
+      expect(allResponse.ok()).toBe(true);
+      const allData = await allResponse.json();
+      const allUploads = allData.data?.items || [];
+      expect(allUploads.some(upload => upload.id === pendingUploadId)).toBe(true);
+      expect(allUploads.some(upload => upload.id === approveUploadId)).toBe(true);
+      expect(allUploads.some(upload => upload.id === rejectUploadId)).toBe(true);
+
+      // Cleanup
+      await cleanupTestData(request, superAdminToken);
     });
   });
 

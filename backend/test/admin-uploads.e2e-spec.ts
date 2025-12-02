@@ -144,7 +144,7 @@ describe('AdminUploadsController (e2e)', () => {
   describe('/admin/dishes/uploads/pending (GET)', () => {
     it('should return paginated pending uploads list for super admin', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending')
+        .get('/admin/dishes/uploads/pending?status=pending')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
@@ -175,12 +175,61 @@ describe('AdminUploadsController (e2e)', () => {
 
     it('should return pending uploads for reviewer admin with upload:approve permission', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending')
+        .get('/admin/dishes/uploads/pending?status=pending')
         .set('Authorization', `Bearer ${reviewerAdminToken}`)
         .expect(200);
 
       expect(response.body.code).toBe(200);
       expect(response.body.data.items).toBeInstanceOf(Array);
+      // 验证只返回pending状态的记录
+      response.body.data.items.forEach((upload: any) => {
+        expect(upload.status).toBe('pending');
+      });
+    });
+
+    it('should filter uploads by status - approved', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/admin/dishes/uploads/pending?status=approved')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.items).toBeInstanceOf(Array);
+      // 验证只返回approved状态的记录
+      response.body.data.items.forEach((upload: any) => {
+        expect(upload.status).toBe('approved');
+      });
+    });
+
+    it('should filter uploads by status - rejected', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/admin/dishes/uploads/pending?status=rejected')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.items).toBeInstanceOf(Array);
+      // 验证只返回rejected状态的记录
+      response.body.data.items.forEach((upload: any) => {
+        expect(upload.status).toBe('rejected');
+      });
+    });
+
+    it('should return all uploads when no status filter is provided', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/admin/dishes/uploads/pending')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.items).toBeInstanceOf(Array);
+      
+      // 验证返回的结果包含多种状态（不筛选时应该返回所有状态的记录）
+      // seed数据中已经创建了pending、approved、rejected状态的上传
+      const statuses = response.body.data.items.map((upload: any) => upload.status);
+      const uniqueStatuses = [...new Set(statuses)];
+      // 应该至少包含多于一种状态（证明没有按状态筛选）
+      expect(uniqueStatuses.length).toBeGreaterThan(1);
     });
 
     it('should return 401 without auth token', async () => {
@@ -205,7 +254,7 @@ describe('AdminUploadsController (e2e)', () => {
 
     it('should include uploader information in response', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending')
+        .get('/admin/dishes/uploads/pending?status=pending')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
@@ -220,7 +269,7 @@ describe('AdminUploadsController (e2e)', () => {
 
     it('should include dish details in response', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending')
+        .get('/admin/dishes/uploads/pending?status=pending')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
