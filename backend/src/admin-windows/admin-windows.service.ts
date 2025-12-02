@@ -157,7 +157,7 @@ export class AdminWindowsService {
         canteenId,
         floorId,
         name: windowData.name,
-        number: windowData.number,
+        number: windowData.number ?? '',
         position: windowData.position,
         description: windowData.description,
         tags: windowData.tags || [],
@@ -198,7 +198,7 @@ export class AdminWindowsService {
       data: {
         floorId,
         name: windowData.name,
-        number: windowData.number,
+        ...(windowData.number !== undefined ? { number: windowData.number } : {}),
         position: windowData.position,
         description: windowData.description,
         tags: windowData.tags,

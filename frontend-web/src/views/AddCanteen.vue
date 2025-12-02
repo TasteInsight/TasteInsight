@@ -278,7 +278,7 @@
                   </div>
                   
                   <!-- 窗口管理 -->
-                  <div class="mb-6">
+                  <div class="mb-6" v-if="editingCanteen">
                     <div class="flex justify-between items-center mb-2">
                       <label class="block text-gray-700 font-medium">窗口管理</label>
                       <button 
@@ -309,12 +309,19 @@
                           </div>
                           <div>
                             <label class="block text-xs text-gray-500 mb-1">窗口所在楼层 <span class="text-red-500">*</span></label>
-                            <input 
-                              type="text" 
+                            <select 
                               v-model="window.floor" 
                               class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
-                              placeholder="例如：一层"
                             >
+                              <option value="" disabled>请选择楼层</option>
+                              <option 
+                                v-for="floor in availableFloors" 
+                                :key="floor.value" 
+                                :value="floor.value"
+                              >
+                                {{ floor.label }}
+                              </option>
+                            </select>
                           </div>
                           <div>
                             <label class="block text-xs text-gray-500 mb-1">窗口编号</label>
@@ -338,6 +345,15 @@
                     </div>
                     <div v-else class="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
                       <p>点击"添加窗口"可以添加新窗口</p>
+                    </div>
+                  </div>
+                  <div v-else class="mb-6 bg-blue-50 p-4 rounded-lg border border-blue-100">
+                    <div class="flex items-start">
+                      <span class="iconify text-blue-500 mt-1 mr-2" data-icon="carbon:information"></span>
+                      <div>
+                        <h4 class="font-medium text-blue-800">窗口管理</h4>
+                        <p class="text-sm text-blue-600 mt-1">请先填写并保存食堂基本信息（包含楼层信息），保存成功后即可在此处添加和管理窗口。</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -437,11 +453,11 @@ export default {
       try {
         const response = await canteenApi.getWindows(canteenId, { page: 1, pageSize: 100 })
         if (response.code === 200 && response.data) {
-          // 转换窗口数据，将 floor 对象转换为字符串供表单使用
+          // 转换窗口数据，将 floor 信息转换为下拉框可用的值
           windows.value = (response.data.items || []).map(w => ({
             ...w,
-            // 将 floor 对象转换为字符串（用于表单显示）
-            floor: w.floor ? (w.floor.name || w.floor.level || '') : ''
+            floor: w.floor ? (w.floor.level || '') : '',
+            floorLabel: w.floor ? (w.floor.name || w.floor.level || '') : ''
           }))
         }
       } catch (error) {
@@ -564,7 +580,11 @@ export default {
     
     // 添加窗口
     const addWindow = () => {
-      windows.value.push({ name: '', number: '', floor: '', position: '', description: '', tags: [] })
+      if (!availableFloors.value.length) {
+        alert('请先配置并保存楼层信息后再添加窗口')
+        return
+      }
+      windows.value.push({ name: '', number: '', floor: '', floorLabel: '', position: '', description: '', tags: [] })
     }
     
     // 删除窗口
@@ -624,6 +644,46 @@ export default {
       return null
     }
 
+    // 可选楼层列表
+    const availableFloors = computed(() => {
+      if (!formData.floorInput) return []
+      
+      const floors = formData.floorInput.split('/').map(s => s.trim()).filter(s => s)
+      const result = []
+      
+      for (const floorStr of floors) {
+        const level = parseFloorLevel(floorStr)
+        if (level !== null) {
+          result.push({
+            label: floorStr,
+            value: level.toString()
+          })
+        }
+      }
+      return result
+    })
+
+    const resolveWindowFloor = (value, fallbackLabel = '') => {
+      if (!value) {
+        return null
+      }
+      const match = availableFloors.value.find(f => f.value === value)
+      if (match) {
+        return {
+          level: match.value,
+          name: match.label
+        }
+      }
+      const parsedLevel = parseFloorLevel(String(value))
+      if (parsedLevel !== null) {
+        return {
+          level: parsedLevel.toString(),
+          name: fallbackLabel || String(value)
+        }
+      }
+      return null
+    }
+
     const submitForm = async () => {
       // 表单验证
       if (!formData.name || !formData.name.trim()) {
@@ -669,6 +729,23 @@ export default {
         alert('请至少输入一个有效的楼层')
         return
       }
+
+      if (editingCanteen.value) {
+        for (const window of windows.value) {
+          if (!window.name || !window.name.trim()) {
+            continue
+          }
+          if (!window.floor) {
+            alert(`请先为窗口"${window.name}"选择楼层`)
+            return
+          }
+          const floorInfo = resolveWindowFloor(window.floor, window.floorLabel || '')
+          if (!floorInfo) {
+            alert(`窗口"${window.name}"的楼层信息无效，请检查`)
+            return
+          }
+        }
+      }
       
       if (isSubmitting.value) {
         return
@@ -700,19 +777,19 @@ export default {
           imageUrls = [formData.imageUrl]
         }
         
-        // 2. 构建窗口数据（需要包含在创建请求中）
-        const windowsData = windows.value
-          .filter(w => w.name && w.name.trim())
-          .map(w => {
-            const level = parseFloorLevel(w.floor)
-            return {
+        // 2. 构建窗口数据（仅用于新建食堂时）
+        let windowsData = []
+        if (!editingCanteen.value) {
+          windowsData = windows.value
+            .filter(w => w.name && w.name.trim())
+            .map(w => ({
               name: w.name.trim(),
-              number: w.number ? w.number.trim() : 'W1', // 提供默认编号
+              number: w.number ? w.number.trim() : '',
               position: w.position || undefined,
               description: w.description || undefined,
               tags: w.tags || []
-            }
-          })
+            }))
+        }
         
         // 3. 构建请求数据
         // 使用解析出的楼层信息，不再从窗口推导
@@ -735,7 +812,7 @@ export default {
               }))
             : [], // 必须是数组
           floors: parsedFloors,
-          windows: windowsData // 必须是数组
+          ...(editingCanteen.value ? {} : { windows: windowsData })
         }
         
         // 4. 创建或更新食堂
@@ -745,22 +822,28 @@ export default {
           const response = await canteenApi.updateCanteen(editingCanteen.value.id, requestData)
           if (response.code === 200 && response.data) {
             canteenId = response.data.id
+            // 更新当前编辑对象，以防有返回的新数据
+            editingCanteen.value = { ...editingCanteen.value, ...response.data }
             alert('食堂信息已更新！')
           } else {
             throw new Error(response.message || '更新食堂失败')
           }
         } else {
-          // 创建食堂（窗口已包含在请求中）
+          // 创建食堂（窗口已包含在请求中，但现在新建时窗口部分被隐藏，所以为空）
           const response = await canteenApi.createCanteen(requestData)
           if (response.code === 200 && response.data) {
             canteenId = response.data.id
-            alert('食堂信息已成功创建！')
+            editingCanteen.value = response.data // 设置为编辑模式
+            viewMode.value = 'edit'
+            alert('食堂创建成功！现在您可以添加窗口信息。')
+            isSubmitting.value = false // 结束提交状态，允许继续操作
+            return // 不返回列表，停留在编辑页面
           } else {
             throw new Error(response.message || '创建食堂失败')
           }
         }
         
-        // 5. 仅在编辑模式下单独保存窗口信息（新建时窗口已包含在请求中）
+        // 5. 仅在编辑模式下单独保存窗口信息（新建时流程已中断）
         if (editingCanteen.value && canteenId && windows.value.length > 0) {
           for (const window of windows.value) {
             if (!window.name || !window.name.trim()) {
@@ -768,43 +851,30 @@ export default {
             }
             
             // 解析窗口楼层
-            let windowFloor = undefined
-            if (window.floor && window.floor.trim()) {
-               const level = parseFloorLevel(window.floor)
-               if (level !== null) {
-                 windowFloor = {
-                   level: level.toString(),
-                   name: window.floor.trim()
-                 }
-               }
+            const windowFloor = resolveWindowFloor(window.floor, window.floorLabel || '')
+            if (!windowFloor) {
+              console.warn(`窗口"${window.name}"无法解析楼层信息"${window.floor}"，跳过保存`)
+              continue
             }
 
-            if (!windowFloor) {
-               console.warn(`窗口"${window.name}"无法解析楼层信息"${window.floor}"，跳过保存`)
-               continue
+            const payload = {
+              name: window.name.trim(),
+              number: window.number ? window.number.trim() : '',
+              floor: windowFloor,
+              position: window.position || undefined,
+              description: window.description || undefined,
+              tags: window.tags && window.tags.length > 0 ? window.tags : undefined
             }
             
             try {
               if (window.id) {
                 // 更新窗口
-                await canteenApi.updateWindow(window.id, {
-                  name: window.name.trim(),
-                  number: window.number ? window.number.trim() : undefined,
-                  floor: windowFloor,
-                  position: window.position || undefined,
-                  description: window.description || undefined,
-                  tags: window.tags || undefined
-                })
+                await canteenApi.updateWindow(window.id, payload)
               } else {
                 // 创建窗口
                 await canteenApi.createWindow({
-                  name: window.name.trim(),
-                  number: window.number ? window.number.trim() : undefined,
-                  floor: windowFloor,
-                  canteenId: canteenId,
-                  position: window.position || undefined,
-                  description: window.description || undefined,
-                  tags: window.tags || undefined
+                  ...payload,
+                  canteenId: canteenId
                 })
               }
             } catch (error) {
@@ -816,6 +886,9 @@ export default {
         
         // 5. 重新加载列表并返回
         await loadCanteens()
+        // 如果是更新操作，询问是否返回列表或者留下来继续编辑
+        // 或者简单的逻辑：如果是添加了窗口，可能希望继续留在页面看结果？
+        // 现在的逻辑：更新成功后返回列表
         backToList()
       } catch (error) {
         console.error('保存食堂失败:', error)
@@ -839,6 +912,7 @@ export default {
       windows,
       isSubmitting,
       isLoading,
+      availableFloors,
       loadCanteens,
       createNewCanteen,
       editCanteen,
