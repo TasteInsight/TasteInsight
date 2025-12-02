@@ -8,7 +8,7 @@ describe('NewsController (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let userAccessToken: string;
-  let testNewsIds: string[] = [];
+  const testNewsIds: string[] = [];
   let testCanteenId1: string;
   let testCanteenId2: string;
 

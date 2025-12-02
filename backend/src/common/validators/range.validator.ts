@@ -32,7 +32,7 @@ export class IsValidRangeConstraint implements ValidatorConstraintInterface {
  * 使用方式：直接应用在范围类型的属性上
  */
 export function IsValidRange(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       target: object.constructor,
       propertyName: propertyName,
