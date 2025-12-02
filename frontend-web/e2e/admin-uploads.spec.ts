@@ -203,7 +203,7 @@ test.describe('Admin Uploads API Tests', () => {
     test('should return pending uploads for super admin', async ({ request }) => {
       const response = await request.get(`${baseURL}admin/dishes/uploads/pending`, {
         headers: { Authorization: `Bearer ${superAdminToken}` },
-        params: { page: 1, pageSize: 20 },
+        params: { page: 1, pageSize: 20, status: 'pending' },
       });
 
       expect(response.ok()).toBe(true);
@@ -369,7 +369,7 @@ test.describe('Admin Uploads API Tests', () => {
       // Cleanup
       await cleanupTestData(request, superAdminToken);
     });
-    });
+  });
 
   test.describe('/admin/dishes/uploads/pending/:id (GET)', () => {
     test('should return pending upload detail for super admin', async ({ request }) => {
