@@ -69,7 +69,7 @@
                       </div>
                     </td>
                     <td class="py-4 px-6">{{ canteen.position || '未设置' }}</td>
-                    <td class="py-4 px-6">{{ canteen.windowsList?.length || 0 }} 个窗口</td>
+                    <td class="py-4 px-6">{{ canteen.windows?.length || 0 }} 个窗口</td>
                     <td class="py-4 px-6">
                       <div class="flex items-center">
                         <span class="iconify text-yellow-400" data-icon="bxs:star"></span>
