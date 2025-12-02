@@ -26,8 +26,11 @@ export class OssStorageStrategy implements StorageStrategy {
       const bucket = this.configService.get<string>('OSS_BUCKET');
 
       if (!region || !accessKeyId || !accessKeySecret || !bucket) {
-        this.logger.warn(
+        this.logger.error(
           'OSS configuration is missing, but storage type is set to OSS.',
+        );
+        throw new InternalServerErrorException(
+          'OSS is not properly configured',
         );
       } else {
         this.client = new OSS({
@@ -43,6 +46,9 @@ export class OssStorageStrategy implements StorageStrategy {
 
   async upload(file: Express.Multer.File): Promise<UploadResult> {
     if (!this.client) {
+      this.logger.error(
+        'OSS client is not initialized. Check your configuration.',
+      );
       throw new InternalServerErrorException('OSS client is not initialized');
     }
 

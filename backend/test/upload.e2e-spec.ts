@@ -1,12 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { AppModule } from '@/app.module';
 import * as fs from 'fs';
 import * as path from 'path';
 
 describe('UploadController (e2e)', () => {
-  let app: INestApplication;
+  let app: NestExpressApplication;
   let accessToken: string;
   const testImagePath = path.join(__dirname, 'test-image.jpg');
   const testTextPath = path.join(__dirname, 'test-file.txt');
@@ -22,13 +22,14 @@ describe('UploadController (e2e)', () => {
       imports: [AppModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
+    app = moduleFixture.createNestApplication<NestExpressApplication>();
 
-    // Manually mount static files middleware to verify if ServeStaticModule is the issue
-    app.use(
-      '/images',
-      require('express').static(path.join(process.cwd(), 'uploads')),
-    );
+    // Explicitly configure static assets for the test environment
+    // This ensures that supertest can access the files even if ServeStaticModule
+    // behaves differently in the testing module context
+    app.useStaticAssets(uploadsDir, {
+      prefix: '/images',
+    });
 
     await app.init();
 
@@ -69,9 +70,11 @@ describe('UploadController (e2e)', () => {
     fs.writeFileSync(testTextPath, 'This is a text file');
 
     // Login to get access token
+    const adminUsername = process.env.INITIAL_ADMIN_USERNAME || 'testadmin';
+    const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'password123';
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/admin/login')
-      .send({ username: 'testadmin', password: 'password123' });
+      .send({ username: adminUsername, password: adminPassword });
 
     accessToken = loginResponse.body.data.token.accessToken;
   });
@@ -149,12 +152,13 @@ describe('UploadController (e2e)', () => {
       const fileUrl = uploadResponse.body.data.url;
       const relativeUrl = fileUrl.replace(/^http:\/\/localhost:\d+/, '');
 
+      const fileName = path.basename(fileUrl);
+      const uploadPath = path.join(process.cwd(), 'uploads', fileName);
+
       // Then try to access it
       await request(app.getHttpServer()).get(relativeUrl).expect(200);
 
       // Clean up
-      const fileName = path.basename(fileUrl);
-      const uploadPath = path.join(process.cwd(), 'uploads', fileName);
       if (fs.existsSync(uploadPath)) {
         fs.unlinkSync(uploadPath);
       }

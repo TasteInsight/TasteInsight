@@ -17,6 +17,10 @@ export class CustomFileTypeValidator extends FileValidator<{
   }
 
   buildErrorMessage(file: any): string {
-    return `Validation failed (current file type is ${file.mimetype}, expected type is ${this.validationOptions.fileType})`;
+    const expectedType =
+      this.validationOptions.fileType instanceof RegExp
+        ? this.validationOptions.fileType.source
+        : this.validationOptions.fileType;
+    return `Invalid file type. Expected: ${expectedType}, but got: ${file.mimetype}`;
   }
 }

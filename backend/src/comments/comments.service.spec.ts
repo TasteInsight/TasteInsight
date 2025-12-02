@@ -29,7 +29,7 @@ const createMockPrisma = () => {
     $queryRaw: jest.fn(),
     $transaction: jest.fn(),
   };
-  mock.$transaction.mockImplementation((cb) => cb(mock));
+  mock.$transaction.mockImplementation(async (cb) => cb(mock));
   return mock;
 };
 

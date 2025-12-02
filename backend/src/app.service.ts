@@ -32,7 +32,7 @@ export class AppService implements OnApplicationBootstrap {
       return;
     }
 
-    this.logger.log(`Creating initial superadmin user: ${username}`);
+    this.logger.log('Creating initial superadmin user');
 
     const hashedPassword = await bcrypt.hash(password, 10);
 

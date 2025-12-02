@@ -73,8 +73,9 @@ export class AuthService {
     let openid: string;
 
     // 特殊处理测试用的 code，使其能匹配 seed 创建的基础用户
-    const enableMock = this.configService.get<string>('ENABLE_MOCK_AUTH') === 'true';
-    
+    const enableMock =
+      this.configService.get<string>('ENABLE_MOCK_AUTH') === 'true';
+
     if (enableMock && code === 'baseline_user_code_placeholder') {
       openid = 'baseline_user_openid';
     } else if (enableMock && code === 'secondary_user_code_placeholder') {

@@ -24,7 +24,7 @@ export class LocalStorageStrategy implements StorageStrategy {
       'APP_URL',
       'http://localhost:3000',
     );
-    // 如果没有配置 UPLOAD_BASE_URL，则默认使用 /images 路径
+    // 如果没有配置 UPLOAD_BASE_URL，则默认使用 ${APP_URL}/images 路径
     this.baseUrl = this.configService.get<string>(
       'UPLOAD_BASE_URL',
       `${appUrl}/images`,
