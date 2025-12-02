@@ -495,7 +495,7 @@ export class AdminDishesService {
       priceUnit: dishUpload.priceUnit,
       description: dishUpload.description,
       images: dishUpload.images,
-      parentDishId: dishUpload.parentDishId,
+      parentDishId: dishUpload.parentDishId || undefined,
       subDishId: [],
       ingredients: dishUpload.ingredients,
       allergens: dishUpload.allergens,

@@ -18,12 +18,15 @@ export class AdminUploadsService {
    * 获取待审核的上传菜品列表
    */
   async getPendingUploads(query: AdminGetPendingUploadsDto, adminInfo: any) {
-    const { page = 1, pageSize = 20 } = query;
+    const { page = 1, pageSize = 20, status } = query;
 
     // 构建查询条件
-    const where: any = {
-      status: 'pending',
-    };
+    const where: any = {};
+
+    // 如果指定了状态，则筛选状态，否则返回所有
+    if (status) {
+      where.status = status;
+    }
 
     // 如果管理员有 canteenId 限制，只能查看该食堂的上传
     if (adminInfo.canteenId) {
