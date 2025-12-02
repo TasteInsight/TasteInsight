@@ -28,7 +28,7 @@ export class MealPlansController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
-  getMealPlans(@Request() req): Promise<MealPlanListResponseDto> {
+  getMealPlans(@Request() req: any): Promise<MealPlanListResponseDto> {
     const userId = req.user.sub;
     return this.mealPlansService.getMealPlans(userId);
   }
@@ -37,7 +37,7 @@ export class MealPlansController {
   @HttpCode(HttpStatus.CREATED)
   createMealPlan(
     @Body() createMealPlanDto: CreateMealPlanDto,
-    @Request() req,
+    @Request() req: any,
   ): Promise<MealPlanResponseDto> {
     const userId = req.user.sub;
     return this.mealPlansService.createMealPlan(userId, createMealPlanDto);
@@ -48,7 +48,7 @@ export class MealPlansController {
   updateMealPlan(
     @Param('id') id: string,
     @Body() updateMealPlanDto: UpdateMealPlanDto,
-    @Request() req,
+    @Request() req: any,
   ): Promise<MealPlanResponseDto> {
     const userId = req.user.sub;
     return this.mealPlansService.updateMealPlan(id, userId, updateMealPlanDto);
@@ -58,7 +58,7 @@ export class MealPlansController {
   @HttpCode(HttpStatus.OK)
   deleteMealPlan(
     @Param('id') id: string,
-    @Request() req,
+    @Request() req: any,
   ): Promise<SuccessResponseDto> {
     const userId = req.user.sub;
     return this.mealPlansService.deleteMealPlan(id, userId);

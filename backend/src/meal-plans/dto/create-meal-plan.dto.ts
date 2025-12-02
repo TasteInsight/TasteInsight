@@ -6,7 +6,9 @@ import {
   IsArray,
 } from 'class-validator';
 import { MealTime } from '@/common/enums';
+import { IsValidDateRange } from '@/common/validators/date-range.validator';
 
+@IsValidDateRange()
 export class CreateMealPlanDto {
   @IsNotEmpty()
   @IsDateString()

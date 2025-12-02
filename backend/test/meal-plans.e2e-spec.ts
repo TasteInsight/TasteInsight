@@ -21,7 +21,15 @@ describe('MealPlansController (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     prisma = app.get<PrismaService>(PrismaService);
-    app.useGlobalPipes(new ValidationPipe({ transform: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({
+        transform: true,
+        transformOptions: {
+          enableImplicitConversion: true,
+        },
+        whitelist: true,
+      }),
+    );
     await app.init();
 
     // 获取测试用户登录token
@@ -87,8 +95,8 @@ describe('MealPlansController (e2e)', () => {
 
     it('should deduplicate dishes', async () => {
       const createData = {
-        startDate: '2023-12-02',
-        endDate: '2023-12-02',
+        startDate: '2025-12-02',
+        endDate: '2025-12-02',
         mealTime: MealTime.LUNCH,
         dishes: [testDishId1, testDishId1, testDishId2],
       };
@@ -105,9 +113,25 @@ describe('MealPlansController (e2e)', () => {
     it('should return 400 for invalid data', async () => {
       const invalidData = {
         startDate: 'invalid-date',
-        endDate: '2023-12-01',
+        endDate: '2025-12-01',
         mealTime: MealTime.BREAKFAST,
         dishes: [],
+      };
+
+      const response = await request(app.getHttpServer())
+        .post('/meal-plans')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send(invalidData);
+
+      expect(response.status).toBe(400);
+    });
+
+    it('should return 400 for endDate before startDate', async () => {
+      const invalidData = {
+        startDate: '2025-12-02',
+        endDate: '2025-12-01',
+        mealTime: MealTime.BREAKFAST,
+        dishes: [testDishId1],
       };
 
       const response = await request(app.getHttpServer())

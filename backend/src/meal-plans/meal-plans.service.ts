@@ -1,5 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
+import { Prisma } from '@prisma/client';
 import { CreateMealPlanDto } from './dto/create-meal-plan.dto';
 import { UpdateMealPlanDto } from './dto/update-meal-plan.dto';
 import {
@@ -70,13 +75,16 @@ export class MealPlansService {
       where: { id },
     });
 
-    if (!existing || existing.userId !== userId) {
+    if (!existing) {
       throw new NotFoundException('饮食计划不存在');
+    }
+    if (existing.userId !== userId) {
+      throw new ForbiddenException('没有权限修改此饮食计划');
     }
 
     const { dishes, startDate, endDate, ...rest } = updateMealPlanDto;
 
-    const data: any = { ...rest };
+    const data: Prisma.MealPlanUpdateInput = { ...rest };
     if (startDate) data.startDate = new Date(startDate);
     if (endDate) data.endDate = new Date(endDate);
 
@@ -110,8 +118,11 @@ export class MealPlansService {
       where: { id },
     });
 
-    if (!existing || existing.userId !== userId) {
+    if (!existing) {
       throw new NotFoundException('饮食计划不存在');
+    }
+    if (existing.userId !== userId) {
+      throw new ForbiddenException('没有权限删除此饮食计划');
     }
 
     await this.prisma.mealPlan.delete({
@@ -125,7 +136,7 @@ export class MealPlansService {
     };
   }
 
-  private mapToMealPlanDto(mealPlan: any): MealPlanDto  {
+  private mapToMealPlanDto(mealPlan: any): MealPlanDto {
     return {
       id: mealPlan.id,
       userId: mealPlan.userId,

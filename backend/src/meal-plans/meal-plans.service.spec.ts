@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { MealPlansService } from './meal-plans.service';
 import { PrismaService } from '@/prisma.service';
 import { CreateMealPlanDto } from './dto/create-meal-plan.dto';
@@ -13,11 +13,11 @@ describe('MealPlansService', () => {
   beforeEach(async () => {
     const mockPrisma = {
       mealPlan: {
-        findMany: jest.fn(),
-        create: jest.fn(),
-        findUnique: jest.fn(),
-        update: jest.fn(),
-        delete: jest.fn(),
+        findMany: jest.fn() as jest.Mock,
+        create: jest.fn() as jest.Mock,
+        findUnique: jest.fn() as jest.Mock,
+        update: jest.fn() as jest.Mock,
+        delete: jest.fn() as jest.Mock,
       },
     };
 
@@ -32,7 +32,7 @@ describe('MealPlansService', () => {
     }).compile();
 
     service = module.get<MealPlansService>(MealPlansService);
-    prisma = module.get(PrismaService);
+    prisma = module.get(PrismaService) as jest.Mocked<PrismaService>;
   });
 
   it('should be defined', () => {
@@ -46,14 +46,14 @@ describe('MealPlansService', () => {
         {
           id: 'mp1',
           userId,
-          startDate: new Date('2023-01-01'),
-          endDate: new Date('2023-01-02'),
+          startDate: new Date('2025-01-01'),
+          endDate: new Date('2025-01-02'),
           mealTime: MealTime.BREAKFAST,
           dishes: [{ dishId: 'dish1' }, { dishId: 'dish2' }],
           createdAt: new Date(),
         },
       ];
-      prisma.mealPlan.findMany.mockResolvedValue(mockMealPlans);
+      (prisma.mealPlan.findMany as jest.Mock).mockResolvedValue(mockMealPlans);
 
       const result = await service.getMealPlans(userId);
 
@@ -72,28 +72,28 @@ describe('MealPlansService', () => {
     it('should create a meal plan', async () => {
       const userId = 'user1';
       const createDto: CreateMealPlanDto = {
-        startDate: '2023-01-01',
-        endDate: '2023-01-02',
+        startDate: '2025-01-01',
+        endDate: '2025-01-02',
         mealTime: MealTime.BREAKFAST,
         dishes: ['dish1', 'dish2', 'dish1'], // duplicate
       };
       const mockCreated = {
         id: 'mp1',
         userId,
-        startDate: new Date('2023-01-01'),
-        endDate: new Date('2023-01-02'),
+        startDate: new Date('2025-01-01'),
+        endDate: new Date('2025-01-02'),
         mealTime: MealTime.BREAKFAST,
         dishes: [{ dishId: 'dish1' }, { dishId: 'dish2' }],
         createdAt: new Date(),
       };
-      prisma.mealPlan.create.mockResolvedValue(mockCreated);
+      (prisma.mealPlan.create as jest.Mock).mockResolvedValue(mockCreated);
 
       const result = await service.createMealPlan(userId, createDto);
 
       expect(prisma.mealPlan.create).toHaveBeenCalledWith({
         data: {
-          startDate: new Date('2023-01-01'),
-          endDate: new Date('2023-01-02'),
+          startDate: new Date('2025-01-01'),
+          endDate: new Date('2025-01-02'),
           mealTime: MealTime.BREAKFAST,
           userId,
           dishes: {
@@ -126,12 +126,14 @@ describe('MealPlansService', () => {
         dishes: [{ dishId: 'dish3' }, { dishId: 'dish4' }],
         createdAt: new Date(),
       };
-      prisma.mealPlan.findUnique.mockResolvedValue(mockExisting);
-      prisma.mealPlan.update.mockResolvedValue(mockUpdated);
+      (prisma.mealPlan.findUnique as jest.Mock).mockResolvedValue(mockExisting);
+      (prisma.mealPlan.update as jest.Mock).mockResolvedValue(mockUpdated);
 
       const result = await service.updateMealPlan(id, userId, updateDto);
 
-      expect(prisma.mealPlan.findUnique).toHaveBeenCalledWith({ where: { id } });
+      expect(prisma.mealPlan.findUnique).toHaveBeenCalledWith({
+        where: { id },
+      });
       expect(prisma.mealPlan.update).toHaveBeenCalledWith({
         where: { id },
         data: {
@@ -142,20 +144,24 @@ describe('MealPlansService', () => {
         },
         include: { dishes: true },
       });
-      expect(result.code).toBe(201);
+      expect(result.code).toBe(200);
     });
 
     it('should throw NotFoundException if meal plan not found', async () => {
-      prisma.mealPlan.findUnique.mockResolvedValue(null);
+      (prisma.mealPlan.findUnique as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.updateMealPlan('invalid', 'user1', {})).rejects.toThrow(NotFoundException);
+      await expect(
+        service.updateMealPlan('invalid', 'user1', {}),
+      ).rejects.toThrow(NotFoundException);
     });
 
-    it('should throw NotFoundException if user does not own the meal plan', async () => {
+    it('should throw ForbiddenException if user does not own the meal plan', async () => {
       const mockExisting = { id: 'mp1', userId: 'user2' };
-      prisma.mealPlan.findUnique.mockResolvedValue(mockExisting);
+      (prisma.mealPlan.findUnique as jest.Mock).mockResolvedValue(mockExisting);
 
-      await expect(service.updateMealPlan('mp1', 'user1', {})).rejects.toThrow(NotFoundException);
+      await expect(service.updateMealPlan('mp1', 'user1', {})).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -164,27 +170,33 @@ describe('MealPlansService', () => {
       const id = 'mp1';
       const userId = 'user1';
       const mockExisting = { id, userId };
-      prisma.mealPlan.findUnique.mockResolvedValue(mockExisting);
-      prisma.mealPlan.delete.mockResolvedValue(mockExisting);
+      (prisma.mealPlan.findUnique as jest.Mock).mockResolvedValue(mockExisting);
+      (prisma.mealPlan.delete as jest.Mock).mockResolvedValue(mockExisting);
 
       const result = await service.deleteMealPlan(id, userId);
 
-      expect(prisma.mealPlan.findUnique).toHaveBeenCalledWith({ where: { id } });
+      expect(prisma.mealPlan.findUnique).toHaveBeenCalledWith({
+        where: { id },
+      });
       expect(prisma.mealPlan.delete).toHaveBeenCalledWith({ where: { id } });
       expect(result.code).toBe(200);
     });
 
     it('should throw NotFoundException if meal plan not found', async () => {
-      prisma.mealPlan.findUnique.mockResolvedValue(null);
+      (prisma.mealPlan.findUnique as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.deleteMealPlan('invalid', 'user1')).rejects.toThrow(NotFoundException);
+      await expect(service.deleteMealPlan('invalid', 'user1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
-    it('should throw NotFoundException if user does not own the meal plan', async () => {
+    it('should throw ForbiddenException if user does not own the meal plan', async () => {
       const mockExisting = { id: 'mp1', userId: 'user2' };
-      prisma.mealPlan.findUnique.mockResolvedValue(mockExisting);
+      (prisma.mealPlan.findUnique as jest.Mock).mockResolvedValue(mockExisting);
 
-      await expect(service.deleteMealPlan('mp1', 'user1')).rejects.toThrow(NotFoundException);
+      await expect(service.deleteMealPlan('mp1', 'user1')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 });
