@@ -27,8 +27,8 @@ export class CreateWindowDto {
   name: string;
 
   @IsString()
-  @IsNotEmpty()
-  number: string;
+  @IsOptional()
+  number?: string;
 
   @IsString()
   @IsOptional()

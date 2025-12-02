@@ -52,8 +52,8 @@ export class WindowDto {
   name: string;
 
   @IsString()
-  @IsNotEmpty()
-  number: string;
+  @IsOptional()
+  number?: string;
 
   @IsString()
   @IsOptional()

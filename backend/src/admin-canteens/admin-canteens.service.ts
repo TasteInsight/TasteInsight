@@ -67,7 +67,7 @@ export class AdminCanteensService {
         windows: {
           create: windows.map((w) => ({
             name: w.name,
-            number: w.number,
+            number: w.number ?? '',
             position: w.position,
             description: w.description,
             tags: w.tags || [],
@@ -164,7 +164,7 @@ export class AdminCanteensService {
           where: { id: window.id },
           data: {
             name: window.name,
-            number: window.number,
+            ...(window.number !== undefined ? { number: window.number } : {}),
             position: window.position,
             description: window.description,
             tags: window.tags,
@@ -178,7 +178,7 @@ export class AdminCanteensService {
           data: windowsToCreate.map((w) => ({
             canteenId: id,
             name: w.name,
-            number: w.number,
+            number: w.number ?? '',
             position: w.position,
             description: w.description,
             tags: w.tags || [],
