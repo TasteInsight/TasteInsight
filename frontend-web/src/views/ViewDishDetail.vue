@@ -430,7 +430,8 @@ export default {
       oiliness: 0,
       availableMealTime: [],
       availableDates: [],
-      subItems: []
+      subItems: [],
+      subDishId: [] // 添加subDishId字段
     })
     
     const reviewsData = reactive({
@@ -501,8 +502,14 @@ export default {
             oiliness: dish.oiliness !== null && dish.oiliness !== undefined ? dish.oiliness : 0,
             availableMealTime: dish.availableMealTime || [],
             availableDates: dish.availableDates || [],
-            subItems: dish.subItems || []
+            subItems: [], // 初始化为空数组
+            subDishId: dish.subDishId || [] // 保存subDishId数组
           })
+          
+          // 如果有子项ID，加载子项详细信息
+          if (dish.subDishId && dish.subDishId.length > 0) {
+            await loadSubDishes(dish.subDishId)
+          }
         } else {
           throw new Error(response.message || '获取菜品信息失败')
         }
@@ -512,6 +519,24 @@ export default {
         router.push('/modify-dish')
       } finally {
         isLoading.value = false
+      }
+    }
+    
+    // 加载子项列表
+    const loadSubDishes = async (subDishIds) => {
+      try {
+        const subDishPromises = subDishIds.map(id => dishApi.getDishById(id))
+        const responses = await Promise.all(subDishPromises)
+        dishData.subItems = responses
+          .filter(res => res.code === 200 && res.data)
+          .map(res => ({
+            id: res.data.id,
+            name: res.data.name || '未命名',
+            price: res.data.price || 0
+          }))
+      } catch (error) {
+        console.error('加载子项列表失败:', error)
+        dishData.subItems = []
       }
     }
     
