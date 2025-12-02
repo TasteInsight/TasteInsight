@@ -251,14 +251,14 @@ test.describe('Sub-item Creation and Display', () => {
       // Wait for the table to load (wait for loading spinner to disappear)
       await page.waitForSelector('tr:not(:has-text("加载中"))', { timeout: 10000 });
       
-      // Small delay to ensure data is rendered
-      await page.waitForTimeout(500);
+      // Wait for network to be idle to ensure data is loaded
+      await page.waitForLoadState('networkidle');
       
       // Search for the item
       await page.fill('input[placeholder="搜索菜品名称..."]', subName);
       
-      // Wait for filter to apply
-      await page.waitForTimeout(300);
+      // Wait for the search results to appear or table to update
+      await page.waitForSelector(`tr:has-text("${subName}")`, { timeout: 5000 });
       
       const reviewRow = page.locator('tr', { hasText: subName });
       await expect(reviewRow).toBeVisible({ timeout: 10000 });
@@ -273,11 +273,14 @@ test.describe('Sub-item Creation and Display', () => {
       await page.waitForURL(/\/review-dish/);
 
       // 6. Poll for the created dish to appear in the dishes list
-      // Wait a moment for the approval to be processed
-      await page.waitForTimeout(1000);
-      
+      // Wait for the approval to be processed by monitoring network activity
+      await page.waitForLoadState('networkidle');
+
       let found = false;
-      for (let i = 0; i < 15 && !found; i++) {
+      const maxRetries = 15;
+      const retryInterval = 1000;
+      
+      for (let i = 0; i < maxRetries && !found; i++) {
         const dishesResp = await request.get(`${baseURL}admin/dishes?pageSize=100`, {
           headers: { 'Authorization': `Bearer ${superToken}` }
         });
@@ -290,12 +293,15 @@ test.describe('Sub-item Creation and Display', () => {
             break;
           }
         }
-        await new Promise((r) => setTimeout(r, 1000));
+        if (i < maxRetries - 1) { // Don't wait after the last attempt
+          await new Promise((r) => setTimeout(r, retryInterval));
+        }
       }
 
-      expect(createdSubId).toBeTruthy();
-
-      // 7. Verify via API that parent dish now has the sub-item in subDishId
+      if (!found) {
+        throw new Error(`Sub-dish '${subName}' was not found after approval within ${maxRetries * retryInterval}ms timeout period`);
+      }
+      expect(createdSubId, `Expected sub-dish '${subName}' to be created`).toBeTruthy();      // 7. Verify via API that parent dish now has the sub-item in subDishId
       const parentDetailResp = await request.get(`${baseURL}admin/dishes/${parentId}`, {
         headers: { 'Authorization': `Bearer ${superToken}` }
       });
