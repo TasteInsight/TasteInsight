@@ -23,10 +23,13 @@ describe('UploadController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    
+
     // Manually mount static files middleware to verify if ServeStaticModule is the issue
-    app.use('/images', require('express').static(path.join(process.cwd(), 'uploads')));
-    
+    app.use(
+      '/images',
+      require('express').static(path.join(process.cwd(), 'uploads')),
+    );
+
     await app.init();
 
     // Create a dummy image file
@@ -69,7 +72,7 @@ describe('UploadController (e2e)', () => {
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/admin/login')
       .send({ username: 'testadmin', password: 'password123' });
-    
+
     accessToken = loginResponse.body.data.token.accessToken;
   });
 
@@ -134,29 +137,27 @@ describe('UploadController (e2e)', () => {
         .attach('file', testImagePath)
         .expect(401);
     });
-    
+
     it('should be able to access the uploaded file via HTTP', async () => {
-       // First upload
-       const uploadResponse = await request(app.getHttpServer())
+      // First upload
+      const uploadResponse = await request(app.getHttpServer())
         .post('/upload/image')
         .set('Authorization', `Bearer ${accessToken}`)
         .attach('file', testImagePath)
         .expect(201);
-        
-       const fileUrl = uploadResponse.body.data.url;
-       const relativeUrl = fileUrl.replace(/^http:\/\/localhost:\d+/, '');
-       
-       // Then try to access it
-       await request(app.getHttpServer())
-         .get(relativeUrl)
-         .expect(200);
-         
-       // Clean up
-       const fileName = path.basename(fileUrl);
-       const uploadPath = path.join(process.cwd(), 'uploads', fileName);
-       if (fs.existsSync(uploadPath)) {
-         fs.unlinkSync(uploadPath);
-       }
+
+      const fileUrl = uploadResponse.body.data.url;
+      const relativeUrl = fileUrl.replace(/^http:\/\/localhost:\d+/, '');
+
+      // Then try to access it
+      await request(app.getHttpServer()).get(relativeUrl).expect(200);
+
+      // Clean up
+      const fileName = path.basename(fileUrl);
+      const uploadPath = path.join(process.cwd(), 'uploads', fileName);
+      if (fs.existsSync(uploadPath)) {
+        fs.unlinkSync(uploadPath);
+      }
     });
   });
 });

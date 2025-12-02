@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { StorageStrategy, UploadResult } from './storage.strategy';
 import { ConfigService } from '@nestjs/config';
 import OSS from 'ali-oss';
@@ -12,15 +16,19 @@ export class OssStorageStrategy implements StorageStrategy {
 
   constructor(private configService: ConfigService) {
     const storageType = this.configService.get<string>('UPLOAD_STORAGE_TYPE');
-    
+
     if (storageType === 'oss') {
       const region = this.configService.get<string>('OSS_REGION');
       const accessKeyId = this.configService.get<string>('OSS_ACCESS_KEY_ID');
-      const accessKeySecret = this.configService.get<string>('OSS_ACCESS_KEY_SECRET');
+      const accessKeySecret = this.configService.get<string>(
+        'OSS_ACCESS_KEY_SECRET',
+      );
       const bucket = this.configService.get<string>('OSS_BUCKET');
 
       if (!region || !accessKeyId || !accessKeySecret || !bucket) {
-        this.logger.warn('OSS configuration is missing, but storage type is set to OSS.');
+        this.logger.warn(
+          'OSS configuration is missing, but storage type is set to OSS.',
+        );
       } else {
         this.client = new OSS({
           region,
@@ -45,7 +53,7 @@ export class OssStorageStrategy implements StorageStrategy {
     try {
       const result = await this.client.put(fileName, file.buffer);
       let url = result.url;
-      
+
       // 处理自定义域名
       const customDomain = this.configService.get<string>('OSS_CUSTOM_DOMAIN');
       if (customDomain) {
@@ -53,7 +61,9 @@ export class OssStorageStrategy implements StorageStrategy {
         // 我们只需要 path 部分
         const urlObj = new URL(result.url);
         // 确保 customDomain 不以 / 结尾，pathname 以 / 开头
-        const domain = customDomain.endsWith('/') ? customDomain.slice(0, -1) : customDomain;
+        const domain = customDomain.endsWith('/')
+          ? customDomain.slice(0, -1)
+          : customDomain;
         url = `${domain}${urlObj.pathname}`;
       }
 

@@ -1,7 +1,7 @@
 import request from '@/utils/request'
-import type { 
-  Dish, 
-  DishCreateRequest, 
+import type {
+  Dish,
+  DishCreateRequest,
   DishUpdateRequest,
   GetDishesParams,
   GetDishReviewsParams,
@@ -41,12 +41,12 @@ export const dishApi = {
       // 如果直接获取失败，通过列表接口获取，然后筛选
       console.log('直接获取失败，尝试通过列表接口获取:', error)
     }
-    
+
     // 通过列表接口获取所有菜品，然后筛选
     const response = await request.get<ApiResponse<PaginationResponse<Dish>>>('/admin/dishes', {
-      params: { pageSize: 1000 } // 获取足够多的数据以便找到目标菜品
+      params: { pageSize: 100 } // 获取足够多的数据以便找到目标菜品
     })
-    
+
     if (response.code === 200 && response.data) {
       const dish = response.data.items.find(d => d.id === id)
       if (dish) {
@@ -57,7 +57,7 @@ export const dishApi = {
         }
       }
     }
-    
+
     // 如果没找到，返回错误
     return Promise.reject(new Error('未找到该菜品'))
   },
