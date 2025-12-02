@@ -94,10 +94,10 @@ export const reviewApi = {
 
   /**
    * 获取待审核的用户上传菜品
-   * @param params 分页参数
+   * @param params 分页参数和筛选参数
    * @returns 待审核菜品列表
    */
-  async getPendingUploads(params: { page?: number; pageSize?: number } = {}): Promise<ApiResponse<any>> {
+  async getPendingUploads(params: { page?: number; pageSize?: number; status?: string } = {}): Promise<ApiResponse<any>> {
     return await request.get<ApiResponse<any>>('/admin/dishes/uploads/pending', { params });
   },
 

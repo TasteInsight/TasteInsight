@@ -215,10 +215,14 @@ export default {
       isLoading.value = true
       try {
         // 从 API 获取数据
-        const response = await reviewApi.getPendingUploads({
+        const params = {
           page: currentPage.value,
           pageSize: pageSize.value
-        })
+        }
+        if (statusFilter.value) {
+          params.status = statusFilter.value
+        }
+        const response = await reviewApi.getPendingUploads(params)
         
         if (response.code === 200 && response.data && response.data.items) {
           // 转换 API 数据格式
@@ -259,24 +263,11 @@ export default {
       }
     }
     
-    // 监听路由变化，检查是否需要刷新
-    watch(() => route.query, (newQuery) => {
-      if (newQuery.refresh === 'true') {
-        const updatedId = newQuery.updatedId
-        const newStatus = newQuery.status || 'approved'
-        
-        if (updatedId) {
-          // 更新对应菜品的状态
-          updateDishStatus(parseInt(updatedId), newStatus)
-        } else {
-          // 如果没有指定 ID，重新加载所有数据
-          loadReviewDishes()
-        }
-        
-        // 清除查询参数
-        router.replace({ path: '/review-dish', query: {} })
-      }
-    }, { immediate: true })
+    // 监听筛选条件变化，重新加载数据
+    watch([statusFilter, canteenFilter], () => {
+      currentPage.value = 1
+      loadReviewDishes()
+    })
     
     // 组件挂载时加载数据
     onMounted(() => {
