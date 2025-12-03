@@ -93,7 +93,7 @@
 </template>
 
 <script setup lang="ts">
-import { onHide } from '@dcloudio/uni-app';
+import { onHide, onPullDownRefresh } from '@dcloudio/uni-app';
 import { useMenuPlanning } from './composables/use-menu-planning';
 import type { EnrichedMealPlan } from './composables/use-menu-planning';
 import PlanCard from './components/PlanCard.vue';
@@ -135,6 +135,19 @@ onHide(() => {
 const handleExecutePlan = async (plan: EnrichedMealPlan) => {
   await executePlan(plan.id);
 };
+
+// 下拉刷新处理
+const onRefresh = async () => {
+  try {
+    await refreshPlans();
+  } catch (error) {
+    console.error('刷新规划数据失败:', error);
+  } finally {
+    uni.stopPullDownRefresh();
+  }
+};
+
+onPullDownRefresh(onRefresh);
 </script>
 
 <style>

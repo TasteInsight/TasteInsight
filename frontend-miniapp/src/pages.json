@@ -11,7 +11,7 @@
 			"path": "pages/index/index",
 			"style": {
 				"navigationBarTitleText": "首页",
-				"enablePullDownRefresh": false
+				"enablePullDownRefresh": true
 			}
 		},
 		{
@@ -51,7 +51,8 @@
 		{
 			"path": "pages/news/index",
 			"style": {
-				"navigationBarTitleText": "新闻"
+				"navigationBarTitleText": "新闻",
+				"enablePullDownRefresh": true
 			}
 		},
 		{
@@ -63,7 +64,8 @@
 		{
 			"path": "pages/planning/index",
 			"style": {
-				"navigationBarTitleText": "规划"
+				"navigationBarTitleText": "规划",
+				"enablePullDownRefresh": true
 			}
 		},
 		{

@@ -61,6 +61,7 @@
 
 <script setup lang="ts">
 import { onMounted, computed, ref } from 'vue';
+import { onPullDownRefresh } from '@dcloudio/uni-app';
 
 // ... 导入子组件 (保持不变) ...
 import SearchBar from './components/SearchBar.vue';
@@ -271,6 +272,46 @@ onMounted(async () => {
     search: { keyword: '' },
   };
   dishesStore.fetchDishes(dishRequestParams);
+});
+
+/**
+ * 下拉刷新处理函数
+ */
+onPullDownRefresh(async () => {
+  try {
+    // 重新获取用户信息
+    await userStore.fetchProfileAction();
+    
+    // 重新获取食堂列表
+    await canteenStore.fetchCanteenList({ page: 1, pageSize: 10 });
+    
+    // 重新获取菜品列表（使用当前的筛选条件）
+    const dishRequestParams: GetDishesRequest = {
+      sort: buildDishSortFromUserSettings(),
+      pagination: { page: 1, pageSize: 20 },
+      filter: { ...buildDishFilterFromUserSettings(), ...currentFilter.value },
+      search: { keyword: '' },
+    };
+    
+    await dishesStore.fetchDishes(dishRequestParams);
+    
+    // 刷新完成后停止下拉刷新动画
+    uni.stopPullDownRefresh();
+    
+    // 显示刷新成功提示
+    uni.showToast({
+      title: '刷新成功',
+      icon: 'success',
+      duration: 1500
+    });
+  } catch (error) {
+    console.error('下拉刷新失败:', error);
+    uni.stopPullDownRefresh();
+    uni.showToast({
+      title: '刷新失败',
+      icon: 'none'
+    });
+  }
 });
 </script>
 
