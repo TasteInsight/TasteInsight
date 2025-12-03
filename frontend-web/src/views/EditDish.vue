@@ -106,25 +106,88 @@
                 
                 <!-- 菜品图片上传 -->
                 <div>
-                  <label class="block text-gray-700 font-medium mb-2">菜品图片</label>
-                  <div class="border-2 border-dashed rounded-lg aspect-square w-[40%] relative flex items-center justify-center bg-gray-50 overflow-hidden">
-                    <img 
-                      v-if="formData.imageUrl" 
-                      :src="formData.imageUrl" 
-                      alt="菜品图片预览"
-                      class="w-full h-full object-cover object-center"
-                    >
-                    <div v-else class="text-center p-6">
-                      <span class="iconify text-4xl text-gray-400 mx-auto" data-icon="bi:image"></span>
-                      <div class="mt-2">点击上传菜品图片</div>
-                      <p class="text-sm text-gray-500 mt-1">建议尺寸800x800像素，小于2MB</p>
+                  <label class="block text-gray-700 font-medium mb-2">菜品图片 <span class="text-sm text-gray-500 font-normal">（第一张将作为封面图，支持多图上传）</span></label>
+                  
+                  <div class="flex gap-4 items-start">
+                    <!-- 封面图（第一张） -->
+                    <div class="relative group flex-shrink-0">
+                      <div class="w-[300px] h-[300px] border-2 border-dashed rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center">
+                        <img 
+                          v-if="formData.imageFiles.length > 0" 
+                          :src="formData.imageFiles[0].url" 
+                          alt="封面图"
+                          class="w-full h-full object-cover"
+                        >
+                        <div v-else class="text-center p-6 text-gray-400">
+                          <span class="iconify text-4xl mx-auto" data-icon="bi:image"></span>
+                          <div class="mt-2 font-medium">封面图</div>
+                          <p class="text-xs mt-1">点击右侧按钮添加</p>
+                        </div>
+                        
+                        <!-- 删除遮罩 -->
+                        <div 
+                          v-if="formData.imageFiles.length > 0"
+                          class="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center gap-3 transition-all duration-200"
+                        >
+                          <button 
+                            type="button"
+                            @click="removeImage(0)"
+                            class="p-2 bg-white/20 text-white rounded-full hover:bg-red-500 transition-colors"
+                            title="删除图片"
+                          >
+                            <span class="iconify text-xl" data-icon="carbon:trash-can"></span>
+                          </button>
+                        </div>
+                      </div>
+                      <div class="text-center mt-2 text-sm text-gray-600 font-medium">封面展示</div>
                     </div>
-                    <input 
-                      type="file" 
-                      class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                      @change="handleImageUpload"
-                      accept="image/*"
-                    >
+                    
+                    <!-- 其他图片及上传按钮 -->
+                    <div class="flex-1 flex flex-wrap gap-4 content-start">
+                      <!-- 其他图片列表 -->
+                      <div 
+                        v-for="(img, index) in formData.imageFiles.slice(1)" 
+                        :key="img.id"
+                        class="relative group w-[140px] h-[140px]"
+                      >
+                        <div class="w-full h-full border rounded-lg overflow-hidden bg-gray-50">
+                          <img :src="img.url" class="w-full h-full object-cover">
+                        </div>
+                        
+                        <!-- 操作遮罩 -->
+                        <div class="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center gap-2 rounded-lg transition-all duration-200">
+                          <button 
+                            type="button"
+                            @click="setAsCover(index + 1)"
+                            class="p-1.5 bg-white/20 text-white rounded-full hover:bg-tsinghua-purple transition-colors"
+                            title="设为封面"
+                          >
+                            <span class="iconify" data-icon="carbon:image-copy"></span>
+                          </button>
+                          <button 
+                            type="button"
+                            @click="removeImage(index + 1)"
+                            class="p-1.5 bg-white/20 text-white rounded-full hover:bg-red-500 transition-colors"
+                            title="删除图片"
+                          >
+                            <span class="iconify" data-icon="carbon:trash-can"></span>
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <!-- 上传按钮 -->
+                      <div class="w-[140px] h-[140px] border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-gray-400 hover:text-tsinghua-purple hover:border-tsinghua-purple transition-colors relative cursor-pointer bg-white">
+                        <span class="iconify text-3xl mb-1" data-icon="carbon:add"></span>
+                        <span class="text-sm">添加图片</span>
+                        <input 
+                          type="file" 
+                          class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          @change="handleImageUpload"
+                          accept="image/*"
+                          multiple
+                        >
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -468,8 +531,7 @@ export default {
       description: '',
       allergens: '',
       ingredients: '',
-      image: null,
-      imageUrl: '',
+      imageFiles: [], // { id: string, url: string, file?: File, isNew: boolean }
       tags: [],
       spicyLevel: 0,
       saltiness: 0,
@@ -539,10 +601,19 @@ export default {
       }
       
       // 处理图片
+      formData.imageFiles = []
       if (dish.images && dish.images.length > 0) {
-        formData.imageUrl = dish.images[0]
+        formData.imageFiles = dish.images.map((url, index) => ({
+          id: `existing_${index}_${Date.now()}`,
+          url: url,
+          isNew: false
+        }))
       } else if (dish.image) {
-        formData.imageUrl = dish.image
+        formData.imageFiles = [{
+          id: `existing_0_${Date.now()}`,
+          url: dish.image,
+          isNew: false
+        }]
       }
       
       // 处理标签（TAG）
@@ -651,15 +722,39 @@ export default {
     }
     
     const handleImageUpload = (event) => {
-      const file = event.target.files[0]
-      if (file) {
-        formData.image = file
-        // 创建预览 URL
-        const reader = new FileReader()
-        reader.onload = (e) => {
-          formData.imageUrl = e.target.result
-        }
-        reader.readAsDataURL(file)
+      const files = event.target.files
+      if (files && files.length > 0) {
+        Array.from(files).forEach(file => {
+          // 验证文件大小
+          if (file.size > 2 * 1024 * 1024) {
+            alert(`图片 ${file.name} 大小超过2MB，已跳过`)
+            return
+          }
+          
+          const reader = new FileReader()
+          reader.onload = (e) => {
+            formData.imageFiles.push({
+              id: `new_${Date.now()}_${Math.random()}`,
+              file: file,
+              url: e.target.result,
+              isNew: true
+            })
+          }
+          reader.readAsDataURL(file)
+        })
+      }
+      // 清空 input value 以允许重复上传同一文件
+      event.target.value = ''
+    }
+
+    const removeImage = (index) => {
+      formData.imageFiles.splice(index, 1)
+    }
+
+    const setAsCover = (index) => {
+      if (index > 0 && index < formData.imageFiles.length) {
+        const item = formData.imageFiles.splice(index, 1)[0]
+        formData.imageFiles.unshift(item)
       }
     }
     
@@ -699,25 +794,33 @@ export default {
       isSubmitting.value = true
       
       try {
-        // 1. 上传新图片（如果有）
+        // 1. 处理所有图片（上传新图片，保留旧图片）
         let imageUrls = []
-        if (formData.image && formData.image instanceof File) {
+        if (formData.imageFiles && formData.imageFiles.length > 0) {
           try {
-            const uploadResponse = await dishApi.uploadImage(formData.image)
-            if (uploadResponse.code === 200 && uploadResponse.data) {
-              imageUrls = [uploadResponse.data.url]
-            } else {
-              throw new Error(uploadResponse.message || '图片上传失败')
-            }
+            // 对每个图片项进行处理
+            const processPromises = formData.imageFiles.map(async (imgItem) => {
+              if (imgItem.isNew && imgItem.file) {
+                // 新图片，需要上传
+                const uploadResponse = await dishApi.uploadImage(imgItem.file)
+                if (uploadResponse.code === 200 && uploadResponse.data) {
+                  return uploadResponse.data.url
+                } else {
+                  throw new Error(uploadResponse.message || '图片上传失败')
+                }
+              } else {
+                // 旧图片，直接使用 URL
+                return imgItem.url
+              }
+            })
+            
+            imageUrls = await Promise.all(processPromises)
           } catch (error) {
-            console.error('图片上传失败:', error)
-            alert('图片上传失败，请重试')
+            console.error('图片处理失败:', error)
+            alert('图片处理失败，请重试')
             isSubmitting.value = false
             return
           }
-        } else if (formData.imageUrl) {
-          // 如果已有图片 URL，直接使用
-          imageUrls = [formData.imageUrl]
         }
         
         // 2. 构建更新数据
@@ -837,6 +940,8 @@ export default {
       addTag,
       removeTag,
       handleImageUpload,
+      removeImage,
+      setAsCover,
       submitForm,
       goBack
     }

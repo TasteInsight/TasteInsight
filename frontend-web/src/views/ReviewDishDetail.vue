@@ -81,14 +81,34 @@
                 <!-- 菜品图片 -->
                 <div>
                   <label class="block text-gray-700 font-medium mb-2">菜品图片</label>
-                  <div class="border-2 border-dashed rounded-lg h-48 flex items-center justify-center bg-gray-50 overflow-hidden">
-                    <img 
-                      v-if="dishData.image || dishData.imageUrl" 
-                      :src="dishData.image || dishData.imageUrl" 
-                      alt="菜品图片"
-                      class="w-full h-full object-cover"
-                    >
-                    <div v-else class="text-center p-6">
+                  
+                  <div v-if="dishData.images && dishData.images.length > 0">
+                    <!-- 主图展示 -->
+                    <div class="border-2 rounded-lg aspect-square w-full relative flex items-center justify-center bg-gray-50 overflow-hidden mb-4">
+                      <img 
+                        :src="selectedImage || dishData.images[0]" 
+                        alt="菜品图片"
+                        class="w-full h-full object-cover cursor-pointer"
+                        @click="previewImage(selectedImage || dishData.images[0])"
+                      >
+                    </div>
+                    
+                    <!-- 缩略图列表 -->
+                    <div class="flex gap-2 overflow-x-auto pb-2">
+                      <div 
+                        v-for="(img, index) in dishData.images" 
+                        :key="index"
+                        class="w-20 h-20 flex-shrink-0 border-2 rounded-lg overflow-hidden cursor-pointer transition-all"
+                        :class="{'border-tsinghua-purple': (selectedImage || dishData.images[0]) === img, 'border-transparent': (selectedImage || dishData.images[0]) !== img}"
+                        @mouseenter="selectedImage = img"
+                      >
+                        <img :src="img" class="w-full h-full object-cover">
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div v-else class="border-2 border-dashed rounded-lg h-48 flex items-center justify-center bg-gray-50 overflow-hidden">
+                    <div class="text-center p-6">
                       <span class="iconify text-4xl text-gray-400 mx-auto" data-icon="bi:image"></span>
                       <div class="mt-2 text-gray-500">暂无图片</div>
                     </div>
@@ -309,6 +329,7 @@ export default {
     const route = useRoute()
     const dishId = route.params.id
     const isLoading = ref(false)
+    const selectedImage = ref('')
     
     const dishData = reactive({
       id: '',
@@ -323,6 +344,7 @@ export default {
       ingredients: '',
       image: '',
       imageUrl: '',
+      images: [],
       subItems: [],
       tags: [],
       spicyLevel: 0,
@@ -400,9 +422,13 @@ export default {
           if (dish.images && dish.images.length > 0) {
             dishData.imageUrl = dish.images[0]
             dishData.image = dish.images[0]
+            dishData.images = dish.images
           } else if (dish.image) {
             dishData.imageUrl = dish.image
             dishData.image = dish.image
+            dishData.images = [dish.image]
+          } else {
+            dishData.images = []
           }
           
           // 处理标签
@@ -456,6 +482,11 @@ export default {
       }
     }
     
+    // 预览图片
+    const previewImage = (imgUrl) => {
+      window.open(imgUrl, '_blank')
+    }
+
     // 批准通过
     const approveDish = async () => {
       if (!confirm(`确定要批准通过菜品 "${dishData.name}" 吗？`)) {
@@ -536,8 +567,10 @@ export default {
     return {
       dishData,
       isLoading,
+      selectedImage,
       statusClasses,
       statusText,
+      previewImage,
       approveDish,
       rejectDish,
       revokeApproval,
