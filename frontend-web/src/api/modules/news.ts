@@ -4,7 +4,8 @@ import type {
   PaginationResponse,
   ApiResponse,
   NewsCreateRequest,
-  NewsUpdateRequest
+  NewsUpdateRequest,
+  GetNewsParams
 } from '@/types/api'
 
 /**
@@ -13,10 +14,10 @@ import type {
 export const newsApi = {
   /**
    * 获取新闻列表
-   * @param params 分页参数
+   * @param params 查询参数
    * @returns 新闻列表
    */
-  async getNews(params: { page?: number; pageSize?: number } = {}): Promise<ApiResponse<PaginationResponse<News>>> {
+  async getNews(params: GetNewsParams = {}): Promise<ApiResponse<PaginationResponse<News>>> {
     return await request.get<ApiResponse<PaginationResponse<News>>>('/admin/news', { params });
   },
 
@@ -46,6 +47,24 @@ export const newsApi = {
    */
   async deleteNews(id: string): Promise<ApiResponse<void>> {
     return await request.delete<ApiResponse<void>>(`/admin/news/${id}`);
+  },
+
+  /**
+   * 发布新闻
+   * @param id 新闻 ID
+   * @returns 发布结果
+   */
+  async publishNews(id: string): Promise<ApiResponse<void>> {
+    return await request.post<ApiResponse<void>>(`/admin/news/${id}/publish`);
+  },
+
+  /**
+   * 撤回已发布新闻
+   * @param id 新闻 ID
+   * @returns 撤回结果
+   */
+  async revokeNews(id: string): Promise<ApiResponse<void>> {
+    return await request.post<ApiResponse<void>>(`/admin/news/${id}/revoke`);
   }
 }
 

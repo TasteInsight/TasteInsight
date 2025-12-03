@@ -487,12 +487,16 @@ export interface News {
   id: string
   title: string
   content: string
-  author: string
+  summary?: string
+  canteenId?: string
+  canteenName?: string
+  author?: string // 兼容旧代码，对应 createdBy
+  createdBy?: string
   images?: string[]
-  status: 'draft' | 'published'
+  status?: 'draft' | 'published'
   publishedAt?: string
   createdAt: string
-  updatedAt: string
+  updatedAt?: string
 }
 
 /**
@@ -501,7 +505,9 @@ export interface News {
 export interface NewsCreateRequest {
   title: string
   content: string
-  author: string
+  summary?: string
+  canteenId?: string
+  author?: string // 暂时保留
   images?: string[]
   status?: 'draft' | 'published'
 }
@@ -512,7 +518,9 @@ export interface NewsCreateRequest {
 export interface NewsUpdateRequest {
   title?: string
   content?: string
-  author?: string
+  summary?: string
+  canteenId?: string
+  author?: string // 暂时保留
   images?: string[]
   status?: 'draft' | 'published'
 }
@@ -522,6 +530,7 @@ export interface NewsUpdateRequest {
  */
 export interface GetNewsParams extends PaginationParams {
   status?: 'draft' | 'published'
+  canteenName?: string
 }
 
 // ==================== 日志相关类型 ====================
