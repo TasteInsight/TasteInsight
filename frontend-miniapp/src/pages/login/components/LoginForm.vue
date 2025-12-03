@@ -10,7 +10,7 @@
     </view>
 
     <!-- 登录操作区域 -->
-    <view class="w-full space-y-6 animate-fade-in-up">
+    <view class="w-full space-y-4 animate-fade-in-up">
       <!-- 微信一键登录按钮 -->
       <button
         class="w-full bg-ts-purple text-white py-4 rounded-full font-bold text-lg shadow-lg shadow-purple-200 active:scale-[0.98] active:shadow-md transition-all duration-200 flex items-center justify-center border-none"
@@ -26,7 +26,7 @@
     </view>
 
     <!-- 底部协议 -->
-    <view class="mt-12 text-center animate-fade-in">
+    <view class="mt-8 text-center animate-fade-in">
       <view class="flex items-center justify-center space-x-1 text-xs text-gray-400">
         <text>登录即代表同意</text>
         <text class="text-ts-purple font-medium" @click="openAgreement('user')">《用户协议》</text>
