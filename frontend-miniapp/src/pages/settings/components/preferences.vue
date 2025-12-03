@@ -214,28 +214,24 @@
     <!-- 食堂偏好 -->
     <view class="bg-white rounded-lg p-6 mb-4 shadow-sm border border-gray-100">
       <text class="text-lg font-semibold text-gray-800 mb-4 block">食堂偏好</text>
-      <view class="flex items-center space-x-2 mb-4">
-        <input 
-          v-model="newCanteenPreference" 
-          class="flex-1 p-3 border border-gray-200 rounded-lg text-base focus:border-ts-purple focus:ring-1 focus:ring-purple-100 transition-all"
-          placeholder="请输入食堂名称"
-          maxlength="20"
-          @confirm="addCanteenPreference"
-        />
-        <button 
-          class="px-5 py-3 bg-purple-50 text-ts-purple border border-purple-100 rounded-lg text-sm font-medium active:bg-purple-100"
-          @click="addCanteenPreference"
-        >
-          添加
-        </button>
+      
+      <!-- 食堂选择器 -->
+      <view class="mb-4">
+        <picker class="w-full" mode="selector" :range="canteenList" range-key="name" @change="onCanteenSelect">
+          <view class="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-xl border border-gray-200">
+            <text class="text-sm text-gray-700">选择食堂</text>
+            <text class="text-gray-400">▼</text>
+          </view>
+        </picker>
       </view>
+      
       <view class="flex flex-wrap gap-2" v-if="form.canteenPreferences.length > 0">
         <view 
-          v-for="(item, index) in form.canteenPreferences" 
-          :key="index"
+          v-for="(canteenId, index) in form.canteenPreferences" 
+          :key="canteenId"
           class="px-3 py-1.5 bg-purple-50 text-ts-purple rounded-lg text-sm flex items-center border border-purple-100"
         >
-          <text>{{ item }}</text>
+          <text>{{ getCanteenNameById(canteenId) }}</text>
           <view class="ml-2 w-4 h-4 rounded-full bg-purple-200 flex items-center justify-center" @click="removeCanteenPreference(index)">
              <text class="text-xs text-purple-700 font-bold">×</text>
           </view>
@@ -294,12 +290,14 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue';
+import { reactive, ref, onMounted, computed } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
+import { useCanteenStore } from '@/store/modules/use-canteen-store';
 import { updateUserProfile } from '@/api/modules/user';
 import type { UserProfileUpdateRequest, UserPreference } from '@/types/api';
 
 const userStore = useUserStore();
+const canteenStore = useCanteenStore();
 const saving = ref(false);
 const loading = ref(true);
 const form = reactive({
@@ -320,6 +318,9 @@ const newMeatPreference = ref('');
 const newCanteenPreference = ref('');
 const newAvoidIngredient = ref('');
 
+// 食堂列表
+const canteenList = computed(() => canteenStore.canteenList);
+
 const tasteLabels = ['未设置', '清淡', '适中', '偏重', '很重', '极重'];
 const spicinessLabels = ['未设置', '微辣', '中辣', '重辣', '特辣', '变态辣'];
 const portionLabels: Record<'small' | 'medium' | 'large', string> = {
@@ -338,6 +339,11 @@ const reversePortionLabels: Record<string, 'small' | 'medium' | 'large'> = {
  */
 onMounted(async () => {
   try {
+    // 加载食堂列表
+    if (canteenStore.canteenList.length === 0) {
+      await canteenStore.fetchCanteenList();
+    }
+    
     await userStore.fetchProfileAction();
     const userInfo = userStore.userInfo;
     if (userInfo && userInfo.preferences) {
@@ -426,6 +432,30 @@ function addCanteenPreference() {
 
 function removeCanteenPreference(index: number) {
   form.canteenPreferences.splice(index, 1);
+}
+
+/**
+ * 选择食堂
+ */
+function onCanteenSelect(e: any) {
+  const index = e.detail.value;
+  const selectedCanteen = canteenList.value[index];
+  if (selectedCanteen) {
+    const canteenId = selectedCanteen.id;
+    if (!form.canteenPreferences.includes(canteenId)) {
+      form.canteenPreferences.push(canteenId);
+    } else {
+      uni.showToast({ title: '已存在该食堂', icon: 'none' });
+    }
+  }
+}
+
+/**
+ * 根据食堂ID获取食堂名称
+ */
+function getCanteenNameById(canteenId: string): string {
+  const canteen = canteenList.value.find((c: any) => c.id === canteenId);
+  return canteen ? canteen.name : canteenId;
 }
 
 /**
