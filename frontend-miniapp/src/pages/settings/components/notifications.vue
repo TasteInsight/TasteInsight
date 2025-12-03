@@ -78,7 +78,7 @@
 import { reactive, ref, onMounted } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { updateUserProfile } from '@/api/modules/user';
-import type { UserProfileUpdateRequest, UserPreference } from '@/types/api';
+import type { UserProfileUpdateRequest, UserPreference, UserSettings } from '@/types/api';
 
 const userStore = useUserStore();
 const saving = ref(false);
@@ -97,8 +97,8 @@ onMounted(async () => {
   try {
     await userStore.fetchProfileAction();
     const userInfo = userStore.userInfo;
-    if (userInfo && userInfo.preferences && userInfo.preferences.notificationSettings) {
-      const notif = userInfo.preferences.notificationSettings;
+    if (userInfo && userInfo.settings && userInfo.settings.notificationSettings) {
+      const notif = userInfo.settings.notificationSettings;
       form.newDishAlert = notif.newDishAlert ?? true;
       form.priceChangeAlert = notif.priceChangeAlert ?? false;
       form.reviewReplyAlert = notif.reviewReplyAlert ?? true;
@@ -117,7 +117,7 @@ onMounted(async () => {
 async function handleSave() {
   saving.value = true;
   try {
-    const preferences: Partial<UserPreference> = {
+    const settings: Partial<UserSettings> = {
       notificationSettings: {
         newDishAlert: form.newDishAlert,
         priceChangeAlert: form.priceChangeAlert,
@@ -127,7 +127,7 @@ async function handleSave() {
     };
 
     const payload: UserProfileUpdateRequest = {
-      preferences
+      settings
     };
 
     const response = await updateUserProfile(payload);
