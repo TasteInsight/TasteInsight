@@ -568,7 +568,7 @@ export default {
         const reader = new FileReader()
         reader.onload = (e) => {
             formData.imageFiles.push({
-              id: `img_${Date.now()}_${Math.random()}`,
+              id: crypto.randomUUID(),
               file: file,
               preview: e.target.result
             })
@@ -634,8 +634,10 @@ export default {
               .filter(res => res.code === 200 && res.data)
               .map(res => res.data.url)
               
-            if (imageUrls.length !== formData.imageFiles.length) {
-               console.warn('部分图片上传失败')
+            const failed = formData.imageFiles.length - imageUrls.length;
+            if (!window.confirm(`${failed}张图片上传失败，是否继续提交？`)) {
+              isSubmitting.value = false;
+              return;
             }
           } catch (error) {
             console.error('图片上传失败:', error)

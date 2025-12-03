@@ -530,7 +530,6 @@ export default {
     const router = useRouter()
     const dishStore = useDishStore()
     const isSubmitting = ref(false)
-    const imagePreview = ref('') // Deprecated, using formData.imageFiles
     const parentDishId = ref(null) // 用于存储父菜品ID（创建父菜品后）
     
     const newTag = ref('')
@@ -712,7 +711,7 @@ export default {
         const reader = new FileReader()
         reader.onload = (e) => {
             formData.imageFiles.push({
-              id: `img_${Date.now()}_${Math.random()}`,
+              id: (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : `img_${Date.now()}_${Math.random()}`,
               file: file,
               preview: e.target.result
             })
@@ -774,8 +773,10 @@ export default {
               .filter(res => res.code === 200 && res.data)
               .map(res => res.data.url)
               
-            if (imageUrls.length !== formData.imageFiles.length) {
-               console.warn('部分图片上传失败')
+            const failed = formData.imageFiles.length - imageUrls.length;
+            if (!confirm(`${failed}张图片上传失败，是否继续？`)) {
+              isSubmitting.value = false;
+              return;
             }
           } catch (error) {
             console.error('图片上传失败:', error)
@@ -895,7 +896,6 @@ export default {
         availableDates: []
       })
       newTag.value = ''
-      imagePreview.value = '' // Deprecated ref, keeping just in case
       windows.value = [] // Reset windows list
     }
     
@@ -904,7 +904,6 @@ export default {
       canteens,
       windows,
       newTag,
-      imagePreview,
       isSubmitting,
       parentDishId,
       loadCanteens,

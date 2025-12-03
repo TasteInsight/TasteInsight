@@ -672,9 +672,11 @@ export default {
       
       // 匹配窗口ID
       if (formData.windowName && windows.value.length > 0) {
-        // 尝试通过名称匹配窗口
-        // 注意：窗口名称可能重复，如果有窗口编号更好，但这里尽量匹配
-        const foundWindow = windows.value.find(w => w.name === formData.windowName)
+        // 尝试通过名称和编号匹配窗口
+        const foundWindow = windows.value.find(w => 
+          w.name === formData.windowName && 
+          (!formData.windowNumber || w.number === formData.windowNumber)
+        );
         if (foundWindow) {
           formData.windowId = foundWindow.id
           // 确保其他信息一致
@@ -851,7 +853,7 @@ export default {
         const reader = new FileReader()
         reader.onload = (e) => {
             formData.imageFiles.push({
-              id: `new_${Date.now()}_${Math.random()}`,
+              id: (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : `new_${Date.now()}_${Math.random()}`,
               file: file,
               url: e.target.result,
               isNew: true
@@ -920,18 +922,30 @@ export default {
               if (imgItem.isNew && imgItem.file) {
                 // 新图片，需要上传
                 const uploadResponse = await dishApi.uploadImage(imgItem.file)
-            if (uploadResponse.code === 200 && uploadResponse.data) {
+                if (uploadResponse.code === 200 && uploadResponse.data) {
                   return uploadResponse.data.url
-            } else {
-              throw new Error(uploadResponse.message || '图片上传失败')
-            }
+                } else {
+                  throw new Error(uploadResponse.message || '图片上传失败')
+                }
               } else {
                 // 旧图片，直接使用 URL
                 return imgItem.url
               }
             })
             
-            imageUrls = await Promise.all(processPromises)
+            const results = await Promise.allSettled(processPromises)
+            
+            imageUrls = results
+              .filter(result => result.status === 'fulfilled')
+              .map(result => result.value)
+              
+            if (imageUrls.length !== formData.imageFiles.length) {
+              const failed = formData.imageFiles.length - imageUrls.length
+              if (!confirm(`${failed}张图片处理失败，是否继续保存？`)) {
+                isSubmitting.value = false
+                return
+              }
+            }
           } catch (error) {
             console.error('图片处理失败:', error)
             alert('图片处理失败，请重试')

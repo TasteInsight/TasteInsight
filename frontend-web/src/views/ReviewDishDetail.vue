@@ -101,6 +101,7 @@
                         class="w-20 h-20 flex-shrink-0 border-2 rounded-lg overflow-hidden cursor-pointer transition-all"
                         :class="{'border-tsinghua-purple': (selectedImage || dishData.images[0]) === img, 'border-transparent': (selectedImage || dishData.images[0]) !== img}"
                         @mouseenter="selectedImage = img"
+                        @mouseleave="selectedImage = ''"
                       >
                         <img :src="img" class="w-full h-full object-cover">
                       </div>
