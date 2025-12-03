@@ -13,6 +13,7 @@ import { AdminWindowsModule } from './admin-windows/admin-windows.module';
 import { AdminReportsModule } from './admin-reports/admin-reports.module';
 import { AdminUploadsModule } from './admin-uploads/admin-uploads.module';
 import { AdminAdminsModule } from './admin-admins/admin-admins.module';
+import { AdminNewsModule } from './admin-news/admin-news.module';
 import { ConfigModule } from '@nestjs/config';
 import { CanteensModule } from './canteens/canteens.module';
 import { ReviewsModule } from './reviews/reviews.module';
@@ -42,6 +43,7 @@ import { join } from 'path';
     AdminReportsModule,
     AdminUploadsModule,
     AdminAdminsModule,
+    AdminNewsModule,
     UploadModule,
     ConfigModule.forRoot({
       isGlobal: true,

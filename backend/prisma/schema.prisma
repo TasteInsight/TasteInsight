@@ -555,7 +555,8 @@ model News {
   canteenId   String?
   canteen     Canteen? @relation(fields: [canteenId], references: [id])
   canteenName String?
-  publishedAt DateTime
+  publishedAt DateTime?
+  status      String   @default("draft") // draft, published
   createdBy   String
   creator     Admin    @relation(fields: [createdBy], references: [id])
 
@@ -564,5 +565,6 @@ model News {
 
   @@index([canteenId])
   @@index([publishedAt])
+  @@index([status])
   @@map("news")
 }
