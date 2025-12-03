@@ -294,7 +294,7 @@ import { reactive, ref, onMounted, computed } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { useCanteenStore } from '@/store/modules/use-canteen-store';
 import { updateUserProfile } from '@/api/modules/user';
-import type { UserProfileUpdateRequest, UserPreference } from '@/types/api';
+import type { UserProfileUpdateRequest, UserPreference, Canteen } from '@/types/api';
 
 const userStore = useUserStore();
 const canteenStore = useCanteenStore();
@@ -437,7 +437,7 @@ function removeCanteenPreference(index: number) {
 /**
  * 选择食堂
  */
-function onCanteenSelect(e: any) {
+function onCanteenSelect(e: { detail: { value: number } }) {
   const index = e.detail.value;
   const selectedCanteen = canteenList.value[index];
   if (selectedCanteen) {
@@ -454,7 +454,7 @@ function onCanteenSelect(e: any) {
  * 根据食堂ID获取食堂名称
  */
 function getCanteenNameById(canteenId: string): string {
-  const canteen = canteenList.value.find((c: any) => c.id === canteenId);
+  const canteen = canteenList.value.find((c) => c.id === canteenId);
   return canteen ? canteen.name : canteenId;
 }
 
