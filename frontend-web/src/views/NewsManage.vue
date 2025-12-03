@@ -24,6 +24,24 @@
           
           <!-- 新闻列表 -->
           <div class="mt-6">
+            <!-- 状态筛选 -->
+            <div class="mb-4 flex space-x-4">
+              <button 
+                class="px-4 py-2 rounded-lg transition-colors"
+                :class="currentStatus === 'published' ? 'bg-tsinghua-purple text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                @click="changeStatus('published')"
+              >
+                已发布
+              </button>
+              <button 
+                class="px-4 py-2 rounded-lg transition-colors"
+                :class="currentStatus === 'draft' ? 'bg-tsinghua-purple text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                @click="changeStatus('draft')"
+              >
+                未发布 (草稿)
+              </button>
+            </div>
+
             <div class="overflow-x-auto">
               <table class="w-full">
                 <thead class="bg-gray-50">
@@ -31,12 +49,26 @@
                     <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">标题</th>
                     <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">摘要</th>
                     <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">食堂</th>
-                    <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">发布时间</th>
+                    <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">
+                      {{ currentStatus === 'published' ? '发布时间' : '创建时间' }}
+                    </th>
                     <th class="py-3 px-6 text-center text-sm font-medium text-gray-500">操作</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200">
+                  <tr v-if="isLoading">
+                    <td colspan="5" class="py-8 text-center text-gray-500">
+                      <span class="iconify inline-block text-2xl animate-spin" data-icon="mdi:loading"></span>
+                      <span class="ml-2">加载中...</span>
+                    </td>
+                  </tr>
+                  <tr v-else-if="newsList.length === 0">
+                    <td colspan="5" class="py-8 text-center text-gray-500">
+                      暂无{{ currentStatus === 'published' ? '已发布' : '未发布' }}新闻
+                    </td>
+                  </tr>
                   <tr 
+                    v-else
                     v-for="news in newsList" 
                     :key="news.id"
                     class="hover:bg-gray-50"
@@ -50,15 +82,41 @@
                       </div>
                     </td>
                     <td class="py-4 px-6 text-gray-600">{{ getCanteenName(news.canteenId) }}</td>
-                    <td class="py-4 px-6 text-gray-600 text-sm">{{ formatDate(news.publishedAt) || '未设置' }}</td>
+                    <td class="py-4 px-6 text-gray-600 text-sm">
+                      {{ formatDate(currentStatus === 'published' ? news.publishedAt : news.createdAt) || '未设置' }}
+                    </td>
                     <td class="py-4 px-6 text-center">
                       <div class="flex items-center justify-center space-x-2">
-                        <button
-                          @click="editNews(news)"
-                          class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200 transition duration-200"
-                        >
-                          编辑
-                        </button>
+                        <!-- 未发布状态操作 -->
+                        <template v-if="currentStatus === 'draft'">
+                          <button
+                            @click="publishNews(news.id)"
+                            class="px-3 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200 transition duration-200"
+                          >
+                            发布
+                          </button>
+                          <button
+                            @click="editNews(news)"
+                            class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200 transition duration-200"
+                          >
+                            编辑
+                          </button>
+                        </template>
+                        
+                        <!-- 已发布状态操作 -->
+                        <template v-else>
+                          <button
+                            @click="revokeNews(news.id)"
+                            class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded text-sm hover:bg-yellow-200 transition duration-200"
+                            title="如需编辑已发布新闻，请先撤回至草稿状态"
+                          >
+                            撤回
+                          </button>
+                          <span class="ml-1 text-gray-400 text-xs" title="如需编辑已发布新闻，请先撤回至草稿状态">
+                            <span class="iconify" data-icon="mdi:information-outline"></span>
+                          </span>
+                        </template>
+
                         <button
                           @click="deleteNews(news.id)"
                           class="px-3 py-1 bg-red-100 text-red-700 rounded text-sm hover:bg-red-200 transition duration-200"
@@ -66,11 +124,6 @@
                           删除
                         </button>
                       </div>
-                    </td>
-                  </tr>
-                  <tr v-if="newsList.length === 0">
-                    <td colspan="5" class="py-8 text-center text-gray-500">
-                      暂无新闻，点击"创建新闻"按钮添加
                     </td>
                   </tr>
                 </tbody>
@@ -192,16 +245,46 @@
             </div>
             
             <div class="flex space-x-4 pt-4 border-t border-gray-200">
-              <button
-                type="submit"
-                class="flex-1 px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200"
-              >
-                {{ showEditModal ? '更新' : '创建' }}
-              </button>
+              <!-- 创建模式：保存草稿 或 立即发布 -->
+              <template v-if="!showEditModal">
+                <button
+                  type="button"
+                  @click="submitForm('draft')"
+                  class="flex-1 px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition duration-200"
+                >
+                  保存为草稿
+                </button>
+                <button
+                  type="button"
+                  @click="submitForm('published')"
+                  class="flex-1 px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200"
+                >
+                  立即发布
+                </button>
+              </template>
+              
+              <!-- 编辑模式：保存更新 -->
+              <template v-else>
+                <button
+                  type="button"
+                  @click="submitForm('draft')"
+                  class="flex-1 px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition duration-200"
+                >
+                  保存为草稿
+                </button>
+                <button
+                  type="button"
+                  @click="submitForm('published')"
+                  class="flex-1 px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200"
+                >
+                  立即发布
+                </button>
+              </template>
+
               <button
                 type="button"
                 @click="closeModal"
-                class="flex-1 px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"
+                class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"
               >
                 取消
               </button>
@@ -241,6 +324,8 @@ export default {
     const showCreateModal = ref(false)
     const showEditModal = ref(false)
     const editingNewsId = ref(null)
+    const isLoading = ref(false)
+    const currentStatus = ref('published') // 默认显示已发布
     const canteenList = ref([])
     const authStore = useAuthStore()
 
@@ -290,15 +375,18 @@ export default {
       content: '',
       summary: '',
       canteenId: '',
-      publishedAt: ''
+      publishedAt: '',
+      status: 'draft'
     })
     
     // 加载新闻列表
     const loadNews = async () => {
+      isLoading.value = true
       try {
         const response = await newsApi.getNews({
           page: pagination.page,
-          pageSize: pagination.pageSize
+          pageSize: pagination.pageSize,
+          status: currentStatus.value
         })
         
         if (response.code === 200 && response.data) {
@@ -311,11 +399,24 @@ export default {
           } else if (Array.isArray(response.data)) {
             newsList.value = response.data
           }
+        } else {
+          // 清空列表
+          newsList.value = []
+          pagination.total = 0
         }
       } catch (error) {
         console.error('加载新闻列表失败:', error)
         alert(error instanceof Error ? error.message : '加载新闻列表失败，请重试')
+      } finally {
+        isLoading.value = false
       }
+    }
+    
+    // 切换状态筛选
+    const changeStatus = (status) => {
+      currentStatus.value = status
+      pagination.page = 1
+      loadNews()
     }
     
     const formatDate = (dateString) => {
@@ -364,6 +465,7 @@ export default {
       newsForm.summary = ''
       newsForm.canteenId = ''
       newsForm.publishedAt = ''
+      newsForm.status = 'draft'
       editingNewsId.value = null
       
       // 【关键】重置编辑器内容
@@ -390,6 +492,7 @@ export default {
       newsForm.content = news.content || ''
       newsForm.summary = news.summary || ''
       newsForm.canteenId = news.canteenId || ''
+      newsForm.status = news.status || 'draft'
       
       // 【关键】将新闻内容赋值给编辑器
       valueHtml.value = news.content || ''
@@ -412,7 +515,17 @@ export default {
     }
     
     // 提交表单
-    const submitForm = async () => {
+    const submitForm = async (targetStatus) => {
+      // 表单验证
+      if (!newsForm.title || !newsForm.summary || !valueHtml.value) {
+        alert('请填写标题、摘要和内容')
+        return
+      }
+      if (targetStatus === 'published' && !newsForm.publishedAt) {
+        alert('请填写发布时间')
+        return
+      }
+
       try {
         // 【关键】提交前，将编辑器中的 HTML 同步回 newsForm.content
         newsForm.content = valueHtml.value
@@ -423,7 +536,8 @@ export default {
           summary: newsForm.summary,
           canteenId: newsForm.canteenId || null, // 如果是空字符串（全校公告），则传 null
           publishedAt: newsForm.publishedAt ? new Date(newsForm.publishedAt).toISOString() : undefined,
-          createdBy: authStore.user?.id // 添加发布人 ID
+          createdBy: authStore.user?.id, // 添加发布人 ID
+          status: targetStatus // 使用传入的目标状态
         }
         
         if (showEditModal.value && editingNewsId.value) {
@@ -442,6 +556,10 @@ export default {
           if (response.code === 200 || response.code === 201) {
             alert('新闻创建成功！')
             closeModal()
+            // 如果创建的是草稿，确保当前视图切换到草稿列表，或者提示用户
+            if (targetStatus === 'draft' && currentStatus.value !== 'draft') {
+              currentStatus.value = 'draft'
+            }
             loadNews()
           } else {
             throw new Error(response.message || '创建失败')
@@ -450,6 +568,40 @@ export default {
       } catch (error) {
         console.error('提交失败:', error)
         alert(error instanceof Error ? error.message : '操作失败，请重试')
+      }
+    }
+    
+    // 发布新闻
+    const publishNews = async (id) => {
+      if (!confirm('确定要发布这条新闻吗？')) return
+      try {
+        const response = await newsApi.publishNews(id)
+        if (response.code === 200) {
+          alert('发布成功')
+          loadNews()
+        } else {
+          throw new Error(response.message || '发布失败')
+        }
+      } catch (error) {
+        console.error('发布失败:', error)
+        alert(error instanceof Error ? error.message : '发布失败，请重试')
+      }
+    }
+
+    // 撤回新闻
+    const revokeNews = async (id) => {
+      if (!confirm('确定要撤回这条新闻吗？撤回后将变为草稿状态。')) return
+      try {
+        const response = await newsApi.revokeNews(id)
+        if (response.code === 200) {
+          alert('撤回成功，已移至草稿箱')
+          loadNews()
+        } else {
+          throw new Error(response.message || '撤回失败')
+        }
+      } catch (error) {
+        console.error('撤回失败:', error)
+        alert(error instanceof Error ? error.message : '撤回失败，请重试')
       }
     }
     
@@ -487,6 +639,11 @@ export default {
       canteenList,
       pagination,
       currentAdmin,
+      currentStatus,
+      isLoading,
+      changeStatus,
+      publishNews,
+      revokeNews,
       // 导出编辑器相关变量
       editorRef,
       valueHtml,
