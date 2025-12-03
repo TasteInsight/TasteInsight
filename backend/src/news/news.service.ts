@@ -15,7 +15,9 @@ export class NewsService {
     const { page = 1, pageSize = 20, canteenId } = query;
     const skip = (page - 1) * pageSize;
 
-    const where: any = {};
+    const where: any = {
+      status: 'published',
+    };
     if (canteenId) {
       where.canteenId = canteenId;
     }
@@ -54,7 +56,7 @@ export class NewsService {
       where: { id },
     });
 
-    if (!news) {
+    if (!news || news.status !== 'published') {
       throw new NotFoundException({
         code: 404,
         message: '资源不存在',
