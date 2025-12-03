@@ -16,17 +16,19 @@ model User {
   openId    String   @unique
   nickname  String
   avatar    String?
-  allergens String[] // 过敏原列表
+  allergens String[] @default([]) // 过敏原列表
 
   // 关联关系
   preferences    UserPreference?
+  settings       UserSetting?
   reviews        Review[]
   comments       Comment[]
-  favoriteDishes FavoriteDish[]
   mealPlans      MealPlan[]
-  browseHistory  BrowseHistory[]
   uploads        DishUpload[]
   reports        Report[]
+  favoriteDishes FavoriteDish[]
+  browseHistory  BrowseHistory[]
+
   feedbacks      AIRecommendationFeedback[]
 
   createdAt        DateTime           @default(now())
@@ -42,16 +44,16 @@ model UserPreference {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // 基础偏好
-  tagPreferences String[] // 菜系偏好
+  tagPreferences String[] @default([]) // 菜系偏好
 
   // 价格偏好
   priceMin Float @default(0)
   priceMax Float @default(50)
 
   // 肉类和食材偏好
-  meatPreference      String[]
-  avoidIngredients    String[] // 不喜欢的食材
-  favoriteIngredients String[] // 喜欢的食材
+  meatPreference      String[] @default([])
+  avoidIngredients    String[] @default([]) // 不喜欢的食材
+  favoriteIngredients String[] @default([]) // 喜欢的食材
 
   // 口味偏好
   spicyLevel Int @default(0) // 0-5 辣度等级
@@ -60,8 +62,20 @@ model UserPreference {
   oiliness   Int @default(0) // 0-5
 
   // 其他偏好
-  canteenPreferences String[] // 偏好食堂ID列表
+  canteenPreferences String[] @default([]) // 偏好食堂ID列表
   portionSize        String   @default("medium") // small, medium, large
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user_preferences")
+
+}
+
+model UserSetting {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // 通知设置
   newDishAlert         Boolean @default(true)
@@ -77,7 +91,7 @@ model UserPreference {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("user_preferences")
+  @@map("user_settings")
 }
 
 // ==================== 管理员相关模型 ====================

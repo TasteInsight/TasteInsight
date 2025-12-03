@@ -198,7 +198,6 @@ export class AdminCreateDishDto {
   @IsString()
   windowNumber?: string;
 
-
   @IsOptional()
   @IsArray()
   @IsEnum(MealTime, { each: true })
@@ -305,7 +304,6 @@ export class AdminUpdateDishDto {
   @IsOptional()
   @IsString()
   windowNumber?: string;
-
 
   @IsOptional()
   @IsArray()

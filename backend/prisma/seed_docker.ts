@@ -333,6 +333,14 @@ async function main() {
       oiliness: 2,
       canteenPreferences: [canteen1.id, canteen2.id],
       portionSize: 'medium',
+    },
+  });
+  console.log(`Created user preferences for ${user.nickname}`);
+
+  // 为用户创建设置
+  await prisma.userSetting.create({
+    data: {
+      userId: user.id,
       newDishAlert: true,
       priceChangeAlert: false,
       reviewReplyAlert: true,
@@ -342,7 +350,7 @@ async function main() {
       defaultSortBy: 'rating',
     },
   });
-  console.log(`Created user preferences for ${user.nickname}`);
+  console.log(`Created user settings for ${user.nickname}`);
 
   // 5. 创建测试窗口
   const window1 = await prisma.window.create({
@@ -418,6 +426,7 @@ async function main() {
       name: '宫保鸡丁',
       tags: ['川菜', '家常菜', '鸡肉'],
       price: 15.0,
+      priceUnit: '份',
       description: '经典川菜，鸡肉鲜嫩，花生酥脆',
       images: ['https://example.com/dish1.jpg'],
       ingredients: ['鸡肉', '花生', '辣椒', '葱', '姜', '蒜'],
@@ -447,6 +456,7 @@ async function main() {
       name: '清蒸鲈鱼',
       tags: ['粤菜', '海鲜', '清淡'],
       price: 28.0,
+      priceUnit: '份',
       description: '新鲜鲈鱼清蒸，保留鱼肉鲜美',
       images: ['https://example.com/dish2.jpg'],
       ingredients: ['鲈鱼', '姜', '葱', '料酒'],
@@ -476,6 +486,7 @@ async function main() {
       name: '牛肉面',
       tags: ['面食', '主食', '牛肉'],
       price: 12.0,
+      priceUnit: '份',
       description: '手工拉面，牛肉炖得软烂',
       images: ['https://example.com/dish3.jpg'],
       ingredients: ['牛肉', '面粉', '葱', '香菜', '辣椒油'],
@@ -505,6 +516,7 @@ async function main() {
       name: '麻婆豆腐',
       tags: ['川菜', '素菜', '豆制品'],
       price: 10.0,
+      priceUnit: '份',
       description: '麻辣鲜香，豆腐嫩滑',
       images: ['https://example.com/dish4.jpg'],
       ingredients: ['豆腐', '牛肉末', '豆瓣酱', '花椒', '辣椒'],
@@ -534,6 +546,7 @@ async function main() {
       name: '番茄炒蛋',
       tags: ['家常菜', '素菜'],
       price: 8.0,
+      priceUnit: '份',
       description: '简单美味的家常菜',
       images: ['https://example.com/dish5.jpg'],
       ingredients: ['番茄', '鸡蛋', '葱', '盐', '糖'],
@@ -564,6 +577,7 @@ async function main() {
       name: '二楼小炒肉',
       tags: ['湘菜', '辣味'],
       price: 18.0,
+      priceUnit: '份',
       description: '二楼招牌菜',
       images: ['https://example.com/dish_extra_1.jpg'],
       ingredients: ['猪肉', '辣椒'],
@@ -593,6 +607,7 @@ async function main() {
       name: '地下炸鸡',
       tags: ['小吃', '炸物'],
       price: 12.0,
+      priceUnit: '份',
       description: '酥脆炸鸡',
       images: ['https://example.com/dish_extra_2.jpg'],
       ingredients: ['鸡肉', '面粉'],
@@ -609,7 +624,7 @@ async function main() {
       windowId: window1_b1_1.id,
       windowNumber: window1_b1_1.number,
       windowName: window1_b1_1.name,
-      availableMealTime: ['lunch', 'dinner', 'night_snack'],
+      availableMealTime: ['lunch', 'dinner', 'nightsnack'],
       status: 'online',
       averageRating: 4.5,
       reviewCount: 50,
@@ -624,6 +639,7 @@ async function main() {
       name: '季节性烤鱼',
       tags: ['烧烤', '海鲜'],
       price: 35.0,
+      priceUnit: '份',
       description: '季节性菜品，目前不供应',
       images: ['https://example.com/dish6.jpg'],
       ingredients: ['鱼', '调料'],
@@ -656,6 +672,7 @@ async function main() {
       name: '用户上传待审核菜品',
       tags: ['待审核'],
       price: 15.0,
+      priceUnit: '份',
       description: '用户觉得好吃的菜',
       images: ['https://example.com/upload1.jpg'],
       ingredients: ['未知'],
@@ -678,6 +695,7 @@ async function main() {
       name: '管理员上传待审核菜品',
       tags: ['新品'],
       price: 25.0,
+      priceUnit: '份',
       description: '即将推出的新品',
       images: ['https://example.com/upload2.jpg'],
       ingredients: ['高级食材'],
@@ -700,6 +718,7 @@ async function main() {
       name: '第二食堂用户上传待审核菜品',
       tags: ['待审核', '面食'],
       price: 18.0,
+      priceUnit: '份',
       description: '第二食堂的面食',
       images: ['https://example.com/upload3.jpg'],
       ingredients: ['面粉', '牛肉'],
@@ -722,6 +741,7 @@ async function main() {
       name: '已通过审核的菜品',
       tags: ['已审核'],
       price: 20.0,
+      priceUnit: '份',
       description: '这道菜已经通过审核',
       images: ['https://example.com/upload4.jpg'],
       ingredients: ['蔬菜'],
@@ -745,6 +765,7 @@ async function main() {
       name: '被拒绝的菜品',
       tags: ['拒绝'],
       price: 30.0,
+      priceUnit: '份',
       description: '这道菜被拒绝了',
       images: ['https://example.com/upload5.jpg'],
       ingredients: ['不明食材'],

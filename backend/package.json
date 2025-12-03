@@ -26,6 +26,7 @@
     "test:e2e:comments": "pnpm run test:setup && dotenv -e .env.test -- jest --config ./test/jest-e2e.json test/comments.e2e-spec.ts --coverage --collectCoverageFrom \"src/comments/**/*.ts\"",
     "test:e2e:news": "pnpm run test:setup && dotenv -e .env.test -- jest --config ./test/jest-e2e.json test/news.e2e-spec.ts --coverage --collectCoverageFrom \"src/news/**/*.ts\"",
     "test:e2e:meal-plans": "pnpm run test:setup && dotenv -e .env.test -- jest --config ./test/jest-e2e.json test/meal-plans.e2e-spec.ts --coverage --collectCoverageFrom \"src/meal-plans/**/*.ts\"",
+    "test:e2e:user-profile": "pnpm run test:setup && dotenv -e .env.test -- jest --config ./test/jest-e2e.json test/user-profile.e2e-spec.ts --coverage --collectCoverageFrom \"src/user-profile/**/*.ts\"",
     "test:e2e:admin-dishes": "pnpm run test:setup && dotenv -e .env.test -- jest --config ./test/jest-e2e.json test/admin-dishes.e2e-spec.ts --coverage --collectCoverageFrom \"src/admin-dishes/**/*.ts\"",
     "test:e2e:admin-reviews": "pnpm run test:setup && dotenv -e .env.test -- jest --config ./test/jest-e2e.json test/admin-reviews.e2e-spec.ts --coverage --collectCoverageFrom \"src/admin-reviews/**/*.ts\"",
     "test:e2e:admin-canteens": "pnpm run test:setup && dotenv -e .env.test -- jest --config ./test/jest-e2e.json test/admin-canteens.e2e-spec.ts --coverage --collectCoverageFrom \"src/admin-canteens/**/*.ts\"",
@@ -41,6 +42,7 @@
     "test:unit:comments": "jest src/comments/comments.service.spec.ts",
     "test:unit:news": "jest src/news/news.service.spec.ts",
     "test:unit:meal-plans": "jest src/meal-plans/meal-plans.service.spec.ts",
+    "test:unit:user-profile": "jest src/user-profile/user-profile.service.spec.ts",
     "test": "pnpm run test:setup && pnpm run test:e2e"
   },
   "dependencies": {
