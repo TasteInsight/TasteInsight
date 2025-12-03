@@ -122,17 +122,17 @@
                     <!-- 封面图（第一张） -->
                     <div class="relative group flex-shrink-0">
                       <div class="w-[300px] h-[300px] border-2 border-dashed rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center">
-                        <img 
+                    <img 
                           v-if="formData.imageFiles.length > 0" 
                           :src="formData.imageFiles[0].preview" 
                           alt="封面图"
                           class="w-full h-full object-cover"
-                        >
+                    >
                         <div v-else class="text-center p-6 text-gray-400">
                           <span class="iconify text-4xl mx-auto" data-icon="bi:image"></span>
                           <div class="mt-2 font-medium">封面图</div>
                           <p class="text-xs mt-1">点击右侧按钮添加</p>
-                        </div>
+                    </div>
                         
                         <!-- 删除遮罩 -->
                         <div 
@@ -189,14 +189,14 @@
                       <div class="w-[140px] h-[140px] border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-gray-400 hover:text-tsinghua-purple hover:border-tsinghua-purple transition-colors relative cursor-pointer bg-white">
                         <span class="iconify text-3xl mb-1" data-icon="carbon:add"></span>
                         <span class="text-sm">添加图片</span>
-                        <input 
-                          type="file" 
-                          class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                          @change="handleImageUpload"
-                          accept="image/*"
+                    <input 
+                      type="file" 
+                      class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      @change="handleImageUpload"
+                      accept="image/*"
                           multiple
-                        >
-                      </div>
+                    >
+                  </div>
                     </div>
                   </div>
                   <p class="mt-2 text-sm text-gray-500">建议尺寸800x800像素，单张小于2MB，支持批量上传</p>
@@ -703,21 +703,21 @@ export default {
       const files = event.target.files
       if (files && files.length > 0) {
         Array.from(files).forEach(file => {
-          // 验证文件大小
-          if (file.size > 2 * 1024 * 1024) {
+        // 验证文件大小
+        if (file.size > 2 * 1024 * 1024) {
             alert(`图片 ${file.name} 大小超过2MB，已跳过`)
-            return
-          }
-          
-          const reader = new FileReader()
-          reader.onload = (e) => {
+          return
+        }
+        
+        const reader = new FileReader()
+        reader.onload = (e) => {
             formData.imageFiles.push({
               id: `img_${Date.now()}_${Math.random()}`,
               file: file,
               preview: e.target.result
             })
-          }
-          reader.readAsDataURL(file)
+        }
+        reader.readAsDataURL(file)
         })
       }
       // 清空 input value 以允许重复上传同一文件

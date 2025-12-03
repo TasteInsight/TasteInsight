@@ -85,12 +85,12 @@
                   <div v-if="dishData.images && dishData.images.length > 0">
                     <!-- 主图展示 -->
                     <div class="border-2 rounded-lg aspect-square w-full relative flex items-center justify-center bg-gray-50 overflow-hidden mb-4">
-                      <img 
+                    <img 
                         :src="selectedImage || dishData.images[0]" 
-                        alt="菜品图片"
+                      alt="菜品图片"
                         class="w-full h-full object-cover cursor-pointer"
                         @click="previewImage(selectedImage || dishData.images[0])"
-                      >
+                    >
                     </div>
                     
                     <!-- 缩略图列表 -->
@@ -486,7 +486,7 @@ export default {
     const previewImage = (imgUrl) => {
       window.open(imgUrl, '_blank')
     }
-
+    
     // 批准通过
     const approveDish = async () => {
       if (!confirm(`确定要批准通过菜品 "${dishData.name}" 吗？`)) {
@@ -537,18 +537,20 @@ export default {
         return
       }
       
-      if (!confirm(`确定要撤销菜品 "${dishData.name}" 的审核结果吗？`)) {
+      if (!confirm(`确定要撤销菜品 "${dishData.name}" 的审核结果吗？\n撤销后菜品将变为"待审核"状态，如果已上架将被下架。`)) {
         return
       }
       
       try {
-        // 注意：如果后端没有撤销接口，可能需要调用更新接口将状态改回 pending
-        // 这里假设可以通过更新菜品状态来实现
-        // 如果后端有专门的撤销接口，应该调用那个接口
-        dishData.status = 'pending'
-        // 通过路由参数传递刷新标志
-        router.push({ path: '/review-dish', query: { refresh: 'true', updatedId: dishData.id, status: 'pending' } })
-        alert('菜品审核结果已撤销，重新进入待审核状态。')
+        const response = await reviewApi.revokeUpload(dishData.id.toString())
+        if (response.code === 200 || response.code === 201) {
+          dishData.status = 'pending'
+          // 通过路由参数传递刷新标志
+          router.push({ path: '/review-dish', query: { refresh: 'true', updatedId: dishData.id, status: 'pending' } })
+          alert('菜品审核结果已撤销，重新进入待审核状态。')
+        } else {
+          throw new Error(response.message || '撤销审核失败')
+        }
       } catch (error) {
         console.error('撤销审核失败:', error)
         alert(error instanceof Error ? error.message : '撤销审核失败，请重试')

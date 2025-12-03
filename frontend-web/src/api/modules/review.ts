@@ -127,6 +127,15 @@ export const reviewApi = {
    */
   async rejectUpload(id: string, reason: string): Promise<ApiResponse<void>> {
     return await request.post<ApiResponse<void>>(`/admin/dishes/uploads/${id}/reject`, { reason });
+  },
+
+  /**
+   * 撤销用户上传菜品审核
+   * @param id 上传菜品 ID
+   * @returns 审核结果
+   */
+  async revokeUpload(id: string): Promise<ApiResponse<void>> {
+    return await request.post<ApiResponse<void>>(`/admin/dishes/uploads/${id}/revoke`);
   }
 }
 

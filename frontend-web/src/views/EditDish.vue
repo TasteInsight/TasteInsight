@@ -24,7 +24,7 @@
                       <select 
                         v-model="formData.canteenId" 
                         @change="onCanteenChange"
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                        class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
                         required
                       >
                         <option value="" disabled>选择食堂</option>
@@ -55,7 +55,7 @@
                       <select 
                         v-model="formData.windowId" 
                         @change="onWindowChange"
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                        class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
                         :disabled="!formData.canteenId"
                         required
                       >
@@ -122,17 +122,17 @@
                     <!-- 封面图（第一张） -->
                     <div class="relative group flex-shrink-0">
                       <div class="w-[300px] h-[300px] border-2 border-dashed rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center">
-                        <img 
+                    <img 
                           v-if="formData.imageFiles.length > 0" 
                           :src="formData.imageFiles[0].url" 
                           alt="封面图"
                           class="w-full h-full object-cover"
-                        >
+                    >
                         <div v-else class="text-center p-6 text-gray-400">
                           <span class="iconify text-4xl mx-auto" data-icon="bi:image"></span>
                           <div class="mt-2 font-medium">封面图</div>
                           <p class="text-xs mt-1">点击右侧按钮添加</p>
-                        </div>
+                    </div>
                         
                         <!-- 删除遮罩 -->
                         <div 
@@ -189,13 +189,13 @@
                       <div class="w-[140px] h-[140px] border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-gray-400 hover:text-tsinghua-purple hover:border-tsinghua-purple transition-colors relative cursor-pointer bg-white">
                         <span class="iconify text-3xl mb-1" data-icon="carbon:add"></span>
                         <span class="text-sm">添加图片</span>
-                        <input 
-                          type="file" 
-                          class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                          @change="handleImageUpload"
-                          accept="image/*"
+                    <input 
+                      type="file" 
+                      class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      @change="handleImageUpload"
+                      accept="image/*"
                           multiple
-                        >
+                    >
                       </div>
                     </div>
                   </div>
@@ -621,7 +621,7 @@ export default {
         formData.floor = ''
       }
     }
-
+    
     // 加载菜品信息
     const loadDishData = async (id = null) => {
       const targetId = id || dishId.value
@@ -848,16 +848,16 @@ export default {
             return
           }
           
-          const reader = new FileReader()
-          reader.onload = (e) => {
+        const reader = new FileReader()
+        reader.onload = (e) => {
             formData.imageFiles.push({
               id: `new_${Date.now()}_${Math.random()}`,
               file: file,
               url: e.target.result,
               isNew: true
             })
-          }
-          reader.readAsDataURL(file)
+        }
+        reader.readAsDataURL(file)
         })
       }
       // 清空 input value 以允许重复上传同一文件
@@ -920,11 +920,11 @@ export default {
               if (imgItem.isNew && imgItem.file) {
                 // 新图片，需要上传
                 const uploadResponse = await dishApi.uploadImage(imgItem.file)
-                if (uploadResponse.code === 200 && uploadResponse.data) {
+            if (uploadResponse.code === 200 && uploadResponse.data) {
                   return uploadResponse.data.url
-                } else {
-                  throw new Error(uploadResponse.message || '图片上传失败')
-                }
+            } else {
+              throw new Error(uploadResponse.message || '图片上传失败')
+            }
               } else {
                 // 旧图片，直接使用 URL
                 return imgItem.url

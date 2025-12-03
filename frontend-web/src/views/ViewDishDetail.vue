@@ -98,12 +98,12 @@
                   <div v-if="dishData.images && dishData.images.length > 0">
                     <!-- 主图展示 -->
                     <div class="border-2 rounded-lg aspect-square w-full relative flex items-center justify-center bg-gray-50 overflow-hidden mb-4">
-                      <img 
+                    <img 
                         :src="selectedImage || dishData.images[0]" 
-                        alt="菜品图片"
+                      alt="菜品图片"
                         class="w-full h-full object-cover cursor-pointer"
                         @click="previewImage(selectedImage || dishData.images[0])"
-                      >
+                    >
                     </div>
                     
                     <!-- 缩略图列表 -->

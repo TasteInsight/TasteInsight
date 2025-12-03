@@ -62,4 +62,11 @@ export class AdminUploadsController {
       req.admin,
     );
   }
+
+  @Post(':id/revoke')
+  @RequirePermissions('upload:approve')
+  @HttpCode(HttpStatus.OK)
+  async revokeUpload(@Param('id') id: string, @Request() req) {
+    return this.adminUploadsService.revokeUpload(id, req.admin);
+  }
 }
