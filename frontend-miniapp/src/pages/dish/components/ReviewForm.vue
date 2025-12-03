@@ -161,13 +161,17 @@ const {
 const showResumeDialog = ref(false);
 const isResuming = ref(false);
 
+// Tailwind CSS gap-3 的值（0.75rem = 12px，假设 1rem = 16px）
+// 如果修改 Tailwind 配置，请同步更新此常量
+const TAILWIND_GAP_3 = 12; // px
+
 // 响应式星星大小计算
 const screenWidth = ref(375); // 默认值
 const starSize = computed(() => {
   // 星星总宽度占据屏幕的60%
   const totalWidth = screenWidth.value * 0.6;
-  // 5个星星 + 4个间隙（gap-3 ≈ 12px）
-  const gap = 12; // 间隙大小
+  // 5个星星 + 4个间隙（使用 Tailwind gap-3 的值）
+  const gap = TAILWIND_GAP_3;
   const starWidth = (totalWidth - 4 * gap) / 5;
   return Math.max(24, Math.min(48, starWidth)); // 限制在24px-48px之间
 });
