@@ -91,9 +91,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
-import { createReview } from '@/api/modules/review';
-import type { ReviewCreateRequest } from '@/types/api';
+import { onMounted, onUnmounted, nextTick } from 'vue';
+import { useReviewForm } from '../composables/use-review';
 
 interface Props {
   dishId: string;
@@ -108,34 +107,21 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-const rating = ref(0);
-const content = ref('');
-const submitting = ref(false);
-const showFlavorError = ref(false);
-
-type FlavorKey = 'spicyLevel' | 'sweetness' | 'saltiness' | 'oiliness';
-
-const flavorOptions: Array<{ key: FlavorKey; label: string; hint: string }> = [
-  { key: 'spicyLevel', label: '辣度', hint: '辣味程度' },
-  { key: 'sweetness', label: '甜度', hint: '甜味浓淡' },
-  { key: 'saltiness', label: '咸度', hint: '咸味强度' },
-  { key: 'oiliness', label: '油腻程度', hint: '油脂感' },
-];
-
-const flavorRatings = ref<Record<FlavorKey, number>>({
-  spicyLevel: 0,
-  sweetness: 0,
-  saltiness: 0,
-  oiliness: 0,
-});
-
-const hasFlavorSelection = computed(() =>
-  Object.values(flavorRatings.value).some(value => value > 0)
-);
-
-const flavorSelectionComplete = computed(() =>
-  !hasFlavorSelection.value || Object.values(flavorRatings.value).every(value => value > 0)
-);
+const {
+  rating,
+  content,
+  submitting,
+  showFlavorError,
+  flavorOptions,
+  flavorRatings,
+  hasFlavorSelection,
+  flavorSelectionComplete,
+  ratingText,
+  setRating,
+  setFlavorRating,
+  resetFlavorRatings,
+  handleSubmit: submitForm
+} = useReviewForm();
 
 // 隐藏tabbar
 onMounted(() => {
@@ -170,97 +156,14 @@ onUnmounted(() => {
   }, 200);
 });
 
-const ratingText = computed(() => {
-  const texts = ['请选择评分', '非常差', '差', '一般', '好', '非常好'];
-  return texts[rating.value] || texts[0];
-});
-
-
-const setRating = (star: number) => {
-  rating.value = star;
-};
-
-const setFlavorRating = (key: FlavorKey, value: number) => {
-  showFlavorError.value = false;
-  flavorRatings.value[key] = flavorRatings.value[key] === value ? 0 : value;
-};
-
-const resetFlavorRatings = () => {
-  flavorRatings.value = {
-    spicyLevel: 0,
-    sweetness: 0,
-    saltiness: 0,
-    oiliness: 0,
-  };
-  showFlavorError.value = false;
-};
-
-// 当主评分清空时重置口味评分
-watch(rating, (value) => {
-  if (value === 0) {
-    resetFlavorRatings();
-  }
-});
-
 const handleClose = () => {
   emit('close');
 };
 
-const handleSubmit = async () => {
-  if (submitting.value) return;
-
-  submitting.value = true;
-
-  try {
-    if (rating.value === 0) {
-      uni.showToast({
-        title: '请先选择总体评分',
-        icon: 'none',
-      });
-      submitting.value = false;
-      return;
-    }
-
-    if (!flavorSelectionComplete.value) {
-      showFlavorError.value = true;
-      submitting.value = false;
-      uni.showToast({
-        title: '请选择全部口味评分或全部留空',
-        icon: 'none',
-      });
-      return;
-    }
-
-    const payload: ReviewCreateRequest = {
-      dishId: props.dishId,
-      rating: rating.value,
-      content: content.value.trim(),
-    };
-
-    if (hasFlavorSelection.value) {
-      payload.ratingDetails = { ...flavorRatings.value };
-    }
-
-    const response = await createReview(payload);
-
-    if (response.code === 200) {
-      emit('success');
-      resetFlavorRatings();
-    } else {
-      uni.showToast({
-        title: response.message || '提交失败',
-        icon: 'none',
-      });
-    }
-  } catch (err: any) {
-    console.error('提交评价失败:', err);
-    uni.showToast({
-      title: '网络错误，请稍后重试',
-      icon: 'none',
-    });
-  } finally {
-    submitting.value = false;
-  }
+const handleSubmit = () => {
+  submitForm(props.dishId, () => {
+    emit('success');
+  });
 };
 </script>
 
