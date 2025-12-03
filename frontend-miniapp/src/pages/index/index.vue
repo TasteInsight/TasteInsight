@@ -60,7 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed, ref } from 'vue';
+import { onMounted, computed, ref, watch } from 'vue';
 import { onPullDownRefresh } from '@dcloudio/uni-app';
 
 // ... 导入子组件 (保持不变) ...
@@ -273,6 +273,29 @@ onMounted(async () => {
   };
   dishesStore.fetchDishes(dishRequestParams);
 });
+
+// 监听用户信息变化，当偏好设置或显示设置更新时刷新菜品列表
+watch(
+  () => userStore.userInfo,
+  (newUserInfo, oldUserInfo) => {
+    // 检查是否是偏好设置或显示设置的更新
+    const preferencesChanged = JSON.stringify(newUserInfo?.preferences) !== JSON.stringify(oldUserInfo?.preferences);
+    const settingsChanged = JSON.stringify(newUserInfo?.settings) !== JSON.stringify(oldUserInfo?.settings);
+    
+    if (preferencesChanged || settingsChanged) {
+      console.log('用户偏好设置或显示设置已更新，刷新今日推荐菜品');
+      
+      const dishRequestParams: GetDishesRequest = {
+        sort: buildDishSortFromUserSettings(),
+        pagination: { page: 1, pageSize: 10 },
+        filter: buildDishFilterFromUserSettings(),
+        search: { keyword: '' },
+      };
+      dishesStore.fetchDishes(dishRequestParams);
+    }
+  },
+  { deep: true }
+);
 
 /**
  * 下拉刷新处理函数
