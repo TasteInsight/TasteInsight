@@ -198,7 +198,9 @@ export class AdminWindowsService {
       data: {
         floorId,
         name: windowData.name,
-        ...(windowData.number !== undefined ? { number: windowData.number } : {}),
+        ...(windowData.number !== undefined
+          ? { number: windowData.number }
+          : {}),
         position: windowData.position,
         description: windowData.description,
         tags: windowData.tags,

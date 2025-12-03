@@ -272,7 +272,8 @@ export class AdminDishesService {
     if (updateDto.name !== undefined) updateData.name = updateDto.name;
     if (updateDto.tags !== undefined) updateData.tags = updateDto.tags;
     if (updateDto.price !== undefined) updateData.price = updateDto.price;
-    if (updateDto.priceUnit !== undefined) updateData.priceUnit = updateDto.priceUnit;
+    if (updateDto.priceUnit !== undefined)
+      updateData.priceUnit = updateDto.priceUnit;
     if (updateDto.description !== undefined)
       updateData.description = updateDto.description;
     if (updateDto.images !== undefined) updateData.images = updateDto.images;
@@ -355,8 +356,6 @@ export class AdminDishesService {
       updateData.windowNumber = window.number;
       updateData.windowName = window.name;
     }
-
-
 
     const dish = await this.prisma.dish.update({
       where: { id },
