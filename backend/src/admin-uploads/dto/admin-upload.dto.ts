@@ -26,7 +26,9 @@ export class AdminGetPendingUploadsDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(['pending', 'approved', 'rejected'], { message: '状态必须是 pending, approved 或 rejected' })
+  @IsIn(['pending', 'approved', 'rejected'], {
+    message: '状态必须是 pending, approved 或 rejected',
+  })
   status?: string;
 }
 
