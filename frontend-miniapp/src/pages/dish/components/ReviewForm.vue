@@ -238,7 +238,8 @@ onUnmounted(() => {
 
 const handleClose = () => {
   if (showResumeDialog.value) {
-    // 如果显示恢复对话框，直接关闭整个组件
+    // 如果显示恢复对话框，清除保存的状态并关闭整个组件
+    clearReviewState(props.dishId);
     emit('close');
   } else {
     // 如果显示评价弹窗，保存评价状态（如果有内容）
