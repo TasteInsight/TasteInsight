@@ -1,9 +1,7 @@
 import { ref } from 'vue';
 import type { GetDishesRequest } from '@/types/api';
 
-export const useFilter = (
-  emit: (event: 'filter-change', filter: GetDishesRequest['filter']) => void
-) => {
+export const useFilter = () => {
   const filterOptions = [
     { key: 'taste', label: '口味' },
     { key: 'price', label: '价格' },
@@ -424,9 +422,9 @@ export const useFilter = (
     }
   };
 
-  const applyFilter = () => {
+  const applyFilter = (): GetDishesRequest['filter'] | null => {
     if (!validatePriceInput() || !validateRatingInput() || !validateTasteInput()) {
-      return;
+      return null;
     }
 
     const filter: GetDishesRequest['filter'] = {};
@@ -492,10 +490,10 @@ export const useFilter = (
     }
 
     activeFilter.value = '';
-    emit('filter-change', filter);
+    return filter;
   };
 
-  const resetAllFilters = () => {
+  const resetAllFilters = (): GetDishesRequest['filter'] => {
     selectedPrice.value = '';
     customPriceMin.value = '';
     customPriceMax.value = '';
@@ -522,7 +520,7 @@ export const useFilter = (
     selectedOilyMax.value = 0;
     tasteError.value = '';
     activeFilter.value = '';
-    emit('filter-change', {});
+    return {};
   };
 
   return {
@@ -559,9 +557,13 @@ export const useFilter = (
     selectedSweetMax,
     selectedOilyMin,
     selectedOilyMax,
+    isTasteModified,
     getTasteRangeLabel,
+    validatePriceInput,
     onCustomPriceInput,
+    validateRatingInput,
     onCustomRatingInput,
+    validateTasteInput,
     addCustomTag,
     removeCustomTag,
     addCustomAvoid,
