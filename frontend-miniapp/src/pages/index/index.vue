@@ -60,7 +60,8 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed, ref } from 'vue';
+import { onMounted, computed, ref, watch } from 'vue';
+import { onPullDownRefresh } from '@dcloudio/uni-app';
 
 // ... 导入子组件 (保持不变) ...
 import SearchBar from './components/SearchBar.vue';
@@ -71,6 +72,7 @@ import FilterBar from './components/FilterBar.vue';
 // 导入 Store
 import { useCanteenStore } from '@/store/modules/use-canteen-store';
 import { useDishesStore } from '@/store/modules/use-dishes-store';
+import { useUserStore } from '@/store/modules/use-user-store';
 import type { GetDishesRequest } from '@/types/api';
 
 
@@ -81,6 +83,7 @@ const navItems = [ /* ... */ ];
 // 2. 直接获取 store 实例
 const canteenStore = useCanteenStore();
 const dishesStore = useDishesStore();
+const userStore = useUserStore();
 
 // 当前筛选条件
 const currentFilter = ref<GetDishesRequest['filter']>({});
@@ -112,14 +115,135 @@ const handleSwiperChange = (e: any) => {
   currentSwiperIndex.value = e.detail.current;
 };
 
+/**
+ * 根据用户设置构建菜品筛选条件
+ */
+function buildDishFilterFromUserSettings(): GetDishesRequest['filter'] {
+  const userInfo = userStore.userInfo;
+  const filter: GetDishesRequest['filter'] = {};
+
+  if (!userInfo) return filter;
+
+  // 过敏原筛选 - 排除含有用户过敏原的菜品
+  if (userInfo.allergens && userInfo.allergens.length > 0) {
+    filter.avoidIngredients = userInfo.allergens;
+  }
+
+  // 用户偏好设置
+  if (userInfo.preferences) {
+    const prefs = userInfo.preferences;
+
+    // 价格范围
+    if (prefs.priceRange) {
+      filter.price = {
+        min: prefs.priceRange.min,
+        max: prefs.priceRange.max,
+      };
+    }
+
+    // 忌口食材
+    if (prefs.avoidIngredients && prefs.avoidIngredients.length > 0) {
+      filter.avoidIngredients = [
+        ...(filter.avoidIngredients || []),
+        ...prefs.avoidIngredients
+      ];
+    }
+
+    // 喜好食材 - 优先推荐含有这些食材的菜品
+    if (prefs.favoriteIngredients && prefs.favoriteIngredients.length > 0) {
+      // 这里可以添加逻辑来提升含有喜好食材的菜品优先级
+      // 暂时先不实现，留给后端处理
+    }
+
+    // 食堂偏好
+    if (prefs.canteenPreferences && prefs.canteenPreferences.length > 0) {
+      filter.canteenId = prefs.canteenPreferences;
+    }
+
+    // 标签偏好
+    if (prefs.tagPreferences && prefs.tagPreferences.length > 0) {
+      filter.tag = prefs.tagPreferences;
+    }
+
+    // 口味偏好 - 用于筛选菜品
+    if (prefs.tastePreferences) {
+      const taste = prefs.tastePreferences;
+      // 只有当口味偏好不为0（未设置）时才应用筛选
+      if (taste.spicyLevel !== undefined && taste.spicyLevel > 0) {
+        filter.spicyLevel = {
+          min: Math.max(0, taste.spicyLevel - 1), // 允许稍微偏离的范围
+          max: Math.min(5, taste.spicyLevel + 1),
+        };
+      }
+      if (taste.sweetness !== undefined && taste.sweetness > 0) {
+        filter.sweetness = {
+          min: Math.max(0, taste.sweetness - 1),
+          max: Math.min(5, taste.sweetness + 1),
+        };
+      }
+      if (taste.saltiness !== undefined && taste.saltiness > 0) {
+        filter.saltiness = {
+          min: Math.max(0, taste.saltiness - 1),
+          max: Math.min(5, taste.saltiness + 1),
+        };
+      }
+      if (taste.oiliness !== undefined && taste.oiliness > 0) {
+        filter.oiliness = {
+          min: Math.max(0, taste.oiliness - 1),
+          max: Math.min(5, taste.oiliness + 1),
+        };
+      }
+    }
+  }
+
+  return filter;
+}
+
+/**
+ * 根据用户设置构建排序条件
+ */
+function buildDishSortFromUserSettings(): GetDishesRequest['sort'] {
+  const userInfo = userStore.userInfo;
+  
+  // 默认排序
+  let sort: GetDishesRequest['sort'] = {
+    field: 'averageRating',
+    order: 'desc',
+  };
+
+  // 如果用户设置了排序偏好，使用用户的设置
+  if (userInfo?.settings?.displaySettings?.sortBy) {
+    const sortBy = userInfo.settings.displaySettings.sortBy;
+    switch (sortBy) {
+      case 'rating':
+        sort = { field: 'averageRating', order: 'desc' };
+        break;
+      case 'price_low':
+        sort = { field: 'price', order: 'asc' };
+        break;
+      case 'price_high':
+        sort = { field: 'price', order: 'desc' };
+        break;
+      case 'popularity':
+        sort = { field: 'reviewCount', order: 'desc' };
+        break;
+      case 'newest':
+        sort = { field: 'createdAt', order: 'desc' };
+        break;
+    }
+  }
+
+  return sort;
+}
+
 // 处理筛选变化
 const handleFilterChange = (filter: GetDishesRequest['filter']) => {
   currentFilter.value = filter;
   
   const dishRequestParams: GetDishesRequest = {
-    sort: { field: 'averageRating', order: 'desc' },
+    sort: buildDishSortFromUserSettings(),
     pagination: { page: 1, pageSize: 20 },
-    filter: filter,
+    filter: { ...buildDishFilterFromUserSettings(), ...filter }, // 合并用户设置和手动筛选
     search: { keyword: '' },
   };
   
@@ -134,17 +258,87 @@ function navigateTo(path: string) {
 }
 
 // --- 生命周期 ---
-onMounted(() => {
+onMounted(async () => {
   // 4. 调用 actions (保持不变)
   canteenStore.fetchCanteenList({ page: 1, pageSize: 10 });
 
+  // 先获取用户信息，然后根据用户设置获取推荐菜品
+  await userStore.fetchProfileAction();
+  
   const dishRequestParams: GetDishesRequest = {
-    sort: { field: 'averageRating', order: 'desc' },
+    sort: buildDishSortFromUserSettings(),
     pagination: { page: 1, pageSize: 10 },
-    filter: {},
+    filter: buildDishFilterFromUserSettings(),
     search: { keyword: '' },
   };
   dishesStore.fetchDishes(dishRequestParams);
+});
+
+// 监听用户信息变化，当偏好设置或显示设置更新时刷新菜品列表
+watch(
+  [
+    () => userStore.userInfo?.preferences,
+    () => userStore.userInfo?.settings
+  ],
+  ([newPreferences, newSettings], [oldPreferences, oldSettings]) => {
+    // 检查偏好设置是否发生变化
+    const preferencesChanged = JSON.stringify(newPreferences) !== JSON.stringify(oldPreferences);
+    // 检查显示设置是否发生变化
+    const settingsChanged = JSON.stringify(newSettings) !== JSON.stringify(oldSettings);
+    
+    if (preferencesChanged || settingsChanged) {
+      console.log('用户偏好设置或显示设置已更新，刷新今日推荐菜品');
+      
+      const dishRequestParams: GetDishesRequest = {
+        sort: buildDishSortFromUserSettings(),
+        pagination: { page: 1, pageSize: 10 },
+        filter: buildDishFilterFromUserSettings(),
+        search: { keyword: '' },
+      };
+      dishesStore.fetchDishes(dishRequestParams);
+    }
+  },
+  { deep: true }
+);
+
+/**
+ * 下拉刷新处理函数
+ */
+onPullDownRefresh(async () => {
+  try {
+    // 重新获取用户信息
+    await userStore.fetchProfileAction();
+    
+    // 重新获取食堂列表
+    await canteenStore.fetchCanteenList({ page: 1, pageSize: 10 });
+    
+    // 重新获取菜品列表（使用当前的筛选条件）
+    const dishRequestParams: GetDishesRequest = {
+      sort: buildDishSortFromUserSettings(),
+      pagination: { page: 1, pageSize: 20 },
+      filter: { ...buildDishFilterFromUserSettings(), ...currentFilter.value },
+      search: { keyword: '' },
+    };
+    
+    await dishesStore.fetchDishes(dishRequestParams);
+    
+    // 刷新完成后停止下拉刷新动画
+    uni.stopPullDownRefresh();
+    
+    // 显示刷新成功提示
+    uni.showToast({
+      title: '刷新成功',
+      icon: 'success',
+      duration: 1500
+    });
+  } catch (error) {
+    console.error('下拉刷新失败:', error);
+    uni.stopPullDownRefresh();
+    uni.showToast({
+      title: '刷新失败',
+      icon: 'none'
+    });
+  }
 });
 </script>
 

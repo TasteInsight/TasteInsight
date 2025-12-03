@@ -1,5 +1,5 @@
 <template>
-  <view class="w-full min-h-screen bg-gradient-to-b from-white via-purple-50/20 to-white p-4" style="max-width: 375px;">
+  <view class="w-full min-h-screen bg-gradient-to-b from-white via-purple-50/20 to-white p-4">
     <!-- 显示选项 -->
     <view class="bg-white rounded-2xl p-6 mb-4 shadow-sm">
       <text class="text-lg font-semibold text-gray-800 mb-4 block">显示选项</text>
@@ -63,7 +63,7 @@
 import { reactive, ref, onMounted } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { updateUserProfile } from '@/api/modules/user';
-import type { UserProfileUpdateRequest, UserPreference } from '@/types/api';
+import type { UserProfileUpdateRequest, UserPreference, UserSettings } from '@/types/api';
 
 const userStore = useUserStore();
 const saving = ref(false);
@@ -84,8 +84,8 @@ onMounted(async () => {
   try {
     await userStore.fetchProfileAction();
     const userInfo = userStore.userInfo;
-    if (userInfo && userInfo.preferences && userInfo.preferences.displaySettings) {
-      const display = userInfo.preferences.displaySettings;
+    if (userInfo && userInfo.settings && userInfo.settings.displaySettings) {
+      const display = userInfo.settings.displaySettings;
       form.showCalories = display.showCalories ?? true;
       form.showNutrition = display.showNutrition ?? true;
       if (display.sortBy) {
@@ -122,7 +122,7 @@ function onSortChange(e: any) {
 async function handleSave() {
   saving.value = true;
   try {
-    const preferences: Partial<UserPreference> = {
+    const settings: Partial<UserSettings> = {
       displaySettings: {
         showCalories: form.showCalories,
         showNutrition: form.showNutrition,
@@ -131,7 +131,7 @@ async function handleSave() {
     };
 
     const payload: UserProfileUpdateRequest = {
-      preferences
+      settings
     };
 
     const response = await updateUserProfile(payload);
