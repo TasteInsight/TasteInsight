@@ -443,7 +443,9 @@ describe('UserProfileService', () => {
       };
 
       // Access the private method using type assertion
-      const result = (service as any).mapToUserPreferencesUpdateData(preferences);
+      const result = (service as any).mapToUserPreferencesUpdateData(
+        preferences,
+      );
 
       expect(result.tagPreferences).toEqual(['川菜']);
       expect(result.priceMin).toBe(10);

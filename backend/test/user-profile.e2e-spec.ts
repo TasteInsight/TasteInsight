@@ -203,7 +203,9 @@ describe('UserProfileController (e2e)', () => {
         .expect(200)
         .expect((res) => {
           expect(res.body.code).toBe(200);
-          expect(res.body.data.settings.displaySettings.showNutrition).toBe(true);
+          expect(res.body.data.settings.displaySettings.showNutrition).toBe(
+            true,
+          );
         });
     });
   });
@@ -300,9 +302,7 @@ describe('UserProfileController (e2e)', () => {
     });
 
     it('should fail without token', () => {
-      return request(app.getHttpServer())
-        .delete('/user/history')
-        .expect(401);
+      return request(app.getHttpServer()).delete('/user/history').expect(401);
     });
   });
 
