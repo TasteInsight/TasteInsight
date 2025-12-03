@@ -276,11 +276,15 @@ onMounted(async () => {
 
 // 监听用户信息变化，当偏好设置或显示设置更新时刷新菜品列表
 watch(
-  () => userStore.userInfo,
-  (newUserInfo, oldUserInfo) => {
-    // 检查是否是偏好设置或显示设置的更新
-    const preferencesChanged = JSON.stringify(newUserInfo?.preferences) !== JSON.stringify(oldUserInfo?.preferences);
-    const settingsChanged = JSON.stringify(newUserInfo?.settings) !== JSON.stringify(oldUserInfo?.settings);
+  [
+    () => userStore.userInfo?.preferences,
+    () => userStore.userInfo?.settings
+  ],
+  ([newPreferences, newSettings], [oldPreferences, oldSettings]) => {
+    // 检查偏好设置是否发生变化
+    const preferencesChanged = JSON.stringify(newPreferences) !== JSON.stringify(oldPreferences);
+    // 检查显示设置是否发生变化
+    const settingsChanged = JSON.stringify(newSettings) !== JSON.stringify(oldSettings);
     
     if (preferencesChanged || settingsChanged) {
       console.log('用户偏好设置或显示设置已更新，刷新今日推荐菜品');

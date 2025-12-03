@@ -195,9 +195,9 @@ export const mockGetDishes = async (params: GetDishesRequest): Promise<Paginated
       let valB = b[field];
       
       // 处理日期字段
-      if (field === 'createdAt' && typeof valA === 'string') {
-        valA = new Date(valA).getTime();
-        valB = new Date(valB).getTime();
+      if (field === 'createdAt' && valA instanceof Date) {
+        valA = valA.getTime();
+        valB = (valB as Date).getTime();
       }
       
       // 处理数值字段
