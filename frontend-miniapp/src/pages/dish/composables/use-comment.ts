@@ -1,4 +1,4 @@
-import { ref, computed, watch } from 'vue';
+import { ref, computed} from 'vue';
 import { getCommentsByReview, createComment, deleteComment } from '@/api/modules/comment';
 import type { Comment, CommentCreateRequest } from '@/types/api';
 

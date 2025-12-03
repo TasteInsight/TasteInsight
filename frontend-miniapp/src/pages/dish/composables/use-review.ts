@@ -2,6 +2,8 @@ import { ref, computed, watch } from 'vue';
 import { getReviewsByDish, createReview, deleteReview } from '@/api/modules/review';
 import type { Review, ReviewCreateRequest } from '@/types/api';
 
+const REVIEW_STATE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24小时过期时间
+
 type FlavorKey = 'spicyLevel' | 'sweetness' | 'saltiness' | 'oiliness';
 
 /**
@@ -200,7 +202,7 @@ export function useReviewForm() {
       if (state && typeof state === 'object') {
         // 检查是否过期（24小时）
         const now = Date.now();
-        if (now - state.timestamp < 24 * 60 * 60 * 1000) {
+        if (now - state.timestamp < REVIEW_STATE_EXPIRY_MS) {
           rating.value = state.rating || 0;
           content.value = state.content || '';
           flavorRatings.value = state.flavorRatings ? { ...state.flavorRatings } : {
@@ -233,7 +235,7 @@ export function useReviewForm() {
       const state = uni.getStorageSync(`review_state_${dishId}`);
       if (state && typeof state === 'object') {
         const now = Date.now();
-        return now - state.timestamp < 24 * 60 * 60 * 1000;
+        return now - state.timestamp < REVIEW_STATE_EXPIRY_MS;
       }
     } catch (error) {
       console.log('检查评价状态失败:', error);
