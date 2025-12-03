@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '@/prisma.service';
+import { UserProfileService } from '@/user-profile/user-profile.service';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
@@ -26,6 +27,7 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private httpService: HttpService,
+    private userProfileService: UserProfileService,
   ) {}
 
   // --- 核心方法：生成 Access Token 和 Refresh Token ---
@@ -99,17 +101,10 @@ export class AuthService {
     });
 
     if (!user) {
-      user = await this.prisma.user.create({
-        data: {
-          openId: openid,
-          nickname: `微信用户_${openid.slice(-4)}`, // 初始昵称
-          // 其他默认字段
-          allergens: [],
-        },
-      });
+      user = (await this.userProfileService.createUser(openid)) as any;
     }
 
-    const tokens = await this._generateTokens({ sub: user.id, type: 'user' });
+    const tokens = await this._generateTokens({ sub: user!.id, type: 'user' });
 
     return {
       code: 200,

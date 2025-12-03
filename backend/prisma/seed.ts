@@ -304,6 +304,14 @@ async function main() {
       oiliness: 2,
       canteenPreferences: [canteen1.id, canteen2.id],
       portionSize: 'medium',
+    },
+  });
+  console.log(`Created user preferences for ${user.nickname}`);
+
+  // 为用户创建设置
+  await prisma.userSetting.create({
+    data: {
+      userId: user.id,
       newDishAlert: true,
       priceChangeAlert: false,
       reviewReplyAlert: true,
@@ -313,7 +321,7 @@ async function main() {
       defaultSortBy: 'rating',
     },
   });
-  console.log(`Created user preferences for ${user.nickname}`);
+  console.log(`Created user settings for ${user.nickname}`);
 
   // 5. 创建测试窗口
   const window1 = await prisma.window.create({

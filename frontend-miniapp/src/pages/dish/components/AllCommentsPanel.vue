@@ -135,15 +135,48 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue';
-import { getCommentsByReview, createComment } from '@/api/modules/comment';
 import type { Comment } from '@/types/api';
 import dayjs from 'dayjs';
 import { useUserStore } from '@/store/modules/use-user-store';
 import ReportDialog from './ReportDialog.vue';
 import LongPressMenu from './LongPressMenu.vue';
 import { useReport } from '@/pages/dish/composables/use-report';
+import { useCommentPanel } from '../composables/use-comment';
 
 const userStore = useUserStore();
+
+interface Props {
+  reviewId: string;
+  isVisible: boolean;
+}
+
+interface Emits {
+  (e: 'close'): void;
+  (e: 'commentAdded'): void;
+  (e: 'delete', commentId: string): void;
+}
+
+const props = defineProps<Props>();
+const emit = defineEmits<Emits>();
+
+// 使用评论面板 composable
+const {
+  comments,
+  loading,
+  hasMore,
+  replyContent,
+  replyingTo,
+  canSendReply,
+  fetchPanelComments,
+  loadMoreComments,
+  selectCommentForReply,
+  cancelReply,
+  submitReply: doSubmitReply,
+  resetPanel
+} = useCommentPanel(
+  () => props.reviewId,
+  () => emit('commentAdded')
+);
 
 // 长按菜单相关状态
 const menuVisible = ref(false);
@@ -183,6 +216,7 @@ const handleReportFromMenu = () => {
   closeMenu();
   openReportModal('comment', commentId);
 };
+
 const {
   isReportVisible,
   openReportModal,
@@ -190,144 +224,24 @@ const {
   submitReport
 } = useReport();
 
-interface Props {
-  reviewId: string;
-  isVisible: boolean;
-}
-
-interface Emits {
-  (e: 'close'): void;
-  (e: 'commentAdded'): void;
-  (e: 'delete', commentId: string): void;
-}
-
-const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
-
-const comments = ref<Comment[]>([]);
-const loading = ref(false);
-const hasMore = ref(false);
-const currentPage = ref(1);
-const pageSize = 10;
-const replyContent = ref('');
-const replyingTo = ref<Comment | null>(null);
-
-// 计算属性：判断是否可以发送
-const canSendReply = computed(() => {
-  return replyContent.value.trim().length > 0;
-});
-
 // 监听面板显示状态
 watch(() => props.isVisible, (visible: boolean) => {
   if (visible) {
-    currentPage.value = 1;
-    fetchComments();
+    fetchPanelComments();
   } else {
     // 重置状态
-    replyContent.value = '';
-    replyingTo.value = null;
+    resetPanel();
   }
 });
 
 onMounted(() => {
   if (props.isVisible) {
-    fetchComments();
+    fetchPanelComments();
   }
 });
 
-const fetchComments = async () => {
-  if (loading.value) return;
-
-  loading.value = true;
-
-  try {
-    const response = await getCommentsByReview(props.reviewId, {
-      page: currentPage.value,
-      pageSize,
-    });
-
-    if (response.code === 200 && response.data) {
-      const newComments = response.data.items || [];
-      
-      if (currentPage.value === 1) {
-        comments.value = newComments;
-      } else {
-        comments.value = [...comments.value, ...newComments];
-      }
-
-      hasMore.value = newComments.length === pageSize;
-    }
-  } catch (err) {
-    console.error('获取评论失败:', err);
-  } finally {
-    loading.value = false;
-  }
-};
-
-const loadMoreComments = () => {
-  if (hasMore.value && !loading.value) {
-    currentPage.value++;
-    fetchComments();
-  }
-};
-
-const selectCommentForReply = (comment: Comment) => {
-  replyingTo.value = comment;
-};
-
-const cancelReply = () => {
-  replyingTo.value = null;
-};
-
-const submitReply = async () => {
-  if (!replyContent.value.trim()) {
-    uni.showToast({
-      title: '请输入回复内容',
-      icon: 'none',
-    });
-    return;
-  }
-
-  try {
-    const requestData: { reviewId: string; content: string; parentCommentId?: string } = {
-      reviewId: props.reviewId,
-      content: replyContent.value.trim(),
-    };
-    
-    // 如果是回复某条评论，添加 parentCommentId
-    if (replyingTo.value) {
-      requestData.parentCommentId = replyingTo.value.id;
-    }
-    
-    const response = await createComment(requestData);
-
-    if (response.code === 200) {
-      uni.showToast({
-        title: '回复成功',
-        icon: 'success',
-      });
-
-      replyContent.value = '';
-      replyingTo.value = null;
-      
-      // 刷新评论列表以获取正确的楼层号
-      currentPage.value = 1;
-      await fetchComments();
-
-      emit('commentAdded');
-    } else {
-      uni.showToast({
-        title: response.message || '回复失败',
-        icon: 'none',
-      });
-    }
-  } catch (err) {
-    console.error('提交回复失败:', err);
-    uni.showToast({
-      title: '网络错误，请稍后重试',
-      icon: 'none',
-    });
-  }
+const submitReply = () => {
+  doSubmitReply();
 };
 
 const handleClose = () => {
@@ -342,8 +256,7 @@ const handleDelete = (commentId: string) => {
       if (res.confirm) {
         emit('delete', commentId);
         // 刷新评论列表以获取正确的楼层号
-        currentPage.value = 1;
-        fetchComments();
+        fetchPanelComments();
       }
     }
   });
