@@ -315,7 +315,6 @@ const form = reactive({
 
 const newFavoriteIngredient = ref('');
 const newMeatPreference = ref('');
-const newCanteenPreference = ref('');
 const newAvoidIngredient = ref('');
 
 // 食堂列表
@@ -415,19 +414,6 @@ function addMeatPreference() {
 
 function removeMeatPreference(index: number) {
   form.meatPreference.splice(index, 1);
-}
-
-/**
- * 添加食堂偏好
- */
-function addCanteenPreference() {
-  const value = newCanteenPreference.value.trim();
-  if (value && !form.canteenPreferences.includes(value)) {
-    form.canteenPreferences.push(value);
-    newCanteenPreference.value = '';
-  } else if (form.canteenPreferences.includes(value)) {
-    uni.showToast({ title: '已存在该食堂', icon: 'none' });
-  }
 }
 
 function removeCanteenPreference(index: number) {

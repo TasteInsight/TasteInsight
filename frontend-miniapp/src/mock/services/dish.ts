@@ -45,19 +45,11 @@ export const mockGetDishes = async (params: GetDishesRequest): Promise<Paginated
       avoidIngredients
     } = params.filter;
 
-    // 按食堂ID或名称过滤
+    // 按食堂ID过滤
     if (canteenId && canteenId.length > 0) {
-      dishes = dishes.filter(d => {
-        // 检查食堂ID匹配
-        if (d.canteenId && canteenId.includes(d.canteenId)) {
-          return true;
-        }
-        // 检查食堂名称匹配
-        if (d.canteenName && canteenId.includes(d.canteenName)) {
-          return true;
-        }
-        return false;
-      });
+      dishes = dishes.filter(d => 
+        d.canteenId && canteenId.includes(d.canteenId)
+      );
     }
 
     // 按用餐时段过滤
