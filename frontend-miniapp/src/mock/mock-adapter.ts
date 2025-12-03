@@ -9,7 +9,6 @@ import type { ApiResponse, RequestOptions } from '@/types/api';
 
 // Mock 配置
 export const USE_MOCK = true;
-
 // Mock 处理函数类型
 type MockHandler<T = any> = (
   url: string,
@@ -129,7 +128,13 @@ export async function mockInterceptor<T>(
     }
   }
   
-  return null;
+  // 如果没有匹配到 Mock 路由，在 Mock 环境中返回模拟错误而不是发送真实请求
+  console.warn('[Mock] 未匹配的路由:', method, url, '- 返回模拟错误');
+  return {
+    code: 404,
+    message: `Mock API not implemented: ${method} ${url}`,
+    data: null as any,
+  };
 }
 
 /**
