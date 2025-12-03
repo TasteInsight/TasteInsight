@@ -476,7 +476,6 @@ export default {
     const route = useRoute()
     const dishStore = useDishStore()
     const isSubmitting = ref(false)
-    const imagePreview = ref('') // Deprecated
     
     const parentDishId = ref(route.query.parentId || '')
     const subItemName = ref(route.query.subItemName || '')
