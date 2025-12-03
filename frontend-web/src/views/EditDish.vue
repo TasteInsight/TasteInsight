@@ -21,22 +21,26 @@
                   <div class="grid grid-cols-2 gap-4">
                     <div>
                       <label class="block text-sm text-gray-600 mb-1">食堂名称 <span class="text-red-500">*</span></label>
-                      <input 
-                        type="text" 
-                        v-model="formData.canteen" 
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
-                        placeholder="例如：紫荆园"
+                      <select 
+                        v-model="formData.canteenId" 
+                        @change="onCanteenChange"
+                        class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
                         required
                       >
+                        <option value="" disabled>选择食堂</option>
+                        <option v-for="canteen in canteens" :key="canteen.id" :value="canteen.id">
+                          {{ canteen.name }}
+                        </option>
+                      </select>
                     </div>
                     <div>
-                      <label class="block text-sm text-gray-600 mb-1">食堂楼层 <span class="text-red-500">*</span></label>
+                      <label class="block text-sm text-gray-600 mb-1">食堂楼层</label>
                       <input 
                         type="text" 
                         v-model="formData.floor" 
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
-                        placeholder="例如：一层、二层"
-                        required
+                        class="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed" 
+                        placeholder="自动填充"
+                        readonly
                       >
                     </div>
                   </div>
@@ -48,21 +52,27 @@
                   <div class="grid grid-cols-2 gap-4">
                     <div>
                       <label class="block text-sm text-gray-600 mb-1">窗口名称 <span class="text-red-500">*</span></label>
-                      <input 
-                        type="text" 
-                        v-model="formData.windowName" 
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
-                        placeholder="例如：川湘风味"
+                      <select 
+                        v-model="formData.windowId" 
+                        @change="onWindowChange"
+                        class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                        :disabled="!formData.canteenId"
                         required
                       >
+                        <option value="" disabled>选择窗口</option>
+                        <option v-for="window in windows" :key="window.id" :value="window.id">
+                          {{ window.name }}
+                        </option>
+                      </select>
                     </div>
                     <div>
                       <label class="block text-sm text-gray-600 mb-1">窗口编号</label>
                       <input 
                         type="text" 
                         v-model="formData.windowNumber" 
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
-                        placeholder="例如：01、A01（可选）"
+                        class="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed" 
+                        placeholder="自动填充"
+                        readonly
                       >
                     </div>
                   </div>
@@ -500,6 +510,7 @@
 import { reactive, onMounted, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { dishApi } from '@/api/modules/dish'
+import { canteenApi } from '@/api/modules/canteen'
 import { useDishStore } from '@/store/modules/use-dish-store'
 import Sidebar from '@/components/Layout/Sidebar.vue'
 import Header from '@/components/Layout/Header.vue'
@@ -519,11 +530,15 @@ export default {
     const isSubmitting = ref(false)
     
     const newTag = ref('')
+    const canteens = ref([])
+    const windows = ref([])
     
     const formData = reactive({
       id: '',
+      canteenId: '',
       canteen: '',
       floor: '',
+      windowId: '',
       windowName: '',
       windowNumber: '',
       name: '',
@@ -548,17 +563,79 @@ export default {
     
     const subDishes = ref([]) // 存储子项列表
     
+    const loadCanteens = async () => {
+      try {
+        const response = await canteenApi.getCanteens({ page: 1, pageSize: 100 })
+        if (response.code === 200 && response.data) {
+          canteens.value = response.data.items || []
+        }
+      } catch (error) {
+        console.error('加载食堂列表失败:', error)
+      }
+    }
+
+    const loadWindows = async (canteenId) => {
+      if (!canteenId) {
+        windows.value = []
+        return
+      }
+      try {
+        const response = await canteenApi.getWindows(canteenId, { page: 1, pageSize: 100 })
+        if (response.code === 200 && response.data) {
+          windows.value = response.data.items || []
+        }
+      } catch (error) {
+        console.error('加载窗口列表失败:', error)
+        windows.value = []
+      }
+    }
+
+    const onCanteenChange = () => {
+      const selectedCanteen = canteens.value.find(c => c.id === formData.canteenId)
+      if (selectedCanteen) {
+        formData.canteen = selectedCanteen.name
+        loadWindows(formData.canteenId)
+      } else {
+        formData.canteen = ''
+        windows.value = []
+      }
+      // 重置窗口选择
+      formData.windowId = ''
+      formData.windowName = ''
+      formData.windowNumber = ''
+      formData.floor = ''
+    }
+
+    const onWindowChange = () => {
+      const selectedWindow = windows.value.find(w => w.id === formData.windowId)
+      if (selectedWindow) {
+        formData.windowName = selectedWindow.name
+        formData.windowNumber = selectedWindow.number
+        // 如果窗口有楼层信息，自动填充
+        if (selectedWindow.floor) {
+           formData.floor = selectedWindow.floor.name || selectedWindow.floor.level || ''
+        }
+      } else {
+        formData.windowName = ''
+        formData.windowNumber = ''
+        formData.floor = ''
+      }
+    }
+
     // 加载菜品信息
     const loadDishData = async (id = null) => {
       const targetId = id || dishId.value
       isLoading.value = true
       try {
+        // 先加载食堂列表
+        await loadCanteens()
+
         // 优先从 API 获取
         const response = await dishApi.getDishById(targetId)
         
         if (response.code === 200 && response.data) {
           const dish = response.data
-          fillFormData(dish)
+          await fillFormData(dish)
         } else {
           throw new Error(response.message || '获取菜品信息失败')
         }
@@ -575,12 +652,39 @@ export default {
     const isSubDish = ref(false)
     
     // 填充表单数据
-    const fillFormData = (dish) => {
+    const fillFormData = async (dish) => {
       formData.id = dish.id
       formData.canteen = dish.canteenName || dish.canteen || ''
       formData.floor = dish.floorName || dish.floor || ''
+      
+      // 匹配食堂ID
+      if (formData.canteen) {
+        const foundCanteen = canteens.value.find(c => c.name === formData.canteen)
+        if (foundCanteen) {
+          formData.canteenId = foundCanteen.id
+          // 加载该食堂的窗口
+          await loadWindows(foundCanteen.id)
+        }
+      }
+      
       formData.windowName = dish.windowName || dish.window || ''
       formData.windowNumber = dish.windowNumber || ''
+      
+      // 匹配窗口ID
+      if (formData.windowName && windows.value.length > 0) {
+        // 尝试通过名称匹配窗口
+        // 注意：窗口名称可能重复，如果有窗口编号更好，但这里尽量匹配
+        const foundWindow = windows.value.find(w => w.name === formData.windowName)
+        if (foundWindow) {
+          formData.windowId = foundWindow.id
+          // 确保其他信息一致
+          formData.windowNumber = foundWindow.number
+          if (foundWindow.floor) {
+             formData.floor = foundWindow.floor.name || foundWindow.floor.level || formData.floor
+          }
+        }
+      }
+      
       formData.name = dish.name || ''
       formData.description = dish.description || ''
       
@@ -773,8 +877,8 @@ export default {
     
     const submitForm = async () => {
       // 表单验证
-      if (!formData.name || !formData.canteen || !formData.floor || !formData.windowName) {
-        alert('请填写必填字段：菜品名称、食堂名称、食堂楼层、窗口名称')
+      if (!formData.name || !formData.canteenId || !formData.windowId) {
+        alert('请填写必填字段：菜品名称、食堂名称、窗口名称')
         return
       }
       
@@ -946,6 +1050,11 @@ export default {
       isSubmitting,
       subDishes,
       isSubDish,
+      canteens,
+      windows,
+      loadCanteens,
+      onCanteenChange,
+      onWindowChange,
       addSubItem,
       editSubDish,
       addDateRange,
