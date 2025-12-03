@@ -148,7 +148,7 @@
                 backgroundColor="#e5e7eb"
                 block-size="20"
                 class="flex-1"
-                @change="(e: any) => selectedSpicyMin = e.detail.value"
+                @change="(e: any) => onTasteSliderChange('spicy', e.detail.value, true)"
               />
               <text class="text-xs text-gray-600 w-8 text-center">{{ selectedSpicyMin === 0 ? '不限' : selectedSpicyMin }}</text>
             </view>
@@ -163,7 +163,7 @@
                 backgroundColor="#e5e7eb"
                 block-size="20"
                 class="flex-1"
-                @change="(e: any) => selectedSpicyMax = e.detail.value"
+                @change="(e: any) => onTasteSliderChange('spicy', e.detail.value, false)"
               />
               <text class="text-xs text-gray-600 w-8 text-center">{{ selectedSpicyMax === 0 ? '不限' : selectedSpicyMax }}</text>
             </view>
@@ -188,7 +188,7 @@
                 backgroundColor="#e5e7eb"
                 block-size="20"
                 class="flex-1"
-                @change="(e: any) => selectedSaltyMin = e.detail.value"
+                @change="(e: any) => onTasteSliderChange('salty', e.detail.value, true)"
               />
               <text class="text-xs text-gray-600 w-8 text-center">{{ selectedSaltyMin === 0 ? '不限' : selectedSaltyMin }}</text>
             </view>
@@ -203,7 +203,7 @@
                 backgroundColor="#e5e7eb"
                 block-size="20"
                 class="flex-1"
-                @change="(e: any) => selectedSaltyMax = e.detail.value"
+                @change="(e: any) => onTasteSliderChange('salty', e.detail.value, false)"
               />
               <text class="text-xs text-gray-600 w-8 text-center">{{ selectedSaltyMax === 0 ? '不限' : selectedSaltyMax }}</text>
             </view>
@@ -228,7 +228,7 @@
                 backgroundColor="#e5e7eb"
                 block-size="20"
                 class="flex-1"
-                @change="(e: any) => selectedSweetMin = e.detail.value"
+                @change="(e: any) => onTasteSliderChange('sweet', e.detail.value, true)"
               />
               <text class="text-xs text-gray-600 w-8 text-center">{{ selectedSweetMin === 0 ? '不限' : selectedSweetMin }}</text>
             </view>
@@ -243,7 +243,7 @@
                 backgroundColor="#e5e7eb"
                 block-size="20"
                 class="flex-1"
-                @change="(e: any) => selectedSweetMax = e.detail.value"
+                @change="(e: any) => onTasteSliderChange('sweet', e.detail.value, false)"
               />
               <text class="text-xs text-gray-600 w-8 text-center">{{ selectedSweetMax === 0 ? '不限' : selectedSweetMax }}</text>
             </view>
@@ -268,7 +268,7 @@
                 backgroundColor="#e5e7eb"
                 block-size="20"
                 class="flex-1"
-                @change="(e: any) => selectedOilyMin = e.detail.value"
+                @change="(e: any) => onTasteSliderChange('oily', e.detail.value, true)"
               />
               <text class="text-xs text-gray-600 w-8 text-center">{{ selectedOilyMin === 0 ? '不限' : selectedOilyMin }}</text>
             </view>
@@ -283,7 +283,7 @@
                 backgroundColor="#e5e7eb"
                 block-size="20"
                 class="flex-1"
-                @change="(e: any) => selectedOilyMax = e.detail.value"
+                @change="(e: any) => onTasteSliderChange('oily', e.detail.value, false)"
               />
               <text class="text-xs text-gray-600 w-8 text-center">{{ selectedOilyMax === 0 ? '不限' : selectedOilyMax }}</text>
             </view>
@@ -695,6 +695,46 @@ const removeCustomAvoid = (item: string) => {
   const index = customAvoid.value.indexOf(item);
   if (index > -1) {
     customAvoid.value.splice(index, 1);
+  }
+};
+
+// 清除口味错误信息
+const clearTasteError = () => {
+  tasteError.value = '';
+};
+
+// 更新口味滑块值并清除错误信息
+const onTasteSliderChange = (type: string, value: number, isMin: boolean) => {
+  clearTasteError();
+  switch (type) {
+    case 'spicy':
+      if (isMin) {
+        selectedSpicyMin.value = value;
+      } else {
+        selectedSpicyMax.value = value;
+      }
+      break;
+    case 'salty':
+      if (isMin) {
+        selectedSaltyMin.value = value;
+      } else {
+        selectedSaltyMax.value = value;
+      }
+      break;
+    case 'sweet':
+      if (isMin) {
+        selectedSweetMin.value = value;
+      } else {
+        selectedSweetMax.value = value;
+      }
+      break;
+    case 'oily':
+      if (isMin) {
+        selectedOilyMin.value = value;
+      } else {
+        selectedOilyMax.value = value;
+      }
+      break;
   }
 };
 
