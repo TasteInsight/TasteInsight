@@ -188,58 +188,27 @@ export const mockGetDishes = async (params: GetDishesRequest): Promise<Paginated
   if (params.sort && params.sort.field) {
     const { field, order = 'asc' } = params.sort;
     
-    // 处理特殊的排序字段映射
-    let sortField = field;
-    let sortOrder = order;
-    
-    switch (field) {
-      case 'rating':
-        sortField = 'averageRating';
-        sortOrder = 'desc'; // 评分默认降序
-        break;
-      case 'price_low':
-        sortField = 'price';
-        sortOrder = 'asc'; // 价格从低到高
-        break;
-      case 'price_high':
-        sortField = 'price';
-        sortOrder = 'desc'; // 价格从高到低
-        break;
-      case 'popularity':
-        sortField = 'reviewCount';
-        sortOrder = 'desc'; // 评价数量默认降序
-        break;
-      case 'newest':
-        sortField = 'createdAt';
-        sortOrder = 'desc'; // 创建时间默认降序（最新的在前）
-        break;
-      default:
-        // 对于其他字段，使用传入的排序方式
-        sortField = field;
-        sortOrder = order;
-    }
-    
     dishes.sort((a, b) => {
       // @ts-ignore
-      let valA = a[sortField];
+      let valA = a[field];
       // @ts-ignore
-      let valB = b[sortField];
+      let valB = b[field];
       
       // 处理日期字段
-      if (sortField === 'createdAt' && typeof valA === 'string') {
+      if (field === 'createdAt' && typeof valA === 'string') {
         valA = new Date(valA).getTime();
         valB = new Date(valB).getTime();
       }
       
       // 处理数值字段
       if (typeof valA === 'number' && typeof valB === 'number') {
-        return sortOrder === 'asc' ? valA - valB : valB - valA;
+        return order === 'asc' ? valA - valB : valB - valA;
       }
       
       // 处理字符串字段
       if (typeof valA === 'string' && typeof valB === 'string') {
         const comparison = valA.localeCompare(valB);
-        return sortOrder === 'asc' ? comparison : -comparison;
+        return order === 'asc' ? comparison : -comparison;
       }
       
       // 默认保持原顺序
