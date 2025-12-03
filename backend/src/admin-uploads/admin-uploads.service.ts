@@ -272,18 +272,11 @@ export class AdminUploadsService {
           return;
         }
 
-        // 如果是已通过状态，删除对应的菜品
-        if (currentUpload.status === 'approved' && currentUpload.approvedDishId) {
-          try {
-            await tx.dish.delete({
-              where: { id: currentUpload.approvedDishId },
-            });
-          } catch (error) {
-            // 忽略菜品不存在的错误（可能已被手动删除）
-            if (error.code !== 'P2025') {
-              throw error;
-            }
-          }
+        // 如果是已通过状态，不允许直接拒绝
+        if (currentUpload.status === 'approved') {
+          throw new BadRequestException(
+            '该记录已通过审核，无法直接拒绝，请先撤销审核',
+          );
         }
 
         // 更新状态为 rejected
