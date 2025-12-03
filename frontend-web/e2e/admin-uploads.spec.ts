@@ -24,9 +24,9 @@ const TEST_UPLOAD_PREFIX = 'E2E_UPLOAD_TEST_';
  */
 async function getPendingUploads(request: any, token: string): Promise<any[]> {
   try {
-    const response = await request.get(`${baseURL}admin/dishes/uploads/pending`, {
+    const response = await request.get(`${baseURL}admin/dishes/uploads`, {
       headers: { Authorization: `Bearer ${token}` },
-      params: { page: 1, pageSize: 100 },
+      params: { page: 1, pageSize: 100, status: 'pending' },
     });
     if (response.ok()) {
       const data = await response.json();
@@ -199,9 +199,9 @@ test.describe('Admin Uploads API Tests', () => {
     await cleanupTestData(request, superAdminToken);
   });
 
-  test.describe('/admin/dishes/uploads/pending (GET)', () => {
+  test.describe('/admin/dishes/uploads (GET)', () => {
     test('should return pending uploads for super admin', async ({ request }) => {
-      const response = await request.get(`${baseURL}admin/dishes/uploads/pending`, {
+      const response = await request.get(`${baseURL}admin/dishes/uploads`, {
         headers: { Authorization: `Bearer ${superAdminToken}` },
         params: { page: 1, pageSize: 20, status: 'pending' },
       });
@@ -224,9 +224,9 @@ test.describe('Admin Uploads API Tests', () => {
     });
 
     test('should return pending uploads with pagination params', async ({ request }) => {
-      const response = await request.get(`${baseURL}admin/dishes/uploads/pending`, {
+      const response = await request.get(`${baseURL}admin/dishes/uploads`, {
         headers: { Authorization: `Bearer ${superAdminToken}` },
-        params: { page: 1, pageSize: 5 },
+        params: { page: 1, pageSize: 5, status: 'pending' },
       });
 
       expect(response.ok()).toBe(true);
@@ -240,8 +240,9 @@ test.describe('Admin Uploads API Tests', () => {
     test('should return pending uploads for reviewer admin with upload:approve permission', async ({ request }) => {
       test.skip(!reviewerAdminToken, 'Reviewer admin account not available');
 
-      const response = await request.get(`${baseURL}admin/dishes/uploads/pending`, {
+      const response = await request.get(`${baseURL}admin/dishes/uploads`, {
         headers: { Authorization: `Bearer ${reviewerAdminToken}` },
+        params: { status: 'pending' },
       });
 
       expect(response.ok()).toBe(true);
@@ -251,20 +252,21 @@ test.describe('Admin Uploads API Tests', () => {
     });
 
     test('should return 401 without auth token', async ({ request }) => {
-      const response = await request.get(`${baseURL}admin/dishes/uploads/pending`);
+      const response = await request.get(`${baseURL}admin/dishes/uploads`);
       expect(response.status()).toBe(401);
     });
 
     test('should return 403 for admin without upload:approve permission', async ({ request }) => {
-      const response = await request.get(`${baseURL}admin/dishes/uploads/pending`, {
+      const response = await request.get(`${baseURL}admin/dishes/uploads`, {
         headers: { Authorization: `Bearer ${normalAdminToken}` },
       });
       expect(response.status()).toBe(403);
     });
 
     test('should include uploader information in response', async ({ request }) => {
-      const response = await request.get(`${baseURL}admin/dishes/uploads/pending`, {
+      const response = await request.get(`${baseURL}admin/dishes/uploads`, {
         headers: { Authorization: `Bearer ${superAdminToken}` },
+        params: { status: 'pending' },
       });
 
       expect(response.ok()).toBe(true);
@@ -279,8 +281,9 @@ test.describe('Admin Uploads API Tests', () => {
     });
 
     test('should include dish details in response', async ({ request }) => {
-      const response = await request.get(`${baseURL}admin/dishes/uploads/pending`, {
+      const response = await request.get(`${baseURL}admin/dishes/uploads`, {
         headers: { Authorization: `Bearer ${superAdminToken}` },
+        params: { status: 'pending' },
       });
 
       expect(response.ok()).toBe(true);
@@ -319,7 +322,7 @@ test.describe('Admin Uploads API Tests', () => {
       });
 
       // Test filtering by pending
-      const pendingResponse = await request.get(`${baseURL}admin/dishes/uploads/pending`, {
+      const pendingResponse = await request.get(`${baseURL}admin/dishes/uploads`, {
         headers: { Authorization: `Bearer ${superAdminToken}` },
         params: { status: 'pending', pageSize: 100 },
       });
@@ -331,7 +334,7 @@ test.describe('Admin Uploads API Tests', () => {
       expect(pendingUploads.some(upload => upload.id === rejectUploadId)).toBe(false);
 
       // Test filtering by approved
-      const approvedResponse = await request.get(`${baseURL}admin/dishes/uploads/pending`, {
+      const approvedResponse = await request.get(`${baseURL}admin/dishes/uploads`, {
         headers: { Authorization: `Bearer ${superAdminToken}` },
         params: { status: 'approved', pageSize: 100 },
       });
@@ -343,7 +346,7 @@ test.describe('Admin Uploads API Tests', () => {
       expect(approvedUploads.some(upload => upload.id === rejectUploadId)).toBe(false);
 
       // Test filtering by rejected
-      const rejectedResponse = await request.get(`${baseURL}admin/dishes/uploads/pending`, {
+      const rejectedResponse = await request.get(`${baseURL}admin/dishes/uploads`, {
         headers: { Authorization: `Bearer ${superAdminToken}` },
         params: { status: 'rejected', pageSize: 100 },
       });
@@ -355,7 +358,7 @@ test.describe('Admin Uploads API Tests', () => {
       expect(rejectedUploads.some(upload => upload.id === approveUploadId)).toBe(false);
 
       // Test no status filter (all)
-      const allResponse = await request.get(`${baseURL}admin/dishes/uploads/pending`, {
+      const allResponse = await request.get(`${baseURL}admin/dishes/uploads`, {
         headers: { Authorization: `Bearer ${superAdminToken}` },
         params: { pageSize: 100 },
       });
@@ -371,14 +374,14 @@ test.describe('Admin Uploads API Tests', () => {
     });
   });
 
-  test.describe('/admin/dishes/uploads/pending/:id (GET)', () => {
+  test.describe('/admin/dishes/uploads/:id (GET)', () => {
     test('should return pending upload detail for super admin', async ({ request }) => {
       // First get a pending upload ID
       const uploads = await getPendingUploads(request, superAdminToken);
       test.skip(uploads.length === 0, 'No pending uploads available for testing');
 
       const uploadId = uploads[0].id;
-      const response = await request.get(`${baseURL}admin/dishes/uploads/pending/${uploadId}`, {
+      const response = await request.get(`${baseURL}admin/dishes/uploads/${uploadId}`, {
         headers: { Authorization: `Bearer ${superAdminToken}` },
       });
 
@@ -396,7 +399,7 @@ test.describe('Admin Uploads API Tests', () => {
       test.skip(uploads.length === 0, 'No pending uploads available for testing');
 
       const uploadId = uploads[0].id;
-      const response = await request.get(`${baseURL}admin/dishes/uploads/pending/${uploadId}`, {
+      const response = await request.get(`${baseURL}admin/dishes/uploads/${uploadId}`, {
         headers: { Authorization: `Bearer ${superAdminToken}` },
       });
 
@@ -429,7 +432,7 @@ test.describe('Admin Uploads API Tests', () => {
     });
 
     test('should return 404 for non-existent upload', async ({ request }) => {
-      const response = await request.get(`${baseURL}admin/dishes/uploads/pending/non-existent-id`, {
+      const response = await request.get(`${baseURL}admin/dishes/uploads/non-existent-id`, {
         headers: { Authorization: `Bearer ${superAdminToken}` },
       });
 
@@ -439,7 +442,7 @@ test.describe('Admin Uploads API Tests', () => {
     });
 
     test('should return 401 without auth token', async ({ request }) => {
-      const response = await request.get(`${baseURL}admin/dishes/uploads/pending/some-id`);
+      const response = await request.get(`${baseURL}admin/dishes/uploads/some-id`);
       expect(response.status()).toBe(401);
     });
 
@@ -448,7 +451,7 @@ test.describe('Admin Uploads API Tests', () => {
       test.skip(uploads.length === 0, 'No pending uploads available for testing');
 
       const uploadId = uploads[0].id;
-      const response = await request.get(`${baseURL}admin/dishes/uploads/pending/${uploadId}`, {
+      const response = await request.get(`${baseURL}admin/dishes/uploads/${uploadId}`, {
         headers: { Authorization: `Bearer ${normalAdminToken}` },
       });
 

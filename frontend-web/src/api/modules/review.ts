@@ -93,21 +93,21 @@ export const reviewApi = {
   },
 
   /**
-   * 获取待审核的用户上传菜品
+   * 获取上传菜品审核列表
    * @param params 分页参数和筛选参数
-   * @returns 待审核菜品列表
+   * @returns 上传菜品审核列表
    */
   async getPendingUploads(params: { page?: number; pageSize?: number; status?: string } = {}): Promise<ApiResponse<any>> {
-    return await request.get<ApiResponse<any>>('/admin/dishes/uploads/pending', { params });
+    return await request.get<ApiResponse<any>>('/admin/dishes/uploads', { params });
   },
 
   /**
-   * 获取待审核上传菜品详情
+   * 获取上传菜品审核详情
    * @param id 上传菜品 ID
-   * @returns 待审核菜品详情
+   * @returns 上传菜品审核详情
    */
   async getPendingUploadById(id: string): Promise<ApiResponse<any>> {
-    return await request.get<ApiResponse<any>>(`/admin/dishes/uploads/pending/${id}`);
+    return await request.get<ApiResponse<any>>(`/admin/dishes/uploads/${id}`);
   },
 
   /**
