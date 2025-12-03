@@ -1013,7 +1013,7 @@ export default {
           oiliness: formData.oiliness !== null && formData.oiliness !== undefined ? formData.oiliness : 0,
           availableMealTime: availableMealTime.length > 0 ? availableMealTime : undefined,
           availableDates: availableDates,
-          status: 'offline', // 修改后需要重新审核，状态设为 offline
+          status: 'online', // 修改后直接上线，无需审核
           // 保留原有的 subDishId 和 parentDishId
           subDishId: currentDish?.subDishId || undefined,
           parentDishId: currentDish?.parentDishId || undefined

@@ -8,7 +8,7 @@
 import type { ApiResponse, RequestOptions } from '@/types/api';
 
 // Mock 配置
-export const USE_MOCK = true;
+export const USE_MOCK = false;
 // Mock 处理函数类型
 type MockHandler<T = any> = (
   url: string,

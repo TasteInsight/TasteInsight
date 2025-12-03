@@ -770,7 +770,6 @@ export default {
     return {
       formData,
       newTag,
-      imagePreview,
       isSubmitting,
       subItemName,
       parentDishName,
