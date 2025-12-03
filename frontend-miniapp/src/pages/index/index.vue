@@ -167,25 +167,26 @@ function buildDishFilterFromUserSettings(): GetDishesRequest['filter'] {
     // 口味偏好 - 用于筛选菜品
     if (prefs.tastePreferences) {
       const taste = prefs.tastePreferences;
-      if (taste.spicyLevel !== undefined) {
+      // 只有当口味偏好不为0（未设置）时才应用筛选
+      if (taste.spicyLevel !== undefined && taste.spicyLevel > 0) {
         filter.spicyLevel = {
           min: Math.max(0, taste.spicyLevel - 1), // 允许稍微偏离的范围
           max: Math.min(5, taste.spicyLevel + 1),
         };
       }
-      if (taste.sweetness !== undefined) {
+      if (taste.sweetness !== undefined && taste.sweetness > 0) {
         filter.sweetness = {
           min: Math.max(0, taste.sweetness - 1),
           max: Math.min(5, taste.sweetness + 1),
         };
       }
-      if (taste.saltiness !== undefined) {
+      if (taste.saltiness !== undefined && taste.saltiness > 0) {
         filter.saltiness = {
           min: Math.max(0, taste.saltiness - 1),
           max: Math.min(5, taste.saltiness + 1),
         };
       }
-      if (taste.oiliness !== undefined) {
+      if (taste.oiliness !== undefined && taste.oiliness > 0) {
         filter.oiliness = {
           min: Math.max(0, taste.oiliness - 1),
           max: Math.min(5, taste.oiliness + 1),
