@@ -108,9 +108,13 @@
                           <button
                             @click="revokeNews(news.id)"
                             class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded text-sm hover:bg-yellow-200 transition duration-200"
+                            title="如需编辑已发布新闻，请先撤回至草稿状态"
                           >
                             撤回
                           </button>
+                          <span class="ml-1 text-gray-400 text-xs" title="如需编辑已发布新闻，请先撤回至草稿状态">
+                            <span class="iconify" data-icon="mdi:information-outline"></span>
+                          </span>
                         </template>
 
                         <button
@@ -263,10 +267,17 @@
               <template v-else>
                 <button
                   type="button"
-                  @click="submitForm(newsForm.status)"
+                  @click="submitForm('draft')"
+                  class="flex-1 px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition duration-200"
+                >
+                  保存为草稿
+                </button>
+                <button
+                  type="button"
+                  @click="submitForm('published')"
                   class="flex-1 px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200"
                 >
-                  保存更新
+                  立即发布
                 </button>
               </template>
 
@@ -510,6 +521,10 @@ export default {
         alert('请填写标题、摘要和内容')
         return
       }
+      if (targetStatus === 'published' && !newsForm.publishedAt) {
+        alert('请填写发布时间')
+        return
+      }
 
       try {
         // 【关键】提交前，将编辑器中的 HTML 同步回 newsForm.content
@@ -543,7 +558,7 @@ export default {
             closeModal()
             // 如果创建的是草稿，确保当前视图切换到草稿列表，或者提示用户
             if (targetStatus === 'draft' && currentStatus.value !== 'draft') {
-               // 只是提示，不强制跳转，或者可以自动切换tab
+              currentStatus.value = 'draft'
             }
             loadNews()
           } else {
