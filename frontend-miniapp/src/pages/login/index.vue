@@ -1,5 +1,5 @@
 <template>
-  <view class="w-full h-[812px] bg-white overflow-hidden flex shadow-lg flex-col relative" style="max-width: 375px;">
+  <view class="w-full h-[812px] bg-white overflow-hidden flex shadow-lg flex-col relative">
     <view class="bg-white flex-1 flex items-center justify-center p-6">
       <LoginForm @login-success="handleLoginSuccess" @login-error="handleLoginError" />
     </view>
