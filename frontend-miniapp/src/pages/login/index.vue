@@ -29,18 +29,6 @@ onLoad(() => {
 });
 
 /**
- * 页面显示时再次检查（处理返回的情况）
- */
-onShow(() => {
-  // 如果已登录，直接跳转到首页
-  if (userStore.isLoggedIn) {
-    uni.switchTab({
-      url: '/pages/index/index'
-    });
-  }
-});
-
-/**
  * 处理登录成功
  */
 function handleLoginSuccess() {

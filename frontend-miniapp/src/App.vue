@@ -23,6 +23,13 @@ function checkLoginStatus() {
   
   // 获取当前页面路径
   const pages = getCurrentPages();
+  
+  // Check if pages array is empty
+  if (pages.length === 0) {
+    console.warn('No pages found during app initialization. Skipping login status check.');
+    return;
+  }
+  
   const currentPage = pages[pages.length - 1];
   const currentPath = currentPage ? `/${currentPage.route}` : '';
   
