@@ -514,7 +514,7 @@ export default {
     const router = useRouter()
     const route = useRoute()
     const dishStore = useDishStore()
-    const dishId = route.params.id
+    const dishId = ref(route.params.id)
     const isLoading = ref(false)
     const isSubmitting = ref(false)
     
@@ -549,11 +549,12 @@ export default {
     const subDishes = ref([]) // 存储子项列表
     
     // 加载菜品信息
-    const loadDishData = async () => {
+    const loadDishData = async (id = null) => {
+      const targetId = id || dishId.value
       isLoading.value = true
       try {
         // 优先从 API 获取
-        const response = await dishApi.getDishById(dishId)
+        const response = await dishApi.getDishById(targetId)
         
         if (response.code === 200 && response.data) {
           const dish = response.data
@@ -575,7 +576,7 @@ export default {
     
     // 填充表单数据
     const fillFormData = (dish) => {
-      formData.id = dish.id || dishId
+      formData.id = dish.id
       formData.canteen = dish.canteenName || dish.canteen || ''
       formData.floor = dish.floorName || dish.floor || ''
       formData.windowName = dish.windowName || dish.window || ''
@@ -692,9 +693,21 @@ export default {
     }
     
     const editSubDish = (subDishId) => {
-      // 跳转到编辑子项页面（使用EditDish组件）
+      // 如果已经在编辑页面，需要强制刷新或更新路由
+      // 使用 router.push 跳转到同一路由但不同参数，Vue Router 默认会响应
+      // 但为了确保数据更新，我们需要监听路由参数变化
       router.push(`/edit-dish/${subDishId}`)
     }
+    
+    // 监听路由参数 id 变化，重新加载数据
+    watch(() => route.params.id, (newId) => {
+      if (newId) {
+        // 更新当前的 dishId
+        // 注意：setup 中的 dishId 是常量，我们需要直接使用 route.params.id 或更新一个响应式变量
+        // 这里直接调用 loadDishData，它会使用 route.params.id
+        loadDishData(newId)
+      }
+    })
     
     const addDateRange = () => {
       if (!formData.availableDates) {
