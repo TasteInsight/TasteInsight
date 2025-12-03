@@ -289,6 +289,7 @@
             </view>
           </view>
         </view>
+        <view v-if="tasteError" class="text-xs text-red-500 mt-2">{{ tasteError }}</view>
       </view>
 
       <!-- 荤素偏好筛选 -->
@@ -524,6 +525,9 @@ const customTags = ref<string[]>([]);
 const customAvoidInput = ref<string>('');
 const customAvoid = ref<string[]>([]);
 
+// 口味验证错误
+const tasteError = ref<string>('');
+
 // 口味范围 (0=未设置, 1-5=程度)
 const selectedSpicyMin = ref<number>(0);
 const selectedSpicyMax = ref<number>(0);
@@ -627,6 +631,37 @@ const onCustomRatingInput = () => {
   if (customRatingMin.value || customRatingMax.value) {
     selectedRating.value = 0;
   }
+};
+
+// 验证口味范围输入
+const validateTasteInput = (): boolean => {
+  tasteError.value = '';
+  
+  // 检查辣度
+  if (selectedSpicyMin.value > 0 && selectedSpicyMax.value > 0 && selectedSpicyMin.value > selectedSpicyMax.value) {
+    tasteError.value = '辣度最大值不能小于最小值';
+    return false;
+  }
+  
+  // 检查咸度
+  if (selectedSaltyMin.value > 0 && selectedSaltyMax.value > 0 && selectedSaltyMin.value > selectedSaltyMax.value) {
+    tasteError.value = '咸度最大值不能小于最小值';
+    return false;
+  }
+  
+  // 检查甜度
+  if (selectedSweetMin.value > 0 && selectedSweetMax.value > 0 && selectedSweetMin.value > selectedSweetMax.value) {
+    tasteError.value = '甜度最大值不能小于最小值';
+    return false;
+  }
+  
+  // 检查油腻度
+  if (selectedOilyMin.value > 0 && selectedOilyMax.value > 0 && selectedOilyMin.value > selectedOilyMax.value) {
+    tasteError.value = '油腻度最大值不能小于最小值';
+    return false;
+  }
+  
+  return true;
 };
 
 // 添加自定义标签
@@ -794,6 +829,7 @@ const resetCurrentFilter = () => {
       selectedSweetMax.value = 0;
       selectedOilyMin.value = 0;
       selectedOilyMax.value = 0;
+      tasteError.value = '';
       break;
   }
 };
@@ -801,7 +837,7 @@ const resetCurrentFilter = () => {
 // 构建并应用筛选条件
 const applyFilter = () => {
   // 验证输入
-  if (!validatePriceInput() || !validateRatingInput()) {
+  if (!validatePriceInput() || !validateRatingInput() || !validateTasteInput()) {
     return;
   }
 
@@ -907,6 +943,7 @@ const resetAllFilters = () => {
   selectedSweetMax.value = 0;
   selectedOilyMin.value = 0;
   selectedOilyMax.value = 0;
+  tasteError.value = '';
   activeFilter.value = '';
   emit('filter-change', {});
 };
