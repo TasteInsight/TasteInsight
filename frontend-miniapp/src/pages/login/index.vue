@@ -1,6 +1,9 @@
 <template>
-  <view class="w-full h-[812px] bg-white overflow-hidden flex shadow-lg flex-col relative">
-    <view class="bg-white flex-1 flex items-center justify-center p-6">
+  <view class="min-h-screen bg-white flex flex-col relative">
+    <!-- 背景装饰 -->
+    <view class="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-purple-50 to-white -z-10"></view>
+    
+    <view class="flex-1 flex flex-col items-center justify-center px-8">
       <LoginForm @login-success="handleLoginSuccess" @login-error="handleLoginError" />
     </view>
   </view>
