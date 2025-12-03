@@ -20,6 +20,7 @@ import { PermissionsGuard } from '@/auth/guards/permissions.guard';
 import { RequirePermissions } from '@/auth/decorators/permissions.decorator';
 import { NewsListResponseDto, NewsResponseDto } from './dto/news-response.dto';
 import { SuccessResponseDto } from '@/common/dto/response.dto';
+import { AdminGetNewsDto } from './dto/news.dto';
 
 @Controller('admin/news')
 @UseGuards(AdminAuthGuard, PermissionsGuard)
@@ -29,18 +30,8 @@ export class AdminNewsController {
   @Get()
   @RequirePermissions('news:view')
   @HttpCode(HttpStatus.OK)
-  async findAll(
-    @Query('page') page: number = 1,
-    @Query('pageSize') pageSize: number = 20,
-    @Query('status') status?: string,
-    @Query('canteenName') canteenName?: string,
-  ): Promise<NewsListResponseDto> {
-    return this.adminNewsService.findAll(
-      Number(page),
-      Number(pageSize),
-      status,
-      canteenName,
-    );
+  async findAll(@Query() query: AdminGetNewsDto): Promise<NewsListResponseDto> {
+    return this.adminNewsService.findAll(query);
   }
 
   @Post()

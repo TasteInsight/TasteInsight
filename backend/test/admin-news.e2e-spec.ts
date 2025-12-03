@@ -333,6 +333,40 @@ describe('AdminNewsController (e2e)', () => {
       expect(response.body.data.content).toBe(updateDto.content);
     });
 
+    it('should update canteenId and canteenName correctly', async () => {
+      // First revoke the news to make it editable
+      await request(app.getHttpServer())
+        .post(`/admin/news/${createdNewsId}/revoke`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      const updateDto = {
+        canteenId: testCanteenId,
+      };
+
+      const response = await request(app.getHttpServer())
+        .put(`/admin/news/${createdNewsId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send(updateDto)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.canteenId).toBe(testCanteenId);
+      expect(response.body.data.canteenName).toBe('News Test Canteen');
+    });
+
+    it('should return 400 when updating with non-existent canteenId', async () => {
+      const updateDto = {
+        canteenId: 'non-existent-canteen-id',
+      };
+
+      await request(app.getHttpServer())
+        .put(`/admin/news/${createdNewsId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send(updateDto)
+        .expect(400);
+    });
+
     it('should return 404 when updating non-existent news', async () => {
       await request(app.getHttpServer())
         .put('/admin/news/non-existent-id')
@@ -429,6 +463,7 @@ describe('AdminNewsController (e2e)', () => {
           title: 'Permission Test News',
           content: 'Content',
           publishedAt: new Date(),
+          status: 'published',
           createdBy: viewOnlyAdminId, // Just assign to someone
         },
       });

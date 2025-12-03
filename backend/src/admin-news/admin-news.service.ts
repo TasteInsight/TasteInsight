@@ -6,23 +6,16 @@ import {
 import { PrismaService } from '@/prisma.service';
 import { CreateNewsDto } from './dto/create-news.dto';
 import { UpdateNewsDto } from './dto/update-news.dto';
-import {
-  NewsListResponseDto,
-  NewsResponseDto,
-  NewsDto,
-} from './dto/news-response.dto';
+import { NewsListResponseDto, NewsResponseDto } from './dto/news-response.dto';
 import { SuccessResponseDto } from '@/common/dto/response.dto';
+import { NewsDto, AdminGetNewsDto } from './dto/news.dto';
 
 @Injectable()
 export class AdminNewsService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(
-    page: number = 1,
-    pageSize: number = 20,
-    status?: string,
-    canteenName?: string,
-  ): Promise<NewsListResponseDto> {
+  async findAll(query: AdminGetNewsDto): Promise<NewsListResponseDto> {
+    const { page = 1, pageSize = 20, status, canteenName } = query;
     const skip = (page - 1) * pageSize;
 
     const where: any = {};
@@ -42,13 +35,13 @@ export class AdminNewsService {
         where,
         skip,
         take: pageSize,
-        orderBy: { publishedAt: 'desc' },
+        orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
       }),
     ]);
 
     return {
       code: 200,
-      message: 'success',
+      message: '获取新闻列表成功',
       data: {
         items: newsList.map((news) => this.mapToNewsDto(news)),
         meta: {
@@ -70,9 +63,10 @@ export class AdminNewsService {
       const canteen = await this.prisma.canteen.findUnique({
         where: { id: createNewsDto.canteenId },
       });
-      if (canteen) {
-        canteenName = canteen.name;
+      if (!canteen) {
+        throw new BadRequestException('指定的食堂不存在');
       }
+      canteenName = canteen.name;
     }
 
     const news = await this.prisma.news.create({
@@ -87,7 +81,7 @@ export class AdminNewsService {
 
     return {
       code: 200,
-      message: 'success',
+      message: '创建新闻成功',
       data: this.mapToNewsDto(news),
     };
   }
@@ -108,14 +102,26 @@ export class AdminNewsService {
       throw new BadRequestException('已发布的新闻无法编辑，请先撤回');
     }
 
+    // 如果更新了 canteenId，需要同时更新 canteenName
+    const updateData: any = { ...updateNewsDto };
+    if (updateNewsDto.canteenId) {
+      const canteen = await this.prisma.canteen.findUnique({
+        where: { id: updateNewsDto.canteenId },
+      });
+      if (!canteen) {
+        throw new BadRequestException('指定的食堂不存在');
+      }
+      updateData.canteenName = canteen.name;
+    }
+
     const news = await this.prisma.news.update({
       where: { id },
-      data: updateNewsDto,
+      data: updateData,
     });
 
     return {
       code: 200,
-      message: 'success',
+      message: '更新新闻成功',
       data: this.mapToNewsDto(news),
     };
   }
