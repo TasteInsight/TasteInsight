@@ -19,7 +19,7 @@ export const createMockUser = (): User => ({
     id: 'pref_001',
     userId: 'mock_user_001',
     tastePreferences: {
-      spiciness: 0,
+      spicileval: 0,
       sweetness: 0,
       saltiness: 0,
       oiliness: 0,

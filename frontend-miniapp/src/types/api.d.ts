@@ -67,6 +67,7 @@ export interface User {
   nickname: string;
   avatar: string;
   preferences?: UserPreference;
+
   allergens?: string[];
   myFavoriteDishes?: string[];
   myReviews?: string[];
@@ -81,7 +82,6 @@ export interface User {
 export interface UserPreference {
   id: string;
   userId: string;
-  spicyLevel?: number; // 0-5
   tagPreferences?: string[];
   priceRange?: {
     min: number;
@@ -89,7 +89,7 @@ export interface UserPreference {
   };
   meatPreference?: string[]; // 修正为 meatPreferences
   tastePreferences?: {
-    spiciness?: number; // 添加辣度字段
+    spicileval?: number; // 添加辣度字段
     sweetness?: number;
     saltiness?: number;
     oiliness?: number;

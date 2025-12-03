@@ -343,7 +343,7 @@ onMounted(async () => {
     if (userInfo && userInfo.preferences) {
       const pref = userInfo.preferences;
       if (pref.tastePreferences) {
-        form.spiciness = pref.tastePreferences.spiciness ?? 0;
+        form.spiciness = pref.tastePreferences.spicileval ?? 0;
         form.sweetness = pref.tastePreferences.sweetness ?? 0;
         form.saltiness = pref.tastePreferences.saltiness ?? 0;
         form.oiliness = pref.tastePreferences.oiliness ?? 0;
@@ -463,7 +463,7 @@ async function handleSave() {
   try {
     const preferences: Partial<UserPreference> = {
       tastePreferences: {
-        spiciness: form.spiciness,
+        spicileval: form.spiciness,
         sweetness: form.sweetness,
         saltiness: form.saltiness,
         oiliness: form.oiliness
