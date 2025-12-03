@@ -116,26 +116,90 @@
                 
                 <!-- 菜品图片上传 -->
                 <div>
-                  <label class="block text-gray-700 font-medium mb-2">菜品图片</label>
-                  <div class="border-2 border-dashed rounded-lg aspect-square w-[40%] relative flex items-center justify-center bg-gray-50 overflow-hidden">
+                  <label class="block text-gray-700 font-medium mb-2">菜品图片 <span class="text-sm text-gray-500 font-normal">（第一张将作为封面图，支持多图上传）</span></label>
+                  
+                  <div class="flex gap-4 items-start">
+                    <!-- 封面图（第一张） -->
+                    <div class="relative group flex-shrink-0">
+                      <div class="w-[300px] h-[300px] border-2 border-dashed rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center">
                     <img 
-                      v-if="imagePreview" 
-                      :src="imagePreview" 
-                      alt="菜品图片预览"
-                      class="w-full h-full object-cover object-center"
+                          v-if="formData.imageFiles.length > 0" 
+                          :src="formData.imageFiles[0].preview" 
+                          alt="封面图"
+                          class="w-full h-full object-cover"
                     >
-                    <div v-else class="text-center p-6">
-                      <span class="iconify text-4xl text-gray-400 mx-auto" data-icon="bi:image"></span>
-                      <div class="mt-2">点击上传菜品图片</div>
-                      <p class="text-sm text-gray-500 mt-1">建议尺寸800x800像素，小于2MB</p>
+                        <div v-else class="text-center p-6 text-gray-400">
+                          <span class="iconify text-4xl mx-auto" data-icon="bi:image"></span>
+                          <div class="mt-2 font-medium">封面图</div>
+                          <p class="text-xs mt-1">点击右侧按钮添加</p>
                     </div>
+                        
+                        <!-- 删除遮罩 -->
+                        <div 
+                          v-if="formData.imageFiles.length > 0"
+                          class="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center gap-3 transition-all duration-200"
+                        >
+                          <button 
+                            type="button"
+                            @click="removeImage(0)"
+                            class="p-2 bg-white/20 text-white rounded-full hover:bg-red-500 transition-colors"
+                            title="删除图片"
+                          >
+                            <span class="iconify text-xl" data-icon="carbon:trash-can"></span>
+                          </button>
+                        </div>
+                      </div>
+                      <div class="text-center mt-2 text-sm text-gray-600 font-medium">封面展示</div>
+                    </div>
+                    
+                    <!-- 其他图片及上传按钮 -->
+                    <div class="flex-1 flex flex-wrap gap-4 content-start">
+                      <!-- 其他图片列表 -->
+                      <div 
+                        v-for="(img, index) in formData.imageFiles.slice(1)" 
+                        :key="img.id"
+                        class="relative group w-[140px] h-[140px]"
+                      >
+                        <div class="w-full h-full border rounded-lg overflow-hidden bg-gray-50">
+                          <img :src="img.preview" class="w-full h-full object-cover">
+                        </div>
+                        
+                        <!-- 操作遮罩 -->
+                        <div class="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center gap-2 rounded-lg transition-all duration-200">
+                          <button 
+                            type="button"
+                            @click="setAsCover(index + 1)"
+                            class="p-1.5 bg-white/20 text-white rounded-full hover:bg-tsinghua-purple transition-colors"
+                            title="设为封面"
+                          >
+                            <span class="iconify" data-icon="carbon:image-copy"></span>
+                          </button>
+                          <button 
+                            type="button"
+                            @click="removeImage(index + 1)"
+                            class="p-1.5 bg-white/20 text-white rounded-full hover:bg-red-500 transition-colors"
+                            title="删除图片"
+                          >
+                            <span class="iconify" data-icon="carbon:trash-can"></span>
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <!-- 上传按钮 -->
+                      <div class="w-[140px] h-[140px] border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-gray-400 hover:text-tsinghua-purple hover:border-tsinghua-purple transition-colors relative cursor-pointer bg-white">
+                        <span class="iconify text-3xl mb-1" data-icon="carbon:add"></span>
+                        <span class="text-sm">添加图片</span>
                     <input 
                       type="file" 
                       class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                       @change="handleImageUpload"
                       accept="image/*"
+                          multiple
                     >
                   </div>
+                    </div>
+                  </div>
+                  <p class="mt-2 text-sm text-gray-500">建议尺寸800x800像素，单张小于2MB，支持批量上传</p>
                 </div>
               </div>
               
@@ -466,7 +530,6 @@ export default {
     const router = useRouter()
     const dishStore = useDishStore()
     const isSubmitting = ref(false)
-    const imagePreview = ref('')
     const parentDishId = ref(null) // 用于存储父菜品ID（创建父菜品后）
     
     const newTag = ref('')
@@ -485,7 +548,7 @@ export default {
       description: '',
       allergens: '',
       ingredients: '',
-      image: null,
+      imageFiles: [], // { id: string, file: File, preview: string }
       subItems: [], // 子项只存储名称和临时ID
       tags: [],
       spicyLevel: 0,
@@ -590,8 +653,8 @@ export default {
       
       // 如果父菜品还未创建，先创建父菜品
       if (!parentDishId.value) {
-        // 先保存父菜品
-        await submitForm()
+        // 先保存父菜品，不进行跳转
+        await submitForm(false)
         // 如果保存失败，submitForm 会显示错误，这里直接返回
         if (!parentDishId.value) {
           return
@@ -636,27 +699,44 @@ export default {
     }
     
     const handleImageUpload = (event) => {
-      const file = event.target.files[0]
-      if (file) {
+      const files = event.target.files
+      if (files && files.length > 0) {
+        Array.from(files).forEach(file => {
         // 验证文件大小
         if (file.size > 2 * 1024 * 1024) {
-          alert('图片大小不能超过2MB')
+            alert(`图片 ${file.name} 大小超过2MB，已跳过`)
           return
         }
         
-        formData.image = file
-        // 创建预览
         const reader = new FileReader()
         reader.onload = (e) => {
-          imagePreview.value = e.target.result
+            formData.imageFiles.push({
+              id: (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : `img_${Date.now()}_${Math.random()}`,
+              file: file,
+              preview: e.target.result
+            })
         }
         reader.readAsDataURL(file)
+        })
+      }
+      // 清空 input value 以允许重复上传同一文件
+      event.target.value = ''
+    }
+
+    const removeImage = (index) => {
+      formData.imageFiles.splice(index, 1)
+    }
+
+    const setAsCover = (index) => {
+      if (index > 0 && index < formData.imageFiles.length) {
+        const item = formData.imageFiles.splice(index, 1)[0]
+        formData.imageFiles.unshift(item)
       }
     }
     
-    const submitForm = async () => {
+    const submitForm = async (redirect = true) => {
       // 表单验证
-      if (!formData.name || !formData.canteen || !formData.windowName) {
+      if (!formData.name || !formData.canteenId || !formData.windowId) {
         alert('请填写必填字段：菜品名称、食堂名称、窗口名称')
         return
       }
@@ -680,15 +760,23 @@ export default {
       isSubmitting.value = true
       
       try {
-        // 1. 上传图片（如果有）
+        // 1. 上传所有图片
         let imageUrls = []
-        if (formData.image) {
+        if (formData.imageFiles && formData.imageFiles.length > 0) {
           try {
-            const uploadResponse = await dishApi.uploadImage(formData.image)
-            if (uploadResponse.code === 200 && uploadResponse.data) {
-              imageUrls = [uploadResponse.data.url]
-            } else {
-              throw new Error(uploadResponse.message || '图片上传失败')
+            // 并行上传所有图片
+            const uploadPromises = formData.imageFiles.map(imgItem => dishApi.uploadImage(imgItem.file))
+            const results = await Promise.all(uploadPromises)
+            
+            // 收集成功上传的 URL
+            imageUrls = results
+              .filter(res => res.code === 200 && res.data)
+              .map(res => res.data.url)
+              
+            const failed = formData.imageFiles.length - imageUrls.length;
+            if (!confirm(`${failed}张图片上传失败，是否继续？`)) {
+              isSubmitting.value = false;
+              return;
             }
           } catch (error) {
             console.error('图片上传失败:', error)
@@ -760,9 +848,13 @@ export default {
             parentDishId.value = response.data.id
           }
           
-          alert('父菜品保存成功！正在跳转到编辑页面，您可以在那里继续添加子项。')
-          // 跳转到编辑页面，方便继续添加子项
-          router.push(`/edit-dish/${parentDishId.value}`)
+          if (redirect) {
+            alert('菜品提交成功，已进入审核列表！')
+            // 跳转到审核页面
+            router.push('/review-dish')
+          } else {
+            alert('父菜品保存成功！')
+          }
         } else {
           throw new Error(response.message || '创建菜品失败')
         }
@@ -788,6 +880,7 @@ export default {
         allergens: '',
         ingredients: '',
         image: null,
+        imageFiles: [],
         subItems: [],
         tags: [],
         spicyLevel: 0,
@@ -803,7 +896,6 @@ export default {
         availableDates: []
       })
       newTag.value = ''
-      imagePreview.value = ''
       windows.value = [] // Reset windows list
     }
     
@@ -812,7 +904,6 @@ export default {
       canteens,
       windows,
       newTag,
-      imagePreview,
       isSubmitting,
       parentDishId,
       loadCanteens,
@@ -827,6 +918,8 @@ export default {
       addTag,
       removeTag,
       handleImageUpload,
+      removeImage,
+      setAsCover,
       submitForm,
       resetForm
     }

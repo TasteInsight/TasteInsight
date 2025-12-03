@@ -81,14 +81,35 @@
                 <!-- 菜品图片 -->
                 <div>
                   <label class="block text-gray-700 font-medium mb-2">菜品图片</label>
-                  <div class="border-2 border-dashed rounded-lg h-48 flex items-center justify-center bg-gray-50 overflow-hidden">
+                  
+                  <div v-if="dishData.images && dishData.images.length > 0">
+                    <!-- 主图展示 -->
+                    <div class="border-2 rounded-lg aspect-square w-full relative flex items-center justify-center bg-gray-50 overflow-hidden mb-4">
                     <img 
-                      v-if="dishData.image || dishData.imageUrl" 
-                      :src="dishData.image || dishData.imageUrl" 
+                        :src="selectedImage || dishData.images[0]" 
                       alt="菜品图片"
-                      class="w-full h-full object-cover"
+                        class="w-full h-full object-cover cursor-pointer"
+                        @click="previewImage(selectedImage || dishData.images[0])"
                     >
-                    <div v-else class="text-center p-6">
+                    </div>
+                    
+                    <!-- 缩略图列表 -->
+                    <div class="flex gap-2 overflow-x-auto pb-2">
+                      <div 
+                        v-for="(img, index) in dishData.images" 
+                        :key="index"
+                        class="w-20 h-20 flex-shrink-0 border-2 rounded-lg overflow-hidden cursor-pointer transition-all"
+                        :class="{'border-tsinghua-purple': (selectedImage || dishData.images[0]) === img, 'border-transparent': (selectedImage || dishData.images[0]) !== img}"
+                        @mouseenter="selectedImage = img"
+                        @mouseleave="selectedImage = ''"
+                      >
+                        <img :src="img" class="w-full h-full object-cover">
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div v-else class="border-2 border-dashed rounded-lg h-48 flex items-center justify-center bg-gray-50 overflow-hidden">
+                    <div class="text-center p-6">
                       <span class="iconify text-4xl text-gray-400 mx-auto" data-icon="bi:image"></span>
                       <div class="mt-2 text-gray-500">暂无图片</div>
                     </div>
@@ -262,7 +283,7 @@
               <button 
                 type="button" 
                 class="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200 flex items-center justify-center"
-                @click="rejectDish"
+                @click="openRejectModal"
               >
                 <span class="iconify mr-2" data-icon="carbon:close-filled"></span>
                 拒绝审核
@@ -284,6 +305,51 @@
               </button>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 拒绝审核弹窗 -->
+    <div v-if="isRejectModalOpen" class="fixed inset-0 z-[10000] flex items-center justify-center bg-black bg-opacity-50">
+      <div class="bg-white rounded-lg shadow-xl w-[500px] overflow-hidden animate-fade-in-up">
+        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+          <h3 class="text-lg font-medium text-gray-900">拒绝审核</h3>
+          <button @click="closeRejectModal" class="text-gray-400 hover:text-gray-500 transition-colors">
+            <span class="iconify text-xl" data-icon="carbon:close"></span>
+          </button>
+        </div>
+        
+        <div class="p-6">
+          <p class="text-gray-600 mb-4">
+            确定要拒绝菜品 <span class="font-medium text-gray-900">"{{ dishData.name }}"</span> 吗？
+          </p>
+          
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">拒绝原因</label>
+            <textarea
+              v-model="rejectReason"
+              rows="4"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-shadow resize-none"
+              placeholder="请输入拒绝原因（建议填写，以便用户修改）..."
+            ></textarea>
+          </div>
+        </div>
+        
+        <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+          <button 
+            @click="closeRejectModal"
+            class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition duration-200"
+          >
+            取消
+          </button>
+          <button 
+            @click="confirmReject"
+            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200 flex items-center"
+            :disabled="isSubmitting"
+          >
+            <span v-if="isSubmitting" class="iconify animate-spin mr-2" data-icon="mdi:loading"></span>
+            确认拒绝
+          </button>
         </div>
       </div>
     </div>
@@ -309,6 +375,7 @@ export default {
     const route = useRoute()
     const dishId = route.params.id
     const isLoading = ref(false)
+    const selectedImage = ref('')
     
     const dishData = reactive({
       id: '',
@@ -323,6 +390,7 @@ export default {
       ingredients: '',
       image: '',
       imageUrl: '',
+      images: [],
       subItems: [],
       tags: [],
       spicyLevel: 0,
@@ -400,9 +468,13 @@ export default {
           if (dish.images && dish.images.length > 0) {
             dishData.imageUrl = dish.images[0]
             dishData.image = dish.images[0]
+            dishData.images = dish.images
           } else if (dish.image) {
             dishData.imageUrl = dish.image
             dishData.image = dish.image
+            dishData.images = [dish.image]
+          } else {
+            dishData.images = []
           }
           
           // 处理标签
@@ -456,6 +528,11 @@ export default {
       }
     }
     
+    // 预览图片
+    const previewImage = (imgUrl) => {
+      window.open(imgUrl, '_blank')
+    }
+    
     // 批准通过
     const approveDish = async () => {
       if (!confirm(`确定要批准通过菜品 "${dishData.name}" 吗？`)) {
@@ -477,17 +554,32 @@ export default {
       }
     }
     
-    // 拒绝审核
-    const rejectDish = async () => {
-      const reason = prompt(`确定要拒绝菜品 "${dishData.name}" 吗？\n请输入拒绝原因（可选）：`)
-      if (reason === null) {
-        return // 用户取消
-      }
+    // 拒绝审核相关状态
+    const isRejectModalOpen = ref(false)
+    const rejectReason = ref('')
+    const isSubmitting = ref(false)
+
+    // 打开拒绝弹窗
+    const openRejectModal = () => {
+      rejectReason.value = ''
+      isRejectModalOpen.value = true
+    }
+
+    // 关闭拒绝弹窗
+    const closeRejectModal = () => {
+      isRejectModalOpen.value = false
+    }
+
+    // 确认拒绝
+    const confirmReject = async () => {
+      if (isSubmitting.value) return
+      isSubmitting.value = true
       
       try {
-        const response = await reviewApi.rejectUpload(dishData.id.toString(), reason || '')
+        const response = await reviewApi.rejectUpload(dishData.id.toString(), rejectReason.value || '')
         if (response.code === 200 || response.code === 201) {
           dishData.status = 'rejected'
+          isRejectModalOpen.value = false
           // 通过路由参数传递刷新标志
           router.push({ path: '/review-dish', query: { refresh: 'true', updatedId: dishData.id, status: 'rejected' } })
         } else {
@@ -496,6 +588,8 @@ export default {
       } catch (error) {
         console.error('拒绝审核失败:', error)
         alert(error instanceof Error ? error.message : '拒绝审核失败，请重试')
+      } finally {
+        isSubmitting.value = false
       }
     }
     
@@ -506,18 +600,20 @@ export default {
         return
       }
       
-      if (!confirm(`确定要撤销菜品 "${dishData.name}" 的审核结果吗？`)) {
+      if (!confirm(`确定要撤销菜品 "${dishData.name}" 的审核结果吗？\n撤销后菜品将变为"待审核"状态，如果已上架将被下架。`)) {
         return
       }
       
       try {
-        // 注意：如果后端没有撤销接口，可能需要调用更新接口将状态改回 pending
-        // 这里假设可以通过更新菜品状态来实现
-        // 如果后端有专门的撤销接口，应该调用那个接口
-        dishData.status = 'pending'
-        // 通过路由参数传递刷新标志
-        router.push({ path: '/review-dish', query: { refresh: 'true', updatedId: dishData.id, status: 'pending' } })
-        alert('菜品审核结果已撤销，重新进入待审核状态。')
+        const response = await reviewApi.revokeUpload(dishData.id.toString())
+        if (response.code === 200 || response.code === 201) {
+          dishData.status = 'pending'
+          // 通过路由参数传递刷新标志
+          router.push({ path: '/review-dish', query: { refresh: 'true', updatedId: dishData.id, status: 'pending' } })
+          alert('菜品审核结果已撤销，重新进入待审核状态。')
+        } else {
+          throw new Error(response.message || '撤销审核失败')
+        }
       } catch (error) {
         console.error('撤销审核失败:', error)
         alert(error instanceof Error ? error.message : '撤销审核失败，请重试')
@@ -536,12 +632,19 @@ export default {
     return {
       dishData,
       isLoading,
+      selectedImage,
       statusClasses,
       statusText,
+      previewImage,
       approveDish,
-      rejectDish,
       revokeApproval,
-      goBack
+      goBack,
+      isRejectModalOpen,
+      rejectReason,
+      isSubmitting,
+      openRejectModal,
+      closeRejectModal,
+      confirmReject
     }
   }
 }

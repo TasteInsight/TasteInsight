@@ -21,22 +21,26 @@
                   <div class="grid grid-cols-2 gap-4">
                     <div>
                       <label class="block text-sm text-gray-600 mb-1">食堂名称 <span class="text-red-500">*</span></label>
-                      <input 
-                        type="text" 
-                        v-model="formData.canteen" 
+                      <select 
+                        v-model="formData.canteenId" 
+                        @change="onCanteenChange"
                         class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
-                        placeholder="例如：紫荆园"
                         required
                       >
+                        <option value="" disabled>选择食堂</option>
+                        <option v-for="canteen in canteens" :key="canteen.id" :value="canteen.id">
+                          {{ canteen.name }}
+                        </option>
+                      </select>
                     </div>
                     <div>
-                      <label class="block text-sm text-gray-600 mb-1">食堂楼层 <span class="text-red-500">*</span></label>
+                      <label class="block text-sm text-gray-600 mb-1">食堂楼层</label>
                       <input 
                         type="text" 
                         v-model="formData.floor" 
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
-                        placeholder="例如：一层、二层"
-                        required
+                        class="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed" 
+                        placeholder="自动填充"
+                        readonly
                       >
                     </div>
                   </div>
@@ -48,21 +52,27 @@
                   <div class="grid grid-cols-2 gap-4">
                     <div>
                       <label class="block text-sm text-gray-600 mb-1">窗口名称 <span class="text-red-500">*</span></label>
-                      <input 
-                        type="text" 
-                        v-model="formData.windowName" 
+                      <select 
+                        v-model="formData.windowId" 
+                        @change="onWindowChange"
                         class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
-                        placeholder="例如：川湘风味"
+                        :disabled="!formData.canteenId"
                         required
                       >
+                        <option value="" disabled>选择窗口</option>
+                        <option v-for="window in windows" :key="window.id" :value="window.id">
+                          {{ window.name }}
+                        </option>
+                      </select>
                     </div>
                     <div>
                       <label class="block text-sm text-gray-600 mb-1">窗口编号</label>
                       <input 
                         type="text" 
                         v-model="formData.windowNumber" 
-                        class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" 
-                        placeholder="例如：01、A01（可选）"
+                        class="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed" 
+                        placeholder="自动填充"
+                        readonly
                       >
                     </div>
                   </div>
@@ -106,25 +116,88 @@
                 
                 <!-- 菜品图片上传 -->
                 <div>
-                  <label class="block text-gray-700 font-medium mb-2">菜品图片</label>
-                  <div class="border-2 border-dashed rounded-lg aspect-square w-[40%] relative flex items-center justify-center bg-gray-50 overflow-hidden">
+                  <label class="block text-gray-700 font-medium mb-2">菜品图片 <span class="text-sm text-gray-500 font-normal">（第一张将作为封面图，支持多图上传）</span></label>
+                  
+                  <div class="flex gap-4 items-start">
+                    <!-- 封面图（第一张） -->
+                    <div class="relative group flex-shrink-0">
+                      <div class="w-[300px] h-[300px] border-2 border-dashed rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center">
                     <img 
-                      v-if="formData.imageUrl" 
-                      :src="formData.imageUrl" 
-                      alt="菜品图片预览"
-                      class="w-full h-full object-cover object-center"
+                          v-if="formData.imageFiles.length > 0" 
+                          :src="formData.imageFiles[0].url" 
+                          alt="封面图"
+                          class="w-full h-full object-cover"
                     >
-                    <div v-else class="text-center p-6">
-                      <span class="iconify text-4xl text-gray-400 mx-auto" data-icon="bi:image"></span>
-                      <div class="mt-2">点击上传菜品图片</div>
-                      <p class="text-sm text-gray-500 mt-1">建议尺寸800x800像素，小于2MB</p>
+                        <div v-else class="text-center p-6 text-gray-400">
+                          <span class="iconify text-4xl mx-auto" data-icon="bi:image"></span>
+                          <div class="mt-2 font-medium">封面图</div>
+                          <p class="text-xs mt-1">点击右侧按钮添加</p>
                     </div>
+                        
+                        <!-- 删除遮罩 -->
+                        <div 
+                          v-if="formData.imageFiles.length > 0"
+                          class="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center gap-3 transition-all duration-200"
+                        >
+                          <button 
+                            type="button"
+                            @click="removeImage(0)"
+                            class="p-2 bg-white/20 text-white rounded-full hover:bg-red-500 transition-colors"
+                            title="删除图片"
+                          >
+                            <span class="iconify text-xl" data-icon="carbon:trash-can"></span>
+                          </button>
+                        </div>
+                      </div>
+                      <div class="text-center mt-2 text-sm text-gray-600 font-medium">封面展示</div>
+                    </div>
+                    
+                    <!-- 其他图片及上传按钮 -->
+                    <div class="flex-1 flex flex-wrap gap-4 content-start">
+                      <!-- 其他图片列表 -->
+                      <div 
+                        v-for="(img, index) in formData.imageFiles.slice(1)" 
+                        :key="img.id"
+                        class="relative group w-[140px] h-[140px]"
+                      >
+                        <div class="w-full h-full border rounded-lg overflow-hidden bg-gray-50">
+                          <img :src="img.url" class="w-full h-full object-cover">
+                        </div>
+                        
+                        <!-- 操作遮罩 -->
+                        <div class="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center gap-2 rounded-lg transition-all duration-200">
+                          <button 
+                            type="button"
+                            @click="setAsCover(index + 1)"
+                            class="p-1.5 bg-white/20 text-white rounded-full hover:bg-tsinghua-purple transition-colors"
+                            title="设为封面"
+                          >
+                            <span class="iconify" data-icon="carbon:image-copy"></span>
+                          </button>
+                          <button 
+                            type="button"
+                            @click="removeImage(index + 1)"
+                            class="p-1.5 bg-white/20 text-white rounded-full hover:bg-red-500 transition-colors"
+                            title="删除图片"
+                          >
+                            <span class="iconify" data-icon="carbon:trash-can"></span>
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <!-- 上传按钮 -->
+                      <div class="w-[140px] h-[140px] border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-gray-400 hover:text-tsinghua-purple hover:border-tsinghua-purple transition-colors relative cursor-pointer bg-white">
+                        <span class="iconify text-3xl mb-1" data-icon="carbon:add"></span>
+                        <span class="text-sm">添加图片</span>
                     <input 
                       type="file" 
                       class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                       @change="handleImageUpload"
                       accept="image/*"
+                          multiple
                     >
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -416,7 +489,7 @@
                 :disabled="isSubmitting || isLoading"
               >
                 <span class="iconify mr-1" data-icon="carbon:save"></span>
-                {{ isSubmitting ? '提交中...' : '提交审核' }}
+                {{ isSubmitting ? '保存中...' : '保存修改' }}
               </button>
               <button 
                 type="button" 
@@ -437,6 +510,7 @@
 import { reactive, onMounted, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { dishApi } from '@/api/modules/dish'
+import { canteenApi } from '@/api/modules/canteen'
 import { useDishStore } from '@/store/modules/use-dish-store'
 import Sidebar from '@/components/Layout/Sidebar.vue'
 import Header from '@/components/Layout/Header.vue'
@@ -451,16 +525,20 @@ export default {
     const router = useRouter()
     const route = useRoute()
     const dishStore = useDishStore()
-    const dishId = route.params.id
+    const dishId = ref(route.params.id)
     const isLoading = ref(false)
     const isSubmitting = ref(false)
     
     const newTag = ref('')
+    const canteens = ref([])
+    const windows = ref([])
     
     const formData = reactive({
       id: '',
+      canteenId: '',
       canteen: '',
       floor: '',
+      windowId: '',
       windowName: '',
       windowNumber: '',
       name: '',
@@ -468,8 +546,7 @@ export default {
       description: '',
       allergens: '',
       ingredients: '',
-      image: null,
-      imageUrl: '',
+      imageFiles: [], // { id: string, url: string, file?: File, isNew: boolean }
       tags: [],
       spicyLevel: 0,
       saltiness: 0,
@@ -486,16 +563,79 @@ export default {
     
     const subDishes = ref([]) // 存储子项列表
     
+    const loadCanteens = async () => {
+      try {
+        const response = await canteenApi.getCanteens({ page: 1, pageSize: 100 })
+        if (response.code === 200 && response.data) {
+          canteens.value = response.data.items || []
+        }
+      } catch (error) {
+        console.error('加载食堂列表失败:', error)
+      }
+    }
+
+    const loadWindows = async (canteenId) => {
+      if (!canteenId) {
+        windows.value = []
+        return
+      }
+      try {
+        const response = await canteenApi.getWindows(canteenId, { page: 1, pageSize: 100 })
+        if (response.code === 200 && response.data) {
+          windows.value = response.data.items || []
+        }
+      } catch (error) {
+        console.error('加载窗口列表失败:', error)
+        windows.value = []
+      }
+    }
+
+    const onCanteenChange = () => {
+      const selectedCanteen = canteens.value.find(c => c.id === formData.canteenId)
+      if (selectedCanteen) {
+        formData.canteen = selectedCanteen.name
+        loadWindows(formData.canteenId)
+      } else {
+        formData.canteen = ''
+        windows.value = []
+      }
+      // 重置窗口选择
+      formData.windowId = ''
+      formData.windowName = ''
+      formData.windowNumber = ''
+      formData.floor = ''
+    }
+
+    const onWindowChange = () => {
+      const selectedWindow = windows.value.find(w => w.id === formData.windowId)
+      if (selectedWindow) {
+        formData.windowName = selectedWindow.name
+        formData.windowNumber = selectedWindow.number
+        // 如果窗口有楼层信息，自动填充
+        if (selectedWindow.floor) {
+           formData.floor = selectedWindow.floor.name || selectedWindow.floor.level || ''
+        }
+      } else {
+        formData.windowName = ''
+        formData.windowNumber = ''
+        formData.floor = ''
+      }
+    }
+    
     // 加载菜品信息
-    const loadDishData = async () => {
+    const loadDishData = async (id = null) => {
+      const targetId = id || dishId.value
       isLoading.value = true
       try {
+        // 先加载食堂列表
+        await loadCanteens()
+
         // 优先从 API 获取
-        const response = await dishApi.getDishById(dishId)
+        const response = await dishApi.getDishById(targetId)
         
         if (response.code === 200 && response.data) {
           const dish = response.data
-          fillFormData(dish)
+          await fillFormData(dish)
         } else {
           throw new Error(response.message || '获取菜品信息失败')
         }
@@ -512,12 +652,41 @@ export default {
     const isSubDish = ref(false)
     
     // 填充表单数据
-    const fillFormData = (dish) => {
-      formData.id = dish.id || dishId
+    const fillFormData = async (dish) => {
+      formData.id = dish.id
       formData.canteen = dish.canteenName || dish.canteen || ''
       formData.floor = dish.floorName || dish.floor || ''
+      
+      // 匹配食堂ID
+      if (formData.canteen) {
+        const foundCanteen = canteens.value.find(c => c.name === formData.canteen)
+        if (foundCanteen) {
+          formData.canteenId = foundCanteen.id
+          // 加载该食堂的窗口
+          await loadWindows(foundCanteen.id)
+        }
+      }
+      
       formData.windowName = dish.windowName || dish.window || ''
       formData.windowNumber = dish.windowNumber || ''
+      
+      // 匹配窗口ID
+      if (formData.windowName && windows.value.length > 0) {
+        // 尝试通过名称和编号匹配窗口
+        const foundWindow = windows.value.find(w => 
+          w.name === formData.windowName && 
+          (!formData.windowNumber || w.number === formData.windowNumber)
+        );
+        if (foundWindow) {
+          formData.windowId = foundWindow.id
+          // 确保其他信息一致
+          formData.windowNumber = foundWindow.number
+          if (foundWindow.floor) {
+             formData.floor = foundWindow.floor.name || foundWindow.floor.level || formData.floor
+          }
+        }
+      }
+      
       formData.name = dish.name || ''
       formData.description = dish.description || ''
       
@@ -539,10 +708,19 @@ export default {
       }
       
       // 处理图片
+      formData.imageFiles = []
       if (dish.images && dish.images.length > 0) {
-        formData.imageUrl = dish.images[0]
+        formData.imageFiles = dish.images.map((url, index) => ({
+          id: `existing_${index}_${Date.now()}`,
+          url: url,
+          isNew: false
+        }))
       } else if (dish.image) {
-        formData.imageUrl = dish.image
+        formData.imageFiles = [{
+          id: `existing_0_${Date.now()}`,
+          url: dish.image,
+          isNew: false
+        }]
       }
       
       // 处理标签（TAG）
@@ -621,9 +799,21 @@ export default {
     }
     
     const editSubDish = (subDishId) => {
-      // 跳转到编辑子项页面（使用EditDish组件）
+      // 如果已经在编辑页面，需要强制刷新或更新路由
+      // 使用 router.push 跳转到同一路由但不同参数，Vue Router 默认会响应
+      // 但为了确保数据更新，我们需要监听路由参数变化
       router.push(`/edit-dish/${subDishId}`)
     }
+    
+    // 监听路由参数 id 变化，重新加载数据
+    watch(() => route.params.id, (newId) => {
+      if (newId) {
+        // 更新当前的 dishId
+        // 注意：setup 中的 dishId 是常量，我们需要直接使用 route.params.id 或更新一个响应式变量
+        // 这里直接调用 loadDishData，它会使用 route.params.id
+        loadDishData(newId)
+      }
+    })
     
     const addDateRange = () => {
       if (!formData.availableDates) {
@@ -651,22 +841,46 @@ export default {
     }
     
     const handleImageUpload = (event) => {
-      const file = event.target.files[0]
-      if (file) {
-        formData.image = file
-        // 创建预览 URL
+      const files = event.target.files
+      if (files && files.length > 0) {
+        Array.from(files).forEach(file => {
+          // 验证文件大小
+          if (file.size > 2 * 1024 * 1024) {
+            alert(`图片 ${file.name} 大小超过2MB，已跳过`)
+            return
+          }
+          
         const reader = new FileReader()
         reader.onload = (e) => {
-          formData.imageUrl = e.target.result
+            formData.imageFiles.push({
+              id: (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : `new_${Date.now()}_${Math.random()}`,
+              file: file,
+              url: e.target.result,
+              isNew: true
+            })
         }
         reader.readAsDataURL(file)
+        })
+      }
+      // 清空 input value 以允许重复上传同一文件
+      event.target.value = ''
+    }
+
+    const removeImage = (index) => {
+      formData.imageFiles.splice(index, 1)
+    }
+
+    const setAsCover = (index) => {
+      if (index > 0 && index < formData.imageFiles.length) {
+        const item = formData.imageFiles.splice(index, 1)[0]
+        formData.imageFiles.unshift(item)
       }
     }
     
     const submitForm = async () => {
       // 表单验证
-      if (!formData.name || !formData.canteen || !formData.floor || !formData.windowName) {
-        alert('请填写必填字段：菜品名称、食堂名称、食堂楼层、窗口名称')
+      if (!formData.name || !formData.canteenId || !formData.windowId) {
+        alert('请填写必填字段：菜品名称、食堂名称、窗口名称')
         return
       }
       
@@ -699,25 +913,45 @@ export default {
       isSubmitting.value = true
       
       try {
-        // 1. 上传新图片（如果有）
+        // 1. 处理所有图片（上传新图片，保留旧图片）
         let imageUrls = []
-        if (formData.image && formData.image instanceof File) {
+        if (formData.imageFiles && formData.imageFiles.length > 0) {
           try {
-            const uploadResponse = await dishApi.uploadImage(formData.image)
-            if (uploadResponse.code === 200 && uploadResponse.data) {
-              imageUrls = [uploadResponse.data.url]
-            } else {
-              throw new Error(uploadResponse.message || '图片上传失败')
+            // 对每个图片项进行处理
+            const processPromises = formData.imageFiles.map(async (imgItem) => {
+              if (imgItem.isNew && imgItem.file) {
+                // 新图片，需要上传
+                const uploadResponse = await dishApi.uploadImage(imgItem.file)
+                if (uploadResponse.code === 200 && uploadResponse.data) {
+                  return uploadResponse.data.url
+                } else {
+                  throw new Error(uploadResponse.message || '图片上传失败')
+                }
+              } else {
+                // 旧图片，直接使用 URL
+                return imgItem.url
+              }
+            })
+            
+            const results = await Promise.allSettled(processPromises)
+            
+            imageUrls = results
+              .filter(result => result.status === 'fulfilled')
+              .map(result => result.value)
+              
+            if (imageUrls.length !== formData.imageFiles.length) {
+              const failed = formData.imageFiles.length - imageUrls.length
+              if (!confirm(`${failed}张图片处理失败，是否继续保存？`)) {
+                isSubmitting.value = false
+                return
+              }
             }
           } catch (error) {
-            console.error('图片上传失败:', error)
-            alert('图片上传失败，请重试')
+            console.error('图片处理失败:', error)
+            alert('图片处理失败，请重试')
             isSubmitting.value = false
             return
           }
-        } else if (formData.imageUrl) {
-          // 如果已有图片 URL，直接使用
-          imageUrls = [formData.imageUrl]
         }
         
         // 2. 构建更新数据
@@ -792,7 +1026,7 @@ export default {
           // 4. 更新 store 中的菜品信息
           dishStore.updateDish(formData.id, response.data)
           
-          alert('菜品信息已更新，已提交审核！')
+          alert('菜品信息已更新！')
           router.push('/modify-dish')
         } else {
           throw new Error(response.message || '更新菜品失败')
@@ -830,6 +1064,11 @@ export default {
       isSubmitting,
       subDishes,
       isSubDish,
+      canteens,
+      windows,
+      loadCanteens,
+      onCanteenChange,
+      onWindowChange,
       addSubItem,
       editSubDish,
       addDateRange,
@@ -837,6 +1076,8 @@ export default {
       addTag,
       removeTag,
       handleImageUpload,
+      removeImage,
+      setAsCover,
       submitForm,
       goBack
     }

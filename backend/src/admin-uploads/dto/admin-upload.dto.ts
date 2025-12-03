@@ -10,7 +10,7 @@ import {
 import { Type } from 'class-transformer';
 
 // 获取待审核上传列表的查询参数
-export class AdminGetPendingUploadsDto {
+export class AdminGetUploadsDto {
   @IsOptional()
   @IsNumber()
   @Min(1)
@@ -26,7 +26,9 @@ export class AdminGetPendingUploadsDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(['pending', 'approved', 'rejected'], { message: '状态必须是 pending, approved 或 rejected' })
+  @IsIn(['pending', 'approved', 'rejected'], {
+    message: '状态必须是 pending, approved 或 rejected',
+  })
   status?: string;
 }
 
