@@ -67,7 +67,7 @@ export interface User {
   nickname: string;
   avatar: string;
   preferences?: UserPreference;
-
+  settings?: UserSettings;
   allergens?: string[];
   myFavoriteDishes?: string[];
   myReviews?: string[];
@@ -89,7 +89,7 @@ export interface UserPreference {
   };
   meatPreference?: string[]; // 修正为 meatPreferences
   tastePreferences?: {
-    spicileval?: number; // 添加辣度字段
+    spicyLevel?: number; // 辣度字段
     sweetness?: number;
     saltiness?: number;
     oiliness?: number;
@@ -98,6 +98,10 @@ export interface UserPreference {
   portionSize?: 'small' | 'medium' | 'large';
   avoidIngredients?: string[];
   favoriteIngredients?: string[];
+  
+}
+
+export interface UserSettings {
   notificationSettings?: {
     newDishAlert?: boolean;
     priceChangeAlert?: boolean;
@@ -109,6 +113,7 @@ export interface UserPreference {
     showNutrition?: boolean;
     sortBy?: 'rating' | 'price_low' | 'price_high' | 'popularity' | 'newest';
   };
+
 }
 
 /**
@@ -755,6 +760,7 @@ export interface UserProfileUpdateRequest {
   nickname?: string;
   avatar?: string;
   preferences?: Partial<UserPreference>;
+  settings?: Partial<UserSettings>;
   allergens?: string[];
 }
 

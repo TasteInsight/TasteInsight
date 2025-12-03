@@ -2,7 +2,7 @@ import { reactive, ref, computed, watch } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { updateUserProfile } from '@/api/modules/user';
-import type { User, UserProfileUpdateRequest, UserPreference } from '@/types/api';
+import type { User, UserProfileUpdateRequest, UserPreference, UserSettings } from '@/types/api';
 
 export interface SettingsFormState {
   nickname: string;
@@ -116,7 +116,6 @@ export function useSettings() {
 
       if (info.preferences) {
         const pref = info.preferences;
-        snapshot.spicyLevel = pref.spicyLevel ?? snapshot.spicyLevel;
         snapshot.portionSize = pref.portionSize ?? snapshot.portionSize;
         snapshot.favoriteIngredientsText = (pref.favoriteIngredients ?? []).join(', ');
         snapshot.avoidIngredientsText = (pref.avoidIngredients ?? []).join(', ');
@@ -126,22 +125,29 @@ export function useSettings() {
         snapshot.priceRangeMax = pref.priceRange?.max !== undefined ? String(pref.priceRange.max) : snapshot.priceRangeMax;
 
         if (pref.tastePreferences) {
+          snapshot.spicyLevel = pref.tastePreferences.spicyLevel ?? snapshot.spicyLevel;
           snapshot.sweetness = pref.tastePreferences.sweetness ?? snapshot.sweetness;
           snapshot.saltiness = pref.tastePreferences.saltiness ?? snapshot.saltiness;
           snapshot.oiliness = pref.tastePreferences.oiliness ?? snapshot.oiliness;
         }
 
-        if (pref.displaySettings) {
-          snapshot.showCalories = pref.displaySettings.showCalories ?? snapshot.showCalories;
-          snapshot.showNutrition = pref.displaySettings.showNutrition ?? snapshot.showNutrition;
-          snapshot.sortBy = pref.displaySettings.sortBy ?? snapshot.sortBy;
+    
+      }
+
+      if (info.settings) {
+        const settings = info.settings;
+
+        if (settings.displaySettings) {
+          snapshot.showCalories = settings.displaySettings.showCalories ?? snapshot.showCalories;
+          snapshot.showNutrition = settings.displaySettings.showNutrition ?? snapshot.showNutrition;
+          snapshot.sortBy = settings.displaySettings.sortBy ?? snapshot.sortBy;
         }
 
-        if (pref.notificationSettings) {
-          snapshot.newDishAlert = pref.notificationSettings.newDishAlert ?? snapshot.newDishAlert;
-          snapshot.priceChangeAlert = pref.notificationSettings.priceChangeAlert ?? snapshot.priceChangeAlert;
-          snapshot.reviewReplyAlert = pref.notificationSettings.reviewReplyAlert ?? snapshot.reviewReplyAlert;
-          snapshot.weeklyRecommendation = pref.notificationSettings.weeklyRecommendation ?? snapshot.weeklyRecommendation;
+        if (settings.notificationSettings) {
+          snapshot.newDishAlert = settings.notificationSettings.newDishAlert ?? snapshot.newDishAlert;
+          snapshot.priceChangeAlert = settings.notificationSettings.priceChangeAlert ?? snapshot.priceChangeAlert;
+          snapshot.reviewReplyAlert = settings.notificationSettings.reviewReplyAlert ?? snapshot.reviewReplyAlert;
+          snapshot.weeklyRecommendation = settings.notificationSettings.weeklyRecommendation ?? snapshot.weeklyRecommendation;
         }
       }
     }
@@ -192,6 +198,7 @@ export function useSettings() {
       };
 
       const preferences: Partial<UserPreference> = {};
+      const settings: Partial<UserSettings> = {};
 
       const favoriteIngredientsChanged = hasFieldChanged('favoriteIngredientsText');
       const avoidIngredientsChanged = hasFieldChanged('avoidIngredientsText');
@@ -214,13 +221,10 @@ export function useSettings() {
         preferences.tagPreferences = parseList(form.tagPreferencesText);
       }
 
-      if (hasFieldChanged('spicyLevel')) {
-        preferences.spicyLevel = form.spicyLevel;
-      }
-
-      const tasteFields: SettingsField[] = ['sweetness', 'saltiness', 'oiliness'];
+      const tasteFields: SettingsField[] = ['spicyLevel', 'sweetness', 'saltiness', 'oiliness'];
       if (tasteFields.some((field) => hasFieldChanged(field))) {
         preferences.tastePreferences = {
+          spicyLevel: form.spicyLevel,
           sweetness: form.sweetness,
           saltiness: form.saltiness,
           oiliness: form.oiliness,
@@ -244,7 +248,7 @@ export function useSettings() {
 
       const displayFields: SettingsField[] = ['showCalories', 'showNutrition', 'sortBy'];
       if (displayFields.some((field) => hasFieldChanged(field))) {
-        preferences.displaySettings = {
+        settings.displaySettings = {
           showCalories: form.showCalories,
           showNutrition: form.showNutrition,
           sortBy: form.sortBy || undefined,
@@ -253,7 +257,7 @@ export function useSettings() {
 
       const notificationFields: SettingsField[] = ['newDishAlert', 'priceChangeAlert', 'reviewReplyAlert', 'weeklyRecommendation'];
       if (notificationFields.some((field) => hasFieldChanged(field))) {
-        preferences.notificationSettings = {
+        settings.notificationSettings = {
           newDishAlert: form.newDishAlert,
           priceChangeAlert: form.priceChangeAlert,
           reviewReplyAlert: form.reviewReplyAlert,
@@ -263,6 +267,10 @@ export function useSettings() {
 
       if (Object.keys(preferences).length > 0) {
         payload.preferences = preferences;
+      }
+
+      if (Object.keys(settings).length > 0) {
+        payload.settings = settings;
       }
 
       const response = await updateUserProfile(payload);
