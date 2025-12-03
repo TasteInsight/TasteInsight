@@ -23,6 +23,7 @@ describe('AdminUploadsController (e2e)', () => {
   let pendingUploadId: string;
   let pendingUploadId2: string;
   let canteen2PendingUploadId: string;
+  let baselineUserNickname: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -78,8 +79,10 @@ describe('AdminUploadsController (e2e)', () => {
     // 获取待审核上传ID（用于approve/reject测试）
     const pendingUpload = await prisma.dishUpload.findFirst({
       where: { name: '用户上传待审核菜品', status: 'pending' },
+      include: { user: true },
     });
     pendingUploadId = pendingUpload?.id || '';
+    baselineUserNickname = pendingUpload?.user?.nickname || 'Baseline User';
 
     const pendingUpload2 = await prisma.dishUpload.findFirst({
       where: { name: '管理员上传待审核菜品', status: 'pending' },
@@ -146,10 +149,10 @@ describe('AdminUploadsController (e2e)', () => {
     await app.close();
   });
 
-  describe('/admin/dishes/uploads/pending (GET)', () => {
+  describe('/admin/dishes/uploads (GET)', () => {
     it('should return paginated pending uploads list for super admin', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending?status=pending')
+        .get('/admin/dishes/uploads?status=pending')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
@@ -169,7 +172,7 @@ describe('AdminUploadsController (e2e)', () => {
 
     it('should return pending uploads with pagination params', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending?page=1&pageSize=5')
+        .get('/admin/dishes/uploads?page=1&pageSize=5')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
@@ -180,7 +183,7 @@ describe('AdminUploadsController (e2e)', () => {
 
     it('should return pending uploads for reviewer admin with upload:approve permission', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending?status=pending')
+        .get('/admin/dishes/uploads?status=pending')
         .set('Authorization', `Bearer ${reviewerAdminToken}`)
         .expect(200);
 
@@ -194,7 +197,7 @@ describe('AdminUploadsController (e2e)', () => {
 
     it('should filter uploads by status - approved', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending?status=approved')
+        .get('/admin/dishes/uploads?status=approved')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
@@ -208,7 +211,7 @@ describe('AdminUploadsController (e2e)', () => {
 
     it('should filter uploads by status - rejected', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending?status=rejected')
+        .get('/admin/dishes/uploads?status=rejected')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
@@ -222,7 +225,7 @@ describe('AdminUploadsController (e2e)', () => {
 
     it('should return all uploads when no status filter is provided', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending')
+        .get('/admin/dishes/uploads')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
@@ -241,27 +244,27 @@ describe('AdminUploadsController (e2e)', () => {
 
     it('should return 401 without auth token', async () => {
       await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending')
+        .get('/admin/dishes/uploads')
         .expect(401);
     });
 
     it('should return 403 for user token (not admin)', async () => {
       await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending')
+        .get('/admin/dishes/uploads')
         .set('Authorization', `Bearer ${userToken}`)
         .expect(403);
     });
 
     it('should return 403 for admin without upload:approve permission', async () => {
       await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending')
+        .get('/admin/dishes/uploads')
         .set('Authorization', `Bearer ${normalAdminToken}`)
         .expect(403);
     });
 
     it('should include uploader information in response', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending?status=pending')
+        .get('/admin/dishes/uploads?status=pending')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
@@ -276,7 +279,7 @@ describe('AdminUploadsController (e2e)', () => {
 
     it('should include dish details in response', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending?status=pending')
+        .get('/admin/dishes/uploads?status=pending')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
@@ -295,10 +298,10 @@ describe('AdminUploadsController (e2e)', () => {
     });
   });
 
-  describe('/admin/dishes/uploads/pending/:id (GET)', () => {
+  describe('/admin/dishes/uploads/:id (GET)', () => {
     it('should return pending upload detail for super admin', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/admin/dishes/uploads/pending/${pendingUploadId}`)
+        .get(`/admin/dishes/uploads/${pendingUploadId}`)
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
@@ -311,7 +314,7 @@ describe('AdminUploadsController (e2e)', () => {
 
     it('should return pending upload detail with all fields', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/admin/dishes/uploads/pending/${pendingUploadId}`)
+        .get(`/admin/dishes/uploads/${pendingUploadId}`)
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
@@ -342,19 +345,19 @@ describe('AdminUploadsController (e2e)', () => {
 
     it('should include uploader information in detail', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/admin/dishes/uploads/pending/${pendingUploadId}`)
+        .get(`/admin/dishes/uploads/${pendingUploadId}`)
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
       const upload = response.body.data;
       expect(upload.uploaderType).toBe('user');
-      expect(upload.uploaderName).toBe('Baseline User');
+      expect(upload.uploaderName).toBe(baselineUserNickname);
       expect(upload.userId).not.toBeNull();
     });
 
     it('should return admin upload detail with admin info', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/admin/dishes/uploads/pending/${pendingUploadId2}`)
+        .get(`/admin/dishes/uploads/${pendingUploadId2}`)
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
@@ -366,7 +369,7 @@ describe('AdminUploadsController (e2e)', () => {
 
     it('should return pending upload detail for reviewer admin', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/admin/dishes/uploads/pending/${pendingUploadId}`)
+        .get(`/admin/dishes/uploads/${pendingUploadId}`)
         .set('Authorization', `Bearer ${reviewerAdminToken}`)
         .expect(200);
 
@@ -376,7 +379,7 @@ describe('AdminUploadsController (e2e)', () => {
 
     it('should return 404 for non-existent upload', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending/non-existent-id')
+        .get('/admin/dishes/uploads/non-existent-id')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(404);
 
@@ -386,20 +389,20 @@ describe('AdminUploadsController (e2e)', () => {
 
     it('should return 401 without auth token', async () => {
       await request(app.getHttpServer())
-        .get(`/admin/dishes/uploads/pending/${pendingUploadId}`)
+        .get(`/admin/dishes/uploads/${pendingUploadId}`)
         .expect(401);
     });
 
     it('should return 403 for user token (not admin)', async () => {
       await request(app.getHttpServer())
-        .get(`/admin/dishes/uploads/pending/${pendingUploadId}`)
+        .get(`/admin/dishes/uploads/${pendingUploadId}`)
         .set('Authorization', `Bearer ${userToken}`)
         .expect(403);
     });
 
     it('should return 403 for admin without upload:approve permission', async () => {
       await request(app.getHttpServer())
-        .get(`/admin/dishes/uploads/pending/${pendingUploadId}`)
+        .get(`/admin/dishes/uploads/${pendingUploadId}`)
         .set('Authorization', `Bearer ${normalAdminToken}`)
         .expect(403);
     });
@@ -407,7 +410,7 @@ describe('AdminUploadsController (e2e)', () => {
     it('should allow canteen admin to view their canteen upload detail', async () => {
       // 权限已在 beforeAll 中设置，直接使用 canteenAdminToken
       const response = await request(app.getHttpServer())
-        .get(`/admin/dishes/uploads/pending/${pendingUploadId}`)
+        .get(`/admin/dishes/uploads/${pendingUploadId}`)
         .set('Authorization', `Bearer ${canteenAdminToken}`)
         .expect(200);
 
@@ -422,7 +425,7 @@ describe('AdminUploadsController (e2e)', () => {
       const canteenToken = canteenAdminLogin.body.data.token.accessToken;
 
       await request(app.getHttpServer())
-        .get(`/admin/dishes/uploads/pending/${canteen2PendingUploadId}`)
+        .get(`/admin/dishes/uploads/${canteen2PendingUploadId}`)
         .set('Authorization', `Bearer ${canteenToken}`)
         .expect(403);
     });
@@ -888,7 +891,7 @@ describe('AdminUploadsController (e2e)', () => {
     it('should filter pending uploads for canteen admin', async () => {
       // 使用顶层 beforeAll 中获取的 canteenAdminToken
       const response = await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending')
+        .get('/admin/dishes/uploads')
         .set('Authorization', `Bearer ${canteenAdminToken}`)
         .expect(200);
 

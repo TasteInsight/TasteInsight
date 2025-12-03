@@ -10,7 +10,7 @@ import {
 import { Type } from 'class-transformer';
 
 // 获取待审核上传列表的查询参数
-export class AdminGetPendingUploadsDto {
+export class AdminGetUploadsDto {
   @IsOptional()
   @IsNumber()
   @Min(1)

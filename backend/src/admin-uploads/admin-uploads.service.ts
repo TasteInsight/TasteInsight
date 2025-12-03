@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import {
-  AdminGetPendingUploadsDto,
+  AdminGetUploadsDto,
   DishUploadDto,
 } from './dto/admin-upload.dto';
 
@@ -15,9 +15,9 @@ export class AdminUploadsService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * 获取待审核的上传菜品列表
+   * 获取上传菜品列表
    */
-  async getPendingUploads(query: AdminGetPendingUploadsDto, adminInfo: any) {
+  async getUploads(query: AdminGetUploadsDto, adminInfo: any) {
     const { page = 1, pageSize = 20, status } = query;
 
     // 构建查询条件
@@ -82,9 +82,9 @@ export class AdminUploadsService {
   }
 
   /**
-   * 获取待审核上传菜品详情
+   * 获取上传菜品详情
    */
-  async getPendingUploadById(id: string, adminInfo: any) {
+  async getUploadById(id: string, adminInfo: any) {
     const upload = await this.prisma.dishUpload.findUnique({
       where: { id },
       include: {
