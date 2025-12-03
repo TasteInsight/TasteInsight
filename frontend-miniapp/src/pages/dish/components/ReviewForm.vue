@@ -25,7 +25,7 @@
             v-for="star in 5"
             :key="star"
             class="cursor-pointer inline-block leading-none select-none transition-all duration-200 star-glow"
-            :style="{ fontSize: star <= rating ? '48px' : '40px', color: star <= rating ? '#fbbf24' : '#d1d5db' }"
+            :style="{ fontSize: star <= rating ? mainStarSize + 'px' : mainSmallStarSize + 'px', color: star <= rating ? '#fbbf24' : '#d1d5db' }"
             @tap="setRating(star)"
           >{{ star <= rating ? '★' : '☆' }}</text>
         </view>
@@ -53,7 +53,7 @@
               v-for="star in 5"
               :key="star"
               class="cursor-pointer inline-block leading-none select-none transition-all duration-200"
-              :style="{ fontSize: star <= flavorRatings[option.key] ? '40px' : '32px', color: star <= flavorRatings[option.key] ? '#fbbf24' : '#d1d5db' }"
+              :style="{ fontSize: star <= flavorRatings[option.key] ? starSize + 'px' : smallStarSize + 'px', color: star <= flavorRatings[option.key] ? '#fbbf24' : '#d1d5db' }"
               @tap="setFlavorRating(option.key, star)"
             >{{ star <= flavorRatings[option.key] ? '★' : '☆' }}</text>
           </view>
@@ -91,7 +91,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, nextTick } from 'vue';
+import { onMounted, onUnmounted, nextTick, ref, computed } from 'vue';
 import { useReviewForm } from '../composables/use-review';
 
 interface Props {
@@ -123,8 +123,45 @@ const {
   handleSubmit: submitForm
 } = useReviewForm();
 
+// 响应式星星大小计算
+const screenWidth = ref(375); // 默认值
+const starSize = computed(() => {
+  // 星星总宽度占据屏幕的60%
+  const totalWidth = screenWidth.value * 0.6;
+  // 5个星星 + 4个间隙（gap-3 ≈ 12px）
+  const gap = 12; // 间隙大小
+  const starWidth = (totalWidth - 4 * gap) / 5;
+  return Math.max(24, Math.min(48, starWidth)); // 限制在24px-48px之间
+});
+
+const smallStarSize = computed(() => {
+  return starSize.value * 0.8; // 小星星是正常大小的80%
+});
+
+// 整体评分星星（更大一些）
+const mainStarSize = computed(() => {
+  return starSize.value * 1.2; // 整体评分星星更大
+});
+
+const mainSmallStarSize = computed(() => {
+  return smallStarSize.value * 1.2; // 整体评分小星星也相应更大
+});
+
+// 获取屏幕宽度
+const updateScreenWidth = () => {
+  try {
+    const systemInfo = uni.getSystemInfoSync();
+    screenWidth.value = systemInfo.windowWidth || systemInfo.screenWidth || 375;
+  } catch (error) {
+    console.log('获取屏幕信息失败，使用默认宽度');
+  }
+};
+
 // 隐藏tabbar
 onMounted(() => {
+  // 获取屏幕宽度
+  updateScreenWidth();
+  
   nextTick(() => {
     // 添加CSS类来隐藏tabbar
     document.body.classList.add('hide-tabbar');
