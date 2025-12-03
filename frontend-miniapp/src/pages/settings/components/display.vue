@@ -60,104 +60,15 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue';
-import { useUserStore } from '@/store/modules/use-user-store';
-import { updateUserProfile } from '@/api/modules/user';
-import type { UserProfileUpdateRequest, UserPreference, UserSettings } from '@/types/api';
+import { useDisplay } from '../composables/use-display';
 
-const userStore = useUserStore();
-const saving = ref(false);
-const loading = ref(true);
-const form = reactive({
-  showCalories: true,
-  showNutrition: true,
-  sortByIndex: 0
-});
-
-const sortOptions = ['推荐排序', '热度排序', '最新上架', '价格从低到高', '价格从高到低'];
-const sortByValues = ['rating', 'popularity', 'newest', 'price_low', 'price_high'];
-
-/**
- * 加载用户信息
- */
-onMounted(async () => {
-  try {
-    await userStore.fetchProfileAction();
-    const userInfo = userStore.userInfo;
-    if (userInfo && userInfo.settings && userInfo.settings.displaySettings) {
-      const display = userInfo.settings.displaySettings;
-      form.showCalories = display.showCalories ?? true;
-      form.showNutrition = display.showNutrition ?? true;
-      if (display.sortBy) {
-        const index = sortByValues.indexOf(display.sortBy);
-        form.sortByIndex = index >= 0 ? index : 0;
-      }
-    }
-  } catch (error) {
-    console.error('加载用户信息失败:', error);
-  } finally {
-    loading.value = false;
-  }
-});
-
-/**
- * 事件处理：兼容不同平台的 change 事件结构
- */
-function onShowCaloriesChange(e: any) {
-  form.showCalories = e && typeof e === 'object' && 'detail' in e ? !!e.detail.value : !!e;
-}
-
-function onShowNutritionChange(e: any) {
-  form.showNutrition = e && typeof e === 'object' && 'detail' in e ? !!e.detail.value : !!e;
-}
-
-function onSortChange(e: any) {
-  const val = e && typeof e === 'object' && 'detail' in e ? e.detail.value : e;
-  form.sortByIndex = Number(val) || 0;
-}
-
-/**
- * 保存设置
- */
-async function handleSave() {
-  saving.value = true;
-  try {
-    const settings: Partial<UserSettings> = {
-      displaySettings: {
-        showCalories: form.showCalories,
-        showNutrition: form.showNutrition,
-        sortBy: sortByValues[form.sortByIndex] as any
-      }
-    };
-
-    const payload: UserProfileUpdateRequest = {
-      settings
-    };
-
-    const response = await updateUserProfile(payload);
-    if (response.code !== 200 || !response.data) {
-      throw new Error(response.message || '保存失败');
-    }
-
-    userStore.updateLocalUserInfo(response.data);
-    
-    uni.showToast({
-      title: '保存成功',
-      icon: 'success'
-    });
-    
-    setTimeout(() => {
-      uni.navigateBack();
-    }, 1000);
-  } catch (error) {
-    console.error('保存失败:', error);
-    const message = error instanceof Error ? error.message : '保存失败';
-    uni.showToast({
-      title: message,
-      icon: 'none'
-    });
-  } finally {
-    saving.value = false;
-  }
-}
+const {
+  form,
+  saving,
+  sortOptions,
+  onShowCaloriesChange,
+  onShowNutritionChange,
+  onSortChange,
+  handleSave
+} = useDisplay();
 </script>

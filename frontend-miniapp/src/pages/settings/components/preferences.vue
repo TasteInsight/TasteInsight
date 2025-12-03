@@ -290,236 +290,29 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted, computed } from 'vue';
-import { useUserStore } from '@/store/modules/use-user-store';
-import { useCanteenStore } from '@/store/modules/use-canteen-store';
-import { updateUserProfile } from '@/api/modules/user';
-import type { UserProfileUpdateRequest, UserPreference, Canteen } from '@/types/api';
+import { usePreferences } from '../composables/use-preferences';
 
-const userStore = useUserStore();
-const canteenStore = useCanteenStore();
-const saving = ref(false);
-const loading = ref(true);
-const form = reactive({
-  spiciness: 0,
-  sweetness: 0,
-  saltiness: 0,
-  oiliness: 0,
-  portionSize: 'medium' as 'small' | 'medium' | 'large',
-  meatPreference: [] as string[],
-  priceRange: { min: 20, max: 100 },
-  canteenPreferences: [] as string[],
-  avoidIngredients: [] as string[],
-  favoriteIngredients: [] as string[]
-});
-
-const newFavoriteIngredient = ref('');
-const newMeatPreference = ref('');
-const newAvoidIngredient = ref('');
-
-// 食堂列表
-const canteenList = computed(() => canteenStore.canteenList);
-
-const tasteLabels = ['未设置', '清淡', '适中', '偏重', '很重', '极重'];
-const spicinessLabels = ['未设置', '微辣', '中辣', '重辣', '特辣', '变态辣'];
-const portionLabels: Record<'small' | 'medium' | 'large', string> = {
-  small: '小份',
-  medium: '中份',
-  large: '大份'
-};
-const reversePortionLabels: Record<string, 'small' | 'medium' | 'large'> = {
-  '小份': 'small',
-  '中份': 'medium',
-  '大份': 'large'
-};
-
-/**
- * 加载用户信息
- */
-onMounted(async () => {
-  try {
-    // 加载食堂列表
-    if (canteenStore.canteenList.length === 0) {
-      await canteenStore.fetchCanteenList();
-    }
-    
-    await userStore.fetchProfileAction();
-    const userInfo = userStore.userInfo;
-    if (userInfo && userInfo.preferences) {
-      const pref = userInfo.preferences;
-      if (pref.tastePreferences) {
-        form.spiciness = pref.tastePreferences.spicyLevel ?? 0;
-        form.sweetness = pref.tastePreferences.sweetness ?? 0;
-        form.saltiness = pref.tastePreferences.saltiness ?? 0;
-        form.oiliness = pref.tastePreferences.oiliness ?? 0;
-      }
-      form.portionSize = pref.portionSize ?? 'medium';
-      form.meatPreference = pref.meatPreference ?? [];
-      form.priceRange = pref.priceRange ?? { min: 20, max: 100 };
-      form.canteenPreferences = pref.canteenPreferences ?? [];
-      form.avoidIngredients = pref.avoidIngredients ?? [];
-      form.favoriteIngredients = pref.favoriteIngredients ?? [];
-    }
-  } catch (error) {
-    console.error('加载用户信息失败:', error);
-  } finally {
-    loading.value = false;
-  }
-});
-
-/**
- * 验证价格范围
- */
-function validatePriceRange() {
-  const { min, max } = form.priceRange;
-  if (min >= max) {
-    uni.showToast({
-      title: '最低价格必须小于最高价格',
-      icon: 'none'
-    });
-    // 重置为默认值
-    form.priceRange = { min: 20, max: 100 };
-  }
-}
-
-/**
- * 添加喜好食材
- */
-function addFavoriteIngredient() {
-  const value = newFavoriteIngredient.value.trim();
-  if (value && !form.favoriteIngredients.includes(value)) {
-    form.favoriteIngredients.push(value);
-    newFavoriteIngredient.value = '';
-  } else if (form.favoriteIngredients.includes(value)) {
-    uni.showToast({ title: '已存在该食材', icon: 'none' });
-  }
-}
-
-function removeFavoriteIngredient(index: number) {
-  form.favoriteIngredients.splice(index, 1);
-}
-
-/**
- * 添加肉类偏好
- */
-function addMeatPreference() {
-  const value = newMeatPreference.value.trim();
-  if (value && !form.meatPreference.includes(value)) {
-    form.meatPreference.push(value);
-    newMeatPreference.value = '';
-  } else if (form.meatPreference.includes(value)) {
-    uni.showToast({ title: '已存在该肉类', icon: 'none' });
-  }
-}
-
-function removeMeatPreference(index: number) {
-  form.meatPreference.splice(index, 1);
-}
-
-function removeCanteenPreference(index: number) {
-  form.canteenPreferences.splice(index, 1);
-}
-
-/**
- * 选择食堂
- */
-function onCanteenSelect(e: { detail: { value: number } }) {
-  const index = e.detail.value;
-  const selectedCanteen = canteenList.value[index];
-  if (selectedCanteen) {
-    const canteenId = selectedCanteen.id;
-    if (!form.canteenPreferences.includes(canteenId)) {
-      form.canteenPreferences.push(canteenId);
-    } else {
-      uni.showToast({ title: '已存在该食堂', icon: 'none' });
-    }
-  }
-}
-
-/**
- * 根据食堂ID获取食堂名称
- */
-function getCanteenNameById(canteenId: string): string {
-  const canteen = canteenList.value.find((c) => c.id === canteenId);
-  return canteen ? canteen.name : canteenId;
-}
-
-/**
- * 添加不喜欢的食材
- */
-function addAvoidIngredient() {
-  const value = newAvoidIngredient.value.trim();
-  if (value && !form.avoidIngredients.includes(value)) {
-    form.avoidIngredients.push(value);
-    newAvoidIngredient.value = '';
-  } else if (form.avoidIngredients.includes(value)) {
-    uni.showToast({ title: '已存在该食材', icon: 'none' });
-  }
-}
-
-function removeAvoidIngredient(index: number) {
-  form.avoidIngredients.splice(index, 1);
-}
-
-/**
- * 保存设置
- */
-async function handleSave() {
-  // 验证价格范围
-  const { min, max } = form.priceRange;
-  if (min >= max) {
-    uni.showToast({
-      title: '最低价格必须小于最高价格',
-      icon: 'none'
-    });
-    return;
-  }
-
-  saving.value = true;
-  try {
-    const preferences: Partial<UserPreference> = {
-      tastePreferences: {
-        spicyLevel: form.spiciness,
-        sweetness: form.sweetness,
-        saltiness: form.saltiness,
-        oiliness: form.oiliness
-      },
-      portionSize: form.portionSize,
-      meatPreference: form.meatPreference,
-      priceRange: form.priceRange,
-      canteenPreferences: form.canteenPreferences,
-      avoidIngredients: form.avoidIngredients,
-      favoriteIngredients: form.favoriteIngredients
-    };
-
-    const payload: UserProfileUpdateRequest = {
-      preferences
-    };
-
-    const response = await updateUserProfile(payload);
-    if (response.code !== 200 || !response.data) {
-      throw new Error(response.message || '保存失败');
-    }
-
-    userStore.updateLocalUserInfo(response.data);
-    
-    uni.showToast({
-      title: '保存成功',
-      icon: 'success'
-    });
-    
-    setTimeout(() => {
-      uni.navigateBack();
-    }, 1000);
-  } catch (error) {
-    console.error('保存失败:', error);
-    const message = error instanceof Error ? error.message : '保存失败';
-    uni.showToast({
-      title: message,
-      icon: 'none'
-    });
-  } finally {
-    saving.value = false;
-  }
-}
+const {
+  form,
+  saving,
+  newFavoriteIngredient,
+  newMeatPreference,
+  newAvoidIngredient,
+  canteenList,
+  tasteLabels,
+  spicinessLabels,
+  portionLabels,
+  reversePortionLabels,
+  validatePriceRange,
+  addFavoriteIngredient,
+  removeFavoriteIngredient,
+  addMeatPreference,
+  removeMeatPreference,
+  onCanteenSelect,
+  removeCanteenPreference,
+  getCanteenNameById,
+  addAvoidIngredient,
+  removeAvoidIngredient,
+  handleSave
+} = usePreferences();
 </script>
