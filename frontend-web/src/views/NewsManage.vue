@@ -521,23 +521,17 @@ export default {
         alert('请填写标题、摘要和内容')
         return
       }
-      if (targetStatus === 'published' && !newsForm.publishedAt) {
-        alert('请填写发布时间')
-        return
-      }
 
       try {
         // 【关键】提交前，将编辑器中的 HTML 同步回 newsForm.content
         newsForm.content = valueHtml.value
 
+        // 基础数据，不包含 status, publishedAt, createdBy 等后端不接受的字段
         const requestData = {
           title: newsForm.title,
           content: newsForm.content,
           summary: newsForm.summary,
-          canteenId: newsForm.canteenId || null, // 如果是空字符串（全校公告），则传 null
-          publishedAt: newsForm.publishedAt ? new Date(newsForm.publishedAt).toISOString() : undefined,
-          createdBy: authStore.user?.id, // 添加发布人 ID
-          status: targetStatus // 使用传入的目标状态
+          canteenId: newsForm.canteenId || undefined // 如果为空字符串，则不传（全校公告）
         }
         
         if (showEditModal.value && editingNewsId.value) {
@@ -553,13 +547,30 @@ export default {
         } else {
           // 创建
           const response = await newsApi.createNews(requestData)
+          
           if (response.code === 200 || response.code === 201) {
-            alert('新闻创建成功！')
-            closeModal()
-            // 如果创建的是草稿，确保当前视图切换到草稿列表，或者提示用户
-            if (targetStatus === 'draft' && currentStatus.value !== 'draft') {
-              currentStatus.value = 'draft'
+            const newNewsId = response.data.id
+            
+            // 如果用户选择"立即发布"，则额外调用发布接口
+            if (targetStatus === 'published') {
+              try {
+                await newsApi.publishNews(newNewsId)
+                alert('新闻创建并发布成功！')
+              } catch (publishError) {
+                console.error('发布失败:', publishError)
+                alert('新闻创建成功，但发布失败，请在列表中手动发布')
+              }
+            } else {
+              alert('新闻草稿创建成功！')
+              // 如果创建的是草稿，确保当前视图切换到草稿列表
+              if (currentStatus.value !== 'draft') {
+                 // 自动切换到草稿箱以便用户看到新创建的内容
+                 changeStatus('draft')
+                 return // changeStatus 会触发 loadNews
+              }
             }
+            
+            closeModal()
             loadNews()
           } else {
             throw new Error(response.message || '创建失败')
