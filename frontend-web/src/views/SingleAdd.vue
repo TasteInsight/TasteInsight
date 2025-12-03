@@ -654,8 +654,8 @@ export default {
       
       // 如果父菜品还未创建，先创建父菜品
       if (!parentDishId.value) {
-        // 先保存父菜品
-        await submitForm()
+        // 先保存父菜品，不进行跳转
+        await submitForm(false)
         // 如果保存失败，submitForm 会显示错误，这里直接返回
         if (!parentDishId.value) {
           return
@@ -735,9 +735,9 @@ export default {
       }
     }
     
-    const submitForm = async () => {
+    const submitForm = async (redirect = true) => {
       // 表单验证
-      if (!formData.name || !formData.canteen || !formData.windowName) {
+      if (!formData.name || !formData.canteenId || !formData.windowId) {
         alert('请填写必填字段：菜品名称、食堂名称、窗口名称')
         return
       }
@@ -847,9 +847,13 @@ export default {
             parentDishId.value = response.data.id
           }
           
-          alert('父菜品保存成功！正在跳转到编辑页面，您可以在那里继续添加子项。')
-          // 跳转到编辑页面，方便继续添加子项
-          router.push(`/edit-dish/${parentDishId.value}`)
+          if (redirect) {
+            alert('菜品提交成功，已进入审核列表！')
+            // 跳转到审核页面
+            router.push('/review-dish')
+          } else {
+            alert('父菜品保存成功！')
+          }
         } else {
           throw new Error(response.message || '创建菜品失败')
         }
