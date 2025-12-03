@@ -1,5 +1,5 @@
 <template>
-  <view class="w-full min-h-screen bg-gradient-to-b from-white via-purple-50/20 to-white p-4" style="max-width: 375px;">
+  <view class="w-full min-h-screen bg-gradient-to-b from-white via-purple-50/20 to-white p-4">
     <!-- 通知设置 -->
     <view class="bg-white rounded-2xl p-6 mb-4 shadow-sm">
       <text class="text-lg font-semibold text-gray-800 mb-4 block">通知设置</text>

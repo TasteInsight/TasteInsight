@@ -1,5 +1,5 @@
 <template>
-  <view class="w-full min-h-screen bg-gray-50 p-4 pb-10" style="max-width: 375px;">
+  <view class="w-full min-h-screen bg-gray-50 p-4 pb-10">
     
     <!-- 口味偏好 -->
     <view class="bg-white rounded-lg p-6 mb-4 shadow-sm border border-gray-100">

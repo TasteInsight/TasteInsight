@@ -1,5 +1,5 @@
 <template>
-  <view class="w-full min-h-screen bg-gray-50 p-4" style="max-width: 375px;">
+  <view class="w-full min-h-screen bg-gray-50 p-4">
     <!-- 头像上传区域 -->
     <view class="bg-white rounded-lg p-6 mb-4 shadow-sm">
       <text class="text-lg font-semibold text-gray-800 mb-6 block">头像</text>
