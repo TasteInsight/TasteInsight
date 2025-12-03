@@ -179,6 +179,69 @@ export function useReviewForm() {
   });
 
   /**
+   * 保存评价状态到本地存储
+   */
+  const saveReviewState = (dishId: string) => {
+    const state = {
+      rating: rating.value,
+      content: content.value,
+      flavorRatings: { ...flavorRatings.value },
+      timestamp: Date.now(),
+    };
+    uni.setStorageSync(`review_state_${dishId}`, state);
+  };
+
+  /**
+   * 从本地存储恢复评价状态
+   */
+  const loadReviewState = (dishId: string) => {
+    try {
+      const state = uni.getStorageSync(`review_state_${dishId}`);
+      if (state && typeof state === 'object') {
+        // 检查是否过期（24小时）
+        const now = Date.now();
+        if (now - state.timestamp < 24 * 60 * 60 * 1000) {
+          rating.value = state.rating || 0;
+          content.value = state.content || '';
+          flavorRatings.value = state.flavorRatings ? { ...state.flavorRatings } : {
+            spicyLevel: 0,
+            sweetness: 0,
+            saltiness: 0,
+            oiliness: 0,
+          };
+          return true;
+        }
+      }
+    } catch (error) {
+      console.log('恢复评价状态失败:', error);
+    }
+    return false;
+  };
+
+  /**
+   * 清除保存的评价状态
+   */
+  const clearReviewState = (dishId: string) => {
+    uni.removeStorageSync(`review_state_${dishId}`);
+  };
+
+  /**
+   * 检查是否有保存的评价状态
+   */
+  const hasSavedReviewState = (dishId: string) => {
+    try {
+      const state = uni.getStorageSync(`review_state_${dishId}`);
+      if (state && typeof state === 'object') {
+        const now = Date.now();
+        return now - state.timestamp < 24 * 60 * 60 * 1000;
+      }
+    } catch (error) {
+      console.log('检查评价状态失败:', error);
+    }
+    return false;
+  };
+
+  /**
    * 提交评价
    */
   const handleSubmit = async (dishId: string, onSuccess?: () => void) => {
@@ -252,6 +315,10 @@ export function useReviewForm() {
     setFlavorRating,
     resetFlavorRatings,
     resetForm,
+    saveReviewState,
+    loadReviewState,
+    clearReviewState,
+    hasSavedReviewState,
     handleSubmit
   };
 }

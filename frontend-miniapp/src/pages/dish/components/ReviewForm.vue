@@ -1,5 +1,32 @@
 <template>
   <view class="fixed inset-0 bg-black/40 z-[9999] flex items-end justify-center" @tap="handleClose">
+    <!-- 恢复评价状态对话框 -->
+    <view v-if="showResumeDialog" class="fixed inset-0 bg-black/60 z-[10000] flex items-center justify-center" @tap.stop>
+      <view class="bg-white rounded-lg p-6 mx-4 max-w-sm w-full">
+        <view class="text-center mb-4">
+          <text class="text-lg font-semibold text-gray-800">发现未完成的评价</text>
+        </view>
+        <view class="text-sm text-gray-600 mb-6 text-center">
+          您之前有未完成的评价内容，是否要继续填写？
+        </view>
+        <view class="flex gap-3">
+          <button
+            class="flex-1 h-10 flex items-center justify-center font-medium rounded-md border border-gray-300 text-gray-700"
+            @tap="startNewReview"
+          >
+            新开始
+          </button>
+          <button
+            class="flex-1 h-10 flex items-center justify-center font-medium rounded-md bg-ts-purple text-white"
+            :disabled="isResuming"
+            @tap="resumeReview"
+          >
+            {{ isResuming ? '恢复中...' : '继续填写' }}
+          </button>
+        </view>
+      </view>
+    </view>
+
     <scroll-view 
       class="review-form-container" 
       scroll-y 
@@ -120,8 +147,17 @@ const {
   setRating,
   setFlavorRating,
   resetFlavorRatings,
+  resetForm,
+  saveReviewState,
+  loadReviewState,
+  clearReviewState,
+  hasSavedReviewState,
   handleSubmit: submitForm
 } = useReviewForm();
+
+// 恢复状态相关
+const showResumeDialog = ref(false);
+const isResuming = ref(false);
 
 // 响应式星星大小计算
 const screenWidth = ref(375); // 默认值
@@ -162,6 +198,11 @@ onMounted(() => {
   // 获取屏幕宽度
   updateScreenWidth();
   
+  // 检查是否有保存的评价状态
+  if (hasSavedReviewState(props.dishId)) {
+    showResumeDialog.value = true;
+  }
+  
   nextTick(() => {
     // 添加CSS类来隐藏tabbar
     document.body.classList.add('hide-tabbar');
@@ -194,13 +235,35 @@ onUnmounted(() => {
 });
 
 const handleClose = () => {
+  // 保存评价状态（如果有内容）
+  if (rating.value > 0 || content.value.trim() || hasFlavorSelection.value) {
+    saveReviewState(props.dishId);
+  }
   emit('close');
 };
 
 const handleSubmit = () => {
   submitForm(props.dishId, () => {
+    // 提交成功后清除保存的状态
+    clearReviewState(props.dishId);
     emit('success');
   });
+};
+
+// 恢复评价状态
+const resumeReview = () => {
+  isResuming.value = true;
+  if (loadReviewState(props.dishId)) {
+    showResumeDialog.value = false;
+  }
+  isResuming.value = false;
+};
+
+// 开始新评价
+const startNewReview = () => {
+  resetForm();
+  clearReviewState(props.dishId);
+  showResumeDialog.value = false;
 };
 </script>
 
