@@ -222,6 +222,10 @@ export function useCommentPanel(reviewId: () => string, onCommentAdded?: () => v
    * 重置面板状态
    */
   const resetPanel = () => {
+    comments.value = [];
+    loading.value = false;
+    hasMore.value = false;
+    currentPage.value = 1;
     replyContent.value = '';
     replyingTo.value = null;
   };
