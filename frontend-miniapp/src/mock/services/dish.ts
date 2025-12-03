@@ -31,11 +31,33 @@ export const mockGetDishes = async (params: GetDishesRequest): Promise<Paginated
 
   // 1. 筛选
   if (params.filter) {
-    const { canteenId, mealTime, tag, price, rating, meatPreference } = params.filter;
+    const { 
+      canteenId, 
+      mealTime, 
+      tag, 
+      price, 
+      rating, 
+      meatPreference,
+      spicyLevel,
+      sweetness,
+      saltiness,
+      oiliness,
+      avoidIngredients
+    } = params.filter;
 
-    // 按食堂ID过滤
+    // 按食堂ID或名称过滤
     if (canteenId && canteenId.length > 0) {
-      dishes = dishes.filter(d => d.canteenId && canteenId.includes(d.canteenId));
+      dishes = dishes.filter(d => {
+        // 检查食堂ID匹配
+        if (d.canteenId && canteenId.includes(d.canteenId)) {
+          return true;
+        }
+        // 检查食堂名称匹配
+        if (d.canteenName && canteenId.includes(d.canteenName)) {
+          return true;
+        }
+        return false;
+      });
     }
 
     // 按用餐时段过滤
@@ -74,6 +96,65 @@ export const mockGetDishes = async (params: GetDishesRequest): Promise<Paginated
       });
     }
 
+    // 按辣度范围过滤
+    if (spicyLevel && (spicyLevel.min !== undefined || spicyLevel.max !== undefined)) {
+      dishes = dishes.filter(d => {
+        const dishSpicyLevel = d.spicyLevel || 0;
+        const minOk = spicyLevel.min === undefined || dishSpicyLevel >= spicyLevel.min;
+        const maxOk = spicyLevel.max === undefined || dishSpicyLevel <= spicyLevel.max;
+        return minOk && maxOk;
+      });
+    }
+
+    // 按甜度范围过滤
+    if (sweetness && (sweetness.min !== undefined || sweetness.max !== undefined)) {
+      dishes = dishes.filter(d => {
+        const dishSweetness = d.sweetness || 0;
+        const minOk = sweetness.min === undefined || dishSweetness >= sweetness.min;
+        const maxOk = sweetness.max === undefined || dishSweetness <= sweetness.max;
+        return minOk && maxOk;
+      });
+    }
+
+    // 按咸度范围过滤
+    if (saltiness && (saltiness.min !== undefined || saltiness.max !== undefined)) {
+      dishes = dishes.filter(d => {
+        const dishSaltiness = d.saltiness || 0;
+        const minOk = saltiness.min === undefined || dishSaltiness >= saltiness.min;
+        const maxOk = saltiness.max === undefined || dishSaltiness <= saltiness.max;
+        return minOk && maxOk;
+      });
+    }
+
+    // 按油腻程度过滤
+    if (oiliness && (oiliness.min !== undefined || oiliness.max !== undefined)) {
+      dishes = dishes.filter(d => {
+        const dishOiliness = d.oiliness || 0;
+        const minOk = oiliness.min === undefined || dishOiliness >= oiliness.min;
+        const maxOk = oiliness.max === undefined || dishOiliness <= oiliness.max;
+        return minOk && maxOk;
+      });
+    }
+
+    // 按忌口食材过滤
+    if (avoidIngredients && avoidIngredients.length > 0) {
+      dishes = dishes.filter(d => {
+        if (!d.ingredients && !d.allergens) return true; // 如果没有食材信息，默认不过滤
+        
+        const allIngredients = [
+          ...(d.ingredients || []),
+          ...(d.allergens || [])
+        ];
+        
+        // 检查是否包含忌口食材
+        return !avoidIngredients.some(avoid => 
+          allIngredients.some(ingredient => 
+            ingredient.toLowerCase().includes(avoid.toLowerCase())
+          )
+        );
+      });
+    }
+
     // 按荤素偏好过滤（通过 tags 实现）
     if (meatPreference && meatPreference.length > 0) {
       dishes = dishes.filter(d => {
@@ -106,15 +187,62 @@ export const mockGetDishes = async (params: GetDishesRequest): Promise<Paginated
   // 3. 排序
   if (params.sort && params.sort.field) {
     const { field, order = 'asc' } = params.sort;
+    
+    // 处理特殊的排序字段映射
+    let sortField = field;
+    let sortOrder = order;
+    
+    switch (field) {
+      case 'rating':
+        sortField = 'averageRating';
+        sortOrder = 'desc'; // 评分默认降序
+        break;
+      case 'price_low':
+        sortField = 'price';
+        sortOrder = 'asc'; // 价格从低到高
+        break;
+      case 'price_high':
+        sortField = 'price';
+        sortOrder = 'desc'; // 价格从高到低
+        break;
+      case 'popularity':
+        sortField = 'reviewCount';
+        sortOrder = 'desc'; // 评价数量默认降序
+        break;
+      case 'newest':
+        sortField = 'createdAt';
+        sortOrder = 'desc'; // 创建时间默认降序（最新的在前）
+        break;
+      default:
+        // 对于其他字段，使用传入的排序方式
+        sortField = field;
+        sortOrder = order;
+    }
+    
     dishes.sort((a, b) => {
       // @ts-ignore
-      const valA = a[field];
+      let valA = a[sortField];
       // @ts-ignore
-      const valB = b[field];
+      let valB = b[sortField];
       
-      if (typeof valA === 'number' && typeof valB === 'number') {
-        return order === 'asc' ? valA - valB : valB - valA;
+      // 处理日期字段
+      if (sortField === 'createdAt' && typeof valA === 'string') {
+        valA = new Date(valA).getTime();
+        valB = new Date(valB).getTime();
       }
+      
+      // 处理数值字段
+      if (typeof valA === 'number' && typeof valB === 'number') {
+        return sortOrder === 'asc' ? valA - valB : valB - valA;
+      }
+      
+      // 处理字符串字段
+      if (typeof valA === 'string' && typeof valB === 'string') {
+        const comparison = valA.localeCompare(valB);
+        return sortOrder === 'asc' ? comparison : -comparison;
+      }
+      
+      // 默认保持原顺序
       return 0;
     });
   }

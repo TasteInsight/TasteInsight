@@ -27,6 +27,10 @@ export const createMockDishes = (): Dish[] => {
     averageRating: 4.5,
     reviewCount: 128,
     subDishId: ['dish_002', 'dish_003'],
+    spicyLevel: 3, // 中辣
+    sweetness: 1, // 微甜
+    saltiness: 2, // 中咸
+    oiliness: 2, // 中油
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -49,6 +53,10 @@ export const createMockDishes = (): Dish[] => {
     averageRating: 4.2,
     reviewCount: 96,
     parentDishId: 'dish_001',
+    spicyLevel: 4, // 辣
+    sweetness: 0, // 不甜
+    saltiness: 3, // 咸
+    oiliness: 3, // 油腻
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -71,6 +79,10 @@ export const createMockDishes = (): Dish[] => {
     averageRating: 4.8,
     reviewCount: 156,
     parentDishId: 'dish_001',
+    spicyLevel: 2, // 微辣
+    sweetness: 3, // 甜
+    saltiness: 2, // 中咸
+    oiliness: 1, // 不油腻
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -93,6 +105,10 @@ export const createMockDishes = (): Dish[] => {
     averageRating: 4.0,
     reviewCount: 64,
     parentDishId: 'dish_005',
+    spicyLevel: 0, // 不辣
+    sweetness: 0, // 不甜
+    saltiness: 1, // 微咸
+    oiliness: 0, // 清淡
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -115,6 +131,10 @@ export const createMockDishes = (): Dish[] => {
     averageRating: 4.8,
     reviewCount: 203,
     subDishId: ['dish_006', 'dish_004', 'dish_007', 'dish_008'],
+    spicyLevel: 0, // 不辣
+    sweetness: 2, // 微甜
+    saltiness: 3, // 咸
+    oiliness: 4, // 油腻
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -137,6 +157,10 @@ export const createMockDishes = (): Dish[] => {
     averageRating: 4.3,
     reviewCount: 89,
     parentDishId: 'dish_005',
+    spicyLevel: 0, // 不辣
+    sweetness: 0, // 不甜
+    saltiness: 2, // 中咸
+    oiliness: 1, // 不油腻
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -159,6 +183,10 @@ export const createMockDishes = (): Dish[] => {
     averageRating: 4.6,
     reviewCount: 156,
     parentDishId: 'dish_005',
+    spicyLevel: 1, // 微辣
+    sweetness: 0, // 不甜
+    saltiness: 2, // 中咸
+    oiliness: 2, // 中油
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -181,6 +209,10 @@ export const createMockDishes = (): Dish[] => {
     averageRating: 4.4,
     reviewCount: 178,
     parentDishId: 'dish_005',
+    spicyLevel: 0, // 不辣
+    sweetness: 3, // 甜
+    saltiness: 2, // 中咸
+    oiliness: 2, // 中油
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -202,6 +234,10 @@ export const createMockDishes = (): Dish[] => {
     status: Status.Online,
     averageRating: 4.7,
     reviewCount: 134,
+    spicyLevel: 0, // 不辣
+    sweetness: 4, // 很甜
+    saltiness: 2, // 中咸
+    oiliness: 3, // 油腻
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -223,6 +259,10 @@ export const createMockDishes = (): Dish[] => {
     status: Status.Online,
     averageRating: 4.5,
     reviewCount: 112,
+    spicyLevel: 0, // 不辣
+    sweetness: 0, // 不甜
+    saltiness: 2, // 中咸
+    oiliness: 1, // 不油腻
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -246,6 +286,10 @@ export const createMockDishes = (): Dish[] => {
     status: Status.Online,
     averageRating: 4.6,
     reviewCount: 145,
+    spicyLevel: 0, // 不辣
+    sweetness: 0, // 不甜
+    saltiness: 1, // 微咸
+    oiliness: 1, // 不油腻
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -267,6 +311,10 @@ export const createMockDishes = (): Dish[] => {
     status: Status.Online,
     averageRating: 4.4,
     reviewCount: 98,
+    spicyLevel: 0, // 不辣
+    sweetness: 0, // 不甜
+    saltiness: 2, // 中咸
+    oiliness: 1, // 不油腻
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -288,6 +336,10 @@ export const createMockDishes = (): Dish[] => {
     status: Status.Online,
     averageRating: 4.7,
     reviewCount: 167,
+    spicyLevel: 0, // 不辣
+    sweetness: 0, // 不甜
+    saltiness: 1, // 微咸
+    oiliness: 1, // 不油腻
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -311,6 +363,10 @@ export const createMockDishes = (): Dish[] => {
     status: Status.Online,
     averageRating: 4.6,
     reviewCount: 234,
+    spicyLevel: 1, // 微辣
+    sweetness: 0, // 不甜
+    saltiness: 3, // 咸
+    oiliness: 2, // 中油
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -332,6 +388,10 @@ export const createMockDishes = (): Dish[] => {
     status: Status.Online,
     averageRating: 4.3,
     reviewCount: 156,
+    spicyLevel: 0, // 不辣
+    sweetness: 1, // 微甜
+    saltiness: 2, // 中咸
+    oiliness: 1, // 不油腻
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -353,6 +413,10 @@ export const createMockDishes = (): Dish[] => {
     status: Status.Online,
     averageRating: 4.5,
     reviewCount: 189,
+    spicyLevel: 0, // 不辣
+    sweetness: 1, // 微甜
+    saltiness: 3, // 咸
+    oiliness: 3, // 油腻
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -376,6 +440,10 @@ export const createMockDishes = (): Dish[] => {
     status: Status.Online,
     averageRating: 4.8,
     reviewCount: 267,
+    spicyLevel: 4, // 辣
+    sweetness: 0, // 不甜
+    saltiness: 3, // 咸
+    oiliness: 3, // 油腻
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -397,6 +465,10 @@ export const createMockDishes = (): Dish[] => {
     status: Status.Online,
     averageRating: 4.5,
     reviewCount: 198,
+    spicyLevel: 4, // 辣
+    sweetness: 0, // 不甜
+    saltiness: 3, // 咸
+    oiliness: 3, // 油腻
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -420,6 +492,10 @@ export const createMockDishes = (): Dish[] => {
     status: Status.Online,
     averageRating: 4.4,
     reviewCount: 312,
+    spicyLevel: 1, // 微辣
+    sweetness: 1, // 微甜
+    saltiness: 3, // 咸
+    oiliness: 2, // 中油
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -441,6 +517,10 @@ export const createMockDishes = (): Dish[] => {
     status: Status.Online,
     averageRating: 4.6,
     reviewCount: 245,
+    spicyLevel: 0, // 不辣
+    sweetness: 1, // 微甜
+    saltiness: 3, // 咸
+    oiliness: 4, // 油腻
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -462,6 +542,10 @@ export const createMockDishes = (): Dish[] => {
     status: Status.Online,
     averageRating: 4.3,
     reviewCount: 178,
+    spicyLevel: 2, // 微辣
+    sweetness: 1, // 微甜
+    saltiness: 2, // 中咸
+    oiliness: 2, // 中油
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -485,6 +569,10 @@ export const createMockDishes = (): Dish[] => {
     status: Status.Online,
     averageRating: 4.7,
     reviewCount: 189,
+    spicyLevel: 1, // 微辣
+    sweetness: 0, // 不甜
+    saltiness: 2, // 中咸
+    oiliness: 2, // 中油
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -506,6 +594,10 @@ export const createMockDishes = (): Dish[] => {
     status: Status.Online,
     averageRating: 4.8,
     reviewCount: 423,
+    spicyLevel: 2, // 微辣
+    sweetness: 0, // 不甜
+    saltiness: 2, // 中咸
+    oiliness: 1, // 不油腻
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -529,6 +621,10 @@ export const createMockDishes = (): Dish[] => {
     status: Status.Online,
     averageRating: 4.9,
     reviewCount: 356,
+    spicyLevel: 4, // 辣
+    sweetness: 0, // 不甜
+    saltiness: 3, // 咸
+    oiliness: 3, // 油腻
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -550,6 +646,10 @@ export const createMockDishes = (): Dish[] => {
     status: Status.Online,
     averageRating: 4.6,
     reviewCount: 234,
+    spicyLevel: 2, // 微辣
+    sweetness: 1, // 微甜
+    saltiness: 2, // 中咸
+    oiliness: 2, // 中油
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -573,6 +673,10 @@ export const createMockDishes = (): Dish[] => {
     status: Status.Online,
     averageRating: 4.4,
     reviewCount: 289,
+    spicyLevel: 0, // 不辣
+    sweetness: 0, // 不甜
+    saltiness: 2, // 中咸
+    oiliness: 2, // 中油
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -594,6 +698,10 @@ export const createMockDishes = (): Dish[] => {
     status: Status.Online,
     averageRating: 4.5,
     reviewCount: 345,
+    spicyLevel: 0, // 不辣
+    sweetness: 0, // 不甜
+    saltiness: 2, // 中咸
+    oiliness: 4, // 油腻
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -617,6 +725,10 @@ export const createMockDishes = (): Dish[] => {
     status: Status.Online,
     averageRating: 4.7,
     reviewCount: 198,
+    spicyLevel: 0, // 不辣
+    sweetness: 1, // 微甜
+    saltiness: 1, // 微咸
+    oiliness: 1, // 不油腻
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -638,6 +750,10 @@ export const createMockDishes = (): Dish[] => {
     status: Status.Online,
     averageRating: 4.6,
     reviewCount: 234,
+    spicyLevel: 3, // 中辣
+    sweetness: 1, // 微甜
+    saltiness: 2, // 中咸
+    oiliness: 2, // 中油
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -659,6 +775,10 @@ export const createMockDishes = (): Dish[] => {
     status: Status.Online,
     averageRating: 4.8,
     reviewCount: 287,
+    spicyLevel: 4, // 辣
+    sweetness: 0, // 不甜
+    saltiness: 3, // 咸
+    oiliness: 3, // 油腻
     createdAt: new Date(),
     updatedAt: new Date(),
   },
