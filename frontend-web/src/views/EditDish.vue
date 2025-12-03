@@ -489,7 +489,7 @@
                 :disabled="isSubmitting || isLoading"
               >
                 <span class="iconify mr-1" data-icon="carbon:save"></span>
-                {{ isSubmitting ? '提交中...' : '提交审核' }}
+                {{ isSubmitting ? '保存中...' : '保存修改' }}
               </button>
               <button 
                 type="button" 
@@ -1012,7 +1012,7 @@ export default {
           // 4. 更新 store 中的菜品信息
           dishStore.updateDish(formData.id, response.data)
           
-          alert('菜品信息已更新，已提交审核！')
+          alert('菜品信息已更新！')
           router.push('/modify-dish')
         } else {
           throw new Error(response.message || '更新菜品失败')
