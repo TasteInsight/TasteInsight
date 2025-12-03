@@ -1,6 +1,35 @@
 <template>
   <view class="fixed inset-0 bg-black/40 z-[9999] flex items-end justify-center" @tap="handleClose">
+    <!-- 恢复评价状态对话框 -->
+    <view v-if="showResumeDialog" class="fixed inset-0 bg-black/60 z-[10000] flex items-center justify-center" @tap.stop>
+      <view class="bg-white rounded-lg p-6 mx-4 max-w-sm w-full">
+        <view class="text-center mb-4">
+          <text class="text-lg font-semibold text-gray-800">发现未完成的评价</text>
+        </view>
+        <view class="text-sm text-gray-600 mb-6 text-center">
+          您之前有未完成的评价内容，是否要继续填写？
+        </view>
+        <view class="flex gap-3">
+          <button
+            class="flex-1 h-10 flex items-center justify-center font-medium rounded-md border border-gray-300 text-gray-700"
+            @tap="startNewReview"
+          >
+            新开始
+          </button>
+          <button
+            class="flex-1 h-10 flex items-center justify-center font-medium rounded-md bg-ts-purple text-white"
+            :disabled="isResuming"
+            @tap="resumeReview"
+          >
+            {{ isResuming ? '恢复中...' : '继续填写' }}
+          </button>
+        </view>
+      </view>
+    </view>
+
+    <!-- 评价弹窗 -->
     <scroll-view 
+      v-if="!showResumeDialog"
       class="review-form-container" 
       scroll-y 
       :scroll-with-animation="true"
@@ -25,7 +54,7 @@
             v-for="star in 5"
             :key="star"
             class="cursor-pointer inline-block leading-none select-none transition-all duration-200 star-glow"
-            :style="{ fontSize: star <= rating ? '48px' : '40px', color: star <= rating ? '#fbbf24' : '#d1d5db' }"
+            :style="{ fontSize: star <= rating ? mainStarSize + 'px' : mainSmallStarSize + 'px', color: star <= rating ? '#fbbf24' : '#d1d5db' }"
             @tap="setRating(star)"
           >{{ star <= rating ? '★' : '☆' }}</text>
         </view>
@@ -53,7 +82,7 @@
               v-for="star in 5"
               :key="star"
               class="cursor-pointer inline-block leading-none select-none transition-all duration-200"
-              :style="{ fontSize: star <= flavorRatings[option.key] ? '40px' : '32px', color: star <= flavorRatings[option.key] ? '#fbbf24' : '#d1d5db' }"
+              :style="{ fontSize: star <= flavorRatings[option.key] ? starSize + 'px' : smallStarSize + 'px', color: star <= flavorRatings[option.key] ? '#fbbf24' : '#d1d5db' }"
               @tap="setFlavorRating(option.key, star)"
             >{{ star <= flavorRatings[option.key] ? '★' : '☆' }}</text>
           </view>
@@ -91,9 +120,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
-import { createReview } from '@/api/modules/review';
-import type { ReviewCreateRequest } from '@/types/api';
+import { onMounted, onUnmounted, nextTick, ref, computed } from 'vue';
+import { useReviewForm } from '../composables/use-review';
 
 interface Props {
   dishId: string;
@@ -108,37 +136,79 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-const rating = ref(0);
-const content = ref('');
-const submitting = ref(false);
-const showFlavorError = ref(false);
+const {
+  rating,
+  content,
+  submitting,
+  showFlavorError,
+  flavorOptions,
+  flavorRatings,
+  hasFlavorSelection,
+  flavorSelectionComplete,
+  ratingText,
+  setRating,
+  setFlavorRating,
+  resetFlavorRatings,
+  resetForm,
+  saveReviewState,
+  loadReviewState,
+  clearReviewState,
+  hasSavedReviewState,
+  handleSubmit: submitForm
+} = useReviewForm();
 
-type FlavorKey = 'spicyLevel' | 'sweetness' | 'saltiness' | 'oiliness';
+// 恢复状态相关
+const showResumeDialog = ref(false);
+const isResuming = ref(false);
 
-const flavorOptions: Array<{ key: FlavorKey; label: string; hint: string }> = [
-  { key: 'spicyLevel', label: '辣度', hint: '辣味程度' },
-  { key: 'sweetness', label: '甜度', hint: '甜味浓淡' },
-  { key: 'saltiness', label: '咸度', hint: '咸味强度' },
-  { key: 'oiliness', label: '油腻程度', hint: '油脂感' },
-];
+// Tailwind CSS gap-3 的值（0.75rem = 12px，假设 1rem = 16px）
+// 如果修改 Tailwind 配置，请同步更新此常量
+const TAILWIND_GAP_3 = 12; // px
 
-const flavorRatings = ref<Record<FlavorKey, number>>({
-  spicyLevel: 0,
-  sweetness: 0,
-  saltiness: 0,
-  oiliness: 0,
+// 响应式星星大小计算
+const screenWidth = ref(375); // 默认值
+const starSize = computed(() => {
+  // 星星总宽度占据屏幕的60%
+  const totalWidth = screenWidth.value * 0.6;
+  // 5个星星 + 4个间隙（使用 Tailwind gap-3 的值）
+  const gap = TAILWIND_GAP_3;
+  const starWidth = (totalWidth - 4 * gap) / 5;
+  return Math.max(24, Math.min(48, starWidth)); // 限制在24px-48px之间
 });
 
-const hasFlavorSelection = computed(() =>
-  Object.values(flavorRatings.value).some(value => value > 0)
-);
+const smallStarSize = computed(() => {
+  return starSize.value * 0.8; // 小星星是正常大小的80%
+});
 
-const flavorSelectionComplete = computed(() =>
-  !hasFlavorSelection.value || Object.values(flavorRatings.value).every(value => value > 0)
-);
+// 整体评分星星（更大一些）
+const mainStarSize = computed(() => {
+  return starSize.value * 1.2; // 整体评分星星更大
+});
+
+const mainSmallStarSize = computed(() => {
+  return smallStarSize.value * 1.2; // 整体评分小星星也相应更大
+});
+
+// 获取屏幕宽度
+const updateScreenWidth = () => {
+  try {
+    const systemInfo = uni.getSystemInfoSync();
+    screenWidth.value = systemInfo.windowWidth || systemInfo.screenWidth || 375;
+  } catch (error) {
+    console.log('获取屏幕信息失败，使用默认宽度');
+  }
+};
 
 // 隐藏tabbar
 onMounted(() => {
+  // 获取屏幕宽度
+  updateScreenWidth();
+  
+  // 检查是否有保存的评价状态
+  if (hasSavedReviewState(props.dishId)) {
+    showResumeDialog.value = true;
+  }
+  
   nextTick(() => {
     // 添加CSS类来隐藏tabbar
     document.body.classList.add('hide-tabbar');
@@ -170,97 +240,42 @@ onUnmounted(() => {
   }, 200);
 });
 
-const ratingText = computed(() => {
-  const texts = ['请选择评分', '非常差', '差', '一般', '好', '非常好'];
-  return texts[rating.value] || texts[0];
-});
-
-
-const setRating = (star: number) => {
-  rating.value = star;
-};
-
-const setFlavorRating = (key: FlavorKey, value: number) => {
-  showFlavorError.value = false;
-  flavorRatings.value[key] = flavorRatings.value[key] === value ? 0 : value;
-};
-
-const resetFlavorRatings = () => {
-  flavorRatings.value = {
-    spicyLevel: 0,
-    sweetness: 0,
-    saltiness: 0,
-    oiliness: 0,
-  };
-  showFlavorError.value = false;
-};
-
-// 当主评分清空时重置口味评分
-watch(rating, (value) => {
-  if (value === 0) {
-    resetFlavorRatings();
-  }
-});
-
 const handleClose = () => {
-  emit('close');
+  if (showResumeDialog.value) {
+    // 如果显示恢复对话框，清除保存的状态并关闭整个组件
+    clearReviewState(props.dishId);
+    emit('close');
+  } else {
+    // 如果显示评价弹窗，保存评价状态（如果有内容）
+    if (rating.value > 0 || content.value.trim() || hasFlavorSelection.value) {
+      saveReviewState(props.dishId);
+    }
+    emit('close');
+  }
 };
 
-const handleSubmit = async () => {
-  if (submitting.value) return;
+const handleSubmit = () => {
+  submitForm(props.dishId, () => {
+    // 提交成功后清除保存的状态
+    clearReviewState(props.dishId);
+    emit('success');
+  });
+};
 
-  submitting.value = true;
-
-  try {
-    if (rating.value === 0) {
-      uni.showToast({
-        title: '请先选择总体评分',
-        icon: 'none',
-      });
-      submitting.value = false;
-      return;
-    }
-
-    if (!flavorSelectionComplete.value) {
-      showFlavorError.value = true;
-      submitting.value = false;
-      uni.showToast({
-        title: '请选择全部口味评分或全部留空',
-        icon: 'none',
-      });
-      return;
-    }
-
-    const payload: ReviewCreateRequest = {
-      dishId: props.dishId,
-      rating: rating.value,
-      content: content.value.trim(),
-    };
-
-    if (hasFlavorSelection.value) {
-      payload.ratingDetails = { ...flavorRatings.value };
-    }
-
-    const response = await createReview(payload);
-
-    if (response.code === 200) {
-      emit('success');
-      resetFlavorRatings();
-    } else {
-      uni.showToast({
-        title: response.message || '提交失败',
-        icon: 'none',
-      });
-    }
-  } catch (err: any) {
-    console.error('提交评价失败:', err);
-    uni.showToast({
-      title: '网络错误，请稍后重试',
-      icon: 'none',
-    });
-  } finally {
-    submitting.value = false;
+// 恢复评价状态
+const resumeReview = () => {
+  isResuming.value = true;
+  if (loadReviewState(props.dishId)) {
+    showResumeDialog.value = false;
   }
+  isResuming.value = false;
+};
+
+// 开始新评价
+const startNewReview = () => {
+  resetForm();
+  clearReviewState(props.dishId);
+  showResumeDialog.value = false;
 };
 </script>
 
