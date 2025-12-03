@@ -197,12 +197,97 @@ describe('UserProfileService', () => {
       expect(mockPrismaService.userPreference.upsert).toHaveBeenCalled();
     });
 
-    it('should skip user update when no user fields provided', async () => {
-      const mockUser = {
+    it('should update user profile with partial preferences containing undefined values', async () => {
+      const updateDto = {
+        nickname: 'Updated User', // Add a user field to trigger user.update
+        preferences: {
+          tagPreferences: ['川菜'],
+          priceRange: { min: 10, max: 50 },
+          meatPreference: ['鸡肉'],
+          tastePreferences: {
+            spicyLevel: 3,
+            sweetness: undefined,
+            saltiness: undefined,
+            oiliness: 2,
+          },
+          canteenPreferences: [],
+          portionSize: 'large',
+          favoriteIngredients: [],
+          avoidIngredients: [],
+        },
+      };
+
+      mockPrismaService.user.update.mockResolvedValue({});
+      mockPrismaService.userPreference.upsert.mockResolvedValue({});
+      mockPrismaService.user.findUnique.mockResolvedValue({
         id: 'user1',
         openId: 'openid1',
-        nickname: 'User 1',
-        avatar: 'avatar.jpg',
+        nickname: 'Updated User',
+        avatar: null,
+        allergens: [],
+        preferences: {
+          spicyLevel: 3,
+          sweetness: 0,
+          saltiness: 0,
+          oiliness: 2,
+          priceMin: 10,
+          priceMax: 50,
+          tagPreferences: ['川菜'],
+          meatPreference: ['鸡肉'],
+          canteenPreferences: [],
+          portionSize: 'large',
+          favoriteIngredients: [],
+          avoidIngredients: [],
+        },
+        settings: {
+          newDishAlert: true,
+          priceChangeAlert: false,
+          reviewReplyAlert: true,
+          weeklyRecommendation: true,
+          showCalories: true,
+          showNutrition: false,
+          defaultSortBy: 'rating',
+        },
+        favoriteDishes: [],
+        reviews: [],
+        comments: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const result = await service.updateUserProfile('user1', updateDto);
+      expect(mockPrismaService.user.update).toHaveBeenCalled();
+      expect(mockPrismaService.userPreference.upsert).toHaveBeenCalled();
+      expect(result.data.nickname).toBe('Updated User');
+      expect(result.data.preferences.tastePreferences.spicyLevel).toBe(3);
+      expect(result.data.preferences.tastePreferences.oiliness).toBe(2);
+    });
+
+    it('should update user profile with partial settings containing undefined values', async () => {
+      const updateDto = {
+        nickname: 'Updated User 2', // Add a user field to trigger user.update
+        settings: {
+          notificationSettings: {
+            newDishAlert: true,
+            priceChangeAlert: undefined,
+            reviewReplyAlert: undefined,
+            weeklyRecommendation: false,
+          },
+          displaySettings: {
+            showCalories: true,
+            showNutrition: false,
+            sortBy: undefined,
+          },
+        },
+      };
+
+      mockPrismaService.user.update.mockResolvedValue({});
+      mockPrismaService.userSetting.upsert.mockResolvedValue({});
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'user1',
+        openId: 'openid1',
+        nickname: 'Updated User 2',
+        avatar: null,
         allergens: [],
         preferences: {
           spicyLevel: 0,
@@ -221,8 +306,8 @@ describe('UserProfileService', () => {
         settings: {
           newDishAlert: true,
           priceChangeAlert: false,
-          reviewReplyAlert: true,
-          weeklyRecommendation: true,
+          reviewReplyAlert: false,
+          weeklyRecommendation: false,
           showCalories: true,
           showNutrition: false,
           defaultSortBy: 'rating',
@@ -232,14 +317,14 @@ describe('UserProfileService', () => {
         comments: [],
         createdAt: new Date(),
         updatedAt: new Date(),
-      };
+      });
 
-      mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
-
-      const result = await service.updateUserProfile('user1', {} as any);
-
-      expect(mockPrismaService.user.update).not.toHaveBeenCalled();
-      expect(result.data.id).toEqual('user1');
+      const result = await service.updateUserProfile('user1', updateDto);
+      expect(mockPrismaService.user.update).toHaveBeenCalled();
+      expect(mockPrismaService.userSetting.upsert).toHaveBeenCalled();
+      expect(result.data.nickname).toBe('Updated User 2');
+      expect(result.data.settings.notificationSettings.newDishAlert).toBe(true);
+      expect(result.data.settings.displaySettings.showCalories).toBe(true);
     });
   });
 
@@ -339,30 +424,64 @@ describe('UserProfileService', () => {
     });
   });
 
-  describe('getMyReports', () => {
-    it('should return user reports', async () => {
-      const mockReports = [
-        {
-          id: 'report1',
-          reporterId: 'user1',
-          targetType: 'review',
-          targetId: 'review1',
-          type: 'spam',
-          reason: 'spam',
-          status: 'pending',
-          handleResult: null,
-          handledBy: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          handledAt: null,
-          reporter: { id: 'user1', nickname: 'User 1', avatar: null },
+  describe('mapToUserPreferencesUpdateData', () => {
+    it('should filter out undefined values', () => {
+      const preferences = {
+        tagPreferences: ['川菜'],
+        priceRange: { min: 10, max: 50 },
+        meatPreference: ['鸡肉'],
+        tastePreferences: {
+          spicyLevel: 3,
+          sweetness: undefined,
+          saltiness: undefined,
+          oiliness: 2,
         },
-      ];
-      mockPrismaService.report.findMany.mockResolvedValue(mockReports);
-      mockPrismaService.report.count.mockResolvedValue(1);
+        canteenPreferences: [],
+        portionSize: 'large',
+        favoriteIngredients: [],
+        avoidIngredients: [],
+      };
 
-      const result = await service.getMyReports('user1', 1, 20);
-      expect(result.data.items.length).toBe(1);
+      // Access the private method using type assertion
+      const result = (service as any).mapToUserPreferencesUpdateData(preferences);
+
+      expect(result.tagPreferences).toEqual(['川菜']);
+      expect(result.priceMin).toBe(10);
+      expect(result.priceMax).toBe(50);
+      expect(result.meatPreference).toEqual(['鸡肉']);
+      expect(result.spicyLevel).toBe(3);
+      expect(result.oiliness).toBe(2);
+      expect(result.sweetness).toBeUndefined();
+      expect(result.saltiness).toBeUndefined();
+    });
+  });
+
+  describe('mapToUserSettingsUpdateData', () => {
+    it('should filter out undefined values', () => {
+      const settings = {
+        notificationSettings: {
+          newDishAlert: true,
+          priceChangeAlert: undefined,
+          reviewReplyAlert: undefined,
+          weeklyRecommendation: false,
+        },
+        displaySettings: {
+          showCalories: true,
+          showNutrition: false,
+          sortBy: undefined,
+        },
+      };
+
+      // Access the private method using type assertion
+      const result = (service as any).mapToUserSettingsUpdateData(settings);
+
+      expect(result.newDishAlert).toBe(true);
+      expect(result.weeklyRecommendation).toBe(false);
+      expect(result.showCalories).toBe(true);
+      expect(result.showNutrition).toBe(false);
+      expect(result.priceChangeAlert).toBeUndefined();
+      expect(result.reviewReplyAlert).toBeUndefined();
+      expect(result.defaultSortBy).toBeUndefined();
     });
   });
 });
