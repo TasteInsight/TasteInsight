@@ -42,8 +42,8 @@ export class UserProfileService {
         settings: {
           create: {},
         },
-      } as any,
-      include: { settings: true, preferences: true } as any,
+      },
+      include: { settings: true, preferences: true },
     });
   }
 
@@ -56,7 +56,7 @@ export class UserProfileService {
         favoriteDishes: { select: { dishId: true } },
         reviews: { select: { id: true } },
         comments: { select: { id: true } },
-      } as any,
+      },
     });
 
     if (!user) {
@@ -78,14 +78,8 @@ export class UserProfileService {
   ): Promise<UserProfileResponseDto> {
     const { preferences, settings, ...userData } = updateDto;
 
-    const userUpdatePayload = Object.entries(userData).reduce(
-      (acc, [key, value]) => {
-        if (value !== undefined) {
-          acc[key] = value;
-        }
-        return acc;
-      },
-      {} as Record<string, any>,
+    const userUpdatePayload = Object.fromEntries(
+      Object.entries(userData).filter(([_, value]) => value !== undefined),
     );
 
     if (Object.keys(userUpdatePayload).length > 0) {
@@ -112,7 +106,7 @@ export class UserProfileService {
     // Update Settings if provided
     if (settings) {
       const settingsData = this.mapToUserSettingsUpdateData(settings);
-      await (this.prisma as any).userSetting.upsert({
+      await this.prisma.userSetting.upsert({
         where: { userId },
         create: {
           userId,
@@ -469,8 +463,8 @@ export class UserProfileService {
       type: report.type,
       reason: report.reason,
       status: report.status,
-      handleResult: report.handleResult ? report.handleResult : null,
-      handledBy: report.handledBy ? report.handledBy : null,
+      handleResult: report.handleResult ?? null,
+      handledBy: report.handledBy ?? null,
       createdAt: report.createdAt.toISOString(),
       updatedAt: report.updatedAt.toISOString(),
       handledAt: report.handledAt ? report.handledAt.toISOString() : null,

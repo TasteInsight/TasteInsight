@@ -7,6 +7,7 @@ const mockPrismaService = {
   user: {
     findUnique: jest.fn(),
     update: jest.fn(),
+    create: jest.fn(),
   },
   userPreference: {
     upsert: jest.fn(),
@@ -421,6 +422,131 @@ describe('UserProfileService', () => {
 
       const result = await service.getMyUploads('user1', 1, 20);
       expect(result.data.items.length).toBe(1);
+    });
+  });
+
+  describe('getMyReports', () => {
+    it('should return user reports', async () => {
+      const handledAtDate = new Date('2024-01-01T10:00:00Z');
+      const mockReports = [
+        {
+          id: 'report1',
+          reporterId: 'user1',
+          targetType: 'review',
+          targetId: 'review1',
+          type: 'inappropriate',
+          reason: 'Inappropriate content',
+          status: 'pending',
+          handleResult: null,
+          handledBy: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          handledAt: null,
+          reporter: {
+            id: 'user1',
+            nickname: 'User 1',
+            avatar: 'avatar.jpg',
+          },
+        },
+        {
+          id: 'report2',
+          reporterId: 'user1',
+          targetType: 'comment',
+          targetId: 'comment1',
+          type: 'spam',
+          reason: 'Spam content',
+          status: 'approved',
+          handleResult: 'Content removed',
+          handledBy: 'admin1',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          handledAt: handledAtDate,
+          reporter: {
+            id: 'user1',
+            nickname: 'User 1',
+            avatar: 'avatar.jpg',
+          },
+        },
+      ];
+      mockPrismaService.report.findMany.mockResolvedValue(mockReports);
+      mockPrismaService.report.count.mockResolvedValue(2);
+
+      const result = await service.getMyReports('user1', 1, 20);
+      expect(result.data.items.length).toBe(2);
+      expect(result.data.items[0].id).toBe('report1');
+      expect(result.data.items[0].targetType).toBe('review');
+      expect(result.data.items[0].reporterNickname).toBe('User 1');
+      expect(result.data.items[1].handledAt).toBe(handledAtDate.toISOString());
+    });
+  });
+
+  describe('createUser', () => {
+    it('should create a new user with default preferences and settings', async () => {
+      const mockCreatedUser = {
+        id: 'newUserId',
+        openId: 'test_openid_1234',
+        nickname: '微信用户_1234',
+        allergens: [],
+        preferences: {
+          id: 'pref1',
+          userId: 'newUserId',
+          tagPreferences: [],
+          priceMin: 0,
+          priceMax: 50,
+          meatPreference: [],
+          spicyLevel: 0,
+          sweetness: 0,
+          saltiness: 0,
+          oiliness: 0,
+          canteenPreferences: [],
+          portionSize: 'medium',
+          favoriteIngredients: [],
+          avoidIngredients: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        settings: {
+          id: 'setting1',
+          userId: 'newUserId',
+          newDishAlert: true,
+          priceChangeAlert: false,
+          reviewReplyAlert: true,
+          weeklyRecommendation: true,
+          showCalories: true,
+          showNutrition: false,
+          defaultSortBy: 'rating',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      mockPrismaService.user.create.mockResolvedValue(mockCreatedUser);
+
+      const result = await service.createUser('test_openid_1234');
+
+      expect(mockPrismaService.user.create).toHaveBeenCalledWith({
+        data: {
+          openId: 'test_openid_1234',
+          nickname: '微信用户_1234',
+          allergens: [],
+          preferences: {
+            create: {},
+          },
+          settings: {
+            create: {},
+          },
+        },
+        include: { settings: true, preferences: true },
+      });
+
+      expect(result.id).toBe('newUserId');
+      expect(result.openId).toBe('test_openid_1234');
+      expect(result.nickname).toBe('微信用户_1234');
+      expect(result.allergens).toEqual([]);
+      expect(result.preferences).toBeDefined();
+      expect(result.settings).toBeDefined();
     });
   });
 

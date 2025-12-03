@@ -50,10 +50,41 @@ describe('UserProfileController (e2e)', () => {
       return request(app.getHttpServer()).get('/user/profile').expect(401);
     });
 
-    it('should return 404 for non-existent user', async () => {
-      // Skip this test as JWT validation happens before user lookup
-      // In real scenarios, invalid tokens are caught by auth middleware
-      expect(true).toBe(true);
+    it('should handle non-existent user gracefully', async () => {
+      // Test that when a user referenced in JWT doesn't exist,
+      // the API handles it appropriately (either 404 or 401)
+      // This simulates the case where a user was deleted after token was issued
+
+      // First, create a temporary user
+      const tempUser = await prisma.user.create({
+        data: {
+          openId: 'temp_test_user_openid',
+          nickname: 'Temp Test User',
+          allergens: [],
+          preferences: { create: {} },
+          settings: { create: {} },
+        },
+      });
+
+      // Get a token for this user
+      const tempLoginResponse = await request(app.getHttpServer())
+        .post('/auth/wechat/login')
+        .send({ code: 'temp_test_code' });
+
+      const tempToken = tempLoginResponse.body.data?.token?.accessToken;
+
+      // Delete the user
+      await prisma.user.delete({ where: { id: tempUser.id } });
+
+      // Now try to access profile with the token for deleted user
+      // This should either return 404 (user not found) or 401 (unauthorized)
+      const response = await request(app.getHttpServer())
+        .get('/user/profile')
+        .set('Authorization', `Bearer ${tempToken}`)
+        .expect((res) => {
+          // Should be either 404 (user not found) or 401 (token invalid)
+          expect([401, 404]).toContain(res.status);
+        });
     });
   });
 
@@ -153,9 +184,34 @@ describe('UserProfileController (e2e)', () => {
     });
 
     it('should update only settings without preferences', () => {
-      // Skip this test due to DTO validation complexity
-      // The functionality is covered by other tests
-      expect(true).toBe(true);
+      const updateData = {
+        settings: {
+          notificationSettings: {
+            newDishAlert: true,
+            priceChangeAlert: false,
+            reviewReplyAlert: true,
+            weeklyRecommendation: false,
+          },
+          displaySettings: {
+            showCalories: true,
+            showNutrition: false,
+            sortBy: 'rating',
+          },
+        },
+      };
+
+      return request(app.getHttpServer())
+        .put('/user/profile')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send(updateData)
+        .expect(200)
+        .expect((res) => {
+          expect(res.body.code).toBe(200);
+          expect(res.body.data.settings.notificationSettings.newDishAlert).toBe(
+            true,
+          );
+          expect(res.body.data.settings.displaySettings.sortBy).toBe('rating');
+        });
     });
 
     it('should handle partial preference updates with undefined values', () => {
