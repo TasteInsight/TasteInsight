@@ -84,7 +84,9 @@ export const useUserStore = defineStore('user', () => {
 
         userInfo.value = safeUser;
         uni.setStorageSync('userInfo', JSON.stringify(safeUser));
-        return safeUser;
+        // 确保获取最新的profile数据
+        await fetchProfileAction();
+        return userInfo.value;
       }
 
       // 情况2：后端未返回用户信息，仅返回 token，则使用 profile 接口获取
