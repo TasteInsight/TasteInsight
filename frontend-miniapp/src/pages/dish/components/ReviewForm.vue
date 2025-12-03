@@ -27,7 +27,9 @@
       </view>
     </view>
 
+    <!-- 评价弹窗 -->
     <scroll-view 
+      v-if="!showResumeDialog"
       class="review-form-container" 
       scroll-y 
       :scroll-with-animation="true"
@@ -235,11 +237,16 @@ onUnmounted(() => {
 });
 
 const handleClose = () => {
-  // 保存评价状态（如果有内容）
-  if (rating.value > 0 || content.value.trim() || hasFlavorSelection.value) {
-    saveReviewState(props.dishId);
+  if (showResumeDialog.value) {
+    // 如果显示恢复对话框，直接关闭整个组件
+    emit('close');
+  } else {
+    // 如果显示评价弹窗，保存评价状态（如果有内容）
+    if (rating.value > 0 || content.value.trim() || hasFlavorSelection.value) {
+      saveReviewState(props.dishId);
+    }
+    emit('close');
   }
-  emit('close');
 };
 
 const handleSubmit = () => {
