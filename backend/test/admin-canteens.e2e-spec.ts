@@ -277,6 +277,148 @@ describe('AdminCanteensController (e2e)', () => {
       await prisma.dish.delete({ where: { id: testDish.id } });
       await prisma.canteen.delete({ where: { id: testCanteen.id } });
     });
+
+    it('should sync dish windowName and windowNumber when window name or number is updated', async () => {
+      // Create test canteen with window
+      const testCanteen = await prisma.canteen.create({
+        data: {
+          name: 'Window Sync Test Canteen',
+          position: 'Test Position',
+          description: 'Test Description',
+          images: [],
+          openingHours: [],
+        },
+      });
+
+      const testWindow = await prisma.window.create({
+        data: {
+          canteenId: testCanteen.id,
+          name: 'Test Window',
+          number: '1',
+          position: 'Test Position',
+          description: 'Test Window Description',
+          tags: ['test'],
+        },
+      });
+
+      // Create test dish
+      const testDish = await prisma.dish.create({
+        data: {
+          name: 'Window Sync Test Dish',
+          tags: ['test'],
+          price: 10.0,
+          priceUnit: '元',
+          description: 'Test dish for window sync',
+          images: [],
+          ingredients: ['test'],
+          allergens: [],
+          canteenId: testCanteen.id,
+          canteenName: testCanteen.name,
+          windowId: testWindow.id,
+          windowName: testWindow.name,
+          windowNumber: testWindow.number,
+          floorName: '',
+          availableMealTime: ['lunch'],
+          status: 'online',
+        },
+      });
+
+      // Update window name and number
+      await request(app.getHttpServer())
+        .put(`/admin/canteens/${testCanteen.id}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          windows: [{
+            id: testWindow.id,
+            name: 'Updated Test Window',
+            number: '2',
+            position: 'Test Position',
+            description: 'Test Window Description',
+            tags: ['test'],
+          }]
+        })
+        .expect(200);
+
+      // Check dish windowName and windowNumber were updated
+      const updatedDish = await prisma.dish.findUnique({
+        where: { id: testDish.id },
+      });
+      expect(updatedDish.windowName).toBe('Updated Test Window');
+      expect(updatedDish.windowNumber).toBe('2');
+
+      // Cleanup
+      await prisma.dish.delete({ where: { id: testDish.id } });
+      await prisma.window.delete({ where: { id: testWindow.id } });
+      await prisma.canteen.delete({ where: { id: testCanteen.id } });
+    });
+
+    it('should sync dish floorName and floorLevel when floor name or level is updated', async () => {
+      // Create test canteen with floor
+      const testCanteen = await prisma.canteen.create({
+        data: {
+          name: 'Floor Sync Test Canteen',
+          position: 'Test Position',
+          description: 'Test Description',
+          images: [],
+          openingHours: [],
+        },
+      });
+
+      const testFloor = await prisma.floor.create({
+        data: {
+          canteenId: testCanteen.id,
+          level: '1',
+          name: 'Test Floor',
+        },
+      });
+
+      // Create test dish
+      const testDish = await prisma.dish.create({
+        data: {
+          name: 'Floor Sync Test Dish',
+          tags: ['test'],
+          price: 10.0,
+          priceUnit: '元',
+          description: 'Test dish for floor sync',
+          images: [],
+          ingredients: ['test'],
+          allergens: [],
+          canteenId: testCanteen.id,
+          canteenName: testCanteen.name,
+          floorId: testFloor.id,
+          floorName: testFloor.name,
+          floorLevel: testFloor.level,
+          windowName: '',
+          availableMealTime: ['lunch'],
+          status: 'online',
+        },
+      });
+
+      // Update floor name and level
+      await request(app.getHttpServer())
+        .put(`/admin/canteens/${testCanteen.id}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          floors: [{
+            id: testFloor.id,
+            level: '2',
+            name: 'Updated Test Floor',
+          }]
+        })
+        .expect(200);
+
+      // Check dish floorName and floorLevel were updated
+      const updatedDish = await prisma.dish.findUnique({
+        where: { id: testDish.id },
+      });
+      expect(updatedDish.floorName).toBe('Updated Test Floor');
+      expect(updatedDish.floorLevel).toBe('2');
+
+      // Cleanup
+      await prisma.dish.delete({ where: { id: testDish.id } });
+      await prisma.floor.delete({ where: { id: testFloor.id } });
+      await prisma.canteen.delete({ where: { id: testCanteen.id } });
+    });
   });
 
 
