@@ -12,6 +12,11 @@ else
 fi
 
 if [ "$IMPORT_DATA" = "true" ]; then
+  echo "Checking for Excel file..."
+  if [ ! -f "prisma/DishesofZijingYuan.xlsx" ]; then
+    echo "Error: Excel file prisma/DishesofZijingYuan.xlsx not found!"
+    exit 1
+  fi
   echo "Running import_canteens.ts..."
   ./node_modules/.bin/ts-node prisma/import_canteens.ts
 fi
