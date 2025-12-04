@@ -10,10 +10,17 @@ const prisma = new PrismaClient();
 async function importCanteensFromExcel() {
   console.log('Starting import from Excel...');
   const filePath = path.join(process.cwd(), 'prisma', 'DishesofZijingYuan.xlsx');
-  const workbook = XLSX.readFile(filePath);
-  const sheetName = workbook.SheetNames[0];
-  const sheet = workbook.Sheets[sheetName];
-  const data = XLSX.utils.sheet_to_json(sheet);
+
+  let data: any[];
+  try {
+    const workbook = XLSX.readFile(filePath);
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    data = XLSX.utils.sheet_to_json(sheet);
+  } catch (error) {
+    console.error('Failed to read Excel file:', error);
+    throw new Error(`Could not read Excel file at ${filePath}. Please ensure the file exists and is valid.`);
+  }
 
   const parseMealTime = (str: string): string[] => {
     const times: string[] = [];
@@ -28,10 +35,26 @@ async function importCanteensFromExcel() {
   const parsePrice = (val: any): number => {
     if (typeof val === 'number') return val;
     if (typeof val === 'string') {
-      return parseFloat(val.replace('元', '').trim());
+      const parsed = parseFloat(val.replace('元', '').trim());
+      return isNaN(parsed) ? 0 : parsed;
     }
     return 0;
   };
+
+  // Preload existing data to avoid N+1 queries
+  console.log('Preloading existing data...');
+  const [existingCanteens, existingFloors, existingWindows] = await Promise.all([
+    prisma.canteen.findMany(),
+    prisma.floor.findMany(),
+    prisma.window.findMany(),
+  ]);
+
+  const canteenMap = new Map(existingCanteens.map(c => [c.name, c]));
+  const floorMap = new Map(existingFloors.map(f => [`${f.canteenId}:${f.name}`, f]));
+  const windowMap = new Map(existingWindows.map(w => [`${w.canteenId}:${w.name}`, w]));
+
+  // Track auto-generated window numbers per canteen
+  const windowNumberCounters = new Map<string, number>();
 
   for (const row of data as any[]) {
     const canteenName = row['食堂'];
@@ -47,7 +70,8 @@ async function importCanteensFromExcel() {
 
     if (!canteenName || !dishName) continue;
 
-    let canteen = await prisma.canteen.findFirst({ where: { name: canteenName } });
+    // Get or create canteen
+    let canteen = canteenMap.get(canteenName) as any;
     if (!canteen) {
       canteen = await prisma.canteen.create({
         data: {
@@ -55,6 +79,7 @@ async function importCanteensFromExcel() {
           openingHours: {},
         },
       });
+      canteenMap.set(canteenName, canteen);
       console.log(`Created canteen: ${canteenName}`);
     }
 
@@ -64,9 +89,9 @@ async function importCanteensFromExcel() {
     if (floorName && floorName.includes('四楼')) level = '4';
     if (floorName && floorName.includes('地下')) level = '-1';
 
-    let floor = await prisma.floor.findFirst({
-      where: { canteenId: canteen.id, name: floorName },
-    });
+    // Get or create floor
+    const floorKey = `${canteen.id}:${floorName}`;
+    let floor = floorMap.get(floorKey) as any;
     if (!floor) {
       floor = await prisma.floor.create({
         data: {
@@ -75,14 +100,23 @@ async function importCanteensFromExcel() {
           level: level,
         },
       });
+      floorMap.set(floorKey, floor);
       console.log(`Created floor: ${floorName}`);
     }
 
-    let window = await prisma.window.findFirst({
-      where: { canteenId: canteen.id, name: windowName },
-    });
+    // Get or create window
+    const windowKey = `${canteen.id}:${windowName}`;
+    let window = windowMap.get(windowKey) as any;
     if (!window) {
-      const num = windowNumber || `W-${Math.floor(Math.random() * 10000)}`;
+      let num = windowNumber;
+      if (!num) {
+        // Use counter-based auto-generation instead of random
+        const counterKey = canteen.id;
+        const currentCount = windowNumberCounters.get(counterKey) || 0;
+        const nextCount = currentCount + 1;
+        windowNumberCounters.set(counterKey, nextCount);
+        num = `AUTO-${nextCount}`;
+      }
       window = await prisma.window.create({
         data: {
           canteenId: canteen.id,
@@ -91,6 +125,7 @@ async function importCanteensFromExcel() {
           number: num.toString(),
         },
       });
+      windowMap.set(windowKey, window);
       console.log(`Created window: ${windowName}`);
     }
 
