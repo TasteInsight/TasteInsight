@@ -1,0 +1,165 @@
+name: CI - Backend
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/ci-backend.yml'
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/ci-backend.yml'
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '9'
+  # CI 测试数据库配置（非敏感，仅用于临时测试容器）
+  CI_DB_USER: ci_test_user
+  CI_DB_PASSWORD: ci_test_password_12345
+  CI_DB_NAME: tasteinsight_ci_test
+  CI_DATABASE_URL: postgresql://ci_test_user:ci_test_password_12345@localhost:5432/tasteinsight_ci_test?schema=public
+
+defaults:
+  run:
+    working-directory: ./backend
+
+jobs:
+  lint-and-build:
+    name: Lint & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run ESLint
+        run: pnpm lint
+
+      - name: Check formatting
+        run: pnpm format --check
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Build
+        run: pnpm build
+
+  test:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: lint-and-build
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: ${{ env.CI_DB_USER }}
+          POSTGRES_PASSWORD: ${{ env.CI_DB_PASSWORD }}
+          POSTGRES_DB: ${{ env.CI_DB_NAME }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Run database migrations
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ env.CI_DATABASE_URL }}
+
+      - name: Seed database
+        run: pnpm exec ts-node prisma/seed.ts
+        env:
+          DATABASE_URL: ${{ env.CI_DATABASE_URL }}
+
+      - name: Run E2E tests
+        run: pnpm test:e2e:cov
+        env:
+          # Application
+          APP_PORT: 3000
+          APP_URL: http://localhost:3000
+          # Database
+          DATABASE_URL: ${{ env.CI_DATABASE_URL }}
+          # Admin（CI 测试用固定值）
+          INITIAL_ADMIN_USERNAME: ci_admin
+          INITIAL_ADMIN_PASSWORD: ci_admin_password_12345
+          # JWT（CI 测试用固定值）
+          JWT_SECRET: ci-jwt-secret-for-testing-only-32chars
+          JWT_EXPIRATION_TIME: 3600s
+          JWT_REFRESH_SECRET: ci-jwt-refresh-secret-testing-32ch
+          JWT_REFRESH_EXPIRATION_TIME: 7d
+          # WeChat（CI 测试用 mock 值）
+          WECHAT_APPID: wx_ci_test_appid
+          WECHAT_SECRET: wx_ci_test_secret
+          # Upload
+          UPLOAD_STORAGE_TYPE: local
+          UPLOAD_LOCAL_PATH: ./uploads
+          UPLOAD_BASE_URL: http://localhost:3000/images
+          UPLOAD_MAX_FILE_SIZE: 10485760
+          # Mock auth for testing
+          ENABLE_MOCK_AUTH: true
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./backend/coverage-e2e/lcov.info
+          flags: e2e-tests
+          fail_ci_if_error: false
+          working-directory: ${{ github.workspace }}
+
+  docker-build:
+    name: Docker Build Test
+    runs-on: ubuntu-latest
+    needs: [lint-and-build, test]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: false
+          tags: tasteinsight-backend:ci-test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
