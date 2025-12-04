@@ -228,7 +228,57 @@ describe('AdminCanteensController (e2e)', () => {
         .send({ name: 'New Name' })
         .expect(404);
     });
+
+    it('should sync dish canteenName when canteen name is updated', async () => {
+      // Create test canteen
+      const testCanteen = await prisma.canteen.create({
+        data: {
+          name: 'Sync Test Canteen',
+          position: 'Test Position',
+          description: 'Test Description',
+          images: [],
+          openingHours: [],
+        },
+      });
+
+      // Create test dish
+      const testDish = await prisma.dish.create({
+        data: {
+          name: 'Sync Test Dish',
+          tags: ['test'],
+          price: 10.0,
+          priceUnit: '元',
+          description: 'Test dish for sync',
+          images: [],
+          ingredients: ['test'],
+          allergens: [],
+          canteenId: testCanteen.id,
+          canteenName: testCanteen.name,
+          windowName: '',
+          availableMealTime: ['lunch'],
+          status: 'online',
+        },
+      });
+
+      // Update canteen name
+      await request(app.getHttpServer())
+        .put(`/admin/canteens/${testCanteen.id}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({ name: 'Updated Sync Test Canteen' })
+        .expect(200);
+
+      // Check dish canteenName was updated
+      const updatedDish = await prisma.dish.findUnique({
+        where: { id: testDish.id },
+      });
+      expect(updatedDish.canteenName).toBe('Updated Sync Test Canteen');
+
+      // Cleanup
+      await prisma.dish.delete({ where: { id: testDish.id } });
+      await prisma.canteen.delete({ where: { id: testCanteen.id } });
+    });
   });
+
 
   describe('/admin/canteens/:id (DELETE)', () => {
     it('should return 404 when deleting non-existent canteen', async () => {
