@@ -2,8 +2,32 @@
   <view class="min-h-screen bg-white rounded-lg overflow-hidden flex flex-col">
     <!-- 主内容区 -->
     <view class="flex-1 overflow-y-auto px-4 hide-scrollbar">
+      <!-- 搜索栏 -->
       <SearchBar />
 
+      <!-- 菜品图片轮播 -->
+      <view  class="mb-4">
+        <swiper
+          class="dish-image-swiper"
+          :indicator-dots="dishImages.length > 1"
+          :autoplay="true"
+          :interval="3000"
+          :circular="true"
+          indicator-color="rgba(255, 255, 255, 0.5)"
+          indicator-active-color="#8B5CF6"
+        >
+          <swiper-item v-for="(image, index) in dishImages" :key="index" class="relative overflow-hidden rounded-lg">
+            <image
+              :src="image"
+              class="w-full h-48 object-cover"
+              mode="aspectFill"
+            />
+            <!-- 渐变遮罩 -->
+            <view class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></view>
+          </swiper-item>
+        </swiper>
+      </view>
+      
       <!-- 食堂栏目 -->
       <view v-if="canteenStore.loading" class="text-center py-4 text-gray-500">正在加载食堂...</view>
       <view v-else-if="canteenStore.error" class="text-center py-4 text-red-500">{{ canteenStore.error }}</view>
@@ -74,6 +98,7 @@ import { useCanteenStore } from '@/store/modules/use-canteen-store';
 import { useDishesStore } from '@/store/modules/use-dishes-store';
 import { useUserStore } from '@/store/modules/use-user-store';
 import type { GetDishesRequest } from '@/types/api';
+import { getDishesImages } from '@/api/modules/dish';
 
 
 // --- 底部导航数据 (保持不变) ---
@@ -87,6 +112,9 @@ const userStore = useUserStore();
 
 // 当前筛选条件
 const currentFilter = ref<GetDishesRequest['filter']>({});
+
+// 菜品图片列表
+const dishImages = ref<string[]>([]);
 
 // 是否有激活的筛选条件
 const hasActiveFilters = computed(() => {
@@ -113,6 +141,20 @@ const currentSwiperIndex = ref(0);
 
 const handleSwiperChange = (e: any) => {
   currentSwiperIndex.value = e.detail.current;
+};
+
+/**
+ * 获取菜品图片列表
+ */
+const fetchDishImages = async () => {
+  try {
+    const response = await getDishesImages();
+    if (response.code === 200 && response.data) {
+      dishImages.value = response.data.images || [];
+    }
+  } catch (error) {
+    console.error('获取菜品图片失败:', error);
+  }
 };
 
 /**
@@ -262,6 +304,9 @@ onMounted(async () => {
   // 4. 调用 actions (保持不变)
   canteenStore.fetchCanteenList({ page: 1, pageSize: 10 });
 
+  // 获取菜品图片
+  await fetchDishImages();
+
   // 先获取用户信息，然后根据用户设置获取推荐菜品
   await userStore.fetchProfileAction();
   
@@ -306,6 +351,9 @@ watch(
  */
 onPullDownRefresh(async () => {
   try {
+    // 重新获取菜品图片
+    await fetchDishImages();
+    
     // 重新获取用户信息
     await userStore.fetchProfileAction();
     
@@ -347,6 +395,14 @@ onPullDownRefresh(async () => {
 /* 仅保留在小程序与浏览器中隐藏滚动条的必要样式 */
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* 菜品图片轮播样式 */
+.dish-image-swiper {
+  width: 100%;
+  height: 192px; /* h-48 = 192px */
+  border-radius: 8px;
+  overflow: hidden;
+}
 
 /* 兼容旧类名的最小 CSS（使用普通 CSS 避免 @apply 编译问题） */
 .nav-item {
