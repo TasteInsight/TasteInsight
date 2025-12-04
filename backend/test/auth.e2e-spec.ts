@@ -88,7 +88,7 @@ describe('AuthController (e2e)', () => {
       expect(response.body.data.token.accessToken).toBeDefined();
       expect(response.body.data.token.refreshToken).toBeDefined();
       expect(response.body.data.user).toBeDefined();
-      expect(response.body.data.user.nickname).toBe('Baseline User');
+      expect(response.body.data.user.nickname).toBe('Basic Update Only');
     });
 
     it('should return tokens for secondary user (from seed)', async () => {
@@ -256,7 +256,7 @@ describe('AuthController (e2e)', () => {
       expect(response.body.code).toBe(200);
       expect(response.body.message).toBe('刷新成功');
       expect(response.body.data.user).toBeDefined();
-      expect(response.body.data.user.nickname).toBe('Baseline User');
+      expect(response.body.data.user.nickname).toBe('Basic Update Only');
     });
 
     it('should fail with 401 if no token is provided', () => {
