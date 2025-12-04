@@ -6,9 +6,53 @@ const baseURL = process.env.VITE_API_BASE_URL || 'http://localhost:3000/';
 
 test.describe('Admin Dish Management', () => {
   let createdDishId: string;
+  let apiToken: string;
 
-  test.beforeEach(async ({ page }) => {
+  // Helper to clean up test data by prefix
+  async function cleanupTestData(request: APIRequestContext, token: string, prefix: string) {
+    try {
+      // Clean up dishes
+      const dishesResp = await request.get(`${baseURL}admin/dishes?pageSize=100`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (dishesResp.ok()) {
+        const dishes = await dishesResp.json();
+        const matches = dishes.data.items.filter((d: any) => d.name && d.name.startsWith(prefix));
+        for (const m of matches) {
+          await request.delete(`${baseURL}admin/dishes/${m.id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          }).catch(() => {});
+        }
+      }
+    } catch (e) { /* ignore */ }
+
+    try {
+      // Clean up uploads (pending dishes)
+      const uploadsResp = await request.get(`${baseURL}admin/dishes/uploads/pending?pageSize=100`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (uploadsResp.ok()) {
+        const uploads = await uploadsResp.json();
+        const matches = uploads.data.items.filter((u: any) => u.name && u.name.startsWith(prefix));
+        for (const u of matches) {
+          // Reject or delete the upload - use reject with a reason
+          await request.post(`${baseURL}admin/dishes/uploads/${u.id}/reject`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+            data: { reason: 'E2E test cleanup' }
+          }).catch(() => {});
+        }
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  test.beforeEach(async ({ page, request }) => {
     await loginAsAdmin(page);
+    
+    // Get API token for cleanup
+    apiToken = await getApiToken(request, TEST_ACCOUNTS.superAdmin.username, TEST_ACCOUNTS.superAdmin.password);
+    
+    // Clean up any residual test data before each test
+    await cleanupTestData(request, apiToken, 'E2E Test Dish');
   });
 
   test.afterEach(async ({ request }) => {
@@ -87,13 +131,10 @@ test.describe('Admin Dish Management', () => {
     // Submit
     await page.click('button:has-text("保存菜品信息")');
 
-    // Wait for navigation to edit page which confirms creation
-    await page.waitForURL(/\/edit-dish\/.*/);
-
-    // 2. Approve the dish in ReviewDish page
-    await page.goto('/review-dish');
+    // Wait for navigation to review page (creation now redirects to review)
+    await page.waitForURL('/review-dish');
     
-    // Search for the dish
+    // Search for the dish (already on review page)
     await page.fill('input[placeholder="搜索菜品名称..."]', dishName);
     
     // Wait for the row to appear
@@ -227,12 +268,55 @@ test.describe('Sub-item Creation and Display', () => {
     let createdSubId: string | undefined;
 
     try {
-      // 4. Login and navigate to add sub-item page
+      // 4. Navigate to parent dish edit page and add sub-item through UI
       await loginAsAdmin(page);
-      await page.goto(`/add-sub-dish?parentId=${parentId}&subItemName=${encodeURIComponent(subName)}`);
+      console.log(`Navigating to edit page for parent dish: ${parentId}`);
+      await page.goto(`/edit-dish/${parentId}`);
+
+      // Wait for page to load
+      await page.waitForLoadState('networkidle');
+      
+      // Verify we are on the edit page
+      await expect(page).toHaveURL(new RegExp(`/edit-dish/${parentId}`));
+
+      // Click "添加子项" button
+      console.log('Clicking "添加子项" button...');
+      const addButton = page.locator('button:has-text("添加子项")');
+      await expect(addButton).toBeVisible({ timeout: 10000 });
+      await addButton.click();
+
+      // This should navigate to /add-sub-dish page
+      console.log('Waiting for navigation to /add-sub-dish...');
+      await page.waitForURL(/\/add-sub-dish/, { timeout: 10000 });
+      console.log(`Current URL: ${page.url()}`);
+
+      // Wait for page to load completely
+      await page.waitForLoadState('networkidle');
+
+      // Debug: check for header
+      const header = page.locator('h1');
+      if (await header.isVisible()) {
+        console.log(`Header found: ${await header.textContent()}`);
+      } else {
+        console.log('Header NOT found');
+        // Print body content for debugging
+        console.log('Body content:', await page.content());
+      }
+
+      // Wait for the input field to be visible
+      console.log('Waiting for input field...');
+      // Use a more robust selector based on the label
+      const nameInput = page.locator('label:has-text("菜品名称")').locator('..').locator('input').first();
+      await expect(nameInput).toBeVisible({ timeout: 10000 });
+
+      // Fill the sub-item name
+      await nameInput.fill(subName);
+
+      // Additional wait for Vue to update
+      await page.waitForTimeout(2000);
 
       // Ensure name is present
-      await expect(page.locator('input[placeholder="例如：水煮肉片"]')).toHaveValue(subName);
+      await expect(page.locator('input[placeholder="例如：水煮肉片"]').first()).toHaveValue(subName, { timeout: 10000 });
 
       // Fill price and description
       await page.fill('input[type="number"][placeholder*="15.00"]', '9.9');
