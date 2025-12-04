@@ -224,9 +224,6 @@ jobs:
 
             # 设置镜像标签
             export TAG=dev
-            
-            # 创建 Docker 网络（如不存在）
-            docker network create tasteinsight_net 2>/dev/null || true
 
             # 拉取并启动容器
             docker compose pull
@@ -311,9 +308,6 @@ jobs:
 
             # 设置镜像标签
             export TAG=main
-            
-            # 创建 Docker 网络（如不存在）
-            docker network create tasteinsight_net 2>/dev/null || true
 
             # 拉取并启动容器
             docker compose pull

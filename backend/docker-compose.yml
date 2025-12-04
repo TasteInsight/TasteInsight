@@ -1,7 +1,7 @@
 services:
   backend:
     build: .
-    image: ghcr.io/tasteinsight/tasteinsight:${TAG:-latest}
+    image: ghcr.io/tasteinsight/tasteinsight-backend:${TAG:-latest}
     env_file: .env
     environment:
       # Override for Docker networking
@@ -66,6 +66,6 @@ volumes:
 
 networks:
   tasteinsight_net:
-    external: true
+    name: tasteinsight_net
   db_net:
     internal: true
