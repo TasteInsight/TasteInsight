@@ -31,7 +31,8 @@
 		{
 			"path": "pages/canteen/index",
 			"style": {
-				"navigationBarTitleText": "食堂"
+				"navigationBarTitleText": "食堂",
+				"enablePullDownRefresh": true
 			}
 		},
 		{
@@ -45,7 +46,7 @@
 			"style": {
 				"navigationBarTitleText": "菜品详情",
 				"disableScroll": false,
-				"enablePullDownRefresh": false,
+				"enablePullDownRefresh": true,
 				"navigationStyle": "default"
 			}
 		},
@@ -85,7 +86,8 @@
 		{
 			"path": "pages/profile/index",
 			"style": {
-				"navigationBarTitleText": "我的"
+				"navigationBarTitleText": "我的",
+				"enablePullDownRefresh": true
 			}
 		},
 
@@ -140,19 +142,22 @@
 		{
 			"path": "pages/profile/my-reviews/index",
 			"style": {
-				"navigationBarTitleText": "我的评价"
+				"navigationBarTitleText": "我的评价",
+				"enablePullDownRefresh": true
 			}
 		},
 		{
 			"path": "pages/profile/history/index",
 			"style": {
-				"navigationBarTitleText": "历史浏览"
+				"navigationBarTitleText": "历史浏览",
+				"enablePullDownRefresh": true
 			}
 		},
 		{
 			"path": "pages/profile/my-favorites/index",
 			"style": {
-				"navigationBarTitleText": "我的收藏"
+				"navigationBarTitleText": "我的收藏",
+				"enablePullDownRefresh": true
 			}
 		},
 		{

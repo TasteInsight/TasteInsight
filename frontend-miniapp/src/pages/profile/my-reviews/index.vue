@@ -45,6 +45,7 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue';
+import { onPullDownRefresh } from '@dcloudio/uni-app';
 import ReviewCard from './components/ReviewCard.vue';
 import { useMyReviews } from '@/pages/profile/my-reviews/composables/use-my-reviews';
 
@@ -52,6 +53,26 @@ const { reviews, loading, hasMore, fetchReviews, loadMore } = useMyReviews();
 
 onMounted(() => {
   fetchReviews();
+});
+
+// 下拉刷新处理
+onPullDownRefresh(async () => {
+  try {
+    await fetchReviews(true); // 传入 true 表示刷新
+    uni.showToast({
+      title: '刷新成功',
+      icon: 'success',
+      duration: 1500
+    });
+  } catch (err) {
+    console.error('下拉刷新失败:', err);
+    uni.showToast({
+      title: '刷新失败',
+      icon: 'none'
+    });
+  } finally {
+    uni.stopPullDownRefresh();
+  }
 });
 
 /**

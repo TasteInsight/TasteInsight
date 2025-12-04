@@ -91,11 +91,34 @@
 </template>
 
 <script setup lang="ts">
+import { onPullDownRefresh } from '@dcloudio/uni-app';
 import UserHeader from './components/UserHeader.vue';
 import { useProfile } from './composables/use-profile';
 
 // 从 use-profile 中获取所需的状态和方法
-const { userInfo, isLoggedIn, loading, handleLogout } = useProfile();
+const { userInfo, isLoggedIn, loading, handleLogout, fetchProfile } = useProfile();
+
+// 下拉刷新处理
+onPullDownRefresh(async () => {
+  try {
+    if (isLoggedIn.value) {
+      await fetchProfile();
+    }
+    uni.showToast({
+      title: '刷新成功',
+      icon: 'success',
+      duration: 1500
+    });
+  } catch (err) {
+    console.error('下拉刷新失败:', err);
+    uni.showToast({
+      title: '刷新失败',
+      icon: 'none'
+    });
+  } finally {
+    uni.stopPullDownRefresh();
+  }
+});
 
 const menuItems = [
   { id: 'reviews', icon: 'mdi:star-outline', title: '我的评价', path: '/pages/profile/my-reviews/index' },
