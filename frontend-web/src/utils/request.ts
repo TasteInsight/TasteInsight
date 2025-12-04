@@ -13,6 +13,22 @@ const getAuthStore = () => {
   return authStore
 }
 
+// 导航到登录页
+const navigateToLogin = () => {
+  const currentPath = window.location.pathname + window.location.search
+  // 动态导入 router 避免循环依赖
+  import('@/router').then(module => {
+    const router = module.default
+    router.push({
+      path: '/login',
+      query: { redirect: currentPath }
+    })
+  }).catch(() => {
+    // 降级处理
+    window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`
+  })
+}
+
 /**
  * 创建 axios 实例
  */
@@ -110,6 +126,7 @@ service.interceptors.response.use(
           }
           processQueue(new Error('认证已过期，请重新登录'), null)
           isRefreshing = false
+          navigateToLogin()
           return Promise.reject(new Error('认证已过期，请重新登录'))
         }
 
@@ -149,10 +166,28 @@ service.interceptors.response.use(
             sessionStorage.removeItem('admin_refresh_token')
           }
           processQueue(refreshError, null)
+          navigateToLogin()
           return Promise.reject(new Error('认证已过期，请重新登录'))
         } finally {
           isRefreshing = false
         }
+      }
+
+      // 如果重试后依然是 401（或者非登录接口直接返回401），强制登出并跳转登录
+      // 上面的 if 块如果执行成功会 return Promise，不会执行到这里
+      // 所以这里捕获的是：重试后的 401，或者不满足刷新条件的 401
+      if (status === 401 && !isLoginRequest) {
+        const store = getAuthStore()
+        if (store) {
+          store.logout()
+        } else {
+          localStorage.removeItem('admin_token')
+          localStorage.removeItem('admin_refresh_token')
+          sessionStorage.removeItem('admin_token')
+          sessionStorage.removeItem('admin_refresh_token')
+        }
+        navigateToLogin()
+        return Promise.reject(new Error('认证已过期，请重新登录'))
       }
       
       // 403 无权限
