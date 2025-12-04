@@ -41,7 +41,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { onLoad } from '@dcloudio/uni-app';
+import { onLoad, onPullDownRefresh } from '@dcloudio/uni-app';
 import { useCanteenData } from './composables/use-canteen-data';
 import CanteenSearchBar from './components/CanteenSearchBar.vue';
 import CanteenFilterBar from './components/CanteenFilterBar.vue';
@@ -53,6 +53,7 @@ import type { GetDishesRequest } from '@/types/api';
 const { canteenInfo, loading, error, windows, dishes, init, fetchDishes } = useCanteenData();
 
 const currentCanteenId = ref('');
+const currentFilter = ref<GetDishesRequest['filter']>({});
 
 // 页面加载时获取参数并初始化
 onLoad((options: any) => {
@@ -62,10 +63,37 @@ onLoad((options: any) => {
   }
 });
 
+// 下拉刷新处理
+onPullDownRefresh(async () => {
+  try {
+    if (currentCanteenId.value) {
+      await init(currentCanteenId.value);
+      // 如果有筛选条件，重新应用
+      if (Object.keys(currentFilter.value).length > 0) {
+        await fetchDishes(currentCanteenId.value, currentFilter.value);
+      }
+    }
+    uni.showToast({
+      title: '刷新成功',
+      icon: 'success',
+      duration: 1500
+    });
+  } catch (err) {
+    console.error('下拉刷新失败:', err);
+    uni.showToast({
+      title: '刷新失败',
+      icon: 'none'
+    });
+  } finally {
+    uni.stopPullDownRefresh();
+  }
+});
+
 const goToDishDetail = (id: string) => uni.navigateTo({ url: `/pages/dish/index?id=${id}` });
 const goToWindow = (id: string) => uni.navigateTo({ url: `/pages/window/index?id=${id}` });
 
 const handleFilterChange = (filter: GetDishesRequest['filter']) => {
+  currentFilter.value = filter;
   if (currentCanteenId.value) {
     fetchDishes(currentCanteenId.value, filter);
   }

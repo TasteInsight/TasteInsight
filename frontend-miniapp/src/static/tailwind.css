@@ -574,10 +574,6 @@
   height: 1px
 }
 
-.h-3\.5 {
-  height: 0.875rem
-}
-
 .max-h-\[72vh\] {
   max-height: 72vh
 }
@@ -664,10 +660,6 @@
 
 .w-px {
   width: 1px
-}
-
-.w-3\.5 {
-  width: 0.875rem
 }
 
 .min-w-0 {

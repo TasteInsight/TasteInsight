@@ -41,6 +41,7 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue';
+import { onPullDownRefresh } from '@dcloudio/uni-app';
 import DishCard from '@/pages/profile/components/ProfileDishCard.vue';
 import { useHistory } from '@/pages/profile/history/composables/use-history';
 
@@ -48,6 +49,26 @@ const { dishes, loading, hasMore, fetchHistory, loadMore } = useHistory();
 
 onMounted(() => {
   fetchHistory();
+});
+
+// 下拉刷新处理
+onPullDownRefresh(async () => {
+  try {
+    await fetchHistory(true); // 传入 true 表示刷新
+    uni.showToast({
+      title: '刷新成功',
+      icon: 'success',
+      duration: 1500
+    });
+  } catch (err) {
+    console.error('下拉刷新失败:', err);
+    uni.showToast({
+      title: '刷新失败',
+      icon: 'none'
+    });
+  } finally {
+    uni.stopPullDownRefresh();
+  }
 });
 
 /**

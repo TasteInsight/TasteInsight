@@ -83,3 +83,6 @@ nginx.conf
 
 # SSL Certs
 certs/
+
+# xlsx
+*.xlsx
