@@ -102,7 +102,7 @@ export class AdminCanteensService {
     id: string,
     updateCanteenDto: UpdateCanteenDto,
   ): Promise<CanteenResponseDto> {
-    const { windows, floors, ...canteenData } = updateCanteenDto;
+    const { windows, floors, ...canteenData }: { windows?: any[], floors?: any[], name?: string, description?: string, position?: string, images?: string[], openingHours?: any } = updateCanteenDto;
 
     const existingCanteen = await this.prisma.canteen.findUnique({
       where: { id },
@@ -113,9 +113,11 @@ export class AdminCanteensService {
 
     // Update basic info
     const updatedFields: any = {};
-    if (canteenData.name) updatedFields.name = canteenData.name;
-    if (canteenData.description) updatedFields.description = canteenData.description;
-    if (canteenData.openingHours) updatedFields.openingHours = canteenData.openingHours as any;
+    if (canteenData.name !== undefined) updatedFields.name = canteenData.name;
+    if (canteenData.description !== undefined) updatedFields.description = canteenData.description;
+    if (canteenData.position !== undefined) updatedFields.position = canteenData.position;
+    if (canteenData.images !== undefined) updatedFields.images = canteenData.images;
+    if (canteenData.openingHours !== undefined) updatedFields.openingHours = canteenData.openingHours as any;
 
     await this.prisma.canteen.update({
       where: { id },
@@ -153,20 +155,23 @@ export class AdminCanteensService {
         (id) => !providedIds.includes(id),
       );
 
-      // 3. Execute updates
+      // 3. Prepare operations for transaction
+      const operations: any[] = [];
+
       // Delete removed windows
       if (windowsToDelete.length > 0) {
-        // Note: This might fail if dishes are linked and onDelete is not Cascade/SetNull.
-        // Assuming it's safe or we want it to fail if there are dependencies.
-        await this.prisma.window.deleteMany({
-          where: {
-            id: { in: windowsToDelete },
-            canteenId: id, // Safety check
-          },
-        });
+        operations.push(
+          this.prisma.window.deleteMany({
+            where: {
+              id: { in: windowsToDelete },
+              canteenId: id, // Safety check
+            },
+          })
+        );
       }
 
-      // Update existing windows
+      // Update existing windows and collect sync operations
+      const dishSyncs: any[] = [];
       for (const window of windowsToUpdate) {
         const existingWindow = existingWindows.find(w => w.id === window.id);
         const updatedData: any = {
@@ -177,36 +182,46 @@ export class AdminCanteensService {
         };
         if (window.number !== undefined) updatedData.number = window.number;
 
-        await this.prisma.window.update({
-          where: { id: window.id },
-          data: updatedData,
-        });
+        operations.push(
+          this.prisma.window.update({
+            where: { id: window.id },
+            data: updatedData,
+          })
+        );
 
         // If window name or number changed, sync dish windowName and windowNumber
-        if (existingWindow && (existingWindow.name !== window.name || existingWindow.number !== window.number)) {
-          await this.prisma.dish.updateMany({
-            where: { windowId: window.id },
-            data: {
-              windowName: window.name,
-              windowNumber: window.number ?? '',
-            },
-          });
+        if (existingWindow && (existingWindow.name !== window.name || 
+            (window.number !== undefined && existingWindow.number !== window.number))) {
+          dishSyncs.push(
+            this.prisma.dish.updateMany({
+              where: { windowId: window.id },
+              data: {
+                windowName: window.name,
+                ...(window.number !== undefined ? { windowNumber: window.number } : {})
+              },
+            })
+          );
         }
       }
 
       // Create new windows
       if (windowsToCreate.length > 0) {
-        await this.prisma.window.createMany({
-          data: windowsToCreate.map((w) => ({
-            canteenId: id,
-            name: w.name,
-            number: w.number ?? '',
-            position: w.position,
-            description: w.description,
-            tags: w.tags || [],
-          })),
-        });
+        operations.push(
+          this.prisma.window.createMany({
+            data: windowsToCreate.map((w) => ({
+              canteenId: id,
+              name: w.name,
+              number: w.number ?? '',
+              position: w.position,
+              description: w.description,
+              tags: w.tags || [],
+            })),
+          })
+        );
       }
+
+      // Execute all operations in transaction
+      await this.prisma.$transaction([...operations, ...dishSyncs]);
     }
 
     // Update floors if provided
@@ -230,50 +245,64 @@ export class AdminCanteensService {
         (id) => !providedIds.includes(id),
       );
 
-      // 3. Execute updates
+      // 3. Prepare operations for transaction
+      const operations: any[] = [];
+
       // Delete removed floors
       if (floorsToDelete.length > 0) {
-        await this.prisma.floor.deleteMany({
-          where: {
-            id: { in: floorsToDelete },
-            canteenId: id,
-          },
-        });
+        operations.push(
+          this.prisma.floor.deleteMany({
+            where: {
+              id: { in: floorsToDelete },
+              canteenId: id,
+            },
+          })
+        );
       }
 
-      // Update existing floors
+      // Update existing floors and collect sync operations
+      const dishSyncs: any[] = [];
       for (const floor of floorsToUpdate) {
         const existingFloor = existingFloors.find(f => f.id === floor.id);
-        await this.prisma.floor.update({
-          where: { id: floor.id },
-          data: {
-            level: floor.level,
-            name: floor.name,
-          },
-        });
+        operations.push(
+          this.prisma.floor.update({
+            where: { id: floor.id },
+            data: {
+              level: floor.level,
+              name: floor.name,
+            },
+          })
+        );
 
         // If floor name or level changed, sync dish floorName and floorLevel
         if (existingFloor && (existingFloor.name !== floor.name || existingFloor.level !== floor.level)) {
-          await this.prisma.dish.updateMany({
-            where: { floorId: floor.id },
-            data: {
-              floorName: floor.name,
-              floorLevel: floor.level,
-            },
-          });
+          dishSyncs.push(
+            this.prisma.dish.updateMany({
+              where: { floorId: floor.id },
+              data: {
+                floorName: floor.name,
+                floorLevel: floor.level,
+              },
+            })
+          );
         }
       }
 
       // Create new floors
       if (floorsToCreate.length > 0) {
-        await this.prisma.floor.createMany({
-          data: floorsToCreate.map((f) => ({
-            canteenId: id,
-            level: f.level,
-            name: f.name,
-          })),
-        });
+        operations.push(
+          this.prisma.floor.createMany({
+            data: floorsToCreate.map((f) => ({
+              canteenId: id,
+              level: f.level,
+              name: f.name,
+            })),
+          })
+        );
       }
+
+      // Execute all operations in transaction
+      await this.prisma.$transaction([...operations, ...dishSyncs]);
     }
 
     const updatedCanteen = await this.prisma.canteen.findUnique({
