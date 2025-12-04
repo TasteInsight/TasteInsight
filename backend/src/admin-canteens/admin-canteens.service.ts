@@ -112,15 +112,23 @@ export class AdminCanteensService {
     }
 
     // Update basic info
+    const updatedFields: any = {};
+    if (canteenData.name) updatedFields.name = canteenData.name;
+    if (canteenData.description) updatedFields.description = canteenData.description;
+    if (canteenData.openingHours) updatedFields.openingHours = canteenData.openingHours as any;
+
     await this.prisma.canteen.update({
       where: { id },
-      data: {
-        ...canteenData,
-        openingHours: canteenData.openingHours
-          ? (canteenData.openingHours as any)
-          : undefined,
-      },
+      data: updatedFields,
     });
+
+    // If canteen name was updated, sync dish canteenName
+    if (canteenData.name) {
+      await this.prisma.dish.updateMany({
+        where: { canteenId: id },
+        data: { canteenName: canteenData.name },
+      });
+    }
 
     // Update windows if provided
     if (windows) {
@@ -160,16 +168,30 @@ export class AdminCanteensService {
 
       // Update existing windows
       for (const window of windowsToUpdate) {
+        const existingWindow = existingWindows.find(w => w.id === window.id);
+        const updatedData: any = {
+          name: window.name,
+          position: window.position,
+          description: window.description,
+          tags: window.tags,
+        };
+        if (window.number !== undefined) updatedData.number = window.number;
+
         await this.prisma.window.update({
           where: { id: window.id },
-          data: {
-            name: window.name,
-            ...(window.number !== undefined ? { number: window.number } : {}),
-            position: window.position,
-            description: window.description,
-            tags: window.tags,
-          },
+          data: updatedData,
         });
+
+        // If window name or number changed, sync dish windowName and windowNumber
+        if (existingWindow && (existingWindow.name !== window.name || existingWindow.number !== window.number)) {
+          await this.prisma.dish.updateMany({
+            where: { windowId: window.id },
+            data: {
+              windowName: window.name,
+              windowNumber: window.number ?? '',
+            },
+          });
+        }
       }
 
       // Create new windows
@@ -221,6 +243,7 @@ export class AdminCanteensService {
 
       // Update existing floors
       for (const floor of floorsToUpdate) {
+        const existingFloor = existingFloors.find(f => f.id === floor.id);
         await this.prisma.floor.update({
           where: { id: floor.id },
           data: {
@@ -228,6 +251,17 @@ export class AdminCanteensService {
             name: floor.name,
           },
         });
+
+        // If floor name or level changed, sync dish floorName and floorLevel
+        if (existingFloor && (existingFloor.name !== floor.name || existingFloor.level !== floor.level)) {
+          await this.prisma.dish.updateMany({
+            where: { floorId: floor.id },
+            data: {
+              floorName: floor.name,
+              floorLevel: floor.level,
+            },
+          });
+        }
       }
 
       // Create new floors
