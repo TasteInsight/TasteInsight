@@ -1030,7 +1030,9 @@ export default {
       removeOpeningHours,
       addWindow,
       removeWindow,
-      submitForm
+      submitForm,
+      removeImage,
+      setAsCover
     }
   }
 }
