@@ -54,6 +54,7 @@
     "@dcloudio/uni-mp-xhs": "3.0.0-4080420251103001",
     "@dcloudio/uni-quickapp-webview": "3.0.0-4080420251103001",
     "@dcloudio/uni-ui": "^1.5.11",
+    "@iconify/vue": "^5.0.0",
     "@vue/devtools-api": "^6.6.4",
     "dayjs": "^1.11.19",
     "pinia": "^2.3.1",

@@ -68,6 +68,9 @@ importers:
       '@dcloudio/uni-ui':
         specifier: ^1.5.11
         version: 1.5.11
+      '@iconify/vue':
+        specifier: ^5.0.0
+        version: 5.0.0(vue@3.4.21(typescript@4.9.5))
       '@vue/devtools-api':
         specifier: ^6.6.4
         version: 6.6.4
@@ -1440,6 +1443,14 @@ packages:
     engines: {node: '>=12'}
     cpu: [x64]
     os: [win32]
+
+  '@iconify/types@2.0.0':
+    resolution: {integrity: sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg==}
+
+  '@iconify/vue@5.0.0':
+    resolution: {integrity: sha512-C+KuEWIF5nSBrobFJhT//JS87OZ++QDORB6f2q2Wm6fl2mueSTpFBeBsveK0KW9hWiZ4mNiPjsh6Zs4jjdROSg==}
+    peerDependencies:
+      vue: 3.4.21
 
   '@intlify/core-base@9.1.9':
     resolution: {integrity: sha512-x5T0p/Ja0S8hs5xs+ImKyYckVkL4CzcEXykVYYV6rcbXxJTe2o58IquSqX9bdncVKbRZP7GlBU1EcRaQEEJ+vw==}
@@ -6882,6 +6893,13 @@ snapshots:
 
   '@esbuild/win32-x64@0.20.2':
     optional: true
+
+  '@iconify/types@2.0.0': {}
+
+  '@iconify/vue@5.0.0(vue@3.4.21(typescript@4.9.5))':
+    dependencies:
+      '@iconify/types': 2.0.0
+      vue: 3.4.21(typescript@4.9.5)
 
   '@intlify/core-base@9.1.9':
     dependencies:

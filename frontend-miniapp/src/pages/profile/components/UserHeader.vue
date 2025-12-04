@@ -1,4 +1,4 @@
-<!-- UserHeader.vue - Tailwind CSS 版本 -->
+<!-- UserHeader.vue-->
 <template>
   <view class="user-header-wrapper">
     <!-- 加载状态 -->
@@ -15,14 +15,16 @@
       <view v-if="isLoggedIn" class="w-full">
         <view v-if="userInfo" class="flex flex-row items-center w-full relative">
           <!-- 头像区域 -->
-          <view class="relative w-20 h-20 rounded-full bg-purple-300 border-4 border-white/30 flex items-center justify-center overflow-hidden shadow-lg flex-shrink-0">
+          <view class="relative w-20 h-20 rounded-full border-2 border-white shadow-md flex-shrink-0 overflow-hidden bg-gray-50">
             <image 
               v-if="userInfo?.avatar" 
               :src="userInfo.avatar" 
               mode="aspectFill" 
               class="w-full h-full" 
             />
-            <text v-else class="text-white text-4xl">👤</text>
+            <view v-else class="w-full h-full flex items-center justify-center bg-purple-50">
+              <Icon icon="mdi:account" class="text-purple-300" style="font-size: 40px;" />
+            </view>
           </view>
 
           <!-- 用户信息 -->
@@ -36,9 +38,9 @@
                 class="flex flex-row items-center bg-ts-purple px-3 py-1.5 rounded-full active:bg-purple-800 shadow-sm"
                 @tap="handleEditProfile"
               >
-                <text class="iconify text-white mr-1" data-icon="mdi:cog-outline" data-width="14"></text>
+                <Icon icon="mdi:cog-outline" class="text-white mr-1" style="font-size: 14px;" />
                 <text class="text-xs text-white">编辑资料</text>
-                <text class="iconify text-white ml-1" data-icon="mdi:chevron-right" data-width="14"></text>
+                <Icon icon="mdi:chevron-right" class="text-white ml-1" style="font-size: 14px;" />
               </view>
             </view>
           </view>
@@ -71,6 +73,7 @@
 
 <script setup lang="ts">
 import type { User } from '@/types/api';
+import {Icon} from '@iconify/vue';
 
 defineProps<{
   userInfo: User | null;
