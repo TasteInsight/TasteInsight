@@ -388,10 +388,6 @@
   margin-top: 0.5rem
 }
 
-.mt-20 {
-  margin-top: 5rem
-}
-
 .mt-3 {
   margin-top: 0.75rem
 }
@@ -414,10 +410,6 @@
 
 .mt-auto {
   margin-top: auto
-}
-
-.mt-12 {
-  margin-top: 3rem
 }
 
 .box-border {
@@ -582,6 +574,10 @@
   height: 1px
 }
 
+.h-3\.5 {
+  height: 0.875rem
+}
+
 .max-h-\[72vh\] {
   max-height: 72vh
 }
@@ -670,6 +666,10 @@
   width: 1px
 }
 
+.w-3\.5 {
+  width: 0.875rem
+}
+
 .min-w-0 {
   min-width: 0px
 }
@@ -742,16 +742,6 @@
   transform: translate(var(--tw-translate-x), var(--tw-translate-y)) rotate(var(--tw-rotate)) skewX(var(--tw-skew-x)) skewY(var(--tw-skew-y)) scaleX(var(--tw-scale-x)) scaleY(var(--tw-scale-y))
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg)
-  }
-}
-
-.animate-spin {
-  animation: spin 1s linear infinite
-}
-
 @keyframes pulse {
   50% {
     opacity: .5
@@ -760,6 +750,16 @@
 
 .animate-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg)
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite
 }
 
 .cursor-not-allowed {
