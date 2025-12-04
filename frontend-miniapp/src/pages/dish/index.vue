@@ -282,7 +282,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { onLoad, onBackPress } from '@dcloudio/uni-app';
+import { onLoad, onBackPress, onPullDownRefresh } from '@dcloudio/uni-app';
 import { useDishDetail } from '@/pages/dish/composables/use-dish-detail';
 import ReviewList from './components/ReviewList.vue';
 import ReviewForm from './components/ReviewForm.vue';
@@ -358,6 +358,28 @@ onLoad((options: any) => {
   if (options.id) {
     dishId.value = options.id;
     fetchDishDetail(options.id);
+  }
+});
+
+// 下拉刷新处理
+onPullDownRefresh(async () => {
+  try {
+    if (dishId.value) {
+      await fetchDishDetail(dishId.value);
+    }
+    uni.showToast({
+      title: '刷新成功',
+      icon: 'success',
+      duration: 1500
+    });
+  } catch (err) {
+    console.error('下拉刷新失败:', err);
+    uni.showToast({
+      title: '刷新失败',
+      icon: 'none'
+    });
+  } finally {
+    uni.stopPullDownRefresh();
   }
 });
 
