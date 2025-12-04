@@ -7,6 +7,7 @@ import type {
   DishUserCreateRequest,
   DishUploadData,
   ApiResponse,
+  DishesImages
 } from '@/types/api';
 
 /**
@@ -31,6 +32,17 @@ export const getDishes = (
     url: '/dishes',
     method: 'POST',
     data: params,
+  });
+};
+
+/**
+ *  获取菜品图片列表
+ */
+export const getDishesImages = (
+): Promise<ApiResponse<DishesImages>> => {
+  return request<DishesImages>({
+    url: '/dishes/images',
+    method: 'GET',
   });
 };
 

@@ -324,6 +324,10 @@ export interface Dish {
     [property: string]: any;
 }
 
+export interface DishesImages {
+  images: string[];
+}
+
 /**
  * 评价模型
  */
