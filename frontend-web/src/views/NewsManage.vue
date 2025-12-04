@@ -95,12 +95,12 @@
                           >
                             发布
                           </button>
-                          <button
-                            @click="editNews(news)"
-                            class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200 transition duration-200"
-                          >
-                            编辑
-                          </button>
+                        <button
+                          @click="editNews(news)"
+                          class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200 transition duration-200"
+                        >
+                          编辑
+                        </button>
                         </template>
                         
                         <!-- 已发布状态操作 -->
@@ -272,13 +272,13 @@
                 >
                   保存为草稿
                 </button>
-                <button
+              <button
                   type="button"
                   @click="submitForm('published')"
-                  class="flex-1 px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200"
-                >
+                class="flex-1 px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200"
+              >
                   立即发布
-                </button>
+              </button>
               </template>
 
               <button
@@ -306,6 +306,7 @@ import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 import { newsApi } from '@/api/modules/news'
 import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
+import config from '@/config'
 import Sidebar from '@/components/Layout/Sidebar.vue'
 import Header from '@/components/Layout/Header.vue'
 import Pagination from '@/components/Common/Pagination.vue'
@@ -343,11 +344,37 @@ export default {
     
     const toolbarConfig = {}
     
+    // 构建完整的上传 URL
+    const baseUrl = config.baseURL.endsWith('/') ? config.baseURL.slice(0, -1) : config.baseURL
+    const uploadUrl = `${baseUrl}/upload/image`
+
     const editorConfig = { 
       placeholder: '请输入新闻内容...',
       MENU_CONF: {
-        // 如果需要上传图片，请在这里配置，例如：
-        // uploadImage: { server: '/api/upload', fieldName: 'file' }
+        uploadImage: {
+          server: uploadUrl,
+          fieldName: 'file',
+          headers: {
+            Authorization: `Bearer ${authStore.token}`
+          },
+          // 自定义插入图片
+          customInsert(res, insertFn) {
+            // res 即服务端的返回结果
+            if (res.code === 200 || res.code === 201) {
+              const url = res.data.url
+              const alt = res.data.filename
+              const href = res.data.url
+              insertFn(url, alt, href)
+            } else {
+              alert(res.message || '图片上传失败')
+            }
+          },
+          // 错误处理
+          onError(file, err, res) {
+            console.error('上传错误:', err, res)
+            alert('图片上传出错: ' + (err.message || '未知错误'))
+          }
+        }
       }
     }
     

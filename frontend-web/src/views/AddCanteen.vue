@@ -183,30 +183,92 @@
                   
                   <!-- 食堂图片上传 -->
                   <div>
-                    <label class="block text-gray-700 font-medium mb-2">食堂图片</label>
-                    <div class="border-2 border-dashed rounded-lg w-[50%] aspect-video relative flex items-center justify-center bg-gray-50 overflow-hidden group">
-                      <img 
-                        v-if="formData.imageUrl" 
-                        :src="formData.imageUrl" 
-                        alt="食堂图片预览"
-                        class="w-full h-full object-contain object-center"
-                      >
-                      <div v-else class="text-center p-6">
-                        <span class="iconify text-4xl text-gray-400 mx-auto" data-icon="bi:image"></span>
-                        <div class="mt-2">点击上传食堂图片</div>
-                        <p class="text-sm text-gray-500 mt-1">建议上传清晰的图片，小于2MB</p>
+                    <label class="block text-gray-700 font-medium mb-2">食堂图片 <span class="text-sm text-gray-500 font-normal">（第一张将作为封面图，封面图将进行正方形裁剪，其他图片保留原比例）</span></label>
+                    
+                    <div class="flex gap-6 items-start">
+                      <!-- 封面图（第一张） -->
+                      <div class="relative group flex-shrink-0">
+                        <div class="w-[300px] h-[300px] border-2 border-dashed rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center">
+                          <img 
+                            v-if="formData.imageFiles.length > 0" 
+                            :src="formData.imageFiles[0].url" 
+                            alt="封面图"
+                            class="w-full h-full object-cover"
+                          >
+                          <div v-else class="text-center p-6 text-gray-400">
+                            <span class="iconify text-4xl mx-auto" data-icon="bi:image"></span>
+                            <div class="mt-2 font-medium">封面图</div>
+                            <p class="text-xs mt-1">点击右侧按钮添加</p>
+                          </div>
+                          
+                          <!-- 删除遮罩 -->
+                          <div 
+                            v-if="formData.imageFiles.length > 0"
+                            class="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center gap-3 transition-all duration-200"
+                          >
+                            <button 
+                              type="button"
+                              @click="removeImage(0)"
+                              class="p-2 bg-white/20 text-white rounded-full hover:bg-red-500 transition-colors"
+                              title="删除图片"
+                            >
+                              <span class="iconify text-xl" data-icon="carbon:trash-can"></span>
+                            </button>
+                          </div>
+                        </div>
+                        <div class="text-center mt-2 text-sm text-gray-600 font-medium">封面展示（正方形裁剪）</div>
                       </div>
-                      <input 
-                        type="file" 
-                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        @change="handleImageUpload"
-                        accept="image/*"
-                      >
-                      <!-- 悬浮提示 -->
-                      <div v-if="formData.imageUrl" class="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                        <span class="text-white font-medium">点击更换图片</span>
+                      
+                      <!-- 其他图片及上传按钮（横向滚动） -->
+                      <div class="flex-1 min-w-0">
+                        <div class="flex gap-4 overflow-x-auto pb-4 items-start" style="min-height: 200px;">
+                          <!-- 其他图片列表 -->
+                          <div 
+                            v-for="(img, index) in formData.imageFiles.slice(1)" 
+                            :key="img.id"
+                            class="relative group flex-shrink-0 h-[200px]"
+                          >
+                            <!-- 图片：高度固定，宽度自适应 -->
+                            <img :src="img.url" class="h-full w-auto rounded-lg border bg-gray-50 object-contain">
+                            
+                            <!-- 操作遮罩 -->
+                            <div class="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center gap-2 rounded-lg transition-all duration-200">
+                              <button 
+                                type="button"
+                                @click="setAsCover(index + 1)"
+                                class="p-1.5 bg-white/20 text-white rounded-full hover:bg-tsinghua-purple transition-colors"
+                                title="设为封面"
+                              >
+                                <span class="iconify" data-icon="carbon:image-copy"></span>
+                              </button>
+                              <button 
+                                type="button"
+                                @click="removeImage(index + 1)"
+                                class="p-1.5 bg-white/20 text-white rounded-full hover:bg-red-500 transition-colors"
+                                title="删除图片"
+                              >
+                                <span class="iconify" data-icon="carbon:trash-can"></span>
+                              </button>
+                            </div>
+                          </div>
+                          
+                          <!-- 上传按钮 -->
+                          <div class="flex-shrink-0 w-[140px] h-[200px] border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-gray-400 hover:text-tsinghua-purple hover:border-tsinghua-purple transition-colors relative cursor-pointer bg-white">
+                            <span class="iconify text-3xl mb-1" data-icon="carbon:add"></span>
+                            <span class="text-sm">添加图片</span>
+                            <input 
+                              type="file" 
+                              class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                              @change="handleImageUpload"
+                              accept="image/*"
+                              multiple
+                            >
+                          </div>
+                        </div>
+                        <p class="text-sm text-gray-500">其他图片将保持原比例展示，您可以横向滚动查看所有图片。</p>
                       </div>
                     </div>
+                    <p class="mt-2 text-sm text-gray-500">建议上传清晰的图片，单张小于2MB，支持批量上传。封面图将展示为正方形，其他图片点击查看大图时保持原比例。</p>
                   </div>
                 </div>
                 
@@ -416,8 +478,7 @@ export default {
       name: '',
       position: '',
       description: '',
-      image: null,
-      imageUrl: '',
+      imageFiles: [], // 替换原来的 image 和 imageUrl
       floorInput: '', // 添加楼层输入字段
       openingHours: []
     })
@@ -484,8 +545,16 @@ export default {
       formData.name = canteen.name || ''
       formData.position = canteen.position || ''
       formData.description = canteen.description || ''
-      formData.imageUrl = canteen.images && canteen.images.length > 0 ? canteen.images[0] : ''
-      formData.image = null
+      
+      // 处理图片
+      formData.imageFiles = []
+      if (canteen.images && canteen.images.length > 0) {
+        formData.imageFiles = canteen.images.map((url, index) => ({
+          id: `existing_${index}_${Date.now()}`,
+          url: url,
+          isNew: false
+        }))
+      }
       
       // 处理楼层信息 - 从 canteen.floors 中恢复
       if (canteen.floors && Array.isArray(canteen.floors) && canteen.floors.length > 0) {
@@ -545,29 +614,46 @@ export default {
       formData.name = ''
       formData.position = ''
       formData.description = ''
-      formData.image = null
-      formData.imageUrl = ''
+      formData.imageFiles = []
       formData.floorInput = ''
       formData.openingHours = []
       windows.value = []
     }
     
     const handleImageUpload = (event) => {
-      const file = event.target.files[0]
-      if (file) {
-        // 验证文件大小（2MB）
-        if (file.size > 2 * 1024 * 1024) {
-          alert('图片大小不能超过2MB')
-          return
-        }
-        
-        formData.image = file
-        // 创建预览 URL
-        const reader = new FileReader()
-        reader.onload = (e) => {
-          formData.imageUrl = e.target.result
-        }
-        reader.readAsDataURL(file)
+      const files = event.target.files
+      if (files && files.length > 0) {
+        Array.from(files).forEach(file => {
+          // 验证文件大小
+          if (file.size > 2 * 1024 * 1024) {
+            alert(`图片 ${file.name} 大小超过2MB，已跳过`)
+            return
+          }
+          
+          const reader = new FileReader()
+          reader.onload = (e) => {
+            formData.imageFiles.push({
+              id: (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : `new_${Date.now()}_${Math.random()}`,
+              file: file,
+              url: e.target.result,
+              isNew: true
+            })
+          }
+          reader.readAsDataURL(file)
+        })
+      }
+      // 清空 input value 以允许重复上传同一文件
+      event.target.value = ''
+    }
+
+    const removeImage = (index) => {
+      formData.imageFiles.splice(index, 1)
+    }
+
+    const setAsCover = (index) => {
+      if (index > 0 && index < formData.imageFiles.length) {
+        const item = formData.imageFiles.splice(index, 1)[0]
+        formData.imageFiles.unshift(item)
       }
     }
     
@@ -760,15 +846,38 @@ export default {
       try {
         // 1. 上传图片（如果有新图片）
         let imageUrls = []
-        if (formData.image && formData.image instanceof File) {
+        if (formData.imageFiles && formData.imageFiles.length > 0) {
           try {
             const { dishApi } = await import('@/api/modules/dish')
-            const uploadResponse = await dishApi.uploadImage(formData.image)
             
-            if (uploadResponse.code === 200 && uploadResponse.data) {
-              imageUrls = [uploadResponse.data.url]
-            } else {
-              throw new Error(uploadResponse.message || '图片上传失败')
+            // 对每个图片项进行处理
+            const processPromises = formData.imageFiles.map(async (imgItem) => {
+              if (imgItem.isNew && imgItem.file) {
+                // 新图片，需要上传
+                const uploadResponse = await dishApi.uploadImage(imgItem.file)
+                if (uploadResponse.code === 200 && uploadResponse.data) {
+                  return uploadResponse.data.url
+                } else {
+                  throw new Error(uploadResponse.message || '图片上传失败')
+                }
+              } else {
+                // 旧图片，直接使用 URL
+                return imgItem.url
+              }
+            })
+            
+            const results = await Promise.allSettled(processPromises)
+            
+            imageUrls = results
+              .filter(result => result.status === 'fulfilled')
+              .map(result => result.value)
+              
+            if (imageUrls.length !== formData.imageFiles.length) {
+              const failed = formData.imageFiles.length - imageUrls.length
+              if (!confirm(`${failed}张图片处理失败，是否继续保存？`)) {
+                isSubmitting.value = false
+                return
+              }
             }
           } catch (error) {
             console.error('图片上传失败:', error)
@@ -776,9 +885,6 @@ export default {
             isSubmitting.value = false
             return
           }
-        } else if (formData.imageUrl && formData.imageUrl.startsWith('http')) {
-          // 如果已有完整的图片 URL，直接使用
-          imageUrls = [formData.imageUrl]
         }
         
         // 2. 构建窗口数据（仅用于新建食堂时）
@@ -924,7 +1030,9 @@ export default {
       removeOpeningHours,
       addWindow,
       removeWindow,
-      submitForm
+      submitForm,
+      removeImage,
+      setAsCover
     }
   }
 }
