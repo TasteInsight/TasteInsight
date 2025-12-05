@@ -47,7 +47,6 @@ const { formatTime, getNewsSummary, getNewsTagText, getNewsTagClass, goToDetail 
 </script>
 
 <style scoped>
-/* 移除原有SCSS样式，使用Tailwind CSS */
 view {
   box-sizing: border-box;
 }
