@@ -24,6 +24,7 @@
               :src="image"
               class="w-full h-48 object-cover"
               mode="aspectFill"
+              :aria-label="`推荐菜品展示图片 ${index + 1}`"
             />
             <!-- 渐变遮罩 -->
             <view class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></view>

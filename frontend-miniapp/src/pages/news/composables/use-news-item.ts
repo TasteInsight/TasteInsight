@@ -1,4 +1,3 @@
-// @/pages/news/composables/useNewsItem.ts
 import dayjs from 'dayjs';
 import type { News } from '@/types/api';
 

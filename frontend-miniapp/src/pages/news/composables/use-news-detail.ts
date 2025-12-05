@@ -1,4 +1,3 @@
-// @/pages/news/composables/useNewsDetail.ts
 import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { getNewsById } from '@/api/modules/news';
