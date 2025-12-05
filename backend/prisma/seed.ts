@@ -39,46 +39,6 @@ async function main() {
   });
   console.log(`Created baseline admin: ${admin.username}`);
 
-  // 为超级管理员添加所有权限
-  await prisma.adminPermission.createMany({
-    data: [
-      {
-        adminId: admin.id,
-        permission: 'config:global:view',
-      },
-      {
-        adminId: admin.id,
-        permission: 'config:global:edit',
-      },
-      {
-        adminId: admin.id,
-        permission: 'config:canteen:view',
-      },
-      {
-        adminId: admin.id,
-        permission: 'config:canteen:edit',
-      },
-      // 保留其他现有权限
-      {
-        adminId: admin.id,
-        permission: 'dish:view',
-      },
-      {
-        adminId: admin.id,
-        permission: 'dish:create',
-      },
-      {
-        adminId: admin.id,
-        permission: 'dish:edit',
-      },
-      {
-        adminId: admin.id,
-        permission: 'dish:delete',
-      },
-    ],
-  });
-  console.log(`Added all permissions to superadmin`);
-
   // 创建一个普通管理员用于测试权限
   const normalAdminPassword = await bcrypt.hash('admin123', 10);
   const normalAdmin = await prisma.admin.create({

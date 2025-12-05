@@ -114,8 +114,9 @@ jobs:
         run: pnpm exec ts-node prisma/seed.ts
         env:
           DATABASE_URL: ${{ env.CI_DATABASE_URL }}
-          INITIAL_ADMIN_USERNAME: ci_admin
-          INITIAL_ADMIN_PASSWORD: ci_admin_password_12345
+          # Admin（CI 测试用固定值）
+          INITIAL_ADMIN_USERNAME: testadmin
+          INITIAL_ADMIN_PASSWORD: password123
 
       - name: Run E2E tests
         run: pnpm test:e2e:cov
@@ -126,8 +127,8 @@ jobs:
           # Database
           DATABASE_URL: ${{ env.CI_DATABASE_URL }}
           # Admin（CI 测试用固定值）
-          INITIAL_ADMIN_USERNAME: ci_admin
-          INITIAL_ADMIN_PASSWORD: ci_admin_password_12345
+          INITIAL_ADMIN_USERNAME: testadmin
+          INITIAL_ADMIN_PASSWORD: password123
           # JWT（CI 测试用固定值）
           JWT_SECRET: ci-jwt-secret-for-testing-only-32chars
           JWT_EXPIRATION_TIME: 3600s
