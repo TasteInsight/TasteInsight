@@ -2,8 +2,11 @@
   <view class="min-h-screen w-full flex flex-col bg-gray-100 overflow-hidden">
     <!-- 导航栏区域（在uni-app中通常由pages.json配置，或者使用自定义组件） -->
 
+    <!-- 骨架屏 -->
+    <NewsListSkeleton v-if="loading && list.length === 0 && !isRefreshing" />
+
     <!-- 列表内容区域，使用页面自身的滚动 -->
-    <view class="flex-1 px-4 box-border pb-6">
+    <view v-else class="flex-1 px-4 box-border pb-6">
       <view class="text-lg font-semibold text-gray-800 my-4">最新公告</view>
 
       <!-- 数据列表 -->
@@ -19,8 +22,7 @@
       
       <!-- 首次加载中/空状态 -->
       <view v-else class="text-center py-4 text-gray-500 text-sm">
-        <text v-if="loading">加载中...</text>
-        <view v-else-if="!loading && !isRefreshing">
+        <view v-if="!loading && !isRefreshing">
           <!-- 假设使用 EmptyState 组件 -->
           <!-- <EmptyState message="暂无最新公告" /> -->
           <text>暂无最新公告</text>
@@ -37,6 +39,7 @@
 import { onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import { useNewsList } from './composables/use-news-list';
 import NewsItem from './components/NewsItem.vue';
+import { NewsListSkeleton } from '@/components/skeleton';
 
 const { list, loading, finished, isRefreshing, refresh, loadMore: loadMoreData } = useNewsList();
 

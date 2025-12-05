@@ -1,7 +1,10 @@
 <template>
   <view class="min-h-screen bg-white rounded-lg overflow-hidden flex flex-col">
+    <!-- 骨架屏 -->
+    <IndexSkeleton v-if="isInitialLoading" />
+    
     <!-- 主内容区 -->
-    <view class="flex-1 overflow-y-auto px-4 hide-scrollbar">
+    <view v-else class="flex-1 overflow-y-auto px-4 hide-scrollbar">
       <!-- 搜索栏 -->
       <SearchBar />
 
@@ -92,6 +95,7 @@ import SearchBar from './components/SearchBar.vue';
 import CanteenItem from './components/CanteenList.vue';
 import RecommendItem from './components/RecommendItem.vue';
 import FilterBar from './components/FilterBar.vue';
+import { IndexSkeleton } from '@/components/skeleton';
 
 // 导入 Store
 import { useCanteenStore } from '@/store/modules/use-canteen-store';
@@ -115,6 +119,9 @@ const currentFilter = ref<GetDishesRequest['filter']>({});
 
 // 菜品图片列表
 const dishImages = ref<string[]>([]);
+
+// 是否处于初始加载状态（用于显示骨架屏）
+const isInitialLoading = ref(true);
 
 // 是否有激活的筛选条件
 const hasActiveFilters = computed(() => {
@@ -217,23 +224,28 @@ function navigateTo(path: string) {
 
 // --- 生命周期 ---
 onMounted(async () => {
-  // 4. 调用 actions (保持不变)
-  canteenStore.fetchCanteenList({ page: 1, pageSize: 10 });
+  try {
+    // 4. 调用 actions (保持不变)
+    canteenStore.fetchCanteenList({ page: 1, pageSize: 10 });
 
-  // 获取菜品图片
-  await fetchDishImages();
+    // 获取菜品图片
+    await fetchDishImages();
 
-  // 先获取用户信息
-  await userStore.fetchProfileAction();
-  
-  // 获取今日推荐菜品，使用后端推荐逻辑
-  const dishRequestParams: GetDishesRequest = {
-    sort: buildDishSortFromUserSettings(),
-    pagination: { page: 1, pageSize: 10 },
-    filter: { isSuggestion: true },  // 让后端根据推荐返回菜品
-    search: { keyword: '' },
-  };
-  dishesStore.fetchDishes(dishRequestParams);
+    // 先获取用户信息
+    await userStore.fetchProfileAction();
+    
+    // 获取今日推荐菜品，使用后端推荐逻辑
+    const dishRequestParams: GetDishesRequest = {
+      sort: buildDishSortFromUserSettings(),
+      pagination: { page: 1, pageSize: 10 },
+      filter: { isSuggestion: true },  // 让后端根据推荐返回菜品
+      search: { keyword: '' },
+    };
+    await dishesStore.fetchDishes(dishRequestParams);
+  } finally {
+    // 无论成功失败，都结束初始加载状态
+    isInitialLoading.value = false;
+  }
 });
 
 // 监听用户信息变化，当偏好设置或显示设置更新时刷新菜品列表

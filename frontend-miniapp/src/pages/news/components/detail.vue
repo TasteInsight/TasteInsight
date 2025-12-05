@@ -1,12 +1,11 @@
 <template>
   <view class="min-h-screen flex flex-col bg-gray-100">
-    <scroll-view scroll-y class="flex-1 bg-white">
+    <!-- 骨架屏 -->
+    <NewsDetailSkeleton v-if="loading" />
+    
+    <scroll-view v-else scroll-y class="flex-1 bg-white">
       <view class="p-4 box-border w-full">
-        <view v-if="loading" class="text-center py-12.5 text-gray-500">
-          <text>加载中...</text>
-        </view>
-
-        <view v-else-if="newsDetail.id" class="pb-5">
+        <view v-if="newsDetail.id" class="pb-5">
           <view class="text-2xl font-bold mb-2.5 leading-relaxed">{{ newsDetail.title }}</view>
           <view class="flex justify-between text-gray-500 text-sm mb-5 pb-2.5 border-b border-gray-200">
             <text>{{ newsDetail.canteenName || '全校公告' }}</text>
@@ -31,6 +30,7 @@
 
 <script setup lang="ts">
 import { useNewsDetail } from '../composables/use-news-detail';
+import { NewsDetailSkeleton } from '@/components/skeleton';
 
 const { newsDetail, loading, formattedContent, formatTime, initDetailPage } = useNewsDetail();
 
