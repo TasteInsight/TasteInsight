@@ -180,6 +180,9 @@ jobs:
           # 创建临时目录存放部署文件
           DEPLOY_TMP=$(mktemp -d)
           trap "rm -rf $DEPLOY_TMP" EXIT
+
+          # 复制 docker-compose.yml
+          cp docker-compose.yml "$DEPLOY_TMP/docker-compose.yml"
           
           # 使用 heredoc 安全写入敏感文件
           cat > "$DEPLOY_TMP/cert.pem" << 'EOF'
@@ -199,6 +202,7 @@ jobs:
           EOF
           
           # 复制文件到服务器
+          scp "$DEPLOY_TMP/docker-compose.yml" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/docker-compose.yml"
           scp "$DEPLOY_TMP/cert.pem" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/certs/cert.pem"
           scp "$DEPLOY_TMP/private.key" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/certs/private.key"
           scp "$DEPLOY_TMP/.env" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/.env"
@@ -214,9 +218,6 @@ jobs:
           script: |
             set -e
             cd ${{ secrets.DEV_DEPLOY_PATH }}
-            
-            # 拉取最新代码
-            git pull origin dev
             
             # 设置证书权限
             chmod 600 certs/private.key
@@ -264,6 +265,9 @@ jobs:
           # 创建临时目录存放部署文件
           DEPLOY_TMP=$(mktemp -d)
           trap "rm -rf $DEPLOY_TMP" EXIT
+
+          # 复制 docker-compose.yml
+          cp docker-compose.yml "$DEPLOY_TMP/docker-compose.yml"
           
           # 使用 heredoc 安全写入敏感文件
           cat > "$DEPLOY_TMP/cert.pem" << 'EOF'
@@ -283,6 +287,7 @@ jobs:
           EOF
           
           # 复制文件到服务器
+          scp "$DEPLOY_TMP/docker-compose.yml" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/docker-compose.yml"
           scp "$DEPLOY_TMP/cert.pem" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/certs/cert.pem"
           scp "$DEPLOY_TMP/private.key" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/certs/private.key"
           scp "$DEPLOY_TMP/.env" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/.env"
@@ -298,9 +303,6 @@ jobs:
           script: |
             set -e
             cd ${{ secrets.PROD_DEPLOY_PATH }}
-            
-            # 拉取最新代码
-            git pull origin main
             
             # 设置证书权限
             chmod 600 certs/private.key
