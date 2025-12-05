@@ -163,7 +163,11 @@ export class AuthService {
     const tokens = await this._generateTokens({ sub: admin.id, type: 'admin' });
 
     // 从返回结果中移除密码和权限关联
-    const { password: _password, permissions: permissionsRelation, ...adminData } = admin;
+    const {
+      password: _password,
+      permissions: permissionsRelation,
+      ...adminData
+    } = admin;
 
     // 提取权限字符串数组
     const permissions = permissionsRelation.map((p) => p.permission);
