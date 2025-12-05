@@ -104,7 +104,7 @@ export class AuthService {
       user = await this.userProfileService.createUser(openid);
     }
 
-    const tokens = await this._generateTokens({ sub: user!.id, type: 'user' });
+    const tokens = await this._generateTokens({ sub: user.id, type: 'user' });
 
     return {
       code: 200,
@@ -163,7 +163,7 @@ export class AuthService {
     const tokens = await this._generateTokens({ sub: admin.id, type: 'admin' });
 
     // 从返回结果中移除密码和权限关联
-    const { password, permissions: permissionsRelation, ...adminData } = admin;
+    const { password: _password, permissions: permissionsRelation, ...adminData } = admin;
 
     // 提取权限字符串数组
     const permissions = permissionsRelation.map((p) => p.permission);
@@ -195,7 +195,7 @@ export class AuthService {
       const adminData = await this.validateAdmin(userId);
       // 移除密码字段
       if (adminData) {
-        const { password, ...admin } = adminData;
+        const { password: _password, ...admin } = adminData;
         userData = admin;
       }
     }
