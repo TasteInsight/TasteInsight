@@ -24,6 +24,9 @@ describe('ReviewsController (e2e)', () => {
     );
     await app.init();
 
+    // 清理所有配置，确保测试从干净状态开始
+    await prisma.adminConfig.deleteMany();
+
     // 获取测试用户登录token
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/wechat/login')

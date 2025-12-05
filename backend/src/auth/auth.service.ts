@@ -10,7 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import * as bcrypt from 'bcrypt';
-import { Admin, User } from '@prisma/client';
+import type { Admin, User } from '@prisma/client';
 
 interface WechatAuthResponse {
   openid?: string;
@@ -101,7 +101,7 @@ export class AuthService {
     });
 
     if (!user) {
-      user = (await this.userProfileService.createUser(openid)) as any;
+      user = await this.userProfileService.createUser(openid);
     }
 
     const tokens = await this._generateTokens({ sub: user!.id, type: 'user' });
@@ -136,7 +136,7 @@ export class AuthService {
         this.httpService.get<WechatAuthResponse>(url),
       );
       return data;
-    } catch (error) {
+    } catch {
       throw new InternalServerErrorException('Failed to connect to WeChat API');
     }
   }
@@ -214,11 +214,11 @@ export class AuthService {
   }
 
   // --- 辅助方法：验证用户 ---
-  async validateUser(userId: string): Promise<User | null> {
+  validateUser(userId: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { id: userId } });
   }
 
-  async validateAdmin(adminId: string): Promise<Admin | null> {
+  validateAdmin(adminId: string): Promise<Admin | null> {
     return this.prisma.admin.findUnique({ where: { id: adminId } });
   }
 }
