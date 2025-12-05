@@ -4,7 +4,7 @@ interface EnvConfig {
 
 export const development: EnvConfig = {
   // 开发环境
-  baseUrl: 'http://localhost:3000',
+  baseUrl: 'https://www.zens.top/api/v1',
 };
 
 export const production: EnvConfig = {

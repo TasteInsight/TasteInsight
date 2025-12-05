@@ -1,5 +1,9 @@
 <template>
   <view class="w-full min-h-screen bg-gradient-to-b from-white via-purple-50/20 to-white p-4">
+    <!-- 骨架屏：首次加载时显示 -->
+    <DisplaySettingsSkeleton v-if="loading" />
+
+    <template v-else>
     <!-- 显示选项 -->
     <view class="bg-white rounded-2xl p-6 mb-4 shadow-sm">
       <text class="text-lg font-semibold text-gray-800 mb-4 block">显示选项</text>
@@ -56,15 +60,18 @@
     >
       <text>{{ saving ? '保存中...' : '保存设置' }}</text>
     </button>
+    </template>
   </view>
 </template>
 
 <script setup lang="ts">
 import { useDisplay } from '../composables/use-display';
+import { DisplaySettingsSkeleton } from '@/components/skeleton';
 
 const {
   form,
   saving,
+  loading,
   sortOptions,
   onShowCaloriesChange,
   onShowNutritionChange,

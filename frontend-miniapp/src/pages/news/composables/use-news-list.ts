@@ -1,4 +1,3 @@
-// @/pages/news/composables/useNewsList.js
 import { ref, onMounted, reactive } from 'vue';
 import { getNewsList } from '@/api/modules/news';
 import type { News } from '@/types/api';

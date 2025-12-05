@@ -22,10 +22,8 @@
 
     <!-- 搜索结果 -->
     <div class="px-4 py-3">
-      <!-- 加载中 -->
-      <div v-if="loading" class="text-center py-10 text-gray-500">
-        正在搜索...
-      </div>
+      <!-- 骨架屏：搜索加载中 -->
+      <SearchSkeleton v-if="loading" />
 
       <!-- 错误提示 -->
       <div v-else-if="error" class="text-center py-10 text-red-500">
@@ -89,6 +87,7 @@ import { useSearch } from './composables/use-search';
 import CanteenResultItem from './components/CanteenResultItem.vue';
 import WindowResultItem from './components/WindowResultItem.vue';
 import DishResultItem from './components/DishResultItem.vue';
+import { SearchSkeleton } from '@/components/skeleton';
 
 const { 
   keyword, 

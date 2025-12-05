@@ -1,9 +1,37 @@
 <template>
   <view class="min-h-screen bg-white rounded-lg overflow-hidden flex flex-col">
+    <!-- 骨架屏 -->
+    <IndexSkeleton v-if="isInitialLoading" />
+    
     <!-- 主内容区 -->
-    <view class="flex-1 overflow-y-auto px-4 hide-scrollbar">
+    <view v-else class="flex-1 overflow-y-auto px-4 hide-scrollbar">
+      <!-- 搜索栏 -->
       <SearchBar />
 
+      <!-- 菜品图片轮播 -->
+      <view v-if="dishImages.length>0" class="mb-4">
+        <swiper
+          class="dish-image-swiper"
+          :indicator-dots="dishImages.length > 1"
+          :autoplay="true"
+          :interval="3000"
+          :circular="true"
+          indicator-color="rgba(255, 255, 255, 0.5)"
+          indicator-active-color="#8B5CF6"
+        >
+          <swiper-item v-for="(image, index) in dishImages" :key="index" class="relative overflow-hidden rounded-lg">
+            <image
+              :src="image"
+              class="w-full h-48 object-cover"
+              mode="aspectFill"
+              :aria-label="`推荐菜品展示图片 ${index + 1}`"
+            />
+            <!-- 渐变遮罩 -->
+            <view class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></view>
+          </swiper-item>
+        </swiper>
+      </view>
+      
       <!-- 食堂栏目 -->
       <view v-if="canteenStore.loading" class="text-center py-4 text-gray-500">正在加载食堂...</view>
       <view v-else-if="canteenStore.error" class="text-center py-4 text-red-500">{{ canteenStore.error }}</view>
@@ -68,12 +96,14 @@ import SearchBar from './components/SearchBar.vue';
 import CanteenItem from './components/CanteenList.vue';
 import RecommendItem from './components/RecommendItem.vue';
 import FilterBar from './components/FilterBar.vue';
+import { IndexSkeleton } from '@/components/skeleton';
 
 // 导入 Store
 import { useCanteenStore } from '@/store/modules/use-canteen-store';
 import { useDishesStore } from '@/store/modules/use-dishes-store';
 import { useUserStore } from '@/store/modules/use-user-store';
 import type { GetDishesRequest } from '@/types/api';
+import { getDishesImages } from '@/api/modules/dish';
 
 
 // --- 底部导航数据 (保持不变) ---
@@ -87,6 +117,12 @@ const userStore = useUserStore();
 
 // 当前筛选条件
 const currentFilter = ref<GetDishesRequest['filter']>({});
+
+// 菜品图片列表
+const dishImages = ref<string[]>([]);
+
+// 是否处于初始加载状态（用于显示骨架屏）
+const isInitialLoading = ref(true);
 
 // 是否有激活的筛选条件
 const hasActiveFilters = computed(() => {
@@ -116,88 +152,18 @@ const handleSwiperChange = (e: any) => {
 };
 
 /**
- * 根据用户设置构建菜品筛选条件
+ * 获取菜品图片列表
  */
-function buildDishFilterFromUserSettings(): GetDishesRequest['filter'] {
-  const userInfo = userStore.userInfo;
-  const filter: GetDishesRequest['filter'] = {};
-
-  if (!userInfo) return filter;
-
-  // 过敏原筛选 - 排除含有用户过敏原的菜品
-  if (userInfo.allergens && userInfo.allergens.length > 0) {
-    filter.avoidIngredients = userInfo.allergens;
+const fetchDishImages = async () => {
+  try {
+    const response = await getDishesImages();
+    if (response.code === 200 && response.data) {
+      dishImages.value = response.data.images || [];
+    }
+  } catch (error) {
+    console.error('获取菜品图片失败:', error);
   }
-
-  // 用户偏好设置
-  if (userInfo.preferences) {
-    const prefs = userInfo.preferences;
-
-    // 价格范围
-    if (prefs.priceRange) {
-      filter.price = {
-        min: prefs.priceRange.min,
-        max: prefs.priceRange.max,
-      };
-    }
-
-    // 忌口食材
-    if (prefs.avoidIngredients && prefs.avoidIngredients.length > 0) {
-      filter.avoidIngredients = [
-        ...(filter.avoidIngredients || []),
-        ...prefs.avoidIngredients
-      ];
-    }
-
-    // 喜好食材 - 优先推荐含有这些食材的菜品
-    if (prefs.favoriteIngredients && prefs.favoriteIngredients.length > 0) {
-      // 这里可以添加逻辑来提升含有喜好食材的菜品优先级
-      // 暂时先不实现，留给后端处理
-    }
-
-    // 食堂偏好
-    if (prefs.canteenPreferences && prefs.canteenPreferences.length > 0) {
-      filter.canteenId = prefs.canteenPreferences;
-    }
-
-    // 标签偏好
-    if (prefs.tagPreferences && prefs.tagPreferences.length > 0) {
-      filter.tag = prefs.tagPreferences;
-    }
-
-    // 口味偏好 - 用于筛选菜品
-    if (prefs.tastePreferences) {
-      const taste = prefs.tastePreferences;
-      // 只有当口味偏好不为0（未设置）时才应用筛选
-      if (taste.spicyLevel !== undefined && taste.spicyLevel > 0) {
-        filter.spicyLevel = {
-          min: Math.max(0, taste.spicyLevel - 1), // 允许稍微偏离的范围
-          max: Math.min(5, taste.spicyLevel + 1),
-        };
-      }
-      if (taste.sweetness !== undefined && taste.sweetness > 0) {
-        filter.sweetness = {
-          min: Math.max(0, taste.sweetness - 1),
-          max: Math.min(5, taste.sweetness + 1),
-        };
-      }
-      if (taste.saltiness !== undefined && taste.saltiness > 0) {
-        filter.saltiness = {
-          min: Math.max(0, taste.saltiness - 1),
-          max: Math.min(5, taste.saltiness + 1),
-        };
-      }
-      if (taste.oiliness !== undefined && taste.oiliness > 0) {
-        filter.oiliness = {
-          min: Math.max(0, taste.oiliness - 1),
-          max: Math.min(5, taste.oiliness + 1),
-        };
-      }
-    }
-  }
-
-  return filter;
-}
+};
 
 /**
  * 根据用户设置构建排序条件
@@ -243,7 +209,7 @@ const handleFilterChange = (filter: GetDishesRequest['filter']) => {
   const dishRequestParams: GetDishesRequest = {
     sort: buildDishSortFromUserSettings(),
     pagination: { page: 1, pageSize: 20 },
-    filter: { ...buildDishFilterFromUserSettings(), ...filter }, // 合并用户设置和手动筛选
+    filter: { isSuggestion: true, ...filter }, // 使用后端推荐 + 用户筛选条件
     search: { keyword: '' },
   };
   
@@ -259,19 +225,28 @@ function navigateTo(path: string) {
 
 // --- 生命周期 ---
 onMounted(async () => {
-  // 4. 调用 actions (保持不变)
-  canteenStore.fetchCanteenList({ page: 1, pageSize: 10 });
+  try {
+    // 4. 调用 actions (保持不变)
+    canteenStore.fetchCanteenList({ page: 1, pageSize: 10 });
 
-  // 先获取用户信息，然后根据用户设置获取推荐菜品
-  await userStore.fetchProfileAction();
-  
-  const dishRequestParams: GetDishesRequest = {
-    sort: buildDishSortFromUserSettings(),
-    pagination: { page: 1, pageSize: 10 },
-    filter: buildDishFilterFromUserSettings(),
-    search: { keyword: '' },
-  };
-  dishesStore.fetchDishes(dishRequestParams);
+    // 获取菜品图片
+    await fetchDishImages();
+
+    // 先获取用户信息
+    await userStore.fetchProfileAction();
+    
+    // 获取今日推荐菜品，使用后端推荐逻辑
+    const dishRequestParams: GetDishesRequest = {
+      sort: buildDishSortFromUserSettings(),
+      pagination: { page: 1, pageSize: 10 },
+      filter: { isSuggestion: true },  // 让后端根据推荐返回菜品
+      search: { keyword: '' },
+    };
+    await dishesStore.fetchDishes(dishRequestParams);
+  } finally {
+    // 无论成功失败，都结束初始加载状态
+    isInitialLoading.value = false;
+  }
 });
 
 // 监听用户信息变化，当偏好设置或显示设置更新时刷新菜品列表
@@ -292,7 +267,7 @@ watch(
       const dishRequestParams: GetDishesRequest = {
         sort: buildDishSortFromUserSettings(),
         pagination: { page: 1, pageSize: 10 },
-        filter: buildDishFilterFromUserSettings(),
+        filter: { isSuggestion: true },  // 让后端根据推荐返回菜品
         search: { keyword: '' },
       };
       dishesStore.fetchDishes(dishRequestParams);
@@ -306,17 +281,20 @@ watch(
  */
 onPullDownRefresh(async () => {
   try {
+    // 重新获取菜品图片
+    await fetchDishImages();
+    
     // 重新获取用户信息
     await userStore.fetchProfileAction();
     
     // 重新获取食堂列表
     await canteenStore.fetchCanteenList({ page: 1, pageSize: 10 });
     
-    // 重新获取菜品列表（使用当前的筛选条件）
+    // 重新获取菜品列表（使用后端推荐 + 当前的筛选条件）
     const dishRequestParams: GetDishesRequest = {
       sort: buildDishSortFromUserSettings(),
       pagination: { page: 1, pageSize: 20 },
-      filter: { ...buildDishFilterFromUserSettings(), ...currentFilter.value },
+      filter: { isSuggestion: true, ...currentFilter.value },
       search: { keyword: '' },
     };
     
@@ -347,6 +325,14 @@ onPullDownRefresh(async () => {
 /* 仅保留在小程序与浏览器中隐藏滚动条的必要样式 */
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* 菜品图片轮播样式 */
+.dish-image-swiper {
+  width: 100%;
+  height: 192px; /* h-48 = 192px */
+  border-radius: 8px;
+  overflow: hidden;
+}
 
 /* 兼容旧类名的最小 CSS（使用普通 CSS 避免 @apply 编译问题） */
 .nav-item {

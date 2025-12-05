@@ -1,5 +1,9 @@
 <template>
   <view class="w-full min-h-screen p-4 bg-gray-50">
+    <!-- 骨架屏：首次加载时显示 -->
+    <AllergensSkeleton v-if="loading" />
+
+    <template v-else>
     <!-- 说明文字 -->
     <view class="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-4">
       <text class="text-sm text-blue-700 leading-relaxed">设置您的过敏原信息，系统会为您过滤包含这些成分的菜品。</text>
@@ -45,11 +49,13 @@
     >
       <text>{{ saving ? '保存中...' : '保存设置' }}</text>
     </button>
+    </template>
   </view>
 </template>
 
 <script setup lang="ts">
 import { useAllergens } from '../composables/use-allergens';
+import { AllergensSkeleton } from '@/components/skeleton';
 
-const { form, saving, commonAllergens, isSelected, toggleAllergen, handleSave } = useAllergens();
+const { form, saving, loading, commonAllergens, isSelected, toggleAllergen, handleSave } = useAllergens();
 </script>

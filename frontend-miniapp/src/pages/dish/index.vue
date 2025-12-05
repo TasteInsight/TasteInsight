@@ -1,9 +1,7 @@
 <template>
   <view class="min-h-screen bg-white pt-16">
-    <!-- 加载状态 -->
-    <view v-if="loading" class="flex items-center justify-center min-h-screen">
-      <text class="text-purple-500">加载中...</text>
-    </view>
+    <!-- 骨架屏 -->
+    <DishDetailSkeleton v-if="loading && !dish" />
 
     <!-- 错误状态 -->
     <view v-else-if="error" class="flex items-center justify-center min-h-screen">
@@ -290,6 +288,7 @@ import BottomReviewInput from './components/BottomReviewInput.vue';
 import AllCommentsPanel from './components/AllCommentsPanel.vue';
 import RatingBars from './components/RatingBars.vue';
 import ReportDialog from './components/ReportDialog.vue';
+import { DishDetailSkeleton } from '@/components/skeleton';
 import { useReport } from '@/pages/dish/composables/use-report';
 
 const dishId = ref('');
