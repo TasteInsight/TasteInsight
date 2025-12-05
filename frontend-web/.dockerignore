@@ -1,0 +1,43 @@
+# Dependencies
+node_modules
+
+# Build output (will be rebuilt in container)
+dist
+
+# Test files
+e2e
+test-results
+playwright-report
+coverage
+
+# IDE and editor
+.idea
+.vscode
+*.swp
+*.swo
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+*.md
+
+# Local env files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Misc
+*.local

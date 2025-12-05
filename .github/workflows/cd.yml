@@ -1,0 +1,319 @@
+name: CD - Deploy
+
+on:
+  # 当 CI 工作流完成时触发
+  workflow_run:
+    workflows: ["CI - Backend", "CI - Frontend"]
+    types:
+      - completed
+    branches: [main, dev]
+  # 支持 tag 推送
+  push:
+    tags:
+      - 'v*'
+  # 手动触发
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE: ${{ github.repository }}-backend
+  FRONTEND_IMAGE: ${{ github.repository }}-frontend
+
+jobs:
+  # 检查 CI 是否成功
+  check-ci:
+    name: Check CI Status
+    runs-on: ubuntu-latest
+    # 仅当 workflow_run 触发时检查，tag 和手动触发跳过
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    outputs:
+      should_deploy: ${{ steps.check.outputs.should_deploy }}
+    steps:
+      - name: Check CI result
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            if [ "${{ github.event.workflow_run.conclusion }}" = "success" ]; then
+              echo "should_deploy=true" >> $GITHUB_OUTPUT
+              echo "✅ CI passed, proceeding with deployment"
+            else
+              echo "should_deploy=false" >> $GITHUB_OUTPUT
+              echo "❌ CI failed, skipping deployment"
+              exit 1
+            fi
+          else
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+            echo "📦 Tag push or manual trigger, proceeding with deployment"
+          fi
+
+  # 构建后端镜像
+  build-backend:
+    name: Build Backend Image
+    runs-on: ubuntu-latest
+    needs: check-ci
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+      image_digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch || github.ref }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Backend
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-
+
+      - name: Build and push Backend
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+  # 构建前端镜像
+  build-frontend:
+    name: Build Frontend Image
+    runs-on: ubuntu-latest
+    needs: check-ci
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+      image_digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch || github.ref }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for Frontend
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-
+
+      - name: Build and push Frontend
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend-web
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+  # 部署到开发环境
+  deploy-dev:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend]
+    if: github.ref == 'refs/heads/dev'
+    environment: development
+    concurrency:
+      group: deploy-development
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEV_SSH_KEY }}
+
+      - name: Add host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.DEV_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Create and copy deployment files
+        run: |
+          # 创建临时目录存放部署文件
+          DEPLOY_TMP=$(mktemp -d)
+          trap "rm -rf $DEPLOY_TMP" EXIT
+          
+          # 使用 heredoc 安全写入敏感文件
+          cat > "$DEPLOY_TMP/cert.pem" << 'EOF'
+          ${{ secrets.DEV_SSL_CERT }}
+          EOF
+          
+          cat > "$DEPLOY_TMP/private.key" << 'EOF'
+          ${{ secrets.DEV_SSL_KEY }}
+          EOF
+          
+          cat > "$DEPLOY_TMP/.env" << 'EOF'
+          ${{ secrets.DEV_ENV_FILE }}
+          EOF
+          
+          cat > "$DEPLOY_TMP/nginx.conf" << 'EOF'
+          ${{ secrets.DEV_NGINX_CONF }}
+          EOF
+          
+          # 复制文件到服务器
+          scp "$DEPLOY_TMP/cert.pem" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/certs/cert.pem"
+          scp "$DEPLOY_TMP/private.key" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/certs/private.key"
+          scp "$DEPLOY_TMP/.env" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/.env"
+          scp "$DEPLOY_TMP/nginx.conf" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/nginx.conf"
+        shell: bash
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_HOST }}
+          username: ${{ secrets.DEV_USER }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ secrets.DEV_DEPLOY_PATH }}
+            
+            # 拉取最新代码
+            git pull origin dev
+            
+            # 设置证书权限
+            chmod 600 certs/private.key
+            chmod 644 certs/cert.pem
+
+            # 设置镜像标签
+            export TAG=dev
+
+            # 拉取并启动容器
+            docker compose pull
+            docker compose up -d --remove-orphans
+            
+            # 清理未使用的镜像
+            docker image prune -f
+            
+            echo "✅ Development deployment completed at $(date)"
+
+  # 部署到生产环境
+  deploy-prod:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend]
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
+
+      - name: Add host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.PROD_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Create and copy deployment files
+        run: |
+          # 创建临时目录存放部署文件
+          DEPLOY_TMP=$(mktemp -d)
+          trap "rm -rf $DEPLOY_TMP" EXIT
+          
+          # 使用 heredoc 安全写入敏感文件
+          cat > "$DEPLOY_TMP/cert.pem" << 'EOF'
+          ${{ secrets.PROD_SSL_CERT }}
+          EOF
+          
+          cat > "$DEPLOY_TMP/private.key" << 'EOF'
+          ${{ secrets.PROD_SSL_KEY }}
+          EOF
+          
+          cat > "$DEPLOY_TMP/.env" << 'EOF'
+          ${{ secrets.PROD_ENV_FILE }}
+          EOF
+          
+          cat > "$DEPLOY_TMP/nginx.conf" << 'EOF'
+          ${{ secrets.PROD_NGINX_CONF }}
+          EOF
+          
+          # 复制文件到服务器
+          scp "$DEPLOY_TMP/cert.pem" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/certs/cert.pem"
+          scp "$DEPLOY_TMP/private.key" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/certs/private.key"
+          scp "$DEPLOY_TMP/.env" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/.env"
+          scp "$DEPLOY_TMP/nginx.conf" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/nginx.conf"
+        shell: bash
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ secrets.PROD_DEPLOY_PATH }}
+            
+            # 拉取最新代码
+            git pull origin main
+            
+            # 设置证书权限
+            chmod 600 certs/private.key
+            chmod 644 certs/cert.pem
+
+            # 设置镜像标签
+            export TAG=main
+
+            # 拉取并启动容器
+            docker compose pull
+            docker compose up -d --remove-orphans
+            
+            # 清理未使用的镜像
+            docker image prune -f
+            
+            echo "✅ Production deployment completed at $(date)"

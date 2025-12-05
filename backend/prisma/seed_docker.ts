@@ -27,10 +27,12 @@ async function main() {
   await prisma.admin.deleteMany({});
 
   // 2. 创建一个可用于所有测试的【基础管理员】(superadmin)
-  const hashedPassword = await bcrypt.hash('password123', 10);
+  const adminUsername = process.env.INITIAL_ADMIN_USERNAME || 'testadmin';
+  const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'password123';
+  const hashedPassword = await bcrypt.hash(adminPassword, 10);
   const admin = await prisma.admin.create({
     data: {
-      username: 'testadmin',
+      username: adminUsername,
       password: hashedPassword,
       role: 'superadmin',
     },
