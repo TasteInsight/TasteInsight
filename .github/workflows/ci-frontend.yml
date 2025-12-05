@@ -47,4 +47,4 @@ jobs:
         run: pnpm build
 
       - name: Run Unit Tests
-        run: pnpm test --run
+        run: pnpm test run

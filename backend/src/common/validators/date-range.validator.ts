@@ -45,7 +45,7 @@ export class IsValidDateRangeConstraint
  * 使用方式：应用在类上
  */
 export function IsValidDateRange(validationOptions?: ValidationOptions) {
-  return function (target: Function) {
+  return function (target: new (...args: any[]) => any) {
     registerDecorator({
       target: target,
       propertyName: undefined as any, // 类装饰器不需要属性名
