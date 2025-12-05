@@ -224,7 +224,7 @@ jobs:
             chmod 644 certs/cert.pem
 
             # 登录 GitHub Container Registry
-            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.GHCR_USER }}" --password-stdin
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
             # 设置镜像标签并拉取启动容器
             export TAG=dev
@@ -310,7 +310,7 @@ jobs:
             chmod 644 certs/cert.pem
 
             # 登录 GitHub Container Registry
-            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ secrets.GHCR_USER }}" --password-stdin
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
             # 设置镜像标签并拉取启动容器
             export TAG=main
