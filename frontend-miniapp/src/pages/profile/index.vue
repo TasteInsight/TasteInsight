@@ -1,5 +1,9 @@
 <template>
   <view class="w-full h-full min-h-screen bg-gray-50 overflow-hidden flex flex-col relative" >
+    <!-- 骨架屏：首次加载时显示 -->
+    <ProfileSkeleton v-if="isInitialLoading" />
+
+    <template v-else>
     <!-- 紫色背景头部区域 -->
     <view class="bg-white pt-12 pb-6 px-6">
       <!-- 用户信息头部 -->
@@ -87,16 +91,30 @@
         </view>
       </view>
     </view>
+    </template>
   </view>
 </template>
 
 <script setup lang="ts">
+import { ref, computed, onMounted } from 'vue';
 import { onPullDownRefresh } from '@dcloudio/uni-app';
 import UserHeader from './components/UserHeader.vue';
 import { useProfile } from './composables/use-profile';
+import { ProfileSkeleton } from '@/components/skeleton';
 
 // 从 use-profile 中获取所需的状态和方法
 const { userInfo, isLoggedIn, loading, handleLogout, fetchProfile } = useProfile();
+
+// 初次加载标记
+const hasLoaded = ref(false);
+const isInitialLoading = computed(() => loading.value && !hasLoaded.value);
+
+// 监听数据加载完成
+onMounted(() => {
+  if (userInfo.value || !loading.value) {
+    hasLoaded.value = true;
+  }
+});
 
 // 下拉刷新处理
 onPullDownRefresh(async () => {

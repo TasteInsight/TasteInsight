@@ -1,5 +1,9 @@
 <template>
   <view class="w-full min-h-screen bg-gradient-to-b from-white via-purple-50/20 to-white p-4">
+    <!-- 骨架屏：首次加载时显示 -->
+    <NotificationsSkeleton v-if="loading" />
+
+    <template v-else>
     <!-- 通知设置 -->
     <view class="bg-white rounded-2xl p-6 mb-4 shadow-sm">
       <text class="text-lg font-semibold text-gray-800 mb-4 block">通知设置</text>
@@ -71,11 +75,13 @@
     >
       <text>{{ saving ? '保存中...' : '保存设置' }}</text>
     </button>
+    </template>
   </view>
 </template>
 
 <script setup lang="ts">
 import { useNotifications } from '../composables/use-notifications';
+import { NotificationsSkeleton } from '@/components/skeleton';
 
-const { form, saving, updateField, handleSave } = useNotifications();
+const { form, saving, loading, updateField, handleSave } = useNotifications();
 </script>

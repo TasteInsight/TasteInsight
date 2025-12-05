@@ -1,7 +1,9 @@
 <template>
   <view class="min-h-screen bg-gray-50 pb-safe">
-   
+    <!-- 骨架屏：首次加载时显示 -->
+    <PlanningSkeleton v-if="isInitialLoading" />
 
+    <template v-else>
     <!-- 标签页 -->
     <view class="bg-white flex border-b-2 border-gray-100">
       <view 
@@ -26,8 +28,8 @@
       </view>
     </view>
 
-    <!-- 加载状态 -->
-    <view v-if="loading" class="flex flex-col items-center justify-center py-20">
+    <!-- 加载状态（后续加载） -->
+    <view v-if="loading && !isInitialLoading" class="flex flex-col items-center justify-center py-20">
       <view class="w-10 h-10 border-4 border-gray-200 border-t-purple-700 rounded-full animate-spin mb-4"></view>
       <text class="text-gray-500">加载中...</text>
     </view>
@@ -89,16 +91,22 @@
       @close="closeCreateDialog"
       @submit="submitCreate"
     />
+    </template>
   </view>
 </template>
 
 <script setup lang="ts">
+import { ref, computed } from 'vue';
 import { onHide, onPullDownRefresh } from '@dcloudio/uni-app';
 import { useMenuPlanning } from './composables/use-menu-planning';
 import type { EnrichedMealPlan } from './composables/use-menu-planning';
 import PlanCard from './components/PlanCard.vue';
 import PlanDetailDialog from './components/PlanDetailDialog.vue';
 import PlanEditDialog from './components/PlanEditDialog.vue';
+import { PlanningSkeleton } from '@/components/skeleton';
+
+// 初次加载标记
+const hasLoaded = ref(false);
 
 const {
   loading,
@@ -124,6 +132,19 @@ const {
   refreshPlans,
   executePlan,
 } = useMenuPlanning();
+
+// 首次加载状态：加载中且数据为空
+const isInitialLoading = computed(() => {
+  return loading.value && !hasLoaded.value;
+});
+
+// 监听数据加载完成
+import { watch } from 'vue';
+watch([currentPlans, historyPlans], () => {
+  if (currentPlans.value.length > 0 || historyPlans.value.length > 0 || !loading.value) {
+    hasLoaded.value = true;
+  }
+}, { immediate: true });
 
 // 页面隐藏时关闭所有对话框
 onHide(() => {

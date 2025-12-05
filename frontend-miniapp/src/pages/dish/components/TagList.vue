@@ -1,5 +1,9 @@
 <template>
   <view class="min-h-screen bg-white">
+    <!-- 骨架屏：首次加载时显示 -->
+    <TagListSkeleton v-if="loading && dishes.length === 0" />
+
+    <template v-else>
     <!-- 顶部标题 -->
     <view class="px-4 py-3 border-b border-gray-100 bg-white sticky top-0 z-10">
       <view class="text-lg font-bold text-gray-800">
@@ -11,11 +15,7 @@
     </view>
 
     <view class="px-4">
-      <view v-if="loading && dishes.length === 0" class="text-center py-8 text-gray-500">
-        加载中...
-      </view>
-
-      <view v-else-if="error" class="text-center py-8 text-red-500">
+      <view v-if="error" class="text-center py-8 text-red-500">
         {{ error }}
         <view class="mt-2">
           <button size="mini" @click="loadDishes(true)">重试</button>
@@ -41,6 +41,7 @@
         暂无相关菜品
       </view>
     </view>
+    </template>
   </view>
 </template>
 
@@ -50,6 +51,7 @@ import { onLoad, onReachBottom } from '@dcloudio/uni-app';
 import { getDishes } from '@/api/modules/dish';
 import type { Dish } from '@/types/api';
 import CanteenDishCard from '@/pages/canteen/components/CanteenDishCard.vue';
+import { TagListSkeleton } from '@/components/skeleton';
 
 const currentTag = ref('');
 const canteenId = ref('');

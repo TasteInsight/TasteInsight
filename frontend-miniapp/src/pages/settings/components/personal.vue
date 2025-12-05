@@ -1,5 +1,9 @@
 <template>
   <view class="w-full min-h-screen bg-gray-50 p-4">
+    <!-- 骨架屏：首次加载时显示 -->
+    <PersonalSettingsSkeleton v-if="loading" />
+
+    <template v-else>
     <!-- 头像上传区域 -->
     <view class="bg-white rounded-lg p-6 mb-4 shadow-sm">
       <text class="text-lg font-semibold text-gray-800 mb-6 block">头像</text>
@@ -45,11 +49,13 @@
     >
       <text>{{ saving ? '保存中...' : '保存修改' }}</text>
     </button>
+    </template>
   </view>
 </template>
 
 <script setup lang="ts">
 import { usePersonal } from '../composables/use-personal';
+import { PersonalSettingsSkeleton } from '@/components/skeleton';
 
-const { form, saving, chooseAvatar, handleSave } = usePersonal();
+const { form, saving, loading, chooseAvatar, handleSave } = usePersonal();
 </script>

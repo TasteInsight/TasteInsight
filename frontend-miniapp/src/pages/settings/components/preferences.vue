@@ -1,6 +1,9 @@
 <template>
   <view class="w-full min-h-screen bg-gray-50 p-4 pb-10">
-    
+    <!-- 骨架屏：首次加载时显示 -->
+    <PreferencesSkeleton v-if="loading" />
+
+    <template v-else>
     <!-- 口味偏好 -->
     <view class="bg-white rounded-lg p-6 mb-4 shadow-sm border border-gray-100">
       <text class="text-lg font-semibold text-gray-800 mb-6 block">口味偏好</text>
@@ -286,15 +289,18 @@
     >
       <text>{{ saving ? '保存中...' : '保存修改' }}</text>
     </button>
+    </template>
   </view>
 </template>
 
 <script setup lang="ts">
 import { usePreferences } from '../composables/use-preferences';
+import { PreferencesSkeleton } from '@/components/skeleton';
 
 const {
   form,
   saving,
+  loading,
   newFavoriteIngredient,
   newMeatPreference,
   newAvoidIngredient,

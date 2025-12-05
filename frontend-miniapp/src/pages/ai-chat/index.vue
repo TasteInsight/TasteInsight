@@ -1,5 +1,9 @@
 <template>
   <view class="app-page ai-chat-page">
+    <!-- 骨架屏：首次加载时显示 -->
+    <AIChatSkeleton v-if="isInitialLoading" />
+
+    <template v-else>
     <view class="page-header">
         <text class="header-title">问AI</text>
         <view class="history-btn" @click="alertHistory">
@@ -39,20 +43,26 @@
 
     <!-- 底部输入框 (绝对定位在底部，覆盖内容) -->
     <InputBar class="fixed-input-bar" />
+    </template>
 
     <!-- 底部导航 (由pages.json处理，此处不重复实现) -->
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 import { useChatStore } from '@/store/modules/use-chat-store';
 import RecommendationCard from './components/RecommendationCard.vue';
 import InputBar from './components/InputBar.vue';
+import { AIChatSkeleton } from '@/components/skeleton';
 
 const chatStore = useChatStore();
 const scrollAnchorId = 'chat-bottom-anchor';
 const scrollViewId = ref(scrollAnchorId);
+
+// 首次加载状态
+const hasInitialized = ref(false);
+const isInitialLoading = computed(() => !hasInitialized.value && chatStore.messages.length === 0);
 
 // 监听消息变化，自动滚动到底部
 watch(() => chatStore.messages.length, () => {
@@ -67,6 +77,7 @@ onMounted(() => {
     if (chatStore.messages.length === 0) {
         chatStore.startNewSession(); // 初始化欢迎消息
     }
+    hasInitialized.value = true;
 });
 
 const alertHistory = () => {
