@@ -16,14 +16,13 @@ env:
   NODE_VERSION: '22'
   PNPM_VERSION: '9'
 
-defaults:
-  run:
-    working-directory: ./frontend-web
-
 jobs:
   build-and-test:
     name: Build & Test
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend-web
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -32,6 +31,7 @@ jobs:
         uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
+          run_install: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -47,4 +47,4 @@ jobs:
         run: pnpm build
 
       - name: Run Unit Tests
-        run: pnpm test
+        run: pnpm test --run
