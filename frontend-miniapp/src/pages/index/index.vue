@@ -9,7 +9,7 @@
       <SearchBar />
 
       <!-- 菜品图片轮播 -->
-      <view  class="mb-4">
+      <view v-if="dishImages.length>0" class="mb-4">
         <swiper
           class="dish-image-swiper"
           :indicator-dots="dishImages.length > 1"

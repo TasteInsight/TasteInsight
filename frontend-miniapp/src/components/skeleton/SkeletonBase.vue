@@ -4,6 +4,7 @@
     :class="[
       animated ? 'skeleton-animated' : '',
       roundedFull ? 'rounded-full' : '',
+      rounded,
       className
     ]"
     :style="{ width: width, height: height }"
@@ -16,6 +17,7 @@ interface Props {
   height?: string;
   animated?: boolean;
   roundedFull?: boolean;
+  rounded?: string;
   className?: string;
 }
 
@@ -24,6 +26,7 @@ withDefaults(defineProps<Props>(), {
   height: '1rem',
   animated: true,
   roundedFull: false,
+  rounded: '',
   className: '',
 });
 </script>
