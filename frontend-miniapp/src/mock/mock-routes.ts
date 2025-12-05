@@ -19,7 +19,7 @@ import {
   mockDeleteReview,
   mockDeleteComment
 } from './services/review';
-import { mockGetDishById, mockGetDishes } from './services/dish';
+import { mockGetDishById, mockGetDishes, mockGetDishesImages } from './services/dish';
 import { mockGetCanteenList, mockGetCanteenDetail, mockGetWindowList, mockGetWindowDetail, mockGetWindowDishes, mockSearchDishes } from './services/canteen';
 import { mockGetNewsList, mockGetNewsById } from './services/news';
 import { 
@@ -144,6 +144,12 @@ registerMockRoute('GET', '/dishes/:id', async (url) => {
 registerMockRoute('POST', '/dishes', async (url, options) => {
   const params = options.data as any;
   const data = await mockGetDishes(params);
+  return mockSuccess(data);
+});
+
+// GET /dishes/images - 获取菜品图片列表
+registerMockRoute('GET', '/dishes/images', async () => {
+  const data = await mockGetDishesImages();
   return mockSuccess(data);
 });
 
