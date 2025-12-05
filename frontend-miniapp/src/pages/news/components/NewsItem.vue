@@ -33,30 +33,30 @@
   </view>
 </template>
 
-<script setup>
+<script setup lang="ts">
 // 假设 dayjs 插件可用，提供一个格式化函数
 import dayjs from 'dayjs'; // 假设 dayjs 已通过插件配置全局导入或此处引入
+import type { News } from '@/types/api';
 
-const props = defineProps({
-  news: {
-    type: Object,
-    required: true,
-  },
-});
+interface Props {
+  news: News;
+}
 
-const formatTime = (time) => {
+const props = defineProps<Props>();
+
+const formatTime = (time: string): string => {
   // 仅保留日期部分，例如 2025-10-21
   return dayjs(time).format('YYYY-MM-DD');
 };
 
 // 简单的去除 HTML 标签函数，用于摘要回退
-const stripHtml = (html) => {
+const stripHtml = (html: string): string => {
   if (!html) return '';
   const stripped = html.replace(/<[^>]*>/g, '');
   return stripped.substring(0, 60) + (stripped.length > 60 ? '...' : '');
 };
 
-const goToDetail = (id) => {
+const goToDetail = (id: string): void => {
   if (id) {
     uni.navigateTo({
       url: `/pages/news/components/detail?id=${id}`,

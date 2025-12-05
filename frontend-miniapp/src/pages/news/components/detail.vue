@@ -31,28 +31,29 @@
   </view>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { getNewsById } from '@/api/modules/news';
 // import CustomNavbar from '@/components/common/CustomNavbar.vue'; 
 import dayjs from 'dayjs'; 
+import type { News } from '@/types/api';
 
-const newsDetail = ref({});
-const loading = ref(false);
+const newsDetail = ref<News>({} as News);
+const loading = ref<boolean>(false);
 
 // 处理富文本内容，主要是为了让图片自适应屏幕宽度
-const formattedContent = computed(() => {
+const formattedContent = computed((): string => {
   if (!newsDetail.value.content) return '';
   
-  let content = newsDetail.value.content;
+  let content: string = newsDetail.value.content;
 
   // 0. 移除 html 和 body 标签，防止 rich-text 解析异常
   content = content.replace(/<\/?html[^>]*>/gi, '').replace(/<\/?body[^>]*>/gi, '');
   
   // 1. 给 img 标签添加 max-width: 100% 样式
   // 使用回调函数处理，避免产生重复的 style 属性
-  content = content.replace(/<img[^>]*>/gi, (match) => {
+  content = content.replace(/<img[^>]*>/gi, (match: string) => {
     // 如果已经有 style 属性
     if (match.indexOf('style="') > -1) {
       return match.replace('style="', 'style="max-width:100%;height:auto;display:block;margin:10px auto;');
@@ -62,7 +63,7 @@ const formattedContent = computed(() => {
   });
 
   // 2. 给 table 添加 max-width: 100%
-  content = content.replace(/<table[^>]*>/gi, (match) => {
+  content = content.replace(/<table[^>]*>/gi, (match: string) => {
     if (match.indexOf('style="') > -1) {
       return match.replace('style="', 'style="max-width:100%;box-sizing:border-box;');
     }
@@ -70,7 +71,7 @@ const formattedContent = computed(() => {
   });
 
   // 3. 给 pre 添加样式防止溢出
-  content = content.replace(/<pre[^>]*>/gi, (match) => {
+  content = content.replace(/<pre[^>]*>/gi, (match: string) => {
     if (match.indexOf('style="') > -1) {
       return match.replace('style="', 'style="max-width:100%;white-space:pre-wrap;word-break:break-all;');
     }
@@ -80,7 +81,11 @@ const formattedContent = computed(() => {
   return content;
 });
 
-onLoad((options) => {
+const formatTime = (time: string): string => {
+  return dayjs(time).format('YYYY-MM-DD HH:mm');
+};
+
+onLoad((options: any) => {
   if (options.id) {
     fetchNewsDetail(options.id);
   } else {
@@ -89,7 +94,7 @@ onLoad((options) => {
   }
 });
 
-const fetchNewsDetail = async (id) => {
+const fetchNewsDetail = async (id: string): Promise<void> => {
   loading.value = true;
   try {
     const res = await getNewsById(id);
@@ -103,10 +108,6 @@ const fetchNewsDetail = async (id) => {
   } finally {
     loading.value = false;
   }
-};
-
-const formatTime = (time) => {
-  return dayjs(time).format('YYYY-MM-DD HH:mm');
 };
 </script>
 

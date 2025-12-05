@@ -33,7 +33,7 @@
   </view>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import { useNewsList } from './composables/use-news-list';
 import NewsItem from './components/NewsItem.vue';
