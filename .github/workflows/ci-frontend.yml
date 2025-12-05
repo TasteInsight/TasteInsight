@@ -46,5 +46,6 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Run Unit Tests
-        run: pnpm test run
+      # TODO: Enable tests when they are available
+      # - name: Run Unit Tests
+      #   run: pnpm test run

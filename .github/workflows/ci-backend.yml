@@ -114,6 +114,8 @@ jobs:
         run: pnpm exec ts-node prisma/seed.ts
         env:
           DATABASE_URL: ${{ env.CI_DATABASE_URL }}
+          INITIAL_ADMIN_USERNAME: ci_admin
+          INITIAL_ADMIN_PASSWORD: ci_admin_password_12345
 
       - name: Run E2E tests
         run: pnpm test:e2e:cov
