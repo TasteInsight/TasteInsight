@@ -1,167 +1,209 @@
 <template>
-  <!-- 主对话框 - 从底部弹出 -->
+  <!-- 主对话框 - 居中显示 -->
   <view 
     v-if="visible" 
-    class="fixed inset-0 bg-black/50 z-[1000] flex items-end px-3" 
+    class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1000] flex items-center justify-center p-5" 
     @tap="handleClose"
     @touchmove.stop.prevent
   >
     <view 
-      class="w-full max-h-[72vh] bg-white rounded-t-3xl flex flex-col overflow-hidden px-3 box-border" 
+      class="bg-white rounded-3xl w-full max-w-xl flex flex-col overflow-hidden shadow-2xl animate-fade-in" 
+      style="max-height: 90vh; min-height: 70vh;"
       @tap.stop
       @touchmove.stop
     >
       <!-- 头部 -->
-      <view class="flex items-center justify-between px-4 py-4 border-b border-gray-100 shrink-0">
-        <text class="text-lg font-semibold text-gray-800">{{ isEdit ? '编辑规划' : '新建规划' }}</text>
-        <view class="w-6 h-6 flex items-center justify-center text-gray-400 text-xl" @tap="handleClose">
-          <text>✕</text>
+      <view class="flex items-center justify-between px-6 py-5 border-b border-gray-100 shrink-0 bg-white z-10">
+        <view>
+          <text class="text-xl font-bold text-gray-900 block">{{ isEdit ? '编辑规划' : '新建规划' }}</text>
+          <text class="text-sm text-gray-500 mt-1">制定你的专属饮食计划</text>
+        </view>
+        <view 
+          class="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full text-gray-500 active:bg-gray-200 transition-colors" 
+          @tap="handleClose"
+        >
+          <text class="text-sm">✕</text>
         </view>
       </view>
 
       <!-- 表单内容 -->
-      <view scroll-y class="flex-1 px-4 py-3 overflow-x-hidden">
-        <!-- 日期选择行 -->
-        <view class="mb-5">
-          <view class="flex gap-3 max-w-[420px] mx-auto">
-            <view class="flex-1">
-              <text class="block text-sm text-gray-500 mb-2">开始日期</text>
-              <picker mode="date" :value="formData.startDate" @change="onStartDateChange">
-                <view class="flex items-center justify-between py-2.5 px-3 bg-gray-100 rounded-xl">
-                  <text class="text-sm text-gray-700">{{ formData.startDate || '请选择' }}</text>
-                  <text class="text-gray-400">›</text>
-                </view>
-              </picker>
-            </view>
-            <view class="flex-1">
-              <text class="block text-sm text-gray-500 mb-2">结束日期</text>
-              <picker mode="date" :value="formData.endDate" @change="onEndDateChange">
-                <view class="flex items-center justify-between py-2.5 px-3 bg-gray-100 rounded-xl">
-                  <text class="text-sm text-gray-700">{{ formData.endDate || '请选择' }}</text>
-                  <text class="text-gray-400">›</text>
-                </view>
-              </picker>
+      <scroll-view scroll-y class="flex-1 w-full bg-white">
+        <view class="px-6 py-6 space-y-6">
+          <!-- 日期选择行 -->
+          <view>
+            <text class="text-sm font-semibold text-gray-700 mb-3 block pl-1">日期范围</text>
+            <view class="flex gap-3">
+              <view class="flex-1">
+                <picker mode="date" :value="formData.startDate" @change="onStartDateChange">
+                  <view class="flex flex-col bg-gray-50 rounded-2xl p-3 border border-gray-100 active:border-purple-200 transition-colors">
+                    <text class="text-xs text-gray-400 mb-1">开始日期</text>
+                    <view class="flex items-center justify-between">
+                      <text class="text-base font-medium text-gray-800">{{ formData.startDate || '选择日期' }}</text>
+                      <text class="text-gray-400 text-xs">📅</text>
+                    </view>
+                  </view>
+                </picker>
+              </view>
+              <view class="flex items-center justify-center pt-4">
+                <text class="text-gray-300">→</text>
+              </view>
+              <view class="flex-1">
+                <picker mode="date" :value="formData.endDate" @change="onEndDateChange">
+                  <view class="flex flex-col bg-gray-50 rounded-2xl p-3 border border-gray-100 active:border-purple-200 transition-colors">
+                    <text class="text-xs text-gray-400 mb-1">结束日期</text>
+                    <view class="flex items-center justify-between">
+                      <text class="text-base font-medium text-gray-800">{{ formData.endDate || '选择日期' }}</text>
+                      <text class="text-gray-400 text-xs">📅</text>
+                    </view>
+                  </view>
+                </picker>
+              </view>
             </view>
           </view>
-        </view>
 
-        <!-- 用餐时间 -->
-        <view class="mb-5">
-          <text class="block text-sm text-gray-500 mb-3 text-center">用餐时间</text>
-          <view class="grid grid-cols-4 gap-3 max-w-[420px] w-full mx-auto">
-            <view 
-              v-for="option in mealTimeOptions" 
-              :key="option.value"
-              class="w-full py-2.5 text-center rounded-lg text-sm transition-all"
-              :class="formData.mealTime === option.value 
-                ? 'bg-purple-100 text-purple-700' 
-                : 'bg-gray-100 text-gray-600'"
-              @tap="selectMealTime(option.value)"
-            >
-              <text>{{ option.label }}</text>
+          <!-- 用餐时间 -->
+          <view>
+            <text class="text-sm font-semibold text-gray-700 mb-3 block pl-1">用餐时段</text>
+            <view class="grid grid-cols-4 gap-2">
+              <view 
+                v-for="option in mealTimeOptions" 
+                :key="option.value"
+                class="py-3 text-center rounded-xl text-sm font-medium transition-all duration-200 border"
+                :class="formData.mealTime === option.value 
+                  ? 'bg-ts-purple text-white border-ts-purple shadow-md shadow-purple-200' 
+                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'"
+                @tap="selectMealTime(option.value)"
+              >
+                <text>{{ option.label }}</text>
+              </view>
             </view>
           </view>
-        </view>
 
-        <!-- 已选菜品 -->
-        <view class="mb-5">
-          <view class="flex items-center justify-between mb-3 max-w-[420px] mx-auto">
-            <text class="text-sm text-gray-500">已选菜品</text>
-            <text class="text-xs text-purple-600">{{ selectedDishes.length }} 个</text>
-          </view>
-          
-          <view v-if="selectedDishes.length === 0" class="py-6 text-center bg-gray-50 rounded-xl max-w-[420px] mx-auto">
-            <text class="text-sm text-gray-400">暂未选择菜品</text>
-          </view>
-          
-          <view v-else class="flex flex-wrap gap-2 mb-3 max-w-[420px] mx-auto">
-            <view 
-              v-for="dish in selectedDishes" 
-              :key="dish.id"
-              class="flex items-center py-1.5 px-2.5 bg-purple-50 rounded-full"
-            >
-              <text class="text-xs text-purple-600">{{ dish.name }}</text>
-              <text class="ml-1.5 text-base text-purple-400" @tap="removeDish(dish.id)">×</text>
+          <!-- 已选菜品 -->
+          <view>
+            <view class="flex items-center justify-between mb-3 pl-1">
+              <text class="text-sm font-semibold text-gray-700">已选菜品</text>
+              <view class="bg-purple-50 px-2 py-0.5 rounded-md">
+                <text class="text-xs text-purple-600 font-medium">{{ selectedDishes.length }} 道菜</text>
+              </view>
             </view>
-          </view>
-          
-          <view class="flex justify-center">
-            <view 
-              class="py-3 text-center bg-purple-100 rounded-lg max-w-[420px] w-full"
-              @tap="openDishSelector"
-            >
-              <text class="text-sm text-purple-700 font-medium">+ 添加菜品</text>
+            
+            <view class="bg-gray-50 rounded-2xl p-4 border border-gray-100 min-h-[120px] flex flex-col">
+              <view v-if="selectedDishes.length === 0" class="flex-1 flex flex-col items-center justify-center py-4">
+                <view class="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mb-2 text-xl text-gray-400">🍽️</view>
+                <text class="text-sm text-gray-400">暂未选择任何菜品</text>
+              </view>
+              
+              <view v-else class="flex flex-wrap gap-2 mb-4">
+                <view 
+                  v-for="dish in selectedDishes" 
+                  :key="dish.id"
+                  class="flex items-center py-1.5 pl-3 pr-2 bg-white border border-purple-100 rounded-full shadow-sm"
+                >
+                  <text class="text-xs text-gray-700 font-medium">{{ dish.name }}</text>
+                  <view 
+                    class="ml-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-gray-100 text-gray-400 active:bg-red-100 active:text-red-500 transition-colors"
+                    @tap="removeDish(dish.id)"
+                  >
+                    <text class="text-xs font-bold">×</text>
+                  </view>
+                </view>
+              </view>
+              
+              <view 
+                class="mt-auto w-full py-3 flex items-center justify-center gap-2 border-2 border-dashed border-purple-200 bg-purple-50/50 rounded-xl active:bg-purple-100 transition-colors"
+                @tap="openDishSelector"
+              >
+                <view class="w-5 h-5 rounded-full bg-ts-purple text-white flex items-center justify-center text-xs font-bold">+</view>
+                <text class="text-sm text-purple-700 font-medium">添加菜品</text>
+              </view>
             </view>
           </view>
         </view>
-      </view>
+      </scroll-view>
 
       <!-- 底部按钮 -->
-      <view class="flex gap-3 px-4 py-3 border-t border-gray-100 pb-safe max-w-[420px] mx-auto w-full">
-        <view class="flex-1 py-2 text-center bg-gray-100 rounded-xl" @tap="handleClose">
-          <text class="text-gray-500">取消</text>
-        </view>
-        <view 
-          class="flex-1 py-2 text-center rounded-xl"
-          :class="submitting ? 'bg-purple-300' : 'bg-ts-purple'"
-          @tap="handleSubmit"
-        >
-          <text class="text-white">{{ submitting ? '提交中...' : '确定' }}</text>
+      <view class="px-6 py-5 border-t border-gray-100 bg-white z-10">
+        <view class="flex gap-4">
+          <view 
+            class="flex-1 py-3.5 text-center bg-gray-100 rounded-2xl active:bg-gray-200 transition-colors" 
+            @tap="handleClose"
+          >
+            <text class="text-gray-600 font-medium">取消</text>
+          </view>
+          <view 
+            class="flex-1 py-3.5 text-center rounded-2xl shadow-lg shadow-purple-200 active:scale-[0.98] transition-all"
+            :class="submitting ? 'bg-purple-300' : 'bg-ts-purple'"
+            @tap="handleSubmit"
+          >
+            <text class="text-white font-bold text-base">{{ submitting ? '提交中...' : '确认保存' }}</text>
+          </view>
         </view>
       </view>
     </view>
   </view>
 
-  <!-- 菜品选择器 - 底部弹出 70% 高度 -->
+  <!-- 菜品选择器 - 居中显示 -->
   <view 
     v-if="showDishSelector" 
-    class="fixed inset-0 bg-black/50 z-[1001] flex items-end px-3" 
+    class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[1001] flex items-center justify-center p-5" 
     @tap="closeDishSelector"
     @touchmove.stop.prevent
   >
     <view 
-      class="w-full h-[65vh] bg-white rounded-t-3xl flex flex-col overflow-hidden px-3 box-border" 
+      class="bg-white rounded-3xl w-full max-w-xl flex flex-col overflow-hidden shadow-2xl animate-fade-in" 
+      style="max-height: 85vh; min-height: 60vh;"
       @tap.stop
       @touchmove.stop
     >
       <!-- 头部 -->
-      <view class="flex items-center justify-between px-4 py-3.5 border-b border-gray-100 shrink-0">
-        <view class="w-8 h-8 flex items-center justify-center" @tap="closeDishSelector">
-          <text class="text-xl text-gray-400">✕</text>
-        </view>
-        <text class="text-base font-semibold text-gray-800">选择菜品</text>
+      <view class="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0 bg-white z-10">
         <view 
-          class="px-3 py-1.5 rounded-full"
-          :class="tempSelectedDishes.length > 0 ? 'bg-purple-100' : 'bg-transparent'"
+          class="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full text-gray-500" 
+          @tap="closeDishSelector"
+        >
+          <text class="text-sm">✕</text>
+        </view>
+        <text class="text-lg font-bold text-gray-900">添加菜品</text>
+        <view 
+          class="px-4 py-1.5 rounded-full transition-all"
+          :class="tempSelectedDishes.length > 0 ? 'bg-ts-purple text-white shadow-md shadow-purple-200' : 'bg-gray-100 text-gray-400'"
           @tap="confirmDishSelection"
         >
-          <text 
-            class="text-sm font-medium"
-            :class="tempSelectedDishes.length > 0 ? 'text-purple-700' : 'text-gray-400'"
-          >
+          <text class="text-sm font-medium">
             完成{{ tempSelectedDishes.length > 0 ? `(${tempSelectedDishes.length})` : '' }}
           </text>
         </view>
       </view>
 
       <!-- 筛选区域 -->
-      <view class="px-4 py-3 bg-white border-b border-gray-100">
+      <view class="px-6 py-4 bg-white border-b border-gray-100 z-10">
         <!-- 搜索框 -->
-        <view class="flex items-center py-2 px-3 bg-gray-50 rounded-xl mb-2.5">
+        <view class="flex items-center py-2.5 px-4 bg-gray-100 rounded-full mb-3 transition-colors focus-within:bg-white focus-within:ring-2 focus-within:ring-purple-100 focus-within:border-purple-200 border border-transparent">
           <text class="text-base mr-2 text-gray-400">🔍</text>
           <input 
             v-model="searchKeyword" 
-            class="flex-1 text-sm bg-transparent"
-            placeholder="搜索菜品名称"
+            class="flex-1 text-sm bg-transparent h-6"
+            placeholder="搜索想吃的菜品..."
             placeholder-class="text-gray-400"
+            @confirm="handleSearch"
           />
+          <view v-if="searchKeyword" @tap="searchKeyword = ''" class="w-5 h-5 bg-gray-300 rounded-full flex items-center justify-center mr-2">
+            <text class="text-white text-xs">×</text>
+          </view>
+          <view 
+            class="px-3 py-1 bg-ts-purple text-white rounded-full text-xs font-medium active:bg-purple-700 transition-colors"
+            @tap="handleSearch"
+          >
+            <text>搜索</text>
+          </view>
         </view>
         
         <!-- 食堂和窗口选择 -->
-        <view class="flex gap-2">
+        <view class="flex gap-3">
           <picker class="flex-1" mode="selector" :range="canteenList" range-key="name" @change="onCanteenChange">
-            <view class="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-xl">
-              <text class="text-sm text-gray-700 truncate flex-1">{{ selectedCanteen?.name || '选择食堂' }}</text>
+            <view class="flex items-center justify-between py-2.5 px-4 bg-white border border-gray-200 rounded-xl active:bg-gray-50 transition-colors">
+              <text class="text-sm text-gray-700 truncate flex-1 font-medium">{{ selectedCanteen?.name || '选择食堂' }}</text>
               <text class="text-xs text-gray-400 ml-2">▼</text>
             </view>
           </picker>
@@ -174,8 +216,8 @@
             range-key="name" 
             @change="onWindowChange"
           >
-            <view class="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-xl">
-              <text class="text-sm text-gray-700 truncate flex-1">{{ selectedWindow?.name || '选择窗口' }}</text>
+            <view class="flex items-center justify-between py-2.5 px-4 bg-white border border-gray-200 rounded-xl active:bg-gray-50 transition-colors">
+              <text class="text-sm text-gray-700 truncate flex-1 font-medium">{{ selectedWindow?.name || '选择窗口' }}</text>
               <text class="text-xs text-gray-400 ml-2">▼</text>
             </view>
           </picker>
@@ -183,60 +225,68 @@
       </view>
 
       <!-- 菜品列表 -->
-      <scroll-view scroll-y class="flex-1 bg-gray-50 overflow-x-hidden">
-        <view class="p-3 box-border">
+      <scroll-view scroll-y class="flex-1 bg-gray-50 w-full">
+        <view class="p-4 pb-20">
           <!-- 加载状态 -->
-          <view v-if="dishLoading" class="flex flex-col items-center justify-center py-16 text-gray-400">
-            <text class="text-3xl mb-2">⏳</text>
-            <text class="text-sm">加载中...</text>
+          <view v-if="dishLoading" class="flex flex-col items-center justify-center py-20 text-gray-400">
+            <view class="w-10 h-10 border-4 border-purple-200 border-t-ts-purple rounded-full animate-spin mb-4"></view>
+            <text class="text-sm">正在加载美味...</text>
           </view>
           
           <!-- 空状态 - 未选择窗口 -->
-          <view v-else-if="!selectedWindow" class="flex flex-col items-center justify-center py-16 text-gray-400">
-            <text class="text-4xl mb-2">🏪</text>
-            <text class="text-sm">请先选择食堂和窗口</text>
+          <view v-else-if="!selectedWindow" class="flex flex-col items-center justify-center py-20 text-gray-400">
+            <view class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4 text-3xl">🏪</view>
+            <text class="text-sm font-medium text-gray-500">请先选择食堂和窗口</text>
+            <text class="text-xs text-gray-400 mt-1">选择后即可查看该窗口的菜品</text>
           </view>
           
           <!-- 空状态 - 无菜品 -->
-          <view v-else-if="filteredDishList.length === 0" class="flex flex-col items-center justify-center py-16 text-gray-400">
-            <text class="text-4xl mb-2">🍽️</text>
-            <text class="text-sm">{{ searchKeyword ? '未找到相关菜品' : '该窗口暂无菜品' }}</text>
+          <view v-else-if="filteredDishList.length === 0" class="flex flex-col items-center justify-center py-20 text-gray-400">
+            <view class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4 text-3xl">🍽️</view>
+            <text class="text-sm font-medium text-gray-500">{{ searchKeyword ? '未找到相关菜品' : '该窗口暂无菜品' }}</text>
           </view>
           
           <!-- 菜品列表 -->
-          <view v-else class="flex flex-col gap-2">
+          <view v-else class="space-y-3">
             <view 
               v-for="dish in filteredDishList" 
               :key="dish.id"
-              class="w-full flex items-center p-3 bg-white rounded-2xl shadow-sm transition-all box-border"
-              :class="isDishSelected(dish.id) ? 'ring-2 ring-purple-500' : ''"
+              class="w-full flex items-center p-3 bg-white rounded-2xl border transition-all duration-200"
+              :class="isDishSelected(dish.id) ? 'border-ts-purple shadow-md shadow-purple-100 bg-purple-50/10' : 'border-gray-100 shadow-sm'"
               @tap="toggleDishSelection(dish)"
             >
               <!-- 菜品图片 -->
-              <image 
-                v-if="dish.images && dish.images.length > 0"
-                :src="dish.images[0]" 
-                class="w-16 h-16 rounded-xl mr-3 flex-shrink-0"
-                mode="aspectFill"
-              />
-              <view v-else class="w-16 h-16 rounded-xl mr-3 flex-shrink-0 bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
-                <text class="text-2xl">🍜</text>
+              <view class="relative">
+                <image 
+                  v-if="dish.images && dish.images.length > 0"
+                  :src="dish.images[0]" 
+                  class="w-20 h-20 rounded-xl mr-4 flex-shrink-0 bg-gray-100 object-cover"
+                  mode="aspectFill"
+                />
+                <view v-else class="w-20 h-20 rounded-xl mr-4 flex-shrink-0 bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center border border-gray-100">
+                  <text class="text-2xl">🍜</text>
+                </view>
+                <view v-if="isDishSelected(dish.id)" class="absolute -top-2 -left-2 w-6 h-6 bg-ts-purple rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                  <text class="text-white text-xs font-bold">✓</text>
+                </view>
               </view>
               
               <!-- 菜品信息 -->
-              <view class="flex-1 min-w-0 mr-2">
-                <text class="text-sm font-medium text-gray-800 block truncate mb-1">{{ dish.name }}</text>
-                <text class="text-sm text-amber-600 font-semibold">¥{{ dish.price }}</text>
-              </view>
-              
-              <!-- 选择状态 -->
-              <view 
-                class="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 transition-all"
-                :class="isDishSelected(dish.id) 
-                  ? 'bg-purple-600 shadow-lg shadow-purple-300' 
-                  : 'border-2 border-gray-300 bg-white'"
-              >
-                <text v-if="isDishSelected(dish.id)" class="text-white text-sm">✓</text>
+              <view class="flex-1 min-w-0 mr-2 py-1">
+                <text class="text-base font-bold text-gray-800 block truncate mb-1.5">{{ dish.name }}</text>
+                <view class="flex items-center justify-between">
+                  <text class="text-lg text-amber-600 font-bold"><text class="text-xs font-normal mr-0.5">¥</text>{{ dish.price }}</text>
+                  
+                  <!-- 选择按钮 -->
+                  <view 
+                    class="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+                    :class="isDishSelected(dish.id) 
+                      ? 'bg-purple-100 text-purple-700' 
+                      : 'bg-gray-100 text-gray-600'"
+                  >
+                    {{ isDishSelected(dish.id) ? '已选择' : '选择' }}
+                  </view>
+                </view>
               </view>
             </view>
           </view>
@@ -469,6 +519,12 @@ const selectMealTime = (value: string) => {
   formData.value.mealTime = value as MealPlanRequest['mealTime'];
 };
 
+// 搜索菜品
+const handleSearch = () => {
+  // 搜索功能通过 computed 属性 filteredDishList 自动实现
+  // 这里可以添加额外的搜索逻辑，比如触发搜索统计等
+};
+
 // 关闭对话框
 const handleClose = () => {
   emit('close');
@@ -520,5 +576,21 @@ const handleSubmit = async () => {
 .pb-safe {
   padding-bottom: calc(12px + constant(safe-area-inset-bottom));
   padding-bottom: calc(12px + env(safe-area-inset-bottom));
+}
+
+/* 淡入动画 */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
 }
 </style>
