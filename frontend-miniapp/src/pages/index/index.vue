@@ -285,7 +285,7 @@ const handleFilterChange = (filter: GetDishesRequest['filter']) => {
   const dishRequestParams: GetDishesRequest = {
     sort: buildDishSortFromUserSettings(),
     pagination: { page: 1, pageSize: 20 },
-    filter: { ...buildDishFilterFromUserSettings(), ...filter }, // 合并用户设置和手动筛选
+    filter: { isSuggestion: true, ...filter }, // 使用后端推荐 + 用户筛选条件
     search: { keyword: '' },
   };
   
@@ -307,13 +307,14 @@ onMounted(async () => {
   // 获取菜品图片
   await fetchDishImages();
 
-  // 先获取用户信息，然后根据用户设置获取推荐菜品
+  // 先获取用户信息
   await userStore.fetchProfileAction();
   
+  // 获取今日推荐菜品，使用后端推荐逻辑
   const dishRequestParams: GetDishesRequest = {
     sort: buildDishSortFromUserSettings(),
     pagination: { page: 1, pageSize: 10 },
-    filter: buildDishFilterFromUserSettings(),
+    filter: { isSuggestion: true },  // 让后端根据推荐返回菜品
     search: { keyword: '' },
   };
   dishesStore.fetchDishes(dishRequestParams);
@@ -337,7 +338,7 @@ watch(
       const dishRequestParams: GetDishesRequest = {
         sort: buildDishSortFromUserSettings(),
         pagination: { page: 1, pageSize: 10 },
-        filter: buildDishFilterFromUserSettings(),
+        filter: { isSuggestion: true },  // 让后端根据推荐返回菜品
         search: { keyword: '' },
       };
       dishesStore.fetchDishes(dishRequestParams);
@@ -360,11 +361,11 @@ onPullDownRefresh(async () => {
     // 重新获取食堂列表
     await canteenStore.fetchCanteenList({ page: 1, pageSize: 10 });
     
-    // 重新获取菜品列表（使用当前的筛选条件）
+    // 重新获取菜品列表（使用后端推荐 + 当前的筛选条件）
     const dishRequestParams: GetDishesRequest = {
       sort: buildDishSortFromUserSettings(),
       pagination: { page: 1, pageSize: 20 },
-      filter: { ...buildDishFilterFromUserSettings(), ...currentFilter.value },
+      filter: { isSuggestion: true, ...currentFilter.value },
       search: { keyword: '' },
     };
     
