@@ -1,16 +1,8 @@
 <!-- UserHeader.vue-->
 <template>
   <view class="user-header-wrapper">
-    <!-- 加载状态 -->
-    <view v-if="loading" class="flex flex-col items-center py-4">
-      <view class="w-24 h-24 rounded-full bg-purple-400"></view>
-      <view class="mt-4">
-        <view class="h-6 w-32 bg-purple-400 rounded"></view>
-      </view>
-    </view>
-    
     <!-- 正常状态 -->
-    <view v-else class="w-full">
+    <view class="w-full">
       <!-- 已登录用户信息 -->
       <view v-if="isLoggedIn" class="w-full">
         <view v-if="userInfo" class="flex flex-row items-center w-full relative">

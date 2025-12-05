@@ -28,14 +28,9 @@
       </view>
     </view>
 
-    <!-- 加载状态（后续加载） -->
-    <view v-if="loading && !isInitialLoading" class="flex flex-col items-center justify-center py-20">
-      <view class="w-10 h-10 border-4 border-gray-200 border-t-purple-700 rounded-full animate-spin mb-4"></view>
-      <text class="text-gray-500">加载中...</text>
-    </view>
-
+    
     <!-- 错误状态 -->
-    <view v-else-if="error" class="flex flex-col items-center justify-center py-20 px-5">
+    <view v-if="error" class="flex flex-col items-center justify-center py-20 px-5">
       <text class="text-red-500 mb-4">{{ error }}</text>
       <view @tap="refreshPlans" class="py-2 px-6 bg-purple-700 rounded-lg">
         <text class="text-white">重试</text>

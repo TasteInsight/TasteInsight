@@ -96,7 +96,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { onPullDownRefresh } from '@dcloudio/uni-app';
 import UserHeader from './components/UserHeader.vue';
 import { useProfile } from './composables/use-profile';
@@ -110,8 +110,15 @@ const hasLoaded = ref(false);
 const isInitialLoading = computed(() => loading.value && !hasLoaded.value);
 
 // 监听数据加载完成
+watch(loading, (newLoading) => {
+  if (!newLoading) {
+    hasLoaded.value = true;
+  }
+});
+
+// 页面挂载时如果数据已加载完成，立即标记为已加载
 onMounted(() => {
-  if (userInfo.value || !loading.value) {
+  if (!loading.value) {
     hasLoaded.value = true;
   }
 });
