@@ -223,10 +223,11 @@ jobs:
             chmod 600 certs/private.key
             chmod 644 certs/cert.pem
 
-            # 设置镜像标签
-            export TAG=dev
+            # 登录 GitHub Container Registry
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-            # 拉取并启动容器
+            # 设置镜像标签并拉取启动容器
+            export TAG=dev
             docker compose pull
             docker compose up -d --remove-orphans
             
@@ -308,10 +309,11 @@ jobs:
             chmod 600 certs/private.key
             chmod 644 certs/cert.pem
 
-            # 设置镜像标签
-            export TAG=main
+            # 登录 GitHub Container Registry
+            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-            # 拉取并启动容器
+            # 设置镜像标签并拉取启动容器
+            export TAG=main
             docker compose pull
             docker compose up -d --remove-orphans
             
