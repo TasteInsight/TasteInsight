@@ -211,10 +211,14 @@ jobs:
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_PAT }}
+          GHCR_USER: ${{ secrets.GHCR_USER }}
         with:
           host: ${{ secrets.DEV_HOST }}
           username: ${{ secrets.DEV_USER }}
           key: ${{ secrets.DEV_SSH_KEY }}
+          envs: GHCR_TOKEN,GHCR_USER
           script: |
             set -e
             cd ${{ secrets.DEV_DEPLOY_PATH }}
@@ -223,10 +227,11 @@ jobs:
             chmod 600 certs/private.key
             chmod 644 certs/cert.pem
 
-            # 设置镜像标签
-            export TAG=dev
+            # 登录 GitHub Container Registry
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
-            # 拉取并启动容器
+            # 设置镜像标签并拉取启动容器
+            export TAG=dev
             docker compose pull
             docker compose up -d --remove-orphans
             
@@ -296,10 +301,14 @@ jobs:
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          GHCR_TOKEN: ${{ secrets.GHCR_PAT }}
+          GHCR_USER: ${{ secrets.GHCR_USER }}
         with:
           host: ${{ secrets.PROD_HOST }}
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
+          envs: GHCR_TOKEN,GHCR_USER
           script: |
             set -e
             cd ${{ secrets.PROD_DEPLOY_PATH }}
@@ -308,10 +317,11 @@ jobs:
             chmod 600 certs/private.key
             chmod 644 certs/cert.pem
 
-            # 设置镜像标签
-            export TAG=main
+            # 登录 GitHub Container Registry
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
 
-            # 拉取并启动容器
+            # 设置镜像标签并拉取启动容器
+            export TAG=main
             docker compose pull
             docker compose up -d --remove-orphans
             
