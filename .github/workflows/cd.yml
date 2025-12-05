@@ -182,7 +182,7 @@ jobs:
           trap "rm -rf $DEPLOY_TMP" EXIT
 
           # 复制 docker-compose.yml
-          cp docker-compose.yml "$DEPLOY_TMP/docker-compose.yml"
+          cp backend/docker-compose.yml "$DEPLOY_TMP/docker-compose.yml"
           
           # 使用 heredoc 安全写入敏感文件
           cat > "$DEPLOY_TMP/cert.pem" << 'EOF'
@@ -267,7 +267,7 @@ jobs:
           trap "rm -rf $DEPLOY_TMP" EXIT
 
           # 复制 docker-compose.yml
-          cp docker-compose.yml "$DEPLOY_TMP/docker-compose.yml"
+          cp backend/docker-compose.yml "$DEPLOY_TMP/docker-compose.yml"
           
           # 使用 heredoc 安全写入敏感文件
           cat > "$DEPLOY_TMP/cert.pem" << 'EOF'
