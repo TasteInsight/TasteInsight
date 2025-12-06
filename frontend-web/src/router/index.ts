@@ -118,11 +118,9 @@ router.beforeEach((to, _from, next) => {
       // 已登录，允许访问
       next()
     } else {
-      // 未登录，重定向到登录页
-      next({
-        path: '/login',
-        query: { redirect: to.fullPath },
-      })
+      // 未登录，保存重定向地址并跳转
+      sessionStorage.setItem('login_redirect', to.fullPath)
+      next('/login')
     }
   } else {
     // 不需要认证的路由

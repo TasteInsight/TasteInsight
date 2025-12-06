@@ -215,7 +215,11 @@ export default {
         })
 
         // 登录成功，跳转到之前访问的页面或首页
-        const redirect = router.currentRoute.value.query.redirect || '/'
+        const redirect =
+          router.currentRoute.value.query.redirect ||
+          sessionStorage.getItem('login_redirect') ||
+          '/'
+        sessionStorage.removeItem('login_redirect')
         router.push(redirect)
       } catch (error) {
         // 登录失败，显示错误信息
