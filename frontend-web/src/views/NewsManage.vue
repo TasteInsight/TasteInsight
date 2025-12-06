@@ -149,7 +149,7 @@
   <!-- 创建/编辑新闻模态框 -->
   <div
     v-if="showCreateModal || showEditModal"
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]"
     @click.self="closeModal"
   >
     <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[95vh] overflow-y-auto m-4">
