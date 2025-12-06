@@ -13,11 +13,11 @@ describe('MealPlansService', () => {
   beforeEach(async () => {
     const mockPrisma = {
       mealPlan: {
-        findMany: jest.fn() as jest.Mock,
-        create: jest.fn() as jest.Mock,
-        findUnique: jest.fn() as jest.Mock,
-        update: jest.fn() as jest.Mock,
-        delete: jest.fn() as jest.Mock,
+        findMany: jest.fn(),
+        create: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
       },
     };
 
@@ -32,7 +32,7 @@ describe('MealPlansService', () => {
     }).compile();
 
     service = module.get<MealPlansService>(MealPlansService);
-    prisma = module.get(PrismaService) as jest.Mocked<PrismaService>;
+    prisma = module.get(PrismaService);
   });
 
   it('should be defined', () => {

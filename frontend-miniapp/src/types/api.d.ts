@@ -324,6 +324,10 @@ export interface Dish {
     [property: string]: any;
 }
 
+export interface DishesImages {
+  images: string[];
+}
+
 /**
  * 评价模型
  */
@@ -540,6 +544,9 @@ export interface GetDishesRequest {
     meatPreference?: string[];      // 肉类偏好
     avoidIngredients?: string[];    // 忌口
     favoriteIngredients?: string[]; // 喜好食材
+
+    // --- 推荐模式 ---
+    isSuggestion?: boolean;         // 是否使用后端推荐，默认为 false
   };
   search: {
     keyword: string;

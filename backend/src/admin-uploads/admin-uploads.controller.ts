@@ -27,10 +27,7 @@ export class AdminUploadsController {
   @Get('')
   @RequirePermissions('upload:approve')
   @HttpCode(HttpStatus.OK)
-  async getUploads(
-    @Query() query: AdminGetUploadsDto,
-    @Request() req,
-  ) {
+  async getUploads(@Query() query: AdminGetUploadsDto, @Request() req) {
     return this.adminUploadsService.getUploads(query, req.admin);
   }
 

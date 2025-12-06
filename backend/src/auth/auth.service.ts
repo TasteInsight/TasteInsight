@@ -10,7 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import * as bcrypt from 'bcrypt';
-import { Admin, User } from '@prisma/client';
+import type { Admin, User } from '@prisma/client';
 
 interface WechatAuthResponse {
   openid?: string;
@@ -101,10 +101,10 @@ export class AuthService {
     });
 
     if (!user) {
-      user = (await this.userProfileService.createUser(openid)) as any;
+      user = await this.userProfileService.createUser(openid);
     }
 
-    const tokens = await this._generateTokens({ sub: user!.id, type: 'user' });
+    const tokens = await this._generateTokens({ sub: user.id, type: 'user' });
 
     return {
       code: 200,
@@ -136,7 +136,7 @@ export class AuthService {
         this.httpService.get<WechatAuthResponse>(url),
       );
       return data;
-    } catch (error) {
+    } catch {
       throw new InternalServerErrorException('Failed to connect to WeChat API');
     }
   }
@@ -163,7 +163,11 @@ export class AuthService {
     const tokens = await this._generateTokens({ sub: admin.id, type: 'admin' });
 
     // 从返回结果中移除密码和权限关联
-    const { password, permissions: permissionsRelation, ...adminData } = admin;
+    const {
+      password: _password,
+      permissions: permissionsRelation,
+      ...adminData
+    } = admin;
 
     // 提取权限字符串数组
     const permissions = permissionsRelation.map((p) => p.permission);
@@ -195,7 +199,7 @@ export class AuthService {
       const adminData = await this.validateAdmin(userId);
       // 移除密码字段
       if (adminData) {
-        const { password, ...admin } = adminData;
+        const { password: _password, ...admin } = adminData;
         userData = admin;
       }
     }
@@ -214,11 +218,11 @@ export class AuthService {
   }
 
   // --- 辅助方法：验证用户 ---
-  async validateUser(userId: string): Promise<User | null> {
+  validateUser(userId: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { id: userId } });
   }
 
-  async validateAdmin(adminId: string): Promise<Admin | null> {
+  validateAdmin(adminId: string): Promise<Admin | null> {
     return this.prisma.admin.findUnique({ where: { id: adminId } });
   }
 }
