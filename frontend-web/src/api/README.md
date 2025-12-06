@@ -18,10 +18,12 @@ src/api/modules/
 ## 各模块功能
 
 ### 1. 认证管理 (`auth.ts`)
+
 - 管理员登录
 - Token 刷新
 
 ### 2. 菜品管理 (`dish.ts`)
+
 - 获取菜品列表（分页）
 - 获取单个菜品详情
 - 创建菜品
@@ -32,6 +34,7 @@ src/api/modules/
 - 上传图片
 
 ### 3. 审核管理 (`review.ts`)
+
 - 获取待审核评价列表
 - 通过/拒绝评价审核
 - 获取待审核评论列表
@@ -42,21 +45,25 @@ src/api/modules/
 - 通过/拒绝用户上传菜品
 
 ### 4. 权限管理 (`permission.ts`)
+
 - 获取子管理员列表
 - 创建子管理员
 - 删除子管理员
 - 更新子管理员权限
 
 ### 5. 日志管理 (`log.ts`)
+
 - 获取操作日志（支持多条件筛选）
 
 ### 6. 新闻管理 (`news.ts`)
+
 - 获取新闻列表
 - 创建新闻
 - 更新新闻
 - 删除新闻
 
 ### 7. 食堂窗口管理 (`canteen.ts`)
+
 - 获取食堂列表
 - 创建食堂
 - 更新食堂
@@ -169,8 +176,8 @@ const canteen = await canteenApi.createCanteen({
   images: ['https://example.com/canteen.jpg'],
   openingHours: [
     { day: '周一至周五', open: '07:00', close: '20:00' },
-    { day: '周六至周日', open: '08:00', close: '19:00' }
-  ]
+    { day: '周六至周日', open: '08:00', close: '19:00' },
+  ],
 })
 
 // 2. 在食堂下创建窗口
@@ -180,7 +187,7 @@ await canteenApi.createWindow({
   canteenId: canteen.data.id,
   position: '一楼东侧',
   description: '提供各种川菜',
-  tags: ['川菜', '辣']
+  tags: ['川菜', '辣'],
 })
 
 await canteenApi.createWindow({
@@ -189,7 +196,7 @@ await canteenApi.createWindow({
   canteenId: canteen.data.id,
   position: '一楼西侧',
   description: '提供各种粤菜',
-  tags: ['粤菜', '清淡']
+  tags: ['粤菜', '清淡'],
 })
 
 // 3. 获取该食堂的所有窗口
@@ -208,6 +215,7 @@ const windows = await canteenApi.getWindows(canteen.data.id)
 如果你的代码使用了旧的 `adminApi`，需要进行以下迁移：
 
 ### 审核相关
+
 ```typescript
 // 旧方式
 import { adminApi } from '@/api'
@@ -219,6 +227,7 @@ await reviewApi.getPendingReviews()
 ```
 
 ### 权限相关
+
 ```typescript
 // 旧方式
 import { adminApi } from '@/api'
@@ -232,7 +241,8 @@ await permissionApi.getAdmins()
 ### 其他功能类似迁移即可
 
 或者继续使用统一的 `api` 对象（无需修改代码）：
+
 ```typescript
 import { api } from '@/api'
-await api.getPendingReviews()  // 仍然可用
+await api.getPendingReviews() // 仍然可用
 ```

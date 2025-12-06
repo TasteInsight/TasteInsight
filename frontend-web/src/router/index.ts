@@ -20,7 +20,7 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: Login,
-    meta: { requiresAuth: false }
+    meta: { requiresAuth: false },
   },
   {
     path: '/',
@@ -31,88 +31,87 @@ const routes = [
         path: 'single-add',
         name: 'SingleAdd',
         component: SingleAdd,
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true },
       },
       {
         path: 'batch-add',
         name: 'BatchAdd',
         component: BatchAdd,
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true },
       },
       {
         path: 'modify-dish',
         name: 'ModifyDish',
         component: ModifyDish,
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true },
       },
       {
         path: 'edit-dish/:id',
         name: 'EditDish',
         component: EditDish,
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true },
       },
       {
         path: 'view-dish/:id',
         name: 'ViewDishDetail',
         component: ViewDishDetail,
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true },
       },
       {
         path: 'add-sub-dish',
         name: 'AddSubDish',
         component: AddSubDish,
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true },
       },
       {
         path: 'add-canteen',
         name: 'AddCanteen',
         component: AddCanteen,
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true },
       },
       {
         path: 'review-dish',
         name: 'ReviewDish',
         component: ReviewDish,
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true },
       },
       {
         path: 'review-dish/:id',
         name: 'ReviewDishDetail',
         component: ReviewDishDetail,
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true },
       },
       {
         path: 'user-manage',
         name: 'UserManage',
         component: UserManage,
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true },
       },
       {
         path: 'news-manage',
         name: 'NewsManage',
         component: NewsManage,
-        meta: { requiresAuth: true }
+        meta: { requiresAuth: true },
       },
       {
         path: 'log-view',
         name: 'LogView',
         component: LogView,
-        meta: { requiresAuth: true }
-      }
-    ]
-  }
+        meta: { requiresAuth: true },
+      },
+    ],
+  },
 ]
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes,
 })
 
 // 路由守卫
 router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
-  
-  
+
   // 检查路由是否需要认证
   if (to.meta.requiresAuth) {
     if (authStore.isLoggedIn) {
@@ -122,7 +121,7 @@ router.beforeEach((to, _from, next) => {
       // 未登录，重定向到登录页
       next({
         path: '/login',
-        query: { redirect: to.fullPath }
+        query: { redirect: to.fullPath },
       })
     }
   } else {
