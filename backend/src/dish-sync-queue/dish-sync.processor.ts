@@ -21,7 +21,7 @@ export class DishSyncProcessor extends WorkerHost {
   async process(job: Job): Promise<any> {
     this.logger.log(`Processing job ${job.id} of type ${job.name}`);
 
-    switch (job.name) {
+    switch (job.name as DishSyncJobType) {
       case DishSyncJobType.SYNC_CANTEEN_NAME:
         return this.syncCanteenName(job.data as SyncCanteenNameJobData);
       case DishSyncJobType.SYNC_WINDOW_INFO:

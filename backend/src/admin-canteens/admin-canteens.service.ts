@@ -137,7 +137,7 @@ export class AdminCanteensService {
     if (canteenData.images !== undefined)
       updatedFields.images = canteenData.images;
     if (canteenData.openingHours !== undefined)
-      updatedFields.openingHours = canteenData.openingHours as any;
+      updatedFields.openingHours = canteenData.openingHours;
 
     await this.prisma.canteen.update({
       where: { id },
