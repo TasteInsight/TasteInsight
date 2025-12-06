@@ -1,12 +1,8 @@
 <template>
-  <div class="w-full min-h-screen flex container-shadow rounded-lg bg-white overflow-hidden">
-    <Sidebar />
-    
-    <div class="flex-1 min-h-screen overflow-x-auto overflow-y-auto bg-tsinghua-light ml-[260px]">
-      <div class="p-8 min-h-screen min-w-[1200px]">
-        <div class="bg-white rounded-lg container-shadow p-8">
-          <Header 
-            title="编辑菜品" 
+  <div class="p-8 min-h-screen min-w-[1200px]">
+    <div class="bg-white rounded-lg container-shadow p-8">
+      <Header 
+        title="编辑菜品" 
             description="修改菜品信息并提交审核"
             header-icon="carbon:edit"
           />
@@ -500,10 +496,8 @@
               </button>
             </div>
           </form>
-        </div>
       </div>
     </div>
-  </div>
 </template>
 
 <script>
@@ -512,13 +506,11 @@ import { useRouter, useRoute } from 'vue-router'
 import { dishApi } from '@/api/modules/dish'
 import { canteenApi } from '@/api/modules/canteen'
 import { useDishStore } from '@/store/modules/use-dish-store'
-import Sidebar from '@/components/Layout/Sidebar.vue'
 import Header from '@/components/Layout/Header.vue'
 
 export default {
   name: 'EditDish',
   components: {
-    Sidebar,
     Header
   },
   setup() {

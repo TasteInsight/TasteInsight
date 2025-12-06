@@ -1,12 +1,8 @@
 <template>
-  <div class="w-full min-h-screen flex container-shadow rounded-lg bg-white overflow-hidden">
-    <Sidebar />
-    
-    <div class="flex-1 min-h-screen overflow-x-auto overflow-y-auto bg-tsinghua-light ml-[260px]">
-      <div class="p-8 min-h-screen min-w-[1200px]">
-        <div class="bg-white rounded-lg container-shadow p-8">
-          <Header 
-            title="操作日志" 
+  <div class="p-8 min-h-screen min-w-[1200px]">
+    <div class="bg-white rounded-lg container-shadow p-8">
+      <Header 
+        title="操作日志" 
             description="查看系统操作日志，包括管理员操作记录和详细信息"
             header-icon="carbon:document-view"
           />
@@ -175,7 +171,6 @@
           </div>
         </div>
       </div>
-    </div>
     
     <!-- 日志详情弹窗 -->
     <div 
@@ -237,7 +232,6 @@
             <label class="block text-sm font-medium text-gray-600 mb-1">用户代理</label>
             <p class="text-sm text-gray-800 break-all">{{ selectedLog.userAgent }}</p>
           </div>
-        </div>
       </div>
     </div>
   </div>
@@ -246,13 +240,11 @@
 <script>
 import { ref, reactive, onMounted } from 'vue'
 import { logApi } from '@/api/modules/log'
-import Sidebar from '@/components/Layout/Sidebar.vue'
 import Header from '@/components/Layout/Header.vue'
 
 export default {
   name: 'LogView',
   components: {
-    Sidebar,
     Header
   },
   setup() {

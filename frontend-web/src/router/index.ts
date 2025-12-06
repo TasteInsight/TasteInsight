@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/store/modules/use-auth-store'
+import MainLayout from '@/components/Layout/MainLayout.vue'
 import SingleAdd from '../views/SingleAdd.vue'
 import BatchAdd from '../views/BatchAdd.vue'
 import ModifyDish from '../views/ModifyDish.vue'
@@ -23,79 +24,82 @@ const routes = [
   },
   {
     path: '/',
-    redirect: '/single-add'
-  },
-  {
-    path: '/single-add',
-    name: 'SingleAdd',
-    component: SingleAdd,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/batch-add',
-    name: 'BatchAdd',
-    component: BatchAdd,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/modify-dish',
-    name: 'ModifyDish',
-    component: ModifyDish,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/edit-dish/:id',
-    name: 'EditDish',
-    component: EditDish,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/view-dish/:id',
-    name: 'ViewDishDetail',
-    component: ViewDishDetail,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/add-sub-dish',
-    name: 'AddSubDish',
-    component: AddSubDish,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/add-canteen',
-    name: 'AddCanteen',
-    component: AddCanteen,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/review-dish',
-    name: 'ReviewDish',
-    component: ReviewDish,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/review-dish/:id',
-    name: 'ReviewDishDetail',
-    component: ReviewDishDetail,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/user-manage',
-    name: 'UserManage',
-    component: UserManage,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/news-manage',
-    name: 'NewsManage',
-    component: NewsManage,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/log-view',
-    name: 'LogView',
-    component: LogView,
-    meta: { requiresAuth: true }
+    component: MainLayout,
+    redirect: '/single-add',
+    children: [
+      {
+        path: 'single-add',
+        name: 'SingleAdd',
+        component: SingleAdd,
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'batch-add',
+        name: 'BatchAdd',
+        component: BatchAdd,
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'modify-dish',
+        name: 'ModifyDish',
+        component: ModifyDish,
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'edit-dish/:id',
+        name: 'EditDish',
+        component: EditDish,
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'view-dish/:id',
+        name: 'ViewDishDetail',
+        component: ViewDishDetail,
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'add-sub-dish',
+        name: 'AddSubDish',
+        component: AddSubDish,
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'add-canteen',
+        name: 'AddCanteen',
+        component: AddCanteen,
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'review-dish',
+        name: 'ReviewDish',
+        component: ReviewDish,
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'review-dish/:id',
+        name: 'ReviewDishDetail',
+        component: ReviewDishDetail,
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'user-manage',
+        name: 'UserManage',
+        component: UserManage,
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'news-manage',
+        name: 'NewsManage',
+        component: NewsManage,
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'log-view',
+        name: 'LogView',
+        component: LogView,
+        meta: { requiresAuth: true }
+      }
+    ]
   }
 ]
 

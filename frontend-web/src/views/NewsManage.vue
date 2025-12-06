@@ -1,12 +1,8 @@
 <template>
-  <div class="w-full min-h-screen flex container-shadow rounded-lg bg-white overflow-hidden">
-    <Sidebar />
-    
-    <div class="flex-1 min-h-screen overflow-x-auto overflow-y-auto bg-tsinghua-light ml-[260px]">
-      <div class="p-8 min-h-screen min-w-[1200px]">
-        <div class="bg-white rounded-lg container-shadow p-8">
-          <Header 
-            title="新闻管理" 
+  <div class="p-8 min-h-screen min-w-[1200px]">
+    <div class="bg-white rounded-lg container-shadow p-8">
+      <Header 
+        title="新闻管理" 
             description="管理和发布新闻资讯"
             header-icon="carbon:news"
           />
@@ -141,7 +137,6 @@
           </div>
         </div>
       </div>
-    </div>
     
     <!-- 创建/编辑新闻模态框 -->
     <div 
@@ -290,7 +285,6 @@
               </button>
             </div>
           </form>
-        </div>
       </div>
     </div>
   </div>
@@ -307,14 +301,12 @@ import { newsApi } from '@/api/modules/news'
 import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import config from '@/config'
-import Sidebar from '@/components/Layout/Sidebar.vue'
 import Header from '@/components/Layout/Header.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 
 export default {
   name: 'NewsManage',
   components: {
-    Sidebar,
     Header,
     Pagination,
     Editor, // 注册 Editor 组件

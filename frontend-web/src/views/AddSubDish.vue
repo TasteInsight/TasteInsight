@@ -1,12 +1,8 @@
 <template>
-  <div class="w-full min-h-screen flex container-shadow rounded-lg bg-white overflow-hidden">
-    <Sidebar />
-    
-    <div class="flex-1 min-h-screen overflow-x-auto overflow-y-auto bg-tsinghua-light ml-[260px]">
-      <div class="p-8 min-h-screen min-w-[1200px]">
-        <div class="bg-white rounded-lg container-shadow p-8">
-          <Header 
-            :title="`添加子项：${subItemName || '子项'}`" 
+  <div class="p-8 min-h-screen min-w-[1200px]">
+    <div class="bg-white rounded-lg container-shadow p-8">
+      <Header 
+        :title="`添加子项：${subItemName || '子项'}`" 
             description="填写子项详情信息并上传图片"
             header-icon="carbon:add"
           />
@@ -451,10 +447,8 @@
               </button>
             </div>
           </form>
-        </div>
       </div>
     </div>
-  </div>
 </template>
 
 <script>
@@ -462,13 +456,11 @@ import { reactive, ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useDishStore } from '@/store/modules/use-dish-store';
 import { dishApi } from '@/api/modules/dish';
-import Sidebar from '@/components/Layout/Sidebar.vue';
 import Header from '@/components/Layout/Header.vue';
 
 export default {
   name: 'AddSubDish',
   components: {
-    Sidebar,
     Header
   },
   setup() {

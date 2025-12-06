@@ -1,11 +1,7 @@
 <template>
-  <div class="w-full min-h-screen flex container-shadow rounded-lg bg-white overflow-hidden">
-    <Sidebar />
-    
-    <div class="flex-1 min-h-screen overflow-x-auto overflow-y-auto bg-tsinghua-light ml-[260px]">
-      <div class="p-8 min-h-screen min-w-[1200px]">
-        <div class="bg-white rounded-lg container-shadow p-8">
-          <!-- 列表视图 -->
+  <div class="p-8 min-h-screen min-w-[1200px]">
+    <div class="bg-white rounded-lg container-shadow p-8">
+      <!-- 列表视图 -->
           <div v-if="viewMode === 'list'">
             <div class="flex justify-between items-center mb-6">
               <Header 
@@ -445,8 +441,6 @@
                 </button>
               </div>
             </form>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -456,13 +450,11 @@
 import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { canteenApi } from '@/api/modules/canteen'
-import Sidebar from '@/components/Layout/Sidebar.vue'
 import Header from '@/components/Layout/Header.vue'
 
 export default {
   name: 'AddCanteen',
   components: {
-    Sidebar,
     Header
   },
   setup() {

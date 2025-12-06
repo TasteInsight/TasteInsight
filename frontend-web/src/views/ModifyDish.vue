@@ -1,12 +1,8 @@
 <template>
-  <div class="w-full min-h-screen flex container-shadow rounded-lg bg-white overflow-hidden">
-    <Sidebar />
-    
-    <div class="flex-1 min-h-screen overflow-x-auto overflow-y-auto bg-tsinghua-light ml-[260px] relative z-0">
-      <div class="p-8 min-h-screen min-w-[1200px]">
-        <div class="bg-white rounded-lg container-shadow">
-          <Header 
-            title="菜品管理" 
+  <div class="p-8 min-h-screen min-w-[1200px]">
+    <div class="bg-white rounded-lg container-shadow">
+      <Header 
+        title="菜品管理" 
             description="编辑和更新现有菜品信息"
             header-icon="clarity:note-edit-line"
           />
@@ -106,8 +102,6 @@
             :total="totalDishes"
             @page-change="handlePageChange"
           />
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -117,7 +111,6 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { dishApi } from '@/api/modules/dish'
 import { useDishStore } from '@/store/modules/use-dish-store';
-import Sidebar from '@/components/Layout/Sidebar.vue';
 import Header from '@/components/Layout/Header.vue';
 import SearchBar from '@/components/Common/SearchBar.vue';
 import Pagination from '@/components/Common/Pagination.vue'
@@ -125,7 +118,6 @@ import Pagination from '@/components/Common/Pagination.vue'
 export default {
   name: 'ModifyDish',
   components: {
-    Sidebar,
     Header,
     SearchBar,
     Pagination

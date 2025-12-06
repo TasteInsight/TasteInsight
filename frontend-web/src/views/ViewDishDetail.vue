@@ -1,11 +1,7 @@
 <template>
-  <div class="w-full min-h-screen flex container-shadow rounded-lg bg-white overflow-hidden">
-    <Sidebar />
-    
-    <div class="flex-1 min-h-screen overflow-x-auto overflow-y-auto bg-tsinghua-light ml-[260px]">
-      <div class="p-8 min-h-screen min-w-[1200px]">
-        <div class="bg-white rounded-lg container-shadow p-8 relative">
-          <!-- 关闭按钮 -->
+  <div class="p-8 min-h-screen min-w-[1200px]">
+    <div class="bg-white rounded-lg container-shadow p-8 relative">
+      <!-- 关闭按钮 -->
           <button
             @click="goBack"
             class="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition p-2"
@@ -400,8 +396,6 @@
                 暂无评论
               </div>
             </div>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -411,13 +405,11 @@
 import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { dishApi } from '@/api/modules/dish'
-import Sidebar from '@/components/Layout/Sidebar.vue'
 import Header from '@/components/Layout/Header.vue'
 
 export default {
   name: 'ViewDishDetail',
   components: {
-    Sidebar,
     Header
   },
   setup() {
