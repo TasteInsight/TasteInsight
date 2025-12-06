@@ -295,7 +295,7 @@
                   </div>
                 </div>
                 <p class="mt-2 text-sm text-gray-500">
-                  建议上传清晰的图片，单张小于2MB，支持批量上传。封面图将展示为正方形，其他图片点击查看大图时保持原比例。
+                  建议上传清晰的图片，单张小于10MB，支持批量上传。封面图将展示为正方形，其他图片点击查看大图时保持原比例。
                 </p>
               </div>
             </div>
@@ -662,8 +662,8 @@ export default {
       if (files && files.length > 0) {
         Array.from(files).forEach((file) => {
           // 验证文件大小
-          if (file.size > 2 * 1024 * 1024) {
-            alert(`图片 ${file.name} 大小超过2MB，已跳过`)
+          if (file.size > 10 * 1024 * 1024) {
+            alert(`图片 ${file.name} 大小超过10MB，已跳过`)
             return
           }
 

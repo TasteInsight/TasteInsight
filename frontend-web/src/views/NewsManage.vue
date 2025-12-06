@@ -363,6 +363,7 @@ export default {
         uploadImage: {
           server: uploadUrl,
           fieldName: 'file',
+          maxFileSize: 10 * 1024 * 1024, // 10M
           headers: {
             Authorization: `Bearer ${authStore.token}`,
           },

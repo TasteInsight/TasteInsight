@@ -883,8 +883,8 @@ export default {
       if (files && files.length > 0) {
         Array.from(files).forEach((file) => {
           // 验证文件大小
-          if (file.size > 2 * 1024 * 1024) {
-            alert(`图片 ${file.name} 大小超过2MB，已跳过`)
+          if (file.size > 10 * 1024 * 1024) {
+            alert(`图片 ${file.name} 大小超过10MB，已跳过`)
             return
           }
 

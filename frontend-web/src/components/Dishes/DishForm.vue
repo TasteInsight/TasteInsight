@@ -77,7 +77,7 @@
             <div v-if="!previewImage" class="text-center p-6">
               <span class="iconify text-4xl text-gray-400 mx-auto" data-icon="bi:image"></span>
               <div class="mt-2">点击上传菜品图片</div>
-              <p class="text-sm text-gray-500 mt-1">建议尺寸800x800像素，小于2MB</p>
+              <p class="text-sm text-gray-500 mt-1">建议尺寸800x800像素，小于10MB</p>
             </div>
             <div v-else class="text-center p-6">
               <img :src="previewImage" alt="预览图" class="max-h-32 mx-auto mb-2 rounded" />
@@ -329,8 +329,8 @@ export default {
     const handleFileSelect = (event) => {
       const file = event.target.files[0]
       if (file) {
-        if (file.size > 2 * 1024 * 1024) {
-          errors.image = '文件大小不能超过2MB'
+        if (file.size > 10 * 1024 * 1024) {
+          errors.image = '文件大小不能超过10MB'
           return
         }
 
