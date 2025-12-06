@@ -1,6 +1,6 @@
 <template>
   <div class="p-8 min-h-screen min-w-[1200px]">
-    <div class="bg-white rounded-lg container-shadow">
+    <div class="bg-white rounded-lg container-shadow p-8">
       <Header
         title="菜品审核"
         description="审核待上线的菜品信息"
