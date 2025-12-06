@@ -1,7 +1,7 @@
 <template>
   <div class="p-8 min-h-screen min-w-[1200px]">
     <div class="bg-white rounded-lg container-shadow p-8">
-      <Header title="新闻管理" description="管理和发布新闻资讯" header-icon="carbon:news" />
+      <Header title="新闻管理" description="管理和发布新闻资讯" header-icon="carbon:license-draft" />
 
       <!-- 创建新闻按钮 -->
       <div class="mt-6 flex justify-end">

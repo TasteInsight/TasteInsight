@@ -2,9 +2,9 @@
   <div class="p-8 min-h-screen min-w-[1200px]">
     <div class="bg-white rounded-lg container-shadow p-8">
       <Header
-        title="批量添加菜品"
+        title="批量添加"
         description="通过上传表格批量添加多个菜品"
-        header-icon="carbon:document-multiple"
+        header-icon="carbon:document-multiple-02"
       />
 
       <div class="space-y-8">
