@@ -799,3 +799,106 @@ test.describe('Canteen Creation Validation (API)', () => {
     expect([200, 400]).toContain(status);
   });
 });
+
+test.describe('Canteen Dish Sync', () => {
+  let createdCanteenId: string;
+
+  test('should update dish window name when canteen window is updated', async ({ page, request }) => {
+    // 1. Create a test canteen with a window via API
+    const token = await getApiToken(
+      request,
+      TEST_ACCOUNTS.superAdmin.username,
+      TEST_ACCOUNTS.superAdmin.password
+    );
+    
+    const canteenData = {
+      name: 'Dish Sync Test Canteen',
+      position: 'Test Position',
+      description: 'Test Description',
+      images: [],
+      openingHours: [],
+      windows: [
+        {
+          name: 'Original Window',
+          number: 'W1',
+          position: '1F',
+          description: 'Test Window',
+          tags: []
+        }
+      ],
+      floors: [{ level: '1', name: '1F' }]
+    };
+
+    const createResponse = await request.post(`${baseURL}admin/canteens`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: canteenData
+    });
+    
+    expect(createResponse.ok()).toBeTruthy();
+    const canteen = (await createResponse.json()).data;
+    createdCanteenId = canteen.id;
+    const windowId = canteen.windows[0].id;
+
+    // 2. Create a dish associated with this window via API
+    const dishData = {
+      name: 'Sync Test Dish',
+      price: 10,
+      canteenId: canteen.id,
+      windowId: windowId,
+      ingredients: [],
+      allergens: [],
+      images: [],
+      tags: [],
+      availableMealTime: ['lunch'],
+      status: 'online'
+    };
+
+    const createDishResponse = await request.post(`${baseURL}admin/dishes`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: dishData
+    });
+    expect(createDishResponse.ok()).toBeTruthy();
+    const dish = (await createDishResponse.json()).data;
+
+    // 3. Go to Modify Dish page and verify original window name
+    await page.goto('/modify-dish');
+    
+    // Search for the dish
+    const searchInput = page.getByPlaceholder('搜索菜品名称、食堂、窗口...');
+    await searchInput.fill('Sync Test Dish');
+    await page.waitForTimeout(1000); // Wait for debounce
+
+    // Verify dish is displayed with original window name
+    await expect(page.getByText('Original Window')).toBeVisible();
+
+    // 4. Go to Edit Canteen page and update window name
+    await page.goto(`/edit-canteen/${canteen.id}`);
+    
+    // Find the window input and update it
+    // Note: This depends on the implementation of EditCanteen.vue
+    // Assuming there's an input for window name
+    const windowNameInput = page.locator('input[value="Original Window"]');
+    await windowNameInput.fill('Updated Window Name');
+    
+    // Save changes
+    await page.getByRole('button', { name: '保存修改' }).click();
+    await expect(page.getByText('更新成功')).toBeVisible();
+
+    // 5. Go back to Modify Dish page and verify updated window name
+    await page.goto('/modify-dish');
+    
+    // Search for the dish again
+    await searchInput.fill('Sync Test Dish');
+    await page.waitForTimeout(1000); // Wait for debounce
+
+    // Verify dish is displayed with UPDATED window name
+    // This is the critical check - if this fails, the bug is reproduced
+    await expect(page.getByText('Updated Window Name')).toBeVisible();
+    await expect(page.getByText('Original Window')).not.toBeVisible();
+    
+    // Cleanup dish
+    await request.delete(`${baseURL}admin/dishes/${dish.id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  });
+});

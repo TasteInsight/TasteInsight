@@ -328,14 +328,16 @@ describe('AdminCanteensController (e2e)', () => {
         .put(`/admin/canteens/${testCanteen.id}`)
         .set('Authorization', `Bearer ${superAdminToken}`)
         .send({
-          windows: [{
-            id: testWindow.id,
-            name: 'Updated Test Window',
-            number: '2',
-            position: 'Test Position',
-            description: 'Test Window Description',
-            tags: ['test'],
-          }]
+          windows: [
+            {
+              id: testWindow.id,
+              name: 'Updated Test Window',
+              number: '2',
+              position: 'Test Position',
+              description: 'Test Window Description',
+              tags: ['test'],
+            },
+          ],
         })
         .expect(200);
 
@@ -345,6 +347,19 @@ describe('AdminCanteensController (e2e)', () => {
       });
       expect(updatedDish.windowName).toBe('Updated Test Window');
       expect(updatedDish.windowNumber).toBe('2');
+
+      // Check that the admin dishes API returns the updated window name from the association
+      const dishesResponse = await request(app.getHttpServer())
+        .get('/admin/dishes')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .query({ keyword: 'Window Sync Test Dish' })
+        .expect(200);
+
+      expect(dishesResponse.body.code).toBe(200);
+      expect(dishesResponse.body.data.items).toHaveLength(1);
+      expect(dishesResponse.body.data.items[0].windowName).toBe(
+        'Updated Test Window',
+      );
 
       // Cleanup
       await prisma.dish.delete({ where: { id: testDish.id } });
@@ -399,11 +414,13 @@ describe('AdminCanteensController (e2e)', () => {
         .put(`/admin/canteens/${testCanteen.id}`)
         .set('Authorization', `Bearer ${superAdminToken}`)
         .send({
-          floors: [{
-            id: testFloor.id,
-            level: '2',
-            name: 'Updated Test Floor',
-          }]
+          floors: [
+            {
+              id: testFloor.id,
+              level: '2',
+              name: 'Updated Test Floor',
+            },
+          ],
         })
         .expect(200);
 
@@ -419,8 +436,90 @@ describe('AdminCanteensController (e2e)', () => {
       await prisma.floor.delete({ where: { id: testFloor.id } });
       await prisma.canteen.delete({ where: { id: testCanteen.id } });
     });
-  });
 
+    it('should reflect synced window info in admin/dishes API response', async () => {
+      // Create test canteen with window
+      const testCanteen = await prisma.canteen.create({
+        data: {
+          name: 'API Sync Test Canteen',
+          position: 'Test Position',
+          description: 'Test Description',
+          images: [],
+          openingHours: [],
+        },
+      });
+
+      const testWindow = await prisma.window.create({
+        data: {
+          canteenId: testCanteen.id,
+          name: 'Original Window Name',
+          number: 'W001',
+          position: 'Ground Floor',
+          description: 'Test window',
+          tags: [],
+        },
+      });
+
+      // Create test dish
+      const testDish = await prisma.dish.create({
+        data: {
+          name: 'API Sync Test Dish',
+          tags: ['test'],
+          price: 15.0,
+          priceUnit: '元',
+          description: 'Test dish for API sync verification',
+          images: [],
+          ingredients: ['test'],
+          allergens: [],
+          canteenId: testCanteen.id,
+          canteenName: testCanteen.name,
+          windowId: testWindow.id,
+          windowName: testWindow.name,
+          windowNumber: testWindow.number,
+          availableMealTime: ['lunch'],
+          status: 'online',
+        },
+      });
+
+      // Update window name via admin/canteens API
+      await request(app.getHttpServer())
+        .put(`/admin/canteens/${testCanteen.id}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          windows: [
+            {
+              id: testWindow.id,
+              name: 'Updated Window Name',
+              number: 'W002',
+              position: 'Ground Floor',
+              description: 'Test window',
+              tags: [],
+            },
+          ],
+        })
+        .expect(200);
+
+      // Verify via admin/dishes API that the dish reflects updated window info
+      const dishesResponse = await request(app.getHttpServer())
+        .get('/admin/dishes')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .query({ keyword: 'API Sync Test Dish' })
+        .expect(200);
+
+      expect(dishesResponse.body.code).toBe(200);
+      const foundDish = dishesResponse.body.data.items.find(
+        (d: any) => d.id === testDish.id,
+      );
+      expect(foundDish).toBeDefined();
+      expect(foundDish.windowName).toBe('Updated Window Name');
+      expect(foundDish.windowNumber).toBe('W002');
+
+      // Cleanup
+      await prisma.dish.delete({ where: { id: testDish.id } });
+      await prisma.window.delete({ where: { id: testWindow.id } });
+      await prisma.canteen.delete({ where: { id: testCanteen.id } });
+    });
+  });
 
   describe('/admin/canteens/:id (DELETE)', () => {
     it('should return 404 when deleting non-existent canteen', async () => {
