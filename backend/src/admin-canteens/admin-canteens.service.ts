@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
+import { DishSyncService } from '@/dish-sync-queue';
 import { CreateCanteenDto } from './dto/create-canteen.dto';
 import { UpdateCanteenDto } from './dto/update-canteen.dto';
 import {
@@ -10,7 +11,10 @@ import {
 
 @Injectable()
 export class AdminCanteensService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private dishSyncService: DishSyncService,
+  ) {}
 
   async findAll(
     page: number = 1,
@@ -102,7 +106,19 @@ export class AdminCanteensService {
     id: string,
     updateCanteenDto: UpdateCanteenDto,
   ): Promise<CanteenResponseDto> {
-    const { windows, floors, ...canteenData }: { windows?: any[], floors?: any[], name?: string, description?: string, position?: string, images?: string[], openingHours?: any } = updateCanteenDto;
+    const {
+      windows,
+      floors,
+      ...canteenData
+    }: {
+      windows?: any[];
+      floors?: any[];
+      name?: string;
+      description?: string;
+      position?: string;
+      images?: string[];
+      openingHours?: any;
+    } = updateCanteenDto;
 
     const existingCanteen = await this.prisma.canteen.findUnique({
       where: { id },
@@ -111,26 +127,40 @@ export class AdminCanteensService {
       throw new NotFoundException('食堂不存在');
     }
 
-    // Update basic info
+    // 1. 更新基础信息
     const updatedFields: any = {};
     if (canteenData.name !== undefined) updatedFields.name = canteenData.name;
-    if (canteenData.description !== undefined) updatedFields.description = canteenData.description;
-    if (canteenData.position !== undefined) updatedFields.position = canteenData.position;
-    if (canteenData.images !== undefined) updatedFields.images = canteenData.images;
-    if (canteenData.openingHours !== undefined) updatedFields.openingHours = canteenData.openingHours as any;
+    if (canteenData.description !== undefined)
+      updatedFields.description = canteenData.description;
+    if (canteenData.position !== undefined)
+      updatedFields.position = canteenData.position;
+    if (canteenData.images !== undefined)
+      updatedFields.images = canteenData.images;
+    if (canteenData.openingHours !== undefined)
+      updatedFields.openingHours = canteenData.openingHours as any;
 
     await this.prisma.canteen.update({
       where: { id },
       data: updatedFields,
     });
 
-    // If canteen name was updated, sync dish canteenName
     if (canteenData.name) {
-      await this.prisma.dish.updateMany({
-        where: { canteenId: id },
-        data: { canteenName: canteenData.name },
-      });
+      await this.dishSyncService.syncCanteenName(id, canteenData.name);
     }
+
+    // 2. 准备同步任务列表 (将定义移到外层，确保在所有事务提交后再执行)
+    const windowSyncJobs: Array<{
+      windowId: string;
+      newName: string;
+      newNumber?: string;
+      newFloorId?: string;
+    }> = [];
+
+    const floorSyncJobs: Array<{
+      floorId: string;
+      newName: string;
+      newLevel: string;
+    }> = [];
 
     // Update windows if provided
     if (windows) {
@@ -166,14 +196,12 @@ export class AdminCanteensService {
               id: { in: windowsToDelete },
               canteenId: id, // Safety check
             },
-          })
+          }),
         );
       }
 
-      // Update existing windows and collect sync operations
-      const dishSyncs: any[] = [];
       for (const window of windowsToUpdate) {
-        const existingWindow = existingWindows.find(w => w.id === window.id);
+        const existingWindow = existingWindows.find((w) => w.id === window.id);
         const updatedData: any = {
           name: window.name,
           position: window.position,
@@ -182,25 +210,36 @@ export class AdminCanteensService {
         };
         if (window.number !== undefined) updatedData.number = window.number;
 
+        // 允许更新 floorId
+        if (window.floorId) {
+          updatedData.floorId = window.floorId;
+        }
+
         operations.push(
           this.prisma.window.update({
             where: { id: window.id },
             data: updatedData,
-          })
+          }),
         );
 
-        // If window name or number changed, sync dish windowName and windowNumber
-        if (existingWindow && (existingWindow.name !== window.name || 
-            (window.number !== undefined && existingWindow.number !== window.number))) {
-          dishSyncs.push(
-            this.prisma.dish.updateMany({
-              where: { windowId: window.id },
-              data: {
-                windowName: window.name,
-                ...(window.number !== undefined ? { windowNumber: window.number } : {})
-              },
-            })
-          );
+        // 收集同步任务，但暂不执行
+        if (existingWindow) {
+          const nameChanged = existingWindow.name !== window.name;
+          const numberChanged =
+            window.number !== undefined &&
+            existingWindow.number !== window.number;
+          const floorChanged =
+            window.floorId && existingWindow.floorId !== window.floorId;
+
+          if (nameChanged || numberChanged || floorChanged) {
+            windowSyncJobs.push({
+              windowId: window.id!,
+              newName: window.name,
+              newNumber: window.number,
+              // 只有当楼层变了才传 id，否则传 undefined
+              newFloorId: floorChanged ? window.floorId : undefined,
+            });
+          }
         }
       }
 
@@ -216,12 +255,12 @@ export class AdminCanteensService {
               description: w.description,
               tags: w.tags || [],
             })),
-          })
+          }),
         );
       }
 
-      // Execute all operations in transaction
-      await this.prisma.$transaction([...operations, ...dishSyncs]);
+      // Execute database operations in transaction
+      await this.prisma.$transaction(operations);
     }
 
     // Update floors if provided
@@ -245,66 +284,88 @@ export class AdminCanteensService {
         (id) => !providedIds.includes(id),
       );
 
-      // 3. Prepare operations for transaction
-      const operations: any[] = [];
+      const floorOperations: any[] = [];
 
       // Delete removed floors
       if (floorsToDelete.length > 0) {
-        operations.push(
+        floorOperations.push(
           this.prisma.floor.deleteMany({
             where: {
               id: { in: floorsToDelete },
               canteenId: id,
             },
-          })
+          }),
         );
       }
 
-      // Update existing floors and collect sync operations
-      const dishSyncs: any[] = [];
       for (const floor of floorsToUpdate) {
-        const existingFloor = existingFloors.find(f => f.id === floor.id);
-        operations.push(
+        const existingFloor = existingFloors.find((f) => f.id === floor.id);
+        floorOperations.push(
           this.prisma.floor.update({
             where: { id: floor.id },
             data: {
               level: floor.level,
               name: floor.name,
             },
-          })
+          }),
         );
 
-        // If floor name or level changed, sync dish floorName and floorLevel
-        if (existingFloor && (existingFloor.name !== floor.name || existingFloor.level !== floor.level)) {
-          dishSyncs.push(
-            this.prisma.dish.updateMany({
-              where: { floorId: floor.id },
-              data: {
-                floorName: floor.name,
-                floorLevel: floor.level,
-              },
-            })
-          );
+        // 收集 floor 同步任务
+        if (
+          existingFloor &&
+          (existingFloor.name !== floor.name ||
+            existingFloor.level !== floor.level)
+        ) {
+          floorSyncJobs.push({
+            floorId: floor.id!,
+            newName: floor.name,
+            newLevel: floor.level,
+          });
         }
       }
 
       // Create new floors
       if (floorsToCreate.length > 0) {
-        operations.push(
+        floorOperations.push(
           this.prisma.floor.createMany({
             data: floorsToCreate.map((f) => ({
               canteenId: id,
               level: f.level,
               name: f.name,
             })),
-          })
+          }),
         );
       }
 
-      // Execute all operations in transaction
-      await this.prisma.$transaction([...operations, ...dishSyncs]);
+      // Execute database operations in transaction
+      if (floorOperations.length > 0) {
+        await this.prisma.$transaction(floorOperations);
+      }
     }
 
+    // 5. 最终阶段：执行所有同步任务
+    // 此时数据库中所有的 Window 和 Floor 变更都已经提交，Worker 可以查到最新的数据
+
+    // 执行 Window 同步
+    for (const job of windowSyncJobs) {
+      await this.dishSyncService.syncWindowInfo(
+        job.windowId,
+        job.newName,
+        job.newNumber,
+        job.newFloorId,
+      );
+    }
+
+    // 执行 Floor 同步
+    for (const job of floorSyncJobs) {
+      await this.dishSyncService.syncFloorInfo(
+        job.floorId,
+        job.newName,
+        job.newLevel,
+      );
+    }
+
+    // 6. 返回最新数据
     const updatedCanteen = await this.prisma.canteen.findUnique({
       where: { id },
       include: { windows: true, floors: true },

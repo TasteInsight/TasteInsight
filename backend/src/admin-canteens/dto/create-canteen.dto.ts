@@ -57,6 +57,10 @@ export class WindowDto {
 
   @IsString()
   @IsOptional()
+  floorId?: string;
+
+  @IsString()
+  @IsOptional()
   position?: string;
 
   @IsString()
