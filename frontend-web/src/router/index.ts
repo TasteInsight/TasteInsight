@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/store/modules/use-auth-store'
+import MainLayout from '@/components/Layout/MainLayout.vue'
 import SingleAdd from '../views/SingleAdd.vue'
 import BatchAdd from '../views/BatchAdd.vue'
 import ModifyDish from '../views/ModifyDish.vue'
@@ -19,107 +20,107 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: Login,
-    meta: { requiresAuth: false }
+    meta: { requiresAuth: false },
   },
   {
     path: '/',
-    redirect: '/single-add'
+    component: MainLayout,
+    redirect: '/single-add',
+    children: [
+      {
+        path: 'single-add',
+        name: 'SingleAdd',
+        component: SingleAdd,
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'batch-add',
+        name: 'BatchAdd',
+        component: BatchAdd,
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'modify-dish',
+        name: 'ModifyDish',
+        component: ModifyDish,
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'edit-dish/:id',
+        name: 'EditDish',
+        component: EditDish,
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'view-dish/:id',
+        name: 'ViewDishDetail',
+        component: ViewDishDetail,
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'add-sub-dish',
+        name: 'AddSubDish',
+        component: AddSubDish,
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'add-canteen',
+        name: 'AddCanteen',
+        component: AddCanteen,
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'review-dish',
+        name: 'ReviewDish',
+        component: ReviewDish,
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'review-dish/:id',
+        name: 'ReviewDishDetail',
+        component: ReviewDishDetail,
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'user-manage',
+        name: 'UserManage',
+        component: UserManage,
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'news-manage',
+        name: 'NewsManage',
+        component: NewsManage,
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'log-view',
+        name: 'LogView',
+        component: LogView,
+        meta: { requiresAuth: true },
+      },
+    ],
   },
-  {
-    path: '/single-add',
-    name: 'SingleAdd',
-    component: SingleAdd,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/batch-add',
-    name: 'BatchAdd',
-    component: BatchAdd,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/modify-dish',
-    name: 'ModifyDish',
-    component: ModifyDish,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/edit-dish/:id',
-    name: 'EditDish',
-    component: EditDish,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/view-dish/:id',
-    name: 'ViewDishDetail',
-    component: ViewDishDetail,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/add-sub-dish',
-    name: 'AddSubDish',
-    component: AddSubDish,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/add-canteen',
-    name: 'AddCanteen',
-    component: AddCanteen,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/review-dish',
-    name: 'ReviewDish',
-    component: ReviewDish,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/review-dish/:id',
-    name: 'ReviewDishDetail',
-    component: ReviewDishDetail,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/user-manage',
-    name: 'UserManage',
-    component: UserManage,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/news-manage',
-    name: 'NewsManage',
-    component: NewsManage,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/log-view',
-    name: 'LogView',
-    component: LogView,
-    meta: { requiresAuth: true }
-  }
 ]
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes,
 })
 
 // 路由守卫
 router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
-  
-  
+
   // 检查路由是否需要认证
   if (to.meta.requiresAuth) {
     if (authStore.isLoggedIn) {
       // 已登录，允许访问
       next()
     } else {
-      // 未登录，重定向到登录页
-      next({
-        path: '/login',
-        query: { redirect: to.fullPath }
-      })
+      // 未登录，保存重定向地址并跳转
+      sessionStorage.setItem('login_redirect', to.fullPath)
+      next('/login')
     }
   } else {
     // 不需要认证的路由
