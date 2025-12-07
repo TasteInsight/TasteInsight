@@ -108,8 +108,10 @@
                   class="px-3 py-1 bg-tsinghua-purple text-white rounded text-sm hover:bg-tsinghua-dark transition duration-200"
                   :class="{
                     'bg-gray-200 text-gray-700 hover:bg-gray-300': dish.status === 'approved',
+                    'opacity-50 cursor-not-allowed': !authStore.hasPermission('upload:approve')
                   }"
                   @click="reviewDish(dish)"
+                  :title="!authStore.hasPermission('upload:approve') ? '无权限审核' : ''"
                 >
                   {{
                     dish.status === 'rejected'
@@ -139,6 +141,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { reviewApi } from '@/api/modules/review'
+import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 
@@ -151,6 +154,7 @@ export default {
   setup() {
     const router = useRouter()
     const route = useRoute()
+    const authStore = useAuthStore()
     const searchQuery = ref('')
     const statusFilter = ref('')
     const canteenFilter = ref('')
@@ -206,6 +210,10 @@ export default {
     }
 
     const reviewDish = (dish) => {
+      if (!authStore.hasPermission('upload:approve')) {
+        alert('您没有权限审核菜品')
+        return
+      }
       // 跳转到审核详情页面
       router.push(`/review-dish/${dish.id}`)
     }
@@ -286,6 +294,7 @@ export default {
       handlePageChange,
       loadReviewDishes,
       viewDishDetail,
+      authStore,
     }
   },
 }

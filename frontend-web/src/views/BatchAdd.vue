@@ -112,8 +112,10 @@
         <div class="flex space-x-4">
           <button
             class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center"
-            :disabled="validCount === 0"
+            :class="{ 'opacity-50 cursor-not-allowed': !authStore.hasPermission('dish:create') }"
+            :disabled="validCount === 0 || !authStore.hasPermission('dish:create')"
             @click="submitBatchData"
+            :title="!authStore.hasPermission('dish:create') ? '无权限创建' : '确认导入有效数据'"
           >
             <span class="iconify mr-1" data-icon="carbon:checkmark"></span>确认导入有效数据
           </button>
@@ -132,6 +134,7 @@
 <script>
 import { ref, computed } from 'vue'
 import { useDishStore } from '../store'
+import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '../components/Layout/Header.vue'
 
 export default {
@@ -141,6 +144,7 @@ export default {
   },
   setup() {
     const dishStore = useDishStore()
+    const authStore = useAuthStore()
     const fileInput = ref(null)
     const uploadedFile = ref(null)
 
@@ -216,6 +220,10 @@ export default {
     }
 
     const submitBatchData = () => {
+      if (!authStore.hasPermission('dish:create')) {
+        alert('您没有权限创建菜品')
+        return
+      }
       const validItems = parsedData.value.filter((item) => item.status === '有效')
 
       validItems.forEach((item) => {
@@ -252,6 +260,7 @@ export default {
       handleFileDrop,
       submitBatchData,
       resetBatchData,
+      authStore,
     }
   },
 }

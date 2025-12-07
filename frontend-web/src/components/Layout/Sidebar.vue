@@ -11,7 +11,7 @@
     </div>
 
     <div class="flex-1">
-      <div v-permission="'dish:create'">
+      <div v-permission="'dish:view'">
         <button
           class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
           :class="{ active: activeMenu === 'add' }"
@@ -40,7 +40,7 @@
         </div>
       </div>
       <router-link
-        v-permission="'dish:edit'"
+        v-permission="'dish:view'"
         to="/modify-dish"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/modify-dish' }"

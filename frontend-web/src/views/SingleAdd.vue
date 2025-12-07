@@ -517,8 +517,10 @@
           <button
             type="button"
             class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+            :class="{ 'opacity-50 cursor-not-allowed': !authStore.hasPermission('dish:create') }"
             @click="submitForm"
-            :disabled="isSubmitting"
+            :disabled="isSubmitting || !authStore.hasPermission('dish:create')"
+            :title="!authStore.hasPermission('dish:create') ? '无权限创建' : '保存菜品信息'"
           >
             <span class="iconify mr-1" data-icon="carbon:save"></span>
             {{ isSubmitting ? '提交中...' : '保存菜品信息' }}
@@ -540,6 +542,7 @@
 import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDishStore } from '@/store/modules/use-dish-store'
+import { useAuthStore } from '@/store/modules/use-auth-store'
 import { dishApi } from '@/api/modules/dish'
 import { canteenApi } from '@/api/modules/canteen'
 import Header from '@/components/Layout/Header.vue'
@@ -552,6 +555,7 @@ export default {
   setup() {
     const router = useRouter()
     const dishStore = useDishStore()
+    const authStore = useAuthStore()
     const isSubmitting = ref(false)
     const parentDishId = ref(null) // 用于存储父菜品ID（创建父菜品后）
 
@@ -761,6 +765,10 @@ export default {
     }
 
     const submitForm = async (redirect = true) => {
+      if (!authStore.hasPermission('dish:create')) {
+        alert('您没有权限创建菜品')
+        return
+      }
       // 表单验证
       if (!formData.name || !formData.canteenId || !formData.windowId) {
         alert('请填写必填字段：菜品名称、食堂名称、窗口名称')
@@ -967,6 +975,7 @@ export default {
       setAsCover,
       submitForm,
       resetForm,
+      authStore,
     }
   },
 }

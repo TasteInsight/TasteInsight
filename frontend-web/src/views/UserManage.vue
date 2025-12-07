@@ -10,9 +10,10 @@
             header-icon="clarity:group-line"
           />
           <button
-            v-permission="'admin:create'"
             class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center"
-            @click="createNewAdmin"
+            :class="{ 'opacity-50 cursor-not-allowed': !authStore.hasPermission('admin:create') }"
+            @click="!authStore.hasPermission('admin:create') ? null : createNewAdmin()"
+            :title="!authStore.hasPermission('admin:create') ? '无权限创建' : '创建子管理员'"
           >
             <span class="iconify mr-1" data-icon="carbon:add"></span>
             创建子管理员
@@ -58,18 +59,18 @@
                 <td class="py-4 px-6 text-center" @click.stop>
                   <div class="flex items-center justify-center gap-2">
                     <button
-                      v-permission="'admin:edit'"
                       class="p-2 rounded-full hover:bg-gray-200 text-tsinghua-purple"
-                      @click="editAdmin(admin)"
-                      title="编辑权限"
+                      :class="{ 'opacity-50 cursor-not-allowed': !authStore.hasPermission('admin:edit') }"
+                      @click.stop="!authStore.hasPermission('admin:edit') ? null : editAdmin(admin)"
+                      :title="!authStore.hasPermission('admin:edit') ? '无权限编辑' : '编辑权限'"
                     >
                       <span class="iconify" data-icon="carbon:edit"></span>
                     </button>
                     <button
-                      v-permission="'admin:delete'"
                       class="p-2 rounded-full hover:bg-gray-200 text-red-500"
-                      @click="deleteAdmin(admin)"
-                      title="删除"
+                      :class="{ 'opacity-50 cursor-not-allowed': !authStore.hasPermission('admin:delete') }"
+                      @click.stop="!authStore.hasPermission('admin:delete') ? null : deleteAdmin(admin)"
+                      :title="!authStore.hasPermission('admin:delete') ? '无权限删除' : '删除'"
                     >
                       <span class="iconify" data-icon="carbon:trash-can"></span>
                     </button>
@@ -88,9 +89,10 @@
           ></span>
           <p class="mt-4 text-gray-500">暂无子管理员</p>
           <button
-            v-permission="'admin:create'"
             class="mt-4 px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200"
-            @click="createNewAdmin"
+            :class="{ 'opacity-50 cursor-not-allowed': !authStore.hasPermission('admin:create') }"
+            @click="!authStore.hasPermission('admin:create') ? null : createNewAdmin()"
+            :title="!authStore.hasPermission('admin:create') ? '无权限创建' : '创建第一个子管理员'"
           >
             创建第一个子管理员
           </button>
@@ -729,6 +731,7 @@ export default {
       changePage,
       formatDate,
       getRoleLabel,
+      authStore,
     }
   },
 }
