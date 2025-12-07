@@ -10,8 +10,10 @@
             header-icon="carbon:restaurant"
           />
           <button
-            class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center"
-            @click="createNewCanteen"
+            class="px-6 py-2 text-white rounded-lg transition duration-200 flex items-center"
+            :class="authStore.hasPermission('canteen:create') ? 'bg-tsinghua-purple hover:bg-tsinghua-dark' : 'bg-gray-400 cursor-not-allowed'"
+            @click="!authStore.hasPermission('canteen:create') ? null : createNewCanteen()"
+            :title="!authStore.hasPermission('canteen:create') ? '无权限新建' : '新建食堂'"
           >
             <span class="iconify mr-1" data-icon="carbon:add"></span>
             新建食堂
@@ -80,16 +82,18 @@
                 <td class="py-4 px-6 text-center" @click.stop>
                   <div class="flex items-center justify-center gap-2">
                     <button
-                      class="p-2 rounded-full hover:bg-gray-200 text-tsinghua-purple"
-                      @click="editCanteen(canteen)"
-                      title="编辑"
+                      class="p-2 rounded-full hover:bg-gray-200"
+                      :class="authStore.hasPermission('canteen:edit') ? 'text-tsinghua-purple' : 'text-gray-400 cursor-not-allowed'"
+                      @click.stop="!authStore.hasPermission('canteen:edit') ? null : editCanteen(canteen)"
+                      :title="!authStore.hasPermission('canteen:edit') ? '无权限编辑' : '编辑'"
                     >
                       <span class="iconify" data-icon="carbon:edit"></span>
                     </button>
                     <button
-                      class="p-2 rounded-full hover:bg-gray-200 text-red-500"
-                      @click="deleteCanteen(canteen)"
-                      title="删除"
+                      class="p-2 rounded-full hover:bg-gray-200"
+                      :class="authStore.hasPermission('canteen:delete') ? 'text-red-500' : 'text-gray-400 cursor-not-allowed'"
+                      @click.stop="!authStore.hasPermission('canteen:delete') ? null : deleteCanteen(canteen)"
+                      :title="!authStore.hasPermission('canteen:delete') ? '无权限删除' : '删除'"
                     >
                       <span class="iconify" data-icon="carbon:trash-can"></span>
                     </button>
@@ -105,8 +109,10 @@
           <span class="iconify text-6xl text-gray-300 mx-auto" data-icon="carbon:building"></span>
           <p class="mt-4 text-gray-500">暂无食堂信息</p>
           <button
-            class="mt-4 px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200"
-            @click="createNewCanteen"
+            class="mt-4 px-6 py-2 text-white rounded-lg transition duration-200"
+            :class="authStore.hasPermission('canteen:create') ? 'bg-tsinghua-purple hover:bg-tsinghua-dark' : 'bg-gray-400 cursor-not-allowed'"
+            @click="!authStore.hasPermission('canteen:create') ? null : createNewCanteen()"
+            :title="!authStore.hasPermission('canteen:create') ? '无权限新建' : '创建第一个食堂'"
           >
             创建第一个食堂
           </button>
@@ -494,6 +500,7 @@
 import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { canteenApi } from '@/api/modules/canteen'
+import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 
 export default {
@@ -503,6 +510,7 @@ export default {
   },
   setup() {
     const router = useRouter()
+    const authStore = useAuthStore()
     const isSubmitting = ref(false)
     const isLoading = ref(false)
     const viewMode = ref('list') // 'list' 或 'edit'
@@ -570,6 +578,10 @@ export default {
 
     // 创建新食堂
     const createNewCanteen = () => {
+      if (!authStore.hasPermission('canteen:create')) {
+        alert('您没有权限创建食堂')
+        return
+      }
       editingCanteen.value = null
       resetForm()
       viewMode.value = 'edit'
@@ -577,6 +589,10 @@ export default {
 
     // 编辑食堂
     const editCanteen = async (canteen) => {
+      if (!authStore.hasPermission('canteen:edit')) {
+        alert('您没有权限编辑食堂')
+        return
+      }
       editingCanteen.value = canteen
       // 填充表单数据
       formData.name = canteen.name || ''
@@ -621,6 +637,10 @@ export default {
 
     // 删除食堂
     const deleteCanteen = async (canteen) => {
+      if (!authStore.hasPermission('canteen:delete')) {
+        alert('您没有权限删除食堂')
+        return
+      }
       if (!confirm(`确定要删除食堂"${canteen.name}"吗？此操作不可恢复！`)) {
         return
       }
@@ -1096,6 +1116,7 @@ export default {
       submitForm,
       removeImage,
       setAsCover,
+      authStore,
     }
   },
 }

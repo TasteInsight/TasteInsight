@@ -11,7 +11,7 @@
     </div>
 
     <div class="flex-1">
-      <div>
+      <div v-permission="'dish:view'">
         <button
           class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
           :class="{ active: activeMenu === 'add' }"
@@ -40,6 +40,7 @@
         </div>
       </div>
       <router-link
+        v-permission="'dish:view'"
         to="/modify-dish"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/modify-dish' }"
@@ -48,6 +49,7 @@
         <span>菜品修改</span>
       </router-link>
       <router-link
+        v-permission="'upload:approve'"
         to="/review-dish"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/review-dish' }"
@@ -56,6 +58,7 @@
         <span>菜品审核</span>
       </router-link>
       <router-link
+        v-permission="'canteen:view'"
         to="/add-canteen"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/add-canteen' }"
@@ -64,6 +67,7 @@
         <span>食堂信息管理</span>
       </router-link>
       <router-link
+        v-permission="'admin:view'"
         to="/user-manage"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/user-manage' }"
@@ -72,6 +76,7 @@
         <span>人员权限管理</span>
       </router-link>
       <router-link
+        v-permission="'news:view'"
         to="/news-manage"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/news-manage' }"
@@ -80,6 +85,7 @@
         <span>新闻管理</span>
       </router-link>
       <router-link
+        v-permission="'admin:view'"
         to="/log-view"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/log-view' }"
@@ -200,55 +206,60 @@ export default {
         id: 'dishes',
         name: '菜品管理',
         permissions: [
-          { id: 'dishes-view', label: '浏览菜品列表' },
-          { id: 'dishes-create', label: '新建菜品' },
-          { id: 'dishes-edit', label: '编辑菜品' },
-          { id: 'dishes-delete', label: '删除菜品' },
-          { id: 'dishes-status', label: '修改菜品状态' },
+          { id: 'dish:view', label: '浏览菜品列表' },
+          { id: 'dish:create', label: '新建菜品' },
+          { id: 'dish:edit', label: '编辑菜品' },
+          { id: 'dish:delete', label: '删除菜品' },
+        ],
+      },
+      {
+        id: 'canteen',
+        name: '食堂与窗口管理',
+        permissions: [
+          { id: 'canteen:view', label: '浏览食堂/窗口' },
+          { id: 'canteen:create', label: '创建食堂/窗口' },
+          { id: 'canteen:edit', label: '编辑食堂/窗口' },
+          { id: 'canteen:delete', label: '删除食堂/窗口' },
         ],
       },
       {
         id: 'review',
         name: '内容审核',
         permissions: [
-          { id: 'review-dishes', label: '审核菜品评价' },
-          { id: 'review-comments', label: '审核评论' },
-          { id: 'review-reports', label: '处理举报' },
-          { id: 'review-user-dishes', label: '审核用户上传菜品' },
-        ],
-      },
-      {
-        id: 'admin',
-        name: '权限管理',
-        permissions: [
-          { id: 'admin-create', label: '创建子管理员' },
-          { id: 'admin-delete', label: '删除子管理员' },
-          { id: 'admin-permission', label: '权限分配与授予' },
-        ],
-      },
-      {
-        id: 'audit',
-        name: '操作审计',
-        permissions: [
-          { id: 'audit-log', label: '记录操作日志' },
-          { id: 'audit-view', label: '查看操作日志' },
+          { id: 'review:approve', label: '审核评价' },
+          { id: 'review:delete', label: '删除评价' },
+          { id: 'comment:approve', label: '审核评论' },
+          { id: 'report:handle', label: '处理举报' },
+          { id: 'upload:approve', label: '审核菜品上传' },
         ],
       },
       {
         id: 'news',
         name: '新闻管理',
         permissions: [
-          { id: 'news-view', label: '浏览新闻列表' },
-          { id: 'news-create', label: '创建新闻' },
-          { id: 'news-edit', label: '编辑新闻' },
-          { id: 'news-delete', label: '删除新闻' },
+          { id: 'news:view', label: '浏览新闻' },
+          { id: 'news:create', label: '创建新闻' },
+          { id: 'news:edit', label: '编辑新闻' },
+          { id: 'news:publish', label: '发布新闻' },
+          { id: 'news:revoke', label: '撤销新闻' },
+          { id: 'news:delete', label: '删除新闻' },
+        ],
+      },
+      {
+        id: 'admin',
+        name: '子管理员管理',
+        permissions: [
+          { id: 'admin:view', label: '浏览子管理员' },
+          { id: 'admin:create', label: '创建子管理员' },
+          { id: 'admin:edit', label: '编辑子管理员' },
+          { id: 'admin:delete', label: '删除子管理员' },
         ],
       },
     ]
 
     // 检查是否拥有某个权限
     const hasPermission = (permissionId) => {
-      return userPermissions.value.includes(permissionId)
+      return authStore.hasPermission(permissionId)
     }
 
     // 切换权限下拉框

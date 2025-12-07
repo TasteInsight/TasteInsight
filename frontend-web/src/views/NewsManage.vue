@@ -7,7 +7,9 @@
       <div class="mt-6 flex justify-end">
         <button
           @click="openCreateModal"
-          class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center space-x-2"
+          class="px-6 py-2 text-white rounded-lg transition duration-200 flex items-center space-x-2"
+          :class="authStore.hasPermission('news:create') ? 'bg-tsinghua-purple hover:bg-tsinghua-dark' : 'bg-gray-400 cursor-not-allowed'"
+          :title="!authStore.hasPermission('news:create') ? '无权限创建' : '创建新闻'"
         >
           <span class="iconify" data-icon="carbon:add"></span>
           <span>创建新闻</span>
@@ -92,13 +94,17 @@
                     <template v-if="currentStatus === 'draft'">
                       <button
                         @click="publishNews(news.id)"
-                        class="px-3 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200 transition duration-200"
+                        class="px-3 py-1 rounded text-sm transition duration-200"
+                        :class="authStore.hasPermission('news:publish') ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
+                        :title="!authStore.hasPermission('news:publish') ? '无权限发布' : '发布'"
                       >
                         发布
                       </button>
                       <button
                         @click="editNews(news)"
-                        class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200 transition duration-200"
+                        class="px-3 py-1 rounded text-sm transition duration-200"
+                        :class="authStore.hasPermission('news:edit') ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
+                        :title="!authStore.hasPermission('news:edit') ? '无权限编辑' : '编辑'"
                       >
                         编辑
                       </button>
@@ -108,8 +114,9 @@
                     <template v-else>
                       <button
                         @click="revokeNews(news.id)"
-                        class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded text-sm hover:bg-yellow-200 transition duration-200"
-                        title="如需编辑已发布新闻，请先撤回至草稿状态"
+                        class="px-3 py-1 rounded text-sm transition duration-200"
+                        :class="authStore.hasPermission('news:revoke') ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
+                        :title="!authStore.hasPermission('news:revoke') ? '无权限撤回' : '如需编辑已发布新闻，请先撤回至草稿状态'"
                       >
                         撤回
                       </button>
@@ -123,7 +130,9 @@
 
                     <button
                       @click="deleteNews(news.id)"
-                      class="px-3 py-1 bg-red-100 text-red-700 rounded text-sm hover:bg-red-200 transition duration-200"
+                      class="px-3 py-1 rounded text-sm transition duration-200"
+                      :class="authStore.hasPermission('news:delete') ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
+                      :title="!authStore.hasPermission('news:delete') ? '无权限删除' : '删除'"
                     >
                       删除
                     </button>
@@ -516,6 +525,10 @@ export default {
 
     // 打开创建模态框
     const openCreateModal = () => {
+      if (!authStore.hasPermission('news:create')) {
+        alert('您没有权限创建新闻')
+        return
+      }
       resetForm()
       showCreateModal.value = true
     }
@@ -529,6 +542,10 @@ export default {
 
     // 编辑新闻
     const editNews = (news) => {
+      if (!authStore.hasPermission('news:edit')) {
+        alert('您没有权限编辑新闻')
+        return
+      }
       editingNewsId.value = news.id
       newsForm.title = news.title || ''
       newsForm.content = news.content || ''
@@ -626,6 +643,10 @@ export default {
 
     // 发布新闻
     const publishNews = async (id) => {
+      if (!authStore.hasPermission('news:publish')) {
+        alert('您没有权限发布新闻')
+        return
+      }
       if (!confirm('确定要发布这条新闻吗？')) return
       try {
         const response = await newsApi.publishNews(id)
@@ -643,6 +664,10 @@ export default {
 
     // 撤回新闻
     const revokeNews = async (id) => {
+      if (!authStore.hasPermission('news:revoke')) {
+        alert('您没有权限撤回新闻')
+        return
+      }
       if (!confirm('确定要撤回这条新闻吗？撤回后将变为草稿状态。')) return
       try {
         const response = await newsApi.revokeNews(id)
@@ -659,6 +684,10 @@ export default {
     }
 
     const deleteNews = async (newsId) => {
+      if (!authStore.hasPermission('news:delete')) {
+        alert('您没有权限删除新闻')
+        return
+      }
       if (!confirm('确定要删除这条新闻吗？')) return
       try {
         const response = await newsApi.deleteNews(newsId)
@@ -714,6 +743,7 @@ export default {
       submitForm,
       deleteNews,
       handlePageChange,
+      authStore,
     }
   },
 }

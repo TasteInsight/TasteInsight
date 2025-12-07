@@ -79,9 +79,10 @@
                     <span class="iconify" data-icon="carbon:view"></span>
                   </button>
                   <button
-                    class="p-2 rounded-full hover:bg-gray-200 text-tsinghua-purple"
+                    class="p-2 rounded-full hover:bg-gray-200"
+                    :class="authStore.hasPermission('dish:edit') ? 'text-tsinghua-purple' : 'text-gray-400 cursor-not-allowed'"
                     @click="editDish(dish)"
-                    title="编辑"
+                    :title="!authStore.hasPermission('dish:edit') ? '无权限编辑' : '编辑'"
                   >
                     <span class="iconify" data-icon="carbon:edit"></span>
                   </button>
@@ -107,6 +108,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { dishApi } from '@/api/modules/dish'
 import { useDishStore } from '@/store/modules/use-dish-store'
+import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import SearchBar from '@/components/Common/SearchBar.vue'
 import Pagination from '@/components/Common/Pagination.vue'
@@ -121,6 +123,7 @@ export default {
   setup() {
     const router = useRouter()
     const dishStore = useDishStore()
+    const authStore = useAuthStore()
     const searchQuery = ref('')
     const showFilter = ref(false)
     const currentPage = ref(1)
@@ -192,6 +195,10 @@ export default {
     }
 
     const editDish = (dish) => {
+      if (!authStore.hasPermission('dish:edit')) {
+        alert('您没有权限编辑菜品')
+        return
+      }
       // 跳转到编辑页面
       router.push(`/edit-dish/${dish.id}`)
     }
@@ -237,6 +244,7 @@ export default {
       handlePageChange,
       handleSearchChange,
       loadDishes,
+      authStore,
     }
   },
 }

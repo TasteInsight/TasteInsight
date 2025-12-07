@@ -22,6 +22,41 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isLoggedIn = computed(() => !!token.value && isAuthenticated.value)
 
+  // 获取权限列表
+  const getPermissions = (): string[] => {
+    const stored =
+      localStorage.getItem('admin_permissions') || sessionStorage.getItem('admin_permissions')
+    return stored ? JSON.parse(stored) : []
+  }
+
+  const permissions = computed(() => getPermissions())
+
+  // 检查是否拥有特定权限
+  const hasPermission = (permission: string): boolean => {
+    if (!user.value) return false
+    
+    // 超级管理员 testadmin 拥有所有权限
+    // 或者角色为 superadmin 的用户
+    if (user.value.username === 'testadmin' || user.value.role === 'superadmin') {
+      return true
+    }
+
+    const perms = permissions.value
+    return perms.includes(permission)
+  }
+
+  // 检查是否拥有任一权限
+  const hasAnyPermission = (permissionList: string[]): boolean => {
+    if (!user.value) return false
+    
+    if (user.value.username === 'testadmin' || user.value.role === 'superadmin') {
+      return true
+    }
+
+    const perms = permissions.value
+    return permissionList.some(p => perms.includes(p))
+  }
+
   const login = async (credentials: LoginCredentials & { remember?: boolean }) => {
     try {
       // 调用登录 API
@@ -31,7 +66,7 @@ export const useAuthStore = defineStore('auth', () => {
       })
 
       if (response.code === 200 && response.data) {
-        const { token: tokenInfo, admin, permissions } = response.data
+        const { token: tokenInfo, admin, permissions: userPermissions } = response.data
 
         // 保存 token 和用户信息
         token.value = tokenInfo.accessToken
@@ -44,19 +79,19 @@ export const useAuthStore = defineStore('auth', () => {
           localStorage.setItem('admin_token', tokenInfo.accessToken)
           localStorage.setItem('admin_refresh_token', tokenInfo.refreshToken)
           localStorage.setItem('admin_user', JSON.stringify(admin))
-          localStorage.setItem('admin_permissions', JSON.stringify(permissions))
+          localStorage.setItem('admin_permissions', JSON.stringify(userPermissions))
         } else {
           sessionStorage.setItem('admin_token', tokenInfo.accessToken)
           sessionStorage.setItem('admin_refresh_token', tokenInfo.refreshToken)
           sessionStorage.setItem('admin_user', JSON.stringify(admin))
-          sessionStorage.setItem('admin_permissions', JSON.stringify(permissions))
+          sessionStorage.setItem('admin_permissions', JSON.stringify(userPermissions))
         }
 
         return {
           token: tokenInfo.accessToken,
           data: {
             user: admin,
-            permissions,
+            permissions: userPermissions,
           },
         }
       } else {
@@ -90,15 +125,6 @@ export const useAuthStore = defineStore('auth', () => {
     sessionStorage.removeItem('admin_permissions')
   }
 
-  // 获取权限列表
-  const getPermissions = (): string[] => {
-    const stored =
-      localStorage.getItem('admin_permissions') || sessionStorage.getItem('admin_permissions')
-    return stored ? JSON.parse(stored) : []
-  }
-
-  const permissions = computed(() => getPermissions())
-
   return {
     token,
     refreshToken,
@@ -108,5 +134,7 @@ export const useAuthStore = defineStore('auth', () => {
     permissions,
     login,
     logout,
+    hasPermission,
+    hasAnyPermission
   }
 })
