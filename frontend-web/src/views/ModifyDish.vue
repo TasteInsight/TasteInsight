@@ -79,8 +79,8 @@
                     <span class="iconify" data-icon="carbon:view"></span>
                   </button>
                   <button
-                    class="p-2 rounded-full hover:bg-gray-200 text-tsinghua-purple"
-                    :class="{ 'opacity-50 cursor-not-allowed': !authStore.hasPermission('dish:edit') }"
+                    class="p-2 rounded-full hover:bg-gray-200"
+                    :class="authStore.hasPermission('dish:edit') ? 'text-tsinghua-purple' : 'text-gray-400 cursor-not-allowed'"
                     @click="editDish(dish)"
                     :title="!authStore.hasPermission('dish:edit') ? '无权限编辑' : '编辑'"
                   >

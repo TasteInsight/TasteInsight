@@ -516,8 +516,8 @@
         <div class="flex space-x-4 pt-6 border-t border-gray-200">
           <button
             type="button"
-            class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-            :class="{ 'opacity-50 cursor-not-allowed': !authStore.hasPermission('dish:create') }"
+            class="px-6 py-2 text-white rounded-lg transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+            :class="authStore.hasPermission('dish:create') ? 'bg-tsinghua-purple hover:bg-tsinghua-dark' : 'bg-gray-400 cursor-not-allowed'"
             @click="submitForm"
             :disabled="isSubmitting || !authStore.hasPermission('dish:create')"
             :title="!authStore.hasPermission('dish:create') ? '无权限创建' : '保存菜品信息'"

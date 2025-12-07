@@ -7,8 +7,8 @@
       <div class="mt-6 flex justify-end">
         <button
           @click="openCreateModal"
-          class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center space-x-2"
-          :class="{ 'opacity-50 cursor-not-allowed': !authStore.hasPermission('news:create') }"
+          class="px-6 py-2 text-white rounded-lg transition duration-200 flex items-center space-x-2"
+          :class="authStore.hasPermission('news:create') ? 'bg-tsinghua-purple hover:bg-tsinghua-dark' : 'bg-gray-400 cursor-not-allowed'"
           :title="!authStore.hasPermission('news:create') ? '无权限创建' : '创建新闻'"
         >
           <span class="iconify" data-icon="carbon:add"></span>
@@ -94,16 +94,16 @@
                     <template v-if="currentStatus === 'draft'">
                       <button
                         @click="publishNews(news.id)"
-                        class="px-3 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200 transition duration-200"
-                        :class="{ 'opacity-50 cursor-not-allowed': !authStore.hasPermission('news:publish') }"
+                        class="px-3 py-1 rounded text-sm transition duration-200"
+                        :class="authStore.hasPermission('news:publish') ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
                         :title="!authStore.hasPermission('news:publish') ? '无权限发布' : '发布'"
                       >
                         发布
                       </button>
                       <button
                         @click="editNews(news)"
-                        class="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm hover:bg-blue-200 transition duration-200"
-                        :class="{ 'opacity-50 cursor-not-allowed': !authStore.hasPermission('news:edit') }"
+                        class="px-3 py-1 rounded text-sm transition duration-200"
+                        :class="authStore.hasPermission('news:edit') ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
                         :title="!authStore.hasPermission('news:edit') ? '无权限编辑' : '编辑'"
                       >
                         编辑
@@ -114,8 +114,8 @@
                     <template v-else>
                       <button
                         @click="revokeNews(news.id)"
-                        class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded text-sm hover:bg-yellow-200 transition duration-200"
-                        :class="{ 'opacity-50 cursor-not-allowed': !authStore.hasPermission('news:revoke') }"
+                        class="px-3 py-1 rounded text-sm transition duration-200"
+                        :class="authStore.hasPermission('news:revoke') ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
                         :title="!authStore.hasPermission('news:revoke') ? '无权限撤回' : '如需编辑已发布新闻，请先撤回至草稿状态'"
                       >
                         撤回
@@ -130,8 +130,8 @@
 
                     <button
                       @click="deleteNews(news.id)"
-                      class="px-3 py-1 bg-red-100 text-red-700 rounded text-sm hover:bg-red-200 transition duration-200"
-                      :class="{ 'opacity-50 cursor-not-allowed': !authStore.hasPermission('news:delete') }"
+                      class="px-3 py-1 rounded text-sm transition duration-200"
+                      :class="authStore.hasPermission('news:delete') ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
                       :title="!authStore.hasPermission('news:delete') ? '无权限删除' : '删除'"
                     >
                       删除

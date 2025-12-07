@@ -105,11 +105,12 @@
               </td>
               <td class="py-4 px-6 text-center" @click.stop>
                 <button
-                  class="px-3 py-1 bg-tsinghua-purple text-white rounded text-sm hover:bg-tsinghua-dark transition duration-200"
-                  :class="{
-                    'bg-gray-200 text-gray-700 hover:bg-gray-300': dish.status === 'approved',
-                    'opacity-50 cursor-not-allowed': !authStore.hasPermission('upload:approve')
-                  }"
+                  class="px-3 py-1 text-white rounded text-sm transition duration-200"
+                  :class="[
+                    !authStore.hasPermission('upload:approve') ? 'bg-gray-400 cursor-not-allowed' :
+                    dish.status === 'approved' ? 'bg-green-600 hover:bg-green-700' : 
+                    'bg-tsinghua-purple hover:bg-tsinghua-dark'
+                  ]"
                   @click="reviewDish(dish)"
                   :title="!authStore.hasPermission('upload:approve') ? '无权限审核' : ''"
                 >

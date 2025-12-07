@@ -111,8 +111,8 @@
         <!-- 提交按钮 -->
         <div class="flex space-x-4">
           <button
-            class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center"
-            :class="{ 'opacity-50 cursor-not-allowed': !authStore.hasPermission('dish:create') }"
+            class="px-6 py-2 text-white rounded-lg transition duration-200 flex items-center"
+            :class="authStore.hasPermission('dish:create') ? 'bg-tsinghua-purple hover:bg-tsinghua-dark' : 'bg-gray-400 cursor-not-allowed'"
             :disabled="validCount === 0 || !authStore.hasPermission('dish:create')"
             @click="submitBatchData"
             :title="!authStore.hasPermission('dish:create') ? '无权限创建' : '确认导入有效数据'"
