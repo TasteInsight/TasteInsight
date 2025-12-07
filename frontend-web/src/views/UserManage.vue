@@ -10,6 +10,7 @@
             header-icon="clarity:group-line"
           />
           <button
+            v-permission="'admin:create'"
             class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center"
             @click="createNewAdmin"
           >
@@ -57,6 +58,7 @@
                 <td class="py-4 px-6 text-center" @click.stop>
                   <div class="flex items-center justify-center gap-2">
                     <button
+                      v-permission="'admin:edit'"
                       class="p-2 rounded-full hover:bg-gray-200 text-tsinghua-purple"
                       @click="editAdmin(admin)"
                       title="编辑权限"
@@ -64,6 +66,7 @@
                       <span class="iconify" data-icon="carbon:edit"></span>
                     </button>
                     <button
+                      v-permission="'admin:delete'"
                       class="p-2 rounded-full hover:bg-gray-200 text-red-500"
                       @click="deleteAdmin(admin)"
                       title="删除"
@@ -85,6 +88,7 @@
           ></span>
           <p class="mt-4 text-gray-500">暂无子管理员</p>
           <button
+            v-permission="'admin:create'"
             class="mt-4 px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200"
             @click="createNewAdmin"
           >
@@ -358,54 +362,54 @@ export default {
       {
         id: 'dishes',
         name: '菜品管理',
-        code: 'FR-M-2',
         permissions: [
-          { id: 'dishes-view', label: '浏览菜品列表' },
-          { id: 'dishes-create', label: '新建菜品' },
-          { id: 'dishes-edit', label: '编辑菜品' },
-          { id: 'dishes-delete', label: '删除菜品' },
-          { id: 'dishes-status', label: '修改菜品状态' },
+          { id: 'dish:view', label: '浏览菜品列表' },
+          { id: 'dish:create', label: '新建菜品' },
+          { id: 'dish:edit', label: '编辑菜品' },
+          { id: 'dish:delete', label: '删除菜品' },
+        ],
+      },
+      {
+        id: 'canteen',
+        name: '食堂与窗口管理',
+        permissions: [
+          { id: 'canteen:view', label: '浏览食堂/窗口' },
+          { id: 'canteen:create', label: '创建食堂/窗口' },
+          { id: 'canteen:edit', label: '编辑食堂/窗口' },
+          { id: 'canteen:delete', label: '删除食堂/窗口' },
         ],
       },
       {
         id: 'review',
         name: '内容审核',
-        code: 'FR-M-3',
         permissions: [
-          { id: 'review-dishes', label: '审核菜品评价' },
-          { id: 'review-comments', label: '审核评论' },
-          { id: 'review-reports', label: '处理举报' },
-          { id: 'review-user-dishes', label: '审核用户上传菜品' },
-        ],
-      },
-      {
-        id: 'admin',
-        name: '权限管理',
-        code: 'FR-M-4',
-        permissions: [
-          { id: 'admin-create', label: '创建子管理员' },
-          { id: 'admin-delete', label: '删除子管理员' },
-          { id: 'admin-permission', label: '权限分配与授予' },
-        ],
-      },
-      {
-        id: 'audit',
-        name: '操作审计',
-        code: 'FR-M-5',
-        permissions: [
-          { id: 'audit-log', label: '记录操作日志' },
-          { id: 'audit-view', label: '查看操作日志' },
+          { id: 'review:approve', label: '审核评价' },
+          { id: 'review:delete', label: '删除评价' },
+          { id: 'comment:approve', label: '审核评论' },
+          { id: 'report:handle', label: '处理举报' },
+          { id: 'upload:approve', label: '审核菜品上传' },
         ],
       },
       {
         id: 'news',
         name: '新闻管理',
-        code: 'FR-M-6',
         permissions: [
-          { id: 'news-view', label: '浏览新闻列表' },
-          { id: 'news-create', label: '创建新闻' },
-          { id: 'news-edit', label: '编辑新闻' },
-          { id: 'news-delete', label: '删除新闻' },
+          { id: 'news:view', label: '浏览新闻' },
+          { id: 'news:create', label: '创建新闻' },
+          { id: 'news:edit', label: '编辑新闻' },
+          { id: 'news:publish', label: '发布新闻' },
+          { id: 'news:revoke', label: '撤销新闻' },
+          { id: 'news:delete', label: '删除新闻' },
+        ],
+      },
+      {
+        id: 'admin',
+        name: '子管理员管理',
+        permissions: [
+          { id: 'admin:view', label: '浏览子管理员' },
+          { id: 'admin:create', label: '创建子管理员' },
+          { id: 'admin:edit', label: '编辑子管理员' },
+          { id: 'admin:delete', label: '删除子管理员' },
         ],
       },
     ]
@@ -497,10 +501,14 @@ export default {
       formData.role = admin.role || 'canteen_manager'
       formData.canteenId = admin.canteenId || ''
 
-      // 加载权限信息（如果接口支持）
-      // 注意：这里假设可以通过其他接口获取权限，如果没有，可能需要从其他地方获取
-      // 暂时使用空数组，用户需要重新选择权限
-      formData.permissions = []
+      // 加载权限信息
+      // 如果admin对象中没有permissions字段，可能需要单独请求或从admin列表项中获取
+      // 假设admin对象包含了permissions数组
+      if (admin.permissions && Array.isArray(admin.permissions)) {
+         formData.permissions = admin.permissions.map(p => typeof p === 'string' ? p : p.permission)
+      } else {
+         formData.permissions = []
+      }
 
       viewMode.value = 'edit'
     }
@@ -564,24 +572,23 @@ export default {
       const permissionMap = {
         super_admin: permissionGroups.flatMap((g) => g.permissions.map((p) => p.id)),
         canteen_manager: [
-          'dishes-view',
-          'dishes-create',
-          'dishes-edit',
-          'dishes-delete',
-          'dishes-status',
-          'review-user-dishes',
-          'audit-log',
-          'audit-view',
+          'dish:view',
+          'dish:create',
+          'dish:edit',
+          'dish:delete',
+          'canteen:view',
+          'upload:approve',
+          'news:view',
+          'news:create',
         ],
         restaurant_manager: [
-          'dishes-view',
-          'dishes-create',
-          'dishes-edit',
-          'dishes-status',
-          'review-user-dishes',
-          'audit-log',
+          'dish:view',
+          'dish:create',
+          'dish:edit',
+          'canteen:view',
+          'upload:approve',
         ],
-        kitchen_operator: ['dishes-view', 'dishes-create', 'dishes-edit', 'dishes-status'],
+        kitchen_operator: ['dish:view', 'dish:create', 'dish:edit'],
       }
       return permissionMap[role] || []
     }
