@@ -214,13 +214,38 @@ export default {
           remember: loginForm.remember,
         })
 
-        // 登录成功，跳转到之前访问的页面或首页
-        const redirect =
-          router.currentRoute.value.query.redirect ||
-          sessionStorage.getItem('login_redirect') ||
-          '/'
+        // 登录成功，跳转到之前访问的页面或第一个有权限的页面
+        const queryRedirect = router.currentRoute.value.query.redirect
+        const storageRedirect = sessionStorage.getItem('login_redirect')
+        const savedRedirect = (typeof queryRedirect === 'string' ? queryRedirect : null) || storageRedirect
         sessionStorage.removeItem('login_redirect')
-        router.push(redirect)
+        
+        if (savedRedirect) {
+          // 如果有保存的重定向地址，尝试跳转
+          router.push(savedRedirect)
+        } else {
+          // 否则根据权限跳转到第一个有权限的页面
+          const routePriority = [
+            { path: '/single-add', permission: 'dish:view' },
+            { path: '/modify-dish', permission: 'dish:view' },
+            { path: '/review-dish', permission: 'upload:approve' },
+            { path: '/add-canteen', permission: 'canteen:view' },
+            { path: '/user-manage', permission: 'admin:view' },
+            { path: '/news-manage', permission: 'news:view' },
+            { path: '/report-manage', permission: 'report:handle' },
+          ]
+          
+          // 找到第一个有权限的页面
+          let targetRoute = '/single-add'
+          for (const route of routePriority) {
+            if (authStore.hasPermission(route.permission)) {
+              targetRoute = route.path
+              break
+            }
+          }
+          
+          router.push(targetRoute)
+        }
       } catch (error) {
         // 登录失败，显示错误信息
         errorMessage.value = error.message || '登录失败，请检查用户名和密码'

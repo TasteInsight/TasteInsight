@@ -26,85 +26,112 @@ const routes = [
   {
     path: '/',
     component: MainLayout,
-    redirect: '/single-add',
+    redirect: () => {
+      // 根据权限跳转到第一个有权限的页面
+      const authStore = useAuthStore()
+      if (!authStore.isLoggedIn) {
+        return '/login'
+      }
+      
+      // 定义路由优先级顺序和所需权限
+      const routePriority = [
+        { path: '/single-add', permission: 'dish:view' },
+        { path: '/modify-dish', permission: 'dish:view' },
+        { path: '/review-dish', permission: 'upload:approve' },
+        { path: '/add-canteen', permission: 'canteen:view' },
+        { path: '/user-manage', permission: 'admin:view' },
+        { path: '/news-manage', permission: 'news:view' },
+        { path: '/report-manage', permission: 'report:handle' },
+      ]
+      
+      // 找到第一个有权限的页面
+      for (const route of routePriority) {
+        if (authStore.hasPermission(route.permission)) {
+          return route.path
+        }
+      }
+      
+      // 如果没有任何权限，返回第一个页面（虽然不应该发生）
+      return '/single-add'
+    },
     children: [
       {
         path: 'single-add',
         name: 'SingleAdd',
         component: SingleAdd,
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, requiredPermission: 'dish:view' },
       },
       {
         path: 'batch-add',
         name: 'BatchAdd',
         component: BatchAdd,
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, requiredPermission: 'dish:view' },
       },
       {
         path: 'modify-dish',
         name: 'ModifyDish',
         component: ModifyDish,
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, requiredPermission: 'dish:view' },
       },
       {
         path: 'edit-dish/:id',
         name: 'EditDish',
         component: EditDish,
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, requiredPermission: 'dish:view' },
       },
       {
         path: 'view-dish/:id',
         name: 'ViewDishDetail',
         component: ViewDishDetail,
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, requiredPermission: 'dish:view' },
       },
       {
         path: 'add-sub-dish',
         name: 'AddSubDish',
         component: AddSubDish,
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, requiredPermission: 'dish:view' },
       },
       {
         path: 'add-canteen',
         name: 'AddCanteen',
         component: AddCanteen,
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, requiredPermission: 'canteen:view' },
       },
       {
         path: 'review-dish',
         name: 'ReviewDish',
         component: ReviewDish,
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, requiredPermission: 'upload:approve' },
       },
       {
         path: 'review-dish/:id',
         name: 'ReviewDishDetail',
         component: ReviewDishDetail,
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, requiredPermission: 'upload:approve' },
       },
       {
         path: 'user-manage',
         name: 'UserManage',
         component: UserManage,
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, requiredPermission: 'admin:view' },
       },
       {
         path: 'news-manage',
         name: 'NewsManage',
         component: NewsManage,
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, requiredPermission: 'news:view' },
       },
       {
         path: 'log-view',
         name: 'LogView',
         component: LogView,
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, requiredPermission: 'admin:view' },
       },
       {
         path: 'report-manage',
         name: 'ReportManage',
         component: ReportManage,
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, requiredPermission: 'report:handle' },
       },
     ],
   },
@@ -115,6 +142,29 @@ const router = createRouter({
   routes,
 })
 
+// 根据权限获取第一个可访问的页面
+function getFirstAccessibleRoute(authStore: ReturnType<typeof useAuthStore>): string {
+  const routePriority = [
+    { path: '/single-add', permission: 'dish:view' },
+    { path: '/modify-dish', permission: 'dish:view' },
+    { path: '/review-dish', permission: 'upload:approve' },
+    { path: '/add-canteen', permission: 'canteen:view' },
+    { path: '/user-manage', permission: 'admin:view' },
+    { path: '/news-manage', permission: 'news:view' },
+    { path: '/report-manage', permission: 'report:handle' },
+  ]
+  
+  // 找到第一个有权限的页面
+  for (const route of routePriority) {
+    if (authStore.hasPermission(route.permission)) {
+      return route.path
+    }
+  }
+  
+  // 如果没有任何权限，返回第一个页面（虽然不应该发生）
+  return '/single-add'
+}
+
 // 路由守卫
 router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
@@ -122,8 +172,16 @@ router.beforeEach((to, _from, next) => {
   // 检查路由是否需要认证
   if (to.meta.requiresAuth) {
     if (authStore.isLoggedIn) {
-      // 已登录，允许访问
-      next()
+      // 检查是否有访问该路由的权限
+      const requiredPermission = to.meta.requiredPermission as string | undefined
+      if (requiredPermission && !authStore.hasPermission(requiredPermission)) {
+        // 没有权限，跳转到第一个有权限的页面
+        const firstRoute = getFirstAccessibleRoute(authStore)
+        next(firstRoute)
+      } else {
+        // 已登录且有权限，允许访问
+        next()
+      }
     } else {
       // 未登录，保存重定向地址并跳转
       sessionStorage.setItem('login_redirect', to.fullPath)
@@ -132,8 +190,9 @@ router.beforeEach((to, _from, next) => {
   } else {
     // 不需要认证的路由
     if (to.path === '/login' && authStore.isLoggedIn) {
-      // 已登录用户访问登录页，重定向到首页
-      next('/')
+      // 已登录用户访问登录页，重定向到第一个有权限的页面
+      const firstRoute = getFirstAccessibleRoute(authStore)
+      next(firstRoute)
     } else {
       next()
     }

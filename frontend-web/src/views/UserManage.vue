@@ -860,6 +860,12 @@ export default {
         return
       }
 
+      // 验证权限：创建管理员时至少需要选择一个权限
+      if (!editingAdmin.value && (!formData.permissions || formData.permissions.length === 0)) {
+        alert('请至少选择一个权限')
+        return
+      }
+
       // 验证自定义角色（如果选择了自定义角色，则验证名称长度）
       if (formData.role === 'custom' && formData.customRole && formData.customRole.trim()) {
         if (formData.customRole.trim().length > 50) {
