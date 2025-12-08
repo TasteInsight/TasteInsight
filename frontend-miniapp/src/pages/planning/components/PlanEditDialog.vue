@@ -248,14 +248,19 @@
           </view>
           
           <!-- 空状态 - 未选择窗口 -->
-          <view v-else-if="!selectedWindow" class="flex flex-col items-center justify-center py-20 text-gray-400">
+          <view v-else-if="!selectedWindow && !searchKeyword && dishList.length === 0" class="flex flex-col items-center justify-center py-20 text-gray-400">
             <text class="text-sm font-medium text-gray-500">请先选择食堂和窗口</text>
-            <text class="text-xs text-gray-400 mt-1">选择后即可查看该窗口的菜品</text>
+            <text class="text-xs text-gray-400 mt-1">或者直接搜索菜品名称</text>
           </view>
           
           <!-- 空状态 - 无菜品 -->
-          <view v-else-if="filteredDishList.length === 0" class="flex flex-col items-center justify-center py-20 text-gray-400">
-            <text class="text-sm font-medium text-gray-500">{{ searchKeyword ? '未找到相关菜品' : '该窗口暂无菜品' }}</text>
+          <view v-else-if="filteredDishList.length === 0 && dishList.length === 0" class="flex flex-col items-center justify-center py-20 text-gray-400">
+            <text class="text-sm font-medium text-gray-500">{{ selectedWindow ? '该窗口暂无菜品' : (searchKeyword ? '请点击搜索按钮查询' : '请输入搜索词或选择窗口') }}</text>
+          </view>
+          
+          <!-- 空状态 - 搜索后无结果 -->
+          <view v-else-if="filteredDishList.length === 0 && dishList.length > 0" class="flex flex-col items-center justify-center py-20 text-gray-400">
+            <text class="text-sm font-medium text-gray-500">未找到相关菜品</text>
           </view>
           
           <!-- 菜品列表 -->
@@ -312,6 +317,7 @@
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { useCanteenStore } from '@/store/modules/use-canteen-store';
 import { getWindowDishes } from '@/api/modules/canteen';
+import { getDishes } from '@/api/modules/dish';
 import type { EnrichedMealPlan } from '../composables/use-menu-planning';
 import type { MealPlanRequest, Canteen, Window, Dish } from '@/types/api';
 import dayjs from 'dayjs';
@@ -366,13 +372,20 @@ const mealTimeOptions = [
 
 // 根据搜索关键词过滤菜品
 const filteredDishList = computed(() => {
-  if (!searchKeyword.value.trim()) {
-    return dishList.value;
+  // 如果选择了窗口，则使用本地过滤（因为已经加载了该窗口的所有菜品）
+  if (selectedWindow.value) {
+    if (!searchKeyword.value.trim()) {
+      return dishList.value;
+    }
+    const keyword = searchKeyword.value.toLowerCase();
+    return dishList.value.filter(dish => 
+      dish.name.toLowerCase().includes(keyword)
+    );
   }
-  const keyword = searchKeyword.value.toLowerCase();
-  return dishList.value.filter(dish => 
-    dish.name.toLowerCase().includes(keyword)
-  );
+  
+  // 如果没有选择窗口（即全局搜索或食堂内搜索），直接显示 dishList
+  // 因为 dishList 已经是通过 handleSearch 从后端获取的搜索结果了
+  return dishList.value;
 });
 
 // 初始化加载食堂列表
@@ -412,13 +425,9 @@ const handleBackPress = () => {
   // 优先关闭菜品选择器
   if (showDishSelector.value) {
     closeDishSelector();
-    return true; // 阻止默认返回行为
+    return true; // 阻止默认返回行为，表示已处理
   }
-  // 其次关闭主弹窗
-  if (props.visible) {
-    emit('close');
-    return true; // 阻止默认返回行为
-  }
+  // 如果菜品选择器已关闭，返回 false，让父组件处理关闭主弹窗的逻辑
   return false;
 };
 
@@ -552,9 +561,53 @@ const selectMealTime = (value: string) => {
 };
 
 // 搜索菜品
-const handleSearch = () => {
-  // 搜索功能通过 computed 属性 filteredDishList 自动实现
-  // 这里可以添加额外的搜索逻辑，比如触发搜索统计等
+const handleSearch = async () => {
+  // 1. 如果选择了窗口，使用本地过滤（通过 computed 属性 filteredDishList 自动实现）
+  if (selectedWindow.value) {
+    return;
+  }
+
+  // 2. 如果没有选择窗口，调用后端接口搜索
+  if (!searchKeyword.value.trim()) {
+    // 如果没有搜索词且没有选择窗口，清空列表
+    dishList.value = [];
+    return;
+  }
+
+  dishLoading.value = true;
+  try {
+    const params: any = {
+      search: {
+        keyword: searchKeyword.value
+      },
+      filter: {},
+      pagination: {
+        page: 1,
+        pageSize: 50 // 搜索结果显示前50条
+      }
+    };
+
+    // 如果选择了食堂，添加食堂ID过滤
+    if (selectedCanteen.value) {
+      params.filter.canteenId = [selectedCanteen.value.id];
+    }
+
+    const response = await getDishes(params);
+    if (response.code === 200 && response.data?.items) {
+      dishList.value = response.data.items;
+    } else {
+      dishList.value = [];
+    }
+  } catch (err) {
+    console.error('搜索菜品失败:', err);
+    uni.showToast({
+      title: '搜索失败，请重试',
+      icon: 'none'
+    });
+    dishList.value = [];
+  } finally {
+    dishLoading.value = false;
+  }
 };
 
 // 关闭对话框

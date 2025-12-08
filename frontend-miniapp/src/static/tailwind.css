@@ -678,16 +678,16 @@
   width: 21vw
 }
 
+.w-\[90\%\] {
+  width: 90%
+}
+
 .w-full {
   width: 100%
 }
 
 .w-px {
   width: 1px
-}
-
-.w-\[90\%\] {
-  width: 90%
 }
 
 .min-w-0 {

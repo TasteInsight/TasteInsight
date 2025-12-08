@@ -157,28 +157,33 @@ onHide(() => {
 // 返回键拦截处理
 onBackPress(() => {
   // 优先处理编辑对话框中的返回
-  if (showEditDialog.value && editDialogRef.value?.handleBackPress?.()) {
+  if (showEditDialog.value) {
+    // 如果组件内部处理了返回（例如关闭了子弹窗），则只执行组件内部逻辑
+    if (editDialogRef.value?.handleBackPress?.()) {
+      return true;
+    }
+    // 否则关闭编辑对话框
+    closeEditDialog();
     return true;
   }
+  
   // 处理创建对话框中的返回
-  if (showCreateDialog.value && createDialogRef.value?.handleBackPress?.()) {
+  if (showCreateDialog.value) {
+    // 如果组件内部处理了返回（例如关闭了子弹窗），则只执行组件内部逻辑
+    if (createDialogRef.value?.handleBackPress?.()) {
+      return true;
+    }
+    // 否则关闭创建对话框
+    closeCreateDialog();
     return true;
   }
+
   // 关闭详情对话框
   if (showDetailDialog.value) {
     closeDetailDialog();
     return true;
   }
-  // 关闭编辑对话框
-  if (showEditDialog.value) {
-    closeEditDialog();
-    return true;
-  }
-  // 关闭创建对话框
-  if (showCreateDialog.value) {
-    closeCreateDialog();
-    return true;
-  }
+  
   return false; // 允许默认返回行为
 });
 
