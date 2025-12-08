@@ -238,7 +238,7 @@
       <scroll-view 
         scroll-y 
         class="flex-1 bg-gray-50 w-full min-h-0" 
-        enable-flex
+        style="max-height: calc(85vh - 200px);"
       >
         <view class="p-4 pb-20">
           <!-- 加载状态 -->
