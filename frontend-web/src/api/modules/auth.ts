@@ -11,7 +11,10 @@ export const authApi = {
    * @returns 登录响应（包含 token、管理员信息和权限）
    */
   async adminLogin(credentials: LoginCredentials): Promise<ApiResponse<AdminLoginResponse>> {
-    const response = await request.post<ApiResponse<AdminLoginResponse>>('/auth/admin/login', credentials)
+    const response = await request.post<ApiResponse<AdminLoginResponse>>(
+      '/auth/admin/login',
+      credentials,
+    )
     return response
   },
 
@@ -22,7 +25,7 @@ export const authApi = {
   async refreshToken(): Promise<ApiResponse<{ token: TokenInfo }>> {
     const response = await request.post<ApiResponse<{ token: TokenInfo }>>('/auth/refresh')
     return response
-  }
+  },
 }
 
 export default authApi

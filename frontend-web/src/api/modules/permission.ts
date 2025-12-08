@@ -1,10 +1,10 @@
 import request from '@/utils/request'
-import type { 
-  Admin, 
-  GetAdminsParams, 
+import type {
+  Admin,
+  GetAdminsParams,
   CreateAdminRequest,
   PaginationResponse,
-  ApiResponse
+  ApiResponse,
 } from '@/types/api'
 
 /**
@@ -17,18 +17,22 @@ export const permissionApi = {
    * @returns 管理员列表和分页信息
    */
   async getAdmins(params: GetAdminsParams = {}): Promise<ApiResponse<PaginationResponse<Admin>>> {
-    const { page = 1, pageSize = 10, ...rest } = params;
-    
+    const { page = 1, pageSize = 10, ...rest } = params
+
     // 构建查询字符串
     const queryParams = new URLSearchParams({
       page: page.toString(),
       pageSize: pageSize.toString(),
       ...Object.fromEntries(
-        Object.entries(rest).filter(([_, value]) => value !== undefined && value !== null && value !== '')
-      )
-    });
-    
-    return await request.get<ApiResponse<PaginationResponse<Admin>>>(`/admin/admins?${queryParams.toString()}`);
+        Object.entries(rest).filter(
+          ([_, value]) => value !== undefined && value !== null && value !== '',
+        ),
+      ),
+    })
+
+    return await request.get<ApiResponse<PaginationResponse<Admin>>>(
+      `/admin/admins?${queryParams.toString()}`,
+    )
   },
 
   /**
@@ -37,7 +41,7 @@ export const permissionApi = {
    * @returns 创建的管理员信息
    */
   async createAdmin(data: CreateAdminRequest): Promise<ApiResponse<Admin>> {
-    return await request.post<ApiResponse<Admin>>('/admin/admins', data);
+    return await request.post<ApiResponse<Admin>>('/admin/admins', data)
   },
 
   /**
@@ -46,7 +50,7 @@ export const permissionApi = {
    * @returns 删除结果
    */
   async deleteAdmin(adminId: string): Promise<ApiResponse<void>> {
-    return await request.delete<ApiResponse<void>>(`/admin/admins/${adminId}`);
+    return await request.delete<ApiResponse<void>>(`/admin/admins/${adminId}`)
   },
 
   /**
@@ -56,8 +60,10 @@ export const permissionApi = {
    * @returns 更新结果
    */
   async updateAdminPermissions(adminId: string, permissions: string[]): Promise<ApiResponse<void>> {
-    return await request.put<ApiResponse<void>>(`/admin/admins/${adminId}/permissions`, { permissions });
-  }
+    return await request.put<ApiResponse<void>>(`/admin/admins/${adminId}/permissions`, {
+      permissions,
+    })
+  },
 }
 
 export default permissionApi

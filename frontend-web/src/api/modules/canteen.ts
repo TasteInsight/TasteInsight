@@ -1,5 +1,5 @@
 import request from '@/utils/request'
-import type { 
+import type {
   Canteen,
   Window,
   PaginationResponse,
@@ -7,7 +7,7 @@ import type {
   CanteenCreateRequest,
   CanteenUpdateRequest,
   WindowCreateRequest,
-  WindowUpdateRequest
+  WindowUpdateRequest,
 } from '@/types/api'
 
 /**
@@ -19,8 +19,12 @@ export const canteenApi = {
    * @param params 分页参数
    * @returns 食堂列表
    */
-  async getCanteens(params: { page?: number; pageSize?: number } = {}): Promise<ApiResponse<PaginationResponse<Canteen>>> {
-    return await request.get<ApiResponse<PaginationResponse<Canteen>>>('/admin/canteens', { params });
+  async getCanteens(
+    params: { page?: number; pageSize?: number } = {},
+  ): Promise<ApiResponse<PaginationResponse<Canteen>>> {
+    return await request.get<ApiResponse<PaginationResponse<Canteen>>>('/admin/canteens', {
+      params,
+    })
   },
 
   /**
@@ -29,7 +33,7 @@ export const canteenApi = {
    * @returns 创建的食堂信息
    */
   async createCanteen(data: CanteenCreateRequest): Promise<ApiResponse<Canteen>> {
-    return await request.post<ApiResponse<Canteen>>('/admin/canteens', data);
+    return await request.post<ApiResponse<Canteen>>('/admin/canteens', data)
   },
 
   /**
@@ -39,7 +43,7 @@ export const canteenApi = {
    * @returns 更新后的食堂信息
    */
   async updateCanteen(id: string, data: CanteenUpdateRequest): Promise<ApiResponse<Canteen>> {
-    return await request.put<ApiResponse<Canteen>>(`/admin/canteens/${id}`, data);
+    return await request.put<ApiResponse<Canteen>>(`/admin/canteens/${id}`, data)
   },
 
   /**
@@ -48,7 +52,7 @@ export const canteenApi = {
    * @returns 删除结果
    */
   async deleteCanteen(id: string): Promise<ApiResponse<void>> {
-    return await request.delete<ApiResponse<void>>(`/admin/canteens/${id}`);
+    return await request.delete<ApiResponse<void>>(`/admin/canteens/${id}`)
   },
 
   /**
@@ -57,8 +61,14 @@ export const canteenApi = {
    * @param params 分页参数
    * @returns 窗口列表
    */
-  async getWindows(canteenId: string, params: { page?: number; pageSize?: number } = {}): Promise<ApiResponse<PaginationResponse<Window>>> {
-    return await request.get<ApiResponse<PaginationResponse<Window>>>(`/admin/windows/${canteenId}`, { params });
+  async getWindows(
+    canteenId: string,
+    params: { page?: number; pageSize?: number } = {},
+  ): Promise<ApiResponse<PaginationResponse<Window>>> {
+    return await request.get<ApiResponse<PaginationResponse<Window>>>(
+      `/admin/windows/${canteenId}`,
+      { params },
+    )
   },
 
   /**
@@ -67,7 +77,7 @@ export const canteenApi = {
    * @returns 创建的窗口信息
    */
   async createWindow(data: WindowCreateRequest): Promise<ApiResponse<Window>> {
-    return await request.post<ApiResponse<Window>>('/admin/windows', data);
+    return await request.post<ApiResponse<Window>>('/admin/windows', data)
   },
 
   /**
@@ -77,7 +87,7 @@ export const canteenApi = {
    * @returns 更新后的窗口信息
    */
   async updateWindow(id: string, data: WindowUpdateRequest): Promise<ApiResponse<Window>> {
-    return await request.put<ApiResponse<Window>>(`/admin/windows/${id}`, data);
+    return await request.put<ApiResponse<Window>>(`/admin/windows/${id}`, data)
   },
 
   /**
@@ -86,8 +96,8 @@ export const canteenApi = {
    * @returns 删除结果
    */
   async deleteWindow(id: string): Promise<ApiResponse<void>> {
-    return await request.delete<ApiResponse<void>>(`/admin/windows/${id}`);
-  }
+    return await request.delete<ApiResponse<void>>(`/admin/windows/${id}`)
+  },
 }
 
 export default canteenApi

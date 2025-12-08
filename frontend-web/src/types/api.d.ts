@@ -349,7 +349,7 @@ export interface AdminWithPermissions extends Admin {
 export interface CreateAdminRequest {
   username: string
   password: string
-  role: string
+  role?: string // 角色为可选字段，可以是预设角色或自定义角色
   canteenId?: string
   permissions?: string[]
 }

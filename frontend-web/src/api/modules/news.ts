@@ -1,11 +1,11 @@
 import request from '@/utils/request'
-import type { 
+import type {
   News,
   PaginationResponse,
   ApiResponse,
   NewsCreateRequest,
   NewsUpdateRequest,
-  GetNewsParams
+  GetNewsParams,
 } from '@/types/api'
 
 /**
@@ -18,7 +18,7 @@ export const newsApi = {
    * @returns 新闻列表
    */
   async getNews(params: GetNewsParams = {}): Promise<ApiResponse<PaginationResponse<News>>> {
-    return await request.get<ApiResponse<PaginationResponse<News>>>('/admin/news', { params });
+    return await request.get<ApiResponse<PaginationResponse<News>>>('/admin/news', { params })
   },
 
   /**
@@ -27,7 +27,7 @@ export const newsApi = {
    * @returns 创建的新闻信息
    */
   async createNews(data: NewsCreateRequest): Promise<ApiResponse<News>> {
-    return await request.post<ApiResponse<News>>('/admin/news', data);
+    return await request.post<ApiResponse<News>>('/admin/news', data)
   },
 
   /**
@@ -37,7 +37,7 @@ export const newsApi = {
    * @returns 更新后的新闻信息
    */
   async updateNews(id: string, data: NewsUpdateRequest): Promise<ApiResponse<News>> {
-    return await request.put<ApiResponse<News>>(`/admin/news/${id}`, data);
+    return await request.put<ApiResponse<News>>(`/admin/news/${id}`, data)
   },
 
   /**
@@ -46,7 +46,7 @@ export const newsApi = {
    * @returns 删除结果
    */
   async deleteNews(id: string): Promise<ApiResponse<void>> {
-    return await request.delete<ApiResponse<void>>(`/admin/news/${id}`);
+    return await request.delete<ApiResponse<void>>(`/admin/news/${id}`)
   },
 
   /**
@@ -55,7 +55,7 @@ export const newsApi = {
    * @returns 发布结果
    */
   async publishNews(id: string): Promise<ApiResponse<void>> {
-    return await request.post<ApiResponse<void>>(`/admin/news/${id}/publish`);
+    return await request.post<ApiResponse<void>>(`/admin/news/${id}/publish`)
   },
 
   /**
@@ -64,8 +64,8 @@ export const newsApi = {
    * @returns 撤回结果
    */
   async revokeNews(id: string): Promise<ApiResponse<void>> {
-    return await request.post<ApiResponse<void>>(`/admin/news/${id}/revoke`);
-  }
+    return await request.post<ApiResponse<void>>(`/admin/news/${id}/revoke`)
+  },
 }
 
 export default newsApi
