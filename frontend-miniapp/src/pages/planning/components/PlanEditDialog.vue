@@ -198,7 +198,7 @@
             placeholder-class="text-gray-400"
             @confirm="handleSearch"
           />
-          <view v-if="searchKeyword" @tap="searchKeyword = ''" class="w-5 h-5 bg-gray-300 rounded-full flex items-center justify-center mr-2">
+          <view v-if="searchKeyword" @tap="clearSearch" class="w-5 h-5 bg-gray-300 rounded-full flex items-center justify-center mr-2">
             <text class="text-white text-xs">×</text>
           </view>
           <view 
@@ -442,7 +442,8 @@ const backInterceptor = {
       emit('close');
       return false; // 阻止默认返回
     }
-    return undefined; // 允许默认行为
+    // 明确返回 true 以允许默认返回行为（比返回 undefined 更具可读性）
+    return true; // 允许默认行为
   }
 };
 
@@ -457,7 +458,8 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  uni.removeInterceptor('navigateBack');
+  // 移除我们添加的具体拦截器，避免误删其他拦截器
+  (uni as any).removeInterceptor('navigateBack', backInterceptor);
 });
 
 // 监听 visible 变化重置选择器状态
@@ -632,6 +634,13 @@ const handleSearch = async () => {
   } finally {
     dishLoading.value = false;
   }
+};
+
+// 清除搜索关键词并立即刷新结果
+const clearSearch = async () => {
+  searchKeyword.value = '';
+  // handleSearch 会根据 selectedWindow 的状态做适当的操作
+  await handleSearch();
 };
 
 // 关闭对话框
