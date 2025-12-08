@@ -171,7 +171,7 @@ export const reviewApi = {
 
   /**
    * 获取指定菜品的评论列表
-   * @param reviewId 评价 ID（菜品 ID）
+   * @param reviewId 评价 ID
    * @param params 分页参数
    * @returns 评论列表
    */

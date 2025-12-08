@@ -38,7 +38,7 @@
             >
               <div class="flex items-center">
                 <img
-                  :src="(dish.images && dish.images.length > 0 ? dish.images[0] : '') || '/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'"
+                  :src="(dish.images && dish.images.length > 0 ? dish.images[0] : '') || '/default-dish.png'"
                   :alt="dish.name"
                   class="w-12 h-12 rounded object-cover border mr-3"
                 />
@@ -405,7 +405,7 @@ export default defineComponent({
       }
     }
 
-    // 加载评论列表（加载所有评论以便分组显示）
+    // 加载评论列表
     const loadComments = async () => {
       if (!selectedDishId.value) return
 
@@ -414,7 +414,7 @@ export default defineComponent({
         // 加载所有评论，使用较大的 pageSize
         const response = await reviewApi.getDishComments(selectedDishId.value, {
           page: 1,
-          pageSize: 1000, // 加载足够多的评论以便分组显示
+          pageSize: 30, // 加载足够多的评论以便分组显示
         })
 
         if (response.code === 200 && response.data) {

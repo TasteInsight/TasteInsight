@@ -241,7 +241,7 @@ export default defineComponent({
           }
 
           reports.value = items
-          totalReports.value = response.data.meta?.total || 0
+          totalReports.value = items.length
         } else {
           reports.value = []
           totalReports.value = 0

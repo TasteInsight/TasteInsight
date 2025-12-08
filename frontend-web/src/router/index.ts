@@ -34,27 +34,9 @@ const routes = [
         return '/login'
       }
       
-      // 定义路由优先级顺序和所需权限
-      const routePriority = [
-        { path: '/single-add', permission: 'dish:view' },
-        { path: '/modify-dish', permission: 'dish:view' },
-        { path: '/review-dish', permission: 'upload:approve' },
-        { path: '/add-canteen', permission: 'canteen:view' },
-        { path: '/user-manage', permission: 'admin:view' },
-        { path: '/news-manage', permission: 'news:view' },
-        { path: '/report-manage', permission: 'report:handle' },
-        { path: '/comment-manage', permission: 'review:delete' },
-      ]
-      
-      // 找到第一个有权限的页面
-      for (const route of routePriority) {
-        if (authStore.hasPermission(route.permission)) {
-          return route.path
-        }
-      }
-      
-      // 如果没有任何权限，返回第一个页面（虽然不应该发生）
-      return '/single-add'
+      // 使用 getFirstAccessibleRoute 获取第一个有权限的页面
+      const firstRoute = getFirstAccessibleRoute(authStore)
+      return firstRoute
     },
     children: [
       {
