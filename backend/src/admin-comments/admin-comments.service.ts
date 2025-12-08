@@ -111,4 +111,24 @@ export class AdminCommentsService {
       data: null,
     };
   }
+
+  async deleteComment(id: string): Promise<SuccessResponseDto> {
+    const comment = await this.prisma.comment.findUnique({
+      where: { id, deletedAt: null },
+    });
+    if (!comment) {
+      throw new NotFoundException('评论不存在');
+    }
+
+    await this.prisma.comment.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+
+    return {
+      code: 200,
+      message: '删除成功',
+      data: null,
+    };
+  }
 }
