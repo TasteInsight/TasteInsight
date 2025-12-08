@@ -73,6 +73,7 @@
 
     <!-- 编辑对话框 -->
     <PlanEditDialog
+      ref="editDialogRef"
       :visible="showEditDialog"
       :plan="selectedPlan"
       @close="closeEditDialog"
@@ -81,6 +82,7 @@
 
     <!-- 创建对话框 -->
     <PlanEditDialog
+      ref="createDialogRef"
       :visible="showCreateDialog"
       :plan="null"
       @close="closeCreateDialog"
@@ -92,13 +94,17 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { onHide, onPullDownRefresh } from '@dcloudio/uni-app';
+import { onHide, onPullDownRefresh, onBackPress } from '@dcloudio/uni-app';
 import { useMenuPlanning } from './composables/use-menu-planning';
 import type { EnrichedMealPlan } from './composables/use-menu-planning';
 import PlanCard from './components/PlanCard.vue';
 import PlanDetailDialog from './components/PlanDetailDialog.vue';
 import PlanEditDialog from './components/PlanEditDialog.vue';
 import { PlanningSkeleton } from '@/components/skeleton';
+
+// 弹窗引用
+const editDialogRef = ref<InstanceType<typeof PlanEditDialog> | null>(null);
+const createDialogRef = ref<InstanceType<typeof PlanEditDialog> | null>(null);
 
 // 初次加载标记
 const hasLoaded = ref(false);
@@ -146,6 +152,39 @@ onHide(() => {
   closeDetailDialog();
   closeEditDialog();
   closeCreateDialog();
+});
+
+// 返回键拦截处理
+onBackPress(() => {
+  // 优先处理编辑对话框中的返回
+  if (showEditDialog.value) {
+    // 如果组件内部处理了返回（例如关闭了子弹窗），则只执行组件内部逻辑
+    if (editDialogRef.value?.handleBackPress?.()) {
+      return true;
+    }
+    // 否则关闭编辑对话框
+    closeEditDialog();
+    return true;
+  }
+  
+  // 处理创建对话框中的返回
+  if (showCreateDialog.value) {
+    // 如果组件内部处理了返回（例如关闭了子弹窗），则只执行组件内部逻辑
+    if (createDialogRef.value?.handleBackPress?.()) {
+      return true;
+    }
+    // 否则关闭创建对话框
+    closeCreateDialog();
+    return true;
+  }
+
+  // 关闭详情对话框
+  if (showDetailDialog.value) {
+    closeDetailDialog();
+    return true;
+  }
+  
+  return false; // 允许默认返回行为
 });
 
 const handleExecutePlan = async (plan: EnrichedMealPlan) => {
