@@ -900,5 +900,11 @@ test.describe('Canteen Dish Sync', () => {
     await request.delete(`${baseURL}admin/dishes/${dish.id}`, {
       headers: { Authorization: `Bearer ${token}` }
     });
+
+    // Cleanup canteen
+    await request.delete(`${baseURL}admin/canteens/${createdCanteenId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    createdCanteenId = '';
   });
 });
