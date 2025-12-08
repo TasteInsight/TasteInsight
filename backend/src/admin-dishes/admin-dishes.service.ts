@@ -46,12 +46,13 @@ export class AdminDishesService {
     }
 
     // 关键字搜索
+    // 只搜索关联表的实时数据，确保数据一致性（不搜索冗余字段，避免歧义）
     if (keyword) {
       where.OR = [
         { name: { contains: keyword, mode: 'insensitive' } },
         { description: { contains: keyword, mode: 'insensitive' } },
-        { canteenName: { contains: keyword, mode: 'insensitive' } },
-        { windowName: { contains: keyword, mode: 'insensitive' } },
+        { canteen: { name: { contains: keyword, mode: 'insensitive' } } },
+        { window: { name: { contains: keyword, mode: 'insensitive' } } },
       ];
     }
 
@@ -67,6 +68,7 @@ export class AdminDishesService {
       include: {
         canteen: true,
         window: true,
+        floor: true,
         parentDish: true,
         subDishes: true,
       },
@@ -96,6 +98,7 @@ export class AdminDishesService {
       include: {
         canteen: true,
         window: true,
+        floor: true,
         parentDish: true,
         subDishes: true,
       },
@@ -363,6 +366,7 @@ export class AdminDishesService {
       include: {
         canteen: true,
         window: true,
+        floor: true,
         parentDish: true,
         subDishes: true,
       },
@@ -460,13 +464,13 @@ export class AdminDishesService {
       saltiness: dish.saltiness,
       oiliness: dish.oiliness,
       canteenId: dish.canteenId,
-      canteenName: dish.canteenName,
+      canteenName: dish.canteen?.name || dish.canteenName,
       floorId: dish.floorId,
-      floorLevel: dish.floorLevel,
-      floorName: dish.floorName,
+      floorLevel: dish.floor?.level || dish.floorLevel,
+      floorName: dish.floor?.name || dish.floorName,
       windowId: dish.windowId,
-      windowNumber: dish.windowNumber,
-      windowName: dish.windowName,
+      windowNumber: dish.window?.number || dish.windowNumber,
+      windowName: dish.window?.name || dish.windowName,
       availableMealTime: dish.availableMealTime,
       availableDates: dish.availableDates,
       status: dish.status,
