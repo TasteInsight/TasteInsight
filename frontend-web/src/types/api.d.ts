@@ -451,12 +451,11 @@ export interface PendingComment extends Comment {
 
 /**
  * 举报信息
- * 符合数据模型定义：包含 reporterNickname 字段
  */
 export interface Report {
   id: string
   reporterId: string
-  reporterNickname?: string // 数据模型中的字段，后端可能通过 reporter 对象返回
+  reporterNickname?: string 
   targetType: 'review' | 'comment'
   targetId: string
   type: string
@@ -466,7 +465,7 @@ export interface Report {
   handledBy: string | null
   handledAt: string | null
   createdAt: string
-  updatedAt?: string // 数据模型中可能没有，但后端返回了
+  updatedAt?: string 
   reporter?: {
     id: string
     nickname: string
