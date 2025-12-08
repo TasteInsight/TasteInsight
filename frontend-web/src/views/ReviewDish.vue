@@ -36,11 +36,9 @@
             v-model="canteenFilter"
           >
             <option value="">所有食堂</option>
-            <option>紫荆园</option>
-            <option>桃李园</option>
-            <option>丁香园</option>
-            <option>清芬园</option>
-            <option>听涛园</option>
+            <option v-for="canteen in canteens" :key="canteen.id" :value="canteen.name">
+              {{ canteen.name }}
+            </option>
           </select>
         </div>
       </div>
@@ -142,6 +140,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { reviewApi } from '@/api/modules/review'
+import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import Pagination from '@/components/Common/Pagination.vue'
@@ -166,6 +165,9 @@ export default {
 
     // 审核数据
     const reviewDishes = ref([])
+
+    // 食堂列表
+    const canteens = ref([])
 
     const statusClasses = {
       pending: 'bg-yellow-100 text-yellow-800',
@@ -224,6 +226,21 @@ export default {
       loadReviewDishes()
     }
 
+    // 加载食堂列表
+    const loadCanteens = async () => {
+      try {
+        const response = await canteenApi.getCanteens({ page: 1, pageSize: 100 })
+        if (response.code === 200 && response.data && response.data.items) {
+          canteens.value = response.data.items
+        } else {
+          canteens.value = []
+        }
+      } catch (error) {
+        console.error('加载食堂列表失败:', error)
+        canteens.value = []
+      }
+    }
+
     // 加载审核菜品列表
     const loadReviewDishes = async () => {
       isLoading.value = true
@@ -277,6 +294,7 @@ export default {
 
     // 组件挂载时加载数据
     onMounted(() => {
+      loadCanteens()
       loadReviewDishes()
     })
 
@@ -296,6 +314,7 @@ export default {
       loadReviewDishes,
       viewDishDetail,
       authStore,
+      canteens,
     }
   },
 }
