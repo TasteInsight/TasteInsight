@@ -108,6 +108,46 @@ describe('AdminReportsController (e2e)', () => {
       });
     });
 
+    it('should filter reports by targetType=review', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/admin/reports?targetType=review')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.items).toBeInstanceOf(Array);
+      response.body.data.items.forEach((report: any) => {
+        expect(report.targetType).toBe('review');
+      });
+    });
+
+    it('should filter reports by targetType=comment', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/admin/reports?targetType=comment')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.items).toBeInstanceOf(Array);
+      response.body.data.items.forEach((report: any) => {
+        expect(report.targetType).toBe('comment');
+      });
+    });
+
+    it('should filter reports by both status and targetType', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/admin/reports?status=pending&targetType=review')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.items).toBeInstanceOf(Array);
+      response.body.data.items.forEach((report: any) => {
+        expect(report.status).toBe('pending');
+        expect(report.targetType).toBe('review');
+      });
+    });
+
     it('should support pagination', async () => {
       const response = await request(app.getHttpServer())
         .get('/admin/reports?page=1&pageSize=2')
