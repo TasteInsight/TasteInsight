@@ -34,7 +34,6 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
     const userStore = useUserStore();
     const header: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.header, // 允许页面传入自定义的 header
     };
 
     // 核心：自动为需要授权的接口注入 Token
@@ -42,6 +41,11 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
       // 'Authorization' 是后端接口文档中约定的字段
       // 'Bearer ' 是 JWT 规范中推荐的前缀，具体看后端要求
       header['Authorization'] = `Bearer ${userStore.token}`;
+    }
+
+    // 允许页面传入自定义的 header 覆盖默认值
+    if (options.header) {
+      Object.assign(header, options.header);
     }
 
     // --- 阶段二: 发起 uniapp 网络请求 ---
@@ -89,6 +93,61 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
             // 业务失败，也 reject Promise，让页面中的 .catch() 能捕获到
             reject(new Error(responseData.message || '操作失败'));
           }
+        } else if (statusCode === 401) {
+          // 401 未授权，尝试刷新 Token
+          const userStore = useUserStore();
+          
+          // 如果是刷新 token 的请求本身失败了，或者没有 refresh token，则直接退出登录
+          if (fullUrl.includes('/auth/refresh') || !userStore.refreshToken) {
+            handleHttpError(statusCode, responseData);
+            reject(new Error(`HTTP ${statusCode}`));
+            return;
+          }
+
+          // 尝试刷新 token
+          // 使用 uni.request 直接请求，避免循环依赖
+          const refreshUrl = config.baseUrl + '/auth/refresh';
+          // eslint-disable-next-line no-console
+          console.log('[request] -> Refreshing Token', refreshUrl);
+          
+          uni.request({
+            url: refreshUrl,
+            method: 'POST',
+            header: {
+              'Content-Type': 'application/json',
+              // 携带 refresh token，具体视后端要求而定
+              // 'Authorization': `Bearer ${userStore.refreshToken}` 
+            },
+            data: {},
+            success: (refreshRes) => {
+              const refreshData = refreshRes.data as any; // 简化类型
+              if (refreshRes.statusCode >= 200 && refreshRes.statusCode < 300 && refreshData.code === 200 && refreshData.data?.token) {
+                // eslint-disable-next-line no-console
+                console.log('[request] Token refreshed successfully');
+                const newToken = refreshData.data.token;
+                
+                // 更新 store 和 storage
+                userStore.token = newToken.accessToken;
+                uni.setStorageSync('token', newToken.accessToken);
+                
+                if (newToken.refreshToken) {
+                  userStore.refreshToken = newToken.refreshToken;
+                  uni.setStorageSync('refreshToken', newToken.refreshToken);
+                }
+                
+                // 重试原请求
+                request<T>(options).then(resolve).catch(reject);
+              } else {
+                // 刷新失败
+                handleHttpError(401, responseData);
+                reject(new Error('Token refresh failed'));
+              }
+            },
+            fail: (err) => {
+              handleHttpError(401, responseData);
+              reject(err);
+            }
+          });
         } else {
           // HTTP 状态码非 2xx，代表请求出错了（404, 500 等）
           // 交给统一的错误处理器

@@ -31,6 +31,7 @@ import {
 } from './services/meal-plan';
 import { 
   mockWechatLogin, 
+  mockRefreshToken,
   mockGetUserProfile, 
   mockUpdateUserProfile,
   mockGetMyReviews,
@@ -294,6 +295,12 @@ registerMockRoute('DELETE', '/meal-plans/:id', async (url) => {
 registerMockRoute('POST', '/auth/wechat/login', async (url, options) => {
   const loginData = options.data as any;
   const data = await mockWechatLogin(loginData.code);
+  return mockSuccess(data);
+});
+
+// POST /auth/refresh - 刷新 Token
+registerMockRoute('POST', '/auth/refresh', async () => {
+  const data = await mockRefreshToken();
   return mockSuccess(data);
 });
 

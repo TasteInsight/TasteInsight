@@ -68,6 +68,21 @@ export const mockWechatLogin = async (code: string): Promise<LoginData> => {
   return { token, user };
 };
 
+// 刷新 Token
+export const mockRefreshToken = async (): Promise<LoginData> => {
+  console.log('🔄 [Mock] 刷新 Token');
+  await mockDelay();
+  
+  const user = getMockUserFromStorage();
+  const token = {
+    accessToken: 'mock_access_token_refreshed_' + Date.now(),
+    refreshToken: 'mock_refresh_token_refreshed_' + Date.now(),
+  };
+  
+  console.log('✅ [Mock] Token 刷新成功');
+  return { token, user };
+};
+
 // 获取用户信息
 export const mockGetUserProfile = async (): Promise<User> => {
   console.log('👤 [Mock] 获取用户信息');
