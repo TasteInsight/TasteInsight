@@ -11,6 +11,60 @@ import { mockInterceptor } from '@/mock/mock-adapter';
 // 初始化 Mock 路由（副作用导入，确保路由被注册）
 import '@/mock/mock-routes';
 
+// 全局刷新token的Promise缓存，避免竞态条件
+let refreshTokenPromise: Promise<void> | null = null;
+
+/**
+ * 执行token刷新操作，返回Promise以便缓存和等待
+ */
+function performTokenRefresh(): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const userStore = useUserStore();
+    const refreshUrl = config.baseUrl + '/auth/refresh';
+    
+    // eslint-disable-next-line no-console
+    console.log('[request] -> Refreshing Token', refreshUrl);
+    
+    uni.request({
+      url: refreshUrl,
+      method: 'POST',
+      header: {
+        'Content-Type': 'application/json',
+        // 携带 refresh token，具体视后端要求而定
+         'Authorization': `Bearer ${userStore.refreshToken}` 
+      },
+      data: {},
+      success: (refreshRes) => {
+        const refreshData = refreshRes.data as any; // 简化类型
+        if (refreshRes.statusCode >= 200 && refreshRes.statusCode < 300 && refreshData.code === 200 && refreshData.data?.token) {
+          // eslint-disable-next-line no-console
+          console.log('[request] Token refreshed successfully');
+          const newToken = refreshData.data.token;
+          
+          // 更新 store 和 storage
+          userStore.token = newToken.accessToken;
+          uni.setStorageSync('token', newToken.accessToken);
+          
+          if (newToken.refreshToken) {
+            userStore.refreshToken = newToken.refreshToken;
+            uni.setStorageSync('refreshToken', newToken.refreshToken);
+          }
+          
+          resolve();
+        } else {
+          // 刷新失败
+          handleHttpError(401, refreshData);
+          reject(new Error('Token refresh failed'));
+        }
+      },
+      fail: (err) => {
+        handleHttpError(401, {});
+        reject(err);
+      }
+    });
+  });
+}
+
 
 /**
  * 封装的网络请求函数
@@ -104,50 +158,43 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
             return;
           }
 
-          // 尝试刷新 token
-          // 使用 uni.request 直接请求，避免循环依赖
-          const refreshUrl = config.baseUrl + '/auth/refresh';
-          // eslint-disable-next-line no-console
-          console.log('[request] -> Refreshing Token', refreshUrl);
-          
-          uni.request({
-            url: refreshUrl,
-            method: 'POST',
-            header: {
-              'Content-Type': 'application/json',
-              // 携带 refresh token，具体视后端要求而定
-               'Authorization': `Bearer ${userStore.refreshToken}` 
-            },
-            data: {},
-            success: (refreshRes) => {
-              const refreshData = refreshRes.data as any; // 简化类型
-              if (refreshRes.statusCode >= 200 && refreshRes.statusCode < 300 && refreshData.code === 200 && refreshData.data?.token) {
-                // eslint-disable-next-line no-console
-                console.log('[request] Token refreshed successfully');
-                const newToken = refreshData.data.token;
-                
-                // 更新 store 和 storage
-                userStore.token = newToken.accessToken;
-                uni.setStorageSync('token', newToken.accessToken);
-                
-                if (newToken.refreshToken) {
-                  userStore.refreshToken = newToken.refreshToken;
-                  uni.setStorageSync('refreshToken', newToken.refreshToken);
-                }
-                
-                // 重试原请求
-                request<T>(options).then(resolve).catch(reject);
-              } else {
-                // 刷新失败
-                handleHttpError(401, responseData);
-                reject(new Error('Token refresh failed'));
+          // 检查是否已有刷新操作在进行
+          if (!refreshTokenPromise) {
+            // 没有正在进行的刷新，发起新的刷新操作
+            refreshTokenPromise = performTokenRefresh()
+              .finally(() => {
+                // 无论成功还是失败，都清除缓存的promise
+                refreshTokenPromise = null;
+              });
+          }
+
+          // 如果当前请求已经重试过一次，则不再尝试刷新并重试
+          if ((options as any)._retry) {
+            // 已经重试过，直接登出并返回错误
+            handleHttpError(statusCode, responseData);
+            reject(new Error('Unauthorized after token refresh'));
+            return;
+          }
+
+          // 等待刷新完成，然后重试原请求，确保重试时不会携带旧 Authorization
+          refreshTokenPromise
+            .then(() => {
+              // 刷新成功，重试原请求
+              // 确保不会使用旧的 Authorization header（如果调用方传入了 header.Authorization）
+              const newOptions = {
+                ...(options as any),
+                _retry: true,
+                header: options.header ? { ...options.header } : undefined,
+              } as RequestOptions & { _retry?: boolean };
+              if (newOptions.header && newOptions.header['Authorization']) {
+                delete newOptions.header['Authorization'];
               }
-            },
-            fail: (err) => {
-              handleHttpError(401, responseData);
-              reject(err);
-            }
-          });
+              request<T>(newOptions).then(resolve).catch(reject);
+            })
+            .catch((error) => {
+              // 刷新失败，直接reject
+              reject(error);
+            });
         } else {
           // HTTP 状态码非 2xx，代表请求出错了（404, 500 等）
           // 交给统一的错误处理器
