@@ -524,4 +524,95 @@ export class AdminDishesService {
       updatedAt: dishUpload.updatedAt,
     };
   }
+
+  /**
+   * 管理端获取菜品评价列表
+   */
+  async getDishReviews(dishId: string, page: number = 1, pageSize: number = 20) {
+    // 检查菜品是否存在
+    const dish = await this.prisma.dish.findUnique({
+      where: { id: dishId },
+    });
+
+    if (!dish) {
+      throw new NotFoundException('菜品不存在');
+    }
+
+    const skip = (page - 1) * pageSize;
+    const where = { dishId, deletedAt: null };
+
+    const [total, reviews] = await Promise.all([
+      this.prisma.review.count({ where }),
+      this.prisma.review.findMany({
+        where,
+        skip,
+        take: pageSize,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: {
+            select: {
+              id: true,
+              nickname: true,
+              avatar: true,
+            },
+          },
+          _count: {
+            select: {
+              comments: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const items = reviews.map((review) => {
+      const hasDetails =
+        review.spicyLevel ||
+        review.sweetness ||
+        review.saltiness ||
+        review.oiliness;
+
+      return {
+        id: review.id,
+        dishId: review.dishId,
+        userId: review.userId,
+        rating: review.rating,
+        ratingDetails: hasDetails
+          ? {
+              spicyLevel: review.spicyLevel,
+              sweetness: review.sweetness,
+              saltiness: review.saltiness,
+              oiliness: review.oiliness,
+            }
+          : null,
+        content: review.content,
+        images: review.images,
+        status: review.status,
+        rejectReason: review.rejectReason,
+        createdAt: review.createdAt,
+        updatedAt: review.updatedAt,
+        deletedAt: review.deletedAt,
+        user: {
+          id: review.user.id,
+          nickname: review.user.nickname,
+          avatar: review.user.avatar,
+        },
+        commentCount: review._count.comments,
+      };
+    });
+
+    return {
+      code: 200,
+      message: 'success',
+      data: {
+        items,
+        meta: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize),
+        },
+      },
+    };
+  }
 }

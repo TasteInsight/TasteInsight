@@ -76,6 +76,21 @@ export class AdminDishesController {
     );
   }
 
+  @Get(':id/reviews')
+  @RequirePermissions('dish:view')
+  @HttpCode(HttpStatus.OK)
+  async getDishReviews(
+    @Param('id') id: string,
+    @Query('page') page: number = 1,
+    @Query('pageSize') pageSize: number = 20,
+  ) {
+    return this.adminDishesService.getDishReviews(
+      id,
+      Number(page),
+      Number(pageSize),
+    );
+  }
+
   @Delete(':id')
   @RequirePermissions('dish:delete')
   @HttpCode(HttpStatus.OK)
