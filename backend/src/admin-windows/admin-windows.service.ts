@@ -224,7 +224,7 @@ export class AdminWindowsService {
       existingWindow.number !== windowData.number;
 
     // 3. 检查楼层是否改变 (对比 ID)
-    // 注意：existingWindow.floorId 可能为 null
+    // 修复：正确处理 floorId 显式设置为 undefined/null 的情况
     const floorChanged = existingWindow.floorId !== floorId;
 
     if (nameChanged || numberChanged || floorChanged) {
@@ -234,7 +234,7 @@ export class AdminWindowsService {
         window.id,
         window.name,
         window.number,
-        floorId || undefined, // 如果是 null 转 undefined
+        floorId ?? undefined, // 如果是 null 转 undefined
       );
     }
 

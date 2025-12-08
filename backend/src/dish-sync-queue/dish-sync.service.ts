@@ -74,6 +74,8 @@ export class DishSyncService {
           updateData.floorId = floor.id;
           updateData.floorName = floor.name;
           updateData.floorLevel = floor.level;
+        } else {
+          console.warn(`[DishSyncService] Floor not found for id: ${newFloorId}, skipping floor update`);
         }
       }
       await this.prisma.dish.updateMany({

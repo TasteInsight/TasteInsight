@@ -68,6 +68,8 @@ export class DishSyncProcessor extends WorkerHost {
         updateData.floorName = floor.name;
         updateData.floorLevel = floor.level;
         this.logger.log(`Also syncing floor info to "${floor.name}"`);
+      } else {
+        this.logger.warn(`Floor not found for id: ${newFloorId}, skipping floor update`);
       }
     }
 

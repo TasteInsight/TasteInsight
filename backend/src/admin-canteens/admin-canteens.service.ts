@@ -228,8 +228,10 @@ export class AdminCanteensService {
           const numberChanged =
             window.number !== undefined &&
             existingWindow.number !== window.number;
+          // 修复：正确处理 floorId 显式设置为 null 的情况
           const floorChanged =
-            window.floorId && existingWindow.floorId !== window.floorId;
+            window.floorId !== undefined &&
+            existingWindow.floorId !== window.floorId;
 
           if (nameChanged || numberChanged || floorChanged) {
             windowSyncJobs.push({

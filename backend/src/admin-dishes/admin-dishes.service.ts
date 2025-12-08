@@ -46,14 +46,11 @@ export class AdminDishesService {
     }
 
     // 关键字搜索
+    // 只搜索关联表的实时数据，确保数据一致性（不搜索冗余字段，避免歧义）
     if (keyword) {
       where.OR = [
         { name: { contains: keyword, mode: 'insensitive' } },
         { description: { contains: keyword, mode: 'insensitive' } },
-        // [修改] 搜索 Dish 表的冗余字段 (为了性能)
-        { canteenName: { contains: keyword, mode: 'insensitive' } },
-        { windowName: { contains: keyword, mode: 'insensitive' } },
-        // [新增] 同时也搜索关联表的实时数据 (为了数据一致性，解决队列延迟问题)
         { canteen: { name: { contains: keyword, mode: 'insensitive' } } },
         { window: { name: { contains: keyword, mode: 'insensitive' } } },
       ];
