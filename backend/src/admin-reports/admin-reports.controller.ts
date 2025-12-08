@@ -28,11 +28,13 @@ export class AdminReportsController {
     @Query('page') page: number = 1,
     @Query('pageSize') pageSize: number = 20,
     @Query('status') status?: 'pending' | 'approved' | 'rejected',
+    @Query('targetType') targetType?: string,
   ) {
     return this.adminReportsService.getReports(
       Number(page),
       Number(pageSize),
       status,
+      targetType,
     );
   }
 
