@@ -4,9 +4,14 @@
     v-if="visible" 
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
     @touchmove.stop.prevent="() => {}"
+    @tap="handleClose"
   >
     <!-- 2. 弹窗主体容器：限制最大高度，圆角，白色背景 -->
-    <view class="w-[90%] max-h-[85vh] flex flex-col bg-white rounded-xl overflow-hidden shadow-2xl transition-all">
+    <view 
+      class="w-[90%] max-h-[85vh] flex flex-col bg-white rounded-xl overflow-hidden shadow-2xl transition-all"
+      @tap.stop
+      @touchmove.stop
+    >
       
       <!-- 3. 头部：固定高度，不随内容滚动 -->
       <view class="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-100 bg-white">
@@ -26,7 +31,7 @@
       <scroll-view 
         scroll-y 
         class="flex-1 w-full bg-white min-h-0" 
-        enable-flex
+        style="max-height: calc(85vh - 160px);"
       >
         <view class="px-6 py-6 space-y-6">
           <!-- 日期选择行 -->
