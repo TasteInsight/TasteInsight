@@ -5,6 +5,7 @@ import type {
   Report,
   PendingReview,
   PendingComment,
+  Comment,
 } from '@/types/api'
 
 /**
@@ -166,6 +167,34 @@ export const reviewApi = {
    */
   async revokeUpload(id: string): Promise<ApiResponse<void>> {
     return await request.post<ApiResponse<void>>(`/admin/dishes/uploads/${id}/revoke`)
+  },
+
+  /**
+   * 获取指定菜品的评论列表
+   * @param reviewId 评价 ID（菜品 ID）
+   * @param params 分页参数
+   * @returns 评论列表
+   */
+  async getDishComments(
+    reviewId: string,
+    params: { page?: number; pageSize?: number } = {},
+  ): Promise<ApiResponse<PaginationResponse<Comment>>> {
+    const { page = 1, pageSize = 20 } = params
+    return await request.get<ApiResponse<PaginationResponse<Comment>>>(
+      `/admin/dishes/${reviewId}/comments`,
+      {
+        params: { page, pageSize },
+      },
+    )
+  },
+
+  /**
+   * 删除评论
+   * @param id 评论 ID
+   * @returns 删除结果
+   */
+  async deleteComment(id: string): Promise<ApiResponse<void>> {
+    return await request.delete<ApiResponse<void>>(`/admin/comments/${id}`)
   },
 }
 

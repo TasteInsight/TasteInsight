@@ -45,6 +45,8 @@ export const api = {
   getPendingUploads: reviewApi.getPendingUploads.bind(reviewApi),
   approveUpload: reviewApi.approveUpload.bind(reviewApi),
   rejectUpload: reviewApi.rejectUpload.bind(reviewApi),
+  getDishComments: reviewApi.getDishComments.bind(reviewApi),
+  deleteComment: reviewApi.deleteComment.bind(reviewApi),
 
   // 日志管理
   getLogs: logApi.getLogs.bind(logApi),

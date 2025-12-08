@@ -14,6 +14,7 @@ import UserManage from '../views/UserManage.vue'
 import NewsManage from '../views/NewsManage.vue'
 import LogView from '../views/LogView.vue'
 import ReportManage from '../views/ReportManage.vue'
+import CommentManage from '../views/CommentManage.vue'
 import Login from '../views/Login.vue'
 
 const routes = [
@@ -42,6 +43,7 @@ const routes = [
         { path: '/user-manage', permission: 'admin:view' },
         { path: '/news-manage', permission: 'news:view' },
         { path: '/report-manage', permission: 'report:handle' },
+        { path: '/comment-manage', permission: 'review:delete' },
       ]
       
       // 找到第一个有权限的页面
@@ -133,6 +135,12 @@ const routes = [
         component: ReportManage,
         meta: { requiresAuth: true, requiredPermission: 'report:handle' },
       },
+      {
+        path: 'comment-manage',
+        name: 'CommentManage',
+        component: CommentManage,
+        meta: { requiresAuth: true, requiredPermission: 'review:delete' },
+      },
     ],
   },
 ]
@@ -152,6 +160,7 @@ function getFirstAccessibleRoute(authStore: ReturnType<typeof useAuthStore>): st
     { path: '/user-manage', permission: 'admin:view' },
     { path: '/news-manage', permission: 'news:view' },
     { path: '/report-manage', permission: 'report:handle' },
+    { path: '/comment-manage', permission: 'review:delete' },
   ]
   
   // 找到第一个有权限的页面
