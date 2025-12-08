@@ -25,7 +25,7 @@
           <input
             type="text"
             v-model="searchQuery"
-            placeholder="搜索用户名、角色..."
+            placeholder="搜索用户名、角色（权限组合）..."
             class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
           />
         </div>
@@ -36,7 +36,7 @@
             <thead class="bg-gray-50">
               <tr>
                 <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">用户名</th>
-                <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">角色</th>
+                <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">角色（权限组合）</th>
                 <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">管理范围</th>
                 <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">创建时间</th>
                 <th class="py-3 px-6 text-center text-sm font-medium text-gray-500">操作</th>
@@ -201,7 +201,7 @@
               <!-- 角色 -->
               <div class="mb-6">
                 <label class="block text-gray-700 font-medium mb-2">
-                  角色 <span class="text-red-500">*</span>
+                  角色（权限组合）
                 </label>
                 <div class="grid grid-cols-2 gap-3">
                   <div
@@ -251,12 +251,35 @@
                       </div>
                     </div>
                   </div>
+                  <!-- 不选择角色选项 -->
+                  <div
+                    @click="selectRole('')"
+                    class="p-3 border rounded-lg cursor-pointer transition"
+                    :class="
+                      !formData.role
+                        ? 'border-tsinghua-purple bg-purple-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    "
+                  >
+                    <div class="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        :value="''"
+                        v-model="formData.role"
+                        class="text-tsinghua-purple"
+                      />
+                      <div>
+                        <div class="font-medium text-sm">不选择角色</div>
+                        <div class="text-xs text-gray-500">仅手动选择权限，不设置角色</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 
                 <!-- 自定义角色输入框 -->
                 <div v-if="formData.role === 'custom'" class="mt-3">
                   <label class="block text-sm text-gray-600 mb-1">
-                    自定义角色名称 <span class="text-red-500">*</span>
+                    自定义角色名称
                   </label>
                   <input
                     type="text"
@@ -409,7 +432,7 @@ export default {
     const formData = reactive({
       username: '',
       password: '',
-      role: 'canteen_manager',
+      role: '',
       customRole: '',
       canteenId: '',
       permissions: [],
@@ -544,6 +567,7 @@ export default {
 
     // 获取角色标签
     const getRoleLabel = (role) => {
+      if (!role) return '未设置'
       const roleObj = roles.find((r) => r.value === role)
       return roleObj ? roleObj.label : role
     }
@@ -605,16 +629,22 @@ export default {
       formData.username = admin.username || ''
       
       // 判断是否为预设角色
-      const presetRoleValues = roles.map(r => r.value)
-      const isPresetRole = presetRoleValues.includes(admin.role)
-      
-      if (isPresetRole) {
-        formData.role = admin.role || 'canteen_manager'
-        formData.customRole = ''
+      if (admin.role) {
+        const presetRoleValues = roles.map(r => r.value)
+        const isPresetRole = presetRoleValues.includes(admin.role)
+        
+        if (isPresetRole) {
+          formData.role = admin.role
+          formData.customRole = ''
+        } else {
+          // 如果不是预设角色，则视为自定义角色
+          formData.role = 'custom'
+          formData.customRole = admin.role
+        }
       } else {
-        // 如果不是预设角色，则视为自定义角色
-        formData.role = 'custom'
-        formData.customRole = admin.role || ''
+        // 如果没有角色，保持为空
+        formData.role = ''
+        formData.customRole = ''
       }
       
       formData.canteenId = admin.canteenId || ''
@@ -662,7 +692,7 @@ export default {
     const resetForm = () => {
       formData.username = ''
       formData.password = 'Tsinghua@2025'
-      formData.role = 'canteen_manager'
+      formData.role = ''
       formData.customRole = ''
       formData.canteenId = ''
       formData.permissions = []
@@ -681,13 +711,23 @@ export default {
 
     // 选择角色
     const selectRole = (role) => {
+      // 如果点击已选中的角色，则取消选择
+      if (formData.role === role) {
+        formData.role = ''
+        formData.customRole = ''
+        return
+      }
+      
       formData.role = role
       if (role === 'custom') {
         // 自定义角色不清空权限，让用户手动选择
         formData.customRole = ''
-      } else {
+      } else if (role) {
         // 根据角色设置默认权限
         formData.permissions = getDefaultPermissionsByRole(role)
+        formData.customRole = ''
+      } else {
+        // 不选择角色，不清空权限，让用户手动选择
         formData.customRole = ''
       }
     }
@@ -820,12 +860,14 @@ export default {
         return
       }
 
-      // 验证自定义角色
-      if (formData.role === 'custom') {
-        if (!formData.customRole || !formData.customRole.trim()) {
-          alert('请填写自定义角色名称')
-          return
-        }
+      // 验证权限：创建管理员时至少需要选择一个权限
+      if (!editingAdmin.value && (!formData.permissions || formData.permissions.length === 0)) {
+        alert('请至少选择一个权限')
+        return
+      }
+
+      // 验证自定义角色（如果选择了自定义角色，则验证名称长度）
+      if (formData.role === 'custom' && formData.customRole && formData.customRole.trim()) {
         if (formData.customRole.trim().length > 50) {
           alert('自定义角色名称不能超过50个字符')
           return
@@ -855,18 +897,16 @@ export default {
           }
         } else {
           // 创建新管理员
-          // 确定最终的角色值：如果是自定义角色，使用 customRole，否则使用 role
-          const finalRole = formData.role === 'custom' ? formData.customRole.trim() : formData.role
-          
-          // Note: 后端可能暂时不支持 role 字段，但前端准备好数据
-          // 当后端支持时，可以直接使用 role 字段
+          // 注意：后端暂时不支持 role 字段，所以不发送该字段
+          // 当后端支持时，可以添加 role 字段
           const createData = {
             username: formData.username.trim(),
             password: formData.password.trim(),
             canteenId: formData.canteenId.trim() || undefined,
             permissions: formData.permissions,
-            // role 字段：如果后端支持，可以传递；如果不支持，后端会忽略
-            role: finalRole,
+            // role 字段暂时不发送，等待后端支持后再添加
+            // const finalRole = formData.role === 'custom' ? formData.customRole.trim() : formData.role
+            // role: finalRole,
           }
 
           const response = await permissionApi.createAdmin(createData)

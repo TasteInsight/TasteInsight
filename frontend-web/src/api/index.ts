@@ -36,6 +36,7 @@ export const api = {
   getPendingReviews: reviewApi.getPendingReviews.bind(reviewApi),
   approveReview: reviewApi.approveReview.bind(reviewApi),
   rejectReview: reviewApi.rejectReview.bind(reviewApi),
+  deleteReview: reviewApi.deleteReview.bind(reviewApi),
   getPendingComments: reviewApi.getPendingComments.bind(reviewApi),
   approveComment: reviewApi.approveComment.bind(reviewApi),
   rejectComment: reviewApi.rejectComment.bind(reviewApi),
@@ -44,6 +45,8 @@ export const api = {
   getPendingUploads: reviewApi.getPendingUploads.bind(reviewApi),
   approveUpload: reviewApi.approveUpload.bind(reviewApi),
   rejectUpload: reviewApi.rejectUpload.bind(reviewApi),
+  getDishComments: reviewApi.getDishComments.bind(reviewApi),
+  deleteComment: reviewApi.deleteComment.bind(reviewApi),
 
   // 日志管理
   getLogs: logApi.getLogs.bind(logApi),

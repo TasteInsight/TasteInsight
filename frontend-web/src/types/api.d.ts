@@ -428,6 +428,16 @@ export interface GetDishReviewsParams extends PaginationParams {
 }
 
 /**
+ * 父评论信息（用于回复）
+ */
+export interface ParentComment {
+  id: string
+  userId: string
+  userNickname: string
+  deleted: boolean
+}
+
+/**
  * 评论信息
  */
 export interface Comment {
@@ -438,6 +448,8 @@ export interface Comment {
   userAvatar: string
   content: string
   status: 'pending' | 'approved' | 'rejected'
+  parentComment?: ParentComment | null
+  floor: number
   createdAt: string
 }
 
@@ -455,20 +467,36 @@ export interface PendingComment extends Comment {
 export interface Report {
   id: string
   reporterId: string
-  reporterNickname: string
+  reporterNickname?: string 
   targetType: 'review' | 'comment'
   targetId: string
+  type: string
   reason: string
   status: 'pending' | 'approved' | 'rejected'
+  handleResult: string | null
+  handledBy: string | null
+  handledAt: string | null
   createdAt: string
+  updatedAt?: string 
+  reporter?: {
+    id: string
+    nickname: string
+    avatar: string | null
+  }
+  targetContent?: {
+    content: string | null
+    userId: string
+    userNickname: string
+    isDeleted: boolean
+  }
 }
 
 /**
  * 处理举报请求
  */
 export interface ReportHandleRequest {
-  action: 'approve' | 'reject'
-  reason?: string
+  action: 'delete_content' | 'warn_user' | 'reject_report'
+  result?: string
 }
 
 /**

@@ -5,6 +5,7 @@ import type {
   Report,
   PendingReview,
   PendingComment,
+  Comment,
 } from '@/types/api'
 
 /**
@@ -45,6 +46,15 @@ export const reviewApi = {
    */
   async rejectReview(id: string, reason: string): Promise<ApiResponse<void>> {
     return await request.post<ApiResponse<void>>(`/admin/reviews/${id}/reject`, { reason })
+  },
+
+  /**
+   * 删除评价
+   * @param id 评价 ID
+   * @returns 删除结果
+   */
+  async deleteReview(id: string): Promise<ApiResponse<void>> {
+    return await request.delete<ApiResponse<void>>(`/admin/reviews/${id}`)
   },
 
   /**
@@ -92,7 +102,7 @@ export const reviewApi = {
     params: {
       page?: number
       pageSize?: number
-      status?: 'pending' | 'processing' | 'resolved' | 'rejected'
+      status?: 'pending' | 'approved' | 'rejected'
     } = {},
   ): Promise<ApiResponse<PaginationResponse<Report>>> {
     return await request.get<ApiResponse<PaginationResponse<Report>>>('/admin/reports', { params })
@@ -106,7 +116,7 @@ export const reviewApi = {
    */
   async handleReport(
     id: string,
-    data: { action: 'approve' | 'reject'; reason?: string },
+    data: { action: 'delete_content' | 'warn_user' | 'reject_report'; result?: string },
   ): Promise<ApiResponse<void>> {
     return await request.post<ApiResponse<void>>(`/admin/reports/${id}/handle`, data)
   },
@@ -157,6 +167,34 @@ export const reviewApi = {
    */
   async revokeUpload(id: string): Promise<ApiResponse<void>> {
     return await request.post<ApiResponse<void>>(`/admin/dishes/uploads/${id}/revoke`)
+  },
+
+  /**
+   * 获取指定菜品的评论列表
+   * @param reviewId 评价 ID
+   * @param params 分页参数
+   * @returns 评论列表
+   */
+  async getDishComments(
+    reviewId: string,
+    params: { page?: number; pageSize?: number } = {},
+  ): Promise<ApiResponse<PaginationResponse<Comment>>> {
+    const { page = 1, pageSize = 20 } = params
+    return await request.get<ApiResponse<PaginationResponse<Comment>>>(
+      `/admin/reviews/${reviewId}/comments`,
+      {
+        params: { page, pageSize },
+      },
+    )
+  },
+
+  /**
+   * 删除评论
+   * @param id 评论 ID
+   * @returns 删除结果
+   */
+  async deleteComment(id: string): Promise<ApiResponse<void>> {
+    return await request.delete<ApiResponse<void>>(`/admin/comments/${id}`)
   },
 }
 

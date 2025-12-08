@@ -93,6 +93,24 @@
         <span class="iconify" data-icon="carbon:document-view"></span>
         <span>操作日志</span>
       </router-link>
+      <router-link
+        v-permission="'report:handle'"
+        to="/report-manage"
+        class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
+        :class="{ active: $route.path === '/report-manage' }"
+      >
+        <span class="iconify" data-icon="carbon:warning"></span>
+        <span>举报管理</span>
+      </router-link>
+      <router-link
+        v-permission="'review:delete'"
+        to="/comment-manage"
+        class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
+        :class="{ active: $route.path === '/comment-manage' }"
+      >
+        <span class="iconify" data-icon="carbon:chat"></span>
+        <span>评论和评价管理</span>
+      </router-link>
     </div>
 
     <div ref="userInfoSection" class="px-6 py-4 text-sm mt-auto border-t border-white/20 relative">
