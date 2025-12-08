@@ -181,7 +181,7 @@ export const reviewApi = {
   ): Promise<ApiResponse<PaginationResponse<Comment>>> {
     const { page = 1, pageSize = 20 } = params
     return await request.get<ApiResponse<PaginationResponse<Comment>>>(
-      `/admin/dishes/${reviewId}/comments`,
+      `/admin/reviews/${reviewId}/comments`,
       {
         params: { page, pageSize },
       },
