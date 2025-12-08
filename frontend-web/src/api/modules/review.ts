@@ -48,6 +48,15 @@ export const reviewApi = {
   },
 
   /**
+   * 删除评价
+   * @param id 评价 ID
+   * @returns 删除结果
+   */
+  async deleteReview(id: string): Promise<ApiResponse<void>> {
+    return await request.delete<ApiResponse<void>>(`/admin/reviews/${id}`)
+  },
+
+  /**
    * 获取待审核评论列表
    * @param params 分页参数
    * @returns 待审核评论列表
@@ -92,7 +101,7 @@ export const reviewApi = {
     params: {
       page?: number
       pageSize?: number
-      status?: 'pending' | 'processing' | 'resolved' | 'rejected'
+      status?: 'pending' | 'approved' | 'rejected'
     } = {},
   ): Promise<ApiResponse<PaginationResponse<Report>>> {
     return await request.get<ApiResponse<PaginationResponse<Report>>>('/admin/reports', { params })
@@ -106,7 +115,7 @@ export const reviewApi = {
    */
   async handleReport(
     id: string,
-    data: { action: 'approve' | 'reject'; reason?: string },
+    data: { action: 'delete_content' | 'warn_user' | 'reject_report'; result?: string },
   ): Promise<ApiResponse<void>> {
     return await request.post<ApiResponse<void>>(`/admin/reports/${id}/handle`, data)
   },

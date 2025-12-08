@@ -36,6 +36,7 @@ export const api = {
   getPendingReviews: reviewApi.getPendingReviews.bind(reviewApi),
   approveReview: reviewApi.approveReview.bind(reviewApi),
   rejectReview: reviewApi.rejectReview.bind(reviewApi),
+  deleteReview: reviewApi.deleteReview.bind(reviewApi),
   getPendingComments: reviewApi.getPendingComments.bind(reviewApi),
   approveComment: reviewApi.approveComment.bind(reviewApi),
   rejectComment: reviewApi.rejectComment.bind(reviewApi),

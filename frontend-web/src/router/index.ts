@@ -13,6 +13,7 @@ import ViewDishDetail from '../views/ViewDishDetail.vue'
 import UserManage from '../views/UserManage.vue'
 import NewsManage from '../views/NewsManage.vue'
 import LogView from '../views/LogView.vue'
+import ReportManage from '../views/ReportManage.vue'
 import Login from '../views/Login.vue'
 
 const routes = [
@@ -97,6 +98,12 @@ const routes = [
         path: 'log-view',
         name: 'LogView',
         component: LogView,
+        meta: { requiresAuth: true },
+      },
+      {
+        path: 'report-manage',
+        name: 'ReportManage',
+        component: ReportManage,
         meta: { requiresAuth: true },
       },
     ],

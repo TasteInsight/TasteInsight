@@ -451,24 +451,41 @@ export interface PendingComment extends Comment {
 
 /**
  * 举报信息
+ * 符合数据模型定义：包含 reporterNickname 字段
  */
 export interface Report {
   id: string
   reporterId: string
-  reporterNickname: string
+  reporterNickname?: string // 数据模型中的字段，后端可能通过 reporter 对象返回
   targetType: 'review' | 'comment'
   targetId: string
+  type: string
   reason: string
   status: 'pending' | 'approved' | 'rejected'
+  handleResult: string | null
+  handledBy: string | null
+  handledAt: string | null
   createdAt: string
+  updatedAt?: string // 数据模型中可能没有，但后端返回了
+  reporter?: {
+    id: string
+    nickname: string
+    avatar: string | null
+  }
+  targetContent?: {
+    content: string | null
+    userId: string
+    userNickname: string
+    isDeleted: boolean
+  }
 }
 
 /**
  * 处理举报请求
  */
 export interface ReportHandleRequest {
-  action: 'approve' | 'reject'
-  reason?: string
+  action: 'delete_content' | 'warn_user' | 'reject_report'
+  result?: string
 }
 
 /**
