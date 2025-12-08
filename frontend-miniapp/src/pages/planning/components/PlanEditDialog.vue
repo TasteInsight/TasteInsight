@@ -431,9 +431,33 @@ const handleBackPress = () => {
   return false;
 };
 
+// 在小程序端拦截物理返回：优先关闭菜品选择器，其次关闭主弹窗
+const backInterceptor = {
+  invoke() {
+    if (showDishSelector.value) {
+      closeDishSelector();
+      return false; // 阻止默认返回
+    }
+    if (props.visible) {
+      emit('close');
+      return false; // 阻止默认返回
+    }
+    return undefined; // 允许默认行为
+  }
+};
+
 // 暴露给父组件使用
 defineExpose({
   handleBackPress
+});
+
+// 挂载/卸载拦截器
+onMounted(() => {
+  uni.addInterceptor('navigateBack', backInterceptor);
+});
+
+onUnmounted(() => {
+  uni.removeInterceptor('navigateBack');
 });
 
 // 监听 visible 变化重置选择器状态
