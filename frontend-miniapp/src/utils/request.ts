@@ -116,7 +116,7 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
             header: {
               'Content-Type': 'application/json',
               // 携带 refresh token，具体视后端要求而定
-              // 'Authorization': `Bearer ${userStore.refreshToken}` 
+               'Authorization': `Bearer ${userStore.refreshToken}` 
             },
             data: {},
             success: (refreshRes) => {
