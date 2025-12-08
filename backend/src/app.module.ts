@@ -14,7 +14,7 @@ import { AdminReportsModule } from './admin-reports/admin-reports.module';
 import { AdminUploadsModule } from './admin-uploads/admin-uploads.module';
 import { AdminAdminsModule } from './admin-admins/admin-admins.module';
 import { AdminNewsModule } from './admin-news/admin-news.module';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CanteensModule } from './canteens/canteens.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { CommentsModule } from './comments/comments.module';
@@ -23,10 +23,26 @@ import { MealPlansModule } from './meal-plans/meal-plans.module';
 import { UserProfileModule } from './user-profile/user-profile.module';
 import { UploadModule } from './upload/upload.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { BullModule } from '@nestjs/bullmq';
+import { DishSyncQueueModule } from './dish-sync-queue';
 import { join } from 'path';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          host: configService.get('REDIS_HOST', 'localhost'),
+          port: configService.get('REDIS_PORT', 6379),
+        },
+      }),
+      inject: [ConfigService],
+    }),
+    DishSyncQueueModule,
     AuthModule,
     DishesModule,
     CanteensModule,
@@ -45,9 +61,6 @@ import { join } from 'path';
     AdminAdminsModule,
     AdminNewsModule,
     UploadModule,
-    ConfigModule.forRoot({
-      isGlobal: true,
-    }),
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'uploads'),
       serveRoot: '/images',

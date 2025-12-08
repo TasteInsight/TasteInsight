@@ -12,6 +12,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     # Command is handled by ENTRYPOINT in Dockerfile and docker-entrypoint.sh
     volumes:
       - uploads_data:/app/uploads
@@ -26,6 +28,21 @@ services:
     image: ghcr.io/tasteinsight/tasteinsight-frontend:${TAG:-latest}
     networks:
       - tasteinsight_net
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - db_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    command: redis-server --appendonly yes
 
   nginx:
     image: nginx:alpine
@@ -63,6 +80,7 @@ services:
 volumes:
   db-data:
   uploads_data:
+  redis-data:
 
 networks:
   tasteinsight_net:
