@@ -5,6 +5,8 @@ import {
   PendingReviewListResponseDto,
   SuccessResponseDto,
   ReviewItemData,
+  ReviewCommentListResponseDto,
+  ReviewCommentItemData,
 } from './dto/review-response.dto';
 
 @Injectable()
@@ -145,6 +147,79 @@ export class AdminReviewsService {
       code: 200,
       message: '删除成功',
       data: null,
+    };
+  }
+
+  /**
+   * 获取评价的评论列表
+   */
+  async getReviewComments(
+    reviewId: string,
+    page: number = 1,
+    pageSize: number = 20,
+  ): Promise<ReviewCommentListResponseDto> {
+    // 检查评价是否存在
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+    });
+
+    if (!review) {
+      throw new NotFoundException('评价不存在');
+    }
+
+    const skip = (page - 1) * pageSize;
+    const where = { reviewId, deletedAt: null };
+
+    const [total, comments] = await Promise.all([
+      this.prisma.comment.count({ where }),
+      this.prisma.comment.findMany({
+        where,
+        skip,
+        take: pageSize,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: {
+            select: {
+              id: true,
+              nickname: true,
+              avatar: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const items: ReviewCommentItemData[] = comments.map((comment) => ({
+      id: comment.id,
+      reviewId: comment.reviewId,
+      userId: comment.userId,
+      content: comment.content,
+      floor: comment.floor,
+      parentCommentId: comment.parentCommentId,
+      status: comment.status,
+      rejectReason: comment.rejectReason,
+      createdAt: comment.createdAt,
+      updatedAt: comment.updatedAt,
+      deletedAt: comment.deletedAt,
+      user: {
+        id: comment.user.id,
+        nickname: comment.user.nickname,
+        avatar: comment.user.avatar,
+      },
+    }));
+
+    return {
+      code: 200,
+      message: 'success',
+      data: {
+        items,
+        meta: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize),
+        },
+      },
     };
   }
 }
