@@ -6,7 +6,8 @@ import type {
   RecommendFeedbackRequest, 
   ComponentDishCard,
   ComponentMealPlanDraft,
-  ComponentCanteenCard
+  ComponentCanteenCard,
+  ComponentWindowCard
 } from '@/types/api';
 
 // 消息段类型
@@ -14,7 +15,8 @@ export type MessageSegment =
   | { type: 'text'; text: string }
   | { type: 'card_dish'; data: ComponentDishCard[] }
   | { type: 'card_plan'; data: ComponentMealPlanDraft[] }
-  | { type: 'card_canteen'; data: ComponentCanteenCard[] };
+  | { type: 'card_canteen'; data: ComponentCanteenCard[] }
+  | { type: 'card_window'; data: ComponentWindowCard[] };
 
 // 内部消息类型定义
 export interface ChatMessage {

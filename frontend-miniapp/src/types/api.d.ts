@@ -1019,6 +1019,15 @@ export interface ComponentCanteenCard {
   linkAction?: LinkAction;
 }
 
+export interface ComponentWindowCard {
+  id: string;
+  name: string;
+  canteenName?: string;
+  image?: string;
+  status?: string;
+  rating?: number;
+}
+
 export interface ComponentMealPlanDraft {
   summary?: string;
   previewData?: Record<string, any>;
@@ -1050,7 +1059,12 @@ export interface SegmentCanteenCard {
   data: ComponentCanteenCard[];
 }
 
-export type ChatContentSegment = SegmentText | SegmentDishCard | SegmentPlanCard | SegmentCanteenCard;
+export interface SegmentWindowCard {
+  type: 'card_window';
+  data: ComponentWindowCard[];
+}
+
+export type ChatContentSegment = SegmentText | SegmentDishCard | SegmentPlanCard | SegmentCanteenCard | SegmentWindowCard;
 
 // 聊天消息条目
 export interface ChatMessageItem {

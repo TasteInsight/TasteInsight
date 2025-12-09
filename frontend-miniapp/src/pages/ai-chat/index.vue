@@ -1,42 +1,44 @@
 <template>
-  <view class="app-page ai-chat-page">
+  <view class="flex flex-col h-screen relative bg-gray-100">
     <!-- 骨架屏：首次加载时显示 -->
     <AIChatSkeleton v-if="isInitialLoading" />
 
     <template v-else>
-    <view class="page-header">
-        <text class="header-title">问AI</text>
-        <view class="history-btn" @click="alertHistory">
-          <text class="iconify" data-icon="mdi:history" data-width="16"></text>
+    <view class="h-14 flex items-center justify-center px-4 bg-white border-b border-gray-200 relative">
+        <text class="text-lg font-semibold text-gray-800">问AI</text>
+        <view class="absolute top-2.5 right-4 bg-white border border-gray-200 rounded-full px-3 py-1.5 text-sm text-gray-600 flex items-center" @click="alertHistory">
+          <text class="iconify mr-1" data-icon="mdi:history" data-width="16"></text>
           历史记录
         </view>
     </view>
     
     <scroll-view 
       scroll-y 
-      class="content-container" 
+      class="flex-1 p-4 pb-[160px]" 
       :scroll-into-view="scrollViewId"
-      :style="{ paddingBottom: '110px' }" 
       @scroll="handleScroll"
     >
       <!-- AI 聊天消息列表 -->
-      <view v-for="message in chatStore.messages" :key="message.id" :id="`msg-${message.id}`">
+      <view v-for="message in messages" :key="message.id" :id="`msg-${message.id}`" class="mb-4">
         <!-- 遍历消息段 -->
-        <view v-for="(segment, index) in message.content" :key="index" class="message-segment">
+        <view v-for="(segment, index) in message.content" :key="index" class="mb-2">
           
           <!-- 文本段 -->
-          <view v-if="segment.type === 'text'" class="chat-bubble" :class="[message.type === 'user' ? 'chat-right' : 'chat-left']">
+          <view v-if="segment.type === 'text'" 
+            class="py-2.5 px-4 rounded-2xl max-w-[80%] text-base"
+            :class="[message.type === 'user' ? 'bg-ts-purple text-white ml-auto rounded-br-sm' : 'bg-gray-200 text-gray-800 mr-auto rounded-bl-sm']"
+          >
             {{ segment.text }}
-            <text v-if="message.isStreaming && index === message.content.length - 1" class="loading-dots">...</text>
+            <text v-if="message.isStreaming && index === message.content.length - 1" class="animate-pulse">...</text>
           </view>
 
           <!-- 菜品卡片 -->
-          <view v-else-if="segment.type === 'card_dish'" class="card-container">
+          <view v-else-if="segment.type === 'card_dish'" class="w-full">
              <DishCard v-for="(dish, i) in segment.data" :key="i" :dish="dish" />
           </view>
 
           <!-- 规划卡片 -->
-          <view v-else-if="segment.type === 'card_plan'" class="card-container">
+          <view v-else-if="segment.type === 'card_plan'" class="w-full">
              <PlanningCard 
                v-for="(plan, i) in segment.data" 
                :key="i" 
@@ -46,52 +48,72 @@
              />
           </view>
 
+          <!-- 食堂卡片 -->
+          <view v-else-if="segment.type === 'card_canteen'" class="w-full">
+             <CanteenCard v-for="(canteen, i) in segment.data" :key="i" :canteen="canteen" />
+          </view>
+
+          <!-- 窗口卡片 -->
+          <view v-else-if="segment.type === 'card_window'" class="w-full">
+             <WindowCard v-for="(window, i) in segment.data" :key="i" :window="window" />
+          </view>
+
         </view>
       </view>
       
       <!-- 滚动锚点 -->
-      <view :id="scrollAnchorId" style="height: 1px;"></view>
+      <view :id="scrollAnchorId" class="h-px"></view>
     </scroll-view>
 
-    <!-- 底部输入框 (绝对定位在底部，覆盖内容) -->
-    <InputBar class="fixed-input-bar" />
-    </template>
+    <!-- 快捷提示词 -->
+    <view class="absolute bottom-[160px] left-0 right-0 z-10">
+       <SuggestionChips :suggestions="suggestions" @select="handleSuggestionSelect" />
+    </view>
 
-    <!-- 底部导航 (由pages.json处理，此处不重复实现) -->
+    <!-- 底部输入框 -->
+    <InputBar ref="inputBarRef" :loading="aiLoading" @send="handleSend" />
+    </template>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, computed } from 'vue';
-import { useChatStore } from '@/store/modules/use-chat-store';
+import { ref, watch } from 'vue';
+import { useChat } from './composables/use-chat';
 import DishCard from './components/DishCard.vue';
 import PlanningCard from './components/PlanningCard.vue';
+import CanteenCard from './components/CanteenCard.vue';
+import WindowCard from './components/WindowCard.vue';
 import InputBar from './components/InputBar.vue';
+import SuggestionChips from './components/SuggestionChips.vue';
 import { AIChatSkeleton } from '@/components/skeleton';
 import type { ComponentMealPlanDraft } from '@/types/api';
 
-const chatStore = useChatStore();
+const { 
+  messages, 
+  aiLoading, 
+  suggestions, 
+  isInitialLoading, 
+  sendMessage,
+  handleSuggestionClick 
+} = useChat();
+
 const scrollAnchorId = 'chat-bottom-anchor';
 const scrollViewId = ref(scrollAnchorId);
-
-// 首次加载状态
-const hasInitialized = ref(false);
-const isInitialLoading = computed(() => !hasInitialized.value && chatStore.messages.length === 0);
+const inputBarRef = ref<InstanceType<typeof InputBar> | null>(null);
 
 // 监听消息变化，自动滚动到底部
-watch(() => chatStore.messages.length, () => {
-  // 使用 nextTick/setTimeout 确保 DOM/Scroll-view 更新完成后再滚动
+watch(() => messages.value.length, () => {
   setTimeout(() => {
-    scrollViewId.value = ''; // 强制更新滚动
+    scrollViewId.value = ''; 
     scrollViewId.value = scrollAnchorId;
   }, 50); 
 }, { deep: true });
 
-// 监听流式消息内容变化 (针对最后一个消息的最后一个segment)
+// 监听流式消息内容变化
 watch(() => {
-    const lastMsg = chatStore.messages[chatStore.messages.length - 1];
+    const lastMsg = messages.value[messages.value.length - 1];
     if (lastMsg && lastMsg.isStreaming) {
-        return lastMsg.content.length; // 监听 segment 数量变化
+        return lastMsg.content.length; 
     }
     return 0;
 }, () => {
@@ -101,23 +123,22 @@ watch(() => {
     }, 50);
 });
 
-onMounted(() => {
-    if (chatStore.messages.length === 0) {
-        chatStore.startNewSession(); // 初始化欢迎消息
-    }
-    hasInitialized.value = true;
-});
+const handleSend = (text: string) => {
+  sendMessage(text);
+};
+
+const handleSuggestionSelect = (text: string) => {
+  if (inputBarRef.value) {
+    inputBarRef.value.setText(text);
+  }
+};
 
 const alertHistory = () => {
   uni.showToast({ title: '查看历史记录 (功能待实现)', icon: 'none' });
-  // 实际应导航到历史记录页面
-  // uni.navigateTo({ url: '/pages/ai-chat/history' });
 };
 
 const handleApplyPlan = (plan: ComponentMealPlanDraft) => {
   uni.showToast({ title: '正在应用规划...', icon: 'loading' });
-  // 这里应该调用 API 应用规划
-  // 暂时模拟成功
   setTimeout(() => {
       uni.showToast({ title: '规划已应用', icon: 'success' });
   }, 1000);
@@ -127,101 +148,10 @@ const handleDiscardPlan = () => {
     uni.showToast({ title: '已放弃规划', icon: 'none' });
 };
 
-// 避免滚动时频繁触发 watch
 const handleScroll = (e : Event) => {
-    // 可以添加逻辑，例如在用户向上滚动时停止自动滚动
 };
 </script>
 
-<style scoped lang="scss">
-
-
-.ai-chat-page {
-  /* 确保页面是全屏的 flex 容器 */
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  position: relative; 
-  background-color: #f5f5f5; 
-}
-
-/* 模拟 prototype 头部和历史记录按钮 */
-.page-header {
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 16px;
-  background: white;
-  border-bottom: 1px solid #eee;
-  position: relative;
-}
-
-.header-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #333;
-}
-
-.history-btn {
-  /* 模拟 prototype .history-btn 样式 */
-  position: absolute;
-  top: 10px;
-  right: 16px;
-  background: white;
-  border: 1px solid #e5e5e5;
-  border-radius: 20px;
-  padding: 6px 12px;
-  font-size: 14px;
-  cursor: pointer;
-  color: #666;
-  display: flex;
-  align-items: center;
-  
-  .iconify {
-      margin-right: 4px;
-  }
-}
-
-.content-container {
-  /* 填充剩余空间，并允许滚动 */
-  flex: 1;
-  padding: 16px;
-  /* 底部预留空间给 InputBar */
-  padding-bottom: 110px; 
-}
-
-/* 聊天气泡样式 */
-.chat-bubble {
-  padding: 10px 16px;
-  border-radius: 18px;
-  max-width: 80%; /* 限制宽度 */
-  margin-bottom: 16px;
-  font-size: 15px;
-}
-
-.chat-left {
-  background: #f1f1f1;
-  border-bottom-left-radius: 4px;
-  margin-right: auto;
-  margin-left: 0;
-}
-
-.chat-right {
-  background: #82318E; /* purple-bg */
-  color: white;
-  border-bottom-right-radius: 4px;
-  margin-left: auto;
-  margin-right: 0;
-}
-
-.loading-dots {
-    animation: blinker 1s linear infinite;
-}
-
-@keyframes blinker {
-  50% {
-    opacity: 0.5;
-  }
-}
+<style scoped>
+/* Tailwind classes handle most styles */
 </style>
