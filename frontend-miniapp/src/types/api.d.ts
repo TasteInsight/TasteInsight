@@ -976,6 +976,114 @@ export interface RequestOptions {
   timeout?: number;
 }
 
+// ============================================
+// AI / 会话 相关类型
+// ============================================
+
+// 对话场景
+export type AIScene = 'general_chat' | 'meal_planner' | 'dish_critic';
+
+// 创建会话请求
+export interface CreateAISessionRequest {
+  scene?: AIScene;
+}
+
+// 链接跳转动作
+export interface LinkAction {
+  type: 'navigate';
+  page: 'dish_detail' | 'canteen_detail' | 'meal_plan_home';
+  params?: Record<string, any>;
+}
+
+// 卡片组件定义
+export interface ComponentDishCard {
+  dish: {
+    name: string;
+    image: string;
+    rating: string;
+    tags: string[];
+    id: string;
+  };
+  recommendReason?: string;
+  windowName?: string;
+  canteenName?: string;
+  linkAction?: LinkAction;
+}
+
+export interface ComponentCanteenCard {
+  id?: string;
+  name?: string;
+  status?: string;
+  averageRating?: number;
+  image: string;
+  linkAction?: LinkAction;
+}
+
+export interface ComponentMealPlanDraft {
+  summary?: string;
+  previewData?: Record<string, any>;
+  confirmAction?: {
+    api?: string;
+    method?: string;
+    body?: Record<string, any>;
+  };
+}
+
+// 消息段定义
+export interface SegmentText {
+  type: 'text';
+  data: string;
+}
+
+export interface SegmentDishCard {
+  type: 'card_dish';
+  data: ComponentDishCard[];
+}
+
+export interface SegmentPlanCard {
+  type: 'card_plan';
+  data: ComponentMealPlanDraft[];
+}
+
+export interface SegmentCanteenCard {
+  type: 'card_canteen';
+  data: ComponentCanteenCard[];
+}
+
+export type ChatContentSegment = SegmentText | SegmentDishCard | SegmentPlanCard | SegmentCanteenCard;
+
+// 聊天消息条目
+export interface ChatMessageItem {
+  role: 'user' | 'assistant';
+  timestamp: string; // ISO 时间
+  content: ChatContentSegment[];
+}
+
+// 聊天请求
+export interface ChatRequest {
+  message: string;
+  clientContext: {
+    localTime: string; // 必传，示例 12:05
+    [key: string]: any;
+  };
+}
+
+// 创建会话响应数据
+export interface SessionCreateData {
+  sessionId: string;
+  welcomeMessage?: string;
+}
+
+// 获取引导词响应数据
+export interface SuggestionData {
+  suggestions: string[];
+}
+
+// 历史记录响应数据
+export interface HistoryData {
+  messages: ChatMessageItem[];
+}
+
 /**
  * 获取食堂列表
  */
@@ -1055,3 +1163,31 @@ export function updateWindow(
  * 删除窗口
  */
 export function deleteWindow(id: string): Promise<ApiResponse<null>>;
+
+// ==================== AI 会话/聊天 ====================
+
+/**
+ * 创建新的对话会话
+ */
+export function createAISession(data: CreateAISessionRequest): Promise<ApiResponse<SessionCreateData>>;
+
+/**
+ * 流式对话（SSE）。返回值类型因实现而异，这里使用 Promise<string> 占位。
+ */
+export function streamAIChat(
+  sessionId: string,
+  data: ChatRequest
+): Promise<string>;
+
+/**
+ * 获取会话引导/快捷提示词
+ */
+export function getAISuggestions(): Promise<ApiResponse<SuggestionData>>;
+
+/**
+ * 获取历史聊天记录
+ */
+export function getAIHistory(
+  sessionId: string,
+  cursor?: string
+): Promise<ApiResponse<HistoryData>>;
