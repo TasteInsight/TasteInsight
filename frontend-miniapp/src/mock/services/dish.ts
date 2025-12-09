@@ -179,11 +179,30 @@ export const mockGetDishes = async (params: GetDishesRequest): Promise<Paginated
   // 2. 搜索
   if (params.search && params.search.keyword) {
     const keyword = params.search.keyword.toLowerCase();
-    dishes = dishes.filter(d => 
-      (d.name || '').toLowerCase().includes(keyword) || 
-      (d.description && d.description.toLowerCase().includes(keyword)) ||
-      (d.tags || []).some(t => t.toLowerCase().includes(keyword))
-    );
+    const fields = params.search.fields;
+
+    dishes = dishes.filter(d => {
+      // 如果指定了 fields，只在指定字段中搜索
+      if (fields && fields.length > 0) {
+        return fields.some(field => {
+          if (field === 'name') return (d.name || '').toLowerCase().includes(keyword);
+          if (field === 'description') return (d.description || '').toLowerCase().includes(keyword);
+          if (field === 'tags') return (d.tags || []).some(t => t.toLowerCase().includes(keyword));
+          if (field === 'canteen') return (d.canteenName || '').toLowerCase().includes(keyword);
+          if (field === 'window') return (d.windowName || '').toLowerCase().includes(keyword);
+          return false;
+        });
+      }
+      
+      // 默认在所有字段中搜索
+      return (
+        (d.name || '').toLowerCase().includes(keyword) || 
+        (d.description || '').toLowerCase().includes(keyword) ||
+        (d.tags || []).some(t => t.toLowerCase().includes(keyword)) ||
+        (d.canteenName || '').toLowerCase().includes(keyword) ||
+        (d.windowName || '').toLowerCase().includes(keyword)
+      );
+    });
   }
 
   // 3. 排序
