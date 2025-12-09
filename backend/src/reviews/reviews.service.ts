@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { AdminConfigService } from '@/admin-config/admin-config.service';
+import { ConfigKeys } from '@/admin-config/config-definitions';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { ReportReviewDto } from './dto/report-review.dto';
 import {
@@ -36,7 +37,7 @@ export class ReviewsService {
 
     // 根据管理员配置决定评价初始状态
     const autoApprove = await this.adminConfigService.getBooleanConfigValue(
-      'review.autoApprove',
+      ConfigKeys.REVIEW_AUTO_APPROVE,
       dish.canteenId,
     );
 

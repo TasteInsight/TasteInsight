@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { CommentsService } from './comments.service';
 import { PrismaService } from '@/prisma.service';
 import { AdminConfigService } from '@/admin-config/admin-config.service';
+import { ConfigKeys } from '@/admin-config/config-definitions';
 import {
   BadRequestException,
   ForbiddenException,
@@ -267,7 +268,7 @@ describe('CommentsService', () => {
       const result = await service.createComment('user', dto);
 
       expect(adminConfigService.getBooleanConfigValue).toHaveBeenCalledWith(
-        'comment.autoApprove',
+        ConfigKeys.COMMENT_AUTO_APPROVE,
         'c1',
       );
       expect(prisma.comment.create).toHaveBeenCalledWith({

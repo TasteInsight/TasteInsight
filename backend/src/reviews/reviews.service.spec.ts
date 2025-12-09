@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ReviewsService } from './reviews.service';
 import { PrismaService } from '@/prisma.service';
 import { AdminConfigService } from '@/admin-config/admin-config.service';
+import { ConfigKeys } from '@/admin-config/config-definitions';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ReportType } from '@/common/enums';
 
@@ -132,7 +133,7 @@ describe('ReviewsService', () => {
         images: [],
       });
       expect(mockAdminConfigService.getBooleanConfigValue).toHaveBeenCalledWith(
-        'review.autoApprove',
+        ConfigKeys.REVIEW_AUTO_APPROVE,
         'c1',
       );
       expect(prisma.review.create).toHaveBeenCalledWith(

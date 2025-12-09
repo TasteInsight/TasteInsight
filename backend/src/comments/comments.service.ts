@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { AdminConfigService } from '@/admin-config/admin-config.service';
+import { ConfigKeys } from '@/admin-config/config-definitions';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import {
   CommentListResponseDto,
@@ -118,7 +119,7 @@ export class CommentsService {
       // 根据管理员配置决定评论初始状态
       const autoApprove = dish
         ? await this.adminConfigService.getBooleanConfigValue(
-            'comment.autoApprove',
+            ConfigKeys.COMMENT_AUTO_APPROVE,
             dish.canteenId,
           )
         : false;
