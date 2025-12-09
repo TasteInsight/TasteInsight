@@ -824,19 +824,18 @@ async function main() {
   
   // 为全局配置添加默认配置项
   const templates = await prisma.adminConfigTemplate.findMany();
-  for (const template of templates) {
-    await prisma.adminConfigItem.create({
-      data: {
-        adminConfigId: globalAdminConfig.id,
-        templateId: template.id,
-        key: template.key,
-        value: template.defaultValue,
-        valueType: template.valueType,
-        description: template.description,
-        category: template.category,
-      },
-    });
-  }
+  await prisma.adminConfigItem.createMany({
+    data: templates.map(template => ({
+      adminConfigId: globalAdminConfig.id,
+      templateId: template.id,
+      key: template.key,
+      value: template.defaultValue,
+      valueType: template.valueType,
+      description: template.description,
+      category: template.category,
+    })),
+    skipDuplicates: true, // 避免重复插入
+  });
   console.log('Admin config templates and global config initialized.');
 
   console.log(`Seeding finished.`);

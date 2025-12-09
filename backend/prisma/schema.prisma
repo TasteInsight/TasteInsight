@@ -587,7 +587,7 @@ model AdminConfig {
 
 model AdminConfigTemplate {
   id           String  @id @default(cuid())
-  key          String  @unique // 如 'review.autoApproveReview'
+  key          String  @unique // 如 'review.autoApprove'
   defaultValue String // 默认值，统一用 string 存储
   valueType    String  @default("string") // 'boolean' | 'string' | 'number' | 'json'
   description  String?
@@ -610,7 +610,7 @@ model AdminConfigItem {
   templateId String? // 关联到模板
   template   AdminConfigTemplate? @relation(fields: [templateId], references: [id])
 
-  key       String // 如 'review.autoApproveReview'
+  key       String // 如 'review.autoApprove'
   value     String // 统一用 string 存储，应用层转换
   valueType String @default("string") // 'boolean' | 'string' | 'number' | 'json'
 

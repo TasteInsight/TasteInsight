@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsIn } from 'class-validator';
+import { IsString, IsOptional } from 'class-validator';
 
 export class UpdateConfigItemDto {
   @IsString()
@@ -8,21 +8,9 @@ export class UpdateConfigItemDto {
   value: string;
 }
 
-export class UpdateGlobalConfigDto {
-  @IsString()
-  key: string;
+export class UpdateGlobalConfigDto extends UpdateConfigItemDto {}
 
-  @IsString()
-  value: string;
-}
-
-export class UpdateCanteenConfigDto {
-  @IsString()
-  key: string;
-
-  @IsString()
-  value: string;
-}
+export class UpdateCanteenConfigDto extends UpdateConfigItemDto {}
 
 export class QueryConfigDto {
   @IsOptional()
