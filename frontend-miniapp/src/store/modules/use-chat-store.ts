@@ -135,9 +135,15 @@ export const useChatStore = defineStore('ai-chat', () => {
 
   /**
    * 初始化会话
+   * @param scene 可选场景
+   * @param force 是否强制重新初始化，即使 sessionId 已存在
    */
-  async function initSession(scene?: string | AIScene) {
-    if (sessionId.value) return;
+  async function initSession(scene?: string | AIScene, force = false) {
+    if (sessionId.value && !force) return;
+    // 如果强制重新初始化，清除现有 sessionId
+    if (force) {
+      sessionId.value = '';
+    }
     // validate scene param, prefer passed param if valid
     let sceneToUse = currentScene.value;
     if (scene && (ALLOWED_SCENES as readonly string[]).includes(String(scene))) {
