@@ -17,22 +17,42 @@
 
     <view class="flex gap-3">
       <button class="flex-1 text-sm py-2 rounded-full bg-gray-100 text-gray-600 border-none after:border-none" @click="handleDiscard">放弃</button>
-      <button class="flex-1 text-sm py-2 rounded-full bg-ts-purple text-white border-none after:border-none" @click="handleApply">应用规划</button>
+      <button 
+        class="flex-1 text-sm py-2 rounded-full border-none after:border-none" 
+        :class="appliedButtonClass"
+        :disabled="plan.appliedStatus === 'success'"
+        @click="handleApply"
+      >
+        {{ appliedButtonText }}
+      </button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { ComponentMealPlanDraft } from '@/types/api';
 
 const props = defineProps<{
-  plan: ComponentMealPlanDraft;
+  plan: ComponentMealPlanDraft & { appliedStatus?: 'success' | 'failed' };
 }>();
 
 const emit = defineEmits<{
   (e: 'apply', plan: ComponentMealPlanDraft): void;
   (e: 'discard'): void;
 }>();
+
+const appliedButtonText = computed(() => {
+  if (props.plan.appliedStatus === 'success') return '已应用';
+  if (props.plan.appliedStatus === 'failed') return '应用失败，重试';
+  return '应用规划';
+});
+
+const appliedButtonClass = computed(() => {
+  if (props.plan.appliedStatus === 'success') return 'bg-green-500 text-white';
+  if (props.plan.appliedStatus === 'failed') return 'bg-red-500 text-white';
+  return 'bg-ts-purple text-white';
+});
 
 const handleApply = () => {
   emit('apply', props.plan);

@@ -331,7 +331,7 @@ const handleScenePicker = (e: any) => {
 };
 
 // === 核心业务逻辑：应用规划 ===
-const handleApplyPlan = async (plan: ComponentMealPlanDraft) => {
+const handleApplyPlan = async (plan: ComponentMealPlanDraft & { appliedStatus?: 'success' | 'failed' }) => {
   const action = plan.confirmAction;
   
   if (!action || !action.api) {
@@ -353,6 +353,8 @@ const handleApplyPlan = async (plan: ComponentMealPlanDraft) => {
 
     if (res.code === 200) {
       uni.showToast({ title: '已应用到日程', icon: 'success' });
+      // 更新 UI 状态
+      plan.appliedStatus = 'success';
 
       // 2. 【闭环】自动告诉 AI "我已应用"
       setTimeout(() => {
@@ -361,16 +363,16 @@ const handleApplyPlan = async (plan: ComponentMealPlanDraft) => {
     } else {
       // 业务逻辑失败
       uni.showToast({ title: res.message || '保存失败，请重试', icon: 'none' });
-      // 可以在这里更新 UI 状态，例如标记规划为应用失败
-      // plan.applied = false; // 如果 plan 有状态字段
+      // 更新 UI 状态
+      plan.appliedStatus = 'failed';
     }
 
   } catch (error) {
     uni.hideLoading();
     uni.showToast({ title: '保存失败，请重试', icon: 'none' });
     console.error(error);
-    // 可以在这里更新 UI 状态，例如标记规划为应用失败
-    // plan.applied = false;
+    // 更新 UI 状态
+    plan.appliedStatus = 'failed';
   }
 };
 
