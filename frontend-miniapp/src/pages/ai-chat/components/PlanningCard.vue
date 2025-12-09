@@ -1,25 +1,23 @@
 <template>
-  <view class="planning-card">
-    <view class="plan-header">
-      <text class="plan-title">饮食规划建议</text>
+  <view class="bg-white rounded-xl p-4 mb-3 shadow-sm">
+    <view class="border-b border-gray-100 pb-2 mb-3">
+      <text class="text-base font-semibold text-gray-800">饮食规划建议</text>
     </view>
     
-    <view class="plan-content">
-      <text class="plan-summary">{{ plan.summary }}</text>
+    <view class="mb-4">
+      <text class="text-sm text-gray-600 leading-relaxed block">{{ plan.summary }}</text>
       
-      <!-- 如果有预览数据，可以在这里展示更详细的信息 -->
-      <view v-if="plan.previewData" class="plan-details">
-        <!-- 简单展示预览数据，实际可根据结构优化 -->
-        <view v-for="(value, key) in plan.previewData" :key="key" class="detail-item">
-          <text class="detail-key">{{ key }}: </text>
-          <text class="detail-value">{{ value }}</text>
+      <view v-if="plan.previewData" class="mt-2 bg-gray-50 p-2 rounded-lg">
+        <view v-for="(value, key) in plan.previewData" :key="key" class="text-xs mb-1 flex">
+          <text class="text-gray-500 mr-1">{{ key }}: </text>
+          <text class="text-gray-800">{{ value }}</text>
         </view>
       </view>
     </view>
 
-    <view class="plan-actions">
-      <button class="action-btn discard" @click="handleDiscard">放弃</button>
-      <button class="action-btn apply" @click="handleApply">应用规划</button>
+    <view class="flex gap-3">
+      <button class="flex-1 text-sm py-2 rounded-full bg-gray-100 text-gray-600 border-none after:border-none" @click="handleDiscard">放弃</button>
+      <button class="flex-1 text-sm py-2 rounded-full bg-ts-purple text-white border-none after:border-none" @click="handleApply">应用规划</button>
     </view>
   </view>
 </template>
@@ -44,79 +42,3 @@ const handleDiscard = () => {
   emit('discard');
 };
 </script>
-
-<style scoped lang="scss">
-.planning-card {
-  background: white;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.plan-header {
-  margin-bottom: 12px;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 8px;
-}
-
-.plan-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
-}
-
-.plan-content {
-  margin-bottom: 16px;
-}
-
-.plan-summary {
-  font-size: 14px;
-  color: #666;
-  line-height: 1.5;
-}
-
-.plan-details {
-  margin-top: 8px;
-  background: #f9f9f9;
-  padding: 8px;
-  border-radius: 8px;
-}
-
-.detail-item {
-  font-size: 12px;
-  margin-bottom: 4px;
-}
-
-.detail-key {
-  color: #888;
-}
-
-.detail-value {
-  color: #333;
-}
-
-.plan-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.action-btn {
-  flex: 1;
-  font-size: 14px;
-  padding: 8px 0;
-  border-radius: 20px;
-  border: none;
-  cursor: pointer;
-  
-  &.discard {
-    background: #f5f5f5;
-    color: #666;
-  }
-  
-  &.apply {
-    background: #82318E;
-    color: white;
-  }
-}
-</style>

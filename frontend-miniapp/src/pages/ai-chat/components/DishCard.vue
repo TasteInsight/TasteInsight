@@ -1,17 +1,23 @@
 <template>
-  <view class="dish-card" @click="goToDishDetail">
+  <view class="bg-white rounded-xl p-3 mb-3 shadow-sm cursor-pointer" @click="goToDishDetail">
     <view class="flex">
-      <image :src="dish.dish.image || '/default-dish.png'" class="dish-image" mode="aspectFill" />
-      <view class="flex-grow ml-3">
-        <view class="dish-name">{{ dish.dish.name }}</view>
-        <view class="dish-location">{{ dish.canteenName }} {{ dish.windowName }}</view>
-        <view class="flex items-center mt-1">
-          <text class="rating-icon">★</text>
-          <text class="rating-text">{{ dish.dish.rating }}</text>
+      <image :src="dish.dish.image || '/default-dish.png'" class="w-20 h-20 rounded-lg flex-shrink-0 object-cover" mode="aspectFill" />
+      <view class="flex-grow ml-3 flex flex-col justify-between">
+        <view>
+            <view class="font-medium text-base text-gray-800 line-clamp-1">{{ dish.dish.name }}</view>
+            <view class="text-xs text-gray-500 mt-1">{{ dish.canteenName }} {{ dish.windowName }}</view>
         </view>
-        <view v-if="dish.recommendReason" class="ai-reason">
-          <text class="text-xs text-gray-500">推荐理由: </text>
-          <text class="text-xs text-primary">{{ dish.recommendReason }}</text>
+        
+        <view class="flex items-center justify-between mt-1">
+            <view class="flex items-center">
+                <text class="text-yellow-500 text-sm">★</text>
+                <text class="text-yellow-600 text-sm ml-0.5">{{ dish.dish.rating }}</text>
+            </view>
+        </view>
+
+        <view v-if="dish.recommendReason" class="mt-1.5 text-xs">
+          <text class="text-gray-500">推荐理由: </text>
+          <text class="text-ts-purple">{{ dish.recommendReason }}</text>
         </view>
       </view>
     </view>
@@ -33,47 +39,3 @@ const goToDishDetail = () => {
   }
 };
 </script>
-
-<style scoped lang="scss">
-.dish-card {
-  background: white;
-  border-radius: 12px;
-  padding: 12px;
-  margin-bottom: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  cursor: pointer;
-}
-
-.dish-image {
-  width: 80px;
-  height: 80px;
-  border-radius: 8px;
-  flex-shrink: 0;
-}
-
-.dish-name {
-  font-weight: 500;
-  font-size: 16px;
-}
-
-.dish-location {
-  font-size: 13px;
-  color: #666;
-  margin-top: 4px;
-}
-
-.rating-icon, .rating-text {
-  color: #FFA726;
-  font-size: 14px;
-  margin-right: 4px;
-}
-
-.ai-reason {
-    margin-top: 6px;
-    font-size: 12px;
-    
-    .text-primary {
-        color: #82318E;
-    }
-}
-</style>
