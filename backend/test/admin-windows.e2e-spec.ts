@@ -499,19 +499,29 @@ describe('AdminWindowsController (e2e)', () => {
     afterAll(async () => {
       // Clean up in reverse order
       if (syncTestDishId) {
-        await prisma.dish.delete({ where: { id: syncTestDishId } }).catch(() => {});
+        await prisma.dish
+          .delete({ where: { id: syncTestDishId } })
+          .catch(() => {});
       }
       if (syncTestWindowId) {
-        await prisma.window.delete({ where: { id: syncTestWindowId } }).catch(() => {});
+        await prisma.window
+          .delete({ where: { id: syncTestWindowId } })
+          .catch(() => {});
       }
       if (syncTestFloorId) {
-        await prisma.floor.delete({ where: { id: syncTestFloorId } }).catch(() => {});
+        await prisma.floor
+          .delete({ where: { id: syncTestFloorId } })
+          .catch(() => {});
       }
       if (syncTestFloor2Id) {
-        await prisma.floor.delete({ where: { id: syncTestFloor2Id } }).catch(() => {});
+        await prisma.floor
+          .delete({ where: { id: syncTestFloor2Id } })
+          .catch(() => {});
       }
       if (syncTestCanteenId) {
-        await prisma.canteen.delete({ where: { id: syncTestCanteenId } }).catch(() => {});
+        await prisma.canteen
+          .delete({ where: { id: syncTestCanteenId } })
+          .catch(() => {});
       }
     });
 
@@ -584,8 +594,10 @@ describe('AdminWindowsController (e2e)', () => {
 
       expect(response.body.code).toBe(200);
       expect(response.body.data.items.length).toBeGreaterThan(0);
-      
-      const dish = response.body.data.items.find((d: any) => d.id === syncTestDishId);
+
+      const dish = response.body.data.items.find(
+        (d: any) => d.id === syncTestDishId,
+      );
       expect(dish).toBeDefined();
       expect(dish.windowName).toBe('Updated Window Name');
       expect(dish.floorName).toBe('New Floor');
