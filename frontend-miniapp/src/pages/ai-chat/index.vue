@@ -222,14 +222,11 @@ const {
 // === State ===
 const scrollTop = ref(0); // 使用 scrollTop 控制滚动
 const inputBarRef = ref<InstanceType<typeof InputBar> | null>(null);
+let scrollTimeout: any = null; // 用于防抖滚动
 const systemInfo = uni.getSystemInfoSync();
 const safeAreaInsets = systemInfo.safeAreaInsets;
-// 减少安全区顶部的间距，让顶部按钮更靠近但仍避免与系统状态栏冲突
-const STATUSBAR_REDUCTION = 2; // 可以调整（例如 0、4、8、12）
 const NAV_HEIGHT = 48; // header content height (h-12 = 48px)
-const navPaddingTop = computed(() => 0); // 强制为 0，消除顶部空白
-// 调试：输出 safeAreaInsets.top 到控制台，确认设备安全区值
-console.debug('[AI Chat] safeAreaInsets.top', safeAreaInsets?.top, 'navPaddingTop', navPaddingTop.value);
+console.debug('[AI Chat] safeAreaInsets.top', safeAreaInsets?.top);
 const contentPaddingTop = computed(() => NAV_HEIGHT);
 const showHistory = ref(false);
 const showNewChatModal = ref(false);
@@ -277,8 +274,11 @@ watch(() => {
   }
   return 0;
 }, () => {
-  // 节流滚动：这里简单处理，实际可加 debounce
-  scrollToBottom();
+  // 防抖滚动：延迟 100ms 执行，避免频繁滚动
+  if (scrollTimeout) clearTimeout(scrollTimeout);
+  scrollTimeout = setTimeout(() => {
+    scrollToBottom();
+  }, 100);
 });
 
 
