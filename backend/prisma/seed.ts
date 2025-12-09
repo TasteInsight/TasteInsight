@@ -237,6 +237,14 @@ async function main() {
         adminId: canteenAdmin.id,
         permission: 'config:canteen:edit',
       },
+      {
+        adminId: canteenAdmin.id,
+        permission: 'config:view',
+      },
+      {
+        adminId: canteenAdmin.id,
+        permission: 'config:edit',
+      },
     ],
   });
   console.log(`Added all dish and config permissions to canteenadmin`);
@@ -784,6 +792,59 @@ async function main() {
     },
   });
   console.log(`Created rejected report`);
+
+  // 初始化配置模板
+  console.log('Initializing admin config templates...');
+  
+  // 先清理旧的配置数据
+  await prisma.adminConfigItem.deleteMany({});
+  await prisma.adminConfig.deleteMany({});
+  await prisma.adminConfigTemplate.deleteMany({});
+  
+  await prisma.adminConfigTemplate.createMany({
+    data: [
+      {
+        key: 'review.autoApprove',
+        defaultValue: 'false',
+        valueType: 'boolean',
+        description: '是否自动通过评价',
+        category: 'review',
+      },
+      {
+        key: 'comment.autoApprove',
+        defaultValue: 'false',
+        valueType: 'boolean',
+        description: '是否自动通过评论',
+        category: 'comment',
+      },
+    ],
+    skipDuplicates: true, // 避免重复插入
+  });
+  
+  // 创建全局配置
+  const globalAdminConfig = await prisma.adminConfig.create({
+    data: {
+      canteenId: null, // null 表示全局配置
+    },
+  });
+  console.log('Created global admin config:', globalAdminConfig.id);
+  
+  // 为全局配置添加默认配置项
+  const templates = await prisma.adminConfigTemplate.findMany();
+  for (const template of templates) {
+    await prisma.adminConfigItem.create({
+      data: {
+        adminConfigId: globalAdminConfig.id,
+        templateId: template.id,
+        key: template.key,
+        value: template.defaultValue,
+        valueType: template.valueType,
+        description: template.description,
+        category: template.category,
+      },
+    });
+  }
+  console.log('Admin config templates and global config initialized.');
 
   console.log(`Seeding finished.`);
 }
