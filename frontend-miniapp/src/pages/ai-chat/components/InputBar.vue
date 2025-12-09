@@ -40,7 +40,7 @@ const sendMessage = async () => {
 
   // 3. 请求 AI 推荐 (可以传递用户输入作为 requestData 的一部分，这里简化)
   // 实际项目中，需要根据用户输入解析意图，并构建 AIRecommendRequest
-  await chatStore.fetchAIResponse(text, {}); 
+  await chatStore.sendChatMessage(text); 
 };
 </script>
 

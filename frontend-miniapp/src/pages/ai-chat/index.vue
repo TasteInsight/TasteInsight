@@ -21,19 +21,31 @@
     >
       <!-- AI 聊天消息列表 -->
       <view v-for="message in chatStore.messages" :key="message.id" :id="`msg-${message.id}`">
-        <!-- 基础文本气泡 -->
-        <view class="chat-bubble" :class="[message.type === 'user' ? 'chat-right' : 'chat-left']">
-          {{ message.text }}
-          <text v-if="message" class="loading-dots">...</text>
-        </view>
+        <!-- 遍历消息段 -->
+        <view v-for="(segment, index) in message.content" :key="index" class="message-segment">
+          
+          <!-- 文本段 -->
+          <view v-if="segment.type === 'text'" class="chat-bubble" :class="[message.type === 'user' ? 'chat-right' : 'chat-left']">
+            {{ segment.text }}
+            <text v-if="message.isStreaming && index === message.content.length - 1" class="loading-dots">...</text>
+          </view>
 
-        <!-- AI推荐卡片 (仅在 AI 消息且有推荐内容时展示) -->
-        <view v-if="message.recommendations && message.recommendations.length > 0">
-          <RecommendationCard 
-            v-for="rec in message.recommendations" 
-            :key="rec.dish.id" 
-            :recommendation="rec" 
-          />
+          <!-- 菜品卡片 -->
+          <view v-else-if="segment.type === 'card_dish'" class="card-container">
+             <DishCard v-for="(dish, i) in segment.data" :key="i" :dish="dish" />
+          </view>
+
+          <!-- 规划卡片 -->
+          <view v-else-if="segment.type === 'card_plan'" class="card-container">
+             <PlanningCard 
+               v-for="(plan, i) in segment.data" 
+               :key="i" 
+               :plan="plan" 
+               @apply="handleApplyPlan"
+               @discard="handleDiscardPlan"
+             />
+          </view>
+
         </view>
       </view>
       
@@ -52,9 +64,11 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue';
 import { useChatStore } from '@/store/modules/use-chat-store';
-import RecommendationCard from './components/RecommendationCard.vue';
+import DishCard from './components/DishCard.vue';
+import PlanningCard from './components/PlanningCard.vue';
 import InputBar from './components/InputBar.vue';
 import { AIChatSkeleton } from '@/components/skeleton';
+import type { ComponentMealPlanDraft } from '@/types/api';
 
 const chatStore = useChatStore();
 const scrollAnchorId = 'chat-bottom-anchor';
@@ -73,6 +87,20 @@ watch(() => chatStore.messages.length, () => {
   }, 50); 
 }, { deep: true });
 
+// 监听流式消息内容变化 (针对最后一个消息的最后一个segment)
+watch(() => {
+    const lastMsg = chatStore.messages[chatStore.messages.length - 1];
+    if (lastMsg && lastMsg.isStreaming) {
+        return lastMsg.content.length; // 监听 segment 数量变化
+    }
+    return 0;
+}, () => {
+    setTimeout(() => {
+        scrollViewId.value = ''; 
+        scrollViewId.value = scrollAnchorId;
+    }, 50);
+});
+
 onMounted(() => {
     if (chatStore.messages.length === 0) {
         chatStore.startNewSession(); // 初始化欢迎消息
@@ -84,6 +112,19 @@ const alertHistory = () => {
   uni.showToast({ title: '查看历史记录 (功能待实现)', icon: 'none' });
   // 实际应导航到历史记录页面
   // uni.navigateTo({ url: '/pages/ai-chat/history' });
+};
+
+const handleApplyPlan = (plan: ComponentMealPlanDraft) => {
+  uni.showToast({ title: '正在应用规划...', icon: 'loading' });
+  // 这里应该调用 API 应用规划
+  // 暂时模拟成功
+  setTimeout(() => {
+      uni.showToast({ title: '规划已应用', icon: 'success' });
+  }, 1000);
+};
+
+const handleDiscardPlan = () => {
+    uni.showToast({ title: '已放弃规划', icon: 'none' });
 };
 
 // 避免滚动时频繁触发 watch
