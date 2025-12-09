@@ -254,7 +254,7 @@ export const useChatStore = defineStore('ai-chat', () => {
         const contentArr = aiMessage.content;
         const lastSegment = contentArr[contentArr.length - 1];
         
-        const errorText = '\n[网络请求出错，请检查网络]';
+        const errorText = `\n[网络请求出错: ${err?.message || '请检查网络'}]`;
         if (lastSegment && lastSegment.type === 'text') {
             lastSegment.text += errorText;
         } else {
