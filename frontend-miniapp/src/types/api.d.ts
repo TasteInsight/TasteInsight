@@ -1084,6 +1084,28 @@ export interface HistoryData {
   messages: ChatMessageItem[];
 }
 
+export interface AIStreamCallbacks {
+  /** 收到 event: xxx 事件名时触发 */
+  onEvent?: (event: string) => void;
+  /** 收到 data: xxx 数据时触发（原始字符串） */
+  onMessage?: (raw: string) => void;
+  /** 收到 data: xxx 且能解析为 JSON 时触发 */
+  onJSON?: (json: any) => void;
+  /** 请求失败或网络错误时触发 */
+  onError?: (err: any) => void;
+  /** 流结束或连接断开时触发 */
+  onComplete?: () => void;
+}
+
+/**
+ * 统一的流式对话函数签名
+ */
+export type StreamAIChatFn = (
+  sessionId: string,
+  payload: ChatRequest,
+  callbacks?: AIStreamCallbacks
+) => { close: () => void };
+
 /**
  * 获取食堂列表
  */
@@ -1174,10 +1196,11 @@ export function createAISession(data: CreateAISessionRequest): Promise<ApiRespon
 /**
  * 流式对话（SSE）。返回值类型因实现而异，这里使用 Promise<string> 占位。
  */
-export function streamAIChat(
+export declare function streamAIChat(
   sessionId: string,
-  data: ChatRequest
-): Promise<string>;
+  data: ChatRequest,
+  callbacks?: AIStreamCallbacks
+): { close: () => void };
 
 /**
  * 获取会话引导/快捷提示词
