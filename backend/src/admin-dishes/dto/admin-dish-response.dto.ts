@@ -1,4 +1,4 @@
-import { BaseResponseDto, PaginationMeta } from '@/common/dto/response.dto';
+import { BaseResponseDto, PaginationMeta, ReviewRatingDetails, UserBasicInfo } from '@/common/dto/response.dto';
 import { AdminDishDto } from './admin-dish.dto';
 
 // 菜品详情响应
@@ -13,20 +13,8 @@ export class AdminDishListData {
 // 菜品列表响应
 export class AdminDishListResponseDto extends BaseResponseDto<AdminDishListData> {}
 
-// 评价详细评分
-export class ReviewRatingDetails {
-  spicyLevel?: number | null;
-  sweetness?: number | null;
-  saltiness?: number | null;
-  oiliness?: number | null;
-}
-
-// 评价用户信息
-export class ReviewUserInfo {
-  id: string;
-  nickname: string;
-  avatar: string | null;
-}
+// 导出共享DTO以保持向后兼容
+export { ReviewRatingDetails, UserBasicInfo };
 
 // 菜品评价项数据
 export class DishReviewItemData {
@@ -42,7 +30,7 @@ export class DishReviewItemData {
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date | null;
-  user: ReviewUserInfo;
+  user: UserBasicInfo;
   commentCount: number;
 }
 

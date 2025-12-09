@@ -558,7 +558,9 @@ export class AdminDishesService {
           },
           _count: {
             select: {
-              comments: true,
+              comments: {
+                where: { deletedAt: null },
+              },
             },
           },
         },
@@ -567,10 +569,10 @@ export class AdminDishesService {
 
     const items = reviews.map((review) => {
       const hasDetails =
-        review.spicyLevel ||
-        review.sweetness ||
-        review.saltiness ||
-        review.oiliness;
+        review.spicyLevel !== null ||
+        review.sweetness !== null ||
+        review.saltiness !== null ||
+        review.oiliness !== null;
 
       return {
         id: review.id,

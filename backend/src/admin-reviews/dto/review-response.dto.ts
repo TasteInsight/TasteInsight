@@ -1,13 +1,9 @@
-import { PaginationMeta, BaseResponseDto } from '@/common/dto/response.dto';
+import { PaginationMeta, BaseResponseDto, ReviewRatingDetails, UserBasicInfo } from '@/common/dto/response.dto';
 
-export { SuccessResponseDto } from '@/common/dto/response.dto';
+export { SuccessResponseDto, ReviewRatingDetails } from '@/common/dto/response.dto';
 
-export class ReviewRatingDetails {
-  spicyLevel?: number | null;
-  sweetness?: number | null;
-  saltiness?: number | null;
-  oiliness?: number | null;
-}
+// 评论用户信息类型别名（使用共享的UserBasicInfo）
+export type CommentUserInfo = UserBasicInfo;
 
 export class ReviewItemData {
   id: string;
@@ -33,13 +29,6 @@ export class PendingReviewListData {
 }
 
 export class PendingReviewListResponseDto extends BaseResponseDto<PendingReviewListData> {}
-
-// 评论用户信息
-export class CommentUserInfo {
-  id: string;
-  nickname: string;
-  avatar: string | null;
-}
 
 // 评论项数据（用于评价下的评论列表）
 export class ReviewCommentItemData {
