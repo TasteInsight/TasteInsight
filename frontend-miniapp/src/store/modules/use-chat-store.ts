@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue'; 
+import { ref, reactive } from 'vue'; 
 import { createAISession, streamAIChat, submitRecommendFeedback } from '@/api/modules/ai';
 import type { 
   ChatRequest, 
@@ -201,14 +201,14 @@ export const useChatStore = defineStore('ai-chat', () => {
     
     // 3. 创建一个空的 AI 消息占位符
     const aiMessageId = Date.now() + 1;
-    const aiMessage = ref<ChatMessage>({
+    const aiMessage = reactive<ChatMessage>({
       id: aiMessageId,
       type: 'ai',
       content: [{ type: 'text', text: '' }], // 默认先给一个空文本块，防止渲染报错
       timestamp: Date.now(),
       isStreaming: true,
     });
-    messages.value.push(aiMessage.value);
+    messages.value.push(aiMessage);
 
     const payload: ChatRequest = {
       message: text,
@@ -227,7 +227,7 @@ export const useChatStore = defineStore('ai-chat', () => {
       onMessage: (chunk) => {
         // 只有当事件明确是 text_chunk 时才拼接文本
         if (currentEvent === 'text_chunk') {
-             const contentArr = aiMessage.value.content;
+             const contentArr = aiMessage.content;
              const lastSegment = contentArr[contentArr.length - 1];
              
              // 如果最后一个块是文本，则追加
@@ -245,13 +245,13 @@ export const useChatStore = defineStore('ai-chat', () => {
              // 简单的类型断言，实际项目中可以加 Schema 校验
              const segment = json as MessageSegment;
              if (segment && segment.type && segment.type !== 'text') {
-               aiMessage.value.content.push(segment);
+               aiMessage.content.push(segment);
              }
         }
       },
       onError: (err) => {
         console.error('Stream error', err);
-        const contentArr = aiMessage.value.content;
+        const contentArr = aiMessage.content;
         const lastSegment = contentArr[contentArr.length - 1];
         
         const errorText = '\n[网络请求出错，请检查网络]';
@@ -262,12 +262,12 @@ export const useChatStore = defineStore('ai-chat', () => {
         }
         
         aiLoading.value = false;
-        aiMessage.value.isStreaming = false;
+        aiMessage.isStreaming = false;
         currentStreamAbort.value = null;
       },
       onComplete: () => {
         aiLoading.value = false;
-        aiMessage.value.isStreaming = false;
+        aiMessage.isStreaming = false;
         upsertHistoryEntry(sessionId.value, currentScene.value, messages.value);
         currentStreamAbort.value = null;
       }
