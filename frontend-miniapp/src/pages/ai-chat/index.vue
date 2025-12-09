@@ -35,6 +35,7 @@
                <text class="iconify text-gray-500" data-icon="mdi:history" data-width="20"></text>
                <text class="text-sm font-medium text-gray-700">历史记录</text>
             </view>
+              </view>
             </view>
             <view class="flex items-center space-x-2">
               <view class="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100">

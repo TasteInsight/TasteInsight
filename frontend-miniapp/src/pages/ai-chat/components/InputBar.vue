@@ -5,8 +5,8 @@
       <text class="iconify text-gray-600 mr-2" data-icon="mdi:tag-outline" data-width="18"></text>
       <select
         class="flex-1 h-full text-sm text-gray-700 bg-transparent"
-        v-model="sceneLocal"
-        @change="emitScene"
+        :value="sceneLocal"
+        @change="handleSceneChange"
       >
         <option value="general_chat">普通对话</option>
         <option value="meal_planner">餐单规划</option>
@@ -48,6 +48,11 @@ const sceneLocal = ref(props.scene || 'general_chat');
 
 const emitScene = () => {
   emit('update:scene', sceneLocal.value);
+};
+
+const handleSceneChange = (e: any) => {
+  sceneLocal.value = e.detail.value;
+  emitScene();
 };
 
 const handleSend = () => {
