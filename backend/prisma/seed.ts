@@ -1,6 +1,7 @@
 // prisma/seed.ts
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { CONFIG_DEFINITIONS } from '../src/admin-config/config-definitions';
 
 const prisma = new PrismaClient();
 
@@ -236,6 +237,14 @@ async function main() {
       {
         adminId: canteenAdmin.id,
         permission: 'config:canteen:edit',
+      },
+      {
+        adminId: canteenAdmin.id,
+        permission: 'config:view',
+      },
+      {
+        adminId: canteenAdmin.id,
+        permission: 'config:edit',
       },
     ],
   });
@@ -784,6 +793,50 @@ async function main() {
     },
   });
   console.log(`Created rejected report`);
+
+  // 初始化配置模板
+  console.log('Initializing admin config templates...');
+  
+  // 先清理旧的配置数据
+  await prisma.adminConfigItem.deleteMany({});
+  await prisma.adminConfig.deleteMany({});
+  await prisma.adminConfigTemplate.deleteMany({});
+  
+  // 使用 config-definitions.ts 中定义的配置模板
+  await prisma.adminConfigTemplate.createMany({
+    data: CONFIG_DEFINITIONS.map((def) => ({
+      key: def.key,
+      defaultValue: def.defaultValue,
+      valueType: def.valueType,
+      description: def.description,
+      category: def.category,
+    })),
+    skipDuplicates: true, // 避免重复插入
+  });
+  
+  // 创建全局配置
+  const globalAdminConfig = await prisma.adminConfig.create({
+    data: {
+      canteenId: null, // null 表示全局配置
+    },
+  });
+  console.log('Created global admin config:', globalAdminConfig.id);
+  
+  // 为全局配置添加默认配置项
+  const templates = await prisma.adminConfigTemplate.findMany();
+  await prisma.adminConfigItem.createMany({
+    data: templates.map(template => ({
+      adminConfigId: globalAdminConfig.id,
+      templateId: template.id,
+      key: template.key,
+      value: template.defaultValue,
+      valueType: template.valueType,
+      description: template.description,
+      category: template.category,
+    })),
+    skipDuplicates: true, // 避免重复插入
+  });
+  console.log('Admin config templates and global config initialized.');
 
   console.log(`Seeding finished.`);
 }
