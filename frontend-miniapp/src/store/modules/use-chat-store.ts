@@ -105,7 +105,8 @@ export const useChatStore = defineStore('ai-chat', () => {
   function upsertHistoryEntry(session: string, scene: AIScene, msgs: ChatMessage[]) {
     if (!session) return;
     const copy = cloneMessages(msgs);
-    const title = (copy.find(m => m.type === 'user')?.content?.find(seg => seg.type === 'text') as any)?.text || '对话';
+    const textSeg = copy.find(m => m.type === 'user')?.content?.find(seg => seg.type === 'text');
+    const title = textSeg && textSeg.type === 'text' ? textSeg.text : '对话';
     const idx = historyEntries.value.findIndex(h => h.sessionId === session);
     const entry: ChatHistoryEntry = {
       sessionId: session,
