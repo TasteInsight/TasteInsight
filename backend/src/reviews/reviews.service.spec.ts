@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ReviewsService } from './reviews.service';
 import { PrismaService } from '@/prisma.service';
+import { AdminConfigService } from '@/admin-config/admin-config.service';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ReportType } from '@/common/enums';
 
@@ -17,6 +18,10 @@ const mockPrisma = {
   report: { create: jest.fn() },
 };
 
+const mockAdminConfigService = {
+  getBooleanConfigValue: jest.fn(),
+};
+
 describe('ReviewsService', () => {
   let service: ReviewsService;
   let prisma: typeof mockPrisma;
@@ -31,6 +36,7 @@ describe('ReviewsService', () => {
       providers: [
         ReviewsService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: AdminConfigService, useValue: mockAdminConfigService },
       ],
     }).compile();
     service = module.get<ReviewsService>(ReviewsService);
@@ -54,7 +60,8 @@ describe('ReviewsService', () => {
       ).rejects.toThrow(NotFoundException);
     });
     it('should create review with detailed ratings and return data', async () => {
-      prisma.dish.findUnique.mockResolvedValue({ id: 'd1' });
+      prisma.dish.findUnique.mockResolvedValue({ id: 'd1', canteenId: 'c1' });
+      mockAdminConfigService.getBooleanConfigValue.mockResolvedValue(false);
       prisma.review.create.mockResolvedValue({
         id: 'r1',
         dishId: 'd1',
@@ -97,6 +104,46 @@ describe('ReviewsService', () => {
       expect(result).toHaveProperty('code', 201);
       expect(result.data).toHaveProperty('id', 'r1');
       expect(result.data.ratingDetails).toHaveProperty('spicyLevel', 3);
+    });
+
+    it('should create approved review when auto-approve is enabled', async () => {
+      prisma.dish.findUnique.mockResolvedValue({ id: 'd1', canteenId: 'c1' });
+      mockAdminConfigService.getBooleanConfigValue.mockResolvedValue(true);
+      prisma.review.create.mockResolvedValue({
+        id: 'r1',
+        dishId: 'd1',
+        userId: 'u1',
+        rating: 5,
+        content: 'c',
+        images: [],
+        status: 'approved',
+        spicyLevel: null,
+        sweetness: null,
+        saltiness: null,
+        oiliness: null,
+        createdAt: new Date(),
+        deletedAt: null,
+        user: { id: 'u1', nickname: 'nick', avatar: 'a' },
+      });
+      const result = await service.createReview('u1', {
+        dishId: 'd1',
+        rating: 5,
+        content: 'c',
+        images: [],
+      });
+      expect(mockAdminConfigService.getBooleanConfigValue).toHaveBeenCalledWith(
+        'review.autoApprove',
+        'c1',
+      );
+      expect(prisma.review.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: 'approved',
+          }),
+        }),
+      );
+      expect(result).toHaveProperty('code', 201);
+      expect(result.data).toHaveProperty('id', 'r1');
     });
   });
 

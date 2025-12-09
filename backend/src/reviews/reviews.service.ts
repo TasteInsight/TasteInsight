@@ -4,6 +4,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
+import { AdminConfigService } from '@/admin-config/admin-config.service';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { ReportReviewDto } from './dto/report-review.dto';
 import {
@@ -16,7 +17,10 @@ import { ReportReviewResponseDto } from './dto/report-review.dto';
 
 @Injectable()
 export class ReviewsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private adminConfigService: AdminConfigService,
+  ) {}
 
   async createReview(
     userId: string,
@@ -30,6 +34,12 @@ export class ReviewsService {
     }
     const { ratingDetails } = createReviewDto;
 
+    // 根据管理员配置决定评价初始状态
+    const autoApprove = await this.adminConfigService.getBooleanConfigValue(
+      'review.autoApprove',
+      dish.canteenId,
+    );
+
     const review = await this.prisma.review.create({
       data: {
         dishId: createReviewDto.dishId,
@@ -37,7 +47,7 @@ export class ReviewsService {
         rating: createReviewDto.rating,
         content: createReviewDto.content,
         images: createReviewDto.images,
-        status: 'pending',
+        status: autoApprove ? 'approved' : 'pending',
         spicyLevel: ratingDetails?.spicyLevel,
         sweetness: ratingDetails?.sweetness,
         saltiness: ratingDetails?.saltiness,
