@@ -6,38 +6,31 @@
     <template v-else>
       <!-- 顶部导航栏 -->
       <view 
-        class="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 px-3 py-1 flex justify-between items-center shadow-sm"
-        :style="{ paddingTop: (safeAreaInsets?.top || 0) + 'px' }"
+        class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-lg border-b border-gray-100 shadow-sm transition-all duration-300"
       >
-         <view class="flex-1 flex items-center justify-between">
+         <view class="flex items-center justify-between px-4 h-12">
             <!-- 场景徽标 -->
             <view class="flex items-center">
-              <view class="px-2.5 py-1 rounded-full bg-purple-50 border border-purple-100">
-                <text class="text-xs font-medium text-purple-700">{{ sceneBadge }}</text>
+              <view class="flex items-center px-3 py-1 rounded-full bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 shadow-sm">
+                <view class="w-1.5 h-1.5 rounded-full bg-purple-500 mr-2 animate-pulse"></view>
+                <text class="text-xs font-semibold text-purple-700 tracking-wide">{{ sceneBadge }}</text>
               </view>
             </view>
             
-            <!-- 中间操作区 -->
-            <view class="flex items-center justify-center flex-1">
-              <view class="flex items-center space-x-2">
-                <view
-                  class="flex flex-col items-center justify-center bg-gray-100 active:bg-gray-200 px-3 py-1.5 rounded-full"
-                  @click.stop="handleNewChat"
-                >
-                   <text class="text-xs font-medium text-gray-700 mt-0.5">新建对话</text>
-                </view>
-                <view
-                  class="flex flex-col items-center justify-center bg-gray-100 active:bg-gray-200 px-3 py-1.5 rounded-full"
-                  @click.stop="openHistory"
-                >
-                   <text class="text-xs font-medium text-gray-700 mt-0.5">历史记录</text>
-                </view>
+            <!-- 右侧操作区 -->
+            <view class="flex items-center space-x-3">
+              <view
+                class="group flex items-center justify-center px-3 py-1.5 rounded-full bg-gray-50 border border-gray-200 active:bg-gray-100 active:scale-95 transition-all duration-200"
+                @click.stop="handleNewChat"
+              >
+                 <text class="text-xs font-medium text-gray-600 group-active:text-gray-900">新建对话</text>
               </view>
-            </view>
-
-            <!-- 占位或更多菜单 -->
-            <view class="flex items-center w-8">
-              <!-- 可以放设置按钮 -->
+              <view
+                class="group flex items-center justify-center px-3 py-1.5 rounded-full bg-gray-50 border border-gray-200 active:bg-gray-100 active:scale-95 transition-all duration-200"
+                @click.stop="openHistory"
+              >
+                 <text class="text-xs font-medium text-gray-600 group-active:text-gray-900">历史记录</text>
+              </view>
             </view>
          </view>
       </view>
@@ -46,7 +39,7 @@
       <scroll-view 
         scroll-y 
         class="flex-1 px-4" 
-        :style="{ paddingTop: ((safeAreaInsets?.top || 0) + 52) + 'px', paddingBottom: '160px' }"
+        :style="{ paddingTop: contentPaddingTop + 'px', paddingBottom: '160px' }"
         :scroll-top="scrollTop" 
         :scroll-with-animation="true"
       >
@@ -232,6 +225,13 @@ const scrollTop = ref(0); // 使用 scrollTop 控制滚动
 const inputBarRef = ref<InstanceType<typeof InputBar> | null>(null);
 const systemInfo = uni.getSystemInfoSync();
 const safeAreaInsets = systemInfo.safeAreaInsets;
+// 减少安全区顶部的间距，让顶部按钮更靠近但仍避免与系统状态栏冲突
+const STATUSBAR_REDUCTION = 2; // 可以调整（例如 0、4、8、12）
+const NAV_HEIGHT = 48; // header content height (h-12 = 48px)
+const navPaddingTop = computed(() => 0); // 强制为 0，消除顶部空白
+// 调试：输出 safeAreaInsets.top 到控制台，确认设备安全区值
+console.debug('[AI Chat] safeAreaInsets.top', safeAreaInsets?.top, 'navPaddingTop', navPaddingTop.value);
+const contentPaddingTop = computed(() => NAV_HEIGHT);
 const showHistory = ref(false);
 const showNewChatModal = ref(false);
 const sceneOptions = [
