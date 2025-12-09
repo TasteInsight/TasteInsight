@@ -168,16 +168,20 @@ export const useChatStore = defineStore('ai-chat', () => {
    * 发送聊天消息并处理流式响应
    */
   async function sendChatMessage(text: string) {
+    // 1. 确保会话已初始化
     if (!sessionId.value) await initSession();
+    
+    // 2. 【核心修复】先在 UI 上显示用户的消息
+    addUserMessage(text);
     
     aiLoading.value = true;
     
-    // 创建一个空的 AI 消息用于流式更新
+    // 3. 创建一个空的 AI 消息占位符
     const aiMessageId = Date.now() + 1;
     const aiMessage = ref<ChatMessage>({
       id: aiMessageId,
       type: 'ai',
-      content: [{ type: 'text', text: '' }], // 初始为空文本
+      content: [{ type: 'text', text: '' }], // 默认先给一个空文本块，防止渲染报错
       timestamp: Date.now(),
       isStreaming: true,
     });
@@ -196,29 +200,44 @@ export const useChatStore = defineStore('ai-chat', () => {
       onEvent: (evt) => {
         currentEvent = evt;
       },
+      // 处理文本流
       onMessage: (chunk) => {
+        // 只有当事件明确是 text_chunk 时才拼接文本
         if (currentEvent === 'text_chunk') {
-             const lastSegment = aiMessage.value.content[aiMessage.value.content.length - 1];
+             const contentArr = aiMessage.value.content;
+             const lastSegment = contentArr[contentArr.length - 1];
+             
+             // 如果最后一个块是文本，则追加
              if (lastSegment && lastSegment.type === 'text') {
                lastSegment.text += chunk;
              } else {
-               aiMessage.value.content.push({ type: 'text', text: chunk });
+               // 否则（比如上一个是卡片），新建一个文本块
+               contentArr.push({ type: 'text', text: chunk });
              }
         }
       },
+      // 处理组件流 (new_block)
       onJSON: (json) => {
         if (currentEvent === 'new_block') {
-             aiMessage.value.content.push(json as MessageSegment);
+             // 简单的类型断言，实际项目中可以加 Schema 校验
+             const segment = json as MessageSegment;
+             if (segment && segment.type && segment.type !== 'text') {
+               aiMessage.value.content.push(segment);
+             }
         }
       },
       onError: (err) => {
         console.error('Stream error', err);
-        const lastSegment = aiMessage.value.content[aiMessage.value.content.length - 1];
+        const contentArr = aiMessage.value.content;
+        const lastSegment = contentArr[contentArr.length - 1];
+        
+        const errorText = '\n[网络请求出错，请检查网络]';
         if (lastSegment && lastSegment.type === 'text') {
-            lastSegment.text += '\n[网络错误，请重试]';
+            lastSegment.text += errorText;
         } else {
-            aiMessage.value.content.push({ type: 'text', text: '\n[网络错误，请重试]' });
+            contentArr.push({ type: 'text', text: errorText });
         }
+        
         aiLoading.value = false;
         aiMessage.value.isStreaming = false;
       },

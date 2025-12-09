@@ -45,10 +45,16 @@ export function useChat() {
   };
 
   const resetChat = async (s?: string) => {
-    chatStore.messages = [];
-    chatStore.sessionId = '';
+    // 如果指定了新场景，先更新 store 状态
+    if (s) setScene(s);
+    
+    // 开启新会话 (内部会自动创建 session 并拉取 welcomeMessage)
     await chatStore.startNewSession(s || scene.value);
-    await init(s || scene.value);
+    
+    // 刷新建议词
+    await fetchSuggestions();
+    
+    hasInitialized.value = true;
   };
 
   const sendMessage = async (text: string) => {
