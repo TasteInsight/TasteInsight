@@ -157,6 +157,20 @@ export const streamAIChat = (
       callbacks.onError?.(err);
     },
     complete: () => {
+      // 处理最后剩余的未完成 UTF-8 字节
+      const remaining = decoder.decode();
+      if (remaining) {
+        buffer += remaining;
+      }
+      // 处理剩余的 buffer
+      if (buffer) {
+        const events = buffer.split('\n\n');
+        for (const evt of events) {
+          if (evt.trim()) {
+            parseSSEEventString(evt, callbacks);
+          }
+        }
+      }
       callbacks.onComplete?.();
     }
   });
