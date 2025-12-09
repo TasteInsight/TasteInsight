@@ -19,16 +19,7 @@
         <text>历史规划 ({{ historyPlans.length }})</text>
       </view>
     </view>
-
-     <!-- 页面头部 -->
-    <!-- <view v-if="activeTab === 'current'" class="bg-white px-5 py-4 flex justify-end items-center border-b border-gray-100">
-      <view @tap="createNewPlan" class="flex items-center gap-1.5 bg-ts-purple py-2 px-5 rounded-lg border border-ts-purple">
-        <text class="text-gray-100 text-xl">+</text>
-        <text class="text-gray-100">新建规划</text>
-      </view>
-    </view> -->
-
-    
+        
     <!-- 错误状态 -->
     <view v-if="error" class="flex flex-col items-center justify-center py-20 px-5">
       <text class="text-red-500 mb-4">{{ error }}</text>
