@@ -226,7 +226,11 @@ let scrollTimeout: any = null; // 用于防抖滚动
 const systemInfo = uni.getSystemInfoSync();
 const safeAreaInsets = systemInfo.safeAreaInsets;
 const NAV_HEIGHT = 48; // header content height (h-12 = 48px)
-console.debug('[AI Chat] safeAreaInsets.top', safeAreaInsets?.top);
+
+if(process.env.NODE_ENV === 'development'){
+  console.debug('[AI Chat] safeAreaInsets.top', safeAreaInsets?.top);
+}
+
 const contentPaddingTop = computed(() => NAV_HEIGHT);
 const showHistory = ref(false);
 const showNewChatModal = ref(false);
@@ -339,24 +343,34 @@ const handleApplyPlan = async (plan: ComponentMealPlanDraft) => {
 
   try {
     // 1. 调用业务接口保存规划
-    await request({
+    const res = await request({
       url: action.api,
       method: action.method as any || 'POST',
       data: action.body
     });
 
     uni.hideLoading();
-    uni.showToast({ title: '已应用到日程', icon: 'success' });
 
-    // 2. 【闭环】自动告诉 AI "我已应用"
-    setTimeout(() => {
-      sendMessage("我已确认应用了该饮食规划，请帮我生成后续建议");
-    }, 500);
+    if (res.code === 200) {
+      uni.showToast({ title: '已应用到日程', icon: 'success' });
+
+      // 2. 【闭环】自动告诉 AI "我已应用"
+      setTimeout(() => {
+        sendMessage("我已确认应用了该饮食规划，请帮我生成后续建议");
+      }, 500);
+    } else {
+      // 业务逻辑失败
+      uni.showToast({ title: res.message || '保存失败，请重试', icon: 'none' });
+      // 可以在这里更新 UI 状态，例如标记规划为应用失败
+      // plan.applied = false; // 如果 plan 有状态字段
+    }
 
   } catch (error) {
     uni.hideLoading();
     uni.showToast({ title: '保存失败，请重试', icon: 'none' });
     console.error(error);
+    // 可以在这里更新 UI 状态，例如标记规划为应用失败
+    // plan.applied = false;
   }
 };
 
