@@ -1,77 +1,107 @@
 <template>
-  <view class="flex flex-col h-screen relative bg-gray-100">
+  <view class="flex flex-col h-screen bg-gray-50">
     <!-- 骨架屏：首次加载时显示 -->
     <AIChatSkeleton v-if="isInitialLoading" />
 
     <template v-else>
-    <view class="h-14 flex items-center justify-center px-4 bg-white border-b border-gray-200 relative">
-        <text class="text-lg font-semibold text-gray-800">问AI</text>
-        <view class="absolute top-2.5 right-4 bg-white border border-gray-200 rounded-full px-3 py-1.5 text-sm text-gray-600 flex items-center" @click="alertHistory">
-          <text class="iconify mr-1" data-icon="mdi:history" data-width="16"></text>
-          历史记录
-        </view>
-    </view>
-    
-    <scroll-view 
-      scroll-y 
-      class="flex-1 p-4 pb-[160px]" 
-      :scroll-into-view="scrollViewId"
-      @scroll="handleScroll"
-    >
-      <!-- AI 聊天消息列表 -->
-      <view v-for="message in messages" :key="message.id" :id="`msg-${message.id}`" class="mb-4">
-        <!-- 遍历消息段 -->
-        <view v-for="(segment, index) in message.content" :key="index" class="mb-2">
-          
-          <!-- 文本段 -->
-          <view v-if="segment.type === 'text'" 
-            class="py-2.5 px-4 rounded-2xl max-w-[80%] text-base"
-            :class="[message.type === 'user' ? 'bg-ts-purple text-white ml-auto rounded-br-sm' : 'bg-gray-200 text-gray-800 mr-auto rounded-bl-sm']"
-          >
-            {{ segment.text }}
-            <text v-if="message.isStreaming && index === message.content.length - 1" class="animate-pulse">...</text>
-          </view>
-
-          <!-- 菜品卡片 -->
-          <view v-else-if="segment.type === 'card_dish'" class="w-full">
-             <DishCard v-for="(dish, i) in segment.data" :key="i" :dish="dish" />
-          </view>
-
-          <!-- 规划卡片 -->
-          <view v-else-if="segment.type === 'card_plan'" class="w-full">
-             <PlanningCard 
-               v-for="(plan, i) in segment.data" 
-               :key="i" 
-               :plan="plan" 
-               @apply="handleApplyPlan"
-               @discard="handleDiscardPlan"
-             />
-          </view>
-
-          <!-- 食堂卡片 -->
-          <view v-else-if="segment.type === 'card_canteen'" class="w-full">
-             <CanteenCard v-for="(canteen, i) in segment.data" :key="i" :canteen="canteen" />
-          </view>
-
-          <!-- 窗口卡片 -->
-          <view v-else-if="segment.type === 'card_window'" class="w-full">
-             <WindowCard v-for="(window, i) in segment.data" :key="i" :window="window" />
-          </view>
-
-        </view>
+      <!-- 顶部导航栏 -->
+      <view 
+        class="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex justify-between items-center shadow-sm transition-all duration-300"
+        :style="{ paddingTop: (safeAreaInsets?.top || 0) + 'px' }"
+      >
+         <view class="flex-1 flex justify-center space-x-6">
+            <!-- 新建对话 -->
+            <view 
+              class="flex items-center space-x-2 bg-gray-100 active:bg-gray-200 px-5 py-2.5 rounded-full transition-all cursor-pointer"
+              @click="handleNewChat"
+            >
+               <text class="iconify text-ts-purple" data-icon="mdi:plus-circle" data-width="20"></text>
+               <text class="text-sm font-medium text-gray-700">新建对话</text>
+            </view>
+            
+            <!-- 历史记录 -->
+            <view 
+              class="flex items-center space-x-2 bg-gray-100 active:bg-gray-200 px-5 py-2.5 rounded-full transition-all cursor-pointer"
+              @click="alertHistory"
+            >
+               <text class="iconify text-gray-500" data-icon="mdi:history" data-width="20"></text>
+               <text class="text-sm font-medium text-gray-700">历史记录</text>
+            </view>
+         </view>
       </view>
-      
-      <!-- 滚动锚点 -->
-      <view :id="scrollAnchorId" class="h-px"></view>
-    </scroll-view>
+    
+      <!-- 聊天区域 -->
+      <scroll-view 
+        scroll-y 
+        class="flex-1 px-4" 
+        :style="{ paddingTop: ((safeAreaInsets?.top || 0) + 70) + 'px', paddingBottom: '180px' }"
+        :scroll-into-view="scrollViewId"
+        @scroll="handleScroll"
+        :scroll-with-animation="true"
+      >
+        <!-- AI 聊天消息列表 -->
+        <view v-for="message in messages" :key="message.id" :id="`msg-${message.id}`" class="mb-6">
+          <!-- 遍历消息段 -->
+          <view v-for="(segment, index) in message.content" :key="index" class="mb-2">
+            
+            <!-- 文本段 -->
+            <view v-if="segment.type === 'text'" 
+              class="py-3 px-5 rounded-2xl max-w-[85%] text-base leading-relaxed shadow-sm"
+              :class="[
+                message.type === 'user' 
+                  ? 'bg-ts-purple text-white ml-auto rounded-br-sm' 
+                  : 'bg-white text-gray-800 mr-auto rounded-bl-sm border border-gray-100'
+              ]"
+            >
+              {{ segment.text }}
+              <text v-if="message.isStreaming && index === message.content.length - 1" class="animate-pulse">...</text>
+            </view>
 
-    <!-- 快捷提示词 -->
-    <view class="absolute bottom-[160px] left-0 right-0 z-10">
-       <SuggestionChips :suggestions="suggestions" @select="handleSuggestionSelect" />
-    </view>
+            <!-- 菜品卡片 -->
+            <view v-else-if="segment.type === 'card_dish'" class="w-full pl-2">
+               <DishCard v-for="(dish, i) in segment.data" :key="i" :dish="dish" />
+            </view>
 
-    <!-- 底部输入框 -->
-    <InputBar ref="inputBarRef" :loading="aiLoading" @send="handleSend" />
+            <!-- 规划卡片 -->
+            <view v-else-if="segment.type === 'card_plan'" class="w-full pl-2">
+               <PlanningCard 
+                 v-for="(plan, i) in segment.data" 
+                 :key="i" 
+                 :plan="plan" 
+                 @apply="handleApplyPlan"
+                 @discard="handleDiscardPlan"
+               />
+            </view>
+
+            <!-- 食堂卡片 -->
+            <view v-else-if="segment.type === 'card_canteen'" class="w-full pl-2">
+               <CanteenCard v-for="(canteen, i) in segment.data" :key="i" :canteen="canteen" />
+            </view>
+
+            <!-- 窗口卡片 -->
+            <view v-else-if="segment.type === 'card_window'" class="w-full pl-2">
+               <WindowCard v-for="(window, i) in segment.data" :key="i" :window="window" />
+            </view>
+
+          </view>
+        </view>
+        
+        <!-- 滚动锚点 -->
+        <view :id="scrollAnchorId" class="h-px w-full"></view>
+      </scroll-view>
+
+      <!-- 底部固定区域 -->
+      <view class="fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-t from-gray-50 via-gray-50 to-transparent pb-[calc(20px+env(safe-area-inset-bottom))] pt-10 px-4 pointer-events-none">
+         <view class="pointer-events-auto relative w-full max-w-screen-md mx-auto">
+            <!-- 快捷提示词 -->
+            <view class="mb-3">
+               <SuggestionChips :suggestions="suggestions" @select="handleSuggestionSelect" />
+            </view>
+
+            <!-- 输入框 -->
+            <InputBar ref="inputBarRef" :loading="aiLoading" @send="handleSend" />
+         </view>
+      </view>
     </template>
   </view>
 </template>
@@ -94,12 +124,15 @@ const {
   suggestions, 
   isInitialLoading, 
   sendMessage,
-  handleSuggestionClick 
+  handleSuggestionClick,
+  resetChat
 } = useChat();
 
 const scrollAnchorId = 'chat-bottom-anchor';
 const scrollViewId = ref(scrollAnchorId);
 const inputBarRef = ref<InstanceType<typeof InputBar> | null>(null);
+const systemInfo = uni.getSystemInfoSync();
+const safeAreaInsets = systemInfo.safeAreaInsets;
 
 // 监听消息变化，自动滚动到底部
 watch(() => messages.value.length, () => {
@@ -131,6 +164,18 @@ const handleSuggestionSelect = (text: string) => {
   if (inputBarRef.value) {
     inputBarRef.value.setText(text);
   }
+};
+
+const handleNewChat = () => {
+  uni.showModal({
+    title: '新建对话',
+    content: '确定要开始新的对话吗？当前对话记录将被清除。',
+    success: (res) => {
+      if (res.confirm) {
+        resetChat();
+      }
+    }
+  });
 };
 
 const alertHistory = () => {

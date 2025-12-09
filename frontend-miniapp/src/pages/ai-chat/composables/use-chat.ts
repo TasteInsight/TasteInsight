@@ -33,6 +33,12 @@ export function useChat() {
     hasInitialized.value = true;
   };
 
+  const resetChat = async () => {
+    chatStore.messages = [];
+    chatStore.sessionId = '';
+    await init();
+  };
+
   const sendMessage = async (text: string) => {
     if (!text.trim()) return;
     
@@ -60,6 +66,7 @@ export function useChat() {
     isInitialLoading,
     sendMessage,
     handleSuggestionClick,
-    refreshSuggestions: fetchSuggestions
+    refreshSuggestions: fetchSuggestions,
+    resetChat
   };
 }

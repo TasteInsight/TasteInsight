@@ -108,6 +108,10 @@
   pointer-events: none
 }
 
+.pointer-events-auto {
+  pointer-events: auto
+}
+
 .visible {
   visibility: visible
 }
@@ -266,6 +270,10 @@
 
 .z-\[9999\] {
   z-index: 9999
+}
+
+.z-40 {
+  z-index: 40
 }
 
 .m-0 {
@@ -770,6 +778,14 @@
   max-width: 36rem
 }
 
+.max-w-\[85\%\] {
+  max-width: 85%
+}
+
+.max-w-screen-md {
+  max-width: 768px
+}
+
 .flex-1 {
   flex: 1 1 0%
 }
@@ -1002,6 +1018,12 @@
   --tw-space-y-reverse: 0;
   margin-top: calc(1.5rem * calc(1 - var(--tw-space-y-reverse)));
   margin-bottom: calc(1.5rem * var(--tw-space-y-reverse))
+}
+
+.space-x-6 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 0;
+  margin-right: calc(1.5rem * var(--tw-space-x-reverse));
+  margin-left: calc(1.5rem * calc(1 - var(--tw-space-x-reverse)))
 }
 
 .self-stretch {
@@ -1405,6 +1427,10 @@
   background-color: rgb(254 252 232 / var(--tw-bg-opacity))
 }
 
+.bg-white\/80 {
+  background-color: rgb(255 255 255 / 0.8)
+}
+
 .bg-opacity-50 {
   --tw-bg-opacity: 0.5
 }
@@ -1473,6 +1499,12 @@
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to)
 }
 
+.from-gray-50 {
+  --tw-gradient-from: #f9fafb var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(249 250 251 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to)
+}
+
 .via-purple-50\/20 {
   --tw-gradient-to: rgb(250 245 255 / 0)  var(--tw-gradient-to-position);
   --tw-gradient-stops: var(--tw-gradient-from), rgb(250 245 255 / 0.2) var(--tw-gradient-via-position), var(--tw-gradient-to)
@@ -1481,6 +1513,11 @@
 .via-transparent {
   --tw-gradient-to: rgb(0 0 0 / 0)  var(--tw-gradient-to-position);
   --tw-gradient-stops: var(--tw-gradient-from), transparent var(--tw-gradient-via-position), var(--tw-gradient-to)
+}
+
+.via-gray-50 {
+  --tw-gradient-to: rgb(249 250 251 / 0)  var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), #f9fafb var(--tw-gradient-via-position), var(--tw-gradient-to)
 }
 
 .to-black\/10 {
@@ -1770,6 +1807,18 @@
 
 .pt-6 {
   padding-top: 1.5rem
+}
+
+.pb-\[calc\(20px\+env\(safe-area-inset-bottom\)\)\] {
+  padding-bottom: calc(20px + env(safe-area-inset-bottom))
+}
+
+.pl-2 {
+  padding-left: 0.5rem
+}
+
+.pt-10 {
+  padding-top: 2.5rem
 }
 
 .text-left {
