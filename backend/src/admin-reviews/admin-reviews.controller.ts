@@ -48,6 +48,21 @@ export class AdminReviewsController {
     return this.adminReviewsService.rejectReview(id, dto);
   }
 
+  @Get(':reviewId/comments')
+  @RequirePermissions('review:approve')
+  @HttpCode(HttpStatus.OK)
+  async getReviewComments(
+    @Param('reviewId') reviewId: string,
+    @Query('page') page: number = 1,
+    @Query('pageSize') pageSize: number = 20,
+  ) {
+    return this.adminReviewsService.getReviewComments(
+      reviewId,
+      Number(page),
+      Number(pageSize),
+    );
+  }
+
   @Delete(':id')
   @RequirePermissions('review:delete')
   @HttpCode(HttpStatus.OK)

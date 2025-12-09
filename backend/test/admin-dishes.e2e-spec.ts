@@ -964,4 +964,109 @@ describe('AdminDishesController (e2e)', () => {
         .expect(403);
     });
   });
+
+  describe('/admin/dishes/:id/reviews (GET)', () => {
+    let testReviewId: string;
+    let testUserId: string;
+
+    beforeAll(async () => {
+      // 获取用户ID
+      const user = await prisma.user.findFirst({
+        where: { openId: 'baseline_user_openid' },
+      });
+      testUserId = user?.id || '';
+
+      // 创建用于测试的评价
+      const review = await prisma.review.create({
+        data: {
+          dishId: testDishId,
+          userId: testUserId,
+          rating: 5,
+          content: '测试菜品评价',
+          status: 'approved',
+          spicyLevel: 3,
+          sweetness: 2,
+          saltiness: 3,
+          oiliness: 2,
+        },
+      });
+      testReviewId = review.id;
+    });
+
+    afterAll(async () => {
+      if (testReviewId) {
+        await prisma.review.deleteMany({ where: { id: testReviewId } });
+      }
+    });
+
+    it('should return dish reviews for super admin', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/admin/dishes/${testDishId}/reviews`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.message).toBe('success');
+      expect(response.body.data.items).toBeInstanceOf(Array);
+      expect(response.body.data.meta).toBeDefined();
+      expect(response.body.data.meta.page).toBe(1);
+      expect(response.body.data.meta.pageSize).toBe(20);
+    });
+
+    it('should return review with user info and rating details', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/admin/dishes/${testDishId}/reviews`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      const found = response.body.data.items.find(
+        (r: any) => r.id === testReviewId,
+      );
+      expect(found).toBeDefined();
+      expect(found.user).toBeDefined();
+      expect(found.user.nickname).toBeDefined();
+      expect(found.ratingDetails).toBeDefined();
+      expect(found.ratingDetails.spicyLevel).toBe(3);
+      expect(found.commentCount).toBeDefined();
+    });
+
+    it('should support pagination', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/admin/dishes/${testDishId}/reviews?page=1&pageSize=5`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.data.meta.pageSize).toBe(5);
+      expect(response.body.data.items.length).toBeLessThanOrEqual(5);
+    });
+
+    it('should return 404 for non-existent dish', async () => {
+      await request(app.getHttpServer())
+        .get('/admin/dishes/non-existent-id/reviews')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(404);
+    });
+
+    it('should return 401 without auth token', async () => {
+      await request(app.getHttpServer())
+        .get(`/admin/dishes/${testDishId}/reviews`)
+        .expect(401);
+    });
+
+    it('should return 403 for user without admin access', async () => {
+      await request(app.getHttpServer())
+        .get(`/admin/dishes/${testDishId}/reviews`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(403);
+    });
+
+    it('should allow normal admin with dish:view permission', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/admin/dishes/${testDishId}/reviews`)
+        .set('Authorization', `Bearer ${normalAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+    });
+  });
 });

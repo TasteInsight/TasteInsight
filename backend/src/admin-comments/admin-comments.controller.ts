@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Body,
   Param,
   Query,
@@ -45,5 +46,12 @@ export class AdminCommentsController {
   @HttpCode(HttpStatus.OK)
   async rejectComment(@Param('id') id: string, @Body() dto: RejectCommentDto) {
     return this.adminCommentsService.rejectComment(id, dto);
+  }
+
+  @Delete(':id')
+  @RequirePermissions('comment:delete')
+  @HttpCode(HttpStatus.OK)
+  async deleteComment(@Param('id') id: string) {
+    return this.adminCommentsService.deleteComment(id);
   }
 }

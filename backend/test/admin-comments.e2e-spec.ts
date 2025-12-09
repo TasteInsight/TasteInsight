@@ -166,4 +166,76 @@ describe('AdminCommentsController (e2e)', () => {
       expect(updatedComment?.rejectReason).toBe('内容不当');
     });
   });
+
+  describe('/admin/comments/:id (DELETE)', () => {
+    let deleteCommentId: string;
+
+    beforeEach(async () => {
+      const comment = await prisma.comment.create({
+        data: {
+          reviewId: testReviewId,
+          userId: testUserId,
+          content: '待删除评论测试',
+          status: 'approved',
+        },
+      });
+      deleteCommentId = comment.id;
+    });
+
+    afterEach(async () => {
+      if (deleteCommentId) {
+        await prisma.comment.deleteMany({ where: { id: deleteCommentId } });
+      }
+    });
+
+    it('should delete comment (soft delete)', async () => {
+      const response = await request(app.getHttpServer())
+        .delete(`/admin/comments/${deleteCommentId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.message).toBe('删除成功');
+
+      const deletedComment = await prisma.comment.findUnique({
+        where: { id: deleteCommentId },
+      });
+      expect(deletedComment?.deletedAt).not.toBeNull();
+    });
+
+    it('should return 404 for non-existent comment', async () => {
+      const nonExistentId = '00000000-0000-0000-0000-000000000000';
+      await request(app.getHttpServer())
+        .delete(`/admin/comments/${nonExistentId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(404);
+    });
+
+    it('should return 404 for already deleted comment', async () => {
+      // 先软删除
+      await prisma.comment.update({
+        where: { id: deleteCommentId },
+        data: { deletedAt: new Date() },
+      });
+
+      // 再次尝试删除
+      await request(app.getHttpServer())
+        .delete(`/admin/comments/${deleteCommentId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(404);
+    });
+
+    it('should return 403 for normal admin without permission', async () => {
+      await request(app.getHttpServer())
+        .delete(`/admin/comments/${deleteCommentId}`)
+        .set('Authorization', `Bearer ${normalAdminToken}`)
+        .expect(403);
+    });
+
+    it('should return 401 without auth token', async () => {
+      await request(app.getHttpServer())
+        .delete(`/admin/comments/${deleteCommentId}`)
+        .expect(401);
+    });
+  });
 });

@@ -296,4 +296,104 @@ describe('AdminReviewsController (e2e)', () => {
         .expect(403);
     });
   });
+
+  describe('/admin/reviews/:reviewId/comments (GET)', () => {
+    let reviewForCommentsId: string;
+    let testCommentId: string;
+
+    beforeAll(async () => {
+      // 创建用于测试的评价
+      const review = await prisma.review.create({
+        data: {
+          dishId: testDishId,
+          userId: testUserId,
+          rating: 4,
+          content: '用于测试评论列表的评价',
+          status: 'approved',
+        },
+      });
+      reviewForCommentsId = review.id;
+
+      // 创建用于测试的评论
+      const comment = await prisma.comment.create({
+        data: {
+          reviewId: reviewForCommentsId,
+          userId: testUserId,
+          content: '测试评论内容',
+          status: 'approved',
+          floor: 1,
+        },
+      });
+      testCommentId = comment.id;
+    });
+
+    afterAll(async () => {
+      if (testCommentId) {
+        await prisma.comment.deleteMany({ where: { id: testCommentId } });
+      }
+      if (reviewForCommentsId) {
+        await prisma.review.deleteMany({ where: { id: reviewForCommentsId } });
+      }
+    });
+
+    it('should return comments for a review', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/admin/reviews/${reviewForCommentsId}/comments`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.message).toBe('success');
+      expect(response.body.data.items).toBeInstanceOf(Array);
+      expect(response.body.data.meta).toBeDefined();
+      expect(response.body.data.meta.page).toBe(1);
+    });
+
+    it('should return comment with user info', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/admin/reviews/${reviewForCommentsId}/comments`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      const found = response.body.data.items.find(
+        (c: any) => c.id === testCommentId,
+      );
+      expect(found).toBeDefined();
+      expect(found.user).toBeDefined();
+      expect(found.user.nickname).toBeDefined();
+      expect(found.content).toBe('测试评论内容');
+      expect(found.floor).toBe(1);
+    });
+
+    it('should support pagination', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/admin/reviews/${reviewForCommentsId}/comments?page=1&pageSize=5`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.data.meta.pageSize).toBe(5);
+      expect(response.body.data.items.length).toBeLessThanOrEqual(5);
+    });
+
+    it('should return 404 for non-existent review', async () => {
+      const nonExistentId = '00000000-0000-0000-0000-000000000000';
+      await request(app.getHttpServer())
+        .get(`/admin/reviews/${nonExistentId}/comments`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(404);
+    });
+
+    it('should return 401 without auth token', async () => {
+      await request(app.getHttpServer())
+        .get(`/admin/reviews/${reviewForCommentsId}/comments`)
+        .expect(401);
+    });
+
+    it('should return 403 for normal admin without permission', async () => {
+      await request(app.getHttpServer())
+        .get(`/admin/reviews/${reviewForCommentsId}/comments`)
+        .set('Authorization', `Bearer ${normalAdminToken}`)
+        .expect(403);
+    });
+  });
 });
