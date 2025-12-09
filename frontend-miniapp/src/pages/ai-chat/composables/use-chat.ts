@@ -67,6 +67,15 @@ export function useChat() {
     sendMessage(text);
   };
 
+  const loadHistorySession = async (sessionId: string) => {
+    const ok = chatStore.loadSessionFromHistory(sessionId);
+    if (ok) {
+      hasInitialized.value = true;
+      await fetchSuggestions();
+    }
+    return ok;
+  };
+
   onMounted(() => {
     init();
   });
@@ -81,6 +90,8 @@ export function useChat() {
     refreshSuggestions: fetchSuggestions,
     resetChat,
     scene,
-    setScene
+    setScene,
+    historyEntries: computed(() => chatStore.historyEntries),
+    loadHistorySession
   };
 }

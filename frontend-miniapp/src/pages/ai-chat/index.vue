@@ -12,6 +12,9 @@
          <view class="flex-1 flex items-center justify-between">
             <view class="flex items-center space-x-2">
               <text class="text-lg font-medium text-gray-800">问AI</text>
+              <view class="px-2 py-0.5 rounded-full bg-purple-50 border border-purple-100">
+                <text class="text-xs text-purple-700">{{ sceneBadge }}</text>
+              </view>
             </view>
             <view class="flex items-center justify-center flex-1">
               <view class="flex items-center space-x-3">
@@ -27,7 +30,7 @@
             <!-- 历史记录 -->
             <view 
               class="flex items-center space-x-2 bg-gray-100 active:bg-gray-200 px-5 py-2.5 rounded-full transition-all cursor-pointer"
-              @click="alertHistory"
+              @click="openHistory"
             >
                <text class="iconify text-gray-500" data-icon="mdi:history" data-width="20"></text>
                <text class="text-sm font-medium text-gray-700">历史记录</text>
@@ -113,12 +116,42 @@
             <InputBar v-model:scene="scene" @update:scene="setScene" ref="inputBarRef" :loading="aiLoading" @send="handleSend" />
          </view>
       </view>
+
+      <!-- 历史记录抽屉 -->
+      <view v-if="showHistory" class="fixed inset-0 z-50">
+        <view class="absolute inset-0 bg-black/30" @click="closeHistory"></view>
+        <view class="absolute top-0 left-0 h-full w-4/5 max-w-[320px] bg-white shadow-2xl flex flex-col">
+          <view class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <text class="text-base font-semibold text-gray-800">历史对话</text>
+            <view class="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center border border-gray-200" @click="closeHistory">
+              <text class="iconify text-gray-500" data-icon="mdi:close" data-width="18"></text>
+            </view>
+          </view>
+          <scroll-view scroll-y class="flex-1">
+            <view v-if="!historyEntries.length" class="p-4 text-sm text-gray-400">暂无历史记录</view>
+            <view 
+              v-for="item in historyEntries" 
+              :key="item.sessionId" 
+              class="px-4 py-3 border-b border-gray-100 active:bg-gray-50"
+              @click="handleLoadHistory(item.sessionId)"
+            >
+              <view class="flex items-center justify-between">
+                <text class="text-sm font-medium text-gray-800 truncate">{{ item.title || '对话' }}</text>
+                <view class="px-2 py-0.5 rounded-full bg-purple-50 border border-purple-100">
+                  <text class="text-[11px] text-purple-700">{{ sceneLabelMap[item.scene] || item.scene }}</text>
+                </view>
+              </view>
+              <text class="text-xs text-gray-400">{{ formatTime(item.updatedAt) }}</text>
+            </view>
+          </scroll-view>
+        </view>
+      </view>
     </template>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { useChat } from './composables/use-chat';
 import DishCard from './components/DishCard.vue';
 import PlanningCard from './components/PlanningCard.vue';
@@ -127,7 +160,7 @@ import WindowCard from './components/WindowCard.vue';
 import InputBar from './components/InputBar.vue';
 import SuggestionChips from './components/SuggestionChips.vue';
 import { AIChatSkeleton } from '@/components/skeleton';
-import type { ComponentMealPlanDraft } from '@/types/api';
+import type { ComponentMealPlanDraft, AIScene } from '@/types/api';
 
 const { 
   messages, 
@@ -138,7 +171,9 @@ const {
   handleSuggestionClick,
   resetChat,
   scene,
-  setScene
+  setScene,
+  historyEntries,
+  loadHistorySession
 } = useChat();
 
 const scrollAnchorId = 'chat-bottom-anchor';
@@ -146,6 +181,15 @@ const scrollViewId = ref(scrollAnchorId);
 const inputBarRef = ref<InstanceType<typeof InputBar> | null>(null);
 const systemInfo = uni.getSystemInfoSync();
 const safeAreaInsets = systemInfo.safeAreaInsets;
+const showHistory = ref(false);
+
+const sceneLabelMap: Record<AIScene, string> = {
+  general_chat: '普通对话',
+  meal_planner: '餐单规划',
+  dish_critic: '菜品点评'
+};
+
+const sceneBadge = computed(() => sceneLabelMap[scene.value] || scene.value);
 
 // 监听消息变化，自动滚动到底部
 watch(() => messages.value.length, () => {
@@ -176,6 +220,33 @@ const handleSend = (text: string) => {
 const handleSuggestionSelect = (text: string) => {
   if (inputBarRef.value) {
     inputBarRef.value.setText(text);
+  }
+};
+
+const openHistory = () => {
+  showHistory.value = true;
+};
+
+const closeHistory = () => {
+  showHistory.value = false;
+};
+
+const formatTime = (ts: number) => {
+  const d = new Date(ts);
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+const handleLoadHistory = async (sessionId: string) => {
+  const ok = await loadHistorySession(sessionId);
+  if (ok) {
+    closeHistory();
+    setTimeout(() => {
+      scrollViewId.value = '';
+      scrollViewId.value = scrollAnchorId;
+    }, 50);
+  } else {
+    uni.showToast({ title: '加载历史失败', icon: 'none' });
   }
 };
 

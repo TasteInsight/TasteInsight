@@ -750,6 +750,10 @@
   width: 140px
 }
 
+.w-4\/5 {
+  width: 80%
+}
+
 .min-w-0 {
   min-width: 0px
 }
@@ -792,6 +796,10 @@
 
 .max-w-screen-md {
   max-width: 768px
+}
+
+.max-w-\[320px\] {
+  max-width: 320px
 }
 
 .flex-1 {
@@ -1439,6 +1447,10 @@
   background-color: rgb(255 255 255 / 0.8)
 }
 
+.bg-black\/30 {
+  background-color: rgb(0 0 0 / 0.3)
+}
+
 .bg-opacity-50 {
   --tw-bg-opacity: 0.5
 }
@@ -1887,6 +1899,10 @@
 .text-xs {
   font-size: 0.75rem;
   line-height: 1rem
+}
+
+.text-\[11px\] {
+  font-size: 11px
 }
 
 .font-bold {

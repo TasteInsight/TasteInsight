@@ -26,12 +26,28 @@ export interface ChatMessage {
   content: MessageSegment[]; // 支持混排
   timestamp: number;
   isStreaming?: boolean; // 是否正在流式接收中
-}// 转换为 Pinia Setup Store
+}
+
+// 历史会话记录
+export interface ChatHistoryEntry {
+  sessionId: string;
+  scene: AIScene;
+  updatedAt: number;
+  title?: string; // 可选标题（来自首条用户消息）
+  messages: ChatMessage[];
+}
+
+// 转换为 Pinia Setup Store
 export const useChatStore = defineStore('ai-chat', () => {
   // === State (使用 ref 声明响应式状态) ===
   const messages = ref<ChatMessage[]>([]);
   const aiLoading = ref(false); // AI 正在回复
   const sessionId = ref<string>('');
+  const historyEntries = ref<ChatHistoryEntry[]>([]);
+  const HISTORY_STORAGE_KEY = 'ai-chat-history';
+
+  // 载入本地历史
+  loadHistoryFromStorage();
 
   // === Actions (声明为普通函数) ===
 
@@ -46,6 +62,61 @@ export const useChatStore = defineStore('ai-chat', () => {
     } else {
       currentScene.value = 'general_chat';
     }
+  }
+
+  // === History helpers ===
+  function persistHistory() {
+    try {
+      uni.setStorageSync(HISTORY_STORAGE_KEY, historyEntries.value);
+    } catch (e) {
+      console.error('persistHistory failed', e);
+    }
+  }
+
+  function loadHistoryFromStorage() {
+    try {
+      const cached = uni.getStorageSync(HISTORY_STORAGE_KEY);
+      if (cached && Array.isArray(cached)) {
+        historyEntries.value = cached as ChatHistoryEntry[];
+      }
+    } catch (e) {
+      console.error('loadHistoryFromStorage failed', e);
+    }
+  }
+
+  function cloneMessages(msgs: ChatMessage[]) {
+    return JSON.parse(JSON.stringify(msgs)) as ChatMessage[];
+  }
+
+  function upsertHistoryEntry(session: string, scene: AIScene, msgs: ChatMessage[]) {
+    if (!session) return;
+    const copy = cloneMessages(msgs);
+    const title = (copy.find(m => m.type === 'user')?.content?.find(seg => seg.type === 'text') as any)?.text || '对话';
+    const idx = historyEntries.value.findIndex(h => h.sessionId === session);
+    const entry: ChatHistoryEntry = {
+      sessionId: session,
+      scene,
+      updatedAt: Date.now(),
+      title,
+      messages: copy,
+    };
+    if (idx >= 0) {
+      historyEntries.value[idx] = entry;
+    } else {
+      historyEntries.value.unshift(entry);
+    }
+    // 最多保留 20 条
+    historyEntries.value = historyEntries.value.slice(0, 20);
+    persistHistory();
+  }
+
+  function loadSessionFromHistory(session: string) {
+    const target = historyEntries.value.find(h => h.sessionId === session);
+    if (!target) return false;
+    messages.value = cloneMessages(target.messages);
+    sessionId.value = target.sessionId;
+    setScene(target.scene);
+    return true;
   }
 
   /**
@@ -70,6 +141,7 @@ export const useChatStore = defineStore('ai-chat', () => {
             content: [{ type: 'text', text: res.data.welcomeMessage }],
             timestamp: Date.now(),
           });
+          upsertHistoryEntry(sessionId.value, sceneToUse, messages.value);
         }
       }
     } catch (e) {
@@ -153,6 +225,7 @@ export const useChatStore = defineStore('ai-chat', () => {
       onComplete: () => {
         aiLoading.value = false;
         aiMessage.value.isStreaming = false;
+        upsertHistoryEntry(sessionId.value, currentScene.value, messages.value);
       }
     });
   }
@@ -190,11 +263,13 @@ export const useChatStore = defineStore('ai-chat', () => {
     aiLoading,
     sessionId,
     currentScene,
+    historyEntries,
     initSession,
     setScene,
     addUserMessage,
     sendChatMessage,
     submitFeedback,
     startNewSession,
+    loadSessionFromHistory,
   };
 });
