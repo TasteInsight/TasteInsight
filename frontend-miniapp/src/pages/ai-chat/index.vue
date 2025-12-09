@@ -18,23 +18,23 @@
             </view>
             <view class="flex items-center justify-center flex-1">
               <view class="flex items-center space-x-3">
-            <!-- 新建对话 -->
-            <view 
-              class="flex items-center space-x-2 bg-gray-100 active:bg-gray-200 px-5 py-2.5 rounded-full transition-all cursor-pointer"
-              @click="handleNewChat"
-            >
-               <text class="iconify text-ts-purple" data-icon="mdi:plus-circle" data-width="20"></text>
-               <text class="text-sm font-medium text-gray-700">新建对话</text>
-            </view>
-            
-            <!-- 历史记录 -->
-            <view 
-              class="flex items-center space-x-2 bg-gray-100 active:bg-gray-200 px-5 py-2.5 rounded-full transition-all cursor-pointer"
-              @click="openHistory"
-            >
-               <text class="iconify text-gray-500" data-icon="mdi:history" data-width="20"></text>
-               <text class="text-sm font-medium text-gray-700">历史记录</text>
-            </view>
+                <!-- 新建对话 -->
+                <view 
+                  class="flex items-center space-x-2 bg-gray-100 active:bg-gray-200 px-5 py-2.5 rounded-full transition-all cursor-pointer"
+                  @click="handleNewChat"
+                >
+                   <text class="iconify text-ts-purple" data-icon="mdi:plus-circle" data-width="20"></text>
+                   <text class="text-sm font-medium text-gray-700">新建对话</text>
+                </view>
+                
+                <!-- 历史记录 -->
+                <view 
+                  class="flex items-center space-x-2 bg-gray-100 active:bg-gray-200 px-5 py-2.5 rounded-full transition-all cursor-pointer"
+                  @click="openHistory"
+                >
+                   <text class="iconify text-gray-500" data-icon="mdi:history" data-width="20"></text>
+                   <text class="text-sm font-medium text-gray-700">历史记录</text>
+                </view>
               </view>
             </view>
             <view class="flex items-center space-x-2">
@@ -261,10 +261,6 @@ const handleNewChat = () => {
       }
     }
   });
-};
-
-const alertHistory = () => {
-  uni.showToast({ title: '查看历史记录 (功能待实现)', icon: 'none' });
 };
 
 const handleApplyPlan = (plan: ComponentMealPlanDraft) => {

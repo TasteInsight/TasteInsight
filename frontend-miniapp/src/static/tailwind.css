@@ -228,6 +228,10 @@
   top: 1rem
 }
 
+.top-full {
+  top: 100%
+}
+
 .-z-10 {
   z-index: -10
 }
@@ -752,6 +756,10 @@
 
 .w-4\/5 {
   width: 80%
+}
+
+.w-\[160px\] {
+  width: 160px
 }
 
 .min-w-0 {
@@ -2504,6 +2512,11 @@
 
 .active\:bg-ts-purple\/10:active {
   background-color: rgb(102 8 116 / 0.1)
+}
+
+.active\:bg-gray-100:active {
+  --tw-bg-opacity: 1;
+  background-color: rgb(243 244 246 / var(--tw-bg-opacity))
 }
 
 .active\:text-red-500:active {
