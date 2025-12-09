@@ -44,10 +44,10 @@
         :scroll-with-animation="true"
       >
         <!-- AI 聊天消息列表 -->
-        <view v-for="message in messages" :key="message.id" :id="`msg-${message.id}`" class="mb-6">
+        <view v-for="(message, index) in messages" :key="message.id" :id="`msg-${message.id}`" class="mb-6">
           
           <!-- 消息头部时间 (可选，两条消息间隔久才显示) -->
-          <view v-if="shouldShowTime(message)" class="flex justify-center mb-4">
+          <view v-if="shouldShowTime(index, messages)" class="flex justify-center mb-4">
              <text class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">{{ formatTimeShort(message.timestamp) }}</text>
           </view>
 
@@ -393,9 +393,13 @@ const formatTimeShort = (ts: number) => {
   }
   return `${d.getMonth() + 1}/${d.getDate()}`;
 };
-const shouldShowTime = (msg: any) => {
-  // 简单逻辑：如果是第一条，或者跟上一条间隔超过5分钟
-  return true; // 简化处理，实际可以对比 index-1 的 timestamp
+const shouldShowTime = (index: number, messages: any[]) => {
+  // 显示时间戳：如果是第一条，或者跟上一条间隔超过5分钟
+  if (index === 0) return true;
+  const prev = messages[index - 1];
+  const curr = messages[index];
+  if (!prev || !curr) return true;
+  return (curr.timestamp - prev.timestamp) > 5 * 60 * 1000;
 };
 </script>
 
