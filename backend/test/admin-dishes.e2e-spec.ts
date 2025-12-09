@@ -1053,11 +1053,20 @@ describe('AdminDishesController (e2e)', () => {
         .expect(401);
     });
 
-    it('should return 403 for normal admin without permission', async () => {
+    it('should return 403 for user without admin access', async () => {
       await request(app.getHttpServer())
         .get(`/admin/dishes/${testDishId}/reviews`)
         .set('Authorization', `Bearer ${userToken}`)
         .expect(403);
+    });
+
+    it('should allow normal admin with dish:view permission', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/admin/dishes/${testDishId}/reviews`)
+        .set('Authorization', `Bearer ${normalAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
     });
   });
 });
