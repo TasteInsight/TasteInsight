@@ -194,7 +194,11 @@ export const streamAIChat = (
       const events = buffer.split('\n\n');
       
       // 最后一个元素可能是不完整的（粘包），留到下一次处理
-      buffer = events.pop() || '';
+      if (buffer.endsWith('\n\n')) {
+        buffer = '';
+      } else {
+        buffer = events.pop() || '';
+      }
 
       for (const evt of events) {
          parseSSEEventString(evt, callbacks);
