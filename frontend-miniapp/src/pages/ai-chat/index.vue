@@ -318,8 +318,12 @@ const handleLoadHistory = async (sessionId: string) => {
 };
 const handleScenePicker = (e: any) => {
   const idx = e.detail.value;
-  selectedSceneIndex.value = idx;
-  selectedScene.value = sceneOptions[idx].value as AIScene;
+  if (typeof idx === 'number' && idx >= 0 && idx < sceneOptions.length) {
+    selectedSceneIndex.value = idx;
+    selectedScene.value = sceneOptions[idx].value as AIScene;
+  } else {
+    uni.showToast({ title: '无效的选项', icon: 'none' });
+  }
 };
 
 // === 核心业务逻辑：应用规划 ===
