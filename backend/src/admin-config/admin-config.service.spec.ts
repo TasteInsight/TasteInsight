@@ -6,6 +6,7 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
+import { ConfigKeys, CONFIG_DEFINITIONS } from './config-definitions';
 
 const mockPrismaService = {
   canteen: {
@@ -20,6 +21,8 @@ const mockPrismaService = {
     findMany: jest.fn(),
     findUnique: jest.fn(),
     count: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
   },
   adminConfigItem: {
     upsert: jest.fn(),
@@ -823,6 +826,101 @@ describe('AdminConfigService', () => {
       );
 
       expect(result).toBe(false);
+    });
+
+    it('should return hardcoded default when no config and no template exists', async () => {
+      // Simulate production environment where database has no config data
+      prisma.adminConfig.findUnique.mockResolvedValue(null);
+      prisma.adminConfig.findFirst.mockResolvedValue(null);
+      prisma.adminConfigTemplate.findUnique.mockResolvedValue(null);
+
+      // Should use hardcoded default from config-definitions.ts
+      const result = await service.getBooleanConfigValue(
+        ConfigKeys.REVIEW_AUTO_APPROVE,
+        'canteen-1',
+      );
+
+      // Default for review.autoApprove is 'false' in CONFIG_DEFINITIONS
+      expect(result).toBe(false);
+    });
+
+    it('should use config definition default when value is null', async () => {
+      prisma.adminConfig.findUnique.mockResolvedValue(null);
+      prisma.adminConfig.findFirst.mockResolvedValue(null);
+      prisma.adminConfigTemplate.findUnique.mockResolvedValue(null);
+
+      // Test with known config key that has boolean default
+      const result = await service.getBooleanConfigValue(
+        ConfigKeys.COMMENT_AUTO_APPROVE,
+      );
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('getNumberConfigValue', () => {
+    it('should return number value from config', async () => {
+      const mockConfig = {
+        id: 'config-1',
+        canteenId: null,
+        items: [{ key: 'test.number', value: '42' }],
+      };
+
+      prisma.adminConfig.findUnique.mockResolvedValue(null);
+      prisma.adminConfig.findFirst.mockResolvedValue(mockConfig);
+
+      const result = await service.getNumberConfigValue('test.number');
+
+      expect(result).toBe(42);
+    });
+
+    it('should return null for non-numeric value', async () => {
+      const mockConfig = {
+        id: 'config-1',
+        canteenId: null,
+        items: [{ key: 'test.number', value: 'not-a-number' }],
+      };
+
+      prisma.adminConfig.findUnique.mockResolvedValue(null);
+      prisma.adminConfig.findFirst.mockResolvedValue(mockConfig);
+
+      const result = await service.getNumberConfigValue('test.number');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('syncConfigTemplates (via onModuleInit)', () => {
+    it('should create missing config templates on init', async () => {
+      // All templates missing
+      prisma.adminConfigTemplate.findUnique.mockResolvedValue(null);
+      prisma.adminConfigTemplate.create.mockResolvedValue({});
+
+      await service.onModuleInit();
+
+      // Should attempt to create templates for all definitions
+      expect(prisma.adminConfigTemplate.create).toHaveBeenCalledTimes(
+        CONFIG_DEFINITIONS.length,
+      );
+    });
+
+    it('should update existing templates with changed metadata', async () => {
+      const existingTemplate = {
+        id: 'template-1',
+        key: ConfigKeys.REVIEW_AUTO_APPROVE,
+        defaultValue: 'false',
+        valueType: 'boolean',
+        description: 'old description',
+        category: 'old-category',
+      };
+
+      prisma.adminConfigTemplate.findUnique.mockResolvedValue(existingTemplate);
+      prisma.adminConfigTemplate.update.mockResolvedValue({});
+
+      await service.onModuleInit();
+
+      // Should update templates with changed description/category
+      expect(prisma.adminConfigTemplate.update).toHaveBeenCalled();
     });
   });
 });
