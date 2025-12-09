@@ -170,12 +170,12 @@ export const reviewApi = {
   },
 
   /**
-   * 获取指定菜品的评论列表
+   * 获取指定评价的评论列表
    * @param reviewId 评价 ID
    * @param params 分页参数
    * @returns 评论列表
    */
-  async getDishComments(
+  async getReviewComments(
     reviewId: string,
     params: { page?: number; pageSize?: number } = {},
   ): Promise<ApiResponse<PaginationResponse<Comment>>> {
