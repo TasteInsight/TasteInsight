@@ -150,7 +150,7 @@ export const useChatStore = defineStore('ai-chat', () => {
         sessionId.value = res.data.sessionId;
         if (res.data.welcomeMessage) {
           messages.value.push({
-            id: Date.now(),
+            id: Date.now() + Math.random(),
             type: 'ai',
             content: [{ type: 'text', text: res.data.welcomeMessage }],
             timestamp: Date.now(),
