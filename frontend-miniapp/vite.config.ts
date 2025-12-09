@@ -8,6 +8,10 @@ const isApp = process.env.UNI_PLATFORM === 'app'
 const WeappTailwindcssDisabled = isH5 || isApp // H5/App 平台不需要启用
 
 export default defineConfig({
+  build: {
+    // 解决 terserOptions 警告：显式使用 terser 以匹配插件配置
+    minify: 'terser',
+  },
   plugins: [
     uni(),
     // 只有在非 H5/App 平台（即小程序平台）时，才启用这个插件
