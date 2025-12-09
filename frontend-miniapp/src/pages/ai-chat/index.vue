@@ -18,21 +18,19 @@
             <view class="flex items-center justify-center flex-1">
               <view class="flex items-center space-x-2">
                 <!-- 新建对话 -->
-                <view 
-                  class="flex items-center space-x-1.5 bg-gray-100 active:bg-gray-200 px-3 py-1.5 rounded-full"
-                  @click="handleNewChat"
+                <view
+                  class="flex flex-col items-center justify-center bg-gray-100 active:bg-gray-200 px-3 py-1.5 rounded-full"
+                  @click.stop="handleNewChat"
                 >
-                   <text class="iconify text-ts-purple" data-icon="mdi:plus-circle" data-width="16"></text>
-                   <text class="text-xs font-medium text-gray-700">新建对话</text>
+                   <text class="text-xs font-medium text-gray-700 mt-0.5">新建对话</text>
                 </view>
-                
+
                 <!-- 历史记录 -->
-                <view 
-                  class="flex items-center space-x-1.5 bg-gray-100 active:bg-gray-200 px-3 py-1.5 rounded-full"
-                  @click="openHistory"
+                <view
+                  class="flex flex-col items-center justify-center bg-gray-100 active:bg-gray-200 px-3 py-1.5 rounded-full"
+                  @click.stop="openHistory"
                 >
-                   <text class="iconify text-gray-500" data-icon="mdi:history" data-width="16"></text>
-                   <text class="text-xs font-medium text-gray-700">历史记录</text>
+                   <text class="text-xs font-medium text-gray-700 mt-0.5">历史记录</text>
                 </view>
               </view>
             </view>
@@ -146,6 +144,34 @@
           </scroll-view>
         </view>
       </view>
+
+      <!-- 新建对话弹窗 -->
+      <view v-if="showNewChatModal" class="fixed inset-0 z-[100] flex items-center justify-center" @click="cancelNewChat">
+        <view class="absolute inset-0 bg-black/40"></view>
+        <view class="relative bg-white rounded-2xl mx-6 p-6 w-[300px]" @click.stop>
+          <text class="text-lg font-semibold text-gray-800 block mb-4">新建对话</text>
+          <text class="text-sm text-gray-600 block mb-4">请选择对话场景</text>
+          
+          <picker mode="selector" :range="sceneOptions" range-key="label" :value="selectedSceneIndex" @change="handleScenePicker">
+            <view class="flex items-center justify-between border border-gray-200 rounded-lg px-4 py-3 mb-6 bg-gray-50 active:bg-gray-100">
+              <view class="flex items-center">
+                <text class="iconify text-ts-purple mr-2" data-icon="mdi:tag-outline" data-width="20"></text>
+                <text class="text-sm text-gray-700">{{ sceneOptions[selectedSceneIndex].label }}</text>
+              </view>
+              <text class="iconify text-gray-400" data-icon="mdi:chevron-down" data-width="18"></text>
+            </view>
+          </picker>
+
+          <view class="flex gap-3">
+            <view class="flex-1 bg-gray-100 active:bg-gray-200 rounded-lg py-2.5 flex items-center justify-center" @click="cancelNewChat">
+              <text class="text-sm font-medium text-gray-700">取消</text>
+            </view>
+            <view class="flex-1 bg-ts-purple active:bg-purple-600 rounded-lg py-2.5 flex items-center justify-center" @click="confirmNewChat">
+              <text class="text-sm font-medium text-white">确定</text>
+            </view>
+          </view>
+        </view>
+      </view>
     </template>
   </view>
 </template>
@@ -182,11 +208,25 @@ const inputBarRef = ref<InstanceType<typeof InputBar> | null>(null);
 const systemInfo = uni.getSystemInfoSync();
 const safeAreaInsets = systemInfo.safeAreaInsets;
 const showHistory = ref(false);
+const showNewChatModal = ref(false);
+const sceneOptions = [
+  { value: 'general_chat', label: '普通对话' },
+  { value: 'meal_planner', label: '餐单规划' },
+  { value: 'dish_critic', label: '菜品点评' }
+];
+const selectedScene = ref<AIScene>('general_chat');
+const selectedSceneIndex = ref(0);
 
 const sceneLabelMap: Record<AIScene, string> = {
   general_chat: '普通对话',
   meal_planner: '餐单规划',
   dish_critic: '菜品点评'
+};
+
+const handleScenePicker = (e: any) => {
+  const idx = e.detail.value;
+  selectedSceneIndex.value = idx;
+  selectedScene.value = sceneOptions[idx].value as AIScene;
 };
 
 const sceneBadge = computed(() => sceneLabelMap[scene.value] || scene.value);
@@ -251,15 +291,16 @@ const handleLoadHistory = async (sessionId: string) => {
 };
 
 const handleNewChat = () => {
-  uni.showModal({
-    title: '新建对话',
-    content: '确定要开始新的对话吗？当前对话记录将被清除。',
-    success: (res) => {
-        if (res.confirm) {
-        resetChat(scene.value);
-      }
-    }
-  });
+  showNewChatModal.value = true;
+};
+
+const confirmNewChat = () => {
+  resetChat(selectedScene.value);
+  showNewChatModal.value = false;
+};
+
+const cancelNewChat = () => {
+  showNewChatModal.value = false;
 };
 
 const handleApplyPlan = (plan: ComponentMealPlanDraft) => {
