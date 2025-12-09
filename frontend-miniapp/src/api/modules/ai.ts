@@ -164,10 +164,12 @@ export const streamAIChat = (
       callbacks.onError?.(err);
     },
     complete: () => {
-      // 处理最后剩余的未完成 UTF-8 字节
-      const remaining = decoder.decode();
-      if (remaining) {
-        buffer += remaining;
+      // 处理最后剩余的未完成 UTF-8 字节（仅当支持 TextDecoder 时）
+      if (decoder) {
+        const remaining = decoder.decode();
+        if (remaining) {
+          buffer += remaining;
+        }
       }
       // 处理剩余的 buffer
       if (buffer) {
@@ -183,18 +185,30 @@ export const streamAIChat = (
   });
 
   // 3. 处理分块数据
-  // TextDecoder 兼容性处理
-  // 在微信小程序基础库 2.11.0+ 支持 TextDecoder
-  // 如果在某些旧版 App 环境不支持，可能需要引入 polyfill 或使用简易实现
-  // 这里假设环境支持 TextDecoder (HBuilderX 3.x+ 内置的 App 环境通常支持)
-  const decoder = new TextDecoder('utf-8'); 
+  // 兼容性处理：如果环境支持 TextDecoder，则使用，否则使用简易 fallback
+  let decoder: TextDecoder | null = null;
+  let decodeChunk: (data: ArrayBuffer) => string;
+  if (typeof TextDecoder !== 'undefined') {
+    decoder = new TextDecoder('utf-8');
+    decodeChunk = (data: ArrayBuffer) => decoder!.decode(data, { stream: true });
+  } else {
+    // 简易 fallback: 仅适用于基本 UTF-8/ASCII，复杂字符可能有问题
+    decodeChunk = (data: ArrayBuffer) => {
+      const uint8Array = new Uint8Array(data);
+      let result = '';
+      for (let i = 0; i < uint8Array.length; i++) {
+        result += String.fromCharCode(uint8Array[i]);
+      }
+      return result;
+    };
+  }
   let buffer = '';
 
   // @ts-ignore: uni.request 返回的 requestTask 在 TS 定义中可能缺少 onChunkReceived
   requestTask.onChunkReceived((response: { data: ArrayBuffer }) => {
     if (response && response.data) {
       // 解码二进制数据
-      const chunk = decoder.decode(response.data, { stream: true });
+      const chunk = decodeChunk(response.data);
       buffer += chunk;
       
       // 按双换行符切割 SSE 事件
