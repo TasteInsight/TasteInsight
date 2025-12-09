@@ -1,5 +1,5 @@
 <template>
-  <view class="w-full h-[60px] flex items-center px-3 bg-white rounded-full shadow-lg gap-2 relative">
+  <view class="w-full max-w-md h-[60px] flex items-center px-3 bg-white rounded-full shadow-lg gap-2 relative">
     <input 
       class="flex-1 h-full text-base ml-1" 
       placeholder="请问今天吃什么？" 

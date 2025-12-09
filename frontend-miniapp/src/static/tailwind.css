@@ -108,10 +108,6 @@
   pointer-events: none
 }
 
-.pointer-events-auto {
-  pointer-events: auto
-}
-
 .visible {
   visibility: visible
 }
@@ -168,12 +164,8 @@
   bottom: 0.75rem
 }
 
-.bottom-\[160px\] {
-  bottom: 160px
-}
-
-.bottom-\[92px\] {
-  bottom: 92px
+.bottom-6 {
+  bottom: 1.5rem
 }
 
 .left-0 {
@@ -208,6 +200,10 @@
   right: 1.25rem
 }
 
+.right-6 {
+  right: 1.5rem
+}
+
 .top-0 {
   top: 0px
 }
@@ -216,28 +212,8 @@
   top: 50%
 }
 
-.top-2 {
-  top: 0.5rem
-}
-
-.top-2\.5 {
-  top: 0.625rem
-}
-
 .top-4 {
   top: 1rem
-}
-
-.top-full {
-  top: 100%
-}
-
-.bottom-6 {
-  bottom: 1.5rem
-}
-
-.right-6 {
-  right: 1.5rem
 }
 
 .-z-10 {
@@ -250,6 +226,10 @@
 
 .z-20 {
   z-index: 20
+}
+
+.z-40 {
+  z-index: 40
 }
 
 .z-50 {
@@ -268,6 +248,10 @@
   z-index: 1001
 }
 
+.z-\[100\] {
+  z-index: 100
+}
+
 .z-\[1500\] {
   z-index: 1500
 }
@@ -284,14 +268,6 @@
   z-index: 9999
 }
 
-.z-40 {
-  z-index: 40
-}
-
-.z-\[100\] {
-  z-index: 100
-}
-
 .m-0 {
   margin: 0px
 }
@@ -299,6 +275,11 @@
 .mx-4 {
   margin-left: 1rem;
   margin-right: 1rem
+}
+
+.mx-6 {
+  margin-left: 1.5rem;
+  margin-right: 1.5rem
 }
 
 .mx-auto {
@@ -316,9 +297,8 @@
   margin-bottom: 1rem
 }
 
-.mx-6 {
-  margin-left: 1.5rem;
-  margin-right: 1.5rem
+.-mr-2 {
+  margin-right: -0.5rem
 }
 
 .mb-0 {
@@ -443,10 +423,6 @@
 
 .mr-4 {
   margin-right: 1rem
-}
-
-.mr-auto {
-  margin-right: auto
 }
 
 .mt-0 {
@@ -659,10 +635,6 @@
   height: 100vh
 }
 
-.h-7 {
-  height: 1.75rem
-}
-
 .max-h-\[85vh\] {
   max-height: 85vh
 }
@@ -707,6 +679,10 @@
   width: 4rem
 }
 
+.w-2 {
+  width: 0.5rem
+}
+
 .w-20 {
   width: 5rem
 }
@@ -725,6 +701,10 @@
 
 .w-4 {
   width: 1rem
+}
+
+.w-4\/5 {
+  width: 80%
 }
 
 .w-40 {
@@ -755,6 +735,10 @@
   width: 21vw
 }
 
+.w-\[300px\] {
+  width: 300px
+}
+
 .w-\[90\%\] {
   width: 90%
 }
@@ -765,30 +749,6 @@
 
 .w-px {
   width: 1px
-}
-
-.w-\[110px\] {
-  width: 110px
-}
-
-.w-\[140px\] {
-  width: 140px
-}
-
-.w-4\/5 {
-  width: 80%
-}
-
-.w-\[160px\] {
-  width: 160px
-}
-
-.w-7 {
-  width: 1.75rem
-}
-
-.w-\[300px\] {
-  width: 300px
 }
 
 .min-w-0 {
@@ -811,6 +771,10 @@
   max-width: 42rem
 }
 
+.max-w-\[320px\] {
+  max-width: 320px
+}
+
 .max-w-\[75\%\] {
   max-width: 75%
 }
@@ -819,24 +783,28 @@
   max-width: 80%
 }
 
-.max-w-sm {
-  max-width: 24rem
-}
-
-.max-w-xl {
-  max-width: 36rem
-}
-
 .max-w-\[85\%\] {
   max-width: 85%
+}
+
+.max-w-\[90\%\] {
+  max-width: 90%
+}
+
+.max-w-md {
+  max-width: 28rem
 }
 
 .max-w-screen-md {
   max-width: 768px
 }
 
-.max-w-\[320px\] {
-  max-width: 320px
+.max-w-sm {
+  max-width: 24rem
+}
+
+.max-w-xl {
+  max-width: 36rem
 }
 
 .flex-1 {
@@ -1073,12 +1041,6 @@
   margin-bottom: calc(1.5rem * var(--tw-space-y-reverse))
 }
 
-.space-x-6 > :not([hidden]) ~ :not([hidden]) {
-  --tw-space-x-reverse: 0;
-  margin-right: calc(1.5rem * var(--tw-space-x-reverse));
-  margin-left: calc(1.5rem * calc(1 - var(--tw-space-x-reverse)))
-}
-
 .self-stretch {
   align-self: stretch
 }
@@ -1099,6 +1061,10 @@
 
 .whitespace-nowrap {
   white-space: nowrap
+}
+
+.whitespace-pre-wrap {
+  white-space: pre-wrap
 }
 
 .break-words {
@@ -1302,6 +1268,10 @@
   background-color: rgb(0 0 0 / 0.15)
 }
 
+.bg-black\/30 {
+  background-color: rgb(0 0 0 / 0.3)
+}
+
 .bg-black\/40 {
   background-color: rgb(0 0 0 / 0.4)
 }
@@ -1327,6 +1297,10 @@
 .bg-blue-500 {
   --tw-bg-opacity: 1;
   background-color: rgb(59 130 246 / var(--tw-bg-opacity))
+}
+
+.bg-current {
+  background-color: currentColor
 }
 
 .bg-gray-100 {
@@ -1471,6 +1445,10 @@
   background-color: rgb(255 255 255 / 0.7)
 }
 
+.bg-white\/80 {
+  background-color: rgb(255 255 255 / 0.8)
+}
+
 .bg-white\/90 {
   background-color: rgb(255 255 255 / 0.9)
 }
@@ -1478,14 +1456,6 @@
 .bg-yellow-50 {
   --tw-bg-opacity: 1;
   background-color: rgb(254 252 232 / var(--tw-bg-opacity))
-}
-
-.bg-white\/80 {
-  background-color: rgb(255 255 255 / 0.8)
-}
-
-.bg-black\/30 {
-  background-color: rgb(0 0 0 / 0.3)
 }
 
 .bg-opacity-50 {
@@ -1556,12 +1526,6 @@
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to)
 }
 
-.from-gray-50 {
-  --tw-gradient-from: #f9fafb var(--tw-gradient-from-position);
-  --tw-gradient-to: rgb(249 250 251 / 0) var(--tw-gradient-to-position);
-  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to)
-}
-
 .via-purple-50\/20 {
   --tw-gradient-to: rgb(250 245 255 / 0)  var(--tw-gradient-to-position);
   --tw-gradient-stops: var(--tw-gradient-from), rgb(250 245 255 / 0.2) var(--tw-gradient-via-position), var(--tw-gradient-to)
@@ -1570,11 +1534,6 @@
 .via-transparent {
   --tw-gradient-to: rgb(0 0 0 / 0)  var(--tw-gradient-to-position);
   --tw-gradient-stops: var(--tw-gradient-from), transparent var(--tw-gradient-via-position), var(--tw-gradient-to)
-}
-
-.via-gray-50 {
-  --tw-gradient-to: rgb(249 250 251 / 0)  var(--tw-gradient-to-position);
-  --tw-gradient-stops: var(--tw-gradient-from), #f9fafb var(--tw-gradient-via-position), var(--tw-gradient-to)
 }
 
 .to-black\/10 {
@@ -1810,8 +1769,8 @@
   padding-bottom: 1.5rem
 }
 
-.pb-\[160px\] {
-  padding-bottom: 160px
+.pb-\[calc\(10px\+env\(safe-area-inset-bottom\)\)\] {
+  padding-bottom: calc(10px + env(safe-area-inset-bottom))
 }
 
 .pl-1 {
@@ -1866,18 +1825,6 @@
   padding-top: 1.5rem
 }
 
-.pb-\[calc\(20px\+env\(safe-area-inset-bottom\)\)\] {
-  padding-bottom: calc(20px + env(safe-area-inset-bottom))
-}
-
-.pl-2 {
-  padding-left: 0.5rem
-}
-
-.pt-10 {
-  padding-top: 2.5rem
-}
-
 .text-left {
   text-align: left
 }
@@ -1894,6 +1841,14 @@
   text-align: justify
 }
 
+.align-top {
+  vertical-align: top
+}
+
+.align-middle {
+  vertical-align: middle
+}
+
 .text-2xl {
   font-size: 1.5rem;
   line-height: 2rem
@@ -1902,11 +1857,6 @@
 .text-4xl {
   font-size: 2.25rem;
   line-height: 2.5rem
-}
-
-.text-6xl {
-  font-size: 3.75rem;
-  line-height: 1
 }
 
 .text-\[10px\] {
@@ -1938,17 +1888,12 @@
   line-height: 1rem
 }
 
-.text-\[11px\] {
-  font-size: 11px
-}
-
-.text-3xl {
-  font-size: 1.875rem;
-  line-height: 2.25rem
-}
-
 .font-bold {
   font-weight: 700
+}
+
+.font-light {
+  font-weight: 300
 }
 
 .font-medium {
@@ -1961,10 +1906,6 @@
 
 .font-semibold {
   font-weight: 600
-}
-
-.font-light {
-  font-weight: 300
 }
 
 .uppercase {
@@ -2222,6 +2163,12 @@
 .shadow-\[0_-4px_12px_rgba\(0\2c 0\2c 0\2c 0\.08\)\] {
   --tw-shadow: 0 -4px 12px rgba(0,0,0,0.08);
   --tw-shadow-colored: 0 -4px 12px var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)
+}
+
+.shadow-\[0_-4px_6px_-1px_rgba\(0\2c 0\2c 0\2c 0\.05\)\] {
+  --tw-shadow: 0 -4px 6px -1px rgba(0,0,0,0.05);
+  --tw-shadow-colored: 0 -4px 6px -1px var(--tw-shadow-color);
   box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)
 }
 
@@ -2510,6 +2457,11 @@
   background-color: rgb(37 99 235 / var(--tw-bg-opacity))
 }
 
+.active\:bg-gray-100:active {
+  --tw-bg-opacity: 1;
+  background-color: rgb(243 244 246 / var(--tw-bg-opacity))
+}
+
 .active\:bg-gray-200:active {
   --tw-bg-opacity: 1;
   background-color: rgb(229 231 235 / var(--tw-bg-opacity))
@@ -2534,6 +2486,11 @@
   background-color: rgb(233 213 255 / var(--tw-bg-opacity))
 }
 
+.active\:bg-purple-600:active {
+  --tw-bg-opacity: 1;
+  background-color: rgb(147 51 234 / var(--tw-bg-opacity))
+}
+
 .active\:bg-purple-700:active {
   --tw-bg-opacity: 1;
   background-color: rgb(126 34 206 / var(--tw-bg-opacity))
@@ -2556,21 +2513,6 @@
 
 .active\:bg-ts-purple\/10:active {
   background-color: rgb(102 8 116 / 0.1)
-}
-
-.active\:bg-gray-100:active {
-  --tw-bg-opacity: 1;
-  background-color: rgb(243 244 246 / var(--tw-bg-opacity))
-}
-
-.active\:bg-purple-600:active {
-  --tw-bg-opacity: 1;
-  background-color: rgb(147 51 234 / var(--tw-bg-opacity))
-}
-
-.active\:bg-red-600:active {
-  --tw-bg-opacity: 1;
-  background-color: rgb(220 38 38 / var(--tw-bg-opacity))
 }
 
 .active\:text-red-500:active {
