@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CommentsService } from './comments.service';
 import { PrismaService } from '@/prisma.service';
+import { AdminConfigService } from '@/admin-config/admin-config.service';
 import {
   BadRequestException,
   ForbiddenException,
@@ -23,6 +24,9 @@ const createMockPrisma = () => {
     review: {
       findUnique: jest.fn(),
     },
+    dish: {
+      findUnique: jest.fn(),
+    },
     report: {
       create: jest.fn(),
     },
@@ -33,17 +37,24 @@ const createMockPrisma = () => {
   return mock;
 };
 
+const createMockAdminConfigService = () => ({
+  getBooleanConfigValue: jest.fn(),
+});
+
 describe('CommentsService', () => {
   let service: CommentsService;
   let prisma: ReturnType<typeof createMockPrisma>;
+  let adminConfigService: ReturnType<typeof createMockAdminConfigService>;
 
   beforeEach(async () => {
     prisma = createMockPrisma();
+    adminConfigService = createMockAdminConfigService();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CommentsService,
         { provide: PrismaService, useValue: prisma },
+        { provide: AdminConfigService, useValue: adminConfigService },
       ],
     }).compile();
 
@@ -171,9 +182,11 @@ describe('CommentsService', () => {
 
     it('creates comment and returns detail response', async () => {
       prisma.$queryRaw.mockResolvedValue([{ id: 'r1' }]);
-      prisma.review.findUnique.mockResolvedValue({ id: 'r1' });
+      prisma.review.findUnique.mockResolvedValue({ id: 'r1', dishId: 'd1' });
+      prisma.dish.findUnique.mockResolvedValue({ id: 'd1', canteenId: 'c1' });
       prisma.comment.findUnique.mockResolvedValue(null);
       prisma.comment.count.mockResolvedValue(0);
+      adminConfigService.getBooleanConfigValue.mockResolvedValue(false);
       const created = {
         id: 'c1',
         reviewId: 'r1',
@@ -228,6 +241,58 @@ describe('CommentsService', () => {
           deleted: false,
         },
       });
+    });
+
+    it('creates approved comment when auto-approve is enabled', async () => {
+      prisma.$queryRaw.mockResolvedValue([{ id: 'r1' }]);
+      prisma.review.findUnique.mockResolvedValue({ id: 'r1', dishId: 'd1' });
+      prisma.dish.findUnique.mockResolvedValue({ id: 'd1', canteenId: 'c1' });
+      prisma.comment.findUnique.mockResolvedValue(null);
+      prisma.comment.count.mockResolvedValue(0);
+      adminConfigService.getBooleanConfigValue.mockResolvedValue(true);
+      const created = {
+        id: 'c1',
+        reviewId: 'r1',
+        userId: 'user',
+        content: 'new comment',
+        createdAt: new Date('2025-01-01T00:00:00Z'),
+        deletedAt: null,
+        status: 'approved',
+        floor: 1,
+        user: { id: 'user', nickname: 'nick', avatar: 'ava' },
+        parentComment: null,
+      };
+      prisma.comment.create.mockResolvedValue(created);
+
+      const result = await service.createComment('user', dto);
+
+      expect(adminConfigService.getBooleanConfigValue).toHaveBeenCalledWith(
+        'comment.autoApprove',
+        'c1',
+      );
+      expect(prisma.comment.create).toHaveBeenCalledWith({
+        data: {
+          reviewId: 'r1',
+          userId: 'user',
+          content: 'new comment',
+          parentCommentId: undefined,
+          status: 'approved',
+          floor: 1,
+        },
+        include: {
+          user: { select: { id: true, nickname: true, avatar: true } },
+          parentComment: {
+            select: {
+              id: true,
+              userId: true,
+              user: { select: { nickname: true } },
+              deletedAt: true,
+            },
+          },
+        },
+      });
+      expect(result.code).toBe(201);
+      expect(result.data.status).toBe('approved');
     });
   });
 

@@ -5,6 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
+import { AdminConfigService } from '@/admin-config/admin-config.service';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import {
   CommentListResponseDto,
@@ -17,7 +18,10 @@ import { ReportCommentDto } from './dto/report-comment.dto';
 
 @Injectable()
 export class CommentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private adminConfigService: AdminConfigService,
+  ) {}
 
   async getComments(
     reviewId: string,
@@ -106,6 +110,19 @@ export class CommentsService {
         }
       }
 
+      // 获取菜品信息以确定食堂ID
+      const dish = await tx.dish.findUnique({
+        where: { id: review.dishId },
+      });
+
+      // 根据管理员配置决定评论初始状态
+      const autoApprove = dish
+        ? await this.adminConfigService.getBooleanConfigValue(
+            'comment.autoApprove',
+            dish.canteenId,
+          )
+        : false;
+
       const count = await tx.comment.count({
         where: { reviewId: dto.reviewId },
       });
@@ -117,7 +134,7 @@ export class CommentsService {
           userId,
           content: dto.content,
           parentCommentId: dto.parentCommentId,
-          status: 'pending',
+          status: autoApprove ? 'approved' : 'pending',
           floor,
         },
         include: {
