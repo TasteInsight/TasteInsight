@@ -1,7 +1,7 @@
 // prisma/seed.ts
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { CONFIG_DEFINITIONS } from '@/admin-config/config-definitions';
+import { CONFIG_DEFINITIONS } from '../src/admin-config/config-definitions';
 
 const prisma = new PrismaClient();
 
