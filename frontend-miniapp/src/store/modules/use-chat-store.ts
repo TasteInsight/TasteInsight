@@ -39,6 +39,10 @@ export interface ChatHistoryEntry {
 
 // 转换为 Pinia Setup Store
 export const useChatStore = defineStore('ai-chat', () => {
+  // === Constants ===
+  // 最大历史记录条数：限制存储大小，避免本地存储过大影响性能
+  const MAX_HISTORY_ENTRIES = 20;
+
   // === State (使用 ref 声明响应式状态) ===
   const messages = ref<ChatMessage[]>([]);
   const aiLoading = ref(false); // AI 正在回复
@@ -120,8 +124,8 @@ export const useChatStore = defineStore('ai-chat', () => {
     } else {
       historyEntries.value.unshift(entry);
     }
-    // 最多保留 20 条
-    historyEntries.value = historyEntries.value.slice(0, 20);
+    // 最多保留 MAX_HISTORY_ENTRIES 条
+    historyEntries.value = historyEntries.value.slice(0, MAX_HISTORY_ENTRIES);
     persistHistory();
   }
 
@@ -166,7 +170,7 @@ export const useChatStore = defineStore('ai-chat', () => {
         }
       }
     } catch (e) {
-      console.error('Failed to create AI session', e);
+      console.error('Failed to create AI session with scene:', sceneToUse, e);
     }
   }
 
