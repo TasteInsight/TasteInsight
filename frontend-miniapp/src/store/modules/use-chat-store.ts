@@ -1,31 +1,178 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue'; 
-import { getAIRecommendation, submitRecommendFeedback } from '@/api/modules/ai';
+import { ref, reactive } from 'vue'; 
+import { createAISession, streamAIChat, submitRecommendFeedback } from '@/api/modules/ai';
 import type { 
-  AIRecommendRequest, 
-  RecommendationItem, 
-  RecommendFeedbackRequest,
-  Dish 
+  ChatRequest, 
+  RecommendFeedbackRequest, 
+  ComponentDishCard,
+  ComponentMealPlanDraft,
+  ComponentCanteenCard,
+  ComponentWindowCard
 } from '@/types/api';
+import type { AIScene } from '@/types/api';
+
+// 消息段类型
+export type MessageSegment = 
+  | { type: 'text'; text: string }
+  | { type: 'card_dish'; data: ComponentDishCard[] }
+  | { type: 'card_plan'; data: ComponentMealPlanDraft[] }
+  | { type: 'card_canteen'; data: ComponentCanteenCard[] }
+  | { type: 'card_window'; data: ComponentWindowCard[] };
 
 // 内部消息类型定义
 export interface ChatMessage {
   id: number;
   type: 'user' | 'ai'; // 消息发送方
-  text: string; // 消息内容
+  content: MessageSegment[]; // 支持混排
   timestamp: number;
-  recommendations?: RecommendationItem[]; // 仅在 type: 'ai' 时可能存在
-  isFeedbackLoading?: boolean; // 反馈提交状态
+  isStreaming?: boolean; // 是否正在流式接收中
+}
+
+// 历史会话记录
+export interface ChatHistoryEntry {
+  sessionId: string;
+  scene: AIScene;
+  updatedAt: number;
+  title?: string; // 可选标题（来自首条用户消息）
+  messages: ChatMessage[];
 }
 
 // 转换为 Pinia Setup Store
 export const useChatStore = defineStore('ai-chat', () => {
+  // === Constants ===
+  // 最大历史记录条数：限制存储大小，避免本地存储过大影响性能
+  const MAX_HISTORY_ENTRIES = 20;
+
   // === State (使用 ref 声明响应式状态) ===
   const messages = ref<ChatMessage[]>([]);
   const aiLoading = ref(false); // AI 正在回复
-  const currentSessionId = ref(Date.now()); // 简单的会话ID
+  const sessionId = ref<string>('');
+  const historyEntries = ref<ChatHistoryEntry[]>([]);
+  const currentStreamAbort = ref<(() => void) | null>(null);
+  const HISTORY_STORAGE_KEY = 'ai-chat-history';
+
+  // 载入本地历史
+  loadHistoryFromStorage();
 
   // === Actions (声明为普通函数) ===
+
+  // 当前会话场景，默认为 general_chat
+  const currentScene = ref<AIScene>('general_chat');
+  const ALLOWED_SCENES = ['general_chat', 'meal_planner', 'dish_critic'] as const;
+
+  function setScene(scene?: string | AIScene) {
+    const s = (scene || 'general_chat') as string;
+    if ((ALLOWED_SCENES as readonly string[]).includes(s)) {
+      currentScene.value = s as AIScene;
+    } else {
+      currentScene.value = 'general_chat';
+    }
+  }
+
+  function abortChat() {
+    if (currentStreamAbort.value) {
+      currentStreamAbort.value();
+      currentStreamAbort.value = null;
+    }
+    aiLoading.value = false;
+    // 如果最后一条消息还在 streaming，将其标记为结束
+    const lastMsg = messages.value[messages.value.length - 1];
+    if (lastMsg && lastMsg.isStreaming) {
+      lastMsg.isStreaming = false;
+    }
+  }
+
+  // === History helpers ===
+  function persistHistory() {
+    try {
+      uni.setStorageSync(HISTORY_STORAGE_KEY, historyEntries.value);
+    } catch (e) {
+      console.error('persistHistory failed', e);
+    }
+  }
+
+  function loadHistoryFromStorage() {
+    try {
+      const cached = uni.getStorageSync(HISTORY_STORAGE_KEY);
+      if (cached && Array.isArray(cached)) {
+        historyEntries.value = cached as ChatHistoryEntry[];
+      }
+    } catch (e) {
+      console.error('loadHistoryFromStorage failed', e);
+    }
+  }
+
+  function cloneMessages(msgs: ChatMessage[]) {
+    return JSON.parse(JSON.stringify(msgs)) as ChatMessage[];
+  }
+
+  function upsertHistoryEntry(session: string, scene: AIScene, msgs: ChatMessage[]) {
+    if (!session) return;
+    const copy = cloneMessages(msgs);
+    const textSeg = copy.find(m => m.type === 'user')?.content?.find(seg => seg.type === 'text');
+    const title = textSeg && textSeg.type === 'text' ? textSeg.text : '对话';
+    const idx = historyEntries.value.findIndex(h => h.sessionId === session);
+    const entry: ChatHistoryEntry = {
+      sessionId: session,
+      scene,
+      updatedAt: Date.now(),
+      title,
+      messages: copy,
+    };
+    if (idx >= 0) {
+      historyEntries.value[idx] = entry;
+    } else {
+      historyEntries.value.unshift(entry);
+    }
+    // 最多保留 MAX_HISTORY_ENTRIES 条
+    historyEntries.value = historyEntries.value.slice(0, MAX_HISTORY_ENTRIES);
+    persistHistory();
+  }
+
+  function loadSessionFromHistory(session: string) {
+    const target = historyEntries.value.find(h => h.sessionId === session);
+    if (!target) return false;
+    messages.value = cloneMessages(target.messages);
+    sessionId.value = target.sessionId;
+    setScene(target.scene);
+    return true;
+  }
+
+  /**
+   * 初始化会话
+   * @param scene 可选场景
+   * @param force 是否强制重新初始化，即使 sessionId 已存在
+   */
+  async function initSession(scene?: string | AIScene, force = false) {
+    if (sessionId.value && !force) return;
+    // 如果强制重新初始化，清除现有 sessionId
+    if (force) {
+      sessionId.value = '';
+    }
+    // validate scene param, prefer passed param if valid
+    let sceneToUse = currentScene.value;
+    if (scene && (ALLOWED_SCENES as readonly string[]).includes(String(scene))) {
+      sceneToUse = scene as AIScene;
+    }
+    currentScene.value = sceneToUse;
+    try {
+      const res = await createAISession({ scene: sceneToUse });
+      if (res.code === 200 && res.data) {
+        sessionId.value = res.data.sessionId;
+        if (res.data.welcomeMessage) {
+          messages.value.push({
+            id: Date.now() + Math.random(),
+            type: 'ai',
+            content: [{ type: 'text', text: res.data.welcomeMessage }],
+            timestamp: Date.now(),
+          });
+          upsertHistoryEntry(sessionId.value, sceneToUse, messages.value);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to create AI session with scene:', sceneToUse, e);
+    }
+  }
 
   /**
    * 添加用户消息到聊天记录
@@ -33,9 +180,9 @@ export const useChatStore = defineStore('ai-chat', () => {
    */
   function addUserMessage(text: string) {
     const newMessage: ChatMessage = {
-      id: Date.now() + Math.random(),
+      id: Date.now(),
       type: 'user',
-      text: text,
+      content: [{ type: 'text', text }],
       timestamp: Date.now(),
     };
     messages.value.push(newMessage); // 访问 ref 值需要 .value
@@ -43,65 +190,97 @@ export const useChatStore = defineStore('ai-chat', () => {
   }
 
   /**
-   * 请求 AI 推荐并添加 AI 回复
-   * @param requestData AI请求数据，例如用户输入、偏好
+   * 发送聊天消息并处理流式响应
    */
-  async function fetchAIResponse(userText: string, requestData: AIRecommendRequest = {}) {
-    aiLoading.value = true; // 访问 ref 值需要 .value
+  async function sendChatMessage(text: string) {
+    // 0. 中断上一次可能的请求
+    abortChat();
+
+    // 1. 确保会话已初始化
+    if (!sessionId.value) await initSession();
     
-    // 1. 模拟 AI 思考中的消息
-    const loadingMessage: ChatMessage = {
-      id: Date.now() + Math.random(),
+    // 2. 【核心修复】先在 UI 上显示用户的消息
+    addUserMessage(text);
+    
+    aiLoading.value = true;
+    
+    // 3. 创建一个空的 AI 消息占位符
+    const aiMessageId = Date.now() + 1;
+    const aiMessage = reactive<ChatMessage>({
+      id: aiMessageId,
       type: 'ai',
-      text: 'AI 正在思考中...',
+      content: [{ type: 'text', text: '' }], // 默认先给一个空文本块，防止渲染报错
       timestamp: Date.now(),
+      isStreaming: true,
+    });
+    messages.value.push(aiMessage);
+
+    const payload: ChatRequest = {
+      message: text,
+      clientContext: {
+        localTime: new Date().toLocaleTimeString(),
+      }
     };
-    messages.value.push(loadingMessage); // 访问 ref 值需要 .value
 
-    try {
-      const res = await getAIRecommendation(requestData);
+    let currentEvent = '';
 
-      // 2. 移除加载消息
-      const loadingIndex = messages.value.findIndex(m => m.id === loadingMessage.id);
-      if (loadingIndex !== -1) {
-          messages.value.splice(loadingIndex, 1);
+    const streamControl = streamAIChat(sessionId.value, payload, {
+      onEvent: (evt) => {
+        currentEvent = evt;
+      },
+      // 处理文本流
+      onMessage: (chunk) => {
+        // 只有当事件明确是 text_chunk 时才拼接文本
+        if (currentEvent === 'text_chunk') {
+             const contentArr = aiMessage.content;
+             const lastSegment = contentArr[contentArr.length - 1];
+             
+             // 如果最后一个块是文本，则追加
+             if (lastSegment && lastSegment.type === 'text') {
+               lastSegment.text += chunk;
+             } else {
+               // 否则（比如上一个是卡片），新建一个文本块
+               contentArr.push({ type: 'text', text: chunk });
+             }
+        }
+      },
+      // 处理组件流 (new_block)
+      onJSON: (json) => {
+        if (currentEvent === 'new_block') {
+             // 简单的类型断言，实际项目中可以加 Schema 校验
+             const segment = json as MessageSegment;
+             if (segment && segment.type && segment.type !== 'text') {
+               aiMessage.content.push(segment);
+             }
+        }
+      },
+      onError: (err) => {
+        console.error('Stream error', err);
+        const contentArr = aiMessage.content;
+        const lastSegment = contentArr[contentArr.length - 1];
+        
+        const errorText = `\n[网络请求出错: ${err?.message || '请检查网络'}]`;
+        if (lastSegment && lastSegment.type === 'text') {
+            lastSegment.text += errorText;
+        } else {
+            contentArr.push({ type: 'text', text: errorText });
+        }
+        
+        aiLoading.value = false;
+        aiMessage.isStreaming = false;
+        currentStreamAbort.value = null;
+      },
+      onComplete: () => {
+        aiLoading.value = false;
+        aiMessage.isStreaming = false;
+        upsertHistoryEntry(sessionId.value, currentScene.value, messages.value);
+        currentStreamAbort.value = null;
       }
+    });
 
-      if (res.code === 200 && res.data) {
-        // 3. 构建最终回复消息
-        const recommendations = res.data.recommendations || [];
-        const aiResponse: ChatMessage = {
-          id: Date.now() + Math.random(),
-          type: 'ai',
-          text: recommendations.length > 0 ? '根据您的偏好，为您推荐以下菜品：' : '抱歉，当前没有合适的推荐。',
-          timestamp: Date.now(),
-          recommendations: recommendations,
-        };
-        messages.value.push(aiResponse);
-      } else {
-        throw new Error(res.message || 'AI推荐服务异常');
-      }
-    } catch (error) {
-      // 4. 处理错误，更新加载消息或添加错误消息
-      const loadingIndex = messages.value.findIndex(m => m.id === loadingMessage.id);
-      if (loadingIndex !== -1) {
-          // 替换加载消息为错误提示
-          // 注意: 原Options Store中的 `loading: false` 属性在 ChatMessage 接口中不存在，已移除。
-          messages.value.splice(loadingIndex, 1, {
-              ...loadingMessage,
-              text: 'AI服务请求失败，请稍后再试。',
-          } as ChatMessage);
-      } else {
-          messages.value.push({
-              id: Date.now() + Math.random(),
-              type: 'ai',
-              text: 'AI服务请求失败，请稍后再试。',
-              timestamp: Date.now(),
-          });
-      }
-      console.error("AI Recommendation Error:", error);
-    } finally {
-      aiLoading.value = false;
+    // 保存中断控制器
+    if (streamControl && streamControl.close) {
+      currentStreamAbort.value = streamControl.close;
     }
   }
 
@@ -123,31 +302,30 @@ export const useChatStore = defineStore('ai-chat', () => {
   }
 
   /**
-   * 启动新的会话
+   * 启动新的会话 (重置)
    */
-  function startNewSession() {
+  function startNewSession(scene?: string) {
+    abortChat(); // 停止当前可能的生成
     messages.value = [];
-    currentSessionId.value = Date.now();
-    // 可以选择性地添加一个欢迎消息
-    messages.value.push({
-        id: Date.now(),
-        type: 'ai',
-        text: '您好！我是您的智能美食助手，请问今天想吃什么呢？',
-        timestamp: Date.now(),
-    });
+    sessionId.value = '';
+    // 如果传入了场景则先设置
+    if (scene) setScene(scene);
+    initSession(scene);
   }
   
-  // Setup Store 必须返回所有 state, getters 和 actions
   return {
-    // State
     messages,
     aiLoading,
-    currentSessionId,
-
-    // Actions
+    sessionId,
+    currentScene,
+    historyEntries,
+    initSession,
+    setScene,
     addUserMessage,
-    fetchAIResponse,
+    sendChatMessage,
     submitFeedback,
     startNewSession,
+    loadSessionFromHistory,
+    abortChat,
   };
 });
