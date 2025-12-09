@@ -642,6 +642,10 @@
   height: 100vh
 }
 
+.h-7 {
+  height: 1.75rem
+}
+
 .max-h-\[85vh\] {
   max-height: 85vh
 }
@@ -760,6 +764,10 @@
 
 .w-\[160px\] {
   width: 160px
+}
+
+.w-7 {
+  width: 1.75rem
 }
 
 .min-w-0 {

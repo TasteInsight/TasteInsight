@@ -6,40 +6,39 @@
     <template v-else>
       <!-- 顶部导航栏 -->
       <view 
-        class="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex justify-between items-center shadow-sm transition-all duration-300"
+        class="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 px-3 py-2 flex justify-between items-center shadow-sm"
         :style="{ paddingTop: (safeAreaInsets?.top || 0) + 'px' }"
       >
          <view class="flex-1 flex items-center justify-between">
-            <view class="flex items-center space-x-2">
-              <text class="text-lg font-medium text-gray-800">问AI</text>
-              <view class="px-2 py-0.5 rounded-full bg-purple-50 border border-purple-100">
-                <text class="text-xs text-purple-700">{{ sceneBadge }}</text>
+            <view class="flex items-center">
+              <view class="px-2.5 py-1 rounded-full bg-purple-50 border border-purple-100">
+                <text class="text-xs font-medium text-purple-700">{{ sceneBadge }}</text>
               </view>
             </view>
             <view class="flex items-center justify-center flex-1">
-              <view class="flex items-center space-x-3">
+              <view class="flex items-center space-x-2">
                 <!-- 新建对话 -->
                 <view 
-                  class="flex items-center space-x-2 bg-gray-100 active:bg-gray-200 px-5 py-2.5 rounded-full transition-all cursor-pointer"
+                  class="flex items-center space-x-1.5 bg-gray-100 active:bg-gray-200 px-3 py-1.5 rounded-full"
                   @click="handleNewChat"
                 >
-                   <text class="iconify text-ts-purple" data-icon="mdi:plus-circle" data-width="20"></text>
-                   <text class="text-sm font-medium text-gray-700">新建对话</text>
+                   <text class="iconify text-ts-purple" data-icon="mdi:plus-circle" data-width="16"></text>
+                   <text class="text-xs font-medium text-gray-700">新建对话</text>
                 </view>
                 
                 <!-- 历史记录 -->
                 <view 
-                  class="flex items-center space-x-2 bg-gray-100 active:bg-gray-200 px-5 py-2.5 rounded-full transition-all cursor-pointer"
+                  class="flex items-center space-x-1.5 bg-gray-100 active:bg-gray-200 px-3 py-1.5 rounded-full"
                   @click="openHistory"
                 >
-                   <text class="iconify text-gray-500" data-icon="mdi:history" data-width="20"></text>
-                   <text class="text-sm font-medium text-gray-700">历史记录</text>
+                   <text class="iconify text-gray-500" data-icon="mdi:history" data-width="16"></text>
+                   <text class="text-xs font-medium text-gray-700">历史记录</text>
                 </view>
               </view>
             </view>
-            <view class="flex items-center space-x-2">
-              <view class="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100">
-                <text class="iconify text-gray-500" data-icon="mdi:dots-vertical" data-width="18"></text>
+            <view class="flex items-center">
+              <view class="w-7 h-7 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100">
+                <text class="iconify text-gray-500" data-icon="mdi:dots-vertical" data-width="16"></text>
               </view>
             </view>
          </view>
@@ -49,7 +48,7 @@
       <scroll-view 
         scroll-y 
         class="flex-1 px-4" 
-        :style="{ paddingTop: ((safeAreaInsets?.top || 0) + 70) + 'px', paddingBottom: '180px' }"
+        :style="{ paddingTop: ((safeAreaInsets?.top || 0) + 56) + 'px', paddingBottom: '180px' }"
         :scroll-into-view="scrollViewId"
         @scroll="handleScroll"
         :scroll-with-animation="true"
