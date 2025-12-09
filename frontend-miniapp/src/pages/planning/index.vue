@@ -1,5 +1,5 @@
 <template>
-  <view class="min-h-screen bg-gray-50 pb-safe">
+  <view class="min-h-screen bg-gray-50 pb-safe relative">
     <!-- 骨架屏：首次加载时显示 -->
     <PlanningSkeleton v-if="isInitialLoading" />
 
@@ -21,12 +21,12 @@
     </view>
 
      <!-- 页面头部 -->
-    <view v-if="activeTab === 'current'" class="bg-white px-5 py-4 flex justify-end items-center border-b border-gray-100">
+    <!-- <view v-if="activeTab === 'current'" class="bg-white px-5 py-4 flex justify-end items-center border-b border-gray-100">
       <view @tap="createNewPlan" class="flex items-center gap-1.5 bg-ts-purple py-2 px-5 rounded-lg border border-ts-purple">
         <text class="text-gray-100 text-xl">+</text>
         <text class="text-gray-100">新建规划</text>
       </view>
-    </view>
+    </view> -->
 
     
     <!-- 错误状态 -->
@@ -39,7 +39,6 @@
 
     <!-- 空状态 -->
     <view v-else-if="displayPlans.length === 0" class="flex flex-col items-center justify-center py-20 px-5">
-      <text class="text-6xl text-gray-300 mb-4">📅</text>
       <text class="text-gray-400 text-lg mb-5">{{ activeTab === 'current' ? '暂无当前规划' : '暂无历史规划' }}</text>
       <view v-if="activeTab === 'current'" @tap="createNewPlan" class="py-2 px-6 bg-ts-purple rounded-lg border border-ts-purple">
         <text class="text-gray-100">创建第一个规划</text>
@@ -88,6 +87,16 @@
       @close="closeCreateDialog"
       @submit="submitCreate"
     />
+
+    <!-- 浮动新建按钮 -->
+    <view v-if="activeTab === 'current'" class="fixed bottom-6 right-6" style="z-index: 9999;">
+       <view
+        @tap="createNewPlan"
+        class="w-14 h-14 bg-ts-purple rounded-full flex items-center justify-center shadow-xl active:bg-purple-600 transition-all duration-200 transform active:scale-95"
+      >
+        <text class="text-white text-2xl font-light">+</text>
+      </view>
+    </view>
     </template>
   </view>
 </template>
