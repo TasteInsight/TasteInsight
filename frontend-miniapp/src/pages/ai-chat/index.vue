@@ -195,7 +195,6 @@
 <script setup lang="ts">
 import { ref, watch, computed, nextTick } from 'vue';
 import { useChat } from './composables/use-chat';
-// 确保引入了 request，用于直接发送应用规划的请求
 import request from '@/utils/request'; 
 import DishCard from './components/DishCard.vue';
 import PlanningCard from './components/PlanningCard.vue';

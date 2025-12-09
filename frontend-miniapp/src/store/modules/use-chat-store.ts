@@ -44,6 +44,7 @@ export const useChatStore = defineStore('ai-chat', () => {
   const aiLoading = ref(false); // AI 正在回复
   const sessionId = ref<string>('');
   const historyEntries = ref<ChatHistoryEntry[]>([]);
+  const currentStreamAbort = ref<(() => void) | null>(null);
   const HISTORY_STORAGE_KEY = 'ai-chat-history';
 
   // 载入本地历史
@@ -61,6 +62,19 @@ export const useChatStore = defineStore('ai-chat', () => {
       currentScene.value = s as AIScene;
     } else {
       currentScene.value = 'general_chat';
+    }
+  }
+
+  function abortChat() {
+    if (currentStreamAbort.value) {
+      currentStreamAbort.value();
+      currentStreamAbort.value = null;
+    }
+    aiLoading.value = false;
+    // 如果最后一条消息还在 streaming，将其标记为结束
+    const lastMsg = messages.value[messages.value.length - 1];
+    if (lastMsg && lastMsg.isStreaming) {
+      lastMsg.isStreaming = false;
     }
   }
 
@@ -168,6 +182,9 @@ export const useChatStore = defineStore('ai-chat', () => {
    * 发送聊天消息并处理流式响应
    */
   async function sendChatMessage(text: string) {
+    // 0. 中断上一次可能的请求
+    abortChat();
+
     // 1. 确保会话已初始化
     if (!sessionId.value) await initSession();
     
@@ -196,7 +213,7 @@ export const useChatStore = defineStore('ai-chat', () => {
 
     let currentEvent = '';
 
-    streamAIChat(sessionId.value, payload, {
+    const streamControl = streamAIChat(sessionId.value, payload, {
       onEvent: (evt) => {
         currentEvent = evt;
       },
@@ -240,13 +257,20 @@ export const useChatStore = defineStore('ai-chat', () => {
         
         aiLoading.value = false;
         aiMessage.value.isStreaming = false;
+        currentStreamAbort.value = null;
       },
       onComplete: () => {
         aiLoading.value = false;
         aiMessage.value.isStreaming = false;
         upsertHistoryEntry(sessionId.value, currentScene.value, messages.value);
+        currentStreamAbort.value = null;
       }
     });
+
+    // 保存中断控制器
+    if (streamControl && streamControl.close) {
+      currentStreamAbort.value = streamControl.close;
+    }
   }
 
   /**
@@ -270,6 +294,7 @@ export const useChatStore = defineStore('ai-chat', () => {
    * 启动新的会话 (重置)
    */
   function startNewSession(scene?: string) {
+    abortChat(); // 停止当前可能的生成
     messages.value = [];
     sessionId.value = '';
     // 如果传入了场景则先设置
@@ -290,5 +315,6 @@ export const useChatStore = defineStore('ai-chat', () => {
     submitFeedback,
     startNewSession,
     loadSessionFromHistory,
+    abortChat,
   };
 });
