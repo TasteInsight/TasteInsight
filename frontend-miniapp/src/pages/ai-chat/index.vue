@@ -9,7 +9,12 @@
         class="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex justify-between items-center shadow-sm transition-all duration-300"
         :style="{ paddingTop: (safeAreaInsets?.top || 0) + 'px' }"
       >
-         <view class="flex-1 flex justify-center space-x-6">
+         <view class="flex-1 flex items-center justify-between">
+            <view class="flex items-center space-x-2">
+              <text class="text-lg font-medium text-gray-800">问AI</text>
+            </view>
+            <view class="flex items-center justify-center flex-1">
+              <view class="flex items-center space-x-3">
             <!-- 新建对话 -->
             <view 
               class="flex items-center space-x-2 bg-gray-100 active:bg-gray-200 px-5 py-2.5 rounded-full transition-all cursor-pointer"
@@ -26,6 +31,12 @@
             >
                <text class="iconify text-gray-500" data-icon="mdi:history" data-width="20"></text>
                <text class="text-sm font-medium text-gray-700">历史记录</text>
+            </view>
+            </view>
+            <view class="flex items-center space-x-2">
+              <view class="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100">
+                <text class="iconify text-gray-500" data-icon="mdi:dots-vertical" data-width="18"></text>
+              </view>
             </view>
          </view>
       </view>
@@ -99,7 +110,7 @@
             </view>
 
             <!-- 输入框 -->
-            <InputBar ref="inputBarRef" :loading="aiLoading" @send="handleSend" />
+            <InputBar v-model:scene="scene" @update:scene="setScene" ref="inputBarRef" :loading="aiLoading" @send="handleSend" />
          </view>
       </view>
     </template>
@@ -125,7 +136,9 @@ const {
   isInitialLoading, 
   sendMessage,
   handleSuggestionClick,
-  resetChat
+  resetChat,
+  scene,
+  setScene
 } = useChat();
 
 const scrollAnchorId = 'chat-bottom-anchor';
@@ -171,8 +184,8 @@ const handleNewChat = () => {
     title: '新建对话',
     content: '确定要开始新的对话吗？当前对话记录将被清除。',
     success: (res) => {
-      if (res.confirm) {
-        resetChat();
+        if (res.confirm) {
+        resetChat(scene.value);
       }
     }
   });

@@ -9,6 +9,7 @@ import type {
   ComponentCanteenCard,
   ComponentWindowCard
 } from '@/types/api';
+import type { AIScene } from '@/types/api';
 
 // 消息段类型
 export type MessageSegment = 
@@ -34,13 +35,32 @@ export const useChatStore = defineStore('ai-chat', () => {
 
   // === Actions (声明为普通函数) ===
 
+  // 当前会话场景，默认为 general_chat
+  const currentScene = ref<AIScene>('general_chat');
+  const ALLOWED_SCENES = ['general_chat', 'meal_planner', 'dish_critic'] as const;
+
+  function setScene(scene?: string | AIScene) {
+    const s = (scene || 'general_chat') as string;
+    if ((ALLOWED_SCENES as readonly string[]).includes(s)) {
+      currentScene.value = s as AIScene;
+    } else {
+      currentScene.value = 'general_chat';
+    }
+  }
+
   /**
    * 初始化会话
    */
-  async function initSession() {
+  async function initSession(scene?: string | AIScene) {
     if (sessionId.value) return;
+    // validate scene param, prefer passed param if valid
+    let sceneToUse = currentScene.value;
+    if (scene && (ALLOWED_SCENES as readonly string[]).includes(String(scene))) {
+      sceneToUse = scene as AIScene;
+    }
+    currentScene.value = sceneToUse;
     try {
-      const res = await createAISession({ scene: 'general_chat' });
+      const res = await createAISession({ scene: sceneToUse });
       if (res.code === 200 && res.data) {
         sessionId.value = res.data.sessionId;
         if (res.data.welcomeMessage) {
@@ -157,17 +177,21 @@ export const useChatStore = defineStore('ai-chat', () => {
   /**
    * 启动新的会话 (重置)
    */
-  function startNewSession() {
+  function startNewSession(scene?: string) {
     messages.value = [];
     sessionId.value = '';
-    initSession();
+    // 如果传入了场景则先设置
+    if (scene) setScene(scene);
+    initSession(scene);
   }
   
   return {
     messages,
     aiLoading,
     sessionId,
+    currentScene,
     initSession,
+    setScene,
     addUserMessage,
     sendChatMessage,
     submitFeedback,

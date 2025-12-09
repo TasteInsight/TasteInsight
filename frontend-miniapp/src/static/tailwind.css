@@ -742,6 +742,14 @@
   width: 1px
 }
 
+.w-\[110px\] {
+  width: 110px
+}
+
+.w-\[140px\] {
+  width: 140px
+}
+
 .min-w-0 {
   min-width: 0px
 }

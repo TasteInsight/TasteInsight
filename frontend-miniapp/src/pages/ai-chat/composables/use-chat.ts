@@ -1,6 +1,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { useChatStore } from '@/store/modules/use-chat-store';
 import { getAISuggestions } from '@/api/modules/ai';
+import type { AIScene } from '@/types/api';
 
 export function useChat() {
   const chatStore = useChatStore();
@@ -25,18 +26,29 @@ export function useChat() {
     }
   };
 
-  const init = async () => {
+  const scene = ref<AIScene>(chatStore.currentScene || 'general_chat');
+
+  const setScene = (s: string) => {
+    // forward to store for validation
+    chatStore.setScene(s);
+    scene.value = chatStore.currentScene || 'general_chat';
+  };
+
+  const init = async (s?: string) => {
+    // 如果传入 scene 则更新
+    if (s) setScene(s);
     if (chatStore.messages.length === 0) {
-      await chatStore.initSession();
+      await chatStore.initSession(scene.value);
     }
     await fetchSuggestions();
     hasInitialized.value = true;
   };
 
-  const resetChat = async () => {
+  const resetChat = async (s?: string) => {
     chatStore.messages = [];
     chatStore.sessionId = '';
-    await init();
+    await chatStore.startNewSession(s || scene.value);
+    await init(s || scene.value);
   };
 
   const sendMessage = async (text: string) => {
@@ -67,6 +79,8 @@ export function useChat() {
     sendMessage,
     handleSuggestionClick,
     refreshSuggestions: fetchSuggestions,
-    resetChat
+    resetChat,
+    scene,
+    setScene
   };
 }
