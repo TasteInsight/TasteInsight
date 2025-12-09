@@ -13,6 +13,7 @@ export function useRecommendDishes() {
     try {
       const requestParams: GetDishesRequest = {
         filter: {},
+        isSuggestions: true, // 开启推荐模式
         search: { keyword: '' },
         sort: {
           field: 'averageRating',

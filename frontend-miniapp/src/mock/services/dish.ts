@@ -31,7 +31,7 @@ export const mockGetDishes = async (params: GetDishesRequest): Promise<Paginated
   let dishes = createMockDishes();
 
   // 1. 智能推荐处理
-  if (params.filter?.isSuggestion) {
+  if (params.isSuggestion) {
     console.log('🍽️ [Mock] 启用智能推荐模式');
     const user = createMockUser();
     

@@ -84,6 +84,7 @@ export function useSearch() {
         // 搜索菜品（后端支持 keyword 搜索）
         getDishes({
           filter: {},
+          isSuggestion: false,
           search: {
             keyword: searchTerm,
             fields: ['name'],
