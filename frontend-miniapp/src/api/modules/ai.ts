@@ -142,6 +142,11 @@ export const streamAIChat = (
   }
 
   // 2. 发起分块请求
+  // 注意：对于 enableChunked: true 的流式请求，success/fail/complete 回调的行为可能不一致
+  // - success: 可能在连接建立时触发，不代表数据传输完成
+  // - fail: 可能在连接失败时触发，但流式传输中的错误可能不触发此回调
+  // - complete: 在连接关闭时触发，可用于清理资源
+  // 主要错误处理应通过 onChunkReceived 中的异常或超时机制实现
   const requestTask = uni.request({
     url,
     method: 'POST',
@@ -150,10 +155,12 @@ export const streamAIChat = (
     enableChunked: true, // 【核心】：开启分块传输
     timeout: 60000,      // 建议设置长超时（如60秒），防止AI思考时间过长导致断开
     success: (res) => {
-      // 这里的 success 是指整个请求连接结束（或握手成功），并不代表数据接收完毕
-      // 通常在流结束后触发，视平台实现而定
+      // 对于流式请求，此回调可能仅表示连接握手成功，不代表数据接收完毕
+      // 不在这里处理业务逻辑
     },
     fail: (err) => {
+      // 注意：流式传输中的网络错误可能不会触发此回调
+      // 主要依赖 complete 回调和外部超时机制处理错误
       callbacks.onError?.(err);
     },
     complete: () => {
