@@ -89,8 +89,8 @@
     />
 
     <!-- 浮动新建按钮 -->
-    <view v-if="activeTab === 'current'" class="fixed bottom-6 right-6" style="z-index: 9999;">
-       <view
+    <view v-if="activeTab === 'current' && !showCreateDialog && !showEditDialog && !showDetailDialog" class="fixed bottom-6 right-6" style="z-index: 9999;">
+      <view
         @tap="createNewPlan"
         class="w-14 h-14 bg-ts-purple rounded-full flex items-center justify-center shadow-xl active:bg-purple-600 transition-all duration-200 transform active:scale-95"
       >
