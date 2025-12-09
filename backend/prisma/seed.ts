@@ -1,6 +1,7 @@
 // prisma/seed.ts
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { CONFIG_DEFINITIONS } from '@/admin-config/config-definitions';
 
 const prisma = new PrismaClient();
 
@@ -801,23 +802,15 @@ async function main() {
   await prisma.adminConfig.deleteMany({});
   await prisma.adminConfigTemplate.deleteMany({});
   
+  // 使用 config-definitions.ts 中定义的配置模板
   await prisma.adminConfigTemplate.createMany({
-    data: [
-      {
-        key: 'review.autoApprove',
-        defaultValue: 'false',
-        valueType: 'boolean',
-        description: '是否自动通过评价',
-        category: 'review',
-      },
-      {
-        key: 'comment.autoApprove',
-        defaultValue: 'false',
-        valueType: 'boolean',
-        description: '是否自动通过评论',
-        category: 'comment',
-      },
-    ],
+    data: CONFIG_DEFINITIONS.map((def) => ({
+      key: def.key,
+      defaultValue: def.defaultValue,
+      valueType: def.valueType,
+      description: def.description,
+      category: def.category,
+    })),
     skipDuplicates: true, // 避免重复插入
   });
   
