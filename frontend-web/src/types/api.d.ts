@@ -227,7 +227,8 @@ export interface BatchParsedDish {
   tempId: string          // 前端生成的临时ID，用于列表渲染
   name: string            // 菜品名
   description?: string    // 菜品描述
-  price: number           // 价格
+  price: number           // 价格（数字部分）
+  priceUnit?: string      // 价格单位（如"元"、"元/份"、"元/两"、"元/斤"）
   tags?: string[]         // tags
   
   // 位置信息
