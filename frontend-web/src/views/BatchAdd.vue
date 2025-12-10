@@ -89,6 +89,7 @@
                       <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">菜品名</th>
                       <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">菜品子项</th>
                       <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">价格</th>
+                      <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">价格单位</th>
                       <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">供应时间</th>
                       <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">供应时段</th>
                       <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">菜品描述</th>
@@ -119,6 +120,7 @@
                         <span v-else class="text-gray-400">-</span>
                       </td>
                       <td class="py-3 px-4 text-sm">¥{{ item.price || '-' }}</td>
+                      <td class="py-3 px-4 text-sm">{{ item.priceUnit || '元' }}</td>
                       <td class="py-3 px-4 text-sm">{{ item.supplyTime || '-' }}</td>
                       <td class="py-3 px-4 text-sm">
                         <span v-if="item.supplyPeriod && item.supplyPeriod.length > 0">
@@ -177,7 +179,7 @@
                 >
                   <span class="iconify mr-1" data-icon="carbon:download"></span>
                   导出错误列表
-                </button>
+                 </button>
               </div>
             </div>
             
@@ -255,6 +257,44 @@ const parseError = ref<string | null>(null)
       parsedData.value.filter((item: BatchParsedDish) => item.status === 'invalid').length
     )
 
+    // 价格解析函数
+    const parsePrice = (priceStr: string): { price: number; priceUnit: string } => {
+      if (!priceStr || typeof priceStr !== 'string') {
+        return { price: 0, priceUnit: '元' }
+      }
+      
+      // 移除所有空格
+      const trimmed = priceStr.trim()
+      
+      // 使用正则表达式匹配价格模式
+      // 支持格式：数字 + 元 + 可选的/单位
+      // 例如：12元、12元/份、12元/两、12元/斤
+      const priceRegex = /^(\d+(?:\.\d+)?)元(?:\/(.+))?$/
+      const match = trimmed.match(priceRegex)
+      
+      if (match) {
+        const price = parseFloat(match[1])
+        const unit = match[2] || '份' // 如果没有指定单位，默认是"份"
+        return { 
+          price: isNaN(price) ? 0 : price, 
+          priceUnit: `元/${unit}` 
+        }
+      }
+      
+      // 如果不匹配预期格式，尝试提取纯数字
+      const numberMatch = trimmed.match(/(\d+(?:\.\d+)?)/)
+      if (numberMatch) {
+        const price = parseFloat(numberMatch[1])
+        return { 
+          price: isNaN(price) ? 0 : price, 
+          priceUnit: '元' 
+        }
+      }
+      
+      // 如果完全无法解析，返回默认值
+      return { price: 0, priceUnit: '元' }
+    }
+
     const downloadTemplate = () => {
       // TODO: 实现模板下载功能
       alert('模板下载功能开发中...')
@@ -291,10 +331,21 @@ const parseError = ref<string | null>(null)
         
         if (response.code === 200 && response.data) {
           // 为每条数据添加临时ID（如果后端没有提供）
-          parsedData.value = response.data.items.map((item, index) => ({
-            ...item,
-            tempId: item.tempId || `temp-${index}-${Date.now()}`
-          }))
+          parsedData.value = response.data.items.map((item, index) => {
+            const processedItem = {
+              ...item,
+              tempId: item.tempId || `temp-${index}-${Date.now()}`
+            }
+            
+            // 如果后端还没有实现价格解析，在前端临时处理
+            if (typeof processedItem.price === 'string') {
+              const priceResult = parsePrice(processedItem.price as string)
+              processedItem.price = priceResult.price
+              processedItem.priceUnit = priceResult.priceUnit
+            }
+            
+            return processedItem
+          })
           
           if (parsedData.value.length === 0) {
             alert('解析完成，但未找到有效数据')
