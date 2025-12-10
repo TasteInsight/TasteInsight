@@ -607,6 +607,7 @@ const handleSearch = async () => {
         keyword: searchKeyword.value
       },
       filter: {},
+      isSuggestion: false, // 搜索时不使用推荐模式
       pagination: {
         page: 1,
         pageSize: 50 // 搜索结果显示前50条
