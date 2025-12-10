@@ -180,7 +180,7 @@ export const dishApi = {
   async confirmBatchImport(data: BatchConfirmRequest): Promise<ApiResponse<BatchConfirmResponse>> {
     // 注意：需要后端实现对应的 /admin/dishes/batch/confirm 接口
     return request.post('/admin/dishes/batch/confirm', data)
-  }
+  },
 }
 
 

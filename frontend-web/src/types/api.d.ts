@@ -275,7 +275,7 @@ export interface BatchConfirmRequest {
 export interface BatchConfirmResponse {
   successCount: number
   failCount: number
-  errors?: Array<{ index: number; message: string }> // 具体的失败原因
+  errors?: Array<{ index: number; message: string; type?: 'validation' | 'permission' | 'unknown' }>
 }
 
 // ==================== 食堂相关类型 ====================

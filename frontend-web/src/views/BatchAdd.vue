@@ -257,44 +257,6 @@ const parseError = ref<string | null>(null)
       parsedData.value.filter((item: BatchParsedDish) => item.status === 'invalid').length
     )
 
-    // 价格解析函数
-    const parsePrice = (priceStr: string): { price: number; priceUnit: string } => {
-      if (!priceStr || typeof priceStr !== 'string') {
-        return { price: 0, priceUnit: '元' }
-      }
-      
-      // 移除所有空格
-      const trimmed = priceStr.trim()
-      
-      // 使用正则表达式匹配价格模式
-      // 支持格式：数字 + 元 + 可选的/单位
-      // 例如：12元、12元/份、12元/两、12元/斤
-      const priceRegex = /^(\d+(?:\.\d+)?)元(?:\/(.+))?$/
-      const match = trimmed.match(priceRegex)
-      
-      if (match) {
-        const price = parseFloat(match[1])
-        const unit = match[2] || '份' // 如果没有指定单位，默认是"份"
-        return { 
-          price: isNaN(price) ? 0 : price, 
-          priceUnit: `元/${unit}` 
-        }
-      }
-      
-      // 如果不匹配预期格式，尝试提取纯数字
-      const numberMatch = trimmed.match(/(\d+(?:\.\d+)?)/)
-      if (numberMatch) {
-        const price = parseFloat(numberMatch[1])
-        return { 
-          price: isNaN(price) ? 0 : price, 
-          priceUnit: '元' 
-        }
-      }
-      
-      // 如果完全无法解析，返回默认值
-      return { price: 0, priceUnit: '元' }
-    }
-
     const downloadTemplate = () => {
       // TODO: 实现模板下载功能
       alert('模板下载功能开发中...')
@@ -310,7 +272,9 @@ const parseError = ref<string | null>(null)
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
         'application/vnd.ms-excel' // .xls
       ]
-      if (!validTypes.includes(file.type) && !file.name.match(/\.(xlsx|xls)$/i)) {
+      const hasValidMime = !file.type || validTypes.includes(file.type)
+      const hasValidExtension = /\.(xlsx|xls)$/i.test(file.name)
+      if (!hasValidMime || !hasValidExtension) {
         alert('请上传 Excel 文件（.xlsx 或 .xls 格式）')
         return
       }
@@ -331,21 +295,10 @@ const parseError = ref<string | null>(null)
         
         if (response.code === 200 && response.data) {
           // 为每条数据添加临时ID（如果后端没有提供）
-          parsedData.value = response.data.items.map((item, index) => {
-            const processedItem = {
-              ...item,
-              tempId: item.tempId || `temp-${index}-${Date.now()}`
-            }
-            
-            // 如果后端还没有实现价格解析，在前端临时处理
-            if (typeof processedItem.price === 'string') {
-              const priceResult = parsePrice(processedItem.price as string)
-              processedItem.price = priceResult.price
-              processedItem.priceUnit = priceResult.priceUnit
-            }
-            
-            return processedItem
-          })
+          parsedData.value = response.data.items.map((item, index) => ({
+            ...item,
+            tempId: item.tempId || `temp-${index}-${Date.now()}`
+          }))
           
           if (parsedData.value.length === 0) {
             alert('解析完成，但未找到有效数据')
@@ -406,7 +359,15 @@ const parseError = ref<string | null>(null)
           if (failCount > 0) {
             message += `，失败：${failCount} 条`
             if (errors && errors.length > 0) {
-              message += '\n\n失败详情：\n' + errors.map(e => `第 ${e.index + 1} 条：${e.message}`).join('\n')
+              message += '\n\n失败详情：\n' + errors.map(e => {
+                const typeLabel =
+                  e.type === 'permission'
+                    ? '[权限]'
+                    : e.type === 'validation'
+                      ? '[校验]'
+                      : '[系统]'
+                return `${typeLabel} 第 ${e.index + 1} 条：${e.message}`
+              }).join('\n')
             }
           }
           
