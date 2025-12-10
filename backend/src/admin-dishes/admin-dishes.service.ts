@@ -528,7 +528,11 @@ export class AdminDishesService {
   /**
    * 管理端获取菜品评价列表
    */
-  async getDishReviews(dishId: string, page: number = 1, pageSize: number = 20) {
+  async getDishReviews(
+    dishId: string,
+    page: number = 1,
+    pageSize: number = 20,
+  ) {
     // 检查菜品是否存在
     const dish = await this.prisma.dish.findUnique({
       where: { id: dishId },
