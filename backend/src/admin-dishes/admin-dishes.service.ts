@@ -23,6 +23,7 @@ import {
   BatchParsedDishDto,
 } from './dto/admin-dish-batch.dto';
 import type { Express } from 'express';
+import type { Buffer } from 'node:buffer';
 
 type NormalizedExcelRow = {
   raw: Record<string, any>;
@@ -49,6 +50,7 @@ type BatchImportCaches = {
 type PrismaJsonInput =
   | Prisma.NullableJsonNullValueInput
   | Prisma.InputJsonValue;
+type BatchErrorType = 'validation' | 'permission' | 'unknown';
 
 @Injectable()
 export class AdminDishesService {
@@ -632,12 +634,33 @@ export class AdminDishesService {
         })
       : null;
 
+    const [existingCanteens, existingFloors, existingWindows] = await Promise.all([
+      this.prisma.canteen.findMany(),
+      this.prisma.floor.findMany(),
+      this.prisma.window.findMany(),
+    ]);
+
     const caches: BatchImportCaches = {
       canteens: new Map(),
       floors: new Map(),
       windows: new Map(),
       parentDishes: new Map(),
     };
+
+    existingCanteens.forEach((c) => {
+      caches.canteens.set(this.normalizeName(c.name), c);
+    });
+
+    existingFloors.forEach((f) => {
+      if (!f.name) return;
+      const key = `${f.canteenId}:${this.normalizeName(f.name)}`;
+      caches.floors.set(key, f);
+    });
+
+    existingWindows.forEach((w) => {
+      const key = `${w.canteenId}:${this.normalizeName(w.name)}`;
+      caches.windows.set(key, w);
+    });
 
     if (limitedCanteen) {
       caches.canteens.set(
@@ -647,14 +670,14 @@ export class AdminDishesService {
     }
 
     const windowNumberCounters = new Map<string, number>();
-    const errors: Array<{ index: number; message: string }> = [];
+    const errors: Array<{ index: number; message: string; type: BatchErrorType }> = [];
     let successCount = 0;
 
     for (let i = 0; i < body.dishes.length; i++) {
       const item = body.dishes[i];
 
       if (item.status === BatchDishStatus.INVALID) {
-        errors.push({ index: i, message: '数据标记为 invalid，已跳过' });
+        errors.push({ index: i, message: '数据标记为 invalid，已跳过', type: 'validation' });
         continue;
       }
 
@@ -671,14 +694,20 @@ export class AdminDishesService {
         });
         successCount += 1;
       } catch (error) {
-        const message =
-          error instanceof BadRequestException ||
-          error instanceof ForbiddenException
-            ? error.message
-            : error instanceof Error
-              ? error.message
-              : '导入失败';
-        errors.push({ index: i, message });
+        let type: BatchErrorType = 'unknown';
+        let message = '导入失败';
+
+        if (error instanceof BadRequestException) {
+          type = 'validation';
+          message = error.message;
+        } else if (error instanceof ForbiddenException) {
+          type = 'permission';
+          message = error.message;
+        } else if (error instanceof Error) {
+          message = error.message;
+        }
+
+        errors.push({ index: i, message, type });
       }
     }
 
