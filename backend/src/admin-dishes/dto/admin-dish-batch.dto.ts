@@ -24,7 +24,7 @@ const splitToStringArray = (value: any): string[] => {
 
   if (typeof value === 'string') {
     return value
-      .split(/[,，\/、;；\s]+/)
+      .split(/[,，/、;；\s]+/)
       .map((item) => item.trim())
       .filter((item) => item.length > 0);
   }
