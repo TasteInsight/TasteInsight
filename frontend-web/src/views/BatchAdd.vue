@@ -220,68 +220,6 @@
               </div>
             </div>
           </div>
-          <p v-if="uploadedFile" class="mt-2 text-green-600 flex items-center">
-            <span class="iconify mr-1" data-icon="carbon:checkmark-filled"></span>
-            已上传文件: {{ uploadedFile.name }}
-          </p>
-        </div>
-
-        <!-- 解析结果预览 -->
-        <div class="border-b pb-6">
-          <h3 class="font-medium text-gray-700 mb-4">第三步：确认解析结果</h3>
-          <div class="overflow-auto max-h-96 border rounded-lg">
-            <table class="w-full">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">序号</th>
-                  <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">菜品名称</th>
-                  <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">食堂</th>
-                  <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">窗口</th>
-                  <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">价格区间</th>
-                  <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">状态</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-200">
-                <tr v-for="item in parsedData" :key="item.id" class="table-row">
-                  <td class="py-3 px-4">{{ item.id }}</td>
-                  <td class="py-3 px-4">{{ item.name }}</td>
-                  <td class="py-3 px-4">{{ item.canteen }}</td>
-                  <td class="py-3 px-4">{{ item.window }}</td>
-                  <td class="py-3 px-4">{{ item.priceRange }}</td>
-                  <td
-                    class="py-3 px-4"
-                    :class="item.status === '有效' ? 'text-green-600' : 'text-red-600'"
-                  >
-                    {{ item.status }}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="mt-4 text-gray-500 text-sm">
-            <p>
-              共解析{{ parsedData.length }}条数据，{{ validCount }}条有效，{{ invalidCount }}条无效
-            </p>
-          </div>
-        </div>
-
-        <!-- 提交按钮 -->
-        <div class="flex space-x-4">
-          <button
-            class="px-6 py-2 text-white rounded-lg transition duration-200 flex items-center"
-            :class="authStore.hasPermission('dish:create') ? 'bg-tsinghua-purple hover:bg-tsinghua-dark' : 'bg-gray-400 cursor-not-allowed'"
-            :disabled="validCount === 0 || !authStore.hasPermission('dish:create')"
-            @click="submitBatchData"
-            :title="!authStore.hasPermission('dish:create') ? '无权限创建' : '确认导入有效数据'"
-          >
-            <span class="iconify mr-1" data-icon="carbon:checkmark"></span>确认导入有效数据
-          </button>
-          <button
-            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"
-            @click="resetBatchData"
-          >
-            取消
-          </button>
         </div>
       </div>
     </div>
@@ -294,6 +232,9 @@ import { dishApi } from '@/api/modules/dish'
 import type { BatchParsedDish } from '@/types/api'
 import Sidebar from '@/components/Layout/Sidebar.vue'
 import Header from '@/components/Layout/Header.vue'
+import { useAuthStore } from '@/store/modules/use-auth-store'
+
+const authStore = useAuthStore()
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploadedFile = ref<File | null>(null)
@@ -303,15 +244,15 @@ const isSubmitting = ref(false)
 const parseError = ref<string | null>(null)
     
     const validCount = computed(() => 
-      parsedData.value.filter(item => item.status === 'valid').length
+      parsedData.value.filter((item: BatchParsedDish) => item.status === 'valid').length
     )
     
     const warningCount = computed(() => 
-      parsedData.value.filter(item => item.status === 'warning').length
+      parsedData.value.filter((item: BatchParsedDish) => item.status === 'warning').length
     )
     
     const invalidCount = computed(() => 
-      parsedData.value.filter(item => item.status === 'invalid').length
+      parsedData.value.filter((item: BatchParsedDish) => item.status === 'invalid').length
     )
 
     const downloadTemplate = () => {
@@ -387,9 +328,8 @@ const parseError = ref<string | null>(null)
     }
     
     const submitBatchData = async () => {
-      // 筛选出有效和警告的数据（无效数据不提交）
       const validItems = parsedData.value.filter(
-        item => item.status === 'valid' || item.status === 'warning'
+        (item: BatchParsedDish) => item.status === 'valid' || item.status === 'warning'
       )
       
       if (validItems.length === 0) {
@@ -444,7 +384,7 @@ const parseError = ref<string | null>(null)
     }
     
     const exportErrorList = () => {
-      const errorItems = parsedData.value.filter(item => item.status === 'invalid')
+      const errorItems = parsedData.value.filter((item: BatchParsedDish) => item.status === 'invalid')
       if (errorItems.length === 0) {
         alert('没有错误数据可导出')
         return
@@ -452,7 +392,7 @@ const parseError = ref<string | null>(null)
       
       // 构建 CSV 内容
       const headers = ['序号', '食堂', '楼层', '窗口', '窗口编号', '菜品名', '错误信息']
-      const rows = errorItems.map((item, index) => [
+      const rows = errorItems.map((item: BatchParsedDish, index: number) => [
         index + 1,
         item.canteenName || '',
         item.floorName || '',
@@ -464,7 +404,7 @@ const parseError = ref<string | null>(null)
       
       const csvContent = [
         headers.join(','),
-        ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        ...rows.map((row: string[]) => row.map((cell: string) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       ].join('\n')
       
       // 创建下载链接
