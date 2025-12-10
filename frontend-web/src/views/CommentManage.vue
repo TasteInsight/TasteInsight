@@ -51,7 +51,6 @@
                   </div>
                   <div class="text-sm opacity-80 mt-1 flex items-center gap-4">
                     <span>评价数: <span class="font-medium">{{ dish.reviewCount || 0 }}</span></span>
-                    <span>评论数: <span class="font-medium">{{ getDishCommentCount(dish.id) }}</span></span>
                   </div>
                 </div>
               </div>
@@ -298,7 +297,7 @@ export default defineComponent({
     const isLoadingReviews = ref(false)
 
     // 评论列表相关
-    const comments = ref<Comment[]>([])
+    const commentsMap = ref<Record<string, Comment[]>>({})
     const commentPage = ref(1)
     const commentPageSize = ref(10)
     const totalComments = ref(0)
@@ -373,8 +372,9 @@ export default defineComponent({
       selectedDishId.value = dish.id
       reviewPage.value = 1
       commentPage.value = 1
-      loadReviews()
-      loadComments()
+      loadReviews().then(() => {
+        loadCommentsForReviews()
+      })
     }
 
     // 加载评价列表
@@ -405,29 +405,39 @@ export default defineComponent({
       }
     }
 
-    // 加载评论列表
-    const loadComments = async () => {
-      if (!selectedDishId.value) return
+    // 加载评论列表（为所有评价加载评论）
+    const loadCommentsForReviews = async () => {
+      if (!selectedDishId.value || reviews.value.length === 0) return
 
       isLoadingComments.value = true
       try {
-        // 加载所有评论，使用较大的 pageSize
-        const response = await reviewApi.getDishComments(selectedDishId.value, {
-          page: 1,
-          pageSize: 30, // 加载足够多的评论以便分组显示
+        // 为每个评价加载评论
+        const commentPromises = reviews.value.map(review =>
+          reviewApi.getReviewComments(review.id, {
+            page: 1,
+            pageSize: 30, // 加载足够多的评论以便显示
+          })
+        )
+
+        const responses = await Promise.allSettled(commentPromises)
+
+        // 清空之前的评论
+        commentsMap.value = {}
+
+        let totalCommentCount = 0
+        responses.forEach((result, index) => {
+          if (result.status === 'fulfilled' && result.value.code === 200 && result.value.data) {
+            const reviewId = reviews.value[index].id
+            commentsMap.value[reviewId] = result.value.data.items || []
+            totalCommentCount += result.value.data.meta?.total || 0
+          }
         })
 
-        if (response.code === 200 && response.data) {
-          comments.value = response.data.items || []
-          totalComments.value = response.data.meta?.total || 0
-        } else {
-          comments.value = []
-          totalComments.value = 0
-        }
+        totalComments.value = totalCommentCount
       } catch (error) {
         console.error('加载评论列表失败:', error)
         alert('加载评论列表失败，请重试')
-        comments.value = []
+        commentsMap.value = {}
         totalComments.value = 0
       } finally {
         isLoadingComments.value = false
@@ -436,17 +446,7 @@ export default defineComponent({
 
     // 根据评价ID获取该评价下的所有评论
     const getCommentsByReviewId = (reviewId: string): Comment[] => {
-      return comments.value.filter((comment) => comment.reviewId === reviewId)
-    }
-
-    // 获取菜品的评论数（从已加载的评论中计算）
-    const getDishCommentCount = (dishId: string): number => {
-      // 如果当前选中的菜品是目标菜品，返回已加载的评论数
-      if (selectedDishId.value === dishId) {
-        return comments.value.length
-      }
-      // 否则返回0，因为还没有加载该菜品的评论
-      return 0
+      return commentsMap.value[reviewId] || []
     }
 
     // 根据图片数量返回网格布局类
@@ -523,9 +523,9 @@ export default defineComponent({
 
     const handleReviewPageChange = (page: number) => {
       reviewPage.value = page
-      loadReviews()
-      // 切换评价页面时，重新加载评论
-      loadComments()
+      loadReviews().then(() => {
+        loadCommentsForReviews()
+      })
     }
 
     // 获取菜品分页总页数
@@ -582,7 +582,7 @@ export default defineComponent({
       isLoadingReviews,
 
       // 评论列表
-      comments,
+      commentsMap,
       commentPage,
       commentPageSize,
       totalComments,
@@ -603,7 +603,6 @@ export default defineComponent({
       previewImage,
       getDishTotalPages,
       getDishPaginationPages,
-      getDishCommentCount,
       authStore,
     }
   },
