@@ -247,6 +247,7 @@ export default {
           { id: 'review:approve', label: '审核评价' },
           { id: 'review:delete', label: '删除评价' },
           { id: 'comment:approve', label: '审核评论' },
+          { id: 'comment:delete', label: '删除评论' },
           { id: 'report:handle', label: '处理举报' },
           { id: 'upload:approve', label: '审核菜品上传' },
         ],
@@ -271,6 +272,14 @@ export default {
           { id: 'admin:create', label: '创建子管理员' },
           { id: 'admin:edit', label: '编辑子管理员' },
           { id: 'admin:delete', label: '删除子管理员' },
+        ],
+      },
+      {
+        id: 'config',
+        name: '配置管理',
+        permissions: [
+          { id: 'config:view', label: '查看配置' },
+          { id: 'config:edit', label: '编辑配置' },
         ],
       },
     ]

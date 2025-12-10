@@ -475,6 +475,7 @@ export default {
           { id: 'review:approve', label: '审核评价' },
           { id: 'review:delete', label: '删除评价' },
           { id: 'comment:approve', label: '审核评论' },
+          { id: 'comment:delete', label: '删除评论' },
           { id: 'report:handle', label: '处理举报' },
           { id: 'upload:approve', label: '审核菜品上传' },
         ],
@@ -501,6 +502,14 @@ export default {
           { id: 'admin:delete', label: '删除子管理员' },
         ],
       },
+      {
+        id: 'config',
+        name: '配置管理',
+        permissions: [
+          { id: 'config:view', label: '查看配置' },
+          { id: 'config:edit', label: '编辑配置' },
+        ],
+      },
     ]
 
     // 权限依赖关系配置
@@ -521,6 +530,8 @@ export default {
       'admin:create': ['admin:view', 'canteen:view'], // 创建管理员可能需要分配食堂
       'admin:edit': ['admin:view'],
       'admin:delete': ['admin:view'],
+      'comment:delete': ['comment:approve'], // 删除评论需要审核权限
+      'config:edit': ['config:view'], // 编辑配置需要查看权限
     }
 
     // 过滤后的管理员列表

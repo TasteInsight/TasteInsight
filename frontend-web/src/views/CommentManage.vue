@@ -232,8 +232,8 @@
                         <button
                           class="ml-3 px-2 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 transition duration-200 flex items-center gap-1"
                           @click="handleDeleteComment(comment)"
-                          :disabled="!authStore.hasPermission('review:delete')"
-                          :title="!authStore.hasPermission('review:delete') ? '无权限删除评论' : '删除评论'"
+                          :disabled="!authStore.hasPermission('comment:delete')"
+                          :title="!authStore.hasPermission('comment:delete') ? '无权限删除评论' : '删除评论'"
                         >
                           <span class="iconify inline-block text-xs" data-icon="carbon:trash-can"></span>
                         </button>
@@ -492,7 +492,7 @@ export default defineComponent({
 
     // 删除评论
     const handleDeleteComment = async (comment: Comment) => {
-      if (!authStore.hasPermission('review:delete')) {
+      if (!authStore.hasPermission('comment:delete')) {
         alert('您没有权限删除评论')
         return
       }
