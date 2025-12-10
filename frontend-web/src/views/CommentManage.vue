@@ -419,17 +419,17 @@ export default defineComponent({
           })
         )
 
-        const responses = await Promise.all(commentPromises)
+        const responses = await Promise.allSettled(commentPromises)
 
         // 清空之前的评论
         commentsMap.value = {}
 
         let totalCommentCount = 0
-        responses.forEach((response, index) => {
-          if (response.code === 200 && response.data) {
+        responses.forEach((result, index) => {
+          if (result.status === 'fulfilled' && result.value.code === 200 && result.value.data) {
             const reviewId = reviews.value[index].id
-            commentsMap.value[reviewId] = response.data.items || []
-            totalCommentCount += response.data.meta?.total || 0
+            commentsMap.value[reviewId] = result.value.data.items || []
+            totalCommentCount += result.value.data.meta?.total || 0
           }
         })
 
@@ -447,16 +447,6 @@ export default defineComponent({
     // 根据评价ID获取该评价下的所有评论
     const getCommentsByReviewId = (reviewId: string): Comment[] => {
       return commentsMap.value[reviewId] || []
-    }
-
-    // 获取菜品的评论数（从已加载的评论中计算）
-    const getDishCommentCount = (dishId: string): number => {
-      // 如果当前选中的菜品是目标菜品，返回已加载的评论数
-      if (selectedDishId.value === dishId) {
-        return Object.values(commentsMap.value).reduce((total, comments) => total + comments.length, 0)
-      }
-      // 否则返回0，因为还没有加载该菜品的评论
-      return 0
     }
 
     // 根据图片数量返回网格布局类
@@ -613,7 +603,6 @@ export default defineComponent({
       previewImage,
       getDishTotalPages,
       getDishPaginationPages,
-      getDishCommentCount,
       authStore,
     }
   },
