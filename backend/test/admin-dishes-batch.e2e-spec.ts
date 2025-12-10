@@ -117,7 +117,9 @@ describe('Admin dishes batch APIs (e2e)', () => {
       expect(firstItem.canteenName).toBe(TEST_CANTEEN_NAME);
       expect(firstItem.windowName).toBe(TEST_WINDOW_NAME);
       expect(firstItem.price).toBeCloseTo(15.5);
-      expect(response.body.data.warningCount).toBeGreaterThanOrEqual(1);
+      const warningItem = response.body.data.items.find((item: any) => item.status === 'warning');
+      expect(warningItem).toBeTruthy();
+      expect(warningItem.message).toContain('食堂不存在');
     });
 
     it('should reject when no file is provided', async () => {
