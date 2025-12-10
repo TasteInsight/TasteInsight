@@ -22,6 +22,7 @@ import {
   BatchDishStatus,
   BatchParsedDishDto,
 } from './dto/admin-dish-batch.dto';
+import { splitToStringArray } from './utils/split-to-string-array.util';
 import type { Express } from 'express';
 import type { Buffer } from 'node:buffer';
 
@@ -634,11 +635,12 @@ export class AdminDishesService {
         })
       : null;
 
-    const [existingCanteens, existingFloors, existingWindows] = await Promise.all([
-      this.prisma.canteen.findMany(),
-      this.prisma.floor.findMany(),
-      this.prisma.window.findMany(),
-    ]);
+    const [existingCanteens, existingFloors, existingWindows] =
+      await Promise.all([
+        this.prisma.canteen.findMany(),
+        this.prisma.floor.findMany(),
+        this.prisma.window.findMany(),
+      ]);
 
     const caches: BatchImportCaches = {
       canteens: new Map(),
@@ -670,14 +672,22 @@ export class AdminDishesService {
     }
 
     const windowNumberCounters = new Map<string, number>();
-    const errors: Array<{ index: number; message: string; type: BatchErrorType }> = [];
+    const errors: Array<{
+      index: number;
+      message: string;
+      type: BatchErrorType;
+    }> = [];
     let successCount = 0;
 
     for (let i = 0; i < body.dishes.length; i++) {
       const item = body.dishes[i];
 
       if (item.status === BatchDishStatus.INVALID) {
-        errors.push({ index: i, message: '数据标记为 invalid，已跳过', type: 'validation' });
+        errors.push({
+          index: i,
+          message: '数据标记为 invalid，已跳过',
+          type: 'validation',
+        });
         continue;
       }
 
@@ -1290,24 +1300,6 @@ export class AdminDishesService {
     return Array.from(result);
   }
 
-  private splitTextToArray(value: any): string[] {
-    if (Array.isArray(value)) {
-      return value
-        .map((item) => (typeof item === 'string' ? item.trim() : String(item)))
-        .filter((item) => item.length > 0);
-    }
-    if (typeof value === 'string') {
-      return value
-        .split(/[,，/、;；\s]+/)
-        .map((item) => item.trim())
-        .filter((item) => item.length > 0);
-    }
-    if (typeof value === 'number') {
-      return [String(value)];
-    }
-    return [];
-  }
-
   private extractMealTimesFromText(value?: string): string[] {
     if (!value) {
       return [];
@@ -1528,13 +1520,13 @@ export class AdminDishesService {
       }
     }
 
-    const supplyPeriod = this.splitTextToArray(row.supplyPeriodRaw);
+    const supplyPeriod = splitToStringArray(row.supplyPeriodRaw);
     const inferredPeriods =
       !supplyPeriod.length && row.supplyTime
         ? this.extractMealTimesFromText(row.supplyTime)
         : [];
-    const tags = this.splitTextToArray(row.tagsRaw);
-    const subDishNames = this.splitTextToArray(row.subDishRaw);
+    const tags = splitToStringArray(row.tagsRaw);
+    const subDishNames = splitToStringArray(row.subDishRaw);
 
     const status = errors.length
       ? BatchDishStatus.INVALID
