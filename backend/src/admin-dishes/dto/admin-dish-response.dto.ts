@@ -1,4 +1,9 @@
-import { BaseResponseDto, PaginationMeta, ReviewRatingDetails, UserBasicInfo } from '@/common/dto/response.dto';
+import {
+  BaseResponseDto,
+  PaginationMeta,
+  ReviewRatingDetails,
+  UserBasicInfo,
+} from '@/common/dto/response.dto';
 import { AdminDishDto } from './admin-dish.dto';
 
 // 菜品详情响应
