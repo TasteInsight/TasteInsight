@@ -1,5 +1,9 @@
 <template>
-  <view class="w-full min-h-screen bg-gray-50 p-4" style="max-width: 375px;">
+  <view class="w-full min-h-screen bg-gray-50 p-4">
+    <!-- 骨架屏：首次加载时显示 -->
+    <PersonalSettingsSkeleton v-if="loading" />
+
+    <template v-else>
     <!-- 头像上传区域 -->
     <view class="bg-white rounded-lg p-6 mb-4 shadow-sm">
       <text class="text-lg font-semibold text-gray-800 mb-6 block">头像</text>
@@ -45,106 +49,13 @@
     >
       <text>{{ saving ? '保存中...' : '保存修改' }}</text>
     </button>
+    </template>
   </view>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue';
-import { useUserStore } from '@/store/modules/use-user-store';
-import { updateUserProfile } from '@/api/modules/user';
-import type { UserProfileUpdateRequest } from '@/types/api';
+import { usePersonal } from '../composables/use-personal';
+import { PersonalSettingsSkeleton } from '@/components/skeleton';
 
-const userStore = useUserStore();
-const saving = ref(false);
-const loading = ref(true);
-const form = reactive({
-  avatar: '',
-  nickname: ''
-});
-
-/**
- * 加载用户信息
- */
-onMounted(async () => {
-  try {
-    await userStore.fetchProfileAction();
-    const userInfo = userStore.userInfo;
-    if (userInfo) {
-      form.avatar = userInfo.avatar || '';
-      form.nickname = userInfo.nickname || '';
-    }
-  } catch (error) {
-    console.error('加载用户信息失败:', error);
-  } finally {
-    loading.value = false;
-  }
-});
-
-/**
- * 选择头像
- */
-function chooseAvatar() {
-  uni.chooseImage({
-    count: 1,
-    sizeType: ['compressed'],
-    sourceType: ['album', 'camera'],
-    success: (res) => {
-      form.avatar = res.tempFilePaths[0];
-      // TODO: 上传到服务器获取 URL
-    },
-    fail: (err) => {
-      console.error('选择图片失败:', err);
-      uni.showToast({
-        title: '选择图片失败',
-        icon: 'none'
-      });
-    }
-  });
-}
-
-/**
- * 保存设置
- */
-async function handleSave() {
-  if (!form.nickname.trim()) {
-    uni.showToast({
-      title: '请输入昵称',
-      icon: 'none'
-    });
-    return;
-  }
-
-  saving.value = true;
-  try {
-    const payload: UserProfileUpdateRequest = {
-      nickname: form.nickname.trim(),
-      avatar: form.avatar.trim() || undefined
-    };
-
-    const response = await updateUserProfile(payload);
-    if (response.code !== 200 || !response.data) {
-      throw new Error(response.message || '保存失败');
-    }
-
-    userStore.updateLocalUserInfo(response.data);
-    
-    uni.showToast({
-      title: '保存成功',
-      icon: 'success'
-    });
-    
-    setTimeout(() => {
-      uni.navigateBack();
-    }, 1000);
-  } catch (error) {
-    console.error('保存失败:', error);
-    const message = error instanceof Error ? error.message : '保存失败';
-    uni.showToast({
-      title: message,
-      icon: 'none'
-    });
-  } finally {
-    saving.value = false;
-  }
-}
+const { form, saving, loading, chooseAvatar, handleSave } = usePersonal();
 </script>

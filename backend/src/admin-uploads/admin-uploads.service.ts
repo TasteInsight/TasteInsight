@@ -5,25 +5,25 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
-import {
-  AdminGetPendingUploadsDto,
-  DishUploadDto,
-} from './dto/admin-upload.dto';
+import { AdminGetUploadsDto, DishUploadDto } from './dto/admin-upload.dto';
 
 @Injectable()
 export class AdminUploadsService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * 获取待审核的上传菜品列表
+   * 获取上传菜品列表
    */
-  async getPendingUploads(query: AdminGetPendingUploadsDto, adminInfo: any) {
-    const { page = 1, pageSize = 20 } = query;
+  async getUploads(query: AdminGetUploadsDto, adminInfo: any) {
+    const { page = 1, pageSize = 20, status } = query;
 
     // 构建查询条件
-    const where: any = {
-      status: 'pending',
-    };
+    const where: any = {};
+
+    // 如果指定了状态，则筛选状态，否则返回所有
+    if (status) {
+      where.status = status;
+    }
 
     // 如果管理员有 canteenId 限制，只能查看该食堂的上传
     if (adminInfo.canteenId) {
@@ -79,9 +79,9 @@ export class AdminUploadsService {
   }
 
   /**
-   * 获取待审核上传菜品详情
+   * 获取上传菜品详情
    */
-  async getPendingUploadById(id: string, adminInfo: any) {
+  async getUploadById(id: string, adminInfo: any) {
     const upload = await this.prisma.dishUpload.findUnique({
       where: { id },
       include: {
@@ -248,26 +248,114 @@ export class AdminUploadsService {
       throw new ForbiddenException('权限不足');
     }
 
-    // 使用条件更新防止竞态条件：只有 pending 状态才能被拒绝
-    const updateResult = await this.prisma.dishUpload.updateMany({
-      where: {
-        id,
-        status: 'pending',
-      },
-      data: {
-        status: 'rejected',
-        rejectReason: reason,
-      },
-    });
+    // 使用条件更新防止竞态条件：支持 pending 和 approved 状态
+    // 如果是 approved 状态，还需要删除对应的菜品
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const currentUpload = await tx.dishUpload.findUnique({
+          where: { id },
+        });
 
-    // 如果没有更新任何记录，说明已被其他管理员处理
-    if (updateResult.count === 0) {
-      throw new BadRequestException('该上传已被处理');
+        if (!currentUpload) {
+          throw new NotFoundException('上传记录不存在');
+        }
+
+        if (currentUpload.status === 'rejected') {
+          // 已经是拒绝状态，只更新原因
+          await tx.dishUpload.update({
+            where: { id },
+            data: { rejectReason: reason },
+          });
+          return;
+        }
+
+        // 如果是已通过状态，不允许直接拒绝
+        if (currentUpload.status === 'approved') {
+          throw new BadRequestException(
+            '该记录已通过审核，无法直接拒绝，请先撤销审核',
+          );
+        }
+
+        // 更新状态为 rejected
+        await tx.dishUpload.update({
+          where: { id },
+          data: {
+            status: 'rejected',
+            rejectReason: reason,
+            approvedDishId: null, // 清除关联
+          },
+        });
+      });
+    } catch (error) {
+      throw error;
     }
 
     return {
       code: 200,
       message: '已拒绝',
+      data: null,
+    };
+  }
+
+  /**
+   * 撤销审核（重置为待审核状态）
+   */
+  async revokeUpload(id: string, adminInfo: any) {
+    // 查找上传记录
+    const upload = await this.prisma.dishUpload.findUnique({
+      where: { id },
+    });
+
+    if (!upload) {
+      throw new NotFoundException('上传记录不存在');
+    }
+
+    // 检查权限：如果管理员有食堂限制，必须匹配
+    if (adminInfo.canteenId && upload.canteenId !== adminInfo.canteenId) {
+      throw new ForbiddenException('权限不足');
+    }
+
+    if (upload.status === 'pending') {
+      return {
+        code: 200,
+        message: '已是待审核状态',
+        data: null,
+      };
+    }
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        // 如果是已通过状态，删除对应的菜品
+        if (upload.status === 'approved' && upload.approvedDishId) {
+          try {
+            await tx.dish.delete({
+              where: { id: upload.approvedDishId },
+            });
+          } catch (error) {
+            // 忽略菜品不存在的错误
+            if (error.code !== 'P2025') {
+              throw error;
+            }
+          }
+        }
+
+        // 更新状态为 pending
+        await tx.dishUpload.update({
+          where: { id },
+          data: {
+            status: 'pending',
+            rejectReason: null,
+            approvedDishId: null,
+          },
+        });
+      });
+    } catch (error) {
+      throw error;
+    }
+
+    return {
+      code: 200,
+      message: '已撤销审核，重置为待审核状态',
       data: null,
     };
   }

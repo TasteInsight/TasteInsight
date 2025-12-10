@@ -416,4 +416,191 @@ describe('AdminWindowsController (e2e)', () => {
       expect(response.body.statusCode).toBe(403);
     });
   });
+
+  describe('Dish Sync on Window Update', () => {
+    let syncTestCanteenId: string;
+    let syncTestWindowId: string;
+    let syncTestFloorId: string;
+    let syncTestFloor2Id: string;
+    let syncTestDishId: string;
+
+    beforeAll(async () => {
+      // Create a test canteen with floors for sync tests
+      const canteen = await prisma.canteen.create({
+        data: {
+          name: 'Window Sync Test Canteen',
+          position: 'Test Position',
+          description: 'Test Description',
+          images: [],
+          openingHours: [],
+        },
+      });
+      syncTestCanteenId = canteen.id;
+
+      // Create two floors
+      const floor1 = await prisma.floor.create({
+        data: {
+          canteenId: syncTestCanteenId,
+          level: '1',
+          name: 'Original Floor',
+        },
+      });
+      syncTestFloorId = floor1.id;
+
+      const floor2 = await prisma.floor.create({
+        data: {
+          canteenId: syncTestCanteenId,
+          level: '2',
+          name: 'New Floor',
+        },
+      });
+      syncTestFloor2Id = floor2.id;
+
+      // Create a window
+      const window = await prisma.window.create({
+        data: {
+          canteenId: syncTestCanteenId,
+          floorId: syncTestFloorId,
+          name: 'Original Window Name',
+          number: 'W1',
+          position: '1F',
+          description: 'Test Window',
+          tags: [],
+        },
+      });
+      syncTestWindowId = window.id;
+
+      // Create a dish associated with this window
+      const dish = await prisma.dish.create({
+        data: {
+          name: 'Window Sync Test Dish',
+          tags: ['test'],
+          price: 10.0,
+          priceUnit: '元',
+          description: 'Test dish for window sync',
+          images: [],
+          ingredients: ['test'],
+          allergens: [],
+          canteenId: syncTestCanteenId,
+          canteenName: canteen.name,
+          floorId: syncTestFloorId,
+          floorLevel: '1',
+          floorName: 'Original Floor',
+          windowId: syncTestWindowId,
+          windowNumber: 'W1',
+          windowName: 'Original Window Name',
+          availableMealTime: ['lunch'],
+          status: 'online',
+        },
+      });
+      syncTestDishId = dish.id;
+    });
+
+    afterAll(async () => {
+      // Clean up in reverse order
+      if (syncTestDishId) {
+        await prisma.dish
+          .delete({ where: { id: syncTestDishId } })
+          .catch(() => {});
+      }
+      if (syncTestWindowId) {
+        await prisma.window
+          .delete({ where: { id: syncTestWindowId } })
+          .catch(() => {});
+      }
+      if (syncTestFloorId) {
+        await prisma.floor
+          .delete({ where: { id: syncTestFloorId } })
+          .catch(() => {});
+      }
+      if (syncTestFloor2Id) {
+        await prisma.floor
+          .delete({ where: { id: syncTestFloor2Id } })
+          .catch(() => {});
+      }
+      if (syncTestCanteenId) {
+        await prisma.canteen
+          .delete({ where: { id: syncTestCanteenId } })
+          .catch(() => {});
+      }
+    });
+
+    it('should sync dish windowName when window name is updated', async () => {
+      // Update window name
+      await request(app.getHttpServer())
+        .put(`/admin/windows/${syncTestWindowId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          canteenId: syncTestCanteenId,
+          name: 'Updated Window Name',
+          number: 'W1',
+        })
+        .expect(200);
+
+      // Verify dish was updated
+      const updatedDish = await prisma.dish.findUnique({
+        where: { id: syncTestDishId },
+      });
+      expect(updatedDish?.windowName).toBe('Updated Window Name');
+    });
+
+    it('should sync dish windowNumber when window number is updated', async () => {
+      // Update window number
+      await request(app.getHttpServer())
+        .put(`/admin/windows/${syncTestWindowId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          canteenId: syncTestCanteenId,
+          name: 'Updated Window Name',
+          number: 'W2-Updated',
+        })
+        .expect(200);
+
+      // Verify dish was updated
+      const updatedDish = await prisma.dish.findUnique({
+        where: { id: syncTestDishId },
+      });
+      expect(updatedDish?.windowNumber).toBe('W2-Updated');
+    });
+
+    it('should sync dish floor info when window floor is changed', async () => {
+      // Update window floor - use floor object, not floorId
+      await request(app.getHttpServer())
+        .put(`/admin/windows/${syncTestWindowId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          name: 'Updated Window Name',
+          number: 'W2-Updated',
+          floor: { level: '2', name: 'New Floor' },
+        })
+        .expect(200);
+
+      // Verify dish floor info was updated
+      const updatedDish = await prisma.dish.findUnique({
+        where: { id: syncTestDishId },
+      });
+      expect(updatedDish?.floorId).toBe(syncTestFloor2Id);
+      expect(updatedDish?.floorName).toBe('New Floor');
+      expect(updatedDish?.floorLevel).toBe('2');
+    });
+
+    it('should reflect updated window info in admin/dishes API response', async () => {
+      // Get dish via API
+      const response = await request(app.getHttpServer())
+        .get('/admin/dishes')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .query({ keyword: 'Window Sync Test Dish' })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.items.length).toBeGreaterThan(0);
+
+      const dish = response.body.data.items.find(
+        (d: any) => d.id === syncTestDishId,
+      );
+      expect(dish).toBeDefined();
+      expect(dish.windowName).toBe('Updated Window Name');
+      expect(dish.floorName).toBe('New Floor');
+    });
+  });
 });

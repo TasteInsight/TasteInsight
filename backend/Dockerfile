@@ -53,8 +53,15 @@ COPY --from=builder /app/package.json ./
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/tsconfig.json ./
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
+
 # Expose port
 EXPOSE 3000
+
+# Set entrypoint
+ENTRYPOINT ["./docker-entrypoint.sh"]
 
 # Start the application
 CMD ["node", "dist/src/main"]

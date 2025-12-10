@@ -1,5 +1,9 @@
 <template>
-  <view class="w-full min-h-screen bg-gradient-to-b from-white via-purple-50/20 to-white p-4" style="max-width: 375px;">
+  <view class="w-full min-h-screen bg-gradient-to-b from-white via-purple-50/20 to-white p-4">
+    <!-- 骨架屏：首次加载时显示 -->
+    <NotificationsSkeleton v-if="loading" />
+
+    <template v-else>
     <!-- 通知设置 -->
     <view class="bg-white rounded-2xl p-6 mb-4 shadow-sm">
       <text class="text-lg font-semibold text-gray-800 mb-4 block">通知设置</text>
@@ -13,7 +17,7 @@
         <switch 
           :checked="form.newDishAlert" 
           color="#82318E"
-          @change="(e: any) => form.newDishAlert = e.detail.value"
+          @change="(e: any) => updateField('newDishAlert', e)"
         />
       </view>
 
@@ -26,7 +30,7 @@
         <switch 
           :checked="form.priceChangeAlert" 
           color="#82318E"
-          @change="(e: any) => form.priceChangeAlert = e.detail.value"
+          @change="(e: any) => updateField('priceChangeAlert', e)"
         />
       </view>
 
@@ -39,7 +43,7 @@
         <switch 
           :checked="form.reviewReplyAlert" 
           color="#82318E"
-          @change="(e: any) => form.reviewReplyAlert = e.detail.value"
+          @change="(e: any) => updateField('reviewReplyAlert', e)"
         />
       </view>
 
@@ -52,7 +56,7 @@
         <switch 
           :checked="form.weeklyRecommendation" 
           color="#82318E"
-          @change="(e: any) => form.weeklyRecommendation = e.detail.value"
+          @change="(e: any) => updateField('weeklyRecommendation', e)"
         />
       </view>
     </view>
@@ -71,89 +75,13 @@
     >
       <text>{{ saving ? '保存中...' : '保存设置' }}</text>
     </button>
+    </template>
   </view>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue';
-import { useUserStore } from '@/store/modules/use-user-store';
-import { updateUserProfile } from '@/api/modules/user';
-import type { UserProfileUpdateRequest, UserPreference } from '@/types/api';
+import { useNotifications } from '../composables/use-notifications';
+import { NotificationsSkeleton } from '@/components/skeleton';
 
-const userStore = useUserStore();
-const saving = ref(false);
-const loading = ref(true);
-const form = reactive({
-  newDishAlert: true,
-  priceChangeAlert: false,
-  reviewReplyAlert: true,
-  weeklyRecommendation: true
-});
-
-/**
- * 加载用户信息
- */
-onMounted(async () => {
-  try {
-    await userStore.fetchProfileAction();
-    const userInfo = userStore.userInfo;
-    if (userInfo && userInfo.preferences && userInfo.preferences.notificationSettings) {
-      const notif = userInfo.preferences.notificationSettings;
-      form.newDishAlert = notif.newDishAlert ?? true;
-      form.priceChangeAlert = notif.priceChangeAlert ?? false;
-      form.reviewReplyAlert = notif.reviewReplyAlert ?? true;
-      form.weeklyRecommendation = notif.weeklyRecommendation ?? true;
-    }
-  } catch (error) {
-    console.error('加载用户信息失败:', error);
-  } finally {
-    loading.value = false;
-  }
-});
-
-/**
- * 保存设置
- */
-async function handleSave() {
-  saving.value = true;
-  try {
-    const preferences: Partial<UserPreference> = {
-      notificationSettings: {
-        newDishAlert: form.newDishAlert,
-        priceChangeAlert: form.priceChangeAlert,
-        reviewReplyAlert: form.reviewReplyAlert,
-        weeklyRecommendation: form.weeklyRecommendation
-      }
-    };
-
-    const payload: UserProfileUpdateRequest = {
-      preferences
-    };
-
-    const response = await updateUserProfile(payload);
-    if (response.code !== 200 || !response.data) {
-      throw new Error(response.message || '保存失败');
-    }
-
-    userStore.updateLocalUserInfo(response.data);
-    
-    uni.showToast({
-      title: '保存成功',
-      icon: 'success'
-    });
-    
-    setTimeout(() => {
-      uni.navigateBack();
-    }, 1000);
-  } catch (error) {
-    console.error('保存失败:', error);
-    const message = error instanceof Error ? error.message : '保存失败';
-    uni.showToast({
-      title: message,
-      icon: 'none'
-    });
-  } finally {
-    saving.value = false;
-  }
-}
+const { form, saving, loading, updateField, handleSave } = useNotifications();
 </script>

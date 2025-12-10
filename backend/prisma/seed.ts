@@ -1,6 +1,7 @@
 // prisma/seed.ts
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { CONFIG_DEFINITIONS } from '../src/admin-config/config-definitions';
 
 const prisma = new PrismaClient();
 
@@ -27,10 +28,12 @@ async function main() {
   await prisma.admin.deleteMany({});
 
   // 2. 创建一个可用于所有测试的【基础管理员】(superadmin)
-  const hashedPassword = await bcrypt.hash('password123', 10);
+  const adminUsername = process.env.INITIAL_ADMIN_USERNAME || 'testadmin';
+  const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'password123';
+  const hashedPassword = await bcrypt.hash(adminPassword, 10);
   const admin = await prisma.admin.create({
     data: {
-      username: 'testadmin',
+      username: adminUsername,
       password: hashedPassword,
       role: 'superadmin',
     },
@@ -208,7 +211,7 @@ async function main() {
   });
   console.log(`Created canteen admin: ${canteenAdmin.username}`);
 
-  // 为食堂管理员添加所有菜品权限
+  // 为食堂管理员添加所有菜品权限和配置权限
   await prisma.adminPermission.createMany({
     data: [
       {
@@ -227,9 +230,25 @@ async function main() {
         adminId: canteenAdmin.id,
         permission: 'dish:delete',
       },
+      {
+        adminId: canteenAdmin.id,
+        permission: 'config:canteen:view',
+      },
+      {
+        adminId: canteenAdmin.id,
+        permission: 'config:canteen:edit',
+      },
+      {
+        adminId: canteenAdmin.id,
+        permission: 'config:view',
+      },
+      {
+        adminId: canteenAdmin.id,
+        permission: 'config:edit',
+      },
     ],
   });
-  console.log(`Added all dish permissions to canteenadmin`);
+  console.log(`Added all dish and config permissions to canteenadmin`);
 
   // 4. 创建测试食堂
   const canteen1 = await prisma.canteen.create({
@@ -304,6 +323,14 @@ async function main() {
       oiliness: 2,
       canteenPreferences: [canteen1.id, canteen2.id],
       portionSize: 'medium',
+    },
+  });
+  console.log(`Created user preferences for ${user.nickname}`);
+
+  // 为用户创建设置
+  await prisma.userSetting.create({
+    data: {
+      userId: user.id,
       newDishAlert: true,
       priceChangeAlert: false,
       reviewReplyAlert: true,
@@ -313,7 +340,7 @@ async function main() {
       defaultSortBy: 'rating',
     },
   });
-  console.log(`Created user preferences for ${user.nickname}`);
+  console.log(`Created user settings for ${user.nickname}`);
 
   // 5. 创建测试窗口
   const window1 = await prisma.window.create({
@@ -766,6 +793,50 @@ async function main() {
     },
   });
   console.log(`Created rejected report`);
+
+  // 初始化配置模板
+  console.log('Initializing admin config templates...');
+  
+  // 先清理旧的配置数据
+  await prisma.adminConfigItem.deleteMany({});
+  await prisma.adminConfig.deleteMany({});
+  await prisma.adminConfigTemplate.deleteMany({});
+  
+  // 使用 config-definitions.ts 中定义的配置模板
+  await prisma.adminConfigTemplate.createMany({
+    data: CONFIG_DEFINITIONS.map((def) => ({
+      key: def.key,
+      defaultValue: def.defaultValue,
+      valueType: def.valueType,
+      description: def.description,
+      category: def.category,
+    })),
+    skipDuplicates: true, // 避免重复插入
+  });
+  
+  // 创建全局配置
+  const globalAdminConfig = await prisma.adminConfig.create({
+    data: {
+      canteenId: null, // null 表示全局配置
+    },
+  });
+  console.log('Created global admin config:', globalAdminConfig.id);
+  
+  // 为全局配置添加默认配置项
+  const templates = await prisma.adminConfigTemplate.findMany();
+  await prisma.adminConfigItem.createMany({
+    data: templates.map(template => ({
+      adminConfigId: globalAdminConfig.id,
+      templateId: template.id,
+      key: template.key,
+      value: template.defaultValue,
+      valueType: template.valueType,
+      description: template.description,
+      category: template.category,
+    })),
+    skipDuplicates: true, // 避免重复插入
+  });
+  console.log('Admin config templates and global config initialized.');
 
   console.log(`Seeding finished.`);
 }

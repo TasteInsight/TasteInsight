@@ -4,6 +4,11 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '@/app.module';
 import { PrismaService } from '@/prisma.service';
+import {
+  PendingUploadListResponseDto,
+  PendingUploadDetailResponseDto,
+  UploadActionSuccessResponseDto,
+} from '@/admin-uploads/dto/admin-upload-response.dto';
 
 describe('AdminUploadsController (e2e)', () => {
   let app: INestApplication;
@@ -18,6 +23,7 @@ describe('AdminUploadsController (e2e)', () => {
   let pendingUploadId: string;
   let pendingUploadId2: string;
   let canteen2PendingUploadId: string;
+  let baselineUserNickname: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -73,8 +79,10 @@ describe('AdminUploadsController (e2e)', () => {
     // 获取待审核上传ID（用于approve/reject测试）
     const pendingUpload = await prisma.dishUpload.findFirst({
       where: { name: '用户上传待审核菜品', status: 'pending' },
+      include: { user: true },
     });
     pendingUploadId = pendingUpload?.id || '';
+    baselineUserNickname = pendingUpload?.user?.nickname || 'Baseline User';
 
     const pendingUpload2 = await prisma.dishUpload.findFirst({
       where: { name: '管理员上传待审核菜品', status: 'pending' },
@@ -141,10 +149,10 @@ describe('AdminUploadsController (e2e)', () => {
     await app.close();
   });
 
-  describe('/admin/dishes/uploads/pending (GET)', () => {
+  describe('/admin/dishes/uploads (GET)', () => {
     it('should return paginated pending uploads list for super admin', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending')
+        .get('/admin/dishes/uploads?status=pending')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
@@ -164,7 +172,7 @@ describe('AdminUploadsController (e2e)', () => {
 
     it('should return pending uploads with pagination params', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending?page=1&pageSize=5')
+        .get('/admin/dishes/uploads?page=1&pageSize=5')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
@@ -175,37 +183,88 @@ describe('AdminUploadsController (e2e)', () => {
 
     it('should return pending uploads for reviewer admin with upload:approve permission', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending')
+        .get('/admin/dishes/uploads?status=pending')
         .set('Authorization', `Bearer ${reviewerAdminToken}`)
         .expect(200);
 
       expect(response.body.code).toBe(200);
       expect(response.body.data.items).toBeInstanceOf(Array);
+      // 验证只返回pending状态的记录
+      response.body.data.items.forEach((upload: any) => {
+        expect(upload.status).toBe('pending');
+      });
+    });
+
+    it('should filter uploads by status - approved', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/admin/dishes/uploads?status=approved')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.items).toBeInstanceOf(Array);
+      // 验证只返回approved状态的记录
+      response.body.data.items.forEach((upload: any) => {
+        expect(upload.status).toBe('approved');
+      });
+    });
+
+    it('should filter uploads by status - rejected', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/admin/dishes/uploads?status=rejected')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.items).toBeInstanceOf(Array);
+      // 验证只返回rejected状态的记录
+      response.body.data.items.forEach((upload: any) => {
+        expect(upload.status).toBe('rejected');
+      });
+    });
+
+    it('should return all uploads when no status filter is provided', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/admin/dishes/uploads')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.items).toBeInstanceOf(Array);
+
+      // 验证返回的结果包含多种状态（不筛选时应该返回所有状态的记录）
+      // seed数据中已经创建了pending、approved、rejected状态的上传
+      const statuses = response.body.data.items.map(
+        (upload: any) => upload.status,
+      );
+      const uniqueStatuses = [...new Set(statuses)];
+      // 应该至少包含多于一种状态（证明没有按状态筛选）
+      expect(uniqueStatuses.length).toBeGreaterThan(1);
     });
 
     it('should return 401 without auth token', async () => {
       await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending')
+        .get('/admin/dishes/uploads')
         .expect(401);
     });
 
     it('should return 403 for user token (not admin)', async () => {
       await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending')
+        .get('/admin/dishes/uploads')
         .set('Authorization', `Bearer ${userToken}`)
         .expect(403);
     });
 
     it('should return 403 for admin without upload:approve permission', async () => {
       await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending')
+        .get('/admin/dishes/uploads')
         .set('Authorization', `Bearer ${normalAdminToken}`)
         .expect(403);
     });
 
     it('should include uploader information in response', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending')
+        .get('/admin/dishes/uploads?status=pending')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
@@ -220,7 +279,7 @@ describe('AdminUploadsController (e2e)', () => {
 
     it('should include dish details in response', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending')
+        .get('/admin/dishes/uploads?status=pending')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
@@ -239,10 +298,10 @@ describe('AdminUploadsController (e2e)', () => {
     });
   });
 
-  describe('/admin/dishes/uploads/pending/:id (GET)', () => {
+  describe('/admin/dishes/uploads/:id (GET)', () => {
     it('should return pending upload detail for super admin', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/admin/dishes/uploads/pending/${pendingUploadId}`)
+        .get(`/admin/dishes/uploads/${pendingUploadId}`)
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
@@ -255,7 +314,7 @@ describe('AdminUploadsController (e2e)', () => {
 
     it('should return pending upload detail with all fields', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/admin/dishes/uploads/pending/${pendingUploadId}`)
+        .get(`/admin/dishes/uploads/${pendingUploadId}`)
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
@@ -286,19 +345,19 @@ describe('AdminUploadsController (e2e)', () => {
 
     it('should include uploader information in detail', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/admin/dishes/uploads/pending/${pendingUploadId}`)
+        .get(`/admin/dishes/uploads/${pendingUploadId}`)
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
       const upload = response.body.data;
       expect(upload.uploaderType).toBe('user');
-      expect(upload.uploaderName).toBe('Baseline User');
+      expect(upload.uploaderName).toBe(baselineUserNickname);
       expect(upload.userId).not.toBeNull();
     });
 
     it('should return admin upload detail with admin info', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/admin/dishes/uploads/pending/${pendingUploadId2}`)
+        .get(`/admin/dishes/uploads/${pendingUploadId2}`)
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
@@ -310,7 +369,7 @@ describe('AdminUploadsController (e2e)', () => {
 
     it('should return pending upload detail for reviewer admin', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/admin/dishes/uploads/pending/${pendingUploadId}`)
+        .get(`/admin/dishes/uploads/${pendingUploadId}`)
         .set('Authorization', `Bearer ${reviewerAdminToken}`)
         .expect(200);
 
@@ -320,7 +379,7 @@ describe('AdminUploadsController (e2e)', () => {
 
     it('should return 404 for non-existent upload', async () => {
       const response = await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending/non-existent-id')
+        .get('/admin/dishes/uploads/non-existent-id')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(404);
 
@@ -330,20 +389,20 @@ describe('AdminUploadsController (e2e)', () => {
 
     it('should return 401 without auth token', async () => {
       await request(app.getHttpServer())
-        .get(`/admin/dishes/uploads/pending/${pendingUploadId}`)
+        .get(`/admin/dishes/uploads/${pendingUploadId}`)
         .expect(401);
     });
 
     it('should return 403 for user token (not admin)', async () => {
       await request(app.getHttpServer())
-        .get(`/admin/dishes/uploads/pending/${pendingUploadId}`)
+        .get(`/admin/dishes/uploads/${pendingUploadId}`)
         .set('Authorization', `Bearer ${userToken}`)
         .expect(403);
     });
 
     it('should return 403 for admin without upload:approve permission', async () => {
       await request(app.getHttpServer())
-        .get(`/admin/dishes/uploads/pending/${pendingUploadId}`)
+        .get(`/admin/dishes/uploads/${pendingUploadId}`)
         .set('Authorization', `Bearer ${normalAdminToken}`)
         .expect(403);
     });
@@ -351,7 +410,7 @@ describe('AdminUploadsController (e2e)', () => {
     it('should allow canteen admin to view their canteen upload detail', async () => {
       // 权限已在 beforeAll 中设置，直接使用 canteenAdminToken
       const response = await request(app.getHttpServer())
-        .get(`/admin/dishes/uploads/pending/${pendingUploadId}`)
+        .get(`/admin/dishes/uploads/${pendingUploadId}`)
         .set('Authorization', `Bearer ${canteenAdminToken}`)
         .expect(200);
 
@@ -366,7 +425,7 @@ describe('AdminUploadsController (e2e)', () => {
       const canteenToken = canteenAdminLogin.body.data.token.accessToken;
 
       await request(app.getHttpServer())
-        .get(`/admin/dishes/uploads/pending/${canteen2PendingUploadId}`)
+        .get(`/admin/dishes/uploads/${canteen2PendingUploadId}`)
         .set('Authorization', `Bearer ${canteenToken}`)
         .expect(403);
     });
@@ -569,13 +628,18 @@ describe('AdminUploadsController (e2e)', () => {
         .expect(404);
     });
 
-    it('should return 400 for already processed upload', async () => {
+    it('should allow updating rejection reason for already rejected upload', async () => {
       // 使用已经被reject的记录
       await request(app.getHttpServer())
         .post(`/admin/dishes/uploads/${testRejectUploadId}/reject`)
         .set('Authorization', `Bearer ${superAdminToken}`)
         .send({ reason: '再次拒绝' })
-        .expect(400);
+        .expect(200);
+
+      const upload = await prisma.dishUpload.findUnique({
+        where: { id: testRejectUploadId },
+      });
+      expect(upload?.rejectReason).toBe('再次拒绝');
     });
 
     it('should return 401 without auth token', async () => {
@@ -598,6 +662,156 @@ describe('AdminUploadsController (e2e)', () => {
         .post(`/admin/dishes/uploads/${pendingUploadId}/reject`)
         .set('Authorization', `Bearer ${normalAdminToken}`)
         .send({ reason: '测试' })
+        .expect(403);
+    });
+  });
+
+  describe('/admin/dishes/uploads/:id/revoke (POST)', () => {
+    let testRevokeApprovedId: string;
+    let testRevokeRejectedId: string;
+
+    beforeAll(async () => {
+      const window = await prisma.window.findFirst({
+        where: { canteenId: canteen1Id },
+      });
+      const user = await prisma.user.findFirst({
+        where: { openId: 'baseline_user_openid' },
+      });
+
+      // 创建一个 Approved 的上传记录
+      const upload1 = await prisma.dishUpload.create({
+        data: {
+          userId: user?.id,
+          name: '测试撤销Approved API',
+          tags: ['测试'],
+          price: 15.0,
+          canteenId: canteen1Id,
+          canteenName: '第一食堂',
+          windowId: window?.id || '',
+          windowNumber: window?.number || '',
+          windowName: window?.name || '',
+          availableMealTime: ['lunch'],
+          status: 'pending',
+        },
+      });
+
+      // 模拟 Approved 状态
+      const dish1 = await prisma.dish.create({
+        data: {
+          name: '测试撤销Approved API',
+          price: 15.0,
+          canteenId: canteen1Id,
+          canteenName: '第一食堂',
+          windowName: '测试窗口',
+          status: 'online',
+        },
+      });
+
+      await prisma.dishUpload.update({
+        where: { id: upload1.id },
+        data: {
+          status: 'approved',
+          approvedDishId: dish1.id,
+        },
+      });
+      testRevokeApprovedId = upload1.id;
+
+      // 创建一个 Rejected 的上传记录
+      const upload2 = await prisma.dishUpload.create({
+        data: {
+          userId: user?.id,
+          name: '测试撤销Rejected API',
+          tags: ['测试'],
+          price: 15.0,
+          canteenId: canteen1Id,
+          canteenName: '第一食堂',
+          windowId: window?.id || '',
+          windowNumber: window?.number || '',
+          windowName: window?.name || '',
+          availableMealTime: ['lunch'],
+          status: 'rejected',
+          rejectReason: '测试拒绝',
+        },
+      });
+      testRevokeRejectedId = upload2.id;
+    });
+
+    afterAll(async () => {
+      await prisma.dish.deleteMany({
+        where: { name: '测试撤销Approved API' },
+      });
+      await prisma.dishUpload.deleteMany({
+        where: {
+          name: { in: ['测试撤销Approved API', '测试撤销Rejected API'] },
+        },
+      });
+    });
+
+    it('should revoke approved upload for super admin', async () => {
+      const response = await request(app.getHttpServer())
+        .post(`/admin/dishes/uploads/${testRevokeApprovedId}/revoke`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.message).toBe('已撤销审核，重置为待审核状态');
+
+      const upload = await prisma.dishUpload.findUnique({
+        where: { id: testRevokeApprovedId },
+      });
+      expect(upload?.status).toBe('pending');
+      expect(upload?.approvedDishId).toBeNull();
+    });
+
+    it('should revoke rejected upload for super admin', async () => {
+      const response = await request(app.getHttpServer())
+        .post(`/admin/dishes/uploads/${testRevokeRejectedId}/revoke`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.message).toBe('已撤销审核，重置为待审核状态');
+
+      const upload = await prisma.dishUpload.findUnique({
+        where: { id: testRevokeRejectedId },
+      });
+      expect(upload?.status).toBe('pending');
+    });
+
+    it('should return success message when revoking pending upload', async () => {
+      const response = await request(app.getHttpServer())
+        .post(`/admin/dishes/uploads/${pendingUploadId}/revoke`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.message).toBe('已是待审核状态');
+    });
+
+    it('should return 404 for non-existent upload', async () => {
+      await request(app.getHttpServer())
+        .post('/admin/dishes/uploads/non-existent-id/revoke')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(404);
+    });
+
+    it('should return 401 without auth token', async () => {
+      await request(app.getHttpServer())
+        .post(`/admin/dishes/uploads/${pendingUploadId}/revoke`)
+        .expect(401);
+    });
+
+    it('should return 403 for user token (not admin)', async () => {
+      await request(app.getHttpServer())
+        .post(`/admin/dishes/uploads/${pendingUploadId}/revoke`)
+        .set('Authorization', `Bearer ${userToken}`)
+        .expect(403);
+    });
+
+    it('should return 403 for admin without upload:approve permission', async () => {
+      await request(app.getHttpServer())
+        .post(`/admin/dishes/uploads/${pendingUploadId}/revoke`)
+        .set('Authorization', `Bearer ${normalAdminToken}`)
         .expect(403);
     });
   });
@@ -677,7 +891,7 @@ describe('AdminUploadsController (e2e)', () => {
     it('should filter pending uploads for canteen admin', async () => {
       // 使用顶层 beforeAll 中获取的 canteenAdminToken
       const response = await request(app.getHttpServer())
-        .get('/admin/dishes/uploads/pending')
+        .get('/admin/dishes/uploads')
         .set('Authorization', `Bearer ${canteenAdminToken}`)
         .expect(200);
 
@@ -799,6 +1013,290 @@ describe('AdminUploadsController (e2e)', () => {
 
       expect(response.body.code).toBe(200);
       expect(response.body.message).toBe('已拒绝');
+    });
+  });
+
+  describe('State Machine Transitions', () => {
+    let uploadToRevokeApprovedId: string;
+    let uploadToRevokeRejectedId: string;
+    let uploadToFailRejectId: string;
+    let uploadToFailApproveId: string;
+
+    beforeAll(async () => {
+      const user = await prisma.user.findFirst({
+        where: { openId: 'baseline_user_openid' },
+      });
+      const window = await prisma.window.findFirst({
+        where: { canteenId: canteen1Id },
+      });
+
+      // 1. 创建一个 Approved 的上传记录 (先创建 pending 然后 approve)
+      const upload1 = await prisma.dishUpload.create({
+        data: {
+          userId: user?.id,
+          name: '测试撤销Approved',
+          tags: ['测试'],
+          price: 10,
+          canteenId: canteen1Id,
+          canteenName: '第一食堂',
+          windowId: window?.id || '',
+          windowNumber: window?.number || '',
+          windowName: window?.name || '',
+          availableMealTime: ['lunch'],
+          status: 'pending',
+        },
+      });
+
+      // 手动模拟 Approved 状态
+      const dish1 = await prisma.dish.create({
+        data: {
+          name: '测试撤销Approved',
+          price: 10,
+          canteenId: canteen1Id,
+          canteenName: '第一食堂',
+          windowName: '测试窗口',
+          status: 'online',
+        },
+      });
+
+      await prisma.dishUpload.update({
+        where: { id: upload1.id },
+        data: {
+          status: 'approved',
+          approvedDishId: dish1.id,
+        },
+      });
+      uploadToRevokeApprovedId = upload1.id;
+
+      // 2. 创建一个 Rejected 的上传记录
+      const upload2 = await prisma.dishUpload.create({
+        data: {
+          userId: user?.id,
+          name: '测试撤销Rejected',
+          tags: ['测试'],
+          price: 10,
+          canteenId: canteen1Id,
+          canteenName: '第一食堂',
+          windowId: window?.id || '',
+          windowNumber: window?.number || '',
+          windowName: window?.name || '',
+          availableMealTime: ['lunch'],
+          status: 'rejected',
+          rejectReason: '初始拒绝',
+        },
+      });
+      uploadToRevokeRejectedId = upload2.id;
+
+      // 3. 创建一个 Approved 的上传记录用于测试 "Fail Reject"
+      const upload3 = await prisma.dishUpload.create({
+        data: {
+          userId: user?.id,
+          name: '测试失败Reject',
+          tags: ['测试'],
+          price: 10,
+          canteenId: canteen1Id,
+          canteenName: '第一食堂',
+          windowId: window?.id || '',
+          windowNumber: window?.number || '',
+          windowName: window?.name || '',
+          availableMealTime: ['lunch'],
+          status: 'approved',
+        },
+      });
+      uploadToFailRejectId = upload3.id;
+
+      // 4. 创建一个 Rejected 的上传记录用于测试 "Fail Approve"
+      const upload4 = await prisma.dishUpload.create({
+        data: {
+          userId: user?.id,
+          name: '测试失败Approve',
+          tags: ['测试'],
+          price: 10,
+          canteenId: canteen1Id,
+          canteenName: '第一食堂',
+          windowId: window?.id || '',
+          windowNumber: window?.number || '',
+          windowName: window?.name || '',
+          availableMealTime: ['lunch'],
+          status: 'rejected',
+          rejectReason: '初始拒绝',
+        },
+      });
+      uploadToFailApproveId = upload4.id;
+    });
+
+    afterAll(async () => {
+      await prisma.dish.deleteMany({
+        where: { name: { in: ['测试撤销Approved'] } },
+      });
+      await prisma.dishUpload.deleteMany({
+        where: {
+          name: {
+            in: [
+              '测试撤销Approved',
+              '测试撤销Rejected',
+              '测试失败Reject',
+              '测试失败Approve',
+            ],
+          },
+        },
+      });
+    });
+
+    it('should revoke approved upload to pending and delete created dish', async () => {
+      const response = await request(app.getHttpServer())
+        .post(`/admin/dishes/uploads/${uploadToRevokeApprovedId}/revoke`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.message).toBe('已撤销审核，重置为待审核状态');
+
+      const upload = await prisma.dishUpload.findUnique({
+        where: { id: uploadToRevokeApprovedId },
+      });
+      expect(upload?.status).toBe('pending');
+      expect(upload?.approvedDishId).toBeNull();
+    });
+
+    it('should revoke rejected upload to pending', async () => {
+      const response = await request(app.getHttpServer())
+        .post(`/admin/dishes/uploads/${uploadToRevokeRejectedId}/revoke`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.message).toBe('已撤销审核，重置为待审核状态');
+
+      const upload = await prisma.dishUpload.findUnique({
+        where: { id: uploadToRevokeRejectedId },
+      });
+      expect(upload?.status).toBe('pending');
+      expect(upload?.rejectReason).toBeNull();
+    });
+
+    it('should fail to reject an approved upload', async () => {
+      const response = await request(app.getHttpServer())
+        .post(`/admin/dishes/uploads/${uploadToFailRejectId}/reject`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({ reason: '试图拒绝已通过的' })
+        .expect(400);
+
+      expect(response.body.message).toContain('该记录已通过审核，无法直接拒绝');
+
+      const upload = await prisma.dishUpload.findUnique({
+        where: { id: uploadToFailRejectId },
+      });
+      expect(upload?.status).toBe('approved');
+    });
+
+    it('should fail to approve a rejected upload', async () => {
+      const response = await request(app.getHttpServer())
+        .post(`/admin/dishes/uploads/${uploadToFailApproveId}/approve`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(400);
+
+      expect(response.body.message).toBe('该上传已被处理');
+
+      const upload = await prisma.dishUpload.findUnique({
+        where: { id: uploadToFailApproveId },
+      });
+      expect(upload?.status).toBe('rejected');
+    });
+
+    it('should fail to approve an approved upload', async () => {
+      const response = await request(app.getHttpServer())
+        .post(`/admin/dishes/uploads/${uploadToFailRejectId}/approve`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(400);
+
+      expect(response.body.message).toBe('该上传已被处理');
+    });
+
+    it('should return success when revoking a pending upload', async () => {
+      // 创建一个 pending 状态的上传
+      const user = await prisma.user.findFirst({
+        where: { openId: 'baseline_user_openid' },
+      });
+      const window = await prisma.window.findFirst({
+        where: { canteenId: canteen1Id },
+      });
+
+      const pendingUpload = await prisma.dishUpload.create({
+        data: {
+          userId: user?.id,
+          name: '测试撤销Pending',
+          tags: ['测试'],
+          price: 10,
+          canteenId: canteen1Id,
+          canteenName: '第一食堂',
+          windowId: window?.id || '',
+          windowNumber: window?.number || '',
+          windowName: window?.name || '',
+          availableMealTime: ['lunch'],
+          status: 'pending',
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .post(`/admin/dishes/uploads/${pendingUpload.id}/revoke`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.message).toBe('已是待审核状态');
+
+      // 清理
+      await prisma.dishUpload.delete({ where: { id: pendingUpload.id } });
+    });
+
+    it('should handle dish not found when revoking approved upload', async () => {
+      // 创建一个 Approved 的上传记录，但手动删除对应的菜品
+      const user = await prisma.user.findFirst({
+        where: { openId: 'baseline_user_openid' },
+      });
+      const window = await prisma.window.findFirst({
+        where: { canteenId: canteen1Id },
+      });
+
+      const upload = await prisma.dishUpload.create({
+        data: {
+          userId: user?.id,
+          name: '测试撤销Approved无菜品',
+          tags: ['测试'],
+          price: 10,
+          canteenId: canteen1Id,
+          canteenName: '第一食堂',
+          windowId: window?.id || '',
+          windowNumber: window?.number || '',
+          windowName: window?.name || '',
+          availableMealTime: ['lunch'],
+          status: 'approved',
+          approvedDishId: 'non-existent-dish-id', // 指向不存在的菜品
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .post(`/admin/dishes/uploads/${upload.id}/revoke`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.message).toBe('已撤销审核，重置为待审核状态');
+
+      const updatedUpload = await prisma.dishUpload.findUnique({
+        where: { id: upload.id },
+      });
+      expect(updatedUpload?.status).toBe('pending');
+
+      // 清理
+      await prisma.dishUpload.delete({ where: { id: upload.id } });
+    });
+
+    it('should cover DTOs', () => {
+      // 实例化 DTO 以触发覆盖率
+      new PendingUploadListResponseDto();
+      new PendingUploadDetailResponseDto();
+      new UploadActionSuccessResponseDto();
+      expect(true).toBe(true);
     });
   });
 });

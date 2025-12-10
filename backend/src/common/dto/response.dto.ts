@@ -28,3 +28,18 @@ export class PaginationMeta {
   total: number;
   totalPages: number;
 }
+
+// 评价详细评分（共享DTO）
+export class ReviewRatingDetails {
+  spicyLevel?: number | null;
+  sweetness?: number | null;
+  saltiness?: number | null;
+  oiliness?: number | null;
+}
+
+// 用户基本信息（共享DTO）
+export class UserBasicInfo {
+  id: string;
+  nickname: string;
+  avatar: string | null;
+}

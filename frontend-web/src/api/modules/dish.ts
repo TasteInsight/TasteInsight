@@ -24,7 +24,9 @@ export const dishApi = {
    * @returns 菜品列表（分页）
    */
   async getDishes(params?: GetDishesParams): Promise<ApiResponse<PaginationResponse<Dish>>> {
-    const response = await request.get<ApiResponse<PaginationResponse<Dish>>>('/admin/dishes', { params })
+    const response = await request.get<ApiResponse<PaginationResponse<Dish>>>('/admin/dishes', {
+      params,
+    })
     return response
   },
 
@@ -47,16 +49,16 @@ export const dishApi = {
 
     // 通过列表接口获取所有菜品，然后筛选
     const response = await request.get<ApiResponse<PaginationResponse<Dish>>>('/admin/dishes', {
-      params: { pageSize: 100 } // 获取足够多的数据以便找到目标菜品
+      params: { pageSize: 100 }, // 获取足够多的数据以便找到目标菜品
     })
 
     if (response.code === 200 && response.data) {
-      const dish = response.data.items.find(d => d.id === id)
+      const dish = response.data.items.find((d) => d.id === id)
       if (dish) {
         return {
           code: 200,
           message: '获取成功',
-          data: dish
+          data: dish,
         }
       }
     }
@@ -92,8 +94,8 @@ export const dishApi = {
    * @returns 删除结果
    */
   async deleteDish(id: string): Promise<ApiResponse<void>> {
-    const response = await request.delete<ApiResponse<void>>(`/admin/dishes/${id}`);
-    return response;
+    const response = await request.delete<ApiResponse<void>>(`/admin/dishes/${id}`)
+    return response
   },
 
   /**
@@ -102,14 +104,14 @@ export const dishApi = {
    * @returns 上传结果
    */
   async batchUpload(file: File): Promise<ApiResponse<void>> {
-    const formData = new FormData();
-    formData.append('file', file);
+    const formData = new FormData()
+    formData.append('file', file)
     const response = await request.post<ApiResponse<void>>('/admin/dishes/batch', formData, {
       headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
-    return response;
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+    return response
   },
 
   /**
@@ -119,8 +121,10 @@ export const dishApi = {
    * @returns 修改结果
    */
   async updateDishStatus(id: string, status: 'online' | 'offline'): Promise<ApiResponse<void>> {
-    const response = await request.patch<ApiResponse<void>>(`/admin/dishes/${id}/status`, { status });
-    return response;
+    const response = await request.patch<ApiResponse<void>>(`/admin/dishes/${id}/status`, {
+      status,
+    })
+    return response
   },
 
   /**
@@ -131,11 +135,15 @@ export const dishApi = {
   async uploadImage(file: File): Promise<ApiResponse<ImageUploadResponse>> {
     const formData = new FormData()
     formData.append('file', file)
-    const response = await request.post<ApiResponse<ImageUploadResponse>>('/upload/image', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
+    const response = await request.post<ApiResponse<ImageUploadResponse>>(
+      '/upload/image',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      },
+    )
     return response
   },
 

@@ -27,10 +27,12 @@ async function main() {
   await prisma.admin.deleteMany({});
 
   // 2. 创建一个可用于所有测试的【基础管理员】(superadmin)
-  const hashedPassword = await bcrypt.hash('password123', 10);
+  const adminUsername = process.env.INITIAL_ADMIN_USERNAME || 'testadmin';
+  const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || 'password123';
+  const hashedPassword = await bcrypt.hash(adminPassword, 10);
   const admin = await prisma.admin.create({
     data: {
-      username: 'testadmin',
+      username: adminUsername,
       password: hashedPassword,
       role: 'superadmin',
     },
@@ -333,6 +335,14 @@ async function main() {
       oiliness: 2,
       canteenPreferences: [canteen1.id, canteen2.id],
       portionSize: 'medium',
+    },
+  });
+  console.log(`Created user preferences for ${user.nickname}`);
+
+  // 为用户创建设置
+  await prisma.userSetting.create({
+    data: {
+      userId: user.id,
       newDishAlert: true,
       priceChangeAlert: false,
       reviewReplyAlert: true,
@@ -342,7 +352,7 @@ async function main() {
       defaultSortBy: 'rating',
     },
   });
-  console.log(`Created user preferences for ${user.nickname}`);
+  console.log(`Created user settings for ${user.nickname}`);
 
   // 5. 创建测试窗口
   const window1 = await prisma.window.create({
@@ -418,6 +428,7 @@ async function main() {
       name: '宫保鸡丁',
       tags: ['川菜', '家常菜', '鸡肉'],
       price: 15.0,
+      priceUnit: '份',
       description: '经典川菜，鸡肉鲜嫩，花生酥脆',
       images: ['https://example.com/dish1.jpg'],
       ingredients: ['鸡肉', '花生', '辣椒', '葱', '姜', '蒜'],
@@ -447,6 +458,7 @@ async function main() {
       name: '清蒸鲈鱼',
       tags: ['粤菜', '海鲜', '清淡'],
       price: 28.0,
+      priceUnit: '份',
       description: '新鲜鲈鱼清蒸，保留鱼肉鲜美',
       images: ['https://example.com/dish2.jpg'],
       ingredients: ['鲈鱼', '姜', '葱', '料酒'],
@@ -476,6 +488,7 @@ async function main() {
       name: '牛肉面',
       tags: ['面食', '主食', '牛肉'],
       price: 12.0,
+      priceUnit: '份',
       description: '手工拉面，牛肉炖得软烂',
       images: ['https://example.com/dish3.jpg'],
       ingredients: ['牛肉', '面粉', '葱', '香菜', '辣椒油'],
@@ -505,6 +518,7 @@ async function main() {
       name: '麻婆豆腐',
       tags: ['川菜', '素菜', '豆制品'],
       price: 10.0,
+      priceUnit: '份',
       description: '麻辣鲜香，豆腐嫩滑',
       images: ['https://example.com/dish4.jpg'],
       ingredients: ['豆腐', '牛肉末', '豆瓣酱', '花椒', '辣椒'],
@@ -534,6 +548,7 @@ async function main() {
       name: '番茄炒蛋',
       tags: ['家常菜', '素菜'],
       price: 8.0,
+      priceUnit: '份',
       description: '简单美味的家常菜',
       images: ['https://example.com/dish5.jpg'],
       ingredients: ['番茄', '鸡蛋', '葱', '盐', '糖'],
@@ -564,6 +579,7 @@ async function main() {
       name: '二楼小炒肉',
       tags: ['湘菜', '辣味'],
       price: 18.0,
+      priceUnit: '份',
       description: '二楼招牌菜',
       images: ['https://example.com/dish_extra_1.jpg'],
       ingredients: ['猪肉', '辣椒'],
@@ -593,6 +609,7 @@ async function main() {
       name: '地下炸鸡',
       tags: ['小吃', '炸物'],
       price: 12.0,
+      priceUnit: '份',
       description: '酥脆炸鸡',
       images: ['https://example.com/dish_extra_2.jpg'],
       ingredients: ['鸡肉', '面粉'],
@@ -609,7 +626,7 @@ async function main() {
       windowId: window1_b1_1.id,
       windowNumber: window1_b1_1.number,
       windowName: window1_b1_1.name,
-      availableMealTime: ['lunch', 'dinner', 'night_snack'],
+      availableMealTime: ['lunch', 'dinner', 'nightsnack'],
       status: 'online',
       averageRating: 4.5,
       reviewCount: 50,
@@ -624,6 +641,7 @@ async function main() {
       name: '季节性烤鱼',
       tags: ['烧烤', '海鲜'],
       price: 35.0,
+      priceUnit: '份',
       description: '季节性菜品，目前不供应',
       images: ['https://example.com/dish6.jpg'],
       ingredients: ['鱼', '调料'],
@@ -656,6 +674,7 @@ async function main() {
       name: '用户上传待审核菜品',
       tags: ['待审核'],
       price: 15.0,
+      priceUnit: '份',
       description: '用户觉得好吃的菜',
       images: ['https://example.com/upload1.jpg'],
       ingredients: ['未知'],
@@ -678,6 +697,7 @@ async function main() {
       name: '管理员上传待审核菜品',
       tags: ['新品'],
       price: 25.0,
+      priceUnit: '份',
       description: '即将推出的新品',
       images: ['https://example.com/upload2.jpg'],
       ingredients: ['高级食材'],
@@ -700,6 +720,7 @@ async function main() {
       name: '第二食堂用户上传待审核菜品',
       tags: ['待审核', '面食'],
       price: 18.0,
+      priceUnit: '份',
       description: '第二食堂的面食',
       images: ['https://example.com/upload3.jpg'],
       ingredients: ['面粉', '牛肉'],
@@ -722,6 +743,7 @@ async function main() {
       name: '已通过审核的菜品',
       tags: ['已审核'],
       price: 20.0,
+      priceUnit: '份',
       description: '这道菜已经通过审核',
       images: ['https://example.com/upload4.jpg'],
       ingredients: ['蔬菜'],
@@ -745,6 +767,7 @@ async function main() {
       name: '被拒绝的菜品',
       tags: ['拒绝'],
       price: 30.0,
+      priceUnit: '份',
       description: '这道菜被拒绝了',
       images: ['https://example.com/upload5.jpg'],
       ingredients: ['不明食材'],
@@ -798,6 +821,158 @@ async function main() {
   });
   console.log(`Created pending review 3: ${pendingReview3.id}`);
 
+  // --- 创建更多已审核通过的评价（用于测试菜品评价列表功能）---
+  const approvedReview1 = await prisma.review.create({
+    data: {
+      dishId: dish1.id,
+      userId: secondaryUser.id,
+      rating: 5,
+      content: '宫保鸡丁是我最喜欢的菜，每次来必点！',
+      images: ['https://example.com/review_approved_1.jpg', 'https://example.com/review_approved_1_2.jpg'],
+      status: 'approved',
+      spicyLevel: 4,
+      sweetness: 2,
+      saltiness: 3,
+      oiliness: 3,
+    },
+  });
+  console.log(`Created approved review 1: ${approvedReview1.id}`);
+
+  const approvedReview2 = await prisma.review.create({
+    data: {
+      dishId: dish1.id,
+      userId: user.id,
+      rating: 4,
+      content: '味道不错，就是辣了一点。',
+      images: [],
+      status: 'approved',
+      spicyLevel: 5,
+      sweetness: 1,
+      saltiness: 3,
+      oiliness: 4,
+    },
+  });
+  console.log(`Created approved review 2: ${approvedReview2.id}`);
+
+  const approvedReview3 = await prisma.review.create({
+    data: {
+      dishId: dish2.id,
+      userId: secondaryUser.id,
+      rating: 5,
+      content: '清蒸鲈鱼太棒了！鱼肉很嫩，很新鲜。',
+      images: ['https://example.com/review_approved_3.jpg'],
+      status: 'approved',
+      spicyLevel: 0,
+      sweetness: 1,
+      saltiness: 2,
+      oiliness: 1,
+    },
+  });
+  console.log(`Created approved review 3: ${approvedReview3.id}`);
+
+  const approvedReview4 = await prisma.review.create({
+    data: {
+      dishId: dish3.id,
+      userId: user.id,
+      rating: 4,
+      content: '牛肉面的汤头很浓郁，牛肉炖得很烂。',
+      images: [],
+      status: 'approved',
+      spicyLevel: 2,
+      sweetness: 1,
+      saltiness: 4,
+      oiliness: 3,
+    },
+  });
+  console.log(`Created approved review 4: ${approvedReview4.id}`);
+
+  const approvedReview5 = await prisma.review.create({
+    data: {
+      dishId: dish4.id,
+      userId: user.id,
+      rating: 5,
+      content: '麻婆豆腐太下饭了，麻辣鲜香，豆腐入味！',
+      images: ['https://example.com/review_approved_5.jpg'],
+      status: 'approved',
+      spicyLevel: 5,
+      sweetness: 1,
+      saltiness: 4,
+      oiliness: 4,
+    },
+  });
+  console.log(`Created approved review 5: ${approvedReview5.id}`);
+
+  const approvedReview6 = await prisma.review.create({
+    data: {
+      dishId: dish4.id,
+      userId: secondaryUser.id,
+      rating: 3,
+      content: '麻婆豆腐味道还行，就是太辣了。',
+      images: [],
+      status: 'approved',
+      spicyLevel: 5,
+      sweetness: 0,
+      saltiness: 4,
+      oiliness: 4,
+    },
+  });
+  console.log(`Created approved review 6: ${approvedReview6.id}`);
+
+  const approvedReview7 = await prisma.review.create({
+    data: {
+      dishId: dish5.id,
+      userId: user.id,
+      rating: 4,
+      content: '番茄炒蛋简单美味，适合配饭吃。',
+      images: [],
+      status: 'approved',
+      spicyLevel: 0,
+      sweetness: 3,
+      saltiness: 2,
+      oiliness: 2,
+    },
+  });
+  console.log(`Created approved review 7: ${approvedReview7.id}`);
+
+  const approvedReview8 = await prisma.review.create({
+    data: {
+      dishId: dish5.id,
+      userId: secondaryUser.id,
+      rating: 5,
+      content: '番茄炒蛋做得很好，番茄酸甜可口。',
+      images: ['https://example.com/review_approved_8.jpg'],
+      status: 'approved',
+    },
+  });
+  console.log(`Created approved review 8: ${approvedReview8.id}`);
+
+  // 创建被拒绝的评价
+  const rejectedReview1 = await prisma.review.create({
+    data: {
+      dishId: dish1.id,
+      userId: secondaryUser.id,
+      rating: 1,
+      content: '这评价包含不当内容所以被拒绝了。',
+      images: [],
+      status: 'rejected',
+      rejectReason: '评价内容包含不当言论',
+    },
+  });
+  console.log(`Created rejected review 1: ${rejectedReview1.id}`);
+
+  const rejectedReview2 = await prisma.review.create({
+    data: {
+      dishId: dish3.id,
+      userId: user.id,
+      rating: 2,
+      content: '广告内容测试',
+      images: [],
+      status: 'rejected',
+      rejectReason: '评价内容为广告',
+    },
+  });
+  console.log(`Created rejected review 2: ${rejectedReview2.id}`);
+
   // 创建测试评价用于举报测试
   const testReviewForReport = await prisma.review.create({
     data: {
@@ -820,6 +995,171 @@ async function main() {
     },
   });
   console.log(`Created test comment for report: ${testCommentForReport.id}`);
+
+  // --- 创建更多评论（用于测试评论列表功能）---
+  // 对 approvedReview1 的评论
+  const comment1 = await prisma.comment.create({
+    data: {
+      reviewId: approvedReview1.id,
+      userId: user.id,
+      content: '我也觉得宫保鸡丁很好吃！',
+      floor: 1,
+      status: 'approved',
+    },
+  });
+  console.log(`Created comment 1: ${comment1.id}`);
+
+  const comment2 = await prisma.comment.create({
+    data: {
+      reviewId: approvedReview1.id,
+      userId: secondaryUser.id,
+      content: '同意楼上的，这道菜确实不错。',
+      floor: 2,
+      status: 'approved',
+    },
+  });
+  console.log(`Created comment 2: ${comment2.id}`);
+
+  const comment3 = await prisma.comment.create({
+    data: {
+      reviewId: approvedReview1.id,
+      userId: user.id,
+      content: '今天去吃了，果然很好吃！',
+      floor: 3,
+      status: 'approved',
+    },
+  });
+  console.log(`Created comment 3: ${comment3.id}`);
+
+  // 带回复的评论（回复 comment1）
+  const comment4 = await prisma.comment.create({
+    data: {
+      reviewId: approvedReview1.id,
+      userId: secondaryUser.id,
+      content: '回复楼上：我也觉得！',
+      floor: 4,
+      parentCommentId: comment1.id,
+      status: 'approved',
+    },
+  });
+  console.log(`Created reply comment 4: ${comment4.id}`);
+
+  // 对 approvedReview2 的评论
+  const comment5 = await prisma.comment.create({
+    data: {
+      reviewId: approvedReview2.id,
+      userId: secondaryUser.id,
+      content: '确实有点辣，不过我喜欢。',
+      floor: 1,
+      status: 'approved',
+    },
+  });
+  console.log(`Created comment 5: ${comment5.id}`);
+
+  // 对 approvedReview3 的评论
+  const comment6 = await prisma.comment.create({
+    data: {
+      reviewId: approvedReview3.id,
+      userId: user.id,
+      content: '下次也试试这道鱼！',
+      floor: 1,
+      status: 'approved',
+    },
+  });
+  console.log(`Created comment 6: ${comment6.id}`);
+
+  const comment7 = await prisma.comment.create({
+    data: {
+      reviewId: approvedReview3.id,
+      userId: secondaryUser.id,
+      content: '强烈推荐！',
+      floor: 2,
+      status: 'approved',
+    },
+  });
+  console.log(`Created comment 7: ${comment7.id}`);
+
+  // 对 approvedReview4 的评论
+  const comment8 = await prisma.comment.create({
+    data: {
+      reviewId: approvedReview4.id,
+      userId: secondaryUser.id,
+      content: '牛肉面是我的最爱！',
+      floor: 1,
+      status: 'approved',
+    },
+  });
+  console.log(`Created comment 8: ${comment8.id}`);
+
+  // 对 approvedReview5 的评论
+  const comment9 = await prisma.comment.create({
+    data: {
+      reviewId: approvedReview5.id,
+      userId: secondaryUser.id,
+      content: '麻婆豆腐确实很下饭。',
+      floor: 1,
+      status: 'approved',
+    },
+  });
+  console.log(`Created comment 9: ${comment9.id}`);
+
+  const comment10 = await prisma.comment.create({
+    data: {
+      reviewId: approvedReview5.id,
+      userId: user.id,
+      content: '配一碗米饭刚刚好！',
+      floor: 2,
+      status: 'approved',
+    },
+  });
+  console.log(`Created comment 10: ${comment10.id}`);
+
+  // 待审核的评论
+  const pendingComment1 = await prisma.comment.create({
+    data: {
+      reviewId: approvedReview1.id,
+      userId: user.id,
+      content: '这是一条待审核的评论内容',
+      floor: 5,
+      status: 'pending',
+    },
+  });
+  console.log(`Created pending comment 1: ${pendingComment1.id}`);
+
+  const pendingComment2 = await prisma.comment.create({
+    data: {
+      reviewId: approvedReview3.id,
+      userId: secondaryUser.id,
+      content: '另一条待审核评论',
+      floor: 3,
+      status: 'pending',
+    },
+  });
+  console.log(`Created pending comment 2: ${pendingComment2.id}`);
+
+  const pendingComment3 = await prisma.comment.create({
+    data: {
+      reviewId: approvedReview5.id,
+      userId: user.id,
+      content: '第三条待审核评论',
+      floor: 3,
+      status: 'pending',
+    },
+  });
+  console.log(`Created pending comment 3: ${pendingComment3.id}`);
+
+  // 被拒绝的评论
+  const rejectedComment1 = await prisma.comment.create({
+    data: {
+      reviewId: approvedReview2.id,
+      userId: secondaryUser.id,
+      content: '这是被拒绝的评论',
+      floor: 2,
+      status: 'rejected',
+      rejectReason: '评论内容包含广告',
+    },
+  });
+  console.log(`Created rejected comment 1: ${rejectedComment1.id}`);
 
   // 11. 创建测试举报数据
   // 待处理的评价举报
@@ -850,6 +1190,147 @@ async function main() {
   });
   console.log(`Created pending comment report`);
 
+  // --- 新增更多待审核举报数据 ---
+  // 待审核举报：评价类型 - inappropriate
+  await prisma.report.create({
+    data: {
+      reporterId: secondaryUser.id,
+      targetType: 'review',
+      targetId: approvedReview1.id,
+      reviewId: approvedReview1.id,
+      type: 'inappropriate',
+      reason: '评价内容有人身攻击',
+      status: 'pending',
+    },
+  });
+  console.log(`Created pending review report - inappropriate`);
+
+  // 待审核举报：评价类型 - spam
+  await prisma.report.create({
+    data: {
+      reporterId: user.id,
+      targetType: 'review',
+      targetId: approvedReview3.id,
+      reviewId: approvedReview3.id,
+      type: 'spam',
+      reason: '评价内容为广告推广',
+      status: 'pending',
+    },
+  });
+  console.log(`Created pending review report - spam`);
+
+  // 待审核举报：评价类型 - false_info
+  await prisma.report.create({
+    data: {
+      reporterId: secondaryUser.id,
+      targetType: 'review',
+      targetId: approvedReview5.id,
+      reviewId: approvedReview5.id,
+      type: 'false_info',
+      reason: '评价内容与事实不符',
+      status: 'pending',
+    },
+  });
+  console.log(`Created pending review report - false_info`);
+
+  // 待审核举报：评价类型 - other
+  await prisma.report.create({
+    data: {
+      reporterId: user.id,
+      targetType: 'review',
+      targetId: approvedReview6.id,
+      reviewId: approvedReview6.id,
+      type: 'other',
+      reason: '其他原因：评价语气不友好',
+      status: 'pending',
+    },
+  });
+  console.log(`Created pending review report - other`);
+
+  // 待审核举报：评论类型 - inappropriate
+  await prisma.report.create({
+    data: {
+      reporterId: user.id,
+      targetType: 'comment',
+      targetId: comment1.id,
+      commentId: comment1.id,
+      type: 'inappropriate',
+      reason: '评论内容不当',
+      status: 'pending',
+    },
+  });
+  console.log(`Created pending comment report - inappropriate`);
+
+  // 待审核举报：评论类型 - spam
+  await prisma.report.create({
+    data: {
+      reporterId: secondaryUser.id,
+      targetType: 'comment',
+      targetId: comment3.id,
+      commentId: comment3.id,
+      type: 'spam',
+      reason: '评论为刷屏内容',
+      status: 'pending',
+    },
+  });
+  console.log(`Created pending comment report - spam`);
+
+  // 待审核举报：评论类型 - false_info
+  await prisma.report.create({
+    data: {
+      reporterId: user.id,
+      targetType: 'comment',
+      targetId: comment5.id,
+      commentId: comment5.id,
+      type: 'false_info',
+      reason: '评论包含虚假信息',
+      status: 'pending',
+    },
+  });
+  console.log(`Created pending comment report - false_info`);
+
+  // 待审核举报：评论类型 - other
+  await prisma.report.create({
+    data: {
+      reporterId: secondaryUser.id,
+      targetType: 'comment',
+      targetId: comment8.id,
+      commentId: comment8.id,
+      type: 'other',
+      reason: '其他原因举报',
+      status: 'pending',
+    },
+  });
+  console.log(`Created pending comment report - other`);
+
+  // 待审核举报：更多评价举报
+  await prisma.report.create({
+    data: {
+      reporterId: user.id,
+      targetType: 'review',
+      targetId: approvedReview7.id,
+      reviewId: approvedReview7.id,
+      type: 'spam',
+      reason: '疑似机器人评价',
+      status: 'pending',
+    },
+  });
+  console.log(`Created pending review report - spam 2`);
+
+  await prisma.report.create({
+    data: {
+      reporterId: secondaryUser.id,
+      targetType: 'review',
+      targetId: approvedReview8.id,
+      reviewId: approvedReview8.id,
+      type: 'inappropriate',
+      reason: '评价图片不雅',
+      status: 'pending',
+    },
+  });
+  console.log(`Created pending review report - inappropriate 2`);
+
+  // --- 已处理的举报 ---
   // 已处理的举报（用于测试筛选）
   await prisma.report.create({
     data: {
@@ -867,6 +1348,39 @@ async function main() {
   });
   console.log(`Created approved report`);
 
+  // 更多已通过的举报
+  await prisma.report.create({
+    data: {
+      reporterId: user.id,
+      targetType: 'review',
+      targetId: approvedReview2.id,
+      reviewId: approvedReview2.id,
+      type: 'inappropriate',
+      reason: '评价内容涉及辱骂',
+      status: 'approved',
+      handleResult: '已删除评价内容',
+      handledBy: admin.id,
+      handledAt: new Date(),
+    },
+  });
+  console.log(`Created approved report 2`);
+
+  await prisma.report.create({
+    data: {
+      reporterId: secondaryUser.id,
+      targetType: 'comment',
+      targetId: comment2.id,
+      commentId: comment2.id,
+      type: 'spam',
+      reason: '评论为广告',
+      status: 'approved',
+      handleResult: '已删除评论',
+      handledBy: admin.id,
+      handledAt: new Date(),
+    },
+  });
+  console.log(`Created approved comment report`);
+
   // 被拒绝的举报
   await prisma.report.create({
     data: {
@@ -883,6 +1397,39 @@ async function main() {
     },
   });
   console.log(`Created rejected report`);
+
+  // 更多被拒绝的举报
+  await prisma.report.create({
+    data: {
+      reporterId: user.id,
+      targetType: 'review',
+      targetId: approvedReview4.id,
+      reviewId: approvedReview4.id,
+      type: 'false_info',
+      reason: '恶意举报',
+      status: 'rejected',
+      handleResult: '未发现违规内容',
+      handledBy: admin.id,
+      handledAt: new Date(),
+    },
+  });
+  console.log(`Created rejected report 2`);
+
+  await prisma.report.create({
+    data: {
+      reporterId: secondaryUser.id,
+      targetType: 'comment',
+      targetId: comment6.id,
+      commentId: comment6.id,
+      type: 'inappropriate',
+      reason: '举报原因不明确',
+      status: 'rejected',
+      handleResult: '举报无效',
+      handledBy: admin.id,
+      handledAt: new Date(),
+    },
+  });
+  console.log(`Created rejected comment report`);
 
   console.log(`Seeding finished.`);
 }

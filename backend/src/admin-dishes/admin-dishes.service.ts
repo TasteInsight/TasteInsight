@@ -46,12 +46,13 @@ export class AdminDishesService {
     }
 
     // 关键字搜索
+    // 只搜索关联表的实时数据，确保数据一致性（不搜索冗余字段，避免歧义）
     if (keyword) {
       where.OR = [
         { name: { contains: keyword, mode: 'insensitive' } },
         { description: { contains: keyword, mode: 'insensitive' } },
-        { canteenName: { contains: keyword, mode: 'insensitive' } },
-        { windowName: { contains: keyword, mode: 'insensitive' } },
+        { canteen: { name: { contains: keyword, mode: 'insensitive' } } },
+        { window: { name: { contains: keyword, mode: 'insensitive' } } },
       ];
     }
 
@@ -67,6 +68,7 @@ export class AdminDishesService {
       include: {
         canteen: true,
         window: true,
+        floor: true,
         parentDish: true,
         subDishes: true,
       },
@@ -96,6 +98,7 @@ export class AdminDishesService {
       include: {
         canteen: true,
         window: true,
+        floor: true,
         parentDish: true,
         subDishes: true,
       },
@@ -109,6 +112,16 @@ export class AdminDishesService {
     if (adminInfo.canteenId && dish.canteenId !== adminInfo.canteenId) {
       throw new ForbiddenException('权限不足');
     }
+
+    // 为了更稳健地确保返回的父菜品包含其子菜品 ID（有时关系加载可能未及时反映），
+    // 额外查询一次子菜品列表并注入到返回 DTO 中。
+    const childRows = await this.prisma.dish.findMany({
+      where: { parentDishId: id },
+      select: { id: true },
+    });
+
+    // 将子项 id 列表注入到 dish 对象，方便 mapToAdminDishDto 使用
+    (dish as any).subDishes = childRows.map((r) => ({ id: r.id }));
 
     return {
       code: 200,
@@ -191,6 +204,7 @@ export class AdminDishesService {
         name: createDto.name,
         tags: createDto.tags || [],
         price: createDto.price,
+        priceUnit: createDto.priceUnit,
         description: createDto.description || '',
         images: createDto.images || [],
         parentDishId: createDto.parentDishId,
@@ -261,6 +275,8 @@ export class AdminDishesService {
     if (updateDto.name !== undefined) updateData.name = updateDto.name;
     if (updateDto.tags !== undefined) updateData.tags = updateDto.tags;
     if (updateDto.price !== undefined) updateData.price = updateDto.price;
+    if (updateDto.priceUnit !== undefined)
+      updateData.priceUnit = updateDto.priceUnit;
     if (updateDto.description !== undefined)
       updateData.description = updateDto.description;
     if (updateDto.images !== undefined) updateData.images = updateDto.images;
@@ -344,45 +360,13 @@ export class AdminDishesService {
       updateData.windowName = window.name;
     }
 
-    // 楼层信息处理：如果前端传入了 floor 字段，且没有更新窗口，则单独更新楼层信息
-    // 注意：如果更新了窗口，楼层信息必须跟随窗口，忽略前端传入的 floor 字段，防止数据不一致
-    if (!shouldUpdateWindow && updateDto.floor !== undefined) {
-      // 确定食堂 ID（优先使用更新后的，否则使用现有的）
-      const targetCanteenId = updateData.canteenId || existingDish.canteenId;
-
-      // 先按 name 查找楼层
-      let floor = await this.prisma.floor.findFirst({
-        where: {
-          canteenId: targetCanteenId,
-          name: updateDto.floor,
-        },
-      });
-
-      // 如果按 name 找不到，再按 level 查找
-      if (!floor) {
-        floor = await this.prisma.floor.findFirst({
-          where: {
-            canteenId: targetCanteenId,
-            level: updateDto.floor,
-          },
-        });
-      }
-
-      if (floor) {
-        // 找到楼层，更新楼层信息
-        updateData.floorId = floor.id;
-        updateData.floorLevel = floor.level;
-        updateData.floorName = floor.name;
-      }
-      // 如果找不到对应的楼层，不报错，保持原有楼层信息或使用窗口关联的楼层
-    }
-
     const dish = await this.prisma.dish.update({
       where: { id },
       data: updateData,
       include: {
         canteen: true,
         window: true,
+        floor: true,
         parentDish: true,
         subDishes: true,
       },
@@ -468,8 +452,11 @@ export class AdminDishesService {
       name: dish.name,
       tags: dish.tags,
       price: dish.price,
+      priceUnit: dish.priceUnit,
       description: dish.description,
       images: dish.images,
+      parentDishId: dish.parentDishId,
+      subDishId: dish.subDishes?.map((s: any) => s.id) ?? [],
       ingredients: dish.ingredients,
       allergens: dish.allergens,
       spicyLevel: dish.spicyLevel,
@@ -477,13 +464,13 @@ export class AdminDishesService {
       saltiness: dish.saltiness,
       oiliness: dish.oiliness,
       canteenId: dish.canteenId,
-      canteenName: dish.canteenName,
+      canteenName: dish.canteen?.name || dish.canteenName,
       floorId: dish.floorId,
-      floorLevel: dish.floorLevel,
-      floorName: dish.floorName,
+      floorLevel: dish.floor?.level || dish.floorLevel,
+      floorName: dish.floor?.name || dish.floorName,
       windowId: dish.windowId,
-      windowNumber: dish.windowNumber,
-      windowName: dish.windowName,
+      windowNumber: dish.window?.number || dish.windowNumber,
+      windowName: dish.window?.name || dish.windowName,
       availableMealTime: dish.availableMealTime,
       availableDates: dish.availableDates,
       status: dish.status,
@@ -508,8 +495,11 @@ export class AdminDishesService {
       name: dishUpload.name,
       tags: dishUpload.tags,
       price: dishUpload.price,
+      priceUnit: dishUpload.priceUnit,
       description: dishUpload.description,
       images: dishUpload.images,
+      parentDishId: dishUpload.parentDishId || undefined,
+      subDishId: [],
       ingredients: dishUpload.ingredients,
       allergens: dishUpload.allergens,
       spicyLevel: dishUpload.spicyLevel,
@@ -532,6 +522,99 @@ export class AdminDishesService {
       reviewCount: 0,
       createdAt: dishUpload.createdAt,
       updatedAt: dishUpload.updatedAt,
+    };
+  }
+
+  /**
+   * 管理端获取菜品评价列表
+   */
+  async getDishReviews(dishId: string, page: number = 1, pageSize: number = 20) {
+    // 检查菜品是否存在
+    const dish = await this.prisma.dish.findUnique({
+      where: { id: dishId },
+    });
+
+    if (!dish) {
+      throw new NotFoundException('菜品不存在');
+    }
+
+    const skip = (page - 1) * pageSize;
+    const where = { dishId, deletedAt: null };
+
+    const [total, reviews] = await Promise.all([
+      this.prisma.review.count({ where }),
+      this.prisma.review.findMany({
+        where,
+        skip,
+        take: pageSize,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: {
+            select: {
+              id: true,
+              nickname: true,
+              avatar: true,
+            },
+          },
+          _count: {
+            select: {
+              comments: {
+                where: { deletedAt: null },
+              },
+            },
+          },
+        },
+      }),
+    ]);
+
+    const items = reviews.map((review) => {
+      const hasDetails =
+        review.spicyLevel !== null ||
+        review.sweetness !== null ||
+        review.saltiness !== null ||
+        review.oiliness !== null;
+
+      return {
+        id: review.id,
+        dishId: review.dishId,
+        userId: review.userId,
+        rating: review.rating,
+        ratingDetails: hasDetails
+          ? {
+              spicyLevel: review.spicyLevel,
+              sweetness: review.sweetness,
+              saltiness: review.saltiness,
+              oiliness: review.oiliness,
+            }
+          : null,
+        content: review.content,
+        images: review.images,
+        status: review.status,
+        rejectReason: review.rejectReason,
+        createdAt: review.createdAt,
+        updatedAt: review.updatedAt,
+        deletedAt: review.deletedAt,
+        user: {
+          id: review.user.id,
+          nickname: review.user.nickname,
+          avatar: review.user.avatar,
+        },
+        commentCount: review._count.comments,
+      };
+    });
+
+    return {
+      code: 200,
+      message: 'success',
+      data: {
+        items,
+        meta: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize),
+        },
+      },
     };
   }
 }

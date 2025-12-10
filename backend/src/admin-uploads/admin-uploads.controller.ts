@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { AdminUploadsService } from './admin-uploads.service';
 import {
-  AdminGetPendingUploadsDto,
+  AdminGetUploadsDto,
   AdminRejectUploadDto,
 } from './dto/admin-upload.dto';
 import { AdminAuthGuard } from '@/auth/guards/admin-auth.guard';
@@ -24,21 +24,18 @@ import { RequirePermissions } from '@/auth/decorators/permissions.decorator';
 export class AdminUploadsController {
   constructor(private readonly adminUploadsService: AdminUploadsService) {}
 
-  @Get('pending')
+  @Get('')
   @RequirePermissions('upload:approve')
   @HttpCode(HttpStatus.OK)
-  async getPendingUploads(
-    @Query() query: AdminGetPendingUploadsDto,
-    @Request() req,
-  ) {
-    return this.adminUploadsService.getPendingUploads(query, req.admin);
+  async getUploads(@Query() query: AdminGetUploadsDto, @Request() req) {
+    return this.adminUploadsService.getUploads(query, req.admin);
   }
 
-  @Get('pending/:id')
+  @Get(':id')
   @RequirePermissions('upload:approve')
   @HttpCode(HttpStatus.OK)
-  async getPendingUploadById(@Param('id') id: string, @Request() req) {
-    return this.adminUploadsService.getPendingUploadById(id, req.admin);
+  async getUploadById(@Param('id') id: string, @Request() req) {
+    return this.adminUploadsService.getUploadById(id, req.admin);
   }
 
   @Post(':id/approve')
@@ -61,5 +58,12 @@ export class AdminUploadsController {
       rejectDto.reason,
       req.admin,
     );
+  }
+
+  @Post(':id/revoke')
+  @RequirePermissions('upload:approve')
+  @HttpCode(HttpStatus.OK)
+  async revokeUpload(@Param('id') id: string, @Request() req) {
+    return this.adminUploadsService.revokeUpload(id, req.admin);
   }
 }

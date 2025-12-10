@@ -174,7 +174,6 @@ export interface DishCreateRequest {
   oiliness?: number
   canteenId?: string
   canteenName: string
-  floor?: string // 楼层名称或编号
   windowNumber?: string
   windowName: string
   availableMealTime?: ('breakfast' | 'lunch' | 'dinner' | 'nightsnack')[]
@@ -201,7 +200,6 @@ export interface DishUpdateRequest {
   oiliness?: number
   canteenId?: string
   canteenName?: string
-  floor?: string // 楼层名称或编号
   windowNumber?: string
   windowName?: string
   availableMealTime?: ('breakfast' | 'lunch' | 'dinner' | 'nightsnack')[]
@@ -412,7 +410,7 @@ export interface AdminWithPermissions extends Admin {
 export interface CreateAdminRequest {
   username: string
   password: string
-  role: string
+  role?: string // 角色为可选字段，可以是预设角色或自定义角色
   canteenId?: string
   permissions?: string[]
 }
@@ -491,6 +489,16 @@ export interface GetDishReviewsParams extends PaginationParams {
 }
 
 /**
+ * 父评论信息（用于回复）
+ */
+export interface ParentComment {
+  id: string
+  userId: string
+  userNickname: string
+  deleted: boolean
+}
+
+/**
  * 评论信息
  */
 export interface Comment {
@@ -501,6 +509,8 @@ export interface Comment {
   userAvatar: string
   content: string
   status: 'pending' | 'approved' | 'rejected'
+  parentComment?: ParentComment | null
+  floor: number
   createdAt: string
 }
 
@@ -518,20 +528,36 @@ export interface PendingComment extends Comment {
 export interface Report {
   id: string
   reporterId: string
-  reporterNickname: string
+  reporterNickname?: string 
   targetType: 'review' | 'comment'
   targetId: string
+  type: string
   reason: string
   status: 'pending' | 'approved' | 'rejected'
+  handleResult: string | null
+  handledBy: string | null
+  handledAt: string | null
   createdAt: string
+  updatedAt?: string 
+  reporter?: {
+    id: string
+    nickname: string
+    avatar: string | null
+  }
+  targetContent?: {
+    content: string | null
+    userId: string
+    userNickname: string
+    isDeleted: boolean
+  }
 }
 
 /**
  * 处理举报请求
  */
 export interface ReportHandleRequest {
-  action: 'approve' | 'reject'
-  reason?: string
+  action: 'delete_content' | 'warn_user' | 'reject_report'
+  result?: string
 }
 
 /**
@@ -550,12 +576,16 @@ export interface News {
   id: string
   title: string
   content: string
-  author: string
+  summary?: string
+  canteenId?: string
+  canteenName?: string
+  author?: string // 兼容旧代码，对应 createdBy
+  createdBy?: string
   images?: string[]
-  status: 'draft' | 'published'
+  status?: 'draft' | 'published'
   publishedAt?: string
   createdAt: string
-  updatedAt: string
+  updatedAt?: string
 }
 
 /**
@@ -564,7 +594,9 @@ export interface News {
 export interface NewsCreateRequest {
   title: string
   content: string
-  author: string
+  summary?: string
+  canteenId?: string
+  author?: string // 暂时保留
   images?: string[]
   status?: 'draft' | 'published'
 }
@@ -575,7 +607,9 @@ export interface NewsCreateRequest {
 export interface NewsUpdateRequest {
   title?: string
   content?: string
-  author?: string
+  summary?: string
+  canteenId?: string
+  author?: string // 暂时保留
   images?: string[]
   status?: 'draft' | 'published'
 }
@@ -585,6 +619,7 @@ export interface NewsUpdateRequest {
  */
 export interface GetNewsParams extends PaginationParams {
   status?: 'draft' | 'published'
+  canteenName?: string
 }
 
 // ==================== 日志相关类型 ====================

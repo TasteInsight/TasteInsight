@@ -1,5 +1,9 @@
 <template>
-  <view class="w-full min-h-screen bg-gradient-to-b from-white via-purple-50/20 to-white p-4" style="max-width: 375px;">
+  <view class="w-full min-h-screen bg-gradient-to-b from-white via-purple-50/20 to-white p-4">
+    <!-- 骨架屏：首次加载时显示 -->
+    <DisplaySettingsSkeleton v-if="loading" />
+
+    <template v-else>
     <!-- 显示选项 -->
     <view class="bg-white rounded-2xl p-6 mb-4 shadow-sm">
       <text class="text-lg font-semibold text-gray-800 mb-4 block">显示选项</text>
@@ -56,108 +60,22 @@
     >
       <text>{{ saving ? '保存中...' : '保存设置' }}</text>
     </button>
+    </template>
   </view>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue';
-import { useUserStore } from '@/store/modules/use-user-store';
-import { updateUserProfile } from '@/api/modules/user';
-import type { UserProfileUpdateRequest, UserPreference } from '@/types/api';
+import { useDisplay } from '../composables/use-display';
+import { DisplaySettingsSkeleton } from '@/components/skeleton';
 
-const userStore = useUserStore();
-const saving = ref(false);
-const loading = ref(true);
-const form = reactive({
-  showCalories: true,
-  showNutrition: true,
-  sortByIndex: 0
-});
-
-const sortOptions = ['推荐排序', '热度排序', '最新上架', '价格从低到高', '价格从高到低'];
-const sortByValues = ['rating', 'popularity', 'newest', 'price_low', 'price_high'];
-
-/**
- * 加载用户信息
- */
-onMounted(async () => {
-  try {
-    await userStore.fetchProfileAction();
-    const userInfo = userStore.userInfo;
-    if (userInfo && userInfo.preferences && userInfo.preferences.displaySettings) {
-      const display = userInfo.preferences.displaySettings;
-      form.showCalories = display.showCalories ?? true;
-      form.showNutrition = display.showNutrition ?? true;
-      if (display.sortBy) {
-        const index = sortByValues.indexOf(display.sortBy);
-        form.sortByIndex = index >= 0 ? index : 0;
-      }
-    }
-  } catch (error) {
-    console.error('加载用户信息失败:', error);
-  } finally {
-    loading.value = false;
-  }
-});
-
-/**
- * 事件处理：兼容不同平台的 change 事件结构
- */
-function onShowCaloriesChange(e: any) {
-  form.showCalories = e && typeof e === 'object' && 'detail' in e ? !!e.detail.value : !!e;
-}
-
-function onShowNutritionChange(e: any) {
-  form.showNutrition = e && typeof e === 'object' && 'detail' in e ? !!e.detail.value : !!e;
-}
-
-function onSortChange(e: any) {
-  const val = e && typeof e === 'object' && 'detail' in e ? e.detail.value : e;
-  form.sortByIndex = Number(val) || 0;
-}
-
-/**
- * 保存设置
- */
-async function handleSave() {
-  saving.value = true;
-  try {
-    const preferences: Partial<UserPreference> = {
-      displaySettings: {
-        showCalories: form.showCalories,
-        showNutrition: form.showNutrition,
-        sortBy: sortByValues[form.sortByIndex] as any
-      }
-    };
-
-    const payload: UserProfileUpdateRequest = {
-      preferences
-    };
-
-    const response = await updateUserProfile(payload);
-    if (response.code !== 200 || !response.data) {
-      throw new Error(response.message || '保存失败');
-    }
-
-    userStore.updateLocalUserInfo(response.data);
-    
-    uni.showToast({
-      title: '保存成功',
-      icon: 'success'
-    });
-    
-    setTimeout(() => {
-      uni.navigateBack();
-    }, 1000);
-  } catch (error) {
-    console.error('保存失败:', error);
-    const message = error instanceof Error ? error.message : '保存失败';
-    uni.showToast({
-      title: message,
-      icon: 'none'
-    });
-  } finally {
-    saving.value = false;
-  }
-}
+const {
+  form,
+  saving,
+  loading,
+  sortOptions,
+  onShowCaloriesChange,
+  onShowNutritionChange,
+  onSortChange,
+  handleSave
+} = useDisplay();
 </script>

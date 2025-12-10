@@ -1,5 +1,9 @@
 <template>
   <view class="w-full min-h-screen p-4 bg-gray-50">
+    <!-- 骨架屏：首次加载时显示 -->
+    <AllergensSkeleton v-if="loading" />
+
+    <template v-else>
     <!-- 说明文字 -->
     <view class="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-4">
       <text class="text-sm text-blue-700 leading-relaxed">设置您的过敏原信息，系统会为您过滤包含这些成分的菜品。</text>
@@ -45,108 +49,13 @@
     >
       <text>{{ saving ? '保存中...' : '保存设置' }}</text>
     </button>
+    </template>
   </view>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue';
-import { useUserStore } from '@/store/modules/use-user-store';
-import { updateUserProfile } from '@/api/modules/user';
-import type { UserProfileUpdateRequest } from '@/types/api';
+import { useAllergens } from '../composables/use-allergens';
+import { AllergensSkeleton } from '@/components/skeleton';
 
-const userStore = useUserStore();
-const saving = ref(false);
-const loading = ref(true);
-const form = reactive({
-  allergens: ''
-});
-
-const commonAllergens = ['花生', '牛奶', '鸡蛋', '海鲜', '大豆', '小麦', '坚果', '芝麻', '芒果', '菠萝', '猕猴桃', '桃子', '蚕豆'];
-
-/**
- * 加载用户信息
- */
-onMounted(async () => {
-  try {
-    await userStore.fetchProfileAction();
-    const userInfo = userStore.userInfo;
-    if (userInfo && userInfo.allergens) {
-      form.allergens = userInfo.allergens.join(', ');
-    }
-  } catch (error) {
-    console.error('加载用户信息失败:', error);
-  } finally {
-    loading.value = false;
-  }
-});
-
-/**
- * 判断过敏原是否已选中
- */
-function isSelected(allergen: string): boolean {
-  return form.allergens.split(/[,，]/).map(a => a.trim()).includes(allergen);
-}
-
-/**
- * 切换过敏原选中状态
- */
-function toggleAllergen(allergen: string) {
-  let allergenList = form.allergens.split(/[,，]/).map(a => a.trim()).filter(a => a);
-  const index = allergenList.indexOf(allergen);
-  
-  if (index > -1) {
-    allergenList.splice(index, 1);
-  } else {
-    allergenList.push(allergen);
-  }
-  
-  form.allergens = allergenList.join(', ');
-}
-
-/**
- * 解析列表
- */
-function parseList(text: string): string[] {
-  return text
-    .split(/[,，;；\n\r\s]+/)
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-/**
- * 保存设置
- */
-async function handleSave() {
-  saving.value = true;
-  try {
-    const payload: UserProfileUpdateRequest = {
-      allergens: parseList(form.allergens)
-    };
-
-    const response = await updateUserProfile(payload);
-    if (response.code !== 200 || !response.data) {
-      throw new Error(response.message || '保存失败');
-    }
-
-    userStore.updateLocalUserInfo(response.data);
-    
-    uni.showToast({
-      title: '保存成功',
-      icon: 'success'
-    });
-    
-    setTimeout(() => {
-      uni.navigateBack();
-    }, 1000);
-  } catch (error) {
-    console.error('保存失败:', error);
-    const message = error instanceof Error ? error.message : '保存失败';
-    uni.showToast({
-      title: message,
-      icon: 'none'
-    });
-  } finally {
-    saving.value = false;
-  }
-}
+const { form, saving, loading, commonAllergens, isSelected, toggleAllergen, handleSave } = useAllergens();
 </script>

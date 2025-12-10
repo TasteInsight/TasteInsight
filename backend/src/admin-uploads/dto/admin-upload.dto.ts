@@ -5,11 +5,12 @@ import {
   IsNotEmpty,
   Min,
   Max,
+  IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
 // 获取待审核上传列表的查询参数
-export class AdminGetPendingUploadsDto {
+export class AdminGetUploadsDto {
   @IsOptional()
   @IsNumber()
   @Min(1)
@@ -22,6 +23,13 @@ export class AdminGetPendingUploadsDto {
   @Max(100)
   @Type(() => Number)
   pageSize?: number = 20;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['pending', 'approved', 'rejected'], {
+    message: '状态必须是 pending, approved 或 rejected',
+  })
+  status?: string;
 }
 
 // 拒绝上传的请求体

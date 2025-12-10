@@ -19,17 +19,19 @@ import {
   mockDeleteReview,
   mockDeleteComment
 } from './services/review';
-import { mockGetDishById, mockGetDishes } from './services/dish';
+import { mockGetDishById, mockGetDishes, mockGetDishesImages } from './services/dish';
 import { mockGetCanteenList, mockGetCanteenDetail, mockGetWindowList, mockGetWindowDetail, mockGetWindowDishes, mockSearchDishes } from './services/canteen';
 import { mockGetNewsList, mockGetNewsById } from './services/news';
 import { 
   mockGetMealPlans, 
-  mockCreateOrUpdateMealPlan, 
+  mockCreateMealPlan,
+  mockUpdateMealPlan,
   mockDeleteMealPlan,
   mockExecutePlan,
 } from './services/meal-plan';
 import { 
   mockWechatLogin, 
+  mockRefreshToken,
   mockGetUserProfile, 
   mockUpdateUserProfile,
   mockGetMyReviews,
@@ -146,6 +148,12 @@ registerMockRoute('POST', '/dishes', async (url, options) => {
   return mockSuccess(data);
 });
 
+// GET /dishes/images - 获取菜品图片列表
+registerMockRoute('GET', '/dishes/images', async () => {
+  const data = await mockGetDishesImages();
+  return mockSuccess(data);
+});
+
 // POST /dishes/:dishId/favorite - 收藏菜品
 registerMockRoute('POST', '/dishes/:dishId/favorite', async (url) => {
   const match = url.match(/\/dishes\/([^/]+)\/favorite/);
@@ -249,11 +257,25 @@ registerMockRoute('POST', '/meal-plans/:id/execute', async (url) => {
   return mockSuccess(data);
 });
 
-// POST /meal-plans - 创建/更新用餐计划
+// POST /meal-plans - 创建用餐计划
 registerMockRoute('POST', '/meal-plans', async (url, options) => {
   const planData = options.data as any;
-  const data = await mockCreateOrUpdateMealPlan(planData);
+  const data = await mockCreateMealPlan(planData);
   return mockSuccess(data);
+});
+
+// PATCH /meal-plans/:id - 更新用餐计划
+registerMockRoute('PATCH', '/meal-plans/:id', async (url, options) => {
+  const match = url.match(/\/meal-plans\/([^/]+)$/);
+  const planId = match?.[1] || '';
+  const planData = options.data as any;
+  
+  const data = await mockUpdateMealPlan(planId, planData);
+  if (data) {
+    return mockSuccess(data);
+  } else {
+    return { code: 404, message: '规划不存在', data: null };
+  }
 });
 
 // DELETE /meal-plans/:id - 删除用餐计划
@@ -273,6 +295,12 @@ registerMockRoute('DELETE', '/meal-plans/:id', async (url) => {
 registerMockRoute('POST', '/auth/wechat/login', async (url, options) => {
   const loginData = options.data as any;
   const data = await mockWechatLogin(loginData.code);
+  return mockSuccess(data);
+});
+
+// POST /auth/refresh - 刷新 Token
+registerMockRoute('POST', '/auth/refresh', async () => {
+  const data = await mockRefreshToken();
   return mockSuccess(data);
 });
 

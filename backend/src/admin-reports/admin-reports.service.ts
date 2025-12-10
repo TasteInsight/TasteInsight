@@ -19,12 +19,17 @@ export class AdminReportsService {
     page: number = 1,
     pageSize: number = 20,
     status?: 'pending' | 'approved' | 'rejected',
+    targetType?: string,
   ): Promise<ReportListResponseDto> {
     const skip = (page - 1) * pageSize;
     const where: any = {};
 
     if (status) {
       where.status = status;
+    }
+
+    if (targetType) {
+      where.targetType = targetType;
     }
 
     const [total, reports] = await Promise.all([

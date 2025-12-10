@@ -5,6 +5,7 @@ import type { User, UserProfileUpdateRequest } from '@/types/api';
 
 export const useUserStore = defineStore('user', () => {
   const token = ref<string | null>(uni.getStorageSync('token') || null);
+  const refreshToken = ref<string | null>(uni.getStorageSync('refreshToken') || null);
   
   const initialUserInfo = (() => {
     const info = uni.getStorageSync('userInfo');
@@ -52,6 +53,10 @@ export const useUserStore = defineStore('user', () => {
       // 先保存 token（以便后续请求能够携带 token 拉取 profile）
       token.value = newToken.accessToken;
       uni.setStorageSync('token', newToken.accessToken);
+      if (newToken.refreshToken) {
+        refreshToken.value = newToken.refreshToken;
+        uni.setStorageSync('refreshToken', newToken.refreshToken);
+      }
 
       // 情况1：后端同时返回用户信息，直接做容错处理
       if (user) {
@@ -84,7 +89,9 @@ export const useUserStore = defineStore('user', () => {
 
         userInfo.value = safeUser;
         uni.setStorageSync('userInfo', JSON.stringify(safeUser));
-        return safeUser;
+        // 确保获取最新的profile数据
+        await fetchProfileAction();
+        return userInfo.value;
       }
 
       // 情况2：后端未返回用户信息，仅返回 token，则使用 profile 接口获取
@@ -110,8 +117,10 @@ export const useUserStore = defineStore('user', () => {
    */
   function logoutAction(): void {
     token.value = null;
+    refreshToken.value = null;
     userInfo.value = null;
     uni.removeStorageSync('token');
+    uni.removeStorageSync('refreshToken');
     uni.removeStorageSync('userInfo');
   }
     
@@ -158,6 +167,7 @@ export const useUserStore = defineStore('user', () => {
   return {
     // State
     token,
+    refreshToken,
     userInfo,
     // Getters
     isLoggedIn,

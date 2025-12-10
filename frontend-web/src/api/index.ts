@@ -14,7 +14,7 @@ export const api = {
   // 认证相关
   adminLogin: authApi.adminLogin.bind(authApi),
   refreshToken: authApi.refreshToken.bind(authApi),
-  
+
   // 菜品相关
   getDishes: dishApi.getDishes.bind(dishApi),
   getDishById: dishApi.getDishById.bind(dishApi),
@@ -25,17 +25,18 @@ export const api = {
   updateDishStatus: dishApi.updateDishStatus.bind(dishApi),
   uploadImage: dishApi.uploadImage.bind(dishApi),
   getDishReviews: dishApi.getDishReviews.bind(dishApi),
-  
+
   // 权限管理
   getAdmins: permissionApi.getAdmins.bind(permissionApi),
   createAdmin: permissionApi.createAdmin.bind(permissionApi),
   deleteAdmin: permissionApi.deleteAdmin.bind(permissionApi),
   updateAdminPermissions: permissionApi.updateAdminPermissions.bind(permissionApi),
-  
+
   // 审核相关
   getPendingReviews: reviewApi.getPendingReviews.bind(reviewApi),
   approveReview: reviewApi.approveReview.bind(reviewApi),
   rejectReview: reviewApi.rejectReview.bind(reviewApi),
+  deleteReview: reviewApi.deleteReview.bind(reviewApi),
   getPendingComments: reviewApi.getPendingComments.bind(reviewApi),
   approveComment: reviewApi.approveComment.bind(reviewApi),
   rejectComment: reviewApi.rejectComment.bind(reviewApi),
@@ -44,16 +45,18 @@ export const api = {
   getPendingUploads: reviewApi.getPendingUploads.bind(reviewApi),
   approveUpload: reviewApi.approveUpload.bind(reviewApi),
   rejectUpload: reviewApi.rejectUpload.bind(reviewApi),
-  
+  getDishComments: reviewApi.getDishComments.bind(reviewApi),
+  deleteComment: reviewApi.deleteComment.bind(reviewApi),
+
   // 日志管理
   getLogs: logApi.getLogs.bind(logApi),
-  
+
   // 新闻管理
   getNews: newsApi.getNews.bind(newsApi),
   createNews: newsApi.createNews.bind(newsApi),
   updateNews: newsApi.updateNews.bind(newsApi),
   deleteNews: newsApi.deleteNews.bind(newsApi),
-  
+
   // 食堂窗口管理
   getCanteens: canteenApi.getCanteens.bind(canteenApi),
   createCanteen: canteenApi.createCanteen.bind(canteenApi),
@@ -68,18 +71,17 @@ export const api = {
 /**
  * 分类导出（推荐使用）
  */
-export { 
-  authApi,      // 认证
-  dishApi,      // 菜品
-  reviewApi,    // 审核
-  permissionApi,// 权限
-  logApi,       // 日志
-  newsApi,      // 新闻
-  canteenApi    // 食堂
+export {
+  authApi, // 认证
+  dishApi, // 菜品
+  reviewApi, // 审核
+  permissionApi, // 权限
+  logApi, // 日志
+  newsApi, // 新闻
+  canteenApi, // 食堂
 }
 
 /**
  * 导出类型
  */
 export type * from '@/types/api'
-

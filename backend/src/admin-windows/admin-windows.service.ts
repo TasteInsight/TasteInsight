@@ -11,6 +11,7 @@ import {
   WindowResponseDto,
   WindowDto,
 } from './dto/window-response.dto';
+import { DishSyncService } from '@/dish-sync-queue/dish-sync.service';
 
 // Window 类型定义，用于 mapWindowToDto
 type WindowWithFloor = {
@@ -33,7 +34,10 @@ type WindowWithFloor = {
 
 @Injectable()
 export class AdminWindowsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private dishSyncService: DishSyncService,
+  ) {}
 
   /**
    * 将 Window 实体映射为 WindowDto
@@ -193,12 +197,15 @@ export class AdminWindowsService {
       ? await this.findOrCreateFloor(existingWindow.canteenId, floor)
       : existingWindow.floorId;
 
+    // 执行数据库更新
     const window = await this.prisma.window.update({
       where: { id },
       data: {
-        floorId,
+        floorId, // 这里使用了计算后的最新 floorId
         name: windowData.name,
-        ...(windowData.number !== undefined ? { number: windowData.number } : {}),
+        ...(windowData.number !== undefined
+          ? { number: windowData.number }
+          : {}),
         position: windowData.position,
         description: windowData.description,
         tags: windowData.tags,
@@ -207,6 +214,29 @@ export class AdminWindowsService {
         floor: true,
       },
     });
+
+    // 1. 检查名字是否改变
+    const nameChanged = existingWindow.name !== windowData.name;
+
+    // 2. 检查编号是否改变 (注意处理 undefined)
+    const numberChanged =
+      windowData.number !== undefined &&
+      existingWindow.number !== windowData.number;
+
+    // 3. 检查楼层是否改变 (对比 ID)
+    // 修复：正确处理 floorId 显式设置为 undefined/null 的情况
+    const floorChanged = existingWindow.floorId !== floorId;
+
+    if (nameChanged || numberChanged || floorChanged) {
+      // 这里的 window.name 是更新后的名字
+      // floorId 是更新后的楼层ID (如果没变就是原来的，变了就是新的)
+      await this.dishSyncService.syncWindowInfo(
+        window.id,
+        window.name,
+        window.number,
+        floorId ?? undefined, // 如果是 null 转 undefined
+      );
+    }
 
     return {
       code: 200,

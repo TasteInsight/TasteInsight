@@ -28,6 +28,30 @@ describe('AuthController (e2e)', () => {
     httpService = app.get<HttpService>(HttpService);
     app.useGlobalPipes(new ValidationPipe());
     await app.init();
+
+    // 确保 baseline 和 secondary 用户存在（使用 upsert 以兼容 seed 数据和独立运行）
+    // 同时恢复 nickname，因为其他测试可能会修改它
+    await prisma.user.upsert({
+      where: { openId: 'baseline_user_openid' },
+      update: { nickname: 'Baseline User' },
+      create: {
+        openId: 'baseline_user_openid',
+        nickname: 'Baseline User',
+        avatar: 'https://example.com/avatar.jpg',
+        allergens: ['芒果'],
+      },
+    });
+
+    await prisma.user.upsert({
+      where: { openId: 'secondary_user_openid' },
+      update: { nickname: 'Secondary User' },
+      create: {
+        openId: 'secondary_user_openid',
+        nickname: 'Secondary User',
+        avatar: 'https://example.com/avatar2.jpg',
+        allergens: [],
+      },
+    });
   });
 
   afterAll(async () => {
@@ -112,8 +136,8 @@ describe('AuthController (e2e)', () => {
           status: 200,
           statusText: 'OK',
           headers: {},
-          config: { headers: undefined },
-        }),
+          config: { headers: {} },
+        } as any),
       );
 
       const response = await request(app.getHttpServer())
@@ -136,8 +160,8 @@ describe('AuthController (e2e)', () => {
           status: 200,
           statusText: 'OK',
           headers: {},
-          config: { headers: undefined },
-        }),
+          config: { headers: {} },
+        } as any),
       );
 
       await request(app.getHttpServer())

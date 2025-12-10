@@ -121,12 +121,12 @@ describe('NewsService', () => {
 
       expect(mockPrismaService.news.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: {},
+          where: { status: 'published' },
         }),
       );
       expect(mockPrismaService.news.count).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: {},
+          where: { status: 'published' },
         }),
       );
     });
@@ -139,12 +139,12 @@ describe('NewsService', () => {
 
       expect(mockPrismaService.news.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { canteenId },
+          where: { canteenId, status: 'published' },
         }),
       );
       expect(mockPrismaService.news.count).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { canteenId },
+          where: { canteenId, status: 'published' },
         }),
       );
     });
@@ -161,6 +161,7 @@ describe('NewsService', () => {
         summary: 'Summary 1',
         canteenId: 'c1',
         canteenName: 'Canteen 1',
+        status: 'published',
         publishedAt,
         createdBy: 'admin1',
         createdAt,

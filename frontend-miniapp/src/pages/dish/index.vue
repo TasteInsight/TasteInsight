@@ -1,9 +1,7 @@
 <template>
   <view class="min-h-screen bg-white pt-16">
-    <!-- 加载状态 -->
-    <view v-if="loading" class="flex items-center justify-center min-h-screen">
-      <text class="text-purple-500">加载中...</text>
-    </view>
+    <!-- 骨架屏 -->
+    <DishDetailSkeleton v-if="loading && !dish" />
 
     <!-- 错误状态 -->
     <view v-else-if="error" class="flex items-center justify-center min-h-screen">
@@ -282,7 +280,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { onLoad, onBackPress } from '@dcloudio/uni-app';
+import { onLoad, onBackPress, onPullDownRefresh } from '@dcloudio/uni-app';
 import { useDishDetail } from '@/pages/dish/composables/use-dish-detail';
 import ReviewList from './components/ReviewList.vue';
 import ReviewForm from './components/ReviewForm.vue';
@@ -290,6 +288,7 @@ import BottomReviewInput from './components/BottomReviewInput.vue';
 import AllCommentsPanel from './components/AllCommentsPanel.vue';
 import RatingBars from './components/RatingBars.vue';
 import ReportDialog from './components/ReportDialog.vue';
+import { DishDetailSkeleton } from '@/components/skeleton';
 import { useReport } from '@/pages/dish/composables/use-report';
 
 const dishId = ref('');
@@ -358,6 +357,28 @@ onLoad((options: any) => {
   if (options.id) {
     dishId.value = options.id;
     fetchDishDetail(options.id);
+  }
+});
+
+// 下拉刷新处理
+onPullDownRefresh(async () => {
+  try {
+    if (dishId.value) {
+      await fetchDishDetail(dishId.value);
+    }
+    uni.showToast({
+      title: '刷新成功',
+      icon: 'success',
+      duration: 1500
+    });
+  } catch (err) {
+    console.error('下拉刷新失败:', err);
+    uni.showToast({
+      title: '刷新失败',
+      icon: 'none'
+    });
+  } finally {
+    uni.stopPullDownRefresh();
   }
 });
 

@@ -220,6 +220,68 @@
               </div>
             </div>
           </div>
+          <p v-if="uploadedFile" class="mt-2 text-green-600 flex items-center">
+            <span class="iconify mr-1" data-icon="carbon:checkmark-filled"></span>
+            已上传文件: {{ uploadedFile.name }}
+          </p>
+        </div>
+
+        <!-- 解析结果预览 -->
+        <div class="border-b pb-6">
+          <h3 class="font-medium text-gray-700 mb-4">第三步：确认解析结果</h3>
+          <div class="overflow-auto max-h-96 border rounded-lg">
+            <table class="w-full">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">序号</th>
+                  <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">菜品名称</th>
+                  <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">食堂</th>
+                  <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">窗口</th>
+                  <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">价格区间</th>
+                  <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">状态</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200">
+                <tr v-for="item in parsedData" :key="item.id" class="table-row">
+                  <td class="py-3 px-4">{{ item.id }}</td>
+                  <td class="py-3 px-4">{{ item.name }}</td>
+                  <td class="py-3 px-4">{{ item.canteen }}</td>
+                  <td class="py-3 px-4">{{ item.window }}</td>
+                  <td class="py-3 px-4">{{ item.priceRange }}</td>
+                  <td
+                    class="py-3 px-4"
+                    :class="item.status === '有效' ? 'text-green-600' : 'text-red-600'"
+                  >
+                    {{ item.status }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="mt-4 text-gray-500 text-sm">
+            <p>
+              共解析{{ parsedData.length }}条数据，{{ validCount }}条有效，{{ invalidCount }}条无效
+            </p>
+          </div>
+        </div>
+
+        <!-- 提交按钮 -->
+        <div class="flex space-x-4">
+          <button
+            class="px-6 py-2 text-white rounded-lg transition duration-200 flex items-center"
+            :class="authStore.hasPermission('dish:create') ? 'bg-tsinghua-purple hover:bg-tsinghua-dark' : 'bg-gray-400 cursor-not-allowed'"
+            :disabled="validCount === 0 || !authStore.hasPermission('dish:create')"
+            @click="submitBatchData"
+            :title="!authStore.hasPermission('dish:create') ? '无权限创建' : '确认导入有效数据'"
+          >
+            <span class="iconify mr-1" data-icon="carbon:checkmark"></span>确认导入有效数据
+          </button>
+          <button
+            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"
+            @click="resetBatchData"
+          >
+            取消
+          </button>
         </div>
       </div>
     </div>
@@ -251,12 +313,12 @@ const parseError = ref<string | null>(null)
     const invalidCount = computed(() => 
       parsedData.value.filter(item => item.status === 'invalid').length
     )
-    
+
     const downloadTemplate = () => {
       // TODO: 实现模板下载功能
       alert('模板下载功能开发中...')
     }
-    
+
     const triggerFileInput = () => {
       fileInput.value?.click()
     }
@@ -371,7 +433,7 @@ const parseError = ref<string | null>(null)
         isSubmitting.value = false
       }
     }
-    
+
     const resetBatchData = () => {
       uploadedFile.value = null
       parsedData.value = []

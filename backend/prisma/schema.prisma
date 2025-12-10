@@ -16,18 +16,20 @@ model User {
   openId    String   @unique
   nickname  String
   avatar    String?
-  allergens String[] // 过敏原列表
+  allergens String[] @default([]) // 过敏原列表
 
   // 关联关系
   preferences    UserPreference?
+  settings       UserSetting?
   reviews        Review[]
   comments       Comment[]
-  favoriteDishes FavoriteDish[]
   mealPlans      MealPlan[]
-  browseHistory  BrowseHistory[]
   uploads        DishUpload[]
   reports        Report[]
-  feedbacks      AIRecommendationFeedback[]
+  favoriteDishes FavoriteDish[]
+  browseHistory  BrowseHistory[]
+
+  feedbacks AIRecommendationFeedback[]
 
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
@@ -42,16 +44,16 @@ model UserPreference {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // 基础偏好
-  tagPreferences String[] // 菜系偏好
+  tagPreferences String[] @default([]) // 菜系偏好
 
   // 价格偏好
   priceMin Float @default(0)
   priceMax Float @default(50)
 
   // 肉类和食材偏好
-  meatPreference      String[]
-  avoidIngredients    String[] // 不喜欢的食材
-  favoriteIngredients String[] // 喜欢的食材
+  meatPreference      String[] @default([])
+  avoidIngredients    String[] @default([]) // 不喜欢的食材
+  favoriteIngredients String[] @default([]) // 喜欢的食材
 
   // 口味偏好
   spicyLevel Int @default(0) // 0-5 辣度等级
@@ -60,8 +62,19 @@ model UserPreference {
   oiliness   Int @default(0) // 0-5
 
   // 其他偏好
-  canteenPreferences String[] // 偏好食堂ID列表
+  canteenPreferences String[] @default([]) // 偏好食堂ID列表
   portionSize        String   @default("medium") // small, medium, large
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user_preferences")
+}
+
+model UserSetting {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // 通知设置
   newDishAlert         Boolean @default(true)
@@ -77,7 +90,7 @@ model UserPreference {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@map("user_preferences")
+  @@map("user_settings")
 }
 
 // ==================== 管理员相关模型 ====================
@@ -155,12 +168,13 @@ model Canteen {
   reviewCount   Int   @default(0)
 
   // 关联关系
-  floors      Floor[]
-  windows     Window[]
-  dishes      Dish[]
-  dishUploads DishUpload[]
-  news        News[]
-  admins      Admin[]
+  floors       Floor[]
+  windows      Window[]
+  dishes       Dish[]
+  dishUploads  DishUpload[]
+  news         News[]
+  admins       Admin[]
+  adminConfigs AdminConfig[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -217,13 +231,14 @@ model Dish {
   name        String
   tags        String[]
   price       Float
+  priceUnit   String?
   description String?
   images      String[]
 
   // 菜品层级关系
-  parentDishId String?
-  parentDish   Dish?   @relation("DishHierarchy", fields: [parentDishId], references: [id])
-  subDishes    Dish[]  @relation("DishHierarchy")
+  parentDishId     String?
+  parentDish       Dish?        @relation("DishHierarchy", fields: [parentDishId], references: [id])
+  subDishes        Dish[]       @relation("DishHierarchy")
   pendingSubDishes DishUpload[] @relation("DishParentToUpload")
 
   // 食材信息
@@ -279,7 +294,7 @@ model Dish {
 }
 
 model DishUpload {
-  id     String @id @default(cuid())
+  id     String  @id @default(cuid())
   userId String?
   user   User?   @relation(fields: [userId], references: [id])
 
@@ -293,6 +308,7 @@ model DishUpload {
   name        String
   tags        String[]
   price       Float
+  priceUnit   String?
   description String?
   images      String[]
   ingredients String[]
@@ -378,7 +394,7 @@ model Comment {
   user     User   @relation(fields: [userId], references: [id])
 
   content String
-  floor   Int     @default(1) // 楼层数
+  floor   Int    @default(1) // 楼层数
 
   parentCommentId String?
   parentComment   Comment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
@@ -532,21 +548,78 @@ model AIRecommendationFeedback {
 // ==================== 新闻模型 ====================
 
 model News {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   title       String
-  content     String   @db.Text
+  content     String    @db.Text
   summary     String?
   canteenId   String?
-  canteen     Canteen? @relation(fields: [canteenId], references: [id])
+  canteen     Canteen?  @relation(fields: [canteenId], references: [id])
   canteenName String?
-  publishedAt DateTime
+  publishedAt DateTime?
+  status      String    @default("draft") // draft, published
   createdBy   String
-  creator     Admin    @relation(fields: [createdBy], references: [id])
+  creator     Admin     @relation(fields: [createdBy], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([canteenId])
   @@index([publishedAt])
+  @@index([status])
   @@map("news")
+}
+
+// ==================== 管理配置模型 ====================
+
+model AdminConfig {
+  id        String   @id @default(cuid())
+  canteenId String?  @unique // null 表示全局配置
+  canteen   Canteen? @relation(fields: [canteenId], references: [id], onDelete: Cascade)
+
+  // 配置项列表
+  items AdminConfigItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("admin_configs")
+}
+
+model AdminConfigTemplate {
+  id           String  @id @default(cuid())
+  key          String  @unique // 如 'review.autoApprove'
+  defaultValue String // 默认值，统一用 string 存储
+  valueType    String  @default("string") // 'boolean' | 'string' | 'number' | 'json'
+  description  String?
+  category     String  @default("general") // 'review' | 'dish' | 'user'
+
+  // 配置项实例
+  configItems AdminConfigItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("admin_config_templates")
+}
+
+model AdminConfigItem {
+  id            String      @id @default(cuid())
+  adminConfigId String
+  adminConfig   AdminConfig @relation(fields: [adminConfigId], references: [id], onDelete: Cascade)
+
+  templateId String? // 关联到模板
+  template   AdminConfigTemplate? @relation(fields: [templateId], references: [id])
+
+  key       String // 如 'review.autoApprove'
+  value     String // 统一用 string 存储，应用层转换
+  valueType String @default("string") // 'boolean' | 'string' | 'number' | 'json'
+
+  description String?
+  category    String  @default("general") // 'review' | 'dish' | 'user'
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([adminConfigId, key])
+  @@map("admin_config_items")
 }

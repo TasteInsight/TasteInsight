@@ -1,14 +1,32 @@
 import { ref, computed } from 'vue';
 import { getDishById, favoriteDish, unfavoriteDish } from '@/api/modules/dish';
-import { getReviewsByDish, deleteReview } from '@/api/modules/review';
-import { getCommentsByReview, deleteComment } from '@/api/modules/comment';
 import { useUserStore } from '@/store/modules/use-user-store';
-import type { Dish, Review, Comment } from '@/types/api';
+import type { Dish } from '@/types/api';
+import { useReview } from './use-review';
+import { useComment } from './use-comment';
 
 /**
  * 菜品详情页面逻辑
  */
 export function useDishDetail() {
+  // --- 引入新的 Composables ---
+  const {
+    reviews,
+    reviewsLoading,
+    reviewsError,
+    reviewsHasMore,
+    fetchReviews: fetchReviewsOriginal,
+    removeReview: removeReviewOriginal,
+    submitReview
+  } = useReview();
+
+  const {
+    reviewComments,
+    fetchComments,
+    removeComment: removeCommentOriginal,
+    submitComment
+  } = useComment();
+
   // --- 菜品详情状态 ---
   const dish = ref<Dish | null>(null);
   const loading = ref(false);
@@ -21,21 +39,6 @@ export function useDishDetail() {
   // --- 父菜品状态 ---
   const parentDish = ref<Dish | null>(null);
   const parentDishLoading = ref(false);
-
-  // --- 评价列表状态 ---
-  const reviews = ref<Review[]>([]);
-  const reviewsLoading = ref(false);
-  const reviewsError = ref('');
-  const reviewsHasMore = ref(true);
-  const reviewsPage = ref(1);
-  const reviewsPageSize = 10;
-
-  // --- 评论状态 (按 reviewId 存储) ---
-  const reviewComments = ref<Record<string, { 
-    items: Comment[], 
-    total: number, 
-    loading: boolean 
-  }>>({});
 
   // --- 收藏状态 ---
   const userStore = useUserStore();
@@ -56,10 +59,6 @@ export function useDishDetail() {
     // 重置其他状态
     subDishes.value = [];
     parentDish.value = null;
-    reviews.value = [];
-    reviewsPage.value = 1;
-    reviewsHasMore.value = true;
-    reviewComments.value = {}; // 重置评论缓存
 
     try {
       const response = await getDishById(dishId);
@@ -71,7 +70,7 @@ export function useDishDetail() {
         await Promise.all([
           fetchSubDishes(),
           fetchParentDish(),
-          fetchReviews(dishId, true)
+          fetchReviewsOriginal(dishId, true)
         ]);
       } else {
         error.value = response.message || '获取菜品详情失败';
@@ -133,135 +132,39 @@ export function useDishDetail() {
   };
 
   /**
-   * 获取评价列表
-   */
-  const fetchReviews = async (dishId: string, refresh = false) => {
-    if (reviewsLoading.value) return;
-    if (!refresh && !reviewsHasMore.value) return;
-
-    reviewsLoading.value = true;
-    reviewsError.value = '';
-
-    if (refresh) {
-      reviewsPage.value = 1;
-      reviews.value = [];
-      reviewsHasMore.value = true;
-    }
-
-    try {
-      const response = await getReviewsByDish(dishId, {
-        page: reviewsPage.value,
-        pageSize: reviewsPageSize,
-      });
-
-      if (response.code === 200 && response.data) {
-        const newReviews = response.data.items || [];
-        
-        if (refresh) {
-          reviews.value = newReviews;
-        } else {
-          reviews.value = [...reviews.value, ...newReviews];
-        }
-
-        // 判断是否还有更多数据
-        if (newReviews.length < reviewsPageSize) {
-          reviewsHasMore.value = false;
-        } else {
-          reviewsPage.value++;
-        }
-      } else {
-        reviewsError.value = response.message || '获取评价失败';
-      }
-    } catch (err: any) {
-      console.error('获取评价失败:', err);
-      reviewsError.value = '网络错误，请稍后重试';
-    } finally {
-      reviewsLoading.value = false;
-    }
-  };
-
-  /**
-   * 获取某条评价的评论
-   */
-  const fetchComments = async (reviewId: string) => {
-    // 如果正在加载，则跳过
-    if (reviewComments.value[reviewId]?.loading) return;
-
-    // 初始化状态
-    if (!reviewComments.value[reviewId]) {
-      reviewComments.value[reviewId] = { items: [], total: 0, loading: true };
-    } else {
-      reviewComments.value[reviewId].loading = true;
-    }
-
-    try {
-      // 列表页只展示前5条
-      const res = await getCommentsByReview(reviewId, { page: 1, pageSize: 5 });
-      if (res.code === 200 && res.data) {
-        reviewComments.value[reviewId] = {
-          items: res.data.items || [],
-          total: res.data.meta?.total || 0,
-          loading: false
-        };
-      }
-    } catch (e) {
-      console.error('获取评论失败', e);
-      reviewComments.value[reviewId].loading = false;
-    }
-  };
-
-  /**
    * 加载更多评价
    */
   const loadMoreReviews = () => {
     if (dish.value?.id) {
-      fetchReviews(dish.value.id);
+      fetchReviewsOriginal(dish.value.id);
     }
   };
 
   /**
-   * 删除评价
+   * 删除评价 (包装一层以处理 UI 反馈和更新菜品评价数)
    */
   const removeReview = async (reviewId: string) => {
     try {
-      const res = await deleteReview(reviewId);
-      if (res.code === 200) {
-        // 从列表中移除
-        reviews.value = reviews.value.filter(r => r.id !== reviewId);
-        // 更新菜品评价数
-        if (dish.value && dish.value.reviewCount) {
-          dish.value.reviewCount--;
-        }
-        uni.showToast({ title: '删除成功', icon: 'success' });
-      } else {
-        uni.showToast({ title: res.message || '删除失败', icon: 'none' });
+      await removeReviewOriginal(reviewId);
+      // 更新菜品评价数
+      if (dish.value && dish.value.reviewCount) {
+        dish.value.reviewCount--;
       }
-    } catch (err) {
-      console.error('删除评价失败', err);
-      uni.showToast({ title: '网络错误', icon: 'none' });
+      uni.showToast({ title: '删除成功', icon: 'success' });
+    } catch (err: any) {
+      uni.showToast({ title: err.message || '删除失败', icon: 'none' });
     }
   };
 
   /**
-   * 删除评论
+   * 删除评论 (包装一层以处理 UI 反馈)
    */
   const removeComment = async (commentId: string, reviewId: string) => {
     try {
-      const res = await deleteComment(commentId);
-      if (res.code === 200) {
-        // 从缓存中移除
-        if (reviewComments.value[reviewId]) {
-          const comments = reviewComments.value[reviewId];
-          comments.items = comments.items.filter(c => c.id !== commentId);
-          comments.total--;
-        }
-        uni.showToast({ title: '删除成功', icon: 'success' });
-      } else {
-        uni.showToast({ title: res.message || '删除失败', icon: 'none' });
-      }
-    } catch (err) {
-      console.error('删除评论失败', err);
-      uni.showToast({ title: '网络错误', icon: 'none' });
+      await removeCommentOriginal(commentId, reviewId);
+      uni.showToast({ title: '删除成功', icon: 'success' });
+    } catch (err: any) {
+      uni.showToast({ title: err.message || '删除失败', icon: 'none' });
     }
   };
 
@@ -327,11 +230,13 @@ export function useDishDetail() {
     reviewsLoading,
     reviewsError,
     reviewsHasMore,
-    fetchReviews,
+    fetchReviews: fetchReviewsOriginal,
     loadMoreReviews,
+    submitReview,
 
     reviewComments,
     fetchComments,
+    submitComment,
     
     removeReview,
     removeComment,

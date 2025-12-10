@@ -8,10 +8,18 @@
 	},
 	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
 		{
+			"path": "pages/login/index",
+			"style": {
+				"navigationBarTitleText": "登录",
+				"navigationStyle": "custom",
+				"disableSwipeBack": true
+			}
+		},
+		{
 			"path": "pages/index/index",
 			"style": {
 				"navigationBarTitleText": "首页",
-				"enablePullDownRefresh": false
+				"enablePullDownRefresh": true
 			}
 		},
 		{
@@ -23,7 +31,8 @@
 		{
 			"path": "pages/canteen/index",
 			"style": {
-				"navigationBarTitleText": "食堂"
+				"navigationBarTitleText": "食堂",
+				"enablePullDownRefresh": true
 			}
 		},
 		{
@@ -37,7 +46,7 @@
 			"style": {
 				"navigationBarTitleText": "菜品详情",
 				"disableScroll": false,
-				"enablePullDownRefresh": false,
+				"enablePullDownRefresh": true,
 				"navigationStyle": "default"
 			}
 		},
@@ -51,7 +60,8 @@
 		{
 			"path": "pages/news/index",
 			"style": {
-				"navigationBarTitleText": "新闻"
+				"navigationBarTitleText": "新闻",
+				"enablePullDownRefresh": true
 			}
 		},
 		{
@@ -63,7 +73,8 @@
 		{
 			"path": "pages/planning/index",
 			"style": {
-				"navigationBarTitleText": "规划"
+				"navigationBarTitleText": "规划",
+				"enablePullDownRefresh": true
 			}
 		},
 		{
@@ -75,15 +86,11 @@
 		{
 			"path": "pages/profile/index",
 			"style": {
-				"navigationBarTitleText": "我的"
+				"navigationBarTitleText": "我的",
+				"enablePullDownRefresh": true
 			}
 		},
-		{
-			"path": "pages/login/index",
-			"style": {
-				"navigationBarTitleText": "登录"
-			}
-		},
+
 		{
 			"path": "pages/settings/index",
 			"style": {
@@ -135,19 +142,22 @@
 		{
 			"path": "pages/profile/my-reviews/index",
 			"style": {
-				"navigationBarTitleText": "我的评价"
+				"navigationBarTitleText": "我的评价",
+				"enablePullDownRefresh": true
 			}
 		},
 		{
 			"path": "pages/profile/history/index",
 			"style": {
-				"navigationBarTitleText": "历史浏览"
+				"navigationBarTitleText": "历史浏览",
+				"enablePullDownRefresh": true
 			}
 		},
 		{
 			"path": "pages/profile/my-favorites/index",
 			"style": {
-				"navigationBarTitleText": "我的收藏"
+				"navigationBarTitleText": "我的收藏",
+				"enablePullDownRefresh": true
 			}
 		},
 		{

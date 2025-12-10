@@ -8,9 +8,10 @@ describe('NewsController (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let userAccessToken: string;
-  let testNewsIds: string[] = [];
+  const testNewsIds: string[] = [];
   let testCanteenId1: string;
   let testCanteenId2: string;
+  const publishedNewsIds: string[] = [];
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -54,11 +55,13 @@ describe('NewsController (e2e)', () => {
         summary: 'Test Summary 1',
         canteenId: testCanteenId1,
         canteenName: '第一食堂',
+        status: 'published',
         publishedAt: new Date(),
         createdBy: admin.id,
       },
     });
     testNewsIds.push(news1.id);
+    publishedNewsIds.push(news1.id);
 
     // 创建测试新闻 2 (如果存在第二食堂)
     if (testCanteenId2) {
@@ -69,12 +72,29 @@ describe('NewsController (e2e)', () => {
           summary: 'Test Summary 2',
           canteenId: testCanteenId2,
           canteenName: '第二食堂',
+          status: 'published',
           publishedAt: new Date(),
           createdBy: admin.id,
         },
       });
       testNewsIds.push(news2.id);
+      publishedNewsIds.push(news2.id);
     }
+
+    // 创建一个 draft 状态的新闻，用于测试用户侧看不到
+    const draftNews = await prisma.news.create({
+      data: {
+        title: 'Draft News',
+        content: '<p>This is a draft news content.</p>',
+        summary: 'Draft Summary',
+        canteenId: testCanteenId1,
+        canteenName: '第一食堂',
+        status: 'draft',
+        publishedAt: null,
+        createdBy: admin.id,
+      },
+    });
+    testNewsIds.push(draftNews.id);
   });
 
   afterAll(async () => {
@@ -102,9 +122,9 @@ describe('NewsController (e2e)', () => {
       expect(response.body.message).toBe('获取新闻列表成功');
       expect(response.body.data).toBeDefined();
       expect(Array.isArray(response.body.data.items)).toBe(true);
-      // Should contain at least the news we created
+      // Should contain at least the published news we created
       const newsIds = response.body.data.items.map((item: any) => item.id);
-      expect(newsIds).toEqual(expect.arrayContaining(testNewsIds));
+      expect(newsIds).toEqual(expect.arrayContaining(publishedNewsIds));
     });
 
     it('should support pagination', async () => {
@@ -159,6 +179,20 @@ describe('NewsController (e2e)', () => {
         .get('/news/invalid-id')
         .set('Authorization', `Bearer ${userAccessToken}`)
         .expect(404);
+    });
+
+    it('should return 404 for draft news', async () => {
+      // Find the draft news we created
+      const draftNews = await prisma.news.findFirst({
+        where: { status: 'draft' },
+      });
+
+      if (draftNews) {
+        await request(app.getHttpServer())
+          .get(`/news/${draftNews.id}`)
+          .set('Authorization', `Bearer ${userAccessToken}`)
+          .expect(404);
+      }
     });
   });
 });

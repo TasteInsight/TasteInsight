@@ -35,8 +35,11 @@ export class AdminDishDto {
   name: string;
   tags: string[];
   price: number;
+  priceUnit: string | null;
   description: string | null;
   images: string[];
+  parentDishId?: string;
+  subDishId?: string[];
 
   // Ingredients & Taste
   ingredients: string[];
@@ -121,6 +124,10 @@ export class AdminCreateDishDto {
 
   @IsOptional()
   @IsString()
+  priceUnit?: string;
+
+  @IsOptional()
+  @IsString()
   description?: string;
 
   @IsOptional()
@@ -190,10 +197,6 @@ export class AdminCreateDishDto {
   @IsOptional()
   @IsString()
   windowNumber?: string;
-
-  @IsOptional()
-  @IsString()
-  floor?: string; // 楼层名称或编号，用于查找 Floor
 
   @IsOptional()
   @IsArray()
@@ -228,6 +231,10 @@ export class AdminUpdateDishDto {
 
   @IsOptional()
   @IsString()
+  priceUnit?: string;
+
+  @IsOptional()
+  @IsString()
   description?: string;
 
   @IsOptional()
@@ -297,10 +304,6 @@ export class AdminUpdateDishDto {
   @IsOptional()
   @IsString()
   windowNumber?: string;
-
-  @IsOptional()
-  @IsString()
-  floor?: string; // 楼层名称或编号，用于查找 Floor
 
   @IsOptional()
   @IsArray()

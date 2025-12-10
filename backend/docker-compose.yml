@@ -1,44 +1,76 @@
 services:
   backend:
     build: .
-    env_file:
-      - .env.docker
+    image: ghcr.io/tasteinsight/tasteinsight-backend:${TAG:-latest}
+    env_file: .env
+    environment:
+      # Override for Docker networking
+      - POSTGRES_HOST=db
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB}?schema=public
+      # Set to false in production
+      - RUN_SEED=${RUN_SEED:-false}
     depends_on:
       db:
         condition: service_healthy
-    # Wait for DB to be healthy, then run migrations, optionally seed, and start the app
-    command: >
-      sh -c "npx prisma migrate deploy &&
-             if [ \"$$RUN_SEED\" = \"true\" ]; then echo 'Running docker seed...' && pnpm exec ts-node prisma/seed_docker.ts; else echo 'Skipping seed...'; fi &&
-             node dist/src/main"
+      redis:
+        condition: service_healthy
+    # Command is handled by ENTRYPOINT in Dockerfile and docker-entrypoint.sh
     volumes:
       - uploads_data:/app/uploads
     networks:
-      - frontend
-      - backend
+      - tasteinsight_net
+      - db_net
+
+  frontend:
+    build:
+      context: ../frontend-web
+      dockerfile: Dockerfile
+    image: ghcr.io/tasteinsight/tasteinsight-frontend:${TAG:-latest}
+    networks:
+      - tasteinsight_net
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - db_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    command: redis-server --appendonly yes
 
   nginx:
     image: nginx:alpine
     ports:
-      - "${APP_PORT:-80}:80"
+      - "80:80"
+      - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certs:/etc/nginx/ssl:ro
       - uploads_data:/var/www/uploads:ro
     depends_on:
       - backend
-    networks:
       - frontend
+    networks:
+      - tasteinsight_net
 
   db:
     image: postgres:15-alpine
-    env_file:
-      - .env.docker
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     volumes:
       - db-data:/var/lib/postgresql/data
     ports:
       - "5433:5432"
     networks:
-      - backend
+      - db_net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -48,7 +80,10 @@ services:
 volumes:
   db-data:
   uploads_data:
+  redis-data:
 
 networks:
-  frontend:
-  backend:
+  tasteinsight_net:
+    name: tasteinsight_net
+  db_net:
+    internal: true

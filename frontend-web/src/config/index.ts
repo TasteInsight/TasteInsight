@@ -20,8 +20,8 @@ export const config = {
 
   /** 默认请求头 */
   headers: {
-    'Content-Type': 'application/json'
-  }
+    'Content-Type': 'application/json',
+  },
 }
 
 export default config
