@@ -5,6 +5,7 @@ import { permissionApi } from '@/api/modules/permission'
 import { logApi } from '@/api/modules/log'
 import { newsApi } from '@/api/modules/news'
 import { canteenApi } from '@/api/modules/canteen'
+import { configApi } from '@/api/modules/config'
 
 /**
  * 统一 API 对象
@@ -66,6 +67,15 @@ export const api = {
   createWindow: canteenApi.createWindow.bind(canteenApi),
   updateWindow: canteenApi.updateWindow.bind(canteenApi),
   deleteWindow: canteenApi.deleteWindow.bind(canteenApi),
+
+  // 配置管理
+  getConfigTemplates: configApi.getTemplates.bind(configApi),
+  getGlobalConfig: configApi.getGlobalConfig.bind(configApi),
+  updateGlobalConfig: configApi.updateGlobalConfig.bind(configApi),
+  getCanteenConfig: configApi.getCanteenConfig.bind(configApi),
+  updateCanteenConfig: configApi.updateCanteenConfig.bind(configApi),
+  getEffectiveConfig: configApi.getEffectiveConfig.bind(configApi),
+  deleteCanteenConfigItem: configApi.deleteCanteenConfigItem.bind(configApi),
 }
 
 /**
@@ -79,6 +89,7 @@ export {
   logApi, // 日志
   newsApi, // 新闻
   canteenApi, // 食堂
+  configApi, // 配置
 }
 
 /**

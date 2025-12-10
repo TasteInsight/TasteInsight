@@ -625,3 +625,96 @@ export type CreateAdminData = CreateAdminRequest
  * @deprecated 使用 UpdateAdminPermissionsRequest 替代
  */
 export type UpdateAdminPermissionsData = UpdateAdminPermissionsRequest
+
+// ==================== 配置管理相关类型 ====================
+
+/**
+ * 配置模板
+ */
+export interface ConfigTemplate {
+  id: string
+  key: string
+  defaultValue: string
+  valueType: 'boolean' | 'string' | 'number'
+  description: string | null
+  category: string
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * 配置项
+ */
+export interface ConfigItem {
+  id: string
+  adminConfigId: string
+  templateId: string | null
+  key: string
+  value: string
+  valueType: 'boolean' | 'string' | 'number'
+  description: string | null
+  category: string
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * 管理员配置
+ */
+export interface AdminConfig {
+  id: string
+  canteenId: string | null
+  items: ConfigItem[]
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * 有效配置值
+ */
+export interface EffectiveConfigValue {
+  key: string
+  value: string
+  valueType: 'boolean' | 'string' | 'number'
+  source: 'canteen' | 'global' | 'default'
+}
+
+/**
+ * 更新配置请求
+ */
+export interface UpdateConfigRequest {
+  key: string
+  value: string
+}
+
+/**
+ * 获取配置模板列表响应
+ */
+export interface ConfigTemplatesResponse {
+  items: ConfigTemplate[]
+  meta: PaginationMeta
+}
+
+/**
+ * 获取全局配置响应
+ */
+export interface GlobalConfigResponse {
+  config: AdminConfig
+  templates: ConfigTemplate[]
+}
+
+/**
+ * 获取食堂配置响应
+ */
+export interface CanteenConfigResponse {
+  config: AdminConfig
+  globalConfig: AdminConfig
+  templates: ConfigTemplate[]
+}
+
+/**
+ * 获取食堂有效配置响应
+ */
+export interface EffectiveConfigResponse {
+  items: EffectiveConfigValue[]
+}
