@@ -15,6 +15,7 @@ import NewsManage from '../views/NewsManage.vue'
 import LogView from '../views/LogView.vue'
 import ReportManage from '../views/ReportManage.vue'
 import CommentManage from '../views/CommentManage.vue'
+import ConfigManage from '../views/ConfigManage.vue'
 import Login from '../views/Login.vue'
 
 const routes = [
@@ -123,6 +124,12 @@ const routes = [
         component: CommentManage,
         meta: { requiresAuth: true, requiredPermission: 'review:delete' },
       },
+      {
+        path: 'config-manage',
+        name: 'ConfigManage',
+        component: ConfigManage,
+        meta: { requiresAuth: true, requiredPermission: 'config:view' },
+      },
     ],
   },
 ]
@@ -143,6 +150,7 @@ function getFirstAccessibleRoute(authStore: ReturnType<typeof useAuthStore>): st
     { path: '/news-manage', permission: 'news:view' },
     { path: '/report-manage', permission: 'report:handle' },
     { path: '/comment-manage', permission: 'review:delete' },
+    { path: '/config-manage', permission: 'config:view' },
   ]
   
   // 找到第一个有权限的页面
