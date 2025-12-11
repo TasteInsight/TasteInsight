@@ -1,6 +1,14 @@
-import { PaginationMeta, BaseResponseDto, ReviewRatingDetails, UserBasicInfo } from '@/common/dto/response.dto';
+import {
+  PaginationMeta,
+  BaseResponseDto,
+  ReviewRatingDetails,
+  UserBasicInfo,
+} from '@/common/dto/response.dto';
 
-export { SuccessResponseDto, ReviewRatingDetails } from '@/common/dto/response.dto';
+export {
+  SuccessResponseDto,
+  ReviewRatingDetails,
+} from '@/common/dto/response.dto';
 
 // 评论用户信息类型别名（使用共享的UserBasicInfo）
 export type CommentUserInfo = UserBasicInfo;

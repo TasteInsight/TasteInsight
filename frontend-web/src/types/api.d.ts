@@ -216,6 +216,68 @@ export interface GetDishesParams extends PaginationParams {
   keyword?: string
 }
 
+
+// ==================== 批量导入相关类型 ====================
+
+/**
+ * 批量解析后的单条菜品数据（用于预览和确认）
+ */
+export interface BatchParsedDish {
+  // 基础信息
+  tempId: string          // 前端生成的临时ID，用于列表渲染
+  name: string            // 菜品名
+  description?: string    // 菜品描述
+  price: number           // 价格（数字部分）
+  priceUnit?: string      // 价格单位（如"元"、"元/份"、"元/两"、"元/斤"）
+  tags?: string[]         // tags
+  
+  // 位置信息
+  canteenName: string     // 食堂
+  floorName?: string      // 楼层
+  windowName: string      // 窗口
+  windowNumber?: string   // 窗口编号
+  
+  // 供应信息
+  supplyTime?: string     // 供应时间 (对应 Excel 原始文本，如 "2023-01-01 至 2023-12-31")
+  supplyPeriod?: string[] // 供应时段 (如 ["早餐", "午餐"])
+  
+  // 子项信息
+  subDishNames?: string[] // 菜品子项名 (用于后端查找或创建子菜品)
+  
+  // 解析状态
+  status: 'valid' | 'invalid' | 'warning'
+  message?: string        // 错误或警告信息 (如 "窗口不存在，将自动创建")
+  
+  // 原始数据 (可选，用于调试或回显)
+  rawData?: any
+}
+
+/**
+ * 批量解析响应
+ */
+export interface BatchParseResponse {
+  items: BatchParsedDish[]
+  total: number
+  validCount: number
+  invalidCount: number
+}
+
+/**
+ * 批量确认导入请求
+ */
+export interface BatchConfirmRequest {
+  dishes: BatchParsedDish[] // 仅提交状态为 valid 或 warning 的数据
+}
+
+/**
+ * 批量确认响应
+ */
+export interface BatchConfirmResponse {
+  successCount: number
+  failCount: number
+  errors?: Array<{ index: number; message: string; type?: 'validation' | 'permission' | 'unknown' }>
+}
+
 // ==================== 食堂相关类型 ====================
 
 /**

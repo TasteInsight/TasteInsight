@@ -12,6 +12,8 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import { AdminDishesService } from './admin-dishes.service';
 import {
@@ -23,6 +25,9 @@ import {
 import { AdminAuthGuard } from '@/auth/guards/admin-auth.guard';
 import { PermissionsGuard } from '@/auth/guards/permissions.guard';
 import { RequirePermissions } from '@/auth/decorators/permissions.decorator';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { BatchConfirmRequestDto } from './dto/admin-dish-batch.dto';
+import type { Express } from 'express';
 
 @Controller('admin/dishes')
 @UseGuards(AdminAuthGuard, PermissionsGuard)
@@ -96,5 +101,26 @@ export class AdminDishesController {
   @HttpCode(HttpStatus.OK)
   async deleteAdminDish(@Param('id') id: string, @Request() req) {
     return this.adminDishesService.deleteAdminDish(id, req.admin);
+  }
+
+  @Post('batch/parse')
+  @RequirePermissions('dish:create')
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(FileInterceptor('file'))
+  async parseBatchExcel(
+    @UploadedFile() file: Express.Multer.File,
+    @Request() req,
+  ) {
+    return this.adminDishesService.parseBatchExcel(file, req.admin);
+  }
+
+  @Post('batch/confirm')
+  @RequirePermissions('dish:create')
+  @HttpCode(HttpStatus.OK)
+  async confirmBatchImport(
+    @Body() body: BatchConfirmRequestDto,
+    @Request() req,
+  ) {
+    return this.adminDishesService.confirmBatchImport(body, req.admin);
   }
 }
