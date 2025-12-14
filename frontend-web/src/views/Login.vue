@@ -101,6 +101,7 @@
             </label>
             <a
               href="#"
+              @click.prevent="handleForgotPassword"
               class="text-sm text-tsinghua-purple hover:text-tsinghua-dark transition-colors duration-200 font-medium"
             >
               忘记密码？
@@ -146,6 +147,31 @@
         <p class="text-gray-500 text-sm">© 2024 清华大学食堂菜品管理系统</p>
       </div>
     </div>
+
+    <!-- 错误弹窗 -->
+    <div
+      v-if="showErrorModal"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]"
+      @click.self="closeErrorModal"
+    >
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 transform transition-all">
+        <div class="p-6">
+          <div class="flex items-center justify-center mb-4">
+            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+              <span class="iconify text-red-500 text-3xl" data-icon="carbon:warning"></span>
+            </div>
+          </div>
+          <h3 class="text-xl font-semibold text-gray-800 text-center mb-2">登录失败</h3>
+          <p class="text-gray-600 text-center mb-6">{{ errorMessage || '用户名或密码错误' }}</p>
+          <button
+            @click="closeErrorModal"
+            class="w-full py-3 bg-gradient-to-r from-tsinghua-purple to-tsinghua-dark text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-tsinghua-purple/30 transition-all duration-200"
+          >
+            确定
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -174,6 +200,7 @@ export default {
     const showPassword = ref(false)
     const loading = ref(false)
     const errorMessage = ref('')
+    const showErrorModal = ref(false)
 
     const validateForm = () => {
       errors.username = ''
@@ -248,10 +275,25 @@ export default {
         }
       } catch (error) {
         // 登录失败，显示错误信息
-        errorMessage.value = error.message || '登录失败，请检查用户名和密码'
+        if (error instanceof Error) {
+          errorMessage.value = error.message || '用户名或密码错误'
+        } else {
+          errorMessage.value = '用户名或密码错误'
+        }
+        // 显示错误弹窗
+        showErrorModal.value = true
       } finally {
         loading.value = false
       }
+    }
+
+    const closeErrorModal = () => {
+      showErrorModal.value = false
+      errorMessage.value = ''
+    }
+
+    const handleForgotPassword = () => {
+      alert('如果您忘记了密码，请联系上级管理员重置密码。')
     }
 
     return {
@@ -260,7 +302,10 @@ export default {
       showPassword,
       loading,
       errorMessage,
+      showErrorModal,
       handleLogin,
+      handleForgotPassword,
+      closeErrorModal,
     }
   },
 }
