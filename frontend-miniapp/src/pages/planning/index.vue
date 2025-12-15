@@ -1,5 +1,54 @@
 <template>
   <view class="min-h-screen bg-gray-50 pb-safe relative">
+    <!-- #ifdef MP-WEIXIN -->
+    <!-- 微信小程序专用：统一在父组件管理 page-container 拦截返回事件 -->
+    <!-- 详情弹窗 -->
+    <page-container 
+      v-if="showDetailDialog"
+      :show="showDetailDialog" 
+      :overlay="false" 
+      :duration="300"
+      custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
+      @leave="closeDetailDialog" 
+    />
+    <!-- 编辑弹窗 -->
+    <page-container 
+      v-if="showEditDialog"
+      :show="showEditDialog" 
+      :overlay="false" 
+      :duration="300"
+      custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
+      @leave="handleEditDialogBack" 
+    />
+    <!-- 创建弹窗 -->
+    <page-container 
+      v-if="showCreateDialog"
+      :show="showCreateDialog" 
+      :overlay="false" 
+      :duration="300"
+      custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
+      @leave="handleCreateDialogBack" 
+    />
+    <!-- 编辑弹窗的菜品选择器 -->
+    <page-container 
+      v-if="editDishSelectorVisible"
+      :show="editDishSelectorVisible" 
+      :overlay="false" 
+      :duration="300"
+      custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
+      @leave="closeEditDishSelector" 
+    />
+    <!-- 创建弹窗的菜品选择器 -->
+    <page-container 
+      v-if="createDishSelectorVisible"
+      :show="createDishSelectorVisible" 
+      :overlay="false" 
+      :duration="300"
+      custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
+      @leave="closeCreateDishSelector" 
+    />
+    <!-- #endif -->
+
     <!-- 骨架屏：首次加载时显示 -->
     <PlanningSkeleton v-if="isInitialLoading" />
 
@@ -155,27 +204,55 @@ onHide(() => {
   closeCreateDialog();
 });
 
-// 返回键拦截处理
+// 菜品选择器状态（用于 page-container 管理）
+const editDishSelectorVisible = computed(() => 
+  showEditDialog.value && (editDialogRef.value as any)?.showDishSelector
+);
+const createDishSelectorVisible = computed(() => 
+  showCreateDialog.value && (createDialogRef.value as any)?.showDishSelector
+);
+
+// 关闭编辑弹窗的菜品选择器
+const closeEditDishSelector = () => {
+  editDialogRef.value?.closeDishSelector?.();
+};
+
+// 关闭创建弹窗的菜品选择器
+const closeCreateDishSelector = () => {
+  createDialogRef.value?.closeDishSelector?.();
+};
+
+// 处理编辑弹窗返回
+const handleEditDialogBack = () => {
+  // 如果有菜品选择器打开，优先关闭它
+  if ((editDialogRef.value as any)?.showDishSelector) {
+    closeEditDishSelector();
+  } else {
+    closeEditDialog();
+  }
+};
+
+// 处理创建弹窗返回
+const handleCreateDialogBack = () => {
+  // 如果有菜品选择器打开，优先关闭它
+  if ((createDialogRef.value as any)?.showDishSelector) {
+    closeCreateDishSelector();
+  } else {
+    closeCreateDialog();
+  }
+};
+
+// 返回键拦截处理（App/H5 端备用）
 onBackPress(() => {
   // 优先处理编辑对话框中的返回
   if (showEditDialog.value) {
-    // 如果组件内部处理了返回（例如关闭了子弹窗），则只执行组件内部逻辑
-    if (editDialogRef.value?.handleBackPress?.()) {
-      return true;
-    }
-    // 否则关闭编辑对话框
-    closeEditDialog();
+    handleEditDialogBack();
     return true;
   }
   
   // 处理创建对话框中的返回
   if (showCreateDialog.value) {
-    // 如果组件内部处理了返回（例如关闭了子弹窗），则只执行组件内部逻辑
-    if (createDialogRef.value?.handleBackPress?.()) {
-      return true;
-    }
-    // 否则关闭创建对话框
-    closeCreateDialog();
+    handleCreateDialogBack();
     return true;
   }
 

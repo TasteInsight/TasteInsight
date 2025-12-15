@@ -40,7 +40,7 @@
         scroll-y 
         class="flex-1" 
         :style="{ paddingTop: contentPaddingTop + 'px', paddingBottom: '160px' }"
-        :scroll-top="scrollTop" 
+        :scroll-into-view="scrollIntoViewId"
         :scroll-with-animation="true"
       >
         <!-- AI 聊天消息列表 -->
@@ -108,7 +108,7 @@
         </view>
         
         <!-- 底部垫高，防止被输入框遮挡 -->
-        <view :style="{ height: '10px' }"></view>
+        <view id="chat-bottom-anchor" :style="{ height: '10px' }"></view>
       </scroll-view>
 
       <!-- 底部固定区域 -->
@@ -229,7 +229,7 @@ watch(suggestions, (newSuggestions) => {
 }, { immediate: true });
 
 // === State ===
-const scrollTop = ref(0); // 使用 scrollTop 控制滚动
+const scrollIntoViewId = ref(''); // 用于滚动到指定元素
 const inputBarRef = ref<InstanceType<typeof InputBar> | null>(null);
 let scrollTimeout: any = null; // 用于防抖滚动
 const systemInfo = uni.getSystemInfoSync();
@@ -263,15 +263,23 @@ const sceneBadge = computed(() => sceneLabelMap[scene.value] || '对话');
 // === Scroll Logic (Critical for Streaming) ===
 const scrollToBottom = () => {
   nextTick(() => {
-    // 设置一个很大的值来触发到底部
-    scrollTop.value = 99999;
-    // 小技巧：如果值没变Vue可能不更新，微调一下确保触发
-    setTimeout(() => { scrollTop.value += 1; }, 10);
+    // 使用 scroll-into-view 滚动到底部锚点
+    // 先清空再设置，确保每次都能触发
+    scrollIntoViewId.value = '';
+    setTimeout(() => {
+      scrollIntoViewId.value = 'chat-bottom-anchor';
+    }, 10);
   });
 };
 
 // 监听消息数量变化 (新消息)
-watch(() => messages.value.length, scrollToBottom);
+watch(() => messages.value.length, () => {
+  // 消息增加时，立即滚动到底部
+  scrollToBottom();
+  // 再次延迟滚动，确保渲染完成后（特别是图片或卡片加载后）能到底部
+  setTimeout(scrollToBottom, 150);
+  setTimeout(scrollToBottom, 300);
+});
 
 // 监听流式传输内容变化 (文本逐字出现)
 watch(() => {

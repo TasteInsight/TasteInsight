@@ -1,22 +1,4 @@
 <template>
-  <!-- #ifdef MP-WEIXIN -->
-  <!-- 微信小程序专用：使用 page-container 拦截返回事件 -->
-  <page-container 
-    :show="visible" 
-    :overlay="false" 
-    :duration="300"
-    custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
-    @leave="handleClose" 
-  />
-  <page-container 
-    :show="showDishSelector" 
-    :overlay="false" 
-    :duration="300"
-    custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
-    @leave="showDishSelector = false" 
-  />
-  <!-- #endif -->
-
   <!-- 1. 最外层遮罩：全屏覆盖，高层级，拦截触摸事件防止穿透 -->
   <view 
     v-if="visible" 
@@ -332,7 +314,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
+import { ref, watch, computed, onMounted } from 'vue';
 import { useCanteenStore } from '@/store/modules/use-canteen-store';
 import { getWindowDishes } from '@/api/modules/canteen';
 import { getDishes } from '@/api/modules/dish';
@@ -442,43 +424,12 @@ watch(() => props.plan, (newPlan) => {
 const handleBackPress = () => {
   // 优先关闭菜品选择器
   if (showDishSelector.value) {
-    closeDishSelector();
+    showDishSelector.value = false;
     return true; // 阻止默认返回行为，表示已处理
   }
   // 如果菜品选择器已关闭，返回 false，让父组件处理关闭主弹窗的逻辑
   return false;
 };
-
-// 在小程序端拦截物理返回：优先关闭菜品选择器，其次关闭主弹窗
-const backInterceptor = {
-  invoke() {
-    if (showDishSelector.value) {
-      closeDishSelector();
-      return false; // 阻止默认返回
-    }
-    if (props.visible) {
-      emit('close');
-      return false; // 阻止默认返回
-    }
-    // 明确返回 true 以允许默认返回行为（比返回 undefined 更具可读性）
-    return true; // 允许默认行为
-  }
-};
-
-// 暴露给父组件使用
-defineExpose({
-  handleBackPress
-});
-
-// 挂载/卸载拦截器
-onMounted(() => {
-  uni.addInterceptor('navigateBack', backInterceptor);
-});
-
-onUnmounted(() => {
-  // 移除我们添加的具体拦截器，避免误删其他拦截器
-  (uni as any).removeInterceptor('navigateBack', backInterceptor);
-});
 
 // 监听 visible 变化重置选择器状态
 watch(() => props.visible, (newVisible, oldVisible) => {
@@ -520,9 +471,18 @@ const openDishSelector = () => {
 
 // 关闭菜品选择器
 const closeDishSelector = () => {
+  // 必须先设置 showDishSelector 为 false，触发 page-container 的 leave 事件（如果是手动关闭）
+  // 或者在 leave 事件中调用此方法
   showDishSelector.value = false;
   resetDishSelector();
 };
+
+// 暴露给父组件使用
+defineExpose({
+  handleBackPress,
+  showDishSelector,
+  closeDishSelector
+});
 
 // 重置选择器状态
 const resetDishSelector = () => {
