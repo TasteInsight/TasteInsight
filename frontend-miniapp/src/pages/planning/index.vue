@@ -206,10 +206,10 @@ onHide(() => {
 
 // 菜品选择器状态（用于 page-container 管理）
 const editDishSelectorVisible = computed(() => 
-  showEditDialog.value && (editDialogRef.value as any)?.showDishSelector
+  showEditDialog.value && !!((editDialogRef.value as any)?.showDishSelector?.value)
 );
 const createDishSelectorVisible = computed(() => 
-  showCreateDialog.value && (createDialogRef.value as any)?.showDishSelector
+  showCreateDialog.value && !!((createDialogRef.value as any)?.showDishSelector?.value)
 );
 
 // 关闭编辑弹窗的菜品选择器
@@ -224,8 +224,12 @@ const closeCreateDishSelector = () => {
 
 // 处理编辑弹窗返回
 const handleEditDialogBack = () => {
+  console.log('[planning] handleEditDialogBack called', {
+    showEditDialog: showEditDialog.value,
+    showDishSelector: (editDialogRef.value as any)?.showDishSelector?.value
+  });
   // 如果有菜品选择器打开，优先关闭它
-  if ((editDialogRef.value as any)?.showDishSelector) {
+  if ((editDialogRef.value as any)?.showDishSelector?.value) {
     closeEditDishSelector();
   } else {
     closeEditDialog();
@@ -234,8 +238,12 @@ const handleEditDialogBack = () => {
 
 // 处理创建弹窗返回
 const handleCreateDialogBack = () => {
+  console.log('[planning] handleCreateDialogBack called', {
+    showCreateDialog: showCreateDialog.value,
+    showDishSelector: (createDialogRef.value as any)?.showDishSelector?.value
+  });
   // 如果有菜品选择器打开，优先关闭它
-  if ((createDialogRef.value as any)?.showDishSelector) {
+  if ((createDialogRef.value as any)?.showDishSelector?.value) {
     closeCreateDishSelector();
   } else {
     closeCreateDialog();
