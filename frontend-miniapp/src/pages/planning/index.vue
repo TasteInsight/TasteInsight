@@ -141,8 +141,9 @@ const isInitialLoading = computed(() => {
 
 // 监听数据加载完成
 import { watch } from 'vue';
-watch([currentPlans, historyPlans], () => {
-  if (currentPlans.value.length > 0 || historyPlans.value.length > 0 || !loading.value) {
+watch(loading, (newLoading, oldLoading) => {
+  // 当 loading 从 true 变为 false 时，表示首次加载完成
+  if (oldLoading === true && newLoading === false) {
     hasLoaded.value = true;
   }
 }, { immediate: true });
