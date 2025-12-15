@@ -304,12 +304,16 @@
     <!-- 图片预览对话框 -->
     <div
       v-if="imagePreview.show"
+      role="dialog"
+      aria-modal="true"
+      aria-label="图片预览"
       class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[100]"
       @click.self="closeImagePreview"
     >
       <div class="relative max-w-7xl max-h-[90vh] mx-4">
         <!-- 关闭按钮 -->
         <button
+          aria-label="关闭图片预览"
           class="absolute top-4 right-4 z-10 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition"
           @click="closeImagePreview"
         >
@@ -326,7 +330,9 @@
         <!-- 导航按钮 -->
         <button
           v-if="imagePreview.images.length > 1"
-          class="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full p-3 hover:bg-opacity-75 transition"
+          aria-label="上一张图片"
+          :aria-disabled="imagePreview.currentIndex === 0"
+          class="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full p-3 hover:bg-opacity-75 transition disabled:opacity-50 disabled:cursor-not-allowed"
           @click.stop="previousImage"
           :disabled="imagePreview.currentIndex === 0"
         >
@@ -334,7 +340,9 @@
         </button>
         <button
           v-if="imagePreview.images.length > 1"
-          class="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full p-3 hover:bg-opacity-75 transition"
+          aria-label="下一张图片"
+          :aria-disabled="imagePreview.currentIndex === imagePreview.images.length - 1"
+          class="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full p-3 hover:bg-opacity-75 transition disabled:opacity-50 disabled:cursor-not-allowed"
           @click.stop="nextImage"
           :disabled="imagePreview.currentIndex === imagePreview.images.length - 1"
         >
