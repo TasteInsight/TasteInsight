@@ -13,7 +13,7 @@
               class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform duration-200 overflow-hidden border-2 border-gray-200"
             >
               <img
-                src="@/assets/images/TasteInsight.png"
+                src="@/assets/images/TasteInsight_Icon.png"
                 alt="TasteInsight"
                 class="w-full h-full object-contain"
               />

@@ -1,10 +1,6 @@
 <template>
-  <div class="w-full min-h-screen flex container-shadow rounded-lg bg-white overflow-hidden">
-    <Sidebar />
-    
-    <div class="flex-1 min-h-screen overflow-x-auto overflow-y-auto bg-tsinghua-light ml-[260px]">
-      <div class="p-8 min-h-screen min-w-[1200px]">
-        <div class="bg-white rounded-lg container-shadow p-8">
+  <div class="p-8 min-h-screen min-w-[1200px]">
+    <div class="bg-white rounded-lg container-shadow p-8">
           <Header 
             title="批量添加菜品" 
             description="通过上传表格批量添加多个菜品"
@@ -222,8 +218,6 @@
               </div>
             </div>
           </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -232,11 +226,7 @@
 import { ref, computed } from 'vue'
 import { dishApi } from '@/api/modules/dish'
 import type { BatchParsedDish } from '@/types/api'
-import Sidebar from '@/components/Layout/Sidebar.vue'
 import Header from '@/components/Layout/Header.vue'
-import { useAuthStore } from '@/store/modules/use-auth-store'
-
-const authStore = useAuthStore()
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploadedFile = ref<File | null>(null)
@@ -416,7 +406,7 @@ const parseError = ref<string | null>(null)
       
       const csvContent = [
         headers.join(','),
-        ...rows.map((row: string[]) => row.map((cell: string) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        ...rows.map((row: (string | number)[]) => row.map((cell: string | number) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       ].join('\n')
       
       // 创建下载链接
