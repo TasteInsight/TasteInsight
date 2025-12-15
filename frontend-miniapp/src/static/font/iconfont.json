@@ -1,0 +1,37 @@
+{
+  "id": "5089498",
+  "name": "TasteInsight",
+  "font_family": "iconfont",
+  "css_prefix_text": "icon-",
+  "description": "",
+  "glyphs": [
+    {
+      "icon_id": "701705",
+      "name": "account",
+      "font_class": "account",
+      "unicode": "e604",
+      "unicode_decimal": 58884
+    },
+    {
+      "icon_id": "8474366",
+      "name": "send",
+      "font_class": "send",
+      "unicode": "e6d5",
+      "unicode_decimal": 59093
+    },
+    {
+      "icon_id": "18542393",
+      "name": "delete",
+      "font_class": "delete",
+      "unicode": "e614",
+      "unicode_decimal": 58900
+    },
+    {
+      "icon_id": "44063168",
+      "name": "edit",
+      "font_class": "edit",
+      "unicode": "e9da",
+      "unicode_decimal": 59866
+    }
+  ]
+}

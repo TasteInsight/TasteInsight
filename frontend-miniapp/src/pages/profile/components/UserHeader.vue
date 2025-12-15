@@ -15,7 +15,7 @@
               class="w-full h-full" 
             />
             <view v-else class="w-full h-full flex items-center justify-center bg-purple-50">
-              <Icon icon="mdi:account" class="text-purple-300" style="font-size: 40px;" />
+              <text class="iconfont icon-account text-purple-300" style="font-size: 40px; line-height:1"></text>
             </view>
           </view>
 

@@ -13,7 +13,7 @@
       :class="{ 'opacity-50 pointer-events-none': !inputText.trim() || loading }"
       @click="handleSend"
     >
-      <text class="iconify text-white" data-icon="mdi:send" data-width="16"></text>
+      <text class="iconfont icon-send text-white" style="font-size:16px; line-height:1"></text>
     </view>
   </view>
 </template>

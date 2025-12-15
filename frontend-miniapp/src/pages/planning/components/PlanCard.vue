@@ -4,10 +4,10 @@
       <text class="font-bold text-white">{{ formatDate(plan.startDate) }} | {{ mealTimeText }}</text>
       <view class="flex gap-3 items-center">
         <view v-if="!isHistory" @tap.stop="$emit('edit')" class="p-1">
-          <text class="text-white text-base">✏️</text>
+          <text class="iconfont icon-edit text-white text-base" style="font-size:18px; line-height:1"> </text>
         </view>
         <view @tap.stop="$emit('delete')" class="p-1">
-          <text class="text-white text-base">🗑️</text>
+          <text class="iconfont icon-delete text-white text-base" style="font-size:18px; line-height:1"> </text>
         </view>
       </view>
     </view>

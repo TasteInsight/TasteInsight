@@ -27,7 +27,8 @@
           @click="navigateTo(item.path)"
         >
           <view class="flex items-center">
-            <text class="iconify text-purple-600 text-xl mr-3" :data-icon="item.icon"></text>
+            <text v-if="item.fontClass" :class="['iconfont text-purple-600 text-xl mr-3', item.fontClass]"></text>
+            <text v-else class="iconify text-purple-600 text-xl mr-3" :data-icon="item.icon"></text>
             <text class="text-gray-800 text-base font-medium">{{ item.title }}</text>
           </view>
           <text class="iconify text-gray-400" data-icon="mdi:chevron-right" data-width="20"></text>
@@ -146,10 +147,11 @@ onPullDownRefresh(async () => {
 });
 
 const menuItems = [
-  { id: 'reviews', icon: 'mdi:star-outline', title: '我的评价', path: '/pages/profile/my-reviews/index' },
+  { id: 'reviews', icon: 'mdi:star-outline', fontClass: 'icon-edit', title: '我的评价', path: '/pages/profile/my-reviews/index' },
   { id: 'history', icon: 'mdi:history', title: '历史浏览', path: '/pages/profile/history/index' },
   { id: 'favorites', icon: 'mdi:heart-outline', title: '我的收藏', path: '/pages/profile/my-favorites/index' },
 ];
+
 
 /**
  * 使用 Uni-app API 进行页面跳转
