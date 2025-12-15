@@ -1471,6 +1471,11 @@
   background-color: rgb(254 252 232 / var(--tw-bg-opacity))
 }
 
+.bg-gray-400 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(156 163 175 / var(--tw-bg-opacity))
+}
+
 .bg-opacity-50 {
   --tw-bg-opacity: 0.5
 }
@@ -2375,6 +2380,11 @@
 .focus-within\:border-purple-200:focus-within {
   --tw-border-opacity: 1;
   border-color: rgb(233 213 255 / var(--tw-border-opacity))
+}
+
+.focus-within\:border-purple-400:focus-within {
+  --tw-border-opacity: 1;
+  border-color: rgb(192 132 252 / var(--tw-border-opacity))
 }
 
 .focus-within\:bg-white:focus-within {

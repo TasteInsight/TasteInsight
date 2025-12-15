@@ -40,6 +40,20 @@
             
             <!-- 评论内容 -->
             <view class="text-sm text-gray-700 leading-relaxed mt-2">{{ review.content }}</view>
+
+            <!-- 评价图片 -->
+            <view v-if="review.images && review.images.length > 0" class="flex flex-wrap gap-2 mt-2">
+              <image 
+                v-for="(img, idx) in review.images" 
+                :key="idx" 
+                :src="img" 
+                class="w-20 h-20 rounded object-cover border border-gray-100"
+                mode="aspectFill"
+                @tap.stop="previewReviewImage(review.images, idx)"
+              />
+            </view>
+            
+            
             
             <!-- 时间 -->
             <view class="flex justify-between items-center mt-2">
@@ -141,6 +155,13 @@ const loadMore = () => {
 
 const formatDate = (dateString: string) => {
   return dayjs(dateString).format('YYYY-MM-DD HH:mm');
+};
+
+const previewReviewImage = (urls: string[], current: number) => {
+  uni.previewImage({
+    urls,
+    current: urls[current]
+  });
 };
 
 const handleCommentAdded = () => {

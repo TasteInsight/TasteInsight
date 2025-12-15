@@ -1,5 +1,6 @@
 import { ref, computed, watch } from 'vue';
 import { getReviewsByDish, createReview, deleteReview } from '@/api/modules/review';
+import { uploadImage } from '@/api/modules/upload';
 import type { Review, ReviewCreateRequest } from '@/types/api';
 
 const REVIEW_STATE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24小时过期时间
@@ -118,6 +119,7 @@ export function useReview() {
 export function useReviewForm() {
   const rating = ref(0);
   const content = ref('');
+  const images = ref<string[]>([]);
   const submitting = ref(false);
   const showFlavorError = ref(false);
 
@@ -170,6 +172,7 @@ export function useReviewForm() {
   const resetForm = () => {
     rating.value = 0;
     content.value = '';
+    images.value = [];
     resetFlavorRatings();
   };
 
@@ -187,6 +190,7 @@ export function useReviewForm() {
     const state = {
       rating: rating.value,
       content: content.value,
+      images: images.value,
       flavorRatings: { ...flavorRatings.value },
       timestamp: Date.now(),
     };
@@ -205,6 +209,7 @@ export function useReviewForm() {
         if (now - state.timestamp < REVIEW_STATE_EXPIRY_MS) {
           rating.value = state.rating || 0;
           content.value = state.content || '';
+          images.value = state.images || [];
           flavorRatings.value = state.flavorRatings ? { ...state.flavorRatings } : {
             spicyLevel: 0,
             sweetness: 0,
@@ -243,11 +248,37 @@ export function useReviewForm() {
     return false;
   };
 
+  const isUploading = ref(false);
+
+  const uploadImages = async (tempFilePaths: string[]) => {
+    if (images.value.length + tempFilePaths.length > 3) {
+      uni.showToast({ title: '最多只能上传3张图片', icon: 'none' });
+      return;
+    }
+    
+    isUploading.value = true;
+    try {
+      const uploadPromises = tempFilePaths.map(path => uploadImage(path));
+      const results = await Promise.all(uploadPromises);
+      const newUrls = results.map(res => res.url);
+      images.value = [...images.value, ...newUrls];
+    } catch (error) {
+      console.error('图片上传失败:', error);
+      uni.showToast({ title: '图片上传失败', icon: 'none' });
+    } finally {
+      isUploading.value = false;
+    }
+  };
+
+  const removeImage = (index: number) => {
+    images.value.splice(index, 1);
+  };
+
   /**
    * 提交评价
    */
   const handleSubmit = async (dishId: string, onSuccess?: () => void) => {
-    if (submitting.value) return;
+    if (submitting.value || isUploading.value) return;
 
     submitting.value = true;
 
@@ -275,6 +306,7 @@ export function useReviewForm() {
         dishId,
         rating: rating.value,
         content: content.value.trim(),
+        images: images.value,
       };
 
       if (hasFlavorSelection.value) {
@@ -306,6 +338,8 @@ export function useReviewForm() {
   return {
     rating,
     content,
+    images,
+    isUploading,
     submitting,
     showFlavorError,
     flavorOptions,
@@ -321,6 +355,8 @@ export function useReviewForm() {
     loadReviewState,
     clearReviewState,
     hasSavedReviewState,
-    handleSubmit
+    handleSubmit,
+    uploadImages,
+    removeImage
   };
 }

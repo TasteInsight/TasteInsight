@@ -96,14 +96,55 @@
       <!-- 评价内容 -->
       <view class="mb-5">
         <view class="text-sm font-medium text-gray-700 mb-3">评价内容</view>
-        <textarea
-          v-model="content"
-          class="w-full h-28 p-3 border border-gray-200 rounded-lg resize-none focus:outline-none focus:border-purple-400 transition-colors bg-white"
-          placeholder="分享你的用餐体验吧~"
-          maxlength="500"
-        ></textarea>
-        <view class="text-xs text-gray-400 text-right mt-2">
-          {{ content.length }}/500
+        <view class="border border-gray-200 rounded-lg bg-white p-3 transition-colors focus-within:border-purple-400">
+          <textarea
+            v-model="content"
+            class="w-full h-24 resize-none focus:outline-none text-base"
+            placeholder="分享你的用餐体验吧~"
+            maxlength="500"
+            :disabled="submitting"
+          ></textarea>
+          
+          <!-- 图片上传区域 -->
+          <view class="flex items-end justify-between mt-2">
+            <view class="flex flex-wrap gap-2">
+              <!-- 已上传图片 -->
+              <view 
+                v-for="(img, index) in images" 
+                :key="index" 
+                class="relative w-16 h-16"
+              >
+                <image 
+                  :src="img" 
+                  class="w-full h-full rounded object-cover border border-gray-100" 
+                  mode="aspectFill"
+                  @tap="handlePreviewImage(index)" 
+                />
+                <!-- 删除按钮 -->
+                <view 
+                  class="absolute -top-2 -right-2 w-5 h-5 bg-gray-400 rounded-full flex items-center justify-center z-10"
+                  @tap.stop="removeImage(index)"
+                >
+                  <text class="text-white text-xs font-bold">×</text>
+                </view>
+              </view>
+              
+              <!-- 上传按钮 -->
+              <view 
+                v-if="images.length < 3" 
+                class="w-16 h-16 border border-dashed border-gray-300 rounded flex items-center justify-center active:bg-gray-50"
+                @tap="handleChooseImage"
+              >
+                <text v-if="!isUploading" class="text-gray-400 text-2xl font-light">+</text>
+                <text v-else class="text-gray-400 text-xs">...</text>
+              </view>
+            </view>
+            
+            <!-- 字数统计 -->
+            <view class="text-xs text-gray-400 mb-1 ml-2">
+              {{ content.length }}/500
+            </view>
+          </view>
         </view>
       </view>
 
@@ -139,6 +180,8 @@ const emit = defineEmits<Emits>();
 const {
   rating,
   content,
+  images,
+  isUploading,
   submitting,
   showFlavorError,
   flavorOptions,
@@ -154,8 +197,32 @@ const {
   loadReviewState,
   clearReviewState,
   hasSavedReviewState,
-  handleSubmit: submitForm
+  handleSubmit: submitForm,
+  uploadImages,
+  removeImage
 } = useReviewForm();
+
+// 图片选择
+const handleChooseImage = () => {
+  if (isUploading.value) return;
+  
+  uni.chooseImage({
+    count: 3 - images.value.length,
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+    success: (res) => {
+      uploadImages(res.tempFilePaths as string[]);
+    }
+  });
+};
+
+// 图片预览
+const handlePreviewImage = (index: number) => {
+  uni.previewImage({
+    urls: images.value,
+    current: images.value[index]
+  });
+};
 
 // 恢复状态相关
 const showResumeDialog = ref(false);
