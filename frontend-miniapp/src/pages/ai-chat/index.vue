@@ -235,12 +235,13 @@ let scrollTimeout: any = null; // 用于防抖滚动
 const systemInfo = uni.getSystemInfoSync();
 const safeAreaInsets = systemInfo.safeAreaInsets;
 const NAV_HEIGHT = 48; // header content height (h-12 = 48px)
+const EXTRA_TOP_PADDING = 8; // additional spacing between header and chat content (px)
 
 if(process.env.NODE_ENV === 'development'){
   console.debug('[AI Chat] safeAreaInsets.top', safeAreaInsets?.top);
 }
 
-const contentPaddingTop = computed(() => NAV_HEIGHT);
+const contentPaddingTop = computed(() => NAV_HEIGHT + EXTRA_TOP_PADDING);
 const showHistory = ref(false);
 const showNewChatModal = ref(false);
 const sceneOptions = [
