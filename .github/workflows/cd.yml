@@ -15,9 +15,20 @@ on:
   workflow_dispatch:
 
 env:
-  REGISTRY: ghcr.io
-  BACKEND_IMAGE: ${{ github.repository }}-backend
-  FRONTEND_IMAGE: ${{ github.repository }}-frontend
+  # 1. GitHub Container Registry (原有的)
+  GHCR_REGISTRY: ghcr.io
+  
+  # 2. 阿里云 Registry (新增的，从 Secrets 读取)
+  ALIYUN_REGISTRY: ${{ secrets.REGISTRY_HOST }}
+  ALIYUN_NAMESPACE: tasteinsight
+
+  # 镜像名称定义
+  GHCR_BACKEND_IMAGE: ${{ github.repository }}-backend
+  GHCR_FRONTEND_IMAGE: ${{ github.repository }}-frontend
+  
+  # 阿里云
+  ALIYUN_BACKEND_REPO: tasteinsight-backend
+  ALIYUN_FRONTEND_REPO: tasteinsight-frontend
 
 jobs:
   # 检查 CI 是否成功
@@ -68,18 +79,30 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Container Registry
+      # 登录 GitHub Container Registry (保持不变)
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # 同时也登录 阿里云 (新增)
+      - name: Log in to Aliyun Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ALIYUN_REGISTRY }}
+          username: ${{ secrets.ALIYUN_USERNAME }}
+          password: ${{ secrets.ALIYUN_PASSWORD }}
+
+      # 配置多重镜像元数据
       - name: Extract metadata for Backend
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}
+          images: |
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_BACKEND_IMAGE }}
+            ${{ env.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}/${{ env.ALIYUN_BACKEND_REPO }}
           tags: |
             type=semver,pattern={{version}}
             type=sha,prefix=sha-
@@ -87,6 +110,7 @@ jobs:
             type=raw,value=latest-dev,enable=${{ (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'dev') || github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '-')) }}
             type=raw,value=latest,enable=${{ (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main') || github.ref == 'refs/heads/main' || (startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-')) }}
 
+      # 构建并推送
       - name: Build and push Backend
         id: build
         uses: docker/build-push-action@v6
@@ -98,6 +122,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
+
 
   # 构建前端镜像
   build-frontend:
@@ -121,18 +146,29 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Container Registry
+      # 前端同样需要双重登录
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ${{ env.GHCR_REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Log in to Aliyun Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ALIYUN_REGISTRY }}
+          username: ${{ secrets.ALIYUN_USERNAME }}
+          password: ${{ secrets.ALIYUN_PASSWORD }}
+
+      # 前端配置多重镜像地址
       - name: Extract metadata for Frontend
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}
+          images: |
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_FRONTEND_IMAGE }}
+            ${{ env.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}/${{ env.ALIYUN_FRONTEND_REPO }}
           tags: |
             type=semver,pattern={{version}}
             type=sha,prefix=sha-
@@ -182,14 +218,11 @@ jobs:
 
       - name: Create and copy deployment files
         run: |
-          # 创建临时目录存放部署文件
           DEPLOY_TMP=$(mktemp -d)
           trap "rm -rf $DEPLOY_TMP" EXIT
 
-          # 复制 docker-compose.yml
           cp backend/docker-compose.yml "$DEPLOY_TMP/docker-compose.yml"
           
-          # 使用 heredoc 安全写入敏感文件
           cat > "$DEPLOY_TMP/cert.pem" << 'EOF'
           ${{ secrets.DEV_SSL_CERT }}
           EOF
@@ -206,14 +239,13 @@ jobs:
           ${{ secrets.DEV_NGINX_CONF }}
           EOF
           
-          # 复制文件到服务器
           scp "$DEPLOY_TMP/docker-compose.yml" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/docker-compose.yml"
           scp "$DEPLOY_TMP/cert.pem" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/certs/cert.pem"
           scp "$DEPLOY_TMP/private.key" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/certs/private.key"
           scp "$DEPLOY_TMP/.env" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/.env"
           scp "$DEPLOY_TMP/nginx.conf" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/nginx.conf"
         shell: bash
-
+        
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -228,13 +260,15 @@ jobs:
             chmod 600 certs/private.key
             chmod 644 certs/cert.pem
 
-            # 登录 GitHub Container Registry
-            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            echo "${{ secrets.ALIYUN_PASSWORD }}" | docker login ${{ env.ALIYUN_REGISTRY }} -u "${{ secrets.ALIYUN_USERNAME }}" --password-stdin
 
-            # 设置镜像标签并拉取启动容器
             export TAG=latest-dev
             
-            echo "Deploying version: $TAG"
+            # 这个变量会被传入 docker-compose.yml 中替换 ${IMAGE_REGISTRY}
+            export IMAGE_REGISTRY="${{ env.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}"
+            
+            echo "🚀 Deploying from Registry: $IMAGE_REGISTRY"
+            
             docker compose pull
             docker compose up -d --remove-orphans
             
@@ -319,17 +353,18 @@ jobs:
             chmod 600 certs/private.key
             chmod 644 certs/cert.pem
 
-            # 登录 GitHub Container Registry
-            echo "${{ secrets.GHCR_PAT }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            # 生产环境同样登录阿里云
+            echo "${{ secrets.ALIYUN_PASSWORD }}" | docker login ${{ env.ALIYUN_REGISTRY }} -u "${{ secrets.ALIYUN_USERNAME }}" --password-stdin
 
-            # 设置镜像标签并拉取启动容器
             export TAG=latest
             
-            echo "Deploying version: $TAG"
+            # 生产环境同样指定阿里云源
+            export IMAGE_REGISTRY="${{ env.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}"
+            
+            echo "🚀 Deploying from Registry: $IMAGE_REGISTRY"
+            
             docker compose pull
             docker compose up -d --remove-orphans
             
-            # 清理未使用的镜像
             docker image prune -f
-            
             echo "✅ Production deployment completed at $(date)"
