@@ -1,4 +1,22 @@
 <template>
+  <!-- #ifdef MP-WEIXIN -->
+  <!-- 微信小程序专用：使用 page-container 拦截返回事件 -->
+  <page-container 
+    :show="visible" 
+    :overlay="false" 
+    :duration="300"
+    custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
+    @leave="handleClose" 
+  />
+  <page-container 
+    :show="showDishSelector" 
+    :overlay="false" 
+    :duration="300"
+    custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
+    @leave="showDishSelector = false" 
+  />
+  <!-- #endif -->
+
   <!-- 1. 最外层遮罩：全屏覆盖，高层级，拦截触摸事件防止穿透 -->
   <view 
     v-if="visible" 
@@ -688,6 +706,7 @@ const handleSubmit = async () => {
     submitting.value = false;
   }
 };
+
 </script>
 
 <style scoped>
