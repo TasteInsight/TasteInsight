@@ -24,7 +24,7 @@ export class AdminExperimentsService {
   async getAllExperiments(): Promise<ExperimentListResponseDto> {
     const experiments = await this.prisma.experiment.findMany({
       include: {
-        groups: true,
+        groupItems: true,
       },
       orderBy: {
         createdAt: 'desc',
@@ -53,7 +53,7 @@ export class AdminExperimentsService {
     const experiment = await this.prisma.experiment.findUnique({
       where: { id },
       include: {
-        groups: true,
+        groupItems: true,
       },
     });
 
@@ -88,7 +88,7 @@ export class AdminExperimentsService {
         startTime: data.startTime,
         endTime: data.endTime,
         status: 'draft',
-        groups: {
+        groupItems: {
           create: data.groups.map((g) => ({
             name: g.name,
             ratio: g.ratio,
@@ -197,7 +197,7 @@ export class AdminExperimentsService {
       startTime: experiment.startTime,
       endTime: experiment.endTime || undefined,
       status: experiment.status,
-      groups: experiment.groups.map((g) => ({
+      groups: experiment.groupItems.map((g) => ({
         id: g.id,
         name: g.name,
         ratio: g.ratio,

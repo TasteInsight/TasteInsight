@@ -9,7 +9,7 @@ CREATE TABLE "recommendation_events" (
     "position" INTEGER,
     "score" DOUBLE PRECISION,
     "experimentId" TEXT,
-    "groupId" TEXT,
+    "groupItemId" TEXT,
     "extra" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -32,7 +32,7 @@ CREATE TABLE "experiments" (
 );
 
 -- CreateTable
-CREATE TABLE "experiment_groups" (
+CREATE TABLE "experiment_group_items" (
     "id" TEXT NOT NULL,
     "experimentId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -42,7 +42,7 @@ CREATE TABLE "experiment_groups" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "experiment_groups_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "experiment_group_items_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -50,7 +50,7 @@ CREATE TABLE "user_experiment_assignments" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "experimentId" TEXT NOT NULL,
-    "groupId" TEXT NOT NULL,
+    "groupItemId" TEXT NOT NULL,
     "assignedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "user_experiment_assignments_pkey" PRIMARY KEY ("id")
@@ -96,10 +96,10 @@ CREATE INDEX "experiments_status_idx" ON "experiments"("status");
 CREATE INDEX "experiments_startTime_endTime_idx" ON "experiments"("startTime", "endTime");
 
 -- CreateIndex
-CREATE INDEX "experiment_groups_experimentId_idx" ON "experiment_groups"("experimentId");
+CREATE INDEX "experiment_group_items_experimentId_idx" ON "experiment_group_items"("experimentId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "experiment_groups_experimentId_name_key" ON "experiment_groups"("experimentId", "name");
+CREATE UNIQUE INDEX "experiment_group_items_experimentId_name_key" ON "experiment_group_items"("experimentId", "name");
 
 -- CreateIndex
 CREATE INDEX "user_experiment_assignments_userId_idx" ON "user_experiment_assignments"("userId");
@@ -108,7 +108,7 @@ CREATE INDEX "user_experiment_assignments_userId_idx" ON "user_experiment_assign
 CREATE INDEX "user_experiment_assignments_experimentId_idx" ON "user_experiment_assignments"("experimentId");
 
 -- CreateIndex
-CREATE INDEX "user_experiment_assignments_groupId_idx" ON "user_experiment_assignments"("groupId");
+CREATE INDEX "user_experiment_assignments_groupItemId_idx" ON "user_experiment_assignments"("groupItemId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "user_experiment_assignments_userId_experimentId_key" ON "user_experiment_assignments"("userId", "experimentId");
@@ -123,4 +123,4 @@ CREATE INDEX "dish_embeddings_dishId_idx" ON "dish_embeddings"("dishId");
 CREATE INDEX "dish_embeddings_version_idx" ON "dish_embeddings"("version");
 
 -- AddForeignKey
-ALTER TABLE "experiment_groups" ADD CONSTRAINT "experiment_groups_experimentId_fkey" FOREIGN KEY ("experimentId") REFERENCES "experiments"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "experiment_group_items" ADD CONSTRAINT "experiment_group_items_experimentId_fkey" FOREIGN KEY ("experimentId") REFERENCES "experiments"("id") ON DELETE CASCADE ON UPDATE CASCADE;

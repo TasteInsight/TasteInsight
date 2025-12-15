@@ -548,24 +548,24 @@ model AIRecommendationFeedback {
 // ==================== 推荐系统事件日志 ====================
 
 model RecommendationEvent {
-  id        String   @id @default(cuid())
-  eventType String   // impression, click, favorite, review, dislike
+  id        String @id @default(cuid())
+  eventType String // impression, click, favorite, review, dislike
   userId    String
   dishId    String
-  
+
   // 推荐上下文
-  scene      String  // home, search, similar, guess_like, today
-  requestId  String? // 推荐请求ID，用于追踪
-  position   Int?    // 菜品在列表中的位置
-  score      Float?  // 推荐分数
-  
+  scene     String // home, search, similar, guess_like, today
+  requestId String? // 推荐请求ID，用于追踪
+  position  Int? // 菜品在列表中的位置
+  score     Float? // 推荐分数
+
   // A/B 测试
-  experimentId    String? // 实验ID
-  groupId String? // 实验组ID
-  
+  experimentId String? // 实验ID
+  groupItemId  String? // 实验组ID
+
   // 额外数据
   extra Json? // 存储额外的事件数据
-  
+
   createdAt DateTime @default(now())
 
   @@index([userId])
@@ -581,23 +581,23 @@ model RecommendationEvent {
 // ==================== A/B 测试实验配置 ====================
 
 model Experiment {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   name        String
   description String?
-  
+
   // 流量配置
   trafficRatio Float @default(0) // 0-1 实验流量比例，比如 0.2 = 20% 用户参与实验
-  
+
   // 时间配置
   startTime DateTime
   endTime   DateTime?
-  
+
   // 状态
   status String @default("draft") // draft, running, completed, paused
-  
-  // 实验分组
-  groups ExperimentGroup[]
-  
+
+  // 实验分组项列表
+  groupItems ExperimentGroupItem[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -606,26 +606,26 @@ model Experiment {
   @@map("experiments")
 }
 
-model ExperimentGroup {
-  id           String @id @default(cuid())
+model ExperimentGroupItem {
+  id           String     @id @default(cuid())
   experimentId String // 所属实验ID
   experiment   Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
-  
-  name  String // 组内名称
-  ratio Float // 组内流量比例，所有组的ratio加起来应为1
-  
+
+  name  String // 分组名称（如：control, variant_a）
+  ratio Float // 流量比例，所有分组项的 ratio 加起来应为 1
+
   // 权重配置（JSON格式存储）
   weights Json? // { preferenceMatch: 30, favoriteSimilarity: 25, ... }
-  
+
   // 其他配置
   config Json? // 其他实验参数
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([experimentId, name])
   @@index([experimentId])
-  @@map("experiment_groups")
+  @@map("experiment_group_items")
 }
 
 // ==================== 用户实验分组分配 ====================
@@ -634,14 +634,14 @@ model UserExperimentAssignment {
   id           String @id @default(cuid())
   userId       String
   experimentId String // 参与的实验ID
-  groupId      String // 分配的实验组ID
-  
+  groupItemId  String // 分配的实验组ID
+
   assignedAt DateTime @default(now())
 
   @@unique([userId, experimentId])
   @@index([userId])
   @@index([experimentId])
-  @@index([groupId])
+  @@index([groupItemId])
   @@map("user_experiment_assignments")
 }
 
@@ -650,10 +650,10 @@ model UserExperimentAssignment {
 model DishEmbedding {
   id     String @id @default(cuid())
   dishId String @unique
-  
+
   // 向量嵌入（存储为 JSON 数组）
   embedding Json // Float[] 向量数据
-  
+
   // 元数据
   version   String   @default("v1") // 嵌入版本
   createdAt DateTime @default(now())
