@@ -121,7 +121,7 @@
          </view>
 
          <!-- 输入框区域 -->
-         <view class="bg-gray-50 w-full pb-[calc(10px+env(safe-area-inset-bottom))] pt-2 px-4 relative z-50">
+         <view class="bg-gray-50 w-full pb-[calc(5px+env(safe-area-inset-bottom))] mb-1 px-4 relative z-50">
             <view class="max-w-screen-md mx-auto">
                <InputBar 
                  v-model:scene="scene" 
