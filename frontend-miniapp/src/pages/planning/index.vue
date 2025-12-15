@@ -85,7 +85,7 @@
         @tap="createNewPlan"
         class="w-14 h-14 bg-ts-purple rounded-full flex items-center justify-center shadow-xl active:bg-purple-600 transition-all duration-200 transform active:scale-95"
       >
-        <text class="text-white text-2xl font-light">+</text>
+        <text class="text-white text-4xl font-light">+</text>
       </view>
     </view>
     </template>
