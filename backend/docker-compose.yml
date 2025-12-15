@@ -1,7 +1,7 @@
 services:
   backend:
     build: .
-    image: ghcr.io/tasteinsight/tasteinsight-backend:${TAG:-latest}
+    image: ${IMAGE_REGISTRY:-ghcr.io/tasteinsight}/tasteinsight-backend:${TAG:-latest}
     env_file: .env
     environment:
       # Override for Docker networking
@@ -28,7 +28,7 @@ services:
     build:
       context: ../frontend-web
       dockerfile: Dockerfile
-    image: ghcr.io/tasteinsight/tasteinsight-frontend:${TAG:-latest}
+    image: ${IMAGE_REGISTRY:-ghcr.io/tasteinsight}/tasteinsight-frontend:${TAG:-latest}
     networks:
       - tasteinsight_net
 
