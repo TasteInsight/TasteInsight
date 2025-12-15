@@ -10,7 +10,7 @@
         class="w-16 h-16 rounded-lg object-cover"
       />
       <div v-else class="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center">
-        <text class="iconify text-gray-400" data-icon="mdi:store"></text>
+        <text class="iconfont icon-store text-gray-400"></text>
       </div>
       <div class="flex-1">
         <div class="font-semibold text-gray-800">{{ canteen.name }}</div>

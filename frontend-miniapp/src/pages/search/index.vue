@@ -32,7 +32,7 @@
 
       <!-- 无结果 - 显示添加菜品提示 -->
       <div v-else-if="!loading && !hasResults && hasSearched" class="text-center py-10">
-        <text class="iconify text-4xl mb-2 text-gray-300" data-icon="mdi:magnify"></text>
+        <text class="iconfont icon-magnify text-4xl mb-2 text-gray-300"></text>
         <div class="text-gray-400">未找到"{{ keyword }}"相关结果</div>
         <div class="text-sm text-gray-400 mt-2">
           找不到？帮我们<text class="text-blue-500" @click="goToAddDish">添加这道菜</text>吧
@@ -75,7 +75,7 @@
 
       <!-- 默认提示 -->
       <div v-else class="text-center py-10 text-gray-400">
-        <text class="iconify text-4xl mb-2" data-icon="mdi:food"></text>
+        <text class="iconfont icon-food text-4xl mb-2"></text>
         <div class="text-sm">输入关键词搜索食堂、窗口或菜品</div>
       </div>
     </div>

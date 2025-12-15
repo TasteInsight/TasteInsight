@@ -8,7 +8,7 @@
         <picker :range="reportTypes" range-key="label" @change="handleTypeChange">
           <view class="border border-gray-300 rounded p-2 text-sm flex justify-between items-center">
             <text>{{ selectedTypeLabel || '请选择举报类型' }}</text>
-            <text class="iconify" data-icon="mdi:chevron-down"></text>
+            <text class="iconfont icon-chevron-down"></text>
           </view>
         </picker>
       </view>

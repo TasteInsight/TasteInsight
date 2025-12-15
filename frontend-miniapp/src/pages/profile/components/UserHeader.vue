@@ -30,9 +30,9 @@
                 class="flex flex-row items-center bg-ts-purple px-3 py-1.5 rounded-full active:bg-purple-800 shadow-sm"
                 @tap="handleEditProfile"
               >
-                <Icon icon="mdi:cog-outline" class="text-white mr-1" style="font-size: 14px;" />
+                <text class="iconfont icon-cog-outline text-white mr-1" style="font-size: 14px; line-height:1"></text>
                 <text class="text-xs text-white">编辑资料</text>
-                <Icon icon="mdi:chevron-right" class="text-white ml-1" style="font-size: 14px;" />
+                <text class="iconfont icon-chevronright text-white ml-1" style="font-size: 14px; line-height:1"></text>
               </view>
             </view>
           </view>

@@ -19,10 +19,10 @@
     <!-- 反馈按钮 -->
     <view class="feedback-actions">
         <button class="feedback-btn like" @click.stop="submitFeedback('like')">
-            <text class="iconify" data-icon="mdi:thumb-up-outline"></text> 喜欢
+            <text class="iconfont icon-thumb-up-outline"></text> 喜欢
         </button>
         <button class="feedback-btn dislike" @click.stop="submitFeedback('dislike')">
-            <text class="iconify" data-icon="mdi:thumb-down-outline"></text> 不喜欢
+            <text class="iconfont icon-thumb-down-outline"></text> 不喜欢
         </button>
     </view>
   </view>

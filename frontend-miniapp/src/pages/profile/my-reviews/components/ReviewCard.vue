@@ -48,11 +48,9 @@
               <text
                 v-for="star in 5"
                 :key="star"
-                class="iconify"
-                :class="star <= review.rating ? 'text-orange-400' : 'text-gray-200'"
-                data-icon="mdi:star"
-                data-width="14"
-              ></text>
+                class="iconfont"
+                :class="[star <= review.rating ? 'text-orange-400' : 'text-gray-200', 'icon-star']"
+                ></text>
             </view>
             <text class="text-orange-500 font-semibold text-sm">{{ review.rating.toFixed(1) }}</text>
           </view>
@@ -60,7 +58,7 @@
           <!-- 查看详情 (Gray text + arrow) -->
           <view class="flex items-center">
              <text class="text-gray-400 text-xs mr-0.5">查看详情</text>
-             <text class="iconify text-gray-400" data-icon="mdi:chevron-right" data-width="14"></text>
+             <text class="iconfont icon-chevronright text-gray-400" data-width="14"></text>
           </view>
         </view>
       </view>

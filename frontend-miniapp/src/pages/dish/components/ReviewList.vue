@@ -92,7 +92,7 @@
 
     <!-- 空状态 -->
     <view v-else class="text-center py-8 text-gray-400">
-      <text class="iconify text-4xl mb-2" data-icon="mdi:comment-outline"></text>
+      <text class="iconfont icon-comment-outline text-4xl mb-2" ></text>
       <view class="text-sm">暂无评价，快来抢沙发吧~</view>
     </view>
 

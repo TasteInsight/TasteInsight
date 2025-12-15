@@ -12,7 +12,7 @@
 
     <!-- 空状态 -->
     <view v-if="!loading && reviews.length === 0" class="flex flex-col items-center justify-center py-20">
-      <text class="iconify text-gray-300 mb-4" data-icon="mdi:comment-text-outline" data-width="64"></text>
+      <text class="iconfont icon-comment-text-outline text-gray-300 mb-4" data-width="64"></text>
       <text class="text-gray-500">暂无评价</text>
     </view>
 
