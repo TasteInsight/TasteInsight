@@ -133,7 +133,7 @@
 
       <!-- 底部信息 -->
       <div class="mt-4 sm:mt-8 text-center">
-        <p class="text-gray-500 text-xs sm:text-sm">© 2025 食鉴TasteInsight开发团队</p>
+        <p class="text-gray-500 text-xs sm:text-sm">© 2025 食鉴 TasteInsight 开发团队</p>
       </div>
     </div>
 

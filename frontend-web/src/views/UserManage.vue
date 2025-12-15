@@ -548,8 +548,7 @@ export default {
     // 过滤后的权限组：只显示当前用户拥有的权限
     const permissionGroups = computed(() => {
       const currentUserPermissions = authStore.permissions || []
-      const isSuperAdmin = authStore.user?.username === 'testadmin' || authStore.user?.role === 'superadmin'
-      
+      const isSuperAdmin = authStore.user?.role === 'superadmin'
       // 如果是超级管理员，显示所有权限
       if (isSuperAdmin) {
         return allPermissionGroups
@@ -863,8 +862,10 @@ export default {
       
       // 检查当前用户是否有该权限
       if (!isSuperAdmin && !currentUserPermissions.includes(permissionId)) {
-        alert('您没有该权限，无法分配给子管理员')
+        errors.permissions = '您没有该权限，无法分配给子管理员'
         return
+      } else {
+        errors.permissions = ''
       }
       
       const index = formData.permissions.indexOf(permissionId)
