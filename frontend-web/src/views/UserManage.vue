@@ -160,12 +160,20 @@
                 <input
                   type="text"
                   v-model="formData.username"
+                  @input="errors.username = ''"
                   class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                  :class="{
+                    'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.username,
+                  }"
                   placeholder="例如：admin001"
                   :disabled="!!editingAdmin"
                   required
                 />
-                <p v-if="editingAdmin" class="mt-1 text-sm text-gray-500">用户名创建后不可修改</p>
+                <p v-if="errors.username" class="mt-1 text-xs text-red-500 flex items-center">
+                  <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                  {{ errors.username }}
+                </p>
+                <p v-else-if="editingAdmin" class="mt-1 text-sm text-gray-500">用户名创建后不可修改</p>
               </div>
 
               <!-- 密码 -->
@@ -176,8 +184,12 @@
                 <div class="flex gap-2">
                   <input
                     v-model="formData.password"
+                    @input="errors.password = ''"
                     type="text"
                     class="flex-1 px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                    :class="{
+                      'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.password,
+                    }"
                     placeholder="请输入密码"
                   />
                   <button
@@ -196,6 +208,10 @@
                   ></div>
                 </div>
                 <div class="text-xs text-gray-500 mt-1">{{ passwordStrengthText }}</div>
+                <p v-if="errors.password" class="mt-1 text-xs text-red-500 flex items-center">
+                  <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                  {{ errors.password }}
+                </p>
               </div>
 
               <!-- 角色 -->
@@ -284,11 +300,19 @@
                   <input
                     type="text"
                     v-model="formData.customRole"
+                    @input="errors.customRole = ''"
                     class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                    :class="{
+                      'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.customRole,
+                    }"
                     placeholder="请输入自定义角色名称，例如：数据分析师、运营专员等"
                     maxlength="50"
                   />
-                  <p class="mt-1 text-xs text-gray-500">
+                  <p v-if="errors.customRole" class="mt-1 text-xs text-red-500 flex items-center">
+                    <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                    {{ errors.customRole }}
+                  </p>
+                  <p v-else class="mt-1 text-xs text-gray-500">
                     自定义角色不会自动分配权限，请手动选择所需权限
                   </p>
                 </div>
@@ -428,6 +452,14 @@ export default {
     const currentPage = ref(1)
     const pageSize = ref(10)
     const totalPages = ref(1)
+
+    // 表单错误状态
+    const errors = reactive({
+      username: '',
+      password: '',
+      permissions: '',
+      customRole: '',
+    })
 
     const formData = reactive({
       username: '',
@@ -907,41 +939,53 @@ export default {
 
     // 提交表单
     const submitForm = async () => {
+      // 清除之前的错误
+      errors.username = ''
+      errors.password = ''
+      errors.permissions = ''
+      errors.customRole = ''
+      
       // 表单验证
+      let hasError = false
+      
       if (!formData.username || !formData.username.trim()) {
-        alert('请填写用户名')
-        return
+        errors.username = '请填写用户名'
+        hasError = true
       }
 
       if (!editingAdmin.value && (!formData.password || !formData.password.trim())) {
-        alert('请填写初始密码')
-        return
+        errors.password = '请填写初始密码'
+        hasError = true
       }
 
       // 验证权限：创建管理员时至少需要选择一个权限
       if (!editingAdmin.value && (!formData.permissions || formData.permissions.length === 0)) {
-        alert('请至少选择一个权限')
-        return
+        errors.permissions = '请至少选择一个权限'
+        hasError = true
       }
 
       // 验证：只能分配当前用户拥有的权限
       const currentUserPermissions = authStore.permissions || []
       const isSuperAdmin = authStore.user?.username === 'testadmin' || authStore.user?.role === 'superadmin'
       
-      if (!isSuperAdmin) {
+      if (!isSuperAdmin && formData.permissions && formData.permissions.length > 0) {
         const invalidPermissions = formData.permissions.filter(p => !currentUserPermissions.includes(p))
         if (invalidPermissions.length > 0) {
-          alert(`您没有以下权限，无法分配给子管理员：${invalidPermissions.join(', ')}`)
-          return
+          errors.permissions = `您没有以下权限，无法分配给子管理员：${invalidPermissions.join(', ')}`
+          hasError = true
         }
       }
 
       // 验证自定义角色（如果选择了自定义角色，则验证名称长度）
       if (formData.role === 'custom' && formData.customRole && formData.customRole.trim()) {
         if (formData.customRole.trim().length > 50) {
-          alert('自定义角色名称不能超过50个字符')
-          return
+          errors.customRole = '自定义角色名称不能超过50个字符'
+          hasError = true
         }
+      }
+      
+      if (hasError) {
+        return
       }
 
       if (isSubmitting.value) {
@@ -1028,6 +1072,7 @@ export default {
       searchQuery,
       filteredAdmins,
       formData,
+      errors,
       roles,
       permissionGroups,
       isSubmitting,

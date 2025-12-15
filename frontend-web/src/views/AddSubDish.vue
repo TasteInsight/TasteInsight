@@ -99,9 +99,17 @@
               <input
                 type="text"
                 v-model="formData.name"
+                @input="errors.name = ''"
                 class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                :class="{
+                  'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.name,
+                }"
                 placeholder="例如：水煮肉片"
               />
+              <p v-if="errors.name" class="mt-1 text-xs text-red-500 flex items-center">
+                <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                {{ errors.name }}
+              </p>
             </div>
 
             <!-- 菜品价格 -->
@@ -110,12 +118,20 @@
               <input
                 type="number"
                 v-model.number="formData.price"
+                @input="errors.price = ''"
                 class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                :class="{
+                  'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.price,
+                }"
                 placeholder="例如：15.00（默认为0）"
                 step="0.01"
                 min="0"
               />
-              <p class="mt-1 text-sm text-gray-500">如不填写，默认为0</p>
+              <p v-if="errors.price" class="mt-1 text-xs text-red-500 flex items-center">
+                <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                {{ errors.price }}
+              </p>
+              <p v-else class="mt-1 text-sm text-gray-500">如不填写，默认为0</p>
             </div>
 
             <!-- 菜品描述 -->
@@ -512,6 +528,15 @@ export default {
 
     const newTag = ref('')
 
+    // 表单错误状态
+    const errors = reactive({
+      name: '',
+      canteen: '',
+      floor: '',
+      windowName: '',
+      price: '',
+    })
+
     const formData = reactive({
       canteen: '',
       floor: '',
@@ -620,10 +645,34 @@ export default {
     }
 
     const submitForm = async () => {
+      // 清除之前的错误
+      errors.name = ''
+      errors.canteen = ''
+      errors.floor = ''
+      errors.windowName = ''
+      errors.price = ''
+      
       // 表单验证
-      if (!formData.name || !formData.canteen || !formData.floor || !formData.windowName) {
-        alert('请填写必填字段：菜品名称、食堂名称、食堂楼层、窗口名称')
-        return
+      let hasError = false
+      
+      if (!formData.name || !formData.name.trim()) {
+        errors.name = '请输入菜品名称'
+        hasError = true
+      }
+      
+      if (!formData.canteen || !formData.canteen.trim()) {
+        errors.canteen = '食堂名称不能为空'
+        hasError = true
+      }
+      
+      if (!formData.floor || !formData.floor.trim()) {
+        errors.floor = '食堂楼层不能为空'
+        hasError = true
+      }
+      
+      if (!formData.windowName || !formData.windowName.trim()) {
+        errors.windowName = '窗口名称不能为空'
+        hasError = true
       }
 
       if (!parentDishId.value) {
@@ -637,9 +686,13 @@ export default {
       if (formData.price !== null && formData.price !== undefined && formData.price !== '') {
         dishPrice = parseFloat(formData.price)
         if (isNaN(dishPrice) || dishPrice < 0) {
-          alert('价格必须为有效的数字（大于等于0）')
-          return
+          errors.price = '价格必须为有效的数字（大于等于0）'
+          hasError = true
         }
+      }
+      
+      if (hasError) {
+        return
       }
 
       if (isSubmitting.value) {
@@ -817,6 +870,7 @@ export default {
 
     return {
       formData,
+      errors,
       newTag,
       isSubmitting,
       subItemName,
