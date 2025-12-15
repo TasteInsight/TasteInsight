@@ -1921,6 +1921,10 @@
   line-height: 1rem
 }
 
+.text-\[15px\] {
+  font-size: 15px
+}
+
 .font-bold {
   font-weight: 700
 }
@@ -1959,6 +1963,10 @@
 
 .leading-tight {
   line-height: 1.25
+}
+
+.leading-normal {
+  line-height: 1.5
 }
 
 .tracking-wide {

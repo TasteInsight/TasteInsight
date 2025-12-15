@@ -38,13 +38,13 @@
       <!-- 聊天区域 -->
       <scroll-view 
         scroll-y 
-        class="flex-1 px-4" 
+        class="flex-1" 
         :style="{ paddingTop: contentPaddingTop + 'px', paddingBottom: '160px' }"
         :scroll-top="scrollTop" 
         :scroll-with-animation="true"
       >
         <!-- AI 聊天消息列表 -->
-        <view v-for="(message, index) in messages" :key="message.id" :id="`msg-${message.id}`" class="mb-6">
+        <view v-for="(message, index) in messages" :key="message.id" :id="`msg-${message.id}`" class="mb-6 px-4">
           
           <!-- 消息头部时间 (可选，两条消息间隔久才显示) -->
           <view v-if="shouldShowTime(index, messages)" class="flex justify-center mb-4">
@@ -57,7 +57,7 @@
             
             <!-- 文本段 (增加 markdown-style class) -->
             <view v-if="segment.type === 'text'" 
-              class="py-3 px-4 rounded-2xl max-w-[85%] text-base shadow-sm relative"
+              class="py-2 px-3 rounded-xl max-w-[80%] text-[15px] shadow-sm relative"
               :class="[
                 message.type === 'user' 
                   ? 'bg-purple-600 text-white rounded-br-sm' 
@@ -65,7 +65,7 @@
               ]"
             >
               <!-- 核心修复：支持换行和空格 -->
-              <text :user-select="true" class="whitespace-pre-wrap leading-relaxed">{{ segment.text }}</text>
+              <text :user-select="true" class="whitespace-pre-wrap leading-normal">{{ segment.text }}</text>
               
               <!-- 流式传输的光标动画 -->
               <view v-if="message.isStreaming && index === message.content.length - 1" class="inline-block w-2 h-4 ml-1 bg-current opacity-70 animate-pulse align-middle"></view>
