@@ -20,6 +20,8 @@ env:
   CI_DB_PASSWORD: ci_test_password_12345
   CI_DB_NAME: tasteinsight_ci_test
   CI_DATABASE_URL: postgresql://ci_test_user:ci_test_password_12345@localhost:5432/tasteinsight_ci_test?schema=public
+  # CI 测试 Redis 配置
+  CI_REDIS_PASSWORD: ci_redis_password_for_testing_only
 
 jobs:
   lint-and-build:
@@ -81,6 +83,17 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      redis:
+        image: redis:alpine
+        env:
+          REDIS_PASSWORD: ${{ env.CI_REDIS_PASSWORD }}
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout code
@@ -126,6 +139,10 @@ jobs:
           APP_URL: http://localhost:3000
           # Database
           DATABASE_URL: ${{ env.CI_DATABASE_URL }}
+          # Redis
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          REDIS_PASSWORD: ${{ env.CI_REDIS_PASSWORD }}
           # Admin（CI 测试用固定值）
           INITIAL_ADMIN_USERNAME: testadmin
           INITIAL_ADMIN_PASSWORD: password123
