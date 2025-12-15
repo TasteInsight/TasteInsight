@@ -219,6 +219,11 @@ const {
   loadHistorySession
 } = useChat();
 
+// 调试：监听suggestions变化
+watch(suggestions, (newSuggestions) => {
+  console.log('[AI Chat Page] suggestions changed:', newSuggestions);
+}, { immediate: true });
+
 // === State ===
 const scrollTop = ref(0); // 使用 scrollTop 控制滚动
 const inputBarRef = ref<InstanceType<typeof InputBar> | null>(null);
