@@ -241,6 +241,18 @@
       </view>
     </view>
 
+    <!-- #ifdef MP-WEIXIN -->
+    <!-- 微信小程序：使用 page-container 拦截返回，确保返回时关闭弹窗而不是返回上一页 -->
+    <page-container
+      v-if="isReviewFormVisible"
+      :show="isReviewFormVisible"
+      :overlay="false"
+      :duration="300"
+      custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
+      @leave="hideReviewForm"
+    />
+    <!-- #endif -->
+
     <!-- 评价表单弹窗 -->
     <ReviewForm
       v-if="isReviewFormVisible"
