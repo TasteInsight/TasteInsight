@@ -52,6 +52,7 @@ export class AdminReportsService {
               content: true,
               userId: true,
               deletedAt: true,
+              images: true,
               user: {
                 select: {
                   nickname: true,
@@ -85,6 +86,7 @@ export class AdminReportsService {
           userId: report.review.userId,
           userNickname: report.review.user.nickname,
           isDeleted: report.review.deletedAt !== null,
+          images: report.review.images || [],
         };
       } else if (report.targetType === 'comment' && report.comment) {
         targetContent = {

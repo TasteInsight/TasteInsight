@@ -551,6 +551,7 @@ export interface Report {
     userId: string
     userNickname: string
     isDeleted: boolean
+    images?: string[] // 评价图片（仅当targetType为review时存在）
   }
 }
 
