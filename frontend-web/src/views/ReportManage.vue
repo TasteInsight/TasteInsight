@@ -70,8 +70,30 @@
                 </div>
               </td>
               <td class="py-4 px-6">
-                <div class="text-sm">
-                  {{ report.targetType === 'review' ? '评价' : '评论' }}
+                <div class="flex items-center space-x-2">
+                  <div class="text-sm">
+                    {{ report.targetType === 'review' ? '评价' : '评论' }}
+                  </div>
+                  <!-- 评价图片预览 -->
+                  <div 
+                    v-if="report.targetType === 'review' && report.targetContent?.images && report.targetContent.images.length > 0"
+                    class="flex items-center space-x-1"
+                  >
+                    <img
+                      :src="report.targetContent.images[0]"
+                      :alt="'评价图片'"
+                      class="w-10 h-10 rounded object-cover border cursor-pointer hover:opacity-80 transition"
+                      @click.stop="openDetailDialog(report)"
+                      title="点击查看详情"
+                    />
+                    <span 
+                      v-if="report.targetContent.images.length > 1"
+                      class="text-xs text-gray-500"
+                      title="共{{ report.targetContent.images.length }}张图片"
+                    >
+                      +{{ report.targetContent.images.length - 1 }}
+                    </span>
+                  </div>
                 </div>
               </td>
               <td class="py-4 px-6">
@@ -189,9 +211,33 @@
                       {{ selectedReport.targetContent.userNickname || '未知用户' }}
                     </span>
                   </div>
-                  <div class="py-4 px-5 bg-gray-50 rounded-lg border border-gray-300">
+                  <div class="py-4 px-5 bg-gray-50 rounded-lg border border-gray-300 mb-4">
                     <div class="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
                       {{ selectedReport.targetContent.content || '（无内容）' }}
+                    </div>
+                  </div>
+                  <!-- 评价图片展示 -->
+                  <div 
+                    v-if="selectedReport.targetType === 'review' && selectedReport.targetContent.images && selectedReport.targetContent.images.length > 0"
+                    class="mb-4"
+                  >
+                    <div class="text-xs text-gray-400 uppercase tracking-wide mb-2">评价图片</div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                      <div
+                        v-for="(image, index) in selectedReport.targetContent.images"
+                        :key="index"
+                        class="relative group aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100 cursor-pointer hover:border-tsinghua-purple transition"
+                        @click="openImagePreview(selectedReport.targetContent.images, index)"
+                      >
+                        <img
+                          :src="image"
+                          :alt="`评价图片 ${index + 1}`"
+                          class="w-full h-full object-cover"
+                        />
+                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition flex items-center justify-center">
+                          <span class="iconify text-white text-2xl opacity-0 group-hover:opacity-100 transition" data-icon="carbon:zoom-in"></span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <div v-if="selectedReport.targetContent.isDeleted" class="mt-3 flex items-center text-xs text-red-600">
@@ -254,11 +300,69 @@
         @page-change="handlePageChange"
       />
     </div>
+
+    <!-- 图片预览对话框 -->
+    <div
+      v-if="imagePreview.show"
+      role="dialog"
+      aria-modal="true"
+      aria-label="图片预览"
+      class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[100]"
+      @click.self="closeImagePreview"
+    >
+      <div class="relative max-w-7xl max-h-[90vh] mx-4">
+        <!-- 关闭按钮 -->
+        <button
+          aria-label="关闭图片预览"
+          class="absolute top-4 right-4 z-10 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition"
+          @click="closeImagePreview"
+        >
+          <span class="iconify text-2xl" data-icon="carbon:close"></span>
+        </button>
+        
+        <!-- 图片 -->
+        <img
+          :src="imagePreview.images[imagePreview.currentIndex]"
+          :alt="`评价图片 ${imagePreview.currentIndex + 1}`"
+          class="max-w-full max-h-[90vh] object-contain rounded-lg"
+        />
+        
+        <!-- 导航按钮 -->
+        <button
+          v-if="imagePreview.images.length > 1"
+          aria-label="上一张图片"
+          :aria-disabled="imagePreview.currentIndex === 0"
+          class="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full p-3 hover:bg-opacity-75 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          @click.stop="previousImage"
+          :disabled="imagePreview.currentIndex === 0"
+        >
+          <span class="iconify text-2xl" data-icon="carbon:chevron-left"></span>
+        </button>
+        <button
+          v-if="imagePreview.images.length > 1"
+          aria-label="下一张图片"
+          :aria-disabled="imagePreview.currentIndex === imagePreview.images.length - 1"
+          class="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full p-3 hover:bg-opacity-75 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          @click.stop="nextImage"
+          :disabled="imagePreview.currentIndex === imagePreview.images.length - 1"
+        >
+          <span class="iconify text-2xl" data-icon="carbon:chevron-right"></span>
+        </button>
+        
+        <!-- 图片计数 -->
+        <div
+          v-if="imagePreview.images.length > 1"
+          class="absolute bottom-4 left-1/2 -translate-x-1/2 text-white bg-black bg-opacity-50 rounded-full px-4 py-2 text-sm"
+        >
+          {{ imagePreview.currentIndex + 1 }} / {{ imagePreview.images.length }}
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script lang="ts">
-import { ref, onMounted, defineComponent } from 'vue'
+import { ref, onMounted, onUnmounted, defineComponent } from 'vue'
 import { reviewApi } from '@/api/modules/review'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
@@ -280,6 +384,15 @@ export default defineComponent({
     const statusFilter = ref('')
     const targetTypeFilter = ref('')
     const selectedReport = ref<any>(null)
+    const imagePreview = ref<{
+      show: boolean
+      images: string[]
+      currentIndex: number
+    }>({
+      show: false,
+      images: [],
+      currentIndex: 0,
+    })
 
     const statusClasses: Record<string, string> = {
       pending: 'bg-yellow-100 text-yellow-800',
@@ -482,8 +595,57 @@ export default defineComponent({
       selectedReport.value = null
     }
 
+    const openImagePreview = (images: string[], index: number = 0) => {
+      imagePreview.value = {
+        show: true,
+        images,
+        currentIndex: index,
+      }
+    }
+
+    const closeImagePreview = () => {
+      imagePreview.value = {
+        show: false,
+        images: [],
+        currentIndex: 0,
+      }
+    }
+
+    const previousImage = () => {
+      if (imagePreview.value.currentIndex > 0) {
+        imagePreview.value.currentIndex--
+      }
+    }
+
+    const nextImage = () => {
+      if (imagePreview.value.currentIndex < imagePreview.value.images.length - 1) {
+        imagePreview.value.currentIndex++
+      }
+    }
+
+    // 键盘快捷键支持
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!imagePreview.value.show) return
+      
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault()
+        previousImage()
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault()
+        nextImage()
+      } else if (event.key === 'Escape') {
+        event.preventDefault()
+        closeImagePreview()
+      }
+    }
+
     onMounted(() => {
       loadReports()
+      window.addEventListener('keydown', handleKeyDown)
+    })
+
+    onUnmounted(() => {
+      window.removeEventListener('keydown', handleKeyDown)
     })
 
     return {
@@ -505,6 +667,11 @@ export default defineComponent({
       handleReport,
       openDetailDialog,
       closeDetailDialog,
+      imagePreview,
+      openImagePreview,
+      closeImagePreview,
+      previousImage,
+      nextImage,
       authStore,
     }
   },

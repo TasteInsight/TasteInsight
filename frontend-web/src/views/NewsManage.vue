@@ -193,11 +193,19 @@
             >
             <input
               v-model="newsForm.title"
+              @input="errors.title = ''"
               type="text"
               required
               class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+              :class="{
+                'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.title,
+              }"
               placeholder="请输入新闻标题"
             />
+            <p v-if="errors.title" class="mt-1 text-xs text-red-500 flex items-center">
+              <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+              {{ errors.title }}
+            </p>
           </div>
 
           <div>
@@ -206,11 +214,19 @@
             >
             <input
               v-model="newsForm.summary"
+              @input="errors.summary = ''"
               type="text"
               required
               class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+              :class="{
+                'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.summary,
+              }"
               placeholder="请输入新闻摘要"
             />
+            <p v-if="errors.summary" class="mt-1 text-xs text-red-500 flex items-center">
+              <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+              {{ errors.summary }}
+            </p>
           </div>
 
           <!-- ================= 富文本编辑器区域 START ================= -->
@@ -218,7 +234,13 @@
             <label class="block text-gray-700 font-medium mb-2"
               >内容 <span class="text-red-500">*</span></label
             >
-            <div style="border: 1px solid #ccc; z-index: 100" class="rounded-lg overflow-hidden">
+            <div 
+              style="border: 1px solid #ccc; z-index: 100" 
+              class="rounded-lg overflow-hidden"
+              :class="{
+                'border-red-400': errors.content,
+              }"
+            >
               <Toolbar
                 style="border-bottom: 1px solid #ccc"
                 :editor="editorRef"
@@ -233,6 +255,10 @@
                 @onCreated="handleCreated"
               />
             </div>
+            <p v-if="errors.content" class="mt-1 text-xs text-red-500 flex items-center">
+              <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+              {{ errors.content }}
+            </p>
           </div>
           <!-- ================= 富文本编辑器区域 END ================= -->
 
@@ -416,6 +442,13 @@ export default {
       totalPages: 0,
     })
 
+    // 表单错误状态
+    const errors = reactive({
+      title: '',
+      summary: '',
+      content: '',
+    })
+
     const newsForm = reactive({
       title: '',
       content: '',
@@ -575,9 +608,30 @@ export default {
 
     // 提交表单
     const submitForm = async (targetStatus) => {
+      // 清除之前的错误
+      errors.title = ''
+      errors.summary = ''
+      errors.content = ''
+      
       // 表单验证
-      if (!newsForm.title || !newsForm.summary || !valueHtml.value) {
-        alert('请填写标题、摘要和内容')
+      let hasError = false
+      
+      if (!newsForm.title || !newsForm.title.trim()) {
+        errors.title = '请输入标题'
+        hasError = true
+      }
+      
+      if (!newsForm.summary || !newsForm.summary.trim()) {
+        errors.summary = '请输入摘要'
+        hasError = true
+      }
+      
+      if (!valueHtml.value || !valueHtml.value.trim()) {
+        errors.content = '请输入内容'
+        hasError = true
+      }
+      
+      if (hasError) {
         return
       }
 
@@ -718,6 +772,7 @@ export default {
       showCreateModal,
       showEditModal,
       newsForm,
+      errors,
       canteenList,
       pagination,
       currentAdmin,

@@ -147,10 +147,18 @@
                 <input
                   type="text"
                   v-model="formData.name"
+                  @input="errors.name = ''"
                   class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                  :class="{
+                    'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.name,
+                  }"
                   placeholder="例如：紫荆园"
                   required
                 />
+                <p v-if="errors.name" class="mt-1 text-xs text-red-500 flex items-center">
+                  <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                  {{ errors.name }}
+                </p>
               </div>
 
               <!-- 食堂位置 -->
@@ -172,11 +180,19 @@
                 <input
                   type="text"
                   v-model="formData.floorInput"
+                  @input="errors.floorInput = ''"
                   class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                  :class="{
+                    'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.floorInput,
+                  }"
                   placeholder="例如：一层/二层/B1/地下二层（用/分隔）"
                   required
                 />
-                <p class="text-sm text-gray-500 mt-1">
+                <p v-if="errors.floorInput" class="mt-1 text-xs text-red-500 flex items-center">
+                  <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                  {{ errors.floorInput }}
+                </p>
+                <p v-else class="text-sm text-gray-500 mt-1">
                   请输入楼层信息，支持格式：一层、1F、B1、地下二层等，多层用"/"分隔
                 </p>
               </div>
@@ -529,6 +545,12 @@ export default {
 
     const windows = ref([]) // 窗口列表
 
+    // 表单错误状态
+    const errors = reactive({
+      name: '',
+      floorInput: '',
+    })
+
     // 过滤后的食堂列表
     const filteredCanteens = computed(() => {
       if (!searchQuery.value) {
@@ -854,19 +876,67 @@ export default {
     }
 
     const submitForm = async () => {
+      // 清除之前的错误
+      errors.name = ''
+      errors.floorInput = ''
+      
       // 表单验证
+      let hasError = false
+      
       if (!formData.name || !formData.name.trim()) {
-        alert('请填写食堂名称')
-        return
+        errors.name = '请填写食堂名称'
+        hasError = true
       }
 
       // 验证楼层输入
       if (!formData.floorInput || !formData.floorInput.trim()) {
-        alert('请填写楼层信息')
+        errors.floorInput = '请填写楼层信息'
+        hasError = true
+      } else {
+        // 解析楼层
+        const floorInputs = formData.floorInput
+          .split('/')
+          .map((s) => s.trim())
+          .filter((s) => s)
+        const parsedFloors = []
+        const seenLevels = new Set()
+
+        for (const floorStr of floorInputs) {
+          const level = parseFloorLevel(floorStr)
+
+          if (level === null) {
+            errors.floorInput = `无法解析楼层信息: "${floorStr}"`
+            hasError = true
+            break
+          }
+
+          if (level > 5 || level < -2) {
+            errors.floorInput = `楼层范围必须在 -2 到 5 之间，"${floorStr}" 解析为 ${level} 层，超出范围`
+            hasError = true
+            break
+          }
+
+          if (seenLevels.has(level)) {
+            // 允许同名楼层？一般不允许不同名字映射到同一层级，或者允许但提示
+          }
+          seenLevels.add(level)
+          parsedFloors.push({
+            level: level.toString(), // 转换为字符串存储
+            name: floorStr,
+          })
+        }
+
+        if (parsedFloors.length === 0 && !hasError) {
+          errors.floorInput = '请至少输入一个有效的楼层'
+          hasError = true
+        }
+      }
+      
+      if (hasError) {
         return
       }
-
-      // 解析楼层
+      
+      // 重新解析楼层（如果验证通过）
       const floorInputs = formData.floorInput
         .split('/')
         .map((s) => s.trim())
@@ -876,30 +946,13 @@ export default {
 
       for (const floorStr of floorInputs) {
         const level = parseFloorLevel(floorStr)
-
-        if (level === null) {
-          alert(`无法解析楼层信息: "${floorStr}"`)
-          return
+        if (level !== null && level <= 5 && level >= -2) {
+          seenLevels.add(level)
+          parsedFloors.push({
+            level: level.toString(),
+            name: floorStr,
+          })
         }
-
-        if (level > 5 || level < -2) {
-          alert(`楼层范围必须在 -2 到 5 之间，"${floorStr}" 解析为 ${level} 层，超出范围`)
-          return
-        }
-
-        if (seenLevels.has(level)) {
-          // 允许同名楼层？一般不允许不同名字映射到同一层级，或者允许但提示
-        }
-        seenLevels.add(level)
-        parsedFloors.push({
-          level: level.toString(), // 转换为字符串存储
-          name: floorStr,
-        })
-      }
-
-      if (parsedFloors.length === 0) {
-        alert('请至少输入一个有效的楼层')
-        return
       }
 
       if (editingCanteen.value) {
@@ -1099,6 +1152,7 @@ export default {
       searchQuery,
       filteredCanteens,
       formData,
+      errors,
       windows,
       isSubmitting,
       isLoading,
