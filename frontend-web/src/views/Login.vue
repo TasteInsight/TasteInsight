@@ -10,12 +10,16 @@
         <div class="text-center space-y-3">
           <div class="flex justify-center mb-6">
             <div
-              class="w-20 h-20 bg-gradient-to-br from-tsinghua-purple to-tsinghua-dark rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform duration-200"
+              class="w-20 h-20 rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform duration-200 overflow-hidden border-2 border-gray-200"
             >
-              <span class="iconify text-white text-4xl" data-icon="carbon:user-admin"></span>
+              <img
+                src="@/assets/images/TasteInsight.png"
+                alt="TasteInsight"
+                class="w-full h-full object-contain"
+              />
             </div>
           </div>
-          <h1 class="text-3xl font-bold text-gray-900">管理员登录</h1>
+          <h1 class="text-3xl font-bold text-gray-900">食鉴管理员登录</h1>
           <p class="text-gray-500 text-sm">请输入您的账号和密码以继续</p>
         </div>
 
@@ -112,7 +116,7 @@
           <button
             type="submit"
             :disabled="loading"
-            class="w-full py-3.5 bg-gradient-to-r from-tsinghua-purple to-tsinghua-dark text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-tsinghua-purple/30 transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none transform hover:scale-[1.02] active:scale-[0.98]"
+            class="w-full py-3.5 bg-tsinghua-purple text-white rounded-xl font-semibold hover:bg-tsinghua-dark hover:shadow-lg hover:shadow-tsinghua-purple/30 transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none transform hover:scale-[1.02] active:scale-[0.98]"
           >
             <span
               v-if="loading"
@@ -144,7 +148,7 @@
 
       <!-- 底部信息 -->
       <div class="mt-8 text-center">
-        <p class="text-gray-500 text-sm">© 2024 清华大学食堂菜品管理系统</p>
+        <p class="text-gray-500 text-sm">© 2025 食鉴TasteInsight开发团队</p>
       </div>
     </div>
 
@@ -165,7 +169,7 @@
           <p class="text-gray-600 text-center mb-6">{{ errorMessage || '用户名或密码错误' }}</p>
           <button
             @click="closeErrorModal"
-            class="w-full py-3 bg-gradient-to-r from-tsinghua-purple to-tsinghua-dark text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-tsinghua-purple/30 transition-all duration-200"
+            class="w-full py-3 bg-tsinghua-purple text-white rounded-xl font-semibold hover:bg-tsinghua-dark hover:shadow-lg hover:shadow-tsinghua-purple/30 transition-all duration-200"
           >
             确定
           </button>
