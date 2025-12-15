@@ -40,6 +40,7 @@
                 type="text"
                 required
                 placeholder="请输入用户名"
+                @input="clearLoginError"
                 class="w-full pl-12 pr-4 py-3.5 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-tsinghua-purple focus:border-tsinghua-purple outline-none transition-all duration-200 placeholder:text-gray-400"
                 :class="{
                   'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400':
@@ -68,6 +69,7 @@
                 :type="showPassword ? 'text' : 'password'"
                 required
                 placeholder="请输入密码"
+                @input="clearLoginError"
                 class="w-full pl-12 pr-12 py-3.5 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-tsinghua-purple focus:border-tsinghua-purple outline-none transition-all duration-200 placeholder:text-gray-400"
                 :class="{
                   'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400':
@@ -127,23 +129,6 @@
             <span>{{ loading ? '登录中...' : '登录' }}</span>
           </button>
         </form>
-
-        <!-- 错误提示 -->
-        <div
-          v-if="errorMessage"
-          class="bg-red-50 border-l-4 border-red-400 rounded-lg p-4 transition-all duration-300"
-        >
-          <div class="flex items-start space-x-3">
-            <span
-              class="iconify text-red-500 text-xl flex-shrink-0 mt-0.5"
-              data-icon="carbon:warning"
-            ></span>
-            <div>
-              <p class="text-sm font-medium text-red-800">登录失败</p>
-              <p class="text-sm text-red-600 mt-1">{{ errorMessage }}</p>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- 底部信息 -->
@@ -205,6 +190,7 @@ export default {
     const loading = ref(false)
     const errorMessage = ref('')
     const showErrorModal = ref(false)
+    const loginError = ref('')
 
     const validateForm = () => {
       errors.username = ''
@@ -230,6 +216,9 @@ export default {
     const handleLogin = async () => {
       // 清除之前的错误信息
       errorMessage.value = ''
+      loginError.value = ''
+      errors.username = ''
+      errors.password = ''
 
       // 表单验证
       if (!validateForm()) {
@@ -279,10 +268,17 @@ export default {
         }
       } catch (error) {
         // 登录失败，显示错误信息
+        const errorMsg = '用户名或密码错误'
+        loginError.value = errorMsg
+        // 设置用户名和密码框的错误状态，使边框变红
+        errors.username = errorMsg
+        errors.password = errorMsg
+        
+        // 保留原有的错误弹窗逻辑（可选，如果需要可以移除）
         if (error instanceof Error) {
-          errorMessage.value = error.message || '用户名或密码错误'
+          errorMessage.value = error.message || errorMsg
         } else {
-          errorMessage.value = '用户名或密码错误'
+          errorMessage.value = errorMsg
         }
         // 显示错误弹窗
         showErrorModal.value = true
@@ -300,6 +296,15 @@ export default {
       alert('如果您忘记了密码，请联系上级管理员重置密码。')
     }
 
+    const clearLoginError = () => {
+      // 当用户开始输入时，清除登录错误状态
+      if (loginError.value) {
+        loginError.value = ''
+        errors.username = ''
+        errors.password = ''
+      }
+    }
+
     return {
       loginForm,
       errors,
@@ -307,9 +312,11 @@ export default {
       loading,
       errorMessage,
       showErrorModal,
+      loginError,
       handleLogin,
       handleForgotPassword,
       closeErrorModal,
+      clearLoginError,
     }
   },
 }
