@@ -112,21 +112,25 @@
       </scroll-view>
 
       <!-- 底部固定区域 -->
-      <view class="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-50 pb-[calc(10px+env(safe-area-inset-bottom))] pt-4 px-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-         <view class="relative w-full max-w-screen-md mx-auto">
-            <!-- 快捷提示词 (Chips) -->
-            <view v-if="suggestions.length > 0" class="mb-3">
+      <view class="fixed bottom-0 left-0 right-0 z-40 flex flex-col">
+         <!-- 快捷提示词 (Chips) -->
+         <view v-if="suggestions.length > 0" class="bg-gray-50 w-full py-2">
+            <view class="max-w-screen-md mx-auto">
                <SuggestionChips :suggestions="suggestions" @select="handleSuggestionSelect" />
             </view>
+         </view>
 
-            <!-- 输入框 -->
-            <InputBar 
-              v-model:scene="scene" 
-              @update:scene="setScene" 
-              ref="inputBarRef" 
-              :loading="aiLoading" 
-              @send="handleSend" 
-            />
+         <!-- 输入框区域 -->
+         <view class="bg-gray-50 w-full pb-[calc(10px+env(safe-area-inset-bottom))] pt-2 px-4 relative z-50">
+            <view class="max-w-screen-md mx-auto">
+               <InputBar 
+                 v-model:scene="scene" 
+                 @update:scene="setScene" 
+                 ref="inputBarRef" 
+                 :loading="aiLoading" 
+                 @send="handleSend" 
+               />
+            </view>
          </view>
       </view>
 

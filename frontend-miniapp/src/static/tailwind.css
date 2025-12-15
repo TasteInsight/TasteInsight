@@ -2211,6 +2211,12 @@
   box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)
 }
 
+.shadow-\[0_-4px_10px_-2px_rgba\(0\2c 0\2c 0\2c 0\.08\)\] {
+  --tw-shadow: 0 -4px 10px -2px rgba(0,0,0,0.08);
+  --tw-shadow-colored: 0 -4px 10px -2px var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)
+}
+
 .shadow-purple-100 {
   --tw-shadow-color: #f3e8ff;
   --tw-shadow: var(--tw-shadow-colored)
