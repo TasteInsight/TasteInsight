@@ -394,6 +394,7 @@ export interface Admin {
   username: string
   role: string
   canteenId?: string | null
+  canteenName?: string | null
   createdBy?: string | null
   createdAt: string
 }

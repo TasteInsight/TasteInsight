@@ -87,7 +87,6 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { configApi } from '@/api/modules/config'
-import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 
@@ -103,10 +102,12 @@ export default {
     const saveSuccess = ref(false)
     const commentAutoApprove = ref(false)
     const configItems = ref([])
-    const canteenList = ref([])
 
     // 当前管理员的食堂ID
     const currentCanteenId = computed(() => authStore.user?.canteenId || null)
+    
+    // 当前管理员的食堂名称
+    const currentCanteenName = computed(() => authStore.user?.canteenName || null)
 
     // Toggle switch 的类名（避免引号冲突）
     const toggleSwitchClass = computed(() => {
@@ -126,24 +127,16 @@ export default {
       if (!currentCanteenId.value) {
         return '您正在管理全局配置（所有食堂）'
       }
-      const canteen = canteenList.value.find((c) => c.id === currentCanteenId.value)
-      if (canteen) {
-        return `您正在管理食堂配置：${canteen.name}（仅影响该食堂）`
+      
+      // 直接使用管理员的 canteenName 字段
+      if (currentCanteenName.value) {
+        return `您正在管理食堂配置：${currentCanteenName.value}（仅影响该食堂）`
       }
+      
+      // 如果 canteenName 不存在，显示ID作为后备
       return `您正在管理食堂配置（食堂ID: ${currentCanteenId.value}）`
     })
 
-    // 加载食堂列表
-    const loadCanteens = async () => {
-      try {
-        const response = await canteenApi.getCanteens({ page: 1, pageSize: 100 })
-        if (response.code === 200 && response.data) {
-          canteenList.value = response.data.items || []
-        }
-      } catch (error) {
-        console.error('加载食堂列表失败:', error)
-      }
-    }
 
     // 加载配置（根据管理员是否有食堂ID决定加载全局还是食堂配置）
     const loadConfig = async () => {
@@ -258,7 +251,7 @@ export default {
     }
 
     onMounted(async () => {
-      await loadCanteens()
+      // 直接加载配置，食堂名称从管理员信息中获取
       await loadConfig()
     })
 
