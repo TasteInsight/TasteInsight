@@ -15,6 +15,7 @@ import { AdminUploadsModule } from './admin-uploads/admin-uploads.module';
 import { AdminAdminsModule } from './admin-admins/admin-admins.module';
 import { AdminNewsModule } from './admin-news/admin-news.module';
 import { AdminConfigModule } from './admin-config/admin-config.module';
+import { AdminExperimentsModule } from './admin-experiments/admin-experiments.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CanteensModule } from './canteens/canteens.module';
 import { ReviewsModule } from './reviews/reviews.module';
@@ -62,6 +63,7 @@ import { join } from 'path';
     AdminAdminsModule,
     AdminNewsModule,
     AdminConfigModule,
+    AdminExperimentsModule,
     UploadModule,
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'uploads'),
