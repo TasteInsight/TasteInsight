@@ -116,8 +116,8 @@ describe('useSettings', () => {
     
     mockStore.userInfo = { nickname: 'Old' };
     await nextTick();
-    await nextTick();
     
+    await nextTick(); // Sync form
     form.nickname = 'Updated Name';
 
     (updateUserProfile as jest.Mock).mockRejectedValue(new Error('Save failed'));

@@ -1,6 +1,7 @@
 /// <reference types="jest" />
 import { useReview } from '@/pages/dish/composables/use-review';
 import { getReviewsByDish } from '@/api/modules/review';
+import type { Review } from '@/types/api';
 
 // Mock the API module
 jest.mock('@/api/modules/review', () => ({
