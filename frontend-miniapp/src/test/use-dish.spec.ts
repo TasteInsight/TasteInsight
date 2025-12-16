@@ -1,5 +1,4 @@
-﻿import { useDishDetail } from '@/pages/dish/composables/use-dish-detail';
-import { getDishById, favoriteDish, unfavoriteDish } from '@/api/modules/dish';
+﻿import { useDishDetail } from '@/pages/dish/composables/use-dish-detail';import { getDishById, favoriteDish, unfavoriteDish } from '@/api/modules/dish';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { ref } from 'vue';
 
@@ -54,8 +53,8 @@ describe('useDishDetail', () => {
 
   beforeEach(() => {
     mockUserStore = {
-      isLoggedIn: true, // Added isLoggedIn
       userInfo: { myFavoriteDishes: [] },
+      isLoggedIn: true,
       updateLocalUserInfo: jest.fn(),
     };
     (useUserStore as unknown as jest.Mock).mockReturnValue(mockUserStore);
