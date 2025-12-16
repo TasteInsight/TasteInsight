@@ -27,30 +27,30 @@
       <!-- 技术栈 -->
       <view class="mb-8">
         <text class="text-base font-semibold text-gray-800 mb-4 block">⚡ 技术栈</text>
-        <view class="grid grid-cols-2 gap-3">
-          <view class="bg-gray-50 rounded-lg p-3 text-center">
+        <view class="space-y-3">
+          <view class="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
             <text class="text-sm font-medium text-gray-700">前端框架</text>
-            <text class="text-xs text-gray-500 mt-1">Vue 3 + Composition API</text>
+            <text class="text-xs text-gray-500">Vue 3 + Composition API</text>
           </view>
-          <view class="bg-gray-50 rounded-lg p-3 text-center">
+          <view class="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
             <text class="text-sm font-medium text-gray-700">跨平台框架</text>
-            <text class="text-xs text-gray-500 mt-1">uni-app</text>
+            <text class="text-xs text-gray-500">uni-app</text>
           </view>
-          <view class="bg-gray-50 rounded-lg p-3 text-center">
+          <view class="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
             <text class="text-sm font-medium text-gray-700">样式框架</text>
-            <text class="text-xs text-gray-500 mt-1">Tailwind CSS</text>
+            <text class="text-xs text-gray-500">Tailwind CSS</text>
           </view>
-          <view class="bg-gray-50 rounded-lg p-3 text-center">
+          <view class="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
             <text class="text-sm font-medium text-gray-700">状态管理</text>
-            <text class="text-xs text-gray-500 mt-1">Pinia</text>
+            <text class="text-xs text-gray-500">Pinia</text>
           </view>
-          <view class="bg-gray-50 rounded-lg p-3 text-center">
+          <view class="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
             <text class="text-sm font-medium text-gray-700">HTTP客户端</text>
-            <text class="text-xs text-gray-500 mt-1">Axios</text>
+            <text class="text-xs text-gray-500">Axios</text>
           </view>
-          <view class="bg-gray-50 rounded-lg p-3 text-center">
+          <view class="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
             <text class="text-sm font-medium text-gray-700">图标库</text>
-            <text class="text-xs text-gray-500 mt-1">@iconify/json</text>
+            <text class="text-xs text-gray-500">@iconify/json</text>
           </view>
         </view>
       </view>
