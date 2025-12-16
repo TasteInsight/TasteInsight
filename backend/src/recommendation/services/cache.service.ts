@@ -189,7 +189,7 @@ export class RecommendationCacheService
   async setDishEmbedding(
     dishId: string,
     embedding: number[],
-    ttl: number = CACHE_CONFIG.DISH_FEATURE_TTL,
+    ttl: number = CACHE_CONFIG.DISH_EMBEDDING_TTL,
   ): Promise<void> {
     const key = `${CACHE_CONFIG.KEY_PREFIX.DISH_FEATURE}embedding:${dishId}`;
     await this.redis.setex(key, ttl, JSON.stringify(embedding));
@@ -220,6 +220,59 @@ export class RecommendationCacheService
     values.forEach((value, index) => {
       if (value) {
         result.set(dishIds[index], JSON.parse(value));
+      }
+    });
+
+    return result;
+  }
+
+  // ==================== 用户嵌入向量缓存 ====================
+
+  /**
+   * 缓存用户嵌入向量
+   */
+  async setUserEmbedding(
+    userId: string,
+    embedding: number[],
+    ttl: number = CACHE_CONFIG.USER_EMBEDDING_TTL,
+  ): Promise<void> {
+    const key = `${CACHE_CONFIG.KEY_PREFIX.USER_FEATURE}embedding:${userId}`;
+    await this.redis.setex(key, ttl, JSON.stringify(embedding));
+  }
+
+  /**
+   * 获取用户嵌入向量
+   */
+  async getUserEmbedding(userId: string): Promise<number[] | null> {
+    const key = `${CACHE_CONFIG.KEY_PREFIX.USER_FEATURE}embedding:${userId}`;
+    const data = await this.redis.get(key);
+    if (!data) return null;
+    return JSON.parse(data);
+  }
+
+  /**
+   * 删除用户嵌入向量缓存
+   */
+  async invalidateUserEmbedding(userId: string): Promise<void> {
+    const key = `${CACHE_CONFIG.KEY_PREFIX.USER_FEATURE}embedding:${userId}`;
+    await this.redis.del(key);
+  }
+
+  /**
+   * 批量获取用户嵌入向量
+   */
+  async getUserEmbeddings(userIds: string[]): Promise<Map<string, number[]>> {
+    const result = new Map<string, number[]>();
+    if (userIds.length === 0) return result;
+
+    const keys = userIds.map(
+      (id) => `${CACHE_CONFIG.KEY_PREFIX.USER_FEATURE}embedding:${id}`,
+    );
+    const values = await this.redis.mget(...keys);
+
+    values.forEach((value, index) => {
+      if (value) {
+        result.set(userIds[index], JSON.parse(value));
       }
     });
 

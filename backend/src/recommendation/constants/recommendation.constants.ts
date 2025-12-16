@@ -89,8 +89,10 @@ export enum RecommendationEventType {
 export const CACHE_CONFIG = {
   /** 用户特征缓存 TTL（秒） */
   USER_FEATURE_TTL: 3600, // 1小时
-  /** 菜品特征缓存 TTL（秒） */
-  DISH_FEATURE_TTL: 1800, // 30分钟
+  /** 菜品嵌入缓存 TTL（秒） */
+  DISH_EMBEDDING_TTL: 1800, // 30分钟
+  /** 用户嵌入缓存 TTL（秒） */
+  USER_EMBEDDING_TTL: 3600, // 1小时
   /** 推荐结果缓存 TTL（秒） */
   RECOMMENDATION_RESULT_TTL: 300, // 5分钟
   /** 缓存键前缀 */
