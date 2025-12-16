@@ -23,6 +23,9 @@ const userStore = useUserStore();
  * 页面加载时检查登录状态
  */
 onLoad(() => {
+  // 确保 LoginForm 在运行时代码中被引用，防止小程序打包时被依赖分析误判为无引用文件而过滤
+  void _LoginFormRef;
+
   // 如果已登录，直接跳转到首页
   if (userStore.isLoggedIn) {
     uni.switchTab({
