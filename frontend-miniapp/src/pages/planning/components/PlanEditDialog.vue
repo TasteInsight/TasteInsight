@@ -1,9 +1,10 @@
 <template>
+
   <!-- 1. 最外层遮罩：全屏覆盖，高层级，拦截触摸事件防止穿透 -->
-  <view 
-    v-if="visible" 
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-    @touchmove.stop.prevent="() => {}"
+  <view
+    v-if="visible"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-1"
+    @touchmove.stop.prevent
     @tap="handleClose"
   >
     <!-- 2. 弹窗主体容器：限制最大高度，圆角，白色背景 -->

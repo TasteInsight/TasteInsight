@@ -11,6 +11,7 @@
       custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
       @leave="closeDetailDialog" 
     />
+
     <!-- 编辑弹窗 -->
     <page-container 
       v-if="showEditDialog"
@@ -20,7 +21,8 @@
       custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
       @leave="closeEditDialog" 
     />
-    <!-- 创建弹窗 -->
+
+    <!-- 新建弹窗 -->
     <page-container 
       v-if="showCreateDialog"
       :show="showCreateDialog" 
@@ -29,6 +31,8 @@
       custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
       @leave="closeCreateDialog" 
     />
+
+    
     <!-- #endif -->
 
     <!-- 骨架屏：首次加载时显示 -->
@@ -186,30 +190,8 @@ onHide(() => {
   closeCreateDialog();
 });
 
-// 处理编辑弹窗返回
-const handleEditDialogBack = () => {
-  closeEditDialog();
-};
-
-// 处理创建弹窗返回
-const handleCreateDialogBack = () => {
-  closeCreateDialog();
-};
-
 // 返回键拦截处理（App/H5 端备用）
 onBackPress(() => {
-  // 优先处理编辑对话框中的返回
-  if (showEditDialog.value) {
-    closeEditDialog();
-    return true;
-  }
-  
-  // 处理创建对话框中的返回
-  if (showCreateDialog.value) {
-    closeCreateDialog();
-    return true;
-  }
-
   // 关闭详情对话框
   if (showDetailDialog.value) {
     closeDetailDialog();
