@@ -13,6 +13,7 @@ type FlavorKey = 'spicyLevel' | 'sweetness' | 'saltiness' | 'oiliness';
 export function useReview() {
   const reviews = ref<Review[]>([]);
   const reviewsLoading = ref(false);
+  const isInitializing = ref(false);
   const reviewsError = ref('');
   const reviewsHasMore = ref(true);
   const reviewsPage = ref(1);
@@ -26,6 +27,9 @@ export function useReview() {
     if (!refresh && !reviewsHasMore.value) return;
 
     reviewsLoading.value = true;
+    if (refresh) {
+      isInitializing.value = true;
+    }
     reviewsError.value = '';
 
     if (refresh) {
@@ -63,6 +67,9 @@ export function useReview() {
       reviewsError.value = '网络错误，请稍后重试';
     } finally {
       reviewsLoading.value = false;
+      if (refresh) {
+        isInitializing.value = false;
+      }
     }
   };
 
@@ -105,6 +112,7 @@ export function useReview() {
   return {
     reviews,
     reviewsLoading,
+    isInitializing,
     reviewsError,
     reviewsHasMore,
     fetchReviews,
