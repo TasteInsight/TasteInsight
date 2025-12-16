@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
+import { ExperimentService } from '@/recommendation/services/experiment.service';
 import {
   CreateExperimentDto,
   UpdateExperimentDto,
@@ -16,7 +17,12 @@ import {
  */
 @Injectable()
 export class AdminExperimentsService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(AdminExperimentsService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private experimentService: ExperimentService,
+  ) {}
 
   /**
    * 获取所有实验
@@ -99,6 +105,12 @@ export class AdminExperimentsService {
       },
     });
 
+    // 刷新活跃实验列表
+    await this.experimentService.refreshActiveExperiments();
+    this.logger.log(
+      `Created experiment ${experiment.id}, refreshed active experiments`,
+    );
+
     return {
       code: 201,
       message: 'Experiment created successfully',
@@ -118,6 +130,12 @@ export class AdminExperimentsService {
       data,
     });
 
+    // 刷新活跃实验列表
+    await this.experimentService.refreshActiveExperiments();
+    this.logger.log(
+      `Updated experiment ${experiment.id}, refreshed active experiments`,
+    );
+
     return {
       code: 200,
       message: 'Experiment updated successfully',
@@ -132,6 +150,12 @@ export class AdminExperimentsService {
     const experiment = await this.prisma.experiment.delete({
       where: { id },
     });
+
+    // 刷新活跃实验列表
+    await this.experimentService.refreshActiveExperiments();
+    this.logger.log(
+      `Deleted experiment ${experiment.id}, refreshed active experiments`,
+    );
 
     return {
       code: 200,
@@ -149,6 +173,12 @@ export class AdminExperimentsService {
       data: { status: 'running' },
     });
 
+    // 刷新活跃实验列表
+    await this.experimentService.refreshActiveExperiments();
+    this.logger.log(
+      `Enabled experiment ${experiment.id}, refreshed active experiments`,
+    );
+
     return {
       code: 200,
       message: 'Experiment enabled successfully',
@@ -165,6 +195,12 @@ export class AdminExperimentsService {
       data: { status: 'paused' },
     });
 
+    // 刷新活跃实验列表
+    await this.experimentService.refreshActiveExperiments();
+    this.logger.log(
+      `Disabled experiment ${experiment.id}, refreshed active experiments`,
+    );
+
     return {
       code: 200,
       message: 'Experiment disabled successfully',
@@ -180,6 +216,12 @@ export class AdminExperimentsService {
       where: { id },
       data: { status: 'completed' },
     });
+
+    // 刷新活跃实验列表
+    await this.experimentService.refreshActiveExperiments();
+    this.logger.log(
+      `Completed experiment ${experiment.id}, refreshed active experiments`,
+    );
 
     return {
       code: 200,
