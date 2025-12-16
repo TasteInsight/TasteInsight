@@ -18,7 +18,7 @@
       :overlay="false" 
       :duration="300"
       custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
-      @leave="handleEditDialogBack" 
+      @leave="closeEditDialog" 
     />
     <!-- 创建弹窗 -->
     <page-container 
@@ -27,25 +27,7 @@
       :overlay="false" 
       :duration="300"
       custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
-      @leave="handleCreateDialogBack" 
-    />
-    <!-- 编辑弹窗的菜品选择器 -->
-    <page-container 
-      v-if="editDishSelectorVisible"
-      :show="editDishSelectorVisible" 
-      :overlay="false" 
-      :duration="300"
-      custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
-      @leave="closeEditDishSelector" 
-    />
-    <!-- 创建弹窗的菜品选择器 -->
-    <page-container 
-      v-if="createDishSelectorVisible"
-      :show="createDishSelectorVisible" 
-      :overlay="false" 
-      :duration="300"
-      custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
-      @leave="closeCreateDishSelector" 
+      @leave="closeCreateDialog" 
     />
     <!-- #endif -->
 
@@ -204,63 +186,27 @@ onHide(() => {
   closeCreateDialog();
 });
 
-// 菜品选择器状态（用于 page-container 管理）
-const editDishSelectorVisible = computed(() => 
-  showEditDialog.value && !!((editDialogRef.value as any)?.showDishSelector?.value)
-);
-const createDishSelectorVisible = computed(() => 
-  showCreateDialog.value && !!((createDialogRef.value as any)?.showDishSelector?.value)
-);
-
-// 关闭编辑弹窗的菜品选择器
-const closeEditDishSelector = () => {
-  editDialogRef.value?.closeDishSelector?.();
-};
-
-// 关闭创建弹窗的菜品选择器
-const closeCreateDishSelector = () => {
-  createDialogRef.value?.closeDishSelector?.();
-};
-
 // 处理编辑弹窗返回
 const handleEditDialogBack = () => {
-  console.log('[planning] handleEditDialogBack called', {
-    showEditDialog: showEditDialog.value,
-    showDishSelector: (editDialogRef.value as any)?.showDishSelector?.value
-  });
-  // 如果有菜品选择器打开，优先关闭它
-  if ((editDialogRef.value as any)?.showDishSelector?.value) {
-    closeEditDishSelector();
-  } else {
-    closeEditDialog();
-  }
+  closeEditDialog();
 };
 
 // 处理创建弹窗返回
 const handleCreateDialogBack = () => {
-  console.log('[planning] handleCreateDialogBack called', {
-    showCreateDialog: showCreateDialog.value,
-    showDishSelector: (createDialogRef.value as any)?.showDishSelector?.value
-  });
-  // 如果有菜品选择器打开，优先关闭它
-  if ((createDialogRef.value as any)?.showDishSelector?.value) {
-    closeCreateDishSelector();
-  } else {
-    closeCreateDialog();
-  }
+  closeCreateDialog();
 };
 
 // 返回键拦截处理（App/H5 端备用）
 onBackPress(() => {
   // 优先处理编辑对话框中的返回
   if (showEditDialog.value) {
-    handleEditDialogBack();
+    closeEditDialog();
     return true;
   }
   
   // 处理创建对话框中的返回
   if (showCreateDialog.value) {
-    handleCreateDialogBack();
+    closeCreateDialog();
     return true;
   }
 
