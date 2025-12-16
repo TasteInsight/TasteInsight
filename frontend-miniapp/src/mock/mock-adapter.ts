@@ -104,7 +104,7 @@ export async function mockInterceptor<T>(
   options: RequestOptions
 ): Promise<ApiResponse<T> | null> {
   if (!USE_MOCK) {
-    console.log('[Mock] Mock disabled');
+    console.debug('[Mock] Mock disabled');
     return null;
   }
   

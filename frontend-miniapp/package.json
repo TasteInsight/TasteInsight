@@ -33,6 +33,7 @@
     "build:quickapp-webview": "uni build -p quickapp-webview",
     "build:quickapp-webview-huawei": "uni build -p quickapp-webview-huawei",
     "build:quickapp-webview-union": "uni build -p quickapp-webview-union",
+    "test": "jest",
     "type-check": "vue-tsc --noEmit",
     "postinstall": "weapp-tw patch"
   },
@@ -62,11 +63,14 @@
     "vue-i18n": "^9.1.9"
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.28.5",
+    "@babel/preset-typescript": "^7.28.5",
     "@dcloudio/types": "3.4.19",
     "@dcloudio/uni-automator": "3.0.0-4080420251103001",
     "@dcloudio/uni-cli-shared": "3.0.0-4080420251103001",
     "@dcloudio/uni-stacktracey": "3.0.0-4080420251103001",
     "@dcloudio/vite-plugin-uni": "3.0.0-4080420251103001",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.17.14",
     "@vue/runtime-core": "3.4.21",
     "@vue/tsconfig": "^0.1.3",
