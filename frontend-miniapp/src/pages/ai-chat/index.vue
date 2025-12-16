@@ -135,6 +135,15 @@
       </view>
 
       <!-- 历史记录抽屉 (保持不变) -->
+      <!-- #ifdef MP-WEIXIN -->
+      <page-container 
+        :show="showHistory" 
+        :overlay="false" 
+        :duration="300"
+        custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
+        @leave="closeHistory" 
+      />
+      <!-- #endif -->
       <view v-if="showHistory" class="fixed inset-0 z-50 transition-opacity duration-300">
         <view class="absolute inset-0 bg-black/30" @click="closeHistory"></view>
         <view class="absolute top-0 left-0 h-full w-4/5 max-w-[320px] bg-white shadow-2xl flex flex-col transform transition-transform duration-300">
@@ -166,6 +175,15 @@
       </view>
 
       <!-- 新建对话弹窗 (保持不变) -->
+      <!-- #ifdef MP-WEIXIN -->
+      <page-container 
+        :show="showNewChatModal" 
+        :overlay="false" 
+        :duration="300"
+        custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
+        @leave="cancelNewChat" 
+      />
+      <!-- #endif -->
       <view v-if="showNewChatModal" class="fixed inset-0 z-[100] flex items-center justify-center" @click="cancelNewChat">
         <!-- ... 保持不变 ... -->
          <view class="absolute inset-0 bg-black/40"></view>
