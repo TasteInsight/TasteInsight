@@ -40,6 +40,7 @@ import {
   mockAddFavorite,
   mockRemoveFavorite,
 } from './services/user';
+import { mockGetAISuggestions } from './services/ai';
 
 // ============================================
 // Review 相关路由
@@ -336,6 +337,16 @@ registerMockRoute('GET', '/user/history', async (url, options) => {
   const params = options.data as PaginationParams;
   const data = await mockGetBrowseHistory(params);
   return mockSuccess(data);
+});
+
+// ============================================
+// AI 相关路由
+// ============================================
+
+// GET /ai/suggestions - 获取AI提示词
+registerMockRoute('GET', '/ai/suggestions', async (url, options) => {
+  // mockGetAISuggestions 已经返回了完整的 ApiResponse，不需要再用 mockSuccess 包裹
+  return await mockGetAISuggestions();
 });
 
 console.log('[Mock] 路由注册完成');

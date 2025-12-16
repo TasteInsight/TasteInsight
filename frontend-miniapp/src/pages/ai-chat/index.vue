@@ -38,13 +38,13 @@
       <!-- 聊天区域 -->
       <scroll-view 
         scroll-y 
-        class="flex-1 px-4" 
+        class="flex-1" 
         :style="{ paddingTop: contentPaddingTop + 'px', paddingBottom: '160px' }"
-        :scroll-top="scrollTop" 
+        :scroll-into-view="scrollIntoViewId"
         :scroll-with-animation="true"
       >
         <!-- AI 聊天消息列表 -->
-        <view v-for="(message, index) in messages" :key="message.id" :id="`msg-${message.id}`" class="mb-6">
+        <view v-for="(message, index) in messages" :key="message.id" :id="`msg-${message.id}`" class="mb-6 px-4">
           
           <!-- 消息头部时间 (可选，两条消息间隔久才显示) -->
           <view v-if="shouldShowTime(index, messages)" class="flex justify-center mb-4">
@@ -57,7 +57,7 @@
             
             <!-- 文本段 (增加 markdown-style class) -->
             <view v-if="segment.type === 'text'" 
-              class="py-3 px-4 rounded-2xl max-w-[85%] text-base shadow-sm relative"
+              class="py-2 px-3 rounded-xl max-w-[80%] text-[15px] shadow-sm relative"
               :class="[
                 message.type === 'user' 
                   ? 'bg-purple-600 text-white rounded-br-sm' 
@@ -65,7 +65,7 @@
               ]"
             >
               <!-- 核心修复：支持换行和空格 -->
-              <text :user-select="true" class="whitespace-pre-wrap leading-relaxed">{{ segment.text }}</text>
+              <text :user-select="true" class="whitespace-pre-wrap leading-normal">{{ segment.text }}</text>
               
               <!-- 流式传输的光标动画 -->
               <view v-if="message.isStreaming && index === message.content.length - 1" class="inline-block w-2 h-4 ml-1 bg-current opacity-70 animate-pulse align-middle"></view>
@@ -108,25 +108,29 @@
         </view>
         
         <!-- 底部垫高，防止被输入框遮挡 -->
-        <view :style="{ height: '10px' }"></view>
+        <view id="chat-bottom-anchor" :style="{ height: '10px' }"></view>
       </scroll-view>
 
       <!-- 底部固定区域 -->
-      <view class="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-50 pb-[calc(10px+env(safe-area-inset-bottom))] pt-4 px-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-         <view class="relative w-full max-w-screen-md mx-auto">
-            <!-- 快捷提示词 (Chips) -->
-            <view v-if="suggestions.length > 0" class="mb-3">
+      <view class="fixed bottom-0 left-0 right-0 z-40 flex flex-col">
+         <!-- 快捷提示词 (Chips) -->
+         <view v-if="suggestions.length > 0" class="bg-gray-50 w-full py-2">
+            <view class="max-w-screen-md mx-auto">
                <SuggestionChips :suggestions="suggestions" @select="handleSuggestionSelect" />
             </view>
+         </view>
 
-            <!-- 输入框 -->
-            <InputBar 
-              v-model:scene="scene" 
-              @update:scene="setScene" 
-              ref="inputBarRef" 
-              :loading="aiLoading" 
-              @send="handleSend" 
-            />
+         <!-- 输入框区域 -->
+         <view class="bg-gray-50 w-full pb-[calc(5px+env(safe-area-inset-bottom))] mb-1 px-4 relative z-50">
+            <view class="max-w-screen-md mx-auto">
+               <InputBar 
+                 v-model:scene="scene" 
+                 @update:scene="setScene" 
+                 ref="inputBarRef" 
+                 :loading="aiLoading" 
+                 @send="handleSend" 
+               />
+            </view>
          </view>
       </view>
 
@@ -219,19 +223,25 @@ const {
   loadHistorySession
 } = useChat();
 
+// 调试：监听suggestions变化
+watch(suggestions, (newSuggestions) => {
+  console.log('[AI Chat Page] suggestions changed:', newSuggestions);
+}, { immediate: true });
+
 // === State ===
-const scrollTop = ref(0); // 使用 scrollTop 控制滚动
+const scrollIntoViewId = ref(''); // 用于滚动到指定元素
 const inputBarRef = ref<InstanceType<typeof InputBar> | null>(null);
 let scrollTimeout: any = null; // 用于防抖滚动
 const systemInfo = uni.getSystemInfoSync();
 const safeAreaInsets = systemInfo.safeAreaInsets;
 const NAV_HEIGHT = 48; // header content height (h-12 = 48px)
+const EXTRA_TOP_PADDING = 8; // additional spacing between header and chat content (px)
 
 if(process.env.NODE_ENV === 'development'){
   console.debug('[AI Chat] safeAreaInsets.top', safeAreaInsets?.top);
 }
 
-const contentPaddingTop = computed(() => NAV_HEIGHT);
+const contentPaddingTop = computed(() => NAV_HEIGHT + EXTRA_TOP_PADDING);
 const showHistory = ref(false);
 const showNewChatModal = ref(false);
 const sceneOptions = [
@@ -253,15 +263,23 @@ const sceneBadge = computed(() => sceneLabelMap[scene.value] || '对话');
 // === Scroll Logic (Critical for Streaming) ===
 const scrollToBottom = () => {
   nextTick(() => {
-    // 设置一个很大的值来触发到底部
-    scrollTop.value = 99999;
-    // 小技巧：如果值没变Vue可能不更新，微调一下确保触发
-    setTimeout(() => { scrollTop.value += 1; }, 10);
+    // 使用 scroll-into-view 滚动到底部锚点
+    // 先清空再设置，确保每次都能触发
+    scrollIntoViewId.value = '';
+    setTimeout(() => {
+      scrollIntoViewId.value = 'chat-bottom-anchor';
+    }, 10);
   });
 };
 
 // 监听消息数量变化 (新消息)
-watch(() => messages.value.length, scrollToBottom);
+watch(() => messages.value.length, () => {
+  // 消息增加时，立即滚动到底部
+  scrollToBottom();
+  // 再次延迟滚动，确保渲染完成后（特别是图片或卡片加载后）能到底部
+  setTimeout(scrollToBottom, 150);
+  setTimeout(scrollToBottom, 300);
+});
 
 // 监听流式传输内容变化 (文本逐字出现)
 watch(() => {

@@ -1,5 +1,5 @@
 <template>
-  <view class="w-full max-w-md h-[60px] flex items-center px-3 bg-white rounded-full shadow-lg gap-2 relative">
+  <view class="w-full max-w-md h-[50px] flex items-center px-3 bg-white rounded-full shadow-lg gap-2 relative border border-gray-200">
     <input 
       class="flex-1 h-full text-base ml-1" 
       placeholder="请问今天吃什么？" 
@@ -13,7 +13,7 @@
       :class="{ 'opacity-50 pointer-events-none': !inputText.trim() || loading }"
       @click="handleSend"
     >
-      <text class="iconify text-white" data-icon="mdi:send" data-width="16"></text>
+      <text class="iconfont icon-send text-white" style="font-size:16px; line-height:1"></text>
     </view>
   </view>
 </template>

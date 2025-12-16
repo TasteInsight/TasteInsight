@@ -1,4 +1,14 @@
 <template>
+  <!-- #ifdef MP-WEIXIN -->
+  <page-container 
+    :show="visible" 
+    :overlay="false" 
+    :duration="300"
+    custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
+    @leave="handleClose" 
+  />
+  <!-- #endif -->
+
   <view 
     v-if="visible" 
     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-5" 

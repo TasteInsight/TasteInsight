@@ -13,6 +13,7 @@ export function useDishDetail() {
   const {
     reviews,
     reviewsLoading,
+    isInitializing: reviewsInitializing,
     reviewsError,
     reviewsHasMore,
     fetchReviews: fetchReviewsOriginal,
@@ -228,6 +229,7 @@ export function useDishDetail() {
     
     reviews,
     reviewsLoading,
+    reviewsInitializing,
     reviewsError,
     reviewsHasMore,
     fetchReviews: fetchReviewsOriginal,

@@ -104,12 +104,14 @@ export async function mockInterceptor<T>(
   options: RequestOptions
 ): Promise<ApiResponse<T> | null> {
   if (!USE_MOCK) {
+    console.debug('[Mock] Mock disabled');
     return null;
   }
   
   const url = options.url;
   const method = options.method || 'GET';
   
+  console.log('[Mock] Checking route:', method, url);
   const match = findMockRoute(url, method);
   
   if (match) {

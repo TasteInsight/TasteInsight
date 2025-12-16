@@ -551,10 +551,6 @@
   height: 6rem
 }
 
-.h-28 {
-  height: 7rem
-}
-
 .h-3 {
   height: 0.75rem
 }
@@ -607,12 +603,12 @@
   height: 48px
 }
 
-.h-\[55px\] {
-  height: 55px
+.h-\[50px\] {
+  height: 50px
 }
 
-.h-\[60px\] {
-  height: 60px
+.h-\[55px\] {
+  height: 55px
 }
 
 .h-\[65px\] {
@@ -783,10 +779,6 @@
   max-width: 80%
 }
 
-.max-w-\[85\%\] {
-  max-width: 85%
-}
-
 .max-w-\[90\%\] {
   max-width: 90%
 }
@@ -911,6 +903,10 @@
 
 .flex-wrap {
   flex-wrap: wrap
+}
+
+.flex-nowrap {
+  flex-wrap: nowrap
 }
 
 .items-start {
@@ -1316,6 +1312,11 @@
 .bg-gray-300 {
   --tw-bg-opacity: 1;
   background-color: rgb(209 213 219 / var(--tw-bg-opacity))
+}
+
+.bg-gray-400 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(156 163 175 / var(--tw-bg-opacity))
 }
 
 .bg-gray-50 {
@@ -1774,8 +1775,8 @@
   padding-bottom: 1.5rem
 }
 
-.pb-\[calc\(10px\+env\(safe-area-inset-bottom\)\)\] {
-  padding-bottom: calc(10px + env(safe-area-inset-bottom))
+.pb-\[calc\(5px\+env\(safe-area-inset-bottom\)\)\] {
+  padding-bottom: calc(5px + env(safe-area-inset-bottom))
 }
 
 .pl-1 {
@@ -1868,6 +1869,10 @@
   font-size: 10px
 }
 
+.text-\[15px\] {
+  font-size: 15px
+}
+
 .text-base {
   font-size: 1rem;
   line-height: 1.5rem
@@ -1919,6 +1924,10 @@
 
 .leading-none {
   line-height: 1
+}
+
+.leading-normal {
+  line-height: 1.5
 }
 
 .leading-relaxed {
@@ -2171,12 +2180,6 @@
   box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)
 }
 
-.shadow-\[0_-4px_6px_-1px_rgba\(0\2c 0\2c 0\2c 0\.05\)\] {
-  --tw-shadow: 0 -4px 6px -1px rgba(0,0,0,0.05);
-  --tw-shadow-colored: 0 -4px 6px -1px var(--tw-shadow-color);
-  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)
-}
-
 .shadow-\[0_1px_2px_rgba\(0\2c 0\2c 0\2c 0\.02\)\] {
   --tw-shadow: 0 1px 2px rgba(0,0,0,0.02);
   --tw-shadow-colored: 0 1px 2px var(--tw-shadow-color);
@@ -2333,6 +2336,11 @@
 .focus-within\:border-purple-200:focus-within {
   --tw-border-opacity: 1;
   border-color: rgb(233 213 255 / var(--tw-border-opacity))
+}
+
+.focus-within\:border-purple-400:focus-within {
+  --tw-border-opacity: 1;
+  border-color: rgb(192 132 252 / var(--tw-border-opacity))
 }
 
 .focus-within\:bg-white:focus-within {

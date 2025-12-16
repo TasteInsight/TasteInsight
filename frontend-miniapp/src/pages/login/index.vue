@@ -14,6 +14,9 @@ import { onShow, onLoad } from '@dcloudio/uni-app';
 import LoginForm from './components/LoginForm.vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 
+// 保持对 LoginForm 的显式引用，防止微信小程序的代码依赖分析误判为无引用文件而被过滤
+const _LoginFormRef = LoginForm;
+
 const userStore = useUserStore();
 
 /**

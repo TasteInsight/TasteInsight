@@ -146,7 +146,7 @@
       <picker :value="Object.values(portionLabels).indexOf(portionLabels[form.portionSize])" :range="Object.values(portionLabels)" @change="(e: any) => form.portionSize = reversePortionLabels[Object.values(portionLabels)[e.detail.value]]">
         <view class="w-full p-3 border border-gray-200 rounded-lg flex justify-between items-center bg-white active:bg-gray-50 transition-colors">
            <text class="text-gray-800">{{ portionLabels[form.portionSize] }}</text>
-           <text class="iconify text-gray-400" data-icon="mdi:chevron-down" data-width="20"></text>
+           <text class="iconfont icon-chevron-down text-gray-400" data-width="20"></text>
         </view>
       </picker>
     </view>
