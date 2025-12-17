@@ -4,6 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
+import { DishReviewStatsService } from '@/dish-review-stats-queue';
 import { HandleReportDto } from './dto/handle-report.dto';
 import {
   ReportListResponseDto,
@@ -13,7 +14,10 @@ import {
 
 @Injectable()
 export class AdminReportsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private dishReviewStatsService: DishReviewStatsService,
+  ) {}
 
   async getReports(
     page: number = 1,
@@ -179,6 +183,8 @@ export class AdminReportsService {
               where: { id: report.reviewId },
               data: { deletedAt: new Date() },
             });
+
+            await this.dishReviewStatsService.recomputeDishStats(review.dishId);
           }
         } else if (report.targetType === 'comment' && report.commentId) {
           const comment = await this.prisma.comment.findUnique({
