@@ -165,7 +165,7 @@ export class CanteensService {
     const windows = canteen.windows ?? [];
     const floors = canteen.floors ?? [];
 
-    let openingHours = [];
+    let openingHours: any[] = [];
     if (Array.isArray(canteen.openingHours)) {
       // 兼容旧数据结构：如果数组元素包含 dayOfWeek，说明是旧的扁平结构
       if (
@@ -174,7 +174,7 @@ export class CanteensService {
       ) {
         openingHours = [
           {
-            floorLevel: null,
+            floorLevel: 'default',
             schedule: canteen.openingHours,
           },
         ];
