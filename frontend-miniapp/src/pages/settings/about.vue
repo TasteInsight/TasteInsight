@@ -87,7 +87,7 @@
             <text class="text-xs text-gray-500">Apache-2.0</text>
           </view>
           <view class="flex justify-between items-center py-2 border-b border-gray-100">
-            <text class="text-sm font-medium text-gray-700">Tailwind CSS</text>
+            <text class="text-sm text-gray-700">Tailwind CSS</text>
             <text class="text-xs text-gray-500">MIT License</text>
           </view>
           <view class="flex justify-between items-center py-2 border-b border-gray-100">

@@ -1,4 +1,5 @@
-﻿import { useDishDetail } from '@/pages/dish/composables/use-dish-detail';import { getDishById, favoriteDish, unfavoriteDish } from '@/api/modules/dish';
+﻿import { useDishDetail } from '@/pages/dish/composables/use-dish-detail';
+import { getDishById, favoriteDish, unfavoriteDish } from '@/api/modules/dish';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { ref } from 'vue';
 

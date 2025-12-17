@@ -118,7 +118,7 @@
               <text class="text-gray-600 text-sm leading-relaxed block">• 更正权：修改不准确或不完整的信息</text>
               <text class="text-gray-600 text-sm leading-relaxed block">• 删除权：要求删除您的个人信息</text>
               <text class="text-gray-600 text-sm leading-relaxed block">• 撤回同意：撤销对信息处理的同意</text>
-              <text class="text-gray-600 text-sm leading-relaxed block">• 数据 portability：获取您的个人数据副本</text>
+              <text class="text-gray-600 text-sm leading-relaxed block">• 可携带权：获取您的个人数据副本</text>
               <text class="text-gray-600 text-sm leading-relaxed block">• 投诉权：对隐私处理有异议时可投诉</text>
             </view>
           </view>
