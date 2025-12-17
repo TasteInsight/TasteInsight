@@ -407,4 +407,17 @@ registerMockRoute('POST', '/ai/sessions/:sessionId/chat/stream', async (url, opt
   }
 });
 
+// POST /upload/image - 模拟图片上传
+registerMockRoute('POST', '/upload/image', async (url, options) => {
+  console.log('[Mock] Uploading image:', options);
+  
+  // 模拟上传延迟
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  return mockSuccess({
+    url: `https://mock-image.com/${Date.now()}.jpg`,
+    filename: `mock_image_${Date.now()}.jpg`
+  });
+});
+
 console.log('[Mock] 路由注册完成');
