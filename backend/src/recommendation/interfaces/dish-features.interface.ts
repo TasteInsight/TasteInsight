@@ -7,6 +7,9 @@ export interface DishFeatures {
   tags: string[];
   price: number;
   canteenId: string;
+  canteenName?: string;
+  windowName?: string;
+  description?: string;
   ingredients: string[];
   allergens: string[];
   spicyLevel: number;
@@ -15,6 +18,19 @@ export interface DishFeatures {
   oiliness: number;
   averageRating: number;
   reviewCount: number;
+}
+
+/**
+ * 数值特征（用于混合嵌入）
+ */
+export interface NumericFeatures {
+  price?: number;
+  spicyLevel?: number;
+  sweetness?: number;
+  saltiness?: number;
+  oiliness?: number;
+  averageRating?: number;
+  reviewCount?: number;
 }
 
 /**

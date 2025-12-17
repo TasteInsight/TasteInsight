@@ -7,7 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { CACHE_CONFIG } from '../constants/recommendation.constants';
-import { UserFeatures, RecommendationWeights } from '../interfaces';
+import { UserFeatures, RecommendationWeights, VersionedEmbedding } from '../interfaces';
 import { hashToShortString } from '../utils/hash.util';
 
 /**
@@ -189,16 +189,18 @@ export class RecommendationCacheService
   async setDishEmbedding(
     dishId: string,
     embedding: number[],
+    version: string,
     ttl: number = CACHE_CONFIG.DISH_EMBEDDING_TTL,
   ): Promise<void> {
     const key = `${CACHE_CONFIG.KEY_PREFIX.DISH_FEATURE}embedding:${dishId}`;
-    await this.redis.setex(key, ttl, JSON.stringify(embedding));
+    const data: VersionedEmbedding = { embedding, version };
+    await this.redis.setex(key, ttl, JSON.stringify(data));
   }
 
   /**
    * 获取菜品向量
    */
-  async getDishEmbedding(dishId: string): Promise<number[] | null> {
+  async getDishEmbedding(dishId: string): Promise<VersionedEmbedding | null> {
     const key = `${CACHE_CONFIG.KEY_PREFIX.DISH_FEATURE}embedding:${dishId}`;
     const data = await this.redis.get(key);
     if (!data) return null;
@@ -208,8 +210,8 @@ export class RecommendationCacheService
   /**
    * 批量获取菜品向量
    */
-  async getDishEmbeddings(dishIds: string[]): Promise<Map<string, number[]>> {
-    const result = new Map<string, number[]>();
+  async getDishEmbeddings(dishIds: string[]): Promise<Map<string, VersionedEmbedding>> {
+    const result = new Map<string, VersionedEmbedding>();
     if (dishIds.length === 0) return result;
 
     const keys = dishIds.map(
@@ -234,16 +236,18 @@ export class RecommendationCacheService
   async setUserEmbedding(
     userId: string,
     embedding: number[],
+    version: string,
     ttl: number = CACHE_CONFIG.USER_EMBEDDING_TTL,
   ): Promise<void> {
     const key = `${CACHE_CONFIG.KEY_PREFIX.USER_FEATURE}embedding:${userId}`;
-    await this.redis.setex(key, ttl, JSON.stringify(embedding));
+    const data: VersionedEmbedding = { embedding, version };
+    await this.redis.setex(key, ttl, JSON.stringify(data));
   }
 
   /**
    * 获取用户嵌入向量
    */
-  async getUserEmbedding(userId: string): Promise<number[] | null> {
+  async getUserEmbedding(userId: string): Promise<VersionedEmbedding | null> {
     const key = `${CACHE_CONFIG.KEY_PREFIX.USER_FEATURE}embedding:${userId}`;
     const data = await this.redis.get(key);
     if (!data) return null;
@@ -261,8 +265,8 @@ export class RecommendationCacheService
   /**
    * 批量获取用户嵌入向量
    */
-  async getUserEmbeddings(userIds: string[]): Promise<Map<string, number[]>> {
-    const result = new Map<string, number[]>();
+  async getUserEmbeddings(userIds: string[]): Promise<Map<string, VersionedEmbedding>> {
+    const result = new Map<string, VersionedEmbedding>();
     if (userIds.length === 0) return result;
 
     const keys = userIds.map(

@@ -59,3 +59,23 @@ export type ExperimentAssignment = ExperimentGroupItemConfig & {
   /** 完整的权重配置（合并默认值后） */
   resolvedWeights: RecommendationWeights;
 };
+
+/**
+ * 外部嵌入服务配置
+ */
+export interface EmbeddingServiceConfig {
+  externalEnabled: boolean;
+  externalServiceUrl: string;
+  externalEmbeddingDim: number;
+  embeddingDim: number;
+  batchSize: number;
+  externalVersion?: string;
+}
+
+/**
+ * 带版本的嵌入向量
+ */
+export interface VersionedEmbedding {
+  embedding: number[];
+  version: string;
+}
