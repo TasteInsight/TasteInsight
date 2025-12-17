@@ -41,7 +41,10 @@ describe('AdminReportsService', () => {
       providers: [
         AdminReportsService,
         { provide: PrismaService, useValue: mockPrisma },
-        { provide: DishReviewStatsService, useValue: mockDishReviewStatsService },
+        {
+          provide: DishReviewStatsService,
+          useValue: mockDishReviewStatsService,
+        },
       ],
     }).compile();
 
@@ -53,14 +56,25 @@ describe('AdminReportsService', () => {
     it('should throw if report not found', async () => {
       prisma.report.findUnique.mockResolvedValue(null);
       await expect(
-        service.handleReport('rep1', { action: 'delete_content', result: 'x' } as any, 'a1'),
+        service.handleReport(
+          'rep1',
+          { action: 'delete_content', result: 'x' } as any,
+          'a1',
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw if report already handled', async () => {
-      prisma.report.findUnique.mockResolvedValue({ id: 'rep1', status: 'approved' });
+      prisma.report.findUnique.mockResolvedValue({
+        id: 'rep1',
+        status: 'approved',
+      });
       await expect(
-        service.handleReport('rep1', { action: 'delete_content', result: 'x' } as any, 'a1'),
+        service.handleReport(
+          'rep1',
+          { action: 'delete_content', result: 'x' } as any,
+          'a1',
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -73,7 +87,11 @@ describe('AdminReportsService', () => {
         commentId: null,
       });
       prisma.report.update.mockResolvedValue({});
-      prisma.review.findUnique.mockResolvedValue({ id: 'r1', dishId: 'd1', deletedAt: null });
+      prisma.review.findUnique.mockResolvedValue({
+        id: 'r1',
+        dishId: 'd1',
+        deletedAt: null,
+      });
       prisma.review.update.mockResolvedValue({});
 
       const result = await service.handleReport(
@@ -87,7 +105,9 @@ describe('AdminReportsService', () => {
         where: { id: 'r1' },
         data: { deletedAt: expect.any(Date) },
       });
-      expect(mockDishReviewStatsService.recomputeDishStats).toHaveBeenCalledWith('d1');
+      expect(
+        mockDishReviewStatsService.recomputeDishStats,
+      ).toHaveBeenCalledWith('d1');
       expect(result.code).toBe(200);
     });
 
@@ -100,7 +120,11 @@ describe('AdminReportsService', () => {
         commentId: null,
       });
       prisma.report.update.mockResolvedValue({});
-      prisma.review.findUnique.mockResolvedValue({ id: 'r1', dishId: 'd1', deletedAt: new Date() });
+      prisma.review.findUnique.mockResolvedValue({
+        id: 'r1',
+        dishId: 'd1',
+        deletedAt: new Date(),
+      });
 
       const result = await service.handleReport(
         'rep1',
@@ -109,7 +133,9 @@ describe('AdminReportsService', () => {
       );
 
       expect(prisma.review.update).not.toHaveBeenCalled();
-      expect(mockDishReviewStatsService.recomputeDishStats).not.toHaveBeenCalled();
+      expect(
+        mockDishReviewStatsService.recomputeDishStats,
+      ).not.toHaveBeenCalled();
       expect(result.code).toBe(200);
     });
   });

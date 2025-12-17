@@ -68,7 +68,9 @@ export class ReviewsService {
     });
 
     if (autoApprove) {
-      await this.dishReviewStatsService.recomputeDishStats(createReviewDto.dishId);
+      await this.dishReviewStatsService.recomputeDishStats(
+        createReviewDto.dishId,
+      );
     }
 
     return {

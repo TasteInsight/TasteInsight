@@ -45,7 +45,10 @@ describe('ReviewsService', () => {
         ReviewsService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: AdminConfigService, useValue: mockAdminConfigService },
-        { provide: DishReviewStatsService, useValue: mockDishReviewStatsService },
+        {
+          provide: DishReviewStatsService,
+          useValue: mockDishReviewStatsService,
+        },
       ],
     }).compile();
     service = module.get<ReviewsService>(ReviewsService);
@@ -154,9 +157,9 @@ describe('ReviewsService', () => {
           }),
         }),
       );
-      expect(mockDishReviewStatsService.recomputeDishStats).toHaveBeenCalledWith(
-        'd1',
-      );
+      expect(
+        mockDishReviewStatsService.recomputeDishStats,
+      ).toHaveBeenCalledWith('d1');
       expect(result).toHaveProperty('code', 201);
       expect(result.data).toHaveProperty('id', 'r1');
     });
@@ -189,9 +192,9 @@ describe('ReviewsService', () => {
         images: [],
       });
 
-      expect(mockDishReviewStatsService.recomputeDishStats).toHaveBeenCalledWith(
-        'd1',
-      );
+      expect(
+        mockDishReviewStatsService.recomputeDishStats,
+      ).toHaveBeenCalledWith('d1');
     });
 
     it('should enqueue dish stats recompute (pending)', async () => {
@@ -335,9 +338,9 @@ describe('ReviewsService', () => {
         where: { id: 'r1' },
         data: expect.objectContaining({ deletedAt: expect.any(Date) }),
       });
-      expect(mockDishReviewStatsService.recomputeDishStats).toHaveBeenCalledWith(
-        'd1',
-      );
+      expect(
+        mockDishReviewStatsService.recomputeDishStats,
+      ).toHaveBeenCalledWith('d1');
       expect(result.code).toBe(200);
     });
   });

@@ -37,7 +37,10 @@ describe('AdminReviewsService', () => {
       providers: [
         AdminReviewsService,
         { provide: PrismaService, useValue: mockPrisma },
-        { provide: DishReviewStatsService, useValue: mockDishReviewStatsService },
+        {
+          provide: DishReviewStatsService,
+          useValue: mockDishReviewStatsService,
+        },
       ],
     }).compile();
 
@@ -48,11 +51,17 @@ describe('AdminReviewsService', () => {
   describe('approveReview', () => {
     it('should throw if review not found', async () => {
       prisma.review.findUnique.mockResolvedValue(null);
-      await expect(service.approveReview('r1')).rejects.toThrow(NotFoundException);
+      await expect(service.approveReview('r1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should approve and recompute dish stats', async () => {
-      prisma.review.findUnique.mockResolvedValue({ id: 'r1', dishId: 'd1', deletedAt: null });
+      prisma.review.findUnique.mockResolvedValue({
+        id: 'r1',
+        dishId: 'd1',
+        deletedAt: null,
+      });
       prisma.review.update.mockResolvedValue({});
 
       const result = await service.approveReview('r1');
@@ -61,14 +70,20 @@ describe('AdminReviewsService', () => {
         where: { id: 'r1' },
         data: { status: 'approved' },
       });
-      expect(mockDishReviewStatsService.recomputeDishStats).toHaveBeenCalledWith('d1');
+      expect(
+        mockDishReviewStatsService.recomputeDishStats,
+      ).toHaveBeenCalledWith('d1');
       expect(result.code).toBe(200);
     });
   });
 
   describe('rejectReview', () => {
     it('should reject and recompute dish stats', async () => {
-      prisma.review.findUnique.mockResolvedValue({ id: 'r1', dishId: 'd1', deletedAt: null });
+      prisma.review.findUnique.mockResolvedValue({
+        id: 'r1',
+        dishId: 'd1',
+        deletedAt: null,
+      });
       prisma.review.update.mockResolvedValue({});
 
       const result = await service.rejectReview('r1', { reason: 'no' });
@@ -80,14 +95,20 @@ describe('AdminReviewsService', () => {
           rejectReason: 'no',
         },
       });
-      expect(mockDishReviewStatsService.recomputeDishStats).toHaveBeenCalledWith('d1');
+      expect(
+        mockDishReviewStatsService.recomputeDishStats,
+      ).toHaveBeenCalledWith('d1');
       expect(result.code).toBe(200);
     });
   });
 
   describe('deleteReview', () => {
     it('should delete and recompute dish stats', async () => {
-      prisma.review.findUnique.mockResolvedValue({ id: 'r1', dishId: 'd1', deletedAt: null });
+      prisma.review.findUnique.mockResolvedValue({
+        id: 'r1',
+        dishId: 'd1',
+        deletedAt: null,
+      });
       prisma.review.update.mockResolvedValue({});
 
       const result = await service.deleteReview('r1');
@@ -96,7 +117,9 @@ describe('AdminReviewsService', () => {
         where: { id: 'r1' },
         data: { deletedAt: expect.any(Date) },
       });
-      expect(mockDishReviewStatsService.recomputeDishStats).toHaveBeenCalledWith('d1');
+      expect(
+        mockDishReviewStatsService.recomputeDishStats,
+      ).toHaveBeenCalledWith('d1');
       expect(result.code).toBe(200);
     });
   });
