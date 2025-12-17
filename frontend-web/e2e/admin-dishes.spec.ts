@@ -257,49 +257,76 @@ test.describe('Sub-item Creation and Display', () => {
   }
 
   test('Add sub-item -> approve -> parent shows sub-item (UI flow)', async ({ page, request }) => {
+    // This test involves multiple API calls, polling, and UI interactions, so we need more time
+    test.setTimeout(120000);
+
     // 1. Get auth token
     const superToken = await getApiToken(request, TEST_ACCOUNTS.superAdmin.username, TEST_ACCOUNTS.superAdmin.password);
     expect(superToken).toBeTruthy();
 
     // Generate unique name with timestamp to avoid conflicts
     const timestamp = Date.now();
-    const subName = `${TEST_PREFIX}${timestamp}`;
+    const parentName = `${TEST_PREFIX}Parent_${timestamp}`;
+    const subName = `${TEST_PREFIX}Sub_${timestamp}`;
 
     // 2. Clean up any residual test data before starting
     await cleanupTestData(request, superToken!, TEST_PREFIX);
 
-    // 3. Find a suitable parent dish from seed data
-    const listResp = await request.get(`${baseURL}admin/dishes`, {
+    // 3. Create a parent dish via API first (Precondition: Parent dish must exist and be online)
+    console.log(`Creating parent dish: ${parentName}`);
+    const createParentResp = await request.post(`${baseURL}admin/dishes`, {
+      headers: { 'Authorization': `Bearer ${superToken}` },
+      data: {
+        name: parentName,
+        price: 20.0,
+        canteenName: '第一食堂',
+        windowName: '川菜窗口',
+        description: 'E2E Parent Dish for Sub-item Test'
+      }
+    });
+    expect(createParentResp.status()).toBe(201);
+    const createParentData = await createParentResp.json();
+    const parentUploadId = createParentData.data.id;
+
+    // Approve the parent dish
+    const approveParentResp = await request.post(`${baseURL}admin/dishes/uploads/${parentUploadId}/approve`, {
       headers: { 'Authorization': `Bearer ${superToken}` }
     });
-    expect(listResp.ok()).toBeTruthy();
-    const listData = await listResp.json();
-    const parentDish = listData.data.items.find((d: any) => !d.parentDishId && d.status === 'online');
-    if (!parentDish) {
-      test.skip();
-      return;
+    expect(approveParentResp.ok()).toBeTruthy();
+
+    // Wait for parent dish to be available in dishes list
+    let parentId: string | undefined;
+    let parentDishFound = false;
+    for (let i = 0; i < 10; i++) {
+        const listResp = await request.get(`${baseURL}admin/dishes?pageSize=100`, {
+            headers: { 'Authorization': `Bearer ${superToken}` }
+        });
+        if (listResp.ok()) {
+            const listData = await listResp.json();
+            const found = listData.data.items.find((d: any) => d.name === parentName);
+            if (found) {
+                parentId = found.id;
+                parentDishFound = true;
+                break;
+            }
+        }
+        await new Promise(r => setTimeout(r, 1000));
     }
 
-    const parentId = parentDish.id;
+    if (!parentDishFound || !parentId) {
+        throw new Error(`Failed to create and find parent dish: ${parentName}`);
+    }
+    console.log(`Parent dish created and approved: ${parentId}`);
+
     let createdSubId: string | undefined;
-
-    // Verify parent dish is accessible via API
-    const verifyResp = await request.get(`${baseURL}admin/dishes/${parentId}`, {
-      headers: { 'Authorization': `Bearer ${superToken}` }
-    });
-    if (!verifyResp.ok()) {
-      console.log(`Parent dish ${parentId} not accessible via API: ${verifyResp.status()}`);
-      test.skip();
-      return;
-    }
 
     try {
       // 4. Navigate to parent dish edit page and add sub-item through UI
       await loginAsAdmin(page);
       
       // Ensure we are logged in by checking for an element common to authenticated pages
-      // Increased timeout to account for slower page loads or redirects
-      await page.waitForSelector('header', { state: 'visible', timeout: 30000 });
+      // Use sidebar title as a reliable element
+      await page.waitForSelector('h1:has-text("食鉴管理平台")', { state: 'visible', timeout: 30000 });
 
       console.log(`Navigating to edit page for parent dish: ${parentId}`);
       await page.goto(`/edit-dish/${parentId}`);
