@@ -8,6 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 .VSCodeCounter
+coverage
 
 node_modules
 .DS_Store
