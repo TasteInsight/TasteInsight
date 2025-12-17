@@ -476,10 +476,18 @@ const hideAllCommentsPanel = () => {
 };
 
 const handleCommentAdded = () => {
-  // 更新评论总数
-  const currentComments = reviewComments.value[currentCommentsReviewId.value];
-  if (currentComments) {
-    currentComments.total += 1;
+  const reviewId = currentCommentsReviewId.value;
+  // 刷新该条评价的评论预览（列表页展示用）
+  if (reviewId) {
+    fetchComments(reviewId);
+  }
+  // 刷新评价列表（评论发送后也刷新评价列表）
+  if (dishId.value) {
+    fetchReviews(dishId.value, true);
+  }
+  // 刷新菜品详情（按需求：发送后刷新详情页）
+  if (dishId.value) {
+    fetchDishDetail(dishId.value);
   }
 };
 </script>
