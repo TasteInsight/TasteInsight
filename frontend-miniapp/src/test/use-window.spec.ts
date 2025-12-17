@@ -79,4 +79,24 @@ describe('useWindowData', () => {
 
     expect(error.value).toBe('Store Error');
   });
+
+  it('should support refresh operations', async () => {
+    const { fetchWindow, fetchDishes } = useWindowData();
+    const windowId = '123';
+    const mockDishes = [{ id: '1', name: 'Dish 1' }];
+
+    (getWindowDishes as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: { items: mockDishes },
+    });
+
+    // Test refresh operations (similar to pull-to-refresh)
+    await Promise.all([
+      fetchWindow(windowId),
+      fetchDishes(windowId)
+    ]);
+
+    expect(mockStore.fetchWindowDetail).toHaveBeenCalledWith(windowId);
+    expect(getWindowDishes).toHaveBeenCalledWith(windowId, expect.anything());
+  });
 });
