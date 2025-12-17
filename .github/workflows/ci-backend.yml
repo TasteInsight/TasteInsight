@@ -13,7 +13,7 @@ on:
       - '.github/workflows/ci-backend.yml'
 
 env:
-  NODE_VERSION: '22'-
+  NODE_VERSION: '22'
   PNPM_VERSION: '9'
   # CI 测试数据库配置
   CI_DB_USER: ci_test_user
