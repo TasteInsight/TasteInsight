@@ -34,8 +34,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
@@ -43,7 +41,7 @@ services:
     networks:
       - db_net
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5

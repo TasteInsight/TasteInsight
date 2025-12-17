@@ -255,6 +255,12 @@ jobs:
           script: |
             set -e
             cd ${{ secrets.DEV_DEPLOY_PATH }}
+
+            # Fail fast if required env vars are missing
+            if ! grep -q '^REDIS_PASSWORD=' .env; then
+              echo "❌ Missing REDIS_PASSWORD in .env" >&2
+              exit 1
+            fi
             
             # 设置证书权限
             chmod 600 certs/private.key
@@ -348,6 +354,12 @@ jobs:
           script: |
             set -e
             cd ${{ secrets.PROD_DEPLOY_PATH }}
+
+            # Fail fast if required env vars are missing
+            if ! grep -q '^REDIS_PASSWORD=' .env; then
+              echo "❌ Missing REDIS_PASSWORD in .env" >&2
+              exit 1
+            fi
             
             # 设置证书权限
             chmod 600 certs/private.key
