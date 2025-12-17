@@ -43,12 +43,32 @@ const props = defineProps<{ canteen: Canteen | null }>();
 
 const formattedHours = computed(() => {
   if (!props.canteen?.openingHours?.length) return '';
-  // 简单展示当天的营业时间，这里取第一条作为示例
-  const today = props.canteen.openingHours[0];
-  if (today && !today.isClosed && today.slots) {
-    return today.slots.map(s => `${s.openTime}-${s.closeTime}`).join(', ');
-  }
-  return '休息中';
+
+  // 以本地日期推导今天是周几，匹配后端 dayOfWeek 字符串（Monday...Sunday）
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const todayName = dayNames[new Date().getDay()];
+
+  const parts = props.canteen.openingHours
+    .map((floorHours) => {
+      const todaySchedule = floorHours.schedule?.find((d) => d.dayOfWeek === todayName);
+      if (!todaySchedule || todaySchedule.isClosed || !todaySchedule.slots?.length) return null;
+
+      const timeStr = todaySchedule.slots.map((s) => `${s.openTime}-${s.closeTime}`).join(', ');
+
+      // 单条 default 配置时不加前缀，避免冗余
+      if (props.canteen!.openingHours.length === 1 && (floorHours.floorLevel === 'default' || !floorHours.floorLevel)) {
+        return timeStr;
+      }
+
+      const floorLabel = !floorHours.floorLevel || floorHours.floorLevel === 'default'
+        ? '通用'
+        : `${floorHours.floorLevel}F`;
+      return `${floorLabel} ${timeStr}`;
+    })
+    .filter(Boolean) as string[];
+
+  if (parts.length === 0) return '今日休息';
+  return parts.join(' | ');
 });
 
 // 图片预览

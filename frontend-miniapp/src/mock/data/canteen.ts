@@ -1,7 +1,7 @@
 // Mock 食堂数据
-import type { Canteen, Window, Floor, OpeningHour } from '@/types/api';
+import type { Canteen, Window, Floor, OpeningHour, FloorOpeningHours } from '@/types/api';
 
-const createOpeningHours = (timeRange: string): OpeningHour[] => {
+const createDailyOpeningHours = (timeRange: string): OpeningHour[] => {
   const [open, close] = timeRange.split('-');
   return ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => ({
     dayOfWeek: day,
@@ -14,6 +14,13 @@ const createOpeningHours = (timeRange: string): OpeningHour[] => {
   }));
 };
 
+const createFloorOpeningHours = (floorLevel: string, timeRange: string): FloorOpeningHours => {
+  return {
+    floorLevel,
+    schedule: createDailyOpeningHours(timeRange),
+  };
+};
+
 const defaultFloor: Floor = { level: '1', name: '一楼' };
 const secondFloor: Floor = { level: '2', name: '二楼' };
 
@@ -24,7 +31,10 @@ export const createMockCanteens = (): Canteen[] => [
     position: '校园东区',
     description: '学校最大的综合性食堂，提供多种风味美食',
     images: ['https://via.placeholder.com/400x300'],
-    openingHours: createOpeningHours('06:30-21:00'),
+    openingHours: [
+      createFloorOpeningHours('1', '06:30-21:00'),
+      createFloorOpeningHours('2', '07:00-20:30'),
+    ],
     averageRating: 4.5,
     reviewCount: 1280,
     floors: [defaultFloor, secondFloor],
@@ -36,7 +46,10 @@ export const createMockCanteens = (): Canteen[] => [
     position: '校园西区',
     description: '以特色小吃和地方风味为主',
     images: ['https://via.placeholder.com/400x300'],
-    openingHours: createOpeningHours('06:30-21:30'),
+    openingHours: [
+      createFloorOpeningHours('1', '06:30-21:30'),
+      createFloorOpeningHours('2', '07:00-21:00'),
+    ],
     averageRating: 4.3,
     reviewCount: 956,
     floors: [defaultFloor, secondFloor],
@@ -48,7 +61,7 @@ export const createMockCanteens = (): Canteen[] => [
     position: '校园南区',
     description: '清真食堂，提供清真餐饮',
     images: ['https://via.placeholder.com/400x300'],
-    openingHours: createOpeningHours('07:00-20:30'),
+    openingHours: [createFloorOpeningHours('default', '07:00-20:30')],
     averageRating: 4.6,
     reviewCount: 623,
     floors: [defaultFloor],
@@ -60,7 +73,10 @@ export const createMockCanteens = (): Canteen[] => [
     position: '校园北区',
     description: '集合各地特色美食的综合美食广场',
     images: ['https://via.placeholder.com/400x300'],
-    openingHours: createOpeningHours('07:00-22:00'),
+    openingHours: [
+      createFloorOpeningHours('1', '07:00-22:00'),
+      createFloorOpeningHours('2', '10:00-21:30'),
+    ],
     averageRating: 4.4,
     reviewCount: 1543,
     floors: [defaultFloor, secondFloor],

@@ -163,6 +163,21 @@ export interface Slot {
     [property: string]: any;
 }
 
+  /**
+   * 营业时间（按楼层区分）
+   */
+  export interface FloorOpeningHours {
+    /**
+     * 对应 Floor.level，如 "1", "2"。如果为 "default" 或空，则为通用配置
+     */
+    floorLevel: string;
+    /**
+     * 每日营业时间表
+     */
+    schedule: OpeningHour[];
+    [property: string]: any;
+  }
+
 /**
  * Window
  */
@@ -199,7 +214,7 @@ export interface Canteen {
     /**
      * 营业时间
      */
-    openingHours: OpeningHour[];
+    openingHours: FloorOpeningHours[];
     position?: string;
     /**
      * 评论数
