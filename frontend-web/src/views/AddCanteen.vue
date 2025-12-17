@@ -673,14 +673,32 @@ export default {
 
       // 处理营业时间 - 将 API 格式转换为表单格式
       // API 格式: { dayOfWeek, slots: [{ mealType, openTime, closeTime }], isClosed, floor: { level, name } }
+      // 或者新格式: { floorLevel, schedule: [{ dayOfWeek, slots: [...] }] }
       // 表单格式: { day, open, close, floor }
       if (canteen.openingHours && Array.isArray(canteen.openingHours)) {
-        formData.openingHours = canteen.openingHours.map((h) => ({
-          day: h.dayOfWeek || h.day || '每天',
-          open: (h.slots && h.slots[0] && h.slots[0].openTime) || h.open || '06:30',
-          close: (h.slots && h.slots[0] && h.slots[0].closeTime) || h.close || '22:00',
-          floor: h.floor ? (h.floor.level || h.floor) : '',
-        }))
+        const flatHours = []
+        canteen.openingHours.forEach((item) => {
+          if (item.schedule && Array.isArray(item.schedule)) {
+            // 新格式 (grouped by floor)
+            item.schedule.forEach((daily) => {
+              flatHours.push({
+                day: daily.dayOfWeek,
+                open: daily.slots?.[0]?.openTime || '06:30',
+                close: daily.slots?.[0]?.closeTime || '22:00',
+                floor: item.floorLevel || '',
+              })
+            })
+          } else {
+            // 旧格式
+            flatHours.push({
+              day: item.dayOfWeek || item.day || '每天',
+              open: (item.slots && item.slots[0] && item.slots[0].openTime) || item.open || '06:30',
+              close: (item.slots && item.slots[0] && item.slots[0].closeTime) || item.close || '22:00',
+              floor: item.floor ? item.floor.level || item.floor : '',
+            })
+          }
+        })
+        formData.openingHours = flatHours
       } else {
         formData.openingHours = []
       }
@@ -1089,21 +1107,33 @@ export default {
           images: imageUrls.length > 0 ? imageUrls : [], // 必须是数组
           openingHours:
             formData.openingHours && formData.openingHours.length > 0
-              ? formData.openingHours.map((hours) => {
-                  const floorInfo = resolveWindowFloor(hours.floor)
-                  return {
-                    dayOfWeek: hours.day,
-                    floor: floorInfo,
-                    slots: [
-                      {
-                        mealType: 'default', // 添加必需的 mealType 字段
-                        openTime: hours.open,
-                        closeTime: hours.close,
-                      },
-                    ],
-                    isClosed: false,
-                  }
-                })
+              ? (() => {
+                  const grouped = new Map()
+                  formData.openingHours.forEach((hours) => {
+                    const floorInfo = resolveWindowFloor(hours.floor)
+                    const floorLevel = floorInfo ? floorInfo.level : ''
+
+                    if (!grouped.has(floorLevel)) {
+                      grouped.set(floorLevel, {
+                        floorLevel: floorLevel,
+                        schedule: [],
+                      })
+                    }
+
+                    grouped.get(floorLevel).schedule.push({
+                      dayOfWeek: hours.day,
+                      slots: [
+                        {
+                          mealType: 'default',
+                          openTime: hours.open,
+                          closeTime: hours.close,
+                        },
+                      ],
+                      isClosed: false,
+                    })
+                  })
+                  return Array.from(grouped.values())
+                })()
               : [], // 必须是数组
           floors: parsedFloors,
           ...(editingCanteen.value ? {} : { windows: windowsData }),
