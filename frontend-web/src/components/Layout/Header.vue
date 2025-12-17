@@ -1,5 +1,5 @@
 <template>
-  <div class="p-6 border-b border-gray-200">
+  <div class="p-6" :class="{ 'border-b border-gray-200': showBorder }">
     <h2 class="text-2xl font-semibold text-gray-800 mb-1 flex items-center space-x-2">
       <span class="iconify text-tsinghua-purple" :data-icon="headerIcon"></span>
       <span>{{ title }}</span>
@@ -23,6 +23,10 @@ export default {
     headerIcon: {
       type: String,
       required: true,
+    },
+    showBorder: {
+      type: Boolean,
+      default: true,
     },
   },
 }
