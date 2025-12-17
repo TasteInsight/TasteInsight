@@ -110,9 +110,9 @@ describe('ReviewsService', () => {
           }),
         }),
       );
-      expect(mockDishReviewStatsService.recomputeDishStats).toHaveBeenCalledWith(
-        'd1',
-      );
+      expect(
+        mockDishReviewStatsService.recomputeDishStats,
+      ).not.toHaveBeenCalled();
       expect(result).toHaveProperty('code', 201);
       expect(result.data).toHaveProperty('id', 'r1');
       expect(result.data.ratingDetails).toHaveProperty('spicyLevel', 3);
@@ -222,9 +222,9 @@ describe('ReviewsService', () => {
         images: [],
       });
 
-      expect(mockDishReviewStatsService.recomputeDishStats).toHaveBeenCalledWith(
-        'd1',
-      );
+      expect(
+        mockDishReviewStatsService.recomputeDishStats,
+      ).not.toHaveBeenCalled();
     });
   });
 
