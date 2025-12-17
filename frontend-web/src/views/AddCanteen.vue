@@ -324,20 +324,22 @@
 
             <!-- 右侧列 -->
             <div>
-              <!-- 营业时间 -->
-              <div class="mb-6">
-                <div class="flex justify-between items-center mb-2">
-                  <label class="block text-gray-700 font-medium">营业时间</label>
-                  <button
-                    type="button"
-                    class="text-tsinghua-purple text-sm flex items-center hover:text-tsinghua-dark"
-                    @click="addOpeningHours"
-                  >
-                    <span class="iconify" data-icon="carbon:add-alt"></span>
-                    添加营业时间
-                  </button>
-                </div>
+            <!-- 营业时间 -->
+            <div class="mb-6">
+              <div class="flex justify-between items-center mb-2">
+                <label class="block text-gray-700 font-medium">营业时间</label>
+                <button
+                  v-if="editingCanteen"
+                  type="button"
+                  class="text-tsinghua-purple text-sm flex items-center hover:text-tsinghua-dark"
+                  @click="addOpeningHours"
+                >
+                  <span class="iconify" data-icon="carbon:add-alt"></span>
+                  添加营业时间
+                </button>
+              </div>
 
+              <div v-if="editingCanteen">
                 <div
                   v-if="formData.openingHours && formData.openingHours.length > 0"
                   class="space-y-3"
@@ -347,7 +349,23 @@
                     :key="index"
                     class="flex items-center gap-3 p-3 border rounded-lg bg-gray-50"
                   >
-                    <div class="flex-1 grid grid-cols-3 gap-3">
+                    <div class="flex-1 grid grid-cols-4 gap-3">
+                      <div>
+                        <label class="block text-xs text-gray-500 mb-1">楼层</label>
+                        <select
+                          v-model="hours.floor"
+                          class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+                        >
+                          <option value="" disabled>请选择楼层</option>
+                          <option
+                            v-for="floor in availableFloors"
+                            :key="floor.value"
+                            :value="floor.value"
+                          >
+                            {{ floor.label }}
+                          </option>
+                        </select>
+                      </div>
                       <div>
                         <label class="block text-xs text-gray-500 mb-1">星期</label>
                         <select
@@ -392,9 +410,24 @@
                   </div>
                 </div>
                 <div v-else class="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
-                  <p>可以添加多个营业时间段，例如：周一至周五 6:30-22:00</p>
+                  <p>点击"添加营业时间"设置不同楼层的营业时间，例如：一层 周一至周五 6:30-22:00</p>
                 </div>
               </div>
+              <div v-else class="mb-6 bg-blue-50 p-4 rounded-lg border border-blue-100">
+                <div class="flex items-start">
+                  <span
+                    class="iconify text-blue-500 mt-1 mr-2"
+                    data-icon="carbon:information"
+                  ></span>
+                  <div>
+                    <h4 class="font-medium text-blue-800">营业时间管理</h4>
+                    <p class="text-sm text-blue-600 mt-1">
+                      请先填写并保存食堂基本信息（包含楼层信息），保存成功后即可在此处添加和管理营业时间。
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
               <!-- 窗口管理 -->
               <div class="mb-6" v-if="editingCanteen">
@@ -639,13 +672,14 @@ export default {
       }
 
       // 处理营业时间 - 将 API 格式转换为表单格式
-      // API 格式: { dayOfWeek, slots: [{ mealType, openTime, closeTime }], isClosed }
-      // 表单格式: { day, open, close }
+      // API 格式: { dayOfWeek, slots: [{ mealType, openTime, closeTime }], isClosed, floor: { level, name } }
+      // 表单格式: { day, open, close, floor }
       if (canteen.openingHours && Array.isArray(canteen.openingHours)) {
         formData.openingHours = canteen.openingHours.map((h) => ({
           day: h.dayOfWeek || h.day || '每天',
           open: (h.slots && h.slots[0] && h.slots[0].openTime) || h.open || '06:30',
           close: (h.slots && h.slots[0] && h.slots[0].closeTime) || h.close || '22:00',
+          floor: h.floor ? (h.floor.level || h.floor) : '',
         }))
       } else {
         formData.openingHours = []
@@ -743,7 +777,7 @@ export default {
       if (!formData.openingHours) {
         formData.openingHours = []
       }
-      formData.openingHours.push({ day: '每天', open: '06:30', close: '22:00' })
+      formData.openingHours.push({ day: '每天', open: '06:30', close: '22:00', floor: '' })
     }
 
     const removeOpeningHours = (index) => {
@@ -970,6 +1004,16 @@ export default {
             return
           }
         }
+
+        // 验证营业时间楼层
+        if (formData.openingHours && formData.openingHours.length > 0) {
+          for (const hours of formData.openingHours) {
+            if (!hours.floor) {
+              alert(`请为营业时间(${hours.day})选择楼层`)
+              return
+            }
+          }
+        }
       }
 
       if (isSubmitting.value) {
@@ -1045,17 +1089,21 @@ export default {
           images: imageUrls.length > 0 ? imageUrls : [], // 必须是数组
           openingHours:
             formData.openingHours && formData.openingHours.length > 0
-              ? formData.openingHours.map((hours) => ({
-                  dayOfWeek: hours.day,
-                  slots: [
-                    {
-                      mealType: 'default', // 添加必需的 mealType 字段
-                      openTime: hours.open,
-                      closeTime: hours.close,
-                    },
-                  ],
-                  isClosed: false,
-                }))
+              ? formData.openingHours.map((hours) => {
+                  const floorInfo = resolveWindowFloor(hours.floor)
+                  return {
+                    dayOfWeek: hours.day,
+                    floor: floorInfo,
+                    slots: [
+                      {
+                        mealType: 'default', // 添加必需的 mealType 字段
+                        openTime: hours.open,
+                        closeTime: hours.close,
+                      },
+                    ],
+                    isClosed: false,
+                  }
+                })
               : [], // 必须是数组
           floors: parsedFloors,
           ...(editingCanteen.value ? {} : { windows: windowsData }),
