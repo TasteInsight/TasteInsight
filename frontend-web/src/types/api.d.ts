@@ -329,10 +329,15 @@ export interface TimeSlot {
 /**
  * 营业时间
  */
-export interface OpeningHours {
+export interface DaliyOpeningHours {
   dayOfWeek: string
   slots: TimeSlot[]
   isClosed: boolean
+}
+
+export class FloorOpeningHours {
+  floorLevel: string; // 如“1”，"2"。如果为"default"或空，则为通用配置
+schedule: DailyopeningHours[];
 }
 
 /**
@@ -355,7 +360,7 @@ export interface CanteenUpdateRequest {
   position?: string
   description?: string
   images?: string[]
-  openingHours?: OpeningHours[]
+  openingHours?: FloorOpeningHours[]
   floors?: Floor[]
 }
 
