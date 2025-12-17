@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# 虚拟环境
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 测试和覆盖率
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# 文档（不需要在运行时）
+*.md
+!README.md
+
+# Git
+.git/
+.gitignore
+
+# 环境配置
+.env
+.env.local
+env.example
+
+# 训练相关（推理不需要）
+train/
+
+# 测试脚本
+test_service.py
+
+# Make 文件
+Makefile
+
+# 训练好的模型文件（通过 volume 挂载到 saved_models/）
+saved_models/
+*.pt
+*.pth
+
+# 日志
+*.log
+

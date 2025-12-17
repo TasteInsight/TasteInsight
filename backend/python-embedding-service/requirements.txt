@@ -1,0 +1,8 @@
+flask==3.0.0
+gunicorn==21.2.0
+sentence-transformers==2.5.1
+torch==2.2.0
+numpy==1.26.3
+transformers==4.37.2
+psycopg2-binary==2.9.9
+tqdm==4.66.1
