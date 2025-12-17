@@ -88,12 +88,11 @@ jobs:
         ports:
           - 6379:6379
         options: >-
-          --health-cmd "redis-cli --raw incr ping"
+          --health-cmd "redis-cli -a ci_redis_password_for_testing_only ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-          --entrypoint redis-server
-          --requirepass ci_redis_password_for_testing_only --appendonly yes
+          redis-server --requirepass ci_redis_password_for_testing_only --appendonly yes
 
     steps:
       - name: Checkout code
