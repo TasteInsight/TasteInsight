@@ -1,12 +1,15 @@
 services:
   backend:
     build: .
-    image: ghcr.io/tasteinsight/tasteinsight-backend:${TAG:-latest}
+    image: ${IMAGE_REGISTRY:-ghcr.io/tasteinsight}/tasteinsight-backend:${TAG:-latest}
     env_file: .env
     environment:
       # Override for Docker networking
       - POSTGRES_HOST=db
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT}/${POSTGRES_DB}?schema=public
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
       # Set to false in production
       - RUN_SEED=${RUN_SEED:-false}
     depends_on:
@@ -25,7 +28,7 @@ services:
     build:
       context: ../frontend-web
       dockerfile: Dockerfile
-    image: ghcr.io/tasteinsight/tasteinsight-frontend:${TAG:-latest}
+    image: ${IMAGE_REGISTRY:-ghcr.io/tasteinsight}/tasteinsight-frontend:${TAG:-latest}
     networks:
       - tasteinsight_net
 
@@ -38,11 +41,11 @@ services:
     networks:
       - db_net
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
 
   nginx:
     image: nginx:alpine

@@ -20,6 +20,8 @@ env:
   CI_DB_PASSWORD: ci_test_password_12345
   CI_DB_NAME: tasteinsight_ci_test
   CI_DATABASE_URL: postgresql://ci_test_user:ci_test_password_12345@localhost:5432/tasteinsight_ci_test?schema=public
+  # CI 测试 Redis 配置
+  CI_REDIS_PASSWORD: ci_redis_password_for_testing_only
 
 jobs:
   lint-and-build:
@@ -102,6 +104,23 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Start Redis (password-protected)
+        run: |
+          docker rm -f tasteinsight-ci-redis 2>/dev/null || true
+          docker run -d --name tasteinsight-ci-redis \
+            -p 6379:6379 \
+            redis:alpine \
+            redis-server --requirepass "${{ env.CI_REDIS_PASSWORD }}" --appendonly yes
+          for i in $(seq 1 30); do
+            if docker exec tasteinsight-ci-redis redis-cli -a "${{ env.CI_REDIS_PASSWORD }}" ping | grep -q PONG; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Redis did not become ready" >&2
+          docker logs tasteinsight-ci-redis || true
+          exit 1
+
       - name: Generate Prisma Client
         run: npx prisma generate
 
@@ -126,6 +145,10 @@ jobs:
           APP_URL: http://localhost:3000
           # Database
           DATABASE_URL: ${{ env.CI_DATABASE_URL }}
+          # Redis
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          REDIS_PASSWORD: ${{ env.CI_REDIS_PASSWORD }}
           # Admin（CI 测试用固定值）
           INITIAL_ADMIN_USERNAME: testadmin
           INITIAL_ADMIN_PASSWORD: password123
