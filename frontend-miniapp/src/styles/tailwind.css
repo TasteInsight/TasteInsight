@@ -1,0 +1,8 @@
+/* 1. Tailwind 的基础样式，包括重置 */
+@tailwind base;
+
+/* 2. Tailwind 的组件样式 */
+@tailwind components;
+
+/* 3. Tailwind 的工具类 (你代码中用到的所有类) */
+@tailwind utilities;

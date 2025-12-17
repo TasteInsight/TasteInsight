@@ -1,0 +1,54 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+
+# Test coverage
+coverage
+coverage-e2e
+
+# Environment files - NEVER include in image
+.env*
+!.env.example
+!.env.test.example
+
+# Git
+.git
+.gitignore
+
+# Documentation (except README)
+*.md
+!README.md
+
+# IDE
+.vscode
+.idea
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Database data
+postgres-data
+
+# Uploads (should be mounted as volume)
+uploads
+
+# Nginx config (not needed in app image)
+nginx.conf
+nginx.conf.example
+certs
+
+# Docker files (not needed inside image)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Test files
+test
+*.e2e-spec.ts
+jest-e2e.json

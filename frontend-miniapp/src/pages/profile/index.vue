@@ -1,0 +1,189 @@
+<template>
+  <view class="w-full h-full min-h-screen bg-gray-50 overflow-hidden flex flex-col relative" >
+    <!-- 骨架屏：首次加载时显示 -->
+    <ProfileSkeleton v-if="isInitialLoading" />
+
+    <template v-else>
+    <!-- 紫色背景头部区域 -->
+    <view class="bg-white pt-12 pb-6 px-6">
+      <!-- 用户信息头部 -->
+      <UserHeader 
+        :user-info="userInfo"
+        :is-logged-in="isLoggedIn"
+        :loading="loading"
+        @login="handleLogin" 
+      />
+    </view>
+    
+    <!-- 功能菜单区域 -->
+    <view class="flex-1 px-4 py-4 flex flex-col space-y-4">
+      
+      <!-- 第一组：功能入口 (圆角较小的大框) - 仅登录可见 -->
+      <view v-if="isLoggedIn" class="bg-white rounded-lg shadow-sm overflow-hidden">
+        <view 
+          v-for="(item, index) in menuItems" 
+          :key="item.id"
+          class="flex items-center justify-between p-4 active:bg-gray-50 transition-colors relative"
+          @click="navigateTo(item.path)"
+        >
+          <view class="flex items-center">
+            <text v-if="item.fontClass" :class="['iconfont text-purple-600 text-xl mr-3', item.fontClass]"></text>
+            <text v-else class="iconify text-purple-600 text-xl mr-3" :data-icon="item.icon"></text>
+            <text class="text-gray-800 text-base font-medium">{{ item.title }}</text>
+          </view>
+          <text class="iconfont icon-chevronright text-gray-400" data-width="20"></text>
+          
+          <!-- 分隔线 (除了最后一项) -->
+          <view v-if="index < menuItems.length - 1" class="absolute bottom-0 left-4 right-4 h-[1px] bg-gray-200"></view>
+        </view>
+      </view>
+
+      <!-- 第二组：隐私与关于 - 始终可见 -->
+      <view class="bg-white rounded-lg shadow-sm overflow-hidden">
+        <!-- 隐私 -->
+        <view 
+          class="flex items-center justify-between p-4 active:bg-gray-50 transition-colors relative"
+          @click="navigateTo('/pages/settings/privacy')"
+        >
+          <view class="flex items-center">
+            <text class="iconfont icon-shield-lock-outline text-purple-600 text-xl mr-3"></text>
+            <text class="text-gray-800 text-base font-medium">隐私</text>
+          </view>
+          <text class="iconfont icon-chevronright text-gray-400" data-width="20"></text>
+          <view class="absolute bottom-0 left-4 right-4 h-[1px] bg-gray-200"></view>
+        </view>
+
+        <!-- 关于食鉴 -->
+        <view 
+          class="flex items-center justify-between p-4 active:bg-gray-50 transition-colors"
+          @click="navigateTo('/pages/settings/about')"
+        >
+          <view class="flex items-center">
+            <text class="iconfont icon-informationoutline text-purple-600 text-xl mr-3"></text>
+            <text class="text-gray-800 text-base font-medium">关于食鉴</text>
+          </view>
+          <view class="flex items-center">
+            <text class="text-gray-400 text-sm mr-2">v1.0.0</text>
+            <text class="iconfont icon-chevronright text-gray-400" data-width="20"></text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 按钮区域 - 仅登录可见 -->
+      <view v-if="isLoggedIn" class="mt-4 space-y-3">
+        <!-- 设置按钮 (如果仍然需要，或者可以移除如果用户意图是用上面的替代) -->
+         <!-- 既然用户没明确说删掉，先保留，但通常这种布局下设置可能会被整合。
+              这里保留为底部按钮风格 -->
+        <view 
+          class="bg-white text-gray-700 flex items-center justify-center py-3 px-8 rounded-lg shadow-sm active:bg-gray-50 transition-colors w-full border border-gray-200"
+          @click="navigateTo('/pages/settings/index')"
+        >
+          <text class="iconfont icon-cog text-gray-700" data-width="20"></text>
+          <text class="ml-2 font-medium">更多设置</text>
+        </view>
+        
+        <!-- 退出登录按钮 -->
+        <view 
+          class="bg-white text-red-500 border border-red-100 flex items-center justify-center py-3 px-8 rounded-lg shadow-sm active:bg-red-50 transition-colors w-full"
+          @click="handleLogout"
+        >
+          <text class="iconfont icon-logout text-red-500" data-width="20"></text>
+          <text class="ml-2 font-medium">退出登录</text>
+        </view>
+      </view>
+    </view>
+    </template>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted, watch } from 'vue';
+import { onPullDownRefresh } from '@dcloudio/uni-app';
+import UserHeader from './components/UserHeader.vue';
+import { useProfile } from './composables/use-profile';
+import { ProfileSkeleton } from '@/components/skeleton';
+
+// 从 use-profile 中获取所需的状态和方法
+const { userInfo, isLoggedIn, loading, handleLogout, fetchProfile } = useProfile();
+
+// 初次加载标记
+const hasLoaded = ref(false);
+const isInitialLoading = computed(() => loading.value && !hasLoaded.value);
+
+// 监听数据加载完成
+watch(loading, (newLoading) => {
+  if (!newLoading) {
+    hasLoaded.value = true;
+  }
+});
+
+// 页面挂载时如果数据已加载完成，立即标记为已加载
+onMounted(() => {
+  if (!loading.value) {
+    hasLoaded.value = true;
+  }
+});
+
+// 下拉刷新处理
+onPullDownRefresh(async () => {
+  try {
+    if (isLoggedIn.value) {
+      await fetchProfile();
+    }
+    uni.showToast({
+      title: '刷新成功',
+      icon: 'success',
+      duration: 1500
+    });
+  } catch (err) {
+    console.error('下拉刷新失败:', err);
+    uni.showToast({
+      title: '刷新失败',
+      icon: 'none'
+    });
+  } finally {
+    uni.stopPullDownRefresh();
+  }
+});
+
+interface MenuItem {
+  id: string;
+  title: string;
+  path: string;
+  icon?: string;
+  fontClass?: string;
+}
+
+const menuItems: MenuItem[] = [
+  { id: 'reviews', fontClass: 'icon-staroutline', title: '我的评价', path: '/pages/profile/my-reviews/index' },
+  { id: 'history', fontClass: 'icon-history', title: '历史浏览', path: '/pages/profile/history/index' },
+  { id: 'favorites', fontClass: 'icon-heart-outline', title: '我的收藏', path: '/pages/profile/my-favorites/index' },
+];
+
+
+/**
+ * 使用 Uni-app API 进行页面跳转
+ * @param {string} path - 在 pages.json 中定义的页面路径
+ */
+function navigateTo(path: string) {
+  uni.navigateTo({
+    url: path,
+    fail: (err) => {
+      console.error(`跳转失败: ${path}`, err);
+      uni.showToast({
+        title: '页面跳转失败',
+        icon: 'none'
+      });
+    }
+  });
+}
+
+/**
+ * 处理登录逻辑
+ */
+function handleLogin() {
+  uni.navigateTo({
+    url: '/pages/login/index' 
+  });
+}
+</script>

@@ -1,0 +1,382 @@
+name: CD - Deploy
+
+on:
+  # 当 CI 工作流完成时触发
+  workflow_run:
+    workflows: ["CI - Backend", "CI - Frontend"]
+    types:
+      - completed
+    branches: [main, dev]
+  # 支持 tag 推送
+  push:
+    tags:
+      - 'v*'
+  # 手动触发
+  workflow_dispatch:
+
+env:
+  # 1. GitHub Container Registry (原有的)
+  GHCR_REGISTRY: ghcr.io
+  
+  # 2. 阿里云 Registry (新增的，从 Secrets 读取)
+  ALIYUN_REGISTRY: ${{ secrets.REGISTRY_HOST }}
+  ALIYUN_NAMESPACE: tasteinsight
+
+  # 镜像名称定义
+  GHCR_BACKEND_IMAGE: ${{ github.repository }}-backend
+  GHCR_FRONTEND_IMAGE: ${{ github.repository }}-frontend
+  
+  # 阿里云
+  ALIYUN_BACKEND_REPO: tasteinsight-backend
+  ALIYUN_FRONTEND_REPO: tasteinsight-frontend
+
+jobs:
+  # 检查 CI 是否成功
+  check-ci:
+    name: Check CI Status
+    runs-on: ubuntu-latest
+    # 仅当 workflow_run 触发时检查，tag 和手动触发跳过
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    outputs:
+      should_deploy: ${{ steps.check.outputs.should_deploy }}
+    steps:
+      - name: Check CI result
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            if [ "${{ github.event.workflow_run.conclusion }}" = "success" ]; then
+              echo "should_deploy=true" >> $GITHUB_OUTPUT
+              echo "✅ CI passed, proceeding with deployment"
+            else
+              echo "should_deploy=false" >> $GITHUB_OUTPUT
+              echo "❌ CI failed, skipping deployment"
+              exit 1
+            fi
+          else
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+            echo "📦 Tag push or manual trigger, proceeding with deployment"
+          fi
+
+  # 构建后端镜像
+  build-backend:
+    name: Build Backend Image
+    runs-on: ubuntu-latest
+    needs: check-ci
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+      image_digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch || github.ref }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 登录 GitHub Container Registry (保持不变)
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 同时也登录 阿里云 (新增)
+      - name: Log in to Aliyun Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ALIYUN_REGISTRY }}
+          username: ${{ secrets.ALIYUN_USERNAME }}
+          password: ${{ secrets.ALIYUN_PASSWORD }}
+
+      # 配置多重镜像元数据
+      - name: Extract metadata for Backend
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_BACKEND_IMAGE }}
+            ${{ env.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}/${{ env.ALIYUN_BACKEND_REPO }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=sha,prefix=sha-
+            type=raw,value=${{ github.event.workflow_run.head_branch }},enable=${{ github.event_name == 'workflow_run' }}
+            type=raw,value=latest-dev,enable=${{ (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'dev') || github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '-')) }}
+            type=raw,value=latest,enable=${{ (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main') || github.ref == 'refs/heads/main' || (startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-')) }}
+
+      # 构建并推送
+      - name: Build and push Backend
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+
+  # 构建前端镜像
+  build-frontend:
+    name: Build Frontend Image
+    runs-on: ubuntu-latest
+    needs: check-ci
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+      image_digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch || github.ref }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 前端同样需要双重登录
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Aliyun Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ALIYUN_REGISTRY }}
+          username: ${{ secrets.ALIYUN_USERNAME }}
+          password: ${{ secrets.ALIYUN_PASSWORD }}
+
+      # 前端配置多重镜像地址
+      - name: Extract metadata for Frontend
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_FRONTEND_IMAGE }}
+            ${{ env.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}/${{ env.ALIYUN_FRONTEND_REPO }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=sha,prefix=sha-
+            type=raw,value=${{ github.event.workflow_run.head_branch }},enable=${{ github.event_name == 'workflow_run' }}
+            type=raw,value=latest-dev,enable=${{ (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'dev') || github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '-')) }}
+            type=raw,value=latest,enable=${{ (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main') || github.ref == 'refs/heads/main' || (startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-')) }}
+
+      - name: Build and push Frontend
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend-web
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+  # 部署到开发环境
+  deploy-dev:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend]
+    if: >
+      (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'dev') ||
+      (github.event_name != 'workflow_run' && github.ref == 'refs/heads/dev') ||
+      (startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '-'))
+    environment: development
+    concurrency:
+      group: deploy-development
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEV_SSH_KEY }}
+
+      - name: Add host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.DEV_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Create and copy deployment files
+        run: |
+          DEPLOY_TMP=$(mktemp -d)
+          trap "rm -rf $DEPLOY_TMP" EXIT
+
+          cp backend/docker-compose.yml "$DEPLOY_TMP/docker-compose.yml"
+          
+          cat > "$DEPLOY_TMP/cert.pem" << 'EOF'
+          ${{ secrets.DEV_SSL_CERT }}
+          EOF
+          
+          cat > "$DEPLOY_TMP/private.key" << 'EOF'
+          ${{ secrets.DEV_SSL_KEY }}
+          EOF
+          
+          cat > "$DEPLOY_TMP/.env" << 'EOF'
+          ${{ secrets.DEV_ENV_FILE }}
+          EOF
+          
+          cat > "$DEPLOY_TMP/nginx.conf" << 'EOF'
+          ${{ secrets.DEV_NGINX_CONF }}
+          EOF
+          
+          scp "$DEPLOY_TMP/docker-compose.yml" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/docker-compose.yml"
+          scp "$DEPLOY_TMP/cert.pem" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/certs/cert.pem"
+          scp "$DEPLOY_TMP/private.key" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/certs/private.key"
+          scp "$DEPLOY_TMP/.env" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/.env"
+          scp "$DEPLOY_TMP/nginx.conf" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/nginx.conf"
+        shell: bash
+        
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEV_HOST }}
+          username: ${{ secrets.DEV_USER }}
+          key: ${{ secrets.DEV_SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ secrets.DEV_DEPLOY_PATH }}
+
+            # Fail fast if required env vars are missing
+            if ! grep -q '^REDIS_PASSWORD=' .env; then
+              echo "❌ Missing REDIS_PASSWORD in .env" >&2
+              exit 1
+            fi
+            
+            # 设置证书权限
+            chmod 600 certs/private.key
+            chmod 644 certs/cert.pem
+
+            echo "${{ secrets.ALIYUN_PASSWORD }}" | docker login ${{ env.ALIYUN_REGISTRY }} -u "${{ secrets.ALIYUN_USERNAME }}" --password-stdin
+
+            export TAG=latest-dev
+            
+            # 这个变量会被传入 docker-compose.yml 中替换 ${IMAGE_REGISTRY}
+            export IMAGE_REGISTRY="${{ env.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}"
+            
+            echo "🚀 Deploying from Registry: $IMAGE_REGISTRY"
+            
+            docker compose pull
+            docker compose up -d --remove-orphans
+            
+            # 清理未使用的镜像
+            docker image prune -f
+            
+            echo "✅ Development deployment completed at $(date)"
+
+  # 部署到生产环境
+  deploy-prod:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend]
+    if: >
+      (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main') ||
+      (github.event_name != 'workflow_run' && github.ref == 'refs/heads/main') ||
+      (startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-'))
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
+
+      - name: Add host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.PROD_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Create and copy deployment files
+        run: |
+          # 创建临时目录存放部署文件
+          DEPLOY_TMP=$(mktemp -d)
+          trap "rm -rf $DEPLOY_TMP" EXIT
+
+          # 复制 docker-compose.yml
+          cp backend/docker-compose.yml "$DEPLOY_TMP/docker-compose.yml"
+          
+          # 使用 heredoc 安全写入敏感文件
+          cat > "$DEPLOY_TMP/cert.pem" << 'EOF'
+          ${{ secrets.PROD_SSL_CERT }}
+          EOF
+          
+          cat > "$DEPLOY_TMP/private.key" << 'EOF'
+          ${{ secrets.PROD_SSL_KEY }}
+          EOF
+          
+          cat > "$DEPLOY_TMP/.env" << 'EOF'
+          ${{ secrets.PROD_ENV_FILE }}
+          EOF
+          
+          cat > "$DEPLOY_TMP/nginx.conf" << 'EOF'
+          ${{ secrets.PROD_NGINX_CONF }}
+          EOF
+          
+          # 复制文件到服务器
+          scp "$DEPLOY_TMP/docker-compose.yml" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/docker-compose.yml"
+          scp "$DEPLOY_TMP/cert.pem" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/certs/cert.pem"
+          scp "$DEPLOY_TMP/private.key" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/certs/private.key"
+          scp "$DEPLOY_TMP/.env" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/.env"
+          scp "$DEPLOY_TMP/nginx.conf" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/nginx.conf"
+        shell: bash
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ secrets.PROD_DEPLOY_PATH }}
+
+            # Fail fast if required env vars are missing
+            if ! grep -q '^REDIS_PASSWORD=' .env; then
+              echo "❌ Missing REDIS_PASSWORD in .env" >&2
+              exit 1
+            fi
+            
+            # 设置证书权限
+            chmod 600 certs/private.key
+            chmod 644 certs/cert.pem
+
+            # 生产环境同样登录阿里云
+            echo "${{ secrets.ALIYUN_PASSWORD }}" | docker login ${{ env.ALIYUN_REGISTRY }} -u "${{ secrets.ALIYUN_USERNAME }}" --password-stdin
+
+            export TAG=latest
+            
+            # 生产环境同样指定阿里云源
+            export IMAGE_REGISTRY="${{ env.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}"
+            
+            echo "🚀 Deploying from Registry: $IMAGE_REGISTRY"
+            
+            docker compose pull
+            docker compose up -d --remove-orphans
+            
+            docker image prune -f
+            echo "✅ Production deployment completed at $(date)"

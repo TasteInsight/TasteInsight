@@ -11,6 +11,7 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
+test_output*.txt
 
 # OS
 .DS_Store
@@ -18,6 +19,7 @@ lerna-debug.log*
 # Tests
 /coverage
 /.nyc_output
+/coverage-e2e
 
 # IDEs and editors
 /.idea
@@ -37,14 +39,15 @@ lerna-debug.log*
 
 # dotenv environment variable files
 .env
-.env.development.local
-.env.test.local
-.env.production.local
+.env.test
 .env.local
+.env.*.local
 
 # temp directory
 .temp
-.tmp
+
+# database data
+postgres-data/
 
 # Runtime data
 pids
@@ -54,3 +57,32 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+/generated/prisma
+
+# Prisma temporary migration files
+/prisma/*.sqlite
+/prisma/*.sqlite-journal
+
+# tar
+*.tar
+*.tgz
+*.tar.gz
+
+# .md
+*.md
+
+# postgres data
+/postgres-data
+
+# .bak
+*.bak
+
+# Nginx Conf
+nginx.conf
+
+# SSL Certs
+certs/
+
+# xlsx
+*.xlsx

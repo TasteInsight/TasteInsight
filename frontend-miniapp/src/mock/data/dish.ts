@@ -1,0 +1,805 @@
+// Mock 菜品数据
+import type { Dish, Window } from '@/types/api.d';
+import { AvailableMealTime, Status } from '@/types/api.d';
+import { createMockWindows } from './canteen';
+
+// 窗口与菜品的映射关系（用于快速查询）
+export const dishWindowMap: Record<string, string> = {};
+
+export const createMockDishes = (): Dish[] => {
+  const dishes: Dish[] = [
+  {
+    id: 'dish_001',
+    name: '宫保鸡丁',
+    tags: ['川菜', '辣味', '经典'],
+    price: 12.5,
+    description: '鸡丁嫩滑，花生酥脆，辣而不燥',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['鸡肉', '花生', '干辣椒', '花椒'],
+    allergens: ['花生'],
+    canteenId: 'canteen_001',
+    canteenName: '一食堂',
+    floor: '1F',
+    windowNumber: '101',
+    windowName: '川味窗口',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.5,
+    reviewCount: 128,
+    subDishId: ['dish_002', 'dish_003'],
+    spicyLevel: 3, // 中辣
+    sweetness: 1, // 微甜
+    saltiness: 2, // 中咸
+    oiliness: 2, // 中油
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'dish_002',
+    name: '麻婆豆腐',
+    tags: ['川菜', '辣味', '素食'],
+    price: 8.0,
+    description: '麻辣鲜香，豆腐嫩滑',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['豆腐', '肉末', '豆瓣酱', '花椒'],
+    allergens: ['大豆'],
+    canteenId: 'canteen_001',
+    canteenName: '一食堂',
+    floor: '1F',
+    windowNumber: '101',
+    windowName: '川味窗口',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.2,
+    reviewCount: 96,
+    parentDishId: 'dish_001',
+    spicyLevel: 4, // 辣
+    sweetness: 0, // 不甜
+    saltiness: 3, // 咸
+    oiliness: 3, // 油腻
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'dish_003',
+    name: '鱼香肉丝',
+    tags: ['川菜', '下饭'],
+    price: 10.0,
+    description: '酸甜咸辣，色香味俱全',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['猪肉', '青椒', '胡萝卜', '木耳'],
+    allergens: [],
+    canteenId: 'canteen_001',
+    canteenName: '一食堂',
+    floor: '1F',
+    windowNumber: '101',
+    windowName: '川味窗口',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.8,
+    reviewCount: 156,
+    parentDishId: 'dish_001',
+    spicyLevel: 2, // 微辣
+    sweetness: 3, // 甜
+    saltiness: 2, // 中咸
+    oiliness: 1, // 不油腻
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'dish_004',
+    name: '清炒时蔬',
+    tags: ['素食', '健康', '清淡'],
+    price: 6.0,
+    description: '新鲜时蔬，清爽可口',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['时令蔬菜'],
+    allergens: [],
+    canteenId: 'canteen_002',
+    canteenName: '二食堂',
+    floor: '1F',
+    windowNumber: '102',
+    windowName: '素食窗口',
+    availableMealTime: [AvailableMealTime.Breakfast, AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.0,
+    reviewCount: 64,
+    parentDishId: 'dish_005',
+    spicyLevel: 0, // 不辣
+    sweetness: 0, // 不甜
+    saltiness: 1, // 微咸
+    oiliness: 0, // 清淡
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'dish_005',
+    name: '红烧肉',
+    tags: ['经典', '下饭'],
+    price: 15.0,
+    description: '肥而不腻，入口即化',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['五花肉', '冰糖', '酱油'],
+    allergens: [],
+    canteenId: 'canteen_001',
+    canteenName: '一食堂',
+    floor: '1F',
+    windowNumber: '103',
+    windowName: '特色窗口',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.8,
+    reviewCount: 203,
+    subDishId: ['dish_006', 'dish_004', 'dish_007', 'dish_008'],
+    spicyLevel: 0, // 不辣
+    sweetness: 2, // 微甜
+    saltiness: 3, // 咸
+    oiliness: 4, // 油腻
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'dish_006',
+    name: '皮蛋瘦肉粥',
+    tags: ['早餐', '粥品', '清淡'],
+    price: 6.0,
+    description: '软糯香滑，营养丰富',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['大米', '皮蛋', '瘦肉', '姜丝'],
+    allergens: ['鸡蛋'],
+    canteenId: 'canteen_001',
+    canteenName: '一食堂',
+    floor: '1F',
+    windowNumber: '104',
+    windowName: '早餐窗口',
+    availableMealTime: [AvailableMealTime.Breakfast],
+    status: Status.Online,
+    averageRating: 4.3,
+    reviewCount: 89,
+    parentDishId: 'dish_005',
+    spicyLevel: 0, // 不辣
+    sweetness: 0, // 不甜
+    saltiness: 2, // 中咸
+    oiliness: 1, // 不油腻
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'dish_007',
+    name: '烤串拼盘',
+    tags: ['夜宵', '烧烤'],
+    price: 18.0,
+    description: '羊肉串、鸡翅、烤茄子等多种美味',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['羊肉', '鸡翅', '茄子', '孜然'],
+    allergens: [],
+    canteenId: 'canteen_002',
+    canteenName: '二食堂',
+    floor: '2F',
+    windowNumber: '205',
+    windowName: '夜宵窗口',
+    availableMealTime: [AvailableMealTime.Nightsnack],
+    status: Status.Online,
+    averageRating: 4.6,
+    reviewCount: 156,
+    parentDishId: 'dish_005',
+    spicyLevel: 1, // 微辣
+    sweetness: 0, // 不甜
+    saltiness: 2, // 中咸
+    oiliness: 2, // 中油
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'dish_008',
+    name: '番茄炒蛋',
+    tags: ['家常', '下饭', '经典'],
+    price: 7.0,
+    description: '酸甜可口，百吃不腻',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['番茄', '鸡蛋', '葱花'],
+    allergens: ['鸡蛋'],
+    canteenId: 'canteen_001',
+    canteenName: '一食堂',
+    floor: '1F',
+    windowNumber: '101',
+    windowName: '川味窗口',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.4,
+    reviewCount: 178,
+    parentDishId: 'dish_005',
+    spicyLevel: 0, // 不辣
+    sweetness: 3, // 甜
+    saltiness: 2, // 中咸
+    oiliness: 2, // 中油
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'dish_009',
+    name: '糖醋里脊',
+    tags: ['经典', '酸甜'],
+    price: 14.0,
+    description: '外酥里嫩，酸甜适口',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['猪里脊', '淀粉', '醋', '糖'],
+    allergens: [],
+    canteenId: 'canteen_002',
+    canteenName: '二食堂',
+    floor: '1F',
+    windowNumber: '102',
+    windowName: '素食窗口',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.7,
+    reviewCount: 134,
+    spicyLevel: 0, // 不辣
+    sweetness: 4, // 很甜
+    saltiness: 2, // 中咸
+    oiliness: 3, // 油腻
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'dish_010',
+    name: '小笼包',
+    tags: ['早餐', '点心'],
+    price: 8.0,
+    description: '皮薄馅多，汤汁鲜美',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['面粉', '猪肉', '皮冻'],
+    allergens: ['小麦'],
+    canteenId: 'canteen_001',
+    canteenName: '一食堂',
+    floor: '1F',
+    windowNumber: '104',
+    windowName: '早餐窗口',
+    availableMealTime: [AvailableMealTime.Breakfast],
+    status: Status.Online,
+    averageRating: 4.5,
+    reviewCount: 112,
+    spicyLevel: 0, // 不辣
+    sweetness: 0, // 不甜
+    saltiness: 2, // 中咸
+    oiliness: 1, // 不油腻
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  
+  // ========== 一食堂 - 粤菜窗口 (window_002) ==========
+  {
+    id: 'dish_011',
+    name: '白切鸡',
+    tags: ['粤菜', '清淡', '经典'],
+    price: 16.0,
+    description: '鸡肉嫩滑，保持原汁原味',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['鸡肉', '姜', '葱'],
+    allergens: [],
+    canteenId: 'canteen_001',
+    canteenName: '一食堂',
+    floor: '1F',
+    windowNumber: '102',
+    windowName: '粤菜窗口',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.6,
+    reviewCount: 145,
+    spicyLevel: 0, // 不辣
+    sweetness: 0, // 不甜
+    saltiness: 1, // 微咸
+    oiliness: 1, // 不油腻
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'dish_012',
+    name: '蒸排骨',
+    tags: ['粤菜', '蒸菜', '营养'],
+    price: 14.0,
+    description: '排骨软烂，清淡营养',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['排骨', '豆豉', '蒜'],
+    allergens: ['大豆'],
+    canteenId: 'canteen_001',
+    canteenName: '一食堂',
+    floor: '1F',
+    windowNumber: '102',
+    windowName: '粤菜窗口',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.4,
+    reviewCount: 98,
+    spicyLevel: 0, // 不辣
+    sweetness: 0, // 不甜
+    saltiness: 2, // 中咸
+    oiliness: 1, // 不油腻
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'dish_013',
+    name: '虾饺',
+    tags: ['粤菜', '点心', '虾'],
+    price: 12.0,
+    description: '皮薄馅大，鲜虾肉质Q弹',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['虾仁', '面粉', '竹笋'],
+    allergens: ['小麦', '海鲜'],
+    canteenId: 'canteen_001',
+    canteenName: '一食堂',
+    floor: '1F',
+    windowNumber: '102',
+    windowName: '粤菜窗口',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.7,
+    reviewCount: 167,
+    spicyLevel: 0, // 不辣
+    sweetness: 0, // 不甜
+    saltiness: 1, // 微咸
+    oiliness: 1, // 不油腻
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  
+  // ========== 一食堂 - 面食窗口 (window_004) ==========
+  {
+    id: 'dish_014',
+    name: '牛肉拉面',
+    tags: ['面食', '牛肉', '热门'],
+    price: 13.0,
+    description: '面条劲道，汤头浓郁',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['面条', '牛肉', '香菜', '葱'],
+    allergens: ['小麦'],
+    canteenId: 'canteen_001',
+    canteenName: '一食堂',
+    floor: '1F',
+    windowNumber: '104',
+    windowName: '面食窗口',
+    availableMealTime: [AvailableMealTime.Breakfast, AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.6,
+    reviewCount: 234,
+    spicyLevel: 1, // 微辣
+    sweetness: 0, // 不甜
+    saltiness: 3, // 咸
+    oiliness: 2, // 中油
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'dish_015',
+    name: '刀削面',
+    tags: ['面食', '经典', '手工'],
+    price: 10.0,
+    description: '现削现煮，口感独特',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['面粉', '番茄', '鸡蛋'],
+    allergens: ['小麦', '鸡蛋'],
+    canteenId: 'canteen_001',
+    canteenName: '一食堂',
+    floor: '1F',
+    windowNumber: '104',
+    windowName: '面食窗口',
+    availableMealTime: [AvailableMealTime.Breakfast, AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.3,
+    reviewCount: 156,
+    spicyLevel: 0, // 不辣
+    sweetness: 1, // 微甜
+    saltiness: 2, // 中咸
+    oiliness: 1, // 不油腻
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'dish_016',
+    name: '炸酱面',
+    tags: ['面食', '北京', '经典'],
+    price: 11.0,
+    description: '酱香浓郁，配菜丰富',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['面条', '猪肉', '黄瓜', '豆芽'],
+    allergens: ['小麦', '大豆'],
+    canteenId: 'canteen_001',
+    canteenName: '一食堂',
+    floor: '1F',
+    windowNumber: '104',
+    windowName: '面食窗口',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.5,
+    reviewCount: 189,
+    spicyLevel: 0, // 不辣
+    sweetness: 1, // 微甜
+    saltiness: 3, // 咸
+    oiliness: 3, // 油腻
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  
+  // ========== 二食堂 - 湘菜窗口 (window_006) ==========
+  {
+    id: 'dish_017',
+    name: '剁椒鱼头',
+    tags: ['湘菜', '辣味', '特色'],
+    price: 22.0,
+    description: '鱼肉鲜嫩，剁椒香辣',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['鱼头', '剁椒', '姜', '蒜'],
+    allergens: [],
+    canteenId: 'canteen_002',
+    canteenName: '二食堂',
+    floor: '1F',
+    windowNumber: '201',
+    windowName: '湘菜窗口',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.8,
+    reviewCount: 267,
+    spicyLevel: 4, // 辣
+    sweetness: 0, // 不甜
+    saltiness: 3, // 咸
+    oiliness: 3, // 油腻
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'dish_018',
+    name: '辣椒炒肉',
+    tags: ['湘菜', '辣味', '下饭'],
+    price: 13.0,
+    description: '经典湘菜，辣而不燥',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['猪肉', '辣椒', '豆豉'],
+    allergens: ['大豆'],
+    canteenId: 'canteen_002',
+    canteenName: '二食堂',
+    floor: '1F',
+    windowNumber: '201',
+    windowName: '湘菜窗口',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.5,
+    reviewCount: 198,
+    spicyLevel: 4, // 辣
+    sweetness: 0, // 不甜
+    saltiness: 3, // 咸
+    oiliness: 3, // 油腻
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  
+  // ========== 二食堂 - 盖饭窗口 (window_008) ==========
+  {
+    id: 'dish_019',
+    name: '黄焖鸡米饭',
+    tags: ['盖饭', '鸡肉', '快餐'],
+    price: 12.0,
+    description: '鸡肉软烂，汤汁浓郁',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['鸡肉', '土豆', '香菇', '青椒'],
+    allergens: [],
+    canteenId: 'canteen_002',
+    canteenName: '二食堂',
+    floor: '1F',
+    windowNumber: '203',
+    windowName: '盖饭窗口',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.4,
+    reviewCount: 312,
+    spicyLevel: 1, // 微辣
+    sweetness: 1, // 微甜
+    saltiness: 3, // 咸
+    oiliness: 2, // 中油
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'dish_020',
+    name: '梅菜扣肉饭',
+    tags: ['盖饭', '经典', '下饭'],
+    price: 14.0,
+    description: '肥而不腻，梅菜解腻',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['五花肉', '梅菜', '米饭'],
+    allergens: [],
+    canteenId: 'canteen_002',
+    canteenName: '二食堂',
+    floor: '1F',
+    windowNumber: '203',
+    windowName: '盖饭窗口',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.6,
+    reviewCount: 245,
+    spicyLevel: 0, // 不辣
+    sweetness: 1, // 微甜
+    saltiness: 3, // 咸
+    oiliness: 4, // 油腻
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'dish_021',
+    name: '咖喱鸡饭',
+    tags: ['盖饭', '咖喱', '异国'],
+    price: 13.0,
+    description: '咖喱香浓，鸡肉嫩滑',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['鸡肉', '咖喱', '土豆', '胡萝卜'],
+    allergens: [],
+    canteenId: 'canteen_002',
+    canteenName: '二食堂',
+    floor: '1F',
+    windowNumber: '203',
+    windowName: '盖饭窗口',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.3,
+    reviewCount: 178,
+    spicyLevel: 2, // 微辣
+    sweetness: 1, // 微甜
+    saltiness: 2, // 中咸
+    oiliness: 2, // 中油
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  
+  // ========== 三食堂 - 清真窗口 (window_010) ==========
+  {
+    id: 'dish_022',
+    name: '手抓饭',
+    tags: ['清真', '新疆', '特色'],
+    price: 18.0,
+    description: '羊肉香嫩，米饭油润',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['羊肉', '胡萝卜', '洋葱', '大米'],
+    allergens: [],
+    canteenId: 'canteen_003',
+    canteenName: '三食堂',
+    floor: '1F',
+    windowNumber: '301',
+    windowName: '清真窗口',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.7,
+    reviewCount: 189,
+    spicyLevel: 1, // 微辣
+    sweetness: 0, // 不甜
+    saltiness: 2, // 中咸
+    oiliness: 2, // 中油
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'dish_023',
+    name: '羊肉串',
+    tags: ['清真', '烧烤', '特色'],
+    price: 2.5,
+    description: '孜然香味浓郁，肉质鲜嫩',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['羊肉', '孜然', '辣椒粉'],
+    allergens: [],
+    canteenId: 'canteen_003',
+    canteenName: '三食堂',
+    floor: '1F',
+    windowNumber: '301',
+    windowName: '清真窗口',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner, AvailableMealTime.Nightsnack],
+    status: Status.Online,
+    averageRating: 4.8,
+    reviewCount: 423,
+    spicyLevel: 2, // 微辣
+    sweetness: 0, // 不甜
+    saltiness: 2, // 中咸
+    oiliness: 1, // 不油腻
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  
+  // ========== 三食堂 - 新疆风味 (window_011) ==========
+  {
+    id: 'dish_024',
+    name: '大盘鸡',
+    tags: ['新疆', '辣味', '特色'],
+    price: 25.0,
+    description: '鸡肉入味，土豆绵软',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['鸡肉', '土豆', '青椒', '干辣椒'],
+    allergens: [],
+    canteenId: 'canteen_003',
+    canteenName: '三食堂',
+    floor: '1F',
+    windowNumber: '302',
+    windowName: '新疆风味',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.9,
+    reviewCount: 356,
+    spicyLevel: 4, // 辣
+    sweetness: 0, // 不甜
+    saltiness: 3, // 咸
+    oiliness: 3, // 油腻
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'dish_025',
+    name: '拌面',
+    tags: ['新疆', '面食', '手工'],
+    price: 12.0,
+    description: '面条筋道，配菜丰富',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['面条', '牛肉', '青椒', '番茄'],
+    allergens: ['小麦'],
+    canteenId: 'canteen_003',
+    canteenName: '三食堂',
+    floor: '1F',
+    windowNumber: '302',
+    windowName: '新疆风味',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.6,
+    reviewCount: 234,
+    spicyLevel: 2, // 微辣
+    sweetness: 1, // 微甜
+    saltiness: 2, // 中咸
+    oiliness: 2, // 中油
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  
+  // ========== 美食广场 - 西式快餐 (window_013) ==========
+  {
+    id: 'dish_026',
+    name: '经典汉堡',
+    tags: ['西餐', '快餐', '汉堡'],
+    price: 15.0,
+    description: '牛肉饼多汁，配料新鲜',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['牛肉饼', '生菜', '番茄', '面包'],
+    allergens: ['小麦'],
+    canteenId: 'canteen_004',
+    canteenName: '美食广场',
+    floor: '1F',
+    windowNumber: '402',
+    windowName: '西式快餐',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.4,
+    reviewCount: 289,
+    spicyLevel: 0, // 不辣
+    sweetness: 0, // 不甜
+    saltiness: 2, // 中咸
+    oiliness: 2, // 中油
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'dish_027',
+    name: '炸鸡套餐',
+    tags: ['西餐', '快餐', '炸鸡'],
+    price: 18.0,
+    description: '外酥里嫩，香脆可口',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['鸡肉', '面粉', '香料'],
+    allergens: ['小麦'],
+    canteenId: 'canteen_004',
+    canteenName: '美食广场',
+    floor: '1F',
+    windowNumber: '402',
+    windowName: '西式快餐',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.5,
+    reviewCount: 345,
+    spicyLevel: 0, // 不辣
+    sweetness: 0, // 不甜
+    saltiness: 2, // 中咸
+    oiliness: 4, // 油腻
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  
+  // ========== 美食广场 - 日韩料理 (window_014) ==========
+  {
+    id: 'dish_028',
+    name: '寿司拼盘',
+    tags: ['日料', '寿司', '精致'],
+    price: 28.0,
+    description: '新鲜食材，口感丰富',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['米饭', '三文鱼', '金枪鱼', '海苔'],
+    allergens: ['海鲜'],
+    canteenId: 'canteen_004',
+    canteenName: '美食广场',
+    floor: '2F',
+    windowNumber: '403',
+    windowName: '日韩料理',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.7,
+    reviewCount: 198,
+    spicyLevel: 0, // 不辣
+    sweetness: 1, // 微甜
+    saltiness: 1, // 微咸
+    oiliness: 1, // 不油腻
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'dish_029',
+    name: '石锅拌饭',
+    tags: ['韩餐', '拌饭', '营养'],
+    price: 16.0,
+    description: '锅底微焦，拌匀香浓',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['米饭', '牛肉', '蔬菜', '辣酱'],
+    allergens: [],
+    canteenId: 'canteen_004',
+    canteenName: '美食广场',
+    floor: '2F',
+    windowNumber: '403',
+    windowName: '日韩料理',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.6,
+    reviewCount: 234,
+    spicyLevel: 3, // 中辣
+    sweetness: 1, // 微甜
+    saltiness: 2, // 中咸
+    oiliness: 2, // 中油
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'dish_030',
+    name: '部队火锅',
+    tags: ['韩餐', '火锅', '特色'],
+    price: 32.0,
+    description: '食材丰富，汤底鲜美',
+    images: ['https://via.placeholder.com/300'],
+    ingredients: ['火腿', '方便面', '年糕', '泡菜'],
+    allergens: ['小麦'],
+    canteenId: 'canteen_004',
+    canteenName: '美食广场',
+    floor: '2F',
+    windowNumber: '403',
+    windowName: '日韩料理',
+    availableMealTime: [AvailableMealTime.Lunch, AvailableMealTime.Dinner],
+    status: Status.Online,
+    averageRating: 4.8,
+    reviewCount: 287,
+    spicyLevel: 4, // 辣
+    sweetness: 0, // 不甜
+    saltiness: 3, // 咸
+    oiliness: 3, // 油腻
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+];
+
+  // 构建窗口映射关系：根据窗口号查找对应的 window.id
+  const windows: Window[] = createMockWindows();
+  dishes.forEach(dish => {
+    if (dish.windowNumber) {
+      const matched = windows.find((w: Window) => w.number === dish.windowNumber);
+      if (matched) {
+        dishWindowMap[dish.id] = matched.id;
+      }
+    }
+  });
+
+  return dishes;
+};
+
+// 根据窗口ID获取菜品列表
+export const getDishesByWindowId = (windowId: string): Dish[] => {
+  const allDishes = createMockDishes();
+  return allDishes.filter(dish => dishWindowMap[dish.id] === windowId);
+};
