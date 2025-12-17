@@ -44,11 +44,7 @@ export class FeatureEncoderService {
     const vector = new Array(this.DIM).fill(0);
 
     // 1. 标签特征（Multi-hot）
-    this.encodeCategories(
-      feature.tags || [],
-      vector,
-      this.FEATURE_CONFIG.tags,
-    );
+    this.encodeCategories(feature.tags || [], vector, this.FEATURE_CONFIG.tags);
 
     // 2. 食材特征
     this.encodeCategories(
@@ -154,7 +150,8 @@ export class FeatureEncoderService {
     // 避免的食材（负权重）
     if (prefs) {
       prefs.avoidIngredients.forEach((ingredient) => {
-        const hash = hashString(ingredient) % this.FEATURE_CONFIG.ingredients.size;
+        const hash =
+          hashString(ingredient) % this.FEATURE_CONFIG.ingredients.size;
         const idx = this.FEATURE_CONFIG.ingredients.start + hash;
         vector[idx] -= 0.5; // 负向权重
       });
@@ -360,4 +357,3 @@ export class FeatureEncoderService {
     return this.DIM;
   }
 }
-

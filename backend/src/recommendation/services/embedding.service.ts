@@ -11,7 +11,6 @@ import {
   VersionedEmbedding,
 } from '../interfaces';
 
-
 /**
  * 嵌入服务
  * 负责生成菜品和用户的特征嵌入向量，用于推荐系统的相似度计算
@@ -30,15 +29,30 @@ export class EmbeddingService implements OnModuleInit {
   ) {
     this.config = {
       externalEnabled:
-        this.configService.get<string>('EXTERNAL_EMBEDDING_SERVICE_ENABLED', 'false') === 'true',
+        this.configService.get<string>(
+          'EXTERNAL_EMBEDDING_SERVICE_ENABLED',
+          'false',
+        ) === 'true',
       externalServiceUrl: this.configService.get<string>(
         'EXTERNAL_EMBEDDING_SERVICE_URL',
         'http://localhost:5001',
       ),
-      externalEmbeddingDim: this.configService.get<number>('EXTERNAL_EMBEDDING_SERVICE_EMBEDDING_DIM', 256),
-      embeddingDim: this.configService.get<number>('EMBEDDING_SERVICE_EMBEDDING_DIM', featureEncoder.getDimension()),
-      batchSize: this.configService.get<number>('EMBEDDING_SERVICE_BATCH_SIZE', 50),
-      externalVersion: this.configService.get<string>('EXTERNAL_EMBEDDING_SERVICE_VERSION', 'v2'),
+      externalEmbeddingDim: this.configService.get<number>(
+        'EXTERNAL_EMBEDDING_SERVICE_EMBEDDING_DIM',
+        256,
+      ),
+      embeddingDim: this.configService.get<number>(
+        'EMBEDDING_SERVICE_EMBEDDING_DIM',
+        featureEncoder.getDimension(),
+      ),
+      batchSize: this.configService.get<number>(
+        'EMBEDDING_SERVICE_BATCH_SIZE',
+        50,
+      ),
+      externalVersion: this.configService.get<string>(
+        'EXTERNAL_EMBEDDING_SERVICE_VERSION',
+        'v2',
+      ),
     };
   }
 
@@ -65,7 +79,9 @@ export class EmbeddingService implements OnModuleInit {
         return this.serviceHealthy;
       }
     } catch (error) {
-      this.logger.warn(`External embedding service health check failed: ${error}`);
+      this.logger.warn(
+        `External embedding service health check failed: ${error}`,
+      );
       this.serviceHealthy = false;
     }
     return false;
@@ -143,7 +159,6 @@ export class EmbeddingService implements OnModuleInit {
     };
   }
 
-
   /**
    * 从数据库菜品记录转换为 DishFeatures
    */
@@ -167,7 +182,6 @@ export class EmbeddingService implements OnModuleInit {
       reviewCount: dish.reviewCount || 0,
     };
   }
-
 
   /**
    * 调用外部嵌入服务生成混合嵌入（文本+数值特征）
@@ -210,7 +224,6 @@ export class EmbeddingService implements OnModuleInit {
     }
   }
 
-
   /**
    * 批量生成混合嵌入向量
    */
@@ -231,11 +244,14 @@ export class EmbeddingService implements OnModuleInit {
         version: version || this.config.externalVersion || 'v2',
       };
 
-      const response = await fetch(`${this.config.externalServiceUrl}/embed_batch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
-      });
+      const response = await fetch(
+        `${this.config.externalServiceUrl}/embed_batch`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+        },
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -318,9 +334,15 @@ export class EmbeddingService implements OnModuleInit {
     });
 
     // 更新 Redis 缓存
-    await this.cacheService.setDishEmbedding(dishId, embedding, embeddingVersion);
+    await this.cacheService.setDishEmbedding(
+      dishId,
+      embedding,
+      embeddingVersion,
+    );
 
-    this.logger.debug(`Updated embedding for dish ${dishId} (version: ${embeddingVersion})`);
+    this.logger.debug(
+      `Updated embedding for dish ${dishId} (version: ${embeddingVersion})`,
+    );
     return true;
   }
 
@@ -413,7 +435,6 @@ export class EmbeddingService implements OnModuleInit {
     return processedCount;
   }
 
-
   /**
    * 获取菜品嵌入向量（优先从缓存获取）
    */
@@ -455,7 +476,9 @@ export class EmbeddingService implements OnModuleInit {
   /**
    * 批量获取菜品嵌入向量
    */
-  async getDishEmbeddings(dishIds: string[]): Promise<Map<string, VersionedEmbedding>> {
+  async getDishEmbeddings(
+    dishIds: string[],
+  ): Promise<Map<string, VersionedEmbedding>> {
     const result = new Map<string, VersionedEmbedding>();
     if (dishIds.length === 0) {
       return result;
@@ -481,7 +504,11 @@ export class EmbeddingService implements OnModuleInit {
       const version = record.version || 'v1';
       result.set(record.dishId, { embedding, version });
       // 缓存到 Redis
-      await this.cacheService.setDishEmbedding(record.dishId, embedding, version);
+      await this.cacheService.setDishEmbedding(
+        record.dishId,
+        embedding,
+        version,
+      );
     }
 
     return result;
@@ -519,14 +546,15 @@ export class EmbeddingService implements OnModuleInit {
 
       // 口味偏好
       const flavorParts: string[] = [];
-      if (prefs.spicyLevel > 0) flavorParts.push(`辣度偏好${prefs.spicyLevel}级`);
+      if (prefs.spicyLevel > 0)
+        flavorParts.push(`辣度偏好${prefs.spicyLevel}级`);
       if (prefs.sweetness > 0) flavorParts.push(`甜度偏好${prefs.sweetness}级`);
       if (prefs.saltiness > 0) flavorParts.push(`咸度偏好${prefs.saltiness}级`);
       if (prefs.oiliness > 0) flavorParts.push(`油度偏好${prefs.oiliness}级`);
       if (flavorParts.length > 0) {
         parts.push(`口味: ${flavorParts.join(', ')}`);
       }
-      
+
       // 食堂偏好
       if (prefs.canteenPreferences.length > 0) {
         parts.push(`食堂偏好: ${prefs.canteenPreferences.join(', ')}`);
@@ -623,7 +651,9 @@ export class EmbeddingService implements OnModuleInit {
   /**
    * 提取用户数值特征（用于混合嵌入）
    */
-  private extractUserNumericFeatures(userFeatures: UserFeatures): NumericFeatures {
+  private extractUserNumericFeatures(
+    userFeatures: UserFeatures,
+  ): NumericFeatures {
     const prefs = userFeatures.preferences;
     const favFeatures = userFeatures.favoriteFeatures;
 
@@ -631,7 +661,8 @@ export class EmbeddingService implements OnModuleInit {
     const prefWeight = 0.7;
     const favWeight = 0.3;
     const prefAvgPrice = prefs ? (prefs.priceMin + prefs.priceMax) / 2 : 25;
-    const avgPrice = prefAvgPrice * prefWeight + favFeatures.avgPrice * favWeight;
+    const avgPrice =
+      prefAvgPrice * prefWeight + favFeatures.avgPrice * favWeight;
 
     // 口味偏好（加权平均）
     const spicyLevel = prefs
@@ -695,7 +726,9 @@ export class EmbeddingService implements OnModuleInit {
     // 存储到 Redis（用户嵌入不存数据库，因为变化频繁）
     await this.cacheService.setUserEmbedding(userId, embedding, version);
 
-    this.logger.debug(`Generated embedding for user ${userId} (version: ${version})`);
+    this.logger.debug(
+      `Generated embedding for user ${userId} (version: ${version})`,
+    );
     return { embedding, version };
   }
 
@@ -754,7 +787,10 @@ export class EmbeddingService implements OnModuleInit {
   /**
    * 升级菜品嵌入到目标版本
    */
-  async upgradeDishEmbedding(dishId: string, targetVersion: string): Promise<VersionedEmbedding | null> {
+  async upgradeDishEmbedding(
+    dishId: string,
+    targetVersion: string,
+  ): Promise<VersionedEmbedding | null> {
     const dish = await this.prisma.dish.findUnique({
       where: { id: dishId },
       include: { canteen: true, window: true },
@@ -774,7 +810,11 @@ export class EmbeddingService implements OnModuleInit {
       // 调用外部服务
       const text = this.buildDishFeatureText(feature);
       const numericFeatures = this.extractDishNumericFeatures(feature);
-      embedding = await this.generateHybridEmbedding(text, numericFeatures, targetVersion);
+      embedding = await this.generateHybridEmbedding(
+        text,
+        numericFeatures,
+        targetVersion,
+      );
     }
 
     if (!embedding) {
@@ -795,11 +835,16 @@ export class EmbeddingService implements OnModuleInit {
   /**
    * 升级用户嵌入到目标版本
    */
-  async upgradeUserEmbedding(userId: string, targetVersion: string): Promise<VersionedEmbedding | null> {
+  async upgradeUserEmbedding(
+    userId: string,
+    targetVersion: string,
+  ): Promise<VersionedEmbedding | null> {
     // 从缓存获取用户特征
     const userFeatures = await this.cacheService.getUserFeatures(userId);
     if (!userFeatures) {
-      this.logger.warn(`Cannot upgrade user embedding: user features not found for ${userId}`);
+      this.logger.warn(
+        `Cannot upgrade user embedding: user features not found for ${userId}`,
+      );
       return null;
     }
 
@@ -812,7 +857,11 @@ export class EmbeddingService implements OnModuleInit {
       // 调用外部服务
       const text = this.buildUserFeatureText(userFeatures);
       const numericFeatures = this.extractUserNumericFeatures(userFeatures);
-      embedding = await this.generateHybridEmbedding(text, numericFeatures, targetVersion);
+      embedding = await this.generateHybridEmbedding(
+        text,
+        numericFeatures,
+        targetVersion,
+      );
     }
 
     if (!embedding) {
@@ -857,16 +906,18 @@ export class EmbeddingService implements OnModuleInit {
     // 升级低版本的嵌入
     if (cmp < 0 && id1) {
       // ve1 版本较低，升级 ve1
-      const upgraded = type1 === 'dish'
-        ? await this.upgradeDishEmbedding(id1, targetVersion)
-        : await this.upgradeUserEmbedding(id1, targetVersion);
+      const upgraded =
+        type1 === 'dish'
+          ? await this.upgradeDishEmbedding(id1, targetVersion)
+          : await this.upgradeUserEmbedding(id1, targetVersion);
       if (!upgraded) return null;
       return { e1: upgraded.embedding, e2: ve2.embedding };
     } else if (cmp > 0 && id2) {
       // ve2 版本较低，升级 ve2
-      const upgraded = type2 === 'dish'
-        ? await this.upgradeDishEmbedding(id2, targetVersion)
-        : await this.upgradeUserEmbedding(id2, targetVersion);
+      const upgraded =
+        type2 === 'dish'
+          ? await this.upgradeDishEmbedding(id2, targetVersion)
+          : await this.upgradeUserEmbedding(id2, targetVersion);
       if (!upgraded) return null;
       return { e1: ve1.embedding, e2: upgraded.embedding };
     }
@@ -900,7 +951,12 @@ export class EmbeddingService implements OnModuleInit {
 
     // 版本不一致，升级菜品嵌入到用户嵌入的版本
     const compatible = await this.ensureVersionCompatibility(
-      userVE, dishVE, userId, dishId, 'user', 'dish',
+      userVE,
+      dishVE,
+      userId,
+      dishId,
+      'user',
+      'dish',
     );
 
     if (!compatible) {
@@ -957,9 +1013,14 @@ export class EmbeddingService implements OnModuleInit {
 
     // 批量升级菜品
     if (needUpgrade.length > 0) {
-      this.logger.debug(`Upgrading ${needUpgrade.length} dish embeddings to ${userVE.version}`);
+      this.logger.debug(
+        `Upgrading ${needUpgrade.length} dish embeddings to ${userVE.version}`,
+      );
       for (const dishId of needUpgrade) {
-        const upgraded = await this.upgradeDishEmbedding(dishId, userVE.version);
+        const upgraded = await this.upgradeDishEmbedding(
+          dishId,
+          userVE.version,
+        );
         if (upgraded) {
           dishEmbeddings.set(dishId, upgraded);
         }
@@ -970,7 +1031,10 @@ export class EmbeddingService implements OnModuleInit {
     for (const dishId of dishIds) {
       const dishVE = dishEmbeddings.get(dishId);
       if (dishVE && dishVE.version === userVE.version) {
-        result.set(dishId, this.cosineSimilarity(userVE.embedding, dishVE.embedding));
+        result.set(
+          dishId,
+          this.cosineSimilarity(userVE.embedding, dishVE.embedding),
+        );
       } else {
         result.set(dishId, 0);
       }
@@ -1002,7 +1066,12 @@ export class EmbeddingService implements OnModuleInit {
 
     // 版本不一致，升级低版本
     const compatible = await this.ensureVersionCompatibility(
-      ve1, ve2, dishId1, dishId2, 'dish', 'dish',
+      ve1,
+      ve2,
+      dishId1,
+      dishId2,
+      'dish',
+      'dish',
     );
 
     if (!compatible) {

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import {
   UpdateUserProfileDto,
@@ -24,10 +24,14 @@ import {
   UserSettingData,
   UserUploadData,
 } from '@/user-profile/dto/user.dto';
+import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service';
 
 @Injectable()
 export class UserProfileService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Optional() private embeddingQueueService?: EmbeddingQueueService,
+  ) {}
 
   // 创建用户入口（由用户模块负责），缺省值由数据库默认值提供
   async createUser(openId: string) {
@@ -82,6 +86,14 @@ export class UserProfileService {
       Object.entries(userData).filter(([_, value]) => value !== undefined),
     );
 
+    // 标记是否需要刷新用户嵌入（避免重复刷新）
+    let needRefreshEmbedding = false;
+
+    // 检查是否更新了 allergens（过敏原变化会影响推荐）
+    if (userUpdatePayload.allergens !== undefined) {
+      needRefreshEmbedding = true;
+    }
+
     if (Object.keys(userUpdatePayload).length > 0) {
       await this.prisma.user.update({
         where: { id: userId },
@@ -101,6 +113,9 @@ export class UserProfileService {
         },
         update: preferenceData,
       });
+
+      // 偏好变化会影响推荐
+      needRefreshEmbedding = true;
     }
 
     // Update Settings if provided
@@ -114,6 +129,11 @@ export class UserProfileService {
         },
         update: settingsData,
       });
+    }
+
+    // 所有更新完成后，统一触发一次嵌入刷新（避免重复）
+    if (needRefreshEmbedding && this.embeddingQueueService) {
+      await this.embeddingQueueService.enqueueRefreshUser(userId);
     }
 
     return this.getUserProfile(userId);

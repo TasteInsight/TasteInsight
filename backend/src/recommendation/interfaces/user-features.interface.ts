@@ -29,7 +29,7 @@ export interface UserPreferenceFeatures {
   saltiness: number;
   oiliness: number;
   canteenPreferences: string[];
-  portionSize: "small" | "medium" | "large";
+  portionSize: 'small' | 'medium' | 'large';
 }
 
 /**

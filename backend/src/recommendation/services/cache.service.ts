@@ -7,7 +7,11 @@ import {
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { CACHE_CONFIG } from '../constants/recommendation.constants';
-import { UserFeatures, RecommendationWeights, VersionedEmbedding } from '../interfaces';
+import {
+  UserFeatures,
+  RecommendationWeights,
+  VersionedEmbedding,
+} from '../interfaces';
 import { hashToShortString } from '../utils/hash.util';
 
 /**
@@ -210,7 +214,9 @@ export class RecommendationCacheService
   /**
    * 批量获取菜品向量
    */
-  async getDishEmbeddings(dishIds: string[]): Promise<Map<string, VersionedEmbedding>> {
+  async getDishEmbeddings(
+    dishIds: string[],
+  ): Promise<Map<string, VersionedEmbedding>> {
     const result = new Map<string, VersionedEmbedding>();
     if (dishIds.length === 0) return result;
 
@@ -265,7 +271,9 @@ export class RecommendationCacheService
   /**
    * 批量获取用户嵌入向量
    */
-  async getUserEmbeddings(userIds: string[]): Promise<Map<string, VersionedEmbedding>> {
+  async getUserEmbeddings(
+    userIds: string[],
+  ): Promise<Map<string, VersionedEmbedding>> {
     const result = new Map<string, VersionedEmbedding>();
     if (userIds.length === 0) return result;
 
