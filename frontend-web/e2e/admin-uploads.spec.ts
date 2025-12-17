@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { loginAsAdmin, getApiToken, TEST_ACCOUNTS } from './utils';
+import { loginAsAdmin, getApiToken, TEST_ACCOUNTS, API_BASE_URL } from './utils';
+import process from 'node:process';
 
 // API base URL for direct API calls
-const baseURL = process.env.VITE_API_BASE_URL || 'http://localhost:3000/';
+const baseURL = API_BASE_URL.endsWith('/') ? API_BASE_URL : `${API_BASE_URL}/`;
 
 /**
  * Admin Uploads (Dish Review) E2E Tests
