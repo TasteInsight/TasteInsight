@@ -513,6 +513,20 @@ export default {
           { id: 'upload:approve', label: '审核菜品上传' },
         ],
       },
+      // {
+      //   id: 'log',
+      //   name: '操作日志',
+      //   permissions: [
+      //     { id: 'log:view', label: '浏览日志' },
+      //   ],
+      // },
+      // {
+      //   id: 'log',
+      //   name: '操作日志',
+      //   permissions: [
+      //     { id: 'log:view', label: '浏览日志' },
+      //   ],
+      // },
       {
         id: 'news',
         name: '新闻管理',
@@ -525,6 +539,13 @@ export default {
           { id: 'news:delete', label: '删除新闻' },
         ],
       },
+      // {
+      //   id: 'log',
+      //   name: '操作日志',
+      //   permissions: [
+      //     { id: 'log:view', label: '浏览日志' },
+      //   ],
+      // },
       {
         id: 'admin',
         name: '子管理员管理',

@@ -5,6 +5,7 @@
             title="批量添加菜品" 
             description="通过上传表格批量添加多个菜品"
             header-icon="carbon:document-multiple"
+            :show-border="false"
           />
           
           <div class="space-y-8">
