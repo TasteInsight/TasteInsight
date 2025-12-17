@@ -85,8 +85,6 @@ jobs:
           --health-retries 5
       redis:
         image: redis:alpine
-        env:
-          REDIS_PASSWORD: ${{ env.CI_REDIS_PASSWORD }}
         ports:
           - 6379:6379
         options: >-
@@ -94,7 +92,8 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-        command: redis-server --requirepass ${{ env.CI_REDIS_PASSWORD }} --appendonly yes
+          --entrypoint redis-server
+          -- --requirepass ci_redis_password_for_testing_only --appendonly yes
 
     steps:
       - name: Checkout code
