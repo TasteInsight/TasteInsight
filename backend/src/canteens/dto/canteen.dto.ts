@@ -4,10 +4,15 @@ export class OpeningHoursSlotDto {
   closeTime: string;
 }
 
-export class OpeningHoursDto {
+export class DailyOpeningHoursDto {
   dayOfWeek: string;
   slots: OpeningHoursSlotDto[];
   isClosed: boolean;
+}
+
+export class FloorOpeningHoursDto {
+  floorLevel: string; // 对应 Floor.level，如 "1", "2"。如果为 "default" 或空，则为通用配置
+  schedule: DailyOpeningHoursDto[];
 }
 
 export class FloorDto {
@@ -31,7 +36,7 @@ export class CanteenDto {
   position?: string;
   description?: string;
   images: string[];
-  openingHours: OpeningHoursDto[];
+  openingHours: FloorOpeningHoursDto[];
   averageRating: number;
   reviewCount: number;
   floors: FloorDto[];
