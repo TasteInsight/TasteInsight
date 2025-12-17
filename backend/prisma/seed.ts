@@ -257,11 +257,39 @@ async function main() {
       position: '校园东区',
       description: '学校最大的食堂，提供各种美食',
       images: ['https://example.com/canteen1.jpg'],
-      openingHours: {
-        breakfast: '07:00-09:00',
-        lunch: '11:00-13:00',
-        dinner: '17:00-19:00',
-      },
+      openingHours: [
+        {
+          floorLevel: '1',
+          schedule: [
+            {
+              dayOfWeek: 'Monday',
+              slots: [
+                {
+                  mealType: 'Breakfast',
+                  openTime: '07:00',
+                  closeTime: '09:00',
+                },
+                { mealType: 'Lunch', openTime: '11:00', closeTime: '13:00' },
+                { mealType: 'Dinner', openTime: '17:00', closeTime: '19:00' },
+              ],
+              isClosed: false,
+            },
+          ],
+        },
+        {
+          floorLevel: '2',
+          schedule: [
+            {
+              dayOfWeek: 'Monday',
+              slots: [
+                { mealType: 'Lunch', openTime: '11:30', closeTime: '13:30' },
+                { mealType: 'Dinner', openTime: '17:30', closeTime: '19:30' },
+              ],
+              isClosed: false,
+            },
+          ],
+        },
+      ],
     },
   });
   console.log(`Created canteen: ${canteen1.name}`);
@@ -272,11 +300,26 @@ async function main() {
       position: '校园西区',
       description: '特色菜品食堂',
       images: ['https://example.com/canteen2.jpg'],
-      openingHours: {
-        breakfast: '07:00-09:00',
-        lunch: '11:00-13:00',
-        dinner: '17:00-19:00',
-      },
+      openingHours: [
+        {
+          floorLevel: null,
+          schedule: [
+            {
+              dayOfWeek: 'Monday',
+              slots: [
+                {
+                  mealType: 'Breakfast',
+                  openTime: '07:00',
+                  closeTime: '09:00',
+                },
+                { mealType: 'Lunch', openTime: '11:00', closeTime: '13:00' },
+                { mealType: 'Dinner', openTime: '17:00', closeTime: '19:00' },
+              ],
+              isClosed: false,
+            },
+          ],
+        },
+      ],
     },
   });
   console.log(`Created canteen: ${canteen2.name}`);
