@@ -1022,6 +1022,7 @@ export default {
           const response = await permissionApi.updateAdminPermissions(
             editingAdmin.value.id,
             formData.permissions,
+            formData.canteenId.trim() ? formData.canteenId.trim() : null,
           )
 
           if (response.code === 200) {
