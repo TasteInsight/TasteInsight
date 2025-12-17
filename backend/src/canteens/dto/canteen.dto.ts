@@ -11,7 +11,7 @@ export class DailyOpeningHoursDto {
 }
 
 export class FloorOpeningHoursDto {
-  floorLevel: string; // 对应 Floor.level，如 "1", "2"。如果为 "default" 或空，则为通用配置
+  floorLevel?: string; // 对应 Floor.level，如 "1", "2"。如果为 "default" 或空，则为通用配置
   schedule: DailyOpeningHoursDto[];
 }
 
