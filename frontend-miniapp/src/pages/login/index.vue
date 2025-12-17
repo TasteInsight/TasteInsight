@@ -14,8 +14,9 @@ import { onShow, onLoad } from '@dcloudio/uni-app';
 import LoginForm from './components/LoginForm.vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 
-// 保持对 LoginForm 的显式引用，防止微信小程序的代码依赖分析误判为无引用文件而被过滤
-const _LoginFormRef = LoginForm;
+// 显式引用 LoginForm 组件，防止微信小程序的 tree-shaking 误删组件
+// 使用类型断言确保组件被保留在打包中
+const _LoginFormComponent: typeof LoginForm = LoginForm;
 
 const userStore = useUserStore();
 
@@ -23,6 +24,9 @@ const userStore = useUserStore();
  * 页面加载时检查登录状态
  */
 onLoad(() => {
+  // 确保 LoginForm 在运行时代码中被引用，防止小程序打包时被依赖分析误判为无引用文件而过滤
+  void _LoginFormComponent;
+
   // 如果已登录，直接跳转到首页
   if (userStore.isLoggedIn) {
     uni.switchTab({
