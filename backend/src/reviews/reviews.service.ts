@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '@/prisma.service';
 import { AdminConfigService } from '@/admin-config/admin-config.service';
 import { ConfigKeys } from '@/admin-config/config-definitions';
+import { DishReviewStatsService } from '@/dish-review-stats-queue';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { ReportReviewDto } from './dto/report-review.dto';
 import {
@@ -21,6 +22,7 @@ export class ReviewsService {
   constructor(
     private prisma: PrismaService,
     private adminConfigService: AdminConfigService,
+    private dishReviewStatsService: DishReviewStatsService,
   ) {}
 
   async createReview(
@@ -64,6 +66,8 @@ export class ReviewsService {
         },
       },
     });
+
+    await this.dishReviewStatsService.recomputeDishStats(createReviewDto.dishId);
 
     return {
       code: 201,
@@ -190,6 +194,8 @@ export class ReviewsService {
       where: { id: reviewId },
       data: { deletedAt: new Date() },
     });
+
+    await this.dishReviewStatsService.recomputeDishStats(review.dishId);
 
     return {
       code: 200,
