@@ -137,7 +137,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { reviewApi } from '@/api/modules/review'
 import { canteenApi } from '@/api/modules/canteen'
@@ -294,6 +294,11 @@ export default {
 
     // 组件挂载时加载数据
     onMounted(() => {
+      loadCanteens()
+      loadReviewDishes()
+    })
+
+    onActivated(() => {
       loadCanteens()
       loadReviewDishes()
     })

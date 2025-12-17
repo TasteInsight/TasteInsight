@@ -104,7 +104,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onActivated, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { dishApi } from '@/api/modules/dish'
 import { useDishStore } from '@/store/modules/use-dish-store'
@@ -221,6 +221,10 @@ export default {
     }
 
     onMounted(() => {
+      loadDishes()
+    })
+
+    onActivated(() => {
       loadDishes()
     })
 

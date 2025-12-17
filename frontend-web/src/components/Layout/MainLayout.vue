@@ -3,7 +3,12 @@
     <Sidebar />
 
     <div class="flex-1 min-h-screen overflow-x-auto overflow-y-auto bg-tsinghua-light ml-[260px]">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <keep-alive>
+          <component :is="Component" v-if="$route.meta.keepAlive" :key="$route.path" />
+        </keep-alive>
+        <component :is="Component" v-if="!$route.meta.keepAlive" :key="$route.path" />
+      </router-view>
     </div>
   </div>
 </template>

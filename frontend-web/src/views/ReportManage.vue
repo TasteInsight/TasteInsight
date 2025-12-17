@@ -362,7 +362,7 @@
 </template>
 
 <script lang="ts">
-import { ref, onMounted, onUnmounted, defineComponent } from 'vue'
+import { ref, onMounted, onActivated, onUnmounted, defineComponent } from 'vue'
 import { reviewApi } from '@/api/modules/review'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
@@ -642,6 +642,10 @@ export default defineComponent({
     onMounted(() => {
       loadReports()
       window.addEventListener('keydown', handleKeyDown)
+    })
+
+    onActivated(() => {
+      loadReports()
     })
 
     onUnmounted(() => {

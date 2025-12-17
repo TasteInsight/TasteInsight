@@ -132,7 +132,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onActivated } from 'vue'
 import { configApi } from '@/api/modules/config'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
@@ -370,6 +370,10 @@ export default {
 
     onMounted(async () => {
       // 直接加载配置，食堂名称从管理员信息中获取
+      await loadConfig()
+    })
+
+    onActivated(async () => {
       await loadConfig()
     })
 

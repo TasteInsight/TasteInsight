@@ -263,7 +263,7 @@
 </template>
 
 <script lang="ts">
-import { ref, computed, onMounted, defineComponent } from 'vue'
+import { ref, computed, onMounted, onActivated, defineComponent } from 'vue'
 import { dishApi } from '@/api/modules/dish'
 import { reviewApi } from '@/api/modules/review'
 import { useAuthStore } from '@/store/modules/use-auth-store'
@@ -561,6 +561,14 @@ export default defineComponent({
 
     onMounted(() => {
       loadDishes()
+    })
+
+    onActivated(() => {
+      loadDishes()
+      if (selectedDishId.value) {
+        loadReviews()
+        loadCommentsForReviews()
+      }
     })
 
     return {

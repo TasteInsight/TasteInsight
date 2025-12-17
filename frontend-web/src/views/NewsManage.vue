@@ -344,7 +344,7 @@
 
 <script>
 // 1. 引入 Vue 核心功能，添加 shallowRef, onBeforeUnmount
-import { ref, reactive, onMounted, shallowRef, onBeforeUnmount, computed } from 'vue'
+import { ref, reactive, onMounted, onActivated, shallowRef, onBeforeUnmount, computed } from 'vue'
 // 2. 引入 wangEditor CSS 和组件
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
@@ -763,6 +763,11 @@ export default {
     }
 
     onMounted(() => {
+      loadCanteens()
+      loadNews()
+    })
+
+    onActivated(() => {
       loadCanteens()
       loadNews()
     })

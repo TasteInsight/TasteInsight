@@ -546,7 +546,7 @@
 </template>
 
 <script>
-import { reactive, ref, computed, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
 import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
@@ -1190,6 +1190,10 @@ export default {
     }
 
     onMounted(() => {
+      loadCanteens()
+    })
+
+    onActivated(() => {
       loadCanteens()
     })
 

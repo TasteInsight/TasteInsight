@@ -427,7 +427,7 @@
 </template>
 
 <script>
-import { reactive, ref, computed, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
 import { permissionApi } from '@/api/modules/permission'
 import { canteenApi } from '@/api/modules/canteen'
@@ -1083,6 +1083,11 @@ export default {
     }
 
     onMounted(() => {
+      loadCanteens()
+      loadAdmins()
+    })
+
+    onActivated(() => {
       loadCanteens()
       loadAdmins()
     })
