@@ -83,16 +83,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      redis:
-        image: redis:alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli -a ci_redis_password_for_testing_only ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-          redis-server --requirepass ci_redis_password_for_testing_only --appendonly yes
 
     steps:
       - name: Checkout code
@@ -113,6 +103,23 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Start Redis (password-protected)
+        run: |
+          docker rm -f tasteinsight-ci-redis 2>/dev/null || true
+          docker run -d --name tasteinsight-ci-redis \
+            -p 6379:6379 \
+            redis:alpine \
+            redis-server --requirepass "${{ env.CI_REDIS_PASSWORD }}" --appendonly yes
+          for i in $(seq 1 30); do
+            if docker exec tasteinsight-ci-redis redis-cli -a "${{ env.CI_REDIS_PASSWORD }}" ping | grep -q PONG; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Redis did not become ready" >&2
+          docker logs tasteinsight-ci-redis || true
+          exit 1
 
       - name: Generate Prisma Client
         run: npx prisma generate
