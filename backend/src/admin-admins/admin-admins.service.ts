@@ -186,7 +186,7 @@ export class AdminAdminsService {
     targetId: string,
     updatePermissionsDto: UpdatePermissionsDto,
   ): Promise<{ code: number; message: string; data: null }> {
-    const { permissions } = updatePermissionsDto;
+    const { permissions, canteenId } = updatePermissionsDto;
 
     // 查找目标管理员
     const targetAdmin = await this.prisma.admin.findUnique({
@@ -207,8 +207,26 @@ export class AdminAdminsService {
       throw new ForbiddenException('无法更新该管理员的权限');
     }
 
+    // 如果传入 canteenId（包含显式传 null 的情况），验证食堂是否存在
+    if (canteenId !== undefined && canteenId !== null) {
+      const canteen = await this.prisma.canteen.findUnique({
+        where: { id: canteenId },
+      });
+      if (!canteen) {
+        throw new BadRequestException('指定的食堂不存在');
+      }
+    }
+
     // 使用事务更新权限
     await this.prisma.$transaction(async (tx) => {
+      // 0. 更新管理范围（食堂）
+      if (canteenId !== undefined) {
+        await tx.admin.update({
+          where: { id: targetId },
+          data: { canteenId: canteenId ?? null },
+        });
+      }
+
       // 1. 删除现有权限
       await tx.adminPermission.deleteMany({
         where: { adminId: targetId },
