@@ -1,8 +1,9 @@
 import { test, expect, APIRequestContext } from '@playwright/test';
-import { loginAsAdmin, getApiToken, TEST_ACCOUNTS } from './utils';
+import { loginAsAdmin, getApiToken, TEST_ACCOUNTS, API_BASE_URL } from './utils';
+import process from 'node:process';
 
 // API base URL for direct API calls
-const baseURL = process.env.VITE_API_BASE_URL || 'http://localhost:3000/';
+const baseURL = API_BASE_URL.endsWith('/') ? API_BASE_URL : `${API_BASE_URL}/`;
 
 /**
  * Helper function to get a canteen with its ID
@@ -220,9 +221,20 @@ test.describe('Admin Window Management', () => {
     const newWindowNameInput = allWindowNameInputs.nth(existingWindowInputs);
     await newWindowNameInput.fill(windowName);
 
-    const allFloorInputs = page.locator('input[placeholder="例如：一层"]');
-    const newFloorInput = allFloorInputs.nth(existingWindowInputs);
-    await newFloorInput.fill(windowFloor);
+    // Select floor for the new window (required)
+    // Find the floor select for the new window
+    // The structure is likely repeated blocks of window inputs
+    const windowBlocks = page.locator('.flex.items-center.gap-3.p-3.border.rounded-lg');
+    // If window blocks exist, use them to scope search, otherwise rely on input order (risky if layout changes)
+    // Based on AddCanteen.vue, windows are rendered in a loop
+    
+    // We need to target the select inside the NEWLY added window block
+    // The "添加窗口" button adds a new object to the array, so it should be the last block
+    const allFloorSelects = page.locator('select').filter({ hasText: '请选择楼层' });
+    // Assuming the new one is the last one (or count increased)
+    const newFloorSelect = allFloorSelects.last();
+    await newFloorSelect.click();
+    await newFloorSelect.selectOption({ index: 1 }); // Select first available floor
 
     const allNumberInputs = page.locator('input[placeholder="例如：01、A01（选填）"]');
     const newNumberInput = allNumberInputs.nth(existingWindowInputs);
@@ -230,7 +242,7 @@ test.describe('Admin Window Management', () => {
 
     // Handle success alert
     page.once('dialog', async (dialog) => {
-      expect(dialog.message()).toContain('更新');
+      expect(dialog.message()).toContain('更新'); // Or '成功'
       await dialog.accept();
     });
 
@@ -248,12 +260,19 @@ test.describe('Admin Window Management', () => {
     );
     expect(token).toBeTruthy();
 
-    const response = await request.get(`${baseURL}admin/windows/${testCanteenId}`, {
+    // Use large pageSize to ensure we find the created window
+    const response = await request.get(`${baseURL}admin/windows/${testCanteenId}?pageSize=100`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
     const data = await response.json();
     const createdWindow = data.data.items.find((w: any) => w.name === windowName);
+    
+    if (!createdWindow) {
+      console.log('Failed to find window:', windowName);
+      console.log('Available windows:', data.data.items.map((w: any) => w.name).join(', '));
+    }
+    
     expect(createdWindow).toBeDefined();
     expect(createdWindow.number).toBe(windowNumber);
 

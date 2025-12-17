@@ -1,17 +1,15 @@
 import { test, expect } from '@playwright/test';
-import { getApiToken, TEST_ACCOUNTS } from './utils';
+import { loginAsAdmin, getApiToken, TEST_ACCOUNTS, API_BASE_URL } from './utils';
+import process from 'node:process';
 
 // API base URL for direct API calls
-const baseURL = process.env.VITE_API_BASE_URL || 'http://localhost:3000/';
+const baseURL = API_BASE_URL.endsWith('/') ? API_BASE_URL : `${API_BASE_URL}/`;
 
 /**
  * Admin Reviews Management E2E Tests
  * 
  * These tests cover the review management functionality in the admin panel.
- * Based on backend tests in backend/test/admin-reviews.e2e-spec.ts
- * 
- * Note: The frontend currently does not have a dedicated review management page.
- * These tests focus on API-level testing to verify the backend integration.
+ * Includes both API tests and UI tests for CommentManage.vue.
  */
 
 /**
@@ -32,6 +30,75 @@ async function getPendingReviews(request: any, token: string): Promise<any[]> {
   }
   return [];
 }
+
+test.describe('Admin Reviews UI Tests', () => {
+  test.beforeEach(async ({ page }) => {
+    await loginAsAdmin(page);
+  });
+
+  test('should display comment management page', async ({ page }) => {
+    await page.goto('/comment-manage');
+    
+    // Verify Header
+    await expect(page.locator('h2:has-text("评论和评价管理")')).toBeVisible();
+    
+    // Verify layout elements
+    await expect(page.locator('input[placeholder="搜索菜品名称..."]')).toBeVisible();
+    await expect(page.locator('text=请选择一个菜品查看评价和评论')).toBeVisible();
+  });
+
+  test('should list dishes and allow selection', async ({ page, request }) => {
+    await page.goto('/comment-manage');
+    
+    // Wait for dish list to load
+    // Assuming there is at least one dish in the system. 
+    // If not, we might need to create one or skip. 
+    // We can check if "暂无菜品数据" is visible first.
+    
+    const noData = await page.locator('text=暂无菜品数据').isVisible();
+    if (noData) {
+      console.log('No dishes available to test selection');
+      return;
+    }
+
+    // Wait for at least one dish item
+    const dishItems = page.locator('.p-4.mb-2.border.rounded-lg');
+    await expect(dishItems.first()).toBeVisible({ timeout: 10000 });
+    
+    // Find a dish with reviews > 0
+    const count = await dishItems.count();
+    let targetDishIndex = 0;
+    
+    for (let i = 0; i < count; i++) {
+        const dish = dishItems.nth(i);
+        const text = await dish.textContent();
+        // Check for "评价数: X" where X > 0
+        // Text might be like "评价数: 5" or just check if it contains non-zero number after "评价数:"
+        if (text && /评价数:\s*[1-9]\d*/.test(text)) {
+            targetDishIndex = i;
+            console.log(`Found dish with reviews at index ${i}`);
+            break;
+        }
+    }
+    
+    // Click the target dish
+    await dishItems.nth(targetDishIndex).click();
+    
+    // Verify right side updates
+    // Should show "评价和评论" header instead of placeholder
+    await expect(page.locator('h3:has-text("评价和评论")')).toBeVisible();
+    
+    // Verify stats or empty state
+    // "暂无评价" or review list
+    const hasReviews = await page.locator('text=暂无评价').isVisible();
+    if (!hasReviews) {
+      // If reviews exist, we should see review items
+      await expect(page.locator('.bg-white.border.rounded-xl').first()).toBeVisible();
+    } else {
+       console.log('Selected dish has no reviews (or seed data insufficient), verified empty state');
+    }
+  });
+});
 
 test.describe('Admin Reviews API Tests', () => {
   let superAdminToken: string;
