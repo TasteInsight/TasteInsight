@@ -323,7 +323,7 @@ export function useReviewForm() {
 
       const response = await createReview(payload);
 
-      if (response.code === 200) {
+      if (response.code === 200 || response.code === 201) {
         resetForm();
         onSuccess?.();
       } else {
