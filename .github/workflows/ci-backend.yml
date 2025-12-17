@@ -13,7 +13,7 @@ on:
       - '.github/workflows/ci-backend.yml'
 
 env:
-  NODE_VERSION: '22'
+  NODE_VERSION: '22'-
   PNPM_VERSION: '9'
   # CI 测试数据库配置
   CI_DB_USER: ci_test_user
@@ -90,10 +90,11 @@ jobs:
         ports:
           - 6379:6379
         options: >-
-          --health-cmd "redis-cli ping"
+          --health-cmd "redis-cli --raw incr ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+        command: redis-server --requirepass ${{ env.CI_REDIS_PASSWORD }} --appendonly yes
 
     steps:
       - name: Checkout code
