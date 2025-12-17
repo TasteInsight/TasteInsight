@@ -1,7 +1,7 @@
 import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { PrismaService } from '@/prisma.service';
+import { DishReviewStatsService } from './dish-review-stats.service';
 import {
   DISH_REVIEW_STATS_QUEUE,
   DishReviewStatsJobType,
@@ -12,7 +12,7 @@ import {
 export class DishReviewStatsProcessor extends WorkerHost {
   private readonly logger = new Logger(DishReviewStatsProcessor.name);
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(private readonly dishReviewStatsService: DishReviewStatsService) {
     super();
   }
 
@@ -22,40 +22,13 @@ export class DishReviewStatsProcessor extends WorkerHost {
     switch (job.name as DishReviewStatsJobType) {
       case DishReviewStatsJobType.RECOMPUTE_DISH_REVIEW_STATS: {
         const { dishId } = job.data as RecomputeDishReviewStatsJobData;
-        await this.recomputeDishStatsNow(dishId);
+        await this.dishReviewStatsService.recomputeDishStatsNow(dishId);
         return;
       }
       default:
         this.logger.warn(`Unknown job type: ${job.name}`);
         return;
     }
-  }
-
-  private async recomputeDishStatsNow(dishId: string): Promise<void> {
-    const agg = await this.prisma.review.aggregate({
-      where: {
-        dishId,
-        status: 'approved',
-        deletedAt: null,
-      },
-      _count: {
-        _all: true,
-      },
-      _avg: {
-        rating: true,
-      },
-    });
-
-    const reviewCount = agg._count._all;
-    const averageRating = agg._avg.rating ?? 0;
-
-    await this.prisma.dish.update({
-      where: { id: dishId },
-      data: {
-        reviewCount,
-        averageRating,
-      },
-    });
   }
 
   @OnWorkerEvent('completed')

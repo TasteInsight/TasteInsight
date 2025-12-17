@@ -34,11 +34,6 @@ export class DishReviewStatsService {
       DishReviewStatsJobType.RECOMPUTE_DISH_REVIEW_STATS,
       data,
       {
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 1000,
-        },
         removeOnComplete: 100,
         removeOnFail: 50,
       },

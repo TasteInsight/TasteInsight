@@ -16,25 +16,90 @@ const mockConfigService = {
   get: jest.fn(),
 };
 
+const mockQueue = {
+  add: jest.fn(),
+};
+
 describe('DishReviewStatsService', () => {
   let service: DishReviewStatsService;
 
-  beforeEach(async () => {
-    mockPrisma.review.aggregate.mockReset();
-    mockPrisma.dish.update.mockReset();
-    mockConfigService.get.mockReset();
+  describe('recomputeDishStats (sync mode)', () => {
+    beforeEach(async () => {
+      mockPrisma.review.aggregate.mockReset();
+      mockPrisma.dish.update.mockReset();
+      mockConfigService.get.mockReset();
+      mockQueue.add.mockReset();
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        DishReviewStatsService,
-        { provide: PrismaService, useValue: mockPrisma },
-        { provide: ConfigService, useValue: mockConfigService },
-        // Queue is not needed for sync-mode tests; service won't enqueue.
-        { provide: 'BullQueue_dish-review-stats', useValue: {} },
-      ],
-    }).compile();
+      mockConfigService.get.mockReturnValue('test');
 
-    service = module.get(DishReviewStatsService);
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          DishReviewStatsService,
+          { provide: PrismaService, useValue: mockPrisma },
+          { provide: ConfigService, useValue: mockConfigService },
+          { provide: 'BullQueue_dish-review-stats', useValue: mockQueue },
+        ],
+      }).compile();
+
+      service = module.get(DishReviewStatsService);
+    });
+
+    it('should run synchronously in test environment (no enqueue)', async () => {
+      mockPrisma.review.aggregate.mockResolvedValue({
+        _count: { _all: 1 },
+        _avg: { rating: 4 },
+      });
+      mockPrisma.dish.update.mockResolvedValue({});
+
+      await service.recomputeDishStats('d1');
+
+      expect(mockQueue.add).not.toHaveBeenCalled();
+      expect(mockPrisma.review.aggregate).toHaveBeenCalledWith({
+        where: { dishId: 'd1', status: 'approved', deletedAt: null },
+        _count: { _all: true },
+        _avg: { rating: true },
+      });
+      expect(mockPrisma.dish.update).toHaveBeenCalledWith({
+        where: { id: 'd1' },
+        data: { reviewCount: 1, averageRating: 4 },
+      });
+    });
+  });
+
+  describe('recomputeDishStats (async mode)', () => {
+    beforeEach(async () => {
+      mockPrisma.review.aggregate.mockReset();
+      mockPrisma.dish.update.mockReset();
+      mockConfigService.get.mockReset();
+      mockQueue.add.mockReset();
+
+      mockConfigService.get.mockReturnValue('development');
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          DishReviewStatsService,
+          { provide: PrismaService, useValue: mockPrisma },
+          { provide: ConfigService, useValue: mockConfigService },
+          { provide: 'BullQueue_dish-review-stats', useValue: mockQueue },
+        ],
+      }).compile();
+
+      service = module.get(DishReviewStatsService);
+    });
+
+    it('should enqueue a job outside test environment', async () => {
+      mockQueue.add.mockResolvedValue({});
+
+      await service.recomputeDishStats('d1');
+
+      expect(mockQueue.add).toHaveBeenCalledWith(
+        'recompute-dish-review-stats',
+        { dishId: 'd1' },
+        expect.any(Object),
+      );
+      expect(mockPrisma.review.aggregate).not.toHaveBeenCalled();
+      expect(mockPrisma.dish.update).not.toHaveBeenCalled();
+    });
   });
 
   describe('recomputeDishStatsNow', () => {
