@@ -85,6 +85,7 @@
         <span>新闻管理</span>
       </router-link>
       <router-link
+        v-if="false"
         v-permission="'admin:view'"
         to="/log-view"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
