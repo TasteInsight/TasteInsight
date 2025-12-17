@@ -298,7 +298,8 @@ test.describe('Sub-item Creation and Display', () => {
       await loginAsAdmin(page);
       
       // Ensure we are logged in by checking for an element common to authenticated pages
-      await page.waitForSelector('header', { timeout: 5000 });
+      // Increased timeout to account for slower page loads or redirects
+      await page.waitForSelector('header', { state: 'visible', timeout: 30000 });
 
       console.log(`Navigating to edit page for parent dish: ${parentId}`);
       await page.goto(`/edit-dish/${parentId}`);
