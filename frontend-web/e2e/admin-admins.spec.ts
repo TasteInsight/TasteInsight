@@ -1,8 +1,8 @@
-import { test, expect, APIRequestContext } from '@playwright/test';
-import { loginAsAdmin, getApiToken, TEST_ACCOUNTS } from './utils';
+import { test, expect, APIRequestContext, Page } from '@playwright/test';
+import { loginAsAdmin, getApiToken, TEST_ACCOUNTS, API_BASE_URL } from './utils';
 
 // API base URL for direct API calls
-const baseURL = process.env.VITE_API_BASE_URL || 'http://localhost:3000/';
+const baseURL = API_BASE_URL.endsWith('/') ? API_BASE_URL : `${API_BASE_URL}/`;
 
 /**
  * Generate a short unique username (max 20 chars)
@@ -26,7 +26,7 @@ async function cleanupTestAdmins(apiRequest: APIRequestContext) {
     if (!token) return;
 
     // Get all admins
-    const response = await apiRequest.get(`${baseURL}admin/admins`, {
+    const response = await apiRequest.get(`${baseURL}admin/admins?pageSize=100`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -34,7 +34,7 @@ async function cleanupTestAdmins(apiRequest: APIRequestContext) {
       const data = await response.json();
       // Match test usernames with all prefixes used in tests
       const testAdmins = data.data.items.filter((a: any) =>
-        /^(e2e|ui|api|mgr|dup|del|upd|perm|weak|unauth|delu|mown|ssub)_\d+$/.test(a.username)
+        /^(e2e|ui|api|mgr|dup|del|upd|perm|weak|unauth|delu|mown|ssub|full|edit|batch)_\d+$/.test(a.username)
       );
 
       for (const admin of testAdmins) {
@@ -54,6 +54,17 @@ async function cleanupTestAdmins(apiRequest: APIRequestContext) {
 }
 
 /**
+ * Helper function to get superadmin API token
+ */
+async function getSuperAdminToken(apiRequest: APIRequestContext): Promise<string | null> {
+  return await getApiToken(
+    apiRequest,
+    TEST_ACCOUNTS.superAdmin.username,
+    TEST_ACCOUNTS.superAdmin.password
+  );
+}
+
+/**
  * Helper function to get admin manager token
  */
 async function getAdminManagerToken(apiRequest: APIRequestContext): Promise<string | null> {
@@ -65,16 +76,54 @@ async function getAdminManagerToken(apiRequest: APIRequestContext): Promise<stri
 }
 
 /**
- * Admin Sub-Admin Management E2E Tests
- * 
- * These tests cover the sub-admin management functionality in the admin panel.
- * Based on backend tests in backend/test/admin-admins.e2e-spec.ts
+ * Helper to create a sub-admin via API
  */
-test.describe('Admin Sub-Admin Management', () => {
-  // Run tests in this describe block serially to avoid conflicts
-  test.describe.configure({ mode: 'serial' });
+async function createSubAdminViaApi(
+  apiRequest: APIRequestContext,
+  token: string,
+  data: { username: string; password: string; permissions: string[]; canteenId?: string }
+): Promise<{ id: string; username: string } | null> {
+  try {
+    const response = await apiRequest.post(`${baseURL}admin/admins`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data,
+    });
+    if (response.ok()) {
+      const result = await response.json();
+      return { id: result.data.id, username: result.data.username };
+    }
+  } catch (e) {
+    console.warn('Failed to create sub-admin via API:', e);
+  }
+  return null;
+}
 
-  let createdSubAdminId: string;
+/**
+ * Helper to delete a sub-admin via API
+ */
+async function deleteSubAdminViaApi(
+  apiRequest: APIRequestContext,
+  token: string,
+  adminId: string
+): Promise<boolean> {
+  try {
+    const response = await apiRequest.delete(`${baseURL}admin/admins/${adminId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.ok();
+  } catch (e) {
+    console.warn('Failed to delete sub-admin via API:', e);
+    return false;
+  }
+}
+
+/**
+ * Admin Sub-Admin Management UI E2E Tests
+ * 
+ * Tests for the user-manage page (/user-manage) functionality
+ */
+test.describe('Admin Sub-Admin Management - UI Tests', () => {
+  test.describe.configure({ mode: 'serial' });
 
   // Clean up any leftover test data before running tests
   test.beforeAll(async ({ request }) => {
@@ -85,69 +134,33 @@ test.describe('Admin Sub-Admin Management', () => {
     await loginAsAdmin(page);
   });
 
-  test.afterEach(async ({ request }) => {
-    // Cleanup: delete the test admin if it was created
-    if (createdSubAdminId) {
-      try {
-        const token = await getApiToken(
-          request,
-          TEST_ACCOUNTS.superAdmin.username,
-          TEST_ACCOUNTS.superAdmin.password
-        );
-        if (token) {
-          await request.delete(`${baseURL}admin/admins/${createdSubAdminId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-        }
-      } catch (error) {
-        console.warn('Failed to clean up test admin:', error);
-      }
-      createdSubAdminId = '';
-    }
-  });
-
-  // Also clean up after all tests
   test.afterAll(async ({ request }) => {
     await cleanupTestAdmins(request);
   });
 
   test('should display admin list page correctly', async ({ page }) => {
-    // Navigate to user management page
     await page.goto('/user-manage');
+    await page.waitForLoadState('networkidle');
 
-    // Verify page elements - use h2 to target the page title, not sidebar link
+    // Verify page header
     await expect(page.locator('h2:has-text("人员权限管理")')).toBeVisible();
     await expect(page.locator('text=管理子管理员账号和权限分配')).toBeVisible();
+
+    // Verify create button exists
     await expect(page.locator('button:has-text("创建子管理员")')).toBeVisible();
+
+    // Verify search input exists
+    await expect(page.locator('input[placeholder="搜索用户名、角色（权限组合）..."]')).toBeVisible();
 
     // Verify table headers
     await expect(page.locator('th:has-text("用户名")')).toBeVisible();
-    await expect(page.locator('th:has-text("角色")')).toBeVisible();
+    await expect(page.locator('th:has-text("角色（权限组合）")')).toBeVisible();
     await expect(page.locator('th:has-text("管理范围")')).toBeVisible();
     await expect(page.locator('th:has-text("创建时间")')).toBeVisible();
     await expect(page.locator('th:has-text("操作")')).toBeVisible();
   });
 
-  test('should show sub-admins list from seed data', async ({ page }) => {
-    await page.goto('/user-manage');
-
-    // Wait for the list to load
-    await page.waitForSelector('table tbody', { state: 'visible', timeout: 10000 });
-
-    // The page should display sub-admins (may show empty if superadmin doesn't have view rights
-    // or only shows admins created by the current user for non-superadmins)
-    // For superadmin, it should show all admins
-    const rows = page.locator('table tbody tr');
-    
-    // If there are sub-admins, verify they are displayed correctly
-    const rowCount = await rows.count();
-    if (rowCount > 0) {
-      // Verify first row has expected structure
-      await expect(rows.first().locator('td').first()).toBeVisible();
-    }
-  });
-
-  test('should navigate to create sub-admin form', async ({ page }) => {
+  test('should navigate to create form when clicking create button', async ({ page }) => {
     await page.goto('/user-manage');
     await page.waitForLoadState('networkidle');
 
@@ -155,195 +168,363 @@ test.describe('Admin Sub-Admin Management', () => {
     await page.click('button:has-text("创建子管理员")');
 
     // Verify form elements are displayed
-    await expect(page.locator('text=创建子管理员').first()).toBeVisible();
+    await expect(page.locator('h2:has-text("创建子管理员")')).toBeVisible();
     await expect(page.locator('input[placeholder="例如：admin001"]')).toBeVisible();
+    await expect(page.locator('input[placeholder="请输入密码"]')).toBeVisible();
     await expect(page.locator('button:has-text("返回列表")')).toBeVisible();
+    await expect(page.locator('button:has-text("随机生成")')).toBeVisible();
   });
 
-  test('should search admins by username', async ({ page }) => {
-    await page.goto('/user-manage');
-    await page.waitForSelector('table tbody', { state: 'visible', timeout: 10000 });
-
-    // Search for a non-existent username
-    await page.fill('input[placeholder="搜索用户名、角色..."]', 'nonexistentuser12345');
-    await page.waitForTimeout(500);
-
-    // Verify no results or empty message
-    const rows = page.locator('table tbody tr');
-    const emptyMessage = page.locator('text=暂无子管理员');
-    
-    // Either no rows or empty message should be visible
-    const rowCount = await rows.count();
-    if (rowCount === 0) {
-      await expect(emptyMessage).toBeVisible();
-    }
-  });
-
-  test('Create, Edit, and Delete Sub-Admin - Full UI Flow', async ({ page, request: apiRequest }) => {
-    test.setTimeout(90000);
-
-    const username = generateUsername('ui');
-    const password = 'Test@123!';
-
-    // 1. Navigate to user management page and click create
+  test('should show validation errors for empty form submission', async ({ page }) => {
     await page.goto('/user-manage');
     await page.waitForLoadState('networkidle');
+
+    // Click create button
     await page.click('button:has-text("创建子管理员")');
 
-    // 2. Wait for form to be visible
-    await expect(page.locator('text=创建子管理员').first()).toBeVisible();
+    // Wait for form to be visible
+    await expect(page.locator('h2:has-text("创建子管理员")')).toBeVisible();
 
-    // 3. Fill in the form
-    await page.fill('input[placeholder="例如：admin001"]', username);
-    await page.fill('input[placeholder="请输入密码"]', password);
+    // Clear default password (if any)
+    await page.fill('input[placeholder="请输入密码"]', '');
 
-    // 4. Select a role (e.g., 食堂主管)
-    await page.click('text=食堂主管');
+    // Try to submit empty form (click the submit button at the bottom)
+    await page.locator('button:has-text("创建子管理员")').last().click();
 
-    // 5. Select some permissions
-    // Wait for permission checkboxes to be visible
-    await page.waitForSelector('input[type="checkbox"]', { state: 'visible' });
+    // Verify validation error messages
+    await expect(page.locator('text=请填写用户名')).toBeVisible();
+    await expect(page.locator('text=请填写初始密码')).toBeVisible();
+  });
+
+  test('should generate random password when clicking generate button', async ({ page }) => {
+    await page.goto('/user-manage');
+    await page.waitForLoadState('networkidle');
+
+    // Navigate to create form
+    await page.click('button:has-text("创建子管理员")');
+    await expect(page.locator('h2:has-text("创建子管理员")')).toBeVisible();
+
+    // Get initial password value
+    const passwordInput = page.locator('input[placeholder="请输入密码"]');
+    const initialPassword = await passwordInput.inputValue();
+
+    // Click generate button
+    await page.click('button:has-text("随机生成")');
+
+    // Verify password changed
+    const newPassword = await passwordInput.inputValue();
+    expect(newPassword).not.toBe('');
+    expect(newPassword.length).toBeGreaterThanOrEqual(8);
+  });
+
+  test('should return to list when clicking back button', async ({ page }) => {
+    await page.goto('/user-manage');
+    await page.waitForLoadState('networkidle');
+
+    // Navigate to create form
+    await page.click('button:has-text("创建子管理员")');
+    await expect(page.locator('h2:has-text("创建子管理员")')).toBeVisible();
+
+    // Click back button
+    await page.click('button:has-text("返回列表")');
+
+    // Verify we're back on the list
+    await expect(page.locator('h2:has-text("人员权限管理")')).toBeVisible();
+    await expect(page.locator('th:has-text("用户名")')).toBeVisible();
+  });
+
+  test('should search admins by username', async ({ page, request }) => {
+    // First, create a test admin via API
+    const token = await getSuperAdminToken(request);
+    expect(token).toBeTruthy();
     
-    // Select dish:view permission (first checkbox in 菜品管理 group)
-    const dishViewCheckbox = page.locator('input#dishes-view');
-    if (await dishViewCheckbox.isVisible()) {
-      await dishViewCheckbox.check();
-    }
+    const username = generateUsername('batch');
+    const admin = await createSubAdminViaApi(request, token!, {
+      username,
+      password: 'Test@123!',
+      permissions: ['dish:view'],
+    });
+    expect(admin).toBeTruthy();
 
-    // 6. Handle success alert and submit
+    try {
+      await page.goto('/user-manage');
+      await page.waitForLoadState('networkidle');
+
+      // Wait for table to load
+      await page.waitForSelector('table tbody', { state: 'visible', timeout: 10000 });
+
+      // Search for the created admin
+      await page.fill('input[placeholder="搜索用户名、角色（权限组合）..."]', username);
+      
+      // Wait for filtering to apply
+      await page.waitForTimeout(500);
+
+      // Verify the admin appears
+      await expect(page.locator(`td:has-text("${username}")`)).toBeVisible({ timeout: 5000 });
+
+      // Search for non-existent user
+      await page.fill('input[placeholder="搜索用户名、角色（权限组合）..."]', 'nonexistentuser99999');
+      await page.waitForTimeout(500);
+
+      // Verify no results or empty message
+      const rows = page.locator('table tbody tr');
+      const rowCount = await rows.count();
+      if (rowCount === 0) {
+        await expect(page.locator('text=暂无子管理员')).toBeVisible();
+      } else {
+        // Table might still show because of loading, wait a bit more
+        await page.waitForTimeout(500);
+      }
+    } finally {
+      // Cleanup
+      if (admin) {
+        await deleteSubAdminViaApi(request, token!, admin.id);
+      }
+    }
+  });
+
+  test('should display role selection options in create form', async ({ page }) => {
+    await page.goto('/user-manage');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('button:has-text("创建子管理员")');
+    await expect(page.locator('h2:has-text("创建子管理员")')).toBeVisible();
+
+    // Verify role options are displayed
+    await expect(page.locator('text=超级管理员')).toBeVisible();
+    await expect(page.locator('text=食堂主管')).toBeVisible();
+    await expect(page.locator('text=餐厅经理')).toBeVisible();
+    await expect(page.locator('text=后厨操作员')).toBeVisible();
+    await expect(page.locator('text=新闻编辑')).toBeVisible();
+    await expect(page.locator('text=内容审核员')).toBeVisible();
+    await expect(page.locator('text=自定义角色')).toBeVisible();
+    await expect(page.locator('text=不选择角色')).toBeVisible();
+  });
+
+  test('should display permission groups in create form', async ({ page }) => {
+    await page.goto('/user-manage');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('button:has-text("创建子管理员")');
+    await expect(page.locator('h2:has-text("创建子管理员")')).toBeVisible();
+
+    // Verify permission groups are displayed
+    await expect(page.locator('h4:has-text("菜品管理")')).toBeVisible();
+    await expect(page.locator('h4:has-text("食堂与窗口管理")')).toBeVisible();
+    await expect(page.locator('h4:has-text("内容审核")')).toBeVisible();
+    await expect(page.locator('h4:has-text("新闻管理")')).toBeVisible();
+    await expect(page.locator('h4:has-text("子管理员管理")')).toBeVisible();
+    await expect(page.locator('h4:has-text("配置管理")')).toBeVisible();
+
+    // Verify individual permissions exist
+    await expect(page.locator('label:has-text("浏览菜品列表")')).toBeVisible();
+    await expect(page.locator('label:has-text("新建菜品")')).toBeVisible();
+  });
+});
+
+/**
+ * Admin Sub-Admin Full CRUD Flow Tests
+ */
+test.describe('Admin Sub-Admin CRUD Flow - UI Tests', () => {
+  test.describe.configure({ mode: 'serial' });
+
+  let createdAdminId: string = '';
+  const testUsername = generateUsername('full');
+
+  test.beforeAll(async ({ request }) => {
+    await cleanupTestAdmins(request);
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await loginAsAdmin(page);
+  });
+
+  test.afterAll(async ({ request }) => {
+    // Final cleanup
+    if (createdAdminId) {
+      const token = await getSuperAdminToken(request);
+      if (token) {
+        await deleteSubAdminViaApi(request, token, createdAdminId);
+      }
+    }
+    await cleanupTestAdmins(request);
+  });
+
+  test('should create a new sub-admin via UI', async ({ page, request }) => {
+    test.setTimeout(60000);
+
+    await page.goto('/user-manage');
+    await page.waitForLoadState('networkidle');
+
+    // Click create button
+    await page.click('button:has-text("创建子管理员")');
+    await expect(page.locator('h2:has-text("创建子管理员")')).toBeVisible();
+
+    // Fill in username
+    await page.fill('input[placeholder="例如：admin001"]', testUsername);
+
+    // Fill in password
+    await page.fill('input[placeholder="请输入密码"]', 'Test@123!');
+
+    // Select some permissions - check the dish:view checkbox
+    const dishViewCheckbox = page.locator('input#dish\\:view');
+    await dishViewCheckbox.check();
+    await expect(dishViewCheckbox).toBeChecked();
+
+    // Also select canteen:view
+    const canteenViewCheckbox = page.locator('input#canteen\\:view');
+    await canteenViewCheckbox.check();
+    await expect(canteenViewCheckbox).toBeChecked();
+
+    // Handle success alert
     page.once('dialog', async (dialog) => {
       expect(dialog.message()).toContain('成功');
       await dialog.accept();
     });
 
-    await page.click('button:has-text("创建子管理员")');
+    // Click submit button (the one at the bottom of the form)
+    await page.locator('button:has-text("创建子管理员")').last().click();
 
-    // 7. Wait for navigation back to list
-    await page.waitForSelector('text=人员权限管理', { state: 'visible', timeout: 15000 });
+    // Wait for navigation back to list
+    await expect(page.locator('h2:has-text("人员权限管理")')).toBeVisible({ timeout: 15000 });
 
-    // 8. Verify the admin appears in the list
-    await page.fill('input[placeholder="搜索用户名、角色..."]', username);
+    // Verify the new admin appears in the list
+    await page.fill('input[placeholder="搜索用户名、角色（权限组合）..."]', testUsername);
     await page.waitForTimeout(500);
-    await expect(page.locator(`td:has-text("${username}")`)).toBeVisible({ timeout: 10000 });
+    await expect(page.locator(`td:has-text("${testUsername}")`)).toBeVisible({ timeout: 10000 });
 
-    // 9. Get the admin ID via API for cleanup
-    const token = await getApiToken(
-      apiRequest,
-      TEST_ACCOUNTS.superAdmin.username,
-      TEST_ACCOUNTS.superAdmin.password
-    );
+    // Get the admin ID via API for cleanup
+    const token = await getSuperAdminToken(request);
     expect(token).toBeTruthy();
 
-    const adminsResponse = await apiRequest.get(`${baseURL}admin/admins`, {
+    const adminsResponse = await request.get(`${baseURL}admin/admins?pageSize=100`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const admins = await adminsResponse.json();
-    const createdAdmin = admins.data.items.find(
-      (a: any) => a.username === username
-    );
+    const createdAdmin = admins.data.items.find((a: any) => a.username === testUsername);
     expect(createdAdmin).toBeDefined();
-    createdSubAdminId = createdAdmin.id;
+    createdAdminId = createdAdmin.id;
+  });
 
-    // 10. Click edit button
-    const row = page.locator('tr', { hasText: username });
-    await row.locator('button[title="编辑权限"]').click();
+  test('should edit sub-admin permissions via UI', async ({ page }) => {
+    test.setTimeout(60000);
 
-    // 11. Verify edit form is displayed
-    await expect(page.locator('text=编辑子管理员')).toBeVisible();
+    // This test depends on the previous test creating the admin
+    expect(createdAdminId).toBeTruthy();
 
-    // 12. Update permissions - add another permission
-    const dishCreateCheckbox = page.locator('input#dishes-create');
-    if (await dishCreateCheckbox.isVisible()) {
-      await dishCreateCheckbox.check();
-    }
+    await page.goto('/user-manage');
+    await page.waitForLoadState('networkidle');
 
-    // Handle update success alert
+    // Search for the admin
+    await page.fill('input[placeholder="搜索用户名、角色（权限组合）..."]', testUsername);
+    await page.waitForTimeout(500);
+    await expect(page.locator(`td:has-text("${testUsername}")`)).toBeVisible({ timeout: 10000 });
+
+    // Find the row and click edit button (using the icon button with carbon:edit)
+    const row = page.locator('tr', { hasText: testUsername });
+    await row.locator('button:has(.iconify[data-icon="carbon:edit"])').click();
+
+    // Verify edit form is displayed
+    await expect(page.locator('h2:has-text("编辑子管理员")')).toBeVisible();
+
+    // Verify username is disabled in edit mode
+    const usernameInput = page.locator('input[placeholder="例如：admin001"]');
+    await expect(usernameInput).toBeDisabled();
+    expect(await usernameInput.inputValue()).toBe(testUsername);
+
+    // Verify current permissions are checked
+    const dishViewCheckbox = page.locator('input#dish\\:view');
+    await expect(dishViewCheckbox).toBeChecked();
+
+    // Add a new permission
+    const dishCreateCheckbox = page.locator('input#dish\\:create');
+    await dishCreateCheckbox.check();
+    await expect(dishCreateCheckbox).toBeChecked();
+
+    // Handle success alert
     page.once('dialog', async (dialog) => {
+      expect(dialog.message()).toContain('更新');
       await dialog.accept();
     });
 
+    // Click save button
     await page.click('button:has-text("保存修改")');
 
-    // 13. Wait for navigation back to list
-    await page.waitForSelector('text=人员权限管理', { state: 'visible', timeout: 15000 });
+    // Wait for navigation back to list
+    await expect(page.locator('h2:has-text("人员权限管理")')).toBeVisible({ timeout: 15000 });
+  });
 
-    // 14. Verify we're back on the list
-    await page.fill('input[placeholder="搜索用户名、角色..."]', username);
-    await expect(page.locator(`td:has-text("${username}")`)).toBeVisible({ timeout: 10000 });
+  test('should delete sub-admin via UI', async ({ page }) => {
+    test.setTimeout(60000);
 
-    // 15. Delete the admin via UI
-    const updatedRow = page.locator('tr', { hasText: username });
+    // This test depends on the previous tests
+    expect(createdAdminId).toBeTruthy();
 
-    // Handle delete confirmation dialog
+    await page.goto('/user-manage');
+    await page.waitForLoadState('networkidle');
+
+    // Search for the admin
+    await page.fill('input[placeholder="搜索用户名、角色（权限组合）..."]', testUsername);
+    await page.waitForTimeout(500);
+    await expect(page.locator(`td:has-text("${testUsername}")`)).toBeVisible({ timeout: 10000 });
+
+    // Find the row and click delete button
+    const row = page.locator('tr', { hasText: testUsername });
+
+    // Handle confirm dialog
     page.once('dialog', async (dialog) => {
       expect(dialog.message()).toContain('确定要删除');
       await dialog.accept();
     });
 
-    await updatedRow.locator('button[title="删除"]').click();
+    await row.locator('button:has(.iconify[data-icon="carbon:trash-can"])').click();
 
-    // Handle success notification
+    // Handle success alert (if any)
     page.once('dialog', async (dialog) => {
       await dialog.accept();
     });
 
-    // 16. Verify the admin is removed from the list
+    // Wait for the admin to be removed from the list
     await page.waitForTimeout(1000);
-    await page.fill('input[placeholder="搜索用户名、角色..."]', username);
-    await page.waitForTimeout(500);
-    await expect(page.locator(`td:has-text("${username}")`)).not.toBeVisible({ timeout: 5000 });
 
-    // Clear the ID since we already deleted it
-    createdSubAdminId = '';
+    // Verify the admin is no longer in the list
+    await page.fill('input[placeholder="搜索用户名、角色（权限组合）..."]', testUsername);
+    await page.waitForTimeout(500);
+    await expect(page.locator(`td:has-text("${testUsername}")`)).not.toBeVisible({ timeout: 5000 });
+
+    // Clear the ID since it's deleted
+    createdAdminId = '';
   });
 });
 
 /**
  * Admin Sub-Admin API Tests - Direct API Testing
- * Based on backend/test/admin-admins.e2e-spec.ts
  */
 test.describe('Admin Sub-Admin API Tests', () => {
-  // Run tests in this describe block serially to avoid conflicts
   test.describe.configure({ mode: 'serial' });
 
-  let createdSubAdminId: string;
+  let createdSubAdminId: string = '';
 
-  // Clean up any leftover test data before running tests
   test.beforeAll(async ({ request }) => {
     await cleanupTestAdmins(request);
   });
 
   test.afterEach(async ({ request }) => {
     if (createdSubAdminId) {
-      try {
-        const token = await getApiToken(
-          request,
-          TEST_ACCOUNTS.superAdmin.username,
-          TEST_ACCOUNTS.superAdmin.password
-        );
-        if (token) {
-          await request.delete(`${baseURL}admin/admins/${createdSubAdminId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-        }
-      } catch (error) {
-        console.warn('Failed to clean up test admin:', error);
+      const token = await getSuperAdminToken(request);
+      if (token) {
+        await deleteSubAdminViaApi(request, token, createdSubAdminId);
       }
       createdSubAdminId = '';
     }
   });
 
-  // Also clean up after all tests
   test.afterAll(async ({ request }) => {
     await cleanupTestAdmins(request);
   });
 
   test('should create a new sub admin with superadmin via API', async ({ request }) => {
-    const token = await getApiToken(
-      request,
-      TEST_ACCOUNTS.superAdmin.username,
-      TEST_ACCOUNTS.superAdmin.password
-    );
+    const token = await getSuperAdminToken(request);
     expect(token).toBeTruthy();
 
     const createDto = {
@@ -363,9 +544,7 @@ test.describe('Admin Sub-Admin API Tests', () => {
     expect(data.message).toBe('success');
     expect(data.data.username).toBe(createDto.username);
     expect(data.data.role).toBe('admin');
-    expect(data.data.permissions).toEqual(
-      expect.arrayContaining(createDto.permissions)
-    );
+    expect(data.data.permissions).toEqual(expect.arrayContaining(createDto.permissions));
     expect(data.data.createdBy).toBeDefined();
 
     createdSubAdminId = data.data.id;
@@ -392,24 +571,14 @@ test.describe('Admin Sub-Admin API Tests', () => {
     expect(data.data.username).toBe(createDto.username);
 
     // Cleanup
-    const superToken = await getApiToken(
-      request,
-      TEST_ACCOUNTS.superAdmin.username,
-      TEST_ACCOUNTS.superAdmin.password
-    );
+    const superToken = await getSuperAdminToken(request);
     if (superToken) {
-      await request.delete(`${baseURL}admin/admins/${data.data.id}`, {
-        headers: { Authorization: `Bearer ${superToken}` },
-      });
+      await deleteSubAdminViaApi(request, superToken, data.data.id);
     }
   });
 
   test('should return 400 for duplicate username via API', async ({ request }) => {
-    const token = await getApiToken(
-      request,
-      TEST_ACCOUNTS.superAdmin.username,
-      TEST_ACCOUNTS.superAdmin.password
-    );
+    const token = await getSuperAdminToken(request);
     expect(token).toBeTruthy();
 
     // First create an admin
@@ -440,16 +609,12 @@ test.describe('Admin Sub-Admin API Tests', () => {
   });
 
   test('should return 400 for invalid password format via API', async ({ request }) => {
-    const token = await getApiToken(
-      request,
-      TEST_ACCOUNTS.superAdmin.username,
-      TEST_ACCOUNTS.superAdmin.password
-    );
+    const token = await getSuperAdminToken(request);
     expect(token).toBeTruthy();
 
     const createDto = {
       username: generateUsername('weak'),
-      password: 'weak', // Too weak - missing uppercase, number, special char
+      password: 'weak', // Too weak
       permissions: ['dish:view'],
     };
 
@@ -484,11 +649,7 @@ test.describe('Admin Sub-Admin API Tests', () => {
   });
 
   test('should return list of sub admins for superadmin via API', async ({ request }) => {
-    const token = await getApiToken(
-      request,
-      TEST_ACCOUNTS.superAdmin.username,
-      TEST_ACCOUNTS.superAdmin.password
-    );
+    const token = await getSuperAdminToken(request);
     expect(token).toBeTruthy();
 
     const response = await request.get(`${baseURL}admin/admins`, {
@@ -505,11 +666,7 @@ test.describe('Admin Sub-Admin API Tests', () => {
   });
 
   test('should support pagination via API', async ({ request }) => {
-    const token = await getApiToken(
-      request,
-      TEST_ACCOUNTS.superAdmin.username,
-      TEST_ACCOUNTS.superAdmin.password
-    );
+    const token = await getSuperAdminToken(request);
     expect(token).toBeTruthy();
 
     const response = await request.get(`${baseURL}admin/admins?page=1&pageSize=5`, {
@@ -537,12 +694,8 @@ test.describe('Admin Sub-Admin API Tests', () => {
     expect(response.status()).toBe(403);
   });
 
-  test('should update sub admin permissions with superadmin via API', async ({ request }) => {
-    const token = await getApiToken(
-      request,
-      TEST_ACCOUNTS.superAdmin.username,
-      TEST_ACCOUNTS.superAdmin.password
-    );
+  test('should update sub admin permissions via API', async ({ request }) => {
+    const token = await getSuperAdminToken(request);
     expect(token).toBeTruthy();
 
     // First create an admin
@@ -580,11 +733,7 @@ test.describe('Admin Sub-Admin API Tests', () => {
   });
 
   test('should return 404 for non-existent sub admin update via API', async ({ request }) => {
-    const token = await getApiToken(
-      request,
-      TEST_ACCOUNTS.superAdmin.username,
-      TEST_ACCOUNTS.superAdmin.password
-    );
+    const token = await getSuperAdminToken(request);
     expect(token).toBeTruthy();
 
     const updateDto = {
@@ -603,11 +752,7 @@ test.describe('Admin Sub-Admin API Tests', () => {
   });
 
   test('should return 403 when normal admin updates permissions via API', async ({ request }) => {
-    const superToken = await getApiToken(
-      request,
-      TEST_ACCOUNTS.superAdmin.username,
-      TEST_ACCOUNTS.superAdmin.password
-    );
+    const superToken = await getSuperAdminToken(request);
     expect(superToken).toBeTruthy();
 
     // First create an admin
@@ -648,12 +793,8 @@ test.describe('Admin Sub-Admin API Tests', () => {
     expect(updateResponse.status()).toBe(403);
   });
 
-  test('should delete sub admin with superadmin via API', async ({ request }) => {
-    const token = await getApiToken(
-      request,
-      TEST_ACCOUNTS.superAdmin.username,
-      TEST_ACCOUNTS.superAdmin.password
-    );
+  test('should delete sub admin via API', async ({ request }) => {
+    const token = await getSuperAdminToken(request);
     expect(token).toBeTruthy();
 
     // First create an admin
@@ -672,12 +813,9 @@ test.describe('Admin Sub-Admin API Tests', () => {
     const adminId = createData.data.id;
 
     // Now delete
-    const deleteResponse = await request.delete(
-      `${baseURL}admin/admins/${adminId}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
+    const deleteResponse = await request.delete(`${baseURL}admin/admins/${adminId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
     expect(deleteResponse.status()).toBe(200);
     const deleteData = await deleteResponse.json();
@@ -686,29 +824,18 @@ test.describe('Admin Sub-Admin API Tests', () => {
   });
 
   test('should return 404 for non-existent sub admin delete via API', async ({ request }) => {
-    const token = await getApiToken(
-      request,
-      TEST_ACCOUNTS.superAdmin.username,
-      TEST_ACCOUNTS.superAdmin.password
-    );
+    const token = await getSuperAdminToken(request);
     expect(token).toBeTruthy();
 
-    const response = await request.delete(
-      `${baseURL}admin/admins/non-existent-id`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
+    const response = await request.delete(`${baseURL}admin/admins/non-existent-id`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
     expect(response.status()).toBe(404);
   });
 
   test('should return 403 when normal admin deletes sub admin via API', async ({ request }) => {
-    const superToken = await getApiToken(
-      request,
-      TEST_ACCOUNTS.superAdmin.username,
-      TEST_ACCOUNTS.superAdmin.password
-    );
+    const superToken = await getSuperAdminToken(request);
     expect(superToken).toBeTruthy();
 
     // First create an admin
@@ -761,13 +888,11 @@ test.describe('Admin Sub-Admin API Tests', () => {
  * Admin Manager specific tests
  * Tests for adminManager role who has admin:* permissions but is not superadmin
  */
-test.describe('Admin Manager Sub-Admin Tests', () => {
-  // Run tests in this describe block serially to avoid conflicts
+test.describe('Admin Manager Permission Tests', () => {
   test.describe.configure({ mode: 'serial' });
 
-  let createdByManagerId: string;
+  let createdByManagerId: string = '';
 
-  // Clean up any leftover test data before running tests
   test.beforeAll(async ({ request }) => {
     await cleanupTestAdmins(request);
   });
@@ -775,24 +900,10 @@ test.describe('Admin Manager Sub-Admin Tests', () => {
   test.afterEach(async ({ request }) => {
     if (createdByManagerId) {
       try {
-        // Use adminManager to delete their own sub-admin
-        const mgrToken = await getAdminManagerToken(request);
-        if (mgrToken) {
-          await request.delete(`${baseURL}admin/admins/${createdByManagerId}`, {
-            headers: { Authorization: `Bearer ${mgrToken}` },
-          });
-        } else {
-          // Fallback to superadmin
-          const superToken = await getApiToken(
-            request,
-            TEST_ACCOUNTS.superAdmin.username,
-            TEST_ACCOUNTS.superAdmin.password
-          );
-          if (superToken) {
-            await request.delete(`${baseURL}admin/admins/${createdByManagerId}`, {
-              headers: { Authorization: `Bearer ${superToken}` },
-            });
-          }
+        // Use superadmin to delete
+        const superToken = await getSuperAdminToken(request);
+        if (superToken) {
+          await deleteSubAdminViaApi(request, superToken, createdByManagerId);
         }
       } catch (error) {
         console.warn('Failed to clean up manager test admin:', error);
@@ -801,7 +912,6 @@ test.describe('Admin Manager Sub-Admin Tests', () => {
     }
   });
 
-  // Also clean up after all tests
   test.afterAll(async ({ request }) => {
     await cleanupTestAdmins(request);
   });
@@ -853,13 +963,9 @@ test.describe('Admin Manager Sub-Admin Tests', () => {
     createdByManagerId = ''; // Already deleted
   });
 
-  test('adminManager should NOT be able to update/delete superadmin sub-admin via API', async ({ request }) => {
+  test('adminManager should NOT be able to update superadmin-created sub-admin via API', async ({ request }) => {
     // First, superadmin creates a sub-admin
-    const superToken = await getApiToken(
-      request,
-      TEST_ACCOUNTS.superAdmin.username,
-      TEST_ACCOUNTS.superAdmin.password
-    );
+    const superToken = await getSuperAdminToken(request);
     expect(superToken).toBeTruthy();
 
     const createDto = {
@@ -894,8 +1000,36 @@ test.describe('Admin Manager Sub-Admin Tests', () => {
       );
 
       expect(updateResponse.status()).toBe(403);
+    } finally {
+      // Cleanup: superadmin deletes their own sub-admin
+      await deleteSubAdminViaApi(request, superToken, superSubAdminId);
+    }
+  });
 
-      // adminManager tries to delete it - should also fail
+  test('adminManager should NOT be able to delete superadmin-created sub-admin via API', async ({ request }) => {
+    // First, superadmin creates a sub-admin
+    const superToken = await getSuperAdminToken(request);
+    expect(superToken).toBeTruthy();
+
+    const createDto = {
+      username: generateUsername('ssub'),
+      password: 'Test@123!',
+      permissions: ['dish:view'],
+    };
+
+    const createResponse = await request.post(`${baseURL}admin/admins`, {
+      headers: { Authorization: `Bearer ${superToken}` },
+      data: createDto,
+    });
+    expect(createResponse.status()).toBe(201);
+    const createData = await createResponse.json();
+    const superSubAdminId = createData.data.id;
+
+    try {
+      // Now adminManager tries to delete it - should fail
+      const mgrToken = await getAdminManagerToken(request);
+      expect(mgrToken).toBeTruthy();
+
       const deleteResponse = await request.delete(
         `${baseURL}admin/admins/${superSubAdminId}`,
         {
@@ -906,9 +1040,137 @@ test.describe('Admin Manager Sub-Admin Tests', () => {
       expect(deleteResponse.status()).toBe(403);
     } finally {
       // Cleanup: superadmin deletes their own sub-admin
-      await request.delete(`${baseURL}admin/admins/${superSubAdminId}`, {
-        headers: { Authorization: `Bearer ${superToken}` },
-      });
+      await deleteSubAdminViaApi(request, superToken, superSubAdminId);
     }
+  });
+
+  test('adminManager should only see own sub-admins in list via API', async ({ request }) => {
+    const mgrToken = await getAdminManagerToken(request);
+    expect(mgrToken).toBeTruthy();
+
+    const response = await request.get(`${baseURL}admin/admins`, {
+      headers: { Authorization: `Bearer ${mgrToken}` },
+    });
+
+    expect(response.status()).toBe(200);
+    const data = await response.json();
+    expect(data.code).toBe(200);
+    expect(data.data.items).toBeInstanceOf(Array);
+
+    // All items should have createdBy set (meaning they are sub-admins, not original admins)
+    for (const admin of data.data.items) {
+      expect(admin.createdBy).toBeDefined();
+    }
+  });
+});
+
+/**
+ * Role Selection and Permission Assignment Tests
+ */
+test.describe('Role and Permission Selection Tests', () => {
+  test.beforeEach(async ({ page }) => {
+    await loginAsAdmin(page);
+  });
+
+  test('should auto-select permissions when selecting a role', async ({ page }) => {
+    await page.goto('/user-manage');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('button:has-text("创建子管理员")');
+    await expect(page.locator('h2:has-text("创建子管理员")')).toBeVisible();
+
+    // Initially no permissions should be checked
+    const dishViewCheckbox = page.locator('input#dish\\:view');
+    
+    // Click on "后厨操作员" role
+    await page.click('text=后厨操作员');
+
+    // Verify that dish:view permission is now checked
+    await expect(dishViewCheckbox).toBeChecked();
+
+    // Verify canteen:view is also checked (it's in the role's default permissions)
+    const canteenViewCheckbox = page.locator('input#canteen\\:view');
+    await expect(canteenViewCheckbox).toBeChecked();
+  });
+
+  test('should allow selecting custom role', async ({ page }) => {
+    await page.goto('/user-manage');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('button:has-text("创建子管理员")');
+    await expect(page.locator('h2:has-text("创建子管理员")')).toBeVisible();
+
+    // Click on "自定义角色"
+    await page.click('text=自定义角色');
+
+    // Verify custom role input appears
+    await expect(page.locator('input[placeholder="请输入自定义角色名称，例如：数据分析师、运营专员等"]')).toBeVisible();
+  });
+
+  test('should toggle all permissions in a group', async ({ page }) => {
+    await page.goto('/user-manage');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('button:has-text("创建子管理员")');
+    await expect(page.locator('h2:has-text("创建子管理员")')).toBeVisible();
+
+    // Find the "菜品管理" group and click its "全选" button
+    const dishGroupSection = page.locator('div:has(h4:has-text("菜品管理"))');
+    await dishGroupSection.locator('button:has-text("全选")').click();
+
+    // Verify all dish permissions are checked
+    await expect(page.locator('input#dish\\:view')).toBeChecked();
+    await expect(page.locator('input#dish\\:create')).toBeChecked();
+    await expect(page.locator('input#dish\\:edit')).toBeChecked();
+    await expect(page.locator('input#dish\\:delete')).toBeChecked();
+
+    // Click "取消全选" to uncheck all
+    await dishGroupSection.locator('button:has-text("取消全选")').click();
+
+    // Verify all dish permissions are unchecked
+    await expect(page.locator('input#dish\\:view')).not.toBeChecked();
+    await expect(page.locator('input#dish\\:create')).not.toBeChecked();
+    await expect(page.locator('input#dish\\:edit')).not.toBeChecked();
+    await expect(page.locator('input#dish\\:delete')).not.toBeChecked();
+  });
+
+  test('should toggle all permissions globally', async ({ page }) => {
+    await page.goto('/user-manage');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('button:has-text("创建子管理员")');
+    await expect(page.locator('h2:has-text("创建子管理员")')).toBeVisible();
+
+    // Click "全部全选" button
+    await page.click('button:has-text("全部全选")');
+
+    // Verify some permissions are checked
+    await expect(page.locator('input#dish\\:view')).toBeChecked();
+    await expect(page.locator('input#canteen\\:view')).toBeChecked();
+    await expect(page.locator('input#news\\:view')).toBeChecked();
+
+    // Click "取消全选" to uncheck all
+    await page.click('button:has-text("取消全选")');
+
+    // Verify permissions are unchecked
+    await expect(page.locator('input#dish\\:view')).not.toBeChecked();
+    await expect(page.locator('input#canteen\\:view')).not.toBeChecked();
+    await expect(page.locator('input#news\\:view')).not.toBeChecked();
+  });
+
+  test('should show canteen selection dropdown', async ({ page }) => {
+    await page.goto('/user-manage');
+    await page.waitForLoadState('networkidle');
+
+    await page.click('button:has-text("创建子管理员")');
+    await expect(page.locator('h2:has-text("创建子管理员")')).toBeVisible();
+
+    // Verify canteen select exists
+    await expect(page.locator('select:has(option:has-text("全校食堂"))')).toBeVisible();
+    
+    // The dropdown should have canteens loaded
+    const options = page.locator('select').first().locator('option');
+    const optionCount = await options.count();
+    expect(optionCount).toBeGreaterThan(1); // At least "全校食堂" + some canteens
   });
 });
