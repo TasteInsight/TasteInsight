@@ -21,7 +21,9 @@ export class AdminAdminsService {
   /**
    * 验证食堂ID是否存在（如果提供）
    */
-  private async validateCanteenId(canteenId: string | null | undefined): Promise<void> {
+  private async validateCanteenId(
+    canteenId: string | null | undefined,
+  ): Promise<void> {
     if (canteenId !== undefined && canteenId !== null) {
       const canteen = await this.prisma.canteen.findUnique({
         where: { id: canteenId },

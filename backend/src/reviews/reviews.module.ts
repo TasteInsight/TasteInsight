@@ -8,7 +8,11 @@ import { DishReviewStatsQueueModule } from '@/dish-review-stats-queue';
 import { EmbeddingQueueModule } from '@/embedding-queue/embedding-queue.module';
 
 @Module({
-  imports: [AdminConfigModule, DishReviewStatsQueueModule, EmbeddingQueueModule],
+  imports: [
+    AdminConfigModule,
+    DishReviewStatsQueueModule,
+    EmbeddingQueueModule,
+  ],
   controllers: [ReviewsController],
   providers: [ReviewsService, PrismaService, JwtService],
 })
