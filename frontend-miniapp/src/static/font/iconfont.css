@@ -13,6 +13,50 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+.icon-flash:before {
+  content: "\e675";
+}
+
+.icon-phone:before {
+  content: "\e725";
+}
+
+.icon-jubao:before {
+  content: "\e652";
+}
+
+.icon-team:before {
+  content: "\e60d";
+}
+
+.icon-link:before {
+  content: "\e772";
+}
+
+.icon-document:before {
+  content: "\e6f3";
+}
+
+.icon-feedback:before {
+  content: "\e6fa";
+}
+
+.icon-mail:before {
+  content: "\e70a";
+}
+
+.icon-warning:before {
+  content: "\e682";
+}
+
+.icon-chat:before {
+  content: "\e69d";
+}
+
+.icon-school:before {
+  content: "\e811";
+}
+
 .icon-staroutline:before {
   content: "\e8bc";
 }

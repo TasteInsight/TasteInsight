@@ -403,7 +403,7 @@ const onCanteenChange = async (e: any) => {
   
   if (selectedCanteen.value) {
     try {
-      await canteenStore.fetchWindowList(selectedCanteen.value.id);
+      await canteenStore.fetchWindowList(selectedCanteen.value.id, { page: 1, pageSize: 50 });
     } catch (err) {
       console.error('加载窗口列表失败:', err);
     }

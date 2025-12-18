@@ -11,13 +11,17 @@
 
       <!-- 功能介绍 -->
       <view class="mb-8">
-        <text class="text-base font-semibold text-gray-800 mb-4 block">🏫 关于食鉴</text>
+        <text class="text-base font-semibold text-gray-800 mb-4 block">
+          <text class="iconfont icon-school mr-2"></text>关于食鉴
+        </text>
         <text class="text-gray-600 text-sm leading-relaxed mb-4">
           食鉴是一款专为高校师生打造的智能食堂评价与推荐小程序。我们致力于通过用户评价、AI推荐和数据分析，为您提供最真实、最有价值的校园餐饮信息。
         </text>
 
         <view class="bg-blue-50 rounded-lg p-4 mb-4">
-          <text class="text-sm font-medium text-blue-800 mb-2 block">✨ 核心功能</text>
+          <text class="text-sm font-medium text-blue-800 mb-2 block">
+            <text class="iconfont icon-star mr-2"></text>核心功能
+          </text>
           <text class="text-blue-700 text-sm leading-relaxed">
             • 智能菜品评价系统：支持文字评价、星级评分、图片上传\n• AI美食推荐：基于您的口味偏好和过敏信息提供个性化推荐\n• 食堂窗口导航：实时查看各窗口菜品和价格信息\n• 菜单规划助手：智能生成每日/每周饮食计划\n• 社区互动：查看他人评价、参与讨论交流\n• 个人中心：收藏菜品、管理评价历史、设置偏好
           </text>
@@ -26,7 +30,9 @@
 
       <!-- 技术栈 -->
       <view class="mb-8">
-        <text class="text-base font-semibold text-gray-800 mb-4 block">⚡ 技术栈</text>
+        <text class="text-base font-semibold text-gray-800 mb-4 block">
+          <text class="iconfont icon-flash mr-2"></text>技术栈
+        </text>
         <view class="space-y-3">
           <view class="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
             <text class="text-sm font-medium text-gray-700">前端框架</text>
@@ -57,7 +63,9 @@
 
       <!-- 开发团队 -->
       <view class="mb-8">
-        <text class="text-base font-semibold text-gray-800 mb-4 block">👥 开发团队</text>
+        <text class="text-base font-semibold text-gray-800 mb-4 block">
+          <text class="iconfont icon-team mr-2"></text>开发团队
+        </text>
         <view class="space-y-3">
           <view class="flex items-center">
             <view class="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mr-3">
@@ -76,7 +84,9 @@
 
       <!-- 开源项目 -->
       <view class="mb-8">
-        <text class="text-base font-semibold text-gray-800 mb-4 block">🔗 开源项目</text>
+        <text class="text-base font-semibold text-gray-800 mb-4 block">
+          <text class="iconfont icon-link mr-2"></text>开源项目
+        </text>
         <view class="space-y-2">
           <view class="flex justify-between items-center py-2 border-b border-gray-100">
             <text class="text-sm text-gray-700">Vue.js</text>
@@ -106,7 +116,9 @@
 
       <!-- 更新日志 -->
       <view class="mb-8">
-        <text class="text-base font-semibold text-gray-800 mb-4 block">📋 版本更新</text>
+        <text class="text-base font-semibold text-gray-800 mb-4 block">
+          <text class="iconfont icon-document mr-2"></text>版本更新
+        </text>
         <view class="space-y-3">
           <view class="border-l-4 border-blue-500 pl-4">
             <text class="text-sm font-medium text-gray-700">v1.0.0 (2024-12-16)</text>
@@ -125,11 +137,13 @@
 
       <!-- 联系我们 -->
       <view class="mb-8">
-        <text class="text-base font-semibold text-gray-800 mb-4 block">📞 联系我们</text>
+        <text class="text-base font-semibold text-gray-800 mb-4 block">
+          <text class="iconfont icon-phone mr-2"></text>联系我们
+        </text>
         <view class="space-y-3">
           <view class="flex items-center">
             <view class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
-              <text class="text-green-600 text-sm">💬</text>
+              <text class="iconfont icon-chat text-green-600"></text>
             </view>
             <view>
               <text class="text-sm text-gray-700">微信公众号</text>
@@ -138,7 +152,7 @@
           </view>
           <view class="flex items-center">
             <view class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-              <text class="text-blue-600 text-sm">📧</text>
+              <text class="iconfont icon-mail text-blue-600"></text>
             </view>
             <view>
               <text class="text-sm text-gray-700">邮箱反馈</text>
@@ -147,7 +161,7 @@
           </view>
           <view class="flex items-center">
             <view class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
-              <text class="text-purple-600 text-sm">🐛</text>
+              <text class="iconfont icon-feedback text-purple-600"></text>
             </view>
             <view>
               <text class="text-sm text-gray-700">问题反馈</text>
@@ -159,7 +173,9 @@
 
       <!-- 免责声明 -->
       <view class="mb-8">
-        <text class="text-base font-semibold text-gray-800 mb-4 block">⚠️ 免责声明</text>
+        <text class="text-base font-semibold text-gray-800 mb-4 block">
+          <text class="iconfont icon-warning mr-2"></text>免责声明
+        </text>
         <text class="text-gray-600 text-sm leading-relaxed">
           本小程序提供的菜品评价信息仅供参考，不构成任何形式的消费建议或保证。实际菜品质量可能因季节、厨师等因素有所变化，请以实地考察为准。
         </text>

@@ -277,8 +277,10 @@ onMounted(() => {
   }
   
   nextTick(() => {
-    // 添加CSS类来隐藏tabbar
-    document.body.classList.add('hide-tabbar');
+    // 添加CSS类来隐藏tabbar（小程序环境没有 document）
+    if (typeof document !== 'undefined' && document?.body) {
+      document.body.classList.add('hide-tabbar');
+    }
 
     // 同时尝试API隐藏
     setTimeout(() => {
@@ -295,7 +297,9 @@ onMounted(() => {
 // 显示tabbar
 onUnmounted(() => {
   // 移除CSS类
-  document.body.classList.remove('hide-tabbar');
+  if (typeof document !== 'undefined' && document?.body) {
+    document.body.classList.remove('hide-tabbar');
+  }
 
   setTimeout(() => {
     uni.showTabBar({

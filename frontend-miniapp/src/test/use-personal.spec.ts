@@ -1,6 +1,7 @@
 import { usePersonal } from '@/pages/settings/composables/use-personal';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { updateUserProfile } from '@/api/modules/user';
+import { uploadImage } from '@/api/modules/upload';
 import { reactive, ref } from 'vue';
 
 // Mock Store
@@ -11,6 +12,11 @@ jest.mock('@/store/modules/use-user-store', () => ({
 // Mock API
 jest.mock('@/api/modules/user', () => ({
   updateUserProfile: jest.fn(),
+}));
+
+// Mock Upload API
+jest.mock('@/api/modules/upload', () => ({
+  uploadImage: jest.fn(),
 }));
 
 // Mock Vue onMounted
@@ -26,6 +32,8 @@ jest.mock('vue', () => {
 (global as any).uni = {
   showToast: jest.fn(),
   chooseImage: jest.fn(),
+  showLoading: jest.fn(),
+  hideLoading: jest.fn(),
 };
 
 describe('usePersonal', () => {
@@ -111,15 +119,52 @@ describe('usePersonal', () => {
   });
 
   it('should handle choose avatar success', async () => {
-    const { chooseAvatar, form } = usePersonal();
+    const { chooseAvatar, form, uploading } = usePersonal();
+    
+    (uploadImage as jest.Mock).mockResolvedValue({
+      url: 'uploaded-avatar-url.jpg',
+      filename: 'uploaded-avatar.jpg'
+    });
     
     (uni.chooseImage as jest.Mock).mockImplementation((options) => {
-      options.success({ tempFilePaths: ['new-avatar.jpg'] });
+      options.success({ tempFilePaths: ['temp-avatar.jpg'] });
     });
 
-    chooseAvatar();
+    await chooseAvatar();
 
-    expect(form.avatar).toBe('new-avatar.jpg');
+    expect(uploadImage).toHaveBeenCalledWith('temp-avatar.jpg');
+    expect(form.avatar).toBe('uploaded-avatar-url.jpg');
+    expect(uploading.value).toBe(false);
+    expect(uni.showLoading).toHaveBeenCalledWith({ title: '上传中...' });
+    expect(uni.hideLoading).toHaveBeenCalled();
+    expect(uni.showToast).toHaveBeenCalledWith({ title: '头像上传成功', icon: 'success' });
+  });
+
+  it('should handle avatar upload failure', async () => {
+    const { chooseAvatar, form, uploading } = usePersonal();
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    
+    // Wait for initial data load
+    await new Promise(process.nextTick);
+    const originalAvatar = form.avatar; // Save original value after load
+    
+    (uploadImage as jest.Mock).mockRejectedValue(new Error('Upload failed'));
+    
+    (uni.chooseImage as jest.Mock).mockImplementation((options) => {
+      options.success({ tempFilePaths: ['temp-avatar.jpg'] });
+    });
+
+    await expect(chooseAvatar()).rejects.toThrow('Upload failed');
+
+    expect(uploadImage).toHaveBeenCalledWith('temp-avatar.jpg');
+    expect(form.avatar).toBe(originalAvatar); // Should remain unchanged on failure
+    expect(uploading.value).toBe(false);
+    expect(uni.showLoading).toHaveBeenCalledWith({ title: '上传中...' });
+    expect(uni.hideLoading).toHaveBeenCalled();
+    expect(consoleSpy).toHaveBeenCalledWith('上传头像失败:', expect.any(Error));
+    expect(uni.showToast).toHaveBeenCalledWith({ title: '头像上传失败', icon: 'none' });
+    
+    consoleSpy.mockRestore();
   });
 
   it('should handle choose avatar failure', async () => {
@@ -130,7 +175,7 @@ describe('usePersonal', () => {
       options.fail(new Error('Choose failed'));
     });
 
-    chooseAvatar();
+    await expect(chooseAvatar()).rejects.toThrow('Choose failed');
 
     expect(consoleSpy).toHaveBeenCalledWith('选择图片失败:', expect.any(Error));
     expect(uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ title: '选择图片失败' }));

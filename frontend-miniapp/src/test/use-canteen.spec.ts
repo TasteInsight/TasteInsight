@@ -36,7 +36,7 @@ describe('useCanteenData', () => {
     await init(canteenId);
 
     expect(mockStore.fetchCanteenDetail).toHaveBeenCalledWith(canteenId);
-    expect(mockStore.fetchWindowList).toHaveBeenCalledWith(canteenId);
+    expect(mockStore.fetchWindowList).toHaveBeenCalledWith(canteenId, { page: 1, pageSize: 50 });
     expect(getDishes).toHaveBeenCalled();
   });
 

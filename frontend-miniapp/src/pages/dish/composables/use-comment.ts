@@ -49,7 +49,7 @@ export function useComment() {
   const submitComment = async (payload: CommentCreateRequest) => {
     try {
       const response = await createComment(payload);
-      if (response.code === 200) {
+      if (response.code === 200 || response.code === 201) {
         return response.data;
       } else {
         throw new Error(response.message || '提交失败');
@@ -189,7 +189,7 @@ export function useCommentPanel(reviewId: () => string, onCommentAdded?: () => v
       
       const response = await createComment(requestData);
 
-      if (response.code === 200) {
+      if (response.code === 200 || response.code === 201) {
         uni.showToast({
           title: '回复成功',
           icon: 'success',

@@ -1,5 +1,5 @@
 // Mock 食堂服务
-import type { Canteen, Window, Dish, CanteenListData, WindowListData, WindowDishesData } from '@/types/api';
+import type { Canteen, Window, Dish, CanteenListData, WindowListData, WindowDishesData, PaginationParams } from '@/types/api';
 import { createMockCanteens, createMockWindows, getWindowsByCanteenId } from '../data/canteen';
 import { createMockDishes } from '../data/dish';
 
@@ -65,22 +65,27 @@ export const mockGetCanteenDetail = async (canteenId: string): Promise<Canteen |
 /**
  * 根据食堂ID获取窗口列表
  */
-export const mockGetWindowList = async (canteenId: string): Promise<WindowListData> => {
+export const mockGetWindowList = async (canteenId: string, params?: PaginationParams): Promise<WindowListData> => {
   console.log(`🪟 [Mock] 获取窗口列表: ${canteenId}`);
   await mockDelay();
   
-  const windows = getWindowsByCanteenId(canteenId);
-  console.log(`✅ [Mock] 返回 ${windows.length} 个窗口`);
+  const allWindows = getWindowsByCanteenId(canteenId);
+  const page = params?.page || 1;
+  const pageSize = params?.pageSize || 10;
   
-  const totalW = windows.length;
-  const pageSizeW = 20;
+  const start = (page - 1) * pageSize;
+  const end = start + pageSize;
+  const items = allWindows.slice(start, end);
+  
+  console.log(`✅ [Mock] 返回 ${items.length} 个窗口 (第${page}页, 共${allWindows.length}个)`);
+  
   return {
-    items: windows,
+    items,
     meta: {
-      total: totalW,
-      page: 1,
-      pageSize: pageSizeW,
-      totalPages: Math.ceil(totalW / pageSizeW),
+      total: allWindows.length,
+      page,
+      pageSize,
+      totalPages: Math.ceil(allWindows.length / pageSize),
     },
   };
 };

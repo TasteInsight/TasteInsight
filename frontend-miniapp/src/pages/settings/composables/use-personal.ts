@@ -1,6 +1,7 @@
 import { reactive, ref, onMounted } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { updateUserProfile } from '@/api/modules/user';
+import { uploadImage } from '@/api/modules/upload';
 import type { UserProfileUpdateRequest } from '@/types/api';
 
 export interface PersonalForm {
@@ -13,6 +14,7 @@ export function usePersonal() {
   
   const saving = ref(false);
   const loading = ref(true);
+  const uploading = ref(false);
   
   const form = reactive<PersonalForm>({
     avatar: '',
@@ -41,22 +43,52 @@ export function usePersonal() {
   /**
    * 选择头像
    */
-  function chooseAvatar() {
-    uni.chooseImage({
-      count: 1,
-      sizeType: ['compressed'],
-      sourceType: ['album', 'camera'],
-      success: (res) => {
-        form.avatar = res.tempFilePaths[0];
-        // TODO: 上传到服务器获取 URL
-      },
-      fail: (err) => {
-        console.error('选择图片失败:', err);
-        uni.showToast({
-          title: '选择图片失败',
-          icon: 'none'
-        });
-      }
+  async function chooseAvatar() {
+    return new Promise<void>((resolve, reject) => {
+      uni.chooseImage({
+        count: 1,
+        sizeType: ['compressed'],
+        sourceType: ['album', 'camera'],
+        success: async (res) => {
+          const tempFilePath = res.tempFilePaths[0];
+          
+          // 开始上传
+          uploading.value = true;
+          uni.showLoading({
+            title: '上传中...'
+          });
+          
+          try {
+            const uploadResult = await uploadImage(tempFilePath);
+            form.avatar = uploadResult.url;
+            
+            uni.hideLoading();
+            uni.showToast({
+              title: '头像上传成功',
+              icon: 'success'
+            });
+            resolve();
+          } catch (error) {
+            console.error('上传头像失败:', error);
+            uni.hideLoading();
+            uni.showToast({
+              title: '头像上传失败',
+              icon: 'none'
+            });
+            reject(error);
+          } finally {
+            uploading.value = false;
+          }
+        },
+        fail: (err) => {
+          console.error('选择图片失败:', err);
+          uni.showToast({
+            title: '选择图片失败',
+            icon: 'none'
+          });
+          reject(err);
+        }
+      });
     });
   }
 
@@ -127,6 +159,7 @@ export function usePersonal() {
     form,
     saving,
     loading,
+    uploading,
     
     // 方法
     chooseAvatar,

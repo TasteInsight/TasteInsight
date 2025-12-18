@@ -13,16 +13,22 @@
             :src="form.avatar || '/static/images/default-avatar.png'" 
             class="w-24 h-24 rounded-full border-4 border-purple-50"
             mode="aspectFill"
-            @click="chooseAvatar"
+            :class="{ 'opacity-50': uploading }"
+            @click="!uploading && chooseAvatar()"
           />
            <view 
             class="absolute bottom-0 right-0 bg-ts-purple rounded-full p-1.5 border-2 border-white shadow-sm"
-            @click="chooseAvatar"
+            :class="{ 'opacity-50': uploading }"
+            @click="!uploading && chooseAvatar()"
            >
              <text class="iconfont icon-camera text-white" style="font-size:14px; line-height:1"></text>
            </view>
+           <!-- 上传中遮罩 -->
+           <view v-if="uploading" class="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
+             <text class="text-white text-sm">上传中...</text>
+           </view>
         </view>
-        <text class="text-gray-500 text-sm mb-2">点击图片或相机图标更换头像</text>
+        <text class="text-gray-500 text-sm mb-2">{{ uploading ? '正在上传头像...' : '点击图片或相机图标更换头像' }}</text>
       </view>
     </view>
 
@@ -57,5 +63,5 @@
 import { usePersonal } from '../composables/use-personal';
 import { PersonalSettingsSkeleton } from '@/components/skeleton';
 
-const { form, saving, loading, chooseAvatar, handleSave } = usePersonal();
+const { form, saving, loading, uploading, chooseAvatar, handleSave } = usePersonal();
 </script>
