@@ -12,7 +12,7 @@
 
     <!-- 空状态 -->
     <view v-if="!loading && dishes.length === 0" class="flex flex-col items-center justify-center py-20">
-      <text class="iconify text-gray-300 mb-4" data-icon="mdi:heart-outline" data-width="64"></text>
+      <text class="iconfont icon-heart-outline text-gray-300 mb-4" data-width="64"></text>
       <text class="text-gray-500">暂无收藏</text>
     </view>
 

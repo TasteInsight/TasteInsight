@@ -1,5 +1,40 @@
 <template>
   <view class="min-h-screen bg-gray-50 pb-safe relative">
+    <!-- #ifdef MP-WEIXIN -->
+    <!-- 微信小程序专用：统一在父组件管理 page-container 拦截返回事件 -->
+    <!-- 详情弹窗 -->
+    <page-container 
+      v-if="showDetailDialog"
+      :show="showDetailDialog" 
+      :overlay="false" 
+      :duration="300"
+      custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
+      @leave="closeDetailDialog" 
+    />
+
+    <!-- 编辑弹窗 -->
+    <page-container 
+      v-if="showEditDialog"
+      :show="showEditDialog" 
+      :overlay="false" 
+      :duration="300"
+      custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
+      @leave="closeEditDialog" 
+    />
+
+    <!-- 新建弹窗 -->
+    <page-container 
+      v-if="showCreateDialog"
+      :show="showCreateDialog" 
+      :overlay="false" 
+      :duration="300"
+      custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
+      @leave="closeCreateDialog" 
+    />
+
+    
+    <!-- #endif -->
+
     <!-- 骨架屏：首次加载时显示 -->
     <PlanningSkeleton v-if="isInitialLoading" />
 
@@ -85,7 +120,7 @@
         @tap="createNewPlan"
         class="w-14 h-14 bg-ts-purple rounded-full flex items-center justify-center shadow-xl active:bg-purple-600 transition-all duration-200 transform active:scale-95"
       >
-        <text class="text-white text-2xl font-light">+</text>
+        <text class="text-white text-4xl font-light">+</text>
       </view>
     </view>
     </template>
@@ -141,8 +176,9 @@ const isInitialLoading = computed(() => {
 
 // 监听数据加载完成
 import { watch } from 'vue';
-watch([currentPlans, historyPlans], () => {
-  if (currentPlans.value.length > 0 || historyPlans.value.length > 0 || !loading.value) {
+watch(loading, (newLoading, oldLoading) => {
+  // 当 loading 从 true 变为 false 时，表示首次加载完成
+  if (oldLoading === true && newLoading === false) {
     hasLoaded.value = true;
   }
 }, { immediate: true });
@@ -154,30 +190,8 @@ onHide(() => {
   closeCreateDialog();
 });
 
-// 返回键拦截处理
+// 返回键拦截处理（App/H5 端备用）
 onBackPress(() => {
-  // 优先处理编辑对话框中的返回
-  if (showEditDialog.value) {
-    // 如果组件内部处理了返回（例如关闭了子弹窗），则只执行组件内部逻辑
-    if (editDialogRef.value?.handleBackPress?.()) {
-      return true;
-    }
-    // 否则关闭编辑对话框
-    closeEditDialog();
-    return true;
-  }
-  
-  // 处理创建对话框中的返回
-  if (showCreateDialog.value) {
-    // 如果组件内部处理了返回（例如关闭了子弹窗），则只执行组件内部逻辑
-    if (createDialogRef.value?.handleBackPress?.()) {
-      return true;
-    }
-    // 否则关闭创建对话框
-    closeCreateDialog();
-    return true;
-  }
-
   // 关闭详情对话框
   if (showDetailDialog.value) {
     closeDetailDialog();

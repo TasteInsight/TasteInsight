@@ -3,7 +3,7 @@ import {
   CreateCanteenDto,
   WindowDto,
   FloorDto,
-  OpeningHours,
+  FloorOpeningHours,
 } from './create-canteen.dto';
 import { IsArray, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -35,7 +35,7 @@ export class UpdateCanteenDto extends PartialType(CreateCanteenDto) {
 
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => OpeningHours)
+  @Type(() => FloorOpeningHours)
   @IsOptional()
-  openingHours?: OpeningHours[];
+  openingHours?: FloorOpeningHours[];
 }

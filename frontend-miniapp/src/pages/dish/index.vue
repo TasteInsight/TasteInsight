@@ -71,7 +71,7 @@
           <view class="flex-1">
             <h1 class="text-xl font-bold text-gray-800">{{ dish.name }}</h1>
             <view class="text-sm text-gray-500 mt-1 flex items-center">
-              <text class="iconify" data-icon="mdi:store"></text>
+              <text class="iconfont icon-store"></text>
               <text class="ml-1">{{ dish.canteenName }} · {{ dish.windowName }}</text>
             </view>
           </view>
@@ -160,13 +160,13 @@
             >
               <image v-if="parentDish.images?.[0]" :src="parentDish.images[0]" class="w-14 h-14 rounded-md object-cover" mode="aspectFill" />
               <view v-else class="w-14 h-14 bg-gray-200 rounded-md flex items-center justify-center">
-                <text class="iconify text-gray-400" data-icon="mdi:food"></text>
+                <text class="iconfont icon-food text-gray-400"></text>
               </view>
               <view class="flex-1 min-w-0">
                 <view class="font-medium text-sm text-gray-800 truncate">{{ parentDish.name }}</view>
                 <view class="text-xs text-red-600 mt-1">¥{{ parentDish.price }}</view>
               </view>
-              <text class="iconify text-gray-400" data-icon="mdi:chevron-right"></text>
+              <text class="iconfont icon-chevronright text-gray-400"></text>
             </view>
           </view>
 
@@ -182,13 +182,13 @@
               >
                 <image v-if="sub.images?.[0]" :src="sub.images[0]" class="w-14 h-14 rounded-md object-cover" mode="aspectFill" />
                 <view v-else class="w-14 h-14 bg-gray-200 rounded-md flex items-center justify-center">
-                  <text class="iconify text-gray-400" data-icon="mdi:food"></text>
+                  <text class="iconfont icon-food text-gray-400"></text>
                 </view>
                 <view class="flex-1 min-w-0">
                   <view class="font-medium text-sm text-gray-800 truncate">{{ sub.name }}</view>
                   <view class="text-xs text-red-600 mt-1">¥{{ sub.price }}</view>
                 </view>
-                <text class="iconify text-gray-400" data-icon="mdi:chevron-right"></text>
+                <text class="iconfont icon-chevronright text-gray-400"></text>
               </view>
             </view>
             <!-- 展开/收起子菜品按钮 -->
@@ -240,6 +240,18 @@
         />
       </view>
     </view>
+
+    <!-- #ifdef MP-WEIXIN -->
+    <!-- 微信小程序：使用 page-container 拦截返回，确保返回时关闭弹窗而不是返回上一页 -->
+    <page-container
+      v-if="isReviewFormVisible"
+      :show="isReviewFormVisible"
+      :overlay="false"
+      :duration="300"
+      custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
+      @leave="hideReviewForm"
+    />
+    <!-- #endif -->
 
     <!-- 评价表单弹窗 -->
     <ReviewForm

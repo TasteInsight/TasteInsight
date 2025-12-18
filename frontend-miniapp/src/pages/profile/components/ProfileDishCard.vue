@@ -44,7 +44,7 @@
 
     <!-- Favorite Button (Absolute Positioned) -->
     <view v-if="showFavorite" class="absolute top-4 right-2 p-2" @click.stop="$emit('unfavorite')">
-      <text class="iconify text-red-500" data-icon="mdi:heart" data-width="20"></text>
+      <text class="iconfont icon-heart-outline text-red-500" data-width="20"></text>
     </view>
   </view>
 </template>

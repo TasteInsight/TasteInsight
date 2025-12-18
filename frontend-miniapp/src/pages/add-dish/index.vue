@@ -178,7 +178,7 @@
             class="w-20 h-20 bg-gray-100 rounded-lg flex flex-col items-center justify-center text-gray-400"
             @click="chooseImages"
           >
-            <text class="iconify text-2xl" data-icon="mdi:plus"></text>
+            <text class="iconfont icon-plus text-2xl"></text>
             <span class="text-xs mt-1">添加图片</span>
           </button>
         </div>

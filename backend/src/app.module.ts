@@ -27,6 +27,7 @@ import { UploadModule } from './upload/upload.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { BullModule } from '@nestjs/bullmq';
 import { DishSyncQueueModule } from './dish-sync-queue';
+import { DishReviewStatsQueueModule } from './dish-review-stats-queue';
 import { join } from 'path';
 
 @Module({
@@ -40,11 +41,13 @@ import { join } from 'path';
         connection: {
           host: configService.get('REDIS_HOST', 'localhost'),
           port: configService.get('REDIS_PORT', 6379),
+          password: configService.get('REDIS_PASSWORD'),
         },
       }),
       inject: [ConfigService],
     }),
     DishSyncQueueModule,
+    DishReviewStatsQueueModule,
     AuthModule,
     DishesModule,
     CanteensModule,

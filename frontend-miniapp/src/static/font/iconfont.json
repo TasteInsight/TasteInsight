@@ -1,0 +1,184 @@
+{
+  "id": "5089498",
+  "name": "TasteInsight",
+  "font_family": "iconfont",
+  "css_prefix_text": "icon-",
+  "description": "",
+  "glyphs": [
+    {
+      "icon_id": "142048",
+      "name": "star-outline",
+      "font_class": "staroutline",
+      "unicode": "e8bc",
+      "unicode_decimal": 59580
+    },
+    {
+      "icon_id": "309604",
+      "name": "chevron-right",
+      "font_class": "chevronright",
+      "unicode": "e61f",
+      "unicode_decimal": 58911
+    },
+    {
+      "icon_id": "392063",
+      "name": "STAR",
+      "font_class": "star",
+      "unicode": "e658",
+      "unicode_decimal": 58968
+    },
+    {
+      "icon_id": "702966",
+      "name": "information-outline",
+      "font_class": "informationoutline",
+      "unicode": "e8f0",
+      "unicode_decimal": 59632
+    },
+    {
+      "icon_id": "1433690",
+      "name": "cog",
+      "font_class": "cog",
+      "unicode": "e627",
+      "unicode_decimal": 58919
+    },
+    {
+      "icon_id": "1444298",
+      "name": "comment-outline",
+      "font_class": "comment-outline",
+      "unicode": "e6ca",
+      "unicode_decimal": 59082
+    },
+    {
+      "icon_id": "1444870",
+      "name": "magnify",
+      "font_class": "magnify",
+      "unicode": "e7e0",
+      "unicode_decimal": 59360
+    },
+    {
+      "icon_id": "2261659",
+      "name": "历史",
+      "font_class": "history",
+      "unicode": "e81d",
+      "unicode_decimal": 59421
+    },
+    {
+      "icon_id": "6151293",
+      "name": "plus",
+      "font_class": "plus",
+      "unicode": "e829",
+      "unicode_decimal": 59433
+    },
+    {
+      "icon_id": "7008902",
+      "name": "camera",
+      "font_class": "camera",
+      "unicode": "e6e7",
+      "unicode_decimal": 59111
+    },
+    {
+      "icon_id": "7945725",
+      "name": "heart-outline",
+      "font_class": "heart-outline",
+      "unicode": "e620",
+      "unicode_decimal": 58912
+    },
+    {
+      "icon_id": "10265410",
+      "name": "food",
+      "font_class": "food",
+      "unicode": "e615",
+      "unicode_decimal": 58901
+    },
+    {
+      "icon_id": "16439702",
+      "name": "shield-lock-outline",
+      "font_class": "shield-lock-outline",
+      "unicode": "e7d7",
+      "unicode_decimal": 59351
+    },
+    {
+      "icon_id": "16756496",
+      "name": "comment-text-outline",
+      "font_class": "comment-text-outline",
+      "unicode": "f682",
+      "unicode_decimal": 63106
+    },
+    {
+      "icon_id": "19418349",
+      "name": "chevron-down",
+      "font_class": "chevron-down",
+      "unicode": "e71b",
+      "unicode_decimal": 59163
+    },
+    {
+      "icon_id": "26344271",
+      "name": "thumb-up-outline",
+      "font_class": "thumb-up-outline",
+      "unicode": "e9a4",
+      "unicode_decimal": 59812
+    },
+    {
+      "icon_id": "29679042",
+      "name": "thumb-down-outline",
+      "font_class": "thumb-down-outline",
+      "unicode": "e916",
+      "unicode_decimal": 59670
+    },
+    {
+      "icon_id": "40924783",
+      "name": "cog-outline",
+      "font_class": "cog-outline",
+      "unicode": "e60c",
+      "unicode_decimal": 58892
+    },
+    {
+      "icon_id": "43242734",
+      "name": "window-open-variant",
+      "font_class": "window-open-variant",
+      "unicode": "f16b",
+      "unicode_decimal": 61803
+    },
+    {
+      "icon_id": "44043908",
+      "name": "store",
+      "font_class": "store",
+      "unicode": "e61d",
+      "unicode_decimal": 58909
+    },
+    {
+      "icon_id": "44044401",
+      "name": "logout",
+      "font_class": "logout",
+      "unicode": "e651",
+      "unicode_decimal": 58961
+    },
+    {
+      "icon_id": "701705",
+      "name": "account",
+      "font_class": "account",
+      "unicode": "e604",
+      "unicode_decimal": 58884
+    },
+    {
+      "icon_id": "8474366",
+      "name": "send",
+      "font_class": "send",
+      "unicode": "e6d5",
+      "unicode_decimal": 59093
+    },
+    {
+      "icon_id": "18542393",
+      "name": "delete",
+      "font_class": "delete",
+      "unicode": "e614",
+      "unicode_decimal": 58900
+    },
+    {
+      "icon_id": "44063168",
+      "name": "edit",
+      "font_class": "edit",
+      "unicode": "e9da",
+      "unicode_decimal": 59866
+    }
+  ]
+}

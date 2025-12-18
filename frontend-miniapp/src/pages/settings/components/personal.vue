@@ -19,7 +19,7 @@
             class="absolute bottom-0 right-0 bg-ts-purple rounded-full p-1.5 border-2 border-white shadow-sm"
             @click="chooseAvatar"
            >
-             <text class="iconify text-white" data-icon="mdi:camera" data-width="14"></text>
+             <text class="iconfont icon-camera text-white" style="font-size:14px; line-height:1"></text>
            </view>
         </view>
         <text class="text-gray-500 text-sm mb-2">点击图片或相机图标更换头像</text>

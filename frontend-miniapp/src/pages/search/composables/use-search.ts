@@ -1,7 +1,6 @@
 import { ref, computed } from 'vue';
-import { getCanteenList } from '@/api/modules/canteen';
 import { getDishes } from '@/api/modules/dish';
-import type { Canteen, Window, Dish, GetDishesRequest } from '@/types/api';
+import type { Canteen, Window, Dish } from '@/types/api';
 
 /**
  * 搜索结果类型
@@ -14,11 +13,11 @@ export interface SearchResults {
 
 /**
  * 搜索逻辑 Composable
- * 优先级：食堂名称 > 窗口名称 > 菜品名字 > 菜品tag
  * 
- * 注意：当前实现同时兼容 Mock 数据和真实接口
- * - Mock 模式：前端过滤确保结果准确
- * - 真实接口：依赖后端搜索，前端过滤作为保险
+ * 搜索逻辑完全由后端接管：
+ * 1. 调用 getDishes 接口，传入 keyword
+ * 2. 后端会在 name, description, tags, canteen, window 中进行搜索
+ * 3. 前端只负责展示结果
  */
 export function useSearch() {
   const keyword = ref('');
@@ -43,20 +42,6 @@ export function useSearch() {
   });
 
   /**
-   * 前端过滤 - 确保搜索结果准确性
-   * 无论后端返回什么，都在前端做一次过滤保证结果匹配搜索词
-   */
-  const filterByKeyword = <T extends { name: string }>(
-    items: T[],
-    searchTerm: string
-  ): T[] => {
-    if (!searchTerm) return items;
-    return items.filter(item => 
-      item.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  };
-
-  /**
    * 执行搜索
    */
   const search = async () => {
@@ -75,92 +60,28 @@ export function useSearch() {
 
     try {
       const searchTerm = keyword.value.trim();
-      const searchTermLower = searchTerm.toLowerCase();
       
-      // 并行请求食堂列表和菜品列表，提高搜索效率
-      const [canteenResponse, dishResponse] = await Promise.all([
-        // 获取食堂列表（未来可改为带 keyword 参数的搜索接口）
-        getCanteenList({ page: 1, pageSize: 100 }),
-        // 搜索菜品（后端支持 keyword 搜索）
-        getDishes({
-          filter: {},
-          search: {
-            keyword: searchTerm,
-            fields: ['name'],
-          },
-          sort: {},
-          pagination: {
-            page: 1,
-            pageSize: 50,
-          },
-        } as GetDishesRequest),
-      ]);
+      // 调用后端搜索接口
+      // 不传入 fields，后端默认在 name, description, tags, canteen, window 中搜索
+      const response = await getDishes({
+        filter: {},
+        isSuggestion: false,
+        search: {
+          keyword: searchTerm,
+        },
+        sort: {},
+        pagination: {
+          page: 1,
+          pageSize: 50,
+        },
+      });
 
-      const matchedCanteens: Canteen[] = [];
-      const matchedWindows: (Window & { canteenId: string; canteenName: string })[] = [];
-      let matchedDishes: Dish[] = [];
-
-      // 1. 处理食堂和窗口搜索结果
-      if (canteenResponse.code === 200 && canteenResponse.data) {
-        for (const canteen of canteenResponse.data.items) {
-          // 匹配食堂名称
-          if (canteen.name.toLowerCase().includes(searchTermLower)) {
-            matchedCanteens.push(canteen);
-          }
-          
-          // 匹配窗口名称
-          if (canteen.windows) {
-            for (const window of canteen.windows) {
-              if (window.name.toLowerCase().includes(searchTermLower)) {
-                matchedWindows.push({
-                  ...window,
-                  canteenId: canteen.id,
-                  canteenName: canteen.name,
-                });
-              }
-            }
-          }
-        }
+      if (response.code === 200 && response.data) {
+        searchResults.value.dishes = response.data.items;
+        // 目前后端接口只返回菜品，暂不处理食堂和窗口的独立搜索结果
+      } else {
+        error.value = response.message || '搜索失败';
       }
-
-      // 2. 处理菜品搜索结果
-      if (dishResponse.code === 200 && dishResponse.data) {
-        // 前端过滤确保结果准确（兼容 Mock 和真实接口）
-        matchedDishes = dishResponse.data.items.filter(dish => 
-          dish.name.toLowerCase().includes(searchTermLower)
-        );
-      }
-
-      // 3. 如果菜品名称没找到，尝试按标签搜索
-      if (matchedDishes.length === 0 && matchedCanteens.length === 0 && matchedWindows.length === 0) {
-        const tagResponse = await getDishes({
-          filter: {
-            tag: [searchTerm],
-          },
-          search: {
-            keyword: '',
-          },
-          sort: {},
-          pagination: {
-            page: 1,
-            pageSize: 50,
-          },
-        } as GetDishesRequest);
-
-        if (tagResponse.code === 200 && tagResponse.data) {
-          // 前端过滤确保标签匹配
-          matchedDishes = tagResponse.data.items.filter(dish =>
-            dish.tags?.some(tag => tag.toLowerCase().includes(searchTermLower))
-          );
-        }
-      }
-
-      searchResults.value = {
-        canteens: matchedCanteens,
-        windows: matchedWindows,
-        dishes: matchedDishes,
-      };
-
     } catch (err: any) {
       console.error('搜索失败:', err);
       error.value = err.message || '搜索失败，请稍后重试';

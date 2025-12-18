@@ -20,7 +20,11 @@
                   <select
                     v-model="formData.canteenId"
                     @change="onCanteenChange"
+                    @input="errors.canteenId = ''"
                     class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                    :class="{
+                      'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.canteenId,
+                    }"
                     required
                   >
                     <option value="" disabled>选择食堂</option>
@@ -28,6 +32,10 @@
                       {{ canteen.name }}
                     </option>
                   </select>
+                  <p v-if="errors.canteenId" class="mt-1 text-xs text-red-500 flex items-center">
+                    <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                    {{ errors.canteenId }}
+                  </p>
                 </div>
                 <div>
                   <label class="block text-sm text-gray-600 mb-1">食堂楼层</label>
@@ -53,7 +61,11 @@
                   <select
                     v-model="formData.windowId"
                     @change="onWindowChange"
+                    @input="errors.windowId = ''"
                     class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                    :class="{
+                      'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.windowId,
+                    }"
                     :disabled="!formData.canteenId"
                     required
                   >
@@ -62,6 +74,10 @@
                       {{ window.name }}
                     </option>
                   </select>
+                  <p v-if="errors.windowId" class="mt-1 text-xs text-red-500 flex items-center">
+                    <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                    {{ errors.windowId }}
+                  </p>
                 </div>
                 <div>
                   <label class="block text-sm text-gray-600 mb-1">窗口编号</label>
@@ -84,9 +100,17 @@
               <input
                 type="text"
                 v-model="formData.name"
+                @input="errors.name = ''"
                 class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                :class="{
+                  'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.name,
+                }"
                 placeholder="例如：水煮肉片"
               />
+              <p v-if="errors.name" class="mt-1 text-xs text-red-500 flex items-center">
+                <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                {{ errors.name }}
+              </p>
             </div>
 
             <!-- 菜品价格 -->
@@ -95,12 +119,20 @@
               <input
                 type="number"
                 v-model.number="formData.price"
+                @input="errors.price = ''"
                 class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                :class="{
+                  'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.price,
+                }"
                 placeholder="例如：15.00（默认为0）"
                 step="0.01"
                 min="0"
               />
-              <p class="mt-1 text-sm text-gray-500">如不填写，默认为0</p>
+              <p v-if="errors.price" class="mt-1 text-xs text-red-500 flex items-center">
+                <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                {{ errors.price }}
+              </p>
+              <p v-else class="mt-1 text-sm text-gray-500">如不填写，默认为0</p>
             </div>
 
             <!-- 菜品描述 -->
@@ -555,6 +587,15 @@ export default {
     const canteens = ref([])
     const windows = ref([])
 
+    // 表单错误状态
+    const errors = reactive({
+      name: '',
+      canteenId: '',
+      windowId: '',
+      price: '',
+      subItemPrice: '',
+    })
+
     const formData = reactive({
       id: '',
       canteenId: '',
@@ -919,10 +960,29 @@ export default {
     }
 
     const submitForm = async () => {
+      // 清除之前的错误
+      errors.name = ''
+      errors.canteenId = ''
+      errors.windowId = ''
+      errors.price = ''
+      errors.subItemPrice = ''
+      
       // 表单验证
-      if (!formData.name || !formData.canteenId || !formData.windowId) {
-        alert('请填写必填字段：菜品名称、食堂名称、窗口名称')
-        return
+      let hasError = false
+      
+      if (!formData.name || !formData.name.trim()) {
+        errors.name = '请输入菜品名称'
+        hasError = true
+      }
+      
+      if (!formData.canteenId) {
+        errors.canteenId = '请选择食堂'
+        hasError = true
+      }
+      
+      if (!formData.windowId) {
+        errors.windowId = '请选择窗口'
+        hasError = true
       }
 
       // 验证价格：必须为数字，默认为0
@@ -931,8 +991,8 @@ export default {
       if (formData.price !== null && formData.price !== undefined && formData.price !== '') {
         dishPrice = parseFloat(formData.price)
         if (isNaN(dishPrice) || dishPrice < 0) {
-          alert('价格必须为有效的数字（大于等于0）')
-          return
+          errors.price = '价格必须为有效的数字（大于等于0）'
+          hasError = true
         }
       } else {
         // 如果没有直接输入价格，检查子项
@@ -940,11 +1000,15 @@ export default {
         if (validSubItems.length > 0) {
           dishPrice = parseFloat(validSubItems[0].price)
           if (isNaN(dishPrice) || dishPrice < 0) {
-            alert('子项价格必须为有效的数字（大于等于0）')
-            return
+            errors.subItemPrice = '子项价格必须为有效的数字（大于等于0）'
+            hasError = true
           }
         }
         // 如果都没有，使用默认值0
+      }
+      
+      if (hasError) {
+        return
       }
 
       if (isSubmitting.value) {
@@ -1120,6 +1184,7 @@ export default {
 
     return {
       formData,
+      errors,
       newTag,
       isLoading,
       isSubmitting,

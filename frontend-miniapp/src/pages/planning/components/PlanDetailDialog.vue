@@ -1,7 +1,7 @@
 <template>
-  <view 
-    v-if="visible" 
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-5" 
+  <view
+    v-if="visible"
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-5"
     @tap="handleClose"
     @touchmove.stop.prevent
   >

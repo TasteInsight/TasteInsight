@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '@/prisma.service';
 import { AdminConfigService } from '@/admin-config/admin-config.service';
 import { ConfigKeys } from '@/admin-config/config-definitions';
+import { DishReviewStatsService } from '@/dish-review-stats-queue';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { ReportReviewDto } from './dto/report-review.dto';
 import {
@@ -23,6 +24,7 @@ export class ReviewsService {
   constructor(
     private prisma: PrismaService,
     private adminConfigService: AdminConfigService,
+    private dishReviewStatsService: DishReviewStatsService,
     @Optional() private embeddingQueueService?: EmbeddingQueueService,
   ) {}
 
@@ -67,6 +69,12 @@ export class ReviewsService {
         },
       },
     });
+
+    if (autoApprove) {
+      await this.dishReviewStatsService.recomputeDishStats(
+        createReviewDto.dishId,
+      );
+    }
 
     // 异步刷新用户嵌入（评价行为反映用户偏好，会影响推荐）
     if (this.embeddingQueueService) {
@@ -198,6 +206,8 @@ export class ReviewsService {
       where: { id: reviewId },
       data: { deletedAt: new Date() },
     });
+
+    await this.dishReviewStatsService.recomputeDishStats(review.dishId);
 
     return {
       code: 200,

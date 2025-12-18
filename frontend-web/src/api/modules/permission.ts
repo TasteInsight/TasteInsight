@@ -57,11 +57,17 @@ export const permissionApi = {
    * 更新子管理员权限
    * @param adminId 管理员 ID
    * @param permissions 权限列表
+   * @param canteenId 管理范围（食堂ID），null 表示全校
    * @returns 更新结果
    */
-  async updateAdminPermissions(adminId: string, permissions: string[]): Promise<ApiResponse<void>> {
+  async updateAdminPermissions(
+    adminId: string,
+    permissions: string[],
+    canteenId?: string | null,
+  ): Promise<ApiResponse<void>> {
     return await request.put<ApiResponse<void>>(`/admin/admins/${adminId}/permissions`, {
       permissions,
+      ...(canteenId !== undefined ? { canteenId } : {}),
     })
   },
 }

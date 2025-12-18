@@ -147,10 +147,18 @@
                 <input
                   type="text"
                   v-model="formData.name"
+                  @input="errors.name = ''"
                   class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                  :class="{
+                    'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.name,
+                  }"
                   placeholder="例如：紫荆园"
                   required
                 />
+                <p v-if="errors.name" class="mt-1 text-xs text-red-500 flex items-center">
+                  <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                  {{ errors.name }}
+                </p>
               </div>
 
               <!-- 食堂位置 -->
@@ -172,11 +180,19 @@
                 <input
                   type="text"
                   v-model="formData.floorInput"
+                  @input="errors.floorInput = ''"
                   class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                  :class="{
+                    'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.floorInput,
+                  }"
                   placeholder="例如：一层/二层/B1/地下二层（用/分隔）"
                   required
                 />
-                <p class="text-sm text-gray-500 mt-1">
+                <p v-if="errors.floorInput" class="mt-1 text-xs text-red-500 flex items-center">
+                  <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                  {{ errors.floorInput }}
+                </p>
+                <p v-else class="text-sm text-gray-500 mt-1">
                   请输入楼层信息，支持格式：一层、1F、B1、地下二层等，多层用"/"分隔
                 </p>
               </div>
@@ -308,20 +324,22 @@
 
             <!-- 右侧列 -->
             <div>
-              <!-- 营业时间 -->
-              <div class="mb-6">
-                <div class="flex justify-between items-center mb-2">
-                  <label class="block text-gray-700 font-medium">营业时间</label>
-                  <button
-                    type="button"
-                    class="text-tsinghua-purple text-sm flex items-center hover:text-tsinghua-dark"
-                    @click="addOpeningHours"
-                  >
-                    <span class="iconify" data-icon="carbon:add-alt"></span>
-                    添加营业时间
-                  </button>
-                </div>
+            <!-- 营业时间 -->
+            <div class="mb-6">
+              <div class="flex justify-between items-center mb-2">
+                <label class="block text-gray-700 font-medium">营业时间</label>
+                <button
+                  v-if="editingCanteen"
+                  type="button"
+                  class="text-tsinghua-purple text-sm flex items-center hover:text-tsinghua-dark"
+                  @click="addOpeningHours"
+                >
+                  <span class="iconify" data-icon="carbon:add-alt"></span>
+                  添加营业时间
+                </button>
+              </div>
 
+              <div v-if="editingCanteen">
                 <div
                   v-if="formData.openingHours && formData.openingHours.length > 0"
                   class="space-y-3"
@@ -331,7 +349,23 @@
                     :key="index"
                     class="flex items-center gap-3 p-3 border rounded-lg bg-gray-50"
                   >
-                    <div class="flex-1 grid grid-cols-3 gap-3">
+                    <div class="flex-1 grid grid-cols-4 gap-3">
+                      <div>
+                        <label class="block text-xs text-gray-500 mb-1">楼层</label>
+                        <select
+                          v-model="hours.floor"
+                          class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+                        >
+                          <option value="" disabled>请选择楼层</option>
+                          <option
+                            v-for="floor in availableFloors"
+                            :key="floor.value"
+                            :value="floor.value"
+                          >
+                            {{ floor.label }}
+                          </option>
+                        </select>
+                      </div>
                       <div>
                         <label class="block text-xs text-gray-500 mb-1">星期</label>
                         <select
@@ -376,9 +410,24 @@
                   </div>
                 </div>
                 <div v-else class="text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
-                  <p>可以添加多个营业时间段，例如：周一至周五 6:30-22:00</p>
+                  <p>点击"添加营业时间"设置不同楼层的营业时间，例如：一层 周一至周五 6:30-22:00</p>
                 </div>
               </div>
+              <div v-else class="mb-6 bg-blue-50 p-4 rounded-lg border border-blue-100">
+                <div class="flex items-start">
+                  <span
+                    class="iconify text-blue-500 mt-1 mr-2"
+                    data-icon="carbon:information"
+                  ></span>
+                  <div>
+                    <h4 class="font-medium text-blue-800">营业时间管理</h4>
+                    <p class="text-sm text-blue-600 mt-1">
+                      请先填写并保存食堂基本信息（包含楼层信息），保存成功后即可在此处添加和管理营业时间。
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
               <!-- 窗口管理 -->
               <div class="mb-6" v-if="editingCanteen">
@@ -529,6 +578,12 @@ export default {
 
     const windows = ref([]) // 窗口列表
 
+    // 表单错误状态
+    const errors = reactive({
+      name: '',
+      floorInput: '',
+    })
+
     // 过滤后的食堂列表
     const filteredCanteens = computed(() => {
       if (!searchQuery.value) {
@@ -617,13 +672,14 @@ export default {
       }
 
       // 处理营业时间 - 将 API 格式转换为表单格式
-      // API 格式: { dayOfWeek, slots: [{ mealType, openTime, closeTime }], isClosed }
-      // 表单格式: { day, open, close }
+      // API 格式: { dayOfWeek, slots: [{ mealType, openTime, closeTime }], isClosed, floor: { level, name } }
+      // 表单格式: { day, open, close, floor }
       if (canteen.openingHours && Array.isArray(canteen.openingHours)) {
         formData.openingHours = canteen.openingHours.map((h) => ({
           day: h.dayOfWeek || h.day || '每天',
           open: (h.slots && h.slots[0] && h.slots[0].openTime) || h.open || '06:30',
           close: (h.slots && h.slots[0] && h.slots[0].closeTime) || h.close || '22:00',
+          floor: h.floor ? (h.floor.level || h.floor) : '',
         }))
       } else {
         formData.openingHours = []
@@ -721,7 +777,7 @@ export default {
       if (!formData.openingHours) {
         formData.openingHours = []
       }
-      formData.openingHours.push({ day: '每天', open: '06:30', close: '22:00' })
+      formData.openingHours.push({ day: '每天', open: '06:30', close: '22:00', floor: '' })
     }
 
     const removeOpeningHours = (index) => {
@@ -854,19 +910,67 @@ export default {
     }
 
     const submitForm = async () => {
+      // 清除之前的错误
+      errors.name = ''
+      errors.floorInput = ''
+      
       // 表单验证
+      let hasError = false
+      
       if (!formData.name || !formData.name.trim()) {
-        alert('请填写食堂名称')
-        return
+        errors.name = '请填写食堂名称'
+        hasError = true
       }
 
       // 验证楼层输入
       if (!formData.floorInput || !formData.floorInput.trim()) {
-        alert('请填写楼层信息')
+        errors.floorInput = '请填写楼层信息'
+        hasError = true
+      } else {
+        // 解析楼层
+        const floorInputs = formData.floorInput
+          .split('/')
+          .map((s) => s.trim())
+          .filter((s) => s)
+        const parsedFloors = []
+        const seenLevels = new Set()
+
+        for (const floorStr of floorInputs) {
+          const level = parseFloorLevel(floorStr)
+
+          if (level === null) {
+            errors.floorInput = `无法解析楼层信息: "${floorStr}"`
+            hasError = true
+            break
+          }
+
+          if (level > 5 || level < -2) {
+            errors.floorInput = `楼层范围必须在 -2 到 5 之间，"${floorStr}" 解析为 ${level} 层，超出范围`
+            hasError = true
+            break
+          }
+
+          if (seenLevels.has(level)) {
+            // 允许同名楼层？一般不允许不同名字映射到同一层级，或者允许但提示
+          }
+          seenLevels.add(level)
+          parsedFloors.push({
+            level: level.toString(), // 转换为字符串存储
+            name: floorStr,
+          })
+        }
+
+        if (parsedFloors.length === 0 && !hasError) {
+          errors.floorInput = '请至少输入一个有效的楼层'
+          hasError = true
+        }
+      }
+      
+      if (hasError) {
         return
       }
-
-      // 解析楼层
+      
+      // 重新解析楼层（如果验证通过）
       const floorInputs = formData.floorInput
         .split('/')
         .map((s) => s.trim())
@@ -876,30 +980,13 @@ export default {
 
       for (const floorStr of floorInputs) {
         const level = parseFloorLevel(floorStr)
-
-        if (level === null) {
-          alert(`无法解析楼层信息: "${floorStr}"`)
-          return
+        if (level !== null && level <= 5 && level >= -2) {
+          seenLevels.add(level)
+          parsedFloors.push({
+            level: level.toString(),
+            name: floorStr,
+          })
         }
-
-        if (level > 5 || level < -2) {
-          alert(`楼层范围必须在 -2 到 5 之间，"${floorStr}" 解析为 ${level} 层，超出范围`)
-          return
-        }
-
-        if (seenLevels.has(level)) {
-          // 允许同名楼层？一般不允许不同名字映射到同一层级，或者允许但提示
-        }
-        seenLevels.add(level)
-        parsedFloors.push({
-          level: level.toString(), // 转换为字符串存储
-          name: floorStr,
-        })
-      }
-
-      if (parsedFloors.length === 0) {
-        alert('请至少输入一个有效的楼层')
-        return
       }
 
       if (editingCanteen.value) {
@@ -915,6 +1002,16 @@ export default {
           if (!floorInfo) {
             alert(`窗口"${window.name}"的楼层信息无效，请检查`)
             return
+          }
+        }
+
+        // 验证营业时间楼层
+        if (formData.openingHours && formData.openingHours.length > 0) {
+          for (const hours of formData.openingHours) {
+            if (!hours.floor) {
+              alert(`请为营业时间(${hours.day})选择楼层`)
+              return
+            }
           }
         }
       }
@@ -992,17 +1089,21 @@ export default {
           images: imageUrls.length > 0 ? imageUrls : [], // 必须是数组
           openingHours:
             formData.openingHours && formData.openingHours.length > 0
-              ? formData.openingHours.map((hours) => ({
-                  dayOfWeek: hours.day,
-                  slots: [
-                    {
-                      mealType: 'default', // 添加必需的 mealType 字段
-                      openTime: hours.open,
-                      closeTime: hours.close,
-                    },
-                  ],
-                  isClosed: false,
-                }))
+              ? formData.openingHours.map((hours) => {
+                  const floorInfo = resolveWindowFloor(hours.floor)
+                  return {
+                    dayOfWeek: hours.day,
+                    floor: floorInfo,
+                    slots: [
+                      {
+                        mealType: 'default', // 添加必需的 mealType 字段
+                        openTime: hours.open,
+                        closeTime: hours.close,
+                      },
+                    ],
+                    isClosed: false,
+                  }
+                })
               : [], // 必须是数组
           floors: parsedFloors,
           ...(editingCanteen.value ? {} : { windows: windowsData }),
@@ -1099,6 +1200,7 @@ export default {
       searchQuery,
       filteredCanteens,
       formData,
+      errors,
       windows,
       isSubmitting,
       isLoading,

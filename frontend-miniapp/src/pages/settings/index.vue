@@ -17,7 +17,7 @@
           @click="navigateTo('/pages/settings/components/personal')"
         >
           <text class="text-base font-medium text-gray-800">个人信息设置</text>
-          <text class="iconify text-purple-300" data-icon="mdi:chevron-right" data-width="24"></text>
+          <text class="iconfont icon-chevronright text-purple-300" data-width="24"></text>
           <view class="absolute bottom-0 left-4 right-4 h-[1px] bg-gray-200"></view>
         </view>
 
@@ -27,7 +27,7 @@
           @click="navigateTo('/pages/settings/components/allergens')"
         >
           <text class="text-base font-medium text-gray-800">过敏原设置</text>
-          <text class="iconify text-purple-300" data-icon="mdi:chevron-right" data-width="24"></text>
+          <text class="iconfont icon-chevronright text-purple-300" data-width="24"></text>
           <view class="absolute bottom-0 left-4 right-4 h-[1px] bg-gray-200"></view>
         </view>
 
@@ -37,7 +37,7 @@
           @click="navigateTo('/pages/settings/components/preferences')"
         >
           <text class="text-base font-medium text-gray-800">偏好设置</text>
-          <text class="iconify text-purple-300" data-icon="mdi:chevron-right" data-width="24"></text>
+          <text class="iconfont icon-chevronright text-purple-300" data-width="24"></text>
         </view>
       </view>
 
@@ -49,7 +49,7 @@
           @click="navigateTo('/pages/settings/components/display')"
         >
           <text class="text-base font-medium text-gray-800">显示设置</text>
-          <text class="iconify text-purple-300" data-icon="mdi:chevron-right" data-width="24"></text>
+          <text class="iconfont icon-chevronright text-purple-300" data-width="24"></text>
           <view class="absolute bottom-0 left-4 right-4 h-[1px] bg-gray-200"></view>
         </view>
 
@@ -59,7 +59,7 @@
           @click="navigateTo('/pages/settings/components/notifications')"
         >
           <text class="text-base font-medium text-gray-800">通知设置</text>
-          <text class="iconify text-purple-300" data-icon="mdi:chevron-right" data-width="24"></text>
+          <text class="iconfont icon-chevronright text-purple-300" data-width="24"></text>
         </view>
       </view>
 

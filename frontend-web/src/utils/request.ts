@@ -95,8 +95,9 @@ service.interceptors.response.use(
 
       // 401 未授权 - 尝试刷新 token
       // 排除登录接口，登录接口的 401 是账号密码错误，不需要刷新 token
-      // 使用正则匹配 /auth/admin/login 或 /auth/wechat/login
-      const isLoginRequest = /\/auth\/(admin|wechat)\/login$/.test(originalRequest.url || '')
+      // 使用正则匹配包含 /auth/admin/login 或 /auth/wechat/login 的 URL
+      const requestUrl = originalRequest.url || ''
+      const isLoginRequest = /\/auth\/(admin|wechat)\/login/.test(requestUrl)
 
       if (status === 401 && !originalRequest._retry && !isLoginRequest) {
         if (isRefreshing) {
@@ -201,6 +202,11 @@ service.interceptors.response.use(
       // 403 无权限
       if (status === 403) {
         return Promise.reject(new Error('无权限访问该资源'))
+      }
+
+      // 登录接口的 401 错误，返回明确的错误提示
+      if (status === 401 && isLoginRequest) {
+        return Promise.reject(new Error('用户名或密码错误'))
       }
 
       // 返回错误信息

@@ -5,9 +5,10 @@ import { AdminReportsController } from './admin-reports.controller';
 import { AdminReportsService } from './admin-reports.service';
 import { PrismaService } from '@/prisma.service';
 import { PermissionsGuard } from '@/auth/guards/permissions.guard';
+import { DishReviewStatsQueueModule } from '@/dish-review-stats-queue';
 
 @Module({
-  imports: [JwtModule.register({}), ConfigModule],
+  imports: [JwtModule.register({}), ConfigModule, DishReviewStatsQueueModule],
   controllers: [AdminReportsController],
   providers: [AdminReportsService, PrismaService, PermissionsGuard],
 })

@@ -216,6 +216,68 @@ export interface GetDishesParams extends PaginationParams {
   keyword?: string
 }
 
+
+// ==================== 批量导入相关类型 ====================
+
+/**
+ * 批量解析后的单条菜品数据（用于预览和确认）
+ */
+export interface BatchParsedDish {
+  // 基础信息
+  tempId: string          // 前端生成的临时ID，用于列表渲染
+  name: string            // 菜品名
+  description?: string    // 菜品描述
+  price: number           // 价格（数字部分）
+  priceUnit?: string      // 价格单位（如"元"、"元/份"、"元/两"、"元/斤"）
+  tags?: string[]         // tags
+  
+  // 位置信息
+  canteenName: string     // 食堂
+  floorName?: string      // 楼层
+  windowName: string      // 窗口
+  windowNumber?: string   // 窗口编号
+  
+  // 供应信息
+  supplyTime?: string     // 供应时间 (对应 Excel 原始文本，如 "2023-01-01 至 2023-12-31")
+  supplyPeriod?: string[] // 供应时段 (如 ["早餐", "午餐"])
+  
+  // 子项信息
+  subDishNames?: string[] // 菜品子项名 (用于后端查找或创建子菜品)
+  
+  // 解析状态
+  status: 'valid' | 'invalid' | 'warning'
+  message?: string        // 错误或警告信息 (如 "窗口不存在，将自动创建")
+  
+  // 原始数据 (可选，用于调试或回显)
+  rawData?: any
+}
+
+/**
+ * 批量解析响应
+ */
+export interface BatchParseResponse {
+  items: BatchParsedDish[]
+  total: number
+  validCount: number
+  invalidCount: number
+}
+
+/**
+ * 批量确认导入请求
+ */
+export interface BatchConfirmRequest {
+  dishes: BatchParsedDish[] // 仅提交状态为 valid 或 warning 的数据
+}
+
+/**
+ * 批量确认响应
+ */
+export interface BatchConfirmResponse {
+  successCount: number
+  failCount: number
+  errors?: Array<{ index: number; message: string; type?: 'validation' | 'permission' | 'unknown' }>
+}
+
 // ==================== 食堂相关类型 ====================
 
 /**
@@ -267,10 +329,15 @@ export interface TimeSlot {
 /**
  * 营业时间
  */
-export interface OpeningHours {
+export interface DaliyOpeningHours {
   dayOfWeek: string
   slots: TimeSlot[]
   isClosed: boolean
+}
+
+export class FloorOpeningHours {
+  floorLevel: string; // 如“1”，"2"。如果为"default"或空，则为通用配置
+schedule: DailyopeningHours[];
 }
 
 /**
@@ -293,7 +360,7 @@ export interface CanteenUpdateRequest {
   position?: string
   description?: string
   images?: string[]
-  openingHours?: OpeningHours[]
+  openingHours?: FloorOpeningHours[]
   floors?: Floor[]
 }
 
@@ -332,6 +399,7 @@ export interface Admin {
   username: string
   role: string
   canteenId?: string | null
+  canteenName?: string | null
   createdBy?: string | null
   createdAt: string
 }
@@ -488,6 +556,7 @@ export interface Report {
     userId: string
     userNickname: string
     isDeleted: boolean
+    images?: string[] // 评价图片（仅当targetType为review时存在）
   }
 }
 
@@ -625,3 +694,96 @@ export type CreateAdminData = CreateAdminRequest
  * @deprecated 使用 UpdateAdminPermissionsRequest 替代
  */
 export type UpdateAdminPermissionsData = UpdateAdminPermissionsRequest
+
+// ==================== 配置管理相关类型 ====================
+
+/**
+ * 配置模板
+ */
+export interface ConfigTemplate {
+  id: string
+  key: string
+  defaultValue: string
+  valueType: 'boolean' | 'string' | 'number'
+  description: string | null
+  category: string
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * 配置项
+ */
+export interface ConfigItem {
+  id: string
+  adminConfigId: string
+  templateId: string | null
+  key: string
+  value: string
+  valueType: 'boolean' | 'string' | 'number'
+  description: string | null
+  category: string
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * 管理员配置
+ */
+export interface AdminConfig {
+  id: string
+  canteenId: string | null
+  items: ConfigItem[]
+  createdAt: string
+  updatedAt: string
+}
+
+/**
+ * 有效配置值
+ */
+export interface EffectiveConfigValue {
+  key: string
+  value: string
+  valueType: 'boolean' | 'string' | 'number'
+  source: 'canteen' | 'global' | 'default'
+}
+
+/**
+ * 更新配置请求
+ */
+export interface UpdateConfigRequest {
+  key: string
+  value: string
+}
+
+/**
+ * 获取配置模板列表响应
+ */
+export interface ConfigTemplatesResponse {
+  items: ConfigTemplate[]
+  meta: PaginationMeta
+}
+
+/**
+ * 获取全局配置响应
+ */
+export interface GlobalConfigResponse {
+  config: AdminConfig
+  templates: ConfigTemplate[]
+}
+
+/**
+ * 获取食堂配置响应
+ */
+export interface CanteenConfigResponse {
+  config: AdminConfig
+  globalConfig: AdminConfig
+  templates: ConfigTemplate[]
+}
+
+/**
+ * 获取食堂有效配置响应
+ */
+export interface EffectiveConfigResponse {
+  items: EffectiveConfigValue[]
+}

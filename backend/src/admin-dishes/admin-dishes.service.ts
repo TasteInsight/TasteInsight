@@ -15,7 +15,45 @@ import {
   DishUploadStatus,
 } from './dto/admin-dish.dto';
 import { AdminDishDto } from './dto/admin-dish.dto';
-import { Prisma } from '@prisma/client';
+import { Canteen, Dish, Floor, Prisma, Window } from '@prisma/client';
+import { promises as fs } from 'fs';
+import * as XLSX from 'xlsx';
+import { randomUUID } from 'crypto';
+import {
+  BatchConfirmRequestDto,
+  BatchDishStatus,
+  BatchParsedDishDto,
+} from './dto/admin-dish-batch.dto';
+import { splitToStringArray } from './utils/split-to-string-array.util';
+import type { Express } from 'express';
+import type { Buffer } from 'node:buffer';
+
+type NormalizedExcelRow = {
+  raw: Record<string, any>;
+  canteenName?: string;
+  floorName?: string;
+  windowName?: string;
+  windowNumber?: string;
+  dishName?: string;
+  subDishRaw?: string;
+  priceRaw?: any;
+  supplyTime?: string;
+  supplyPeriodRaw?: string;
+  description?: string;
+  tagsRaw?: string;
+};
+
+type BatchImportCaches = {
+  canteens: Map<string, Canteen>;
+  floors: Map<string, Floor>;
+  windows: Map<string, Window>;
+  parentDishes: Map<string, Dish>;
+};
+
+type PrismaJsonInput =
+  | Prisma.NullableJsonNullValueInput
+  | Prisma.InputJsonValue;
+type BatchErrorType = 'validation' | 'permission' | 'unknown';
 import { EmbeddingService } from '@/recommendation/services/embedding.service';
 import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service';
 
@@ -28,6 +66,41 @@ export class AdminDishesService {
     @Optional() private embeddingService?: EmbeddingService,
     @Optional() private embeddingQueueService?: EmbeddingQueueService,
   ) {}
+
+  private readonly MAX_BATCH_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+  private readonly excelColumnMap: Record<string, keyof NormalizedExcelRow> = {
+    食堂: 'canteenName',
+    楼层: 'floorName',
+    窗口: 'windowName',
+    窗口编号: 'windowNumber',
+    窗口号: 'windowNumber',
+    菜品名: 'dishName',
+    菜品子项: 'subDishRaw',
+    价格: 'priceRaw',
+    供应时间: 'supplyTime',
+    供应时段: 'supplyPeriodRaw',
+    菜品描述: 'description',
+    描述: 'description',
+    tags: 'tagsRaw',
+    Tags: 'tagsRaw',
+  };
+
+  private readonly mealTimeDictionary = new Map<string, string>([
+    ['早餐', 'breakfast'],
+    ['早饭', 'breakfast'],
+    ['午餐', 'lunch'],
+    ['午饭', 'lunch'],
+    ['中餐', 'lunch'],
+    ['晚餐', 'dinner'],
+    ['晚饭', 'dinner'],
+    ['夜宵', 'nightsnack'],
+    ['宵夜', 'nightsnack'],
+    ['breakfast', 'breakfast'],
+    ['lunch', 'lunch'],
+    ['dinner', 'dinner'],
+    ['nightsnack', 'nightsnack'],
+  ]);
 
   // 管理端获取菜品列表
   async getAdminDishes(query: AdminGetDishesDto, adminInfo: any) {
@@ -463,6 +536,219 @@ export class AdminDishesService {
     };
   }
 
+  /**
+   * 批量解析 Excel 文件
+   */
+  async parseBatchExcel(file: Express.Multer.File, adminInfo: any) {
+    if (!file) {
+      throw new BadRequestException('请上传 Excel 文件');
+    }
+
+    if (file.size > this.MAX_BATCH_FILE_SIZE) {
+      throw new BadRequestException('文件大小不能超过 10MB');
+    }
+
+    const limitedCanteen = adminInfo.canteenId
+      ? await this.prisma.canteen.findUnique({
+          where: { id: adminInfo.canteenId },
+        })
+      : null;
+
+    const buffer = await this.readUploadedFile(file);
+    let rows: Record<string, any>[] = [];
+
+    try {
+      const workbook = XLSX.read(buffer, { type: 'buffer' });
+      if (!workbook.SheetNames.length) {
+        throw new Error('no-sheet');
+      }
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+    } catch (error) {
+      throw new BadRequestException('无法解析 Excel 文件，请确认格式正确');
+    }
+
+    if (!rows.length) {
+      throw new BadRequestException('Excel 文件内容为空');
+    }
+
+    const [canteens, floors, windows] = await Promise.all([
+      this.prisma.canteen.findMany(),
+      this.prisma.floor.findMany(),
+      this.prisma.window.findMany(),
+    ]);
+
+    const canteenMap = new Map<string, Canteen>();
+    canteens.forEach((c) => canteenMap.set(this.normalizeName(c.name), c));
+
+    const floorMap = new Map<string, Floor>();
+    floors.forEach((f) => {
+      if (!f.name) return;
+      const key = `${f.canteenId}:${this.normalizeName(f.name)}`;
+      floorMap.set(key, f);
+    });
+
+    const windowMap = new Map<string, Window>();
+    windows.forEach((w) => {
+      const key = `${w.canteenId}:${this.normalizeName(w.name)}`;
+      windowMap.set(key, w);
+    });
+
+    const items: BatchParsedDishDto[] = [];
+
+    for (const row of rows) {
+      const normalized = this.normalizeExcelRow(row);
+      if (this.isRowEmpty(normalized)) {
+        continue;
+      }
+      const item = this.buildParsedDish(
+        normalized,
+        canteenMap,
+        floorMap,
+        windowMap,
+        limitedCanteen,
+      );
+      items.push(item);
+    }
+
+    if (!items.length) {
+      throw new BadRequestException('未发现可解析的数据行');
+    }
+
+    const validCount = items.filter(
+      (item) => item.status === BatchDishStatus.VALID,
+    ).length;
+    const warningCount = items.filter(
+      (item) => item.status === BatchDishStatus.WARNING,
+    ).length;
+    const invalidCount = items.filter(
+      (item) => item.status === BatchDishStatus.INVALID,
+    ).length;
+
+    return {
+      code: 200,
+      message: 'success',
+      data: {
+        total: items.length,
+        validCount,
+        warningCount,
+        invalidCount,
+        items,
+      },
+    };
+  }
+
+  /**
+   * 批量确认导入
+   */
+  async confirmBatchImport(body: BatchConfirmRequestDto, adminInfo: any) {
+    if (!body.dishes || body.dishes.length === 0) {
+      throw new BadRequestException('没有可导入的数据');
+    }
+
+    const limitedCanteen = adminInfo.canteenId
+      ? await this.prisma.canteen.findUnique({
+          where: { id: adminInfo.canteenId },
+        })
+      : null;
+
+    const [existingCanteens, existingFloors, existingWindows] =
+      await Promise.all([
+        this.prisma.canteen.findMany(),
+        this.prisma.floor.findMany(),
+        this.prisma.window.findMany(),
+      ]);
+
+    const caches: BatchImportCaches = {
+      canteens: new Map(),
+      floors: new Map(),
+      windows: new Map(),
+      parentDishes: new Map(),
+    };
+
+    existingCanteens.forEach((c) => {
+      caches.canteens.set(this.normalizeName(c.name), c);
+    });
+
+    existingFloors.forEach((f) => {
+      if (!f.name) return;
+      const key = `${f.canteenId}:${this.normalizeName(f.name)}`;
+      caches.floors.set(key, f);
+    });
+
+    existingWindows.forEach((w) => {
+      const key = `${w.canteenId}:${this.normalizeName(w.name)}`;
+      caches.windows.set(key, w);
+    });
+
+    if (limitedCanteen) {
+      caches.canteens.set(
+        this.normalizeName(limitedCanteen.name),
+        limitedCanteen,
+      );
+    }
+
+    const windowNumberCounters = new Map<string, number>();
+    const errors: Array<{
+      index: number;
+      message: string;
+      type: BatchErrorType;
+    }> = [];
+    let successCount = 0;
+
+    for (let i = 0; i < body.dishes.length; i++) {
+      const item = body.dishes[i];
+
+      if (item.status === BatchDishStatus.INVALID) {
+        errors.push({
+          index: i,
+          message: '数据标记为 invalid，已跳过',
+          type: 'validation',
+        });
+        continue;
+      }
+
+      try {
+        await this.prisma.$transaction(async (tx) => {
+          await this.processSingleBatchItem(
+            tx,
+            item,
+            adminInfo,
+            limitedCanteen,
+            caches,
+            windowNumberCounters,
+          );
+        });
+        successCount += 1;
+      } catch (error) {
+        let type: BatchErrorType = 'unknown';
+        let message = '导入失败';
+
+        if (error instanceof BadRequestException) {
+          type = 'validation';
+          message = error.message;
+        } else if (error instanceof ForbiddenException) {
+          type = 'permission';
+          message = error.message;
+        } else if (error instanceof Error) {
+          message = error.message;
+        }
+
+        errors.push({ index: i, message, type });
+      }
+    }
+
+    return {
+      code: 200,
+      message: 'success',
+      data: {
+        successCount,
+        failCount: errors.length,
+        errors,
+      },
+    };
+  }
+
   private mapToAdminDishDto(dish: any): AdminDishDto {
     return {
       id: dish.id,
@@ -637,6 +923,672 @@ export class AdminDishesService {
         },
       },
     };
+  }
+
+  private async processSingleBatchItem(
+    tx: Prisma.TransactionClient,
+    item: BatchParsedDishDto,
+    adminInfo: any,
+    limitedCanteen: Canteen | null,
+    caches: BatchImportCaches,
+    windowNumberCounters: Map<string, number>,
+  ) {
+    const canteenName = item.canteenName?.trim() || limitedCanteen?.name || '';
+    if (!canteenName) {
+      throw new BadRequestException('食堂名称不能为空');
+    }
+
+    const dishName = item.name?.trim();
+    if (!dishName) {
+      throw new BadRequestException('菜品名称不能为空');
+    }
+
+    const price =
+      typeof item.price === 'number' ? item.price : Number(item.price);
+    if (Number.isNaN(price)) {
+      throw new BadRequestException('价格格式不正确');
+    }
+
+    const priceUnit = item.priceUnit?.trim() || '元';
+    const tags = (item.tags || [])
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0);
+    const subDishNames = (item.subDishNames || [])
+      .map((name) => name.trim())
+      .filter((name) => name.length > 0);
+
+    const canteen = await this.getOrCreateCanteen(
+      tx,
+      caches,
+      canteenName,
+      limitedCanteen,
+    );
+
+    if (adminInfo.canteenId && canteen.id !== adminInfo.canteenId) {
+      throw new ForbiddenException('无权导入其他食堂的数据');
+    }
+
+    const floor = await this.getOrCreateFloor(
+      tx,
+      caches,
+      canteen,
+      item.floorName,
+    );
+    const window = await this.getOrCreateWindow(
+      tx,
+      caches,
+      canteen,
+      floor,
+      item.windowName,
+      item.windowNumber,
+      windowNumberCounters,
+    );
+
+    const mealTimes = this.parseMealTimesFromItem(item);
+    const dateRange = this.parseDateRange(item.supplyTime);
+    const availableDates: PrismaJsonInput | undefined = dateRange
+      ? [{ startDate: dateRange.startDate, endDate: dateRange.endDate }]
+      : undefined;
+    const description = item.description?.trim() || '';
+
+    if (subDishNames.length > 0) {
+      const parentDish = await this.getOrCreateParentDish(
+        tx,
+        caches,
+        dishName,
+        canteen,
+        floor,
+        window,
+        tags,
+        mealTimes,
+        availableDates,
+        description,
+      );
+
+      for (const subDishName of subDishNames) {
+        await this.upsertDish(tx, {
+          name: subDishName,
+          price,
+          priceUnit,
+          description,
+          tags,
+          canteen,
+          floor,
+          window,
+          availableMealTime: mealTimes,
+          availableDates,
+          parentDishId: parentDish.id,
+        });
+      }
+    } else {
+      await this.upsertDish(tx, {
+        name: dishName,
+        price,
+        priceUnit,
+        description,
+        tags,
+        canteen,
+        floor,
+        window,
+        availableMealTime: mealTimes,
+        availableDates,
+        parentDishId: null,
+      });
+    }
+  }
+
+  private async getOrCreateCanteen(
+    tx: Prisma.TransactionClient,
+    caches: BatchImportCaches,
+    canteenName: string,
+    limitedCanteen: Canteen | null,
+  ): Promise<Canteen> {
+    if (limitedCanteen) {
+      const allowedName = this.normalizeName(limitedCanteen.name);
+      const incomingName = this.normalizeName(
+        canteenName || limitedCanteen.name,
+      );
+      if (incomingName && allowedName !== incomingName) {
+        throw new ForbiddenException('导入食堂与您的权限不匹配');
+      }
+      return limitedCanteen;
+    }
+
+    const normalized = this.normalizeName(canteenName);
+    if (!normalized) {
+      throw new BadRequestException('食堂名称不能为空');
+    }
+
+    if (caches.canteens.has(normalized)) {
+      return caches.canteens.get(normalized)!;
+    }
+
+    let canteen = await tx.canteen.findFirst({ where: { name: canteenName } });
+    if (!canteen) {
+      canteen = await tx.canteen.create({
+        data: {
+          name: canteenName,
+          openingHours: {},
+        },
+      });
+    }
+
+    caches.canteens.set(normalized, canteen);
+    return canteen;
+  }
+
+  private async getOrCreateFloor(
+    tx: Prisma.TransactionClient,
+    caches: BatchImportCaches,
+    canteen: Canteen,
+    floorName?: string,
+  ): Promise<Floor | null> {
+    const trimmed = floorName?.trim();
+    if (!trimmed) {
+      return null;
+    }
+
+    const key = `${canteen.id}:${this.normalizeName(trimmed)}`;
+    if (caches.floors.has(key)) {
+      return caches.floors.get(key)!;
+    }
+
+    let floor = await tx.floor.findFirst({
+      where: { canteenId: canteen.id, name: trimmed },
+    });
+
+    if (!floor) {
+      floor = await tx.floor.create({
+        data: {
+          canteenId: canteen.id,
+          name: trimmed,
+          level: this.deriveFloorLevel(trimmed) ?? '1',
+        },
+      });
+    }
+
+    caches.floors.set(key, floor);
+    return floor;
+  }
+
+  private async getOrCreateWindow(
+    tx: Prisma.TransactionClient,
+    caches: BatchImportCaches,
+    canteen: Canteen,
+    floor: Floor | null,
+    windowName: string,
+    windowNumber: string | undefined,
+    counters: Map<string, number>,
+  ): Promise<Window> {
+    const trimmed = windowName?.trim();
+    if (!trimmed) {
+      throw new BadRequestException('窗口名称不能为空');
+    }
+
+    const key = `${canteen.id}:${this.normalizeName(trimmed)}`;
+    if (caches.windows.has(key)) {
+      return caches.windows.get(key)!;
+    }
+
+    let window = await tx.window.findFirst({
+      where: { canteenId: canteen.id, name: trimmed },
+    });
+
+    if (!window) {
+      const number =
+        windowNumber?.trim() ||
+        (await this.generateWindowNumber(tx, canteen.id, counters));
+      window = await tx.window.create({
+        data: {
+          canteenId: canteen.id,
+          floorId: floor?.id,
+          name: trimmed,
+          number,
+        },
+      });
+    }
+
+    caches.windows.set(key, window);
+    return window;
+  }
+
+  private async generateWindowNumber(
+    tx: Prisma.TransactionClient,
+    canteenId: string,
+    counters: Map<string, number>,
+  ): Promise<string> {
+    if (!counters.has(canteenId)) {
+      const existingCount = await tx.window.count({ where: { canteenId } });
+      counters.set(canteenId, existingCount);
+    }
+
+    const next = (counters.get(canteenId) ?? 0) + 1;
+    counters.set(canteenId, next);
+    return `AUTO-${next}`;
+  }
+
+  private async getOrCreateParentDish(
+    tx: Prisma.TransactionClient,
+    caches: BatchImportCaches,
+    parentName: string,
+    canteen: Canteen,
+    floor: Floor | null,
+    window: Window,
+    tags: string[],
+    mealTimes: string[],
+    availableDates?: PrismaJsonInput,
+    description?: string,
+  ): Promise<Dish> {
+    const trimmed = parentName.trim();
+    if (!trimmed) {
+      throw new BadRequestException('父菜品名称不能为空');
+    }
+
+    const key = `${window.id}:${this.normalizeName(trimmed)}`;
+    if (caches.parentDishes.has(key)) {
+      return caches.parentDishes.get(key)!;
+    }
+
+    let parentDish = await tx.dish.findFirst({
+      where: {
+        name: trimmed,
+        windowId: window.id,
+        parentDishId: null,
+      },
+    });
+
+    if (!parentDish) {
+      parentDish = await tx.dish.create({
+        data: {
+          name: trimmed,
+          price: 0,
+          priceUnit: '元',
+          description: description || '',
+          tags,
+          canteenId: canteen.id,
+          canteenName: canteen.name,
+          floorId: floor?.id,
+          floorLevel: floor?.level,
+          floorName: floor?.name,
+          windowId: window.id,
+          windowName: window.name,
+          windowNumber: window.number,
+          availableMealTime: mealTimes,
+          availableDates,
+          status: 'online',
+        },
+      });
+    }
+
+    caches.parentDishes.set(key, parentDish);
+    return parentDish;
+  }
+
+  private async upsertDish(
+    tx: Prisma.TransactionClient,
+    params: {
+      name: string;
+      price: number;
+      priceUnit: string;
+      description: string;
+      tags: string[];
+      canteen: Canteen;
+      floor: Floor | null;
+      window: Window;
+      availableMealTime: string[];
+      availableDates?: PrismaJsonInput;
+      parentDishId: string | null;
+    },
+  ) {
+    const trimmed = params.name.trim();
+    if (!trimmed) {
+      throw new BadRequestException('菜品名称不能为空');
+    }
+
+    const existing = await tx.dish.findFirst({
+      where: {
+        name: trimmed,
+        windowId: params.window.id,
+        parentDishId: params.parentDishId,
+      },
+    });
+
+    if (existing) {
+      await tx.dish.update({
+        where: { id: existing.id },
+        data: {
+          price: params.price,
+          priceUnit: params.priceUnit,
+          description: params.description,
+          tags: params.tags,
+          availableMealTime: params.availableMealTime,
+          availableDates: params.availableDates,
+          windowNumber: params.window.number,
+          floorId: params.floor?.id,
+          floorLevel: params.floor?.level,
+          floorName: params.floor?.name,
+        },
+      });
+      return;
+    }
+
+    await tx.dish.create({
+      data: {
+        name: trimmed,
+        price: params.price,
+        priceUnit: params.priceUnit,
+        description: params.description,
+        tags: params.tags,
+        canteenId: params.canteen.id,
+        canteenName: params.canteen.name,
+        floorId: params.floor?.id,
+        floorLevel: params.floor?.level,
+        floorName: params.floor?.name,
+        windowId: params.window.id,
+        windowName: params.window.name,
+        windowNumber: params.window.number,
+        availableMealTime: params.availableMealTime,
+        availableDates: params.availableDates,
+        parentDishId: params.parentDishId,
+        status: 'online',
+      },
+    });
+  }
+
+  private parseMealTimesFromItem(item: BatchParsedDishDto): string[] {
+    const source =
+      item.supplyPeriod && item.supplyPeriod.length > 0
+        ? item.supplyPeriod
+        : this.extractMealTimesFromText(item.supplyTime);
+
+    const result = new Set<string>();
+    for (const label of source) {
+      const trimmed = label.trim();
+      if (!trimmed) continue;
+      const normalized = trimmed.toLowerCase();
+      const mapped =
+        this.mealTimeDictionary.get(trimmed) ||
+        this.mealTimeDictionary.get(normalized) ||
+        this.mealTimeDictionary.get(this.normalizeName(trimmed));
+      if (mapped) {
+        result.add(mapped);
+      }
+    }
+    return Array.from(result);
+  }
+
+  private extractMealTimesFromText(value?: string): string[] {
+    if (!value) {
+      return [];
+    }
+    const needles = [
+      '早餐',
+      '早饭',
+      '午餐',
+      '午饭',
+      '中餐',
+      '晚餐',
+      '晚饭',
+      '夜宵',
+      '宵夜',
+      'breakfast',
+      'lunch',
+      'dinner',
+      'nightsnack',
+    ];
+    const lowered = value.toLowerCase();
+    const result = new Set<string>();
+    for (const needle of needles) {
+      if (value.includes(needle) || lowered.includes(needle.toLowerCase())) {
+        result.add(needle);
+      }
+    }
+    return Array.from(result);
+  }
+
+  private parsePriceCell(value: any): {
+    price: number;
+    unit: string;
+    error?: string;
+  } {
+    if (typeof value === 'number' && !Number.isNaN(value)) {
+      return { price: value, unit: '元' };
+    }
+
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return { price: 0, unit: '元', error: '价格不能为空' };
+      }
+
+      const regex = /^(\d+(?:\.\d+)?)(?:\s*)(?:元)?(?:\/(.+))?$/;
+      const match = trimmed.match(regex);
+      if (match) {
+        const price = parseFloat(match[1]);
+        if (Number.isNaN(price)) {
+          return { price: 0, unit: '元', error: '价格格式错误' };
+        }
+        const unit = match[2] ? `元/${match[2]}` : '元';
+        return { price, unit };
+      }
+
+      const numeric = parseFloat(trimmed);
+      if (!Number.isNaN(numeric)) {
+        return { price: numeric, unit: '元' };
+      }
+
+      return { price: 0, unit: '元', error: '价格格式错误' };
+    }
+
+    return { price: 0, unit: '元', error: '价格格式错误' };
+  }
+
+  private parseDateRange(
+    value?: string,
+  ): { startDate: string; endDate: string } | null {
+    if (!value) {
+      return null;
+    }
+    const cleaned = value.trim();
+    if (!cleaned) {
+      return null;
+    }
+
+    const parts = cleaned
+      .split(/(?:至|到|to|TO|—|–|-)/)
+      .map((part) => part.trim());
+    if (parts.length !== 2) {
+      return null;
+    }
+
+    const [start, end] = parts;
+    const datePattern = /^\d{4}-\d{1,2}-\d{1,2}$/;
+    if (datePattern.test(start) && datePattern.test(end)) {
+      return { startDate: start, endDate: end };
+    }
+    return null;
+  }
+
+  private deriveFloorLevel(name?: string): string | null {
+    if (!name) {
+      return null;
+    }
+    if (name.includes('地下')) {
+      return '-1';
+    }
+    const digitMatch = name.match(/(-?\d+)/);
+    if (digitMatch) {
+      return digitMatch[1];
+    }
+    const mapping: Record<string, string> = {
+      一: '1',
+      二: '2',
+      三: '3',
+      四: '4',
+      五: '5',
+      六: '6',
+      七: '7',
+      八: '8',
+      九: '9',
+      十: '10',
+    };
+    for (const [key, value] of Object.entries(mapping)) {
+      if (name.includes(key)) {
+        return value;
+      }
+    }
+    return null;
+  }
+
+  private normalizeExcelRow(row: Record<string, any>): NormalizedExcelRow {
+    const normalized: NormalizedExcelRow = { raw: row };
+    Object.entries(row).forEach(([key, value]) => {
+      const trimmedKey = key?.toString().trim();
+      if (!trimmedKey) {
+        return;
+      }
+      const mappedKey = this.excelColumnMap[trimmedKey];
+      if (mappedKey) {
+        (normalized as any)[mappedKey] = value;
+      }
+    });
+    return normalized;
+  }
+
+  private isRowEmpty(row: NormalizedExcelRow): boolean {
+    const keys: Array<keyof NormalizedExcelRow> = [
+      'canteenName',
+      'floorName',
+      'windowName',
+      'windowNumber',
+      'dishName',
+      'subDishRaw',
+      'priceRaw',
+      'supplyTime',
+      'supplyPeriodRaw',
+      'description',
+      'tagsRaw',
+    ];
+    return keys.every((key) => {
+      const value = row[key];
+      return value === undefined || value === null || `${value}`.trim() === '';
+    });
+  }
+
+  private buildParsedDish(
+    row: NormalizedExcelRow,
+    canteenMap: Map<string, Canteen>,
+    floorMap: Map<string, Floor>,
+    windowMap: Map<string, Window>,
+    limitedCanteen: Canteen | null,
+  ): BatchParsedDishDto {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    const canteenName = row.canteenName ? String(row.canteenName).trim() : '';
+    const floorName = row.floorName ? String(row.floorName).trim() : undefined;
+    const windowName = row.windowName ? String(row.windowName).trim() : '';
+    const dishName = row.dishName ? String(row.dishName).trim() : '';
+    const {
+      price,
+      unit,
+      error: priceError,
+    } = this.parsePriceCell(row.priceRaw);
+
+    if (!canteenName) {
+      errors.push('食堂名称不能为空');
+    }
+    if (!windowName) {
+      errors.push('窗口名称不能为空');
+    }
+    if (!dishName) {
+      errors.push('菜品名称不能为空');
+    }
+    if (priceError) {
+      errors.push(priceError);
+    }
+
+    if (limitedCanteen && canteenName) {
+      const restricted = this.normalizeName(limitedCanteen.name);
+      if (restricted !== this.normalizeName(canteenName)) {
+        errors.push('导入食堂与您的权限食堂不一致');
+      }
+    }
+
+    const normalizedCanteen = this.normalizeName(canteenName);
+    const matchedCanteen = normalizedCanteen
+      ? canteenMap.get(normalizedCanteen)
+      : null;
+    if (!matchedCanteen && canteenName) {
+      warnings.push('食堂不存在，导入时将自动创建');
+    }
+
+    if (floorName && matchedCanteen) {
+      const floorKey = `${matchedCanteen.id}:${this.normalizeName(floorName)}`;
+      if (!floorMap.get(floorKey)) {
+        warnings.push('楼层不存在，导入时将自动创建');
+      }
+    }
+
+    if (windowName && matchedCanteen) {
+      const windowKey = `${matchedCanteen.id}:${this.normalizeName(windowName)}`;
+      if (!windowMap.get(windowKey)) {
+        warnings.push('窗口不存在，导入时将自动创建');
+      }
+    }
+
+    const supplyPeriod = splitToStringArray(row.supplyPeriodRaw);
+    const inferredPeriods =
+      !supplyPeriod.length && row.supplyTime
+        ? this.extractMealTimesFromText(row.supplyTime)
+        : [];
+    const tags = splitToStringArray(row.tagsRaw);
+    const subDishNames = splitToStringArray(row.subDishRaw);
+
+    const status = errors.length
+      ? BatchDishStatus.INVALID
+      : warnings.length
+        ? BatchDishStatus.WARNING
+        : BatchDishStatus.VALID;
+    const message = errors.length ? errors.join('；') : warnings.join('；');
+
+    return {
+      tempId: randomUUID(),
+      name: dishName,
+      description: row.description ? String(row.description).trim() : undefined,
+      price,
+      priceUnit: unit,
+      tags,
+      canteenName,
+      floorName,
+      windowName,
+      windowNumber: row.windowNumber
+        ? String(row.windowNumber).trim()
+        : undefined,
+      supplyTime: row.supplyTime ? String(row.supplyTime).trim() : undefined,
+      supplyPeriod: supplyPeriod.length ? supplyPeriod : inferredPeriods,
+      subDishNames,
+      status,
+      message: message || undefined,
+      rawData: row.raw,
+    };
+  }
+
+  private normalizeName(value?: string | null): string {
+    if (!value) {
+      return '';
+    }
+    return value.toString().trim().toLowerCase();
+  }
+
+  private async readUploadedFile(file: Express.Multer.File): Promise<Buffer> {
+    if (file.buffer) {
+      return file.buffer;
+    }
+    if (file.path) {
+      return fs.readFile(file.path);
+    }
+    throw new BadRequestException('无法读取上传的文件');
   }
 
   /**

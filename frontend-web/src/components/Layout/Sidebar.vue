@@ -85,6 +85,7 @@
         <span>新闻管理</span>
       </router-link>
       <router-link
+        v-if="false"
         v-permission="'admin:view'"
         to="/log-view"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
@@ -110,6 +111,15 @@
       >
         <span class="iconify" data-icon="carbon:chat"></span>
         <span>评论和评价管理</span>
+      </router-link>
+      <router-link
+        v-permission="'config:view'"
+        to="/config-manage"
+        class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
+        :class="{ active: $route.path === '/config-manage' }"
+      >
+        <span class="iconify" data-icon="carbon:settings"></span>
+        <span>系统配置</span>
       </router-link>
     </div>
 
@@ -247,6 +257,7 @@ export default {
           { id: 'review:approve', label: '审核评价' },
           { id: 'review:delete', label: '删除评价' },
           { id: 'comment:approve', label: '审核评论' },
+          { id: 'comment:delete', label: '删除评论' },
           { id: 'report:handle', label: '处理举报' },
           { id: 'upload:approve', label: '审核菜品上传' },
         ],
@@ -271,6 +282,14 @@ export default {
           { id: 'admin:create', label: '创建子管理员' },
           { id: 'admin:edit', label: '编辑子管理员' },
           { id: 'admin:delete', label: '删除子管理员' },
+        ],
+      },
+      {
+        id: 'config',
+        name: '配置管理',
+        permissions: [
+          { id: 'config:view', label: '查看配置' },
+          { id: 'config:edit', label: '编辑配置' },
         ],
       },
     ]

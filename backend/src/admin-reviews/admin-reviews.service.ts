@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
+import { DishReviewStatsService } from '@/dish-review-stats-queue';
 import { RejectReviewDto } from './dto/reject-review.dto';
 import {
   PendingReviewListResponseDto,
@@ -11,7 +12,10 @@ import {
 
 @Injectable()
 export class AdminReviewsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private dishReviewStatsService: DishReviewStatsService,
+  ) {}
 
   async getPendingReviews(
     page: number = 1,
@@ -97,6 +101,8 @@ export class AdminReviewsService {
       data: { status: 'approved' },
     });
 
+    await this.dishReviewStatsService.recomputeDishStats(review.dishId);
+
     return {
       code: 200,
       message: '审核通过',
@@ -123,6 +129,8 @@ export class AdminReviewsService {
       },
     });
 
+    await this.dishReviewStatsService.recomputeDishStats(review.dishId);
+
     return {
       code: 200,
       message: '已拒绝',
@@ -142,6 +150,8 @@ export class AdminReviewsService {
       where: { id },
       data: { deletedAt: new Date() },
     });
+
+    await this.dishReviewStatsService.recomputeDishStats(review.dishId);
 
     return {
       code: 200,

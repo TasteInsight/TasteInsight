@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, reactive } from 'vue'; 
 import { createAISession, streamAIChat, submitRecommendFeedback } from '@/api/modules/ai';
+import { USE_MOCK } from '../../mock/mock-adapter';
 import type { 
   ChatRequest, 
   RecommendFeedbackRequest, 
@@ -224,59 +225,89 @@ export const useChatStore = defineStore('ai-chat', () => {
 
     let currentEvent = '';
 
-    const streamControl = streamAIChat(sessionId.value, payload, {
-      onEvent: (evt) => {
-        currentEvent = evt;
-      },
-      // 处理文本流
-      onMessage: (chunk) => {
-        // 只有当事件明确是 text_chunk 时才拼接文本
-        if (currentEvent === 'text_chunk') {
-             const contentArr = aiMessage.content;
-             const lastSegment = contentArr[contentArr.length - 1];
-             
-             // 如果最后一个块是文本，则追加
-             if (lastSegment && lastSegment.type === 'text') {
-               lastSegment.text += chunk;
-             } else {
-               // 否则（比如上一个是卡片），新建一个文本块
-               contentArr.push({ type: 'text', text: chunk });
-             }
-        }
-      },
-      // 处理组件流 (new_block)
-      onJSON: (json) => {
-        if (currentEvent === 'new_block') {
-             // 简单的类型断言，实际项目中可以加 Schema 校验
-             const segment = json as MessageSegment;
-             if (segment && segment.type && segment.type !== 'text') {
-               aiMessage.content.push(segment);
-             }
-        }
-      },
-      onError: (err) => {
-        console.error('Stream error', err);
-        const contentArr = aiMessage.content;
-        const lastSegment = contentArr[contentArr.length - 1];
-        
-        const errorText = `\n[网络请求出错: ${err?.message || '请检查网络'}]`;
-        if (lastSegment && lastSegment.type === 'text') {
-            lastSegment.text += errorText;
-        } else {
-            contentArr.push({ type: 'text', text: errorText });
-        }
-        
-        aiLoading.value = false;
-        aiMessage.isStreaming = false;
-        currentStreamAbort.value = null;
-      },
-      onComplete: () => {
-        aiLoading.value = false;
-        aiMessage.isStreaming = false;
-        upsertHistoryEntry(sessionId.value, currentScene.value, messages.value);
-        currentStreamAbort.value = null;
-      }
-    });
+    const streamControl = USE_MOCK 
+      ? (() => {
+          // 简单的mock实现，避免require路径问题
+          const mockResponse = `收到你的消息："${payload.message}"。这是一个模拟的流式回复。我可以帮你推荐菜品，或者制定饮食计划。`;
+          const chunks = mockResponse.split('');
+          let currentIndex = 0;
+          
+          const interval = setInterval(() => {
+            if (currentIndex >= chunks.length) {
+              clearInterval(interval);
+              aiLoading.value = false;
+              aiMessage.isStreaming = false;
+              upsertHistoryEntry(sessionId.value, currentScene.value, messages.value);
+              return;
+            }
+            
+            const chunkSize = Math.floor(Math.random() * 3) + 1;
+            const chunkContent = chunks.slice(currentIndex, currentIndex + chunkSize).join('');
+            currentIndex += chunkSize;
+            
+            const contentArr = aiMessage.content;
+            const lastSegment = contentArr[contentArr.length - 1];
+            
+            if (lastSegment && lastSegment.type === 'text') {
+              lastSegment.text += chunkContent;
+            } else {
+              contentArr.push({ type: 'text', text: chunkContent });
+            }
+          }, 100);
+          
+          return {
+            close: () => {
+              clearInterval(interval);
+            }
+          };
+        })()
+      : streamAIChat(sessionId.value, payload, {
+          onEvent: (evt: string) => {
+            currentEvent = evt;
+          },
+          onMessage: (chunk: string) => {
+            if (currentEvent === 'text_chunk') {
+                 const contentArr = aiMessage.content;
+                 const lastSegment = contentArr[contentArr.length - 1];
+                 
+                 if (lastSegment && lastSegment.type === 'text') {
+                   lastSegment.text += chunk;
+                 } else {
+                   contentArr.push({ type: 'text', text: chunk });
+                 }
+            }
+          },
+          onJSON: (json) => {
+            if (currentEvent === 'new_block') {
+                 const segment = json as MessageSegment;
+                 if (segment && segment.type && segment.type !== 'text') {
+                   aiMessage.content.push(segment);
+                 }
+            }
+          },
+          onError: (err) => {
+            console.error('Stream error', err);
+            const contentArr = aiMessage.content;
+            const lastSegment = contentArr[contentArr.length - 1];
+            
+            const errorText = `\n[网络请求出错: ${err?.message || '请检查网络'}]`;
+            if (lastSegment && lastSegment.type === 'text') {
+                lastSegment.text += errorText;
+            } else {
+                contentArr.push({ type: 'text', text: errorText });
+            }
+            
+            aiLoading.value = false;
+            aiMessage.isStreaming = false;
+            currentStreamAbort.value = null;
+          },
+          onComplete: () => {
+            aiLoading.value = false;
+            aiMessage.isStreaming = false;
+            upsertHistoryEntry(sessionId.value, currentScene.value, messages.value);
+            currentStreamAbort.value = null;
+          }
+        });
 
     // 保存中断控制器
     if (streamControl && streamControl.close) {

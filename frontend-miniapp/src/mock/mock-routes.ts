@@ -5,8 +5,8 @@
  * 每个路由将 URL 模式映射到对应的 mock 处理函数
  */
 
-import { registerMockRoute, mockSuccess } from './mock-adapter';
-import type { RequestOptions, PaginationParams } from '@/types/api';
+import { registerMockRoute, mockSuccess, mockError } from './mock-adapter';
+import type { RequestOptions, PaginationParams, ChatMessageItem } from '@/types/api';
 
 // ============================================
 // 导入 Mock 数据服务
@@ -40,6 +40,12 @@ import {
   mockAddFavorite,
   mockRemoveFavorite,
 } from './services/user';
+import { 
+  mockGetAISuggestions,
+  mockCreateAISession,
+  mockGetAIHistory
+} from './services/ai';
+
 
 // ============================================
 // Review 相关路由
@@ -336,6 +342,69 @@ registerMockRoute('GET', '/user/history', async (url, options) => {
   const params = options.data as PaginationParams;
   const data = await mockGetBrowseHistory(params);
   return mockSuccess(data);
+});
+
+// ============================================
+// AI 相关路由
+// ============================================
+
+// GET /ai/suggestions - 获取AI提示词
+registerMockRoute('GET', '/ai/suggestions', async (url, options) => {
+  // mockGetAISuggestions 已经返回了完整的 ApiResponse，不需要再用 mockSuccess 包裹
+  return await mockGetAISuggestions();
+});
+
+// POST /ai/sessions - 创建会话
+registerMockRoute('POST', '/ai/sessions', async () => {
+  return await mockCreateAISession();
+});
+
+// GET /ai/sessions/:sessionId/history - 获取历史记录
+registerMockRoute('GET', '/ai/sessions/:sessionId/history', async (url) => {
+  const match = url.match(/\/ai\/sessions\/([^/]+)\/history/);
+  const sessionId = match?.[1] || '';
+  return await mockGetAIHistory(sessionId);
+});
+
+
+
+// POST /ai/sessions/:sessionId/chat/stream - 模拟流式对话（降级实现）
+// 由于原生流式请求可能直接用 uni.request，且不一定通过统一 request 拦截器，本路由提供一个简化的替代：
+// - 接收请求体中的 message 字段，将用户消息记录到会话历史
+// - 在短延迟后追加一条完整的 AI 回复到会话历史，供后续 /history 查询使用
+registerMockRoute('POST', '/ai/sessions/:sessionId/chat/stream', async (url, options) => {
+  try {
+    const match = url.match(/\/ai\/sessions\/([^/]+)\/chat\/stream/);
+    const sessionId = match?.[1] || '';
+    const body = options?.data ? (typeof options.data === 'string' ? JSON.parse(options.data) : options.data) : {};
+    const messageText = body?.message || '';
+
+    // 将用户消息写入会话历史
+    const historyRes = await mockGetAIHistory(sessionId);
+    const history = historyRes.data?.messages || [];
+
+    const userMsg: ChatMessageItem = {
+      role: 'user',
+      timestamp: new Date().toISOString(),
+      content: [{ type: 'text', data: messageText }]
+    };
+    history.push(userMsg);
+
+    // 异步在短时间后加入完整 AI 回复（模拟流结束后的汇总消息）
+    setTimeout(() => {
+      const aiMsg: ChatMessageItem = {
+        role: 'assistant',
+        timestamp: new Date().toISOString(),
+        content: [{ type: 'text', data: `模拟回复：我收到了你的消息“${messageText}”，这是完整的回复。` }]
+      };
+      history.push(aiMsg);
+    }, 300);
+
+    return mockSuccess(null, 'stream started');
+  } catch (err) {
+    console.error('[Mock] stream route error', err);
+    return mockError(500, 'stream mock failed');
+  }
 });
 
 console.log('[Mock] 路由注册完成');

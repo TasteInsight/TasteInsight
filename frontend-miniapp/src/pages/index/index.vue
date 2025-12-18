@@ -209,7 +209,8 @@ const handleFilterChange = (filter: GetDishesRequest['filter']) => {
   const dishRequestParams: GetDishesRequest = {
     sort: buildDishSortFromUserSettings(),
     pagination: { page: 1, pageSize: 20 },
-    filter: { isSuggestion: true, ...filter }, // 使用后端推荐 + 用户筛选条件
+    filter: { ...filter }, // 用户筛选条件
+    isSuggestion: true, // 使用后端推荐
     search: { keyword: '' },
   };
   
@@ -239,7 +240,8 @@ onMounted(async () => {
     const dishRequestParams: GetDishesRequest = {
       sort: buildDishSortFromUserSettings(),
       pagination: { page: 1, pageSize: 10 },
-      filter: { isSuggestion: true },  // 让后端根据推荐返回菜品
+      filter: {},  // 让后端根据推荐返回菜品
+      isSuggestion: true,
       search: { keyword: '' },
     };
     await dishesStore.fetchDishes(dishRequestParams);
@@ -267,7 +269,8 @@ watch(
       const dishRequestParams: GetDishesRequest = {
         sort: buildDishSortFromUserSettings(),
         pagination: { page: 1, pageSize: 10 },
-        filter: { isSuggestion: true },  // 让后端根据推荐返回菜品
+        filter: {},  // 让后端根据推荐返回菜品
+        isSuggestion: true,
         search: { keyword: '' },
       };
       dishesStore.fetchDishes(dishRequestParams);
@@ -294,7 +297,8 @@ onPullDownRefresh(async () => {
     const dishRequestParams: GetDishesRequest = {
       sort: buildDishSortFromUserSettings(),
       pagination: { page: 1, pageSize: 20 },
-      filter: { isSuggestion: true, ...currentFilter.value },
+      filter: { ...currentFilter.value },
+      isSuggestion: true,
       search: { keyword: '' },
     };
     

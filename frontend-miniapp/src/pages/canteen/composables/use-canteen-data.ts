@@ -33,6 +33,7 @@ export function useCanteenData() {
   const fetchDishes = async (canteenId: string, extraFilters: GetDishesRequest['filter'] = {}) => {
     const params: GetDishesRequest = {
       filter: { canteenId: [canteenId], ...extraFilters },
+      isSuggestion: false, // 食堂详情页不使用推荐模式
       sort: { field: 'averageRating', order: 'desc' },
       pagination: { page: 1, pageSize: 20 },
       search: { keyword: '' },

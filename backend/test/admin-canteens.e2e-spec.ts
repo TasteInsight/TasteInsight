@@ -57,11 +57,16 @@ describe('AdminCanteensController (e2e)', () => {
         images: ['http://example.com/image.jpg'],
         openingHours: [
           {
-            dayOfWeek: 'Monday',
-            slots: [
-              { mealType: 'Lunch', openTime: '11:00', closeTime: '13:00' },
+            floorLevel: 'default',
+            schedule: [
+              {
+                dayOfWeek: 'Monday',
+                slots: [
+                  { mealType: 'Lunch', openTime: '11:00', closeTime: '13:00' },
+                ],
+                isClosed: false,
+              },
             ],
-            isClosed: false,
           },
         ],
         floors: [{ level: '1', name: '1F' }],

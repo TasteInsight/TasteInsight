@@ -5,7 +5,7 @@
   >
     <div class="flex items-center gap-3">
       <div class="w-14 h-14 rounded-lg bg-orange-50 flex items-center justify-center">
-        <text class="iconify text-orange-500 text-2xl" data-icon="mdi:window-open-variant"></text>
+        <text class="iconfont icon-window-open-variant text-orange-500 text-2xl"></text>
       </div>
       <div class="flex-1">
         <div class="font-semibold text-gray-800">{{ window.name }}</div>
@@ -22,7 +22,7 @@
           </span>
         </div>
       </div>
-      <text class="iconify text-gray-400" data-icon="mdi:chevron-right"></text>
+      <text class="iconfont icon-chevronright text-gray-400"></text>
     </div>
   </div>
 </template>

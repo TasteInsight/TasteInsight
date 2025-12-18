@@ -22,7 +22,7 @@ export class TimeSlot {
   closeTime: string;
 }
 
-export class OpeningHours {
+export class DailyOpeningHours {
   @IsString()
   @IsNotEmpty()
   dayOfWeek: string;
@@ -34,6 +34,17 @@ export class OpeningHours {
 
   @IsBoolean()
   isClosed: boolean;
+}
+
+export class FloorOpeningHours {
+  @IsString()
+  @IsOptional()
+  floorLevel?: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DailyOpeningHours)
+  schedule: DailyOpeningHours[];
 }
 
 export class FloorDto {
@@ -92,8 +103,8 @@ export class CreateCanteenDto {
 
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => OpeningHours)
-  openingHours: OpeningHours[];
+  @Type(() => FloorOpeningHours)
+  openingHours: FloorOpeningHours[];
 
   @IsArray()
   @ValidateNested({ each: true })
