@@ -66,7 +66,21 @@
         {{ hasActiveFilters ? '筛选结果' : '今日推荐' }}
       </view>
       <view v-if="dishesStore.loading" class="text-center py-4 text-gray-500">正在加载菜品...</view>
-      <view v-else-if="dishesStore.error" class="text-center py-4 text-red-500">{{ dishesStore.error }}</view>
+      <view v-else-if="recommendError" class="text-center py-8">
+        <view class="text-gray-400 mb-2">
+          <text class="text-4xl">😴</text>
+        </view>
+        <view class="text-gray-500 text-sm">{{ recommendError }}</view>
+        <view class="mt-3">
+          <button 
+            class="px-4 py-2 bg-purple-100 text-purple-600 rounded-full text-sm hover:bg-purple-200 transition-colors"
+            @click="retryLoadRecommend"
+          >
+            重新加载
+          </button>
+        </view>
+      </view>
+      <view v-else-if="dishesStore.error && hasActiveFilters" class="text-center py-4 text-red-500">{{ dishesStore.error }}</view>
       <view v-else-if="topThreeDishes.length > 0">
         <RecommendItem
           v-for="dish in topThreeDishes"
@@ -128,6 +142,9 @@ const isInitialLoading = ref(true);
 const hasActiveFilters = computed(() => {
   return Object.keys(currentFilter.value).length > 0;
 });
+
+// 推荐菜品加载错误状态
+const recommendError = ref<string | null>(null);
 
 // --- 计算属性 ---
 // 3. 计算属性直接从 store 实例中读取 state
@@ -210,11 +227,32 @@ const handleFilterChange = (filter: GetDishesRequest['filter']) => {
     sort: buildDishSortFromUserSettings(),
     pagination: { page: 1, pageSize: 20 },
     filter: { ...filter }, // 用户筛选条件
-    isSuggestion: true, // 使用后端推荐
     search: { keyword: '' },
   };
   
   dishesStore.fetchDishes(dishRequestParams);
+};
+
+// 重新加载推荐菜品
+const retryLoadRecommend = async () => {
+  recommendError.value = null;
+  try {
+    const dishRequestParams: GetDishesRequest = {
+      sort: buildDishSortFromUserSettings(),
+      pagination: { page: 1, pageSize: 10 },
+      filter: {},  // 让后端根据推荐返回菜品
+      isSuggestion: true,
+      search: { keyword: '' },
+    };
+    await dishesStore.fetchDishes(dishRequestParams);
+  } catch (error: any) {
+    if (error?.message?.includes('400') || error?.message?.includes('Bad Request')) {
+      recommendError.value = '网络开小差了，请稍后再试';
+    } else {
+      recommendError.value = '加载推荐菜品失败，请稍后再试';
+    }
+    console.error('重新加载推荐菜品失败:', error);
+  }
 };
 
 // --- 页面导航逻辑 (保持不变) ---
@@ -237,14 +275,25 @@ onMounted(async () => {
     await userStore.fetchProfileAction();
     
     // 获取今日推荐菜品，使用后端推荐逻辑
-    const dishRequestParams: GetDishesRequest = {
-      sort: buildDishSortFromUserSettings(),
-      pagination: { page: 1, pageSize: 10 },
-      filter: {},  // 让后端根据推荐返回菜品
-      isSuggestion: true,
-      search: { keyword: '' },
-    };
-    await dishesStore.fetchDishes(dishRequestParams);
+    try {
+      const dishRequestParams: GetDishesRequest = {
+        sort: buildDishSortFromUserSettings(),
+        pagination: { page: 1, pageSize: 10 },
+        filter: {},  // 让后端根据推荐返回菜品
+        isSuggestion: true,
+        search: { keyword: '' },
+      };
+      await dishesStore.fetchDishes(dishRequestParams);
+      recommendError.value = null; // 成功时清除错误
+    } catch (error: any) {
+      // 检查是否是HTTP 400错误或其他网络错误
+      if (error?.message?.includes('400') || error?.message?.includes('Bad Request')) {
+        recommendError.value = '网络开小差了，请稍后再试';
+      } else {
+        recommendError.value = '加载推荐菜品失败，请稍后再试';
+      }
+      console.error('获取推荐菜品失败:', error);
+    }
   } finally {
     // 无论成功失败，都结束初始加载状态
     isInitialLoading.value = false;
@@ -257,7 +306,7 @@ watch(
     () => userStore.userInfo?.preferences,
     () => userStore.userInfo?.settings
   ],
-  ([newPreferences, newSettings], [oldPreferences, oldSettings]) => {
+  async ([newPreferences, newSettings], [oldPreferences, oldSettings]) => {
     // 检查偏好设置是否发生变化
     const preferencesChanged = JSON.stringify(newPreferences) !== JSON.stringify(oldPreferences);
     // 检查显示设置是否发生变化
@@ -266,14 +315,24 @@ watch(
     if (preferencesChanged || settingsChanged) {
       console.log('用户偏好设置或显示设置已更新，刷新今日推荐菜品');
       
-      const dishRequestParams: GetDishesRequest = {
-        sort: buildDishSortFromUserSettings(),
-        pagination: { page: 1, pageSize: 10 },
-        filter: {},  // 让后端根据推荐返回菜品
-        isSuggestion: true,
-        search: { keyword: '' },
-      };
-      dishesStore.fetchDishes(dishRequestParams);
+      try {
+        const dishRequestParams: GetDishesRequest = {
+          sort: buildDishSortFromUserSettings(),
+          pagination: { page: 1, pageSize: 10 },
+          filter: {},  // 让后端根据推荐返回菜品
+          isSuggestion: true,
+          search: { keyword: '' },
+        };
+        await dishesStore.fetchDishes(dishRequestParams);
+        recommendError.value = null; // 成功时清除错误
+      } catch (error: any) {
+        if (error?.message?.includes('400') || error?.message?.includes('Bad Request')) {
+          recommendError.value = '网络开小差了，请稍后再试';
+        } else {
+          recommendError.value = '加载推荐菜品失败，请稍后再试';
+        }
+        console.error('刷新推荐菜品失败:', error);
+      }
     }
   },
   { deep: true }
@@ -294,15 +353,24 @@ onPullDownRefresh(async () => {
     await canteenStore.fetchCanteenList({ page: 1, pageSize: 10 });
     
     // 重新获取菜品列表（使用后端推荐 + 当前的筛选条件）
-    const dishRequestParams: GetDishesRequest = {
-      sort: buildDishSortFromUserSettings(),
-      pagination: { page: 1, pageSize: 20 },
-      filter: { ...currentFilter.value },
-      isSuggestion: true,
-      search: { keyword: '' },
-    };
-    
-    await dishesStore.fetchDishes(dishRequestParams);
+    try {
+      const dishRequestParams: GetDishesRequest = {
+        sort: buildDishSortFromUserSettings(),
+        pagination: { page: 1, pageSize: 20 },
+        filter: { ...currentFilter.value },
+        search: { keyword: '' },
+      };
+      
+      await dishesStore.fetchDishes(dishRequestParams);
+      recommendError.value = null; // 成功时清除错误
+    } catch (error: any) {
+      if (error?.message?.includes('400') || error?.message?.includes('Bad Request')) {
+        recommendError.value = '网络开小差了，请稍后再试';
+      } else {
+        recommendError.value = '加载推荐菜品失败，请稍后再试';
+      }
+      console.error('下拉刷新菜品失败:', error);
+    }
     
     // 刷新完成后停止下拉刷新动画
     uni.stopPullDownRefresh();
