@@ -189,11 +189,12 @@ registerMockRoute('GET', '/canteens', async () => {
 });
 
 // GET /canteens/:canteenId/windows - 获取窗口列表（必须在 /canteens/:id 之前）
-registerMockRoute('GET', '/canteens/:canteenId/windows', async (url) => {
+registerMockRoute('GET', '/canteens/:canteenId/windows', async (url, options) => {
   const match = url.match(/\/canteens\/([^/]+)\/windows/);
   const canteenId = match?.[1] || '';
+  const params = options.data as PaginationParams;
   
-  const data = await mockGetWindowList(canteenId);
+  const data = await mockGetWindowList(canteenId, params);
   return mockSuccess(data);
 });
 

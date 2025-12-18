@@ -27,7 +27,7 @@ export function useCanteenData() {
   };
 
   const fetchWindows = async (canteenId: string) => {
-    await canteenStore.fetchWindowList(canteenId).catch(() => {});
+    await canteenStore.fetchWindowList(canteenId, { page: 1, pageSize: 50 }).catch(() => {});
   };
 
   const fetchDishes = async (canteenId: string, extraFilters: GetDishesRequest['filter'] = {}) => {
