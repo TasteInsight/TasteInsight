@@ -212,6 +212,7 @@ export interface DishUpdateRequest {
  */
 export interface GetDishesParams extends PaginationParams {
   canteenId?: string
+  windowId?: string
   status?: 'online' | 'offline'
   keyword?: string
 }

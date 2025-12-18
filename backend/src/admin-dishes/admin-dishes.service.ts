@@ -94,7 +94,7 @@ export class AdminDishesService {
 
   // 管理端获取菜品列表
   async getAdminDishes(query: AdminGetDishesDto, adminInfo: any) {
-    const { page = 1, pageSize = 20, canteenId, status, keyword } = query;
+    const { page = 1, pageSize = 20, canteenId, windowId, status, keyword } = query;
 
     // 构建查询条件
     const where: any = {};
@@ -111,6 +111,11 @@ export class AdminDishesService {
         throw new ForbiddenException('权限不足');
       }
       where.canteenId = canteenId;
+    }
+
+    // 如果指定了窗口ID
+    if (windowId) {
+      where.windowId = windowId;
     }
 
     // 状态筛选
