@@ -242,11 +242,11 @@ export class RecommendationService {
       return null;
     }
 
-    const cacheKey = this.buildCacheKey(dto, experimentAssignment?.groupItemId);
     const cached = await this.cacheService.getRecommendationResult(
       userId,
       scene,
-      cacheKey,
+      dto,
+      experimentAssignment?.groupItemId,
     );
 
     if (cached) {
@@ -696,30 +696,13 @@ export class RecommendationService {
       return;
     }
 
-    const cacheKey = this.buildCacheKey(dto, experimentAssignment?.groupItemId);
     await this.cacheService.setRecommendationResult(
       userId,
       scene,
-      cacheKey,
+      dto,
+      experimentAssignment?.groupItemId,
       result,
     );
-  }
-
-  /**
-   * 构建缓存键
-   */
-  private buildCacheKey(
-    dto: RecommendationRequestDto,
-    groupItemId?: string,
-  ): string {
-    const parts = [
-      groupItemId || 'default',
-      this.hashObject(dto.filter),
-      dto.search ? this.hashObject(dto.search) : 'none',
-      this.hashObject(dto.pagination),
-      dto.includeScoreBreakdown ? 'with-score' : 'no-score',
-    ];
-    return parts.join(':');
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -2323,13 +2306,6 @@ export class RecommendationService {
       score: includeScore ? scoredDish.score : undefined,
       scoreBreakdown: includeScore ? scoredDish.scoreBreakdown : undefined,
     };
-  }
-
-  /**
-   * 简单对象哈希（用于缓存键）
-   */
-  private hashObject(obj: any): string {
-    return Buffer.from(JSON.stringify(obj)).toString('base64').slice(0, 16);
   }
 
   /**

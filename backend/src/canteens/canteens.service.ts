@@ -170,7 +170,7 @@ export class CanteensService {
       // 兼容旧数据结构：如果数组元素包含 dayOfWeek，说明是旧的扁平结构
       if (
         canteen.openingHours.length > 0 &&
-        'dayOfWeek' in (canteen.openingHours[0] as any)
+        'dayOfWeek' in canteen.openingHours[0]
       ) {
         openingHours = [
           {

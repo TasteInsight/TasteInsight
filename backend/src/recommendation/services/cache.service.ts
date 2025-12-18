@@ -12,6 +12,8 @@ import {
   RecommendationWeights,
   VersionedEmbedding,
 } from '../interfaces';
+import { RecommendationRequestDto } from '../dto/recommendation-request.dto';
+import { RecommendationResultDto } from '../dto/recommendation-result.dto';
 import { hashToShortString } from '../utils/hash.util';
 
 /**
@@ -97,10 +99,12 @@ export class RecommendationCacheService
   async setRecommendationResult(
     userId: string,
     scene: string,
-    filters: string,
-    result: any,
+    dto: RecommendationRequestDto,
+    groupItemId: string | undefined,
+    result: RecommendationResultDto,
   ): Promise<void> {
-    const key = this.buildRecommendationKey(userId, scene, filters);
+    const cacheKey = this.buildCacheKey(dto, groupItemId);
+    const key = this.buildRecommendationKey(userId, scene, cacheKey);
     await this.redis.setex(
       key,
       CACHE_CONFIG.RECOMMENDATION_RESULT_TTL,
@@ -114,9 +118,11 @@ export class RecommendationCacheService
   async getRecommendationResult(
     userId: string,
     scene: string,
-    filters: string,
-  ): Promise<any | null> {
-    const key = this.buildRecommendationKey(userId, scene, filters);
+    dto: RecommendationRequestDto,
+    groupItemId: string | undefined,
+  ): Promise<RecommendationResultDto | null> {
+    const cacheKey = this.buildCacheKey(dto, groupItemId);
+    const key = this.buildRecommendationKey(userId, scene, cacheKey);
     const data = await this.redis.get(key);
     if (!data) return null;
     return JSON.parse(data);
@@ -344,13 +350,40 @@ export class RecommendationCacheService
 
   // ==================== 辅助方法 ====================
 
+  /**
+   * 构建缓存键（从 DTO 和实验组 ID）
+   */
+  private buildCacheKey(
+    dto: RecommendationRequestDto,
+    groupItemId?: string,
+  ): string {
+    const parts = [
+      groupItemId || 'default',
+      this.hashObject(dto.filter),
+      dto.search ? this.hashObject(dto.search) : 'none',
+      this.hashObject(dto.pagination),
+      dto.includeScoreBreakdown ? 'with-score' : 'no-score',
+    ];
+    return parts.join(':');
+  }
+
+  /**
+   * 哈希对象为短字符串
+   */
+  private hashObject(obj: unknown): string {
+    return Buffer.from(JSON.stringify(obj)).toString('base64').slice(0, 16);
+  }
+
+  /**
+   * 构建完整的推荐缓存键
+   */
   private buildRecommendationKey(
     userId: string,
     scene: string,
-    filters: string,
+    cacheKey: string,
   ): string {
-    // 对 filters 进行哈希以避免 key 过长
-    const hash = hashToShortString(filters);
+    // 对 cacheKey 进行哈希以避免 key 过长
+    const hash = hashToShortString(cacheKey);
     return `${CACHE_CONFIG.KEY_PREFIX.RECOMMENDATION}${userId}:${scene}:${hash}`;
   }
 

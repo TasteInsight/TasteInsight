@@ -48,9 +48,11 @@ export class ExperimentService implements OnModuleInit {
 
     // 设置防抖动，500ms 内多次调用只执行一次
     return new Promise((resolve) => {
-      this.refreshTimer = setTimeout(async () => {
-        await this.performRefresh();
-        resolve();
+      this.refreshTimer = setTimeout(() => {
+        void (async () => {
+          await this.performRefresh();
+          resolve();
+        })();
       }, 500);
     });
   }

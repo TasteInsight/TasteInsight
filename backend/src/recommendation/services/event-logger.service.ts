@@ -345,7 +345,8 @@ export class EventLoggerService {
       }
 
       const groupMetrics = metrics.get(groupItemId);
-      switch (event.eventType) {
+      const eventType = event.eventType as RecommendationEventType;
+      switch (eventType) {
         case RecommendationEventType.IMPRESSION:
           groupMetrics.impressions = event._count;
           break;
