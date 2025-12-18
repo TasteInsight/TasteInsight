@@ -1,5 +1,5 @@
 // Mock 食堂服务
-import type { Canteen, Window, Dish, CanteenListData, WindowListData, WindowDishesData } from '@/types/api';
+import type { Canteen, Window, Dish, CanteenListData, WindowListData, WindowDishesData, PaginationParams } from '@/types/api';
 import { createMockCanteens, createMockWindows, getWindowsByCanteenId } from '../data/canteen';
 import { createMockDishes } from '../data/dish';
 
