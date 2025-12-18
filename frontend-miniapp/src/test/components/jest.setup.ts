@@ -45,4 +45,20 @@ config.global.stubs = {
   showToast: jest.fn(),
   navigateTo: jest.fn(),
   switchTab: jest.fn(),
+  showModal: jest.fn(),
+  showLoading: jest.fn(),
+  hideLoading: jest.fn(),
+  stopPullDownRefresh: jest.fn(),
 };
+
+// Mock uni-app lifecycle hooks
+(globalThis as any).onLoad = jest.fn();
+(globalThis as any).onShow = jest.fn();
+(globalThis as any).onHide = jest.fn();
+(globalThis as any).onUnload = jest.fn();
+(globalThis as any).onPullDownRefresh = jest.fn();
+(globalThis as any).onReachBottom = jest.fn();
+(globalThis as any).onShareAppMessage = jest.fn();
+(globalThis as any).onShareTimeline = jest.fn();
+(globalThis as any).onBackPress = jest.fn();
+(globalThis as any).onTabItemTap = jest.fn();

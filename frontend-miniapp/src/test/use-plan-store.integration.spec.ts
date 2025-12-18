@@ -101,16 +101,19 @@ describe('usePlanStore integration', () => {
     const { usePlanStore } = require('@/store/modules/use-plan-store');
 
     const store = usePlanStore();
-    // seed plan
+    // seed plan - ensure it's not expired and not completed
+    const futureDate = '2025-12-25'; // Future date to ensure not expired
     store.allPlans = [
       {
         id: 'p3',
-        startDate: '2025-12-18',
-        endDate: '2025-12-18',
+        startDate: futureDate,
+        endDate: futureDate,
         mealTime: 'breakfast',
         dishes: [],
       } as any,
     ];
+    // Ensure dishMap has the necessary data
+    store.dishMap = new Map();
 
     // Before: should be in currentPlans
     expect(store.currentPlans.map((p: any) => p.id)).toContain('p3');
