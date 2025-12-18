@@ -254,6 +254,83 @@ describe('AdminAdminsController (e2e)', () => {
       );
     });
 
+    it('should update sub admin canteenId (management scope) with superadmin', async () => {
+      const canteens = await prisma.canteen.findMany({ take: 2 });
+      if (canteens.length < 2) {
+        throw new Error('需要至少 2 个食堂数据用于测试更新 canteenId');
+      }
+
+      // 先让目标子管理员绑定到 canteens[0]
+      await prisma.admin.update({
+        where: { id: createdSubAdminId },
+        data: { canteenId: canteens[0].id },
+      });
+
+      const updateDto = {
+        permissions: ['dish:view'],
+        canteenId: canteens[1].id,
+      };
+
+      const response = await request(app.getHttpServer())
+        .put(`/admin/admins/${createdSubAdminId}/permissions`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send(updateDto)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+
+      const updatedAdmin = await prisma.admin.findUnique({
+        where: { id: createdSubAdminId },
+      });
+      expect(updatedAdmin?.canteenId).toBe(canteens[1].id);
+    });
+
+    it('should update sub admin canteenId to null (all canteens scope) with superadmin', async () => {
+      // 先让目标子管理员绑定到一个食堂
+      const canteen = await prisma.canteen.findFirst();
+      if (!canteen) {
+        throw new Error('需要至少 1 个食堂数据用于测试更新 canteenId 为 null');
+      }
+
+      await prisma.admin.update({
+        where: { id: createdSubAdminId },
+        data: { canteenId: canteen.id },
+      });
+
+      const updateDto = {
+        permissions: ['dish:view'],
+        canteenId: null, // 设置为 null 表示管理所有食堂
+      };
+
+      const response = await request(app.getHttpServer())
+        .put(`/admin/admins/${createdSubAdminId}/permissions`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send(updateDto)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+
+      const updatedAdmin = await prisma.admin.findUnique({
+        where: { id: createdSubAdminId },
+      });
+      expect(updatedAdmin?.canteenId).toBeNull();
+    });
+
+    it('should return 400 for non-existent canteenId when updating permissions', async () => {
+      const updateDto = {
+        permissions: ['dish:view'],
+        canteenId: 'non-existent-canteen-id',
+      };
+
+      const response = await request(app.getHttpServer())
+        .put(`/admin/admins/${createdSubAdminId}/permissions`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send(updateDto)
+        .expect(400);
+
+      expect(response.body.message).toContain('指定的食堂不存在');
+    });
+
     it('should update permissions for own sub admin with adminManager', async () => {
       // First, create a sub admin by adminManager
       const createDto = {
