@@ -1019,10 +1019,11 @@ export default {
       try {
         if (editingAdmin.value) {
           // 更新管理员权限
+          const trimmedCanteenId = formData.canteenId.trim();
           const response = await permissionApi.updateAdminPermissions(
             editingAdmin.value.id,
             formData.permissions,
-            formData.canteenId.trim() ? formData.canteenId.trim() : null,
+            trimmedCanteenId || null,
           )
 
           if (response.code === 200) {
