@@ -38,6 +38,7 @@
     "test:e2e:admin-news": "pnpm run test:setup && dotenv -e .env.test -- jest --config ./test/jest-e2e.json test/admin-news.e2e-spec.ts --coverage --collectCoverageFrom \"src/admin-news/**/*.ts\"",
     "test:e2e:admin-config": "pnpm run test:setup && dotenv -e .env.test -- jest --config ./test/jest-e2e.json test/admin-config.e2e-spec.ts --coverage --collectCoverageFrom \"src/admin-config/**/*.ts\"",
     "test:e2e:upload": "pnpm run test:setup && dotenv -e .env.test -- jest --config ./test/jest-e2e.json test/upload.e2e-spec.ts --coverage --collectCoverageFrom \"src/upload/**/*.ts\"",
+    "test:e2e:recommendation": "pnpm run test:setup && dotenv -e .env.test -- jest --config ./test/jest-e2e.json test/recommendation.e2e-spec.ts --coverage --collectCoverageFrom \"src/recommendation/**/*.ts\"",
     "test:unit": "jest",
     "test:unit:canteens": "jest src/canteens/canteens.service.spec.ts",
     "test:unit:reviews": "jest src/reviews/reviews.service.spec.ts",
@@ -46,6 +47,7 @@
     "test:unit:meal-plans": "jest src/meal-plans/meal-plans.service.spec.ts",
     "test:unit:user-profile": "jest src/user-profile/user-profile.service.spec.ts",
     "test:unit:admin-config": "jest src/admin-config/admin-config.service.spec.ts",
+    "test:unit:recommendation": "jest src/recommendation/recommendation.service.spec.ts",
     "test": "pnpm run test:setup && pnpm run test:e2e"
   },
   "dependencies": {

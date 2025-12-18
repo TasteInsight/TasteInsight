@@ -9,20 +9,20 @@ class Config:
     """服务配置"""
     
     # Flask 配置
-    HOST = os.getenv('HOST', '0.0.0.0')
-    PORT = int(os.getenv('PORT', 5001))
-    DEBUG = os.getenv('DEBUG', 'false').lower() == 'true'
+    HOST = os.getenv('PYTHON_EMBEDDING_HOST', '0.0.0.0')
+    PORT = int(os.getenv('PYTHON_EMBEDDING_PORT', 5001))
+    DEBUG = os.getenv('PYTHON_EMBEDDING_DEBUG', 'false').lower() == 'true'
     
     # 模型配置
-    TEXT_MODEL = os.getenv('TEXT_MODEL', 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2')
-    DEFAULT_VERSION = os.getenv('DEFAULT_EMBEDDING_VERSION', 'v2')
-    MODEL_DIR = os.getenv('MODEL_DIR', 'saved_models')  # 训练好的模型文件目录
+    TEXT_MODEL = os.getenv('PYTHON_EMBEDDING_TEXT_MODEL', 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2')
+    DEFAULT_VERSION = os.getenv('PYTHON_EMBEDDING_DEFAULT_VERSION', 'v2')
+    MODEL_DIR = os.getenv('PYTHON_EMBEDDING_MODEL_DIR', 'saved_models')  # 训练好的模型文件目录
     
     # 设备配置
-    DEVICE = os.getenv('DEVICE', None)  # None = 自动检测
+    DEVICE = os.getenv('PYTHON_EMBEDDING_DEVICE', None)  # None = 自动检测
     
     # 预加载模型
-    PRELOAD_MODELS = os.getenv('PRELOAD_MODELS', 'v2,v3').split(',')
+    PRELOAD_MODELS = os.getenv('PYTHON_EMBEDDING_PRELOAD_MODELS', 'v2,v3').split(',')
     
     @classmethod
     def get_info(cls) -> dict:

@@ -38,6 +38,11 @@ def init_service():
     """初始化嵌入服务"""
     global embedding_service
     
+    # 如果已经初始化过，直接返回
+    if embedding_service is not None:
+        logger.info("Service already initialized")
+        return
+    
     logger.info("=" * 60)
     logger.info("TasteInsight Embedding Service")
     logger.info("=" * 60)
@@ -61,10 +66,38 @@ def init_service():
     logger.info("=" * 60)
 
 
+# 在应用启动时自动初始化服务（优先于请求触发）
+try:
+    # 利用 Gunicorn --preload，在主进程预加载模型并共享内存到 workers
+    init_service()
+except Exception as e:
+    # 若启动期预加载失败，记录错误并在请求时重试
+    logger.warning(f"Deferred initialization due to startup error: {e}")
+
+# 使用中间件模式确保服务初始化
+@app.before_request
+def ensure_service_initialized():
+    """确保服务在请求前已初始化"""
+    global embedding_service
+    if embedding_service is None:
+        try:
+            init_service()
+        except Exception as e:
+            logger.error(f"Failed to initialize service: {e}")
+            # 让健康检查接口返回503，其他接口返回500
+
+
 @app.route('/health', methods=['GET'])
 def health_check():
     """健康检查"""
     try:
+        # 确保服务已初始化
+        if embedding_service is None:
+            return jsonify({
+                'status': 'initializing',
+                'message': 'Service is still initializing'
+            }), 503
+            
         service_info = embedding_service.get_service_info()
         
         return jsonify({

@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { AdminConfigService } from '@/admin-config/admin-config.service';
@@ -15,12 +16,14 @@ import {
 } from './dto/review-response.dto';
 import { ReviewData, ReviewDetailData } from './dto/review.dto';
 import { ReportReviewResponseDto } from './dto/report-review.dto';
+import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service';
 
 @Injectable()
 export class ReviewsService {
   constructor(
     private prisma: PrismaService,
     private adminConfigService: AdminConfigService,
+    @Optional() private embeddingQueueService?: EmbeddingQueueService,
   ) {}
 
   async createReview(
@@ -64,6 +67,11 @@ export class ReviewsService {
         },
       },
     });
+
+    // 异步刷新用户嵌入（评价行为反映用户偏好，会影响推荐）
+    if (this.embeddingQueueService) {
+      await this.embeddingQueueService.enqueueRefreshUser(userId);
+    }
 
     return {
       code: 201,

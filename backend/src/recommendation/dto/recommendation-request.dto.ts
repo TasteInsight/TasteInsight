@@ -5,6 +5,10 @@ import {
   IsEnum,
   ValidateNested,
   IsObject,
+  IsInt,
+  IsNumber,
+  Min,
+  Max,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { RecommendationScene } from '../constants/recommendation.constants';
@@ -66,4 +70,92 @@ export class RecommendationRequestDto {
   @IsOptional()
   @IsObject()
   userContext?: Record<string, any>; // 用户上下文信息
+}
+
+// ==================== 查询请求 DTO ====================
+
+/**
+ * 获取相似菜品请求 DTO
+ */
+export class GetSimilarDishesDto {
+  @ValidateNested()
+  @Type(() => PaginationDto)
+  pagination: PaginationDto;
+}
+
+/**
+ * 获取个性化推荐菜品请求 DTO
+ */
+export class GetPersonalizedDishesDto {
+  @IsOptional()
+  @IsString()
+  canteenId?: string;
+
+  @IsOptional()
+  @IsString()
+  mealTime?: string;
+
+  @ValidateNested()
+  @Type(() => PaginationDto)
+  pagination: PaginationDto;
+}
+
+// ==================== 事件追踪 DTO ====================
+
+/**
+ * 基础事件追踪 DTO
+ */
+class BaseEventDto {
+  @IsString()
+  dishId: string;
+
+  @IsOptional()
+  @IsString()
+  requestId?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  position?: number;
+
+  @IsOptional()
+  @IsEnum(RecommendationScene)
+  scene?: RecommendationScene;
+
+  @IsOptional()
+  @IsString()
+  experimentId?: string;
+
+  @IsOptional()
+  @IsString()
+  groupItemId?: string;
+}
+
+/**
+ * 点击事件 DTO
+ */
+export class ClickEventDto extends BaseEventDto {}
+
+/**
+ * 收藏事件 DTO
+ */
+export class FavoriteEventDto extends BaseEventDto {}
+
+/**
+ * 评价事件 DTO
+ */
+export class ReviewEventDto extends BaseEventDto {
+  @IsNumber()
+  @Min(1)
+  @Max(5)
+  rating: number;
+}
+
+/**
+ * 负反馈事件 DTO
+ */
+export class DislikeEventDto extends BaseEventDto {
+  @IsOptional()
+  @IsString()
+  reason?: string;
 }

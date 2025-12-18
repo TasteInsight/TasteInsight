@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { GetDishesDto, SortOrder } from './dto/get-dishes.dto';
@@ -14,13 +15,19 @@ import {
   DishUploadResponseDto,
   FavoriteStatusResponseDto,
 } from './dto/dish-response.dto';
+import { RecommendationService } from '@/recommendation/recommendation.service';
+import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service';
 
 @Injectable()
 export class DishesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private recommendationService: RecommendationService,
+    @Optional() private embeddingQueueService?: EmbeddingQueueService,
+  ) {}
 
   // 获取菜品详情
-  async getDishById(id: string): Promise<DishResponseDto> {
+  async getDishById(id: string, userId: string): Promise<DishResponseDto> {
     const dish = await this.prisma.dish.findUnique({
       where: { id },
       include: {
@@ -35,6 +42,19 @@ export class DishesService {
       throw new NotFoundException('菜品不存在');
     }
 
+    // 记录用户浏览历史
+    try {
+      await this.prisma.browseHistory.create({
+        data: {
+          userId,
+          dishId: id,
+        },
+      });
+    } catch (error) {
+      // 记录失败不影响主要功能，静默处理
+      console.warn('Failed to record browse history:', error);
+    }
+
     return {
       code: 200,
       message: 'success',
@@ -43,8 +63,78 @@ export class DishesService {
   }
 
   // 获取菜品列表
-  async getDishes(getDishesDto: GetDishesDto): Promise<DishListResponseDto> {
-    const { filter, search, sort, pagination } = getDishesDto;
+  async getDishes(
+    getDishesDto: GetDishesDto,
+    userId: string,
+  ): Promise<DishListResponseDto> {
+    const { isSuggestion, filter, search, sort, pagination } = getDishesDto;
+
+    // 如果是推荐模式，调用推荐服务
+    // isSuggestion 为 true 时使用默认 HOME 场景的推荐
+    if (isSuggestion) {
+      const result = await this.recommendationService.getRecommendations(
+        userId,
+        {
+          filter,
+          search: search?.keyword ? search : undefined,
+          pagination,
+          // 默认首页推荐场景，不追踪详细事件（简化模式）
+        },
+      );
+
+      // 获取推荐的菜品ID列表
+      const dishIds = result.data.items.map((item) => item.id);
+
+      // 获取用户过敏原信息
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { allergens: true },
+      });
+      const userAllergens = user?.allergens || [];
+
+      // 构建查询条件（包含过敏原过滤）
+      const whereCondition: Prisma.DishWhereInput = {
+        id: { in: dishIds },
+        status: 'online',
+      };
+
+      // 如果用户有过敏原，排除含有这些过敏原的菜品
+      if (userAllergens.length > 0) {
+        whereCondition.NOT = {
+          allergens: {
+            hasSome: userAllergens,
+          },
+        };
+      }
+
+      // 批量查询完整的菜品数据
+      const fullDishes = await this.prisma.dish.findMany({
+        where: whereCondition,
+        include: {
+          canteen: true,
+          window: true,
+          floor: true,
+          subDishes: {
+            select: { id: true },
+          },
+        },
+      });
+
+      // 按照推荐顺序排序
+      const dishMap = new Map(fullDishes.map((dish) => [dish.id, dish]));
+      const sortedDishes = dishIds
+        .map((id) => dishMap.get(id))
+        .filter((dish) => dish != null);
+
+      return {
+        code: result.code,
+        message: result.message,
+        data: {
+          items: sortedDishes.map((dish) => DishDto.fromEntity(dish)),
+          meta: result.data.meta,
+        },
+      };
+    }
 
     // 构建 where 条件 - 使用数组来确保类型正确
     const andConditions: Prisma.DishWhereInput[] = [];
@@ -301,6 +391,11 @@ export class DishesService {
       },
     });
 
+    // 异步刷新用户嵌入（收藏变化会影响推荐）
+    if (this.embeddingQueueService) {
+      await this.embeddingQueueService.enqueueRefreshUser(userId);
+    }
+
     // 获取收藏总数
     const favoriteCount = await this.prisma.favoriteDish.count({
       where: { dishId },
@@ -353,6 +448,11 @@ export class DishesService {
         },
       },
     });
+
+    // 异步刷新用户嵌入（收藏变化会影响推荐）
+    if (this.embeddingQueueService) {
+      await this.embeddingQueueService.enqueueRefreshUser(userId);
+    }
 
     // 获取收藏总数
     const favoriteCount = await this.prisma.favoriteDish.count({

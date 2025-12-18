@@ -506,4 +506,215 @@ describe('DishesController (e2e)', () => {
         .expect(401);
     });
   });
+
+  describe('/dishes (POST) - Suggestion Mode', () => {
+    it('should return suggested dishes when isSuggestion is true', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/dishes')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          isSuggestion: true,
+          filter: {},
+          search: { keyword: '' },
+          sort: {},
+          pagination: { page: 1, pageSize: 10 },
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.message).toBe('success');
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.items).toBeInstanceOf(Array);
+      expect(response.body.data.meta).toBeDefined();
+      expect(response.body.data.meta.page).toBe(1);
+      expect(response.body.data.meta.pageSize).toBe(10);
+    });
+
+    it('should filter suggested dishes by price range', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/dishes')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          isSuggestion: true,
+          filter: {
+            price: { min: 10, max: 20 },
+          },
+          search: { keyword: '' },
+          sort: {},
+          pagination: { page: 1, pageSize: 10 },
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.items).toBeInstanceOf(Array);
+      response.body.data.items.forEach((dish: any) => {
+        expect(dish.price).toBeGreaterThanOrEqual(10);
+        expect(dish.price).toBeLessThanOrEqual(20);
+      });
+    });
+
+    it('should filter suggested dishes by meal time', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/dishes')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          isSuggestion: true,
+          filter: {
+            mealTime: ['breakfast'],
+          },
+          search: { keyword: '' },
+          sort: {},
+          pagination: { page: 1, pageSize: 10 },
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.items).toBeInstanceOf(Array);
+      response.body.data.items.forEach((dish: any) => {
+        expect(dish.availableMealTime).toContain('breakfast');
+      });
+    });
+
+    it('should search suggested dishes by keyword', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/dishes')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          isSuggestion: true,
+          filter: {},
+          search: {
+            keyword: '鸡',
+            fields: ['name'],
+          },
+          sort: {},
+          pagination: { page: 1, pageSize: 10 },
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.items).toBeInstanceOf(Array);
+      // 至少应该有一个包含"鸡"的菜品
+      if (response.body.data.items.length > 0) {
+        const hasChickenDish = response.body.data.items.some((dish: any) =>
+          dish.name.includes('鸡'),
+        );
+        expect(hasChickenDish).toBe(true);
+      }
+    });
+
+    it('should paginate suggested dishes correctly', async () => {
+      const response1 = await request(app.getHttpServer())
+        .post('/dishes')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          isSuggestion: true,
+          filter: {},
+          search: { keyword: '' },
+          sort: {},
+          pagination: { page: 1, pageSize: 2 },
+        })
+        .expect(200);
+
+      const response2 = await request(app.getHttpServer())
+        .post('/dishes')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          isSuggestion: true,
+          filter: {},
+          search: { keyword: '' },
+          sort: {},
+          pagination: { page: 2, pageSize: 2 },
+        })
+        .expect(200);
+
+      expect(response1.body.data.items.length).toBe(2);
+      expect(response2.body.data.items.length).toBeGreaterThan(0);
+      // 不同页的第一个菜品应该不同
+      expect(response1.body.data.items[0].id).not.toBe(
+        response2.body.data.items[0].id,
+      );
+    });
+
+    it('should consider user preferences in suggestions', async () => {
+      // 先更新用户偏好
+      await prisma.userPreference.upsert({
+        where: { userId: testUserId },
+        create: {
+          userId: testUserId,
+          tagPreferences: ['川菜'],
+          priceMin: 10,
+          priceMax: 30,
+          spicyLevel: 3,
+        },
+        update: {
+          tagPreferences: ['川菜'],
+          priceMin: 10,
+          priceMax: 30,
+          spicyLevel: 3,
+        },
+      });
+
+      const response = await request(app.getHttpServer())
+        .post('/dishes')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          isSuggestion: true,
+          filter: {},
+          search: { keyword: '' },
+          sort: {},
+          pagination: { page: 1, pageSize: 10 },
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.items).toBeInstanceOf(Array);
+      // 由于有偏好设置，推荐结果应该考虑了这些偏好
+      expect(response.body.data.items.length).toBeGreaterThan(0);
+    });
+
+    it('should exclude allergens from suggestions', async () => {
+      // 设置用户过敏原
+      await prisma.user.update({
+        where: { id: testUserId },
+        data: { allergens: ['花生'] },
+      });
+
+      const response = await request(app.getHttpServer())
+        .post('/dishes')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          isSuggestion: true,
+          filter: {},
+          search: { keyword: '' },
+          sort: {},
+          pagination: { page: 1, pageSize: 20 },
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      // 所有推荐的菜品都不应包含花生过敏原
+      response.body.data.items.forEach((dish: any) => {
+        expect(dish.allergens || []).not.toContain('花生');
+      });
+
+      // 恢复用户过敏原设置
+      await prisma.user.update({
+        where: { id: testUserId },
+        data: { allergens: [] },
+      });
+    });
+
+    it('should return 401 for suggestion mode without auth token', async () => {
+      await request(app.getHttpServer())
+        .post('/dishes')
+        .send({
+          isSuggestion: true,
+          filter: {},
+          search: { keyword: '' },
+          sort: {},
+          pagination: { page: 1, pageSize: 10 },
+        })
+        .expect(401);
+    });
+  });
 });
