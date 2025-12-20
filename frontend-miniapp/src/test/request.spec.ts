@@ -84,7 +84,6 @@ describe('request utils', () => {
     });
 
     await expect(request({ url: '/test' })).rejects.toThrow('Bad Request');
-    expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Bad Request' }));
   });
 
   it('should reject on network failure', async () => {
@@ -92,8 +91,7 @@ describe('request utils', () => {
       opts.fail({ errMsg: 'Network Error' });
     });
 
-    await expect(request({ url: '/test' })).rejects.toThrow('网络连接异常');
-    expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({ title: '网络连接异常，请稍后重试' }));
+    await expect(request({ url: '/test' })).rejects.toThrow('网络开小差了，请检查网络后重试');
   });
 
   it('should handle 401 and refresh token successfully', async () => {
@@ -138,7 +136,7 @@ describe('request utils', () => {
       opts.success({ statusCode: 401, data: { code: 401 } });
     });
 
-    await expect(request({ url: '/test' })).rejects.toThrow('HTTP 401');
+    await expect(request({ url: '/test' })).rejects.toThrow('登录已过期，请重新登录');
     expect(mockUserStore.logoutAction).toHaveBeenCalled();
     expect(mockReLaunch).toHaveBeenCalledWith({ url: '/pages/login/index' });
   });
@@ -159,7 +157,7 @@ describe('request utils', () => {
        }
     });
 
-    await expect(request({ url: '/test' })).rejects.toThrow('Token refresh failed');
+    await expect(request({ url: '/test' })).rejects.toThrow('登录已过期，请重新登录');
     // The refresh failure logic calls handleHttpError(401)
     expect(mockUserStore.logoutAction).toHaveBeenCalled();
     expect(mockReLaunch).toHaveBeenCalledWith({ url: '/pages/login/index' });
@@ -170,7 +168,6 @@ describe('request utils', () => {
       opts.success({ statusCode: 500, data: { message: 'Server Error' } });
     });
 
-    await expect(request({ url: '/test' })).rejects.toThrow('HTTP 500');
-    expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({ title: '服务器内部错误' }));
+    await expect(request({ url: '/test' })).rejects.toThrow('服务器开小差了，请稍后再试');
   });
 });

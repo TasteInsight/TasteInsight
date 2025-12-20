@@ -6,6 +6,7 @@ import { useUserStore } from '@/store/modules/use-user-store';
 import config from '@/config';
 // 导入类型定义
 import type { RequestOptions, ApiResponse } from '@/types/api';
+import { toUserFriendlyErrorMessage } from '@/utils/user-friendly-error';
 // 导入 Mock 拦截器
 import { mockInterceptor } from '@/mock/mock-adapter';
 // 初始化 Mock 路由（副作用导入，确保路由被注册）
@@ -13,6 +14,10 @@ import '@/mock/mock-routes';
 
 // 全局刷新token的Promise缓存，避免竞态条件
 let refreshTokenPromise: Promise<void> | null = null;
+
+function buildUserFriendlyError(err: unknown): Error {
+  return new Error(toUserFriendlyErrorMessage(err));
+}
 
 /**
  * 执行token刷新操作，返回Promise以便缓存和等待
@@ -54,12 +59,12 @@ function performTokenRefresh(): Promise<void> {
         } else {
           // 刷新失败
           handleHttpError(401, refreshData);
-          reject(new Error('Token refresh failed'));
+          reject(buildUserFriendlyError(new Error('HTTP 401')));
         }
       },
       fail: (err) => {
         handleHttpError(401, {});
-        reject(err);
+        reject(buildUserFriendlyError(err));
       }
     });
   });
@@ -139,13 +144,8 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
             resolve(responseData);
           } else {
             // 业务失败 (例如：参数错误、验证码错误等)
-            // 统一弹出错误提示
-            uni.showToast({
-              title: responseData.message || '操作失败',
-              icon: 'none',
-            });
             // 业务失败，也 reject Promise，让页面中的 .catch() 能捕获到
-            reject(new Error(responseData.message || '操作失败'));
+            reject(buildUserFriendlyError(new Error(responseData.message || '操作失败')));
           }
         } else if (statusCode === 401) {
           // 401 未授权，尝试刷新 Token
@@ -154,7 +154,7 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
           // 如果是刷新 token 的请求本身失败了，或者没有 refresh token，则直接退出登录
           if (fullUrl.includes('/auth/refresh') || !userStore.refreshToken) {
             handleHttpError(statusCode, responseData);
-            reject(new Error(`HTTP ${statusCode}`));
+            reject(buildUserFriendlyError(new Error(`HTTP ${statusCode}`)));
             return;
           }
 
@@ -172,7 +172,7 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
           if ((options as any)._retry) {
             // 已经重试过，直接登出并返回错误
             handleHttpError(statusCode, responseData);
-            reject(new Error('Unauthorized after token refresh'));
+            reject(buildUserFriendlyError(new Error(`HTTP ${statusCode}`)));
             return;
           }
 
@@ -193,24 +193,20 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
             })
             .catch((error) => {
               // 刷新失败，直接reject
-              reject(error);
+              reject(buildUserFriendlyError(error));
             });
         } else {
           // HTTP 状态码非 2xx，代表请求出错了（404, 500 等）
           // 交给统一的错误处理器
           handleHttpError(statusCode, responseData);
-          reject(new Error(`HTTP ${statusCode}`));
+          reject(buildUserFriendlyError(new Error(`HTTP ${statusCode}`)));
         }
       },
 
       // 3. 失败回调 (网络层面，比如断网)
       fail: (err: UniApp.GeneralCallbackResult) => {
         console.error('网络请求失败:', err);
-        uni.showToast({
-          title: '网络连接异常，请稍后重试',
-          icon: 'none',
-        });
-        reject(new Error('网络连接异常'));
+        reject(buildUserFriendlyError(new Error('网络连接异常')));
       },
     });
   });
@@ -246,11 +242,6 @@ function handleHttpError(statusCode: number, responseData: any): void {
     default:
       message = `请求错误 - ${statusCode}`;
   }
-
-  uni.showToast({
-    title: message,
-    icon: 'none',
-  });
 }
 
 // 导出封装好的 request 函数
