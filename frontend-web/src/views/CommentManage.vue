@@ -10,6 +10,7 @@
       <div class="flex gap-6 mt-6">
         <!-- 左侧：菜品列表 -->
         <div class="w-1/3 border-r pr-6">
+          <!-- 搜索栏 -->
           <div class="mb-4">
             <input
               type="text"
@@ -18,6 +19,59 @@
               v-model="searchQuery"
               @input="handleSearchChange"
             />
+          </div>
+
+          <!-- 筛选区域 -->
+          <div class="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-100 space-y-3">
+            <div class="flex items-center gap-3">
+              <span class="text-sm font-medium text-gray-600 whitespace-nowrap">所属食堂</span>
+              <div class="relative flex-1">
+                <select
+                  v-model="selectedCanteenId"
+                  @change="handleCanteenChange"
+                  class="appearance-none w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm transition-all cursor-pointer hover:border-gray-400"
+                >
+                  <option value="">全部食堂</option>
+                  <option v-for="canteen in canteens" :key="canteen.id" :value="canteen.id">
+                    {{ canteen.name }}
+                  </option>
+                </select>
+                <span class="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
+                  <span class="iconify text-sm" data-icon="carbon:chevron-down"></span>
+                </span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <span class="text-sm font-medium text-gray-600 whitespace-nowrap">所属窗口</span>
+              <div class="relative flex-1">
+                <select
+                  v-model="selectedWindowId"
+                  @change="handleWindowChange"
+                  class="appearance-none w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm transition-all cursor-pointer hover:border-gray-400 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:border-gray-200"
+                  :disabled="!selectedCanteenId"
+                >
+                  <option value="">全部窗口</option>
+                  <option v-for="window in windows" :key="window.id" :value="window.id">
+                    {{ window.name }}
+                  </option>
+                </select>
+                <span class="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center" :class="{'opacity-50': !selectedCanteenId}">
+                  <span class="iconify text-sm" data-icon="carbon:chevron-down"></span>
+                </span>
+              </div>
+            </div>
+
+            <div class="flex justify-end">
+              <button
+                v-if="selectedCanteenId || selectedWindowId || searchQuery"
+                @click="resetFilters"
+                class="text-xs text-gray-500 hover:text-tsinghua-purple flex items-center gap-1 px-2 py-1 rounded-md hover:bg-gray-200/50 transition-colors"
+              >
+                <span class="iconify text-sm" data-icon="carbon:reset"></span>
+                重置筛选
+              </button>
+            </div>
           </div>
 
           <div class="overflow-auto" style="max-height: calc(100vh - 300px)">
@@ -263,9 +317,10 @@
 </template>
 
 <script lang="ts">
-import { ref, computed, onMounted, defineComponent } from 'vue'
+import { ref, computed, onMounted, onActivated, defineComponent } from 'vue'
 import { dishApi } from '@/api/modules/dish'
 import { reviewApi } from '@/api/modules/review'
+import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import Pagination from '@/components/Common/Pagination.vue'
@@ -288,6 +343,12 @@ export default defineComponent({
     const totalDishes = ref(0)
     const isLoadingDishes = ref(false)
     const selectedDishId = ref<string | null>(null)
+
+    // 筛选相关
+    const selectedCanteenId = ref('')
+    const selectedWindowId = ref('')
+    const canteens = ref<any[]>([])
+    const windows = ref<any[]>([])
 
     // 评价列表相关
     const reviews = ref<Review[]>([])
@@ -340,15 +401,64 @@ export default defineComponent({
       })
     }
 
+    // 加载食堂列表
+    const loadCanteens = async () => {
+      try {
+        const response = await canteenApi.getCanteens({ page: 1, pageSize: 100 })
+        if (response.code === 200 && response.data) {
+          canteens.value = response.data.items || []
+        }
+      } catch (error) {
+        console.error('加载食堂列表失败:', error)
+      }
+    }
+
+    // 处理食堂变化
+    const handleCanteenChange = async () => {
+      selectedWindowId.value = '' // 重置窗口选择
+      windows.value = [] // 清空窗口列表
+      
+      // 重新加载菜品
+      dishPage.value = 1
+      loadDishes()
+
+      if (selectedCanteenId.value) {
+        try {
+          const response = await canteenApi.getWindows(selectedCanteenId.value, { page: 1, pageSize: 100 })
+          if (response.code === 200 && response.data) {
+            windows.value = response.data.items || []
+          }
+        } catch (error) {
+          console.error('加载窗口列表失败:', error)
+        }
+      }
+    }
+
+    // 处理窗口变化
+    const handleWindowChange = () => {
+      dishPage.value = 1
+      loadDishes()
+    }
+
     // 加载菜品列表
     const loadDishes = async () => {
       isLoadingDishes.value = true
       try {
-        const response = await dishApi.getDishes({
+        const params: any = {
           page: dishPage.value,
           pageSize: dishPageSize.value,
           keyword: searchQuery.value || undefined,
-        })
+        }
+
+        // 添加筛选参数
+        if (selectedCanteenId.value) {
+          params.canteenId = selectedCanteenId.value
+        }
+        if (selectedWindowId.value) {
+          params.windowId = selectedWindowId.value
+        }
+
+        const response = await dishApi.getDishes(params)
 
         if (response.code === 200 && response.data) {
           dishes.value = response.data.items || []
@@ -505,7 +615,7 @@ export default defineComponent({
         const response = await reviewApi.deleteComment(comment.id)
         if (response.code === 200) {
           alert('删除成功')
-          loadComments() // 重新加载评论列表
+          loadCommentsForReviews() // 重新加载评论列表
         } else {
           alert(response.message || '删除失败')
         }
@@ -559,8 +669,28 @@ export default defineComponent({
       }, 500)
     }
 
-    onMounted(() => {
+    // 重置筛选
+    const resetFilters = () => {
+      searchQuery.value = ''
+      selectedCanteenId.value = ''
+      selectedWindowId.value = ''
+      windows.value = []
+      dishPage.value = 1
       loadDishes()
+    }
+
+    onMounted(() => {
+      loadCanteens()
+      loadDishes()
+    })
+
+    onActivated(() => {
+      loadCanteens()
+      loadDishes()
+      if (selectedDishId.value) {
+        loadReviews()
+        loadCommentsForReviews()
+      }
     })
 
     return {
@@ -603,6 +733,14 @@ export default defineComponent({
       previewImage,
       getDishTotalPages,
       getDishPaginationPages,
+      // 筛选相关
+      selectedCanteenId,
+      selectedWindowId,
+      canteens,
+      windows,
+      handleCanteenChange,
+      handleWindowChange,
+      resetFilters,
       authStore,
     }
   },

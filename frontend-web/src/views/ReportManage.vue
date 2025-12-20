@@ -74,25 +74,13 @@
                   <div class="text-sm">
                     {{ report.targetType === 'review' ? '评价' : '评论' }}
                   </div>
-                  <!-- 评价图片预览 -->
+                  <!-- 评价图片数量 -->
                   <div 
                     v-if="report.targetType === 'review' && report.targetContent?.images && report.targetContent.images.length > 0"
-                    class="flex items-center space-x-1"
+                    class="ml-2 inline-flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 rounded text-xs text-gray-600"
                   >
-                    <img
-                      :src="report.targetContent.images[0]"
-                      :alt="'评价图片'"
-                      class="w-10 h-10 rounded object-cover border cursor-pointer hover:opacity-80 transition"
-                      @click.stop="openDetailDialog(report)"
-                      title="点击查看详情"
-                    />
-                    <span 
-                      v-if="report.targetContent.images.length > 1"
-                      class="text-xs text-gray-500"
-                      title="共{{ report.targetContent.images.length }}张图片"
-                    >
-                      +{{ report.targetContent.images.length - 1 }}
-                    </span>
+                    <span class="iconify inline-block text-sm" data-icon="carbon:image"></span>
+                    <span>{{ report.targetContent.images.length }} 张</span>
                   </div>
                 </div>
               </td>
@@ -216,7 +204,7 @@
                       {{ selectedReport.targetContent.content || '（无内容）' }}
                     </div>
                   </div>
-                  <!-- 评价图片展示 -->
+                  <!-- 评价图片数量 -->
                   <div 
                     v-if="selectedReport.targetType === 'review' && selectedReport.targetContent.images && selectedReport.targetContent.images.length > 0"
                     class="mb-4"
@@ -362,7 +350,7 @@
 </template>
 
 <script lang="ts">
-import { ref, onMounted, onUnmounted, defineComponent } from 'vue'
+import { ref, onMounted, onActivated, onUnmounted, defineComponent } from 'vue'
 import { reviewApi } from '@/api/modules/review'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
@@ -642,6 +630,10 @@ export default defineComponent({
     onMounted(() => {
       loadReports()
       window.addEventListener('keydown', handleKeyDown)
+    })
+
+    onActivated(() => {
+      loadReports()
     })
 
     onUnmounted(() => {

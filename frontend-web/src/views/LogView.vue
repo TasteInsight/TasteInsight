@@ -242,7 +242,7 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onActivated } from 'vue'
 import { logApi } from '@/api/modules/log'
 import Header from '@/components/Layout/Header.vue'
 
@@ -385,6 +385,10 @@ export default {
     }
 
     onMounted(() => {
+      loadLogs()
+    })
+
+    onActivated(() => {
       loadLogs()
     })
 

@@ -99,6 +99,10 @@ export class AdminGetDishesDto {
   canteenId?: string;
 
   @IsOptional()
+  @IsString()
+  windowId?: string;
+
+  @IsOptional()
   @IsEnum(DishStatus)
   status?: DishStatus;
 

@@ -20,14 +20,43 @@
           </button>
         </div>
 
-        <!-- 搜索栏 -->
-        <div class="mb-6">
-          <input
-            type="text"
-            v-model="searchQuery"
-            placeholder="搜索用户名、角色（权限组合）..."
-            class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
-          />
+        <!-- 搜索和筛选栏 -->
+        <div class="mb-6 space-y-4">
+          <!-- 搜索栏 -->
+          <div>
+            <input
+              type="text"
+              v-model="searchQuery"
+              placeholder="搜索用户名、角色（权限组合）..."
+              class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+            />
+          </div>
+          
+          <!-- 筛选栏 -->
+          <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2">
+              <label class="text-sm font-medium text-gray-600">管理范围：</label>
+              <select
+                v-model="canteenFilter"
+                @change="handleFilterChange"
+                class="px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple bg-white min-w-[200px]"
+              >
+                <option value="">全部食堂</option>
+                <option value="all">全校食堂</option>
+                <option v-for="canteen in canteenList" :key="canteen.id" :value="canteen.id">
+                  {{ canteen.name }}
+                </option>
+              </select>
+            </div>
+            <button
+              v-if="canteenFilter || searchQuery"
+              @click="resetFilters"
+              class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-2 rounded-md hover:bg-gray-100 transition-colors"
+            >
+              <span class="iconify" data-icon="carbon:reset"></span>
+              重置筛选
+            </button>
+          </div>
         </div>
 
         <!-- 管理员列表表格 -->
@@ -427,7 +456,7 @@
 </template>
 
 <script>
-import { reactive, ref, computed, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
 import { permissionApi } from '@/api/modules/permission'
 import { canteenApi } from '@/api/modules/canteen'
@@ -449,6 +478,7 @@ export default {
     const adminList = ref([]) // 子管理员列表
     const canteenList = ref([]) // 食堂列表
     const searchQuery = ref('')
+    const canteenFilter = ref('') // 食堂筛选
     const currentPage = ref(1)
     const pageSize = ref(10)
     const totalPages = ref(1)
@@ -610,15 +640,30 @@ export default {
 
     // 过滤后的管理员列表
     const filteredAdmins = computed(() => {
-      if (!searchQuery.value) {
-        return adminList.value
+      let filtered = adminList.value
+
+      // 搜索筛选
+      if (searchQuery.value) {
+        const query = searchQuery.value.toLowerCase()
+        filtered = filtered.filter(
+          (admin) =>
+            admin.username.toLowerCase().includes(query) ||
+            (admin.role && admin.role.toLowerCase().includes(query)),
+        )
       }
-      const query = searchQuery.value.toLowerCase()
-      return adminList.value.filter(
-        (admin) =>
-          admin.username.toLowerCase().includes(query) ||
-          (admin.role && admin.role.toLowerCase().includes(query)),
-      )
+
+      // 食堂筛选
+      if (canteenFilter.value) {
+        if (canteenFilter.value === 'all') {
+          // 筛选全校食堂（canteenId为空或null）
+          filtered = filtered.filter((admin) => !admin.canteenId)
+        } else {
+          // 筛选指定食堂
+          filtered = filtered.filter((admin) => admin.canteenId === canteenFilter.value)
+        }
+      }
+
+      return filtered
     })
 
     // 密码强度计算
@@ -1073,6 +1118,20 @@ export default {
       }
     }
 
+    // 处理筛选变化
+    const handleFilterChange = () => {
+      // 筛选是客户端进行的，不需要重新加载数据
+      // 但可以重置到第一页（如果需要分页的话）
+      currentPage.value = 1
+    }
+
+    // 重置筛选
+    const resetFilters = () => {
+      searchQuery.value = ''
+      canteenFilter.value = ''
+      currentPage.value = 1
+    }
+
     // 格式化日期
     const formatDate = (dateString) => {
       if (!dateString) return '-'
@@ -1089,11 +1148,17 @@ export default {
       loadAdmins()
     })
 
+    onActivated(() => {
+      loadCanteens()
+      loadAdmins()
+    })
+
     return {
       viewMode,
       editingAdmin,
       adminList,
       searchQuery,
+      canteenFilter,
       filteredAdmins,
       formData,
       errors,
@@ -1121,6 +1186,8 @@ export default {
       isAllPermissionsSelected,
       submitForm,
       changePage,
+      handleFilterChange,
+      resetFilters,
       formatDate,
       getRoleLabel,
       getCanteenName,
