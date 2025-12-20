@@ -16,7 +16,7 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:setup": "docker stop redis-test && docker rm redis-test || true && docker run -d --name redis-test -p 6380:6379 -e REDIS_PASSWORD=J30pardiZeTheWor1d redis:alpine redis-server --requirepass J30pardiZeTheWor1d --appendonly yes && sleep 2 && dotenv -e .env.test -- pnpm prisma migrate deploy && dotenv -e .env.test -- pnpm prisma generate && dotenv -e .env.test -- ts-node prisma/seed.ts",
+    "test:setup": "docker rm -f redis-test 2>/dev/null || true && if [ -z \"$REDIS_PASSWORD\" ]; then docker run -d --name redis-test -p 6380:6379 redis:alpine redis-server --appendonly yes; else docker run -d --name redis-test -p 6380:6379 -e REDIS_PASSWORD=\"$REDIS_PASSWORD\" redis:alpine redis-server --requirepass \"$REDIS_PASSWORD\" --appendonly yes; fi && sleep 2 && dotenv -e .env.test -- pnpm prisma migrate deploy && dotenv -e .env.test -- pnpm prisma generate && dotenv -e .env.test -- ts-node prisma/seed.ts",
     "test:e2e": "dotenv -e .env.test -- jest --config ./test/jest-e2e.json --runInBand",
     "test:e2e:cov": "dotenv -e .env.test -- jest --config ./test/jest-e2e.json --coverage --runInBand",
     "test:e2e:auth": "pnpm run test:setup && dotenv -e .env.test -- jest --config ./test/jest-e2e.json test/auth.e2e-spec.ts --coverage --collectCoverageFrom \"src/auth/**/*.ts\"",
