@@ -4,10 +4,12 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '@/app.module';
 import { PrismaService } from '@/prisma.service';
+import { RecommendationService } from '@/recommendation/recommendation.service';
 
 describe('Recommendation Module (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let recommendationService: RecommendationService;
   let userAccessToken: string;
   let testUserId: string;
 
@@ -18,6 +20,9 @@ describe('Recommendation Module (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     prisma = app.get<PrismaService>(PrismaService);
+    recommendationService = app.get<RecommendationService>(
+      RecommendationService,
+    );
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
     await app.init();
 
@@ -134,6 +139,8 @@ describe('Recommendation Module (e2e)', () => {
         where: { id: testUserId },
         data: { allergens: [] },
       });
+      // 手动触发缓存刷新
+      await recommendationService.refreshUserFeatureCache(testUserId);
 
       const response1 = await request(app.getHttpServer())
         .post('/dishes')
@@ -189,6 +196,9 @@ describe('Recommendation Module (e2e)', () => {
         },
       });
 
+      // 手动触发缓存刷新
+      await recommendationService.refreshUserFeatureCache(testUserId);
+
       const response = await request(app.getHttpServer())
         .post('/dishes')
         .set('Authorization', `Bearer ${userAccessToken}`)
@@ -213,6 +223,9 @@ describe('Recommendation Module (e2e)', () => {
         data: { allergens: ['花生'] },
       });
 
+      // 手动触发缓存刷新
+      await recommendationService.refreshUserFeatureCache(testUserId);
+
       const response = await request(app.getHttpServer())
         .post('/dishes')
         .set('Authorization', `Bearer ${userAccessToken}`)
@@ -236,6 +249,8 @@ describe('Recommendation Module (e2e)', () => {
         where: { id: testUserId },
         data: { allergens: [] },
       });
+      // 手动触发缓存刷新
+      await recommendationService.refreshUserFeatureCache(testUserId);
     });
 
     it('should return 401 for suggestion mode without auth token', async () => {

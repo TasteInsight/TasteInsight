@@ -684,6 +684,9 @@ describe('DishesController (e2e)', () => {
         },
       });
 
+      // 手动触发缓存刷新
+      await recommendationService.refreshUserFeatureCache(testUserId);
+
       const response = await request(app.getHttpServer())
         .post('/dishes')
         .set('Authorization', `Bearer ${userAccessToken}`)
