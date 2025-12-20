@@ -2,7 +2,6 @@
   <view v-if="window" class="bg-white px-4 py-4">
     <view class="flex items-center justify-between">
       <view class="text-xl font-bold text-gray-800">{{ window.name }}</view>
-      <view v-if="window.number" class="text-sm text-gray-400">#{{ window.number }}</view>
     </view>
     
     <view v-if="window.description" class="text-sm text-gray-500 mt-2">
