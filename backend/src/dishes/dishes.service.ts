@@ -78,38 +78,19 @@ export class DishesService {
           filter,
           search: search?.keyword ? search : undefined,
           pagination,
-          // 默认首页推荐场景，不追踪详细事件（简化模式）
+          // 默认首页推荐场景，不追踪详细事件
         },
       );
 
       // 获取推荐的菜品ID列表
       const dishIds = result.data.items.map((item) => item.id);
 
-      // 获取用户过敏原信息
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { allergens: true },
-      });
-      const userAllergens = user?.allergens || [];
-
-      // 构建查询条件（包含过敏原过滤）
-      const whereCondition: Prisma.DishWhereInput = {
-        id: { in: dishIds },
-        status: 'online',
-      };
-
-      // 如果用户有过敏原，排除含有这些过敏原的菜品
-      if (userAllergens.length > 0) {
-        whereCondition.NOT = {
-          allergens: {
-            hasSome: userAllergens,
-          },
-        };
-      }
-
-      // 批量查询完整的菜品数据
+      // 批量查询完整的菜品数据（推荐服务已经处理了过敏原过滤）
       const fullDishes = await this.prisma.dish.findMany({
-        where: whereCondition,
+        where: {
+          id: { in: dishIds },
+          status: 'online',
+        },
         include: {
           canteen: true,
           window: true,
@@ -124,14 +105,25 @@ export class DishesService {
       const dishMap = new Map(fullDishes.map((dish) => [dish.id, dish]));
       const sortedDishes = dishIds
         .map((id) => dishMap.get(id))
-        .filter((dish) => dish != null);
+        .filter((dish) => dish != null)
+        .slice(0, pagination.pageSize);
+
+      // 使用推荐服务返回的 total
+      const totalPages = Math.ceil(
+        result.data.meta.total / pagination.pageSize,
+      );
 
       return {
         code: result.code,
         message: result.message,
         data: {
           items: sortedDishes.map((dish) => DishDto.fromEntity(dish)),
-          meta: result.data.meta,
+          meta: {
+            page: pagination.page,
+            pageSize: pagination.pageSize,
+            total: result.data.meta.total,
+            totalPages,
+          },
         },
       };
     }

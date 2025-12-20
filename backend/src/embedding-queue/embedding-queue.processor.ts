@@ -86,17 +86,16 @@ export class EmbeddingQueueProcessor extends WorkerHost {
 
   /**
    * 处理刷新用户嵌入任务
+   * 用户更新偏好或行为变化时调用
    */
   private async handleRefreshUser(
     data: RefreshUserJobData,
   ): Promise<{ userId: string; success: boolean }> {
     const { userId } = data;
     try {
-      // 获取用户特征
-      const userFeatures =
-        await this.recommendationService.getUserFeatures(userId);
-      // 生成并缓存用户嵌入
-      await this.embeddingService.updateUserEmbedding(userId, userFeatures);
+      // 使用 refreshUserFeatureCache 来统一处理所有相关缓存的失效和刷新
+      // 这会失效用户特征缓存、推荐结果缓存和用户嵌入缓存，然后重新获取并缓存
+      await this.recommendationService.refreshUserFeatureCache(userId);
       return { userId, success: true };
     } catch (error) {
       this.logger.error(

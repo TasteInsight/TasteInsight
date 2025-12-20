@@ -100,11 +100,10 @@ export class EmbeddingQueueService {
    */
   async enqueueRefreshUser(userId: string): Promise<string | void> {
     if (this.mode === 'sync') {
-      // 同步模式：直接获取用户特征并更新嵌入
-      if (this.recommendationService && this.embeddingService) {
-        const userFeatures =
-          await this.recommendationService.getUserFeatures(userId);
-        await this.embeddingService.updateUserEmbedding(userId, userFeatures);
+      // 同步模式：使用 refreshUserFeatureCache 来统一处理所有相关缓存的失效和刷新
+      // 这会失效用户特征缓存、推荐结果缓存和用户嵌入缓存，然后重新获取并缓存
+      if (this.recommendationService) {
+        await this.recommendationService.refreshUserFeatureCache(userId);
       }
       return;
     }
