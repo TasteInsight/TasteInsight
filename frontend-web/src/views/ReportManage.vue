@@ -215,11 +215,11 @@
                         v-for="(image, index) in selectedReport.targetContent.images"
                         :key="index"
                         class="relative group aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100 cursor-pointer hover:border-tsinghua-purple transition"
-                        @click="openImagePreview(selectedReport.targetContent.images, Number(index))"
+                        @click="openImagePreview(selectedReport.targetContent.images, index)"
                       >
                         <img
                           :src="image"
-                          :alt="`评价图片 ${Number(index) + 1}`"
+                          :alt="`评价图片 ${index + 1}`"
                           class="w-full h-full object-cover"
                         />
                         <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition flex items-center justify-center">

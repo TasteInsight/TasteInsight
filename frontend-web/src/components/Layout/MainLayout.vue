@@ -4,10 +4,14 @@
 
     <div class="flex-1 min-h-screen overflow-x-auto overflow-y-auto bg-tsinghua-light ml-[260px]">
       <router-view v-slot="{ Component }">
-        <keep-alive>
-          <component :is="Component" v-if="$route.meta.keepAlive" :key="$route.path" />
-        </keep-alive>
-        <component :is="Component" v-if="!$route.meta.keepAlive" :key="$route.path" />
+        <template v-if="$route.meta.keepAlive">
+          <keep-alive>
+            <component :is="Component" :key="$route.path" />
+          </keep-alive>
+        </template>
+        <template v-else>
+          <component :is="Component" :key="$route.path" />
+        </template>
       </router-view>
     </div>
   </div>

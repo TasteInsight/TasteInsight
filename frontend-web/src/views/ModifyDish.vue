@@ -78,7 +78,7 @@
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">菜品名称</th>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">食堂/楼层</th>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">窗口</th>
-              <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">Tags</th>
+              <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">标签</th>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">价格区间</th>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">评分</th>
               <th class="py-3 px-6 text-center text-sm font-medium text-gray-500">操作</th>
@@ -337,7 +337,7 @@ export default {
     })
 
     onActivated(() => {
-      // 如果有选中的食堂，确保重新加载窗口列表，防止状态丢失
+      // 如果有选中的食堂且窗口列表为空，则尝试重新加载窗口列表，防止状态丢失
       if (selectedCanteenId.value && windows.value.length === 0) {
         canteenApi.getWindows(selectedCanteenId.value, { page: 1, pageSize: 100 })
           .then(res => {
@@ -345,7 +345,11 @@ export default {
               windows.value = res.data.items || []
             }
           })
-          .catch(err => console.error('恢复窗口列表失败:', err))
+          .catch(err => {
+            console.error('恢复窗口列表失败:', err)
+            // 向用户展示错误提示
+            alert('恢复窗口列表失败，请稍后重试')
+          })
       }
       loadDishes()
     })

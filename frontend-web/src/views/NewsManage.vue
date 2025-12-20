@@ -635,6 +635,7 @@ export default {
           }
 
           if (endDate.value) {
+            // 创建新的日期对象，避免修改原始对象
             const end = new Date(endDate.value)
             // 结束时间设置为当天的23:59:59
             end.setHours(23, 59, 59, 999)

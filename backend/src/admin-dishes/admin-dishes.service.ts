@@ -115,6 +115,29 @@ export class AdminDishesService {
 
     // 如果指定了窗口ID
     if (windowId) {
+      // 验证窗口是否存在，并检查权限
+      const window = await this.prisma.window.findUnique({
+        where: { id: windowId },
+        select: { id: true, canteenId: true },
+      });
+
+      if (!window) {
+        throw new NotFoundException('窗口不存在');
+      }
+
+      // 优先使用查询参数中的 canteenId，其次使用管理员绑定的 canteenId
+      const effectiveCanteenId = canteenId ?? adminInfo.canteenId;
+
+      // 如果管理员有食堂限制，验证窗口是否属于该食堂
+      if (effectiveCanteenId && window.canteenId !== effectiveCanteenId) {
+        throw new ForbiddenException('权限不足：该窗口不属于您管理的食堂');
+      }
+
+      // 如果管理员有食堂限制，确保窗口属于该食堂
+      if (adminInfo.canteenId && window.canteenId !== adminInfo.canteenId) {
+        throw new ForbiddenException('权限不足：该窗口不属于您管理的食堂');
+      }
+
       where.windowId = windowId;
     }
 
