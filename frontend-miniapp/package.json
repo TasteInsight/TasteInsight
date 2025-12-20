@@ -36,6 +36,9 @@
     "test": "jest",
     "test:components": "jest src/test/components",
     "test:components:watch": "jest src/test/components --watch",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report",
     "type-check": "vue-tsc --noEmit",
     "postinstall": "weapp-tw patch"
   },
@@ -72,6 +75,7 @@
     "@dcloudio/uni-cli-shared": "3.0.0-4080420251103001",
     "@dcloudio/uni-stacktracey": "3.0.0-4080420251103001",
     "@dcloudio/vite-plugin-uni": "3.0.0-4080420251103001",
+    "@playwright/test": "^1.57.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^20.17.14",
     "@vue/compiler-sfc": "3.4.21",
