@@ -44,6 +44,70 @@
           </button>
         </div>
 
+        <!-- 搜索和筛选栏 -->
+        <div class="mb-6 space-y-4 p-4 bg-gray-50 rounded-lg border">
+          <!-- 搜索栏 -->
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-2">搜索标题</label>
+            <input
+              type="text"
+              v-model="searchQuery"
+              placeholder="输入新闻标题进行搜索..."
+              class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+            />
+          </div>
+
+          <!-- 筛选栏 -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- 食堂筛选 -->
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-2">发布食堂</label>
+              <select
+                v-model="canteenFilter"
+                class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple bg-white"
+              >
+                <option value="">全部食堂</option>
+                <option value="all">全校公告</option>
+                <option v-for="canteen in canteenList" :key="canteen.id" :value="canteen.id">
+                  {{ canteen.name }}
+                </option>
+              </select>
+            </div>
+
+            <!-- 开始时间 -->
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-2">开始时间</label>
+              <input
+                type="datetime-local"
+                v-model="startDate"
+                class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+              />
+            </div>
+
+            <!-- 结束时间 -->
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-2">结束时间</label>
+              <input
+                type="datetime-local"
+                v-model="endDate"
+                class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+              />
+            </div>
+          </div>
+
+          <!-- 重置筛选按钮 -->
+          <div class="flex justify-end">
+            <button
+              v-if="searchQuery || canteenFilter || startDate || endDate"
+              @click="resetFilters"
+              class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-2 rounded-md hover:bg-gray-100 transition-colors"
+            >
+              <span class="iconify" data-icon="carbon:reset"></span>
+              重置筛选
+            </button>
+          </div>
+        </div>
+
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead class="bg-gray-50">
@@ -67,12 +131,12 @@
                   <span class="ml-2">加载中...</span>
                 </td>
               </tr>
-              <tr v-else-if="newsList.length === 0">
+              <tr v-else-if="filteredNewsList.length === 0">
                 <td colspan="5" class="py-8 text-center text-gray-500">
-                  暂无{{ currentStatus === 'published' ? '已发布' : '未发布' }}新闻
+                  {{ searchQuery || canteenFilter || startDate || endDate ? '没有找到符合条件的新闻' : `暂无${currentStatus === 'published' ? '已发布' : '未发布'}新闻` }}
                 </td>
               </tr>
-              <tr v-else v-for="news in newsList" :key="news.id" class="hover:bg-gray-50">
+              <tr v-else v-for="news in filteredNewsList" :key="news.id" class="hover:bg-gray-50">
                 <td class="py-4 px-6">
                   <div class="font-medium text-gray-900">{{ news.title }}</div>
                 </td>
@@ -374,6 +438,12 @@ export default {
     const canteenList = ref([])
     const authStore = useAuthStore()
 
+    // 搜索和筛选状态
+    const searchQuery = ref('')
+    const canteenFilter = ref('')
+    const startDate = ref('')
+    const endDate = ref('')
+
     // 获取当前登录管理员信息
     const currentAdmin = computed(() => authStore.user)
 
@@ -522,9 +592,68 @@ export default {
     }
 
     const getCanteenName = (canteenId) => {
-      if (!canteenId) return '未设置'
+      if (!canteenId) return '全校公告'
       const canteen = canteenList.value.find((c) => c.id === canteenId)
       return canteen ? canteen.name : '未知食堂'
+    }
+
+    // 过滤后的新闻列表
+    const filteredNewsList = computed(() => {
+      let filtered = newsList.value
+
+      // 标题搜索
+      if (searchQuery.value) {
+        const query = searchQuery.value.toLowerCase().trim()
+        filtered = filtered.filter((news) =>
+          news.title && news.title.toLowerCase().includes(query)
+        )
+      }
+
+      // 食堂筛选
+      if (canteenFilter.value) {
+        if (canteenFilter.value === 'all') {
+          // 筛选全校公告（canteenId为空或null）
+          filtered = filtered.filter((news) => !news.canteenId)
+        } else {
+          // 筛选指定食堂
+          filtered = filtered.filter((news) => news.canteenId === canteenFilter.value)
+        }
+      }
+
+      // 时间范围筛选
+      if (startDate.value || endDate.value) {
+        filtered = filtered.filter((news) => {
+          const newsDate = currentStatus.value === 'published' 
+            ? (news.publishedAt ? new Date(news.publishedAt) : null)
+            : (news.createdAt ? new Date(news.createdAt) : null)
+          
+          if (!newsDate) return false
+
+          if (startDate.value) {
+            const start = new Date(startDate.value)
+            if (newsDate < start) return false
+          }
+
+          if (endDate.value) {
+            const end = new Date(endDate.value)
+            // 结束时间设置为当天的23:59:59
+            end.setHours(23, 59, 59, 999)
+            if (newsDate > end) return false
+          }
+
+          return true
+        })
+      }
+
+      return filtered
+    })
+
+    // 重置筛选
+    const resetFilters = () => {
+      searchQuery.value = ''
+      canteenFilter.value = ''
+      startDate.value = ''
+      endDate.value = ''
     }
 
     const loadCanteens = async () => {
@@ -774,6 +903,7 @@ export default {
 
     return {
       newsList,
+      filteredNewsList,
       showCreateModal,
       showEditModal,
       newsForm,
@@ -783,9 +913,14 @@ export default {
       currentAdmin,
       currentStatus,
       isLoading,
+      searchQuery,
+      canteenFilter,
+      startDate,
+      endDate,
       changeStatus,
       publishNews,
       revokeNews,
+      resetFilters,
       // 导出编辑器相关变量
       editorRef,
       valueHtml,
