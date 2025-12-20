@@ -352,6 +352,28 @@ export async function installMockApi(page: Page): Promise<void> {
       return json(route, ok({ items: [] }));
     }
 
+    // 创建规划
+    if (method === 'POST' && path.endsWith('/meal-plans')) {
+      const body = tryParseJson(req.postData());
+      const newPlan = {
+        id: `plan_${Date.now()}`,
+        name: body?.name || '新规划',
+        description: body?.description || '',
+        startDate: body?.startDate || new Date().toISOString().split('T')[0],
+        endDate: body?.endDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        meals: body?.meals || [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      return json(route, ok(newPlan));
+    }
+
+    // 删除规划
+    const deletePlanMatch = path.match(/\/meal-plans\/([^/]+)$/);
+    if (method === 'DELETE' && deletePlanMatch) {
+      return json(route, ok(null));
+    }
+
     // AI：创建会话
     if (method === 'POST' && path.endsWith('/ai/sessions')) {
       return json(route, ok({ sessionId: 'e2e-ai-session', welcomeMessage: '你好，我是AI助手。' }));
