@@ -133,15 +133,15 @@ jobs:
             -p 5001:5001 \
             -e DEFAULT_EMBEDDING_VERSION=v2 \
             tasteinsight-embedding:ci-test
-          echo "⏳ Waiting for embedding service to be ready..."
+          echo "Waiting for embedding service to be ready..."
           for i in $(seq 1 60); do
             if curl -f http://localhost:5001/health 2>/dev/null | grep -q '"status":"healthy"'; then
-              echo "✅ Embedding service is ready"
+              echo "Embedding service is ready"
               exit 0
             fi
             sleep 2
           done
-          echo "❌ Embedding service did not become ready" >&2
+          echo "Embedding service did not become ready" >&2
           docker logs tasteinsight-ci-embedding || true
           exit 1
 
