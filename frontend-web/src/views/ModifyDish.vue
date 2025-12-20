@@ -78,7 +78,7 @@
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">菜品名称</th>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">食堂/楼层</th>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">窗口</th>
-              <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">菜系</th>
+              <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">Tags</th>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">价格区间</th>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">评分</th>
               <th class="py-3 px-6 text-center text-sm font-medium text-gray-500">操作</th>
