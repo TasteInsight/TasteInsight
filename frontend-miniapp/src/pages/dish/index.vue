@@ -1,5 +1,5 @@
 <template>
-  <view class="min-h-screen bg-white pt-16">
+  <view class="min-h-screen bg-white">
     <!-- 骨架屏 -->
     <DishDetailSkeleton v-if="loading && !dish" />
 
