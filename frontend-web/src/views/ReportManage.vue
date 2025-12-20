@@ -74,25 +74,13 @@
                   <div class="text-sm">
                     {{ report.targetType === 'review' ? '评价' : '评论' }}
                   </div>
-                  <!-- 评价图片预览 -->
+                  <!-- 评价图片数量 -->
                   <div 
                     v-if="report.targetType === 'review' && report.targetContent?.images && report.targetContent.images.length > 0"
-                    class="flex items-center space-x-1"
+                    class="ml-2 inline-flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 rounded text-xs text-gray-600"
                   >
-                    <img
-                      :src="report.targetContent.images[0]"
-                      :alt="'评价图片'"
-                      class="w-10 h-10 rounded object-cover border cursor-pointer hover:opacity-80 transition"
-                      @click.stop="openDetailDialog(report)"
-                      title="点击查看详情"
-                    />
-                    <span 
-                      v-if="report.targetContent.images.length > 1"
-                      class="text-xs text-gray-500"
-                      title="共{{ report.targetContent.images.length }}张图片"
-                    >
-                      +{{ report.targetContent.images.length - 1 }}
-                    </span>
+                    <span class="iconify inline-block text-sm" data-icon="carbon:image"></span>
+                    <span>{{ report.targetContent.images.length }} 张</span>
                   </div>
                 </div>
               </td>
@@ -216,7 +204,7 @@
                       {{ selectedReport.targetContent.content || '（无内容）' }}
                     </div>
                   </div>
-                  <!-- 评价图片展示 -->
+                  <!-- 评价图片数量 -->
                   <div 
                     v-if="selectedReport.targetType === 'review' && selectedReport.targetContent.images && selectedReport.targetContent.images.length > 0"
                     class="mb-4"
@@ -227,11 +215,11 @@
                         v-for="(image, index) in selectedReport.targetContent.images"
                         :key="index"
                         class="relative group aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100 cursor-pointer hover:border-tsinghua-purple transition"
-                        @click="openImagePreview(selectedReport.targetContent.images, index)"
+                        @click="openImagePreview(selectedReport.targetContent.images, Number(index))"
                       >
                         <img
                           :src="image"
-                          :alt="`评价图片 ${index + 1}`"
+                          :alt="`评价图片 ${Number(index) + 1}`"
                           class="w-full h-full object-cover"
                         />
                         <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition flex items-center justify-center">

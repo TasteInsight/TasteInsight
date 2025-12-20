@@ -505,7 +505,7 @@ export default defineComponent({
         const response = await reviewApi.deleteComment(comment.id)
         if (response.code === 200) {
           alert('删除成功')
-          loadComments() // 重新加载评论列表
+          loadCommentsForReviews() // 重新加载评论列表
         } else {
           alert(response.message || '删除失败')
         }
