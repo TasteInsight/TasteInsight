@@ -105,8 +105,7 @@ export class DishesService {
       const dishMap = new Map(fullDishes.map((dish) => [dish.id, dish]));
       const sortedDishes = dishIds
         .map((id) => dishMap.get(id))
-        .filter((dish) => dish != null)
-        .slice(0, pagination.pageSize);
+        .filter((dish) => dish != null);
 
       // 使用推荐服务返回的 total
       const totalPages = Math.ceil(

@@ -402,7 +402,7 @@ export class RecommendationService {
 
     // 2. 召回候选菜品
     const candidateDishes = await this.recallCandidates(
-      dto.pagination.pageSize,
+      dto.pagination,
       filterConditions,
       context,
     );
@@ -453,12 +453,15 @@ export class RecommendationService {
    * 召回候选菜品
    */
   private async recallCandidates(
-    pageSize: number,
+    pagination: { page: number; pageSize: number },
     filterConditions: Prisma.DishWhereInput[],
     context: RecommendationContext,
   ): Promise<any[]> {
+    // 计算需要召回的候选数量
+    // 需要确保召回足够的候选来覆盖到请求的页面
+    const minCandidatesNeeded = pagination.page * pagination.pageSize;
     const candidateLimit = Math.max(
-      pageSize * RECOMMENDATION_LIMITS.CANDIDATE_MULTIPLIER,
+      minCandidatesNeeded * RECOMMENDATION_LIMITS.CANDIDATE_MULTIPLIER,
       RECOMMENDATION_LIMITS.MIN_CANDIDATES,
     );
 

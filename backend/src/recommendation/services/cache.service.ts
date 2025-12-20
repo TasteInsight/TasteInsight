@@ -371,7 +371,7 @@ export class RecommendationCacheService
    * 哈希对象为短字符串
    */
   private hashObject(obj: unknown): string {
-    return Buffer.from(JSON.stringify(obj)).toString('base64').slice(0, 16);
+    return hashToShortString(JSON.stringify(obj));
   }
 
   /**

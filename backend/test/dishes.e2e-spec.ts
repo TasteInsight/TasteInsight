@@ -4,10 +4,12 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '@/app.module';
 import { PrismaService } from '@/prisma.service';
+import { RecommendationService } from '@/recommendation/recommendation.service';
 
 describe('DishesController (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let recommendationService: RecommendationService;
   let userAccessToken: string;
   let testDishId: string;
   let testUserId: string;
@@ -19,6 +21,9 @@ describe('DishesController (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     prisma = app.get<PrismaService>(PrismaService);
+    recommendationService = app.get<RecommendationService>(
+      RecommendationService,
+    );
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
     await app.init();
 
@@ -603,6 +608,12 @@ describe('DishesController (e2e)', () => {
     });
 
     it('should paginate suggested dishes correctly', async () => {
+      // 先确保用户没有过敏原设置（避免过滤导致结果过少）
+      await prisma.user.update({
+        where: { id: testUserId },
+        data: { allergens: [] },
+      });
+
       const response1 = await request(app.getHttpServer())
         .post('/dishes')
         .set('Authorization', `Bearer ${userAccessToken}`)
@@ -627,11 +638,30 @@ describe('DishesController (e2e)', () => {
         })
         .expect(200);
 
+      // 验证第一页返回正确的数量
       expect(response1.body.data.items.length).toBe(2);
+      expect(response1.body.data.meta.page).toBe(1);
+      expect(response1.body.data.meta.pageSize).toBe(2);
+
+      // 验证第二页
       expect(response2.body.data.items.length).toBeGreaterThan(0);
-      // 不同页的第一个菜品应该不同
-      expect(response1.body.data.items[0].id).not.toBe(
-        response2.body.data.items[0].id,
+      expect(response2.body.data.meta.page).toBe(2);
+      expect(response2.body.data.meta.pageSize).toBe(2);
+
+      // 验证不同页的数据不重复
+      const page1Ids = response1.body.data.items.map((item: any) => item.id);
+      const page2Ids = response2.body.data.items.map((item: any) => item.id);
+      const intersection = page1Ids.filter((id: string) =>
+        page2Ids.includes(id),
+      );
+      expect(intersection.length).toBe(0); // 两页之间不应该有重复的ID
+
+      // 验证总数和总页数
+      expect(response1.body.data.meta.total).toBe(
+        response2.body.data.meta.total,
+      );
+      expect(response1.body.data.meta.totalPages).toBe(
+        response2.body.data.meta.totalPages,
       );
     });
 
@@ -679,6 +709,9 @@ describe('DishesController (e2e)', () => {
         data: { allergens: ['花生'] },
       });
 
+      // 手动触发缓存刷新（因为直接更新数据库不会触发 UserProfileService）
+      await recommendationService.refreshUserFeatureCache(testUserId);
+
       const response = await request(app.getHttpServer())
         .post('/dishes')
         .set('Authorization', `Bearer ${userAccessToken}`)
@@ -697,11 +730,185 @@ describe('DishesController (e2e)', () => {
         expect(dish.allergens || []).not.toContain('花生');
       });
 
+      // 验证分页时过敏原过滤仍然有效
+      const response2 = await request(app.getHttpServer())
+        .post('/dishes')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          isSuggestion: true,
+          filter: {},
+          search: { keyword: '' },
+          sort: {},
+          pagination: { page: 2, pageSize: 20 },
+        })
+        .expect(200);
+
+      response2.body.data.items.forEach((dish: any) => {
+        expect(dish.allergens || []).not.toContain('花生');
+      });
+
       // 恢复用户过敏原设置
       await prisma.user.update({
         where: { id: testUserId },
         data: { allergens: [] },
       });
+      // 手动触发缓存刷新
+      await recommendationService.refreshUserFeatureCache(testUserId);
+    });
+
+    it('should handle pagination correctly with allergen filtering', async () => {
+      // 设置用户过敏原
+      await prisma.user.update({
+        where: { id: testUserId },
+        data: { allergens: ['花生'] },
+      });
+
+      // 手动触发缓存刷新（因为直接更新数据库不会触发 UserProfileService）
+      await recommendationService.refreshUserFeatureCache(testUserId);
+
+      const page1Response = await request(app.getHttpServer())
+        .post('/dishes')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          isSuggestion: true,
+          filter: {},
+          search: { keyword: '' },
+          sort: {},
+          pagination: { page: 1, pageSize: 3 },
+        })
+        .expect(200);
+
+      const page2Response = await request(app.getHttpServer())
+        .post('/dishes')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          isSuggestion: true,
+          filter: {},
+          search: { keyword: '' },
+          sort: {},
+          pagination: { page: 2, pageSize: 3 },
+        })
+        .expect(200);
+
+      // 验证每页返回的数量（不超过 pageSize）
+      expect(page1Response.body.data.items.length).toBeLessThanOrEqual(3);
+      expect(page2Response.body.data.items.length).toBeLessThanOrEqual(3);
+      // 验证分页元数据
+      expect(page1Response.body.data.meta.pageSize).toBe(3);
+      expect(page2Response.body.data.meta.pageSize).toBe(3);
+
+      // 验证所有返回的菜品都不含过敏原
+      [
+        ...page1Response.body.data.items,
+        ...page2Response.body.data.items,
+      ].forEach((dish: any) => {
+        expect(dish.allergens || []).not.toContain('花生');
+      });
+
+      // 恢复用户过敏原设置
+      await prisma.user.update({
+        where: { id: testUserId },
+        data: { allergens: [] },
+      });
+      // 手动触发缓存刷新
+      await recommendationService.refreshUserFeatureCache(testUserId);
+    });
+
+    it('should handle multi-page strict pagination in suggestion mode', async () => {
+      // 恢复用户过敏原设置 (ensure clean state)
+      await prisma.user.update({
+        where: { id: testUserId },
+        data: { allergens: [] },
+      });
+      // 手动触发缓存刷新
+      await recommendationService.refreshUserFeatureCache(testUserId);
+
+      // Total expected active dishes in seed: 5 online dishes
+      // Page 1: 2 items
+      const page1Response = await request(app.getHttpServer())
+        .post('/dishes')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          isSuggestion: true,
+          filter: {},
+          search: { keyword: '' },
+          sort: {},
+          pagination: { page: 1, pageSize: 2 },
+        })
+        .expect(200);
+
+      // Page 2: 2 items
+      const page2Response = await request(app.getHttpServer())
+        .post('/dishes')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          isSuggestion: true,
+          filter: {},
+          search: { keyword: '' },
+          sort: {},
+          pagination: { page: 2, pageSize: 2 },
+        })
+        .expect(200);
+
+      // Page 3: 1 item
+      const page3Response = await request(app.getHttpServer())
+        .post('/dishes')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          isSuggestion: true,
+          filter: {},
+          search: { keyword: '' },
+          sort: {},
+          pagination: { page: 3, pageSize: 2 },
+        })
+        .expect(200);
+
+      // Page 4: 0 items
+      const page4Response = await request(app.getHttpServer())
+        .post('/dishes')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          isSuggestion: true,
+          filter: {},
+          search: { keyword: '' },
+          sort: {},
+          pagination: { page: 4, pageSize: 2 },
+        })
+        .expect(200);
+
+      // Verify Page 1
+      expect(page1Response.body.data.items.length).toBe(2);
+      expect(page1Response.body.data.meta.page).toBe(1);
+      // total 可能因测试数据或推荐算法变化而不同，使用更灵活的断言
+      expect(page1Response.body.data.meta.total).toBeGreaterThanOrEqual(4);
+
+      // Verify Page 2
+      expect(page2Response.body.data.items.length).toBe(2);
+      expect(page2Response.body.data.meta.page).toBe(2);
+
+      // Verify Page 3
+      expect(page3Response.body.data.items.length).toBe(1);
+      expect(page3Response.body.data.meta.page).toBe(3);
+
+      // Verify Page 4
+      expect(page4Response.body.data.items.length).toBe(0);
+
+      // Verify No Intersections
+      const p1Ids = page1Response.body.data.items.map((d: any) => d.id);
+      const p2Ids = page2Response.body.data.items.map((d: any) => d.id);
+      const p3Ids = page3Response.body.data.items.map((d: any) => d.id);
+
+      // Check p1 vs p2
+      const intersection12 = p1Ids.filter((id: string) => p2Ids.includes(id));
+      expect(intersection12.length).toBe(0);
+
+      // Check p1 vs p3
+      const intersection13 = p1Ids.filter((id: string) => p3Ids.includes(id));
+      expect(intersection13.length).toBe(0);
+
+      // Check p2 vs p3
+      const intersection23 = p2Ids.filter((id: string) => p3Ids.includes(id));
+      expect(intersection23.length).toBe(0);
     });
 
     it('should return 401 for suggestion mode without auth token', async () => {
