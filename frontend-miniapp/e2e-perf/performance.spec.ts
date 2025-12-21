@@ -138,4 +138,76 @@ test.describe('H5 性能基线（uni-app）', () => {
       expect(perf.vitals.tbtMs).toBeLessThan(thresholds.tbtMs);
     }
   });
+
+  test('新闻详情页：内容加载性能', async ({ page }) => {
+    const thresholds = defaultPerfThresholds();
+
+    await installPerfResourceStubs(page);
+    await seedUniStorage(page, defaultLoggedInSeed);
+    await installMockApi(page);
+    await installPerformanceObservers(page);
+
+    await gotoUniPage(page, '/pages/news/detail?id=news_001');
+
+    await expect(page).toHaveURL(/\/pages\/news\/detail/);
+    await page.waitForTimeout(500);
+
+    const perf = await collectPerfResults(page);
+    console.log('[perf] news-detail', JSON.stringify(perf, null, 2));
+
+    // 页面可能内容简单，不一定触发所有 vitals
+    if (typeof perf.vitals.fcpMs === 'number') {
+      expect(perf.vitals.fcpMs).toBeGreaterThan(0);
+    }
+    if (typeof perf.vitals.lcpMs === 'number') {
+      expect(perf.vitals.lcpMs).toBeLessThan(thresholds.lcpMs);
+    }
+  });
+
+  test('个人资料页：加载性能', async ({ page }) => {
+    const thresholds = defaultPerfThresholds();
+
+    await installPerfResourceStubs(page);
+    await seedUniStorage(page, defaultLoggedInSeed);
+    await installMockApi(page);
+    await installPerformanceObservers(page);
+
+    await gotoUniPage(page, '/pages/profile/index');
+
+    await expect(page).toHaveURL(/\/pages\/profile\/index/);
+    await page.waitForTimeout(500);
+
+    const perf = await collectPerfResults(page);
+    console.log('[perf] profile', JSON.stringify(perf, null, 2));
+
+    expect(perf.vitals.fcpMs).toBeGreaterThan(0);
+    if (typeof perf.vitals.fcpMs === 'number') {
+      expect(perf.vitals.fcpMs).toBeLessThan(thresholds.fcpMs);
+    }
+  });
+
+  test('收藏列表页：内容加载性能', async ({ page }) => {
+    const thresholds = defaultPerfThresholds();
+
+    await installPerfResourceStubs(page);
+    await seedUniStorage(page, defaultLoggedInSeed);
+    await installMockApi(page);
+    await installPerformanceObservers(page);
+
+    await gotoUniPage(page, '/pages/favorites/index');
+
+    await expect(page).toHaveURL(/\/pages\/favorites\/index/);
+    await page.waitForTimeout(500);
+
+    const perf = await collectPerfResults(page);
+    console.log('[perf] favorites', JSON.stringify(perf, null, 2));
+
+    // 页面可能内容简单，不一定触发所有 vitals
+    if (typeof perf.vitals.fcpMs === 'number') {
+      expect(perf.vitals.fcpMs).toBeGreaterThan(0);
+    }
+    if (typeof perf.vitals.lcpMs === 'number') {
+      expect(perf.vitals.lcpMs).toBeLessThan(thresholds.lcpMs);
+    }
+  });
 });

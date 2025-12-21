@@ -140,6 +140,18 @@ const server = http.createServer(async (req, res) => {
     const payload = await readJson(req);
     return ok(res, { ...payload, id: 'user_001' });
   }
+  if (req.method === 'GET' && pathname === '/user/settings') {
+    return ok(res, { displaySettings: { sortBy: 'rating' }, notifications: { enabled: true } });
+  }
+  if (req.method === 'PUT' && pathname === '/user/settings') {
+    const payload = await readJson(req);
+    return ok(res, payload);
+  }
+
+  // notifications
+  if (req.method === 'GET' && pathname === '/notifications') {
+    return ok(res, [{ id: 'notif_001', message: 'mock notification' }]);
+  }
 
   // comments
   {

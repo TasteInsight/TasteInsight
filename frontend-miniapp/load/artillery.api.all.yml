@@ -48,6 +48,14 @@ scenarios:
           url: "/user/profile"
           headers:
             Authorization: "Bearer {{ token }}"
+      - get:
+          url: "/user/settings"
+          headers:
+            Authorization: "Bearer {{ token }}"
+      - get:
+          url: "/notifications"
+          headers:
+            Authorization: "Bearer {{ token }}"
 
       # 食堂/窗口/菜品
       - get:
@@ -111,6 +119,17 @@ scenarios:
     weight: 20
     flow:
       - function: maybeLogin
+
+      # 更新用户设置
+      - put:
+          url: "/user/settings"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          json:
+            displaySettings:
+              sortBy: "rating"
+            notifications:
+              enabled: true
 
       # 更新用户信息
       - put:

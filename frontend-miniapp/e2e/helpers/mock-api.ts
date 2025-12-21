@@ -173,6 +173,23 @@ export async function installMockApi(page: Page): Promise<void> {
       return json(route, ok(user));
     }
 
+    // 用户设置
+    if (method === 'GET' && path.endsWith('/user/settings')) {
+      return json(route, ok({
+        displaySettings: { sortBy: 'rating' },
+        notifications: { enabled: true },
+      }));
+    }
+    if (method === 'PUT' && path.endsWith('/user/settings')) {
+      const body = tryParseJson(req.postData());
+      return json(route, ok(body));
+    }
+
+    // 通知
+    if (method === 'GET' && path.endsWith('/notifications')) {
+      return json(route, ok({ items: [] }));
+    }
+
     // 登录 / 刷新 token（避免意外触发 401 逻辑导致跳转）
     if (method === 'POST' && path.endsWith('/auth/wechat/login')) {
       return json(route, ok({
