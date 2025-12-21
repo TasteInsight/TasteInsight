@@ -66,10 +66,9 @@ export async function installPerformanceObservers(page: Page): Promise<void> {
       longTasks: [] as Array<{ startTime: number; duration: number }>,
     };
 
-    const safeObserver = (type: string, cb: (entries: PerformanceEntryList) => void) => {
+    const safeObserver = (type: string, cb: (entries: PerformanceObserverEntryList) => void) => {
       try {
         const obs = new PerformanceObserver((list) => cb(list));
-        // @ts-expect-error: type is string at runtime
         obs.observe({ type, buffered: true });
         return obs;
       } catch {

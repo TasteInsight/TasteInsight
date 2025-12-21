@@ -43,6 +43,38 @@ scenarios:
       # 登录/刷新（如果后端没开这个接口或需要真微信 code，可用 IGNORE_LOGIN=1 跳过）
       - function: maybeLogin
 
+      # 先拉列表，动态获取真实 ID（避免固定 ID 不存在）
+      - get:
+          url: "/canteens"
+          capture:
+            - json: "$.data[0].id"
+              as: "canteenId"
+      - get:
+          url: "/canteens/{{ canteenId }}/windows"
+          capture:
+            - json: "$.data[0].id"
+              as: "windowId"
+      - get:
+          url: "/windows/{{ windowId }}/dishes"
+          capture:
+            - json: "$.data[0].id"
+              as: "dishId"
+      - get:
+          url: "/dishes/{{ dishId }}/reviews"
+          capture:
+            - json: "$.data[0].id"
+              as: "reviewId"
+      - get:
+          url: "/comments/{{ reviewId }}"
+          capture:
+            - json: "$.data[0].id"
+              as: "commentId"
+      - get:
+          url: "/meal-plans"
+          capture:
+            - json: "$.data[0].id"
+              as: "planId"
+
       # 用户信息
       - get:
           url: "/user/profile"
@@ -175,3 +207,30 @@ scenarios:
             endDate: "2025-12-22"
             mealTime: "lunch"
             dishes: ["{{ dishId }}"]
+
+  - name: "管理端 API 压测（需要 admin token）"
+    weight: 0  # 默认关闭（weight=0），需要时设环境变量 ADMIN_WEIGHT=20
+    flow:
+      - function: maybeAdminLogin
+
+      # 管理端核心接口（示例：审核举报、新闻管理、用户管理等）
+      - get:
+          url: "/admin/reports"
+          headers:
+            Authorization: "Bearer {{ adminToken }}"
+      - get:
+          url: "/admin/news"
+          headers:
+            Authorization: "Bearer {{ adminToken }}"
+      - get:
+          url: "/admin/users"
+          headers:
+            Authorization: "Bearer {{ adminToken }}"
+      - get:
+          url: "/admin/dishes"
+          headers:
+            Authorization: "Bearer {{ adminToken }}"
+      - get:
+          url: "/admin/canteens"
+          headers:
+            Authorization: "Bearer {{ adminToken }}"

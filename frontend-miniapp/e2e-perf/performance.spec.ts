@@ -43,6 +43,71 @@ test.describe('H5 性能基线（uni-app）', () => {
     expect(perf.resources.count).toBeGreaterThan(0);
   });
 
+  test('登录页：加载性能', async ({ page }) => {
+    const thresholds = defaultPerfThresholds();
+
+    await installPerfResourceStubs(page);
+    await installMockApi(page);
+    await installPerformanceObservers(page);
+
+    await gotoUniPage(page, '/pages/login/index');
+
+    await expect(page.getByText('微信登录').first()).toBeVisible();
+    await page.waitForTimeout(500);
+
+    const perf = await collectPerfResults(page);
+    console.log('[perf] login', JSON.stringify(perf, null, 2));
+
+    expect(perf.vitals.fcpMs).toBeGreaterThan(0);
+    if (typeof perf.vitals.fcpMs === 'number') {
+      expect(perf.vitals.fcpMs).toBeLessThan(thresholds.fcpMs);
+    }
+  });
+
+  test('菜品详情页：内容加载性能', async ({ page }) => {
+    const thresholds = defaultPerfThresholds();
+
+    await installPerfResourceStubs(page);
+    await seedUniStorage(page, defaultLoggedInSeed);
+    await installMockApi(page);
+    await installPerformanceObservers(page);
+
+    await gotoUniPage(page, '/pages/dish/index?id=dish-1');
+
+    await expect(page.getByText('评价').first()).toBeVisible();
+    await page.waitForTimeout(500);
+
+    const perf = await collectPerfResults(page);
+    console.log('[perf] dish-detail', JSON.stringify(perf, null, 2));
+
+    expect(perf.vitals.fcpMs).toBeGreaterThan(0);
+    if (typeof perf.vitals.lcpMs === 'number') {
+      expect(perf.vitals.lcpMs).toBeLessThan(thresholds.lcpMs);
+    }
+  });
+
+  test('AI 聊天页：交互性能', async ({ page }) => {
+    const thresholds = defaultPerfThresholds();
+
+    await installPerfResourceStubs(page);
+    await seedUniStorage(page, defaultLoggedInSeed);
+    await installMockApi(page);
+    await installPerformanceObservers(page);
+
+    await gotoUniPage(page, '/pages/ai-chat/index');
+
+    await expect(page.getByText('发送').first()).toBeVisible();
+    await page.waitForTimeout(500);
+
+    const perf = await collectPerfResults(page);
+    console.log('[perf] ai-chat', JSON.stringify(perf, null, 2));
+
+    expect(perf.vitals.fcpMs).toBeGreaterThan(0);
+    if (typeof perf.vitals.tbtMs === 'number') {
+      expect(perf.vitals.tbtMs).toBeLessThan(thresholds.tbtMs);
+    }
+  });
+
   test('搜索页：交互前性能基线', async ({ page }) => {
     const thresholds = defaultPerfThresholds();
 

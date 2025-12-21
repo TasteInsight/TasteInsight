@@ -85,7 +85,59 @@ function captureSessionId(context, events, done) {
   done()
 }
 
+function maybeAdminLogin(context, events, done) {
+  const ignore = process.env.IGNORE_ADMIN_LOGIN === '1' || process.env.IGNORE_ADMIN_LOGIN === 'true'
+  if (ignore) {
+    context.vars.adminToken = process.env.ADMIN_TOKEN || context.vars.adminToken || ''
+    return done()
+  }
+
+  if (process.env.ADMIN_TOKEN) {
+    context.vars.adminToken = process.env.ADMIN_TOKEN
+    return done()
+  }
+
+  // 假设管理端登录接口是 /auth/admin/login，需要 username/password
+  const username = process.env.ADMIN_USERNAME
+  const password = process.env.ADMIN_PASSWORD
+  if (!username || !password) {
+    events.emit('counter', 'load.admin_login.skipped_missing_creds', 1)
+    context.vars.adminToken = ''
+    return done()
+  }
+
+  const target = context._config.target
+  const url = new URL('/auth/admin/login', target).toString()
+
+  const fetchImpl = globalThis.fetch || require('node-fetch')
+
+  fetchImpl(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  })
+    .then(async (res) => {
+      const json = await res.json().catch(() => ({}))
+      const token =
+        json?.data?.accessToken ||
+        json?.data?.token ||
+        json?.accessToken ||
+        json?.token ||
+        ''
+
+      context.vars.adminToken = token
+      if (!token) events.emit('counter', 'load.admin_login.missing_token', 1)
+      done()
+    })
+    .catch(() => {
+      events.emit('counter', 'load.admin_login.failed', 1)
+      context.vars.adminToken = ''
+      done()
+    })
+}
+
 module.exports = {
   maybeLogin,
   captureSessionId,
+  maybeAdminLogin,
 }
