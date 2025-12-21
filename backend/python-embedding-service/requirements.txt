@@ -1,0 +1,20 @@
+# Web framework
+flask==3.0.0
+gunicorn==21.2.0
+
+# Core ML libraries
+# 使用 CPU-only 版本的 PyTorch（体积更小，下载更快）
+# 从 PyTorch 官方源下载 CPU 版本
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.2.0+cpu
+sentence-transformers==2.5.1
+
+# Data processing
+numpy==1.26.3
+transformers==4.37.2
+
+# Database
+psycopg2-binary==2.9.9
+
+# Utilities
+tqdm==4.66.1

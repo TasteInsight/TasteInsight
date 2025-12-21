@@ -1,18 +1,35 @@
 name: CD - Deploy
 
 on:
-  # 当 CI 工作流完成时触发
+  # 1. 当 CI 通过后自动触发部署
+  #    - push 到 main → CI 成功 → 自动部署生产
+  #    - push 到 dev  → CI 成功 → 自动部署开发
   workflow_run:
     workflows: ["CI - Backend", "CI - Frontend"]
     types:
       - completed
     branches: [main, dev]
-  # 支持 tag 推送
+  
+  # 2. 支持直接 push 到分支或 tag 触发
   push:
+    branches: [main, dev]
     tags:
       - 'v*'
-  # 手动触发
+    paths:
+      - 'backend/**'
+      - 'frontend-web/**'
+      - '.github/workflows/cd.yml'
+  
+  # 3. 手动触发
   workflow_dispatch:
+    inputs:
+      environment:
+        description: '部署环境'
+        required: true
+        type: choice
+        options:
+          - development
+          - production
 
 env:
   # 1. GitHub Container Registry (原有的)
@@ -25,10 +42,12 @@ env:
   # 镜像名称定义
   GHCR_BACKEND_IMAGE: ${{ github.repository }}-backend
   GHCR_FRONTEND_IMAGE: ${{ github.repository }}-frontend
+  GHCR_EMBEDDING_IMAGE: ${{ github.repository }}-embedding
   
   # 阿里云
   ALIYUN_BACKEND_REPO: tasteinsight-backend
   ALIYUN_FRONTEND_REPO: tasteinsight-frontend
+  ALIYUN_EMBEDDING_REPO: tasteinsight-embedding
 
 jobs:
   # 检查 CI 是否成功
@@ -188,14 +207,79 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64
 
+  # 构建嵌入服务镜像
+  build-embedding:
+    name: Build Embedding Service Image
+    runs-on: ubuntu-latest
+    needs: check-ci
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
+      image_digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch || github.ref }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.GHCR_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Aliyun Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ALIYUN_REGISTRY }}
+          username: ${{ secrets.ALIYUN_USERNAME }}
+          password: ${{ secrets.ALIYUN_PASSWORD }}
+
+      - name: Extract metadata for Embedding Service
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_EMBEDDING_IMAGE }}
+            ${{ env.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}/${{ env.ALIYUN_EMBEDDING_REPO }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=sha,prefix=sha-
+            type=raw,value=${{ github.event.workflow_run.head_branch }},enable=${{ github.event_name == 'workflow_run' }}
+            type=raw,value=latest-dev,enable=${{ (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'dev') || github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '-')) }}
+            type=raw,value=latest,enable=${{ (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main') || github.ref == 'refs/heads/main' || (startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-')) }}
+
+      - name: Build and push Embedding Service
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend/python-embedding-service
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=embedding
+          cache-to: type=gha,mode=max,scope=embedding
+          platforms: linux/amd64
+          build-args: |
+            PRELOAD_MODEL=true
+
   # 部署到开发环境
   deploy-dev:
     name: Deploy to Development
     runs-on: ubuntu-latest
-    needs: [build-backend, build-frontend]
+    needs: [build-backend, build-frontend, build-embedding]
     if: >
       (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'dev') ||
-      (github.event_name != 'workflow_run' && github.ref == 'refs/heads/dev') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/dev') ||
+      (github.event_name == 'workflow_dispatch' && inputs.environment == 'development') ||
       (startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '-'))
     environment: development
     concurrency:
@@ -287,10 +371,11 @@ jobs:
   deploy-prod:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [build-backend, build-frontend]
+    needs: [build-backend, build-frontend, build-embedding]
     if: >
       (github.event_name == 'workflow_run' && github.event.workflow_run.head_branch == 'main') ||
-      (github.event_name != 'workflow_run' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_dispatch' && inputs.environment == 'production') ||
       (startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-'))
     environment: production
     concurrency:

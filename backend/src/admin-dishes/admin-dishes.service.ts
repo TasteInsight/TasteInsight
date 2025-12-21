@@ -3,6 +3,8 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Optional,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import {
@@ -52,10 +54,18 @@ type PrismaJsonInput =
   | Prisma.NullableJsonNullValueInput
   | Prisma.InputJsonValue;
 type BatchErrorType = 'validation' | 'permission' | 'unknown';
+import { EmbeddingService } from '@/recommendation/services/embedding.service';
+import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service';
 
 @Injectable()
 export class AdminDishesService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(AdminDishesService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    @Optional() private embeddingService?: EmbeddingService,
+    @Optional() private embeddingQueueService?: EmbeddingQueueService,
+  ) {}
 
   private readonly MAX_BATCH_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -472,6 +482,21 @@ export class AdminDishesService {
         subDishes: true,
       },
     });
+
+    // 异步刷新嵌入（避免阻塞管理端）
+    // 使用 try-catch 确保嵌入服务的错误不会影响菜品更新的主要流程
+    try {
+      if (this.embeddingQueueService) {
+        await this.embeddingQueueService.enqueueRefreshDish(id);
+      } else if (this.embeddingService) {
+        await this.embeddingService.updateDishEmbedding(id);
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Failed to refresh embedding for dish ${id}: ${error.message}`,
+      );
+      // 继续执行，不影响主要的更新流程
+    }
 
     return {
       code: 200,
@@ -1600,5 +1625,155 @@ export class AdminDishesService {
       return fs.readFile(file.path);
     }
     throw new BadRequestException('无法读取上传的文件');
+  }
+
+  /**
+   * 刷新单个菜品的嵌入向量
+   */
+  async refreshDishEmbedding(dishId: string, adminInfo: any) {
+    if (!this.embeddingService) {
+      throw new BadRequestException('嵌入服务未启用');
+    }
+
+    // 检查菜品是否存在
+    const dish = await this.prisma.dish.findUnique({
+      where: { id: dishId },
+      select: { id: true, name: true, canteenId: true },
+    });
+
+    if (!dish) {
+      throw new NotFoundException('菜品不存在');
+    }
+
+    // 检查权限
+    if (adminInfo.canteenId && adminInfo.canteenId !== dish.canteenId) {
+      throw new ForbiddenException('权限不足');
+    }
+
+    this.logger.log(
+      `Admin ${adminInfo.username} requested to refresh embedding for dish ${dishId}`,
+    );
+
+    if (this.embeddingQueueService) {
+      const jobId = await this.embeddingQueueService.enqueueRefreshDish(dishId);
+      return {
+        code: 200,
+        message: '已提交刷新任务',
+        data: {
+          jobId: jobId ?? null,
+          dishId,
+          dishName: dish.name,
+          mode: jobId ? 'async' : 'sync',
+        },
+      };
+    }
+
+    // 回退为同步执行
+    await this.embeddingService.updateDishEmbedding(dishId);
+
+    return {
+      code: 200,
+      message: '菜品嵌入向量刷新成功',
+      data: {
+        dishId,
+        dishName: dish.name,
+        mode: 'sync',
+      },
+    };
+  }
+
+  /**
+   * 刷新指定食堂所有菜品的嵌入向量
+   */
+  async refreshDishesEmbeddingsByCanteen(canteenId: string, adminInfo: any) {
+    if (!this.embeddingService) {
+      throw new BadRequestException('嵌入服务未启用');
+    }
+
+    // 检查食堂是否存在
+    const canteen = await this.prisma.canteen.findUnique({
+      where: { id: canteenId },
+      select: { id: true, name: true },
+    });
+
+    if (!canteen) {
+      throw new NotFoundException('食堂不存在');
+    }
+
+    // 检查权限
+    if (adminInfo.canteenId && adminInfo.canteenId !== canteenId) {
+      throw new ForbiddenException('权限不足');
+    }
+
+    this.logger.log(
+      `Admin ${adminInfo.username} requested to refresh embeddings for canteen ${canteenId}`,
+    );
+
+    // 优先使用异步队列
+    if (this.embeddingQueueService) {
+      const jobId =
+        await this.embeddingQueueService.enqueueRefreshCanteenDishes(canteenId);
+      return {
+        code: 200,
+        message: '已提交刷新任务',
+        data: {
+          jobId: jobId ?? null,
+          canteenId,
+          canteenName: canteen.name,
+          mode: jobId ? 'async' : 'sync',
+        },
+      };
+    }
+
+    // 回退为同步执行
+    const startTime = Date.now();
+    const count =
+      await this.embeddingService.updateDishEmbeddingsByCanteen(canteenId);
+    const duration = Date.now() - startTime;
+
+    this.logger.log(
+      `Refreshed ${count} dish embeddings for canteen ${canteenId} in ${duration}ms`,
+    );
+
+    return {
+      code: 200,
+      message: '食堂菜品嵌入向量刷新成功',
+      data: {
+        canteenId,
+        canteenName: canteen.name,
+        count,
+        duration,
+        mode: 'sync',
+      },
+    };
+  }
+
+  /**
+   * 获取嵌入任务状态
+   */
+  async getEmbeddingJobStatus(jobId: string) {
+    if (!this.embeddingQueueService) {
+      return {
+        code: 200,
+        message: '队列服务未启用',
+        data: null,
+      };
+    }
+
+    const status = await this.embeddingQueueService.getJobStatus(jobId);
+
+    if (!status) {
+      return {
+        code: 404,
+        message: '任务不存在',
+        data: null,
+      };
+    }
+
+    return {
+      code: 200,
+      message: 'success',
+      data: status,
+    };
   }
 }
