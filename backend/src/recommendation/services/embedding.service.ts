@@ -533,15 +533,16 @@ export class EmbeddingService implements OnModuleInit {
     }
 
     // 2. 从数据库获取（使用 raw query 因为 embedding 是 Unsupported 类型）
+    // 注意：需要将 vector 类型转换为 text 以避免 Prisma 反序列化错误
     const dbRecords = await this.prisma.$queryRaw<
       Array<{
         id: string;
         dishId: string;
-        embedding: number[];
+        embedding: string; // 从 vector 转换为 text
         version: string;
       }>
     >`
-      SELECT id, "dishId", embedding, version
+      SELECT id, "dishId", embedding::text as embedding, version
       FROM "dish_embeddings"
       WHERE "dishId" = ${dishId}
       LIMIT 1
@@ -549,7 +550,8 @@ export class EmbeddingService implements OnModuleInit {
 
     if (dbRecords.length > 0) {
       const dbRecord = dbRecords[0];
-      const embedding = dbRecord.embedding;
+      // 将 text 格式的向量解析回 number[]
+      const embedding = JSON.parse(dbRecord.embedding) as number[];
       const version = dbRecord.version || 'v1';
       // 缓存到 Redis
       await this.cacheService.setDishEmbedding(dishId, embedding, version);
@@ -593,27 +595,30 @@ export class EmbeddingService implements OnModuleInit {
     }
 
     // 3. 从数据库获取缺失的（使用 raw query）
+    // 注意：需要将 vector 类型转换为 text 以避免 Prisma 反序列化错误
     const dbRecords = await this.prisma.$queryRaw<
       Array<{
         id: string;
         dishId: string;
-        embedding: number[];
+        embedding: string; // 从 vector 转换为 text
         version: string;
       }>
     >`
-      SELECT id, "dishId", embedding, version
+      SELECT id, "dishId", embedding::text as embedding, version
       FROM "dish_embeddings"
       WHERE "dishId" = ANY(${missingIds})
     `;
 
     for (const record of dbRecords) {
-      const embedding = record.embedding;
+      // 将 text 格式的向量解析回 number[]
+      // PostgreSQL vector 的 text 格式是 "[1.0,2.0,3.0]"
+      const embeddingArray = JSON.parse(record.embedding) as number[];
       const version = record.version || 'v1';
-      result.set(record.dishId, { embedding, version });
+      result.set(record.dishId, { embedding: embeddingArray, version });
       // 缓存到 Redis
       await this.cacheService.setDishEmbedding(
         record.dishId,
-        embedding,
+        embeddingArray,
         version,
       );
     }

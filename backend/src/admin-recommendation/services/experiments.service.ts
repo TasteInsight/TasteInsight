@@ -4,24 +4,26 @@ import { ExperimentService } from '@/recommendation/services/experiment.service'
 import {
   CreateExperimentDto,
   UpdateExperimentDto,
-} from './dto/create-experiment.dto';
+} from '../dto/experiment/create-experiment.dto';
 import {
   ExperimentDto,
   ExperimentResponseDto,
   ExperimentListResponseDto,
   SuccessResponseDto,
-} from './dto/experiment-response.dto';
+} from '../dto/experiment/experiment-response.dto';
 
 /**
- * 管理员实验管理服务
+ * 实验管理服务
+ *
+ * 负责 A/B 测试实验的 CRUD 操作
  */
 @Injectable()
-export class AdminExperimentsService {
-  private readonly logger = new Logger(AdminExperimentsService.name);
+export class ExperimentsService {
+  private readonly logger = new Logger(ExperimentsService.name);
 
   constructor(
     private prisma: PrismaService,
-    private experimentService: ExperimentService,
+    private experimentService: ExperimentService, // 实验服务
   ) {}
 
   /**
