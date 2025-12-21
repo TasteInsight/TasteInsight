@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma.service';
 import { RecommendationCacheService } from './cache.service';
 import { FeatureEncoderService } from './feature-encoder.service';
@@ -20,6 +21,13 @@ export class EmbeddingService implements OnModuleInit {
   private readonly logger = new Logger(EmbeddingService.name);
   private config: EmbeddingServiceConfig;
   private serviceHealthy = false;
+
+  // 不同版本的嵌入维度
+  private readonly EMBEDDING_DIMENSIONS = {
+    v1: 128, // 本地 TF-IDF + 特征工程
+    v2: 788, // Concat 模型：768 (SBERT) + 20 (数值特征)
+    v3: 256, // Fusion 模型：神经网络融合
+  };
 
   constructor(
     private readonly prisma: PrismaService,
@@ -62,6 +70,9 @@ export class EmbeddingService implements OnModuleInit {
     } else {
       this.logger.log('External embedding service is disabled');
     }
+
+    // 确保向量索引存在
+    await this.ensureVectorIndexes();
   }
 
   /**
@@ -85,6 +96,69 @@ export class EmbeddingService implements OnModuleInit {
       this.serviceHealthy = false;
     }
     return false;
+  }
+
+  /**
+   * 确保为每个存在的嵌入版本创建HNSW向量索引
+   *
+   * 自动检测数据库中存在的嵌入版本，并为其创建对应维度的索引
+   * - 如果索引已存在，则跳过（IF NOT EXISTS）
+   * - 如果版本没有数据，则跳过
+   * - 支持多版本共存
+   */
+  private async ensureVectorIndexes(): Promise<void> {
+    try {
+      // 查询数据库中存在的所有版本及其数量
+      const versions = await this.prisma.$queryRaw<
+        Array<{ version: string; count: bigint }>
+      >`
+        SELECT version, COUNT(*) as count
+        FROM "dish_embeddings"
+        WHERE embedding IS NOT NULL
+        GROUP BY version
+      `;
+
+      if (versions.length === 0) {
+        this.logger.log('No embeddings found, skipping index creation');
+        return;
+      }
+
+      for (const { version, count } of versions) {
+        const dimension = this.EMBEDDING_DIMENSIONS[version];
+
+        if (!dimension) {
+          this.logger.warn(
+            `Unknown embedding version: ${version}, skipping index creation`,
+          );
+          continue;
+        }
+
+        this.logger.log(
+          `Found ${count} ${version} embeddings (${dimension}D), ensuring index...`,
+        );
+
+        try {
+          // 创建版本特定的HNSW索引
+          // 使用 WHERE 子句创建部分索引，只为特定版本的数据建索引
+          const indexName = `dish_embeddings_embedding_${version}_idx`;
+
+          await this.prisma.$executeRawUnsafe(`
+            CREATE INDEX IF NOT EXISTS "${indexName}"
+            ON "dish_embeddings" USING hnsw (embedding vector_cosine_ops)
+            WITH (m = 16, ef_construction = 200)
+            WHERE version = '${version}'
+          `);
+
+          this.logger.log(`HNSW index for ${version} created/verified`);
+        } catch (error) {
+          this.logger.error(
+            `Failed to create index for ${version}: ${error.message}`,
+          );
+        }
+      }
+    } catch (error) {
+      this.logger.error(`Failed to ensure vector indexes: ${error.message}`);
+    }
   }
 
   /**
@@ -319,19 +393,16 @@ export class EmbeddingService implements OnModuleInit {
       embeddingVersion = 'v1';
     }
 
-    // 保存到数据库
-    await this.prisma.dishEmbedding.upsert({
-      where: { dishId },
-      create: {
-        dishId,
-        embedding: embedding as any,
-        version: embeddingVersion,
-      },
-      update: {
-        embedding: embedding as any,
-        version: embeddingVersion,
-      },
-    });
+    // 保存到数据库（使用 raw query 因为 embedding 是 Unsupported 类型）
+    await this.prisma.$executeRaw`
+      INSERT INTO "dish_embeddings" ("id", "dishId", "embedding", "version", "createdAt", "updatedAt")
+      VALUES (gen_random_uuid(), ${dishId}, ${embedding}::vector, ${embeddingVersion}, NOW(), NOW())
+      ON CONFLICT ("dishId")
+      DO UPDATE SET
+        "embedding" = ${embedding}::vector,
+        "version" = ${embeddingVersion},
+        "updatedAt" = NOW()
+    `;
 
     // 更新 Redis 缓存
     await this.cacheService.setDishEmbedding(
@@ -387,11 +458,16 @@ export class EmbeddingService implements OnModuleInit {
       const dish = dishes[i];
       const embedding = embeddings[i];
 
-      await this.prisma.dishEmbedding.upsert({
-        where: { dishId: dish.id },
-        create: { dishId: dish.id, embedding: embedding as any, version },
-        update: { embedding: embedding as any, version },
-      });
+      // 使用 raw query 保存 vector 类型
+      await this.prisma.$executeRaw`
+        INSERT INTO "dish_embeddings" ("id", "dishId", "embedding", "version", "createdAt", "updatedAt")
+        VALUES (gen_random_uuid(), ${dish.id}, ${embedding}::vector, ${version}, NOW(), NOW())
+        ON CONFLICT ("dishId")
+        DO UPDATE SET
+          "embedding" = ${embedding}::vector,
+          "version" = ${version},
+          "updatedAt" = NOW()
+      `;
 
       // 更新 Redis 缓存
       await this.cacheService.setDishEmbedding(dish.id, embedding, version);
@@ -445,13 +521,24 @@ export class EmbeddingService implements OnModuleInit {
       return cached;
     }
 
-    // 2. 从数据库获取
-    const dbRecord = await this.prisma.dishEmbedding.findUnique({
-      where: { dishId },
-    });
+    // 2. 从数据库获取（使用 raw query 因为 embedding 是 Unsupported 类型）
+    const dbRecords = await this.prisma.$queryRaw<
+      Array<{
+        id: string;
+        dishId: string;
+        embedding: number[];
+        version: string;
+      }>
+    >`
+      SELECT id, "dishId", embedding, version
+      FROM "dish_embeddings"
+      WHERE "dishId" = ${dishId}
+      LIMIT 1
+    `;
 
-    if (dbRecord) {
-      const embedding = dbRecord.embedding as number[];
+    if (dbRecords.length > 0) {
+      const dbRecord = dbRecords[0];
+      const embedding = dbRecord.embedding;
       const version = dbRecord.version || 'v1';
       // 缓存到 Redis
       await this.cacheService.setDishEmbedding(dishId, embedding, version);
@@ -494,13 +581,22 @@ export class EmbeddingService implements OnModuleInit {
       return result;
     }
 
-    // 3. 从数据库获取缺失的
-    const dbRecords = await this.prisma.dishEmbedding.findMany({
-      where: { dishId: { in: missingIds } },
-    });
+    // 3. 从数据库获取缺失的（使用 raw query）
+    const dbRecords = await this.prisma.$queryRaw<
+      Array<{
+        id: string;
+        dishId: string;
+        embedding: number[];
+        version: string;
+      }>
+    >`
+      SELECT id, "dishId", embedding, version
+      FROM "dish_embeddings"
+      WHERE "dishId" = ANY(${missingIds})
+    `;
 
     for (const record of dbRecords) {
-      const embedding = record.embedding as number[];
+      const embedding = record.embedding;
       const version = record.version || 'v1';
       result.set(record.dishId, { embedding, version });
       // 缓存到 Redis
@@ -821,12 +917,16 @@ export class EmbeddingService implements OnModuleInit {
       return null;
     }
 
-    // 更新数据库和缓存
-    await this.prisma.dishEmbedding.upsert({
-      where: { dishId },
-      create: { dishId, embedding: embedding as any, version: targetVersion },
-      update: { embedding: embedding as any, version: targetVersion },
-    });
+    // 更新数据库和缓存（使用 raw query）
+    await this.prisma.$executeRaw`
+      INSERT INTO "dish_embeddings" ("id", "dishId", "embedding", "version", "createdAt", "updatedAt")
+      VALUES (gen_random_uuid(), ${dishId}, ${embedding}::vector, ${targetVersion}, NOW(), NOW())
+      ON CONFLICT ("dishId")
+      DO UPDATE SET
+        "embedding" = ${embedding}::vector,
+        "version" = ${targetVersion},
+        "updatedAt" = NOW()
+    `;
     await this.cacheService.setDishEmbedding(dishId, embedding, targetVersion);
 
     return { embedding, version: targetVersion };
@@ -881,6 +981,213 @@ export class EmbeddingService implements OnModuleInit {
    */
   cosineSimilarity(vec1: number[], vec2: number[]): number {
     return this.featureEncoder.cosineSimilarity(vec1, vec2);
+  }
+
+  // ==================== 向量召回方法 ====================
+
+  /**
+   * 基于用户向量召回最相似的菜品（语义召回）
+   *
+   * 这是推荐系统的核心召回路径之一，通过向量相似度检索
+   * 能够发现语义相关但关键词不匹配的菜品
+   *
+   * @param userId 用户ID
+   * @param limit 召回数量
+   * @param filter 可选的过滤条件（如食堂、价格范围）
+   * @returns 召回的菜品ID列表（按相似度降序）
+   */
+  async recallDishesByUserEmbedding(
+    userId: string,
+    limit: number = 50,
+    filter?: Prisma.DishWhereInput,
+  ): Promise<string[]> {
+    // 1. 获取用户嵌入向量
+    const userEmbedding = await this.getUserEmbedding(userId);
+    if (!userEmbedding) {
+      this.logger.warn(
+        `No user embedding found for ${userId}, cannot perform vector recall`,
+      );
+      return [];
+    }
+
+    // 2. 从WHERE条件构建SQL子句
+    const whereClauses: string[] = ['de.version = $2', "d.status = 'online'"];
+    if (filter) {
+      // 处理AND数组中的条件
+      const conditions =
+        filter.AND && Array.isArray(filter.AND) ? filter.AND : [filter];
+
+      conditions.forEach((cond) => {
+        // 食堂ID过滤
+        if (cond.canteenId) {
+          if (typeof cond.canteenId === 'string') {
+            whereClauses.push(`d."canteenId" = '${cond.canteenId}'`);
+          } else if (
+            typeof cond.canteenId === 'object' &&
+            'in' in cond.canteenId
+          ) {
+            const ids = (cond.canteenId.in as string[])
+              .map((id) => `'${id}'`)
+              .join(',');
+            whereClauses.push(`d."canteenId" IN (${ids})`);
+          }
+        }
+        // 价格范围过滤
+        if (cond.price && typeof cond.price === 'object') {
+          const pf = cond.price as any;
+          if (pf.gte !== undefined) whereClauses.push(`d.price >= ${pf.gte}`);
+          if (pf.lte !== undefined) whereClauses.push(`d.price <= ${pf.lte}`);
+        }
+        // ID排除过滤
+        if (cond.id && typeof cond.id === 'object' && 'notIn' in cond.id) {
+          const ids = (cond.id.notIn as string[])
+            .map((id) => `'${id}'`)
+            .join(',');
+          whereClauses.push(`d.id NOT IN (${ids})`);
+        }
+      });
+    }
+    const whereSQL = whereClauses.join(' AND ');
+    try {
+      // 使用余弦距离（<=>）进行向量相似度搜索
+      const results = await this.prisma.$queryRawUnsafe<
+        Array<{ dishId: string; distance: number }>
+      >(
+        `
+        SELECT 
+          de."dishId",
+          de.embedding <=> $1::vector AS distance
+        FROM "DishEmbedding" de
+        INNER JOIN "Dish" d ON de."dishId" = d.id
+        WHERE ${whereSQL}
+        ORDER BY distance ASC
+        LIMIT $3
+        `,
+        `[${userEmbedding.embedding.join(',')}]`,
+        userEmbedding.version,
+        limit,
+      );
+
+      return results.map((r) => r.dishId);
+    } catch (error) {
+      this.logger.error(`Vector recall failed: ${error.message}`);
+      return [];
+    }
+  }
+
+  /**
+   * 基于查询文本向量召回相关菜品（用于语义搜索）
+   *
+   * 当用户输入"开胃的"、"解腻的"等模糊描述时，
+   * 传统关键词搜索无法匹配，而向量召回可以找到语义相关的菜品
+   *
+   * @param queryText 搜索文本
+   * @param limit 召回数量
+   * @param version 嵌入版本
+   * @returns 召回的菜品ID列表
+   */
+  async recallDishesByQueryText(
+    queryText: string,
+    limit: number = 50,
+    version?: string,
+  ): Promise<string[]> {
+    if (!this.isExternalServiceAvailable()) {
+      this.logger.warn(
+        'External embedding service not available for query vector recall',
+      );
+      return [];
+    }
+
+    // 1. 将查询文本转换为向量
+    const targetVersion = version || this.config.externalVersion || 'v2';
+
+    try {
+      const queryEmbedding = await this.generateHybridEmbedding(
+        queryText,
+        { price: 0 }, // Dummy numeric features for text-only query
+        targetVersion,
+      );
+
+      if (!queryEmbedding) {
+        return [];
+      }
+
+      // 2. 向量检索
+      const results = await this.prisma.$queryRawUnsafe<
+        Array<{ dishId: string; distance: number }>
+      >(
+        `
+        SELECT 
+          de."dishId",
+          de.embedding <=> $1::vector AS distance
+        FROM "DishEmbedding" de
+        INNER JOIN "Dish" d ON de."dishId" = d.id
+        WHERE de.version = $2
+          AND d.status = 'online'
+        ORDER BY distance ASC
+        LIMIT $3
+        `,
+        `[${queryEmbedding.join(',')}]`,
+        targetVersion,
+        limit,
+      );
+
+      return results.map((r) => r.dishId);
+    } catch (error) {
+      this.logger.error(`Query text vector recall failed: ${error.message}`);
+      return [];
+    }
+  }
+
+  /**
+   * 获取指定菜品的向量相似菜品召回（用于"相似推荐"）
+   *
+   * @param dishId 触发菜品ID
+   * @param limit 召回数量
+   * @param excludeSelf 是否排除自己
+   * @returns 相似菜品ID列表
+   */
+  async recallSimilarDishesByEmbedding(
+    dishId: string,
+    limit: number = 50,
+    excludeSelf: boolean = true,
+  ): Promise<string[]> {
+    const dishEmbedding = await this.getDishEmbedding(dishId);
+    if (!dishEmbedding) {
+      this.logger.warn(`No embedding found for dish ${dishId}`);
+      return [];
+    }
+
+    try {
+      const excludeClause = excludeSelf ? `AND de."dishId" != '${dishId}'` : '';
+
+      const results = await this.prisma.$queryRawUnsafe<
+        Array<{ dishId: string; distance: number }>
+      >(
+        `
+        SELECT 
+          de."dishId",
+          de.embedding <=> $1::vector AS distance
+        FROM "DishEmbedding" de
+        INNER JOIN "Dish" d ON de."dishId" = d.id
+        WHERE de.version = $2
+          AND d.status = 'online'
+          ${excludeClause}
+        ORDER BY distance ASC
+        LIMIT $3
+        `,
+        `[${dishEmbedding.embedding.join(',')}]`,
+        dishEmbedding.version,
+        limit,
+      );
+
+      return results.map((r) => r.dishId);
+    } catch (error) {
+      this.logger.error(
+        `Similar dishes vector recall failed: ${error.message}`,
+      );
+      return [];
+    }
   }
 
   /**
