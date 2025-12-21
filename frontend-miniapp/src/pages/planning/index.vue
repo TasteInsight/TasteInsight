@@ -45,13 +45,13 @@
         :class="['flex-1 py-3 text-center border-b-2', activeTab === 'current' ? 'border-purple-700 text-ts-purple font-semibold' : 'border-transparent text-gray-600']"
         @tap="switchTab('current')"
       >
-        <text>当前规划 ({{ currentPlans.length }})</text>
+        <text class="text-sm">当前规划 ({{ currentPlans.length }})</text>
       </view>
       <view 
         :class="['flex-1 py-3 text-center border-b-2', activeTab === 'history' ? 'border-purple-700 text-ts-purple font-semibold' : 'border-transparent text-gray-600']"
         @tap="switchTab('history')"
       >
-        <text>历史规划 ({{ historyPlans.length }})</text>
+        <text class="text-sm">历史规划 ({{ historyPlans.length }})</text>
       </view>
     </view>
         

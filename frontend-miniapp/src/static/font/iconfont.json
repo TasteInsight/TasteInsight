@@ -6,6 +6,13 @@
   "description": "",
   "glyphs": [
     {
+      "icon_id": "6805326",
+      "name": "Sleeping",
+      "font_class": "Sleeping",
+      "unicode": "e944",
+      "unicode_decimal": 59716
+    },
+    {
       "icon_id": "248944",
       "name": "flash",
       "font_class": "flash",

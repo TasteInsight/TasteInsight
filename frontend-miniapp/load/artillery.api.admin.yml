@@ -1,0 +1,46 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    - duration: 10
+      arrivalRate: 1
+      name: admin-steady
+
+  plugins:
+    ensure: {}
+
+  ensure:
+    thresholds:
+      - http.response_time.p95: 3000
+      - vusers.failed: 1
+
+  defaults:
+    headers:
+      Content-Type: application/json
+
+  processor: "./processors.cjs"
+
+scenarios:
+  - name: "管理端 API 压测（需要 admin token）"
+    flow:
+      - function: maybeAdminLogin
+
+      - get:
+          url: "/admin/reports"
+          headers:
+            Authorization: "Bearer {{ adminToken }}"
+      - get:
+          url: "/admin/news"
+          headers:
+            Authorization: "Bearer {{ adminToken }}"
+      - get:
+          url: "/admin/users"
+          headers:
+            Authorization: "Bearer {{ adminToken }}"
+      - get:
+          url: "/admin/dishes"
+          headers:
+            Authorization: "Bearer {{ adminToken }}"
+      - get:
+          url: "/admin/canteens"
+          headers:
+            Authorization: "Bearer {{ adminToken }}"

@@ -16,6 +16,7 @@ import type {
   ApiResponse,
   SuccessResponse
 } from '@/types/api';
+import { toUserFriendlyErrorMessage } from '@/utils/user-friendly-error';
 
 // 为 state 定义一个类型，增强类型安全
 interface DishesState {
@@ -71,8 +72,7 @@ export const useDishesStore = defineStore('dishes', () => {
         throw new Error(response.message || '获取菜品列表失败');
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : '未知错误';
-      error.value = message;
+      error.value = toUserFriendlyErrorMessage(err);
       console.error('获取菜品列表失败:', err);
       // 抛出错误以便 UI 层可以捕获
       throw err;
@@ -98,8 +98,7 @@ export const useDishesStore = defineStore('dishes', () => {
         throw new Error(response.message || '获取菜品详情失败');
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : '未知错误';
-      error.value = message;
+      error.value = toUserFriendlyErrorMessage(err);
       console.error(`获取ID为 ${id} 的菜品详情失败:`, err);
       throw err;
     } finally {

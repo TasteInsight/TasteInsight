@@ -1,5 +1,5 @@
 <template>
-  <view class="min-h-screen bg-white pt-16">
+  <view class="min-h-screen bg-white">
     <!-- 骨架屏 -->
     <DishDetailSkeleton v-if="loading && !dish" />
 
@@ -244,7 +244,7 @@
     <!-- #ifdef MP-WEIXIN -->
     <!-- 微信小程序：使用 page-container 拦截返回，确保返回时关闭弹窗而不是返回上一页 -->
     <page-container
-      v-if="isReviewFormVisible"
+      v-if="shouldRenderReviewHelper"
       :show="isReviewFormVisible"
       :overlay="false"
       :duration="300"
@@ -264,7 +264,7 @@
 
     <!-- 全部评论面板 -->
     <AllCommentsPanel
-      v-if="isAllCommentsPanelVisible"
+      v-if="shouldRenderAllCommentsPanel"
       :review-id="currentCommentsReviewId"
       :is-visible="isAllCommentsPanelVisible"
       @close="hideAllCommentsPanel"
@@ -291,7 +291,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, nextTick, watch } from 'vue';
 import { onLoad, onBackPress, onPullDownRefresh } from '@dcloudio/uni-app';
 import { useDishDetail } from '@/pages/dish/composables/use-dish-detail';
 import ReviewList from './components/ReviewList.vue';
@@ -338,6 +338,31 @@ const isDetailExpanded = ref(false);
 const isAllCommentsPanelVisible = ref(false);
 const currentCommentsReviewId = ref('');
 const isSubDishesExpanded = ref(false);
+const shouldRefreshDishDetail = ref(false);
+
+// 控制 page-container 的渲染，延迟销毁以避免滚动锁定问题
+const shouldRenderAllCommentsPanel = ref(false);
+const shouldRenderReviewHelper = ref(false);
+
+watch(isAllCommentsPanelVisible, (val: boolean) => {
+  if (val) {
+    shouldRenderAllCommentsPanel.value = true;
+  } else {
+    setTimeout(() => {
+      shouldRenderAllCommentsPanel.value = false;
+    }, 300);
+  }
+});
+
+watch(isReviewFormVisible, (val: boolean) => {
+  if (val) {
+    shouldRenderReviewHelper.value = true;
+  } else {
+    setTimeout(() => {
+      shouldRenderReviewHelper.value = false;
+    }, 300);
+  }
+});
 
 // 拦截返回键，如果有弹窗打开则关闭弹窗而不是返回上一页
 onBackPress(() => {
@@ -346,8 +371,7 @@ onBackPress(() => {
     return true;
   }
   if (isAllCommentsPanelVisible.value) {
-    isAllCommentsPanelVisible.value = false;
-    currentCommentsReviewId.value = '';
+    hideAllCommentsPanel();
     return true;
   }
   if (isReportVisible.value) {
@@ -443,14 +467,20 @@ const hideReviewForm = () => {
   isReviewFormVisible.value = false;
 };
 
-const handleReviewSuccess = () => {
+const handleReviewSuccess = async () => {
   hideReviewForm();
-  // 刷新评价列表
+  
+  // 等待弹窗关闭动画完成 (300ms duration + buffer)
+  await new Promise(resolve => setTimeout(resolve, 350));
+  
+  // 刷新评价列表和菜品信息
   if (dishId.value) {
-    fetchReviews(dishId.value, true);
-    // 刷新菜品信息（更新评分）
-    fetchDishDetail(dishId.value);
+    await Promise.all([
+      fetchReviews(dishId.value, true),
+      fetchDishDetail(dishId.value)
+    ]);
   }
+  
   uni.showToast({
     title: '评价成功',
     icon: 'success',
@@ -470,25 +500,35 @@ const showAllCommentsPanel = (reviewId: string) => {
   isAllCommentsPanelVisible.value = true;
 };
 
-const hideAllCommentsPanel = () => {
+const hideAllCommentsPanel = async () => {
   isAllCommentsPanelVisible.value = false;
   currentCommentsReviewId.value = '';
+  
+  if (shouldRefreshDishDetail.value) {
+    shouldRefreshDishDetail.value = false;
+    
+    // 等待面板关闭动画完成
+    await new Promise(resolve => setTimeout(resolve, 350));
+    
+    if (dishId.value) {
+      await Promise.all([
+        fetchReviews(dishId.value, true),
+        fetchDishDetail(dishId.value)
+      ]);
+    }
+  }
 };
 
-const handleCommentAdded = () => {
+const handleCommentAdded = async () => {
   const reviewId = currentCommentsReviewId.value;
+  
   // 刷新该条评价的评论预览（列表页展示用）
   if (reviewId) {
-    fetchComments(reviewId);
+    await fetchComments(reviewId);
   }
-  // 刷新评价列表（评论发送后也刷新评价列表）
-  if (dishId.value) {
-    fetchReviews(dishId.value, true);
-  }
-  // 刷新菜品详情（按需求：发送后刷新详情页）
-  if (dishId.value) {
-    fetchDishDetail(dishId.value);
-  }
+  
+  // 标记需要刷新，待面板关闭后执行
+  shouldRefreshDishDetail.value = true;
 };
 </script>
 

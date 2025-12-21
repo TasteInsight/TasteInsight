@@ -15,6 +15,9 @@ node_modules
 dist
 *.local
 
+# Artillery load-test reports
+load-report*.json
+
 # Editor directories and files
 .idea
 *.suo
