@@ -68,7 +68,7 @@
       <view v-if="dishesStore.loading" class="text-center py-4 text-gray-500">正在加载菜品...</view>
       <view v-else-if="recommendError" class="text-center py-8">
         <view class="text-gray-400 mb-2">
-          <text class="text-4xl">😴</text>
+          <text class="iconfont icon-Sleeping" :style="{ fontSize: '4rem' }"></text>
         </view>
         <view class="text-gray-500 text-sm">{{ recommendError }}</view>
         <view class="mt-3">
