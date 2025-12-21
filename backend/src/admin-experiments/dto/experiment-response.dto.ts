@@ -12,7 +12,6 @@ export class ExperimentDto {
     id: string;
     name: string;
     ratio: number;
-    weights?: Record<string, any>;
     config?: Record<string, any>;
   }[];
   createdAt: Date;

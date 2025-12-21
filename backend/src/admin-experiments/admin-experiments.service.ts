@@ -98,7 +98,6 @@ export class AdminExperimentsService {
           create: data.groups.map((g) => ({
             name: g.name,
             ratio: g.ratio,
-            weights: g.weights as any,
             config: g.config as any,
           })),
         },
@@ -125,9 +124,44 @@ export class AdminExperimentsService {
     id: string,
     data: UpdateExperimentDto,
   ): Promise<SuccessResponseDto> {
-    const experiment = await this.prisma.experiment.update({
-      where: { id },
-      data,
+    // 如果包含 groups，需要验证分组比例之和为 1
+    if (data.groups) {
+      const totalRatio = data.groups.reduce((sum, g) => sum + g.ratio, 0);
+      if (Math.abs(totalRatio - 1) > 0.01) {
+        throw new Error('Group ratios must sum to 1');
+      }
+    }
+
+    // 提取 groups 字段
+    const { groups, ...experimentData } = data;
+
+    // 使用事务更新实验和分组
+    const experiment = await this.prisma.$transaction(async (tx) => {
+      // 更新实验基本信息
+      const updatedExp = await tx.experiment.update({
+        where: { id },
+        data: experimentData,
+      });
+
+      // 如果提供了 groups，则更新分组
+      if (groups && groups.length > 0) {
+        // 删除现有的分组
+        await tx.experimentGroupItem.deleteMany({
+          where: { experimentId: id },
+        });
+
+        // 创建新的分组
+        await tx.experimentGroupItem.createMany({
+          data: groups.map((g) => ({
+            experimentId: id,
+            name: g.name,
+            ratio: g.ratio,
+            config: g.config as any,
+          })),
+        });
+      }
+
+      return updatedExp;
     });
 
     // 刷新活跃实验列表
@@ -230,6 +264,39 @@ export class AdminExperimentsService {
     };
   }
 
+
+  /**
+   * 获取实验分组的配置
+   */
+  async getGroupConfig(groupItemId: string) {
+    const group = await this.prisma.experimentGroupItem.findUnique({
+      where: { id: groupItemId },
+      include: {
+        experiment: true,
+      },
+    });
+
+    if (!group) {
+      throw new NotFoundException('Group item not found');
+    }
+
+    return {
+      code: 200,
+      message: 'success',
+      data: {
+        id: group.id,
+        name: group.name,
+        ratio: group.ratio,
+        config: group.config,
+        experiment: {
+          id: group.experiment.id,
+          name: group.experiment.name,
+          status: group.experiment.status,
+        },
+      },
+    };
+  }
+
   private mapToExperimentDto(experiment: any): ExperimentDto {
     return {
       id: experiment.id,
@@ -243,7 +310,6 @@ export class AdminExperimentsService {
         id: g.id,
         name: g.name,
         ratio: g.ratio,
-        weights: g.weights as Record<string, any> | undefined,
         config: g.config as Record<string, any> | undefined,
       })),
       createdAt: experiment.createdAt,

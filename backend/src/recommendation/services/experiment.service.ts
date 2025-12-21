@@ -116,12 +116,17 @@ export class ExperimentService implements OnModuleInit {
         startTime: exp.startTime,
         endTime: exp.endTime || undefined,
         status: exp.status,
-        groupItems: exp.groupItems.map((g) => ({
-          groupItemId: g.id,
-          name: g.name,
-          ratio: g.ratio,
-          weights: g.weights as Partial<RecommendationWeights> | undefined,
-        })),
+        groupItems: exp.groupItems.map((g) => {
+          // 从 config 中提取 weights 和 recallQuota
+          const dbConfig = g.config as any;
+          return {
+            groupItemId: g.id,
+            name: g.name,
+            ratio: g.ratio,
+            weights: dbConfig?.weights as Partial<RecommendationWeights> | undefined,
+            recallQuota: dbConfig?.recallQuota,
+          };
+        }),
       };
 
       this.activeExperiments.set(exp.id, config);
@@ -132,10 +137,13 @@ export class ExperimentService implements OnModuleInit {
 
   /**
    * 为用户分配实验组
+   * 
+   * @param userId 用户ID
+   * @param context 推荐上下文（保留可选）
    */
   async assignUserToExperiment(
     userId: string,
-    _context: RecommendationContext,
+    _context?: RecommendationContext,
   ): Promise<ExperimentAssignment | null> {
     // 如果没有活跃实验，返回空
     if (this.activeExperiments.size === 0) {
@@ -206,7 +214,11 @@ export class ExperimentService implements OnModuleInit {
       }
 
       return {
-        ...groupItem,
+        groupItemId: groupItem.groupItemId,
+        name: groupItem.name,
+        ratio: groupItem.ratio,
+        weights: groupItem.weights,
+        recallQuota: groupItem.recallQuota,  // 明确返回召回配额
         experimentId,
         resolvedWeights: weights || this.getDefaultWeights(),
       };
@@ -315,29 +327,6 @@ export class ExperimentService implements OnModuleInit {
     }
 
     return results;
-  }
-
-  /**
-   * 更新实验分组项权重
-   */
-  async updateGroupItemWeights(
-    groupItemId: string,
-    weights: Partial<RecommendationWeights>,
-  ): Promise<void> {
-    await this.prisma.experimentGroupItem.update({
-      where: { id: groupItemId },
-      data: { weights: weights as any },
-    });
-
-    // 清除缓存的权重
-    const fullWeights = this.mergeWeights(weights);
-    await this.cacheService.setExperimentGroupItemWeights(
-      groupItemId,
-      fullWeights,
-    );
-
-    // 刷新活跃实验
-    await this.refreshActiveExperiments();
   }
 
   // ==================== 辅助方法 ====================
