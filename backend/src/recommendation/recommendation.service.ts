@@ -533,13 +533,16 @@ export class RecommendationService {
     // 批量获取菜品详情
     if (allDishIds.size === 0) {
       this.logger.warn(
-        'All recall paths returned empty results, fallback to basic query',
+        `All recall paths returned empty results (${filterConditions.length} filter conditions), fallback to basic query`,
       );
       return this.recallByRules(candidateLimit, filterConditions);
     }
 
     const dishes = await this.prisma.dish.findMany({
-      where: { id: { in: Array.from(allDishIds) } },
+      where: {
+        id: { in: Array.from(allDishIds) },
+        AND: filterConditions.length > 0 ? filterConditions : [],
+      },
       include: {
         canteen: true,
         window: true,
