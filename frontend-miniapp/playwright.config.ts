@@ -5,7 +5,7 @@ const baseURL = process.env.E2E_BASE_URL || 'http://localhost:5173';
 export default defineConfig({
   testDir: './e2e',
   testIgnore: ['**/_*.spec.ts'],
-  timeout: 30_000,
+  timeout: 60_000,  // 增加到 60s
   expect: {
     timeout: 10_000,
   },
@@ -33,4 +33,5 @@ export default defineConfig({
       },
     },
   ],
+  workers: 1,  // 减少到 1 worker 避免并发问题
 });

@@ -52,7 +52,7 @@ test.describe('H5 性能基线（uni-app）', () => {
 
     await gotoUniPage(page, '/pages/login/index');
 
-    await expect(page.getByText('微信登录').first()).toBeVisible();
+    await expect(page.getByText('微信一键登录').first()).toBeVisible();
     await page.waitForTimeout(500);
 
     const perf = await collectPerfResults(page);
@@ -72,9 +72,9 @@ test.describe('H5 性能基线（uni-app）', () => {
     await installMockApi(page);
     await installPerformanceObservers(page);
 
-    await gotoUniPage(page, '/pages/dish/index?id=dish-1');
+    await gotoUniPage(page, '/pages/dish/index?id=dish_001');
 
-    await expect(page.getByText('评价').first()).toBeVisible();
+    await expect(page.getByText('用户评价').first()).toBeVisible();
     await page.waitForTimeout(500);
 
     const perf = await collectPerfResults(page);
@@ -96,7 +96,7 @@ test.describe('H5 性能基线（uni-app）', () => {
 
     await gotoUniPage(page, '/pages/ai-chat/index');
 
-    await expect(page.getByText('发送').first()).toBeVisible();
+    await expect(page.getByText('新建对话').first()).toBeVisible();
     await page.waitForTimeout(500);
 
     const perf = await collectPerfResults(page);
