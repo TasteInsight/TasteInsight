@@ -41,6 +41,8 @@ type NormalizedExcelRow = {
   supplyPeriodRaw?: string;
   description?: string;
   tagsRaw?: string;
+  ingredientsRaw?: string;
+  allergensRaw?: string;
 };
 
 type BatchImportCaches = {
@@ -84,6 +86,8 @@ export class AdminDishesService {
     描述: 'description',
     tags: 'tagsRaw',
     Tags: 'tagsRaw',
+    主辅料: 'ingredientsRaw',
+    过敏原: 'allergensRaw',
   };
 
   private readonly mealTimeDictionary = new Map<string, string>([
@@ -989,6 +993,12 @@ export class AdminDishesService {
     const tags = (item.tags || [])
       .map((tag) => tag.trim())
       .filter((tag) => tag.length > 0);
+    const ingredients = (item.ingredients || [])
+      .map((v) => v.trim())
+      .filter((v) => v.length > 0);
+    const allergens = (item.allergens || [])
+      .map((v) => v.trim())
+      .filter((v) => v.length > 0);
     const subDishNames = (item.subDishNames || [])
       .map((name) => name.trim())
       .filter((name) => name.length > 0);
@@ -1036,6 +1046,8 @@ export class AdminDishesService {
         floor,
         window,
         tags,
+        ingredients,
+        allergens,
         mealTimes,
         availableDates,
         description,
@@ -1048,6 +1060,8 @@ export class AdminDishesService {
           priceUnit,
           description,
           tags,
+          ingredients,
+          allergens,
           canteen,
           floor,
           window,
@@ -1063,6 +1077,8 @@ export class AdminDishesService {
         priceUnit,
         description,
         tags,
+        ingredients,
+        allergens,
         canteen,
         floor,
         window,
@@ -1211,6 +1227,8 @@ export class AdminDishesService {
     floor: Floor | null,
     window: Window,
     tags: string[],
+    ingredients: string[],
+    allergens: string[],
     mealTimes: string[],
     availableDates?: PrismaJsonInput,
     description?: string,
@@ -1241,6 +1259,8 @@ export class AdminDishesService {
           priceUnit: '元',
           description: description || '',
           tags,
+          ingredients,
+          allergens,
           canteenId: canteen.id,
           canteenName: canteen.name,
           floorId: floor?.id,
@@ -1268,6 +1288,8 @@ export class AdminDishesService {
       priceUnit: string;
       description: string;
       tags: string[];
+      ingredients: string[];
+      allergens: string[];
       canteen: Canteen;
       floor: Floor | null;
       window: Window;
@@ -1297,6 +1319,8 @@ export class AdminDishesService {
           priceUnit: params.priceUnit,
           description: params.description,
           tags: params.tags,
+          ingredients: params.ingredients,
+          allergens: params.allergens,
           availableMealTime: params.availableMealTime,
           availableDates: params.availableDates,
           windowNumber: params.window.number,
@@ -1315,6 +1339,8 @@ export class AdminDishesService {
         priceUnit: params.priceUnit,
         description: params.description,
         tags: params.tags,
+        ingredients: params.ingredients,
+        allergens: params.allergens,
         canteenId: params.canteen.id,
         canteenName: params.canteen.name,
         floorId: params.floor?.id,
@@ -1504,6 +1530,8 @@ export class AdminDishesService {
       'supplyPeriodRaw',
       'description',
       'tagsRaw',
+      'ingredientsRaw',
+      'allergensRaw',
     ];
     return keys.every((key) => {
       const value = row[key];
@@ -1579,6 +1607,8 @@ export class AdminDishesService {
         ? this.extractMealTimesFromText(row.supplyTime)
         : [];
     const tags = splitToStringArray(row.tagsRaw);
+    const ingredients = splitToStringArray(row.ingredientsRaw);
+    const allergens = splitToStringArray(row.allergensRaw);
     const subDishNames = splitToStringArray(row.subDishRaw);
 
     const status = errors.length
@@ -1595,6 +1625,8 @@ export class AdminDishesService {
       price,
       priceUnit: unit,
       tags,
+      ingredients,
+      allergens,
       canteenName,
       floorName,
       windowName,
