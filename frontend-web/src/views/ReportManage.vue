@@ -464,10 +464,10 @@ export default defineComponent({
       }
 
       try {
-        const response = await reviewApi.deleteReview(report.targetId)
+        const response = await reviewApi.handleReport(report.id, { action: 'delete_content' })
         if (response.code === 200) {
           alert('删除成功')
-          loadReports()
+          await loadReports()
           // 如果详情对话框打开，更新选中的举报信息
           if (selectedReport.value && selectedReport.value.id === report.id) {
             // 重新加载该举报的详细信息
@@ -498,10 +498,10 @@ export default defineComponent({
       }
 
       try {
-        const response = await reviewApi.deleteComment(report.targetId)
+        const response = await reviewApi.handleReport(report.id, { action: 'delete_content' })
         if (response.code === 200) {
           alert('删除成功')
-          loadReports()
+          await loadReports()
           // 如果详情对话框打开，更新选中的举报信息
           if (selectedReport.value && selectedReport.value.id === report.id) {
             // 重新加载该举报的详细信息
@@ -555,7 +555,7 @@ export default defineComponent({
 
         if (response.code === 200) {
           alert('处理成功')
-          loadReports()
+          await loadReports()
           // 如果详情对话框打开，更新选中的举报信息
           if (selectedReport.value && selectedReport.value.id === report.id) {
             // 重新加载该举报的详细信息
