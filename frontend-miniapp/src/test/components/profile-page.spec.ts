@@ -69,7 +69,7 @@ describe('ProfilePage', () => {
   });
 
   it('shows menu items when logged in', () => {
-    mockUseProfile.loading = false;
+    mockUseProfile.loading.value = false;
     mockUseProfile.isLoggedIn = true;
 
     const wrapper = shallowMount(ProfilePage, {

@@ -16,4 +16,5 @@ module.exports = {
   },
   setupFilesAfterEnv: ['<rootDir>/src/test/components/jest.setup.ts'],
   testMatch: ['**/__tests__/**/*.[jt]s?(x)', '**/?(*.)+(spec|test).[jt]s?(x)'],
+  testPathIgnorePatterns: ['<rootDir>/e2e/'],
 };
