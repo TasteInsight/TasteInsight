@@ -37,6 +37,7 @@
     "test:components": "jest src/test/components",
     "test:components:watch": "jest src/test/components --watch",
     "test:e2e": "playwright test",
+    "test:perf": "playwright test -c playwright.perf.config.ts --workers=1",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
     "type-check": "vue-tsc --noEmit",
