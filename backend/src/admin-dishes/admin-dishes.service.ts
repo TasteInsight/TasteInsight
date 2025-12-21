@@ -456,10 +456,18 @@ export class AdminDishesService {
     });
 
     // 异步刷新嵌入（避免阻塞管理端）
-    if (this.embeddingQueueService) {
-      await this.embeddingQueueService.enqueueRefreshDish(id);
-    } else if (this.embeddingService) {
-      await this.embeddingService.updateDishEmbedding(id);
+    // 使用 try-catch 确保嵌入服务的错误不会影响菜品更新的主要流程
+    try {
+      if (this.embeddingQueueService) {
+        await this.embeddingQueueService.enqueueRefreshDish(id);
+      } else if (this.embeddingService) {
+        await this.embeddingService.updateDishEmbedding(id);
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Failed to refresh embedding for dish ${id}: ${error.message}`,
+      );
+      // 继续执行，不影响主要的更新流程
     }
 
     return {

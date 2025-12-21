@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
+import cuid from 'cuid';
 import { PrismaService } from '@/prisma.service';
 import { RecommendationCacheService } from './cache.service';
 import { FeatureEncoderService } from './feature-encoder.service';
@@ -102,6 +103,8 @@ export class EmbeddingService implements OnModuleInit {
    * 确保为每个存在的嵌入版本创建HNSW向量索引
    *
    * 自动检测数据库中存在的嵌入版本，并为其创建对应维度的索引
+   * - 使用HNSW索引配合类型转换 (embedding::vector(dimension))
+   * - 支持无维度限制的vector列，通过类型转换指定维度
    * - 如果索引已存在，则跳过（IF NOT EXISTS）
    * - 如果版本没有数据，则跳过
    * - 支持多版本共存
@@ -139,14 +142,16 @@ export class EmbeddingService implements OnModuleInit {
 
         try {
           // 创建版本特定的HNSW索引
+          // 使用类型转换 (embedding::vector(dimension)) 为无维度vector列创建特定维度的索引
           // 使用 WHERE 子句创建部分索引，只为特定版本的数据建索引
+          // PostgreSQL会在查询时自动选择正确的索引
           const indexName = `dish_embeddings_embedding_${version}_idx`;
 
           await this.prisma.$executeRawUnsafe(`
             CREATE INDEX IF NOT EXISTS "${indexName}"
-            ON "dish_embeddings" USING hnsw (embedding vector_cosine_ops)
+            ON "dish_embeddings" USING hnsw ((embedding::vector(${dimension})) vector_cosine_ops)
             WITH (m = 16, ef_construction = 200)
-            WHERE version = '${version}'
+            WHERE version = '${version}' AND embedding IS NOT NULL
           `);
 
           this.logger.log(`HNSW index for ${version} created/verified`);
@@ -394,12 +399,15 @@ export class EmbeddingService implements OnModuleInit {
     }
 
     // 保存到数据库（使用 raw query 因为 embedding 是 Unsupported 类型）
+    // 使用 ::float[]::vector 确保类型转换正确（避免 bigint[] 转换错误）
+    // 使用 cuid() 生成 ID，与 Prisma schema 中的 @default(cuid()) 保持一致
+    const id = cuid();
     await this.prisma.$executeRaw`
       INSERT INTO "dish_embeddings" ("id", "dishId", "embedding", "version", "createdAt", "updatedAt")
-      VALUES (gen_random_uuid(), ${dishId}, ${embedding}::vector, ${embeddingVersion}, NOW(), NOW())
+      VALUES (${id}, ${dishId}, ${embedding}::float[]::vector, ${embeddingVersion}, NOW(), NOW())
       ON CONFLICT ("dishId")
       DO UPDATE SET
-        "embedding" = ${embedding}::vector,
+        "embedding" = ${embedding}::float[]::vector,
         "version" = ${embeddingVersion},
         "updatedAt" = NOW()
     `;
@@ -459,12 +467,15 @@ export class EmbeddingService implements OnModuleInit {
       const embedding = embeddings[i];
 
       // 使用 raw query 保存 vector 类型
+      // 使用 ::float[]::vector 确保类型转换正确（避免 bigint[] 转换错误）
+      // 使用 cuid() 生成 ID，与 Prisma schema 中的 @default(cuid()) 保持一致
+      const id = cuid();
       await this.prisma.$executeRaw`
         INSERT INTO "dish_embeddings" ("id", "dishId", "embedding", "version", "createdAt", "updatedAt")
-        VALUES (gen_random_uuid(), ${dish.id}, ${embedding}::vector, ${version}, NOW(), NOW())
+        VALUES (${id}, ${dish.id}, ${embedding}::float[]::vector, ${version}, NOW(), NOW())
         ON CONFLICT ("dishId")
         DO UPDATE SET
-          "embedding" = ${embedding}::vector,
+          "embedding" = ${embedding}::float[]::vector,
           "version" = ${version},
           "updatedAt" = NOW()
       `;
@@ -918,12 +929,15 @@ export class EmbeddingService implements OnModuleInit {
     }
 
     // 更新数据库和缓存（使用 raw query）
+    // 使用 ::float[]::vector 确保类型转换正确（避免 bigint[] 转换错误）
+    // 使用 cuid() 生成 ID，与 Prisma schema 中的 @default(cuid()) 保持一致
+    const id = cuid();
     await this.prisma.$executeRaw`
       INSERT INTO "dish_embeddings" ("id", "dishId", "embedding", "version", "createdAt", "updatedAt")
-      VALUES (gen_random_uuid(), ${dishId}, ${embedding}::vector, ${targetVersion}, NOW(), NOW())
+      VALUES (${id}, ${dishId}, ${embedding}::float[]::vector, ${targetVersion}, NOW(), NOW())
       ON CONFLICT ("dishId")
       DO UPDATE SET
-        "embedding" = ${embedding}::vector,
+        "embedding" = ${embedding}::float[]::vector,
         "version" = ${targetVersion},
         "updatedAt" = NOW()
     `;
@@ -1057,8 +1071,8 @@ export class EmbeddingService implements OnModuleInit {
         SELECT 
           de."dishId",
           de.embedding <=> $1::vector AS distance
-        FROM "DishEmbedding" de
-        INNER JOIN "Dish" d ON de."dishId" = d.id
+        FROM "dish_embeddings" de
+        INNER JOIN "dishes" d ON de."dishId" = d.id
         WHERE ${whereSQL}
         ORDER BY distance ASC
         LIMIT $3
@@ -1120,8 +1134,8 @@ export class EmbeddingService implements OnModuleInit {
         SELECT 
           de."dishId",
           de.embedding <=> $1::vector AS distance
-        FROM "DishEmbedding" de
-        INNER JOIN "Dish" d ON de."dishId" = d.id
+        FROM "dish_embeddings" de
+        INNER JOIN "dishes" d ON de."dishId" = d.id
         WHERE de.version = $2
           AND d.status = 'online'
         ORDER BY distance ASC
@@ -1168,8 +1182,8 @@ export class EmbeddingService implements OnModuleInit {
         SELECT 
           de."dishId",
           de.embedding <=> $1::vector AS distance
-        FROM "DishEmbedding" de
-        INNER JOIN "Dish" d ON de."dishId" = d.id
+        FROM "dish_embeddings" de
+        INNER JOIN "dishes" d ON de."dishId" = d.id
         WHERE de.version = $2
           AND d.status = 'online'
           ${excludeClause}
