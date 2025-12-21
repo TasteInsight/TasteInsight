@@ -231,6 +231,8 @@ export interface BatchParsedDish {
   price: number           // 价格（数字部分）
   priceUnit?: string      // 价格单位（如"元"、"元/份"、"元/两"、"元/斤"）
   tags?: string[]         // tags
+  ingredients?: string[]  // 主辅料
+  allergens?: string[]    // 过敏原
   
   // 位置信息
   canteenName: string     // 食堂
