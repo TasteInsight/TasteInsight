@@ -1869,6 +1869,11 @@
   line-height: 2.5rem
 }
 
+.text-6xl {
+  font-size: 3.75rem;
+  line-height: 1
+}
+
 .text-\[10px\] {
   font-size: 10px
 }
@@ -1900,6 +1905,11 @@
 .text-xs {
   font-size: 0.75rem;
   line-height: 1rem
+}
+
+.text-8xl {
+  font-size: 6rem;
+  line-height: 1
 }
 
 .font-bold {
@@ -2386,6 +2396,11 @@
 .hover\:bg-purple-100:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(243 232 255 / var(--tw-bg-opacity))
+}
+
+.hover\:bg-purple-200:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(233 213 255 / var(--tw-bg-opacity))
 }
 
 .hover\:bg-purple-50:hover {
