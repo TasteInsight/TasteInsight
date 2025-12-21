@@ -121,10 +121,19 @@ jobs:
           docker logs tasteinsight-ci-redis || true
           exit 1
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build Embedding Service Image
-        run: |
-          cd python-embedding-service
-          docker build -t tasteinsight-embedding:ci-test .
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend/python-embedding-service
+          # 根据分支选择 Dockerfile：main 分支用 Full，其他用 Mock
+          file: ./backend/python-embedding-service/${{ (github.ref_name == 'main' || github.base_ref == 'main') && 'Dockerfile' || 'Dockerfile.mock' }}
+          tags: tasteinsight-embedding:ci-test
+          load: true
+          cache-from: type=gha,scope=embedding
+          cache-to: type=gha,mode=max,scope=embedding
 
       - name: Start Embedding Service
         run: |
@@ -134,7 +143,12 @@ jobs:
             -e DEFAULT_EMBEDDING_VERSION=v2 \
             tasteinsight-embedding:ci-test
           echo "Waiting for embedding service to be ready..."
-          for i in $(seq 1 60); do
+          # 为 Full 预留更多时间
+          MAX_RETRIES=60
+          if [ "${{ github.ref_name }}" = "main" ] || [ "${{ github.base_ref }}" = "main" ]; then
+            MAX_RETRIES=150
+          fi
+          for i in $(seq 1 $MAX_RETRIES); do
             if curl -f http://localhost:5001/health 2>/dev/null | grep -q '"status":"healthy"'; then
               echo "Embedding service is ready"
               exit 0
@@ -227,12 +241,3 @@ jobs:
           tags: tasteinsight-backend:ci-test
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Build Embedding Service Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./backend/python-embedding-service
-          push: false
-          tags: tasteinsight-embedding:ci-test
-          cache-from: type=gha,scope=embedding
-          cache-to: type=gha,mode=max,scope=embedding
