@@ -1,3 +1,6 @@
+-- 启用 pgvector 扩展
+CREATE EXTENSION IF NOT EXISTS vector;
+
 -- CreateTable
 CREATE TABLE "recommendation_events" (
     "id" TEXT NOT NULL,
@@ -37,7 +40,6 @@ CREATE TABLE "experiment_group_items" (
     "experimentId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "ratio" DOUBLE PRECISION NOT NULL,
-    "weights" JSONB,
     "config" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -60,7 +62,7 @@ CREATE TABLE "user_experiment_assignments" (
 CREATE TABLE "dish_embeddings" (
     "id" TEXT NOT NULL,
     "dishId" TEXT NOT NULL,
-    "embedding" JSONB NOT NULL,
+    "embedding" vector,
     "version" TEXT NOT NULL DEFAULT 'v1',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -124,3 +126,7 @@ CREATE INDEX "dish_embeddings_version_idx" ON "dish_embeddings"("version");
 
 -- AddForeignKey
 ALTER TABLE "experiment_group_items" ADD CONSTRAINT "experiment_group_items_experimentId_fkey" FOREIGN KEY ("experimentId") REFERENCES "experiments"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- 添加注释
+COMMENT ON COLUMN "dish_embeddings"."embedding" IS 'Dish feature embedding vector for semantic similarity search (pgvector)';
+COMMENT ON COLUMN "experiment_group_items"."config" IS 'Experiment configuration including weights and recallQuota and other configs (JSON)';

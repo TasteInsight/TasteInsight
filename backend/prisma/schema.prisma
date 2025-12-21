@@ -614,11 +614,9 @@ model ExperimentGroupItem {
   name  String // 分组名称（如：control, variant_a）
   ratio Float // 流量比例，所有分组项的 ratio 加起来应为 1
 
-  // 权重配置（JSON格式存储）
-  weights Json? // { preferenceMatch: 30, favoriteSimilarity: 25, ... }
-
-  // 其他配置
-  config Json? // 其他实验参数
+  // 实验配置（JSON格式存储）
+  // 可包含：weights（权重配置）、recallQuota（召回配额）等
+  config Json? // { weights: {...}, recallQuota: {...}, ... }
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -651,11 +649,13 @@ model DishEmbedding {
   id     String @id @default(cuid())
   dishId String @unique
 
-  // 向量嵌入（存储为 JSON 数组）
-  embedding Json // Float[] 向量数据
+  // 向量嵌入（使用 PostgreSQL pgvector 扩展）
+  // Prisma 目前不原生支持 vector 类型，使用 Unsupported 标记
+  // 实际数据类型将在迁移文件中定义为 vector
+  embedding Unsupported("vector")? // Float[] 向量数据，存储为 pgvector
 
   // 元数据
-  version   String   @default("v1") // 嵌入版本
+  version   String   @default("v1") // 嵌入版本（v1, v2, v3）
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
