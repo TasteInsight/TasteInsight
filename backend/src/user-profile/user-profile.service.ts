@@ -330,24 +330,45 @@ export class UserProfileService {
   }
 
   private mapToUserPreferencesDto(preferences: any): UserPreferenceData {
-    // 数据库已有默认值，直接映射字段即可
+    // 处理 preferences 为空的情况
+    if (!preferences) {
+      return {
+        tagPreferences: [],
+        priceRange: {
+          min: 0,
+          max: 50,
+        },
+        meatPreference: [],
+        tastePreferences: {
+          spicyLevel: 0,
+          sweetness: 0,
+          saltiness: 0,
+          oiliness: 0,
+        },
+        canteenPreferences: [],
+        portionSize: 'medium',
+        favoriteIngredients: [],
+        avoidIngredients: [],
+      };
+    }
+
     return {
-      tagPreferences: preferences.tagPreferences,
+      tagPreferences: preferences.tagPreferences || [],
       priceRange: {
-        min: preferences.priceMin,
-        max: preferences.priceMax,
+        min: preferences.priceMin ?? 0,
+        max: preferences.priceMax ?? 50,
       },
-      meatPreference: preferences.meatPreference,
+      meatPreference: preferences.meatPreference || [],
       tastePreferences: {
-        spicyLevel: preferences.spicyLevel,
-        sweetness: preferences.sweetness,
-        saltiness: preferences.saltiness,
-        oiliness: preferences.oiliness,
+        spicyLevel: preferences.spicyLevel ?? 0,
+        sweetness: preferences.sweetness ?? 0,
+        saltiness: preferences.saltiness ?? 0,
+        oiliness: preferences.oiliness ?? 0,
       },
-      canteenPreferences: preferences.canteenPreferences,
-      portionSize: preferences.portionSize,
-      favoriteIngredients: preferences.favoriteIngredients,
-      avoidIngredients: preferences.avoidIngredients,
+      canteenPreferences: preferences.canteenPreferences || [],
+      portionSize: preferences.portionSize || 'medium',
+      favoriteIngredients: preferences.favoriteIngredients || [],
+      avoidIngredients: preferences.avoidIngredients || [],
     };
   }
 
@@ -377,18 +398,34 @@ export class UserProfileService {
   }
 
   private mapToUserSettingsDto(settings: any): UserSettingData {
-    // 数据库已有默认值，直接映射字段即可
+    // 处理 settings 为空的情况
+    if (!settings) {
+      return {
+        notificationSettings: {
+          newDishAlert: true,
+          priceChangeAlert: false,
+          reviewReplyAlert: true,
+          weeklyRecommendation: true,
+        },
+        displaySettings: {
+          showCalories: true,
+          showNutrition: false,
+          sortBy: 'rating',
+        },
+      };
+    }
+
     return {
       notificationSettings: {
-        newDishAlert: settings.newDishAlert,
-        priceChangeAlert: settings.priceChangeAlert,
-        reviewReplyAlert: settings.reviewReplyAlert,
-        weeklyRecommendation: settings.weeklyRecommendation,
+        newDishAlert: settings.newDishAlert ?? true,
+        priceChangeAlert: settings.priceChangeAlert ?? false,
+        reviewReplyAlert: settings.reviewReplyAlert ?? true,
+        weeklyRecommendation: settings.weeklyRecommendation ?? true,
       },
       displaySettings: {
-        showCalories: settings.showCalories,
-        showNutrition: settings.showNutrition,
-        sortBy: settings.defaultSortBy,
+        showCalories: settings.showCalories ?? true,
+        showNutrition: settings.showNutrition ?? false,
+        sortBy: settings.defaultSortBy || 'rating',
       },
     };
   }
