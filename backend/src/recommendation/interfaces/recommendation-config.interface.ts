@@ -17,6 +17,18 @@ export interface RecommendationWeights {
 }
 
 /**
+ * 召回配额配置（用于 A/B 测试不同的召回策略）
+ */
+export interface RecallQuotaConfig {
+  /** 向量召回配额比例 (0-1) */
+  vectorQuota: number;
+  /** 规则召回配额比例 (0-1) */
+  ruleQuota: number;
+  /** 协同召回配额比例 (0-1) */
+  collaborativeQuota: number;
+}
+
+/**
  * A/B 测试实验配置
  */
 export interface ExperimentConfig {
@@ -48,6 +60,8 @@ export interface ExperimentGroupItemConfig {
   ratio: number;
   /** 该分组使用的权重配置 */
   weights?: Partial<RecommendationWeights>;
+  /** 该分组使用的召回配额配置（用于测试不同的召回策略） */
+  recallQuota?: RecallQuotaConfig;
 }
 
 /**

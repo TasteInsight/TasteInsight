@@ -8,6 +8,7 @@ import { ExperimentService } from './services/experiment.service';
 import { EmbeddingService } from './services/embedding.service';
 import { FeatureEncoderService } from './services/feature-encoder.service';
 import { TokenizerService } from './services/tokenizer.service';
+import { RecallMetricsService } from './services/recall-metrics.service';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
 
@@ -22,6 +23,7 @@ import { ConfigModule } from '@nestjs/config';
     FeatureEncoderService,
     TokenizerService,
     EmbeddingService,
+    RecallMetricsService,
     RecommendationService, // 主推荐服务
   ],
   exports: [
@@ -31,6 +33,7 @@ import { ConfigModule } from '@nestjs/config';
     ExperimentService,
     EmbeddingService,
     TokenizerService,
+    RecallMetricsService,
   ],
 })
 export class RecommendationModule {}

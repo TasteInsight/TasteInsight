@@ -4,11 +4,11 @@
 export class CreateExperimentGroupDto {
   name: string;
   ratio: number;
-  /** 
+  /**
    * 实验配置，可以包含：
    * - weights: 权重配置 { preferenceMatch, favoriteSimilarity, ... }
    * - recallQuota: 召回策略配额 { vectorQuota, ruleQuota, collaborativeQuota }
-   * 
+   *
    * @example
    * {
    *   "weights": {

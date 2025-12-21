@@ -123,7 +123,9 @@ export class ExperimentService implements OnModuleInit {
             groupItemId: g.id,
             name: g.name,
             ratio: g.ratio,
-            weights: dbConfig?.weights as Partial<RecommendationWeights> | undefined,
+            weights: dbConfig?.weights as
+              | Partial<RecommendationWeights>
+              | undefined,
             recallQuota: dbConfig?.recallQuota,
           };
         }),
@@ -137,7 +139,7 @@ export class ExperimentService implements OnModuleInit {
 
   /**
    * 为用户分配实验组
-   * 
+   *
    * @param userId 用户ID
    * @param context 推荐上下文（保留可选）
    */
@@ -218,7 +220,7 @@ export class ExperimentService implements OnModuleInit {
         name: groupItem.name,
         ratio: groupItem.ratio,
         weights: groupItem.weights,
-        recallQuota: groupItem.recallQuota,  // 明确返回召回配额
+        recallQuota: groupItem.recallQuota, // 明确返回召回配额
         experimentId,
         resolvedWeights: weights || this.getDefaultWeights(),
       };

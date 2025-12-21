@@ -21,6 +21,7 @@ import {
   RecommendationEvent,
   SearchContext,
   ExperimentAssignment,
+  RecallQuotaConfig,
 } from './interfaces';
 import {
   RecommendationFilterDto,
@@ -40,7 +41,7 @@ import { TokenizerService } from './services/tokenizer.service';
 /**
  * 推荐系统核心服务
  *
- * 📋 目录：
+ * 目录：
  * 1. 主推荐入口 - 核心公共 API
  * 2. 推荐流程子方法 - 推荐流程核心逻辑
  * 3. 用户特征管理 - 用户特征获取与缓存
@@ -72,7 +73,7 @@ export class RecommendationService {
   ) {}
 
   // ═══════════════════════════════════════════════════════════════════
-  // 📍 主推荐入口 - 核心公共 API
+  // 主推荐入口 - 核心公共 API
   // ═══════════════════════════════════════════════════════════════════
 
   /**
@@ -176,7 +177,7 @@ export class RecommendationService {
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  // 📍 推荐流程子方法 - 推荐流程核心逻辑
+  // 推荐流程子方法 - 推荐流程核心逻辑
   // ═══════════════════════════════════════════════════════════════════
 
   /**
@@ -402,9 +403,11 @@ export class RecommendationService {
 
     // 2. 召回候选菜品
     const candidateDishes = await this.recallCandidates(
+      context.userId,
+      context.scene,
       dto.pagination,
       filterConditions,
-      context,
+      { triggerDishId: context.triggerDishId },
     );
 
     // 3. 计算推荐分数
@@ -450,49 +453,309 @@ export class RecommendationService {
   }
 
   /**
-   * 召回候选菜品
+   * 召回候选菜品 - 多路召回架构
+   *
+   * 采用多路并发召回策略，融合以下召回路径：
+   * 1. 向量召回（Vector Recall）- 基于语义相似度
+   * 2. 规则召回（Rule-based Recall）- 基于业务规则和过滤条件
+   * 3. 协同召回（Collaborative Recall）- 基于用户行为相似度
+   *
+   * 召回配额可通过 A/B 测试动态调整，以找到最优召回策略
    */
   private async recallCandidates(
+    userId: string,
+    scene: RecommendationScene,
     pagination: { page: number; pageSize: number },
     filterConditions: Prisma.DishWhereInput[],
-    context: RecommendationContext,
+    options: {
+      triggerDishId?: string;
+    } = {},
   ): Promise<any[]> {
     // 计算需要召回的候选数量
-    // 需要确保召回足够的候选来覆盖到请求的页面
     const minCandidatesNeeded = pagination.page * pagination.pageSize;
     const candidateLimit = Math.max(
       minCandidatesNeeded * RECOMMENDATION_LIMITS.CANDIDATE_MULTIPLIER,
       RECOMMENDATION_LIMITS.MIN_CANDIDATES,
     );
 
-    // 相似推荐场景：优先获取与触发菜品相似的候选
-    if (
-      context.scene === RecommendationScene.SIMILAR &&
-      context.triggerDishId
-    ) {
+    // 相似推荐场景：使用专门的相似召回逻辑
+    if (scene === RecommendationScene.SIMILAR && options.triggerDishId) {
       return this.recallSimilarCandidates(
-        context.triggerDishId,
+        options.triggerDishId,
         candidateLimit,
         filterConditions,
       );
     }
 
-    // 通用召回
-    return this.prisma.dish.findMany({
-      where:
-        filterConditions.length > 0
-          ? { AND: filterConditions }
-          : { status: 'online' },
+    // === 多路召回策略 ===
+    // 从 A/B 测试实验配置中获取召回配额，如果没有配置则使用默认值
+    const quotaConfig = await this.getRecallQuotaConfig(userId, scene);
+
+    const vectorQuota = Math.floor(candidateLimit * quotaConfig.vectorQuota);
+    const ruleQuota = Math.floor(candidateLimit * quotaConfig.ruleQuota);
+    const collabQuota = Math.floor(
+      candidateLimit * quotaConfig.collaborativeQuota,
+    );
+
+    this.logger.debug(
+      `Recall quota config: vector=${quotaConfig.vectorQuota}, ` +
+        `rule=${quotaConfig.ruleQuota}, collaborative=${quotaConfig.collaborativeQuota}`,
+    );
+
+    const recallResults = await Promise.allSettled([
+      // 路径1：向量召回（语义相似度）
+      this.recallByVector(userId, vectorQuota, filterConditions),
+
+      // 路径2：规则召回（业务规则 + SQL过滤）
+      this.recallByRules(ruleQuota, filterConditions),
+
+      // 路径3：协同召回（基于用户相似度）
+      this.recallByCollaboration(userId, collabQuota, filterConditions),
+    ]);
+
+    // 融合召回结果并去重
+    const allDishIds = new Set<string>();
+    const dishIdToSource = new Map<string, string[]>(); // 记录每个菜品来自哪些召回路径
+
+    recallResults.forEach((result, index) => {
+      if (result.status === 'fulfilled' && result.value.length > 0) {
+        const sourceName = ['vector', 'rule', 'collaborative'][index];
+        result.value.forEach((dishId: string) => {
+          allDishIds.add(dishId);
+          if (!dishIdToSource.has(dishId)) {
+            dishIdToSource.set(dishId, []);
+          }
+          dishIdToSource.get(dishId)!.push(sourceName);
+        });
+      }
+    });
+
+    // 批量获取菜品详情
+    if (allDishIds.size === 0) {
+      this.logger.warn(
+        'All recall paths returned empty results, fallback to basic query',
+      );
+      return this.recallByRules(candidateLimit, filterConditions);
+    }
+
+    const dishes = await this.prisma.dish.findMany({
+      where: { id: { in: Array.from(allDishIds) } },
       include: {
         canteen: true,
         window: true,
       },
-      take: candidateLimit,
     });
+
+    // 记录召回质量指标（便于后续优化）
+    this.logger.debug(
+      `Multi-path recall: ${dishes.length} dishes from ${allDishIds.size} unique IDs. ` +
+        `Vector: ${recallResults[0].status === 'fulfilled' ? recallResults[0].value.length : 0}, ` +
+        `Rule: ${recallResults[1].status === 'fulfilled' ? recallResults[1].value.length : 0}, ` +
+        `Collab: ${recallResults[2].status === 'fulfilled' ? recallResults[2].value.length : 0}`,
+    );
+
+    return dishes;
   }
 
   /**
-   * 召回相似菜品候选
+   * 获取召回配额配置
+   *
+   * 优先从 A/B 测试实验配置中获取，如果没有则使用默认值
+   * 这允许通过 A/B 测试来优化召回策略
+   *
+   * @param userId 用户ID
+   * @param scene 推荐场景
+   */
+  private async getRecallQuotaConfig(
+    userId: string,
+    scene: RecommendationScene,
+  ): Promise<RecallQuotaConfig> {
+    // 默认配额配置
+    const DEFAULT_QUOTA: RecallQuotaConfig = {
+      vectorQuota: 0.6, // 60% 向量召回
+      ruleQuota: 0.3, // 30% 规则召回
+      collaborativeQuota: 0.1, // 10% 协同召回
+    };
+
+    // 如果没有实验服务，直接返回默认值
+    if (!this.experimentService) {
+      return DEFAULT_QUOTA;
+    }
+
+    try {
+      // 构建实验上下文
+      const experimentContext: RecommendationContext = {
+        userId,
+        scene,
+      };
+
+      // 获取用户的实验分组
+      const assignment = await this.experimentService.assignUserToExperiment(
+        userId,
+        experimentContext,
+      );
+
+      // 如果实验分组中配置了召回配额，则使用实验配置
+      if (assignment && 'recallQuota' in assignment && assignment.recallQuota) {
+        const quota = assignment.recallQuota;
+
+        // 验证配额总和是否为 1
+        const sum =
+          quota.vectorQuota + quota.ruleQuota + quota.collaborativeQuota;
+        if (Math.abs(sum - 1.0) > 0.01) {
+          this.logger.warn(
+            `Recall quota sum (${sum}) is not 1.0, using default config`,
+          );
+          return DEFAULT_QUOTA;
+        }
+
+        this.logger.debug(
+          `Using recall quota from experiment: ${JSON.stringify(quota)}`,
+        );
+        return quota;
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Failed to get recall quota from experiment: ${error.message}`,
+      );
+    }
+
+    return DEFAULT_QUOTA;
+  }
+
+  /**
+   * 向量召回路径
+   */
+  private async recallByVector(
+    userId: string,
+    limit: number,
+    filterConditions: Prisma.DishWhereInput[],
+  ): Promise<string[]> {
+    if (!this.embeddingService) {
+      return [];
+    }
+
+    try {
+      // 合并过滤条件为单个 WHERE 对象
+      const where: Prisma.DishWhereInput =
+        filterConditions.length > 0 ? { AND: filterConditions } : {};
+
+      const dishIds = await this.embeddingService.recallDishesByUserEmbedding(
+        userId,
+        limit,
+        where,
+      );
+
+      return dishIds;
+    } catch (error) {
+      this.logger.warn(`Vector recall failed: ${error.message}`);
+      return [];
+    }
+  }
+
+  /**
+   * 规则召回路径（传统SQL召回）
+   */
+  private async recallByRules(
+    limit: number,
+    filterConditions: Prisma.DishWhereInput[],
+  ): Promise<string[]> {
+    const dishes = await this.prisma.dish.findMany({
+      where:
+        filterConditions.length > 0
+          ? { AND: filterConditions }
+          : { status: 'online' },
+      select: { id: true },
+      take: limit,
+      orderBy: [
+        { averageRating: 'desc' }, // 优先召回高评分
+        { reviewCount: 'desc' }, // 然后是热门菜品
+      ],
+    });
+
+    return dishes.map((d) => d.id);
+  }
+
+  /**
+   * 协同召回路径（基于用户行为相似度）
+   *
+   * 简化实现：召回与当前用户有相似收藏/浏览行为的其他用户喜欢的菜品
+   */
+  private async recallByCollaboration(
+    userId: string,
+    limit: number,
+    filterConditions: Prisma.DishWhereInput[],
+  ): Promise<string[]> {
+    try {
+      // 获取当前用户最近收藏的菜品
+      const userFavorites = await this.prisma.favoriteDish.findMany({
+        where: { userId },
+        select: { dishId: true },
+        take: 10,
+        orderBy: { addedAt: 'desc' },
+      });
+
+      if (userFavorites.length === 0) {
+        return [];
+      }
+
+      const favoriteDishIds = userFavorites.map((f) => f.dishId);
+
+      // 找到也收藏了这些菜品的其他用户
+      const similarUsers = await this.prisma.favoriteDish.findMany({
+        where: {
+          dishId: { in: favoriteDishIds },
+          userId: { not: userId },
+        },
+        select: { userId: true },
+        distinct: ['userId'],
+        take: 20, // 找20个相似用户
+      });
+
+      if (similarUsers.length === 0) {
+        return [];
+      }
+
+      const similarUserIds = similarUsers.map((u) => u.userId);
+
+      // 召回这些相似用户收藏的菜品（但当前用户还没收藏的）
+      const collaborativeDishes = await this.prisma.favoriteDish.findMany({
+        where: {
+          userId: { in: similarUserIds },
+          dishId: { notIn: favoriteDishIds }, // 排除用户已收藏的
+        },
+        select: { dishId: true },
+        distinct: ['dishId'],
+        take: limit,
+      });
+
+      // 再根据filterConditions过滤一次
+      const dishIds = collaborativeDishes.map((d) => d.dishId);
+      if (dishIds.length === 0) {
+        return [];
+      }
+
+      const validDishes = await this.prisma.dish.findMany({
+        where: {
+          id: { in: dishIds },
+          AND:
+            filterConditions.length > 0
+              ? filterConditions
+              : [{ status: 'online' }],
+        },
+        select: { id: true },
+        take: limit,
+      });
+
+      return validDishes.map((d) => d.id);
+    } catch (error) {
+      this.logger.warn(`Collaborative recall failed: ${error.message}`);
+      return [];
+    }
+  }
+
+  /**
+   * 召回相似菜品候选（优先使用向量相似度）
    */
   private async recallSimilarCandidates(
     triggerDishId: string,
@@ -506,17 +769,45 @@ export class RecommendationService {
 
     if (!triggerDish) {
       // 回退到通用召回
-      return this.prisma.dish.findMany({
-        where:
-          filterConditions.length > 0
-            ? { AND: filterConditions }
-            : { status: 'online' },
-        include: { canteen: true, window: true },
-        take: limit,
-      });
+      return this.recallByRules(limit, filterConditions);
     }
 
-    // 基于标签和食堂的相似召回
+    // 优先使用向量召回（更精准的语义相似度）
+    if (this.embeddingService) {
+      try {
+        const vectorDishIds =
+          await this.embeddingService.recallSimilarDishesByEmbedding(
+            triggerDishId,
+            limit,
+            true, // 排除自己
+          );
+
+        if (vectorDishIds.length > 0) {
+          // 获取菜品详情并应用过滤条件
+          const dishes = await this.prisma.dish.findMany({
+            where: {
+              id: { in: vectorDishIds },
+              AND: filterConditions.length > 0 ? filterConditions : [],
+            },
+            include: { canteen: true, window: true },
+            take: limit,
+          });
+
+          if (dishes.length > 0) {
+            this.logger.debug(
+              `Vector-based similar recall: ${dishes.length} dishes for trigger ${triggerDishId}`,
+            );
+            return dishes;
+          }
+        }
+      } catch (error) {
+        this.logger.warn(
+          `Vector similar recall failed, falling back to tag-based: ${error.message}`,
+        );
+      }
+    }
+
+    // 回退：基于标签和食堂的传统相似召回
     const conditions: Prisma.DishWhereInput[] = [
       { id: { not: triggerDishId } },
       { status: 'online' },
@@ -709,7 +1000,7 @@ export class RecommendationService {
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  // 📍 用户特征管理 - 用户特征获取与缓存
+  // 用户特征管理 - 用户特征获取与缓存
   // ═══════════════════════════════════════════════════════════════════
 
   /**
@@ -876,7 +1167,7 @@ export class RecommendationService {
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  // 📍 特征提取方法 - 收藏、浏览特征提取
+  // 特征提取方法 - 收藏、浏览特征提取
   // ═══════════════════════════════════════════════════════════════════
 
   /**
@@ -966,7 +1257,7 @@ export class RecommendationService {
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  // 📍 筛选条件构建 - 过滤条件构建
+  // 筛选条件构建 - 过滤条件构建
   // ═══════════════════════════════════════════════════════════════════
 
   /**
@@ -1189,7 +1480,7 @@ export class RecommendationService {
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  // 📍 评分计算方法 - 多维度评分算法
+  // 评分计算方法 - 多维度评分算法
   // ═══════════════════════════════════════════════════════════════════
 
   /**
@@ -1631,7 +1922,7 @@ export class RecommendationService {
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  // 📍 事件追踪 API - 点击、收藏、评价事件
+  // 事件追踪 API - 点击、收藏、评价事件
   // ═══════════════════════════════════════════════════════════════════
 
   /**
@@ -1797,7 +2088,7 @@ export class RecommendationService {
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  // 📍 相似菜品推荐 - 相似推荐算法
+  // 相似菜品推荐 - 相似推荐算法
   // ═══════════════════════════════════════════════════════════════════
 
   /**
@@ -2029,7 +2320,7 @@ export class RecommendationService {
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  // 📍 嵌入向量推荐 - 基于向量的推荐
+  // 嵌入向量推荐 - 基于向量的推荐
   // ═══════════════════════════════════════════════════════════════════
 
   /**
@@ -2199,7 +2490,7 @@ export class RecommendationService {
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  // 📍 A/B 测试相关 - 实验分组管理
+  // A/B 测试相关 - 实验分组管理
   // ═══════════════════════════════════════════════════════════════════
 
   /**
@@ -2246,7 +2537,7 @@ export class RecommendationService {
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  // 📍 系统健康状态 - 健康检查接口
+  // 系统健康状态 - 健康检查接口
   // ═══════════════════════════════════════════════════════════════════
 
   /**
@@ -2294,7 +2585,7 @@ export class RecommendationService {
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  // 📍 辅助方法 - 工具函数
+  // 辅助方法 - 工具函数
   // ═══════════════════════════════════════════════════════════════════
 
   /**
