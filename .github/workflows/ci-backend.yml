@@ -71,7 +71,7 @@ jobs:
         working-directory: ./backend
     services:
       postgres:
-        image: postgres:15-alpine
+        image: pgvector/pgvector:pg15
         env:
           POSTGRES_USER: ${{ env.CI_DB_USER }}
           POSTGRES_PASSWORD: ${{ env.CI_DB_PASSWORD }}
