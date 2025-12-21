@@ -37,6 +37,7 @@ services:
     environment:
       # Override for Docker container paths
       - PYTHON_EMBEDDING_MODEL_DIR=/app/saved_models
+      - HF_ENDPOINT=https://hf-mirror.com
     volumes:
       # Persist trained models
       - embedding_models:/app/saved_models
