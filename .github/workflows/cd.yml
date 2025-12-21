@@ -10,15 +10,10 @@ on:
       - completed
     branches: [main, dev]
   
-  # 2. 支持直接 push 到分支或 tag 触发
+  # 2. 支持 tag 触发
   push:
-    branches: [main, dev]
     tags:
       - 'v*'
-    paths:
-      - 'backend/**'
-      - 'frontend-web/**'
-      - '.github/workflows/cd.yml'
   
   # 3. 手动触发
   workflow_dispatch:
@@ -81,6 +76,7 @@ jobs:
     name: Build Backend Image
     runs-on: ubuntu-latest
     needs: check-ci
+    if: needs.check-ci.outputs.should_deploy == 'true'
     permissions:
       contents: read
       packages: write
@@ -148,6 +144,7 @@ jobs:
     name: Build Frontend Image
     runs-on: ubuntu-latest
     needs: check-ci
+    if: needs.check-ci.outputs.should_deploy == 'true'
     permissions:
       contents: read
       packages: write
@@ -212,6 +209,7 @@ jobs:
     name: Build Embedding Service Image
     runs-on: ubuntu-latest
     needs: check-ci
+    if: needs.check-ci.outputs.should_deploy == 'true'
     permissions:
       contents: read
       packages: write
