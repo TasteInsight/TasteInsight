@@ -85,7 +85,9 @@ export class RecommendationService {
     userId: string,
     dto: RecommendationRequestDto,
   ): Promise<RecommendationResultDto> {
-    const requestId = uuidv4();
+    // 使用传入的 requestId（如果有），否则生成新的
+    // 以确保同一个推荐会话在不同页之间保持一致
+    const requestId = dto.requestId || uuidv4();
     const startTime = Date.now();
     const hasSearchKeyword = !!dto.search?.keyword?.trim();
 
@@ -143,9 +145,34 @@ export class RecommendationService {
       const searchContext = this.buildSearchContext(dto.search);
 
       // 9. 执行推荐核心逻辑
+      // 如果提供了 requestId，在第一次请求时获取更多结果以支持分页
+      let modifiedDto = dto;
+      let fullListForSession: RecommendedDishItemDto[] | null = null;
+
+      if (dto.requestId) {
+        // 计算需要获取的结果数量
+        // 如果请求的是第N页，我们需要至少获取 N * pageSize 个结果
+        // 再加上一些缓冲（比如额外20个），以支持后续的翻页
+        const { page, pageSize } = dto.pagination;
+        const minRequired = page * pageSize;
+        const fetchSize = Math.min(minRequired + 20, 200); // 最多获取200个
+
+        modifiedDto = {
+          ...dto,
+          pagination: {
+            page: 1,
+            pageSize: fetchSize,
+          },
+        };
+
+        this.logger.debug(
+          `[${requestId}] Fetching ${fetchSize} items for session (requested page ${page})`,
+        );
+      }
+
       const result = await this.executeRecommendation(
         userId,
-        dto,
+        modifiedDto,
         context,
         userFeatures,
         weights,
@@ -154,6 +181,26 @@ export class RecommendationService {
         startTime,
       );
 
+      // 如果提供了 requestId，缓存完整列表并切片返回当前页
+      if (dto.requestId) {
+        fullListForSession = result.data.items;
+
+        // 从完整列表中切片当前页
+        const { page, pageSize } = dto.pagination;
+        const start = (page - 1) * pageSize;
+        const end = start + pageSize;
+        const pageItems = fullListForSession.slice(start, end);
+
+        // 修改结果为当前页的数据
+        result.data.items = pageItems;
+        result.data.meta = {
+          page,
+          pageSize,
+          total: fullListForSession.length,
+          totalPages: Math.ceil(fullListForSession.length / pageSize),
+        };
+      }
+
       // 10. 缓存推荐结果
       await this.cacheRecommendationResult(
         userId,
@@ -161,6 +208,7 @@ export class RecommendationService {
         dto,
         experimentAssignment,
         result,
+        fullListForSession, // 传递完整列表用于缓存
       );
 
       // 11. 记录曝光事件
@@ -243,6 +291,88 @@ export class RecommendationService {
       return null;
     }
 
+    // 如果提供了 requestId，使用基于 requestId 的缓存
+    // 这确保同一个推荐会话的不同页返回一致的结果
+    if (dto.requestId) {
+      // 如果是第一页请求，清空旧缓存以确保获取最新数据
+      if (dto.pagination.page === 1) {
+        await this.cacheService.invalidateSessionFullList(dto.requestId);
+        this.logger.debug(
+          `[${requestId}] Page 1 request, cleared old session cache`,
+        );
+      } else {
+        // 非第一页请求，尝试从缓存获取
+        const fullList = await this.cacheService.getSessionFullList(
+          dto.requestId,
+        );
+
+        if (fullList) {
+          // 从完整列表中切片当前页的数据
+          const { page, pageSize } = dto.pagination;
+          const start = (page - 1) * pageSize;
+          const end = start + pageSize;
+
+          // 检查请求的页码是否超出范围
+          if (start >= fullList.length) {
+            // 请求的页码超出了缓存的数据范围
+            // 清空缓存，让后续逻辑重新获取更多数据
+            this.logger.warn(
+              `[${requestId}] Requested page ${page} exceeds cached data (${fullList.length} items), clearing cache to fetch more`,
+            );
+            await this.cacheService.invalidateSessionFullList(dto.requestId);
+            // 不返回，继续执行后续的推荐逻辑以获取更多数据
+          } else {
+            // 在缓存范围内，正常切片返回
+            const pageItems = fullList.slice(start, end);
+
+            this.logger.debug(
+              `[${requestId}] Session cache hit, returning page ${page} from cached full list (${fullList.length} items)`,
+            );
+
+            // 构造分页结果
+            const result: RecommendationResultDto = {
+              code: 200,
+              message: 'success',
+              data: {
+                items: pageItems,
+                meta: {
+                  page,
+                  pageSize,
+                  total: fullList.length,
+                  totalPages: Math.ceil(fullList.length / pageSize),
+                },
+              },
+            };
+
+            // 记录曝光事件
+            if (this.eventLogger) {
+              await this.eventLogger.logImpressions(
+                userId,
+                pageItems.map((item) => item.id),
+                {
+                  scene,
+                  requestId,
+                  experimentId: dto.experimentId,
+                  groupItemId: experimentAssignment?.groupItemId,
+                },
+              );
+            }
+
+            return result;
+          }
+        } else {
+          // 缓存不存在但请求的是非第一页，这是异常情况
+          // 可能是缓存过期或用户直接跳转到非第一页
+          this.logger.warn(
+            `[${requestId}] Session cache miss for page ${dto.pagination.page}, falling back to regular recommendation`,
+          );
+          // 继续执行常规推荐逻辑（不使用 session 缓存）
+          // 注意：这可能导致结果不一致，但总比返回错误好
+        }
+      }
+    }
+
+    // 否则使用常规缓存（包含分页参数）
     const cached = await this.cacheService.getRecommendationResult(
       userId,
       scene,
@@ -983,6 +1113,7 @@ export class RecommendationService {
     dto: RecommendationRequestDto,
     experimentAssignment: ExperimentAssignment | null,
     result: RecommendationResultDto,
+    fullListForSession?: RecommendedDishItemDto[] | null,
   ): Promise<void> {
     if (!this.cacheService) {
       return;
@@ -993,6 +1124,19 @@ export class RecommendationService {
       return;
     }
 
+    // 如果提供了 requestId 和完整列表，缓存完整列表（用于分页一致性）
+    if (dto.requestId && fullListForSession) {
+      await this.cacheService.setSessionFullList(
+        dto.requestId,
+        fullListForSession,
+      );
+
+      this.logger.debug(
+        `Cached full list (${fullListForSession.length} items) for session ${dto.requestId}`,
+      );
+    }
+
+    // 同时使用常规缓存（包含分页参数）
     await this.cacheService.setRecommendationResult(
       userId,
       scene,
@@ -2102,13 +2246,62 @@ export class RecommendationService {
     pagination: { page: number; pageSize: number },
     userId?: string,
   ): Promise<{ items: ScoredDish[]; total: number; totalPages: number }> {
+    // 尝试从缓存获取完整结果
+    const cacheKey = `similar:${dishId}:${userId || 'anonymous'}`;
+    let allScoredDishes: ScoredDish[];
+
+    if (this.cacheService) {
+      const redis = this.cacheService.getRedisClient();
+      const cached = await redis.get(cacheKey);
+
+      if (cached) {
+        allScoredDishes = JSON.parse(cached) as ScoredDish[];
+        this.logger.debug(
+          `Similar dishes cache hit for dish ${dishId} (${allScoredDishes.length} items)`,
+        );
+      } else {
+        // 缓存未命中，重新计算
+        allScoredDishes = await this.generateSimilarDishes(dishId, userId);
+
+        // 缓存结果（30分钟）
+        await redis.setex(cacheKey, 1800, JSON.stringify(allScoredDishes));
+        this.logger.debug(
+          `Cached similar dishes for dish ${dishId} (${allScoredDishes.length} items)`,
+        );
+      }
+    } else {
+      // 没有缓存服务，直接计算
+      allScoredDishes = await this.generateSimilarDishes(dishId, userId);
+    }
+
+    // 应用分页
+    const { page, pageSize } = pagination;
+    const skip = (page - 1) * pageSize;
+    const paginatedItems = allScoredDishes.slice(skip, skip + pageSize);
+    const total = allScoredDishes.length;
+    const totalPages = Math.ceil(total / pageSize);
+
+    return {
+      items: paginatedItems,
+      total,
+      totalPages,
+    };
+  }
+
+  /**
+   * 生成相似菜品推荐（内部方法）
+   */
+  private async generateSimilarDishes(
+    dishId: string,
+    userId?: string,
+  ): Promise<ScoredDish[]> {
     const targetDish = await this.prisma.dish.findUnique({
       where: { id: dishId },
       include: { canteen: true, window: true },
     });
 
     if (!targetDish) {
-      return { items: [], total: 0, totalPages: 0 };
+      return [];
     }
 
     // 获取候选菜品（排除自身）
@@ -2128,30 +2321,19 @@ export class RecommendationService {
       allScoredDishes = await this.getSimilarDishesByEmbedding(
         targetDish,
         candidateDishes,
-        RECOMMENDATION_LIMITS.MIN_CANDIDATES, // 获取所有候选
+        RECOMMENDATION_LIMITS.MIN_CANDIDATES,
       );
     } else {
       // 否则使用特征相似度
       allScoredDishes = await this.getSimilarDishesByFeatures(
         targetDish,
         candidateDishes,
-        RECOMMENDATION_LIMITS.MIN_CANDIDATES, // 获取所有候选
+        RECOMMENDATION_LIMITS.MIN_CANDIDATES,
         userId,
       );
     }
 
-    // 应用分页
-    const { page, pageSize } = pagination;
-    const skip = (page - 1) * pageSize;
-    const paginatedItems = allScoredDishes.slice(skip, skip + pageSize);
-    const total = allScoredDishes.length;
-    const totalPages = Math.ceil(total / pageSize);
-
-    return {
-      items: paginatedItems,
-      total,
-      totalPages,
-    };
+    return allScoredDishes;
   }
 
   /**
@@ -2429,13 +2611,71 @@ export class RecommendationService {
   ): Promise<{ items: ScoredDish[]; total: number; totalPages: number }> {
     const { canteenId, mealTime, pagination } = options;
 
+    // 尝试从缓存获取完整结果
+    const cacheKey = `personalized:${userId}:${canteenId || 'all'}:${mealTime || 'all'}`;
+    let allScoredDishes: ScoredDish[];
+
+    if (this.cacheService) {
+      const redis = this.cacheService.getRedisClient();
+      const cached = await redis.get(cacheKey);
+
+      if (cached) {
+        allScoredDishes = JSON.parse(cached) as ScoredDish[];
+        this.logger.debug(
+          `Personalized dishes cache hit for user ${userId} (${allScoredDishes.length} items)`,
+        );
+      } else {
+        // 缓存未命中，重新计算
+        allScoredDishes = await this.generatePersonalizedDishes(
+          userId,
+          canteenId,
+          mealTime,
+        );
+
+        // 缓存结果（15分钟，比相似菜品短，因为用户偏好可能变化）
+        await redis.setex(cacheKey, 900, JSON.stringify(allScoredDishes));
+        this.logger.debug(
+          `Cached personalized dishes for user ${userId} (${allScoredDishes.length} items)`,
+        );
+      }
+    } else {
+      // 没有缓存服务，直接计算
+      allScoredDishes = await this.generatePersonalizedDishes(
+        userId,
+        canteenId,
+        mealTime,
+      );
+    }
+
+    // 应用分页
+    const { page, pageSize } = pagination;
+    const skip = (page - 1) * pageSize;
+    const paginatedItems = allScoredDishes.slice(skip, skip + pageSize);
+    const total = allScoredDishes.length;
+    const totalPages = Math.ceil(total / pageSize);
+
+    return {
+      items: paginatedItems,
+      total,
+      totalPages,
+    };
+  }
+
+  /**
+   * 生成个性化推荐（内部方法）
+   */
+  private async generatePersonalizedDishes(
+    userId: string,
+    canteenId?: string,
+    mealTime?: string,
+  ): Promise<ScoredDish[]> {
     let allScoredDishes: ScoredDish[];
 
     // 如果有嵌入服务，使用嵌入推荐
     if (this.embeddingService && this.embeddingService.isEnabled()) {
       allScoredDishes = await this.getEmbeddingBasedRecommendations(
         userId,
-        RECOMMENDATION_LIMITS.MIN_CANDIDATES, // 获取所有候选
+        RECOMMENDATION_LIMITS.MIN_CANDIDATES,
         canteenId,
       );
     } else {
@@ -2478,18 +2718,7 @@ export class RecommendationService {
       allScoredDishes.sort((a, b) => b.score - a.score);
     }
 
-    // 应用分页
-    const { page, pageSize } = pagination;
-    const skip = (page - 1) * pageSize;
-    const paginatedItems = allScoredDishes.slice(skip, skip + pageSize);
-    const total = allScoredDishes.length;
-    const totalPages = Math.ceil(total / pageSize);
-
-    return {
-      items: paginatedItems,
-      total,
-      totalPages,
-    };
+    return allScoredDishes;
   }
 
   // ═══════════════════════════════════════════════════════════════════

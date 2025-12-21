@@ -914,6 +914,56 @@ describe('DishesController (e2e)', () => {
       expect(intersection23.length).toBe(0);
     });
 
+    it('should handle page request exceeding initial cache', async () => {
+      // 恢复用户过敏原设置 (ensure clean state)
+      await prisma.user.update({
+        where: { id: testUserId },
+        data: { allergens: [] },
+      });
+      await recommendationService.refreshUserFeatureCache(testUserId);
+
+      // 请求第 1 页（正常）
+      const page1Response = await request(app.getHttpServer())
+        .post('/dishes')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          isSuggestion: true,
+          filter: {},
+          search: { keyword: '' },
+          sort: {},
+          pagination: { page: 1, pageSize: 2 },
+        })
+        .expect(200);
+
+      expect(page1Response.body.data.items.length).toBe(2);
+      const firstPageTotal = page1Response.body.data.meta.total;
+
+      // 请求第 10 页（可能超出初始缓存，但系统会自动获取更多数据）
+      const page10Response = await request(app.getHttpServer())
+        .post('/dishes')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          isSuggestion: true,
+          filter: {},
+          search: { keyword: '' },
+          sort: {},
+          pagination: { page: 10, pageSize: 2 },
+        })
+        .expect(200);
+
+      // 系统应该自动获取足够的数据
+      // 如果有数据，应该返回数据；如果真的没有数据（超出总页数），返回空数组
+      expect(page10Response.body.data.meta.page).toBe(10);
+
+      // 如果第10页在总页数范围内，应该有数据
+      if (page10Response.body.data.meta.totalPages >= 10) {
+        expect(page10Response.body.data.items.length).toBeGreaterThan(0);
+      } else {
+        // 如果第10页超出总页数，返回空数组
+        expect(page10Response.body.data.items.length).toBe(0);
+      }
+    });
+
     it('should return 401 for suggestion mode without auth token', async () => {
       await request(app.getHttpServer())
         .post('/dishes')

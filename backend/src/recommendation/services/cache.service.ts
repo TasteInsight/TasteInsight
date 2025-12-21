@@ -13,7 +13,10 @@ import {
   VersionedEmbedding,
 } from '../interfaces';
 import { RecommendationRequestDto } from '../dto/recommendation-request.dto';
-import { RecommendationResultDto } from '../dto/recommendation-result.dto';
+import {
+  RecommendationResultDto,
+  RecommendedDishItemDto,
+} from '../dto/recommendation-result.dto';
 import { hashToShortString } from '../utils/hash.util';
 
 /**
@@ -297,6 +300,40 @@ export class RecommendationCacheService
     return result;
   }
 
+  // ==================== 会话完全列表缓存 ====================
+
+  /**
+   * 缓存会话完全列表（用于分页一致性）
+   */
+  async setSessionFullList(
+    requestId: string,
+    fullList: RecommendedDishItemDto[],
+    ttl: number = CACHE_CONFIG.SESSION_FULL_LIST_TTL,
+  ): Promise<void> {
+    const key = `${CACHE_CONFIG.KEY_PREFIX.SESSION_FULL_LIST}${requestId}`;
+    await this.redis.setex(key, ttl, JSON.stringify(fullList));
+  }
+
+  /**
+   * 获取会话完全列表
+   */
+  async getSessionFullList(
+    requestId: string,
+  ): Promise<RecommendedDishItemDto[] | null> {
+    const key = `${CACHE_CONFIG.KEY_PREFIX.SESSION_FULL_LIST}${requestId}`;
+    const data = await this.redis.get(key);
+    if (!data) return null;
+    return JSON.parse(data);
+  }
+
+  /**
+   * 删除会话完全列表缓存
+   */
+  async invalidateSessionFullList(requestId: string): Promise<void> {
+    const key = `${CACHE_CONFIG.KEY_PREFIX.SESSION_FULL_LIST}${requestId}`;
+    await this.redis.del(key);
+  }
+
   // ==================== 统计计数器 ====================
 
   /**
@@ -443,6 +480,13 @@ export class RecommendationCacheService
   }
 
   /**
+   * 获取 Redis 客户端
+   */
+  getRedisClient(): Redis {
+    return this.redis;
+  }
+
+  /**
    * 清空所有推荐相关缓存（谨慎使用）
    */
   async flushRecommendationCache(): Promise<void> {
@@ -453,6 +497,7 @@ export class RecommendationCacheService
       `${CACHE_CONFIG.KEY_PREFIX.EXPERIMENT_USER_GROUP}*`,
       `${CACHE_CONFIG.KEY_PREFIX.EXPERIMENT_WEIGHTS}*`,
       `${CACHE_CONFIG.KEY_PREFIX.STATS_EVENT}*`,
+      `${CACHE_CONFIG.KEY_PREFIX.SESSION_FULL_LIST}*`,
     ];
 
     for (const pattern of patterns) {

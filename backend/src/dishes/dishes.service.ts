@@ -17,6 +17,7 @@ import {
 } from './dto/dish-response.dto';
 import { RecommendationService } from '@/recommendation/recommendation.service';
 import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service';
+import { createHash } from 'crypto';
 
 @Injectable()
 export class DishesService {
@@ -72,12 +73,23 @@ export class DishesService {
     // 如果是推荐模式，调用推荐服务
     // isSuggestion 为 true 时使用默认 HOME 场景的推荐
     if (isSuggestion) {
+      // 生成稳定的 requestId，确保同一个推荐会话（相同的 filter 和 search）
+      // 在不同页之间返回一致的结果
+      const requestIdSeed = JSON.stringify({
+        userId,
+        filter,
+        search: search?.keyword || '',
+        // 不包含 pagination，因为我们希望同一个会话的不同页使用相同的 requestId
+      });
+      const requestId = createHash('md5').update(requestIdSeed).digest('hex');
+
       const result = await this.recommendationService.getRecommendations(
         userId,
         {
           filter,
           search: search?.keyword ? search : undefined,
           pagination,
+          requestId, // 传递 requestId 以保持分页一致性
           // 默认首页推荐场景，不追踪详细事件
         },
       );

@@ -95,6 +95,8 @@ export const CACHE_CONFIG = {
   USER_EMBEDDING_TTL: 3600, // 1小时
   /** 推荐结果缓存 TTL（秒） */
   RECOMMENDATION_RESULT_TTL: 300, // 5分钟
+  /** 会话完全列表缓存 TTL（秒） */
+  SESSION_FULL_LIST_TTL: 1800, // 30分钟
   /** 缓存键前缀 */
   KEY_PREFIX: {
     USER_FEATURE: 'rec:user:feature:',
@@ -103,5 +105,6 @@ export const CACHE_CONFIG = {
     EXPERIMENT_USER_GROUP: 'rec:experiment:user_group:',
     EXPERIMENT_WEIGHTS: 'rec:experiment:weights:',
     STATS_EVENT: 'rec:stats:',
+    SESSION_FULL_LIST: 'rec:session:',
   },
 } as const;

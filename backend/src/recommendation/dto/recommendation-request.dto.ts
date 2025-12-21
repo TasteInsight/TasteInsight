@@ -9,6 +9,8 @@ import {
   IsNumber,
   Min,
   Max,
+  IsDefined,
+  IsNotEmptyObject,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { RecommendationScene } from '../constants/recommendation.constants';
@@ -32,7 +34,16 @@ export class RecommendationSearchDto extends PartialType(SearchDto) {}
 /**
  * 推荐分页信息
  */
-export class RecommendationPaginationDto extends PaginationDto {}
+export class RecommendationPaginationDto {
+  @IsInt()
+  @Min(1)
+  page: number;
+
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  pageSize: number;
+}
 
 /**
  * 推荐请求 DTO
@@ -44,21 +55,30 @@ export class RecommendationRequestDto {
 
   @IsOptional()
   @IsString()
+  requestId?: string; // 推荐请求 ID，用于追踪和保持分页一致性
+
+  @IsOptional()
+  @IsString()
   experimentId?: string; // A/B 测试实验 ID
 
   @IsOptional()
   @IsString()
   triggerDishId?: string; // 触发推荐的菜品 ID
 
+  @IsDefined()
+  @IsObject()
   @ValidateNested()
   @Type(() => RecommendationFilterDto)
   filter: RecommendationFilterDto;
 
   @IsOptional()
+  @IsObject()
   @ValidateNested()
   @Type(() => RecommendationSearchDto)
   search?: RecommendationSearchDto;
 
+  @IsDefined()
+  @IsObject()
   @ValidateNested()
   @Type(() => RecommendationPaginationDto)
   pagination: RecommendationPaginationDto;

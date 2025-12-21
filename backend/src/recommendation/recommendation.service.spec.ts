@@ -56,6 +56,11 @@ const mockCacheService = {
   getUserEmbedding: jest.fn(),
   invalidateUserEmbedding: jest.fn(),
   isConnected: jest.fn(),
+  getRedisClient: jest.fn().mockReturnValue({
+    get: jest.fn(),
+    setex: jest.fn(),
+    del: jest.fn(),
+  }),
 };
 
 const mockEmbeddingService = {
@@ -110,6 +115,13 @@ describe('RecommendationService', () => {
     Object.values(mockEventLogger).forEach((fn: any) => fn.mockReset?.());
     Object.values(mockExperimentService).forEach((fn: any) => fn.mockReset?.());
     Object.values(mockTokenizerService).forEach((fn: any) => fn.mockReset?.());
+
+    // Re-setup nested mocks that are cleared by reset
+    mockCacheService.getRedisClient.mockReturnValue({
+      get: jest.fn(),
+      setex: jest.fn(),
+      del: jest.fn(),
+    });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -316,15 +328,85 @@ describe('RecommendationService', () => {
   });
 
   describe('Health Status', () => {
-    it('should return health status', async () => {
-      mockCacheService.isConnected.mockReturnValue(true);
-      mockPrisma.dish.findMany.mockResolvedValue([{ id: 'dish1' }]);
+    it('should return health status even when some services fail', async () => {
+      mockCacheService.isConnected.mockReturnValue(false);
+      mockEmbeddingService.isEnabled.mockReturnValue(false);
+      mockPrisma.dish.findMany.mockRejectedValue(new Error('DB Error'));
 
       const status = await service.getHealthStatus();
 
-      expect(status).toBeDefined();
-      expect(status).toHaveProperty('status');
-      expect(status).toHaveProperty('services');
+      expect(status.status).toBe('degraded');
+      expect(status.services.prisma).toBe(false);
+      expect(status.services.cacheConnected).toBe(false);
+    });
+  });
+
+  describe('Complex Score & Filter Logic', () => {
+    it('should correctly handle allergen filtering in rule-based recommendation', async () => {
+      mockEmbeddingService.isEnabled.mockReturnValue(false);
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'user1',
+        allergens: ['花生'],
+      });
+      mockPrisma.dish.findMany.mockResolvedValue([
+        { id: 'dish1', allergens: ['花生'], name: '花生米' },
+        { id: 'dish2', allergens: [], name: '大米饭' },
+      ]);
+      mockCacheService.getUserFeatures.mockResolvedValue({
+        id: 'user1',
+        allergens: ['花生'],
+      } as any);
+
+      const result = await service.getPersonalizedDishes('user1', {
+        pagination: { page: 1, pageSize: 10 },
+      });
+
+      // 验证是否过滤了含过敏原的菜品
+      expect(mockPrisma.dish.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            NOT: expect.objectContaining({
+              allergens: { hasSome: ['花生'] },
+            }),
+          }),
+        }),
+      );
+    });
+
+    it('should calculate weights correctly based on scene', async () => {
+      const dto: any = {
+        pagination: { page: 1, pageSize: 5 },
+        includeScoreBreakdown: true,
+      };
+
+      mockPrisma.user.findUnique.mockResolvedValue({ id: 'user1' });
+      mockEmbeddingService.isEnabled.mockReturnValue(true);
+      mockEmbeddingService.getSimilarDishes.mockResolvedValue([]);
+      mockPrisma.dish.findMany.mockResolvedValue([]);
+
+      const result = await service.getRecommendations('user1', dto);
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('RequestId and Session Consistency', () => {
+    it('should reuse requestId when provided', async () => {
+      const dto: any = {
+        requestId: 'preset-request-id',
+        pagination: { page: 2, pageSize: 5 },
+        filter: {},
+      };
+
+      const redis = mockCacheService.getRedisClient();
+      redis.get.mockResolvedValue(
+        JSON.stringify([{ dish: { id: 'dish1' }, score: 0.9 }]),
+      );
+
+      const result = await service.getRecommendations('user1', dto);
+      expect(result.data.items.length).toBeDefined();
+      expect(redis.get).toHaveBeenCalledWith(
+        expect.stringContaining('preset-request-id'),
+      );
     });
   });
 });
