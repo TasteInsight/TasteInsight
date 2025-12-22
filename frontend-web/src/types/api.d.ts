@@ -1067,3 +1067,143 @@ export interface ExperimentGroupResponseData {
 export interface RecommendHealthResponseData {
   [key: string]: any
 }
+
+// ==================== 实验管理相关类型 ====================
+
+/**
+ * 权重配置
+ */
+export interface WeightConfig {
+  preferenceMatch?: number
+  favoriteSimilarity?: number
+  browseRelevance?: number
+  dishQuality?: number
+  diversity?: number
+  searchRelevance?: number
+}
+
+/**
+ * 召回配额配置
+ */
+export interface RecallQuotaConfig {
+  vectorQuota?: number
+  ruleQuota?: number
+  collaborativeQuota?: number
+}
+
+/**
+ * 实验配置
+ */
+export interface ExperimentConfig {
+  weights?: WeightConfig
+  recallQuota?: RecallQuotaConfig
+}
+
+/**
+ * 实验分组
+ */
+export interface ExperimentGroup {
+  name: string
+  ratio: number
+  config?: ExperimentConfig
+}
+
+/**
+ * 实验状态
+ */
+export type ExperimentStatus = 'draft' | 'running' | 'paused' | 'completed' | string
+
+/**
+ * 实验信息
+ */
+export interface Experiment {
+  id: string
+  name: string
+  description?: string
+  trafficRatio: number
+  startTime: string
+  endTime?: string
+  status?: ExperimentStatus
+  groups: ExperimentGroup[]
+  createdAt?: string
+  updatedAt?: string
+}
+
+/**
+ * 创建实验请求参数
+ */
+export interface CreateExperimentRequest {
+  name: string
+  description?: string
+  trafficRatio: number
+  startTime: string
+  endTime?: string
+  groups: ExperimentGroup[]
+}
+
+/**
+ * 更新实验请求参数
+ */
+export interface UpdateExperimentRequest {
+  name?: string
+  description?: string
+  trafficRatio?: number
+  startTime?: string
+  endTime?: string
+  status?: ExperimentStatus
+  groups?: ExperimentGroup[]
+}
+
+/**
+ * 评估召回质量请求参数
+ */
+export interface EvaluateRecallQualityParams {
+  k?: number
+  days?: number
+  sampleSize?: number
+}
+
+/**
+ * Recall@K 指标
+ */
+export interface RecallAtK {
+  recallAtK: number
+  totalUsers: number
+  hitUsers: number
+}
+
+/**
+ * 覆盖率指标
+ */
+export interface Coverage {
+  coverage: number
+  totalDishes: number
+  recalledDishes: number
+}
+
+/**
+ * 标签统计
+ */
+export interface TagCount {
+  tag: string
+  count: number
+}
+
+/**
+ * 多样性指标
+ */
+export interface Diversity {
+  diversity: number
+  dominantTags: TagCount[]
+}
+
+/**
+ * 召回质量评估响应数据
+ */
+export interface RecallQualityEvaluationData {
+  timestamp: string
+  recallAtK: RecallAtK
+  coverage: Coverage
+  diversity: Diversity
+  summary: string
+}
