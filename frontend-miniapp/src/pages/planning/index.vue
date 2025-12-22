@@ -4,30 +4,33 @@
     <!-- 微信小程序专用：统一在父组件管理 page-container 拦截返回事件 -->
     <!-- 详情弹窗 -->
     <page-container 
-      v-if="showDetailDialog"
+      v-if="shouldRenderDetailHelper"
       :show="showDetailDialog" 
       :overlay="false" 
       :duration="300"
+      :disable-scroll="false"
       custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
       @leave="closeDetailDialog" 
     />
 
     <!-- 编辑弹窗 -->
     <page-container 
-      v-if="showEditDialog"
+      v-if="shouldRenderEditHelper"
       :show="showEditDialog" 
       :overlay="false" 
       :duration="300"
+      :disable-scroll="false"
       custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
       @leave="closeEditDialog" 
     />
 
     <!-- 新建弹窗 -->
     <page-container 
-      v-if="showCreateDialog"
+      v-if="shouldRenderCreateHelper"
       :show="showCreateDialog" 
       :overlay="false" 
       :duration="300"
+      :disable-scroll="false"
       custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
       @leave="closeCreateDialog" 
     />
@@ -128,7 +131,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch, isRef } from 'vue';
 import { onHide, onPullDownRefresh, onBackPress } from '@dcloudio/uni-app';
 import { useMenuPlanning } from './composables/use-menu-planning';
 import type { EnrichedMealPlan } from './composables/use-menu-planning';
@@ -169,13 +172,53 @@ const {
   executePlan,
 } = useMenuPlanning();
 
+// 微信小程序 page-container：延迟销毁以避免关闭弹窗后出现滚动锁定
+const shouldRenderDetailHelper = ref(false);
+const shouldRenderEditHelper = ref(false);
+const shouldRenderCreateHelper = ref(false);
+
+if (isRef(showDetailDialog)) {
+  watch(showDetailDialog, (val: boolean) => {
+    if (val) {
+      shouldRenderDetailHelper.value = true;
+    } else {
+      setTimeout(() => {
+        shouldRenderDetailHelper.value = false;
+      }, 300);
+    }
+  });
+}
+
+if (isRef(showEditDialog)) {
+  watch(showEditDialog, (val: boolean) => {
+    if (val) {
+      shouldRenderEditHelper.value = true;
+    } else {
+      setTimeout(() => {
+        shouldRenderEditHelper.value = false;
+      }, 300);
+    }
+  });
+}
+
+if (isRef(showCreateDialog)) {
+  watch(showCreateDialog, (val: boolean) => {
+    if (val) {
+      shouldRenderCreateHelper.value = true;
+    } else {
+      setTimeout(() => {
+        shouldRenderCreateHelper.value = false;
+      }, 300);
+    }
+  });
+}
+
 // 首次加载状态：加载中且数据为空
 const isInitialLoading = computed(() => {
   return loading.value && !hasLoaded.value;
 });
 
 // 监听数据加载完成
-import { watch } from 'vue';
 watch(() => loading.value, (newLoading, oldLoading) => {
   // 当 loading 从 true 变为 false 时，表示首次加载完成
   if (oldLoading === true && newLoading === false) {

@@ -161,7 +161,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, nextTick, ref, computed } from 'vue';
+import { onMounted, onUnmounted, nextTick, ref, computed, watch } from 'vue';
 import { useReviewForm } from '../composables/use-review';
 import type { Review } from '@/types/api';
 
@@ -206,6 +206,22 @@ const {
   uploadImages,
   removeImage
 } = useReviewForm();
+
+const applyInitialReview = (review: Review) => {
+  resetForm();
+  rating.value = review.rating || 0;
+  content.value = review.content || '';
+  images.value = Array.isArray(review.images) ? [...review.images] : [];
+
+  if (review.ratingDetails) {
+    flavorRatings.value = {
+      spicyLevel: review.ratingDetails.spicyLevel ?? 0,
+      sweetness: review.ratingDetails.sweetness ?? 0,
+      saltiness: review.ratingDetails.saltiness ?? 0,
+      oiliness: review.ratingDetails.oiliness ?? 0,
+    };
+  }
+};
 
 // 图片选择
 const handleChooseImage = () => {
@@ -275,10 +291,13 @@ const updateScreenWidth = () => {
 onMounted(() => {
   // 获取屏幕宽度
   updateScreenWidth();
-  
-  // 检查是否有保存的评价状态
-  if (hasSavedReviewState(props.dishId)) {
-    showResumeDialog.value = true;
+
+  // 编辑模式：不展示“恢复草稿”，始终以历史评价为基础进行修改
+  if (!isEditing.value) {
+    // 检查是否有保存的评价状态
+    if (hasSavedReviewState(props.dishId)) {
+      showResumeDialog.value = true;
+    }
   }
   
   nextTick(() => {
@@ -299,6 +318,18 @@ onMounted(() => {
   });
 });
 
+// initialReview 往往是异步拉取后才有值；这里用 watch 确保“修改评价”能稳定回填
+watch(
+  () => props.initialReview,
+  (review) => {
+    if (!isEditing.value) return;
+    if (!review) return;
+    showResumeDialog.value = false;
+    applyInitialReview(review);
+  },
+  { immediate: true }
+);
+
 // 显示tabbar
 onUnmounted(() => {
   // 移除CSS类
@@ -317,6 +348,11 @@ onUnmounted(() => {
 });
 
 const handleClose = () => {
+  if (isEditing.value) {
+    emit('close');
+    return;
+  }
+
   if (showResumeDialog.value) {
     // 如果显示恢复对话框，清除保存的状态并关闭整个组件
     clearReviewState(props.dishId);
@@ -335,7 +371,7 @@ const handleSubmit = () => {
     // 提交成功后清除保存的状态
     clearReviewState(props.dishId);
     emit('success');
-  });
+  }, props.existingReviewId);
 };
 
 // 恢复评价状态
