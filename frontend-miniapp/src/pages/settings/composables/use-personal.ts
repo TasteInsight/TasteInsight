@@ -51,34 +51,69 @@ export function usePersonal() {
         sourceType: ['album', 'camera'],
         success: async (res) => {
           const tempFilePath = res.tempFilePaths[0];
-          
-          // 开始上传
-          uploading.value = true;
-          uni.showLoading({
-            title: '上传中...'
-          });
-          
-          try {
-            const uploadResult = await uploadImage(tempFilePath);
-            form.avatar = uploadResult.url;
-            
-            uni.hideLoading();
-            uni.showToast({
-              title: '头像上传成功',
-              icon: 'success'
-            });
-            resolve();
-          } catch (error) {
-            console.error('上传头像失败:', error);
-            uni.hideLoading();
-            uni.showToast({
-              title: '头像上传失败',
-              icon: 'none'
-            });
-            reject(error);
-          } finally {
-            uploading.value = false;
+
+          // 单测/非运行环境可能没有 navigateTo，回退为直接上传
+          if (typeof (uni as any).navigateTo !== 'function') {
+            uploading.value = true;
+            uni.showLoading({ title: '上传中...' });
+            (async () => {
+              try {
+                const uploadResult = await uploadImage(tempFilePath);
+                form.avatar = uploadResult.url;
+                uni.hideLoading();
+                uni.showToast({ title: '头像上传成功', icon: 'success' });
+                resolve();
+              } catch (error) {
+                console.error('上传头像失败:', error);
+                uni.hideLoading();
+                uni.showToast({ title: '头像上传失败', icon: 'none' });
+                reject(error);
+              } finally {
+                uploading.value = false;
+              }
+            })();
+            return;
           }
+
+          // 进入裁剪页面，裁剪完成后再上传
+          uni.navigateTo({
+            // 不通过 query 传递本地临时路径（部分端会因 URL 过长/非法字符导致 navigateTo 失败）
+            url: `/pages/settings/components/avatar-crop`,
+            success: (navRes) => {
+              const eventChannel = navRes.eventChannel;
+              eventChannel.emit('init', { src: tempFilePath });
+              eventChannel.on('cropped', async (data: { tempFilePath: string }) => {
+                const croppedPath = data?.tempFilePath;
+                if (!croppedPath) {
+                  reject(new Error('裁剪失败'));
+                  return;
+                }
+
+                uploading.value = true;
+                uni.showLoading({ title: '上传中...' });
+                try {
+                  const uploadResult = await uploadImage(croppedPath);
+                  form.avatar = uploadResult.url;
+                  uni.hideLoading();
+                  uni.showToast({ title: '头像上传成功', icon: 'success' });
+                  resolve();
+                } catch (error) {
+                  console.error('上传头像失败:', error);
+                  uni.hideLoading();
+                  uni.showToast({ title: '头像上传失败', icon: 'none' });
+                  reject(error);
+                } finally {
+                  uploading.value = false;
+                }
+              });
+            },
+            fail: (err) => {
+              console.error('跳转裁剪页面失败:', err);
+              const errMsg = (err as any)?.errMsg ? String((err as any).errMsg) : '';
+              uni.showToast({ title: errMsg ? `打开裁剪失败：${errMsg}` : '打开裁剪失败', icon: 'none' });
+              reject(err);
+            },
+          });
         },
         fail: (err) => {
           console.error('选择图片失败:', err);
@@ -132,7 +167,9 @@ export function usePersonal() {
       });
       
       setTimeout(() => {
-        uni.navigateBack();
+        if (typeof (uni as any).navigateBack === 'function') {
+          uni.navigateBack();
+        }
       }, 1000);
       
       return true;
