@@ -8,7 +8,7 @@
     <view class="bg-white rounded-lg p-6 mb-4 shadow-sm">
       <text class="text-lg font-semibold text-gray-800 mb-6 block">头像</text>
       <view class="flex flex-col items-center">
-        <view class="relative mb-6">
+        <view class="relative mb-6" :class="{ 'border-2 border-gray-300 rounded-full': !form.avatar }">
            <image 
             :src="form.avatar || '/static/images/default-avatar.png'" 
             class="w-24 h-24 rounded-full border-4 border-purple-50"
@@ -35,7 +35,7 @@
     <!-- 昵称设置 -->
     <view class="bg-white rounded-lg p-6 mb-4 shadow-sm">
       <text class="text-lg font-semibold text-gray-800 mb-4 block">昵称</text>
-      <view class="relative">
+      <view class="relative border-2 border-gray-300 rounded-lg p-1">
          <input 
           v-model="form.nickname" 
           class="w-full p-3 pr-12 border border-gray-200 rounded-lg text-base focus:border-ts-purple focus:ring-1 focus:ring-purple-100 transition-all"
