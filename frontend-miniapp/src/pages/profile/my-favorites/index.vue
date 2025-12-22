@@ -28,9 +28,9 @@
       />
     </view>
 
-    <!-- 加载更多 -->
-    <view v-if="hasMore && !loading" class="flex justify-center py-4">
-      <text class="text-gray-500 text-sm" @click="loadMore">加载更多</text>
+    <!-- 底部提示：上拉加载更多 / 没有更多了 -->
+    <view v-if="dishes.length > 0 && !loading" class="flex justify-center py-4">
+      <text class="text-gray-500 text-sm" @click="hasMore ? loadMore() : undefined">{{ hasMore ? '上拉加载更多' : '没有更多了' }}</text>
     </view>
 
     <!-- 底部加载状态 -->

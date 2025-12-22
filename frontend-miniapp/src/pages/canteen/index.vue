@@ -35,10 +35,18 @@
             @click="goToDishDetail"
           />
 
-          <!-- 上拉加载更多：底部加载动画 -->
-          <view v-if="dishesLoadingMore" class="flex items-center justify-center py-4 text-gray-500 text-sm">
-            <view class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"></view>
-            <text>加载中...</text>
+          <!-- 上拉加载更多：底部提示/动画 -->
+          <view class="flex items-center justify-center py-4 text-gray-500 text-sm">
+            <template v-if="dishesLoadingMore">
+              <view class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"></view>
+              <text>加载中...</text>
+            </template>
+            <template v-else-if="hasMore">
+              <text>上拉加载更多</text>
+            </template>
+            <template v-else>
+              <text>没有更多了</text>
+            </template>
           </view>
         </view>
 
@@ -62,7 +70,7 @@ import CanteenWindowList from './components/CanteenWindowList.vue';
 import { CanteenSkeleton } from '@/components/skeleton';
 import type { GetDishesRequest } from '@/types/api';
 
-const { canteenInfo, loading, error, windows, dishes, dishesLoadingMore, init, fetchDishes, loadMoreDishes } = useCanteenData();
+const { canteenInfo, loading, error, windows, dishes, dishesLoadingMore, hasMore, init, fetchDishes, loadMoreDishes } = useCanteenData();
 
 const currentCanteenId = ref('');
 const currentFilter = ref<GetDishesRequest['filter']>({});

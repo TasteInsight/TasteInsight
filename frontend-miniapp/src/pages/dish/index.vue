@@ -365,7 +365,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, watch } from 'vue';
-import { onLoad, onBackPress, onPullDownRefresh } from '@dcloudio/uni-app';
+import { onLoad, onBackPress, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import { useDishDetail } from '@/pages/dish/composables/use-dish-detail';
 import { useUserStore } from '@/store/modules/use-user-store';
 import dayjs from 'dayjs';
@@ -509,6 +509,15 @@ onPullDownRefresh(async () => {
   } finally {
     uni.stopPullDownRefresh();
   }
+});
+
+// 触底上拉：加载更多评价
+onReachBottom(async () => {
+  if (isAllCommentsPanelVisible.value) return;
+  if (isReviewFormVisible.value) return;
+  if (reviewsLoading.value) return;
+  if (!reviewsHasMore.value) return;
+  await loadMoreReviews();
 });
 
 // 跳转到子菜品详情

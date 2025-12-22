@@ -43,9 +43,17 @@
             />
           </view>
 
-          <view v-if="loadingMore" class="flex items-center justify-center py-4 text-gray-500 text-sm">
-            <view class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"></view>
-            <text>加载中...</text>
+          <view v-if="dishes.length > 0 || loadingMore" class="flex items-center justify-center py-4 text-gray-500 text-sm">
+            <template v-if="loadingMore">
+              <view class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"></view>
+              <text>加载中...</text>
+            </template>
+            <template v-else-if="hasMore">
+              <text>上拉加载更多</text>
+            </template>
+            <template v-else>
+              <text>没有更多了</text>
+            </template>
           </view>
 
           <view v-else class="text-center py-10 text-gray-500">
