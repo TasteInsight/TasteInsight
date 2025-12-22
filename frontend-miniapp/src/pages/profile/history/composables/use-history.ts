@@ -63,6 +63,8 @@ export function useHistory() {
         title: message,
         icon: 'none'
       });
+      // 加载失败时，认为没有更多数据
+      hasMore.value = false;
     } finally {
       loading.value = false;
     }
