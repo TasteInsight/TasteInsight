@@ -28,6 +28,9 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { BullModule } from '@nestjs/bullmq';
 import { DishSyncQueueModule } from './dish-sync-queue';
 import { DishReviewStatsQueueModule } from './dish-review-stats-queue';
+import { EmbeddingQueueModule } from './embedding-queue/embedding-queue.module';
+import { RecommendationModule } from './recommendation/recommendation.module';
+import { AIChatModule } from './ai-chat/ai-chat.module';
 import { join } from 'path';
 
 @Module({
@@ -67,6 +70,9 @@ import { join } from 'path';
     AdminNewsModule,
     AdminConfigModule,
     AdminRecommendationModule,
+    RecommendationModule,
+    EmbeddingQueueModule,
+    AIChatModule,
     UploadModule,
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'uploads'),

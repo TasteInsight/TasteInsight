@@ -56,6 +56,7 @@ const mockCacheService = {
   getUserEmbedding: jest.fn(),
   invalidateUserEmbedding: jest.fn(),
   isConnected: jest.fn(),
+  getSessionFullList: jest.fn(),
   getRedisClient: jest.fn().mockReturnValue({
     get: jest.fn(),
     setex: jest.fn(),
@@ -348,14 +349,14 @@ describe('RecommendationService', () => {
         id: 'user1',
         allergens: ['花生'],
       });
+      mockPrisma.userPreference.findUnique.mockResolvedValue(null);
+      mockPrisma.favoriteDish.findMany.mockResolvedValue([]);
+      mockPrisma.browseHistory.findMany.mockResolvedValue([]);
       mockPrisma.dish.findMany.mockResolvedValue([
         { id: 'dish1', allergens: ['花生'], name: '花生米' },
         { id: 'dish2', allergens: [], name: '大米饭' },
       ]);
-      mockCacheService.getUserFeatures.mockResolvedValue({
-        id: 'user1',
-        allergens: ['花生'],
-      } as any);
+      mockCacheService.getUserFeatures.mockResolvedValue(null);
 
       const result = await service.getPersonalizedDishes('user1', {
         pagination: { page: 1, pageSize: 10 },
@@ -377,12 +378,21 @@ describe('RecommendationService', () => {
       const dto: any = {
         pagination: { page: 1, pageSize: 5 },
         includeScoreBreakdown: true,
+        filter: {},
       };
 
-      mockPrisma.user.findUnique.mockResolvedValue({ id: 'user1' });
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'user1',
+        allergens: [],
+      });
+      mockPrisma.userPreference.findUnique.mockResolvedValue(null);
+      mockPrisma.favoriteDish.findMany.mockResolvedValue([]);
+      mockPrisma.browseHistory.findMany.mockResolvedValue([]);
       mockEmbeddingService.isEnabled.mockReturnValue(true);
       mockEmbeddingService.getSimilarDishes.mockResolvedValue([]);
+      mockEmbeddingService.getUserEmbedding.mockResolvedValue(null);
       mockPrisma.dish.findMany.mockResolvedValue([]);
+      mockCacheService.getUserFeatures.mockResolvedValue(null);
 
       const result = await service.getRecommendations('user1', dto);
       expect(result).toBeDefined();
@@ -397,15 +407,31 @@ describe('RecommendationService', () => {
         filter: {},
       };
 
-      const redis = mockCacheService.getRedisClient();
-      redis.get.mockResolvedValue(
-        JSON.stringify([{ dish: { id: 'dish1' }, score: 0.9 }]),
-      );
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'user1',
+        allergens: [],
+      });
+      mockPrisma.userPreference.findUnique.mockResolvedValue(null);
+      mockPrisma.favoriteDish.findMany.mockResolvedValue([]);
+      mockPrisma.browseHistory.findMany.mockResolvedValue([]);
+      mockCacheService.getUserFeatures.mockResolvedValue(null);
+      mockCacheService.getSessionFullList.mockResolvedValue([
+        { id: 'dish1', score: 0.9 },
+        { id: 'dish2', score: 0.8 },
+        { id: 'dish3', score: 0.7 },
+        { id: 'dish4', score: 0.6 },
+        { id: 'dish5', score: 0.5 },
+        { id: 'dish6', score: 0.4 },
+        { id: 'dish7', score: 0.3 },
+        { id: 'dish8', score: 0.2 },
+        { id: 'dish9', score: 0.1 },
+        { id: 'dish10', score: 0.0 },
+      ]);
 
       const result = await service.getRecommendations('user1', dto);
       expect(result.data.items.length).toBeDefined();
-      expect(redis.get).toHaveBeenCalledWith(
-        expect.stringContaining('preset-request-id'),
+      expect(mockCacheService.getSessionFullList).toHaveBeenCalledWith(
+        'preset-request-id',
       );
     });
   });

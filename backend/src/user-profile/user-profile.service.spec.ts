@@ -427,7 +427,7 @@ describe('UserProfileService', () => {
 
   describe('getMyReports', () => {
     it('should return user reports', async () => {
-      const handledAtDate = new Date('2024-01-01T10:00:00Z');
+      const handledAtDate = new Date('2025-01-01T10:00:00Z');
       const mockReports = [
         {
           id: 'report1',

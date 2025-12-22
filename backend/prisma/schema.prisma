@@ -29,11 +29,10 @@ model User {
   favoriteDishes FavoriteDish[]
   browseHistory  BrowseHistory[]
 
-  feedbacks AIRecommendationFeedback[]
+  aiSessions AISession[]
 
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
-  aIRecommendation AIRecommendation[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("users")
 }
@@ -276,12 +275,10 @@ model Dish {
   reviewCount   Int   @default(0)
 
   // 关联关系
-  reviews           Review[]
-  favoritedBy       FavoriteDish[]             @ignore
-  mealPlans         MealPlanDish[]             @ignore
-  browseHistory     BrowseHistory[]            @ignore
-  recommendations   AIRecommendation[]         @ignore
-  recommendFeedback AIRecommendationFeedback[] @ignore
+  reviews       Review[]
+  favoritedBy   FavoriteDish[]  @ignore
+  mealPlans     MealPlanDish[]  @ignore
+  browseHistory BrowseHistory[] @ignore
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -511,38 +508,50 @@ model MealPlanDish {
   @@map("meal_plan_dishes")
 }
 
-// ==================== AI推荐模型 ====================
+// ==================== AI聊天模型 ====================
 
-model AIRecommendation {
+model AISession {
   id     String @id @default(cuid())
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  dishId String
-  dish   Dish   @relation(fields: [dishId], references: [id], onDelete: Cascade)
 
-  reason String // 推荐理由
-  score  Float // 推荐分数
+  scene String @default("general_chat") // general_chat, meal_planner, dish_critic
+
+  messages AIMessage[]
 
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([createdAt])
-  @@map("ai_recommendations")
+  @@map("ai_sessions")
 }
 
-model AIRecommendationFeedback {
-  id       String @id @default(cuid())
-  userId   String
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  dishId   String
-  dish     Dish   @relation(fields: [dishId], references: [id], onDelete: Cascade)
-  feedback String // like, dislike
+model AIMessage {
+  id        String    @id @default(cuid())
+  sessionId String
+  session   AISession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  role    String // user, assistant
+  content Json // Array of content segments (text, card_dish, card_plan, card_canteen)
 
   createdAt DateTime @default(now())
 
-  @@index([userId])
-  @@index([dishId])
-  @@map("recommend_feedbacks")
+  @@index([sessionId])
+  @@index([createdAt])
+  @@map("ai_messages")
+}
+
+model AIConfig {
+  id       String @id @default(cuid())
+  key      String @unique
+  value    String
+  category String @default("general") // provider, model, api
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("ai_configs")
 }
 
 // ==================== 推荐系统事件日志 ====================

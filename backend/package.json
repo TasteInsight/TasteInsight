@@ -7,7 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" \"scripts/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
@@ -44,6 +44,7 @@
     "test:embedding:start": "docker inspect tasteinsight-embedding:mock >/dev/null 2>&1 || pnpm run test:embedding:setup && docker rm -f embedding-test 2>/dev/null || true && docker run -d --name embedding-test -p 5001:5001 tasteinsight-embedding:mock",
     "test:embedding:stop": "docker stop embedding-test && docker rm embedding-test || true",
     "test:e2e:recommendation": "pnpm run test:setup && dotenv -e .env.test -- jest --config ./test/jest-e2e.json test/recommendation.e2e-spec.ts --coverage --collectCoverageFrom \"src/recommendation/**/*.ts\"",
+    "test:e2e:ai-chat": "pnpm run test:setup && dotenv -e .env.test -- jest --config ./test/jest-e2e.json test/ai-chat.e2e-spec.ts --coverage --collectCoverageFrom \"src/ai-chat/**/*.ts\"",
     "test:unit": "jest",
     "test:unit:canteens": "jest src/canteens/canteens.service.spec.ts",
     "test:unit:reviews": "jest src/reviews/reviews.service.spec.ts",
@@ -53,7 +54,9 @@
     "test:unit:user-profile": "jest src/user-profile/user-profile.service.spec.ts",
     "test:unit:admin-config": "jest src/admin-config/admin-config.service.spec.ts",
     "test:unit:recommendation": "jest src/recommendation/recommendation.service.spec.ts",
-    "test": "pnpm run test:setup && pnpm run test:e2e"
+    "test:unit:ai-chat": "jest src/ai-chat/**/*.spec.ts --coverage --collectCoverageFrom \"src/ai-chat/**/*.ts\" --testPathIgnorePatterns=\".e2e-spec.ts\"",
+    "test": "pnpm run test:setup && pnpm run test:e2e",
+    "chat:debug": "dotenv -e .env.test -- ts-node -r tsconfig-paths/register scripts/chat-debug.ts"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.1",
@@ -76,6 +79,7 @@
     "cuid": "^3.0.0",
     "dotenv": "^17.2.3",
     "ioredis": "^5.8.2",
+    "openai": "^6.15.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "swagger-ui-express": "^5.0.1",

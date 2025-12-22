@@ -10,5 +10,6 @@ import { EmbeddingQueueModule } from '@/embedding-queue/embedding-queue.module';
   imports: [RecommendationModule, EmbeddingQueueModule],
   controllers: [DishesController],
   providers: [DishesService, PrismaService, JwtService],
+  exports: [DishesService],
 })
 export class DishesModule {}
