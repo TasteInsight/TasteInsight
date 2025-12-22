@@ -92,26 +92,38 @@ export class OpenAIProviderService implements BaseAIProvider {
         model: this.config?.model,
         baseUrl: this.config?.baseUrl,
       });
-      
+
       // Provide user-friendly error messages without exposing technical details
       // Messages should sound natural and not imply system errors
       let userMessage = '抱歉，我现在无法处理您的请求，请稍后再试。';
-      
+
       if (error instanceof Error) {
         const errorMsg = error.message.toLowerCase();
-        
+
         // Map technical errors to natural user messages
-        if (errorMsg.includes('model not exist') || errorMsg.includes('model_not_found')) {
+        if (
+          errorMsg.includes('model not exist') ||
+          errorMsg.includes('model_not_found')
+        ) {
           userMessage = '抱歉，我现在无法处理您的请求，请稍后再试。';
-        } else if (errorMsg.includes('401') || errorMsg.includes('unauthorized')) {
+        } else if (
+          errorMsg.includes('401') ||
+          errorMsg.includes('unauthorized')
+        ) {
           userMessage = '抱歉，我现在无法处理您的请求，请稍后再试。';
-        } else if (errorMsg.includes('429') || errorMsg.includes('rate_limit')) {
+        } else if (
+          errorMsg.includes('429') ||
+          errorMsg.includes('rate_limit')
+        ) {
           userMessage = '抱歉，当前请求过于频繁，请稍后再试。';
-        } else if (errorMsg.includes('timeout') || errorMsg.includes('network')) {
+        } else if (
+          errorMsg.includes('timeout') ||
+          errorMsg.includes('network')
+        ) {
           userMessage = '抱歉，响应时间过长，请稍后再试。';
         }
       }
-      
+
       yield {
         type: 'error',
         error: userMessage,

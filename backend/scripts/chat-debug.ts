@@ -65,15 +65,17 @@ async function bootstrap() {
     });
 
     let conversationTurn = 0;
+    let isCleaningUp = false;
 
-    rl.prompt();
+    // 清理函数
+    const cleanup = async () => {
+        if (isCleaningUp) {
+            return; // 防止重复清理
+        }
+        isCleaningUp = true;
 
-    rl.on('line', async (line: string) => {
-        const message = line.trim();
-
-        // 处理特殊命令
-        if (message === 'exit' || message === 'quit') {
-            console.log('\n👋 再见！清理会话...');
+        try {
+            console.log('\n🧹 清理测试数据...');
 
             // 清理测试数据
             await prisma.aIMessage.deleteMany({
@@ -83,7 +85,39 @@ async function bootstrap() {
                 where: { id: sessionData.sessionId },
             });
 
+            // 清理测试用户
+            await prisma.user.delete({
+                where: { id: user.id },
+            }).catch((err) => {
+                // 如果删除失败（可能已被其他进程删除），忽略错误
+                console.warn('⚠️  清理用户时出现警告（可忽略）:', err.message);
+            });
+
             await app.close();
+        } catch (error) {
+            console.error('❌ 清理过程中出现错误:', error.message);
+        }
+    };
+
+    // 注册信号处理器（Ctrl+C 和终止信号）
+    const signalHandler = async (signal: string) => {
+        console.log(`\n\n收到 ${signal} 信号，正在退出...`);
+        await cleanup();
+        process.exit(0);
+    };
+
+    process.on('SIGINT', () => signalHandler('SIGINT'));
+    process.on('SIGTERM', () => signalHandler('SIGTERM'));
+
+    rl.prompt();
+
+    rl.on('line', async (line: string) => {
+        const message = line.trim();
+
+        // 处理特殊命令
+        if (message === 'exit' || message === 'quit') {
+            console.log('\n👋 再见！');
+            await cleanup();
             rl.close();
             process.exit(0);
         }
@@ -182,10 +216,10 @@ async function bootstrap() {
                                     if (dataLine) {
                                         try {
                                             const segment = JSON.parse(dataLine.substring(5));
-                                            // segment 是一个 ContentSegment，有 type 和 data 字段
-                                            const componentType = segment.type || 'unknown';
+                                            // segment 是一个 ContentSegment，type 可能是 'card_dish', 'card_canteen', 'card_plan' 或 'text'
+                                            const segmentType = segment.type || 'unknown';
                                             const dataPreview = JSON.stringify(segment.data).substring(0, 100);
-                                            console.log(`  - ${componentType}: ${dataPreview}...`);
+                                            console.log(`  - ${segmentType}: ${dataPreview}...`);
                                             toolCallsDetected++;
                                         } catch (e) {
                                             // 忽略
@@ -230,16 +264,7 @@ async function bootstrap() {
     });
 
     rl.on('close', async () => {
-        console.log('\n👋 会话结束，清理数据...');
-
-        await prisma.aIMessage.deleteMany({
-            where: { sessionId: sessionData.sessionId },
-        });
-        await prisma.aISession.delete({
-            where: { id: sessionData.sessionId },
-        });
-
-        await app.close();
+        await cleanup();
         process.exit(0);
     });
 }
