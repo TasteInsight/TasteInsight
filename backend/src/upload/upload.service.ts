@@ -31,7 +31,12 @@ export class UploadService {
   async uploadFile(file: Express.Multer.File): Promise<UploadResponseDto> {
     // Check if file size is greater than 1MB (1024 * 1024 bytes)
     const ONE_MB = 1024 * 1024;
-    if (file.size > ONE_MB) {
+    // Only compress images, skip GIFs to preserve animation
+    if (
+      file.size > ONE_MB &&
+      file.mimetype.startsWith('image/') &&
+      file.mimetype !== 'image/gif'
+    ) {
       this.logger.log(`File size ${file.size} exceeds 1MB, compressing...`);
       try {
         const compressedBuffer = await this.compressImage(file.buffer);
@@ -39,10 +44,15 @@ export class UploadService {
         // Update file object with compressed data
         file.buffer = compressedBuffer;
         file.size = compressedBuffer.length;
+        // Note: We preserve the original format, so mimetype/filename remains valid
 
         this.logger.log(`File compressed to ${file.size} bytes`);
       } catch (error) {
-        this.logger.error('Image compression failed', error);
+        // Fallback to original file if compression fails
+        this.logger.error(
+          'Image compression failed, uploading original file',
+          error,
+        );
       }
     }
 
@@ -71,6 +81,9 @@ export class UploadService {
       pipeline = pipeline.png({ quality: 80, palette: true });
     } else if (format === 'webp') {
       pipeline = pipeline.webp({ quality: 80 });
+    } else {
+      // Unsupported format for compression, return original
+      return buffer;
     }
 
     let outputBuffer = await pipeline.toBuffer();
@@ -79,17 +92,18 @@ export class UploadService {
     if (outputBuffer.length > 1024 * 1024) {
       const image2 = sharp(outputBuffer);
       const metadata2 = await image2.metadata();
+      const format2 = metadata2.format;
 
       let pipeline2 = image2;
       if (metadata2.width && metadata2.width > 1280) {
         pipeline2 = pipeline2.resize({ width: 1280, withoutEnlargement: true });
       }
 
-      if (format === 'jpeg' || format === 'jpg') {
+      if (format2 === 'jpeg' || format2 === 'jpg') {
         pipeline2 = pipeline2.jpeg({ quality: 60 });
-      } else if (format === 'png') {
+      } else if (format2 === 'png') {
         pipeline2 = pipeline2.png({ quality: 60, palette: true });
-      } else if (format === 'webp') {
+      } else if (format2 === 'webp') {
         pipeline2 = pipeline2.webp({ quality: 60 });
       }
 
