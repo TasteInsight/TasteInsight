@@ -449,13 +449,21 @@ export interface Review {
   id: string
   dishId: string
   userId: string
-  userNickname: string
-  userAvatar: string
+  userNickname?: string
+  userAvatar?: string
   rating: number
   content: string
   images?: string[]
   status: 'pending' | 'approved' | 'rejected'
   createdAt: string
+  ratingDetails?: {
+    spicyLevel?: number
+    sweetness?: number
+    saltiness?: number
+    oiliness?: number
+  } | null
+  rejectReason?: string | null
+  updatedAt?: string
 }
 
 /**
@@ -515,13 +523,15 @@ export interface Comment {
   id: string
   reviewId: string
   userId: string
-  userNickname: string
-  userAvatar: string
+  userNickname?: string
+  userAvatar?: string
   content: string
   status: 'pending' | 'approved' | 'rejected'
   parentComment?: ParentComment | null
   floor: number
   createdAt: string
+  rejectReason?: string | null
+  updatedAt?: string
 }
 
 /**
@@ -558,6 +568,7 @@ export interface Report {
     content: string | null
     userId: string
     userNickname: string
+    userAvatar: string | null
     isDeleted: boolean
     images?: string[] // 评价图片（仅当targetType为review时存在）
   }

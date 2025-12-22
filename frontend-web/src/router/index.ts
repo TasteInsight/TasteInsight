@@ -15,6 +15,7 @@ import NewsManage from '../views/NewsManage.vue'
 import LogView from '../views/LogView.vue'
 import ReportManage from '../views/ReportManage.vue'
 import CommentManage from '../views/CommentManage.vue'
+import ReviewManage from '../views/ReviewManage.vue'
 import ConfigManage from '../views/ConfigManage.vue'
 import Login from '../views/Login.vue'
 
@@ -125,6 +126,12 @@ const routes = [
         meta: { requiresAuth: true, requiredPermission: 'review:delete', keepAlive: true },
       },
       {
+        path: 'review-manage',
+        name: 'ReviewManage',
+        component: ReviewManage,
+        meta: { requiresAuth: true, requiredPermission: 'review:approve', keepAlive: true },
+      },
+      {
         path: 'config-manage',
         name: 'ConfigManage',
         component: ConfigManage,
@@ -150,6 +157,7 @@ function getFirstAccessibleRoute(authStore: ReturnType<typeof useAuthStore>): st
     { path: '/news-manage', permission: 'news:view' },
     { path: '/report-manage', permission: 'report:handle' },
     { path: '/comment-manage', permission: 'review:delete' },
+    { path: '/review-manage', permission: 'review:approve' },
     { path: '/config-manage', permission: 'config:view' },
   ]
   

@@ -64,9 +64,13 @@
               class="hover:bg-gray-50"
             >
               <td class="py-4 px-6">
-                <div class="font-medium">
-                  <span class="iconify inline-block mr-1" data-icon="mdi:account"></span>
-                  {{ report.reporterNickname || report.reporter?.nickname || '未知用户' }}
+                <div class="flex items-center">
+                  <img
+                    :src="report.reporter?.avatar || '/default-avatar.png'"
+                    :alt="report.reporterNickname || report.reporter?.nickname || '用户'"
+                    class="w-8 h-8 rounded-full mr-2 border border-gray-200"
+                  />
+                  <span class="text-sm font-medium text-gray-900">{{ report.reporterNickname || report.reporter?.nickname || '未知用户' }}</span>
                 </div>
               </td>
               <td class="py-4 px-6">
@@ -140,8 +144,13 @@
                 <div class="grid grid-cols-2 gap-6">
                   <div class="space-y-1">
                     <div class="text-xs text-gray-400 uppercase tracking-wide">举报人</div>
-                    <div class="text-sm font-medium text-gray-900">
-                      {{ selectedReport.reporterNickname || selectedReport.reporter?.nickname || '未知用户' }}
+                    <div class="flex items-center">
+                      <img
+                        :src="selectedReport.reporter?.avatar || '/default-avatar.png'"
+                        :alt="selectedReport.reporterNickname || selectedReport.reporter?.nickname || '用户'"
+                        class="w-6 h-6 rounded-full mr-2 border border-gray-200"
+                      />
+                      <span class="text-sm font-medium text-gray-900">{{ selectedReport.reporterNickname || selectedReport.reporter?.nickname || '未知用户' }}</span>
                     </div>
                   </div>
                   <div class="space-y-1">
@@ -193,9 +202,14 @@
                   被举报内容
                 </h4>
                 <div v-if="selectedReport.targetContent">
-                  <div class="mb-4 text-sm">
-                    <span class="text-gray-500">发布者：</span>
-                    <span class="text-gray-900 font-medium ml-2">
+                  <div class="mb-4 flex items-center">
+                    <span class="text-gray-500 text-sm mr-2">发布者：</span>
+                    <img
+                      :src="selectedReport.targetContent.userAvatar || '/default-avatar.png'"
+                      :alt="selectedReport.targetContent.userNickname || '用户'"
+                      class="w-6 h-6 rounded-full mr-2 border border-gray-200"
+                    />
+                    <span class="text-gray-900 font-medium text-sm">
                       {{ selectedReport.targetContent.userNickname || '未知用户' }}
                     </span>
                   </div>
@@ -215,11 +229,11 @@
                         v-for="(image, index) in selectedReport.targetContent.images"
                         :key="index"
                         class="relative group aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100 cursor-pointer hover:border-tsinghua-purple transition"
-                        @click="openImagePreview(selectedReport.targetContent.images, index)"
+                        @click="openImagePreview(selectedReport.targetContent.images, Number(index))"
                       >
                         <img
                           :src="image"
-                          :alt="`评价图片 ${index + 1}`"
+                          :alt="`评价图片 ${Number(index) + 1}`"
                           class="w-full h-full object-cover"
                         />
                         <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition flex items-center justify-center">

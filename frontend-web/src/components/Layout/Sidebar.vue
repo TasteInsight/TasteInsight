@@ -104,6 +104,15 @@
         <span>举报管理</span>
       </router-link>
       <router-link
+        v-permission="'review:approve'"
+        to="/review-manage"
+        class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
+        :class="{ active: $route.path === '/review-manage' }"
+      >
+        <span class="iconify" data-icon="carbon:task-approved"></span>
+        <span>评价和评论审核</span>
+      </router-link>
+      <router-link
         v-permission="'review:delete'"
         to="/comment-manage"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"

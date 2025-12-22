@@ -29,6 +29,7 @@ export class ReportItemData {
     content: string | null;
     userId: string;
     userNickname: string;
+    userAvatar: string | null;
     isDeleted: boolean; // 标记内容是否已被软删除
     images?: string[]; // 评价图片（仅当targetType为review时存在）
   };
