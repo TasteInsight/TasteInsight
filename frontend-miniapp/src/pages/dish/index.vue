@@ -6,7 +6,7 @@
     <!-- 错误状态 -->
     <view v-else-if="error" class="flex items-center justify-center min-h-screen">
       <view class="text-center">
-        <text class="text-red-500">{{ error }}</text>
+        <text class="text-black">{{ error }}</text>
         <button 
           class="mt-4 px-4 py-2 bg-ts-purple text-white rounded-lg border border-ts-purple active:opacity-90 transition-colors"
           @click="refresh"

@@ -57,7 +57,7 @@
         
     <!-- 错误状态 -->
     <view v-if="error" class="flex flex-col items-center justify-center py-20 px-5">
-      <text class="text-red-500 mb-4">{{ error }}</text>
+      <text class="text-black mb-4">{{ error }}</text>
       <view @tap="refreshPlans" class="py-2 px-6 bg-ts-purple rounded-lg border border-ts-purple active:opacity-90">
         <text class="text-white">重试</text>
       </view>
