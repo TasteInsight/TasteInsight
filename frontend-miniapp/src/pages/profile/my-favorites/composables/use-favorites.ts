@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { getMyFavorites } from '@/api/modules/user';
 import { getDishById, unfavoriteDish } from '@/api/modules/dish';
+import { useUserStore } from '@/store/modules/use-user-store';
 import type { Dish } from '@/types/api';
 
 export function useFavorites() {
@@ -11,6 +12,7 @@ export function useFavorites() {
   const currentPage = ref(1);
   const pageSize = 10;
   const hasMore = ref(true);
+  const userStore = useUserStore();
 
   /**
    * 获取收藏列表
@@ -78,6 +80,10 @@ export function useFavorites() {
       if (response.code === 200) {
         // 从列表中移除该菜品
         dishes.value = dishes.value.filter(dish => dish.id !== dishId);
+        
+        // 更新 userStore 中的本地收藏状态
+        const newFavorites = (userStore.userInfo?.myFavoriteDishes || []).filter(id => id !== dishId);
+        userStore.updateLocalUserInfo({ myFavoriteDishes: newFavorites });
         
         uni.showToast({
           title: '已取消收藏',
