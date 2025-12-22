@@ -114,6 +114,73 @@
       <!-- 分隔线 -->
       <view class="h-3 bg-gray-50 border-t border-b border-gray-100"></view>
 
+      <!-- 我的评价：置顶展示（位于详细信息与用户评价之间） -->
+      <view class="bg-white p-4">
+        <view class="flex items-center justify-between mb-3">
+          <h2 class="text-lg font-semibold text-gray-800">我的评价</h2>
+          <view class="flex items-center gap-3">
+            <view
+              v-if="myReview"
+              class="text-sm text-gray-500"
+              @tap="handleDeleteMyReview"
+            >删除</view>
+            <view
+              class="text-sm text-ts-purple"
+              @tap="showReviewForm"
+            >{{ myReview ? '修改' : '去评价' }}</view>
+          </view>
+        </view>
+
+        <view v-if="myReview" class="border border-gray-100 rounded-lg p-3">
+          <view class="flex items-start">
+            <image
+              :src="myReview.userAvatar || '/default-avatar.png'"
+              class="w-10 h-10 rounded-full mr-3 flex-shrink-0"
+              mode="aspectFill"
+            />
+
+            <view class="flex-1">
+              <view class="font-bold text-purple-900 text-sm">{{ myReview.userNickname }}</view>
+              <view class="flex items-center mt-1">
+                <text
+                  v-for="star in 5"
+                  :key="star"
+                  class="text-base mr-0.5"
+                  :class="star <= myReview.rating ? 'text-yellow-500' : 'text-gray-300'"
+                >{{ star <= myReview.rating ? '★' : '☆' }}</text>
+              </view>
+
+              <view v-if="myReview.ratingDetails" class="mt-2 text-xs text-gray-500 flex flex-wrap gap-2">
+                <view class="px-2 py-1 bg-gray-50 rounded">辣度 {{ myReview.ratingDetails.spicyLevel }}/5</view>
+                <view class="px-2 py-1 bg-gray-50 rounded">甜度 {{ myReview.ratingDetails.sweetness }}/5</view>
+                <view class="px-2 py-1 bg-gray-50 rounded">咸度 {{ myReview.ratingDetails.saltiness }}/5</view>
+                <view class="px-2 py-1 bg-gray-50 rounded">油腻 {{ myReview.ratingDetails.oiliness }}/5</view>
+              </view>
+
+              <view class="text-sm text-gray-700 leading-relaxed mt-2">{{ myReview.content }}</view>
+
+              <view v-if="myReview.images && myReview.images.length > 0" class="flex flex-wrap gap-2 mt-2">
+                <image
+                  v-for="(img, idx) in myReview.images"
+                  :key="idx"
+                  :src="img"
+                  class="w-20 h-20 rounded object-cover border border-gray-100"
+                  mode="aspectFill"
+                  @tap.stop="previewMyReviewImage(myReview.images, idx)"
+                />
+              </view>
+
+              <view class="text-xs text-gray-400 mt-2">{{ formatReviewDate(myReview.createdAt) }}</view>
+            </view>
+          </view>
+        </view>
+
+        <view v-else class="text-sm text-gray-400 py-2">你还没有评价过这道菜</view>
+      </view>
+
+      <!-- 分隔线 -->
+      <view class="h-3 bg-gray-50 border-t border-b border-gray-100"></view>
+
       <!-- 详细信息 -->
       <view class="bg-white p-4">
         <!-- 标题 - 始终显示 -->
@@ -227,7 +294,7 @@
 
         <ReviewList
           :dish-id="dishId"
-          :reviews="reviews"
+          :reviews="otherReviews"
           :loading="reviewsLoading"
           :error="reviewsError"
           :has-more="reviewsHasMore"
@@ -258,6 +325,8 @@
       v-if="isReviewFormVisible"
       :dish-id="dishId"
       :dish-name="dish?.name || ''"
+      :existing-review-id="myReview?.id"
+      :initial-review="myReview"
       @close="hideReviewForm"
       @success="handleReviewSuccess"
     />
@@ -294,6 +363,8 @@
 import { ref, computed, nextTick, watch } from 'vue';
 import { onLoad, onBackPress, onPullDownRefresh } from '@dcloudio/uni-app';
 import { useDishDetail } from '@/pages/dish/composables/use-dish-detail';
+import { useUserStore } from '@/store/modules/use-user-store';
+import dayjs from 'dayjs';
 import ReviewList from './components/ReviewList.vue';
 import ReviewForm from './components/ReviewForm.vue';
 import BottomReviewInput from './components/BottomReviewInput.vue';
@@ -332,6 +403,24 @@ const {
   closeReportModal,
   submitReport
 } = useReport();
+
+const userStore = useUserStore();
+
+const myReview = computed(() => {
+  const uid = userStore.userInfo?.id;
+  if (!uid) return null;
+  const mine = (reviews.value || []).filter(r => r.userId === uid);
+  if (mine.length === 0) return null;
+  return mine
+    .slice()
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+});
+
+const otherReviews = computed(() => {
+  const uid = userStore.userInfo?.id;
+  if (!uid) return reviews.value;
+  return (reviews.value || []).filter(r => r.userId !== uid);
+});
 
 const isReviewFormVisible = ref(false);
 const isDetailExpanded = ref(false);
@@ -484,6 +573,40 @@ const handleReviewSuccess = async () => {
   uni.showToast({
     title: '评价成功',
     icon: 'success',
+  });
+};
+
+const formatReviewDate = (dateString: string) => {
+  return dayjs(dateString).format('YYYY-MM-DD HH:mm');
+};
+
+const previewMyReviewImage = (urls: string[], current: number) => {
+  uni.previewImage({
+    urls,
+    current: urls[current],
+  });
+};
+
+const handleDeleteMyReview = () => {
+  if (!myReview.value) return;
+  uni.showModal({
+    title: '提示',
+    content: '确定要删除你的这条评价吗？',
+    success: async (res) => {
+      if (!res.confirm) return;
+      try {
+        await removeReview(myReview.value!.id);
+        if (dishId.value) {
+          await Promise.all([
+            fetchReviews(dishId.value, true),
+            fetchDishDetail(dishId.value)
+          ]);
+        }
+        uni.showToast({ title: '已删除', icon: 'success' });
+      } catch (e) {
+        uni.showToast({ title: '删除失败', icon: 'none' });
+      }
+    },
   });
 };
 

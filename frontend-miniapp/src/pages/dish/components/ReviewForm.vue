@@ -37,7 +37,7 @@
     >
       <!-- 标题栏 -->
       <view class="flex justify-center items-center mb-4 pb-4 border-b border-gray-100 relative">
-        <h2 class="text-lg font-bold text-gray-800">写评价</h2>
+        <h2 class="text-lg font-bold text-gray-800">{{ isEditing ? '修改评价' : '写评价' }}</h2>
         <button
           class="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-gray-400 text-xl rounded-full bg-transparent border-0 after:border-none"
           @tap="handleClose"
@@ -154,7 +154,7 @@
         :disabled="submitting"
         @click="handleSubmit"
       >
-        {{ submitting ? '提交中...' : '提交评价' }}
+        {{ submitting ? '提交中...' : (isEditing ? '更新评价' : '提交评价') }}
       </button>
     </scroll-view>
   </view>
@@ -163,10 +163,13 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, nextTick, ref, computed } from 'vue';
 import { useReviewForm } from '../composables/use-review';
+import type { Review } from '@/types/api';
 
 interface Props {
   dishId: string;
   dishName: string;
+  existingReviewId?: string;
+  initialReview?: Review | null;
 }
 
 interface Emits {
@@ -176,6 +179,8 @@ interface Emits {
 
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
+
+const isEditing = computed(() => !!props.existingReviewId);
 
 const {
   rating,
