@@ -45,7 +45,7 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue';
-import { onPullDownRefresh } from '@dcloudio/uni-app';
+import { onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import ReviewCard from './components/ReviewCard.vue';
 import { useMyReviews } from '@/pages/profile/my-reviews/composables/use-my-reviews';
 import { ReviewListSkeleton } from '@/components/skeleton';
@@ -54,6 +54,11 @@ const { reviews, loading, hasMore, fetchReviews, loadMore } = useMyReviews();
 
 onMounted(() => {
   fetchReviews();
+});
+
+// 触底上拉加载更多
+onReachBottom(async () => {
+  await loadMore();
 });
 
 // 下拉刷新处理

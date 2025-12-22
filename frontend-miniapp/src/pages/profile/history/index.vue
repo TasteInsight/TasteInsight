@@ -41,7 +41,7 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue';
-import { onPullDownRefresh } from '@dcloudio/uni-app';
+import { onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import DishCard from '@/pages/profile/components/ProfileDishCard.vue';
 import { useHistory } from '@/pages/profile/history/composables/use-history';
 import { DishListSkeleton } from '@/components/skeleton';
@@ -50,6 +50,11 @@ const { dishes, loading, hasMore, fetchHistory, loadMore } = useHistory();
 
 onMounted(() => {
   fetchHistory();
+});
+
+// 触底上拉加载更多
+onReachBottom(async () => {
+  await loadMore();
 });
 
 // 下拉刷新处理

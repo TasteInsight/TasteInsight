@@ -46,7 +46,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { onLoad, onPullDownRefresh } from '@dcloudio/uni-app';
+import { onLoad, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import { useCanteenData } from './composables/use-canteen-data';
 import CanteenSearchBar from './components/CanteenSearchBar.vue';
 import CanteenFilterBar from './components/CanteenFilterBar.vue';
@@ -56,7 +56,7 @@ import CanteenWindowList from './components/CanteenWindowList.vue';
 import { CanteenSkeleton } from '@/components/skeleton';
 import type { GetDishesRequest } from '@/types/api';
 
-const { canteenInfo, loading, error, windows, dishes, init, fetchDishes } = useCanteenData();
+const { canteenInfo, loading, error, windows, dishes, init, fetchDishes, loadMoreDishes } = useCanteenData();
 
 const currentCanteenId = ref('');
 const currentFilter = ref<GetDishesRequest['filter']>({});
@@ -111,4 +111,9 @@ const handleFilterChange = (filter: GetDishesRequest['filter']) => {
     fetchDishes(currentCanteenId.value, filter);
   }
 };
+
+// 触底上拉加载更多
+onReachBottom(async () => {
+  await loadMoreDishes();
+});
 </script>

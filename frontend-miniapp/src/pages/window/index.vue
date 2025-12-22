@@ -18,6 +18,8 @@
         :refresher-triggered="refresherTriggered"
         @refresherrefresh="onRefresh"
         @refresherrestore="onRefreshRestore"
+        lower-threshold="80"
+        @scrolltolower="onLoadMore"
       >
         <!-- 窗口信息 -->
         <WindowHeader :window="windowInfo" />
@@ -41,6 +43,10 @@
             />
           </view>
 
+          <view v-if="loadingMore" class="flex justify-center py-4">
+            <text class="text-gray-500 text-sm">加载中...</text>
+          </view>
+
           <view v-else class="text-center py-10 text-gray-500">
             暂无菜品信息
           </view>
@@ -59,7 +65,7 @@ import CanteenSearchBar from '../canteen/components/CanteenSearchBar.vue';
 import CanteenDishCard from '../canteen/components/CanteenDishCard.vue';
 import { WindowSkeleton } from '@/components/skeleton';
 
-const { windowInfo, loading, error, dishes, init, fetchDishes, fetchWindow } = useWindowData();
+const { windowInfo, loading, loadingMore, hasMore, error, dishes, init, fetchDishes, loadMoreDishes, fetchWindow } = useWindowData();
 
 let currentWindowId = '';
 const isInitialLoading = ref(true);
@@ -104,6 +110,15 @@ const onRefresh = async () => {
  */
 const onRefreshRestore = () => {
   refresherTriggered.value = false;
+};
+
+/**
+ * 触底上拉加载更多（scroll-view）
+ */
+const onLoadMore = async () => {
+  if (!currentWindowId) return;
+  if (!hasMore.value) return;
+  await loadMoreDishes(currentWindowId);
 };
 
 const goToSearch = () => uni.navigateTo({ url: '/pages/search/index' });

@@ -43,7 +43,7 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue';
-import { onPullDownRefresh } from '@dcloudio/uni-app';
+import { onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import DishCard from '@/pages/profile/components/ProfileDishCard.vue';
 import { useFavorites } from '@/pages/profile/my-favorites/composables/use-favorites';
 import { DishListSkeleton } from '@/components/skeleton';
@@ -52,6 +52,11 @@ const { dishes, loading, hasMore, fetchFavorites, loadMore, removeFavorite } = u
 
 onMounted(() => {
   fetchFavorites();
+});
+
+// 触底上拉加载更多
+onReachBottom(async () => {
+  await loadMore();
 });
 
 // 下拉刷新处理
