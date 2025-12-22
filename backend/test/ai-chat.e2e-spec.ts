@@ -723,7 +723,8 @@ describe('AI Chat (e2e)', () => {
             res.on('end', () => callback(null, null));
           })
           .end((err) => {
-            if (err) reject(err);
+            if (err)
+              reject(err instanceof Error ? err : new Error(String(err)));
             else resolve();
           });
       });
@@ -993,7 +994,7 @@ describe('Continuous Conversation (e2e)', () => {
           res.on('end', () => callback(null, turn1Events));
         })
         .end((err) => {
-          if (err) reject(err);
+          if (err) reject(err instanceof Error ? err : new Error(String(err)));
           else resolve();
         });
     });
@@ -1021,7 +1022,7 @@ describe('Continuous Conversation (e2e)', () => {
           res.on('end', () => callback(null, turn2Events));
         })
         .end((err) => {
-          if (err) reject(err);
+          if (err) reject(err instanceof Error ? err : new Error(String(err)));
           else resolve();
         });
     });
@@ -1048,7 +1049,7 @@ describe('Continuous Conversation (e2e)', () => {
           res.on('end', () => callback(null, turn3Events));
         })
         .end((err) => {
-          if (err) reject(err);
+          if (err) reject(err instanceof Error ? err : new Error(String(err)));
           else resolve();
         });
     });
