@@ -161,9 +161,31 @@ ${budget ? `\n✅ 符合每天 ¥${budget} 的预算要求` : ''}
    * 根据评分权重随机选择菜品
    */
   private weightedRandomSelect(dishes: any[]): any {
+    // 空数组检查
+    if (!dishes || dishes.length === 0) {
+      throw new Error('Cannot select from empty dishes array');
+    }
+
+    // 如果只有一个菜品，直接返回
+    if (dishes.length === 1) {
+      return dishes[0];
+    }
+
     // 计算权重（评分越高权重越大）
-    const weights = dishes.map((d) => Math.pow(d.averageRating || 3, 2));
+    // 使用 Math.max 确保最小权重为 1，避免 totalWeight 为 0
+    const weights = dishes.map((d) => {
+      const rating =
+        d.averageRating != null && typeof d.averageRating === 'number'
+          ? d.averageRating
+          : 3; // 默认评分 3
+      return Math.max(Math.pow(rating, 2), 1); // 最小权重为 1
+    });
     const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+
+    // 如果 totalWeight 为 0（理论上不应该发生，因为最小权重为 1），使用均匀随机
+    if (totalWeight === 0) {
+      return dishes[Math.floor(Math.random() * dishes.length)];
+    }
 
     // 随机选择
     let random = Math.random() * totalWeight;
@@ -174,6 +196,7 @@ ${budget ? `\n✅ 符合每天 ¥${budget} 的预算要求` : ''}
       }
     }
 
+    // 回退：返回最后一个菜品（理论上不应该到达这里）
     return dishes[dishes.length - 1];
   }
 }

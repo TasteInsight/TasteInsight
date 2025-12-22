@@ -75,22 +75,29 @@ export class DishSearchTool implements BaseTool {
     );
 
     // Convert to dish cards
-    const dishCards: ComponentDishCard[] = result.data.items.map((dish) => ({
-      dish: {
-        id: dish.id,
-        name: dish.name,
-        image: dish.images?.[0] || '',
-        rating: dish.averageRating?.toString() || '0',
-        tags: dish.tags || [],
-      },
-      canteenName: dish.canteenName || '',
-      windowName: dish.windowName || '',
-      linkAction: {
-        type: 'navigate',
-        page: 'dish_detail',
-        params: { id: dish.id },
-      },
-    }));
+    const dishCards: ComponentDishCard[] = result.data.items.map((dish) => {
+      const rating =
+        dish.averageRating != null && typeof dish.averageRating === 'number'
+          ? dish.averageRating.toString()
+          : '0';
+
+      return {
+        dish: {
+          id: dish.id,
+          name: dish.name,
+          image: dish.images?.[0] || '',
+          rating,
+          tags: dish.tags || [],
+        },
+        canteenName: dish.canteenName || '',
+        windowName: dish.windowName || '',
+        linkAction: {
+          type: 'navigate',
+          page: 'dish_detail',
+          params: { id: dish.id },
+        },
+      };
+    });
     return dishCards;
   }
 }

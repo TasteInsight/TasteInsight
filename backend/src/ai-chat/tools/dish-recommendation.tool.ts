@@ -50,8 +50,26 @@ export class DishRecommendationTool implements BaseTool {
   ): Promise<ComponentDishCard[]> {
     const { mealTime, canteenId, priceMin, priceMax, limit = 5 } = params;
 
+    // Validate mealTime value
+    const validMealTimes = ['breakfast', 'lunch', 'dinner', 'nightsnack'];
+
+    // Validate required parameter
+    if (!mealTime) {
+      throw new Error(
+        `mealTime is required and must be one of: ${validMealTimes.join(', ')}`,
+      );
+    }
+
+    if (!validMealTimes.includes(mealTime)) {
+      throw new Error(
+        `Invalid mealTime: ${mealTime}. Must be one of: ${validMealTimes.join(', ')}`,
+      );
+    }
+
     // Build filter
-    const filter: any = {};
+    const filter: any = {
+      mealTime: [mealTime],
+    };
     if (canteenId) {
       filter.canteenId = canteenId;
     }
@@ -59,9 +77,6 @@ export class DishRecommendationTool implements BaseTool {
       filter.price = {};
       if (priceMin !== undefined) filter.price.min = priceMin;
       if (priceMax !== undefined) filter.price.max = priceMax;
-    }
-    if (mealTime) {
-      filter.mealTime = [mealTime];
     }
 
     // Get recommendations using suggestion mode
@@ -77,23 +92,34 @@ export class DishRecommendationTool implements BaseTool {
     );
 
     // Convert to dish cards
-    const dishCards: ComponentDishCard[] = result.data.items.map((dish) => ({
-      dish: {
-        id: dish.id,
-        name: dish.name,
-        image: dish.images?.[0] || '',
-        rating: dish.averageRating?.toString() || '0',
-        tags: dish.tags || [],
-      },
-      canteenName: dish.canteenName || '',
-      windowName: dish.windowName || '',
-      recommendReason: `评分 ${dish.averageRating?.toFixed(1) || '暂无'}`,
-      linkAction: {
-        type: 'navigate',
-        page: 'dish_detail',
-        params: { id: dish.id },
-      },
-    }));
+    const dishCards: ComponentDishCard[] = result.data.items.map((dish) => {
+      const rating =
+        dish.averageRating != null && typeof dish.averageRating === 'number'
+          ? dish.averageRating.toString()
+          : '0';
+      const ratingDisplay =
+        dish.averageRating != null && typeof dish.averageRating === 'number'
+          ? dish.averageRating.toFixed(1)
+          : '暂无';
+
+      return {
+        dish: {
+          id: dish.id,
+          name: dish.name,
+          image: dish.images?.[0] || '',
+          rating,
+          tags: dish.tags || [],
+        },
+        canteenName: dish.canteenName || '',
+        windowName: dish.windowName || '',
+        recommendReason: `评分 ${ratingDisplay}`,
+        linkAction: {
+          type: 'navigate',
+          page: 'dish_detail',
+          params: { id: dish.id },
+        },
+      };
+    });
 
     return dishCards;
   }
