@@ -7,7 +7,7 @@
         <view class="dish-location">{{ recommendation.dish.canteenName }} {{ recommendation.dish.windowName }}</view>
         <view class="flex items-center mt-1">
           <text class="rating-icon">★</text>
-          <text class="rating-text">{{ recommendation.dish.averageRating.toFixed(1) }}</text>
+          <text class="rating-text">{{ recommendation.dish.averageRating === 0 ? '暂无' : recommendation.dish.averageRating.toFixed(1) }}</text>
         </view>
         <view class="ai-reason">
           <text class="text-xs text-gray-500">推荐理由: </text>

@@ -6,7 +6,6 @@
         <image src="/static/logo.png" class="w-20 h-20 mx-auto mb-4 rounded-xl" mode="aspectFit" />
         <text class="text-xl font-bold text-gray-800 block">食鉴 TasteInsight</text>
         <text class="text-gray-500 text-sm mt-1">Version 1.0.0</text>
-        <text class="text-gray-400 text-xs mt-1">Build 20241216</text>
       </view>
 
       <!-- 功能介绍 -->
@@ -126,12 +125,7 @@
               • ✨ 全新发布：完整的食堂评价和AI推荐功能\n• 🎨 现代化UI设计，支持深色模式\n• 🤖 集成AI聊天助手，提供智能美食推荐\n• 📱 优化移动端体验，支持手势操作\n• 🔒 增强隐私保护，合规GDPR要求
             </text>
           </view>
-          <view class="border-l-4 border-gray-300 pl-4">
-            <text class="text-sm font-medium text-gray-500">未来规划</text>
-            <text class="text-xs text-gray-500 mt-1 block">
-              • 增加营养分析功能\n• 支持食堂预约点餐\n• 添加好友评价分享\n• 推出小程序PC版本
-            </text>
-          </view>
+          
         </view>
       </view>
 

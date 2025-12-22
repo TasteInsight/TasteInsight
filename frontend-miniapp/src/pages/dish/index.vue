@@ -98,7 +98,7 @@
             <!-- 左侧评分和评价数量 -->
             <view class="flex flex-col mt-8 ml-6">
               <view class="text-xl font-bold text-yellow-500">
-                {{ dish.averageRating.toFixed(1) }}分
+                {{ dish.averageRating === 0 ? '暂无' : `${dish.averageRating.toFixed(1)}分` }}
               </view>
               <view class="text-xs text-gray-500 mt-1">
                 {{ dish.reviewCount }} 条评价
