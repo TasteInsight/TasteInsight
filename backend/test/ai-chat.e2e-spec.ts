@@ -5,6 +5,8 @@ import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma.service';
 import { ToolRegistryService } from '../src/ai-chat/tools/tool-registry.service';
 import { AIConfigService } from '../src/ai-chat/services/ai-config.service';
+import { OpenAIProviderService } from '../src/ai-chat/services/ai-provider/openai-provider.service';
+import { MockAIProviderService } from '../src/ai-chat/services/ai-provider/mock-ai-provider.service';
 
 describe('AI Chat (e2e)', () => {
   let app: INestApplication;
@@ -14,9 +16,24 @@ describe('AI Chat (e2e)', () => {
   let sessionId: string;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
+    // Use Mock Provider if USE_MOCK_AI_PROVIDER environment variable is set to 'true' or '1'
+    // Default to false (use real OpenAI API, requires valid API key)
+    const useMockAIProvider =
+      process.env.USE_MOCK_AI_PROVIDER === 'true' ||
+      process.env.USE_MOCK_AI_PROVIDER === '1';
+
+    let moduleBuilder = Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    });
+
+    // Override with Mock Provider if enabled
+    if (useMockAIProvider) {
+      moduleBuilder = moduleBuilder
+        .overrideProvider(OpenAIProviderService)
+        .useClass(MockAIProviderService);
+    }
+
+    const moduleFixture: TestingModule = await moduleBuilder.compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
@@ -937,9 +954,24 @@ describe('Continuous Conversation (e2e)', () => {
   let sessionId: string;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
+    // Use Mock Provider if USE_MOCK_AI_PROVIDER environment variable is set to 'true' or '1'
+    // Default to false (use real OpenAI API, requires valid API key)
+    const useMockAIProvider =
+      process.env.USE_MOCK_AI_PROVIDER === 'true' ||
+      process.env.USE_MOCK_AI_PROVIDER === '1';
+
+    let moduleBuilder = Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    });
+
+    // Override with Mock Provider if enabled
+    if (useMockAIProvider) {
+      moduleBuilder = moduleBuilder
+        .overrideProvider(OpenAIProviderService)
+        .useClass(MockAIProviderService);
+    }
+
+    const moduleFixture: TestingModule = await moduleBuilder.compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true }));

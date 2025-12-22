@@ -15,21 +15,32 @@ export class AIConfigService {
 
   /**
    * Get AI provider configuration
-   * Priority: Database > Environment Variables
+   * Priority: Environment Variables > Database > Default
    */
   async getProviderConfig(): Promise<AIProviderConfig> {
     const provider = await this.get('ai.provider', 'openai');
-    const apiKey = await this.get('ai.api_key', '');
-    const model = await this.get('ai.model', 'gpt-4o-mini');
-    const baseUrl = await this.get('ai.base_url', '');
+    
+    // Environment variables take priority (more secure, per-environment)
+    const envApiKey = this.configService.get<string>('AI_API_KEY');
+    const envModel = this.configService.get<string>('AI_MODEL');
+    const envBaseUrl = this.configService.get<string>('AI_BASE_URL');
+    
+    // Fallback to database if env vars not set
+    const dbApiKey = await this.get('ai.api_key', '');
+    const dbModel = await this.get('ai.model', '');
+    const dbBaseUrl = await this.get('ai.base_url', '');
 
-    // Fallback to environment variables if not in database
-    const finalApiKey =
-      apiKey || this.configService.get<string>('AI_API_KEY') || '';
-    const finalModel =
-      model || this.configService.get<string>('AI_MODEL') || 'gpt-4o-mini';
-    const finalBaseUrl =
-      baseUrl || this.configService.get<string>('AI_BASE_URL');
+    // Final values: env > database > default
+    const finalApiKey = envApiKey || dbApiKey || '';
+    const finalModel = envModel || dbModel || 'gpt-4o-mini';
+    const finalBaseUrl = envBaseUrl || dbBaseUrl;
+
+    // Warn if API key is missing
+    if (!finalApiKey) {
+      this.logger.warn(
+        'AI API key is not configured. Please set AI_API_KEY environment variable or configure ai.api_key in database.',
+      );
+    }
 
     return {
       apiKey: finalApiKey,

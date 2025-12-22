@@ -86,13 +86,35 @@ export class OpenAIProviderService implements BaseAIProvider {
 
       yield { type: 'done' };
     } catch (error) {
-      this.logger.error('OpenAI API error:', error);
+      // Log detailed error for debugging
+      this.logger.error('OpenAI API error:', {
+        message: error instanceof Error ? error.message : String(error),
+        model: this.config?.model,
+        baseUrl: this.config?.baseUrl,
+      });
+      
+      // Provide user-friendly error messages without exposing technical details
+      // Messages should sound natural and not imply system errors
+      let userMessage = '抱歉，我现在无法处理您的请求，请稍后再试。';
+      
+      if (error instanceof Error) {
+        const errorMsg = error.message.toLowerCase();
+        
+        // Map technical errors to natural user messages
+        if (errorMsg.includes('model not exist') || errorMsg.includes('model_not_found')) {
+          userMessage = '抱歉，我现在无法处理您的请求，请稍后再试。';
+        } else if (errorMsg.includes('401') || errorMsg.includes('unauthorized')) {
+          userMessage = '抱歉，我现在无法处理您的请求，请稍后再试。';
+        } else if (errorMsg.includes('429') || errorMsg.includes('rate_limit')) {
+          userMessage = '抱歉，当前请求过于频繁，请稍后再试。';
+        } else if (errorMsg.includes('timeout') || errorMsg.includes('network')) {
+          userMessage = '抱歉，响应时间过长，请稍后再试。';
+        }
+      }
+      
       yield {
         type: 'error',
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Failed to communicate with AI provider',
+        error: userMessage,
       };
     }
   }
