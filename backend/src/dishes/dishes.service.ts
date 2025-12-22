@@ -44,13 +44,39 @@ export class DishesService {
     }
 
     // 记录用户浏览历史
+    // 去重逻辑：如果用户在5分钟内再次访问同一菜品，则更新时间而不是创建新记录
     try {
-      await this.prisma.browseHistory.create({
-        data: {
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+      // 查找最近的浏览记录
+      const recentHistory = await this.prisma.browseHistory.findFirst({
+        where: {
           userId,
           dishId: id,
+          viewedAt: {
+            gte: fiveMinutesAgo,
+          },
+        },
+        orderBy: {
+          viewedAt: 'desc',
         },
       });
+
+      if (recentHistory) {
+        // 如果5分钟内已经访问过，更新时间
+        await this.prisma.browseHistory.update({
+          where: { id: recentHistory.id },
+          data: { viewedAt: new Date() },
+        });
+      } else {
+        // 否则创建新记录
+        await this.prisma.browseHistory.create({
+          data: {
+            userId,
+            dishId: id,
+          },
+        });
+      }
     } catch (error) {
       // 记录失败不影响主要功能，静默处理
       console.warn('Failed to record browse history:', error);

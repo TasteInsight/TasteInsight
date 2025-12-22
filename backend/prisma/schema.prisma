@@ -276,9 +276,9 @@ model Dish {
 
   // 关联关系
   reviews       Review[]
-  favoritedBy   FavoriteDish[]  @ignore
-  mealPlans     MealPlanDish[]  @ignore
-  browseHistory BrowseHistory[] @ignore
+  favoritedBy   FavoriteDish[]
+  mealPlans     MealPlanDish[]
+  browseHistory BrowseHistory[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
