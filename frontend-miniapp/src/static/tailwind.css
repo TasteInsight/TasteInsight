@@ -1455,6 +1455,11 @@
   background-color: rgb(254 252 232 / var(--tw-bg-opacity))
 }
 
+.bg-green-50 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(240 253 244 / var(--tw-bg-opacity))
+}
+
 .bg-opacity-50 {
   --tw-bg-opacity: 0.5
 }

@@ -222,6 +222,25 @@
             <text class="detail-text text-red-600">{{ dish.allergens.join('、') }}</text>
           </view>
 
+          <!-- 口味信息 -->
+          <view v-if="hasTasteInfo" class="detail-section">
+            <text class="font-bold text-black mr-1 text-sm">口味信息：</text>
+            <view class="mt-2 flex flex-wrap gap-2">
+              <view v-if="dish.spicyLevel !== undefined" class="px-3 py-1 bg-red-50 text-red-600 text-xs rounded-md">
+                辣度 {{ dish.spicyLevel === 0 ? '暂无' : `${dish.spicyLevel}/5` }}
+              </view>
+              <view v-if="dish.sweetness !== undefined" class="px-3 py-1 bg-yellow-50 text-yellow-600 text-xs rounded-md">
+                甜度 {{ dish.sweetness === 0 ? '暂无' : `${dish.sweetness}/5` }}
+              </view>
+              <view v-if="dish.saltiness !== undefined" class="px-3 py-1 bg-blue-50 text-blue-600 text-xs rounded-md">
+                咸度 {{ dish.saltiness === 0 ? '暂无' : `${dish.saltiness}/5` }}
+              </view>
+              <view v-if="dish.oiliness !== undefined" class="px-3 py-1 bg-green-50 text-green-600 text-xs rounded-md">
+                油腻度 {{ dish.oiliness === 0 ? '暂无' : `${dish.oiliness}/5` }}
+              </view>
+            </view>
+          </view>
+
           <!-- 父菜品（如果有） -->
           <view v-if="parentDish" class="detail-section mt-3">
             <text class="font-bold text-black mr-1 text-sm">所属菜品：</text>
@@ -424,6 +443,16 @@ const otherReviews = computed(() => {
   const uid = userStore.userInfo?.id;
   if (!uid) return reviews.value;
   return (reviews.value || []).filter(r => r.userId !== uid);
+});
+
+// 检查是否有口味信息
+const hasTasteInfo = computed(() => {
+  return dish.value && (
+    dish.value.spicyLevel !== undefined ||
+    dish.value.sweetness !== undefined ||
+    dish.value.saltiness !== undefined ||
+    dish.value.oiliness !== undefined
+  );
 });
 
 const isReviewFormVisible = ref(false);
