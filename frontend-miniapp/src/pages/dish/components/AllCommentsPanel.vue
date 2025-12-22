@@ -22,7 +22,13 @@
       </view>
 
       <!-- 评论列表 -->
-      <view class="flex-1 overflow-y-auto px-5">
+      <scroll-view
+        class="flex-1 px-5"
+        scroll-y="true"
+        enable-flex="true"
+        lower-threshold="80"
+        @scrolltolower="handleScrollToLower"
+      >
         <view v-if="loading && comments.length === 0" class="flex justify-center items-center h-48 text-gray-500">
           <text>加载中...</text>
         </view>
@@ -75,17 +81,20 @@
             <view v-if="index < comments.length - 1" class="h-px bg-gray-200 my-3"></view>
           </view>
 
-          <!-- 加载更多 -->
-          <view v-if="hasMore && !loading" class="text-center py-4">
-            <button
-              class="text-sm text-gray-500 bg-transparent border-none after:border-none"
-              @tap="loadMoreComments"
-            >
-              加载更多评论
-            </button>
+          <!-- 底部提示：上拉加载更多 / 加载中 / 没有更多了 -->
+          <view class="flex items-center justify-center py-4 text-gray-500 text-sm">
+            <template v-if="loading">
+              <text>加载中...</text>
+            </template>
+            <template v-else-if="hasMore">
+              <text>上拉加载更多</text>
+            </template>
+            <template v-else>
+              <text>没有更多评论了</text>
+            </template>
           </view>
         </view>
-      </view>
+      </scroll-view>
 
       <!-- 底部回复输入框 -->
       <view class="border-t border-gray-200 bg-white px-4 pt-3 pb-safe shrink-0">
@@ -177,6 +186,12 @@ const {
   () => props.reviewId,
   () => emit('commentAdded')
 );
+
+const handleScrollToLower = () => {
+  if (loading.value) return;
+  if (!hasMore.value) return;
+  loadMoreComments();
+};
 
 // 长按菜单相关状态
 const menuVisible = ref(false);

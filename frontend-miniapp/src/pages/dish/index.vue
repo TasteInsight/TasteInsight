@@ -6,9 +6,9 @@
     <!-- 错误状态 -->
     <view v-else-if="error" class="flex items-center justify-center min-h-screen">
       <view class="text-center">
-        <text class="text-red-500">{{ error }}</text>
+        <text class="text-black">{{ error }}</text>
         <button 
-          class="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+          class="mt-4 px-4 py-2 bg-ts-purple text-white rounded-lg border border-ts-purple active:opacity-90 transition-colors"
           @click="refresh"
         >
           重试
@@ -98,7 +98,7 @@
             <!-- 左侧评分和评价数量 -->
             <view class="flex flex-col mt-8 ml-6">
               <view class="text-xl font-bold text-yellow-500">
-                {{ dish.averageRating.toFixed(1) }}分
+                {{ dish.averageRating === 0 ? '暂无' : `${dish.averageRating.toFixed(1)}分` }}
               </view>
               <view class="text-xs text-gray-500 mt-1">
                 {{ dish.reviewCount }} 条评价
@@ -118,7 +118,10 @@
       <view class="bg-white p-4">
         <!-- 标题 - 始终显示 -->
         <view class="flex justify-between items-center mb-3">
-          <h2 class="text-lg font-semibold text-gray-800">详细信息</h2>
+          <view class="flex items-center">
+            <view class="w-1 h-4 bg-ts-purple rounded-full mr-2"></view>
+            <h2 class="text-lg font-semibold text-gray-800">详细信息</h2>
+          </view>
           <text 
             v-if="!isDetailExpanded"
             class="text-sm text-gray-500 cursor-pointer"
@@ -149,6 +152,25 @@
           <view v-if="dish.allergens?.length" class="detail-section">
             <text class="font-bold text-black mr-1 text-sm">过敏原信息：</text>
             <text class="detail-text text-red-600">{{ dish.allergens.join('、') }}</text>
+          </view>
+
+          <!-- 口味信息 -->
+          <view v-if="hasTasteInfo" class="detail-section">
+            <text class="font-bold text-black mr-1 text-sm">口味信息：</text>
+            <view class="mt-2 flex flex-wrap gap-2">
+              <view v-if="dish.spicyLevel !== undefined" class="px-3 py-1 bg-red-50 text-red-600 text-xs rounded-md">
+                辣度 {{ dish.spicyLevel === 0 ? '暂无' : `${dish.spicyLevel}/5` }}
+              </view>
+              <view v-if="dish.sweetness !== undefined" class="px-3 py-1 bg-yellow-50 text-yellow-600 text-xs rounded-md">
+                甜度 {{ dish.sweetness === 0 ? '暂无' : `${dish.sweetness}/5` }}
+              </view>
+              <view v-if="dish.saltiness !== undefined" class="px-3 py-1 bg-blue-50 text-blue-600 text-xs rounded-md">
+                咸度 {{ dish.saltiness === 0 ? '暂无' : `${dish.saltiness}/5` }}
+              </view>
+              <view v-if="dish.oiliness !== undefined" class="px-3 py-1 bg-green-50 text-green-600 text-xs rounded-md">
+                油腻度 {{ dish.oiliness === 0 ? '暂无' : `${dish.oiliness}/5` }}
+              </view>
+            </view>
           </view>
 
           <!-- 父菜品（如果有） -->
@@ -219,15 +241,92 @@
       <!-- 分隔线 -->
       <view class="h-3 bg-gray-50 border-t border-b border-gray-100"></view>
 
+      <!-- 我的评价：置顶展示（位于详细信息与用户评价之间） -->
+      <view v-if="myReview" class="bg-white p-4">
+        <view class="flex items-center justify-between mb-3">
+          <view class="flex items-center">
+            <view class="w-1 h-4 bg-ts-purple rounded-full mr-2"></view>
+            <h2 class="text-lg font-semibold text-gray-800">我的评价</h2>
+          </view>
+          <view class="flex items-center gap-3">
+            <view
+              v-if="myReview"
+              class="text-sm text-gray-500"
+              @tap="handleDeleteMyReview"
+            >删除</view>
+            <view
+              class="text-sm text-ts-purple"
+              @tap="showReviewForm"
+            >{{ myReview ? '修改' : '去评价' }}</view>
+          </view>
+        </view>
+
+        <view
+          v-if="myReview"
+          class="border border-gray-100 rounded-lg p-3 active:bg-gray-50"
+          @tap="showReviewForm"
+        >
+          <view class="flex items-start">
+            <image
+              :src="myReview.userAvatar || '/default-avatar.png'"
+              class="w-10 h-10 rounded-full mr-3 flex-shrink-0"
+              mode="aspectFill"
+            />
+
+            <view class="flex-1">
+              <view class="font-bold text-purple-900 text-sm">{{ myReview.userNickname }}</view>
+              <view class="flex items-center mt-1">
+                <text
+                  v-for="star in 5"
+                  :key="star"
+                  class="text-base mr-0.5"
+                  :class="star <= myReview.rating ? 'text-yellow-500' : 'text-gray-300'"
+                >{{ star <= myReview.rating ? '★' : '☆' }}</text>
+              </view>
+
+              <view v-if="myReview.ratingDetails" class="mt-2 text-xs text-gray-500 flex flex-wrap gap-2">
+                <view class="px-2 py-1 bg-red-50 text-red-600 rounded">辣度 {{ myReview.ratingDetails.spicyLevel }}/5</view>
+                <view class="px-2 py-1 bg-yellow-50 text-yellow-600 rounded">甜度 {{ myReview.ratingDetails.sweetness }}/5</view>
+                <view class="px-2 py-1 bg-blue-50 text-blue-600 rounded">咸度 {{ myReview.ratingDetails.saltiness }}/5</view>
+                <view class="px-2 py-1 bg-green-50 text-green-600 rounded">油腻 {{ myReview.ratingDetails.oiliness }}/5</view>
+              </view>
+
+              <view class="text-sm text-gray-700 leading-relaxed mt-2">{{ myReview.content }}</view>
+
+              <view v-if="myReview.images && myReview.images.length > 0" class="flex flex-wrap gap-2 mt-2">
+                <image
+                  v-for="(img, idx) in myReview.images"
+                  :key="idx"
+                  :src="img"
+                  class="w-20 h-20 rounded object-cover border border-gray-100"
+                  mode="aspectFill"
+                  @tap.stop="previewMyReviewImage(myReview.images, idx)"
+                />
+              </view>
+
+              <view class="text-xs text-gray-400 mt-2">{{ formatReviewDate(myReview.createdAt) }}</view>
+            </view>
+          </view>
+        </view>
+
+        <view v-else class="text-sm text-gray-400 py-2">你还没有评价过这道菜</view>
+      </view>
+
+      <!-- 分隔线 -->
+      <view class="h-3 bg-gray-50 border-t border-b border-gray-100"></view>
+
       <!-- 评价列表 -->
       <view class="bg-white p-4">
         <view class="mb-4">
-          <h2 class="text-lg font-semibold text-gray-800">用户评价</h2>
+          <view class="flex items-center">
+            <view class="w-1 h-4 bg-ts-purple rounded-full mr-2"></view>
+            <h2 class="text-lg font-semibold text-gray-800">用户评价</h2>
+          </view>
         </view>
 
         <ReviewList
           :dish-id="dishId"
-          :reviews="reviews"
+          :reviews="otherReviews"
           :loading="reviewsLoading"
           :error="reviewsError"
           :has-more="reviewsHasMore"
@@ -258,6 +357,8 @@
       v-if="isReviewFormVisible"
       :dish-id="dishId"
       :dish-name="dish?.name || ''"
+      :existing-review-id="myReview?.id"
+      :initial-review="myReview"
       @close="hideReviewForm"
       @success="handleReviewSuccess"
     />
@@ -292,8 +393,10 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, watch } from 'vue';
-import { onLoad, onBackPress, onPullDownRefresh } from '@dcloudio/uni-app';
+import { onLoad, onBackPress, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import { useDishDetail } from '@/pages/dish/composables/use-dish-detail';
+import { useUserStore } from '@/store/modules/use-user-store';
+import dayjs from 'dayjs';
 import ReviewList from './components/ReviewList.vue';
 import ReviewForm from './components/ReviewForm.vue';
 import BottomReviewInput from './components/BottomReviewInput.vue';
@@ -332,6 +435,34 @@ const {
   closeReportModal,
   submitReport
 } = useReport();
+
+const userStore = useUserStore();
+
+const myReview = computed(() => {
+  const uid = userStore.userInfo?.id;
+  if (!uid) return null;
+  const mine = (reviews.value || []).filter(r => r.userId === uid);
+  if (mine.length === 0) return null;
+  return mine
+    .slice()
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+});
+
+const otherReviews = computed(() => {
+  const uid = userStore.userInfo?.id;
+  if (!uid) return reviews.value;
+  return (reviews.value || []).filter(r => r.userId !== uid);
+});
+
+// 检查是否有口味信息
+const hasTasteInfo = computed(() => {
+  return dish.value && (
+    dish.value.spicyLevel !== undefined ||
+    dish.value.sweetness !== undefined ||
+    dish.value.saltiness !== undefined ||
+    dish.value.oiliness !== undefined
+  );
+});
 
 const isReviewFormVisible = ref(false);
 const isDetailExpanded = ref(false);
@@ -418,6 +549,15 @@ onPullDownRefresh(async () => {
   }
 });
 
+// 触底上拉：加载更多评价
+onReachBottom(async () => {
+  if (isAllCommentsPanelVisible.value) return;
+  if (isReviewFormVisible.value) return;
+  if (reviewsLoading.value) return;
+  if (!reviewsHasMore.value) return;
+  await loadMoreReviews();
+});
+
 // 跳转到子菜品详情
 const goToSubDish = (id: string) => {
   if (!id) return;
@@ -484,6 +624,40 @@ const handleReviewSuccess = async () => {
   uni.showToast({
     title: '评价成功',
     icon: 'success',
+  });
+};
+
+const formatReviewDate = (dateString: string) => {
+  return dayjs(dateString).format('YYYY-MM-DD HH:mm');
+};
+
+const previewMyReviewImage = (urls: string[], current: number) => {
+  uni.previewImage({
+    urls,
+    current: urls[current],
+  });
+};
+
+const handleDeleteMyReview = () => {
+  if (!myReview.value) return;
+  uni.showModal({
+    title: '提示',
+    content: '确定要删除你的这条评价吗？',
+    success: async (res) => {
+      if (!res.confirm) return;
+      try {
+        await removeReview(myReview.value!.id);
+        if (dishId.value) {
+          await Promise.all([
+            fetchReviews(dishId.value, true),
+            fetchDishDetail(dishId.value)
+          ]);
+        }
+        uni.showToast({ title: '已删除', icon: 'success' });
+      } catch (e) {
+        uni.showToast({ title: '删除失败', icon: 'none' });
+      }
+    },
   });
 };
 

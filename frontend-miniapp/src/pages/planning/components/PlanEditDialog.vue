@@ -262,7 +262,7 @@ import { useCanteenStore } from '@/store/modules/use-canteen-store';
 import { getWindowDishes } from '@/api/modules/canteen';
 import { getDishes } from '@/api/modules/dish';
 import type { EnrichedMealPlan } from '../composables/use-menu-planning';
-import type { MealPlanRequest, Canteen, Window, Dish } from '@/types/api';
+import type { MealPlanRequest, Canteen, Window, Dish, GetDishesRequest } from '@/types/api';
 import dayjs from 'dayjs';
 
 const props = defineProps<{
@@ -465,23 +465,26 @@ const handleSearch = async () => {
     return;
   }
 
-  if (!searchKeyword.value.trim()) {
+  const keyword = searchKeyword.value.trim();
+  if (!keyword) {
     dishList.value = [];
     return;
   }
 
   dishLoading.value = true;
   try {
-    const params: any = {
-      search: {
-        keyword: searchKeyword.value
-      },
+    const params: GetDishesRequest = {
       filter: {},
       isSuggestion: false,
+      search: {
+        keyword,
+      },
+      // sort 为必填字段；这里用空对象交给后端默认处理（与搜索页保持一致）
+      sort: {},
       pagination: {
         page: 1,
-        pageSize: 50
-      }
+        pageSize: 50,
+      },
     };
 
     if (selectedCanteen.value) {

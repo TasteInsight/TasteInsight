@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { getMyFavorites } from '@/api/modules/user';
 import { unfavoriteDish } from '@/api/modules/dish';
+import { useUserStore } from '@/store/modules/use-user-store';
 import type { Favorite } from '@/types/api';
 
 export function useFavorites() {
@@ -11,6 +12,7 @@ export function useFavorites() {
   const currentPage = ref(1);
   const pageSize = 10;
   const hasMore = ref(true);
+  const userStore = useUserStore();
 
   /**
    * 获取收藏列表
@@ -56,6 +58,8 @@ export function useFavorites() {
         title: message,
         icon: 'none'
       });
+      // 加载失败时，认为没有更多数据
+      hasMore.value = false;
     } finally {
       loading.value = false;
     }

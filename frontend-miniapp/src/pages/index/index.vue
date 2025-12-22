@@ -70,10 +70,10 @@
         <view class="text-gray-400 mb-2">
           <text class="iconfont icon-Sleeping" :style="{ fontSize: '4rem' }"></text>
         </view>
-        <view class="text-gray-500 text-sm">{{ recommendError }}</view>
+        <view class="text-black text-sm">{{ recommendError }}</view>
         <view class="mt-3">
           <button 
-            class="px-4 py-2 bg-purple-100 text-purple-600 rounded-full text-sm hover:bg-purple-200 transition-colors"
+            class="px-4 py-2 bg-ts-purple/10 text-ts-purple border border-ts-purple/30 rounded-full text-sm active:bg-ts-purple/20 transition-colors"
             @click="retryLoadRecommend"
           >
             重新加载
@@ -89,21 +89,33 @@
           @click="navigateTo(`/pages/dish/index?id=${dish.id}`)"
         />
       </view>
+
+      <!-- 上拉加载更多：底部提示/动画（仅在有列表或正在加载更多时显示） -->
+      <view v-if="topThreeDishes.length > 0 || dishesStore.loadingMore" class="flex items-center justify-center py-4 text-gray-500 text-sm">
+        <template v-if="dishesStore.loadingMore">
+          <view class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"></view>
+          <text>加载中...</text>
+        </template>
+        <template v-else-if="dishesHasMore">
+          <text>上拉加载更多</text>
+        </template>
+        <template v-else>
+          <text>没有更多了</text>
+        </template>
+      </view>
+
       <view v-else class="text-center py-10 text-gray-500">
         {{ hasActiveFilters ? '没有符合条件的菜品' : '今天好像没有推荐菜品哦' }}
       </view>
     </view>
 
-    <!-- 底部导航栏 -->
-    <view class="h-20 bg-white flex border-t border-gray-200 flex-shrink-0">
-      <!-- ... (这部分保持不变) ... -->
-    </view>
+    
   </view>
 </template>
 
 <script setup lang="ts">
 import { onMounted, computed, ref, watch } from 'vue';
-import { onPullDownRefresh } from '@dcloudio/uni-app';
+import { onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 
 // ... 导入子组件 (保持不变) ...
 import SearchBar from './components/SearchBar.vue';
@@ -132,6 +144,16 @@ const userStore = useUserStore();
 // 当前筛选条件
 const currentFilter = ref<GetDishesRequest['filter']>({});
 
+// 记录当前菜品列表的“查询基准参数”（不含 pagination），用于上拉加载更多复用
+const currentDishQueryBase = ref<Omit<GetDishesRequest, 'pagination'>>({
+  sort: { field: 'averageRating', order: 'desc' },
+  filter: {},
+  search: { keyword: '' },
+});
+
+// 记录当前分页大小（推荐/筛选可能不同）
+const currentDishPageSize = ref(10);
+
 // 菜品图片列表
 const dishImages = ref<string[]>([]);
 
@@ -145,6 +167,24 @@ const hasActiveFilters = computed(() => {
 
 // 推荐菜品加载错误状态
 const recommendError = ref<string | null>(null);
+
+const dishesHasMore = computed(() => {
+  const meta = dishesStore.pagination;
+  if (!meta) return false;
+  return meta.page < meta.totalPages;
+});
+
+const currentDishPage = computed(() => dishesStore.pagination?.page ?? 1);
+
+const fetchDishList = async (options: { reset: boolean; append?: boolean } = { reset: true }) => {
+  const page = options.reset ? 1 : currentDishPage.value;
+  const params: GetDishesRequest = {
+    ...currentDishQueryBase.value,
+    pagination: { page, pageSize: currentDishPageSize.value },
+  };
+
+  await dishesStore.fetchDishes(params, { append: options.append === true });
+};
 
 // --- 计算属性 ---
 // 3. 计算属性直接从 store 实例中读取 state
@@ -223,28 +263,27 @@ function buildDishSortFromUserSettings(): GetDishesRequest['sort'] {
 const handleFilterChange = (filter: GetDishesRequest['filter']) => {
   currentFilter.value = filter;
   
-  const dishRequestParams: GetDishesRequest = {
+  currentDishQueryBase.value = {
     sort: buildDishSortFromUserSettings(),
-    pagination: { page: 1, pageSize: 20 },
-    filter: { ...filter }, // 用户筛选条件
+    filter: { ...filter },
     search: { keyword: '' },
   };
-  
-  dishesStore.fetchDishes(dishRequestParams);
+  currentDishPageSize.value = 20;
+  fetchDishList({ reset: true });
 };
 
 // 重新加载推荐菜品
 const retryLoadRecommend = async () => {
   recommendError.value = null;
   try {
-    const dishRequestParams: GetDishesRequest = {
+    currentDishQueryBase.value = {
       sort: buildDishSortFromUserSettings(),
-      pagination: { page: 1, pageSize: 10 },
-      filter: {},  // 让后端根据推荐返回菜品
+      filter: {}, // 让后端根据推荐返回菜品
       isSuggestion: true,
       search: { keyword: '' },
     };
-    await dishesStore.fetchDishes(dishRequestParams);
+    currentDishPageSize.value = 10;
+    await fetchDishList({ reset: true });
   } catch (error: any) {
     if (error?.message?.includes('400') || error?.message?.includes('Bad Request')) {
       recommendError.value = '网络开小差了，请稍后再试';
@@ -276,14 +315,14 @@ onMounted(async () => {
     
     // 获取今日推荐菜品，使用后端推荐逻辑
     try {
-      const dishRequestParams: GetDishesRequest = {
+      currentDishQueryBase.value = {
         sort: buildDishSortFromUserSettings(),
-        pagination: { page: 1, pageSize: 10 },
-        filter: {},  // 让后端根据推荐返回菜品
+        filter: {}, // 让后端根据推荐返回菜品
         isSuggestion: true,
         search: { keyword: '' },
       };
-      await dishesStore.fetchDishes(dishRequestParams);
+      currentDishPageSize.value = 10;
+      await fetchDishList({ reset: true });
       recommendError.value = null; // 成功时清除错误
     } catch (error: any) {
       // 检查是否是HTTP 400错误或其他网络错误
@@ -316,14 +355,14 @@ watch(
       console.log('用户偏好设置或显示设置已更新，刷新今日推荐菜品');
       
       try {
-        const dishRequestParams: GetDishesRequest = {
+        currentDishQueryBase.value = {
           sort: buildDishSortFromUserSettings(),
-          pagination: { page: 1, pageSize: 10 },
-          filter: {},  // 让后端根据推荐返回菜品
+          filter: {}, // 让后端根据推荐返回菜品
           isSuggestion: true,
           search: { keyword: '' },
         };
-        await dishesStore.fetchDishes(dishRequestParams);
+        currentDishPageSize.value = 10;
+        await fetchDishList({ reset: true });
         recommendError.value = null; // 成功时清除错误
       } catch (error: any) {
         if (error?.message?.includes('400') || error?.message?.includes('Bad Request')) {
@@ -354,14 +393,14 @@ onPullDownRefresh(async () => {
     
     // 重新获取菜品列表（使用后端推荐 + 当前的筛选条件）
     try {
-      const dishRequestParams: GetDishesRequest = {
+      // 保持现有行为：下拉刷新使用 pageSize=20 + 当前筛选条件
+      currentDishQueryBase.value = {
         sort: buildDishSortFromUserSettings(),
-        pagination: { page: 1, pageSize: 20 },
         filter: { ...currentFilter.value },
         search: { keyword: '' },
       };
-      
-      await dishesStore.fetchDishes(dishRequestParams);
+      currentDishPageSize.value = 20;
+      await fetchDishList({ reset: true });
       recommendError.value = null; // 成功时清除错误
     } catch (error: any) {
       if (error?.message?.includes('400') || error?.message?.includes('Bad Request')) {
@@ -388,6 +427,26 @@ onPullDownRefresh(async () => {
       title: '刷新失败',
       icon: 'none'
     });
+  }
+});
+
+/**
+ * 触底上拉加载更多（小程序页面触底）
+ */
+onReachBottom(async () => {
+  // 避免在首次加载/追加加载中重复触发
+  if (dishesStore.loading || dishesStore.loadingMore) return;
+  if (!dishesHasMore.value) return;
+
+  try {
+    const nextPage = currentDishPage.value + 1;
+    const params: GetDishesRequest = {
+      ...currentDishQueryBase.value,
+      pagination: { page: nextPage, pageSize: currentDishPageSize.value },
+    };
+    await dishesStore.fetchDishes(params, { append: true });
+  } catch (err) {
+    console.error('上拉加载更多失败:', err);
   }
 });
 </script>

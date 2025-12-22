@@ -37,14 +37,15 @@
       />
     </view>
 
-    <!-- 加载更多 -->
-    <view v-if="hasMore && !loading" class="flex justify-center py-4">
-      <text class="text-gray-500 text-sm" @click="loadMore">加载更多</text>
+    <!-- 底部提示：上拉加载更多 / 没有更多了 -->
+    <view v-if="favoriteItems.length > 0 && !loading" class="flex justify-center py-4">
+      <text class="text-gray-500 text-sm" @click="hasMore ? loadMore() : undefined">{{ hasMore ? '上拉加载更多' : '没有更多了' }}</text>
     </view>
 
     <!-- 底部加载状态 -->
-    <view v-if="loading && favoriteItems.length > 0" class="flex justify-center py-4">
-      <text class="text-gray-500 text-sm">加载中...</text>
+    <view v-if="loading && favoriteItems.length > 0" class="flex items-center justify-center py-4 text-gray-500 text-sm">
+      <view class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"></view>
+      <text>加载中...</text>
     </view>
     </template>
   </view>
@@ -52,7 +53,7 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue';
-import { onPullDownRefresh } from '@dcloudio/uni-app';
+import { onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import DishCard from '@/pages/profile/components/ProfileDishCard.vue';
 import { useFavorites } from '@/pages/profile/my-favorites/composables/use-favorites';
 import { DishListSkeleton } from '@/components/skeleton';
@@ -61,6 +62,11 @@ const { favoriteItems, loading, hasMore, fetchFavorites, loadMore, removeFavorit
 
 onMounted(() => {
   fetchFavorites();
+});
+
+// 触底上拉加载更多
+onReachBottom(async () => {
+  await loadMore();
 });
 
 // 下拉刷新处理

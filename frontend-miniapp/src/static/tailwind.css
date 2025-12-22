@@ -1239,9 +1239,19 @@
   border-color: rgb(255 255 255 / 0.3)
 }
 
+.border-gray-400 {
+  --tw-border-opacity: 1;
+  border-color: rgb(156 163 175 / var(--tw-border-opacity))
+}
+
 .border-t-ts-purple {
   --tw-border-opacity: 1;
   border-top-color: rgb(102 8 116 / var(--tw-border-opacity))
+}
+
+.border-t-gray-500 {
+  --tw-border-opacity: 1;
+  border-top-color: rgb(107 114 128 / var(--tw-border-opacity))
 }
 
 .bg-black {
@@ -1393,11 +1403,6 @@
   background-color: rgb(147 51 234 / var(--tw-bg-opacity))
 }
 
-.bg-purple-700 {
-  --tw-bg-opacity: 1;
-  background-color: rgb(126 34 206 / var(--tw-bg-opacity))
-}
-
 .bg-purple-800 {
   --tw-bg-opacity: 1;
   background-color: rgb(107 33 168 / var(--tw-bg-opacity))
@@ -1448,6 +1453,11 @@
 .bg-yellow-50 {
   --tw-bg-opacity: 1;
   background-color: rgb(254 252 232 / var(--tw-bg-opacity))
+}
+
+.bg-green-50 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(240 253 244 / var(--tw-bg-opacity))
 }
 
 .bg-opacity-50 {
@@ -1869,11 +1879,6 @@
   line-height: 2.5rem
 }
 
-.text-6xl {
-  font-size: 3.75rem;
-  line-height: 1
-}
-
 .text-\[10px\] {
   font-size: 10px
 }
@@ -1905,11 +1910,6 @@
 .text-xs {
   font-size: 0.75rem;
   line-height: 1rem
-}
-
-.text-8xl {
-  font-size: 6rem;
-  line-height: 1
 }
 
 .font-bold {
@@ -2408,11 +2408,6 @@
   background-color: rgb(250 245 255 / var(--tw-bg-opacity))
 }
 
-.hover\:bg-purple-700:hover {
-  --tw-bg-opacity: 1;
-  background-color: rgb(126 34 206 / var(--tw-bg-opacity))
-}
-
 .hover\:text-gray-700:hover {
   --tw-text-opacity: 1;
   color: rgb(55 65 81 / var(--tw-text-opacity))
@@ -2556,6 +2551,10 @@
 .active\:text-red-500:active {
   --tw-text-opacity: 1;
   color: rgb(239 68 68 / var(--tw-text-opacity))
+}
+
+.active\:opacity-90:active {
+  opacity: 0.9
 }
 
 .active\:shadow-md:active {

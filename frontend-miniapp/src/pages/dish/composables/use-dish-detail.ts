@@ -77,8 +77,9 @@ export function useDishDetail() {
         error.value = response.message || '获取菜品详情失败';
       }
     } catch (err: any) {
-      console.error('获取菜品详情失败:', err);
-      error.value = err.message || '网络错误，请稍后重试';
+      const debugError = err && typeof err === 'object' && 'originalError' in err ? (err as any).originalError : err;
+      console.error('获取菜品详情失败:', debugError);
+      error.value = err?.message || '网络开小差了，请稍后再试';
     } finally {
       loading.value = false;
     }

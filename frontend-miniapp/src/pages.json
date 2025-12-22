@@ -104,6 +104,12 @@
 			}
 		},
 		{
+			"path": "pages/settings/components/avatar-crop",
+			"style": {
+				"navigationBarTitleText": "裁剪头像"
+			}
+		},
+		{
 			"path": "pages/settings/components/allergens",
 			"style": {
 				"navigationBarTitleText": "过敏原设置"

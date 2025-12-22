@@ -7,6 +7,7 @@ jest.mock('@dcloudio/uni-app', () => ({
   onLoad: jest.fn((callback: Function) => callback({ id: 'test-dish-id' })),
   onBackPress: jest.fn(),
   onPullDownRefresh: jest.fn(),
+  onReachBottom: jest.fn(),
 }));
 
 // Mock composables

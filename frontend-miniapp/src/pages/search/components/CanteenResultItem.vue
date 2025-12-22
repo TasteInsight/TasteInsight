@@ -15,8 +15,8 @@
       <div class="flex-1">
         <div class="font-semibold text-gray-800">{{ canteen.name }}</div>
         <div class="text-xs text-gray-500 mt-1">{{ canteen.description || '暂无描述' }}</div>
-        <div v-if="canteen.averageRating" class="text-xs text-yellow-600 mt-1">
-          ⭐ {{ canteen.averageRating.toFixed(1) }}
+        <div class="text-xs text-yellow-600 mt-1">
+          ⭐ {{ !canteen.averageRating || canteen.averageRating === 0 ? '暂无评分' : canteen.averageRating.toFixed(1) }}
         </div>
       </div>
     </div>
