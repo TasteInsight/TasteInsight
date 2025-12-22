@@ -43,6 +43,7 @@
           <thead class="bg-gray-50">
             <tr>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">菜品</th>
+              <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">用户</th>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">评分</th>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">提交时间</th>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">状态</th>
@@ -51,7 +52,7 @@
           </thead>
           <tbody class="divide-y divide-gray-200">
             <tr v-if="isLoadingReviews">
-              <td colspan="5" class="py-8 text-center text-gray-500">
+              <td colspan="6" class="py-8 text-center text-gray-500">
                 <span
                   class="iconify inline-block text-2xl animate-spin"
                   data-icon="mdi:loading"
@@ -60,7 +61,7 @@
               </td>
             </tr>
             <tr v-else-if="reviews.length === 0">
-              <td colspan="5" class="py-8 text-center text-gray-500">暂无待审核评价</td>
+              <td colspan="6" class="py-8 text-center text-gray-500">暂无待审核评价</td>
             </tr>
             <tr
               v-else
@@ -82,6 +83,16 @@
                       {{ review.content ? (review.content.length > 30 ? review.content.substring(0, 30) + '...' : review.content) : '无内容' }}
                     </div>
                   </div>
+                </div>
+              </td>
+              <td class="py-4 px-6">
+                <div class="flex items-center">
+                  <img
+                    :src="review.userAvatar || '/default-avatar.png'"
+                    :alt="review.userNickname || '用户'"
+                    class="w-8 h-8 rounded-full mr-2 border border-gray-200"
+                  />
+                  <span class="text-sm font-medium text-gray-900">{{ review.userNickname || '未知用户' }}</span>
                 </div>
               </td>
               <td class="py-4 px-6">
@@ -125,6 +136,7 @@
           <thead class="bg-gray-50">
             <tr>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">关联评价</th>
+              <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">用户</th>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">评论内容</th>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">提交时间</th>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">状态</th>
@@ -133,7 +145,7 @@
           </thead>
           <tbody class="divide-y divide-gray-200">
             <tr v-if="isLoadingComments">
-              <td colspan="5" class="py-8 text-center text-gray-500">
+              <td colspan="6" class="py-8 text-center text-gray-500">
                 <span
                   class="iconify inline-block text-2xl animate-spin"
                   data-icon="mdi:loading"
@@ -142,7 +154,7 @@
               </td>
             </tr>
             <tr v-else-if="comments.length === 0">
-              <td colspan="5" class="py-8 text-center text-gray-500">暂无待审核评论</td>
+              <td colspan="6" class="py-8 text-center text-gray-500">暂无待审核评论</td>
             </tr>
             <tr
               v-else
@@ -156,6 +168,16 @@
                   <div class="text-sm text-gray-500">
                     {{ comment.reviewContent ? (comment.reviewContent.length > 30 ? comment.reviewContent.substring(0, 30) + '...' : comment.reviewContent) : '无内容' }}
                   </div>
+                </div>
+              </td>
+              <td class="py-4 px-6">
+                <div class="flex items-center">
+                  <img
+                    :src="comment.userAvatar || '/default-avatar.png'"
+                    :alt="comment.userNickname || '用户'"
+                    class="w-8 h-8 rounded-full mr-2 border border-gray-200"
+                  />
+                  <span class="text-sm font-medium text-gray-900">{{ comment.userNickname || '未知用户' }}</span>
                 </div>
               </td>
               <td class="py-4 px-6">
@@ -241,6 +263,17 @@
                   </div>
                 </div>
                 <div class="space-y-1">
+                  <div class="text-xs text-gray-400 uppercase tracking-wide">用户</div>
+                  <div class="flex items-center">
+                    <img
+                      :src="selectedReview.userAvatar || '/default-avatar.png'"
+                      :alt="selectedReview.userNickname || '用户'"
+                      class="w-6 h-6 rounded-full mr-2 border border-gray-200"
+                    />
+                    <span class="text-sm font-medium text-gray-900">{{ selectedReview.userNickname || '未知用户' }}</span>
+                  </div>
+                </div>
+                <div class="space-y-1">
                   <div class="text-xs text-gray-400 uppercase tracking-wide">评分</div>
                   <div class="flex items-center">
                     <span class="text-yellow-500 mr-1">
@@ -270,6 +303,20 @@
             <!-- 评价内容 -->
             <div class="bg-white rounded-xl shadow-md p-6">
               <h4 class="text-lg font-semibold text-gray-900 mb-4">评价内容</h4>
+              <!-- 用户信息 -->
+              <div class="flex items-center mb-3 pb-3 border-b border-gray-200">
+                <img
+                  :src="selectedReview.userAvatar || '/default-avatar.png'"
+                  :alt="selectedReview.userNickname || '用户'"
+                  class="w-10 h-10 rounded-full mr-3 border-2 border-gray-200"
+                />
+                <div class="flex-1">
+                  <div class="flex items-center gap-2">
+                    <span class="font-semibold text-gray-900">{{ selectedReview.userNickname || '未知用户' }}</span>
+                    <span class="text-xs text-gray-500">{{ formatDate(selectedReview.createdAt) }}</span>
+                  </div>
+                </div>
+              </div>
               <div class="py-4 px-5 bg-gray-50 rounded-lg border border-gray-300 mb-4">
                 <div class="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
                   {{ selectedReview.content || '（无内容）' }}
@@ -403,12 +450,23 @@
                   </div>
                 </div>
                 <div class="space-y-1">
+                  <div class="text-xs text-gray-400 uppercase tracking-wide">用户</div>
+                  <div class="flex items-center">
+                    <img
+                      :src="selectedComment.userAvatar || '/default-avatar.png'"
+                      :alt="selectedComment.userNickname || '用户'"
+                      class="w-6 h-6 rounded-full mr-2 border border-gray-200"
+                    />
+                    <span class="text-sm font-medium text-gray-900">{{ selectedComment.userNickname || '未知用户' }}</span>
+                  </div>
+                </div>
+                <div class="space-y-1">
                   <div class="text-xs text-gray-400 uppercase tracking-wide">提交时间</div>
                   <div class="text-sm font-medium text-gray-900">
                     {{ formatDate(selectedComment.createdAt) }}
                   </div>
                 </div>
-                <div class="space-y-1 col-span-2">
+                <div class="space-y-1">
                   <div class="text-xs text-gray-400 uppercase tracking-wide">审核状态</div>
                   <span
                     class="inline-block px-3 py-1 rounded-full text-xs font-medium"
@@ -433,6 +491,20 @@
             <!-- 评论内容 -->
             <div class="bg-white rounded-xl shadow-md p-6">
               <h4 class="text-lg font-semibold text-gray-900 mb-4">评论内容</h4>
+              <!-- 用户信息 -->
+              <div class="flex items-center mb-3 pb-3 border-b border-gray-200">
+                <img
+                  :src="selectedComment.userAvatar || '/default-avatar.png'"
+                  :alt="selectedComment.userNickname || '用户'"
+                  class="w-10 h-10 rounded-full mr-3 border-2 border-gray-200"
+                />
+                <div class="flex-1">
+                  <div class="flex items-center gap-2">
+                    <span class="font-semibold text-gray-900">{{ selectedComment.userNickname || '未知用户' }}</span>
+                    <span class="text-xs text-gray-500">{{ formatDate(selectedComment.createdAt) }}</span>
+                  </div>
+                </div>
+              </div>
               <div class="py-4 px-5 bg-gray-50 rounded-lg border border-gray-300">
                 <div class="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
                   {{ selectedComment.content || '（无内容）' }}

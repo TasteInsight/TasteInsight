@@ -59,7 +59,9 @@ export class AdminReportsService {
               images: true,
               user: {
                 select: {
+                  id: true,
                   nickname: true,
+                  avatar: true,
                 },
               },
             },
@@ -71,7 +73,9 @@ export class AdminReportsService {
               deletedAt: true,
               user: {
                 select: {
+                  id: true,
                   nickname: true,
+                  avatar: true,
                 },
               },
             },
@@ -89,6 +93,7 @@ export class AdminReportsService {
           content: report.review.content,
           userId: report.review.userId,
           userNickname: report.review.user.nickname,
+          userAvatar: report.review.user.avatar,
           isDeleted: report.review.deletedAt !== null,
           images: report.review.images || [],
         };
@@ -97,6 +102,7 @@ export class AdminReportsService {
           content: report.comment.content,
           userId: report.comment.userId,
           userNickname: report.comment.user.nickname,
+          userAvatar: report.comment.user.avatar,
           isDeleted: report.comment.deletedAt !== null,
         };
       }

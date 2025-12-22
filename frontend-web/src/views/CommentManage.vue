@@ -190,12 +190,12 @@
                     <div class="flex items-center flex-1">
                       <img
                         :src="review.userAvatar || '/default-avatar.png'"
-                        :alt="review.userNickname"
+                        :alt="review.userNickname || '用户'"
                         class="w-10 h-10 rounded-full mr-3 border-2 border-gray-200"
                       />
                       <div class="flex-1">
                         <div class="flex items-center gap-2">
-                          <span class="font-semibold text-gray-900">{{ review.userNickname }}</span>
+                          <span class="font-semibold text-gray-900">{{ review.userNickname || '未知用户' }}</span>
                           <span class="flex items-center text-yellow-500 text-sm">
                             <span class="iconify inline-block" data-icon="bxs:star"></span>
                             <span class="ml-1 font-medium">{{ review.rating }}</span>
@@ -258,10 +258,10 @@
                           <div class="flex items-center mb-2">
                             <img
                               :src="comment.userAvatar || '/default-avatar.png'"
-                              :alt="comment.userNickname"
+                              :alt="comment.userNickname || '用户'"
                               class="w-7 h-7 rounded-full mr-2 border border-gray-200"
                             />
-                            <span class="font-medium text-sm text-gray-900">{{ comment.userNickname }}</span>
+                            <span class="font-medium text-sm text-gray-900">{{ comment.userNickname || '未知用户' }}</span>
                             <span class="ml-2 text-xs text-gray-500">#{{ comment.floor }}楼</span>
                             <span
                               class="ml-2 px-1.5 py-0.5 rounded text-xs font-medium"
