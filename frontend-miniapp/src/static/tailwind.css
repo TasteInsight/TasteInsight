@@ -1869,11 +1869,6 @@
   line-height: 2.5rem
 }
 
-.text-6xl {
-  font-size: 3.75rem;
-  line-height: 1
-}
-
 .text-\[10px\] {
   font-size: 10px
 }
@@ -1905,11 +1900,6 @@
 .text-xs {
   font-size: 0.75rem;
   line-height: 1rem
-}
-
-.text-8xl {
-  font-size: 6rem;
-  line-height: 1
 }
 
 .font-bold {
@@ -2556,6 +2546,10 @@
 .active\:text-red-500:active {
   --tw-text-opacity: 1;
   color: rgb(239 68 68 / var(--tw-text-opacity))
+}
+
+.active\:opacity-90:active {
+  opacity: 0.9
 }
 
 .active\:shadow-md:active {

@@ -8,7 +8,7 @@
       <view class="text-center">
         <text class="text-red-500">{{ error }}</text>
         <button 
-          class="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+          class="mt-4 px-4 py-2 bg-ts-purple text-white rounded-lg border border-ts-purple active:opacity-90 transition-colors"
           @click="refresh"
         >
           重试
