@@ -6,9 +6,9 @@
         <view class="font-medium text-base text-gray-800">{{ canteen.name }}</view>
         <view class="flex items-center mt-1">
           <text class="text-xs text-gray-500">{{ canteen.status || '营业中' }}</text>
-          <view v-if="canteen.averageRating" class="flex items-center ml-2">
+          <view class="flex items-center ml-2">
              <text class="text-yellow-500 text-xs">★</text>
-             <text class="text-yellow-600 text-xs ml-0.5">{{ canteen.averageRating.toFixed(1) }}</text>
+             <text class="text-yellow-600 text-xs ml-0.5">{{ !canteen.averageRating || canteen.averageRating === 0 ? '暂无评分' : canteen.averageRating.toFixed(1) }}</text>
           </view>
         </view>
       </view>
