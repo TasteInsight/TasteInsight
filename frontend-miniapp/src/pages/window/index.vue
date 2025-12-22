@@ -43,8 +43,9 @@
             />
           </view>
 
-          <view v-if="loadingMore" class="flex justify-center py-4">
-            <text class="text-gray-500 text-sm">加载中...</text>
+          <view v-if="loadingMore" class="flex items-center justify-center py-4 text-gray-500 text-sm">
+            <view class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"></view>
+            <text>加载中...</text>
           </view>
 
           <view v-else class="text-center py-10 text-gray-500">

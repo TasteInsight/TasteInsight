@@ -32,8 +32,9 @@
     </view>
 
     <!-- 底部加载状态 -->
-    <view v-if="loading && dishes.length > 0" class="flex justify-center py-4">
-      <text class="text-gray-500 text-sm">加载中...</text>
+    <view v-if="loading && dishes.length > 0" class="flex items-center justify-center py-4 text-gray-500 text-sm">
+      <view class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"></view>
+      <text>加载中...</text>
     </view>
     </template>
   </view>

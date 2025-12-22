@@ -131,7 +131,11 @@
           </view>
         </view>
 
-        <view v-if="myReview" class="border border-gray-100 rounded-lg p-3">
+        <view
+          v-if="myReview"
+          class="border border-gray-100 rounded-lg p-3 active:bg-gray-50"
+          @tap="showReviewForm"
+        >
           <view class="flex items-start">
             <image
               :src="myReview.userAvatar || '/default-avatar.png'"

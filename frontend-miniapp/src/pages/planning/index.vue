@@ -71,8 +71,8 @@
       </view>
     </view>
 
-    <!-- 规划列表 -->
-    <scroll-view v-else scroll-y class="box-border w-full px-5 pt-5">
+    <!-- 规划列表（使用页面原生滚动，避免 scroll-view 未设置高度导致无法滚动） -->
+    <view v-else class="box-border w-full px-5 pt-5">
       <view class="flex flex-col items-center w-full">
         <PlanCard
           v-for="plan in displayPlans"
@@ -87,7 +87,7 @@
         />
         <view class="h-5"></view>
       </view>
-    </scroll-view>
+    </view>
 
     <!-- 详情对话框 -->
     <PlanDetailDialog
