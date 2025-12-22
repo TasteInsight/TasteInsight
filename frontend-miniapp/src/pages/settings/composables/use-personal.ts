@@ -85,7 +85,14 @@ export function usePersonal() {
             success: (navRes) => {
               const eventChannel = navRes.eventChannel;
               eventChannel.emit('init', { src: tempFilePath });
+
+              // 设置超时，如果用户取消裁剪或出错，5分钟后 reject
+              const timeout = setTimeout(() => {
+                reject(new Error('裁剪超时或取消'));
+              }, 5 * 60 * 1000); // 5分钟
+
               eventChannel.on('cropped', async (data: { tempFilePath: string }) => {
+                clearTimeout(timeout);
                 const croppedPath = data?.tempFilePath;
                 if (!croppedPath) {
                   reject(new Error('裁剪失败'));
