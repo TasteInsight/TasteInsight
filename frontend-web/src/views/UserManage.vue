@@ -506,7 +506,7 @@ export default {
       { value: 'restaurant_manager', label: '餐厅经理', desc: '单个食堂管理' },
       { value: 'kitchen_operator', label: '后厨操作员', desc: '菜品与库存管理' },
       { value: 'news_editor', label: '新闻编辑', desc: '发布和管理新闻' },
-      { value: 'auditor', label: '内容审核员', desc: '审核评论和评价' },
+      { value: 'auditor', label: '内容审核员', desc: '审核评价、评论和处理举报' },
     ]
 
     // 所有权限组定义
@@ -533,7 +533,7 @@ export default {
       },
       {
         id: 'review',
-        name: '内容审核',
+        name: '评价和评论审核',
         permissions: [
           { id: 'review:approve', label: '审核评价' },
           { id: 'review:delete', label: '删除评价' },
@@ -625,6 +625,9 @@ export default {
       'canteen:edit': ['canteen:view'],
       'canteen:delete': ['canteen:view'],
       'review:approve': ['dish:view', 'canteen:view'], // 审核评价可能需要查看菜品和食堂
+      'review:delete': ['review:approve'], // 删除评价需要审核权限
+      'comment:approve': ['dish:view', 'canteen:view'], // 审核评论可能需要查看菜品和食堂
+      'comment:delete': ['comment:approve'], // 删除评论需要审核权限
       'upload:approve': ['dish:view', 'canteen:view'], // 审核上传需要查看菜品
       'news:create': ['news:view'],
       'news:edit': ['news:view'],
@@ -634,7 +637,6 @@ export default {
       'admin:create': ['admin:view', 'canteen:view'], // 创建管理员可能需要分配食堂
       'admin:edit': ['admin:view'],
       'admin:delete': ['admin:view'],
-      'comment:delete': ['comment:approve'], // 删除评论需要审核权限
       'config:edit': ['config:view'], // 编辑配置需要查看权限
     }
 
@@ -912,6 +914,7 @@ export default {
           'review:approve',
           'review:delete',
           'comment:approve',
+          'comment:delete',
           'report:handle',
           'upload:approve',
           'dish:view', // 审核需要查看菜品
