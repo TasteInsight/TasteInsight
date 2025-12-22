@@ -62,6 +62,10 @@ export const useFilter = () => {
   ];
 
   const activeFilter = ref<string>('');
+
+  // 保存原始状态，用于取消修改时恢复
+  const originalStates = ref<Record<string, any>>({});
+
   const selectedPrice = ref<string>('');
   const selectedRating = ref<number>(0);
   const selectedMealTime = ref<string[]>([]);
@@ -319,11 +323,132 @@ export const useFilter = () => {
   };
 
   const toggleFilter = (key: string) => {
-    activeFilter.value = activeFilter.value === key ? '' : key;
+    if (activeFilter.value === key) {
+      // 如果点击的是当前打开的筛选，关闭它
+      closeFilterPanel();
+    } else {
+      // 如果打开新的筛选，先保存当前状态，然后切换
+      if (activeFilter.value) {
+        saveCurrentState(activeFilter.value);
+      }
+      activeFilter.value = key;
+      saveCurrentState(key);
+    }
   };
 
   const closeFilterPanel = () => {
+    if (activeFilter.value) {
+      // 恢复到原始状态
+      restoreOriginalState(activeFilter.value);
+    }
     activeFilter.value = '';
+  };
+
+  // 保存当前筛选类型的原始状态
+  const saveCurrentState = (filterKey: string) => {
+    switch (filterKey) {
+      case 'price':
+        originalStates.value[filterKey] = {
+          selectedPrice: selectedPrice.value,
+          customPriceMin: customPriceMin.value,
+          customPriceMax: customPriceMax.value,
+          priceError: priceError.value,
+        };
+        break;
+      case 'rating':
+        originalStates.value[filterKey] = {
+          selectedRating: selectedRating.value,
+          customRatingMin: customRatingMin.value,
+          customRatingMax: customRatingMax.value,
+          ratingError: ratingError.value,
+        };
+        break;
+      case 'mealTime':
+        originalStates.value[filterKey] = {
+          selectedMealTime: [...selectedMealTime.value],
+        };
+        break;
+      case 'meat':
+        originalStates.value[filterKey] = {
+          selectedMeat: [...selectedMeat.value],
+        };
+        break;
+      case 'tag':
+        originalStates.value[filterKey] = {
+          selectedTags: [...selectedTags.value],
+          customTags: [...customTags.value],
+          customTagInput: customTagInput.value,
+        };
+        break;
+      case 'avoid':
+        originalStates.value[filterKey] = {
+          selectedAvoid: [...selectedAvoid.value],
+          customAvoid: [...customAvoid.value],
+          customAvoidInput: customAvoidInput.value,
+        };
+        break;
+      case 'taste':
+        originalStates.value[filterKey] = {
+          selectedSpicyMin: selectedSpicyMin.value,
+          selectedSpicyMax: selectedSpicyMax.value,
+          selectedSaltyMin: selectedSaltyMin.value,
+          selectedSaltyMax: selectedSaltyMax.value,
+          selectedSweetMin: selectedSweetMin.value,
+          selectedSweetMax: selectedSweetMax.value,
+          selectedOilyMin: selectedOilyMin.value,
+          selectedOilyMax: selectedOilyMax.value,
+          tasteError: tasteError.value,
+        };
+        break;
+    }
+  };
+
+  // 恢复到原始状态
+  const restoreOriginalState = (filterKey: string) => {
+    const originalState = originalStates.value[filterKey];
+    if (!originalState) return;
+
+    switch (filterKey) {
+      case 'price':
+        selectedPrice.value = originalState.selectedPrice;
+        customPriceMin.value = originalState.customPriceMin;
+        customPriceMax.value = originalState.customPriceMax;
+        priceError.value = originalState.priceError;
+        break;
+      case 'rating':
+        selectedRating.value = originalState.selectedRating;
+        customRatingMin.value = originalState.customRatingMin;
+        customRatingMax.value = originalState.customRatingMax;
+        ratingError.value = originalState.ratingError;
+        break;
+      case 'mealTime':
+        selectedMealTime.value = [...originalState.selectedMealTime];
+        break;
+      case 'meat':
+        selectedMeat.value = [...originalState.selectedMeat];
+        break;
+      case 'tag':
+        selectedTags.value = [...originalState.selectedTags];
+        customTags.value = [...originalState.customTags];
+        customTagInput.value = originalState.customTagInput;
+        break;
+      case 'avoid':
+        selectedAvoid.value = [...originalState.selectedAvoid];
+        customAvoid.value = [...originalState.customAvoid];
+        customAvoidInput.value = originalState.customAvoidInput;
+        break;
+      case 'taste':
+        selectedSpicyMin.value = originalState.selectedSpicyMin;
+        selectedSpicyMax.value = originalState.selectedSpicyMax;
+        selectedSaltyMin.value = originalState.selectedSaltyMin;
+        selectedSaltyMax.value = originalState.selectedSaltyMax;
+        selectedSweetMin.value = originalState.selectedSweetMin;
+        selectedSweetMax.value = originalState.selectedSweetMax;
+        selectedOilyMin.value = originalState.selectedOilyMin;
+        selectedOilyMax.value = originalState.selectedOilyMax;
+        tasteError.value = originalState.tasteError;
+        break;
+    }
   };
 
   const selectPrice = (value: string) => {
@@ -490,6 +615,8 @@ export const useFilter = () => {
     }
 
     activeFilter.value = '';
+    // 清除已应用的筛选的原始状态，因为修改已确认
+    delete originalStates.value[activeFilter.value];
     return filter;
   };
 
