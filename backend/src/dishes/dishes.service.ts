@@ -44,9 +44,20 @@ export class DishesService {
     }
 
     // 记录用户浏览历史
+    // 使用 upsert 操作确保原子性，避免并发请求导致的重复记录
+    // 如果记录已存在，更新 viewedAt；否则创建新记录
     try {
-      await this.prisma.browseHistory.create({
-        data: {
+      await this.prisma.browseHistory.upsert({
+        where: {
+          userId_dishId: {
+            userId,
+            dishId: id,
+          },
+        },
+        update: {
+          viewedAt: new Date(),
+        },
+        create: {
           userId,
           dishId: id,
         },

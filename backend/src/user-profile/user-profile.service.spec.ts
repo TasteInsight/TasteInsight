@@ -359,11 +359,22 @@ describe('UserProfileService', () => {
   });
 
   describe('getMyFavorites', () => {
-    it('should return user favorites', async () => {
+    it('should return user favorites with dish details', async () => {
       const mockFavorites = [
         {
           dishId: 'dish1',
           addedAt: new Date(),
+          dish: {
+            name: 'Favorite Dish',
+            images: ['fav1.jpg'],
+            price: 20.0,
+            windowName: 'Window 1',
+            tags: ['tag1', 'tag2'],
+            averageRating: 4.5,
+            canteen: {
+              name: 'Main Canteen',
+            },
+          },
         },
       ];
       mockPrismaService.favoriteDish.findMany.mockResolvedValue(mockFavorites);
@@ -372,15 +383,32 @@ describe('UserProfileService', () => {
       const result = await service.getMyFavorites('user1', 1, 20);
       expect(result.data.items.length).toBe(1);
       expect(result.data.items[0].dishId).toBe('dish1');
+      expect(result.data.items[0].dishName).toBe('Favorite Dish');
+      expect(result.data.items[0].dishPrice).toBe(20.0);
+      expect(result.data.items[0].canteenName).toBe('Main Canteen');
+      expect(result.data.items[0].windowName).toBe('Window 1');
+      expect(result.data.items[0].tags).toEqual(['tag1', 'tag2']);
+      expect(result.data.items[0].averageRating).toBe(4.5);
     });
   });
 
   describe('getBrowseHistory', () => {
-    it('should return browse history', async () => {
+    it('should return browse history with dish details', async () => {
       const mockHistory = [
         {
           dishId: 'dish1',
           viewedAt: new Date(),
+          dish: {
+            name: 'Test Dish',
+            images: ['dish1.jpg'],
+            price: 15.5,
+            windowName: 'Test Window',
+            tags: ['chinese', 'spicy'],
+            averageRating: 4.2,
+            canteen: {
+              name: 'Test Canteen',
+            },
+          },
         },
       ];
       mockPrismaService.browseHistory.findMany.mockResolvedValue(mockHistory);
@@ -388,6 +416,13 @@ describe('UserProfileService', () => {
 
       const result = await service.getBrowseHistory('user1', 1, 20);
       expect(result.data.items.length).toBe(1);
+      expect(result.data.items[0].dishId).toBe('dish1');
+      expect(result.data.items[0].dishName).toBe('Test Dish');
+      expect(result.data.items[0].dishPrice).toBe(15.5);
+      expect(result.data.items[0].canteenName).toBe('Test Canteen');
+      expect(result.data.items[0].windowName).toBe('Test Window');
+      expect(result.data.items[0].tags).toEqual(['chinese', 'spicy']);
+      expect(result.data.items[0].averageRating).toBe(4.2);
     });
   });
 
