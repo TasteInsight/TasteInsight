@@ -790,3 +790,280 @@ export interface CanteenConfigResponse {
 export interface EffectiveConfigResponse {
   items: EffectiveConfigValue[]
 }
+
+// ==================== 推荐系统相关类型 ====================
+
+/**
+ * 推荐场景
+ */
+export type RecommendScene = 'home' | 'search' | 'similar' | 'guess_like' | 'today'
+
+/**
+ * 用餐时间
+ */
+export type MealTime = 'BREAKFAST' | 'LUNCH' | 'DINNER' | 'SNACK'
+
+/**
+ * 评分范围
+ */
+export interface RatingRange {
+  min?: number
+  max?: number
+}
+
+/**
+ * 价格范围
+ */
+export interface PriceRange {
+  min?: number
+  max?: number
+}
+
+/**
+ * 口味范围
+ */
+export interface FlavorRange {
+  min?: number
+  max?: number
+}
+
+/**
+ * 过滤条件
+ */
+export interface RecommendFilter {
+  rating?: RatingRange
+  mealTime?: MealTime[]
+  price?: PriceRange
+  tag?: string[]
+  includeOffline?: boolean
+  canteenId?: string[]
+  meatPreference?: string[]
+  avoidIngredients?: string[]
+  favoriteIngredients?: string[]
+  spicyLevel?: FlavorRange
+  sweetness?: FlavorRange
+  saltiness?: FlavorRange
+  oiliness?: FlavorRange
+}
+
+/**
+ * 搜索条件
+ */
+export interface RecommendSearch {
+  keyword?: string
+  fields?: string[]
+}
+
+/**
+ * 分页参数（推荐系统专用）
+ */
+export interface RecommendPagination {
+  page: number
+  pageSize: number
+}
+
+/**
+ * 用户上下文信息
+ */
+export interface UserContext {
+  [key: string]: number | string | boolean
+}
+
+/**
+ * 获取个性化推荐请求参数
+ */
+export interface GetRecommendRequest {
+  scene?: RecommendScene
+  requestId?: string
+  experimentId?: string
+  triggerDishId?: string
+  filter: RecommendFilter
+  search?: RecommendSearch
+  pagination: RecommendPagination
+  includeScoreBreakdown?: boolean
+  userContext?: UserContext
+}
+
+/**
+ * 分数明细
+ */
+export interface ScoreBreakdown {
+  preferenceMatch?: number
+  favoriteSimilarity?: number
+  browseRelevance?: number
+  dishQuality?: number
+  diversity?: number
+  searchRelevance?: number
+}
+
+/**
+ * 推荐菜品项（完整版，包含分数明细）
+ */
+export interface RecommendedDishItem {
+  id: string
+  score?: number
+  scoreBreakdown?: ScoreBreakdown
+  [key: string]: any
+}
+
+/**
+ * 推荐菜品项（简化版）
+ */
+export interface RecommendItem {
+  id: string
+  score?: number
+  [key: string]: any
+}
+
+/**
+ * 调试信息
+ */
+export interface DebugInfo {
+  processingTimeMs?: number
+  candidateCount?: number
+  scene?: string
+  hasSearch?: boolean
+  weightsUsed?: Record<string, number>
+}
+
+/**
+ * 获取个性化推荐响应数据（/recommend）
+ */
+export interface GetRecommendResponseData {
+  items: RecommendedDishItem[]
+  meta: PaginationMeta
+  requestId?: string
+  groupItemId?: string
+  debug?: DebugInfo
+}
+
+/**
+ * 获取相似/个性化推荐响应数据（/recommend/similar/{dishId} 和 /recommend/personal）
+ */
+export interface SimilarRecommendResponseData {
+  items: RecommendItem[]
+  total: number
+  pagination: {
+    page: number
+    pageSize: number
+    totalPages: number
+  }
+}
+
+/**
+ * 获取相似菜品推荐请求参数
+ */
+export interface GetSimilarRecommendRequest {
+  pagination: RecommendPagination
+}
+
+/**
+ * 获取基于嵌入的个性化推荐请求参数
+ */
+export interface GetPersonalRecommendRequest {
+  canteenId?: string
+  mealTime?: string
+  pagination: RecommendPagination
+}
+
+/**
+ * 推荐事件基础参数
+ */
+export interface RecommendEventBase {
+  dishId: string
+  requestId?: string
+  position?: number
+  scene?: RecommendScene
+  experimentId?: string
+  groupItemId?: string
+}
+
+/**
+ * 点击事件请求参数
+ */
+export interface ClickEventRequest extends RecommendEventBase {}
+
+/**
+ * 收藏事件请求参数
+ */
+export interface FavoriteEventRequest extends RecommendEventBase {}
+
+/**
+ * 评价事件请求参数
+ */
+export interface ReviewEventRequest extends RecommendEventBase {
+  rating: number
+}
+
+/**
+ * 负反馈事件请求参数
+ */
+export interface DislikeEventRequest extends RecommendEventBase {
+  reason?: string
+}
+
+/**
+ * 事件记录响应数据
+ */
+export interface EventResponseData {
+  eventId: string
+}
+
+/**
+ * 推荐事件类型
+ */
+export type RecommendEventType =
+  | 'impression'
+  | 'click'
+  | 'favorite'
+  | 'review'
+  | 'dislike'
+  | string
+
+/**
+ * 推荐事件项
+ */
+export interface RecommendEventItem {
+  eventId: string
+  eventType: RecommendEventType
+  dishId: string
+  position?: number
+  timestamp: string
+}
+
+/**
+ * 获取推荐请求事件链响应数据
+ */
+export interface EventChainResponseData {
+  requestId: string
+  events: RecommendEventItem[]
+  eventCount: number
+}
+
+/**
+ * 获取用户行为漏斗数据请求参数
+ */
+export interface GetFunnelAnalyticsParams {
+  days?: number
+}
+
+/**
+ * 用户行为漏斗数据响应
+ */
+export interface FunnelAnalyticsResponseData {
+  [key: string]: any
+}
+
+/**
+ * 实验分组信息响应数据
+ */
+export interface ExperimentGroupResponseData {
+  [key: string]: any
+}
+
+/**
+ * 推荐系统健康状态响应数据
+ */
+export interface RecommendHealthResponseData {
+  [key: string]: any
+}
