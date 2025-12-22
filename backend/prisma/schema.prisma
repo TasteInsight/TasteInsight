@@ -471,6 +471,7 @@ model BrowseHistory {
   dish     Dish     @relation(fields: [dishId], references: [id], onDelete: Cascade)
   viewedAt DateTime @default(now())
 
+  @@unique([userId, dishId])
   @@index([userId])
   @@index([viewedAt])
   @@map("browse_history")
