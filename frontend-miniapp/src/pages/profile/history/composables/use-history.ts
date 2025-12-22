@@ -1,11 +1,10 @@
 // @/pages/profile/history/composables/use-history.ts
 import { ref } from 'vue';
 import { getBrowseHistory } from '@/api/modules/user';
-import { getDishById } from '@/api/modules/dish';
-import type { Dish } from '@/types/api';
+import type { BrowseHistoryItem } from '@/types/api';
 
 export function useHistory() {
-  const dishes = ref<Dish[]>([]);
+  const historyItems = ref<BrowseHistoryItem[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
   const currentPage = ref(1);
@@ -17,14 +16,14 @@ export function useHistory() {
    */
   const fetchHistory = async (reset = false) => {
     if (loading.value) return;
-    
+
     loading.value = true;
     error.value = null;
 
     try {
       if (reset) {
         currentPage.value = 1;
-        dishes.value = [];
+        historyItems.value = [];
         hasMore.value = true;
       }
 
@@ -35,19 +34,12 @@ export function useHistory() {
 
       if (response.code === 200 && response.data) {
         const { items, meta } = response.data;
-        
-        // 获取每个历史记录对应的菜品详情
-        const dishPromises = items.map(item => getDishById(item.dishId));
-        const dishResponses = await Promise.all(dishPromises);
-        
-        const fetchedDishes = dishResponses
-          .filter(res => res.code === 200 && res.data)
-          .map(res => res.data!);
 
+        // 历史记录已经包含了菜品详情
         if (reset) {
-          dishes.value = fetchedDishes;
+          historyItems.value = items;
         } else {
-          dishes.value.push(...fetchedDishes);
+          historyItems.value.push(...items);
         }
 
         // 判断是否还有更多数据
@@ -87,7 +79,7 @@ export function useHistory() {
   };
 
   return {
-    dishes,
+    historyItems,
     loading,
     error,
     hasMore,

@@ -43,6 +43,18 @@ export class BatchParsedDishDto {
   @Transform(({ value }) => splitToStringArray(value))
   tags?: string[];
 
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @Transform(({ value }) => splitToStringArray(value))
+  ingredients?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @Transform(({ value }) => splitToStringArray(value))
+  allergens?: string[];
+
   @IsNotEmpty()
   @IsString()
   canteenName!: string;
