@@ -1,0 +1,420 @@
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Observable } from 'rxjs';
+import { PrismaService } from '@/prisma.service';
+import { AIConfigService } from './services/ai-config.service';
+import { OpenAIProviderService } from './services/ai-provider/openai-provider.service';
+import { ToolRegistryService } from './tools/tool-registry.service';
+import { PromptBuilder } from './utils/prompt-builder.util';
+import { ContentBuilder } from './utils/content-builder.util';
+import { CreateSessionDto, SessionData } from './dto/session.dto';
+import {
+  ChatRequestDto,
+  ChatMessageItemDto,
+  ContentSegment,
+} from './dto/chat.dto';
+import {
+  AIMessage,
+  StreamChunk,
+} from './services/ai-provider/base-ai-provider.interface';
+
+interface MessageEvent {
+  data: string;
+}
+
+@Injectable()
+export class AIChatService {
+  private readonly logger = new Logger(AIChatService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly aiConfig: AIConfigService,
+    private readonly openaiProvider: OpenAIProviderService,
+    private readonly toolRegistry: ToolRegistryService,
+  ) {}
+
+  /**
+   * Create a new chat session
+   */
+  async createSession(
+    userId: string,
+    dto: CreateSessionDto,
+  ): Promise<SessionData> {
+    const scene = dto.scene || 'general_chat';
+
+    const session = await this.prisma.aISession.create({
+      data: {
+        userId,
+        scene,
+      },
+    });
+
+    return {
+      sessionId: session.id,
+      welcomeMessage: PromptBuilder.getWelcomeMessage(scene),
+    };
+  }
+
+  /**
+   * Stream chat response with SSE
+   */
+  streamChat(
+    userId: string,
+    sessionId: string,
+    dto: ChatRequestDto,
+  ): Observable<MessageEvent> {
+    return new Observable((subscriber) => {
+      this.handleStreamChat(userId, sessionId, dto, subscriber).catch(
+        (error) => {
+          this.logger.error('Stream chat error:', error);
+          subscriber.next({
+            data: `event: error\ndata: ${JSON.stringify({ error: error.message })}\n\n`,
+          });
+          subscriber.complete();
+        },
+      );
+    });
+  }
+
+  private async handleStreamChat(
+    userId: string,
+    sessionId: string,
+    dto: ChatRequestDto,
+    subscriber: any,
+  ): Promise<void> {
+    // Verify session exists and belongs to user
+    const session = await this.prisma.aISession.findFirst({
+      where: { id: sessionId, userId },
+      include: { messages: { orderBy: { createdAt: 'asc' } } },
+    });
+
+    if (!session) {
+      throw new NotFoundException('Session not found');
+    }
+
+    // Save user message
+    await this.prisma.aIMessage.create({
+      data: {
+        sessionId,
+        role: 'user',
+        content: [ContentBuilder.text(dto.message)] as any,
+      },
+    });
+
+    // Build initial conversation history
+    const conversationMessages: AIMessage[] = [
+      {
+        role: 'system',
+        content: PromptBuilder.getSystemPrompt(session.scene),
+      },
+    ];
+
+    // Add previous messages
+    for (const msg of session.messages) {
+      const content = msg.content as any;
+      const textContent = this.extractTextFromContent(content);
+      conversationMessages.push({
+        role: msg.role as 'user' | 'assistant',
+        content: textContent,
+      });
+    }
+
+    // Add current user message
+    conversationMessages.push({
+      role: 'user',
+      content: dto.message,
+    });
+
+    // Get AI provider config and tools
+    const config = await this.aiConfig.getProviderConfig();
+    this.openaiProvider.setConfig(config);
+    const tools = this.toolRegistry.getAllTools();
+
+    // Content to save
+    const assistantContent: ContentSegment[] = [];
+    let finalTextContent = '';
+
+    try {
+      // Multi-turn conversation loop for tool calling
+      const maxTurns = 5; // Prevent infinite loops
+      let turn = 0;
+
+      while (turn < maxTurns) {
+        turn++;
+        this.logger.debug(`AI conversation turn ${turn}`);
+
+        let currentText = '';
+        const pendingToolCalls: Map<string, any> = new Map();
+        let hasToolCalls = false;
+
+        // Stream AI response
+        for await (const chunk of this.openaiProvider.streamChat(
+          conversationMessages,
+          tools,
+        )) {
+          if (chunk.type === 'text' && chunk.content) {
+            currentText += chunk.content;
+            finalTextContent += chunk.content;
+            // Send text chunk to client
+            subscriber.next({
+              data: `event: text\ndata: ${JSON.stringify({ text: chunk.content })}\n\n`,
+            });
+          } else if (chunk.type === 'tool_call' && chunk.toolCall) {
+            hasToolCalls = true;
+            const toolCall = chunk.toolCall;
+            if (!pendingToolCalls.has(toolCall.id)) {
+              pendingToolCalls.set(toolCall.id, {
+                id: toolCall.id,
+                name: toolCall.function.name,
+                arguments: '',
+              });
+            }
+            const pending = pendingToolCalls.get(toolCall.id);
+            pending.arguments += toolCall.function.arguments;
+          } else if (chunk.type === 'error') {
+            throw new Error(chunk.error || 'AI provider error');
+          }
+        }
+
+        // If no tool calls, conversation is complete
+        if (!hasToolCalls || pendingToolCalls.size === 0) {
+          this.logger.debug('No tool calls, ending conversation');
+          break;
+        }
+
+        // Execute tool calls and prepare results for next turn
+        const toolCallsForHistory: any[] = [];
+        const toolResultsForHistory: AIMessage[] = [];
+        let allToolsSucceeded = true;
+
+        for (const [id, toolCall] of pendingToolCalls.entries()) {
+          toolCallsForHistory.push({
+            id: toolCall.id,
+            type: 'function',
+            function: {
+              name: toolCall.name,
+              arguments: toolCall.arguments,
+            },
+          });
+
+          try {
+            // Validate and parse arguments
+            let params: any;
+
+            // Handle empty or whitespace-only arguments
+            const argsStr = toolCall.arguments?.trim() || '';
+
+            if (argsStr === '' || argsStr === '{}') {
+              // Empty arguments are valid (means no parameters)
+              params = {};
+            } else {
+              try {
+                params = JSON.parse(argsStr);
+              } catch (parseError) {
+                const errorMsg = `Error: Invalid JSON arguments for tool ${toolCall.name}: ${toolCall.arguments}`;
+                this.logger.warn(errorMsg, parseError);
+                toolResultsForHistory.push({
+                  role: 'tool',
+                  tool_call_id: toolCall.id,
+                  content: errorMsg,
+                } as any);
+                allToolsSucceeded = false;
+                continue;
+              }
+            }
+
+            // Execute tool
+            const result = await this.toolRegistry.executeTool(
+              toolCall.name,
+              params,
+              { userId, sessionId, localTime: dto.clientContext?.localTime },
+            );
+
+            // Convert result to content segment and send to client
+            const segment = this.toolResultToSegment(toolCall.name, result);
+            if (segment) {
+              assistantContent.push(segment);
+              subscriber.next({
+                data: `event: component\ndata: ${JSON.stringify(segment)}\n\n`,
+              });
+            }
+
+            // Add success result to conversation
+            toolResultsForHistory.push({
+              role: 'tool',
+              tool_call_id: toolCall.id,
+              content: JSON.stringify(result),
+            } as any);
+          } catch (error) {
+            const errorMsg = `Error executing tool ${toolCall.name}: ${error.message}`;
+            this.logger.error(errorMsg, error);
+
+            // Add error result to conversation for AI to handle
+            toolResultsForHistory.push({
+              role: 'tool',
+              tool_call_id: toolCall.id,
+              content: errorMsg,
+            } as any);
+            allToolsSucceeded = false;
+          }
+        }
+
+        // Add assistant message with tool calls to conversation history
+        conversationMessages.push({
+          role: 'assistant',
+          content: currentText || null,
+          tool_calls: toolCallsForHistory,
+        } as any);
+
+        // Add all tool results to conversation history
+        conversationMessages.push(...toolResultsForHistory);
+
+        // Continue to next turn so AI can use tool results to generate response
+        // The loop will naturally end when AI stops calling tools
+        this.logger.debug(
+          `Tool execution completed. ${allToolsSucceeded ? 'All succeeded' : 'Some failed'}. Continuing to turn ${turn + 1}`,
+        );
+      }
+
+      if (turn >= maxTurns) {
+        this.logger.warn(
+          `Reached maximum turns (${maxTurns}), ending conversation`,
+        );
+        const warningMsg =
+          '抱歉，处理您的请求时遇到了一些困难。请尝试重新表述您的需求。';
+        finalTextContent += warningMsg;
+        subscriber.next({
+          data: `event: text\ndata: ${JSON.stringify({ text: warningMsg })}\n\n`,
+        });
+      }
+
+      // Add final text content if any
+      if (finalTextContent) {
+        assistantContent.unshift(ContentBuilder.text(finalTextContent));
+      }
+
+      // Save assistant message
+      await this.prisma.aIMessage.create({
+        data: {
+          sessionId,
+          role: 'assistant',
+          content: assistantContent as any,
+        },
+      });
+
+      // Send stop event
+      subscriber.next({ data: 'event: stop\ndata: {}\n\n' });
+      subscriber.complete();
+    } catch (error) {
+      this.logger.error('Stream processing error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get chat history
+   */
+  async getHistory(
+    userId: string,
+    sessionId: string,
+    cursor?: string,
+  ): Promise<{ messages: ChatMessageItemDto[]; cursor?: string }> {
+    // Verify session belongs to user
+    const session = await this.prisma.aISession.findFirst({
+      where: { id: sessionId, userId },
+    });
+
+    if (!session) {
+      throw new NotFoundException('Session not found');
+    }
+
+    const pageSize = 50;
+    const messages = await this.prisma.aIMessage.findMany({
+      where: {
+        sessionId,
+        ...(cursor ? { createdAt: { lt: new Date(cursor) } } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: pageSize + 1,
+    });
+
+    const hasMore = messages.length > pageSize;
+    const items = messages.slice(0, pageSize);
+
+    return {
+      messages: items.map((msg) => ({
+        role: msg.role as 'user' | 'assistant',
+        timestamp: msg.createdAt.toISOString(),
+        content: msg.content as any as ContentSegment[],
+      })),
+      cursor: hasMore
+        ? items[items.length - 1].createdAt.toISOString()
+        : undefined,
+    };
+  }
+
+  /**
+   * Get conversation suggestions based on time and user profile
+   */
+  async getSuggestions(userId: string): Promise<string[]> {
+    const hour = new Date().getHours();
+    let mealTime = 'lunch';
+
+    if (hour >= 6 && hour < 10) {
+      mealTime = 'breakfast';
+    } else if (hour >= 10 && hour < 14) {
+      mealTime = 'lunch';
+    } else if (hour >= 17 && hour < 20) {
+      mealTime = 'dinner';
+    } else if (hour >= 20 || hour < 6) {
+      mealTime = 'nightsnack';
+    }
+
+    const suggestions = [
+      `推荐一些${this.getMealTimeName(mealTime)}`,
+      '看看全校最火的菜',
+      '帮我生成下周食谱',
+    ];
+
+    // Add canteen-specific suggestion
+    const canteens = await this.prisma.canteen.findMany({ take: 3 });
+    if (canteens.length > 0) {
+      const randomCanteen =
+        canteens[Math.floor(Math.random() * canteens.length)];
+      suggestions.push(`${randomCanteen.name}有什么好吃的？`);
+    }
+
+    return suggestions;
+  }
+
+  private getMealTimeName(mealTime: string): string {
+    const names = {
+      breakfast: '早餐',
+      lunch: '午餐',
+      dinner: '晚餐',
+      nightsnack: '夜宵',
+    };
+    return names[mealTime] || '美食';
+  }
+
+  private extractTextFromContent(content: any[]): string {
+    if (!Array.isArray(content)) return '';
+    return content
+      .filter((seg) => seg.type === 'text')
+      .map((seg) => seg.data)
+      .join('\n');
+  }
+
+  private toolResultToSegment(
+    toolName: string,
+    result: any,
+  ): ContentSegment | null {
+    if (toolName === 'recommend_dishes' || toolName === 'search_dishes') {
+      return ContentBuilder.dishCards(result);
+    } else if (toolName === 'get_canteen_info') {
+      return ContentBuilder.canteenCards(result);
+    } else if (toolName === 'generate_meal_plan') {
+      return ContentBuilder.mealPlanCards(result);
+    }
+    return null;
+  }
+}
