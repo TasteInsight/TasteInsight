@@ -30,11 +30,18 @@ const ImageStub = {
   template: '<img v-bind="$attrs" />',
 };
 
+const ScrollViewStub = {
+  name: 'scroll-view',
+  inheritAttrs: false,
+  template: '<div v-bind="$attrs"><slot /></div>',
+};
+
 config.global.stubs = {
   ...(config.global.stubs || {}),
   view: ViewStub,
   text: TextStub,
   image: ImageStub,
+  'scroll-view': ScrollViewStub,
 };
 
 // Minimal uni global so components that call uni.* won't crash.
