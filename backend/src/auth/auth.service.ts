@@ -147,6 +147,7 @@ export class AuthService {
       where: { username },
       include: {
         permissions: true,
+        canteen: true,
       },
     });
 
@@ -166,6 +167,7 @@ export class AuthService {
     const {
       password: _password,
       permissions: permissionsRelation,
+      canteen,
       ...adminData
     } = admin;
 
@@ -180,7 +182,10 @@ export class AuthService {
           accessToken: tokens.accessToken,
           refreshToken: tokens.refreshToken,
         },
-        admin: adminData,
+        admin: {
+          ...adminData,
+          canteenName: canteen?.name ?? null,
+        },
         permissions,
       },
     };
