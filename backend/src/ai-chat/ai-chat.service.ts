@@ -100,11 +100,14 @@ export class AIChatService {
       },
     });
 
+    // Get time for chat: prefer client's localTime if valid, otherwise use server time
+    const chatTime = this.getChatTime(dto.clientContext?.localTime);
+
     // Build initial conversation history
     const conversationMessages: AIMessage[] = [
       {
         role: 'system',
-        content: PromptBuilder.getSystemPrompt(session.scene),
+        content: PromptBuilder.getSystemPrompt(session.scene, chatTime),
       },
     ];
 
@@ -394,6 +397,34 @@ export class AIChatService {
       nightsnack: '夜宵',
     };
     return names[mealTime] || '美食';
+  }
+
+  /**
+   * Get time for chat context, preferring client's localTime if valid, otherwise use server time
+   * @param clientLocalTime Client's local time as ISOString
+   * @returns Date object
+   */
+  private getChatTime(clientLocalTime?: string): Date {
+    const serverTime = new Date();
+
+    // If no client time provided, use server time
+    if (!clientLocalTime) {
+      return serverTime;
+    }
+
+    // Try to parse as ISOString
+    const clientTime = new Date(clientLocalTime);
+
+    // Validate the parsed date is valid
+    if (isNaN(clientTime.getTime())) {
+      // Invalid format, use server time
+      this.logger.warn(
+        `Invalid localTime format (expected ISOString): ${clientLocalTime}, using server time`,
+      );
+      return serverTime;
+    }
+
+    return clientTime;
   }
 
   private extractTextFromContent(content: any[]): string {

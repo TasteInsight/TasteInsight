@@ -37,11 +37,7 @@ export class MockAIProviderService implements BaseAIProvider {
     tools: Tool[],
   ): AsyncGenerator<StreamChunk, void, unknown> {
     if (!this.config) {
-      yield {
-        type: 'error',
-        error: 'AI provider not configured',
-      };
-      return;
+      throw new Error('AI provider not configured');
     }
 
     this.logger.debug(

@@ -3,17 +3,66 @@
 export class PromptBuilder {
   /**
    * Get system prompt for a given scene
+   * @param scene Chat scene
+   * @param currentTime Optional current time (Date object)
    */
-  static getSystemPrompt(scene: string): string {
+  static getSystemPrompt(scene: string, currentTime?: Date): string {
+    const timeInfo = currentTime
+      ? `\n\n当前时间：${this.formatTime(currentTime)}\n。`
+      : '';
+
     switch (scene) {
       case 'meal_planner':
-        return this.getMealPlannerPrompt();
+        return this.getMealPlannerPrompt() + timeInfo;
       case 'dish_critic':
-        return this.getDishCriticPrompt();
+        return this.getDishCriticPrompt() + timeInfo;
       case 'general_chat':
       default:
-        return this.getGeneralChatPrompt();
+        return this.getGeneralChatPrompt() + timeInfo;
     }
+  }
+
+  /**
+   * Format date to Chinese time string
+   */
+  private static formatTime(date: Date): string {
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const dayOfWeek = date.getDay();
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+
+    const weekdays = [
+      '星期日',
+      '星期一',
+      '星期二',
+      '星期三',
+      '星期四',
+      '星期五',
+      '星期六',
+    ];
+    const weekday = weekdays[dayOfWeek];
+
+    // 判断时间段
+    let timeOfDay = '';
+    if (hours >= 5 && hours < 9) {
+      timeOfDay = '早上';
+    } else if (hours >= 9 && hours < 11) {
+      timeOfDay = '上午';
+    } else if (hours >= 11 && hours < 14) {
+      timeOfDay = '中午';
+    } else if (hours >= 14 && hours < 18) {
+      timeOfDay = '下午';
+    } else if (hours >= 18 && hours < 22) {
+      timeOfDay = '晚上';
+    } else {
+      timeOfDay = '深夜';
+    }
+
+    const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+
+    return `${year}年${month}月${day}日 ${weekday} ${timeOfDay}${timeStr}`;
   }
 
   private static getGeneralChatPrompt(): string {

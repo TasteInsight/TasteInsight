@@ -27,11 +27,7 @@ export class OpenAIProviderService implements BaseAIProvider {
     tools: Tool[],
   ): AsyncGenerator<StreamChunk, void, unknown> {
     if (!this.client || !this.config) {
-      yield {
-        type: 'error',
-        error: 'AI provider not configured',
-      };
-      return;
+      throw new Error('AI provider not configured');
     }
 
     try {
@@ -46,6 +42,7 @@ export class OpenAIProviderService implements BaseAIProvider {
         temperature: 0.7,
       });
 
+      let isDone = false;
       for await (const chunk of stream) {
         const delta = chunk.choices[0]?.delta;
 
@@ -78,13 +75,17 @@ export class OpenAIProviderService implements BaseAIProvider {
           }
         }
 
-        // Check if done
-        if (chunk.choices[0]?.finish_reason) {
+        // Check if done (only yield once)
+        if (!isDone && chunk.choices[0]?.finish_reason) {
           yield { type: 'done' };
+          isDone = true;
         }
       }
 
-      yield { type: 'done' };
+      // Fallback: yield 'done' if stream completed without finish_reason
+      if (!isDone) {
+        yield { type: 'done' };
+      }
     } catch (error) {
       // Log detailed error for debugging
       this.logger.error('OpenAI API error:', {

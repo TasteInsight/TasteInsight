@@ -10,7 +10,7 @@ import { Type } from 'class-transformer';
 export class ClientContextDto {
   @IsOptional()
   @IsString()
-  localTime?: string; // Format: "HH:mm"
+  localTime?: string; // Format: ISOString (e.g., "2025-01-09T12:04:00.000Z")
 }
 
 // Chat request DTO
