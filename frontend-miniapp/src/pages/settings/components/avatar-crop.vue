@@ -17,7 +17,6 @@
             :scale="true"
             :scale-min="1"
             :scale-max="4"
-            :scale-value="scale"
             direction="all"
             @change="handleMoveChange"
             class="absolute"
@@ -25,7 +24,7 @@
           >
             <image
               :src="src"
-              mode="aspectFill"
+              mode="scaleToFill"
               class="w-full h-full"
               draggable="false"
             />
@@ -78,7 +77,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, getCurrentInstance } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 
 const src = ref('');
@@ -104,7 +103,27 @@ const baseDisplayHeight = ref(0);
 // movable-view 状态
 const posX = ref(0);
 const posY = ref(0);
-const scale = ref(1);
+
+// 真机上 movable-view 缩放 change 事件非常高频：
+// 1) 频繁更新受控 x/y 会导致明显卡顿
+// 2) 这里用“最新值 + 每帧合并一次更新”的方式降低卡顿
+// 3) scale 不做受控绑定（不传 scale-value），避免真机上下一次触摸把缩放重置回 1
+const latestMove = {
+  x: 0,
+  y: 0,
+  scale: 1,
+};
+
+let moveSyncPending = false;
+const scheduleFrame: (cb: () => void) => void =
+  typeof requestAnimationFrame === 'function'
+    ? (cb) => requestAnimationFrame(cb)
+    : (cb) => setTimeout(cb, 16);
+
+let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
+
+// uniapp 在部分真机上调用 canvasToTempFilePath / createCanvasContext 需要传入组件实例
+const instanceProxy = getCurrentInstance()?.proxy as any;
 
 async function initWithSrc(inputSrc: string) {
   src.value = inputSrc;
@@ -141,6 +160,10 @@ async function initWithSrc(inputSrc: string) {
     posX.value = Math.floor((cropSizePx - baseDisplayWidth.value) / 2);
     posY.value = Math.floor((cropSizePx - baseDisplayHeight.value) / 2);
 
+    latestMove.x = posX.value;
+    latestMove.y = posY.value;
+    latestMove.scale = 1;
+
     ready.value = true;
   } catch (e) {
     console.error('getImageInfo failed', e);
@@ -155,30 +178,59 @@ onLoad(async (options: any) => {
   const openerEventChannel = page?.getOpenerEventChannel?.();
   if (openerEventChannel?.on) {
     openerEventChannel.on('init', (data: { src?: string }) => {
-      if (data?.src) initWithSrc(data.src);
+      if (data?.src) {
+        if (fallbackTimer) {
+          clearTimeout(fallbackTimer);
+          fallbackTimer = null;
+        }
+        initWithSrc(data.src);
+      }
     });
   }
 
   // 2) 兜底：仍支持 query 传 src
   if (options?.src) {
-    initWithSrc(decodeURIComponent(options.src));
+    if (fallbackTimer) {
+      clearTimeout(fallbackTimer);
+      fallbackTimer = null;
+    }
+    let decoded = '';
+    try {
+      decoded = decodeURIComponent(String(options.src));
+    } catch (e) {
+      decoded = String(options.src);
+    }
+    initWithSrc(decoded);
     return;
   }
 
-  // 3) 若两者都没拿到，给个短超时提示
-  setTimeout(() => {
+  // 3) 若两者都没拿到，给个兜底超时提示（设备慢/时序问题时不应太短）
+  fallbackTimer = setTimeout(() => {
     if (!src.value) {
       uni.showToast({ title: '图片不存在', icon: 'none' });
       setTimeout(() => uni.navigateBack(), 800);
     }
-  }, 300);
+    fallbackTimer = null;
+  }, 2000);
 });
 
 function handleMoveChange(e: any) {
   // e.detail: { x, y, scale }
-  if (typeof e?.detail?.x === 'number') posX.value = e.detail.x;
-  if (typeof e?.detail?.y === 'number') posY.value = e.detail.y;
-  if (typeof e?.detail?.scale === 'number') scale.value = e.detail.scale;
+  const nextX = Number(e?.detail?.x);
+  const nextY = Number(e?.detail?.y);
+  const nextScale = Number(e?.detail?.scale);
+  // 真机上可能返回 string，这里统一转 number；NaN 则忽略，避免回弹
+  if (Number.isFinite(nextX)) latestMove.x = nextX;
+  if (Number.isFinite(nextY)) latestMove.y = nextY;
+  if (Number.isFinite(nextScale) && nextScale > 0) latestMove.scale = nextScale;
+
+  if (moveSyncPending) return;
+  moveSyncPending = true;
+  scheduleFrame(() => {
+    moveSyncPending = false;
+    posX.value = latestMove.x;
+    posY.value = latestMove.y;
+  });
 }
 
 function handleCancel() {
@@ -191,11 +243,16 @@ async function handleConfirm() {
   uni.showLoading({ title: '生成中...' });
 
   try {
-    const displayScale = (baseDisplayWidth.value * scale.value) / originalWidth.value;
+    // 导出时使用最新一次事件里的参数，避免节流导致的“框选与导出不一致”
+    const exportX = Number.isFinite(latestMove.x) ? latestMove.x : posX.value;
+    const exportY = Number.isFinite(latestMove.y) ? latestMove.y : posY.value;
+    const exportScale = Number.isFinite(latestMove.scale) && latestMove.scale > 0 ? latestMove.scale : 1;
+
+    const displayScale = (baseDisplayWidth.value * exportScale) / originalWidth.value;
 
     // 裁剪框为整个 movable-area (0..cropSizePx)
-    const sx = (0 - posX.value) / displayScale;
-    const sy = (0 - posY.value) / displayScale;
+    const sx = (0 - exportX) / displayScale;
+    const sy = (0 - exportY) / displayScale;
     const sWidth = cropSizePx / displayScale;
     const sHeight = cropSizePx / displayScale;
 
@@ -206,32 +263,37 @@ async function handleConfirm() {
     const csw = clamp(sWidth, 1, originalWidth.value - csx);
     const csh = clamp(sHeight, 1, originalHeight.value - csy);
 
-    const ctx = uni.createCanvasContext('avatarCropCanvas');
+    const ctx = instanceProxy
+      ? uni.createCanvasContext('avatarCropCanvas', instanceProxy)
+      : uni.createCanvasContext('avatarCropCanvas');
     ctx.clearRect(0, 0, outputSizePx, outputSizePx);
     ctx.drawImage(src.value, csx, csy, csw, csh, 0, 0, outputSizePx, outputSizePx);
     ctx.draw(false, () => {
-      uni.canvasToTempFilePath(
-        {
-          canvasId: 'avatarCropCanvas',
-          destWidth: outputSizePx,
-          destHeight: outputSizePx,
-          fileType: 'jpg',
-          quality: 0.92,
-          success: (res) => {
-            uni.hideLoading();
-            const eventChannel = (getCurrentPages() as any).slice(-1)[0].getOpenerEventChannel?.();
-            eventChannel?.emit('cropped', { tempFilePath: res.tempFilePath });
-            uni.navigateBack();
-          },
-          fail: (err) => {
-            console.error('canvasToTempFilePath fail', err);
-            uni.hideLoading();
-            uni.showToast({ title: '生成失败', icon: 'none' });
-          },
+      const options: UniApp.CanvasToTempFilePathOptions = {
+        canvasId: 'avatarCropCanvas',
+        destWidth: outputSizePx,
+        destHeight: outputSizePx,
+        fileType: 'jpg',
+        quality: 0.92,
+        success: (res) => {
+          uni.hideLoading();
+          const eventChannel = (getCurrentPages() as any).slice(-1)[0].getOpenerEventChannel?.();
+          eventChannel?.emit('cropped', { tempFilePath: res.tempFilePath });
+          uni.navigateBack();
         },
-        // @ts-ignore
-        this
-      );
+        fail: (err) => {
+          console.error('canvasToTempFilePath fail', err);
+          uni.hideLoading();
+          uni.showToast({ title: '生成失败', icon: 'none' });
+        },
+      };
+
+      // 真机优先传实例，避免找不到 canvas 导致一直转圈
+      if (instanceProxy) {
+        uni.canvasToTempFilePath(options, instanceProxy);
+      } else {
+        uni.canvasToTempFilePath(options);
+      }
     });
   } catch (e) {
     console.error('crop confirm error', e);

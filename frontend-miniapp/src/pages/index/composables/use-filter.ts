@@ -614,9 +614,10 @@ export const useFilter = () => {
       };
     }
 
+    const currentFilter = activeFilter.value;
     activeFilter.value = '';
     // 清除已应用的筛选的原始状态，因为修改已确认
-    delete originalStates.value[activeFilter.value];
+    delete originalStates.value[currentFilter];
     return filter;
   };
 
