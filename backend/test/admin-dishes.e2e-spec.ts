@@ -440,7 +440,7 @@ describe('AdminDishesController (e2e)', () => {
           saltiness: 2,
           oiliness: 3,
           availableMealTime: ['lunch', 'dinner'],
-          availableDates: [{ startDate: '2024-01-01', endDate: '2024-12-31' }],
+          availableDates: [{ startDate: '2025-01-01', endDate: '2025-12-31' }],
         })
         .expect(201);
 
@@ -610,7 +610,7 @@ describe('AdminDishesController (e2e)', () => {
           saltiness: 2,
           oiliness: 3,
           availableMealTime: ['breakfast', 'lunch', 'dinner'],
-          availableDates: [{ startDate: '2024-01-01', endDate: '2024-12-31' }],
+          availableDates: [{ startDate: '2025-01-01', endDate: '2025-12-31' }],
           parentDishId: testDishId,
         })
         .expect(200);

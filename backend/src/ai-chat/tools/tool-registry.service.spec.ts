@@ -109,7 +109,7 @@ describe('ToolRegistryService', () => {
       const context = {
         userId: 'user123',
         sessionId: 'session456',
-        localTime: '2024-01-01T12:00:00Z',
+        localTime: '2025-01-01T12:00:00Z',
       };
 
       await service.executeTool('mock_tool', { input: 'test' }, context);

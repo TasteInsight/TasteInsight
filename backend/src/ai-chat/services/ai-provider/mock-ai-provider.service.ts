@@ -49,13 +49,25 @@ export class MockAIProviderService implements BaseAIProvider {
 
     const userMessageText = lastUserMessage?.content || '';
 
+    // Check for recent tool errors in conversation history
+    const recentToolMessages = messages
+      .filter((m) => m.role === 'tool')
+      .slice(-3); // Check last 3 tool messages
+    const hasToolError = recentToolMessages.some(
+      (m) =>
+        m.content &&
+        typeof m.content === 'string' &&
+        m.content.includes('Error executing tool'),
+    );
+
     // Simulate AI thinking delay
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    // Check if user message suggests tool usage
+    // Check if user message suggests tool usage or if we need to retry after error
     const shouldUseTools =
       tools.length > 0 &&
-      (userMessageText.includes('推荐') ||
+      (hasToolError ||
+        userMessageText.includes('推荐') ||
         userMessageText.includes('搜索') ||
         userMessageText.includes('食堂') ||
         userMessageText.includes('食谱') ||
@@ -67,13 +79,49 @@ export class MockAIProviderService implements BaseAIProvider {
       const toolCallId = `call_${Date.now()}`;
 
       // First, yield some text response
-      const textResponse = '让我帮您查找相关信息。';
+      const textResponse = hasToolError
+        ? '让我重新尝试。'
+        : '让我帮您查找相关信息。';
       for (const char of textResponse) {
         yield {
           type: 'text',
           content: char,
         };
         await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+
+      // Generate appropriate arguments based on tool name
+      let toolArguments: any = {};
+      if (toolToCall.function.name === 'recommend_dishes') {
+        // Determine mealTime from user message or default to lunch
+        let mealTime = 'lunch';
+        if (
+          userMessageText.includes('早餐') ||
+          userMessageText.includes('早饭')
+        ) {
+          mealTime = 'breakfast';
+        } else if (
+          userMessageText.includes('午餐') ||
+          userMessageText.includes('午饭')
+        ) {
+          mealTime = 'lunch';
+        } else if (
+          userMessageText.includes('晚餐') ||
+          userMessageText.includes('晚饭')
+        ) {
+          mealTime = 'dinner';
+        } else if (userMessageText.includes('夜宵')) {
+          mealTime = 'nightsnack';
+        }
+        toolArguments = { mealTime };
+      } else if (toolToCall.function.name === 'search_dishes') {
+        // Extract keyword from user message
+        const keywordMatch = userMessageText.match(/搜索|找|查找|(.+)/);
+        toolArguments = {
+          keyword: keywordMatch?.[1]?.trim() || userMessageText || '菜品',
+        };
+      } else if (toolToCall.function.name === 'generate_meal_plan') {
+        toolArguments = { days: 7 };
       }
 
       // Then yield tool call
@@ -84,7 +132,7 @@ export class MockAIProviderService implements BaseAIProvider {
           type: 'function',
           function: {
             name: toolToCall.function.name,
-            arguments: JSON.stringify({}),
+            arguments: JSON.stringify(toolArguments),
           },
         },
       };

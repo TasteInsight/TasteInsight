@@ -66,8 +66,14 @@ export class AIChatService {
       this.handleStreamChat(userId, sessionId, dto, subscriber).catch(
         (error) => {
           this.logger.error('Stream chat error:', error);
+          const errorMessage =
+            error instanceof Error
+              ? error.message
+              : typeof error === 'string'
+                ? error
+                : 'Unknown error';
           subscriber.next({
-            data: `event: error\ndata: ${JSON.stringify({ error: error.message })}\n\n`,
+            data: `event: error\ndata: ${JSON.stringify({ error: errorMessage })}\n\n`,
           });
           subscriber.complete();
         },
@@ -203,8 +209,13 @@ export class AIChatService {
             // Validate and parse arguments
             let params: any;
 
-            // Handle empty or whitespace-only arguments
-            const argsStr = toolCall.arguments?.trim() || '';
+            // Handle null, undefined, empty or whitespace-only arguments
+            // Safely convert to string and trim
+            const argsStr =
+              toolCall.arguments != null &&
+              typeof toolCall.arguments === 'string'
+                ? toolCall.arguments.trim()
+                : '';
 
             if (argsStr === '' || argsStr === '{}') {
               // Empty arguments are valid (means no parameters)
@@ -248,7 +259,13 @@ export class AIChatService {
               content: JSON.stringify(result),
             } as any);
           } catch (error) {
-            const errorMsg = `Error executing tool ${toolCall.name}: ${error.message}`;
+            const errorMessage =
+              error instanceof Error
+                ? error.message
+                : typeof error === 'string'
+                  ? error
+                  : 'Unknown error';
+            const errorMsg = `Error executing tool ${toolCall.name}: ${errorMessage}`;
             this.logger.error(errorMsg, error);
 
             // Add error result to conversation for AI to handle
@@ -266,7 +283,7 @@ export class AIChatService {
           role: 'assistant',
           content: currentText || null,
           tool_calls: toolCallsForHistory,
-        } as any);
+        });
 
         // Add all tool results to conversation history
         conversationMessages.push(...toolResultsForHistory);
@@ -278,21 +295,23 @@ export class AIChatService {
         );
       }
 
+      // Add final text content if any (before components)
+      if (finalTextContent) {
+        assistantContent.unshift(ContentBuilder.text(finalTextContent));
+      }
+
+      // Add warning message at the end if max turns reached
       if (turn >= maxTurns) {
         this.logger.warn(
           `Reached maximum turns (${maxTurns}), ending conversation`,
         );
         const warningMsg =
           '抱歉，处理您的请求时遇到了一些困难。请尝试重新表述您的需求。';
-        finalTextContent += warningMsg;
         subscriber.next({
           data: `event: text\ndata: ${JSON.stringify({ text: warningMsg })}\n\n`,
         });
-      }
-
-      // Add final text content if any
-      if (finalTextContent) {
-        assistantContent.unshift(ContentBuilder.text(finalTextContent));
+        // Add warning message at the end of content array
+        assistantContent.push(ContentBuilder.text(warningMsg));
       }
 
       // Save assistant message

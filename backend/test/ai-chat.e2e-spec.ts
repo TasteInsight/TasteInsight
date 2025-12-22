@@ -430,7 +430,7 @@ describe('AI Chat (e2e)', () => {
       const result = await toolRegistry.executeTool(
         'recommend_dishes',
         { mealTime: 'lunch' },
-        { userId, sessionId: 'test', localTime: '2024-01-01T12:00:00Z' },
+        { userId, sessionId: 'test', localTime: '2025-01-01T12:00:00Z' },
       );
 
       expect(Array.isArray(result)).toBe(true);
@@ -666,7 +666,7 @@ describe('AI Chat (e2e)', () => {
         .send({
           message: '推荐一些午餐',
           clientContext: {
-            localTime: '2024-01-01T12:00:00Z',
+            localTime: '2025-01-01T12:00:00Z',
           },
         })
         .buffer(false)
@@ -818,7 +818,7 @@ describe('AI Chat (e2e)', () => {
         {
           userId,
           sessionId: chainTestSessionId,
-          localTime: '2024-01-01T12:00:00Z',
+          localTime: '2025-01-01T12:00:00Z',
         },
       );
 
@@ -863,7 +863,7 @@ describe('AI Chat (e2e)', () => {
       const context = {
         userId,
         sessionId: chainTestSessionId,
-        localTime: '2024-01-01T12:00:00Z',
+        localTime: '2025-01-01T12:00:00Z',
       };
 
       const call1 = await toolRegistry.executeTool(
@@ -896,7 +896,7 @@ describe('AI Chat (e2e)', () => {
       const context = {
         userId,
         sessionId: chainTestSessionId,
-        localTime: '2024-01-01T12:00:00Z',
+        localTime: '2025-01-01T12:00:00Z',
       };
 
       // Execute multiple tools in parallel
@@ -1018,7 +1018,7 @@ describe('Continuous Conversation (e2e)', () => {
         .set('Accept', 'text/event-stream')
         .send({
           message: '有什么午餐推荐吗？',
-          clientContext: { localTime: '2024-01-01T12:00:00Z' },
+          clientContext: { localTime: '2025-01-01T12:00:00Z' },
         })
         .buffer(false)
         .parse((res, callback) => {

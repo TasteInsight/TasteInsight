@@ -38,8 +38,8 @@ describe('OpeningHoursUtil', () => {
         },
       ];
 
-      // Monday 8:00 AM
-      const testTime = new Date('2024-01-01T08:00:00');
+      // Monday 8:00 AM (2025-01-06 is Monday)
+      const testTime = new Date('2025-01-06T08:00:00');
       const status = OpeningHoursUtil.getStatus(openingHours, testTime);
       expect(status).toBe('open');
     });
@@ -64,8 +64,8 @@ describe('OpeningHoursUtil', () => {
         },
       ];
 
-      // Monday 10:00 AM (before lunch)
-      const testTime = new Date('2024-01-01T10:00:00');
+      // Monday 10:00 AM (before lunch) (2025-01-06 is Monday)
+      const testTime = new Date('2025-01-06T10:00:00');
       const status = OpeningHoursUtil.getStatus(openingHours, testTime);
       expect(status).toBe('closed');
     });
@@ -84,7 +84,7 @@ describe('OpeningHoursUtil', () => {
         },
       ];
 
-      const testTime = new Date('2024-01-01T12:00:00');
+      const testTime = new Date('2025-01-06T12:00:00');
       const status = OpeningHoursUtil.getStatus(openingHours, testTime);
       expect(status).toBe('closed');
     });
@@ -125,8 +125,8 @@ describe('OpeningHoursUtil', () => {
         },
       ];
 
-      // Monday 8:00 AM - only floor 2 is open
-      const testTime = new Date('2024-01-01T08:00:00');
+      // Monday 8:00 AM - only floor 2 is open (2025-01-06 is Monday)
+      const testTime = new Date('2025-01-06T08:00:00');
       const status = OpeningHoursUtil.getStatus(openingHours, testTime);
       expect(status).toBe('open');
     });
@@ -151,16 +151,16 @@ describe('OpeningHoursUtil', () => {
         },
       ];
 
-      // Monday 23:30 (should be open)
-      const testTime1 = new Date('2024-01-01T23:30:00');
+      // Monday 23:30 (should be open) (2025-01-06 is Monday)
+      const testTime1 = new Date('2025-01-06T23:30:00');
       expect(OpeningHoursUtil.getStatus(openingHours, testTime1)).toBe('open');
 
-      // Monday 00:30 (should be open - after midnight)
-      const testTime2 = new Date('2024-01-01T00:30:00');
+      // Monday 00:30 (should be open - after midnight) (2025-01-06 is Monday)
+      const testTime2 = new Date('2025-01-06T00:30:00');
       expect(OpeningHoursUtil.getStatus(openingHours, testTime2)).toBe('open');
 
-      // Monday 02:00 (should be closed)
-      const testTime3 = new Date('2024-01-01T02:00:00');
+      // Monday 02:00 (should be closed) (2025-01-06 is Monday)
+      const testTime3 = new Date('2025-01-06T02:00:00');
       expect(OpeningHoursUtil.getStatus(openingHours, testTime3)).toBe(
         'closed',
       );
@@ -185,8 +185,8 @@ describe('OpeningHoursUtil', () => {
         },
       ];
 
-      // Exactly at opening time
-      const testTime = new Date('2024-01-01T11:00:00');
+      // Exactly at opening time (2025-01-06 is Monday)
+      const testTime = new Date('2025-01-06T11:00:00');
       expect(OpeningHoursUtil.getStatus(openingHours, testTime)).toBe('open');
     });
 
@@ -209,8 +209,8 @@ describe('OpeningHoursUtil', () => {
         },
       ];
 
-      // Exactly at closing time (should be closed)
-      const testTime = new Date('2024-01-01T13:00:00');
+      // Exactly at closing time (should be closed) (2025-01-06 is Monday)
+      const testTime = new Date('2025-01-06T13:00:00');
       expect(OpeningHoursUtil.getStatus(openingHours, testTime)).toBe('closed');
     });
 
@@ -238,12 +238,12 @@ describe('OpeningHoursUtil', () => {
         },
       ];
 
-      // Tuesday 12:00 (should be open)
-      const tuesday = new Date('2024-01-02T12:00:00');
+      // Tuesday 12:00 (should be open) (2025-01-07 is Tuesday)
+      const tuesday = new Date('2025-01-07T12:00:00');
       expect(OpeningHoursUtil.getStatus(openingHours, tuesday)).toBe('open');
 
-      // Wednesday 12:00 (should be closed - isClosed=true)
-      const wednesday = new Date('2024-01-03T12:00:00');
+      // Wednesday 12:00 (should be closed - isClosed=true) (2025-01-01 is Wednesday)
+      const wednesday = new Date('2025-01-01T12:00:00');
       expect(OpeningHoursUtil.getStatus(openingHours, wednesday)).toBe(
         'closed',
       );
@@ -280,8 +280,8 @@ describe('OpeningHoursUtil', () => {
         },
       ];
 
-      // Monday 10:00 AM
-      const testTime = new Date('2024-01-01T10:00:00');
+      // Monday 10:00 AM (2025-01-06 is Monday)
+      const testTime = new Date('2025-01-06T10:00:00');
       const info = OpeningHoursUtil.getNextOpeningInfo(openingHours, testTime);
       expect(info).toBe('将于11:00营业');
     });
@@ -310,8 +310,8 @@ describe('OpeningHoursUtil', () => {
         },
       ];
 
-      // Monday 15:00 (between lunch and dinner)
-      const testTime = new Date('2024-01-01T15:00:00');
+      // Monday 15:00 (between lunch and dinner) (2025-01-06 is Monday)
+      const testTime = new Date('2025-01-06T15:00:00');
       const info = OpeningHoursUtil.getNextOpeningInfo(openingHours, testTime);
       expect(info).toBe('将于17:00营业');
     });
@@ -335,8 +335,8 @@ describe('OpeningHoursUtil', () => {
         },
       ];
 
-      // Monday 20:00 (after all slots)
-      const testTime = new Date('2024-01-01T20:00:00');
+      // Monday 20:00 (after all slots) (2025-01-06 is Monday)
+      const testTime = new Date('2025-01-06T20:00:00');
       const info = OpeningHoursUtil.getNextOpeningInfo(openingHours, testTime);
       expect(info).toBeNull();
     });

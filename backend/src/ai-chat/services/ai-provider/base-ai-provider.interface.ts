@@ -8,7 +8,7 @@ export interface AIProviderConfig {
 
 export interface AIMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
-  content: string;
+  content: string | null; // Can be null when tool_calls are present (OpenAI API behavior)
   name?: string; // For tool responses
   tool_call_id?: string; // For tool responses
   tool_calls?: ToolCall[]; // For assistant messages with tool calls
