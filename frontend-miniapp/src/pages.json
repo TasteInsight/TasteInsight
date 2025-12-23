@@ -146,6 +146,12 @@
 			}
 		},
 		{
+			"path": "pages/easter-egg/index",
+			"style": {
+				"navigationBarTitleText": "食鉴彩蛋"
+			}
+		},
+		{
 			"path": "pages/profile/my-reviews/index",
 			"style": {
 				"navigationBarTitleText": "我的评价",

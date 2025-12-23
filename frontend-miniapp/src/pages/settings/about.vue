@@ -2,7 +2,7 @@
   <view class="w-full min-h-screen bg-gray-50 p-4">
     <view class="bg-white rounded-xl p-6 shadow-sm">
       <!-- 应用信息 -->
-      <view class="text-center mb-8">
+      <view class="text-center mb-8" @tap="handleSecretTap">
         <image src="/static/logo.png" class="w-20 h-20 mx-auto mb-4 rounded-xl" mode="aspectFit" />
         <text class="text-xl font-bold text-gray-800 block">食鉴 TasteInsight</text>
         <text class="text-gray-500 text-sm mt-1">Version 1.0.0</text>
@@ -192,6 +192,32 @@
 </template>
 
 <script setup lang="ts">
-// About page logic
+import { ref } from 'vue'
+
+const secretTapCount = ref(0)
+const lastTapAt = ref(0)
+
+const MAX_TAP_GAP_MS = 800
+const REQUIRED_TAPS = 5
+
+function handleSecretTap() {
+  const now = Date.now()
+  if (now - lastTapAt.value > MAX_TAP_GAP_MS) {
+    secretTapCount.value = 0
+  }
+  lastTapAt.value = now
+  secretTapCount.value += 1
+
+  if (secretTapCount.value >= REQUIRED_TAPS) {
+    secretTapCount.value = 0
+    uni.showToast({ title: '彩蛋入口已解锁', icon: 'none', duration: 1200 })
+    if (typeof uni.vibrateShort === 'function') {
+      uni.vibrateShort()
+    }
+    setTimeout(() => {
+      uni.navigateTo({ url: '/pages/easter-egg/index' })
+    }, 200)
+  }
+}
 </script>
 
