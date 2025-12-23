@@ -34,6 +34,20 @@
             :dish="dish"
             @click="goToDishDetail"
           />
+
+          <!-- 上拉加载更多：底部提示/动画 -->
+          <view class="flex items-center justify-center py-4 text-gray-500 text-sm">
+            <template v-if="dishesLoadingMore">
+              <view class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"></view>
+              <text>加载中...</text>
+            </template>
+            <template v-else-if="hasMore">
+              <text>上拉加载更多</text>
+            </template>
+            <template v-else>
+              <text>没有更多了</text>
+            </template>
+          </view>
         </view>
 
         <view v-else class="text-center py-10 text-gray-500">
@@ -46,7 +60,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { onLoad, onPullDownRefresh } from '@dcloudio/uni-app';
+import { onLoad, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import { useCanteenData } from './composables/use-canteen-data';
 import CanteenSearchBar from './components/CanteenSearchBar.vue';
 import CanteenFilterBar from './components/CanteenFilterBar.vue';
@@ -56,7 +70,7 @@ import CanteenWindowList from './components/CanteenWindowList.vue';
 import { CanteenSkeleton } from '@/components/skeleton';
 import type { GetDishesRequest } from '@/types/api';
 
-const { canteenInfo, loading, error, windows, dishes, init, fetchDishes } = useCanteenData();
+const { canteenInfo, loading, error, windows, dishes, dishesLoadingMore, hasMore, init, fetchDishes, loadMoreDishes } = useCanteenData();
 
 const currentCanteenId = ref('');
 const currentFilter = ref<GetDishesRequest['filter']>({});
@@ -111,4 +125,9 @@ const handleFilterChange = (filter: GetDishesRequest['filter']) => {
     fetchDishes(currentCanteenId.value, filter);
   }
 };
+
+// 触底上拉加载更多
+onReachBottom(async () => {
+  await loadMoreDishes();
+});
 </script>

@@ -15,6 +15,7 @@ import { AdminUploadsModule } from './admin-uploads/admin-uploads.module';
 import { AdminAdminsModule } from './admin-admins/admin-admins.module';
 import { AdminNewsModule } from './admin-news/admin-news.module';
 import { AdminConfigModule } from './admin-config/admin-config.module';
+import { AdminRecommendationModule } from './admin-recommendation/admin-recommendation.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CanteensModule } from './canteens/canteens.module';
 import { ReviewsModule } from './reviews/reviews.module';
@@ -26,6 +27,10 @@ import { UploadModule } from './upload/upload.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { BullModule } from '@nestjs/bullmq';
 import { DishSyncQueueModule } from './dish-sync-queue';
+import { DishReviewStatsQueueModule } from './dish-review-stats-queue';
+import { EmbeddingQueueModule } from './embedding-queue/embedding-queue.module';
+import { RecommendationModule } from './recommendation/recommendation.module';
+import { AIChatModule } from './ai-chat/ai-chat.module';
 import { join } from 'path';
 
 @Module({
@@ -45,6 +50,7 @@ import { join } from 'path';
       inject: [ConfigService],
     }),
     DishSyncQueueModule,
+    DishReviewStatsQueueModule,
     AuthModule,
     DishesModule,
     CanteensModule,
@@ -63,6 +69,10 @@ import { join } from 'path';
     AdminAdminsModule,
     AdminNewsModule,
     AdminConfigModule,
+    AdminRecommendationModule,
+    RecommendationModule,
+    EmbeddingQueueModule,
+    AIChatModule,
     UploadModule,
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'uploads'),

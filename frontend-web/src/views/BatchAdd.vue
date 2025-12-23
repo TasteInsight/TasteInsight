@@ -5,6 +5,7 @@
             title="批量添加菜品" 
             description="通过上传表格批量添加多个菜品"
             header-icon="carbon:document-multiple"
+            :show-border="false"
           />
           
           <div class="space-y-8">
@@ -90,6 +91,8 @@
                       <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">供应时段</th>
                       <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">菜品描述</th>
                       <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">Tags</th>
+                      <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">主辅料</th>
+                      <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">过敏原</th>
                       <th class="py-3 px-4 text-left text-sm font-medium text-gray-500">状态</th>
                     </tr>
                   </thead>
@@ -135,6 +138,30 @@
                             class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs"
                           >
                             {{ tag }}
+                          </span>
+                        </div>
+                        <span v-else class="text-gray-400">-</span>
+                      </td>
+                      <td class="py-3 px-4 text-sm">
+                        <div v-if="item.ingredients && item.ingredients.length > 0" class="flex flex-wrap gap-1">
+                          <span 
+                            v-for="ing in item.ingredients" 
+                            :key="ing"
+                            class="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs"
+                          >
+                            {{ ing }}
+                          </span>
+                        </div>
+                        <span v-else class="text-gray-400">-</span>
+                      </td>
+                      <td class="py-3 px-4 text-sm">
+                        <div v-if="item.allergens && item.allergens.length > 0" class="flex flex-wrap gap-1">
+                          <span 
+                            v-for="alg in item.allergens" 
+                            :key="alg"
+                            class="px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs"
+                          >
+                            {{ alg }}
                           </span>
                         </div>
                         <span v-else class="text-gray-400">-</span>
@@ -421,4 +448,24 @@ const parseError = ref<string | null>(null)
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
     }
+
+defineExpose({
+  fileInput,
+  downloadTemplate,
+  triggerFileInput,
+  parseFile,
+  handleFileSelect,
+  handleFileDrop,
+  submitBatchData,
+  resetBatchData,
+  exportErrorList,
+  uploadedFile,
+  parsedData,
+  isParsing,
+  isSubmitting,
+  parseError,
+  validCount,
+  warningCount,
+  invalidCount,
+})
 </script>

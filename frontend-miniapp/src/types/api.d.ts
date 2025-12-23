@@ -98,7 +98,7 @@ export interface UserPreference {
   portionSize?: 'small' | 'medium' | 'large';
   avoidIngredients?: string[];
   favoriteIngredients?: string[];
-  
+
 }
 
 export interface UserSettings {
@@ -120,208 +120,223 @@ export interface UserSettings {
  * Floor
  */
 export interface Floor {
-    /**
-     * 楼层数
-     */
-    level: string;
-    /**
-     * 楼层名
-     */
-    name?: string;
-    [property: string]: any;
+  /**
+   * 楼层数
+   */
+  level: string;
+  /**
+   * 楼层名
+   */
+  name?: string;
+  [property: string]: any;
 }
 
 export interface OpeningHour {
-    /**
-     * 星期几
-     */
-    dayOfWeek: string;
-    /**
-     * 是否关闭
-     */
-    isClosed: boolean;
-    /**
-     * 当天的开放时段列表
-     */
-    slots: Slot[];
-    [property: string]: any;
+  /**
+   * 星期几
+   */
+  dayOfWeek: string;
+  /**
+   * 是否关闭
+   */
+  isClosed: boolean;
+  /**
+   * 当天的开放时段列表
+   */
+  slots: Slot[];
+  [property: string]: any;
 }
 
 export interface Slot {
-    /**
-     * 结束时间
-     */
-    closeTime: string;
-    /**
-     * 早/中/晚/夜宵
-     */
-    mealType: string;
-    /**
-     * 开始时间
-     */
-    openTime: string;
-    [property: string]: any;
+  /**
+   * 结束时间
+   */
+  closeTime: string;
+  /**
+   * 早/中/晚/夜宵
+   */
+  mealType: string;
+  /**
+   * 开始时间
+   */
+  openTime: string;
+  [property: string]: any;
+}
+
+/**
+ * 营业时间（按楼层区分）
+ */
+export interface FloorOpeningHours {
+  /**
+   * 对应 Floor.level，如 "1", "2"。如果为 "default" 或空，则为通用配置
+   */
+  floorLevel: string;
+  /**
+   * 每日营业时间表
+   */
+  schedule: OpeningHour[];
+  [property: string]: any;
 }
 
 /**
  * Window
  */
 export interface Window {
-    description?: string;
-    floor: Floor;
-    id: string;
-    name: string;
-    /**
-     * 窗口号
-     */
-    number: string;
-    position?: string;
-    /**
-     * 特色
-     */
-    tags?: string[];
-    [property: string]: any;
+  description?: string;
+  floor: Floor;
+  id: string;
+  name: string;
+  /**
+   * 窗口号
+   */
+  number: string;
+  position?: string;
+  /**
+   * 特色
+   */
+  tags?: string[];
+  [property: string]: any;
 }
 
 /**
  * Canteen
  */
 export interface Canteen {
-    /**
-     * 平均评分
-     */
-    averageRating?: number;
-    description?: string;
-    floors: Floor[];
-    id: string;
-    images: string[];
-    name: string;
-    /**
-     * 营业时间
-     */
-    openingHours: OpeningHour[];
-    position?: string;
-    /**
-     * 评论数
-     */
-    reviewCount?: number;
-    /**
-     * 窗口列表
-     */
-    windows: Window[];
-    [property: string]: any;
+  /**
+   * 平均评分
+   */
+  averageRating?: number;
+  description?: string;
+  floors: Floor[];
+  id: string;
+  images: string[];
+  name: string;
+  /**
+   * 营业时间
+   */
+  openingHours: FloorOpeningHours[];
+  position?: string;
+  /**
+   * 评论数
+   */
+  reviewCount?: number;
+  /**
+   * 窗口列表
+   */
+  windows: Window[];
+  [property: string]: any;
 }
 
 export interface AvailableDate {
-    endDate: Date;
-    startDate: Date;
-    [property: string]: any;
+  endDate: Date;
+  startDate: Date;
+  [property: string]: any;
 }
 
 export enum AvailableMealTime {
-    Breakfast = "breakfast",
-    Dinner = "dinner",
-    Lunch = "lunch",
-    Nightsnack = "nightsnack",
+  Breakfast = "breakfast",
+  Dinner = "dinner",
+  Lunch = "lunch",
+  Nightsnack = "nightsnack",
 }
 
 /**
  * 菜品状态
  */
 export enum Status {
-    Offline = "offline",
-    Online = "online",
+  Offline = "offline",
+  Online = "online",
 }
 
 /**
  * Dish
  */
 export interface Dish {
-    /**
-     * 过敏原
-     */
-    allergens?: string[];
-    availableDates?: AvailableDate[];
-    /**
-     * 供应时段
-     */
-    availableMealTime?: AvailableMealTime[];
-    /**
-     * 平均评分
-     */
-    averageRating: number;
-    /**
-     * 所属食堂ID
-     */
-    canteenId?: string;
-    /**
-     * 所属食堂名称
-     */
-    canteenName?: string;
-    createdAt?: Date;
-    /**
-     * 菜品描述
-     */
-    description?: string;
-    /**
-     * 楼层
-     */
-    floorLevel?: string;
-    /**
-     * 楼层名
-     */
-    floorName?: string;
-    id: string;
-    /**
-     * 图片URL列表
-     */
-    images: string[];
-    /**
-     * 原辅料
-     */
-    ingredients?: string[];
-    /**
-     * 菜品名称
-     */
-    name: string;
-    oiliness?: number;
-    /**
-     * 父项菜ID
-     */
-    parentDishId?: string;
-    /**
-     * 价格
-     */
-    price: number;
-    /**
-     * 评价数量
-     */
-    reviewCount?: number;
-    saltiness?: number;
-    spicyLevel?: number;
-    /**
-     * 菜品状态
-     */
-    status?: Status;
-    /**
-     * 菜品子项列表
-     */
-    subDishId?: string[];
-    sweetness?: number;
-    /**
-     * 菜品标签
-     */
-    tags?: string[];
-    updatedAt?: Date;
-    /**
-     * 窗口名
-     */
-    windowName?: string;
-    /**
-     * 窗口号
-     */
-    windowNumber?: string;
-    [property: string]: any;
+  /**
+   * 过敏原
+   */
+  allergens?: string[];
+  availableDates?: AvailableDate[];
+  /**
+   * 供应时段
+   */
+  availableMealTime?: AvailableMealTime[];
+  /**
+   * 平均评分
+   */
+  averageRating: number;
+  /**
+   * 所属食堂ID
+   */
+  canteenId?: string;
+  /**
+   * 所属食堂名称
+   */
+  canteenName?: string;
+  createdAt?: Date;
+  /**
+   * 菜品描述
+   */
+  description?: string;
+  /**
+   * 楼层
+   */
+  floorLevel?: string;
+  /**
+   * 楼层名
+   */
+  floorName?: string;
+  id: string;
+  /**
+   * 图片URL列表
+   */
+  images: string[];
+  /**
+   * 原辅料
+   */
+  ingredients?: string[];
+  /**
+   * 菜品名称
+   */
+  name: string;
+  oiliness?: number;
+  /**
+   * 父项菜ID
+   */
+  parentDishId?: string;
+  /**
+   * 价格
+   */
+  price: number;
+  /**
+   * 评价数量
+   */
+  reviewCount?: number;
+  saltiness?: number;
+  spicyLevel?: number;
+  /**
+   * 菜品状态
+   */
+  status?: Status;
+  /**
+   * 菜品子项列表
+   */
+  subDishId?: string[];
+  sweetness?: number;
+  /**
+   * 菜品标签
+   */
+  tags?: string[];
+  updatedAt?: Date;
+  /**
+   * 窗口名
+   */
+  windowName?: string;
+  /**
+   * 窗口号
+   */
+  windowNumber?: string;
+  [property: string]: any;
 }
 
 export interface DishesImages {
@@ -369,13 +384,13 @@ export interface Comment {
 }
 
 export interface ParentComment {
-    deleted?: boolean;
-    /**
-     * parentComment ID
-     */
-    id?: string;
-    userId?: string;
-    userNickname?: string;
+  deleted?: boolean;
+  /**
+   * parentComment ID
+   */
+  id?: string;
+  userId?: string;
+  userNickname?: string;
 }
 
 /**
@@ -384,6 +399,13 @@ export interface ParentComment {
 export interface Favorite {
   dishId: string;
   addedAt: string;
+  dishName: string;
+  dishImages: string[];
+  dishPrice: number;
+  canteenName: string;
+  windowName: string;
+  tags: string[];
+  averageRating: number;
 }
 
 /**
@@ -519,8 +541,8 @@ export interface GetDishesRequest {
       min: number;
       max: number;
     };
-    
-    mealTime?: string[]; 
+
+    mealTime?: string[];
 
     // 口味范围筛选（必须是范围对象，不能是单个数字）
     oiliness?: {
@@ -539,7 +561,7 @@ export interface GetDishesRequest {
       min: number;
       max: number;
     };
-    priceUnit?:string;
+    priceUnit?: string;
 
     meatPreference?: string[];      // 肉类偏好
     avoidIngredients?: string[];    // 忌口
@@ -809,16 +831,16 @@ export interface AdminCreateRequest {
  * 登录响应数据
  */
 export interface LoginData {
-    token?: Token;
-    user?: User;
+  token?: Token;
+  user?: User;
 }
 
 /**
  * JWT Token
  */
 export interface Token {
-    accessToken?: string;
-    refreshToken?: string;
+  accessToken?: string;
+  refreshToken?: string;
 }
 
 /**
@@ -878,16 +900,23 @@ export interface MyUploadItem {
 export interface BrowseHistoryItem {
   dishId: string;
   viewedAt: string;
+  dishName: string;
+  dishImages: string[];
+  dishPrice: number;
+  canteenName: string;
+  windowName: string;
+  tags: string[];
+  averageRating: number;
 }
 
 /**
  * 用户信息项
  */
 export interface MyUserProfileResponse {
-    code?: number;
-    data?: User;
-    message?: string;
-    [property: string]: any;
+  code?: number;
+  data?: User;
+  message?: string;
+  [property: string]: any;
 }
 
 

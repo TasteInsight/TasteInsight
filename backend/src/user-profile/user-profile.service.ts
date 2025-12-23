@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import {
   UpdateUserProfileDto,
@@ -24,10 +24,14 @@ import {
   UserSettingData,
   UserUploadData,
 } from '@/user-profile/dto/user.dto';
+import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service';
 
 @Injectable()
 export class UserProfileService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Optional() private embeddingQueueService?: EmbeddingQueueService,
+  ) {}
 
   // 创建用户入口（由用户模块负责），缺省值由数据库默认值提供
   async createUser(openId: string) {
@@ -82,6 +86,14 @@ export class UserProfileService {
       Object.entries(userData).filter(([_, value]) => value !== undefined),
     );
 
+    // 标记是否需要刷新用户嵌入（避免重复刷新）
+    let needRefreshEmbedding = false;
+
+    // 检查是否更新了 allergens（过敏原变化会影响推荐）
+    if (userUpdatePayload.allergens !== undefined) {
+      needRefreshEmbedding = true;
+    }
+
     if (Object.keys(userUpdatePayload).length > 0) {
       await this.prisma.user.update({
         where: { id: userId },
@@ -101,6 +113,9 @@ export class UserProfileService {
         },
         update: preferenceData,
       });
+
+      // 偏好变化会影响推荐
+      needRefreshEmbedding = true;
     }
 
     // Update Settings if provided
@@ -114,6 +129,11 @@ export class UserProfileService {
         },
         update: settingsData,
       });
+    }
+
+    // 所有更新完成后，统一触发一次嵌入刷新（避免重复）
+    if (needRefreshEmbedding && this.embeddingQueueService) {
+      await this.embeddingQueueService.enqueueRefreshUser(userId);
     }
 
     return this.getUserProfile(userId);
@@ -166,6 +186,23 @@ export class UserProfileService {
         skip,
         take: pageSize,
         orderBy: { addedAt: 'desc' },
+        include: {
+          dish: {
+            select: {
+              name: true,
+              images: true,
+              price: true,
+              windowName: true,
+              tags: true,
+              averageRating: true,
+              canteen: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
       }),
       this.prisma.favoriteDish.count({ where: { userId } }),
     ]);
@@ -197,6 +234,23 @@ export class UserProfileService {
         skip,
         take: pageSize,
         orderBy: { viewedAt: 'desc' },
+        include: {
+          dish: {
+            select: {
+              name: true,
+              images: true,
+              price: true,
+              windowName: true,
+              tags: true,
+              averageRating: true,
+              canteen: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
       }),
       this.prisma.browseHistory.count({ where: { userId } }),
     ]);
@@ -310,24 +364,45 @@ export class UserProfileService {
   }
 
   private mapToUserPreferencesDto(preferences: any): UserPreferenceData {
-    // 数据库已有默认值，直接映射字段即可
+    // 处理 preferences 为空的情况
+    if (!preferences) {
+      return {
+        tagPreferences: [],
+        priceRange: {
+          min: 0,
+          max: 50,
+        },
+        meatPreference: [],
+        tastePreferences: {
+          spicyLevel: 0,
+          sweetness: 0,
+          saltiness: 0,
+          oiliness: 0,
+        },
+        canteenPreferences: [],
+        portionSize: 'medium',
+        favoriteIngredients: [],
+        avoidIngredients: [],
+      };
+    }
+
     return {
-      tagPreferences: preferences.tagPreferences,
+      tagPreferences: preferences.tagPreferences || [],
       priceRange: {
-        min: preferences.priceMin,
-        max: preferences.priceMax,
+        min: preferences.priceMin ?? 0,
+        max: preferences.priceMax ?? 50,
       },
-      meatPreference: preferences.meatPreference,
+      meatPreference: preferences.meatPreference || [],
       tastePreferences: {
-        spicyLevel: preferences.spicyLevel,
-        sweetness: preferences.sweetness,
-        saltiness: preferences.saltiness,
-        oiliness: preferences.oiliness,
+        spicyLevel: preferences.spicyLevel ?? 0,
+        sweetness: preferences.sweetness ?? 0,
+        saltiness: preferences.saltiness ?? 0,
+        oiliness: preferences.oiliness ?? 0,
       },
-      canteenPreferences: preferences.canteenPreferences,
-      portionSize: preferences.portionSize,
-      favoriteIngredients: preferences.favoriteIngredients,
-      avoidIngredients: preferences.avoidIngredients,
+      canteenPreferences: preferences.canteenPreferences || [],
+      portionSize: preferences.portionSize || 'medium',
+      favoriteIngredients: preferences.favoriteIngredients || [],
+      avoidIngredients: preferences.avoidIngredients || [],
     };
   }
 
@@ -357,18 +432,34 @@ export class UserProfileService {
   }
 
   private mapToUserSettingsDto(settings: any): UserSettingData {
-    // 数据库已有默认值，直接映射字段即可
+    // 处理 settings 为空的情况
+    if (!settings) {
+      return {
+        notificationSettings: {
+          newDishAlert: true,
+          priceChangeAlert: false,
+          reviewReplyAlert: true,
+          weeklyRecommendation: true,
+        },
+        displaySettings: {
+          showCalories: true,
+          showNutrition: false,
+          sortBy: 'rating',
+        },
+      };
+    }
+
     return {
       notificationSettings: {
-        newDishAlert: settings.newDishAlert,
-        priceChangeAlert: settings.priceChangeAlert,
-        reviewReplyAlert: settings.reviewReplyAlert,
-        weeklyRecommendation: settings.weeklyRecommendation,
+        newDishAlert: settings.newDishAlert ?? true,
+        priceChangeAlert: settings.priceChangeAlert ?? false,
+        reviewReplyAlert: settings.reviewReplyAlert ?? true,
+        weeklyRecommendation: settings.weeklyRecommendation ?? true,
       },
       displaySettings: {
-        showCalories: settings.showCalories,
-        showNutrition: settings.showNutrition,
-        sortBy: settings.defaultSortBy,
+        showCalories: settings.showCalories ?? true,
+        showNutrition: settings.showNutrition ?? false,
+        sortBy: settings.defaultSortBy || 'rating',
       },
     };
   }
@@ -426,13 +517,30 @@ export class UserProfileService {
     return {
       dishId: favorite.dishId,
       addedAt: favorite.addedAt.toISOString(),
+      dishName: favorite.dish.name,
+      dishImages: favorite.dish.images,
+      dishPrice: favorite.dish.price,
+      canteenName: favorite.dish.canteen.name,
+      windowName: favorite.dish.windowName,
+      tags: favorite.dish.tags,
+      averageRating: favorite.dish.averageRating,
     };
   }
 
   private mapToUserBrowseHistoryDto(history: any): UserHistoryData {
     return {
       dishId: history.dishId,
-      viewedAt: history.viewedAt.toISOString(),
+      viewedAt:
+        history.viewedAt instanceof Date
+          ? history.viewedAt.toISOString()
+          : history.viewedAt,
+      dishName: history.dish.name,
+      dishImages: history.dish.images,
+      dishPrice: history.dish.price,
+      canteenName: history.dish.canteen.name,
+      windowName: history.dish.windowName,
+      tags: history.dish.tags,
+      averageRating: history.dish.averageRating,
     };
   }
 

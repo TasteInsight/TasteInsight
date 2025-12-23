@@ -411,7 +411,7 @@ export function adminGetWindowList(
   params?: PaginationParams
 ): Promise<ApiResponse<WindowListData>> {
   return request({
-    url: `/admin/windows/${canteenId}`,
+    url: `/admin/canteens/${canteenId}/windows`,
     method: 'GET',
     data:params,
   });

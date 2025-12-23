@@ -8,37 +8,38 @@ import {
   Max,
   IsEnum,
   ValidateNested,
+  IsNumber,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { MealTime, DishSortField } from '@/common/enums';
 import { IsValidRange } from '@/common/validators/range.validator';
 
 // 评分范围
-class RatingRangeDto {
-  @IsInt()
+export class RatingRangeDto {
+  @IsNumber()
   @Min(0)
   @Max(5)
   min: number;
 
-  @IsInt()
+  @IsNumber()
   @Min(0)
   @Max(5)
   max: number;
 }
 
 // 价格范围
-class PriceRangeDto {
-  @IsInt()
+export class PriceRangeDto {
+  @IsNumber()
   @Min(0)
   min: number;
 
-  @IsInt()
+  @IsNumber()
   @Min(0)
   max: number;
 }
 
 // 口味范围（辣度、甜度、咸度、油度）
-class FlavorRangeDto {
+export class FlavorRangeDto {
   @IsInt()
   @Min(0)
   @Max(5)
@@ -51,7 +52,7 @@ class FlavorRangeDto {
 }
 
 // 过滤条件
-class FilterDto {
+export class FilterDto {
   @IsOptional()
   @ValidateNested()
   @Type(() => RatingRangeDto)
@@ -125,7 +126,7 @@ class FilterDto {
 }
 
 // 搜索条件
-class SearchDto {
+export class SearchDto {
   @IsString()
   keyword: string;
 
@@ -155,7 +156,7 @@ class SortDto {
 }
 
 // 分页信息
-class PaginationDto {
+export class PaginationDto {
   @IsInt()
   @Min(1)
   page: number;
@@ -168,6 +169,10 @@ class PaginationDto {
 
 // 主请求DTO
 export class GetDishesDto {
+  @IsOptional()
+  @IsBoolean()
+  isSuggestion?: boolean;
+
   @ValidateNested()
   @Type(() => FilterDto)
   filter: FilterDto;

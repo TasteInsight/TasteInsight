@@ -162,6 +162,8 @@ export default {
       { key: 'canteen', title: '食堂' },
       { key: 'window', title: '窗口' },
       { key: 'priceRange', title: '价格区间' },
+      { key: 'ingredients', title: '主辅料' },
+      { key: 'allergens', title: '过敏原' },
       { key: 'status', title: '状态' },
     ]
 

@@ -212,6 +212,7 @@ export interface DishUpdateRequest {
  */
 export interface GetDishesParams extends PaginationParams {
   canteenId?: string
+  windowId?: string
   status?: 'online' | 'offline'
   keyword?: string
 }
@@ -230,6 +231,8 @@ export interface BatchParsedDish {
   price: number           // 价格（数字部分）
   priceUnit?: string      // 价格单位（如"元"、"元/份"、"元/两"、"元/斤"）
   tags?: string[]         // tags
+  ingredients?: string[]  // 主辅料
+  allergens?: string[]    // 过敏原
   
   // 位置信息
   canteenName: string     // 食堂
@@ -329,10 +332,15 @@ export interface TimeSlot {
 /**
  * 营业时间
  */
-export interface OpeningHours {
+export interface DaliyOpeningHours {
   dayOfWeek: string
   slots: TimeSlot[]
   isClosed: boolean
+}
+
+export class FloorOpeningHours {
+  floorLevel: string; // 如“1”，"2"。如果为"default"或空，则为通用配置
+schedule: DailyopeningHours[];
 }
 
 /**
@@ -355,7 +363,7 @@ export interface CanteenUpdateRequest {
   position?: string
   description?: string
   images?: string[]
-  openingHours?: OpeningHours[]
+  openingHours?: FloorOpeningHours[]
   floors?: Floor[]
 }
 
@@ -441,13 +449,21 @@ export interface Review {
   id: string
   dishId: string
   userId: string
-  userNickname: string
-  userAvatar: string
+  userNickname?: string
+  userAvatar?: string
   rating: number
   content: string
   images?: string[]
   status: 'pending' | 'approved' | 'rejected'
   createdAt: string
+  ratingDetails?: {
+    spicyLevel?: number
+    sweetness?: number
+    saltiness?: number
+    oiliness?: number
+  } | null
+  rejectReason?: string | null
+  updatedAt?: string
 }
 
 /**
@@ -507,13 +523,15 @@ export interface Comment {
   id: string
   reviewId: string
   userId: string
-  userNickname: string
-  userAvatar: string
+  userNickname?: string
+  userAvatar?: string
   content: string
   status: 'pending' | 'approved' | 'rejected'
   parentComment?: ParentComment | null
   floor: number
   createdAt: string
+  rejectReason?: string | null
+  updatedAt?: string
 }
 
 /**
@@ -550,6 +568,7 @@ export interface Report {
     content: string | null
     userId: string
     userNickname: string
+    userAvatar: string | null
     isDeleted: boolean
     images?: string[] // 评价图片（仅当targetType为review时存在）
   }

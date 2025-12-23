@@ -25,7 +25,7 @@
           <text class="text-orange-500 font-bold">¥{{ dish.price }}</text>
           <view class="flex items-center">
             <text class="text-yellow-500">★</text>
-            <text class="text-yellow-500 ml-1">{{ dish.averageRating.toFixed(1) }}</text>
+            <text class="text-yellow-500 ml-1">{{ dish.averageRating === 0 ? '暂无' : dish.averageRating.toFixed(1) }}</text>
           </view>
         </view>
       </view>

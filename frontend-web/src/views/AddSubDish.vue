@@ -718,7 +718,7 @@ export default {
               .map((res) => res.data.url)
 
             const failed = formData.imageFiles.length - imageUrls.length
-            if (!window.confirm(`${failed}张图片上传失败，是否继续提交？`)) {
+            if (failed > 0 && !window.confirm(`${failed}张图片上传失败，是否继续提交？`)) {
               isSubmitting.value = false
               return
             }

@@ -2,14 +2,18 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
+  IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
   ValidateNested,
 } from 'class-validator';
+import { MealTime, DayOfWeek } from '@/common/enums';
 
 export class TimeSlot {
-  @IsString()
+  @IsEnum(MealTime, {
+    message: 'mealType must be one of: breakfast, lunch, dinner, nightsnack',
+  })
   @IsNotEmpty()
   mealType: string;
 
@@ -22,8 +26,11 @@ export class TimeSlot {
   closeTime: string;
 }
 
-export class OpeningHours {
-  @IsString()
+export class DailyOpeningHours {
+  @IsEnum(DayOfWeek, {
+    message:
+      'dayOfWeek must be one of: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday',
+  })
   @IsNotEmpty()
   dayOfWeek: string;
 
@@ -34,6 +41,17 @@ export class OpeningHours {
 
   @IsBoolean()
   isClosed: boolean;
+}
+
+export class FloorOpeningHours {
+  @IsString()
+  @IsOptional()
+  floorLevel?: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DailyOpeningHours)
+  schedule: DailyOpeningHours[];
 }
 
 export class FloorDto {
@@ -92,8 +110,8 @@ export class CreateCanteenDto {
 
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => OpeningHours)
-  openingHours: OpeningHours[];
+  @Type(() => FloorOpeningHours)
+  openingHours: FloorOpeningHours[];
 
   @IsArray()
   @ValidateNested({ each: true })

@@ -3,13 +3,15 @@ import { ReviewsService } from './reviews.service';
 import { PrismaService } from '@/prisma.service';
 import { AdminConfigService } from '@/admin-config/admin-config.service';
 import { ConfigKeys } from '@/admin-config/config-definitions';
+import { DishReviewStatsService } from '@/dish-review-stats-queue';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ReportType } from '@/common/enums';
 
 const mockPrisma = {
-  dish: { findUnique: jest.fn() },
+  dish: { findUnique: jest.fn(), update: jest.fn() },
   review: {
     create: jest.fn(),
+    upsert: jest.fn(),
     findMany: jest.fn(),
     count: jest.fn(),
     groupBy: jest.fn(),
@@ -23,6 +25,10 @@ const mockAdminConfigService = {
   getBooleanConfigValue: jest.fn(),
 };
 
+const mockDishReviewStatsService = {
+  recomputeDishStats: jest.fn(),
+};
+
 describe('ReviewsService', () => {
   let service: ReviewsService;
   let prisma: typeof mockPrisma;
@@ -33,11 +39,17 @@ describe('ReviewsService', () => {
         mockPrisma[key][fn].mockReset && mockPrisma[key][fn].mockReset();
       }
     }
+    mockAdminConfigService.getBooleanConfigValue.mockReset();
+    mockDishReviewStatsService.recomputeDishStats.mockReset();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ReviewsService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: AdminConfigService, useValue: mockAdminConfigService },
+        {
+          provide: DishReviewStatsService,
+          useValue: mockDishReviewStatsService,
+        },
       ],
     }).compile();
     service = module.get<ReviewsService>(ReviewsService);
@@ -63,7 +75,12 @@ describe('ReviewsService', () => {
     it('should create review with detailed ratings and return data', async () => {
       prisma.dish.findUnique.mockResolvedValue({ id: 'd1', canteenId: 'c1' });
       mockAdminConfigService.getBooleanConfigValue.mockResolvedValue(false);
-      prisma.review.create.mockResolvedValue({
+
+      // Mock findUnique to return null (no existing review)
+      prisma.review.findUnique.mockResolvedValue(null);
+
+      // Mock upsert to create new review
+      prisma.review.upsert.mockResolvedValue({
         id: 'r1',
         dishId: 'd1',
         userId: 'u1',
@@ -92,9 +109,9 @@ describe('ReviewsService', () => {
         },
       });
       expect(prisma.dish.findUnique).toHaveBeenCalled();
-      expect(prisma.review.create).toHaveBeenCalledWith(
+      expect(prisma.review.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
+          create: expect.objectContaining({
             spicyLevel: 3,
             sweetness: 2,
             saltiness: 3,
@@ -102,7 +119,11 @@ describe('ReviewsService', () => {
           }),
         }),
       );
+      expect(
+        mockDishReviewStatsService.recomputeDishStats,
+      ).not.toHaveBeenCalled();
       expect(result).toHaveProperty('code', 201);
+      expect(result).toHaveProperty('message', '创建成功');
       expect(result.data).toHaveProperty('id', 'r1');
       expect(result.data.ratingDetails).toHaveProperty('spicyLevel', 3);
     });
@@ -110,7 +131,9 @@ describe('ReviewsService', () => {
     it('should create approved review when auto-approve is enabled', async () => {
       prisma.dish.findUnique.mockResolvedValue({ id: 'd1', canteenId: 'c1' });
       mockAdminConfigService.getBooleanConfigValue.mockResolvedValue(true);
-      prisma.review.create.mockResolvedValue({
+
+      prisma.review.findUnique.mockResolvedValue(null);
+      prisma.review.upsert.mockResolvedValue({
         id: 'r1',
         dishId: 'd1',
         userId: 'u1',
@@ -136,15 +159,86 @@ describe('ReviewsService', () => {
         ConfigKeys.REVIEW_AUTO_APPROVE,
         'c1',
       );
-      expect(prisma.review.create).toHaveBeenCalledWith(
+      expect(prisma.review.upsert).toHaveBeenCalledWith(
         expect.objectContaining({
-          data: expect.objectContaining({
+          create: expect.objectContaining({
             status: 'approved',
           }),
         }),
       );
+      expect(
+        mockDishReviewStatsService.recomputeDishStats,
+      ).toHaveBeenCalledWith('d1');
       expect(result).toHaveProperty('code', 201);
       expect(result.data).toHaveProperty('id', 'r1');
+    });
+
+    it('should enqueue dish stats recompute (auto-approved)', async () => {
+      prisma.dish.findUnique.mockResolvedValue({ id: 'd1', canteenId: 'c1' });
+      mockAdminConfigService.getBooleanConfigValue.mockResolvedValue(true);
+
+      prisma.review.findUnique.mockResolvedValue(null);
+      prisma.review.upsert.mockResolvedValue({
+        id: 'r1',
+        dishId: 'd1',
+        userId: 'u1',
+        rating: 4,
+        content: 'c',
+        images: [],
+        status: 'approved',
+        spicyLevel: null,
+        sweetness: null,
+        saltiness: null,
+        oiliness: null,
+        createdAt: new Date(),
+        deletedAt: null,
+        user: { id: 'u1', nickname: 'nick', avatar: 'a' },
+      });
+
+      await service.createReview('u1', {
+        dishId: 'd1',
+        rating: 4,
+        content: 'c',
+        images: [],
+      });
+
+      expect(
+        mockDishReviewStatsService.recomputeDishStats,
+      ).toHaveBeenCalledWith('d1');
+    });
+
+    it('should enqueue dish stats recompute (pending)', async () => {
+      prisma.dish.findUnique.mockResolvedValue({ id: 'd1', canteenId: 'c1' });
+      mockAdminConfigService.getBooleanConfigValue.mockResolvedValue(false);
+
+      prisma.review.findUnique.mockResolvedValue(null);
+      prisma.review.upsert.mockResolvedValue({
+        id: 'r1',
+        dishId: 'd1',
+        userId: 'u1',
+        rating: 1,
+        content: 'pending',
+        images: [],
+        status: 'pending',
+        spicyLevel: null,
+        sweetness: null,
+        saltiness: null,
+        oiliness: null,
+        createdAt: new Date(),
+        deletedAt: null,
+        user: { id: 'u1', nickname: 'nick', avatar: 'a' },
+      });
+
+      await service.createReview('u1', {
+        dishId: 'd1',
+        rating: 1,
+        content: 'pending',
+        images: [],
+      });
+
+      expect(
+        mockDishReviewStatsService.recomputeDishStats,
+      ).not.toHaveBeenCalled();
     });
   });
 
@@ -246,6 +340,7 @@ describe('ReviewsService', () => {
       prisma.review.findUnique.mockResolvedValue({
         id: 'r1',
         userId: 'u1',
+        dishId: 'd1',
         deletedAt: null,
       });
       prisma.review.update.mockResolvedValue({});
@@ -254,6 +349,9 @@ describe('ReviewsService', () => {
         where: { id: 'r1' },
         data: expect.objectContaining({ deletedAt: expect.any(Date) }),
       });
+      expect(
+        mockDishReviewStatsService.recomputeDishStats,
+      ).toHaveBeenCalledWith('d1');
       expect(result.code).toBe(200);
     });
   });

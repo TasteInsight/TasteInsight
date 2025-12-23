@@ -1,40 +1,66 @@
 <template>
-  <view class="min-h-screen bg-white">
+  <view class="min-h-screen bg-white flex flex-col">
     <!-- 骨架屏 -->
     <WindowSkeleton v-if="isInitialLoading" />
     
     <template v-else>
       <!-- 搜索栏 -->
-      <view class="px-4">
+      <view class="px-4 flex-shrink-0">
         <CanteenSearchBar />
       </view>
 
-      <!-- 窗口信息 -->
-      <WindowHeader :window="windowInfo" />
+      <!-- 窗口信息和菜品列表 - 支持下拉刷新 -->
+      <scroll-view
+        class="flex-1"
+        scroll-y="true"
+        enable-flex="true"
+        refresher-enabled="true"
+        :refresher-triggered="refresherTriggered"
+        @refresherrefresh="onRefresh"
+        @refresherrestore="onRefreshRestore"
+        lower-threshold="80"
+        @scrolltolower="onLoadMore"
+      >
+        <!-- 窗口信息 -->
+        <WindowHeader :window="windowInfo" />
 
-      <!-- 菜品列表 -->
-      <view class="px-4">
-        <view v-if="loading" class="text-center py-8 text-gray-500">
-          加载中...
-        </view>
+        <!-- 菜品列表 -->
+        <view class="px-4 pb-4">
+          <view v-if="loading" class="text-center py-8 text-gray-500">
+            加载中...
+          </view>
 
-        <view v-else-if="error" class="text-center py-8 text-red-500">
-          {{ error }}
-        </view>
+          <view v-else-if="error" class="text-center py-8 text-red-500">
+            {{ error }}
+          </view>
 
-        <view v-else-if="dishes.length > 0">
-          <CanteenDishCard
-            v-for="dish in dishes"
-            :key="dish.id"
-            :dish="dish"
-            @click="goToDishDetail"
-          />
-        </view>
+          <view v-else-if="dishes.length > 0">
+            <CanteenDishCard
+              v-for="dish in dishes"
+              :key="dish.id"
+              :dish="dish"
+              @click="goToDishDetail"
+            />
+          </view>
 
-        <view v-else class="text-center py-10 text-gray-500">
-          暂无菜品信息
+          <view v-if="dishes.length > 0 || loadingMore" class="flex items-center justify-center py-4 text-gray-500 text-sm">
+            <template v-if="loadingMore">
+              <view class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"></view>
+              <text>加载中...</text>
+            </template>
+            <template v-else-if="hasMore">
+              <text>上拉加载更多</text>
+            </template>
+            <template v-else>
+              <text>没有更多了</text>
+            </template>
+          </view>
+
+          <view v-else class="text-center py-10 text-gray-500">
+            暂无菜品信息
+          </view>
         </view>
-      </view>
+      </scroll-view>
     </template>
   </view>
 </template>
@@ -48,10 +74,11 @@ import CanteenSearchBar from '../canteen/components/CanteenSearchBar.vue';
 import CanteenDishCard from '../canteen/components/CanteenDishCard.vue';
 import { WindowSkeleton } from '@/components/skeleton';
 
-const { windowInfo, loading, error, dishes, init } = useWindowData();
+const { windowInfo, loading, loadingMore, hasMore, error, dishes, init, fetchDishes, loadMoreDishes, fetchWindow } = useWindowData();
 
 let currentWindowId = '';
 const isInitialLoading = ref(true);
+const refresherTriggered = ref(false);
 
 onLoad(async (options: any) => {
   if (options.id) {
@@ -65,6 +92,43 @@ onLoad(async (options: any) => {
     isInitialLoading.value = false;
   }
 });
+
+/**
+ * 下拉刷新处理
+ */
+const onRefresh = async () => {
+  if (!currentWindowId) return;
+  
+  refresherTriggered.value = true;
+  
+  try {
+    // 同时刷新窗口信息和菜品列表
+    await Promise.all([
+      fetchWindow(currentWindowId),
+      fetchDishes(currentWindowId)
+    ]);
+  } catch (err) {
+    console.error('刷新失败:', err);
+  } finally {
+    refresherTriggered.value = false;
+  }
+};
+
+/**
+ * 刷新恢复处理
+ */
+const onRefreshRestore = () => {
+  refresherTriggered.value = false;
+};
+
+/**
+ * 触底上拉加载更多（scroll-view）
+ */
+const onLoadMore = async () => {
+  if (!currentWindowId) return;
+  if (!hasMore.value) return;
+  await loadMoreDishes(currentWindowId);
+};
 
 const goToSearch = () => uni.navigateTo({ url: '/pages/search/index' });
 const goToDishDetail = (id: string) => uni.navigateTo({ url: `/pages/dish/index?id=${id}` });

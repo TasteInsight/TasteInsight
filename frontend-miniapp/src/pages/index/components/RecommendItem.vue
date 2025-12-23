@@ -25,8 +25,8 @@
         <span class="text-orange-500 font-bold text-lg">¥{{ dish.price.toFixed(1) }}</span>
         <view class="flex items-center bg-yellow-50 px-2 py-1 rounded">
           <text class="text-yellow-500" style="font-size: 16px; line-height: 1;">★</text>
-          <span class="text-yellow-600 ml-1 font-semibold text-sm">{{ dish.averageRating.toFixed(1) }}</span>
-          <span class="text-gray-400 text-xs ml-1">分</span>
+          <span class="text-yellow-600 ml-1 font-semibold text-sm">{{ dish.averageRating === 0 ? '暂无' : dish.averageRating.toFixed(1) }}</span>
+          <span v-if="dish.averageRating !== 0" class="text-gray-400 text-xs ml-1">分</span>
         </view>
       </view>
     </view>

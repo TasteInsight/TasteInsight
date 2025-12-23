@@ -111,7 +111,7 @@
             </button>
           </div>
 
-          <div class="space-y-4">
+          <div class="max-h-[400px] overflow-y-auto space-y-4 pr-2">
             <div v-for="(item, index) in formData.subItems" :key="index" class="sub-item-row">
               <div class="flex space-x-4">
                 <div class="flex-1">

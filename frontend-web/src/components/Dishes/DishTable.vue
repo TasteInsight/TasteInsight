@@ -105,5 +105,79 @@
 <script>
 import { computed } from 'vue'
 
-// ...existing code...
+export default {
+  name: 'DishTable',
+  props: {
+    columns: {
+      type: Array,
+      required: true,
+    },
+    data: {
+      type: Array,
+      default: () => [],
+    },
+    actions: {
+      type: Array,
+      default: () => ['edit', 'delete', 'view'],
+    },
+    currentPage: {
+      type: Number,
+      default: 1,
+    },
+    pageSize: {
+      type: Number,
+      default: 10,
+    },
+    imageFallback: {
+      type: String,
+      default: '',
+    },
+  },
+  emits: ['edit', 'delete', 'view'],
+  setup(props) {
+    const paginatedData = computed(() => {
+      const page = Number.isFinite(props.currentPage) ? props.currentPage : 1
+      const size = Number.isFinite(props.pageSize) ? props.pageSize : 10
+      const start = Math.max(0, (page - 1) * size)
+      return (props.data || []).slice(start, start + size)
+    })
+
+    const getImageUrl = (value) => {
+      if (typeof value === 'string' && value.trim()) return value
+      return props.imageFallback
+    }
+
+    const getStatusText = (value) => {
+      if (value === true) return '启用'
+      if (value === false) return '禁用'
+      if (value == null) return ''
+      return String(value)
+    }
+
+    const getStatusClass = (value) => {
+      const text = getStatusText(value)
+      if (
+        value === true ||
+        /^(启用|有效|已发布|已通过|上架|可用)$/i.test(text) ||
+        /approved|enabled|active/i.test(text)
+      ) {
+        return 'bg-green-100 text-green-700'
+      }
+
+      if (/待|审核|pending/i.test(text)) {
+        return 'bg-yellow-100 text-yellow-700'
+      }
+
+      if (!text) return 'bg-gray-100 text-gray-600'
+      return 'bg-red-100 text-red-700'
+    }
+
+    return {
+      paginatedData,
+      getImageUrl,
+      getStatusText,
+      getStatusClass,
+    }
+  },
+}
 </script>

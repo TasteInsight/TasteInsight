@@ -264,7 +264,7 @@
                 </button>
               </div>
 
-              <div v-if="subDishes.length > 0" class="space-y-3">
+              <div v-if="subDishes.length > 0" class="max-h-[400px] overflow-y-auto space-y-3 pr-2">
                 <!-- 子项列表 -->
                 <div
                   v-for="(subDish, index) in subDishes"
@@ -610,6 +610,7 @@ export default {
       allergens: '',
       ingredients: '',
       imageFiles: [], // { id: string, url: string, file?: File, isNew: boolean }
+      subItems: [], // 兼容 submitForm 中对子项价格兜底逻辑
       tags: [],
       spicyLevel: 0,
       saltiness: 0,

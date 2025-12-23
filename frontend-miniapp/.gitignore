@@ -8,11 +8,15 @@ pnpm-debug.log*
 lerna-debug.log*
 
 .VSCodeCounter
+coverage
 
 node_modules
 .DS_Store
 dist
 *.local
+
+# Artillery load-test reports
+load-report*.json
 
 # Editor directories and files
 .idea

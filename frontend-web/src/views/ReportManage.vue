@@ -64,9 +64,13 @@
               class="hover:bg-gray-50"
             >
               <td class="py-4 px-6">
-                <div class="font-medium">
-                  <span class="iconify inline-block mr-1" data-icon="mdi:account"></span>
-                  {{ report.reporterNickname || report.reporter?.nickname || '未知用户' }}
+                <div class="flex items-center">
+                  <img
+                    :src="report.reporter?.avatar || '/default-avatar.png'"
+                    :alt="report.reporterNickname || report.reporter?.nickname || '用户'"
+                    class="w-8 h-8 rounded-full mr-2 border border-gray-200"
+                  />
+                  <span class="text-sm font-medium text-gray-900">{{ report.reporterNickname || report.reporter?.nickname || '未知用户' }}</span>
                 </div>
               </td>
               <td class="py-4 px-6">
@@ -74,25 +78,13 @@
                   <div class="text-sm">
                     {{ report.targetType === 'review' ? '评价' : '评论' }}
                   </div>
-                  <!-- 评价图片预览 -->
+                  <!-- 评价图片数量 -->
                   <div 
                     v-if="report.targetType === 'review' && report.targetContent?.images && report.targetContent.images.length > 0"
-                    class="flex items-center space-x-1"
+                    class="ml-2 inline-flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 rounded text-xs text-gray-600"
                   >
-                    <img
-                      :src="report.targetContent.images[0]"
-                      :alt="'评价图片'"
-                      class="w-10 h-10 rounded object-cover border cursor-pointer hover:opacity-80 transition"
-                      @click.stop="openDetailDialog(report)"
-                      title="点击查看详情"
-                    />
-                    <span 
-                      v-if="report.targetContent.images.length > 1"
-                      class="text-xs text-gray-500"
-                      title="共{{ report.targetContent.images.length }}张图片"
-                    >
-                      +{{ report.targetContent.images.length - 1 }}
-                    </span>
+                    <span class="iconify inline-block text-sm" data-icon="carbon:image"></span>
+                    <span>{{ report.targetContent.images.length }} 张</span>
                   </div>
                 </div>
               </td>
@@ -152,8 +144,13 @@
                 <div class="grid grid-cols-2 gap-6">
                   <div class="space-y-1">
                     <div class="text-xs text-gray-400 uppercase tracking-wide">举报人</div>
-                    <div class="text-sm font-medium text-gray-900">
-                      {{ selectedReport.reporterNickname || selectedReport.reporter?.nickname || '未知用户' }}
+                    <div class="flex items-center">
+                      <img
+                        :src="selectedReport.reporter?.avatar || '/default-avatar.png'"
+                        :alt="selectedReport.reporterNickname || selectedReport.reporter?.nickname || '用户'"
+                        class="w-6 h-6 rounded-full mr-2 border border-gray-200"
+                      />
+                      <span class="text-sm font-medium text-gray-900">{{ selectedReport.reporterNickname || selectedReport.reporter?.nickname || '未知用户' }}</span>
                     </div>
                   </div>
                   <div class="space-y-1">
@@ -205,9 +202,14 @@
                   被举报内容
                 </h4>
                 <div v-if="selectedReport.targetContent">
-                  <div class="mb-4 text-sm">
-                    <span class="text-gray-500">发布者：</span>
-                    <span class="text-gray-900 font-medium ml-2">
+                  <div class="mb-4 flex items-center">
+                    <span class="text-gray-500 text-sm mr-2">发布者：</span>
+                    <img
+                      :src="selectedReport.targetContent.userAvatar || '/default-avatar.png'"
+                      :alt="selectedReport.targetContent.userNickname || '用户'"
+                      class="w-6 h-6 rounded-full mr-2 border border-gray-200"
+                    />
+                    <span class="text-gray-900 font-medium text-sm">
                       {{ selectedReport.targetContent.userNickname || '未知用户' }}
                     </span>
                   </div>
@@ -216,7 +218,7 @@
                       {{ selectedReport.targetContent.content || '（无内容）' }}
                     </div>
                   </div>
-                  <!-- 评价图片展示 -->
+                  <!-- 评价图片数量 -->
                   <div 
                     v-if="selectedReport.targetType === 'review' && selectedReport.targetContent.images && selectedReport.targetContent.images.length > 0"
                     class="mb-4"
@@ -227,11 +229,11 @@
                         v-for="(image, index) in selectedReport.targetContent.images"
                         :key="index"
                         class="relative group aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100 cursor-pointer hover:border-tsinghua-purple transition"
-                        @click="openImagePreview(selectedReport.targetContent.images, index)"
+                        @click="openImagePreview(selectedReport.targetContent.images, Number(index))"
                       >
                         <img
                           :src="image"
-                          :alt="`评价图片 ${index + 1}`"
+                          :alt="`评价图片 ${Number(index) + 1}`"
                           class="w-full h-full object-cover"
                         />
                         <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition flex items-center justify-center">
@@ -362,7 +364,7 @@
 </template>
 
 <script lang="ts">
-import { ref, onMounted, onUnmounted, defineComponent } from 'vue'
+import { ref, onMounted, onActivated, onUnmounted, defineComponent } from 'vue'
 import { reviewApi } from '@/api/modules/review'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
@@ -476,10 +478,10 @@ export default defineComponent({
       }
 
       try {
-        const response = await reviewApi.deleteReview(report.targetId)
+        const response = await reviewApi.handleReport(report.id, { action: 'delete_content' })
         if (response.code === 200) {
           alert('删除成功')
-          loadReports()
+          await loadReports()
           // 如果详情对话框打开，更新选中的举报信息
           if (selectedReport.value && selectedReport.value.id === report.id) {
             // 重新加载该举报的详细信息
@@ -510,10 +512,10 @@ export default defineComponent({
       }
 
       try {
-        const response = await reviewApi.deleteComment(report.targetId)
+        const response = await reviewApi.handleReport(report.id, { action: 'delete_content' })
         if (response.code === 200) {
           alert('删除成功')
-          loadReports()
+          await loadReports()
           // 如果详情对话框打开，更新选中的举报信息
           if (selectedReport.value && selectedReport.value.id === report.id) {
             // 重新加载该举报的详细信息
@@ -567,7 +569,7 @@ export default defineComponent({
 
         if (response.code === 200) {
           alert('处理成功')
-          loadReports()
+          await loadReports()
           // 如果详情对话框打开，更新选中的举报信息
           if (selectedReport.value && selectedReport.value.id === report.id) {
             // 重新加载该举报的详细信息
@@ -642,6 +644,10 @@ export default defineComponent({
     onMounted(() => {
       loadReports()
       window.addEventListener('keydown', handleKeyDown)
+    })
+
+    onActivated(() => {
+      loadReports()
     })
 
     onUnmounted(() => {

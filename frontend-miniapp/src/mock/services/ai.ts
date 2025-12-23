@@ -1,8 +1,18 @@
-// Mock AI 服务
-import type { SuggestionData, ApiResponse } from '@/types/api';
+import type { 
+  SuggestionData, 
+  ApiResponse,
+  SessionCreateData,
+  HistoryData,
+  ChatMessageItem,
+  ChatRequest,
+  AIStreamCallbacks
+} from '@/types/api';
 
 // 模拟网络延迟
 const mockDelay = () => new Promise(resolve => setTimeout(resolve, 200));
+
+// 模拟会话存储
+const mockSessions = new Map<string, ChatMessageItem[]>();
 
 // AI 提示词数据
 const mockAISuggestions = [
@@ -44,4 +54,119 @@ export const mockGetAISuggestions = async (): Promise<ApiResponse<SuggestionData
   
   console.log('🤖 [Mock] 获取AI提示词 - 返回数据:', JSON.stringify(response));
   return response;
+};
+
+// 创建会话
+export const mockCreateAISession = async (): Promise<ApiResponse<SessionCreateData>> => {
+  console.log('🤖 [Mock] 创建AI会话 - 开始');
+  await mockDelay();
+  
+  const sessionId = `mock-session-${Date.now()}`;
+  mockSessions.set(sessionId, []);
+  
+  const response = {
+    code: 200,
+    message: 'success',
+    data: {
+      sessionId,
+      welcomeMessage: '你好！我是你的美食助手，有什么可以帮你的吗？'
+    }
+  };
+  
+  console.log('🤖 [Mock] 创建AI会话 - 返回数据:', JSON.stringify(response));
+  return response;
+};
+
+// 获取历史记录
+export const mockGetAIHistory = async (sessionId: string): Promise<ApiResponse<HistoryData>> => {
+  console.log(`🤖 [Mock] 获取AI历史记录 - SessionId: ${sessionId}`);
+  await mockDelay();
+  
+  // 模拟一些历史数据，如果为空
+  let messages = mockSessions.get(sessionId);
+  if (!messages) {
+      messages = [];
+      mockSessions.set(sessionId, messages);
+  }
+  
+  const response = {
+    code: 200,
+    message: 'success',
+    data: {
+      messages
+    }
+  };
+  
+  return response;
+};
+
+// 流式对话
+export const mockStreamAIChat = (
+  sessionId: string,
+  payload: ChatRequest,
+  callbacks: AIStreamCallbacks = {}
+) => {
+  console.log(`🤖 [Mock] 流式对话 - SessionId: ${sessionId}, Message: ${payload.message}`);
+  
+  let isAborted = false;
+  
+  // 模拟用户消息入库
+  const userMsg: ChatMessageItem = {
+    role: 'user',
+    timestamp: new Date().toISOString(),
+    content: [{ type: 'text', data: payload.message }]
+  };
+  
+  const history = mockSessions.get(sessionId) || [];
+  history.push(userMsg);
+  mockSessions.set(sessionId, history);
+
+  // 模拟AI回复
+  const aiResponseText = `收到你的消息："${payload.message}"。这是一个模拟的流式回复。
+  
+我可以帮你推荐菜品，或者制定饮食计划。`;
+  
+  const chunks = aiResponseText.split('');
+  let currentIndex = 0;
+  
+  const streamInterval = setInterval(() => {
+    if (isAborted) {
+      clearInterval(streamInterval);
+      return;
+    }
+    
+    if (currentIndex >= chunks.length) {
+      clearInterval(streamInterval);
+      
+      // 模拟AI消息入库
+      const aiMsg: ChatMessageItem = {
+        role: 'assistant',
+        timestamp: new Date().toISOString(),
+        content: [{ type: 'text', data: aiResponseText }]
+      };
+      history.push(aiMsg);
+      mockSessions.set(sessionId, history);
+      
+      callbacks.onComplete?.();
+      return;
+    }
+    
+    // 每次发送几个字符
+    const chunkSize = Math.floor(Math.random() * 3) + 1;
+    const chunkContent = chunks.slice(currentIndex, currentIndex + chunkSize).join('');
+    currentIndex += chunkSize;
+    
+    // 发送事件类型和文本chunk
+    callbacks.onEvent?.('text_chunk');
+    callbacks.onMessage?.(chunkContent);
+    
+  }, 100); 
+  
+  return {
+    close: () => {
+      isAborted = true;
+      clearInterval(streamInterval);
+      console.log('🤖 [Mock] 流式对话 - 已中断');
+    }
+  };
 };

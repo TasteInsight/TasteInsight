@@ -37,7 +37,7 @@
     >
       <!-- 标题栏 -->
       <view class="flex justify-center items-center mb-4 pb-4 border-b border-gray-100 relative">
-        <h2 class="text-lg font-bold text-gray-800">写评价</h2>
+        <h2 class="text-lg font-bold text-gray-800">{{ isEditing ? '修改评价' : '写评价' }}</h2>
         <button
           class="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-gray-400 text-xl rounded-full bg-transparent border-0 after:border-none"
           @tap="handleClose"
@@ -154,19 +154,22 @@
         :disabled="submitting"
         @click="handleSubmit"
       >
-        {{ submitting ? '提交中...' : '提交评价' }}
+        {{ submitting ? '提交中...' : (isEditing ? '更新评价' : '提交评价') }}
       </button>
     </scroll-view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, nextTick, ref, computed } from 'vue';
+import { onMounted, onUnmounted, nextTick, ref, computed, watch } from 'vue';
 import { useReviewForm } from '../composables/use-review';
+import type { Review } from '@/types/api';
 
 interface Props {
   dishId: string;
   dishName: string;
+  existingReviewId?: string;
+  initialReview?: Review | null;
 }
 
 interface Emits {
@@ -176,6 +179,8 @@ interface Emits {
 
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
+
+const isEditing = computed(() => !!props.existingReviewId);
 
 const {
   rating,
@@ -201,6 +206,22 @@ const {
   uploadImages,
   removeImage
 } = useReviewForm();
+
+const applyInitialReview = (review: Review) => {
+  resetForm();
+  rating.value = review.rating || 0;
+  content.value = review.content || '';
+  images.value = Array.isArray(review.images) ? [...review.images] : [];
+
+  if (review.ratingDetails) {
+    flavorRatings.value = {
+      spicyLevel: review.ratingDetails.spicyLevel ?? 0,
+      sweetness: review.ratingDetails.sweetness ?? 0,
+      saltiness: review.ratingDetails.saltiness ?? 0,
+      oiliness: review.ratingDetails.oiliness ?? 0,
+    };
+  }
+};
 
 // 图片选择
 const handleChooseImage = () => {
@@ -270,15 +291,20 @@ const updateScreenWidth = () => {
 onMounted(() => {
   // 获取屏幕宽度
   updateScreenWidth();
-  
-  // 检查是否有保存的评价状态
-  if (hasSavedReviewState(props.dishId)) {
-    showResumeDialog.value = true;
+
+  // 编辑模式：不展示“恢复草稿”，始终以历史评价为基础进行修改
+  if (!isEditing.value) {
+    // 检查是否有保存的评价状态
+    if (hasSavedReviewState(props.dishId)) {
+      showResumeDialog.value = true;
+    }
   }
   
   nextTick(() => {
-    // 添加CSS类来隐藏tabbar
-    document.body.classList.add('hide-tabbar');
+    // 添加CSS类来隐藏tabbar（小程序环境没有 document）
+    if (typeof document !== 'undefined' && document?.body) {
+      document.body.classList.add('hide-tabbar');
+    }
 
     // 同时尝试API隐藏
     setTimeout(() => {
@@ -292,10 +318,24 @@ onMounted(() => {
   });
 });
 
+// initialReview 往往是异步拉取后才有值；这里用 watch 确保“修改评价”能稳定回填
+watch(
+  () => props.initialReview,
+  (review) => {
+    if (!isEditing.value) return;
+    if (!review) return;
+    showResumeDialog.value = false;
+    applyInitialReview(review);
+  },
+  { immediate: true }
+);
+
 // 显示tabbar
 onUnmounted(() => {
   // 移除CSS类
-  document.body.classList.remove('hide-tabbar');
+  if (typeof document !== 'undefined' && document?.body) {
+    document.body.classList.remove('hide-tabbar');
+  }
 
   setTimeout(() => {
     uni.showTabBar({
@@ -308,6 +348,11 @@ onUnmounted(() => {
 });
 
 const handleClose = () => {
+  if (isEditing.value) {
+    emit('close');
+    return;
+  }
+
   if (showResumeDialog.value) {
     // 如果显示恢复对话框，清除保存的状态并关闭整个组件
     clearReviewState(props.dishId);
@@ -326,7 +371,7 @@ const handleSubmit = () => {
     // 提交成功后清除保存的状态
     clearReviewState(props.dishId);
     emit('success');
-  });
+  }, props.existingReviewId);
 };
 
 // 恢复评价状态

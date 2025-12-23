@@ -36,15 +36,15 @@
         <text class="text-orange-500 font-bold text-lg">¥{{ dish.price.toFixed(1) }}</text>
         <view class="flex items-center bg-yellow-50 px-2 py-1 rounded">
           <text class="text-yellow-500" style="font-size: 16px; line-height: 1;">★</text>
-          <text class="text-yellow-600 ml-1 font-semibold text-sm">{{ dish.averageRating.toFixed(1) }}</text>
-          <text class="text-gray-400 text-xs ml-1">分</text>
+          <text class="text-yellow-600 ml-1 font-semibold text-sm">{{ dish.averageRating === 0 ? '暂无' : dish.averageRating.toFixed(1) }}</text>
+          <text v-if="dish.averageRating !== 0" class="text-gray-400 text-xs ml-1">分</text>
         </view>
       </view>
     </view>
 
     <!-- Favorite Button (Absolute Positioned) -->
     <view v-if="showFavorite" class="absolute top-4 right-2 p-2" @click.stop="$emit('unfavorite')">
-      <text class="iconfont icon-heart-outline text-red-500" data-width="20"></text>
+      <text class="text-red-500" style="font-size: 20px; line-height: 1;">♥</text>
     </view>
   </view>
 </template>

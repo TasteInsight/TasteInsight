@@ -104,6 +104,12 @@
 			}
 		},
 		{
+			"path": "pages/settings/components/avatar-crop",
+			"style": {
+				"navigationBarTitleText": "裁剪头像"
+			}
+		},
+		{
 			"path": "pages/settings/components/allergens",
 			"style": {
 				"navigationBarTitleText": "过敏原设置"
@@ -137,6 +143,12 @@
 			"path": "pages/settings/about",
 			"style": {
 				"navigationBarTitleText": "关于食鉴"
+			}
+		},
+		{
+			"path": "pages/easter-egg/index",
+			"style": {
+				"navigationBarTitleText": "食鉴彩蛋"
 			}
 		},
 		{

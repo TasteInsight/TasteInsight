@@ -8,28 +8,34 @@
     <view class="bg-white rounded-lg p-6 mb-4 shadow-sm">
       <text class="text-lg font-semibold text-gray-800 mb-6 block">头像</text>
       <view class="flex flex-col items-center">
-        <view class="relative mb-6">
+        <view class="relative mb-6" :class="{ 'border-2 border-gray-300 rounded-full': !form.avatar }">
            <image 
             :src="form.avatar || '/static/images/default-avatar.png'" 
             class="w-24 h-24 rounded-full border-4 border-purple-50"
             mode="aspectFill"
-            @click="chooseAvatar"
+            :class="{ 'opacity-50': uploading }"
+            @click="!uploading && chooseAvatar()"
           />
            <view 
             class="absolute bottom-0 right-0 bg-ts-purple rounded-full p-1.5 border-2 border-white shadow-sm"
-            @click="chooseAvatar"
+            :class="{ 'opacity-50': uploading }"
+            @click="!uploading && chooseAvatar()"
            >
              <text class="iconfont icon-camera text-white" style="font-size:14px; line-height:1"></text>
            </view>
+           <!-- 上传中遮罩 -->
+           <view v-if="uploading" class="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
+             <text class="text-white text-sm">上传中...</text>
+           </view>
         </view>
-        <text class="text-gray-500 text-sm mb-2">点击图片或相机图标更换头像</text>
+        <text class="text-gray-500 text-sm mb-2">{{ uploading ? '正在上传头像...' : '点击图片或相机图标更换头像' }}</text>
       </view>
     </view>
 
     <!-- 昵称设置 -->
     <view class="bg-white rounded-lg p-6 mb-4 shadow-sm">
       <text class="text-lg font-semibold text-gray-800 mb-4 block">昵称</text>
-      <view class="relative">
+      <view class="relative border-2 border-gray-300 rounded-lg p-1">
          <input 
           v-model="form.nickname" 
           class="w-full p-3 pr-12 border border-gray-200 rounded-lg text-base focus:border-ts-purple focus:ring-1 focus:ring-purple-100 transition-all"
@@ -57,5 +63,5 @@
 import { usePersonal } from '../composables/use-personal';
 import { PersonalSettingsSkeleton } from '@/components/skeleton';
 
-const { form, saving, loading, chooseAvatar, handleSave } = usePersonal();
+const { form, saving, loading, uploading, chooseAvatar, handleSave } = usePersonal();
 </script>

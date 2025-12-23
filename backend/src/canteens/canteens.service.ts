@@ -171,9 +171,7 @@ export class CanteensService {
       position: canteen.position,
       description: canteen.description,
       images: canteen.images ?? [],
-      openingHours: Array.isArray(canteen.openingHours)
-        ? canteen.openingHours
-        : [],
+      openingHours: canteen.openingHours ?? [],
       averageRating: canteen.averageRating,
       reviewCount: canteen.reviewCount,
       floors: floors.map((floor: any) => this.mapToFloorDto(floor)),

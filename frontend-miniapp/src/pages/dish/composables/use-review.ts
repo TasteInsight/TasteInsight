@@ -285,7 +285,11 @@ export function useReviewForm() {
   /**
    * 提交评价
    */
-  const handleSubmit = async (dishId: string, onSuccess?: () => void) => {
+  const handleSubmit = async (
+    dishId: string,
+    onSuccess?: () => void,
+    existingReviewId?: string
+  ) => {
     if (submitting.value || isUploading.value) return;
 
     submitting.value = true;
@@ -321,9 +325,19 @@ export function useReviewForm() {
         payload.ratingDetails = { ...flavorRatings.value };
       }
 
+      // 单人单评：如果已存在评价，提交时覆盖（先删后建，避免后端不支持 update 接口）
+      if (existingReviewId) {
+        try {
+          await deleteReview(existingReviewId);
+        } catch (e) {
+          // 删除失败不阻断创建：可能后端已做 upsert 或旧评价已被删除
+          console.warn('覆盖评价：删除旧评价失败，将继续提交新评价', e);
+        }
+      }
+
       const response = await createReview(payload);
 
-      if (response.code === 200) {
+      if (response.code === 200 || response.code === 201) {
         resetForm();
         onSuccess?.();
       } else {

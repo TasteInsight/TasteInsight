@@ -4,6 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
+import { DishReviewStatsService } from '@/dish-review-stats-queue';
 import { HandleReportDto } from './dto/handle-report.dto';
 import {
   ReportListResponseDto,
@@ -13,7 +14,10 @@ import {
 
 @Injectable()
 export class AdminReportsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private dishReviewStatsService: DishReviewStatsService,
+  ) {}
 
   async getReports(
     page: number = 1,
@@ -55,7 +59,9 @@ export class AdminReportsService {
               images: true,
               user: {
                 select: {
+                  id: true,
                   nickname: true,
+                  avatar: true,
                 },
               },
             },
@@ -67,7 +73,9 @@ export class AdminReportsService {
               deletedAt: true,
               user: {
                 select: {
+                  id: true,
                   nickname: true,
+                  avatar: true,
                 },
               },
             },
@@ -85,6 +93,7 @@ export class AdminReportsService {
           content: report.review.content,
           userId: report.review.userId,
           userNickname: report.review.user.nickname,
+          userAvatar: report.review.user.avatar,
           isDeleted: report.review.deletedAt !== null,
           images: report.review.images || [],
         };
@@ -93,6 +102,7 @@ export class AdminReportsService {
           content: report.comment.content,
           userId: report.comment.userId,
           userNickname: report.comment.user.nickname,
+          userAvatar: report.comment.user.avatar,
           isDeleted: report.comment.deletedAt !== null,
         };
       }
@@ -179,6 +189,8 @@ export class AdminReportsService {
               where: { id: report.reviewId },
               data: { deletedAt: new Date() },
             });
+
+            await this.dishReviewStatsService.recomputeDishStats(review.dishId);
           }
         } else if (report.targetType === 'comment' && report.commentId) {
           const comment = await this.prisma.comment.findUnique({

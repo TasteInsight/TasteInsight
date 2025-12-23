@@ -10,6 +10,8 @@ services:
       - REDIS_HOST=${REDIS_HOST:-redis}
       - REDIS_PORT=${REDIS_PORT:-6379}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
+      # Python embedding service URL
+      - EXTERNAL_EMBEDDING_SERVICE_URL=http://embedding-service:5001
       # Set to false in production
       - RUN_SEED=${RUN_SEED:-false}
     depends_on:
@@ -17,12 +19,39 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      embedding-service:
+        condition: service_healthy
     # Command is handled by ENTRYPOINT in Dockerfile and docker-entrypoint.sh
     volumes:
       - uploads_data:/app/uploads
     networks:
       - tasteinsight_net
       - db_net
+
+  embedding-service:
+    build:
+      context: ./python-embedding-service
+      dockerfile: Dockerfile
+    image: ${IMAGE_REGISTRY:-ghcr.io/tasteinsight}/tasteinsight-embedding:${TAG:-latest}
+    env_file: .env
+    environment:
+      # Override for Docker container paths
+      - PYTHON_EMBEDDING_MODEL_DIR=/app/saved_models
+      - HF_ENDPOINT=https://hf-mirror.com
+    volumes:
+      # Persist trained models
+      - embedding_models:/app/saved_models
+      # Cache HuggingFace models to avoid re-downloading
+      - huggingface_cache:/app/.cache/huggingface
+    networks:
+      - tasteinsight_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
 
   frontend:
     build:
@@ -63,7 +92,7 @@ services:
       - tasteinsight_net
 
   db:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -84,6 +113,8 @@ volumes:
   db-data:
   uploads_data:
   redis-data:
+  embedding_models:
+  huggingface_cache:
 
 networks:
   tasteinsight_net:

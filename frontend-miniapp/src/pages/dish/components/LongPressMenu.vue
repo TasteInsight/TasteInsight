@@ -17,7 +17,7 @@
           class="flex flex-col items-center justify-center w-16 cursor-pointer transition-all duration-200 active:scale-95"
           @tap="handleReport"
         >
-          <text class="text-xl text-orange-500">⚠️</text>
+          <text class="iconfont icon-warning text-xl text-orange-500"></text>
           <text class="text-xs text-gray-600 mt-1">举报</text>
         </view>
 
@@ -27,7 +27,7 @@
             class="flex flex-col items-center justify-center w-16 cursor-pointer transition-all duration-200 active:scale-95"
             @tap="handleDelete"
           >
-            <text class="text-xl text-red-500">🗑️</text>
+            <text class="iconfont icon-delete text-xl text-red-500"></text>
             <text class="text-xs text-gray-600 mt-1">删除</text>
           </view>
         </template>

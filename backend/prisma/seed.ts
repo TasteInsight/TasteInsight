@@ -10,8 +10,6 @@ async function main() {
 
   // 1. 清空所有数据，确保幂等性
   // 注意删除顺序，防止外键约束失败
-  await prisma.aIRecommendationFeedback.deleteMany({});
-  await prisma.aIRecommendation.deleteMany({});
   await prisma.mealPlanDish.deleteMany({});
   await prisma.mealPlan.deleteMany({});
   await prisma.browseHistory.deleteMany({});
@@ -180,10 +178,10 @@ async function main() {
   // 3. 创建两个可用于测试的【基础用户】
   const user = await prisma.user.create({
     data: {
-        openId: 'baseline_user_openid',
-        nickname: 'Baseline User',
-        avatar: 'https://example.com/avatar.jpg',
-        allergens: ['芒果'],
+      openId: 'baseline_user_openid',
+      nickname: 'Baseline User',
+      avatar: 'https://example.com/avatar.jpg',
+      allergens: ['芒果'],
     }
   });
   console.log(`Created baseline user: ${user.nickname}`);
@@ -257,11 +255,141 @@ async function main() {
       position: '校园东区',
       description: '学校最大的食堂，提供各种美食',
       images: ['https://example.com/canteen1.jpg'],
-      openingHours: {
-        breakfast: '07:00-09:00',
-        lunch: '11:00-13:00',
-        dinner: '17:00-19:00',
-      },
+      openingHours: [
+        {
+          floorLevel: '1',
+          schedule: [
+            {
+              dayOfWeek: 'Monday',
+              slots: [
+                {
+                  mealType: 'breakfast',
+                  openTime: '07:00',
+                  closeTime: '09:00',
+                },
+                { mealType: 'lunch', openTime: '11:00', closeTime: '13:00' },
+                { mealType: 'dinner', openTime: '17:00', closeTime: '19:00' },
+              ],
+              isClosed: false,
+            },
+            {
+              dayOfWeek: 'Tuesday',
+              slots: [
+                { mealType: 'breakfast', openTime: '07:00', closeTime: '09:00' },
+                { mealType: 'lunch', openTime: '11:00', closeTime: '13:00' },
+                { mealType: 'dinner', openTime: '17:00', closeTime: '19:00' },
+              ],
+              isClosed: false,
+            },
+            {
+              dayOfWeek: 'Wednesday',
+              slots: [
+                { mealType: 'breakfast', openTime: '07:00', closeTime: '09:00' },
+                { mealType: 'lunch', openTime: '11:00', closeTime: '13:00' },
+                { mealType: 'dinner', openTime: '17:00', closeTime: '19:00' },
+              ],
+              isClosed: false,
+            },
+            {
+              dayOfWeek: 'Thursday',
+              slots: [
+                { mealType: 'breakfast', openTime: '07:00', closeTime: '09:00' },
+                { mealType: 'lunch', openTime: '11:00', closeTime: '13:00' },
+                { mealType: 'dinner', openTime: '17:00', closeTime: '19:00' },
+              ],
+              isClosed: false,
+            },
+            {
+              dayOfWeek: 'Friday',
+              slots: [
+                { mealType: 'breakfast', openTime: '07:00', closeTime: '09:00' },
+                { mealType: 'lunch', openTime: '11:00', closeTime: '13:00' },
+                { mealType: 'dinner', openTime: '17:00', closeTime: '19:00' },
+              ],
+              isClosed: false,
+            },
+            {
+              dayOfWeek: 'Saturday',
+              slots: [
+                { mealType: 'breakfast', openTime: '07:30', closeTime: '09:30' },
+                { mealType: 'lunch', openTime: '11:00', closeTime: '13:00' },
+                { mealType: 'dinner', openTime: '17:00', closeTime: '19:00' },
+              ],
+              isClosed: false,
+            },
+            {
+              dayOfWeek: 'Sunday',
+              slots: [
+                { mealType: 'breakfast', openTime: '07:30', closeTime: '09:30' },
+                { mealType: 'lunch', openTime: '11:00', closeTime: '13:00' },
+                { mealType: 'dinner', openTime: '17:00', closeTime: '19:00' },
+              ],
+              isClosed: false,
+            },
+          ],
+        },
+        {
+          floorLevel: '2',
+          schedule: [
+            {
+              dayOfWeek: 'Monday',
+              slots: [
+                { mealType: 'lunch', openTime: '11:30', closeTime: '13:30' },
+                { mealType: 'dinner', openTime: '17:30', closeTime: '19:30' },
+              ],
+              isClosed: false,
+            },
+            {
+              dayOfWeek: 'Tuesday',
+              slots: [
+                { mealType: 'lunch', openTime: '11:30', closeTime: '13:30' },
+                { mealType: 'dinner', openTime: '17:30', closeTime: '19:30' },
+              ],
+              isClosed: false,
+            },
+            {
+              dayOfWeek: 'Wednesday',
+              slots: [
+                { mealType: 'lunch', openTime: '11:30', closeTime: '13:30' },
+                { mealType: 'dinner', openTime: '17:30', closeTime: '19:30' },
+              ],
+              isClosed: false,
+            },
+            {
+              dayOfWeek: 'Thursday',
+              slots: [
+                { mealType: 'lunch', openTime: '11:30', closeTime: '13:30' },
+                { mealType: 'dinner', openTime: '17:30', closeTime: '19:30' },
+              ],
+              isClosed: false,
+            },
+            {
+              dayOfWeek: 'Friday',
+              slots: [
+                { mealType: 'lunch', openTime: '11:30', closeTime: '13:30' },
+                { mealType: 'dinner', openTime: '17:30', closeTime: '19:30' },
+              ],
+              isClosed: false,
+            },
+            {
+              dayOfWeek: 'Saturday',
+              slots: [
+                { mealType: 'lunch', openTime: '11:30', closeTime: '13:30' },
+                { mealType: 'dinner', openTime: '17:30', closeTime: '19:30' },
+              ],
+              isClosed: false,
+            },
+            {
+              dayOfWeek: 'Sunday',
+              slots: [
+                { mealType: 'lunch', openTime: '11:30', closeTime: '13:30' },
+                { mealType: 'dinner', openTime: '17:30', closeTime: '19:30' },
+              ],
+              isClosed: false,
+            },
+          ],
+        },
+      ],
     },
   });
   console.log(`Created canteen: ${canteen1.name}`);
@@ -272,11 +400,80 @@ async function main() {
       position: '校园西区',
       description: '特色菜品食堂',
       images: ['https://example.com/canteen2.jpg'],
-      openingHours: {
-        breakfast: '07:00-09:00',
-        lunch: '11:00-13:00',
-        dinner: '17:00-19:00',
-      },
+      openingHours: [
+        {
+          floorLevel: null,
+          schedule: [
+            {
+              dayOfWeek: 'Monday',
+              slots: [
+                {
+                  mealType: 'breakfast',
+                  openTime: '07:00',
+                  closeTime: '09:00',
+                },
+                { mealType: 'lunch', openTime: '11:00', closeTime: '13:00' },
+                { mealType: 'dinner', openTime: '17:00', closeTime: '19:00' },
+              ],
+              isClosed: false,
+            },
+            {
+              dayOfWeek: 'Tuesday',
+              slots: [
+                { mealType: 'breakfast', openTime: '07:00', closeTime: '09:00' },
+                { mealType: 'lunch', openTime: '11:00', closeTime: '13:00' },
+                { mealType: 'dinner', openTime: '17:00', closeTime: '19:00' },
+              ],
+              isClosed: false,
+            },
+            {
+              dayOfWeek: 'Wednesday',
+              slots: [
+                { mealType: 'breakfast', openTime: '07:00', closeTime: '09:00' },
+                { mealType: 'lunch', openTime: '11:00', closeTime: '13:00' },
+                { mealType: 'dinner', openTime: '17:00', closeTime: '19:00' },
+              ],
+              isClosed: false,
+            },
+            {
+              dayOfWeek: 'Thursday',
+              slots: [
+                { mealType: 'breakfast', openTime: '07:00', closeTime: '09:00' },
+                { mealType: 'lunch', openTime: '11:00', closeTime: '13:00' },
+                { mealType: 'dinner', openTime: '17:00', closeTime: '19:00' },
+              ],
+              isClosed: false,
+            },
+            {
+              dayOfWeek: 'Friday',
+              slots: [
+                { mealType: 'breakfast', openTime: '07:00', closeTime: '09:00' },
+                { mealType: 'lunch', openTime: '11:00', closeTime: '13:00' },
+                { mealType: 'dinner', openTime: '17:00', closeTime: '19:00' },
+              ],
+              isClosed: false,
+            },
+            {
+              dayOfWeek: 'Saturday',
+              slots: [
+                { mealType: 'breakfast', openTime: '07:30', closeTime: '09:30' },
+                { mealType: 'lunch', openTime: '11:00', closeTime: '13:00' },
+                { mealType: 'dinner', openTime: '17:00', closeTime: '19:00' },
+              ],
+              isClosed: false,
+            },
+            {
+              dayOfWeek: 'Sunday',
+              slots: [
+                { mealType: 'breakfast', openTime: '07:30', closeTime: '09:30' },
+                { mealType: 'lunch', openTime: '11:00', closeTime: '13:00' },
+                { mealType: 'dinner', openTime: '17:00', closeTime: '19:00' },
+              ],
+              isClosed: false,
+            },
+          ],
+        },
+      ],
     },
   });
   console.log(`Created canteen: ${canteen2.name}`);
@@ -796,12 +993,12 @@ async function main() {
 
   // 初始化配置模板
   console.log('Initializing admin config templates...');
-  
+
   // 先清理旧的配置数据
   await prisma.adminConfigItem.deleteMany({});
   await prisma.adminConfig.deleteMany({});
   await prisma.adminConfigTemplate.deleteMany({});
-  
+
   // 使用 config-definitions.ts 中定义的配置模板
   await prisma.adminConfigTemplate.createMany({
     data: CONFIG_DEFINITIONS.map((def) => ({
@@ -813,7 +1010,7 @@ async function main() {
     })),
     skipDuplicates: true, // 避免重复插入
   });
-  
+
   // 创建全局配置
   const globalAdminConfig = await prisma.adminConfig.create({
     data: {
@@ -821,7 +1018,7 @@ async function main() {
     },
   });
   console.log('Created global admin config:', globalAdminConfig.id);
-  
+
   // 为全局配置添加默认配置项
   const templates = await prisma.adminConfigTemplate.findMany();
   await prisma.adminConfigItem.createMany({

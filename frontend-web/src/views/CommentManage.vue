@@ -10,6 +10,7 @@
       <div class="flex gap-6 mt-6">
         <!-- 左侧：菜品列表 -->
         <div class="w-1/3 border-r pr-6">
+          <!-- 搜索栏 -->
           <div class="mb-4">
             <input
               type="text"
@@ -18,6 +19,59 @@
               v-model="searchQuery"
               @input="handleSearchChange"
             />
+          </div>
+
+          <!-- 筛选区域 -->
+          <div class="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-100 space-y-3">
+            <div class="flex items-center gap-3">
+              <span class="text-sm font-medium text-gray-600 whitespace-nowrap">所属食堂</span>
+              <div class="relative flex-1">
+                <select
+                  v-model="selectedCanteenId"
+                  @change="handleCanteenChange"
+                  class="appearance-none w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm transition-all cursor-pointer hover:border-gray-400"
+                >
+                  <option value="">全部食堂</option>
+                  <option v-for="canteen in canteens" :key="canteen.id" :value="canteen.id">
+                    {{ canteen.name }}
+                  </option>
+                </select>
+                <span class="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
+                  <span class="iconify text-sm" data-icon="carbon:chevron-down"></span>
+                </span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <span class="text-sm font-medium text-gray-600 whitespace-nowrap">所属窗口</span>
+              <div class="relative flex-1">
+                <select
+                  v-model="selectedWindowId"
+                  @change="handleWindowChange"
+                  class="appearance-none w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm transition-all cursor-pointer hover:border-gray-400 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:border-gray-200"
+                  :disabled="!selectedCanteenId"
+                >
+                  <option value="">全部窗口</option>
+                  <option v-for="window in windows" :key="window.id" :value="window.id">
+                    {{ window.name }}
+                  </option>
+                </select>
+                <span class="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center" :class="{'opacity-50': !selectedCanteenId}">
+                  <span class="iconify text-sm" data-icon="carbon:chevron-down"></span>
+                </span>
+              </div>
+            </div>
+
+            <div class="flex justify-end">
+              <button
+                v-if="selectedCanteenId || selectedWindowId || searchQuery"
+                @click="resetFilters"
+                class="text-xs text-gray-500 hover:text-tsinghua-purple flex items-center gap-1 px-2 py-1 rounded-md hover:bg-gray-200/50 transition-colors"
+              >
+                <span class="iconify text-sm" data-icon="carbon:reset"></span>
+                重置筛选
+              </button>
+            </div>
           </div>
 
           <div class="overflow-auto" style="max-height: calc(100vh - 300px)">
@@ -136,12 +190,12 @@
                     <div class="flex items-center flex-1">
                       <img
                         :src="review.userAvatar || '/default-avatar.png'"
-                        :alt="review.userNickname"
+                        :alt="review.userNickname || '用户'"
                         class="w-10 h-10 rounded-full mr-3 border-2 border-gray-200"
                       />
                       <div class="flex-1">
                         <div class="flex items-center gap-2">
-                          <span class="font-semibold text-gray-900">{{ review.userNickname }}</span>
+                          <span class="font-semibold text-gray-900">{{ review.userNickname || '未知用户' }}</span>
                           <span class="flex items-center text-yellow-500 text-sm">
                             <span class="iconify inline-block" data-icon="bxs:star"></span>
                             <span class="ml-1 font-medium">{{ review.rating }}</span>
@@ -174,14 +228,21 @@
 
                   <!-- 评价图片 -->
                   <div v-if="review.images && review.images.length > 0" class="grid gap-2 mb-4" :class="getImageGridClass(review.images.length)">
-                    <img
+                    <div
                       v-for="(img, idx) in review.images"
                       :key="idx"
-                      :src="img"
-                      :alt="`评价图片${idx + 1}`"
-                      class="w-full h-full object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
-                      @click="previewImage(img, review.images || [])"
-                    />
+                      class="relative group aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100 cursor-pointer hover:border-tsinghua-purple transition"
+                      @click="openImagePreview(review.images || [], idx)"
+                    >
+                      <img
+                        :src="img"
+                        :alt="`评价图片${idx + 1}`"
+                        class="w-full h-full object-cover"
+                      />
+                      <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition flex items-center justify-center">
+                        <span class="iconify text-white text-2xl opacity-0 group-hover:opacity-100 transition" data-icon="carbon:zoom-in"></span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -204,10 +265,10 @@
                           <div class="flex items-center mb-2">
                             <img
                               :src="comment.userAvatar || '/default-avatar.png'"
-                              :alt="comment.userNickname"
+                              :alt="comment.userNickname || '用户'"
                               class="w-7 h-7 rounded-full mr-2 border border-gray-200"
                             />
-                            <span class="font-medium text-sm text-gray-900">{{ comment.userNickname }}</span>
+                            <span class="font-medium text-sm text-gray-900">{{ comment.userNickname || '未知用户' }}</span>
                             <span class="ml-2 text-xs text-gray-500">#{{ comment.floor }}楼</span>
                             <span
                               class="ml-2 px-1.5 py-0.5 rounded text-xs font-medium"
@@ -259,13 +320,72 @@
         </div>
       </div>
     </div>
+
+    <!-- 图片预览对话框 -->
+    <div
+      v-if="imagePreview.show"
+      role="dialog"
+      aria-modal="true"
+      aria-label="图片预览"
+      class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[100]"
+      @click.self="closeImagePreview"
+    >
+      <div class="relative max-w-7xl max-h-[90vh] mx-4">
+        <!-- 关闭按钮 -->
+        <button
+          aria-label="关闭图片预览"
+          class="absolute top-4 right-4 z-10 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition"
+          @click="closeImagePreview"
+        >
+          <span class="iconify text-2xl" data-icon="carbon:close"></span>
+        </button>
+        
+        <!-- 图片 -->
+        <img
+          :src="imagePreview.images[imagePreview.currentIndex]"
+          :alt="`评价图片 ${imagePreview.currentIndex + 1}`"
+          class="max-w-full max-h-[90vh] object-contain rounded-lg"
+        />
+        
+        <!-- 导航按钮 -->
+        <button
+          v-if="imagePreview.images.length > 1"
+          aria-label="上一张图片"
+          :aria-disabled="imagePreview.currentIndex === 0"
+          class="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full p-3 hover:bg-opacity-75 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          @click.stop="previousImage"
+          :disabled="imagePreview.currentIndex === 0"
+        >
+          <span class="iconify text-2xl" data-icon="carbon:chevron-left"></span>
+        </button>
+        <button
+          v-if="imagePreview.images.length > 1"
+          aria-label="下一张图片"
+          :aria-disabled="imagePreview.currentIndex === imagePreview.images.length - 1"
+          class="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full p-3 hover:bg-opacity-75 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          @click.stop="nextImage"
+          :disabled="imagePreview.currentIndex === imagePreview.images.length - 1"
+        >
+          <span class="iconify text-2xl" data-icon="carbon:chevron-right"></span>
+        </button>
+        
+        <!-- 图片计数 -->
+        <div
+          v-if="imagePreview.images.length > 1"
+          class="absolute bottom-4 left-1/2 -translate-x-1/2 text-white bg-black bg-opacity-50 rounded-full px-4 py-2 text-sm"
+        >
+          {{ imagePreview.currentIndex + 1 }} / {{ imagePreview.images.length }}
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script lang="ts">
-import { ref, computed, onMounted, defineComponent } from 'vue'
+import { ref, computed, onMounted, onActivated, onUnmounted, defineComponent } from 'vue'
 import { dishApi } from '@/api/modules/dish'
 import { reviewApi } from '@/api/modules/review'
+import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import Pagination from '@/components/Common/Pagination.vue'
@@ -289,6 +409,12 @@ export default defineComponent({
     const isLoadingDishes = ref(false)
     const selectedDishId = ref<string | null>(null)
 
+    // 筛选相关
+    const selectedCanteenId = ref('')
+    const selectedWindowId = ref('')
+    const canteens = ref<any[]>([])
+    const windows = ref<any[]>([])
+
     // 评价列表相关
     const reviews = ref<Review[]>([])
     const reviewPage = ref(1)
@@ -302,6 +428,17 @@ export default defineComponent({
     const commentPageSize = ref(10)
     const totalComments = ref(0)
     const isLoadingComments = ref(false)
+
+    // 图片预览相关
+    const imagePreview = ref<{
+      show: boolean
+      images: string[]
+      currentIndex: number
+    }>({
+      show: false,
+      images: [],
+      currentIndex: 0,
+    })
 
     const statusClasses: Record<string, string> = {
       pending: 'bg-yellow-100 text-yellow-800',
@@ -340,15 +477,64 @@ export default defineComponent({
       })
     }
 
+    // 加载食堂列表
+    const loadCanteens = async () => {
+      try {
+        const response = await canteenApi.getCanteens({ page: 1, pageSize: 100 })
+        if (response.code === 200 && response.data) {
+          canteens.value = response.data.items || []
+        }
+      } catch (error) {
+        console.error('加载食堂列表失败:', error)
+      }
+    }
+
+    // 处理食堂变化
+    const handleCanteenChange = async () => {
+      selectedWindowId.value = '' // 重置窗口选择
+      windows.value = [] // 清空窗口列表
+      
+      // 重新加载菜品
+      dishPage.value = 1
+      loadDishes()
+
+      if (selectedCanteenId.value) {
+        try {
+          const response = await canteenApi.getWindows(selectedCanteenId.value, { page: 1, pageSize: 100 })
+          if (response.code === 200 && response.data) {
+            windows.value = response.data.items || []
+          }
+        } catch (error) {
+          console.error('加载窗口列表失败:', error)
+        }
+      }
+    }
+
+    // 处理窗口变化
+    const handleWindowChange = () => {
+      dishPage.value = 1
+      loadDishes()
+    }
+
     // 加载菜品列表
     const loadDishes = async () => {
       isLoadingDishes.value = true
       try {
-        const response = await dishApi.getDishes({
+        const params: any = {
           page: dishPage.value,
           pageSize: dishPageSize.value,
           keyword: searchQuery.value || undefined,
-        })
+        }
+
+        // 添加筛选参数
+        if (selectedCanteenId.value) {
+          params.canteenId = selectedCanteenId.value
+        }
+        if (selectedWindowId.value) {
+          params.windowId = selectedWindowId.value
+        }
+
+        const response = await dishApi.getDishes(params)
 
         if (response.code === 200 && response.data) {
           dishes.value = response.data.items || []
@@ -451,18 +637,56 @@ export default defineComponent({
 
     // 根据图片数量返回网格布局类
     const getImageGridClass = (imageCount: number): string => {
-      if (imageCount === 1) return 'grid-cols-1'
+      if (imageCount === 1) return 'grid-cols-1 max-w-md'
       if (imageCount === 2) return 'grid-cols-2'
       if (imageCount === 3) return 'grid-cols-3'
       if (imageCount === 4) return 'grid-cols-2'
       return 'grid-cols-3'
     }
 
-    // 图片预览（简单实现，可以后续优化为图片查看器）
-    const previewImage = (currentImg: string, _allImages?: string[]) => {
-      // 可以在这里实现图片预览功能，比如使用模态框
-      // 暂时使用浏览器默认行为
-      window.open(currentImg, '_blank')
+    // 图片预览相关
+    const openImagePreview = (images: string[], index: number = 0) => {
+      imagePreview.value = {
+        show: true,
+        images,
+        currentIndex: index,
+      }
+    }
+
+    const closeImagePreview = () => {
+      imagePreview.value = {
+        show: false,
+        images: [],
+        currentIndex: 0,
+      }
+    }
+
+    const previousImage = () => {
+      if (imagePreview.value.currentIndex > 0) {
+        imagePreview.value.currentIndex--
+      }
+    }
+
+    const nextImage = () => {
+      if (imagePreview.value.currentIndex < imagePreview.value.images.length - 1) {
+        imagePreview.value.currentIndex++
+      }
+    }
+
+    // 键盘快捷键支持
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!imagePreview.value.show) return
+      
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault()
+        previousImage()
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault()
+        nextImage()
+      } else if (event.key === 'Escape') {
+        event.preventDefault()
+        closeImagePreview()
+      }
     }
 
     // 删除评价
@@ -505,7 +729,7 @@ export default defineComponent({
         const response = await reviewApi.deleteComment(comment.id)
         if (response.code === 200) {
           alert('删除成功')
-          loadComments() // 重新加载评论列表
+          loadCommentsForReviews() // 重新加载评论列表
         } else {
           alert(response.message || '删除失败')
         }
@@ -559,8 +783,33 @@ export default defineComponent({
       }, 500)
     }
 
-    onMounted(() => {
+    // 重置筛选
+    const resetFilters = () => {
+      searchQuery.value = ''
+      selectedCanteenId.value = ''
+      selectedWindowId.value = ''
+      windows.value = []
+      dishPage.value = 1
       loadDishes()
+    }
+
+    onMounted(() => {
+      loadCanteens()
+      loadDishes()
+      document.addEventListener('keydown', handleKeyDown)
+    })
+
+    onActivated(() => {
+      loadCanteens()
+      loadDishes()
+      if (selectedDishId.value) {
+        loadReviews()
+        loadCommentsForReviews()
+      }
+    })
+
+    onUnmounted(() => {
+      document.removeEventListener('keydown', handleKeyDown)
     })
 
     return {
@@ -600,9 +849,21 @@ export default defineComponent({
       handleSearchChange,
       getCommentsByReviewId,
       getImageGridClass,
-      previewImage,
+      imagePreview,
+      openImagePreview,
+      closeImagePreview,
+      previousImage,
+      nextImage,
       getDishTotalPages,
       getDishPaginationPages,
+      // 筛选相关
+      selectedCanteenId,
+      selectedWindowId,
+      canteens,
+      windows,
+      handleCanteenChange,
+      handleWindowChange,
+      resetFilters,
       authStore,
     }
   },

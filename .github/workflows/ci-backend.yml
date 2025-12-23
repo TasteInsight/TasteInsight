@@ -71,7 +71,7 @@ jobs:
         working-directory: ./backend
     services:
       postgres:
-        image: postgres:15-alpine
+        image: pgvector/pgvector:pg15
         env:
           POSTGRES_USER: ${{ env.CI_DB_USER }}
           POSTGRES_PASSWORD: ${{ env.CI_DB_PASSWORD }}
@@ -121,6 +121,44 @@ jobs:
           docker logs tasteinsight-ci-redis || true
           exit 1
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Embedding Service Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend/python-embedding-service
+          # 根据分支选择 Dockerfile：main 分支用 Full，其他用 Mock
+          file: ./backend/python-embedding-service/${{ (github.ref_name == 'main' || github.base_ref == 'main') && 'Dockerfile' || 'Dockerfile.mock' }}
+          tags: tasteinsight-embedding:ci-test
+          load: true
+          cache-from: type=gha,scope=embedding
+          cache-to: type=gha,mode=max,scope=embedding
+
+      - name: Start Embedding Service
+        run: |
+          docker rm -f tasteinsight-ci-embedding 2>/dev/null || true
+          docker run -d --name tasteinsight-ci-embedding \
+            -p 5001:5001 \
+            -e DEFAULT_EMBEDDING_VERSION=v2 \
+            tasteinsight-embedding:ci-test
+          echo "Waiting for embedding service to be ready..."
+          # 为 Full 预留更多时间
+          MAX_RETRIES=60
+          if [ "${{ github.ref_name }}" = "main" ] || [ "${{ github.base_ref }}" = "main" ]; then
+            MAX_RETRIES=150
+          fi
+          for i in $(seq 1 $MAX_RETRIES); do
+            if curl -f http://localhost:5001/health 2>/dev/null | grep -q '"status":"healthy"'; then
+              echo "Embedding service is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Embedding service did not become ready" >&2
+          docker logs tasteinsight-ci-embedding || true
+          exit 1
+
       - name: Generate Prisma Client
         run: npx prisma generate
 
@@ -149,6 +187,8 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           REDIS_PASSWORD: ${{ env.CI_REDIS_PASSWORD }}
+          # Embedding Service
+          EXTERNAL_EMBEDDING_SERVICE_URL: http://localhost:5001
           # Admin（CI 测试用固定值）
           INITIAL_ADMIN_USERNAME: testadmin
           INITIAL_ADMIN_PASSWORD: password123
@@ -160,6 +200,10 @@ jobs:
           # WeChat（CI 测试用 mock 值）
           WECHAT_APPID: wx_ci_test_appid
           WECHAT_SECRET: wx_ci_test_secret
+          # AI Provider（CI 测试用 mock 值）
+          USE_MOCK_AI_PROVIDER: true
+          AI_API_KEY: ci-ai-api-key-placeholder
+          AI_MODEL: model-placeholder
           # Upload
           UPLOAD_STORAGE_TYPE: local
           UPLOAD_LOCAL_PATH: ./uploads
@@ -167,6 +211,12 @@ jobs:
           UPLOAD_MAX_FILE_SIZE: 10485760
           # Mock auth for testing
           ENABLE_MOCK_AUTH: true
+
+      - name: Cleanup test containers
+        if: always()
+        run: |
+          docker stop tasteinsight-ci-embedding 2>/dev/null || true
+          docker rm tasteinsight-ci-embedding 2>/dev/null || true
 
       - name: Upload coverage report
         uses: codecov/codecov-action@v4
@@ -187,7 +237,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker image
+      - name: Build Backend Docker image
         uses: docker/build-push-action@v6
         with:
           context: ./backend

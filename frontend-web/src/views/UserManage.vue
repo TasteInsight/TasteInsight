@@ -20,14 +20,43 @@
           </button>
         </div>
 
-        <!-- 搜索栏 -->
-        <div class="mb-6">
-          <input
-            type="text"
-            v-model="searchQuery"
-            placeholder="搜索用户名、角色（权限组合）..."
-            class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
-          />
+        <!-- 搜索和筛选栏 -->
+        <div class="mb-6 space-y-4">
+          <!-- 搜索栏 -->
+          <div>
+            <input
+              type="text"
+              v-model="searchQuery"
+              placeholder="搜索用户名、角色（权限组合）..."
+              class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+            />
+          </div>
+          
+          <!-- 筛选栏 -->
+          <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2">
+              <label class="text-sm font-medium text-gray-600">管理范围：</label>
+              <select
+                v-model="canteenFilter"
+                @change="handleFilterChange"
+                class="px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple bg-white min-w-[200px]"
+              >
+                <option value="">全部食堂</option>
+                <option value="all">全校食堂</option>
+                <option v-for="canteen in canteenList" :key="canteen.id" :value="canteen.id">
+                  {{ canteen.name }}
+                </option>
+              </select>
+            </div>
+            <button
+              v-if="canteenFilter || searchQuery"
+              @click="resetFilters"
+              class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-2 rounded-md hover:bg-gray-100 transition-colors"
+            >
+              <span class="iconify" data-icon="carbon:reset"></span>
+              重置筛选
+            </button>
+          </div>
         </div>
 
         <!-- 管理员列表表格 -->
@@ -427,7 +456,7 @@
 </template>
 
 <script>
-import { reactive, ref, computed, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
 import { permissionApi } from '@/api/modules/permission'
 import { canteenApi } from '@/api/modules/canteen'
@@ -449,6 +478,7 @@ export default {
     const adminList = ref([]) // 子管理员列表
     const canteenList = ref([]) // 食堂列表
     const searchQuery = ref('')
+    const canteenFilter = ref('') // 食堂筛选
     const currentPage = ref(1)
     const pageSize = ref(10)
     const totalPages = ref(1)
@@ -476,7 +506,7 @@ export default {
       { value: 'restaurant_manager', label: '餐厅经理', desc: '单个食堂管理' },
       { value: 'kitchen_operator', label: '后厨操作员', desc: '菜品与库存管理' },
       { value: 'news_editor', label: '新闻编辑', desc: '发布和管理新闻' },
-      { value: 'auditor', label: '内容审核员', desc: '审核评论和评价' },
+      { value: 'auditor', label: '内容审核员', desc: '审核评价、评论和处理举报' },
     ]
 
     // 所有权限组定义
@@ -503,7 +533,7 @@ export default {
       },
       {
         id: 'review',
-        name: '内容审核',
+        name: '评价和评论审核',
         permissions: [
           { id: 'review:approve', label: '审核评价' },
           { id: 'review:delete', label: '删除评价' },
@@ -513,6 +543,20 @@ export default {
           { id: 'upload:approve', label: '审核菜品上传' },
         ],
       },
+      // {
+      //   id: 'log',
+      //   name: '操作日志',
+      //   permissions: [
+      //     { id: 'log:view', label: '浏览日志' },
+      //   ],
+      // },
+      // {
+      //   id: 'log',
+      //   name: '操作日志',
+      //   permissions: [
+      //     { id: 'log:view', label: '浏览日志' },
+      //   ],
+      // },
       {
         id: 'news',
         name: '新闻管理',
@@ -525,6 +569,13 @@ export default {
           { id: 'news:delete', label: '删除新闻' },
         ],
       },
+      // {
+      //   id: 'log',
+      //   name: '操作日志',
+      //   permissions: [
+      //     { id: 'log:view', label: '浏览日志' },
+      //   ],
+      // },
       {
         id: 'admin',
         name: '子管理员管理',
@@ -574,6 +625,9 @@ export default {
       'canteen:edit': ['canteen:view'],
       'canteen:delete': ['canteen:view'],
       'review:approve': ['dish:view', 'canteen:view'], // 审核评价可能需要查看菜品和食堂
+      'review:delete': ['review:approve'], // 删除评价需要审核权限
+      'comment:approve': ['dish:view', 'canteen:view'], // 审核评论可能需要查看菜品和食堂
+      'comment:delete': ['comment:approve'], // 删除评论需要审核权限
       'upload:approve': ['dish:view', 'canteen:view'], // 审核上传需要查看菜品
       'news:create': ['news:view'],
       'news:edit': ['news:view'],
@@ -583,21 +637,35 @@ export default {
       'admin:create': ['admin:view', 'canteen:view'], // 创建管理员可能需要分配食堂
       'admin:edit': ['admin:view'],
       'admin:delete': ['admin:view'],
-      'comment:delete': ['comment:approve'], // 删除评论需要审核权限
       'config:edit': ['config:view'], // 编辑配置需要查看权限
     }
 
     // 过滤后的管理员列表
     const filteredAdmins = computed(() => {
-      if (!searchQuery.value) {
-        return adminList.value
+      let filtered = adminList.value
+
+      // 搜索筛选
+      if (searchQuery.value) {
+        const query = searchQuery.value.toLowerCase()
+        filtered = filtered.filter(
+          (admin) =>
+            admin.username.toLowerCase().includes(query) ||
+            (admin.role && admin.role.toLowerCase().includes(query)),
+        )
       }
-      const query = searchQuery.value.toLowerCase()
-      return adminList.value.filter(
-        (admin) =>
-          admin.username.toLowerCase().includes(query) ||
-          (admin.role && admin.role.toLowerCase().includes(query)),
-      )
+
+      // 食堂筛选
+      if (canteenFilter.value) {
+        if (canteenFilter.value === 'all') {
+          // 筛选全校食堂（canteenId为空或null）
+          filtered = filtered.filter((admin) => !admin.canteenId)
+        } else {
+          // 筛选指定食堂
+          filtered = filtered.filter((admin) => admin.canteenId === canteenFilter.value)
+        }
+      }
+
+      return filtered
     })
 
     // 密码强度计算
@@ -771,13 +839,27 @@ export default {
 
     // 生成随机密码
     const generatePassword = () => {
-      const chars =
-        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?'
+      // 使用更安全、常用的特殊字符，确保生成的密码符合后端验证规则
+      const lowercase = 'abcdefghijklmnopqrstuvwxyz'
+      const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+      const numbers = '0123456789'
+      const specialChars = '!@#$%^&*()_+-=?'
+      const allChars = lowercase + uppercase + numbers + specialChars
+      
       let password = ''
-      for (let i = 0; i < 12; i++) {
-        password += chars.charAt(Math.floor(Math.random() * chars.length))
+      // 确保至少包含一个小写字母、大写字母、数字和特殊字符
+      password += lowercase.charAt(Math.floor(Math.random() * lowercase.length))
+      password += uppercase.charAt(Math.floor(Math.random() * uppercase.length))
+      password += numbers.charAt(Math.floor(Math.random() * numbers.length))
+      password += specialChars.charAt(Math.floor(Math.random() * specialChars.length))
+      
+      // 填充剩余长度（至少12位）
+      for (let i = password.length; i < 12; i++) {
+        password += allChars.charAt(Math.floor(Math.random() * allChars.length))
       }
-      formData.password = password
+      
+      // 打乱字符顺序
+      formData.password = password.split('').sort(() => Math.random() - 0.5).join('')
     }
 
     // 选择角色
@@ -846,6 +928,7 @@ export default {
           'review:approve',
           'review:delete',
           'comment:approve',
+          'comment:delete',
           'report:handle',
           'upload:approve',
           'dish:view', // 审核需要查看菜品
@@ -998,9 +1081,11 @@ export default {
       try {
         if (editingAdmin.value) {
           // 更新管理员权限
+          const trimmedCanteenId = formData.canteenId.trim();
           const response = await permissionApi.updateAdminPermissions(
             editingAdmin.value.id,
             formData.permissions,
+            trimmedCanteenId || null,
           )
 
           if (response.code === 200) {
@@ -1050,6 +1135,20 @@ export default {
       }
     }
 
+    // 处理筛选变化
+    const handleFilterChange = () => {
+      // 筛选是客户端进行的，不需要重新加载数据
+      // 但可以重置到第一页（如果需要分页的话）
+      currentPage.value = 1
+    }
+
+    // 重置筛选
+    const resetFilters = () => {
+      searchQuery.value = ''
+      canteenFilter.value = ''
+      currentPage.value = 1
+    }
+
     // 格式化日期
     const formatDate = (dateString) => {
       if (!dateString) return '-'
@@ -1066,11 +1165,17 @@ export default {
       loadAdmins()
     })
 
+    onActivated(() => {
+      loadCanteens()
+      loadAdmins()
+    })
+
     return {
       viewMode,
       editingAdmin,
       adminList,
       searchQuery,
+      canteenFilter,
       filteredAdmins,
       formData,
       errors,
@@ -1098,6 +1203,8 @@ export default {
       isAllPermissionsSelected,
       submitForm,
       changePage,
+      handleFilterChange,
+      resetFilters,
       formatDate,
       getRoleLabel,
       getCanteenName,

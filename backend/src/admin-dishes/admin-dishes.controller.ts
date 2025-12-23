@@ -123,4 +123,31 @@ export class AdminDishesController {
   ) {
     return this.adminDishesService.confirmBatchImport(body, req.admin);
   }
+
+  @Post(':id/embedding/refresh')
+  @RequirePermissions('dish:edit')
+  @HttpCode(HttpStatus.OK)
+  async refreshDishEmbedding(@Param('id') id: string, @Request() req) {
+    return this.adminDishesService.refreshDishEmbedding(id, req.admin);
+  }
+
+  @Post('embedding/refresh')
+  @RequirePermissions('dish:edit')
+  @HttpCode(HttpStatus.OK)
+  async refreshDishesEmbeddingByCanteen(
+    @Query('canteenId') canteenId: string,
+    @Request() req,
+  ) {
+    return this.adminDishesService.refreshDishesEmbeddingsByCanteen(
+      canteenId,
+      req.admin,
+    );
+  }
+
+  @Get('embedding/job/:jobId')
+  @RequirePermissions('dish:view')
+  @HttpCode(HttpStatus.OK)
+  async getEmbeddingJobStatus(@Param('jobId') jobId: string) {
+    return this.adminDishesService.getEmbeddingJobStatus(jobId);
+  }
 }

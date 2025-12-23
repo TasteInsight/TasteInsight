@@ -1,0 +1,194 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    # 默认是“开发/本地”安全强度。压得更狠用环境变量覆盖（见 scripts）
+    - duration: 5
+      arrivalRate: 1
+      name: warmup
+    - duration: 10
+      arrivalRate: 2
+      name: steady
+    - duration: 5
+      arrivalRate: 3
+      name: spike
+
+  plugins:
+    ensure: {}
+
+  ensure:
+    thresholds:
+      # 95 分位响应时间阈值（ms）
+      - http.response_time.p95: 3000
+      # 避免 http.errors.rate 在部分环境为 NaN，使用失败 VU 数量做兜底
+      - vusers.failed: 1
+
+  defaults:
+    headers:
+      Content-Type: application/json
+
+  variables:
+    dishId: ["dish_001", "dish-1", "dish_0001"]
+    canteenId: ["canteen_001", "canteen-1"]
+    windowId: ["window_001", "window-1"]
+    reviewId: ["review_001", "review-1"]
+    commentId: ["comment_001", "comment-1"]
+    planId: ["plan_001", "plan-1"]
+
+  processor: "./processors.cjs"
+
+scenarios:
+  - name: "用户端 API 混合压测（读多写少）"
+    weight: 80
+    flow:
+      # 登录/刷新（如果后端没开这个接口或需要真微信 code，可用 IGNORE_LOGIN=1 跳过）
+      - function: maybeLogin
+
+      # 用户信息
+      - get:
+          url: "/user/profile"
+          headers:
+            Authorization: "Bearer {{ token }}"
+      - get:
+          url: "/user/settings"
+          headers:
+            Authorization: "Bearer {{ token }}"
+      - get:
+          url: "/notifications"
+          headers:
+            Authorization: "Bearer {{ token }}"
+
+      # 食堂/窗口/菜品
+      - get:
+          url: "/canteens"
+      - get:
+          url: "/canteens/{{ canteenId }}/windows"
+      - post:
+          url: "/dishes"
+          json:
+            search:
+              keyword: "宫保"
+            pagination:
+              page: 1
+              pageSize: 10
+            sort:
+              field: "rating"
+              order: "desc"
+      - get:
+          url: "/dishes/{{ dishId }}"
+      - get:
+          url: "/dishes/{{ dishId }}/reviews"
+      - get:
+          url: "/comments/{{ reviewId }}"
+
+      # 新闻
+      - get:
+          url: "/news"
+
+      # 饮食计划（读）
+      - get:
+          url: "/meal-plans"
+          headers:
+            Authorization: "Bearer {{ token }}"
+
+      # AI（注意：chat/stream 不建议压测为 HTTP 普通请求；这里压 suggestions/history/recommend）
+      - get:
+          url: "/ai/suggestions"
+          headers:
+            Authorization: "Bearer {{ token }}"
+      - post:
+          url: "/ai/recommend"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          json:
+            userPreference: {}
+      - post:
+          url: "/ai/sessions"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          json:
+            title: "load-test"
+          capture:
+            - json: "$.data.id"
+              as: "sessionId"
+      - get:
+          url: "/ai/sessions/{{ sessionId }}/history"
+          headers:
+            Authorization: "Bearer {{ token }}"
+
+  - name: "写操作与状态变更（低比例）"
+    weight: 20
+    flow:
+      - function: maybeLogin
+
+      # 更新用户设置
+      - put:
+          url: "/user/settings"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          json:
+            displaySettings:
+              sortBy: "rating"
+            notifications:
+              enabled: true
+
+      # 更新用户信息
+      - put:
+          url: "/user/profile"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          json:
+            nickname: "load-{{ $randomString() }}"
+
+      # 收藏/取消收藏（对后端写压力）
+      - post:
+          url: "/dishes/{{ dishId }}/favorite"
+          headers:
+            Authorization: "Bearer {{ token }}"
+      - delete:
+          url: "/dishes/{{ dishId }}/favorite"
+          headers:
+            Authorization: "Bearer {{ token }}"
+
+      # 创建评价/评论（如果后端需要严格鉴权/风控，可能要改造数据或降低并发）
+      - post:
+          url: "/reviews"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          json:
+            dishId: "{{ dishId }}"
+            rating: 5
+            content: "load test"
+      - post:
+          url: "/comments"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          json:
+            reviewId: "{{ reviewId }}"
+            content: "load test"
+
+      # 举报（可选）
+      - post:
+          url: "/reviews/{{ reviewId }}/report"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          json:
+            type: "spam"
+            reason: "load test"
+      - post:
+          url: "/comments/{{ commentId }}/report"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          json:
+            type: "spam"
+            reason: "load test"
+
+      # 饮食计划写入
+      - post:
+          url: "/meal-plans"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          json:
+            startDate: "2025-12-21"
+            endDate: "2025-12-22"
+            mealTime: "lunch"
+            dishes: ["{{ dishId }}"]

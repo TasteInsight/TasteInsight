@@ -19,6 +19,22 @@ export class AdminAdminsService {
   constructor(private prisma: PrismaService) {}
 
   /**
+   * 验证食堂ID是否存在（如果提供）
+   */
+  private async validateCanteenId(
+    canteenId: string | null | undefined,
+  ): Promise<void> {
+    if (canteenId !== undefined && canteenId !== null) {
+      const canteen = await this.prisma.canteen.findUnique({
+        where: { id: canteenId },
+      });
+      if (!canteen) {
+        throw new BadRequestException('指定的食堂不存在');
+      }
+    }
+  }
+
+  /**
    * 获取当前管理员创建的子管理员列表
    */
   async findAll(
@@ -45,6 +61,7 @@ export class AdminAdminsService {
         orderBy: { createdAt: 'desc' },
         include: {
           permissions: true,
+          canteen: true,
         },
       }),
     ]);
@@ -54,6 +71,7 @@ export class AdminAdminsService {
       username: admin.username,
       role: admin.role,
       canteenId: admin.canteenId,
+      canteenName: admin.canteen?.name ?? null,
       createdBy: admin.createdBy,
       permissions: admin.permissions.map((p) => p.permission),
       createdAt: admin.createdAt,
@@ -84,15 +102,8 @@ export class AdminAdminsService {
   ): Promise<AdminResponseDto> {
     const { username, password, canteenId, permissions } = createAdminDto;
 
-    // 如果传入了 canteenId，验证食堂是否存在
-    if (canteenId) {
-      const canteen = await this.prisma.canteen.findUnique({
-        where: { id: canteenId },
-      });
-      if (!canteen) {
-        throw new BadRequestException('指定的食堂不存在');
-      }
-    }
+    // 验证食堂存在性
+    await this.validateCanteenId(canteenId);
 
     // 加密密码
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -112,6 +123,7 @@ export class AdminAdminsService {
         },
         include: {
           permissions: true,
+          canteen: true,
         },
       });
 
@@ -123,6 +135,7 @@ export class AdminAdminsService {
           username: admin.username,
           role: admin.role,
           canteenId: admin.canteenId,
+          canteenName: admin.canteen?.name ?? null,
           createdBy: admin.createdBy,
           permissions: admin.permissions.map((p) => p.permission),
           createdAt: admin.createdAt,
@@ -186,7 +199,7 @@ export class AdminAdminsService {
     targetId: string,
     updatePermissionsDto: UpdatePermissionsDto,
   ): Promise<{ code: number; message: string; data: null }> {
-    const { permissions } = updatePermissionsDto;
+    const { permissions, canteenId } = updatePermissionsDto;
 
     // 查找目标管理员
     const targetAdmin = await this.prisma.admin.findUnique({
@@ -207,14 +220,25 @@ export class AdminAdminsService {
       throw new ForbiddenException('无法更新该管理员的权限');
     }
 
+    // 验证食堂存在性
+    await this.validateCanteenId(canteenId);
+
     // 使用事务更新权限
     await this.prisma.$transaction(async (tx) => {
-      // 1. 删除现有权限
+      // 首先更新管理范围（食堂）
+      if (canteenId !== undefined) {
+        await tx.admin.update({
+          where: { id: targetId },
+          data: { canteenId: canteenId ?? null },
+        });
+      }
+
+      // 删除现有权限
       await tx.adminPermission.deleteMany({
         where: { adminId: targetId },
       });
 
-      // 2. 创建新权限
+      // 创建新权限
       await tx.adminPermission.createMany({
         data: permissions.map((permission) => ({
           adminId: targetId,

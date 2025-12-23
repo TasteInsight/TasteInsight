@@ -7,13 +7,68 @@
         header-icon="clarity:note-edit-line"
       />
 
-      <SearchBar
-        v-model="searchQuery"
-        placeholder="搜索菜品名称、食堂、窗口..."
-        :show-filter="true"
-        @filter="showFilter = true"
-        @input="handleSearchChange"
-      />
+      <!-- 搜索和筛选区域 -->
+      <div class="mb-6 space-y-4">
+        <SearchBar
+          v-model="searchQuery"
+          placeholder="搜索菜品名称、标签..."
+          :show-filter="false"
+          @input="handleSearchChange"
+          class="w-full"
+        />
+
+        <div class="p-4 bg-gray-50 rounded-lg border border-gray-100 flex flex-wrap items-center gap-x-8 gap-y-4">
+          <div class="flex items-center gap-3">
+            <span class="text-sm font-medium text-gray-600">所属食堂</span>
+            <div class="relative">
+              <select
+                v-model="selectedCanteenId"
+                @change="handleCanteenChange"
+                class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[200px] transition-all cursor-pointer hover:border-gray-400"
+              >
+                <option value="">全部食堂</option>
+                <option v-for="canteen in canteens" :key="canteen.id" :value="canteen.id">
+                  {{ canteen.name }}
+                </option>
+              </select>
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
+                <span class="iconify" data-icon="carbon:chevron-down"></span>
+              </span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <span class="text-sm font-medium text-gray-600">所属窗口</span>
+            <div class="relative">
+              <select
+                v-model="selectedWindowId"
+                @change="handleWindowChange"
+                class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[200px] transition-all cursor-pointer hover:border-gray-400 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:border-gray-200"
+                :disabled="!selectedCanteenId"
+              >
+                <option value="">全部窗口</option>
+                <option v-for="window in windows" :key="window.id" :value="window.id">
+                  {{ window.name }}
+                </option>
+              </select>
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center" :class="{'opacity-50': !selectedCanteenId}">
+                <span class="iconify" data-icon="carbon:chevron-down"></span>
+              </span>
+            </div>
+          </div>
+
+          <div class="ml-auto flex items-center">
+            <button
+              v-if="selectedCanteenId || searchQuery"
+              @click="resetFilters"
+              class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-gray-200/50 transition-colors"
+            >
+              <span class="iconify" data-icon="carbon:reset"></span>
+              重置筛选
+            </button>
+          </div>
+        </div>
+      </div>
 
       <!-- 菜品表格 -->
       <div class="overflow-auto">
@@ -23,7 +78,7 @@
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">菜品名称</th>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">食堂/楼层</th>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">窗口</th>
-              <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">菜系</th>
+              <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">标签</th>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">价格区间</th>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">评分</th>
               <th class="py-3 px-6 text-center text-sm font-medium text-gray-500">操作</th>
@@ -104,9 +159,10 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onActivated, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { dishApi } from '@/api/modules/dish'
+import { canteenApi } from '@/api/modules/canteen'
 import { useDishStore } from '@/store/modules/use-dish-store'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
@@ -131,17 +187,72 @@ export default {
     const isLoading = ref(false)
     const dishes = ref([])
     const totalDishes = ref(0)
+    
+    // 筛选相关
+    const canteens = ref([])
+    const windows = ref([])
+    const selectedCanteenId = ref('')
+    const selectedWindowId = ref('')
+
+    // 加载食堂列表
+    const loadCanteens = async () => {
+      try {
+        const response = await canteenApi.getCanteens({ page: 1, pageSize: 100 })
+        if (response.code === 200 && response.data) {
+          canteens.value = response.data.items || []
+        }
+      } catch (error) {
+        console.error('加载食堂列表失败:', error)
+      }
+    }
+
+    // 处理食堂变化
+    const handleCanteenChange = async () => {
+      selectedWindowId.value = '' // 重置窗口选择
+      windows.value = [] // 清空窗口列表
+      
+      // 重新加载菜品
+      currentPage.value = 1
+      loadDishes()
+
+      if (selectedCanteenId.value) {
+        try {
+          const response = await canteenApi.getWindows(selectedCanteenId.value, { page: 1, pageSize: 100 })
+          if (response.code === 200 && response.data) {
+            windows.value = response.data.items || []
+          }
+        } catch (error) {
+          console.error('加载窗口列表失败:', error)
+        }
+      }
+    }
+
+    // 处理窗口变化
+    const handleWindowChange = () => {
+      currentPage.value = 1
+      loadDishes()
+    }
 
     // 加载菜品列表
     const loadDishes = async () => {
       isLoading.value = true
       try {
-        const response = await dishApi.getDishes({
+        const params = {
           page: currentPage.value,
           pageSize: pageSize.value,
           keyword: searchQuery.value || undefined,
           status: undefined, // 获取所有状态的菜品
-        })
+        }
+        
+        // 添加筛选参数
+        if (selectedCanteenId.value) {
+          params.canteenId = selectedCanteenId.value
+        }
+        if (selectedWindowId.value) {
+          params.windowId = selectedWindowId.value
+        }
+
+        const response = await dishApi.getDishes(params)
 
         if (response.code === 200 && response.data) {
           // 转换API数据格式
@@ -221,6 +332,25 @@ export default {
     }
 
     onMounted(() => {
+      loadCanteens()
+      loadDishes()
+    })
+
+    onActivated(() => {
+      // 如果有选中的食堂且窗口列表为空，则尝试重新加载窗口列表，防止状态丢失
+      if (selectedCanteenId.value && windows.value.length === 0) {
+        canteenApi.getWindows(selectedCanteenId.value, { page: 1, pageSize: 100 })
+          .then(res => {
+            if (res.code === 200 && res.data) {
+              windows.value = res.data.items || []
+            }
+          })
+          .catch(err => {
+            console.error('恢复窗口列表失败:', err)
+            // 向用户展示错误提示
+            alert('恢复窗口列表失败，请稍后重试')
+          })
+      }
       loadDishes()
     })
 
@@ -230,6 +360,15 @@ export default {
         delete window.__modifyDish_clickLogger
       }
     })
+
+    const resetFilters = () => {
+      searchQuery.value = ''
+      selectedCanteenId.value = ''
+      selectedWindowId.value = ''
+      windows.value = []
+      currentPage.value = 1
+      loadDishes()
+    }
 
     return {
       searchQuery,
@@ -245,6 +384,13 @@ export default {
       handleSearchChange,
       loadDishes,
       authStore,
+      canteens,
+      windows,
+      selectedCanteenId,
+      selectedWindowId,
+      handleCanteenChange,
+      handleWindowChange,
+      resetFilters,
     }
   },
 }

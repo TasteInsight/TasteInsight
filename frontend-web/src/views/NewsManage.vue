@@ -3,23 +3,10 @@
     <div class="bg-white rounded-lg container-shadow p-8">
       <Header title="新闻管理" description="管理和发布新闻资讯" header-icon="carbon:license-draft" />
 
-      <!-- 创建新闻按钮 -->
-      <div class="mt-6 flex justify-end">
-        <button
-          @click="openCreateModal"
-          class="px-6 py-2 text-white rounded-lg transition duration-200 flex items-center space-x-2"
-          :class="authStore.hasPermission('news:create') ? 'bg-tsinghua-purple hover:bg-tsinghua-dark' : 'bg-gray-400 cursor-not-allowed'"
-          :title="!authStore.hasPermission('news:create') ? '无权限创建' : '创建新闻'"
-        >
-          <span class="iconify" data-icon="carbon:add"></span>
-          <span>创建新闻</span>
-        </button>
-      </div>
-
-      <!-- 新闻列表 -->
-      <div class="mt-6">
+      <!-- 创建新闻按钮和状态筛选 -->
+      <div class="mt-6 flex items-center justify-between">
         <!-- 状态筛选 -->
-        <div class="mb-4 flex space-x-4">
+        <div class="flex space-x-4">
           <button
             class="px-4 py-2 rounded-lg transition-colors"
             :class="
@@ -42,6 +29,85 @@
           >
             未发布 (草稿)
           </button>
+        </div>
+        
+        <!-- 创建新闻按钮 -->
+        <button
+          @click="openCreateModal"
+          class="px-6 py-2 text-white rounded-lg transition duration-200 flex items-center space-x-2"
+          :class="authStore.hasPermission('news:create') ? 'bg-tsinghua-purple hover:bg-tsinghua-dark' : 'bg-gray-400 cursor-not-allowed'"
+          :title="!authStore.hasPermission('news:create') ? '无权限创建' : '创建新闻'"
+        >
+          <span class="iconify" data-icon="carbon:add"></span>
+          <span>创建新闻</span>
+        </button>
+      </div>
+
+      <!-- 新闻列表 -->
+      <div class="mt-6">
+
+        <!-- 搜索和筛选栏 -->
+        <div class="mb-6 space-y-4 p-4 bg-gray-50 rounded-lg border">
+          <!-- 搜索栏 -->
+          <div>
+            <label class="block text-sm font-medium text-gray-600 mb-2">搜索标题</label>
+            <input
+              type="text"
+              v-model="searchQuery"
+              placeholder="输入新闻标题进行搜索..."
+              class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+            />
+          </div>
+
+          <!-- 筛选栏 -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- 食堂筛选 -->
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-2">发布食堂</label>
+              <select
+                v-model="canteenFilter"
+                class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple bg-white"
+              >
+                <option value="">全部食堂</option>
+                <option value="all">全校公告</option>
+                <option v-for="canteen in canteenList" :key="canteen.id" :value="canteen.id">
+                  {{ canteen.name }}
+                </option>
+              </select>
+            </div>
+
+            <!-- 开始时间 -->
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-2">开始时间</label>
+              <input
+                type="datetime-local"
+                v-model="startDate"
+                class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+              />
+            </div>
+
+            <!-- 结束时间 -->
+            <div>
+              <label class="block text-sm font-medium text-gray-600 mb-2">结束时间</label>
+              <input
+                type="datetime-local"
+                v-model="endDate"
+                class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+              />
+            </div>
+          </div>
+
+          <!-- 重置筛选按钮 -->
+          <div class="flex justify-end">
+            <button
+              v-if="searchQuery || canteenFilter || startDate || endDate"
+              @click="resetFilters"
+              class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-2 rounded-md hover:bg-gray-100 transition-colors"
+            >
+              <span class="iconify" data-icon="carbon:reset"></span>
+              重置筛选
+            </button>
+          </div>
         </div>
 
         <div class="overflow-x-auto">
@@ -67,12 +133,12 @@
                   <span class="ml-2">加载中...</span>
                 </td>
               </tr>
-              <tr v-else-if="newsList.length === 0">
+              <tr v-else-if="filteredNewsList.length === 0">
                 <td colspan="5" class="py-8 text-center text-gray-500">
-                  暂无{{ currentStatus === 'published' ? '已发布' : '未发布' }}新闻
+                  {{ searchQuery || canteenFilter || startDate || endDate ? '没有找到符合条件的新闻' : `暂无${currentStatus === 'published' ? '已发布' : '未发布'}新闻` }}
                 </td>
               </tr>
-              <tr v-else v-for="news in newsList" :key="news.id" class="hover:bg-gray-50">
+              <tr v-else v-for="news in filteredNewsList" :key="news.id" class="hover:bg-gray-50">
                 <td class="py-4 px-6">
                   <div class="font-medium text-gray-900">{{ news.title }}</div>
                 </td>
@@ -90,6 +156,15 @@
                 </td>
                 <td class="py-4 px-6 text-center">
                   <div class="flex items-center justify-center space-x-2">
+                    <!-- 预览按钮（所有状态都可预览） -->
+                    <button
+                      @click="previewNews(news)"
+                      class="px-3 py-1 rounded text-sm transition duration-200 bg-purple-100 text-purple-700 hover:bg-purple-200"
+                      title="预览新闻"
+                    >
+                      预览
+                    </button>
+
                     <!-- 未发布状态操作 -->
                     <template v-if="currentStatus === 'draft'">
                       <button
@@ -340,11 +415,62 @@
       </div>
     </div>
   </div>
+
+  <!-- 新闻预览模态框 -->
+  <div
+    v-if="showPreviewModal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="news-preview-title"
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]"
+    @click.self="closePreviewModal"
+  >
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] overflow-hidden m-4 flex flex-col">
+      <!-- 预览头部 -->
+      <div class="p-6 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+        <h3 id="news-preview-title" class="text-xl font-semibold text-gray-800">新闻预览</h3>
+        <button
+          @click="closePreviewModal"
+          aria-label="关闭新闻预览"
+          class="text-gray-400 hover:text-gray-600 transition"
+        >
+          <span class="iconify text-2xl" data-icon="carbon:close"></span>
+        </button>
+      </div>
+
+      <!-- 预览内容区域（可滚动） -->
+      <div class="flex-1 overflow-y-auto bg-gray-100">
+        <div class="p-4 box-border w-full bg-white min-h-full">
+          <div v-if="previewNewsData.id" class="pb-5">
+            <!-- 标题 -->
+            <div class="text-2xl font-bold mb-2.5 leading-relaxed">{{ previewNewsData.title }}</div>
+            
+            <!-- 发布信息 -->
+            <div class="flex justify-between text-gray-500 text-sm mb-5 pb-2.5 border-b border-gray-200">
+              <span>{{ previewNewsData.canteenName || '全校公告' }}</span>
+              <span>{{ previewNewsData.publishedAt ? formatPreviewTime(previewNewsData.publishedAt) : (previewNewsData.createdAt ? formatPreviewTime(previewNewsData.createdAt) : '') }}</span>
+            </div>
+            
+            <!-- 内容（富文本） -->
+            <div 
+              class="text-base leading-relaxed text-gray-800 overflow-hidden break-words w-full news-preview-content"
+              v-html="formattedPreviewContent"
+            ></div>
+            
+            <!-- 发布人信息 -->
+            <div class="mt-6 pt-2 border-t border-dashed border-gray-200 text-gray-500 text-xs text-right">
+              <span>发布人：{{ previewNewsData.createdBy || '管理员' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script>
 // 1. 引入 Vue 核心功能，添加 shallowRef, onBeforeUnmount
-import { ref, reactive, onMounted, shallowRef, onBeforeUnmount, computed } from 'vue'
+import { ref, reactive, onMounted, onActivated, onUnmounted, shallowRef, onBeforeUnmount, computed } from 'vue'
 // 2. 引入 wangEditor CSS 和组件
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
@@ -368,11 +494,19 @@ export default {
     const newsList = ref([])
     const showCreateModal = ref(false)
     const showEditModal = ref(false)
+    const showPreviewModal = ref(false)
+    const previewNewsData = ref({})
     const editingNewsId = ref(null)
     const isLoading = ref(false)
     const currentStatus = ref('published') // 默认显示已发布
     const canteenList = ref([])
     const authStore = useAuthStore()
+
+    // 搜索和筛选状态
+    const searchQuery = ref('')
+    const canteenFilter = ref('')
+    const startDate = ref('')
+    const endDate = ref('')
 
     // 获取当前登录管理员信息
     const currentAdmin = computed(() => authStore.user)
@@ -522,9 +656,69 @@ export default {
     }
 
     const getCanteenName = (canteenId) => {
-      if (!canteenId) return '未设置'
+      if (!canteenId) return '全校公告'
       const canteen = canteenList.value.find((c) => c.id === canteenId)
       return canteen ? canteen.name : '未知食堂'
+    }
+
+    // 过滤后的新闻列表
+    const filteredNewsList = computed(() => {
+      let filtered = newsList.value
+
+      // 标题搜索
+      if (searchQuery.value) {
+        const query = searchQuery.value.toLowerCase().trim()
+        filtered = filtered.filter((news) =>
+          news.title && news.title.toLowerCase().includes(query)
+        )
+      }
+
+      // 食堂筛选
+      if (canteenFilter.value) {
+        if (canteenFilter.value === 'all') {
+          // 筛选全校公告（canteenId为空或null）
+          filtered = filtered.filter((news) => !news.canteenId)
+        } else {
+          // 筛选指定食堂
+          filtered = filtered.filter((news) => news.canteenId === canteenFilter.value)
+        }
+      }
+
+      // 时间范围筛选
+      if (startDate.value || endDate.value) {
+        filtered = filtered.filter((news) => {
+          const newsDate = currentStatus.value === 'published' 
+            ? (news.publishedAt ? new Date(news.publishedAt) : null)
+            : (news.createdAt ? new Date(news.createdAt) : null)
+          
+          if (!newsDate) return false
+
+          if (startDate.value) {
+            const start = new Date(startDate.value)
+            if (newsDate < start) return false
+          }
+
+          if (endDate.value) {
+            // 创建新的日期对象，避免修改原始对象
+            const end = new Date(endDate.value)
+            // 结束时间设置为当天的23:59:59
+            end.setHours(23, 59, 59, 999)
+            if (newsDate > end) return false
+          }
+
+          return true
+        })
+      }
+
+      return filtered
+    })
+
+    // 重置筛选
+    const resetFilters = () => {
+      searchQuery.value = ''
+      canteenFilter.value = ''
+      startDate.value = ''
+      endDate.value = ''
     }
 
     const loadCanteens = async () => {
@@ -757,6 +951,78 @@ export default {
       }
     }
 
+    // 键盘事件处理（用于预览模态框）
+    const handlePreviewKeyDown = (event) => {
+      if (!showPreviewModal.value) return
+      
+      if (event.key === 'Escape' || event.key === 'Esc') {
+        event.preventDefault()
+        closePreviewModal()
+      }
+    }
+
+    // 预览新闻
+    const previewNews = (news) => {
+      previewNewsData.value = { ...news }
+      showPreviewModal.value = true
+    }
+
+    // 关闭预览模态框
+    const closePreviewModal = () => {
+      showPreviewModal.value = false
+      previewNewsData.value = {}
+    }
+
+    // 格式化预览时间
+    const formatPreviewTime = (time) => {
+      if (!time) return ''
+      const date = new Date(time)
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      return `${year}-${month}-${day} ${hours}:${minutes}`
+    }
+
+    // 格式化预览内容（处理富文本，让图片自适应）
+    const formattedPreviewContent = computed(() => {
+      if (!previewNewsData.value.content) return ''
+
+      let content = previewNewsData.value.content
+
+      // 0. 移除 html 和 body 标签，防止解析异常
+      content = content.replace(/<\/?html[^>]*>/gi, '').replace(/<\/?body[^>]*>/gi, '')
+
+      // 1. 给 img 标签添加 max-width: 100% 样式
+      content = content.replace(/<img[^>]*>/gi, (match) => {
+        // 如果已经有 style 属性
+        if (match.indexOf('style="') > -1) {
+          return match.replace('style="', 'style="max-width:100%;height:auto;display:block;margin:10px auto;')
+        }
+        // 如果没有 style 属性
+        return match.replace('<img', '<img style="max-width:100%;height:auto;display:block;margin:10px auto;"')
+      })
+
+      // 2. 给 table 添加 max-width: 100%
+      content = content.replace(/<table[^>]*>/gi, (match) => {
+        if (match.indexOf('style="') > -1) {
+          return match.replace('style="', 'style="max-width:100%;box-sizing:border-box;')
+        }
+        return match.replace('<table', '<table style="max-width:100%;box-sizing:border-box;"')
+      })
+
+      // 3. 给 pre 添加样式防止溢出
+      content = content.replace(/<pre[^>]*>/gi, (match) => {
+        if (match.indexOf('style="') > -1) {
+          return match.replace('style="', 'style="max-width:100%;white-space:pre-wrap;word-break:break-all;')
+        }
+        return match.replace('<pre', '<pre style="max-width:100%;white-space:pre-wrap;word-break:break-all;"')
+      })
+
+      return content
+    })
+
     const handlePageChange = (page) => {
       pagination.page = page
       loadNews()
@@ -765,12 +1031,25 @@ export default {
     onMounted(() => {
       loadCanteens()
       loadNews()
+      document.addEventListener('keydown', handlePreviewKeyDown)
+    })
+
+    onActivated(() => {
+      loadCanteens()
+      loadNews()
+    })
+
+    onUnmounted(() => {
+      document.removeEventListener('keydown', handlePreviewKeyDown)
     })
 
     return {
       newsList,
+      filteredNewsList,
       showCreateModal,
       showEditModal,
+      showPreviewModal,
+      previewNewsData,
       newsForm,
       errors,
       canteenList,
@@ -778,9 +1057,14 @@ export default {
       currentAdmin,
       currentStatus,
       isLoading,
+      searchQuery,
+      canteenFilter,
+      startDate,
+      endDate,
       changeStatus,
       publishNews,
       revokeNews,
+      resetFilters,
       // 导出编辑器相关变量
       editorRef,
       valueHtml,
@@ -798,8 +1082,72 @@ export default {
       submitForm,
       deleteNews,
       handlePageChange,
+      // 预览相关
+      previewNews,
+      closePreviewModal,
+      formatPreviewTime,
+      formattedPreviewContent,
       authStore,
     }
   },
 }
 </script>
+
+<style scoped>
+/* 新闻预览内容样式，与小程序保持一致 */
+.news-preview-content {
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+.news-preview-content :deep(img) {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block;
+  margin: 10px auto;
+}
+
+.news-preview-content :deep(table) {
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+.news-preview-content :deep(pre) {
+  max-width: 100% !important;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-x: auto;
+}
+
+.news-preview-content :deep(p) {
+  margin: 0.5em 0;
+}
+
+.news-preview-content :deep(h1),
+.news-preview-content :deep(h2),
+.news-preview-content :deep(h3),
+.news-preview-content :deep(h4),
+.news-preview-content :deep(h5),
+.news-preview-content :deep(h6) {
+  margin: 0.8em 0 0.5em 0;
+  font-weight: bold;
+}
+
+.news-preview-content :deep(ul),
+.news-preview-content :deep(ol) {
+  margin: 0.5em 0;
+  padding-left: 2em;
+}
+
+.news-preview-content :deep(blockquote) {
+  margin: 0.5em 0;
+  padding-left: 1em;
+  border-left: 3px solid #ddd;
+  color: #666;
+}
+
+.news-preview-content :deep(a) {
+  color: #007aff;
+  text-decoration: underline;
+}
+</style>

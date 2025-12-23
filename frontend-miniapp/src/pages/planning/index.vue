@@ -4,49 +4,38 @@
     <!-- 微信小程序专用：统一在父组件管理 page-container 拦截返回事件 -->
     <!-- 详情弹窗 -->
     <page-container 
-      v-if="showDetailDialog"
+      v-if="shouldRenderDetailHelper"
       :show="showDetailDialog" 
       :overlay="false" 
       :duration="300"
+      :disable-scroll="false"
       custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
       @leave="closeDetailDialog" 
     />
+
     <!-- 编辑弹窗 -->
     <page-container 
-      v-if="showEditDialog"
+      v-if="shouldRenderEditHelper"
       :show="showEditDialog" 
       :overlay="false" 
       :duration="300"
+      :disable-scroll="false"
       custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
-      @leave="handleEditDialogBack" 
+      @leave="closeEditDialog" 
     />
-    <!-- 创建弹窗 -->
+
+    <!-- 新建弹窗 -->
     <page-container 
-      v-if="showCreateDialog"
+      v-if="shouldRenderCreateHelper"
       :show="showCreateDialog" 
       :overlay="false" 
       :duration="300"
+      :disable-scroll="false"
       custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
-      @leave="handleCreateDialogBack" 
+      @leave="closeCreateDialog" 
     />
-    <!-- 编辑弹窗的菜品选择器 -->
-    <page-container 
-      v-if="editDishSelectorVisible"
-      :show="editDishSelectorVisible" 
-      :overlay="false" 
-      :duration="300"
-      custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
-      @leave="closeEditDishSelector" 
-    />
-    <!-- 创建弹窗的菜品选择器 -->
-    <page-container 
-      v-if="createDishSelectorVisible"
-      :show="createDishSelectorVisible" 
-      :overlay="false" 
-      :duration="300"
-      custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
-      @leave="closeCreateDishSelector" 
-    />
+
+    
     <!-- #endif -->
 
     <!-- 骨架屏：首次加载时显示 -->
@@ -59,20 +48,20 @@
         :class="['flex-1 py-3 text-center border-b-2', activeTab === 'current' ? 'border-purple-700 text-ts-purple font-semibold' : 'border-transparent text-gray-600']"
         @tap="switchTab('current')"
       >
-        <text>当前规划 ({{ currentPlans.length }})</text>
+        <text class="text-sm">当前规划 ({{ currentPlans.length }})</text>
       </view>
       <view 
         :class="['flex-1 py-3 text-center border-b-2', activeTab === 'history' ? 'border-purple-700 text-ts-purple font-semibold' : 'border-transparent text-gray-600']"
         @tap="switchTab('history')"
       >
-        <text>历史规划 ({{ historyPlans.length }})</text>
+        <text class="text-sm">历史规划 ({{ historyPlans.length }})</text>
       </view>
     </view>
         
     <!-- 错误状态 -->
     <view v-if="error" class="flex flex-col items-center justify-center py-20 px-5">
-      <text class="text-red-500 mb-4">{{ error }}</text>
-      <view @tap="refreshPlans" class="py-2 px-6 bg-purple-700 rounded-lg">
+      <text class="text-black mb-4">{{ error }}</text>
+      <view @tap="refreshPlans" class="py-2 px-6 bg-ts-purple rounded-lg border border-ts-purple active:opacity-90">
         <text class="text-white">重试</text>
       </view>
     </view>
@@ -85,8 +74,8 @@
       </view>
     </view>
 
-    <!-- 规划列表 -->
-    <scroll-view v-else scroll-y class="box-border w-full px-5 pt-5">
+    <!-- 规划列表（使用页面原生滚动，避免 scroll-view 未设置高度导致无法滚动） -->
+    <view v-else class="box-border w-full px-5 pt-5">
       <view class="flex flex-col items-center w-full">
         <PlanCard
           v-for="plan in displayPlans"
@@ -101,7 +90,7 @@
         />
         <view class="h-5"></view>
       </view>
-    </scroll-view>
+    </view>
 
     <!-- 详情对话框 -->
     <PlanDetailDialog
@@ -142,7 +131,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch, isRef } from 'vue';
 import { onHide, onPullDownRefresh, onBackPress } from '@dcloudio/uni-app';
 import { useMenuPlanning } from './composables/use-menu-planning';
 import type { EnrichedMealPlan } from './composables/use-menu-planning';
@@ -183,14 +172,54 @@ const {
   executePlan,
 } = useMenuPlanning();
 
+// 微信小程序 page-container：延迟销毁以避免关闭弹窗后出现滚动锁定
+const shouldRenderDetailHelper = ref(false);
+const shouldRenderEditHelper = ref(false);
+const shouldRenderCreateHelper = ref(false);
+
+if (isRef(showDetailDialog)) {
+  watch(showDetailDialog, (val: boolean) => {
+    if (val) {
+      shouldRenderDetailHelper.value = true;
+    } else {
+      setTimeout(() => {
+        shouldRenderDetailHelper.value = false;
+      }, 300);
+    }
+  });
+}
+
+if (isRef(showEditDialog)) {
+  watch(showEditDialog, (val: boolean) => {
+    if (val) {
+      shouldRenderEditHelper.value = true;
+    } else {
+      setTimeout(() => {
+        shouldRenderEditHelper.value = false;
+      }, 300);
+    }
+  });
+}
+
+if (isRef(showCreateDialog)) {
+  watch(showCreateDialog, (val: boolean) => {
+    if (val) {
+      shouldRenderCreateHelper.value = true;
+    } else {
+      setTimeout(() => {
+        shouldRenderCreateHelper.value = false;
+      }, 300);
+    }
+  });
+}
+
 // 首次加载状态：加载中且数据为空
 const isInitialLoading = computed(() => {
   return loading.value && !hasLoaded.value;
 });
 
 // 监听数据加载完成
-import { watch } from 'vue';
-watch(loading, (newLoading, oldLoading) => {
+watch(() => loading.value, (newLoading, oldLoading) => {
   // 当 loading 从 true 变为 false 时，表示首次加载完成
   if (oldLoading === true && newLoading === false) {
     hasLoaded.value = true;
@@ -204,66 +233,8 @@ onHide(() => {
   closeCreateDialog();
 });
 
-// 菜品选择器状态（用于 page-container 管理）
-const editDishSelectorVisible = computed(() => 
-  showEditDialog.value && !!((editDialogRef.value as any)?.showDishSelector?.value)
-);
-const createDishSelectorVisible = computed(() => 
-  showCreateDialog.value && !!((createDialogRef.value as any)?.showDishSelector?.value)
-);
-
-// 关闭编辑弹窗的菜品选择器
-const closeEditDishSelector = () => {
-  editDialogRef.value?.closeDishSelector?.();
-};
-
-// 关闭创建弹窗的菜品选择器
-const closeCreateDishSelector = () => {
-  createDialogRef.value?.closeDishSelector?.();
-};
-
-// 处理编辑弹窗返回
-const handleEditDialogBack = () => {
-  console.log('[planning] handleEditDialogBack called', {
-    showEditDialog: showEditDialog.value,
-    showDishSelector: (editDialogRef.value as any)?.showDishSelector?.value
-  });
-  // 如果有菜品选择器打开，优先关闭它
-  if ((editDialogRef.value as any)?.showDishSelector?.value) {
-    closeEditDishSelector();
-  } else {
-    closeEditDialog();
-  }
-};
-
-// 处理创建弹窗返回
-const handleCreateDialogBack = () => {
-  console.log('[planning] handleCreateDialogBack called', {
-    showCreateDialog: showCreateDialog.value,
-    showDishSelector: (createDialogRef.value as any)?.showDishSelector?.value
-  });
-  // 如果有菜品选择器打开，优先关闭它
-  if ((createDialogRef.value as any)?.showDishSelector?.value) {
-    closeCreateDishSelector();
-  } else {
-    closeCreateDialog();
-  }
-};
-
 // 返回键拦截处理（App/H5 端备用）
 onBackPress(() => {
-  // 优先处理编辑对话框中的返回
-  if (showEditDialog.value) {
-    handleEditDialogBack();
-    return true;
-  }
-  
-  // 处理创建对话框中的返回
-  if (showCreateDialog.value) {
-    handleCreateDialogBack();
-    return true;
-  }
-
   // 关闭详情对话框
   if (showDetailDialog.value) {
     closeDetailDialog();

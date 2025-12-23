@@ -77,8 +77,9 @@ export function useDishDetail() {
         error.value = response.message || '获取菜品详情失败';
       }
     } catch (err: any) {
-      console.error('获取菜品详情失败:', err);
-      error.value = err.message || '网络错误，请稍后重试';
+      const debugError = err && typeof err === 'object' && 'originalError' in err ? (err as any).originalError : err;
+      console.error('获取菜品详情失败:', debugError);
+      error.value = err?.message || '网络开小差了，请稍后再试';
     } finally {
       loading.value = false;
     }
@@ -151,6 +152,13 @@ export function useDishDetail() {
       if (dish.value && dish.value.reviewCount) {
         dish.value.reviewCount--;
       }
+      // 刷新评价列表和菜品详情（更新评分统计）
+      if (dish.value?.id) {
+        await Promise.all([
+          fetchReviewsOriginal(dish.value.id, true),
+          fetchDishDetail(dish.value.id)
+        ]);
+      }
       uni.showToast({ title: '删除成功', icon: 'success' });
     } catch (err: any) {
       uni.showToast({ title: err.message || '删除失败', icon: 'none' });
@@ -163,6 +171,10 @@ export function useDishDetail() {
   const removeComment = async (commentId: string, reviewId: string) => {
     try {
       await removeCommentOriginal(commentId, reviewId);
+      // 刷新该条评价的评论列表
+      if (reviewId) {
+        await fetchComments(reviewId);
+      }
       uni.showToast({ title: '删除成功', icon: 'success' });
     } catch (err: any) {
       uni.showToast({ title: err.message || '删除失败', icon: 'none' });

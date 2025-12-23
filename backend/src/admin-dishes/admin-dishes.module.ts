@@ -5,9 +5,16 @@ import { AdminDishesController } from './admin-dishes.controller';
 import { AdminDishesService } from './admin-dishes.service';
 import { PrismaService } from '@/prisma.service';
 import { PermissionsGuard } from '@/auth/guards/permissions.guard';
+import { RecommendationModule } from '@/recommendation/recommendation.module';
+import { EmbeddingQueueModule } from '@/embedding-queue/embedding-queue.module';
 
 @Module({
-  imports: [JwtModule.register({}), ConfigModule],
+  imports: [
+    JwtModule.register({}),
+    ConfigModule,
+    RecommendationModule,
+    EmbeddingQueueModule,
+  ],
   controllers: [AdminDishesController],
   providers: [AdminDishesService, PrismaService, PermissionsGuard],
 })

@@ -16,6 +16,7 @@ import type {
   ApiResponse,
   SuccessResponse
 } from '@/types/api';
+import { toUserFriendlyErrorMessage } from '@/utils/user-friendly-error';
 
 // 为 state 定义一个类型，增强类型安全
 interface DishesState {
@@ -37,6 +38,8 @@ export const useDishesStore = defineStore('dishes', () => {
   const pagination = ref<PaginationMeta | null>(null);
   // 加载状态
   const loading = ref(false);
+  // 追加加载状态（用于上拉加载更多，避免遮挡已渲染列表）
+  const loadingMore = ref(false);
   // 错误信息
   const error = ref<string | null>(null);
 
@@ -58,26 +61,41 @@ export const useDishesStore = defineStore('dishes', () => {
    * 获取菜品列表 (支持筛选、搜索、排序和分页)
    * @param {GetDishesRequest} params - 请求参数
    */
-  async function fetchDishes(params: GetDishesRequest): Promise<void> {
-    loading.value = true;
+  async function fetchDishes(
+    params: GetDishesRequest,
+    options?: {
+      append?: boolean;
+    }
+  ): Promise<void> {
+    const append = options?.append === true;
+
+    if (append) {
+      loadingMore.value = true;
+    } else {
+      loading.value = true;
+    }
     error.value = null;
     try {
       const response = await getDishes(params);
       
       if (response.code === 200 && response.data) {
-        dishes.value = response.data.items;
+        const items = response.data.items;
+        dishes.value = append ? [...dishes.value, ...items] : items;
         pagination.value = response.data.meta;
       } else {
         throw new Error(response.message || '获取菜品列表失败');
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : '未知错误';
-      error.value = message;
+      error.value = toUserFriendlyErrorMessage(err);
       console.error('获取菜品列表失败:', err);
       // 抛出错误以便 UI 层可以捕获
       throw err;
     } finally {
-      loading.value = false;
+      if (append) {
+        loadingMore.value = false;
+      } else {
+        loading.value = false;
+      }
     }
   }
 
@@ -98,8 +116,7 @@ export const useDishesStore = defineStore('dishes', () => {
         throw new Error(response.message || '获取菜品详情失败');
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : '未知错误';
-      error.value = message;
+      error.value = toUserFriendlyErrorMessage(err);
       console.error(`获取ID为 ${id} 的菜品详情失败:`, err);
       throw err;
     } finally {
@@ -192,6 +209,7 @@ export const useDishesStore = defineStore('dishes', () => {
     currentDish,
     pagination,
     loading,
+    loadingMore,
     error,
     
     // Getters
