@@ -40,7 +40,7 @@ const chatStore = useChatStore();
 
 const goToDishDetail = (id: string) => {
   uni.navigateTo({
-    url: `/pages/canteen/dish-detail?id=${id}`,
+    url: `/pages/dish/index?id=${id}`,
   });
 };
 

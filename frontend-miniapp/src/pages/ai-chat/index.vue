@@ -64,8 +64,11 @@
                   : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100'
               ]"
             >
-              <!-- 核心修复：支持换行和空格 -->
-              <text :user-select="true" class="whitespace-pre-wrap leading-normal">{{ segment.text }}</text>
+              <!-- AI 消息：将后端返回的 Markdown 渲染为富文本 -->
+              <MarkdownText v-if="message.type === 'ai'" :content="segment.text" />
+
+              <!-- 用户消息：保留可选中复制的纯文本渲染 -->
+              <text v-else :user-select="true" class="whitespace-pre-wrap leading-normal">{{ segment.text }}</text>
               
               <!-- 流式传输的光标动画 -->
               <view v-if="message.isStreaming && index === message.content.length - 1" class="inline-block w-2 h-4 ml-1 bg-current opacity-70 animate-pulse align-middle"></view>
@@ -219,6 +222,7 @@ import { ref, watch, computed, nextTick } from 'vue';
 import { useChat } from './composables/use-chat';
 import request from '@/utils/request'; 
 import DishCard from './components/DishCard.vue';
+import MarkdownText from './components/MarkdownText.vue';
 import PlanningCard from './components/PlanningCard.vue';
 import CanteenCard from './components/CanteenCard.vue';
 import WindowCard from './components/WindowCard.vue';

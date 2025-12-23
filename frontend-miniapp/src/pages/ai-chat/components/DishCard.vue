@@ -11,7 +11,7 @@
         <view class="flex items-center justify-between mt-1">
             <view class="flex items-center">
                 <text class="text-yellow-500 text-sm">★</text>
-                <text class="text-yellow-600 text-sm ml-0.5">{{ dish.dish.rating }}</text>
+            <text class="text-yellow-600 text-sm ml-0.5">{{ formattedRating }}</text>
             </view>
         </view>
 
@@ -25,16 +25,23 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { ComponentDishCard } from '@/types/api';
 
 const props = defineProps<{
   dish: ComponentDishCard;
 }>();
 
+const formattedRating = computed(() => {
+  const raw = (props.dish as any)?.dish?.rating;
+  const n = typeof raw === 'number' ? raw : Number.parseFloat(String(raw));
+  return Number.isFinite(n) ? n.toFixed(1) : '暂无';
+});
+
 const goToDishDetail = () => {
   if (props.dish.dish.id) {
     uni.navigateTo({
-      url: `/pages/canteen/dish-detail?id=${props.dish.dish.id}`,
+      url: `/pages/dish/index?id=${props.dish.dish.id}`,
     });
   }
 };
