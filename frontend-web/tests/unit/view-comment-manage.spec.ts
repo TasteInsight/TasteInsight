@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { shallowMount } from '@vue/test-utils'
 import { nextTick } from 'vue'
+import type { Dish, Review, Comment } from '@/types/api'
 
 const mocks = vi.hoisted(() => ({
   authStoreMock: {
@@ -39,6 +40,50 @@ vi.mock('@/api/modules/canteen', () => ({
 
 import CommentManage from '../../src/views/CommentManage.vue'
 
+function createMockDish(overrides: Partial<Dish> = {}): Dish {
+  return {
+    id: 'd1',
+    name: 'Noodles',
+    price: 10,
+    canteenId: 'c1',
+    canteenName: 'C1',
+    windowNumber: '01',
+    windowName: 'W1',
+    status: 'online',
+    createdAt: '2025-01-01T00:00:00Z',
+    updatedAt: '2025-01-01T00:00:00Z',
+    ...overrides,
+  }
+}
+
+function createMockReview(overrides: Partial<Review> = {}): Review {
+  return {
+    id: 'rv1',
+    dishId: 'd1',
+    userId: 'u1',
+    userNickname: 'u1',
+    rating: 5,
+    content: 'ok',
+    status: 'approved',
+    createdAt: '2025-01-01T10:00:00',
+    ...overrides,
+  }
+}
+
+function createMockComment(overrides: Partial<Comment> = {}): Comment {
+  return {
+    id: 'cm1',
+    reviewId: 'rv1',
+    userId: 'u1',
+    userNickname: 'u1',
+    content: 'c1',
+    status: 'approved',
+    floor: 1,
+    createdAt: '2025-01-01T11:00:00',
+    ...overrides,
+  }
+}
+
 function flushMicrotasks() {
   return Promise.resolve()
 }
@@ -69,22 +114,22 @@ describe('views/CommentManage', () => {
       code: 200,
       data: {
         items: [
-          {
+          createMockDish({
             id: 'd1',
             name: 'Noodles',
             canteenName: 'C1',
             windowName: 'W1',
             images: ['img'],
             reviewCount: 1,
-          },
-          {
+          }),
+          createMockDish({
             id: 'd2',
             name: 'Rice',
             canteenName: 'C1',
             windowName: 'W1',
             images: [],
             reviewCount: 0,
-          },
+          }),
         ],
         meta: { total: 2 },
       },
@@ -94,7 +139,7 @@ describe('views/CommentManage', () => {
       code: 200,
       data: {
         items: [
-          {
+          createMockReview({
             id: 'rv1',
             content: 'ok',
             rating: 5,
@@ -102,8 +147,8 @@ describe('views/CommentManage', () => {
             createdAt: '2025-01-01T10:00:00',
             userNickname: 'u1',
             images: ['a', 'b'],
-          },
-          {
+          }),
+          createMockReview({
             id: 'rv2',
             content: 'meh',
             rating: 2,
@@ -111,7 +156,7 @@ describe('views/CommentManage', () => {
             createdAt: '2025-01-02T10:00:00',
             userNickname: 'u2',
             images: [],
-          },
+          }),
         ],
         meta: { total: 2 },
       },
@@ -122,7 +167,7 @@ describe('views/CommentManage', () => {
         return Promise.resolve({
           code: 200,
           data: {
-            items: [{ id: 'cm1', content: 'c1', floor: 1, status: 'approved', createdAt: '2025-01-01T11:00:00' }],
+            items: [createMockComment({ id: 'cm1', content: 'c1', floor: 1, status: 'approved', createdAt: '2025-01-01T11:00:00' })],
             meta: { total: 1 },
           },
         })
@@ -260,7 +305,7 @@ describe('views/CommentManage', () => {
 
     await flushAll()
 
-    wrapper.vm.selectDish({ id: 'd1', name: 'Noodles' })
+    wrapper.vm.selectDish(createMockDish({ id: 'd1', name: 'Noodles' }))
     await flushAll()
 
     expect(wrapper.vm.selectedDishId).toBe('d1')
@@ -285,30 +330,30 @@ describe('views/CommentManage', () => {
 
     // no permission
     mocks.authStoreMock.hasPermission.mockReturnValueOnce(false)
-    await wrapper.vm.handleDeleteReview({ id: 'rv1' })
+    await wrapper.vm.handleDeleteReview(createMockReview({ id: 'rv1' }))
     expect(window.alert).toHaveBeenCalledWith('您没有权限删除评价')
 
     // confirm cancel
     mocks.authStoreMock.hasPermission.mockReturnValue(true)
     ;(window.confirm as any).mockReturnValueOnce(false)
-    await wrapper.vm.handleDeleteReview({ id: 'rv1' })
+    await wrapper.vm.handleDeleteReview(createMockReview({ id: 'rv1' }))
     expect(mocks.reviewApiMock.deleteReview).toHaveBeenCalledTimes(0)
 
     // non-200
     mocks.reviewApiMock.deleteReview.mockResolvedValueOnce({ code: 400, message: 'bad' })
-    await wrapper.vm.handleDeleteReview({ id: 'rv1' })
+    await wrapper.vm.handleDeleteReview(createMockReview({ id: 'rv1' }))
     expect(window.alert).toHaveBeenCalledWith('bad')
 
     // catch
     mocks.reviewApiMock.deleteReview.mockRejectedValueOnce(new Error('boom'))
-    await wrapper.vm.handleDeleteReview({ id: 'rv1' })
+    await wrapper.vm.handleDeleteReview(createMockReview({ id: 'rv1' }))
     expect(window.alert).toHaveBeenCalledWith('删除评价失败，请重试')
 
     // comment: no permission + success reload
     mocks.authStoreMock.hasPermission.mockImplementation((p: string) => p === 'comment:delete')
     ;(window.confirm as any).mockReturnValueOnce(true)
     mocks.reviewApiMock.deleteComment.mockResolvedValueOnce({ code: 200 })
-    await wrapper.vm.handleDeleteComment({ id: 'cm1' })
+    await wrapper.vm.handleDeleteComment(createMockComment({ id: 'cm1' }))
     expect(window.alert).toHaveBeenCalledWith('删除成功')
 
     wrapper.unmount()
@@ -382,7 +427,7 @@ describe('views/CommentManage', () => {
     expect(wrapper.text()).toContain('重置筛选')
 
     // select dish, reviews loading
-    wrapper.vm.selectDish({ id: 'd1', name: 'N' })
+    wrapper.vm.selectDish(createMockDish({ id: 'd1', name: 'N' }))
     await flushAll()
     wrapper.vm.isLoadingReviews = true
     await nextTick()
@@ -396,7 +441,7 @@ describe('views/CommentManage', () => {
 
     // reviews with no images
     wrapper.vm.reviews = [
-      {
+      createMockReview({
         id: 'rv1',
         content: 'ok',
         rating: 5,
@@ -404,7 +449,7 @@ describe('views/CommentManage', () => {
         createdAt: '2025-01-01T10:00:00',
         userNickname: 'u1',
         images: [], // no images
-      },
+      }),
     ]
     await nextTick()
     expect(wrapper.text()).toContain('ok')
@@ -416,7 +461,7 @@ describe('views/CommentManage', () => {
       code: 200,
       data: { items: [], meta: { total: 0 } },
     })
-    wrapper.vm.selectDish({ id: 'd1', name: 'N' })
+    wrapper.vm.selectDish(createMockDish({ id: 'd1', name: 'N' }))
     await flushAll()
     expect(wrapper.text()).toContain('暂无评论')
 
@@ -448,7 +493,7 @@ describe('views/CommentManage', () => {
     ;(window.alert as any).mockClear()
     wrapper.vm.selectedDishId = 'd1'
     mocks.dishApiMock.getDishReviews.mockRejectedValueOnce(new Error('reviews boom'))
-    await wrapper.vm.selectDish({ id: 'd1', name: 'N' })
+    await wrapper.vm.selectDish(createMockDish({ id: 'd1', name: 'N' }))
     expect(window.alert).toHaveBeenCalledWith('加载评价列表失败，请重试')
 
     // loadCommentsForReviews catch
@@ -463,7 +508,7 @@ describe('views/CommentManage', () => {
     mocks.reviewApiMock.getReviewComments.mockImplementationOnce(() => {
       throw new Error('comments boom')
     })
-    await wrapper.vm.selectDish({ id: 'd1', name: 'N' })
+    await wrapper.vm.selectDish(createMockDish({ id: 'd1', name: 'N' }))
     await flushAll()
     expect(window.alert).toHaveBeenCalledWith('加载评论列表失败，请重试')
 
@@ -471,13 +516,13 @@ describe('views/CommentManage', () => {
     ;(window.alert as any).mockClear()
     mocks.authStoreMock.hasPermission.mockReturnValue(true)
     mocks.reviewApiMock.deleteReview.mockRejectedValueOnce(new Error('del review boom'))
-    await wrapper.vm.handleDeleteReview({ id: 'rv1' })
+    await wrapper.vm.handleDeleteReview(createMockReview({ id: 'rv1' }))
     expect(window.alert).toHaveBeenCalledWith('删除评价失败，请重试')
 
     // handleDeleteComment catch
     ;(window.alert as any).mockClear()
     mocks.reviewApiMock.deleteComment.mockRejectedValueOnce(new Error('del comment boom'))
-    await wrapper.vm.handleDeleteComment({ id: 'cm1' })
+    await wrapper.vm.handleDeleteComment(createMockComment({ id: 'cm1' }))
     expect(window.alert).toHaveBeenCalledWith('删除评论失败，请重试')
 
     wrapper.unmount()

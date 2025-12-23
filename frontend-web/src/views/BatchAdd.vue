@@ -448,4 +448,24 @@ const parseError = ref<string | null>(null)
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
     }
+
+defineExpose({
+  fileInput,
+  downloadTemplate,
+  triggerFileInput,
+  parseFile,
+  handleFileSelect,
+  handleFileDrop,
+  submitBatchData,
+  resetBatchData,
+  exportErrorList,
+  uploadedFile,
+  parsedData,
+  isParsing,
+  isSubmitting,
+  parseError,
+  validCount,
+  warningCount,
+  invalidCount,
+})
 </script>
