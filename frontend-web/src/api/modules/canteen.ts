@@ -66,7 +66,7 @@ export const canteenApi = {
     params: { page?: number; pageSize?: number } = {},
   ): Promise<ApiResponse<PaginationResponse<Window>>> {
     return await request.get<ApiResponse<PaginationResponse<Window>>>(
-      `/admin/windows/${canteenId}`,
+      `/admin/canteens/${canteenId}/windows`,
       { params },
     )
   },
