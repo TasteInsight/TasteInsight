@@ -221,6 +221,8 @@
 import { ref, watch, computed, nextTick } from 'vue';
 import { useChat } from './composables/use-chat';
 import request from '@/utils/request'; 
+import { getDishes } from '@/api/modules/dish';
+import { createMealPlan } from '@/api/modules/meal-plan';
 import DishCard from './components/DishCard.vue';
 import MarkdownText from './components/MarkdownText.vue';
 import PlanningCard from './components/PlanningCard.vue';
@@ -361,8 +363,8 @@ const handleLoadHistory = async (sessionId: string) => {
   }
 };
 const handleScenePicker = (e: any) => {
-  const idx = e.detail.value;
-  if (typeof idx === 'number' && idx >= 0 && idx < sceneOptions.length) {
+  const idx = Number(e?.detail?.value);
+  if (Number.isFinite(idx) && idx >= 0 && idx < sceneOptions.length) {
     selectedSceneIndex.value = idx;
     selectedScene.value = sceneOptions[idx].value as AIScene;
   } else {
@@ -372,46 +374,114 @@ const handleScenePicker = (e: any) => {
 
 // === 核心业务逻辑：应用规划 ===
 const handleApplyPlan = async (plan: ComponentMealPlanDraft & { appliedStatus?: 'success' | 'failed' }) => {
-  const action = plan.confirmAction;
-  
-  if (!action || !action.api) {
-    uni.showToast({ title: '无效的规划数据', icon: 'none' });
-    return;
-  }
+  // 后端 meal-plans 创建接口要求 CreateMealPlanDto:
+  // { startDate, endDate, mealTime, dishes }
+  // AI 返回的 confirmAction 可能不完整，因此前端这里以“对齐后端 DTO”为准进行落库。
 
-  uni.showLoading({ title: '正在保存...' });
+  const formatISODate = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
+  };
+
+  const inferDays = () => {
+    const previewDays = (plan.previewData as any)?.days;
+    if (typeof previewDays === 'number' && Number.isFinite(previewDays) && previewDays > 0) return previewDays;
+    const m = String(plan.summary || '').match(/\*\*(\d+)天膳食计划\*\*/);
+    if (m && m[1]) {
+      const n = Number(m[1]);
+      if (Number.isFinite(n) && n > 0) return n;
+    }
+    return 7;
+  };
+
+  const extractDishNamesByMealTime = (summary: string) => {
+    const s = String(summary || '');
+    const pick = (label: '早餐' | '午餐' | '晚餐') => {
+      const re = new RegExp(`${label}：([^（(\n]+)`, 'g');
+      const names: string[] = [];
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(s))) {
+        const name = (m[1] || '').trim();
+        if (name) names.push(name);
+      }
+      // 去重但保持顺序
+      return names.filter((n, i) => names.indexOf(n) === i);
+    };
+    return {
+      breakfast: pick('早餐'),
+      lunch: pick('午餐'),
+      dinner: pick('晚餐'),
+    };
+  };
+
+  const resolveDishIds = async (dishNames: string[]) => {
+    const ids: string[] = [];
+    for (const name of dishNames) {
+      try {
+        const res = await getDishes({
+          filter: {},
+          search: { keyword: name, fields: ['name'] },
+          sort: {},
+          pagination: { page: 1, pageSize: 1 },
+        } as any);
+        const item = (res.data as any)?.items?.[0];
+        if (item?.id && !ids.includes(item.id)) ids.push(item.id);
+      } catch (e) {
+        // 单个菜品解析失败不阻断全流程
+        console.warn('[AI Chat] resolveDishIds failed for', name, e);
+      }
+    }
+    return ids;
+  };
+
+  uni.showLoading({ title: '正在应用...' });
 
   try {
-    // 1. 调用业务接口保存规划
-    const res = await request({
-      url: action.api,
-      method: action.method as any || 'POST',
-      data: action.body
-    });
+    const days = inferDays();
+    const today = new Date();
+    const startDate = formatISODate(today);
+    const end = new Date(today);
+    end.setDate(end.getDate() + Math.max(days - 1, 0));
+    const endDate = formatISODate(end);
 
-    uni.hideLoading();
+    const dishNamesByMealTime = extractDishNamesByMealTime(plan.summary || '');
 
-    if (res.code === 200) {
-      uni.showToast({ title: '已应用到日程', icon: 'success' });
-      // 更新 UI 状态
-      plan.appliedStatus = 'success';
+    const [breakfastIds, lunchIds, dinnerIds] = await Promise.all([
+      resolveDishIds(dishNamesByMealTime.breakfast),
+      resolveDishIds(dishNamesByMealTime.lunch),
+      resolveDishIds(dishNamesByMealTime.dinner),
+    ]);
 
-      // 2. 【闭环】自动告诉 AI "我已应用"
-      setTimeout(() => {
-        sendMessage("我已确认应用了该饮食规划，请帮我生成后续建议");
-      }, 500);
-    } else {
-      // 业务逻辑失败
-      uni.showToast({ title: res.message || '保存失败，请重试', icon: 'none' });
-      // 更新 UI 状态
-      plan.appliedStatus = 'failed';
+    const tasks: Array<Promise<any>> = [];
+    if (breakfastIds.length) {
+      tasks.push(createMealPlan({ startDate, endDate, mealTime: 'breakfast', dishes: breakfastIds }));
+    }
+    if (lunchIds.length) {
+      tasks.push(createMealPlan({ startDate, endDate, mealTime: 'lunch', dishes: lunchIds }));
+    }
+    if (dinnerIds.length) {
+      tasks.push(createMealPlan({ startDate, endDate, mealTime: 'dinner', dishes: dinnerIds }));
     }
 
+    if (tasks.length === 0) {
+      throw new Error('无法从规划内容中解析到可保存的菜品');
+    }
+
+    await Promise.all(tasks);
+
+    uni.hideLoading();
+    uni.showToast({ title: '已应用到日程', icon: 'success' });
+    plan.appliedStatus = 'success';
+
+    setTimeout(() => {
+      sendMessage('我已确认应用了该饮食规划，请帮我生成后续建议');
+    }, 500);
   } catch (error) {
     uni.hideLoading();
-    uni.showToast({ title: '保存失败，请重试', icon: 'none' });
+    uni.showToast({ title: '应用失败，请重试', icon: 'none' });
     console.error(error);
-    // 更新 UI 状态
     plan.appliedStatus = 'failed';
   }
 };

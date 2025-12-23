@@ -219,12 +219,8 @@ export const useChatStore = defineStore('ai-chat', () => {
     const payload: ChatRequest = {
       message: text,
       clientContext: {
-        localTime: (() => {
-          const now = new Date();
-          const hh = now.getHours().toString().padStart(2, '0');
-          const mm = now.getMinutes().toString().padStart(2, '0');
-          return `${hh}:${mm}`;
-        })(),
+        // 后端期望 ISOString，例如 "2025-01-09T12:04:00.000Z"
+        localTime: new Date().toISOString(),
       }
     };
 

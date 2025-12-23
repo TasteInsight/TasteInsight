@@ -12,7 +12,6 @@
           </view>
         </view>
       </view>
-      <view class="text-ts-purple text-sm">详情 ></view>
     </view>
   </view>
 </template>
