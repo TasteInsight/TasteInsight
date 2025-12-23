@@ -18,9 +18,6 @@ export default mergeConfig(
         include: ['src/**/*.{ts,tsx,js,jsx,vue}'],
         exclude: [
           'src/main.ts',
-          'src/views/**',
-          'src/components/Dishes/**',
-          'src/components/Layout/**',
           'src/env.d.ts',
           'src/shims-vue.d.ts',
           '**/*.d.ts',
