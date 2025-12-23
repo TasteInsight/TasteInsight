@@ -125,7 +125,6 @@ describe('components/Dishes', () => {
 
   it('BatchUpload handleFileDrop updates dragging state and calls validation', async () => {
     const wrapper = mount(BatchUpload)
-    // @ts-expect-error simplify for test
     wrapper.vm.isDragging = true
 
     const file = createFile('a.xlsx', 1024)
@@ -279,7 +278,6 @@ describe('components/Dishes', () => {
 
     const wrapper = mount(DishForm)
     // avoid jsdom FileList type enforcement on real <input>.files
-    // @ts-expect-error test override
     wrapper.vm.fileInput = {}
     const file = createFile('a.png', 1024, 'image/png')
 

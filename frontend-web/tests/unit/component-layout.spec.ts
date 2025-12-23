@@ -21,7 +21,7 @@ const authStoreMock = {
   user: { username: 'u' },
   token: 't',
   permissions: ['dish:view'],
-  hasPermission: vi.fn(() => true),
+  hasPermission: vi.fn((id: string) => true),
   logout: vi.fn(),
 }
 

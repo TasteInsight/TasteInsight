@@ -15,8 +15,8 @@ vi.mock('@/api/modules/log', () => ({
 }))
 
 const flushAll = async () => {
-  await new Promise((resolve) => queueMicrotask(resolve))
-  await new Promise((resolve) => queueMicrotask(resolve))
+  await new Promise<void>((resolve) => queueMicrotask(() => resolve()))
+  await new Promise<void>((resolve) => queueMicrotask(() => resolve()))
   await nextTick()
 }
 

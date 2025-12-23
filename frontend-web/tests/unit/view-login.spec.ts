@@ -4,7 +4,7 @@ import { ref } from 'vue'
 
 import Login from '../../src/views/Login.vue'
 
-const flushPromises = () => new Promise((resolve) => queueMicrotask(resolve))
+const flushPromises = () => new Promise<void>((resolve) => queueMicrotask(() => resolve()))
 
 const routerMock = {
   push: vi.fn(),
@@ -13,7 +13,7 @@ const routerMock = {
 
 const authStoreMock = {
   login: vi.fn(async () => undefined),
-  hasPermission: vi.fn(() => true),
+  hasPermission: vi.fn((p: string) => true),
 }
 
 vi.mock('vue-router', () => ({
