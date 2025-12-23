@@ -26,6 +26,11 @@ on:
           - development
           - production
 
+# 防止重复部署
+concurrency:
+  group: cd-${{ github.event.workflow_run.head_branch || github.ref_name }}-${{ inputs.environment || 'auto' }}
+  cancel-in-progress: true
+
 env:
   # 1. GitHub Container Registry (原有的)
   GHCR_REGISTRY: ghcr.io
