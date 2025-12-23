@@ -3,23 +3,10 @@
     <div class="bg-white rounded-lg container-shadow p-8">
       <Header title="新闻管理" description="管理和发布新闻资讯" header-icon="carbon:license-draft" />
 
-      <!-- 创建新闻按钮 -->
-      <div class="mt-6 flex justify-end">
-        <button
-          @click="openCreateModal"
-          class="px-6 py-2 text-white rounded-lg transition duration-200 flex items-center space-x-2"
-          :class="authStore.hasPermission('news:create') ? 'bg-tsinghua-purple hover:bg-tsinghua-dark' : 'bg-gray-400 cursor-not-allowed'"
-          :title="!authStore.hasPermission('news:create') ? '无权限创建' : '创建新闻'"
-        >
-          <span class="iconify" data-icon="carbon:add"></span>
-          <span>创建新闻</span>
-        </button>
-      </div>
-
-      <!-- 新闻列表 -->
-      <div class="mt-6">
+      <!-- 创建新闻按钮和状态筛选 -->
+      <div class="mt-6 flex items-center justify-between">
         <!-- 状态筛选 -->
-        <div class="mb-4 flex space-x-4">
+        <div class="flex space-x-4">
           <button
             class="px-4 py-2 rounded-lg transition-colors"
             :class="
@@ -43,6 +30,21 @@
             未发布 (草稿)
           </button>
         </div>
+        
+        <!-- 创建新闻按钮 -->
+        <button
+          @click="openCreateModal"
+          class="px-6 py-2 text-white rounded-lg transition duration-200 flex items-center space-x-2"
+          :class="authStore.hasPermission('news:create') ? 'bg-tsinghua-purple hover:bg-tsinghua-dark' : 'bg-gray-400 cursor-not-allowed'"
+          :title="!authStore.hasPermission('news:create') ? '无权限创建' : '创建新闻'"
+        >
+          <span class="iconify" data-icon="carbon:add"></span>
+          <span>创建新闻</span>
+        </button>
+      </div>
+
+      <!-- 新闻列表 -->
+      <div class="mt-6">
 
         <!-- 搜索和筛选栏 -->
         <div class="mb-6 space-y-4 p-4 bg-gray-50 rounded-lg border">
