@@ -293,8 +293,8 @@ describe('AdminCanteensController (e2e)', () => {
         where: { id: createdCanteenId },
         include: { windows: true, floors: true },
       });
-      const windowId = currentCanteen.windows[0].id;
-      const floorId = currentCanteen.floors[0].id;
+      const windowId = currentCanteen!.windows[0].id;
+      const floorId = currentCanteen!.floors[0].id;
 
       // 2. Test Update and Create
       const updateDto = {
@@ -377,10 +377,10 @@ describe('AdminCanteensController (e2e)', () => {
         where: { id: createdCanteenId },
         include: { windows: true, floors: true },
       });
-      expect(final.windows).toHaveLength(1);
-      expect(final.windows[0].id).toBe(newWindowId);
-      expect(final.floors).toHaveLength(1);
-      expect(final.floors[0].id).toBe(newFloorId);
+      expect(final!.windows).toHaveLength(1);
+      expect(final!.windows[0].id).toBe(newWindowId);
+      expect(final!.floors).toHaveLength(1);
+      expect(final!.floors[0].id).toBe(newFloorId);
     });
 
     it('should return 404 when updating non-existent canteen', async () => {
@@ -433,7 +433,7 @@ describe('AdminCanteensController (e2e)', () => {
       const updatedDish = await prisma.dish.findUnique({
         where: { id: testDish.id },
       });
-      expect(updatedDish.canteenName).toBe('Updated Sync Test Canteen');
+      expect(updatedDish!.canteenName).toBe('Updated Sync Test Canteen');
 
       // Cleanup
       await prisma.dish.delete({ where: { id: testDish.id } });
@@ -507,8 +507,8 @@ describe('AdminCanteensController (e2e)', () => {
       const updatedDish = await prisma.dish.findUnique({
         where: { id: testDish.id },
       });
-      expect(updatedDish.windowName).toBe('Updated Test Window');
-      expect(updatedDish.windowNumber).toBe('2');
+      expect(updatedDish!.windowName).toBe('Updated Test Window');
+      expect(updatedDish!.windowNumber).toBe('2');
 
       // Check that the admin dishes API returns the updated window name from the association
       const dishesResponse = await request(app.getHttpServer())
@@ -590,8 +590,8 @@ describe('AdminCanteensController (e2e)', () => {
       const updatedDish = await prisma.dish.findUnique({
         where: { id: testDish.id },
       });
-      expect(updatedDish.floorName).toBe('Updated Test Floor');
-      expect(updatedDish.floorLevel).toBe('2');
+      expect(updatedDish!.floorName).toBe('Updated Test Floor');
+      expect(updatedDish!.floorLevel).toBe('2');
 
       // Cleanup
       await prisma.dish.delete({ where: { id: testDish.id } });
