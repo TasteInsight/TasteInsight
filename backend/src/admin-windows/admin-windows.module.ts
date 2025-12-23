@@ -10,5 +10,6 @@ import { DishSyncQueueModule } from '@/dish-sync-queue/dish-sync-queue.module';
   imports: [JwtModule.register({}), ConfigModule, DishSyncQueueModule],
   controllers: [AdminWindowsController],
   providers: [AdminWindowsService, PrismaService],
+  exports: [AdminWindowsService],
 })
 export class AdminWindowsModule {}
