@@ -131,7 +131,7 @@ export class DishRecommendationTool implements BaseTool {
           },
         } as ComponentDishCard;
       })
-      .filter((card) => card !== null);
+      .filter((card): card is ComponentDishCard => card !== null);
 
     return dishCards;
   }
