@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent } from 'vue'
 
-import ConfigManage from '@/views/ConfigManage.vue'
+import ConfigManage from '../../src/views/ConfigManage.vue'
 
 const flushPromises = () => new Promise((resolve) => queueMicrotask(resolve))
 

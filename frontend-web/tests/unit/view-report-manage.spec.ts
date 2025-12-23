@@ -20,7 +20,7 @@ vi.mock('@/api/modules/review', () => ({
   reviewApi: mocks.reviewApiMock,
 }))
 
-import ReportManage from '@/views/ReportManage.vue'
+import ReportManage from '../../src/views/ReportManage.vue'
 
 function flushMicrotasks() {
   return Promise.resolve()

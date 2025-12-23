@@ -46,7 +46,7 @@ vi.mock('@/api/modules/canteen', () => ({
   canteenApi: mocks.canteenApiMock,
 }))
 
-import SingleAdd from '@/views/SingleAdd.vue'
+import SingleAdd from '../../src/views/SingleAdd.vue'
 
 function flushMicrotasks() {
   return Promise.resolve()

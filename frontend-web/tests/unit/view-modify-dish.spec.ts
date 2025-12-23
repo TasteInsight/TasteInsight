@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { defineComponent, nextTick, shallowRef, markRaw } from 'vue'
 import { mount, shallowMount } from '@vue/test-utils'
 
-import ModifyDish from '@/views/ModifyDish.vue'
+import ModifyDish from '../../src/views/ModifyDish.vue'
 
 const mocks = vi.hoisted(() => ({
   routerMock: {

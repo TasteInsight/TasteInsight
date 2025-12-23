@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, nextTick, ref } from 'vue'
 
-import LogView from '@/views/LogView.vue'
+import LogView from '../../src/views/LogView.vue'
 
 const { getLogsMock } = vi.hoisted(() => ({
   getLogsMock: vi.fn(),

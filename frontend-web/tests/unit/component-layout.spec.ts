@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { mount, shallowMount } from '@vue/test-utils'
 import { defineComponent, nextTick } from 'vue'
 
-import Header from '@/components/Layout/Header.vue'
-import MainLayout from '@/components/Layout/MainLayout.vue'
+import Header from '../../src/components/Layout/Header.vue'
+import MainLayout from '../../src/components/Layout/MainLayout.vue'
 
 const routerMock = {
   push: vi.fn(),
@@ -120,7 +120,7 @@ describe('components/Layout', () => {
     routeMock.path = '/single-add'
     authStoreMock.user = { username: 'admin' }
 
-    const Comp = (await import('@/components/Layout/Sidebar.vue')).default
+    const Comp = (await import('../../src/components/Layout/Sidebar.vue')).default
 
     const confirmSpy = vi.spyOn(window, 'confirm')
     confirmSpy.mockReturnValueOnce(true)
@@ -177,7 +177,7 @@ describe('components/Layout', () => {
   it('Sidebar click-outside closes dropdown', async () => {
     routeMock.path = '/'
 
-    const Comp = (await import('@/components/Layout/Sidebar.vue')).default
+    const Comp = (await import('../../src/components/Layout/Sidebar.vue')).default
 
     const wrapper = mount(Comp, {
       attachTo: document.body,
@@ -216,7 +216,7 @@ describe('components/Layout', () => {
     authStoreMock.logout = vi.fn()
     routerMock.push = vi.fn()
 
-    const Comp = (await import('@/components/Layout/Sidebar.vue')).default
+    const Comp = (await import('../../src/components/Layout/Sidebar.vue')).default
 
     const wrapper = mount(Comp, {
       global: {

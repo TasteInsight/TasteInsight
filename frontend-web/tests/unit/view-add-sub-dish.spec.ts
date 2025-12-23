@@ -36,7 +36,7 @@ vi.mock('@/api/modules/dish', () => ({
   dishApi: mocks.dishApiMock,
 }))
 
-import AddSubDish from '@/views/AddSubDish.vue'
+import AddSubDish from '../../src/views/AddSubDish.vue'
 
 function flushMicrotasks() {
   return Promise.resolve()

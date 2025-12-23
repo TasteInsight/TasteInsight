@@ -46,7 +46,7 @@ vi.mock('@/config', () => ({
   default: { baseURL: 'http://example.com/' },
 }))
 
-import NewsManage from '@/views/NewsManage.vue'
+import NewsManage from '../../src/views/NewsManage.vue'
 
 function flushMicrotasks() {
   return Promise.resolve()

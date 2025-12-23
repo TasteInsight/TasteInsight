@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, nextTick } from 'vue'
 
-import ViewDishDetail from '@/views/ViewDishDetail.vue'
+import ViewDishDetail from '../../src/views/ViewDishDetail.vue'
 
 const mocks = vi.hoisted(() => ({
   routerPush: vi.fn(),

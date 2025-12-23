@@ -29,7 +29,7 @@ vi.mock('@/store/modules/use-auth-store', () => {
 })
 
 // stub out all route components imported by router/index.ts
-vi.mock('@/components/Layout/MainLayout.vue', () => ({ default: {} }))
+vi.mock('../../src/components/Layout/MainLayout.vue', () => ({ default: {} }))
 vi.mock('@/views/SingleAdd.vue', () => ({ default: {} }))
 vi.mock('@/views/BatchAdd.vue', () => ({ default: {} }))
 vi.mock('@/views/ModifyDish.vue', () => ({ default: {} }))

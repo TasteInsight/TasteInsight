@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, nextTick } from 'vue'
 
-import ReviewDishDetail from '@/views/ReviewDishDetail.vue'
+import ReviewDishDetail from '../../src/views/ReviewDishDetail.vue'
 
 const mocks = vi.hoisted(() => ({
   routerPush: vi.fn(),
@@ -35,8 +35,8 @@ vi.mock('@/api/modules/dish', () => ({
 }))
 
 const flushAll = async () => {
-  await new Promise((resolve) => queueMicrotask(resolve))
-  await new Promise((resolve) => queueMicrotask(resolve))
+  await new Promise<void>((resolve) => queueMicrotask(() => resolve()))
+  await new Promise<void>((resolve) => queueMicrotask(() => resolve()))
   await nextTick()
 }
 

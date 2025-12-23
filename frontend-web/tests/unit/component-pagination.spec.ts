@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
-import Pagination from '@/components/Common/Pagination.vue'
+import Pagination from '../../src/components/Common/Pagination.vue'
 
 describe('components/Common/Pagination', () => {
   it('renders range text correctly', () => {

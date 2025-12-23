@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { mount, shallowMount } from '@vue/test-utils'
 
-import BatchAdd from '@/views/BatchAdd.vue'
+import BatchAdd from '../../src/views/BatchAdd.vue'
 
 const mocks = vi.hoisted(() => ({
   dishApiMock: {

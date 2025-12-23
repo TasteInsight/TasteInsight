@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
-import BatchUpload from '@/components/Dishes/BatchUpload.vue'
-import DishForm from '@/components/Dishes/DishForm.vue'
-import DishTable from '@/components/Dishes/DishTable.vue'
+import BatchUpload from '../../src/components/Dishes/BatchUpload.vue'
+import DishForm from '../../src/components/Dishes/DishForm.vue'
+import DishTable from '../../src/components/Dishes/DishTable.vue'
 
 function createFile(name: string, size: number, type = 'application/vnd.ms-excel') {
   const blob = new Blob([new ArrayBuffer(size)], { type })

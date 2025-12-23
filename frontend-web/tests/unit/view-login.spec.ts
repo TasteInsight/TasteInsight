@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref } from 'vue'
 
-import Login from '@/views/Login.vue'
+import Login from '../../src/views/Login.vue'
 
 const flushPromises = () => new Promise((resolve) => queueMicrotask(resolve))
 

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, nextTick, ref } from 'vue'
 
-import ReviewDish from '@/views/ReviewDish.vue'
+import ReviewDish from '../../src/views/ReviewDish.vue'
 
 const { routerPushMock, routeMock } = vi.hoisted(() => ({
   routerPushMock: vi.fn(),
@@ -49,8 +49,8 @@ vi.mock('@/store/modules/use-auth-store', () => ({
 }))
 
 const flushAll = async () => {
-  await new Promise((resolve) => queueMicrotask(resolve))
-  await new Promise((resolve) => queueMicrotask(resolve))
+  await new Promise<void>((resolve) => queueMicrotask(() => resolve()))
+  await new Promise<void>((resolve) => queueMicrotask(() => resolve()))
   await nextTick()
 }
 

@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { mount, shallowMount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
-import UserManage from '@/views/UserManage.vue'
+import UserManage from '../../src/views/UserManage.vue'
 
 const mocks = vi.hoisted(() => ({
   routerMock: { push: vi.fn() },

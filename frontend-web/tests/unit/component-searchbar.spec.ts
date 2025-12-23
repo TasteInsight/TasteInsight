@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
-import SearchBar from '@/components/Common/SearchBar.vue'
+import SearchBar from '../../src/components/Common/SearchBar.vue'
 
 describe('components/Common/SearchBar', () => {
   it('emits update:modelValue on input', async () => {

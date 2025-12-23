@@ -47,7 +47,7 @@ vi.mock('@/api/modules/dish', () => ({
   dishApi: mocks.dishApiMock,
 }))
 
-import AddCanteen from '@/views/AddCanteen.vue'
+import AddCanteen from '../../src/views/AddCanteen.vue'
 
 function flushMicrotasks() {
   return Promise.resolve()

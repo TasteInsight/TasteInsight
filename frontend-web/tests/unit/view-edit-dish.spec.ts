@@ -44,7 +44,7 @@ vi.mock('@/api/modules/canteen', () => ({
   canteenApi: mocks.canteenApiMock,
 }))
 
-import EditDish from '@/views/EditDish.vue'
+import EditDish from '../../src/views/EditDish.vue'
 
 function flushMicrotasks() {
   return Promise.resolve()

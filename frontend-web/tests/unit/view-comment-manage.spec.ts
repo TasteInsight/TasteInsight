@@ -37,7 +37,7 @@ vi.mock('@/api/modules/canteen', () => ({
   canteenApi: mocks.canteenApiMock,
 }))
 
-import CommentManage from '@/views/CommentManage.vue'
+import CommentManage from '../../src/views/CommentManage.vue'
 
 function flushMicrotasks() {
   return Promise.resolve()

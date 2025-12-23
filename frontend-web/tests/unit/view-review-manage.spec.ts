@@ -24,7 +24,7 @@ vi.mock('@/api/modules/review', () => ({
   reviewApi: mocks.reviewApiMock,
 }))
 
-import ReviewManage from '@/views/ReviewManage.vue'
+import ReviewManage from '../../src/views/ReviewManage.vue'
 
 function flushMicrotasks() {
   return Promise.resolve()
@@ -69,11 +69,14 @@ describe('views/ReviewManage', () => {
         items: [
           {
             id: 'cm1',
+            reviewId: 'rv1',
+            userId: 'u2-id',
             dishName: 'D1',
             userNickname: 'u2',
             userAvatar: '',
             content: 'c',
             reviewContent: 'r',
+            floor: 1,
             createdAt: '2025-01-02T10:00:00',
             status: 'pending',
           },
@@ -174,10 +177,13 @@ describe('views/ReviewManage', () => {
 
     const comment = {
       id: 'cm1',
+      reviewId: 'rv1',
+      userId: 'u2-id',
       dishName: 'D1',
       userNickname: 'u2',
       content: 'c',
       reviewContent: 'r',
+      floor: 1,
       createdAt: '2025-01-02T10:00:00',
       status: 'pending',
     }
