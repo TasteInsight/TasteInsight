@@ -575,7 +575,12 @@ export default defineComponent({
         })
 
         if (response.code === 200 && response.data) {
-          reviews.value = response.data.items || []
+          // 映射用户信息到顶层字段
+          reviews.value = (response.data.items || []).map((review: any) => ({
+            ...review,
+            userNickname: review.user?.nickname || review.userNickname,
+            userAvatar: review.user?.avatar || review.userAvatar,
+          }))
           totalReviews.value = response.data.meta?.total || 0
         } else {
           reviews.value = []
@@ -614,7 +619,17 @@ export default defineComponent({
         responses.forEach((result, index) => {
           if (result.status === 'fulfilled' && result.value.code === 200 && result.value.data) {
             const reviewId = reviews.value[index].id
-            commentsMap.value[reviewId] = result.value.data.items || []
+            // 映射用户信息到顶层字段
+            commentsMap.value[reviewId] = (result.value.data.items || []).map((comment: any) => ({
+              ...comment,
+              userNickname: comment.user?.nickname || comment.userNickname,
+              userAvatar: comment.user?.avatar || comment.userAvatar,
+              // 处理父评论的用户信息
+              parentComment: comment.parentComment ? {
+                ...comment.parentComment,
+                userNickname: comment.parentComment.user?.nickname || comment.parentComment.userNickname,
+              } : comment.parentComment,
+            }))
             totalCommentCount += result.value.data.meta?.total || 0
           }
         })
