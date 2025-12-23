@@ -154,6 +154,15 @@
                 </td>
                 <td class="py-4 px-6 text-center">
                   <div class="flex items-center justify-center space-x-2">
+                    <!-- 预览按钮（所有状态都可预览） -->
+                    <button
+                      @click="previewNews(news)"
+                      class="px-3 py-1 rounded text-sm transition duration-200 bg-purple-100 text-purple-700 hover:bg-purple-200"
+                      title="预览新闻"
+                    >
+                      预览
+                    </button>
+
                     <!-- 未发布状态操作 -->
                     <template v-if="currentStatus === 'draft'">
                       <button
@@ -404,6 +413,50 @@
       </div>
     </div>
   </div>
+
+  <!-- 新闻预览模态框 -->
+  <div
+    v-if="showPreviewModal"
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]"
+    @click.self="closePreviewModal"
+  >
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] overflow-hidden m-4 flex flex-col">
+      <!-- 预览头部 -->
+      <div class="p-6 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+        <h3 class="text-xl font-semibold text-gray-800">新闻预览</h3>
+        <button @click="closePreviewModal" class="text-gray-400 hover:text-gray-600 transition">
+          <span class="iconify text-2xl" data-icon="carbon:close"></span>
+        </button>
+      </div>
+
+      <!-- 预览内容区域（可滚动） -->
+      <div class="flex-1 overflow-y-auto bg-gray-100">
+        <div class="p-4 box-border w-full bg-white min-h-full">
+          <div v-if="previewNewsData.id" class="pb-5">
+            <!-- 标题 -->
+            <div class="text-2xl font-bold mb-2.5 leading-relaxed">{{ previewNewsData.title }}</div>
+            
+            <!-- 发布信息 -->
+            <div class="flex justify-between text-gray-500 text-sm mb-5 pb-2.5 border-b border-gray-200">
+              <span>{{ previewNewsData.canteenName || '全校公告' }}</span>
+              <span>{{ previewNewsData.publishedAt ? formatPreviewTime(previewNewsData.publishedAt) : (previewNewsData.createdAt ? formatPreviewTime(previewNewsData.createdAt) : '') }}</span>
+            </div>
+            
+            <!-- 内容（富文本） -->
+            <div 
+              class="text-base leading-relaxed text-gray-800 overflow-hidden break-words w-full news-preview-content"
+              v-html="formattedPreviewContent"
+            ></div>
+            
+            <!-- 发布人信息 -->
+            <div class="mt-6 pt-2 border-t border-dashed border-gray-200 text-gray-500 text-xs text-right">
+              <span>发布人：{{ previewNewsData.createdBy || '管理员' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script>
@@ -432,6 +485,8 @@ export default {
     const newsList = ref([])
     const showCreateModal = ref(false)
     const showEditModal = ref(false)
+    const showPreviewModal = ref(false)
+    const previewNewsData = ref({})
     const editingNewsId = ref(null)
     const isLoading = ref(false)
     const currentStatus = ref('published') // 默认显示已发布
@@ -887,6 +942,68 @@ export default {
       }
     }
 
+    // 预览新闻
+    const previewNews = (news) => {
+      previewNewsData.value = { ...news }
+      showPreviewModal.value = true
+    }
+
+    // 关闭预览模态框
+    const closePreviewModal = () => {
+      showPreviewModal.value = false
+      previewNewsData.value = {}
+    }
+
+    // 格式化预览时间
+    const formatPreviewTime = (time) => {
+      if (!time) return ''
+      const date = new Date(time)
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      return `${year}-${month}-${day} ${hours}:${minutes}`
+    }
+
+    // 格式化预览内容（处理富文本，让图片自适应）
+    const formattedPreviewContent = computed(() => {
+      if (!previewNewsData.value.content) return ''
+
+      let content = previewNewsData.value.content
+
+      // 0. 移除 html 和 body 标签，防止解析异常
+      content = content.replace(/<\/?html[^>]*>/gi, '').replace(/<\/?body[^>]*>/gi, '')
+
+      // 1. 给 img 标签添加 max-width: 100% 样式
+      content = content.replace(/<img[^>]*>/gi, (match) => {
+        // 如果已经有 style 属性
+        if (match.indexOf('style="') > -1) {
+          return match.replace('style="', 'style="max-width:100%;height:auto;display:block;margin:10px auto;')
+        }
+        // 如果没有 style 属性
+        return match.replace('<img', '<img style="max-width:100%;height:auto;display:block;margin:10px auto;"')
+      })
+
+      // 2. 给 table 添加 max-width: 100%
+      content = content.replace(/<table[^>]*>/gi, (match) => {
+        if (match.indexOf('style="') > -1) {
+          return match.replace('style="', 'style="max-width:100%;box-sizing:border-box;')
+        }
+        return match.replace('<table', '<table style="max-width:100%;box-sizing:border-box;"')
+      })
+
+      // 3. 给 pre 添加样式防止溢出
+      content = content.replace(/<pre[^>]*>/gi, (match) => {
+        if (match.indexOf('style="') > -1) {
+          return match.replace('style="', 'style="max-width:100%;white-space:pre-wrap;word-break:break-all;')
+        }
+        return match.replace('<pre', '<pre style="max-width:100%;white-space:pre-wrap;word-break:break-all;"')
+      })
+
+      return content
+    })
+
     const handlePageChange = (page) => {
       pagination.page = page
       loadNews()
@@ -907,6 +1024,8 @@ export default {
       filteredNewsList,
       showCreateModal,
       showEditModal,
+      showPreviewModal,
+      previewNewsData,
       newsForm,
       errors,
       canteenList,
@@ -939,8 +1058,72 @@ export default {
       submitForm,
       deleteNews,
       handlePageChange,
+      // 预览相关
+      previewNews,
+      closePreviewModal,
+      formatPreviewTime,
+      formattedPreviewContent,
       authStore,
     }
   },
 }
 </script>
+
+<style scoped>
+/* 新闻预览内容样式，与小程序保持一致 */
+.news-preview-content {
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+.news-preview-content :deep(img) {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block;
+  margin: 10px auto;
+}
+
+.news-preview-content :deep(table) {
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
+.news-preview-content :deep(pre) {
+  max-width: 100% !important;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-x: auto;
+}
+
+.news-preview-content :deep(p) {
+  margin: 0.5em 0;
+}
+
+.news-preview-content :deep(h1),
+.news-preview-content :deep(h2),
+.news-preview-content :deep(h3),
+.news-preview-content :deep(h4),
+.news-preview-content :deep(h5),
+.news-preview-content :deep(h6) {
+  margin: 0.8em 0 0.5em 0;
+  font-weight: bold;
+}
+
+.news-preview-content :deep(ul),
+.news-preview-content :deep(ol) {
+  margin: 0.5em 0;
+  padding-left: 2em;
+}
+
+.news-preview-content :deep(blockquote) {
+  margin: 0.5em 0;
+  padding-left: 1em;
+  border-left: 3px solid #ddd;
+  color: #666;
+}
+
+.news-preview-content :deep(a) {
+  color: #007aff;
+  text-decoration: underline;
+}
+</style>
