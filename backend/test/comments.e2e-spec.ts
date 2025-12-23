@@ -87,11 +87,22 @@ describe('CommentsController (e2e)', () => {
     });
     reviewId = review.id;
 
-    // Create another review
+    // Create another dish for the second review (to avoid unique constraint violation)
+    const dish2 = await prisma.dish.create({
+      data: {
+        name: 'Test Dish For Comments 2',
+        price: 12,
+        canteenId: canteen.id,
+        canteenName: canteen.name,
+        windowName: 'Test Window',
+      },
+    });
+
+    // Create another review with a different dish
     const review2 = await prisma.review.create({
       data: {
         userId: user.id,
-        dishId: dish.id,
+        dishId: dish2.id, // Different dish to avoid unique constraint
         rating: 4,
         content: 'Good dish!',
         status: 'approved',
@@ -221,19 +232,26 @@ describe('CommentsController (e2e)', () => {
     });
 
     it('should assign correct floor number even if previous comments are deleted', async () => {
+      // Create a new dish for this test to avoid unique constraint violation
+      const canteen = await prisma.canteen.findFirst({
+        where: { name: 'Test Canteen For Comments' },
+      });
+      const cleanDish = await prisma.dish.create({
+        data: {
+          name: 'Clean Test Dish For Floor Test',
+          price: 10,
+          canteenId: canteen!.id,
+          canteenName: canteen!.name,
+          windowName: 'Test Window',
+          availableMealTime: ['lunch'],
+        },
+      });
+
       // Create a new review for this test to ensure clean state
       const cleanReview = await prisma.review.create({
         data: {
           userId: userId,
-          dishId:
-            (
-              await prisma.dish.findFirst({
-                where: { name: 'Test Dish For Comments' },
-              })
-            )?.id ??
-            (() => {
-              throw new Error('Dish not found');
-            })(),
+          dishId: cleanDish.id,
           rating: 5,
           content: 'Clean review for floor test',
           status: 'approved',

@@ -968,6 +968,7 @@ describe('AdminDishesController (e2e)', () => {
   describe('/admin/dishes/:id/reviews (GET)', () => {
     let testReviewId: string;
     let testUserId: string;
+    let reviewTestDishId: string;
 
     beforeAll(async () => {
       // 获取用户ID
@@ -976,10 +977,24 @@ describe('AdminDishesController (e2e)', () => {
       });
       testUserId = user?.id || '';
 
+      // 创建新菜品避免与 seed 数据冲突
+      const canteen = await prisma.canteen.findFirst();
+      const dish = await prisma.dish.create({
+        data: {
+          name: 'Admin Dishes Review Test Dish',
+          price: 10,
+          canteenId: canteen!.id,
+          canteenName: canteen!.name,
+          windowName: 'Test Window',
+          availableMealTime: ['lunch'],
+        },
+      });
+      reviewTestDishId = dish.id;
+
       // 创建用于测试的评价
       const review = await prisma.review.create({
         data: {
-          dishId: testDishId,
+          dishId: reviewTestDishId,
           userId: testUserId,
           rating: 5,
           content: '测试菜品评价',
@@ -997,11 +1012,14 @@ describe('AdminDishesController (e2e)', () => {
       if (testReviewId) {
         await prisma.review.deleteMany({ where: { id: testReviewId } });
       }
+      if (reviewTestDishId) {
+        await prisma.dish.deleteMany({ where: { id: reviewTestDishId } });
+      }
     });
 
     it('should return dish reviews for super admin', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/admin/dishes/${testDishId}/reviews`)
+        .get(`/admin/dishes/${reviewTestDishId}/reviews`)
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
@@ -1015,7 +1033,7 @@ describe('AdminDishesController (e2e)', () => {
 
     it('should return review with user info and rating details', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/admin/dishes/${testDishId}/reviews`)
+        .get(`/admin/dishes/${reviewTestDishId}/reviews`)
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
@@ -1032,7 +1050,7 @@ describe('AdminDishesController (e2e)', () => {
 
     it('should support pagination', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/admin/dishes/${testDishId}/reviews?page=1&pageSize=5`)
+        .get(`/admin/dishes/${reviewTestDishId}/reviews?page=1&pageSize=5`)
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 

@@ -49,9 +49,19 @@ describe('AdminCommentsController (e2e)', () => {
     });
     testUserId = user?.id || '';
 
-    // 获取菜品ID
-    const dish = await prisma.dish.findFirst({ where: { name: '宫保鸡丁' } });
-    testDishId = dish?.id || '';
+    // 创建一个新的测试菜品（避免与 seed 数据中的评论冲突）
+    const canteen = await prisma.canteen.findFirst();
+    const dish = await prisma.dish.create({
+      data: {
+        name: 'Admin Comments Test Dish',
+        price: 10,
+        canteenId: canteen!.id,
+        canteenName: canteen!.name,
+        windowName: 'Test Window',
+        availableMealTime: ['lunch'],
+      },
+    });
+    testDishId = dish.id;
 
     // 创建评价
     const review = await prisma.review.create({
@@ -84,6 +94,9 @@ describe('AdminCommentsController (e2e)', () => {
     }
     if (testReviewId) {
       await prisma.review.deleteMany({ where: { id: testReviewId } });
+    }
+    if (testDishId) {
+      await prisma.dish.deleteMany({ where: { id: testDishId } });
     }
     await app.close();
   });
