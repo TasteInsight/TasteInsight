@@ -106,7 +106,7 @@
             </view>
 
             <!-- 右侧评分比例条状图 -->
-            <RatingBars :dish-id="dish.id" />
+            <RatingBars ref="ratingBarsRef" :dish-id="dish.id" />
           </view>
         </view>
       </view>
@@ -335,7 +335,7 @@
           @load-more="loadMoreReviews"
           @view-all-comments="showAllCommentsPanel"
           @report="(id) => openReportModal('review', id)"
-          @delete="removeReview"
+          @delete="handleDeleteReview"
         />
       </view>
     </view>
@@ -470,6 +470,7 @@ const isAllCommentsPanelVisible = ref(false);
 const currentCommentsReviewId = ref('');
 const isSubDishesExpanded = ref(false);
 const shouldRefreshDishDetail = ref(false);
+const ratingBarsRef = ref();
 
 // 控制 page-container 的渲染，延迟销毁以避免滚动锁定问题
 const shouldRenderAllCommentsPanel = ref(false);
@@ -621,6 +622,9 @@ const handleReviewSuccess = async () => {
     ]);
   }
   
+  // 刷新评分条状图
+  ratingBarsRef.value?.refresh();
+  
   uni.showToast({
     title: '评价成功',
     icon: 'success',
@@ -646,14 +650,11 @@ const handleDeleteMyReview = () => {
     success: async (res) => {
       if (!res.confirm) return;
       try {
-        await removeReview(myReview.value!.id);
-        if (dishId.value) {
-          await Promise.all([
-            fetchReviews(dishId.value, true),
-            fetchDishDetail(dishId.value)
-          ]);
-        }
-        uni.showToast({ title: '已删除', icon: 'success' });
+        await removeReview(myReview.value!.id, () => {
+          // 刷新评分条状图
+          ratingBarsRef.value?.refresh();
+        });
+        // removeReview 已经处理了刷新逻辑，这里不需要重复
       } catch (e) {
         uni.showToast({ title: '删除失败', icon: 'none' });
       }
@@ -703,6 +704,13 @@ const handleCommentAdded = async () => {
   
   // 标记需要刷新，待面板关闭后执行
   shouldRefreshDishDetail.value = true;
+};
+
+const handleDeleteReview = async (reviewId: string) => {
+  await removeReview(reviewId, () => {
+    // 刷新评分条状图
+    ratingBarsRef.value?.refresh();
+  });
 };
 </script>
 
