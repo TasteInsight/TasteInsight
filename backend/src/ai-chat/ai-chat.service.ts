@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Observable } from 'rxjs';
+import { MessageEvent } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { AIConfigService } from './services/ai-config.service';
 import { OpenAIProviderService } from './services/ai-provider/openai-provider.service';
@@ -16,10 +17,6 @@ import {
   AIMessage,
   StreamChunk,
 } from './services/ai-provider/base-ai-provider.interface';
-
-interface MessageEvent {
-  data: string;
-}
 
 @Injectable()
 export class AIChatService {
@@ -73,7 +70,8 @@ export class AIChatService {
                 ? error
                 : 'Unknown error';
           subscriber.next({
-            data: `event: error\ndata: ${JSON.stringify({ error: errorMessage })}\n\n`,
+            type: 'error',
+            data: { error: errorMessage },
           });
           subscriber.complete();
         },
@@ -165,7 +163,8 @@ export class AIChatService {
             finalTextContent += chunk.content;
             // Send text chunk to client
             subscriber.next({
-              data: `event: text\ndata: ${JSON.stringify({ text: chunk.content })}\n\n`,
+              type: 'text_chunk',
+              data: chunk.content,
             });
           } else if (chunk.type === 'tool_call' && chunk.toolCall) {
             hasToolCalls = true;
@@ -248,7 +247,8 @@ export class AIChatService {
             if (segment) {
               assistantContent.push(segment);
               subscriber.next({
-                data: `event: component\ndata: ${JSON.stringify(segment)}\n\n`,
+                type: 'new_block',
+                data: segment,
               });
             }
 
@@ -308,7 +308,8 @@ export class AIChatService {
         const warningMsg =
           '抱歉，处理您的请求时遇到了一些困难。请尝试重新表述您的需求。';
         subscriber.next({
-          data: `event: text\ndata: ${JSON.stringify({ text: warningMsg })}\n\n`,
+          type: 'text_chunk',
+          data: warningMsg,
         });
         // Add warning message at the end of content array
         assistantContent.push(ContentBuilder.text(warningMsg));
@@ -323,8 +324,8 @@ export class AIChatService {
         },
       });
 
-      // Send stop event
-      subscriber.next({ data: 'event: stop\ndata: {}\n\n' });
+      // Stream complete - no explicit stop event needed
+      // Frontend handles completion via onComplete callback
       subscriber.complete();
     } catch (error) {
       this.logger.error('Stream processing error:', error);

@@ -689,7 +689,7 @@ describe('AI Chat (e2e)', () => {
           const fullData = events.join('');
 
           // Should contain at least one text event
-          expect(fullData).toContain('event: text');
+          expect(fullData).toContain('event: text_chunk');
 
           done();
         });
@@ -1033,7 +1033,7 @@ describe('Continuous Conversation (e2e)', () => {
 
     // Verify first turn got a response
     const turn1Data = turn1Events.join('');
-    expect(turn1Data).toContain('event: text');
+    expect(turn1Data).toContain('event: text_chunk');
 
     // Wait a bit for message to be saved
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -1060,7 +1060,7 @@ describe('Continuous Conversation (e2e)', () => {
     });
 
     const turn2Data = turn2Events.join('');
-    expect(turn2Data).toContain('event: text');
+    expect(turn2Data).toContain('event: text_chunk');
 
     // Wait for second message to be saved
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -1087,7 +1087,7 @@ describe('Continuous Conversation (e2e)', () => {
     });
 
     const turn3Data = turn3Events.join('');
-    expect(turn3Data).toContain('event: text');
+    expect(turn3Data).toContain('event: text_chunk');
 
     // Verify all messages are saved in the database
     const messages = await prisma.aIMessage.findMany({

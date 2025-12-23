@@ -1,10 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { BaseTool, ToolDefinition, ToolContext } from './base-tool.interface';
 import { DishesService } from '@/dishes/dishes.service';
 import { ComponentDishCard } from '../dto/chat.dto';
 
 @Injectable()
 export class DishSearchTool implements BaseTool {
+  private readonly logger = new Logger(DishSearchTool.name);
+
   constructor(private readonly dishesService: DishesService) {}
 
   getDefinition(): ToolDefinition {
@@ -75,29 +77,40 @@ export class DishSearchTool implements BaseTool {
     );
 
     // Convert to dish cards
-    const dishCards: ComponentDishCard[] = result.data.items.map((dish) => {
-      const rating =
-        dish.averageRating != null && typeof dish.averageRating === 'number'
-          ? dish.averageRating.toString()
-          : '0';
+    const dishCards: ComponentDishCard[] = result.data.items
+      .map((dish) => {
+        // Validate dish has required fields
+        if (!dish || !dish.id || !dish.name) {
+          this.logger.warn(
+            `Skipping invalid dish in search: ${dish?.id || 'unknown'}`,
+          );
+          return null;
+        }
 
-      return {
-        dish: {
-          id: dish.id,
-          name: dish.name,
-          image: dish.images?.[0] || '',
-          rating,
-          tags: dish.tags || [],
-        },
-        canteenName: dish.canteenName || '',
-        windowName: dish.windowName || '',
-        linkAction: {
-          type: 'navigate',
-          page: 'dish_detail',
-          params: { id: dish.id },
-        },
-      };
-    });
+        const rating =
+          dish.averageRating != null && typeof dish.averageRating === 'number'
+            ? dish.averageRating.toString()
+            : '0';
+
+        return {
+          dish: {
+            id: dish.id,
+            name: dish.name,
+            image: dish.images?.[0] || '',
+            rating,
+            tags: dish.tags || [],
+          },
+          canteenName: dish.canteenName || '',
+          windowName: dish.windowName || '',
+          linkAction: {
+            type: 'navigate',
+            page: 'dish_detail',
+            params: { id: dish.id },
+          },
+        } as ComponentDishCard;
+      })
+      .filter((card) => card !== null);
+
     return dishCards;
   }
 }
