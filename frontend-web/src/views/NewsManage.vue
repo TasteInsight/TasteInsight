@@ -417,14 +417,21 @@
   <!-- 新闻预览模态框 -->
   <div
     v-if="showPreviewModal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="news-preview-title"
     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]"
     @click.self="closePreviewModal"
   >
     <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] overflow-hidden m-4 flex flex-col">
       <!-- 预览头部 -->
       <div class="p-6 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
-        <h3 class="text-xl font-semibold text-gray-800">新闻预览</h3>
-        <button @click="closePreviewModal" class="text-gray-400 hover:text-gray-600 transition">
+        <h3 id="news-preview-title" class="text-xl font-semibold text-gray-800">新闻预览</h3>
+        <button
+          @click="closePreviewModal"
+          aria-label="关闭新闻预览"
+          class="text-gray-400 hover:text-gray-600 transition"
+        >
           <span class="iconify text-2xl" data-icon="carbon:close"></span>
         </button>
       </div>
@@ -461,7 +468,7 @@
 
 <script>
 // 1. 引入 Vue 核心功能，添加 shallowRef, onBeforeUnmount
-import { ref, reactive, onMounted, onActivated, shallowRef, onBeforeUnmount, computed } from 'vue'
+import { ref, reactive, onMounted, onActivated, onUnmounted, shallowRef, onBeforeUnmount, computed } from 'vue'
 // 2. 引入 wangEditor CSS 和组件
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
@@ -942,6 +949,16 @@ export default {
       }
     }
 
+    // 键盘事件处理（用于预览模态框）
+    const handlePreviewKeyDown = (event) => {
+      if (!showPreviewModal.value) return
+      
+      if (event.key === 'Escape' || event.key === 'Esc') {
+        event.preventDefault()
+        closePreviewModal()
+      }
+    }
+
     // 预览新闻
     const previewNews = (news) => {
       previewNewsData.value = { ...news }
@@ -1012,11 +1029,16 @@ export default {
     onMounted(() => {
       loadCanteens()
       loadNews()
+      document.addEventListener('keydown', handlePreviewKeyDown)
     })
 
     onActivated(() => {
       loadCanteens()
       loadNews()
+    })
+
+    onUnmounted(() => {
+      document.removeEventListener('keydown', handlePreviewKeyDown)
     })
 
     return {
