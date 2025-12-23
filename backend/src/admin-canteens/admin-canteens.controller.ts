@@ -33,6 +33,13 @@ export class AdminCanteensController {
     return this.adminCanteensService.findAll(Number(page), Number(pageSize));
   }
 
+  @Get(':id')
+  @RequirePermissions('canteen:view')
+  @HttpCode(HttpStatus.OK)
+  async findOne(@Param('id') id: string) {
+    return this.adminCanteensService.findOne(id);
+  }
+
   @Post()
   @RequirePermissions('canteen:create')
   @HttpCode(HttpStatus.OK)
