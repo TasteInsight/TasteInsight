@@ -204,8 +204,18 @@ const canteenChunks = computed(() => {
 
 const currentSwiperIndex = ref(0);
 
-const handleSwiperChange = (e: any) => {
-  currentSwiperIndex.value = e.detail.current;
+const handleSwiperChange = async (e: any) => {
+  const newIndex = e.detail.current;
+  currentSwiperIndex.value = newIndex;
+  
+  // 当滑动到最后一个 swiper-item 时，加载更多食堂
+  if (newIndex === canteenChunks.value.length - 1 && canteenStore.pagination.page < canteenStore.pagination.totalPages) {
+    try {
+      await canteenStore.loadMoreCanteenList();
+    } catch (error) {
+      console.error('加载更多食堂失败:', error);
+    }
+  }
 };
 
 /**
@@ -305,7 +315,7 @@ function navigateTo(path: string) {
 onMounted(async () => {
   try {
     // 4. 调用 actions (保持不变)
-    canteenStore.fetchCanteenList({ page: 1, pageSize: 10 });
+    canteenStore.fetchCanteenList({ page: 1, pageSize: 9 });
 
     // 获取菜品图片
     await fetchDishImages();

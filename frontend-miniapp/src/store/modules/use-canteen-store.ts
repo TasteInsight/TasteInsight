@@ -35,13 +35,16 @@ export const useCanteenStore = defineStore('canteen', () => {
   // 分页信息
   const pagination = ref({
     page: 1,
-    pageSize: 10,
+    pageSize: 9,
     total: 0,
     totalPages: 0,
   });
   
   // 加载状态
   const loading = ref(false);
+  
+  // 加载更多状态
+  const loadingMore = ref(false);
   
   // 错误信息
   const error = ref<string | null>(null);
@@ -96,6 +99,36 @@ export const useCanteenStore = defineStore('canteen', () => {
       throw err;
     } finally {
       loading.value = false;
+    }
+  }
+
+  /**
+   * 加载更多食堂列表
+   */
+  async function loadMoreCanteenList() {
+    if (loadingMore.value || pagination.value.page >= pagination.value.totalPages) {
+      return;
+    }
+    
+    loadingMore.value = true;
+    error.value = null;
+    
+    try {
+      const nextPage = pagination.value.page + 1;
+      const response = await getCanteenList({ page: nextPage, pageSize: pagination.value.pageSize });
+      
+      if (response.code === 200 && response.data) {
+        canteenList.value = [...canteenList.value, ...response.data.items];
+        pagination.value = response.data.meta;
+      } else {
+        throw new Error(response.message || '加载更多食堂失败');
+      }
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : '未知错误';
+      console.error('加载更多食堂失败:', err);
+      throw err;
+    } finally {
+      loadingMore.value = false;
     }
   }
 
@@ -224,7 +257,7 @@ export const useCanteenStore = defineStore('canteen', () => {
     currentWindow.value = null;
     pagination.value = {
       page: 1,
-      pageSize: 10,
+      pageSize: 9,
       total: 0,
       totalPages: 0,
     };
@@ -240,6 +273,7 @@ export const useCanteenStore = defineStore('canteen', () => {
     currentWindowDishes,
     pagination,
     loading,
+    loadingMore,
     error,
     
     // Getters
@@ -250,6 +284,7 @@ export const useCanteenStore = defineStore('canteen', () => {
     
     // Actions
     fetchCanteenList,
+    loadMoreCanteenList,
     fetchCanteenDetail,
     fetchWindowList,
     fetchWindowDetail,
