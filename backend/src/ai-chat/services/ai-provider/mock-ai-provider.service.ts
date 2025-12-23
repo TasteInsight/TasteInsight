@@ -49,10 +49,11 @@ export class MockAIProviderService implements BaseAIProvider {
 
     const userMessageText = lastUserMessage?.content || '';
 
-    // Check for recent tool errors in conversation history
+    // Check for recent tool messages in conversation history
     const recentToolMessages = messages
       .filter((m) => m.role === 'tool')
       .slice(-3); // Check last 3 tool messages
+
     const hasToolError = recentToolMessages.some(
       (m) =>
         m.content &&
@@ -60,12 +61,23 @@ export class MockAIProviderService implements BaseAIProvider {
         m.content.includes('Error executing tool'),
     );
 
+    // Check if we have successful tool results (not errors)
+    const hasToolResults = recentToolMessages.some(
+      (m) =>
+        m.content &&
+        typeof m.content === 'string' &&
+        !m.content.includes('Error executing tool'),
+    );
+
     // Simulate AI thinking delay
     await new Promise((resolve) => setTimeout(resolve, 50));
 
-    // Check if user message suggests tool usage or if we need to retry after error
+    // Check if user message suggests tool usage
+    // BUT: Don't call tools again if we already have successful tool results
+    // Only retry if there was an error
     const shouldUseTools =
       tools.length > 0 &&
+      !hasToolResults && // Don't call tools if we already have results
       (hasToolError ||
         userMessageText.includes('推荐') ||
         userMessageText.includes('搜索') ||

@@ -8,6 +8,7 @@ import {
   UseGuards,
   Req,
   Sse,
+  MessageEvent,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { AuthGuard } from '@/auth/guards/auth.guard';
@@ -19,10 +20,6 @@ import {
   SuggestionResponseDto,
   HistoryResponseDto,
 } from './dto/response.dto';
-
-interface MessageEvent {
-  data: string;
-}
 
 @Controller('ai')
 @UseGuards(AuthGuard)

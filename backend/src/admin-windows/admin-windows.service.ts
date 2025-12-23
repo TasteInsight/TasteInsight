@@ -93,6 +93,25 @@ export class AdminWindowsService {
     return newFloor.id;
   }
 
+  async findOne(id: string): Promise<WindowResponseDto> {
+    const window = await this.prisma.window.findUnique({
+      where: { id },
+      include: {
+        floor: true,
+      },
+    });
+
+    if (!window) {
+      throw new NotFoundException('窗口不存在');
+    }
+
+    return {
+      code: 200,
+      message: 'success',
+      data: this.mapWindowToDto(window),
+    };
+  }
+
   async findAllByCanteen(
     canteenId: string,
     page: number = 1,

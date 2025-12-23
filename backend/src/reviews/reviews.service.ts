@@ -46,8 +46,38 @@ export class ReviewsService {
       dish.canteenId,
     );
 
-    const review = await this.prisma.review.create({
-      data: {
+    // 检查是否存在已有评论（包括已删除的）
+    const existingReview = await this.prisma.review.findUnique({
+      where: {
+        userId_dishId: {
+          userId: userId,
+          dishId: createReviewDto.dishId,
+        },
+      },
+    });
+
+    // 使用 upsert 确保同一用户对同一菜品只有一个评分
+    // 如果已存在则更新，否则创建新评分
+    const review = await this.prisma.review.upsert({
+      where: {
+        userId_dishId: {
+          userId: userId,
+          dishId: createReviewDto.dishId,
+        },
+      },
+      update: {
+        rating: createReviewDto.rating,
+        content: createReviewDto.content,
+        images: createReviewDto.images,
+        status: autoApprove ? 'approved' : 'pending',
+        spicyLevel: ratingDetails?.spicyLevel,
+        sweetness: ratingDetails?.sweetness,
+        saltiness: ratingDetails?.saltiness,
+        oiliness: ratingDetails?.oiliness,
+        deletedAt: null, // 如果之前被删除，现在恢复
+        updatedAt: new Date(),
+      },
+      create: {
         dishId: createReviewDto.dishId,
         userId: userId,
         rating: createReviewDto.rating,
@@ -70,6 +100,7 @@ export class ReviewsService {
       },
     });
 
+    // 无论创建还是更新，如果自动审核通过，都需要重新计算统计
     if (autoApprove) {
       await this.dishReviewStatsService.recomputeDishStats(
         createReviewDto.dishId,
@@ -81,9 +112,11 @@ export class ReviewsService {
       await this.embeddingQueueService.enqueueRefreshUser(userId);
     }
 
+    // 根据是否存在已有评论返回不同消息
+    const isUpdate = !!existingReview;
     return {
       code: 201,
-      message: '创建成功',
+      message: isUpdate ? '更新成功' : '创建成功',
       data: this.mapToReviewDetailData(review),
     };
   }

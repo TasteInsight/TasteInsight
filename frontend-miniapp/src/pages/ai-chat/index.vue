@@ -72,14 +72,14 @@
             </view>
 
             <!-- 菜品卡片 (组件内部负责点击跳转) -->
-            <view v-else-if="segment.type === 'card_dish'" class="w-full max-w-[90%] mt-1">
+            <view v-else-if="segment.type === 'card_dish' && segment.data && segment.data.length > 0" class="w-full max-w-[90%] mt-1">
                <!-- 假设 DishCard 支持 horizontal scroll 或者是单个 -->
                <scroll-view scroll-x class="whitespace-nowrap w-full" v-if="segment.data.length > 1">
                  <view class="inline-block mr-2 align-top" v-for="(dish, i) in segment.data" :key="i">
-                   <DishCard :dish="dish" />
+                   <DishCard v-if="dish && dish.dish" :dish="dish" />
                  </view>
                </scroll-view>
-               <view v-else>
+               <view v-else-if="segment.data[0] && segment.data[0].dish">
                   <DishCard :dish="segment.data[0]" />
                </view>
             </view>

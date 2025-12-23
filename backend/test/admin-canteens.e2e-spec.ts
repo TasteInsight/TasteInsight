@@ -62,7 +62,7 @@ describe('AdminCanteensController (e2e)', () => {
               {
                 dayOfWeek: 'Monday',
                 slots: [
-                  { mealType: 'Lunch', openTime: '11:00', closeTime: '13:00' },
+                  { mealType: 'lunch', openTime: '11:00', closeTime: '13:00' },
                 ],
                 isClosed: false,
               },
@@ -115,6 +115,162 @@ describe('AdminCanteensController (e2e)', () => {
     });
   });
 
+  describe('/admin/canteens/:canteenId/windows (GET)', () => {
+    it('should return list of windows for the canteen', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/admin/canteens/${createdCanteenId}/windows`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.message).toBe('success');
+      expect(response.body.data.items).toBeInstanceOf(Array);
+      expect(response.body.data.meta).toBeDefined();
+      expect(response.body.data.meta.page).toBe(1);
+
+      // Should have the window we created
+      expect(response.body.data.items.length).toBeGreaterThan(0);
+      const window = response.body.data.items.find(
+        (w: any) => w.name === 'Test Window',
+      );
+      expect(window).toBeDefined();
+      expect(window.number).toBe('W1');
+      expect(window.canteenId).toBe(createdCanteenId);
+    });
+
+    it('should support pagination', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/admin/canteens/${createdCanteenId}/windows?page=1&pageSize=1`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.meta.page).toBe(1);
+      expect(response.body.data.meta.pageSize).toBe(1);
+      expect(response.body.data.items.length).toBeLessThanOrEqual(1);
+    });
+
+    it('should return 404 for non-existent canteen', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/admin/canteens/non-existent-id/windows')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(404);
+
+      expect(response.body.statusCode).toBe(404);
+    });
+
+    it('should return 401 without authorization', async () => {
+      await request(app.getHttpServer())
+        .get(`/admin/canteens/${createdCanteenId}/windows`)
+        .expect(401);
+    });
+
+    it('should return 403 for admin without canteen:view permission', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/admin/canteens/${createdCanteenId}/windows`)
+        .set('Authorization', `Bearer ${normalAdminToken}`)
+        .expect(403);
+
+      expect(response.body.statusCode).toBe(403);
+    });
+
+    it('should allow subAdmin with canteen:view permission', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/admin/canteens/${createdCanteenId}/windows`)
+        .set('Authorization', `Bearer ${subAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.items).toBeInstanceOf(Array);
+    });
+  });
+
+  describe('/admin/windows/:id (GET)', () => {
+    let testWindowId: string;
+
+    beforeAll(async () => {
+      // Get a window ID from the created canteen
+      const response = await request(app.getHttpServer())
+        .get(`/admin/canteens/${createdCanteenId}/windows`)
+        .set('Authorization', `Bearer ${superAdminToken}`);
+
+      if (response.body.data.items.length > 0) {
+        testWindowId = response.body.data.items[0].id;
+      }
+    });
+
+    it('should return window details by id', async () => {
+      if (!testWindowId) {
+        // Skip if no window available
+        return;
+      }
+
+      const response = await request(app.getHttpServer())
+        .get(`/admin/windows/${testWindowId}`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.message).toBe('success');
+      expect(response.body.data).toHaveProperty('id', testWindowId);
+      expect(response.body.data).toHaveProperty('canteenId', createdCanteenId);
+      expect(response.body.data).toHaveProperty('name');
+      expect(response.body.data).toHaveProperty('number');
+      expect(response.body.data).toHaveProperty('position');
+      expect(response.body.data).toHaveProperty('description');
+      expect(response.body.data).toHaveProperty('tags');
+      expect(response.body.data).toHaveProperty('floor');
+      expect(response.body.data).toHaveProperty('createdAt');
+      expect(response.body.data).toHaveProperty('updatedAt');
+    });
+
+    it('should return 404 for non-existent window', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/admin/windows/non-existent-window-id')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(404);
+
+      expect(response.body.statusCode).toBe(404);
+    });
+
+    it('should return 401 without authorization', async () => {
+      if (!testWindowId) {
+        return;
+      }
+
+      await request(app.getHttpServer())
+        .get(`/admin/windows/${testWindowId}`)
+        .expect(401);
+    });
+
+    it('should return 403 for admin without canteen:view permission', async () => {
+      if (!testWindowId) {
+        return;
+      }
+
+      const response = await request(app.getHttpServer())
+        .get(`/admin/windows/${testWindowId}`)
+        .set('Authorization', `Bearer ${normalAdminToken}`)
+        .expect(403);
+
+      expect(response.body.statusCode).toBe(403);
+    });
+
+    it('should allow subAdmin with canteen:view permission', async () => {
+      if (!testWindowId) {
+        return;
+      }
+
+      const response = await request(app.getHttpServer())
+        .get(`/admin/windows/${testWindowId}`)
+        .set('Authorization', `Bearer ${subAdminToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data).toHaveProperty('id', testWindowId);
+    });
+  });
+
   describe('/admin/canteens/:id (PUT)', () => {
     it('should update the canteen basic info', async () => {
       const updateDto = {
@@ -137,8 +293,8 @@ describe('AdminCanteensController (e2e)', () => {
         where: { id: createdCanteenId },
         include: { windows: true, floors: true },
       });
-      const windowId = currentCanteen.windows[0].id;
-      const floorId = currentCanteen.floors[0].id;
+      const windowId = currentCanteen!.windows[0].id;
+      const floorId = currentCanteen!.floors[0].id;
 
       // 2. Test Update and Create
       const updateDto = {
@@ -179,22 +335,23 @@ describe('AdminCanteensController (e2e)', () => {
         where: { id: createdCanteenId },
         include: { windows: true, floors: true },
       });
-      expect(updated.windows.find((w) => w.id === windowId).name).toBe(
+      expect(updated).toBeDefined();
+      expect(updated!.windows.find((w) => w.id === windowId)!.name).toBe(
         'Updated Window',
       );
-      expect(updated.floors.find((f) => f.id === floorId).name).toBe(
+      expect(updated!.floors.find((f) => f.id === floorId)!.name).toBe(
         '1F Updated',
       );
       expect(
-        updated.windows.find((w) => w.name === 'New Window'),
+        updated!.windows.find((w) => w.name === 'New Window'),
       ).toBeDefined();
-      expect(updated.floors.find((f) => f.name === '2F')).toBeDefined();
+      expect(updated!.floors.find((f) => f.name === '2F')).toBeDefined();
 
       // 3. Test Delete
-      const newWindowId = updated.windows.find(
+      const newWindowId = updated!.windows.find(
         (w) => w.name === 'New Window',
-      ).id;
-      const newFloorId = updated.floors.find((f) => f.name === '2F').id;
+      )!.id;
+      const newFloorId = updated!.floors.find((f) => f.name === '2F')!.id;
 
       const deleteDto = {
         windows: [
@@ -220,10 +377,10 @@ describe('AdminCanteensController (e2e)', () => {
         where: { id: createdCanteenId },
         include: { windows: true, floors: true },
       });
-      expect(final.windows).toHaveLength(1);
-      expect(final.windows[0].id).toBe(newWindowId);
-      expect(final.floors).toHaveLength(1);
-      expect(final.floors[0].id).toBe(newFloorId);
+      expect(final!.windows).toHaveLength(1);
+      expect(final!.windows[0].id).toBe(newWindowId);
+      expect(final!.floors).toHaveLength(1);
+      expect(final!.floors[0].id).toBe(newFloorId);
     });
 
     it('should return 404 when updating non-existent canteen', async () => {
@@ -276,7 +433,7 @@ describe('AdminCanteensController (e2e)', () => {
       const updatedDish = await prisma.dish.findUnique({
         where: { id: testDish.id },
       });
-      expect(updatedDish.canteenName).toBe('Updated Sync Test Canteen');
+      expect(updatedDish!.canteenName).toBe('Updated Sync Test Canteen');
 
       // Cleanup
       await prisma.dish.delete({ where: { id: testDish.id } });
@@ -350,8 +507,8 @@ describe('AdminCanteensController (e2e)', () => {
       const updatedDish = await prisma.dish.findUnique({
         where: { id: testDish.id },
       });
-      expect(updatedDish.windowName).toBe('Updated Test Window');
-      expect(updatedDish.windowNumber).toBe('2');
+      expect(updatedDish!.windowName).toBe('Updated Test Window');
+      expect(updatedDish!.windowNumber).toBe('2');
 
       // Check that the admin dishes API returns the updated window name from the association
       const dishesResponse = await request(app.getHttpServer())
@@ -433,8 +590,8 @@ describe('AdminCanteensController (e2e)', () => {
       const updatedDish = await prisma.dish.findUnique({
         where: { id: testDish.id },
       });
-      expect(updatedDish.floorName).toBe('Updated Test Floor');
-      expect(updatedDish.floorLevel).toBe('2');
+      expect(updatedDish!.floorName).toBe('Updated Test Floor');
+      expect(updatedDish!.floorLevel).toBe('2');
 
       // Cleanup
       await prisma.dish.delete({ where: { id: testDish.id } });
