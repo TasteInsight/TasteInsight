@@ -10,7 +10,7 @@
       <div class="text-sm opacity-75 mt-2 tracking-wide">清华大学餐饮管理中心</div>
     </div>
 
-    <div class="flex-1">
+    <div class="flex-1 overflow-y-auto min-h-0 sidebar-menu-scroll">
       <div v-permission="'dish:view'">
         <button
           class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
@@ -378,3 +378,29 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+/* 自定义滚动条样式 */
+.sidebar-menu-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-menu-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-menu-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.sidebar-menu-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Firefox 滚动条样式 */
+.sidebar-menu-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+</style>
