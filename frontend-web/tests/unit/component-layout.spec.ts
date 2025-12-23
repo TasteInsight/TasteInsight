@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { mount, shallowMount } from '@vue/test-utils'
+import { mount} from '@vue/test-utils'
 import { defineComponent, nextTick } from 'vue'
 
 import Header from '../../src/components/Layout/Header.vue'
