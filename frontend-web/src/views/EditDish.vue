@@ -550,14 +550,62 @@
             {{ isSubmitting ? '保存中...' : '保存修改' }}
           </button>
           <button
+            v-permission="'dish:delete'"
             type="button"
-            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"
+            class="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+            @click="showDeleteConfirm = true"
+            :disabled="isSubmitting || isLoading || isDeleting"
+          >
+            <span class="iconify mr-1" data-icon="carbon:trash-can"></span>
+            {{ isDeleting ? '删除中...' : '删除菜品' }}
+          </button>
+          <button
+            type="button"
+            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200 ml-auto"
             @click="goBack"
           >
             取消
           </button>
         </div>
       </form>
+    </div>
+
+    <!-- 删除确认对话框 -->
+    <div
+      v-if="showDeleteConfirm"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      @click.self="showDeleteConfirm = false"
+    >
+      <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+        <div class="flex items-center mb-4">
+          <span class="iconify text-red-500 text-3xl mr-3" data-icon="carbon:warning"></span>
+          <h3 class="text-lg font-semibold text-gray-800">确认删除菜品</h3>
+        </div>
+        <p class="text-gray-600 mb-6">
+          您确定要删除菜品 <span class="font-semibold text-gray-800">"{{ formData.name }}"</span> 吗？
+          <br />
+          <span class="text-sm text-red-500 mt-2 block">此操作不可恢复，请谨慎操作！</span>
+        </p>
+        <div class="flex space-x-3 justify-end">
+          <button
+            type="button"
+            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"
+            @click="showDeleteConfirm = false"
+            :disabled="isDeleting"
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+            @click="handleDelete"
+            :disabled="isDeleting"
+          >
+            <span class="iconify mr-1" data-icon="carbon:trash-can"></span>
+            {{ isDeleting ? '删除中...' : '确认删除' }}
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -582,6 +630,8 @@ export default {
     const dishId = ref(route.params.id)
     const isLoading = ref(false)
     const isSubmitting = ref(false)
+    const isDeleting = ref(false)
+    const showDeleteConfirm = ref(false)
 
     const newTag = ref('')
     const canteens = ref([])
@@ -1166,6 +1216,32 @@ export default {
       router.push('/modify-dish')
     }
 
+    const handleDelete = async () => {
+      if (isDeleting.value) {
+        return
+      }
+
+      isDeleting.value = true
+
+      try {
+        const response = await dishApi.deleteDish(formData.id)
+
+        if (response.code === 200) {
+          alert('菜品删除成功！')
+          // 更新 store 中的菜品列表（如果 store 有相关方法）
+          router.push('/modify-dish')
+        } else {
+          throw new Error(response.message || '删除菜品失败')
+        }
+      } catch (error) {
+        console.error('删除菜品失败:', error)
+        alert(error instanceof Error ? error.message : '删除菜品失败，请重试')
+      } finally {
+        isDeleting.value = false
+        showDeleteConfirm.value = false
+      }
+    }
+
     onMounted(() => {
       loadDishData()
     })
@@ -1189,6 +1265,8 @@ export default {
       newTag,
       isLoading,
       isSubmitting,
+      isDeleting,
+      showDeleteConfirm,
       subDishes,
       isSubDish,
       canteens,
@@ -1207,6 +1285,7 @@ export default {
       setAsCover,
       submitForm,
       goBack,
+      handleDelete,
     }
   },
 }
