@@ -289,6 +289,114 @@ describe('views/UserManage', () => {
     wrapper.unmount()
   })
 
+  it('password strength helpers, generatePassword, selectRole toggling, handleFilterChange, and superadmin permissionGroups', async () => {
+    const origUser = mocks.authStoreMock.user
+    const origPerms = mocks.authStoreMock.permissions
+
+    const wrapper = mount(UserManage, { global: { stubs: { Header: true } } })
+    await Promise.resolve()
+    await nextTick()
+
+    wrapper.vm.createNewAdmin()
+    await nextTick()
+
+    wrapper.vm.formData.password = ''
+    await nextTick()
+    expect(wrapper.vm.passwordStrengthText).toBe('密码强度：弱')
+
+    wrapper.vm.formData.password = 'abc'
+    await nextTick()
+    expect(wrapper.vm.passwordStrengthClass).toBe('bg-red-500')
+
+    wrapper.vm.formData.password = 'Abcdef12'
+    await nextTick()
+    expect(wrapper.vm.passwordStrengthClass).toBe('bg-orange-500')
+
+    wrapper.vm.formData.password = 'Abcdef12!'
+    await nextTick()
+    expect(wrapper.vm.passwordStrengthClass).toBe('bg-green-500')
+
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
+    wrapper.vm.generatePassword()
+    expect(wrapper.vm.formData.password).toHaveLength(12)
+    randomSpy.mockRestore()
+
+    // selectRole: selecting same role again cancels
+    wrapper.vm.formData.permissions = ['dish:view']
+    wrapper.vm.selectRole('custom')
+    expect(wrapper.vm.formData.role).toBe('custom')
+    expect(wrapper.vm.formData.permissions).toEqual(['dish:view'])
+
+    wrapper.vm.selectRole('custom')
+    expect(wrapper.vm.formData.role).toBe('')
+    expect(wrapper.vm.formData.customRole).toBe('')
+
+    wrapper.vm.selectRole('kitchen_operator')
+    expect(wrapper.vm.formData.role).toBe('kitchen_operator')
+    expect(wrapper.vm.formData.permissions.length).toBeGreaterThan(0)
+
+    // handleFilterChange just resets page
+    wrapper.vm.currentPage = 3
+    wrapper.vm.handleFilterChange()
+    expect(wrapper.vm.currentPage).toBe(1)
+
+    // superadmin permissionGroups shows all groups
+    mocks.authStoreMock.user = { username: 'sa', role: 'superadmin' } as any
+    mocks.authStoreMock.permissions = []
+    const wrapper2 = shallowMount(UserManage, { global: { stubs: { Header: true } } })
+    await Promise.resolve()
+
+    expect(wrapper2.vm.permissionGroups.length).toBeGreaterThan(0)
+    expect(wrapper2.vm.permissionGroups.some((g: any) => g.id === 'admin')).toBe(true)
+
+    wrapper2.unmount()
+    wrapper.unmount()
+
+    mocks.authStoreMock.user = origUser
+    mocks.authStoreMock.permissions = origPerms
+  })
+
+  it('submitForm blocks invalid permissions assignment and respects isSubmitting guard', async () => {
+    mocks.authStoreMock.user = { username: 'admin', role: 'staff' } as any
+    mocks.authStoreMock.permissions = ['admin:view', 'canteen:view']
+
+    const wrapper = shallowMount(UserManage, { global: { stubs: { Header: true } } })
+    await Promise.resolve()
+
+    wrapper.vm.formData.username = 'u'
+    wrapper.vm.formData.password = 'pw'
+    wrapper.vm.formData.permissions = ['admin:view', 'admin:delete']
+
+    await wrapper.vm.submitForm()
+    expect(wrapper.vm.errors.permissions).toContain('您没有以下权限')
+    expect(mocks.permissionApiMock.createAdmin).not.toHaveBeenCalled()
+
+    wrapper.vm.errors.permissions = ''
+    wrapper.vm.isSubmitting = true
+    await wrapper.vm.submitForm()
+    expect(mocks.permissionApiMock.createAdmin).not.toHaveBeenCalled()
+
+    wrapper.unmount()
+  })
+
+  it('deleteAdmin handles non-200 and thrown errors with alert message', async () => {
+    const wrapper = shallowMount(UserManage, { global: { stubs: { Header: true } } })
+    await Promise.resolve()
+
+    ;(window.confirm as any).mockReturnValueOnce(true)
+    mocks.permissionApiMock.deleteAdmin.mockResolvedValueOnce({ code: 500, message: 'bad' })
+    await wrapper.vm.deleteAdmin({ id: 1, username: 'u' })
+    expect(window.alert).toHaveBeenCalledWith('bad')
+
+    ;(window.alert as any).mockClear()
+    ;(window.confirm as any).mockReturnValueOnce(true)
+    mocks.permissionApiMock.deleteAdmin.mockRejectedValueOnce(new Error('boom'))
+    await wrapper.vm.deleteAdmin({ id: 2, username: 'u2' })
+    expect(window.alert).toHaveBeenCalledWith('boom')
+
+    wrapper.unmount()
+  })
+
   it('changePage respects bounds and resetFilters resets state', async () => {
     const wrapper = shallowMount(UserManage, { global: { stubs: { Header: true } } })
     await Promise.resolve()
