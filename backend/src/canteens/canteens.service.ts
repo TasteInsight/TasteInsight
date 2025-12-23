@@ -165,31 +165,13 @@ export class CanteensService {
     const windows = canteen.windows ?? [];
     const floors = canteen.floors ?? [];
 
-    let openingHours: any[] = [];
-    if (Array.isArray(canteen.openingHours)) {
-      // 兼容旧数据结构：如果数组元素包含 dayOfWeek，说明是旧的扁平结构
-      if (
-        canteen.openingHours.length > 0 &&
-        'dayOfWeek' in canteen.openingHours[0]
-      ) {
-        openingHours = [
-          {
-            floorLevel: 'default',
-            schedule: canteen.openingHours,
-          },
-        ];
-      } else {
-        openingHours = canteen.openingHours;
-      }
-    }
-
     return {
       id: canteen.id,
       name: canteen.name,
       position: canteen.position,
       description: canteen.description,
       images: canteen.images ?? [],
-      openingHours: openingHours,
+      openingHours: canteen.openingHours ?? [],
       averageRating: canteen.averageRating,
       reviewCount: canteen.reviewCount,
       floors: floors.map((floor: any) => this.mapToFloorDto(floor)),

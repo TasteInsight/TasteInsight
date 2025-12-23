@@ -1127,7 +1127,7 @@ export class AdminDishesService {
       canteen = await tx.canteen.create({
         data: {
           name: canteenName,
-          openingHours: {},
+          openingHours: [],
         },
       });
     }

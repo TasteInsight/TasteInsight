@@ -62,7 +62,7 @@ describe('AdminCanteensController (e2e)', () => {
               {
                 dayOfWeek: 'Monday',
                 slots: [
-                  { mealType: 'Lunch', openTime: '11:00', closeTime: '13:00' },
+                  { mealType: 'lunch', openTime: '11:00', closeTime: '13:00' },
                 ],
                 isClosed: false,
               },

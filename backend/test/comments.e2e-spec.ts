@@ -60,7 +60,7 @@ describe('CommentsController (e2e)', () => {
       data: {
         name: 'Test Canteen For Comments',
         position: 'Test Location',
-        openingHours: {},
+        openingHours: [],
       },
     });
 
