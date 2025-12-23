@@ -114,6 +114,7 @@ describe('AdminAdminsController (e2e)', () => {
 
       expect(response.body.code).toBe(200);
       expect(response.body.data.canteenId).toBe(canteen?.id);
+      expect(response.body.data.canteenName).toBe(canteen?.name);
 
       // Cleanup
       await prisma.admin.delete({ where: { id: response.body.data.id } });
@@ -219,6 +220,41 @@ describe('AdminAdminsController (e2e)', () => {
 
       expect(response.body.data.meta.page).toBe(1);
       expect(response.body.data.meta.pageSize).toBe(5);
+    });
+
+    it('should include canteenName for admins with canteenId', async () => {
+      // First create a sub admin with canteenId
+      const canteen = await prisma.canteen.findFirst();
+      const createDto = {
+        username: 'testcanteenname',
+        password: 'Test@123!',
+        canteenId: canteen?.id,
+        permissions: ['dish:view'],
+      };
+
+      const createResponse = await request(app.getHttpServer())
+        .post('/admin/admins')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send(createDto)
+        .expect(201);
+
+      const subAdminId = createResponse.body.data.id;
+
+      // Now list and verify canteenName is included
+      const listResponse = await request(app.getHttpServer())
+        .get('/admin/admins')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      const createdAdmin = listResponse.body.data.items.find(
+        (admin: any) => admin.id === subAdminId,
+      );
+      expect(createdAdmin).toBeDefined();
+      expect(createdAdmin.canteenId).toBe(canteen?.id);
+      expect(createdAdmin.canteenName).toBe(canteen?.name);
+
+      // Cleanup
+      await prisma.admin.delete({ where: { id: subAdminId } });
     });
 
     it('should return 403 for normal admin without permission', async () => {

@@ -229,6 +229,31 @@ describe('AuthController (e2e)', () => {
         .send({ username: 'testadmin' })
         .expect(400);
     });
+
+    it('should return canteenName for admin with associated canteen', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/auth/admin/login')
+        .send({ username: 'canteenadmin', password: 'canteen123' })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.message).toBe('登录成功');
+      expect(response.body.data.admin).toBeDefined();
+      expect(response.body.data.admin.canteenId).toBeDefined();
+      expect(response.body.data.admin.canteenName).toBe('第一食堂');
+    });
+
+    it('should return null canteenName for admin without associated canteen', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/auth/admin/login')
+        .send({ username: 'testadmin', password: 'password123' })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.admin).toBeDefined();
+      expect(response.body.data.admin.canteenId).toBeNull();
+      expect(response.body.data.admin.canteenName).toBeNull();
+    });
   });
 
   describe('/auth/refresh (POST)', () => {
