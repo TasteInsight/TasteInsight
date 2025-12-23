@@ -443,7 +443,7 @@
                   </button>
                 </div>
 
-                <div v-if="windows.length > 0" class="space-y-3">
+                <div v-if="windows.length > 0" class="max-h-[400px] overflow-y-auto space-y-3 pr-2">
                   <div
                     v-for="(window, index) in windows"
                     :key="window.id || index"
