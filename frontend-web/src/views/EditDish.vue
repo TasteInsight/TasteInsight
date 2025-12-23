@@ -610,6 +610,7 @@ export default {
       allergens: '',
       ingredients: '',
       imageFiles: [], // { id: string, url: string, file?: File, isNew: boolean }
+      subItems: [], // 兼容 submitForm 中对子项价格兜底逻辑
       tags: [],
       spicyLevel: 0,
       saltiness: 0,

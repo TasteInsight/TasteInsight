@@ -1,23 +1,24 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/store/modules/use-auth-store'
+import { getFirstAccessibleRoute } from './access'
 import MainLayout from '@/components/Layout/MainLayout.vue'
-import SingleAdd from '../views/SingleAdd.vue'
-import BatchAdd from '../views/BatchAdd.vue'
-import ModifyDish from '../views/ModifyDish.vue'
-import EditDish from '../views/EditDish.vue'
-import AddSubDish from '../views/AddSubDish.vue'
-import AddCanteen from '../views/AddCanteen.vue'
-import ReviewDish from '../views/ReviewDish.vue'
-import ReviewDishDetail from '../views/ReviewDishDetail.vue'
-import ViewDishDetail from '../views/ViewDishDetail.vue'
-import UserManage from '../views/UserManage.vue'
-import NewsManage from '../views/NewsManage.vue'
-import LogView from '../views/LogView.vue'
-import ReportManage from '../views/ReportManage.vue'
-import CommentManage from '../views/CommentManage.vue'
-import ReviewManage from '../views/ReviewManage.vue'
-import ConfigManage from '../views/ConfigManage.vue'
-import Login from '../views/Login.vue'
+import SingleAdd from '@/views/SingleAdd.vue'
+import BatchAdd from '@/views/BatchAdd.vue'
+import ModifyDish from '@/views/ModifyDish.vue'
+import EditDish from '@/views/EditDish.vue'
+import AddSubDish from '@/views/AddSubDish.vue'
+import AddCanteen from '@/views/AddCanteen.vue'
+import ReviewDish from '@/views/ReviewDish.vue'
+import ReviewDishDetail from '@/views/ReviewDishDetail.vue'
+import ViewDishDetail from '@/views/ViewDishDetail.vue'
+import UserManage from '@/views/UserManage.vue'
+import NewsManage from '@/views/NewsManage.vue'
+import LogView from '@/views/LogView.vue'
+import ReportManage from '@/views/ReportManage.vue'
+import CommentManage from '@/views/CommentManage.vue'
+import ReviewManage from '@/views/ReviewManage.vue'
+import ConfigManage from '@/views/ConfigManage.vue'
+import Login from '@/views/Login.vue'
 
 const routes = [
   {
@@ -146,31 +147,7 @@ const router = createRouter({
   routes,
 })
 
-// 根据权限获取第一个可访问的页面
-function getFirstAccessibleRoute(authStore: ReturnType<typeof useAuthStore>): string {
-  const routePriority = [
-    { path: '/single-add', permission: 'dish:view' },
-    { path: '/modify-dish', permission: 'dish:view' },
-    { path: '/review-dish', permission: 'upload:approve' },
-    { path: '/add-canteen', permission: 'canteen:view' },
-    { path: '/user-manage', permission: 'admin:view' },
-    { path: '/news-manage', permission: 'news:view' },
-    { path: '/report-manage', permission: 'report:handle' },
-    { path: '/comment-manage', permission: 'review:delete' },
-    { path: '/review-manage', permission: 'review:approve' },
-    { path: '/config-manage', permission: 'config:view' },
-  ]
-  
-  // 找到第一个有权限的页面
-  for (const route of routePriority) {
-    if (authStore.hasPermission(route.permission)) {
-      return route.path
-    }
-  }
-  
-  // 如果没有任何权限，返回第一个页面（虽然不应该发生）
-  return '/single-add'
-}
+export { getFirstAccessibleRoute }
 
 // 路由守卫
 router.beforeEach((to, _from, next) => {
