@@ -219,7 +219,12 @@ export const useChatStore = defineStore('ai-chat', () => {
     const payload: ChatRequest = {
       message: text,
       clientContext: {
-        localTime: new Date().toLocaleTimeString(),
+        localTime: (() => {
+          const now = new Date();
+          const hh = now.getHours().toString().padStart(2, '0');
+          const mm = now.getMinutes().toString().padStart(2, '0');
+          return `${hh}:${mm}`;
+        })(),
       }
     };
 
