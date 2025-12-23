@@ -337,7 +337,7 @@ describe('views/NewsManage', () => {
     expect(wrapper.vm.pagination.page).toBe(1)
     await flushMicrotasks()
     expect(mocks.newsApiMock.getNews.mock.calls.length).toBeGreaterThan(callsBefore)
-    expect(mocks.newsApiMock.getNews.mock.calls.at(-1)?.[0]).toMatchObject({ status: 'draft' })
+    expect(mocks.newsApiMock.getNews.mock.calls[mocks.newsApiMock.getNews.mock.calls.length - 1]?.[0]).toMatchObject({ status: 'draft' })
 
     // edit update path
     wrapper.vm.editNews({
@@ -437,7 +437,7 @@ describe('views/NewsManage', () => {
     expect(wrapper.vm.pagination.page).toBe(3)
     await flushMicrotasks()
     expect(mocks.newsApiMock.getNews.mock.calls.length).toBeGreaterThan(callsBefore)
-    expect(mocks.newsApiMock.getNews.mock.calls.at(-1)?.[0]).toMatchObject({ page: 3 })
+    expect(mocks.newsApiMock.getNews.mock.calls[mocks.newsApiMock.getNews.mock.calls.length - 1]?.[0]).toMatchObject({ page: 3 })
 
     wrapper.unmount()
   })

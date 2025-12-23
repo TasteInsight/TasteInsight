@@ -53,10 +53,10 @@ describe('components/Common/Pagination', () => {
     const next = buttons[buttons.length - 2]
 
     await prev.trigger('click')
-    expect(wrapper.emitted('page-change')?.at(-1)).toEqual([1])
+    expect(wrapper.emitted('page-change')?.[wrapper.emitted('page-change')!.length - 1]).toEqual([1])
 
     await next.trigger('click')
-    expect(wrapper.emitted('page-change')?.at(-1)).toEqual([3])
+    expect(wrapper.emitted('page-change')?.[wrapper.emitted('page-change')!.length - 1]).toEqual([3])
   })
 
   it('disables prev on first page and next on last page', () => {
@@ -94,12 +94,12 @@ describe('components/Common/Pagination', () => {
     const input = wrapper.find('input[type="number"]')
 
     await input.setValue('0')
-    await wrapper.findAll('button').at(-1)!.trigger('click') // 确定
-    expect(wrapper.emitted('page-change')?.at(-1)).toEqual([1])
+    await wrapper.findAll('button')[wrapper.findAll('button').length - 1]!.trigger('click') // 确定
+    expect(wrapper.emitted('page-change')?.[wrapper.emitted('page-change')!.length - 1]).toEqual([1])
 
     await input.setValue('999')
-    await wrapper.findAll('button').at(-1)!.trigger('click')
-    expect(wrapper.emitted('page-change')?.at(-1)).toEqual([5])
+    await wrapper.findAll('button')[wrapper.findAll('button').length - 1]!.trigger('click')
+    expect(wrapper.emitted('page-change')?.[wrapper.emitted('page-change')!.length - 1]).toEqual([5])
   })
 
   it('jump triggers on Enter key', async () => {
@@ -111,7 +111,7 @@ describe('components/Common/Pagination', () => {
     await input.setValue('3')
     await input.trigger('keyup.enter')
 
-    expect(wrapper.emitted('page-change')?.at(-1)).toEqual([3])
+    expect(wrapper.emitted('page-change')?.[wrapper.emitted('page-change')!.length - 1]).toEqual([3])
   })
 
   it('jump treats NaN input as page 1', async () => {
@@ -120,9 +120,9 @@ describe('components/Common/Pagination', () => {
     })
 
     ;(wrapper.vm as any).inputPage = Number.NaN
-    await wrapper.findAll('button').at(-1)!.trigger('click')
+    await wrapper.findAll('button')[wrapper.findAll('button').length - 1]!.trigger('click')
 
-    expect(wrapper.emitted('page-change')?.at(-1)).toEqual([1])
+    expect(wrapper.emitted('page-change')?.[wrapper.emitted('page-change')!.length - 1]).toEqual([1])
   })
 
   it('syncs inputPage when currentPage prop changes', async () => {

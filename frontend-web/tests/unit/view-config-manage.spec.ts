@@ -4,7 +4,7 @@ import { defineComponent } from 'vue'
 
 import ConfigManage from '../../src/views/ConfigManage.vue'
 
-const flushPromises = () => new Promise((resolve) => queueMicrotask(resolve))
+const flushPromises = () => new Promise<void>((resolve) => queueMicrotask(() => resolve()))
 
 const { configApiMock, authStoreMock } = vi.hoisted(() => {
   return {

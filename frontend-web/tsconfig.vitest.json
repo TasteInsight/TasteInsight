@@ -22,7 +22,7 @@
     "strict": true,
     "noEmit": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.vitest.tsbuildinfo",
-    "types": ["node", "vitest/globals"],
+    "types": ["vitest/globals"],
     "paths": {
       "@/*": ["./src/*"]
     }

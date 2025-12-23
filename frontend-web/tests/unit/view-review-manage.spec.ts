@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { shallowMount } from '@vue/test-utils'
 import { nextTick } from 'vue'
+import type { PendingComment } from '@/types/api'
 
 const mocks = vi.hoisted(() => ({
   authStoreMock: {
@@ -175,7 +176,7 @@ describe('views/ReviewManage', () => {
     wrapper.vm.closeReviewDetail()
     expect(wrapper.vm.selectedReview).toBe(null)
 
-    const comment = {
+    const comment: PendingComment = {
       id: 'cm1',
       reviewId: 'rv1',
       userId: 'u2-id',

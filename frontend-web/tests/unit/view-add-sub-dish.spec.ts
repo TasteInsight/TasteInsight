@@ -89,11 +89,11 @@ describe('views/AddSubDish', () => {
 
     ;(globalThis as any).FileReader = FileReaderMock
     if (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function') {
-      randomUuidSpy = vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('uuid-1')
+      randomUuidSpy = vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('uuid-1-uuid-2-uuid-3-uuid-4-uuid-5')
     } else {
       // 极端情况下没有 randomUUID，提供一个可用的替代
       Object.defineProperty(globalThis, 'crypto', {
-        value: { randomUUID: () => 'uuid-1' },
+        value: { randomUUID: () => 'uuid-1-uuid-2-uuid-3-uuid-4-uuid-5' },
         configurable: true,
       })
     }
