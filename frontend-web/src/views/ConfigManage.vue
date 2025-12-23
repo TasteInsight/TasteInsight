@@ -45,7 +45,7 @@
                 <input
                   type="checkbox"
                   v-model="reviewAutoApprove"
-                  :disabled="!authStore.hasPermission('config:edit') || isSaving"
+                  :disabled="!authStore.hasPermission('config:edit') || reviewSaving"
                   @change="handleReviewAutoApproveChange"
                   class="sr-only peer"
                 />
@@ -57,11 +57,11 @@
                 </span>
               </label>
 
-              <div v-if="isSaving" class="flex items-center gap-2 text-sm text-gray-500">
+              <div v-if="reviewSaving" class="flex items-center gap-2 text-sm text-gray-500">
                 <span class="iconify animate-spin" data-icon="carbon:circle-dash"></span>
                 <span>保存中...</span>
               </div>
-              <div v-else-if="saveSuccess" class="flex items-center gap-2 text-sm text-green-600">
+              <div v-else-if="reviewSaveSuccess" class="flex items-center gap-2 text-sm text-green-600">
                 <span class="iconify" data-icon="carbon:checkmark-filled"></span>
                 <span>保存成功</span>
               </div>
@@ -92,7 +92,7 @@
                 <input
                   type="checkbox"
                   v-model="commentAutoApprove"
-                  :disabled="!authStore.hasPermission('config:edit') || isSaving"
+                  :disabled="!authStore.hasPermission('config:edit') || commentSaving"
                   @change="handleCommentAutoApproveChange"
                   class="sr-only peer"
                 />
@@ -104,11 +104,11 @@
                 </span>
               </label>
 
-              <div v-if="isSaving" class="flex items-center gap-2 text-sm text-gray-500">
+              <div v-if="commentSaving" class="flex items-center gap-2 text-sm text-gray-500">
                 <span class="iconify animate-spin" data-icon="carbon:circle-dash"></span>
                 <span>保存中...</span>
               </div>
-              <div v-else-if="saveSuccess" class="flex items-center gap-2 text-sm text-green-600">
+              <div v-else-if="commentSaveSuccess" class="flex items-center gap-2 text-sm text-green-600">
                 <span class="iconify" data-icon="carbon:checkmark-filled"></span>
                 <span>保存成功</span>
               </div>
@@ -145,8 +145,10 @@ export default {
   setup() {
     const authStore = useAuthStore()
     const loading = ref(false)
-    const isSaving = ref(false)
-    const saveSuccess = ref(false)
+    const reviewSaving = ref(false)
+    const reviewSaveSuccess = ref(false)
+    const commentSaving = ref(false)
+    const commentSaveSuccess = ref(false)
     const reviewAutoApprove = ref(false)
     const commentAutoApprove = ref(false)
     const configItems = ref([])
@@ -284,8 +286,8 @@ export default {
         return
       }
 
-      isSaving.value = true
-      saveSuccess.value = false
+      reviewSaving.value = true
+      reviewSaveSuccess.value = false
 
       try {
         let response
@@ -304,10 +306,10 @@ export default {
         }
 
         if (response.code === 200) {
-          saveSuccess.value = true
+          reviewSaveSuccess.value = true
           // 3秒后隐藏成功提示
           setTimeout(() => {
-            saveSuccess.value = false
+            reviewSaveSuccess.value = false
           }, 3000)
         } else {
           throw new Error(response.message || '保存配置失败')
@@ -318,7 +320,7 @@ export default {
         // 恢复原值
         await loadConfig()
       } finally {
-        isSaving.value = false
+        reviewSaving.value = false
       }
     }
 
@@ -330,8 +332,8 @@ export default {
         return
       }
 
-      isSaving.value = true
-      saveSuccess.value = false
+      commentSaving.value = true
+      commentSaveSuccess.value = false
 
       try {
         let response
@@ -350,10 +352,10 @@ export default {
         }
 
         if (response.code === 200) {
-          saveSuccess.value = true
+          commentSaveSuccess.value = true
           // 3秒后隐藏成功提示
           setTimeout(() => {
-            saveSuccess.value = false
+            commentSaveSuccess.value = false
           }, 3000)
         } else {
           throw new Error(response.message || '保存配置失败')
@@ -364,7 +366,7 @@ export default {
         // 恢复原值
         await loadConfig()
       } finally {
-        isSaving.value = false
+        commentSaving.value = false
       }
     }
 
@@ -379,8 +381,10 @@ export default {
 
     return {
       loading,
-      isSaving,
-      saveSuccess,
+      reviewSaving,
+      reviewSaveSuccess,
+      commentSaving,
+      commentSaveSuccess,
       reviewAutoApprove,
       commentAutoApprove,
       configItems,

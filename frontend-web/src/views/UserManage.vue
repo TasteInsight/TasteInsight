@@ -839,13 +839,27 @@ export default {
 
     // 生成随机密码
     const generatePassword = () => {
-      const chars =
-        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?'
+      // 使用更安全、常用的特殊字符，确保生成的密码符合后端验证规则
+      const lowercase = 'abcdefghijklmnopqrstuvwxyz'
+      const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+      const numbers = '0123456789'
+      const specialChars = '!@#$%^&*()_+-=?'
+      const allChars = lowercase + uppercase + numbers + specialChars
+      
       let password = ''
-      for (let i = 0; i < 12; i++) {
-        password += chars.charAt(Math.floor(Math.random() * chars.length))
+      // 确保至少包含一个小写字母、大写字母、数字和特殊字符
+      password += lowercase.charAt(Math.floor(Math.random() * lowercase.length))
+      password += uppercase.charAt(Math.floor(Math.random() * uppercase.length))
+      password += numbers.charAt(Math.floor(Math.random() * numbers.length))
+      password += specialChars.charAt(Math.floor(Math.random() * specialChars.length))
+      
+      // 填充剩余长度（至少12位）
+      for (let i = password.length; i < 12; i++) {
+        password += allChars.charAt(Math.floor(Math.random() * allChars.length))
       }
-      formData.password = password
+      
+      // 打乱字符顺序
+      formData.password = password.split('').sort(() => Math.random() - 0.5).join('')
     }
 
     // 选择角色

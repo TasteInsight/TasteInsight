@@ -264,7 +264,7 @@
                 </button>
               </div>
 
-              <div v-if="subDishes.length > 0" class="space-y-3">
+              <div v-if="subDishes.length > 0" class="max-h-[400px] overflow-y-auto space-y-3 pr-2">
                 <!-- 子项列表 -->
                 <div
                   v-for="(subDish, index) in subDishes"
