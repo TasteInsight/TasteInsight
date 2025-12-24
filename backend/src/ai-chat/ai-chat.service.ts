@@ -126,8 +126,8 @@ export class AIChatService {
       },
     });
 
-    // Get time for chat: prefer client's localTime if valid, otherwise use server time
-    const chatTime = this.getChatTime(dto.clientContext?.localTime);
+    // Get time for chat: format using client's wall-clock time when provided
+    const chatTime = this.getChatTime(dto.clientContext);
 
     // Build initial conversation history with enhanced security prompt
     const basePrompt = PromptBuilder.getSystemPrompt(session.scene, chatTime);
@@ -471,15 +471,54 @@ export class AIChatService {
 
   /**
    * Get time for chat context, preferring client's localTime if valid, otherwise use server time
-   * @param clientLocalTime Client's local time as ISOString
+   * @param clientContext Client context (localTime may include timezone offset)
    * @returns Date object
    */
-  private getChatTime(clientLocalTime?: string): Date {
+  private getChatTime(clientContext?: ChatRequestDto['clientContext']): Date {
     const serverTime = new Date();
+
+    const clientLocalTime = clientContext?.localTime;
 
     // If no client time provided, use server time
     if (!clientLocalTime) {
       return serverTime;
+    }
+
+    // Prefer using the client's wall-clock parts to avoid server timezone skew when formatting.
+    // Accept both ISO8601 with offset/Z and without timezone.
+    const m = clientLocalTime.match(
+      /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?(?:Z|[+\-]\d{2}:?\d{2})?$/,
+    );
+    if (m) {
+      const year = Number(m[1]);
+      const month = Number(m[2]);
+      const day = Number(m[3]);
+      const hours = Number(m[4]);
+      const minutes = Number(m[5]);
+      const seconds = m[6] != null ? Number(m[6]) : 0;
+      const millis =
+        m[7] != null
+          ? Number(m[7].padEnd(3, '0').slice(0, 3))
+          : 0;
+
+      // Basic range validation to avoid odd Date overflows
+      if (
+        year >= 1970 &&
+        month >= 1 &&
+        month <= 12 &&
+        day >= 1 &&
+        day <= 31 &&
+        hours >= 0 &&
+        hours <= 23 &&
+        minutes >= 0 &&
+        minutes <= 59 &&
+        seconds >= 0 &&
+        seconds <= 59 &&
+        millis >= 0 &&
+        millis <= 999
+      ) {
+        return new Date(year, month - 1, day, hours, minutes, seconds, millis);
+      }
     }
 
     // Try to parse as ISOString

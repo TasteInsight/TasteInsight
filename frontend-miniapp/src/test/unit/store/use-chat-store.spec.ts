@@ -68,7 +68,9 @@ describe('useChatStore (unit)', () => {
     (createAISession as jest.Mock).mockResolvedValue({ code: 200, data: { sessionId: 's-xyz' } });
 
     // mock streamAIChat to synchronously call callbacks
-    (streamAIChat as jest.Mock).mockImplementation((_sessionId: string, _payload: any, callbacks: any) => {
+    let capturedPayload: any;
+    (streamAIChat as jest.Mock).mockImplementation((_sessionId: string, payload: any, callbacks: any) => {
+      capturedPayload = payload;
       // Simulate receiving a text chunk
       callbacks.onEvent && callbacks.onEvent('text_chunk');
       callbacks.onMessage && callbacks.onMessage('hello');
@@ -84,6 +86,15 @@ describe('useChatStore (unit)', () => {
     await store.initSession('general_chat', true);
 
     await store.sendChatMessage('ping');
+
+    // payload should include client localTime with timezone offset
+    expect(capturedPayload).toBeTruthy();
+    expect(capturedPayload.clientContext).toBeTruthy();
+    expect(typeof capturedPayload.clientContext.localTime).toBe('string');
+    expect(capturedPayload.clientContext.localTime).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{2}:\d{2}$/,
+    );
+    expect(typeof capturedPayload.clientContext.tzOffsetMinutes).toBe('number');
 
     // ai message should be present with text and a card segment
     const aiMessages = store.messages.filter((m: any) => m.type === 'ai');
