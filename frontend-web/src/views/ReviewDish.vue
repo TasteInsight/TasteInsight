@@ -144,6 +144,9 @@ import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import Pagination from '@/components/Common/Pagination.vue'
+import { savePageState, restorePageState } from '@/utils/page-state-cache'
+
+const PAGE_STATE_KEY = 'review-dish'
 
 export default {
   name: 'ReviewDish',
@@ -155,13 +158,34 @@ export default {
     const router = useRouter()
     const route = useRoute()
     const authStore = useAuthStore()
-    const searchQuery = ref('')
-    const statusFilter = ref('')
-    const canteenFilter = ref('')
-    const currentPage = ref(1)
+    
+    // 默认状态定义
+    const defaultState = {
+      searchQuery: '',
+      statusFilter: '',
+      canteenFilter: '',
+      currentPage: 1,
+    }
+    
+    // 从缓存恢复状态
+    const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
+    const searchQuery = ref(restoredState.searchQuery)
+    const statusFilter = ref(restoredState.statusFilter)
+    const canteenFilter = ref(restoredState.canteenFilter)
+    const currentPage = ref(restoredState.currentPage)
     const pageSize = ref(10)
     const isLoading = ref(false)
     const totalDishes = ref(0)
+    
+    // 保存页面状态
+    const saveState = () => {
+      savePageState(PAGE_STATE_KEY, {
+        searchQuery: searchQuery.value,
+        statusFilter: statusFilter.value,
+        canteenFilter: canteenFilter.value,
+        currentPage: currentPage.value,
+      })
+    }
 
     // 审核数据
     const reviewDishes = ref([])
@@ -208,6 +232,8 @@ export default {
     })
 
     const viewDishDetail = (dish) => {
+      // 保存当前状态后再跳转
+      saveState()
       // 跳转到审核详情页面
       router.push(`/review-dish/${dish.id}`)
     }
@@ -217,12 +243,15 @@ export default {
         alert('您没有权限审核菜品')
         return
       }
+      // 保存当前状态后再跳转
+      saveState()
       // 跳转到审核详情页面
       router.push(`/review-dish/${dish.id}`)
     }
 
     const handlePageChange = (page) => {
       currentPage.value = page
+      saveState() // 保存状态
       loadReviewDishes()
     }
 
@@ -289,6 +318,7 @@ export default {
     // 监听筛选条件变化，重新加载数据
     watch([statusFilter, canteenFilter], () => {
       currentPage.value = 1
+      saveState() // 保存状态
       loadReviewDishes()
     })
 
@@ -299,6 +329,13 @@ export default {
     })
 
     onActivated(() => {
+      // 恢复状态
+      const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
+      searchQuery.value = restoredState.searchQuery
+      statusFilter.value = restoredState.statusFilter
+      canteenFilter.value = restoredState.canteenFilter
+      currentPage.value = restoredState.currentPage
+      
       loadCanteens()
       loadReviewDishes()
     })

@@ -462,6 +462,9 @@ import { permissionApi } from '@/api/modules/permission'
 import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
+import { savePageState, restorePageState } from '@/utils/page-state-cache'
+
+const PAGE_STATE_KEY = 'user-manage'
 
 export default {
   name: 'UserManage',
@@ -477,11 +480,30 @@ export default {
     const editingAdmin = ref(null) // 当前编辑的管理员
     const adminList = ref([]) // 子管理员列表
     const canteenList = ref([]) // 食堂列表
-    const searchQuery = ref('')
-    const canteenFilter = ref('') // 食堂筛选
-    const currentPage = ref(1)
+    
+    // 默认状态定义
+    const defaultState = {
+      searchQuery: '',
+      canteenFilter: '',
+      currentPage: 1,
+    }
+    
+    // 从缓存恢复状态
+    const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
+    const searchQuery = ref(restoredState.searchQuery)
+    const canteenFilter = ref(restoredState.canteenFilter) // 食堂筛选
+    const currentPage = ref(restoredState.currentPage)
     const pageSize = ref(10)
     const totalPages = ref(1)
+    
+    // 保存页面状态
+    const saveState = () => {
+      savePageState(PAGE_STATE_KEY, {
+        searchQuery: searchQuery.value,
+        canteenFilter: canteenFilter.value,
+        currentPage: currentPage.value,
+      })
+    }
 
     // 表单错误状态
     const errors = reactive({
@@ -1131,6 +1153,7 @@ export default {
     const changePage = (page) => {
       if (page >= 1 && page <= totalPages.value) {
         currentPage.value = page
+        saveState() // 保存状态
         loadAdmins()
       }
     }
@@ -1140,6 +1163,7 @@ export default {
       // 筛选是客户端进行的，不需要重新加载数据
       // 但可以重置到第一页（如果需要分页的话）
       currentPage.value = 1
+      saveState() // 保存状态
     }
 
     // 重置筛选
@@ -1147,6 +1171,7 @@ export default {
       searchQuery.value = ''
       canteenFilter.value = ''
       currentPage.value = 1
+      saveState() // 保存状态
     }
 
     // 格式化日期
@@ -1166,6 +1191,12 @@ export default {
     })
 
     onActivated(() => {
+      // 恢复状态
+      const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
+      searchQuery.value = restoredState.searchQuery
+      canteenFilter.value = restoredState.canteenFilter
+      currentPage.value = restoredState.currentPage
+      
       loadCanteens()
       loadAdmins()
     })

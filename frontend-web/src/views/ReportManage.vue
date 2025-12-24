@@ -369,6 +369,9 @@ import { reviewApi } from '@/api/modules/review'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import Pagination from '@/components/Common/Pagination.vue'
+import { savePageState, restorePageState } from '@/utils/page-state-cache'
+
+const PAGE_STATE_KEY = 'report-manage'
 
 export default defineComponent({
   name: 'ReportManage',
@@ -380,11 +383,30 @@ export default defineComponent({
     const authStore = useAuthStore()
     const reports = ref<any[]>([])
     const isLoading = ref(false)
-    const currentPage = ref(1)
     const pageSize = ref(20)
     const totalReports = ref(0)
-    const statusFilter = ref('')
-    const targetTypeFilter = ref('')
+    
+    // 默认状态定义
+    const defaultState = {
+      currentPage: 1,
+      statusFilter: '',
+      targetTypeFilter: '',
+    }
+    
+    // 从缓存恢复状态
+    const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
+    const currentPage = ref(restoredState.currentPage)
+    const statusFilter = ref(restoredState.statusFilter)
+    const targetTypeFilter = ref(restoredState.targetTypeFilter)
+    
+    // 保存页面状态
+    const saveState = () => {
+      savePageState(PAGE_STATE_KEY, {
+        currentPage: currentPage.value,
+        statusFilter: statusFilter.value,
+        targetTypeFilter: targetTypeFilter.value,
+      })
+    }
     const selectedReport = ref<any>(null)
     const imagePreview = ref<{
       show: boolean
@@ -459,11 +481,13 @@ export default defineComponent({
 
     const handlePageChange = (page: number) => {
       currentPage.value = page
+      saveState() // 保存状态
       loadReports()
     }
 
     const handleFilterChange = () => {
       currentPage.value = 1
+      saveState() // 保存状态
       loadReports()
     }
 
@@ -647,6 +671,12 @@ export default defineComponent({
     })
 
     onActivated(() => {
+      // 恢复状态
+      const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
+      currentPage.value = restoredState.currentPage
+      statusFilter.value = restoredState.statusFilter
+      targetTypeFilter.value = restoredState.targetTypeFilter
+      
       loadReports()
     })
 
