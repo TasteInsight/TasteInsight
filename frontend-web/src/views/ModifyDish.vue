@@ -168,6 +168,9 @@ import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import SearchBar from '@/components/Common/SearchBar.vue'
 import Pagination from '@/components/Common/Pagination.vue'
+import { savePageState, restorePageState } from '@/utils/page-state-cache'
+
+const PAGE_STATE_KEY = 'modify-dish'
 
 export default {
   name: 'ModifyDish',
@@ -180,9 +183,21 @@ export default {
     const router = useRouter()
     const dishStore = useDishStore()
     const authStore = useAuthStore()
-    const searchQuery = ref('')
+    
+    // 默认状态定义
+    const defaultState = {
+      searchQuery: '',
+      currentPage: 1,
+      selectedCanteenId: '',
+      selectedWindowId: '',
+    }
+    
+    // 从缓存恢复状态
+    const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
+    
+    const searchQuery = ref(restoredState.searchQuery)
     const showFilter = ref(false)
-    const currentPage = ref(1)
+    const currentPage = ref(restoredState.currentPage)
     const pageSize = ref(10)
     const isLoading = ref(false)
     const dishes = ref([])
@@ -191,8 +206,18 @@ export default {
     // 筛选相关
     const canteens = ref([])
     const windows = ref([])
-    const selectedCanteenId = ref('')
-    const selectedWindowId = ref('')
+    const selectedCanteenId = ref(restoredState.selectedCanteenId)
+    const selectedWindowId = ref(restoredState.selectedWindowId)
+    
+    // 保存页面状态
+    const saveState = () => {
+      savePageState(PAGE_STATE_KEY, {
+        searchQuery: searchQuery.value,
+        currentPage: currentPage.value,
+        selectedCanteenId: selectedCanteenId.value,
+        selectedWindowId: selectedWindowId.value,
+      })
+    }
 
     // 加载食堂列表
     const loadCanteens = async () => {
@@ -213,6 +238,7 @@ export default {
       
       // 重新加载菜品
       currentPage.value = 1
+      saveState() // 保存状态
       loadDishes()
 
       if (selectedCanteenId.value) {
@@ -230,6 +256,7 @@ export default {
     // 处理窗口变化
     const handleWindowChange = () => {
       currentPage.value = 1
+      saveState() // 保存状态
       loadDishes()
     }
 
@@ -301,6 +328,8 @@ export default {
     })
 
     const viewDish = (dish) => {
+      // 保存当前状态后再跳转
+      saveState()
       // 跳转到查看页面
       router.push(`/view-dish/${dish.id}`)
     }
@@ -310,12 +339,15 @@ export default {
         alert('您没有权限编辑菜品')
         return
       }
+      // 保存当前状态后再跳转
+      saveState()
       // 跳转到编辑页面
       router.push(`/edit-dish/${dish.id}`)
     }
 
     const handlePageChange = (page) => {
       currentPage.value = page
+      saveState() // 保存状态
       loadDishes()
     }
 
@@ -327,17 +359,33 @@ export default {
       }
       searchTimeout = setTimeout(() => {
         currentPage.value = 1 // 重置到第一页
+        saveState() // 保存状态
         loadDishes()
       }, 500) // 500ms防抖
     }
 
     onMounted(() => {
       loadCanteens()
+      
+      // 恢复状态后，如果有选中的食堂，需要加载窗口列表
+      if (selectedCanteenId.value) {
+        canteenApi.getWindows(selectedCanteenId.value, { page: 1, pageSize: 100 })
+          .then(res => {
+            if (res.code === 200 && res.data) {
+              windows.value = res.data.items || []
+            }
+          })
+          .catch(err => {
+            console.error('加载窗口列表失败:', err)
+          })
+      }
+      
       loadDishes()
     })
 
     onActivated(() => {
-      // 如果有选中的食堂且窗口列表为空，则尝试重新加载窗口列表，防止状态丢失
+      // 组件重新激活时仅重新加载数据，状态已在setup()中恢复
+      // 如果有选中的食堂且窗口列表为空，则尝试重新加载窗口列表
       if (selectedCanteenId.value && windows.value.length === 0) {
         canteenApi.getWindows(selectedCanteenId.value, { page: 1, pageSize: 100 })
           .then(res => {
@@ -347,8 +395,6 @@ export default {
           })
           .catch(err => {
             console.error('恢复窗口列表失败:', err)
-            // 向用户展示错误提示
-            alert('恢复窗口列表失败，请稍后重试')
           })
       }
       loadDishes()
@@ -367,6 +413,7 @@ export default {
       selectedWindowId.value = ''
       windows.value = []
       currentPage.value = 1
+      saveState() // 保存重置后的状态
       loadDishes()
     }
 

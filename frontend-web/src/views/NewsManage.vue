@@ -481,6 +481,9 @@ import { useAuthStore } from '@/store/modules/use-auth-store'
 import config from '@/config'
 import Header from '@/components/Layout/Header.vue'
 import Pagination from '@/components/Common/Pagination.vue'
+import { savePageState, restorePageState } from '@/utils/page-state-cache'
+
+const PAGE_STATE_KEY = 'news-manage'
 
 export default {
   name: 'NewsManage',
@@ -498,15 +501,38 @@ export default {
     const previewNewsData = ref({})
     const editingNewsId = ref(null)
     const isLoading = ref(false)
-    const currentStatus = ref('published') // 默认显示已发布
     const canteenList = ref([])
     const authStore = useAuthStore()
 
-    // 搜索和筛选状态
-    const searchQuery = ref('')
-    const canteenFilter = ref('')
-    const startDate = ref('')
-    const endDate = ref('')
+    // 默认状态定义
+    const defaultState = {
+      currentStatus: 'published',
+      searchQuery: '',
+      canteenFilter: '',
+      startDate: '',
+      endDate: '',
+      page: 1,
+    }
+    
+    // 从缓存恢复状态
+    const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
+    const currentStatus = ref(restoredState.currentStatus) // 默认显示已发布
+    const searchQuery = ref(restoredState.searchQuery)
+    const canteenFilter = ref(restoredState.canteenFilter)
+    const startDate = ref(restoredState.startDate)
+    const endDate = ref(restoredState.endDate)
+    
+    // 保存页面状态
+    const saveState = () => {
+      savePageState(PAGE_STATE_KEY, {
+        currentStatus: currentStatus.value,
+        searchQuery: searchQuery.value,
+        canteenFilter: canteenFilter.value,
+        startDate: startDate.value,
+        endDate: endDate.value,
+        page: pagination.page,
+      })
+    }
 
     // 获取当前登录管理员信息
     const currentAdmin = computed(() => authStore.user)
@@ -570,7 +596,7 @@ export default {
     // --- wangEditor 配置 END ---
 
     const pagination = reactive({
-      page: 1,
+      page: restoredState.page || 1, // 恢复分页状态
       pageSize: 10,
       total: 0,
       totalPages: 0,
@@ -631,6 +657,7 @@ export default {
     const changeStatus = (status) => {
       currentStatus.value = status
       pagination.page = 1
+      saveState() // 保存状态
       loadNews()
     }
 
@@ -719,6 +746,9 @@ export default {
       canteenFilter.value = ''
       startDate.value = ''
       endDate.value = ''
+      pagination.page = 1 // 重置分页到第一页
+      saveState() // 保存状态
+      loadNews() // 重新加载新闻列表以应用重置后的筛选条件
     }
 
     const loadCanteens = async () => {
@@ -1025,16 +1055,19 @@ export default {
 
     const handlePageChange = (page) => {
       pagination.page = page
+      saveState() // 保存状态
       loadNews()
     }
 
     onMounted(() => {
+      // 状态已在setup()中恢复，这里只需加载数据
       loadCanteens()
       loadNews()
       document.addEventListener('keydown', handlePreviewKeyDown)
     })
 
     onActivated(() => {
+      // 组件重新激活时仅重新加载数据，避免重复恢复状态覆盖用户修改
       loadCanteens()
       loadNews()
     })

@@ -735,7 +735,10 @@ import { reviewApi } from '@/api/modules/review'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import Pagination from '@/components/Common/Pagination.vue'
+import { savePageState, restorePageState } from '@/utils/page-state-cache'
 import type { PendingReview, PendingComment } from '@/types/api'
+
+const PAGE_STATE_KEY = 'review-manage'
 
 export default defineComponent({
   name: 'ReviewManage',
@@ -745,12 +748,22 @@ export default defineComponent({
   },
   setup() {
     const authStore = useAuthStore()
-    const activeTab = ref<'reviews' | 'comments'>('reviews')
+    
+    // 默认状态定义
+    const defaultState = {
+      activeTab: 'reviews',
+      currentPageReviews: 1,
+      currentPageComments: 1,
+    }
+    
+    // 从缓存恢复状态
+    const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
+    const activeTab = ref<'reviews' | 'comments'>(restoredState.activeTab)
     
     // 评价相关
     const reviews = ref<PendingReview[]>([])
     const isLoadingReviews = ref(false)
-    const currentPageReviews = ref(1)
+    const currentPageReviews = ref(restoredState.currentPageReviews)
     const totalReviews = ref(0)
     const selectedReview = ref<PendingReview | null>(null)
     const isRejectReviewModalOpen = ref(false)
@@ -759,8 +772,17 @@ export default defineComponent({
     // 评论相关
     const comments = ref<PendingComment[]>([])
     const isLoadingComments = ref(false)
-    const currentPageComments = ref(1)
+    const currentPageComments = ref(restoredState.currentPageComments)
     const totalComments = ref(0)
+    
+    // 保存页面状态
+    const saveState = () => {
+      savePageState(PAGE_STATE_KEY, {
+        activeTab: activeTab.value,
+        currentPageReviews: currentPageReviews.value,
+        currentPageComments: currentPageComments.value,
+      })
+    }
     const selectedComment = ref<PendingComment | null>(null)
     const isRejectCommentModalOpen = ref(false)
     const rejectCommentReason = ref('')
@@ -804,6 +826,7 @@ export default defineComponent({
 
     const switchTab = (tab: 'reviews' | 'comments') => {
       activeTab.value = tab
+      saveState() // 保存状态
       if (tab === 'reviews') {
         loadReviews()
       } else {
@@ -865,11 +888,13 @@ export default defineComponent({
 
     const handlePageChangeReviews = (page: number) => {
       currentPageReviews.value = page
+      saveState() // 保存状态
       loadReviews()
     }
 
     const handlePageChangeComments = (page: number) => {
       currentPageComments.value = page
+      saveState() // 保存状态
       loadComments()
     }
 
@@ -1074,6 +1099,7 @@ export default defineComponent({
     })
 
     onActivated(() => {
+      // 组件激活时根据当前标签刷新数据，状态已在setup()中恢复
       if (activeTab.value === 'reviews') {
         loadReviews()
       } else {
