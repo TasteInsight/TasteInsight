@@ -1172,6 +1172,7 @@ export default {
       canteenFilter.value = ''
       currentPage.value = 1
       saveState() // 保存状态
+      loadAdmins() // 重新加载数据以应用重置后的筛选条件
     }
 
     // 格式化日期
@@ -1191,12 +1192,7 @@ export default {
     })
 
     onActivated(() => {
-      // 恢复状态
-      const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
-      searchQuery.value = restoredState.searchQuery
-      canteenFilter.value = restoredState.canteenFilter
-      currentPage.value = restoredState.currentPage
-      
+      // 组件重新激活时仅重新加载数据，状态已在setup()中恢复
       loadCanteens()
       loadAdmins()
     })

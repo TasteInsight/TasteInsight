@@ -1099,12 +1099,7 @@ export default defineComponent({
     })
 
     onActivated(() => {
-      // 恢复状态
-      const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
-      activeTab.value = restoredState.activeTab
-      currentPageReviews.value = restoredState.currentPageReviews
-      currentPageComments.value = restoredState.currentPageComments
-      
+      // 组件激活时根据当前标签刷新数据，状态已在setup()中恢复
       if (activeTab.value === 'reviews') {
         loadReviews()
       } else {

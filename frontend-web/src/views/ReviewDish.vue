@@ -329,13 +329,7 @@ export default {
     })
 
     onActivated(() => {
-      // 恢复状态
-      const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
-      searchQuery.value = restoredState.searchQuery
-      statusFilter.value = restoredState.statusFilter
-      canteenFilter.value = restoredState.canteenFilter
-      currentPage.value = restoredState.currentPage
-      
+      // 组件重新激活时仅重新加载数据，状态已在setup()中恢复
       loadCanteens()
       loadReviewDishes()
     })

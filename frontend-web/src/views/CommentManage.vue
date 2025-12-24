@@ -870,15 +870,7 @@ export default defineComponent({
     })
 
     onActivated(() => {
-      // 恢复状态
-      const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
-      searchQuery.value = restoredState.searchQuery
-      selectedCanteenId.value = restoredState.selectedCanteenId
-      selectedWindowId.value = restoredState.selectedWindowId
-      dishPage.value = restoredState.dishPage
-      reviewPage.value = restoredState.reviewPage
-      selectedDishId.value = restoredState.selectedDishId
-      
+      // 组件激活时仅重新加载数据，状态已在setup()中恢复
       // 如果有选中的食堂且窗口列表为空，则尝试重新加载窗口列表
       if (selectedCanteenId.value && windows.value.length === 0) {
         canteenApi.getWindows(selectedCanteenId.value, { page: 1, pageSize: 100 })

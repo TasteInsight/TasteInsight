@@ -596,7 +596,7 @@ export default {
     // --- wangEditor 配置 END ---
 
     const pagination = reactive({
-      page: 1,
+      page: restoredState.page || 1, // 恢复分页状态
       pageSize: 10,
       total: 0,
       totalPages: 0,
@@ -746,7 +746,9 @@ export default {
       canteenFilter.value = ''
       startDate.value = ''
       endDate.value = ''
+      pagination.page = 1 // 重置分页到第一页
       saveState() // 保存状态
+      loadNews() // 重新加载新闻列表以应用重置后的筛选条件
     }
 
     const loadCanteens = async () => {
@@ -1058,25 +1060,14 @@ export default {
     }
 
     onMounted(() => {
-      // 恢复分页状态
-      const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
-      pagination.page = restoredState.page
-      
+      // 状态已在setup()中恢复，这里只需加载数据
       loadCanteens()
       loadNews()
       document.addEventListener('keydown', handlePreviewKeyDown)
     })
 
     onActivated(() => {
-      // 恢复状态
-      const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
-      currentStatus.value = restoredState.currentStatus
-      searchQuery.value = restoredState.searchQuery
-      canteenFilter.value = restoredState.canteenFilter
-      startDate.value = restoredState.startDate
-      endDate.value = restoredState.endDate
-      pagination.page = restoredState.page
-      
+      // 组件重新激活时仅重新加载数据，避免重复恢复状态覆盖用户修改
       loadCanteens()
       loadNews()
     })

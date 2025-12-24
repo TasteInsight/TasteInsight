@@ -671,12 +671,7 @@ export default defineComponent({
     })
 
     onActivated(() => {
-      // 恢复状态
-      const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
-      currentPage.value = restoredState.currentPage
-      statusFilter.value = restoredState.statusFilter
-      targetTypeFilter.value = restoredState.targetTypeFilter
-      
+      // 组件激活时仅重新加载数据，避免重复恢复状态覆盖当前修改
       loadReports()
     })
 

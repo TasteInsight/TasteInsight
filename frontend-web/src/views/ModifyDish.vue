@@ -159,7 +159,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onActivated, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { dishApi } from '@/api/modules/dish'
 import { canteenApi } from '@/api/modules/canteen'
@@ -384,13 +384,7 @@ export default {
     })
 
     onActivated(() => {
-      // 恢复状态
-      const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
-      searchQuery.value = restoredState.searchQuery
-      currentPage.value = restoredState.currentPage
-      selectedCanteenId.value = restoredState.selectedCanteenId
-      selectedWindowId.value = restoredState.selectedWindowId
-      
+      // 组件重新激活时仅重新加载数据，状态已在setup()中恢复
       // 如果有选中的食堂且窗口列表为空，则尝试重新加载窗口列表
       if (selectedCanteenId.value && windows.value.length === 0) {
         canteenApi.getWindows(selectedCanteenId.value, { page: 1, pageSize: 100 })
