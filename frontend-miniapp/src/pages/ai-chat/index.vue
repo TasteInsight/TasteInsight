@@ -115,6 +115,8 @@
       </scroll-view>
 
       <!-- 底部固定区域 -->
+      <!-- 填充条：遮挡输入框与 tabbar 之间可能出现的缝隙（背景与输入框一致） -->
+      <view class="fixed bottom-0 left-0 right-0 z-40 bg-gray-50" :style="{ height: 'calc(env(safe-area-inset-bottom) + 6px)' }" />
       <view class="fixed bottom-0 left-0 right-0 z-40 flex flex-col">
          <!-- 快捷提示词 (Chips) -->
          <view v-if="suggestions.length > 0" class="bg-gray-50 w-full py-2">
@@ -124,7 +126,7 @@
          </view>
 
          <!-- 输入框区域 -->
-         <view class="bg-gray-50 w-full pb-[calc(5px+env(safe-area-inset-bottom))] mb-1 px-4 relative z-50">
+         <view class="bg-gray-50 w-full pb-[calc(5px+env(safe-area-inset-bottom))] px-4 relative z-50">
             <view class="max-w-screen-md mx-auto">
                <InputBar 
                  v-model:scene="scene" 
