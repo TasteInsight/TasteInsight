@@ -264,7 +264,7 @@
         <view
           v-if="myReview"
           class="border border-gray-100 rounded-lg p-3 active:bg-gray-50"
-          @tap="showReviewForm"
+          @tap="showAllCommentsPanel(myReview.id)"
         >
           <view class="flex items-start">
             <image
