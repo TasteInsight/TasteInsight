@@ -5,7 +5,7 @@
   >
     <uni-icons type="search" size="18" color="#999"></uni-icons>
     <view class="flex-1 text-sm text-gray-500 ml-2">
-      搜索食堂、窗口或菜品
+      搜索食堂或菜品
     </view>
   </view>
 </template>
