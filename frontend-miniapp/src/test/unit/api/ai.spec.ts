@@ -92,4 +92,84 @@ describe('api/modules/ai.ts', () => {
     // close handle should be available
     expect(handle).toHaveProperty('close');
   });
+
+  test('streamAIChat processes event lines and non-json data', async () => {
+    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+
+    let savedOnChunk: any = null;
+    let savedComplete: any = null;
+
+    (global as any).uni = {
+      request: (opts: any) => {
+        opts.success && opts.success({});
+        savedComplete = opts.complete;
+        return {
+          onChunkReceived: (cb: any) => { savedOnChunk = cb; },
+          abort: jest.fn(),
+        };
+      },
+    };
+
+    const onEvent = jest.fn();
+    const onMessage = jest.fn();
+    const onJSON = jest.fn();
+
+    const { streamAIChat } = require(MODULE_PATH);
+    streamAIChat('s1', { prompt: 'x' } as any, { onEvent, onMessage, onJSON });
+
+    const buf = Buffer.from('event: progress\ndata: hello\n\n');
+    const arr = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+    savedOnChunk({ data: arr });
+    savedComplete && savedComplete();
+
+    expect(onEvent).toHaveBeenCalledWith('progress');
+    expect(onMessage).toHaveBeenCalledWith('hello');
+    expect(onJSON).not.toHaveBeenCalled();
+  });
+
+  test('streamAIChat falls back to utf8 decoder and handles split multibyte chunks', async () => {
+    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+
+    let savedOnChunk: any = null;
+    let savedComplete: any = null;
+
+    (global as any).uni = {
+      request: (opts: any) => {
+        opts.success && opts.success({});
+        savedComplete = opts.complete;
+        return {
+          onChunkReceived: (cb: any) => { savedOnChunk = cb; },
+          abort: jest.fn(),
+        };
+      },
+    };
+
+    // remove TextDecoder to force fallback
+    (global as any).TextDecoder && delete (global as any).TextDecoder;
+
+    const onMessage = jest.fn();
+    const onJSON = jest.fn();
+    const onComplete = jest.fn();
+
+    const { streamAIChat } = require(MODULE_PATH);
+    streamAIChat('s1', { prompt: 'x' } as any, { onMessage, onJSON, onComplete });
+
+    const full = Buffer.from('data: {"a":"€"}\n\n');
+    // find byte index of euro sign and split inside its bytes
+    const euroIndex = full.indexOf('€');
+    const splitAt = euroIndex + 1; // split inside multibyte code unit
+    const first = full.slice(0, splitAt);
+    const second = full.slice(splitAt);
+
+    const firstBuf = first.buffer.slice(first.byteOffset, first.byteOffset + first.byteLength);
+    const secondBuf = second.buffer.slice(second.byteOffset, second.byteOffset + second.byteLength);
+    savedOnChunk({ data: firstBuf });
+    savedOnChunk({ data: secondBuf });
+
+    savedComplete && savedComplete();
+
+    expect(onMessage).toHaveBeenCalled();
+    expect(onJSON).toHaveBeenCalledWith({ a: '€' });
+    expect(onComplete).toHaveBeenCalled();
+  });
 });

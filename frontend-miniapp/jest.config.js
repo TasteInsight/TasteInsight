@@ -42,5 +42,6 @@ module.exports = {
     '!src/shime-uni.d.ts',
     '!src/api/index.ts',
     '!src/static/**',
+    '!src/pages/**/*.vue',
     '!src/**/*.d.ts'
   ],};
