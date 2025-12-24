@@ -18,16 +18,23 @@ describe('usePreferences', () => {
     (global as any).uni.showToast = jest.fn();
     (global as any).uni.navigateBack = jest.fn();
 
-    mockedUseCanteenStore.mockReturnValue({ canteenList: [], fetchCanteenList: jest.fn().mockResolvedValue(undefined) } as any);
-    mockedUseUserStore.mockReturnValue({ fetchProfileAction: jest.fn().mockResolvedValue(undefined), userInfo: null, updateLocalUserInfo: jest.fn() } as any);
+    const fetchCanteenStub = jest.fn() as unknown as jest.Mock<any, any>;
+    fetchCanteenStub.mockResolvedValue(undefined);
+    mockedUseCanteenStore.mockReturnValue({ canteenList: [], fetchCanteenList: fetchCanteenStub } as any);
+
+    const fetchProfileStub = jest.fn() as unknown as jest.Mock<any, any>;
+    fetchProfileStub.mockResolvedValue(undefined);
+    mockedUseUserStore.mockReturnValue({ fetchProfileAction: fetchProfileStub, userInfo: null, updateLocalUserInfo: jest.fn() } as any);
   });
 
   test('onMounted loadPreferences calls canteenStore.fetchCanteenList and userStore.fetchProfileAction when used inside a component', async () => {
     const { mount } = require('@vue/test-utils');
     const { defineComponent } = require('vue');
 
-    const fetchCanteen = jest.fn().mockResolvedValue(undefined);
-    const fetchProfile = jest.fn().mockResolvedValue(undefined);
+    const fetchCanteen = jest.fn() as unknown as jest.Mock<any, any>;
+    fetchCanteen.mockResolvedValue(undefined);
+    const fetchProfile = jest.fn() as unknown as jest.Mock<any, any>;
+    fetchProfile.mockResolvedValue(undefined);
 
     mockedUseCanteenStore.mockReturnValue({ canteenList: [], fetchCanteenList: fetchCanteen } as any);
     mockedUseUserStore.mockReturnValue({ fetchProfileAction: fetchProfile, userInfo: { preferences: { tastePreferences: { spicyLevel: 2 }, portionSize: 'large', favoriteIngredients: ['f'] } }, updateLocalUserInfo: jest.fn() } as any);

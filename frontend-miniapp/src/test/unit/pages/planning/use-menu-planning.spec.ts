@@ -28,7 +28,8 @@ describe('pages/planning/composables/use-menu-planning.ts', () => {
   });
 
   test('deletePlan respects confirmation and calls removePlan', async () => {
-    const removePlan = jest.fn().mockResolvedValue({});
+    const removePlan = jest.fn() as unknown as jest.Mock<any, any>;
+    removePlan.mockResolvedValue({});
     const mockStore = { fetchPlans: jest.fn(), setSelectedPlan: jest.fn(), removePlan };
     jest.doMock('@/store/modules/use-plan-store', () => ({ usePlanStore: () => mockStore }));
 
@@ -51,7 +52,8 @@ describe('pages/planning/composables/use-menu-planning.ts', () => {
   });
 
   test('createNewPlan and submitCreate handle success and failure', async () => {
-    const createPlan = jest.fn().mockResolvedValue({});
+    const createPlan = jest.fn() as unknown as jest.Mock<any, any>;
+    createPlan.mockResolvedValue({});
     const mockStore = { fetchPlans: jest.fn(), setSelectedPlan: jest.fn(), createPlan };
     jest.doMock('@/store/modules/use-plan-store', () => ({ usePlanStore: () => mockStore }));
 
@@ -70,7 +72,8 @@ describe('pages/planning/composables/use-menu-planning.ts', () => {
   });
 
   test('submitEdit returns early when no selectedPlan, otherwise updates and hides', async () => {
-    const updatePlan = jest.fn().mockResolvedValue({});
+    const updatePlan = jest.fn() as unknown as jest.Mock<any, any>;
+    updatePlan.mockResolvedValue({});
     // First: ensure when no selectedPlan updatePlan not called
     const mockStoreNo = { fetchPlans: jest.fn(), setSelectedPlan: jest.fn(), updatePlan, selectedPlan: null } as any;
     jest.doMock('@/store/modules/use-plan-store', () => ({ usePlanStore: () => mockStoreNo }));
@@ -91,7 +94,8 @@ describe('pages/planning/composables/use-menu-planning.ts', () => {
   });
 
   test('executePlan success and failure show appropriate toasts', async () => {
-    const executePlan = jest.fn().mockResolvedValue({});
+    const executePlan = jest.fn() as unknown as jest.Mock<any, any>;
+    executePlan.mockResolvedValue({});
     const mockStore = { fetchPlans: jest.fn(), setSelectedPlan: jest.fn(), executePlan };
     jest.doMock('@/store/modules/use-plan-store', () => ({ usePlanStore: () => mockStore }));
 

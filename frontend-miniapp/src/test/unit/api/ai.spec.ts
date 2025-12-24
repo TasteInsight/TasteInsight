@@ -11,7 +11,8 @@ describe('api/modules/ai.ts', () => {
   });
 
   test('getAIRecommendation posts payload', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: { items: [] } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: { items: [] } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { getAIRecommendation } = require(MODULE_PATH);
@@ -27,7 +28,8 @@ describe('api/modules/ai.ts', () => {
   });
 
   test('getAIHistory GETs with cursor when provided', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: { items: [] } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: { items: [] } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { getAIHistory } = require(MODULE_PATH);

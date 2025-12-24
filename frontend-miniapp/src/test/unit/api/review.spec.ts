@@ -9,7 +9,8 @@ describe('api/modules/review.ts', () => {
   });
 
   test('getReviewsByDish GETs /dishes/:id/reviews with params', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: { items: [] } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: { items: [] } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { getReviewsByDish } = require(MODULE_PATH);
@@ -24,7 +25,8 @@ describe('api/modules/review.ts', () => {
   });
 
   test('createReview posts to /reviews and returns created data', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 201, data: { id: 'r1' } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 201, data: { id: 'r1' } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { createReview } = require(MODULE_PATH);
@@ -36,7 +38,8 @@ describe('api/modules/review.ts', () => {
   });
 
   test('reportReview posts to /reviews/:id/report', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: null });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: null });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { reportReview } = require(MODULE_PATH);

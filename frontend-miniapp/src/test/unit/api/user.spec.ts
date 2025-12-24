@@ -9,7 +9,8 @@ describe('api/modules/user.ts', () => {
   });
 
   test('wechatLogin posts code', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: { accessToken: 'a' } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: { accessToken: 'a' } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { wechatLogin } = require(MODULE_PATH);
@@ -20,7 +21,8 @@ describe('api/modules/user.ts', () => {
   });
 
   test('refreshToken posts to /auth/refresh', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200 });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200 });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { refreshToken } = require(MODULE_PATH);
@@ -31,7 +33,8 @@ describe('api/modules/user.ts', () => {
   });
 
   test('profile endpoints GET/PUT and collections', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: { id: 'u1' } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: { id: 'u1' } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const {

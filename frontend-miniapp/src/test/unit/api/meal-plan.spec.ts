@@ -23,7 +23,8 @@ describe('api/modules/meal-plan.ts', () => {
   });
 
   test('createMealPlan POSTs payload', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 201, data: { id: 'm1' } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 201, data: { id: 'm1' } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { createMealPlan } = require(MODULE_PATH);

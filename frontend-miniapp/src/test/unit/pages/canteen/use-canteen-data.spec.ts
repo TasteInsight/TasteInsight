@@ -9,7 +9,8 @@ describe('pages/canteen/composables/use-canteen-data.ts', () => {
   });
 
   test('fetchDishes success sets dishes and hasMore', async () => {
-    const getDishes = jest.fn().mockResolvedValue({ code: 200, data: { items: [{ id: 'd1' }], meta: { totalPages: 2 } } });
+    const getDishes = jest.fn() as unknown as jest.Mock<any, any>;
+    getDishes.mockResolvedValue({ code: 200, data: { items: [{ id: 'd1' }], meta: { totalPages: 2 } } });
     const mockStore = { fetchCanteenDetail: jest.fn(), fetchWindowList: jest.fn(), currentCanteen: null, loading: false, error: null, windowList: [] };
     jest.doMock('@/api/modules/dish', () => ({ getDishes }));
     jest.doMock('@/store/modules/use-canteen-store', () => ({ useCanteenStore: () => mockStore }));
@@ -26,7 +27,8 @@ describe('pages/canteen/composables/use-canteen-data.ts', () => {
   });
 
   test('fetchDishes error logs and does not throw', async () => {
-    const getDishes = jest.fn().mockRejectedValue(new Error('fail'));
+    const getDishes = jest.fn() as unknown as jest.Mock<any, any>;
+    getDishes.mockRejectedValue(new Error('fail'));
     const mockStore = { fetchCanteenDetail: jest.fn(), fetchWindowList: jest.fn(), currentCanteen: null, loading: false, error: null, windowList: [] };
     jest.doMock('@/api/modules/dish', () => ({ getDishes }));
     jest.doMock('@/store/modules/use-canteen-store', () => ({ useCanteenStore: () => mockStore }));
@@ -41,7 +43,8 @@ describe('pages/canteen/composables/use-canteen-data.ts', () => {
   });
 
   test('loadMoreDishes respects hasMore and currentCanteenId', async () => {
-    const getDishes = jest.fn().mockResolvedValue({ code: 200, data: { items: [{ id: 'd1' }], meta: { totalPages: 1 } } });
+    const getDishes = jest.fn() as unknown as jest.Mock<any, any>;
+    getDishes.mockResolvedValue({ code: 200, data: { items: [{ id: 'd1' }], meta: { totalPages: 1 } } });
     const mockStore = { fetchCanteenDetail: jest.fn(), fetchWindowList: jest.fn(), currentCanteen: null, loading: false, error: null, windowList: [] };
     jest.doMock('@/api/modules/dish', () => ({ getDishes }));
     jest.doMock('@/store/modules/use-canteen-store', () => ({ useCanteenStore: () => mockStore }));

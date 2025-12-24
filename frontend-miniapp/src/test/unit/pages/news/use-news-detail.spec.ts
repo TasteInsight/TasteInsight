@@ -27,7 +27,8 @@ describe('pages/news/composables/use-news-detail.ts', () => {
   });
 
   test('fetchNewsDetail handles success, non-200 and exception', async () => {
-    const getNewsById = jest.fn().mockResolvedValue({ code: 200, data: { id: 'n1', content: 'x' } });
+    const getNewsById = jest.fn() as unknown as jest.Mock<any, any>;
+    getNewsById.mockResolvedValue({ code: 200, data: { id: 'n1', content: 'x' } });
     jest.doMock('@/api/modules/news', () => ({ getNewsById }));
 
     (global as any).uni = { showToast: jest.fn() };

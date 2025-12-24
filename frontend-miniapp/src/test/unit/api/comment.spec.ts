@@ -9,7 +9,8 @@ describe('api/modules/comment.ts', () => {
   });
 
   test('getCommentsByReview GETs /comments/:reviewId with params', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: { items: [] } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: { items: [] } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { getCommentsByReview } = require(MODULE_PATH);
@@ -24,7 +25,8 @@ describe('api/modules/comment.ts', () => {
   });
 
   test('createComment posts to /comments', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 201, data: { id: 'c1' } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 201, data: { id: 'c1' } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { createComment } = require(MODULE_PATH);
@@ -41,7 +43,8 @@ describe('api/modules/comment.ts', () => {
   });
 
   test('reportComment posts to /comments/:id/report', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: null });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: null });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { reportComment } = require(MODULE_PATH);

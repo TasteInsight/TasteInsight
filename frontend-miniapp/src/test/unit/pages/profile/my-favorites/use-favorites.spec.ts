@@ -10,7 +10,8 @@ describe('pages/profile/my-favorites/composables/use-favorites.ts', () => {
   });
 
   test('fetchFavorites(reset) loads favorites and hasMore', async () => {
-    const getMyFavorites = jest.fn().mockResolvedValue({ code: 200, data: { items: [{ dishId: 'd1' }], meta: { totalPages: 1 } } });
+    const getMyFavorites = jest.fn() as unknown as jest.Mock<any, any>;
+    getMyFavorites.mockResolvedValue({ code: 200, data: { items: [{ dishId: 'd1' }], meta: { totalPages: 1 } } });
     jest.doMock('@/api/modules/user', () => ({ getMyFavorites }));
     jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 't' }) }));
 
@@ -25,7 +26,8 @@ describe('pages/profile/my-favorites/composables/use-favorites.ts', () => {
   });
 
   test('removeFavorite success removes item and shows toast', async () => {
-    const unfavoriteDish = jest.fn().mockResolvedValue({ code: 200 });
+    const unfavoriteDish = jest.fn() as unknown as jest.Mock<any, any>;
+    unfavoriteDish.mockResolvedValue({ code: 200 });
     jest.doMock('@/api/modules/dish', () => ({ unfavoriteDish }));
     jest.doMock('@/api/modules/user', () => ({ getMyFavorites: jest.fn() }));
     jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 't' }) }));
@@ -44,7 +46,8 @@ describe('pages/profile/my-favorites/composables/use-favorites.ts', () => {
   });
 
   test('removeFavorite failure shows error toast and keeps list', async () => {
-    const unfavoriteDish = jest.fn().mockResolvedValue({ code: 500, message: 'fail' });
+    const unfavoriteDish = jest.fn() as unknown as jest.Mock<any, any>;
+    unfavoriteDish.mockResolvedValue({ code: 500, message: 'fail' });
     jest.doMock('@/api/modules/dish', () => ({ unfavoriteDish }));
     jest.doMock('@/api/modules/user', () => ({ getMyFavorites: jest.fn() }));
     jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 't' }) }));
@@ -63,7 +66,8 @@ describe('pages/profile/my-favorites/composables/use-favorites.ts', () => {
   });
 
   test('fetchFavorites handles errors and sets hasMore false', async () => {
-    const getMyFavorites = jest.fn().mockResolvedValue({ code: 400, message: 'bad' });
+    const getMyFavorites = jest.fn() as unknown as jest.Mock<any, any>;
+    getMyFavorites.mockResolvedValue({ code: 400, message: 'bad' });
     jest.doMock('@/api/modules/user', () => ({ getMyFavorites }));
     jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 't' }) }));
 

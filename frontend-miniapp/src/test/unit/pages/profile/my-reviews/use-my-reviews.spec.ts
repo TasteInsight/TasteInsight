@@ -10,7 +10,8 @@ describe('pages/profile/my-reviews/composables/use-my-reviews.ts', () => {
   });
 
   test('fetchReviews(reset) loads items and sets hasMore', async () => {
-    const getMyReviews = jest.fn().mockResolvedValue({ code: 200, data: { items: [{ id: 'r1' }], meta: { totalPages: 2 } } });
+    const getMyReviews = jest.fn() as unknown as jest.Mock<any, any>;
+    getMyReviews.mockResolvedValue({ code: 200, data: { items: [{ id: 'r1' }], meta: { totalPages: 2 } } });
     jest.doMock('@/api/modules/user', () => ({ getMyReviews }));
 
     const { useMyReviews } = require(MODULE_PATH);
@@ -38,7 +39,8 @@ describe('pages/profile/my-reviews/composables/use-my-reviews.ts', () => {
   });
 
   test('fetchReviews handles errors and sets hasMore false', async () => {
-    const getMyReviews = jest.fn().mockResolvedValue({ code: 500, message: 'err' });
+    const getMyReviews = jest.fn() as unknown as jest.Mock<any, any>;
+    getMyReviews.mockResolvedValue({ code: 500, message: 'err' });
     jest.doMock('@/api/modules/user', () => ({ getMyReviews }));
 
     (global as any).uni = { showToast: jest.fn() };

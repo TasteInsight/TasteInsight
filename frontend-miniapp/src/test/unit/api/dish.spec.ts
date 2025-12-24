@@ -9,7 +9,8 @@ describe('api/modules/dish.ts', () => {
   });
 
   test('getDishById GETs /dishes/:id', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: { id: 'd1' } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: { id: 'd1' } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { getDishById } = require(MODULE_PATH);
@@ -23,7 +24,8 @@ describe('api/modules/dish.ts', () => {
   });
 
   test('getDishes posts params', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: { items: [] } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: { items: [] } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { getDishes } = require(MODULE_PATH);
@@ -35,7 +37,8 @@ describe('api/modules/dish.ts', () => {
   });
 
   test('getDishesImages GETs /dishes/images', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: {} });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: {} });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { getDishesImages } = require(MODULE_PATH);
@@ -46,7 +49,8 @@ describe('api/modules/dish.ts', () => {
   });
 
   test('favoriteDish posts to favorite endpoint', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: null });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: null });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { favoriteDish, unfavoriteDish } = require(MODULE_PATH);
@@ -58,7 +62,8 @@ describe('api/modules/dish.ts', () => {
   });
 
   test('uploadDish posts to /dishes/upload', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 201, data: { id: 'd2' } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 201, data: { id: 'd2' } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { uploadDish } = require(MODULE_PATH);

@@ -10,7 +10,8 @@ describe('pages/profile/history/composables/use-history.ts', () => {
   });
 
   test('fetchHistory(reset) loads items and sets hasMore based on meta', async () => {
-    const mock = jest.fn().mockResolvedValue({ code: 200, data: { items: [{ id: 'h1' }], meta: { totalPages: 2 } } });
+    const mock = jest.fn() as unknown as jest.Mock<any, any>;
+    mock.mockResolvedValue({ code: 200, data: { items: [{ id: 'h1' }], meta: { totalPages: 2 } } });
     jest.doMock('@/api/modules/user', () => ({ getBrowseHistory: mock }));
 
     const { useHistory } = require(MODULE_PATH);
@@ -43,7 +44,8 @@ describe('pages/profile/history/composables/use-history.ts', () => {
   });
 
   test('fetchHistory handles errors and sets hasMore false', async () => {
-    const getBrowseHistory = jest.fn().mockResolvedValue({ code: 400, message: 'bad' });
+    const getBrowseHistory = jest.fn() as unknown as jest.Mock<any, any>;
+    getBrowseHistory.mockResolvedValue({ code: 400, message: 'bad' });
     jest.doMock('@/api/modules/user', () => ({ getBrowseHistory }));
 
     (global as any).uni = { showToast: jest.fn() };

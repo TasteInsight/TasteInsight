@@ -10,7 +10,8 @@ describe('api/modules/admin.ts', () => {
   });
 
   test('adminLogin posts username and password', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: { token: 't' } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: { token: 't' } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { adminLogin } = require(MODULE_PATH);
@@ -28,7 +29,8 @@ describe('api/modules/admin.ts', () => {
   });
 
   test('adminUpdateDishStatus posts status to status endpoint', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: null });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: null });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { adminUpdateDishStatus } = require(MODULE_PATH);
@@ -45,7 +47,8 @@ describe('api/modules/admin.ts', () => {
   });
 
   test('adminGetReports calls GET /admin/reports', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: { items: [] } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: { items: [] } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { adminGetReports } = require(MODULE_PATH);
@@ -61,7 +64,8 @@ describe('api/modules/admin.ts', () => {
   });
 
   test('createCanteen posts to /admin/canteens', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 201, data: { id: 'c1', name: 'C' } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 201, data: { id: 'c1', name: 'C' } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { createCanteen } = require(MODULE_PATH);
@@ -80,7 +84,8 @@ describe('api/modules/admin.ts', () => {
   });
 
   test('adminGetCanteenList passes params as data', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: { list: [] } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: { list: [] } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { adminGetCanteenList } = require(MODULE_PATH);
@@ -96,7 +101,8 @@ describe('api/modules/admin.ts', () => {
   });
 
   test('deleteWindow calls DELETE', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: null });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: null });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { deleteWindow } = require(MODULE_PATH);
@@ -110,7 +116,8 @@ describe('api/modules/admin.ts', () => {
   });
 
   test('adminCreateDish and adminUpdateDish and adminDeleteDish', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 201, data: { id: 'd1' } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 201, data: { id: 'd1' } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { adminCreateDish, adminUpdateDish, adminDeleteDish } = require(MODULE_PATH);
@@ -133,7 +140,8 @@ describe('api/modules/admin.ts', () => {
   });
 
   test('pending reviews and comments approval/reject', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: { items: [] } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: { items: [] } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { adminGetPendingReviews, adminApproveReview, adminRejectReview, adminGetPendingComments, adminApproveComment, adminRejectComment } = require(MODULE_PATH);
@@ -166,7 +174,8 @@ describe('api/modules/admin.ts', () => {
   });
 
   test('reports and uploads handling', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: null });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: null });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { adminGetReports, adminHandleReport, adminGetPendingUploads, adminApproveUpload, adminRejectUpload } = require(MODULE_PATH);
@@ -193,7 +202,8 @@ describe('api/modules/admin.ts', () => {
   });
 
   test('sub-admins, permissions, logs and news', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: { items: [] } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: { items: [] } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { adminGetSubAdmins, adminCreateSubAdmin, adminDeleteSubAdmin, adminUpdatePermissions, adminGetLogs, adminGetNews, adminCreateNews, adminUpdateNews, adminDeleteNews, adminGetWindowList, updateCanteen, updateWindow } = require(MODULE_PATH);

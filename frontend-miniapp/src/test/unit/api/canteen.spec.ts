@@ -9,7 +9,8 @@ describe('api/modules/canteen.ts', () => {
   });
 
   test('getCanteenList GETs /canteens with params', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: { list: [] } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: { list: [] } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { getCanteenList } = require(MODULE_PATH);
@@ -24,7 +25,8 @@ describe('api/modules/canteen.ts', () => {
   });
 
   test('getCanteenDetail GETs /canteens/:id', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: { id: 'c1' } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: { id: 'c1' } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { getCanteenDetail } = require(MODULE_PATH);
@@ -38,7 +40,8 @@ describe('api/modules/canteen.ts', () => {
   });
 
   test('getWindowDishes GETs /windows/:id/dishes', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: { items: [] } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: { items: [] } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { getWindowDishes } = require(MODULE_PATH);
@@ -52,7 +55,8 @@ describe('api/modules/canteen.ts', () => {
   });
 
   test('getWindowList GETs /canteens/:id/windows', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: { items: [], meta: { page: 1, totalPages: 1 } } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: { items: [], meta: { page: 1, totalPages: 1 } } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { getWindowList } = require(MODULE_PATH);
@@ -67,7 +71,8 @@ describe('api/modules/canteen.ts', () => {
   });
 
   test('getWindowDishes rejects when request fails', async () => {
-    const mockReq = jest.fn().mockRejectedValue(new Error('boom'));
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockRejectedValue(new Error('boom'));
     jest.doMock('@/utils/request', () => mockReq);
 
     const { getWindowDishes } = require(MODULE_PATH);
