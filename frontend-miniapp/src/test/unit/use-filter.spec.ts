@@ -282,5 +282,23 @@ describe('useFilter', () => {
     const params2 = f.applyFilter();
     expect(params2!.spicyLevel).toEqual({ min: 2, max: 4 });
   });
-});
+  it('applyFilter handles min-only taste and sets default max to 5', () => {
+    const f = useFilter();
+    f.selectedSpicyMin.value = 2;
+    const params = f.applyFilter();
+    expect(params!.spicyLevel).toEqual({ min: 2, max: 5 });
+
+    f.selectedSaltyMin.value = 3;
+    const p2 = f.applyFilter();
+    expect(p2!.saltiness).toEqual({ min: 3, max: 5 });
+
+    f.selectedOilyMin.value = 1;
+    const p3 = f.applyFilter();
+    expect(p3!.oiliness).toEqual({ min: 1, max: 5 });
+  });
+
+  it('hasActiveValue returns false for unknown key', () => {
+    const f = useFilter();
+    expect(f.hasActiveValue('unknown')).toBe(false);
+  });});
 

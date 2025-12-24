@@ -90,4 +90,66 @@ describe('usePersonal', () => {
     expect(res).toBe(false);
     expect((global as any).uni.showToast).toHaveBeenCalled();
   });
+
+  test('chooseAvatar navigates to crop page and uploads cropped image', async () => {
+    // simulate real environment (not test env)
+    process.env.NODE_ENV = 'development';
+    const mockStore = mockedUseUserStore();
+    mockStore.fetchProfileAction = jest.fn().mockResolvedValue(undefined);
+
+    let capturedChannel: any = null;
+    (global as any).uni.navigateTo = jest.fn((opts: any) => {
+      const handlers: Record<string, Function> = {};
+      const eventChannel = {
+        on: (name: string, fn: Function) => { handlers[name] = fn; },
+        emit: (name: string, data: any) => { if (handlers[name]) handlers[name](data); },
+      } as any;
+      capturedChannel = eventChannel;
+      opts.success({ eventChannel });
+    });
+
+    mockedUpload.mockResolvedValueOnce({ url: 'http://cropped' } as any);
+
+    const comp = usePersonal();
+    const p = comp.chooseAvatar();
+    // simulate cropped event after handler registered
+    capturedChannel.emit('cropped', { tempFilePath: 'crop.jpg' });
+    await p;
+
+    expect(mockedUpload).toHaveBeenCalledWith('crop.jpg');
+    expect(comp.form.avatar).toBe('http://cropped');
+    expect((global as any).uni.showToast).toHaveBeenCalled();
+  });
+
+  test('chooseAvatar navigateTo fail rejects and shows toast', async () => {
+    process.env.NODE_ENV = 'development';
+    (global as any).uni.navigateTo = jest.fn((opts: any) => opts.fail({ errMsg: 'navfail' }));
+    const comp = usePersonal();
+    await expect(comp.chooseAvatar()).rejects.toEqual({ errMsg: 'navfail' });
+    expect((global as any).uni.showToast).toHaveBeenCalled();
+  });
+
+  test('onMounted calls fetch and handles fetchProfileAction error (loading cleared) when used inside a component', async () => {
+    const { mount } = require('@vue/test-utils');
+    const { defineComponent } = require('vue');
+
+    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const mockStore = mockedUseUserStore();
+    mockStore.fetchProfileAction = jest.fn().mockRejectedValue(new Error('fetchfail'));
+
+    const wrapper = mount(defineComponent({
+      setup() {
+        const comp = usePersonal();
+        return { comp };
+      },
+      template: '<div />',
+    }));
+
+    // allow onMounted async to run
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(mockStore.fetchProfileAction).toHaveBeenCalled();
+    expect(wrapper.vm.comp.loading.value).toBe(false);
+    spy.mockRestore();
+  });
 });
