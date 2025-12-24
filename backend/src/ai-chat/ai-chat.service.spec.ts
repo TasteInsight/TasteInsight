@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AIChatService } from './ai-chat.service';
 import { PrismaService } from '../../src/prisma.service';
 import { AIConfigService } from './services/ai-config.service';
+import { PromptSecurityService } from './services/prompt-security.service';
 import { OpenAIProviderService } from './services/ai-provider/openai-provider.service';
 import { ToolRegistryService } from './tools/tool-registry.service';
 
@@ -34,6 +35,20 @@ describe('AIChatService', () => {
           provide: AIConfigService,
           useValue: {
             getProviderConfig: jest.fn(),
+          },
+        },
+        {
+          provide: PromptSecurityService,
+          useValue: {
+            validateUserInput: jest.fn().mockReturnValue({
+              isValid: true,
+              sanitized: 'test message',
+            }),
+            enhanceSystemPrompt: jest.fn((prompt) => prompt),
+            filterAIResponse: jest.fn((response) => response),
+            validateToolParams: jest.fn().mockReturnValue({
+              isValid: true,
+            }),
           },
         },
         {

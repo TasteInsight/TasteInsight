@@ -5,6 +5,7 @@ import { PrismaService } from '@/prisma.service';
 import { AIChatController } from './ai-chat.controller';
 import { AIChatService } from './ai-chat.service';
 import { AIConfigService } from './services/ai-config.service';
+import { PromptSecurityService } from './services/prompt-security.service';
 import { OpenAIProviderService } from './services/ai-provider/openai-provider.service';
 import { ToolRegistryService } from './tools/tool-registry.service';
 import { DishRecommendationTool } from './tools/dish-recommendation.tool';
@@ -40,6 +41,7 @@ import { ReviewsModule } from '@/reviews/reviews.module';
     PrismaService,
     AIChatService,
     AIConfigService,
+    PromptSecurityService,
     OpenAIProviderService,
     ToolRegistryService,
     DishRecommendationTool,
