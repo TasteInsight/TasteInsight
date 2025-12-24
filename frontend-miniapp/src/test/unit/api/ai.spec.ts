@@ -172,4 +172,122 @@ describe('api/modules/ai.ts', () => {
     expect(onJSON).toHaveBeenCalledWith({ a: '€' });
     expect(onComplete).toHaveBeenCalled();
   });
+
+  test('streamAIChat accepts string chunks and non-arraybuffer data', async () => {
+    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+
+    let savedOnChunk: any = null;
+    let savedComplete: any = null;
+
+    (global as any).uni = {
+      request: (opts: any) => {
+        opts.success && opts.success({});
+        savedComplete = opts.complete;
+        return {
+          onChunkReceived: (cb: any) => { savedOnChunk = cb; },
+          abort: jest.fn(),
+        };
+      },
+    };
+
+    const onMessage = jest.fn();
+    const onJSON = jest.fn();
+
+    const { streamAIChat } = require(MODULE_PATH);
+    streamAIChat('s1', { prompt: 'str' } as any, { onMessage, onJSON });
+
+    // simulate SDK returning a string payload instead of ArrayBuffer
+    savedOnChunk({ data: 'data: hello\n\n' });
+    savedComplete && savedComplete();
+
+    expect(onMessage).toHaveBeenCalledWith('hello');
+    expect(onJSON).not.toHaveBeenCalled();
+  });
+
+  test('streamAIChat propagates request failure via onError', async () => {
+    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+
+    let savedFail: any = null;
+
+    (global as any).uni = {
+      request: (opts: any) => {
+        savedFail = opts.fail;
+        return { onChunkReceived: () => {}, abort: jest.fn() };
+      },
+    };
+
+    const onError = jest.fn();
+    const { streamAIChat } = require(MODULE_PATH);
+    streamAIChat('s1', { prompt: 'err' } as any, { onError });
+
+    // simulate fail callback
+    savedFail && savedFail({ message: 'network' });
+
+    expect(onError).toHaveBeenCalledWith({ message: 'network' });
+  });
+
+  test('streamAIChat close() aborts the request task', async () => {
+    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+
+    let savedOnChunk: any = null;
+
+    const abortFn = jest.fn();
+
+    (global as any).uni = {
+      request: (opts: any) => {
+        opts.success && opts.success({});
+        return { onChunkReceived: (cb: any) => { savedOnChunk = cb; }, abort: abortFn };
+      },
+    };
+
+    const { streamAIChat } = require(MODULE_PATH);
+    const handle = streamAIChat('s1', { prompt: 'close' } as any, {});
+
+    handle.close();
+
+    expect(abortFn).toHaveBeenCalled();
+  });
+
+  test('streamAIChat preserves partial buffers across chunks', async () => {
+    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+
+    let savedOnChunk: any = null;
+    let savedComplete: any = null;
+
+    (global as any).uni = {
+      request: (opts: any) => {
+        opts.success && opts.success({});
+        savedComplete = opts.complete;
+        return {
+          onChunkReceived: (cb: any) => { savedOnChunk = cb; },
+          abort: jest.fn(),
+        };
+      },
+    };
+
+    const onMessage = jest.fn();
+
+    const { streamAIChat } = require(MODULE_PATH);
+    streamAIChat('s1', { prompt: 'p' } as any, { onMessage });
+
+    // ensure TextEncoder exists
+    if (typeof TextEncoder === 'undefined') {
+      const { TextEncoder } = require('util');
+      (global as any).TextEncoder = TextEncoder;
+    }
+
+    const encoder = new TextEncoder();
+    // first chunk contains a full event and the beginning of the second
+    const part1 = encoder.encode('data: 1\n\n' + 'data: pa').buffer;
+    const part2 = encoder.encode('rtial\n\n').buffer;
+
+    savedOnChunk({ data: part1 });
+    savedOnChunk({ data: part2 });
+    savedComplete && savedComplete();
+
+    expect(onMessage).toHaveBeenCalled();
+    // first call with '1', second with 'partial'
+    expect(onMessage.mock.calls[0][0]).toBe('1');
+    expect(onMessage.mock.calls[1][0]).toBe('partial');
+  });
 });
