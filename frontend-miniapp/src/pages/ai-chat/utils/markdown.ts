@@ -75,7 +75,33 @@ function parseInlineMarkdown(text: string): string {
  * Output is safe HTML with a limited tag set suitable for mp-weixin rich-text.
  */
 export function markdownToRichTextHtml(markdown: string): string {
-  const md = (markdown || '').replace(/\r\n/g, '\n');
+  // Pre-process: split inline lists like "...教学楼 -紫荆园..." into separate lines before parsing.
+  function splitInlineLists(text: string) {
+    const lines = text.split('\n');
+    let inFence = false;
+    const out: string[] = [];
+    for (let l of lines) {
+      if (/^\s*```/.test(l)) {
+        inFence = !inFence;
+        out.push(l);
+        continue;
+      }
+      if (!inFence && l.includes(' -')) {
+        const parts = l.split(/\s-(?=[^\s-])/);
+        if (parts.length > 1) {
+          out.push(parts[0]);
+          for (let j = 1; j < parts.length; j++) {
+            out.push('-' + parts[j].trim());
+          }
+          continue;
+        }
+      }
+      out.push(l);
+    }
+    return out.join('\n');
+  }
+
+  const md = splitInlineLists((markdown || '').replace(/\r\n/g, '\n'));
   const lines = md.split('\n');
 
   const parts: string[] = [];
@@ -106,8 +132,8 @@ export function markdownToRichTextHtml(markdown: string): string {
       continue;
     }
 
-    // ATX Heading: #/##/... up to ######
-    const headingMatch = line.match(/^\s*(#{1,6})\s+(.*)$/);
+    // ATX Heading: #/##/... up to ###### — allow no space between # and text
+    const headingMatch = line.match(/^\s*(#{1,6})\s*(.*)$/);
     if (headingMatch) {
       const level = Math.min(6, headingMatch[1].length);
       const text = parseInlineMarkdown(headingMatch[2].trim());
@@ -160,12 +186,12 @@ export function markdownToRichTextHtml(markdown: string): string {
       continue;
     }
 
-    // Unordered list (with optional task checkbox)
-    const ulMatch = line.match(/^\s*[-*+]\s+(.*)$/);
+    // Unordered list (with optional task checkbox) — accept no space after '-' as well
+    const ulMatch = line.match(/^\s*[-*+]\s*(.*)$/);
     if (ulMatch) {
       const items: string[] = [];
       while (i < lines.length) {
-        const m = lines[i].match(/^\s*[-*+]\s+(?:\[([ xX])\]\s+)?(.*)$/);
+        const m = lines[i].match(/^\s*[-*+]\s*(?:\[([ xX])\]\s*)?(.*)$/);
         if (!m) break;
         const checked = m[1];
         const content = parseInlineMarkdown(m[2]);
@@ -177,12 +203,12 @@ export function markdownToRichTextHtml(markdown: string): string {
       continue;
     }
 
-    // Ordered list
-    const olMatch = line.match(/^\s*(\d+)\.\s+(.*)$/);
+    // Ordered list — accept optional space after dot
+    const olMatch = line.match(/^\s*(\d+)\.\s*(.*)$/);
     if (olMatch) {
       const items: string[] = [];
       while (i < lines.length) {
-        const m = lines[i].match(/^\s*(\d+)\.\s+(.*)$/);
+        const m = lines[i].match(/^\s*(\d+)\.\s*(.*)$/);
         if (!m) break;
         items.push(`<li>${parseInlineMarkdown(m[2])}</li>`);
         i++;
@@ -197,7 +223,7 @@ export function markdownToRichTextHtml(markdown: string): string {
       const cur = lines[i];
       if (!cur.trim()) break;
       if (/^\s*```/.test(cur)) break;
-      if (/^\s*(#{1,3})\s+/.test(cur)) break;
+      if (/^\s*(#{1,6})\s*/.test(cur)) break;
       if (/^\s*>\s?/.test(cur)) break;
       if (/^\s*[-*+]\s+/.test(cur) || /^\s*\d+\.\s+/.test(cur)) break;
       paragraphLines.push(parseInlineMarkdown(cur));

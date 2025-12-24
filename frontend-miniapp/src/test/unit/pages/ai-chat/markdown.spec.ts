@@ -47,6 +47,18 @@ describe('pages/ai-chat/utils/markdown.ts', () => {
     expect(html).toContain('<li>item2</li>');
   });
 
+  test('parses headings without space and inline list items split from same line', () => {
+    const md = '###3。食堂位置提醒\n-桃李园：位于校园东区，靠近教学楼 -紫荆园：位于校园中心区域\n-建议提前规划路线，避免排队时间过长\n###4。反馈与调整\n-在食鉴平台上为菜品评分\n-告诉我你的用餐体验，我会根据反馈优化后续推荐';
+    const html = markdownToRichTextHtml(md);
+
+    expect(html).toContain('<h3');
+    expect(html).toContain('食堂位置提醒');
+    // the inline '-桃李园' should be split into list items
+    expect(html).toContain('<li>桃李园');
+    expect(html).toContain('<h3');
+    expect(html).toContain('反馈与调整');
+  });
+
   test('handles fenced code blocks and preserves spaces', () => {
     const md = '```\n  <tag>  \n```';
     const html = markdownToRichTextHtml(md);
