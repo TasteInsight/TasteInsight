@@ -73,8 +73,8 @@ describe('store/modules/use-plan-store', () => {
   });
 
   test('updatePlan updates existing plan or inserts when missing', async () => {
-    const existing = { id: 'e1', dishes: [], startDate: new Date().toISOString(), endDate: new Date(Date.now() + 86400000).toISOString(), mealTime: 'lunch' };
-    const updated = { id: 'e1', dishes: [], startDate: new Date().toISOString(), endDate: new Date(Date.now() + 86400000).toISOString(), mealTime: 'dinner' };
+    const existing = { id: 'e1', dishes: [], startDate: new Date().toISOString(), endDate: new Date(Date.now() + 86400000).toISOString(), mealTime: 'lunch', userId: '', createdAt: '' };
+    const updated = { id: 'e1', dishes: [], startDate: new Date().toISOString(), endDate: new Date(Date.now() + 86400000).toISOString(), mealTime: 'dinner', userId: '', createdAt: '' };
 
     (updateMealPlan as jest.Mock).mockResolvedValue({ code: 200, data: updated });
     (getDishById as jest.Mock).mockResolvedValue({ code: 200, data: { id: 'dX', name: 'D' } });
@@ -96,14 +96,26 @@ describe('store/modules/use-plan-store', () => {
     (deleteMealPlan as jest.Mock).mockResolvedValue({ code: 200, data: null });
     const store = usePlanStore();
 
-    store.allPlans = [{ id: 'r1', dishes: [], startDate: '', endDate: '', mealTime: 'lunch' }, { id: 'r2', dishes: [], startDate: '', endDate: '', mealTime: 'lunch' }];
+    store.allPlans = [{
+        id: 'r1', dishes: [], startDate: '', endDate: '', mealTime: 'lunch',
+        userId: '',
+        createdAt: ''
+    }, {
+        id: 'r2', dishes: [], startDate: '', endDate: '', mealTime: 'lunch',
+        userId: '',
+        createdAt: ''
+    }];
     await store.removePlan('r1');
     expect(store.allPlans.find(p => p.id === 'r1')).toBeUndefined();
   });
 
   test('executePlan marks completed and persists to storage', async () => {
     const store = usePlanStore();
-    store.allPlans = [{ id: 'ex1', dishes: [], startDate: '', endDate: '', mealTime: 'lunch' }];
+    store.allPlans = [{
+        id: 'ex1', dishes: [], startDate: '', endDate: '', mealTime: 'lunch',
+        userId: '',
+        createdAt: ''
+    }];
 
     await store.executePlan('ex1');
     expect((global as any).uni.setStorageSync).toHaveBeenCalled();

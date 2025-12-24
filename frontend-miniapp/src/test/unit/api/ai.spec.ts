@@ -290,4 +290,131 @@ describe('api/modules/ai.ts', () => {
     expect(onMessage.mock.calls[0][0]).toBe('1');
     expect(onMessage.mock.calls[1][0]).toBe('partial');
   });
+
+  test('streamAIChat flushes pending bytes on complete as replacement char', async () => {
+    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+
+    let savedOnChunk: any = null;
+    let savedComplete: any = null;
+
+    (global as any).uni = {
+      request: (opts: any) => {
+        opts.success && opts.success({});
+        savedComplete = opts.complete;
+        return {
+          onChunkReceived: (cb: any) => { savedOnChunk = cb; },
+          abort: jest.fn(),
+        };
+      },
+    };
+
+    // remove TextDecoder to force fallback
+    (global as any).TextDecoder && delete (global as any).TextDecoder;
+
+    const onMessage = jest.fn();
+    const onJSON = jest.fn();
+
+    const { streamAIChat } = require(MODULE_PATH);
+    streamAIChat('s1', { prompt: 'x' } as any, { onMessage, onJSON });
+
+    // craft a chunk that ends with a partial multibyte (0xE2) followed by \n\n
+    const base = Buffer.from('data: ');
+    const arr = new Uint8Array(base.length + 3);
+    arr.set(base, 0);
+    arr[base.length] = 0xE2; // start of a 3-byte UTF-8 sequence
+    arr[base.length + 1] = 0x0a; // \n
+    arr[base.length + 2] = 0x0a; // \n
+
+    savedOnChunk({ data: arr.buffer });
+
+    savedComplete && savedComplete();
+
+    // onMessage should be called with replacement char (decoded from flush)
+    expect(onMessage).toHaveBeenCalled();
+    // the data parsed should be the replacement character '�' (U+FFFD)
+    expect(onMessage.mock.calls[0][0]).toContain('\uFFFD');
+    expect(onJSON).not.toHaveBeenCalled();
+  });
+
+  test('streamAIChat omits Authorization when user token is absent', async () => {
+    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: '' }) }));
+
+    let capturedHeader: any = null;
+    (global as any).uni = {
+      request: (opts: any) => {
+        capturedHeader = opts.header;
+        return { onChunkReceived: () => {}, abort: jest.fn(), complete: () => {} };
+      },
+    };
+
+    const { streamAIChat } = require(MODULE_PATH);
+    streamAIChat('s1', { prompt: 'no-token' } as any, {});
+
+    expect(capturedHeader).toBeDefined();
+    expect(capturedHeader.Authorization).toBeUndefined();
+  });
+
+  test('streamAIChat joins multiple data: lines into single message with newlines', async () => {
+    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+
+    let savedOnChunk: any = null;
+    let savedComplete: any = null;
+
+    (global as any).uni = {
+      request: (opts: any) => {
+        opts.success && opts.success({});
+        savedComplete = opts.complete;
+        return { onChunkReceived: (cb: any) => { savedOnChunk = cb; }, abort: jest.fn() };
+      },
+    };
+
+    const onMessage = jest.fn();
+
+    const { streamAIChat } = require(MODULE_PATH);
+    streamAIChat('s1', { prompt: 'multi' } as any, { onMessage });
+
+    const buf = Buffer.from('data: line1\ndata: line2\n\n');
+    const arr = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+    savedOnChunk({ data: arr });
+    savedComplete && savedComplete();
+
+    expect(onMessage).toHaveBeenCalledWith('line1\nline2');
+  });
+
+  test('streamAIChat handles invalid UTF-8 continuation bytes with replacement char immediately', async () => {
+    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+
+    let savedOnChunk: any = null;
+    let savedComplete: any = null;
+
+    (global as any).uni = {
+      request: (opts: any) => {
+        opts.success && opts.success({});
+        savedComplete = opts.complete;
+        return { onChunkReceived: (cb: any) => { savedOnChunk = cb; }, abort: jest.fn() };
+      },
+    };
+
+    // force fallback decoder
+    (global as any).TextDecoder && delete (global as any).TextDecoder;
+
+    const onMessage = jest.fn();
+    const onJSON = jest.fn();
+
+    const { streamAIChat } = require(MODULE_PATH);
+    streamAIChat('s1', { prompt: 'bad' } as any, { onMessage, onJSON });
+
+    const base = Buffer.from('data: ');
+    // craft bytes: start of 3-byte sequence (0xE2), followed by ASCII 'A' (0x41) which is invalid as continuation
+    const bad = Buffer.from([...base, 0xE2, 0x41, 0x0a, 0x0a]);
+    const arr = bad.buffer.slice(bad.byteOffset, bad.byteOffset + bad.byteLength);
+
+    savedOnChunk({ data: arr });
+    savedComplete && savedComplete();
+
+    expect(onMessage).toHaveBeenCalled();
+    // should contain replacement char U+FFFD
+    expect(onMessage.mock.calls[0][0]).toContain('\uFFFD');
+    expect(onJSON).not.toHaveBeenCalled();
+  });
 });
