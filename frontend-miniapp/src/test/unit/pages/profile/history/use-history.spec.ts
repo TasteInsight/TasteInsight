@@ -26,8 +26,9 @@ describe('pages/profile/history/composables/use-history.ts', () => {
   });
 
   test('loadMore appends items and increments page', async () => {
-    const getBrowseHistory = jest.fn().mockImplementation(({ page }) =>
-      Promise.resolve({ code: 200, data: { items: [{ id: `h${page}` }], meta: { totalPages: 2 } } })
+    const getBrowseHistory = jest.fn() as unknown as jest.Mock<any, any>;
+    getBrowseHistory.mockImplementation((opts: any) =>
+      Promise.resolve({ code: 200, data: { items: [{ id: `h${opts.page}` }], meta: { totalPages: 2 } } })
     );
     jest.doMock('@/api/modules/user', () => ({ getBrowseHistory }));
 

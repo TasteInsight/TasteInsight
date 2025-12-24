@@ -9,7 +9,8 @@ describe('api/modules/meal-plan.ts', () => {
   });
 
   test('getMealPlans GETs /meal-plans', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: { items: [] } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: { items: [] } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { getMealPlans } = require(MODULE_PATH);
@@ -41,7 +42,8 @@ describe('api/modules/meal-plan.ts', () => {
   });
 
   test('updateMealPlan PATCHes with id', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: { id: 'm1' } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: { id: 'm1' } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { updateMealPlan } = require(MODULE_PATH);
@@ -55,7 +57,8 @@ describe('api/modules/meal-plan.ts', () => {
   });
 
   test('deleteMealPlan DELETEs with planId', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: null });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: null });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { deleteMealPlan } = require(MODULE_PATH);

@@ -1,3 +1,5 @@
+export {};
+
 describe('config index', () => {
   const originalEnv = process.env.NODE_ENV;
 

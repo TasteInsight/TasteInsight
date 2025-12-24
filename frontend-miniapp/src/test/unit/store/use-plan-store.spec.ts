@@ -80,7 +80,7 @@ describe('store/modules/use-plan-store', () => {
     (getDishById as jest.Mock).mockResolvedValue({ code: 200, data: { id: 'dX', name: 'D' } });
 
     const store = usePlanStore();
-    store.allPlans = [existing];
+    store.allPlans = [existing as any];
 
     const res = await store.updatePlan('e1', {} as any);
     expect(res.id).toBe('e1');

@@ -179,7 +179,7 @@ describe('useAddDish', () => {
     expect(formData.images).toContain('a.jpg');
 
     removeImage(0);
-    expect(formData.images.length).toBe(0);
+    expect(formData.images?.length).toBe(0);
   });
 
   it('loadCanteenList failure sets error', async () => {

@@ -41,7 +41,7 @@ describe('pages/profile/my-favorites/composables/use-favorites.ts', () => {
     await inst.removeFavorite('d1');
 
     expect(unfavoriteDish).toHaveBeenCalledWith('d1');
-    expect(inst.favoriteItems.value.find(i => i.dishId === 'd1')).toBeUndefined();
+    expect(inst.favoriteItems.value.find((i: any) => i.dishId === 'd1')).toBeUndefined();
     expect((global as any).uni.showToast).toHaveBeenCalledWith({ title: '已取消收藏', icon: 'success' });
   });
 
@@ -61,7 +61,7 @@ describe('pages/profile/my-favorites/composables/use-favorites.ts', () => {
     await inst.removeFavorite('d1');
 
     expect(unfavoriteDish).toHaveBeenCalledWith('d1');
-    expect(inst.favoriteItems.value.find(i => i.dishId === 'd1')).toBeDefined();
+    expect(inst.favoriteItems.value.find((i: any) => i.dishId === 'd1')).toBeDefined();
     expect((global as any).uni.showToast).toHaveBeenCalled();
   });
 

@@ -60,7 +60,8 @@ describe('api/modules/comment.ts', () => {
   });
 
   test('deleteComment calls DELETE /comments/:id', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: null });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: null });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { deleteComment } = require(MODULE_PATH);

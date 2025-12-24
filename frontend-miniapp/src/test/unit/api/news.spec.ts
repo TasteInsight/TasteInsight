@@ -9,7 +9,8 @@ describe('api/modules/news.ts', () => {
   });
 
   test('getNewsList GETs /news with params', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: { items: [] } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: { items: [] } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { getNewsList } = require(MODULE_PATH);
@@ -24,7 +25,8 @@ describe('api/modules/news.ts', () => {
   });
 
   test('getNewsById GETs /news/:id', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: { id: 'n1' } });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: { id: 'n1' } });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { getNewsById } = require(MODULE_PATH);

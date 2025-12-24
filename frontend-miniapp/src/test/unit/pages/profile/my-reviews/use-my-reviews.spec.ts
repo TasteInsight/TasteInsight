@@ -25,7 +25,8 @@ describe('pages/profile/my-reviews/composables/use-my-reviews.ts', () => {
   });
 
   test('loadMore appends correctly', async () => {
-    const getMyReviews = jest.fn().mockImplementation(({ page }) => Promise.resolve({ code: 200, data: { items: [{ id: `r${page}` }], meta: { totalPages: 2 } } }));
+    const getMyReviews = jest.fn() as unknown as jest.Mock<any, any>;
+    getMyReviews.mockImplementation((opts: any) => Promise.resolve({ code: 200, data: { items: [{ id: `r${opts.page}` }], meta: { totalPages: 2 } } }));
     jest.doMock('@/api/modules/user', () => ({ getMyReviews }));
 
     const { useMyReviews } = require(MODULE_PATH);

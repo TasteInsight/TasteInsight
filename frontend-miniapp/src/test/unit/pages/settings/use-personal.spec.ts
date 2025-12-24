@@ -19,9 +19,10 @@ describe('usePersonal', () => {
     const mockStoreReturn: any = {
       fetchProfileAction: jest.fn() as unknown as jest.Mock<any, any>,
       userInfo: { avatar: '', nickname: '' },
-      updateLocalUserInfo: jest.fn(),
+      updateLocalUserInfo: jest.fn() as unknown as jest.Mock<any, any>,
     };
-    mockStoreReturn.fetchProfileAction.mockResolvedValue(undefined);
+    (mockStoreReturn.fetchProfileAction as jest.Mock).mockResolvedValue(undefined);
+    (mockStoreReturn.updateLocalUserInfo as jest.Mock).mockResolvedValue && (mockStoreReturn.updateLocalUserInfo as jest.Mock).mockResolvedValue(undefined);
     mockedUseUserStore.mockReturnValue(mockStoreReturn as any);
     // basic uni mocks
     (global as any).uni = (global as any).uni || {};
@@ -70,8 +71,8 @@ describe('usePersonal', () => {
   test('handleSave success updates user and returns true', async () => {
     mockedUpdate.mockResolvedValueOnce({ code: 200, data: { nickname: 'n', avatar: 'a' } } as any);
     const mockStore = mockedUseUserStore();
-    mockStore.updateLocalUserInfo = jest.fn();
-    mockStore.updateLocalUserInfo.mockResolvedValue && mockStore.updateLocalUserInfo.mockResolvedValue(undefined);
+    mockStore.updateLocalUserInfo = jest.fn() as unknown as jest.Mock<any, any>;
+    (mockStore.updateLocalUserInfo as jest.Mock).mockResolvedValue && (mockStore.updateLocalUserInfo as jest.Mock).mockResolvedValue(undefined);
 
     const comp = usePersonal();
     comp.form.nickname = 'n';
@@ -99,7 +100,7 @@ describe('usePersonal', () => {
     process.env.NODE_ENV = 'development';
     const mockStore = mockedUseUserStore();
     mockStore.fetchProfileAction = jest.fn() as unknown as jest.Mock<any, any>;
-    mockStore.fetchProfileAction.mockResolvedValue(undefined);
+    (mockStore.fetchProfileAction as jest.Mock).mockResolvedValue(undefined);
 
     let capturedChannel: any = null;
     (global as any).uni.navigateTo = jest.fn((opts: any) => {
@@ -140,7 +141,7 @@ describe('usePersonal', () => {
     const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
     const mockStore = mockedUseUserStore();
     mockStore.fetchProfileAction = jest.fn() as unknown as jest.Mock<any, any>;
-    mockStore.fetchProfileAction.mockRejectedValue(new Error('fetchfail'));
+    (mockStore.fetchProfileAction as jest.Mock).mockRejectedValue(new Error('fetchfail'));
 
     const wrapper = mount(defineComponent({
       setup() {

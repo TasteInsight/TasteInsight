@@ -51,7 +51,8 @@ describe('api/modules/review.ts', () => {
   });
 
   test('deleteReview calls DELETE /reviews/:id', async () => {
-    const mockReq = jest.fn().mockResolvedValue({ code: 200, data: null });
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: null });
     jest.doMock('@/utils/request', () => mockReq);
 
     const { deleteReview } = require(MODULE_PATH);
