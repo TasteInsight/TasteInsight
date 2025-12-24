@@ -30,11 +30,11 @@
         @scrolltolower="handleScrollToLower"
       >
         <view v-if="loading && comments.length === 0" class="flex justify-center items-center h-48 text-gray-500">
-          <text>加载中...</text>
+          <text class="text-center">加载中...</text>
         </view>
 
         <view v-else-if="comments.length === 0" class="flex justify-center items-center h-48 text-gray-500">
-          <text>暂无评论</text>
+          <text class="text-center">暂无评论</text>
         </view>
 
         <view v-else class="py-4">
@@ -84,13 +84,13 @@
           <!-- 底部提示：上拉加载更多 / 加载中 / 没有更多了 -->
           <view class="flex items-center justify-center py-4 text-gray-500 text-sm">
             <template v-if="loading">
-              <text>加载中...</text>
+              <text class="text-center">加载中...</text>
             </template>
             <template v-else-if="hasMore">
-              <text>上拉加载更多</text>
+              <text class="text-center">上拉加载更多</text>
             </template>
             <template v-else>
-              <text>没有更多评论了</text>
+              <text class="text-center">没有更多评论了</text>
             </template>
           </view>
         </view>

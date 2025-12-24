@@ -309,6 +309,16 @@
           </view>
         </view>
 
+        <!-- 我的评价的评论列表 -->
+        <CommentList
+          v-if="myReview"
+          :review-id="myReview.id"
+          :comments-data="reviewComments[myReview.id]"
+          :fetch-comments="fetchComments"
+          @comment-added="handleCommentAdded"
+          @view-all-comments="showAllCommentsPanel(myReview.id)"
+        />
+
         <view v-else class="text-sm text-gray-400 py-2">你还没有评价过这道菜</view>
       </view>
 
@@ -401,6 +411,7 @@ import ReviewList from './components/ReviewList.vue';
 import ReviewForm from './components/ReviewForm.vue';
 import BottomReviewInput from './components/BottomReviewInput.vue';
 import AllCommentsPanel from './components/AllCommentsPanel.vue';
+import CommentList from './components/CommentList.vue';
 import RatingBars from './components/RatingBars.vue';
 import ReportDialog from './components/ReportDialog.vue';
 import { DishDetailSkeleton } from '@/components/skeleton';
@@ -495,6 +506,18 @@ watch(isReviewFormVisible, (val: boolean) => {
     }, 300);
   }
 });
+
+// 监听我的评价变化，加载评论数据
+watch(() => myReview.value, async (newMyReview, oldMyReview) => {
+  // 当我的评价从无到有时，加载评论
+  if (newMyReview && !oldMyReview && newMyReview.id) {
+    try {
+      await fetchComments(newMyReview.id);
+    } catch (err) {
+      console.error('加载我的评价评论失败:', err);
+    }
+  }
+}, { immediate: true });
 
 // 拦截返回键，如果有弹窗打开则关闭弹窗而不是返回上一页
 onBackPress(() => {
