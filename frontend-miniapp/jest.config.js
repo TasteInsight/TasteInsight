@@ -17,4 +17,30 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/src/test/components/jest.setup.ts'],
   testMatch: ['**/__tests__/**/*.[jt]s?(x)', '**/?(*.)+(spec|test).[jt]s?(x)'],
   testPathIgnorePatterns: ['<rootDir>/e2e/', '<rootDir>/e2e-perf/'],
-};
+  // Coverage settings: exclude mock, types and non-app entry files
+  coveragePathIgnorePatterns: [
+    '<rootDir>/src/mock/',
+    '<rootDir>/src/types/',
+    '<rootDir>/src/test/',
+    '<rootDir>/src/static/',
+    '<rootDir>/src/App.vue',
+    '<rootDir>/src/env.d.ts',
+    '<rootDir>/src/main.ts',
+    '<rootDir>/src/shime-uni.d.ts',
+    '<rootDir>/src/api/index.ts',
+  ],
+  collectCoverageFrom: [
+    'src/**/*.{js,ts,vue}',
+    '!src/**/*.spec.{js,ts,vue}',
+    '!src/test/**',
+    '!src/mock/**',
+    '!src/types/**',
+    // exclude top-level entry / declaration files that shouldn't count
+    '!src/App.vue',
+    '!src/env.d.ts',
+    '!src/main.ts',
+    '!src/shime-uni.d.ts',
+    '!src/api/index.ts',
+    '!src/static/**',
+    '!src/**/*.d.ts'
+  ],};
