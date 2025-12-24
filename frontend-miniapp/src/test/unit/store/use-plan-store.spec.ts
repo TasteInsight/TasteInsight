@@ -146,4 +146,77 @@ describe('store/modules/use-plan-store', () => {
     expect(store.currentPlans.length).toBeGreaterThan(0);
     expect(store.getPlanById('h1')?.id).toBe('h1');
   });
+
+  test('fetchPlans returns early when there are no dish ids', async () => {
+    const mealPlans = [{ id: 'p-empty', dishes: [], startDate: new Date().toISOString(), endDate: new Date(Date.now() + 86400000).toISOString(), mealTime: 'lunch' }];
+    (getMealPlans as jest.Mock).mockResolvedValue({ code: 200, data: { items: mealPlans } });
+
+    const store = usePlanStore();
+    await store.fetchPlans();
+
+    expect(getDishById).not.toHaveBeenCalled();
+    expect(store.allPlans[0].dishes.length).toBe(0);
+  });
+
+  test('fetchPlans ignores non-200 dish responses', async () => {
+    const mealPlans = [{ id: 'p2', dishes: ['dx'], startDate: new Date().toISOString(), endDate: new Date(Date.now() + 86400000).toISOString(), mealTime: 'lunch' }];
+    (getMealPlans as jest.Mock).mockResolvedValue({ code: 200, data: { items: mealPlans } });
+    (getDishById as jest.Mock).mockResolvedValue({ code: 404, data: null });
+
+    const store = usePlanStore();
+    await store.fetchPlans();
+
+    // dish returned with non-200 should not populate dish list
+    expect(store.enrichedPlans[0].dishes.length).toBe(0);
+  });
+
+  test('executePlan logs error if storage set fails', async () => {
+    const store = usePlanStore();
+    store.allPlans = [{ id: 's1', dishes: [], startDate: '', endDate: '', mealTime: 'lunch', userId: '', createdAt: '' }];
+
+    const consoleErr = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (global as any).uni.setStorageSync = jest.fn().mockImplementation(() => { throw new Error('disk fail'); });
+
+    await store.executePlan('s1');
+
+    // storage failure should be caught and logged, and the plan marked completed
+    expect(consoleErr).toHaveBeenCalled();
+    expect(store.getPlanById('s1')?.isCompleted).toBeTruthy();
+
+    consoleErr.mockRestore();
+  });
+
+  test('loadCompletedPlanIds logs when storage get fails during init', async () => {
+    // reset modules to simulate init-time behavior
+    jest.resetModules();
+    const consoleErr = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const origUni = (global as any).uni;
+    (global as any).uni = { getStorageSync: jest.fn().mockImplementation(() => { throw new Error('boom'); }), setStorageSync: jest.fn() };
+
+    // ensure active Pinia is set in the fresh module context
+    const piniaModule = await import('pinia');
+    piniaModule.setActivePinia(piniaModule.createPinia());
+
+    const storeModule = await import('@/store/modules/use-plan-store');
+    const store2 = storeModule.usePlanStore();
+
+    expect(consoleErr).toHaveBeenCalled();
+
+    // restore
+    (global as any).uni = origUni;
+    consoleErr.mockRestore();
+  });
+
+  test('sortPlans places unknown mealTime at the end when dates are equal', () => {
+    const date = new Date().toISOString();
+    const a = { id: 'a', dishes: [], startDate: date, endDate: date, mealTime: 'weird' };
+    const b = { id: 'b', dishes: [], startDate: date, endDate: date, mealTime: 'breakfast' };
+
+    const store = usePlanStore();
+    store.allPlans = [a as any, b as any];
+
+    const current = store.currentPlans;
+    expect(current[0].id).toBe('b');
+  });
 });
