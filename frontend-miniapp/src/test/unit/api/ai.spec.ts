@@ -417,4 +417,84 @@ describe('api/modules/ai.ts', () => {
     expect(onMessage.mock.calls[0][0]).toContain('\uFFFD');
     expect(onJSON).not.toHaveBeenCalled();
   });
+
+  test('streamAIChat uses TextDecoder when available and flushes on complete via decoder.flush', async () => {
+    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+
+    let savedOnChunk: any = null;
+    let savedComplete: any = null;
+
+    (global as any).uni = {
+      request: (opts: any) => {
+        opts.success && opts.success({});
+        savedComplete = opts.complete;
+        return { onChunkReceived: (cb: any) => { savedOnChunk = cb; }, abort: jest.fn() };
+      },
+    };
+
+    // provide a mock TextDecoder with spies
+    class MockDecoder {
+      calls: Array<any> = [];
+      constructor(_enc?: string) {}
+      decode(data?: ArrayBuffer, opts?: any) {
+        this.calls.push({ data, opts });
+        // simulate streaming decode: if opts && opts.stream then return partial string else return flushed char
+        if (opts && opts.stream) return 'data: {"b":2}\n\n';
+        return ''; // flush returns empty
+      }
+    }
+
+    (global as any).TextDecoder = MockDecoder as any;
+
+    const onJSON = jest.fn();
+    const onComplete = jest.fn();
+
+    const { streamAIChat } = require(MODULE_PATH);
+    streamAIChat('s1', { prompt: 'hi' } as any, { onJSON, onComplete });
+
+    // send two chunks to exercise decode(stream=true)
+    const enc = new (require('util').TextEncoder)();
+    const buf = enc.encode('data: {"b":2}\n\n').buffer;
+    savedOnChunk({ data: buf });
+    savedComplete && savedComplete();
+
+    expect(onJSON).toHaveBeenCalledWith({ b: 2 });
+    expect(onComplete).toHaveBeenCalled();
+
+    // cleanup mocked TextDecoder so other tests are not affected
+    delete (global as any).TextDecoder;
+  });
+
+  test('parseSSEEventString handles multiple event: and data: lines', async () => {
+    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+
+    let savedOnChunk: any = null;
+    let savedComplete: any = null;
+
+    (global as any).uni = {
+      request: (opts: any) => {
+        opts.success && opts.success({});
+        savedComplete = opts.complete;
+        return { onChunkReceived: (cb: any) => { savedOnChunk = cb; }, abort: jest.fn() };
+      },
+    };
+
+    const onEvent = jest.fn();
+    const onMessage = jest.fn();
+
+    const { streamAIChat } = require(MODULE_PATH);
+    streamAIChat('s1', { prompt: 'x' } as any, { onEvent, onMessage });
+
+    const payload = 'event: a\nevent: b\ndata: x\ndata: y\n\n';
+    const buf = Buffer.from(payload);
+    const arr = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+    savedOnChunk({ data: arr });
+    savedComplete && savedComplete();
+
+    // event should have been emitted (at least once) and final event name should be 'b'
+    expect(onEvent).toHaveBeenCalled();
+    const lastEventCall = onEvent.mock.calls[onEvent.mock.calls.length - 1];
+    expect(lastEventCall[0]).toBe('b');
+    expect(onMessage).toHaveBeenCalledWith('x\ny');
+  });
 });
