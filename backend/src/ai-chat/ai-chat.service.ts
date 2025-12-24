@@ -142,7 +142,7 @@ export class AIChatService {
 
     try {
       // Multi-turn conversation loop for tool calling
-      const maxTurns = 5; // Prevent infinite loops
+      const maxTurns = 10; // Prevent infinite loops
       let turn = 0;
 
       while (turn < maxTurns) {
@@ -243,7 +243,11 @@ export class AIChatService {
             );
 
             // Convert result to content segment and send to client
-            const segment = this.toolResultToSegment(toolCall.name, result);
+            const segment = this.toolResultToSegment(
+              toolCall.name,
+              result,
+              params,
+            );
             if (segment) {
               assistantContent.push(segment);
               subscriber.next({
@@ -458,14 +462,21 @@ export class AIChatService {
   private toolResultToSegment(
     toolName: string,
     result: any,
+    params?: any,
   ): ContentSegment | null {
-    if (toolName === 'recommend_dishes' || toolName === 'search_dishes') {
-      return ContentBuilder.dishCards(result);
-    } else if (toolName === 'get_canteen_info') {
-      return ContentBuilder.canteenCards(result);
-    } else if (toolName === 'generate_meal_plan') {
-      return ContentBuilder.mealPlanCards(result);
+    if (toolName === 'display_content' && params?.type) {
+      const type = params.type;
+      if (type === 'dish') {
+        return ContentBuilder.dishCards(result);
+      } else if (type === 'canteen') {
+        return ContentBuilder.canteenCards(result);
+      } else if (type === 'meal_plan') {
+        return ContentBuilder.mealPlanCards(result);
+      }
     }
+    // All other tools return raw data only,
+    // which should not be directly displayed as cards.
+    // The AI must explicitly call 'display_content' to show them.
     return null;
   }
 }

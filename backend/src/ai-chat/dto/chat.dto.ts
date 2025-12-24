@@ -52,7 +52,7 @@ export type ContentSegment =
   | SegmentPlanCard
   | SegmentCanteenCard;
 
-// Component data structures (matching OpenAPI spec)
+// Component data structures
 export interface ComponentDishCard {
   dish: {
     name: string;

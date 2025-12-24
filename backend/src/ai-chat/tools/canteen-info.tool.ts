@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { BaseTool, ToolDefinition, ToolContext } from './base-tool.interface';
 import { CanteensService } from '@/canteens/canteens.service';
-import { ComponentCanteenCard } from '../dto/chat.dto';
-import { OpeningHoursUtil } from '../utils/opening-hours.util';
 
 @Injectable()
 export class CanteenInfoTool implements BaseTool {
@@ -26,46 +24,19 @@ export class CanteenInfoTool implements BaseTool {
     };
   }
 
-  async execute(
-    params: any,
-    context: ToolContext,
-  ): Promise<ComponentCanteenCard[]> {
+  async execute(params: any, context: ToolContext): Promise<any[]> {
     const { canteenId } = params;
 
     if (canteenId) {
       // Get specific canteen
       const response = await this.canteensService.getCanteenById(canteenId);
       const canteen = response.data;
-      return [
-        {
-          id: canteen.id,
-          name: canteen.name,
-          status: OpeningHoursUtil.getStatus(canteen.openingHours),
-          averageRating: canteen.averageRating || 0,
-          image: canteen.images?.[0] || '',
-          linkAction: {
-            type: 'navigate',
-            page: 'canteen_detail',
-            params: { id: canteen.id },
-          },
-        },
-      ];
+      return [canteen];
     } else {
       // Get all canteens
-      const response = await this.canteensService.getCanteens(1, 20);
+      const response = await this.canteensService.getCanteens(1, 100);
 
-      return response.data.items.map((canteen) => ({
-        id: canteen.id,
-        name: canteen.name,
-        status: OpeningHoursUtil.getStatus(canteen.openingHours),
-        averageRating: canteen.averageRating || 0,
-        image: canteen.images?.[0] || '',
-        linkAction: {
-          type: 'navigate',
-          page: 'canteen_detail',
-          params: { id: canteen.id },
-        },
-      }));
+      return response.data.items;
     }
   }
 }

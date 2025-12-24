@@ -54,7 +54,7 @@ async function bootstrap() {
   console.log(`📋 欢迎消息: ${sessionData.welcomeMessage}\n`);
   console.log('='.repeat(60));
   console.log(
-    '💬 开始对话（输入 "exit" 退出, "history" 查看历史, "clear" 清空屏幕）',
+    '💬 开始对话（输入 "exit" 退出,  "history" 查看历史, "clear" 清空屏幕）',
   );
   console.log('='.repeat(60));
   console.log();
@@ -188,67 +188,29 @@ async function bootstrap() {
       await new Promise<void>((resolve, reject) => {
         stream.subscribe({
           next: (event: any) => {
-            const data = event.data;
-
-            // 解析 SSE 数据
-            const lines = data.split('\n');
-            for (const line of lines) {
-              if (line.startsWith('event:')) {
-                const eventType = line.substring(6).trim();
-
-                if (eventType === 'text') {
-                  // 查找数据行
-                  const dataLine = lines.find((l: string) =>
-                    l.startsWith('data:'),
-                  );
-                  if (dataLine) {
-                    try {
-                      const jsonData = JSON.parse(dataLine.substring(5));
-                      if (jsonData.text) {
-                        process.stdout.write(jsonData.text);
-                        aiResponseText += jsonData.text;
-                      }
-                    } catch (e) {
-                      // 忽略解析错误
-                    }
-                  }
-                } else if (eventType === 'component') {
-                  if (!hasComponents) {
-                    console.log('\n\n📊 组件:');
-                    hasComponents = true;
-                  }
-
-                  const dataLine = lines.find((l: string) =>
-                    l.startsWith('data:'),
-                  );
-                  if (dataLine) {
-                    try {
-                      const segment = JSON.parse(dataLine.substring(5));
-                      // segment 是一个 ContentSegment，type 可能是 'card_dish', 'card_canteen', 'card_plan' 或 'text'
-                      const segmentType = segment.type || 'unknown';
-                      const dataPreview = JSON.stringify(
-                        segment.data,
-                      ).substring(0, 100);
-                      console.log(`  - ${segmentType}: ${dataPreview}...`);
-                      toolCallsDetected++;
-                    } catch (e) {
-                      // 忽略
-                    }
-                  }
-                } else if (eventType === 'error') {
-                  const dataLine = lines.find((l: string) =>
-                    l.startsWith('data:'),
-                  );
-                  if (dataLine) {
-                    try {
-                      const error = JSON.parse(dataLine.substring(5));
-                      console.error(`\n❌ 错误: ${error.error}`);
-                    } catch (e) {
-                      // 忽略
-                    }
-                  }
-                }
+            // MessageEvent 格式: { type: 'text_chunk'|'new_block'|'error', data: ... }
+            if (event.type === 'text_chunk') {
+              const text = event.data;
+              if (text) {
+                process.stdout.write(text);
+                aiResponseText += text;
               }
+            } else if (event.type === 'new_block') {
+              if (!hasComponents) {
+                console.log('\n\n📊 组件:');
+                hasComponents = true;
+              }
+
+              const segment = event.data; // ContentSegment
+              const segmentType = segment.type || 'unknown';
+              const dataPreview = JSON.stringify(segment.data).substring(
+                0,
+                100,
+              );
+              console.log(`  - ${segmentType}: ${dataPreview}...`);
+              toolCallsDetected++;
+            } else if (event.type === 'error') {
+              console.error(`\n❌ 错误: ${event.data.error}`);
             }
           },
           complete: () => {
