@@ -1281,6 +1281,22 @@ export class AdminDishesService {
           status: 'online',
         },
       });
+    } else {
+      parentDish = await tx.dish.update({
+        where: { id: parentDish.id },
+        data: {
+          description: description || '',
+          tags,
+          ingredients,
+          allergens,
+          availableMealTime: mealTimes,
+          availableDates,
+          floorId: floor?.id,
+          floorLevel: floor?.level,
+          floorName: floor?.name,
+          windowNumber: window.number,
+        },
+      });
     }
 
     caches.parentDishes.set(key, parentDish);
