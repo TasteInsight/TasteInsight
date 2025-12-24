@@ -75,6 +75,64 @@ export class CanteensService {
     };
   }
 
+  // 批量获取食堂详情
+  async getCanteensByIds(ids: string[]): Promise<CanteenListResponseDto> {
+    if (!ids || ids.length === 0) {
+      return {
+        code: 200,
+        message: 'success',
+        data: {
+          items: [],
+          meta: {
+            page: 1,
+            pageSize: 0,
+            total: 0,
+            totalPages: 0,
+          },
+        },
+      };
+    }
+
+    const canteens = await this.prisma.canteen.findMany({
+      where: {
+        id: { in: ids },
+      },
+      include: {
+        windows: {
+          include: {
+            floor: true,
+          },
+        },
+      },
+    });
+
+    // 按照请求的 ID 顺序返回
+    const canteenMap = new Map(
+      canteens.map((canteen) => [canteen.id, canteen]),
+    );
+    const sortedCanteens = ids
+      .map((id) => canteenMap.get(id))
+      .filter((canteen) => canteen != null);
+
+    const items = sortedCanteens.map((canteen) =>
+      this.mapToCanteenDto(canteen),
+    );
+
+    return {
+      code: 200,
+      message: 'success',
+      data: {
+        items,
+        meta: {
+          page: 1,
+          pageSize: items.length,
+          total: items.length,
+          totalPages: 1,
+        },
+      },
+    };
+  }
+
   async getCanteenWindows(
     canteenId: string,
     page: number,
@@ -159,6 +217,45 @@ export class CanteensService {
         },
       },
     };
+  }
+
+  /**
+   * 根据名称搜索食堂ID
+   */
+  async searchCanteenIdByName(name: string): Promise<string | null> {
+    if (!name) return null;
+
+    // 尝试精确匹配
+    let canteen = await this.prisma.canteen.findFirst({
+      where: { name: name },
+    });
+    if (canteen) return canteen.id;
+
+    // 尝试模糊匹配
+    canteen = await this.prisma.canteen.findFirst({
+      where: { name: { contains: name } },
+    });
+    if (canteen) return canteen.id;
+
+    return null;
+  }
+
+  /**
+   * 解析食堂标识符（可以是ID或名称）
+   * 先尝试作为ID查询，如果不存在再按名称查询
+   */
+  async resolveCanteenId(identifier: string): Promise<string | null> {
+    if (!identifier) return null;
+
+    // 先尝试作为ID查询
+    const canteenById = await this.prisma.canteen.findUnique({
+      where: { id: identifier },
+      select: { id: true },
+    });
+    if (canteenById) return canteenById.id;
+
+    // 如果ID查询失败，再按名称查询
+    return this.searchCanteenIdByName(identifier);
   }
 
   private mapToCanteenDto(canteen: any): CanteenDto {

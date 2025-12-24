@@ -43,6 +43,8 @@ export class OpenAIProviderService implements BaseAIProvider {
       });
 
       let isDone = false;
+      const toolCallIds = new Map<number, string>(); // Track tool call IDs by index across chunks
+
       for await (const chunk of stream) {
         const delta = chunk.choices[0]?.delta;
 
@@ -59,14 +61,30 @@ export class OpenAIProviderService implements BaseAIProvider {
         // Handle tool calls
         if (delta.tool_calls) {
           for (const toolCall of delta.tool_calls) {
-            if (toolCall.function?.name) {
+            // In streaming, index is consistent for the same tool call across chunks
+            const index = toolCall.index;
+
+            // If this chunk has an ID, it's the start of a tool call (or creating the mapping)
+            // We store it to use for subsequent chunks of the same tool call
+            if (toolCall.id) {
+              toolCallIds.set(index, toolCall.id);
+            }
+
+            const id = toolCallIds.get(index);
+
+            // Only yield if we have identified the tool call ID
+            // And if there is something meaningful to yield (name or arguments)
+            if (
+              id &&
+              (toolCall.function?.name || toolCall.function?.arguments)
+            ) {
               yield {
                 type: 'tool_call',
                 toolCall: {
-                  id: toolCall.id || '',
+                  id: id,
                   type: 'function',
                   function: {
-                    name: toolCall.function.name,
+                    name: toolCall.function.name || '',
                     arguments: toolCall.function.arguments || '',
                   },
                 },

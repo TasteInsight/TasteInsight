@@ -74,6 +74,63 @@ export class DishesService {
     };
   }
 
+  // 批量获取菜品详情
+  async getDishesByIds(
+    ids: string[],
+    userId: string,
+  ): Promise<DishListResponseDto> {
+    if (!ids || ids.length === 0) {
+      return {
+        code: 200,
+        message: 'success',
+        data: {
+          items: [],
+          meta: {
+            page: 1,
+            pageSize: 0,
+            total: 0,
+            totalPages: 0,
+          },
+        },
+      };
+    }
+
+    // 批量查询菜品
+    const dishes = await this.prisma.dish.findMany({
+      where: {
+        id: { in: ids },
+      },
+      include: {
+        canteen: true,
+        window: true,
+        parentDish: true,
+        subDishes: true,
+      },
+    });
+
+    // 按照请求的 ID 顺序返回（保持顺序一致）
+    const dishMap = new Map(dishes.map((dish) => [dish.id, dish]));
+    const sortedDishes = ids
+      .map((id) => dishMap.get(id))
+      .filter((dish) => dish != null);
+
+    const items = sortedDishes.map((dish) => DishDto.fromEntity(dish));
+
+    return {
+      code: 200,
+      message: 'success',
+      data: {
+        items,
+        meta: {
+          page: 1,
+          pageSize: items.length,
+          total: items.length,
+          totalPages: 1,
+        },
+      },
+    };
+  }
+
   // 获取菜品列表
   async getDishes(
     getDishesDto: GetDishesDto,
@@ -312,6 +369,11 @@ export class DishesService {
       }
       if (searchFields.includes('tags')) {
         orConditions.push({ tags: { has: search.keyword } });
+      }
+      if (searchFields.includes('ingredients')) {
+        orConditions.push({
+          ingredients: { has: search.keyword },
+        });
       }
 
       if (orConditions.length > 0) {

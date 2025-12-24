@@ -98,8 +98,12 @@ describe('ToolRegistryService', () => {
 
     it('should throw error for unregistered tool', async () => {
       await expect(
-        service.executeTool('nonexistent_tool', {}, {}),
-      ).rejects.toThrow('Tool not found: nonexistent_tool');
+        service.executeTool(
+          'nonexistent_tool',
+          {},
+          { userId: 'user1', sessionId: 'session1' },
+        ),
+      ).rejects.toThrow('工具未找到: nonexistent_tool');
     });
 
     it('should pass context to tool execution', async () => {

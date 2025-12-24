@@ -1,8 +1,14 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { MessageEvent } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { AIConfigService } from './services/ai-config.service';
+import { PromptSecurityService } from './services/prompt-security.service';
 import { OpenAIProviderService } from './services/ai-provider/openai-provider.service';
 import { ToolRegistryService } from './tools/tool-registry.service';
 import { PromptBuilder } from './utils/prompt-builder.util';
@@ -25,6 +31,7 @@ export class AIChatService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly aiConfig: AIConfigService,
+    private readonly promptSecurity: PromptSecurityService,
     private readonly openaiProvider: OpenAIProviderService,
     private readonly toolRegistry: ToolRegistryService,
   ) {}
@@ -95,23 +102,41 @@ export class AIChatService {
       throw new NotFoundException('Session not found');
     }
 
+    // Validate user input for security
+    const inputValidation = this.promptSecurity.validateUserInput(dto.message);
+    if (!inputValidation.isValid) {
+      this.logger.warn(`User input rejected: ${inputValidation.reason}`, {
+        userId,
+        sessionId,
+      });
+      throw new BadRequestException(
+        inputValidation.reason || '输入内容不符合安全要求',
+      );
+    }
+
+    // Use sanitized message
+    const sanitizedMessage = inputValidation.sanitized;
+
     // Save user message
     await this.prisma.aIMessage.create({
       data: {
         sessionId,
         role: 'user',
-        content: [ContentBuilder.text(dto.message)] as any,
+        content: [ContentBuilder.text(sanitizedMessage)] as any,
       },
     });
 
     // Get time for chat: prefer client's localTime if valid, otherwise use server time
     const chatTime = this.getChatTime(dto.clientContext?.localTime);
 
-    // Build initial conversation history
+    // Build initial conversation history with enhanced security prompt
+    const basePrompt = PromptBuilder.getSystemPrompt(session.scene, chatTime);
+    const securePrompt = this.promptSecurity.enhanceSystemPrompt(basePrompt);
+
     const conversationMessages: AIMessage[] = [
       {
         role: 'system',
-        content: PromptBuilder.getSystemPrompt(session.scene, chatTime),
+        content: securePrompt,
       },
     ];
 
@@ -125,10 +150,10 @@ export class AIChatService {
       });
     }
 
-    // Add current user message
+    // Add current user message (sanitized)
     conversationMessages.push({
       role: 'user',
-      content: dto.message,
+      content: sanitizedMessage,
     });
 
     // Get AI provider config and tools
@@ -142,7 +167,7 @@ export class AIChatService {
 
     try {
       // Multi-turn conversation loop for tool calling
-      const maxTurns = 5; // Prevent infinite loops
+      const maxTurns = 10; // Prevent infinite loops
       let turn = 0;
 
       while (turn < maxTurns) {
@@ -161,10 +186,14 @@ export class AIChatService {
           if (chunk.type === 'text' && chunk.content) {
             currentText += chunk.content;
             finalTextContent += chunk.content;
+            // Filter AI response for sensitive information
+            const filteredContent = this.promptSecurity.filterAIResponse(
+              chunk.content,
+            );
             // Send text chunk to client
             subscriber.next({
               type: 'text_chunk',
-              data: chunk.content,
+              data: filteredContent,
             });
           } else if (chunk.type === 'tool_call' && chunk.toolCall) {
             hasToolCalls = true;
@@ -235,6 +264,23 @@ export class AIChatService {
               }
             }
 
+            // Validate tool parameters for security
+            const paramValidation = this.promptSecurity.validateToolParams(
+              toolCall.name,
+              params,
+            );
+            if (!paramValidation.isValid) {
+              const errorMsg = `Error: Invalid tool parameters for ${toolCall.name}: ${paramValidation.reason}`;
+              this.logger.warn(errorMsg, { params });
+              toolResultsForHistory.push({
+                role: 'tool',
+                tool_call_id: toolCall.id,
+                content: errorMsg,
+              } as any);
+              allToolsSucceeded = false;
+              continue;
+            }
+
             // Execute tool
             const result = await this.toolRegistry.executeTool(
               toolCall.name,
@@ -243,7 +289,11 @@ export class AIChatService {
             );
 
             // Convert result to content segment and send to client
-            const segment = this.toolResultToSegment(toolCall.name, result);
+            const segment = this.toolResultToSegment(
+              toolCall.name,
+              result,
+              params,
+            );
             if (segment) {
               assistantContent.push(segment);
               subscriber.next({
@@ -458,14 +508,21 @@ export class AIChatService {
   private toolResultToSegment(
     toolName: string,
     result: any,
+    params?: any,
   ): ContentSegment | null {
-    if (toolName === 'recommend_dishes' || toolName === 'search_dishes') {
-      return ContentBuilder.dishCards(result);
-    } else if (toolName === 'get_canteen_info') {
-      return ContentBuilder.canteenCards(result);
-    } else if (toolName === 'generate_meal_plan') {
-      return ContentBuilder.mealPlanCards(result);
+    if (toolName === 'display_content' && params?.type) {
+      const type = params.type;
+      if (type === 'dish') {
+        return ContentBuilder.dishCards(result);
+      } else if (type === 'canteen') {
+        return ContentBuilder.canteenCards(result);
+      } else if (type === 'meal_plan') {
+        return ContentBuilder.mealPlanCards(result);
+      }
     }
+    // All other tools return raw data only,
+    // which should not be directly displayed as cards.
+    // The AI must explicitly call 'display_content' to show them.
     return null;
   }
 }
