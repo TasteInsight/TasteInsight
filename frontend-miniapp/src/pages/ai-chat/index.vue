@@ -64,8 +64,11 @@
                   : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100'
               ]"
             >
-              <!-- 核心修复：支持换行和空格 -->
-              <text :user-select="true" class="whitespace-pre-wrap leading-normal">{{ segment.text }}</text>
+              <!-- AI 消息：将后端返回的 Markdown 渲染为富文本 -->
+              <MarkdownText v-if="message.type === 'ai'" :content="segment.text" />
+
+              <!-- 用户消息：保留可选中复制的纯文本渲染 -->
+              <text v-else :user-select="true" class="whitespace-pre-wrap leading-normal">{{ segment.text }}</text>
               
               <!-- 流式传输的光标动画 -->
               <view v-if="message.isStreaming && index === message.content.length - 1" class="inline-block w-2 h-4 ml-1 bg-current opacity-70 animate-pulse align-middle"></view>
@@ -218,7 +221,9 @@
 import { ref, watch, computed, nextTick } from 'vue';
 import { useChat } from './composables/use-chat';
 import request from '@/utils/request'; 
+import { createMealPlan } from '@/api/modules/meal-plan';
 import DishCard from './components/DishCard.vue';
+import MarkdownText from './components/MarkdownText.vue';
 import PlanningCard from './components/PlanningCard.vue';
 import CanteenCard from './components/CanteenCard.vue';
 import WindowCard from './components/WindowCard.vue';
@@ -357,8 +362,8 @@ const handleLoadHistory = async (sessionId: string) => {
   }
 };
 const handleScenePicker = (e: any) => {
-  const idx = e.detail.value;
-  if (typeof idx === 'number' && idx >= 0 && idx < sceneOptions.length) {
+  const idx = Number(e?.detail?.value);
+  if (Number.isFinite(idx) && idx >= 0 && idx < sceneOptions.length) {
     selectedSceneIndex.value = idx;
     selectedScene.value = sceneOptions[idx].value as AIScene;
   } else {
@@ -367,47 +372,34 @@ const handleScenePicker = (e: any) => {
 };
 
 // === 核心业务逻辑：应用规划 ===
+// 期望后端在每个 card_plan 中返回 confirmAction.body，且可直接作为 /meal-plans POST 入参。
 const handleApplyPlan = async (plan: ComponentMealPlanDraft & { appliedStatus?: 'success' | 'failed' }) => {
-  const action = plan.confirmAction;
-  
-  if (!action || !action.api) {
-    uni.showToast({ title: '无效的规划数据', icon: 'none' });
-    return;
-  }
-
-  uni.showLoading({ title: '正在保存...' });
+  uni.showLoading({ title: '正在应用...' });
 
   try {
-    // 1. 调用业务接口保存规划
-    const res = await request({
-      url: action.api,
-      method: action.method as any || 'POST',
-      data: action.body
-    });
+    const body = plan.confirmAction?.body;
+    const startDate = body?.startDate;
+    const endDate = body?.endDate;
+    const mealTime = body?.mealTime;
+    const dishes = body?.dishes;
 
-    uni.hideLoading();
-
-    if (res.code === 200) {
-      uni.showToast({ title: '已应用到日程', icon: 'success' });
-      // 更新 UI 状态
-      plan.appliedStatus = 'success';
-
-      // 2. 【闭环】自动告诉 AI "我已应用"
-      setTimeout(() => {
-        sendMessage("我已确认应用了该饮食规划，请帮我生成后续建议");
-      }, 500);
-    } else {
-      // 业务逻辑失败
-      uni.showToast({ title: res.message || '保存失败，请重试', icon: 'none' });
-      // 更新 UI 状态
-      plan.appliedStatus = 'failed';
+    if (!startDate || !endDate || !mealTime || !Array.isArray(dishes) || dishes.length === 0) {
+      throw new Error('后端未返回可直接应用的规划参数（confirmAction.body）');
     }
 
+    await createMealPlan({ startDate, endDate, mealTime, dishes });
+
+    uni.hideLoading();
+    uni.showToast({ title: '已应用到日程', icon: 'success' });
+    plan.appliedStatus = 'success';
+
+    setTimeout(() => {
+      sendMessage('我已确认应用了该饮食规划，请帮我生成后续建议');
+    }, 500);
   } catch (error) {
     uni.hideLoading();
-    uni.showToast({ title: '保存失败，请重试', icon: 'none' });
+    uni.showToast({ title: '应用失败，请重试', icon: 'none' });
     console.error(error);
-    // 更新 UI 状态
     plan.appliedStatus = 'failed';
   }
 };

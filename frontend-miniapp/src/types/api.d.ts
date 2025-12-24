@@ -1056,13 +1056,20 @@ export interface ComponentWindowCard {
   rating?: number;
 }
 
+export interface ComponentMealPlanDraftPreviewData {
+  startDate: string;
+  endDate: string;
+  mealTime: 'breakfast' | 'lunch' | 'dinner' | 'nightsnack';
+  dishes: Dish[];
+}
+
 export interface ComponentMealPlanDraft {
   summary?: string;
-  previewData?: Record<string, any>;
+  previewData?: ComponentMealPlanDraftPreviewData;
   confirmAction?: {
     api?: string;
-    method?: string;
-    body?: Record<string, any>;
+    method?: RequestMethod;
+    body?: MealPlanRequest;
   };
 }
 

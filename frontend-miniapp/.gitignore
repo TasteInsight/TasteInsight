@@ -18,6 +18,10 @@ dist
 # Artillery load-test reports
 load-report*.json
 
+# E2E test results and reports
+test-results/
+playwright-report/
+
 # Editor directories and files
 .idea
 *.suo

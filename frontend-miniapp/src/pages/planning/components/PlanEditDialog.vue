@@ -31,6 +31,8 @@
       <!-- 表单内容 -->
       <scroll-view 
         scroll-y 
+        :lower-threshold="80"
+        @scrolltolower="handleScrollToLower"
         class="flex-1 w-full bg-white min-h-0" 
         style="max-height: calc(85vh - 160px);"
       >
@@ -227,6 +229,15 @@
                     </view>
                   </view>
                 </view>
+
+                <view v-if="loadingMore" class="flex flex-col items-center justify-center py-4 text-gray-400">
+                  <view class="w-6 h-6 border-4 border-purple-200 border-t-ts-purple rounded-full animate-spin mb-2"></view>
+                  <text class="text-xs">加载更多...</text>
+                </view>
+
+                <view v-else-if="!hasMore && dishList.length > 0" class="flex items-center justify-center py-4 text-gray-400">
+                  <text class="text-xs">没有更多菜品了</text>
+                </view>
               </view>
             </view>
           </view>
@@ -298,6 +309,14 @@ const selectedCanteen = ref<Canteen | null>(null);
 const selectedWindow = ref<Window | null>(null);
 const dishLoading = ref(false);
 const dishList = ref<Dish[]>([]);
+
+// 分页状态（窗口菜品 & 搜索菜品共用）
+const PAGE_SIZE = 10;
+const currentPage = ref(1);
+const totalPages = ref(1);
+const loadingMore = ref(false);
+const hasMore = computed(() => currentPage.value < totalPages.value);
+const requestToken = ref(0);
 
 // 食堂和窗口列表
 const canteenList = computed(() => canteenStore.canteenList);
@@ -383,6 +402,9 @@ const resetDishFilters = () => {
   selectedCanteen.value = null;
   selectedWindow.value = null;
   dishList.value = [];
+  currentPage.value = 1;
+  totalPages.value = 1;
+  loadingMore.value = false;
 };
 
 // 日期选择
@@ -400,6 +422,9 @@ const onCanteenChange = async (e: any) => {
   selectedCanteen.value = canteenList.value[index];
   selectedWindow.value = null;
   dishList.value = [];
+  currentPage.value = 1;
+  totalPages.value = 1;
+  loadingMore.value = false;
   
   if (selectedCanteen.value) {
     try {
@@ -415,20 +440,12 @@ const onWindowChange = async (e: any) => {
   const index = e.detail.value;
   selectedWindow.value = windowList.value[index];
   dishList.value = [];
+  currentPage.value = 1;
+  totalPages.value = 1;
+  loadingMore.value = false;
   
   if (selectedWindow.value) {
-    dishLoading.value = true;
-    try {
-      const response = await getWindowDishes(selectedWindow.value.id);
-      if (response.code === 200 && response.data?.items) {
-        dishList.value = response.data.items;
-      }
-    } catch (err) {
-      console.error('加载菜品列表失败:', err);
-      dishList.value = [];
-    } finally {
-      dishLoading.value = false;
-    }
+    await loadDishPage(1, false);
   }
 };
 
@@ -468,50 +485,115 @@ const handleSearch = async () => {
   const keyword = searchKeyword.value.trim();
   if (!keyword) {
     dishList.value = [];
+    currentPage.value = 1;
+    totalPages.value = 1;
+    loadingMore.value = false;
     return;
   }
 
-  dishLoading.value = true;
-  try {
-    const params: GetDishesRequest = {
-      filter: {},
-      isSuggestion: false,
-      search: {
-        keyword,
-      },
-      // sort 为必填字段；这里用空对象交给后端默认处理（与搜索页保持一致）
-      sort: {},
-      pagination: {
-        page: 1,
-        pageSize: 50,
-      },
-    };
-
-    if (selectedCanteen.value) {
-      params.filter.canteenId = [selectedCanteen.value.id];
-    }
-
-    const response = await getDishes(params);
-    if (response.code === 200 && response.data?.items) {
-      dishList.value = response.data.items;
-    } else {
-      dishList.value = [];
-    }
-  } catch (err) {
-    console.error('搜索菜品失败:', err);
-    uni.showToast({
-      title: '搜索失败，请重试',
-      icon: 'none'
-    });
-    dishList.value = [];
-  } finally {
-    dishLoading.value = false;
-  }
+  currentPage.value = 1;
+  totalPages.value = 1;
+  loadingMore.value = false;
+  await loadDishPage(1, false);
 };
 
 const clearSearch = async () => {
   searchKeyword.value = '';
-  await handleSearch();
+  dishList.value = [];
+  currentPage.value = 1;
+  totalPages.value = 1;
+  loadingMore.value = false;
+};
+
+const loadDishPage = async (page: number, append: boolean) => {
+  const token = ++requestToken.value;
+
+  if (append) {
+    loadingMore.value = true;
+  } else {
+    dishLoading.value = true;
+  }
+
+  try {
+    let response:
+      | Awaited<ReturnType<typeof getWindowDishes>>
+      | Awaited<ReturnType<typeof getDishes>>;
+
+    if (selectedWindow.value) {
+      response = await getWindowDishes(selectedWindow.value.id, { page, pageSize: PAGE_SIZE });
+    } else {
+      const keyword = searchKeyword.value.trim();
+      if (!keyword) {
+        dishList.value = [];
+        currentPage.value = 1;
+        totalPages.value = 1;
+        return;
+      }
+
+      const params: GetDishesRequest = {
+        filter: {},
+        isSuggestion: false,
+        search: {
+          keyword,
+        },
+        sort: {},
+        pagination: {
+          page,
+          pageSize: PAGE_SIZE,
+        },
+      };
+
+      if (selectedCanteen.value) {
+        params.filter.canteenId = [selectedCanteen.value.id];
+      }
+
+      response = await getDishes(params);
+    }
+
+    if (token !== requestToken.value) return;
+
+    if (response.code === 200 && response.data?.items) {
+      dishList.value = append ? [...dishList.value, ...response.data.items] : response.data.items;
+      currentPage.value = page;
+      totalPages.value = response.data.meta?.totalPages ?? page;
+    } else {
+      if (!append) {
+        dishList.value = [];
+      }
+      totalPages.value = page;
+    }
+  } catch (err) {
+    if (token !== requestToken.value) return;
+
+    console.error('加载菜品失败:', err);
+    if (!append) {
+      uni.showToast({
+        title: '加载失败，请重试',
+        icon: 'none'
+      });
+      dishList.value = [];
+    }
+    totalPages.value = page;
+  } finally {
+    if (token !== requestToken.value) return;
+    dishLoading.value = false;
+    loadingMore.value = false;
+  }
+};
+
+const loadNextPage = async () => {
+  if (dishLoading.value || loadingMore.value) return;
+  if (!hasMore.value) return;
+
+  const nextPage = currentPage.value + 1;
+  await loadDishPage(nextPage, true);
+};
+
+const handleScrollToLower = async () => {
+  // 仅在“窗口已选”或“关键词搜索中”时触发分页加载
+  const hasActiveQuery = !!selectedWindow.value || !!searchKeyword.value.trim();
+  if (!hasActiveQuery) return;
+  await loadNextPage();
 };
 
 const handleClose = () => {

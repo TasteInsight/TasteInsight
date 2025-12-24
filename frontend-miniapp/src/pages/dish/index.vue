@@ -98,15 +98,15 @@
             <!-- 左侧评分和评价数量 -->
             <view class="flex flex-col mt-8 ml-6">
               <view class="text-xl font-bold text-yellow-500">
-                {{ dish.averageRating === 0 ? '暂无' : `${dish.averageRating.toFixed(1)}分` }}
+                {{ displayAverageRating === 0 ? '暂无' : `${displayAverageRating.toFixed(1)}分` }}
               </view>
               <view class="text-xs text-gray-500 mt-1">
-                {{ dish.reviewCount }} 条评价
+                {{ displayReviewCount }} 条评价
               </view>
             </view>
 
             <!-- 右侧评分比例条状图 -->
-            <RatingBars :dish-id="dish.id" />
+            <RatingBars ref="ratingBarsRef" :dish-id="dish.id" />
           </view>
         </view>
       </view>
@@ -264,7 +264,7 @@
         <view
           v-if="myReview"
           class="border border-gray-100 rounded-lg p-3 active:bg-gray-50"
-          @tap="showReviewForm"
+          @tap="showAllCommentsPanel(myReview.id)"
         >
           <view class="flex items-start">
             <image
@@ -309,6 +309,16 @@
           </view>
         </view>
 
+        <!-- 我的评价的评论列表 -->
+        <CommentList
+          v-if="myReview"
+          :review-id="myReview.id"
+          :comments-data="reviewComments[myReview.id]"
+          :fetch-comments="fetchComments"
+          @comment-added="handleCommentAdded"
+          @view-all-comments="showAllCommentsPanel(myReview.id)"
+        />
+
         <view v-else class="text-sm text-gray-400 py-2">你还没有评价过这道菜</view>
       </view>
 
@@ -335,7 +345,7 @@
           @load-more="loadMoreReviews"
           @view-all-comments="showAllCommentsPanel"
           @report="(id) => openReportModal('review', id)"
-          @delete="removeReview"
+          @delete="handleDeleteReview"
         />
       </view>
     </view>
@@ -401,6 +411,7 @@ import ReviewList from './components/ReviewList.vue';
 import ReviewForm from './components/ReviewForm.vue';
 import BottomReviewInput from './components/BottomReviewInput.vue';
 import AllCommentsPanel from './components/AllCommentsPanel.vue';
+import CommentList from './components/CommentList.vue';
 import RatingBars from './components/RatingBars.vue';
 import ReportDialog from './components/ReportDialog.vue';
 import { DishDetailSkeleton } from '@/components/skeleton';
@@ -415,6 +426,7 @@ const {
   subDishes,
   parentDish,
   reviews,
+  ratingSummary,
   reviewsLoading,
   reviewsError,
   reviewsHasMore,
@@ -448,6 +460,16 @@ const myReview = computed(() => {
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
 });
 
+const displayAverageRating = computed(() => {
+  const avg = ratingSummary.value?.average;
+  return typeof avg === 'number' ? avg : (dish.value?.averageRating || 0);
+});
+
+const displayReviewCount = computed(() => {
+  const total = ratingSummary.value?.total;
+  return typeof total === 'number' ? total : (dish.value?.reviewCount || 0);
+});
+
 const otherReviews = computed(() => {
   const uid = userStore.userInfo?.id;
   if (!uid) return reviews.value;
@@ -470,6 +492,7 @@ const isAllCommentsPanelVisible = ref(false);
 const currentCommentsReviewId = ref('');
 const isSubDishesExpanded = ref(false);
 const shouldRefreshDishDetail = ref(false);
+const ratingBarsRef = ref();
 
 // 控制 page-container 的渲染，延迟销毁以避免滚动锁定问题
 const shouldRenderAllCommentsPanel = ref(false);
@@ -494,6 +517,22 @@ watch(isReviewFormVisible, (val: boolean) => {
     }, 300);
   }
 });
+
+// 监听我的评价变化，加载评论数据
+watch(() => myReview.value, async (newMyReview, oldMyReview) => {
+  const nextId = newMyReview?.id;
+  const prevId = oldMyReview?.id;
+  if (!nextId) return;
+
+  // 我的评价从无到有，或评价记录被替换（id 变化）时，重新加载评论预览
+  if (!prevId || nextId !== prevId) {
+    try {
+      await fetchComments(nextId);
+    } catch (err) {
+      console.error('加载我的评价评论失败:', err);
+    }
+  }
+}, { immediate: true });
 
 // 拦截返回键，如果有弹窗打开则关闭弹窗而不是返回上一页
 onBackPress(() => {
@@ -621,6 +660,9 @@ const handleReviewSuccess = async () => {
     ]);
   }
   
+  // 刷新评分条状图
+  ratingBarsRef.value?.refresh();
+  
   uni.showToast({
     title: '评价成功',
     icon: 'success',
@@ -646,14 +688,11 @@ const handleDeleteMyReview = () => {
     success: async (res) => {
       if (!res.confirm) return;
       try {
-        await removeReview(myReview.value!.id);
-        if (dishId.value) {
-          await Promise.all([
-            fetchReviews(dishId.value, true),
-            fetchDishDetail(dishId.value)
-          ]);
-        }
-        uni.showToast({ title: '已删除', icon: 'success' });
+        await removeReview(myReview.value!.id, () => {
+          // 刷新评分条状图
+          ratingBarsRef.value?.refresh();
+        });
+        // removeReview 已经处理了刷新逻辑，这里不需要重复
       } catch (e) {
         uni.showToast({ title: '删除失败', icon: 'none' });
       }
@@ -703,6 +742,13 @@ const handleCommentAdded = async () => {
   
   // 标记需要刷新，待面板关闭后执行
   shouldRefreshDishDetail.value = true;
+};
+
+const handleDeleteReview = async (reviewId: string) => {
+  await removeReview(reviewId, () => {
+    // 刷新评分条状图
+    ratingBarsRef.value?.refresh();
+  });
 };
 </script>
 

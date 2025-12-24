@@ -1,8 +1,9 @@
 import { useSearch } from '@/pages/search/composables/use-search';
+import { getCanteenList } from '@/api/modules/canteen';
 import { getDishes } from '@/api/modules/dish';
-import { ref } from 'vue';
 
 // Mock dependencies
+jest.mock('@/api/modules/canteen');
 jest.mock('@/api/modules/dish');
 
 describe('useSearch', () => {
@@ -27,10 +28,42 @@ describe('useSearch', () => {
     
     await search();
     
+    expect(getCanteenList).not.toHaveBeenCalled();
     expect(getDishes).not.toHaveBeenCalled();
   });
 
+  it('should return canteen results first when canteen name matches', async () => {
+    (getCanteenList as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: {
+        items: [
+          { id: 'c1', name: '一食堂' },
+          { id: 'c2', name: '二食堂' },
+        ],
+        meta: { page: 1, pageSize: 50, total: 2, totalPages: 1 },
+      },
+    });
+
+    const { keyword, search, searchResults } = useSearch();
+    keyword.value = '食堂';
+
+    await search();
+
+    expect(getCanteenList).toHaveBeenCalled();
+    expect(getDishes).not.toHaveBeenCalled();
+    expect(searchResults.value.canteens.length).toBeGreaterThan(0);
+    expect(searchResults.value.dishes).toEqual([]);
+  });
+
   it('should search successfully', async () => {
+    (getCanteenList as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: {
+        items: [{ id: 'c1', name: '不匹配的食堂' }],
+        meta: { page: 1, pageSize: 50, total: 1, totalPages: 1 },
+      },
+    });
+
     const mockDishes = [{ id: 1, name: 'Dish 1' }];
     const mockResponse = {
       code: 200,
@@ -59,6 +92,14 @@ describe('useSearch', () => {
   });
 
   it('should handle search error from API response', async () => {
+    (getCanteenList as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: {
+        items: [{ id: 'c1', name: '不匹配的食堂' }],
+        meta: { page: 1, pageSize: 50, total: 1, totalPages: 1 },
+      },
+    });
+
     const mockResponse = {
       code: 500,
       message: 'Server Error'
@@ -75,6 +116,13 @@ describe('useSearch', () => {
 
   it('should handle search exception', async () => {
     const errorMsg = 'Network Error';
+    (getCanteenList as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: {
+        items: [{ id: 'c1', name: '不匹配的食堂' }],
+        meta: { page: 1, pageSize: 50, total: 1, totalPages: 1 },
+      },
+    });
     (getDishes as jest.Mock).mockRejectedValue(new Error(errorMsg));
 
     const { keyword, search, error, searchResults } = useSearch();

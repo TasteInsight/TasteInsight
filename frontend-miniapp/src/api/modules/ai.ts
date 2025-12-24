@@ -118,6 +118,110 @@ function parseSSEEventString(evtString: string, callbacks: AIStreamCallbacks) {
   }
 }
 
+type StreamDecoder = {
+  decode: (data: ArrayBuffer) => string;
+  flush: () => string;
+};
+
+function createUtf8StreamDecoder(): StreamDecoder {
+  let pending: number[] = [];
+
+  const decode = (data: ArrayBuffer): string => {
+    const incoming = new Uint8Array(data);
+    const bytes = pending.length
+      ? new Uint8Array(pending.length + incoming.length)
+      : incoming;
+    if (pending.length) {
+      bytes.set(pending, 0);
+      bytes.set(incoming, pending.length);
+      pending = [];
+    }
+
+    let out = '';
+    let i = 0;
+    while (i < bytes.length) {
+      const b0 = bytes[i];
+      if (b0 <= 0x7f) {
+        out += String.fromCharCode(b0);
+        i += 1;
+        continue;
+      }
+
+      let needed = 0;
+      let codePoint = 0;
+
+      if (b0 >= 0xc2 && b0 <= 0xdf) {
+        needed = 2;
+        codePoint = b0 & 0x1f;
+      } else if (b0 >= 0xe0 && b0 <= 0xef) {
+        needed = 3;
+        codePoint = b0 & 0x0f;
+      } else if (b0 >= 0xf0 && b0 <= 0xf4) {
+        needed = 4;
+        codePoint = b0 & 0x07;
+      } else {
+        out += '\uFFFD';
+        i += 1;
+        continue;
+      }
+
+      if (i + needed > bytes.length) {
+        pending = Array.from(bytes.slice(i));
+        break;
+      }
+
+      let valid = true;
+      for (let k = 1; k < needed; k++) {
+        const bx = bytes[i + k];
+        if ((bx & 0xc0) !== 0x80) {
+          valid = false;
+          break;
+        }
+        codePoint = (codePoint << 6) | (bx & 0x3f);
+      }
+
+      if (!valid) {
+        out += '\uFFFD';
+        i += 1;
+        continue;
+      }
+
+      // Reject overlong encodings and invalid ranges
+      if (
+        (needed === 2 && codePoint < 0x80) ||
+        (needed === 3 && codePoint < 0x800) ||
+        (needed === 4 && codePoint < 0x10000) ||
+        (codePoint >= 0xd800 && codePoint <= 0xdfff) ||
+        codePoint > 0x10ffff
+      ) {
+        out += '\uFFFD';
+        i += needed;
+        continue;
+      }
+
+      if (codePoint <= 0xffff) {
+        out += String.fromCharCode(codePoint);
+      } else {
+        const cp = codePoint - 0x10000;
+        const hi = 0xd800 + (cp >> 10);
+        const lo = 0xdc00 + (cp & 0x3ff);
+        out += String.fromCharCode(hi, lo);
+      }
+      i += needed;
+    }
+
+    return out;
+  };
+
+  const flush = (): string => {
+    if (!pending.length) return '';
+    pending = [];
+    return '\uFFFD';
+  };
+
+  return { decode, flush };
+}
+
 // ==================== HTTP Chunked 实现 (UniApp/小程序/App通用) ====================
 
 /**
@@ -153,6 +257,9 @@ export const streamAIChat = (
     header,
     data: payload,
     enableChunked: true, // 【核心】：开启分块传输
+    // 强制以二进制形式接收 chunk，避免真机把 UTF-8 字节按非 UTF-8 文本提前解码
+    // @ts-ignore: uni.request 的类型定义可能缺少该字段
+    responseType: 'arraybuffer',
     timeout: 60000,      // 建议设置长超时（如60秒），防止AI思考时间过长导致断开
     success: (res) => {
       // 对于流式请求，此回调可能仅表示连接握手成功，不代表数据接收完毕
@@ -164,13 +271,9 @@ export const streamAIChat = (
       callbacks.onError?.(err);
     },
     complete: () => {
-      // 处理最后剩余的未完成 UTF-8 字节（仅当支持 TextDecoder 时）
-      if (decoder) {
-        const remaining = decoder.decode();
-        if (remaining) {
-          buffer += remaining;
-        }
-      }
+      // 处理最后剩余的未完成 UTF-8 字节（包括 TextDecoder 和 fallback 解码器）
+      const remaining = streamDecoder.flush();
+      if (remaining) buffer += remaining;
       // 处理剩余的 buffer
       if (buffer) {
         const events = buffer.split('\n\n');
@@ -185,30 +288,27 @@ export const streamAIChat = (
   });
 
   // 3. 处理分块数据
-  // 兼容性处理：如果环境支持 TextDecoder，则使用，否则使用简易 fallback
-  let decoder: TextDecoder | null = null;
-  let decodeChunk: (data: ArrayBuffer) => string;
-  if (typeof TextDecoder !== 'undefined') {
-    decoder = new TextDecoder('utf-8');
-    decodeChunk = (data: ArrayBuffer) => decoder!.decode(data, { stream: true });
-  } else {
-    // 简易 fallback: 仅适用于基本 UTF-8/ASCII，复杂字符可能有问题
-    decodeChunk = (data: ArrayBuffer) => {
-      const uint8Array = new Uint8Array(data);
-      let result = '';
-      for (let i = 0; i < uint8Array.length; i++) {
-        result += String.fromCharCode(uint8Array[i]);
-      }
-      return result;
-    };
-  }
+  // 兼容性处理：真机环境可能没有 TextDecoder，必须提供正确的 UTF-8 流式解码 fallback
+  const streamDecoder: StreamDecoder =
+    typeof TextDecoder !== 'undefined'
+      ? (() => {
+          const decoder = new TextDecoder('utf-8');
+          return {
+            decode: (data: ArrayBuffer) => decoder.decode(data, { stream: true }),
+            flush: () => decoder.decode(),
+          };
+        })()
+      : createUtf8StreamDecoder();
   let buffer = '';
 
   // @ts-ignore: uni.request 返回的 requestTask 在 TS 定义中可能缺少 onChunkReceived
-  requestTask.onChunkReceived((response: { data: ArrayBuffer }) => {
+  requestTask.onChunkReceived((response: { data: ArrayBuffer | string }) => {
     if (response && response.data) {
-      // 解码二进制数据
-      const chunk = decodeChunk(response.data);
+      // 解码二进制数据（优先 ArrayBuffer；极端情况下若 SDK 返回 string，则尝试兼容）
+      const chunk =
+        typeof response.data === 'string'
+          ? response.data
+          : streamDecoder.decode(response.data);
       buffer += chunk;
       
       // 按双换行符切割 SSE 事件

@@ -20,8 +20,9 @@ describe('useWindowData', () => {
     mockStore = {
       currentWindow: ref(null),
       error: ref(null),
-      fetchWindowDetail: jest.fn().mockResolvedValue(undefined),
+      fetchWindowDetail: jest.fn() as unknown as jest.Mock<any, any>,
     };
+    mockStore.fetchWindowDetail.mockResolvedValue(undefined);
     (useCanteenStore as unknown as jest.Mock).mockReturnValue(mockStore);
     jest.clearAllMocks();
   });
