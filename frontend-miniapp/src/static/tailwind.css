@@ -2201,6 +2201,10 @@
   color: rgb(133 77 14 / var(--tw-text-opacity))
 }
 
+.underline {
+  text-decoration-line: underline
+}
+
 .placeholder-purple-300::-moz-placeholder {
   --tw-placeholder-opacity: 1;
   color: rgb(216 180 254 / var(--tw-placeholder-opacity))

@@ -393,6 +393,13 @@ const handleApplyPlan = async (plan: ComponentMealPlanDraft & { appliedStatus?: 
     uni.showToast({ title: '已应用到日程', icon: 'success' });
     plan.appliedStatus = 'success';
 
+    // 通知规划页刷新数据
+    try {
+      uni.$emit('meal-plan:changed');
+    } catch (e) {
+      console.debug('uni.$emit not available:', e);
+    }
+
     setTimeout(() => {
       sendMessage('我已确认应用了该饮食规划，请帮我生成后续建议');
     }, 500);

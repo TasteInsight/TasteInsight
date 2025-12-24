@@ -16,12 +16,24 @@ describe('pages/ai-chat/utils/markdown.ts', () => {
     expect(html).toContain('<a href="https://ex.com">ok</a>');
   });
 
-  test('handles headings, paragraphs and line breaks', () => {
+  test('handles ATX headings, paragraphs and line breaks', () => {
     const md = '# Title\n\nLine one\nLine two';
     const html = markdownToRichTextHtml(md);
 
-    expect(html).toContain('<p><strong>Title</strong></p>');
+    expect(html).toContain('<h1');
+    expect(html).toContain('Title');
     expect(html).toContain('<p>Line one<br/>Line two</p>');
+  });
+
+  test('handles h3 ATX and setext-style headings', () => {
+    const md = '### Subtitle\n\nSubhead\n---\n\nNext paragraph';
+    const html = markdownToRichTextHtml(md);
+
+    expect(html).toContain('<h3');
+    expect(html).toContain('Subtitle');
+    expect(html).toContain('<h2');
+    expect(html).toContain('Subhead');
+    expect(html).toContain('<p>Next paragraph');
   });
 
   test('handles blockquote and unordered lists', () => {
