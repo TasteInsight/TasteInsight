@@ -1,7 +1,7 @@
 import { ref, computed, watch } from 'vue';
 import { getReviewsByDish, createReview, deleteReview } from '@/api/modules/review';
 import { uploadImage } from '@/api/modules/upload';
-import type { Review, ReviewCreateRequest } from '@/types/api';
+import type { Review, ReviewCreateRequest, ReviewListData } from '@/types/api';
 
 const REVIEW_STATE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24小时过期时间
 
@@ -12,6 +12,7 @@ type FlavorKey = 'spicyLevel' | 'sweetness' | 'saltiness' | 'oiliness';
  */
 export function useReview() {
   const reviews = ref<Review[]>([]);
+  const ratingSummary = ref<ReviewListData['rating'] | null>(null);
   const reviewsLoading = ref(false);
   const isInitializing = ref(false);
   const reviewsError = ref('');
@@ -36,6 +37,7 @@ export function useReview() {
       reviewsPage.value = 1;
       reviews.value = [];
       reviewsHasMore.value = true;
+      ratingSummary.value = null;
     }
 
     try {
@@ -45,6 +47,7 @@ export function useReview() {
       });
 
       if (response.code === 200 && response.data) {
+        ratingSummary.value = response.data.rating || ratingSummary.value;
         const newReviews = response.data.items || [];
         
         if (refresh) {
@@ -111,6 +114,7 @@ export function useReview() {
 
   return {
     reviews,
+    ratingSummary,
     reviewsLoading,
     isInitializing,
     reviewsError,

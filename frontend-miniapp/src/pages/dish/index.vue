@@ -98,10 +98,10 @@
             <!-- 左侧评分和评价数量 -->
             <view class="flex flex-col mt-8 ml-6">
               <view class="text-xl font-bold text-yellow-500">
-                {{ dish.averageRating === 0 ? '暂无' : `${dish.averageRating.toFixed(1)}分` }}
+                {{ displayAverageRating === 0 ? '暂无' : `${displayAverageRating.toFixed(1)}分` }}
               </view>
               <view class="text-xs text-gray-500 mt-1">
-                {{ dish.reviewCount }} 条评价
+                {{ displayReviewCount }} 条评价
               </view>
             </view>
 
@@ -426,6 +426,7 @@ const {
   subDishes,
   parentDish,
   reviews,
+  ratingSummary,
   reviewsLoading,
   reviewsError,
   reviewsHasMore,
@@ -457,6 +458,16 @@ const myReview = computed(() => {
   return mine
     .slice()
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+});
+
+const displayAverageRating = computed(() => {
+  const avg = ratingSummary.value?.average;
+  return typeof avg === 'number' ? avg : (dish.value?.averageRating || 0);
+});
+
+const displayReviewCount = computed(() => {
+  const total = ratingSummary.value?.total;
+  return typeof total === 'number' ? total : (dish.value?.reviewCount || 0);
 });
 
 const otherReviews = computed(() => {
@@ -509,10 +520,14 @@ watch(isReviewFormVisible, (val: boolean) => {
 
 // 监听我的评价变化，加载评论数据
 watch(() => myReview.value, async (newMyReview, oldMyReview) => {
-  // 当我的评价从无到有时，加载评论
-  if (newMyReview && !oldMyReview && newMyReview.id) {
+  const nextId = newMyReview?.id;
+  const prevId = oldMyReview?.id;
+  if (!nextId) return;
+
+  // 我的评价从无到有，或评价记录被替换（id 变化）时，重新加载评论预览
+  if (!prevId || nextId !== prevId) {
     try {
-      await fetchComments(newMyReview.id);
+      await fetchComments(nextId);
     } catch (err) {
       console.error('加载我的评价评论失败:', err);
     }

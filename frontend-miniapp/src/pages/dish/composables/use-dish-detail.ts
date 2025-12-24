@@ -12,6 +12,7 @@ export function useDishDetail() {
   // --- 引入新的 Composables ---
   const {
     reviews,
+    ratingSummary,
     reviewsLoading,
     isInitializing: reviewsInitializing,
     reviewsError,
@@ -241,6 +242,7 @@ export function useDishDetail() {
     parentDishLoading,
     
     reviews,
+    ratingSummary,
     reviewsLoading,
     reviewsInitializing,
     reviewsError,

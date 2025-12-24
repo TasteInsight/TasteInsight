@@ -643,6 +643,10 @@
   min-height: 100vh
 }
 
+.min-h-full {
+  min-height: 100%
+}
+
 .w-1 {
   width: 0.25rem
 }
@@ -1070,12 +1074,12 @@
   border-radius: 0.375rem
 }
 
-.rounded-xl {
-  border-radius: 0.75rem
-}
-
 .rounded-sm {
   border-radius: 0.125rem
+}
+
+.rounded-xl {
+  border-radius: 0.75rem
 }
 
 .rounded-t-xl {
@@ -2289,11 +2293,6 @@
 
 .shadow-ts-purple\/40 {
   --tw-shadow-color: rgb(102 8 116 / 0.4);
-  --tw-shadow: var(--tw-shadow-colored)
-}
-
-.shadow-gray-200 {
-  --tw-shadow-color: #e5e7eb;
   --tw-shadow: var(--tw-shadow-colored)
 }
 

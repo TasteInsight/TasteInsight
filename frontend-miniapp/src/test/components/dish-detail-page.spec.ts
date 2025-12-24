@@ -1,5 +1,6 @@
 import { shallowMount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
+import { ref } from 'vue';
 import DishDetailPage from '@/pages/dish/index.vue';
 
 // Mock uni-app lifecycle hooks
@@ -32,24 +33,25 @@ describe('DishDetailPage', () => {
     setActivePinia(createPinia());
 
     mockUseDishDetail = {
-      dish: null,
-      loading: false,
-      error: '',
+      dish: ref(null),
+      loading: ref(false),
+      error: ref(''),
       fetchDishDetail: jest.fn(),
-      subDishes: [],
-      parentDish: null,
-      reviews: [],
-      reviewsLoading: false,
-      reviewsError: '',
-      reviewsHasMore: false,
+      subDishes: ref([]),
+      parentDish: ref(null),
+      reviews: ref([]),
+      ratingSummary: ref(null),
+      reviewsLoading: ref(false),
+      reviewsError: ref(''),
+      reviewsHasMore: ref(false),
       fetchReviews: jest.fn(),
       loadMoreReviews: jest.fn(),
-      reviewComments: [],
+      reviewComments: ref({}),
       fetchComments: jest.fn(),
       removeReview: jest.fn(),
       removeComment: jest.fn(),
-      isFavorited: false,
-      favoriteLoading: false,
+      isFavorited: ref(false),
+      favoriteLoading: ref(false),
       toggleFavorite: jest.fn(),
     };
 
@@ -74,8 +76,8 @@ describe('DishDetailPage', () => {
   });
 
   it('renders skeleton when loading and no dish', () => {
-    mockUseDishDetail.loading = true;
-    mockUseDishDetail.dish = null;
+    mockUseDishDetail.loading.value = true;
+    mockUseDishDetail.dish.value = null;
 
     const wrapper = shallowMount(DishDetailPage, {
       global: {
@@ -98,9 +100,9 @@ describe('DishDetailPage', () => {
   });
 
   it('renders error state when error exists', () => {
-    mockUseDishDetail.loading = false;
-    mockUseDishDetail.error = '加载失败';
-    mockUseDishDetail.dish = null;
+    mockUseDishDetail.loading.value = false;
+    mockUseDishDetail.error.value = '加载失败';
+    mockUseDishDetail.dish.value = null;
 
     const wrapper = shallowMount(DishDetailPage, {
       global: {
@@ -131,9 +133,9 @@ describe('DishDetailPage', () => {
       averageRating: 4.5,
       price: 15.0
     };
-    mockUseDishDetail.loading = false;
-    mockUseDishDetail.error = null;
-    mockUseDishDetail.dish = mockDish;
+    mockUseDishDetail.loading.value = false;
+    mockUseDishDetail.error.value = '';
+    mockUseDishDetail.dish.value = mockDish;
 
     const wrapper = shallowMount(DishDetailPage, {
       global: {
@@ -157,9 +159,9 @@ describe('DishDetailPage', () => {
   });
 
   it('calls refresh on retry button click', async () => {
-    mockUseDishDetail.loading = false;
-    mockUseDishDetail.error = '错误';
-    mockUseDishDetail.dish = null;
+    mockUseDishDetail.loading.value = false;
+    mockUseDishDetail.error.value = '错误';
+    mockUseDishDetail.dish.value = null;
     mockUseDishDetail.fetchDishDetail = jest.fn();
 
     const wrapper = shallowMount(DishDetailPage, {
