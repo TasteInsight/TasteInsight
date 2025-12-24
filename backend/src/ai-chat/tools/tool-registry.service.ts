@@ -45,7 +45,7 @@ export class ToolRegistryService {
   ): Promise<any> {
     const tool = this.tools.get(name);
     if (!tool) {
-      throw new Error(`Tool not found: ${name}`);
+      throw new Error(`工具未找到: ${name}`);
     }
 
     try {

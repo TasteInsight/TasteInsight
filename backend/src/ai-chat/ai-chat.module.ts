@@ -16,6 +16,7 @@ import { MyHistoryTool } from './tools/my-history.tool';
 import { ContentDisplayTool } from './tools/content-display.tool';
 import { DishReviewsTool } from './tools/dish-reviews.tool';
 import { UpdatePreferencesTool } from './tools/update-preferences.tool';
+import { CreateMealPlanTool } from './tools/create-meal-plan.tool';
 
 // Import required services from other modules
 import { RecommendationModule } from '@/recommendation/recommendation.module';
@@ -50,6 +51,7 @@ import { ReviewsModule } from '@/reviews/reviews.module';
     ContentDisplayTool,
     DishReviewsTool,
     UpdatePreferencesTool,
+    CreateMealPlanTool,
   ],
   exports: [AIChatService],
 })
@@ -65,6 +67,7 @@ export class AIChatModule {
     private readonly contentDisplayTool: ContentDisplayTool,
     private readonly dishReviewsTool: DishReviewsTool,
     private readonly updatePreferencesTool: UpdatePreferencesTool,
+    private readonly createMealPlanTool: CreateMealPlanTool,
   ) {
     // Register all tools on module initialization
     this.toolRegistry.registerTool(this.dishRecommendationTool);
@@ -76,5 +79,6 @@ export class AIChatModule {
     this.toolRegistry.registerTool(this.contentDisplayTool);
     this.toolRegistry.registerTool(this.dishReviewsTool);
     this.toolRegistry.registerTool(this.updatePreferencesTool);
+    this.toolRegistry.registerTool(this.createMealPlanTool);
   }
 }

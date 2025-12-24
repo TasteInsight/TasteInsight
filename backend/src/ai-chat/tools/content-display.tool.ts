@@ -60,34 +60,34 @@ export class ContentDisplayTool implements BaseTool {
 
     if (!type) {
       throw new Error(
-        'Missing parameter "type". You must specify the type of content to display (dish, canteen, or meal_plan).',
+        '缺少参数 "type"。必须指定要展示的内容类型（dish、canteen 或 meal_plan）。',
       );
     }
 
     if (type === 'dish') {
       if (!ids || !Array.isArray(ids) || ids.length === 0) {
         throw new Error(
-          'Missing or invalid parameter "ids" for type "dish". Please provide an array of dish IDs retrieved from search results.',
+          '缺少或无效的参数 "ids"（类型为 "dish"）。请提供从搜索结果中获取的菜品ID数组。',
         );
       }
       return this.getDishCards(ids, context.userId);
     } else if (type === 'canteen') {
       if (!ids || !Array.isArray(ids) || ids.length === 0) {
         throw new Error(
-          'Missing or invalid parameter "ids" for type "canteen". Please provide an array of canteen IDs retrieved from query results.',
+          '缺少或无效的参数 "ids"（类型为 "canteen"）。请提供从查询结果中获取的食堂ID数组。',
         );
       }
       return this.getCanteenCards(ids);
     } else if (type === 'meal_plan') {
       if (!data) {
         throw new Error(
-          'Missing parameter "data" for type "meal_plan". Please provide the meal plan object.',
+          '缺少参数 "data"（类型为 "meal_plan"）。请提供用餐计划对象。',
         );
       }
       return this.getMealPlanCards(data);
     } else {
       throw new Error(
-        `Invalid type "${type}". Allowed values are: dish, canteen, meal_plan.`,
+        `无效的类型 "${type}"。允许的值为：dish、canteen、meal_plan。`,
       );
     }
 

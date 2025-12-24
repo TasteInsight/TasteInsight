@@ -1,11 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PopularDishesTool } from './popular-dishes.tool';
 import { DishesService } from '@/dishes/dishes.service';
+import { CanteensService } from '@/canteens/canteens.service';
 import { DishSortField } from '@/common/enums';
 import { SortOrder } from '@/dishes/dto/get-dishes.dto';
 
 const mockDishesService = {
   getDishes: jest.fn(),
+};
+
+const mockCanteensService = {
+  resolveCanteenId: jest.fn(),
 };
 
 describe('PopularDishesTool', () => {
@@ -18,6 +23,10 @@ describe('PopularDishesTool', () => {
         {
           provide: DishesService,
           useValue: mockDishesService,
+        },
+        {
+          provide: CanteensService,
+          useValue: mockCanteensService,
         },
       ],
     }).compile();

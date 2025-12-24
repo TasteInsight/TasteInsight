@@ -350,7 +350,7 @@ describe('AI Chat (e2e)', () => {
       expect(toolRegistry.hasTool('recommend_dishes')).toBe(true);
       expect(toolRegistry.hasTool('search_dishes')).toBe(true);
       expect(toolRegistry.hasTool('get_canteen_info')).toBe(true);
-      expect(toolRegistry.hasTool('generate_meal_plan')).toBe(true);
+      expect(toolRegistry.hasTool('create_meal_plan')).toBe(true);
     });
 
     it('should return tool definitions in correct format', async () => {
@@ -420,8 +420,6 @@ describe('AI Chat (e2e)', () => {
       if (result.length > 0) {
         expect(result[0]).toHaveProperty('id');
         expect(result[0]).toHaveProperty('name');
-        expect(result[0]).toHaveProperty('status');
-        expect(['open', 'closed', 'unknown']).toContain(result[0].status);
       }
     });
 

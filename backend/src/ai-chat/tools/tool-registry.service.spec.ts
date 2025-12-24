@@ -103,7 +103,7 @@ describe('ToolRegistryService', () => {
           {},
           { userId: 'user1', sessionId: 'session1' },
         ),
-      ).rejects.toThrow('Tool not found: nonexistent_tool');
+      ).rejects.toThrow('工具未找到: nonexistent_tool');
     });
 
     it('should pass context to tool execution', async () => {

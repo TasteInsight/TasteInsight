@@ -120,13 +120,13 @@ export class DishRecommendationTool implements BaseTool {
     // Validate required parameter
     if (!mealTime) {
       throw new Error(
-        `mealTime is required and must be one of: ${validMealTimes.join(', ')}`,
+        `mealTime 是必填参数，必须是以下之一：${validMealTimes.join(', ')}`,
       );
     }
 
     if (!validMealTimes.includes(mealTime)) {
       throw new Error(
-        `Invalid mealTime: ${mealTime}. Must be one of: ${validMealTimes.join(', ')}`,
+        `无效的 mealTime: ${mealTime}。必须是以下之一：${validMealTimes.join(', ')}`,
       );
     }
 
