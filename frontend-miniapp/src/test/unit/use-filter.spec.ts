@@ -247,5 +247,40 @@ describe('useFilter', () => {
     f.closeFilterPanel();
     expect(f.selectedSpicyMin.value).toBe(originalSpicy);
   });
+
+  it('onCustomPriceInput and onCustomRatingInput clear selections and mark active value', () => {
+    const f = useFilter();
+    f.selectedPrice.value = '10-15';
+    f.customPriceMin.value = '5';
+    f.onCustomPriceInput();
+    expect(f.selectedPrice.value).toBe('');
+    expect(f.hasActiveValue('price')).toBe(true);
+
+    f.selectedRating.value = 4.5;
+    f.customRatingMin.value = '3';
+    f.onCustomRatingInput();
+    expect(f.selectedRating.value).toBe(0);
+    expect(f.hasActiveValue('rating')).toBe(true);
+  });
+
+  it('applyFilter removes saved original state (via toggleFilter) and handles taste presence', () => {
+    const f = useFilter();
+    // use toggleFilter to ensure originalStates entry exists for 'tag'
+    f.selectedTags.value = ['B'];
+    f.toggleFilter('tag'); // saves original state for tag
+
+    // change current selection and apply
+    f.selectedTags.value = ['A'];
+    const params = f.applyFilter();
+    expect(params).not.toBeNull();
+    expect(params!.tag).toEqual(['A']);
+    expect(f.activeFilter.value).toBe('');
+
+    // taste applied
+    f.selectedSpicyMin.value = 2;
+    f.selectedSpicyMax.value = 4;
+    const params2 = f.applyFilter();
+    expect(params2!.spicyLevel).toEqual({ min: 2, max: 4 });
+  });
 });
 
