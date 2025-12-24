@@ -157,7 +157,8 @@
               <text class="text-xl text-gray-500">×</text>
             </view>
           </view>
-          <scroll-view scroll-y class="flex-1">
+          <!-- Ensure scroll-view has an explicit height so it can scroll in small containers -->
+          <scroll-view scroll-y :style="{ height: 'calc(100% - 56px)' }">
              <!-- ... 列表内容 ... -->
               <view 
               v-for="item in historyEntries" 
