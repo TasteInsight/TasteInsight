@@ -28,6 +28,9 @@ module.exports = {
     '<rootDir>/src/main.ts',
     '<rootDir>/src/shime-uni.d.ts',
     '<rootDir>/src/api/index.ts',
+    // Exclude store root and app-specific store module from coverage
+    '<rootDir>/src/store/index.ts',
+    '<rootDir>/src/store/modules/use-app-store.ts',
   ],
   collectCoverageFrom: [
     'src/**/*.{js,ts,vue}',
@@ -43,5 +46,8 @@ module.exports = {
     '!src/api/index.ts',
     '!src/static/**',
     '!src/pages/**/*.vue',
-    '!src/**/*.d.ts'
+    '!src/**/*.d.ts',
+    // Exclude store root and app store module from coverage collection
+    '!src/store/index.ts',
+    '!src/store/modules/use-app-store.ts'
   ],};
