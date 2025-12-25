@@ -233,24 +233,24 @@ export interface BatchParsedDish {
   tags?: string[]         // tags
   ingredients?: string[]  // 主辅料
   allergens?: string[]    // 过敏原
-  
+
   // 位置信息
   canteenName: string     // 食堂
   floorName?: string      // 楼层
   windowName: string      // 窗口
   windowNumber?: string   // 窗口编号
-  
+
   // 供应信息
   supplyTime?: string     // 供应时间 (对应 Excel 原始文本，如 "2023-01-01 至 2023-12-31")
   supplyPeriod?: string[] // 供应时段 (如 ["早餐", "午餐"])
-  
+
   // 子项信息
   subDishNames?: string[] // 菜品子项名 (用于后端查找或创建子菜品)
-  
+
   // 解析状态
   status: 'valid' | 'invalid' | 'warning'
   message?: string        // 错误或警告信息 (如 "窗口不存在，将自动创建")
-  
+
   // 原始数据 (可选，用于调试或回显)
   rawData?: any
 }
@@ -313,7 +313,7 @@ export interface Canteen {
   position?: string
   description?: string
   images?: string[]
-  openingHours?: OpeningHours[]
+  openingHours?: FloorOpeningHours[]
   averageRating?: number
   reviewCount?: number
   floors: Floor[]
@@ -330,17 +330,20 @@ export interface TimeSlot {
 }
 
 /**
- * 营业时间
+ * 每日营业时间
  */
-export interface DaliyOpeningHours {
+export interface DailyOpeningHours {
   dayOfWeek: string
   slots: TimeSlot[]
   isClosed: boolean
 }
 
-export class FloorOpeningHours {
-  floorLevel: string; // 如“1”，"2"。如果为"default"或空，则为通用配置
-schedule: DailyopeningHours[];
+/**
+ * 楼层营业时间
+ */
+export interface FloorOpeningHours {
+  floorLevel?: string // 如“1”，"2"。如果为"default"或空，则为通用配置
+  schedule: DailyOpeningHours[]
 }
 
 /**
@@ -351,7 +354,7 @@ export interface CanteenCreateRequest {
   position?: string
   description?: string
   images?: string[]
-  openingHours?: OpeningHours[]
+  openingHours?: FloorOpeningHours[]
   floors: Floor[]
 }
 
@@ -548,7 +551,7 @@ export interface PendingComment extends Comment {
 export interface Report {
   id: string
   reporterId: string
-  reporterNickname?: string 
+  reporterNickname?: string
   targetType: 'review' | 'comment'
   targetId: string
   type: string
@@ -558,7 +561,7 @@ export interface Report {
   handledBy: string | null
   handledAt: string | null
   createdAt: string
-  updatedAt?: string 
+  updatedAt?: string
   reporter?: {
     id: string
     nickname: string

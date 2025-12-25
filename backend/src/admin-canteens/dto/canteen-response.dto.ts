@@ -6,7 +6,7 @@ export class CanteenDto {
   position: string | null;
   description: string | null;
   images: string[];
-  openingHours: any; // Json
+  openingHours: any; // Json - FloorOpeningHoursDto[]
   averageRating: number;
   reviewCount: number;
   floors?: any[];
