@@ -44,7 +44,7 @@
               @tap="goToDishDetail(dish.id)"
             >
               <image 
-                :src="dish.images[0] || '/default-dish.png'" 
+                :src="dish.images[0] || '/static/default_dish.png'" 
                 class="w-20 h-20 rounded-lg shrink-0" 
                 mode="aspectFill"
               />

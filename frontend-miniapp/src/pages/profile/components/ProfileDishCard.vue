@@ -6,7 +6,7 @@
   >
     <!-- Image -->
     <image 
-      :src="dish.images && dish.images[0] ? dish.images[0] : '/static/images/default-dish.png'" 
+      :src="dish.images && dish.images[0] ? dish.images[0] : '/static/default_dish.png'" 
       mode="aspectFill"
       class="w-24 h-24 rounded-lg mr-4 flex-shrink-0" 
     />

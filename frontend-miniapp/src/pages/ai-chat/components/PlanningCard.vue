@@ -11,7 +11,7 @@
     <view v-if="preview?.dishes?.length">
       <view v-for="dish in preview.dishes" :key="dish.id" class="flex mb-3">
         <image
-          :src="dish.images?.[0] || '/default-dish.png'"
+          :src="dish.images?.[0] || '/static/default_dish.png'"
           class="w-20 h-20 rounded-lg"
           mode="aspectFill"
         />

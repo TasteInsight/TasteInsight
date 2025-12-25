@@ -131,7 +131,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, isRef } from 'vue';
+import { ref, computed, watch, isRef, onMounted, onBeforeUnmount } from 'vue';
 import { onHide, onPullDownRefresh, onBackPress } from '@dcloudio/uni-app';
 import { useMenuPlanning } from './composables/use-menu-planning';
 import type { EnrichedMealPlan } from './composables/use-menu-planning';
@@ -260,6 +260,23 @@ const onRefresh = async () => {
 };
 
 onPullDownRefresh(onRefresh);
+
+// 监听来自其它页面的全局刷新事件（例如 AI 页面应用了新规划）
+onMounted(() => {
+  try {
+    uni.$on && uni.$on('meal-plan:changed', refreshPlans);
+  } catch (e) {
+    console.debug('uni.$on not available:', e);
+  }
+});
+
+onBeforeUnmount(() => {
+  try {
+    uni.$off && uni.$off('meal-plan:changed', refreshPlans);
+  } catch (e) {
+    console.debug('uni.$off not available:', e);
+  }
+});
 </script>
 
 <style>

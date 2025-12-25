@@ -757,7 +757,7 @@ describe('AI Chat (e2e)', () => {
       const userMessage = messages.find((m) => m.role === 'user');
       expect(userMessage).toBeDefined();
 
-      const content = userMessage!.content as any;
+      const content = userMessage!.content;
       expect(content[0].data).toContain('测试消息保存');
     }, 15000); // Increased timeout for streaming test
   });

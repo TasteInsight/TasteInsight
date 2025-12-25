@@ -115,6 +115,8 @@
       </scroll-view>
 
       <!-- 底部固定区域 -->
+      <!-- 填充条：遮挡输入框与 tabbar 之间可能出现的缝隙（背景与输入框一致） -->
+      <view class="fixed bottom-0 left-0 right-0 z-40 bg-gray-50" :style="{ height: 'calc(env(safe-area-inset-bottom) + 6px)' }" />
       <view class="fixed bottom-0 left-0 right-0 z-40 flex flex-col">
          <!-- 快捷提示词 (Chips) -->
          <view v-if="suggestions.length > 0" class="bg-gray-50 w-full py-2">
@@ -124,7 +126,7 @@
          </view>
 
          <!-- 输入框区域 -->
-         <view class="bg-gray-50 w-full pb-[calc(5px+env(safe-area-inset-bottom))] mb-1 px-4 relative z-50">
+         <view class="bg-gray-50 w-full pb-[calc(5px+env(safe-area-inset-bottom))] px-4 relative z-50">
             <view class="max-w-screen-md mx-auto">
                <InputBar 
                  v-model:scene="scene" 
@@ -157,7 +159,8 @@
               <text class="text-xl text-gray-500">×</text>
             </view>
           </view>
-          <scroll-view scroll-y class="flex-1">
+          <!-- Ensure scroll-view has an explicit height so it can scroll in small containers -->
+          <scroll-view scroll-y :style="{ height: 'calc(100% - 56px)' }">
              <!-- ... 列表内容 ... -->
               <view 
               v-for="item in historyEntries" 
@@ -392,6 +395,13 @@ const handleApplyPlan = async (plan: ComponentMealPlanDraft & { appliedStatus?: 
     uni.hideLoading();
     uni.showToast({ title: '已应用到日程', icon: 'success' });
     plan.appliedStatus = 'success';
+
+    // 通知规划页刷新数据
+    try {
+      uni.$emit('meal-plan:changed');
+    } catch (e) {
+      console.debug('uni.$emit not available:', e);
+    }
 
     setTimeout(() => {
       sendMessage('我已确认应用了该饮食规划，请帮我生成后续建议');

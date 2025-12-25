@@ -216,12 +216,39 @@ export const useChatStore = defineStore('ai-chat', () => {
     });
     messages.value.push(aiMessage);
 
+    const pad2 = (n: number) => n.toString().padStart(2, '0');
+    const pad3 = (n: number) => n.toString().padStart(3, '0');
+    const formatLocalISOStringWithOffset = (d: Date) => {
+      const year = d.getFullYear();
+      const month = pad2(d.getMonth() + 1);
+      const day = pad2(d.getDate());
+      const hours = pad2(d.getHours());
+      const minutes = pad2(d.getMinutes());
+      const seconds = pad2(d.getSeconds());
+      const millis = pad3(d.getMilliseconds());
+
+      // getTimezoneOffset(): minutes behind UTC (e.g. China is -480)
+      const tzOffsetMinutes = -d.getTimezoneOffset();
+      const sign = tzOffsetMinutes >= 0 ? '+' : '-';
+      const abs = Math.abs(tzOffsetMinutes);
+      const offH = pad2(Math.floor(abs / 60));
+      const offM = pad2(abs % 60);
+
+      return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${millis}${sign}${offH}:${offM}`;
+    };
+
+    const now = new Date();
     const payload: ChatRequest = {
       message: text,
       clientContext: {
-        // 后端期望 ISOString，例如 "2025-01-09T12:04:00.000Z"
-        localTime: new Date().toISOString(),
-      }
+        // 标准 ISO8601：本地时间 + 偏移（例如 2025-12-25T12:00:00.000+08:00）
+        localTime: formatLocalISOStringWithOffset(now),
+        tzOffsetMinutes: -now.getTimezoneOffset(),
+        timeZone:
+          typeof Intl !== 'undefined'
+            ? Intl.DateTimeFormat().resolvedOptions().timeZone
+            : undefined,
+      },
     };
 
     let currentEvent = '';

@@ -408,6 +408,7 @@ onPullDownRefresh(async () => {
         sort: buildDishSortFromUserSettings(),
         filter: { ...currentFilter.value },
         search: { keyword: '' },
+        isSuggestion: true,
       };
       currentDishPageSize.value = 20;
       await fetchDishList({ reset: true });
