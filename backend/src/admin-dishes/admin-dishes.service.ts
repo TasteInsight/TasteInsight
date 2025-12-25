@@ -243,7 +243,7 @@ export class AdminDishesService {
     });
 
     // 将子项 id 列表注入到 dish 对象，方便 mapToAdminDishDto 使用
-    dish.subDishes = childRows.map((r) => ({ id: r.id }));
+    dish.subDishes = childRows.map((r) => ({ id: r.id })) as any;
 
     return {
       code: 200,

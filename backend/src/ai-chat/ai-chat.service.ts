@@ -143,7 +143,9 @@ export class AIChatService {
     // Add previous messages
     for (const msg of session.messages) {
       const content = msg.content;
-      const textContent = this.extractTextFromContent(content);
+      const textContent = this.extractTextFromContent(
+        Array.isArray(content) ? content : [],
+      );
       conversationMessages.push({
         role: msg.role as 'user' | 'assistant',
         content: textContent,
@@ -417,7 +419,9 @@ export class AIChatService {
       messages: items.map((msg) => ({
         role: msg.role as 'user' | 'assistant',
         timestamp: msg.createdAt.toISOString(),
-        content: msg.content as ContentSegment[],
+        content: (Array.isArray(msg.content)
+          ? msg.content
+          : []) as unknown as ContentSegment[],
       })),
       cursor: hasMore
         ? items[items.length - 1].createdAt.toISOString()

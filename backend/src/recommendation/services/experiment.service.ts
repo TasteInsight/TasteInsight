@@ -118,15 +118,23 @@ export class ExperimentService implements OnModuleInit {
         status: exp.status,
         groupItems: exp.groupItems.map((g) => {
           // 从 config 中提取 weights 和 recallQuota
-          const dbConfig = g.config;
+          const dbConfig = g.config as any;
           return {
             groupItemId: g.id,
             name: g.name,
             ratio: g.ratio,
-            weights: dbConfig?.weights as
-              | Partial<RecommendationWeights>
-              | undefined,
-            recallQuota: dbConfig?.recallQuota,
+            weights:
+              dbConfig && typeof dbConfig === 'object' && 'weights' in dbConfig
+                ? (dbConfig.weights as
+                    | Partial<RecommendationWeights>
+                    | undefined)
+                : undefined,
+            recallQuota:
+              dbConfig &&
+              typeof dbConfig === 'object' &&
+              'recallQuota' in dbConfig
+                ? dbConfig.recallQuota
+                : undefined,
           };
         }),
       };
