@@ -1,7 +1,7 @@
 <template>
   <view class="bg-white rounded-xl p-3 mb-3 shadow-sm cursor-pointer" @click="goToDishDetail">
     <view class="flex">
-      <image :src="dish.dish.image || '/default-dish.png'" class="w-20 h-20 rounded-lg flex-shrink-0 object-cover" mode="aspectFill" />
+      <image :src="dish.dish.image || '/static/default_dish.png'" class="w-20 h-20 rounded-lg flex-shrink-0 object-cover" mode="aspectFill" />
       <view class="flex-grow ml-3 flex flex-col justify-between">
         <view>
             <view class="font-medium text-base text-gray-800 line-clamp-1">{{ dish.dish.name }}</view>

@@ -5,7 +5,7 @@
     :data-allergen="dish.allergens?.join(',') || '无'"
     @click="goToDetail"
   >
-    <img :src="dish.images[0] || '/default-dish.png'" :alt="dish.name" class="w-20 h-20 rounded-lg mr-4" style="object-fit:cover" />
+    <img :src="dish.images[0] || '/static/default_dish.png'" :alt="dish.name" class="w-20 h-20 rounded-lg mr-4" style="object-fit:cover" />
     <view class="flex-grow flex flex-col justify-between">
       <view>
         <h3 class="font-semibold text-base text-gray-800">{{ dish.name }}</h3>
