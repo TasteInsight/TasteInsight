@@ -1054,8 +1054,12 @@ export class EmbeddingService implements OnModuleInit {
         // 价格范围过滤
         if (cond.price && typeof cond.price === 'object') {
           const pf = cond.price;
-          if (pf.gte !== undefined) whereClauses.push(`d.price >= ${pf.gte}`);
-          if (pf.lte !== undefined) whereClauses.push(`d.price <= ${pf.lte}`);
+          if (pf.gte !== undefined && typeof pf.gte === 'number') {
+            whereClauses.push(`d.price >= ${pf.gte}`);
+          }
+          if (pf.lte !== undefined && typeof pf.lte === 'number') {
+            whereClauses.push(`d.price <= ${pf.lte}`);
+          }
         }
         // ID排除过滤
         if (cond.id && typeof cond.id === 'object' && 'notIn' in cond.id) {
