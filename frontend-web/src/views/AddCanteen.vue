@@ -349,7 +349,7 @@
                     :key="index"
                     class="flex items-center gap-3 p-3 border rounded-lg bg-gray-50"
                   >
-                    <div class="flex-1 grid grid-cols-4 gap-3">
+                    <div class="flex-1 grid grid-cols-5 gap-3">
                       <div>
                         <label class="block text-xs text-gray-500 mb-1">楼层</label>
                         <select
@@ -380,6 +380,18 @@
                           <option value="周六">周六</option>
                           <option value="周日">周日</option>
                           <option value="每天">每天</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label class="block text-xs text-gray-500 mb-1">餐次</label>
+                        <select
+                          v-model="hours.mealType"
+                          class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+                        >
+                          <option value="breakfast">早餐</option>
+                          <option value="lunch">午餐</option>
+                          <option value="dinner">晚餐</option>
+                          <option value="nightsnack">夜宵</option>
                         </select>
                       </div>
                       <div>
@@ -675,6 +687,17 @@ export default {
       // API 格式: { dayOfWeek, slots: [{ mealType, openTime, closeTime }], isClosed, floor: { level, name } }
       // 或者新格式: { floorLevel, schedule: [{ dayOfWeek, slots: [...] }] }
       // 表单格式: { day, open, close, floor }
+      
+      // 英文星期到中文的映射
+      const dayMapping = {
+        'Monday': '周一',
+        'Tuesday': '周二',
+        'Wednesday': '周三',
+        'Thursday': '周四',
+        'Friday': '周五',
+        'Saturday': '周六',
+        'Sunday': '周日',
+      }
       if (canteen.openingHours && Array.isArray(canteen.openingHours)) {
         const flatHours = []
         canteen.openingHours.forEach((item) => {
@@ -682,7 +705,8 @@ export default {
             // 新格式 (grouped by floor)
             item.schedule.forEach((daily) => {
               flatHours.push({
-                day: daily.dayOfWeek,
+                day: dayMapping[daily.dayOfWeek] || daily.dayOfWeek, // 转换为中文
+                mealType: daily.slots?.[0]?.mealType || 'breakfast',
                 open: daily.slots?.[0]?.openTime || '06:30',
                 close: daily.slots?.[0]?.closeTime || '22:00',
                 floor: item.floorLevel || '',
@@ -691,7 +715,8 @@ export default {
           } else {
             // 旧格式
             flatHours.push({
-              day: item.dayOfWeek || item.day || '每天',
+              day: dayMapping[item.dayOfWeek] || item.dayOfWeek || item.day || '每天',
+              mealType: (item.slots && item.slots[0] && item.slots[0].mealType) || 'breakfast',
               open: (item.slots && item.slots[0] && item.slots[0].openTime) || item.open || '06:30',
               close: (item.slots && item.slots[0] && item.slots[0].closeTime) || item.close || '22:00',
               floor: item.floor ? item.floor.level || item.floor : '',
@@ -795,7 +820,7 @@ export default {
       if (!formData.openingHours) {
         formData.openingHours = []
       }
-      formData.openingHours.push({ day: '每天', open: '06:30', close: '22:00', floor: '' })
+      formData.openingHours.push({ day: '每天', mealType: 'breakfast', open: '06:30', close: '22:00', floor: '' })
     }
 
     const removeOpeningHours = (index) => {
@@ -1108,6 +1133,17 @@ export default {
           openingHours:
             formData.openingHours && formData.openingHours.length > 0
               ? (() => {
+                  // 中文星期到英文的映射
+                  const dayMapping = {
+                    '周一': 'Monday',
+                    '周二': 'Tuesday',
+                    '周三': 'Wednesday',
+                    '周四': 'Thursday',
+                    '周五': 'Friday',
+                    '周六': 'Saturday',
+                    '周日': 'Sunday',
+                  }
+
                   const grouped = new Map()
                   formData.openingHours.forEach((hours) => {
                     const floorInfo = resolveWindowFloor(hours.floor)
@@ -1120,16 +1156,23 @@ export default {
                       })
                     }
 
-                    grouped.get(floorLevel).schedule.push({
-                      dayOfWeek: hours.day,
-                      slots: [
-                        {
-                          mealType: 'default',
-                          openTime: hours.open,
-                          closeTime: hours.close,
-                        },
-                      ],
-                      isClosed: false,
+                    // 如果是"每天"，需要展开为7天
+                    const days = hours.day === '每天'
+                      ? ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+                      : [hours.day]
+
+                    days.forEach(day => {
+                      grouped.get(floorLevel).schedule.push({
+                        dayOfWeek: dayMapping[day] || 'Monday', // 转换为英文
+                        slots: [
+                          {
+                            mealType: hours.mealType || 'breakfast', // 使用用户选择的餐次
+                            openTime: hours.open,
+                            closeTime: hours.close,
+                          },
+                        ],
+                        isClosed: false,
+                      })
                     })
                   })
                   return Array.from(grouped.values())
