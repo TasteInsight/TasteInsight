@@ -142,7 +142,7 @@ export class AIChatService {
 
     // Add previous messages
     for (const msg of session.messages) {
-      const content = msg.content as any;
+      const content = msg.content;
       const textContent = this.extractTextFromContent(content);
       conversationMessages.push({
         role: msg.role as 'user' | 'assistant',
@@ -417,7 +417,7 @@ export class AIChatService {
       messages: items.map((msg) => ({
         role: msg.role as 'user' | 'assistant',
         timestamp: msg.createdAt.toISOString(),
-        content: msg.content as any as ContentSegment[],
+        content: msg.content as ContentSegment[],
       })),
       cursor: hasMore
         ? items[items.length - 1].createdAt.toISOString()
@@ -487,7 +487,7 @@ export class AIChatService {
     // Prefer using the client's wall-clock parts to avoid server timezone skew when formatting.
     // Accept both ISO8601 with offset/Z and without timezone.
     const m = clientLocalTime.match(
-      /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?(?:Z|[+\-]\d{2}:?\d{2})?$/,
+      /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?(?:Z|[+-]\d{2}:?\d{2})?$/,
     );
     if (m) {
       const year = Number(m[1]);
@@ -496,10 +496,7 @@ export class AIChatService {
       const hours = Number(m[4]);
       const minutes = Number(m[5]);
       const seconds = m[6] != null ? Number(m[6]) : 0;
-      const millis =
-        m[7] != null
-          ? Number(m[7].padEnd(3, '0').slice(0, 3))
-          : 0;
+      const millis = m[7] != null ? Number(m[7].padEnd(3, '0').slice(0, 3)) : 0;
 
       // Basic range validation to avoid odd Date overflows
       if (

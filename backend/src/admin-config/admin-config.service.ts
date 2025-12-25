@@ -111,7 +111,7 @@ export class AdminConfigService implements OnModuleInit {
       code: 200,
       message: 'success',
       data: {
-        config: config ? this.toAdminConfigDto(config as any) : null,
+        config: config ? this.toAdminConfigDto(config) : null,
         templates: templates.map((t) => this.toConfigTemplateDto(t)),
       },
     };
@@ -148,10 +148,8 @@ export class AdminConfigService implements OnModuleInit {
       code: 200,
       message: 'success',
       data: {
-        config: config ? this.toAdminConfigDto(config as any) : null,
-        globalConfig: globalConfig
-          ? this.toAdminConfigDto(globalConfig as any)
-          : null,
+        config: config ? this.toAdminConfigDto(config) : null,
+        globalConfig: globalConfig ? this.toAdminConfigDto(globalConfig) : null,
         templates: templates.map((t) => this.toConfigTemplateDto(t)),
       },
     };

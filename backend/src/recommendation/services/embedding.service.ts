@@ -1053,7 +1053,7 @@ export class EmbeddingService implements OnModuleInit {
         }
         // 价格范围过滤
         if (cond.price && typeof cond.price === 'object') {
-          const pf = cond.price as any;
+          const pf = cond.price;
           if (pf.gte !== undefined) whereClauses.push(`d.price >= ${pf.gte}`);
           if (pf.lte !== undefined) whereClauses.push(`d.price <= ${pf.lte}`);
         }

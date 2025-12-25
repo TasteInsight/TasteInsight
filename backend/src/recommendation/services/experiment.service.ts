@@ -118,7 +118,7 @@ export class ExperimentService implements OnModuleInit {
         status: exp.status,
         groupItems: exp.groupItems.map((g) => {
           // 从 config 中提取 weights 和 recallQuota
-          const dbConfig = g.config as any;
+          const dbConfig = g.config;
           return {
             groupItemId: g.id,
             name: g.name,

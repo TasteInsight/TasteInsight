@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
 import {
   Injectable,
   NotFoundException,
@@ -243,7 +244,7 @@ export class AdminDishesService {
     });
 
     // 将子项 id 列表注入到 dish 对象，方便 mapToAdminDishDto 使用
-    (dish as any).subDishes = childRows.map((r) => ({ id: r.id }));
+    dish.subDishes = childRows.map((r) => ({ id: r.id }));
 
     return {
       code: 200,
