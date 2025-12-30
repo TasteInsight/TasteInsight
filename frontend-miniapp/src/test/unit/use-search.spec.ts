@@ -164,4 +164,75 @@ describe('useSearch', () => {
       url: '/pages/add-dish/index?keyword=test%20dish'
     });
   });
+
+  it('should set pagination meta after search', async () => {
+    (getCanteenList as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: {
+        items: [{ id: 'c1', name: '不匹配的食堂' }],
+        meta: { page: 1, pageSize: 50, total: 1, totalPages: 2 },
+      },
+    });
+
+    const mockDishes = [{ id: 1, name: 'Dish 1' }];
+    const mockResponse = {
+      code: 200,
+      data: {
+        items: mockDishes,
+        meta: { page: 1, pageSize: 20, total: 30, totalPages: 2 },
+      },
+    };
+    (getDishes as jest.Mock).mockResolvedValue(mockResponse);
+
+    const { keyword, search, page, hasMore } = useSearch();
+    keyword.value = 'test';
+
+    await search();
+
+    expect(page.value).toBe(1);
+    expect(hasMore.value).toBe(true);
+  });
+
+  it('should append results on loadMore and update pagination', async () => {
+    (getCanteenList as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: {
+        items: [{ id: 'c1', name: '不匹配的食堂' }],
+        meta: { page: 1, pageSize: 50, total: 1, totalPages: 2 },
+      },
+    });
+
+    const page1 = {
+      code: 200,
+      data: {
+        items: [{ id: 1, name: 'Dish 1' }],
+        meta: { page: 1, pageSize: 20, total: 2, totalPages: 2 },
+      },
+    };
+
+    const page2 = {
+      code: 200,
+      data: {
+        items: [{ id: 2, name: 'Dish 2' }],
+        meta: { page: 2, pageSize: 20, total: 2, totalPages: 2 },
+      },
+    };
+
+    // first call returns page1, second call returns page2
+    (getDishes as jest.Mock).mockResolvedValueOnce(page1).mockResolvedValueOnce(page2);
+
+    const { keyword, search, loadMore, searchResults, page, hasMore } = useSearch();
+    keyword.value = 'test';
+
+    await search();
+    expect(searchResults.value.dishes.length).toBe(1);
+    expect(page.value).toBe(1);
+    expect(hasMore.value).toBe(true);
+
+    await loadMore();
+
+    expect(searchResults.value.dishes.length).toBe(2);
+    expect(page.value).toBe(2);
+    expect(hasMore.value).toBe(false);
+  });
 });

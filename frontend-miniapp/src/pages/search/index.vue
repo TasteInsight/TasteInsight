@@ -71,6 +71,10 @@
             :dish="dish"
           />
         </div>
+
+        <!-- 底部加载提示 -->
+        <div v-if="loadingMore" class="text-center py-4 text-gray-500">加载中...</div>
+        <div v-else-if="hasSearched && !hasMore && searchResults.dishes.length > 0" class="text-center py-4 text-gray-400">没有更多了</div>
       </div>
 
       <!-- 默认提示 -->
@@ -89,14 +93,21 @@ import WindowResultItem from './components/WindowResultItem.vue';
 import DishResultItem from './components/DishResultItem.vue';
 import { SearchSkeleton } from '@/components/skeleton';
 
+// TypeScript: uni-app page lifecycle hooks (e.g., onReachBottom) are injected globally at runtime
+// but may not be visible to the TS compiler in some files. Declare them locally to avoid errors.
+declare function onReachBottom(cb: () => void): void;
+
 const { 
   keyword, 
   searchResults,
   hasResults,
   loading, 
+  loadingMore,
+  hasMore,
   error, 
   hasSearched,
   search,
+  loadMore,
   goToAddDish,
 } = useSearch();
 
@@ -111,6 +122,14 @@ const handleSearch = () => {
 const navigateBack = () => {
   uni.navigateBack();
 };
+
+// 上拉触发（兼容小程序/uni-app）
+onReachBottom(() => {
+  if (hasMore.value) {
+    loadMore();
+  }
+});
+
 </script>
 
 <style scoped>

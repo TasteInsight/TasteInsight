@@ -14,10 +14,10 @@ export interface SearchResults {
 
 /**
  * 搜索逻辑 Composable
- * 
+ *
  * 搜索逻辑：
  * 1) 先获取食堂列表，若关键词匹配到食堂名称，则优先展示食堂卡片
- * 2) 若没有匹配的食堂，再调用 getDishes 搜索菜品
+ * 2) 若没有匹配的食堂，再调用 getDishes 搜索菜品（支持分页/上拉加载）
  */
 export function useSearch() {
   const keyword = ref('');
@@ -27,9 +27,15 @@ export function useSearch() {
     dishes: [],
   });
   const loading = ref(false);
+  const loadingMore = ref(false);
   const error = ref('');
   const hasSearched = ref(false);
   const requestToken = ref(0);
+
+  // 分页状态
+  const page = ref(1);
+  const pageSize = ref(20);
+  const hasMore = ref(true);
 
   /**
    * 是否有搜索结果
@@ -43,7 +49,7 @@ export function useSearch() {
   });
 
   /**
-   * 执行搜索
+   * 执行搜索（初始化第一页）
    */
   const search = async () => {
     if (!keyword.value.trim()) {
@@ -58,6 +64,10 @@ export function useSearch() {
       windows: [],
       dishes: [],
     };
+
+    // reset pagination
+    page.value = 1;
+    hasMore.value = true;
 
     try {
       const token = ++requestToken.value;
@@ -74,8 +84,8 @@ export function useSearch() {
         if (first.code === 200 && first.data) {
           allCanteens = first.data.items || [];
           const totalPages = first.data.meta?.totalPages ?? 1;
-          for (let page = 2; page <= totalPages; page += 1) {
-            const next = await getCanteenList({ page, pageSize: 50 });
+          for (let p = 2; p <= totalPages; p += 1) {
+            const next = await getCanteenList({ page: p, pageSize: 50 });
             if (token !== requestToken.value) return;
             if (next.code === 200 && next.data) {
               allCanteens = [...allCanteens, ...(next.data.items || [])];
@@ -99,7 +109,7 @@ export function useSearch() {
         return;
       }
 
-      // 2) 未匹配到食堂，再搜索菜品
+      // 2) 未匹配到食堂，再搜索菜品（第一页）
       const response = await getDishes({
         filter: {},
         isSuggestion: false,
@@ -108,15 +118,19 @@ export function useSearch() {
         },
         sort: {},
         pagination: {
-          page: 1,
-          pageSize: 50,
+          page: page.value,
+          pageSize: pageSize.value,
         },
       });
 
       if (token !== requestToken.value) return;
 
       if (response.code === 200 && response.data) {
-        searchResults.value.dishes = response.data.items;
+        searchResults.value.dishes = response.data.items || [];
+        // update pagination state
+        const meta = response.data.meta || { page: page.value, totalPages: 1 };
+        page.value = meta.page || page.value;
+        hasMore.value = (meta.page ?? 1) < (meta.totalPages ?? 1);
       } else {
         error.value = response.message || '搜索失败';
       }
@@ -134,6 +148,41 @@ export function useSearch() {
   };
 
   /**
+   * 加载下一页（上拉触发）
+   */
+  const loadMore = async () => {
+    if (!hasSearched.value || loading.value || loadingMore.value || !hasMore.value) return;
+
+    loadingMore.value = true;
+    const nextPage = page.value + 1;
+    const token = requestToken.value; // do not bump token for loadMore
+
+    try {
+      const response = await getDishes({
+        filter: {},
+        isSuggestion: false,
+        search: { keyword: keyword.value.trim() },
+        sort: {},
+        pagination: { page: nextPage, pageSize: pageSize.value },
+      });
+
+      if (token !== requestToken.value) return;
+
+      if (response.code === 200 && response.data) {
+        const items = response.data.items || [];
+        searchResults.value.dishes = [...searchResults.value.dishes, ...items];
+        const meta = response.data.meta || { page: nextPage, totalPages: 1 };
+        page.value = meta.page || nextPage;
+        hasMore.value = (meta.page ?? page.value) < (meta.totalPages ?? 1);
+      }
+    } catch (err) {
+      console.error('加载更多失败:', err);
+    } finally {
+      loadingMore.value = false;
+    }
+  };
+
+  /**
    * 清空搜索结果
    */
   const clearSearch = () => {
@@ -145,6 +194,8 @@ export function useSearch() {
     };
     error.value = '';
     hasSearched.value = false;
+    page.value = 1;
+    hasMore.value = true;
   };
 
   /**
@@ -161,9 +212,14 @@ export function useSearch() {
     searchResults,
     hasResults,
     loading,
+    loadingMore,
     error,
     hasSearched,
+    page,
+    pageSize,
+    hasMore,
     search,
+    loadMore,
     clearSearch,
     goToAddDish,
   };
