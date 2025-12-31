@@ -145,6 +145,7 @@ import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
+import { showAlert } from '@/composables/useModal'
 
 const PAGE_STATE_KEY = 'review-dish'
 
@@ -240,7 +241,7 @@ export default {
 
     const reviewDish = (dish) => {
       if (!authStore.hasPermission('upload:approve')) {
-        alert('您没有权限审核菜品')
+        showAlert('您没有权限审核菜品')
         return
       }
       // 保存当前状态后再跳转

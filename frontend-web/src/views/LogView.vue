@@ -245,6 +245,7 @@
 import { ref, reactive, onMounted, onActivated } from 'vue'
 import { logApi } from '@/api/modules/log'
 import Header from '@/components/Layout/Header.vue'
+import { showAlert } from '@/composables/useModal'
 
 export default {
   name: 'LogView',
@@ -299,7 +300,7 @@ export default {
         }
       } catch (error) {
         console.error('加载日志列表失败:', error)
-        alert('加载日志列表失败，请刷新重试')
+        showAlert('加载日志列表失败，请刷新重试')
         logs.value = []
       } finally {
         loading.value = false

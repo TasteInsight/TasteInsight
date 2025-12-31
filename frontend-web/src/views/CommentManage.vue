@@ -391,6 +391,7 @@ import Header from '@/components/Layout/Header.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
 import type { Dish, Review, Comment } from '@/types/api'
+import { showAlert } from '@/composables/useModal'
 
 const PAGE_STATE_KEY = 'comment-manage'
 
@@ -575,7 +576,7 @@ export default defineComponent({
         }
       } catch (error) {
         console.error('加载菜品列表失败:', error)
-        alert('加载菜品列表失败，请刷新重试')
+        showAlert('加载菜品列表失败，请刷新重试')
         dishes.value = []
         totalDishes.value = 0
       } finally {
@@ -619,7 +620,7 @@ export default defineComponent({
         }
       } catch (error) {
         console.error('加载评价列表失败:', error)
-        alert('加载评价列表失败，请重试')
+        showAlert('加载评价列表失败，请重试')
         reviews.value = []
         totalReviews.value = 0
       } finally {
@@ -668,7 +669,7 @@ export default defineComponent({
         totalComments.value = totalCommentCount
       } catch (error) {
         console.error('加载评论列表失败:', error)
-        alert('加载评论列表失败，请重试')
+        showAlert('加载评论列表失败，请重试')
         commentsMap.value = {}
         totalComments.value = 0
       } finally {
@@ -738,7 +739,7 @@ export default defineComponent({
     // 删除评价
     const handleDeleteReview = async (review: Review) => {
       if (!authStore.hasPermission('review:delete')) {
-        alert('您没有权限删除评价')
+        showAlert('您没有权限删除评价')
         return
       }
 
@@ -749,21 +750,21 @@ export default defineComponent({
       try {
         const response = await reviewApi.deleteReview(review.id)
         if (response.code === 200) {
-          alert('删除成功')
+          showAlert('删除成功')
           loadReviews()
         } else {
-          alert(response.message || '删除失败')
+          showAlert(response.message || '删除失败')
         }
       } catch (error) {
         console.error('删除评价失败:', error)
-        alert('删除评价失败，请重试')
+        showAlert('删除评价失败，请重试')
       }
     }
 
     // 删除评论
     const handleDeleteComment = async (comment: Comment) => {
       if (!authStore.hasPermission('comment:delete')) {
-        alert('您没有权限删除评论')
+        showAlert('您没有权限删除评论')
         return
       }
 
@@ -774,14 +775,14 @@ export default defineComponent({
       try {
         const response = await reviewApi.deleteComment(comment.id)
         if (response.code === 200) {
-          alert('删除成功')
+          showAlert('删除成功')
           loadCommentsForReviews() // 重新加载评论列表
         } else {
-          alert(response.message || '删除失败')
+          showAlert(response.message || '删除失败')
         }
       } catch (error) {
         console.error('删除评论失败:', error)
-        alert('删除评论失败，请重试')
+        showAlert('删除评论失败，请重试')
       }
     }
 

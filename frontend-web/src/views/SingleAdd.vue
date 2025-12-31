@@ -578,6 +578,7 @@ import { useAuthStore } from '@/store/modules/use-auth-store'
 import { dishApi } from '@/api/modules/dish'
 import { canteenApi } from '@/api/modules/canteen'
 import Header from '@/components/Layout/Header.vue'
+import { showAlert } from '@/composables/useModal'
 
 export default {
   name: 'SingleAdd',
@@ -714,7 +715,7 @@ export default {
     const goToSubItemDetail = async (index) => {
       const subItem = formData.subItems[index]
       if (!subItem || !subItem.name || !subItem.name.trim()) {
-        alert('请先输入子项名称')
+        showAlert('请先输入子项名称')
         return
       }
 
@@ -757,7 +758,7 @@ export default {
         formData.tags.push(tag)
         newTag.value = ''
       } else if (formData.tags.includes(tag)) {
-        alert('该TAG已存在')
+        showAlert('该TAG已存在')
       }
     }
 
@@ -771,7 +772,7 @@ export default {
         Array.from(files).forEach((file) => {
           // 验证文件大小
           if (file.size > 10 * 1024 * 1024) {
-            alert(`图片 ${file.name} 大小超过10MB，已跳过`)
+            showAlert(`图片 ${file.name} 大小超过10MB，已跳过`)
             return
           }
 
@@ -806,7 +807,7 @@ export default {
 
     const submitForm = async (redirect = true) => {
       if (!authStore.hasPermission('dish:create')) {
-        alert('您没有权限创建菜品')
+        showAlert('您没有权限创建菜品')
         return
       }
       
@@ -879,7 +880,7 @@ export default {
             }
           } catch (error) {
             console.error('图片上传失败:', error)
-            alert('图片上传失败，请重试')
+            showAlert('图片上传失败，请重试')
             isSubmitting.value = false
             return
           }
@@ -965,18 +966,18 @@ export default {
           }
 
           if (redirect) {
-            alert('菜品提交成功，已进入审核列表！')
+            showAlert('菜品提交成功，已进入审核列表！')
             // 跳转到审核页面
             router.push('/review-dish')
           } else {
-            alert('父菜品保存成功！')
+            showAlert('父菜品保存成功！')
           }
         } else {
           throw new Error(response.message || '创建菜品失败')
         }
       } catch (error) {
         console.error('创建菜品失败:', error)
-        alert(error instanceof Error ? error.message : '创建菜品失败，请重试')
+        showAlert(error instanceof Error ? error.message : '创建菜品失败，请重试')
       } finally {
         isSubmitting.value = false
       }

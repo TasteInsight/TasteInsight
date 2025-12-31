@@ -136,6 +136,7 @@ import { ref, computed, onMounted, onActivated } from 'vue'
 import { configApi } from '@/api/modules/config'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
+import { showAlert } from '@/composables/useModal'
 
 export default {
   name: 'ConfigManage',
@@ -272,7 +273,7 @@ export default {
         }
       } catch (error) {
         console.error('加载配置失败:', error)
-        alert('加载配置失败，请刷新重试')
+        showAlert('加载配置失败，请刷新重试')
       } finally {
         loading.value = false
       }
@@ -281,7 +282,7 @@ export default {
     // 处理评价自动审核配置变更
     const handleReviewAutoApproveChange = async () => {
       if (!authStore.hasPermission('config:edit')) {
-        alert('您没有编辑配置的权限')
+        showAlert('您没有编辑配置的权限')
         reviewAutoApprove.value = !reviewAutoApprove.value // 恢复原值
         return
       }
@@ -316,7 +317,7 @@ export default {
         }
       } catch (error) {
         console.error('保存配置失败:', error)
-        alert(error instanceof Error ? error.message : '保存配置失败，请重试')
+        showAlert(error instanceof Error ? error.message : '保存配置失败，请重试')
         // 恢复原值
         await loadConfig()
       } finally {
@@ -327,7 +328,7 @@ export default {
     // 处理评论自动审核配置变更
     const handleCommentAutoApproveChange = async () => {
       if (!authStore.hasPermission('config:edit')) {
-        alert('您没有编辑配置的权限')
+        showAlert('您没有编辑配置的权限')
         commentAutoApprove.value = !commentAutoApprove.value // 恢复原值
         return
       }
@@ -362,7 +363,7 @@ export default {
         }
       } catch (error) {
         console.error('保存配置失败:', error)
-        alert(error instanceof Error ? error.message : '保存配置失败，请重试')
+        showAlert(error instanceof Error ? error.message : '保存配置失败，请重试')
         // 恢复原值
         await loadConfig()
       } finally {

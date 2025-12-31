@@ -510,6 +510,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useDishStore } from '@/store/modules/use-dish-store'
 import { dishApi } from '@/api/modules/dish'
 import Header from '@/components/Layout/Header.vue'
+import { showAlert } from '@/composables/useModal'
 
 export default {
   name: 'AddSubDish',
@@ -600,7 +601,7 @@ export default {
         formData.tags.push(tag)
         newTag.value = ''
       } else if (formData.tags.includes(tag)) {
-        alert('该TAG已存在')
+        showAlert('该TAG已存在')
       }
     }
 
@@ -614,7 +615,7 @@ export default {
         Array.from(files).forEach((file) => {
           // 验证文件大小
           if (file.size > 10 * 1024 * 1024) {
-            alert(`图片 ${file.name} 大小超过10MB，已跳过`)
+            showAlert(`图片 ${file.name} 大小超过10MB，已跳过`)
             return
           }
 
@@ -676,7 +677,7 @@ export default {
       }
 
       if (!parentDishId.value) {
-        alert('缺少父菜品ID，无法创建子项')
+        showAlert('缺少父菜品ID，无法创建子项')
         return
       }
 
@@ -724,7 +725,7 @@ export default {
             }
           } catch (error) {
             console.error('图片上传失败:', error)
-            alert('图片上传失败，请重试')
+            showAlert('图片上传失败，请重试')
             isSubmitting.value = false
             return
           }
@@ -837,7 +838,7 @@ export default {
             }
           }
 
-          alert('子项添加成功！')
+          showAlert('子项添加成功！')
 
           // 保存完子项后，返回到父项的编辑页面
           if (parentDishId.value) {
@@ -853,7 +854,7 @@ export default {
         }
       } catch (error) {
         console.error('创建子项失败:', error)
-        alert(error instanceof Error ? error.message : '创建子项失败，请重试')
+        showAlert(error instanceof Error ? error.message : '创建子项失败，请重试')
       } finally {
         isSubmitting.value = false
       }

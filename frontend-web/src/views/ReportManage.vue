@@ -370,6 +370,7 @@ import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
+import { showAlert, showConfirm } from '@/composables/useModal'
 
 const PAGE_STATE_KEY = 'report-manage'
 
@@ -471,7 +472,7 @@ export default defineComponent({
         }
       } catch (error) {
         console.error('加载举报列表失败:', error)
-        alert('加载举报列表失败，请刷新重试')
+        showAlert('加载举报列表失败，请刷新重试')
         reports.value = []
         totalReports.value = 0
       } finally {
@@ -493,18 +494,19 @@ export default defineComponent({
 
     const handleDeleteReview = async (report: any) => {
       if (!authStore.hasPermission('review:delete')) {
-        alert('您没有权限删除评价')
+        showAlert('您没有权限删除评价')
         return
       }
 
-      if (!confirm('确定要删除这个评价吗？此操作不可恢复。')) {
+      const confirmed = await showConfirm('确定要删除这个评价吗？此操作不可恢复。', '确认删除')
+      if (!confirmed) {
         return
       }
 
       try {
         const response = await reviewApi.handleReport(report.id, { action: 'delete_content' })
         if (response.code === 200) {
-          alert('删除成功')
+          showAlert('删除成功')
           await loadReports()
           // 如果详情对话框打开，更新选中的举报信息
           if (selectedReport.value && selectedReport.value.id === report.id) {
@@ -517,28 +519,29 @@ export default defineComponent({
             }
           }
         } else {
-          alert(response.message || '删除失败')
+          showAlert(response.message || '删除失败')
         }
       } catch (error) {
         console.error('删除评价失败:', error)
-        alert('删除评价失败，请重试')
+        showAlert('删除评价失败，请重试')
       }
     }
 
     const handleDeleteComment = async (report: any) => {
       if (!authStore.hasPermission('review:delete')) {
-        alert('您没有权限删除评论')
+        showAlert('您没有权限删除评论')
         return
       }
 
-      if (!confirm('确定要删除这个评论吗？此操作不可恢复。')) {
+      const confirmed = await showConfirm('确定要删除这个评论吗？此操作不可恢复。', '确认删除')
+      if (!confirmed) {
         return
       }
 
       try {
         const response = await reviewApi.handleReport(report.id, { action: 'delete_content' })
         if (response.code === 200) {
-          alert('删除成功')
+          showAlert('删除成功')
           await loadReports()
           // 如果详情对话框打开，更新选中的举报信息
           if (selectedReport.value && selectedReport.value.id === report.id) {
@@ -551,17 +554,17 @@ export default defineComponent({
             }
           }
         } else {
-          alert(response.message || '删除失败')
+          showAlert(response.message || '删除失败')
         }
       } catch (error) {
         console.error('删除评论失败:', error)
-        alert('删除评论失败，请重试')
+        showAlert('删除评论失败，请重试')
       }
     }
 
     const handleReport = async (report: any, action: 'reject_report') => {
       if (!authStore.hasPermission('report:handle')) {
-        alert('您没有权限处理举报')
+        showAlert('您没有权限处理举报')
         return
       }
 
@@ -574,7 +577,8 @@ export default defineComponent({
           break
       }
 
-      if (!confirm(confirmMessage)) {
+      const confirmed = await showConfirm(confirmMessage, '确认操作')
+      if (!confirmed) {
         return
       }
 
@@ -592,7 +596,7 @@ export default defineComponent({
         const response = await reviewApi.handleReport(report.id, requestData)
 
         if (response.code === 200) {
-          alert('处理成功')
+          showAlert('处理成功')
           await loadReports()
           // 如果详情对话框打开，更新选中的举报信息
           if (selectedReport.value && selectedReport.value.id === report.id) {
@@ -605,11 +609,11 @@ export default defineComponent({
             }
           }
         } else {
-          alert(response.message || '处理失败')
+          showAlert(response.message || '处理失败')
         }
       } catch (error) {
         console.error('处理举报失败:', error)
-        alert('处理举报失败，请重试')
+        showAlert('处理举报失败，请重试')
       }
     }
 

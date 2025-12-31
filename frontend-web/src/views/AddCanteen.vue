@@ -563,6 +563,7 @@ import { useRouter } from 'vue-router'
 import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
+import { showAlert } from '@/composables/useModal'
 
 export default {
   name: 'AddCanteen',
@@ -619,7 +620,7 @@ export default {
         }
       } catch (error) {
         console.error('加载食堂列表失败:', error)
-        alert('加载食堂列表失败，请刷新重试')
+        showAlert('加载食堂列表失败，请刷新重试')
       } finally {
         isLoading.value = false
       }
@@ -646,7 +647,7 @@ export default {
     // 创建新食堂
     const createNewCanteen = () => {
       if (!authStore.hasPermission('canteen:create')) {
-        alert('您没有权限创建食堂')
+        showAlert('您没有权限创建食堂')
         return
       }
       editingCanteen.value = null
@@ -657,7 +658,7 @@ export default {
     // 编辑食堂
     const editCanteen = async (canteen) => {
       if (!authStore.hasPermission('canteen:edit')) {
-        alert('您没有权限编辑食堂')
+        showAlert('您没有权限编辑食堂')
         return
       }
       editingCanteen.value = canteen
@@ -737,7 +738,7 @@ export default {
     // 删除食堂
     const deleteCanteen = async (canteen) => {
       if (!authStore.hasPermission('canteen:delete')) {
-        alert('您没有权限删除食堂')
+        showAlert('您没有权限删除食堂')
         return
       }
       if (!confirm(`确定要删除食堂"${canteen.name}"吗？此操作不可恢复！`)) {
@@ -747,14 +748,14 @@ export default {
       try {
         const response = await canteenApi.deleteCanteen(canteen.id)
         if (response.code === 200) {
-          alert('删除成功！')
+          showAlert('删除成功！')
           loadCanteens()
         } else {
           throw new Error(response.message || '删除失败')
         }
       } catch (error) {
         console.error('删除食堂失败:', error)
-        alert(error instanceof Error ? error.message : '删除食堂失败，请重试')
+        showAlert(error instanceof Error ? error.message : '删除食堂失败，请重试')
       }
     }
 
@@ -782,7 +783,7 @@ export default {
         Array.from(files).forEach((file) => {
           // 验证文件大小
           if (file.size > 10 * 1024 * 1024) {
-            alert(`图片 ${file.name} 大小超过10MB，已跳过`)
+            showAlert(`图片 ${file.name} 大小超过10MB，已跳过`)
             return
           }
 
@@ -830,7 +831,7 @@ export default {
     // 添加窗口
     const addWindow = () => {
       if (!availableFloors.value.length) {
-        alert('请先配置并保存楼层信息后再添加窗口')
+        showAlert('请先配置并保存楼层信息后再添加窗口')
         return
       }
       windows.value.push({
@@ -855,13 +856,13 @@ export default {
           const response = await canteenApi.deleteWindow(windowId)
           if (response.code === 200) {
             windows.value.splice(index, 1)
-            alert('删除成功！')
+            showAlert('删除成功！')
           } else {
             throw new Error(response.message || '删除失败')
           }
         } catch (error) {
           console.error('删除窗口失败:', error)
-          alert(error instanceof Error ? error.message : '删除窗口失败，请重试')
+          showAlert(error instanceof Error ? error.message : '删除窗口失败，请重试')
         }
       } else {
         // 如果窗口未保存，直接移除
@@ -1038,12 +1039,12 @@ export default {
             continue
           }
           if (!window.floor) {
-            alert(`请先为窗口"${window.name}"选择楼层`)
+            showAlert(`请先为窗口"${window.name}"选择楼层`)
             return
           }
           const floorInfo = resolveWindowFloor(window.floor, window.floorLabel || '')
           if (!floorInfo) {
-            alert(`窗口"${window.name}"的楼层信息无效，请检查`)
+            showAlert(`窗口"${window.name}"的楼层信息无效，请检查`)
             return
           }
         }
@@ -1052,7 +1053,7 @@ export default {
         if (formData.openingHours && formData.openingHours.length > 0) {
           for (const hours of formData.openingHours) {
             if (!hours.floor) {
-              alert(`请为营业时间(${hours.day})选择楼层`)
+              showAlert(`请为营业时间(${hours.day})选择楼层`)
               return
             }
           }
@@ -1103,7 +1104,7 @@ export default {
             }
           } catch (error) {
             console.error('图片上传失败:', error)
-            alert('图片上传失败，请重试')
+            showAlert('图片上传失败，请重试')
             isSubmitting.value = false
             return
           }
@@ -1191,7 +1192,7 @@ export default {
             canteenId = response.data.id
             // 更新当前编辑对象，以防有返回的新数据
             editingCanteen.value = { ...editingCanteen.value, ...response.data }
-            alert('食堂信息已更新！')
+            showAlert('食堂信息已更新！')
           } else {
             throw new Error(response.message || '更新食堂失败')
           }
@@ -1202,7 +1203,7 @@ export default {
             canteenId = response.data.id
             editingCanteen.value = response.data // 设置为编辑模式
             viewMode.value = 'edit'
-            alert('食堂创建成功！现在您可以添加窗口信息。')
+            showAlert('食堂创建成功！现在您可以添加窗口信息。')
             isSubmitting.value = false // 结束提交状态，允许继续操作
             return // 不返回列表，停留在编辑页面
           } else {
@@ -1256,7 +1257,7 @@ export default {
         backToList()
       } catch (error) {
         console.error('保存食堂失败:', error)
-        alert(error instanceof Error ? error.message : '保存食堂失败，请重试')
+        showAlert(error instanceof Error ? error.message : '保存食堂失败，请重试')
       } finally {
         isSubmitting.value = false
       }

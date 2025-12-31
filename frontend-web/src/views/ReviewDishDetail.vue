@@ -437,6 +437,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { reviewApi } from '@/api/modules/review'
 import { dishApi } from '@/api/modules/dish'
 import Header from '@/components/Layout/Header.vue'
+import { showAlert } from '@/composables/useModal'
 
 export default {
   name: 'ReviewDishDetail',
@@ -593,12 +594,12 @@ export default {
           // 处理状态
           dishData.status = dish.status || 'pending'
         } else {
-          alert('未找到该菜品信息')
+          showAlert('未找到该菜品信息')
           router.push('/review-dish')
         }
       } catch (error) {
         console.error('加载菜品信息失败:', error)
-        alert('获取菜品信息失败，请重试')
+        showAlert('获取菜品信息失败，请重试')
         router.push('/review-dish')
       } finally {
         isLoading.value = false
@@ -630,7 +631,7 @@ export default {
         }
       } catch (error) {
         console.error('批准审核失败:', error)
-        alert(error instanceof Error ? error.message : '批准审核失败，请重试')
+        showAlert(error instanceof Error ? error.message : '批准审核失败，请重试')
       }
     }
 
@@ -673,7 +674,7 @@ export default {
         }
       } catch (error) {
         console.error('拒绝审核失败:', error)
-        alert(error instanceof Error ? error.message : '拒绝审核失败，请重试')
+        showAlert(error instanceof Error ? error.message : '拒绝审核失败，请重试')
       } finally {
         isSubmitting.value = false
       }
@@ -682,7 +683,7 @@ export default {
     // 撤销审核结果
     const revokeApproval = async () => {
       if (dishData.status === 'pending') {
-        alert('该菜品当前为待审核状态，无需撤销。')
+        showAlert('该菜品当前为待审核状态，无需撤销。')
         return
       }
 
@@ -703,13 +704,13 @@ export default {
             path: '/review-dish',
             query: { refresh: 'true', updatedId: dishData.id, status: 'pending' },
           })
-          alert('菜品审核结果已撤销，重新进入待审核状态。')
+          showAlert('菜品审核结果已撤销，重新进入待审核状态。')
         } else {
           throw new Error(response.message || '撤销审核失败')
         }
       } catch (error) {
         console.error('撤销审核失败:', error)
-        alert(error instanceof Error ? error.message : '撤销审核失败，请重试')
+        showAlert(error instanceof Error ? error.message : '撤销审核失败，请重试')
       }
     }
 
