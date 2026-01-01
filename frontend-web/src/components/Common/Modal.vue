@@ -4,7 +4,7 @@
       <div
         v-if="isVisible"
         class="fixed inset-0 z-[10000] flex items-center justify-center bg-black bg-opacity-50"
-        @click.self="handleClose"
+        @click.self="handleClose(true)"
       >
         <div class="bg-white rounded-lg shadow-xl w-[500px] max-w-[90vw] max-h-[90vh] overflow-hidden animate-fade-in-up flex flex-col">
           <!-- 头部 -->
@@ -12,7 +12,7 @@
             <h3 class="text-lg font-medium text-gray-900">{{ modalTitle }}</h3>
             <button
               v-if="modalShowClose"
-              @click="handleClose"
+              @click="handleClose(false)"
               class="text-gray-400 hover:text-gray-500 transition-colors"
             >
               <span class="iconify text-xl" data-icon="carbon:close"></span>
@@ -96,16 +96,17 @@ const modalButtons = computed(() => props.buttons.length > 0 ? props.buttons : m
 const modalShowClose = computed(() => props.showClose !== undefined ? props.showClose : modalState.showClose.value)
 const modalCloseOnClickMask = computed(() => props.closeOnClickMask !== undefined ? props.closeOnClickMask : modalState.closeOnClickMask.value)
 
-const handleClose = () => {
-  // 点击遮罩层或关闭按钮时，检查是否允许关闭
-  if (!modalCloseOnClickMask.value) {
+const handleClose = (fromMask: boolean = true) => {
+  // 如果是从遮罩层点击，检查是否允许关闭
+  if (fromMask && !modalCloseOnClickMask.value) {
     return
   }
-  if (props.visible !== undefined) {
+  // 关闭按钮总是可以关闭
+  if (modalState.visible.value) {
+    closeModal(false)
+  } else {
     emit('update:visible', false)
     emit('close')
-  } else {
-    closeModal()
   }
 }
 
@@ -130,13 +131,13 @@ const handleButtonClick = async (button: ButtonConfig, index: number) => {
         if (modalState.buttons.value[index]) {
           modalState.buttons.value[index].loading = false
         }
-        // handler返回false时不关闭，其他情况都关闭
-        shouldClose = resolvedResult !== false
-        result = resolvedResult === true ? true : false
+        // 对于确认弹窗等，返回 false 表示点击了取消，应该关闭并返回 false
+        // 只有当 handler 明确需要阻止关闭时（目前没有这种场景），才设置 shouldClose 为 false
+        result = resolvedResult === true
+        shouldClose = true
       } else {
-        // handler返回false时不关闭，其他情况都关闭
-        shouldClose = handlerResult !== false
-        result = handlerResult === true ? true : false
+        result = handlerResult === true
+        shouldClose = true
       }
     } catch (error) {
       if (modalState.buttons.value[index]) {
@@ -150,18 +151,13 @@ const handleButtonClick = async (button: ButtonConfig, index: number) => {
 
   // 根据shouldClose决定是否关闭
   if (shouldClose) {
-    if (props.visible === undefined) {
+    if (modalState.visible.value) {
       // 使用全局状态，调用closeModal
-      // 当handler返回true时，刷新页面
-      closeModal(result, result === true)
+      closeModal(result)
     } else {
       // 使用props，发送事件
       emit('update:visible', false)
       emit('close')
-      // 如果需要刷新页面（当result为true时）
-      if (result === true) {
-        window.location.reload()
-      }
     }
   }
 }

@@ -123,7 +123,7 @@ export function showConfirmDanger(
 }
 
 // 关闭Modal
-export function closeModal(result: boolean = false, shouldReload: boolean = false) {
+export function closeModal(result: boolean = false) {
   // 先更新visible状态，触发响应式更新
   modalState.visible.value = false
   // 然后resolve Promise
@@ -133,14 +133,7 @@ export function closeModal(result: boolean = false, shouldReload: boolean = fals
     // 使用nextTick确保DOM更新完成后再resolve
     Promise.resolve().then(() => {
       resolveFn(result)
-      // 如果需要刷新页面
-      if (shouldReload) {
-        window.location.reload()
-      }
     })
-  } else if (shouldReload) {
-    // 如果没有resolve函数，直接刷新
-    window.location.reload()
   }
 }
 
