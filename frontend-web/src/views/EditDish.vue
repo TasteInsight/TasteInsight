@@ -617,7 +617,7 @@ import { dishApi } from '@/api/modules/dish'
 import { canteenApi } from '@/api/modules/canteen'
 import { useDishStore } from '@/store/modules/use-dish-store'
 import Header from '@/components/Layout/Header.vue'
-import { showAlert } from '@/composables/useModal'
+import { showAlert, showConfirm } from '@/composables/useModal'
 
 export default {
   name: 'EditDish',
@@ -1098,7 +1098,11 @@ export default {
 
             if (imageUrls.length !== formData.imageFiles.length) {
               const failed = formData.imageFiles.length - imageUrls.length
-              if (!confirm(`${failed}张图片处理失败，是否继续保存？`)) {
+              const confirmed = await showConfirm(
+                `${failed}张图片处理失败，是否继续保存？`,
+                '图片处理失败'
+              )
+              if (!confirmed) {
                 isSubmitting.value = false
                 return
               }

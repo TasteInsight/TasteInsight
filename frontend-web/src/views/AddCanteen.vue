@@ -563,7 +563,7 @@ import { useRouter } from 'vue-router'
 import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
-import { showAlert } from '@/composables/useModal'
+import { showAlert, showConfirm, showConfirmDanger } from '@/composables/useModal'
 
 export default {
   name: 'AddCanteen',
@@ -741,7 +741,11 @@ export default {
         showAlert('您没有权限删除食堂')
         return
       }
-      if (!confirm(`确定要删除食堂"${canteen.name}"吗？此操作不可恢复！`)) {
+      const confirmed = await showConfirmDanger(
+        `确定要删除食堂"${canteen.name}"吗？此操作不可恢复！`,
+        '确认删除'
+      )
+      if (!confirmed) {
         return
       }
 
@@ -849,7 +853,8 @@ export default {
     const removeWindow = async (index, windowId) => {
       if (windowId) {
         // 如果窗口已保存，需要调用删除接口
-        if (!confirm('确定要删除这个窗口吗？')) {
+        const confirmed = await showConfirm('确定要删除这个窗口吗？', '确认删除')
+        if (!confirmed) {
           return
         }
         try {
@@ -1097,7 +1102,11 @@ export default {
 
             if (imageUrls.length !== formData.imageFiles.length) {
               const failed = formData.imageFiles.length - imageUrls.length
-              if (!confirm(`${failed}张图片处理失败，是否继续保存？`)) {
+              const confirmed = await showConfirm(
+                `${failed}张图片处理失败，是否继续保存？`,
+                '图片处理失败'
+              )
+              if (!confirmed) {
                 isSubmitting.value = false
                 return
               }

@@ -578,7 +578,7 @@ import { useAuthStore } from '@/store/modules/use-auth-store'
 import { dishApi } from '@/api/modules/dish'
 import { canteenApi } from '@/api/modules/canteen'
 import Header from '@/components/Layout/Header.vue'
-import { showAlert } from '@/composables/useModal'
+import { showAlert, showConfirm } from '@/composables/useModal'
 
 export default {
   name: 'SingleAdd',
@@ -874,7 +874,11 @@ export default {
               .map((res) => res.data.url)
 
             const failed = formData.imageFiles.length - imageUrls.length
-            if (!confirm(`${failed}张图片上传失败，是否继续？`)) {
+            const confirmed = await showConfirm(
+              `${failed}张图片上传失败，是否继续？`,
+              '图片上传失败'
+            )
+            if (!confirmed) {
               isSubmitting.value = false
               return
             }

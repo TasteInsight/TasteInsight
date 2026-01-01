@@ -391,7 +391,7 @@ import Header from '@/components/Layout/Header.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
 import type { Dish, Review, Comment } from '@/types/api'
-import { showAlert } from '@/composables/useModal'
+import { showAlert, showConfirmDanger } from '@/composables/useModal'
 
 const PAGE_STATE_KEY = 'comment-manage'
 
@@ -743,7 +743,11 @@ export default defineComponent({
         return
       }
 
-      if (!confirm('确定要删除这个评价吗？此操作不可恢复。')) {
+      const confirmed = await showConfirmDanger(
+        '确定要删除这个评价吗？此操作不可恢复。',
+        '确认删除'
+      )
+      if (!confirmed) {
         return
       }
 
@@ -768,7 +772,11 @@ export default defineComponent({
         return
       }
 
-      if (!confirm('确定要删除这个评论吗？此操作不可恢复。')) {
+      const confirmed = await showConfirmDanger(
+        '确定要删除这个评论吗？此操作不可恢复。',
+        '确认删除'
+      )
+      if (!confirmed) {
         return
       }
 

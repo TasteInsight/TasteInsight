@@ -254,7 +254,7 @@ import { ref, computed } from 'vue'
 import { dishApi } from '@/api/modules/dish'
 import type { BatchParsedDish } from '@/types/api'
 import Header from '@/components/Layout/Header.vue'
-import { showAlert } from '@/composables/useModal'
+import { showAlert, showConfirm } from '@/composables/useModal'
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploadedFile = ref<File | null>(null)
@@ -359,7 +359,11 @@ const parseError = ref<string | null>(null)
         return
       }
       
-      if (!confirm(`确定要导入 ${validItems.length} 条数据吗？`)) {
+      const confirmed = await showConfirm(
+        `确定要导入 ${validItems.length} 条数据吗？`,
+        '确认导入'
+      )
+      if (!confirmed) {
         return
       }
       

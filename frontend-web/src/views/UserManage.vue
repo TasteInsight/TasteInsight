@@ -463,7 +463,7 @@ import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
-import { showAlert } from '@/composables/useModal'
+import { showAlert, showConfirmDanger } from '@/composables/useModal'
 
 const PAGE_STATE_KEY = 'user-manage'
 
@@ -825,7 +825,11 @@ export default {
 
     // 删除管理员
     const deleteAdmin = async (admin) => {
-      if (!confirm(`确定要删除子管理员"${admin.username}"吗？此操作不可恢复！`)) {
+      const confirmed = await showConfirmDanger(
+        `确定要删除子管理员"${admin.username}"吗？此操作不可恢复！`,
+        '确认删除'
+      )
+      if (!confirmed) {
         return
       }
 

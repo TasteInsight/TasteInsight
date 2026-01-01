@@ -510,7 +510,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useDishStore } from '@/store/modules/use-dish-store'
 import { dishApi } from '@/api/modules/dish'
 import Header from '@/components/Layout/Header.vue'
-import { showAlert } from '@/composables/useModal'
+import { showAlert, showConfirm } from '@/composables/useModal'
 
 export default {
   name: 'AddSubDish',
@@ -719,9 +719,15 @@ export default {
               .map((res) => res.data.url)
 
             const failed = formData.imageFiles.length - imageUrls.length
-            if (failed > 0 && !window.confirm(`${failed}张图片上传失败，是否继续提交？`)) {
-              isSubmitting.value = false
-              return
+            if (failed > 0) {
+              const confirmed = await showConfirm(
+                `${failed}张图片上传失败，是否继续提交？`,
+                '图片上传失败'
+              )
+              if (!confirmed) {
+                isSubmitting.value = false
+                return
+              }
             }
           } catch (error) {
             console.error('图片上传失败:', error)
