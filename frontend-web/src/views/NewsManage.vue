@@ -482,6 +482,7 @@ import config from '@/config'
 import Header from '@/components/Layout/Header.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
+import { showAlert, showConfirm } from '@/composables/useModal'
 
 const PAGE_STATE_KEY = 'news-manage'
 
@@ -571,13 +572,13 @@ export default {
               const href = res.data.url
               insertFn(url, alt, href)
             } else {
-              alert(res.message || '图片上传失败')
+              showAlert(res.message || '图片上传失败')
             }
           },
           // 错误处理
           onError(file, err, res) {
             console.error('上传错误:', err, res)
-            alert('图片上传出错: ' + (err.message || '未知错误'))
+            showAlert('图片上传出错: ' + (err.message || '未知错误'))
           },
         },
       },
@@ -647,7 +648,7 @@ export default {
         }
       } catch (error) {
         console.error('加载新闻列表失败:', error)
-        alert(error instanceof Error ? error.message : '加载新闻列表失败，请重试')
+        showAlert(error instanceof Error ? error.message : '加载新闻列表失败，请重试')
       } finally {
         isLoading.value = false
       }
@@ -783,7 +784,7 @@ export default {
     // 打开创建模态框
     const openCreateModal = () => {
       if (!authStore.hasPermission('news:create')) {
-        alert('您没有权限创建新闻')
+        showAlert('您没有权限创建新闻')
         return
       }
       resetForm()
@@ -800,7 +801,7 @@ export default {
     // 编辑新闻
     const editNews = (news) => {
       if (!authStore.hasPermission('news:edit')) {
-        alert('您没有权限编辑新闻')
+        showAlert('您没有权限编辑新闻')
         return
       }
       editingNewsId.value = news.id
@@ -875,7 +876,7 @@ export default {
           // 更新
           const response = await newsApi.updateNews(editingNewsId.value, requestData)
           if (response.code === 200 || response.code === 201) {
-            alert('新闻更新成功！')
+            showAlert('新闻更新成功！')
             closeModal()
             loadNews()
           } else {
@@ -892,13 +893,13 @@ export default {
             if (targetStatus === 'published') {
               try {
                 await newsApi.publishNews(newNewsId)
-                alert('新闻创建并发布成功！')
+                showAlert('新闻创建并发布成功！')
               } catch (publishError) {
                 console.error('发布失败:', publishError)
-                alert('新闻创建成功，但发布失败，请在列表中手动发布')
+                showAlert('新闻创建成功，但发布失败，请在列表中手动发布')
               }
             } else {
-              alert('新闻草稿创建成功！')
+              showAlert('新闻草稿创建成功！')
               // 如果创建的是草稿，确保当前视图切换到草稿列表
               if (currentStatus.value !== 'draft') {
                 // 自动切换到草稿箱以便用户看到新创建的内容
@@ -915,69 +916,72 @@ export default {
         }
       } catch (error) {
         console.error('提交失败:', error)
-        alert(error instanceof Error ? error.message : '操作失败，请重试')
+        showAlert(error instanceof Error ? error.message : '操作失败，请重试')
       }
     }
 
     // 发布新闻
     const publishNews = async (id) => {
       if (!authStore.hasPermission('news:publish')) {
-        alert('您没有权限发布新闻')
+        showAlert('您没有权限发布新闻')
         return
       }
-      if (!confirm('确定要发布这条新闻吗？')) return
+      const confirmed = await showConfirm('确定要发布这条新闻吗？')
+      if (!confirmed) return
       try {
         const response = await newsApi.publishNews(id)
         if (response.code === 200) {
-          alert('发布成功')
+          showAlert('发布成功')
           loadNews()
         } else {
           throw new Error(response.message || '发布失败')
         }
       } catch (error) {
         console.error('发布失败:', error)
-        alert(error instanceof Error ? error.message : '发布失败，请重试')
+        showAlert(error instanceof Error ? error.message : '发布失败，请重试')
       }
     }
 
     // 撤回新闻
     const revokeNews = async (id) => {
       if (!authStore.hasPermission('news:revoke')) {
-        alert('您没有权限撤回新闻')
+        showAlert('您没有权限撤回新闻')
         return
       }
-      if (!confirm('确定要撤回这条新闻吗？撤回后将变为草稿状态。')) return
+      const confirmed = await showConfirm('确定要撤回这条新闻吗？撤回后将变为草稿状态。')
+      if (!confirmed) return
       try {
         const response = await newsApi.revokeNews(id)
         if (response.code === 200) {
-          alert('撤回成功，已移至草稿箱')
+          showAlert('撤回成功，已移至草稿箱')
           loadNews()
         } else {
           throw new Error(response.message || '撤回失败')
         }
       } catch (error) {
         console.error('撤回失败:', error)
-        alert(error instanceof Error ? error.message : '撤回失败，请重试')
+        showAlert(error instanceof Error ? error.message : '撤回失败，请重试')
       }
     }
 
     const deleteNews = async (newsId) => {
       if (!authStore.hasPermission('news:delete')) {
-        alert('您没有权限删除新闻')
+        showAlert('您没有权限删除新闻')
         return
       }
-      if (!confirm('确定要删除这条新闻吗？')) return
+      const confirmed = await showConfirm('确定要删除这条新闻吗？')
+      if (!confirmed) return
       try {
         const response = await newsApi.deleteNews(newsId)
         if (response.code === 200 || response.code === 201) {
-          alert('新闻删除成功！')
+          showAlert('新闻删除成功！')
           loadNews()
         } else {
           throw new Error(response.message || '删除失败')
         }
       } catch (error) {
         console.error('删除失败:', error)
-        alert(error instanceof Error ? error.message : '删除失败，请重试')
+        showAlert(error instanceof Error ? error.message : '删除失败，请重试')
       }
     }
 

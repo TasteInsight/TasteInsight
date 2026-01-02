@@ -254,6 +254,7 @@ import { ref, computed } from 'vue'
 import { dishApi } from '@/api/modules/dish'
 import type { BatchParsedDish } from '@/types/api'
 import Header from '@/components/Layout/Header.vue'
+import { showAlert, showConfirm } from '@/composables/useModal'
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploadedFile = ref<File | null>(null)
@@ -276,7 +277,7 @@ const parseError = ref<string | null>(null)
 
     const downloadTemplate = () => {
       // TODO: 实现模板下载功能
-      alert('模板下载功能开发中...')
+      showAlert('模板下载功能开发中...')
     }
 
     const triggerFileInput = () => {
@@ -292,13 +293,13 @@ const parseError = ref<string | null>(null)
       const hasValidMime = !file.type || validTypes.includes(file.type)
       const hasValidExtension = /\.(xlsx|xls)$/i.test(file.name)
       if (!hasValidMime || !hasValidExtension) {
-        alert('请上传 Excel 文件（.xlsx 或 .xls 格式）')
+        showAlert('请上传 Excel 文件（.xlsx 或 .xls 格式）')
         return
       }
       
       // 验证文件大小（10MB）
       if (file.size > 10 * 1024 * 1024) {
-        alert('文件大小不能超过 10MB')
+        showAlert('文件大小不能超过 10MB')
         return
       }
       
@@ -318,7 +319,7 @@ const parseError = ref<string | null>(null)
           }))
           
           if (parsedData.value.length === 0) {
-            alert('解析完成，但未找到有效数据')
+            showAlert('解析完成，但未找到有效数据')
           }
         } else {
           throw new Error(response.message || '解析文件失败')
@@ -326,7 +327,7 @@ const parseError = ref<string | null>(null)
       } catch (error) {
         console.error('解析文件失败:', error)
         parseError.value = error instanceof Error ? error.message : '解析文件失败，请检查文件格式'
-        alert(parseError.value)
+        showAlert(parseError.value)
         parsedData.value = []
       } finally {
         isParsing.value = false
@@ -354,11 +355,15 @@ const parseError = ref<string | null>(null)
       )
       
       if (validItems.length === 0) {
-        alert('没有可导入的有效数据')
+        showAlert('没有可导入的有效数据')
         return
       }
       
-      if (!confirm(`确定要导入 ${validItems.length} 条数据吗？`)) {
+      const confirmed = await showConfirm(
+        `确定要导入 ${validItems.length} 条数据吗？`,
+        '确认导入'
+      )
+      if (!confirmed) {
         return
       }
       
@@ -388,7 +393,7 @@ const parseError = ref<string | null>(null)
             }
           }
           
-          alert(message)
+          showAlert(message)
           
           // 重置数据
           resetBatchData()
@@ -397,7 +402,7 @@ const parseError = ref<string | null>(null)
         }
       } catch (error) {
         console.error('导入失败:', error)
-        alert(error instanceof Error ? error.message : '导入失败，请重试')
+        showAlert(error instanceof Error ? error.message : '导入失败，请重试')
       } finally {
         isSubmitting.value = false
       }
@@ -415,7 +420,7 @@ const parseError = ref<string | null>(null)
     const exportErrorList = () => {
       const errorItems = parsedData.value.filter((item: BatchParsedDish) => item.status === 'invalid')
       if (errorItems.length === 0) {
-        alert('没有错误数据可导出')
+        showAlert('没有错误数据可导出')
         return
       }
       

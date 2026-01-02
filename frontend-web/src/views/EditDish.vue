@@ -617,6 +617,7 @@ import { dishApi } from '@/api/modules/dish'
 import { canteenApi } from '@/api/modules/canteen'
 import { useDishStore } from '@/store/modules/use-dish-store'
 import Header from '@/components/Layout/Header.vue'
+import { showAlert, showConfirm } from '@/composables/useModal'
 
 export default {
   name: 'EditDish',
@@ -755,7 +756,7 @@ export default {
         }
       } catch (error) {
         console.error('从 API 获取菜品失败:', error)
-        alert('获取菜品信息失败，请重试')
+        showAlert('获取菜品信息失败，请重试')
         router.push('/modify-dish')
       } finally {
         isLoading.value = false
@@ -962,7 +963,7 @@ export default {
         formData.tags.push(tag)
         newTag.value = ''
       } else if (formData.tags.includes(tag)) {
-        alert('该TAG已存在')
+        showAlert('该TAG已存在')
       }
     }
 
@@ -976,7 +977,7 @@ export default {
         Array.from(files).forEach((file) => {
           // 验证文件大小
           if (file.size > 10 * 1024 * 1024) {
-            alert(`图片 ${file.name} 大小超过10MB，已跳过`)
+            showAlert(`图片 ${file.name} 大小超过10MB，已跳过`)
             return
           }
 
@@ -1097,14 +1098,18 @@ export default {
 
             if (imageUrls.length !== formData.imageFiles.length) {
               const failed = formData.imageFiles.length - imageUrls.length
-              if (!confirm(`${failed}张图片处理失败，是否继续保存？`)) {
+              const confirmed = await showConfirm(
+                `${failed}张图片处理失败，是否继续保存？`,
+                '图片处理失败'
+              )
+              if (!confirmed) {
                 isSubmitting.value = false
                 return
               }
             }
           } catch (error) {
             console.error('图片处理失败:', error)
-            alert('图片处理失败，请重试')
+            showAlert('图片处理失败，请重试')
             isSubmitting.value = false
             return
           }
@@ -1199,14 +1204,14 @@ export default {
           // 4. 更新 store 中的菜品信息
           dishStore.updateDish(formData.id, response.data)
 
-          alert('菜品信息已更新！')
+          showAlert('菜品信息已更新！')
           router.push('/modify-dish')
         } else {
           throw new Error(response.message || '更新菜品失败')
         }
       } catch (error) {
         console.error('更新菜品失败:', error)
-        alert(error instanceof Error ? error.message : '更新菜品失败，请重试')
+        showAlert(error instanceof Error ? error.message : '更新菜品失败，请重试')
       } finally {
         isSubmitting.value = false
       }
@@ -1227,7 +1232,7 @@ export default {
         const response = await dishApi.deleteDish(formData.id)
 
         if (response.code === 200) {
-          alert('菜品删除成功！')
+          showAlert('菜品删除成功！')
           // 更新 store 中的菜品列表（如果 store 有相关方法）
           router.push('/modify-dish')
         } else {
@@ -1235,7 +1240,7 @@ export default {
         }
       } catch (error) {
         console.error('删除菜品失败:', error)
-        alert(error instanceof Error ? error.message : '删除菜品失败，请重试')
+        showAlert(error instanceof Error ? error.message : '删除菜品失败，请重试')
       } finally {
         isDeleting.value = false
         showDeleteConfirm.value = false

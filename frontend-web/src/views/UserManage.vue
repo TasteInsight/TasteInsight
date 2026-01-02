@@ -463,6 +463,7 @@ import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
+import { showAlert, showConfirmDanger } from '@/composables/useModal'
 
 const PAGE_STATE_KEY = 'user-manage'
 
@@ -762,7 +763,7 @@ export default {
         }
       } catch (error) {
         console.error('加载子管理员列表失败:', error)
-        alert('加载子管理员列表失败，请刷新重试')
+        showAlert('加载子管理员列表失败，请刷新重试')
         adminList.value = []
       } finally {
         loading.value = false
@@ -824,21 +825,25 @@ export default {
 
     // 删除管理员
     const deleteAdmin = async (admin) => {
-      if (!confirm(`确定要删除子管理员"${admin.username}"吗？此操作不可恢复！`)) {
+      const confirmed = await showConfirmDanger(
+        `确定要删除子管理员"${admin.username}"吗？此操作不可恢复！`,
+        '确认删除'
+      )
+      if (!confirmed) {
         return
       }
 
       try {
         const response = await permissionApi.deleteAdmin(admin.id)
         if (response.code === 200) {
-          alert('删除成功！')
+          showAlert('删除成功！')
           loadAdmins()
         } else {
           throw new Error(response.message || '删除失败')
         }
       } catch (error) {
         console.error('删除子管理员失败:', error)
-        alert(error instanceof Error ? error.message : '删除子管理员失败，请重试')
+        showAlert(error instanceof Error ? error.message : '删除子管理员失败，请重试')
       }
     }
 
@@ -1111,7 +1116,7 @@ export default {
           )
 
           if (response.code === 200) {
-            alert('权限配置已更新！')
+            showAlert('权限配置已更新！')
             await loadAdmins()
             backToList()
           } else {
@@ -1134,7 +1139,7 @@ export default {
           const response = await permissionApi.createAdmin(createData)
 
           if (response.code === 200 && response.data) {
-            alert('子管理员创建成功！')
+            showAlert('子管理员创建成功！')
             await loadAdmins()
             backToList()
           } else {
@@ -1143,7 +1148,7 @@ export default {
         }
       } catch (error) {
         console.error('保存失败:', error)
-        alert(error instanceof Error ? error.message : '保存失败，请重试')
+        showAlert(error instanceof Error ? error.message : '保存失败，请重试')
       } finally {
         isSubmitting.value = false
       }

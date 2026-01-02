@@ -169,6 +169,7 @@ import Header from '@/components/Layout/Header.vue'
 import SearchBar from '@/components/Common/SearchBar.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
+import { showAlert } from '@/composables/useModal'
 
 const PAGE_STATE_KEY = 'modify-dish'
 
@@ -336,7 +337,7 @@ export default {
 
     const editDish = (dish) => {
       if (!authStore.hasPermission('dish:edit')) {
-        alert('您没有权限编辑菜品')
+        showAlert('您没有权限编辑菜品')
         return
       }
       // 保存当前状态后再跳转

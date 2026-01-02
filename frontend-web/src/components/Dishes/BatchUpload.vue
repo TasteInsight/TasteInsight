@@ -139,6 +139,7 @@
 
 <script>
 import { ref, computed } from 'vue'
+import { showAlert } from '@/composables/useModal'
 
 export default {
   name: 'BatchUpload',
@@ -223,7 +224,7 @@ export default {
       // 模拟下载模板文件
       console.log('下载模板文件...')
       // 这里应该调用API下载模板
-      alert('模板下载功能开发中...')
+      showAlert('模板下载功能开发中...')
     }
 
     const triggerFileInput = () => {
@@ -285,7 +286,7 @@ export default {
       const validItems = parsedData.value.filter((item) => item.status === '有效')
 
       if (validItems.length === 0) {
-        alert('没有有效数据可导入')
+        showAlert('没有有效数据可导入')
         return
       }
 
