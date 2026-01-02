@@ -49,10 +49,10 @@ describe('AdminWindowsController (e2e)', () => {
     await app.close();
   });
 
-  describe('/admin/windows/:canteenId (GET)', () => {
+  describe('/admin/canteens/:canteenId/windows (GET)', () => {
     it('should return list of windows for a canteen', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/admin/windows/${testCanteenId}`)
+        .get(`/admin/canteens/${testCanteenId}/windows`)
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
@@ -77,7 +77,7 @@ describe('AdminWindowsController (e2e)', () => {
 
     it('should return paginated results', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/admin/windows/${testCanteenId}?page=1&pageSize=1`)
+        .get(`/admin/canteens/${testCanteenId}/windows?page=1&pageSize=1`)
         .set('Authorization', `Bearer ${superAdminToken}`)
         .expect(200);
 
@@ -86,6 +86,49 @@ describe('AdminWindowsController (e2e)', () => {
     });
 
     it('should return 404 for non-existent canteen', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/admin/canteens/non-existent-id/windows')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(404);
+
+      expect(response.body.statusCode).toBe(404);
+    });
+
+    it('should return 401 without authorization', async () => {
+      await request(app.getHttpServer())
+        .get(`/admin/canteens/${testCanteenId}/windows`)
+        .expect(401);
+    });
+  });
+
+  describe('/admin/windows/:id (GET)', () => {
+    it('should return window details by id', async () => {
+      // First, get a window from the list
+      const listResponse = await request(app.getHttpServer())
+        .get(`/admin/canteens/${testCanteenId}/windows`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      if (listResponse.body.data.items.length > 0) {
+        const windowId = listResponse.body.data.items[0].id;
+
+        const response = await request(app.getHttpServer())
+          .get(`/admin/windows/${windowId}`)
+          .set('Authorization', `Bearer ${superAdminToken}`)
+          .expect(200);
+
+        expect(response.body.code).toBe(200);
+        expect(response.body.message).toBe('success');
+        expect(response.body.data).toHaveProperty('id', windowId);
+        expect(response.body.data).toHaveProperty('canteenId');
+        expect(response.body.data).toHaveProperty('name');
+        expect(response.body.data).toHaveProperty('number');
+        expect(response.body.data).toHaveProperty('tags');
+        expect(response.body.data).toHaveProperty('floor');
+      }
+    });
+
+    it('should return 404 for non-existent window', async () => {
       const response = await request(app.getHttpServer())
         .get('/admin/windows/non-existent-id')
         .set('Authorization', `Bearer ${superAdminToken}`)
@@ -96,7 +139,7 @@ describe('AdminWindowsController (e2e)', () => {
 
     it('should return 401 without authorization', async () => {
       await request(app.getHttpServer())
-        .get(`/admin/windows/${testCanteenId}`)
+        .get('/admin/windows/some-id')
         .expect(401);
     });
   });
@@ -395,7 +438,7 @@ describe('AdminWindowsController (e2e)', () => {
 
     it('should deny access to windows list for admin without canteen:view permission', async () => {
       const response = await request(app.getHttpServer())
-        .get(`/admin/windows/${testCanteenId}`)
+        .get(`/admin/canteens/${testCanteenId}/windows`)
         .set('Authorization', `Bearer ${normalAdminToken}`)
         .expect(403);
 

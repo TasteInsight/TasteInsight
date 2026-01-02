@@ -193,4 +193,112 @@ describe('useFilter', () => {
     expect(params).not.toBeNull();
     expect(params!.price).toEqual({ min: 5, max: 20 });
   });
-});
+
+  it('validate price and rating invalid cases and taste validation', () => {
+    const f = useFilter();
+
+    // price invalid
+    f.customPriceMin.value = '-1';
+    expect(f.validatePriceInput()).toBe(false);
+    expect(f.priceError.value).toMatch(/最低价必须是非负数字/);
+
+    // rating invalid
+    f.customRatingMin.value = '6';
+    expect(f.validateRatingInput()).toBe(false);
+    expect(f.ratingError.value).toMatch(/最低分必须在 0-5 之间/);
+
+    // taste invalid
+    f.selectedSpicyMin.value = 4;
+    f.selectedSpicyMax.value = 2;
+    expect(f.validateTasteInput()).toBe(false);
+    expect(f.tasteError.value).toBeTruthy();
+  });
+
+  it('custom avoids and taste label', () => {
+    const f = useFilter();
+    f.customAvoidInput.value = '胡椒';
+    f.addCustomAvoid();
+    expect(f.customAvoid.value).toContain('胡椒');
+
+    f.removeCustomAvoid('胡椒');
+    expect(f.customAvoid.value).not.toContain('胡椒');
+
+    expect(f.getTasteRangeLabel('spicy', 0, 0)).toBe('不限');
+    expect(f.getTasteRangeLabel('spicy', 0, 3)).toMatch(/最高/);
+    expect(f.getTasteRangeLabel('spicy', 2, 0)).toMatch(/最低/);
+    expect(f.getTasteRangeLabel('spicy', 2, 4)).toContain('-');
+  });
+
+  it('toggleFilter saves and restores original state for tag and taste', () => {
+    const f = useFilter();
+    f.selectedTags.value = ['招牌'];
+    f.toggleFilter('tag');
+    // change and restore
+    f.selectedTags.value = ['新品'];
+    f.closeFilterPanel();
+    expect(f.selectedTags.value).toEqual(['招牌']);
+
+    // taste save/restore
+    f.toggleFilter('taste');
+    const originalSpicy = f.selectedSpicyMin.value;
+    f.selectedSpicyMin.value = 1;
+    f.selectedSpicyMax.value = 2;
+    f.selectedSpicyMin.value = 3;
+    f.closeFilterPanel();
+    expect(f.selectedSpicyMin.value).toBe(originalSpicy);
+  });
+
+  it('onCustomPriceInput and onCustomRatingInput clear selections and mark active value', () => {
+    const f = useFilter();
+    f.selectedPrice.value = '10-15';
+    f.customPriceMin.value = '5';
+    f.onCustomPriceInput();
+    expect(f.selectedPrice.value).toBe('');
+    expect(f.hasActiveValue('price')).toBe(true);
+
+    f.selectedRating.value = 4.5;
+    f.customRatingMin.value = '3';
+    f.onCustomRatingInput();
+    expect(f.selectedRating.value).toBe(0);
+    expect(f.hasActiveValue('rating')).toBe(true);
+  });
+
+  it('applyFilter removes saved original state (via toggleFilter) and handles taste presence', () => {
+    const f = useFilter();
+    // use toggleFilter to ensure originalStates entry exists for 'tag'
+    f.selectedTags.value = ['B'];
+    f.toggleFilter('tag'); // saves original state for tag
+
+    // change current selection and apply
+    f.selectedTags.value = ['A'];
+    const params = f.applyFilter();
+    expect(params).not.toBeNull();
+    expect(params!.tag).toEqual(['A']);
+    expect(f.activeFilter.value).toBe('');
+
+    // taste applied
+    f.selectedSpicyMin.value = 2;
+    f.selectedSpicyMax.value = 4;
+    const params2 = f.applyFilter();
+    expect(params2!.spicyLevel).toEqual({ min: 2, max: 4 });
+  });
+  it('applyFilter handles min-only taste and sets default max to 5', () => {
+    const f = useFilter();
+    f.selectedSpicyMin.value = 2;
+    const params = f.applyFilter();
+    expect(params!.spicyLevel).toEqual({ min: 2, max: 5 });
+
+    f.selectedSaltyMin.value = 3;
+    const p2 = f.applyFilter();
+    expect(p2!.saltiness).toEqual({ min: 3, max: 5 });
+
+    f.selectedOilyMin.value = 1;
+    const p3 = f.applyFilter();
+    expect(p3!.oiliness).toEqual({ min: 1, max: 5 });
+  });
+
+  it('hasActiveValue returns false for unknown key', () => {
+    const f = useFilter();
+    expect(f.hasActiveValue('unknown')).toBe(false);
+  });});
+

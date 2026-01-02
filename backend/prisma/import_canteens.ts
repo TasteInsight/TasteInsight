@@ -236,8 +236,6 @@ async function main() {
 
   // 1. 清空所有数据，确保幂等性
   // 注意删除顺序，防止外键约束失败
-  await prisma.aIRecommendationFeedback.deleteMany({});
-  await prisma.aIRecommendation.deleteMany({});
   await prisma.mealPlanDish.deleteMany({});
   await prisma.mealPlan.deleteMany({});
   await prisma.browseHistory.deleteMany({});

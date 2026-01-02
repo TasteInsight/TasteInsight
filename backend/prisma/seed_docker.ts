@@ -9,8 +9,6 @@ async function main() {
 
   // 1. 清空所有数据，确保幂等性
   // 注意删除顺序，防止外键约束失败
-  await prisma.aIRecommendationFeedback.deleteMany({});
-  await prisma.aIRecommendation.deleteMany({});
   await prisma.mealPlanDish.deleteMany({});
   await prisma.mealPlan.deleteMany({});
   await prisma.browseHistory.deleteMany({});
@@ -179,10 +177,10 @@ async function main() {
   // 3. 创建两个可用于测试的【基础用户】
   const user = await prisma.user.create({
     data: {
-        openId: 'baseline_user_openid',
-        nickname: 'Baseline User',
-        avatar: 'https://example.com/avatar.jpg',
-        allergens: ['芒果'],
+      openId: 'baseline_user_openid',
+      nickname: 'Baseline User',
+      avatar: 'https://example.com/avatar.jpg',
+      allergens: ['芒果'],
     }
   });
   console.log(`Created baseline user: ${user.nickname}`);
@@ -574,7 +572,7 @@ async function main() {
   console.log(`Created dish: ${dish5.name}`);
 
   // --- EXTRA DISHES FOR DOCKER SEED ---
-  await prisma.dish.create({
+  const dish7 = await prisma.dish.create({
     data: {
       name: '二楼小炒肉',
       tags: ['湘菜', '辣味'],
@@ -602,9 +600,9 @@ async function main() {
       reviewCount: 10,
     },
   });
-  console.log(`Created extra dish: 二楼小炒肉`);
+  console.log(`Created extra dish: ${dish7.name}`);
 
-  await prisma.dish.create({
+  const dish8 = await prisma.dish.create({
     data: {
       name: '地下炸鸡',
       tags: ['小吃', '炸物'],
@@ -632,7 +630,7 @@ async function main() {
       reviewCount: 50,
     },
   });
-  console.log(`Created extra dish: 地下炸鸡`);
+  console.log(`Created extra dish: ${dish8.name}`);
   // ------------------------------------
 
   // 7. 创建一个离线的菜品用于测试筛选
@@ -787,10 +785,10 @@ async function main() {
   // 9. 创建待审核评价数据（用于评价审核测试）
   const pendingReview1 = await prisma.review.create({
     data: {
-      dishId: dish1.id,
+      dishId: dish6.id,
       userId: user.id,
       rating: 5,
-      content: '这道宫保鸡丁真的很好吃，鸡肉鲜嫩，花生酥脆！',
+      content: '这道季节性烤鱼真的很好吃，期待下次供应！',
       images: ['https://example.com/review1.jpg'],
       status: 'pending',
     },
@@ -811,10 +809,10 @@ async function main() {
 
   const pendingReview3 = await prisma.review.create({
     data: {
-      dishId: dish3.id,
-      userId: secondaryUser.id,
+      dishId: dish8.id,
+      userId: user.id,
       rating: 3,
-      content: '牛肉面还行，面条有点软了。',
+      content: '地下炸鸡还行，酥脆可口。',
       images: ['https://example.com/review3.jpg'],
       status: 'pending',
     },
@@ -949,7 +947,7 @@ async function main() {
   // 创建被拒绝的评价
   const rejectedReview1 = await prisma.review.create({
     data: {
-      dishId: dish1.id,
+      dishId: dish6.id,
       userId: secondaryUser.id,
       rating: 1,
       content: '这评价包含不当内容所以被拒绝了。',
@@ -962,7 +960,7 @@ async function main() {
 
   const rejectedReview2 = await prisma.review.create({
     data: {
-      dishId: dish3.id,
+      dishId: dish7.id,
       userId: user.id,
       rating: 2,
       content: '广告内容测试',
@@ -976,7 +974,7 @@ async function main() {
   // 创建测试评价用于举报测试
   const testReviewForReport = await prisma.review.create({
     data: {
-      dishId: dish1.id,
+      dishId: dish3.id,
       userId: secondaryUser.id,
       rating: 1,
       content: '这是一条待举报的评价内容',

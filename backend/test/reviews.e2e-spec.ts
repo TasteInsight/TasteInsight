@@ -108,8 +108,23 @@ describe('ReviewsController (e2e)', () => {
 
   describe('/reviews (POST)', () => {
     it('should create a review with detailed ratings', async () => {
+      // 创建新菜品避免与 seed 数据冲突
+      const canteen = await prisma.canteen.findFirst();
+      const window = await prisma.window.findFirst();
+      const dish1 = await prisma.dish.create({
+        data: {
+          name: 'Test Dish With Details',
+          price: 10,
+          canteenId: canteen!.id,
+          canteenName: canteen!.name,
+          windowId: window!.id,
+          windowName: window!.name,
+          availableMealTime: ['lunch'],
+        },
+      });
+
       const createReviewDto = {
-        dishId: testDishId,
+        dishId: dish1.id,
         rating: 5,
         content: '很好吃！',
         images: ['https://example.com/image1.jpg'],
@@ -131,7 +146,7 @@ describe('ReviewsController (e2e)', () => {
       expect(response.body.message).toBe('创建成功');
       expect(response.body.data).toBeDefined();
       expect(response.body.data.id).toBeDefined();
-      expect(response.body.data.dishId).toBe(testDishId);
+      expect(response.body.data.dishId).toBe(dish1.id);
       expect(response.body.data.rating).toBe(5);
       expect(response.body.data.content).toBe('很好吃！');
       expect(response.body.data.status).toBe('pending');
@@ -144,11 +159,30 @@ describe('ReviewsController (e2e)', () => {
       expect(response.body.data.ratingDetails.oiliness).toBe(4);
 
       testReviewId = response.body.data.id;
+
+      // 清理
+      await prisma.review.delete({ where: { id: testReviewId } });
+      await prisma.dish.delete({ where: { id: dish1.id } });
     });
 
     it('should create a review without rating details', async () => {
+      // 创建新菜品避免与第一个测试冲突
+      const canteen = await prisma.canteen.findFirst();
+      const window = await prisma.window.findFirst();
+      const dish2 = await prisma.dish.create({
+        data: {
+          name: 'Test Dish Without Details',
+          price: 10,
+          canteenId: canteen!.id,
+          canteenName: canteen!.name,
+          windowId: window!.id,
+          windowName: window!.name,
+          availableMealTime: ['lunch'],
+        },
+      });
+
       const createReviewDto = {
-        dishId: testDishId,
+        dishId: dish2.id,
         rating: 4,
         content: '没有详细评分',
         images: [],
@@ -164,6 +198,7 @@ describe('ReviewsController (e2e)', () => {
 
       // 清理
       await prisma.review.delete({ where: { id: response.body.data.id } });
+      await prisma.dish.delete({ where: { id: dish2.id } });
     });
 
     it('should fail to create a review with partial rating details', async () => {
@@ -233,6 +268,141 @@ describe('ReviewsController (e2e)', () => {
         .expect(404);
 
       expect(response.body.message).toContain('未找到对应的菜品');
+    });
+
+    it('should update existing review when user reviews the same dish again', async () => {
+      // 创建新菜品用于此测试
+      const canteen = await prisma.canteen.findFirst();
+      const window = await prisma.window.findFirst();
+      const updateTestDish = await prisma.dish.create({
+        data: {
+          name: 'Update Test Dish',
+          price: 10,
+          canteenId: canteen!.id,
+          canteenName: canteen!.name,
+          windowId: window!.id,
+          windowName: window!.name,
+          availableMealTime: ['lunch'],
+        },
+      });
+
+      // 第一次创建评分
+      const firstReviewDto = {
+        dishId: updateTestDish.id,
+        rating: 4,
+        content: '第一次评价',
+        images: ['https://example.com/image1.jpg'],
+        ratingDetails: {
+          spicyLevel: 3,
+          sweetness: 2,
+          saltiness: 3,
+          oiliness: 4,
+        },
+      };
+
+      const firstResponse = await request(app.getHttpServer())
+        .post('/reviews')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send(firstReviewDto)
+        .expect(201);
+
+      expect(firstResponse.body.message).toBe('创建成功');
+      const firstReviewId = firstResponse.body.data.id;
+
+      // 第二次对同一菜品评分（应该更新而不是创建新的）
+      const secondReviewDto = {
+        dishId: updateTestDish.id,
+        rating: 5,
+        content: '更新后的评价',
+        images: ['https://example.com/image2.jpg'],
+        ratingDetails: {
+          spicyLevel: 4,
+          sweetness: 3,
+          saltiness: 2,
+          oiliness: 3,
+        },
+      };
+
+      const secondResponse = await request(app.getHttpServer())
+        .post('/reviews')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send(secondReviewDto)
+        .expect(201);
+
+      expect(secondResponse.body.message).toBe('更新成功');
+      expect(secondResponse.body.data.id).toBe(firstReviewId); // 应该是同一个ID
+      expect(secondResponse.body.data.rating).toBe(5);
+      expect(secondResponse.body.data.content).toBe('更新后的评价');
+      expect(secondResponse.body.data.ratingDetails.spicyLevel).toBe(4);
+
+      // 验证数据库中只有一条记录
+      const reviewCount = await prisma.review.count({
+        where: {
+          userId: firstResponse.body.data.userId,
+          dishId: updateTestDish.id,
+        },
+      });
+      expect(reviewCount).toBe(1);
+
+      // 清理
+      await prisma.review.delete({ where: { id: firstReviewId } });
+      await prisma.dish.delete({ where: { id: updateTestDish.id } });
+    });
+
+    it('should restore deleted review when user reviews again', async () => {
+      // 创建评分
+      const createReviewDto = {
+        dishId: testDishId,
+        rating: 4,
+        content: '准备删除的评价',
+      };
+
+      const createResponse = await request(app.getHttpServer())
+        .post('/reviews')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send(createReviewDto)
+        .expect(201);
+
+      const reviewId = createResponse.body.data.id;
+
+      // 删除评分
+      await request(app.getHttpServer())
+        .delete(`/reviews/${reviewId}`)
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .expect(200);
+
+      // 验证已被软删除
+      const deletedReview = await prisma.review.findUnique({
+        where: { id: reviewId },
+      });
+      expect(deletedReview?.deletedAt).toBeTruthy();
+
+      // 再次评分（应该恢复并更新）
+      const newReviewDto = {
+        dishId: testDishId,
+        rating: 5,
+        content: '恢复后的评价',
+      };
+
+      const restoreResponse = await request(app.getHttpServer())
+        .post('/reviews')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send(newReviewDto)
+        .expect(201);
+
+      expect(restoreResponse.body.message).toBe('更新成功');
+      expect(restoreResponse.body.data.id).toBe(reviewId); // 应该是同一个ID
+      expect(restoreResponse.body.data.rating).toBe(5);
+      expect(restoreResponse.body.data.content).toBe('恢复后的评价');
+
+      // 验证 deletedAt 已被清除
+      const restoredReview = await prisma.review.findUnique({
+        where: { id: reviewId },
+      });
+      expect(restoredReview?.deletedAt).toBeNull();
+
+      // 清理
+      await prisma.review.delete({ where: { id: reviewId } });
     });
   });
 

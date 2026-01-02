@@ -12,6 +12,7 @@ export function useDishDetail() {
   // --- 引入新的 Composables ---
   const {
     reviews,
+    ratingSummary,
     reviewsLoading,
     isInitializing: reviewsInitializing,
     reviewsError,
@@ -77,8 +78,9 @@ export function useDishDetail() {
         error.value = response.message || '获取菜品详情失败';
       }
     } catch (err: any) {
-      console.error('获取菜品详情失败:', err);
-      error.value = err.message || '网络错误，请稍后重试';
+      const debugError = err && typeof err === 'object' && 'originalError' in err ? (err as any).originalError : err;
+      console.error('获取菜品详情失败:', debugError);
+      error.value = err?.message || '网络开小差了，请稍后再试';
     } finally {
       loading.value = false;
     }
@@ -144,7 +146,7 @@ export function useDishDetail() {
   /**
    * 删除评价 (包装一层以处理 UI 反馈和更新菜品评价数)
    */
-  const removeReview = async (reviewId: string) => {
+  const removeReview = async (reviewId: string, onSuccess?: () => void) => {
     try {
       await removeReviewOriginal(reviewId);
       // 更新菜品评价数
@@ -158,6 +160,7 @@ export function useDishDetail() {
           fetchDishDetail(dish.value.id)
         ]);
       }
+      onSuccess?.();
       uni.showToast({ title: '删除成功', icon: 'success' });
     } catch (err: any) {
       uni.showToast({ title: err.message || '删除失败', icon: 'none' });
@@ -239,6 +242,7 @@ export function useDishDetail() {
     parentDishLoading,
     
     reviews,
+    ratingSummary,
     reviewsLoading,
     reviewsInitializing,
     reviewsError,

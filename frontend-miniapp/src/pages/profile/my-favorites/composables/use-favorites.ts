@@ -1,30 +1,32 @@
 // @/pages/profile/my-favorites/composables/use-favorites.ts
 import { ref } from 'vue';
 import { getMyFavorites } from '@/api/modules/user';
-import { getDishById, unfavoriteDish } from '@/api/modules/dish';
-import type { Dish } from '@/types/api';
+import { unfavoriteDish } from '@/api/modules/dish';
+import { useUserStore } from '@/store/modules/use-user-store';
+import type { Favorite } from '@/types/api';
 
 export function useFavorites() {
-  const dishes = ref<Dish[]>([]);
+  const favoriteItems = ref<Favorite[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
   const currentPage = ref(1);
   const pageSize = 10;
   const hasMore = ref(true);
+  const userStore = useUserStore();
 
   /**
    * 获取收藏列表
    */
   const fetchFavorites = async (reset = false) => {
     if (loading.value) return;
-    
+
     loading.value = true;
     error.value = null;
 
     try {
       if (reset) {
         currentPage.value = 1;
-        dishes.value = [];
+        favoriteItems.value = [];
         hasMore.value = true;
       }
 
@@ -35,19 +37,12 @@ export function useFavorites() {
 
       if (response.code === 200 && response.data) {
         const { items, meta } = response.data;
-        
-        // 获取每个收藏对应的菜品详情
-        const dishPromises = items.map(item => getDishById(item.dishId));
-        const dishResponses = await Promise.all(dishPromises);
-        
-        const fetchedDishes = dishResponses
-          .filter(res => res.code === 200 && res.data)
-          .map(res => res.data!);
 
+        // 收藏列表已经包含了菜品详情
         if (reset) {
-          dishes.value = fetchedDishes;
+          favoriteItems.value = items;
         } else {
-          dishes.value.push(...fetchedDishes);
+          favoriteItems.value.push(...items);
         }
 
         // 判断是否还有更多数据
@@ -63,6 +58,8 @@ export function useFavorites() {
         title: message,
         icon: 'none'
       });
+      // 加载失败时，认为没有更多数据
+      hasMore.value = false;
     } finally {
       loading.value = false;
     }
@@ -74,11 +71,11 @@ export function useFavorites() {
   const removeFavorite = async (dishId: string) => {
     try {
       const response = await unfavoriteDish(dishId);
-      
+
       if (response.code === 200) {
         // 从列表中移除该菜品
-        dishes.value = dishes.value.filter(dish => dish.id !== dishId);
-        
+        favoriteItems.value = favoriteItems.value.filter(item => item.dishId !== dishId);
+
         uni.showToast({
           title: '已取消收藏',
           icon: 'success'
@@ -113,7 +110,7 @@ export function useFavorites() {
   };
 
   return {
-    dishes,
+    favoriteItems,
     loading,
     error,
     hasMore,

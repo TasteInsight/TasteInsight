@@ -55,6 +55,11 @@ watch(() => props.dishId, () => {
   fetchRatingDetail();
 }, { immediate: true });
 
+// 暴露刷新方法给父组件调用
+defineExpose({
+  refresh: fetchRatingDetail
+});
+
 /**
  * 计算评分比例数据
  */

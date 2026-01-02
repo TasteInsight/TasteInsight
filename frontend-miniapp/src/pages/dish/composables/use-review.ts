@@ -1,7 +1,7 @@
 import { ref, computed, watch } from 'vue';
 import { getReviewsByDish, createReview, deleteReview } from '@/api/modules/review';
 import { uploadImage } from '@/api/modules/upload';
-import type { Review, ReviewCreateRequest } from '@/types/api';
+import type { Review, ReviewCreateRequest, ReviewListData } from '@/types/api';
 
 const REVIEW_STATE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24小时过期时间
 
@@ -12,6 +12,7 @@ type FlavorKey = 'spicyLevel' | 'sweetness' | 'saltiness' | 'oiliness';
  */
 export function useReview() {
   const reviews = ref<Review[]>([]);
+  const ratingSummary = ref<ReviewListData['rating'] | null>(null);
   const reviewsLoading = ref(false);
   const isInitializing = ref(false);
   const reviewsError = ref('');
@@ -36,6 +37,7 @@ export function useReview() {
       reviewsPage.value = 1;
       reviews.value = [];
       reviewsHasMore.value = true;
+      ratingSummary.value = null;
     }
 
     try {
@@ -45,6 +47,7 @@ export function useReview() {
       });
 
       if (response.code === 200 && response.data) {
+        ratingSummary.value = response.data.rating || ratingSummary.value;
         const newReviews = response.data.items || [];
         
         if (refresh) {
@@ -111,6 +114,7 @@ export function useReview() {
 
   return {
     reviews,
+    ratingSummary,
     reviewsLoading,
     isInitializing,
     reviewsError,
@@ -285,7 +289,11 @@ export function useReviewForm() {
   /**
    * 提交评价
    */
-  const handleSubmit = async (dishId: string, onSuccess?: () => void) => {
+  const handleSubmit = async (
+    dishId: string,
+    onSuccess?: () => void,
+    existingReviewId?: string
+  ) => {
     if (submitting.value || isUploading.value) return;
 
     submitting.value = true;
@@ -319,6 +327,16 @@ export function useReviewForm() {
 
       if (hasFlavorSelection.value) {
         payload.ratingDetails = { ...flavorRatings.value };
+      }
+
+      // 单人单评：如果已存在评价，提交时覆盖（先删后建，避免后端不支持 update 接口）
+      if (existingReviewId) {
+        try {
+          await deleteReview(existingReviewId);
+        } catch (e) {
+          // 删除失败不阻断创建：可能后端已做 upsert 或旧评价已被删除
+          console.warn('覆盖评价：删除旧评价失败，将继续提交新评价', e);
+        }
       }
 
       const response = await createReview(payload);

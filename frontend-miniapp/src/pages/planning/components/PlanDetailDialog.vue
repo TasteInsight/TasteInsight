@@ -44,7 +44,7 @@
               @tap="goToDishDetail(dish.id)"
             >
               <image 
-                :src="dish.images[0] || '/default-dish.png'" 
+                :src="dish.images[0] || '/static/default_dish.png'" 
                 class="w-20 h-20 rounded-lg shrink-0" 
                 mode="aspectFill"
               />
@@ -55,7 +55,7 @@
                   <text class="text-orange-500 font-bold">¥{{ dish.price }}</text>
                   <view class="flex items-center gap-1">
                     <text class="text-yellow-500">★</text>
-                    <text class="text-yellow-500">{{ dish.averageRating.toFixed(1) }}</text>
+                    <text class="text-yellow-500">{{ dish.averageRating === 0 ? '暂无' : dish.averageRating.toFixed(1) }}</text>
                   </view>
                 </view>
               </view>

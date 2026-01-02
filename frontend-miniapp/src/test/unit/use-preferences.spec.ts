@@ -53,15 +53,17 @@ describe('usePreferences', () => {
           favoriteIngredients: ['tomato'],
         },
       },
-      fetchProfileAction: jest.fn().mockResolvedValue(undefined),
+      fetchProfileAction: jest.fn() as unknown as jest.Mock<any, any>,
       updateLocalUserInfo: jest.fn(),
     });
+    (mockUserStore.fetchProfileAction as jest.Mock).mockResolvedValue(undefined);
     (useUserStore as unknown as jest.Mock).mockReturnValue(mockUserStore);
 
     mockCanteenStore = reactive({
       canteenList: [{ id: 'canteen1', name: 'Canteen 1' }],
-      fetchCanteenList: jest.fn().mockResolvedValue(undefined),
+      fetchCanteenList: jest.fn() as unknown as jest.Mock<any, any>,
     });
+    (mockCanteenStore.fetchCanteenList as jest.Mock).mockResolvedValue(undefined);
     (useCanteenStore as unknown as jest.Mock).mockReturnValue(mockCanteenStore);
 
     jest.clearAllMocks();

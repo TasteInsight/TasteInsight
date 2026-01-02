@@ -23,19 +23,11 @@ import { RequirePermissions } from '@/auth/decorators/permissions.decorator';
 export class AdminWindowsController {
   constructor(private readonly adminWindowsService: AdminWindowsService) {}
 
-  @Get(':canteenId')
+  @Get(':id')
   @RequirePermissions('canteen:view')
   @HttpCode(HttpStatus.OK)
-  async findAllByCanteen(
-    @Param('canteenId') canteenId: string,
-    @Query('page') page: number = 1,
-    @Query('pageSize') pageSize: number = 20,
-  ) {
-    return this.adminWindowsService.findAllByCanteen(
-      canteenId,
-      Number(page),
-      Number(pageSize),
-    );
+  async findOne(@Param('id') id: string) {
+    return this.adminWindowsService.findOne(id);
   }
 
   @Post()

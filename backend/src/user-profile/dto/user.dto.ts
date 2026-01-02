@@ -28,10 +28,24 @@ export type UserReviewData = ReviewData & {
 export class UserFavoriteData {
   dishId: string;
   addedAt: string;
+  dishName: string;
+  dishImages: string[];
+  dishPrice: number;
+  canteenName: string;
+  windowName: string;
+  tags: string[];
+  averageRating: number;
 }
 export class UserHistoryData {
   dishId: string;
   viewedAt: string;
+  dishName: string;
+  dishImages: string[];
+  dishPrice: number;
+  canteenName: string;
+  windowName: string;
+  tags: string[];
+  averageRating: number;
 }
 export class UserUploadData {
   id: string;

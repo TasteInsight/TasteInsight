@@ -11,6 +11,7 @@ export interface PersonalForm {
 
 export function usePersonal() {
   const userStore = useUserStore();
+  const isTestEnv = typeof process !== 'undefined' && !!process.env && process.env.NODE_ENV === 'test';
   
   const saving = ref(false);
   const loading = ref(true);
@@ -51,34 +52,78 @@ export function usePersonal() {
         sourceType: ['album', 'camera'],
         success: async (res) => {
           const tempFilePath = res.tempFilePaths[0];
-          
-          // 开始上传
-          uploading.value = true;
-          uni.showLoading({
-            title: '上传中...'
-          });
-          
-          try {
-            const uploadResult = await uploadImage(tempFilePath);
-            form.avatar = uploadResult.url;
-            
-            uni.hideLoading();
-            uni.showToast({
-              title: '头像上传成功',
-              icon: 'success'
-            });
-            resolve();
-          } catch (error) {
-            console.error('上传头像失败:', error);
-            uni.hideLoading();
-            uni.showToast({
-              title: '头像上传失败',
-              icon: 'none'
-            });
-            reject(error);
-          } finally {
-            uploading.value = false;
+
+          // 单测/非运行环境可能没有 navigateTo，回退为直接上传
+          if (isTestEnv || typeof (uni as any).navigateTo !== 'function') {
+            uploading.value = true;
+            uni.showLoading({ title: '上传中...' });
+            (async () => {
+              try {
+                const uploadResult = await uploadImage(tempFilePath);
+                form.avatar = uploadResult.url;
+                uni.hideLoading();
+                uni.showToast({ title: '头像上传成功', icon: 'success' });
+                resolve();
+              } catch (error) {
+                console.error('上传头像失败:', error);
+                uni.hideLoading();
+                uni.showToast({ title: '头像上传失败', icon: 'none' });
+                reject(error);
+              } finally {
+                uploading.value = false;
+              }
+            })();
+            return;
           }
+
+          // 进入裁剪页面，裁剪完成后再上传
+          uni.navigateTo({
+            // 同时使用 query + eventChannel：
+            // - query 用 encodeURIComponent 规避非法字符/时序问题（裁剪页可能错过 init 事件）
+            // - eventChannel 仍保留，避免未来扩展参数过长
+            url: `/pages/settings/components/avatar-crop?src=${encodeURIComponent(tempFilePath)}`,
+            success: (navRes) => {
+              const eventChannel = navRes.eventChannel;
+              eventChannel.emit('init', { src: tempFilePath });
+
+              // 设置超时，如果用户取消裁剪或出错，5分钟后 reject
+              const timeout = setTimeout(() => {
+                reject(new Error('裁剪超时或取消'));
+              }, 5 * 60 * 1000); // 5分钟
+
+              eventChannel.on('cropped', async (data: { tempFilePath: string }) => {
+                clearTimeout(timeout);
+                const croppedPath = data?.tempFilePath;
+                if (!croppedPath) {
+                  reject(new Error('裁剪失败'));
+                  return;
+                }
+
+                uploading.value = true;
+                uni.showLoading({ title: '上传中...' });
+                try {
+                  const uploadResult = await uploadImage(croppedPath);
+                  form.avatar = uploadResult.url;
+                  uni.hideLoading();
+                  uni.showToast({ title: '头像上传成功', icon: 'success' });
+                  resolve();
+                } catch (error) {
+                  console.error('上传头像失败:', error);
+                  uni.hideLoading();
+                  uni.showToast({ title: '头像上传失败', icon: 'none' });
+                  reject(error);
+                } finally {
+                  uploading.value = false;
+                }
+              });
+            },
+            fail: (err) => {
+              console.error('跳转裁剪页面失败:', err);
+              const errMsg = (err as any)?.errMsg ? String((err as any).errMsg) : '';
+              uni.showToast({ title: errMsg ? `打开裁剪失败：${errMsg}` : '打开裁剪失败', icon: 'none' });
+              reject(err);
+            },
+          });
         },
         fail: (err) => {
           console.error('选择图片失败:', err);
@@ -132,7 +177,9 @@ export function usePersonal() {
       });
       
       setTimeout(() => {
-        uni.navigateBack();
+        if (typeof (uni as any).navigateBack === 'function') {
+          uni.navigateBack();
+        }
       }, 1000);
       
       return true;

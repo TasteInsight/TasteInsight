@@ -14,7 +14,7 @@
 
     <view v-for="dish in plan.dishes" :key="dish.id" class="flex mb-3">
       <image 
-        :src="dish.images[0] || '/default-dish.png'" 
+        :src="dish.images[0] || '/static/default_dish.png'" 
         class="w-20 h-20 rounded-lg" 
         mode="aspectFill"
       />
@@ -25,7 +25,7 @@
           <text class="text-orange-500 font-bold">¥{{ dish.price }}</text>
           <view class="flex items-center">
             <text class="text-yellow-500">★</text>
-            <text class="text-yellow-500 ml-1">{{ dish.averageRating.toFixed(1) }}</text>
+            <text class="text-yellow-500 ml-1">{{ dish.averageRating === 0 ? '暂无' : dish.averageRating.toFixed(1) }}</text>
           </view>
         </view>
       </view>

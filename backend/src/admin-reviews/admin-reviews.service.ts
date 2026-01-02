@@ -38,6 +38,13 @@ export class AdminReviewsService {
               images: true,
             },
           },
+          user: {
+            select: {
+              id: true,
+              nickname: true,
+              avatar: true,
+            },
+          },
         },
       }),
     ]);
@@ -53,6 +60,8 @@ export class AdminReviewsService {
         id: review.id,
         dishId: review.dishId,
         userId: review.userId,
+        userNickname: review.user.nickname,
+        userAvatar: review.user.avatar,
         rating: review.rating,
         ratingDetails: hasDetails
           ? {

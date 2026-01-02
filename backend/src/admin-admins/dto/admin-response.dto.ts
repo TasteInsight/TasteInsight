@@ -5,6 +5,7 @@ export class AdminDto {
   username: string;
   role: string;
   canteenId: string | null;
+  canteenName: string | null;
   createdBy: string | null;
   permissions: string[];
   createdAt: Date;

@@ -48,9 +48,19 @@ describe('AdminReviewsController (e2e)', () => {
     });
     testUserId = user?.id || '';
 
-    // 获取菜品ID
-    const dish = await prisma.dish.findFirst({ where: { name: '宫保鸡丁' } });
-    testDishId = dish?.id || '';
+    // 创建一个新的测试菜品（避免与 seed 数据中的评论冲突）
+    const canteen = await prisma.canteen.findFirst();
+    const dish = await prisma.dish.create({
+      data: {
+        name: 'Admin Reviews Test Dish',
+        price: 10,
+        canteenId: canteen!.id,
+        canteenName: canteen!.name,
+        windowName: 'Test Window',
+        availableMealTime: ['lunch'],
+      },
+    });
+    testDishId = dish.id;
 
     // 创建待审核评价
     const review = await prisma.review.create({
@@ -73,6 +83,9 @@ describe('AdminReviewsController (e2e)', () => {
     // 清理测试数据
     if (testReviewId) {
       await prisma.review.deleteMany({ where: { id: testReviewId } });
+    }
+    if (testDishId) {
+      await prisma.dish.deleteMany({ where: { id: testDishId } });
     }
     await app.close();
   });
@@ -99,10 +112,23 @@ describe('AdminReviewsController (e2e)', () => {
     });
 
     it('should return pending reviews without rating details', async () => {
+      // 创建新菜品避免冲突
+      const canteen = await prisma.canteen.findFirst();
+      const dish2 = await prisma.dish.create({
+        data: {
+          name: 'Test Dish No Details',
+          price: 10,
+          canteenId: canteen!.id,
+          canteenName: canteen!.name,
+          windowName: 'Test Window',
+          availableMealTime: ['lunch'],
+        },
+      });
+
       // 创建一个没有详细评分的待审核评价
       const reviewNoDetails = await prisma.review.create({
         data: {
-          dishId: testDishId,
+          dishId: dish2.id,
           userId: testUserId,
           rating: 4,
           content: '无详细评分测试',
@@ -123,6 +149,7 @@ describe('AdminReviewsController (e2e)', () => {
 
       // 清理
       await prisma.review.delete({ where: { id: reviewNoDetails.id } });
+      await prisma.dish.delete({ where: { id: dish2.id } });
     });
 
     it('should return 403 for normal admin without permission', async () => {
@@ -136,10 +163,25 @@ describe('AdminReviewsController (e2e)', () => {
   describe('/admin/reviews/:id/approve (POST)', () => {
     let reviewToApproveId: string;
 
+    let approveDishId: string;
+
     beforeEach(async () => {
+      const canteen = await prisma.canteen.findFirst();
+      const dish = await prisma.dish.create({
+        data: {
+          name: `Approve Test Dish ${Date.now()}`,
+          price: 10,
+          canteenId: canteen!.id,
+          canteenName: canteen!.name,
+          windowName: 'Test Window',
+          availableMealTime: ['lunch'],
+        },
+      });
+      approveDishId = dish.id;
+
       const review = await prisma.review.create({
         data: {
-          dishId: testDishId,
+          dishId: approveDishId,
           userId: testUserId,
           rating: 4,
           content: '待通过评价',
@@ -152,6 +194,9 @@ describe('AdminReviewsController (e2e)', () => {
     afterEach(async () => {
       if (reviewToApproveId) {
         await prisma.review.deleteMany({ where: { id: reviewToApproveId } });
+      }
+      if (approveDishId) {
+        await prisma.dish.deleteMany({ where: { id: approveDishId } });
       }
     });
 
@@ -189,10 +234,25 @@ describe('AdminReviewsController (e2e)', () => {
   describe('/admin/reviews/:id/reject (POST)', () => {
     let reviewToRejectId: string;
 
+    let rejectDishId: string;
+
     beforeEach(async () => {
+      const canteen = await prisma.canteen.findFirst();
+      const dish = await prisma.dish.create({
+        data: {
+          name: `Reject Test Dish ${Date.now()}`,
+          price: 10,
+          canteenId: canteen!.id,
+          canteenName: canteen!.name,
+          windowName: 'Test Window',
+          availableMealTime: ['lunch'],
+        },
+      });
+      rejectDishId = dish.id;
+
       const review = await prisma.review.create({
         data: {
-          dishId: testDishId,
+          dishId: rejectDishId,
           userId: testUserId,
           rating: 3,
           content: '待拒绝评价',
@@ -205,6 +265,9 @@ describe('AdminReviewsController (e2e)', () => {
     afterEach(async () => {
       if (reviewToRejectId) {
         await prisma.review.deleteMany({ where: { id: reviewToRejectId } });
+      }
+      if (rejectDishId) {
+        await prisma.dish.deleteMany({ where: { id: rejectDishId } });
       }
     });
 
@@ -247,10 +310,25 @@ describe('AdminReviewsController (e2e)', () => {
   describe('/admin/reviews/:id (DELETE)', () => {
     let reviewToDeleteId: string;
 
+    let deleteDishId: string;
+
     beforeEach(async () => {
+      const canteen = await prisma.canteen.findFirst();
+      const dish = await prisma.dish.create({
+        data: {
+          name: `Delete Test Dish ${Date.now()}`,
+          price: 10,
+          canteenId: canteen!.id,
+          canteenName: canteen!.name,
+          windowName: 'Test Window',
+          availableMealTime: ['lunch'],
+        },
+      });
+      deleteDishId = dish.id;
+
       const review = await prisma.review.create({
         data: {
-          dishId: testDishId,
+          dishId: deleteDishId,
           userId: testUserId,
           rating: 2,
           content: '待删除评价',
@@ -263,6 +341,9 @@ describe('AdminReviewsController (e2e)', () => {
     afterEach(async () => {
       if (reviewToDeleteId) {
         await prisma.review.deleteMany({ where: { id: reviewToDeleteId } });
+      }
+      if (deleteDishId) {
+        await prisma.dish.deleteMany({ where: { id: deleteDishId } });
       }
     });
 
@@ -301,11 +382,27 @@ describe('AdminReviewsController (e2e)', () => {
     let reviewForCommentsId: string;
     let testCommentId: string;
 
+    let commentsDishId: string;
+
     beforeAll(async () => {
+      // 创建新菜品避免冲突
+      const canteen = await prisma.canteen.findFirst();
+      const dish = await prisma.dish.create({
+        data: {
+          name: 'Comments Test Dish',
+          price: 10,
+          canteenId: canteen!.id,
+          canteenName: canteen!.name,
+          windowName: 'Test Window',
+          availableMealTime: ['lunch'],
+        },
+      });
+      commentsDishId = dish.id;
+
       // 创建用于测试的评价
       const review = await prisma.review.create({
         data: {
-          dishId: testDishId,
+          dishId: commentsDishId,
           userId: testUserId,
           rating: 4,
           content: '用于测试评论列表的评价',
@@ -333,6 +430,9 @@ describe('AdminReviewsController (e2e)', () => {
       }
       if (reviewForCommentsId) {
         await prisma.review.deleteMany({ where: { id: reviewForCommentsId } });
+      }
+      if (commentsDishId) {
+        await prisma.dish.deleteMany({ where: { id: commentsDishId } });
       }
     });
 

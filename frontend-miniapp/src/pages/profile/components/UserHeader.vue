@@ -20,12 +20,13 @@
           </view>
 
           <!-- 用户信息 -->
-          <view class="ml-4 flex-1 flex flex-col justify-center self-stretch">
-            <view class="text-xl font-bold text-ts-purple mb-1 mt-1">{{ userInfo.nickname }}</view>
-            <view class="text-ts-purple text-sm opacity-80 mb-auto">ID: {{ userInfo.id }}</view>
+          <view class="ml-4 flex-1 flex flex-col self-stretch relative">
+            <view class="flex-1 flex items-center">
+              <view class="text-xl font-bold text-ts-purple">{{ userInfo.nickname }}</view>
+            </view>
             
             <!-- 编辑个人信息按钮 (右下角) -->
-            <view class="flex justify-end mt-1 translate-y-3">
+            <view class="absolute bottom-0 right-0">
               <view 
                 class="flex flex-row items-center bg-ts-purple px-3 py-1.5 rounded-full active:bg-purple-800 shadow-sm"
                 @tap="handleEditProfile"

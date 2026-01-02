@@ -189,12 +189,27 @@ describe('AdminReportsController (e2e)', () => {
   describe('/admin/reports/:id/handle (POST)', () => {
     let testReportId: string;
     let testReviewId: string;
+    let testReportDishId: string;
 
     beforeEach(async () => {
+      // 创建新菜品避免唯一约束冲突
+      const canteen = await prisma.canteen.findFirst();
+      const dish = await prisma.dish.create({
+        data: {
+          name: `Report Test Dish ${Date.now()}`,
+          price: 10,
+          canteenId: canteen!.id,
+          canteenName: canteen!.name,
+          windowName: 'Test Window',
+          availableMealTime: ['lunch'],
+        },
+      });
+      testReportDishId = dish.id;
+
       // 创建用于测试的评价
       const review = await prisma.review.create({
         data: {
-          dishId: testDishId,
+          dishId: testReportDishId,
           userId: testSecondaryUserId,
           rating: 2,
           content: '测试举报处理的评价',
@@ -226,6 +241,11 @@ describe('AdminReportsController (e2e)', () => {
       await prisma.review.deleteMany({
         where: { id: testReviewId },
       });
+      if (testReportDishId) {
+        await prisma.dish.deleteMany({
+          where: { id: testReportDishId },
+        });
+      }
     });
 
     it('should handle report with delete_content action', async () => {
@@ -420,12 +440,27 @@ describe('AdminReportsController (e2e)', () => {
     let testCommentReportId: string;
     let testReviewId: string;
     let testCommentId: string;
+    let testCommentDishId: string;
 
     beforeEach(async () => {
+      // 创建新菜品避免唯一约束冲突
+      const canteen = await prisma.canteen.findFirst();
+      const dish = await prisma.dish.create({
+        data: {
+          name: `Comment Report Test Dish ${Date.now()}`,
+          price: 10,
+          canteenId: canteen!.id,
+          canteenName: canteen!.name,
+          windowName: 'Test Window',
+          availableMealTime: ['lunch'],
+        },
+      });
+      testCommentDishId = dish.id;
+
       // 创建用于测试的评价
       const review = await prisma.review.create({
         data: {
-          dishId: testDishId,
+          dishId: testCommentDishId,
           userId: testSecondaryUserId,
           rating: 3,
           content: '测试评论举报的评价',
@@ -471,6 +506,11 @@ describe('AdminReportsController (e2e)', () => {
       await prisma.review.deleteMany({
         where: { id: testReviewId },
       });
+      if (testCommentDishId) {
+        await prisma.dish.deleteMany({
+          where: { id: testCommentDishId },
+        });
+      }
     });
 
     it('should delete comment when handling with delete_content action', async () => {

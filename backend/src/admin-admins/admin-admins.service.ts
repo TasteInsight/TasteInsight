@@ -61,6 +61,7 @@ export class AdminAdminsService {
         orderBy: { createdAt: 'desc' },
         include: {
           permissions: true,
+          canteen: true,
         },
       }),
     ]);
@@ -70,6 +71,7 @@ export class AdminAdminsService {
       username: admin.username,
       role: admin.role,
       canteenId: admin.canteenId,
+      canteenName: admin.canteen?.name ?? null,
       createdBy: admin.createdBy,
       permissions: admin.permissions.map((p) => p.permission),
       createdAt: admin.createdAt,
@@ -121,6 +123,7 @@ export class AdminAdminsService {
         },
         include: {
           permissions: true,
+          canteen: true,
         },
       });
 
@@ -132,6 +135,7 @@ export class AdminAdminsService {
           username: admin.username,
           role: admin.role,
           canteenId: admin.canteenId,
+          canteenName: admin.canteen?.name ?? null,
           createdBy: admin.createdBy,
           permissions: admin.permissions.map((p) => p.permission),
           createdAt: admin.createdAt,

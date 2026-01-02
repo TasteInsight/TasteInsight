@@ -108,7 +108,14 @@ export class AdminDishesService {
 
   // 管理端获取菜品列表
   async getAdminDishes(query: AdminGetDishesDto, adminInfo: any) {
-    const { page = 1, pageSize = 20, canteenId, windowId, status, keyword } = query;
+    const {
+      page = 1,
+      pageSize = 20,
+      canteenId,
+      windowId,
+      status,
+      keyword,
+    } = query;
 
     // 构建查询条件
     const where: any = {};
@@ -236,7 +243,7 @@ export class AdminDishesService {
     });
 
     // 将子项 id 列表注入到 dish 对象，方便 mapToAdminDishDto 使用
-    (dish as any).subDishes = childRows.map((r) => ({ id: r.id }));
+    dish.subDishes = childRows.map((r) => ({ id: r.id })) as any;
 
     return {
       code: 200,
@@ -1120,7 +1127,7 @@ export class AdminDishesService {
       canteen = await tx.canteen.create({
         data: {
           name: canteenName,
-          openingHours: {},
+          openingHours: [],
         },
       });
     }
@@ -1272,6 +1279,22 @@ export class AdminDishesService {
           availableMealTime: mealTimes,
           availableDates,
           status: 'online',
+        },
+      });
+    } else {
+      parentDish = await tx.dish.update({
+        where: { id: parentDish.id },
+        data: {
+          description: description || '',
+          tags,
+          ingredients,
+          allergens,
+          availableMealTime: mealTimes,
+          availableDates,
+          floorId: floor?.id,
+          floorLevel: floor?.level,
+          floorName: floor?.name,
+          windowNumber: window.number,
         },
       });
     }

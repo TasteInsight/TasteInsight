@@ -68,7 +68,7 @@ describe('CommentsService', () => {
 
   describe('getComments', () => {
     it('returns paginated comments with parent metadata', async () => {
-      const createdAt = new Date('2024-01-01T00:00:00Z');
+      const createdAt = new Date('2025-01-01T00:00:00Z');
       prisma.comment.findMany.mockResolvedValue([
         {
           id: 'c1',

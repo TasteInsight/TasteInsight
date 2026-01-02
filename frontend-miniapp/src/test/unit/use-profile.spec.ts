@@ -24,10 +24,11 @@ describe('useProfile', () => {
     mockUserStore = {
       userInfo: { id: 1, nickname: 'Test User' },
       isLoggedIn: true,
-      fetchProfileAction: jest.fn().mockResolvedValue(undefined),
+      fetchProfileAction: jest.fn() as unknown as jest.Mock<any, any>,
       updateLocalUserInfo: jest.fn(),
       logoutAction: jest.fn(),
     };
+    (mockUserStore.fetchProfileAction as jest.Mock).mockResolvedValue(undefined);
     (useUserStore as unknown as jest.Mock).mockReturnValue(mockUserStore);
 
     // Mock uni globals

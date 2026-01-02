@@ -64,9 +64,13 @@
               class="hover:bg-gray-50"
             >
               <td class="py-4 px-6">
-                <div class="font-medium">
-                  <span class="iconify inline-block mr-1" data-icon="mdi:account"></span>
-                  {{ report.reporterNickname || report.reporter?.nickname || '未知用户' }}
+                <div class="flex items-center">
+                  <img
+                    :src="report.reporter?.avatar || '/default-avatar.png'"
+                    :alt="report.reporterNickname || report.reporter?.nickname || '用户'"
+                    class="w-8 h-8 rounded-full mr-2 border border-gray-200"
+                  />
+                  <span class="text-sm font-medium text-gray-900">{{ report.reporterNickname || report.reporter?.nickname || '未知用户' }}</span>
                 </div>
               </td>
               <td class="py-4 px-6">
@@ -140,8 +144,13 @@
                 <div class="grid grid-cols-2 gap-6">
                   <div class="space-y-1">
                     <div class="text-xs text-gray-400 uppercase tracking-wide">举报人</div>
-                    <div class="text-sm font-medium text-gray-900">
-                      {{ selectedReport.reporterNickname || selectedReport.reporter?.nickname || '未知用户' }}
+                    <div class="flex items-center">
+                      <img
+                        :src="selectedReport.reporter?.avatar || '/default-avatar.png'"
+                        :alt="selectedReport.reporterNickname || selectedReport.reporter?.nickname || '用户'"
+                        class="w-6 h-6 rounded-full mr-2 border border-gray-200"
+                      />
+                      <span class="text-sm font-medium text-gray-900">{{ selectedReport.reporterNickname || selectedReport.reporter?.nickname || '未知用户' }}</span>
                     </div>
                   </div>
                   <div class="space-y-1">
@@ -193,9 +202,14 @@
                   被举报内容
                 </h4>
                 <div v-if="selectedReport.targetContent">
-                  <div class="mb-4 text-sm">
-                    <span class="text-gray-500">发布者：</span>
-                    <span class="text-gray-900 font-medium ml-2">
+                  <div class="mb-4 flex items-center">
+                    <span class="text-gray-500 text-sm mr-2">发布者：</span>
+                    <img
+                      :src="selectedReport.targetContent.userAvatar || '/default-avatar.png'"
+                      :alt="selectedReport.targetContent.userNickname || '用户'"
+                      class="w-6 h-6 rounded-full mr-2 border border-gray-200"
+                    />
+                    <span class="text-gray-900 font-medium text-sm">
                       {{ selectedReport.targetContent.userNickname || '未知用户' }}
                     </span>
                   </div>
@@ -215,11 +229,11 @@
                         v-for="(image, index) in selectedReport.targetContent.images"
                         :key="index"
                         class="relative group aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100 cursor-pointer hover:border-tsinghua-purple transition"
-                        @click="openImagePreview(selectedReport.targetContent.images, index)"
+                        @click="openImagePreview(selectedReport.targetContent.images, Number(index))"
                       >
                         <img
                           :src="image"
-                          :alt="`评价图片 ${index + 1}`"
+                          :alt="`评价图片 ${Number(index) + 1}`"
                           class="w-full h-full object-cover"
                         />
                         <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition flex items-center justify-center">
@@ -355,6 +369,10 @@ import { reviewApi } from '@/api/modules/review'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import Pagination from '@/components/Common/Pagination.vue'
+import { savePageState, restorePageState } from '@/utils/page-state-cache'
+import { showAlert, showConfirm } from '@/composables/useModal'
+
+const PAGE_STATE_KEY = 'report-manage'
 
 export default defineComponent({
   name: 'ReportManage',
@@ -366,11 +384,30 @@ export default defineComponent({
     const authStore = useAuthStore()
     const reports = ref<any[]>([])
     const isLoading = ref(false)
-    const currentPage = ref(1)
     const pageSize = ref(20)
     const totalReports = ref(0)
-    const statusFilter = ref('')
-    const targetTypeFilter = ref('')
+    
+    // 默认状态定义
+    const defaultState = {
+      currentPage: 1,
+      statusFilter: '',
+      targetTypeFilter: '',
+    }
+    
+    // 从缓存恢复状态
+    const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
+    const currentPage = ref(restoredState.currentPage)
+    const statusFilter = ref(restoredState.statusFilter)
+    const targetTypeFilter = ref(restoredState.targetTypeFilter)
+    
+    // 保存页面状态
+    const saveState = () => {
+      savePageState(PAGE_STATE_KEY, {
+        currentPage: currentPage.value,
+        statusFilter: statusFilter.value,
+        targetTypeFilter: targetTypeFilter.value,
+      })
+    }
     const selectedReport = ref<any>(null)
     const imagePreview = ref<{
       show: boolean
@@ -435,7 +472,7 @@ export default defineComponent({
         }
       } catch (error) {
         console.error('加载举报列表失败:', error)
-        alert('加载举报列表失败，请刷新重试')
+        showAlert('加载举报列表失败，请刷新重试')
         reports.value = []
         totalReports.value = 0
       } finally {
@@ -445,28 +482,31 @@ export default defineComponent({
 
     const handlePageChange = (page: number) => {
       currentPage.value = page
+      saveState() // 保存状态
       loadReports()
     }
 
     const handleFilterChange = () => {
       currentPage.value = 1
+      saveState() // 保存状态
       loadReports()
     }
 
     const handleDeleteReview = async (report: any) => {
       if (!authStore.hasPermission('review:delete')) {
-        alert('您没有权限删除评价')
+        showAlert('您没有权限删除评价')
         return
       }
 
-      if (!confirm('确定要删除这个评价吗？此操作不可恢复。')) {
+      const confirmed = await showConfirm('确定要删除这个评价吗？此操作不可恢复。', '确认删除')
+      if (!confirmed) {
         return
       }
 
       try {
         const response = await reviewApi.handleReport(report.id, { action: 'delete_content' })
         if (response.code === 200) {
-          alert('删除成功')
+          showAlert('删除成功')
           await loadReports()
           // 如果详情对话框打开，更新选中的举报信息
           if (selectedReport.value && selectedReport.value.id === report.id) {
@@ -479,28 +519,29 @@ export default defineComponent({
             }
           }
         } else {
-          alert(response.message || '删除失败')
+          showAlert(response.message || '删除失败')
         }
       } catch (error) {
         console.error('删除评价失败:', error)
-        alert('删除评价失败，请重试')
+        showAlert('删除评价失败，请重试')
       }
     }
 
     const handleDeleteComment = async (report: any) => {
       if (!authStore.hasPermission('review:delete')) {
-        alert('您没有权限删除评论')
+        showAlert('您没有权限删除评论')
         return
       }
 
-      if (!confirm('确定要删除这个评论吗？此操作不可恢复。')) {
+      const confirmed = await showConfirm('确定要删除这个评论吗？此操作不可恢复。', '确认删除')
+      if (!confirmed) {
         return
       }
 
       try {
         const response = await reviewApi.handleReport(report.id, { action: 'delete_content' })
         if (response.code === 200) {
-          alert('删除成功')
+          showAlert('删除成功')
           await loadReports()
           // 如果详情对话框打开，更新选中的举报信息
           if (selectedReport.value && selectedReport.value.id === report.id) {
@@ -513,17 +554,17 @@ export default defineComponent({
             }
           }
         } else {
-          alert(response.message || '删除失败')
+          showAlert(response.message || '删除失败')
         }
       } catch (error) {
         console.error('删除评论失败:', error)
-        alert('删除评论失败，请重试')
+        showAlert('删除评论失败，请重试')
       }
     }
 
     const handleReport = async (report: any, action: 'reject_report') => {
       if (!authStore.hasPermission('report:handle')) {
-        alert('您没有权限处理举报')
+        showAlert('您没有权限处理举报')
         return
       }
 
@@ -536,7 +577,8 @@ export default defineComponent({
           break
       }
 
-      if (!confirm(confirmMessage)) {
+      const confirmed = await showConfirm(confirmMessage, '确认操作')
+      if (!confirmed) {
         return
       }
 
@@ -554,7 +596,7 @@ export default defineComponent({
         const response = await reviewApi.handleReport(report.id, requestData)
 
         if (response.code === 200) {
-          alert('处理成功')
+          showAlert('处理成功')
           await loadReports()
           // 如果详情对话框打开，更新选中的举报信息
           if (selectedReport.value && selectedReport.value.id === report.id) {
@@ -567,11 +609,11 @@ export default defineComponent({
             }
           }
         } else {
-          alert(response.message || '处理失败')
+          showAlert(response.message || '处理失败')
         }
       } catch (error) {
         console.error('处理举报失败:', error)
-        alert('处理举报失败，请重试')
+        showAlert('处理举报失败，请重试')
       }
     }
 
@@ -633,6 +675,7 @@ export default defineComponent({
     })
 
     onActivated(() => {
+      // 组件激活时仅重新加载数据，避免重复恢复状态覆盖当前修改
       loadReports()
     })
 

@@ -12,6 +12,12 @@ test.describe('Login flow', () => {
     await gotoUniPage(page, '/pages/login/index');
 
     // 等待跳转到首页
-    await expect(page.getByText('搜索食堂、窗口或菜品').first()).toBeVisible();
+    await page.waitForLoadState('networkidle');
+
+    // 检查 URL 是否正确跳转到首页
+    await expect(page).toHaveURL(/.*\/pages\/index\/index/);
+
+    // 检查页面有内容加载（例如食堂列表）
+    await expect(page.getByText('一食堂').first()).toBeVisible();
   });
 });

@@ -31,7 +31,7 @@ test.describe('Planning', () => {
     // 选择日期（假设有日期选择器）
     const dateInput = page.locator('input[type="date"]').first();
     if (await dateInput.isVisible()) {
-      await dateInput.fill('2024-12-25');
+      await dateInput.fill('2025-12-25');
     }
 
     // 点击确认创建（可能有确认按钮）
@@ -44,7 +44,7 @@ test.describe('Planning', () => {
     }
 
     // 等待创建成功，验证规划出现（检查是否有日期相关的文本）
-    await expect(page.getByText('2024').first()).toBeVisible();
+    await expect(page.getByText('2025').first()).toBeVisible();
 
     // 删除规划（假设有删除按钮）
     const deleteButton = page.getByRole('button', { name: '删除' }).first();

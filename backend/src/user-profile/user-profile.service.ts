@@ -186,6 +186,23 @@ export class UserProfileService {
         skip,
         take: pageSize,
         orderBy: { addedAt: 'desc' },
+        include: {
+          dish: {
+            select: {
+              name: true,
+              images: true,
+              price: true,
+              windowName: true,
+              tags: true,
+              averageRating: true,
+              canteen: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
       }),
       this.prisma.favoriteDish.count({ where: { userId } }),
     ]);
@@ -217,6 +234,23 @@ export class UserProfileService {
         skip,
         take: pageSize,
         orderBy: { viewedAt: 'desc' },
+        include: {
+          dish: {
+            select: {
+              name: true,
+              images: true,
+              price: true,
+              windowName: true,
+              tags: true,
+              averageRating: true,
+              canteen: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
       }),
       this.prisma.browseHistory.count({ where: { userId } }),
     ]);
@@ -483,13 +517,30 @@ export class UserProfileService {
     return {
       dishId: favorite.dishId,
       addedAt: favorite.addedAt.toISOString(),
+      dishName: favorite.dish.name,
+      dishImages: favorite.dish.images,
+      dishPrice: favorite.dish.price,
+      canteenName: favorite.dish.canteen.name,
+      windowName: favorite.dish.windowName,
+      tags: favorite.dish.tags,
+      averageRating: favorite.dish.averageRating,
     };
   }
 
   private mapToUserBrowseHistoryDto(history: any): UserHistoryData {
     return {
       dishId: history.dishId,
-      viewedAt: history.viewedAt.toISOString(),
+      viewedAt:
+        history.viewedAt instanceof Date
+          ? history.viewedAt.toISOString()
+          : history.viewedAt,
+      dishName: history.dish.name,
+      dishImages: history.dish.images,
+      dishPrice: history.dish.price,
+      canteenName: history.dish.canteen.name,
+      windowName: history.dish.windowName,
+      tags: history.dish.tags,
+      averageRating: history.dish.averageRating,
     };
   }
 

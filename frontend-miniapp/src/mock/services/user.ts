@@ -247,6 +247,14 @@ export const mockAddFavorite = async (dishId: string): Promise<void> => {
   await mockDelay();
   
   try {
+    // 获取菜品详情
+    const { mockGetDishById } = await import('../services/dish');
+    const dish = await mockGetDishById(dishId);
+    
+    if (!dish) {
+      throw new Error(`菜品不存在: ${dishId}`);
+    }
+    
     // 更新收藏列表
     const storedFavorites = uni.getStorageSync(STORAGE_KEYS.FAVORITES) || [];
     const exists = storedFavorites.some((f: Favorite) => f.dishId === dishId);
@@ -255,6 +263,13 @@ export const mockAddFavorite = async (dishId: string): Promise<void> => {
       const newFavorite: Favorite = {
         dishId,
         addedAt: new Date().toISOString(),
+        dishName: dish.name,
+        dishImages: dish.images,
+        dishPrice: dish.price,
+        canteenName: dish.canteenName || '未知食堂',
+        windowName: dish.windowName || '未知窗口',
+        tags: dish.tags || [],
+        averageRating: dish.averageRating,
       };
       storedFavorites.unshift(newFavorite);
       uni.setStorageSync(STORAGE_KEYS.FAVORITES, storedFavorites);

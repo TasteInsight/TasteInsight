@@ -17,6 +17,19 @@ export enum MealTime {
 }
 
 /**
+ * 星期枚举
+ */
+export enum DayOfWeek {
+  MONDAY = 'Monday',
+  TUESDAY = 'Tuesday',
+  WEDNESDAY = 'Wednesday',
+  THURSDAY = 'Thursday',
+  FRIDAY = 'Friday',
+  SATURDAY = 'Saturday',
+  SUNDAY = 'Sunday',
+}
+
+/**
  * 菜品可排序字段枚举
  */
 export enum DishSortField {

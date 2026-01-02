@@ -5,9 +5,15 @@ import { AdminCanteensService } from './admin-canteens.service';
 import { AdminCanteensController } from './admin-canteens.controller';
 import { PrismaService } from '@/prisma.service';
 import { DishSyncQueueModule } from '@/dish-sync-queue';
+import { AdminWindowsModule } from '@/admin-windows/admin-windows.module';
 
 @Module({
-  imports: [JwtModule.register({}), ConfigModule, DishSyncQueueModule],
+  imports: [
+    JwtModule.register({}),
+    ConfigModule,
+    DishSyncQueueModule,
+    AdminWindowsModule,
+  ],
   controllers: [AdminCanteensController],
   providers: [AdminCanteensService, PrismaService],
 })

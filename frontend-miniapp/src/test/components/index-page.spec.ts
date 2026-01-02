@@ -5,6 +5,7 @@ import IndexPage from '@/pages/index/index.vue';
 // Mock uni-app lifecycle hooks
 jest.mock('@dcloudio/uni-app', () => ({
   onPullDownRefresh: jest.fn(),
+  onReachBottom: jest.fn(),
 }));
 
 // Mock stores

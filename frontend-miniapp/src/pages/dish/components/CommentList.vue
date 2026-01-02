@@ -38,7 +38,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, watch } from 'vue';
 import type { Comment } from '@/types/api';
 
 interface Props {
@@ -69,6 +69,14 @@ const totalComments = computed(() => {
 onMounted(() => {
   props.fetchComments(props.reviewId);
 });
+
+watch(
+  () => props.reviewId,
+  (nextId, prevId) => {
+    if (!nextId || nextId === prevId) return;
+    props.fetchComments(nextId);
+  }
+);
 </script>
 
 <style scoped>

@@ -8,9 +8,13 @@
         <h1 class="text-xl font-bold">食鉴管理平台</h1>
       </div>
       <div class="text-sm opacity-75 mt-2 tracking-wide">清华大学餐饮管理中心</div>
+      <div v-if="userInfo.canteenName || !userInfo.canteenId" class="text-xs opacity-70 mt-1">
+        <span v-if="userInfo.canteenName">管理食堂：{{ userInfo.canteenName }}</span>
+        <span v-else>管理食堂：全校食堂</span>
+      </div>
     </div>
 
-    <div class="flex-1">
+    <div class="flex-1 overflow-y-auto min-h-0 sidebar-menu-scroll">
       <div v-permission="'dish:view'">
         <button
           class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
@@ -104,6 +108,15 @@
         <span>举报管理</span>
       </router-link>
       <router-link
+        v-permission="'review:approve'"
+        to="/review-manage"
+        class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
+        :class="{ active: $route.path === '/review-manage' }"
+      >
+        <span class="iconify" data-icon="carbon:task-approved"></span>
+        <span>评价和评论审核</span>
+      </router-link>
+      <router-link
         v-permission="'review:delete'"
         to="/comment-manage"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
@@ -123,27 +136,33 @@
       </router-link>
     </div>
 
-    <div ref="userInfoSection" class="px-6 py-4 text-sm mt-auto border-t border-white/20 relative">
-      <div class="flex items-center justify-between">
+    <div ref="userInfoSection" class="px-6 py-4 text-sm mt-auto mb-1 border-t border-white/20 relative">
+      <!-- 第一行：图标、管理员名称、右侧按钮 -->
+      <div class="flex items-center justify-between mb-1">
         <div
-          class="flex items-center space-x-2 opacity-80 cursor-pointer hover:opacity-100 transition"
+          class="flex items-center space-x-2 opacity-80 cursor-pointer hover:opacity-100 transition flex-1 min-w-0"
           @click="togglePermissionsDropdown"
         >
-          <span class="iconify" data-icon="mdi:user-circle-outline"></span>
-          <span>管理员：{{ userInfo.username || userInfo.name || '管理员' }}</span>
+          <span class="iconify flex-shrink-0" data-icon="mdi:user-circle-outline"></span>
+          <span class="truncate">管理员：{{ userInfo.username || userInfo.name || '管理员' }}</span>
           <span
-            class="iconify text-xs transition-transform"
+            class="iconify text-xs transition-transform flex-shrink-0"
             :class="{ 'rotate-180': showPermissionsDropdown }"
             data-icon="carbon:chevron-down"
           ></span>
         </div>
         <button
-          class="opacity-70 hover:opacity-100 transition"
+          class="opacity-70 hover:opacity-100 transition flex-shrink-0 ml-2"
           @click="handleLogout"
           title="退出登录"
         >
           <span class="iconify" data-icon="carbon:logout"></span>
         </button>
+      </div>
+      <!-- 第二行：食堂信息 -->
+      <div v-if="userInfo.canteenName || !userInfo.canteenId" class="pl-7 text-xs opacity-70">
+        <span v-if="userInfo.canteenName">{{ userInfo.canteenName }}</span>
+        <span v-else>全校食堂</span>
       </div>
 
       <!-- 权限下拉框 -->
@@ -369,3 +388,29 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+/* 自定义滚动条样式 */
+.sidebar-menu-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-menu-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-menu-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.sidebar-menu-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Firefox 滚动条样式 */
+.sidebar-menu-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+</style>

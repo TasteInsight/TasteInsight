@@ -57,6 +57,31 @@ export class AdminCanteensService {
     };
   }
 
+  async findOne(id: string): Promise<CanteenResponseDto> {
+    const canteen = await this.prisma.canteen.findUnique({
+      where: { id },
+      include: {
+        windows: true,
+        floors: true,
+      },
+    });
+
+    if (!canteen) {
+      throw new NotFoundException('食堂不存在');
+    }
+
+    return {
+      code: 200,
+      message: 'success',
+      data: {
+        ...canteen,
+        openingHours: canteen.openingHours,
+        floors: canteen.floors,
+        windows: canteen.windows,
+      },
+    };
+  }
+
   async create(
     createCanteenDto: CreateCanteenDto,
   ): Promise<CanteenResponseDto> {

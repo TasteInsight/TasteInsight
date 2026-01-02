@@ -64,22 +64,25 @@
                   : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100'
               ]"
             >
-              <!-- 核心修复：支持换行和空格 -->
-              <text :user-select="true" class="whitespace-pre-wrap leading-normal">{{ segment.text }}</text>
+              <!-- AI 消息：将后端返回的 Markdown 渲染为富文本 -->
+              <MarkdownText v-if="message.type === 'ai'" :content="segment.text" />
+
+              <!-- 用户消息：保留可选中复制的纯文本渲染 -->
+              <text v-else :user-select="true" class="whitespace-pre-wrap leading-normal">{{ segment.text }}</text>
               
               <!-- 流式传输的光标动画 -->
               <view v-if="message.isStreaming && index === message.content.length - 1" class="inline-block w-2 h-4 ml-1 bg-current opacity-70 animate-pulse align-middle"></view>
             </view>
 
             <!-- 菜品卡片 (组件内部负责点击跳转) -->
-            <view v-else-if="segment.type === 'card_dish'" class="w-full max-w-[90%] mt-1">
+            <view v-else-if="segment.type === 'card_dish' && segment.data && segment.data.length > 0" class="w-full max-w-[90%] mt-1">
                <!-- 假设 DishCard 支持 horizontal scroll 或者是单个 -->
                <scroll-view scroll-x class="whitespace-nowrap w-full" v-if="segment.data.length > 1">
                  <view class="inline-block mr-2 align-top" v-for="(dish, i) in segment.data" :key="i">
-                   <DishCard :dish="dish" />
+                   <DishCard v-if="dish && dish.dish" :dish="dish" />
                  </view>
                </scroll-view>
-               <view v-else>
+               <view v-else-if="segment.data[0] && segment.data[0].dish">
                   <DishCard :dish="segment.data[0]" />
                </view>
             </view>
@@ -112,6 +115,8 @@
       </scroll-view>
 
       <!-- 底部固定区域 -->
+      <!-- 填充条：遮挡输入框与 tabbar 之间可能出现的缝隙（背景与输入框一致） -->
+      <view class="fixed bottom-0 left-0 right-0 z-40 bg-gray-50" :style="{ height: 'calc(env(safe-area-inset-bottom) + 6px)' }" />
       <view class="fixed bottom-0 left-0 right-0 z-40 flex flex-col">
          <!-- 快捷提示词 (Chips) -->
          <view v-if="suggestions.length > 0" class="bg-gray-50 w-full py-2">
@@ -121,7 +126,7 @@
          </view>
 
          <!-- 输入框区域 -->
-         <view class="bg-gray-50 w-full pb-[calc(5px+env(safe-area-inset-bottom))] mb-1 px-4 relative z-50">
+         <view class="bg-gray-50 w-full pb-[calc(5px+env(safe-area-inset-bottom))] px-4 relative z-50">
             <view class="max-w-screen-md mx-auto">
                <InputBar 
                  v-model:scene="scene" 
@@ -154,7 +159,8 @@
               <text class="text-xl text-gray-500">×</text>
             </view>
           </view>
-          <scroll-view scroll-y class="flex-1">
+          <!-- Ensure scroll-view has an explicit height so it can scroll in small containers -->
+          <scroll-view scroll-y :style="{ height: 'calc(100% - 56px)' }">
              <!-- ... 列表内容 ... -->
               <view 
               v-for="item in historyEntries" 
@@ -218,7 +224,9 @@
 import { ref, watch, computed, nextTick } from 'vue';
 import { useChat } from './composables/use-chat';
 import request from '@/utils/request'; 
+import { createMealPlan } from '@/api/modules/meal-plan';
 import DishCard from './components/DishCard.vue';
+import MarkdownText from './components/MarkdownText.vue';
 import PlanningCard from './components/PlanningCard.vue';
 import CanteenCard from './components/CanteenCard.vue';
 import WindowCard from './components/WindowCard.vue';
@@ -357,8 +365,8 @@ const handleLoadHistory = async (sessionId: string) => {
   }
 };
 const handleScenePicker = (e: any) => {
-  const idx = e.detail.value;
-  if (typeof idx === 'number' && idx >= 0 && idx < sceneOptions.length) {
+  const idx = Number(e?.detail?.value);
+  if (Number.isFinite(idx) && idx >= 0 && idx < sceneOptions.length) {
     selectedSceneIndex.value = idx;
     selectedScene.value = sceneOptions[idx].value as AIScene;
   } else {
@@ -367,47 +375,41 @@ const handleScenePicker = (e: any) => {
 };
 
 // === 核心业务逻辑：应用规划 ===
+// 期望后端在每个 card_plan 中返回 confirmAction.body，且可直接作为 /meal-plans POST 入参。
 const handleApplyPlan = async (plan: ComponentMealPlanDraft & { appliedStatus?: 'success' | 'failed' }) => {
-  const action = plan.confirmAction;
-  
-  if (!action || !action.api) {
-    uni.showToast({ title: '无效的规划数据', icon: 'none' });
-    return;
-  }
-
-  uni.showLoading({ title: '正在保存...' });
+  uni.showLoading({ title: '正在应用...' });
 
   try {
-    // 1. 调用业务接口保存规划
-    const res = await request({
-      url: action.api,
-      method: action.method as any || 'POST',
-      data: action.body
-    });
+    const body = plan.confirmAction?.body;
+    const startDate = body?.startDate;
+    const endDate = body?.endDate;
+    const mealTime = body?.mealTime;
+    const dishes = body?.dishes;
 
-    uni.hideLoading();
-
-    if (res.code === 200) {
-      uni.showToast({ title: '已应用到日程', icon: 'success' });
-      // 更新 UI 状态
-      plan.appliedStatus = 'success';
-
-      // 2. 【闭环】自动告诉 AI "我已应用"
-      setTimeout(() => {
-        sendMessage("我已确认应用了该饮食规划，请帮我生成后续建议");
-      }, 500);
-    } else {
-      // 业务逻辑失败
-      uni.showToast({ title: res.message || '保存失败，请重试', icon: 'none' });
-      // 更新 UI 状态
-      plan.appliedStatus = 'failed';
+    if (!startDate || !endDate || !mealTime || !Array.isArray(dishes) || dishes.length === 0) {
+      throw new Error('后端未返回可直接应用的规划参数（confirmAction.body）');
     }
 
+    await createMealPlan({ startDate, endDate, mealTime, dishes });
+
+    uni.hideLoading();
+    uni.showToast({ title: '已应用到日程', icon: 'success' });
+    plan.appliedStatus = 'success';
+
+    // 通知规划页刷新数据
+    try {
+      uni.$emit('meal-plan:changed');
+    } catch (e) {
+      console.debug('uni.$emit not available:', e);
+    }
+
+    setTimeout(() => {
+      sendMessage('我已确认应用了该饮食规划，请帮我生成后续建议');
+    }, 500);
   } catch (error) {
     uni.hideLoading();
-    uni.showToast({ title: '保存失败，请重试', icon: 'none' });
+    uni.showToast({ title: '应用失败，请重试', icon: 'none' });
     console.error(error);
-    // 更新 UI 状态
     plan.appliedStatus = 'failed';
   }
 };

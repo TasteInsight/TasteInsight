@@ -127,4 +127,84 @@ describe('useAddDish', () => {
     expect(formData.name).toBe('');
     expect(formData.price).toBe(0);
   });
+
+  it('should select window and toggle mealtime', () => {
+    const { selectWindow, formData, toggleMealTime } = useAddDish();
+    const w = { number: '10', name: 'W', floor: { level: '2' } } as any;
+    selectWindow(w);
+    expect(formData.windowNumber).toBe('10');
+    expect(formData.windowName).toBe('W');
+    expect(formData.floor).toBe('2');
+
+    toggleMealTime('lunch');
+    expect(formData.availableMealTime).toContain('lunch');
+    toggleMealTime('lunch');
+    expect(formData.availableMealTime).not.toContain('lunch');
+  });
+
+  it('should toggle and manage tags and allergens', () => {
+    const { toggleTag, formData, addCustomTag, customTagInput, customTags, removeCustomTag, toggleAllergen, addCustomAllergen, customAllergenInput, customAllergens, removeCustomAllergen } = useAddDish();
+
+    toggleTag('辣');
+    expect(formData.tags).toContain('辣');
+    toggleTag('辣');
+    expect(formData.tags).not.toContain('辣');
+
+    customTagInput.value = '自定义';
+    addCustomTag();
+    expect(formData.tags).toContain('自定义');
+    expect(customTags.value).toContain('自定义');
+    removeCustomTag('自定义');
+    expect(customTags.value).not.toContain('自定义');
+
+    toggleAllergen('花生');
+    expect(formData.allergens).toContain('花生');
+    toggleAllergen('花生');
+    expect(formData.allergens).not.toContain('花生');
+
+    customAllergenInput.value = '鱼';
+    addCustomAllergen();
+    expect(formData.allergens).toContain('鱼');
+    expect(customAllergens.value).toContain('鱼');
+
+    removeCustomAllergen('鱼');
+    expect(customAllergens.value).not.toContain('鱼');
+  });
+
+  it('should choose and remove images', () => {
+    const { chooseImages, formData, removeImage } = useAddDish();
+    (uni.chooseImage as jest.Mock).mockImplementation(({ success }: any) => success({ tempFilePaths: ['a.jpg'] }));
+
+    chooseImages();
+    expect(formData.images).toContain('a.jpg');
+
+    removeImage(0);
+    expect(formData.images?.length).toBe(0);
+  });
+
+  it('loadCanteenList failure sets error', async () => {
+    (getCanteenList as jest.Mock).mockRejectedValue(new Error('bad'));
+    const { loadCanteenList, error } = useAddDish();
+    await loadCanteenList();
+    expect(error.value).toBe('加载食堂列表失败');
+  });
+
+  it('submitForm triggers navigateBack after success timeout', async () => {
+    jest.useFakeTimers();
+    const { submitForm, formData } = useAddDish();
+    formData.name = 'Test';
+    formData.price = 10;
+    formData.canteenName = 'C';
+    formData.windowName = 'W';
+    formData.availableMealTime = ['lunch'];
+
+    (uploadDish as jest.Mock).mockResolvedValue({ code: 200 });
+
+    const res = await submitForm();
+    expect(res).toBe(true);
+    // run timers to execute navigateBack
+    jest.runAllTimers();
+    expect((uni.navigateBack as jest.Mock)).toHaveBeenCalled();
+    jest.useRealTimers();
+  });
 });

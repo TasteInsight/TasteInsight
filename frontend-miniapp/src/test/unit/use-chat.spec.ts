@@ -89,4 +89,65 @@ describe('useChat isInitializing', () => {
     expect(isInitializing.value).toBe(false);
     expect((getAISuggestions as unknown as jest.Mock)).not.toHaveBeenCalled();
   });
+
+  it('fetchSuggestions handles API errors and clears loading flag', async () => {
+    (getAISuggestions as unknown as jest.Mock).mockRejectedValue(new Error('boom'));
+    const { refreshSuggestions, suggestions } = useChat();
+
+    // call and wait
+    await refreshSuggestions();
+
+    // should not throw and loading flag should be reset
+    expect(suggestions.value.length).toBe(0);
+  });
+
+  it('sendMessage ignores empty or whitespace-only text and calls sendChatMessage otherwise', async () => {
+    const { sendMessage } = useChat();
+
+    await sendMessage('   ');
+    expect(chatStoreMock.sendChatMessage).not.toHaveBeenCalled();
+
+    await sendMessage('hello');
+    expect(chatStoreMock.sendChatMessage).toHaveBeenCalledWith('hello');
+    // getAISuggestions should have been triggered to refresh suggestions (async)
+    expect(getAISuggestions).toHaveBeenCalled();
+  });
+
+  it('sendMessage logs errors on failure', async () => {
+    chatStoreMock.sendChatMessage.mockImplementation(() => { throw new Error('fail'); });
+    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const { sendMessage } = useChat();
+
+    await sendMessage('willfail');
+
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('handleSuggestionClick forwards to sendMessage', async () => {
+    const { handleSuggestionClick } = useChat();
+    await handleSuggestionClick('suggest');
+    expect(chatStoreMock.sendChatMessage).toHaveBeenCalledWith('suggest');
+  });
+
+  it('setScene calls store.setScene and updates scene ref', () => {
+    const { setScene, scene } = useChat();
+    setScene('arena');
+    expect(chatStoreMock.setScene).toHaveBeenCalledWith('arena');
+    expect(scene.value).toBe(chatStoreMock.currentScene);
+  });
+
+  it('init with scene param calls setScene and may skip initSession when messages exist', async () => {
+    // messages empty -> initSession called
+    chatStoreMock.messages = [];
+    const { init } = useChat();
+    await init('new');
+    expect(chatStoreMock.initSession).toHaveBeenCalled();
+
+    // messages non-empty -> do not call initSession
+    chatStoreMock.initSession.mockClear();
+    chatStoreMock.messages = [{}];
+    await init('new2');
+    expect(chatStoreMock.initSession).not.toHaveBeenCalled();
+  });
 });

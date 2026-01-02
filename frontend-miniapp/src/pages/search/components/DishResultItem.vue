@@ -17,8 +17,8 @@
         <div class="text-xs text-gray-500 mt-1">{{ dish.canteenName }} - {{ dish.windowName }}</div>
         <div class="flex items-center gap-2 mt-2">
           <div class="text-red-500 font-semibold">¥{{ dish.price }}</div>
-          <div v-if="dish.averageRating" class="text-xs text-yellow-600">
-            ⭐ {{ dish.averageRating.toFixed(1) }}
+          <div class="text-xs text-yellow-600">
+            ⭐ {{ dish.averageRating === 0 ? '暂无' : dish.averageRating.toFixed(1) }}
           </div>
         </div>
         <div v-if="dish.tags?.length" class="flex flex-wrap gap-1 mt-2">

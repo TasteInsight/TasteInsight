@@ -16,7 +16,11 @@ import '@/mock/mock-routes';
 let refreshTokenPromise: Promise<void> | null = null;
 
 function buildUserFriendlyError(err: unknown): Error {
-  return new Error(toUserFriendlyErrorMessage(err));
+  const wrapped = new Error(toUserFriendlyErrorMessage(err)) as Error & {
+    originalError?: unknown;
+  };
+  wrapped.originalError = err;
+  return wrapped;
 }
 
 /**
@@ -64,7 +68,7 @@ function performTokenRefresh(): Promise<void> {
       },
       fail: (err) => {
         handleHttpError(401, {});
-        reject(buildUserFriendlyError(err));
+        reject(buildUserFriendlyError(new Error('HTTP 401')));
       }
     });
   });
@@ -205,7 +209,11 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
 
       // 3. 失败回调 (网络层面，比如断网)
       fail: (err: UniApp.GeneralCallbackResult) => {
-        console.error('网络请求失败:', err);
+        console.error('[request] Network error (uni.request fail):', {
+          method: options.method || 'GET',
+          url: fullUrl,
+          err,
+        });
         reject(buildUserFriendlyError(new Error('网络连接异常')));
       },
     });
@@ -218,6 +226,9 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
  * @param {any} responseData - 响应数据
  */
 function handleHttpError(statusCode: number, responseData: any): void {
+  // 控制台输出真实错误信息（HTTP 状态码 + 响应体），不要输出用户友好文案
+  console.error(`[request] HTTP ${statusCode} error:`, responseData);
+
   let message = '';
   switch (statusCode) {
     case 401:

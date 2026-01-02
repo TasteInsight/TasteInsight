@@ -44,9 +44,20 @@ export class DishesService {
     }
 
     // 记录用户浏览历史
+    // 使用 upsert 操作确保原子性，避免并发请求导致的重复记录
+    // 如果记录已存在，更新 viewedAt；否则创建新记录
     try {
-      await this.prisma.browseHistory.create({
-        data: {
+      await this.prisma.browseHistory.upsert({
+        where: {
+          userId_dishId: {
+            userId,
+            dishId: id,
+          },
+        },
+        update: {
+          viewedAt: new Date(),
+        },
+        create: {
           userId,
           dishId: id,
         },
@@ -60,6 +71,63 @@ export class DishesService {
       code: 200,
       message: 'success',
       data: DishDto.fromEntity(dish),
+    };
+  }
+
+  // 批量获取菜品详情
+  async getDishesByIds(
+    ids: string[],
+    userId: string,
+  ): Promise<DishListResponseDto> {
+    if (!ids || ids.length === 0) {
+      return {
+        code: 200,
+        message: 'success',
+        data: {
+          items: [],
+          meta: {
+            page: 1,
+            pageSize: 0,
+            total: 0,
+            totalPages: 0,
+          },
+        },
+      };
+    }
+
+    // 批量查询菜品
+    const dishes = await this.prisma.dish.findMany({
+      where: {
+        id: { in: ids },
+      },
+      include: {
+        canteen: true,
+        window: true,
+        parentDish: true,
+        subDishes: true,
+      },
+    });
+
+    // 按照请求的 ID 顺序返回（保持顺序一致）
+    const dishMap = new Map(dishes.map((dish) => [dish.id, dish]));
+    const sortedDishes = ids
+      .map((id) => dishMap.get(id))
+      .filter((dish) => dish != null);
+
+    const items = sortedDishes.map((dish) => DishDto.fromEntity(dish));
+
+    return {
+      code: 200,
+      message: 'success',
+      data: {
+        items,
+        meta: {
+          page: 1,
+          pageSize: items.length,
+          total: items.length,
+          totalPages: 1,
+        },
+      },
     };
   }
 
@@ -301,6 +369,11 @@ export class DishesService {
       }
       if (searchFields.includes('tags')) {
         orConditions.push({ tags: { has: search.keyword } });
+      }
+      if (searchFields.includes('ingredients')) {
+        orConditions.push({
+          ingredients: { has: search.keyword },
+        });
       }
 
       if (orConditions.length > 0) {

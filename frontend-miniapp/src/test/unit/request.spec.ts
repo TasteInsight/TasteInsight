@@ -91,7 +91,7 @@ describe('request utils', () => {
       opts.fail({ errMsg: 'Network Error' });
     });
 
-    await expect(request({ url: '/test' })).rejects.toThrow('网络开小差了，请检查网络后重试');
+    await expect(request({ url: '/test' })).rejects.toThrow('网络开小差了，请稍后再试');
   });
 
   it('should handle 401 and refresh token successfully', async () => {
@@ -168,6 +168,6 @@ describe('request utils', () => {
       opts.success({ statusCode: 500, data: { message: 'Server Error' } });
     });
 
-    await expect(request({ url: '/test' })).rejects.toThrow('服务器开小差了，请稍后再试');
+    await expect(request({ url: '/test' })).rejects.toThrow('网络开小差了，请稍后再试');
   });
 });

@@ -462,6 +462,10 @@ import { permissionApi } from '@/api/modules/permission'
 import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
+import { savePageState, restorePageState } from '@/utils/page-state-cache'
+import { showAlert, showConfirmDanger } from '@/composables/useModal'
+
+const PAGE_STATE_KEY = 'user-manage'
 
 export default {
   name: 'UserManage',
@@ -477,11 +481,30 @@ export default {
     const editingAdmin = ref(null) // 当前编辑的管理员
     const adminList = ref([]) // 子管理员列表
     const canteenList = ref([]) // 食堂列表
-    const searchQuery = ref('')
-    const canteenFilter = ref('') // 食堂筛选
-    const currentPage = ref(1)
+    
+    // 默认状态定义
+    const defaultState = {
+      searchQuery: '',
+      canteenFilter: '',
+      currentPage: 1,
+    }
+    
+    // 从缓存恢复状态
+    const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
+    const searchQuery = ref(restoredState.searchQuery)
+    const canteenFilter = ref(restoredState.canteenFilter) // 食堂筛选
+    const currentPage = ref(restoredState.currentPage)
     const pageSize = ref(10)
     const totalPages = ref(1)
+    
+    // 保存页面状态
+    const saveState = () => {
+      savePageState(PAGE_STATE_KEY, {
+        searchQuery: searchQuery.value,
+        canteenFilter: canteenFilter.value,
+        currentPage: currentPage.value,
+      })
+    }
 
     // 表单错误状态
     const errors = reactive({
@@ -506,7 +529,7 @@ export default {
       { value: 'restaurant_manager', label: '餐厅经理', desc: '单个食堂管理' },
       { value: 'kitchen_operator', label: '后厨操作员', desc: '菜品与库存管理' },
       { value: 'news_editor', label: '新闻编辑', desc: '发布和管理新闻' },
-      { value: 'auditor', label: '内容审核员', desc: '审核评论和评价' },
+      { value: 'auditor', label: '内容审核员', desc: '审核评价、评论和处理举报' },
     ]
 
     // 所有权限组定义
@@ -533,7 +556,7 @@ export default {
       },
       {
         id: 'review',
-        name: '内容审核',
+        name: '评价和评论审核',
         permissions: [
           { id: 'review:approve', label: '审核评价' },
           { id: 'review:delete', label: '删除评价' },
@@ -625,6 +648,9 @@ export default {
       'canteen:edit': ['canteen:view'],
       'canteen:delete': ['canteen:view'],
       'review:approve': ['dish:view', 'canteen:view'], // 审核评价可能需要查看菜品和食堂
+      'review:delete': ['review:approve'], // 删除评价需要审核权限
+      'comment:approve': ['dish:view', 'canteen:view'], // 审核评论可能需要查看菜品和食堂
+      'comment:delete': ['comment:approve'], // 删除评论需要审核权限
       'upload:approve': ['dish:view', 'canteen:view'], // 审核上传需要查看菜品
       'news:create': ['news:view'],
       'news:edit': ['news:view'],
@@ -634,7 +660,6 @@ export default {
       'admin:create': ['admin:view', 'canteen:view'], // 创建管理员可能需要分配食堂
       'admin:edit': ['admin:view'],
       'admin:delete': ['admin:view'],
-      'comment:delete': ['comment:approve'], // 删除评论需要审核权限
       'config:edit': ['config:view'], // 编辑配置需要查看权限
     }
 
@@ -738,7 +763,7 @@ export default {
         }
       } catch (error) {
         console.error('加载子管理员列表失败:', error)
-        alert('加载子管理员列表失败，请刷新重试')
+        showAlert('加载子管理员列表失败，请刷新重试')
         adminList.value = []
       } finally {
         loading.value = false
@@ -800,21 +825,25 @@ export default {
 
     // 删除管理员
     const deleteAdmin = async (admin) => {
-      if (!confirm(`确定要删除子管理员"${admin.username}"吗？此操作不可恢复！`)) {
+      const confirmed = await showConfirmDanger(
+        `确定要删除子管理员"${admin.username}"吗？此操作不可恢复！`,
+        '确认删除'
+      )
+      if (!confirmed) {
         return
       }
 
       try {
         const response = await permissionApi.deleteAdmin(admin.id)
         if (response.code === 200) {
-          alert('删除成功！')
+          showAlert('删除成功！')
           loadAdmins()
         } else {
           throw new Error(response.message || '删除失败')
         }
       } catch (error) {
         console.error('删除子管理员失败:', error)
-        alert(error instanceof Error ? error.message : '删除子管理员失败，请重试')
+        showAlert(error instanceof Error ? error.message : '删除子管理员失败，请重试')
       }
     }
 
@@ -837,13 +866,27 @@ export default {
 
     // 生成随机密码
     const generatePassword = () => {
-      const chars =
-        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?'
+      // 使用更安全、常用的特殊字符，确保生成的密码符合后端验证规则
+      const lowercase = 'abcdefghijklmnopqrstuvwxyz'
+      const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+      const numbers = '0123456789'
+      const specialChars = '!@#$%^&*()_+-=?'
+      const allChars = lowercase + uppercase + numbers + specialChars
+      
       let password = ''
-      for (let i = 0; i < 12; i++) {
-        password += chars.charAt(Math.floor(Math.random() * chars.length))
+      // 确保至少包含一个小写字母、大写字母、数字和特殊字符
+      password += lowercase.charAt(Math.floor(Math.random() * lowercase.length))
+      password += uppercase.charAt(Math.floor(Math.random() * uppercase.length))
+      password += numbers.charAt(Math.floor(Math.random() * numbers.length))
+      password += specialChars.charAt(Math.floor(Math.random() * specialChars.length))
+      
+      // 填充剩余长度（至少12位）
+      for (let i = password.length; i < 12; i++) {
+        password += allChars.charAt(Math.floor(Math.random() * allChars.length))
       }
-      formData.password = password
+      
+      // 打乱字符顺序
+      formData.password = password.split('').sort(() => Math.random() - 0.5).join('')
     }
 
     // 选择角色
@@ -912,6 +955,7 @@ export default {
           'review:approve',
           'review:delete',
           'comment:approve',
+          'comment:delete',
           'report:handle',
           'upload:approve',
           'dish:view', // 审核需要查看菜品
@@ -1072,7 +1116,7 @@ export default {
           )
 
           if (response.code === 200) {
-            alert('权限配置已更新！')
+            showAlert('权限配置已更新！')
             await loadAdmins()
             backToList()
           } else {
@@ -1095,7 +1139,7 @@ export default {
           const response = await permissionApi.createAdmin(createData)
 
           if (response.code === 200 && response.data) {
-            alert('子管理员创建成功！')
+            showAlert('子管理员创建成功！')
             await loadAdmins()
             backToList()
           } else {
@@ -1104,7 +1148,7 @@ export default {
         }
       } catch (error) {
         console.error('保存失败:', error)
-        alert(error instanceof Error ? error.message : '保存失败，请重试')
+        showAlert(error instanceof Error ? error.message : '保存失败，请重试')
       } finally {
         isSubmitting.value = false
       }
@@ -1114,6 +1158,7 @@ export default {
     const changePage = (page) => {
       if (page >= 1 && page <= totalPages.value) {
         currentPage.value = page
+        saveState() // 保存状态
         loadAdmins()
       }
     }
@@ -1123,6 +1168,7 @@ export default {
       // 筛选是客户端进行的，不需要重新加载数据
       // 但可以重置到第一页（如果需要分页的话）
       currentPage.value = 1
+      saveState() // 保存状态
     }
 
     // 重置筛选
@@ -1130,6 +1176,8 @@ export default {
       searchQuery.value = ''
       canteenFilter.value = ''
       currentPage.value = 1
+      saveState() // 保存状态
+      loadAdmins() // 重新加载数据以应用重置后的筛选条件
     }
 
     // 格式化日期
@@ -1149,6 +1197,7 @@ export default {
     })
 
     onActivated(() => {
+      // 组件重新激活时仅重新加载数据，状态已在setup()中恢复
       loadCanteens()
       loadAdmins()
     })

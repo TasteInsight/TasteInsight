@@ -8,6 +8,7 @@ import {
   Max,
   IsEnum,
   ValidateNested,
+  IsNumber,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { MealTime, DishSortField } from '@/common/enums';
@@ -15,12 +16,12 @@ import { IsValidRange } from '@/common/validators/range.validator';
 
 // 评分范围
 export class RatingRangeDto {
-  @IsInt()
+  @IsNumber()
   @Min(0)
   @Max(5)
   min: number;
 
-  @IsInt()
+  @IsNumber()
   @Min(0)
   @Max(5)
   max: number;
@@ -28,11 +29,11 @@ export class RatingRangeDto {
 
 // 价格范围
 export class PriceRangeDto {
-  @IsInt()
+  @IsNumber()
   @Min(0)
   min: number;
 
-  @IsInt()
+  @IsNumber()
   @Min(0)
   max: number;
 }

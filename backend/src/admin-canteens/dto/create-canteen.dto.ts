@@ -2,14 +2,18 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
+  IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
   ValidateNested,
 } from 'class-validator';
+import { MealTime, DayOfWeek } from '@/common/enums';
 
 export class TimeSlot {
-  @IsString()
+  @IsEnum(MealTime, {
+    message: 'mealType must be one of: breakfast, lunch, dinner, nightsnack',
+  })
   @IsNotEmpty()
   mealType: string;
 
@@ -23,7 +27,10 @@ export class TimeSlot {
 }
 
 export class DailyOpeningHours {
-  @IsString()
+  @IsEnum(DayOfWeek, {
+    message:
+      'dayOfWeek must be one of: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday',
+  })
   @IsNotEmpty()
   dayOfWeek: string;
 

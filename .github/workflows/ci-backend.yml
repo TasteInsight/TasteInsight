@@ -200,6 +200,10 @@ jobs:
           # WeChat（CI 测试用 mock 值）
           WECHAT_APPID: wx_ci_test_appid
           WECHAT_SECRET: wx_ci_test_secret
+          # AI Provider（CI 测试用 mock 值）
+          USE_MOCK_AI_PROVIDER: true
+          AI_API_KEY: ci-ai-api-key-placeholder
+          AI_MODEL: model-placeholder
           # Upload
           UPLOAD_STORAGE_TYPE: local
           UPLOAD_LOCAL_PATH: ./uploads

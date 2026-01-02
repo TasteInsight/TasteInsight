@@ -29,7 +29,7 @@
     <view class="flex items-center border-t border-gray-100 pt-3">
       <!-- 菜品图片 -->
       <image
-        :src="review.dishImage || '/static/images/default-dish.png'"
+        :src="review.dishImage || '/static/default_dish.png'"
         class="w-16 h-16 rounded-lg mr-3 flex-shrink-0"
         mode="aspectFill"
       />

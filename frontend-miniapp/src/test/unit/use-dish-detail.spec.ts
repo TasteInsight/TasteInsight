@@ -8,6 +8,8 @@ import { getDishById } from '@/api/modules/dish';
 // Mock APIs
 jest.mock('@/api/modules/dish', () => ({
   getDishById: jest.fn(),
+  favoriteDish: jest.fn(),
+  unfavoriteDish: jest.fn(),
 }));
 
 // Mock composables
@@ -144,4 +146,62 @@ describe('useDishDetail', () => {
       expect(mockShowToast).toHaveBeenCalledWith({ title: errorMessage, icon: 'none' });
     });
   });
+
+  describe('fetchDishDetail and related flows', () => {
+    it('loads sub and parent dishes when available', async () => {
+      (getDishById as jest.Mock)
+        .mockResolvedValueOnce({ code: 200, data: { id: 'd1', subDishId: ['s1'], parentDishId: 'p1' } })
+        .mockResolvedValueOnce({ code: 200, data: { id: 's1' } })
+        .mockResolvedValueOnce({ code: 200, data: { id: 'p1' } });
+
+      const { fetchDishDetail, dish, subDishes, parentDish } = useDishDetail();
+      await fetchDishDetail('d1');
+
+      expect(dish.value?.id).toBe('d1');
+      expect(subDishes.value[0].id).toBe('s1');
+      expect(parentDish.value?.id).toBe('p1');
+    });
+
+    it('sets error on non-200 response', async () => {
+      (getDishById as jest.Mock).mockResolvedValueOnce({ code: 500, message: 'nope' });
+      const { fetchDishDetail, error } = useDishDetail();
+      await fetchDishDetail('bad');
+      expect(error.value).toBe('nope');
+    });
+  });
+
+  describe('toggleFavorite', () => {
+    it('skips when no dish id or not logged in and handles favorite/unfavorite success', async () => {
+      const user = (useUserStore() as any);
+      const { toggleFavorite, dish, favoriteLoading } = useDishDetail();
+
+      // no dish id
+      dish.value = {} as any;
+      await toggleFavorite();
+      expect(favoriteLoading.value).toBe(false);
+
+      // not logged in
+      user.isLoggedIn = false;
+      dish.value = { id: 'd1' } as any;
+      await toggleFavorite();
+      expect(mockShowToast).toHaveBeenCalled();
+
+      // logged in and favorite
+      user.isLoggedIn = true;
+      user.userInfo = { myFavoriteDishes: [] };
+      (require('@/api/modules/dish').favoriteDish as jest.Mock).mockResolvedValueOnce({ code: 200 });
+      (require('@/api/modules/dish').unfavoriteDish as jest.Mock).mockResolvedValueOnce({ code: 200 });
+
+      dish.value = { id: 'd1' } as any;
+      await toggleFavorite();
+      expect(user.updateLocalUserInfo).toHaveBeenCalled();
+
+      // now simulate already favorited -> unfavorite
+      user.userInfo = { myFavoriteDishes: ['d1'] };
+      dish.value = { id: 'd1' } as any;
+      await toggleFavorite();
+      expect(user.updateLocalUserInfo).toHaveBeenCalled();
+    });
+  });
+
 });

@@ -7,7 +7,7 @@
         <input
           v-model="keyword"
           type="text"
-          placeholder="搜索食堂、窗口或菜品"
+          placeholder="搜索食堂或菜品"
           class="flex-1 bg-transparent outline-none text-sm px-2 h-9"
           @confirm="handleSearch"
         />
@@ -76,7 +76,7 @@
       <!-- 默认提示 -->
       <div v-else class="text-center py-10 text-gray-400">
         <text class="iconfont icon-food text-4xl mb-2"></text>
-        <div class="text-sm">输入关键词搜索食堂、窗口或菜品</div>
+        <div class="text-sm">输入关键词搜索食堂或菜品</div>
       </div>
     </div>
   </div>

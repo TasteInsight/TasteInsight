@@ -38,10 +38,11 @@ describe('useSettings', () => {
         allergens: [],
         preferences: {}
       },
-      fetchProfileAction: jest.fn().mockResolvedValue(undefined),
+      fetchProfileAction: jest.fn() as unknown as jest.Mock<any, any>,
       updateLocalUserInfo: jest.fn(),
       logoutAction: jest.fn(),
     });
+    (mockStore.fetchProfileAction as jest.Mock).mockResolvedValue(undefined);
     (useUserStore as unknown as jest.Mock).mockReturnValue(mockStore);
     jest.clearAllMocks();
   });

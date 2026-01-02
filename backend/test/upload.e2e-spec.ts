@@ -4,6 +4,7 @@ import request from 'supertest';
 import { AppModule } from '@/app.module';
 import * as fs from 'fs';
 import * as path from 'path';
+import sharp from 'sharp';
 
 describe('UploadController (e2e)', () => {
   let app: NestExpressApplication;
@@ -161,6 +162,53 @@ describe('UploadController (e2e)', () => {
       // Clean up
       if (fs.existsSync(uploadPath)) {
         fs.unlinkSync(uploadPath);
+      }
+    });
+
+    it('should compress large image > 1MB', async () => {
+      // Generate a large image > 1MB using random noise
+      const width = 1000;
+      const height = 1000;
+      const channels = 3;
+      const size = width * height * channels;
+      const randomBuffer = Buffer.alloc(size);
+      // Fill with random noise to ensure poor compression initially and large size
+      for (let i = 0; i < size; i++) {
+        randomBuffer[i] = Math.floor(Math.random() * 256);
+      }
+
+      const largeImageBuffer = await sharp(randomBuffer, {
+        raw: { width, height, channels },
+      })
+        .jpeg({ quality: 100 })
+        .toBuffer();
+
+      const response = await request(app.getHttpServer())
+        .post('/upload/image')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .attach('file', largeImageBuffer, 'large-noise.jpg')
+        .expect(201);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data).toBeDefined();
+      expect(response.body.data.url).toBeDefined();
+
+      // Check saved file size
+      const savedFilePath = path.join(
+        process.cwd(),
+        'uploads',
+        path.basename(response.body.data.url),
+      );
+
+      expect(fs.existsSync(savedFilePath)).toBe(true);
+
+      const stats = fs.statSync(savedFilePath);
+      // Should be compressed (Quality 100 -> 80)
+      expect(stats.size).toBeLessThan(largeImageBuffer.length);
+
+      // Clean up
+      if (fs.existsSync(savedFilePath)) {
+        fs.unlinkSync(savedFilePath);
       }
     });
   });

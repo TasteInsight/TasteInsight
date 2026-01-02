@@ -63,7 +63,7 @@ describe('useDishesStore integration', () => {
     (getDishById as jest.Mock).mockRejectedValue(new Error('HTTP 500'));
 
     await expect(store.fetchDishById('dish-1')).rejects.toThrow('HTTP 500');
-    expect(store.error).toBe('服务器开小差了，请稍后再试');
+    expect(store.error).toBe('网络开小差了，请稍后再试');
   });
 
   it('fetchDishes: business error message should be preserved', async () => {
