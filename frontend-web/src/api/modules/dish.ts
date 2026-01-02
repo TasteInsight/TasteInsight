@@ -181,6 +181,50 @@ export const dishApi = {
     // 注意：需要后端实现对应的 /admin/dishes/batch/confirm 接口
     return request.post('/admin/dishes/batch/confirm', data)
   },
+
+  /**
+   * 刷新单个菜品的嵌入向量
+   * @param dishId 菜品ID
+   * @returns 刷新任务信息
+   */
+  async refreshDishEmbedding(dishId: string): Promise<ApiResponse<{ jobId: string }>> {
+    return request.post(`/admin/dishes/${dishId}/embedding/refresh`)
+  },
+
+  /**
+   * 按食堂批量刷新菜品嵌入向量
+   * @param canteenId 食堂ID
+   * @returns 刷新任务信息
+   */
+  async refreshDishesEmbeddingByCanteen(canteenId: string): Promise<ApiResponse<{ jobId: string }>> {
+    return request.post(`/admin/dishes/embedding/refresh?canteenId=${canteenId}`)
+  },
+
+  /**
+   * 获取嵌入任务状态
+   * @param jobId 任务ID
+   * @returns 任务状态信息
+   */
+  async getEmbeddingJobStatus(jobId: string): Promise<ApiResponse<{
+    jobId: string
+    status: 'pending' | 'processing' | 'completed' | 'failed'
+    progress: number
+    total: number
+    processed: number
+    failed: number
+    message?: string
+  }>> {
+    // 添加时间戳参数避免304缓存，确保获取最新状态
+    return request.get(`/admin/dishes/embedding/job/${jobId}`, {
+      params: {
+        _t: Date.now()
+      },
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
+      }
+    })
+  },
 }
 
 

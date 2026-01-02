@@ -120,6 +120,144 @@
             </div>
           </div>
 
+          <!-- 菜品嵌入向量刷新配置 -->
+          <div class="border border-gray-200 rounded-lg p-6">
+            <div class="flex items-start justify-between mb-4">
+              <div class="flex-1">
+                <h3 class="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                  <span class="iconify text-tsinghua-purple" data-icon="carbon:ai-results"></span>
+                  菜品嵌入向量刷新
+                </h3>
+                <p class="text-sm text-gray-600">
+                  刷新菜品嵌入向量可以更新推荐算法的数据，提高推荐准确性。批量刷新将处理指定食堂的所有菜品，可能需要较长时间。
+                </p>
+              </div>
+            </div>
+
+            <div class="mt-4 space-y-4">
+              <!-- 食堂选择（仅全局管理员显示） -->
+              <div v-if="!currentCanteenId" class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  选择要刷新的食堂
+                </label>
+                <select
+                  v-model="selectedCanteenId"
+                  class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                  :disabled="embeddingRefreshing || loadingCanteens"
+                >
+                  <option value="" disabled>请选择食堂</option>
+                  <option v-for="canteen in canteenList" :key="canteen.id" :value="canteen.id">
+                    {{ canteen.name }}
+                  </option>
+                </select>
+                <p v-if="loadingCanteens" class="mt-1 text-xs text-gray-500">
+                  加载食堂列表中...
+                </p>
+              </div>
+
+              <!-- 批量刷新按钮 -->
+              <div class="flex items-center gap-4">
+                <button
+                  type="button"
+                  :disabled="!authStore.hasPermission('dish:edit') || embeddingRefreshing || (!currentCanteenId && !selectedCanteenId)"
+                  @click="handleRefreshCanteenEmbeddings"
+                  class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span 
+                    v-if="embeddingRefreshing"
+                    class="iconify mr-1 animate-spin" 
+                    data-icon="carbon:circle-dash"
+                  ></span>
+                  <span 
+                    v-else
+                    class="iconify mr-1" 
+                    data-icon="carbon:refresh"
+                  ></span>
+                  {{ embeddingRefreshing ? '刷新中...' : (currentCanteenId ? '刷新当前食堂所有菜品嵌入向量' : '刷新所选食堂所有菜品嵌入向量') }}
+                </button>
+
+                <div v-if="embeddingRefreshSuccess" class="flex items-center gap-2 text-sm text-green-600">
+                  <span class="iconify" data-icon="carbon:checkmark-filled"></span>
+                  <span>刷新任务已提交</span>
+                </div>
+              </div>
+
+              <!-- 任务状态显示 -->
+              <div v-if="currentJobId" class="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium text-gray-700">任务状态</span>
+                    <span 
+                      v-if="jobStatus"
+                      class="px-2 py-1 rounded text-xs font-medium"
+                      :class="getJobStatusClass(jobStatus.status)"
+                    >
+                      {{ getJobStatusText(jobStatus.status) }}
+                    </span>
+                  </div>
+                  <button
+                    v-if="jobStatus && (jobStatus.status === 'pending' || jobStatus.status === 'processing' || jobStatus.status === 'waiting' || jobStatus.status === 'active')"
+                    type="button"
+                    @click="stopPolling"
+                    class="text-xs text-gray-500 hover:text-gray-700"
+                  >
+                    停止轮询
+                  </button>
+                </div>
+
+                <!-- 进度条 -->
+                <div v-if="jobStatus && (jobStatus.progress || jobStatus.returnValue)" class="mt-3">
+                  <!-- 如果 progress 是对象，包含 total, processed 等信息 -->
+                  <div v-if="typeof jobStatus.progress === 'object' && jobStatus.progress">
+                    <div class="flex items-center justify-between text-xs text-gray-600 mb-1">
+                      <span>进度: {{ jobStatus.progress.processed || 0 }} / {{ jobStatus.progress.total || 0 }}</span>
+                      <span>{{ jobStatus.progress.total > 0 ? Math.round((jobStatus.progress.processed / jobStatus.progress.total) * 100) : 0 }}%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        class="bg-tsinghua-purple h-2 rounded-full transition-all duration-300"
+                        :style="{ width: `${jobStatus.progress.total > 0 ? (jobStatus.progress.processed / jobStatus.progress.total) * 100 : 0}%` }"
+                      ></div>
+                    </div>
+                    <div v-if="jobStatus.progress.failed > 0" class="mt-2 text-xs text-red-600">
+                      失败: {{ jobStatus.progress.failed }} 个
+                    </div>
+                  </div>
+                  <!-- 如果 progress 是数字 -->
+                  <div v-else-if="typeof jobStatus.progress === 'number'">
+                    <div class="flex items-center justify-between text-xs text-gray-600 mb-1">
+                      <span>进度: {{ jobStatus.progress }}%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        class="bg-tsinghua-purple h-2 rounded-full transition-all duration-300"
+                        :style="{ width: `${jobStatus.progress}%` }"
+                      ></div>
+                    </div>
+                  </div>
+                  <!-- 如果有 returnValue，显示完成信息 -->
+                  <div v-if="jobStatus.returnValue && typeof jobStatus.returnValue === 'object'">
+                    <div class="text-xs text-gray-600 mt-2">
+                      <div v-if="jobStatus.returnValue.count !== undefined">
+                        已处理: {{ jobStatus.returnValue.count }} 个菜品
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 消息提示 -->
+                <div v-if="jobStatus?.message" class="mt-2 text-xs text-gray-600">
+                  {{ jobStatus.message }}
+                </div>
+              </div>
+
+              <div v-if="!authStore.hasPermission('dish:edit')" class="mt-2 text-xs text-gray-500">
+                <span class="iconify" data-icon="carbon:information"></span>
+                您没有刷新嵌入向量的权限
+              </div>
+            </div>
+          </div>
+
           <!-- 空状态提示 -->
           <div v-if="!loading && configItems.length === 0" class="text-center py-12">
             <span class="iconify text-6xl text-gray-300 mx-auto" data-icon="carbon:settings"></span>
@@ -132,8 +270,10 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onActivated } from 'vue'
+import { ref, computed, onMounted, onActivated, onBeforeUnmount } from 'vue'
 import { configApi } from '@/api/modules/config'
+import { dishApi } from '@/api/modules/dish'
+import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import { showAlert } from '@/composables/useModal'
@@ -153,6 +293,18 @@ export default {
     const reviewAutoApprove = ref(false)
     const commentAutoApprove = ref(false)
     const configItems = ref([])
+
+    // 菜品嵌入刷新相关状态
+    const embeddingRefreshing = ref(false)
+    const embeddingRefreshSuccess = ref(false)
+    const currentJobId = ref(null)
+    const jobStatus = ref(null)
+    let pollingInterval = null
+
+    // 食堂列表（用于全局管理员选择）
+    const canteenList = ref([])
+    const loadingCanteens = ref(false)
+    const selectedCanteenId = ref('')
 
     // 当前管理员的食堂ID
     const currentCanteenId = computed(() => authStore.user?.canteenId || null)
@@ -371,13 +523,236 @@ export default {
       }
     }
 
+    // 加载食堂列表（仅全局管理员需要）
+    const loadCanteenList = async () => {
+      if (currentCanteenId.value) {
+        // 有食堂ID的管理员不需要加载列表
+        return
+      }
+
+      loadingCanteens.value = true
+      try {
+        const response = await canteenApi.getCanteens({ pageSize: 100 })
+        if (response.code === 200 && response.data) {
+          canteenList.value = response.data.items || []
+        }
+      } catch (error) {
+        console.error('加载食堂列表失败:', error)
+      } finally {
+        loadingCanteens.value = false
+      }
+    }
+
+    // 处理按食堂批量刷新菜品嵌入向量
+    const handleRefreshCanteenEmbeddings = async () => {
+      if (!authStore.hasPermission('dish:edit')) {
+        showAlert('您没有刷新嵌入向量的权限')
+        return
+      }
+
+      // 确定要刷新的食堂ID
+      const canteenIdToRefresh = currentCanteenId.value || selectedCanteenId.value
+
+      if (!canteenIdToRefresh) {
+        showAlert('请选择要刷新的食堂')
+        return
+      }
+
+      embeddingRefreshing.value = true
+      embeddingRefreshSuccess.value = false
+      currentJobId.value = null
+      jobStatus.value = null
+
+      try {
+        const response = await dishApi.refreshDishesEmbeddingByCanteen(canteenIdToRefresh)
+        
+        console.log('刷新任务响应:', response)
+        
+        if (response && response.code === 200 && response.data) {
+          embeddingRefreshSuccess.value = true
+          const jobId = response.data.jobId
+          
+          console.log('获取到的jobId:', jobId)
+          
+          if (jobId) {
+            // 有jobId，异步模式，开始轮询
+            currentJobId.value = jobId
+            console.log('开始轮询任务状态，jobId:', jobId)
+            startPolling(jobId)
+          } else {
+            // 没有jobId，同步模式，直接完成
+            console.log('同步模式，任务已完成')
+            currentJobId.value = null
+            embeddingRefreshing.value = false
+            showAlert('刷新任务已提交（同步模式）')
+            // 3秒后隐藏成功提示
+            setTimeout(() => {
+              embeddingRefreshSuccess.value = false
+            }, 3000)
+          }
+        } else {
+          throw new Error(response?.message || '提交刷新任务失败')
+        }
+      } catch (error) {
+        console.error('刷新嵌入向量失败:', error)
+        embeddingRefreshing.value = false
+        currentJobId.value = null
+        showAlert(error instanceof Error ? error.message : '刷新嵌入向量失败，请重试')
+      }
+    }
+
+    // 开始轮询任务状态
+    const startPolling = (jobId) => {
+      // 清除之前的轮询
+      stopPolling()
+      
+      // 立即查询一次
+      checkJobStatus(jobId)
+      
+      // 每2秒轮询一次
+      pollingInterval = setInterval(() => {
+        checkJobStatus(jobId)
+      }, 2000)
+    }
+
+    // 停止轮询
+    const stopPolling = () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval)
+        pollingInterval = null
+      }
+    }
+
+    // 检查任务状态
+    const checkJobStatus = async (jobId) => {
+      if (!jobId) {
+        console.warn('jobId为空，停止轮询')
+        stopPolling()
+        embeddingRefreshing.value = false
+        return
+      }
+
+      try {
+        const response = await dishApi.getEmbeddingJobStatus(jobId)
+        
+        console.log('任务状态响应:', response)
+        
+        // 确保正确获取响应数据
+        let statusData = null
+        if (response && response.code === 200) {
+          // 标准响应格式：{ code: 200, data: {...} }
+          statusData = response.data
+        } else if (response && response.status) {
+          // 如果响应直接包含status字段，说明data就是状态数据
+          statusData = response
+        }
+        
+        if (statusData) {
+          // 更新任务状态
+          // 后端返回的是 state 字段，不是 status
+          // 为了兼容，我们统一使用 status
+          const taskStatus = statusData.state || statusData.status
+          const normalizedStatus = {
+            ...statusData,
+            status: taskStatus, // 统一使用 status 字段
+            // 映射 BullMQ 的状态到我们的状态
+            state: taskStatus,
+          }
+          
+          // 将 BullMQ 的状态映射到我们的状态格式
+          // BullMQ 状态: 'waiting' | 'active' | 'completed' | 'failed' | 'delayed' | 'paused'
+          let mappedStatus = taskStatus
+          if (taskStatus === 'waiting') {
+            mappedStatus = 'pending'
+          } else if (taskStatus === 'active') {
+            mappedStatus = 'processing'
+          }
+          
+          normalizedStatus.status = mappedStatus
+          jobStatus.value = normalizedStatus
+          
+          console.log('任务状态更新:', normalizedStatus, '原始状态:', taskStatus)
+          
+          // 如果任务完成或失败，停止轮询并重置刷新状态
+          if (mappedStatus === 'completed' || mappedStatus === 'failed') {
+            stopPolling()
+            embeddingRefreshing.value = false
+            
+            if (mappedStatus === 'completed') {
+              showAlert('嵌入向量刷新完成')
+            } else {
+              showAlert(`嵌入向量刷新失败: ${normalizedStatus.failedReason || normalizedStatus.message || '未知错误'}`)
+            }
+            return
+          }
+          
+          // 如果状态是pending或processing，继续轮询
+          if (mappedStatus === 'pending' || mappedStatus === 'processing') {
+            // 继续轮询，不做任何操作
+            return
+          }
+        } else if (response && response.code === 404) {
+          // 任务不存在，停止轮询
+          console.warn('任务不存在:', jobId)
+          stopPolling()
+          embeddingRefreshing.value = false
+          jobStatus.value = null
+          showAlert('任务不存在或已过期')
+        } else {
+          // 其他错误情况
+          console.warn('获取任务状态异常:', response)
+        }
+      } catch (error) {
+        console.error('获取任务状态失败:', error)
+        // 如果连续失败，停止轮询
+        stopPolling()
+        embeddingRefreshing.value = false
+        showAlert('获取任务状态失败，请刷新页面查看')
+      }
+    }
+
+    // 获取任务状态文本
+    const getJobStatusText = (status) => {
+      const statusMap = {
+        pending: '等待中',
+        waiting: '等待中', // BullMQ 状态
+        processing: '处理中',
+        active: '处理中', // BullMQ 状态
+        completed: '已完成',
+        failed: '失败',
+      }
+      return statusMap[status] || status
+    }
+
+    // 获取任务状态样式类
+    const getJobStatusClass = (status) => {
+      const classMap = {
+        pending: 'bg-yellow-100 text-yellow-700',
+        waiting: 'bg-yellow-100 text-yellow-700', // BullMQ 状态
+        processing: 'bg-blue-100 text-blue-700',
+        active: 'bg-blue-100 text-blue-700', // BullMQ 状态
+        completed: 'bg-green-100 text-green-700',
+        failed: 'bg-red-100 text-red-700',
+      }
+      return classMap[status] || 'bg-gray-100 text-gray-700'
+    }
+
     onMounted(async () => {
       // 直接加载配置，食堂名称从管理员信息中获取
       await loadConfig()
+      // 如果是全局管理员，加载食堂列表
+      await loadCanteenList()
     })
 
     onActivated(async () => {
       await loadConfig()
+      // 如果是全局管理员，加载食堂列表
+      await loadCanteenList()
+    })
+
+    onBeforeUnmount(() => {
+      // 组件卸载时停止轮询
+      stopPolling()
     })
 
     return {
@@ -395,6 +770,19 @@ export default {
       configDescription,
       currentCanteenInfo,
       toggleSwitchClass,
+      // 菜品嵌入刷新相关
+      embeddingRefreshing,
+      embeddingRefreshSuccess,
+      currentJobId,
+      jobStatus,
+      handleRefreshCanteenEmbeddings,
+      getJobStatusText,
+      getJobStatusClass,
+      stopPolling,
+      // 食堂选择相关
+      canteenList,
+      loadingCanteens,
+      selectedCanteenId,
     }
   },
 }

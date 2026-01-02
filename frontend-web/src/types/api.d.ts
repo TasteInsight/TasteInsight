@@ -1221,3 +1221,18 @@ export interface RecallQualityEvaluationData {
   diversity: Diversity
   summary: string
 }
+
+// ==================== 菜品嵌入相关类型 ====================
+
+/**
+ * 嵌入任务状态
+ */
+export interface EmbeddingJobStatus {
+  jobId: string
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+  progress: number
+  total: number
+  processed: number
+  failed: number
+  message?: string
+}

@@ -93,8 +93,8 @@ export class ExperimentsService {
         name: data.name,
         description: data.description,
         trafficRatio: data.trafficRatio,
-        startTime: data.startTime,
-        endTime: data.endTime,
+        startTime: new Date(data.startTime),
+        endTime: data.endTime ? new Date(data.endTime) : null,
         status: 'draft',
         groupItems: {
           create: data.groups.map((g) => ({
@@ -137,12 +137,21 @@ export class ExperimentsService {
     // 提取 groups 字段
     const { groups, ...experimentData } = data;
 
+    // 转换日期字段
+    const updateData: any = { ...experimentData };
+    if (updateData.startTime) {
+      updateData.startTime = new Date(updateData.startTime);
+    }
+    if (updateData.endTime !== undefined) {
+      updateData.endTime = updateData.endTime ? new Date(updateData.endTime) : null;
+    }
+
     // 使用事务更新实验和分组
     const experiment = await this.prisma.$transaction(async (tx) => {
       // 更新实验基本信息
       const updatedExp = await tx.experiment.update({
         where: { id },
-        data: experimentData,
+        data: updateData,
       });
 
       // 如果提供了 groups，则更新分组

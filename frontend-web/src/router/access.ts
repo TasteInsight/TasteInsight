@@ -15,6 +15,7 @@ export function getFirstAccessibleRoute(authStore: PermissionChecker): string {
     { path: '/comment-manage', permission: 'review:delete' },
     { path: '/review-manage', permission: 'review:approve' },
     { path: '/config-manage', permission: 'config:view' },
+    { path: '/experiment-manage', permission: 'experiment:view' },
   ]
 
   for (const route of routePriority) {
