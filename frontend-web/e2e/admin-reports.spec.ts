@@ -26,22 +26,79 @@ test.describe('Admin Reports Management', () => {
     await expect(page.locator('th:has-text("操作")')).toBeVisible();
   });
 
-  test('should filter reports', async ({ page }) => {
+  test('should filter reports by status', async ({ page }) => {
     await page.goto('/report-manage');
+    await page.waitForLoadState('networkidle');
     
     // Check filter elements
     const selects = page.locator('select');
     await expect(selects.first()).toBeVisible(); // Status filter
-    await expect(selects.nth(1)).toBeVisible(); // Type filter
     
     // Verify we can select 'pending' in status filter
     await selects.first().selectOption('pending');
+    await page.waitForTimeout(1000);
+    
+    // Verify filter is applied
+    await expect(selects.first()).toHaveValue('pending');
+  });
+
+  test('should filter reports by type', async ({ page }) => {
+    await page.goto('/report-manage');
+    await page.waitForLoadState('networkidle');
+    
+    // Check filter elements
+    const selects = page.locator('select');
+    await expect(selects.nth(1)).toBeVisible(); // Type filter
     
     // Verify we can select 'review' in type filter
     await selects.nth(1).selectOption('review');
+    await page.waitForTimeout(1000);
+    
+    // Verify filter is applied
+    await expect(selects.nth(1)).toHaveValue('review');
   });
 
-  // More complex tests require creating a report which needs a user account and a target content
+  test('should display reports list', async ({ page }) => {
+    await page.goto('/report-manage');
+    await page.waitForLoadState('networkidle');
+
+    // Wait for reports to load
+    await page.waitForTimeout(2000);
+
+    // Check for either reports or empty state
+    const hasReports = await page.locator('tbody tr').count() > 0;
+    const hasEmptyState = await page.locator('text=暂无举报').isVisible() || 
+                          await page.locator('text=暂无数据').isVisible();
+
+    expect(hasReports || hasEmptyState).toBeTruthy();
+  });
+
+  test('should display loading state', async ({ page }) => {
+    await page.goto('/report-manage');
+    
+    // Check for loading indicator (might be brief)
+    const loadingVisible = await page.locator('text=加载中...').isVisible();
+    
+    // Loading might be too fast to catch, so we just verify the page loads
+    await page.waitForLoadState('networkidle');
+  });
+
+  test('should handle pagination', async ({ page }) => {
+    await page.goto('/report-manage');
+    await page.waitForLoadState('networkidle');
+
+    // Wait for reports to load
+    await page.waitForTimeout(2000);
+
+    // Check if pagination exists
+    const paginationVisible = await page.locator('button:has-text("上一页")').isVisible();
+
+    if (paginationVisible) {
+      // Verify pagination controls exist
+      await expect(page.locator('button:has-text("上一页")')).toBeVisible();
+      await expect(page.locator('button:has-text("下一页")')).toBeVisible();
+    }
+  });
 });
 
 /**

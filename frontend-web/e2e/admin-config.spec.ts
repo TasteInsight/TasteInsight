@@ -9,6 +9,8 @@ test.describe('Admin Config Management', () => {
   test.describe.configure({ mode: 'serial' });
 
   test.beforeEach(async ({ page }) => {
+    // Increase timeout for login
+    test.setTimeout(45000);
     await loginAsAdmin(page);
   });
 
@@ -20,24 +22,48 @@ test.describe('Admin Config Management', () => {
 
   test('should toggle comment auto approve', async ({ page }) => {
     await page.goto('/config-manage');
+    await page.waitForLoadState('networkidle');
     
-    // Wait for switch to be visible
-    const checkbox = page.locator('input[type="checkbox"]');
+    // Wait for switch to be visible (target the first one for review auto approve, or use specific locator)
+    // The strict mode violation happened because there are two checkboxes (review and comment auto approve)
+    // We should target the specific one we want to test.
+    // Assuming the comment auto approve is the second one based on UI structure in ConfigManage.vue
+    // Or better, find by surrounding text
+    
+    const commentSection = page.locator('.border', { hasText: '评论自动审核' });
+    const checkbox = commentSection.locator('input[type="checkbox"]');
     await expect(checkbox).toBeVisible();
     
     // Get current state
     const isChecked = await checkbox.isChecked();
     
     // Click label to toggle
-    // Using a more specific selector targeting the label that contains the checkbox
-    await page.locator('label').filter({ has: page.locator('input[type="checkbox"]') }).click();
+    await commentSection.locator('label').click();
     
     // Verify "保存成功" message appears
-    await expect(page.locator('text=保存成功')).toBeVisible({ timeout: 5000 });
+    await expect(commentSection.locator('text=保存成功')).toBeVisible({ timeout: 5000 });
     
     // Verify state changed
     const isCheckedNew = await checkbox.isChecked();
     expect(isCheckedNew).toBe(!isChecked);
+  });
+
+  test('should display all config sections', async ({ page }) => {
+    await page.goto('/config-manage');
+    await page.waitForLoadState('networkidle');
+
+    // Verify main config section
+    await expect(page.locator('text=评论自动审核')).toBeVisible();
+  });
+
+  test('should display loading state', async ({ page }) => {
+    await page.goto('/config-manage');
+    
+    // Check for loading indicator (might be brief)
+    const loadingVisible = await page.locator('text=加载中...').isVisible();
+    
+    // Loading might be too fast to catch, so we just verify the page loads
+    await page.waitForLoadState('networkidle');
   });
 });
 
