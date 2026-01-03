@@ -479,9 +479,13 @@ export class AIChatService {
     }
 
     // Add canteen-specific suggestion with variety
-    const canteens = await this.prisma.canteen.findMany({ take: 5 });
+    // Fetch names of all canteens to ensure true randomness
+    const canteens = await this.prisma.canteen.findMany({
+      select: { name: true },
+    });
+
     if (canteens.length > 0) {
-      // Randomly select one canteen
+      // Randomly select one canteen from all available
       const randomCanteen =
         canteens[Math.floor(Math.random() * canteens.length)];
 
