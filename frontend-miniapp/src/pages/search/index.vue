@@ -131,11 +131,14 @@ const navigateBack = () => {
 };
 
 // 上拉触发（兼容小程序/uni-app）
-onReachBottom(() => {
-  if (hasMore.value) {
-    loadMore();
-  }
-});
+// @ts-ignore - uni-app 生命周期在 H5 环境可能未定义
+if (typeof onReachBottom !== 'undefined') {
+  onReachBottom(() => {
+    if (hasMore.value) {
+      loadMore();
+    }
+  });
+}
 </script>
 
 <style scoped>
