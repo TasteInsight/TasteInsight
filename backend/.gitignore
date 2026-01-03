@@ -70,9 +70,6 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 *.tgz
 *.tar.gz
 
-# .md
-*.md
-
 # postgres data
 /postgres-data
 
