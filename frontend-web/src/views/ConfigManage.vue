@@ -8,7 +8,7 @@
       />
 
       <!-- 食堂信息提示 -->
-      <div v-if="currentCanteenInfo" class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+      <div v-if="currentCanteenInfo" class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <div class="flex items-center gap-2">
           <span class="iconify text-blue-600" data-icon="carbon:location"></span>
           <span class="text-sm font-medium text-blue-800">
@@ -17,7 +17,7 @@
         </div>
       </div>
 
-      <div class="mt-8">
+      <div class="mt-6">
         <!-- 加载状态 -->
         <div v-if="loading" class="text-center py-12">
           <span class="iconify text-4xl text-gray-300 animate-spin" data-icon="carbon:circle-dash"></span>

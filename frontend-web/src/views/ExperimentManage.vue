@@ -7,7 +7,7 @@
           <Header
             title="推荐配置管理"
             description="管理推荐系统的A/B测试实验配置"
-            header-icon="carbon:experiment"
+            header-icon="carbon:chemistry"
           />
           <button
             class="px-6 py-2 text-white rounded-lg transition duration-200 flex items-center"
@@ -129,7 +129,7 @@
         <div v-if="filteredExperiments.length === 0 && !loading" class="text-center py-12">
           <span
             class="iconify text-6xl text-gray-300 mx-auto"
-            data-icon="carbon:experiment"
+            data-icon="carbon:chemistry"
           ></span>
           <p class="mt-4 text-gray-500">暂无实验</p>
           <button
@@ -148,7 +148,7 @@
           <Header
             :title="currentExperiment?.name || '实验详情'"
             :description="currentExperiment?.description || '查看实验配置详情'"
-            header-icon="carbon:experiment"
+            header-icon="carbon:chemistry"
           />
           <button
             class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"
@@ -403,7 +403,7 @@
           <Header
             :title="editingExperiment ? '编辑实验' : '创建实验'"
             :description="editingExperiment ? '修改实验配置' : '创建新的A/B测试实验'"
-            header-icon="carbon:experiment"
+            header-icon="carbon:chemistry"
           />
           <button
             class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"

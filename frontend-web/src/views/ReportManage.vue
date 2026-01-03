@@ -8,27 +8,55 @@
       />
 
       <!-- 筛选区域 -->
-      <div class="p-6 bg-gray-50 border-b">
-        <div class="flex items-center space-x-4">
-          <select
-            class="px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
-            v-model="statusFilter"
-            @change="handleFilterChange"
-          >
-            <option value="">所有状态</option>
-            <option value="pending">待处理</option>
-            <option value="approved">已处理</option>
-            <option value="rejected">已拒绝</option>
-          </select>
-          <select
-            class="px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
-            v-model="targetTypeFilter"
-            @change="handleFilterChange"
-          >
-            <option value="">所有类型</option>
-            <option value="review">评价</option>
-            <option value="comment">评论</option>
-          </select>
+      <div class="mb-6 mt-6">
+        <div class="p-4 bg-gray-50 rounded-lg border border-gray-100 flex flex-wrap items-center gap-x-8 gap-y-4">
+          <div class="flex items-center gap-3">
+            <span class="text-sm font-medium text-gray-600">处理状态</span>
+            <div class="relative">
+              <select
+                v-model="statusFilter"
+                @change="handleFilterChange"
+                class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[150px] transition-all cursor-pointer hover:border-gray-400"
+              >
+                <option value="">所有状态</option>
+                <option value="pending">待处理</option>
+                <option value="approved">已处理</option>
+                <option value="rejected">已拒绝</option>
+              </select>
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
+                <span class="iconify" data-icon="carbon:chevron-down"></span>
+              </span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <span class="text-sm font-medium text-gray-600">举报类型</span>
+            <div class="relative">
+              <select
+                v-model="targetTypeFilter"
+                @change="handleFilterChange"
+                class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[150px] transition-all cursor-pointer hover:border-gray-400"
+              >
+                <option value="">所有类型</option>
+                <option value="review">评价</option>
+                <option value="comment">评论</option>
+              </select>
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
+                <span class="iconify" data-icon="carbon:chevron-down"></span>
+              </span>
+            </div>
+          </div>
+
+          <div class="ml-auto flex items-center">
+            <button
+              v-if="statusFilter || targetTypeFilter"
+              @click="statusFilter = ''; targetTypeFilter = ''; handleFilterChange()"
+              class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-gray-200/50 transition-colors"
+            >
+              <span class="iconify" data-icon="carbon:reset"></span>
+              重置筛选
+            </button>
+          </div>
         </div>
       </div>
 

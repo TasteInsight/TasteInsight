@@ -3,7 +3,7 @@
     <div class="bg-white rounded-lg container-shadow p-8">
       <Header title="编辑菜品" description="修改菜品信息并提交审核" header-icon="carbon:edit" />
 
-      <form class="space-y-6">
+      <form class="mt-6 space-y-6">
         <div class="grid grid-cols-2 gap-6">
           <!-- 左侧列 -->
           <div>

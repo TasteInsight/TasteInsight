@@ -140,7 +140,7 @@
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/experiment-manage' || $route.path.startsWith('/experiment-manage/') }"
       >
-        <span class="iconify" data-icon="carbon:experiment"></span>
+        <span class="iconify" data-icon="carbon:chemistry"></span>
         <span>推荐配置</span>
       </router-link>
     </div>
