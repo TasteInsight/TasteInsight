@@ -156,6 +156,11 @@ describe('useRecommendDishes', () => {
   });
 
   it('should maintain dish order as per recommendation score', async () => {
+    // 验证 composable 能正确根据推荐 API 的顺序重排菜品
+    // 推荐 API 返回按分数排序的 ID (dish-2, dish-1, dish-3)
+    // 但 getDishesByIds 返回的菜品是乱序的 (dish-1, dish-2, dish-3)
+    // 最终结果应该按推荐 API 的顺序排列
+    
     const mockRecommendationResponse = {
       code: 200,
       data: {
@@ -169,6 +174,8 @@ describe('useRecommendDishes', () => {
       },
     };
 
+    // 注意：这里返回的菜品顺序与推荐 API 不同
+    // 这模拟了真实场景，因为 getDishesByIds 不保证返回顺序
     const mockDishes = [
       { id: 'dish-1', name: 'Dish 1' },
       { id: 'dish-2', name: 'Dish 2' },
@@ -188,7 +195,8 @@ describe('useRecommendDishes', () => {
 
     await fetchDishes();
 
-    // 验证顺序与推荐 API 返回的顺序一致
+    // 验证：最终顺序应该与推荐 API 返回的顺序一致（按分数从高到低）
+    // 这证明了 composable 正确实现了重排序逻辑
     expect(dishes.value.map(d => d.id)).toEqual(['dish-2', 'dish-1', 'dish-3']);
   });
 });

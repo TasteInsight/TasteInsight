@@ -298,6 +298,12 @@ const fetchRecommendations = async (options: { reset: boolean; append?: boolean 
           .map(id => fullDishes.find(dish => dish.id === id))
           .filter(dish => dish != null);
 
+        // 检查是否有菜品缺失（竞态条件：菜品在两次调用之间被删除或下线）
+        const missingCount = dishIds.length - sortedDishes.length;
+        if (missingCount > 0) {
+          console.warn(`推荐结果中有 ${missingCount} 个菜品不可用（可能已下线或被删除）`);
+        }
+
         if (append) {
           dishesStore.dishes = [...dishesStore.dishes, ...sortedDishes];
         } else {

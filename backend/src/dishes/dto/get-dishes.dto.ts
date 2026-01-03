@@ -9,6 +9,8 @@ import {
   IsEnum,
   ValidateNested,
   IsNumber,
+  ArrayMinSize,
+  ArrayMaxSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { MealTime, DishSortField } from '@/common/enums';
@@ -184,4 +186,15 @@ export class GetDishesDto {
   @ValidateNested()
   @Type(() => PaginationDto)
   pagination: PaginationDto;
+}
+
+/**
+ * 批量获取菜品 DTO
+ */
+export class GetDishesByIdsDto {
+  @IsArray({ message: 'ids 必须是数组' })
+  @ArrayMinSize(1, { message: '至少需要提供 1 个菜品 ID' })
+  @ArrayMaxSize(200, { message: '最多只能查询 200 个菜品' })
+  @IsString({ each: true, message: '每个 ID 必须是字符串' })
+  ids: string[];
 }

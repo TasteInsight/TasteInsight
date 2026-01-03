@@ -2,6 +2,7 @@ import { Injectable, Optional, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { Prisma } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
+import { createHash } from 'crypto';
 import {
   RECOMMENDATION_WEIGHTS,
   SEARCH_SCENE_WEIGHTS,
@@ -343,7 +344,7 @@ export class RecommendationService {
     // 3. 动态计算需要召回的候选数量
     // 基础策略：每次至少召回 pageSize * 3 的候选，确保有足够的多样性
     const minCandidates = pageSize * 3;
-    const requestedItems = page * pageSize;
+    const requestedItems = Math.min(page, 10) * pageSize;
 
     // 4. 召回候选菜品
     let candidateDishes = await this.recallCandidates(
@@ -2628,6 +2629,15 @@ export class RecommendationService {
   // ═══════════════════════════════════════════════════════════════════
 
   /**
+   * 生成安全的 Redis key（对 requestId 进行哈希处理）
+   */
+  private getSeenDishesKey(requestId: string): string {
+    // 使用 SHA-256 哈希避免过长或恶意的 requestId
+    const hash = createHash('sha256').update(requestId).digest('hex');
+    return `rec:seen:${hash}`;
+  }
+
+  /**
    * 获取会话中已看过的菜品ID列表
    */
   private async getSeenDishIds(requestId: string): Promise<Set<string>> {
@@ -2636,7 +2646,7 @@ export class RecommendationService {
     }
 
     try {
-      const key = `rec:seen:${requestId}`;
+      const key = this.getSeenDishesKey(requestId);
       const redis = this.cacheService.getRedisClient();
       const seenIds = await redis.smembers(key);
       return new Set(seenIds);
@@ -2658,7 +2668,7 @@ export class RecommendationService {
     }
 
     try {
-      const key = `rec:seen:${requestId}`;
+      const key = this.getSeenDishesKey(requestId);
       const redis = this.cacheService.getRedisClient();
 
       // 添加到集合
@@ -2747,9 +2757,13 @@ export class RecommendationService {
         take: remainingCount * 2, // 多获取一些以便随机选择
       });
 
-      // 随机打乱并选择
-      const shuffled = randomDishes.sort(() => Math.random() - 0.5);
-      fallbackDishes.push(...shuffled.slice(0, remainingCount));
+      // 使用 Fisher-Yates 洗牌算法进行可靠的随机打乱
+      for (let i = randomDishes.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [randomDishes[i], randomDishes[j]] = [randomDishes[j], randomDishes[i]];
+      }
+
+      fallbackDishes.push(...randomDishes.slice(0, remainingCount));
     }
 
     this.logger.debug(
@@ -2767,6 +2781,9 @@ export class RecommendationService {
    * - 避免连续推荐同一食堂的菜品
    * - 避免连续推荐相同标签的菜品
    * - 对已看过很多菜品的用户，增加探索性推荐
+   *
+   * 使用迭代式选择：每次从剩余候选中选择多样性调整后分数最高的菜品
+   * 这确保了多样性考虑影响菜品选择，而不仅仅是最终排序
    */
   private applyDiversityBoost(
     scoredDishes: ScoredDish[],
@@ -2780,51 +2797,68 @@ export class RecommendationService {
     const diversityBoost = seenDishIds.size > 50 ? 1.2 : 1.0;
 
     const result: ScoredDish[] = [];
+    const remaining = [...scoredDishes];
     const recentCanteenIds: string[] = [];
     const recentTags: Set<string> = new Set();
 
-    for (const dish of scoredDishes) {
-      let adjustedScore = dish.score;
+    // 迭代式选择：每次从剩余候选中选最优的
+    while (remaining.length > 0) {
+      let bestIndex = 0;
+      let bestAdjustedScore = -Infinity;
 
-      // 惩罚：如果最近2个推荐中有同一食堂的菜品
-      if (
-        recentCanteenIds.length >= 2 &&
-        recentCanteenIds.slice(-2).includes(dish.dish.canteenId)
-      ) {
-        adjustedScore *= 0.8;
-      }
+      // 计算每个候选菜品的调整后分数
+      for (let i = 0; i < remaining.length; i++) {
+        const dish = remaining[i];
+        let adjustedScore = dish.score;
 
-      // 惩罚：如果最近的推荐中有太多相同标签
-      if (dish.dish.tags && dish.dish.tags.length > 0) {
-        const commonTags = dish.dish.tags.filter((tag: string) =>
-          recentTags.has(tag),
-        );
-        if (commonTags.length > 2) {
-          adjustedScore *= 0.85;
+        // 惩罚：如果最近2个推荐中有同一食堂的菜品
+        if (
+          recentCanteenIds.length >= 2 &&
+          recentCanteenIds.slice(-2).includes(dish.dish.canteenId)
+        ) {
+          adjustedScore *= 0.8;
+        }
+
+        // 惩罚：如果最近的推荐中有太多相同标签
+        if (dish.dish.tags && dish.dish.tags.length > 0) {
+          const commonTags = dish.dish.tags.filter((tag: string) =>
+            recentTags.has(tag),
+          );
+          if (commonTags.length > 2) {
+            adjustedScore *= 0.85;
+          }
+        }
+
+        // 奖励：如果用户看过很多菜品，对新食堂的菜品给予奖励
+        if (
+          diversityBoost > 1.0 &&
+          !recentCanteenIds.includes(dish.dish.canteenId)
+        ) {
+          adjustedScore *= diversityBoost;
+        }
+
+        // 找到调整后分数最高的菜品
+        if (adjustedScore > bestAdjustedScore) {
+          bestAdjustedScore = adjustedScore;
+          bestIndex = i;
         }
       }
 
-      // 奖励：如果用户看过很多菜品，对新食堂的菜品给予奖励
-      if (
-        diversityBoost > 1.0 &&
-        !recentCanteenIds.includes(dish.dish.canteenId)
-      ) {
-        adjustedScore *= diversityBoost;
-      }
-
+      // 选择最佳菜品并从候选中移除
+      const selectedDish = remaining.splice(bestIndex, 1)[0];
       result.push({
-        ...dish,
-        score: adjustedScore,
+        ...selectedDish,
+        score: bestAdjustedScore, // 使用调整后的分数
       });
 
       // 更新最近的食堂和标签
-      recentCanteenIds.push(dish.dish.canteenId);
+      recentCanteenIds.push(selectedDish.dish.canteenId);
       if (recentCanteenIds.length > 5) {
         recentCanteenIds.shift();
       }
 
-      if (dish.dish.tags) {
-        dish.dish.tags.forEach((tag: string) => recentTags.add(tag));
+      if (selectedDish.dish.tags) {
+        selectedDish.dish.tags.forEach((tag: string) => recentTags.add(tag));
         if (recentTags.size > 10) {
           // 限制标签集合大小
           const tagsArray = Array.from(recentTags);
@@ -2833,9 +2867,6 @@ export class RecommendationService {
         }
       }
     }
-
-    // 重新排序
-    result.sort((a, b) => b.score - a.score);
 
     return result;
   }
