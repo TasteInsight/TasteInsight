@@ -285,7 +285,7 @@
                       >
 
                       <view
-                        class="px-2.5 py-1 rounded-full text-[10px] font-medium transition-all"
+                        class="px-2.5 py-1 rounded-full text-xs font-medium transition-all"
                         :class="
                           isDishSelected(dish.id)
                             ? 'bg-purple-100 text-purple-700'

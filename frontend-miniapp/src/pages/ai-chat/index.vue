@@ -159,7 +159,7 @@
 
         <!-- 输入框区域 -->
         <view
-          class="bg-gray-50 w-full pb-[calc(5px+env(safe-area-inset-bottom))] px-4 relative z-50"
+          class="bg-gray-50 w-full pb-[calc(15px+env(safe-area-inset-bottom))] px-4 relative z-50"
         >
           <view class="max-w-screen-md mx-auto">
             <InputBar

@@ -6,8 +6,8 @@
         :src="dish.images[0]"
         class="w-20 h-20 rounded-lg object-cover"
       />
-      <div v-else class="w-20 h-20 rounded-lg bg-gray-200 flex items-center justify-center">
-        <text class="iconfont icon-food text-gray-400"></text>
+      <div v-else class="w-20 h-20 rounded-lg bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center border border-gray-100">
+        <text class="text-xl">🍜</text>
       </div>
       <div class="flex-1">
         <div class="font-semibold text-gray-800">{{ dish.name }}</div>

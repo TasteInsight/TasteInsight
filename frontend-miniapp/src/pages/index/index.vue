@@ -44,12 +44,13 @@
         </view>
       </view>
 
-      <FilterBar @filter-change="handleFilterChange" />
-
       <!-- 菜品列表 -->
-      <view class="text-lg font-semibold text-gray-800 my-4">
+      <view class="text-lg font-semibold text-gray-800 my-4 flex items-center">
+        <view v-if="!hasActiveFilters" class="w-1 bg-ts-purple mr-3 h-6"></view>
         {{ hasActiveFilters ? '筛选结果' : '今日推荐' }}
       </view>
+
+      <FilterBar @filter-change="handleFilterChange" />
       <view v-if="dishesStore.loading" class="text-center py-4 text-gray-500">正在加载菜品...</view>
       <view v-else-if="recommendError" class="text-center py-8">
         <view class="text-gray-400 mb-2">
