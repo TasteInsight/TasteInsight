@@ -47,7 +47,7 @@ import {
   mockAddFavorite,
   mockRemoveFavorite,
 } from './services/user';
-import { mockGetAISuggestions, mockCreateAISession, mockGetAIHistory } from './services/ai';
+import { mockGetAISuggestions, mockCreateAISession, mockGetAIHistory, mockDeleteAISession } from './services/ai';
 
 // ============================================
 // Review 相关路由
@@ -353,13 +353,27 @@ registerMockRoute('GET', '/user/history', async (url, options) => {
 
 // GET /ai/suggestions - 获取AI提示词
 registerMockRoute('GET', '/ai/suggestions', async (url, options) => {
+  // 提取查询参数中的时间信息
+  const clientContext = options.data ? {
+    localTime: options.data.localTime,
+    timeZone: options.data.timeZone,
+    tzOffsetMinutes: options.data.tzOffsetMinutes ? parseInt(options.data.tzOffsetMinutes) : undefined,
+  } : undefined;
+  
   // mockGetAISuggestions 已经返回了完整的 ApiResponse，不需要再用 mockSuccess 包裹
-  return await mockGetAISuggestions();
+  return await mockGetAISuggestions(clientContext);
 });
 
 // POST /ai/sessions - 创建会话
 registerMockRoute('POST', '/ai/sessions', async () => {
   return await mockCreateAISession();
+});
+
+// DELETE /ai/sessions/:sessionId - 删除会话
+registerMockRoute('DELETE', '/ai/sessions/:sessionId', async url => {
+  const match = url.match(/\/ai\/sessions\/([^/]+)$/);
+  const sessionId = match?.[1] || '';
+  return await mockDeleteAISession(sessionId);
 });
 
 // GET /ai/sessions/:sessionId/history - 获取历史记录

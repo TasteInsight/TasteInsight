@@ -39,8 +39,12 @@ const mockAISuggestions = [
 ];
 
 // 获取AI提示词
-export const mockGetAISuggestions = async (): Promise<ApiResponse<SuggestionData>> => {
-  console.log('🤖 [Mock] 获取AI提示词 - 开始');
+export const mockGetAISuggestions = async (clientContext?: {
+  localTime?: string;
+  timeZone?: string;
+  tzOffsetMinutes?: number;
+}): Promise<ApiResponse<SuggestionData>> => {
+  console.log('🤖 [Mock] 获取AI提示词 - 开始', clientContext);
   await mockDelay();
 
   // 确保返回的是纯对象
@@ -168,4 +172,22 @@ export const mockStreamAIChat = (
       console.log('🤖 [Mock] 流式对话 - 已中断');
     },
   };
+};
+
+// 删除会话
+export const mockDeleteAISession = async (sessionId: string): Promise<ApiResponse<null>> => {
+  console.log(`🤖 [Mock] 删除AI会话 - SessionId: ${sessionId}`);
+  await mockDelay();
+
+  // 从模拟存储中删除会话
+  mockSessions.delete(sessionId);
+
+  const response = {
+    code: 200,
+    message: 'success',
+    data: null,
+  };
+
+  console.log('🤖 [Mock] 删除AI会话 - 返回数据:', JSON.stringify(response));
+  return response;
 };

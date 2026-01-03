@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, reactive } from 'vue';
-import { createAISession, streamAIChat, submitRecommendFeedback } from '@/api/modules/ai';
+import { createAISession, streamAIChat, submitRecommendFeedback, deleteAISession } from '@/api/modules/ai';
 import { USE_MOCK } from '../../mock/mock-adapter';
 import type {
   ChatRequest,
@@ -372,6 +372,30 @@ export const useChatStore = defineStore('ai-chat', () => {
     initSession(scene);
   }
 
+  /**
+   * 删除会话（从历史记录和本地存储中移除）
+   */
+  async function removeSession(session: string) {
+    try {
+      // 调用后端接口删除会话
+      await deleteAISession(session);
+      
+      // 从本地历史记录中删除
+      const idx = historyEntries.value.findIndex(h => h.sessionId === session);
+      if (idx >= 0) {
+        historyEntries.value.splice(idx, 1);
+        persistHistory();
+      }
+      
+      // 不清空当前会话状态，让用户可以继续使用当前聊天
+      
+      return true;
+    } catch (error) {
+      console.error('删除会话失败:', error);
+      throw error;
+    }
+  }
+
   return {
     messages,
     aiLoading,
@@ -385,6 +409,7 @@ export const useChatStore = defineStore('ai-chat', () => {
     submitFeedback,
     startNewSession,
     loadSessionFromHistory,
+    removeSession,
     abortChat,
   };
 });

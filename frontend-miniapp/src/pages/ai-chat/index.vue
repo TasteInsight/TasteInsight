@@ -203,20 +203,28 @@
             <view
               v-for="item in historyEntries"
               :key="item.sessionId"
-              class="px-4 py-4 border-b border-gray-50 active:bg-gray-50 transition-colors"
+              class="px-4 py-4 border-b border-gray-50 active:bg-gray-50 transition-colors flex items-center"
               @click="handleLoadHistory(item.sessionId)"
             >
-              <view class="flex items-center justify-between mb-1">
-                <text class="text-sm font-semibold text-gray-800 truncate flex-1 mr-2">{{
-                  item.title || '对话'
-                }}</text>
-                <view class="px-2 py-0.5 rounded bg-purple-100">
-                  <text class="text-[10px] text-purple-700 font-medium">{{
-                    sceneLabelMap[item.scene] || '对话'
+              <view class="flex-1 min-w-0">
+                <view class="flex items-center justify-between mb-1">
+                  <text class="text-sm font-semibold text-gray-800 truncate flex-1 mr-2">{{
+                    item.title || '对话'
                   }}</text>
+                  <view class="px-2 py-0.5 rounded bg-purple-100">
+                    <text class="text-[10px] text-purple-700 font-medium">{{
+                      sceneLabelMap[item.scene] || '对话'
+                    }}</text>
+                  </view>
                 </view>
+                <text class="text-xs text-gray-400">{{ formatTime(item.updatedAt) }}</text>
               </view>
-              <text class="text-xs text-gray-400">{{ formatTime(item.updatedAt) }}</text>
+              <view
+                class="ml-2 p-2 -mr-2 active:bg-red-50 rounded-full transition-colors flex-shrink-0"
+                @click.stop="handleDeleteHistory(item.sessionId)"
+              >
+                <text class="iconfont icon-delete text-red-500 text-base"></text>
+              </view>
             </view>
           </scroll-view>
         </view>
@@ -301,6 +309,7 @@ import type { ComponentMealPlanDraft, AIScene } from '@/types/api';
 const {
   messages,
   aiLoading,
+  currentSessionId,
   suggestions,
   isInitialLoading,
   sendMessage,
@@ -309,6 +318,7 @@ const {
   setScene,
   historyEntries,
   loadHistorySession,
+  deleteSession,
 } = useChat();
 
 // 调试：监听suggestions变化
@@ -438,6 +448,11 @@ const handleLoadHistory = async (sessionId: string) => {
   } else {
     uni.showToast({ title: '加载历史失败', icon: 'none' });
   }
+};
+
+const handleDeleteHistory = async (sessionId: string) => {
+  // 直接删除，使用 .stop 修饰符阻止事件冒泡
+  await deleteSession(sessionId);
 };
 const handleScenePicker = (e: any) => {
   const idx = Number(e?.detail?.value);

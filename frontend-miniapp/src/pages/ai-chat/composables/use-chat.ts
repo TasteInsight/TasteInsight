@@ -18,7 +18,18 @@ export function useChat() {
   const fetchSuggestions = async () => {
     isSuggestionsLoading.value = true;
     try {
-      const res = await getAISuggestions();
+      // 构建时间上下文，与发送聊天消息时保持一致
+      const now = new Date();
+      const clientContext = {
+        localTime: now.toISOString(),
+        tzOffsetMinutes: -now.getTimezoneOffset(),
+        timeZone:
+          typeof Intl !== 'undefined'
+            ? Intl.DateTimeFormat().resolvedOptions().timeZone
+            : undefined,
+      };
+      
+      const res = await getAISuggestions(clientContext);
       if (res.code === 200 && res.data && res.data.suggestions) {
         suggestions.value = res.data.suggestions;
       }
@@ -103,6 +114,16 @@ export function useChat() {
     }
   };
 
+  const deleteSession = async (sessionId: string) => {
+    try {
+      await chatStore.removeSession(sessionId);
+      return true;
+    } catch (e) {
+      console.error('Failed to delete session', e);
+      return false;
+    }
+  };
+
   onMounted(() => {
     init();
   });
@@ -110,6 +131,7 @@ export function useChat() {
   return {
     messages: computed(() => chatStore.messages),
     aiLoading: computed(() => chatStore.aiLoading),
+    currentSessionId: computed(() => chatStore.sessionId),
     suggestions,
     isInitializing,
     isInitialLoading,
@@ -122,5 +144,6 @@ export function useChat() {
     setScene,
     historyEntries: computed(() => chatStore.historyEntries),
     loadHistorySession,
+    deleteSession,
   };
 }

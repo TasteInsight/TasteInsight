@@ -55,12 +55,29 @@ export const createAISession = (
 };
 
 /**
- * 获取会话引导/快捷提示词 (保持不变)
+ * 获取会话引导/快捷提示词
+ * @param clientContext 客户端上下文，包含本地时间信息
  */
-export const getAISuggestions = (): Promise<ApiResponse<SuggestionData>> => {
+export const getAISuggestions = (clientContext?: {
+  localTime?: string;
+  timeZone?: string;
+  tzOffsetMinutes?: number;
+}): Promise<ApiResponse<SuggestionData>> => {
+  const params: Record<string, string> = {};
+  if (clientContext?.localTime) {
+    params.localTime = clientContext.localTime;
+  }
+  if (clientContext?.timeZone) {
+    params.timeZone = clientContext.timeZone;
+  }
+  if (clientContext?.tzOffsetMinutes !== undefined) {
+    params.tzOffsetMinutes = String(clientContext.tzOffsetMinutes);
+  }
+  
   return request<SuggestionData>({
     url: '/ai/suggestions',
     method: 'GET',
+    data: params,
   });
 };
 
@@ -76,6 +93,18 @@ export const getAIHistory = (
     url: `/ai/sessions/${sessionId}/history`,
     method: 'GET',
     data: query,
+  });
+};
+
+/**
+ * 删除聊天会话
+ */
+export const deleteAISession = (
+  sessionId: string
+): Promise<ApiResponse<null>> => {
+  return request<null>({
+    url: `/ai/sessions/${sessionId}`,
+    method: 'DELETE',
   });
 };
 
