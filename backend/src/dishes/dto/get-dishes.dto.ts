@@ -169,10 +169,6 @@ export class PaginationDto {
 
 // 主请求DTO
 export class GetDishesDto {
-  @IsOptional()
-  @IsBoolean()
-  isSuggestion?: boolean;
-
   @ValidateNested()
   @Type(() => FilterDto)
   filter: FilterDto;

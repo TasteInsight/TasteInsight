@@ -201,7 +201,6 @@ export class DishSearchTool implements BaseTool {
     // Search dishes
     const result = await this.dishesService.getDishes(
       {
-        isSuggestion: false,
         filter,
         search: {
           keyword,

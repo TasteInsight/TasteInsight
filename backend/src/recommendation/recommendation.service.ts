@@ -103,7 +103,7 @@ export class RecommendationService {
     };
 
     this.logger.debug(
-      `[${requestId}] Starting recommendation for user ${userId}, scene: ${scene}`,
+      `[${requestId}] Starting recommendation for user ${userId}, scene: ${scene}, page: ${dto.pagination.page}`,
     );
 
     try {
@@ -115,64 +115,26 @@ export class RecommendationService {
       );
       context.groupItemId = experimentAssignment?.groupItemId;
 
-      // 4. 尝试从缓存获取结果
-      const cachedResult = await this.tryGetCachedResult(
-        userId,
-        scene,
-        dto,
-        experimentAssignment,
-        requestId,
-      );
-      if (cachedResult) {
-        this.logger.debug(`[${requestId}] Cache hit, returning cached result`);
-        return cachedResult;
-      }
-
-      // 5. 获取用户特征
+      // 4. 获取用户特征
       const userFeatures = await this.getUserFeaturesWithCache(userId);
 
-      // 6. 确保用户嵌入向量存在（异步，不阻塞）
+      // 5. 确保用户嵌入向量存在（异步，不阻塞）
       this.ensureUserEmbeddingAsync(userId, userFeatures);
 
-      // 7. 获取推荐权重
+      // 6. 获取推荐权重
       const weights = this.resolveWeights(
         scene,
         hasSearchKeyword,
         experimentAssignment,
       );
 
-      // 8. 构建搜索上下文
+      // 7. 构建搜索上下文
       const searchContext = this.buildSearchContext(dto.search);
 
-      // 9. 执行推荐核心逻辑
-      // 如果提供了 requestId，在第一次请求时获取更多结果以支持分页
-      let modifiedDto = dto;
-      let fullListForSession: RecommendedDishItemDto[] | null = null;
-
-      if (dto.requestId) {
-        // 计算需要获取的结果数量
-        // 如果请求的是第N页，我们需要至少获取 N * pageSize 个结果
-        // 再加上一些缓冲（比如额外20个），以支持后续的翻页
-        const { page, pageSize } = dto.pagination;
-        const minRequired = page * pageSize;
-        const fetchSize = Math.min(minRequired + 20, 200); // 最多获取200个
-
-        modifiedDto = {
-          ...dto,
-          pagination: {
-            page: 1,
-            pageSize: fetchSize,
-          },
-        };
-
-        this.logger.debug(
-          `[${requestId}] Fetching ${fetchSize} items for session (requested page ${page})`,
-        );
-      }
-
-      const result = await this.executeRecommendation(
+      // 8. 执行推荐核心逻辑（使用无限滚动模式）
+      const result = await this.executeInfiniteScrollRecommendation(
         userId,
-        modifiedDto,
+        dto,
         context,
         userFeatures,
         weights,
@@ -181,37 +143,7 @@ export class RecommendationService {
         startTime,
       );
 
-      // 如果提供了 requestId，缓存完整列表并切片返回当前页
-      if (dto.requestId) {
-        fullListForSession = result.data.items;
-
-        // 从完整列表中切片当前页
-        const { page, pageSize } = dto.pagination;
-        const start = (page - 1) * pageSize;
-        const end = start + pageSize;
-        const pageItems = fullListForSession.slice(start, end);
-
-        // 修改结果为当前页的数据
-        result.data.items = pageItems;
-        result.data.meta = {
-          page,
-          pageSize,
-          total: fullListForSession.length,
-          totalPages: Math.ceil(fullListForSession.length / pageSize),
-        };
-      }
-
-      // 10. 缓存推荐结果
-      await this.cacheRecommendationResult(
-        userId,
-        scene,
-        dto,
-        experimentAssignment,
-        result,
-        fullListForSession, // 传递完整列表用于缓存
-      );
-
-      // 11. 记录曝光事件
+      // 9. 记录曝光事件
       await this.logImpressionEvents(userId, result, context, dto.experimentId);
 
       return result;
@@ -265,147 +197,6 @@ export class RecommendationService {
       this.logger.warn(`Failed to assign experiment: ${error.message}`);
       return null;
     }
-  }
-
-  /**
-   * 尝试从缓存获取推荐结果
-   *
-   * 缓存策略：
-   * - 如果有用户上下文信息（如实时位置、时间偏好等），需要将其纳入缓存键
-   * - 实验分组也会影响缓存键
-   */
-  private async tryGetCachedResult(
-    userId: string,
-    scene: RecommendationScene,
-    dto: RecommendationRequestDto,
-    experimentAssignment: ExperimentAssignment | null,
-    requestId: string,
-  ): Promise<RecommendationResultDto | null> {
-    if (!this.cacheService) {
-      return null;
-    }
-
-    // 如果有动态用户上下文（如实时位置等），跳过缓存
-    // 因为这些上下文可能会影响推荐结果
-    if (dto.userContext && this.hasVolatileContext(dto.userContext)) {
-      return null;
-    }
-
-    // 如果提供了 requestId，使用基于 requestId 的缓存
-    // 这确保同一个推荐会话的不同页返回一致的结果
-    if (dto.requestId) {
-      // 如果是第一页请求，清空旧缓存以确保获取最新数据
-      if (dto.pagination.page === 1) {
-        await this.cacheService.invalidateSessionFullList(dto.requestId);
-        this.logger.debug(
-          `[${requestId}] Page 1 request, cleared old session cache`,
-        );
-      } else {
-        // 非第一页请求，尝试从缓存获取
-        const fullList = await this.cacheService.getSessionFullList(
-          dto.requestId,
-        );
-
-        if (fullList) {
-          // 从完整列表中切片当前页的数据
-          const { page, pageSize } = dto.pagination;
-          const start = (page - 1) * pageSize;
-          const end = start + pageSize;
-
-          // 检查请求的页码是否超出范围
-          if (start >= fullList.length) {
-            // 请求的页码超出了缓存的数据范围
-            // 清空缓存，让后续逻辑重新获取更多数据
-            this.logger.warn(
-              `[${requestId}] Requested page ${page} exceeds cached data (${fullList.length} items), clearing cache to fetch more`,
-            );
-            await this.cacheService.invalidateSessionFullList(dto.requestId);
-            // 不返回，继续执行后续的推荐逻辑以获取更多数据
-          } else {
-            // 在缓存范围内，正常切片返回
-            const pageItems = fullList.slice(start, end);
-
-            this.logger.debug(
-              `[${requestId}] Session cache hit, returning page ${page} from cached full list (${fullList.length} items)`,
-            );
-
-            // 构造分页结果
-            const result: RecommendationResultDto = {
-              code: 200,
-              message: 'success',
-              data: {
-                items: pageItems,
-                meta: {
-                  page,
-                  pageSize,
-                  total: fullList.length,
-                  totalPages: Math.ceil(fullList.length / pageSize),
-                },
-              },
-            };
-
-            // 记录曝光事件
-            if (this.eventLogger) {
-              await this.eventLogger.logImpressions(
-                userId,
-                pageItems.map((item) => item.id),
-                {
-                  scene,
-                  requestId,
-                  experimentId: dto.experimentId,
-                  groupItemId: experimentAssignment?.groupItemId,
-                },
-              );
-            }
-
-            return result;
-          }
-        } else {
-          // 缓存不存在但请求的是非第一页，这是异常情况
-          // 可能是缓存过期或用户直接跳转到非第一页
-          this.logger.warn(
-            `[${requestId}] Session cache miss for page ${dto.pagination.page}, falling back to regular recommendation`,
-          );
-          // 继续执行常规推荐逻辑（不使用 session 缓存）
-          // 注意：这可能导致结果不一致，但总比返回错误好
-        }
-      }
-    }
-
-    // 否则使用常规缓存（包含分页参数）
-    const cached = await this.cacheService.getRecommendationResult(
-      userId,
-      scene,
-      dto,
-      experimentAssignment?.groupItemId,
-    );
-
-    if (cached) {
-      // 记录缓存命中的曝光事件
-      if (this.eventLogger) {
-        await this.eventLogger.logImpressions(
-          userId,
-          cached.data.items.map((item: RecommendedDishItemDto) => item.id),
-          {
-            scene,
-            requestId,
-            experimentId: dto.experimentId,
-            groupItemId: experimentAssignment?.groupItemId,
-          },
-        );
-      }
-      return cached;
-    }
-
-    return null;
-  }
-
-  /**
-   * 判断用户上下文是否包含易变信息（不应缓存）
-   */
-  private hasVolatileContext(userContext: Record<string, any>): boolean {
-    const volatileKeys = ['realTimeLocation', 'currentTime', 'weatherInfo'];
-    return volatileKeys.some((key) => userContext[key] !== undefined);
   }
 
   /**
@@ -505,9 +296,9 @@ export class RecommendationService {
   }
 
   /**
-   * 执行推荐核心逻辑
+   * 执行推荐核心逻辑（支持无限滚动）
    */
-  private async executeRecommendation(
+  private async executeInfiniteScrollRecommendation(
     userId: string,
     dto: RecommendationRequestDto,
     context: RecommendationContext,
@@ -517,13 +308,24 @@ export class RecommendationService {
     experimentAssignment: ExperimentAssignment | null,
     startTime: number,
   ): Promise<RecommendationResultDto> {
-    // 0. 根据用户上下文调整权重或筛选条件
+    const { page, pageSize } = dto.pagination;
+    const requestId = context.requestId!;
+
+    // 0. 根据用户上下文调整权重
     const adjustedWeights = this.applyUserContextToWeights(
       weights,
       dto.userContext,
     );
 
-    // 1. 构建筛选条件
+    // 1. 获取或初始化会话状态（已看过的菜品ID）
+    // 使用 requestId（来自 context）而不是 dto.requestId
+    const seenDishIds = await this.getSeenDishIds(requestId);
+
+    this.logger.debug(
+      `[${requestId}] Session has ${seenDishIds.size} seen dishes`,
+    );
+
+    // 2. 构建筛选条件（排除已看过的菜品）
     const filterConditions = this.buildFilterConditions(
       dto.filter,
       userFeatures.allergens,
@@ -531,16 +333,45 @@ export class RecommendationService {
       dto.userContext,
     );
 
-    // 2. 召回候选菜品
-    const candidateDishes = await this.recallCandidates(
+    // 排除已看过的菜品
+    if (seenDishIds.size > 0) {
+      filterConditions.push({
+        id: { notIn: Array.from(seenDishIds) },
+      });
+    }
+
+    // 3. 动态计算需要召回的候选数量
+    // 基础策略：每次至少召回 pageSize * 3 的候选，确保有足够的多样性
+    const minCandidates = pageSize * 3;
+    const requestedItems = page * pageSize;
+
+    // 4. 召回候选菜品
+    let candidateDishes = await this.recallCandidates(
       context.userId,
       context.scene,
-      dto.pagination,
+      {
+        page: 1,
+        pageSize: Math.max(minCandidates, requestedItems + pageSize * 2),
+      },
       filterConditions,
       { triggerDishId: context.triggerDishId },
     );
 
-    // 3. 计算推荐分数
+    // 5. 如果候选不足，使用降级策略补充
+    if (candidateDishes.length < pageSize) {
+      this.logger.warn(
+        `[${requestId}] Insufficient candidates (${candidateDishes.length}), using fallback strategy`,
+      );
+      const fallbackDishes = await this.getFallbackDishes(
+        userId,
+        pageSize - candidateDishes.length,
+        seenDishIds,
+        filterConditions,
+      );
+      candidateDishes = [...candidateDishes, ...fallbackDishes];
+    }
+
+    // 6. 计算推荐分数
     const scoredDishes = await this.scoreCandidates(
       candidateDishes,
       userFeatures,
@@ -550,26 +381,36 @@ export class RecommendationService {
       dto.includeScoreBreakdown,
     );
 
-    // 4. 排序
+    // 7. 排序并应用多样性
     scoredDishes.sort((a, b) => b.score - a.score);
+    const diversifiedDishes = this.applyDiversityBoost(
+      scoredDishes,
+      seenDishIds,
+    );
 
-    // 5. 分页
-    const { page, pageSize } = dto.pagination;
-    const skip = (page - 1) * pageSize;
-    const paginatedDishes = scoredDishes.slice(skip, skip + pageSize);
-    const total = scoredDishes.length;
-    const totalPages = Math.ceil(total / pageSize);
+    // 8. 获取当前页的菜品
+    const pageItems = diversifiedDishes.slice(0, pageSize);
+
+    // 9. 更新已看过的菜品列表
+    if (pageItems.length > 0) {
+      const newSeenIds = pageItems.map((d) => d.dish.id);
+      await this.addSeenDishIds(requestId, newSeenIds);
+    }
 
     const processingTime = Date.now() - startTime;
 
-    // 6. 构建响应
+    // 10. 构建响应
+    // 如果没有结果，返回 total=0；否则返回 -1 表示无限滚动模式
+    const total = pageItems.length === 0 ? 0 : -1;
+    const totalPages = pageItems.length === 0 ? 0 : -1;
+
     return this.buildRecommendationResult(
-      paginatedDishes,
+      pageItems,
       page,
       pageSize,
       total,
       totalPages,
-      context.requestId!,
+      requestId,
       experimentAssignment,
       dto.includeScoreBreakdown,
       {
@@ -578,6 +419,8 @@ export class RecommendationService {
         scene: context.scene,
         hasSearch: !!searchContext,
         weightsUsed: adjustedWeights,
+        seenCount: seenDishIds.size,
+        isInfiniteScroll: true,
       },
     );
   }
@@ -1082,8 +925,14 @@ export class RecommendationService {
       scene: string;
       hasSearch: boolean;
       weightsUsed: RecommendationWeights;
+      seenCount?: number;
+      isInfiniteScroll?: boolean;
     },
   ): RecommendationResultDto {
+    // 在生产环境下，不返回 debug 信息（即使用户请求了）
+    const isProduction = process.env.NODE_ENV === 'production';
+    const shouldIncludeDebug = includeScoreBreakdown && !isProduction;
+
     return {
       code: 200,
       message: 'success',
@@ -1099,51 +948,9 @@ export class RecommendationService {
         },
         requestId,
         groupItemId: experimentAssignment?.groupItemId,
-        debug: includeScoreBreakdown ? debugInfo : undefined,
+        debug: shouldIncludeDebug ? debugInfo : undefined,
       },
     };
-  }
-
-  /**
-   * 缓存推荐结果
-   */
-  private async cacheRecommendationResult(
-    userId: string,
-    scene: RecommendationScene,
-    dto: RecommendationRequestDto,
-    experimentAssignment: ExperimentAssignment | null,
-    result: RecommendationResultDto,
-    fullListForSession?: RecommendedDishItemDto[] | null,
-  ): Promise<void> {
-    if (!this.cacheService) {
-      return;
-    }
-
-    // 如果有动态用户上下文，不缓存
-    if (dto.userContext && this.hasVolatileContext(dto.userContext)) {
-      return;
-    }
-
-    // 如果提供了 requestId 和完整列表，缓存完整列表（用于分页一致性）
-    if (dto.requestId && fullListForSession) {
-      await this.cacheService.setSessionFullList(
-        dto.requestId,
-        fullListForSession,
-      );
-
-      this.logger.debug(
-        `Cached full list (${fullListForSession.length} items) for session ${dto.requestId}`,
-      );
-    }
-
-    // 同时使用常规缓存（包含分页参数）
-    await this.cacheService.setRecommendationResult(
-      userId,
-      scene,
-      dto,
-      experimentAssignment?.groupItemId,
-      result,
-    );
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -2814,6 +2621,223 @@ export class RecommendationService {
       status: allHealthy ? 'healthy' : 'degraded',
       services,
     };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 无限滚动辅助方法 - 已看过菜品追踪、降级策略等
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * 获取会话中已看过的菜品ID列表
+   */
+  private async getSeenDishIds(requestId: string): Promise<Set<string>> {
+    if (!this.cacheService) {
+      return new Set<string>();
+    }
+
+    try {
+      const key = `rec:seen:${requestId}`;
+      const redis = this.cacheService.getRedisClient();
+      const seenIds = await redis.smembers(key);
+      return new Set(seenIds);
+    } catch (error) {
+      this.logger.warn(`Failed to get seen dish IDs: ${error.message}`);
+      return new Set<string>();
+    }
+  }
+
+  /**
+   * 添加已看过的菜品ID到会话
+   */
+  private async addSeenDishIds(
+    requestId: string,
+    dishIds: string[],
+  ): Promise<void> {
+    if (!this.cacheService || dishIds.length === 0) {
+      return;
+    }
+
+    try {
+      const key = `rec:seen:${requestId}`;
+      const redis = this.cacheService.getRedisClient();
+
+      // 添加到集合
+      await redis.sadd(key, ...dishIds);
+
+      // 设置过期时间（2小时）
+      await redis.expire(key, 7200);
+
+      this.logger.debug(
+        `Added ${dishIds.length} dishes to seen list for session ${requestId}`,
+      );
+    } catch (error) {
+      this.logger.warn(`Failed to add seen dish IDs: ${error.message}`);
+    }
+  }
+
+  /**
+   * 降级策略：当推荐候选不足时，使用备选方案
+   *
+   * 降级策略优先级：
+   * 1. 热门菜品（高评分 + 高评价数）
+   * 2. 新菜品（最近添加的菜品）
+   * 3. 随机探索（随机选择菜品，增加多样性）
+   */
+  private async getFallbackDishes(
+    userId: string,
+    count: number,
+    excludeDishIds: Set<string>,
+    filterConditions: Prisma.DishWhereInput[],
+  ): Promise<any[]> {
+    const fallbackDishes: any[] = [];
+    const excludeArray = Array.from(excludeDishIds);
+
+    // 策略1：热门菜品（占50%）
+    const popularCount = Math.ceil(count * 0.5);
+    if (popularCount > 0) {
+      const popularDishes = await this.prisma.dish.findMany({
+        where: {
+          AND: [
+            ...filterConditions,
+            { id: { notIn: excludeArray } },
+            { status: 'online' },
+            { reviewCount: { gte: 5 } }, // 至少5个评价
+          ],
+        },
+        include: { canteen: true, window: true },
+        orderBy: [{ averageRating: 'desc' }, { reviewCount: 'desc' }],
+        take: popularCount,
+      });
+      fallbackDishes.push(...popularDishes);
+      excludeArray.push(...popularDishes.map((d) => d.id));
+    }
+
+    // 策略2：新菜品（占30%）
+    const newCount = Math.ceil(count * 0.3);
+    if (newCount > 0 && fallbackDishes.length < count) {
+      const newDishes = await this.prisma.dish.findMany({
+        where: {
+          AND: [
+            ...filterConditions,
+            { id: { notIn: excludeArray } },
+            { status: 'online' },
+          ],
+        },
+        include: { canteen: true, window: true },
+        orderBy: { createdAt: 'desc' },
+        take: newCount,
+      });
+      fallbackDishes.push(...newDishes);
+      excludeArray.push(...newDishes.map((d) => d.id));
+    }
+
+    // 策略3：随机探索（填充剩余）
+    const remainingCount = count - fallbackDishes.length;
+    if (remainingCount > 0) {
+      // 使用随机排序获取菜品
+      const randomDishes = await this.prisma.dish.findMany({
+        where: {
+          AND: [
+            ...filterConditions,
+            { id: { notIn: excludeArray } },
+            { status: 'online' },
+          ],
+        },
+        include: { canteen: true, window: true },
+        take: remainingCount * 2, // 多获取一些以便随机选择
+      });
+
+      // 随机打乱并选择
+      const shuffled = randomDishes.sort(() => Math.random() - 0.5);
+      fallbackDishes.push(...shuffled.slice(0, remainingCount));
+    }
+
+    this.logger.debug(
+      `Fallback strategy returned ${fallbackDishes.length} dishes (requested: ${count})`,
+    );
+
+    return fallbackDishes;
+  }
+
+  /**
+   * 应用多样性增强
+   *
+   * 在推荐列表中注入多样性，避免推荐过于相似的菜品
+   * 策略：
+   * - 避免连续推荐同一食堂的菜品
+   * - 避免连续推荐相同标签的菜品
+   * - 对已看过很多菜品的用户，增加探索性推荐
+   */
+  private applyDiversityBoost(
+    scoredDishes: ScoredDish[],
+    seenDishIds: Set<string>,
+  ): ScoredDish[] {
+    if (scoredDishes.length <= 1) {
+      return scoredDishes;
+    }
+
+    // 如果用户已经看过很多菜品（>50个），增加多样性权重
+    const diversityBoost = seenDishIds.size > 50 ? 1.2 : 1.0;
+
+    const result: ScoredDish[] = [];
+    const recentCanteenIds: string[] = [];
+    const recentTags: Set<string> = new Set();
+
+    for (const dish of scoredDishes) {
+      let adjustedScore = dish.score;
+
+      // 惩罚：如果最近2个推荐中有同一食堂的菜品
+      if (
+        recentCanteenIds.length >= 2 &&
+        recentCanteenIds.slice(-2).includes(dish.dish.canteenId)
+      ) {
+        adjustedScore *= 0.8;
+      }
+
+      // 惩罚：如果最近的推荐中有太多相同标签
+      if (dish.dish.tags && dish.dish.tags.length > 0) {
+        const commonTags = dish.dish.tags.filter((tag: string) =>
+          recentTags.has(tag),
+        );
+        if (commonTags.length > 2) {
+          adjustedScore *= 0.85;
+        }
+      }
+
+      // 奖励：如果用户看过很多菜品，对新食堂的菜品给予奖励
+      if (
+        diversityBoost > 1.0 &&
+        !recentCanteenIds.includes(dish.dish.canteenId)
+      ) {
+        adjustedScore *= diversityBoost;
+      }
+
+      result.push({
+        ...dish,
+        score: adjustedScore,
+      });
+
+      // 更新最近的食堂和标签
+      recentCanteenIds.push(dish.dish.canteenId);
+      if (recentCanteenIds.length > 5) {
+        recentCanteenIds.shift();
+      }
+
+      if (dish.dish.tags) {
+        dish.dish.tags.forEach((tag: string) => recentTags.add(tag));
+        if (recentTags.size > 10) {
+          // 限制标签集合大小
+          const tagsArray = Array.from(recentTags);
+          recentTags.clear();
+          tagsArray.slice(-10).forEach((tag) => recentTags.add(tag));
+        }
+      }
+    }
+
+    // 重新排序
+    result.sort((a, b) => b.score - a.score);
+
+    return result;
   }
 
   // ═══════════════════════════════════════════════════════════════════
