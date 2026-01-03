@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsArray,
   IsNotEmpty,
+  IsObject,
   Min,
   Max,
   ValidateNested,
@@ -21,6 +22,7 @@ export class CreateExperimentGroupDto {
   name: string;
 
   @IsNumber()
+  @IsNotEmpty()
   @Type(() => Number)
   @Min(0)
   @Max(1)
@@ -32,24 +34,27 @@ export class CreateExperimentGroupDto {
    * - recallQuota: 召回策略配额 { vectorQuota, ruleQuota, collaborativeQuota }
    */
   @IsOptional()
+  @IsObject()
   config?: Record<string, any>;
 }
 
 export class CreateExperimentDto {
-  @IsString()
   @IsNotEmpty()
+  @IsString()
   name: string;
 
   @IsOptional()
   @IsString()
   description?: string;
 
+  @IsNotEmpty()
   @IsNumber()
   @Type(() => Number)
   @Min(0)
   @Max(1)
   trafficRatio: number;
 
+  @IsNotEmpty()
   @IsDateString()
   startTime: string;
 
@@ -57,9 +62,10 @@ export class CreateExperimentDto {
   @IsDateString()
   endTime?: string;
 
+  @IsNotEmpty()
   @IsArray()
-  @ValidateNested({ each: true })
   @Type(() => CreateExperimentGroupDto)
+  @ValidateNested({ each: true })
   groups: CreateExperimentGroupDto[];
 }
 
@@ -93,7 +99,7 @@ export class UpdateExperimentDto {
 
   @IsOptional()
   @IsArray()
-  @ValidateNested({ each: true })
   @Type(() => CreateExperimentGroupDto)
+  @ValidateNested({ each: true })
   groups?: CreateExperimentGroupDto[];
 }

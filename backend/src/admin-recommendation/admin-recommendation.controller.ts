@@ -16,7 +16,7 @@ import { RecallQualityService } from './services/recall-quality.service';
 import { AdminAuthGuard } from '@/auth/guards/admin-auth.guard';
 import { PermissionsGuard } from '@/auth/guards/permissions.guard';
 import { RequirePermissions } from '@/auth/decorators/permissions.decorator';
-import type {
+import {
   CreateExperimentDto,
   UpdateExperimentDto,
 } from './dto/experiment/create-experiment.dto';
