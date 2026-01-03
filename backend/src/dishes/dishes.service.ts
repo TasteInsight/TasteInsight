@@ -17,7 +17,6 @@ import {
 } from './dto/dish-response.dto';
 import { RecommendationService } from '@/recommendation/recommendation.service';
 import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service';
-import { createHash } from 'crypto';
 
 @Injectable()
 export class DishesService {
@@ -141,15 +140,19 @@ export class DishesService {
     // 如果是推荐模式，调用推荐服务
     // isSuggestion 为 true 时使用默认 HOME 场景的推荐
     if (isSuggestion) {
-      // 生成稳定的 requestId，确保同一个推荐会话（相同的 filter 和 search）
-      // 在不同页之间返回一致的结果
+      // 生成唯一的 requestId，确保每次请求都是独立的
+      // 添加时间戳避免测试之间的干扰
       const requestIdSeed = JSON.stringify({
         userId,
         filter,
         search: search?.keyword || '',
-        // 不包含 pagination，因为我们希望同一个会话的不同页使用相同的 requestId
+        page: pagination.page,
+        timestamp: Date.now(), // 添加时间戳确保唯一性
       });
-      const requestId = createHash('md5').update(requestIdSeed).digest('hex');
+      const requestId = require('crypto')
+        .createHash('md5')
+        .update(requestIdSeed)
+        .digest('hex');
 
       const result = await this.recommendationService.getRecommendations(
         userId,
@@ -157,8 +160,7 @@ export class DishesService {
           filter,
           search: search?.keyword ? search : undefined,
           pagination,
-          requestId, // 传递 requestId 以保持分页一致性
-          // 默认首页推荐场景，不追踪详细事件
+          requestId, // 传递 requestId
         },
       );
 

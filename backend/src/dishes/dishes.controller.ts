@@ -39,6 +39,13 @@ export class DishesController {
     return this.dishesService.getDishes(getDishesDto, userId);
   }
 
+  @Post('by-ids')
+  @HttpCode(HttpStatus.OK)
+  getDishesByIds(@Body() body: { ids: string[] }, @Request() req) {
+    const userId = req.user.sub;
+    return this.dishesService.getDishesByIds(body.ids, userId);
+  }
+
   @Post('recommendations')
   @HttpCode(HttpStatus.OK)
   getRecommendations(
