@@ -15,6 +15,7 @@ import { PromptBuilder } from './utils/prompt-builder.util';
 import { ContentBuilder } from './utils/content-builder.util';
 import { CreateSessionDto, SessionData } from './dto/session.dto';
 import {
+  ClientContextDto,
   ChatRequestDto,
   ChatMessageItemDto,
   ContentSegment,
@@ -34,7 +35,7 @@ export class AIChatService {
     private readonly promptSecurity: PromptSecurityService,
     private readonly openaiProvider: OpenAIProviderService,
     private readonly toolRegistry: ToolRegistryService,
-  ) {}
+  ) { }
 
   /**
    * Create a new chat session
@@ -243,7 +244,7 @@ export class AIChatService {
             // Safely convert to string and trim
             const argsStr =
               toolCall.arguments != null &&
-              typeof toolCall.arguments === 'string'
+                typeof toolCall.arguments === 'string'
                 ? toolCall.arguments.trim()
                 : '';
 
@@ -432,8 +433,13 @@ export class AIChatService {
   /**
    * Get conversation suggestions based on time and user profile
    */
-  async getSuggestions(userId: string): Promise<string[]> {
-    const hour = new Date().getHours();
+  async getSuggestions(
+    userId: string,
+    clientContext?: ClientContextDto,
+  ): Promise<string[]> {
+    // Use client context to determine time, reusing the chat time logic
+    const chatTime = this.getChatTime(clientContext);
+    const hour = chatTime.getHours();
     let mealTime = 'lunch';
 
     if (hour >= 6 && hour < 10) {
@@ -446,18 +452,48 @@ export class AIChatService {
       mealTime = 'nightsnack';
     }
 
-    const suggestions = [
-      `推荐一些${this.getMealTimeName(mealTime)}`,
-      '看看全校最火的菜',
-      '帮我生成下周食谱',
+    const mealName = this.getMealTimeName(mealTime);
+
+    // Rotating templates for variety
+    const simpleTemplates = [
+      `推荐一些${mealName}`,
+      `${mealName}吃什么好？`,
+      `帮我规划一顿${mealName}`,
+      `我想吃${mealName}，有什么推荐？`,
     ];
 
-    // Add canteen-specific suggestion
-    const canteens = await this.prisma.canteen.findMany({ take: 3 });
+    // Select one simple suggestion based on time
+    // Use hour to deterministically select but rotate throughout the day
+    const simpleSuggestion = simpleTemplates[hour % simpleTemplates.length];
+
+    const suggestions = [
+      simpleSuggestion,
+      '看看全校最火的菜', // Always popular
+    ];
+
+    // Add specific suggestion based on time/context
+    if (mealTime === 'lunch' || mealTime === 'dinner') {
+      suggestions.push('帮我生成下周食谱');
+    } else {
+      suggestions.push('推荐点清淡的');
+    }
+
+    // Add canteen-specific suggestion with variety
+    const canteens = await this.prisma.canteen.findMany({ take: 5 });
     if (canteens.length > 0) {
+      // Randomly select one canteen
       const randomCanteen =
         canteens[Math.floor(Math.random() * canteens.length)];
-      suggestions.push(`${randomCanteen.name}有什么好吃的？`);
+
+      const canteenTemplates = [
+        `${randomCanteen.name}有什么好吃的？`,
+        `带我去${randomCanteen.name}看看`,
+        `${randomCanteen.name}今天有什么推荐？`,
+      ];
+
+      const canteenSuggestion =
+        canteenTemplates[Math.floor(Math.random() * canteenTemplates.length)];
+      suggestions.push(canteenSuggestion);
     }
 
     return suggestions;
@@ -474,11 +510,38 @@ export class AIChatService {
   }
 
   /**
+   * Delete a chat session
+   */
+  async deleteSession(userId: string, sessionId: string): Promise<void> {
+    // Verify session exists and belongs to user
+    const session = await this.prisma.aISession.findFirst({
+      where: { id: sessionId, userId },
+    });
+
+    if (!session) {
+      throw new NotFoundException('Session not found');
+    }
+
+    // Delete session (cascade delete will handle messages if configured in schema,
+    // but we'll delete messages first to be safe and ensure clean cleanup)
+    await this.prisma.$transaction(async (tx) => {
+      await tx.aIMessage.deleteMany({
+        where: { sessionId },
+      });
+      await tx.aISession.delete({
+        where: { id: sessionId },
+      });
+    });
+
+    this.logger.log(`Session deleted: ${sessionId} by user ${userId}`);
+  }
+
+  /**
    * Get time for chat context, preferring client's localTime if valid, otherwise use server time
    * @param clientContext Client context (localTime may include timezone offset)
    * @returns Date object
    */
-  private getChatTime(clientContext?: ChatRequestDto['clientContext']): Date {
+  private getChatTime(clientContext?: ClientContextDto): Date {
     const serverTime = new Date();
 
     const clientLocalTime = clientContext?.localTime;

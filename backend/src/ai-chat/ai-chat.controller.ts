@@ -9,6 +9,7 @@ import {
   Req,
   Sse,
   MessageEvent,
+  Delete,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { AuthGuard } from '@/auth/guards/auth.guard';
@@ -65,14 +66,41 @@ export class AIChatController {
    * GET /ai/suggestions
    */
   @Get('suggestions')
-  async getSuggestions(@Req() req: any): Promise<SuggestionResponseDto> {
+  async getSuggestions(
+    @Req() req: any,
+    @Query('localTime') localTime?: string,
+    @Query('timeZone') timeZone?: string,
+    @Query('tzOffsetMinutes') tzOffsetMinutes?: string,
+  ): Promise<SuggestionResponseDto> {
     const userId = req.user.sub;
-    const suggestions = await this.aiChatService.getSuggestions(userId);
+    const suggestions = await this.aiChatService.getSuggestions(userId, {
+      localTime,
+      timeZone,
+      tzOffsetMinutes: tzOffsetMinutes ? parseInt(tzOffsetMinutes) : undefined,
+    });
 
     return {
       code: 200,
       message: 'success',
       data: { suggestions },
+    };
+  }
+
+  /**
+   * Delete a chat session
+   * DELETE /ai/sessions/:sessionId
+   */
+  @Delete('sessions/:sessionId')
+  async deleteSession(
+    @Req() req: any,
+    @Param('sessionId') sessionId: string,
+  ): Promise<any> {
+    const userId = req.user.sub;
+    await this.aiChatService.deleteSession(userId, sessionId);
+
+    return {
+      code: 200,
+      message: 'success',
     };
   }
 

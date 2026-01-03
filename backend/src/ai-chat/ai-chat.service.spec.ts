@@ -21,11 +21,14 @@ describe('AIChatService', () => {
               create: jest.fn(),
               findFirst: jest.fn(),
               findMany: jest.fn(),
+              delete: jest.fn(),
             },
             aIMessage: {
               create: jest.fn(),
               findMany: jest.fn(),
+              deleteMany: jest.fn(),
             },
+            $transaction: jest.fn((cb) => cb(prisma)),
             canteen: {
               findMany: jest.fn(),
             },
@@ -137,7 +140,9 @@ describe('AIChatService', () => {
         },
       ]);
 
-      const suggestions = await service.getSuggestions('user123');
+      const suggestions = await service.getSuggestions('user123', {
+        localTime: new Date().toISOString(),
+      });
 
       expect(Array.isArray(suggestions)).toBe(true);
       expect(suggestions.length).toBeGreaterThan(0);
@@ -160,7 +165,9 @@ describe('AIChatService', () => {
         },
       ]);
 
-      const suggestions = await service.getSuggestions('user123');
+      const suggestions = await service.getSuggestions('user123', {
+        localTime: new Date().toISOString(),
+      });
 
       expect(suggestions.some((s) => s.includes('学生食堂'))).toBe(true);
     });
@@ -239,6 +246,42 @@ describe('AIChatService', () => {
 
       expect(result.messages).toHaveLength(50);
       expect(result).toHaveProperty('cursor');
+    });
+  });
+
+  describe('deleteSession', () => {
+    it('should delete existing session', async () => {
+      const mockSession = {
+        id: 'session123',
+        userId: 'user123',
+      };
+
+      jest
+        .spyOn(prisma.aISession, 'findFirst')
+        .mockResolvedValue(mockSession as any);
+      jest
+        .spyOn(prisma.aIMessage, 'deleteMany')
+        .mockResolvedValue({ count: 5 });
+      jest
+        .spyOn(prisma.aISession, 'delete')
+        .mockResolvedValue(mockSession as any);
+
+      await service.deleteSession('user123', 'session123');
+
+      expect(prisma.aIMessage.deleteMany).toHaveBeenCalledWith({
+        where: { sessionId: 'session123' },
+      });
+      expect(prisma.aISession.delete).toHaveBeenCalledWith({
+        where: { id: 'session123' },
+      });
+    });
+
+    it('should throw error if session not found', async () => {
+      jest.spyOn(prisma.aISession, 'findFirst').mockResolvedValue(null);
+
+      await expect(
+        service.deleteSession('user123', 'invalid-session'),
+      ).rejects.toThrow('Session not found');
     });
   });
 });
