@@ -23,6 +23,6 @@ describe('config index', () => {
   test('selects production config otherwise', () => {
     process.env.NODE_ENV = 'production';
     const cfg = require('@/config').default;
-    expect(cfg.baseUrl).toContain('prod.api');
+    expect(cfg.baseUrl).toContain('www.zens.top');
   });
 });
