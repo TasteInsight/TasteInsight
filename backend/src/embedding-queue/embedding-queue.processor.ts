@@ -29,6 +29,7 @@ export class EmbeddingQueueProcessor extends WorkerHost {
     switch (job.name as EmbeddingJobType) {
       case EmbeddingJobType.REFRESH_CANTEEN_DISHES:
         return this.handleRefreshCanteenDishes(
+          job,
           job.data as RefreshCanteenDishesJobData,
         );
 
@@ -53,11 +54,17 @@ export class EmbeddingQueueProcessor extends WorkerHost {
    * 处理刷新食堂菜品嵌入任务
    */
   private async handleRefreshCanteenDishes(
+    job: Job,
     data: RefreshCanteenDishesJobData,
   ): Promise<{ canteenId: string; count: number }> {
     const { canteenId } = data;
-    const count =
-      await this.embeddingService.updateDishEmbeddingsByCanteen(canteenId);
+    const count = await this.embeddingService.updateDishEmbeddingsByCanteen(
+      canteenId,
+      async (processed, total) => {
+        // 使用 BullMQ 的 updateProgress 报告进度
+        await job.updateProgress({ processed, total });
+      },
+    );
     return { canteenId, count };
   }
 
