@@ -9,11 +9,7 @@
 
     <!-- 计划卡片列表骨架 -->
     <view class="px-4 py-4 space-y-4">
-      <view
-        v-for="i in 3"
-        :key="i"
-        class="bg-white rounded-xl p-4 shadow-sm"
-      >
+      <view v-for="i in 3" :key="i" class="bg-white rounded-xl p-4 shadow-sm">
         <!-- 卡片头部：日期和状态 -->
         <view class="flex justify-between items-center mb-4">
           <SkeletonBase width="120px" height="20px" rounded="rounded" />

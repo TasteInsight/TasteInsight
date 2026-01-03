@@ -15,9 +15,7 @@ export function useNewsItem() {
     if (!time) return '';
 
     const date = dayjs(time);
-    return format === 'date'
-      ? date.format('YYYY-MM-DD')
-      : date.format('YYYY-MM-DD HH:mm');
+    return format === 'date' ? date.format('YYYY-MM-DD') : date.format('YYYY-MM-DD HH:mm');
   };
 
   /**
@@ -29,9 +27,7 @@ export function useNewsItem() {
     if (!html) return '';
 
     const stripped = html.replace(/<[^>]*>/g, '');
-    return stripped.length > maxLength
-      ? stripped.substring(0, maxLength) + '...'
-      : stripped;
+    return stripped.length > maxLength ? stripped.substring(0, maxLength) + '...' : stripped;
   };
 
   /**
@@ -55,9 +51,7 @@ export function useNewsItem() {
    * @param news 新闻对象
    */
   const getNewsTagClass = (news: News): string => {
-    return news.canteenName
-      ? 'bg-orange-50 text-orange-600'
-      : 'bg-blue-50 text-blue-600';
+    return news.canteenName ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600';
   };
 
   /**

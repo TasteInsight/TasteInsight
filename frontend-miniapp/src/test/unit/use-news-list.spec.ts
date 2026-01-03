@@ -10,7 +10,7 @@ jest.mock('vue', () => {
   const originalVue = jest.requireActual('vue');
   return {
     ...originalVue,
-    onMounted: jest.fn((fn) => fn()),
+    onMounted: jest.fn(fn => fn()),
   };
 });
 
@@ -36,7 +36,7 @@ describe('useNewsList', () => {
     const { list, loading, finished } = useNewsList();
 
     expect(loading.value).toBe(true);
-    
+
     // Wait for the promise to resolve
     await new Promise(process.nextTick);
 
@@ -136,7 +136,7 @@ describe('useNewsList', () => {
     (getNewsList as jest.Mock).mockRejectedValue(new Error('Network Error'));
 
     const { list, finished, loading } = useNewsList();
-    
+
     expect(loading.value).toBe(true);
     await new Promise(process.nextTick);
 
@@ -144,7 +144,7 @@ describe('useNewsList', () => {
     expect(finished.value).toBe(true);
     expect(loading.value).toBe(false);
     expect(consoleSpy).toHaveBeenCalledWith('API请求错误:', expect.any(Error));
-    
+
     consoleSpy.mockRestore();
   });
 

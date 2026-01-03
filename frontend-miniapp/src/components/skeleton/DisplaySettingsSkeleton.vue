@@ -4,9 +4,13 @@
     <!-- 显示选项骨架 -->
     <view class="bg-white rounded-2xl p-6 mb-4 shadow-sm">
       <SkeletonBase width="80px" height="22px" rounded="rounded" class="mb-4" />
-      
+
       <!-- 开关项骨架 -->
-      <view v-for="i in 2" :key="i" class="flex justify-between items-center py-3 border-b border-gray-100 last:border-b-0">
+      <view
+        v-for="i in 2"
+        :key="i"
+        class="flex justify-between items-center py-3 border-b border-gray-100 last:border-b-0"
+      >
         <view class="space-y-1">
           <SkeletonBase width="80px" height="18px" rounded="rounded" />
           <SkeletonBase width="140px" height="12px" rounded="rounded" />

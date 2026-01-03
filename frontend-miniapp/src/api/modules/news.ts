@@ -20,9 +20,7 @@ export const getNewsList = (params?: {
 /**
  * 获取新闻详情
  */
-export const getNewsById = (
-  id: string
-): Promise<ApiResponse<News>> => {
+export const getNewsById = (id: string): Promise<ApiResponse<News>> => {
   return request<News>({
     url: `/news/${id}`,
     method: 'GET',

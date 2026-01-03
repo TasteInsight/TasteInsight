@@ -11,7 +11,10 @@ describe('pages/profile/my-reviews/composables/use-my-reviews.ts', () => {
 
   test('fetchReviews(reset) loads items and sets hasMore', async () => {
     const getMyReviews = jest.fn() as unknown as jest.Mock<any, any>;
-    getMyReviews.mockResolvedValue({ code: 200, data: { items: [{ id: 'r1' }], meta: { totalPages: 2 } } });
+    getMyReviews.mockResolvedValue({
+      code: 200,
+      data: { items: [{ id: 'r1' }], meta: { totalPages: 2 } },
+    });
     jest.doMock('@/api/modules/user', () => ({ getMyReviews }));
 
     const { useMyReviews } = require(MODULE_PATH);
@@ -26,7 +29,12 @@ describe('pages/profile/my-reviews/composables/use-my-reviews.ts', () => {
 
   test('loadMore appends correctly', async () => {
     const getMyReviews = jest.fn() as unknown as jest.Mock<any, any>;
-    getMyReviews.mockImplementation((opts: any) => Promise.resolve({ code: 200, data: { items: [{ id: `r${opts.page}` }], meta: { totalPages: 2 } } }));
+    getMyReviews.mockImplementation((opts: any) =>
+      Promise.resolve({
+        code: 200,
+        data: { items: [{ id: `r${opts.page}` }], meta: { totalPages: 2 } },
+      })
+    );
     jest.doMock('@/api/modules/user', () => ({ getMyReviews }));
 
     const { useMyReviews } = require(MODULE_PATH);

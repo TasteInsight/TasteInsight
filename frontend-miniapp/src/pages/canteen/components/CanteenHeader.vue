@@ -12,12 +12,7 @@
       indicator-active-color="#fff"
     >
       <swiper-item v-for="(img, index) in canteen.images" :key="index">
-        <image
-          :src="img"
-          mode="aspectFill"
-          class="w-full h-full"
-          @click="previewImage(index)"
-        />
+        <image :src="img" mode="aspectFill" class="w-full h-full" @click="previewImage(index)" />
       </swiper-item>
     </swiper>
 
@@ -49,20 +44,24 @@ const formattedHours = computed(() => {
   const todayName = dayNames[new Date().getDay()];
 
   const parts = props.canteen.openingHours
-    .map((floorHours) => {
-      const todaySchedule = floorHours.schedule?.find((d) => d.dayOfWeek === todayName);
+    .map(floorHours => {
+      const todaySchedule = floorHours.schedule?.find(d => d.dayOfWeek === todayName);
       if (!todaySchedule || todaySchedule.isClosed || !todaySchedule.slots?.length) return null;
 
-      const timeStr = todaySchedule.slots.map((s) => `${s.openTime}-${s.closeTime}`).join(', ');
+      const timeStr = todaySchedule.slots.map(s => `${s.openTime}-${s.closeTime}`).join(', ');
 
       // 单条 default 配置时不加前缀，避免冗余
-      if (props.canteen!.openingHours.length === 1 && (floorHours.floorLevel === 'default' || !floorHours.floorLevel)) {
+      if (
+        props.canteen!.openingHours.length === 1 &&
+        (floorHours.floorLevel === 'default' || !floorHours.floorLevel)
+      ) {
         return timeStr;
       }
 
-      const floorLabel = !floorHours.floorLevel || floorHours.floorLevel === 'default'
-        ? '通用'
-        : `${floorHours.floorLevel}F`;
+      const floorLabel =
+        !floorHours.floorLevel || floorHours.floorLevel === 'default'
+          ? '通用'
+          : `${floorHours.floorLevel}F`;
       return `${floorLabel} ${timeStr}`;
     })
     .filter(Boolean) as string[];
@@ -76,7 +75,7 @@ const previewImage = (index: number) => {
   if (props.canteen?.images?.length) {
     uni.previewImage({
       urls: props.canteen.images,
-      current: index
+      current: index,
     });
   }
 };

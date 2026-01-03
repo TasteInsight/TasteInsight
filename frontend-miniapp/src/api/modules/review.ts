@@ -26,9 +26,7 @@ export const getReviewsByDish = (
 /**
  * 发布评价
  */
-export const createReview = (
-  reviewData: ReviewCreateRequest
-): Promise<ApiResponse<Review>> => {
+export const createReview = (reviewData: ReviewCreateRequest): Promise<ApiResponse<Review>> => {
   return request<Review>({
     url: '/reviews',
     method: 'POST',
@@ -53,9 +51,7 @@ export const reportReview = (
 /**
  * 删除评价
  */
-export const deleteReview = (
-  reviewId: string
-): Promise<ApiResponse<null>> => {
+export const deleteReview = (reviewId: string): Promise<ApiResponse<null>> => {
   return request<null>({
     url: `/reviews/${reviewId}`,
     method: 'DELETE',

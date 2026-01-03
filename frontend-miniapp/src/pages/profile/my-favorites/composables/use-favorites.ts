@@ -56,7 +56,7 @@ export function useFavorites() {
       console.error(message, err);
       uni.showToast({
         title: message,
-        icon: 'none'
+        icon: 'none',
       });
       // 加载失败时，认为没有更多数据
       hasMore.value = false;
@@ -78,7 +78,7 @@ export function useFavorites() {
 
         uni.showToast({
           title: '已取消收藏',
-          icon: 'success'
+          icon: 'success',
         });
       } else {
         throw new Error(response.message || '取消收藏失败');
@@ -88,7 +88,7 @@ export function useFavorites() {
       console.error(message, err);
       uni.showToast({
         title: message,
-        icon: 'none'
+        icon: 'none',
       });
     }
   };

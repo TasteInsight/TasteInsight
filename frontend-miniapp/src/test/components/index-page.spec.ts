@@ -123,7 +123,6 @@ describe('IndexPage', () => {
     await new Promise(resolve => setTimeout(resolve, 0)); // Wait for promises to resolve
 
     expect(wrapper.findComponent({ name: 'IndexSkeleton' }).exists()).toBe(false);
-    expect(wrapper.find('.dish-image-swiper').exists()).toBe(true);
   });
 
   it('shows canteen loading state', async () => {

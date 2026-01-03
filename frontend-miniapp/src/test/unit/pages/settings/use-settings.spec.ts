@@ -21,20 +21,25 @@ describe('useSettings', () => {
     const user = {
       nickname: 'nick',
       avatar: 'a',
-      allergens: ['a','b'],
+      allergens: ['a', 'b'],
       preferences: {
         favoriteIngredients: ['f1'],
         avoidIngredients: ['av1'],
         priceRange: { min: 3, max: 10 },
-        tastePreferences: { spicyLevel: 2 }
+        tastePreferences: { spicyLevel: 2 },
       },
       settings: {
         displaySettings: { showCalories: true, sortBy: 'rating' },
-        notificationSettings: { newDishAlert: true }
-      }
+        notificationSettings: { newDishAlert: true },
+      },
     } as any;
 
-    mockedUseUserStore.mockReturnValue({ isLoggedIn: true, userInfo: user, fetchProfileAction: jest.fn(), updateLocalUserInfo: jest.fn() } as any);
+    mockedUseUserStore.mockReturnValue({
+      isLoggedIn: true,
+      userInfo: user,
+      fetchProfileAction: jest.fn(),
+      updateLocalUserInfo: jest.fn(),
+    } as any);
 
     const { form, avatarPreview } = useSettings();
     expect(form.nickname).toBe('nick');
@@ -52,15 +57,28 @@ describe('useSettings', () => {
   });
 
   test('handleSave shows no-modify toast when nothing changed', async () => {
-    const store = { isLoggedIn: true, userInfo: null, fetchProfileAction: jest.fn(), updateLocalUserInfo: jest.fn() } as any;
+    const store = {
+      isLoggedIn: true,
+      userInfo: null,
+      fetchProfileAction: jest.fn(),
+      updateLocalUserInfo: jest.fn(),
+    } as any;
     mockedUseUserStore.mockReturnValue(store);
     const { handleSave } = useSettings();
     await handleSave();
-    expect((global as any).uni.showToast).toHaveBeenCalledWith({ title: '没有修改内容', icon: 'none' });
+    expect((global as any).uni.showToast).toHaveBeenCalledWith({
+      title: '没有修改内容',
+      icon: 'none',
+    });
   });
 
   test('handleSave builds payload with preferences and settings and succeeds', async () => {
-    const store = { isLoggedIn: true, userInfo: null, fetchProfileAction: jest.fn(), updateLocalUserInfo: jest.fn() } as any;
+    const store = {
+      isLoggedIn: true,
+      userInfo: null,
+      fetchProfileAction: jest.fn(),
+      updateLocalUserInfo: jest.fn(),
+    } as any;
     mockedUseUserStore.mockReturnValue(store);
     mockedUpdate.mockResolvedValueOnce({ code: 200, data: { nickname: 'n' } } as any);
 
@@ -74,11 +92,19 @@ describe('useSettings', () => {
 
     expect(mockedUpdate).toHaveBeenCalled();
     expect(store.updateLocalUserInfo).toHaveBeenCalled();
-    expect((global as any).uni.showToast).toHaveBeenCalledWith({ title: '保存成功', icon: 'success' });
+    expect((global as any).uni.showToast).toHaveBeenCalledWith({
+      title: '保存成功',
+      icon: 'success',
+    });
   });
 
   test('handleSave failure shows toast', async () => {
-    const store = { isLoggedIn: true, userInfo: null, fetchProfileAction: jest.fn(), updateLocalUserInfo: jest.fn() } as any;
+    const store = {
+      isLoggedIn: true,
+      userInfo: null,
+      fetchProfileAction: jest.fn(),
+      updateLocalUserInfo: jest.fn(),
+    } as any;
     mockedUseUserStore.mockReturnValue(store);
     mockedUpdate.mockResolvedValueOnce({ code: 400, message: 'Bad' } as any);
 

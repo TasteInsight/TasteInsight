@@ -41,7 +41,7 @@ describe('useDishDetail', () => {
       reviewsHasMore: { value: true },
       fetchReviews: jest.fn(),
       removeReview: jest.fn(),
-      submitReview: jest.fn()
+      submitReview: jest.fn(),
     };
     (useReview as any).mockReturnValue(mockUseReview);
 
@@ -50,7 +50,7 @@ describe('useDishDetail', () => {
       reviewComments: { value: {} },
       fetchComments: jest.fn(),
       removeComment: jest.fn(),
-      submitComment: jest.fn()
+      submitComment: jest.fn(),
     };
     (useComment as any).mockReturnValue(mockUseComment);
 
@@ -58,7 +58,7 @@ describe('useDishDetail', () => {
     mockUseUserStore = {
       userInfo: { value: { myFavoriteDishes: [] } },
       isLoggedIn: { value: true },
-      updateLocalUserInfo: jest.fn()
+      updateLocalUserInfo: jest.fn(),
     };
     (useUserStore as any).mockReturnValue(mockUseUserStore);
   });
@@ -150,7 +150,10 @@ describe('useDishDetail', () => {
   describe('fetchDishDetail and related flows', () => {
     it('loads sub and parent dishes when available', async () => {
       (getDishById as jest.Mock)
-        .mockResolvedValueOnce({ code: 200, data: { id: 'd1', subDishId: ['s1'], parentDishId: 'p1' } })
+        .mockResolvedValueOnce({
+          code: 200,
+          data: { id: 'd1', subDishId: ['s1'], parentDishId: 'p1' },
+        })
         .mockResolvedValueOnce({ code: 200, data: { id: 's1' } })
         .mockResolvedValueOnce({ code: 200, data: { id: 'p1' } });
 
@@ -172,7 +175,7 @@ describe('useDishDetail', () => {
 
   describe('toggleFavorite', () => {
     it('skips when no dish id or not logged in and handles favorite/unfavorite success', async () => {
-      const user = (useUserStore() as any);
+      const user = useUserStore() as any;
       const { toggleFavorite, dish, favoriteLoading } = useDishDetail();
 
       // no dish id
@@ -189,8 +192,12 @@ describe('useDishDetail', () => {
       // logged in and favorite
       user.isLoggedIn = true;
       user.userInfo = { myFavoriteDishes: [] };
-      (require('@/api/modules/dish').favoriteDish as jest.Mock).mockResolvedValueOnce({ code: 200 });
-      (require('@/api/modules/dish').unfavoriteDish as jest.Mock).mockResolvedValueOnce({ code: 200 });
+      (require('@/api/modules/dish').favoriteDish as jest.Mock).mockResolvedValueOnce({
+        code: 200,
+      });
+      (require('@/api/modules/dish').unfavoriteDish as jest.Mock).mockResolvedValueOnce({
+        code: 200,
+      });
 
       dish.value = { id: 'd1' } as any;
       await toggleFavorite();
@@ -203,5 +210,4 @@ describe('useDishDetail', () => {
       expect(user.updateLocalUserInfo).toHaveBeenCalled();
     });
   });
-
 });

@@ -13,7 +13,8 @@ describe('pages/news/composables/use-news-detail.ts', () => {
     const { formattedContent, newsDetail } = require(MODULE_PATH).useNewsDetail();
     expect(formattedContent.value).toBe('');
 
-    newsDetail.value.content = '<html><body><img src="x.png"><table></table><pre>code</pre></body></html>';
+    newsDetail.value.content =
+      '<html><body><img src="x.png"><table></table><pre>code</pre></body></html>';
     const out = formattedContent.value;
     expect(out).toContain('max-width:100%');
     expect(out).toContain('white-space:pre-wrap');

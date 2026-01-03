@@ -9,11 +9,10 @@ export { USE_MOCK } from './mock-adapter';
 export { createMockMealPlans, getMockPlanDatabase, resetMockPlanDatabase } from './data/meal-plan';
 export { createMockDishes, getDishesByWindowId } from './data/dish';
 export { createMockCanteens, createMockWindows, getWindowsByCanteenId } from './data/canteen';
-export { 
-  createMockReviews, 
-  createMockComments, 
-  getReviewsByDishId, 
+export {
+  createMockReviews,
+  createMockComments,
+  getReviewsByDishId,
   getCommentsByReviewId,
   getRatingDetailByDishId,
 } from './data/review';
-

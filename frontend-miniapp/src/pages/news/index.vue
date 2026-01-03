@@ -12,14 +12,14 @@
       <!-- 数据列表 -->
       <view v-if="list.length > 0">
         <NewsItem v-for="item in list" :key="item.id" :news="item" />
-        
+
         <!-- 加载状态提示 -->
         <view class="text-center py-4 text-gray-500 text-sm">
           <text v-if="loading && list.length > 0">加载中...</text>
           <text v-else-if="finished">没有更多内容了</text>
         </view>
       </view>
-      
+
       <!-- 首次加载中/空状态 -->
       <view v-else class="text-center py-4 text-gray-500 text-sm">
         <view v-if="!loading && !isRefreshing">
@@ -28,9 +28,8 @@
           <text>暂无最新公告</text>
         </view>
       </view>
-
     </view>
-    
+
     <!-- 底部导航区（在pages.json中配置为tabBar，此处不需重复实现 nav-bar） -->
   </view>
 </template>

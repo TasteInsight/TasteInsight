@@ -27,9 +27,7 @@ export const getCommentsByReview = (
 /**
  * 发布评论
  */
-export const createComment = (
-  commentData: CommentCreateRequest
-): Promise<ApiResponse<Comment>> => {
+export const createComment = (commentData: CommentCreateRequest): Promise<ApiResponse<Comment>> => {
   return request<Comment>({
     url: '/comments',
     method: 'POST',
@@ -54,9 +52,7 @@ export const reportComment = (
 /**
  * 删除评论
  */
-export const deleteComment = (
-  commentId: string
-): Promise<ApiResponse<null>> => {
+export const deleteComment = (commentId: string): Promise<ApiResponse<null>> => {
   return request<null>({
     url: `/comments/${commentId}`,
     method: 'DELETE',

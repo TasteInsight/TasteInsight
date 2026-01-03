@@ -82,7 +82,10 @@ describe('usePlanStore integration', () => {
       },
     });
 
-    (getDishById as jest.Mock).mockResolvedValueOnce({ code: 200, data: { id: 'd3', name: 'Dish 3' } });
+    (getDishById as jest.Mock).mockResolvedValueOnce({
+      code: 200,
+      data: { id: 'd3', name: 'Dish 3' },
+    });
 
     const store = usePlanStore();
     const created = await store.createPlan({
@@ -102,7 +105,8 @@ describe('usePlanStore integration', () => {
 
     const store = usePlanStore();
     // seed plan - ensure it's not expired and not completed
-    const futureDate = '2026-12-25'; // Future date to ensure not expired
+    // Use a far-future date to avoid flakiness due to system clock
+    const futureDate = '2099-12-25'; // Far future date to ensure not expired
     store.allPlans = [
       {
         id: 'p3',

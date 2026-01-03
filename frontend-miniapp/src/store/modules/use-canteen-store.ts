@@ -7,31 +7,26 @@ import {
   getWindowDetail,
   getWindowDishes,
 } from '@/api/modules/canteen';
-import type {
-  Canteen,
-  Window,
-  PaginationParams,
-  Dish,
-} from '@/types/api';
+import type { Canteen, Window, PaginationParams, Dish } from '@/types/api';
 
 export const useCanteenStore = defineStore('canteen', () => {
   // ==================== State ====================
-  
+
   // 食堂列表
   const canteenList = ref<Canteen[]>([]);
-  
+
   // 当前食堂详情
   const currentCanteen = ref<Canteen | null>(null);
-  
+
   // 窗口列表
   const windowList = ref<Window[]>([]);
-  
+
   // 当前窗口详情
   const currentWindow = ref<Window | null>(null);
 
   // 当前窗口菜品
   const currentWindowDishes = ref<Dish[]>([]);
-  
+
   // 分页信息
   const pagination = ref({
     page: 1,
@@ -39,35 +34,35 @@ export const useCanteenStore = defineStore('canteen', () => {
     total: 0,
     totalPages: 0,
   });
-  
+
   // 加载状态
   const loading = ref(false);
-  
+
   // 加载更多状态
   const loadingMore = ref(false);
-  
+
   // 错误信息
   const error = ref<string | null>(null);
 
   // ==================== Getters ====================
-  
+
   /**
    * 是否有食堂数据
    */
   const hasCanteens = computed(() => canteenList.value.length > 0);
-  
+
   /**
    * 是否有窗口数据
    */
   const hasWindows = computed(() => windowList.value.length > 0);
-  
+
   /**
    * 根据ID获取食堂
    */
   const getCanteenById = computed(() => {
     return (id: string) => canteenList.value.find(canteen => canteen.id === id);
   });
-  
+
   /**
    * 根据ID获取窗口
    */
@@ -83,10 +78,10 @@ export const useCanteenStore = defineStore('canteen', () => {
   async function fetchCanteenList(params?: PaginationParams) {
     loading.value = true;
     error.value = null;
-    
+
     try {
       const response = await getCanteenList(params);
-      
+
       if (response.code === 200 && response.data) {
         canteenList.value = response.data.items;
         pagination.value = response.data.meta;
@@ -109,14 +104,17 @@ export const useCanteenStore = defineStore('canteen', () => {
     if (loadingMore.value || pagination.value.page >= pagination.value.totalPages) {
       return;
     }
-    
+
     loadingMore.value = true;
     error.value = null;
-    
+
     try {
       const nextPage = pagination.value.page + 1;
-      const response = await getCanteenList({ page: nextPage, pageSize: pagination.value.pageSize });
-      
+      const response = await getCanteenList({
+        page: nextPage,
+        pageSize: pagination.value.pageSize,
+      });
+
       if (response.code === 200 && response.data) {
         canteenList.value = [...canteenList.value, ...response.data.items];
         pagination.value = response.data.meta;
@@ -138,10 +136,10 @@ export const useCanteenStore = defineStore('canteen', () => {
   async function fetchCanteenDetail(canteenId: string, params?: PaginationParams) {
     loading.value = true;
     error.value = null;
-    
+
     try {
       const response = await getCanteenDetail(canteenId, params);
-      
+
       if (response.code === 200 && response.data) {
         currentCanteen.value = response.data;
       } else {
@@ -162,10 +160,10 @@ export const useCanteenStore = defineStore('canteen', () => {
   async function fetchWindowList(canteenId: string, params?: PaginationParams) {
     loading.value = true;
     error.value = null;
-    
+
     try {
       const response = await getWindowList(canteenId, params);
-      
+
       if (response.code === 200 && response.data) {
         windowList.value = response.data.items;
         pagination.value = response.data.meta;
@@ -187,7 +185,7 @@ export const useCanteenStore = defineStore('canteen', () => {
   async function fetchWindowDetail(windowId: string, params?: PaginationParams) {
     loading.value = true;
     error.value = null;
-    
+
     try {
       console.log('[store] fetchWindowDetail ->', windowId, params);
       const response = await getWindowDetail(windowId, params);
@@ -275,13 +273,13 @@ export const useCanteenStore = defineStore('canteen', () => {
     loading,
     loadingMore,
     error,
-    
+
     // Getters
     hasCanteens,
     hasWindows,
     getCanteenById,
     getWindowById,
-    
+
     // Actions
     fetchCanteenList,
     loadMoreCanteenList,
@@ -289,7 +287,7 @@ export const useCanteenStore = defineStore('canteen', () => {
     fetchWindowList,
     fetchWindowDetail,
     fetchWindowDishes,
-    
+
     // Utilities
     clearCurrentCanteen,
     clearCurrentWindow,

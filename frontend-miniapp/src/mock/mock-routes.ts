@@ -1,6 +1,6 @@
 /**
  * Mock 路由注册
- * 
+ *
  * 在这里注册所有的 mock 路由
  * 每个路由将 URL 模式映射到对应的 mock 处理函数
  */
@@ -11,28 +11,35 @@ import type { RequestOptions, PaginationParams, ChatMessageItem } from '@/types/
 // ============================================
 // 导入 Mock 数据服务
 // ============================================
-import { 
-  mockGetReviewsByDish, 
-  mockCreateReview, 
-  mockGetCommentsByReview, 
+import {
+  mockGetReviewsByDish,
+  mockCreateReview,
+  mockGetCommentsByReview,
   mockCreateComment,
   mockDeleteReview,
-  mockDeleteComment
+  mockDeleteComment,
 } from './services/review';
 import { mockGetDishById, mockGetDishes, mockGetDishesImages } from './services/dish';
-import { mockGetCanteenList, mockGetCanteenDetail, mockGetWindowList, mockGetWindowDetail, mockGetWindowDishes, mockSearchDishes } from './services/canteen';
+import {
+  mockGetCanteenList,
+  mockGetCanteenDetail,
+  mockGetWindowList,
+  mockGetWindowDetail,
+  mockGetWindowDishes,
+  mockSearchDishes,
+} from './services/canteen';
 import { mockGetNewsList, mockGetNewsById } from './services/news';
-import { 
-  mockGetMealPlans, 
+import {
+  mockGetMealPlans,
   mockCreateMealPlan,
   mockUpdateMealPlan,
   mockDeleteMealPlan,
   mockExecutePlan,
 } from './services/meal-plan';
-import { 
-  mockWechatLogin, 
+import {
+  mockWechatLogin,
   mockRefreshToken,
-  mockGetUserProfile, 
+  mockGetUserProfile,
   mockUpdateUserProfile,
   mockGetMyReviews,
   mockGetMyFavorites,
@@ -40,12 +47,7 @@ import {
   mockAddFavorite,
   mockRemoveFavorite,
 } from './services/user';
-import { 
-  mockGetAISuggestions,
-  mockCreateAISession,
-  mockGetAIHistory
-} from './services/ai';
-
+import { mockGetAISuggestions, mockCreateAISession, mockGetAIHistory } from './services/ai';
 
 // ============================================
 // Review 相关路由
@@ -57,7 +59,7 @@ registerMockRoute('GET', '/dishes/:dishId/reviews', async (url, options) => {
   const match = url.match(/\/dishes\/([^/]+)\/reviews/);
   const dishId = match?.[1] || '';
   const params = options.data as PaginationParams;
-  
+
   const data = await mockGetReviewsByDish(dishId, params);
   return mockSuccess(data);
 });
@@ -71,15 +73,15 @@ registerMockRoute('POST', '/reviews', async (url, options) => {
     content: reviewData.content || '',
     images: reviewData.images,
   });
-  
+
   return mockSuccess(review);
 });
 
 // DELETE /reviews/:id - 删除评价
-registerMockRoute('DELETE', '/reviews/:id', async (url) => {
+registerMockRoute('DELETE', '/reviews/:id', async url => {
   const match = url.match(/\/reviews\/([^/]+)$/);
   const reviewId = match?.[1] || '';
-  
+
   await mockDeleteReview(reviewId);
   return mockSuccess(null);
 });
@@ -93,7 +95,7 @@ registerMockRoute('GET', '/comments/:reviewId', async (url, options) => {
   const match = url.match(/\/comments\/([^/]+)$/);
   const reviewId = match?.[1] || '';
   const params = options.data as PaginationParams;
-  
+
   const data = await mockGetCommentsByReview(reviewId, params);
   return mockSuccess({
     items: data.items,
@@ -114,15 +116,15 @@ registerMockRoute('POST', '/comments', async (url, options) => {
     content: commentData.content,
     parentCommentId: commentData.parentCommentId,
   });
-  
+
   return mockSuccess(comment);
 });
 
 // DELETE /comments/:id - 删除评论
-registerMockRoute('DELETE', '/comments/:id', async (url) => {
+registerMockRoute('DELETE', '/comments/:id', async url => {
   const match = url.match(/\/comments\/([^/]+)$/);
   const commentId = match?.[1] || '';
-  
+
   await mockDeleteComment(commentId);
   return mockSuccess(null);
 });
@@ -139,10 +141,10 @@ registerMockRoute('GET', '/dishes/search', async (url, options) => {
 });
 
 // GET /dishes/:id - 获取菜品详情
-registerMockRoute('GET', '/dishes/:id', async (url) => {
+registerMockRoute('GET', '/dishes/:id', async url => {
   const match = url.match(/\/dishes\/([^/]+)$/);
   const dishId = match?.[1] || '';
-  
+
   const data = await mockGetDishById(dishId);
   return mockSuccess(data);
 });
@@ -161,19 +163,19 @@ registerMockRoute('GET', '/dishes/images', async () => {
 });
 
 // POST /dishes/:dishId/favorite - 收藏菜品
-registerMockRoute('POST', '/dishes/:dishId/favorite', async (url) => {
+registerMockRoute('POST', '/dishes/:dishId/favorite', async url => {
   const match = url.match(/\/dishes\/([^/]+)\/favorite/);
   const dishId = match?.[1] || '';
-  
+
   await mockAddFavorite(dishId);
   return mockSuccess(null);
 });
 
 // DELETE /dishes/:dishId/favorite - 取消收藏菜品
-registerMockRoute('DELETE', '/dishes/:dishId/favorite', async (url) => {
+registerMockRoute('DELETE', '/dishes/:dishId/favorite', async url => {
   const match = url.match(/\/dishes\/([^/]+)\/favorite/);
   const dishId = match?.[1] || '';
-  
+
   await mockRemoveFavorite(dishId);
   return mockSuccess(null);
 });
@@ -193,34 +195,34 @@ registerMockRoute('GET', '/canteens/:canteenId/windows', async (url, options) =>
   const match = url.match(/\/canteens\/([^/]+)\/windows/);
   const canteenId = match?.[1] || '';
   const params = options.data as PaginationParams;
-  
+
   const data = await mockGetWindowList(canteenId, params);
   return mockSuccess(data);
 });
 
 // GET /canteens/:id - 获取食堂详情
-registerMockRoute('GET', '/canteens/:id', async (url) => {
+registerMockRoute('GET', '/canteens/:id', async url => {
   const match = url.match(/\/canteens\/([^/]+)$/);
   const canteenId = match?.[1] || '';
-  
+
   const data = await mockGetCanteenDetail(canteenId);
   return mockSuccess(data);
 });
 
 // GET /windows/:windowId/dishes - 获取窗口菜品（必须在 /windows/:windowId 之前）
-registerMockRoute('GET', '/windows/:windowId/dishes', async (url) => {
+registerMockRoute('GET', '/windows/:windowId/dishes', async url => {
   const match = url.match(/\/windows\/([^/]+)\/dishes/);
   const windowId = match?.[1] || '';
-  
+
   const data = await mockGetWindowDishes(windowId);
   return mockSuccess(data);
 });
 
 // GET /windows/:windowId - 获取窗口详情
-registerMockRoute('GET', '/windows/:windowId', async (url) => {
+registerMockRoute('GET', '/windows/:windowId', async url => {
   const match = url.match(/\/windows\/([^/]+)$/);
   const windowId = match?.[1] || '';
-  
+
   const data = await mockGetWindowDetail(windowId);
   return mockSuccess(data);
 });
@@ -237,10 +239,10 @@ registerMockRoute('GET', '/news', async (url, options) => {
 });
 
 // GET /news/:id - 获取新闻详情
-registerMockRoute('GET', '/news/:id', async (url) => {
+registerMockRoute('GET', '/news/:id', async url => {
   const match = url.match(/\/news\/([^/]+)$/);
   const newsId = match?.[1] || '';
-  
+
   const data = await mockGetNewsById(newsId);
   return mockSuccess(data);
 });
@@ -256,10 +258,10 @@ registerMockRoute('GET', '/meal-plans', async () => {
 });
 
 // POST /meal-plans/:id/execute - 执行用餐计划（必须在 POST /meal-plans 之前）
-registerMockRoute('POST', '/meal-plans/:id/execute', async (url) => {
+registerMockRoute('POST', '/meal-plans/:id/execute', async url => {
   const match = url.match(/\/meal-plans\/([^/]+)\/execute/);
   const planId = match?.[1] || '';
-  
+
   const data = await mockExecutePlan(planId);
   return mockSuccess(data);
 });
@@ -276,7 +278,7 @@ registerMockRoute('PATCH', '/meal-plans/:id', async (url, options) => {
   const match = url.match(/\/meal-plans\/([^/]+)$/);
   const planId = match?.[1] || '';
   const planData = options.data as any;
-  
+
   const data = await mockUpdateMealPlan(planId, planData);
   if (data) {
     return mockSuccess(data);
@@ -286,10 +288,10 @@ registerMockRoute('PATCH', '/meal-plans/:id', async (url, options) => {
 });
 
 // DELETE /meal-plans/:id - 删除用餐计划
-registerMockRoute('DELETE', '/meal-plans/:id', async (url) => {
+registerMockRoute('DELETE', '/meal-plans/:id', async url => {
   const match = url.match(/\/meal-plans\/([^/]+)$/);
   const planId = match?.[1] || '';
-  
+
   await mockDeleteMealPlan(planId);
   return mockSuccess(null);
 });
@@ -361,13 +363,11 @@ registerMockRoute('POST', '/ai/sessions', async () => {
 });
 
 // GET /ai/sessions/:sessionId/history - 获取历史记录
-registerMockRoute('GET', '/ai/sessions/:sessionId/history', async (url) => {
+registerMockRoute('GET', '/ai/sessions/:sessionId/history', async url => {
   const match = url.match(/\/ai\/sessions\/([^/]+)\/history/);
   const sessionId = match?.[1] || '';
   return await mockGetAIHistory(sessionId);
 });
-
-
 
 // POST /ai/sessions/:sessionId/chat/stream - 模拟流式对话（降级实现）
 // 由于原生流式请求可能直接用 uni.request，且不一定通过统一 request 拦截器，本路由提供一个简化的替代：
@@ -377,7 +377,11 @@ registerMockRoute('POST', '/ai/sessions/:sessionId/chat/stream', async (url, opt
   try {
     const match = url.match(/\/ai\/sessions\/([^/]+)\/chat\/stream/);
     const sessionId = match?.[1] || '';
-    const body = options?.data ? (typeof options.data === 'string' ? JSON.parse(options.data) : options.data) : {};
+    const body = options?.data
+      ? typeof options.data === 'string'
+        ? JSON.parse(options.data)
+        : options.data
+      : {};
     const messageText = body?.message || '';
 
     // 将用户消息写入会话历史
@@ -387,7 +391,7 @@ registerMockRoute('POST', '/ai/sessions/:sessionId/chat/stream', async (url, opt
     const userMsg: ChatMessageItem = {
       role: 'user',
       timestamp: new Date().toISOString(),
-      content: [{ type: 'text', data: messageText }]
+      content: [{ type: 'text', data: messageText }],
     };
     history.push(userMsg);
 
@@ -396,7 +400,9 @@ registerMockRoute('POST', '/ai/sessions/:sessionId/chat/stream', async (url, opt
       const aiMsg: ChatMessageItem = {
         role: 'assistant',
         timestamp: new Date().toISOString(),
-        content: [{ type: 'text', data: `模拟回复：我收到了你的消息“${messageText}”，这是完整的回复。` }]
+        content: [
+          { type: 'text', data: `模拟回复：我收到了你的消息“${messageText}”，这是完整的回复。` },
+        ],
       };
       history.push(aiMsg);
     }, 300);
@@ -411,13 +417,13 @@ registerMockRoute('POST', '/ai/sessions/:sessionId/chat/stream', async (url, opt
 // POST /upload/image - 模拟图片上传
 registerMockRoute('POST', '/upload/image', async (url, options) => {
   console.log('[Mock] Uploading image:', options);
-  
+
   // 模拟上传延迟
   await new Promise(resolve => setTimeout(resolve, 1000));
-  
+
   return mockSuccess({
     url: `https://mock-image.com/${Date.now()}.jpg`,
-    filename: `mock_image_${Date.now()}.jpg`
+    filename: `mock_image_${Date.now()}.jpg`,
   });
 });
 

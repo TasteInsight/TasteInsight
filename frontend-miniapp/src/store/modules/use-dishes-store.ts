@@ -1,20 +1,20 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { 
-  getDishes, 
+import {
+  getDishes,
   getDishById,
   favoriteDish,
   unfavoriteDish,
-  uploadDish
+  uploadDish,
 } from '@/api/modules/dish';
-import type { 
-  Dish, 
+import type {
+  Dish,
   PaginationMeta,
   GetDishesRequest,
   DishUserCreateRequest,
   DishUploadData,
   ApiResponse,
-  SuccessResponse
+  SuccessResponse,
 } from '@/types/api';
 import { toUserFriendlyErrorMessage } from '@/utils/user-friendly-error';
 
@@ -29,7 +29,7 @@ interface DishesState {
 
 export const useDishesStore = defineStore('dishes', () => {
   // ==================== State ====================
-  
+
   // 菜品列表
   const dishes = ref<Dish[]>([]);
   // 当前查看的菜品详情
@@ -49,7 +49,7 @@ export const useDishesStore = defineStore('dishes', () => {
    * 是否有菜品数据
    */
   const hasDishes = computed(() => dishes.value.length > 0);
-  
+
   /**
    * 总页数
    */
@@ -77,7 +77,7 @@ export const useDishesStore = defineStore('dishes', () => {
     error.value = null;
     try {
       const response = await getDishes(params);
-      
+
       if (response.code === 200 && response.data) {
         const items = response.data.items;
         dishes.value = append ? [...dishes.value, ...items] : items;
@@ -109,7 +109,7 @@ export const useDishesStore = defineStore('dishes', () => {
     currentDish.value = null; // 先清空旧数据
     try {
       const response = await getDishById(id);
-      
+
       if (response.code === 200 && response.data) {
         currentDish.value = response.data;
       } else {
@@ -155,7 +155,7 @@ export const useDishesStore = defineStore('dishes', () => {
   async function unfavorite(dishId: string): Promise<boolean> {
     try {
       const response = await unfavoriteDish(dishId);
-       if (response.code === 200) {
+      if (response.code === 200) {
         // 更新菜品状态
         uni.showToast({ title: '已取消收藏', icon: 'success' });
         return true;
@@ -169,7 +169,7 @@ export const useDishesStore = defineStore('dishes', () => {
       return false;
     }
   }
-  
+
   /**
    * 用户上传新菜品
    * @param {DishUserCreateRequest} dishData - 菜品数据
@@ -180,8 +180,8 @@ export const useDishesStore = defineStore('dishes', () => {
     try {
       const response = await uploadDish(dishData);
       if (response.code === 201 && response.data) {
-         uni.showToast({ title: '上传成功，等待审核', icon: 'success' });
-         return response.data;
+        uni.showToast({ title: '上传成功，等待审核', icon: 'success' });
+        return response.data;
       } else {
         throw new Error(response.message || '上传失败');
       }
@@ -211,11 +211,11 @@ export const useDishesStore = defineStore('dishes', () => {
     loading,
     loadingMore,
     error,
-    
+
     // Getters
     hasDishes,
     totalPages,
-    
+
     // Actions
     fetchDishes,
     fetchDishById,

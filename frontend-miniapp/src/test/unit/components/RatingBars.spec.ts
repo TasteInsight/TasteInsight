@@ -22,7 +22,10 @@ describe('RatingBars.vue', () => {
 
   test.skip('computes percentages correctly after fetching rating detail', async () => {
     // Prepare fake response
-    const fakeResponse = { code: 200, data: { rating: { detail: { '5': 3, '4': 1, '3': 1, '2': 0, '1': 0 } } } };
+    const fakeResponse = {
+      code: 200,
+      data: { rating: { detail: { '5': 3, '4': 1, '3': 1, '2': 0, '1': 0 } } },
+    };
 
     const { default: RatingBars } = require(COMPONENT_PATH);
     const review = require('@/api/modules/review');

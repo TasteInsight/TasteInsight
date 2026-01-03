@@ -11,11 +11,7 @@
 
     <!-- 评价列表骨架 -->
     <view class="px-4 space-y-4">
-      <view
-        v-for="i in 4"
-        :key="i"
-        class="bg-white rounded-xl p-4 shadow-sm"
-      >
+      <view v-for="i in 4" :key="i" class="bg-white rounded-xl p-4 shadow-sm">
         <!-- 评价头部：菜品信息 -->
         <view class="flex items-center space-x-3 mb-3 pb-3 border-b border-gray-100">
           <SkeletonBase width="48px" height="48px" rounded="rounded-lg" />

@@ -1,11 +1,11 @@
 <template>
-  <view 
+  <view
     class="skeleton-item rounded"
     :class="[
       animated ? 'skeleton-animated' : '',
       roundedFull ? 'rounded-full' : '',
       rounded,
-      className
+      className,
     ]"
     :style="{ width: width, height: height }"
   ></view>

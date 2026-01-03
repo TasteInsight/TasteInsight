@@ -2,7 +2,7 @@
   <view class="min-h-screen bg-white">
     <!-- 骨架屏 -->
     <CanteenSkeleton v-if="isInitialLoading" />
-    
+
     <template v-else>
       <!-- 搜索栏 -->
       <view class="px-4">
@@ -10,7 +10,7 @@
       </view>
 
       <CanteenHeader :canteen="canteenInfo" />
-      
+
       <!-- 窗口列表 -->
       <CanteenWindowList :windows="windows" @click="goToWindow" />
 
@@ -19,9 +19,7 @@
       </view>
 
       <view class="px-4">
-        <view v-if="loading" class="text-center py-8 text-gray-500">
-          加载中...
-        </view>
+        <view v-if="loading" class="text-center py-8 text-gray-500"> 加载中... </view>
 
         <view v-else-if="error" class="text-center py-8 text-red-500">
           {{ error }}
@@ -38,7 +36,9 @@
           <!-- 上拉加载更多：底部提示/动画 -->
           <view class="flex items-center justify-center py-4 text-gray-500 text-sm">
             <template v-if="dishesLoadingMore">
-              <view class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"></view>
+              <view
+                class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"
+              ></view>
               <text>加载中...</text>
             </template>
             <template v-else-if="hasMore">
@@ -50,9 +50,7 @@
           </view>
         </view>
 
-        <view v-else class="text-center py-10 text-gray-500">
-          暂无菜品信息
-        </view>
+        <view v-else class="text-center py-10 text-gray-500"> 暂无菜品信息 </view>
       </view>
     </template>
   </view>
@@ -70,7 +68,18 @@ import CanteenWindowList from './components/CanteenWindowList.vue';
 import { CanteenSkeleton } from '@/components/skeleton';
 import type { GetDishesRequest } from '@/types/api';
 
-const { canteenInfo, loading, error, windows, dishes, dishesLoadingMore, hasMore, init, fetchDishes, loadMoreDishes } = useCanteenData();
+const {
+  canteenInfo,
+  loading,
+  error,
+  windows,
+  dishes,
+  dishesLoadingMore,
+  hasMore,
+  init,
+  fetchDishes,
+  loadMoreDishes,
+} = useCanteenData();
 
 const currentCanteenId = ref('');
 const currentFilter = ref<GetDishesRequest['filter']>({});
@@ -103,13 +112,13 @@ onPullDownRefresh(async () => {
     uni.showToast({
       title: '刷新成功',
       icon: 'success',
-      duration: 1500
+      duration: 1500,
     });
   } catch (err) {
     console.error('下拉刷新失败:', err);
     uni.showToast({
       title: '刷新失败',
-      icon: 'none'
+      icon: 'none',
     });
   } finally {
     uni.stopPullDownRefresh();

@@ -11,7 +11,10 @@ describe('pages/profile/my-favorites/composables/use-favorites.ts', () => {
 
   test('fetchFavorites(reset) loads favorites and hasMore', async () => {
     const getMyFavorites = jest.fn() as unknown as jest.Mock<any, any>;
-    getMyFavorites.mockResolvedValue({ code: 200, data: { items: [{ dishId: 'd1' }], meta: { totalPages: 1 } } });
+    getMyFavorites.mockResolvedValue({
+      code: 200,
+      data: { items: [{ dishId: 'd1' }], meta: { totalPages: 1 } },
+    });
     jest.doMock('@/api/modules/user', () => ({ getMyFavorites }));
     jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 't' }) }));
 
@@ -42,7 +45,10 @@ describe('pages/profile/my-favorites/composables/use-favorites.ts', () => {
 
     expect(unfavoriteDish).toHaveBeenCalledWith('d1');
     expect(inst.favoriteItems.value.find((i: any) => i.dishId === 'd1')).toBeUndefined();
-    expect((global as any).uni.showToast).toHaveBeenCalledWith({ title: '已取消收藏', icon: 'success' });
+    expect((global as any).uni.showToast).toHaveBeenCalledWith({
+      title: '已取消收藏',
+      icon: 'success',
+    });
   });
 
   test('removeFavorite failure shows error toast and keeps list', async () => {

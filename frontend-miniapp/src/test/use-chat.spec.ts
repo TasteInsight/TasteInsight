@@ -7,7 +7,9 @@ const chatStoreMock: any = {
   initSession: jest.fn(() => Promise.resolve()),
   startNewSession: jest.fn(() => Promise.resolve()),
   sendChatMessage: jest.fn(() => Promise.resolve()),
-  setScene: jest.fn((s: string) => { chatStoreMock.currentScene = s; }),
+  setScene: jest.fn((s: string) => {
+    chatStoreMock.currentScene = s;
+  }),
   aiLoading: false,
   historyEntries: [],
   loadSessionFromHistory: jest.fn((id: string) => true),
@@ -29,7 +31,10 @@ describe('useChat isInitializing', () => {
 
     // Bind mocked functions to return our chatStoreMock and preset getAISuggestions
     (useChatStore as unknown as jest.Mock).mockImplementation(() => chatStoreMock);
-    (getAISuggestions as unknown as jest.Mock).mockResolvedValue({ code: 200, data: { suggestions: ['ok'] } });
+    (getAISuggestions as unknown as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: { suggestions: ['ok'] },
+    });
 
     chatStoreMock.messages = [];
     chatStoreMock.currentScene = undefined;
@@ -87,6 +92,6 @@ describe('useChat isInitializing', () => {
     const ok = await loadHistorySession('sess2');
     expect(ok).toBe(false);
     expect(isInitializing.value).toBe(false);
-    expect((getAISuggestions as unknown as jest.Mock)).not.toHaveBeenCalled();
+    expect(getAISuggestions as unknown as jest.Mock).not.toHaveBeenCalled();
   });
 });

@@ -4,42 +4,47 @@
     <ReviewListSkeleton v-if="loading && reviews.length === 0" />
 
     <template v-else>
-    <!-- 标题栏 -->
-    <view class="text-base font-semibold text-gray-800 flex items-center px-4 py-3 border-b border-gray-200 mb-3 bg-white">
-      <view class="w-1 h-4 bg-ts-purple rounded-full mr-2"></view>
-      我的评价
-    </view>
-
-    <!-- 空状态 -->
-    <view v-if="!loading && reviews.length === 0" class="flex flex-col items-center justify-center py-20">
-      <text class="iconfont icon-comment-text-outline text-gray-300 mb-4" data-width="64"></text>
-      <text class="text-gray-500">暂无评价</text>
-    </view>
-
-    <!-- 评价列表 -->
-    <view v-else class="px-4 space-y-4">
-      <view 
-        v-for="review in reviews" 
-        :key="review.id" 
-        class="mb-4"
+      <!-- 标题栏 -->
+      <view
+        class="text-base font-semibold text-gray-800 flex items-center px-4 py-3 border-b border-gray-200 mb-3 bg-white"
       >
-        <ReviewCard
-          :review="review"
-          @click="goToDishDetail(review.dishId)"
-        />
+        <view class="w-1 h-4 bg-ts-purple rounded-full mr-2"></view>
+        我的评价
       </view>
-    </view>
 
-    <!-- 底部提示：上拉加载更多 / 没有更多了 -->
-    <view v-if="reviews.length > 0 && !loading" class="flex justify-center py-4">
-      <text class="text-gray-500 text-sm" @click="hasMore ? loadMore() : undefined">{{ hasMore ? '上拉加载更多' : '没有更多了' }}</text>
-    </view>
+      <!-- 空状态 -->
+      <view
+        v-if="!loading && reviews.length === 0"
+        class="flex flex-col items-center justify-center py-20"
+      >
+        <text class="iconfont icon-comment-text-outline text-gray-300 mb-4" data-width="64"></text>
+        <text class="text-gray-500">暂无评价</text>
+      </view>
 
-    <!-- 底部加载状态 -->
-    <view v-if="loading && reviews.length > 0" class="flex items-center justify-center py-4 text-gray-500 text-sm">
-      <view class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"></view>
-      <text>加载中...</text>
-    </view>
+      <!-- 评价列表 -->
+      <view v-else class="px-4 space-y-4">
+        <view v-for="review in reviews" :key="review.id" class="mb-4">
+          <ReviewCard :review="review" @click="goToDishDetail(review.dishId)" />
+        </view>
+      </view>
+
+      <!-- 底部提示：上拉加载更多 / 没有更多了 -->
+      <view v-if="reviews.length > 0 && !loading" class="flex justify-center py-4">
+        <text class="text-gray-500 text-sm" @click="hasMore ? loadMore() : undefined">{{
+          hasMore ? '上拉加载更多' : '没有更多了'
+        }}</text>
+      </view>
+
+      <!-- 底部加载状态 -->
+      <view
+        v-if="loading && reviews.length > 0"
+        class="flex items-center justify-center py-4 text-gray-500 text-sm"
+      >
+        <view
+          class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"
+        ></view>
+        <text>加载中...</text>
+      </view>
     </template>
   </view>
 </template>
@@ -69,13 +74,13 @@ onPullDownRefresh(async () => {
     uni.showToast({
       title: '刷新成功',
       icon: 'success',
-      duration: 1500
+      duration: 1500,
     });
   } catch (err) {
     console.error('下拉刷新失败:', err);
     uni.showToast({
       title: '刷新失败',
-      icon: 'none'
+      icon: 'none',
     });
   } finally {
     uni.stopPullDownRefresh();
@@ -91,9 +96,9 @@ function goToDishDetail(dishId: string) {
     fail: () => {
       uni.showToast({
         title: '页面跳转失败',
-        icon: 'none'
+        icon: 'none',
       });
-    }
+    },
   });
 }
 </script>

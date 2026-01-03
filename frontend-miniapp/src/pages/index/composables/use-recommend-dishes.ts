@@ -15,7 +15,7 @@ export function useRecommendDishes() {
   const fetchDishes = async (filter = {}) => {
     if (loading.value) return;
     loading.value = true;
-    
+
     try {
       // 调用推荐 API
       const response = await getRecommendations({

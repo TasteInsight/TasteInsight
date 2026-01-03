@@ -67,7 +67,7 @@ describe('useRecommendDishes', () => {
     expect(loading.value).toBe(false);
     expect(dishes.value).toEqual(mockDishes);
     expect(requestId.value).toBe('test-request-id-123');
-    
+
     // 验证推荐 API 调用
     expect(getRecommendations).toHaveBeenCalledWith({
       scene: RecommendationScene.HOME,
@@ -160,7 +160,7 @@ describe('useRecommendDishes', () => {
     // 推荐 API 返回按分数排序的 ID (dish-2, dish-1, dish-3)
     // 但 getDishesByIds 返回的菜品是乱序的 (dish-1, dish-2, dish-3)
     // 最终结果应该按推荐 API 的顺序排列
-    
+
     const mockRecommendationResponse = {
       code: 200,
       data: {

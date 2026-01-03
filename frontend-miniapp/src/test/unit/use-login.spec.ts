@@ -32,7 +32,7 @@ describe('useLogin', () => {
 
   it('should handle successful login', async () => {
     const { wechatLogin, loading } = useLogin();
-    
+
     // Mock uni.login success
     (uni.login as jest.Mock).mockImplementation(({ success }) => {
       success({ code: 'test-code' });
@@ -42,16 +42,16 @@ describe('useLogin', () => {
     mockUserStore.loginAction.mockResolvedValue(undefined);
 
     const loginPromise = wechatLogin();
-    
+
     expect(loading.value).toBe(true);
-    
+
     await loginPromise;
 
     expect(loading.value).toBe(false);
     expect(uni.login).toHaveBeenCalled();
     expect(mockUserStore.loginAction).toHaveBeenCalledWith('test-code');
     expect(uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ title: '登录成功' }));
-    
+
     // Fast-forward timers for switchTab
     jest.runAllTimers();
     expect(uni.switchTab).toHaveBeenCalledWith({ url: '/pages/index/index' });
@@ -59,7 +59,7 @@ describe('useLogin', () => {
 
   it('should handle uni.login failure', async () => {
     const { wechatLogin, loading } = useLogin();
-    
+
     // Mock uni.login fail
     (uni.login as jest.Mock).mockImplementation(({ fail }) => {
       fail({ errMsg: 'login:fail error' });
@@ -73,12 +73,14 @@ describe('useLogin', () => {
 
     expect(loading.value).toBe(false);
     expect(mockUserStore.loginAction).not.toHaveBeenCalled();
-    expect(uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ title: '微信登录失败，请检查网络连接' }));
+    expect(uni.showToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: '微信登录失败，请检查网络连接' })
+    );
   });
 
   it('should handle store login failure', async () => {
     const { wechatLogin, loading } = useLogin();
-    
+
     // Mock uni.login success
     (uni.login as jest.Mock).mockImplementation(({ success }) => {
       success({ code: 'test-code' });
@@ -94,6 +96,8 @@ describe('useLogin', () => {
     }
 
     expect(loading.value).toBe(false);
-    expect(uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ title: '登录失败，请重试' }));
+    expect(uni.showToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: '登录失败，请重试' })
+    );
   });
 });

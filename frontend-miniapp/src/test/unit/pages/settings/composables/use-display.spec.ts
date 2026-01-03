@@ -31,11 +31,24 @@ describe('use-display composable', () => {
   test('loadDisplaySettings populates form when user settings exist', async () => {
     const userStore = useUserStore();
     userStore.fetchProfileAction = jest.fn().mockResolvedValue(undefined);
-    userStore.userInfo = { settings: { displaySettings: { showCalories: false, showNutrition: false, sortBy: 'price_high' } } } as any;
+    userStore.userInfo = {
+      settings: {
+        displaySettings: { showCalories: false, showNutrition: false, sortBy: 'price_high' },
+      },
+    } as any;
     // mark logged in so original fetchProfileAction won't early-return
     (userStore as any).token = 'tok';
 
-    const wrapper = mount({ template: '<div />', setup() { const d = useDisplay(); return { d }; } }, { global: { plugins: [pinia] } });
+    const wrapper = mount(
+      {
+        template: '<div />',
+        setup() {
+          const d = useDisplay();
+          return { d };
+        },
+      },
+      { global: { plugins: [pinia] } }
+    );
 
     // allow microtasks and macrotasks
     await new Promise(resolve => setTimeout(resolve, 0));
@@ -52,7 +65,16 @@ describe('use-display composable', () => {
     userStore.userInfo = { settings: { displaySettings: { sortBy: 'unknown' } } } as any;
     (userStore as any).token = 'tok';
 
-    const wrapper = mount({ template: '<div />', setup() { const d = useDisplay(); return { d }; } }, { global: { plugins: [pinia] } });
+    const wrapper = mount(
+      {
+        template: '<div />',
+        setup() {
+          const d = useDisplay();
+          return { d };
+        },
+      },
+      { global: { plugins: [pinia] } }
+    );
     await Promise.resolve();
 
     const d = (wrapper.vm as any).d as ReturnType<typeof useDisplay>;
@@ -64,7 +86,16 @@ describe('use-display composable', () => {
     userStore.fetchProfileAction = jest.fn().mockRejectedValue(new Error('boom'));
     (userStore as any).token = 'tok';
 
-    const wrapper = mount({ template: '<div />', setup() { const d = useDisplay(); return { d }; } }, { global: { plugins: [pinia] } });
+    const wrapper = mount(
+      {
+        template: '<div />',
+        setup() {
+          const d = useDisplay();
+          return { d };
+        },
+      },
+      { global: { plugins: [pinia] } }
+    );
     await new Promise(resolve => setTimeout(resolve, 0));
 
     expect(console.error).toHaveBeenCalled();
@@ -103,7 +134,9 @@ describe('use-display composable', () => {
     const ok = await d.handleSave();
     expect(ok).toBe(true);
     expect(userStore.updateLocalUserInfo).toHaveBeenCalled();
-    expect((global as any).uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ icon: 'success' }));
+    expect((global as any).uni.showToast).toHaveBeenCalledWith(
+      expect.objectContaining({ icon: 'success' })
+    );
 
     // simulate timeout
     jest.runAllTimers();
@@ -115,7 +148,9 @@ describe('use-display composable', () => {
     const d2 = useDisplay();
     const ok2 = await d2.handleSave();
     expect(ok2).toBe(false);
-    expect((global as any).uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ icon: 'none' }));
+    expect((global as any).uni.showToast).toHaveBeenCalledWith(
+      expect.objectContaining({ icon: 'none' })
+    );
 
     // failure by reject
     updateUserProfileMock.mockRejectedValue(new Error('api fail'));

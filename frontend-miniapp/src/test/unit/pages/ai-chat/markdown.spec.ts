@@ -1,8 +1,14 @@
 import { markdownToRichTextHtml } from '@/pages/ai-chat/utils/markdown';
 
 describe('pages/ai-chat/utils/markdown.ts', () => {
+  // 注意：这些测试验证原有的 markdown 工具函数，该函数仍然保留作为参考
+  // 实际渲染现在使用 markdown-it + rich-text 组合：
+  // - markdown-it 负责将 markdown 转换为更完整的 HTML（支持更多 markdown 语法）
+  // - rich-text 负责在小程序中渲染 HTML
+
   test('parseInlineMarkdown escapes and formats inline elements', () => {
-    const md = 'Hello <b>!!</b> `code` **bold** *italic* [link](javascript:alert(1)) [ok](https://ex.com)';
+    const md =
+      'Hello <b>!!</b> `code` **bold** *italic* [link](javascript:alert(1)) [ok](https://ex.com)';
     const html = markdownToRichTextHtml(md);
 
     expect(html).toContain('&lt;b&gt;!!&lt;/b&gt;');
@@ -48,7 +54,8 @@ describe('pages/ai-chat/utils/markdown.ts', () => {
   });
 
   test('parses headings without space and inline list items split from same line', () => {
-    const md = '###3。食堂位置提醒\n-桃李园：位于校园东区，靠近教学楼 -紫荆园：位于校园中心区域\n-建议提前规划路线，避免排队时间过长\n###4。反馈与调整\n-在食鉴平台上为菜品评分\n-告诉我你的用餐体验，我会根据反馈优化后续推荐';
+    const md =
+      '###3。食堂位置提醒\n-桃李园：位于校园东区，靠近教学楼 -紫荆园：位于校园中心区域\n-建议提前规划路线，避免排队时间过长\n###4。反馈与调整\n-在食鉴平台上为菜品评分\n-告诉我你的用餐体验，我会根据反馈优化后续推荐';
     const html = markdownToRichTextHtml(md);
 
     expect(html).toContain('<h3');

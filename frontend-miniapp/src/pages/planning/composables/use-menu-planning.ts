@@ -21,7 +21,7 @@ export function useMenuPlanning() {
   const selectedPlan = computed(() => planStore.selectedPlan);
 
   // 当前显示的规划列表
-  const displayPlans = computed(() => 
+  const displayPlans = computed(() =>
     activeTab.value === 'current' ? currentPlans.value : historyPlans.value
   );
 
@@ -51,7 +51,7 @@ export function useMenuPlanning() {
   // 删除规划
   const deletePlan = async (planId: string) => {
     try {
-      const confirmed = await new Promise<boolean>((resolve) => {
+      const confirmed = await new Promise<boolean>(resolve => {
         uni.showModal({
           title: '删除确认',
           content: '确定要删除这个饮食规划吗？',
@@ -96,7 +96,7 @@ export function useMenuPlanning() {
   // 提交编辑
   const submitEdit = async (planData: MealPlanRequest) => {
     if (!selectedPlan.value) return;
-    
+
     try {
       await planStore.updatePlan(selectedPlan.value.id, planData);
       showEditDialog.value = false;
@@ -164,12 +164,12 @@ export function useMenuPlanning() {
     selectedPlan,
     displayPlans,
     activeTab,
-    
+
     // 对话框状态
     showDetailDialog,
     showEditDialog,
     showCreateDialog,
-    
+
     // 方法
     viewPlanDetail,
     editPlan,

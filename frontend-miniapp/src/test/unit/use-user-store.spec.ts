@@ -41,7 +41,8 @@ describe('useUserStore', () => {
     it('should initialize from storage', () => {
       mockGetStorageSync.mockImplementation((key: string) => {
         if (key === 'token') return 'stored-token';
-        if (key === 'userInfo') return JSON.stringify({ nickname: 'Stored User', avatar: 'stored-avatar.png' });
+        if (key === 'userInfo')
+          return JSON.stringify({ nickname: 'Stored User', avatar: 'stored-avatar.png' });
         return '';
       });
 
@@ -105,7 +106,9 @@ describe('useUserStore', () => {
         const store = useUserStore();
         (wechatLogin as jest.Mock).mockResolvedValue({ data: {} });
 
-        await expect(store.loginAction('test-code')).rejects.toThrow('登录失败：未获取到有效的 token');
+        await expect(store.loginAction('test-code')).rejects.toThrow(
+          '登录失败：未获取到有效的 token'
+        );
         expect(store.token).toBeNull();
       });
 
@@ -180,7 +183,10 @@ describe('useUserStore', () => {
         store.updateLocalUserInfo({ nickname: 'New Name' });
 
         expect(store.userInfo?.nickname).toBe('New Name');
-        expect(mockSetStorageSync).toHaveBeenCalledWith('userInfo', expect.stringContaining('New Name'));
+        expect(mockSetStorageSync).toHaveBeenCalledWith(
+          'userInfo',
+          expect.stringContaining('New Name')
+        );
       });
 
       it('should do nothing if userInfo is null', () => {

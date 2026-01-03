@@ -3,15 +3,13 @@ import type { MealPlan } from '@/types/api';
 import dayjs from 'dayjs';
 
 // 辅助函数：生成日期字符串
-const dateStr = (daysOffset: number) => 
-  dayjs().add(daysOffset, 'day').format('YYYY-MM-DD');
+const dateStr = (daysOffset: number) => dayjs().add(daysOffset, 'day').format('YYYY-MM-DD');
 
-const isoDate = (daysOffset: number) => 
-  dayjs().add(daysOffset, 'day').toISOString();
+const isoDate = (daysOffset: number) => dayjs().add(daysOffset, 'day').toISOString();
 
 export const createMockMealPlans = (): MealPlan[] => [
   // ========== 当前规划（未过期） ==========
-  
+
   // 今天的早餐规划
   {
     id: 'plan_001',
@@ -22,7 +20,7 @@ export const createMockMealPlans = (): MealPlan[] => [
     dishes: ['dish_004', 'dish_006'],
     createdAt: isoDate(-1),
   },
-  
+
   // 今天的午餐规划
   {
     id: 'plan_002',
@@ -33,7 +31,7 @@ export const createMockMealPlans = (): MealPlan[] => [
     dishes: ['dish_001', 'dish_003', 'dish_004'],
     createdAt: isoDate(-2),
   },
-  
+
   // 今天的晚餐规划
   {
     id: 'plan_003',
@@ -44,7 +42,7 @@ export const createMockMealPlans = (): MealPlan[] => [
     dishes: ['dish_002', 'dish_005'],
     createdAt: isoDate(-1),
   },
-  
+
   // 今天的夜宵规划
   {
     id: 'plan_004',
@@ -55,7 +53,7 @@ export const createMockMealPlans = (): MealPlan[] => [
     dishes: ['dish_007'],
     createdAt: isoDate(0),
   },
-  
+
   // 未来开始的规划（下周）
   {
     id: 'plan_005',
@@ -66,7 +64,7 @@ export const createMockMealPlans = (): MealPlan[] => [
     dishes: ['dish_001', 'dish_002', 'dish_004'],
     createdAt: isoDate(0),
   },
-  
+
   // 即将到期的规划（明天结束）
   {
     id: 'plan_006',
@@ -77,9 +75,9 @@ export const createMockMealPlans = (): MealPlan[] => [
     dishes: ['dish_003', 'dish_005'],
     createdAt: isoDate(-4),
   },
-  
+
   // ========== 历史规划（已过期） ==========
-  
+
   // 刚过期的规划（昨天结束）- 应显示"未完成"
   {
     id: 'plan_history_001',
@@ -90,7 +88,7 @@ export const createMockMealPlans = (): MealPlan[] => [
     dishes: ['dish_001', 'dish_004'],
     createdAt: isoDate(-6),
   },
-  
+
   // 上周过期的规划 - 应显示"未完成"
   {
     id: 'plan_history_002',
@@ -101,7 +99,7 @@ export const createMockMealPlans = (): MealPlan[] => [
     dishes: ['dish_002', 'dish_003'],
     createdAt: isoDate(-11),
   },
-  
+
   // 更早的历史规划
   {
     id: 'plan_history_003',
@@ -112,7 +110,7 @@ export const createMockMealPlans = (): MealPlan[] => [
     dishes: ['dish_004', 'dish_006'],
     createdAt: isoDate(-16),
   },
-  
+
   // 两周前的晚餐规划
   {
     id: 'plan_history_004',
@@ -123,7 +121,7 @@ export const createMockMealPlans = (): MealPlan[] => [
     dishes: ['dish_005'],
     createdAt: isoDate(-21),
   },
-  
+
   // 很久以前的规划
   {
     id: 'plan_history_005',

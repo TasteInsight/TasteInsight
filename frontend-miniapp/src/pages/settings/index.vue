@@ -1,14 +1,15 @@
 <template>
   <view class="w-full min-h-screen bg-gray-50">
     <!-- 标题区域 -->
-    <view class="px-6 pt-12 pb-4 bg-white border-b border-gray-100 sticky top-0 z-10 flex items-center">
+    <view
+      class="px-6 pt-12 pb-4 bg-white border-b border-gray-100 sticky top-0 z-10 flex items-center"
+    >
       <view class="w-1.5 h-6 bg-ts-purple rounded-full mr-3 shadow-sm"></view>
       <text class="text-2xl font-bold text-gray-800">设置</text>
     </view>
 
     <!-- 设置条目列表 -->
     <view class="px-4 py-4 space-y-4">
-      
       <!-- 分组 1: 个人与偏好 -->
       <view class="bg-white rounded-lg shadow-sm overflow-hidden">
         <!-- 个人信息设置 -->
@@ -62,7 +63,6 @@
           <text class="iconfont icon-chevronright text-purple-300" data-width="24"></text>
         </view>
       </view>
-
     </view>
   </view>
 </template>
@@ -75,13 +75,13 @@ function navigateTo(path: string) {
   console.log('设置页跳转:', path);
   uni.navigateTo({
     url: path,
-    fail: (err) => {
+    fail: err => {
       console.error('跳转失败:', path, err);
       uni.showToast({
         title: '页面跳转失败',
-        icon: 'none'
+        icon: 'none',
       });
-    }
+    },
   });
 }
 </script>

@@ -3,14 +3,12 @@
     <view class="flex items-center justify-between">
       <view class="text-xl font-bold text-gray-800">{{ window.name }}</view>
     </view>
-    
+
     <view v-if="window.description" class="text-sm text-gray-500 mt-2">
       {{ window.description }}
     </view>
-    
-    <view v-if="locationText" class="text-xs text-gray-400 mt-2">
-      位置：{{ locationText }}
-    </view>
+
+    <view v-if="locationText" class="text-xs text-gray-400 mt-2"> 位置：{{ locationText }} </view>
 
     <view v-if="window.tags && window.tags.length > 0" class="flex flex-wrap mt-2 gap-1.5">
       <view

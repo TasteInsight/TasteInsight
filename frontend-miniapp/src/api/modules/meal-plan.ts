@@ -15,9 +15,7 @@ export const getMealPlans = (): Promise<ApiResponse<{ items: MealPlan[] }>> => {
 /**
  * 创建饮食计划
  */
-export const createMealPlan = (
-  planData: MealPlanRequest
-): Promise<ApiResponse<MealPlan>> => {
+export const createMealPlan = (planData: MealPlanRequest): Promise<ApiResponse<MealPlan>> => {
   return request<MealPlan>({
     url: '/meal-plans',
     method: 'POST',

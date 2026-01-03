@@ -4,7 +4,7 @@ import { ref } from 'vue';
 
 // Mock API
 jest.mock('@/api/modules/news', () => ({
-  getNewsById: jest.fn()
+  getNewsById: jest.fn(),
 }));
 
 // Mock onLoad
@@ -27,20 +27,20 @@ describe('useNewsDetail', () => {
       id: 123,
       title: 'Test News',
       content: '<p>Content</p>',
-      publishTime: '2023-01-01T12:00:00Z'
+      publishTime: '2023-01-01T12:00:00Z',
     };
     (getNewsById as jest.Mock).mockResolvedValue({
       code: 200,
-      data: mockNews
+      data: mockNews,
     });
 
     const { newsDetail, loading, initDetailPage } = useNewsDetail();
-    
+
     // Trigger init which calls onLoad -> fetchNewsDetail
     initDetailPage();
-    
+
     expect(loading.value).toBe(true);
-    
+
     // Wait for async
     await new Promise(resolve => setTimeout(resolve, 0));
 
@@ -57,7 +57,7 @@ describe('useNewsDetail', () => {
     };
     (getNewsById as jest.Mock).mockResolvedValue({
       code: 200,
-      data: mockNews
+      data: mockNews,
     });
 
     const { newsDetail, formattedContent, initDetailPage } = useNewsDetail();
@@ -77,13 +77,13 @@ describe('useNewsDetail', () => {
 
     const { newsDetail, loading, initDetailPage } = useNewsDetail();
     initDetailPage();
-    
+
     await new Promise(resolve => setTimeout(resolve, 0));
 
     expect(loading.value).toBe(false);
     expect(newsDetail.value).toEqual({});
     expect(consoleSpy).toHaveBeenCalled();
-    
+
     consoleSpy.mockRestore();
   });
 });

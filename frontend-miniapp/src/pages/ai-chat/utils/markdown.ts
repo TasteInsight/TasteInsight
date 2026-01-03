@@ -53,7 +53,10 @@ function parseInlineMarkdown(text: string): string {
   });
 
   // Autolink plain URLs -> <a>
-  safe = safe.replace(/(^|\s)(https?:\/\/[^\s<]+)/g, (_m, pre, url) => `${pre}<a href="${escapeHtml(url)}">${escapeHtml(url)}</a>`);
+  safe = safe.replace(
+    /(^|\s)(https?:\/\/[^\s<]+)/g,
+    (_m, pre, url) => `${pre}<a href="${escapeHtml(url)}">${escapeHtml(url)}</a>`
+  );
 
   // Hard line break (two spaces at EOL) -> <br/>
   safe = safe.replace(/ {2}\n/g, '<br/>');
@@ -143,7 +146,7 @@ export function markdownToRichTextHtml(markdown: string): string {
     }
 
     // Setext-style heading (underlined with === or ---)
-    const nextLine = (i + 1) < lines.length ? lines[i + 1].trim() : '';
+    const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : '';
     const setextH1 = /^={3,}\s*$/.test(nextLine);
     const setextH2 = /^-{3,}\s*$/.test(nextLine);
     if ((setextH1 || setextH2) && line.trim()) {
@@ -170,7 +173,8 @@ export function markdownToRichTextHtml(markdown: string): string {
 
     // Table: header with pipes + separator of dashes
     const tableHeaderMatch = line.match(/^\s*\|?(.+\|.+)\|?\s*$/);
-    const nextIsSeparator = i + 1 < lines.length && /^\s*\|?\s*:?[-]+:?(\s*\|\s*:?[-]+:?)+\|?\s*$/.test(lines[i + 1]);
+    const nextIsSeparator =
+      i + 1 < lines.length && /^\s*\|?\s*:?[-]+:?(\s*\|\s*:?[-]+:?)+\|?\s*$/.test(lines[i + 1]);
     if (tableHeaderMatch && nextIsSeparator) {
       const headers = tableHeaderMatch[1].split('|').map(s => s.trim());
       i += 2; // skip header and separator
@@ -182,7 +186,9 @@ export function markdownToRichTextHtml(markdown: string): string {
         rows.push(`<tr>${cols.map(c => `<td>${c}</td>`).join('')}</tr>`);
         i++;
       }
-      parts.push(`<table><thead><tr>${headers.map(h => `<th>${parseInlineMarkdown(h)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`);
+      parts.push(
+        `<table><thead><tr>${headers.map(h => `<th>${parseInlineMarkdown(h)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`
+      );
       continue;
     }
 
@@ -195,7 +201,7 @@ export function markdownToRichTextHtml(markdown: string): string {
         if (!m) break;
         const checked = m[1];
         const content = parseInlineMarkdown(m[2]);
-        const prefix = checked === 'x' || checked === 'X' ? '☑ ' : (checked === ' ' ? '☐ ' : '');
+        const prefix = checked === 'x' || checked === 'X' ? '☑ ' : checked === ' ' ? '☐ ' : '';
         items.push(`<li>${prefix}${content}</li>`);
         i++;
       }

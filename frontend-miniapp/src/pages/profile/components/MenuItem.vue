@@ -6,7 +6,11 @@
   >
     <view class="flex items-center justify-between w-full">
       <view class="flex items-center">
-        <text v-if="fontClass" :class="['iconfont text-purple-600', fontClass]" data-width="24"></text>
+        <text
+          v-if="fontClass"
+          :class="['iconfont text-purple-600', fontClass]"
+          data-width="24"
+        ></text>
         <text v-else class="iconify text-purple-600" :data-icon="icon" data-width="24"></text>
         <text class="ml-4 text-gray-800 font-medium text-base">
           {{ title }}

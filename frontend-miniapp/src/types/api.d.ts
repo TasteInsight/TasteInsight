@@ -45,7 +45,6 @@ export interface SuccessResponse<T = any> {
   data: null | T;
 }
 
-
 /**
  * 分页数据响应
  */
@@ -98,7 +97,6 @@ export interface UserPreference {
   portionSize?: 'small' | 'medium' | 'large';
   avoidIngredients?: string[];
   favoriteIngredients?: string[];
-
 }
 
 export interface UserSettings {
@@ -113,7 +111,6 @@ export interface UserSettings {
     showNutrition?: boolean;
     sortBy?: 'rating' | 'price_low' | 'price_high' | 'popularity' | 'newest';
   };
-
 }
 
 /**
@@ -234,18 +231,18 @@ export interface AvailableDate {
 }
 
 export enum AvailableMealTime {
-  Breakfast = "breakfast",
-  Dinner = "dinner",
-  Lunch = "lunch",
-  Nightsnack = "nightsnack",
+  Breakfast = 'breakfast',
+  Dinner = 'dinner',
+  Lunch = 'lunch',
+  Nightsnack = 'nightsnack',
 }
 
 /**
  * 菜品状态
  */
 export enum Status {
-  Offline = "offline",
-  Online = "online",
+  Offline = 'offline',
+  Online = 'online',
 }
 
 /**
@@ -521,7 +518,6 @@ export interface WindowDishesData {
   meta: PaginationMeta;
 }
 
-
 /**
  * 菜品列表请求
  */
@@ -563,8 +559,8 @@ export interface GetDishesRequest {
     };
     priceUnit?: string;
 
-    meatPreference?: string[];      // 肉类偏好
-    avoidIngredients?: string[];    // 忌口
+    meatPreference?: string[]; // 肉类偏好
+    avoidIngredients?: string[]; // 忌口
     favoriteIngredients?: string[]; // 喜好食材
   };
   search: {
@@ -917,7 +913,6 @@ export interface MyUserProfileResponse {
   [property: string]: any;
 }
 
-
 export interface UserInfoItem extends User {
   preferenceSummary?: string;
 }
@@ -1172,7 +1167,12 @@ export interface SegmentWindowCard {
   data: ComponentWindowCard[];
 }
 
-export type ChatContentSegment = SegmentText | SegmentDishCard | SegmentPlanCard | SegmentCanteenCard | SegmentWindowCard;
+export type ChatContentSegment =
+  | SegmentText
+  | SegmentDishCard
+  | SegmentPlanCard
+  | SegmentCanteenCard
+  | SegmentWindowCard;
 
 // 聊天消息条目
 export interface ChatMessageItem {
@@ -1262,7 +1262,9 @@ export function getWindowDetail(
 /**
  * 管理端获取食堂列表
  */
-export function adminGetCanteenList(params?: PaginationParams): Promise<ApiResponse<CanteenListData>>;
+export function adminGetCanteenList(
+  params?: PaginationParams
+): Promise<ApiResponse<CanteenListData>>;
 
 /**
  * 管理端获取窗口列表
@@ -1298,10 +1300,7 @@ export function createWindow(data: WindowCreateRequest): Promise<ApiResponse<Win
 /**
  * 编辑窗口
  */
-export function updateWindow(
-  id: string,
-  data: WindowUpdateRequest
-): Promise<ApiResponse<Window>>;
+export function updateWindow(id: string, data: WindowUpdateRequest): Promise<ApiResponse<Window>>;
 
 /**
  * 删除窗口
@@ -1313,7 +1312,9 @@ export function deleteWindow(id: string): Promise<ApiResponse<null>>;
 /**
  * 创建新的对话会话
  */
-export function createAISession(data: CreateAISessionRequest): Promise<ApiResponse<SessionCreateData>>;
+export function createAISession(
+  data: CreateAISessionRequest
+): Promise<ApiResponse<SessionCreateData>>;
 
 /**
  * 流式对话（SSE）。返回值类型因实现而异，这里使用 Promise<string> 占位。
@@ -1332,7 +1333,4 @@ export function getAISuggestions(): Promise<ApiResponse<SuggestionData>>;
 /**
  * 获取历史聊天记录
  */
-export function getAIHistory(
-  sessionId: string,
-  cursor?: string
-): Promise<ApiResponse<HistoryData>>;
+export function getAIHistory(sessionId: string, cursor?: string): Promise<ApiResponse<HistoryData>>;

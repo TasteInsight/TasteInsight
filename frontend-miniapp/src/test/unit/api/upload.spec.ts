@@ -24,12 +24,17 @@ describe('api/modules/upload.ts - uploadImage', () => {
 
   test('success path resolves with parsed data', async () => {
     jest.doMock('@/mock/mock-adapter', () => ({ USE_MOCK: false }));
-    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok' }),
+    }));
 
     (global as any).uni = {
       uploadFile: ({ success }: any) => {
-        success({ statusCode: 200, data: JSON.stringify({ code: 200, data: { url: 'http://a', filename: 'f.jpg' } }) });
-      }
+        success({
+          statusCode: 200,
+          data: JSON.stringify({ code: 200, data: { url: 'http://a', filename: 'f.jpg' } }),
+        });
+      },
     };
 
     const { uploadImage } = require(MODULE_PATH);
@@ -39,12 +44,14 @@ describe('api/modules/upload.ts - uploadImage', () => {
 
   test('non-200 statusCode rejects', async () => {
     jest.doMock('@/mock/mock-adapter', () => ({ USE_MOCK: false }));
-    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok' }),
+    }));
 
     (global as any).uni = {
       uploadFile: ({ success }: any) => {
         success({ statusCode: 500, data: '{}' });
-      }
+      },
     };
 
     const { uploadImage } = require(MODULE_PATH);
@@ -53,12 +60,14 @@ describe('api/modules/upload.ts - uploadImage', () => {
 
   test('empty response data rejects with server message', async () => {
     jest.doMock('@/mock/mock-adapter', () => ({ USE_MOCK: false }));
-    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok' }),
+    }));
 
     (global as any).uni = {
       uploadFile: ({ success }: any) => {
         success({ statusCode: 200, data: '' });
-      }
+      },
     };
 
     const { uploadImage } = require(MODULE_PATH);
@@ -67,12 +76,14 @@ describe('api/modules/upload.ts - uploadImage', () => {
 
   test('invalid JSON rejects with parse error', async () => {
     jest.doMock('@/mock/mock-adapter', () => ({ USE_MOCK: false }));
-    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok' }),
+    }));
 
     (global as any).uni = {
       uploadFile: ({ success }: any) => {
         success({ statusCode: 200, data: 'not-json' });
-      }
+      },
     };
 
     const { uploadImage } = require(MODULE_PATH);
@@ -81,12 +92,14 @@ describe('api/modules/upload.ts - uploadImage', () => {
 
   test('fail callback rejects with provided error', async () => {
     jest.doMock('@/mock/mock-adapter', () => ({ USE_MOCK: false }));
-    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok' }),
+    }));
 
     (global as any).uni = {
       uploadFile: ({ fail }: any) => {
         fail(new Error('network'));
-      }
+      },
     };
 
     const { uploadImage } = require(MODULE_PATH);

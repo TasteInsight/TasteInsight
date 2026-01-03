@@ -12,15 +12,15 @@ export interface NotificationsForm {
 
 export function useNotifications() {
   const userStore = useUserStore();
-  
+
   const saving = ref(false);
   const loading = ref(true);
-  
+
   const form = reactive<NotificationsForm>({
     newDishAlert: true,
     priceChangeAlert: false,
     reviewReplyAlert: true,
-    weeklyRecommendation: true
+    weeklyRecommendation: true,
   });
 
   /**
@@ -64,8 +64,8 @@ export function useNotifications() {
           newDishAlert: form.newDishAlert,
           priceChangeAlert: form.priceChangeAlert,
           reviewReplyAlert: form.reviewReplyAlert,
-          weeklyRecommendation: form.weeklyRecommendation
-        }
+          weeklyRecommendation: form.weeklyRecommendation,
+        },
       };
 
       const payload: UserProfileUpdateRequest = { settings };
@@ -76,23 +76,23 @@ export function useNotifications() {
       }
 
       userStore.updateLocalUserInfo(response.data);
-      
+
       uni.showToast({
         title: '保存成功',
-        icon: 'success'
+        icon: 'success',
       });
-      
+
       setTimeout(() => {
         uni.navigateBack();
       }, 1000);
-      
+
       return true;
     } catch (error) {
       console.error('保存失败:', error);
       const message = error instanceof Error ? error.message : '保存失败';
       uni.showToast({
         title: message,
-        icon: 'none'
+        icon: 'none',
       });
       return false;
     } finally {
@@ -110,9 +110,9 @@ export function useNotifications() {
     form,
     saving,
     loading,
-    
+
     // 方法
     updateField,
-    handleSave
+    handleSave,
   };
 }
