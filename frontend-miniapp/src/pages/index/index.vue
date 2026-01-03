@@ -121,7 +121,9 @@ import { IndexSkeleton } from '@/components/skeleton';
 import { useCanteenStore } from '@/store/modules/use-canteen-store';
 import { useDishesStore } from '@/store/modules/use-dishes-store';
 import { useUserStore } from '@/store/modules/use-user-store';
-import type { GetDishesRequest } from '@/types/api';
+import type { GetDishesRequest, RecommendationRequest, Dish } from '@/types/api';
+import { getDishes, getDishesByIds } from '@/api/modules/dish';
+import { getRecommendations, RecommendationScene } from '@/api/modules/recommendation';
 
 // --- 底部导航数据 (保持不变) ---
 const navItems = [
@@ -137,18 +139,12 @@ const userStore = useUserStore();
 // 当前筛选条件
 const currentFilter = ref<GetDishesRequest['filter']>({});
 
-// 记录当前菜品列表的“查询基准参数”（不含 pagination），用于上拉加载更多复用
-const currentDishQueryBase = ref<Omit<GetDishesRequest, 'pagination'>>({
-  sort: { field: 'averageRating', order: 'desc' },
-  filter: {},
-  search: { keyword: '' },
-});
-
-// 记录当前分页大小（推荐/筛选可能不同）
-const currentDishPageSize = ref(10);
 
 // 是否处于初始加载状态（用于显示骨架屏）
 const isInitialLoading = ref(true);
+
+// 推荐会话 ID（用于无限滚动追踪）
+const currentRequestId = ref<string | null>(null);
 
 // 是否有激活的筛选条件
 const hasActiveFilters = computed(() => {
@@ -161,20 +157,24 @@ const recommendError = ref<string | null>(null);
 const dishesHasMore = computed(() => {
   const meta = dishesStore.pagination;
   if (!meta) return false;
+
+  // 无限滚动模式：totalPages = -1 表示可以继续加载
+  if (meta.totalPages === -1) {
+    // 在无限滚动模式下，总是可以尝试加载更多
+    // 后端会在没有数据时返回空数组和 totalPages = 0
+    return true;
+  }
+
+  // 如果 totalPages = 0，表示没有数据了
+  if (meta.totalPages === 0) {
+    return false;
+  }
+
+  // 普通分页模式
   return meta.page < meta.totalPages;
 });
 
 const currentDishPage = computed(() => dishesStore.pagination?.page ?? 1);
-
-const fetchDishList = async (options: { reset: boolean; append?: boolean } = { reset: true }) => {
-  const page = options.reset ? 1 : currentDishPage.value;
-  const params: GetDishesRequest = {
-    ...currentDishQueryBase.value,
-    pagination: { page, pageSize: currentDishPageSize.value },
-  };
-
-  await dishesStore.fetchDishes(params, { append: options.append === true });
-};
 
 // --- 计算属性 ---
 // 3. 计算属性直接从 store 实例中读取 state
@@ -212,67 +212,124 @@ const handleSwiperChange = async (e: any) => {
 };
 
 /**
- * 根据用户设置构建排序条件
+ * 加载推荐菜品（使用推荐 API）
  */
-function buildDishSortFromUserSettings(): GetDishesRequest['sort'] {
-  const userInfo = userStore.userInfo;
+const fetchRecommendations = async (options: { reset: boolean; append?: boolean } = { reset: true }) => {
+  const append = options.append === true;
 
-  // 默认排序
-  let sort: GetDishesRequest['sort'] = {
-    field: 'averageRating',
-    order: 'desc',
-  };
-
-  // 如果用户设置了排序偏好，使用用户的设置
-  if (userInfo?.settings?.displaySettings?.sortBy) {
-    const sortBy = userInfo.settings.displaySettings.sortBy;
-    switch (sortBy) {
-      case 'rating':
-        sort = { field: 'averageRating', order: 'desc' };
-        break;
-      case 'price_low':
-        sort = { field: 'price', order: 'asc' };
-        break;
-      case 'price_high':
-        sort = { field: 'price', order: 'desc' };
-        break;
-      case 'popularity':
-        sort = { field: 'reviewCount', order: 'desc' };
-        break;
-      case 'newest':
-        sort = { field: 'createdAt', order: 'desc' };
-        break;
-    }
+  // 设置加载状态
+  if (append) {
+    dishesStore.loadingMore = true;
+  } else {
+    dishesStore.loading = true;
   }
 
-  return sort;
-}
+  try {
+    // 如果是重置，清空 requestId，让后端生成新的
+    if (options.reset) {
+      currentRequestId.value = null;
+    }
+
+    const page = options.reset ? 1 : currentDishPage.value + 1;
+
+    // 构造推荐请求参数，传递 requestId 以维护会话一致性
+    const params: RecommendationRequest = {
+      scene: RecommendationScene.HOME,
+      requestId: currentRequestId.value || undefined,
+      filter: currentFilter.value,
+      pagination: { page, pageSize: 10 },
+    };
+
+    const response = await getRecommendations(params);
+
+    if (response.code === 200 && response.data) {
+      // 使用后端返回的 requestId
+      if (response.data.requestId) {
+        currentRequestId.value = response.data.requestId;
+      }
+
+      // 获取推荐的菜品 ID 列表
+      const dishIds = response.data.items.map(item => item.id);
+
+      if (dishIds.length === 0) {
+        // 没有更多推荐了
+        if (append) {
+          // 如果是追加模式，保持现有数据，只更新分页信息
+          dishesStore.pagination = response.data.meta;
+        } else {
+          // 如果是重置模式，清空数据
+          dishesStore.dishes = [];
+          dishesStore.pagination = response.data.meta;
+        }
+        return;
+      }
+
+      // 批量获取完整的菜品信息
+      const dishesResponse = await getDishesByIds(dishIds);
+
+      if (dishesResponse.code === 200 && dishesResponse.data) {
+        const fullDishes = dishesResponse.data.items;
+
+        // 按照推荐顺序排序
+        const sortedDishes = dishIds
+          .map(id => fullDishes.find(dish => dish.id === id))
+          .filter((dish): dish is Dish => dish != null);
+
+        // 检查是否有菜品缺失（竞态条件：菜品在两次调用之间被删除或下线）
+        const missingCount = dishIds.length - sortedDishes.length;
+        if (missingCount > 0) {
+          console.warn(`推荐结果中有 ${missingCount} 个菜品不可用（可能已下线或被删除）`);
+        }
+
+        if (append) {
+          dishesStore.dishes = [...dishesStore.dishes, ...sortedDishes];
+        } else {
+          dishesStore.dishes = sortedDishes;
+        }
+
+        dishesStore.pagination = response.data.meta;
+      }
+    }
+  } catch (error) {
+    console.error('加载推荐菜品失败:', error);
+    throw error;
+  } finally {
+    if (append) {
+      dishesStore.loadingMore = false;
+    } else {
+      dishesStore.loading = false;
+    }
+  }
+};
 
 // 处理筛选变化
-const handleFilterChange = (filter: GetDishesRequest['filter']) => {
+const handleFilterChange = async (filter: GetDishesRequest['filter']) => {
   currentFilter.value = filter;
+  
+  // 筛选条件变化时重置 requestId，获取新的推荐会话
+  currentRequestId.value = null;
 
-  currentDishQueryBase.value = {
-    sort: buildDishSortFromUserSettings(),
-    filter: { ...filter },
-    search: { keyword: '' },
-  };
-  currentDishPageSize.value = 20;
-  fetchDishList({ reset: true });
+  // 使用推荐 API，传递筛选条件
+  try {
+    await fetchRecommendations({ reset: true });
+    recommendError.value = null;
+  } catch (error: any) {
+    if (error?.message?.includes('400') || error?.message?.includes('Bad Request')) {
+      recommendError.value = '网络开小差了，请稍后再试';
+    } else {
+      recommendError.value = '加载推荐菜品失败，请稍后再试';
+    }
+    console.error('筛选推荐菜品失败:', error);
+  }
 };
 
 // 重新加载推荐菜品
 const retryLoadRecommend = async () => {
   recommendError.value = null;
+  currentFilter.value = {}; // 清空筛选条件
+  currentRequestId.value = null; // 重置会话 ID
   try {
-    currentDishQueryBase.value = {
-      sort: buildDishSortFromUserSettings(),
-      filter: {}, // 让后端根据推荐返回菜品
-      isSuggestion: true,
-      search: { keyword: '' },
-    };
-    currentDishPageSize.value = 10;
-    await fetchDishList({ reset: true });
+    await fetchRecommendations({ reset: true });
   } catch (error: any) {
     if (error?.message?.includes('400') || error?.message?.includes('Bad Request')) {
       recommendError.value = '网络开小差了，请稍后再试';
@@ -295,22 +352,15 @@ function navigateTo(path: string) {
 // --- 生命周期 ---
 onMounted(async () => {
   try {
-    // 4. 调用 actions (保持不变)
+    // 加载食堂列表
     canteenStore.fetchCanteenList({ page: 1, pageSize: 9 });
 
     // 先获取用户信息
     await userStore.fetchProfileAction();
-
-    // 获取今日推荐菜品，使用后端推荐逻辑
+    
+    // 获取今日推荐菜品，使用推荐 API
     try {
-      currentDishQueryBase.value = {
-        sort: buildDishSortFromUserSettings(),
-        filter: {}, // 让后端根据推荐返回菜品
-        isSuggestion: true,
-        search: { keyword: '' },
-      };
-      currentDishPageSize.value = 10;
-      await fetchDishList({ reset: true });
+      await fetchRecommendations({ reset: true });
       recommendError.value = null; // 成功时清除错误
     } catch (error: any) {
       // 检查是否是HTTP 400错误或其他网络错误
@@ -340,14 +390,8 @@ watch(
       console.log('用户偏好设置或显示设置已更新，刷新今日推荐菜品');
 
       try {
-        currentDishQueryBase.value = {
-          sort: buildDishSortFromUserSettings(),
-          filter: {}, // 让后端根据推荐返回菜品
-          isSuggestion: true,
-          search: { keyword: '' },
-        };
-        currentDishPageSize.value = 10;
-        await fetchDishList({ reset: true });
+        // 使用推荐 API，保持当前的筛选条件
+        await fetchRecommendations({ reset: true });
         recommendError.value = null; // 成功时清除错误
       } catch (error: any) {
         if (error?.message?.includes('400') || error?.message?.includes('Bad Request')) {
@@ -364,6 +408,7 @@ watch(
 
 /**
  * 下拉刷新处理函数
+ * 重置 requestId 以获取不同的推荐内容
  */
 onPullDownRefresh(async () => {
   try {
@@ -372,18 +417,13 @@ onPullDownRefresh(async () => {
 
     // 重新获取食堂列表
     await canteenStore.fetchCanteenList({ page: 1, pageSize: 10 });
+    
+    // 下拉刷新时清除 requestId，让用户看到不同的推荐内容
+    currentRequestId.value = null;
 
-    // 重新获取菜品列表（使用后端推荐 + 当前的筛选条件）
+    // 重新获取菜品列表（统一使用推荐 API）
     try {
-      // 保持现有行为：下拉刷新使用 pageSize=20 + 当前筛选条件
-      currentDishQueryBase.value = {
-        sort: buildDishSortFromUserSettings(),
-        filter: { ...currentFilter.value },
-        search: { keyword: '' },
-        isSuggestion: true,
-      };
-      currentDishPageSize.value = 20;
-      await fetchDishList({ reset: true });
+      await fetchRecommendations({ reset: true });
       recommendError.value = null; // 成功时清除错误
     } catch (error: any) {
       if (error?.message?.includes('400') || error?.message?.includes('Bad Request')) {
@@ -422,12 +462,8 @@ onReachBottom(async () => {
   if (!dishesHasMore.value) return;
 
   try {
-    const nextPage = currentDishPage.value + 1;
-    const params: GetDishesRequest = {
-      ...currentDishQueryBase.value,
-      pagination: { page: nextPage, pageSize: currentDishPageSize.value },
-    };
-    await dishesStore.fetchDishes(params, { append: true });
+    // 统一使用推荐 API（保持 requestId 会话，支持筛选条件）
+    await fetchRecommendations({ reset: false, append: true });
   } catch (err) {
     console.error('上拉加载更多失败:', err);
   }

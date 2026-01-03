@@ -17,7 +17,6 @@ import {
 } from './dto/dish-response.dto';
 import { RecommendationService } from '@/recommendation/recommendation.service';
 import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service';
-import { createHash } from 'crypto';
 
 @Injectable()
 export class DishesService {
@@ -136,76 +135,7 @@ export class DishesService {
     getDishesDto: GetDishesDto,
     userId: string,
   ): Promise<DishListResponseDto> {
-    const { isSuggestion, filter, search, sort, pagination } = getDishesDto;
-
-    // 如果是推荐模式，调用推荐服务
-    // isSuggestion 为 true 时使用默认 HOME 场景的推荐
-    if (isSuggestion) {
-      // 生成稳定的 requestId，确保同一个推荐会话（相同的 filter 和 search）
-      // 在不同页之间返回一致的结果
-      const requestIdSeed = JSON.stringify({
-        userId,
-        filter,
-        search: search?.keyword || '',
-        // 不包含 pagination，因为我们希望同一个会话的不同页使用相同的 requestId
-      });
-      const requestId = createHash('md5').update(requestIdSeed).digest('hex');
-
-      const result = await this.recommendationService.getRecommendations(
-        userId,
-        {
-          filter,
-          search: search?.keyword ? search : undefined,
-          pagination,
-          requestId, // 传递 requestId 以保持分页一致性
-          // 默认首页推荐场景，不追踪详细事件
-        },
-      );
-
-      // 获取推荐的菜品ID列表
-      const dishIds = result.data.items.map((item) => item.id);
-
-      // 批量查询完整的菜品数据（推荐服务已经处理了过敏原过滤）
-      const fullDishes = await this.prisma.dish.findMany({
-        where: {
-          id: { in: dishIds },
-          status: 'online',
-        },
-        include: {
-          canteen: true,
-          window: true,
-          floor: true,
-          subDishes: {
-            select: { id: true },
-          },
-        },
-      });
-
-      // 按照推荐顺序排序
-      const dishMap = new Map(fullDishes.map((dish) => [dish.id, dish]));
-      const sortedDishes = dishIds
-        .map((id) => dishMap.get(id))
-        .filter((dish) => dish != null);
-
-      // 使用推荐服务返回的 total
-      const totalPages = Math.ceil(
-        result.data.meta.total / pagination.pageSize,
-      );
-
-      return {
-        code: result.code,
-        message: result.message,
-        data: {
-          items: sortedDishes.map((dish) => DishDto.fromEntity(dish)),
-          meta: {
-            page: pagination.page,
-            pageSize: pagination.pageSize,
-            total: result.data.meta.total,
-            totalPages,
-          },
-        },
-      };
-    }
+    const { filter, search, sort, pagination } = getDishesDto;
 
     // 构建 where 条件 - 使用数组来确保类型正确
     const andConditions: Prisma.DishWhereInput[] = [];

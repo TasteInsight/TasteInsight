@@ -68,7 +68,6 @@ export class PopularDishesTool implements BaseTool {
     // Get dishes
     const result = await this.dishesService.getDishes(
       {
-        isSuggestion: false,
         filter,
         search: { keyword: '', fields: [] },
         sort: {

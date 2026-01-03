@@ -30,16 +30,7 @@ export const mockGetDishes = async (params: GetDishesRequest): Promise<Paginated
 
   let dishes = createMockDishes();
 
-  // 1. 智能推荐处理
-  if (params.isSuggestion) {
-    console.log('🍽️ [Mock] 启用智能推荐模式');
-    const user = createMockUser();
-
-    // 根据用户偏好进行智能筛选和排序
-    dishes = applySmartRecommendation(dishes, user);
-  }
-
-  // 2. 筛选
+  // 1. 筛选
   if (params.filter) {
     const {
       canteenId,

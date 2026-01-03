@@ -414,43 +414,6 @@ describe('Recommendation Module (e2e)', () => {
     });
   });
 
-  describe('Legacy /dishes Endpoint (Suggestion Mode)', () => {
-    it('should return suggestions when isSuggestion=true', async () => {
-      const response = await request(app.getHttpServer())
-        .post('/dishes')
-        .set('Authorization', `Bearer ${userAccessToken}`)
-        .send({
-          isSuggestion: true,
-          filter: {},
-          search: { keyword: '' },
-          sort: {},
-          pagination: { page: 1, pageSize: 10 },
-        })
-        .expect(200);
-
-      expect(response.body.data.items).toBeInstanceOf(Array);
-    });
-
-    it('should filter suggested dishes by price', async () => {
-      const response = await request(app.getHttpServer())
-        .post('/dishes')
-        .set('Authorization', `Bearer ${userAccessToken}`)
-        .send({
-          isSuggestion: true,
-          filter: { price: { min: 10, max: 20 } },
-          search: { keyword: '' }, // Should be required for GetDishesDto
-          sort: {},
-          pagination: { page: 1, pageSize: 10 },
-        })
-        .expect(200);
-
-      response.body.data.items.forEach((dish: any) => {
-        expect(dish.price).toBeGreaterThanOrEqual(10);
-        expect(dish.price).toBeLessThanOrEqual(20);
-      });
-    });
-  });
-
   describe('System & Health', () => {
     it('should return health status', async () => {
       const response = await request(app.getHttpServer())
