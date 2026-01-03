@@ -99,7 +99,9 @@ export function useSearch() {
         console.error('获取食堂列表失败:', e);
       }
 
-      const matchedCanteens = allCanteens.filter(c => (c.name || '').toLowerCase().includes(normalized));
+      const matchedCanteens = allCanteens.filter(c =>
+        (c.name || '').toLowerCase().includes(normalized)
+      );
       if (matchedCanteens.length > 0) {
         searchResults.value = {
           canteens: matchedCanteens,

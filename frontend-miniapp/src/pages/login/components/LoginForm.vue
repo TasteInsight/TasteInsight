@@ -2,7 +2,9 @@
   <view class="w-full flex flex-col items-center">
     <!-- Logo 区域 -->
     <view class="flex flex-col items-center mb-16 animate-fade-in-down">
-      <view class="w-24 h-24 bg-white rounded-2xl shadow-lg flex items-center justify-center mb-6 border border-purple-50">
+      <view
+        class="w-24 h-24 bg-white rounded-2xl shadow-lg flex items-center justify-center mb-6 border border-purple-50"
+      >
         <image src="/static/logo.png" class="w-16 h-16" mode="aspectFit" />
       </view>
       <text class="text-2xl font-bold text-gray-800 tracking-wide">TasteInsight</text>
@@ -21,22 +23,25 @@
         <text v-if="!loading" class="iconify mr-2 text-xl" data-icon="ri:wechat-fill"></text>
         <text>{{ loading ? '正在登录...' : '微信一键登录' }}</text>
       </button>
-      
-      
     </view>
 
     <!-- 底部协议 -->
     <view class="mt-8 text-center animate-fade-in">
       <view class="flex items-center justify-center space-x-1 text-xs text-gray-400">
-        <view class="flex items-center mr-2" @click="toggleAgree" style="cursor: pointer;">
-          <view class="w-4 h-4 border rounded-sm flex items-center justify-center" :class="agreed ? 'bg-ts-purple border-ts-purple' : 'bg-white border-gray-300'">
+        <view class="flex items-center mr-2" @click="toggleAgree" style="cursor: pointer">
+          <view
+            class="w-4 h-4 border rounded-sm flex items-center justify-center"
+            :class="agreed ? 'bg-ts-purple border-ts-purple' : 'bg-white border-gray-300'"
+          >
             <text v-if="agreed" class="text-white text-xs">✓</text>
           </view>
         </view>
         <text>我已同意</text>
         <text class="text-ts-purple font-medium" @click="openAgreement('user')">《用户协议》</text>
         <text>和</text>
-        <text class="text-ts-purple font-medium" @click="openAgreement('privacy')">《隐私政策》</text>
+        <text class="text-ts-purple font-medium" @click="openAgreement('privacy')"
+          >《隐私政策》</text
+        >
       </view>
     </view>
   </view>
@@ -76,13 +81,12 @@ async function handleWechatLogin() {
   }
 }
 
-
-
 /**
  * 打开协议
  */
 function openAgreement(type: 'user' | 'privacy') {
-  const url = type === 'user' ? '/pages/settings/privacy?type=user' : '/pages/settings/privacy?type=privacy';
+  const url =
+    type === 'user' ? '/pages/settings/privacy?type=user' : '/pages/settings/privacy?type=privacy';
   uni.navigateTo({ url });
 }
 </script>

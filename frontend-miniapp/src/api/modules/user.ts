@@ -14,9 +14,7 @@ import type {
   Report,
 } from '@/types/api';
 
-export const wechatLogin = (
-  code: string
-): Promise<ApiResponse<LoginData>> => {
+export const wechatLogin = (code: string): Promise<ApiResponse<LoginData>> => {
   return request<LoginData>({
     url: '/auth/wechat/login',
     method: 'POST',

@@ -12,7 +12,10 @@
   >
     <view id="acp-root" class="w-full h-full flex flex-col">
       <!-- 头部 -->
-      <view id="acp-header" class="flex justify-center items-center py-4 px-5 border-b border-gray-200 shrink-0 relative">
+      <view
+        id="acp-header"
+        class="flex justify-center items-center py-4 px-5 border-b border-gray-200 shrink-0 relative"
+      >
         <h2 class="text-lg font-semibold text-gray-800">全部回复</h2>
         <button
           class="absolute right-5 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-gray-500 text-lg rounded-full bg-transparent border-none"
@@ -62,13 +65,21 @@
                 <view class="flex-1">
                   <!-- 第一行：用户名和回复目标 -->
                   <view class="flex items-center mb-1">
-                    <text class="text-ts-purple font-semibold text-sm">{{ comment.userNickname }}</text>
+                    <text class="text-ts-purple font-semibold text-sm">{{
+                      comment.userNickname
+                    }}</text>
                     <!-- 回复目标显示 -->
                     <template v-if="comment.parentComment && !comment.parentComment.deleted">
                       <text class="text-gray-500 text-sm ml-2">回复</text>
-                      <text class="text-ts-purple text-sm font-semibold ml-1">@{{ comment.parentComment.userNickname }}</text>
+                      <text class="text-ts-purple text-sm font-semibold ml-1"
+                        >@{{ comment.parentComment.userNickname }}</text
+                      >
                     </template>
-                    <text v-else-if="comment.parentComment?.deleted" class="text-gray-400 text-sm ml-2">回复的评论已删除</text>
+                    <text
+                      v-else-if="comment.parentComment?.deleted"
+                      class="text-gray-400 text-sm ml-2"
+                      >回复的评论已删除</text
+                    >
                   </view>
                   <!-- 第二行：评论内容 -->
                   <view class="text-sm text-gray-700 leading-relaxed mb-1">
@@ -105,7 +116,9 @@
       <!-- 底部回复输入框 -->
       <view id="acp-input" class="border-t border-gray-200 bg-white px-4 pt-3 shrink-0 pb-safe">
         <view v-if="replyingTo" class="flex items-center mb-2">
-          <text class="text-ts-purple text-xs font-medium flex-1">回复 @{{ replyingTo?.userNickname }}</text>
+          <text class="text-ts-purple text-xs font-medium flex-1"
+            >回复 @{{ replyingTo?.userNickname }}</text
+          >
           <button
             class="w-5 h-5 flex items-center justify-center text-gray-500 text-sm bg-transparent border-none rounded-full after:border-none"
             @tap="cancelReply"
@@ -123,7 +136,11 @@
           />
           <button
             class="px-4 py-2 border-none rounded-full text-sm font-medium min-w-[60px] transition-all duration-200 after:border-none"
-            :class="canSendReply ? 'bg-gradient-to-br from-purple-700 to-purple-600 text-white' : 'bg-gray-300 text-gray-400'"
+            :class="
+              canSendReply
+                ? 'bg-gradient-to-br from-purple-700 to-purple-600 text-white'
+                : 'bg-gray-300 text-gray-400'
+            "
             :disabled="!canSendReply"
             @tap="submitReply"
           >
@@ -142,11 +159,7 @@
       />
 
       <!-- 举报弹窗 (嵌套在 page-container 内部) -->
-      <ReportDialog
-        v-if="isReportVisible"
-        @close="closeReportModal"
-        @submit="submitReport"
-      />
+      <ReportDialog v-if="isReportVisible" @close="closeReportModal" @submit="submitReport" />
     </view>
   </page-container>
 </template>
@@ -190,7 +203,7 @@ const {
   selectCommentForReply,
   cancelReply,
   submitReply: doSubmitReply,
-  resetPanel
+  resetPanel,
 } = useCommentPanel(
   () => props.reviewId,
   () => emit('commentAdded')
@@ -241,26 +254,24 @@ const handleReportFromMenu = () => {
   openReportModal('comment', commentId);
 };
 
-const {
-  isReportVisible,
-  openReportModal,
-  closeReportModal,
-  submitReport
-} = useReport();
+const { isReportVisible, openReportModal, closeReportModal, submitReport } = useReport();
 
 // 监听面板显示状态
-watch(() => props.isVisible, (visible: boolean) => {
-  if (visible) {
-    nextTick(() => {
-      setTimeout(() => {
-        fetchPanelComments();
-      }, 50);
-    });
-  } else {
-    // 重置状态
-    resetPanel();
+watch(
+  () => props.isVisible,
+  (visible: boolean) => {
+    if (visible) {
+      nextTick(() => {
+        setTimeout(() => {
+          fetchPanelComments();
+        }, 50);
+      });
+    } else {
+      // 重置状态
+      resetPanel();
+    }
   }
-});
+);
 
 onMounted(() => {
   if (props.isVisible) {
@@ -284,7 +295,7 @@ const handleDelete = (commentId: string) => {
   uni.showModal({
     title: '提示',
     content: '确定要删除这条评论吗？',
-    success: (res) => {
+    success: res => {
       if (res.confirm) {
         emit('delete', commentId);
         // 立即从当前列表移除，避免 UI 不更新（父组件删除是异步）
@@ -295,7 +306,7 @@ const handleDelete = (commentId: string) => {
           fetchPanelComments();
         }, 300);
       }
-    }
+    },
   });
 };
 

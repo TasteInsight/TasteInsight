@@ -43,7 +43,7 @@ describe('useCanteenData', () => {
   it('should fetch dishes and update state', async () => {
     const { fetchDishes, dishes } = useCanteenData();
     const mockDishes = [{ id: '1', name: 'Dish 1' }];
-    
+
     (getDishes as jest.Mock).mockResolvedValue({
       code: 200,
       data: { items: mockDishes },
@@ -56,7 +56,7 @@ describe('useCanteenData', () => {
 
   it('should handle fetch dishes error', async () => {
     const { fetchDishes, dishes } = useCanteenData();
-    
+
     (getDishes as jest.Mock).mockRejectedValue(new Error('Error'));
 
     await fetchDishes('123');

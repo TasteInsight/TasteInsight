@@ -20,18 +20,28 @@ const deleteMealPlan = mealPlanModule.deleteMealPlan as jest.Mock;
 const getDishById = dishModule.getDishById as jest.Mock;
 import { usePlanStore } from '@/store/modules/use-plan-store';
 
-
 describe('store/modules/use-plan-store', () => {
   beforeEach(() => {
     jest.resetModules();
     jest.clearAllMocks();
     setActivePinia(createPinia());
     // ensure global uni mocks remain
-    (global as any).uni = (global as any).uni || { setStorageSync: jest.fn(), getStorageSync: jest.fn().mockReturnValue([]) };
+    (global as any).uni = (global as any).uni || {
+      setStorageSync: jest.fn(),
+      getStorageSync: jest.fn().mockReturnValue([]),
+    };
   });
 
   test('fetchPlans populates plans and dishMap on success', async () => {
-    const mealPlans = [{ id: 'p1', dishes: ['d1'], startDate: new Date().toISOString(), endDate: new Date(Date.now() + 86400000).toISOString(), mealTime: 'lunch' }];
+    const mealPlans = [
+      {
+        id: 'p1',
+        dishes: ['d1'],
+        startDate: new Date().toISOString(),
+        endDate: new Date(Date.now() + 86400000).toISOString(),
+        mealTime: 'lunch',
+      },
+    ];
     (getMealPlans as jest.Mock).mockResolvedValue({ code: 200, data: { items: mealPlans } });
     (getDishById as jest.Mock).mockResolvedValue({ code: 200, data: { id: 'd1', name: 'D' } });
 
@@ -44,7 +54,15 @@ describe('store/modules/use-plan-store', () => {
   });
 
   test('fetchPlans handles dish fetch failures gracefully', async () => {
-    const mealPlans = [{ id: 'p1', dishes: ['bad'], startDate: new Date().toISOString(), endDate: new Date(Date.now() + 86400000).toISOString(), mealTime: 'lunch' }];
+    const mealPlans = [
+      {
+        id: 'p1',
+        dishes: ['bad'],
+        startDate: new Date().toISOString(),
+        endDate: new Date(Date.now() + 86400000).toISOString(),
+        mealTime: 'lunch',
+      },
+    ];
     (getMealPlans as jest.Mock).mockResolvedValue({ code: 200, data: { items: mealPlans } });
     (getDishById as jest.Mock).mockRejectedValue(new Error('fail'));
 
@@ -60,7 +78,13 @@ describe('store/modules/use-plan-store', () => {
   });
 
   test('createPlan adds new plan and fetches dishes', async () => {
-    const newPlan = { id: 'np', dishes: ['d2'], startDate: new Date().toISOString(), endDate: new Date(Date.now() + 86400000).toISOString(), mealTime: 'breakfast' };
+    const newPlan = {
+      id: 'np',
+      dishes: ['d2'],
+      startDate: new Date().toISOString(),
+      endDate: new Date(Date.now() + 86400000).toISOString(),
+      mealTime: 'breakfast',
+    };
     (createMealPlan as jest.Mock).mockResolvedValue({ code: 201, data: newPlan });
     (getDishById as jest.Mock).mockResolvedValue({ code: 200, data: { id: 'd2', name: 'DD' } });
 
@@ -73,8 +97,24 @@ describe('store/modules/use-plan-store', () => {
   });
 
   test('updatePlan updates existing plan or inserts when missing', async () => {
-    const existing = { id: 'e1', dishes: [], startDate: new Date().toISOString(), endDate: new Date(Date.now() + 86400000).toISOString(), mealTime: 'lunch', userId: '', createdAt: '' };
-    const updated = { id: 'e1', dishes: [], startDate: new Date().toISOString(), endDate: new Date(Date.now() + 86400000).toISOString(), mealTime: 'dinner', userId: '', createdAt: '' };
+    const existing = {
+      id: 'e1',
+      dishes: [],
+      startDate: new Date().toISOString(),
+      endDate: new Date(Date.now() + 86400000).toISOString(),
+      mealTime: 'lunch',
+      userId: '',
+      createdAt: '',
+    };
+    const updated = {
+      id: 'e1',
+      dishes: [],
+      startDate: new Date().toISOString(),
+      endDate: new Date(Date.now() + 86400000).toISOString(),
+      mealTime: 'dinner',
+      userId: '',
+      createdAt: '',
+    };
 
     (updateMealPlan as jest.Mock).mockResolvedValue({ code: 200, data: updated });
     (getDishById as jest.Mock).mockResolvedValue({ code: 200, data: { id: 'dX', name: 'D' } });
@@ -87,7 +127,16 @@ describe('store/modules/use-plan-store', () => {
     expect(store.allPlans.find(p => p.id === 'e1')?.mealTime).toBe('dinner');
 
     // missing id -> inserts front
-    (updateMealPlan as jest.Mock).mockResolvedValue({ code: 200, data: { id: 'new', dishes: [], startDate: new Date().toISOString(), endDate: new Date(Date.now() + 86400000).toISOString(), mealTime: 'lunch' } });
+    (updateMealPlan as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: {
+        id: 'new',
+        dishes: [],
+        startDate: new Date().toISOString(),
+        endDate: new Date(Date.now() + 86400000).toISOString(),
+        mealTime: 'lunch',
+      },
+    });
     const inserted = await store.updatePlan('missing', {} as any);
     expect(store.allPlans[0].id).toBe('new');
   });
@@ -96,26 +145,43 @@ describe('store/modules/use-plan-store', () => {
     (deleteMealPlan as jest.Mock).mockResolvedValue({ code: 200, data: null });
     const store = usePlanStore();
 
-    store.allPlans = [{
-        id: 'r1', dishes: [], startDate: '', endDate: '', mealTime: 'lunch',
+    store.allPlans = [
+      {
+        id: 'r1',
+        dishes: [],
+        startDate: '',
+        endDate: '',
+        mealTime: 'lunch',
         userId: '',
-        createdAt: ''
-    }, {
-        id: 'r2', dishes: [], startDate: '', endDate: '', mealTime: 'lunch',
+        createdAt: '',
+      },
+      {
+        id: 'r2',
+        dishes: [],
+        startDate: '',
+        endDate: '',
+        mealTime: 'lunch',
         userId: '',
-        createdAt: ''
-    }];
+        createdAt: '',
+      },
+    ];
     await store.removePlan('r1');
     expect(store.allPlans.find(p => p.id === 'r1')).toBeUndefined();
   });
 
   test('executePlan marks completed and persists to storage', async () => {
     const store = usePlanStore();
-    store.allPlans = [{
-        id: 'ex1', dishes: [], startDate: '', endDate: '', mealTime: 'lunch',
+    store.allPlans = [
+      {
+        id: 'ex1',
+        dishes: [],
+        startDate: '',
+        endDate: '',
+        mealTime: 'lunch',
         userId: '',
-        createdAt: ''
-    }];
+        createdAt: '',
+      },
+    ];
 
     await store.executePlan('ex1');
     expect((global as any).uni.setStorageSync).toHaveBeenCalled();
@@ -129,8 +195,12 @@ describe('store/modules/use-plan-store', () => {
     const past = new Date(Date.now() - 86400000).toISOString();
     const future = new Date(Date.now() + 86400000).toISOString();
 
-    jest.doMock('@/api/modules/dish', () => ({ getDishById: (id: string) => Promise.resolve({ code: 200, data: { id, name: 'D' } }) }));
-    jest.doMock('@/api/modules/meal-plan', () => ({ getMealPlans: () => Promise.resolve({ code: 200, data: { items: [] } }) }));
+    jest.doMock('@/api/modules/dish', () => ({
+      getDishById: (id: string) => Promise.resolve({ code: 200, data: { id, name: 'D' } }),
+    }));
+    jest.doMock('@/api/modules/meal-plan', () => ({
+      getMealPlans: () => Promise.resolve({ code: 200, data: { items: [] } }),
+    }));
 
     const store = usePlanStore();
 
@@ -148,7 +218,15 @@ describe('store/modules/use-plan-store', () => {
   });
 
   test('fetchPlans returns early when there are no dish ids', async () => {
-    const mealPlans = [{ id: 'p-empty', dishes: [], startDate: new Date().toISOString(), endDate: new Date(Date.now() + 86400000).toISOString(), mealTime: 'lunch' }];
+    const mealPlans = [
+      {
+        id: 'p-empty',
+        dishes: [],
+        startDate: new Date().toISOString(),
+        endDate: new Date(Date.now() + 86400000).toISOString(),
+        mealTime: 'lunch',
+      },
+    ];
     (getMealPlans as jest.Mock).mockResolvedValue({ code: 200, data: { items: mealPlans } });
 
     const store = usePlanStore();
@@ -159,7 +237,15 @@ describe('store/modules/use-plan-store', () => {
   });
 
   test('fetchPlans ignores non-200 dish responses', async () => {
-    const mealPlans = [{ id: 'p2', dishes: ['dx'], startDate: new Date().toISOString(), endDate: new Date(Date.now() + 86400000).toISOString(), mealTime: 'lunch' }];
+    const mealPlans = [
+      {
+        id: 'p2',
+        dishes: ['dx'],
+        startDate: new Date().toISOString(),
+        endDate: new Date(Date.now() + 86400000).toISOString(),
+        mealTime: 'lunch',
+      },
+    ];
     (getMealPlans as jest.Mock).mockResolvedValue({ code: 200, data: { items: mealPlans } });
     (getDishById as jest.Mock).mockResolvedValue({ code: 404, data: null });
 
@@ -172,10 +258,22 @@ describe('store/modules/use-plan-store', () => {
 
   test('executePlan logs error if storage set fails', async () => {
     const store = usePlanStore();
-    store.allPlans = [{ id: 's1', dishes: [], startDate: '', endDate: '', mealTime: 'lunch', userId: '', createdAt: '' }];
+    store.allPlans = [
+      {
+        id: 's1',
+        dishes: [],
+        startDate: '',
+        endDate: '',
+        mealTime: 'lunch',
+        userId: '',
+        createdAt: '',
+      },
+    ];
 
     const consoleErr = jest.spyOn(console, 'error').mockImplementation(() => {});
-    (global as any).uni.setStorageSync = jest.fn().mockImplementation(() => { throw new Error('disk fail'); });
+    (global as any).uni.setStorageSync = jest.fn().mockImplementation(() => {
+      throw new Error('disk fail');
+    });
 
     await store.executePlan('s1');
 
@@ -192,7 +290,12 @@ describe('store/modules/use-plan-store', () => {
     const consoleErr = jest.spyOn(console, 'error').mockImplementation(() => {});
 
     const origUni = (global as any).uni;
-    (global as any).uni = { getStorageSync: jest.fn().mockImplementation(() => { throw new Error('boom'); }), setStorageSync: jest.fn() };
+    (global as any).uni = {
+      getStorageSync: jest.fn().mockImplementation(() => {
+        throw new Error('boom');
+      }),
+      setStorageSync: jest.fn(),
+    };
 
     // ensure active Pinia is set in the fresh module context
     const piniaModule = await import('pinia');

@@ -11,7 +11,7 @@
           class="flex-1 bg-transparent outline-none text-sm px-2 h-9"
           @confirm="handleSearch"
         />
-        <div 
+        <div
           class="bg-purple-600 text-white text-sm px-6 h-9 flex items-center justify-center rounded-full ml-1 cursor-pointer"
           @click="handleSearch"
         >
@@ -43,9 +43,11 @@
       <div v-else-if="hasResults">
         <!-- 食堂结果 -->
         <div v-if="searchResults.canteens.length > 0" class="mb-6">
-          <div class="text-sm font-semibold text-gray-600 mb-3">食堂 ({{ searchResults.canteens.length }})</div>
-          <CanteenResultItem 
-            v-for="canteen in searchResults.canteens" 
+          <div class="text-sm font-semibold text-gray-600 mb-3">
+            食堂 ({{ searchResults.canteens.length }})
+          </div>
+          <CanteenResultItem
+            v-for="canteen in searchResults.canteens"
             :key="canteen.id"
             :canteen="canteen"
           />
@@ -53,9 +55,11 @@
 
         <!-- 窗口结果 -->
         <div v-if="searchResults.windows.length > 0" class="mb-6">
-          <div class="text-sm font-semibold text-gray-600 mb-3">窗口 ({{ searchResults.windows.length }})</div>
-          <WindowResultItem 
-            v-for="window in searchResults.windows" 
+          <div class="text-sm font-semibold text-gray-600 mb-3">
+            窗口 ({{ searchResults.windows.length }})
+          </div>
+          <WindowResultItem
+            v-for="window in searchResults.windows"
             :key="window.id"
             :window="window"
             :canteen-name="(window as any).canteenName"
@@ -64,17 +68,20 @@
 
         <!-- 菜品结果 -->
         <div v-if="searchResults.dishes.length > 0">
-          <div class="text-sm font-semibold text-gray-600 mb-3">菜品 ({{ searchResults.dishes.length }})</div>
-          <DishResultItem 
-            v-for="dish in searchResults.dishes" 
-            :key="dish.id"
-            :dish="dish"
-          />
+          <div class="text-sm font-semibold text-gray-600 mb-3">
+            菜品 ({{ searchResults.dishes.length }})
+          </div>
+          <DishResultItem v-for="dish in searchResults.dishes" :key="dish.id" :dish="dish" />
         </div>
 
         <!-- 底部加载提示 -->
         <div v-if="loadingMore" class="text-center py-4 text-gray-500">加载中...</div>
-        <div v-else-if="hasSearched && !hasMore && searchResults.dishes.length > 0" class="text-center py-4 text-gray-400">没有更多了</div>
+        <div
+          v-else-if="hasSearched && !hasMore && searchResults.dishes.length > 0"
+          class="text-center py-4 text-gray-400"
+        >
+          没有更多了
+        </div>
       </div>
 
       <!-- 默认提示 -->
@@ -97,14 +104,14 @@ import { SearchSkeleton } from '@/components/skeleton';
 // but may not be visible to the TS compiler in some files. Declare them locally to avoid errors.
 declare function onReachBottom(cb: () => void): void;
 
-const { 
-  keyword, 
+const {
+  keyword,
   searchResults,
   hasResults,
-  loading, 
+  loading,
   loadingMore,
   hasMore,
-  error, 
+  error,
   hasSearched,
   search,
   loadMore,
@@ -129,7 +136,6 @@ onReachBottom(() => {
     loadMore();
   }
 });
-
 </script>
 
 <style scoped>

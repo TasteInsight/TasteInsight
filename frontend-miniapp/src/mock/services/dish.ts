@@ -10,10 +10,10 @@ const mockDelay = () => new Promise(resolve => setTimeout(resolve, 200));
 export const mockGetDishById = async (id: string): Promise<Dish | null> => {
   console.log(`🍽️ [Mock] 获取菜品详情: ${id}`);
   await mockDelay();
-  
+
   const dishes = createMockDishes();
   const dish = dishes.find(d => d.id === id);
-  
+
   if (dish) {
     console.log(`✅ [Mock] 找到菜品: ${dish.name}`);
     return dish;
@@ -34,47 +34,45 @@ export const mockGetDishes = async (params: GetDishesRequest): Promise<Paginated
   if (params.isSuggestion) {
     console.log('🍽️ [Mock] 启用智能推荐模式');
     const user = createMockUser();
-    
+
     // 根据用户偏好进行智能筛选和排序
     dishes = applySmartRecommendation(dishes, user);
   }
 
   // 2. 筛选
   if (params.filter) {
-    const { 
-      canteenId, 
-      mealTime, 
-      tag, 
-      price, 
-      rating, 
+    const {
+      canteenId,
+      mealTime,
+      tag,
+      price,
+      rating,
       meatPreference,
       spicyLevel,
       sweetness,
       saltiness,
       oiliness,
-      avoidIngredients
+      avoidIngredients,
     } = params.filter;
 
     // 按食堂ID过滤
     if (canteenId && canteenId.length > 0) {
-      dishes = dishes.filter(d => 
-        d.canteenId && canteenId.includes(d.canteenId)
-      );
+      dishes = dishes.filter(d => d.canteenId && canteenId.includes(d.canteenId));
     }
 
     // 按用餐时段过滤
     if (mealTime && mealTime.length > 0) {
-      dishes = dishes.filter(d => 
-        d.availableMealTime && d.availableMealTime.some((t: string) => mealTime.includes(t))
+      dishes = dishes.filter(
+        d => d.availableMealTime && d.availableMealTime.some((t: string) => mealTime.includes(t))
       );
     }
 
     // 按标签过滤（口味等）
     if (tag && tag.length > 0) {
-      dishes = dishes.filter(d => 
-        d.tags && d.tags.some(t => 
-          tag.some(filterTag => t.toLowerCase().includes(filterTag.toLowerCase()))
-        )
+      dishes = dishes.filter(
+        d =>
+          d.tags &&
+          d.tags.some(t => tag.some(filterTag => t.toLowerCase().includes(filterTag.toLowerCase())))
       );
     }
 
@@ -142,17 +140,12 @@ export const mockGetDishes = async (params: GetDishesRequest): Promise<Paginated
     if (avoidIngredients && avoidIngredients.length > 0) {
       dishes = dishes.filter(d => {
         if (!d.ingredients && !d.allergens) return true; // 如果没有食材信息，默认不过滤
-        
-        const allIngredients = [
-          ...(d.ingredients || []),
-          ...(d.allergens || [])
-        ];
-        
+
+        const allIngredients = [...(d.ingredients || []), ...(d.allergens || [])];
+
         // 检查是否包含忌口食材
-        return !avoidIngredients.some(avoid => 
-          allIngredients.some(ingredient => 
-            ingredient.toLowerCase().includes(avoid.toLowerCase())
-          )
+        return !avoidIngredients.some(avoid =>
+          allIngredients.some(ingredient => ingredient.toLowerCase().includes(avoid.toLowerCase()))
         );
       });
     }
@@ -164,7 +157,14 @@ export const mockGetDishes = async (params: GetDishesRequest): Promise<Paginated
         const tagsLower = d.tags.map(t => t.toLowerCase());
         return meatPreference.some(pref => {
           if (pref === '荤') {
-            return tagsLower.some(t => t.includes('荤') || t.includes('肉') || t.includes('鸡') || t.includes('鱼') || t.includes('虾'));
+            return tagsLower.some(
+              t =>
+                t.includes('荤') ||
+                t.includes('肉') ||
+                t.includes('鸡') ||
+                t.includes('鱼') ||
+                t.includes('虾')
+            );
           } else if (pref === '素') {
             return tagsLower.some(t => t.includes('素') || t.includes('蔬') || t.includes('菜'));
           } else if (pref === '荤素') {
@@ -193,10 +193,10 @@ export const mockGetDishes = async (params: GetDishesRequest): Promise<Paginated
           return false;
         });
       }
-      
+
       // 默认在所有字段中搜索
       return (
-        (d.name || '').toLowerCase().includes(keyword) || 
+        (d.name || '').toLowerCase().includes(keyword) ||
         (d.description || '').toLowerCase().includes(keyword) ||
         (d.tags || []).some(t => t.toLowerCase().includes(keyword)) ||
         (d.canteenName || '').toLowerCase().includes(keyword) ||
@@ -208,30 +208,30 @@ export const mockGetDishes = async (params: GetDishesRequest): Promise<Paginated
   // 3. 排序
   if (params.sort && params.sort.field) {
     const { field, order = 'asc' } = params.sort;
-    
+
     dishes.sort((a, b) => {
       // @ts-ignore
       let valA = a[field];
       // @ts-ignore
       let valB = b[field];
-      
+
       // 处理日期字段
       if (field === 'createdAt' && valA instanceof Date) {
         valA = valA.getTime();
         valB = (valB as Date).getTime();
       }
-      
+
       // 处理数值字段
       if (typeof valA === 'number' && typeof valB === 'number') {
         return order === 'asc' ? valA - valB : valB - valA;
       }
-      
+
       // 处理字符串字段
       if (typeof valA === 'string' && typeof valB === 'string') {
         const comparison = valA.localeCompare(valB);
         return order === 'asc' ? comparison : -comparison;
       }
-      
+
       // 默认保持原顺序
       return 0;
     });
@@ -263,7 +263,7 @@ export const mockGetDishes = async (params: GetDishesRequest): Promise<Paginated
  */
 function applySmartRecommendation(dishes: Dish[], user: any): Dish[] {
   let recommendedDishes = [...dishes];
-  
+
   if (!user.preferences) {
     // 如果没有用户偏好，按评分和热度排序
     return recommendedDishes.sort((a, b) => {
@@ -280,14 +280,11 @@ function applySmartRecommendation(dishes: Dish[], user: any): Dish[] {
   if (prefs.avoidIngredients && prefs.avoidIngredients.length > 0) {
     recommendedDishes = recommendedDishes.filter(dish => {
       if (!dish.ingredients && !dish.allergens) return true;
-      
-      const allIngredients = [
-        ...(dish.ingredients || []),
-        ...(dish.allergens || [])
-      ];
-      
-      return !prefs.avoidIngredients.some((avoid: string) => 
-        allIngredients.some((ingredient: string) => 
+
+      const allIngredients = [...(dish.ingredients || []), ...(dish.allergens || [])];
+
+      return !prefs.avoidIngredients.some((avoid: string) =>
+        allIngredients.some((ingredient: string) =>
           ingredient.toLowerCase().includes(avoid.toLowerCase())
         )
       );
@@ -304,42 +301,42 @@ function applySmartRecommendation(dishes: Dish[], user: any): Dish[] {
 
   // 3. 按食堂偏好过滤
   if (prefs.canteenPreferences && prefs.canteenPreferences.length > 0) {
-    recommendedDishes = recommendedDishes.filter(dish => 
-      dish.canteenId && prefs.canteenPreferences.includes(dish.canteenId)
+    recommendedDishes = recommendedDishes.filter(
+      dish => dish.canteenId && prefs.canteenPreferences.includes(dish.canteenId)
     );
   }
 
   // 4. 按口味偏好过滤和评分
   if (prefs.tastePreferences) {
     const tastePrefs = prefs.tastePreferences;
-    
+
     recommendedDishes = recommendedDishes.map(dish => {
       let score = 0;
-      
+
       // 辣度匹配度（允许±1的误差）
       if (tastePrefs.spicyLevel !== undefined && tastePrefs.spicyLevel > 0) {
         const diff = Math.abs((dish.spicyLevel || 0) - tastePrefs.spicyLevel);
         score += Math.max(0, 5 - diff * 2); // 完全匹配得5分，误差1得3分，误差2得1分
       }
-      
+
       // 甜度匹配度
       if (tastePrefs.sweetness !== undefined && tastePrefs.sweetness > 0) {
         const diff = Math.abs((dish.sweetness || 0) - tastePrefs.sweetness);
         score += Math.max(0, 5 - diff * 2);
       }
-      
+
       // 咸度匹配度
       if (tastePrefs.saltiness !== undefined && tastePrefs.saltiness > 0) {
         const diff = Math.abs((dish.saltiness || 0) - tastePrefs.saltiness);
         score += Math.max(0, 5 - diff * 2);
       }
-      
+
       // 油腻度匹配度
       if (tastePrefs.oiliness !== undefined && tastePrefs.oiliness > 0) {
         const diff = Math.abs((dish.oiliness || 0) - tastePrefs.oiliness);
         score += Math.max(0, 5 - diff * 2);
       }
-      
+
       return { ...dish, recommendationScore: score };
     }) as Dish[];
   }
@@ -349,20 +346,23 @@ function applySmartRecommendation(dishes: Dish[], user: any): Dish[] {
     recommendedDishes = recommendedDishes.filter(dish => {
       if (!dish.tags) return false;
       const tagsLower = dish.tags.map((t: string) => t.toLowerCase());
-      
+
       return prefs.meatPreference.some((pref: string) => {
         if (pref === '荤') {
-          return tagsLower.some((t: string) => 
-            t.includes('荤') || t.includes('肉') || t.includes('鸡') || t.includes('鱼') || t.includes('虾')
+          return tagsLower.some(
+            (t: string) =>
+              t.includes('荤') ||
+              t.includes('肉') ||
+              t.includes('鸡') ||
+              t.includes('鱼') ||
+              t.includes('虾')
           );
         } else if (pref === '素') {
-          return tagsLower.some((t: string) => 
-            t.includes('素') || t.includes('蔬') || t.includes('菜')
+          return tagsLower.some(
+            (t: string) => t.includes('素') || t.includes('蔬') || t.includes('菜')
           );
         } else if (pref === '荤素') {
-          return tagsLower.some((t: string) => 
-            t.includes('荤素') || t.includes('搭配')
-          );
+          return tagsLower.some((t: string) => t.includes('荤素') || t.includes('搭配'));
         }
         return false;
       });
@@ -372,9 +372,11 @@ function applySmartRecommendation(dishes: Dish[], user: any): Dish[] {
   // 6. 智能排序：结合推荐分数、评分、热度
   recommendedDishes.sort((a, b) => {
     // @ts-ignore
-    const scoreA = (a.recommendationScore || 0) + (a.averageRating || 0) * 2 + (a.reviewCount || 0) * 0.01;
+    const scoreA =
+      (a.recommendationScore || 0) + (a.averageRating || 0) * 2 + (a.reviewCount || 0) * 0.01;
     // @ts-ignore
-    const scoreB = (b.recommendationScore || 0) + (b.averageRating || 0) * 2 + (b.reviewCount || 0) * 0.01;
+    const scoreB =
+      (b.recommendationScore || 0) + (b.averageRating || 0) * 2 + (b.reviewCount || 0) * 0.01;
     return scoreB - scoreA;
   });
 
@@ -388,17 +390,17 @@ function applySmartRecommendation(dishes: Dish[], user: any): Dish[] {
 export const mockGetDishesImages = async (): Promise<DishesImages> => {
   console.log('🍽️ [Mock] 获取菜品图片列表');
   await mockDelay();
-  
+
   // 从 mock 菜品数据中提取图片
   const dishes = createMockDishes();
   const images = dishes
     .filter(dish => dish.images && dish.images.length > 0)
     .flatMap(dish => dish.images!)
     .slice(0, 10); // 限制返回10张图片
-  
+
   console.log(`✅ [Mock] 返回 ${images.length} 张菜品图片`);
-  
+
   return {
-    images
+    images,
   };
 };

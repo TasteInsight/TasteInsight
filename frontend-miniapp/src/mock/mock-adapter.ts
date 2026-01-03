@@ -1,6 +1,6 @@
 /**
  * Mock 适配器 - 统一拦截请求并返回 mock 数据
- * 
+ *
  * 使用路由注册表模式，将 URL 模式与 mock 处理函数关联
  * 这样 API 模块不需要关心是否使用 mock，完全解耦
  */
@@ -39,10 +39,8 @@ export function registerMockRoute<T = any>(
 ): void {
   // 将路径模式转换为正则表达式
   // /dishes/:id -> /dishes/([^/]+)
-  const regexPattern = pattern
-    .replace(/:[^/]+/g, '([^/]+)')
-    .replace(/\//g, '\\/');
-  
+  const regexPattern = pattern.replace(/:[^/]+/g, '([^/]+)').replace(/\//g, '\\/');
+
   mockRoutes.push({
     pattern: new RegExp(`^${regexPattern}$`),
     method: method.toUpperCase(),
@@ -56,7 +54,7 @@ export function registerMockRoute<T = any>(
 function extractParams(url: string, pattern: RegExp, template: string): Record<string, string> {
   const params: Record<string, string> = {};
   const match = url.match(pattern);
-  
+
   if (match) {
     // 提取模板中的参数名
     const paramNames = template.match(/:[^/]+/g) || [];
@@ -64,7 +62,7 @@ function extractParams(url: string, pattern: RegExp, template: string): Record<s
       params[name.slice(1)] = match[index + 1]; // 去掉冒号
     });
   }
-  
+
   return params;
 }
 
@@ -76,7 +74,7 @@ export function findMockRoute(
   method: string
 ): { handler: MockHandler; params: Record<string, string> } | null {
   const normalizedMethod = method.toUpperCase();
-  
+
   for (const route of mockRoutes) {
     if (route.method === normalizedMethod && route.pattern.test(url)) {
       // 需要从原始模式获取参数名，这里简化处理
@@ -91,7 +89,7 @@ export function findMockRoute(
       return { handler: route.handler, params };
     }
   }
-  
+
   return null;
 }
 
@@ -100,20 +98,18 @@ export function findMockRoute(
  * 如果找到匹配的 mock 路由，返回 mock 数据
  * 否则返回 null，让真实请求继续
  */
-export async function mockInterceptor<T>(
-  options: RequestOptions
-): Promise<ApiResponse<T> | null> {
+export async function mockInterceptor<T>(options: RequestOptions): Promise<ApiResponse<T> | null> {
   if (!USE_MOCK) {
     console.debug('[Mock] Mock disabled');
     return null;
   }
-  
+
   const url = options.url;
   const method = options.method || 'GET';
-  
+
   console.log('[Mock] Checking route:', method, url);
   const match = findMockRoute(url, method);
-  
+
   if (match) {
     console.log('[Mock] 拦截请求:', method, url);
     try {
@@ -129,7 +125,7 @@ export async function mockInterceptor<T>(
       };
     }
   }
-  
+
   return null;
 }
 

@@ -27,10 +27,16 @@ export function useNewsDetail() {
     content = content.replace(/<img[^>]*>/gi, (match: string) => {
       // 如果已经有 style 属性
       if (match.indexOf('style="') > -1) {
-        return match.replace('style="', 'style="max-width:100%;height:auto;display:block;margin:10px auto;');
+        return match.replace(
+          'style="',
+          'style="max-width:100%;height:auto;display:block;margin:10px auto;'
+        );
       }
       // 如果没有 style 属性
-      return match.replace('<img', '<img style="max-width:100%;height:auto;display:block;margin:10px auto;"');
+      return match.replace(
+        '<img',
+        '<img style="max-width:100%;height:auto;display:block;margin:10px auto;"'
+      );
     });
 
     // 2. 给 table 添加 max-width: 100%
@@ -44,9 +50,15 @@ export function useNewsDetail() {
     // 3. 给 pre 添加样式防止溢出
     content = content.replace(/<pre[^>]*>/gi, (match: string) => {
       if (match.indexOf('style="') > -1) {
-        return match.replace('style="', 'style="max-width:100%;white-space:pre-wrap;word-break:break-all;');
+        return match.replace(
+          'style="',
+          'style="max-width:100%;white-space:pre-wrap;word-break:break-all;'
+        );
       }
-      return match.replace('<pre', '<pre style="max-width:100%;white-space:pre-wrap;word-break:break-all;"');
+      return match.replace(
+        '<pre',
+        '<pre style="max-width:100%;white-space:pre-wrap;word-break:break-all;"'
+      );
     });
 
     return content;

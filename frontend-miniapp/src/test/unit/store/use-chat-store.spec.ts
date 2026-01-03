@@ -42,8 +42,13 @@ describe('useChatStore (unit)', () => {
     const { createAISession } = require('@/api/modules/ai');
     const { useChatStore } = require('@/store/modules/use-chat-store');
 
-    (createAISession as jest.Mock).mockResolvedValue({ code: 200, data: { sessionId: 's1', welcomeMessage: 'hi' } });
-    mockSetStorageSync.mockImplementation(() => { throw new Error('persist fail'); });
+    (createAISession as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: { sessionId: 's1', welcomeMessage: 'hi' },
+    });
+    mockSetStorageSync.mockImplementation(() => {
+      throw new Error('persist fail');
+    });
 
     const store = useChatStore();
 
@@ -69,18 +74,20 @@ describe('useChatStore (unit)', () => {
 
     // mock streamAIChat to synchronously call callbacks
     let capturedPayload: any;
-    (streamAIChat as jest.Mock).mockImplementation((_sessionId: string, payload: any, callbacks: any) => {
-      capturedPayload = payload;
-      // Simulate receiving a text chunk
-      callbacks.onEvent && callbacks.onEvent('text_chunk');
-      callbacks.onMessage && callbacks.onMessage('hello');
-      // Simulate a new block JSON
-      callbacks.onEvent && callbacks.onEvent('new_block');
-      callbacks.onJSON && callbacks.onJSON({ type: 'card_dish', data: [{ id: 'd1' }] });
-      // Complete
-      callbacks.onComplete && callbacks.onComplete();
-      return { close: jest.fn() };
-    });
+    (streamAIChat as jest.Mock).mockImplementation(
+      (_sessionId: string, payload: any, callbacks: any) => {
+        capturedPayload = payload;
+        // Simulate receiving a text chunk
+        callbacks.onEvent && callbacks.onEvent('text_chunk');
+        callbacks.onMessage && callbacks.onMessage('hello');
+        // Simulate a new block JSON
+        callbacks.onEvent && callbacks.onEvent('new_block');
+        callbacks.onJSON && callbacks.onJSON({ type: 'card_dish', data: [{ id: 'd1' }] });
+        // Complete
+        callbacks.onComplete && callbacks.onComplete();
+        return { close: jest.fn() };
+      }
+    );
 
     const store = useChatStore();
     await store.initSession('general_chat', true);
@@ -92,7 +99,7 @@ describe('useChatStore (unit)', () => {
     expect(capturedPayload.clientContext).toBeTruthy();
     expect(typeof capturedPayload.clientContext.localTime).toBe('string');
     expect(capturedPayload.clientContext.localTime).toMatch(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{2}:\d{2}$/,
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{2}:\d{2}$/
     );
     expect(typeof capturedPayload.clientContext.tzOffsetMinutes).toBe('number');
 
@@ -118,12 +125,14 @@ describe('useChatStore (unit)', () => {
 
     (createAISession as jest.Mock).mockResolvedValue({ code: 200, data: { sessionId: 's-err' } });
 
-    (streamAIChat as jest.Mock).mockImplementation((_sessionId: string, _payload: any, callbacks: any) => {
-      callbacks.onEvent && callbacks.onEvent('text_chunk');
-      callbacks.onMessage && callbacks.onMessage('partial');
-      callbacks.onError && callbacks.onError(new Error('urgent fail'));
-      return { close: jest.fn() };
-    });
+    (streamAIChat as jest.Mock).mockImplementation(
+      (_sessionId: string, _payload: any, callbacks: any) => {
+        callbacks.onEvent && callbacks.onEvent('text_chunk');
+        callbacks.onMessage && callbacks.onMessage('partial');
+        callbacks.onError && callbacks.onError(new Error('urgent fail'));
+        return { close: jest.fn() };
+      }
+    );
 
     const store = useChatStore();
     await store.initSession('general_chat', true);
@@ -146,10 +155,12 @@ describe('useChatStore (unit)', () => {
     (createAISession as jest.Mock).mockResolvedValue({ code: 200, data: { sessionId: 's-abt' } });
 
     const closeFn = jest.fn();
-    (streamAIChat as jest.Mock).mockImplementation((_sessionId: string, _payload: any, callbacks: any) => {
-      // leave stream running
-      return { close: closeFn };
-    });
+    (streamAIChat as jest.Mock).mockImplementation(
+      (_sessionId: string, _payload: any, callbacks: any) => {
+        // leave stream running
+        return { close: closeFn };
+      }
+    );
 
     const store = useChatStore();
     await store.initSession('general_chat', true);

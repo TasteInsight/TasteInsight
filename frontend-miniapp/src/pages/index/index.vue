@@ -2,14 +2,14 @@
   <view class="min-h-screen bg-white rounded-lg overflow-hidden flex flex-col">
     <!-- 骨架屏 -->
     <IndexSkeleton v-if="isInitialLoading" />
-    
+
     <!-- 主内容区 -->
     <view v-else class="flex-1 overflow-y-auto px-4 hide-scrollbar">
       <!-- 搜索栏 -->
       <SearchBar />
 
       <!-- 菜品图片轮播 -->
-      <view v-if="dishImages.length>0" class="mb-4">
+      <view v-if="dishImages.length > 0" class="mb-4">
         <swiper
           class="dish-image-swiper"
           :indicator-dots="dishImages.length > 1"
@@ -19,7 +19,11 @@
           indicator-color="rgba(255, 255, 255, 0.5)"
           indicator-active-color="#8B5CF6"
         >
-          <swiper-item v-for="(image, index) in dishImages" :key="index" class="relative overflow-hidden rounded-lg">
+          <swiper-item
+            v-for="(image, index) in dishImages"
+            :key="index"
+            class="relative overflow-hidden rounded-lg"
+          >
             <image
               :src="image"
               class="w-full h-48 object-cover"
@@ -31,10 +35,14 @@
           </swiper-item>
         </swiper>
       </view>
-      
+
       <!-- 食堂栏目 -->
-      <view v-if="canteenStore.loading" class="text-center py-4 text-gray-500">正在加载食堂...</view>
-      <view v-else-if="canteenStore.error" class="text-center py-4 text-red-500">{{ canteenStore.error }}</view>
+      <view v-if="canteenStore.loading" class="text-center py-4 text-gray-500"
+        >正在加载食堂...</view
+      >
+      <view v-else-if="canteenStore.error" class="text-center py-4 text-red-500">{{
+        canteenStore.error
+      }}</view>
       <view v-else>
         <swiper class="h-32" :current="currentSwiperIndex" @change="handleSwiperChange">
           <swiper-item v-for="(chunk, index) in canteenChunks" :key="index">
@@ -45,7 +53,12 @@
                 :canteen="canteen"
                 @click="navigateTo(`/pages/canteen/index?id=${canteen.id}`)"
               />
-              <view v-if="chunk.length < 3" v-for="i in (3 - chunk.length)" :key="'placeholder-'+i" class="w-24"></view>
+              <view
+                v-if="chunk.length < 3"
+                v-for="i in 3 - chunk.length"
+                :key="'placeholder-' + i"
+                class="w-24"
+              ></view>
             </view>
           </swiper-item>
         </swiper>
@@ -72,7 +85,7 @@
         </view>
         <view class="text-black text-sm">{{ recommendError }}</view>
         <view class="mt-3">
-          <button 
+          <button
             class="px-4 py-2 bg-ts-purple/10 text-ts-purple border border-ts-purple/30 rounded-full text-sm active:bg-ts-purple/20 transition-colors"
             @click="retryLoadRecommend"
           >
@@ -80,7 +93,11 @@
           </button>
         </view>
       </view>
-      <view v-else-if="dishesStore.error && hasActiveFilters" class="text-center py-4 text-red-500">{{ dishesStore.error }}</view>
+      <view
+        v-else-if="dishesStore.error && hasActiveFilters"
+        class="text-center py-4 text-red-500"
+        >{{ dishesStore.error }}</view
+      >
       <view v-else-if="topThreeDishes.length > 0">
         <RecommendItem
           v-for="dish in topThreeDishes"
@@ -91,9 +108,14 @@
       </view>
 
       <!-- 上拉加载更多：底部提示/动画（仅在有列表或正在加载更多时显示） -->
-      <view v-if="topThreeDishes.length > 0 || dishesStore.loadingMore" class="flex items-center justify-center py-4 text-gray-500 text-sm">
+      <view
+        v-if="topThreeDishes.length > 0 || dishesStore.loadingMore"
+        class="flex items-center justify-center py-4 text-gray-500 text-sm"
+      >
         <template v-if="dishesStore.loadingMore">
-          <view class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"></view>
+          <view
+            class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"
+          ></view>
           <text>加载中...</text>
         </template>
         <template v-else-if="dishesHasMore">
@@ -108,8 +130,6 @@
         {{ hasActiveFilters ? '没有符合条件的菜品' : '今天好像没有推荐菜品哦' }}
       </view>
     </view>
-
-    
   </view>
 </template>
 
@@ -131,9 +151,10 @@ import { useUserStore } from '@/store/modules/use-user-store';
 import type { GetDishesRequest } from '@/types/api';
 import { getDishesImages } from '@/api/modules/dish';
 
-
 // --- 底部导航数据 (保持不变) ---
-const navItems = [ /* ... */ ];
+const navItems = [
+  /* ... */
+];
 
 // --- Store 实例化 (核心修改点) ---
 // 2. 直接获取 store 实例
@@ -207,9 +228,12 @@ const currentSwiperIndex = ref(0);
 const handleSwiperChange = async (e: any) => {
   const newIndex = e.detail.current;
   currentSwiperIndex.value = newIndex;
-  
+
   // 当滑动到最后一个 swiper-item 时，加载更多食堂
-  if (newIndex === canteenChunks.value.length - 1 && canteenStore.pagination.page < canteenStore.pagination.totalPages) {
+  if (
+    newIndex === canteenChunks.value.length - 1 &&
+    canteenStore.pagination.page < canteenStore.pagination.totalPages
+  ) {
     try {
       await canteenStore.loadMoreCanteenList();
     } catch (error) {
@@ -237,7 +261,7 @@ const fetchDishImages = async () => {
  */
 function buildDishSortFromUserSettings(): GetDishesRequest['sort'] {
   const userInfo = userStore.userInfo;
-  
+
   // 默认排序
   let sort: GetDishesRequest['sort'] = {
     field: 'averageRating',
@@ -272,7 +296,7 @@ function buildDishSortFromUserSettings(): GetDishesRequest['sort'] {
 // 处理筛选变化
 const handleFilterChange = (filter: GetDishesRequest['filter']) => {
   currentFilter.value = filter;
-  
+
   currentDishQueryBase.value = {
     sort: buildDishSortFromUserSettings(),
     filter: { ...filter },
@@ -305,7 +329,9 @@ const retryLoadRecommend = async () => {
 };
 
 // --- 页面导航逻辑 (保持不变) ---
-function handleTabSwitch(item: { path: string }) { /* ... */ }
+function handleTabSwitch(item: { path: string }) {
+  /* ... */
+}
 function navigateTo(path: string) {
   if (!path) return;
   uni.navigateTo({ url: path });
@@ -322,7 +348,7 @@ onMounted(async () => {
 
     // 先获取用户信息
     await userStore.fetchProfileAction();
-    
+
     // 获取今日推荐菜品，使用后端推荐逻辑
     try {
       currentDishQueryBase.value = {
@@ -351,19 +377,16 @@ onMounted(async () => {
 
 // 监听用户信息变化，当偏好设置或显示设置更新时刷新菜品列表
 watch(
-  [
-    () => userStore.userInfo?.preferences,
-    () => userStore.userInfo?.settings
-  ],
+  [() => userStore.userInfo?.preferences, () => userStore.userInfo?.settings],
   async ([newPreferences, newSettings], [oldPreferences, oldSettings]) => {
     // 检查偏好设置是否发生变化
     const preferencesChanged = JSON.stringify(newPreferences) !== JSON.stringify(oldPreferences);
     // 检查显示设置是否发生变化
     const settingsChanged = JSON.stringify(newSettings) !== JSON.stringify(oldSettings);
-    
+
     if (preferencesChanged || settingsChanged) {
       console.log('用户偏好设置或显示设置已更新，刷新今日推荐菜品');
-      
+
       try {
         currentDishQueryBase.value = {
           sort: buildDishSortFromUserSettings(),
@@ -394,13 +417,13 @@ onPullDownRefresh(async () => {
   try {
     // 重新获取菜品图片
     await fetchDishImages();
-    
+
     // 重新获取用户信息
     await userStore.fetchProfileAction();
-    
+
     // 重新获取食堂列表
     await canteenStore.fetchCanteenList({ page: 1, pageSize: 10 });
-    
+
     // 重新获取菜品列表（使用后端推荐 + 当前的筛选条件）
     try {
       // 保持现有行为：下拉刷新使用 pageSize=20 + 当前筛选条件
@@ -421,22 +444,22 @@ onPullDownRefresh(async () => {
       }
       console.error('下拉刷新菜品失败:', error);
     }
-    
+
     // 刷新完成后停止下拉刷新动画
     uni.stopPullDownRefresh();
-    
+
     // 显示刷新成功提示
     uni.showToast({
       title: '刷新成功',
       icon: 'success',
-      duration: 1500
+      duration: 1500,
     });
   } catch (error) {
     console.error('下拉刷新失败:', error);
     uni.stopPullDownRefresh();
     uni.showToast({
       title: '刷新失败',
-      icon: 'none'
+      icon: 'none',
     });
   }
 });
@@ -462,11 +485,15 @@ onReachBottom(async () => {
 });
 </script>
 
-
 <style scoped>
 /* 仅保留在小程序与浏览器中隐藏滚动条的必要样式 */
-.hide-scrollbar::-webkit-scrollbar { display: none; }
-.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 
 /* 菜品图片轮播样式 */
 .dish-image-swiper {
@@ -483,10 +510,17 @@ onReachBottom(async () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #9CA3AF; /* text-gray-400 */
+  color: #9ca3af; /* text-gray-400 */
   cursor: pointer;
 }
-.nav-item.active { color: #6B21A8; } /* text-purple-600 */
-.nav-icon { font-size: 1.25rem; margin-bottom: 0.25rem; } /* text-xl mb-1 */
-.nav-text { font-size: 0.6875rem; } /* text-xs */
+.nav-item.active {
+  color: #6b21a8;
+} /* text-purple-600 */
+.nav-icon {
+  font-size: 1.25rem;
+  margin-bottom: 0.25rem;
+} /* text-xl mb-1 */
+.nav-text {
+  font-size: 0.6875rem;
+} /* text-xs */
 </style>

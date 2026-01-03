@@ -9,7 +9,7 @@ export const development: EnvConfig = {
 
 export const production: EnvConfig = {
   // 生产环境
-  baseUrl: 'https://prod.api.your-app.com/api/v1', 
+  baseUrl: 'https://www.zens.top/api/v1',
 };
 
 export const mock: EnvConfig = {

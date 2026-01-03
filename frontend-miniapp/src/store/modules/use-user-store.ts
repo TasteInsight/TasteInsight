@@ -6,11 +6,11 @@ import type { User, UserProfileUpdateRequest } from '@/types/api';
 export const useUserStore = defineStore('user', () => {
   const token = ref<string | null>(uni.getStorageSync('token') || null);
   const refreshToken = ref<string | null>(uni.getStorageSync('refreshToken') || null);
-  
+
   const initialUserInfo = (() => {
     const info = uni.getStorageSync('userInfo');
     try {
-      return info ? JSON.parse(info) as User : null;
+      return info ? (JSON.parse(info) as User) : null;
     } catch {
       return null;
     }
@@ -19,17 +19,16 @@ export const useUserStore = defineStore('user', () => {
 
   // ==================== Getters ====================
 
-  
   /**
    * 是否已登录
    */
   const isLoggedIn = computed(() => !!token.value);
-  
+
   /**
    * 用户头像，带默认值
    */
   const avatar = computed(() => userInfo.value?.avatar || '/static/images/default-avatar.png');
-  
+
   /**
    * 用户昵称，带默认值
    */
@@ -108,7 +107,7 @@ export const useUserStore = defineStore('user', () => {
       }
     } catch (error) {
       logoutAction(); // 直接调用函数
-      throw error; 
+      throw error;
     }
   }
 
@@ -123,22 +122,23 @@ export const useUserStore = defineStore('user', () => {
     uni.removeStorageSync('refreshToken');
     uni.removeStorageSync('userInfo');
   }
-    
+
   /**
    * 从服务器刷新最新的用户信息
    */
   async function fetchProfileAction(): Promise<void> {
-    if (!isLoggedIn.value) { // 直接使用 computed getter
+    if (!isLoggedIn.value) {
+      // 直接使用 computed getter
       console.warn('用户未登录，无法获取用户信息');
       return;
     }
-    
+
     try {
       const response = await getUserProfile();
       if (response.code !== 200 || !response.data) {
         throw new Error(response.message || '获取用户信息失败');
       }
-      
+
       const user = response.data;
       userInfo.value = user;
       uni.setStorageSync('userInfo', JSON.stringify(user));
@@ -151,7 +151,7 @@ export const useUserStore = defineStore('user', () => {
       throw error;
     }
   }
-    
+
   /**
    * 更新本地用户信息（不调用接口）
    */

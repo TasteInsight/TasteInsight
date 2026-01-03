@@ -49,7 +49,7 @@ export function useReview() {
       if (response.code === 200 && response.data) {
         ratingSummary.value = response.data.rating || ratingSummary.value;
         const newReviews = response.data.items || [];
-        
+
         if (refresh) {
           reviews.value = newReviews;
         } else {
@@ -121,7 +121,7 @@ export function useReview() {
     reviewsHasMore,
     fetchReviews,
     submitReview,
-    removeReview
+    removeReview,
   };
 }
 
@@ -153,8 +153,8 @@ export function useReviewForm() {
     Object.values(flavorRatings.value).some(value => value > 0)
   );
 
-  const flavorSelectionComplete = computed(() =>
-    !hasFlavorSelection.value || Object.values(flavorRatings.value).every(value => value > 0)
+  const flavorSelectionComplete = computed(
+    () => !hasFlavorSelection.value || Object.values(flavorRatings.value).every(value => value > 0)
   );
 
   const ratingText = computed(() => {
@@ -189,7 +189,7 @@ export function useReviewForm() {
   };
 
   // 当主评分清空时重置口味评分
-  watch(rating, (value) => {
+  watch(rating, value => {
     if (value === 0) {
       resetFlavorRatings();
     }
@@ -222,12 +222,14 @@ export function useReviewForm() {
           rating.value = state.rating || 0;
           content.value = state.content || '';
           images.value = state.images || [];
-          flavorRatings.value = state.flavorRatings ? { ...state.flavorRatings } : {
-            spicyLevel: 0,
-            sweetness: 0,
-            saltiness: 0,
-            oiliness: 0,
-          };
+          flavorRatings.value = state.flavorRatings
+            ? { ...state.flavorRatings }
+            : {
+                spicyLevel: 0,
+                sweetness: 0,
+                saltiness: 0,
+                oiliness: 0,
+              };
           return true;
         }
       }
@@ -267,7 +269,7 @@ export function useReviewForm() {
       uni.showToast({ title: '最多只能上传3张图片', icon: 'none' });
       return;
     }
-    
+
     isUploading.value = true;
     try {
       const uploadPromises = tempFilePaths.map(path => uploadImage(path));
@@ -383,6 +385,6 @@ export function useReviewForm() {
     hasSavedReviewState,
     handleSubmit,
     uploadImages,
-    removeImage
+    removeImage,
   };
 }

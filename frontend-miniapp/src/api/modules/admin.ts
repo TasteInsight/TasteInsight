@@ -18,7 +18,6 @@ import type {
   News,
   NewsCreateRequest,
   NewsUpdateRequest,
-
   Canteen,
   Window,
   CanteenListData,
@@ -151,10 +150,7 @@ export const adminApproveReview = (reviewId: string): Promise<ApiResponse<null>>
 /**
  * 拒绝评价审核
  */
-export const adminRejectReview = (
-  reviewId: string,
-  reason: string
-): Promise<ApiResponse<null>> => {
+export const adminRejectReview = (reviewId: string, reason: string): Promise<ApiResponse<null>> => {
   return request<null>({
     url: `/admin/reviews/${reviewId}/reject`,
     method: 'POST',
@@ -253,10 +249,7 @@ export const adminApproveUpload = (uploadId: string): Promise<ApiResponse<null>>
 /**
  * 拒绝用户上传菜品审核
  */
-export const adminRejectUpload = (
-  uploadId: string,
-  reason: string
-): Promise<ApiResponse<null>> => {
+export const adminRejectUpload = (uploadId: string, reason: string): Promise<ApiResponse<null>> => {
   return request<null>({
     url: `/admin/dishes/uploads/${uploadId}/reject`,
     method: 'POST',
@@ -391,15 +384,16 @@ export const adminDeleteNews = (newsId: string): Promise<ApiResponse<null>> => {
   });
 };
 
-
 /**
  * 管理端获取食堂列表
  */
-export function adminGetCanteenList(params?: PaginationParams): Promise<ApiResponse<CanteenListData>> {
+export function adminGetCanteenList(
+  params?: PaginationParams
+): Promise<ApiResponse<CanteenListData>> {
   return request({
     url: '/admin/canteens',
     method: 'GET',
-    data:params,
+    data: params,
   });
 }
 
@@ -413,7 +407,7 @@ export function adminGetWindowList(
   return request({
     url: `/admin/canteens/${canteenId}/windows`,
     method: 'GET',
-    data:params,
+    data: params,
   });
 }
 
@@ -431,7 +425,10 @@ export function createCanteen(data: CanteenCreateRequest): Promise<ApiResponse<C
 /**
  * 编辑食堂
  */
-export function updateCanteen(id: string, data: CanteenUpdateRequest): Promise<ApiResponse<Canteen>> {
+export function updateCanteen(
+  id: string,
+  data: CanteenUpdateRequest
+): Promise<ApiResponse<Canteen>> {
   return request({
     url: `/admin/canteens/${id}`,
     method: 'PUT',

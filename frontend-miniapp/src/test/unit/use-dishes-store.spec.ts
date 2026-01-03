@@ -13,7 +13,13 @@ jest.mock('@/api/modules/dish', () => ({
 }));
 
 import { useDishesStore } from '@/store/modules/use-dishes-store';
-import { getDishes, getDishById, favoriteDish, unfavoriteDish, uploadDish } from '@/api/modules/dish';
+import {
+  getDishes,
+  getDishById,
+  favoriteDish,
+  unfavoriteDish,
+  uploadDish,
+} from '@/api/modules/dish';
 
 describe('useDishesStore actions', () => {
   beforeEach(() => {
@@ -22,7 +28,10 @@ describe('useDishesStore actions', () => {
   });
 
   test('fetchDishes sets dishes and pagination on success', async () => {
-    (getDishes as jest.Mock).mockResolvedValue({ code: 200, data: { items: [{ id: 'd1' }], meta: { totalPages: 2 } } });
+    (getDishes as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: { items: [{ id: 'd1' }], meta: { totalPages: 2 } },
+    });
     const store = useDishesStore();
     await store.fetchDishes({ page: 1 } as any);
     expect(store.dishes.length).toBe(1);
@@ -31,7 +40,10 @@ describe('useDishesStore actions', () => {
   });
 
   test('fetchDishes append merges items', async () => {
-    (getDishes as jest.Mock).mockResolvedValue({ code: 200, data: { items: [{ id: 'd2' }], meta: { totalPages: 2 } } });
+    (getDishes as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: { items: [{ id: 'd2' }], meta: { totalPages: 2 } },
+    });
     const store = useDishesStore();
     store.dishes = [{ id: 'd1' } as any];
     await store.fetchDishes({ page: 2 } as any, { append: true });

@@ -22,7 +22,8 @@ describe('usePersonal', () => {
       updateLocalUserInfo: jest.fn() as unknown as jest.Mock<any, any>,
     };
     (mockStoreReturn.fetchProfileAction as jest.Mock).mockResolvedValue(undefined);
-    (mockStoreReturn.updateLocalUserInfo as jest.Mock).mockResolvedValue && (mockStoreReturn.updateLocalUserInfo as jest.Mock).mockResolvedValue(undefined);
+    (mockStoreReturn.updateLocalUserInfo as jest.Mock).mockResolvedValue &&
+      (mockStoreReturn.updateLocalUserInfo as jest.Mock).mockResolvedValue(undefined);
     mockedUseUserStore.mockReturnValue(mockStoreReturn as any);
     // basic uni mocks
     (global as any).uni = (global as any).uni || {};
@@ -37,7 +38,7 @@ describe('usePersonal', () => {
 
   test('chooseAvatar uploads in test env and updates form on success', async () => {
     mockedUpload.mockResolvedValueOnce({ url: 'http://avatar' } as any);
-    (global as any).uni.chooseImage = jest.fn((opts) => {
+    (global as any).uni.chooseImage = jest.fn(opts => {
       opts.success({ tempFilePaths: ['tmp.jpg'] });
     });
 
@@ -51,7 +52,7 @@ describe('usePersonal', () => {
 
   test('chooseAvatar shows toast on upload failure and rejects', async () => {
     mockedUpload.mockRejectedValueOnce(new Error('upfail'));
-    (global as any).uni.chooseImage = jest.fn((opts) => {
+    (global as any).uni.chooseImage = jest.fn(opts => {
       opts.success({ tempFilePaths: ['tmp.jpg'] });
     });
 
@@ -72,7 +73,8 @@ describe('usePersonal', () => {
     mockedUpdate.mockResolvedValueOnce({ code: 200, data: { nickname: 'n', avatar: 'a' } } as any);
     const mockStore = mockedUseUserStore();
     mockStore.updateLocalUserInfo = jest.fn() as unknown as jest.Mock<any, any>;
-    (mockStore.updateLocalUserInfo as jest.Mock).mockResolvedValue && (mockStore.updateLocalUserInfo as jest.Mock).mockResolvedValue(undefined);
+    (mockStore.updateLocalUserInfo as jest.Mock).mockResolvedValue &&
+      (mockStore.updateLocalUserInfo as jest.Mock).mockResolvedValue(undefined);
 
     const comp = usePersonal();
     comp.form.nickname = 'n';
@@ -81,7 +83,10 @@ describe('usePersonal', () => {
     const res = await comp.handleSave();
     expect(res).toBe(true);
     expect(mockStore.updateLocalUserInfo).toHaveBeenCalled();
-    expect((global as any).uni.showToast).toHaveBeenCalledWith({ title: '保存成功', icon: 'success' });
+    expect((global as any).uni.showToast).toHaveBeenCalledWith({
+      title: '保存成功',
+      icon: 'success',
+    });
   });
 
   test('handleSave failure shows toast and returns false', async () => {
@@ -106,8 +111,12 @@ describe('usePersonal', () => {
     (global as any).uni.navigateTo = jest.fn((opts: any) => {
       const handlers: Record<string, Function> = {};
       const eventChannel = {
-        on: (name: string, fn: Function) => { handlers[name] = fn; },
-        emit: (name: string, data: any) => { if (handlers[name]) handlers[name](data); },
+        on: (name: string, fn: Function) => {
+          handlers[name] = fn;
+        },
+        emit: (name: string, data: any) => {
+          if (handlers[name]) handlers[name](data);
+        },
       } as any;
       capturedChannel = eventChannel;
       opts.success({ eventChannel });
@@ -143,16 +152,18 @@ describe('usePersonal', () => {
     mockStore.fetchProfileAction = jest.fn() as unknown as jest.Mock<any, any>;
     (mockStore.fetchProfileAction as jest.Mock).mockRejectedValue(new Error('fetchfail'));
 
-    const wrapper = mount(defineComponent({
-      setup() {
-        const comp = usePersonal();
-        return { comp };
-      },
-      template: '<div />',
-    }));
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          const comp = usePersonal();
+          return { comp };
+        },
+        template: '<div />',
+      })
+    );
 
     // allow onMounted async to run
-    await new Promise((r) => setTimeout(r, 0));
+    await new Promise(r => setTimeout(r, 0));
 
     expect(mockStore.fetchProfileAction).toHaveBeenCalled();
     expect(wrapper.vm.comp.loading.value).toBe(false);

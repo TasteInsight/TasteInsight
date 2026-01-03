@@ -34,7 +34,9 @@ describe('useMenuPlanning', () => {
       historyPlans: [],
       selectedPlan: null,
       fetchPlans: jest.fn(),
-      setSelectedPlan: jest.fn((plan) => { mockStore.selectedPlan = plan; }),
+      setSelectedPlan: jest.fn(plan => {
+        mockStore.selectedPlan = plan;
+      }),
       removePlan: jest.fn(),
       createPlan: jest.fn(),
       updatePlan: jest.fn(),
@@ -45,7 +47,7 @@ describe('useMenuPlanning', () => {
 
   it('should initialize correctly', async () => {
     const { showCreateDialog, activeTab } = useMenuPlanning();
-    
+
     expect(showCreateDialog.value).toBe(false);
     expect(activeTab.value).toBe('current');
     expect(mockStore.fetchPlans).toHaveBeenCalled();
@@ -73,7 +75,7 @@ describe('useMenuPlanning', () => {
 
   it('should handle deletePlan', async () => {
     const { deletePlan } = useMenuPlanning();
-    
+
     // Mock uni.showModal
     (global as any).uni.showModal.mockImplementation((options: any) => {
       options.success({ confirm: true });
@@ -106,18 +108,18 @@ describe('useMenuPlanning', () => {
   it('should handle submitEdit', async () => {
     const { submitEdit, showEditDialog } = useMenuPlanning();
     const planData = { name: 'Updated Plan' };
-    
+
     // Set selected plan in store
     mockStore.selectedPlan = { id: '123', name: 'Old Plan' };
 
     await submitEdit(planData as any);
-    
+
     expect(mockStore.updatePlan).toHaveBeenCalledWith('123', planData);
   });
 
   it('should switch tabs and display correct plans', async () => {
     const { activeTab, displayPlans } = useMenuPlanning();
-    
+
     mockStore.currentPlans = [{ id: '1' }];
     mockStore.historyPlans = [{ id: '2' }];
 
@@ -126,7 +128,7 @@ describe('useMenuPlanning', () => {
 
     expect(activeTab.value).toBe('current');
     expect(displayPlans.value).toEqual([{ id: '1' }]);
-    
+
     activeTab.value = 'history';
     await nextTick();
     expect(displayPlans.value).toEqual([{ id: '2' }]);

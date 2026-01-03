@@ -126,12 +126,12 @@ describe('DishDetailPage', () => {
   });
 
   it('renders dish content when dish exists', () => {
-    const mockDish = { 
-      id: '1', 
-      name: '测试菜品', 
+    const mockDish = {
+      id: '1',
+      name: '测试菜品',
       images: ['image1.jpg'],
       averageRating: 4.5,
-      price: 15.0
+      price: 15.0,
     };
     mockUseDishDetail.loading.value = false;
     mockUseDishDetail.error.value = '';

@@ -7,7 +7,7 @@ export function useReport() {
   const isReportVisible = ref(false);
   const reportTargetId = ref('');
   const reportTargetType = ref<'review' | 'comment'>('review');
-  
+
   const openReportModal = (type: 'review' | 'comment', id: string) => {
     reportTargetId.value = id;
     reportTargetType.value = type;
@@ -38,6 +38,6 @@ export function useReport() {
     isReportVisible,
     openReportModal,
     closeReportModal,
-    submitReport
+    submitReport,
   };
 }

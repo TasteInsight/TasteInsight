@@ -2,10 +2,7 @@
   <view class="min-h-screen bg-black flex flex-col">
     <!-- 裁剪区域 -->
     <view class="flex-1 flex items-center justify-center px-6">
-      <view
-        class="relative"
-        :style="{ width: cropSizePx + 'px', height: cropSizePx + 'px' }"
-      >
+      <view class="relative" :style="{ width: cropSizePx + 'px', height: cropSizePx + 'px' }">
         <movable-area
           class="relative overflow-hidden"
           :style="{ width: cropSizePx + 'px', height: cropSizePx + 'px' }"
@@ -22,12 +19,7 @@
             class="absolute"
             :style="{ width: baseDisplayWidth + 'px', height: baseDisplayHeight + 'px' }"
           >
-            <image
-              :src="src"
-              mode="scaleToFill"
-              class="w-full h-full"
-              draggable="false"
-            />
+            <image :src="src" mode="scaleToFill" class="w-full h-full" draggable="false" />
           </movable-view>
         </movable-area>
 
@@ -38,7 +30,11 @@
             class="w-full h-full"
             :style="{
               background:
-                'radial-gradient(circle at center, transparent ' + (cropSizePx / 2) + 'px, rgba(0,0,0,0.55) ' + (cropSizePx / 2 + 1) + 'px)'
+                'radial-gradient(circle at center, transparent ' +
+                cropSizePx / 2 +
+                'px, rgba(0,0,0,0.55) ' +
+                (cropSizePx / 2 + 1) +
+                'px)',
             }"
           />
           <!-- 圆形边框 -->
@@ -58,10 +54,7 @@
       >
         取消
       </view>
-      <view
-        class="px-6 py-3 rounded-full bg-ts-purple text-white"
-        @click="handleConfirm"
-      >
+      <view class="px-6 py-3 rounded-full bg-ts-purple text-white" @click="handleConfirm">
         确定
       </view>
     </view>
@@ -71,7 +64,12 @@
       canvas-id="avatarCropCanvas"
       id="avatarCropCanvas"
       class="absolute"
-      :style="{ left: '-9999px', top: '-9999px', width: outputSizePx + 'px', height: outputSizePx + 'px' }"
+      :style="{
+        left: '-9999px',
+        top: '-9999px',
+        width: outputSizePx + 'px',
+        height: outputSizePx + 'px',
+      }"
     />
   </view>
 </template>
@@ -117,8 +115,8 @@ const latestMove = {
 let moveSyncPending = false;
 const scheduleFrame: (cb: () => void) => void =
   typeof requestAnimationFrame === 'function'
-    ? (cb) => requestAnimationFrame(cb)
-    : (cb) => setTimeout(cb, 16);
+    ? cb => requestAnimationFrame(cb)
+    : cb => setTimeout(cb, 16);
 
 let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -246,7 +244,8 @@ async function handleConfirm() {
     // 导出时使用最新一次事件里的参数，避免节流导致的“框选与导出不一致”
     const exportX = Number.isFinite(latestMove.x) ? latestMove.x : posX.value;
     const exportY = Number.isFinite(latestMove.y) ? latestMove.y : posY.value;
-    const exportScale = Number.isFinite(latestMove.scale) && latestMove.scale > 0 ? latestMove.scale : 1;
+    const exportScale =
+      Number.isFinite(latestMove.scale) && latestMove.scale > 0 ? latestMove.scale : 1;
 
     const displayScale = (baseDisplayWidth.value * exportScale) / originalWidth.value;
 
@@ -275,13 +274,13 @@ async function handleConfirm() {
         destHeight: outputSizePx,
         fileType: 'jpg',
         quality: 0.92,
-        success: (res) => {
+        success: res => {
           uni.hideLoading();
           const eventChannel = (getCurrentPages() as any).slice(-1)[0].getOpenerEventChannel?.();
           eventChannel?.emit('cropped', { tempFilePath: res.tempFilePath });
           uni.navigateBack();
         },
-        fail: (err) => {
+        fail: err => {
           console.error('canvasToTempFilePath fail', err);
           uni.hideLoading();
           uni.showToast({ title: '生成失败', icon: 'none' });

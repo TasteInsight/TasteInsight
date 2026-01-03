@@ -54,22 +54,24 @@ describe('request utils', () => {
 
   it('should add Authorization header if token exists', async () => {
     mockUserStore.token = 'test-token';
-    mockRequest.mockImplementation((opts) => {
+    mockRequest.mockImplementation(opts => {
       opts.success({ statusCode: 200, data: { code: 200, data: 'ok' } });
     });
 
     await request({ url: '/test' });
 
-    expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
-      header: expect.objectContaining({
-        Authorization: 'Bearer test-token',
-      }),
-    }));
+    expect(mockRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        header: expect.objectContaining({
+          Authorization: 'Bearer test-token',
+        }),
+      })
+    );
   });
 
   it('should resolve on success (200)', async () => {
     const responseData = { code: 200, data: 'success' };
-    mockRequest.mockImplementation((opts) => {
+    mockRequest.mockImplementation(opts => {
       opts.success({ statusCode: 200, data: responseData });
     });
 
@@ -79,7 +81,7 @@ describe('request utils', () => {
 
   it('should reject on business error (code != 200/201)', async () => {
     const responseData = { code: 400, message: 'Bad Request' };
-    mockRequest.mockImplementation((opts) => {
+    mockRequest.mockImplementation(opts => {
       opts.success({ statusCode: 200, data: responseData });
     });
 
@@ -87,7 +89,7 @@ describe('request utils', () => {
   });
 
   it('should reject on network failure', async () => {
-    mockRequest.mockImplementation((opts) => {
+    mockRequest.mockImplementation(opts => {
       opts.fail({ errMsg: 'Network Error' });
     });
 
@@ -99,27 +101,28 @@ describe('request utils', () => {
     mockUserStore.refreshToken = 'valid-refresh-token';
 
     // 1. First request fails with 401
-    mockRequest.mockImplementationOnce((opts) => {
-      opts.success({ statusCode: 401, data: { code: 401 } });
-    })
-    // 2. Refresh request succeeds
-    .mockImplementationOnce((opts) => {
-      if (opts.url.includes('/auth/refresh')) {
-        opts.success({
-          statusCode: 200,
-          data: {
-            code: 200,
-            data: { token: { accessToken: 'new-token', refreshToken: 'new-refresh-token' } }
-          }
-        });
-      } else {
-        opts.fail({ errMsg: 'Unexpected request' });
-      }
-    })
-    // 3. Retry request succeeds
-    .mockImplementationOnce((opts) => {
-       opts.success({ statusCode: 200, data: { code: 200, data: 'retried success' } });
-    });
+    mockRequest
+      .mockImplementationOnce(opts => {
+        opts.success({ statusCode: 401, data: { code: 401 } });
+      })
+      // 2. Refresh request succeeds
+      .mockImplementationOnce(opts => {
+        if (opts.url.includes('/auth/refresh')) {
+          opts.success({
+            statusCode: 200,
+            data: {
+              code: 200,
+              data: { token: { accessToken: 'new-token', refreshToken: 'new-refresh-token' } },
+            },
+          });
+        } else {
+          opts.fail({ errMsg: 'Unexpected request' });
+        }
+      })
+      // 3. Retry request succeeds
+      .mockImplementationOnce(opts => {
+        opts.success({ statusCode: 200, data: { code: 200, data: 'retried success' } });
+      });
 
     const result = await request({ url: '/test' });
 
@@ -132,7 +135,7 @@ describe('request utils', () => {
     mockUserStore.token = 'expired-token';
     mockUserStore.refreshToken = null; // No refresh token
 
-    mockRequest.mockImplementation((opts) => {
+    mockRequest.mockImplementation(opts => {
       opts.success({ statusCode: 401, data: { code: 401 } });
     });
 
@@ -146,15 +149,15 @@ describe('request utils', () => {
     mockUserStore.refreshToken = 'invalid-refresh-token';
 
     // First request fails with 401
-    mockRequest.mockImplementationOnce((opts) => {
-       opts.success({ statusCode: 401, data: { code: 401 } });
+    mockRequest.mockImplementationOnce(opts => {
+      opts.success({ statusCode: 401, data: { code: 401 } });
     });
-    
+
     // Refresh request fails
-    mockRequest.mockImplementationOnce((opts) => {
-       if (opts.url.includes('/auth/refresh')) {
-         opts.success({ statusCode: 401, data: { code: 401 } });
-       }
+    mockRequest.mockImplementationOnce(opts => {
+      if (opts.url.includes('/auth/refresh')) {
+        opts.success({ statusCode: 401, data: { code: 401 } });
+      }
     });
 
     await expect(request({ url: '/test' })).rejects.toThrow('登录已过期，请重新登录');
@@ -164,7 +167,7 @@ describe('request utils', () => {
   });
 
   it('should handle other HTTP errors (e.g., 500)', async () => {
-    mockRequest.mockImplementation((opts) => {
+    mockRequest.mockImplementation(opts => {
       opts.success({ statusCode: 500, data: { message: 'Server Error' } });
     });
 

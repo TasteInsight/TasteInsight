@@ -41,10 +41,12 @@ describe('useRecommendDishes', () => {
 
     expect(loading.value).toBe(false);
     expect(dishes.value).toEqual(mockDishes);
-    expect(getDishes).toHaveBeenCalledWith(expect.objectContaining({
-      isSuggestion: true,
-      sort: { field: 'averageRating', order: 'desc' },
-    }));
+    expect(getDishes).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isSuggestion: true,
+        sort: { field: 'averageRating', order: 'desc' },
+      })
+    );
   });
 
   it('should handle fetch error', async () => {

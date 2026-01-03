@@ -15,14 +15,14 @@ export const SORT_VALUES = ['rating', 'popularity', 'newest', 'price_low', 'pric
 
 export function useDisplay() {
   const userStore = useUserStore();
-  
+
   const saving = ref(false);
   const loading = ref(true);
-  
+
   const form = reactive<DisplayForm>({
     showCalories: true,
     showNutrition: true,
-    sortByIndex: 0
+    sortByIndex: 0,
   });
 
   /**
@@ -75,8 +75,8 @@ export function useDisplay() {
         displaySettings: {
           showCalories: form.showCalories,
           showNutrition: form.showNutrition,
-          sortBy: SORT_VALUES[form.sortByIndex] as any
-        }
+          sortBy: SORT_VALUES[form.sortByIndex] as any,
+        },
       };
 
       const payload: UserProfileUpdateRequest = { settings };
@@ -87,23 +87,23 @@ export function useDisplay() {
       }
 
       userStore.updateLocalUserInfo(response.data);
-      
+
       uni.showToast({
         title: '保存成功',
-        icon: 'success'
+        icon: 'success',
       });
-      
+
       setTimeout(() => {
         uni.navigateBack();
       }, 1000);
-      
+
       return true;
     } catch (error) {
       console.error('保存失败:', error);
       const message = error instanceof Error ? error.message : '保存失败';
       uni.showToast({
         title: message,
-        icon: 'none'
+        icon: 'none',
       });
       return false;
     } finally {
@@ -121,14 +121,14 @@ export function useDisplay() {
     form,
     saving,
     loading,
-    
+
     // 常量
     sortOptions: SORT_OPTIONS,
-    
+
     // 方法
     onShowCaloriesChange,
     onShowNutritionChange,
     onSortChange,
-    handleSave
+    handleSave,
   };
 }

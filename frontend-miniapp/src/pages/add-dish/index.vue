@@ -11,12 +11,10 @@
       <!-- 基本信息 -->
       <div class="bg-white px-4 py-4">
         <div class="text-sm font-semibold text-gray-700 mb-3">基本信息</div>
-        
+
         <!-- 菜品名称 -->
         <div class="mb-4">
-          <div class="text-sm text-gray-600 mb-1">
-            菜品名称 <span class="text-red-500">*</span>
-          </div>
+          <div class="text-sm text-gray-600 mb-1">菜品名称 <span class="text-red-500">*</span></div>
           <input
             v-model="formData.name"
             type="text"
@@ -27,9 +25,7 @@
 
         <!-- 价格 -->
         <div class="mb-4">
-          <div class="text-sm text-gray-600 mb-1">
-            价格 <span class="text-red-500">*</span>
-          </div>
+          <div class="text-sm text-gray-600 mb-1">价格 <span class="text-red-500">*</span></div>
           <div class="flex items-center gap-3">
             <div class="flex items-center flex-1">
               <span class="text-gray-500 mr-2">￥</span>
@@ -67,21 +63,21 @@
       <!-- 位置信息 -->
       <div class="bg-white px-4 py-4">
         <div class="text-sm font-semibold text-gray-700 mb-3">位置信息</div>
-        
+
         <!-- 选择食堂 -->
         <div class="mb-4">
-          <div class="text-sm text-gray-600 mb-2">
-            所在食堂 <span class="text-red-500">*</span>
-          </div>
+          <div class="text-sm text-gray-600 mb-2">所在食堂 <span class="text-red-500">*</span></div>
           <div v-if="loading" class="text-gray-400 text-sm">加载中...</div>
           <div v-else class="grid grid-cols-3 gap-2">
             <button
               v-for="canteen in canteenList"
               :key="canteen.id"
               class="w-full py-2 px-3 rounded-lg text-sm transition-colors text-left truncate"
-              :class="selectedCanteen?.id === canteen.id 
-                ? 'bg-blue-500 text-white' 
-                : 'bg-gray-100 text-gray-600'"
+              :class="
+                selectedCanteen?.id === canteen.id
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-600'
+              "
               @click="selectCanteen(canteen)"
             >
               {{ canteen.name }}
@@ -91,17 +87,17 @@
 
         <!-- 选择窗口 -->
         <div v-if="windowList.length > 0">
-          <div class="text-sm text-gray-600 mb-2">
-            所在窗口 <span class="text-red-500">*</span>
-          </div>
+          <div class="text-sm text-gray-600 mb-2">所在窗口 <span class="text-red-500">*</span></div>
           <div class="grid grid-cols-3 gap-2">
             <button
               v-for="window in windowList"
               :key="window.id"
               class="w-full py-2 px-3 rounded-lg text-sm transition-colors text-left truncate"
-              :class="formData.windowName === window.name 
-                ? 'bg-blue-500 text-white' 
-                : 'bg-gray-100 text-gray-600'"
+              :class="
+                formData.windowName === window.name
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-600'
+              "
               @click="selectWindow(window)"
             >
               {{ window.name }}
@@ -111,12 +107,10 @@
             </button>
           </div>
         </div>
-        
+
         <!-- 手动输入窗口（当没有窗口列表时） -->
         <div v-else-if="selectedCanteen">
-          <div class="text-sm text-gray-600 mb-1">
-            窗口名称 <span class="text-red-500">*</span>
-          </div>
+          <div class="text-sm text-gray-600 mb-1">窗口名称 <span class="text-red-500">*</span></div>
           <input
             v-model="formData.windowName"
             type="text"
@@ -143,9 +137,11 @@
             v-for="option in mealTimeOptions"
             :key="option.value"
             class="px-4 py-2 rounded-full text-sm transition-colors"
-            :class="formData.availableMealTime.includes(option.value as any) 
-              ? 'bg-green-500 text-white' 
-              : 'bg-gray-100 text-gray-600'"
+            :class="
+              formData.availableMealTime.includes(option.value as any)
+                ? 'bg-green-500 text-white'
+                : 'bg-gray-100 text-gray-600'
+            "
             @click="toggleMealTime(option.value as any)"
           >
             {{ option.label }}
@@ -158,22 +154,18 @@
         <div class="text-sm font-semibold text-gray-700 mb-3">菜品图片</div>
         <div class="flex flex-wrap gap-2">
           <!-- 已上传图片 -->
-          <div 
-            v-for="(image, index) in formData.images" 
-            :key="index"
-            class="relative w-20 h-20"
-          >
+          <div v-for="(image, index) in formData.images" :key="index" class="relative w-20 h-20">
             <image :src="image" class="w-full h-full rounded-lg object-cover" mode="aspectFill" />
-            <button 
+            <button
               class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center"
               @click="removeImage(index)"
             >
               ×
             </button>
           </div>
-          
+
           <!-- 添加按钮 -->
-          <button 
+          <button
             v-if="!formData.images || formData.images.length < 9"
             class="w-20 h-20 bg-gray-100 rounded-lg flex flex-col items-center justify-center text-gray-400"
             @click="chooseImages"
@@ -193,9 +185,11 @@
             v-for="tag in commonTags"
             :key="tag"
             class="w-full px-3 py-1.5 rounded-full text-sm transition-colors text-left truncate"
-            :class="formData.tags?.includes(tag) 
-              ? 'bg-blue-100 text-blue-600' 
-              : 'bg-gray-100 text-gray-600'"
+            :class="
+              formData.tags?.includes(tag)
+                ? 'bg-blue-100 text-blue-600'
+                : 'bg-gray-100 text-gray-600'
+            "
             @click="toggleTag(tag)"
           >
             {{ tag }}
@@ -209,10 +203,7 @@
             class="flex-1 h-10 px-3 bg-gray-50 rounded-lg text-sm border-none outline-none"
             @confirm="addCustomTag"
           />
-          <button
-            class="px-3 py-2 bg-blue-500 text-white rounded-lg text-sm"
-            @click="addCustomTag"
-          >
+          <button class="px-3 py-2 bg-blue-500 text-white rounded-lg text-sm" @click="addCustomTag">
             添加
           </button>
         </div>
@@ -237,9 +228,11 @@
             v-for="allergen in commonAllergens"
             :key="allergen"
             class="w-full px-3 py-1.5 rounded-full text-sm transition-colors text-left truncate"
-            :class="formData.allergens?.includes(allergen) 
-              ? 'bg-orange-100 text-orange-600' 
-              : 'bg-gray-100 text-gray-600'"
+            :class="
+              formData.allergens?.includes(allergen)
+                ? 'bg-orange-100 text-orange-600'
+                : 'bg-gray-100 text-gray-600'
+            "
             @click="toggleAllergen(allergen)"
           >
             {{ allergen }}
@@ -280,17 +273,17 @@
     >
       <button
         class="w-full h-12 rounded-lg text-white font-semibold transition-colors"
-        :class="isFormValid && !submitting 
-          ? 'bg-blue-500 active:bg-blue-600' 
-          : 'bg-gray-300 cursor-not-allowed'"
+        :class="
+          isFormValid && !submitting
+            ? 'bg-blue-500 active:bg-blue-600'
+            : 'bg-gray-300 cursor-not-allowed'
+        "
         :disabled="!isFormValid || submitting"
         @click="submitForm"
       >
         {{ submitting ? '提交中...' : '提交菜品' }}
       </button>
-      <div class="text-xs text-gray-400 text-center mt-2">
-        提交后将由管理员审核
-      </div>
+      <div class="text-xs text-gray-400 text-center mt-2">提交后将由管理员审核</div>
     </div>
   </div>
 </template>
@@ -332,12 +325,12 @@ const {
 // 获取URL参数中的关键词
 onMounted(() => {
   loadCanteenList();
-  
+
   // 获取传递的关键词参数作为默认菜品名
   const pages = getCurrentPages();
   const currentPage = pages[pages.length - 1];
   const options = (currentPage as any)?.options || {};
-  
+
   if (options.keyword) {
     formData.name = decodeURIComponent(options.keyword);
   }
@@ -345,7 +338,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
-input, textarea {
+input,
+textarea {
   border: none;
   outline: none;
 }

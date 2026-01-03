@@ -9,12 +9,12 @@ import type {
   Favorite,
   BrowseHistoryItem,
 } from '@/types/api';
-import { 
-  createMockUser, 
-  createMockReviews, 
-  createMockFavorites, 
+import {
+  createMockUser,
+  createMockReviews,
+  createMockFavorites,
   createMockHistory,
-  STORAGE_KEYS 
+  STORAGE_KEYS,
 } from '../data/user';
 
 // 模拟网络延迟
@@ -31,7 +31,7 @@ const getMockUserFromStorage = (): User => {
   } catch (e) {
     console.error('📱 [Mock] 读取存储失败:', e);
   }
-  
+
   const newUser = createMockUser();
   try {
     uni.setStorageSync(STORAGE_KEYS.USER, newUser);
@@ -39,7 +39,7 @@ const getMockUserFromStorage = (): User => {
   } catch (e) {
     console.error('📱 [Mock] 保存存储失败:', e);
   }
-  
+
   return newUser;
 };
 
@@ -57,13 +57,13 @@ const saveMockUserToStorage = (user: User): void => {
 export const mockWechatLogin = async (code: string): Promise<LoginData> => {
   console.log('🔐 [Mock] 微信登录，code:', code);
   await mockDelay();
-  
+
   const user = getMockUserFromStorage();
   const token = {
     accessToken: 'mock_access_token_' + Date.now(),
     refreshToken: 'mock_refresh_token_' + Date.now(),
   };
-  
+
   console.log('✅ [Mock] 登录成功');
   return { token, user };
 };
@@ -72,13 +72,13 @@ export const mockWechatLogin = async (code: string): Promise<LoginData> => {
 export const mockRefreshToken = async (): Promise<LoginData> => {
   console.log('🔄 [Mock] 刷新 Token');
   await mockDelay();
-  
+
   const user = getMockUserFromStorage();
   const token = {
     accessToken: 'mock_access_token_refreshed_' + Date.now(),
     refreshToken: 'mock_refresh_token_refreshed_' + Date.now(),
   };
-  
+
   console.log('✅ [Mock] Token 刷新成功');
   return { token, user };
 };
@@ -87,7 +87,7 @@ export const mockRefreshToken = async (): Promise<LoginData> => {
 export const mockGetUserProfile = async (): Promise<User> => {
   console.log('👤 [Mock] 获取用户信息');
   await mockDelay();
-  
+
   const user = getMockUserFromStorage();
   console.log('✅ [Mock] 用户信息:', user.nickname);
   return user;
@@ -97,44 +97,46 @@ export const mockGetUserProfile = async (): Promise<User> => {
 export const mockUpdateUserProfile = async (data: UserProfileUpdateRequest): Promise<User> => {
   console.log('✏️ [Mock] 更新用户信息:', data);
   await mockDelay();
-  
+
   const user = getMockUserFromStorage();
   const updatedUser: User = {
     ...user,
     ...(data.nickname && { nickname: data.nickname }),
     ...(data.avatar && { avatar: data.avatar }),
-    ...(data.preferences && { 
+    ...(data.preferences && {
       preferences: {
         ...user.preferences!,
         ...data.preferences,
-      }
+      },
     }),
     updatedAt: new Date().toISOString(),
   };
-  
+
   saveMockUserToStorage(updatedUser);
   console.log('✅ [Mock] 用户信息已更新');
   return updatedUser;
 };
 
 // 获取我的评价
-export const mockGetMyReviews = async (params?: PaginationParams): Promise<PaginatedData<MyReviewItem>> => {
+export const mockGetMyReviews = async (
+  params?: PaginationParams
+): Promise<PaginatedData<MyReviewItem>> => {
   console.log('📝 [Mock] 获取我的评价');
   await mockDelay();
-  
+
   try {
     const storedReviews = uni.getStorageSync(STORAGE_KEYS.REVIEWS);
     const reviews = storedReviews || createMockReviews();
-    
+
     if (!storedReviews) {
       uni.setStorageSync(STORAGE_KEYS.REVIEWS, reviews);
     }
-    
+
     const page = params?.page || 1;
     const pageSize = params?.pageSize || 10;
     const start = (page - 1) * pageSize;
     const end = start + pageSize;
-    
+
     console.log(`✅ [Mock] 返回评价列表 (第${page}页)`);
     return {
       items: reviews.slice(start, end),
@@ -155,23 +157,25 @@ export const mockGetMyReviews = async (params?: PaginationParams): Promise<Pagin
 };
 
 // 获取我的收藏
-export const mockGetMyFavorites = async (params?: PaginationParams): Promise<PaginatedData<Favorite>> => {
+export const mockGetMyFavorites = async (
+  params?: PaginationParams
+): Promise<PaginatedData<Favorite>> => {
   console.log('⭐ [Mock] 获取我的收藏');
   await mockDelay();
-  
+
   try {
     const storedFavorites = uni.getStorageSync(STORAGE_KEYS.FAVORITES);
     const favorites = storedFavorites || createMockFavorites();
-    
+
     if (!storedFavorites) {
       uni.setStorageSync(STORAGE_KEYS.FAVORITES, favorites);
     }
-    
+
     const page = params?.page || 1;
     const pageSize = params?.pageSize || 10;
     const start = (page - 1) * pageSize;
     const end = start + pageSize;
-    
+
     console.log(`✅ [Mock] 返回收藏列表 (第${page}页)`);
     return {
       items: favorites.slice(start, end),
@@ -192,23 +196,25 @@ export const mockGetMyFavorites = async (params?: PaginationParams): Promise<Pag
 };
 
 // 获取浏览历史
-export const mockGetBrowseHistory = async (params?: PaginationParams): Promise<PaginatedData<BrowseHistoryItem>> => {
+export const mockGetBrowseHistory = async (
+  params?: PaginationParams
+): Promise<PaginatedData<BrowseHistoryItem>> => {
   console.log('🕒 [Mock] 获取浏览历史');
   await mockDelay();
-  
+
   try {
     const storedHistory = uni.getStorageSync(STORAGE_KEYS.HISTORY);
     const history = storedHistory || createMockHistory();
-    
+
     if (!storedHistory) {
       uni.setStorageSync(STORAGE_KEYS.HISTORY, history);
     }
-    
+
     const page = params?.page || 1;
     const pageSize = params?.pageSize || 10;
     const start = (page - 1) * pageSize;
     const end = start + pageSize;
-    
+
     console.log(`✅ [Mock] 返回浏览历史 (第${page}页)`);
     return {
       items: history.slice(start, end),
@@ -232,7 +238,7 @@ export const mockGetBrowseHistory = async (params?: PaginationParams): Promise<P
 export const mockClearBrowseHistory = async (): Promise<void> => {
   console.log('🗑️ [Mock] 清空浏览历史');
   await mockDelay();
-  
+
   try {
     uni.removeStorageSync(STORAGE_KEYS.HISTORY);
     console.log('✅ [Mock] 浏览历史已清空');
@@ -245,20 +251,20 @@ export const mockClearBrowseHistory = async (): Promise<void> => {
 export const mockAddFavorite = async (dishId: string): Promise<void> => {
   console.log('⭐ [Mock] 添加收藏:', dishId);
   await mockDelay();
-  
+
   try {
     // 获取菜品详情
     const { mockGetDishById } = await import('../services/dish');
     const dish = await mockGetDishById(dishId);
-    
+
     if (!dish) {
       throw new Error(`菜品不存在: ${dishId}`);
     }
-    
+
     // 更新收藏列表
     const storedFavorites = uni.getStorageSync(STORAGE_KEYS.FAVORITES) || [];
     const exists = storedFavorites.some((f: Favorite) => f.dishId === dishId);
-    
+
     if (!exists) {
       const newFavorite: Favorite = {
         dishId,
@@ -274,7 +280,7 @@ export const mockAddFavorite = async (dishId: string): Promise<void> => {
       storedFavorites.unshift(newFavorite);
       uni.setStorageSync(STORAGE_KEYS.FAVORITES, storedFavorites);
     }
-    
+
     // 同时更新用户信息中的 myFavoriteDishes
     const user = getMockUserFromStorage();
     if (!user.myFavoriteDishes) {
@@ -284,7 +290,7 @@ export const mockAddFavorite = async (dishId: string): Promise<void> => {
       user.myFavoriteDishes.push(dishId);
       saveMockUserToStorage(user);
     }
-    
+
     console.log('✅ [Mock] 收藏成功');
   } catch (e) {
     console.error('❌ [Mock] 添加收藏失败:', e);
@@ -296,20 +302,20 @@ export const mockAddFavorite = async (dishId: string): Promise<void> => {
 export const mockRemoveFavorite = async (dishId: string): Promise<void> => {
   console.log('⭐ [Mock] 取消收藏:', dishId);
   await mockDelay();
-  
+
   try {
     // 更新收藏列表
     const storedFavorites = uni.getStorageSync(STORAGE_KEYS.FAVORITES) || [];
     const filteredFavorites = storedFavorites.filter((f: Favorite) => f.dishId !== dishId);
     uni.setStorageSync(STORAGE_KEYS.FAVORITES, filteredFavorites);
-    
+
     // 同时更新用户信息中的 myFavoriteDishes
     const user = getMockUserFromStorage();
     if (user.myFavoriteDishes) {
       user.myFavoriteDishes = user.myFavoriteDishes.filter(id => id !== dishId);
       saveMockUserToStorage(user);
     }
-    
+
     console.log('✅ [Mock] 取消收藏成功');
   } catch (e) {
     console.error('❌ [Mock] 取消收藏失败:', e);

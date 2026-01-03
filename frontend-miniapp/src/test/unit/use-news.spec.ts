@@ -4,7 +4,7 @@ import { ref, nextTick } from 'vue';
 
 // Mock API
 jest.mock('@/api/modules/news', () => ({
-  getNewsList: jest.fn()
+  getNewsList: jest.fn(),
 }));
 
 // Mock onMounted
@@ -27,9 +27,9 @@ describe('useNewsList', () => {
   it('should initialize correctly', async () => {
     (getNewsList as jest.Mock).mockResolvedValue({ code: 200, data: { items: [] } });
     const { list, loading, finished, isRefreshing } = useNewsList();
-    
+
     expect(loading.value).toBe(true);
-    
+
     await flushPromises();
 
     expect(list.value).toEqual([]);
@@ -42,14 +42,14 @@ describe('useNewsList', () => {
       code: 200,
       data: {
         items: mockNews,
-        meta: { total: 1, totalPages: 1 }
-      }
+        meta: { total: 1, totalPages: 1 },
+      },
     });
 
     const { list, loading } = useNewsList();
-    
+
     expect(loading.value).toBe(true);
-    
+
     await flushPromises();
 
     expect(loading.value).toBe(false);
@@ -57,14 +57,17 @@ describe('useNewsList', () => {
   });
 
   it('should handle refresh', async () => {
-    (getNewsList as jest.Mock).mockResolvedValue({ code: 200, data: { items: [], meta: { totalPages: 0 } } });
+    (getNewsList as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: { items: [], meta: { totalPages: 0 } },
+    });
     const { refresh, isRefreshing, list } = useNewsList();
-    
+
     await flushPromises(); // Wait for initial load
 
     const promise = refresh();
     expect(isRefreshing.value).toBe(true);
-    
+
     await promise;
 
     expect(isRefreshing.value).toBe(false);

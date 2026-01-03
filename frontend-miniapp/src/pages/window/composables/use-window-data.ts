@@ -7,7 +7,7 @@ export function useWindowData() {
   const canteenStore = useCanteenStore();
   const windowInfo = computed(() => canteenStore.currentWindow);
   // dishes 现在通过 local ref 维护，支持筛选后更新
-  const dishes = ref<Dish[]>([]); 
+  const dishes = ref<Dish[]>([]);
   const loading = ref(false);
   const loadingMore = ref(false);
   const hasMore = ref(true);
@@ -41,7 +41,7 @@ export function useWindowData() {
     }
     try {
       localError.value = '';
-      
+
       const page = pagination?.page ?? 1;
       const size = pagination?.pageSize ?? pageSize;
       const res = await getWindowDishes(windowId, { page, pageSize: size });
@@ -91,4 +91,4 @@ export function useWindowData() {
     loadMoreDishes,
     fetchWindow,
   };
-};
+}

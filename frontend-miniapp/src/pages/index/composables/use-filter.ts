@@ -297,15 +297,11 @@ export const useFilter = () => {
     switch (key) {
       case 'price':
         return (
-          selectedPrice.value !== '' ||
-          customPriceMin.value !== '' ||
-          customPriceMax.value !== ''
+          selectedPrice.value !== '' || customPriceMin.value !== '' || customPriceMax.value !== ''
         );
       case 'rating':
         return (
-          selectedRating.value > 0 ||
-          customRatingMin.value !== '' ||
-          customRatingMax.value !== ''
+          selectedRating.value > 0 || customRatingMin.value !== '' || customRatingMax.value !== ''
         );
       case 'mealTime':
         return selectedMealTime.value.length > 0;

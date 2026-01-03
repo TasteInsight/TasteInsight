@@ -89,11 +89,11 @@ function parseSSEEventString(evtString: string, callbacks: AIStreamCallbacks) {
   // 有些 evtString 可能包含多个 data: 行，或者 event: 行
   // 标准 SSE 格式是以 \n\n 分隔事件，这里的 evtString 应该是已经被 \n\n 切分过的一个完整块（或者不完整的块，但在外部处理了）
   // 简单起见，这里假设 evtString 是一个或多个以 \n 分隔的行
-  
+
   let eventName: string | undefined;
   let dataLines: string[] = [];
   const lines = evtString.split('\n');
-  
+
   for (const line of lines) {
     const trimLine = line.trim();
     if (!trimLine) continue; // 跳过空行
@@ -105,7 +105,7 @@ function parseSSEEventString(evtString: string, callbacks: AIStreamCallbacks) {
       dataLines.push(trimLine.replace('data:', '').trim());
     }
   }
-  
+
   if (dataLines.length > 0) {
     const dataStr = dataLines.join('\n');
     callbacks.onMessage?.(dataStr);
@@ -128,9 +128,7 @@ function createUtf8StreamDecoder(): StreamDecoder {
 
   const decode = (data: ArrayBuffer): string => {
     const incoming = new Uint8Array(data);
-    const bytes = pending.length
-      ? new Uint8Array(pending.length + incoming.length)
-      : incoming;
+    const bytes = pending.length ? new Uint8Array(pending.length + incoming.length) : incoming;
     if (pending.length) {
       bytes.set(pending, 0);
       bytes.set(incoming, pending.length);
@@ -239,7 +237,7 @@ export const streamAIChat = (
   // 1. 构造 Header (需要手动携带 Token，因为不走 request.ts 拦截器)
   const header: Record<string, string> = {
     'Content-Type': 'application/json',
-    'Accept': 'text/event-stream',
+    Accept: 'text/event-stream',
   };
   if (userStore.token) {
     header['Authorization'] = `Bearer ${userStore.token}`;
@@ -260,12 +258,12 @@ export const streamAIChat = (
     // 强制以二进制形式接收 chunk，避免真机把 UTF-8 字节按非 UTF-8 文本提前解码
     // @ts-ignore: uni.request 的类型定义可能缺少该字段
     responseType: 'arraybuffer',
-    timeout: 60000,      // 建议设置长超时（如60秒），防止AI思考时间过长导致断开
-    success: (res) => {
+    timeout: 60000, // 建议设置长超时（如60秒），防止AI思考时间过长导致断开
+    success: res => {
       // 对于流式请求，此回调可能仅表示连接握手成功，不代表数据接收完毕
       // 不在这里处理业务逻辑
     },
-    fail: (err) => {
+    fail: err => {
       // 注意：流式传输中的网络错误可能不会触发此回调
       // 主要依赖 complete 回调和外部超时机制处理错误
       callbacks.onError?.(err);
@@ -284,7 +282,7 @@ export const streamAIChat = (
         }
       }
       callbacks.onComplete?.();
-    }
+    },
   });
 
   // 3. 处理分块数据
@@ -306,14 +304,12 @@ export const streamAIChat = (
     if (response && response.data) {
       // 解码二进制数据（优先 ArrayBuffer；极端情况下若 SDK 返回 string，则尝试兼容）
       const chunk =
-        typeof response.data === 'string'
-          ? response.data
-          : streamDecoder.decode(response.data);
+        typeof response.data === 'string' ? response.data : streamDecoder.decode(response.data);
       buffer += chunk;
-      
+
       // 按双换行符切割 SSE 事件
       const events = buffer.split('\n\n');
-      
+
       // 最后一个元素可能是不完整的（粘包），留到下一次处理
       if (buffer.endsWith('\n\n')) {
         buffer = '';
@@ -322,13 +318,13 @@ export const streamAIChat = (
       }
 
       for (const evt of events) {
-         parseSSEEventString(evt, callbacks);
+        parseSSEEventString(evt, callbacks);
       }
     }
   });
 
   // 返回控制句柄，允许外部中断请求
   return {
-    close: () => requestTask.abort()
+    close: () => requestTask.abort(),
   };
 };

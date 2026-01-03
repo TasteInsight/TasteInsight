@@ -31,7 +31,7 @@ describe('useReview', () => {
 
     (getReviewsByDish as jest.Mock).mockResolvedValue({
       code: 200,
-      data: { items: [] }
+      data: { items: [] },
     });
 
     const promise = fetchReviews(mockDishId, true);
@@ -52,7 +52,7 @@ describe('useReview', () => {
 
     (getReviewsByDish as jest.Mock).mockResolvedValue({
       code: 200,
-      data: { items: [] }
+      data: { items: [] },
     });
 
     const promise = fetchReviews(mockDishId, false);
@@ -75,7 +75,7 @@ describe('useReview', () => {
 
     (getReviewsByDish as jest.Mock).mockResolvedValue({
       code: 200,
-      data: { items: [{ id: '2', content: 'new' }] }
+      data: { items: [{ id: '2', content: 'new' }] },
     });
 
     await fetchReviews(mockDishId, true);

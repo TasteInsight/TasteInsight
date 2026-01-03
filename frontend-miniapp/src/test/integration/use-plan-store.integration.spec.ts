@@ -82,7 +82,10 @@ describe('usePlanStore integration', () => {
       },
     });
 
-    (getDishById as jest.Mock).mockResolvedValueOnce({ code: 200, data: { id: 'd3', name: 'Dish 3' } });
+    (getDishById as jest.Mock).mockResolvedValueOnce({
+      code: 200,
+      data: { id: 'd3', name: 'Dish 3' },
+    });
 
     const store = usePlanStore();
     const created = await store.createPlan({

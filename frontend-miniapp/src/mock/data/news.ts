@@ -5,7 +5,8 @@ export const createMockNews = (): News[] => [
   {
     id: 'news_001',
     title: '一食堂新菜品上线通知',
-    content: '<p>亲爱的同学们：</p><p>为了丰富大家的饮食选择，<strong>一食堂</strong>特别推出了一系列新菜品！</p><h3 style="margin-top: 15px; margin-bottom: 10px; color: #ff6b00;">🔥 川味特色小炒</h3><ul><li style="margin-bottom: 5px;"><strong>宫保鸡丁</strong>：选用优质鸡胸肉，搭配香脆花生米，酸甜微辣，开胃下饭。</li><li style="margin-bottom: 5px;"><strong>麻婆豆腐</strong>：麻辣鲜香，豆腐嫩滑，是米饭的最佳拍档。</li></ul><p><img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80" alt="美食图片"></p><h3 style="margin-top: 15px; margin-bottom: 10px; color: #ff6b00;">🍲 养生炖汤系列</h3><p>选用新鲜食材，慢火炖煮，营养丰富。包括：</p><ul><li>玉米排骨汤</li><li>山药乌鸡汤</li></ul><p style="margin-top: 15px;">欢迎大家前来品尝！</p>',
+    content:
+      '<p>亲爱的同学们：</p><p>为了丰富大家的饮食选择，<strong>一食堂</strong>特别推出了一系列新菜品！</p><h3 style="margin-top: 15px; margin-bottom: 10px; color: #ff6b00;">🔥 川味特色小炒</h3><ul><li style="margin-bottom: 5px;"><strong>宫保鸡丁</strong>：选用优质鸡胸肉，搭配香脆花生米，酸甜微辣，开胃下饭。</li><li style="margin-bottom: 5px;"><strong>麻婆豆腐</strong>：麻辣鲜香，豆腐嫩滑，是米饭的最佳拍档。</li></ul><p><img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80" alt="美食图片"></p><h3 style="margin-top: 15px; margin-bottom: 10px; color: #ff6b00;">🍲 养生炖汤系列</h3><p>选用新鲜食材，慢火炖煮，营养丰富。包括：</p><ul><li>玉米排骨汤</li><li>山药乌鸡汤</li></ul><p style="margin-top: 15px;">欢迎大家前来品尝！</p>',
     summary: '一食堂推出川味特色小炒和养生炖汤系列',
     canteenId: 'canteen_001',
     canteenName: '一食堂',
@@ -107,7 +108,8 @@ function calculateScore(cleanliness, safety, service) {
   {
     id: 'news_003',
     title: '二食堂推出营养套餐',
-    content: '为满足同学们健康饮食需求，二食堂特别推出营养均衡套餐。每份套餐包含主食、荤菜、素菜和汤品，由营养师精心搭配，确保营养均衡。套餐价格实惠，仅需15元。同时提供低脂、低盐、高蛋白等多种选择，满足不同同学的需求。',
+    content:
+      '为满足同学们健康饮食需求，二食堂特别推出营养均衡套餐。每份套餐包含主食、荤菜、素菜和汤品，由营养师精心搭配，确保营养均衡。套餐价格实惠，仅需15元。同时提供低脂、低盐、高蛋白等多种选择，满足不同同学的需求。',
     summary: '二食堂推出营养均衡套餐，价格实惠',
     canteenId: 'canteen_002',
     canteenName: '二食堂',
@@ -118,7 +120,8 @@ function calculateScore(cleanliness, safety, service) {
   {
     id: 'news_004',
     title: '食堂营业时间调整通知',
-    content: '根据同学们的需求反馈，从下周起，各食堂将延长晚餐营业时间至21:00。早餐时间调整为6:30-9:00，午餐时间11:00-13:30，晚餐时间17:00-21:00。周末和节假日营业时间保持不变。希望新的营业时间能更好地服务广大师生。',
+    content:
+      '根据同学们的需求反馈，从下周起，各食堂将延长晚餐营业时间至21:00。早餐时间调整为6:30-9:00，午餐时间11:00-13:30，晚餐时间17:00-21:00。周末和节假日营业时间保持不变。希望新的营业时间能更好地服务广大师生。',
     summary: '食堂延长晚餐营业时间至21:00',
     canteenId: '',
     canteenName: '',
@@ -129,7 +132,8 @@ function calculateScore(cleanliness, safety, service) {
   {
     id: 'news_005',
     title: '三食堂特色窗口开放',
-    content: '三食堂全新升级的特色窗口今日正式开放！特色窗口主营各地风味小吃，包括陕西肉夹馍、湖南臭豆腐、东北锅包肉等。所有菜品均由经验丰富的师傅现场制作，保证口味正宗。首周推广期间，部分菜品享受8折优惠。欢迎同学们前来品尝！',
+    content:
+      '三食堂全新升级的特色窗口今日正式开放！特色窗口主营各地风味小吃，包括陕西肉夹馍、湖南臭豆腐、东北锅包肉等。所有菜品均由经验丰富的师傅现场制作，保证口味正宗。首周推广期间，部分菜品享受8折优惠。欢迎同学们前来品尝！',
     summary: '三食堂特色窗口开放，主营各地风味小吃',
     canteenId: 'canteen_003',
     canteenName: '三食堂',

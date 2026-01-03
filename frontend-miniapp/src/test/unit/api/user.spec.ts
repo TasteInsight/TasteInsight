@@ -17,7 +17,11 @@ describe('api/modules/user.ts', () => {
     await wechatLogin('c1');
 
     expect(mockReq).toHaveBeenCalledTimes(1);
-    expect(mockReq.mock.calls[0][0]).toMatchObject({ url: '/auth/wechat/login', method: 'POST', data: { code: 'c1' } });
+    expect(mockReq.mock.calls[0][0]).toMatchObject({
+      url: '/auth/wechat/login',
+      method: 'POST',
+      data: { code: 'c1' },
+    });
   });
 
   test('refreshToken posts to /auth/refresh', async () => {
@@ -52,10 +56,18 @@ describe('api/modules/user.ts', () => {
     expect(mockReq.mock.calls[0][0]).toMatchObject({ url: '/user/profile', method: 'GET' });
 
     await updateUserProfile({ name: 'N' } as any);
-    expect(mockReq.mock.calls[1][0]).toMatchObject({ url: '/user/profile', method: 'PUT', data: { name: 'N' } });
+    expect(mockReq.mock.calls[1][0]).toMatchObject({
+      url: '/user/profile',
+      method: 'PUT',
+      data: { name: 'N' },
+    });
 
     await getMyReviews({ page: 1 });
-    expect(mockReq.mock.calls[2][0]).toMatchObject({ url: '/user/reviews', method: 'GET', data: { page: 1 } });
+    expect(mockReq.mock.calls[2][0]).toMatchObject({
+      url: '/user/reviews',
+      method: 'GET',
+      data: { page: 1 },
+    });
 
     await getMyFavorites({ page: 1 });
     expect(mockReq.mock.calls[3][0]).toMatchObject({ url: '/user/favorites', method: 'GET' });

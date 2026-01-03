@@ -1,19 +1,19 @@
 import { defineStore } from 'pinia';
-import { ref, reactive } from 'vue'; 
+import { ref, reactive } from 'vue';
 import { createAISession, streamAIChat, submitRecommendFeedback } from '@/api/modules/ai';
 import { USE_MOCK } from '../../mock/mock-adapter';
-import type { 
-  ChatRequest, 
-  RecommendFeedbackRequest, 
+import type {
+  ChatRequest,
+  RecommendFeedbackRequest,
   ComponentDishCard,
   ComponentMealPlanDraft,
   ComponentCanteenCard,
-  ComponentWindowCard
+  ComponentWindowCard,
 } from '@/types/api';
 import type { AIScene } from '@/types/api';
 
 // 消息段类型
-export type MessageSegment = 
+export type MessageSegment =
   | { type: 'text'; text: string }
   | { type: 'card_dish'; data: ComponentDishCard[] }
   | { type: 'card_plan'; data: ComponentMealPlanDraft[] }
@@ -199,12 +199,12 @@ export const useChatStore = defineStore('ai-chat', () => {
 
     // 1. 确保会话已初始化
     if (!sessionId.value) await initSession();
-    
+
     // 2. 【核心修复】先在 UI 上显示用户的消息
     addUserMessage(text);
-    
+
     aiLoading.value = true;
-    
+
     // 3. 创建一个空的 AI 消息占位符
     const aiMessageId = Date.now() + 1;
     const aiMessage = reactive<ChatMessage>({
@@ -253,13 +253,13 @@ export const useChatStore = defineStore('ai-chat', () => {
 
     let currentEvent = '';
 
-    const streamControl = USE_MOCK 
+    const streamControl = USE_MOCK
       ? (() => {
           // 简单的mock实现，避免require路径问题
           const mockResponse = `收到你的消息："${payload.message}"。这是一个模拟的流式回复。我可以帮你推荐菜品，或者制定饮食计划。`;
           const chunks = mockResponse.split('');
           let currentIndex = 0;
-          
+
           const interval = setInterval(() => {
             if (currentIndex >= chunks.length) {
               clearInterval(interval);
@@ -268,25 +268,25 @@ export const useChatStore = defineStore('ai-chat', () => {
               upsertHistoryEntry(sessionId.value, currentScene.value, messages.value);
               return;
             }
-            
+
             const chunkSize = Math.floor(Math.random() * 3) + 1;
             const chunkContent = chunks.slice(currentIndex, currentIndex + chunkSize).join('');
             currentIndex += chunkSize;
-            
+
             const contentArr = aiMessage.content;
             const lastSegment = contentArr[contentArr.length - 1];
-            
+
             if (lastSegment && lastSegment.type === 'text') {
               lastSegment.text += chunkContent;
             } else {
               contentArr.push({ type: 'text', text: chunkContent });
             }
           }, 100);
-          
+
           return {
             close: () => {
               clearInterval(interval);
-            }
+            },
           };
         })()
       : streamAIChat(sessionId.value, payload, {
@@ -295,36 +295,36 @@ export const useChatStore = defineStore('ai-chat', () => {
           },
           onMessage: (chunk: string) => {
             if (currentEvent === 'text_chunk') {
-                 const contentArr = aiMessage.content;
-                 const lastSegment = contentArr[contentArr.length - 1];
-                 
-                 if (lastSegment && lastSegment.type === 'text') {
-                   lastSegment.text += chunk;
-                 } else {
-                   contentArr.push({ type: 'text', text: chunk });
-                 }
+              const contentArr = aiMessage.content;
+              const lastSegment = contentArr[contentArr.length - 1];
+
+              if (lastSegment && lastSegment.type === 'text') {
+                lastSegment.text += chunk;
+              } else {
+                contentArr.push({ type: 'text', text: chunk });
+              }
             }
           },
-          onJSON: (json) => {
+          onJSON: json => {
             if (currentEvent === 'new_block') {
-                 const segment = json as MessageSegment;
-                 if (segment && segment.type && segment.type !== 'text') {
-                   aiMessage.content.push(segment);
-                 }
+              const segment = json as MessageSegment;
+              if (segment && segment.type && segment.type !== 'text') {
+                aiMessage.content.push(segment);
+              }
             }
           },
-          onError: (err) => {
+          onError: err => {
             console.error('Stream error', err);
             const contentArr = aiMessage.content;
             const lastSegment = contentArr[contentArr.length - 1];
-            
+
             const errorText = `\n[网络请求出错: ${err?.message || '请检查网络'}]`;
             if (lastSegment && lastSegment.type === 'text') {
-                lastSegment.text += errorText;
+              lastSegment.text += errorText;
             } else {
-                contentArr.push({ type: 'text', text: errorText });
+              contentArr.push({ type: 'text', text: errorText });
             }
-            
+
             aiLoading.value = false;
             aiMessage.isStreaming = false;
             currentStreamAbort.value = null;
@@ -334,7 +334,7 @@ export const useChatStore = defineStore('ai-chat', () => {
             aiMessage.isStreaming = false;
             upsertHistoryEntry(sessionId.value, currentScene.value, messages.value);
             currentStreamAbort.value = null;
-          }
+          },
         });
 
     // 保存中断控制器
@@ -355,7 +355,7 @@ export const useChatStore = defineStore('ai-chat', () => {
         uni.showToast({ title: res.message || '反馈失败', icon: 'error' });
       }
     } catch (error) {
-      console.error("Feedback submission error:", error);
+      console.error('Feedback submission error:', error);
       uni.showToast({ title: '提交反馈失败', icon: 'error' });
     }
   }
@@ -371,7 +371,7 @@ export const useChatStore = defineStore('ai-chat', () => {
     if (scene) setScene(scene);
     initSession(scene);
   }
-  
+
   return {
     messages,
     aiLoading,

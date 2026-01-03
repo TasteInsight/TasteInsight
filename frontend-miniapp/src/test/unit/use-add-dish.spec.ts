@@ -36,18 +36,18 @@ describe('useAddDish', () => {
 
   it('should load canteen list successfully', async () => {
     const { loadCanteenList, canteenList, loading } = useAddDish();
-    
+
     const mockCanteens = [{ id: '1', name: 'Canteen A' }];
     (getCanteenList as jest.Mock).mockResolvedValue({
       code: 200,
-      data: { items: mockCanteens }
+      data: { items: mockCanteens },
     });
 
     const promise = loadCanteenList();
     expect(loading.value).toBe(true);
-    
+
     await promise;
-    
+
     expect(loading.value).toBe(false);
     expect(canteenList.value).toEqual(mockCanteens);
   });
@@ -79,7 +79,7 @@ describe('useAddDish', () => {
 
   it('should submit form successfully', async () => {
     const { submitForm, formData } = useAddDish();
-    
+
     // Setup valid form
     formData.name = 'Test Dish';
     formData.price = 10;
@@ -93,12 +93,14 @@ describe('useAddDish', () => {
 
     expect(uploadDish).toHaveBeenCalledWith(formData);
     expect(result).toBe(true);
-    expect(uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ title: '提交成功，等待审核' }));
+    expect(uni.showToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: '提交成功，等待审核' })
+    );
   });
 
   it('should handle submit error', async () => {
     const { submitForm, formData, error } = useAddDish();
-    
+
     // Setup valid form
     formData.name = 'Test Dish';
     formData.price = 10;
@@ -106,9 +108,9 @@ describe('useAddDish', () => {
     formData.windowName = 'Window 1';
     formData.availableMealTime = ['lunch'];
 
-    (uploadDish as jest.Mock).mockResolvedValue({ 
-      code: 500, 
-      message: 'Server Error' 
+    (uploadDish as jest.Mock).mockResolvedValue({
+      code: 500,
+      message: 'Server Error',
     });
 
     const result = await submitForm();
@@ -120,10 +122,10 @@ describe('useAddDish', () => {
 
   it('should reset form', () => {
     const { resetForm, formData } = useAddDish();
-    
+
     formData.name = 'Changed';
     resetForm();
-    
+
     expect(formData.name).toBe('');
     expect(formData.price).toBe(0);
   });
@@ -143,7 +145,19 @@ describe('useAddDish', () => {
   });
 
   it('should toggle and manage tags and allergens', () => {
-    const { toggleTag, formData, addCustomTag, customTagInput, customTags, removeCustomTag, toggleAllergen, addCustomAllergen, customAllergenInput, customAllergens, removeCustomAllergen } = useAddDish();
+    const {
+      toggleTag,
+      formData,
+      addCustomTag,
+      customTagInput,
+      customTags,
+      removeCustomTag,
+      toggleAllergen,
+      addCustomAllergen,
+      customAllergenInput,
+      customAllergens,
+      removeCustomAllergen,
+    } = useAddDish();
 
     toggleTag('辣');
     expect(formData.tags).toContain('辣');
@@ -173,7 +187,9 @@ describe('useAddDish', () => {
 
   it('should choose and remove images', () => {
     const { chooseImages, formData, removeImage } = useAddDish();
-    (uni.chooseImage as jest.Mock).mockImplementation(({ success }: any) => success({ tempFilePaths: ['a.jpg'] }));
+    (uni.chooseImage as jest.Mock).mockImplementation(({ success }: any) =>
+      success({ tempFilePaths: ['a.jpg'] })
+    );
 
     chooseImages();
     expect(formData.images).toContain('a.jpg');
@@ -204,7 +220,7 @@ describe('useAddDish', () => {
     expect(res).toBe(true);
     // run timers to execute navigateBack
     jest.runAllTimers();
-    expect((uni.navigateBack as jest.Mock)).toHaveBeenCalled();
+    expect(uni.navigateBack as jest.Mock).toHaveBeenCalled();
     jest.useRealTimers();
   });
 });

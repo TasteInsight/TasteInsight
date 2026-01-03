@@ -1,20 +1,20 @@
 <template>
   <!-- 评分比例条状图 -->
   <view class="w-52">
-    <view
-      v-for="item in ratingBars"
-      :key="item.stars"
-      class="mb-1.5 last:mb-0"
-    >
+    <view v-for="item in ratingBars" :key="item.stars" class="mb-1.5 last:mb-0">
       <view class="flex items-center gap-1.5">
-        <text class="text-[10px] text-gray-500 font-medium min-w-[20px] text-center">{{ item.stars }}星</text>
+        <text class="text-[10px] text-gray-500 font-medium min-w-[20px] text-center"
+          >{{ item.stars }}星</text
+        >
         <view class="flex-1 h-1 bg-gray-100 rounded overflow-hidden">
           <view
             class="h-full rounded bg-gradient-to-r from-yellow-300 to-yellow-400 transition-[width] duration-300"
             :style="{ width: item.percentage + '%' }"
           ></view>
         </view>
-        <text class="text-[10px] text-gray-400 font-medium min-w-[24px] text-right">{{ item.percentage }}%</text>
+        <text class="text-[10px] text-gray-400 font-medium min-w-[24px] text-right"
+          >{{ item.percentage }}%</text
+        >
       </view>
     </view>
   </view>
@@ -39,7 +39,7 @@ const ratingDetail = ref<Record<string, number> | null>(null);
  */
 const fetchRatingDetail = async () => {
   if (!props.dishId) return;
-  
+
   try {
     const response = await getReviewsByDish(props.dishId, { page: 1, pageSize: 1 });
     if (response.code === 200 && response.data?.rating?.detail) {
@@ -51,13 +51,17 @@ const fetchRatingDetail = async () => {
 };
 
 // 监听 dishId 变化
-watch(() => props.dishId, () => {
-  fetchRatingDetail();
-}, { immediate: true });
+watch(
+  () => props.dishId,
+  () => {
+    fetchRatingDetail();
+  },
+  { immediate: true }
+);
 
 // 暴露刷新方法给父组件调用
 defineExpose({
-  refresh: fetchRatingDetail
+  refresh: fetchRatingDetail,
 });
 
 /**

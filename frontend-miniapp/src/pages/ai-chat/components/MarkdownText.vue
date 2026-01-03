@@ -14,10 +14,10 @@ const props = defineProps<{
 
 // 初始化 markdown-it 解析器
 const md = new MarkdownIt({
-  html: false,        // 不允许 HTML 标签（安全考虑）
-  linkify: true,      // 自动将 URL 转换为链接
-  breaks: true,       // 将换行符转换为 <br>
-  typographer: true   // 启用一些语言中立的替换和引号美化
+  html: false, // 不允许 HTML 标签（安全考虑）
+  linkify: true, // 自动将 URL 转换为链接
+  breaks: true, // 将换行符转换为 <br>
+  typographer: true, // 启用一些语言中立的替换和引号美化
 });
 
 // 为输出的 HTML 元素添加 class，避免在小程序端使用标签选择器导致兼容性问题
@@ -45,13 +45,19 @@ md.renderer.rules.fence = (tokens: any[], idx: number) => {
   return `<pre class="md-pre"><code class="md-code${langClass}">${code}</code></pre>`;
 };
 
-md.renderer.rules.code_inline = (tokens: any[], idx: number) => `<code class="md-code-inline">${md.utils.escapeHtml(tokens[idx].content)}</code>`;
+md.renderer.rules.code_inline = (tokens: any[], idx: number) =>
+  `<code class="md-code-inline">${md.utils.escapeHtml(tokens[idx].content)}</code>`;
 
 md.renderer.rules.image = (tokens: any[], idx: number) => {
   const token: any = tokens[idx];
-  const src = token.attrGet ? token.attrGet('src') : (token.attrs && token.attrs.find((a: any) => a[0] === 'src')?.[1] || '');
+  const src = token.attrGet
+    ? token.attrGet('src')
+    : (token.attrs && token.attrs.find((a: any) => a[0] === 'src')?.[1]) || '';
   const alt = md.utils.escapeHtml(token.content || '');
-  const title = token.attrGet && token.attrGet('title') ? ` title="${md.utils.escapeHtml(token.attrGet('title'))}"` : '';
+  const title =
+    token.attrGet && token.attrGet('title')
+      ? ` title="${md.utils.escapeHtml(token.attrGet('title'))}"`
+      : '';
   return `<img class="md-img" src="${md.utils.escapeHtml(src)}" alt="${alt}"${title} />`;
 };
 
@@ -98,10 +104,18 @@ const htmlContent = computed(() => {
   margin: 0.8em 0 0.4em;
 }
 
-:deep(.markdown-body .md-h1) { font-size: 1.5em; }
-:deep(.markdown-body .md-h2) { font-size: 1.3em; }
-:deep(.markdown-body .md-h3) { font-size: 1.2em; }
-:deep(.markdown-body .md-h4) { font-size: 1.1em; }
+:deep(.markdown-body .md-h1) {
+  font-size: 1.5em;
+}
+:deep(.markdown-body .md-h2) {
+  font-size: 1.3em;
+}
+:deep(.markdown-body .md-h3) {
+  font-size: 1.2em;
+}
+:deep(.markdown-body .md-h4) {
+  font-size: 1.1em;
+}
 
 :deep(.markdown-body .md-code-inline) {
   background: #f5f5f5;

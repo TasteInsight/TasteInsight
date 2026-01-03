@@ -16,7 +16,7 @@ export function useMyReviews() {
    */
   const fetchReviews = async (reset = false) => {
     if (loading.value) return;
-    
+
     loading.value = true;
     error.value = null;
 
@@ -34,7 +34,7 @@ export function useMyReviews() {
 
       if (response.code === 200 && response.data) {
         const { items, meta } = response.data;
-        
+
         if (reset) {
           reviews.value = items;
         } else {
@@ -52,7 +52,7 @@ export function useMyReviews() {
       console.error(message, err);
       uni.showToast({
         title: message,
-        icon: 'none'
+        icon: 'none',
       });
       // 加载失败时，认为没有更多数据
       hasMore.value = false;

@@ -11,7 +11,9 @@ export function useChat() {
   // 首次加载状态
   const hasInitialized = ref(false);
   const isInitializing = ref(false);
-  const isInitialLoading = computed(() => isInitializing.value || (!hasInitialized.value && chatStore.messages.length === 0));
+  const isInitialLoading = computed(
+    () => isInitializing.value || (!hasInitialized.value && chatStore.messages.length === 0)
+  );
 
   const fetchSuggestions = async () => {
     isSuggestionsLoading.value = true;
@@ -38,7 +40,7 @@ export function useChat() {
   const init = async (s?: string) => {
     // 如果传入 scene 则更新
     if (s) setScene(s);
-    
+
     isInitializing.value = true;
     try {
       if (chatStore.messages.length === 0) {
@@ -54,12 +56,12 @@ export function useChat() {
   const resetChat = async (s?: string) => {
     // 如果指定了新场景，先更新 store 状态
     if (s) setScene(s);
-    
+
     isInitializing.value = true;
     try {
       // 开启新会话 (内部会自动创建 session 并拉取 welcomeMessage)
       await chatStore.startNewSession(s || scene.value);
-      
+
       // 刷新建议词
       await fetchSuggestions();
     } finally {
@@ -70,7 +72,7 @@ export function useChat() {
 
   const sendMessage = async (text: string) => {
     if (!text.trim()) return;
-    
+
     try {
       await chatStore.sendChatMessage(text);
       // 消息发送后，刷新建议词 (模拟根据上下文更新)
@@ -81,7 +83,6 @@ export function useChat() {
       console.error('Failed to send chat message', e);
       // Optionally, show error to user here
     }
-    
   };
 
   const handleSuggestionClick = (text: string) => {
@@ -120,6 +121,6 @@ export function useChat() {
     scene,
     setScene,
     historyEntries: computed(() => chatStore.historyEntries),
-    loadHistorySession
+    loadHistorySession,
   };
 }

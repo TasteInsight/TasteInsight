@@ -1,15 +1,19 @@
 <template>
   <view class="bg-white rounded-xl p-3 mb-3 shadow-sm cursor-pointer" @click="goToWindow">
     <view class="flex items-center">
-      <image :src="window.image || '/default-window.png'" class="w-16 h-16 rounded-lg flex-shrink-0 object-cover" mode="aspectFill" />
+      <image
+        :src="window.image || '/default-window.png'"
+        class="w-16 h-16 rounded-lg flex-shrink-0 object-cover"
+        mode="aspectFill"
+      />
       <view class="flex-grow ml-3">
         <view class="font-medium text-base text-gray-800">{{ window.name }}</view>
         <view class="text-xs text-gray-500 mt-0.5">{{ window.canteenName }}</view>
         <view class="flex items-center mt-1">
           <text class="text-xs" :class="statusClass">{{ displayStatus }}</text>
           <view v-if="window.rating" class="flex items-center ml-2">
-             <text class="text-yellow-500 text-xs">★</text>
-             <text class="text-yellow-600 text-xs ml-0.5">{{ window.rating.toFixed(1) }}</text>
+            <text class="text-yellow-500 text-xs">★</text>
+            <text class="text-yellow-600 text-xs ml-0.5">{{ window.rating.toFixed(1) }}</text>
           </view>
         </view>
       </view>
@@ -27,7 +31,7 @@ const props = defineProps<{
 
 const displayStatus = computed(() => {
   const status = props.window.status;
-  
+
   switch (status) {
     case 'open':
       return '营业中';
@@ -42,7 +46,7 @@ const displayStatus = computed(() => {
 
 const statusClass = computed(() => {
   const status = props.window.status;
-  
+
   switch (status) {
     case 'open':
       return 'text-green-600';

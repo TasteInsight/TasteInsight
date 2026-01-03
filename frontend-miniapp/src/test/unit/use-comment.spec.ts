@@ -30,13 +30,13 @@ describe('useComment', () => {
 
   it('should fetch comments successfully', async () => {
     const { fetchComments, reviewComments } = useComment();
-    
+
     const mockResponse = {
       code: 200,
       data: {
         items: [{ id: '1', content: 'Test comment' }],
-        meta: { total: 1 }
-      }
+        meta: { total: 1 },
+      },
     };
     (getCommentsByReview as jest.Mock).mockResolvedValue(mockResponse);
 
@@ -46,13 +46,13 @@ describe('useComment', () => {
     expect(reviewComments.value[mockReviewId]).toEqual({
       items: mockResponse.data.items,
       total: 1,
-      loading: false
+      loading: false,
     });
   });
 
   it('should handle fetch error', async () => {
     const { fetchComments, reviewComments } = useComment();
-    
+
     (getCommentsByReview as jest.Mock).mockRejectedValue(new Error('Network error'));
 
     await fetchComments(mockReviewId);
@@ -63,15 +63,15 @@ describe('useComment', () => {
 
   it('should submit comment successfully', async () => {
     const { submitComment } = useComment();
-    
+
     const mockPayload = {
       reviewId: mockReviewId,
       content: 'New comment',
-      parentId: null
+      parentId: null,
     };
     const mockResponse = {
       code: 200,
-      data: { id: 'new-1', ...mockPayload }
+      data: { id: 'new-1', ...mockPayload },
     };
     (createComment as jest.Mock).mockResolvedValue(mockResponse);
 
@@ -83,27 +83,29 @@ describe('useComment', () => {
 
   it('should handle submit error', async () => {
     const { submitComment } = useComment();
-    
+
     (createComment as jest.Mock).mockResolvedValue({
       code: 500,
-      message: 'Server error'
+      message: 'Server error',
     });
 
-    await expect(submitComment({
-      reviewId: mockReviewId,
-      content: 'Fail',
-      parentCommentId: undefined
-    })).rejects.toThrow('Server error');
+    await expect(
+      submitComment({
+        reviewId: mockReviewId,
+        content: 'Fail',
+        parentCommentId: undefined,
+      })
+    ).rejects.toThrow('Server error');
   });
 
   it('should remove comment successfully', async () => {
     const { removeComment, reviewComments } = useComment();
-    
+
     // Setup initial state
     reviewComments.value[mockReviewId] = {
       items: [{ id: mockCommentId, content: 'To delete' } as any],
       total: 1,
-      loading: false
+      loading: false,
     };
 
     (deleteComment as jest.Mock).mockResolvedValue({ code: 200 });
@@ -125,7 +127,9 @@ describe('useCommentPanel', () => {
   });
 
   it('should initialize panel state', () => {
-    const { comments, loading, hasMore, replyContent, replyingTo } = useCommentPanel(() => mockReviewId);
+    const { comments, loading, hasMore, replyContent, replyingTo } = useCommentPanel(
+      () => mockReviewId
+    );
     expect(comments.value).toEqual([]);
     expect(loading.value).toBe(false);
     expect(hasMore.value).toBe(false);
@@ -137,7 +141,7 @@ describe('useCommentPanel', () => {
     const { fetchPanelComments, comments, hasMore } = useCommentPanel(() => mockReviewId);
     (getCommentsByReview as jest.Mock).mockResolvedValue({
       code: 200,
-      data: { items: [{ id: '1' }] }
+      data: { items: [{ id: '1' }] },
     });
 
     await fetchPanelComments();
@@ -147,12 +151,14 @@ describe('useCommentPanel', () => {
   });
 
   it('should load more comments', async () => {
-    const { loadMoreComments, fetchPanelComments, comments, hasMore } = useCommentPanel(() => mockReviewId);
-    
+    const { loadMoreComments, fetchPanelComments, comments, hasMore } = useCommentPanel(
+      () => mockReviewId
+    );
+
     // First page full
     (getCommentsByReview as jest.Mock).mockResolvedValueOnce({
       code: 200,
-      data: { items: new Array(10).fill({ id: 'x' }) }
+      data: { items: new Array(10).fill({ id: 'x' }) },
     });
 
     await fetchPanelComments();
@@ -161,22 +167,25 @@ describe('useCommentPanel', () => {
     // Load more
     (getCommentsByReview as jest.Mock).mockResolvedValueOnce({
       code: 200,
-      data: { items: [{ id: 'new' }] }
+      data: { items: [{ id: 'new' }] },
     });
 
     await loadMoreComments(); // This is async but function is void, so we wait for promise resolution implicitly or mock implementation
-    
+
     // Since loadMoreComments calls fetchPanelComments which is async, we need to wait.
     // But loadMoreComments doesn't return the promise.
     // We can wait for next tick or use jest.runAllTicks if using fake timers, or just await a small delay.
     // Better: check if getCommentsByReview was called with page 2
-    expect(getCommentsByReview).toHaveBeenLastCalledWith(mockReviewId, expect.objectContaining({ page: 2 }));
+    expect(getCommentsByReview).toHaveBeenLastCalledWith(
+      mockReviewId,
+      expect.objectContaining({ page: 2 })
+    );
   });
 
   it('should handle reply selection', () => {
     const { selectCommentForReply, cancelReply, replyingTo } = useCommentPanel(() => mockReviewId);
     const comment = { id: '1' } as any;
-    
+
     selectCommentForReply(comment);
     expect(replyingTo.value).toStrictEqual(comment);
 
@@ -185,7 +194,10 @@ describe('useCommentPanel', () => {
   });
 
   it('should submit reply successfully', async () => {
-    const { submitReply, replyContent, replyingTo } = useCommentPanel(() => mockReviewId, mockOnCommentAdded);
+    const { submitReply, replyContent, replyingTo } = useCommentPanel(
+      () => mockReviewId,
+      mockOnCommentAdded
+    );
     replyContent.value = 'Reply';
     replyingTo.value = { id: 'parent' } as any;
 
@@ -198,7 +210,7 @@ describe('useCommentPanel', () => {
     expect(createComment).toHaveBeenCalledWith({
       reviewId: mockReviewId,
       content: 'Reply',
-      parentCommentId: 'parent'
+      parentCommentId: 'parent',
     });
     expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({ title: '回复成功' }));
     expect(mockOnCommentAdded).toHaveBeenCalled();
@@ -213,7 +225,9 @@ describe('useCommentPanel', () => {
     await submitReply();
 
     expect(createComment).not.toHaveBeenCalled();
-    expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({ title: '请输入回复内容' }));
+    expect(mockShowToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: '请输入回复内容' })
+    );
   });
 
   it('should reset panel', () => {

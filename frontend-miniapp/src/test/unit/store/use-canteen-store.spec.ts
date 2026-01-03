@@ -2,7 +2,8 @@ import { setActivePinia, createPinia } from 'pinia';
 
 jest.mock('@/api/modules/canteen');
 import * as canteenModule from '@/api/modules/canteen';
-const { getCanteenList, getCanteenDetail, getWindowList, getWindowDetail, getWindowDishes } = canteenModule as any;
+const { getCanteenList, getCanteenDetail, getWindowList, getWindowDetail, getWindowDishes } =
+  canteenModule as any;
 
 import { useCanteenStore } from '@/store/modules/use-canteen-store';
 
@@ -14,7 +15,10 @@ describe('store/modules/use-canteen-store', () => {
   });
 
   test('fetchCanteenList sets list and pagination on success', async () => {
-    (getCanteenList as jest.Mock).mockResolvedValue({ code: 200, data: { items: [{ id: 'c1' }], meta: { totalPages: 3, page: 1, total: 6, pageSize: 9 } } });
+    (getCanteenList as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: { items: [{ id: 'c1' }], meta: { totalPages: 3, page: 1, total: 6, pageSize: 9 } },
+    });
     const store = useCanteenStore();
     await store.fetchCanteenList({ page: 1 } as any);
     expect(store.canteenList.length).toBe(1);
@@ -31,8 +35,14 @@ describe('store/modules/use-canteen-store', () => {
 
   test('loadMoreCanteenList appends items and respects totalPages', async () => {
     (getCanteenList as jest.Mock)
-      .mockResolvedValueOnce({ code: 200, data: { items: [{ id: 'c1' }], meta: { totalPages: 2, page: 1, total: 2, pageSize: 9 } } })
-      .mockResolvedValueOnce({ code: 200, data: { items: [{ id: 'c2' }], meta: { totalPages: 2, page: 2, total: 2, pageSize: 9 } } });
+      .mockResolvedValueOnce({
+        code: 200,
+        data: { items: [{ id: 'c1' }], meta: { totalPages: 2, page: 1, total: 2, pageSize: 9 } },
+      })
+      .mockResolvedValueOnce({
+        code: 200,
+        data: { items: [{ id: 'c2' }], meta: { totalPages: 2, page: 2, total: 2, pageSize: 9 } },
+      });
 
     const store = useCanteenStore();
     await store.fetchCanteenList();
@@ -58,7 +68,10 @@ describe('store/modules/use-canteen-store', () => {
   });
 
   test('fetchWindowList and fetchWindowDetail set windowList/currentWindow', async () => {
-    (getWindowList as jest.Mock).mockResolvedValue({ code: 200, data: { items: [{ id: 'w1' }], meta: { totalPages: 1, total: 1, page: 1, pageSize: 9 } } });
+    (getWindowList as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: { items: [{ id: 'w1' }], meta: { totalPages: 1, total: 1, page: 1, pageSize: 9 } },
+    });
     (getWindowDetail as jest.Mock).mockResolvedValue({ code: 200, data: { id: 'w1', name: 'W' } });
 
     const store = useCanteenStore();
@@ -73,7 +86,10 @@ describe('store/modules/use-canteen-store', () => {
   });
 
   test('fetchWindowDishes sets dishes and pagination and handles errors', async () => {
-    (getWindowDishes as jest.Mock).mockResolvedValue({ code: 200, data: { items: [{ id: 'd1' }], meta: { totalPages: 1, total: 1, page: 1, pageSize: 9 } } });
+    (getWindowDishes as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: { items: [{ id: 'd1' }], meta: { totalPages: 1, total: 1, page: 1, pageSize: 9 } },
+    });
     const store = useCanteenStore();
 
     await store.fetchWindowDishes('w1');

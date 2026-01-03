@@ -36,7 +36,7 @@ describe('useSettings', () => {
       userInfo: {
         nickname: 'Initial',
         allergens: [],
-        preferences: {}
+        preferences: {},
       },
       fetchProfileAction: jest.fn() as unknown as jest.Mock<any, any>,
       updateLocalUserInfo: jest.fn(),
@@ -57,19 +57,19 @@ describe('useSettings', () => {
 
   it('should sync form with user info', async () => {
     const { form } = useSettings();
-    
+
     // Trigger watch by updating userInfo
     mockStore.userInfo = {
       nickname: 'Test User',
       allergens: ['Peanut'],
       preferences: {
-        priceRange: { min: 10, max: 20 }
-      }
+        priceRange: { min: 10, max: 20 },
+      },
     };
-    
+
     await nextTick();
     await nextTick(); // Wait for watch callback
-    
+
     expect(form.nickname).toBe('Test User');
     expect(form.allergensText).toBe('Peanut');
     expect(form.priceRangeMin).toBe('10');
@@ -78,46 +78,48 @@ describe('useSettings', () => {
 
   it('should detect changes', async () => {
     const { form, canSubmit } = useSettings();
-    
+
     mockStore.userInfo = { nickname: 'Old' };
     await nextTick();
     await nextTick();
-    
+
     expect(canSubmit.value).toBe(false);
-    
+
     form.nickname = 'New Name';
     expect(canSubmit.value).toBe(true);
   });
 
   it('should save settings successfully', async () => {
     const { form, handleSave } = useSettings();
-    
+
     mockStore.userInfo = { nickname: 'Old' };
     await nextTick();
     await nextTick();
-    
+
     form.nickname = 'Updated Name';
 
     (updateUserProfile as jest.Mock).mockResolvedValue({
       code: 200,
-      data: { nickname: 'Updated Name' }
+      data: { nickname: 'Updated Name' },
     });
 
     await handleSave();
 
-    expect(updateUserProfile).toHaveBeenCalledWith(expect.objectContaining({
-      nickname: 'Updated Name',
-    }));
+    expect(updateUserProfile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        nickname: 'Updated Name',
+      })
+    );
     expect(mockStore.updateLocalUserInfo).toHaveBeenCalled();
     expect(uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ title: '保存成功' }));
   });
 
   it('should handle save error', async () => {
     const { form, handleSave } = useSettings();
-    
+
     mockStore.userInfo = { nickname: 'Old' };
     await nextTick();
-    
+
     await nextTick(); // Sync form
     form.nickname = 'Updated Name';
 
