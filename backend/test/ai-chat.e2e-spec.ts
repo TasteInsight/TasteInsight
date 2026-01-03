@@ -180,6 +180,7 @@ describe('AI Chat (e2e)', () => {
     it('should include time-based suggestions', async () => {
       const response = await request(app.getHttpServer())
         .get('/ai/suggestions')
+        .query({ localTime: '2025-01-01T12:00:00' })
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200);
 
@@ -193,6 +194,7 @@ describe('AI Chat (e2e)', () => {
     it('should include meal planning suggestion', async () => {
       const response = await request(app.getHttpServer())
         .get('/ai/suggestions')
+        .query({ localTime: '2025-01-01T12:00:00' })
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200);
 
@@ -757,7 +759,7 @@ describe('AI Chat (e2e)', () => {
       const userMessage = messages.find((m) => m.role === 'user');
       expect(userMessage).toBeDefined();
 
-      const content = userMessage!.content;
+      const content = userMessage!.content as any[];
       expect(content[0].data).toContain('测试消息保存');
     }, 15000); // Increased timeout for streaming test
   });
