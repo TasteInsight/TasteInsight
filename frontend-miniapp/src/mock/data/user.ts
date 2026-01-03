@@ -179,4 +179,3 @@ export const createMockHistory = (): BrowseHistoryItem[] => [
     averageRating: 4.7,
   },
 ];
-

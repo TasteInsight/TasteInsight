@@ -19,14 +19,14 @@ export function useDishDetail() {
     reviewsHasMore,
     fetchReviews: fetchReviewsOriginal,
     removeReview: removeReviewOriginal,
-    submitReview
+    submitReview,
   } = useReview();
 
   const {
     reviewComments,
     fetchComments,
     removeComment: removeCommentOriginal,
-    submitComment
+    submitComment,
   } = useComment();
 
   // --- 菜品详情状态 ---
@@ -45,7 +45,7 @@ export function useDishDetail() {
   // --- 收藏状态 ---
   const userStore = useUserStore();
   const favoriteLoading = ref(false);
-  
+
   // 计算当前菜品是否已收藏
   const isFavorited = computed(() => {
     if (!dish.value?.id || !userStore.userInfo?.myFavoriteDishes) return false;
@@ -64,21 +64,22 @@ export function useDishDetail() {
 
     try {
       const response = await getDishById(dishId);
-      
+
       if (response.code === 200 && response.data) {
         dish.value = response.data;
-        
+
         // 获取详情成功后，并行获取子菜品、父菜品和评价
         await Promise.all([
           fetchSubDishes(),
           fetchParentDish(),
-          fetchReviewsOriginal(dishId, true)
+          fetchReviewsOriginal(dishId, true),
         ]);
       } else {
         error.value = response.message || '获取菜品详情失败';
       }
     } catch (err: any) {
-      const debugError = err && typeof err === 'object' && 'originalError' in err ? (err as any).originalError : err;
+      const debugError =
+        err && typeof err === 'object' && 'originalError' in err ? (err as any).originalError : err;
       console.error('获取菜品详情失败:', debugError);
       error.value = err?.message || '网络开小差了，请稍后再试';
     } finally {
@@ -157,7 +158,7 @@ export function useDishDetail() {
       if (dish.value?.id) {
         await Promise.all([
           fetchReviewsOriginal(dish.value.id, true),
-          fetchDishDetail(dish.value.id)
+          fetchDishDetail(dish.value.id),
         ]);
       }
       onSuccess?.();
@@ -203,7 +204,9 @@ export function useDishDetail() {
         const res = await unfavoriteDish(dishId);
         if (res.code === 200) {
           // 更新本地用户信息
-          const newFavorites = (userStore.userInfo?.myFavoriteDishes || []).filter(id => id !== dishId);
+          const newFavorites = (userStore.userInfo?.myFavoriteDishes || []).filter(
+            id => id !== dishId
+          );
           userStore.updateLocalUserInfo({ myFavoriteDishes: newFavorites });
           uni.showToast({ title: '已取消收藏', icon: 'none' });
         } else {
@@ -234,13 +237,13 @@ export function useDishDetail() {
     loading,
     error,
     fetchDishDetail,
-    
+
     subDishes,
     subDishesLoading,
-    
+
     parentDish,
     parentDishLoading,
-    
+
     reviews,
     ratingSummary,
     reviewsLoading,
@@ -254,13 +257,12 @@ export function useDishDetail() {
     reviewComments,
     fetchComments,
     submitComment,
-    
+
     removeReview,
     removeComment,
-    
+
     isFavorited,
     favoriteLoading,
-    toggleFavorite
+    toggleFavorite,
   };
 }
-

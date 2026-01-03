@@ -112,12 +112,7 @@ describe('useFilter', () => {
   });
 
   it('should reset current filter', () => {
-    const {
-      activeFilter,
-      selectedPrice,
-      resetCurrentFilter,
-      selectedRating,
-    } = useFilter();
+    const { activeFilter, selectedPrice, resetCurrentFilter, selectedRating } = useFilter();
 
     activeFilter.value = 'price';
     selectedPrice.value = '10-15';
@@ -131,12 +126,7 @@ describe('useFilter', () => {
   });
 
   it('should reset all filters', () => {
-    const {
-      selectedPrice,
-      selectedRating,
-      selectedMealTime,
-      resetAllFilters,
-    } = useFilter();
+    const { selectedPrice, selectedRating, selectedMealTime, resetAllFilters } = useFilter();
 
     selectedPrice.value = '10-15';
     selectedRating.value = 4.5;
@@ -170,26 +160,28 @@ describe('useFilter', () => {
 
     const params = applyFilter();
 
-    expect(params).toEqual(expect.objectContaining({
-      price: { min: 10, max: 15 },
-      rating: { min: 4.5, max: 5 },
-      mealTime: ['breakfast'],
-      meatPreference: ['素'],
-      tag: ['新品'],
-      avoidIngredients: ['葱'],
-    }));
-    
+    expect(params).toEqual(
+      expect.objectContaining({
+        price: { min: 10, max: 15 },
+        rating: { min: 4.5, max: 5 },
+        mealTime: ['breakfast'],
+        meatPreference: ['素'],
+        tag: ['新品'],
+        avoidIngredients: ['葱'],
+      })
+    );
+
     expect(activeFilter.value).toBe('');
   });
 
   it('should handle custom price in applyFilter', () => {
     const { customPriceMin, customPriceMax, applyFilter } = useFilter();
-    
+
     customPriceMin.value = '5';
     customPriceMax.value = '20';
-    
+
     const params = applyFilter();
-    
+
     expect(params).not.toBeNull();
     expect(params!.price).toEqual({ min: 5, max: 20 });
   });
@@ -300,5 +292,5 @@ describe('useFilter', () => {
   it('hasActiveValue returns false for unknown key', () => {
     const f = useFilter();
     expect(f.hasActiveValue('unknown')).toBe(false);
-  });});
-
+  });
+});

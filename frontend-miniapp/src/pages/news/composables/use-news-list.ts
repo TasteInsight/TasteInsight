@@ -7,17 +7,17 @@ import type { News } from '@/types/api';
  * @param {object} initialParams - 初始查询参数
  */
 export function useNewsList(initialParams = {}) {
-  const list = ref<News[]>([]);// 新闻列表数据
+  const list = ref<News[]>([]); // 新闻列表数据
   const loading = ref(false); // 是否正在加载
   const finished = ref(false); // 是否加载完毕
   const isRefreshing = ref(false); // 下拉刷新状态
-  
+
   const meta = reactive({
     page: 1,
     pageSize: 10,
     total: 0,
     totalPages: 0,
-    ...initialParams
+    ...initialParams,
   });
 
   const loadData = async (reset = false) => {
@@ -28,7 +28,7 @@ export function useNewsList(initialParams = {}) {
       finished.value = false;
       isRefreshing.value = true; // 开始刷新
     }
-    
+
     loading.value = true;
     try {
       const res = await getNewsList({
@@ -43,7 +43,7 @@ export function useNewsList(initialParams = {}) {
         } else {
           list.value = [...list.value, ...newItems];
         }
-        
+
         // 更新分页信息
         Object.assign(meta, res.data.meta);
         meta.page = meta.page + 1; // 准备加载下一页
@@ -54,7 +54,7 @@ export function useNewsList(initialParams = {}) {
       } else {
         console.error('获取新闻列表失败:', res.message);
         // 如果是首次加载失败，清空列表并标记完成
-        if (reset) list.value = []; 
+        if (reset) list.value = [];
         finished.value = true;
       }
     } catch (error) {

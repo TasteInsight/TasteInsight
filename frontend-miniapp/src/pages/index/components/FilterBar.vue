@@ -8,9 +8,11 @@
           v-for="filter in filterOptions"
           :key="filter.key"
           class="inline-flex items-center rounded-lg h-[48px] px-4 text-base text-gray-700 bg-gray-100 transition-all duration-200 whitespace-nowrap"
-          :class="(activeFilter === filter.key || hasActiveValue(filter.key))
-            ? 'bg-ts-purple !text-white'
-            : ''"
+          :class="
+            activeFilter === filter.key || hasActiveValue(filter.key)
+              ? 'bg-ts-purple !text-white'
+              : ''
+          "
           @click="toggleFilter(filter.key)"
         >
           <text>{{ filter.label }}</text>
@@ -27,7 +29,10 @@
     ></view>
 
     <!-- 筛选面板 -->
-    <view v-if="activeFilter" class="relative z-10 border border-gray-200 bg-white rounded-lg shadow-lg p-4 mb-4">
+    <view
+      v-if="activeFilter"
+      class="relative z-10 border border-gray-200 bg-white rounded-lg shadow-lg p-4 mb-4"
+    >
       <!-- 价格筛选 -->
       <view v-if="activeFilter === 'price'" class="filter-content">
         <view class="text-sm font-medium text-gray-700 mb-3">价格区间</view>
@@ -37,9 +42,11 @@
             v-for="option in priceOptions"
             :key="option.value"
             class="px-3 py-1.5 rounded-full text-sm cursor-pointer border"
-            :class="selectedPrice === option.value 
-              ? 'bg-ts-purple text-white border-ts-purple' 
-              : 'bg-gray-100 text-gray-700 border-gray-200'"
+            :class="
+              selectedPrice === option.value
+                ? 'bg-ts-purple text-white border-ts-purple'
+                : 'bg-gray-100 text-gray-700 border-gray-200'
+            "
             @click="selectPrice(option.value)"
           >
             {{ option.label }}
@@ -77,9 +84,11 @@
             v-for="option in ratingOptions"
             :key="option.value"
             class="px-3 py-1.5 rounded-full text-sm cursor-pointer border"
-            :class="selectedRating === option.value && customRatingMin === '' && customRatingMax === ''
-              ? 'bg-ts-purple text-white border-ts-purple' 
-              : 'bg-gray-100 text-gray-700 border-gray-200'"
+            :class="
+              selectedRating === option.value && customRatingMin === '' && customRatingMax === ''
+                ? 'bg-ts-purple text-white border-ts-purple'
+                : 'bg-gray-100 text-gray-700 border-gray-200'
+            "
             @click="selectRating(option.value)"
           >
             {{ option.label }}
@@ -117,9 +126,11 @@
             v-for="option in mealTimeOptions"
             :key="option.value"
             class="px-3 py-1.5 rounded-full text-sm cursor-pointer border"
-            :class="selectedMealTime.includes(option.value) 
-              ? 'bg-ts-purple text-white border-ts-purple' 
-              : 'bg-gray-100 text-gray-700 border-gray-200'"
+            :class="
+              selectedMealTime.includes(option.value)
+                ? 'bg-ts-purple text-white border-ts-purple'
+                : 'bg-gray-100 text-gray-700 border-gray-200'
+            "
             @click="toggleMealTime(option.value)"
           >
             {{ option.label }}
@@ -134,15 +145,17 @@
         <view class="mb-6">
           <view class="flex justify-between items-center mb-3">
             <text class="text-sm font-medium text-gray-700">辣度范围</text>
-            <text class="text-xs text-gray-500">{{ getTasteRangeLabel('spicy', selectedSpicyMin, selectedSpicyMax) }}</text>
+            <text class="text-xs text-gray-500">{{
+              getTasteRangeLabel('spicy', selectedSpicyMin, selectedSpicyMax)
+            }}</text>
           </view>
           <view class="px-2">
             <view class="flex items-center gap-3 mb-2">
               <text class="text-xs text-gray-500 w-10 flex-shrink-0">最小</text>
-              <slider 
-                :value="selectedSpicyMin" 
-                :min="0" 
-                :max="5" 
+              <slider
+                :value="selectedSpicyMin"
+                :min="0"
+                :max="5"
                 :step="1"
                 activeColor="#ef4444"
                 backgroundColor="#e5e7eb"
@@ -150,14 +163,16 @@
                 class="flex-1"
                 @change="(e: any) => onTasteSliderChange('spicy', e.detail.value, true)"
               />
-              <text class="text-xs text-gray-600 w-8 text-center">{{ selectedSpicyMin === 0 ? '不限' : selectedSpicyMin }}</text>
+              <text class="text-xs text-gray-600 w-8 text-center">{{
+                selectedSpicyMin === 0 ? '不限' : selectedSpicyMin
+              }}</text>
             </view>
             <view class="flex items-center gap-3">
               <text class="text-xs text-gray-500 w-10 flex-shrink-0">最大</text>
-              <slider 
-                :value="selectedSpicyMax" 
-                :min="0" 
-                :max="5" 
+              <slider
+                :value="selectedSpicyMax"
+                :min="0"
+                :max="5"
                 :step="1"
                 activeColor="#ef4444"
                 backgroundColor="#e5e7eb"
@@ -165,7 +180,9 @@
                 class="flex-1"
                 @change="(e: any) => onTasteSliderChange('spicy', e.detail.value, false)"
               />
-              <text class="text-xs text-gray-600 w-8 text-center">{{ selectedSpicyMax === 0 ? '不限' : selectedSpicyMax }}</text>
+              <text class="text-xs text-gray-600 w-8 text-center">{{
+                selectedSpicyMax === 0 ? '不限' : selectedSpicyMax
+              }}</text>
             </view>
           </view>
         </view>
@@ -174,15 +191,17 @@
         <view class="mb-6">
           <view class="flex justify-between items-center mb-3">
             <text class="text-sm font-medium text-gray-700">咸度范围</text>
-            <text class="text-xs text-gray-500">{{ getTasteRangeLabel('salty', selectedSaltyMin, selectedSaltyMax) }}</text>
+            <text class="text-xs text-gray-500">{{
+              getTasteRangeLabel('salty', selectedSaltyMin, selectedSaltyMax)
+            }}</text>
           </view>
           <view class="px-2">
             <view class="flex items-center gap-3 mb-2">
               <text class="text-xs text-gray-500 w-10 flex-shrink-0">最小</text>
-              <slider 
-                :value="selectedSaltyMin" 
-                :min="0" 
-                :max="5" 
+              <slider
+                :value="selectedSaltyMin"
+                :min="0"
+                :max="5"
                 :step="1"
                 activeColor="#f59e0b"
                 backgroundColor="#e5e7eb"
@@ -190,14 +209,16 @@
                 class="flex-1"
                 @change="(e: any) => onTasteSliderChange('salty', e.detail.value, true)"
               />
-              <text class="text-xs text-gray-600 w-8 text-center">{{ selectedSaltyMin === 0 ? '不限' : selectedSaltyMin }}</text>
+              <text class="text-xs text-gray-600 w-8 text-center">{{
+                selectedSaltyMin === 0 ? '不限' : selectedSaltyMin
+              }}</text>
             </view>
             <view class="flex items-center gap-3">
               <text class="text-xs text-gray-500 w-10 flex-shrink-0">最大</text>
-              <slider 
-                :value="selectedSaltyMax" 
-                :min="0" 
-                :max="5" 
+              <slider
+                :value="selectedSaltyMax"
+                :min="0"
+                :max="5"
                 :step="1"
                 activeColor="#f59e0b"
                 backgroundColor="#e5e7eb"
@@ -205,7 +226,9 @@
                 class="flex-1"
                 @change="(e: any) => onTasteSliderChange('salty', e.detail.value, false)"
               />
-              <text class="text-xs text-gray-600 w-8 text-center">{{ selectedSaltyMax === 0 ? '不限' : selectedSaltyMax }}</text>
+              <text class="text-xs text-gray-600 w-8 text-center">{{
+                selectedSaltyMax === 0 ? '不限' : selectedSaltyMax
+              }}</text>
             </view>
           </view>
         </view>
@@ -214,15 +237,17 @@
         <view class="mb-6">
           <view class="flex justify-between items-center mb-3">
             <text class="text-sm font-medium text-gray-700">甜度范围</text>
-            <text class="text-xs text-gray-500">{{ getTasteRangeLabel('sweet', selectedSweetMin, selectedSweetMax) }}</text>
+            <text class="text-xs text-gray-500">{{
+              getTasteRangeLabel('sweet', selectedSweetMin, selectedSweetMax)
+            }}</text>
           </view>
           <view class="px-2">
             <view class="flex items-center gap-3 mb-2">
               <text class="text-xs text-gray-500 w-10 flex-shrink-0">最小</text>
-              <slider 
-                :value="selectedSweetMin" 
-                :min="0" 
-                :max="5" 
+              <slider
+                :value="selectedSweetMin"
+                :min="0"
+                :max="5"
                 :step="1"
                 activeColor="#ec4899"
                 backgroundColor="#e5e7eb"
@@ -230,14 +255,16 @@
                 class="flex-1"
                 @change="(e: any) => onTasteSliderChange('sweet', e.detail.value, true)"
               />
-              <text class="text-xs text-gray-600 w-8 text-center">{{ selectedSweetMin === 0 ? '不限' : selectedSweetMin }}</text>
+              <text class="text-xs text-gray-600 w-8 text-center">{{
+                selectedSweetMin === 0 ? '不限' : selectedSweetMin
+              }}</text>
             </view>
             <view class="flex items-center gap-3">
               <text class="text-xs text-gray-500 w-10 flex-shrink-0">最大</text>
-              <slider 
-                :value="selectedSweetMax" 
-                :min="0" 
-                :max="5" 
+              <slider
+                :value="selectedSweetMax"
+                :min="0"
+                :max="5"
                 :step="1"
                 activeColor="#ec4899"
                 backgroundColor="#e5e7eb"
@@ -245,7 +272,9 @@
                 class="flex-1"
                 @change="(e: any) => onTasteSliderChange('sweet', e.detail.value, false)"
               />
-              <text class="text-xs text-gray-600 w-8 text-center">{{ selectedSweetMax === 0 ? '不限' : selectedSweetMax }}</text>
+              <text class="text-xs text-gray-600 w-8 text-center">{{
+                selectedSweetMax === 0 ? '不限' : selectedSweetMax
+              }}</text>
             </view>
           </view>
         </view>
@@ -254,15 +283,17 @@
         <view>
           <view class="flex justify-between items-center mb-3">
             <text class="text-sm font-medium text-gray-700">油腻度范围</text>
-            <text class="text-xs text-gray-500">{{ getTasteRangeLabel('oily', selectedOilyMin, selectedOilyMax) }}</text>
+            <text class="text-xs text-gray-500">{{
+              getTasteRangeLabel('oily', selectedOilyMin, selectedOilyMax)
+            }}</text>
           </view>
           <view class="px-2">
             <view class="flex items-center gap-3 mb-2">
               <text class="text-xs text-gray-500 w-10 flex-shrink-0">最小</text>
-              <slider 
-                :value="selectedOilyMin" 
-                :min="0" 
-                :max="5" 
+              <slider
+                :value="selectedOilyMin"
+                :min="0"
+                :max="5"
                 :step="1"
                 activeColor="#ca8a04"
                 backgroundColor="#e5e7eb"
@@ -270,14 +301,16 @@
                 class="flex-1"
                 @change="(e: any) => onTasteSliderChange('oily', e.detail.value, true)"
               />
-              <text class="text-xs text-gray-600 w-8 text-center">{{ selectedOilyMin === 0 ? '不限' : selectedOilyMin }}</text>
+              <text class="text-xs text-gray-600 w-8 text-center">{{
+                selectedOilyMin === 0 ? '不限' : selectedOilyMin
+              }}</text>
             </view>
             <view class="flex items-center gap-3">
               <text class="text-xs text-gray-500 w-10 flex-shrink-0">最大</text>
-              <slider 
-                :value="selectedOilyMax" 
-                :min="0" 
-                :max="5" 
+              <slider
+                :value="selectedOilyMax"
+                :min="0"
+                :max="5"
                 :step="1"
                 activeColor="#ca8a04"
                 backgroundColor="#e5e7eb"
@@ -285,7 +318,9 @@
                 class="flex-1"
                 @change="(e: any) => onTasteSliderChange('oily', e.detail.value, false)"
               />
-              <text class="text-xs text-gray-600 w-8 text-center">{{ selectedOilyMax === 0 ? '不限' : selectedOilyMax }}</text>
+              <text class="text-xs text-gray-600 w-8 text-center">{{
+                selectedOilyMax === 0 ? '不限' : selectedOilyMax
+              }}</text>
             </view>
           </view>
         </view>
@@ -300,9 +335,11 @@
             v-for="option in meatOptions"
             :key="option.value"
             class="px-3 py-1.5 rounded-full text-sm cursor-pointer border"
-            :class="selectedMeat.includes(option.value) 
-              ? 'bg-ts-purple text-white border-ts-purple' 
-              : 'bg-gray-100 text-gray-700 border-gray-200'"
+            :class="
+              selectedMeat.includes(option.value)
+                ? 'bg-ts-purple text-white border-ts-purple'
+                : 'bg-gray-100 text-gray-700 border-gray-200'
+            "
             @click="toggleMeat(option.value)"
           >
             {{ option.label }}
@@ -318,9 +355,11 @@
             v-for="option in tagOptions"
             :key="option.value"
             class="px-3 py-1.5 rounded-full text-sm cursor-pointer border"
-            :class="selectedTags.includes(option.value) 
-              ? 'bg-ts-purple text-white border-ts-purple' 
-              : 'bg-gray-100 text-gray-700 border-gray-200'"
+            :class="
+              selectedTags.includes(option.value)
+                ? 'bg-ts-purple text-white border-ts-purple'
+                : 'bg-gray-100 text-gray-700 border-gray-200'
+            "
             @click="toggleTag(option.value)"
           >
             {{ option.label }}
@@ -364,9 +403,11 @@
             v-for="option in avoidOptions"
             :key="option.value"
             class="px-3 py-1.5 rounded-full text-sm cursor-pointer border"
-            :class="selectedAvoid.includes(option.value) 
-              ? 'bg-red-500 text-white border-red-500' 
-              : 'bg-gray-100 text-gray-700 border-gray-200'"
+            :class="
+              selectedAvoid.includes(option.value)
+                ? 'bg-red-500 text-white border-red-500'
+                : 'bg-gray-100 text-gray-700 border-gray-200'
+            "
             @click="toggleAvoid(option.value)"
           >
             {{ option.label }}
@@ -440,7 +481,7 @@ const {
   meatOptions,
   tagOptions,
   avoidOptions,
-  
+
   // 状态
   activeFilter,
   selectedPrice,
@@ -468,7 +509,7 @@ const {
   selectedSweetMax,
   selectedOilyMin,
   selectedOilyMax,
-  
+
   // 方法
   isTasteModified,
   getTasteRangeLabel,
@@ -529,4 +570,3 @@ defineExpose({
   background-color: transparent;
 }
 </style>
-

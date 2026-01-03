@@ -46,7 +46,10 @@ describe('pages/planning/composables/use-menu-planning.ts', () => {
     expect(removePlan).toHaveBeenCalledWith('p1');
 
     // confirm false
-    (global as any).uni = { showModal: (opts: any) => opts.success({ confirm: false }), showToast: jest.fn() };
+    (global as any).uni = {
+      showModal: (opts: any) => opts.success({ confirm: false }),
+      showToast: jest.fn(),
+    };
     await inst.deletePlan('p2');
     expect(removePlan).toHaveBeenCalledTimes(1);
   });
@@ -75,7 +78,12 @@ describe('pages/planning/composables/use-menu-planning.ts', () => {
     const updatePlan = jest.fn() as unknown as jest.Mock<any, any>;
     updatePlan.mockResolvedValue({});
     // First: ensure when no selectedPlan updatePlan not called
-    const mockStoreNo = { fetchPlans: jest.fn(), setSelectedPlan: jest.fn(), updatePlan, selectedPlan: null } as any;
+    const mockStoreNo = {
+      fetchPlans: jest.fn(),
+      setSelectedPlan: jest.fn(),
+      updatePlan,
+      selectedPlan: null,
+    } as any;
     jest.doMock('@/store/modules/use-plan-store', () => ({ usePlanStore: () => mockStoreNo }));
     const { useMenuPlanning: useMenuPlanningNo } = require(MODULE_PATH);
     const instNo = useMenuPlanningNo();
@@ -84,7 +92,12 @@ describe('pages/planning/composables/use-menu-planning.ts', () => {
 
     // Reset modules and test with selectedPlan present
     jest.resetModules();
-    const mockStoreYes = { fetchPlans: jest.fn(), setSelectedPlan: jest.fn(), updatePlan, selectedPlan: { id: 'p1' } } as any;
+    const mockStoreYes = {
+      fetchPlans: jest.fn(),
+      setSelectedPlan: jest.fn(),
+      updatePlan,
+      selectedPlan: { id: 'p1' },
+    } as any;
     jest.doMock('@/store/modules/use-plan-store', () => ({ usePlanStore: () => mockStoreYes }));
     const { useMenuPlanning: useMenuPlanningYes } = require(MODULE_PATH);
     const instYes = useMenuPlanningYes();

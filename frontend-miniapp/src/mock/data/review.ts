@@ -77,15 +77,15 @@ const getReviewContent = (rating: number): string => {
 // 生成评价数据
 export const createMockReviews = (): Review[] => {
   const reviews: Review[] = [];
-  
+
   // 为每个菜品生成评价
   const dishReviewConfig: Record<string, { count: number; avgRating: number }> = {
-    'dish_001': { count: 15, avgRating: 4.5 },  // 宫保鸡丁
-    'dish_002': { count: 12, avgRating: 4.2 },  // 麻婆豆腐
-    'dish_003': { count: 18, avgRating: 4.8 },  // 鱼香肉丝
-    'dish_004': { count: 8, avgRating: 4.0 },   // 清炒时蔬
-    'dish_005': { count: 20, avgRating: 4.8 },  // 红烧肉
-    'dish_006': { count: 10, avgRating: 4.3 },  // 皮蛋瘦肉粥
+    dish_001: { count: 15, avgRating: 4.5 }, // 宫保鸡丁
+    dish_002: { count: 12, avgRating: 4.2 }, // 麻婆豆腐
+    dish_003: { count: 18, avgRating: 4.8 }, // 鱼香肉丝
+    dish_004: { count: 8, avgRating: 4.0 }, // 清炒时蔬
+    dish_005: { count: 20, avgRating: 4.8 }, // 红烧肉
+    dish_006: { count: 10, avgRating: 4.3 }, // 皮蛋瘦肉粥
   };
 
   let reviewId = 1;
@@ -93,13 +93,13 @@ export const createMockReviews = (): Review[] => {
   for (const [dishId, config] of Object.entries(dishReviewConfig)) {
     for (let i = 0; i < config.count; i++) {
       const user = mockUsers[Math.floor(Math.random() * mockUsers.length)];
-      
+
       // 根据平均评分生成具体评分（正态分布模拟）
       let rating = Math.round(config.avgRating + (Math.random() - 0.5) * 2);
       rating = Math.max(1, Math.min(5, rating));
-      
+
       const hasImages = Math.random() > 0.7; // 30% 概率有图片
-      
+
       reviews.push({
         id: `review_${String(reviewId).padStart(3, '0')}`,
         dishId,
@@ -112,14 +112,14 @@ export const createMockReviews = (): Review[] => {
         status: 'approved',
         createdAt: randomDate(30),
       });
-      
+
       reviewId++;
     }
   }
-  
+
   // 按时间倒序排列
   reviews.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  
+
   return reviews;
 };
 
@@ -144,22 +144,22 @@ const assignFloorsByReview = (commentList: Comment[]) => {
 export const createMockComments = (): Comment[] => {
   const comments: Comment[] = [];
   const reviews = createMockReviews();
-  
+
   let commentId = 1;
-  
+
   // 为部分评价生成评论（约40%的评价有评论）
   for (const review of reviews) {
     if (Math.random() > 0.6) {
       // 每条有评论的评价生成1-3条评论
       const commentCount = Math.floor(Math.random() * 3) + 1;
       const reviewComments: Comment[] = [];
-      
+
       for (let i = 0; i < commentCount; i++) {
         const user = mockUsers[Math.floor(Math.random() * mockUsers.length)];
-        
+
         // 避免自己评论自己
         if (user.id === review.userId) continue;
-        
+
         const comment: Comment = {
           id: `comment_${String(commentId).padStart(3, '0')}`,
           reviewId: review.id,
@@ -171,7 +171,7 @@ export const createMockComments = (): Comment[] => {
           status: 'approved',
           createdAt: randomDate(15), // 评论在最近15天内
         };
-        
+
         // 随机让一些评论成为回复（30%的概率）
         if (reviewComments.length > 0 && Math.random() > 0.7) {
           const parentComment = reviewComments[Math.floor(Math.random() * reviewComments.length)];
@@ -182,19 +182,19 @@ export const createMockComments = (): Comment[] => {
             deleted: false,
           };
         }
-        
+
         reviewComments.push(comment);
         comments.push(comment);
         commentId++;
       }
     }
   }
-  
+
   // 按时间倒序排列
   comments.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   assignFloorsByReview(comments);
-  
+
   return comments;
 };
 
@@ -291,9 +291,11 @@ export const removeComment = (commentId: string): boolean => {
 };
 
 // 计算菜品的评分详情
-export const getRatingDetailByDishId = (dishId: string): { average: number; total: number; detail: Record<string, number> } => {
+export const getRatingDetailByDishId = (
+  dishId: string
+): { average: number; total: number; detail: Record<string, number> } => {
   const reviews = getReviewsByDishId(dishId);
-  
+
   const detail: Record<string, number> = {
     '1': 0,
     '2': 0,
@@ -301,16 +303,16 @@ export const getRatingDetailByDishId = (dishId: string): { average: number; tota
     '4': 0,
     '5': 0,
   };
-  
+
   let totalRating = 0;
-  
+
   for (const review of reviews) {
     detail[String(review.rating)] = (detail[String(review.rating)] || 0) + 1;
     totalRating += review.rating;
   }
-  
+
   const average = reviews.length > 0 ? totalRating / reviews.length : 0;
-  
+
   return {
     average: Math.round(average * 10) / 10,
     total: reviews.length,

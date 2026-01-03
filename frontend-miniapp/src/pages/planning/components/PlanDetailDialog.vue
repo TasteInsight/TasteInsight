@@ -5,9 +5,9 @@
     @tap="handleClose"
     @touchmove.stop.prevent
   >
-    <view 
-      class="bg-white rounded-2xl w-full max-w-2xl flex flex-col overflow-hidden" 
-      style="max-height: 80vh;"
+    <view
+      class="bg-white rounded-2xl w-full max-w-2xl flex flex-col overflow-hidden"
+      style="max-height: 80vh"
       @tap.stop
       @touchmove.stop
     >
@@ -18,7 +18,7 @@
         </view>
       </view>
 
-      <scroll-view v-if="plan" scroll-y class="flex-1" style="max-height: calc(80vh - 140px);">
+      <scroll-view v-if="plan" scroll-y class="flex-1" style="max-height: calc(80vh - 140px)">
         <view class="p-5">
           <view class="bg-gray-50 p-4 rounded-lg mb-5">
             <view class="flex mb-3 items-center">
@@ -31,31 +31,37 @@
             </view>
             <view class="flex items-center">
               <text class="text-gray-600 font-medium w-24 shrink-0">总价：</text>
-              <text class="text-orange-500 font-bold text-lg break-words flex-1">¥{{ totalPrice.toFixed(2) }}</text>
+              <text class="text-orange-500 font-bold text-lg break-words flex-1"
+                >¥{{ totalPrice.toFixed(2) }}</text
+              >
             </view>
           </view>
 
           <view class="mt-5">
             <text class="text-lg font-semibold mb-4 block">包含菜品</text>
-            <view 
-              v-for="dish in plan.dishes" 
-              :key="dish.id" 
+            <view
+              v-for="dish in plan.dishes"
+              :key="dish.id"
               class="flex gap-3 p-3 border border-gray-100 rounded-lg mb-3 active:bg-gray-50"
               @tap="goToDishDetail(dish.id)"
             >
-              <image 
-                :src="dish.images[0] || '/static/default_dish.png'" 
-                class="w-20 h-20 rounded-lg shrink-0" 
+              <image
+                :src="dish.images[0] || '/static/default_dish.png'"
+                class="w-20 h-20 rounded-lg shrink-0"
                 mode="aspectFill"
               />
               <view class="flex-1 min-w-0">
                 <text class="font-semibold block mb-1 break-words truncate">{{ dish.name }}</text>
-                <text class="text-sm text-gray-600 block mb-2 break-words truncate">{{ dish.canteenName }} - {{ dish.windowName }}</text>
+                <text class="text-sm text-gray-600 block mb-2 break-words truncate"
+                  >{{ dish.canteenName }} - {{ dish.windowName }}</text
+                >
                 <view class="flex justify-between items-center">
                   <text class="text-orange-500 font-bold">¥{{ dish.price }}</text>
                   <view class="flex items-center gap-1">
                     <text class="text-yellow-500">★</text>
-                    <text class="text-yellow-500">{{ dish.averageRating === 0 ? '暂无' : dish.averageRating.toFixed(1) }}</text>
+                    <text class="text-yellow-500">{{
+                      dish.averageRating === 0 ? '暂无' : dish.averageRating.toFixed(1)
+                    }}</text>
                   </view>
                 </view>
               </view>
@@ -91,22 +97,20 @@ const mealTimeMap = {
   breakfast: '早餐',
   lunch: '午餐',
   dinner: '晚餐',
-  nightsnack: '夜宵'
+  nightsnack: '夜宵',
 };
 
-const mealTimeText = computed(() => 
-  props.plan ? mealTimeMap[props.plan.mealTime] || '用餐' : ''
-);
+const mealTimeText = computed(() => (props.plan ? mealTimeMap[props.plan.mealTime] || '用餐' : ''));
 
-const totalPrice = computed(() => 
-  props.plan?.dishes.reduce((sum, dish) => sum + dish.price, 0) || 0
+const totalPrice = computed(
+  () => props.plan?.dishes.reduce((sum, dish) => sum + dish.price, 0) || 0
 );
 
 const formatDate = (date: string) => dayjs(date).format('YYYY年MM月DD日');
 
 const goToDishDetail = (dishId: string) => {
   uni.navigateTo({
-    url: `/pages/dish/index?id=${dishId}`
+    url: `/pages/dish/index?id=${dishId}`,
   });
 };
 

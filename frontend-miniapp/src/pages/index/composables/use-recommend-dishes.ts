@@ -5,11 +5,11 @@ import type { Dish, GetDishesRequest } from '@/types/api';
 export function useRecommendDishes() {
   const dishes = ref<Dish[]>([]);
   const loading = ref(false);
-  
+
   const fetchDishes = async () => {
     if (loading.value) return;
     loading.value = true;
-    
+
     try {
       const requestParams: GetDishesRequest = {
         filter: {},
@@ -24,12 +24,11 @@ export function useRecommendDishes() {
           pageSize: 10,
         },
       };
-      
+
       const paginatedData = await getDishes(requestParams);
       dishes.value = paginatedData.data.items;
-
     } catch (err) {
-      console.error("获取推荐菜品失败:", err);
+      console.error('获取推荐菜品失败:', err);
     } finally {
       loading.value = false;
     }

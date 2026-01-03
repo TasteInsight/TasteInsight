@@ -29,25 +29,25 @@ describe('useReport', () => {
 
   it('should open report modal correctly', () => {
     const { openReportModal, isReportVisible } = useReport();
-    
+
     openReportModal('review', '123');
-    
+
     expect(isReportVisible.value).toBe(true);
   });
 
   it('should close report modal correctly', () => {
     const { openReportModal, closeReportModal, isReportVisible } = useReport();
-    
+
     openReportModal('review', '123');
     closeReportModal();
-    
+
     expect(isReportVisible.value).toBe(false);
   });
 
   it('should submit review report successfully', async () => {
     const { openReportModal, submitReport } = useReport();
     const mockData: ReportRequest = { type: 'spam', reason: 'Spam content' };
-    
+
     openReportModal('review', '123');
     (reportReview as jest.Mock).mockResolvedValue({ code: 200 });
 
@@ -60,7 +60,7 @@ describe('useReport', () => {
   it('should submit comment report successfully', async () => {
     const { openReportModal, submitReport } = useReport();
     const mockData: ReportRequest = { type: 'inappropriate', reason: 'Abusive content' };
-    
+
     openReportModal('comment', '456');
     (reportComment as jest.Mock).mockResolvedValue({ code: 200 });
 
@@ -73,12 +73,14 @@ describe('useReport', () => {
   it('should handle report error', async () => {
     const { openReportModal, submitReport } = useReport();
     const mockData: ReportRequest = { type: 'spam', reason: 'Spam content' };
-    
+
     openReportModal('review', '123');
     (reportReview as jest.Mock).mockRejectedValue(new Error('Network Error'));
 
     await submitReport(mockData);
 
-    expect(uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Network Error', icon: 'none' }));
+    expect(uni.showToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Network Error', icon: 'none' })
+    );
   });
 });

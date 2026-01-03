@@ -3,7 +3,12 @@
     class="w-24 h-24 flex flex-col items-center justify-center rounded-lg bg-white shadow-sm cursor-pointer flex-shrink-0"
     @tap="handleTap"
   >
-    <img :src="canteen.images[0] || '/default-canteen.png'" :alt="canteen.name" class="w-12 h-12" style="object-fit:contain" />
+    <img
+      :src="canteen.images[0] || '/default-canteen.png'"
+      :alt="canteen.name"
+      class="w-12 h-12"
+      style="object-fit: contain"
+    />
     <span class="mt-2 font-medium">{{ canteen.name }}</span>
   </view>
 </template>
@@ -21,4 +26,3 @@ const handleTap = () => {
   emit('click');
 };
 </script>
-

@@ -20,11 +20,18 @@ describe('usePreferences', () => {
 
     const fetchCanteenStub = jest.fn() as unknown as jest.Mock<any, any>;
     fetchCanteenStub.mockResolvedValue(undefined);
-    mockedUseCanteenStore.mockReturnValue({ canteenList: [], fetchCanteenList: fetchCanteenStub } as any);
+    mockedUseCanteenStore.mockReturnValue({
+      canteenList: [],
+      fetchCanteenList: fetchCanteenStub,
+    } as any);
 
     const fetchProfileStub = jest.fn() as unknown as jest.Mock<any, any>;
     fetchProfileStub.mockResolvedValue(undefined);
-    mockedUseUserStore.mockReturnValue({ fetchProfileAction: fetchProfileStub, userInfo: null, updateLocalUserInfo: jest.fn() } as any);
+    mockedUseUserStore.mockReturnValue({
+      fetchProfileAction: fetchProfileStub,
+      userInfo: null,
+      updateLocalUserInfo: jest.fn(),
+    } as any);
   });
 
   test('onMounted loadPreferences calls canteenStore.fetchCanteenList and userStore.fetchProfileAction when used inside a component', async () => {
@@ -36,19 +43,34 @@ describe('usePreferences', () => {
     const fetchProfile = jest.fn() as unknown as jest.Mock<any, any>;
     fetchProfile.mockResolvedValue(undefined);
 
-    mockedUseCanteenStore.mockReturnValue({ canteenList: [], fetchCanteenList: fetchCanteen } as any);
-    mockedUseUserStore.mockReturnValue({ fetchProfileAction: fetchProfile, userInfo: { preferences: { tastePreferences: { spicyLevel: 2 }, portionSize: 'large', favoriteIngredients: ['f'] } }, updateLocalUserInfo: jest.fn() } as any);
-
-    const wrapper = mount(defineComponent({
-      setup() {
-        const s = usePreferences();
-        return { s };
+    mockedUseCanteenStore.mockReturnValue({
+      canteenList: [],
+      fetchCanteenList: fetchCanteen,
+    } as any);
+    mockedUseUserStore.mockReturnValue({
+      fetchProfileAction: fetchProfile,
+      userInfo: {
+        preferences: {
+          tastePreferences: { spicyLevel: 2 },
+          portionSize: 'large',
+          favoriteIngredients: ['f'],
+        },
       },
-      template: '<div />',
-    }));
+      updateLocalUserInfo: jest.fn(),
+    } as any);
+
+    const wrapper = mount(
+      defineComponent({
+        setup() {
+          const s = usePreferences();
+          return { s };
+        },
+        template: '<div />',
+      })
+    );
 
     // allow onMounted async to run
-    await new Promise((r) => setTimeout(r, 0));
+    await new Promise(r => setTimeout(r, 0));
 
     expect(fetchCanteen).toHaveBeenCalled();
     expect(fetchProfile).toHaveBeenCalled();
@@ -101,7 +123,10 @@ describe('usePreferences', () => {
     const s = usePreferences();
     const ok = await s.handleSave();
     expect(ok).toBe(true);
-    expect((global as any).uni.showToast).toHaveBeenCalledWith({ title: '保存成功', icon: 'success' });
+    expect((global as any).uni.showToast).toHaveBeenCalledWith({
+      title: '保存成功',
+      icon: 'success',
+    });
 
     mockedUpdate.mockResolvedValueOnce({ code: 400, message: 'Bad' } as any);
     const s2 = usePreferences();

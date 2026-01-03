@@ -22,7 +22,10 @@
             <text class="iconfont icon-star mr-2"></text>核心功能
           </text>
           <text class="text-blue-700 text-sm leading-relaxed">
-            • 智能菜品评价系统：支持文字评价、星级评分、图片上传\n• AI美食推荐：基于您的口味偏好和过敏信息提供个性化推荐\n• 食堂窗口导航：实时查看各窗口菜品和价格信息\n• 菜单规划助手：智能生成每日/每周饮食计划\n• 社区互动：查看他人评价、参与讨论交流\n• 个人中心：收藏菜品、管理评价历史、设置偏好
+            • 智能菜品评价系统：支持文字评价、星级评分、图片上传\n•
+            AI美食推荐：基于您的口味偏好和过敏信息提供个性化推荐\n•
+            食堂窗口导航：实时查看各窗口菜品和价格信息\n• 菜单规划助手：智能生成每日/每周饮食计划\n•
+            社区互动：查看他人评价、参与讨论交流\n• 个人中心：收藏菜品、管理评价历史、设置偏好
           </text>
         </view>
       </view>
@@ -67,7 +70,9 @@
         </text>
         <view class="space-y-3">
           <view class="flex items-center">
-            <view class="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mr-3">
+            <view
+              class="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mr-3"
+            >
               <text class="text-white font-bold text-sm">T</text>
             </view>
             <view>
@@ -122,10 +127,11 @@
           <view class="border-l-4 border-blue-500 pl-4">
             <text class="text-sm font-medium text-gray-700">v1.0.0 (2024-12-16)</text>
             <text class="text-xs text-gray-600 mt-1 block">
-              • ✨ 全新发布：完整的食堂评价和AI推荐功能\n• 🎨 现代化UI设计，支持深色模式\n• 🤖 集成AI聊天助手，提供智能美食推荐\n• 📱 优化移动端体验，支持手势操作\n• 🔒 增强隐私保护，合规GDPR要求
+              • ✨ 全新发布：完整的食堂评价和AI推荐功能\n• 🎨 现代化UI设计，支持深色模式\n• 🤖
+              集成AI聊天助手，提供智能美食推荐\n• 📱 优化移动端体验，支持手势操作\n• 🔒
+              增强隐私保护，合规GDPR要求
             </text>
           </view>
-          
         </view>
       </view>
 
@@ -183,41 +189,38 @@
         <text class="text-gray-400 text-xs block mb-2">
           Copyright © 2024 TasteInsight. All rights reserved.
         </text>
-        <text class="text-gray-400 text-xs">
-          基于 Vue.js 和 uni-app 构建 | 遵循 MIT 开源协议
-        </text>
+        <text class="text-gray-400 text-xs"> 基于 Vue.js 和 uni-app 构建 | 遵循 MIT 开源协议 </text>
       </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref } from 'vue';
 
-const secretTapCount = ref(0)
-const lastTapAt = ref(0)
+const secretTapCount = ref(0);
+const lastTapAt = ref(0);
 
-const MAX_TAP_GAP_MS = 800
-const REQUIRED_TAPS = 5
+const MAX_TAP_GAP_MS = 800;
+const REQUIRED_TAPS = 5;
 
 function handleSecretTap() {
-  const now = Date.now()
+  const now = Date.now();
   if (now - lastTapAt.value > MAX_TAP_GAP_MS) {
-    secretTapCount.value = 0
+    secretTapCount.value = 0;
   }
-  lastTapAt.value = now
-  secretTapCount.value += 1
+  lastTapAt.value = now;
+  secretTapCount.value += 1;
 
   if (secretTapCount.value >= REQUIRED_TAPS) {
-    secretTapCount.value = 0
-    uni.showToast({ title: '彩蛋入口已解锁', icon: 'none', duration: 1200 })
+    secretTapCount.value = 0;
+    uni.showToast({ title: '彩蛋入口已解锁', icon: 'none', duration: 1200 });
     if (typeof uni.vibrateShort === 'function') {
-      uni.vibrateShort()
+      uni.vibrateShort();
     }
     setTimeout(() => {
-      uni.navigateTo({ url: '/pages/easter-egg/index' })
-    }, 200)
+      uni.navigateTo({ url: '/pages/easter-egg/index' });
+    }, 200);
   }
 }
 </script>
-

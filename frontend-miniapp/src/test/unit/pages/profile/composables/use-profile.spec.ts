@@ -55,7 +55,9 @@ describe('use-profile composable', () => {
     const ok = await p.updateProfile({} as any);
     expect(ok).toBe(true);
     expect(userStore.updateLocalUserInfo).toHaveBeenCalledWith({ id: 'u1', nickname: 'N' });
-    expect((global as any).uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ icon: 'success' }));
+    expect((global as any).uni.showToast).toHaveBeenCalledWith(
+      expect.objectContaining({ icon: 'success' })
+    );
 
     // failure
     updateUserProfileMock.mockRejectedValue(new Error('api fail'));
@@ -63,7 +65,9 @@ describe('use-profile composable', () => {
     const ok2 = await p2.updateProfile({} as any);
     expect(ok2).toBe(false);
     expect(p2.error.value).toBe('api fail');
-    expect((global as any).uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ icon: 'none' }));
+    expect((global as any).uni.showToast).toHaveBeenCalledWith(
+      expect.objectContaining({ icon: 'none' })
+    );
   });
 
   test('handleLogout confirm and cancel flows', async () => {
@@ -71,17 +75,23 @@ describe('use-profile composable', () => {
     userStore.logoutAction = jest.fn();
 
     // cancel flow
-    (global as any).uni.showModal = jest.fn().mockImplementation(({ success }: any) => success({ confirm: false }));
+    (global as any).uni.showModal = jest
+      .fn()
+      .mockImplementation(({ success }: any) => success({ confirm: false }));
     const p = useProfile();
     p.handleLogout();
     expect(userStore.logoutAction).not.toHaveBeenCalled();
 
     // confirm flow
-    (global as any).uni.showModal = jest.fn().mockImplementation(({ success }: any) => success({ confirm: true }));
+    (global as any).uni.showModal = jest
+      .fn()
+      .mockImplementation(({ success }: any) => success({ confirm: true }));
     jest.useFakeTimers();
     p.handleLogout();
     expect(userStore.logoutAction).toHaveBeenCalled();
-    expect((global as any).uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ icon: 'success' }));
+    expect((global as any).uni.showToast).toHaveBeenCalledWith(
+      expect.objectContaining({ icon: 'success' })
+    );
     // run timers to trigger reLaunch
     jest.advanceTimersByTime(500);
     expect((global as any).uni.reLaunch).toHaveBeenCalledWith({ url: '/pages/login/index' });
@@ -97,13 +107,16 @@ describe('use-profile composable', () => {
 
     userStore.fetchProfileAction = jest.fn().mockResolvedValue(undefined);
 
-    mount({
-      template: '<div />',
-      setup() {
-        useProfile();
-        return {};
-      }
-    }, { global: { plugins: [pinia] } });
+    mount(
+      {
+        template: '<div />',
+        setup() {
+          useProfile();
+          return {};
+        },
+      },
+      { global: { plugins: [pinia] } }
+    );
 
     // allow microtasks
     await Promise.resolve();

@@ -27,7 +27,7 @@ jest.mock('@/pages/dish/composables/use-review', () => {
       hasMoreReviews: ref(false),
       fetchReviews: jest.fn(),
       loadMoreReviews: jest.fn(),
-    })
+    }),
   };
 });
 
@@ -40,7 +40,7 @@ jest.mock('@/pages/dish/composables/use-comment', () => {
       fetchComments: jest.fn(),
       submitComment: jest.fn(),
       removeComment: jest.fn(),
-    })
+    }),
   };
 });
 
@@ -89,7 +89,7 @@ describe('useDishDetail', () => {
 
   it('should toggle favorite', async () => {
     const { toggleFavorite, isFavorited, fetchDishDetail } = useDishDetail();
-    
+
     // Mock dish loaded
     (getDishById as jest.Mock).mockResolvedValue({ code: 200, data: { id: '1' } });
     await fetchDishDetail('1');
@@ -97,7 +97,7 @@ describe('useDishDetail', () => {
     // Test favorite
     (favoriteDish as jest.Mock).mockResolvedValue({ code: 200 });
     await toggleFavorite();
-    
+
     expect(favoriteDish).toHaveBeenCalledWith('1');
     expect(mockUserStore.updateLocalUserInfo).toHaveBeenCalled();
     expect(uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ title: '收藏成功' }));

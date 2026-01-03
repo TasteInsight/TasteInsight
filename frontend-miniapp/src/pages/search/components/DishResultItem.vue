@@ -1,16 +1,13 @@
 <template>
-  <div 
-    class="bg-white rounded-lg p-4 mb-2 shadow-sm"
-    @click="handleClick"
-  >
+  <div class="bg-white rounded-lg p-4 mb-2 shadow-sm" @click="handleClick">
     <div class="flex gap-3">
-      <img 
-        v-if="dish.images?.[0]" 
-        :src="dish.images[0]" 
+      <img
+        v-if="dish.images?.[0]"
+        :src="dish.images[0]"
         class="w-20 h-20 rounded-lg object-cover"
       />
-      <div v-else class="w-20 h-20 rounded-lg bg-gray-200 flex items-center justify-center">
-        <text class="iconfont icon-food text-gray-400"></text>
+      <div v-else class="w-20 h-20 rounded-lg bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center border border-gray-100">
+        <text class="text-xl">🍜</text>
       </div>
       <div class="flex-1">
         <div class="font-semibold text-gray-800">{{ dish.name }}</div>
@@ -22,8 +19,8 @@
           </div>
         </div>
         <div v-if="dish.tags?.length" class="flex flex-wrap gap-1 mt-2">
-          <span 
-            v-for="tag in dish.tags.slice(0, 3)" 
+          <span
+            v-for="tag in dish.tags.slice(0, 3)"
             :key="tag"
             class="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded"
           >
@@ -46,7 +43,7 @@ const props = defineProps<Props>();
 
 const handleClick = () => {
   uni.navigateTo({
-    url: `/pages/dish/index?id=${props.dish.id}`
+    url: `/pages/dish/index?id=${props.dish.id}`,
   });
 };
 </script>

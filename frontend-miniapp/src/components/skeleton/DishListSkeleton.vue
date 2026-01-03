@@ -11,11 +11,7 @@
 
     <!-- 菜品列表骨架 -->
     <view class="px-4 py-3 space-y-3">
-      <view
-        v-for="i in 5"
-        :key="i"
-        class="flex items-center p-3 bg-gray-50 rounded-xl"
-      >
+      <view v-for="i in 5" :key="i" class="flex items-center p-3 bg-gray-50 rounded-xl">
         <!-- 菜品图片 -->
         <SkeletonBase width="72px" height="72px" rounded="rounded-lg" />
         <!-- 菜品信息 -->

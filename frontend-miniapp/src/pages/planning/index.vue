@@ -3,129 +3,154 @@
     <!-- #ifdef MP-WEIXIN -->
     <!-- 微信小程序专用：统一在父组件管理 page-container 拦截返回事件 -->
     <!-- 详情弹窗 -->
-    <page-container 
+    <page-container
       v-if="shouldRenderDetailHelper"
-      :show="showDetailDialog" 
-      :overlay="false" 
+      :show="showDetailDialog"
+      :overlay="false"
       :duration="300"
       :disable-scroll="false"
       custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
-      @leave="closeDetailDialog" 
+      @leave="closeDetailDialog"
     />
 
     <!-- 编辑弹窗 -->
-    <page-container 
+    <page-container
       v-if="shouldRenderEditHelper"
-      :show="showEditDialog" 
-      :overlay="false" 
+      :show="showEditDialog"
+      :overlay="false"
       :duration="300"
       :disable-scroll="false"
       custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
-      @leave="closeEditDialog" 
+      @leave="closeEditDialog"
     />
 
     <!-- 新建弹窗 -->
-    <page-container 
+    <page-container
       v-if="shouldRenderCreateHelper"
-      :show="showCreateDialog" 
-      :overlay="false" 
+      :show="showCreateDialog"
+      :overlay="false"
       :duration="300"
       :disable-scroll="false"
       custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
-      @leave="closeCreateDialog" 
+      @leave="closeCreateDialog"
     />
 
-    
     <!-- #endif -->
 
     <!-- 骨架屏：首次加载时显示 -->
     <PlanningSkeleton v-if="isInitialLoading" />
 
     <template v-else>
-    <!-- 标签页 -->
-    <view class="bg-white flex border-b-2 border-gray-100">
-      <view 
-        :class="['flex-1 py-3 text-center border-b-2', activeTab === 'current' ? 'border-purple-700 text-ts-purple font-semibold' : 'border-transparent text-gray-600']"
-        @tap="switchTab('current')"
-      >
-        <text class="text-sm">当前规划 ({{ currentPlans.length }})</text>
+      <!-- 标签页 -->
+      <view class="bg-white flex border-b-2 border-gray-100">
+        <view
+          :class="[
+            'flex-1 py-3 text-center border-b-2',
+            activeTab === 'current'
+              ? 'border-purple-700 text-ts-purple font-semibold'
+              : 'border-transparent text-gray-600',
+          ]"
+          @tap="switchTab('current')"
+        >
+          <text class="text-sm">当前规划 ({{ currentPlans.length }})</text>
+        </view>
+        <view
+          :class="[
+            'flex-1 py-3 text-center border-b-2',
+            activeTab === 'history'
+              ? 'border-purple-700 text-ts-purple font-semibold'
+              : 'border-transparent text-gray-600',
+          ]"
+          @tap="switchTab('history')"
+        >
+          <text class="text-sm">历史规划 ({{ historyPlans.length }})</text>
+        </view>
       </view>
-      <view 
-        :class="['flex-1 py-3 text-center border-b-2', activeTab === 'history' ? 'border-purple-700 text-ts-purple font-semibold' : 'border-transparent text-gray-600']"
-        @tap="switchTab('history')"
-      >
-        <text class="text-sm">历史规划 ({{ historyPlans.length }})</text>
+
+      <!-- 错误状态 -->
+      <view v-if="error" class="flex flex-col items-center justify-center py-20 px-5">
+        <text class="text-black mb-4">{{ error }}</text>
+        <view
+          @tap="refreshPlans"
+          class="py-2 px-6 bg-ts-purple rounded-lg border border-ts-purple active:opacity-90"
+        >
+          <text class="text-white">重试</text>
+        </view>
       </view>
-    </view>
-        
-    <!-- 错误状态 -->
-    <view v-if="error" class="flex flex-col items-center justify-center py-20 px-5">
-      <text class="text-black mb-4">{{ error }}</text>
-      <view @tap="refreshPlans" class="py-2 px-6 bg-ts-purple rounded-lg border border-ts-purple active:opacity-90">
-        <text class="text-white">重试</text>
-      </view>
-    </view>
 
-    <!-- 空状态 -->
-    <view v-else-if="displayPlans.length === 0" class="flex flex-col items-center justify-center py-20 px-5">
-      <text class="text-gray-400 text-lg mb-5">{{ activeTab === 'current' ? '暂无当前规划' : '暂无历史规划' }}</text>
-      <view v-if="activeTab === 'current'" @tap="createNewPlan" class="py-2 px-6 bg-ts-purple rounded-lg border border-ts-purple">
-        <text class="text-gray-100">创建第一个规划</text>
-      </view>
-    </view>
-
-    <!-- 规划列表（使用页面原生滚动，避免 scroll-view 未设置高度导致无法滚动） -->
-    <view v-else class="box-border w-full px-5 pt-5">
-      <view class="flex flex-col items-center w-full">
-        <PlanCard
-          v-for="plan in displayPlans"
-          :key="plan.id"
-          :plan="plan"
-          :is-history="activeTab === 'history'"
-          @view="viewPlanDetail(plan)"
-          @edit="editPlan(plan)"
-          @delete="deletePlan(plan.id)"
-          @execute="handleExecutePlan(plan)"
-          class="w-full"
-        />
-        <view class="h-5"></view>
-      </view>
-    </view>
-
-    <!-- 详情对话框 -->
-    <PlanDetailDialog
-      :visible="showDetailDialog"
-      :plan="selectedPlan"
-      @close="closeDetailDialog"
-    />
-
-    <!-- 编辑对话框 -->
-    <PlanEditDialog
-      ref="editDialogRef"
-      :visible="showEditDialog"
-      :plan="selectedPlan"
-      @close="closeEditDialog"
-      @submit="submitEdit"
-    />
-
-    <!-- 创建对话框 -->
-    <PlanEditDialog
-      ref="createDialogRef"
-      :visible="showCreateDialog"
-      :plan="null"
-      @close="closeCreateDialog"
-      @submit="submitCreate"
-    />
-
-    <!-- 浮动新建按钮 -->
-    <view v-if="activeTab === 'current' && !showCreateDialog && !showEditDialog && !showDetailDialog" class="fixed bottom-6 right-6" style="z-index: 9999;">
+      <!-- 空状态 -->
       <view
-        @tap="createNewPlan"
-        class="w-14 h-14 bg-ts-purple rounded-full flex items-center justify-center shadow-xl active:bg-purple-600 transition-all duration-200 transform active:scale-95"
+        v-else-if="displayPlans.length === 0"
+        class="flex flex-col items-center justify-center py-20 px-5"
       >
-        <text class="text-white text-4xl font-light">+</text>
+        <text class="text-gray-400 text-lg mb-5">{{
+          activeTab === 'current' ? '暂无当前规划' : '暂无历史规划'
+        }}</text>
+        <view
+          v-if="activeTab === 'current'"
+          @tap="createNewPlan"
+          class="py-2 px-6 bg-ts-purple rounded-lg border border-ts-purple"
+        >
+          <text class="text-gray-100">创建第一个规划</text>
+        </view>
       </view>
-    </view>
+
+      <!-- 规划列表（使用页面原生滚动，避免 scroll-view 未设置高度导致无法滚动） -->
+      <view v-else class="box-border w-full px-5 pt-5">
+        <view class="flex flex-col items-center w-full">
+          <PlanCard
+            v-for="plan in displayPlans"
+            :key="plan.id"
+            :plan="plan"
+            :is-history="activeTab === 'history'"
+            @view="viewPlanDetail(plan)"
+            @edit="editPlan(plan)"
+            @delete="deletePlan(plan.id)"
+            @execute="handleExecutePlan(plan)"
+            class="w-full"
+          />
+          <view class="h-5"></view>
+        </view>
+      </view>
+
+      <!-- 详情对话框 -->
+      <PlanDetailDialog
+        :visible="showDetailDialog"
+        :plan="selectedPlan"
+        @close="closeDetailDialog"
+      />
+
+      <!-- 编辑对话框 -->
+      <PlanEditDialog
+        ref="editDialogRef"
+        :visible="showEditDialog"
+        :plan="selectedPlan"
+        @close="closeEditDialog"
+        @submit="submitEdit"
+      />
+
+      <!-- 创建对话框 -->
+      <PlanEditDialog
+        ref="createDialogRef"
+        :visible="showCreateDialog"
+        :plan="null"
+        @close="closeCreateDialog"
+        @submit="submitCreate"
+      />
+
+      <!-- 浮动新建按钮 -->
+      <view
+        v-if="activeTab === 'current' && !showCreateDialog && !showEditDialog && !showDetailDialog"
+        class="fixed bottom-6 right-6"
+        style="z-index: 9999"
+      >
+        <view
+          @tap="createNewPlan"
+          class="w-14 h-14 bg-ts-purple rounded-full flex items-center justify-center shadow-xl active:bg-purple-600 transition-all duration-200 transform active:scale-95"
+        >
+          <text class="text-white text-4xl font-light">+</text>
+        </view>
+      </view>
     </template>
   </view>
 </template>
@@ -219,12 +244,16 @@ const isInitialLoading = computed(() => {
 });
 
 // 监听数据加载完成
-watch(() => loading.value, (newLoading, oldLoading) => {
-  // 当 loading 从 true 变为 false 时，表示首次加载完成
-  if (oldLoading === true && newLoading === false) {
-    hasLoaded.value = true;
-  }
-}, { immediate: true });
+watch(
+  () => loading.value,
+  (newLoading, oldLoading) => {
+    // 当 loading 从 true 变为 false 时，表示首次加载完成
+    if (oldLoading === true && newLoading === false) {
+      hasLoaded.value = true;
+    }
+  },
+  { immediate: true }
+);
 
 // 页面隐藏时关闭所有对话框
 onHide(() => {
@@ -240,7 +269,7 @@ onBackPress(() => {
     closeDetailDialog();
     return true;
   }
-  
+
   return false; // 允许默认返回行为
 });
 

@@ -7,9 +7,11 @@
         v-for="filter in filterOptions"
         :key="filter.key"
         class="inline-flex items-center border rounded-full h-8 px-3 text-sm cursor-pointer transition-all"
-        :class="(activeFilter === filter.key || hasActiveValue(filter.key))
-          ? 'bg-ts-purple text-white border-ts-purple' 
-          : 'bg-white text-gray-700 border-gray-300'"
+        :class="
+          activeFilter === filter.key || hasActiveValue(filter.key)
+            ? 'bg-ts-purple text-white border-ts-purple'
+            : 'bg-white text-gray-700 border-gray-300'
+        "
         @click="toggleFilter(filter.key)"
       >
         <text>{{ filter.label }}</text>
@@ -27,9 +29,11 @@
             v-for="option in priceOptions"
             :key="option.value"
             class="px-3 py-1.5 rounded-full text-sm cursor-pointer border"
-            :class="selectedPrice === option.value 
-              ? 'bg-ts-purple text-white border-ts-purple' 
-              : 'bg-gray-100 text-gray-700 border-gray-200'"
+            :class="
+              selectedPrice === option.value
+                ? 'bg-ts-purple text-white border-ts-purple'
+                : 'bg-gray-100 text-gray-700 border-gray-200'
+            "
             @click="selectPrice(option.value)"
           >
             {{ option.label }}
@@ -45,9 +49,11 @@
             v-for="option in ratingOptions"
             :key="option.value"
             class="px-3 py-1.5 rounded-full text-sm cursor-pointer border"
-            :class="selectedRating === option.value 
-              ? 'bg-ts-purple text-white border-ts-purple' 
-              : 'bg-gray-100 text-gray-700 border-gray-200'"
+            :class="
+              selectedRating === option.value
+                ? 'bg-ts-purple text-white border-ts-purple'
+                : 'bg-gray-100 text-gray-700 border-gray-200'
+            "
             @click="selectRating(option.value)"
           >
             {{ option.label }}
@@ -63,9 +69,11 @@
             v-for="option in meatOptions"
             :key="option.value"
             class="px-3 py-1.5 rounded-full text-sm cursor-pointer border"
-            :class="selectedMeat.includes(option.value) 
-              ? 'bg-ts-purple text-white border-ts-purple' 
-              : 'bg-gray-100 text-gray-700 border-gray-200'"
+            :class="
+              selectedMeat.includes(option.value)
+                ? 'bg-ts-purple text-white border-ts-purple'
+                : 'bg-gray-100 text-gray-700 border-gray-200'
+            "
             @click="toggleMeat(option.value)"
           >
             {{ option.label }}
@@ -81,9 +89,11 @@
             v-for="option in tasteOptions"
             :key="option.value"
             class="px-3 py-1.5 rounded-full text-sm cursor-pointer border"
-            :class="selectedTastes.includes(option.value) 
-              ? 'bg-ts-purple text-white border-ts-purple' 
-              : 'bg-gray-100 text-gray-700 border-gray-200'"
+            :class="
+              selectedTastes.includes(option.value)
+                ? 'bg-ts-purple text-white border-ts-purple'
+                : 'bg-gray-100 text-gray-700 border-gray-200'
+            "
             @click="toggleTaste(option.value)"
           >
             {{ option.label }}
@@ -99,9 +109,11 @@
             v-for="option in mealTimeOptions"
             :key="option.value"
             class="px-3 py-1.5 rounded-full text-sm cursor-pointer border"
-            :class="selectedMealTime.includes(option.value) 
-              ? 'bg-ts-purple text-white border-ts-purple' 
-              : 'bg-gray-100 text-gray-700 border-gray-200'"
+            :class="
+              selectedMealTime.includes(option.value)
+                ? 'bg-ts-purple text-white border-ts-purple'
+                : 'bg-gray-100 text-gray-700 border-gray-200'
+            "
             @click="toggleMealTime(option.value)"
           >
             {{ option.label }}
@@ -342,4 +354,3 @@ defineExpose({
   border: 1px solid #e5e7eb;
 }
 </style>
-

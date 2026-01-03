@@ -33,7 +33,11 @@ describe('api/modules/dish.ts', () => {
     await getDishes(params);
 
     expect(mockReq).toHaveBeenCalledTimes(1);
-    expect(mockReq.mock.calls[0][0]).toMatchObject({ url: '/dishes', method: 'POST', data: params });
+    expect(mockReq.mock.calls[0][0]).toMatchObject({
+      url: '/dishes',
+      method: 'POST',
+      data: params,
+    });
   });
 
   test('getDishesImages GETs /dishes/images', async () => {
@@ -58,7 +62,10 @@ describe('api/modules/dish.ts', () => {
     expect(mockReq.mock.calls[0][0]).toMatchObject({ url: '/dishes/d1/favorite', method: 'POST' });
 
     await unfavoriteDish('d1');
-    expect(mockReq.mock.calls[1][0]).toMatchObject({ url: '/dishes/d1/favorite', method: 'DELETE' });
+    expect(mockReq.mock.calls[1][0]).toMatchObject({
+      url: '/dishes/d1/favorite',
+      method: 'DELETE',
+    });
   });
 
   test('uploadDish posts to /dishes/upload', async () => {
@@ -71,7 +78,11 @@ describe('api/modules/dish.ts', () => {
     const res = await uploadDish(payload);
 
     expect(mockReq).toHaveBeenCalledTimes(1);
-    expect(mockReq.mock.calls[0][0]).toMatchObject({ url: '/dishes/upload', method: 'POST', data: payload });
+    expect(mockReq.mock.calls[0][0]).toMatchObject({
+      url: '/dishes/upload',
+      method: 'POST',
+      data: payload,
+    });
     expect(res.code).toBe(201);
   });
 });

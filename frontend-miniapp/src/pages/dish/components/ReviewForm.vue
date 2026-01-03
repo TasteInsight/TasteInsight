@@ -1,7 +1,11 @@
 <template>
   <view class="fixed inset-0 bg-black/40 z-[9999] flex items-end justify-center" @tap="handleClose">
     <!-- 恢复评价状态对话框 -->
-    <view v-if="showResumeDialog" class="fixed inset-0 bg-black/60 z-[10000] flex items-center justify-center" @tap.stop>
+    <view
+      v-if="showResumeDialog"
+      class="fixed inset-0 bg-black/60 z-[10000] flex items-center justify-center"
+      @tap.stop
+    >
       <view class="bg-white rounded-lg p-6 mx-4 max-w-sm w-full">
         <view class="text-center mb-4">
           <text class="text-lg font-semibold text-gray-800">发现未完成的评价</text>
@@ -28,10 +32,10 @@
     </view>
 
     <!-- 评价弹窗 -->
-    <scroll-view 
+    <scroll-view
       v-if="!showResumeDialog"
-      class="review-form-container" 
-      scroll-y 
+      class="review-form-container"
+      scroll-y
       :scroll-with-animation="true"
       @tap.stop
     >
@@ -54,9 +58,13 @@
             v-for="star in 5"
             :key="star"
             class="cursor-pointer inline-block leading-none select-none transition-all duration-200 star-glow"
-            :style="{ fontSize: star <= rating ? mainStarSize + 'px' : mainSmallStarSize + 'px', color: star <= rating ? '#fbbf24' : '#d1d5db' }"
+            :style="{
+              fontSize: star <= rating ? mainStarSize + 'px' : mainSmallStarSize + 'px',
+              color: star <= rating ? '#fbbf24' : '#d1d5db',
+            }"
             @tap="setRating(star)"
-          >{{ star <= rating ? '★' : '☆' }}</text>
+            >{{ star <= rating ? '★' : '☆' }}</text
+          >
         </view>
       </view>
 
@@ -68,7 +76,9 @@
             v-if="hasFlavorSelection"
             class="px-3 py-1.5 text-sm font-medium text-ts-purple bg-purple-50 border border-purple-200 rounded-full hover:bg-purple-100 active:bg-purple-200 transition-colors duration-200"
             @tap="resetFlavorRatings"
-          >清除选择</button>
+          >
+            清除选择
+          </button>
         </view>
 
         <view
@@ -82,9 +92,14 @@
               v-for="star in 5"
               :key="star"
               class="cursor-pointer inline-block leading-none select-none transition-all duration-200"
-              :style="{ fontSize: star <= flavorRatings[option.key] ? starSize + 'px' : smallStarSize + 'px', color: star <= flavorRatings[option.key] ? '#fbbf24' : '#d1d5db' }"
+              :style="{
+                fontSize:
+                  star <= flavorRatings[option.key] ? starSize + 'px' : smallStarSize + 'px',
+                color: star <= flavorRatings[option.key] ? '#fbbf24' : '#d1d5db',
+              }"
               @tap="setFlavorRating(option.key, star)"
-            >{{ star <= flavorRatings[option.key] ? '★' : '☆' }}</text>
+              >{{ star <= flavorRatings[option.key] ? '★' : '☆' }}</text
+            >
           </view>
         </view>
 
@@ -96,7 +111,9 @@
       <!-- 评价内容 -->
       <view class="mb-5">
         <view class="text-sm font-medium text-gray-700 mb-3">评价内容</view>
-        <view class="border border-gray-200 rounded-lg bg-white p-3 transition-colors focus-within:border-purple-400">
+        <view
+          class="border border-gray-200 rounded-lg bg-white p-3 transition-colors focus-within:border-purple-400"
+        >
           <textarea
             v-model="content"
             class="w-full h-24 resize-none focus:outline-none text-base"
@@ -104,34 +121,30 @@
             maxlength="500"
             :disabled="submitting"
           ></textarea>
-          
+
           <!-- 图片上传区域 -->
           <view class="flex items-end justify-between mt-2">
             <view class="flex flex-wrap gap-2">
               <!-- 已上传图片 -->
-              <view 
-                v-for="(img, index) in images" 
-                :key="index" 
-                class="relative w-16 h-16"
-              >
-                <image 
-                  :src="img" 
-                  class="w-full h-full rounded object-cover border border-gray-100" 
+              <view v-for="(img, index) in images" :key="index" class="relative w-16 h-16">
+                <image
+                  :src="img"
+                  class="w-full h-full rounded object-cover border border-gray-100"
                   mode="aspectFill"
-                  @tap="handlePreviewImage(index)" 
+                  @tap="handlePreviewImage(index)"
                 />
                 <!-- 删除按钮 -->
-                <view 
+                <view
                   class="absolute -top-2 -right-2 w-5 h-5 bg-gray-400 rounded-full flex items-center justify-center z-10"
                   @tap.stop="removeImage(index)"
                 >
                   <text class="text-white text-xs font-bold">×</text>
                 </view>
               </view>
-              
+
               <!-- 上传按钮 -->
-              <view 
-                v-if="images.length < 3" 
+              <view
+                v-if="images.length < 3"
                 class="w-16 h-16 border border-dashed border-gray-300 rounded flex items-center justify-center active:bg-gray-50"
                 @tap="handleChooseImage"
               >
@@ -139,11 +152,9 @@
                 <text v-else class="text-gray-400 text-xs">...</text>
               </view>
             </view>
-            
+
             <!-- 字数统计 -->
-            <view class="text-xs text-gray-400 mb-1 ml-2">
-              {{ content.length }}/500
-            </view>
+            <view class="text-xs text-gray-400 mb-1 ml-2"> {{ content.length }}/500 </view>
           </view>
         </view>
       </view>
@@ -154,7 +165,7 @@
         :disabled="submitting"
         @click="handleSubmit"
       >
-        {{ submitting ? '提交中...' : (isEditing ? '更新评价' : '提交评价') }}
+        {{ submitting ? '提交中...' : isEditing ? '更新评价' : '提交评价' }}
       </button>
     </scroll-view>
   </view>
@@ -204,7 +215,7 @@ const {
   hasSavedReviewState,
   handleSubmit: submitForm,
   uploadImages,
-  removeImage
+  removeImage,
 } = useReviewForm();
 
 const applyInitialReview = (review: Review) => {
@@ -226,14 +237,14 @@ const applyInitialReview = (review: Review) => {
 // 图片选择
 const handleChooseImage = () => {
   if (isUploading.value) return;
-  
+
   uni.chooseImage({
     count: 3 - images.value.length,
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
-    success: (res) => {
+    success: res => {
       uploadImages(res.tempFilePaths as string[]);
-    }
+    },
   });
 };
 
@@ -241,7 +252,7 @@ const handleChooseImage = () => {
 const handlePreviewImage = (index: number) => {
   uni.previewImage({
     urls: images.value,
-    current: images.value[index]
+    current: images.value[index],
   });
 };
 
@@ -299,7 +310,7 @@ onMounted(() => {
       showResumeDialog.value = true;
     }
   }
-  
+
   nextTick(() => {
     // 添加CSS类来隐藏tabbar（小程序环境没有 document）
     if (typeof document !== 'undefined' && document?.body) {
@@ -310,9 +321,9 @@ onMounted(() => {
     setTimeout(() => {
       uni.hideTabBar({
         animation: true,
-        fail: (err) => {
+        fail: err => {
           console.log('API隐藏tabbar失败，使用CSS隐藏');
-        }
+        },
       });
     }, 100);
   });
@@ -321,7 +332,7 @@ onMounted(() => {
 // initialReview 往往是异步拉取后才有值；这里用 watch 确保“修改评价”能稳定回填
 watch(
   () => props.initialReview,
-  (review) => {
+  review => {
     if (!isEditing.value) return;
     if (!review) return;
     showResumeDialog.value = false;
@@ -340,9 +351,9 @@ onUnmounted(() => {
   setTimeout(() => {
     uni.showTabBar({
       animation: true,
-      fail: (err) => {
+      fail: err => {
         console.log('API显示tabbar失败');
-      }
+      },
     });
   }, 200);
 });
@@ -367,11 +378,15 @@ const handleClose = () => {
 };
 
 const handleSubmit = () => {
-  submitForm(props.dishId, () => {
-    // 提交成功后清除保存的状态
-    clearReviewState(props.dishId);
-    emit('success');
-  }, props.existingReviewId);
+  submitForm(
+    props.dishId,
+    () => {
+      // 提交成功后清除保存的状态
+      clearReviewState(props.dishId);
+      emit('success');
+    },
+    props.existingReviewId
+  );
 };
 
 // 恢复评价状态

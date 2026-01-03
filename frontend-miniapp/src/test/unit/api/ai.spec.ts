@@ -45,7 +45,9 @@ describe('api/modules/ai.ts', () => {
 
   test('streamAIChat handles chunked JSON and calls callbacks', async () => {
     // Mock useUserStore to provide token
-    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok' }),
+    }));
 
     let savedOnChunk: any = null;
     let savedComplete: any = null;
@@ -96,7 +98,9 @@ describe('api/modules/ai.ts', () => {
   });
 
   test('streamAIChat processes event lines and non-json data', async () => {
-    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok' }),
+    }));
 
     let savedOnChunk: any = null;
     let savedComplete: any = null;
@@ -106,7 +110,9 @@ describe('api/modules/ai.ts', () => {
         opts.success && opts.success({});
         savedComplete = opts.complete;
         return {
-          onChunkReceived: (cb: any) => { savedOnChunk = cb; },
+          onChunkReceived: (cb: any) => {
+            savedOnChunk = cb;
+          },
           abort: jest.fn(),
         };
       },
@@ -130,7 +136,9 @@ describe('api/modules/ai.ts', () => {
   });
 
   test('streamAIChat falls back to utf8 decoder and handles split multibyte chunks', async () => {
-    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok' }),
+    }));
 
     let savedOnChunk: any = null;
     let savedComplete: any = null;
@@ -140,7 +148,9 @@ describe('api/modules/ai.ts', () => {
         opts.success && opts.success({});
         savedComplete = opts.complete;
         return {
-          onChunkReceived: (cb: any) => { savedOnChunk = cb; },
+          onChunkReceived: (cb: any) => {
+            savedOnChunk = cb;
+          },
           abort: jest.fn(),
         };
       },
@@ -176,7 +186,9 @@ describe('api/modules/ai.ts', () => {
   });
 
   test('streamAIChat accepts string chunks and non-arraybuffer data', async () => {
-    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok' }),
+    }));
 
     let savedOnChunk: any = null;
     let savedComplete: any = null;
@@ -186,7 +198,9 @@ describe('api/modules/ai.ts', () => {
         opts.success && opts.success({});
         savedComplete = opts.complete;
         return {
-          onChunkReceived: (cb: any) => { savedOnChunk = cb; },
+          onChunkReceived: (cb: any) => {
+            savedOnChunk = cb;
+          },
           abort: jest.fn(),
         };
       },
@@ -207,7 +221,9 @@ describe('api/modules/ai.ts', () => {
   });
 
   test('streamAIChat propagates request failure via onError', async () => {
-    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok' }),
+    }));
 
     let savedFail: any = null;
 
@@ -229,7 +245,9 @@ describe('api/modules/ai.ts', () => {
   });
 
   test('streamAIChat close() aborts the request task', async () => {
-    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok' }),
+    }));
 
     let savedOnChunk: any = null;
 
@@ -238,7 +256,12 @@ describe('api/modules/ai.ts', () => {
     (global as any).uni = {
       request: (opts: any) => {
         opts.success && opts.success({});
-        return { onChunkReceived: (cb: any) => { savedOnChunk = cb; }, abort: abortFn };
+        return {
+          onChunkReceived: (cb: any) => {
+            savedOnChunk = cb;
+          },
+          abort: abortFn,
+        };
       },
     };
 
@@ -251,7 +274,9 @@ describe('api/modules/ai.ts', () => {
   });
 
   test('streamAIChat preserves partial buffers across chunks', async () => {
-    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok' }),
+    }));
 
     let savedOnChunk: any = null;
     let savedComplete: any = null;
@@ -261,7 +286,9 @@ describe('api/modules/ai.ts', () => {
         opts.success && opts.success({});
         savedComplete = opts.complete;
         return {
-          onChunkReceived: (cb: any) => { savedOnChunk = cb; },
+          onChunkReceived: (cb: any) => {
+            savedOnChunk = cb;
+          },
           abort: jest.fn(),
         };
       },
@@ -294,7 +321,9 @@ describe('api/modules/ai.ts', () => {
   });
 
   test('streamAIChat flushes pending bytes on complete as replacement char', async () => {
-    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok' }),
+    }));
 
     let savedOnChunk: any = null;
     let savedComplete: any = null;
@@ -304,7 +333,9 @@ describe('api/modules/ai.ts', () => {
         opts.success && opts.success({});
         savedComplete = opts.complete;
         return {
-          onChunkReceived: (cb: any) => { savedOnChunk = cb; },
+          onChunkReceived: (cb: any) => {
+            savedOnChunk = cb;
+          },
           abort: jest.fn(),
         };
       },
@@ -323,7 +354,7 @@ describe('api/modules/ai.ts', () => {
     const base = Buffer.from('data: ');
     const arr = new Uint8Array(base.length + 3);
     arr.set(base, 0);
-    arr[base.length] = 0xE2; // start of a 3-byte UTF-8 sequence
+    arr[base.length] = 0xe2; // start of a 3-byte UTF-8 sequence
     arr[base.length + 1] = 0x0a; // \n
     arr[base.length + 2] = 0x0a; // \n
 
@@ -357,7 +388,9 @@ describe('api/modules/ai.ts', () => {
   });
 
   test('streamAIChat joins multiple data: lines into single message with newlines', async () => {
-    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok' }),
+    }));
 
     let savedOnChunk: any = null;
     let savedComplete: any = null;
@@ -366,7 +399,12 @@ describe('api/modules/ai.ts', () => {
       request: (opts: any) => {
         opts.success && opts.success({});
         savedComplete = opts.complete;
-        return { onChunkReceived: (cb: any) => { savedOnChunk = cb; }, abort: jest.fn() };
+        return {
+          onChunkReceived: (cb: any) => {
+            savedOnChunk = cb;
+          },
+          abort: jest.fn(),
+        };
       },
     };
 
@@ -384,7 +422,9 @@ describe('api/modules/ai.ts', () => {
   });
 
   test('streamAIChat handles invalid UTF-8 continuation bytes with replacement char immediately', async () => {
-    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok' }),
+    }));
 
     let savedOnChunk: any = null;
     let savedComplete: any = null;
@@ -393,7 +433,12 @@ describe('api/modules/ai.ts', () => {
       request: (opts: any) => {
         opts.success && opts.success({});
         savedComplete = opts.complete;
-        return { onChunkReceived: (cb: any) => { savedOnChunk = cb; }, abort: jest.fn() };
+        return {
+          onChunkReceived: (cb: any) => {
+            savedOnChunk = cb;
+          },
+          abort: jest.fn(),
+        };
       },
     };
 
@@ -408,7 +453,7 @@ describe('api/modules/ai.ts', () => {
 
     const base = Buffer.from('data: ');
     // craft bytes: start of 3-byte sequence (0xE2), followed by ASCII 'A' (0x41) which is invalid as continuation
-    const bad = Buffer.from([...base, 0xE2, 0x41, 0x0a, 0x0a]);
+    const bad = Buffer.from([...base, 0xe2, 0x41, 0x0a, 0x0a]);
     const arr = bad.buffer.slice(bad.byteOffset, bad.byteOffset + bad.byteLength);
 
     savedOnChunk({ data: arr });
@@ -421,7 +466,9 @@ describe('api/modules/ai.ts', () => {
   });
 
   test('streamAIChat uses TextDecoder when available and flushes on complete via decoder.flush', async () => {
-    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok' }),
+    }));
 
     let savedOnChunk: any = null;
     let savedComplete: any = null;
@@ -430,7 +477,12 @@ describe('api/modules/ai.ts', () => {
       request: (opts: any) => {
         opts.success && opts.success({});
         savedComplete = opts.complete;
-        return { onChunkReceived: (cb: any) => { savedOnChunk = cb; }, abort: jest.fn() };
+        return {
+          onChunkReceived: (cb: any) => {
+            savedOnChunk = cb;
+          },
+          abort: jest.fn(),
+        };
       },
     };
 
@@ -468,7 +520,9 @@ describe('api/modules/ai.ts', () => {
   });
 
   test('parseSSEEventString handles multiple event: and data: lines', async () => {
-    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok' }),
+    }));
 
     let savedOnChunk: any = null;
     let savedComplete: any = null;
@@ -477,7 +531,12 @@ describe('api/modules/ai.ts', () => {
       request: (opts: any) => {
         opts.success && opts.success({});
         savedComplete = opts.complete;
-        return { onChunkReceived: (cb: any) => { savedOnChunk = cb; }, abort: jest.fn() };
+        return {
+          onChunkReceived: (cb: any) => {
+            savedOnChunk = cb;
+          },
+          abort: jest.fn(),
+        };
       },
     };
 

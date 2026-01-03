@@ -2,7 +2,9 @@
   <!-- 设置主页面骨架屏 -->
   <view class="w-full min-h-screen bg-gray-50">
     <!-- 标题区域骨架 -->
-    <view class="px-6 pt-12 pb-4 bg-white border-b border-gray-100 sticky top-0 z-10 flex items-center">
+    <view
+      class="px-6 pt-12 pb-4 bg-white border-b border-gray-100 sticky top-0 z-10 flex items-center"
+    >
       <SkeletonBase width="6px" height="24px" rounded="rounded-full" />
       <view class="ml-3">
         <SkeletonBase width="64px" height="28px" rounded="rounded" />

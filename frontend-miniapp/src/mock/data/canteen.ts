@@ -3,15 +3,19 @@ import type { Canteen, Window, Floor, OpeningHour, FloorOpeningHours } from '@/t
 
 const createDailyOpeningHours = (timeRange: string): OpeningHour[] => {
   const [open, close] = timeRange.split('-');
-  return ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => ({
-    dayOfWeek: day,
-    isClosed: false,
-    slots: [{
-      mealType: 'all_day',
-      openTime: open,
-      closeTime: close
-    }]
-  }));
+  return ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(
+    day => ({
+      dayOfWeek: day,
+      isClosed: false,
+      slots: [
+        {
+          mealType: 'all_day',
+          openTime: open,
+          closeTime: close,
+        },
+      ],
+    })
+  );
 };
 
 const createFloorOpeningHours = (floorLevel: string, timeRange: string): FloorOpeningHours => {
@@ -131,7 +135,7 @@ export const createMockWindows = (): Window[] => [
     tags: ['素食', '健康', '低脂'],
     floor: secondFloor,
   },
-  
+
   // 二食堂窗口
   {
     id: 'window_006',
@@ -169,7 +173,7 @@ export const createMockWindows = (): Window[] => [
     tags: ['烧烤', '夜宵', '串串'],
     floor: secondFloor,
   },
-  
+
   // 三食堂窗口
   {
     id: 'window_010',
@@ -189,7 +193,7 @@ export const createMockWindows = (): Window[] => [
     tags: ['新疆', '拌面', '抓饭'],
     floor: defaultFloor,
   },
-  
+
   // 美食广场窗口
   {
     id: 'window_012',

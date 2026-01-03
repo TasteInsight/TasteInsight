@@ -1,8 +1,8 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <view class="min-h-screen bg-gray-50">
     <!-- 搜索栏 -->
-    <div class="bg-white px-4 py-3 sticky top-0 z-10 shadow-sm">
-      <div class="flex items-center border border-purple-500 rounded-full p-0.5 bg-white">
+    <view class="bg-white px-4 py-3 sticky top-0 z-10 shadow-sm">
+      <view class="flex items-center border border-purple-500 rounded-full p-0.5 bg-white">
         <uni-icons type="search" size="22" color="#999" class="ml-2"></uni-icons>
         <input
           v-model="keyword"
@@ -11,75 +11,94 @@
           class="flex-1 bg-transparent outline-none text-sm px-2 h-9"
           @confirm="handleSearch"
         />
-        <div 
+        <view
           class="bg-purple-600 text-white text-sm px-6 h-9 flex items-center justify-center rounded-full ml-1 cursor-pointer"
-          @click="handleSearch"
+          @tap="handleSearch"
         >
           搜索
-        </div>
-      </div>
-    </div>
+        </view>
+      </view>
+    </view>
 
     <!-- 搜索结果 -->
-    <div class="px-4 py-3">
+    <view class="px-4 py-3">
       <!-- 骨架屏：搜索加载中 -->
       <SearchSkeleton v-if="loading" />
 
       <!-- 错误提示 -->
-      <div v-else-if="error" class="text-center py-10 text-red-500">
+      <view v-else-if="error" class="text-center py-10 text-red-500">
         {{ error }}
-      </div>
+      </view>
 
       <!-- 无结果 - 显示添加菜品提示 -->
-      <div v-else-if="!loading && !hasResults && hasSearched" class="text-center py-10">
+      <view v-else-if="!loading && !hasResults && hasSearched" class="text-center py-10">
         <text class="iconfont icon-magnify text-4xl mb-2 text-gray-300"></text>
-        <div class="text-gray-400">未找到"{{ keyword }}"相关结果</div>
-        <div class="text-sm text-gray-400 mt-2">
-          找不到？帮我们<text class="text-blue-500" @click="goToAddDish">添加这道菜</text>吧
-        </div>
-      </div>
+        <view class="text-gray-400">未找到"{{ keyword }}"相关结果</view>
+        <view class="text-sm text-gray-400 mt-2">
+          找不到？帮我们<text class="text-blue-500" @tap="goToAddDish">添加这道菜</text>吧
+        </view>
+      </view>
 
       <!-- 搜索结果 -->
-      <div v-else-if="hasResults">
+      <view v-else-if="hasResults">
         <!-- 食堂结果 -->
-        <div v-if="searchResults.canteens.length > 0" class="mb-6">
-          <div class="text-sm font-semibold text-gray-600 mb-3">食堂 ({{ searchResults.canteens.length }})</div>
-          <CanteenResultItem 
-            v-for="canteen in searchResults.canteens" 
+        <view v-if="searchResults.canteens.length > 0" class="mb-6">
+          <view class="text-sm font-semibold text-gray-600 mb-3">
+            食堂 ({{ searchResults.canteens.length }})
+          </view>
+          <CanteenResultItem
+            v-for="canteen in searchResults.canteens"
             :key="canteen.id"
             :canteen="canteen"
           />
-        </div>
+        </view>
 
         <!-- 窗口结果 -->
-        <div v-if="searchResults.windows.length > 0" class="mb-6">
-          <div class="text-sm font-semibold text-gray-600 mb-3">窗口 ({{ searchResults.windows.length }})</div>
-          <WindowResultItem 
-            v-for="window in searchResults.windows" 
+        <view v-if="searchResults.windows.length > 0" class="mb-6">
+          <view class="text-sm font-semibold text-gray-600 mb-3">
+            窗口 ({{ searchResults.windows.length }})
+          </view>
+          <WindowResultItem
+            v-for="window in searchResults.windows"
             :key="window.id"
             :window="window"
             :canteen-name="(window as any).canteenName"
           />
-        </div>
+        </view>
 
         <!-- 菜品结果 -->
-        <div v-if="searchResults.dishes.length > 0">
-          <div class="text-sm font-semibold text-gray-600 mb-3">菜品 ({{ searchResults.dishes.length }})</div>
-          <DishResultItem 
-            v-for="dish in searchResults.dishes" 
-            :key="dish.id"
-            :dish="dish"
-          />
-        </div>
-      </div>
+        <view v-if="searchResults.dishes.length > 0">
+          <view class="text-sm font-semibold text-gray-600 mb-3">
+            菜品 ({{ searchResults.dishes.length }})
+          </view>
+          <DishResultItem v-for="dish in searchResults.dishes" :key="dish.id" :dish="dish" />
+        </view>
+
+        <!-- 底部加载提示 -->
+        <view v-if="loadingMore" class="text-center py-4 text-gray-500">加载中...</view>
+        <view
+          v-else-if="hasSearched && !hasMore && searchResults.dishes.length > 0"
+          class="text-center py-4 text-gray-400"
+        >
+          没有更多了
+        </view>
+        
+        <!-- 添加菜品提示（有搜索结果时也显示） -->
+        <view class="text-center py-6 mt-4 border-t border-gray-200">
+          <view class="text-xs text-gray-400">
+            没找到想要的菜品？
+            <text class="text-blue-500 font-medium" @tap="goToAddDish">点此添加</text>
+          </view>
+        </view>
+      </view>
 
       <!-- 默认提示 -->
-      <div v-else class="text-center py-10 text-gray-400">
+      <view v-else class="text-center py-10 text-gray-400">
         <text class="iconfont icon-food text-4xl mb-2"></text>
-        <div class="text-sm">输入关键词搜索食堂或菜品</div>
-      </div>
-    </div>
-  </div>
+        <view class="text-sm">输入关键词搜索食堂或菜品</view>
+      </view>
+    </view>
+  </view>
 </template>
 
 <script setup lang="ts">
@@ -89,14 +108,21 @@ import WindowResultItem from './components/WindowResultItem.vue';
 import DishResultItem from './components/DishResultItem.vue';
 import { SearchSkeleton } from '@/components/skeleton';
 
-const { 
-  keyword, 
+// TypeScript: uni-app page lifecycle hooks (e.g., onReachBottom) are injected globally at runtime
+// but may not be visible to the TS compiler in some files. Declare them locally to avoid errors.
+declare function onReachBottom(cb: () => void): void;
+
+const {
+  keyword,
   searchResults,
   hasResults,
-  loading, 
-  error, 
+  loading,
+  loadingMore,
+  hasMore,
+  error,
   hasSearched,
   search,
+  loadMore,
   goToAddDish,
 } = useSearch();
 
@@ -111,6 +137,16 @@ const handleSearch = () => {
 const navigateBack = () => {
   uni.navigateBack();
 };
+
+// 上拉触发（兼容小程序/uni-app）
+// @ts-ignore - uni-app 生命周期在 H5 环境可能未定义
+if (typeof onReachBottom !== 'undefined') {
+  onReachBottom(() => {
+    if (hasMore.value) {
+      loadMore();
+    }
+  });
+}
 </script>
 
 <style scoped>

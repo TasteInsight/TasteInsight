@@ -56,13 +56,14 @@ describe('ReviewList', () => {
     },
   ];
 
-  const mockReviewComments: Record<string, { items: Comment[], total: number, loading: boolean }> = {
-    '1': {
-      items: [],
-      total: 0,
-      loading: false,
-    },
-  };
+  const mockReviewComments: Record<string, { items: Comment[]; total: number; loading: boolean }> =
+    {
+      '1': {
+        items: [],
+        total: 0,
+        loading: false,
+      },
+    };
 
   const defaultProps = {
     dishId: 'dish1',

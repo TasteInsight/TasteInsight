@@ -12,45 +12,44 @@ export function useLogin() {
     if (loading.value) return;
 
     loading.value = true;
-    
+
     try {
       // 1. 获取微信登录code
       const loginRes = await new Promise<UniApp.LoginRes>((resolve, reject) => {
         uni.login({
           provider: 'weixin',
           success: resolve,
-          fail: reject
+          fail: reject,
         });
       });
 
       // 2. 调用后端登录接口
       await userStore.loginAction(loginRes.code);
-      
+
       uni.showToast({
         title: '登录成功',
-        icon: 'success'
+        icon: 'success',
       });
 
       // 3. 登录成功后跳转到首页
       setTimeout(() => {
         uni.switchTab({
-          url: '/pages/index/index'
+          url: '/pages/index/index',
         });
       }, 500);
-
     } catch (error: any) {
       console.error('微信登录失败:', error);
-      
+
       let errorMessage = '登录失败，请重试';
       if (error?.errMsg?.includes('login:fail')) {
         errorMessage = '微信登录失败，请检查网络连接';
       }
-      
+
       uni.showToast({
         title: errorMessage,
-        icon: 'none'
+        icon: 'none',
       });
-      
+
       throw error;
     } finally {
       loading.value = false;
@@ -59,6 +58,6 @@ export function useLogin() {
 
   return {
     loading,
-    wechatLogin
+    wechatLogin,
   };
 }

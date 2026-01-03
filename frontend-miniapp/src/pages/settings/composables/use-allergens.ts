@@ -9,18 +9,29 @@ export interface AllergensForm {
 
 // 常见过敏原列表
 export const COMMON_ALLERGENS = [
-  '花生', '牛奶', '鸡蛋', '海鲜', '大豆', '小麦', 
-  '坚果', '芝麻', '芒果', '菠萝', '猕猴桃', '桃子', '蚕豆'
+  '花生',
+  '牛奶',
+  '鸡蛋',
+  '海鲜',
+  '大豆',
+  '小麦',
+  '坚果',
+  '芝麻',
+  '芒果',
+  '菠萝',
+  '猕猴桃',
+  '桃子',
+  '蚕豆',
 ];
 
 export function useAllergens() {
   const userStore = useUserStore();
-  
+
   const saving = ref(false);
   const loading = ref(true);
-  
+
   const form = reactive<AllergensForm>({
-    allergens: ''
+    allergens: '',
   });
 
   /**
@@ -59,15 +70,15 @@ export function useAllergens() {
       .split(/[,，]/)
       .map(a => a.trim())
       .filter(a => a);
-    
+
     const index = allergenList.indexOf(allergen);
-    
+
     if (index > -1) {
       allergenList.splice(index, 1);
     } else {
       allergenList.push(allergen);
     }
-    
+
     form.allergens = allergenList.join(', ');
   }
 
@@ -77,7 +88,7 @@ export function useAllergens() {
   function parseAllergenList(text: string): string[] {
     return text
       .split(/[,，;；\n\r\s]+/)
-      .map((item) => item.trim())
+      .map(item => item.trim())
       .filter(Boolean);
   }
 
@@ -88,7 +99,7 @@ export function useAllergens() {
     saving.value = true;
     try {
       const payload: UserProfileUpdateRequest = {
-        allergens: parseAllergenList(form.allergens)
+        allergens: parseAllergenList(form.allergens),
       };
 
       const response = await updateUserProfile(payload);
@@ -97,23 +108,23 @@ export function useAllergens() {
       }
 
       userStore.updateLocalUserInfo(response.data);
-      
+
       uni.showToast({
         title: '保存成功',
-        icon: 'success'
+        icon: 'success',
       });
-      
+
       setTimeout(() => {
         uni.navigateBack();
       }, 1000);
-      
+
       return true;
     } catch (error) {
       console.error('保存失败:', error);
       const message = error instanceof Error ? error.message : '保存失败';
       uni.showToast({
         title: message,
-        icon: 'none'
+        icon: 'none',
       });
       return false;
     } finally {
@@ -131,13 +142,13 @@ export function useAllergens() {
     form,
     saving,
     loading,
-    
+
     // 常量
     commonAllergens: COMMON_ALLERGENS,
-    
+
     // 方法
     isSelected,
     toggleAllergen,
-    handleSave
+    handleSave,
   };
 }

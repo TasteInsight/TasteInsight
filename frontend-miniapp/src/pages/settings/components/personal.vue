@@ -4,57 +4,70 @@
     <PersonalSettingsSkeleton v-if="loading" />
 
     <template v-else>
-    <!-- 头像上传区域 -->
-    <view class="bg-white rounded-lg p-6 mb-4 shadow-sm">
-      <text class="text-lg font-semibold text-gray-800 mb-6 block">头像</text>
-      <view class="flex flex-col items-center">
-        <view class="relative mb-6" :class="{ 'border-2 border-gray-300 rounded-full': !form.avatar }">
-           <image 
-            :src="form.avatar || '/static/images/default-avatar.png'" 
-            class="w-24 h-24 rounded-full border-4 border-purple-50"
-            mode="aspectFill"
-            :class="{ 'opacity-50': uploading }"
-            @click="!uploading && chooseAvatar()"
-          />
-           <view 
-            class="absolute bottom-0 right-0 bg-ts-purple rounded-full p-1.5 border-2 border-white shadow-sm"
-            :class="{ 'opacity-50': uploading }"
-            @click="!uploading && chooseAvatar()"
-           >
-             <text class="iconfont icon-camera text-white" style="font-size:14px; line-height:1"></text>
-           </view>
-           <!-- 上传中遮罩 -->
-           <view v-if="uploading" class="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
-             <text class="text-white text-sm">上传中...</text>
-           </view>
+      <!-- 头像上传区域 -->
+      <view class="bg-white rounded-lg p-6 mb-4 shadow-sm">
+        <text class="text-lg font-semibold text-gray-800 mb-6 block">头像</text>
+        <view class="flex flex-col items-center">
+          <view
+            class="relative mb-6"
+            :class="{ 'border-2 border-gray-300 rounded-full': !form.avatar }"
+          >
+            <image
+              :src="form.avatar || '/static/images/default-avatar.png'"
+              class="w-24 h-24 rounded-full border-4 border-purple-50"
+              mode="aspectFill"
+              :class="{ 'opacity-50': uploading }"
+              @click="!uploading && chooseAvatar()"
+            />
+            <view
+              class="absolute bottom-0 right-0 bg-ts-purple rounded-full p-1.5 border-2 border-white shadow-sm"
+              :class="{ 'opacity-50': uploading }"
+              @click="!uploading && chooseAvatar()"
+            >
+              <text
+                class="iconfont icon-camera text-white"
+                style="font-size: 14px; line-height: 1"
+              ></text>
+            </view>
+            <!-- 上传中遮罩 -->
+            <view
+              v-if="uploading"
+              class="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center"
+            >
+              <text class="text-white text-sm">上传中...</text>
+            </view>
+          </view>
+          <text class="text-gray-500 text-sm mb-2">{{
+            uploading ? '正在上传头像...' : '点击图片或相机图标更换头像'
+          }}</text>
         </view>
-        <text class="text-gray-500 text-sm mb-2">{{ uploading ? '正在上传头像...' : '点击图片或相机图标更换头像' }}</text>
       </view>
-    </view>
 
-    <!-- 昵称设置 -->
-    <view class="bg-white rounded-lg p-6 mb-4 shadow-sm">
-      <text class="text-lg font-semibold text-gray-800 mb-4 block">昵称</text>
-      <view class="relative border-2 border-gray-300 rounded-lg p-1">
-         <input 
-          v-model="form.nickname" 
-          class="w-full p-3 pr-12 border border-gray-200 rounded-lg text-base focus:border-ts-purple focus:ring-1 focus:ring-purple-100 transition-all"
-          placeholder="请输入昵称"
-          maxlength="20"
-        />
-         <text class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">{{ form.nickname.length }}/20</text>
+      <!-- 昵称设置 -->
+      <view class="bg-white rounded-lg p-6 mb-4 shadow-sm">
+        <text class="text-lg font-semibold text-gray-800 mb-4 block">昵称</text>
+        <view class="relative border-2 border-gray-300 rounded-lg p-1">
+          <input
+            v-model="form.nickname"
+            class="w-full p-3 pr-12 border border-gray-200 rounded-lg text-base focus:border-ts-purple focus:ring-1 focus:ring-purple-100 transition-all"
+            placeholder="请输入昵称"
+            maxlength="20"
+          />
+          <text class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400"
+            >{{ form.nickname.length }}/20</text
+          >
+        </view>
       </view>
-    </view>
 
-    <!-- 保存按钮 -->
-    <button 
-      class="w-full py-3.5 bg-ts-purple text-white rounded-full text-base font-semibold shadow-md active:bg-purple-800 active:scale-[0.99] transition-all mt-8"
-      :class="{ 'opacity-70': saving }"
-      :disabled="saving"
-      @click="handleSave"
-    >
-      <text>{{ saving ? '保存中...' : '保存修改' }}</text>
-    </button>
+      <!-- 保存按钮 -->
+      <button
+        class="w-full py-3.5 bg-ts-purple text-white rounded-full text-base font-semibold shadow-md active:bg-purple-800 active:scale-[0.99] transition-all mt-8"
+        :class="{ 'opacity-70': saving }"
+        :disabled="saving"
+        @click="handleSave"
+      >
+        <text>{{ saving ? '保存中...' : '保存修改' }}</text>
+      </button>
     </template>
   </view>
 </template>

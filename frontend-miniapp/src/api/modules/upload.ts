@@ -11,12 +11,12 @@ import { USE_MOCK } from '@/mock/mock-adapter';
  */
 export const uploadImage = (filePath: string): Promise<ImageUploadData> => {
   if (USE_MOCK) {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       console.log('[Mock] Uploading image:', filePath);
       setTimeout(() => {
         resolve({
           url: filePath, // Mock模式下直接返回本地路径
-          filename: 'mock_image_' + Date.now() + '.jpg'
+          filename: 'mock_image_' + Date.now() + '.jpg',
         });
       }, 500);
     });
@@ -30,7 +30,7 @@ export const uploadImage = (filePath: string): Promise<ImageUploadData> => {
       header: {
         Authorization: `Bearer ${useUserStore().token}`,
       },
-      success: (res) => {
+      success: res => {
         console.log('Upload response:', res); // 添加调试日志
         if (res.statusCode === 200 || res.statusCode === 201) {
           try {
@@ -52,7 +52,7 @@ export const uploadImage = (filePath: string): Promise<ImageUploadData> => {
           reject(new Error(`上传失败: ${res.statusCode}`));
         }
       },
-      fail: (err) => {
+      fail: err => {
         reject(err);
       },
     });

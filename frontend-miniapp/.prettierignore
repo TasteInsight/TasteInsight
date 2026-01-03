@@ -1,0 +1,11 @@
+node_modules
+dist
+.output
+.nuxt
+coverage
+playwright-report
+test-results
+load-report*.json
+pnpm-lock.yaml
+*.min.js
+*.min.css

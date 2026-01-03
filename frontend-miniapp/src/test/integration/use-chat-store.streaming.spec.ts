@@ -49,7 +49,7 @@ describe('useChatStore streaming and feedback (integration)', () => {
 
     expect(store.messages.length).toBeGreaterThanOrEqual(2);
 
-    const aiMsg = store.messages.find((m:any) => m.type === 'ai');
+    const aiMsg = store.messages.find((m: any) => m.type === 'ai');
     expect(aiMsg).toBeDefined();
     // The mock stream should have appended some text
     expect(aiMsg?.content[0]).toHaveProperty('text');

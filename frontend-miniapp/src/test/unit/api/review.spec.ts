@@ -33,7 +33,11 @@ describe('api/modules/review.ts', () => {
     const res = await createReview({ dishId: 'd1', rating: 5 } as any);
 
     expect(mockReq).toHaveBeenCalledTimes(1);
-    expect(mockReq.mock.calls[0][0]).toMatchObject({ url: '/reviews', method: 'POST', data: { dishId: 'd1', rating: 5 } });
+    expect(mockReq.mock.calls[0][0]).toMatchObject({
+      url: '/reviews',
+      method: 'POST',
+      data: { dishId: 'd1', rating: 5 },
+    });
     expect(res.code).toBe(201);
   });
 
@@ -46,7 +50,11 @@ describe('api/modules/review.ts', () => {
     const res = await reportReview('r1', { reason: 'spam' } as any);
 
     expect(mockReq).toHaveBeenCalledTimes(1);
-    expect(mockReq.mock.calls[0][0]).toMatchObject({ url: '/reviews/r1/report', method: 'POST', data: { reason: 'spam' } });
+    expect(mockReq.mock.calls[0][0]).toMatchObject({
+      url: '/reviews/r1/report',
+      method: 'POST',
+      data: { reason: 'spam' },
+    });
     expect(res.code).toBe(200);
   });
 

@@ -1,7 +1,7 @@
 // @/utils/request.ts
 
 // 导入 Pinia store，用于获取 token
-import { useUserStore } from '@/store/modules/use-user-store'; 
+import { useUserStore } from '@/store/modules/use-user-store';
 // 导入配置
 import config from '@/config';
 // 导入类型定义
@@ -30,35 +30,40 @@ function performTokenRefresh(): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const userStore = useUserStore();
     const refreshUrl = config.baseUrl + '/auth/refresh';
-    
+
     // eslint-disable-next-line no-console
     console.log('[request] -> Refreshing Token', refreshUrl);
-    
+
     uni.request({
       url: refreshUrl,
       method: 'POST',
       header: {
         'Content-Type': 'application/json',
         // 携带 refresh token，具体视后端要求而定
-         'Authorization': `Bearer ${userStore.refreshToken}` 
+        Authorization: `Bearer ${userStore.refreshToken}`,
       },
       data: {},
-      success: (refreshRes) => {
+      success: refreshRes => {
         const refreshData = refreshRes.data as any; // 简化类型
-        if (refreshRes.statusCode >= 200 && refreshRes.statusCode < 300 && refreshData.code === 200 && refreshData.data?.token) {
+        if (
+          refreshRes.statusCode >= 200 &&
+          refreshRes.statusCode < 300 &&
+          refreshData.code === 200 &&
+          refreshData.data?.token
+        ) {
           // eslint-disable-next-line no-console
           console.log('[request] Token refreshed successfully');
           const newToken = refreshData.data.token;
-          
+
           // 更新 store 和 storage
           userStore.token = newToken.accessToken;
           uni.setStorageSync('token', newToken.accessToken);
-          
+
           if (newToken.refreshToken) {
             userStore.refreshToken = newToken.refreshToken;
             uni.setStorageSync('refreshToken', newToken.refreshToken);
           }
-          
+
           resolve();
         } else {
           // 刷新失败
@@ -66,14 +71,13 @@ function performTokenRefresh(): Promise<void> {
           reject(buildUserFriendlyError(new Error('HTTP 401')));
         }
       },
-      fail: (err) => {
+      fail: err => {
         handleHttpError(401, {});
         reject(buildUserFriendlyError(new Error('HTTP 401')));
-      }
+      },
     });
   });
 }
-
 
 /**
  * 封装的网络请求函数
@@ -90,7 +94,6 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
   }
 
   return new Promise<ApiResponse<T>>((resolve, reject) => {
-    
     // --- 阶段一: 请求拦截器 ---
     // 在这里，我们对即将发出的请求进行最后加工
 
@@ -120,7 +123,15 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
     uni.request({
       // 1. 基础配置
       url: fullUrl, // 自动拼接完整的请求地址
-      method: (options.method || 'GET') as 'GET' | 'POST' | 'PUT' | 'DELETE' | 'OPTIONS' | 'HEAD' | 'TRACE' | 'CONNECT',
+      method: (options.method || 'GET') as
+        | 'GET'
+        | 'POST'
+        | 'PUT'
+        | 'DELETE'
+        | 'OPTIONS'
+        | 'HEAD'
+        | 'TRACE'
+        | 'CONNECT',
       data: options.data || {},
       header: header,
       timeout: options.timeout || 15000, // 默认15秒超时
@@ -129,7 +140,7 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
       success: (res: UniApp.RequestSuccessCallbackResult) => {
         // --- 阶段三: 响应拦截器 ---
         // 在这里，我们对收到的响应进行预处理
-        
+
         const statusCode = res.statusCode;
         // 类型断言：告诉 TypeScript 响应数据的结构
         const responseData = res.data as ApiResponse<T>;
@@ -140,7 +151,6 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
 
         // 2.1 HTTP 状态码判断
         if (statusCode >= 200 && statusCode < 300) {
-          
           // 2.2 业务状态码判断
           // 假设后端约定 code 为 200 或 201 代表业务成功
           if (responseData.code === 200 || responseData.code === 201) {
@@ -154,7 +164,7 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
         } else if (statusCode === 401) {
           // 401 未授权，尝试刷新 Token
           const userStore = useUserStore();
-          
+
           // 如果是刷新 token 的请求本身失败了，或者没有 refresh token，则直接退出登录
           if (fullUrl.includes('/auth/refresh') || !userStore.refreshToken) {
             handleHttpError(statusCode, responseData);
@@ -165,11 +175,10 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
           // 检查是否已有刷新操作在进行
           if (!refreshTokenPromise) {
             // 没有正在进行的刷新，发起新的刷新操作
-            refreshTokenPromise = performTokenRefresh()
-              .finally(() => {
-                // 无论成功还是失败，都清除缓存的promise
-                refreshTokenPromise = null;
-              });
+            refreshTokenPromise = performTokenRefresh().finally(() => {
+              // 无论成功还是失败，都清除缓存的promise
+              refreshTokenPromise = null;
+            });
           }
 
           // 如果当前请求已经重试过一次，则不再尝试刷新并重试
@@ -195,7 +204,7 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
               }
               request<T>(newOptions).then(resolve).catch(reject);
             })
-            .catch((error) => {
+            .catch(error => {
               // 刷新失败，直接reject
               reject(buildUserFriendlyError(error));
             });
@@ -238,7 +247,7 @@ function handleHttpError(statusCode: number, responseData: any): void {
       userStore.logoutAction();
       // 跳转到登录页
       uni.reLaunch({
-        url: '/pages/login/index' 
+        url: '/pages/login/index',
       });
       break;
     case 403:
