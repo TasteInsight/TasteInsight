@@ -47,7 +47,7 @@ export function useRecommendDishes() {
             // 按照推荐顺序排序
             dishes.value = dishIds
               .map(id => fullDishes.find(dish => dish.id === id))
-              .filter(dish => dish != null);
+              .filter((dish): dish is Dish => dish != null);
           }
         } else {
           dishes.value = [];

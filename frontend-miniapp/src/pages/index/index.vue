@@ -128,7 +128,7 @@ import { IndexSkeleton } from '@/components/skeleton';
 import { useCanteenStore } from '@/store/modules/use-canteen-store';
 import { useDishesStore } from '@/store/modules/use-dishes-store';
 import { useUserStore } from '@/store/modules/use-user-store';
-import type { GetDishesRequest, RecommendationRequest } from '@/types/api';
+import type { GetDishesRequest, RecommendationRequest, Dish } from '@/types/api';
 import { getDishesImages, getDishes, getDishesByIds } from '@/api/modules/dish';
 import { getRecommendations, RecommendationScene } from '@/api/modules/recommendation';
 
@@ -296,7 +296,7 @@ const fetchRecommendations = async (options: { reset: boolean; append?: boolean 
         // 按照推荐顺序排序
         const sortedDishes = dishIds
           .map(id => fullDishes.find(dish => dish.id === id))
-          .filter(dish => dish != null);
+          .filter((dish): dish is Dish => dish != null);
 
         // 检查是否有菜品缺失（竞态条件：菜品在两次调用之间被删除或下线）
         const missingCount = dishIds.length - sortedDishes.length;
