@@ -258,10 +258,10 @@
             </div>
           </div>
 
-          <!-- 空状态提示 -->
-          <div v-if="!loading && configItems.length === 0" class="text-center py-12">
-            <span class="iconify text-6xl text-gray-300 mx-auto" data-icon="carbon:settings"></span>
-            <p class="mt-4 text-gray-500">暂无配置项</p>
+          <!-- 加载失败提示 -->
+          <div v-if="loadError" class="text-center py-12">
+            <span class="iconify text-6xl text-gray-300 mx-auto" data-icon="carbon:warning-alt"></span>
+            <p class="mt-4 text-gray-500">配置加载失败，请刷新页面重试</p>
           </div>
         </div>
       </div>
@@ -293,6 +293,7 @@ export default {
     const reviewAutoApprove = ref(false)
     const commentAutoApprove = ref(false)
     const configItems = ref([])
+    const loadError = ref(false)
 
     // 菜品嵌入刷新相关状态
     const embeddingRefreshing = ref(false)
@@ -420,11 +421,13 @@ export default {
             // 保存所有配置项用于显示
             configItems.value = config?.items || []
           }
+          loadError.value = false
         } else {
           throw new Error(response.message || '获取配置失败')
         }
       } catch (error) {
         console.error('加载配置失败:', error)
+        loadError.value = true
         showAlert('加载配置失败，请刷新重试')
       } finally {
         loading.value = false
@@ -757,6 +760,7 @@ export default {
 
     return {
       loading,
+      loadError,
       reviewSaving,
       reviewSaveSuccess,
       commentSaving,
