@@ -22,12 +22,28 @@
 
         <!-- 搜索栏 -->
         <div class="mb-6">
-          <input
-            type="text"
-            v-model="searchQuery"
-            placeholder="搜索实验名称..."
-            class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
-          />
+          <div class="relative">
+            <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" data-icon="carbon:search"></span>
+            <input
+              type="text"
+              v-model="searchQuery"
+              placeholder="搜索实验名称或描述..."
+              class="w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+              @input="() => {}"
+            />
+            <button
+              v-if="searchQuery"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              @click="searchQuery = ''"
+              type="button"
+              title="清除搜索"
+            >
+              <span class="iconify" data-icon="carbon:close"></span>
+            </button>
+          </div>
+          <p v-if="searchQuery" class="mt-2 text-sm text-gray-500">
+            找到 {{ filteredExperiments.length }} 个匹配的实验
+          </p>
         </div>
 
         <!-- 实验列表表格 -->
@@ -168,6 +184,13 @@
                   >
                     {{ getStatusLabel(currentExperiment.status) }}
                   </span>
+                  <span 
+                    v-if="getEffectiveStatus(currentExperiment)" 
+                    class="ml-2 text-xs"
+                    :class="getEffectiveStatus(currentExperiment) === 'active' ? 'text-green-600' : 'text-gray-500'"
+                  >
+                    {{ getEffectiveStatus(currentExperiment) === 'active' ? '✓ 实验生效中' : '(未在生效时间内)' }}
+                  </span>
                 </p>
               </div>
               <div>
@@ -175,13 +198,13 @@
                 <p class="mt-1 text-gray-800">{{ formatDate(currentExperiment.createdAt) }}</p>
               </div>
               <div>
-                <label class="text-sm font-medium text-gray-600">开始日期</label>
+                <label class="text-sm font-medium text-gray-600">生效开始时间</label>
                 <p class="mt-1 text-gray-800">{{ formatDate(currentExperiment.startTime) }}</p>
               </div>
               <div>
-                <label class="text-sm font-medium text-gray-600">结束日期</label>
+                <label class="text-sm font-medium text-gray-600">生效结束时间</label>
                 <p class="mt-1 text-gray-800">
-                  {{ currentExperiment.endTime ? formatDate(currentExperiment.endTime) : '未设置' }}
+                  {{ currentExperiment.endTime ? formatDate(currentExperiment.endTime) : '永久有效' }}
                 </p>
               </div>
               <div>
@@ -201,19 +224,43 @@
               >
                 编辑实验
               </button>
+              <!-- 草稿状态：可以启动 -->
+              <button
+                v-if="authStore.hasPermission('experiment:edit') && currentExperiment.status === 'draft'"
+                class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
+                @click="enableExperiment(currentExperiment)"
+              >
+                启动实验
+              </button>
+              <!-- 运行中状态：可以暂停或完成 -->
               <button
                 v-if="authStore.hasPermission('experiment:edit') && currentExperiment.status === 'running'"
                 class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition"
                 @click="disableExperiment(currentExperiment)"
               >
-                禁用实验
+                暂停实验
               </button>
+              <button
+                v-if="authStore.hasPermission('experiment:edit') && currentExperiment.status === 'running'"
+                class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+                @click="completeExperiment(currentExperiment)"
+              >
+                完成实验
+              </button>
+              <!-- 暂停状态：可以恢复或完成 -->
               <button
                 v-if="authStore.hasPermission('experiment:edit') && currentExperiment.status === 'paused'"
                 class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
                 @click="enableExperiment(currentExperiment)"
               >
-                启用实验
+                恢复实验
+              </button>
+              <button
+                v-if="authStore.hasPermission('experiment:edit') && currentExperiment.status === 'paused'"
+                class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+                @click="completeExperiment(currentExperiment)"
+              >
+                完成实验
               </button>
             </div>
           </div>
@@ -339,8 +386,8 @@
                 :key="key"
                 class="flex justify-between items-center py-2 border-b border-gray-100"
               >
-                <span class="text-sm font-medium text-gray-600">{{ getRecallQuotaLabel(key) }}</span>
-                <span class="text-sm text-gray-800 font-mono">{{ (value * 100).toFixed(1) }}%</span>
+                <span class="text-sm font-medium text-gray-600">{{ getRecallQuotaLabel(key as string) }}</span>
+                <span class="text-sm text-gray-800 font-mono">{{ value != null ? ((value as number) * 100).toFixed(1) : '0.0' }}%</span>
               </div>
             </div>
             <div v-else class="text-center py-8 text-gray-500">
@@ -416,7 +463,7 @@
               </div>
               <div>
                 <label class="block text-gray-700 font-medium mb-2">
-                  开始日期 <span class="text-red-500">*</span>
+                  生效开始时间 <span class="text-red-500">*</span>
                 </label>
                 <input
                   type="datetime-local"
@@ -426,15 +473,17 @@
                   required
                 />
                 <p v-if="errors.startTime" class="mt-1 text-xs text-red-500">{{ errors.startTime }}</p>
+                <p class="mt-1 text-xs text-gray-500">实验启动后，只有在此时间之后才会真正生效</p>
               </div>
               <div>
-                <label class="block text-gray-700 font-medium mb-2">结束日期</label>
+                <label class="block text-gray-700 font-medium mb-2">生效结束时间</label>
                 <input
                   type="datetime-local"
                   v-model="formData.endTime"
                   class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
                   placeholder="可选"
                 />
+                <p class="mt-1 text-xs text-gray-500">留空表示永久有效，直到手动完成实验</p>
               </div>
             </div>
           </div>
@@ -442,15 +491,37 @@
           <!-- 实验分组 -->
           <div class="border border-gray-200 rounded-lg p-6">
             <div class="flex justify-between items-center mb-4">
-              <h3 class="text-lg font-semibold text-gray-800">实验分组</h3>
-              <button
-                type="button"
-                class="px-4 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition"
-                @click="addGroup"
-              >
-                <span class="iconify mr-1" data-icon="carbon:add"></span>
-                添加分组
-              </button>
+              <div class="flex items-center gap-4">
+                <h3 class="text-lg font-semibold text-gray-800">实验分组</h3>
+                <span 
+                  v-if="formData.groups.length > 0"
+                  class="text-sm px-2 py-1 rounded"
+                  :class="groupRatioStatus.isValid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                >
+                  占比总和: {{ groupRatioStatus.total.toFixed(2) }}
+                  <span v-if="!groupRatioStatus.isValid">(应为1.00)</span>
+                </span>
+              </div>
+              <div class="flex gap-2">
+                <button
+                  v-if="formData.groups.length >= 2"
+                  type="button"
+                  class="px-3 py-2 border border-tsinghua-purple text-tsinghua-purple rounded-lg hover:bg-tsinghua-purple/10 transition text-sm"
+                  @click="distributeGroupRatiosEvenly"
+                  title="将所有分组占比均分"
+                >
+                  <span class="iconify mr-1" data-icon="carbon:distribute-horizontal-center"></span>
+                  均分占比
+                </button>
+                <button
+                  type="button"
+                  class="px-4 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition"
+                  @click="addGroup"
+                >
+                  <span class="iconify mr-1" data-icon="carbon:add"></span>
+                  添加分组
+                </button>
+              </div>
             </div>
             <div class="space-y-4">
               <div
@@ -533,6 +604,93 @@
           </div>
         </form>
       </div>
+
+      <!-- 分组配置编辑弹窗 -->
+      <div
+        v-if="showGroupConfigModal"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+        @mousedown.self="closeGroupConfigModal"
+      >
+        <div class="bg-white rounded-lg w-[600px] max-h-[80vh] overflow-auto">
+          <div class="p-6 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+              <h3 class="text-lg font-semibold text-gray-800">
+                配置分组: {{ editingGroupData?.name || '新分组' }}
+              </h3>
+              <button
+                class="p-2 hover:bg-gray-100 rounded-full"
+                @click="closeGroupConfigModal"
+              >
+                <span class="iconify" data-icon="carbon:close"></span>
+              </button>
+            </div>
+          </div>
+          <div class="p-6 space-y-6">
+            <!-- 权重配置 -->
+            <div>
+              <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <span class="iconify text-tsinghua-purple" data-icon="carbon:weight"></span>
+                权重配置 (Weights)
+              </h4>
+              <div class="grid grid-cols-2 gap-4">
+                <div v-for="(label, key) in weightLabels" :key="key">
+                  <label class="block text-sm text-gray-600 mb-1">{{ label }}</label>
+                  <input
+                    type="number"
+                    v-model.number="groupConfigForm.weights[key]"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+                    placeholder="0.0 - 1.0"
+                  />
+                </div>
+              </div>
+            </div>
+            <!-- 召回配额配置 -->
+            <div>
+              <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                <span class="iconify text-tsinghua-purple" data-icon="carbon:chart-line"></span>
+                召回配额配置 (Recall Quota)
+              </h4>
+              <div class="grid grid-cols-2 gap-4">
+                <div v-for="(label, key) in recallQuotaLabels" :key="key">
+                  <label class="block text-sm text-gray-600 mb-1">{{ label }}</label>
+                  <div class="flex items-center gap-2">
+                    <input
+                      type="number"
+                      v-model.number="groupConfigForm.recallQuota[key]"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+                      placeholder="0.0 - 1.0"
+                    />
+                    <span class="text-gray-500 text-sm">×100%</span>
+                  </div>
+                </div>
+              </div>
+              <p class="mt-2 text-xs text-gray-500">
+                提示：召回配额总和应为1.0（{{ recallQuotaTotal.toFixed(2) }}）
+              </p>
+            </div>
+          </div>
+          <div class="p-6 border-t border-gray-200 flex justify-end gap-3">
+            <button
+              class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
+              @click="closeGroupConfigModal"
+            >
+              取消
+            </button>
+            <button
+              class="px-4 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition"
+              @click="saveGroupConfig"
+            >
+              保存配置
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -548,7 +706,6 @@ import type {
   CreateExperimentRequest,
   UpdateExperimentRequest,
   ExperimentGroup,
-  ExperimentConfig,
 } from '@/types/api'
 
 export default {
@@ -558,9 +715,10 @@ export default {
   },
   setup() {
     const authStore = useAuthStore()
+    type ViewMode = 'list' | 'detail' | 'edit' | 'groupDetail'
     const loading = ref(false)
     const isSubmitting = ref(false)
-    const viewMode = ref('list') // 'list' | 'detail' | 'edit' | 'groupDetail'
+    const viewMode = ref<ViewMode>('list')
     const experimentList = ref<Experiment[]>([])
     const currentExperiment = ref<Experiment | null>(null)
     const currentGroup = ref<ExperimentGroup | null>(null)
@@ -577,21 +735,96 @@ export default {
       groups: [],
     })
 
-    const errors = reactive({
+    const errors = reactive<Record<string, string>>({
       name: '',
       trafficRatio: '',
       startTime: '',
     })
 
+    // 分组配置编辑相关
+    const showGroupConfigModal = ref(false)
+    const editingGroupIndex = ref(-1)
+    const editingGroupData = ref<ExperimentGroup | null>(null)
+    const groupConfigForm = reactive({
+      weights: {
+        preferenceMatch: 0,
+        favoriteSimilarity: 0,
+        browseRelevance: 0,
+        dishQuality: 0,
+        diversity: 0,
+        searchRelevance: 0,
+      } as Record<string, number>,
+      recallQuota: {
+        vectorQuota: 0,
+        ruleQuota: 0,
+        collaborativeQuota: 0,
+      } as Record<string, number>,
+    })
+
+    // 权重和召回配额的标签映射
+    const weightLabels: Record<string, string> = {
+      preferenceMatch: '偏好匹配',
+      favoriteSimilarity: '收藏相似度',
+      browseRelevance: '浏览相关性',
+      dishQuality: '菜品质量',
+      diversity: '多样性',
+      searchRelevance: '搜索相关性',
+    }
+
+    const recallQuotaLabels: Record<string, string> = {
+      vectorQuota: '向量召回配额',
+      ruleQuota: '规则召回配额',
+      collaborativeQuota: '协同过滤召回配额',
+    }
+
+    // 计算召回配额总和
+    const recallQuotaTotal = computed(() => {
+      return Object.values(groupConfigForm.recallQuota).reduce((sum, val) => sum + (val || 0), 0)
+    })
+
+    // 计算分组占比总和和状态
+    const groupRatioStatus = computed(() => {
+      const total = formData.groups.reduce((sum, group) => {
+        const ratio = Number(group.ratio) || 0
+        return sum + ratio
+      }, 0)
+      return {
+        total,
+        isValid: Math.abs(total - 1) <= 0.01,
+      }
+    })
+
+    // 均分分组占比
+    const distributeGroupRatiosEvenly = () => {
+      const count = formData.groups.length
+      if (count === 0) return
+      const ratio = Math.round((1 / count) * 100) / 100
+      // 给每个分组分配相同的占比
+      formData.groups.forEach((group, index) => {
+        if (index === count - 1) {
+          // 最后一个分组分配剩余的占比，确保总和为1
+          group.ratio = Math.round((1 - ratio * (count - 1)) * 100) / 100
+        } else {
+          group.ratio = ratio
+        }
+      })
+    }
+
     // 过滤后的实验列表
     const filteredExperiments = computed(() => {
-      if (!searchQuery.value) {
-        return experimentList.value
+      // 先过滤掉无效的实验项（没有 id 或 name 的）
+      const validExperiments = experimentList.value.filter(
+        (exp) => exp && exp.id && exp.name
+      )
+      
+      const query = searchQuery.value?.trim().toLowerCase()
+      if (!query) {
+        return validExperiments
       }
-      const query = searchQuery.value.toLowerCase()
-      return experimentList.value.filter(
+      
+      return validExperiments.filter(
         (exp) =>
-          exp.name.toLowerCase().includes(query) ||
+          exp.name?.toLowerCase().includes(query) ||
           (exp.description && exp.description.toLowerCase().includes(query))
       )
     })
@@ -602,7 +835,17 @@ export default {
       try {
         const response = await experimentApi.getExperiments()
         if (response.code === 200) {
-          experimentList.value = response.data || []
+          // 后端返回的数据格式是 { items: [...], meta: {...} }
+          const data = response.data as any
+          if (data && Array.isArray(data.items)) {
+            experimentList.value = data.items
+          } else if (Array.isArray(data)) {
+            // 兼容直接返回数组的情况
+            experimentList.value = data
+          } else {
+            experimentList.value = []
+            console.warn('实验列表数据格式异常:', data)
+          }
         } else {
           await showAlert(response.message || '加载实验列表失败', '错误')
         }
@@ -636,6 +879,8 @@ export default {
     const formatDate = (date: string | Date | undefined) => {
       if (!date) return '-'
       const d = new Date(date)
+      // 检查日期是否有效
+      if (isNaN(d.getTime())) return '-'
       return d.toLocaleString('zh-CN', {
         year: 'numeric',
         month: '2-digit',
@@ -667,6 +912,26 @@ export default {
       return classMap[status || 'draft'] || 'bg-gray-100 text-gray-700'
     }
 
+    // 获取实验的实际生效状态
+    // 实验只有在 status=running 且在时间窗口内才会真正生效
+    const getEffectiveStatus = (experiment: Experiment) => {
+      if (experiment.status !== 'running') {
+        return null // 非运行状态不显示
+      }
+      const now = new Date()
+      const startTime = new Date(experiment.startTime)
+      const endTime = experiment.endTime ? new Date(experiment.endTime) : null
+      
+      // 检查是否在时间窗口内
+      const afterStart = now >= startTime
+      const beforeEnd = !endTime || now <= endTime
+      
+      if (afterStart && beforeEnd) {
+        return 'active' // 实验正在生效
+      }
+      return 'inactive' // 实验虽然是 running 状态，但不在时间窗口内
+    }
+
     // 获取权重标签
     const getWeightLabel = (key: string) => {
       const labelMap: Record<string, string> = {
@@ -692,6 +957,10 @@ export default {
 
     // 查看实验详情
     const viewExperiment = async (experiment: Experiment) => {
+      if (!experiment.id) {
+        await showAlert('无效的实验数据', '错误')
+        return
+      }
       await loadExperimentDetail(experiment.id)
       viewMode.value = 'detail'
     }
@@ -705,6 +974,10 @@ export default {
 
     // 编辑实验
     const editExperiment = async (experiment: Experiment) => {
+      if (!experiment.id) {
+        await showAlert('无效的实验数据', '错误')
+        return
+      }
       await loadExperimentDetail(experiment.id)
       if (currentExperiment.value) {
         editingExperiment.value = currentExperiment.value
@@ -723,6 +996,8 @@ export default {
     // 格式化日期时间到本地格式
     const formatDateTimeLocal = (date: string | Date) => {
       const d = new Date(date)
+      // 检查日期是否有效
+      if (isNaN(d.getTime())) return ''
       const year = d.getFullYear()
       const month = String(d.getMonth() + 1).padStart(2, '0')
       const day = String(d.getDate()).padStart(2, '0')
@@ -733,6 +1008,10 @@ export default {
 
     // 删除实验
     const deleteExperiment = async (experiment: Experiment) => {
+      if (!experiment.id) {
+        await showAlert('无效的实验数据，无法删除', '错误')
+        return
+      }
       const confirmed = await showConfirmDanger(
         `确定要删除实验"${experiment.name}"吗？此操作不可恢复。`,
         '确认删除'
@@ -769,22 +1048,44 @@ export default {
       }
     }
 
-    // 禁用实验
+    // 暂停实验
     const disableExperiment = async (experiment: Experiment) => {
-      const confirmed = await showConfirmDanger(`确定要禁用实验"${experiment.name}"吗？`, '确认禁用')
+      const confirmed = await showConfirmDanger(`确定要暂停实验"${experiment.name}"吗？`, '确认暂停')
       if (!confirmed) return
 
       try {
         const response = await experimentApi.disableExperiment(experiment.id)
         if (response.code === 200) {
-          await showAlert('实验已禁用', '成功')
+          await showAlert('实验已暂停', '成功')
           await loadExperimentDetail(experiment.id)
         } else {
-          await showAlert(response.message || '禁用实验失败', '错误')
+          await showAlert(response.message || '暂停实验失败', '错误')
         }
       } catch (error) {
-        console.error('禁用实验失败:', error)
-        await showAlert('禁用实验失败，请稍后重试', '错误')
+        console.error('暂停实验失败:', error)
+        await showAlert('暂停实验失败，请稍后重试', '错误')
+      }
+    }
+
+    // 完成实验
+    const completeExperiment = async (experiment: Experiment) => {
+      const confirmed = await showConfirmDanger(
+        `确定要将实验"${experiment.name}"标记为已完成吗？完成后实验将停止运行。`,
+        '确认完成'
+      )
+      if (!confirmed) return
+
+      try {
+        const response = await experimentApi.completeExperiment(experiment.id)
+        if (response.code === 200) {
+          await showAlert('实验已完成', '成功')
+          await loadExperimentDetail(experiment.id)
+        } else {
+          await showAlert(response.message || '完成实验失败', '错误')
+        }
+      } catch (error) {
+        console.error('完成实验失败:', error)
+        await showAlert('完成实验失败，请稍后重试', '错误')
       }
     }
 
@@ -795,11 +1096,19 @@ export default {
       viewMode.value = 'groupDetail'
     }
 
-    // 编辑分组
+    // 编辑分组（从详情页编辑已保存的分组）
     const editGroup = (group: ExperimentGroup, index: number) => {
-      // 这里可以打开一个编辑分组的对话框或跳转到编辑页面
-      // 暂时先显示分组详情
-      viewGroupDetail(group, index)
+      editingGroupIndex.value = index
+      editingGroupData.value = group
+      // 填充配置表单
+      resetGroupConfigForm()
+      if (group.config?.weights) {
+        Object.assign(groupConfigForm.weights, group.config.weights)
+      }
+      if (group.config?.recallQuota) {
+        Object.assign(groupConfigForm.recallQuota, group.config.recallQuota)
+      }
+      showGroupConfigModal.value = true
     }
 
     // 删除分组
@@ -849,11 +1158,115 @@ export default {
       formData.groups.splice(index, 1)
     }
 
-    // 编辑分组配置
+    // 编辑分组配置（从表单中编辑）
     const editGroupConfig = (group: ExperimentGroup, index: number) => {
-      // 这里可以打开一个配置对话框
-      // 暂时提示用户可以在创建后编辑
-      showAlert('分组配置（权重和召回配额）可以在创建实验后通过编辑分组来配置', '提示')
+      editingGroupIndex.value = index
+      editingGroupData.value = group
+      // 填充配置表单
+      resetGroupConfigForm()
+      if (group.config?.weights) {
+        Object.assign(groupConfigForm.weights, group.config.weights)
+      }
+      if (group.config?.recallQuota) {
+        Object.assign(groupConfigForm.recallQuota, group.config.recallQuota)
+      }
+      showGroupConfigModal.value = true
+    }
+
+    // 重置分组配置表单
+    const resetGroupConfigForm = () => {
+      groupConfigForm.weights = {
+        preferenceMatch: 0,
+        favoriteSimilarity: 0,
+        browseRelevance: 0,
+        dishQuality: 0,
+        diversity: 0,
+        searchRelevance: 0,
+      }
+      groupConfigForm.recallQuota = {
+        vectorQuota: 0,
+        ruleQuota: 0,
+        collaborativeQuota: 0,
+      }
+    }
+
+    // 关闭分组配置弹窗
+    const closeGroupConfigModal = () => {
+      showGroupConfigModal.value = false
+      editingGroupIndex.value = -1
+      editingGroupData.value = null
+      resetGroupConfigForm()
+    }
+
+    // 保存分组配置
+    const saveGroupConfig = async () => {
+      if (editingGroupIndex.value < 0) return
+
+      // 构建配置对象，只包含有值的配置
+      const config: Record<string, any> = {}
+      
+      // 处理权重配置
+      const weights: Record<string, number> = {}
+      let hasWeights = false
+      Object.entries(groupConfigForm.weights).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value > 0) {
+          weights[key] = value
+          hasWeights = true
+        }
+      })
+      if (hasWeights) {
+        config.weights = weights
+      }
+
+      // 处理召回配额配置
+      const recallQuota: Record<string, number> = {}
+      let hasRecallQuota = false
+      Object.entries(groupConfigForm.recallQuota).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value > 0) {
+          recallQuota[key] = value
+          hasRecallQuota = true
+        }
+      })
+      if (hasRecallQuota) {
+        // 验证召回配额总和
+        const total = Object.values(recallQuota).reduce((sum, val) => sum + val, 0)
+        if (Math.abs(total - 1) > 0.01) {
+          await showAlert(`召回配额总和应为1，当前为${total.toFixed(2)}`, '错误')
+          return
+        }
+        config.recallQuota = recallQuota
+      }
+
+      // 判断是在编辑表单中还是在详情页编辑
+      if (viewMode.value === 'edit') {
+        // 表单中编辑，更新 formData.groups
+        formData.groups[editingGroupIndex.value].config = Object.keys(config).length > 0 ? config : undefined
+        closeGroupConfigModal()
+        await showAlert('分组配置已保存', '成功')
+      } else if (viewMode.value === 'detail' && currentExperiment.value) {
+        // 详情页编辑，需要调用API更新
+        try {
+          const updatedGroups = [...currentExperiment.value.groups]
+          updatedGroups[editingGroupIndex.value] = {
+            ...updatedGroups[editingGroupIndex.value],
+            config: Object.keys(config).length > 0 ? config : undefined,
+          }
+          const updateData: UpdateExperimentRequest = {
+            groups: updatedGroups,
+          }
+          const response = await experimentApi.updateExperiment(currentExperiment.value.id, updateData)
+          if (response.code === 200) {
+            await showAlert('分组配置已更新', '成功')
+            await loadExperimentDetail(currentExperiment.value.id)
+            closeGroupConfigModal()
+          } else {
+            await showAlert(response.message || '更新分组配置失败', '错误')
+          }
+        } catch (error) {
+          console.error('更新分组配置失败:', error)
+          await showAlert('更新分组配置失败，请稍后重试', '错误')
+        }
+      }
     }
 
     // 重置表单
@@ -871,67 +1284,78 @@ export default {
 
     // 提交表单
     const submitForm = async () => {
-      // 验证表单
-      let hasError = false
+      // 清除之前的错误
+      errors.name = ''
+      errors.trafficRatio = ''
+      errors.startTime = ''
       
-      // 确保数值字段是数字类型
+      // 收集所有验证错误
+      const validationErrors: string[] = []
+      
+      // 验证实验名称
+      if (!formData.name || !formData.name.trim()) {
+        errors.name = '请输入实验名称'
+        validationErrors.push('请输入实验名称')
+      }
+      
+      // 验证流量占比
       const trafficRatio = Number(formData.trafficRatio)
       if (isNaN(trafficRatio) || trafficRatio <= 0 || trafficRatio > 1) {
         errors.trafficRatio = '流量占比必须在0到1之间'
-        hasError = true
+        validationErrors.push('流量占比必须在0到1之间')
       }
       
-      if (!formData.name || !formData.name.trim()) {
-        errors.name = '请输入实验名称'
-        hasError = true
-      }
-      
+      // 验证开始日期
       if (!formData.startTime) {
         errors.startTime = '请选择开始日期'
-        hasError = true
+        validationErrors.push('请选择开始日期')
       }
 
+      // 验证结束日期
       if (formData.endTime && formData.startTime) {
         const start = new Date(formData.startTime)
         const end = new Date(formData.endTime)
-        if (end <= start) {
-          await showAlert('结束日期必须晚于开始日期', '错误')
-          hasError = true
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+          validationErrors.push('日期格式无效')
+        } else if (end <= start) {
+          validationErrors.push('结束日期必须晚于开始日期')
         }
       }
       
+      // 验证分组
       if (formData.groups.length === 0) {
-        await showAlert('请至少添加一个实验分组', '错误')
-        hasError = true
-      }
+        validationErrors.push('请至少添加一个实验分组')
+      } else {
+        // 验证每个分组
+        const groupErrors: string[] = []
+        formData.groups.forEach((group, i) => {
+          if (!group.name || !group.name.trim()) {
+            groupErrors.push(`分组 ${i + 1} 缺少名称`)
+          }
+          const ratio = Number(group.ratio)
+          if (isNaN(ratio) || ratio < 0 || ratio > 1) {
+            groupErrors.push(`分组 ${i + 1} 的占比必须在0到1之间`)
+          }
+        })
+        validationErrors.push(...groupErrors)
 
-      // 验证每个分组都有名称和有效的占比
-      for (let i = 0; i < formData.groups.length; i++) {
-        const group = formData.groups[i]
-        if (!group.name || !group.name.trim()) {
-          await showAlert(`分组 ${i + 1} 缺少名称`, '错误')
-          hasError = true
-          break
+        // 验证分组占比总和（只有在没有单个分组错误时才验证）
+        if (groupErrors.length === 0) {
+          const totalRatio = formData.groups.reduce((sum, group) => {
+            const ratio = Number(group.ratio) || 0
+            return sum + ratio
+          }, 0)
+          if (Math.abs(totalRatio - 1) > 0.01) {
+            validationErrors.push(`分组占比总和应为1，当前为${totalRatio.toFixed(2)}`)
+          }
         }
-        const ratio = Number(group.ratio)
-        if (isNaN(ratio) || ratio < 0 || ratio > 1) {
-          await showAlert(`分组 ${i + 1} 的占比必须在0到1之间`, '错误')
-          hasError = true
-          break
-        }
       }
 
-      // 验证分组占比总和
-      const totalRatio = formData.groups.reduce((sum, group) => {
-        const ratio = Number(group.ratio) || 0
-        return sum + ratio
-      }, 0)
-      if (Math.abs(totalRatio - 1) > 0.01) {
-        await showAlert(`分组占比总和应为1，当前为${totalRatio.toFixed(2)}`, '错误')
-        hasError = true
+      // 如果有验证错误，显示所有错误并返回
+      if (validationErrors.length > 0) {
+        await showAlert(validationErrors.join('\n'), '表单验证失败')
+        return
       }
-
-      if (hasError) return
 
       isSubmitting.value = true
       try {
@@ -954,104 +1378,27 @@ export default {
             await showAlert(response.message || '更新实验失败', '错误')
           }
         } else {
-          // 创建实验
-          // 确保groups数组中的每个对象都有必要的字段，并确保数据类型正确
-          const groups = formData.groups.map((group, index) => {
-            // 确保 ratio 是有效的数字
-            const ratioValue = typeof group.ratio === 'number' 
-              ? group.ratio 
-              : parseFloat(String(group.ratio || 0))
-            
-            if (isNaN(ratioValue)) {
-              throw new Error(`分组 ${index + 1} 的占比必须是有效的数字`)
-            }
-
-            // 只包含后端期望的字段，确保类型正确
-            const groupData: {
-              name: string
-              ratio: number
-              config?: Record<string, any>
-            } = {
-              name: String(group.name || '').trim(),
-              ratio: ratioValue,
-            }
-            
-            // 只有当config存在且不为空对象时才添加
-            if (group.config && typeof group.config === 'object' && Object.keys(group.config).length > 0) {
-              groupData.config = group.config
-            }
-            
-            return groupData
-          })
-
-          // 验证每个分组都有名称
-          const invalidGroups = groups.filter((g) => !g.name || !g.name.trim())
-          if (invalidGroups.length > 0) {
-            await showAlert('请为所有分组填写名称', '错误')
-            return
-          }
-
-          // 确保 trafficRatio 是有效的数字
-          const trafficRatioValue = typeof formData.trafficRatio === 'number'
-            ? formData.trafficRatio
-            : parseFloat(String(formData.trafficRatio || 0))
-          
-          if (isNaN(trafficRatioValue)) {
-            errors.trafficRatio = '流量占比必须是有效的数字'
-            return
-          }
-
-          // 构建请求数据，确保只包含后端期望的字段，且类型正确
+          // 创建实验 - 构建请求数据
           const createData: CreateExperimentRequest = {
-            name: String(formData.name || '').trim(),
-            trafficRatio: trafficRatioValue,
+            name: formData.name.trim(),
+            trafficRatio: Number(formData.trafficRatio),
             startTime: new Date(formData.startTime).toISOString(),
-            groups: groups,
+            groups: formData.groups.map((group) => ({
+              name: group.name.trim(),
+              ratio: Number(group.ratio),
+              ...(group.config && Object.keys(group.config).length > 0 ? { config: group.config } : {}),
+            })),
           }
 
-          // 只有当description有值时才添加
-          const description = formData.description?.trim()
-          if (description) {
-            createData.description = description
+          // 可选字段
+          if (formData.description?.trim()) {
+            createData.description = formData.description.trim()
           }
-
-          // 只有当endTime有值时才添加
           if (formData.endTime) {
             createData.endTime = new Date(formData.endTime).toISOString()
           }
 
-          // 最终清理：确保只包含后端期望的字段，移除任何可能的额外属性
-          const cleanedData: CreateExperimentRequest = {
-            name: createData.name,
-            trafficRatio: createData.trafficRatio,
-            startTime: createData.startTime,
-            groups: createData.groups.map((g) => ({
-              name: g.name,
-              ratio: g.ratio,
-              ...(g.config ? { config: g.config } : {}),
-            })),
-          }
-          
-          if (createData.description) {
-            cleanedData.description = createData.description
-          }
-          
-          if (createData.endTime) {
-            cleanedData.endTime = createData.endTime
-          }
-
-          console.log('发送的创建实验数据:', JSON.stringify(cleanedData, null, 2))
-          console.log('数据类型检查:', {
-            name: typeof cleanedData.name,
-            trafficRatio: typeof cleanedData.trafficRatio,
-            startTime: typeof cleanedData.startTime,
-            groups: cleanedData.groups.map(g => ({
-              name: typeof g.name,
-              ratio: typeof g.ratio,
-            })),
-          })
-
-          const response = await experimentApi.createExperiment(cleanedData)
+          const response = await experimentApi.createExperiment(createData)
           if (response.code === 200 || response.code === 201) {
             await showAlert('实验已创建', '成功')
             await loadExperiments()
@@ -1073,11 +1420,13 @@ export default {
     }
 
     // 返回列表
-    const backToList = () => {
+    const backToList = async () => {
       viewMode.value = 'list'
       currentExperiment.value = null
       editingExperiment.value = null
       resetForm()
+      // 刷新列表数据
+      await loadExperiments()
     }
 
     // 返回详情
@@ -1104,9 +1453,20 @@ export default {
       searchQuery,
       formData,
       errors,
+      // 分组配置相关
+      showGroupConfigModal,
+      editingGroupData,
+      groupConfigForm,
+      weightLabels,
+      recallQuotaLabels,
+      recallQuotaTotal,
+      groupRatioStatus,
+      // 方法
       formatDate,
+      distributeGroupRatiosEvenly,
       getStatusLabel,
       getStatusClass,
+      getEffectiveStatus,
       getWeightLabel,
       getRecallQuotaLabel,
       viewExperiment,
@@ -1115,12 +1475,15 @@ export default {
       deleteExperiment,
       enableExperiment,
       disableExperiment,
+      completeExperiment,
       viewGroupDetail,
       editGroup,
       deleteGroup,
       addGroup,
       removeGroup,
       editGroupConfig,
+      closeGroupConfigModal,
+      saveGroupConfig,
       submitForm,
       backToList,
       backToDetail,
