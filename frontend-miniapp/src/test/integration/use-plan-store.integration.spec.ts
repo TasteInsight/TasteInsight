@@ -102,7 +102,7 @@ describe('usePlanStore integration', () => {
 
     const store = usePlanStore();
     // seed plan - ensure it's not expired and not completed
-    const futureDate = '2025-12-25'; // Future date to ensure not expired
+    const futureDate = '2026-12-25'; // Future date to ensure not expired
     store.allPlans = [
       {
         id: 'p3',

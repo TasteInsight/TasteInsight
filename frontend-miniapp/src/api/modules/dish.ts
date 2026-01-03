@@ -36,6 +36,19 @@ export const getDishes = (
 };
 
 /**
+ * 批量获取菜品（通过 ID 列表）
+ */
+export const getDishesByIds = (
+  ids: string[]
+): Promise<ApiResponse<PaginatedData<Dish>>> => {
+  return request<PaginatedData<Dish>>({
+    url: '/dishes/by-ids',
+    method: 'POST',
+    data: { ids },
+  });
+};
+
+/**
  *  获取菜品图片列表
  */
 export const getDishesImages = (

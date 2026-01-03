@@ -102,7 +102,6 @@ export function useSearch() {
       // 2) 未匹配到食堂，再搜索菜品
       const response = await getDishes({
         filter: {},
-        isSuggestion: false,
         search: {
           keyword: searchTerm,
         },

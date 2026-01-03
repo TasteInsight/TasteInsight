@@ -567,8 +567,6 @@ export interface GetDishesRequest {
     avoidIngredients?: string[];    // 忌口
     favoriteIngredients?: string[]; // 喜好食材
   };
-  // --- 推荐模式 ---
-  isSuggestion?: boolean;         // 是否使用后端推荐，默认为 false
   search: {
     keyword: string;
     fields?: string[];
@@ -1002,6 +1000,81 @@ export interface RequestOptions {
   data?: Record<string, any> | any[];
   header?: Record<string, string>;
   timeout?: number;
+}
+
+// ============================================
+// 推荐系统相关类型
+// ============================================
+
+/**
+ * 推荐场景类型（枚举定义在 @/api/modules/recommendation.ts）
+ */
+export type RecommendationScene = 'home' | 'search' | 'similar' | 'guess_like' | 'today';
+
+/**
+ * 推荐请求参数
+ */
+export interface RecommendationRequest {
+  scene?: RecommendationScene;
+  requestId?: string;
+  filter?: {
+    canteenId?: string[];
+    tag?: string[];
+    rating?: { min: number; max: number };
+    price?: { min: number; max: number };
+    mealTime?: string[];
+    spicyLevel?: { min: number; max: number };
+    sweetness?: { min: number; max: number };
+    saltiness?: { min: number; max: number };
+    oiliness?: { min: number; max: number };
+    meatPreference?: string[];
+    avoidIngredients?: string[];
+    favoriteIngredients?: string[];
+  };
+  search?: {
+    keyword: string;
+    fields?: string[];
+  };
+  pagination: {
+    page: number;
+    pageSize: number;
+  };
+  includeScoreBreakdown?: boolean;
+  userContext?: Record<string, any>;
+}
+
+/**
+ * 推荐结果项
+ */
+export interface RecommendedDishItem {
+  id: string;
+  score?: number;
+  scoreBreakdown?: Record<string, number>;
+}
+
+/**
+ * 推荐响应数据
+ */
+export interface RecommendationResponseData extends PaginatedData<RecommendedDishItem> {
+  requestId?: string;
+  groupItemId?: string;
+}
+
+/**
+ * 点击事件记录请求
+ */
+export interface RecommendationClickEvent {
+  dishId: string;
+  requestId?: string;
+  position?: number;
+  scene?: RecommendationScene;
+}
+
+/**
+ * 点击事件记录响应
+ */
+export interface RecommendationClickEventResponse {
+  eventId: string;
 }
 
 // ============================================

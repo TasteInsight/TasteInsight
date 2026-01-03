@@ -1,10 +1,21 @@
 import { useRecommendDishes } from '@/pages/index/composables/use-recommend-dishes';
-import { getDishes } from '@/api/modules/dish';
-import { ref } from 'vue';
+import { getRecommendations, RecommendationScene } from '@/api/modules/recommendation';
+import { getDishesByIds } from '@/api/modules/dish';
 
-// Mock the API module
+// Mock the API modules
+jest.mock('@/api/modules/recommendation', () => ({
+  getRecommendations: jest.fn(),
+  RecommendationScene: {
+    HOME: 'home',
+    SEARCH: 'search',
+    SIMILAR: 'similar',
+    GUESS_LIKE: 'guess_like',
+    TODAY: 'today',
+  },
+}));
+
 jest.mock('@/api/modules/dish', () => ({
-  getDishes: jest.fn(),
+  getDishesByIds: jest.fn(),
 }));
 
 describe('useRecommendDishes', () => {
@@ -13,26 +24,40 @@ describe('useRecommendDishes', () => {
   });
 
   it('should initialize with default values', () => {
-    const { dishes, loading } = useRecommendDishes();
+    const { dishes, loading, requestId } = useRecommendDishes();
     expect(dishes.value).toEqual([]);
     expect(loading.value).toBe(false);
+    expect(requestId.value).toBeNull();
   });
 
-  it('should fetch dishes successfully', async () => {
+  it('should fetch dishes successfully using recommendation API', async () => {
+    const mockRecommendationResponse = {
+      code: 200,
+      data: {
+        items: [
+          { id: 'dish-1', score: 0.95 },
+          { id: 'dish-2', score: 0.88 },
+        ],
+        meta: { page: 1, pageSize: 10, total: 2, totalPages: 1 },
+        requestId: 'test-request-id-123',
+      },
+    };
+
     const mockDishes = [
-      { id: 1, name: 'Dish 1', price: 10 },
-      { id: 2, name: 'Dish 2', price: 20 },
+      { id: 'dish-1', name: 'Dish 1', price: 10 },
+      { id: 'dish-2', name: 'Dish 2', price: 20 },
     ];
-    (getDishes as jest.Mock).mockResolvedValue({
+
+    (getRecommendations as jest.Mock).mockResolvedValue(mockRecommendationResponse);
+    (getDishesByIds as jest.Mock).mockResolvedValue({
       code: 200,
       data: {
         items: mockDishes,
-        total: 2,
+        meta: { page: 1, pageSize: 2, total: 2, totalPages: 1 },
       },
-      msg: 'success',
     });
 
-    const { dishes, loading, fetchDishes } = useRecommendDishes();
+    const { dishes, loading, requestId, fetchDishes } = useRecommendDishes();
 
     const fetchPromise = fetchDishes();
     expect(loading.value).toBe(true);
@@ -41,15 +66,73 @@ describe('useRecommendDishes', () => {
 
     expect(loading.value).toBe(false);
     expect(dishes.value).toEqual(mockDishes);
-    expect(getDishes).toHaveBeenCalledWith(expect.objectContaining({
-      isSuggestion: true,
-      sort: { field: 'averageRating', order: 'desc' },
-    }));
+    expect(requestId.value).toBe('test-request-id-123');
+    
+    // 验证推荐 API 调用
+    expect(getRecommendations).toHaveBeenCalledWith({
+      scene: RecommendationScene.HOME,
+      requestId: undefined,
+      filter: {},
+      pagination: { page: 1, pageSize: 10 },
+    });
+
+    // 验证批量获取菜品调用
+    expect(getDishesByIds).toHaveBeenCalledWith(['dish-1', 'dish-2']);
+  });
+
+  it('should fetch dishes with filter', async () => {
+    const mockRecommendationResponse = {
+      code: 200,
+      data: {
+        items: [{ id: 'dish-1', score: 0.95 }],
+        meta: { page: 1, pageSize: 10, total: 1, totalPages: 1 },
+        requestId: 'test-request-id',
+      },
+    };
+
+    (getRecommendations as jest.Mock).mockResolvedValue(mockRecommendationResponse);
+    (getDishesByIds as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: {
+        items: [{ id: 'dish-1', name: 'Dish 1', price: 10 }],
+        meta: { page: 1, pageSize: 1, total: 1, totalPages: 1 },
+      },
+    });
+
+    const { fetchDishes } = useRecommendDishes();
+    const filter = { canteenId: ['canteen-1'] };
+
+    await fetchDishes(filter);
+
+    expect(getRecommendations).toHaveBeenCalledWith({
+      scene: RecommendationScene.HOME,
+      requestId: undefined,
+      filter,
+      pagination: { page: 1, pageSize: 10 },
+    });
+  });
+
+  it('should handle empty recommendation results', async () => {
+    (getRecommendations as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: {
+        items: [],
+        meta: { page: 1, pageSize: 10, total: 0, totalPages: 0 },
+        requestId: 'test-request-id',
+      },
+    });
+
+    const { dishes, fetchDishes } = useRecommendDishes();
+
+    await fetchDishes();
+
+    expect(dishes.value).toEqual([]);
+    expect(getDishesByIds).not.toHaveBeenCalled();
   });
 
   it('should handle fetch error', async () => {
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    (getDishes as jest.Mock).mockRejectedValue(new Error('Network Error'));
+    (getRecommendations as jest.Mock).mockRejectedValue(new Error('Network Error'));
 
     const { dishes, loading, fetchDishes } = useRecommendDishes();
 
@@ -68,6 +151,44 @@ describe('useRecommendDishes', () => {
     loading.value = true;
     await fetchDishes();
 
-    expect(getDishes).not.toHaveBeenCalled();
+    expect(getRecommendations).not.toHaveBeenCalled();
+    expect(getDishesByIds).not.toHaveBeenCalled();
+  });
+
+  it('should maintain dish order as per recommendation score', async () => {
+    const mockRecommendationResponse = {
+      code: 200,
+      data: {
+        items: [
+          { id: 'dish-2', score: 0.95 },
+          { id: 'dish-1', score: 0.88 },
+          { id: 'dish-3', score: 0.75 },
+        ],
+        meta: { page: 1, pageSize: 10, total: 3, totalPages: 1 },
+        requestId: 'test-request-id',
+      },
+    };
+
+    const mockDishes = [
+      { id: 'dish-1', name: 'Dish 1' },
+      { id: 'dish-2', name: 'Dish 2' },
+      { id: 'dish-3', name: 'Dish 3' },
+    ];
+
+    (getRecommendations as jest.Mock).mockResolvedValue(mockRecommendationResponse);
+    (getDishesByIds as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: {
+        items: mockDishes,
+        meta: { page: 1, pageSize: 3, total: 3, totalPages: 1 },
+      },
+    });
+
+    const { dishes, fetchDishes } = useRecommendDishes();
+
+    await fetchDishes();
+
+    // 验证顺序与推荐 API 返回的顺序一致
+    expect(dishes.value.map(d => d.id)).toEqual(['dish-2', 'dish-1', 'dish-3']);
   });
 });

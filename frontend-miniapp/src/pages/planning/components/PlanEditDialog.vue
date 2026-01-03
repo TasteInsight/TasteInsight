@@ -532,7 +532,6 @@ const loadDishPage = async (page: number, append: boolean) => {
 
       const params: GetDishesRequest = {
         filter: {},
-        isSuggestion: false,
         search: {
           keyword,
         },
