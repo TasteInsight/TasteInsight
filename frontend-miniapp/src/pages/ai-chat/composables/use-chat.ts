@@ -149,6 +149,10 @@ export function useChat() {
     init();
   });
 
+  const stopStreaming = () => {
+    chatStore.abortChat(true); // 用户手动停止，显示提示
+  };
+
   return {
     messages: computed(() => chatStore.messages),
     aiLoading: computed(() => chatStore.aiLoading),
@@ -166,5 +170,6 @@ export function useChat() {
     historyEntries: computed(() => chatStore.historyEntries),
     loadHistorySession,
     deleteSession,
+    stopStreaming,
   };
 }

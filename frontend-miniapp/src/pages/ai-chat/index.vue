@@ -168,6 +168,7 @@
               ref="inputBarRef"
               :loading="aiLoading"
               @send="handleSend"
+              @stop="handleStopStreaming"
             />
           </view>
         </view>
@@ -319,6 +320,7 @@ const {
   historyEntries,
   loadHistorySession,
   deleteSession,
+  stopStreaming,
 } = useChat();
 
 // 调试：监听suggestions变化
@@ -415,6 +417,11 @@ watch(
 
 const handleSend = (text: string) => {
   sendMessage(text);
+};
+
+const handleStopStreaming = () => {
+  console.log('[AI Chat Page] handleStopStreaming called');
+  stopStreaming();
 };
 
 // 点击提示词，直接发送，体验更好
