@@ -84,8 +84,8 @@ export function useSearch() {
         if (first.code === 200 && first.data) {
           allCanteens = first.data.items || [];
           const totalPages = first.data.meta?.totalPages ?? 1;
-          for (let p = 2; p <= totalPages; p += 1) {
-            const next = await getCanteenList({ page: p, pageSize: 50 });
+          for (let pageNum = 2; pageNum <= totalPages; pageNum += 1) {
+            const next = await getCanteenList({ page: pageNum, pageSize: 50 });
             if (token !== requestToken.value) return;
             if (next.code === 200 && next.data) {
               allCanteens = [...allCanteens, ...(next.data.items || [])];
