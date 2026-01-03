@@ -35,7 +35,7 @@ export class AIChatService {
     private readonly promptSecurity: PromptSecurityService,
     private readonly openaiProvider: OpenAIProviderService,
     private readonly toolRegistry: ToolRegistryService,
-  ) { }
+  ) {}
 
   /**
    * Create a new chat session
@@ -244,7 +244,7 @@ export class AIChatService {
             // Safely convert to string and trim
             const argsStr =
               toolCall.arguments != null &&
-                typeof toolCall.arguments === 'string'
+              typeof toolCall.arguments === 'string'
                 ? toolCall.arguments.trim()
                 : '';
 

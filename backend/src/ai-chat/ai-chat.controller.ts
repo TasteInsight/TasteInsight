@@ -76,7 +76,10 @@ export class AIChatController {
     const suggestions = await this.aiChatService.getSuggestions(userId, {
       localTime,
       timeZone,
-      tzOffsetMinutes: tzOffsetMinutes ? parseInt(tzOffsetMinutes) : undefined,
+      tzOffsetMinutes:
+        tzOffsetMinutes && !isNaN(parseInt(tzOffsetMinutes))
+          ? parseInt(tzOffsetMinutes)
+          : undefined,
     });
 
     return {

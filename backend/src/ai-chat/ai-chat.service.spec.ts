@@ -250,30 +250,44 @@ describe('AIChatService', () => {
   });
 
   describe('deleteSession', () => {
-    it('should delete existing session', async () => {
+    it('should delete existing session using transaction', async () => {
       const mockSession = {
         id: 'session123',
         userId: 'user123',
       };
 
+      // Create a transaction client mock
+      const mockTx = {
+        aIMessage: { deleteMany: jest.fn().mockResolvedValue({ count: 5 }) },
+        aISession: { delete: jest.fn().mockResolvedValue(mockSession) },
+      };
+
+      // Spy on $transaction to execute the callback with mockTx
+      jest
+        .spyOn(prisma, '$transaction')
+        .mockImplementation(async (callback: any) => {
+          return callback(mockTx);
+        });
+
       jest
         .spyOn(prisma.aISession, 'findFirst')
-        .mockResolvedValue(mockSession as any);
-      jest
-        .spyOn(prisma.aIMessage, 'deleteMany')
-        .mockResolvedValue({ count: 5 });
-      jest
-        .spyOn(prisma.aISession, 'delete')
         .mockResolvedValue(mockSession as any);
 
       await service.deleteSession('user123', 'session123');
 
-      expect(prisma.aIMessage.deleteMany).toHaveBeenCalledWith({
+      // Verify transaction was used
+      expect(prisma.$transaction).toHaveBeenCalled();
+
+      // Verify operations were called on the TRANSACTION client, not the main prisma client
+      expect(mockTx.aIMessage.deleteMany).toHaveBeenCalledWith({
         where: { sessionId: 'session123' },
       });
-      expect(prisma.aISession.delete).toHaveBeenCalledWith({
+      expect(mockTx.aISession.delete).toHaveBeenCalledWith({
         where: { id: 'session123' },
       });
+
+      // Verify main client was NOT used for deletion
+      expect(prisma.aISession.delete).not.toHaveBeenCalled();
     });
 
     it('should throw error if session not found', async () => {
