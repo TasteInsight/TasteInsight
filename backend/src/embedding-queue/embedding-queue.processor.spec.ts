@@ -147,7 +147,10 @@ describe('EmbeddingQueueProcessor', () => {
 
       // Simulate embedding service calling progress callback
       mockEmbeddingService.updateDishEmbeddingsByCanteen.mockImplementation(
-        async (canteenId: string, onProgress?: Function) => {
+        async (
+          canteenId: string,
+          onProgress?: (processed: number, total: number) => Promise<void>,
+        ) => {
           if (onProgress) {
             await onProgress(5, 10);
           }
@@ -178,7 +181,10 @@ describe('EmbeddingQueueProcessor', () => {
       });
 
       mockEmbeddingService.updateDishEmbeddingsByCanteen.mockImplementation(
-        async (canteenId: string, onProgress?: Function) => {
+        async (
+          canteenId: string,
+          onProgress?: (processed: number, total: number) => Promise<void>,
+        ) => {
           if (onProgress) {
             // This should throw JobCancelledError because the job is cancelled
             await onProgress(5, 10);
