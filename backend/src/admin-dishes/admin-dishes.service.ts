@@ -542,9 +542,17 @@ export class AdminDishesService {
       throw new BadRequestException('该菜品有子菜品，无法删除');
     }
 
-    // 删除菜品
-    await this.prisma.dish.delete({
-      where: { id },
+    // 删除菜品及关联的审核记录
+    await this.prisma.$transaction(async (tx) => {
+      // 删除关联的上传审核记录，防止重复上架
+      await tx.dishUpload.deleteMany({
+        where: { approvedDishId: id },
+      });
+
+      // 删除菜品
+      await tx.dish.delete({
+        where: { id },
+      });
     });
 
     return {
