@@ -137,7 +137,11 @@ export function useChat() {
 
   const deleteSession = async (sessionId: string) => {
     try {
+      const wasCurrent = chatStore.sessionId === sessionId;
       await chatStore.removeSession(sessionId);
+      if (wasCurrent) {
+        await fetchSuggestions();
+      }
       return true;
     } catch (e) {
       console.error('Failed to delete session', e);

@@ -420,13 +420,13 @@ export const useChatStore = defineStore('ai-chat', () => {
   /**
    * 启动新的会话 (重置)
    */
-  function startNewSession(scene?: string) {
+  async function startNewSession(scene?: string | AIScene) {
     abortChat(false); // 停止当前可能的生成（静默）
     messages.value = [];
     sessionId.value = '';
     // 如果传入了场景则先设置
     if (scene) setScene(scene);
-    initSession(scene);
+    await initSession(scene, true);
   }
 
   /**
@@ -434,6 +434,9 @@ export const useChatStore = defineStore('ai-chat', () => {
    */
   async function removeSession(session: string) {
     try {
+      const isDeletingCurrentSession = sessionId.value === session;
+      const sceneToKeep = currentScene.value;
+
       // 调用后端接口删除会话
       await deleteAISession(session);
       
@@ -443,8 +446,11 @@ export const useChatStore = defineStore('ai-chat', () => {
         historyEntries.value.splice(idx, 1);
         persistHistory();
       }
-      
-      // 不清空当前会话状态，让用户可以继续使用当前聊天
+
+      // 如果删除的是当前会话：自动创建一个新会话并切换过去
+      if (isDeletingCurrentSession) {
+        await startNewSession(sceneToKeep);
+      }
       
       return true;
     } catch (error) {

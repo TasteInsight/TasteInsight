@@ -459,7 +459,12 @@ const handleLoadHistory = async (sessionId: string) => {
 
 const handleDeleteHistory = async (sessionId: string) => {
   // 直接删除，使用 .stop 修饰符阻止事件冒泡
+  const wasCurrent = sessionId === currentSessionId.value;
   await deleteSession(sessionId);
+  if (wasCurrent) {
+    closeHistory();
+    scrollToBottom();
+  }
 };
 const handleScenePicker = (e: any) => {
   const idx = Number(e?.detail?.value);
