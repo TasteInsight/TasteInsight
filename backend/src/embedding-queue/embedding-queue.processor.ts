@@ -37,10 +37,14 @@ export class EmbeddingQueueProcessor extends WorkerHost {
    * 检查任务是否被取消
    */
   private async checkCancelled(job: Job): Promise<void> {
+    const jobId = job.id;
+    if (!jobId) {
+      return; // 如果没有 job.id，无法检查取消状态
+    }
     // 重新获取任务数据以检查最新状态
-    const freshJob = await this.embeddingQueue.getJob(job.id!);
+    const freshJob = await this.embeddingQueue.getJob(jobId);
     if (freshJob?.data?.cancelled) {
-      throw new JobCancelledError(job.id!);
+      throw new JobCancelledError(jobId);
     }
   }
 
