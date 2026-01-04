@@ -12,13 +12,25 @@
         <div class="w-1/3 border-r pr-6">
           <!-- 搜索栏 -->
           <div class="mb-4">
-            <input
-              type="text"
-              placeholder="搜索菜品名称..."
-              class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
-              v-model="searchQuery"
-              @input="handleSearchChange"
-            />
+            <div class="relative">
+              <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" data-icon="carbon:search"></span>
+              <input
+                type="text"
+                placeholder="搜索菜品名称..."
+                class="w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                v-model="searchQuery"
+                @input="handleSearchChange"
+              />
+              <button
+                v-if="searchQuery"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                @click="searchQuery = ''; handleSearchChange()"
+                type="button"
+                title="清除搜索"
+              >
+                <span class="iconify" data-icon="carbon:close"></span>
+              </button>
+            </div>
           </div>
 
           <!-- 筛选区域 -->

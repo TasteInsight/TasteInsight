@@ -8,7 +8,7 @@
       />
 
       <!-- 标签页切换 -->
-      <div class="p-6 bg-gray-50 border-b">
+      <div class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
         <div class="flex items-center space-x-4">
           <button
             class="px-6 py-2 rounded-lg font-medium transition duration-200"

@@ -16,7 +16,7 @@ import { RecallQualityService } from './services/recall-quality.service';
 import { AdminAuthGuard } from '@/auth/guards/admin-auth.guard';
 import { PermissionsGuard } from '@/auth/guards/permissions.guard';
 import { RequirePermissions } from '@/auth/decorators/permissions.decorator';
-import type {
+import {
   CreateExperimentDto,
   UpdateExperimentDto,
 } from './dto/experiment/create-experiment.dto';
@@ -69,9 +69,20 @@ export class AdminRecommendationController {
     try {
       return await this.experimentsService.createExperiment(data);
     } catch (error) {
+      // 如果是验证错误，返回更详细的信息
+      if (error.response && error.response.message) {
+        const messages = Array.isArray(error.response.message)
+          ? error.response.message.join(', ')
+          : error.response.message;
+        return {
+          code: 400,
+          message: `验证失败: ${messages}`,
+          data: null,
+        };
+      }
       return {
         code: 400,
-        message: error.message,
+        message: error.message || '创建实验失败',
         data: null,
       };
     }

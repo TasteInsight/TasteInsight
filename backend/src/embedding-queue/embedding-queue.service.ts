@@ -138,4 +138,50 @@ export class EmbeddingQueueService {
       failedReason: job.failedReason,
     };
   }
+
+  /**
+   * 检查任务是否被请求取消
+   */
+  async isJobCancelled(jobId: string): Promise<boolean> {
+    const job = await this.embeddingQueue.getJob(jobId);
+    if (!job) return true;
+    // 检查任务数据中的取消标记
+    return job.data?.cancelled === true;
+  }
+
+  /**
+   * 取消任务
+   * 等待中的任务直接移除，执行中的任务标记为取消（处理器会检查并中止）
+   */
+  async cancelJob(
+    jobId: string,
+  ): Promise<{ success: boolean; message: string }> {
+    const job = await this.embeddingQueue.getJob(jobId);
+    if (!job) {
+      return { success: false, message: '任务不存在' };
+    }
+
+    const state = await job.getState();
+    if (state === 'completed') {
+      return { success: false, message: '任务已完成' };
+    }
+    if (state === 'failed') {
+      return { success: false, message: '任务已失败' };
+    }
+
+    if (state === 'active') {
+      // 执行中的任务：更新任务数据标记为取消，处理器会检查并中止
+      await job.updateData({ ...job.data, cancelled: true });
+      this.logger.log(`Job ${jobId} marked for cancellation`);
+      return {
+        success: true,
+        message: '已请求取消任务，任务将在下一个检查点停止',
+      };
+    }
+
+    // 等待中的任务：直接移除
+    await job.remove();
+    this.logger.log(`Job ${jobId} cancelled`);
+    return { success: true, message: '任务已取消' };
+  }
 }

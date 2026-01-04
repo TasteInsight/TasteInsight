@@ -8,72 +8,76 @@
       />
 
       <!-- 筛选区域 -->
-      <div class="mt-6 mb-6 p-6 bg-gray-50 border rounded-lg">
-        <div class="grid grid-cols-4 gap-4">
-          <!-- 管理员筛选 -->
-          <div>
-            <label class="block text-sm text-gray-600 mb-2">管理员</label>
-            <input
-              type="text"
-              v-model="filters.adminId"
-              placeholder="管理员ID"
-              class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
-            />
+      <div class="mb-6 mt-6">
+        <div class="p-4 bg-gray-50 rounded-lg border border-gray-100">
+          <div class="flex flex-wrap items-center gap-x-8 gap-y-4">
+            <div class="flex items-center gap-3">
+              <span class="text-sm font-medium text-gray-600">管理员</span>
+              <input
+                type="text"
+                v-model="filters.adminId"
+                placeholder="管理员ID"
+                class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm w-32 transition-all hover:border-gray-400"
+              />
+            </div>
+
+            <div class="flex items-center gap-3">
+              <span class="text-sm font-medium text-gray-600">操作类型</span>
+              <div class="relative">
+                <select
+                  v-model="filters.action"
+                  class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[120px] transition-all cursor-pointer hover:border-gray-400"
+                >
+                  <option value="">全部操作</option>
+                  <option value="create">创建</option>
+                  <option value="update">更新</option>
+                  <option value="delete">删除</option>
+                  <option value="view">查看</option>
+                  <option value="approve">审核通过</option>
+                  <option value="reject">审核拒绝</option>
+                </select>
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
+                  <span class="iconify" data-icon="carbon:chevron-down"></span>
+                </span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <span class="text-sm font-medium text-gray-600">开始日期</span>
+              <input
+                type="date"
+                v-model="filters.startDate"
+                class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm transition-all hover:border-gray-400"
+              />
+            </div>
+
+            <div class="flex items-center gap-3">
+              <span class="text-sm font-medium text-gray-600">结束日期</span>
+              <input
+                type="date"
+                v-model="filters.endDate"
+                :min="filters.startDate"
+                class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm transition-all hover:border-gray-400"
+              />
+            </div>
           </div>
 
-          <!-- 操作类型筛选 -->
-          <div>
-            <label class="block text-sm text-gray-600 mb-2">操作类型</label>
-            <select
-              v-model="filters.action"
-              class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+          <!-- 筛选按钮 -->
+          <div class="flex justify-end gap-3 mt-4">
+            <button
+              class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-gray-200/50 transition-colors"
+              @click="resetFilters"
             >
-              <option value="">全部操作</option>
-              <option value="create">创建</option>
-              <option value="update">更新</option>
-              <option value="delete">删除</option>
-              <option value="view">查看</option>
-              <option value="approve">审核通过</option>
-              <option value="reject">审核拒绝</option>
-            </select>
+              <span class="iconify" data-icon="carbon:reset"></span>
+              重置
+            </button>
+            <button
+              class="px-4 py-2 bg-tsinghua-purple text-white text-sm rounded-lg hover:bg-tsinghua-dark transition duration-200"
+              @click="applyFilters"
+            >
+              查询
+            </button>
           </div>
-
-          <!-- 开始日期 -->
-          <div>
-            <label class="block text-sm text-gray-600 mb-2">开始日期</label>
-            <input
-              type="date"
-              v-model="filters.startDate"
-              class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
-            />
-          </div>
-
-          <!-- 结束日期 -->
-          <div>
-            <label class="block text-sm text-gray-600 mb-2">结束日期</label>
-            <input
-              type="date"
-              v-model="filters.endDate"
-              :min="filters.startDate"
-              class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
-            />
-          </div>
-        </div>
-
-        <!-- 筛选按钮 -->
-        <div class="flex justify-end gap-3 mt-4">
-          <button
-            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"
-            @click="resetFilters"
-          >
-            重置
-          </button>
-          <button
-            class="px-4 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200"
-            @click="applyFilters"
-          >
-            查询
-          </button>
         </div>
       </div>
 

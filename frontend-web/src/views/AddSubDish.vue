@@ -8,7 +8,7 @@
       />
 
       <!-- 父项信息显示 -->
-      <div v-if="parentDishName" class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+      <div v-if="parentDishName" class="mt-6 mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <div class="flex items-center">
           <span class="iconify text-blue-500 mr-2" data-icon="carbon:information"></span>
           <div>

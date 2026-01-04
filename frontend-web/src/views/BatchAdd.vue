@@ -4,11 +4,10 @@
           <Header 
             title="批量添加菜品" 
             description="通过上传表格批量添加多个菜品"
-            header-icon="carbon:document-multiple"
-            :show-border="false"
+            header-icon="carbon:document-multiple-02"
           />
           
-          <div class="space-y-8">
+          <div class="mt-6 space-y-8">
             <!-- 步骤指引 -->
             <div class="bg-blue-50 p-4 rounded-lg">
               <h3 class="font-medium text-blue-700 mb-2 flex items-center space-x-2">

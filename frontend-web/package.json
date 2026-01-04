@@ -1,5 +1,5 @@
 {
-  "name": "dish-management-system",
+  "name": "TasteInsight-Management-System",
   "version": "1.0.0",
   "description": "清华大学食堂菜品管理系统",
   "type": "module",
@@ -44,5 +44,5 @@
   "main": "postcss.config.js",
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "MIT"
 }

@@ -47,66 +47,76 @@
       <div class="mt-6">
 
         <!-- 搜索和筛选栏 -->
-        <div class="mb-6 space-y-4 p-4 bg-gray-50 rounded-lg border">
+        <div class="mb-6 space-y-4">
           <!-- 搜索栏 -->
-          <div>
-            <label class="block text-sm font-medium text-gray-600 mb-2">搜索标题</label>
+          <div class="relative">
+            <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" data-icon="carbon:search"></span>
             <input
               type="text"
               v-model="searchQuery"
               placeholder="输入新闻标题进行搜索..."
-              class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+              class="w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
             />
+            <button
+              v-if="searchQuery"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              @click="searchQuery = ''"
+              type="button"
+              title="清除搜索"
+            >
+              <span class="iconify" data-icon="carbon:close"></span>
+            </button>
           </div>
 
           <!-- 筛选栏 -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <!-- 食堂筛选 -->
-            <div>
-              <label class="block text-sm font-medium text-gray-600 mb-2">发布食堂</label>
-              <select
-                v-model="canteenFilter"
-                class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple bg-white"
-              >
-                <option value="">全部食堂</option>
-                <option value="all">全校公告</option>
-                <option v-for="canteen in canteenList" :key="canteen.id" :value="canteen.id">
-                  {{ canteen.name }}
-                </option>
-              </select>
+          <div class="p-4 bg-gray-50 rounded-lg border border-gray-100 flex flex-wrap items-center gap-x-8 gap-y-4">
+            <div class="flex items-center gap-3">
+              <span class="text-sm font-medium text-gray-600">发布食堂</span>
+              <div class="relative">
+                <select
+                  v-model="canteenFilter"
+                  class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[150px] transition-all cursor-pointer hover:border-gray-400"
+                >
+                  <option value="">全部食堂</option>
+                  <option value="all">全校公告</option>
+                  <option v-for="canteen in canteenList" :key="canteen.id" :value="canteen.id">
+                    {{ canteen.name }}
+                  </option>
+                </select>
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
+                  <span class="iconify" data-icon="carbon:chevron-down"></span>
+                </span>
+              </div>
             </div>
 
-            <!-- 开始时间 -->
-            <div>
-              <label class="block text-sm font-medium text-gray-600 mb-2">开始时间</label>
+            <div class="flex items-center gap-3">
+              <span class="text-sm font-medium text-gray-600">开始时间</span>
               <input
                 type="datetime-local"
                 v-model="startDate"
-                class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm transition-all hover:border-gray-400"
               />
             </div>
 
-            <!-- 结束时间 -->
-            <div>
-              <label class="block text-sm font-medium text-gray-600 mb-2">结束时间</label>
+            <div class="flex items-center gap-3">
+              <span class="text-sm font-medium text-gray-600">结束时间</span>
               <input
                 type="datetime-local"
                 v-model="endDate"
-                class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm transition-all hover:border-gray-400"
               />
             </div>
-          </div>
 
-          <!-- 重置筛选按钮 -->
-          <div class="flex justify-end">
-            <button
-              v-if="searchQuery || canteenFilter || startDate || endDate"
-              @click="resetFilters"
-              class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-2 rounded-md hover:bg-gray-100 transition-colors"
-            >
-              <span class="iconify" data-icon="carbon:reset"></span>
-              重置筛选
-            </button>
+            <div class="ml-auto flex items-center">
+              <button
+                v-if="searchQuery || canteenFilter || startDate || endDate"
+                @click="resetFilters"
+                class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-gray-200/50 transition-colors"
+              >
+                <span class="iconify" data-icon="carbon:reset"></span>
+                重置筛选
+              </button>
+            </div>
           </div>
         </div>
 

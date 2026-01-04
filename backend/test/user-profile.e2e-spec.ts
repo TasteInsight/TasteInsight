@@ -55,30 +55,26 @@ describe('UserProfileController (e2e)', () => {
       // the API handles it appropriately (either 404 or 401)
       // This simulates the case where a user was deleted after token was issued
 
-      // First, create a temporary user
-      const tempUser = await prisma.user.create({
-        data: {
-          openId: 'temp_test_user_openid',
-          nickname: 'Temp Test User',
-          allergens: [],
-          preferences: { create: {} },
-          settings: { create: {} },
-        },
-      });
+      // Use a unique mock code to create a temporary user via login
+      const mockCode = `mock_temp_delete_test_${Date.now()}`;
 
-      // Get a token for this user
+      // Login with the mock code - this will create a user and return a token
       const tempLoginResponse = await request(app.getHttpServer())
         .post('/auth/wechat/login')
-        .send({ code: 'temp_test_code' });
+        .send({ code: mockCode });
 
-      const tempToken = tempLoginResponse.body.data?.token?.accessToken;
+      expect(tempLoginResponse.body.data?.token?.accessToken).toBeDefined();
+      expect(tempLoginResponse.body.data?.user?.id).toBeDefined();
 
-      // Delete the user
-      await prisma.user.delete({ where: { id: tempUser.id } });
+      const tempToken = tempLoginResponse.body.data.token.accessToken;
+      const tempUserId = tempLoginResponse.body.data.user.id;
+
+      // Delete the user using the actual user ID from the login response
+      await prisma.user.delete({ where: { id: tempUserId } });
 
       // Now try to access profile with the token for deleted user
       // This should either return 404 (user not found) or 401 (unauthorized)
-      const response = await request(app.getHttpServer())
+      await request(app.getHttpServer())
         .get('/user/profile')
         .set('Authorization', `Bearer ${tempToken}`)
         .expect((res) => {

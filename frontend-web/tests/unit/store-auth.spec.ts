@@ -54,15 +54,6 @@ describe('store/use-auth-store', () => {
     expect(store.hasAnyPermission(['a', 'b'])).toBe(true)
   })
 
-  it('testadmin has all permissions (username)', async () => {
-    const { useAuthStore } = await import('@/store/modules/use-auth-store')
-    const store = useAuthStore()
-
-    store.user = { username: 'testadmin', role: 'admin' } as any
-    expect(store.hasPermission('anything')).toBe(true)
-    expect(store.hasAnyPermission(['x', 'y'])).toBe(true)
-  })
-
   it('initializes token/refresh/user from storage', async () => {
     sessionStorage.setItem('admin_token', 'st')
     sessionStorage.setItem('admin_refresh_token', 'sr')

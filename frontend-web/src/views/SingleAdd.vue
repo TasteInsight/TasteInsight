@@ -1,9 +1,9 @@
 <template>
   <div class="p-8 min-h-screen min-w-[1200px]">
     <div class="bg-white rounded-lg container-shadow p-8">
-      <Header title="添加新菜品" description="填写菜品信息并上传图片" header-icon="carbon:add" />
+      <Header title="添加新菜品" description="填写菜品信息并上传图片" header-icon="carbon:document" />
 
-      <form class="space-y-6">
+      <form class="mt-6 space-y-6">
         <div class="grid grid-cols-2 gap-6">
           <!-- 左侧列 -->
           <div>

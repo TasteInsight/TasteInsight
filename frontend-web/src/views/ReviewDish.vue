@@ -7,39 +7,76 @@
         header-icon="carbon:task-approved"
       />
 
-      <!-- 筛选区域 -->
-      <div class="p-6 bg-gray-50 border-b">
-        <div class="flex items-center space-x-4">
-          <div class="relative">
-            <input
-              type="text"
-              placeholder="搜索菜品名称..."
-              class="w-64 px-4 pl-10 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
-              v-model="searchQuery"
-            />
-            <span
-              class="iconify text-gray-400 absolute left-3 top-2.5"
-              data-icon="bx:search"
-            ></span>
+      <!-- 搜索和筛选区域 -->
+      <div class="mt-6 mb-6 space-y-4">
+        <!-- 搜索栏 -->
+        <div class="relative">
+          <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" data-icon="carbon:search"></span>
+          <input
+            type="text"
+            placeholder="搜索菜品名称..."
+            class="w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+            v-model="searchQuery"
+          />
+          <button
+            v-if="searchQuery"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            @click="searchQuery = ''"
+            type="button"
+            title="清除搜索"
+          >
+            <span class="iconify" data-icon="carbon:close"></span>
+          </button>
+        </div>
+
+        <!-- 筛选栏 -->
+        <div class="p-4 bg-gray-50 rounded-lg border border-gray-100 flex flex-wrap items-center gap-x-8 gap-y-4">
+          <div class="flex items-center gap-3">
+            <span class="text-sm font-medium text-gray-600">审核状态</span>
+            <div class="relative">
+              <select
+                v-model="statusFilter"
+                class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[150px] transition-all cursor-pointer hover:border-gray-400"
+              >
+                <option value="">所有状态</option>
+                <option value="pending">待审核</option>
+                <option value="approved">已通过</option>
+                <option value="rejected">已拒绝</option>
+              </select>
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
+                <span class="iconify" data-icon="carbon:chevron-down"></span>
+              </span>
+            </div>
           </div>
-          <select
-            class="px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
-            v-model="statusFilter"
-          >
-            <option value="">所有状态</option>
-            <option value="pending">待审核</option>
-            <option value="approved">已通过</option>
-            <option value="rejected">已拒绝</option>
-          </select>
-          <select
-            class="px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
-            v-model="canteenFilter"
-          >
-            <option value="">所有食堂</option>
-            <option v-for="canteen in canteens" :key="canteen.id" :value="canteen.name">
-              {{ canteen.name }}
-            </option>
-          </select>
+
+          <div class="flex items-center gap-3">
+            <span class="text-sm font-medium text-gray-600">所属食堂</span>
+            <div class="relative">
+              <select
+                v-model="canteenFilter"
+                class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[150px] transition-all cursor-pointer hover:border-gray-400"
+              >
+                <option value="">所有食堂</option>
+                <option v-for="canteen in canteens" :key="canteen.id" :value="canteen.name">
+                  {{ canteen.name }}
+                </option>
+              </select>
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
+                <span class="iconify" data-icon="carbon:chevron-down"></span>
+              </span>
+            </div>
+          </div>
+
+          <div class="ml-auto flex items-center">
+            <button
+              v-if="statusFilter || canteenFilter || searchQuery"
+              @click="statusFilter = ''; canteenFilter = ''; searchQuery = ''"
+              class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-gray-200/50 transition-colors"
+            >
+              <span class="iconify" data-icon="carbon:reset"></span>
+              重置筛选
+            </button>
+          </div>
         </div>
       </div>
 

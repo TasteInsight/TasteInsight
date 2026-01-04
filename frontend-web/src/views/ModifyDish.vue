@@ -8,13 +8,11 @@
       />
 
       <!-- 搜索和筛选区域 -->
-      <div class="mb-6 space-y-4">
+      <div class="mt-6 mb-6 space-y-4">
         <SearchBar
           v-model="searchQuery"
           placeholder="搜索菜品名称、标签..."
-          :show-filter="false"
           @input="handleSearchChange"
-          class="w-full"
         />
 
         <div class="p-4 bg-gray-50 rounded-lg border border-gray-100 flex flex-wrap items-center gap-x-8 gap-y-4">
