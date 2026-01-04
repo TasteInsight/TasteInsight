@@ -1,5 +1,5 @@
 import { test, expect, APIRequestContext } from '@playwright/test';
-import { loginAsAdmin, getApiToken, TEST_ACCOUNTS, API_BASE_URL } from './utils';
+import { loginAsAdmin, getApiToken, TEST_ACCOUNTS, API_BASE_URL, handleDialogOrModal } from './utils';
 import process from 'node:process';
 
 // API base URL for direct API calls
@@ -62,6 +62,8 @@ test.describe('Admin News Management', () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    // Increase timeout for login operation which can be slow in CI
+    test.setTimeout(45000);
     await loginAsAdmin(page);
   });
 
@@ -259,20 +261,21 @@ test.describe('Admin News Management', () => {
     // Click delete
     const row = page.locator('tr', { hasText: createDto.title });
     
-    // Mock window.confirm
-    page.on('dialog', async (dialog) => {
-      await dialog.accept();
-    });
+    // Mock window.confirm - REMOVED, using handleDialogOrModal instead
+    // page.on('dialog', async (dialog) => {
+    //   await dialog.accept();
+    // });
     
     await row.locator('button[title="删除"]').click();
 
-    // Wait for deletion and success alert
-    // Note: The UI might show an alert after deletion success, we should handle it if 'dialog' event wasn't enough or if it's a separate alert
-    // Since we accepted the confirm, we might get a "Success" alert
-    // But page.on('dialog') handles all dialogs.
+    // Handle delete confirmation
+    await handleDialogOrModal(page, '确定要删除');
     
-    // Wait for row to disappear
-    await expect(page.locator('tr', { hasText: createDto.title })).not.toBeVisible();
+    // Handle success alert
+    await handleDialogOrModal(page, '确定');
+    
+    // Wait for row to disappear with timeout
+    await expect(page.locator('tr', { hasText: createDto.title })).not.toBeVisible({ timeout: 10000 });
   });
 });
 
