@@ -27,14 +27,16 @@ export class AdminReportsController {
   async getReports(
     @Query('page') page: number = 1,
     @Query('pageSize') pageSize: number = 20,
-    @Query('status') status?: 'pending' | 'approved' | 'rejected',
-    @Query('targetType') targetType?: string,
+    @Query('status') status: 'pending' | 'approved' | 'rejected' | undefined,
+    @Query('targetType') targetType: string | undefined,
+    @Request() req,
   ) {
     return this.adminReportsService.getReports(
       Number(page),
       Number(pageSize),
       status,
       targetType,
+      req.admin,
     );
   }
 
@@ -46,7 +48,6 @@ export class AdminReportsController {
     @Body() dto: HandleReportDto,
     @Request() req,
   ) {
-    const adminId = req.admin.id;
-    return this.adminReportsService.handleReport(id, dto, adminId);
+    return this.adminReportsService.handleReport(id, dto, req.admin);
   }
 }

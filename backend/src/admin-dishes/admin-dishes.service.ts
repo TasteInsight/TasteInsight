@@ -890,6 +890,7 @@ export class AdminDishesService {
     dishId: string,
     page: number = 1,
     pageSize: number = 20,
+    adminInfo: any,
   ) {
     // 检查菜品是否存在
     const dish = await this.prisma.dish.findUnique({
@@ -898,6 +899,11 @@ export class AdminDishesService {
 
     if (!dish) {
       throw new NotFoundException('菜品不存在');
+    }
+
+    // 检查权限
+    if (adminInfo?.canteenId && dish.canteenId !== adminInfo.canteenId) {
+      throw new ForbiddenException('权限不足');
     }
 
     const skip = (page - 1) * pageSize;

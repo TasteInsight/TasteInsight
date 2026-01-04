@@ -88,11 +88,13 @@ export class AdminDishesController {
     @Param('id') id: string,
     @Query('page') page: number = 1,
     @Query('pageSize') pageSize: number = 20,
+    @Request() req,
   ) {
     return this.adminDishesService.getDishReviews(
       id,
       Number(page),
       Number(pageSize),
+      req.admin,
     );
   }
 

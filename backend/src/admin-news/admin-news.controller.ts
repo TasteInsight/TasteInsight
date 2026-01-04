@@ -30,8 +30,11 @@ export class AdminNewsController {
   @Get()
   @RequirePermissions('news:view')
   @HttpCode(HttpStatus.OK)
-  async findAll(@Query() query: AdminGetNewsDto): Promise<NewsListResponseDto> {
-    return this.adminNewsService.findAll(query);
+  async findAll(
+    @Query() query: AdminGetNewsDto,
+    @Request() req,
+  ): Promise<NewsListResponseDto> {
+    return this.adminNewsService.findAll(query, req.admin);
   }
 
   @Post()
@@ -41,7 +44,7 @@ export class AdminNewsController {
     @Body() createNewsDto: CreateNewsDto,
     @Request() req: any,
   ): Promise<NewsResponseDto> {
-    return this.adminNewsService.createNews(createNewsDto, req.admin.id);
+    return this.adminNewsService.createNews(createNewsDto, req.admin);
   }
 
   @Put(':id')
@@ -50,28 +53,38 @@ export class AdminNewsController {
   async updateNews(
     @Param('id') id: string,
     @Body() updateNewsDto: UpdateNewsDto,
+    @Request() req,
   ): Promise<NewsResponseDto> {
-    return this.adminNewsService.updateNews(id, updateNewsDto);
+    return this.adminNewsService.updateNews(id, updateNewsDto, req.admin);
   }
 
   @Post(':id/publish')
   @RequirePermissions('news:publish')
   @HttpCode(HttpStatus.OK)
-  async publishNews(@Param('id') id: string): Promise<SuccessResponseDto> {
-    return this.adminNewsService.publishNews(id);
+  async publishNews(
+    @Param('id') id: string,
+    @Request() req,
+  ): Promise<SuccessResponseDto> {
+    return this.adminNewsService.publishNews(id, req.admin);
   }
 
   @Post(':id/revoke')
   @RequirePermissions('news:revoke')
   @HttpCode(HttpStatus.OK)
-  async revokeNews(@Param('id') id: string): Promise<SuccessResponseDto> {
-    return this.adminNewsService.revokeNews(id);
+  async revokeNews(
+    @Param('id') id: string,
+    @Request() req,
+  ): Promise<SuccessResponseDto> {
+    return this.adminNewsService.revokeNews(id, req.admin);
   }
 
   @Delete(':id')
   @RequirePermissions('news:delete')
   @HttpCode(HttpStatus.OK)
-  async deleteNews(@Param('id') id: string): Promise<SuccessResponseDto> {
-    return this.adminNewsService.deleteNews(id);
+  async deleteNews(
+    @Param('id') id: string,
+    @Request() req,
+  ): Promise<SuccessResponseDto> {
+    return this.adminNewsService.deleteNews(id, req.admin);
   }
 }

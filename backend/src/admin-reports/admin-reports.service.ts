@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { DishReviewStatsService } from '@/dish-review-stats-queue';
@@ -24,6 +25,7 @@ export class AdminReportsService {
     pageSize: number = 20,
     status?: 'pending' | 'approved' | 'rejected',
     targetType?: string,
+    adminInfo?: any,
   ): Promise<ReportListResponseDto> {
     const skip = (page - 1) * pageSize;
     const where: any = {};
@@ -34,6 +36,27 @@ export class AdminReportsService {
 
     if (targetType) {
       where.targetType = targetType;
+    }
+
+    if (adminInfo?.canteenId) {
+      where.OR = [
+        {
+          review: {
+            dish: {
+              canteenId: adminInfo.canteenId,
+            },
+          },
+        },
+        {
+          comment: {
+            review: {
+              dish: {
+                canteenId: adminInfo.canteenId,
+              },
+            },
+          },
+        },
+      ];
     }
 
     const [total, reports] = await Promise.all([
@@ -147,18 +170,43 @@ export class AdminReportsService {
   async handleReport(
     id: string,
     dto: HandleReportDto,
-    adminId: string,
+    adminInfo: any,
   ): Promise<SuccessResponseDto> {
     const report = await this.prisma.report.findUnique({
       where: { id },
       include: {
-        review: true,
-        comment: true,
+        review: {
+          include: {
+            dish: true,
+          },
+        },
+        comment: {
+          include: {
+            review: {
+              include: {
+                dish: true,
+              },
+            },
+          },
+        },
       },
     });
 
     if (!report) {
       throw new NotFoundException('举报不存在');
+    }
+
+    if (adminInfo?.canteenId) {
+      let canteenId: string | undefined;
+      if (report.review) {
+        canteenId = report.review.dish.canteenId;
+      } else if (report.comment) {
+        canteenId = report.comment.review.dish.canteenId;
+      }
+
+      if (!canteenId || canteenId !== adminInfo.canteenId) {
+        throw new ForbiddenException('权限不足');
+      }
     }
 
     if (report.status !== 'pending') {
@@ -174,7 +222,7 @@ export class AdminReportsService {
           data: {
             status: 'approved',
             handleResult: dto.result || '内容已删除',
-            handledBy: adminId,
+            handledBy: adminInfo.id,
             handledAt: new Date(),
           },
         });
@@ -212,7 +260,7 @@ export class AdminReportsService {
           data: {
             status: 'approved',
             handleResult: dto.result || '已警告用户',
-            handledBy: adminId,
+            handledBy: adminInfo.id,
             handledAt: new Date(),
           },
         });
@@ -225,7 +273,7 @@ export class AdminReportsService {
           data: {
             status: 'rejected',
             handleResult: dto.result || '举报被拒绝',
-            handledBy: adminId,
+            handledBy: adminInfo.id,
             handledAt: new Date(),
           },
         });

@@ -9,6 +9,7 @@ import {
   HttpCode,
   HttpStatus,
   Delete,
+  Request,
 } from '@nestjs/common';
 import { AdminReviewsService } from './admin-reviews.service';
 import { RejectReviewDto } from './dto/reject-review.dto';
@@ -27,25 +28,31 @@ export class AdminReviewsController {
   async getPendingReviews(
     @Query('page') page: number = 1,
     @Query('pageSize') pageSize: number = 20,
+    @Request() req,
   ) {
     return this.adminReviewsService.getPendingReviews(
       Number(page),
       Number(pageSize),
+      req.admin,
     );
   }
 
   @Post(':id/approve')
   @RequirePermissions('review:approve')
   @HttpCode(HttpStatus.OK)
-  async approveReview(@Param('id') id: string) {
-    return this.adminReviewsService.approveReview(id);
+  async approveReview(@Param('id') id: string, @Request() req) {
+    return this.adminReviewsService.approveReview(id, req.admin);
   }
 
   @Post(':id/reject')
   @RequirePermissions('review:approve')
   @HttpCode(HttpStatus.OK)
-  async rejectReview(@Param('id') id: string, @Body() dto: RejectReviewDto) {
-    return this.adminReviewsService.rejectReview(id, dto);
+  async rejectReview(
+    @Param('id') id: string,
+    @Body() dto: RejectReviewDto,
+    @Request() req,
+  ) {
+    return this.adminReviewsService.rejectReview(id, dto, req.admin);
   }
 
   @Get(':reviewId/comments')
@@ -55,18 +62,20 @@ export class AdminReviewsController {
     @Param('reviewId') reviewId: string,
     @Query('page') page: number = 1,
     @Query('pageSize') pageSize: number = 20,
+    @Request() req,
   ) {
     return this.adminReviewsService.getReviewComments(
       reviewId,
       Number(page),
       Number(pageSize),
+      req.admin,
     );
   }
 
   @Delete(':id')
   @RequirePermissions('review:delete')
   @HttpCode(HttpStatus.OK)
-  async deleteReview(@Param('id') id: string) {
-    return this.adminReviewsService.deleteReview(id);
+  async deleteReview(@Param('id') id: string, @Request() req) {
+    return this.adminReviewsService.deleteReview(id, req.admin);
   }
 }

@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { CreateWindowDto, FloorInputDto } from './dto/create-window.dto';
@@ -93,7 +94,7 @@ export class AdminWindowsService {
     return newFloor.id;
   }
 
-  async findOne(id: string): Promise<WindowResponseDto> {
+  async findOne(id: string, adminInfo?: any): Promise<WindowResponseDto> {
     const window = await this.prisma.window.findUnique({
       where: { id },
       include: {
@@ -103,6 +104,10 @@ export class AdminWindowsService {
 
     if (!window) {
       throw new NotFoundException('窗口不存在');
+    }
+
+    if (adminInfo?.canteenId && window.canteenId !== adminInfo.canteenId) {
+      throw new ForbiddenException('权限不足');
     }
 
     return {
@@ -116,7 +121,12 @@ export class AdminWindowsService {
     canteenId: string,
     page: number = 1,
     pageSize: number = 20,
+    adminInfo?: any,
   ): Promise<WindowListResponseDto> {
+    if (adminInfo?.canteenId && adminInfo.canteenId !== canteenId) {
+      throw new ForbiddenException('权限不足');
+    }
+
     // 验证食堂是否存在
     const canteen = await this.prisma.canteen.findUnique({
       where: { id: canteenId },
@@ -159,8 +169,15 @@ export class AdminWindowsService {
     };
   }
 
-  async create(createWindowDto: CreateWindowDto): Promise<WindowResponseDto> {
+  async create(
+    createWindowDto: CreateWindowDto,
+    adminInfo?: any,
+  ): Promise<WindowResponseDto> {
     const { canteenId, floor, ...windowData } = createWindowDto;
+
+    if (adminInfo?.canteenId && adminInfo.canteenId !== canteenId) {
+      throw new ForbiddenException('权限不足');
+    }
 
     // 验证食堂是否存在
     const canteen = await this.prisma.canteen.findUnique({
@@ -200,6 +217,7 @@ export class AdminWindowsService {
   async update(
     id: string,
     updateWindowDto: UpdateWindowDto,
+    adminInfo?: any,
   ): Promise<WindowResponseDto> {
     const { floor, ...windowData } = updateWindowDto;
 
@@ -209,6 +227,13 @@ export class AdminWindowsService {
     });
     if (!existingWindow) {
       throw new NotFoundException('窗口不存在');
+    }
+
+    if (
+      adminInfo?.canteenId &&
+      existingWindow.canteenId !== adminInfo.canteenId
+    ) {
+      throw new ForbiddenException('权限不足');
     }
 
     // 如果提供了楼层信息，查找或创建楼层；否则保持原有楼层
@@ -264,7 +289,7 @@ export class AdminWindowsService {
     };
   }
 
-  async remove(id: string): Promise<any> {
+  async remove(id: string, adminInfo?: any): Promise<any> {
     const window = await this.prisma.window.findUnique({
       where: { id },
       include: {
@@ -274,6 +299,10 @@ export class AdminWindowsService {
 
     if (!window) {
       throw new NotFoundException('窗口不存在');
+    }
+
+    if (adminInfo?.canteenId && window.canteenId !== adminInfo.canteenId) {
+      throw new ForbiddenException('权限不足');
     }
 
     // 检查是否有关联的菜品

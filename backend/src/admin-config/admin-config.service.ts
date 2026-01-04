@@ -120,7 +120,14 @@ export class AdminConfigService implements OnModuleInit {
   /**
    * 获取食堂配置
    */
-  async getCanteenConfig(canteenId: string): Promise<CanteenConfigResponseDto> {
+  async getCanteenConfig(
+    canteenId: string,
+    adminCanteenId?: string,
+  ): Promise<CanteenConfigResponseDto> {
+    if (adminCanteenId && adminCanteenId !== canteenId) {
+      throw new ForbiddenException('您只能查看自己所属食堂的配置');
+    }
+
     // 验证食堂是否存在
     const canteen = await this.prisma.canteen.findUnique({
       where: { id: canteenId },
@@ -160,7 +167,12 @@ export class AdminConfigService implements OnModuleInit {
    */
   async getEffectiveConfig(
     canteenId: string,
+    adminCanteenId?: string,
   ): Promise<EffectiveConfigListResponseDto> {
+    if (adminCanteenId && adminCanteenId !== canteenId) {
+      throw new ForbiddenException('您只能查看自己所属食堂的配置');
+    }
+
     // 验证食堂是否存在
     const canteen = await this.prisma.canteen.findUnique({
       where: { id: canteenId },
