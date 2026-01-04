@@ -209,9 +209,6 @@ pnpm test:load
 - [前端开发规范](./docs/前端开发规范文档.md)
 - [数据库开发规范](./docs/数据库开发规范文档.md)
 
-## 🤝 贡献
-
-欢迎贡献代码！请查看 [CONTRIBUTING.md](./CONTRIBUTING.md) 了解贡献流程。
 
 ## 📄 许可证
 
