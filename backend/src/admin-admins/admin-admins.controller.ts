@@ -58,7 +58,11 @@ export class AdminAdminsController {
     @Req() req: AdminRequest,
     @Body() createAdminDto: CreateAdminDto,
   ) {
-    return this.adminAdminsService.create(req.admin.id, createAdminDto);
+    return this.adminAdminsService.create(
+      req.admin.id,
+      req.admin.canteenId,
+      createAdminDto,
+    );
   }
 
   @Delete(':id')
@@ -79,6 +83,7 @@ export class AdminAdminsController {
     return this.adminAdminsService.updatePermissions(
       req.admin.id,
       req.admin.role,
+      req.admin.canteenId,
       id,
       updatePermissionsDto,
     );

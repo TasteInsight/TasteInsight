@@ -98,9 +98,22 @@ export class AdminAdminsService {
    */
   async create(
     creatorId: string,
+    creatorCanteenId: string | null,
     createAdminDto: CreateAdminDto,
   ): Promise<AdminResponseDto> {
     const { username, password, canteenId, permissions } = createAdminDto;
+
+    // 食堂管理员权限校验：
+    // 1. 食堂管理员不能创建全校管理员（canteenId 为 null 或 undefined）
+    // 2. 食堂管理员只能创建属于同一食堂的管理员
+    if (creatorCanteenId) {
+      if (!canteenId) {
+        throw new ForbiddenException('您无权创建全校管理员');
+      }
+      if (canteenId !== creatorCanteenId) {
+        throw new ForbiddenException('您只能创建所属食堂的管理员');
+      }
+    }
 
     // 验证食堂存在性
     await this.validateCanteenId(canteenId);
@@ -196,6 +209,7 @@ export class AdminAdminsService {
   async updatePermissions(
     operatorId: string,
     operatorRole: string,
+    operatorCanteenId: string | null,
     targetId: string,
     updatePermissionsDto: UpdatePermissionsDto,
   ): Promise<{ code: number; message: string; data: null }> {
@@ -218,6 +232,18 @@ export class AdminAdminsService {
     // 不能更新非子管理员的权限
     if (!targetAdmin.createdBy) {
       throw new ForbiddenException('无法更新该管理员的权限');
+    }
+
+    // 食堂管理员权限校验（更新管理范围时）
+    if (operatorCanteenId && canteenId !== undefined) {
+      // 食堂管理员不能将子管理员设置为全校管理员
+      if (canteenId === null) {
+        throw new ForbiddenException('您无权将管理员设置为全校管理员');
+      }
+      // 食堂管理员不能将子管理员分配到其他食堂
+      if (canteenId !== operatorCanteenId) {
+        throw new ForbiddenException('您只能管理所属食堂的管理员');
+      }
     }
 
     // 验证食堂存在性

@@ -132,9 +132,9 @@ export class AdminNewsService {
       updateData.canteenId = adminInfo.canteenId;
       // 查找并设置食堂名称
       const canteen = await this.prisma.canteen.findUnique({
-          where: { id: adminInfo.canteenId }
+        where: { id: adminInfo.canteenId },
       });
-      if(canteen) updateData.canteenName = canteen.name;
+      if (canteen) updateData.canteenName = canteen.name;
     } else if (updateNewsDto.canteenId) {
       const canteen = await this.prisma.canteen.findUnique({
         where: { id: updateNewsDto.canteenId },
