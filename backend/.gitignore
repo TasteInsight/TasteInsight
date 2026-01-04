@@ -84,3 +84,7 @@ certs/
 
 # xlsx
 *.xlsx
+
+# performance test results
+scripts/k6-perf-test/k6-results.json
+scripts/k6-perf-test/prod_result.json
