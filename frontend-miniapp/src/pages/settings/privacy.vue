@@ -216,11 +216,11 @@
             </text>
             <view class="ml-4 mt-2 space-y-1">
               <text class="text-gray-600 text-sm leading-relaxed block"
-                >• 邮箱：privacy@tasteinsight.com</text
+                >• 邮箱：2366769492@qq.com</text
               >
               <text class="text-gray-600 text-sm leading-relaxed block">• 小程序内反馈功能</text>
               <text class="text-gray-600 text-sm leading-relaxed block"
-                >• 开发者微信：tasteinsight_dev</text
+                >• 开发者微信：15535257229</text
               >
             </view>
           </view>
@@ -228,7 +228,7 @@
           <!-- 生效日期 -->
           <view class="mt-8 pt-6 border-t border-gray-100">
             <text class="text-gray-500 text-xs text-center block">
-              本隐私政策于2024年12月16日生效\n最后更新时间：2024年12月16日
+              本隐私政策于2025年12月16日生效\n最后更新时间：2026年1月3日
             </text>
           </view>
         </view>

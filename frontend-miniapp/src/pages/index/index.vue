@@ -199,10 +199,7 @@ const handleSwiperChange = async (e: any) => {
   currentSwiperIndex.value = newIndex;
 
   // 当滑动到最后一个 swiper-item 时，加载更多食堂
-  if (
-    newIndex === canteenChunks.value.length - 1 &&
-    canteenStore.pagination.page < canteenStore.pagination.totalPages
-  ) {
+  if (newIndex === canteenChunks.value.length - 1) {
     try {
       await canteenStore.loadMoreCanteenList();
     } catch (error) {
@@ -353,7 +350,7 @@ function navigateTo(path: string) {
 onMounted(async () => {
   try {
     // 加载食堂列表
-    canteenStore.fetchCanteenList({ page: 1, pageSize: 9 });
+    await canteenStore.fetchCanteenList({ page: 1, pageSize: 9 });
 
     // 先获取用户信息
     await userStore.fetchProfileAction();
@@ -416,7 +413,7 @@ onPullDownRefresh(async () => {
     await userStore.fetchProfileAction();
 
     // 重新获取食堂列表
-    await canteenStore.fetchCanteenList({ page: 1, pageSize: 10 });
+    await canteenStore.fetchCanteenList({ page: 1, pageSize: 9 });
     
     // 下拉刷新时清除 requestId，让用户看到不同的推荐内容
     currentRequestId.value = null;

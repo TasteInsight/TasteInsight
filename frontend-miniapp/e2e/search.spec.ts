@@ -8,6 +8,18 @@ test.describe('Search -> Dish detail', () => {
     await seedUniStorage(page, defaultLoggedInSeed);
   });
 
+  test('shows in-page hint when keyword is empty', async ({ page }) => {
+    await gotoUniPage(page, '/pages/search/index');
+    await expect(page).toHaveURL(/\/pages\/search\/index/);
+
+    const searchButton = page.locator('.bg-purple-600').getByText('搜索');
+    await searchButton.click();
+
+    // No toast; remain in default state
+    await expect(page.getByText('输入关键词搜索食堂或菜品')).toBeVisible();
+    await expect(page.getByText('未找到""相关结果')).toHaveCount(0);
+  });
+
   test('searches dishes and opens dish detail', async ({ page }) => {
     await gotoUniPage(page, '/pages/search/index');
     await expect(page).toHaveURL(/\/pages\/search\/index/);
