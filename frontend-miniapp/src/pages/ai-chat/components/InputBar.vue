@@ -10,10 +10,22 @@
       :disabled="loading"
       @confirm="handleSend"
     />
+    
+    <!-- AI 正在回复时显示停止按钮 -->
     <view
+      v-if="loading"
+      class="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center ml-2.5 cursor-pointer transition-all active:bg-red-600 active:scale-95"
+      @tap="handleStop"
+    >
+      <view class="w-3 h-3 bg-white rounded-sm"></view>
+    </view>
+    
+    <!-- 正常状态显示发送按钮 -->
+    <view
+      v-else
       class="w-8 h-8 rounded-full bg-ts-purple flex items-center justify-center ml-2.5 cursor-pointer transition-opacity"
-      :class="{ 'opacity-50 pointer-events-none': !inputText.trim() || loading }"
-      @click="handleSend"
+      :class="{ 'opacity-50 pointer-events-none': !inputText.trim() }"
+      @tap="handleSend"
     >
       <text class="iconfont icon-send text-white" style="font-size: 16px; line-height: 1"></text>
     </view>
@@ -29,6 +41,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'send', text: string): void;
+  (e: 'stop'): void;
 }>();
 
 const inputText = ref('');
@@ -43,6 +56,11 @@ const handleSend = () => {
 
   emit('send', text);
   inputText.value = '';
+};
+
+const handleStop = () => {
+  console.log('[InputBar] Stop button clicked');
+  emit('stop');
 };
 
 const setText = (text: string) => {

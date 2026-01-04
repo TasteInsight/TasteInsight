@@ -18,7 +18,39 @@ export function useChat() {
   const fetchSuggestions = async () => {
     isSuggestionsLoading.value = true;
     try {
-      const res = await getAISuggestions();
+      // 构建时间上下文，与发送聊天消息时保持一致
+      const now = new Date();
+      
+      // 格式化本地时间为 ISO8601 格式（带时区偏移）
+      const pad2 = (n: number) => n.toString().padStart(2, '0');
+      const pad3 = (n: number) => n.toString().padStart(3, '0');
+      
+      const year = now.getFullYear();
+      const month = pad2(now.getMonth() + 1);
+      const day = pad2(now.getDate());
+      const hours = pad2(now.getHours());
+      const minutes = pad2(now.getMinutes());
+      const seconds = pad2(now.getSeconds());
+      const millis = pad3(now.getMilliseconds());
+
+      const tzOffsetMinutes = -now.getTimezoneOffset();
+      const sign = tzOffsetMinutes >= 0 ? '+' : '-';
+      const abs = Math.abs(tzOffsetMinutes);
+      const offH = pad2(Math.floor(abs / 60));
+      const offM = pad2(abs % 60);
+
+      const localTime = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${millis}${sign}${offH}:${offM}`;
+      
+      const clientContext = {
+        localTime,
+        tzOffsetMinutes,
+        timeZone:
+          typeof Intl !== 'undefined'
+            ? Intl.DateTimeFormat().resolvedOptions().timeZone
+            : undefined,
+      };
+      
+      const res = await getAISuggestions(clientContext);
       if (res.code === 200 && res.data && res.data.suggestions) {
         suggestions.value = res.data.suggestions;
       }
@@ -103,13 +135,32 @@ export function useChat() {
     }
   };
 
+  const deleteSession = async (sessionId: string) => {
+    try {
+      const wasCurrent = chatStore.sessionId === sessionId;
+      await chatStore.removeSession(sessionId);
+      if (wasCurrent) {
+        await fetchSuggestions();
+      }
+      return true;
+    } catch (e) {
+      console.error('Failed to delete session', e);
+      return false;
+    }
+  };
+
   onMounted(() => {
     init();
   });
 
+  const stopStreaming = () => {
+    chatStore.abortChat(true); // 用户手动停止，显示提示
+  };
+
   return {
     messages: computed(() => chatStore.messages),
     aiLoading: computed(() => chatStore.aiLoading),
+    currentSessionId: computed(() => chatStore.sessionId),
     suggestions,
     isInitializing,
     isInitialLoading,
@@ -122,5 +173,7 @@ export function useChat() {
     setScene,
     historyEntries: computed(() => chatStore.historyEntries),
     loadHistorySession,
+    deleteSession,
+    stopStreaming,
   };
 }

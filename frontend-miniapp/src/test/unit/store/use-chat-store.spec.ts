@@ -18,6 +18,7 @@ jest.mock('@/api/modules/ai', () => ({
   createAISession: jest.fn(),
   streamAIChat: jest.fn(),
   submitRecommendFeedback: jest.fn(),
+  deleteAISession: jest.fn(),
 }));
 
 describe('useChatStore (unit)', () => {
@@ -174,5 +175,30 @@ describe('useChatStore (unit)', () => {
     store.abortChat();
     expect(closeFn).toHaveBeenCalled();
     expect(store.aiLoading).toBe(false);
+  });
+
+  test('removeSession: deleting current session auto-creates a new session', async () => {
+    const { createAISession, deleteAISession } = require('@/api/modules/ai');
+    const { useChatStore } = require('@/store/modules/use-chat-store');
+
+    (deleteAISession as jest.Mock).mockResolvedValue({ code: 200, data: null });
+    (createAISession as jest.Mock)
+      .mockResolvedValueOnce({ code: 200, data: { sessionId: 's-old', welcomeMessage: 'hi' } })
+      .mockResolvedValueOnce({ code: 200, data: { sessionId: 's-new', welcomeMessage: 'hello' } });
+
+    const store = useChatStore();
+    await store.initSession('general_chat', true);
+    expect(store.sessionId).toBe('s-old');
+    expect(store.messages.length).toBeGreaterThan(0);
+
+    // ensure history contains the current session so delete path removes it
+    expect(store.historyEntries.some((h: any) => h.sessionId === 's-old')).toBe(true);
+
+    await store.removeSession('s-old');
+
+    expect(deleteAISession).toHaveBeenCalledWith('s-old');
+    expect(store.sessionId).toBe('s-new');
+    expect(store.historyEntries.some((h: any) => h.sessionId === 's-old')).toBe(false);
+    expect(store.messages.length).toBeGreaterThan(0);
   });
 });

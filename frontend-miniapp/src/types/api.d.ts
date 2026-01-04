@@ -1328,7 +1328,16 @@ export declare function streamAIChat(
 /**
  * 获取会话引导/快捷提示词
  */
-export function getAISuggestions(): Promise<ApiResponse<SuggestionData>>;
+export function getAISuggestions(clientContext?: {
+  localTime?: string;
+  timeZone?: string;
+  tzOffsetMinutes?: number;
+}): Promise<ApiResponse<SuggestionData>>;
+
+/**
+ * 删除聊天会话
+ */
+export function deleteAISession(sessionId: string): Promise<ApiResponse<null>>;
 
 /**
  * 获取历史聊天记录

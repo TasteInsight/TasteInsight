@@ -55,12 +55,29 @@ export const createAISession = (
 };
 
 /**
- * 获取会话引导/快捷提示词 (保持不变)
+ * 获取会话引导/快捷提示词
+ * @param clientContext 客户端上下文，包含本地时间信息
  */
-export const getAISuggestions = (): Promise<ApiResponse<SuggestionData>> => {
+export const getAISuggestions = (clientContext?: {
+  localTime?: string;
+  timeZone?: string;
+  tzOffsetMinutes?: number;
+}): Promise<ApiResponse<SuggestionData>> => {
+  const params: Record<string, string> = {};
+  if (clientContext?.localTime) {
+    params.localTime = clientContext.localTime;
+  }
+  if (clientContext?.timeZone) {
+    params.timeZone = clientContext.timeZone;
+  }
+  if (clientContext?.tzOffsetMinutes !== undefined) {
+    params.tzOffsetMinutes = String(clientContext.tzOffsetMinutes);
+  }
+  
   return request<SuggestionData>({
     url: '/ai/suggestions',
     method: 'GET',
+    data: params,
   });
 };
 
@@ -76,6 +93,18 @@ export const getAIHistory = (
     url: `/ai/sessions/${sessionId}/history`,
     method: 'GET',
     data: query,
+  });
+};
+
+/**
+ * 删除聊天会话
+ */
+export const deleteAISession = (
+  sessionId: string
+): Promise<ApiResponse<null>> => {
+  return request<null>({
+    url: `/ai/sessions/${sessionId}`,
+    method: 'DELETE',
   });
 };
 
@@ -249,6 +278,9 @@ export const streamAIChat = (
   // - fail: 可能在连接失败时触发，但流式传输中的错误可能不触发此回调
   // - complete: 在连接关闭时触发，可用于清理资源
   // 主要错误处理应通过 onChunkReceived 中的异常或超时机制实现
+  
+  let isAborted = false; // 标记是否手动中止
+  
   const requestTask = uni.request({
     url,
     method: 'POST',
@@ -262,13 +294,25 @@ export const streamAIChat = (
     success: res => {
       // 对于流式请求，此回调可能仅表示连接握手成功，不代表数据接收完毕
       // 不在这里处理业务逻辑
+      console.log('[streamAIChat] Request success (connection established)');
     },
     fail: err => {
       // 注意：流式传输中的网络错误可能不会触发此回调
       // 主要依赖 complete 回调和外部超时机制处理错误
-      callbacks.onError?.(err);
+      console.log('[streamAIChat] Request failed:', err);
+      if (!isAborted) {
+        callbacks.onError?.(err);
+      }
     },
     complete: () => {
+      console.log('[streamAIChat] Request complete, isAborted:', isAborted);
+      
+      // 如果是手动中止，不处理剩余数据，也不调用 onComplete
+      if (isAborted) {
+        console.log('[streamAIChat] Aborted, skipping completion handler');
+        return;
+      }
+      
       // 处理最后剩余的未完成 UTF-8 字节（包括 TextDecoder 和 fallback 解码器）
       const remaining = streamDecoder.flush();
       if (remaining) buffer += remaining;
@@ -301,6 +345,12 @@ export const streamAIChat = (
 
   // @ts-ignore: uni.request 返回的 requestTask 在 TS 定义中可能缺少 onChunkReceived
   requestTask.onChunkReceived((response: { data: ArrayBuffer | string }) => {
+    // 如果已经被中止，忽略所有后续的 chunk
+    if (isAborted) {
+      console.log('[streamAIChat] Chunk received after abort, ignoring');
+      return;
+    }
+    
     if (response && response.data) {
       // 解码二进制数据（优先 ArrayBuffer；极端情况下若 SDK 返回 string，则尝试兼容）
       const chunk =
@@ -325,6 +375,15 @@ export const streamAIChat = (
 
   // 返回控制句柄，允许外部中断请求
   return {
-    close: () => requestTask.abort(),
+    close: () => {
+      console.log('[streamAIChat] Abort called, requestTask:', !!requestTask);
+      isAborted = true; // 标记为已中止
+      try {
+        requestTask.abort();
+        console.log('[streamAIChat] RequestTask aborted successfully');
+      } catch (error) {
+        console.error('[streamAIChat] Error aborting request:', error);
+      }
+    },
   };
 };
