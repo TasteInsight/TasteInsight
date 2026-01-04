@@ -115,6 +115,14 @@
                     </button>
                     <button
                       class="p-2 rounded-full hover:bg-gray-200"
+                      :class="authStore.hasPermission('admin:edit') ? 'text-orange-500' : 'text-gray-400 cursor-not-allowed'"
+                      @click.stop="!authStore.hasPermission('admin:edit') ? null : openResetPasswordModal(admin)"
+                      :title="!authStore.hasPermission('admin:edit') ? '无权限修改密码' : '重置密码'"
+                    >
+                      <span class="iconify" data-icon="carbon:password"></span>
+                    </button>
+                    <button
+                      class="p-2 rounded-full hover:bg-gray-200"
                       :class="authStore.hasPermission('admin:delete') ? 'text-red-500' : 'text-gray-400 cursor-not-allowed'"
                       @click.stop="!authStore.hasPermission('admin:delete') ? null : deleteAdmin(admin)"
                       :title="!authStore.hasPermission('admin:delete') ? '无权限删除' : '删除'"
@@ -470,6 +478,106 @@
         </form>
       </div>
     </div>
+
+    <!-- 重置子管理员密码的弹窗 -->
+    <div v-if="showResetPasswordModal" class="fixed inset-0 z-50 flex items-center justify-center" @click.stop>
+      <div class="absolute inset-0 bg-black/50" @click="closeResetPasswordModal"></div>
+      <div class="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6 mx-4" @click.stop>
+        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <span class="iconify text-orange-500" data-icon="carbon:password"></span>
+          重置密码 - {{ resetPasswordTarget?.username }}
+        </h3>
+        <form @submit.prevent="handleResetPassword" class="space-y-4">
+          <div>
+            <label class="block text-gray-700 font-medium mb-2">
+              新密码 <span class="text-red-500">*</span>
+            </label>
+            <div class="flex gap-2">
+              <input
+                type="text"
+                :value="resetPasswordForm.newPassword"
+                @input="handleResetPasswordInput('newPassword', $event)"
+                class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple focus:border-tsinghua-purple focus:outline-none"
+                :class="{ 'border-red-400 bg-red-50': resetPasswordError }"
+                placeholder="请输入新密码"
+                autocomplete="new-password"
+              />
+              <button
+                type="button"
+                @click="generateResetPassword"
+                class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition whitespace-nowrap"
+              >
+                随机生成
+              </button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-gray-700 font-medium mb-2">
+              确认新密码 <span class="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              :value="resetPasswordForm.confirmPassword"
+              @input="handleResetPasswordInput('confirmPassword', $event)"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple focus:border-tsinghua-purple focus:outline-none"
+              :class="{ 'border-red-400 bg-red-50': resetPasswordError }"
+              placeholder="请再次输入新密码"
+              autocomplete="new-password"
+            />
+          </div>
+          <!-- 密码要求动态检查 -->
+          <div class="text-xs bg-gray-50 rounded-lg p-3">
+            <p class="font-medium text-gray-600 mb-2">密码要求：</p>
+            <ul class="space-y-1">
+              <li class="flex items-center gap-2" :class="resetPasswordChecks.length ? 'text-green-600' : 'text-gray-400'">
+                <span class="iconify text-sm" :data-icon="resetPasswordChecks.length ? 'carbon:checkmark-filled' : 'carbon:close'"></span>
+                至少 8 个字符
+              </li>
+              <li class="flex items-center gap-2" :class="resetPasswordChecks.uppercase ? 'text-green-600' : 'text-gray-400'">
+                <span class="iconify text-sm" :data-icon="resetPasswordChecks.uppercase ? 'carbon:checkmark-filled' : 'carbon:close'"></span>
+                包含大写字母（A-Z）
+              </li>
+              <li class="flex items-center gap-2" :class="resetPasswordChecks.lowercase ? 'text-green-600' : 'text-gray-400'">
+                <span class="iconify text-sm" :data-icon="resetPasswordChecks.lowercase ? 'carbon:checkmark-filled' : 'carbon:close'"></span>
+                包含小写字母（a-z）
+              </li>
+              <li class="flex items-center gap-2" :class="resetPasswordChecks.number ? 'text-green-600' : 'text-gray-400'">
+                <span class="iconify text-sm" :data-icon="resetPasswordChecks.number ? 'carbon:checkmark-filled' : 'carbon:close'"></span>
+                包含数字（0-9）
+              </li>
+              <li class="flex items-center gap-2" :class="resetPasswordChecks.special ? 'text-green-600' : 'text-gray-400'">
+                <span class="iconify text-sm" :data-icon="resetPasswordChecks.special ? 'carbon:checkmark-filled' : 'carbon:close'"></span>
+                包含特殊符号（如 !@#$%^&amp;*）
+              </li>
+            </ul>
+          </div>
+          <p v-if="resetPasswordError" class="text-sm text-red-500 flex items-center gap-1">
+            <span class="iconify" data-icon="carbon:warning"></span>
+            {{ resetPasswordError }}
+          </p>
+          <p class="text-sm text-gray-500">
+            <span class="iconify inline-block" data-icon="carbon:information"></span>
+            密码重置后，请将新密码告知该管理员。建议让管理员登录后立即修改密码。
+          </p>
+          <div class="flex justify-end gap-3 pt-4">
+            <button
+              type="button"
+              @click="closeResetPasswordModal"
+              class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              :disabled="isResettingPassword"
+              class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {{ isResettingPassword ? '重置中...' : '确认重置' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -499,6 +607,33 @@ export default {
     const editingAdmin = ref(null) // 当前编辑的管理员
     const adminList = ref([]) // 子管理员列表
     const canteenList = ref([]) // 食堂列表
+    
+    // 重置子管理员密码相关状态
+    const showResetPasswordModal = ref(false)
+    const isResettingPassword = ref(false)
+    const resetPasswordError = ref('')
+    const resetPasswordTarget = ref(null)
+    const resetPasswordForm = reactive({
+      newPassword: '',
+      confirmPassword: '',
+    })
+
+    // 重置密码强度动态检查
+    const resetPasswordChecks = computed(() => ({
+      length: resetPasswordForm.newPassword.length >= 8,
+      uppercase: /[A-Z]/.test(resetPasswordForm.newPassword),
+      lowercase: /[a-z]/.test(resetPasswordForm.newPassword),
+      number: /\d/.test(resetPasswordForm.newPassword),
+      special: /[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(resetPasswordForm.newPassword),
+    }))
+
+    // 处理重置密码输入，同时清除错误状态
+    const handleResetPasswordInput = (field, event) => {
+      resetPasswordForm[field] = event.target.value
+      if (resetPasswordError.value) {
+        resetPasswordError.value = ''
+      }
+    }
     
     // 默认状态定义
     const defaultState = {
@@ -1212,6 +1347,114 @@ export default {
       })
     }
 
+    // 密码验证函数
+    const validatePassword = (password) => {
+      // 密码验证：至少8位，包含大小写字母、数字和特殊符号
+      if (password.length < 8) {
+        return '密码长度至少为8位'
+      }
+      if (!/[a-z]/.test(password)) {
+        return '密码必须包含小写字母'
+      }
+      if (!/[A-Z]/.test(password)) {
+        return '密码必须包含大写字母'
+      }
+      if (!/\d/.test(password)) {
+        return '密码必须包含数字'
+      }
+      if (!/[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(password)) {
+        return '密码必须包含特殊符号'
+      }
+      return null
+    }
+
+    // ======== 重置子管理员密码相关方法 ========
+    const openResetPasswordModal = (admin) => {
+      resetPasswordTarget.value = admin
+      resetPasswordForm.newPassword = ''
+      resetPasswordForm.confirmPassword = ''
+      resetPasswordError.value = ''
+      showResetPasswordModal.value = true
+    }
+
+    const closeResetPasswordModal = () => {
+      showResetPasswordModal.value = false
+      resetPasswordTarget.value = null
+      resetPasswordError.value = ''
+    }
+
+    const generateResetPassword = () => {
+      // 生成随机密码
+      const lowercase = 'abcdefghijklmnopqrstuvwxyz'
+      const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+      const numbers = '0123456789'
+      const specialChars = '!@#$%^&*()_+-=?'
+      const allChars = lowercase + uppercase + numbers + specialChars
+      
+      let password = ''
+      // 确保至少包含一个小写字母、大写字母、数字和特殊字符
+      password += lowercase.charAt(Math.floor(Math.random() * lowercase.length))
+      password += uppercase.charAt(Math.floor(Math.random() * uppercase.length))
+      password += numbers.charAt(Math.floor(Math.random() * numbers.length))
+      password += specialChars.charAt(Math.floor(Math.random() * specialChars.length))
+      
+      // 填充剩余长度（至少12位）
+      for (let i = password.length; i < 12; i++) {
+        password += allChars.charAt(Math.floor(Math.random() * allChars.length))
+      }
+      
+      // 打乱字符顺序
+      const shuffledPassword = password.split('').sort(() => Math.random() - 0.5).join('')
+      resetPasswordForm.newPassword = shuffledPassword
+      resetPasswordForm.confirmPassword = shuffledPassword
+    }
+
+    const handleResetPassword = async () => {
+      resetPasswordError.value = ''
+      
+      if (!resetPasswordTarget.value) {
+        resetPasswordError.value = '未选择目标管理员'
+        return
+      }
+      
+      if (!resetPasswordForm.newPassword) {
+        resetPasswordError.value = '请输入新密码'
+        return
+      }
+      
+      const passwordError = validatePassword(resetPasswordForm.newPassword)
+      if (passwordError) {
+        resetPasswordError.value = passwordError
+        return
+      }
+      
+      if (resetPasswordForm.newPassword !== resetPasswordForm.confirmPassword) {
+        resetPasswordError.value = '两次输入的新密码不一致'
+        return
+      }
+      
+      isResettingPassword.value = true
+      
+      try {
+        const response = await permissionApi.changeSubAdminPassword(
+          resetPasswordTarget.value.id,
+          resetPasswordForm.newPassword
+        )
+        
+        if (response.code === 200) {
+          showAlert(`${resetPasswordTarget.value.username} 的密码已重置成功！`)
+          closeResetPasswordModal()
+        } else {
+          resetPasswordError.value = response.message || '密码重置失败'
+        }
+      } catch (error) {
+        console.error('重置密码失败:', error)
+        resetPasswordError.value = error?.response?.data?.message || '密码重置失败，请重试'
+      } finally {
+        isResettingPassword.value = false
+      }
+    }
+
     onMounted(() => {
       loadCanteens()
       loadAdmins()
@@ -1263,6 +1506,18 @@ export default {
       getCanteenName,
       canteenList,
       authStore,
+      // 重置子管理员密码相关
+      showResetPasswordModal,
+      isResettingPassword,
+      resetPasswordError,
+      resetPasswordTarget,
+      resetPasswordForm,
+      resetPasswordChecks,
+      openResetPasswordModal,
+      closeResetPasswordModal,
+      generateResetPassword,
+      handleResetPasswordInput,
+      handleResetPassword,
     }
   },
 }

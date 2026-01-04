@@ -70,6 +70,38 @@ export const permissionApi = {
       ...(canteenId !== undefined ? { canteenId } : {}),
     })
   },
+
+  /**
+   * 修改自己的密码
+   * @param currentPassword 当前密码
+   * @param newPassword 新密码
+   * @returns 修改结果
+   */
+  async changeOwnPassword(
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<ApiResponse<void>> {
+    return await request.put<ApiResponse<void>>('/admin/admins/me/password', {
+      currentPassword,
+      newPassword,
+    })
+  },
+
+  /**
+   * 修改子管理员的密码
+   * @param adminId 管理员 ID
+   * @param newPassword 新密码
+   * @returns 修改结果
+   */
+  async changeSubAdminPassword(
+    adminId: string,
+    newPassword: string,
+  ): Promise<ApiResponse<void>> {
+    return await request.put<ApiResponse<void>>(`/admin/admins/${adminId}/password`, {
+      newPassword,
+    })
+  },
 }
 
 export default permissionApi
+

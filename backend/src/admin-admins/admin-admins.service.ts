@@ -8,6 +8,10 @@ import { PrismaService } from '@/prisma.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdatePermissionsDto } from './dto/update-permissions.dto';
 import {
+  ChangeOwnPasswordDto,
+  ChangeSubAdminPasswordDto,
+} from './dto/change-password.dto';
+import {
   AdminListResponseDto,
   AdminResponseDto,
   AdminDto,
@@ -254,6 +258,103 @@ export class AdminAdminsService {
     return {
       code: 200,
       message: '操作成功',
+      data: null,
+    };
+  }
+
+  /**
+   * 管理员修改自己的密码
+   */
+  async changeOwnPassword(
+    adminId: string,
+    changePasswordDto: ChangeOwnPasswordDto,
+  ): Promise<{ code: number; message: string; data: null }> {
+    const { currentPassword, newPassword } = changePasswordDto;
+
+    // 查找当前管理员
+    const admin = await this.prisma.admin.findUnique({
+      where: { id: adminId },
+    });
+
+    if (!admin) {
+      throw new NotFoundException('管理员不存在');
+    }
+
+    // 验证当前密码
+    const isPasswordMatching = await bcrypt.compare(
+      currentPassword,
+      admin.password,
+    );
+
+    if (!isPasswordMatching) {
+      throw new BadRequestException('当前密码错误');
+    }
+
+    // 检查新密码是否与当前密码相同
+    const isSamePassword = await bcrypt.compare(newPassword, admin.password);
+    if (isSamePassword) {
+      throw new BadRequestException('新密码不能与当前密码相同');
+    }
+
+    // 加密新密码
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // 更新密码
+    await this.prisma.admin.update({
+      where: { id: adminId },
+      data: { password: hashedPassword },
+    });
+
+    return {
+      code: 200,
+      message: '密码修改成功',
+      data: null,
+    };
+  }
+
+  /**
+   * 修改子管理员的密码
+   * 只有创建该子管理员的管理员或 superadmin 可以修改
+   */
+  async changeSubAdminPassword(
+    operatorId: string,
+    operatorRole: string,
+    targetId: string,
+    changePasswordDto: ChangeSubAdminPasswordDto,
+  ): Promise<{ code: number; message: string; data: null }> {
+    const { newPassword } = changePasswordDto;
+
+    // 查找目标管理员
+    const targetAdmin = await this.prisma.admin.findUnique({
+      where: { id: targetId },
+    });
+
+    if (!targetAdmin) {
+      throw new NotFoundException('子管理员不存在');
+    }
+
+    // 检查权限：只能修改自己创建的子管理员密码，superadmin 可以修改任何子管理员密码
+    if (operatorRole !== 'superadmin' && targetAdmin.createdBy !== operatorId) {
+      throw new ForbiddenException('权限不足');
+    }
+
+    // 不能修改非子管理员的密码（即没有 createdBy 的管理员）
+    if (!targetAdmin.createdBy) {
+      throw new ForbiddenException('无法修改该管理员的密码');
+    }
+
+    // 加密新密码
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // 更新密码
+    await this.prisma.admin.update({
+      where: { id: targetId },
+      data: { password: hashedPassword },
+    });
+
+    return {
+      code: 200,
+      message: '密码修改成功',
       data: null,
     };
   }

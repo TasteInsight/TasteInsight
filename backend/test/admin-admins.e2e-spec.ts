@@ -523,4 +523,184 @@ describe('AdminAdminsController (e2e)', () => {
         .expect(401);
     });
   });
+
+  describe('/admin/admins/me/password (PUT) - Change Own Password', () => {
+    let testAdminId: string;
+    let testAdminToken: string;
+    const testAdminPassword = 'TestAdmin@123';
+    const newPassword = 'NewTestAdmin@456';
+
+    beforeAll(async () => {
+      // Create a test admin for password change tests
+      const createResponse = await request(app.getHttpServer())
+        .post('/admin/admins')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          username: 'pwdtestadmin',
+          password: testAdminPassword,
+          permissions: ['dish:view'],
+        })
+        .expect(201);
+
+      testAdminId = createResponse.body.data.id;
+
+      // Login as the test admin
+      const loginResponse = await request(app.getHttpServer())
+        .post('/auth/admin/login')
+        .send({ username: 'pwdtestadmin', password: testAdminPassword });
+      testAdminToken = loginResponse.body.data.token.accessToken;
+    });
+
+    afterAll(async () => {
+      // Cleanup
+      if (testAdminId) {
+        await prisma.admin.deleteMany({ where: { id: testAdminId } });
+      }
+    });
+
+    it('should change own password successfully', async () => {
+      const response = await request(app.getHttpServer())
+        .put('/admin/admins/me/password')
+        .set('Authorization', `Bearer ${testAdminToken}`)
+        .send({
+          currentPassword: testAdminPassword,
+          newPassword: newPassword,
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.message).toBe('密码修改成功');
+
+      // Verify new password works
+      const loginResponse = await request(app.getHttpServer())
+        .post('/auth/admin/login')
+        .send({ username: 'pwdtestadmin', password: newPassword })
+        .expect(200);
+
+      expect(loginResponse.body.code).toBe(200);
+
+      // Update token for subsequent tests
+      testAdminToken = loginResponse.body.data.token.accessToken;
+    });
+
+    it('should return 400 for wrong current password', async () => {
+      const response = await request(app.getHttpServer())
+        .put('/admin/admins/me/password')
+        .set('Authorization', `Bearer ${testAdminToken}`)
+        .send({
+          currentPassword: 'WrongPassword@123',
+          newPassword: 'AnotherNew@456',
+        })
+        .expect(400);
+
+      expect(response.body.message).toContain('当前密码错误');
+    });
+
+    it('should return 400 for same password', async () => {
+      const response = await request(app.getHttpServer())
+        .put('/admin/admins/me/password')
+        .set('Authorization', `Bearer ${testAdminToken}`)
+        .send({
+          currentPassword: newPassword,
+          newPassword: newPassword,
+        })
+        .expect(400);
+
+      expect(response.body.message).toContain('新密码不能与当前密码相同');
+    });
+
+    it('should return 400 for weak password', async () => {
+      const response = await request(app.getHttpServer())
+        .put('/admin/admins/me/password')
+        .set('Authorization', `Bearer ${testAdminToken}`)
+        .send({
+          currentPassword: newPassword,
+          newPassword: 'weak',
+        })
+        .expect(400);
+
+      expect(response.body.message).toBeDefined();
+    });
+  });
+
+  describe('/admin/admins/:id/password (PUT) - Change Sub Admin Password', () => {
+    let subAdminId: string;
+    const subAdminPassword = 'SubAdmin@123';
+    const newSubAdminPassword = 'NewSubAdmin@456';
+
+    beforeAll(async () => {
+      // Create a sub admin for password reset tests
+      const createResponse = await request(app.getHttpServer())
+        .post('/admin/admins')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          username: 'subadminpwdtest',
+          password: subAdminPassword,
+          permissions: ['dish:view'],
+        })
+        .expect(201);
+
+      subAdminId = createResponse.body.data.id;
+    });
+
+    afterAll(async () => {
+      // Cleanup
+      if (subAdminId) {
+        await prisma.admin.deleteMany({ where: { id: subAdminId } });
+      }
+    });
+
+    it('should reset sub admin password with superadmin', async () => {
+      const response = await request(app.getHttpServer())
+        .put(`/admin/admins/${subAdminId}/password`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({ newPassword: newSubAdminPassword })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.message).toBe('密码修改成功');
+
+      // Verify new password works
+      const loginResponse = await request(app.getHttpServer())
+        .post('/auth/admin/login')
+        .send({ username: 'subadminpwdtest', password: newSubAdminPassword })
+        .expect(200);
+
+      expect(loginResponse.body.code).toBe(200);
+    });
+
+    it('should return 404 for non-existent sub admin', async () => {
+      await request(app.getHttpServer())
+        .put('/admin/admins/non-existent-id/password')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({ newPassword: newSubAdminPassword })
+        .expect(404);
+    });
+
+    it('should return 403 when modifying another admin created sub admin', async () => {
+      await request(app.getHttpServer())
+        .put(`/admin/admins/${subAdminId}/password`)
+        .set('Authorization', `Bearer ${adminManagerToken}`)
+        .send({ newPassword: newSubAdminPassword })
+        .expect(403);
+    });
+
+    it('should return 403 for normal admin without permission', async () => {
+      await request(app.getHttpServer())
+        .put(`/admin/admins/${subAdminId}/password`)
+        .set('Authorization', `Bearer ${normalAdminToken}`)
+        .send({ newPassword: newSubAdminPassword })
+        .expect(403);
+    });
+
+    it('should return 400 for weak password', async () => {
+      const response = await request(app.getHttpServer())
+        .put(`/admin/admins/${subAdminId}/password`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({ newPassword: 'weak' })
+        .expect(400);
+
+      expect(response.body.message).toBeDefined();
+    });
+  });
 });

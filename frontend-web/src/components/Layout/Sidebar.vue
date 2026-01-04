@@ -230,17 +230,164 @@
           <div v-else class="text-xs text-gray-500 text-center py-4">
             <p>暂无权限信息</p>
           </div>
+
+          <!-- 修改密码按钮 - 放在权限列表最下方 -->
+          <button
+            class="w-full mt-4 px-3 py-2 text-sm bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition flex items-center justify-center gap-2"
+            @click="openChangePasswordModal"
+          >
+            <span class="iconify" data-icon="carbon:password"></span>
+            修改我的密码
+          </button>
         </div>
+      </div>
+    </div>
+
+    <!-- 修改密码弹窗 -->
+    <div v-if="showChangePasswordModal" class="fixed inset-0 z-[10000] flex items-center justify-center text-gray-900" @click.stop>
+      <div class="absolute inset-0 bg-black/50" @click="closeChangePasswordModal"></div>
+      <div class="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6 mx-4" @click.stop>
+        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <span class="iconify text-tsinghua-purple" data-icon="carbon:password"></span>
+          修改我的密码
+        </h3>
+        <form @submit.prevent="handleChangePassword" class="space-y-4">
+          <div>
+            <label class="block text-gray-700 font-medium mb-2">
+              当前密码 <span class="text-red-500">*</span>
+            </label>
+            <div class="relative">
+              <input
+                :type="showCurrentPassword ? 'text' : 'password'"
+                :value="passwordForm.currentPassword"
+                @input="handlePasswordInput('currentPassword', $event)"
+                class="password-input w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-tsinghua-purple focus:border-tsinghua-purple focus:outline-none"
+                :class="{ 'border-red-400 bg-red-50': passwordError }"
+                placeholder="请输入当前密码"
+                autocomplete="current-password"
+              />
+              <button
+                type="button"
+                @click="showCurrentPassword = !showCurrentPassword"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <span
+                  class="iconify text-lg"
+                  :data-icon="showCurrentPassword ? 'carbon:view-off' : 'carbon:view'"
+                ></span>
+              </button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-gray-700 font-medium mb-2">
+              新密码 <span class="text-red-500">*</span>
+            </label>
+            <div class="relative">
+              <input
+                :type="showNewPassword ? 'text' : 'password'"
+                :value="passwordForm.newPassword"
+                @input="handlePasswordInput('newPassword', $event)"
+                class="password-input w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-tsinghua-purple focus:border-tsinghua-purple focus:outline-none"
+                :class="{ 'border-red-400 bg-red-50': passwordError }"
+                placeholder="请输入新密码"
+                autocomplete="new-password"
+              />
+              <button
+                type="button"
+                @click="showNewPassword = !showNewPassword"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <span
+                  class="iconify text-lg"
+                  :data-icon="showNewPassword ? 'carbon:view-off' : 'carbon:view'"
+                ></span>
+              </button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-gray-700 font-medium mb-2">
+              确认新密码 <span class="text-red-500">*</span>
+            </label>
+            <div class="relative">
+              <input
+                :type="showConfirmPassword ? 'text' : 'password'"
+                :value="passwordForm.confirmPassword"
+                @input="handlePasswordInput('confirmPassword', $event)"
+                class="password-input w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-tsinghua-purple focus:border-tsinghua-purple focus:outline-none"
+                :class="{ 'border-red-400 bg-red-50': passwordError }"
+                placeholder="请再次输入新密码"
+                autocomplete="new-password"
+              />
+              <button
+                type="button"
+                @click="showConfirmPassword = !showConfirmPassword"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <span
+                  class="iconify text-lg"
+                  :data-icon="showConfirmPassword ? 'carbon:view-off' : 'carbon:view'"
+                ></span>
+              </button>
+            </div>
+          </div>
+          <!-- 密码要求提示 - 动态显示 -->
+          <div class="text-xs bg-gray-50 rounded-lg p-3">
+            <p class="font-medium text-gray-600 mb-2">密码要求：</p>
+            <ul class="space-y-1">
+              <li class="flex items-center gap-2" :class="passwordChecks.length ? 'text-green-600' : 'text-gray-400'">
+                <span class="iconify text-sm" :data-icon="passwordChecks.length ? 'carbon:checkmark-filled' : 'carbon:close'"></span>
+                至少 8 个字符
+              </li>
+              <li class="flex items-center gap-2" :class="passwordChecks.uppercase ? 'text-green-600' : 'text-gray-400'">
+                <span class="iconify text-sm" :data-icon="passwordChecks.uppercase ? 'carbon:checkmark-filled' : 'carbon:close'"></span>
+                包含大写字母（A-Z）
+              </li>
+              <li class="flex items-center gap-2" :class="passwordChecks.lowercase ? 'text-green-600' : 'text-gray-400'">
+                <span class="iconify text-sm" :data-icon="passwordChecks.lowercase ? 'carbon:checkmark-filled' : 'carbon:close'"></span>
+                包含小写字母（a-z）
+              </li>
+              <li class="flex items-center gap-2" :class="passwordChecks.number ? 'text-green-600' : 'text-gray-400'">
+                <span class="iconify text-sm" :data-icon="passwordChecks.number ? 'carbon:checkmark-filled' : 'carbon:close'"></span>
+                包含数字（0-9）
+              </li>
+              <li class="flex items-center gap-2" :class="passwordChecks.special ? 'text-green-600' : 'text-gray-400'">
+                <span class="iconify text-sm" :data-icon="passwordChecks.special ? 'carbon:checkmark-filled' : 'carbon:close'"></span>
+                包含特殊符号（如 !@#$%^&amp;*）
+              </li>
+            </ul>
+          </div>
+          <p v-if="passwordError" class="text-sm text-red-500 flex items-center gap-1">
+            <span class="iconify" data-icon="carbon:warning"></span>
+            {{ passwordError }}
+          </p>
+          <div class="flex justify-end gap-3 pt-4">
+            <button
+              type="button"
+              @click="closeChangePasswordModal"
+              class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
+            >
+              取消
+            </button>
+            <button
+              type="submit"
+              :disabled="isChangingPassword"
+              class="px-4 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {{ isChangingPassword ? '修改中...' : '确认修改' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/modules/use-auth-store'
-import { showConfirm } from '@/composables/useModal'
+import { permissionApi } from '@/api/modules/permission'
+import { showConfirm, showAlert } from '@/composables/useModal'
 
 export default {
   name: 'Sidebar',
@@ -256,6 +403,28 @@ export default {
 
     const userInfo = computed(() => authStore.user || { username: '管理员' })
     const userPermissions = computed(() => authStore.permissions || [])
+
+    // 密码修改相关状态
+    const showChangePasswordModal = ref(false)
+    const isChangingPassword = ref(false)
+    const passwordError = ref('')
+    const showCurrentPassword = ref(false)
+    const showNewPassword = ref(false)
+    const showConfirmPassword = ref(false)
+    const passwordForm = reactive({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    })
+
+    // 密码强度动态检查
+    const passwordChecks = computed(() => ({
+      length: passwordForm.newPassword.length >= 8,
+      uppercase: /[A-Z]/.test(passwordForm.newPassword),
+      lowercase: /[a-z]/.test(passwordForm.newPassword),
+      number: /\d/.test(passwordForm.newPassword),
+      special: /[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(passwordForm.newPassword),
+    }))
 
     // 权限分组定义（与 UserManage 保持一致）
     const permissionGroups = [
@@ -321,6 +490,16 @@ export default {
           { id: 'config:edit', label: '编辑配置' },
         ],
       },
+      {
+        id: 'experiment',
+        name: '推荐管理',
+        permissions: [
+          { id: 'experiment:view', label: '浏览实验' },
+          { id: 'experiment:create', label: '创建实验' },
+          { id: 'experiment:edit', label: '编辑实验' },
+          { id: 'experiment:delete', label: '删除实验' },
+        ],
+      },
     ]
 
     // 检查是否拥有某个权限
@@ -356,6 +535,103 @@ export default {
       if (confirmed) {
         authStore.logout()
         router.replace('/login')
+      }
+    }
+
+    // ======== 密码修改相关方法 ========
+    const openChangePasswordModal = () => {
+      passwordForm.currentPassword = ''
+      passwordForm.newPassword = ''
+      passwordForm.confirmPassword = ''
+      passwordError.value = ''
+      showCurrentPassword.value = false
+      showNewPassword.value = false
+      showConfirmPassword.value = false
+      showChangePasswordModal.value = true
+      showPermissionsDropdown.value = false // 关闭权限下拉框
+    }
+
+    const closeChangePasswordModal = () => {
+      showChangePasswordModal.value = false
+      passwordError.value = ''
+      passwordForm.currentPassword = ''
+      passwordForm.newPassword = ''
+      passwordForm.confirmPassword = ''
+      showCurrentPassword.value = false
+      showNewPassword.value = false
+      showConfirmPassword.value = false
+    }
+
+    // 处理密码输入，同时清除错误状态
+    const handlePasswordInput = (field, event) => {
+      passwordForm[field] = event.target.value
+      // 清除错误状态
+      if (passwordError.value) {
+        passwordError.value = ''
+      }
+    }
+
+    const validatePassword = (password) => {
+      if (password.length < 8) {
+        return '密码长度至少为8位'
+      }
+      if (!/[a-z]/.test(password)) {
+        return '密码必须包含小写字母'
+      }
+      if (!/[A-Z]/.test(password)) {
+        return '密码必须包含大写字母'
+      }
+      if (!/\d/.test(password)) {
+        return '密码必须包含数字'
+      }
+      if (!/[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(password)) {
+        return '密码必须包含特殊符号'
+      }
+      return null
+    }
+
+    const handleChangePassword = async () => {
+      passwordError.value = ''
+      
+      if (!passwordForm.currentPassword) {
+        passwordError.value = '请输入当前密码'
+        return
+      }
+      if (!passwordForm.newPassword) {
+        passwordError.value = '请输入新密码'
+        return
+      }
+      
+      const validationError = validatePassword(passwordForm.newPassword)
+      if (validationError) {
+        passwordError.value = validationError
+        return
+      }
+      
+      if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+        passwordError.value = '两次输入的新密码不一致'
+        return
+      }
+      
+      isChangingPassword.value = true
+      
+      try {
+        const response = await permissionApi.changeOwnPassword(
+          passwordForm.currentPassword,
+          passwordForm.newPassword
+        )
+        
+        if (response.code === 200) {
+          showAlert('密码修改成功！请使用新密码重新登录。')
+          closeChangePasswordModal()
+        } else {
+          passwordError.value = response.message || '密码修改失败'
+        }
+      } catch (error) {
+        console.error('修改密码失败:', error)
+        passwordError.value = error?.response?.data?.message || '密码修改失败，请重试'
+      } finally {
+        isChangingPassword.value = false
       }
     }
 
@@ -395,6 +671,19 @@ export default {
       togglePermissionsDropdown,
       toggleAddMenu,
       handleLogout,
+      // 密码修改相关
+      showChangePasswordModal,
+      isChangingPassword,
+      passwordError,
+      passwordForm,
+      passwordChecks,
+      showCurrentPassword,
+      showNewPassword,
+      showConfirmPassword,
+      openChangePasswordModal,
+      closeChangePasswordModal,
+      handlePasswordInput,
+      handleChangePassword,
     }
   },
 }
@@ -423,5 +712,27 @@ export default {
 .sidebar-menu-scroll {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+/* 隐藏浏览器默认的密码显示按钮 */
+.password-input::-ms-reveal,
+.password-input::-ms-clear,
+.password-input::-webkit-credentials-auto-fill-button {
+  display: none !important;
+}
+
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none !important;
+}
+
+/* 覆盖浏览器自动填充的背景色 */
+.password-input:-webkit-autofill,
+.password-input:-webkit-autofill:hover,
+.password-input:-webkit-autofill:focus,
+.password-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px white inset !important;
+  -webkit-text-fill-color: #111827 !important;
+  background-color: white !important;
 }
 </style>
