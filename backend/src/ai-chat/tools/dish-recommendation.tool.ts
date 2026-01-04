@@ -137,16 +137,17 @@ export class DishRecommendationTool implements BaseTool {
     if (canteenId) {
       const resolvedId = await this.canteensService.resolveCanteenId(canteenId);
       if (resolvedId) {
-        filter.canteenId = resolvedId;
+        filter.canteenId = [resolvedId];
       } else {
         // 如果既不是有效ID也不是有效名称，使用不存在的ID确保无结果返回
-        filter.canteenId = 'non-existent-id';
+        filter.canteenId = ['non-existent-id'];
       }
     }
     if (priceMin !== undefined || priceMax !== undefined) {
-      filter.price = {};
-      if (priceMin !== undefined) filter.price.min = priceMin;
-      if (priceMax !== undefined) filter.price.max = priceMax;
+      filter.price = {
+        min: priceMin !== undefined ? priceMin : 0,
+        max: priceMax !== undefined ? priceMax : 10000,
+      };
     }
     if (minRating !== undefined) {
       filter.rating = { min: minRating, max: 5 };

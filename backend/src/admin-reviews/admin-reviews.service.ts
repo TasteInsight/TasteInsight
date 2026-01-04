@@ -170,10 +170,7 @@ export class AdminReviewsService {
     };
   }
 
-  async deleteReview(
-    id: string,
-    adminInfo?: any,
-  ): Promise<SuccessResponseDto> {
+  async deleteReview(id: string, adminInfo?: any): Promise<SuccessResponseDto> {
     const review = await this.prisma.review.findUnique({
       where: { id, deletedAt: null },
       include: { dish: true },

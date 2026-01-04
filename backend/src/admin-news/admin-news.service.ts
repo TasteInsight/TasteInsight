@@ -117,7 +117,10 @@ export class AdminNewsService {
       throw new NotFoundException('新闻不存在');
     }
 
-    if (adminInfo?.canteenId && existingNews.canteenId !== adminInfo.canteenId) {
+    if (
+      adminInfo?.canteenId &&
+      existingNews.canteenId !== adminInfo.canteenId
+    ) {
       throw new ForbiddenException('权限不足');
     }
 
@@ -127,7 +130,7 @@ export class AdminNewsService {
 
     // 如果更新了 canteenId，需要同时更新 canteenName
     const updateData: any = { ...updateNewsDto };
-    
+
     if (adminInfo?.canteenId) {
       // 强制食堂ID为管理员的食堂
       updateData.canteenId = adminInfo.canteenId;
@@ -158,7 +161,10 @@ export class AdminNewsService {
     };
   }
 
-  async publishNews(id: string, adminInfo?: AdminInfo): Promise<SuccessResponseDto> {
+  async publishNews(
+    id: string,
+    adminInfo?: AdminInfo,
+  ): Promise<SuccessResponseDto> {
     const existingNews = await this.prisma.news.findUnique({
       where: { id },
     });
@@ -167,7 +173,10 @@ export class AdminNewsService {
       throw new NotFoundException('新闻不存在');
     }
 
-    if (adminInfo?.canteenId && existingNews.canteenId !== adminInfo.canteenId) {
+    if (
+      adminInfo?.canteenId &&
+      existingNews.canteenId !== adminInfo.canteenId
+    ) {
       throw new ForbiddenException('权限不足');
     }
 
@@ -186,7 +195,10 @@ export class AdminNewsService {
     };
   }
 
-  async revokeNews(id: string, adminInfo?: AdminInfo): Promise<SuccessResponseDto> {
+  async revokeNews(
+    id: string,
+    adminInfo?: AdminInfo,
+  ): Promise<SuccessResponseDto> {
     const existingNews = await this.prisma.news.findUnique({
       where: { id },
     });
@@ -195,7 +207,10 @@ export class AdminNewsService {
       throw new NotFoundException('新闻不存在');
     }
 
-    if (adminInfo?.canteenId && existingNews.canteenId !== adminInfo.canteenId) {
+    if (
+      adminInfo?.canteenId &&
+      existingNews.canteenId !== adminInfo.canteenId
+    ) {
       throw new ForbiddenException('权限不足');
     }
 
@@ -214,7 +229,10 @@ export class AdminNewsService {
     };
   }
 
-  async deleteNews(id: string, adminInfo?: AdminInfo): Promise<SuccessResponseDto> {
+  async deleteNews(
+    id: string,
+    adminInfo?: AdminInfo,
+  ): Promise<SuccessResponseDto> {
     const existingNews = await this.prisma.news.findUnique({
       where: { id },
     });
@@ -223,7 +241,10 @@ export class AdminNewsService {
       throw new NotFoundException('新闻不存在');
     }
 
-    if (adminInfo?.canteenId && existingNews.canteenId !== adminInfo.canteenId) {
+    if (
+      adminInfo?.canteenId &&
+      existingNews.canteenId !== adminInfo.canteenId
+    ) {
       throw new ForbiddenException('权限不足');
     }
 
