@@ -55,10 +55,14 @@ describe('UserProfileController (e2e)', () => {
       // the API handles it appropriately (either 404 or 401)
       // This simulates the case where a user was deleted after token was issued
 
-      // First, create a temporary user
+      // Use a mock code that will generate a predictable openId
+      const mockCode = 'mock_temp_delete_test';
+      const expectedOpenId = `mock_openid_for_${mockCode}`;
+
+      // First, create a temporary user with the openId that matches the mock code
       const tempUser = await prisma.user.create({
         data: {
-          openId: 'temp_test_user_openid',
+          openId: expectedOpenId,
           nickname: 'Temp Test User',
           allergens: [],
           preferences: { create: {} },
@@ -66,10 +70,10 @@ describe('UserProfileController (e2e)', () => {
         },
       });
 
-      // Get a token for this user
+      // Get a token for this user using the mock code
       const tempLoginResponse = await request(app.getHttpServer())
         .post('/auth/wechat/login')
-        .send({ code: 'temp_test_code' });
+        .send({ code: mockCode });
 
       const tempToken = tempLoginResponse.body.data?.token?.accessToken;
 
