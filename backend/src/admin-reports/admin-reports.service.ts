@@ -12,6 +12,7 @@ import {
   SuccessResponseDto,
   ReportItemData,
 } from './dto/report-response.dto';
+import { AdminInfo } from '@/auth/decorators/current-admin.decorator';
 
 @Injectable()
 export class AdminReportsService {
@@ -25,7 +26,7 @@ export class AdminReportsService {
     pageSize: number = 20,
     status?: 'pending' | 'approved' | 'rejected',
     targetType?: string,
-    adminInfo?: any,
+    adminInfo?: AdminInfo,
   ): Promise<ReportListResponseDto> {
     const skip = (page - 1) * pageSize;
     const where: any = {};
@@ -170,7 +171,7 @@ export class AdminReportsService {
   async handleReport(
     id: string,
     dto: HandleReportDto,
-    adminInfo: any,
+    adminInfo: AdminInfo,
   ): Promise<SuccessResponseDto> {
     const report = await this.prisma.report.findUnique({
       where: { id },
@@ -196,7 +197,7 @@ export class AdminReportsService {
       throw new NotFoundException('举报不存在');
     }
 
-    if (adminInfo?.canteenId) {
+    if (adminInfo.canteenId) {
       let canteenId: string | undefined;
       if (report.review) {
         canteenId = report.review.dish.canteenId;

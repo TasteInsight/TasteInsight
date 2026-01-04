@@ -10,6 +10,7 @@ import { UpdateNewsDto } from './dto/update-news.dto';
 import { NewsListResponseDto, NewsResponseDto } from './dto/news-response.dto';
 import { SuccessResponseDto } from '@/common/dto/response.dto';
 import { NewsDto, AdminGetNewsDto } from './dto/news.dto';
+import { AdminInfo } from '@/auth/decorators/current-admin.decorator';
 
 @Injectable()
 export class AdminNewsService {
@@ -17,7 +18,7 @@ export class AdminNewsService {
 
   async findAll(
     query: AdminGetNewsDto,
-    adminInfo?: any,
+    adminInfo?: AdminInfo,
   ): Promise<NewsListResponseDto> {
     const { page = 1, pageSize = 20, status, canteenName } = query;
     const skip = (page - 1) * pageSize;
@@ -63,7 +64,7 @@ export class AdminNewsService {
 
   async createNews(
     createNewsDto: CreateNewsDto,
-    adminInfo: any,
+    adminInfo: AdminInfo,
   ): Promise<NewsResponseDto> {
     let canteenName: string | null = null;
     let canteenId = createNewsDto.canteenId;
@@ -106,7 +107,7 @@ export class AdminNewsService {
   async updateNews(
     id: string,
     updateNewsDto: UpdateNewsDto,
-    adminInfo?: any,
+    adminInfo?: AdminInfo,
   ): Promise<NewsResponseDto> {
     const existingNews = await this.prisma.news.findUnique({
       where: { id },
@@ -157,7 +158,7 @@ export class AdminNewsService {
     };
   }
 
-  async publishNews(id: string, adminInfo?: any): Promise<SuccessResponseDto> {
+  async publishNews(id: string, adminInfo?: AdminInfo): Promise<SuccessResponseDto> {
     const existingNews = await this.prisma.news.findUnique({
       where: { id },
     });
@@ -185,7 +186,7 @@ export class AdminNewsService {
     };
   }
 
-  async revokeNews(id: string, adminInfo?: any): Promise<SuccessResponseDto> {
+  async revokeNews(id: string, adminInfo?: AdminInfo): Promise<SuccessResponseDto> {
     const existingNews = await this.prisma.news.findUnique({
       where: { id },
     });
@@ -213,7 +214,7 @@ export class AdminNewsService {
     };
   }
 
-  async deleteNews(id: string, adminInfo?: any): Promise<SuccessResponseDto> {
+  async deleteNews(id: string, adminInfo?: AdminInfo): Promise<SuccessResponseDto> {
     const existingNews = await this.prisma.news.findUnique({
       where: { id },
     });
