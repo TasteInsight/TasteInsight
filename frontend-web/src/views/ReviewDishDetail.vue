@@ -621,11 +621,8 @@ export default {
         const response = await reviewApi.approveUpload(dishData.id.toString())
         if (response.code === 200 || response.code === 201) {
           dishData.status = 'approved'
-          // 通过路由参数传递刷新标志
-          router.push({
-            path: '/review-dish',
-            query: { refresh: 'true', updatedId: dishData.id, status: 'approved' },
-          })
+          // 返回列表页
+          router.replace({ name: 'ReviewDish' })
         } else {
           throw new Error(response.message || '审核失败')
         }
@@ -664,11 +661,8 @@ export default {
         if (response.code === 200 || response.code === 201) {
           dishData.status = 'rejected'
           isRejectModalOpen.value = false
-          // 通过路由参数传递刷新标志
-          router.push({
-            path: '/review-dish',
-            query: { refresh: 'true', updatedId: dishData.id, status: 'rejected' },
-          })
+          // 返回列表页
+          router.replace({ name: 'ReviewDish' })
         } else {
           throw new Error(response.message || '审核失败')
         }
@@ -699,12 +693,8 @@ export default {
         const response = await reviewApi.revokeUpload(dishData.id.toString())
         if (response.code === 200 || response.code === 201) {
           dishData.status = 'pending'
-          // 通过路由参数传递刷新标志
-          router.push({
-            path: '/review-dish',
-            query: { refresh: 'true', updatedId: dishData.id, status: 'pending' },
-          })
-          showAlert('菜品审核结果已撤销，重新进入待审核状态。')
+          // 返回列表页
+          router.replace({ name: 'ReviewDish' })
         } else {
           throw new Error(response.message || '撤销审核失败')
         }
