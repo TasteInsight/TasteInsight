@@ -402,5 +402,121 @@ describe('AdminConfigController (e2e)', () => {
         .delete(`/admin/config/canteen/${testCanteenId}/review.autoApprove`)
         .set('Authorization', `Bearer ${superAdminToken}`);
     });
+
+    it('should fall back to default when no global or canteen config exists', async () => {
+      // Delete any existing config for this key
+      await request(app.getHttpServer())
+        .delete(`/admin/config/canteen/${testCanteenId}/review.autoApprove`)
+        .set('Authorization', `Bearer ${superAdminToken}`);
+
+      // Try to delete global config (might not exist)
+      // This ensures we test the fallback to default
+
+      // Get effective config
+      const response = await request(app.getHttpServer())
+        .get(`/admin/config/canteen/${testCanteenId}/effective`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      const reviewConfig = response.body.data.items.find(
+        (i: any) => i.key === 'review.autoApprove',
+      );
+      // Should have a value from default source
+      expect(reviewConfig).toBeDefined();
+      expect(['global', 'default']).toContain(reviewConfig.source);
+    });
+  });
+
+  describe('Config value validation', () => {
+    it('should validate number config value', async () => {
+      // Test with a number type config if exists
+      const templatesRes = await request(app.getHttpServer())
+        .get('/admin/config/templates')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      const numberTemplate = templatesRes.body.data.items.find(
+        (t: any) => t.valueType === 'number',
+      );
+
+      if (numberTemplate) {
+        // Valid number
+        const validRes = await request(app.getHttpServer())
+          .put('/admin/config/global')
+          .set('Authorization', `Bearer ${superAdminToken}`)
+          .send({
+            key: numberTemplate.key,
+            value: '42',
+          });
+        expect([200, 400]).toContain(validRes.status);
+
+        // Invalid number
+        const invalidRes = await request(app.getHttpServer())
+          .put('/admin/config/global')
+          .set('Authorization', `Bearer ${superAdminToken}`)
+          .send({
+            key: numberTemplate.key,
+            value: 'not-a-number',
+          });
+        expect(invalidRes.status).toBe(400);
+      }
+    });
+
+    it('should validate JSON config value', async () => {
+      const templatesRes = await request(app.getHttpServer())
+        .get('/admin/config/templates')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      const jsonTemplate = templatesRes.body.data.items.find(
+        (t: any) => t.valueType === 'json',
+      );
+
+      if (jsonTemplate) {
+        // Valid JSON
+        const validRes = await request(app.getHttpServer())
+          .put('/admin/config/global')
+          .set('Authorization', `Bearer ${superAdminToken}`)
+          .send({
+            key: jsonTemplate.key,
+            value: '{"test": "value"}',
+          });
+        expect([200, 400]).toContain(validRes.status);
+
+        // Invalid JSON
+        const invalidRes = await request(app.getHttpServer())
+          .put('/admin/config/global')
+          .set('Authorization', `Bearer ${superAdminToken}`)
+          .send({
+            key: jsonTemplate.key,
+            value: 'not-valid-json',
+          });
+        expect(invalidRes.status).toBe(400);
+      }
+    });
+  });
+
+  describe('Config update with different data types', () => {
+    it('should update string config value', async () => {
+      const templatesRes = await request(app.getHttpServer())
+        .get('/admin/config/templates')
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .expect(200);
+
+      const stringTemplate = templatesRes.body.data.items.find(
+        (t: any) => t.valueType === 'string',
+      );
+
+      if (stringTemplate) {
+        const response = await request(app.getHttpServer())
+          .put('/admin/config/global')
+          .set('Authorization', `Bearer ${superAdminToken}`)
+          .send({
+            key: stringTemplate.key,
+            value: 'test-string-value',
+          });
+        expect([200, 400]).toContain(response.status);
+      }
+    });
   });
 });

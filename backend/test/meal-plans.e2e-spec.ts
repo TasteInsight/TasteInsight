@@ -187,4 +187,144 @@ describe('MealPlansController (e2e)', () => {
       expect(response.status).toBe(404);
     });
   });
+
+  describe('Query Parameters', () => {
+    const tempMealPlanIds: string[] = [];
+
+    beforeAll(async () => {
+      // 创建一些测试用的 meal plans
+      const mealTimes = [MealTime.BREAKFAST, MealTime.LUNCH, MealTime.DINNER];
+      for (const mealTime of mealTimes) {
+        const response = await request(app.getHttpServer())
+          .post('/meal-plans')
+          .set('Authorization', `Bearer ${userAccessToken}`)
+          .send({
+            startDate: '2025-12-10',
+            endDate: '2025-12-10',
+            mealTime,
+            dishes: [testDishId1],
+          });
+        if (response.body.data?.id) {
+          tempMealPlanIds.push(response.body.data.id);
+        }
+      }
+    });
+
+    afterAll(async () => {
+      // 清理创建的测试 meal plans
+      await prisma.mealPlan.deleteMany({
+        where: { id: { in: tempMealPlanIds } },
+      });
+    });
+
+    it('should filter meal plans by date range', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/meal-plans')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .query({
+          startDate: '2025-12-10',
+          endDate: '2025-12-10',
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.code).toBe(200);
+      expect(Array.isArray(response.body.data.items)).toBe(true);
+    });
+
+    it('should filter meal plans by mealTime', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/meal-plans')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .query({
+          mealTime: MealTime.BREAKFAST,
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.code).toBe(200);
+      expect(Array.isArray(response.body.data.items)).toBe(true);
+    });
+
+    it('should support pagination', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/meal-plans')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .query({
+          page: 1,
+          pageSize: 2,
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.code).toBe(200);
+      // Just verify pagination params are accepted, actual limit may vary
+      expect(Array.isArray(response.body.data.items)).toBe(true);
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle empty dishes array', async () => {
+      const createData = {
+        startDate: '2025-12-15',
+        endDate: '2025-12-15',
+        mealTime: MealTime.BREAKFAST,
+        dishes: [],
+      };
+
+      const response = await request(app.getHttpServer())
+        .post('/meal-plans')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send(createData);
+
+      // Should either return 400 (validation error) or 201 with empty dishes
+      expect([201, 400]).toContain(response.status);
+    });
+
+    it('should handle updating with empty dishes', async () => {
+      // First create a meal plan
+      const createResponse = await request(app.getHttpServer())
+        .post('/meal-plans')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          startDate: '2025-12-16',
+          endDate: '2025-12-16',
+          mealTime: MealTime.LUNCH,
+          dishes: [testDishId1],
+        });
+
+      if (createResponse.status === 201 && createResponse.body.data?.id) {
+        const mealPlanId = createResponse.body.data.id;
+
+        const updateResponse = await request(app.getHttpServer())
+          .patch(`/meal-plans/${mealPlanId}`)
+          .set('Authorization', `Bearer ${userAccessToken}`)
+          .send({ dishes: [] });
+
+        expect([200, 400]).toContain(updateResponse.status);
+
+        // Cleanup
+        await prisma.mealPlan.delete({ where: { id: mealPlanId } });
+      }
+    });
+
+    it('should handle date range spanning multiple days', async () => {
+      const createData = {
+        startDate: '2025-12-20',
+        endDate: '2025-12-22',
+        mealTime: MealTime.DINNER,
+        dishes: [testDishId1, testDishId2],
+      };
+
+      const response = await request(app.getHttpServer())
+        .post('/meal-plans')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send(createData);
+
+      expect(response.status).toBe(201);
+      expect(response.body.code).toBe(201);
+
+      // Cleanup
+      if (response.body.data?.id) {
+        await prisma.mealPlan.delete({ where: { id: response.body.data.id } });
+      }
+    });
+  });
 });

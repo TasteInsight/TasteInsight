@@ -453,4 +453,262 @@ describe('Recommendation Module (e2e)', () => {
       // 4. Restore preferences (optional, or just leave it)
     });
   });
+
+  describe('Advanced Filtering', () => {
+    it('should filter by dietary restrictions', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/recommend')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          scene: RecommendationScene.HOME,
+          filter: {
+            dietary: ['vegetarian'],
+          },
+          pagination: { page: 1, pageSize: 10 },
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(Array.isArray(response.body.data.items)).toBe(true);
+    });
+
+    it('should filter by price range', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/recommend')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          scene: RecommendationScene.HOME,
+          filter: {
+            priceRange: {
+              min: 5,
+              max: 15,
+            },
+          },
+          pagination: { page: 1, pageSize: 10 },
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(Array.isArray(response.body.data.items)).toBe(true);
+    });
+
+    it('should filter by spiciness level', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/recommend')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          scene: RecommendationScene.HOME,
+          filter: {
+            spiciness: { max: 2 },
+          },
+          pagination: { page: 1, pageSize: 10 },
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(Array.isArray(response.body.data.items)).toBe(true);
+    });
+
+    it('should combine multiple filters', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/recommend')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          scene: RecommendationScene.HOME,
+          filter: {
+            dietary: ['vegetarian'],
+            priceRange: { min: 5, max: 20 },
+            spiciness: { max: 3 },
+          },
+          pagination: { page: 1, pageSize: 10 },
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(Array.isArray(response.body.data.items)).toBe(true);
+    });
+  });
+
+  describe('Cache Management', () => {
+    it('should handle cache refresh for user features', async () => {
+      await expect(
+        recommendationService.refreshUserFeatureCache(testUserId),
+      ).resolves.not.toThrow();
+    });
+
+    it('should handle cache operations', async () => {
+      // Test basic cache functionality through the recommendation service
+      const testRequest = {
+        scene: RecommendationScene.HOME,
+        filter: {},
+        pagination: { page: 1, pageSize: 5 },
+      };
+
+      // Make a request to populate cache
+      await request(app.getHttpServer())
+        .post('/recommend')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send(testRequest)
+        .expect(200);
+
+      // Verify cache service exists
+      expect(cacheService).toBeDefined();
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should handle invalid scene gracefully', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/recommend')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          scene: 'invalid_scene',
+          filter: {},
+          pagination: { page: 1, pageSize: 10 },
+        })
+        .expect(400);
+    });
+
+    it('should handle missing pagination', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/recommend')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          scene: RecommendationScene.HOME,
+          filter: {},
+        })
+        .expect(400);
+    });
+
+    it('should handle invalid page size', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/recommend')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          scene: RecommendationScene.HOME,
+          filter: {},
+          pagination: { page: 1, pageSize: 0 },
+        })
+        .expect(400);
+    });
+  });
+
+  describe('Different Scenes', () => {
+    it('should handle SEARCH scene', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/recommend')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          scene: RecommendationScene.SEARCH,
+          filter: {},
+          pagination: { page: 1, pageSize: 10 },
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(Array.isArray(response.body.data.items)).toBe(true);
+    });
+
+    it('should handle SEARCH scene with keyword', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/recommend')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          scene: RecommendationScene.SEARCH,
+          filter: {},
+          search: { keyword: '鸡肉' },
+          pagination: { page: 1, pageSize: 10 },
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(Array.isArray(response.body.data.items)).toBe(true);
+    });
+
+    it('should handle SIMILAR scene', async () => {
+      const dishes = await prisma.dish.findMany({ take: 1 });
+
+      if (dishes.length > 0) {
+        const response = await request(app.getHttpServer())
+          .post('/recommend')
+          .set('Authorization', `Bearer ${userAccessToken}`)
+          .send({
+            scene: RecommendationScene.SIMILAR,
+            filter: { dishId: dishes[0].id },
+            pagination: { page: 1, pageSize: 10 },
+          })
+          .expect(200);
+
+        expect(response.body.code).toBe(200);
+        expect(Array.isArray(response.body.data.items)).toBe(true);
+      }
+    });
+
+    it('should handle SIMILAR scene with triggerDishId', async () => {
+      const dishes = await prisma.dish.findMany({ take: 1 });
+
+      if (dishes.length > 0) {
+        const response = await request(app.getHttpServer())
+          .post('/recommend')
+          .set('Authorization', `Bearer ${userAccessToken}`)
+          .send({
+            scene: RecommendationScene.SIMILAR,
+            triggerDishId: dishes[0].id,
+            filter: {},
+            pagination: { page: 1, pageSize: 10 },
+          })
+          .expect(200);
+
+        expect(response.body.code).toBe(200);
+        expect(Array.isArray(response.body.data.items)).toBe(true);
+      }
+    });
+
+    it('should handle MEAL_PLANNING scene', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/recommend')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          scene: RecommendationScene.MEAL_PLANNING,
+          filter: {},
+          pagination: { page: 1, pageSize: 10 },
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(Array.isArray(response.body.data.items)).toBe(true);
+    });
+
+    it('should handle userContext for exploratory mode', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/recommend')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          scene: RecommendationScene.HOME,
+          filter: {},
+          userContext: { exploratory: true },
+          pagination: { page: 1, pageSize: 10 },
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(Array.isArray(response.body.data.items)).toBe(true);
+    });
+
+    it('should handle userContext for high urgency mode', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/recommend')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({
+          scene: RecommendationScene.HOME,
+          filter: {},
+          userContext: { urgency: 'high' },
+          pagination: { page: 1, pageSize: 10 },
+        })
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(Array.isArray(response.body.data.items)).toBe(true);
+    });
+  });
 });

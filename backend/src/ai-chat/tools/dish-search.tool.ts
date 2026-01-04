@@ -64,7 +64,7 @@ export class DishSearchTool implements BaseTool {
           mealTime: {
             type: 'array',
             items: { type: 'string' },
-            description: '适用餐次: breakfast, lunch, dinner, late_night',
+            description: '适用餐次: breakfast, lunch, dinner, nightsnack',
           },
           spicyLevel: {
             type: 'number',

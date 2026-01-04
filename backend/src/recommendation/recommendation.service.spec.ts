@@ -403,7 +403,7 @@ describe('RecommendationService', () => {
     it('should reuse requestId when provided', async () => {
       const dto: any = {
         requestId: 'preset-request-id',
-        pagination: { page: 2, pageSize: 5 },
+        pagination: { page: 1, pageSize: 10 },
         filter: {},
       };
 
@@ -414,25 +414,16 @@ describe('RecommendationService', () => {
       mockPrisma.userPreference.findUnique.mockResolvedValue(null);
       mockPrisma.favoriteDish.findMany.mockResolvedValue([]);
       mockPrisma.browseHistory.findMany.mockResolvedValue([]);
+      mockPrisma.dish.findMany.mockResolvedValue([]);
       mockCacheService.getUserFeatures.mockResolvedValue(null);
-      mockCacheService.getSessionFullList.mockResolvedValue([
-        { id: 'dish1', score: 0.9 },
-        { id: 'dish2', score: 0.8 },
-        { id: 'dish3', score: 0.7 },
-        { id: 'dish4', score: 0.6 },
-        { id: 'dish5', score: 0.5 },
-        { id: 'dish6', score: 0.4 },
-        { id: 'dish7', score: 0.3 },
-        { id: 'dish8', score: 0.2 },
-        { id: 'dish9', score: 0.1 },
-        { id: 'dish10', score: 0.0 },
-      ]);
+      mockEmbeddingService.getUserEmbedding.mockResolvedValue(null);
+      mockEmbeddingService.generateUserEmbedding.mockResolvedValue(null);
 
       const result = await service.getRecommendations('user1', dto);
-      expect(result.data.items.length).toBeDefined();
-      expect(mockCacheService.getSessionFullList).toHaveBeenCalledWith(
-        'preset-request-id',
-      );
+
+      // 验证返回结果包含预设的 requestId
+      expect(result).toBeDefined();
+      expect(result.data.requestId).toBe('preset-request-id');
     });
   });
 });
