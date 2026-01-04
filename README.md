@@ -135,9 +135,6 @@ cd frontend-miniapp
 # 安装依赖
 pnpm install
 
-# H5 开发模式（带 Mock 数据，无需后端）
-pnpm dev:mock
-
 # 微信小程序开发模式
 pnpm dev:mp-weixin
 ```

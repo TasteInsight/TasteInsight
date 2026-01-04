@@ -156,7 +156,6 @@ pnpm install
 # 标准开发模式
 pnpm dev:h5
 
-
 ### 微信小程序开发模式
 
 ```bash
@@ -224,10 +223,14 @@ pnpm test:load:smoke
 
 ## Mock 模式
 
-项目内置完整的 Mock 数据服务，无需后端即可进行前端开发：
+项目内置完整的 Mock 数据服务，无需后端即可进行前端开发。
 
+将 `src/mock/mock-adapter.ts` 文件中的 `USE_MOCK` 设置为 `true` 即可绕过后端，启用 Mock 服务：
 
-将`src/mock/mock-adapter.ts`文件当中的export const USE_MOCK = false;代码改为 true 即可绕过后端，启用 mock 服务。
+```typescript
+// src/mock/mock-adapter.ts
+export const USE_MOCK = true;  // 改为 true 启用 Mock 模式
+```
 
 Mock 数据位于 `src/mock/` 目录：
 - `data/` - 静态数据（用户、食堂、菜品、评价等）
