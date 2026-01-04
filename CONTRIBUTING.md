@@ -84,10 +84,16 @@ cd backend
 cp .env.example .env
 
 # 编辑 .env 文件，填入您的配置
-# DATABASE_URL="postgresql://user:password@localhost:5432/mydb"
+# DATABASE_URL="postgresql://postgres:password@localhost:5432/tasteinsight"
 # REDIS_HOST=localhost
 # REDIS_PORT=6379
-# JWT_SECRET=your-secret-key
+# REDIS_PASSWORD=your_redis_password
+# JWT_SECRET=your-super-secret-key
+# JWT_REFRESH_SECRET=another-super-secret-for-refresh-token
+# WECHAT_APPID=your_wechat_appid
+# WECHAT_SECRET=your_wechat_appsecret
+# INITIAL_ADMIN_USERNAME=admin
+# INITIAL_ADMIN_PASSWORD=your_secure_password
 
 # 前端环境变量
 cd ../frontend-web
@@ -97,7 +103,7 @@ cd ../frontend-miniapp
 cp .env.example .env
 
 # 编辑 .env 文件
-# VITE_API_BASE_URL=http://localhost:3000/api
+# VITE_API_BASE_URL=http://localhost:3000
 ```
 
 ## 启动数据库
@@ -111,11 +117,11 @@ docker-compose up -d
 # PostgreSQL
 docker run -d \
   --name postgres \
-  -e POSTGRES_USER=user \
+  -e POSTGRES_USER=postgres \
   -e POSTGRES_PASSWORD=password \
-  -e POSTGRES_DB=mydb \
+  -e POSTGRES_DB=tasteinsight \
   -p 5432:5432 \
-  postgres:15-alpine
+  postgres:17-alpine
 
 # Redis
 docker run -d \
@@ -137,17 +143,23 @@ npx prisma generate
 
 # (可选) 填充测试数据
 npx prisma db seed
+
+# (可选) 初始化配置模板
+npx ts-node prisma/init-config-templates.ts
+
+# (可选) 导入食堂数据
+npx ts-node prisma/import_canteens.ts
 ```
 
 ## 启动开发服务器
 
 ```bash
-# 启动后端
+# 启动后端 (开发模式)
 cd backend
-pnpm run start # dev 模式启动
+pnpm run start:dev
 # 后端运行在 http://localhost:3000
 
-# 启动前端 (新开终端)
+# 启动管理端前端 (新开终端)
 cd frontend-web
 pnpm dev
 # 前端运行在 http://localhost:5173
@@ -156,6 +168,11 @@ pnpm dev
 cd frontend-miniapp
 pnpm dev:mp-weixin
 # 使用微信开发者工具打开 dist/dev/mp-weixin 目录
+
+# (可选) 启动 Python 嵌入服务
+cd backend/python-embedding-service
+python app.py
+# 嵌入服务运行在 http://localhost:5001
 ```
 
 # 分支管理
@@ -270,53 +287,78 @@ git log --oneline
 ### 命名规范
 
 ```typescript
-// ✅ 正确
+// ✅ 正确 - TasteInsight 项目命名规范
 const userName = 'John'
 const MAX_RETRY_COUNT = 3
 function getUserInfo() {}
-class UserService {}
-interface IUserData {}
+class DishesService {}
+interface DishItem {}           // 接口不使用 I 前缀
+interface PaginationMeta {}     // 接口不使用 I 前缀
+type DishStatus = 'online' | 'offline'
+
+// Store 文件命名
+// use-user-store.ts
+// use-auth-store.ts
+
+// DTO 命名
+class AdminGetDishesDto {}
+class CreateReviewDto {}
+class DishResponseDto {}
 
 // ❌ 错误
-const user_name = 'John'
-const maxRetryCount = 3
-function get_user_info() {}
-class userService {}
-interface UserData {}
+const user_name = 'John'        // 应使用 camelCase
+const maxRetryCount = 3         // 常量应使用 UPPER_SNAKE_CASE
+function get_user_info() {}     // 应使用 camelCase
+class userService {}            // 类应使用 PascalCase
+interface IUserData {}          // 本项目接口不使用 I 前缀
 ```
 
 ### 代码格式
 
 ```typescript
-// ✅ 正确 - 使用 async/await
-async function fetchUser(id: string) {
-  try {
-    const user = await api.get(`/users/${id}`)
-    return user.data
-  } catch (error) {
-    console.error('获取用户失败:', error)
-    throw error
+// ✅ 正确 - 使用 async/await（TasteInsight 菜品服务示例）
+async function getDishById(id: string, userId: string): Promise<DishResponseDto> {
+  const dish = await this.prisma.dish.findUnique({
+    where: { id },
+    include: {
+      canteen: true,
+      window: true,
+    },
+  });
+
+  if (!dish) {
+    throw new NotFoundException('菜品不存在');
   }
+
+  return {
+    code: 200,
+    message: 'success',
+    data: DishDto.fromEntity(dish),
+  };
 }
 
 // ✅ 正确 - 使用早返回
-function validateUser(user: User) {
-  if (!user) {
-    throw new Error('用户不存在')
+function validateReview(review: Review) {
+  if (!review) {
+    throw new NotFoundException('评价不存在');
   }
   
-  if (!user.email) {
-    throw new Error('邮箱不能为空')
+  if (review.status !== 'approved') {
+    throw new BadRequestException('评价未通过审核');
   }
   
-  return true
+  if (review.deletedAt) {
+    throw new NotFoundException('评价已被删除');
+  }
+  
+  return true;
 }
 
 // ❌ 错误 - 过深的嵌套
-function validateUser(user: User) {
-  if (user) {
-    if (user.email) {
-      if (user.email.includes('@')) {
+function validateReview(review: Review) {
+  if (review) {
+    if (review.status === 'approved') {
+      if (!review.deletedAt) {
         return true
       }
     }
@@ -329,22 +371,38 @@ function validateUser(user: User) {
 
 ```typescript
 /**
- * 用户服务类
- * 负责处理用户相关的业务逻辑
+ * 菜品服务类
+ * 负责处理菜品相关的业务逻辑，包括查询、收藏、推荐等功能
  * 
- * @class UserService
- * @author zhangsan
- * @since 2025-10-01
+ * @class DishesService
  */
 @Injectable()
-export class UserService {
+export class DishesService {
+  constructor(
+    private prisma: PrismaService,
+    private recommendationService: RecommendationService,
+  ) {}
+
   /**
-   * 根据ID查找用户
-   * @param id - 用户ID
-   * @returns 用户信息，如果不存在则返回null
-   * @throws {NotFoundException} 当用户不存在时抛出
+   * 根据ID获取菜品详情
+   * @param id - 菜品ID
+   * @param userId - 当前用户ID，用于记录浏览历史
+   * @returns 菜品详情响应
+   * @throws {NotFoundException} 当菜品不存在时抛出
    */
-  async findById(id: string): Promise<User | null> {
+  async getDishById(id: string, userId: string): Promise<DishResponseDto> {
+    // 实现逻辑
+  }
+
+  /**
+   * 收藏菜品
+   * @param dishId - 要收藏的菜品ID
+   * @param userId - 用户ID
+   * @returns 收藏状态响应
+   * @throws {NotFoundException} 当菜品不存在时抛出
+   * @throws {BadRequestException} 当已收藏过该菜品时抛出
+   */
+  async favoriteDish(dishId: string, userId: string): Promise<FavoriteStatusResponseDto> {
     // 实现逻辑
   }
 }
@@ -386,30 +444,35 @@ export class UserService {
 - `api`: API 相关
 - `ui`: UI 组件相关
 - `auth`: 认证相关
+- `dish`: 菜品相关
+- `review`: 评价相关
+- `recommendation`: 推荐相关
+- `canteen`: 食堂相关
 
 ## 提交示例
 
 ```bash
 # 新功能
-git commit -m "feat(auth): 添加用户登录功能"
+git commit -m "feat(dish): 添加菜品收藏功能"
 
 # Bug 修复
-git commit -m "fix(order): 修复订单金额计算错误"
+git commit -m "fix(review): 修复评价楼层号重复问题"
 
 # 文档更新
-git commit -m "docs: 更新 API 文档"
+git commit -m "docs: 更新开发规范文档"
 
 # 代码重构
-git commit -m "refactor(user): 重构用户服务代码结构"
+git commit -m "refactor(recommendation): 重构推荐服务代码结构"
 
 # 性能优化
-git commit -m "perf(database): 优化用户查询性能，添加索引"
+git commit -m "perf(database): 优化菜品查询性能，添加复合索引"
 
 # 多行提交消息
-git commit -m "feat(payment): 添加微信支付功能
+git commit -m "feat(recommendation): 添加个性化菜品推荐功能
 
-- 集成微信支付 SDK
-- 添加支付回调处理
+- 集成 Python 嵌入服务
+- 添加用户偏好分析
+- 实现推荐结果缓存
 - 更新订单状态逻辑
 
 Closes #123"
@@ -452,7 +515,7 @@ git push -f origin feature/backend/user-authentication
 ```markdown
 ## 变更说明
 
-添加用户认证功能，包括登录、注册和密码重置。
+添加菜品推荐功能，基于用户口味偏好和浏览历史进行个性化推荐。
 
 ## 变更类型
 
@@ -464,11 +527,11 @@ git push -f origin feature/backend/user-authentication
 
 ## 变更内容
 
-- 实现用户登录接口
-- 实现用户注册接口
-- 添加 JWT 认证中间件
-- 完善用户密码加密逻辑
-- 添加邮箱验证功能
+- 实现菜品推荐算法服务
+- 添加用户偏好分析接口
+- 集成 Python 嵌入服务
+- 完善推荐结果缓存逻辑
+- 添加推荐 API 端点
 
 ## 测试
 
@@ -500,10 +563,10 @@ Related to #124
 PR 标题应该清晰描述变更内容：
 
 ```
-feat(auth): 添加用户认证功能
-fix(order): 修复订单状态更新问题
+feat(dish): 添加菜品收藏功能
+fix(review): 修复评价状态更新问题
 docs: 更新贡献指南
-refactor(user): 重构用户服务
+refactor(recommendation): 重构推荐服务
 ```
 
 1. 处理反馈
@@ -587,49 +650,52 @@ git push -f origin feature/backend/user-authentication
 
 ## 必须修改 (Required Changes)
 
-1. **安全问题**: 第 45 行的密码应该使用 bcrypt 加密，不能明文存储
+1. **安全问题**: 管理员密码应该使用 bcrypt 加密，不能明文存储
    ```ts
     // 当前代码
-    user.password = req.body.password
+    admin.password = req.body.password
    
     // 建议修改为
-    user.passwordHash = await bcrypt.hash(req.body.password, 10)
+    admin.passwordHash = await bcrypt.hash(req.body.password, 10)
     ```
    
-2. ****性能问题****: 第 78 行存在 N+1 查询问题 
+2. **性能问题**: 存在 N+1 查询问题，应使用 Prisma include
     ```ts
     // 当前代码
-    for (const post of posts) {
-        post.author = await getAuthor(post.authorId)
+    for (const dish of dishes) {
+        dish.canteen = await getCanteen(dish.canteenId)
     }
    
     // 建议使用 include
-    const posts = await prisma.post.findMany({
-        include: { author: true }
+    const dishes = await prisma.dish.findMany({
+        include: { 
+          canteen: true,
+          window: true 
+        }
     })
     ```
 ---
 
 ## 建议优化 (Suggestions)
 
-**1. **代码优化****: 第 120 行的条件判断可以简化
+**1. **命名规范****: 接口命名不应使用 I 前缀
     ```ts
     // 当前代码
-    if (user !== null && user !== undefined) {
+    interface IDishData {}
     
     // 建议改为
-    if (user) {
+    interface DishData {}
     ```
 
-**2. **注释补充****: UserService 类缺少 JSDoc 注释，建议添加
+**2. **注释补充****: DishesService 类缺少 JSDoc 注释，建议添加
 
 ---
 
 ## 赞赏 (Kudos)
 
-- 错误处理很完善 👍
+- 错误处理很完善，使用了 NotFoundException 等 NestJS 异常 👍
 - 测试用例覆盖充分 ✅
-- 代码结构清晰，易于理解 🎉
+- DTO 和响应格式统一，遵循了 { code, message, data } 模式 🎉
 ```
 
 ## 被审查者指南
@@ -820,5 +886,5 @@ git push origin --delete feature/your-module/your-feature  # 删除远程分支
 
 ---
 
-**最后更新**: 2025-10-27
+**最后更新**: 2026-01-04
 **维护者**: TasteInsight开发团队
