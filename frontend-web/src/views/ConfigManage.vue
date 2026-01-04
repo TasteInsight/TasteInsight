@@ -159,17 +159,20 @@
               <div class="flex items-center gap-4">
                 <button
                   type="button"
+                  :key="'refresh-btn-' + embeddingRefreshing"
                   :disabled="!authStore.hasPermission('dish:edit') || embeddingRefreshing || (!currentCanteenId && !selectedCanteenId)"
                   @click="handleRefreshCanteenEmbeddings"
                   class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span 
                     v-if="embeddingRefreshing"
+                    key="icon-loading"
                     class="iconify mr-1 animate-spin" 
                     data-icon="carbon:circle-dash"
                   ></span>
                   <span 
                     v-else
+                    key="icon-refresh"
                     class="iconify mr-1" 
                     data-icon="carbon:refresh"
                   ></span>
@@ -200,8 +203,9 @@
                     type="button"
                     @click="stopPolling"
                     class="text-xs text-gray-500 hover:text-gray-700"
+                    title="后台任务会继续执行，仅停止状态查询"
                   >
-                    停止轮询
+                    隐藏状态
                   </button>
                 </div>
 
@@ -300,7 +304,8 @@ export default {
     const embeddingRefreshSuccess = ref(false)
     const currentJobId = ref(null)
     const jobStatus = ref(null)
-    let pollingInterval = null
+    const pollingIntervalRef = ref(null)
+    const isPollingActive = ref(false) // 标记轮询是否活跃，用于防止异步请求在停止后继续更新状态
 
     // 食堂列表（用于全局管理员选择）
     const canteenList = ref([])
@@ -607,23 +612,39 @@ export default {
     // 开始轮询任务状态
     const startPolling = (jobId) => {
       // 清除之前的轮询
-      stopPolling()
+      if (pollingIntervalRef.value) {
+        clearInterval(pollingIntervalRef.value)
+        pollingIntervalRef.value = null
+      }
+      
+      // 标记轮询为活跃状态
+      isPollingActive.value = true
       
       // 立即查询一次
       checkJobStatus(jobId)
       
       // 每2秒轮询一次
-      pollingInterval = setInterval(() => {
+      pollingIntervalRef.value = setInterval(() => {
         checkJobStatus(jobId)
       }, 2000)
     }
 
     // 停止轮询
     const stopPolling = () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval)
-        pollingInterval = null
+      // 标记轮询为非活跃状态，阻止正在进行的异步请求更新状态
+      isPollingActive.value = false
+      
+      if (pollingIntervalRef.value) {
+        clearInterval(pollingIntervalRef.value)
+        pollingIntervalRef.value = null
       }
+      // 重置成功提示状态
+      embeddingRefreshSuccess.value = false
+      // 重置刷新中状态
+      embeddingRefreshing.value = false
+      // 清除任务ID和状态，让任务状态区域消失
+      currentJobId.value = null
+      jobStatus.value = null
     }
 
     // 检查任务状态
@@ -631,12 +652,21 @@ export default {
       if (!jobId) {
         console.warn('jobId为空，停止轮询')
         stopPolling()
-        embeddingRefreshing.value = false
+        return
+      }
+
+      // 如果轮询已被停止，不再处理响应
+      if (!isPollingActive.value) {
         return
       }
 
       try {
         const response = await dishApi.getEmbeddingJobStatus(jobId)
+        
+        // 再次检查轮询状态，因为在等待响应期间可能已被停止
+        if (!isPollingActive.value) {
+          return
+        }
         
         console.log('任务状态响应:', response)
         
@@ -676,10 +706,17 @@ export default {
           
           console.log('任务状态更新:', normalizedStatus, '原始状态:', taskStatus)
           
-          // 如果任务完成或失败，停止轮询并重置刷新状态
+          // 如果任务完成或失败，停止轮询并重置UI状态
           if (mappedStatus === 'completed' || mappedStatus === 'failed') {
-            stopPolling()
+            // 先停止轮询，清除定时器
+            isPollingActive.value = false
+            if (pollingIntervalRef.value) {
+              clearInterval(pollingIntervalRef.value)
+              pollingIntervalRef.value = null
+            }
+            // 重置UI状态
             embeddingRefreshing.value = false
+            embeddingRefreshSuccess.value = false
             
             if (mappedStatus === 'completed') {
               showAlert('嵌入向量刷新完成')
@@ -698,7 +735,6 @@ export default {
           // 任务不存在，停止轮询
           console.warn('任务不存在:', jobId)
           stopPolling()
-          embeddingRefreshing.value = false
           jobStatus.value = null
           showAlert('任务不存在或已过期')
         } else {
@@ -707,9 +743,12 @@ export default {
         }
       } catch (error) {
         console.error('获取任务状态失败:', error)
+        // 如果轮询已被手动停止，不再处理错误
+        if (!isPollingActive.value) {
+          return
+        }
         // 如果连续失败，停止轮询
         stopPolling()
-        embeddingRefreshing.value = false
         showAlert('获取任务状态失败，请刷新页面查看')
       }
     }
@@ -787,6 +826,7 @@ export default {
       canteenList,
       loadingCanteens,
       selectedCanteenId,
+      currentCanteenId,
     }
   },
 }
