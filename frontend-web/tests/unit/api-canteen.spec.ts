@@ -30,7 +30,7 @@ describe('api/canteenApi', () => {
     const { canteenApi } = await import('@/api/modules/canteen')
     await canteenApi.getWindows('c1', { page: 2 } as any)
 
-    expect(getMock).toHaveBeenCalledWith('/admin/windows/c1', { params: { page: 2 } })
+    expect(getMock).toHaveBeenCalledWith('/admin/canteens/c1/windows', { params: { page: 2 } })
   })
 
   it('deleteCanteen deletes by id', async () => {

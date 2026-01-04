@@ -2,9 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, nextTick, ref } from 'vue'
 
-import ReviewDish from '../../src/views/ReviewDish.vue'
-
-const { routerPushMock, routeMock } = vi.hoisted(() => ({
+const mocks = vi.hoisted(() => ({
   routerPushMock: vi.fn(),
   routeMock: {
     path: '/review-dish',
@@ -12,41 +10,44 @@ const { routerPushMock, routeMock } = vi.hoisted(() => ({
     query: {},
     meta: {},
   },
+  getPendingUploadsMock: vi.fn(),
+  getCanteensMock: vi.fn(),
+  hasPermissionMock: vi.fn(),
+  showAlertMock: vi.fn(() => Promise.resolve()),
 }))
 
 vi.mock('vue-router', () => ({
   useRouter: () => ({
-    push: routerPushMock,
+    push: mocks.routerPushMock,
   }),
-  useRoute: () => routeMock,
-}))
-
-const { getPendingUploadsMock, getCanteensMock } = vi.hoisted(() => ({
-  getPendingUploadsMock: vi.fn(),
-  getCanteensMock: vi.fn(),
+  useRoute: () => mocks.routeMock,
 }))
 
 vi.mock('@/api/modules/review', () => ({
   reviewApi: {
-    getPendingUploads: getPendingUploadsMock,
+    getPendingUploads: mocks.getPendingUploadsMock,
   },
 }))
 
 vi.mock('@/api/modules/canteen', () => ({
   canteenApi: {
-    getCanteens: getCanteensMock,
+    getCanteens: mocks.getCanteensMock,
   },
-}))
-
-const { hasPermissionMock } = vi.hoisted(() => ({
-  hasPermissionMock: vi.fn(),
 }))
 
 vi.mock('@/store/modules/use-auth-store', () => ({
   useAuthStore: () => ({
-    hasPermission: hasPermissionMock,
+    hasPermission: mocks.hasPermissionMock,
   }),
 }))
+
+vi.mock('@/composables/useModal', () => ({
+  showAlert: mocks.showAlertMock,
+  showConfirm: vi.fn(() => Promise.resolve(true)),
+  showConfirmDanger: vi.fn(() => Promise.resolve(true)),
+}))
+
+import ReviewDish from '../../src/views/ReviewDish.vue'
 
 const flushAll = async () => {
   await new Promise<void>((resolve) => queueMicrotask(() => resolve()))
@@ -71,21 +72,18 @@ const baseMountOptions = {
 
 describe('views/ReviewDish', () => {
   beforeEach(() => {
-    routerPushMock.mockReset()
-    hasPermissionMock.mockReset()
-    getPendingUploadsMock.mockReset()
-    getCanteensMock.mockReset()
+    vi.clearAllMocks()
   })
 
   it('loads canteens and pending uploads on mount; maps items and total', async () => {
-    hasPermissionMock.mockReturnValue(true)
+    mocks.hasPermissionMock.mockReturnValue(true)
 
-    getCanteensMock.mockResolvedValueOnce({
+    mocks.getCanteensMock.mockResolvedValueOnce({
       code: 200,
       data: { items: [{ id: 1, name: '一食堂' }] },
     })
 
-    getPendingUploadsMock.mockResolvedValueOnce({
+    mocks.getPendingUploadsMock.mockResolvedValueOnce({
       code: 200,
       data: {
         items: [
@@ -117,8 +115,8 @@ describe('views/ReviewDish', () => {
     const wrapper = mount(ReviewDish, baseMountOptions)
     await flushAll()
 
-    expect(getCanteensMock).toHaveBeenCalledWith({ page: 1, pageSize: 100 })
-    expect(getPendingUploadsMock).toHaveBeenCalledWith({ page: 1, pageSize: 10 })
+    expect(mocks.getCanteensMock).toHaveBeenCalledWith({ page: 1, pageSize: 100 })
+    expect(mocks.getPendingUploadsMock).toHaveBeenCalledWith({ page: 1, pageSize: 10 })
 
     expect(wrapper.vm.canteens).toEqual([{ id: 1, name: '一食堂' }])
     expect(wrapper.vm.totalDishes).toBe(77)
@@ -151,10 +149,10 @@ describe('views/ReviewDish', () => {
   })
 
   it('loadCanteens handles non-200 and thrown errors by setting empty list', async () => {
-    hasPermissionMock.mockReturnValue(true)
+    mocks.hasPermissionMock.mockReturnValue(true)
 
-    getCanteensMock.mockResolvedValueOnce({ code: 500 })
-    getPendingUploadsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { total: 0 } } })
+    mocks.getCanteensMock.mockResolvedValueOnce({ code: 500 })
+    mocks.getPendingUploadsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { total: 0 } } })
 
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
 
@@ -163,7 +161,7 @@ describe('views/ReviewDish', () => {
 
     expect(wrapper.vm.canteens).toEqual([])
 
-    getCanteensMock.mockRejectedValueOnce(new Error('boom'))
+    mocks.getCanteensMock.mockRejectedValueOnce(new Error('boom'))
 
     await wrapper.vm.loadReviewDishes()
     await wrapper.vm.loadReviewDishes() // no-op extra to ensure stable
@@ -177,44 +175,44 @@ describe('views/ReviewDish', () => {
   })
 
   it('watchers reset page and reload when status/canteen filters change; API gets status only', async () => {
-    hasPermissionMock.mockReturnValue(true)
+    mocks.hasPermissionMock.mockReturnValue(true)
 
-    getCanteensMock.mockResolvedValueOnce({ code: 200, data: { items: [] } })
-    getPendingUploadsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { total: 0 } } })
+    mocks.getCanteensMock.mockResolvedValueOnce({ code: 200, data: { items: [] } })
+    mocks.getPendingUploadsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { total: 0 } } })
 
     const wrapper = mount(ReviewDish, baseMountOptions)
     await flushAll()
 
-    getPendingUploadsMock.mockClear()
+    mocks.getPendingUploadsMock.mockClear()
 
-    getPendingUploadsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { total: 0 } } })
+    mocks.getPendingUploadsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { total: 0 } } })
 
     wrapper.vm.currentPage = 5
     wrapper.vm.statusFilter = 'approved'
     await flushAll()
 
     expect(wrapper.vm.currentPage).toBe(1)
-    expect(getPendingUploadsMock).toHaveBeenCalledWith({ page: 1, pageSize: 10, status: 'approved' })
+    expect(mocks.getPendingUploadsMock).toHaveBeenCalledWith({ page: 1, pageSize: 10, status: 'approved' })
 
-    getPendingUploadsMock.mockClear()
+    mocks.getPendingUploadsMock.mockClear()
 
-    getPendingUploadsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { total: 0 } } })
+    mocks.getPendingUploadsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { total: 0 } } })
 
     wrapper.vm.currentPage = 3
     wrapper.vm.canteenFilter = '一食堂'
     await flushAll()
 
     expect(wrapper.vm.currentPage).toBe(1)
-    expect(getPendingUploadsMock).toHaveBeenCalledWith({ page: 1, pageSize: 10, status: 'approved' })
+    expect(mocks.getPendingUploadsMock).toHaveBeenCalledWith({ page: 1, pageSize: 10, status: 'approved' })
 
     wrapper.unmount()
   })
 
   it('computed filtering covers search/status/canteen client-side filters', async () => {
-    hasPermissionMock.mockReturnValue(true)
+    mocks.hasPermissionMock.mockReturnValue(true)
 
-    getCanteensMock.mockResolvedValueOnce({ code: 200, data: { items: [] } })
-    getPendingUploadsMock.mockResolvedValueOnce({
+    mocks.getCanteensMock.mockResolvedValueOnce({ code: 200, data: { items: [] } })
+    mocks.getPendingUploadsMock.mockResolvedValueOnce({
       code: 200,
       data: {
         items: [
@@ -238,7 +236,7 @@ describe('views/ReviewDish', () => {
     wrapper.vm.searchQuery = ''
 
     // statusFilter triggers watcher which reloads from API; keep returning the same dataset
-    getPendingUploadsMock.mockResolvedValueOnce({
+    mocks.getPendingUploadsMock.mockResolvedValueOnce({
       code: 200,
       data: {
         items: [
@@ -254,7 +252,7 @@ describe('views/ReviewDish', () => {
     expect(wrapper.vm.filteredReviewDishes[0].id).toBe('2')
 
     // canteenFilter also triggers watcher reload
-    getPendingUploadsMock.mockResolvedValueOnce({
+    mocks.getPendingUploadsMock.mockResolvedValueOnce({
       code: 200,
       data: {
         items: [
@@ -273,59 +271,56 @@ describe('views/ReviewDish', () => {
   })
 
   it('viewDishDetail and reviewDish push route; permission denied alerts and blocks', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined)
-
-    hasPermissionMock.mockReturnValue(true)
-    getCanteensMock.mockResolvedValueOnce({ code: 200, data: { items: [] } })
-    getPendingUploadsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { total: 0 } } })
+    mocks.hasPermissionMock.mockReturnValue(true)
+    mocks.getCanteensMock.mockResolvedValueOnce({ code: 200, data: { items: [] } })
+    mocks.getPendingUploadsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { total: 0 } } })
 
     const wrapper = mount(ReviewDish, baseMountOptions)
     await flushAll()
 
     wrapper.vm.viewDishDetail({ id: '9' })
-    expect(routerPushMock).toHaveBeenCalledWith('/review-dish/9')
+    expect(mocks.routerPushMock).toHaveBeenCalledWith('/review-dish/9')
 
-    routerPushMock.mockClear()
+    mocks.routerPushMock.mockClear()
     wrapper.vm.reviewDish({ id: '8', status: 'pending' })
-    expect(routerPushMock).toHaveBeenCalledWith('/review-dish/8')
+    expect(mocks.routerPushMock).toHaveBeenCalledWith('/review-dish/8')
 
-    routerPushMock.mockClear()
-    hasPermissionMock.mockReturnValue(false)
+    mocks.routerPushMock.mockClear()
+    mocks.hasPermissionMock.mockReturnValue(false)
 
     wrapper.vm.reviewDish({ id: '7', status: 'pending' })
-    expect(alertSpy).toHaveBeenCalledWith('您没有权限审核菜品')
-    expect(routerPushMock).not.toHaveBeenCalled()
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限审核菜品')
+    expect(mocks.routerPushMock).not.toHaveBeenCalled()
 
     wrapper.unmount()
-    alertSpy.mockRestore()
   })
 
   it('handlePageChange updates page and reloads', async () => {
-    hasPermissionMock.mockReturnValue(true)
+    mocks.hasPermissionMock.mockReturnValue(true)
 
-    getCanteensMock.mockResolvedValueOnce({ code: 200, data: { items: [] } })
-    getPendingUploadsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { total: 0 } } })
+    mocks.getCanteensMock.mockResolvedValueOnce({ code: 200, data: { items: [] } })
+    mocks.getPendingUploadsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { total: 0 } } })
 
     const wrapper = mount(ReviewDish, baseMountOptions)
     await flushAll()
 
-    getPendingUploadsMock.mockClear()
-    getPendingUploadsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { total: 0 } } })
+    mocks.getPendingUploadsMock.mockClear()
+    mocks.getPendingUploadsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { total: 0 } } })
 
     wrapper.vm.handlePageChange(3)
     await flushAll()
 
     expect(wrapper.vm.currentPage).toBe(3)
-    expect(getPendingUploadsMock).toHaveBeenCalledWith({ page: 3, pageSize: 10 })
+    expect(mocks.getPendingUploadsMock).toHaveBeenCalledWith({ page: 3, pageSize: 10 })
 
     wrapper.unmount()
   })
 
   it('onActivated reloads data when kept-alive', async () => {
-    hasPermissionMock.mockReturnValue(true)
+    mocks.hasPermissionMock.mockReturnValue(true)
 
-    getCanteensMock.mockResolvedValue({ code: 200, data: { items: [] } })
-    getPendingUploadsMock.mockResolvedValue({ code: 200, data: { items: [], meta: { total: 0 } } })
+    mocks.getCanteensMock.mockResolvedValue({ code: 200, data: { items: [] } })
+    mocks.getPendingUploadsMock.mockResolvedValue({ code: 200, data: { items: [], meta: { total: 0 } } })
 
     const Parent = defineComponent({
       name: 'ParentKeepAliveReviewDish',
@@ -340,7 +335,7 @@ describe('views/ReviewDish', () => {
     const wrapper = mount(Parent, baseMountOptions)
     await flushAll()
 
-    const callsAfterMount = getPendingUploadsMock.mock.calls.length
+    const callsAfterMount = mocks.getPendingUploadsMock.mock.calls.length
     expect(callsAfterMount).toBeGreaterThanOrEqual(1)
 
     ;(wrapper.vm as any).show = false
@@ -348,7 +343,7 @@ describe('views/ReviewDish', () => {
     ;(wrapper.vm as any).show = true
     await flushAll()
 
-    expect(getPendingUploadsMock.mock.calls.length).toBeGreaterThan(callsAfterMount)
+    expect(mocks.getPendingUploadsMock.mock.calls.length).toBeGreaterThan(callsAfterMount)
 
     wrapper.unmount()
   })

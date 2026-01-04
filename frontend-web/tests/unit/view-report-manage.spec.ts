@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
     getReports: vi.fn(),
     handleReport: vi.fn(),
   },
+  showAlertMock: vi.fn(() => Promise.resolve()),
+  showConfirmMock: vi.fn(() => Promise.resolve(true)),
 }))
 
 vi.mock('@/store/modules/use-auth-store', () => ({
@@ -18,6 +20,12 @@ vi.mock('@/store/modules/use-auth-store', () => ({
 
 vi.mock('@/api/modules/review', () => ({
   reviewApi: mocks.reviewApiMock,
+}))
+
+vi.mock('@/composables/useModal', () => ({
+  showAlert: mocks.showAlertMock,
+  showConfirm: mocks.showConfirmMock,
+  showConfirmDanger: vi.fn(() => Promise.resolve(true)),
 }))
 
 import ReportManage from '../../src/views/ReportManage.vue'
@@ -60,14 +68,10 @@ describe('views/ReportManage', () => {
     })
 
     mocks.reviewApiMock.handleReport.mockResolvedValue({ code: 200 })
-
-    vi.spyOn(window, 'alert').mockImplementation(() => undefined)
-    vi.spyOn(window, 'confirm').mockImplementation(() => true)
   })
 
   afterEach(() => {
-    ;(window.alert as any).mockRestore?.()
-    ;(window.confirm as any).mockRestore?.()
+    vi.useRealTimers()
   })
 
   it('loads reports on mount and supports status/targetType filtering', async () => {
@@ -120,7 +124,7 @@ describe('views/ReportManage', () => {
     await flushMicrotasks()
     await nextTick()
 
-    expect(window.alert).toHaveBeenCalledWith('加载举报列表失败，请刷新重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('加载举报列表失败，请刷新重试')
     expect(wrapper.vm.reports).toEqual([])
     expect(wrapper.vm.totalReports).toBe(0)
 
@@ -158,11 +162,11 @@ describe('views/ReportManage', () => {
     // permission denied
     mocks.authStoreMock.hasPermission.mockReturnValueOnce(false)
     await wrapper.vm.handleDeleteReview(report)
-    expect(window.alert).toHaveBeenCalledWith('您没有权限删除评价')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限删除评价')
 
     // confirm cancel
     mocks.authStoreMock.hasPermission.mockReturnValue(true)
-    ;(window.confirm as any).mockReturnValueOnce(false)
+    mocks.showConfirmMock.mockResolvedValueOnce(false)
     await wrapper.vm.handleDeleteReview(report)
     expect(mocks.reviewApiMock.handleReport).toHaveBeenCalledTimes(0)
 
@@ -181,24 +185,24 @@ describe('views/ReportManage', () => {
       },
     })
 
-    ;(window.confirm as any).mockReturnValueOnce(true)
+    mocks.showConfirmMock.mockResolvedValueOnce(true)
     mocks.reviewApiMock.handleReport.mockResolvedValueOnce({ code: 200 })
     await wrapper.vm.handleDeleteReview(report)
 
     expect(mocks.reviewApiMock.handleReport).toHaveBeenLastCalledWith('r1', { action: 'delete_content' })
-    expect(window.alert).toHaveBeenCalledWith('删除成功')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('删除成功')
     expect(wrapper.vm.selectedReport?.id).toBe('r1')
     expect(wrapper.vm.selectedReport?.targetContent?.isDeleted).toBe(true)
 
     // non-200
     mocks.reviewApiMock.handleReport.mockResolvedValueOnce({ code: 400, message: 'nope' })
     await wrapper.vm.handleDeleteReview(report)
-    expect(window.alert).toHaveBeenCalledWith('nope')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('nope')
 
     // catch
     mocks.reviewApiMock.handleReport.mockRejectedValueOnce(new Error('boom'))
     await wrapper.vm.handleDeleteReview(report)
-    expect(window.alert).toHaveBeenCalledWith('删除评价失败，请重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('删除评价失败，请重试')
 
     wrapper.unmount()
   })
@@ -215,16 +219,16 @@ describe('views/ReportManage', () => {
 
     mocks.authStoreMock.hasPermission.mockReturnValueOnce(false)
     await wrapper.vm.handleDeleteComment(report)
-    expect(window.alert).toHaveBeenCalledWith('您没有权限删除评论')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限删除评论')
 
     mocks.authStoreMock.hasPermission.mockReturnValue(true)
-    ;(window.confirm as any).mockReturnValueOnce(false)
+    mocks.showConfirmMock.mockResolvedValueOnce(false)
     await wrapper.vm.handleDeleteComment(report)
     expect(mocks.reviewApiMock.handleReport).toHaveBeenCalledTimes(0)
 
     mocks.reviewApiMock.handleReport.mockRejectedValueOnce(new Error('boom'))
     await wrapper.vm.handleDeleteComment(report)
-    expect(window.alert).toHaveBeenCalledWith('删除评论失败，请重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('删除评论失败，请重试')
 
     wrapper.unmount()
   })
@@ -241,10 +245,10 @@ describe('views/ReportManage', () => {
 
     mocks.authStoreMock.hasPermission.mockReturnValueOnce(false)
     await wrapper.vm.handleReport(report, 'reject_report')
-    expect(window.alert).toHaveBeenCalledWith('您没有权限处理举报')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限处理举报')
 
     mocks.authStoreMock.hasPermission.mockReturnValue(true)
-    ;(window.confirm as any).mockReturnValueOnce(false)
+    mocks.showConfirmMock.mockResolvedValueOnce(false)
     await wrapper.vm.handleReport(report, 'reject_report')
     expect(mocks.reviewApiMock.handleReport).toHaveBeenCalledTimes(0)
 
@@ -257,7 +261,7 @@ describe('views/ReportManage', () => {
       },
     })
     mocks.reviewApiMock.handleReport.mockResolvedValueOnce({ code: 200 })
-    ;(window.confirm as any).mockReturnValueOnce(true)
+    mocks.showConfirmMock.mockResolvedValueOnce(true)
 
     await wrapper.vm.handleReport(report, 'reject_report')
 
@@ -265,18 +269,18 @@ describe('views/ReportManage', () => {
       action: 'reject_report',
       result: '举报被拒绝',
     })
-    expect(window.alert).toHaveBeenCalledWith('处理成功')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('处理成功')
     expect(wrapper.vm.selectedReport?.status).toBe('rejected')
 
     // non-200
     mocks.reviewApiMock.handleReport.mockResolvedValueOnce({ code: 400, message: 'bad' })
     await wrapper.vm.handleReport(report, 'reject_report')
-    expect(window.alert).toHaveBeenCalledWith('bad')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('bad')
 
     // catch
     mocks.reviewApiMock.handleReport.mockRejectedValueOnce(new Error('boom'))
     await wrapper.vm.handleReport(report, 'reject_report')
-    expect(window.alert).toHaveBeenCalledWith('处理举报失败，请重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('处理举报失败，请重试')
 
     wrapper.unmount()
   })

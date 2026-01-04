@@ -8,11 +8,12 @@ const flushPromises = () => new Promise<void>((resolve) => queueMicrotask(() => 
 
 const routerMock = {
   push: vi.fn(),
+  replace: vi.fn(),
   currentRoute: ref({ query: {} as Record<string, unknown> }),
 }
 
 const authStoreMock = {
-  login: vi.fn(async () => undefined),
+  login: vi.fn(async () => ({ data: { permissions: [] } })),
   hasPermission: vi.fn((p: string) => true),
 }
 
@@ -27,8 +28,9 @@ vi.mock('@/store/modules/use-auth-store', () => ({
 describe('views/Login', () => {
   beforeEach(() => {
     routerMock.push.mockReset()
+    routerMock.replace.mockReset()
     routerMock.currentRoute.value = { query: {} }
-    authStoreMock.login = vi.fn(async () => undefined)
+    authStoreMock.login = vi.fn(async () => ({ data: { permissions: [] } }))
     authStoreMock.hasPermission = vi.fn(() => true)
     sessionStorage.clear()
   })
@@ -66,7 +68,7 @@ describe('views/Login', () => {
 
   it('login success uses query redirect first', async () => {
     routerMock.currentRoute.value = { query: { redirect: '/target' } }
-    authStoreMock.hasPermission = vi.fn(() => false)
+    authStoreMock.login = vi.fn(async () => ({ data: { permissions: [] } }))
 
     const wrapper = mount(Login)
     wrapper.vm.loginForm.username = 'u'
@@ -76,11 +78,12 @@ describe('views/Login', () => {
     await flushPromises()
 
     expect(authStoreMock.login).toHaveBeenCalled()
-    expect(routerMock.push).toHaveBeenCalledWith('/target')
+    expect(routerMock.replace).toHaveBeenCalledWith('/target')
   })
 
   it('login success uses sessionStorage redirect when query missing', async () => {
     sessionStorage.setItem('login_redirect', '/from-storage')
+    authStoreMock.login = vi.fn(async () => ({ data: { permissions: [] } }))
 
     const wrapper = mount(Login)
     wrapper.vm.loginForm.username = 'u'
@@ -89,13 +92,13 @@ describe('views/Login', () => {
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
-    expect(routerMock.push).toHaveBeenCalledWith('/from-storage')
+    expect(routerMock.replace).toHaveBeenCalledWith('/from-storage')
     expect(sessionStorage.getItem('login_redirect')).toBe(null)
   })
 
   it('login success picks first allowed route by permission priority', async () => {
-    // allow only news:view so it should jump to /news-manage
-    authStoreMock.hasPermission = vi.fn((p: string) => p === 'news:view')
+    // Return permissions from login - include news:view to jump to /news-manage
+    authStoreMock.login = vi.fn(async () => ({ data: { permissions: ['news:view'] } }))
 
     const wrapper = mount(Login)
     wrapper.vm.loginForm.username = 'u'
@@ -104,10 +107,10 @@ describe('views/Login', () => {
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
-    expect(routerMock.push).toHaveBeenCalledWith('/news-manage')
+    expect(routerMock.replace).toHaveBeenCalledWith('/news-manage')
   })
 
-  it('login failure shows error modal and clearLoginError clears state', async () => {
+  it('login failure shows error in errors and clearLoginError clears state', async () => {
     authStoreMock.login = vi.fn(async () => {
       throw new Error('bad')
     })
@@ -119,12 +122,9 @@ describe('views/Login', () => {
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
-    expect(wrapper.vm.showErrorModal).toBe(true)
+    // Login.vue no longer has showErrorModal - it directly sets errors
     expect(wrapper.vm.loginError).toContain('用户名或密码错误')
     expect(wrapper.vm.errors.username).toContain('用户名或密码错误')
-
-    wrapper.vm.closeErrorModal()
-    expect(wrapper.vm.showErrorModal).toBe(false)
 
     // clear on input
     wrapper.vm.loginError = 'x'
