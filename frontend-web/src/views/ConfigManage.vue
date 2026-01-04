@@ -190,7 +190,7 @@
                 <div class="flex items-center justify-between mb-2">
                   <div class="flex items-center gap-2">
                     <span class="text-sm font-medium text-gray-700">任务状态</span>
-                    <span 
+                    <span
                       v-if="jobStatus"
                       class="px-2 py-1 rounded text-xs font-medium"
                       :class="getJobStatusClass(jobStatus.status)"
@@ -198,15 +198,20 @@
                       {{ getJobStatusText(jobStatus.status) }}
                     </span>
                   </div>
-                  <button
-                    v-if="jobStatus && (jobStatus.status === 'pending' || jobStatus.status === 'processing' || jobStatus.status === 'waiting' || jobStatus.status === 'active')"
-                    type="button"
-                    @click="stopPolling"
-                    class="text-xs text-gray-500 hover:text-gray-700"
-                    title="后台任务会继续执行，仅停止状态查询"
+                  <div
+                    v-if="jobStatus && (jobStatus.status === 'pending' || jobStatus.status === 'waiting' || jobStatus.status === 'processing' || jobStatus.status === 'active')"
+                    class="flex items-center gap-2"
                   >
-                    隐藏状态
-                  </button>
+                    <button
+                      type="button"
+                      @click="handleCancelJob"
+                      :disabled="cancelling"
+                      class="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
+                      :title="(jobStatus.status === 'processing' || jobStatus.status === 'active') ? '任务将在下一个检查点停止' : ''"
+                    >
+                      {{ cancelling ? '取消中...' : '取消任务' }}
+                    </button>
+                  </div>
                 </div>
 
                 <!-- 进度条 -->
@@ -306,6 +311,7 @@ export default {
     const jobStatus = ref(null)
     const pollingIntervalRef = ref(null)
     const isPollingActive = ref(false) // 标记轮询是否活跃，用于防止异步请求在停止后继续更新状态
+    const cancelling = ref(false) // 正在取消任务
 
     // 食堂列表（用于全局管理员选择）
     const canteenList = ref([])
@@ -314,7 +320,7 @@ export default {
 
     // 当前管理员的食堂ID
     const currentCanteenId = computed(() => authStore.user?.canteenId || null)
-    
+
     // 当前管理员的食堂名称
     const currentCanteenName = computed(() => authStore.user?.canteenName || null)
 
@@ -622,18 +628,18 @@ export default {
       
       // 立即查询一次
       checkJobStatus(jobId)
-      
+
       // 每2秒轮询一次
       pollingIntervalRef.value = setInterval(() => {
         checkJobStatus(jobId)
       }, 2000)
     }
 
-    // 停止轮询
+    // 停止轮询（内部使用）
     const stopPolling = () => {
       // 标记轮询为非活跃状态，阻止正在进行的异步请求更新状态
       isPollingActive.value = false
-      
+
       if (pollingIntervalRef.value) {
         clearInterval(pollingIntervalRef.value)
         pollingIntervalRef.value = null
@@ -645,6 +651,68 @@ export default {
       // 清除任务ID和状态，让任务状态区域消失
       currentJobId.value = null
       jobStatus.value = null
+    }
+
+    // 直接获取并更新任务状态（不受轮询标志影响）
+    const fetchAndUpdateJobStatus = async (jobId) => {
+      if (!jobId) return
+      try {
+        const response = await dishApi.getEmbeddingJobStatus(jobId)
+        if (response && response.code === 200 && response.data) {
+          const statusData = response.data
+          const taskStatus = statusData.state || statusData.status
+          let mappedStatus = taskStatus
+          if (taskStatus === 'waiting') {
+            mappedStatus = 'pending'
+          } else if (taskStatus === 'active') {
+            mappedStatus = 'processing'
+          }
+          jobStatus.value = {
+            ...statusData,
+            status: mappedStatus,
+            state: taskStatus,
+          }
+        }
+      } catch (error) {
+        console.error('获取任务状态失败:', error)
+      }
+    }
+
+    // 取消任务
+    const handleCancelJob = async () => {
+      if (!currentJobId.value) return
+
+      cancelling.value = true
+      try {
+        const response = await dishApi.cancelEmbeddingJob(currentJobId.value)
+        if (response.code === 200 && response.data?.success) {
+          showAlert('任务已取消')
+          stopPolling()
+        } else {
+          // 检查是否是因为任务已完成或已失败
+          const message = response.message || ''
+          if (message.includes('已完成') || message.includes('已失败')) {
+            showAlert(message.includes('已完成') ? '任务已完成，无需取消' : '任务已失败')
+            // 停止轮询定时器，但保留进度显示
+            if (pollingIntervalRef.value) {
+              clearInterval(pollingIntervalRef.value)
+              pollingIntervalRef.value = null
+            }
+            isPollingActive.value = false
+            embeddingRefreshing.value = false
+            embeddingRefreshSuccess.value = false
+            // 获取并显示最新完成状态
+            await fetchAndUpdateJobStatus(currentJobId.value)
+          } else {
+            showAlert(message || '取消任务失败')
+          }
+        }
+      } catch (error) {
+        console.error('取消任务失败:', error)
+        showAlert('取消任务失败，请重试')
+      } finally {
+        cancelling.value = false
+      }
     }
 
     // 检查任务状态
@@ -821,7 +889,8 @@ export default {
       handleRefreshCanteenEmbeddings,
       getJobStatusText,
       getJobStatusClass,
-      stopPolling,
+      handleCancelJob,
+      cancelling,
       // 食堂选择相关
       canteenList,
       loadingCanteens,
@@ -837,4 +906,3 @@ export default {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 </style>
-

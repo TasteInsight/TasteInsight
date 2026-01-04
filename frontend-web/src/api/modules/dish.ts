@@ -225,6 +225,15 @@ export const dishApi = {
       }
     })
   },
+
+  /**
+   * 取消嵌入任务
+   * @param jobId 任务ID
+   * @returns 取消结果
+   */
+  async cancelEmbeddingJob(jobId: string): Promise<ApiResponse<{ success: boolean }>> {
+    return request.delete(`/admin/dishes/embedding/job/${jobId}`)
+  },
 }
 
 
