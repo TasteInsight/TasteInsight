@@ -272,7 +272,6 @@ export default {
 
         // 登录成功后立即标记正在导航，阻止后续任何状态更新
         isNavigating = true
-        isUnmounted = true  // 模拟组件已卸载，阻止任何后续更新
 
         sessionStorage.removeItem('login_redirect')
         
@@ -304,8 +303,8 @@ export default {
           }
         }
         
-        // 直接同步跳转，不等待 Vue 更新
-        window.location.href = targetRoute
+        // 使用 Vue Router 进行导航，保持 SPA 行为
+        router.replace(targetRoute)
       } catch (error) {
         // 如果组件已卸载或正在导航，不再更新状态
         if (isUnmounted || isNavigating) return
