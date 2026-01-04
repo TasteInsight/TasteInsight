@@ -10,7 +10,7 @@
 - **pnpm**: >= 8.x (推荐使用 pnpm)
 - **Git**: >= 2.x
 - **Docker**: >= 20.x (用于运行数据库)
-- **PostgreSQL**: >= 17.x
+- **PostgreSQL**: >= 15.x
 - **Redis**: >= 7.x
 
 ## 安装步骤

@@ -78,7 +78,7 @@ TasteInsight/
 
 ### 环境要求
 
-- Node.js 18+
+- Node.js 22+
 - pnpm 8+
 - PostgreSQL 15+
 - Redis 7+
