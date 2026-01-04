@@ -1,14 +1,16 @@
 import { describe, expect, it, vi } from 'vitest'
-import { mount} from '@vue/test-utils'
+import { mount } from '@vue/test-utils'
 import { defineComponent, nextTick } from 'vue'
 
 import Header from '../../src/components/Layout/Header.vue'
 import MainLayout from '../../src/components/Layout/MainLayout.vue'
 
-const routerMock = {
-  push: vi.fn(),
-  replace: vi.fn(),
-}
+const mocks = vi.hoisted(() => ({
+  routerPush: vi.fn(),
+  routerReplace: vi.fn(),
+  showConfirmMock: vi.fn(() => Promise.resolve(true)),
+  showAlertMock: vi.fn(() => Promise.resolve()),
+}))
 
 const routeMock = {
   path: '/single-add',
@@ -26,12 +28,18 @@ const authStoreMock = {
 }
 
 vi.mock('vue-router', () => ({
-  useRouter: () => routerMock,
+  useRouter: () => ({ push: mocks.routerPush, replace: mocks.routerReplace }),
   useRoute: () => routeMock,
 }))
 
 vi.mock('@/store/modules/use-auth-store', () => ({
   useAuthStore: () => authStoreMock,
+}))
+
+vi.mock('@/composables/useModal', () => ({
+  showAlert: mocks.showAlertMock,
+  showConfirm: mocks.showConfirmMock,
+  showConfirmDanger: vi.fn(() => Promise.resolve(true)),
 }))
 
 describe('components/Layout', () => {
@@ -119,11 +127,12 @@ describe('components/Layout', () => {
 
     routeMock.path = '/single-add'
     authStoreMock.user = { username: 'admin' }
+    authStoreMock.logout.mockClear()
+    mocks.routerPush.mockClear()
 
     const Comp = (await import('../../src/components/Layout/Sidebar.vue')).default
 
-    const confirmSpy = vi.spyOn(window, 'confirm')
-    confirmSpy.mockReturnValueOnce(true)
+    mocks.showConfirmMock.mockResolvedValueOnce(true)
 
     const wrapper = mount(Comp, {
       global: {
@@ -165,8 +174,13 @@ describe('components/Layout', () => {
     const logoutBtn = wrapper.find('button .iconify[data-icon="carbon:logout"]').element
       .parentElement as HTMLButtonElement
     await logoutBtn.click()
+    await nextTick()
+    // Wait for async showConfirm to resolve
+    await Promise.resolve()
+    await nextTick()
     expect(authStoreMock.logout).toHaveBeenCalledTimes(1)
-    expect(routerMock.push).toHaveBeenCalledWith('/login')
+    // Component uses router.replace, not router.push
+    expect(mocks.routerReplace).toHaveBeenCalledWith('/login')
 
     expect(addSpy).toHaveBeenCalled()
 
@@ -213,8 +227,8 @@ describe('components/Layout', () => {
     routeMock.path = '/'
     authStoreMock.user = { username: 'admin' }
     authStoreMock.hasPermission = vi.fn((id: string) => id === 'dish:view')
-    authStoreMock.logout = vi.fn()
-    routerMock.push = vi.fn()
+    authStoreMock.logout.mockClear()
+    mocks.routerPush.mockClear()
 
     const Comp = (await import('../../src/components/Layout/Sidebar.vue')).default
 
@@ -254,11 +268,10 @@ describe('components/Layout', () => {
     expect(wrapper.vm.showPermissionsDropdown).toBe(false)
 
     // logout cancel branch
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValueOnce(false)
-    wrapper.vm.handleLogout()
+    mocks.showConfirmMock.mockResolvedValueOnce(false)
+    await wrapper.vm.handleLogout()
     expect(authStoreMock.logout).not.toHaveBeenCalled()
-    expect(routerMock.push).not.toHaveBeenCalled()
-    confirmSpy.mockRestore()
+    expect(mocks.routerPush).not.toHaveBeenCalled()
 
     wrapper.unmount()
   })

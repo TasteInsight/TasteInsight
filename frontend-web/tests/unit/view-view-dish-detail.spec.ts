@@ -2,8 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, nextTick } from 'vue'
 
-import ViewDishDetail from '../../src/views/ViewDishDetail.vue'
-
 const mocks = vi.hoisted(() => ({
   routerPush: vi.fn(),
   route: {
@@ -16,6 +14,7 @@ const mocks = vi.hoisted(() => ({
     getDishById: vi.fn(),
     getDishReviews: vi.fn(),
   },
+  showAlertMock: vi.fn(() => Promise.resolve()),
 }))
 
 vi.mock('vue-router', () => ({
@@ -26,6 +25,14 @@ vi.mock('vue-router', () => ({
 vi.mock('@/api/modules/dish', () => ({
   dishApi: mocks.dishApi,
 }))
+
+vi.mock('@/composables/useModal', () => ({
+  showAlert: mocks.showAlertMock,
+  showConfirm: vi.fn(() => Promise.resolve(true)),
+  showConfirmDanger: vi.fn(() => Promise.resolve(true)),
+}))
+
+import ViewDishDetail from '../../src/views/ViewDishDetail.vue'
 
 const flushAll = async () => {
   await new Promise((resolve) => queueMicrotask(resolve))
@@ -48,7 +55,6 @@ describe('views/ViewDishDetail', () => {
     vi.clearAllMocks()
     mocks.route.params = { id: '1' }
 
-    vi.spyOn(window, 'alert').mockImplementation(() => undefined)
     vi.spyOn(window, 'open').mockImplementation(() => null as any)
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
   })
@@ -139,7 +145,7 @@ describe('views/ViewDishDetail', () => {
     const wrapper = mount(ViewDishDetail, baseMountOptions)
     await flushAll()
 
-    expect(window.alert).toHaveBeenCalledWith('获取菜品信息失败，请重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('获取菜品信息失败，请重试')
     expect(mocks.routerPush).toHaveBeenCalledWith('/modify-dish')
 
     wrapper.unmount()

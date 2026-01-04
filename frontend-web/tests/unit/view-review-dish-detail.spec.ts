@@ -2,10 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, nextTick } from 'vue'
 
-import ReviewDishDetail from '../../src/views/ReviewDishDetail.vue'
-
 const mocks = vi.hoisted(() => ({
   routerPush: vi.fn(),
+  routerReplace: vi.fn(),
   route: {
     path: '/review-dish/1',
     params: { id: '1' },
@@ -18,10 +17,11 @@ const mocks = vi.hoisted(() => ({
     rejectUpload: vi.fn(),
     revokeUpload: vi.fn(),
   },
+  showAlertMock: vi.fn(() => Promise.resolve()),
 }))
 
 vi.mock('vue-router', () => ({
-  useRouter: () => ({ push: mocks.routerPush }),
+  useRouter: () => ({ push: mocks.routerPush, replace: mocks.routerReplace }),
   useRoute: () => mocks.route,
 }))
 
@@ -33,6 +33,14 @@ vi.mock('@/api/modules/review', () => ({
 vi.mock('@/api/modules/dish', () => ({
   dishApi: {},
 }))
+
+vi.mock('@/composables/useModal', () => ({
+  showAlert: mocks.showAlertMock,
+  showConfirm: vi.fn(() => Promise.resolve(true)),
+  showConfirmDanger: vi.fn(() => Promise.resolve(true)),
+}))
+
+import ReviewDishDetail from '../../src/views/ReviewDishDetail.vue'
 
 const flushAll = async () => {
   await new Promise<void>((resolve) => queueMicrotask(() => resolve()))
@@ -55,7 +63,6 @@ describe('views/ReviewDishDetail', () => {
     vi.clearAllMocks()
     mocks.route.params = { id: '1' }
 
-    vi.spyOn(window, 'alert').mockImplementation(() => undefined)
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     vi.spyOn(window, 'open').mockImplementation(() => null as any)
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
@@ -128,7 +135,7 @@ describe('views/ReviewDishDetail', () => {
     const wrapper = mount(ReviewDishDetail, baseMountOptions)
     await flushAll()
 
-    expect(window.alert).toHaveBeenCalledWith('未找到该菜品信息')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('未找到该菜品信息')
     expect(mocks.routerPush).toHaveBeenCalledWith('/review-dish')
 
     wrapper.unmount()
@@ -146,7 +153,7 @@ describe('views/ReviewDishDetail', () => {
     const wrapper = mount(ReviewDishDetail, baseMountOptions)
     await flushAll()
 
-    expect(window.alert).toHaveBeenCalledWith('获取菜品信息失败，请重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('获取菜品信息失败，请重试')
     expect(mocks.routerPush).toHaveBeenCalledTimes(2)
     expect(mocks.routerPush).toHaveBeenLastCalledWith('/review-dish')
 
@@ -183,18 +190,15 @@ describe('views/ReviewDishDetail', () => {
     await flushAll()
 
     expect(wrapper.vm.dishData.status).toBe('approved')
-    expect(mocks.routerPush).toHaveBeenCalledWith({
-      path: '/review-dish',
-      query: { refresh: 'true', updatedId: 'u1', status: 'approved' },
-    })
+    expect(mocks.routerReplace).toHaveBeenCalledWith({ name: 'ReviewDish' })
 
     mocks.reviewApi.approveUpload.mockResolvedValueOnce({ code: 500, message: 'bad' })
     await wrapper.vm.approveDish()
-    expect(window.alert).toHaveBeenCalledWith('bad')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('bad')
 
     mocks.reviewApi.approveUpload.mockRejectedValueOnce(new Error('boom'))
     await wrapper.vm.approveDish()
-    expect(window.alert).toHaveBeenCalledWith('boom')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('boom')
 
     wrapper.unmount()
   })
@@ -225,20 +229,17 @@ describe('views/ReviewDishDetail', () => {
 
     expect(wrapper.vm.dishData.status).toBe('rejected')
     expect(wrapper.vm.isRejectModalOpen).toBe(false)
-    expect(mocks.routerPush).toHaveBeenCalledWith({
-      path: '/review-dish',
-      query: { refresh: 'true', updatedId: 'u1', status: 'rejected' },
-    })
+    expect(mocks.routerReplace).toHaveBeenCalledWith({ name: 'ReviewDish' })
 
     wrapper.vm.openRejectModal()
     mocks.reviewApi.rejectUpload.mockResolvedValueOnce({ code: 500, message: 'bad' })
     await wrapper.vm.confirmReject()
-    expect(window.alert).toHaveBeenCalledWith('bad')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('bad')
 
     wrapper.vm.openRejectModal()
     mocks.reviewApi.rejectUpload.mockRejectedValueOnce(new Error('boom'))
     await wrapper.vm.confirmReject()
-    expect(window.alert).toHaveBeenCalledWith('boom')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('boom')
 
     // submitting guard
     wrapper.vm.isSubmitting = true
@@ -258,7 +259,7 @@ describe('views/ReviewDishDetail', () => {
     await flushAll()
 
     await wrapper.vm.revokeApproval()
-    expect(window.alert).toHaveBeenCalledWith('该菜品当前为待审核状态，无需撤销。')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('该菜品当前为待审核状态，无需撤销。')
 
     wrapper.vm.dishData.status = 'approved'
 
@@ -271,25 +272,21 @@ describe('views/ReviewDishDetail', () => {
     await flushAll()
 
     expect(wrapper.vm.dishData.status).toBe('pending')
-    expect(mocks.routerPush).toHaveBeenCalledWith({
-      path: '/review-dish',
-      query: { refresh: 'true', updatedId: 'u1', status: 'pending' },
-    })
-    expect(window.alert).toHaveBeenCalledWith('菜品审核结果已撤销，重新进入待审核状态。')
+    expect(mocks.routerReplace).toHaveBeenCalledWith({ name: 'ReviewDish' })
 
     // after success the status is pending; set back to approved to reach failure branches
-    ;(window.alert as any).mockClear?.()
+    mocks.showAlertMock.mockClear?.()
     wrapper.vm.dishData.status = 'approved'
 
     mocks.reviewApi.revokeUpload.mockResolvedValueOnce({ code: 500, message: 'bad' })
     await wrapper.vm.revokeApproval()
-    expect(window.alert).toHaveBeenCalledWith('bad')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('bad')
 
-    ;(window.alert as any).mockClear?.()
+    mocks.showAlertMock.mockClear?.()
     wrapper.vm.dishData.status = 'approved'
     mocks.reviewApi.revokeUpload.mockRejectedValueOnce(new Error('boom'))
     await wrapper.vm.revokeApproval()
-    expect(window.alert).toHaveBeenCalledWith('boom')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('boom')
 
     wrapper.unmount()
   })

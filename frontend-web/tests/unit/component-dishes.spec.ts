@@ -2,6 +2,16 @@ import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
+const mocks = vi.hoisted(() => ({
+  showAlertMock: vi.fn(() => Promise.resolve()),
+}))
+
+vi.mock('@/composables/useModal', () => ({
+  showAlert: mocks.showAlertMock,
+  showConfirm: vi.fn(() => Promise.resolve(true)),
+  showConfirmDanger: vi.fn(() => Promise.resolve(true)),
+}))
+
 import BatchUpload from '../../src/components/Dishes/BatchUpload.vue'
 import DishForm from '../../src/components/Dishes/DishForm.vue'
 import DishTable from '../../src/components/Dishes/DishTable.vue'
@@ -88,7 +98,7 @@ describe('components/Dishes', () => {
 
   it('BatchUpload validates file extension and size', async () => {
     vi.useFakeTimers()
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined)
+    vi.clearAllMocks()
 
     const wrapper = mount(BatchUpload, {
       props: { loading: false },
@@ -108,7 +118,7 @@ describe('components/Dishes', () => {
 
     // download template
     wrapper.vm.downloadTemplate()
-    expect(alertSpy).toHaveBeenCalled()
+    expect(mocks.showAlertMock).toHaveBeenCalled()
 
     vi.runAllTimers()
     vi.useRealTimers()
@@ -139,12 +149,12 @@ describe('components/Dishes', () => {
   })
 
   it('BatchUpload submit shows alert when no valid items', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined)
+    vi.clearAllMocks()
     const wrapper = mount(BatchUpload)
 
     wrapper.vm.parsedData = [{ id: 1, status: '错误' }]
     wrapper.vm.submitBatchData()
-    expect(alertSpy).toHaveBeenCalledWith('没有有效数据可导入')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('没有有效数据可导入')
   })
 
   it('BatchUpload submit/reset emits', async () => {

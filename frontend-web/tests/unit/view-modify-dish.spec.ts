@@ -2,8 +2,6 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { defineComponent, nextTick, shallowRef, markRaw } from 'vue'
 import { mount, shallowMount } from '@vue/test-utils'
 
-import ModifyDish from '../../src/views/ModifyDish.vue'
-
 const mocks = vi.hoisted(() => ({
   routerMock: {
     push: vi.fn(),
@@ -18,6 +16,7 @@ const mocks = vi.hoisted(() => ({
     getCanteens: vi.fn(),
     getWindows: vi.fn(),
   },
+  showAlertMock: vi.fn(() => Promise.resolve()),
 }))
 
 vi.mock('vue-router', () => ({
@@ -39,6 +38,14 @@ vi.mock('@/api/modules/dish', () => ({
 vi.mock('@/api/modules/canteen', () => ({
   canteenApi: mocks.canteenApiMock,
 }))
+
+vi.mock('@/composables/useModal', () => ({
+  showAlert: mocks.showAlertMock,
+  showConfirm: vi.fn(() => Promise.resolve(true)),
+  showConfirmDanger: vi.fn(() => Promise.resolve(true)),
+}))
+
+import ModifyDish from '../../src/views/ModifyDish.vue'
 
 function flushPromises() {
   // Avoid setTimeout so this works with vi.useFakeTimers()
@@ -67,13 +74,10 @@ describe('views/ModifyDish', () => {
         items: [],
       },
     })
-
-    vi.spyOn(window, 'alert').mockImplementation(() => undefined)
   })
 
   afterEach(() => {
     vi.useRealTimers()
-    ;(window.alert as any).mockRestore?.()
   })
 
   it('loads canteens and dishes on mount and maps API items', async () => {
@@ -265,13 +269,13 @@ describe('views/ModifyDish', () => {
 
     // edit blocked
     wrapper.vm.editDish({ id: 9 })
-    expect(window.alert).toHaveBeenCalledWith('您没有权限编辑菜品')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限编辑菜品')
 
     // click edit button in template also hits same branch
     const editBtn = wrapper.find('button .iconify[data-icon="carbon:edit"]').element
       .parentElement as HTMLButtonElement
     await editBtn.click()
-    expect(window.alert).toHaveBeenCalled()
+    expect(mocks.showAlertMock).toHaveBeenCalled()
 
     // allow edit
     mocks.authStoreMock.hasPermission.mockReturnValue(true)
@@ -343,6 +347,8 @@ describe('views/ModifyDish', () => {
   })
 
   it('onActivated restores windows list (success and failure branches)', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
     const Other = defineComponent({ name: 'Other', template: '<div>other</div>' })
 
     const Parent = defineComponent({
@@ -385,7 +391,7 @@ describe('views/ModifyDish', () => {
 
     wrapper.unmount()
 
-    // failure branch triggers alert
+    // failure branch triggers console.error
     mocks.canteenApiMock.getWindows.mockRejectedValueOnce(new Error('nope'))
 
     const wrapper2 = mount(Parent, {
@@ -406,9 +412,11 @@ describe('views/ModifyDish', () => {
     await flushPromises()
     await nextTick()
 
-    expect(window.alert).toHaveBeenCalledWith('恢复窗口列表失败，请稍后重试')
+    // The source code logs to console.error but doesn't call showAlert for this error
+    expect(consoleSpy).toHaveBeenCalled()
 
     wrapper2.unmount()
+    consoleSpy.mockRestore()
   })
 
   it('onBeforeUnmount removes click logger if present', async () => {

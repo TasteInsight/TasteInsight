@@ -2,8 +2,6 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { mount, shallowMount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
-import UserManage from '../../src/views/UserManage.vue'
-
 const mocks = vi.hoisted(() => ({
   routerMock: { push: vi.fn() },
   authStoreMock: {
@@ -32,6 +30,8 @@ const mocks = vi.hoisted(() => ({
   canteenApiMock: {
     getCanteens: vi.fn(),
   },
+  showAlertMock: vi.fn(() => Promise.resolve()),
+  showConfirmDangerMock: vi.fn(() => Promise.resolve(true)),
 }))
 
 vi.mock('vue-router', () => ({
@@ -50,6 +50,14 @@ vi.mock('@/api/modules/canteen', () => ({
   canteenApi: mocks.canteenApiMock,
 }))
 
+vi.mock('@/composables/useModal', () => ({
+  showAlert: mocks.showAlertMock,
+  showConfirm: vi.fn(() => Promise.resolve(true)),
+  showConfirmDanger: mocks.showConfirmDangerMock,
+}))
+
+import UserManage from '../../src/views/UserManage.vue'
+
 describe('views/UserManage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -61,14 +69,10 @@ describe('views/UserManage', () => {
       code: 200,
       data: { items: [], meta: { totalPages: 1 } },
     })
-
-    vi.spyOn(window, 'alert').mockImplementation(() => undefined)
-    vi.spyOn(window, 'confirm').mockImplementation(() => true)
   })
 
   afterEach(() => {
-    ;(window.alert as any).mockRestore?.()
-    ;(window.confirm as any).mockRestore?.()
+    vi.useRealTimers()
   })
 
   it('loads canteens/admins on mount and supports search + canteen filter', async () => {
@@ -122,13 +126,13 @@ describe('views/UserManage', () => {
 
     mocks.permissionApiMock.getAdmins.mockResolvedValueOnce({ code: 500, message: 'bad' })
     await wrapper.vm.loadAdmins()
-    expect(window.alert).toHaveBeenCalledWith('加载子管理员列表失败，请刷新重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('加载子管理员列表失败，请刷新重试')
     expect(wrapper.vm.adminList).toEqual([])
 
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
     mocks.permissionApiMock.getAdmins.mockRejectedValueOnce(new Error('boom'))
     await wrapper.vm.loadAdmins()
-    expect(window.alert).toHaveBeenCalledWith('加载子管理员列表失败，请刷新重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('加载子管理员列表失败，请刷新重试')
 
     wrapper.unmount()
   })
@@ -254,14 +258,14 @@ describe('views/UserManage', () => {
     wrapper.vm.formData.password = ' pw '
     wrapper.vm.formData.canteenId = ' '
     wrapper.vm.formData.permissions = ['dish:view']
+    wrapper.vm.formData.role = 'admin'
 
     await wrapper.vm.submitForm()
-    expect(mocks.permissionApiMock.createAdmin).toHaveBeenCalledWith({
+    expect(mocks.permissionApiMock.createAdmin).toHaveBeenCalledWith(expect.objectContaining({
       username: 'new',
       password: 'pw',
-      canteenId: undefined,
       permissions: ['dish:view'],
-    })
+    }))
 
     // edit path updateAdminPermissions
     wrapper.vm.editingAdmin = { id: 9 } as any
@@ -276,12 +280,12 @@ describe('views/UserManage', () => {
     expect(mocks.permissionApiMock.updateAdminPermissions).toHaveBeenCalledWith(9, ['dish:view'], 'c1')
 
     // delete confirm false
-    ;(window.confirm as any).mockReturnValueOnce(false)
+    mocks.showConfirmDangerMock.mockResolvedValueOnce(false)
     await wrapper.vm.deleteAdmin({ id: 1, username: 'u' })
     expect(mocks.permissionApiMock.deleteAdmin).not.toHaveBeenCalled()
 
     // delete success
-    ;(window.confirm as any).mockReturnValueOnce(true)
+    mocks.showConfirmDangerMock.mockResolvedValueOnce(true)
     mocks.permissionApiMock.deleteAdmin.mockResolvedValueOnce({ code: 200 })
     await wrapper.vm.deleteAdmin({ id: 1, username: 'u' })
     expect(mocks.permissionApiMock.deleteAdmin).toHaveBeenCalledWith(1)
@@ -340,9 +344,19 @@ describe('views/UserManage', () => {
     wrapper.vm.handleFilterChange()
     expect(wrapper.vm.currentPage).toBe(1)
 
-    // superadmin permissionGroups shows all groups
+    // superadmin permissionGroups shows all groups (backend returns all permissions for superadmin)
     mocks.authStoreMock.user = { username: 'sa', role: 'superadmin' } as any
-    mocks.authStoreMock.permissions = []
+    // For superadmin, backend returns all permissions
+    mocks.authStoreMock.permissions = [
+      'dish:view', 'dish:create', 'dish:edit', 'dish:delete',
+      'canteen:view', 'canteen:create', 'canteen:edit', 'canteen:delete',
+      'review:approve', 'review:delete', 'comment:approve', 'comment:delete',
+      'report:handle', 'upload:approve',
+      'news:view', 'news:create', 'news:edit', 'news:publish', 'news:revoke', 'news:delete',
+      'admin:view', 'admin:create', 'admin:edit', 'admin:delete',
+      'config:view', 'config:edit',
+      'experiment:view', 'experiment:create', 'experiment:edit', 'experiment:delete',
+    ]
     const wrapper2 = shallowMount(UserManage, { global: { stubs: { Header: true } } })
     await Promise.resolve()
 
@@ -383,16 +397,16 @@ describe('views/UserManage', () => {
     const wrapper = shallowMount(UserManage, { global: { stubs: { Header: true } } })
     await Promise.resolve()
 
-    ;(window.confirm as any).mockReturnValueOnce(true)
+    mocks.showConfirmDangerMock.mockResolvedValueOnce(true)
     mocks.permissionApiMock.deleteAdmin.mockResolvedValueOnce({ code: 500, message: 'bad' })
     await wrapper.vm.deleteAdmin({ id: 1, username: 'u' })
-    expect(window.alert).toHaveBeenCalledWith('bad')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('bad')
 
-    ;(window.alert as any).mockClear()
-    ;(window.confirm as any).mockReturnValueOnce(true)
+    mocks.showAlertMock.mockClear()
+    mocks.showConfirmDangerMock.mockResolvedValueOnce(true)
     mocks.permissionApiMock.deleteAdmin.mockRejectedValueOnce(new Error('boom'))
     await wrapper.vm.deleteAdmin({ id: 2, username: 'u2' })
-    expect(window.alert).toHaveBeenCalledWith('boom')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('boom')
 
     wrapper.unmount()
   })

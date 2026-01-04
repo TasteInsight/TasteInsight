@@ -17,25 +17,39 @@ describe('components/Common/SearchBar', () => {
     expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['abc'])
   })
 
-  it('shows filter button only when showFilter=true and emits filter', async () => {
+  it('shows clear button when modelValue is not empty and emits empty string on click', async () => {
     const wrapper = mount(SearchBar, {
       props: {
-        showFilter: true,
+        modelValue: 'test',
       },
     })
 
-    const btn = wrapper.find('button')
+    // Clear button should exist when there's content
+    const btn = wrapper.find('button[title="清除搜索"]')
     expect(btn.exists()).toBe(true)
 
     await btn.trigger('click')
-    expect(wrapper.emitted('filter')).toBeTruthy()
+    expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([''])
 
+    // Clear button should not exist when modelValue is empty
     const wrapper2 = mount(SearchBar, {
       props: {
-        showFilter: false,
+        modelValue: '',
       },
     })
 
-    expect(wrapper2.find('button').exists()).toBe(false)
+    expect(wrapper2.find('button[title="清除搜索"]').exists()).toBe(false)
+  })
+
+  it('renders with custom placeholder', async () => {
+    const wrapper = mount(SearchBar, {
+      props: {
+        modelValue: '',
+        placeholder: '自定义搜索提示',
+      },
+    })
+
+    const input = wrapper.find('input[type="text"]')
+    expect(input.attributes('placeholder')).toBe('自定义搜索提示')
   })
 })

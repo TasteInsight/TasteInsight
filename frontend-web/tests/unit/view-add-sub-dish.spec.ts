@@ -21,6 +21,8 @@ const mocks = vi.hoisted(() => ({
     createDish: vi.fn(),
     updateDish: vi.fn(),
   },
+  showAlertMock: vi.fn(() => Promise.resolve()),
+  showConfirmMock: vi.fn(() => Promise.resolve(true)),
 }))
 
 vi.mock('vue-router', () => ({
@@ -34,6 +36,11 @@ vi.mock('@/store/modules/use-dish-store', () => ({
 
 vi.mock('@/api/modules/dish', () => ({
   dishApi: mocks.dishApiMock,
+}))
+
+vi.mock('@/composables/useModal', () => ({
+  showAlert: mocks.showAlertMock,
+  showConfirm: mocks.showConfirmMock,
 }))
 
 import AddSubDish from '../../src/views/AddSubDish.vue'
@@ -84,8 +91,8 @@ describe('views/AddSubDish', () => {
     mocks.dishApiMock.createDish.mockResolvedValue({ code: 201, data: { id: 's1', name: '小份' } })
     mocks.dishApiMock.updateDish.mockResolvedValue({ code: 200, data: {} })
 
-    vi.spyOn(window, 'alert').mockImplementation(() => undefined)
-    vi.spyOn(window, 'confirm').mockImplementation(() => true)
+    mocks.showAlertMock.mockResolvedValue(undefined)
+    mocks.showConfirmMock.mockResolvedValue(true)
 
     ;(globalThis as any).FileReader = FileReaderMock
     if (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function') {
@@ -100,8 +107,6 @@ describe('views/AddSubDish', () => {
   })
 
   afterEach(() => {
-    ;(window.alert as any).mockRestore?.()
-    ;(window.confirm as any).mockRestore?.()
     ;(globalThis as any).FileReader = originalFileReader
     randomUuidSpy?.mockRestore?.()
   })
@@ -130,7 +135,7 @@ describe('views/AddSubDish', () => {
 
     wrapper.vm.newTag = '麻辣'
     wrapper.vm.addTag()
-    expect((window.alert as any).mock.calls.flat().join(' ')).toContain('TAG已存在')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith(expect.stringContaining('TAG已存在'))
 
     wrapper.vm.removeTag(0)
     expect(wrapper.vm.formData.tags).toEqual([])
@@ -155,7 +160,7 @@ describe('views/AddSubDish', () => {
     const evt: any = { target: { files: [big, small], value: 'x' } }
     wrapper.vm.handleImageUpload(evt)
 
-    expect((window.alert as any).mock.calls.flat().join(' ')).toContain('大小超过10MB')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith(expect.stringContaining('大小超过10MB'))
     expect(wrapper.vm.formData.imageFiles.length).toBe(1)
     expect(wrapper.vm.formData.imageFiles[0].preview).toContain('data:image')
     expect(evt.target.value).toBe('')
@@ -199,7 +204,7 @@ describe('views/AddSubDish', () => {
     wrapper2.vm.formData.price = 0
 
     await wrapper2.vm.submitForm()
-    expect(window.alert).toHaveBeenCalledWith('缺少父菜品ID，无法创建子项')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('缺少父菜品ID，无法创建子项')
 
     wrapper.unmount()
     wrapper2.unmount()
@@ -228,17 +233,17 @@ describe('views/AddSubDish', () => {
     mocks.dishApiMock.uploadImage
       .mockResolvedValueOnce({ code: 200, data: { url: 'u1' } })
       .mockResolvedValueOnce({ code: 500, message: 'bad' })
-    ;(window.confirm as any).mockReturnValueOnce(false)
+    mocks.showConfirmMock.mockResolvedValueOnce(false)
 
     await wrapper.vm.submitForm()
-    expect(window.confirm).toHaveBeenCalled()
+    expect(mocks.showConfirmMock).toHaveBeenCalled()
     expect(mocks.dishApiMock.createDish).not.toHaveBeenCalled()
 
     // throw
     wrapper.vm.formData.imageFiles = [{ id: 'i3', file: f1, preview: 'p3' }]
     mocks.dishApiMock.uploadImage.mockRejectedValueOnce(new Error('boom'))
     await wrapper.vm.submitForm()
-    expect(window.alert).toHaveBeenCalledWith('图片上传失败，请重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('图片上传失败，请重试')
 
     wrapper.unmount()
   })
@@ -279,7 +284,7 @@ describe('views/AddSubDish', () => {
       expect.objectContaining({ subDishId: ['s0', 's1'] }),
     )
 
-    expect(window.alert).toHaveBeenCalledWith('子项添加成功！')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('子项添加成功！')
     expect(mocks.routerMock.push).toHaveBeenCalledWith({
       path: '/edit-dish/p1',
       query: { refreshSubDishes: 'true' },
@@ -300,16 +305,16 @@ describe('views/AddSubDish', () => {
     // createDish non-200
     mocks.dishApiMock.createDish.mockResolvedValueOnce({ code: 500, message: 'bad' })
     await wrapper.vm.submitForm()
-    expect((window.alert as any).mock.calls.flat().join(' ')).toContain('bad')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith(expect.stringContaining('bad'))
 
     // createDish success but parent update throws
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
     mocks.dishApiMock.createDish.mockResolvedValueOnce({ code: 200, data: { id: 's2', name: '小份' } })
     mocks.dishApiMock.getDishById.mockResolvedValueOnce({ code: 200, data: { id: 'p1', subDishId: [] } })
     mocks.dishApiMock.updateDish.mockRejectedValueOnce(new Error('boom'))
 
     await wrapper.vm.submitForm()
-    expect((window.alert as any).mock.calls.flat().join(' ')).toContain('子项添加成功')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith(expect.stringContaining('子项添加成功'))
 
     wrapper.unmount()
   })
