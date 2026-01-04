@@ -72,6 +72,21 @@ export const useCanteenStore = defineStore('canteen', () => {
 
   // ==================== Actions ====================
 
+  const normalizePaginationMeta = (meta: any) => {
+    const page = Number(meta?.page ?? 1) || 1;
+    const pageSize = Number(meta?.pageSize ?? pagination.value.pageSize ?? 9) || 9;
+    const total = Number(meta?.total ?? 0) || 0;
+    const rawTotalPages = meta?.totalPages;
+    const totalPages =
+      typeof rawTotalPages === 'number' && !Number.isNaN(rawTotalPages)
+        ? rawTotalPages
+        : total > 0
+          ? Math.ceil(total / pageSize)
+          : 0;
+
+    return { page, pageSize, total, totalPages };
+  };
+
   /**
    * 获取食堂列表
    */
@@ -84,7 +99,7 @@ export const useCanteenStore = defineStore('canteen', () => {
 
       if (response.code === 200 && response.data) {
         canteenList.value = response.data.items;
-        pagination.value = response.data.meta;
+        pagination.value = normalizePaginationMeta(response.data.meta);
       } else {
         throw new Error(response.message || '获取食堂列表失败');
       }
@@ -101,7 +116,12 @@ export const useCanteenStore = defineStore('canteen', () => {
    * 加载更多食堂列表
    */
   async function loadMoreCanteenList() {
-    if (loadingMore.value || pagination.value.page >= pagination.value.totalPages) {
+    const totalPages = pagination.value.totalPages;
+    if (loadingMore.value) {
+      return;
+    }
+    // totalPages <= 0 视为未知：允许尝试加载更多一次，由后端返回空列表终止
+    if (totalPages > 0 && pagination.value.page >= totalPages) {
       return;
     }
 
@@ -116,8 +136,11 @@ export const useCanteenStore = defineStore('canteen', () => {
       });
 
       if (response.code === 200 && response.data) {
-        canteenList.value = [...canteenList.value, ...response.data.items];
-        pagination.value = response.data.meta;
+        const items = response.data.items || [];
+        if (items.length > 0) {
+          canteenList.value = [...canteenList.value, ...items];
+        }
+        pagination.value = normalizePaginationMeta(response.data.meta);
       } else {
         throw new Error(response.message || '加载更多食堂失败');
       }

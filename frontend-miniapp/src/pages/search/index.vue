@@ -123,14 +123,20 @@ const {
   hasSearched,
   search,
   loadMore,
+  clearSearch,
   goToAddDish,
 } = useSearch();
 
 // 执行搜索
 const handleSearch = () => {
-  if (keyword.value.trim()) {
-    search();
+  const trimmed = keyword.value.trim();
+  if (!trimmed) {
+    // 不弹 toast：回到默认提示态
+    clearSearch();
+    return;
   }
+
+  search();
 };
 
 // 导航
