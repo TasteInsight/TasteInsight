@@ -16,6 +16,7 @@ TasteInsight 嵌入服务
 from flask import Flask, request, jsonify
 import logging
 import traceback
+import time
 
 from config import Config
 from services import EmbeddingService
@@ -141,6 +142,7 @@ def embed_single():
         "version": "v3"
     }
     """
+    start_time = time.time()
     try:
         data = request.get_json()
         
@@ -151,6 +153,8 @@ def embed_single():
         text = data['text']
         features = data.get('features', {})
         version = data.get('version')  # None 使用默认版本
+        
+        logger.info(f"Received embed request: text_len={len(text)}, version={version}")
         
         # 验证版本
         if version and not embedding_service.validate_version(version):
@@ -165,6 +169,9 @@ def embed_single():
         # 使用的版本
         used_version = version or embedding_service.model_manager.default_version
         
+        duration = (time.time() - start_time) * 1000
+        logger.info(f"Embedding generated in {duration:.2f}ms (version: {used_version})")
+        
         return jsonify({
             'embedding': embedding.tolist(),
             'dimension': len(embedding),
@@ -172,7 +179,8 @@ def embed_single():
         }), 200
         
     except Exception as e:
-        logger.error(f"Embedding generation failed: {e}\n{traceback.format_exc()}")
+        duration = (time.time() - start_time) * 1000
+        logger.error(f"Embedding generation failed after {duration:.2f}ms: {e}\n{traceback.format_exc()}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -204,6 +212,7 @@ def embed_batch():
         "version": "v3"
     }
     """
+    start_time = time.time()
     try:
         data = request.get_json()
         
@@ -216,6 +225,8 @@ def embed_batch():
         
         if not isinstance(items, list) or not items:
             return jsonify({'error': 'items must be a non-empty list'}), 400
+            
+        logger.info(f"Received batch embed request: count={len(items)}, version={version}")
         
         # 验证版本
         if version and not embedding_service.validate_version(version):
@@ -234,6 +245,9 @@ def embed_batch():
         # 使用的版本
         used_version = version or embedding_service.model_manager.default_version
         
+        duration = (time.time() - start_time) * 1000
+        logger.info(f"Batch embedding generated in {duration:.2f}ms (count: {len(embeddings)}, version: {used_version})")
+        
         return jsonify({
             'embeddings': embeddings.tolist(),
             'count': len(embeddings),
@@ -242,7 +256,8 @@ def embed_batch():
         }), 200
         
     except Exception as e:
-        logger.error(f"Batch embedding generation failed: {e}\n{traceback.format_exc()}")
+        duration = (time.time() - start_time) * 1000
+        logger.error(f"Batch embedding generation failed after {duration:.2f}ms: {e}\n{traceback.format_exc()}")
         return jsonify({'error': str(e)}), 500
 
 

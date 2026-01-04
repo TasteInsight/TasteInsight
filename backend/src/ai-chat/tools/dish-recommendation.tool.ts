@@ -144,10 +144,9 @@ export class DishRecommendationTool implements BaseTool {
       }
     }
     if (priceMin !== undefined || priceMax !== undefined) {
-      filter.price = {
-        min: priceMin !== undefined ? priceMin : 0,
-        max: priceMax !== undefined ? priceMax : 10000,
-      };
+      filter.price = {};
+      if (priceMin !== undefined) filter.price.min = priceMin;
+      if (priceMax !== undefined) filter.price.max = priceMax;
     }
     if (minRating !== undefined) {
       filter.rating = { min: minRating, max: 5 };
