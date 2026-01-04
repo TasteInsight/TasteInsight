@@ -181,7 +181,6 @@ pnpm run start:dev
 
 服务启动后访问：
 - API 服务：http://localhost:3000
-- Swagger 文档：http://localhost:3000/api
 
 ### 生产模式
 
@@ -274,14 +273,6 @@ pnpm run test:e2e:cov
 
 详见 [python-embedding-service/README.md](./python-embedding-service/README.md)
 
-## API 文档
-
-启动服务后访问 Swagger 文档：
-
-```
-http://localhost:3000/api
-```
-
 ## 代码规范
 
 ```bash
@@ -291,8 +282,3 @@ pnpm run format
 # ESLint 检查
 pnpm run lint
 ```
-
-## 许可证
-
-本项目为私有项目，未经授权不得使用。
-
