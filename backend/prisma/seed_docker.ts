@@ -22,6 +22,8 @@ async function main() {
   await prisma.floor.deleteMany({});
   await prisma.canteen.deleteMany({});
   await prisma.user.deleteMany({});
+  await prisma.news.deleteMany({});
+  await prisma.adminPermission.deleteMany({});
   await prisma.admin.deleteMany({});
 
   // 2. 创建一个可用于所有测试的【基础管理员】(superadmin)

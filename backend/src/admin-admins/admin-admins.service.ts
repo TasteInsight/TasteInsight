@@ -100,7 +100,7 @@ export class AdminAdminsService {
     creatorId: string,
     createAdminDto: CreateAdminDto,
   ): Promise<AdminResponseDto> {
-    const { username, password, canteenId, permissions } = createAdminDto;
+    const { username, password, canteenId, permissions, role } = createAdminDto;
 
     // 验证食堂存在性
     await this.validateCanteenId(canteenId);
@@ -108,13 +108,17 @@ export class AdminAdminsService {
     // 加密密码
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // 确定角色：如果提供了 role 则使用，否则默认为 'admin'
+    // 不允许创建 superadmin 角色的子管理员
+    const finalRole = role && role !== 'superadmin' ? role : 'admin';
+
     // 创建管理员及其权限，通过捕获数据库唯一约束错误来处理竞态条件
     try {
       const admin = await this.prisma.admin.create({
         data: {
           username,
           password: hashedPassword,
-          role: 'admin',
+          role: finalRole,
           canteenId: canteenId || null,
           createdBy: creatorId,
           permissions: {

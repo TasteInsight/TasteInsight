@@ -29,6 +29,11 @@ export class CreateAdminDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(50)
+  role?: string;
+
+  @IsString()
+  @IsOptional()
   canteenId?: string | null;
 
   @IsArray()
