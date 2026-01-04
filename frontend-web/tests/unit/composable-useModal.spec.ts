@@ -253,5 +253,72 @@ describe('composables/useModal', () => {
       await promise
     })
   })
+
+  describe('button handler invocation', () => {
+    it('showAlert button handler returns true when invoked', async () => {
+      const promise = showAlert('Test message')
+      
+      // Get the button handler and invoke it
+      const handler = modalState.buttons.value[0].handler
+      expect(handler).toBeDefined()
+      const result = handler!()
+      expect(result).toBe(true)
+      
+      closeModal(true)
+      await promise
+    })
+
+    it('showConfirm cancel button handler returns false', async () => {
+      const promise = showConfirm('Test?')
+      
+      // Cancel button is first
+      const cancelHandler = modalState.buttons.value[0].handler
+      expect(cancelHandler).toBeDefined()
+      const result = cancelHandler!()
+      expect(result).toBe(false)
+      
+      closeModal(false)
+      await promise
+    })
+
+    it('showConfirm confirm button handler returns true', async () => {
+      const promise = showConfirm('Test?')
+      
+      // Confirm button is second
+      const confirmHandler = modalState.buttons.value[1].handler
+      expect(confirmHandler).toBeDefined()
+      const result = confirmHandler!()
+      expect(result).toBe(true)
+      
+      closeModal(true)
+      await promise
+    })
+
+    it('showConfirmDanger cancel button handler returns false', async () => {
+      const promise = showConfirmDanger('Delete?')
+      
+      // Cancel button is first
+      const cancelHandler = modalState.buttons.value[0].handler
+      expect(cancelHandler).toBeDefined()
+      const result = cancelHandler!()
+      expect(result).toBe(false)
+      
+      closeModal(false)
+      await promise
+    })
+
+    it('showConfirmDanger confirm button handler returns true', async () => {
+      const promise = showConfirmDanger('Delete?')
+      
+      // Confirm button is second
+      const confirmHandler = modalState.buttons.value[1].handler
+      expect(confirmHandler).toBeDefined()
+      const result = confirmHandler!()
+      expect(result).toBe(true)
+      
+      closeModal(true)
+      await promise
+    })
+  })
 })
 
