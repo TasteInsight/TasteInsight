@@ -386,8 +386,8 @@
                 :key="key"
                 class="flex justify-between items-center py-2 border-b border-gray-100"
               >
-                <span class="text-sm font-medium text-gray-600">{{ getRecallQuotaLabel(key as string) }}</span>
-                <span class="text-sm text-gray-800 font-mono">{{ value != null ? ((value as number) * 100).toFixed(1) : '0.0' }}%</span>
+                <span class="text-sm font-medium text-gray-600">{{ getRecallQuotaLabel(String(key)) }}</span>
+                <span class="text-sm text-gray-800 font-mono">{{ formatPercentage(value) }}%</span>
               </div>
             </div>
             <div v-else class="text-center py-8 text-gray-500">
@@ -955,6 +955,14 @@ export default {
       return labelMap[key] || key
     }
 
+    // 格式化百分比值（避免模板中的类型断言）
+    const formatPercentage = (value: unknown): string => {
+      if (value == null) return '0.0'
+      const numValue = Number(value)
+      if (isNaN(numValue)) return '0.0'
+      return (numValue * 100).toFixed(1)
+    }
+
     // 查看实验详情
     const viewExperiment = async (experiment: Experiment) => {
       if (!experiment.id) {
@@ -1469,6 +1477,7 @@ export default {
       getEffectiveStatus,
       getWeightLabel,
       getRecallQuotaLabel,
+      formatPercentage,
       viewExperiment,
       createNewExperiment,
       editExperiment,

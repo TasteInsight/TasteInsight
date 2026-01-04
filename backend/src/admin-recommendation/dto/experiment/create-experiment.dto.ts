@@ -14,7 +14,7 @@ import {
 import { Type } from 'class-transformer';
 
 /**
- * 实验分组配置
+ * 创建实验分组配置
  */
 export class CreateExperimentGroupDto {
   @IsString()
@@ -32,6 +32,36 @@ export class CreateExperimentGroupDto {
    * 实验配置，可以包含：
    * - weights: 权重配置 { preferenceMatch, favoriteSimilarity, ... }
    * - recallQuota: 召回策略配额 { vectorQuota, ruleQuota, collaborativeQuota }
+   */
+  @IsOptional()
+  @IsObject()
+  config?: Record<string, any>;
+}
+
+/**
+ * 更新实验分组配置
+ */
+export class UpdateExperimentGroupDto {
+  /**
+   * 分组ID（更新现有分组时必传，新增分组时不传）
+   */
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsNumber()
+  @IsNotEmpty()
+  @Type(() => Number)
+  @Min(0)
+  @Max(1)
+  ratio: number;
+
+  /**
+   * 实验配置
    */
   @IsOptional()
   @IsObject()
@@ -99,7 +129,7 @@ export class UpdateExperimentDto {
 
   @IsOptional()
   @IsArray()
-  @Type(() => CreateExperimentGroupDto)
+  @Type(() => UpdateExperimentGroupDto)
   @ValidateNested({ each: true })
-  groups?: CreateExperimentGroupDto[];
+  groups?: UpdateExperimentGroupDto[];
 }

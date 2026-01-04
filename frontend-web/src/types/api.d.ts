@@ -1117,6 +1117,7 @@ export interface ExperimentConfig {
  * 实验分组
  */
 export interface ExperimentGroup {
+  id?: string  // 更新时用于标识现有分组，创建时不传
   name: string
   ratio: number
   config?: ExperimentConfig
