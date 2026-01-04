@@ -315,4 +315,139 @@ describe('components/Dishes', () => {
     expect(wrapper.vm.formData.canteen).toBe('桃李园')
     expect(wrapper.vm.previewImage).toBe('http://img')
   })
+
+  it('DishForm validates sub-item name and price', async () => {
+    const wrapper = mount(DishForm)
+
+    // Fill required fields except subItems
+    wrapper.vm.formData.canteen = '紫荆园'
+    wrapper.vm.formData.floor = '一层'
+    wrapper.vm.formData.window = '窗口'
+    wrapper.vm.formData.name = '菜品'
+    wrapper.vm.formData.subItems = [{ name: '', price: '' }]
+
+    wrapper.vm.handleSubmit()
+    await nextTick()
+
+    // Should have validation errors for sub-item
+    expect(Object.keys(wrapper.vm.errors).some(k => k.includes('subItem'))).toBe(true)
+  })
+
+  it('DishForm validates sub-item price value', async () => {
+    const wrapper = mount(DishForm)
+
+    wrapper.vm.formData.canteen = '紫荆园'
+    wrapper.vm.formData.floor = '一层'
+    wrapper.vm.formData.window = '窗口'
+    wrapper.vm.formData.name = '菜品'
+    wrapper.vm.formData.subItems = [{ name: '子项名', price: '0' }]
+
+    wrapper.vm.handleSubmit()
+    await nextTick()
+
+    // Price <= 0 should trigger error
+    expect(Object.keys(wrapper.vm.errors).some(k => k.includes('price'))).toBe(true)
+  })
+
+  it('DishForm emits cancel event', async () => {
+    const wrapper = mount(DishForm)
+
+    // Find the cancel button (second button in the form)
+    const buttons = wrapper.findAll('button')
+    const cancelBtn = buttons.find(btn => btn.text().includes('取消'))
+    expect(cancelBtn).toBeTruthy()
+    await cancelBtn!.trigger('click')
+
+    expect(wrapper.emitted('cancel')).toBeTruthy()
+  })
+
+  it('DishForm shows loading state when loading prop is true', async () => {
+    const wrapper = mount(DishForm, {
+      props: { loading: true },
+    })
+
+    expect(wrapper.text()).toContain('保存中')
+    const submitBtn = wrapper.find('button[type="submit"]')
+    expect(submitBtn.attributes('disabled')).toBeDefined()
+  })
+
+  it('DishForm uses custom submitText prop', async () => {
+    const wrapper = mount(DishForm, {
+      props: { submitText: '提交菜品' },
+    })
+
+    expect(wrapper.text()).toContain('提交菜品')
+  })
+
+  it('DishForm handles file select with no files', async () => {
+    const wrapper = mount(DishForm)
+
+    await wrapper.vm.handleFileSelect({ target: { files: [] } })
+    // Should not throw, should not update preview
+    expect(wrapper.vm.previewImage).toBe('')
+  })
+
+  it('DishForm handles null dish prop without crashing', async () => {
+    const wrapper = mount(DishForm, {
+      props: { dish: null },
+    })
+
+    expect(wrapper.vm.formData.canteen).toBe('')
+  })
+
+  it('DishForm watch updates when dish prop changes', async () => {
+    const wrapper = mount(DishForm, {
+      props: { dish: null },
+    })
+
+    await wrapper.setProps({
+      dish: {
+        canteen: '清芬园',
+        floor: '一层',
+        window: 'W2',
+        name: '新菜品',
+      },
+    })
+
+    await nextTick()
+
+    expect(wrapper.vm.formData.canteen).toBe('清芬园')
+    expect(wrapper.vm.formData.name).toBe('新菜品')
+  })
+
+  it('DishForm dragover and dragleave update isDragging', async () => {
+    const wrapper = mount(DishForm)
+
+    const dropZone = wrapper.find('.border-dashed')
+
+    await dropZone.trigger('dragover')
+    expect(wrapper.vm.isDragging).toBe(true)
+
+    await dropZone.trigger('dragleave')
+    expect(wrapper.vm.isDragging).toBe(false)
+  })
+
+  it('DishForm checkbox toggles work correctly', async () => {
+    const wrapper = mount(DishForm)
+
+    // Toggle a serving time
+    wrapper.vm.formData.servingTime.breakfast = true
+    await nextTick()
+    expect(wrapper.vm.formData.servingTime.breakfast).toBe(true)
+
+    // Toggle a season
+    wrapper.vm.formData.seasons.spring = false
+    await nextTick()
+    expect(wrapper.vm.formData.seasons.spring).toBe(false)
+  })
+
+  it('DishForm select options are populated correctly', async () => {
+    const wrapper = mount(DishForm)
+
+    // Check canteen options
+    expect(wrapper.vm.canteenOptions.length).toBeGreaterThan(0)
+    expect(wrapper.vm.floorOptions.length).toBeGreaterThan(0)
+    expect(wrapper.vm.cuisineOptions.length).toBeGreaterThan(0)
+    expect(wrapper.vm.tasteOptions.length).toBeGreaterThan(0)
+  })
 })

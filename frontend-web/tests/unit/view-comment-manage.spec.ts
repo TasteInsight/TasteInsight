@@ -584,4 +584,147 @@ describe('views/CommentManage', () => {
 
     wrapper.unmount()
   })
+
+  it('image preview navigation - next', async () => {
+    const wrapper = shallowMount(CommentManage, {
+      global: { stubs: { Header: true, Pagination: true } },
+    })
+
+    await flushAll()
+
+    // Open preview with multiple images
+    wrapper.vm.openImagePreview(['img1.png', 'img2.png', 'img3.png'], 0)
+    expect(wrapper.vm.imagePreview.currentIndex).toBe(0)
+
+    // Navigate next
+    wrapper.vm.nextImage()
+    expect(wrapper.vm.imagePreview.currentIndex).toBe(1)
+
+    wrapper.vm.nextImage()
+    expect(wrapper.vm.imagePreview.currentIndex).toBe(2)
+
+    wrapper.unmount()
+  })
+
+  it('closeImagePreview hides preview', async () => {
+    const wrapper = shallowMount(CommentManage, {
+      global: { stubs: { Header: true, Pagination: true } },
+    })
+
+    await flushAll()
+
+    wrapper.vm.openImagePreview(['img1.png'], 0)
+    expect(wrapper.vm.imagePreview.show).toBe(true)
+
+    wrapper.vm.closeImagePreview()
+    expect(wrapper.vm.imagePreview.show).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('loadWindows handles empty data', async () => {
+    const wrapper = shallowMount(CommentManage, {
+      global: { stubs: { Header: true, Pagination: true } },
+    })
+
+    await flushAll()
+
+    mocks.canteenApiMock.getWindows.mockResolvedValueOnce({
+      code: 200,
+      data: { items: [] },
+    })
+
+    wrapper.vm.selectedCanteenId = 'c1'
+    await wrapper.vm.handleCanteenChange()
+    await flushMicrotasks()
+
+    expect(wrapper.vm.windows).toEqual([])
+
+    wrapper.unmount()
+  })
+
+  it('loadCanteens handles non-200 response', async () => {
+    mocks.canteenApiMock.getCanteens.mockResolvedValueOnce({
+      code: 500,
+      message: 'Server error',
+    })
+
+    const wrapper = shallowMount(CommentManage, {
+      global: { stubs: { Header: true, Pagination: true } },
+    })
+
+    await flushAll()
+
+    // Should not throw, canteens should be empty or default
+    expect(wrapper.vm.canteens).toBeDefined()
+
+    wrapper.unmount()
+  })
+
+  it('handles delete comment permission denied', async () => {
+    const wrapper = shallowMount(CommentManage, {
+      global: { stubs: { Header: true, Pagination: true } },
+    })
+
+    await flushAll()
+
+    mocks.authStoreMock.hasPermission.mockReturnValueOnce(false)
+    await wrapper.vm.handleDeleteComment(createMockComment({ id: 'cm1' }))
+
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限删除评论')
+
+    wrapper.unmount()
+  })
+
+  it('handles delete comment confirm cancelled', async () => {
+    const wrapper = shallowMount(CommentManage, {
+      global: { stubs: { Header: true, Pagination: true } },
+    })
+
+    await flushAll()
+
+    mocks.authStoreMock.hasPermission.mockReturnValue(true)
+    mocks.showConfirmDangerMock.mockResolvedValueOnce(false)
+
+    await wrapper.vm.handleDeleteComment(createMockComment({ id: 'cm1' }))
+
+    expect(mocks.reviewApiMock.deleteComment).not.toHaveBeenCalled()
+
+    wrapper.unmount()
+  })
+
+  it('handles delete comment non-200 response', async () => {
+    const wrapper = shallowMount(CommentManage, {
+      global: { stubs: { Header: true, Pagination: true } },
+    })
+
+    await flushAll()
+
+    mocks.authStoreMock.hasPermission.mockReturnValue(true)
+    mocks.showConfirmDangerMock.mockResolvedValueOnce(true)
+    mocks.reviewApiMock.deleteComment.mockResolvedValueOnce({
+      code: 400,
+      message: '删除失败',
+    })
+
+    await wrapper.vm.handleDeleteComment(createMockComment({ id: 'cm1' }))
+
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('删除失败')
+
+    wrapper.unmount()
+  })
+
+  it('formatDate handles valid date formats', async () => {
+    const wrapper = shallowMount(CommentManage, {
+      global: { stubs: { Header: true, Pagination: true } },
+    })
+
+    await flushAll()
+
+    // Valid date
+    const result = wrapper.vm.formatDate('2025-01-01T10:00:00')
+    expect(result).toContain('2025')
+
+    wrapper.unmount()
+  })
 })
