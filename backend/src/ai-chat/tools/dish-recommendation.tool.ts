@@ -137,10 +137,10 @@ export class DishRecommendationTool implements BaseTool {
     if (canteenId) {
       const resolvedId = await this.canteensService.resolveCanteenId(canteenId);
       if (resolvedId) {
-        filter.canteenId = resolvedId;
+        filter.canteenId = [resolvedId];
       } else {
         // 如果既不是有效ID也不是有效名称，使用不存在的ID确保无结果返回
-        filter.canteenId = 'non-existent-id';
+        filter.canteenId = ['non-existent-id'];
       }
     }
     if (priceMin !== undefined || priceMax !== undefined) {

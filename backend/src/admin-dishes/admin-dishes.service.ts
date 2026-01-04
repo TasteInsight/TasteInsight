@@ -1755,7 +1755,10 @@ export class AdminDishesService {
   /**
    * 刷新指定食堂所有菜品的嵌入向量
    */
-  async refreshDishesEmbeddingsByCanteen(canteenId: string, adminInfo: AdminInfo) {
+  async refreshDishesEmbeddingsByCanteen(
+    canteenId: string,
+    adminInfo: AdminInfo,
+  ) {
     if (!this.embeddingService) {
       throw new BadRequestException('嵌入服务未启用');
     }

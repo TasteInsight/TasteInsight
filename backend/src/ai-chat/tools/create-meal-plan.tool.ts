@@ -23,13 +23,17 @@ export class CreateMealPlanTool implements BaseTool {
       description:
         '创建用餐计划。用于为用户生成一份用餐计划。' +
         '\\n**重要**：你需要先调用 search_dishes 或 recommend_dishes 获取候选菜品，' +
-        '\\n然后根据用户需求从中选择合适的菜品（2-3个），将菜品ID传给本工具。' +
+        '\\n然后根据用户需求从中选择合适的菜品组合（通常1-2个），将菜品ID传给本工具。' +
+        '\\n**选择规则**：' +
+        '\\n1. **同食堂优先**：对于同一顿饭，必须选择同一个食堂的菜品，除非用户明确要求多个食堂。' +
+        '\\n2. **合理搭配**：注意份量和搭配（如：1个主食+1个饮料/小吃，或者1荤+1素）。不要选择多个主食（如两碗面、两个饭套餐）。' +
+        '\\n3. **份量控制**：通常一人一顿饭只需1个主菜或套餐。' +
         '\\n本工具会生成完整的计划数据，之后需要用 display_content 展示给用户。' +
-        '\\n\\n使用流程示例：' +
+        '\\n\\n使用流程示例（你可以选择合适的工具自行决策）：' +
         '\\n1. 用户：帮我安排明天的午餐，清淡高蛋白' +
         '\\n2. 调用 recommend_dishes(mealTime="lunch", tags=["清淡","高蛋白"])' +
-        '\\n3. 从返回的菜品中选择2-3个（比如 dish_10001, dish_10002）' +
-        '\\n4. 调用 create_meal_plan(dishIds=["dish_10001","dish_10002"], ...)' +
+        '\\n3. 从返回的菜品中选择1-2个（比如主食+饮料，且都在同一个食堂）' +
+        '\\n4. 调用 create_meal_plan(dishIds=["dish_10001", "dish_10002"], ...)' +
         '\\n5. 调用 display_content(type="meal_plan", data=<上一步返回的结果>)',
       parameters: {
         type: 'object',
@@ -38,7 +42,7 @@ export class CreateMealPlanTool implements BaseTool {
             type: 'array',
             items: { type: 'string' },
             description:
-              '【必填】你选择的菜品ID列表。需要先调用其他工具获取候选菜品，然后从中选择2-3个合适的菜品。',
+              '【必填】你选择的菜品ID列表。请确保所有菜品来自同一个食堂（除非用户另有要求），且组合合理（避免多个主食）。',
           },
           startDate: {
             type: 'string',
