@@ -172,7 +172,43 @@ export class AuthService {
     } = admin;
 
     // 提取权限字符串数组
-    const permissions = permissionsRelation.map((p) => p.permission);
+    let permissions = permissionsRelation.map((p) => p.permission);
+
+    // 超级管理员返回所有权限
+    if (admin.role === 'superadmin') {
+      permissions = [
+        'dish:view',
+        'dish:create',
+        'dish:edit',
+        'dish:delete',
+        'canteen:view',
+        'canteen:create',
+        'canteen:edit',
+        'canteen:delete',
+        'upload:approve',
+        'admin:view',
+        'admin:create',
+        'admin:edit',
+        'admin:delete',
+        'news:view',
+        'news:create',
+        'news:edit',
+        'news:publish',
+        'news:revoke',
+        'news:delete',
+        'report:handle',
+        'review:approve',
+        'review:delete',
+        'comment:approve',
+        'comment:delete',
+        'config:view',
+        'config:edit',
+        'experiment:view',
+        'experiment:create',
+        'experiment:edit',
+        'experiment:delete',
+      ];
+    }
 
     return {
       code: 200,

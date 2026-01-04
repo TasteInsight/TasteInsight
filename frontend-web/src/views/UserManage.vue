@@ -635,18 +635,24 @@ export default {
           { id: 'config:edit', label: '编辑配置' },
         ],
       },
+      {
+        id: 'experiment',
+        name: '推荐管理',
+        permissions: [
+          { id: 'experiment:view', label: '浏览实验' },
+          { id: 'experiment:create', label: '创建实验' },
+          { id: 'experiment:edit', label: '编辑实验' },
+          { id: 'experiment:delete', label: '删除实验' },
+        ],
+      },
     ]
 
     // 过滤后的权限组：只显示当前用户拥有的权限
+    // 后端已为 superadmin 返回所有权限，前端只需检查权限列表
     const permissionGroups = computed(() => {
       const currentUserPermissions = authStore.permissions || []
-      const isSuperAdmin = authStore.user?.role === 'superadmin'
-      // 如果是超级管理员，显示所有权限
-      if (isSuperAdmin) {
-        return allPermissionGroups
-      }
       
-      // 否则，只显示当前用户拥有的权限
+      // 只显示当前用户拥有的权限
       return allPermissionGroups
         .map(group => ({
           ...group,
@@ -823,17 +829,13 @@ export default {
       formData.canteenId = admin.canteenId || ''
 
       // 加载权限信息
-      // 如果admin对象中没有permissions字段，可能需要单独请求或从admin列表项中获取
-      // 假设admin对象包含了permissions数组
+      // 后端已为 superadmin 返回所有权限，前端只需检查权限列表
       const currentUserPermissions = authStore.permissions || []
-      const isSuperAdmin = authStore.user?.username === 'testadmin' || authStore.user?.role === 'superadmin'
       
       if (admin.permissions && Array.isArray(admin.permissions)) {
          const allAdminPermissions = admin.permissions.map(p => typeof p === 'string' ? p : p.permission)
          // 只保留当前用户拥有的权限（编辑时也要过滤）
-         formData.permissions = isSuperAdmin 
-           ? allAdminPermissions 
-           : allAdminPermissions.filter(p => currentUserPermissions.includes(p))
+         formData.permissions = allAdminPermissions.filter(p => currentUserPermissions.includes(p))
       } else {
          formData.permissions = []
       }
@@ -931,14 +933,14 @@ export default {
     }
 
     // 根据角色获取默认权限（只返回当前用户拥有的权限）
+    // 后端已为 superadmin 返回所有权限，前端只需检查权限列表
     const getDefaultPermissionsByRole = (role) => {
       const currentUserPermissions = authStore.permissions || []
-      const isSuperAdmin = authStore.user?.username === 'testadmin' || authStore.user?.role === 'superadmin'
       
       const permissionMap = {
-        super_admin: isSuperAdmin 
-          ? allPermissionGroups.flatMap((g) => g.permissions.map((p) => p.id))
-          : currentUserPermissions,
+        super_admin: allPermissionGroups
+          .flatMap((g) => g.permissions.map((p) => p.id))
+          .filter(p => currentUserPermissions.includes(p)),
         canteen_manager: [
           'dish:view',
           'dish:create',
@@ -950,16 +952,16 @@ export default {
           'news:create',
           'review:approve',
           'comment:approve',
-        ].filter(p => isSuperAdmin || currentUserPermissions.includes(p)),
+        ].filter(p => currentUserPermissions.includes(p)),
         restaurant_manager: [
           'dish:view',
           'dish:create',
           'dish:edit',
           'canteen:view',
           'upload:approve',
-        ].filter(p => isSuperAdmin || currentUserPermissions.includes(p)),
+        ].filter(p => currentUserPermissions.includes(p)),
         kitchen_operator: ['dish:view', 'dish:create', 'dish:edit', 'canteen:view']
-          .filter(p => isSuperAdmin || currentUserPermissions.includes(p)),
+          .filter(p => currentUserPermissions.includes(p)),
         news_editor: [
           'news:view',
           'news:create',
@@ -968,7 +970,7 @@ export default {
           'news:revoke',
           'news:delete',
           'canteen:view', // 新闻可能关联食堂
-        ].filter(p => isSuperAdmin || currentUserPermissions.includes(p)),
+        ].filter(p => currentUserPermissions.includes(p)),
         auditor: [
           'review:approve',
           'review:delete',
@@ -978,18 +980,18 @@ export default {
           'upload:approve',
           'dish:view', // 审核需要查看菜品
           'canteen:view', // 审核需要查看食堂
-        ].filter(p => isSuperAdmin || currentUserPermissions.includes(p)),
+        ].filter(p => currentUserPermissions.includes(p)),
       }
       return permissionMap[role] || []
     }
 
     // 切换权限（只能选择当前用户拥有的权限）
+    // 后端已为 superadmin 返回所有权限，前端只需检查权限列表
     const togglePermission = (permissionId) => {
       const currentUserPermissions = authStore.permissions || []
-      const isSuperAdmin = authStore.user?.username === 'testadmin' || authStore.user?.role === 'superadmin'
       
       // 检查当前用户是否有该权限
-      if (!isSuperAdmin && !currentUserPermissions.includes(permissionId)) {
+      if (!currentUserPermissions.includes(permissionId)) {
         errors.permissions = '您没有该权限，无法分配给子管理员'
         return
       } else {
@@ -1010,7 +1012,7 @@ export default {
           dependencies.forEach(dep => {
             if (!formData.permissions.includes(dep)) {
               // 只添加当前用户拥有的依赖权限
-              if (isSuperAdmin || currentUserPermissions.includes(dep)) {
+              if (currentUserPermissions.includes(dep)) {
                 formData.permissions.push(dep)
               }
             }
@@ -1094,10 +1096,10 @@ export default {
       }
 
       // 验证：只能分配当前用户拥有的权限
+      // 后端已为 superadmin 返回所有权限，前端只需检查权限列表
       const currentUserPermissions = authStore.permissions || []
-      const isSuperAdmin = authStore.user?.username === 'testadmin' || authStore.user?.role === 'superadmin'
       
-      if (!isSuperAdmin && formData.permissions && formData.permissions.length > 0) {
+      if (formData.permissions && formData.permissions.length > 0) {
         const invalidPermissions = formData.permissions.filter(p => !currentUserPermissions.includes(p))
         if (invalidPermissions.length > 0) {
           errors.permissions = `您没有以下权限，无法分配给子管理员：${invalidPermissions.join(', ')}`
