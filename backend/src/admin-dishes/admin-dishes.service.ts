@@ -58,6 +58,7 @@ type PrismaJsonInput =
 type BatchErrorType = 'validation' | 'permission' | 'unknown';
 import { EmbeddingService } from '@/recommendation/services/embedding.service';
 import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service';
+import { AdminInfo } from '@/auth/decorators/current-admin.decorator';
 
 @Injectable()
 export class AdminDishesService {
@@ -107,7 +108,7 @@ export class AdminDishesService {
   ]);
 
   // 管理端获取菜品列表
-  async getAdminDishes(query: AdminGetDishesDto, adminInfo: any) {
+  async getAdminDishes(query: AdminGetDishesDto, adminInfo: AdminInfo) {
     const {
       page = 1,
       pageSize = 20,
@@ -214,7 +215,7 @@ export class AdminDishesService {
   /**
    * 管理端获取菜品详情
    */
-  async getAdminDishById(id: string, adminInfo: any) {
+  async getAdminDishById(id: string, adminInfo: AdminInfo) {
     const dish = await this.prisma.dish.findUnique({
       where: { id },
       include: {
@@ -255,7 +256,7 @@ export class AdminDishesService {
   /**
    * 管理端创建菜品
    */
-  async createAdminDish(createDto: AdminCreateDishDto, adminInfo: any) {
+  async createAdminDish(createDto: AdminCreateDishDto, adminInfo: AdminInfo) {
     // 1. 确定食堂
     let canteenId = createDto.canteenId;
     if (!canteenId && createDto.canteenName) {
@@ -374,7 +375,7 @@ export class AdminDishesService {
   async updateAdminDish(
     id: string,
     updateDto: AdminUpdateDishDto,
-    adminInfo: any,
+    adminInfo: AdminInfo,
   ) {
     // 检查菜品是否存在
     const existingDish = await this.prisma.dish.findUnique({
@@ -519,7 +520,7 @@ export class AdminDishesService {
   /**
    * 管理端删除菜品
    */
-  async deleteAdminDish(id: string, adminInfo: any) {
+  async deleteAdminDish(id: string, adminInfo: AdminInfo) {
     // 检查菜品是否存在
     const dish = await this.prisma.dish.findUnique({
       where: { id },
@@ -542,9 +543,17 @@ export class AdminDishesService {
       throw new BadRequestException('该菜品有子菜品，无法删除');
     }
 
-    // 删除菜品
-    await this.prisma.dish.delete({
-      where: { id },
+    // 删除菜品及关联的审核记录
+    await this.prisma.$transaction(async (tx) => {
+      // 删除关联的上传审核记录，防止重复上架
+      await tx.dishUpload.deleteMany({
+        where: { approvedDishId: id },
+      });
+
+      // 删除菜品
+      await tx.dish.delete({
+        where: { id },
+      });
     });
 
     return {
@@ -557,7 +566,7 @@ export class AdminDishesService {
   /**
    * 管理端修改菜品状态
    */
-  async updateDishStatus(id: string, status: DishStatus, adminInfo: any) {
+  async updateDishStatus(id: string, status: DishStatus, adminInfo: AdminInfo) {
     const dish = await this.prisma.dish.findUnique({
       where: { id },
     });
@@ -586,7 +595,7 @@ export class AdminDishesService {
   /**
    * 批量解析 Excel 文件
    */
-  async parseBatchExcel(file: Express.Multer.File, adminInfo: any) {
+  async parseBatchExcel(file: Express.Multer.File, adminInfo: AdminInfo) {
     if (!file) {
       throw new BadRequestException('请上传 Excel 文件');
     }
@@ -688,7 +697,7 @@ export class AdminDishesService {
   /**
    * 批量确认导入
    */
-  async confirmBatchImport(body: BatchConfirmRequestDto, adminInfo: any) {
+  async confirmBatchImport(body: BatchConfirmRequestDto, adminInfo: AdminInfo) {
     if (!body.dishes || body.dishes.length === 0) {
       throw new BadRequestException('没有可导入的数据');
     }
@@ -882,6 +891,7 @@ export class AdminDishesService {
     dishId: string,
     page: number = 1,
     pageSize: number = 20,
+    adminInfo?: AdminInfo,
   ) {
     // 检查菜品是否存在
     const dish = await this.prisma.dish.findUnique({
@@ -890,6 +900,11 @@ export class AdminDishesService {
 
     if (!dish) {
       throw new NotFoundException('菜品不存在');
+    }
+
+    // 检查权限
+    if (adminInfo?.canteenId && dish.canteenId !== adminInfo.canteenId) {
+      throw new ForbiddenException('权限不足');
     }
 
     const skip = (page - 1) * pageSize;
@@ -975,7 +990,7 @@ export class AdminDishesService {
   private async processSingleBatchItem(
     tx: Prisma.TransactionClient,
     item: BatchParsedDishDto,
-    adminInfo: any,
+    adminInfo: AdminInfo,
     limitedCanteen: Canteen | null,
     caches: BatchImportCaches,
     windowNumberCounters: Map<string, number>,
@@ -1685,7 +1700,7 @@ export class AdminDishesService {
   /**
    * 刷新单个菜品的嵌入向量
    */
-  async refreshDishEmbedding(dishId: string, adminInfo: any) {
+  async refreshDishEmbedding(dishId: string, adminInfo: AdminInfo) {
     if (!this.embeddingService) {
       throw new BadRequestException('嵌入服务未启用');
     }
@@ -1740,7 +1755,7 @@ export class AdminDishesService {
   /**
    * 刷新指定食堂所有菜品的嵌入向量
    */
-  async refreshDishesEmbeddingsByCanteen(canteenId: string, adminInfo: any) {
+  async refreshDishesEmbeddingsByCanteen(canteenId: string, adminInfo: AdminInfo) {
     if (!this.embeddingService) {
       throw new BadRequestException('嵌入服务未启用');
     }

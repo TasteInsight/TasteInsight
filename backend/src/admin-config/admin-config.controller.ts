@@ -82,8 +82,12 @@ export class AdminConfigController {
   @HttpCode(HttpStatus.OK)
   async getCanteenConfig(
     @Param('canteenId') canteenId: string,
+    @Req() req: any,
   ): Promise<CanteenConfigResponseDto> {
-    return this.adminConfigService.getCanteenConfig(canteenId);
+    return this.adminConfigService.getCanteenConfig(
+      canteenId,
+      req.admin.canteenId,
+    );
   }
 
   /**
@@ -94,8 +98,12 @@ export class AdminConfigController {
   @HttpCode(HttpStatus.OK)
   async getEffectiveConfig(
     @Param('canteenId') canteenId: string,
+    @Req() req: any,
   ): Promise<EffectiveConfigListResponseDto> {
-    return this.adminConfigService.getEffectiveConfig(canteenId);
+    return this.adminConfigService.getEffectiveConfig(
+      canteenId,
+      req.admin.canteenId,
+    );
   }
 
   /**

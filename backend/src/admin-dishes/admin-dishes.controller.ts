@@ -9,7 +9,6 @@ import {
   Param,
   Query,
   UseGuards,
-  Request,
   HttpCode,
   HttpStatus,
   UseInterceptors,
@@ -25,6 +24,8 @@ import {
 import { AdminAuthGuard } from '@/auth/guards/admin-auth.guard';
 import { PermissionsGuard } from '@/auth/guards/permissions.guard';
 import { RequirePermissions } from '@/auth/decorators/permissions.decorator';
+import { CurrentAdmin } from '@/auth/decorators/current-admin.decorator';
+import type { AdminInfo } from '@/auth/decorators/current-admin.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { BatchConfirmRequestDto } from './dto/admin-dish-batch.dto';
 import type { Express } from 'express';
@@ -37,22 +38,31 @@ export class AdminDishesController {
   @Get()
   @RequirePermissions('dish:view')
   @HttpCode(HttpStatus.OK)
-  async getAdminDishes(@Query() query: AdminGetDishesDto, @Request() req) {
-    return this.adminDishesService.getAdminDishes(query, req.admin);
+  async getAdminDishes(
+    @Query() query: AdminGetDishesDto,
+    @CurrentAdmin() admin: AdminInfo,
+  ) {
+    return this.adminDishesService.getAdminDishes(query, admin);
   }
 
   @Get(':id')
   @RequirePermissions('dish:view')
   @HttpCode(HttpStatus.OK)
-  async getAdminDishById(@Param('id') id: string, @Request() req) {
-    return this.adminDishesService.getAdminDishById(id, req.admin);
+  async getAdminDishById(
+    @Param('id') id: string,
+    @CurrentAdmin() admin: AdminInfo,
+  ) {
+    return this.adminDishesService.getAdminDishById(id, admin);
   }
 
   @Post()
   @RequirePermissions('dish:create')
   @HttpCode(HttpStatus.CREATED)
-  async createAdminDish(@Body() createDto: AdminCreateDishDto, @Request() req) {
-    return this.adminDishesService.createAdminDish(createDto, req.admin);
+  async createAdminDish(
+    @Body() createDto: AdminCreateDishDto,
+    @CurrentAdmin() admin: AdminInfo,
+  ) {
+    return this.adminDishesService.createAdminDish(createDto, admin);
   }
 
   @Put(':id')
@@ -61,9 +71,9 @@ export class AdminDishesController {
   async updateAdminDish(
     @Param('id') id: string,
     @Body() updateDto: AdminUpdateDishDto,
-    @Request() req,
+    @CurrentAdmin() admin: AdminInfo,
   ) {
-    return this.adminDishesService.updateAdminDish(id, updateDto, req.admin);
+    return this.adminDishesService.updateAdminDish(id, updateDto, admin);
   }
 
   @Patch(':id/status')
@@ -72,12 +82,12 @@ export class AdminDishesController {
   async updateDishStatus(
     @Param('id') id: string,
     @Body() updateStatusDto: AdminUpdateDishStatusDto,
-    @Request() req,
+    @CurrentAdmin() admin: AdminInfo,
   ) {
     return this.adminDishesService.updateDishStatus(
       id,
       updateStatusDto.status,
-      req.admin,
+      admin,
     );
   }
 
@@ -88,19 +98,24 @@ export class AdminDishesController {
     @Param('id') id: string,
     @Query('page') page: number = 1,
     @Query('pageSize') pageSize: number = 20,
+    @CurrentAdmin() admin: AdminInfo,
   ) {
     return this.adminDishesService.getDishReviews(
       id,
       Number(page),
       Number(pageSize),
+      admin,
     );
   }
 
   @Delete(':id')
   @RequirePermissions('dish:delete')
   @HttpCode(HttpStatus.OK)
-  async deleteAdminDish(@Param('id') id: string, @Request() req) {
-    return this.adminDishesService.deleteAdminDish(id, req.admin);
+  async deleteAdminDish(
+    @Param('id') id: string,
+    @CurrentAdmin() admin: AdminInfo,
+  ) {
+    return this.adminDishesService.deleteAdminDish(id, admin);
   }
 
   @Post('batch/parse')
@@ -109,9 +124,9 @@ export class AdminDishesController {
   @UseInterceptors(FileInterceptor('file'))
   async parseBatchExcel(
     @UploadedFile() file: Express.Multer.File,
-    @Request() req,
+    @CurrentAdmin() admin: AdminInfo,
   ) {
-    return this.adminDishesService.parseBatchExcel(file, req.admin);
+    return this.adminDishesService.parseBatchExcel(file, admin);
   }
 
   @Post('batch/confirm')
@@ -119,16 +134,19 @@ export class AdminDishesController {
   @HttpCode(HttpStatus.OK)
   async confirmBatchImport(
     @Body() body: BatchConfirmRequestDto,
-    @Request() req,
+    @CurrentAdmin() admin: AdminInfo,
   ) {
-    return this.adminDishesService.confirmBatchImport(body, req.admin);
+    return this.adminDishesService.confirmBatchImport(body, admin);
   }
 
   @Post(':id/embedding/refresh')
   @RequirePermissions('dish:edit')
   @HttpCode(HttpStatus.OK)
-  async refreshDishEmbedding(@Param('id') id: string, @Request() req) {
-    return this.adminDishesService.refreshDishEmbedding(id, req.admin);
+  async refreshDishEmbedding(
+    @Param('id') id: string,
+    @CurrentAdmin() admin: AdminInfo,
+  ) {
+    return this.adminDishesService.refreshDishEmbedding(id, admin);
   }
 
   @Post('embedding/refresh')
@@ -136,11 +154,11 @@ export class AdminDishesController {
   @HttpCode(HttpStatus.OK)
   async refreshDishesEmbeddingByCanteen(
     @Query('canteenId') canteenId: string,
-    @Request() req,
+    @CurrentAdmin() admin: AdminInfo,
   ) {
     return this.adminDishesService.refreshDishesEmbeddingsByCanteen(
       canteenId,
-      req.admin,
+      admin,
     );
   }
 

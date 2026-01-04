@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   UseGuards,
+  Request,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -26,15 +27,15 @@ export class AdminWindowsController {
   @Get(':id')
   @RequirePermissions('canteen:view')
   @HttpCode(HttpStatus.OK)
-  async findOne(@Param('id') id: string) {
-    return this.adminWindowsService.findOne(id);
+  async findOne(@Param('id') id: string, @Request() req) {
+    return this.adminWindowsService.findOne(id, req.admin);
   }
 
   @Post()
   @RequirePermissions('canteen:create')
   @HttpCode(HttpStatus.OK)
-  async create(@Body() createWindowDto: CreateWindowDto) {
-    return this.adminWindowsService.create(createWindowDto);
+  async create(@Body() createWindowDto: CreateWindowDto, @Request() req) {
+    return this.adminWindowsService.create(createWindowDto, req.admin);
   }
 
   @Put(':id')
@@ -43,14 +44,15 @@ export class AdminWindowsController {
   async update(
     @Param('id') id: string,
     @Body() updateWindowDto: UpdateWindowDto,
+    @Request() req,
   ) {
-    return this.adminWindowsService.update(id, updateWindowDto);
+    return this.adminWindowsService.update(id, updateWindowDto, req.admin);
   }
 
   @Delete(':id')
   @RequirePermissions('canteen:delete')
   @HttpCode(HttpStatus.OK)
-  async remove(@Param('id') id: string) {
-    return this.adminWindowsService.remove(id);
+  async remove(@Param('id') id: string, @Request() req) {
+    return this.adminWindowsService.remove(id, req.admin);
   }
 }

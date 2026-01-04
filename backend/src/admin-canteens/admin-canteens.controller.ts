@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   UseGuards,
+  Request,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -33,15 +34,20 @@ export class AdminCanteensController {
   async findAll(
     @Query('page') page: number = 1,
     @Query('pageSize') pageSize: number = 20,
+    @Request() req,
   ) {
-    return this.adminCanteensService.findAll(Number(page), Number(pageSize));
+    return this.adminCanteensService.findAll(
+      Number(page),
+      Number(pageSize),
+      req.admin,
+    );
   }
 
   @Get(':id')
   @RequirePermissions('canteen:view')
   @HttpCode(HttpStatus.OK)
-  async findOne(@Param('id') id: string) {
-    return this.adminCanteensService.findOne(id);
+  async findOne(@Param('id') id: string, @Request() req) {
+    return this.adminCanteensService.findOne(id, req.admin);
   }
 
   @Get(':canteenId/windows')
@@ -51,19 +57,21 @@ export class AdminCanteensController {
     @Param('canteenId') canteenId: string,
     @Query('page') page: number = 1,
     @Query('pageSize') pageSize: number = 20,
+    @Request() req,
   ) {
     return this.adminWindowsService.findAllByCanteen(
       canteenId,
       Number(page),
       Number(pageSize),
+      req.admin,
     );
   }
 
   @Post()
   @RequirePermissions('canteen:create')
   @HttpCode(HttpStatus.OK)
-  async create(@Body() createCanteenDto: CreateCanteenDto) {
-    return this.adminCanteensService.create(createCanteenDto);
+  async create(@Body() createCanteenDto: CreateCanteenDto, @Request() req) {
+    return this.adminCanteensService.create(createCanteenDto, req.admin);
   }
 
   @Put(':id')
@@ -72,14 +80,15 @@ export class AdminCanteensController {
   async update(
     @Param('id') id: string,
     @Body() updateCanteenDto: UpdateCanteenDto,
+    @Request() req,
   ) {
-    return this.adminCanteensService.update(id, updateCanteenDto);
+    return this.adminCanteensService.update(id, updateCanteenDto, req.admin);
   }
 
   @Delete(':id')
   @RequirePermissions('canteen:delete')
   @HttpCode(HttpStatus.OK)
-  async remove(@Param('id') id: string) {
-    return this.adminCanteensService.remove(id);
+  async remove(@Param('id') id: string, @Request() req) {
+    return this.adminCanteensService.remove(id, req.admin);
   }
 }

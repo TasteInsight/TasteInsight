@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { RejectCommentDto } from './dto/reject-comment.dto';
 import {
@@ -14,9 +18,18 @@ export class AdminCommentsService {
   async getPendingComments(
     page: number = 1,
     pageSize: number = 20,
+    adminInfo?: any,
   ): Promise<PendingCommentListResponseDto> {
     const skip = (page - 1) * pageSize;
-    const where = { status: 'pending' };
+    const where: any = { status: 'pending' };
+
+    if (adminInfo?.canteenId) {
+      where.review = {
+        dish: {
+          canteenId: adminInfo.canteenId,
+        },
+      };
+    }
 
     const [total, comments] = await Promise.all([
       this.prisma.comment.count({ where }),
@@ -68,10 +81,29 @@ export class AdminCommentsService {
     };
   }
 
-  async approveComment(id: string): Promise<SuccessResponseDto> {
-    const comment = await this.prisma.comment.findUnique({ where: { id } });
+  async approveComment(
+    id: string,
+    adminInfo?: any,
+  ): Promise<SuccessResponseDto> {
+    const comment = await this.prisma.comment.findUnique({
+      where: { id },
+      include: {
+        review: {
+          include: {
+            dish: true,
+          },
+        },
+      },
+    });
     if (!comment) {
       throw new NotFoundException('评论不存在');
+    }
+
+    if (
+      adminInfo?.canteenId &&
+      comment.review.dish.canteenId !== adminInfo.canteenId
+    ) {
+      throw new ForbiddenException('权限不足');
     }
 
     await this.prisma.comment.update({
@@ -91,10 +123,27 @@ export class AdminCommentsService {
   async rejectComment(
     id: string,
     dto: RejectCommentDto,
+    adminInfo?: any,
   ): Promise<SuccessResponseDto> {
-    const comment = await this.prisma.comment.findUnique({ where: { id } });
+    const comment = await this.prisma.comment.findUnique({
+      where: { id },
+      include: {
+        review: {
+          include: {
+            dish: true,
+          },
+        },
+      },
+    });
     if (!comment) {
       throw new NotFoundException('评论不存在');
+    }
+
+    if (
+      adminInfo?.canteenId &&
+      comment.review.dish.canteenId !== adminInfo.canteenId
+    ) {
+      throw new ForbiddenException('权限不足');
     }
 
     await this.prisma.comment.update({
@@ -112,12 +161,29 @@ export class AdminCommentsService {
     };
   }
 
-  async deleteComment(id: string): Promise<SuccessResponseDto> {
+  async deleteComment(
+    id: string,
+    adminInfo?: any,
+  ): Promise<SuccessResponseDto> {
     const comment = await this.prisma.comment.findUnique({
       where: { id, deletedAt: null },
+      include: {
+        review: {
+          include: {
+            dish: true,
+          },
+        },
+      },
     });
     if (!comment) {
       throw new NotFoundException('评论不存在');
+    }
+
+    if (
+      adminInfo?.canteenId &&
+      comment.review.dish.canteenId !== adminInfo.canteenId
+    ) {
+      throw new ForbiddenException('权限不足');
     }
 
     await this.prisma.comment.update({

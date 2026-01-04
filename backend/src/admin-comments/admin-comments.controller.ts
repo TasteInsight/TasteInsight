@@ -7,6 +7,7 @@ import {
   Param,
   Query,
   UseGuards,
+  Request,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -27,31 +28,37 @@ export class AdminCommentsController {
   async getPendingComments(
     @Query('page') page: number = 1,
     @Query('pageSize') pageSize: number = 20,
+    @Request() req,
   ) {
     return this.adminCommentsService.getPendingComments(
       Number(page),
       Number(pageSize),
+      req.admin,
     );
   }
 
   @Post(':id/approve')
   @RequirePermissions('comment:approve')
   @HttpCode(HttpStatus.OK)
-  async approveComment(@Param('id') id: string) {
-    return this.adminCommentsService.approveComment(id);
+  async approveComment(@Param('id') id: string, @Request() req) {
+    return this.adminCommentsService.approveComment(id, req.admin);
   }
 
   @Post(':id/reject')
   @RequirePermissions('comment:approve')
   @HttpCode(HttpStatus.OK)
-  async rejectComment(@Param('id') id: string, @Body() dto: RejectCommentDto) {
-    return this.adminCommentsService.rejectComment(id, dto);
+  async rejectComment(
+    @Param('id') id: string,
+    @Body() dto: RejectCommentDto,
+    @Request() req,
+  ) {
+    return this.adminCommentsService.rejectComment(id, dto, req.admin);
   }
 
   @Delete(':id')
   @RequirePermissions('comment:delete')
   @HttpCode(HttpStatus.OK)
-  async deleteComment(@Param('id') id: string) {
-    return this.adminCommentsService.deleteComment(id);
+  async deleteComment(@Param('id') id: string, @Request() req) {
+    return this.adminCommentsService.deleteComment(id, req.admin);
   }
 }

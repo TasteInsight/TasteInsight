@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { DishReviewStatsService } from '@/dish-review-stats-queue';
 import { RejectReviewDto } from './dto/reject-review.dto';
@@ -20,9 +24,14 @@ export class AdminReviewsService {
   async getPendingReviews(
     page: number = 1,
     pageSize: number = 20,
+    adminInfo?: any,
   ): Promise<PendingReviewListResponseDto> {
     const skip = (page - 1) * pageSize;
-    const where = { status: 'pending', deletedAt: null };
+    const where: any = { status: 'pending', deletedAt: null };
+
+    if (adminInfo?.canteenId) {
+      where.dish = { canteenId: adminInfo.canteenId };
+    }
 
     const [total, reviews] = await Promise.all([
       this.prisma.review.count({ where }),
@@ -97,12 +106,20 @@ export class AdminReviewsService {
     };
   }
 
-  async approveReview(id: string): Promise<SuccessResponseDto> {
+  async approveReview(
+    id: string,
+    adminInfo?: any,
+  ): Promise<SuccessResponseDto> {
     const review = await this.prisma.review.findUnique({
       where: { id, deletedAt: null },
+      include: { dish: true },
     });
     if (!review) {
       throw new NotFoundException('评价不存在');
+    }
+
+    if (adminInfo?.canteenId && review.dish.canteenId !== adminInfo.canteenId) {
+      throw new ForbiddenException('权限不足');
     }
 
     await this.prisma.review.update({
@@ -122,12 +139,18 @@ export class AdminReviewsService {
   async rejectReview(
     id: string,
     dto: RejectReviewDto,
+    adminInfo?: any,
   ): Promise<SuccessResponseDto> {
     const review = await this.prisma.review.findUnique({
       where: { id, deletedAt: null },
+      include: { dish: true },
     });
     if (!review) {
       throw new NotFoundException('评价不存在');
+    }
+
+    if (adminInfo?.canteenId && review.dish.canteenId !== adminInfo.canteenId) {
+      throw new ForbiddenException('权限不足');
     }
 
     await this.prisma.review.update({
@@ -147,12 +170,20 @@ export class AdminReviewsService {
     };
   }
 
-  async deleteReview(id: string): Promise<SuccessResponseDto> {
+  async deleteReview(
+    id: string,
+    adminInfo?: any,
+  ): Promise<SuccessResponseDto> {
     const review = await this.prisma.review.findUnique({
       where: { id, deletedAt: null },
+      include: { dish: true },
     });
     if (!review) {
       throw new NotFoundException('评价不存在');
+    }
+
+    if (adminInfo?.canteenId && review.dish.canteenId !== adminInfo.canteenId) {
+      throw new ForbiddenException('权限不足');
     }
 
     await this.prisma.review.update({
@@ -176,14 +207,20 @@ export class AdminReviewsService {
     reviewId: string,
     page: number = 1,
     pageSize: number = 20,
+    adminInfo?: any,
   ): Promise<ReviewCommentListResponseDto> {
     // 检查评价是否存在
     const review = await this.prisma.review.findUnique({
       where: { id: reviewId },
+      include: { dish: true },
     });
 
     if (!review) {
       throw new NotFoundException('评价不存在');
+    }
+
+    if (adminInfo?.canteenId && review.dish.canteenId !== adminInfo.canteenId) {
+      throw new ForbiddenException('权限不足');
     }
 
     const skip = (page - 1) * pageSize;
