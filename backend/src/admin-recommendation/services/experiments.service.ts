@@ -143,7 +143,9 @@ export class ExperimentsService {
       updateData.startTime = new Date(updateData.startTime);
     }
     if (updateData.endTime !== undefined) {
-      updateData.endTime = updateData.endTime ? new Date(updateData.endTime) : null;
+      updateData.endTime = updateData.endTime
+        ? new Date(updateData.endTime)
+        : null;
     }
 
     // 使用事务更新实验和分组

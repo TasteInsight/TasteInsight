@@ -1,6 +1,7 @@
 import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
-import { Job } from 'bullmq';
+import { Job, Queue } from 'bullmq';
+import { InjectQueue } from '@nestjs/bullmq';
 import { EmbeddingService } from '@/recommendation/services/embedding.service';
 import { RecommendationService } from '@/recommendation/recommendation.service';
 import {
@@ -12,6 +13,14 @@ import {
   RefreshUserJobData,
 } from './embedding-queue.constants';
 
+// 自定义取消错误
+export class JobCancelledError extends Error {
+  constructor(jobId: string) {
+    super(`Job ${jobId} was cancelled`);
+    this.name = 'JobCancelledError';
+  }
+}
+
 @Processor(EMBEDDING_QUEUE)
 export class EmbeddingQueueProcessor extends WorkerHost {
   private readonly logger = new Logger(EmbeddingQueueProcessor.name);
@@ -19,8 +28,20 @@ export class EmbeddingQueueProcessor extends WorkerHost {
   constructor(
     private readonly embeddingService: EmbeddingService,
     private readonly recommendationService: RecommendationService,
+    @InjectQueue(EMBEDDING_QUEUE) private readonly embeddingQueue: Queue,
   ) {
     super();
+  }
+
+  /**
+   * 检查任务是否被取消
+   */
+  private async checkCancelled(job: Job): Promise<void> {
+    // 重新获取任务数据以检查最新状态
+    const freshJob = await this.embeddingQueue.getJob(job.id!);
+    if (freshJob?.data?.cancelled) {
+      throw new JobCancelledError(job.id!);
+    }
   }
 
   async process(job: Job): Promise<any> {
@@ -56,16 +77,26 @@ export class EmbeddingQueueProcessor extends WorkerHost {
   private async handleRefreshCanteenDishes(
     job: Job,
     data: RefreshCanteenDishesJobData,
-  ): Promise<{ canteenId: string; count: number }> {
+  ): Promise<{ canteenId: string; count: number; cancelled?: boolean }> {
     const { canteenId } = data;
-    const count = await this.embeddingService.updateDishEmbeddingsByCanteen(
-      canteenId,
-      async (processed, total) => {
-        // 使用 BullMQ 的 updateProgress 报告进度
-        await job.updateProgress({ processed, total });
-      },
-    );
-    return { canteenId, count };
+    try {
+      const count = await this.embeddingService.updateDishEmbeddingsByCanteen(
+        canteenId,
+        async (processed, total) => {
+          // 在每个批次处理后检查是否被取消
+          await this.checkCancelled(job);
+          // 使用 BullMQ 的 updateProgress 报告进度
+          await job.updateProgress({ processed, total });
+        },
+      );
+      return { canteenId, count };
+    } catch (error) {
+      if (error instanceof JobCancelledError) {
+        this.logger.log(`Job ${job.id} cancelled during execution`);
+        return { canteenId, count: 0, cancelled: true };
+      }
+      throw error;
+    }
   }
 
   /**

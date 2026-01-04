@@ -1831,4 +1831,25 @@ export class AdminDishesService {
       data: status,
     };
   }
+
+  /**
+   * 取消嵌入任务
+   */
+  async cancelEmbeddingJob(jobId: string) {
+    if (!this.embeddingQueueService) {
+      return {
+        code: 400,
+        message: '队列服务未启用',
+        data: null,
+      };
+    }
+
+    const result = await this.embeddingQueueService.cancelJob(jobId);
+
+    return {
+      code: result.success ? 200 : 400,
+      message: result.message,
+      data: { success: result.success },
+    };
+  }
 }
