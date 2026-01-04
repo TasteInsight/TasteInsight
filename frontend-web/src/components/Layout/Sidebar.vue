@@ -240,6 +240,7 @@
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/modules/use-auth-store'
+import { showConfirm } from '@/composables/useModal'
 
 export default {
   name: 'Sidebar',
@@ -350,10 +351,11 @@ export default {
       activeMenu.value = showAddSubmenu.value ? 'add' : ''
     }
 
-    const handleLogout = () => {
-      if (confirm('确定要退出登录吗？')) {
+    const handleLogout = async () => {
+      const confirmed = await showConfirm('确定要退出登录吗？', '退出登录', '确定', '取消')
+      if (confirmed) {
         authStore.logout()
-        router.push('/login')
+        router.replace('/login')
       }
     }
 

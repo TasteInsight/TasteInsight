@@ -48,7 +48,7 @@
                 }"
               />
             </div>
-            <p v-if="errors.username" class="mt-1.5 sm:mt-2 text-xs sm:text-sm text-red-500 flex items-center">
+            <p v-show="errors.username" class="mt-1.5 sm:mt-2 text-xs sm:text-sm text-red-500 flex items-center">
               <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
               {{ errors.username }}
             </p>
@@ -87,7 +87,7 @@
                 ></span>
               </button>
             </div>
-            <p v-if="errors.password" class="mt-1.5 sm:mt-2 text-xs sm:text-sm text-red-500 flex items-center">
+            <p v-show="errors.password" class="mt-1.5 sm:mt-2 text-xs sm:text-sm text-red-500 flex items-center">
               <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
               {{ errors.password }}
             </p>
@@ -121,11 +121,11 @@
             class="w-full py-2.5 sm:py-3.5 bg-tsinghua-purple text-white rounded-lg sm:rounded-xl font-semibold hover:bg-tsinghua-dark hover:shadow-lg hover:shadow-tsinghua-purple/30 transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none transform hover:scale-[1.02] active:scale-[0.98] text-sm sm:text-base"
           >
             <span
-              v-if="loading"
+              v-show="loading"
               class="iconify animate-spin text-base sm:text-lg"
               data-icon="carbon:circle-dash"
             ></span>
-            <span v-else class="iconify text-base sm:text-lg" data-icon="carbon:login"></span>
+            <span v-show="!loading" class="iconify text-base sm:text-lg" data-icon="carbon:login"></span>
             <span>{{ loading ? '登录中...' : '登录' }}</span>
           </button>
         </form>
@@ -137,38 +137,13 @@
       </div>
     </div>
 
-    <!-- 错误弹窗 -->
-    <div
-      v-if="showErrorModal"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000] p-4"
-      @click.self="closeErrorModal"
-    >
-      <div class="bg-white rounded-xl shadow-2xl w-full max-w-md transform transition-all">
-        <div class="p-4 sm:p-6">
-          <div class="flex items-center justify-center mb-3 sm:mb-4">
-            <div class="w-12 h-12 sm:w-16 sm:h-16 bg-red-100 rounded-full flex items-center justify-center">
-              <span class="iconify text-red-500 text-2xl sm:text-3xl" data-icon="carbon:warning"></span>
-            </div>
-          </div>
-          <h3 class="text-lg sm:text-xl font-semibold text-gray-800 text-center mb-2">登录失败</h3>
-          <p class="text-sm sm:text-base text-gray-600 text-center mb-4 sm:mb-6">{{ errorMessage || '用户名或密码错误' }}</p>
-          <button
-            @click="closeErrorModal"
-            class="w-full py-2.5 sm:py-3 bg-tsinghua-purple text-white rounded-lg sm:rounded-xl font-semibold hover:bg-tsinghua-dark hover:shadow-lg hover:shadow-tsinghua-purple/30 transition-all duration-200 text-sm sm:text-base"
-          >
-            确定
-          </button>
-        </div>
-      </div>
-    </div>
-
     <!-- 忘记密码弹窗 -->
     <div
-      v-if="showForgotPasswordModal"
+      v-show="showForgotPasswordModal"
       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000] p-4"
       @click.self="closeForgotPasswordModal"
     >
-      <div class="bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-lg transform transition-all animate-in fade-in zoom-in duration-200">
+      <div class="bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-lg transform transition-all">
         <!-- 弹窗头部 -->
         <div class="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
           <h3 class="text-xl sm:text-2xl font-bold text-gray-900 flex items-center space-x-2">
@@ -209,7 +184,7 @@
 </template>
 
 <script>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 
@@ -232,10 +207,19 @@ export default {
 
     const showPassword = ref(false)
     const loading = ref(false)
-    const errorMessage = ref('')
-    const showErrorModal = ref(false)
     const loginError = ref('')
     const showForgotPasswordModal = ref(false)
+    
+    // 用于追踪组件是否已卸载
+    let isUnmounted = false
+    // 用于追踪是否正在导航
+    let isNavigating = false
+
+    // 组件卸载前关闭所有模态框，防止 DOM 操作错误
+    onBeforeUnmount(() => {
+      isUnmounted = true
+      showForgotPasswordModal.value = false
+    })
 
     const validateForm = () => {
       errors.username = ''
@@ -259,8 +243,10 @@ export default {
     }
 
     const handleLogin = async () => {
+      // 如果正在导航中，不重复处理
+      if (isNavigating) return
+      
       // 清除之前的错误信息
-      errorMessage.value = ''
       loginError.value = ''
       errors.username = ''
       errors.password = ''
@@ -270,26 +256,32 @@ export default {
         return
       }
 
+      // 先计算目标路由（在登录前计算，避免状态变化后出问题）
+      const queryRedirect = router.currentRoute.value.query.redirect
+      const storageRedirect = sessionStorage.getItem('login_redirect')
+      const savedRedirect = (typeof queryRedirect === 'string' ? queryRedirect : null) || storageRedirect
+      
       loading.value = true
 
       try {
-        await authStore.login({
+        const loginResult = await authStore.login({
           username: loginForm.username,
           password: loginForm.password,
           remember: loginForm.remember,
         })
 
-        // 登录成功，跳转到之前访问的页面或第一个有权限的页面
-        const queryRedirect = router.currentRoute.value.query.redirect
-        const storageRedirect = sessionStorage.getItem('login_redirect')
-        const savedRedirect = (typeof queryRedirect === 'string' ? queryRedirect : null) || storageRedirect
+        // 登录成功后立即标记正在导航，阻止后续任何状态更新
+        isNavigating = true
+        isUnmounted = true  // 模拟组件已卸载，阻止任何后续更新
+
         sessionStorage.removeItem('login_redirect')
         
+        let targetRoute = '/single-add'
+        
         if (savedRedirect) {
-          // 如果有保存的重定向地址，尝试跳转
-          router.push(savedRedirect)
+          targetRoute = savedRedirect
         } else {
-          // 否则根据权限跳转到第一个有权限的页面
+          // 根据权限跳转到第一个有权限的页面
           const routePriority = [
             { path: '/single-add', permission: 'dish:view' },
             { path: '/modify-dish', permission: 'dish:view' },
@@ -300,18 +292,24 @@ export default {
             { path: '/report-manage', permission: 'report:handle' },
           ]
           
-          // 找到第一个有权限的页面
-          let targetRoute = '/single-add'
+          // 从 loginResult 获取权限
+          const userPermissions = loginResult?.data?.permissions || []
+          
           for (const route of routePriority) {
-            if (authStore.hasPermission(route.permission)) {
+            // 只检查后端返回的权限列表
+            if (userPermissions.includes(route.permission)) {
               targetRoute = route.path
               break
             }
           }
-          
-          router.push(targetRoute)
         }
+        
+        // 直接同步跳转，不等待 Vue 更新
+        window.location.href = targetRoute
       } catch (error) {
+        // 如果组件已卸载或正在导航，不再更新状态
+        if (isUnmounted || isNavigating) return
+        
         // 登录失败，显示错误信息
         const errorMsg = '用户名或密码错误'
         loginError.value = errorMsg
@@ -319,22 +317,8 @@ export default {
         errors.username = errorMsg
         errors.password = errorMsg
         
-        // 保留原有的错误弹窗逻辑（可选，如果需要可以移除）
-        if (error instanceof Error) {
-          errorMessage.value = error.message || errorMsg
-        } else {
-          errorMessage.value = errorMsg
-        }
-        // 显示错误弹窗
-        showErrorModal.value = true
-      } finally {
         loading.value = false
       }
-    }
-
-    const closeErrorModal = () => {
-      showErrorModal.value = false
-      errorMessage.value = ''
     }
 
     const handleForgotPassword = () => {
@@ -359,12 +343,9 @@ export default {
       errors,
       showPassword,
       loading,
-      errorMessage,
-      showErrorModal,
       loginError,
       handleLogin,
       handleForgotPassword,
-      closeErrorModal,
       clearLoginError,
       showForgotPasswordModal,
       closeForgotPasswordModal,
@@ -372,3 +353,25 @@ export default {
   },
 }
 </script>
+<style scoped>
+/* 模态框过渡动画 */
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+}
+
+.modal-fade-enter-active > div,
+.modal-fade-leave-active > div {
+  transition: transform 0.2s ease;
+}
+
+.modal-fade-enter-from > div,
+.modal-fade-leave-to > div {
+  transform: scale(0.95);
+}
+</style>
