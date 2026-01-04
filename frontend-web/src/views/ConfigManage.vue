@@ -615,24 +615,32 @@ export default {
       }
     }
 
-    // 开始轮询任务状态
+    // 开始轮询任务状态（使用递归 setTimeout 避免请求重叠）
     const startPolling = (jobId) => {
       // 清除之前的轮询
       if (pollingIntervalRef.value) {
-        clearInterval(pollingIntervalRef.value)
+        clearTimeout(pollingIntervalRef.value)
         pollingIntervalRef.value = null
       }
       
       // 标记轮询为活跃状态
       isPollingActive.value = true
       
-      // 立即查询一次
-      checkJobStatus(jobId)
-
-      // 每2秒轮询一次
-      pollingIntervalRef.value = setInterval(() => {
-        checkJobStatus(jobId)
-      }, 2000)
+      // 定义递归轮询函数
+      const poll = async () => {
+        // 如果轮询已停止，不再继续
+        if (!isPollingActive.value) return
+        
+        await checkJobStatus(jobId)
+        
+        // 检查轮询状态，如果仍然活跃，安排下一次轮询
+        if (isPollingActive.value) {
+          pollingIntervalRef.value = setTimeout(poll, 2000)
+        }
+      }
+      
+      // 立即开始第一次轮询
+      poll()
     }
 
     // 停止轮询（内部使用）
@@ -641,7 +649,7 @@ export default {
       isPollingActive.value = false
 
       if (pollingIntervalRef.value) {
-        clearInterval(pollingIntervalRef.value)
+        clearTimeout(pollingIntervalRef.value)
         pollingIntervalRef.value = null
       }
       // 重置成功提示状态
@@ -695,7 +703,7 @@ export default {
             showAlert(message.includes('已完成') ? '任务已完成，无需取消' : '任务已失败')
             // 停止轮询定时器，但保留进度显示
             if (pollingIntervalRef.value) {
-              clearInterval(pollingIntervalRef.value)
+              clearTimeout(pollingIntervalRef.value)
               pollingIntervalRef.value = null
             }
             isPollingActive.value = false
@@ -779,7 +787,7 @@ export default {
             // 先停止轮询，清除定时器
             isPollingActive.value = false
             if (pollingIntervalRef.value) {
-              clearInterval(pollingIntervalRef.value)
+              clearTimeout(pollingIntervalRef.value)
               pollingIntervalRef.value = null
             }
             // 重置UI状态
