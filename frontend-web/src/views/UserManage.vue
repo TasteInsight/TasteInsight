@@ -1144,16 +1144,17 @@ export default {
           }
         } else {
           // 创建新管理员
-          // 注意：后端暂时不支持 role 字段，所以不发送该字段
-          // 当后端支持时，可以添加 role 字段
+          // 确定最终角色：自定义角色使用输入的名称，否则使用选择的角色
+          const finalRole = formData.role === 'custom' 
+            ? (formData.customRole.trim() || 'admin')
+            : (formData.role || 'admin')
+          
           const createData = {
             username: formData.username.trim(),
             password: formData.password.trim(),
             canteenId: formData.canteenId.trim() || undefined,
             permissions: formData.permissions,
-            // role 字段暂时不发送，等待后端支持后再添加
-            // const finalRole = formData.role === 'custom' ? formData.customRole.trim() : formData.role
-            // role: finalRole,
+            role: finalRole,
           }
 
           const response = await permissionApi.createAdmin(createData)
