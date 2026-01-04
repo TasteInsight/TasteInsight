@@ -156,11 +156,6 @@ pnpm install
 # 标准开发模式
 pnpm dev:h5
 
-# Mock 数据模式（无需后端）
-pnpm dev:mock
-```
-
-访问 http://localhost:5173
 
 ### 微信小程序开发模式
 
