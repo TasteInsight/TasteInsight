@@ -437,6 +437,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { reviewApi } from '@/api/modules/review'
 import { dishApi } from '@/api/modules/dish'
 import Header from '@/components/Layout/Header.vue'
+import { showAlert } from '@/composables/useModal'
 
 export default {
   name: 'ReviewDishDetail',
@@ -593,12 +594,12 @@ export default {
           // 处理状态
           dishData.status = dish.status || 'pending'
         } else {
-          alert('未找到该菜品信息')
+          showAlert('未找到该菜品信息')
           router.push('/review-dish')
         }
       } catch (error) {
         console.error('加载菜品信息失败:', error)
-        alert('获取菜品信息失败，请重试')
+        showAlert('获取菜品信息失败，请重试')
         router.push('/review-dish')
       } finally {
         isLoading.value = false
@@ -620,17 +621,14 @@ export default {
         const response = await reviewApi.approveUpload(dishData.id.toString())
         if (response.code === 200 || response.code === 201) {
           dishData.status = 'approved'
-          // 通过路由参数传递刷新标志
-          router.push({
-            path: '/review-dish',
-            query: { refresh: 'true', updatedId: dishData.id, status: 'approved' },
-          })
+          // 返回列表页
+          router.replace({ name: 'ReviewDish' })
         } else {
           throw new Error(response.message || '审核失败')
         }
       } catch (error) {
         console.error('批准审核失败:', error)
-        alert(error instanceof Error ? error.message : '批准审核失败，请重试')
+        showAlert(error instanceof Error ? error.message : '批准审核失败，请重试')
       }
     }
 
@@ -663,17 +661,14 @@ export default {
         if (response.code === 200 || response.code === 201) {
           dishData.status = 'rejected'
           isRejectModalOpen.value = false
-          // 通过路由参数传递刷新标志
-          router.push({
-            path: '/review-dish',
-            query: { refresh: 'true', updatedId: dishData.id, status: 'rejected' },
-          })
+          // 返回列表页
+          router.replace({ name: 'ReviewDish' })
         } else {
           throw new Error(response.message || '审核失败')
         }
       } catch (error) {
         console.error('拒绝审核失败:', error)
-        alert(error instanceof Error ? error.message : '拒绝审核失败，请重试')
+        showAlert(error instanceof Error ? error.message : '拒绝审核失败，请重试')
       } finally {
         isSubmitting.value = false
       }
@@ -682,7 +677,7 @@ export default {
     // 撤销审核结果
     const revokeApproval = async () => {
       if (dishData.status === 'pending') {
-        alert('该菜品当前为待审核状态，无需撤销。')
+        showAlert('该菜品当前为待审核状态，无需撤销。')
         return
       }
 
@@ -698,18 +693,14 @@ export default {
         const response = await reviewApi.revokeUpload(dishData.id.toString())
         if (response.code === 200 || response.code === 201) {
           dishData.status = 'pending'
-          // 通过路由参数传递刷新标志
-          router.push({
-            path: '/review-dish',
-            query: { refresh: 'true', updatedId: dishData.id, status: 'pending' },
-          })
-          alert('菜品审核结果已撤销，重新进入待审核状态。')
+          // 返回列表页
+          router.replace({ name: 'ReviewDish' })
         } else {
           throw new Error(response.message || '撤销审核失败')
         }
       } catch (error) {
         console.error('撤销审核失败:', error)
-        alert(error instanceof Error ? error.message : '撤销审核失败，请重试')
+        showAlert(error instanceof Error ? error.message : '撤销审核失败，请重试')
       }
     }
 

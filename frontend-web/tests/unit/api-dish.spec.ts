@@ -196,4 +196,50 @@ describe('api/dishApi', () => {
     await dishApi.confirmBatchImport({ items: [] } as any)
     expect(postMock).toHaveBeenCalledWith('/admin/dishes/batch/confirm', { items: [] })
   })
+
+  it('refreshDishEmbedding calls POST /admin/dishes/:id/embedding/refresh', async () => {
+    postMock.mockResolvedValueOnce({ code: 200, data: { jobId: 'job1' } })
+
+    const { dishApi } = await import('@/api/modules/dish')
+    const res = await dishApi.refreshDishEmbedding('d1')
+
+    expect(postMock).toHaveBeenCalledWith('/admin/dishes/d1/embedding/refresh')
+    expect(res.data.jobId).toBe('job1')
+  })
+
+  it('refreshDishesEmbeddingByCanteen calls POST with canteenId query', async () => {
+    postMock.mockResolvedValueOnce({ code: 200, data: { jobId: 'job2' } })
+
+    const { dishApi } = await import('@/api/modules/dish')
+    await dishApi.refreshDishesEmbeddingByCanteen('c1')
+
+    expect(postMock).toHaveBeenCalledWith('/admin/dishes/embedding/refresh?canteenId=c1')
+  })
+
+  it('getEmbeddingJobStatus calls GET with cache-control headers', async () => {
+    getMock.mockResolvedValueOnce({
+      code: 200,
+      data: { jobId: 'job1', status: 'processing', progress: 50 },
+    })
+
+    const { dishApi } = await import('@/api/modules/dish')
+    await dishApi.getEmbeddingJobStatus('job1')
+
+    expect(getMock).toHaveBeenCalledWith(
+      '/admin/dishes/embedding/job/job1',
+      expect.objectContaining({
+        params: { _t: expect.any(Number) },
+        headers: { 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
+      }),
+    )
+  })
+
+  it('cancelEmbeddingJob calls DELETE /admin/dishes/embedding/job/:jobId', async () => {
+    deleteMock.mockResolvedValueOnce({ code: 200, data: { success: true } })
+
+    const { dishApi } = await import('@/api/modules/dish')
+    await dishApi.cancelEmbeddingJob('job1')
+
+    expect(deleteMock).toHaveBeenCalledWith('/admin/dishes/embedding/job/job1')
+  })
 })

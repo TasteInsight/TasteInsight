@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AIChatService } from './ai-chat.service';
 import { PrismaService } from '../../src/prisma.service';
 import { AIConfigService } from './services/ai-config.service';
+import { PromptSecurityService } from './services/prompt-security.service';
 import { OpenAIProviderService } from './services/ai-provider/openai-provider.service';
 import { ToolRegistryService } from './tools/tool-registry.service';
 
@@ -20,11 +21,14 @@ describe('AIChatService', () => {
               create: jest.fn(),
               findFirst: jest.fn(),
               findMany: jest.fn(),
+              delete: jest.fn(),
             },
             aIMessage: {
               create: jest.fn(),
               findMany: jest.fn(),
+              deleteMany: jest.fn(),
             },
+            $transaction: jest.fn((cb) => cb(prisma)),
             canteen: {
               findMany: jest.fn(),
             },
@@ -34,6 +38,20 @@ describe('AIChatService', () => {
           provide: AIConfigService,
           useValue: {
             getProviderConfig: jest.fn(),
+          },
+        },
+        {
+          provide: PromptSecurityService,
+          useValue: {
+            validateUserInput: jest.fn().mockReturnValue({
+              isValid: true,
+              sanitized: 'test message',
+            }),
+            enhanceSystemPrompt: jest.fn((prompt) => prompt),
+            filterAIResponse: jest.fn((response) => response),
+            validateToolParams: jest.fn().mockReturnValue({
+              isValid: true,
+            }),
           },
         },
         {
@@ -122,7 +140,9 @@ describe('AIChatService', () => {
         },
       ]);
 
-      const suggestions = await service.getSuggestions('user123');
+      const suggestions = await service.getSuggestions('user123', {
+        localTime: new Date().toISOString(),
+      });
 
       expect(Array.isArray(suggestions)).toBe(true);
       expect(suggestions.length).toBeGreaterThan(0);
@@ -145,7 +165,9 @@ describe('AIChatService', () => {
         },
       ]);
 
-      const suggestions = await service.getSuggestions('user123');
+      const suggestions = await service.getSuggestions('user123', {
+        localTime: new Date().toISOString(),
+      });
 
       expect(suggestions.some((s) => s.includes('学生食堂'))).toBe(true);
     });
@@ -224,6 +246,56 @@ describe('AIChatService', () => {
 
       expect(result.messages).toHaveLength(50);
       expect(result).toHaveProperty('cursor');
+    });
+  });
+
+  describe('deleteSession', () => {
+    it('should delete existing session using transaction', async () => {
+      const mockSession = {
+        id: 'session123',
+        userId: 'user123',
+      };
+
+      // Create a transaction client mock
+      const mockTx = {
+        aIMessage: { deleteMany: jest.fn().mockResolvedValue({ count: 5 }) },
+        aISession: { delete: jest.fn().mockResolvedValue(mockSession) },
+      };
+
+      // Spy on $transaction to execute the callback with mockTx
+      jest
+        .spyOn(prisma, '$transaction')
+        .mockImplementation(async (callback: any) => {
+          return callback(mockTx);
+        });
+
+      jest
+        .spyOn(prisma.aISession, 'findFirst')
+        .mockResolvedValue(mockSession as any);
+
+      await service.deleteSession('user123', 'session123');
+
+      // Verify transaction was used
+      expect(prisma.$transaction).toHaveBeenCalled();
+
+      // Verify operations were called on the TRANSACTION client, not the main prisma client
+      expect(mockTx.aIMessage.deleteMany).toHaveBeenCalledWith({
+        where: { sessionId: 'session123' },
+      });
+      expect(mockTx.aISession.delete).toHaveBeenCalledWith({
+        where: { id: 'session123' },
+      });
+
+      // Verify main client was NOT used for deletion
+      expect(prisma.aISession.delete).not.toHaveBeenCalled();
+    });
+
+    it('should throw error if session not found', async () => {
+      jest.spyOn(prisma.aISession, 'findFirst').mockResolvedValue(null);
+
+      await expect(
+        service.deleteSession('user123', 'invalid-session'),
+      ).rejects.toThrow('Session not found');
     });
   });
 });

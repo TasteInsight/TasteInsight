@@ -4,43 +4,35 @@
     <TagListSkeleton v-if="loading && dishes.length === 0" />
 
     <template v-else>
-    <!-- 顶部标题 -->
-    <view class="px-4 py-3 border-b border-gray-100 bg-white sticky top-0 z-10">
-      <view class="text-lg font-bold text-gray-800">
-        #{{ currentTag }}
-      </view>
-      <view class="text-xs text-gray-500 mt-1">
-        {{ canteenName }} · 相关菜品
-      </view>
-    </view>
-
-    <view class="px-4">
-      <view v-if="error" class="text-center py-8 text-red-500">
-        {{ error }}
-        <view class="mt-2">
-          <button size="mini" @click="loadDishes(true)">重试</button>
-        </view>
+      <!-- 顶部标题 -->
+      <view class="px-4 py-3 border-b border-gray-100 bg-white sticky top-0 z-10">
+        <view class="text-lg font-bold text-gray-800"> #{{ currentTag }} </view>
+        <view class="text-xs text-gray-500 mt-1"> {{ canteenName }} · 相关菜品 </view>
       </view>
 
-      <view v-else-if="dishes.length > 0">
-        <CanteenDishCard
-          v-for="dish in dishes"
-          :key="dish.id"
-          :dish="dish"
-          @click="goToDishDetail"
-        />
-        <view v-if="loading" class="text-center py-4 text-gray-400 text-sm">
-          加载更多...
+      <view class="px-4">
+        <view v-if="error" class="text-center py-8 text-red-500">
+          {{ error }}
+          <view class="mt-2">
+            <button size="mini" @click="loadDishes(true)">重试</button>
+          </view>
         </view>
-        <view v-if="!hasMore && dishes.length > 0" class="text-center py-4 text-gray-400 text-sm">
-          没有更多了
-        </view>
-      </view>
 
-      <view v-else class="text-center py-10 text-gray-500">
-        暂无相关菜品
+        <view v-else-if="dishes.length > 0">
+          <CanteenDishCard
+            v-for="dish in dishes"
+            :key="dish.id"
+            :dish="dish"
+            @click="goToDishDetail"
+          />
+          <view v-if="loading" class="text-center py-4 text-gray-400 text-sm"> 加载更多... </view>
+          <view v-if="!hasMore && dishes.length > 0" class="text-center py-4 text-gray-400 text-sm">
+            没有更多了
+          </view>
+        </view>
+
+        <view v-else class="text-center py-10 text-gray-500"> 暂无相关菜品 </view>
       </view>
-    </view>
     </template>
   </view>
 </template>
@@ -68,9 +60,9 @@ onLoad((options: any) => {
     currentTag.value = decodeURIComponent(options.tag);
     canteenId.value = options.canteenId;
     canteenName.value = decodeURIComponent(options.canteenName || '');
-    
+
     uni.setNavigationBarTitle({
-      title: `#${currentTag.value} - ${canteenName.value}`
+      title: `#${currentTag.value} - ${canteenName.value}`,
     });
 
     loadDishes(true);
@@ -95,19 +87,19 @@ const loadDishes = async (refresh = false) => {
       filter: {
         tag: [currentTag.value],
         canteenId: [canteenId.value],
-        includeOffline: false
+        includeOffline: false,
       },
       search: {
-        keyword: ''
+        keyword: '',
       },
       sort: {
         field: 'createdAt',
-        order: 'desc'
+        order: 'desc',
       },
       pagination: {
         page: page.value,
-        pageSize: pageSize.value
-      }
+        pageSize: pageSize.value,
+      },
     });
 
     if (res.code === 200 && res.data) {
@@ -117,7 +109,7 @@ const loadDishes = async (refresh = false) => {
       } else {
         dishes.value = [...dishes.value, ...newDishes];
       }
-      
+
       if (newDishes.length < pageSize.value) {
         hasMore.value = false;
       } else {

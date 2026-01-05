@@ -62,7 +62,13 @@ export const mockGetReviewsByDish = async (
 export const mockGetCommentsByReview = async (
   reviewId: string,
   params?: PaginationParams
-): Promise<{ items: Comment[]; total: number; page: number; pageSize: number; hasMore: boolean }> => {
+): Promise<{
+  items: Comment[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+}> => {
   await delay();
 
   const allComments = getCommentsByReviewId(reviewId);
@@ -93,7 +99,7 @@ export const mockCreateReview = async (data: {
   images?: string[];
 }): Promise<Review> => {
   await delay(500);
-  
+
   // 创建新评价对象
   const newId = `review_${Date.now()}`;
   const newReview: Review = {
@@ -108,11 +114,11 @@ export const mockCreateReview = async (data: {
     status: 'pending',
     createdAt: new Date().toISOString(),
   };
-  
+
   // 保存到 mock 数据中
   addReview(newReview);
   console.log('[Mock] 创建评价:', newReview);
-  
+
   return newReview;
 };
 
@@ -125,7 +131,7 @@ export const mockCreateComment = async (data: {
   parentCommentId?: string;
 }): Promise<Comment> => {
   await delay(500);
-  
+
   // 创建新评论对象
   const newId = `comment_${Date.now()}`;
   const newComment: Comment = {
@@ -139,7 +145,7 @@ export const mockCreateComment = async (data: {
     status: 'approved',
     createdAt: new Date().toISOString(),
   };
-  
+
   // 如果有parentCommentId，设置parentComment
   if (data.parentCommentId) {
     const allComments = getCommentsByReviewId(data.reviewId);
@@ -153,11 +159,11 @@ export const mockCreateComment = async (data: {
       };
     }
   }
-  
+
   // 保存到 mock 数据中
   addComment(newComment);
   console.log('[Mock] 创建评论:', newComment);
-  
+
   return newComment;
 };
 
@@ -184,4 +190,3 @@ export const mockDeleteComment = async (commentId: string): Promise<void> => {
   }
   console.log('[Mock] 删除评论:', commentId);
 };
-

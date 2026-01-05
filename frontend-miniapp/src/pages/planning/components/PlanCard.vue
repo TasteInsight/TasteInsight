@@ -1,21 +1,34 @@
 <template>
-  <view @tap="$emit('view')" class="bg-white rounded-xl shadow-sm p-4 mb-3 cursor-pointer w-full box-border">
+  <view
+    @tap="$emit('view')"
+    class="bg-white rounded-xl shadow-sm p-4 mb-3 cursor-pointer w-full box-border"
+  >
     <view class="bg-ts-purple py-2 px-3 rounded-lg mb-3 flex justify-between items-center">
-      <text class="font-bold text-white">{{ formatDate(plan.startDate) }} | {{ mealTimeText }}</text>
+      <text class="font-bold text-white"
+        >{{ formatDate(plan.startDate) }} | {{ mealTimeText }}</text
+      >
       <view class="flex gap-3 items-center">
         <view v-if="!isHistory" @tap.stop="$emit('edit')" class="p-1">
-          <text class="iconfont icon-edit text-white text-base" style="font-size:18px; line-height:1"> </text>
+          <text
+            class="iconfont icon-edit text-white text-base"
+            style="font-size: 18px; line-height: 1"
+          >
+          </text>
         </view>
         <view @tap.stop="$emit('delete')" class="p-1">
-          <text class="iconfont icon-delete text-white text-base" style="font-size:18px; line-height:1"> </text>
+          <text
+            class="iconfont icon-delete text-white text-base"
+            style="font-size: 18px; line-height: 1"
+          >
+          </text>
         </view>
       </view>
     </view>
 
     <view v-for="dish in plan.dishes" :key="dish.id" class="flex mb-3">
-      <image 
-        :src="dish.images[0] || '/default-dish.png'" 
-        class="w-20 h-20 rounded-lg" 
+      <image
+        :src="dish.images[0] || '/static/default_dish.png'"
+        class="w-20 h-20 rounded-lg"
         mode="aspectFill"
       />
       <view class="ml-3 flex-1">
@@ -25,26 +38,25 @@
           <text class="text-orange-500 font-bold">¥{{ dish.price }}</text>
           <view class="flex items-center">
             <text class="text-yellow-500">★</text>
-            <text class="text-yellow-500 ml-1">{{ dish.averageRating === 0 ? '暂无' : dish.averageRating.toFixed(1) }}</text>
+            <text class="text-yellow-500 ml-1">{{
+              dish.averageRating === 0 ? '暂无' : dish.averageRating.toFixed(1)
+            }}</text>
           </view>
         </view>
       </view>
     </view>
-    
+
     <view class="flex items-center justify-between border-t border-gray-100 pt-3 mt-3">
       <text class="text-gray-600">总价：¥{{ totalPrice.toFixed(1) }}</text>
-      <view 
-        v-if="!isHistory" 
+      <view
+        v-if="!isHistory"
         @tap.stop="$emit('execute')"
         class="bg-ts-purple text-gray-400 py-2 px-6 rounded-full"
       >
         <text class="text-white">执行</text>
       </view>
       <view v-else class="flex items-center gap-1">
-        <text 
-          :class="plan.isCompleted ? 'text-green-500' : 'text-orange-500'"
-          class="text-sm"
-        >
+        <text :class="plan.isCompleted ? 'text-green-500' : 'text-orange-500'" class="text-sm">
           {{ plan.isCompleted ? '✓ 已完成' : '✗ 未完成' }}
         </text>
       </view>
@@ -73,15 +85,12 @@ const mealTimeMap = {
   breakfast: '早餐',
   lunch: '午餐',
   dinner: '晚餐',
-  nightsnack: '夜宵'
+  nightsnack: '夜宵',
 };
 
 const mealTimeText = computed(() => mealTimeMap[props.plan.mealTime] || '用餐');
 
-const totalPrice = computed(() => 
-  props.plan.dishes.reduce((sum, dish) => sum + dish.price, 0)
-);
+const totalPrice = computed(() => props.plan.dishes.reduce((sum, dish) => sum + dish.price, 0));
 
 const formatDate = (date: string) => dayjs(date).format('MM月DD日');
 </script>
-

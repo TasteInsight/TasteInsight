@@ -5,13 +5,17 @@
     position="bottom"
     :round="true"
     :overlay="true"
+    :safe-area-inset-bottom="false"
     custom-style="height: 85vh; background-color: #fff;"
     @clickoverlay="handleClose"
     @afterleave="handleClose"
   >
-    <view class="w-full h-full flex flex-col">
+    <view id="acp-root" class="w-full h-full flex flex-col">
       <!-- 头部 -->
-      <view class="flex justify-center items-center py-4 px-5 border-b border-gray-200 shrink-0 relative">
+      <view
+        id="acp-header"
+        class="flex justify-center items-center py-4 px-5 border-b border-gray-200 shrink-0 relative"
+      >
         <h2 class="text-lg font-semibold text-gray-800">全部回复</h2>
         <button
           class="absolute right-5 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-gray-500 text-lg rounded-full bg-transparent border-none"
@@ -23,17 +27,22 @@
 
       <!-- 评论列表 -->
       <scroll-view
-        class="flex-1 px-5"
+        class="px-5 flex-1 min-h-0"
         scroll-y="true"
-        enable-flex="true"
         lower-threshold="80"
         @scrolltolower="handleScrollToLower"
       >
-        <view v-if="loading && comments.length === 0" class="flex justify-center items-center h-48 text-gray-500">
+        <view
+          v-if="loading && comments.length === 0"
+          class="flex justify-center items-center text-gray-500 h-full"
+        >
           <text>加载中...</text>
         </view>
 
-        <view v-else-if="comments.length === 0" class="flex justify-center items-center h-48 text-gray-500">
+        <view
+          v-else-if="comments.length === 0"
+          class="flex justify-center items-center text-gray-500 h-full"
+        >
           <text>暂无评论</text>
         </view>
 
@@ -56,13 +65,21 @@
                 <view class="flex-1">
                   <!-- 第一行：用户名和回复目标 -->
                   <view class="flex items-center mb-1">
-                    <text class="text-ts-purple font-semibold text-sm">{{ comment.userNickname }}</text>
+                    <text class="text-ts-purple font-semibold text-sm">{{
+                      comment.userNickname
+                    }}</text>
                     <!-- 回复目标显示 -->
                     <template v-if="comment.parentComment && !comment.parentComment.deleted">
                       <text class="text-gray-500 text-sm ml-2">回复</text>
-                      <text class="text-ts-purple text-sm font-semibold ml-1">@{{ comment.parentComment.userNickname }}</text>
+                      <text class="text-ts-purple text-sm font-semibold ml-1"
+                        >@{{ comment.parentComment.userNickname }}</text
+                      >
                     </template>
-                    <text v-else-if="comment.parentComment?.deleted" class="text-gray-400 text-sm ml-2">回复的评论已删除</text>
+                    <text
+                      v-else-if="comment.parentComment?.deleted"
+                      class="text-gray-400 text-sm ml-2"
+                      >回复的评论已删除</text
+                    >
                   </view>
                   <!-- 第二行：评论内容 -->
                   <view class="text-sm text-gray-700 leading-relaxed mb-1">
@@ -97,10 +114,15 @@
       </scroll-view>
 
       <!-- 底部回复输入框 -->
-      <view class="border-t border-gray-200 bg-white px-4 pt-3 pb-safe shrink-0">
+      <view id="acp-input" class="border-t border-gray-200 bg-white px-4 pt-3 shrink-0 pb-safe">
         <view v-if="replyingTo" class="flex items-center mb-2">
-          <text class="text-ts-purple text-xs font-medium flex-1">回复 @{{ replyingTo.userNickname }}</text>
-          <button class="w-5 h-5 flex items-center justify-center text-gray-500 text-sm bg-transparent border-none rounded-full after:border-none" @tap="cancelReply">
+          <text class="text-ts-purple text-xs font-medium flex-1"
+            >回复 @{{ replyingTo?.userNickname }}</text
+          >
+          <button
+            class="w-5 h-5 flex items-center justify-center text-gray-500 text-sm bg-transparent border-none rounded-full after:border-none"
+            @tap="cancelReply"
+          >
             <text>✕</text>
           </button>
         </view>
@@ -114,7 +136,11 @@
           />
           <button
             class="px-4 py-2 border-none rounded-full text-sm font-medium min-w-[60px] transition-all duration-200 after:border-none"
-            :class="canSendReply ? 'bg-gradient-to-br from-purple-700 to-purple-600 text-white' : 'bg-gray-300 text-gray-400'"
+            :class="
+              canSendReply
+                ? 'bg-gradient-to-br from-purple-700 to-purple-600 text-white'
+                : 'bg-gray-300 text-gray-400'
+            "
             :disabled="!canSendReply"
             @tap="submitReply"
           >
@@ -133,17 +159,13 @@
       />
 
       <!-- 举报弹窗 (嵌套在 page-container 内部) -->
-      <ReportDialog
-        v-if="isReportVisible"
-        @close="closeReportModal"
-        @submit="submitReport"
-      />
+      <ReportDialog v-if="isReportVisible" @close="closeReportModal" @submit="submitReport" />
     </view>
   </page-container>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, onMounted, watch, computed, nextTick, getCurrentInstance } from 'vue';
 import type { Comment } from '@/types/api';
 import dayjs from 'dayjs';
 import { useUserStore } from '@/store/modules/use-user-store';
@@ -181,7 +203,7 @@ const {
   selectCommentForReply,
   cancelReply,
   submitReply: doSubmitReply,
-  resetPanel
+  resetPanel,
 } = useCommentPanel(
   () => props.reviewId,
   () => emit('commentAdded')
@@ -232,26 +254,32 @@ const handleReportFromMenu = () => {
   openReportModal('comment', commentId);
 };
 
-const {
-  isReportVisible,
-  openReportModal,
-  closeReportModal,
-  submitReport
-} = useReport();
+const { isReportVisible, openReportModal, closeReportModal, submitReport } = useReport();
 
 // 监听面板显示状态
-watch(() => props.isVisible, (visible: boolean) => {
-  if (visible) {
-    fetchPanelComments();
-  } else {
-    // 重置状态
-    resetPanel();
+watch(
+  () => props.isVisible,
+  (visible: boolean) => {
+    if (visible) {
+      nextTick(() => {
+        setTimeout(() => {
+          fetchPanelComments();
+        }, 50);
+      });
+    } else {
+      // 重置状态
+      resetPanel();
+    }
   }
-});
+);
 
 onMounted(() => {
   if (props.isVisible) {
-    fetchPanelComments();
+    nextTick(() => {
+      setTimeout(() => {
+        fetchPanelComments();
+      }, 50);
+    });
   }
 });
 
@@ -267,13 +295,18 @@ const handleDelete = (commentId: string) => {
   uni.showModal({
     title: '提示',
     content: '确定要删除这条评论吗？',
-    success: (res) => {
+    success: res => {
       if (res.confirm) {
         emit('delete', commentId);
-        // 刷新评论列表以获取正确的楼层号
-        fetchPanelComments();
+        // 立即从当前列表移除，避免 UI 不更新（父组件删除是异步）
+        comments.value = (comments.value || []).filter(c => c.id !== commentId);
+        // 等父组件删除完成后再刷新（重置分页/楼层）
+        setTimeout(() => {
+          resetPanel();
+          fetchPanelComments();
+        }, 300);
       }
-    }
+    },
   });
 };
 
@@ -285,7 +318,7 @@ const formatDate = (dateString: string) => {
 <style scoped>
 /* 底部安全区域 padding */
 .pb-safe {
-  padding-bottom: calc(32px + env(safe-area-inset-bottom));
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
 }
 
 /* 移除小程序按钮默认边框 */

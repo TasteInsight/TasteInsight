@@ -15,6 +15,10 @@ import {
 import { AdminAdminsService } from './admin-admins.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdatePermissionsDto } from './dto/update-permissions.dto';
+import {
+  ChangeOwnPasswordDto,
+  ChangeSubAdminPasswordDto,
+} from './dto/change-password.dto';
 import { AdminAuthGuard } from '@/auth/guards/admin-auth.guard';
 import { PermissionsGuard } from '@/auth/guards/permissions.guard';
 import { RequirePermissions } from '@/auth/decorators/permissions.decorator';
@@ -58,7 +62,11 @@ export class AdminAdminsController {
     @Req() req: AdminRequest,
     @Body() createAdminDto: CreateAdminDto,
   ) {
-    return this.adminAdminsService.create(req.admin.id, createAdminDto);
+    return this.adminAdminsService.create(
+      req.admin.id,
+      req.admin.canteenId,
+      createAdminDto,
+    );
   }
 
   @Delete(':id')
@@ -79,8 +87,45 @@ export class AdminAdminsController {
     return this.adminAdminsService.updatePermissions(
       req.admin.id,
       req.admin.role,
+      req.admin.canteenId,
       id,
       updatePermissionsDto,
+    );
+  }
+
+  /**
+   * 修改自己的密码
+   * 任何已登录的管理员都可以修改自己的密码，无需特殊权限
+   */
+  @Put('me/password')
+  @HttpCode(HttpStatus.OK)
+  async changeOwnPassword(
+    @Req() req: AdminRequest,
+    @Body() changePasswordDto: ChangeOwnPasswordDto,
+  ) {
+    return this.adminAdminsService.changeOwnPassword(
+      req.admin.id,
+      changePasswordDto,
+    );
+  }
+
+  /**
+   * 修改子管理员的密码
+   * 需要 admin:edit 权限
+   */
+  @Put(':id/password')
+  @RequirePermissions('admin:edit')
+  @HttpCode(HttpStatus.OK)
+  async changeSubAdminPassword(
+    @Req() req: AdminRequest,
+    @Param('id') id: string,
+    @Body() changePasswordDto: ChangeSubAdminPasswordDto,
+  ) {
+    return this.adminAdminsService.changeSubAdminPassword(
+      req.admin.id,
+      req.admin.role,
+      id,
+      changePasswordDto,
     );
   }
 }

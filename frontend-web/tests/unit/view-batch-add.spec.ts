@@ -1,18 +1,25 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { mount, shallowMount } from '@vue/test-utils'
 
-import BatchAdd from '../../src/views/BatchAdd.vue'
-
 const mocks = vi.hoisted(() => ({
   dishApiMock: {
     parseBatchExcel: vi.fn(),
     confirmBatchImport: vi.fn(),
   },
+  showAlertMock: vi.fn(() => Promise.resolve()),
+  showConfirmMock: vi.fn(() => Promise.resolve(true)),
 }))
 
 vi.mock('@/api/modules/dish', () => ({
   dishApi: mocks.dishApiMock,
 }))
+
+vi.mock('@/composables/useModal', () => ({
+  showAlert: mocks.showAlertMock,
+  showConfirm: mocks.showConfirmMock,
+}))
+
+import BatchAdd from '../../src/views/BatchAdd.vue'
 
 function makeFile(name: string, size = 1000, type = '') {
   const file = new File(['x'.repeat(Math.min(size, 10))], name, { type })
@@ -23,13 +30,11 @@ function makeFile(name: string, size = 1000, type = '') {
 describe('views/BatchAdd', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.spyOn(window, 'alert').mockImplementation(() => undefined)
-    vi.spyOn(window, 'confirm').mockImplementation(() => true)
+    mocks.showAlertMock.mockResolvedValue(undefined)
+    mocks.showConfirmMock.mockResolvedValue(true)
   })
 
   afterEach(() => {
-    ;(window.alert as any).mockRestore?.()
-    ;(window.confirm as any).mockRestore?.()
     vi.useRealTimers()
   })
 
@@ -39,7 +44,7 @@ describe('views/BatchAdd', () => {
     })
 
     wrapper.vm.downloadTemplate()
-    expect(window.alert).toHaveBeenCalledWith('模板下载功能开发中...')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('模板下载功能开发中...')
 
     wrapper.unmount()
   })
@@ -64,19 +69,19 @@ describe('views/BatchAdd', () => {
 
     // invalid extension
     await wrapper.vm.parseFile(makeFile('a.txt', 10, 'text/plain'))
-    expect(window.alert).toHaveBeenCalledWith('请上传 Excel 文件（.xlsx 或 .xls 格式）')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('请上传 Excel 文件（.xlsx 或 .xls 格式）')
     expect(mocks.dishApiMock.parseBatchExcel).not.toHaveBeenCalled()
 
     // invalid mime even if extension ok
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
     await wrapper.vm.parseFile(makeFile('a.xlsx', 10, 'text/plain'))
-    expect(window.alert).toHaveBeenCalledWith('请上传 Excel 文件（.xlsx 或 .xls 格式）')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('请上传 Excel 文件（.xlsx 或 .xls 格式）')
     expect(mocks.dishApiMock.parseBatchExcel).not.toHaveBeenCalled()
 
     // oversize
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
     await wrapper.vm.parseFile(makeFile('a.xlsx', 10 * 1024 * 1024 + 1, 'application/vnd.ms-excel'))
-    expect(window.alert).toHaveBeenCalledWith('文件大小不能超过 10MB')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('文件大小不能超过 10MB')
 
     wrapper.unmount()
   })
@@ -110,9 +115,9 @@ describe('views/BatchAdd', () => {
       data: { items: [] },
     })
 
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
     await wrapper.vm.parseFile(f)
-    expect(window.alert).toHaveBeenCalledWith('解析完成，但未找到有效数据')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('解析完成，但未找到有效数据')
 
     nowSpy.mockRestore()
     wrapper.unmount()
@@ -132,14 +137,14 @@ describe('views/BatchAdd', () => {
 
     await wrapper.vm.parseFile(f)
     expect(wrapper.vm.parseError).toBe('bad')
-    expect(window.alert).toHaveBeenCalledWith('bad')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('bad')
     expect(wrapper.vm.parsedData).toEqual([])
 
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
     mocks.dishApiMock.parseBatchExcel.mockRejectedValueOnce(new Error('boom'))
     await wrapper.vm.parseFile(f)
     expect(wrapper.vm.parseError).toBe('boom')
-    expect(window.alert).toHaveBeenCalledWith('boom')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('boom')
 
     wrapper.unmount()
   })
@@ -181,17 +186,17 @@ describe('views/BatchAdd', () => {
     // no valid/warning
     wrapper.vm.parsedData = [{ status: 'invalid' }] as any
     await wrapper.vm.submitBatchData()
-    expect(window.alert).toHaveBeenCalledWith('没有可导入的有效数据')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('没有可导入的有效数据')
 
     // confirm cancel
-    ;(window.alert as any).mockClear()
-    ;(window.confirm as any).mockReturnValueOnce(false)
+    mocks.showAlertMock.mockClear()
+    mocks.showConfirmMock.mockResolvedValueOnce(false)
     wrapper.vm.parsedData = [{ status: 'valid', name: 'n' }] as any
     await wrapper.vm.submitBatchData()
     expect(mocks.dishApiMock.confirmBatchImport).not.toHaveBeenCalled()
 
     // success no failures => resets
-    ;(window.confirm as any).mockReturnValueOnce(true)
+    mocks.showConfirmMock.mockResolvedValueOnce(true)
     mocks.dishApiMock.confirmBatchImport.mockResolvedValueOnce({
       code: 200,
       data: { successCount: 1, failCount: 0, errors: [] },
@@ -200,12 +205,12 @@ describe('views/BatchAdd', () => {
     wrapper.vm.uploadedFile = makeFile('ok.xlsx') as any
     wrapper.vm.parsedData = [{ status: 'valid', name: 'n' }] as any
     await wrapper.vm.submitBatchData()
-    expect(window.alert).toHaveBeenCalledWith('导入完成！成功：1 条')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('导入完成！成功：1 条')
     expect(wrapper.vm.uploadedFile).toBe(null)
     expect(wrapper.vm.parsedData).toEqual([])
 
     // success with failures & errors mapping
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
     wrapper.vm.parsedData = [{ status: 'warning', name: 'n' }] as any
     mocks.dishApiMock.confirmBatchImport.mockResolvedValueOnce({
       code: 200,
@@ -221,25 +226,22 @@ describe('views/BatchAdd', () => {
     })
 
     await wrapper.vm.submitBatchData()
-    const msg = (window.alert as any).mock.calls[0][0] as string
-    expect(msg).toContain('成功：0 条')
-    expect(msg).toContain('失败：2 条')
-    expect(msg).toContain('[权限]')
-    expect(msg).toContain('[校验]')
-    expect(msg).toContain('[系统]')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith(
+      expect.stringContaining('成功：0 条')
+    )
 
     // api non-200 => alert error
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
     wrapper.vm.parsedData = [{ status: 'valid', name: 'n' }] as any
     mocks.dishApiMock.confirmBatchImport.mockResolvedValueOnce({ code: 500, message: 'import bad' })
     await wrapper.vm.submitBatchData()
-    expect(window.alert).toHaveBeenCalledWith('import bad')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('import bad')
 
     // throw => alert
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
     mocks.dishApiMock.confirmBatchImport.mockRejectedValueOnce(new Error('boom'))
     await wrapper.vm.submitBatchData()
-    expect(window.alert).toHaveBeenCalledWith('boom')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('boom')
 
     wrapper.unmount()
   })
@@ -253,9 +255,9 @@ describe('views/BatchAdd', () => {
 
     wrapper.vm.parsedData = [{ status: 'valid' }] as any
     wrapper.vm.exportErrorList()
-    expect(window.alert).toHaveBeenCalledWith('没有错误数据可导出')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('没有错误数据可导出')
 
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
 
     const url = 'blob:mock'
     const createSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue(url)

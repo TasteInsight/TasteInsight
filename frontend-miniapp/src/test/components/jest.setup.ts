@@ -36,12 +36,19 @@ const ScrollViewStub = {
   template: '<div v-bind="$attrs"><slot /></div>',
 };
 
+const RichTextStub = {
+  name: 'rich-text',
+  inheritAttrs: false,
+  template: '<div v-bind="$attrs"></div>',
+};
+
 config.global.stubs = {
   ...(config.global.stubs || {}),
   view: ViewStub,
   text: TextStub,
   image: ImageStub,
   'scroll-view': ScrollViewStub,
+  'rich-text': RichTextStub,
 };
 
 // Minimal uni global so components that call uni.* won't crash.

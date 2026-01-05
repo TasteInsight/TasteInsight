@@ -17,11 +17,7 @@
       <!-- 食堂结果骨架 -->
       <view>
         <SkeletonBase width="80px" height="16px" rounded="rounded" class="mb-3" />
-        <view
-          v-for="i in 2"
-          :key="'canteen-' + i"
-          class="bg-white rounded-xl p-4 mb-3 shadow-sm"
-        >
+        <view v-for="i in 2" :key="'canteen-' + i" class="bg-white rounded-xl p-4 mb-3 shadow-sm">
           <view class="flex items-center space-x-3">
             <SkeletonBase width="56px" height="56px" rounded="rounded-lg" />
             <view class="flex-1 space-y-2">
@@ -35,11 +31,7 @@
       <!-- 窗口结果骨架 -->
       <view>
         <SkeletonBase width="80px" height="16px" rounded="rounded" class="mb-3" />
-        <view
-          v-for="i in 2"
-          :key="'window-' + i"
-          class="bg-white rounded-xl p-4 mb-3 shadow-sm"
-        >
+        <view v-for="i in 2" :key="'window-' + i" class="bg-white rounded-xl p-4 mb-3 shadow-sm">
           <view class="flex justify-between items-start">
             <view class="flex-1 space-y-2">
               <SkeletonBase width="60%" height="18px" rounded="rounded" />
@@ -57,11 +49,7 @@
       <!-- 菜品结果骨架 -->
       <view>
         <SkeletonBase width="80px" height="16px" rounded="rounded" class="mb-3" />
-        <view
-          v-for="i in 3"
-          :key="'dish-' + i"
-          class="bg-white rounded-xl p-4 mb-3 shadow-sm"
-        >
+        <view v-for="i in 3" :key="'dish-' + i" class="bg-white rounded-xl p-4 mb-3 shadow-sm">
           <view class="flex items-center space-x-3">
             <SkeletonBase width="72px" height="72px" rounded="rounded-lg" />
             <view class="flex-1 space-y-2">

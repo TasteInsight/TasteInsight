@@ -2,7 +2,7 @@
   <view class="min-h-screen bg-white flex flex-col">
     <!-- 骨架屏 -->
     <WindowSkeleton v-if="isInitialLoading" />
-    
+
     <template v-else>
       <!-- 搜索栏 -->
       <view class="px-4 flex-shrink-0">
@@ -26,9 +26,7 @@
 
         <!-- 菜品列表 -->
         <view class="px-4 pb-4">
-          <view v-if="loading" class="text-center py-8 text-gray-500">
-            加载中...
-          </view>
+          <view v-if="loading" class="text-center py-8 text-gray-500"> 加载中... </view>
 
           <view v-else-if="error" class="text-center py-8 text-red-500">
             {{ error }}
@@ -43,9 +41,14 @@
             />
           </view>
 
-          <view v-if="dishes.length > 0 || loadingMore" class="flex items-center justify-center py-4 text-gray-500 text-sm">
+          <view
+            v-if="dishes.length > 0 || loadingMore"
+            class="flex items-center justify-center py-4 text-gray-500 text-sm"
+          >
             <template v-if="loadingMore">
-              <view class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"></view>
+              <view
+                class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"
+              ></view>
               <text>加载中...</text>
             </template>
             <template v-else-if="hasMore">
@@ -56,9 +59,7 @@
             </template>
           </view>
 
-          <view v-else class="text-center py-10 text-gray-500">
-            暂无菜品信息
-          </view>
+          <view v-else class="text-center py-10 text-gray-500"> 暂无菜品信息 </view>
         </view>
       </scroll-view>
     </template>
@@ -74,7 +75,18 @@ import CanteenSearchBar from '../canteen/components/CanteenSearchBar.vue';
 import CanteenDishCard from '../canteen/components/CanteenDishCard.vue';
 import { WindowSkeleton } from '@/components/skeleton';
 
-const { windowInfo, loading, loadingMore, hasMore, error, dishes, init, fetchDishes, loadMoreDishes, fetchWindow } = useWindowData();
+const {
+  windowInfo,
+  loading,
+  loadingMore,
+  hasMore,
+  error,
+  dishes,
+  init,
+  fetchDishes,
+  loadMoreDishes,
+  fetchWindow,
+} = useWindowData();
 
 let currentWindowId = '';
 const isInitialLoading = ref(true);
@@ -98,15 +110,12 @@ onLoad(async (options: any) => {
  */
 const onRefresh = async () => {
   if (!currentWindowId) return;
-  
+
   refresherTriggered.value = true;
-  
+
   try {
     // 同时刷新窗口信息和菜品列表
-    await Promise.all([
-      fetchWindow(currentWindowId),
-      fetchDishes(currentWindowId)
-    ]);
+    await Promise.all([fetchWindow(currentWindowId), fetchDishes(currentWindowId)]);
   } catch (err) {
     console.error('刷新失败:', err);
   } finally {

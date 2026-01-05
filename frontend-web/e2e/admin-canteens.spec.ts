@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { loginAsAdmin, getApiToken, TEST_ACCOUNTS, API_BASE_URL } from './utils';
+import { loginAsAdmin, getApiToken, TEST_ACCOUNTS, API_BASE_URL, handleDialogOrModal } from './utils';
 import process from 'node:process';
 
 // API base URL for direct API calls
@@ -172,20 +172,21 @@ test.describe('Admin Canteen Management', () => {
     await page.fill('input[placeholder="例如：一层/二层/B1/地下二层（用/分隔）"]', '一层/二层');
     await page.fill('textarea[placeholder="请输入食堂描述..."]', canteenDescription);
 
-    // 3. Add opening hours
+    // 3. Submit basic info first (Window management and Opening Hours are only available after creation)
+    await page.click('button:has-text("保存食堂信息")');
+    
+    // Handle success alert for creation (both browser dialog and custom modal)
+    await handleDialogOrModal(page, '确定');
+
+    // 4. Now in edit mode, add opening hours
     await page.click('button:has-text("添加营业时间")');
     
     // Wait for the opening hours form to appear
     await page.waitForSelector('select:has(option[value="每天"])', { state: 'visible' });
-
-    // 4. Submit basic info first (Window management is only available after creation)
-    // Handle success alert for creation
-    page.once('dialog', async (dialog) => {
-      expect(dialog.message()).toContain('成功');
-      await dialog.accept();
-    });
-
-    await page.click('button:has-text("保存食堂信息")');
+    
+    // Select floor for opening hours (first select in the 5-column grid)
+    const openingHourRow = page.locator('.grid-cols-5').first();
+    await openingHourRow.locator('select').first().selectOption({ index: 1 });
 
     // 5. Now in edit mode, add a window
     // Wait for "添加窗口" button to become visible
@@ -199,30 +200,22 @@ test.describe('Admin Canteen Management', () => {
     await page.locator('input[placeholder="例如：川湘风味"]').first().fill('E2E测试窗口');
     
     // Select floor for window (required)
-    // Wait for options to be populated
-    const floorSelect = page.locator('select').filter({ hasText: '请选择楼层' });
-    await floorSelect.click();
-    // Select the first available floor option (usually index 1 as 0 is disabled placeholder)
-    await floorSelect.selectOption({ index: 1 });
+    // Target the select inside the 3-column grid (window form)
+    const windowRow = page.locator('.grid-cols-3').first();
+    await windowRow.locator('select').first().selectOption({ index: 1 });
 
     await page.locator('input[placeholder="例如：01、A01（选填）"]').first().fill('E01');
 
     // 6. Save changes (button text changes to "保存修改")
-    // Handle update success alert
-    page.once('dialog', async (dialog) => {
-      expect(dialog.message()).toContain('更新'); // Or "成功" depending on implementation
-      await dialog.accept();
-    });
-
     await page.click('button:has-text("保存修改")');
     
-    // 7. Click "返回列表" to go back
-    await page.click('button:has-text("返回列表")');
-
-    // 8. Wait for navigation back to list view
+    // Handle update success alert
+    await handleDialogOrModal(page, '确定');
+    
+    // 7. Verify navigation back to list view (Happens automatically after save)
     await page.waitForSelector('text=食堂信息管理', { state: 'visible', timeout: 15000 });
 
-    // 7. Verify the canteen appears in the list
+    // 8. Verify the canteen appears in the list
     await page.fill('input[placeholder="搜索食堂名称、位置..."]', canteenName);
     await expect(page.locator(`td:has-text("${canteenName}")`)).toBeVisible({ timeout: 10000 });
 
@@ -273,19 +266,15 @@ test.describe('Admin Canteen Management', () => {
 
     // 14. Delete the canteen via UI
     const updatedRow = page.locator('tr', { hasText: updatedName });
-    
-    // Handle delete confirmation dialog
-    page.once('dialog', async (dialog) => {
-      expect(dialog.message()).toContain('确定要删除');
-      await dialog.accept();
-    });
-    
     await updatedRow.locator('button[title="删除"]').click();
-
-    // Handle success notification
-    page.once('dialog', async (dialog) => {
-      await dialog.accept();
-    });
+    
+    // Handle delete confirmation dialog (Custom Modal)
+    // Sometimes the click action might be intercepted by a previous modal that is fading out
+    // So we use force click if needed or wait for stability
+    await handleDialogOrModal(page, '确认删除');
+    
+    // Handle success notification (Custom Modal)
+    await handleDialogOrModal(page, '确定');
 
     // 15. Verify the canteen is removed from the list
     await page.waitForTimeout(1000); // Wait for list to refresh
@@ -349,9 +338,14 @@ test.describe('Admin Canteen API Tests', () => {
       images: ['http://example.com/image.jpg'],
       openingHours: [
         {
-          dayOfWeek: 'Monday',
-          slots: [{ mealType: 'Lunch', openTime: '11:00', closeTime: '13:00' }],
-          isClosed: false,
+          floorLevel: '1',
+          schedule: [
+            {
+              dayOfWeek: 'Monday',
+              slots: [{ mealType: 'lunch', openTime: '11:00', closeTime: '13:00' }],
+              isClosed: false,
+            }
+          ]
         },
       ],
       floors: [{ level: '1', name: '1F' }],
@@ -856,12 +850,13 @@ test.describe('Canteen Dish Sync', () => {
     expect(createResponse.ok()).toBeTruthy();
     const canteen = (await createResponse.json()).data;
     createdCanteenId = canteen.id;
+    const floorId = canteen.floors[0].id;
 
     // Add window to canteen using update
     const windowData = {
         name: 'Original Window',
         number: 'W1',
-        floor: { level: '1', name: '1F' },
+        floorId: floorId,
         position: '1F',
         description: 'Test Window',
         tags: []
@@ -913,9 +908,11 @@ test.describe('Canteen Dish Sync', () => {
 
     // 3. Go to Modify Dish page and verify original window name
     await page.goto('/modify-dish');
+    await page.waitForLoadState('networkidle');
     
     // Search for the dish
-    const searchInput = page.getByPlaceholder('搜索菜品名称、食堂、窗口...');
+    // Use a more robust selector for the search input
+    const searchInput = page.locator('input[placeholder*="搜索"]').first();
     await searchInput.fill('Sync Test Dish');
     await page.keyboard.press('Enter');
     await page.waitForTimeout(1000); // Wait for debounce
@@ -941,9 +938,11 @@ test.describe('Canteen Dish Sync', () => {
 
     // 5. Go back to Modify Dish page and verify updated window name
     await page.goto('/modify-dish');
+    await page.waitForLoadState('networkidle');
     
-    // Search for the dish again
-    await searchInput.fill('Sync Test Dish');
+    // Re-locate search input as the page has been reloaded
+    const searchInputAgain = page.locator('input[placeholder*="搜索"]').first();
+    await searchInputAgain.fill('Sync Test Dish');
     await page.keyboard.press('Enter');
     await page.waitForTimeout(1000); // Wait for debounce
 

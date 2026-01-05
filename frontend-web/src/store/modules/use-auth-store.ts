@@ -35,12 +35,7 @@ export const useAuthStore = defineStore('auth', () => {
   const hasPermission = (permission: string): boolean => {
     if (!user.value) return false
     
-    // 超级管理员 testadmin 拥有所有权限
-    // 或者角色为 superadmin 的用户
-    if (user.value.username === 'testadmin' || user.value.role === 'superadmin') {
-      return true
-    }
-
+    // 只检查后端返回的权限列表
     const perms = permissions.value
     return perms.includes(permission)
   }
@@ -49,10 +44,7 @@ export const useAuthStore = defineStore('auth', () => {
   const hasAnyPermission = (permissionList: string[]): boolean => {
     if (!user.value) return false
     
-    if (user.value.username === 'testadmin' || user.value.role === 'superadmin') {
-      return true
-    }
-
+    // 只检查后端返回的权限列表
     const perms = permissions.value
     return permissionList.some(p => perms.includes(p))
   }

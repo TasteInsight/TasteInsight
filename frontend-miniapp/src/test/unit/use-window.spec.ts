@@ -20,8 +20,9 @@ describe('useWindowData', () => {
     mockStore = {
       currentWindow: ref(null),
       error: ref(null),
-      fetchWindowDetail: jest.fn().mockResolvedValue(undefined),
+      fetchWindowDetail: jest.fn() as unknown as jest.Mock<any, any>,
     };
+    mockStore.fetchWindowDetail.mockResolvedValue(undefined);
     (useCanteenStore as unknown as jest.Mock).mockReturnValue(mockStore);
     jest.clearAllMocks();
   });
@@ -44,7 +45,7 @@ describe('useWindowData', () => {
   it('should fetch dishes and update state', async () => {
     const { fetchDishes, dishes, loading } = useWindowData();
     const mockDishes = [{ id: '1', name: 'Dish 1' }];
-    
+
     (getWindowDishes as jest.Mock).mockResolvedValue({
       code: 200,
       data: { items: mockDishes },
@@ -52,7 +53,7 @@ describe('useWindowData', () => {
 
     const promise = fetchDishes('123');
     expect(loading.value).toBe(true);
-    
+
     await promise;
 
     expect(loading.value).toBe(false);
@@ -61,7 +62,7 @@ describe('useWindowData', () => {
 
   it('should handle fetch dishes error', async () => {
     const { fetchDishes, dishes, error } = useWindowData();
-    
+
     (getWindowDishes as jest.Mock).mockRejectedValue(new Error('API Error'));
 
     await fetchDishes('123');
@@ -72,7 +73,7 @@ describe('useWindowData', () => {
 
   it('should handle fetch window error', async () => {
     const { fetchWindow, error } = useWindowData();
-    
+
     mockStore.fetchWindowDetail.mockRejectedValue(new Error('Store Error'));
 
     await fetchWindow('123');
@@ -91,10 +92,7 @@ describe('useWindowData', () => {
     });
 
     // Test refresh operations (similar to pull-to-refresh)
-    await Promise.all([
-      fetchWindow(windowId),
-      fetchDishes(windowId)
-    ]);
+    await Promise.all([fetchWindow(windowId), fetchDishes(windowId)]);
 
     expect(mockStore.fetchWindowDetail).toHaveBeenCalledWith(windowId);
     expect(getWindowDishes).toHaveBeenCalledWith(windowId, expect.anything());

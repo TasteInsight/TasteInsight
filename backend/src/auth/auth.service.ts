@@ -11,6 +11,7 @@ import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import * as bcrypt from 'bcrypt';
 import type { Admin, User } from '@prisma/client';
+import { ALL_PERMISSIONS } from './permissions.constants';
 
 interface WechatAuthResponse {
   openid?: string;
@@ -172,7 +173,12 @@ export class AuthService {
     } = admin;
 
     // 提取权限字符串数组
-    const permissions = permissionsRelation.map((p) => p.permission);
+    let permissions = permissionsRelation.map((p) => p.permission);
+
+    // 超级管理员返回所有权限
+    if (admin.role === 'superadmin') {
+      permissions = [...ALL_PERMISSIONS];
+    }
 
     return {
       code: 200,

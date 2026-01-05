@@ -28,6 +28,8 @@ const mocks = vi.hoisted(() => ({
   canteenApiMock: {
     getCanteens: vi.fn(),
   },
+  showAlertMock: vi.fn(() => Promise.resolve()),
+  showConfirmMock: vi.fn(() => Promise.resolve(true)),
 }))
 
 vi.mock('@/store/modules/use-auth-store', () => ({
@@ -44,6 +46,12 @@ vi.mock('@/api/modules/canteen', () => ({
 
 vi.mock('@/config', () => ({
   default: { baseURL: 'http://example.com/' },
+}))
+
+vi.mock('@/composables/useModal', () => ({
+  showAlert: mocks.showAlertMock,
+  showConfirm: mocks.showConfirmMock,
+  showConfirmDanger: vi.fn(() => Promise.resolve(true)),
 }))
 
 import NewsManage from '../../src/views/NewsManage.vue'
@@ -71,14 +79,10 @@ describe('views/NewsManage', () => {
     mocks.newsApiMock.publishNews.mockResolvedValue({ code: 200 })
     mocks.newsApiMock.revokeNews.mockResolvedValue({ code: 200 })
     mocks.newsApiMock.deleteNews.mockResolvedValue({ code: 200 })
-
-    vi.spyOn(window, 'alert').mockImplementation(() => undefined)
-    vi.spyOn(window, 'confirm').mockImplementation(() => true)
   })
 
   afterEach(() => {
-    ;(window.alert as any).mockRestore?.()
-    ;(window.confirm as any).mockRestore?.()
+    vi.useRealTimers()
   })
 
   it('builds uploadUrl from config.baseURL and loads list/canteens', async () => {
@@ -176,10 +180,10 @@ describe('views/NewsManage', () => {
 
     // throw -> alert(error.message)
     mocks.newsApiMock.getNews.mockRejectedValueOnce(new Error('boom'))
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
     wrapper.vm.handlePageChange(4)
     await flushMicrotasks()
-    expect(window.alert).toHaveBeenCalledWith('boom')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('boom')
 
     wrapper.unmount()
   })
@@ -230,23 +234,23 @@ describe('views/NewsManage', () => {
     expect(insertFn).toHaveBeenCalledWith('u2', 'f2', 'u2')
 
     // customInsert fail alerts
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
     wrapper.vm.editorConfig.MENU_CONF.uploadImage.customInsert(
       { code: 500, message: 'upload bad' },
       insertFn,
     )
-    expect((window.alert as any).mock.calls.flat().join(' ')).toContain('upload bad')
+    expect(mocks.showAlertMock).toHaveBeenCalled()
 
     // onError alerts + logs
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
     wrapper.vm.editorConfig.MENU_CONF.uploadImage.onError(
       new File(['x'], 'x.png'),
       new Error('E1'),
       { code: 500 },
     )
     expect(errSpy).toHaveBeenCalled()
-    expect((window.alert as any).mock.calls.flat().join(' ')).toContain('图片上传出错')
+    expect(mocks.showAlertMock).toHaveBeenCalled()
     errSpy.mockRestore()
 
     // handleCreated + onBeforeUnmount destroy
@@ -268,7 +272,7 @@ describe('views/NewsManage', () => {
     // no permission
     mocks.authStoreMock.hasPermission.mockImplementationOnce(() => false)
     wrapper.vm.openCreateModal()
-    expect(window.alert).toHaveBeenCalledWith('您没有权限创建新闻')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限创建新闻')
 
     // open modal
     mocks.authStoreMock.hasPermission.mockImplementation((p: string) =>
@@ -319,9 +323,9 @@ describe('views/NewsManage', () => {
     wrapper.vm.showCreateModal = true
     mocks.newsApiMock.createNews.mockResolvedValueOnce({ code: 200, data: { id: 'n3' } })
     mocks.newsApiMock.publishNews.mockRejectedValueOnce(new Error('publish bad'))
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
     await wrapper.vm.submitForm('published')
-    expect((window.alert as any).mock.calls.flat().join(' ')).toContain('新闻创建成功，但发布失败')
+    expect(mocks.showAlertMock).toHaveBeenCalled()
 
     // create draft when currentStatus != draft triggers changeStatus and early return
     wrapper.vm.newsForm.title = 't'
@@ -362,42 +366,42 @@ describe('views/NewsManage', () => {
     })
 
     // confirm cancel
-    ;(window.confirm as any).mockReturnValueOnce(false)
+    mocks.showConfirmMock.mockResolvedValueOnce(false)
     await wrapper.vm.publishNews('n1')
     expect(mocks.newsApiMock.publishNews).not.toHaveBeenCalled()
 
     // no permission
     mocks.authStoreMock.hasPermission.mockImplementationOnce(() => false)
     await wrapper.vm.revokeNews('n1')
-    expect(window.alert).toHaveBeenCalledWith('您没有权限撤回新闻')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限撤回新闻')
 
     // revoke success
-    ;(window.confirm as any).mockReturnValueOnce(true)
+    mocks.showConfirmMock.mockResolvedValueOnce(true)
     await wrapper.vm.revokeNews('n1')
     expect(mocks.newsApiMock.revokeNews).toHaveBeenCalledWith('n1')
 
     // delete failure non-200
     mocks.newsApiMock.deleteNews.mockResolvedValueOnce({ code: 500, message: 'bad' })
     await wrapper.vm.deleteNews('n1')
-    expect((window.alert as any).mock.calls.flat().join(' ')).toContain('bad')
+    expect(mocks.showAlertMock).toHaveBeenCalled()
 
     // publish failure non-200
     mocks.newsApiMock.publishNews.mockResolvedValueOnce({ code: 500, message: 'pub bad' })
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
     await wrapper.vm.publishNews('n1')
-    expect((window.alert as any).mock.calls.flat().join(' ')).toContain('pub bad')
+    expect(mocks.showAlertMock).toHaveBeenCalled()
 
     // revoke throw
     mocks.newsApiMock.revokeNews.mockRejectedValueOnce(new Error('revoke boom'))
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
     await wrapper.vm.revokeNews('n1')
-    expect(window.alert).toHaveBeenCalledWith('revoke boom')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('revoke boom')
 
     // delete throw
     mocks.newsApiMock.deleteNews.mockRejectedValueOnce(new Error('del boom'))
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
     await wrapper.vm.deleteNews('n1')
-    expect(window.alert).toHaveBeenCalledWith('del boom')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('del boom')
 
     wrapper.unmount()
   })

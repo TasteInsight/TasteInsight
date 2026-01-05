@@ -45,7 +45,6 @@ export interface SuccessResponse<T = any> {
   data: null | T;
 }
 
-
 /**
  * 分页数据响应
  */
@@ -98,7 +97,6 @@ export interface UserPreference {
   portionSize?: 'small' | 'medium' | 'large';
   avoidIngredients?: string[];
   favoriteIngredients?: string[];
-
 }
 
 export interface UserSettings {
@@ -113,7 +111,6 @@ export interface UserSettings {
     showNutrition?: boolean;
     sortBy?: 'rating' | 'price_low' | 'price_high' | 'popularity' | 'newest';
   };
-
 }
 
 /**
@@ -234,18 +231,18 @@ export interface AvailableDate {
 }
 
 export enum AvailableMealTime {
-  Breakfast = "breakfast",
-  Dinner = "dinner",
-  Lunch = "lunch",
-  Nightsnack = "nightsnack",
+  Breakfast = 'breakfast',
+  Dinner = 'dinner',
+  Lunch = 'lunch',
+  Nightsnack = 'nightsnack',
 }
 
 /**
  * 菜品状态
  */
 export enum Status {
-  Offline = "offline",
-  Online = "online",
+  Offline = 'offline',
+  Online = 'online',
 }
 
 /**
@@ -521,7 +518,6 @@ export interface WindowDishesData {
   meta: PaginationMeta;
 }
 
-
 /**
  * 菜品列表请求
  */
@@ -563,12 +559,10 @@ export interface GetDishesRequest {
     };
     priceUnit?: string;
 
-    meatPreference?: string[];      // 肉类偏好
-    avoidIngredients?: string[];    // 忌口
+    meatPreference?: string[]; // 肉类偏好
+    avoidIngredients?: string[]; // 忌口
     favoriteIngredients?: string[]; // 喜好食材
   };
-  // --- 推荐模式 ---
-  isSuggestion?: boolean;         // 是否使用后端推荐，默认为 false
   search: {
     keyword: string;
     fields?: string[];
@@ -919,7 +913,6 @@ export interface MyUserProfileResponse {
   [property: string]: any;
 }
 
-
 export interface UserInfoItem extends User {
   preferenceSummary?: string;
 }
@@ -1005,6 +998,81 @@ export interface RequestOptions {
 }
 
 // ============================================
+// 推荐系统相关类型
+// ============================================
+
+/**
+ * 推荐场景类型（枚举定义在 @/api/modules/recommendation.ts）
+ */
+export type RecommendationScene = 'home' | 'search' | 'similar' | 'guess_like' | 'today';
+
+/**
+ * 推荐请求参数
+ */
+export interface RecommendationRequest {
+  scene?: RecommendationScene;
+  requestId?: string;
+  filter?: {
+    canteenId?: string[];
+    tag?: string[];
+    rating?: { min: number; max: number };
+    price?: { min: number; max: number };
+    mealTime?: string[];
+    spicyLevel?: { min: number; max: number };
+    sweetness?: { min: number; max: number };
+    saltiness?: { min: number; max: number };
+    oiliness?: { min: number; max: number };
+    meatPreference?: string[];
+    avoidIngredients?: string[];
+    favoriteIngredients?: string[];
+  };
+  search?: {
+    keyword: string;
+    fields?: string[];
+  };
+  pagination: {
+    page: number;
+    pageSize: number;
+  };
+  includeScoreBreakdown?: boolean;
+  userContext?: Record<string, any>;
+}
+
+/**
+ * 推荐结果项
+ */
+export interface RecommendedDishItem {
+  id: string;
+  score?: number;
+  scoreBreakdown?: Record<string, number>;
+}
+
+/**
+ * 推荐响应数据
+ */
+export interface RecommendationResponseData extends PaginatedData<RecommendedDishItem> {
+  requestId?: string;
+  groupItemId?: string;
+}
+
+/**
+ * 点击事件记录请求
+ */
+export interface RecommendationClickEvent {
+  dishId: string;
+  requestId?: string;
+  position?: number;
+  scene?: RecommendationScene;
+}
+
+/**
+ * 点击事件记录响应
+ */
+export interface RecommendationClickEventResponse {
+  eventId: string;
+}
+
+// ============================================
 // AI / 会话 相关类型
 // ============================================
 
@@ -1056,13 +1124,20 @@ export interface ComponentWindowCard {
   rating?: number;
 }
 
+export interface ComponentMealPlanDraftPreviewData {
+  startDate: string;
+  endDate: string;
+  mealTime: 'breakfast' | 'lunch' | 'dinner' | 'nightsnack';
+  dishes: Dish[];
+}
+
 export interface ComponentMealPlanDraft {
   summary?: string;
-  previewData?: Record<string, any>;
+  previewData?: ComponentMealPlanDraftPreviewData;
   confirmAction?: {
     api?: string;
-    method?: string;
-    body?: Record<string, any>;
+    method?: RequestMethod;
+    body?: MealPlanRequest;
   };
 }
 
@@ -1092,7 +1167,12 @@ export interface SegmentWindowCard {
   data: ComponentWindowCard[];
 }
 
-export type ChatContentSegment = SegmentText | SegmentDishCard | SegmentPlanCard | SegmentCanteenCard | SegmentWindowCard;
+export type ChatContentSegment =
+  | SegmentText
+  | SegmentDishCard
+  | SegmentPlanCard
+  | SegmentCanteenCard
+  | SegmentWindowCard;
 
 // 聊天消息条目
 export interface ChatMessageItem {
@@ -1182,7 +1262,9 @@ export function getWindowDetail(
 /**
  * 管理端获取食堂列表
  */
-export function adminGetCanteenList(params?: PaginationParams): Promise<ApiResponse<CanteenListData>>;
+export function adminGetCanteenList(
+  params?: PaginationParams
+): Promise<ApiResponse<CanteenListData>>;
 
 /**
  * 管理端获取窗口列表
@@ -1218,10 +1300,7 @@ export function createWindow(data: WindowCreateRequest): Promise<ApiResponse<Win
 /**
  * 编辑窗口
  */
-export function updateWindow(
-  id: string,
-  data: WindowUpdateRequest
-): Promise<ApiResponse<Window>>;
+export function updateWindow(id: string, data: WindowUpdateRequest): Promise<ApiResponse<Window>>;
 
 /**
  * 删除窗口
@@ -1233,7 +1312,9 @@ export function deleteWindow(id: string): Promise<ApiResponse<null>>;
 /**
  * 创建新的对话会话
  */
-export function createAISession(data: CreateAISessionRequest): Promise<ApiResponse<SessionCreateData>>;
+export function createAISession(
+  data: CreateAISessionRequest
+): Promise<ApiResponse<SessionCreateData>>;
 
 /**
  * 流式对话（SSE）。返回值类型因实现而异，这里使用 Promise<string> 占位。
@@ -1247,12 +1328,18 @@ export declare function streamAIChat(
 /**
  * 获取会话引导/快捷提示词
  */
-export function getAISuggestions(): Promise<ApiResponse<SuggestionData>>;
+export function getAISuggestions(clientContext?: {
+  localTime?: string;
+  timeZone?: string;
+  tzOffsetMinutes?: number;
+}): Promise<ApiResponse<SuggestionData>>;
+
+/**
+ * 删除聊天会话
+ */
+export function deleteAISession(sessionId: string): Promise<ApiResponse<null>>;
 
 /**
  * 获取历史聊天记录
  */
-export function getAIHistory(
-  sessionId: string,
-  cursor?: string
-): Promise<ApiResponse<HistoryData>>;
+export function getAIHistory(sessionId: string, cursor?: string): Promise<ApiResponse<HistoryData>>;

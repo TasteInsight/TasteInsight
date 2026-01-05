@@ -50,10 +50,9 @@ export function useProfile() {
       // 2. 使用 store 中提供的 action 更新本地和持久化存储
       // 修正: 调用 store 中定义的 updateLocalUserInfo
       userStore.updateLocalUserInfo(updatedUser.data);
-      
+
       uni.showToast({ title: '更新成功', icon: 'success' });
       return true;
-
     } catch (err) {
       const message = err instanceof Error ? err.message : '更新用户信息失败';
       error.value = message;
@@ -64,7 +63,7 @@ export function useProfile() {
       loading.value = false;
     }
   };
-  
+
   // --- Lifecycle ---
 
   // 监听登录状态变化，如果用户变为登录状态，则自动获取一次用户信息
@@ -89,19 +88,19 @@ export function useProfile() {
     uni.showModal({
       title: '提示',
       content: '确定要退出登录吗？',
-      success: (res) => {
+      success: res => {
         if (res.confirm) {
           userStore.logoutAction();
           uni.showToast({
             title: '已退出登录',
-            icon: 'success'
+            icon: 'success',
           });
           // 退出后跳转到登录页面
           setTimeout(() => {
             uni.reLaunch({ url: '/pages/login/index' });
           }, 500);
         }
-      }
+      },
     });
   };
 

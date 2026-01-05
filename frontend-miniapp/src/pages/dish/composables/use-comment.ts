@@ -1,4 +1,4 @@
-import { ref, computed} from 'vue';
+import { ref, computed } from 'vue';
 import { getCommentsByReview, createComment, deleteComment } from '@/api/modules/comment';
 import type { Comment, CommentCreateRequest } from '@/types/api';
 
@@ -7,11 +7,16 @@ import type { Comment, CommentCreateRequest } from '@/types/api';
  */
 export function useComment() {
   // --- 评论状态 (按 reviewId 存储) ---
-  const reviewComments = ref<Record<string, { 
-    items: Comment[], 
-    total: number, 
-    loading: boolean 
-  }>>({});
+  const reviewComments = ref<
+    Record<
+      string,
+      {
+        items: Comment[];
+        total: number;
+        loading: boolean;
+      }
+    >
+  >({});
 
   /**
    * 获取某条评价的评论
@@ -34,7 +39,7 @@ export function useComment() {
         reviewComments.value[reviewId] = {
           items: res.data.items || [],
           total: res.data.meta?.total || 0,
-          loading: false
+          loading: false,
         };
       }
     } catch (e) {
@@ -87,7 +92,7 @@ export function useComment() {
     reviewComments,
     fetchComments,
     submitComment,
-    removeComment
+    removeComment,
   };
 }
 
@@ -124,7 +129,7 @@ export function useCommentPanel(reviewId: () => string, onCommentAdded?: () => v
 
       if (response.code === 200 && response.data) {
         const newComments = response.data.items || [];
-        
+
         if (currentPage.value === 1) {
           comments.value = newComments;
         } else {
@@ -181,12 +186,12 @@ export function useCommentPanel(reviewId: () => string, onCommentAdded?: () => v
         reviewId: reviewId(),
         content: replyContent.value.trim(),
       };
-      
+
       // 如果是回复某条评论，添加 parentCommentId
       if (replyingTo.value) {
         requestData.parentCommentId = replyingTo.value.id;
       }
-      
+
       const response = await createComment(requestData);
 
       if (response.code === 200 || response.code === 201) {
@@ -197,7 +202,7 @@ export function useCommentPanel(reviewId: () => string, onCommentAdded?: () => v
 
         replyContent.value = '';
         replyingTo.value = null;
-        
+
         // 刷新评论列表以获取正确的楼层号
         currentPage.value = 1;
         await fetchPanelComments();
@@ -251,6 +256,6 @@ export function useCommentPanel(reviewId: () => string, onCommentAdded?: () => v
     cancelReply,
     submitReply,
     resetPanel,
-    refreshComments
+    refreshComments,
   };
 }

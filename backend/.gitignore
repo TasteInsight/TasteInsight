@@ -70,9 +70,6 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 *.tgz
 *.tar.gz
 
-# .md
-*.md
-
 # postgres data
 /postgres-data
 
@@ -87,3 +84,7 @@ certs/
 
 # xlsx
 *.xlsx
+
+# performance test results
+scripts/k6-perf-test/k6-results.json
+scripts/k6-perf-test/prod_result.json

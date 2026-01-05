@@ -1,6 +1,7 @@
 import {
   IsString,
   IsOptional,
+  IsInt,
   IsObject,
   ValidateNested,
 } from 'class-validator';
@@ -11,6 +12,14 @@ export class ClientContextDto {
   @IsOptional()
   @IsString()
   localTime?: string; // Format: ISOString (e.g., "2025-01-09T12:04:00.000Z")
+
+  @IsOptional()
+  @IsString()
+  timeZone?: string; // IANA tz name (e.g. "Asia/Shanghai")
+
+  @IsOptional()
+  @IsInt()
+  tzOffsetMinutes?: number; // minutes east of UTC (e.g. 480)
 }
 
 // Chat request DTO
@@ -52,7 +61,7 @@ export type ContentSegment =
   | SegmentPlanCard
   | SegmentCanteenCard;
 
-// Component data structures (matching OpenAPI spec)
+// Component data structures
 export interface ComponentDishCard {
   dish: {
     name: string;

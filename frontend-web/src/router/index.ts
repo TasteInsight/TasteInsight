@@ -18,6 +18,7 @@ import ReportManage from '@/views/ReportManage.vue'
 import CommentManage from '@/views/CommentManage.vue'
 import ReviewManage from '@/views/ReviewManage.vue'
 import ConfigManage from '@/views/ConfigManage.vue'
+import ExperimentManage from '@/views/ExperimentManage.vue'
 import Login from '@/views/Login.vue'
 
 const routes = [
@@ -137,6 +138,12 @@ const routes = [
         name: 'ConfigManage',
         component: ConfigManage,
         meta: { requiresAuth: true, requiredPermission: 'config:view', keepAlive: true },
+      },
+      {
+        path: 'experiment-manage',
+        name: 'ExperimentManage',
+        component: ExperimentManage,
+        meta: { requiresAuth: true, requiredPermission: 'experiment:view', keepAlive: true },
       },
     ],
   },

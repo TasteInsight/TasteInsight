@@ -11,7 +11,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { DishesService } from './dishes.service';
-import { GetDishesDto } from './dto/get-dishes.dto';
+import { GetDishesDto, GetDishesByIdsDto } from './dto/get-dishes.dto';
 import { UploadDishDto } from './dto/upload-dish.dto';
 import { AuthGuard } from '@/auth/guards/auth.guard';
 import { RecommendationRequestDto } from '@/recommendation/dto/recommendation-request.dto';
@@ -37,6 +37,13 @@ export class DishesController {
   getDishes(@Body() getDishesDto: GetDishesDto, @Request() req) {
     const userId = req.user.sub;
     return this.dishesService.getDishes(getDishesDto, userId);
+  }
+
+  @Post('by-ids')
+  @HttpCode(HttpStatus.OK)
+  getDishesByIds(@Body() body: GetDishesByIdsDto, @Request() req) {
+    const userId = req.user.sub;
+    return this.dishesService.getDishesByIds(body.ids, userId);
   }
 
   @Post('recommendations')

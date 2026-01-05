@@ -1,8 +1,5 @@
 <template>
-  <div 
-    class="bg-white rounded-lg p-4 mb-2 shadow-sm"
-    @click="handleClick"
-  >
+  <div class="bg-white rounded-lg p-4 mb-2 shadow-sm" @click="handleClick">
     <div class="flex items-center gap-3">
       <div class="w-14 h-14 rounded-lg bg-orange-50 flex items-center justify-center">
         <text class="iconfont icon-window-open-variant text-orange-500 text-2xl"></text>
@@ -13,8 +10,8 @@
           {{ canteenName }} · {{ window.floor?.name || `${window.floor?.level}楼` }}
         </div>
         <div v-if="window.tags?.length" class="flex flex-wrap gap-1 mt-2">
-          <span 
-            v-for="tag in window.tags.slice(0, 3)" 
+          <span
+            v-for="tag in window.tags.slice(0, 3)"
             :key="tag"
             class="text-xs bg-orange-50 text-orange-600 px-2 py-0.5 rounded"
           >
@@ -45,7 +42,7 @@ const props = defineProps<Props>();
 const handleClick = () => {
   const windowData = props.window as ExtendedWindow;
   const canteenId = windowData.canteenId || '';
-  
+
   uni.navigateTo({
     url: `/pages/window/index?id=${props.window.id}&canteenId=${canteenId}`,
   });

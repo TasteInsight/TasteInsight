@@ -8,27 +8,55 @@
       />
 
       <!-- 筛选区域 -->
-      <div class="p-6 bg-gray-50 border-b">
-        <div class="flex items-center space-x-4">
-          <select
-            class="px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
-            v-model="statusFilter"
-            @change="handleFilterChange"
-          >
-            <option value="">所有状态</option>
-            <option value="pending">待处理</option>
-            <option value="approved">已处理</option>
-            <option value="rejected">已拒绝</option>
-          </select>
-          <select
-            class="px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
-            v-model="targetTypeFilter"
-            @change="handleFilterChange"
-          >
-            <option value="">所有类型</option>
-            <option value="review">评价</option>
-            <option value="comment">评论</option>
-          </select>
+      <div class="mb-6 mt-6">
+        <div class="p-4 bg-gray-50 rounded-lg border border-gray-100 flex flex-wrap items-center gap-x-8 gap-y-4">
+          <div class="flex items-center gap-3">
+            <span class="text-sm font-medium text-gray-600">处理状态</span>
+            <div class="relative">
+              <select
+                v-model="statusFilter"
+                @change="handleFilterChange"
+                class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[150px] transition-all cursor-pointer hover:border-gray-400"
+              >
+                <option value="">所有状态</option>
+                <option value="pending">待处理</option>
+                <option value="approved">已处理</option>
+                <option value="rejected">已拒绝</option>
+              </select>
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
+                <span class="iconify" data-icon="carbon:chevron-down"></span>
+              </span>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <span class="text-sm font-medium text-gray-600">举报类型</span>
+            <div class="relative">
+              <select
+                v-model="targetTypeFilter"
+                @change="handleFilterChange"
+                class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[150px] transition-all cursor-pointer hover:border-gray-400"
+              >
+                <option value="">所有类型</option>
+                <option value="review">评价</option>
+                <option value="comment">评论</option>
+              </select>
+              <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
+                <span class="iconify" data-icon="carbon:chevron-down"></span>
+              </span>
+            </div>
+          </div>
+
+          <div class="ml-auto flex items-center">
+            <button
+              v-if="statusFilter || targetTypeFilter"
+              @click="statusFilter = ''; targetTypeFilter = ''; handleFilterChange()"
+              class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-gray-200/50 transition-colors"
+            >
+              <span class="iconify" data-icon="carbon:reset"></span>
+              重置筛选
+            </button>
+          </div>
         </div>
       </div>
 
@@ -369,6 +397,10 @@ import { reviewApi } from '@/api/modules/review'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import Pagination from '@/components/Common/Pagination.vue'
+import { savePageState, restorePageState } from '@/utils/page-state-cache'
+import { showAlert, showConfirm } from '@/composables/useModal'
+
+const PAGE_STATE_KEY = 'report-manage'
 
 export default defineComponent({
   name: 'ReportManage',
@@ -380,11 +412,30 @@ export default defineComponent({
     const authStore = useAuthStore()
     const reports = ref<any[]>([])
     const isLoading = ref(false)
-    const currentPage = ref(1)
     const pageSize = ref(20)
     const totalReports = ref(0)
-    const statusFilter = ref('')
-    const targetTypeFilter = ref('')
+    
+    // 默认状态定义
+    const defaultState = {
+      currentPage: 1,
+      statusFilter: '',
+      targetTypeFilter: '',
+    }
+    
+    // 从缓存恢复状态
+    const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
+    const currentPage = ref(restoredState.currentPage)
+    const statusFilter = ref(restoredState.statusFilter)
+    const targetTypeFilter = ref(restoredState.targetTypeFilter)
+    
+    // 保存页面状态
+    const saveState = () => {
+      savePageState(PAGE_STATE_KEY, {
+        currentPage: currentPage.value,
+        statusFilter: statusFilter.value,
+        targetTypeFilter: targetTypeFilter.value,
+      })
+    }
     const selectedReport = ref<any>(null)
     const imagePreview = ref<{
       show: boolean
@@ -449,7 +500,7 @@ export default defineComponent({
         }
       } catch (error) {
         console.error('加载举报列表失败:', error)
-        alert('加载举报列表失败，请刷新重试')
+        showAlert('加载举报列表失败，请刷新重试')
         reports.value = []
         totalReports.value = 0
       } finally {
@@ -459,28 +510,31 @@ export default defineComponent({
 
     const handlePageChange = (page: number) => {
       currentPage.value = page
+      saveState() // 保存状态
       loadReports()
     }
 
     const handleFilterChange = () => {
       currentPage.value = 1
+      saveState() // 保存状态
       loadReports()
     }
 
     const handleDeleteReview = async (report: any) => {
       if (!authStore.hasPermission('review:delete')) {
-        alert('您没有权限删除评价')
+        showAlert('您没有权限删除评价')
         return
       }
 
-      if (!confirm('确定要删除这个评价吗？此操作不可恢复。')) {
+      const confirmed = await showConfirm('确定要删除这个评价吗？此操作不可恢复。', '确认删除')
+      if (!confirmed) {
         return
       }
 
       try {
         const response = await reviewApi.handleReport(report.id, { action: 'delete_content' })
         if (response.code === 200) {
-          alert('删除成功')
+          showAlert('删除成功')
           await loadReports()
           // 如果详情对话框打开，更新选中的举报信息
           if (selectedReport.value && selectedReport.value.id === report.id) {
@@ -493,28 +547,29 @@ export default defineComponent({
             }
           }
         } else {
-          alert(response.message || '删除失败')
+          showAlert(response.message || '删除失败')
         }
       } catch (error) {
         console.error('删除评价失败:', error)
-        alert('删除评价失败，请重试')
+        showAlert('删除评价失败，请重试')
       }
     }
 
     const handleDeleteComment = async (report: any) => {
       if (!authStore.hasPermission('review:delete')) {
-        alert('您没有权限删除评论')
+        showAlert('您没有权限删除评论')
         return
       }
 
-      if (!confirm('确定要删除这个评论吗？此操作不可恢复。')) {
+      const confirmed = await showConfirm('确定要删除这个评论吗？此操作不可恢复。', '确认删除')
+      if (!confirmed) {
         return
       }
 
       try {
         const response = await reviewApi.handleReport(report.id, { action: 'delete_content' })
         if (response.code === 200) {
-          alert('删除成功')
+          showAlert('删除成功')
           await loadReports()
           // 如果详情对话框打开，更新选中的举报信息
           if (selectedReport.value && selectedReport.value.id === report.id) {
@@ -527,17 +582,17 @@ export default defineComponent({
             }
           }
         } else {
-          alert(response.message || '删除失败')
+          showAlert(response.message || '删除失败')
         }
       } catch (error) {
         console.error('删除评论失败:', error)
-        alert('删除评论失败，请重试')
+        showAlert('删除评论失败，请重试')
       }
     }
 
     const handleReport = async (report: any, action: 'reject_report') => {
       if (!authStore.hasPermission('report:handle')) {
-        alert('您没有权限处理举报')
+        showAlert('您没有权限处理举报')
         return
       }
 
@@ -550,7 +605,8 @@ export default defineComponent({
           break
       }
 
-      if (!confirm(confirmMessage)) {
+      const confirmed = await showConfirm(confirmMessage, '确认操作')
+      if (!confirmed) {
         return
       }
 
@@ -568,7 +624,7 @@ export default defineComponent({
         const response = await reviewApi.handleReport(report.id, requestData)
 
         if (response.code === 200) {
-          alert('处理成功')
+          showAlert('处理成功')
           await loadReports()
           // 如果详情对话框打开，更新选中的举报信息
           if (selectedReport.value && selectedReport.value.id === report.id) {
@@ -581,11 +637,11 @@ export default defineComponent({
             }
           }
         } else {
-          alert(response.message || '处理失败')
+          showAlert(response.message || '处理失败')
         }
       } catch (error) {
         console.error('处理举报失败:', error)
-        alert('处理举报失败，请重试')
+        showAlert('处理举报失败，请重试')
       }
     }
 
@@ -647,6 +703,7 @@ export default defineComponent({
     })
 
     onActivated(() => {
+      // 组件激活时仅重新加载数据，避免重复恢复状态覆盖当前修改
       loadReports()
     })
 

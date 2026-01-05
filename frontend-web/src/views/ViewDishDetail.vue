@@ -518,6 +518,7 @@ import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { dishApi } from '@/api/modules/dish'
 import Header from '@/components/Layout/Header.vue'
+import { showAlert } from '@/composables/useModal'
 
 export default {
   name: 'ViewDishDetail',
@@ -650,7 +651,7 @@ export default {
         }
       } catch (error) {
         console.error('获取菜品信息失败:', error)
-        alert('获取菜品信息失败，请重试')
+        showAlert('获取菜品信息失败，请重试')
         router.push('/modify-dish')
       } finally {
         isLoading.value = false

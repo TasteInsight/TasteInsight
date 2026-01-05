@@ -12,13 +12,25 @@
         <div class="w-1/3 border-r pr-6">
           <!-- 搜索栏 -->
           <div class="mb-4">
-            <input
-              type="text"
-              placeholder="搜索菜品名称..."
-              class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
-              v-model="searchQuery"
-              @input="handleSearchChange"
-            />
+            <div class="relative">
+              <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" data-icon="carbon:search"></span>
+              <input
+                type="text"
+                placeholder="搜索菜品名称..."
+                class="w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                v-model="searchQuery"
+                @input="handleSearchChange"
+              />
+              <button
+                v-if="searchQuery"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                @click="searchQuery = ''; handleSearchChange()"
+                type="button"
+                title="清除搜索"
+              >
+                <span class="iconify" data-icon="carbon:close"></span>
+              </button>
+            </div>
           </div>
 
           <!-- 筛选区域 -->
@@ -389,7 +401,11 @@ import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import Pagination from '@/components/Common/Pagination.vue'
+import { savePageState, restorePageState } from '@/utils/page-state-cache'
 import type { Dish, Review, Comment } from '@/types/api'
+import { showAlert, showConfirmDanger } from '@/composables/useModal'
+
+const PAGE_STATE_KEY = 'comment-manage'
 
 export default defineComponent({
   name: 'CommentManage',
@@ -400,27 +416,52 @@ export default defineComponent({
   setup() {
     const authStore = useAuthStore()
 
+    // 默认状态定义
+    const defaultState = {
+      searchQuery: '',
+      selectedCanteenId: '',
+      selectedWindowId: '',
+      dishPage: 1,
+      reviewPage: 1,
+      selectedDishId: null,
+    }
+    
+    // 从缓存恢复状态
+    const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
+
     // 菜品列表相关
     const dishes = ref<Dish[]>([])
-    const searchQuery = ref('')
-    const dishPage = ref(1)
+    const searchQuery = ref(restoredState.searchQuery)
+    const dishPage = ref(restoredState.dishPage)
     const dishPageSize = ref(10)
     const totalDishes = ref(0)
     const isLoadingDishes = ref(false)
-    const selectedDishId = ref<string | null>(null)
+    const selectedDishId = ref<string | null>(restoredState.selectedDishId)
 
     // 筛选相关
-    const selectedCanteenId = ref('')
-    const selectedWindowId = ref('')
+    const selectedCanteenId = ref(restoredState.selectedCanteenId)
+    const selectedWindowId = ref(restoredState.selectedWindowId)
     const canteens = ref<any[]>([])
     const windows = ref<any[]>([])
 
     // 评价列表相关
     const reviews = ref<Review[]>([])
-    const reviewPage = ref(1)
+    const reviewPage = ref(restoredState.reviewPage)
     const reviewPageSize = ref(10)
     const totalReviews = ref(0)
     const isLoadingReviews = ref(false)
+    
+    // 保存页面状态
+    const saveState = () => {
+      savePageState(PAGE_STATE_KEY, {
+        searchQuery: searchQuery.value,
+        selectedCanteenId: selectedCanteenId.value,
+        selectedWindowId: selectedWindowId.value,
+        dishPage: dishPage.value,
+        reviewPage: reviewPage.value,
+        selectedDishId: selectedDishId.value,
+      })
+    }
 
     // 评论列表相关
     const commentsMap = ref<Record<string, Comment[]>>({})
@@ -496,6 +537,7 @@ export default defineComponent({
       
       // 重新加载菜品
       dishPage.value = 1
+      saveState() // 保存状态
       loadDishes()
 
       if (selectedCanteenId.value) {
@@ -513,6 +555,7 @@ export default defineComponent({
     // 处理窗口变化
     const handleWindowChange = () => {
       dishPage.value = 1
+      saveState() // 保存状态
       loadDishes()
     }
 
@@ -545,7 +588,7 @@ export default defineComponent({
         }
       } catch (error) {
         console.error('加载菜品列表失败:', error)
-        alert('加载菜品列表失败，请刷新重试')
+        showAlert('加载菜品列表失败，请刷新重试')
         dishes.value = []
         totalDishes.value = 0
       } finally {
@@ -558,6 +601,7 @@ export default defineComponent({
       selectedDishId.value = dish.id
       reviewPage.value = 1
       commentPage.value = 1
+      saveState() // 保存状态
       loadReviews().then(() => {
         loadCommentsForReviews()
       })
@@ -575,7 +619,12 @@ export default defineComponent({
         })
 
         if (response.code === 200 && response.data) {
-          reviews.value = response.data.items || []
+          // 映射用户信息到顶层字段
+          reviews.value = (response.data.items || []).map((review: any) => ({
+            ...review,
+            userNickname: review.user?.nickname || review.userNickname,
+            userAvatar: review.user?.avatar || review.userAvatar,
+          }))
           totalReviews.value = response.data.meta?.total || 0
         } else {
           reviews.value = []
@@ -583,7 +632,7 @@ export default defineComponent({
         }
       } catch (error) {
         console.error('加载评价列表失败:', error)
-        alert('加载评价列表失败，请重试')
+        showAlert('加载评价列表失败，请重试')
         reviews.value = []
         totalReviews.value = 0
       } finally {
@@ -614,7 +663,17 @@ export default defineComponent({
         responses.forEach((result, index) => {
           if (result.status === 'fulfilled' && result.value.code === 200 && result.value.data) {
             const reviewId = reviews.value[index].id
-            commentsMap.value[reviewId] = result.value.data.items || []
+            // 映射用户信息到顶层字段
+            commentsMap.value[reviewId] = (result.value.data.items || []).map((comment: any) => ({
+              ...comment,
+              userNickname: comment.user?.nickname || comment.userNickname,
+              userAvatar: comment.user?.avatar || comment.userAvatar,
+              // 处理父评论的用户信息
+              parentComment: comment.parentComment ? {
+                ...comment.parentComment,
+                userNickname: comment.parentComment.user?.nickname || comment.parentComment.userNickname,
+              } : comment.parentComment,
+            }))
             totalCommentCount += result.value.data.meta?.total || 0
           }
         })
@@ -622,7 +681,7 @@ export default defineComponent({
         totalComments.value = totalCommentCount
       } catch (error) {
         console.error('加载评论列表失败:', error)
-        alert('加载评论列表失败，请重试')
+        showAlert('加载评论列表失败，请重试')
         commentsMap.value = {}
         totalComments.value = 0
       } finally {
@@ -692,61 +751,71 @@ export default defineComponent({
     // 删除评价
     const handleDeleteReview = async (review: Review) => {
       if (!authStore.hasPermission('review:delete')) {
-        alert('您没有权限删除评价')
+        showAlert('您没有权限删除评价')
         return
       }
 
-      if (!confirm('确定要删除这个评价吗？此操作不可恢复。')) {
+      const confirmed = await showConfirmDanger(
+        '确定要删除这个评价吗？此操作不可恢复。',
+        '确认删除'
+      )
+      if (!confirmed) {
         return
       }
 
       try {
         const response = await reviewApi.deleteReview(review.id)
         if (response.code === 200) {
-          alert('删除成功')
+          showAlert('删除成功')
           loadReviews()
         } else {
-          alert(response.message || '删除失败')
+          showAlert(response.message || '删除失败')
         }
       } catch (error) {
         console.error('删除评价失败:', error)
-        alert('删除评价失败，请重试')
+        showAlert('删除评价失败，请重试')
       }
     }
 
     // 删除评论
     const handleDeleteComment = async (comment: Comment) => {
       if (!authStore.hasPermission('comment:delete')) {
-        alert('您没有权限删除评论')
+        showAlert('您没有权限删除评论')
         return
       }
 
-      if (!confirm('确定要删除这个评论吗？此操作不可恢复。')) {
+      const confirmed = await showConfirmDanger(
+        '确定要删除这个评论吗？此操作不可恢复。',
+        '确认删除'
+      )
+      if (!confirmed) {
         return
       }
 
       try {
         const response = await reviewApi.deleteComment(comment.id)
         if (response.code === 200) {
-          alert('删除成功')
+          showAlert('删除成功')
           loadCommentsForReviews() // 重新加载评论列表
         } else {
-          alert(response.message || '删除失败')
+          showAlert(response.message || '删除失败')
         }
       } catch (error) {
         console.error('删除评论失败:', error)
-        alert('删除评论失败，请重试')
+        showAlert('删除评论失败，请重试')
       }
     }
 
     // 分页处理
     const handleDishPageChange = (page: number) => {
       dishPage.value = page
+      saveState() // 保存状态
       loadDishes()
     }
 
     const handleReviewPageChange = (page: number) => {
       reviewPage.value = page
+      saveState() // 保存状态
       loadReviews().then(() => {
         loadCommentsForReviews()
       })
@@ -779,6 +848,7 @@ export default defineComponent({
       }
       searchTimeout = setTimeout(() => {
         dishPage.value = 1
+        saveState() // 保存状态
         loadDishes()
       }, 500)
     }
@@ -790,21 +860,57 @@ export default defineComponent({
       selectedWindowId.value = ''
       windows.value = []
       dishPage.value = 1
+      saveState() // 保存状态
       loadDishes()
     }
 
     onMounted(() => {
+      // 恢复状态后，如果有选中的食堂，需要加载窗口列表
+      if (selectedCanteenId.value) {
+        canteenApi.getWindows(selectedCanteenId.value, { page: 1, pageSize: 100 })
+          .then(res => {
+            if (res.code === 200 && res.data) {
+              windows.value = res.data.items || []
+            }
+          })
+          .catch(err => {
+            console.error('加载窗口列表失败:', err)
+          })
+      }
+      
       loadCanteens()
       loadDishes()
       document.addEventListener('keydown', handleKeyDown)
+      
+      // 如果有选中的菜品，加载评价和评论
+      if (selectedDishId.value) {
+        loadReviews().then(() => {
+          loadCommentsForReviews()
+        })
+      }
     })
 
     onActivated(() => {
+      // 组件激活时仅重新加载数据，状态已在setup()中恢复
+      // 如果有选中的食堂且窗口列表为空，则尝试重新加载窗口列表
+      if (selectedCanteenId.value && windows.value.length === 0) {
+        canteenApi.getWindows(selectedCanteenId.value, { page: 1, pageSize: 100 })
+          .then(res => {
+            if (res.code === 200 && res.data) {
+              windows.value = res.data.items || []
+            }
+          })
+          .catch(err => {
+            console.error('恢复窗口列表失败:', err)
+          })
+      }
+      
       loadCanteens()
       loadDishes()
       if (selectedDishId.value) {
-        loadReviews()
-        loadCommentsForReviews()
+        loadReviews().then(() => {
+          loadCommentsForReviews()
+        })
       }
     })
 

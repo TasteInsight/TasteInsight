@@ -2,7 +2,9 @@
   <view class="w-full flex flex-col items-center">
     <!-- Logo 区域 -->
     <view class="flex flex-col items-center mb-16 animate-fade-in-down">
-      <view class="w-24 h-24 bg-white rounded-2xl shadow-lg flex items-center justify-center mb-6 border border-purple-50">
+      <view
+        class="w-24 h-24 bg-white rounded-2xl shadow-lg flex items-center justify-center mb-6 border border-purple-50"
+      >
         <image src="/static/logo.png" class="w-16 h-16" mode="aspectFit" />
       </view>
       <text class="text-2xl font-bold text-gray-800 tracking-wide">TasteInsight</text>
@@ -21,36 +23,57 @@
         <text v-if="!loading" class="iconify mr-2 text-xl" data-icon="ri:wechat-fill"></text>
         <text>{{ loading ? '正在登录...' : '微信一键登录' }}</text>
       </button>
-      
-      
     </view>
 
     <!-- 底部协议 -->
     <view class="mt-8 text-center animate-fade-in">
       <view class="flex items-center justify-center space-x-1 text-xs text-gray-400">
-        <text>登录即代表同意</text>
+        <view class="flex items-center mr-2" @click="toggleAgree" style="cursor: pointer">
+          <view
+            class="w-4 h-4 border rounded-sm flex items-center justify-center"
+            :class="agreed ? 'bg-ts-purple border-ts-purple' : 'bg-white border-gray-300'"
+          >
+            <text v-if="agreed" class="text-white text-xs">✓</text>
+          </view>
+        </view>
+        <text>我已同意</text>
         <text class="text-ts-purple font-medium" @click="openAgreement('user')">《用户协议》</text>
         <text>和</text>
-        <text class="text-ts-purple font-medium" @click="openAgreement('privacy')">《隐私政策》</text>
+        <text class="text-ts-purple font-medium" @click="openAgreement('privacy')"
+          >《隐私政策》</text
+        >
       </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import { useLogin } from '../composables/use-login';
 
 const { loading, wechatLogin } = useLogin();
+const agreed = ref(false);
 
 const emit = defineEmits<{
   loginSuccess: [];
 }>();
 
 /**
+ * 切换同意状态
+ */
+function toggleAgree() {
+  agreed.value = !agreed.value;
+}
+
+/**
  * 处理微信登录
  */
 async function handleWechatLogin() {
   try {
+    if (!agreed.value) {
+      uni.showToast({ title: '请先同意用户协议和隐私政策', icon: 'none' });
+      return;
+    }
     await wechatLogin();
     emit('loginSuccess');
   } catch (error) {
@@ -58,13 +81,12 @@ async function handleWechatLogin() {
   }
 }
 
-
-
 /**
  * 打开协议
  */
 function openAgreement(type: 'user' | 'privacy') {
-  const url = type === 'user' ? '/pages/settings/privacy?type=user' : '/pages/settings/privacy?type=privacy';
+  const url =
+    type === 'user' ? '/pages/settings/privacy?type=user' : '/pages/settings/privacy?type=privacy';
   uni.navigateTo({ url });
 }
 </script>

@@ -68,8 +68,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=5 \
     CMD curl -f http://localhost:5001/health || exit 1
 
 # 使用 gunicorn 生产服务器
-# -w 2: 2 个 worker 进程
+# -w 1: 1 个 worker 进程
 # -b 0.0.0.0:5001: 绑定到所有网络接口
 # --timeout 120: 请求超时 120 秒（嵌入生成可能较慢）
-# --preload: 预加载应用代码
-CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:5001", "--timeout", "120", "--preload", "app:app"]
+# 不能使用 --preload 会导致 PyTorch/OpenMP 在 fork 时的死锁问题
+CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:5001", "--timeout", "120", "app:app"]

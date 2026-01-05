@@ -4,8 +4,29 @@ import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
+// ==================== K6 性能测试专用配置 ====================
+/**
+ * K6 性能测试需要的测试数据量配置
+ * 
+ * 这些配置确保有足够的数据供 K6 并发测试使用
+ * 可通过环境变量调整：
+ *   K6_PENDING_UPLOADS=20    - 待审核上传数量
+ *   K6_PENDING_REVIEWS=15    - 待审核评价数量
+ *   K6_PENDING_COMMENTS=15   - 待审核评论数量
+ *   K6_PENDING_REPORTS=15    - 待处理举报数量
+ *   K6_ONLINE_DISHES=20      - 在线菜品数量
+ */
+const K6_CONFIG = {
+  PENDING_UPLOADS: parseInt(process.env.K6_PENDING_UPLOADS || '15'),
+  PENDING_REVIEWS: parseInt(process.env.K6_PENDING_REVIEWS || '12'),
+  PENDING_COMMENTS: parseInt(process.env.K6_PENDING_COMMENTS || '12'),
+  PENDING_REPORTS: parseInt(process.env.K6_PENDING_REPORTS || '15'),
+  ONLINE_DISHES: parseInt(process.env.K6_ONLINE_DISHES || '15'),
+};
+
 async function main() {
   console.log(`Start seeding ...`);
+  console.log(`K6 Config: ${JSON.stringify(K6_CONFIG)}`);
 
   // 1. 清空所有数据，确保幂等性
   // 注意删除顺序，防止外键约束失败
@@ -22,6 +43,8 @@ async function main() {
   await prisma.floor.deleteMany({});
   await prisma.canteen.deleteMany({});
   await prisma.user.deleteMany({});
+  await prisma.news.deleteMany({});
+  await prisma.adminPermission.deleteMany({});
   await prisma.admin.deleteMany({});
 
   // 2. 创建一个可用于所有测试的【基础管理员】(superadmin)
@@ -36,6 +59,20 @@ async function main() {
     },
   });
   console.log(`Created baseline admin: ${admin.username}`);
+
+  // 2.1 创建专门用于 K6 性能测试的 Super Admin
+  // 这个账号拥有所有权限，密码符合安全要求（大小写+数字+特殊字符）
+  const k6AdminPassword = process.env.K6_ADMIN_PASSWORD || 'K6Test@2024!Pwd';
+  const k6HashedPassword = await bcrypt.hash(k6AdminPassword, 10);
+  const k6Admin = await prisma.admin.create({
+    data: {
+      username: process.env.K6_ADMIN_USERNAME || 'k6admin',
+      password: k6HashedPassword,
+      role: 'superadmin',
+    },
+  });
+  console.log(`Created K6 performance test admin: ${k6Admin.username}`);
+  console.log(`  → Password: ${k6AdminPassword} (符合密码复杂度要求)`);
 
   // 创建一个普通管理员用于测试权限
   const normalAdminPassword = await bcrypt.hash('admin123', 10);
@@ -1428,6 +1465,270 @@ async function main() {
     },
   });
   console.log(`Created rejected comment report`);
+
+  // ==================== K6 性能测试专用数据生成 ====================
+  console.log('\n========== 开始生成 K6 性能测试专用数据 ==========\n');
+
+  // K6-1: 批量生成更多在线菜品（用于菜品状态切换测试）
+  const dishTemplates = [
+    { name: '红烧肉', tags: ['家常菜', '猪肉'], price: 18, spicy: 1 },
+    { name: '糖醋排骨', tags: ['家常菜', '猪肉'], price: 22, spicy: 0 },
+    { name: '鱼香肉丝', tags: ['川菜', '猪肉'], price: 16, spicy: 3 },
+    { name: '水煮牛肉', tags: ['川菜', '牛肉'], price: 28, spicy: 5 },
+    { name: '干锅牛蛙', tags: ['川菜', '蛙类'], price: 38, spicy: 4 },
+    { name: '蒜蓉西兰花', tags: ['素菜', '蔬菜'], price: 12, spicy: 0 },
+    { name: '干煸四季豆', tags: ['家常菜', '素菜'], price: 14, spicy: 2 },
+    { name: '酸辣土豆丝', tags: ['家常菜', '素菜'], price: 10, spicy: 3 },
+    { name: '可乐鸡翅', tags: ['家常菜', '鸡肉'], price: 20, spicy: 0 },
+    { name: '辣子鸡', tags: ['川菜', '鸡肉'], price: 26, spicy: 5 },
+    { name: '青椒肉丝', tags: ['家常菜', '猪肉'], price: 15, spicy: 1 },
+    { name: '回锅肉', tags: ['川菜', '猪肉'], price: 18, spicy: 3 },
+    { name: '醋溜白菜', tags: ['家常菜', '素菜'], price: 8, spicy: 0 },
+    { name: '地三鲜', tags: ['东北菜', '素菜'], price: 14, spicy: 0 },
+    { name: '锅包肉', tags: ['东北菜', '猪肉'], price: 24, spicy: 0 },
+  ];
+
+  const k6Dishes: any[] = [];
+  const windowsForK6 = [window1, window2, window3];
+  const floorsForK6 = [floor1, floor2];
+  const canteensForK6 = [canteen1, canteen2];
+
+  for (let i = 0; i < Math.min(K6_CONFIG.ONLINE_DISHES, dishTemplates.length); i++) {
+    const template = dishTemplates[i];
+    const windowIndex = i % windowsForK6.length;
+    const selectedWindow = windowsForK6[windowIndex];
+    const selectedCanteen = windowIndex < 2 ? canteen1 : canteen2;
+    const selectedFloor = windowIndex < 2 ? floor1 : floor2;
+
+    const dish = await prisma.dish.create({
+      data: {
+        name: `[K6] ${template.name}`,
+        tags: template.tags,
+        price: template.price,
+        priceUnit: '份',
+        description: `K6性能测试用菜品 - ${template.name}`,
+        images: [`https://example.com/k6_dish_${i + 1}.jpg`],
+        ingredients: ['食材1', '食材2', '食材3'],
+        allergens: [],
+        spicyLevel: template.spicy,
+        sweetness: 2,
+        saltiness: 3,
+        oiliness: 3,
+        canteenId: selectedCanteen.id,
+        canteenName: selectedCanteen.name,
+        floorId: selectedFloor.id,
+        floorLevel: selectedFloor.level,
+        floorName: selectedFloor.name,
+        windowId: selectedWindow.id,
+        windowNumber: selectedWindow.number,
+        windowName: selectedWindow.name,
+        availableMealTime: ['lunch', 'dinner'],
+        status: 'online', // 重要：用于状态切换测试
+        averageRating: 4.0 + Math.random() * 0.8,
+        reviewCount: Math.floor(Math.random() * 100) + 10,
+      },
+    });
+    k6Dishes.push(dish);
+  }
+  console.log(`[K6] Created ${k6Dishes.length} online dishes for status toggle testing`);
+
+  // K6-2: 批量生成更多待审核的上传菜品（用于上传审核测试）
+  const uploadTemplates = [
+    '新品炒饭', '特色盖饭', '秘制拌面', '招牌汤面', '营养套餐',
+    '精品小炒', '养生粥品', '特色小吃', '时令蔬菜', '滋补汤品',
+    '手工水饺', '鲜肉包子', '葱油饼', '煎饺', '馄饨',
+  ];
+
+  for (let i = 0; i < K6_CONFIG.PENDING_UPLOADS; i++) {
+    const uploadName = uploadTemplates[i % uploadTemplates.length];
+    const isUserUpload = i % 2 === 0;
+    const selectedUser = isUserUpload ? (i % 4 === 0 ? user : secondaryUser) : null;
+    const selectedAdmin = isUserUpload ? null : admin;
+    const selectedCanteen = i % 2 === 0 ? canteen1 : canteen2;
+    const selectedWindow = windowsForK6[i % windowsForK6.length];
+
+    await prisma.dishUpload.create({
+      data: {
+        userId: selectedUser?.id,
+        adminId: selectedAdmin?.id,
+        name: `[K6] ${uploadName} #${i + 1}`,
+        tags: ['待审核', 'K6测试'],
+        price: 10 + Math.floor(Math.random() * 20),
+        priceUnit: '份',
+        description: `K6性能测试用待审核上传 #${i + 1}`,
+        images: [`https://example.com/k6_upload_${i + 1}.jpg`],
+        ingredients: ['配料1', '配料2'],
+        allergens: [],
+        canteenId: selectedCanteen.id,
+        canteenName: selectedCanteen.name,
+        windowId: selectedWindow.id,
+        windowNumber: selectedWindow.number,
+        windowName: selectedWindow.name,
+        availableMealTime: ['lunch', 'dinner'],
+        status: 'pending', // 关键：待审核状态
+      },
+    });
+  }
+  console.log(`[K6] Created ${K6_CONFIG.PENDING_UPLOADS} pending dish uploads for audit testing`);
+
+  // K6-3: 批量生成更多待审核的评价（用于评价审核测试）
+  const allDishes = [...k6Dishes, dish1, dish2, dish3, dish4, dish5];
+  const users = [user, secondaryUser];
+  const reviewContents = [
+    '这道菜味道非常好，推荐大家尝试！',
+    '性价比很高，量也足够。',
+    '口感不错，下次还会再来。',
+    '味道一般，可以改进。',
+    '服务态度好，菜品也很新鲜。',
+    '等待时间有点长，但味道值得。',
+    '价格合理，味道正宗。',
+    '食材新鲜，烹饪得当。',
+    '分量很足，吃得很饱。',
+    '调味恰到好处，非常满意。',
+    '这是我吃过最好吃的菜之一！',
+    '环境整洁，菜品卫生。',
+  ];
+
+  const k6Reviews: any[] = [];
+  for (let i = 0; i < K6_CONFIG.PENDING_REVIEWS; i++) {
+    const selectedDish = allDishes[i % allDishes.length];
+    const selectedUser = users[i % users.length];
+    const content = reviewContents[i % reviewContents.length];
+
+    try {
+      const review = await prisma.review.create({
+        data: {
+          dishId: selectedDish.id,
+          userId: selectedUser.id,
+          rating: Math.floor(Math.random() * 3) + 3, // 3-5分
+          content: `[K6] ${content} (#${i + 1})`,
+          images: i % 3 === 0 ? [`https://example.com/k6_review_${i + 1}.jpg`] : [],
+          status: 'pending', // 关键：待审核状态
+          spicyLevel: Math.floor(Math.random() * 5) + 1,
+          sweetness: Math.floor(Math.random() * 5) + 1,
+          saltiness: Math.floor(Math.random() * 5) + 1,
+          oiliness: Math.floor(Math.random() * 5) + 1,
+        },
+      });
+      k6Reviews.push(review);
+    } catch (e) {
+      // 跳过重复的 userId+dishId 组合
+      console.log(`[K6] Skipped duplicate review for dish ${selectedDish.name}`);
+    }
+  }
+  console.log(`[K6] Created ${k6Reviews.length} pending reviews for review audit testing`);
+
+  // K6-4: 批量生成更多待审核的评论（用于评论审核测试）
+  const allReviews = [...k6Reviews, approvedReview1, approvedReview2, approvedReview3, approvedReview4, approvedReview5];
+  const commentContents = [
+    '同意楼主的评价！',
+    '我也觉得这道菜不错。',
+    '下次一起去吃吧！',
+    '这个推荐很有用，谢谢！',
+    '请问这道菜辣吗？',
+    '今天去试了，确实好吃。',
+    '性价比真的高！',
+    '已经吃过了，味道棒！',
+    '求推荐其他好吃的菜。',
+    '这家窗口的菜都不错。',
+    '第一次来，感觉很好。',
+    '常客了，一直很稳定。',
+  ];
+
+  let k6CommentCount = 0;
+  let floorCounter: { [key: string]: number } = {};
+  for (let i = 0; i < K6_CONFIG.PENDING_COMMENTS; i++) {
+    const selectedReview = allReviews[i % allReviews.length];
+    if (!selectedReview) continue;
+    
+    const selectedUser = users[i % users.length];
+    const content = commentContents[i % commentContents.length];
+    
+    // 跟踪每个评价的楼层
+    if (!floorCounter[selectedReview.id]) {
+      floorCounter[selectedReview.id] = 10; // 从10楼开始，避免和现有评论冲突
+    }
+    floorCounter[selectedReview.id]++;
+
+    await prisma.comment.create({
+      data: {
+        reviewId: selectedReview.id,
+        userId: selectedUser.id,
+        content: `[K6] ${content} (#${i + 1})`,
+        floor: floorCounter[selectedReview.id],
+        status: 'pending', // 关键：待审核状态
+      },
+    });
+    k6CommentCount++;
+  }
+  console.log(`[K6] Created ${k6CommentCount} pending comments for comment audit testing`);
+
+  // K6-5: 批量生成更多待处理的举报（用于举报处理测试）
+  const reportTypes = ['inappropriate', 'spam', 'false_info', 'other'] as const;
+  const reportReasons = {
+    inappropriate: ['内容不当', '包含辱骂', '攻击性语言', '不良信息'],
+    spam: ['广告内容', '刷屏', '垃圾信息', '机器人'],
+    false_info: ['虚假信息', '与事实不符', '误导消费者', '虚假宣传'],
+    other: ['其他原因', '需要人工判断', '疑似违规', '待确认'],
+  };
+
+  for (let i = 0; i < K6_CONFIG.PENDING_REPORTS; i++) {
+    const isReviewReport = i % 2 === 0;
+    const reportType = reportTypes[i % reportTypes.length];
+    const reasons = reportReasons[reportType];
+    const reason = reasons[i % reasons.length];
+    const reporter = users[i % users.length];
+
+    if (isReviewReport) {
+      const targetReview = allReviews[i % allReviews.length];
+      if (!targetReview) continue;
+      
+      await prisma.report.create({
+        data: {
+          reporterId: reporter.id,
+          targetType: 'review',
+          targetId: targetReview.id,
+          reviewId: targetReview.id,
+          type: reportType,
+          reason: `[K6] ${reason} (#${i + 1})`,
+          status: 'pending', // 关键：待处理状态
+        },
+      });
+    } else {
+      // 评论举报 - 使用已有的评论
+      const existingComments = [comment1, comment2, comment3, comment5, comment6, comment7, comment8, comment9, comment10];
+      const targetComment = existingComments[i % existingComments.length];
+      if (!targetComment) continue;
+
+      await prisma.report.create({
+        data: {
+          reporterId: reporter.id,
+          targetType: 'comment',
+          targetId: targetComment.id,
+          commentId: targetComment.id,
+          type: reportType,
+          reason: `[K6] ${reason} (#${i + 1})`,
+          status: 'pending', // 关键：待处理状态
+        },
+      });
+    }
+  }
+  console.log(`[K6] Created ${K6_CONFIG.PENDING_REPORTS} pending reports for moderation testing`);
+
+  console.log('\n========== K6 性能测试数据生成完成 ==========');
+  console.log(`
+📊 数据统计摘要：
+  - 在线菜品 (status=online): ${k6Dishes.length + 7} 条
+  - 待审核上传 (status=pending): ${K6_CONFIG.PENDING_UPLOADS + 3} 条
+  - 待审核评价 (status=pending): ${k6Reviews.length + 3} 条
+  - 待审核评论 (status=pending): ${k6CommentCount + 3} 条
+  - 待处理举报 (status=pending): ${K6_CONFIG.PENDING_REPORTS + 12} 条
+
+🔑 K6 测试账号：
+  - 用户名: ${k6Admin.username}
+  - 密码: ${k6AdminPassword}
+  - 角色: superadmin (拥有所有权限)
+`);
 
   console.log(`Seeding finished.`);
 }

@@ -22,7 +22,7 @@ jest.mock('vue', () => {
   const originalVue = jest.requireActual('vue');
   return {
     ...originalVue,
-    onMounted: jest.fn((fn) => fn()),
+    onMounted: jest.fn(fn => fn()),
   };
 });
 
@@ -53,15 +53,17 @@ describe('usePreferences', () => {
           favoriteIngredients: ['tomato'],
         },
       },
-      fetchProfileAction: jest.fn().mockResolvedValue(undefined),
+      fetchProfileAction: jest.fn() as unknown as jest.Mock<any, any>,
       updateLocalUserInfo: jest.fn(),
     });
+    (mockUserStore.fetchProfileAction as jest.Mock).mockResolvedValue(undefined);
     (useUserStore as unknown as jest.Mock).mockReturnValue(mockUserStore);
 
     mockCanteenStore = reactive({
       canteenList: [{ id: 'canteen1', name: 'Canteen 1' }],
-      fetchCanteenList: jest.fn().mockResolvedValue(undefined),
+      fetchCanteenList: jest.fn() as unknown as jest.Mock<any, any>,
     });
+    (mockCanteenStore.fetchCanteenList as jest.Mock).mockResolvedValue(undefined);
     (useCanteenStore as unknown as jest.Mock).mockReturnValue(mockCanteenStore);
 
     jest.clearAllMocks();
@@ -70,13 +72,13 @@ describe('usePreferences', () => {
   it('should load preferences on mount', async () => {
     mockCanteenStore.canteenList = []; // Ensure it's empty to trigger fetch
     const { form, loading } = usePreferences();
-    
+
     expect(loading.value).toBe(true);
     await new Promise(process.nextTick);
 
     expect(mockCanteenStore.fetchCanteenList).toHaveBeenCalled();
     expect(mockUserStore.fetchProfileAction).toHaveBeenCalled();
-    
+
     expect(form.spiciness).toBe(1);
     expect(form.sweetness).toBe(2);
     expect(form.saltiness).toBe(3);
@@ -87,7 +89,7 @@ describe('usePreferences', () => {
     expect(form.canteenPreferences).toEqual(['canteen1']);
     expect(form.avoidIngredients).toEqual(['onion']);
     expect(form.favoriteIngredients).toEqual(['tomato']);
-    
+
     expect(loading.value).toBe(false);
   });
 
@@ -96,10 +98,12 @@ describe('usePreferences', () => {
     await new Promise(process.nextTick);
 
     form.spiciness = 5;
-    
+
     (updateUserProfile as jest.Mock).mockResolvedValue({
       code: 200,
-      data: { preferences: { ...mockUserStore.userInfo.preferences, tastePreferences: { spicyLevel: 5 } } },
+      data: {
+        preferences: { ...mockUserStore.userInfo.preferences, tastePreferences: { spicyLevel: 5 } },
+      },
     });
 
     const result = await handleSave();
@@ -137,16 +141,24 @@ describe('usePreferences', () => {
     const result = await handleSave();
 
     expect(result).toBe(false);
-    expect(uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ title: '最低价格必须小于最高价格' }));
+    expect(uni.showToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: '最低价格必须小于最高价格' })
+    );
     expect(updateUserProfile).not.toHaveBeenCalled();
   });
 
   it('should add and remove items', async () => {
-    const { 
-      form, 
-      newFavoriteIngredient, addFavoriteIngredient, removeFavoriteIngredient,
-      newMeatPreference, addMeatPreference, removeMeatPreference,
-      newAvoidIngredient, addAvoidIngredient, removeAvoidIngredient
+    const {
+      form,
+      newFavoriteIngredient,
+      addFavoriteIngredient,
+      removeFavoriteIngredient,
+      newMeatPreference,
+      addMeatPreference,
+      removeMeatPreference,
+      newAvoidIngredient,
+      addAvoidIngredient,
+      removeAvoidIngredient,
     } = usePreferences();
     await new Promise(process.nextTick);
 

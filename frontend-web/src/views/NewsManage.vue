@@ -47,66 +47,76 @@
       <div class="mt-6">
 
         <!-- 搜索和筛选栏 -->
-        <div class="mb-6 space-y-4 p-4 bg-gray-50 rounded-lg border">
+        <div class="mb-6 space-y-4">
           <!-- 搜索栏 -->
-          <div>
-            <label class="block text-sm font-medium text-gray-600 mb-2">搜索标题</label>
+          <div class="relative">
+            <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" data-icon="carbon:search"></span>
             <input
               type="text"
               v-model="searchQuery"
               placeholder="输入新闻标题进行搜索..."
-              class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+              class="w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
             />
+            <button
+              v-if="searchQuery"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              @click="searchQuery = ''"
+              type="button"
+              title="清除搜索"
+            >
+              <span class="iconify" data-icon="carbon:close"></span>
+            </button>
           </div>
 
           <!-- 筛选栏 -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <!-- 食堂筛选 -->
-            <div>
-              <label class="block text-sm font-medium text-gray-600 mb-2">发布食堂</label>
-              <select
-                v-model="canteenFilter"
-                class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple bg-white"
-              >
-                <option value="">全部食堂</option>
-                <option value="all">全校公告</option>
-                <option v-for="canteen in canteenList" :key="canteen.id" :value="canteen.id">
-                  {{ canteen.name }}
-                </option>
-              </select>
+          <div class="p-4 bg-gray-50 rounded-lg border border-gray-100 flex flex-wrap items-center gap-x-8 gap-y-4">
+            <div class="flex items-center gap-3">
+              <span class="text-sm font-medium text-gray-600">发布食堂</span>
+              <div class="relative">
+                <select
+                  v-model="canteenFilter"
+                  class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[150px] transition-all cursor-pointer hover:border-gray-400"
+                >
+                  <option value="">全部食堂</option>
+                  <option value="all">全校公告</option>
+                  <option v-for="canteen in canteenList" :key="canteen.id" :value="canteen.id">
+                    {{ canteen.name }}
+                  </option>
+                </select>
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
+                  <span class="iconify" data-icon="carbon:chevron-down"></span>
+                </span>
+              </div>
             </div>
 
-            <!-- 开始时间 -->
-            <div>
-              <label class="block text-sm font-medium text-gray-600 mb-2">开始时间</label>
+            <div class="flex items-center gap-3">
+              <span class="text-sm font-medium text-gray-600">开始时间</span>
               <input
                 type="datetime-local"
                 v-model="startDate"
-                class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm transition-all hover:border-gray-400"
               />
             </div>
 
-            <!-- 结束时间 -->
-            <div>
-              <label class="block text-sm font-medium text-gray-600 mb-2">结束时间</label>
+            <div class="flex items-center gap-3">
+              <span class="text-sm font-medium text-gray-600">结束时间</span>
               <input
                 type="datetime-local"
                 v-model="endDate"
-                class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm transition-all hover:border-gray-400"
               />
             </div>
-          </div>
 
-          <!-- 重置筛选按钮 -->
-          <div class="flex justify-end">
-            <button
-              v-if="searchQuery || canteenFilter || startDate || endDate"
-              @click="resetFilters"
-              class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-2 rounded-md hover:bg-gray-100 transition-colors"
-            >
-              <span class="iconify" data-icon="carbon:reset"></span>
-              重置筛选
-            </button>
+            <div class="ml-auto flex items-center">
+              <button
+                v-if="searchQuery || canteenFilter || startDate || endDate"
+                @click="resetFilters"
+                class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-gray-200/50 transition-colors"
+              >
+                <span class="iconify" data-icon="carbon:reset"></span>
+                重置筛选
+              </button>
+            </div>
           </div>
         </div>
 
@@ -481,6 +491,10 @@ import { useAuthStore } from '@/store/modules/use-auth-store'
 import config from '@/config'
 import Header from '@/components/Layout/Header.vue'
 import Pagination from '@/components/Common/Pagination.vue'
+import { savePageState, restorePageState } from '@/utils/page-state-cache'
+import { showAlert, showConfirm } from '@/composables/useModal'
+
+const PAGE_STATE_KEY = 'news-manage'
 
 export default {
   name: 'NewsManage',
@@ -498,15 +512,38 @@ export default {
     const previewNewsData = ref({})
     const editingNewsId = ref(null)
     const isLoading = ref(false)
-    const currentStatus = ref('published') // 默认显示已发布
     const canteenList = ref([])
     const authStore = useAuthStore()
 
-    // 搜索和筛选状态
-    const searchQuery = ref('')
-    const canteenFilter = ref('')
-    const startDate = ref('')
-    const endDate = ref('')
+    // 默认状态定义
+    const defaultState = {
+      currentStatus: 'published',
+      searchQuery: '',
+      canteenFilter: '',
+      startDate: '',
+      endDate: '',
+      page: 1,
+    }
+    
+    // 从缓存恢复状态
+    const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
+    const currentStatus = ref(restoredState.currentStatus) // 默认显示已发布
+    const searchQuery = ref(restoredState.searchQuery)
+    const canteenFilter = ref(restoredState.canteenFilter)
+    const startDate = ref(restoredState.startDate)
+    const endDate = ref(restoredState.endDate)
+    
+    // 保存页面状态
+    const saveState = () => {
+      savePageState(PAGE_STATE_KEY, {
+        currentStatus: currentStatus.value,
+        searchQuery: searchQuery.value,
+        canteenFilter: canteenFilter.value,
+        startDate: startDate.value,
+        endDate: endDate.value,
+        page: pagination.page,
+      })
+    }
 
     // 获取当前登录管理员信息
     const currentAdmin = computed(() => authStore.user)
@@ -545,13 +582,13 @@ export default {
               const href = res.data.url
               insertFn(url, alt, href)
             } else {
-              alert(res.message || '图片上传失败')
+              showAlert(res.message || '图片上传失败')
             }
           },
           // 错误处理
           onError(file, err, res) {
             console.error('上传错误:', err, res)
-            alert('图片上传出错: ' + (err.message || '未知错误'))
+            showAlert('图片上传出错: ' + (err.message || '未知错误'))
           },
         },
       },
@@ -570,7 +607,7 @@ export default {
     // --- wangEditor 配置 END ---
 
     const pagination = reactive({
-      page: 1,
+      page: restoredState.page || 1, // 恢复分页状态
       pageSize: 10,
       total: 0,
       totalPages: 0,
@@ -621,7 +658,7 @@ export default {
         }
       } catch (error) {
         console.error('加载新闻列表失败:', error)
-        alert(error instanceof Error ? error.message : '加载新闻列表失败，请重试')
+        showAlert(error instanceof Error ? error.message : '加载新闻列表失败，请重试')
       } finally {
         isLoading.value = false
       }
@@ -631,6 +668,7 @@ export default {
     const changeStatus = (status) => {
       currentStatus.value = status
       pagination.page = 1
+      saveState() // 保存状态
       loadNews()
     }
 
@@ -719,6 +757,9 @@ export default {
       canteenFilter.value = ''
       startDate.value = ''
       endDate.value = ''
+      pagination.page = 1 // 重置分页到第一页
+      saveState() // 保存状态
+      loadNews() // 重新加载新闻列表以应用重置后的筛选条件
     }
 
     const loadCanteens = async () => {
@@ -753,7 +794,7 @@ export default {
     // 打开创建模态框
     const openCreateModal = () => {
       if (!authStore.hasPermission('news:create')) {
-        alert('您没有权限创建新闻')
+        showAlert('您没有权限创建新闻')
         return
       }
       resetForm()
@@ -770,7 +811,7 @@ export default {
     // 编辑新闻
     const editNews = (news) => {
       if (!authStore.hasPermission('news:edit')) {
-        alert('您没有权限编辑新闻')
+        showAlert('您没有权限编辑新闻')
         return
       }
       editingNewsId.value = news.id
@@ -845,7 +886,7 @@ export default {
           // 更新
           const response = await newsApi.updateNews(editingNewsId.value, requestData)
           if (response.code === 200 || response.code === 201) {
-            alert('新闻更新成功！')
+            showAlert('新闻更新成功！')
             closeModal()
             loadNews()
           } else {
@@ -862,13 +903,13 @@ export default {
             if (targetStatus === 'published') {
               try {
                 await newsApi.publishNews(newNewsId)
-                alert('新闻创建并发布成功！')
+                showAlert('新闻创建并发布成功！')
               } catch (publishError) {
                 console.error('发布失败:', publishError)
-                alert('新闻创建成功，但发布失败，请在列表中手动发布')
+                showAlert('新闻创建成功，但发布失败，请在列表中手动发布')
               }
             } else {
-              alert('新闻草稿创建成功！')
+              showAlert('新闻草稿创建成功！')
               // 如果创建的是草稿，确保当前视图切换到草稿列表
               if (currentStatus.value !== 'draft') {
                 // 自动切换到草稿箱以便用户看到新创建的内容
@@ -885,69 +926,72 @@ export default {
         }
       } catch (error) {
         console.error('提交失败:', error)
-        alert(error instanceof Error ? error.message : '操作失败，请重试')
+        showAlert(error instanceof Error ? error.message : '操作失败，请重试')
       }
     }
 
     // 发布新闻
     const publishNews = async (id) => {
       if (!authStore.hasPermission('news:publish')) {
-        alert('您没有权限发布新闻')
+        showAlert('您没有权限发布新闻')
         return
       }
-      if (!confirm('确定要发布这条新闻吗？')) return
+      const confirmed = await showConfirm('确定要发布这条新闻吗？')
+      if (!confirmed) return
       try {
         const response = await newsApi.publishNews(id)
         if (response.code === 200) {
-          alert('发布成功')
+          showAlert('发布成功')
           loadNews()
         } else {
           throw new Error(response.message || '发布失败')
         }
       } catch (error) {
         console.error('发布失败:', error)
-        alert(error instanceof Error ? error.message : '发布失败，请重试')
+        showAlert(error instanceof Error ? error.message : '发布失败，请重试')
       }
     }
 
     // 撤回新闻
     const revokeNews = async (id) => {
       if (!authStore.hasPermission('news:revoke')) {
-        alert('您没有权限撤回新闻')
+        showAlert('您没有权限撤回新闻')
         return
       }
-      if (!confirm('确定要撤回这条新闻吗？撤回后将变为草稿状态。')) return
+      const confirmed = await showConfirm('确定要撤回这条新闻吗？撤回后将变为草稿状态。')
+      if (!confirmed) return
       try {
         const response = await newsApi.revokeNews(id)
         if (response.code === 200) {
-          alert('撤回成功，已移至草稿箱')
+          showAlert('撤回成功，已移至草稿箱')
           loadNews()
         } else {
           throw new Error(response.message || '撤回失败')
         }
       } catch (error) {
         console.error('撤回失败:', error)
-        alert(error instanceof Error ? error.message : '撤回失败，请重试')
+        showAlert(error instanceof Error ? error.message : '撤回失败，请重试')
       }
     }
 
     const deleteNews = async (newsId) => {
       if (!authStore.hasPermission('news:delete')) {
-        alert('您没有权限删除新闻')
+        showAlert('您没有权限删除新闻')
         return
       }
-      if (!confirm('确定要删除这条新闻吗？')) return
+      const confirmed = await showConfirm('确定要删除这条新闻吗？')
+      if (!confirmed) return
       try {
         const response = await newsApi.deleteNews(newsId)
         if (response.code === 200 || response.code === 201) {
-          alert('新闻删除成功！')
+          showAlert('新闻删除成功！')
           loadNews()
         } else {
           throw new Error(response.message || '删除失败')
         }
       } catch (error) {
         console.error('删除失败:', error)
-        alert(error instanceof Error ? error.message : '删除失败，请重试')
+        showAlert(error instanceof Error ? error.message : '删除失败，请重试')
       }
     }
 
@@ -1025,16 +1069,19 @@ export default {
 
     const handlePageChange = (page) => {
       pagination.page = page
+      saveState() // 保存状态
       loadNews()
     }
 
     onMounted(() => {
+      // 状态已在setup()中恢复，这里只需加载数据
       loadCanteens()
       loadNews()
       document.addEventListener('keydown', handlePreviewKeyDown)
     })
 
     onActivated(() => {
+      // 组件重新激活时仅重新加载数据，避免重复恢复状态覆盖用户修改
       loadCanteens()
       loadNews()
     })

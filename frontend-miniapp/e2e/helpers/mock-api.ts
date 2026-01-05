@@ -224,12 +224,22 @@ export async function installMockApi(page: Page): Promise<void> {
 
     // 我的收藏列表
     if (method === 'GET' && path.endsWith('/user/favorites')) {
-      const items = Array.from(favoriteDishIds).map((dishId, index) => ({
-        id: `fav_${index + 1}`,
-        dishId,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }));
+      const items = Array.from(favoriteDishIds).map((dishId, index) => {
+        const dish = fixtures.dishes.find(d => d.id === dishId);
+        return {
+          id: `fav_${index + 1}`,
+          dishId,
+          dishName: dish?.name || '未知菜品',
+          dishImages: dish?.images || [],
+          dishPrice: dish?.price || 0,
+          canteenName: dish?.canteenName || '',
+          windowName: dish?.windowName || '',
+          tags: dish?.tags || [],
+          averageRating: dish?.averageRating || 0,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      });
       return json(route, ok(asPaginated(items, 1, 10)));
     }
 

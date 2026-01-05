@@ -1,8 +1,8 @@
-import { createSSRApp } from "vue";
-import App from "./App.vue";
-import pinia from "./store";
-import './static/tailwind.css'
-import '@/static/font/iconfont.css'
+import { createSSRApp } from 'vue';
+import App from './App.vue';
+import pinia from './store';
+import './static/tailwind.css';
+import '@/static/font/iconfont.css';
 import config from '@/config';
 export function createApp() {
   const app = createSSRApp(App);
@@ -10,5 +10,5 @@ export function createApp() {
   app.use(pinia);
   return {
     app,
-  };  
+  };
 }

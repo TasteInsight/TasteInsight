@@ -23,21 +23,21 @@ export const SPICINESS_LABELS = ['未设置', '微辣', '中辣', '重辣', '特
 export const PORTION_LABELS: Record<'small' | 'medium' | 'large', string> = {
   small: '小份',
   medium: '中份',
-  large: '大份'
+  large: '大份',
 };
 export const REVERSE_PORTION_LABELS: Record<string, 'small' | 'medium' | 'large'> = {
-  '小份': 'small',
-  '中份': 'medium',
-  '大份': 'large'
+  小份: 'small',
+  中份: 'medium',
+  大份: 'large',
 };
 
 export function usePreferences() {
   const userStore = useUserStore();
   const canteenStore = useCanteenStore();
-  
+
   const saving = ref(false);
   const loading = ref(true);
-  
+
   const form = reactive<PreferencesForm>({
     spiciness: 0,
     sweetness: 0,
@@ -48,7 +48,7 @@ export function usePreferences() {
     priceRange: { min: 20, max: 100 },
     canteenPreferences: [],
     avoidIngredients: [],
-    favoriteIngredients: []
+    favoriteIngredients: [],
   });
 
   // 输入框临时值
@@ -69,7 +69,7 @@ export function usePreferences() {
       if (canteenStore.canteenList.length === 0) {
         await canteenStore.fetchCanteenList();
       }
-      
+
       await userStore.fetchProfileAction();
       const userInfo = userStore.userInfo;
       if (userInfo?.preferences) {
@@ -102,7 +102,7 @@ export function usePreferences() {
     if (min >= max) {
       uni.showToast({
         title: '最低价格必须小于最高价格',
-        icon: 'none'
+        icon: 'none',
       });
       form.priceRange = { min: 20, max: 100 };
       return false;
@@ -116,7 +116,7 @@ export function usePreferences() {
   function addFavoriteIngredient() {
     const value = newFavoriteIngredient.value.trim();
     if (!value) return;
-    
+
     if (form.favoriteIngredients.includes(value)) {
       uni.showToast({ title: '已存在该食材', icon: 'none' });
       return;
@@ -135,7 +135,7 @@ export function usePreferences() {
   function addMeatPreference() {
     const value = newMeatPreference.value.trim();
     if (!value) return;
-    
+
     if (form.meatPreference.includes(value)) {
       uni.showToast({ title: '已存在该肉类', icon: 'none' });
       return;
@@ -155,7 +155,7 @@ export function usePreferences() {
     const index = e.detail.value;
     const selectedCanteen = canteenList.value[index];
     if (!selectedCanteen) return;
-    
+
     const canteenId = selectedCanteen.id;
     if (form.canteenPreferences.includes(canteenId)) {
       uni.showToast({ title: '已存在该食堂', icon: 'none' });
@@ -169,7 +169,7 @@ export function usePreferences() {
   }
 
   function getCanteenNameById(canteenId: string): string {
-    const canteen = canteenList.value.find((c) => c.id === canteenId);
+    const canteen = canteenList.value.find(c => c.id === canteenId);
     return canteen ? canteen.name : canteenId;
   }
 
@@ -179,7 +179,7 @@ export function usePreferences() {
   function addAvoidIngredient() {
     const value = newAvoidIngredient.value.trim();
     if (!value) return;
-    
+
     if (form.avoidIngredients.includes(value)) {
       uni.showToast({ title: '已存在该食材', icon: 'none' });
       return;
@@ -205,14 +205,14 @@ export function usePreferences() {
           spicyLevel: form.spiciness,
           sweetness: form.sweetness,
           saltiness: form.saltiness,
-          oiliness: form.oiliness
+          oiliness: form.oiliness,
         },
         portionSize: form.portionSize,
         meatPreference: form.meatPreference,
         priceRange: form.priceRange,
         canteenPreferences: form.canteenPreferences,
         avoidIngredients: form.avoidIngredients,
-        favoriteIngredients: form.favoriteIngredients
+        favoriteIngredients: form.favoriteIngredients,
       };
 
       const payload: UserProfileUpdateRequest = { preferences };
@@ -223,13 +223,13 @@ export function usePreferences() {
       }
 
       userStore.updateLocalUserInfo(response.data);
-      
+
       uni.showToast({ title: '保存成功', icon: 'success' });
-      
+
       setTimeout(() => {
         uni.navigateBack();
       }, 1000);
-      
+
       return true;
     } catch (error) {
       console.error('保存失败:', error);
@@ -255,13 +255,13 @@ export function usePreferences() {
     newMeatPreference,
     newAvoidIngredient,
     canteenList,
-    
+
     // 常量
     tasteLabels: TASTE_LABELS,
     spicinessLabels: SPICINESS_LABELS,
     portionLabels: PORTION_LABELS,
     reversePortionLabels: REVERSE_PORTION_LABELS,
-    
+
     // 方法
     validatePriceRange,
     addFavoriteIngredient,
@@ -273,6 +273,6 @@ export function usePreferences() {
     getCanteenNameById,
     addAvoidIngredient,
     removeAvoidIngredient,
-    handleSave
+    handleSave,
   };
 }

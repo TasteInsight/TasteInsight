@@ -45,22 +45,20 @@ describe('store/use-auth-store', () => {
     expect(store.permissions).toEqual([])
   })
 
-  it('superadmin has all permissions (role)', async () => {
+  it('hasPermission/hasAnyPermission checks permissions from storage only', async () => {
+    // Note: superadmin role is no longer handled specially in frontend.
+    // Permissions are determined solely by backend-provided permission list.
+    localStorage.setItem('admin_permissions', JSON.stringify(['dish:view', 'admin:view']))
+
     const { useAuthStore } = await import('@/store/modules/use-auth-store')
     const store = useAuthStore()
-
     store.user = { username: 'any', role: 'superadmin' } as any
-    expect(store.hasPermission('anything')).toBe(true)
-    expect(store.hasAnyPermission(['a', 'b'])).toBe(true)
-  })
 
-  it('testadmin has all permissions (username)', async () => {
-    const { useAuthStore } = await import('@/store/modules/use-auth-store')
-    const store = useAuthStore()
-
-    store.user = { username: 'testadmin', role: 'admin' } as any
-    expect(store.hasPermission('anything')).toBe(true)
-    expect(store.hasAnyPermission(['x', 'y'])).toBe(true)
+    // Even superadmin only has permissions that are explicitly stored
+    expect(store.hasPermission('dish:view')).toBe(true)
+    expect(store.hasPermission('anything')).toBe(false)
+    expect(store.hasAnyPermission(['admin:view', 'b'])).toBe(true)
+    expect(store.hasAnyPermission(['a', 'b'])).toBe(false)
   })
 
   it('initializes token/refresh/user from storage', async () => {

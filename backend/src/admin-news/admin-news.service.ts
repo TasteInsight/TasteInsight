@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { CreateNewsDto } from './dto/create-news.dto';
@@ -9,12 +10,16 @@ import { UpdateNewsDto } from './dto/update-news.dto';
 import { NewsListResponseDto, NewsResponseDto } from './dto/news-response.dto';
 import { SuccessResponseDto } from '@/common/dto/response.dto';
 import { NewsDto, AdminGetNewsDto } from './dto/news.dto';
+import { AdminInfo } from '@/auth/decorators/current-admin.decorator';
 
 @Injectable()
 export class AdminNewsService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(query: AdminGetNewsDto): Promise<NewsListResponseDto> {
+  async findAll(
+    query: AdminGetNewsDto,
+    adminInfo?: AdminInfo,
+  ): Promise<NewsListResponseDto> {
     const { page = 1, pageSize = 20, status, canteenName } = query;
     const skip = (page - 1) * pageSize;
 
@@ -22,7 +27,10 @@ export class AdminNewsService {
     if (status) {
       where.status = status;
     }
-    if (canteenName) {
+
+    if (adminInfo?.canteenId) {
+      where.canteenId = adminInfo.canteenId;
+    } else if (canteenName) {
       where.canteenName = {
         contains: canteenName,
         mode: 'insensitive',
@@ -56,12 +64,21 @@ export class AdminNewsService {
 
   async createNews(
     createNewsDto: CreateNewsDto,
-    adminId: string,
+    adminInfo: AdminInfo,
   ): Promise<NewsResponseDto> {
     let canteenName: string | null = null;
-    if (createNewsDto.canteenId) {
+    let canteenId = createNewsDto.canteenId;
+
+    if (adminInfo.canteenId) {
+      if (canteenId && canteenId !== adminInfo.canteenId) {
+        throw new ForbiddenException('您只能发布所属食堂的新闻');
+      }
+      canteenId = adminInfo.canteenId;
+    }
+
+    if (canteenId) {
       const canteen = await this.prisma.canteen.findUnique({
-        where: { id: createNewsDto.canteenId },
+        where: { id: canteenId },
       });
       if (!canteen) {
         throw new BadRequestException('指定的食堂不存在');
@@ -72,8 +89,9 @@ export class AdminNewsService {
     const news = await this.prisma.news.create({
       data: {
         ...createNewsDto,
+        canteenId,
         canteenName,
-        createdBy: adminId,
+        createdBy: adminInfo.id,
         status: 'draft',
         publishedAt: null,
       },
@@ -89,6 +107,7 @@ export class AdminNewsService {
   async updateNews(
     id: string,
     updateNewsDto: UpdateNewsDto,
+    adminInfo?: AdminInfo,
   ): Promise<NewsResponseDto> {
     const existingNews = await this.prisma.news.findUnique({
       where: { id },
@@ -98,13 +117,29 @@ export class AdminNewsService {
       throw new NotFoundException('新闻不存在');
     }
 
+    if (
+      adminInfo?.canteenId &&
+      existingNews.canteenId !== adminInfo.canteenId
+    ) {
+      throw new ForbiddenException('权限不足');
+    }
+
     if (existingNews.status === 'published') {
       throw new BadRequestException('已发布的新闻无法编辑，请先撤回');
     }
 
     // 如果更新了 canteenId，需要同时更新 canteenName
     const updateData: any = { ...updateNewsDto };
-    if (updateNewsDto.canteenId) {
+
+    if (adminInfo?.canteenId) {
+      // 强制食堂ID为管理员的食堂
+      updateData.canteenId = adminInfo.canteenId;
+      // 查找并设置食堂名称
+      const canteen = await this.prisma.canteen.findUnique({
+        where: { id: adminInfo.canteenId },
+      });
+      if (canteen) updateData.canteenName = canteen.name;
+    } else if (updateNewsDto.canteenId) {
       const canteen = await this.prisma.canteen.findUnique({
         where: { id: updateNewsDto.canteenId },
       });
@@ -126,13 +161,23 @@ export class AdminNewsService {
     };
   }
 
-  async publishNews(id: string): Promise<SuccessResponseDto> {
+  async publishNews(
+    id: string,
+    adminInfo?: AdminInfo,
+  ): Promise<SuccessResponseDto> {
     const existingNews = await this.prisma.news.findUnique({
       where: { id },
     });
 
     if (!existingNews) {
       throw new NotFoundException('新闻不存在');
+    }
+
+    if (
+      adminInfo?.canteenId &&
+      existingNews.canteenId !== adminInfo.canteenId
+    ) {
+      throw new ForbiddenException('权限不足');
     }
 
     await this.prisma.news.update({
@@ -150,13 +195,23 @@ export class AdminNewsService {
     };
   }
 
-  async revokeNews(id: string): Promise<SuccessResponseDto> {
+  async revokeNews(
+    id: string,
+    adminInfo?: AdminInfo,
+  ): Promise<SuccessResponseDto> {
     const existingNews = await this.prisma.news.findUnique({
       where: { id },
     });
 
     if (!existingNews) {
       throw new NotFoundException('新闻不存在');
+    }
+
+    if (
+      adminInfo?.canteenId &&
+      existingNews.canteenId !== adminInfo.canteenId
+    ) {
+      throw new ForbiddenException('权限不足');
     }
 
     await this.prisma.news.update({
@@ -174,13 +229,23 @@ export class AdminNewsService {
     };
   }
 
-  async deleteNews(id: string): Promise<SuccessResponseDto> {
+  async deleteNews(
+    id: string,
+    adminInfo?: AdminInfo,
+  ): Promise<SuccessResponseDto> {
     const existingNews = await this.prisma.news.findUnique({
       where: { id },
     });
 
     if (!existingNews) {
       throw new NotFoundException('新闻不存在');
+    }
+
+    if (
+      adminInfo?.canteenId &&
+      existingNews.canteenId !== adminInfo.canteenId
+    ) {
+      throw new ForbiddenException('权限不足');
     }
 
     await this.prisma.news.delete({

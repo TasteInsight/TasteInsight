@@ -1,48 +1,135 @@
+import 'reflect-metadata';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsArray,
+  IsNotEmpty,
+  IsObject,
+  Min,
+  Max,
+  ValidateNested,
+  IsDateString,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+
 /**
- * 实验分组配置
+ * 创建实验分组配置
  */
 export class CreateExperimentGroupDto {
+  @IsString()
+  @IsNotEmpty()
   name: string;
+
+  @IsNumber()
+  @IsNotEmpty()
+  @Type(() => Number)
+  @Min(0)
+  @Max(1)
   ratio: number;
+
   /**
    * 实验配置，可以包含：
    * - weights: 权重配置 { preferenceMatch, favoriteSimilarity, ... }
    * - recallQuota: 召回策略配额 { vectorQuota, ruleQuota, collaborativeQuota }
-   *
-   * @example
-   * {
-   *   "weights": {
-   *     "preferenceMatch": 35,
-   *     "favoriteSimilarity": 20,
-   *     "browseRelevance": 15,
-   *     "dishQuality": 15,
-   *   "diversity": 10,
-   *     "searchRelevance": 5
-   *   },
-   *   "recallQuota": {
-   *     "vectorQuota": 0.7,
-   *     "ruleQuota": 0.2,
-   *     "collaborativeQuota": 0.1
-   *   }
    */
+  @IsOptional()
+  @IsObject()
+  config?: Record<string, any>;
+}
+
+/**
+ * 更新实验分组配置
+ */
+export class UpdateExperimentGroupDto {
+  /**
+   * 分组ID（更新现有分组时必传，新增分组时不传）
+   */
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsNumber()
+  @IsNotEmpty()
+  @Type(() => Number)
+  @Min(0)
+  @Max(1)
+  ratio: number;
+
+  /**
+   * 实验配置
+   */
+  @IsOptional()
+  @IsObject()
   config?: Record<string, any>;
 }
 
 export class CreateExperimentDto {
+  @IsNotEmpty()
+  @IsString()
   name: string;
+
+  @IsOptional()
+  @IsString()
   description?: string;
+
+  @IsNotEmpty()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  @Max(1)
   trafficRatio: number;
-  startTime: Date;
-  endTime?: Date;
+
+  @IsNotEmpty()
+  @IsDateString()
+  startTime: string;
+
+  @IsOptional()
+  @IsDateString()
+  endTime?: string;
+
+  @IsNotEmpty()
+  @IsArray()
+  @Type(() => CreateExperimentGroupDto)
+  @ValidateNested({ each: true })
   groups: CreateExperimentGroupDto[];
 }
 
 export class UpdateExperimentDto {
+  @IsOptional()
+  @IsString()
   name?: string;
+
+  @IsOptional()
+  @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  @Max(1)
   trafficRatio?: number;
-  startTime?: Date;
-  endTime?: Date;
+
+  @IsOptional()
+  @IsDateString()
+  startTime?: string;
+
+  @IsOptional()
+  @IsDateString()
+  endTime?: string;
+
+  @IsOptional()
+  @IsString()
   status?: string;
-  groups?: CreateExperimentGroupDto[];
+
+  @IsOptional()
+  @IsArray()
+  @Type(() => UpdateExperimentGroupDto)
+  @ValidateNested({ each: true })
+  groups?: UpdateExperimentGroupDto[];
 }

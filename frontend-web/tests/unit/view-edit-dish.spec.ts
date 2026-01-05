@@ -25,6 +25,8 @@ const mocks = vi.hoisted(() => ({
     getCanteens: vi.fn(),
     getWindows: vi.fn(),
   },
+  showAlertMock: vi.fn(() => Promise.resolve()),
+  showConfirmMock: vi.fn(() => Promise.resolve(true)),
 }))
 
 vi.mock('vue-router', () => ({
@@ -42,6 +44,12 @@ vi.mock('@/api/modules/dish', () => ({
 
 vi.mock('@/api/modules/canteen', () => ({
   canteenApi: mocks.canteenApiMock,
+}))
+
+vi.mock('@/composables/useModal', () => ({
+  showAlert: mocks.showAlertMock,
+  showConfirm: mocks.showConfirmMock,
+  showConfirmDanger: vi.fn(() => Promise.resolve(true)),
 }))
 
 import EditDish from '../../src/views/EditDish.vue'
@@ -94,15 +102,10 @@ describe('views/EditDish', () => {
     mocks.dishApiMock.uploadImage.mockResolvedValue({ code: 200, data: { url: 'http://img/u.png' } })
     mocks.dishApiMock.updateDish.mockResolvedValue({ code: 200, data: { id: 'd1', name: 'N' } })
 
-    vi.spyOn(window, 'alert').mockImplementation(() => undefined)
-    vi.spyOn(window, 'confirm').mockImplementation(() => true)
-
     ;(globalThis as any).FileReader = FileReaderMock
   })
 
   afterEach(() => {
-    ;(window.alert as any).mockRestore?.()
-    ;(window.confirm as any).mockRestore?.()
     ;(globalThis as any).FileReader = originalFileReader
   })
 
@@ -158,7 +161,7 @@ describe('views/EditDish', () => {
     const wrapper = shallowMount(EditDish, { global: { stubs: { Header: true } } })
     await flushAll()
 
-    expect(window.alert).toHaveBeenCalledWith('获取菜品信息失败，请重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('获取菜品信息失败，请重试')
     expect(mocks.routerMock.push).toHaveBeenCalledWith('/modify-dish')
 
     wrapper.unmount()
@@ -222,7 +225,7 @@ describe('views/EditDish', () => {
 
     wrapper.vm.newTag = '麻辣'
     wrapper.vm.addTag()
-    expect((window.alert as any).mock.calls.flat().join(' ')).toContain('TAG已存在')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('该TAG已存在')
 
     wrapper.vm.removeTag(0)
     expect(wrapper.vm.formData.tags).toEqual([])
@@ -247,7 +250,7 @@ describe('views/EditDish', () => {
     const evt: any = { target: { files: [big, small], value: 'x' } }
     wrapper.vm.handleImageUpload(evt)
 
-    expect((window.alert as any).mock.calls.flat().join(' ')).toContain('大小超过10MB')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('图片 big.png 大小超过10MB，已跳过')
     expect(wrapper.vm.formData.imageFiles.length).toBe(1)
     expect(wrapper.vm.formData.imageFiles[0].isNew).toBe(true)
     expect(wrapper.vm.formData.imageFiles[0].url).toContain('data:image')
@@ -327,11 +330,11 @@ describe('views/EditDish', () => {
     ]
 
     mocks.dishApiMock.uploadImage.mockResolvedValueOnce({ code: 500, message: 'bad' })
-    ;(window.confirm as any).mockReturnValueOnce(false)
+    mocks.showConfirmMock.mockResolvedValueOnce(false)
 
     await wrapper.vm.submitForm()
 
-    expect(window.confirm).toHaveBeenCalled()
+    expect(mocks.showConfirmMock).toHaveBeenCalled()
     expect(mocks.dishApiMock.updateDish).not.toHaveBeenCalled()
 
     wrapper.unmount()
@@ -372,22 +375,22 @@ describe('views/EditDish', () => {
     wrapper.vm.isSubmitting = false
 
     expect(mocks.dishStoreMock.updateDish).toHaveBeenCalledWith('d1', { id: 'd1', name: 'N2' })
-    expect(window.alert).toHaveBeenCalledWith('菜品信息已更新！')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('菜品信息已更新！')
     expect(mocks.routerMock.push).toHaveBeenCalledWith('/modify-dish')
 
     // non-200
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
     mocks.dishApiMock.getDishById.mockResolvedValueOnce({ code: 200, data: { id: 'd1' } })
     mocks.dishApiMock.updateDish.mockResolvedValueOnce({ code: 500, message: 'bad' })
     await wrapper.vm.submitForm()
-    expect((window.alert as any).mock.calls.flat().join(' ')).toContain('bad')
+    expect(mocks.showAlertMock).toHaveBeenCalled()
 
     // throw
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
     mocks.dishApiMock.getDishById.mockResolvedValueOnce({ code: 200, data: { id: 'd1' } })
     mocks.dishApiMock.updateDish.mockRejectedValueOnce(new Error('boom'))
     await wrapper.vm.submitForm()
-    expect((window.alert as any).mock.calls.flat().join(' ')).toContain('boom')
+    expect(mocks.showAlertMock).toHaveBeenCalled()
 
     wrapper.unmount()
   })

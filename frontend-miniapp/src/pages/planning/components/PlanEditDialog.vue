@@ -1,5 +1,4 @@
 <template>
-
   <!-- 1. 最外层遮罩：全屏覆盖，高层级，拦截触摸事件防止穿透 -->
   <view
     v-if="visible"
@@ -8,20 +7,23 @@
     @tap="handleClose"
   >
     <!-- 2. 弹窗主体容器：限制最大高度，圆角，白色背景 -->
-    <view 
+    <view
       class="w-[90%] max-h-[85vh] flex flex-col bg-white rounded-xl overflow-hidden shadow-2xl transition-all"
       @tap.stop
       @touchmove.stop
     >
-      
       <!-- 3. 头部：固定高度，不随内容滚动 -->
-      <view class="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-100 bg-white">
+      <view
+        class="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-100 bg-white"
+      >
         <view>
-          <text class="text-xl font-bold text-gray-900 block">{{ isEdit ? '编辑规划' : '新建规划' }}</text>
+          <text class="text-xl font-bold text-gray-900 block">{{
+            isEdit ? '编辑规划' : '新建规划'
+          }}</text>
           <text class="text-sm text-gray-500 mt-1">制定你的专属饮食计划</text>
         </view>
-        <view 
-          class="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full text-gray-500 active:bg-gray-200 transition-colors" 
+        <view
+          class="w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full text-gray-500 active:bg-gray-200 transition-colors"
           @tap="handleClose"
         >
           <text class="text-sm">✕</text>
@@ -29,10 +31,12 @@
       </view>
 
       <!-- 表单内容 -->
-      <scroll-view 
-        scroll-y 
-        class="flex-1 w-full bg-white min-h-0" 
-        style="max-height: calc(85vh - 160px);"
+      <scroll-view
+        scroll-y
+        :lower-threshold="80"
+        @scrolltolower="handleScrollToLower"
+        class="flex-1 w-full bg-white min-h-0"
+        style="max-height: calc(85vh - 160px)"
       >
         <view class="px-6 py-6 space-y-6">
           <!-- 日期选择行 -->
@@ -41,10 +45,14 @@
             <view class="flex gap-3">
               <view class="flex-1">
                 <picker mode="date" :value="formData.startDate" @change="onStartDateChange">
-                  <view class="flex flex-col bg-gray-50 rounded-2xl p-3 border border-gray-100 active:border-purple-200 transition-colors">
+                  <view
+                    class="flex flex-col bg-gray-50 rounded-2xl p-3 border border-gray-100 active:border-purple-200 transition-colors"
+                  >
                     <text class="text-xs text-gray-400 mb-1">开始日期</text>
                     <view class="flex items-center justify-between">
-                      <text class="text-base font-medium text-gray-800">{{ formData.startDate || '选择日期' }}</text>
+                      <text class="text-base font-medium text-gray-800">{{
+                        formData.startDate || '选择日期'
+                      }}</text>
                     </view>
                   </view>
                 </picker>
@@ -54,10 +62,14 @@
               </view>
               <view class="flex-1">
                 <picker mode="date" :value="formData.endDate" @change="onEndDateChange">
-                  <view class="flex flex-col bg-gray-50 rounded-2xl p-3 border border-gray-100 active:border-purple-200 transition-colors">
+                  <view
+                    class="flex flex-col bg-gray-50 rounded-2xl p-3 border border-gray-100 active:border-purple-200 transition-colors"
+                  >
                     <text class="text-xs text-gray-400 mb-1">结束日期</text>
                     <view class="flex items-center justify-between">
-                      <text class="text-base font-medium text-gray-800">{{ formData.endDate || '选择日期' }}</text>
+                      <text class="text-base font-medium text-gray-800">{{
+                        formData.endDate || '选择日期'
+                      }}</text>
                     </view>
                   </view>
                 </picker>
@@ -69,13 +81,15 @@
           <view>
             <text class="text-sm font-semibold text-gray-700 mb-3 block pl-1">用餐时段</text>
             <view class="grid grid-cols-4 gap-2">
-              <view 
-                v-for="option in mealTimeOptions" 
+              <view
+                v-for="option in mealTimeOptions"
                 :key="option.value"
                 class="py-3 text-center rounded-xl text-sm font-medium transition-all duration-200 border"
-                :class="formData.mealTime === option.value 
-                  ? 'bg-ts-purple text-white border-ts-purple shadow-md shadow-purple-200' 
-                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'"
+                :class="
+                  formData.mealTime === option.value
+                    ? 'bg-ts-purple text-white border-ts-purple shadow-md shadow-purple-200'
+                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                "
                 @tap="selectMealTime(option.value)"
               >
                 <text>{{ option.label }}</text>
@@ -88,24 +102,31 @@
             <view class="flex items-center justify-between mb-3 pl-1">
               <text class="text-sm font-semibold text-gray-700">已选菜品</text>
               <view class="bg-purple-100/80 px-2.5 py-1 rounded-full">
-                <text class="text-xs text-purple-700 font-semibold">{{ selectedDishes.length }} 道菜</text>
+                <text class="text-xs text-purple-700 font-semibold"
+                  >{{ selectedDishes.length }} 道菜</text
+                >
               </view>
             </view>
-            
-            <view class="bg-purple-50/40 rounded-2xl p-4 border border-purple-100/50 min-h-[80px] flex flex-col">
-              <view v-if="selectedDishes.length === 0" class="flex-1 flex flex-col items-center justify-center py-4">
+
+            <view
+              class="bg-purple-50/40 rounded-2xl p-4 border border-purple-100/50 min-h-[80px] flex flex-col"
+            >
+              <view
+                v-if="selectedDishes.length === 0"
+                class="flex-1 flex flex-col items-center justify-center py-4"
+              >
                 <text class="text-sm text-gray-500">暂未选择任何菜品</text>
                 <text class="text-xs text-gray-400 mt-1">请在下方添加菜品</text>
               </view>
-              
+
               <view v-else class="flex flex-wrap gap-2">
-                <view 
-                  v-for="dish in selectedDishes" 
+                <view
+                  v-for="dish in selectedDishes"
                   :key="dish.id"
                   class="flex items-center py-1.5 pl-3 pr-2 bg-white border border-purple-200/60 rounded-full shadow-sm"
                 >
                   <text class="text-xs text-gray-700 font-medium">{{ dish.name }}</text>
-                  <view 
+                  <view
                     class="ml-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-red-50 text-red-400 active:bg-red-100 active:text-red-500 transition-colors"
                     @tap="removeDish(dish.id)"
                   >
@@ -119,49 +140,69 @@
           <!-- 添加菜品区域 (集成) -->
           <view class="border-t border-gray-100 pt-6">
             <text class="text-sm font-semibold text-gray-700 mb-3 block pl-1">添加菜品</text>
-            
+
             <!-- 筛选工具 -->
             <view class="space-y-3 mb-4">
               <!-- 搜索框 -->
-              <view class="flex items-center py-2.5 px-4 bg-gray-100 rounded-full transition-colors focus-within:bg-white focus-within:ring-2 focus-within:ring-purple-100 focus-within:border-purple-200 border border-transparent">
+              <view
+                class="flex items-center py-2.5 px-4 bg-gray-100 rounded-full transition-colors focus-within:bg-white focus-within:ring-2 focus-within:ring-purple-100 focus-within:border-purple-200 border border-transparent"
+              >
                 <view class="uni-icon uni-icon-search text-gray-400 mr-2"></view>
-                <input 
-                  v-model="searchKeyword" 
+                <input
+                  v-model="searchKeyword"
                   class="flex-1 text-sm bg-transparent h-6"
                   placeholder="搜索想吃的菜品..."
                   placeholder-class="text-gray-400"
                   @confirm="handleSearch"
                 />
-                <view v-if="searchKeyword" @tap="clearSearch" class="w-5 h-5 bg-gray-300 rounded-full flex items-center justify-center mr-2">
+                <view
+                  v-if="searchKeyword"
+                  @tap="clearSearch"
+                  class="w-5 h-5 bg-gray-300 rounded-full flex items-center justify-center mr-2"
+                >
                   <text class="text-white text-xs">×</text>
                 </view>
-                <view 
+                <view
                   class="px-3 py-1 bg-ts-purple text-white rounded-full text-xs font-medium active:bg-purple-700 transition-colors"
                   @tap="handleSearch"
                 >
                   <text>搜索</text>
                 </view>
               </view>
-              
+
               <!-- 食堂和窗口选择 -->
               <view class="flex gap-3">
-                <picker class="flex-1" mode="selector" :range="canteenList" range-key="name" @change="onCanteenChange">
-                  <view class="flex items-center justify-between py-2.5 px-4 bg-white border border-gray-200 rounded-xl active:bg-gray-50 transition-colors">
-                    <text class="text-sm text-gray-700 truncate flex-1 font-medium">{{ selectedCanteen?.name || '选择食堂' }}</text>
+                <picker
+                  class="flex-1"
+                  mode="selector"
+                  :range="canteenList"
+                  range-key="name"
+                  @change="onCanteenChange"
+                >
+                  <view
+                    class="flex items-center justify-between py-2.5 px-4 bg-white border border-gray-200 rounded-xl active:bg-gray-50 transition-colors"
+                  >
+                    <text class="text-sm text-gray-700 truncate flex-1 font-medium">{{
+                      selectedCanteen?.name || '选择食堂'
+                    }}</text>
                     <text class="text-xs text-gray-400 ml-2">▼</text>
                   </view>
                 </picker>
-                
-                <picker 
+
+                <picker
                   v-if="selectedCanteen"
                   class="flex-1"
-                  mode="selector" 
-                  :range="windowList" 
-                  range-key="name" 
+                  mode="selector"
+                  :range="windowList"
+                  range-key="name"
                   @change="onWindowChange"
                 >
-                  <view class="flex items-center justify-between py-2.5 px-4 bg-white border border-gray-200 rounded-xl active:bg-gray-50 transition-colors">
-                    <text class="text-sm text-gray-700 truncate flex-1 font-medium">{{ selectedWindow?.name || '选择窗口' }}</text>
+                  <view
+                    class="flex items-center justify-between py-2.5 px-4 bg-white border border-gray-200 rounded-xl active:bg-gray-50 transition-colors"
+                  >
+                    <text class="text-sm text-gray-700 truncate flex-1 font-medium">{{
+                      selectedWindow?.name || '选择窗口'
+                    }}</text>
                     <text class="text-xs text-gray-400 ml-2">▼</text>
                   </view>
                 </picker>
@@ -171,84 +212,131 @@
             <!-- 菜品列表 -->
             <view class="min-h-[200px]">
               <!-- 加载状态 -->
-              <view v-if="dishLoading" class="flex flex-col items-center justify-center py-10 text-gray-400">
-                <view class="w-8 h-8 border-4 border-purple-200 border-t-ts-purple rounded-full animate-spin mb-3"></view>
+              <view
+                v-if="dishLoading"
+                class="flex flex-col items-center justify-center py-10 text-gray-400"
+              >
+                <view
+                  class="w-8 h-8 border-4 border-purple-200 border-t-ts-purple rounded-full animate-spin mb-3"
+                ></view>
                 <text class="text-xs">正在加载...</text>
               </view>
-              
+
               <!-- 空状态 -->
-              <view v-else-if="!selectedWindow && !searchKeyword && dishList.length === 0" class="flex flex-col items-center justify-center py-10 text-gray-400">
+              <view
+                v-else-if="!selectedWindow && !searchKeyword && dishList.length === 0"
+                class="flex flex-col items-center justify-center py-10 text-gray-400"
+              >
                 <text class="text-xs text-gray-400">请选择食堂窗口或搜索菜品</text>
               </view>
-              
-              <view v-else-if="filteredDishList.length === 0 && dishList.length === 0" class="flex flex-col items-center justify-center py-10 text-gray-400">
-                <text class="text-xs text-gray-400">{{ selectedWindow ? '该窗口暂无菜品' : '未找到相关菜品' }}</text>
+
+              <view
+                v-else-if="filteredDishList.length === 0 && dishList.length === 0"
+                class="flex flex-col items-center justify-center py-10 text-gray-400"
+              >
+                <text class="text-xs text-gray-400">{{
+                  selectedWindow ? '该窗口暂无菜品' : '未找到相关菜品'
+                }}</text>
               </view>
-              
+
               <!-- 列表 -->
               <view v-else class="space-y-3">
-                <view 
-                  v-for="dish in filteredDishList" 
+                <view
+                  v-for="dish in filteredDishList"
                   :key="dish.id"
                   class="w-full flex items-center p-3 bg-white rounded-2xl border transition-all duration-200"
-                  :class="isDishSelected(dish.id) ? 'border-ts-purple shadow-md shadow-purple-100 bg-purple-50/10' : 'border-gray-100 shadow-sm'"
+                  :class="
+                    isDishSelected(dish.id)
+                      ? 'border-ts-purple shadow-md shadow-purple-100 bg-purple-50/10'
+                      : 'border-gray-100 shadow-sm'
+                  "
                   @tap="toggleDishSelection(dish)"
                 >
                   <!-- 菜品图片 -->
                   <view class="relative">
-                    <image 
+                    <image
                       v-if="dish.images && dish.images.length > 0"
-                      :src="dish.images[0]" 
+                      :src="dish.images[0]"
                       class="w-16 h-16 rounded-xl mr-3 flex-shrink-0 bg-gray-100 object-cover"
                       mode="aspectFill"
                     />
-                    <view v-else class="w-16 h-16 rounded-xl mr-3 flex-shrink-0 bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center border border-gray-100">
+                    <view
+                      v-else
+                      class="w-16 h-16 rounded-xl mr-3 flex-shrink-0 bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center border border-gray-100"
+                    >
                       <text class="text-xl">🍜</text>
                     </view>
-                    <view v-if="isDishSelected(dish.id)" class="absolute -top-2 -left-2 w-5 h-5 bg-ts-purple rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                    <view
+                      v-if="isDishSelected(dish.id)"
+                      class="absolute -top-2 -left-2 w-5 h-5 bg-ts-purple rounded-full flex items-center justify-center border-2 border-white shadow-sm"
+                    >
                       <text class="text-white text-[10px] font-bold">✓</text>
                     </view>
                   </view>
-                  
+
                   <!-- 菜品信息 -->
                   <view class="flex-1 min-w-0 mr-2 py-1">
-                    <text class="text-sm font-bold text-gray-800 block truncate mb-1">{{ dish.name }}</text>
+                    <text class="text-sm font-bold text-gray-800 block truncate mb-1">{{
+                      dish.name
+                    }}</text>
                     <view class="flex items-center justify-between">
-                      <text class="text-base text-amber-600 font-bold"><text class="text-xs font-normal mr-0.5">¥</text>{{ dish.price }}</text>
-                      
-                      <view 
-                        class="px-2.5 py-1 rounded-full text-[10px] font-medium transition-all"
-                        :class="isDishSelected(dish.id) 
-                          ? 'bg-purple-100 text-purple-700' 
-                          : 'bg-gray-100 text-gray-600'"
+                      <text class="text-base text-amber-600 font-bold"
+                        ><text class="text-xs font-normal mr-0.5">¥</text>{{ dish.price }}</text
+                      >
+
+                      <view
+                        class="px-2.5 py-1 rounded-full text-xs font-medium transition-all"
+                        :class="
+                          isDishSelected(dish.id)
+                            ? 'bg-purple-100 text-purple-700'
+                            : 'bg-gray-100 text-gray-600'
+                        "
                       >
                         {{ isDishSelected(dish.id) ? '已添加' : '添加' }}
                       </view>
                     </view>
                   </view>
                 </view>
+
+                <view
+                  v-if="loadingMore"
+                  class="flex flex-col items-center justify-center py-4 text-gray-400"
+                >
+                  <view
+                    class="w-6 h-6 border-4 border-purple-200 border-t-ts-purple rounded-full animate-spin mb-2"
+                  ></view>
+                  <text class="text-xs">加载更多...</text>
+                </view>
+
+                <view
+                  v-else-if="!hasMore && dishList.length > 0"
+                  class="flex items-center justify-center py-4 text-gray-400"
+                >
+                  <text class="text-xs">没有更多菜品了</text>
+                </view>
               </view>
             </view>
           </view>
-
         </view>
       </scroll-view>
 
       <!-- 底部按钮 -->
       <view class="px-6 py-5 border-t border-gray-100 bg-white z-10">
         <view class="flex gap-4">
-          <view 
-            class="flex-1 py-3.5 text-center bg-gray-100 rounded-2xl active:bg-gray-200 transition-colors" 
+          <view
+            class="flex-1 py-3.5 text-center bg-gray-100 rounded-2xl active:bg-gray-200 transition-colors"
             @tap="handleClose"
           >
             <text class="text-gray-600 font-medium">取消</text>
           </view>
-          <view 
+          <view
             class="flex-1 py-3.5 text-center rounded-2xl shadow-lg shadow-purple-200 active:scale-[0.98] transition-all"
             :class="submitting ? 'bg-purple-300' : 'bg-ts-purple'"
             @tap="handleSubmit"
           >
-            <text class="text-white font-bold text-base">{{ submitting ? '提交中...' : '确认保存' }}</text>
+            <text class="text-white font-bold text-base">{{
+              submitting ? '提交中...' : '确认保存'
+            }}</text>
           </view>
         </view>
       </view>
@@ -299,6 +387,14 @@ const selectedWindow = ref<Window | null>(null);
 const dishLoading = ref(false);
 const dishList = ref<Dish[]>([]);
 
+// 分页状态（窗口菜品 & 搜索菜品共用）
+const PAGE_SIZE = 10;
+const currentPage = ref(1);
+const totalPages = ref(1);
+const loadingMore = ref(false);
+const hasMore = computed(() => currentPage.value < totalPages.value);
+const requestToken = ref(0);
+
 // 食堂和窗口列表
 const canteenList = computed(() => canteenStore.canteenList);
 const windowList = computed(() => canteenStore.windowList);
@@ -318,9 +414,7 @@ const filteredDishList = computed(() => {
       return dishList.value;
     }
     const keyword = searchKeyword.value.toLowerCase();
-    return dishList.value.filter(dish => 
-      dish.name.toLowerCase().includes(keyword)
-    );
+    return dishList.value.filter(dish => dish.name.toLowerCase().includes(keyword));
   }
   return dishList.value;
 });
@@ -337,34 +431,41 @@ onMounted(async () => {
 });
 
 // 监听 plan 变化初始化表单
-watch(() => props.plan, (newPlan) => {
-  if (newPlan) {
-    formData.value = {
-      startDate: dayjs(newPlan.startDate).format('YYYY-MM-DD'),
-      endDate: dayjs(newPlan.endDate).format('YYYY-MM-DD'),
-      mealTime: newPlan.mealTime,
-      dishes: newPlan.dishes.map(d => d.id),
-    };
-    selectedDishes.value = [...newPlan.dishes];
-  } else {
-    formData.value = {
-      startDate: dayjs().format('YYYY-MM-DD'),
-      endDate: dayjs().add(1, 'day').format('YYYY-MM-DD'),
-      mealTime: undefined,
-      dishes: [],
-    };
-    selectedDishes.value = [];
-  }
-}, { immediate: true });
+watch(
+  () => props.plan,
+  newPlan => {
+    if (newPlan) {
+      formData.value = {
+        startDate: dayjs(newPlan.startDate).format('YYYY-MM-DD'),
+        endDate: dayjs(newPlan.endDate).format('YYYY-MM-DD'),
+        mealTime: newPlan.mealTime,
+        dishes: newPlan.dishes.map(d => d.id),
+      };
+      selectedDishes.value = [...newPlan.dishes];
+    } else {
+      formData.value = {
+        startDate: dayjs().format('YYYY-MM-DD'),
+        endDate: dayjs().add(1, 'day').format('YYYY-MM-DD'),
+        mealTime: undefined,
+        dishes: [],
+      };
+      selectedDishes.value = [];
+    }
+  },
+  { immediate: true }
+);
 
 // 监听 visible 变化重置状态
-watch(() => props.visible, (newVisible, oldVisible) => {
-  if (!newVisible) {
-    resetDishFilters();
-  } else if (newVisible && !oldVisible && !props.plan) {
-    resetForm();
+watch(
+  () => props.visible,
+  (newVisible, oldVisible) => {
+    if (!newVisible) {
+      resetDishFilters();
+    } else if (newVisible && !oldVisible && !props.plan) {
+      resetForm();
+    }
   }
-});
+);
 
 // 重置表单
 const resetForm = () => {
@@ -383,6 +484,9 @@ const resetDishFilters = () => {
   selectedCanteen.value = null;
   selectedWindow.value = null;
   dishList.value = [];
+  currentPage.value = 1;
+  totalPages.value = 1;
+  loadingMore.value = false;
 };
 
 // 日期选择
@@ -400,7 +504,10 @@ const onCanteenChange = async (e: any) => {
   selectedCanteen.value = canteenList.value[index];
   selectedWindow.value = null;
   dishList.value = [];
-  
+  currentPage.value = 1;
+  totalPages.value = 1;
+  loadingMore.value = false;
+
   if (selectedCanteen.value) {
     try {
       await canteenStore.fetchWindowList(selectedCanteen.value.id, { page: 1, pageSize: 50 });
@@ -415,20 +522,12 @@ const onWindowChange = async (e: any) => {
   const index = e.detail.value;
   selectedWindow.value = windowList.value[index];
   dishList.value = [];
-  
+  currentPage.value = 1;
+  totalPages.value = 1;
+  loadingMore.value = false;
+
   if (selectedWindow.value) {
-    dishLoading.value = true;
-    try {
-      const response = await getWindowDishes(selectedWindow.value.id);
-      if (response.code === 200 && response.data?.items) {
-        dishList.value = response.data.items;
-      }
-    } catch (err) {
-      console.error('加载菜品列表失败:', err);
-      dishList.value = [];
-    } finally {
-      dishLoading.value = false;
-    }
+    await loadDishPage(1, false);
   }
 };
 
@@ -468,50 +567,114 @@ const handleSearch = async () => {
   const keyword = searchKeyword.value.trim();
   if (!keyword) {
     dishList.value = [];
+    currentPage.value = 1;
+    totalPages.value = 1;
+    loadingMore.value = false;
     return;
   }
 
-  dishLoading.value = true;
-  try {
-    const params: GetDishesRequest = {
-      filter: {},
-      isSuggestion: false,
-      search: {
-        keyword,
-      },
-      // sort 为必填字段；这里用空对象交给后端默认处理（与搜索页保持一致）
-      sort: {},
-      pagination: {
-        page: 1,
-        pageSize: 50,
-      },
-    };
-
-    if (selectedCanteen.value) {
-      params.filter.canteenId = [selectedCanteen.value.id];
-    }
-
-    const response = await getDishes(params);
-    if (response.code === 200 && response.data?.items) {
-      dishList.value = response.data.items;
-    } else {
-      dishList.value = [];
-    }
-  } catch (err) {
-    console.error('搜索菜品失败:', err);
-    uni.showToast({
-      title: '搜索失败，请重试',
-      icon: 'none'
-    });
-    dishList.value = [];
-  } finally {
-    dishLoading.value = false;
-  }
+  currentPage.value = 1;
+  totalPages.value = 1;
+  loadingMore.value = false;
+  await loadDishPage(1, false);
 };
 
 const clearSearch = async () => {
   searchKeyword.value = '';
-  await handleSearch();
+  dishList.value = [];
+  currentPage.value = 1;
+  totalPages.value = 1;
+  loadingMore.value = false;
+};
+
+const loadDishPage = async (page: number, append: boolean) => {
+  const token = ++requestToken.value;
+
+  if (append) {
+    loadingMore.value = true;
+  } else {
+    dishLoading.value = true;
+  }
+
+  try {
+    let response:
+      | Awaited<ReturnType<typeof getWindowDishes>>
+      | Awaited<ReturnType<typeof getDishes>>;
+
+    if (selectedWindow.value) {
+      response = await getWindowDishes(selectedWindow.value.id, { page, pageSize: PAGE_SIZE });
+    } else {
+      const keyword = searchKeyword.value.trim();
+      if (!keyword) {
+        dishList.value = [];
+        currentPage.value = 1;
+        totalPages.value = 1;
+        return;
+      }
+
+      const params: GetDishesRequest = {
+        filter: {},
+        search: {
+          keyword,
+        },
+        sort: {},
+        pagination: {
+          page,
+          pageSize: PAGE_SIZE,
+        },
+      };
+
+      if (selectedCanteen.value) {
+        params.filter.canteenId = [selectedCanteen.value.id];
+      }
+
+      response = await getDishes(params);
+    }
+
+    if (token !== requestToken.value) return;
+
+    if (response.code === 200 && response.data?.items) {
+      dishList.value = append ? [...dishList.value, ...response.data.items] : response.data.items;
+      currentPage.value = page;
+      totalPages.value = response.data.meta?.totalPages ?? page;
+    } else {
+      if (!append) {
+        dishList.value = [];
+      }
+      totalPages.value = page;
+    }
+  } catch (err) {
+    if (token !== requestToken.value) return;
+
+    console.error('加载菜品失败:', err);
+    if (!append) {
+      uni.showToast({
+        title: '加载失败，请重试',
+        icon: 'none',
+      });
+      dishList.value = [];
+    }
+    totalPages.value = page;
+  } finally {
+    if (token !== requestToken.value) return;
+    dishLoading.value = false;
+    loadingMore.value = false;
+  }
+};
+
+const loadNextPage = async () => {
+  if (dishLoading.value || loadingMore.value) return;
+  if (!hasMore.value) return;
+
+  const nextPage = currentPage.value + 1;
+  await loadDishPage(nextPage, true);
+};
+
+const handleScrollToLower = async () => {
+  // 仅在“窗口已选”或“关键词搜索中”时触发分页加载
+  const hasActiveQuery = !!selectedWindow.value || !!searchKeyword.value.trim();
+  if (!hasActiveQuery) return;
+  await loadNextPage();
 };
 
 const handleClose = () => {

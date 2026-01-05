@@ -2,17 +2,24 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, nextTick, ref } from 'vue'
 
-import LogView from '../../src/views/LogView.vue'
-
-const { getLogsMock } = vi.hoisted(() => ({
+const mocks = vi.hoisted(() => ({
   getLogsMock: vi.fn(),
+  showAlertMock: vi.fn(() => Promise.resolve()),
 }))
 
 vi.mock('@/api/modules/log', () => ({
   logApi: {
-    getLogs: getLogsMock,
+    getLogs: mocks.getLogsMock,
   },
 }))
+
+vi.mock('@/composables/useModal', () => ({
+  showAlert: mocks.showAlertMock,
+  showConfirm: vi.fn(() => Promise.resolve(true)),
+  showConfirmDanger: vi.fn(() => Promise.resolve(true)),
+}))
+
+import LogView from '../../src/views/LogView.vue'
 
 const flushAll = async () => {
   await new Promise<void>((resolve) => queueMicrotask(() => resolve()))
@@ -32,11 +39,11 @@ const baseMountOptions = {
 
 describe('views/LogView', () => {
   beforeEach(() => {
-    getLogsMock.mockReset()
+    vi.clearAllMocks()
   })
 
   it('loads logs on mount; supports filters; apply/reset reload', async () => {
-    getLogsMock.mockResolvedValueOnce({
+    mocks.getLogsMock.mockResolvedValueOnce({
       code: 200,
       data: {
         items: [
@@ -59,8 +66,8 @@ describe('views/LogView', () => {
     const wrapper = mount(LogView, baseMountOptions)
     await flushAll()
 
-    expect(getLogsMock).toHaveBeenCalledTimes(1)
-    expect(getLogsMock).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
+    expect(mocks.getLogsMock).toHaveBeenCalledTimes(1)
+    expect(mocks.getLogsMock).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
     expect(wrapper.vm.logs).toHaveLength(1)
     expect(wrapper.vm.totalPages).toBe(3)
 
@@ -71,12 +78,12 @@ describe('views/LogView', () => {
     wrapper.vm.filters.startDate = '2025-01-01'
     wrapper.vm.filters.endDate = '2025-01-31'
 
-    getLogsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { totalPages: 1 } } })
+    mocks.getLogsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { totalPages: 1 } } })
 
     wrapper.vm.applyFilters()
     await flushAll()
 
-    expect(getLogsMock).toHaveBeenLastCalledWith({
+    expect(mocks.getLogsMock).toHaveBeenLastCalledWith({
       page: 1,
       pageSize: 20,
       adminId: '100',
@@ -86,7 +93,7 @@ describe('views/LogView', () => {
     })
 
     // resetFilters clears and reloads
-    getLogsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { totalPages: 1 } } })
+    mocks.getLogsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { totalPages: 1 } } })
 
     wrapper.vm.resetFilters()
     await flushAll()
@@ -101,59 +108,57 @@ describe('views/LogView', () => {
   })
 
   it('loadLogs handles non-200 and thrown errors: alerts and clears list', async () => {
-    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => undefined)
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
 
-    getLogsMock.mockResolvedValueOnce({ code: 500, message: 'bad' })
+    mocks.getLogsMock.mockResolvedValueOnce({ code: 500, message: 'bad' })
 
     const wrapper = mount(LogView, baseMountOptions)
     await flushAll()
 
-    expect(alertSpy).toHaveBeenCalledWith('加载日志列表失败，请刷新重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('加载日志列表失败，请刷新重试')
     expect(wrapper.vm.logs).toEqual([])
 
-    getLogsMock.mockRejectedValueOnce(new Error('boom'))
+    mocks.getLogsMock.mockRejectedValueOnce(new Error('boom'))
 
     await wrapper.vm.loadLogs()
     await flushAll()
 
-    expect(alertSpy).toHaveBeenCalledWith('加载日志列表失败，请刷新重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('加载日志列表失败，请刷新重试')
     expect(wrapper.vm.logs).toEqual([])
 
     wrapper.unmount()
-    alertSpy.mockRestore()
     consoleSpy.mockRestore()
   })
 
   it('changePage validates bounds and reloads only when valid', async () => {
-    getLogsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { totalPages: 3 } } })
+    mocks.getLogsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { totalPages: 3 } } })
 
     const wrapper = mount(LogView, baseMountOptions)
     await flushAll()
 
     expect(wrapper.vm.totalPages).toBe(3)
 
-    getLogsMock.mockClear()
+    mocks.getLogsMock.mockClear()
 
     wrapper.vm.changePage(0)
     wrapper.vm.changePage(4)
     await flushAll()
 
-    expect(getLogsMock).not.toHaveBeenCalled()
+    expect(mocks.getLogsMock).not.toHaveBeenCalled()
 
-    getLogsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { totalPages: 3 } } })
+    mocks.getLogsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { totalPages: 3 } } })
 
     wrapper.vm.changePage(2)
     await flushAll()
 
     expect(wrapper.vm.currentPage).toBe(2)
-    expect(getLogsMock).toHaveBeenCalledTimes(1)
+    expect(mocks.getLogsMock).toHaveBeenCalledTimes(1)
 
     wrapper.unmount()
   })
 
   it('viewLogDetail/closeLogDetail toggles selectedLog', async () => {
-    getLogsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { totalPages: 1 } } })
+    mocks.getLogsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { totalPages: 1 } } })
 
     const wrapper = mount(LogView, baseMountOptions)
     await flushAll()
@@ -174,7 +179,7 @@ describe('views/LogView', () => {
   })
 
   it('helpers: formatDateTime/getActionLabel/getActionClass cover known/unknown branches', async () => {
-    getLogsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { totalPages: 1 } } })
+    mocks.getLogsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { totalPages: 1 } } })
 
     const wrapper = mount(LogView, baseMountOptions)
     await flushAll()
@@ -195,7 +200,7 @@ describe('views/LogView', () => {
   })
 
   it('onActivated reloads when kept-alive and re-activated', async () => {
-    getLogsMock.mockResolvedValue({ code: 200, data: { items: [], meta: { totalPages: 1 } } })
+    mocks.getLogsMock.mockResolvedValue({ code: 200, data: { items: [], meta: { totalPages: 1 } } })
 
     const Parent = defineComponent({
       name: 'ParentKeepAlive',
@@ -210,7 +215,7 @@ describe('views/LogView', () => {
     const wrapper = mount(Parent, baseMountOptions)
     await flushAll()
 
-    const callsAfterMount = getLogsMock.mock.calls.length
+    const callsAfterMount = mocks.getLogsMock.mock.calls.length
     expect(callsAfterMount).toBeGreaterThanOrEqual(1)
 
     // deactivate + activate again
@@ -219,7 +224,7 @@ describe('views/LogView', () => {
     ;(wrapper.vm as any).show = true
     await flushAll()
 
-    expect(getLogsMock.mock.calls.length).toBeGreaterThan(callsAfterMount)
+    expect(mocks.getLogsMock.mock.calls.length).toBeGreaterThan(callsAfterMount)
 
     wrapper.unmount()
   })

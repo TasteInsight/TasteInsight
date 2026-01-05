@@ -1,14 +1,21 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { MessageEvent } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { AIConfigService } from './services/ai-config.service';
+import { PromptSecurityService } from './services/prompt-security.service';
 import { OpenAIProviderService } from './services/ai-provider/openai-provider.service';
 import { ToolRegistryService } from './tools/tool-registry.service';
 import { PromptBuilder } from './utils/prompt-builder.util';
 import { ContentBuilder } from './utils/content-builder.util';
 import { CreateSessionDto, SessionData } from './dto/session.dto';
 import {
+  ClientContextDto,
   ChatRequestDto,
   ChatMessageItemDto,
   ContentSegment,
@@ -25,6 +32,7 @@ export class AIChatService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly aiConfig: AIConfigService,
+    private readonly promptSecurity: PromptSecurityService,
     private readonly openaiProvider: OpenAIProviderService,
     private readonly toolRegistry: ToolRegistryService,
   ) {}
@@ -95,40 +103,60 @@ export class AIChatService {
       throw new NotFoundException('Session not found');
     }
 
+    // Validate user input for security
+    const inputValidation = this.promptSecurity.validateUserInput(dto.message);
+    if (!inputValidation.isValid) {
+      this.logger.warn(`User input rejected: ${inputValidation.reason}`, {
+        userId,
+        sessionId,
+      });
+      throw new BadRequestException(
+        inputValidation.reason || '输入内容不符合安全要求',
+      );
+    }
+
+    // Use sanitized message
+    const sanitizedMessage = inputValidation.sanitized;
+
     // Save user message
     await this.prisma.aIMessage.create({
       data: {
         sessionId,
         role: 'user',
-        content: [ContentBuilder.text(dto.message)] as any,
+        content: [ContentBuilder.text(sanitizedMessage)] as any,
       },
     });
 
-    // Get time for chat: prefer client's localTime if valid, otherwise use server time
-    const chatTime = this.getChatTime(dto.clientContext?.localTime);
+    // Get time for chat: format using client's wall-clock time when provided
+    const chatTime = this.getChatTime(dto.clientContext);
 
-    // Build initial conversation history
+    // Build initial conversation history with enhanced security prompt
+    const basePrompt = PromptBuilder.getSystemPrompt(session.scene, chatTime);
+    const securePrompt = this.promptSecurity.enhanceSystemPrompt(basePrompt);
+
     const conversationMessages: AIMessage[] = [
       {
         role: 'system',
-        content: PromptBuilder.getSystemPrompt(session.scene, chatTime),
+        content: securePrompt,
       },
     ];
 
     // Add previous messages
     for (const msg of session.messages) {
-      const content = msg.content as any;
-      const textContent = this.extractTextFromContent(content);
+      const content = msg.content;
+      const textContent = this.extractTextFromContent(
+        Array.isArray(content) ? content : [],
+      );
       conversationMessages.push({
         role: msg.role as 'user' | 'assistant',
         content: textContent,
       });
     }
 
-    // Add current user message
+    // Add current user message (sanitized)
     conversationMessages.push({
       role: 'user',
-      content: dto.message,
+      content: sanitizedMessage,
     });
 
     // Get AI provider config and tools
@@ -142,7 +170,7 @@ export class AIChatService {
 
     try {
       // Multi-turn conversation loop for tool calling
-      const maxTurns = 5; // Prevent infinite loops
+      const maxTurns = 10; // Prevent infinite loops
       let turn = 0;
 
       while (turn < maxTurns) {
@@ -161,10 +189,14 @@ export class AIChatService {
           if (chunk.type === 'text' && chunk.content) {
             currentText += chunk.content;
             finalTextContent += chunk.content;
+            // Filter AI response for sensitive information
+            const filteredContent = this.promptSecurity.filterAIResponse(
+              chunk.content,
+            );
             // Send text chunk to client
             subscriber.next({
               type: 'text_chunk',
-              data: chunk.content,
+              data: filteredContent,
             });
           } else if (chunk.type === 'tool_call' && chunk.toolCall) {
             hasToolCalls = true;
@@ -235,6 +267,23 @@ export class AIChatService {
               }
             }
 
+            // Validate tool parameters for security
+            const paramValidation = this.promptSecurity.validateToolParams(
+              toolCall.name,
+              params,
+            );
+            if (!paramValidation.isValid) {
+              const errorMsg = `Error: Invalid tool parameters for ${toolCall.name}: ${paramValidation.reason}`;
+              this.logger.warn(errorMsg, { params });
+              toolResultsForHistory.push({
+                role: 'tool',
+                tool_call_id: toolCall.id,
+                content: errorMsg,
+              } as any);
+              allToolsSucceeded = false;
+              continue;
+            }
+
             // Execute tool
             const result = await this.toolRegistry.executeTool(
               toolCall.name,
@@ -243,7 +292,11 @@ export class AIChatService {
             );
 
             // Convert result to content segment and send to client
-            const segment = this.toolResultToSegment(toolCall.name, result);
+            const segment = this.toolResultToSegment(
+              toolCall.name,
+              result,
+              params,
+            );
             if (segment) {
               assistantContent.push(segment);
               subscriber.next({
@@ -367,7 +420,9 @@ export class AIChatService {
       messages: items.map((msg) => ({
         role: msg.role as 'user' | 'assistant',
         timestamp: msg.createdAt.toISOString(),
-        content: msg.content as any as ContentSegment[],
+        content: (Array.isArray(msg.content)
+          ? msg.content
+          : []) as unknown as ContentSegment[],
       })),
       cursor: hasMore
         ? items[items.length - 1].createdAt.toISOString()
@@ -378,8 +433,13 @@ export class AIChatService {
   /**
    * Get conversation suggestions based on time and user profile
    */
-  async getSuggestions(userId: string): Promise<string[]> {
-    const hour = new Date().getHours();
+  async getSuggestions(
+    userId: string,
+    clientContext?: ClientContextDto,
+  ): Promise<string[]> {
+    // Use client context to determine time, reusing the chat time logic
+    const chatTime = this.getChatTime(clientContext);
+    const hour = chatTime.getHours();
     let mealTime = 'lunch';
 
     if (hour >= 6 && hour < 10) {
@@ -392,18 +452,52 @@ export class AIChatService {
       mealTime = 'nightsnack';
     }
 
-    const suggestions = [
-      `推荐一些${this.getMealTimeName(mealTime)}`,
-      '看看全校最火的菜',
-      '帮我生成下周食谱',
+    const mealName = this.getMealTimeName(mealTime);
+
+    // Rotating templates for variety
+    const simpleTemplates = [
+      `推荐一些${mealName}`,
+      `${mealName}吃什么好？`,
+      `帮我规划一顿${mealName}`,
+      `我想吃${mealName}，有什么推荐？`,
     ];
 
-    // Add canteen-specific suggestion
-    const canteens = await this.prisma.canteen.findMany({ take: 3 });
+    // Select one simple suggestion based on time
+    // Use hour to deterministically select but rotate throughout the day
+    const simpleSuggestion = simpleTemplates[hour % simpleTemplates.length];
+
+    const suggestions = [
+      simpleSuggestion,
+      '看看全校最火的菜', // Always popular
+    ];
+
+    // Add specific suggestion based on time/context
+    if (mealTime === 'lunch' || mealTime === 'dinner') {
+      suggestions.push('帮我生成下周食谱');
+    } else {
+      suggestions.push('推荐点清淡的');
+    }
+
+    // Add canteen-specific suggestion with variety
+    // Fetch names of all canteens to ensure true randomness
+    const canteens = await this.prisma.canteen.findMany({
+      select: { name: true },
+    });
+
     if (canteens.length > 0) {
+      // Randomly select one canteen from all available
       const randomCanteen =
         canteens[Math.floor(Math.random() * canteens.length)];
-      suggestions.push(`${randomCanteen.name}有什么好吃的？`);
+
+      const canteenTemplates = [
+        `${randomCanteen.name}有什么好吃的？`,
+        `带我去${randomCanteen.name}看看`,
+        `${randomCanteen.name}今天有什么推荐？`,
+      ];
+
+      const canteenSuggestion =
+        canteenTemplates[Math.floor(Math.random() * canteenTemplates.length)];
+      suggestions.push(canteenSuggestion);
     }
 
     return suggestions;
@@ -420,16 +514,79 @@ export class AIChatService {
   }
 
   /**
+   * Delete a chat session
+   */
+  async deleteSession(userId: string, sessionId: string): Promise<void> {
+    // Verify session exists and belongs to user
+    const session = await this.prisma.aISession.findFirst({
+      where: { id: sessionId, userId },
+    });
+
+    if (!session) {
+      throw new NotFoundException('Session not found');
+    }
+
+    // Delete session (cascade delete will handle messages if configured in schema,
+    // but we'll delete messages first to be safe and ensure clean cleanup)
+    await this.prisma.$transaction(async (tx) => {
+      await tx.aIMessage.deleteMany({
+        where: { sessionId },
+      });
+      await tx.aISession.delete({
+        where: { id: sessionId },
+      });
+    });
+
+    this.logger.log(`Session deleted: ${sessionId} by user ${userId}`);
+  }
+
+  /**
    * Get time for chat context, preferring client's localTime if valid, otherwise use server time
-   * @param clientLocalTime Client's local time as ISOString
+   * @param clientContext Client context (localTime may include timezone offset)
    * @returns Date object
    */
-  private getChatTime(clientLocalTime?: string): Date {
+  private getChatTime(clientContext?: ClientContextDto): Date {
     const serverTime = new Date();
+
+    const clientLocalTime = clientContext?.localTime;
 
     // If no client time provided, use server time
     if (!clientLocalTime) {
       return serverTime;
+    }
+
+    // Prefer using the client's wall-clock parts to avoid server timezone skew when formatting.
+    // Accept both ISO8601 with offset/Z and without timezone.
+    const m = clientLocalTime.match(
+      /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?(?:Z|[+-]\d{2}:?\d{2})?$/,
+    );
+    if (m) {
+      const year = Number(m[1]);
+      const month = Number(m[2]);
+      const day = Number(m[3]);
+      const hours = Number(m[4]);
+      const minutes = Number(m[5]);
+      const seconds = m[6] != null ? Number(m[6]) : 0;
+      const millis = m[7] != null ? Number(m[7].padEnd(3, '0').slice(0, 3)) : 0;
+
+      // Basic range validation to avoid odd Date overflows
+      if (
+        year >= 1970 &&
+        month >= 1 &&
+        month <= 12 &&
+        day >= 1 &&
+        day <= 31 &&
+        hours >= 0 &&
+        hours <= 23 &&
+        minutes >= 0 &&
+        minutes <= 59 &&
+        seconds >= 0 &&
+        seconds <= 59 &&
+        millis >= 0 &&
+        millis <= 999
+      ) {
+        return new Date(year, month - 1, day, hours, minutes, seconds, millis);
+      }
     }
 
     // Try to parse as ISOString
@@ -458,14 +615,21 @@ export class AIChatService {
   private toolResultToSegment(
     toolName: string,
     result: any,
+    params?: any,
   ): ContentSegment | null {
-    if (toolName === 'recommend_dishes' || toolName === 'search_dishes') {
-      return ContentBuilder.dishCards(result);
-    } else if (toolName === 'get_canteen_info') {
-      return ContentBuilder.canteenCards(result);
-    } else if (toolName === 'generate_meal_plan') {
-      return ContentBuilder.mealPlanCards(result);
+    if (toolName === 'display_content' && params?.type) {
+      const type = params.type;
+      if (type === 'dish') {
+        return ContentBuilder.dishCards(result);
+      } else if (type === 'canteen') {
+        return ContentBuilder.canteenCards(result);
+      } else if (type === 'meal_plan') {
+        return ContentBuilder.mealPlanCards(result);
+      }
     }
+    // All other tools return raw data only,
+    // which should not be directly displayed as cards.
+    // The AI must explicitly call 'display_content' to show them.
     return null;
   }
 }

@@ -139,5 +139,221 @@ describe('CanteensController (e2e)', () => {
       expect(response.body.data).toBeDefined();
       expect(Array.isArray(response.body.data.items)).toBe(true);
     });
+
+    it('should support pagination for window dishes', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/windows/${testWindowId}/dishes?page=1&pageSize=5`)
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.items.length).toBeLessThanOrEqual(5);
+    });
+
+    it('should handle invalid window id gracefully', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/windows/invalid-id/dishes')
+        .set('Authorization', `Bearer ${userAccessToken}`);
+
+      // Accept either 404 or 200 with empty results
+      expect([200, 404]).toContain(response.status);
+    });
+  });
+
+  describe('Authorization Tests', () => {
+    it('should require authentication for canteen list', async () => {
+      await request(app.getHttpServer()).get('/canteens').expect(401);
+    });
+
+    it('should require authentication for canteen details', async () => {
+      await request(app.getHttpServer())
+        .get(`/canteens/${testCanteenId}`)
+        .expect(401);
+    });
+
+    it('should require authentication for window details', async () => {
+      await request(app.getHttpServer())
+        .get(`/windows/${testWindowId}`)
+        .expect(401);
+    });
+  });
+
+  describe('Query Parameters', () => {
+    it('should filter canteens by name', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/canteens?name=第一')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(Array.isArray(response.body.data.items)).toBe(true);
+    });
+
+    it('should handle valid page numbers', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/canteens?page=1')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+    });
+
+    it('should handle invalid page size gracefully', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/canteens?pageSize=0')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle empty window list', async () => {
+      // Try to get windows from a canteen that might not have any
+      const canteens = await prisma.canteen.findMany();
+
+      for (const canteen of canteens) {
+        const windows = await prisma.window.findMany({
+          where: { canteenId: canteen.id },
+        });
+
+        if (windows.length === 0) {
+          const response = await request(app.getHttpServer())
+            .get(`/canteens/${canteen.id}/windows`)
+            .set('Authorization', `Bearer ${userAccessToken}`)
+            .expect(200);
+
+          expect(response.body.code).toBe(200);
+          expect(response.body.data.items).toEqual([]);
+          break;
+        }
+      }
+    });
+
+    it('should return consistent data structure for empty results', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/canteens?page=9999')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data).toHaveProperty('items');
+      expect(Array.isArray(response.body.data.items)).toBe(true);
+    });
+  });
+
+  describe('Advanced Queries', () => {
+    it('should filter canteens by partial name', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/canteens?name=食堂')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(Array.isArray(response.body.data.items)).toBe(true);
+    });
+
+    it('should handle pagination with page and pageSize', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/canteens?page=1&pageSize=2')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.items.length).toBeLessThanOrEqual(2);
+      expect(response.body.data.meta.page).toBe(1);
+      expect(response.body.data.meta.pageSize).toBe(2);
+    });
+
+    it('should return correct total count', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/canteens?page=1&pageSize=1')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.meta.total).toBeGreaterThan(0);
+      expect(response.body.data.meta.totalPages).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Window Dishes Queries', () => {
+    it('should return dishes with correct structure', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/windows/${testWindowId}/dishes`)
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      if (response.body.data.items.length > 0) {
+        const dish = response.body.data.items[0];
+        expect(dish).toHaveProperty('id');
+        expect(dish).toHaveProperty('name');
+      }
+    });
+
+    it('should handle dishes pagination correctly', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/windows/${testWindowId}/dishes?page=1&pageSize=3`)
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.items.length).toBeLessThanOrEqual(3);
+      expect(response.body.data.meta.page).toBe(1);
+      expect(response.body.data.meta.pageSize).toBe(3);
+    });
+
+    it('should return empty list for non-existent window', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/windows/non-existent-window-id/dishes')
+        .set('Authorization', `Bearer ${userAccessToken}`);
+
+      // Should either return 200 with empty list or 404
+      if (response.status === 200) {
+        expect(response.body.data.items).toEqual([]);
+      } else {
+        expect(response.status).toBe(404);
+      }
+    });
+  });
+
+  describe('Canteen Structure', () => {
+    it('should include windows in canteen details', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/canteens/${testCanteenId}`)
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      expect(response.body.data).toHaveProperty('windows');
+      expect(Array.isArray(response.body.data.windows)).toBe(true);
+    });
+
+    it('should include required canteen fields', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/canteens/${testCanteenId}`)
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .expect(200);
+
+      expect(response.body.data).toHaveProperty('id');
+      expect(response.body.data).toHaveProperty('name');
+      expect(response.body.data).toHaveProperty('position');
+    });
+
+    it('should include window details in canteen windows endpoint', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/canteens/${testCanteenId}/windows`)
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .expect(200);
+
+      expect(response.body.code).toBe(200);
+      if (response.body.data.items.length > 0) {
+        const window = response.body.data.items[0];
+        expect(window).toHaveProperty('id');
+        expect(window).toHaveProperty('name');
+      }
+    });
   });
 });

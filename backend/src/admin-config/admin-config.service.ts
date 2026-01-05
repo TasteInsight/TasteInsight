@@ -111,7 +111,7 @@ export class AdminConfigService implements OnModuleInit {
       code: 200,
       message: 'success',
       data: {
-        config: config ? this.toAdminConfigDto(config as any) : null,
+        config: config ? this.toAdminConfigDto(config) : null,
         templates: templates.map((t) => this.toConfigTemplateDto(t)),
       },
     };
@@ -120,7 +120,14 @@ export class AdminConfigService implements OnModuleInit {
   /**
    * 获取食堂配置
    */
-  async getCanteenConfig(canteenId: string): Promise<CanteenConfigResponseDto> {
+  async getCanteenConfig(
+    canteenId: string,
+    adminCanteenId?: string,
+  ): Promise<CanteenConfigResponseDto> {
+    if (adminCanteenId && adminCanteenId !== canteenId) {
+      throw new ForbiddenException('您只能查看自己所属食堂的配置');
+    }
+
     // 验证食堂是否存在
     const canteen = await this.prisma.canteen.findUnique({
       where: { id: canteenId },
@@ -148,10 +155,8 @@ export class AdminConfigService implements OnModuleInit {
       code: 200,
       message: 'success',
       data: {
-        config: config ? this.toAdminConfigDto(config as any) : null,
-        globalConfig: globalConfig
-          ? this.toAdminConfigDto(globalConfig as any)
-          : null,
+        config: config ? this.toAdminConfigDto(config) : null,
+        globalConfig: globalConfig ? this.toAdminConfigDto(globalConfig) : null,
         templates: templates.map((t) => this.toConfigTemplateDto(t)),
       },
     };
@@ -162,7 +167,12 @@ export class AdminConfigService implements OnModuleInit {
    */
   async getEffectiveConfig(
     canteenId: string,
+    adminCanteenId?: string,
   ): Promise<EffectiveConfigListResponseDto> {
+    if (adminCanteenId && adminCanteenId !== canteenId) {
+      throw new ForbiddenException('您只能查看自己所属食堂的配置');
+    }
+
     // 验证食堂是否存在
     const canteen = await this.prisma.canteen.findUnique({
       where: { id: canteenId },

@@ -75,6 +75,46 @@ test.describe('Admin Comments Management', () => {
       }
     }
   });
+
+  test('should search dishes by name', async ({ page }) => {
+    await page.goto('/comment-manage');
+    await page.waitForLoadState('networkidle');
+
+    // Wait for dish list to load
+    await page.waitForTimeout(2000);
+
+    // Search for a dish
+    const searchInput = page.locator('input[placeholder="搜索菜品名称..."]');
+    await searchInput.fill('测试');
+    await page.waitForTimeout(1000);
+
+    // Verify search is applied
+    await expect(searchInput).toHaveValue('测试');
+  });
+
+  test('should display empty state when no dishes', async ({ page }) => {
+    await page.goto('/comment-manage');
+    await page.waitForLoadState('networkidle');
+
+    // Wait for dish list to load
+    await page.waitForTimeout(2000);
+
+    // Check for empty state
+    const noData = await page.locator('text=暂无菜品数据').isVisible();
+    const hasDishes = await page.locator('.p-4.mb-2.border.rounded-lg').count() > 0;
+
+    expect(noData || hasDishes).toBeTruthy();
+  });
+
+  test('should display loading state', async ({ page }) => {
+    await page.goto('/comment-manage');
+    
+    // Check for loading indicator (might be brief)
+    const loadingVisible = await page.locator('text=加载中...').isVisible();
+    
+    // Loading might be too fast to catch, so we just verify the page loads
+    await page.waitForLoadState('networkidle');
+  });
 });
 
 test.describe('Admin Comments API Tests', () => {

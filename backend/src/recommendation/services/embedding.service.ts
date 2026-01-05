@@ -489,8 +489,13 @@ export class EmbeddingService implements OnModuleInit {
 
   /**
    * 为指定食堂的所有在线菜品生成/更新嵌入向量
+   * @param canteenId 食堂ID
+   * @param onProgress 进度回调函数，可选
    */
-  async updateDishEmbeddingsByCanteen(canteenId: string): Promise<number> {
+  async updateDishEmbeddingsByCanteen(
+    canteenId: string,
+    onProgress?: (processed: number, total: number) => Promise<void>,
+  ): Promise<number> {
     const dishes = await this.prisma.dish.findMany({
       where: { canteenId, status: 'online' },
       include: { canteen: true, window: true },
@@ -507,6 +512,7 @@ export class EmbeddingService implements OnModuleInit {
 
     const batchSize = this.config.batchSize;
     let processedCount = 0;
+    const total = dishes.length;
 
     for (let i = 0; i < dishes.length; i += batchSize) {
       const batch = dishes.slice(i, i + batchSize);
@@ -515,8 +521,13 @@ export class EmbeddingService implements OnModuleInit {
       processedCount += count;
 
       this.logger.log(
-        `Processed ${processedCount}/${dishes.length} dishes for canteen ${canteenId}`,
+        `Processed ${processedCount}/${total} dishes for canteen ${canteenId}`,
       );
+
+      // 报告进度
+      if (onProgress) {
+        await onProgress(processedCount, total);
+      }
     }
 
     return processedCount;
@@ -1053,9 +1064,13 @@ export class EmbeddingService implements OnModuleInit {
         }
         // 价格范围过滤
         if (cond.price && typeof cond.price === 'object') {
-          const pf = cond.price as any;
-          if (pf.gte !== undefined) whereClauses.push(`d.price >= ${pf.gte}`);
-          if (pf.lte !== undefined) whereClauses.push(`d.price <= ${pf.lte}`);
+          const pf = cond.price;
+          if (pf.gte !== undefined && typeof pf.gte === 'number') {
+            whereClauses.push(`d.price >= ${pf.gte}`);
+          }
+          if (pf.lte !== undefined && typeof pf.lte === 'number') {
+            whereClauses.push(`d.price <= ${pf.lte}`);
+          }
         }
         // ID排除过滤
         if (cond.id && typeof cond.id === 'object' && 'notIn' in cond.id) {

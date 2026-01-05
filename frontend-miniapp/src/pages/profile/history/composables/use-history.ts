@@ -53,7 +53,7 @@ export function useHistory() {
       console.error(message, err);
       uni.showToast({
         title: message,
-        icon: 'none'
+        icon: 'none',
       });
       // 加载失败时，认为没有更多数据
       hasMore.value = false;

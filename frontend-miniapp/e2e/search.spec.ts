@@ -8,24 +8,43 @@ test.describe('Search -> Dish detail', () => {
     await seedUniStorage(page, defaultLoggedInSeed);
   });
 
+  test('shows in-page hint when keyword is empty', async ({ page }) => {
+    await gotoUniPage(page, '/pages/search/index');
+    await expect(page).toHaveURL(/\/pages\/search\/index/);
+
+    const searchButton = page.locator('.bg-purple-600').getByText('搜索');
+    await searchButton.click();
+
+    // No toast; remain in default state
+    await expect(page.getByText('输入关键词搜索食堂或菜品')).toBeVisible();
+    await expect(page.getByText('未找到""相关结果')).toHaveCount(0);
+  });
+
   test('searches dishes and opens dish detail', async ({ page }) => {
     await gotoUniPage(page, '/pages/search/index');
     await expect(page).toHaveURL(/\/pages\/search\/index/);
 
-    // uni-app H5 下 input 的语义/placeholder 可能被包装，优先用原生 input 定位
+    // 定位搜索输入框
     const searchInput = page.locator('input').first();
     await expect(searchInput).toBeVisible();
 
-    // 触发搜索：使用 mock 数据关键字
+    // 输入搜索关键词
     await searchInput.fill('宫保');
-    await searchInput.press('Enter');
+    
+    // 点击搜索按钮
+    const searchButton = page.locator('.bg-purple-600').getByText('搜索');
+    await searchButton.click();
+    
+    // 等待搜索结果加载
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(1000);
 
-    // 断言搜索结果出现
-    const dishName = page.getByText('宫保鸡丁');
-    await expect(dishName).toBeVisible();
+    // 验证搜索结果出现
+    const dishCard = page.locator('text=/宫保鸡丁/').first();
+    await expect(dishCard).toBeVisible({ timeout: 5000 });
 
-    // 点击结果进入详情页
-    await dishName.click();
+    // 点击菜品卡片进入详情页
+    await dishCard.click();
     await expect(page).toHaveURL(/\/pages\/dish\/index\?id=dish_001/);
 
     // 详情页关键区域

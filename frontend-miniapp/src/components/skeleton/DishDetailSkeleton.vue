@@ -2,7 +2,7 @@
   <view class="bg-white min-h-screen pt-16">
     <!-- 图片轮播骨架 -->
     <SkeletonBase height="16rem" class-name="mb-4" :animated="true" />
-    
+
     <!-- 基本信息骨架 -->
     <view class="p-4">
       <!-- 标题和价格 -->
@@ -13,12 +13,18 @@
         </view>
         <SkeletonBase width="4rem" height="1.5rem" />
       </view>
-      
+
       <!-- 标签 -->
       <view class="flex gap-2 mb-4">
-        <SkeletonBase v-for="i in 3" :key="i" width="3.5rem" height="1.5rem" class-name="rounded-md" />
+        <SkeletonBase
+          v-for="i in 3"
+          :key="i"
+          width="3.5rem"
+          height="1.5rem"
+          class-name="rounded-md"
+        />
       </view>
-      
+
       <!-- 评分信息 -->
       <view class="py-3 border-t border-gray-100">
         <view class="flex justify-between items-start">
@@ -35,23 +41,29 @@
         </view>
       </view>
     </view>
-    
+
     <!-- 分隔线 -->
     <view class="h-3 bg-gray-50 border-t border-b border-gray-100"></view>
-    
+
     <!-- 详细信息骨架 -->
     <view class="p-4">
       <SkeletonBase width="4rem" height="1.25rem" class-name="mb-3" />
       <SkeletonBase width="100%" height="0.875rem" class-name="mb-2" />
       <SkeletonBase width="100%" height="0.875rem" class-name="mb-2" />
       <SkeletonBase width="70%" height="0.875rem" class-name="mb-4" />
-      
+
       <!-- 食材信息 -->
       <SkeletonBase width="4rem" height="1.25rem" class-name="mb-3" />
       <view class="flex flex-wrap gap-2 mb-4">
-        <SkeletonBase v-for="i in 5" :key="i" width="3rem" height="1.5rem" class-name="rounded-md" />
+        <SkeletonBase
+          v-for="i in 5"
+          :key="i"
+          width="3rem"
+          height="1.5rem"
+          class-name="rounded-md"
+        />
       </view>
-      
+
       <!-- 口味信息 -->
       <SkeletonBase width="4rem" height="1.25rem" class-name="mb-3" />
       <view class="grid grid-cols-2 gap-3">
@@ -61,10 +73,10 @@
         </view>
       </view>
     </view>
-    
+
     <!-- 分隔线 -->
     <view class="h-3 bg-gray-50 border-t border-b border-gray-100"></view>
-    
+
     <!-- 评价列表骨架 -->
     <view class="p-4">
       <SkeletonBase width="4rem" height="1.25rem" class-name="mb-4" />

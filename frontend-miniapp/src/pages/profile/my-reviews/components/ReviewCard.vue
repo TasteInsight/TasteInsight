@@ -1,8 +1,5 @@
 <template>
-  <view 
-    class="bg-white p-4 border border-gray-200"
-    @click="$emit('click')"
-  >
+  <view class="bg-white p-4 border border-gray-200" @click="$emit('click')">
     <!-- 评价头部：时间 -->
     <view class="flex items-center justify-between mb-3">
       <text class="text-gray-500 text-xs">{{ formattedDate }}</text>
@@ -24,23 +21,25 @@
         mode="aspectFill"
       />
     </view>
-    
+
     <!-- 菜品信息 & 评分 -->
     <view class="flex items-center border-t border-gray-100 pt-3">
       <!-- 菜品图片 -->
       <image
-        :src="review.dishImage || '/static/images/default-dish.png'"
+        :src="review.dishImage || '/static/default_dish.png'"
         class="w-16 h-16 rounded-lg mr-3 flex-shrink-0"
         mode="aspectFill"
       />
-      
+
       <!-- 菜品详情 & 评分 -->
       <view class="flex-1 flex flex-col justify-between h-16 py-0.5">
         <view class="flex justify-between items-start">
-           <text class="text-gray-900 font-medium text-base line-clamp-1">{{ review.dishName }}</text>
-           <!-- removed top right arrow -->
+          <text class="text-gray-900 font-medium text-base line-clamp-1">{{
+            review.dishName
+          }}</text>
+          <!-- removed top right arrow -->
         </view>
-        
+
         <!-- 评分 & 查看详情 -->
         <view class="flex items-center justify-between mt-auto">
           <view class="flex items-center">
@@ -50,15 +49,17 @@
                 :key="star"
                 class="iconfont"
                 :class="[star <= review.rating ? 'text-orange-400' : 'text-gray-200', 'icon-star']"
-                ></text>
+              ></text>
             </view>
-            <text class="text-orange-500 font-semibold text-sm">{{ review.rating.toFixed(1) }}</text>
+            <text class="text-orange-500 font-semibold text-sm">{{
+              review.rating.toFixed(1)
+            }}</text>
           </view>
-          
+
           <!-- 查看详情 (Gray text + arrow) -->
           <view class="flex items-center">
-             <text class="text-gray-400 text-xs mr-0.5">查看详情</text>
-             <text class="iconfont icon-chevronright text-gray-400" data-width="14"></text>
+            <text class="text-gray-400 text-xs mr-0.5">查看详情</text>
+            <text class="iconfont icon-chevronright text-gray-400" data-width="14"></text>
           </view>
         </view>
       </view>

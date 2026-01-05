@@ -51,15 +51,35 @@ export function useAddDish() {
 
   // 常用标签
   const commonTags = [
-    '辣', '甜', '清淡', '油腻', '新品',
-    '招牌', '米饭', '面食', '小炒', '汤类',
-    '素食', '荤菜', '凉菜', '主食', '小吃',
+    '辣',
+    '甜',
+    '清淡',
+    '油腻',
+    '新品',
+    '招牌',
+    '米饭',
+    '面食',
+    '小炒',
+    '汤类',
+    '素食',
+    '荤菜',
+    '凉菜',
+    '主食',
+    '小吃',
   ];
 
   // 常见过敏原
   const commonAllergens = [
-    '花生', '牛奶', '鸡蛋', '大豆', '小麦',
-    '海鲜', '坚果', '芝麻', '虾', '蟹',
+    '花生',
+    '牛奶',
+    '鸡蛋',
+    '大豆',
+    '小麦',
+    '海鲜',
+    '坚果',
+    '芝麻',
+    '虾',
+    '蟹',
   ];
 
   /**
@@ -218,7 +238,7 @@ export function useAddDish() {
       count: 9 - (formData.images?.length || 0),
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
-      success: (res) => {
+      success: res => {
         if (!formData.images) {
           formData.images = [];
         }
@@ -251,18 +271,18 @@ export function useAddDish() {
 
     try {
       const response = await uploadDish(formData);
-      
+
       if (response.code === 200) {
         uni.showToast({
           title: '提交成功，等待审核',
           icon: 'success',
         });
-        
+
         // 延迟返回上一页
         setTimeout(() => {
           uni.navigateBack();
         }, 1500);
-        
+
         return true;
       } else {
         throw new Error(response.message || '提交失败');

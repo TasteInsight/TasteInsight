@@ -18,7 +18,7 @@ jest.mock('vue', () => {
   const originalVue = jest.requireActual('vue');
   return {
     ...originalVue,
-    onMounted: jest.fn((fn) => fn()),
+    onMounted: jest.fn(fn => fn()),
   };
 });
 
@@ -52,7 +52,7 @@ describe('useNotifications', () => {
 
   it('should load notification settings on mount', async () => {
     const { form, loading } = useNotifications();
-    
+
     expect(loading.value).toBe(true);
     await new Promise(process.nextTick);
 
@@ -82,7 +82,7 @@ describe('useNotifications', () => {
     await new Promise(process.nextTick);
 
     form.newDishAlert = true;
-    
+
     (updateUserProfile as jest.Mock).mockResolvedValue({
       code: 200,
       data: { settings: { notificationSettings: { newDishAlert: true } } },

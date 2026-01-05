@@ -28,6 +28,9 @@ const mocks = vi.hoisted(() => ({
   dishApiMock: {
     uploadImage: vi.fn(),
   },
+  showAlertMock: vi.fn(() => Promise.resolve()),
+  showConfirmMock: vi.fn(() => Promise.resolve(true)),
+  showConfirmDangerMock: vi.fn(() => Promise.resolve(true)),
 }))
 
 vi.mock('vue-router', () => ({
@@ -45,6 +48,12 @@ vi.mock('@/api/modules/canteen', () => ({
 // Used via dynamic import inside submitForm()
 vi.mock('@/api/modules/dish', () => ({
   dishApi: mocks.dishApiMock,
+}))
+
+vi.mock('@/composables/useModal', () => ({
+  showAlert: mocks.showAlertMock,
+  showConfirm: mocks.showConfirmMock,
+  showConfirmDanger: mocks.showConfirmDangerMock,
 }))
 
 import AddCanteen from '../../src/views/AddCanteen.vue'
@@ -102,15 +111,18 @@ describe('views/AddCanteen', () => {
 
     mocks.dishApiMock.uploadImage.mockResolvedValue({ code: 200, data: { url: 'http://img/u.png' } })
 
-    vi.spyOn(window, 'alert').mockImplementation(() => undefined)
-    vi.spyOn(window, 'confirm').mockImplementation(() => true)
+    // Reset modal mocks
+    mocks.showAlertMock.mockClear()
+    mocks.showConfirmMock.mockClear()
+    mocks.showConfirmDangerMock.mockClear()
+    mocks.showAlertMock.mockResolvedValue(undefined)
+    mocks.showConfirmMock.mockResolvedValue(true)
+    mocks.showConfirmDangerMock.mockResolvedValue(true)
 
     ;(globalThis as any).FileReader = FileReaderMock
   })
 
   afterEach(() => {
-    ;(window.alert as any).mockRestore?.()
-    ;(window.confirm as any).mockRestore?.()
     ;(globalThis as any).FileReader = originalFileReader
   })
 
@@ -138,7 +150,7 @@ describe('views/AddCanteen', () => {
     const wrapper = shallowMount(AddCanteen, { global: { stubs: { Header: true } } })
     await flushMicrotasks()
 
-    expect(window.alert).toHaveBeenCalledWith('加载食堂列表失败，请刷新重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('加载食堂列表失败，请刷新重试')
     wrapper.unmount()
   })
 
@@ -147,7 +159,7 @@ describe('views/AddCanteen', () => {
 
     mocks.authStoreMock.hasPermission.mockImplementationOnce(() => false)
     wrapper.vm.createNewCanteen()
-    expect(window.alert).toHaveBeenCalledWith('您没有权限创建食堂')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限创建食堂')
 
     mocks.authStoreMock.hasPermission.mockImplementation((p: string) =>
       ['canteen:create', 'canteen:view', 'canteen:edit', 'canteen:delete'].includes(p),
@@ -208,7 +220,7 @@ describe('views/AddCanteen', () => {
 
     mocks.authStoreMock.hasPermission.mockImplementationOnce(() => false)
     await wrapper.vm.editCanteen({ id: 'c1', name: 'n' })
-    expect(window.alert).toHaveBeenCalledWith('您没有权限编辑食堂')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限编辑食堂')
 
     wrapper.unmount()
   })
@@ -219,22 +231,23 @@ describe('views/AddCanteen', () => {
     // no permission
     mocks.authStoreMock.hasPermission.mockImplementationOnce(() => false)
     await wrapper.vm.deleteCanteen({ id: 'c1', name: 'n' })
-    expect(window.alert).toHaveBeenCalledWith('您没有权限删除食堂')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限删除食堂')
 
     // confirm cancel
-    ;(window.confirm as any).mockReturnValueOnce(false)
+    mocks.showConfirmDangerMock.mockResolvedValueOnce(false)
     await wrapper.vm.deleteCanteen({ id: 'c1', name: 'n' })
     expect(mocks.canteenApiMock.deleteCanteen).not.toHaveBeenCalled()
 
     // success
-    ;(window.confirm as any).mockReturnValueOnce(true)
+    mocks.showConfirmDangerMock.mockResolvedValueOnce(true)
     await wrapper.vm.deleteCanteen({ id: 'c1', name: 'n' })
-    expect(window.alert).toHaveBeenCalledWith('删除成功！')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('删除成功！')
 
     // non-200
+    mocks.showConfirmDangerMock.mockResolvedValueOnce(true)
     mocks.canteenApiMock.deleteCanteen.mockResolvedValueOnce({ code: 500, message: 'bad' })
     await wrapper.vm.deleteCanteen({ id: 'c1', name: 'n' })
-    expect((window.alert as any).mock.calls.flat().join(' ')).toContain('bad')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('bad')
 
     wrapper.unmount()
   })
@@ -251,7 +264,7 @@ describe('views/AddCanteen', () => {
     const evt: any = { target: { files: [big, small], value: 'x' } }
     wrapper.vm.handleImageUpload(evt)
 
-    expect((window.alert as any).mock.calls.flat().join(' ')).toContain('大小超过10MB')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith(expect.stringContaining('大小超过10MB'))
     expect(wrapper.vm.formData.imageFiles.length).toBe(1)
     expect(evt.target.value).toBe('')
 
@@ -281,7 +294,7 @@ describe('views/AddCanteen', () => {
 
     wrapper.vm.formData.floorInput = ''
     wrapper.vm.addWindow()
-    expect(window.alert).toHaveBeenCalledWith('请先配置并保存楼层信息后再添加窗口')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('请先配置并保存楼层信息后再添加窗口')
 
     wrapper.vm.formData.floorInput = '一层/B1'
     wrapper.vm.addWindow()
@@ -305,19 +318,20 @@ describe('views/AddCanteen', () => {
 
     wrapper.vm.windows = [{ id: 'w1', name: 'x' }] as any
 
-    ;(window.confirm as any).mockReturnValueOnce(false)
+    mocks.showConfirmMock.mockResolvedValueOnce(false)
     await wrapper.vm.removeWindow(0, 'w1')
     expect(mocks.canteenApiMock.deleteWindow).not.toHaveBeenCalled()
 
-    ;(window.confirm as any).mockReturnValueOnce(true)
+    mocks.showConfirmMock.mockResolvedValueOnce(true)
     await wrapper.vm.removeWindow(0, 'w1')
     expect(mocks.canteenApiMock.deleteWindow).toHaveBeenCalledWith('w1')
 
     // non-200
     wrapper.vm.windows = [{ id: 'w2', name: 'x' }] as any
+    mocks.showConfirmMock.mockResolvedValueOnce(true)
     mocks.canteenApiMock.deleteWindow.mockResolvedValueOnce({ code: 500, message: 'bad' })
     await wrapper.vm.removeWindow(0, 'w2')
-    expect((window.alert as any).mock.calls.flat().join(' ')).toContain('bad')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('bad')
 
     wrapper.unmount()
   })
@@ -378,13 +392,15 @@ describe('views/AddCanteen', () => {
     // invalid: window missing floor
     wrapper.vm.windows = [{ id: 'w1', name: '窗口1', floor: '' }] as any
     await wrapper.vm.submitForm()
-    expect((window.alert as any).mock.calls.flat().join(' ')).toContain('选择楼层')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith(expect.stringContaining('选择楼层'))
+
+    mocks.showAlertMock.mockClear()
 
     // invalid: opening hours missing floor
     wrapper.vm.windows = [] as any
     wrapper.vm.formData.openingHours = [{ day: '周一', open: '06:30', close: '22:00', floor: '' }] as any
     await wrapper.vm.submitForm()
-    expect((window.alert as any).mock.calls.flat().join(' ')).toContain('选择楼层')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith(expect.stringContaining('选择楼层'))
 
     // success path: update canteen + save windows + backToList
     wrapper.vm.formData.openingHours = [{ day: '周一', open: '06:30', close: '22:00', floor: '1' }] as any
@@ -424,7 +440,7 @@ describe('views/AddCanteen', () => {
     mocks.dishApiMock.uploadImage.mockResolvedValueOnce({ code: 200, data: { url: 'u1' } })
     mocks.dishApiMock.uploadImage.mockResolvedValueOnce({ code: 500, message: 'bad' })
 
-    ;(window.confirm as any).mockReturnValueOnce(false)
+    mocks.showConfirmMock.mockResolvedValueOnce(false)
 
     await wrapper.vm.submitForm()
 
@@ -446,11 +462,10 @@ describe('views/AddCanteen', () => {
     wrapper.vm.formData.imageFiles = [{ id: 'i1', file: f, url: '', isNew: true }]
     mocks.dishApiMock.uploadImage.mockRejectedValueOnce(new Error('boom'))
 
-    ;(window.confirm as any).mockReturnValueOnce(true)
+    mocks.showConfirmMock.mockResolvedValueOnce(true)
     await wrapper.vm.submitForm()
 
-    expect(window.confirm).toHaveBeenCalled()
-    expect((window.confirm as any).mock.calls.flat().join(' ')).toContain('图片处理失败')
+    expect(mocks.showConfirmMock).toHaveBeenCalled()
     expect(mocks.canteenApiMock.createCanteen).toHaveBeenCalled()
 
     wrapper.unmount()

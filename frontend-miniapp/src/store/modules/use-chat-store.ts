@@ -1,19 +1,19 @@
 import { defineStore } from 'pinia';
-import { ref, reactive } from 'vue'; 
-import { createAISession, streamAIChat, submitRecommendFeedback } from '@/api/modules/ai';
+import { ref, reactive } from 'vue';
+import { createAISession, streamAIChat, submitRecommendFeedback, deleteAISession } from '@/api/modules/ai';
 import { USE_MOCK } from '../../mock/mock-adapter';
-import type { 
-  ChatRequest, 
-  RecommendFeedbackRequest, 
+import type {
+  ChatRequest,
+  RecommendFeedbackRequest,
   ComponentDishCard,
   ComponentMealPlanDraft,
   ComponentCanteenCard,
-  ComponentWindowCard
+  ComponentWindowCard,
 } from '@/types/api';
 import type { AIScene } from '@/types/api';
 
 // 消息段类型
-export type MessageSegment = 
+export type MessageSegment =
   | { type: 'text'; text: string }
   | { type: 'card_dish'; data: ComponentDishCard[] }
   | { type: 'card_plan'; data: ComponentMealPlanDraft[] }
@@ -50,6 +50,7 @@ export const useChatStore = defineStore('ai-chat', () => {
   const sessionId = ref<string>('');
   const historyEntries = ref<ChatHistoryEntry[]>([]);
   const currentStreamAbort = ref<(() => void) | null>(null);
+  const isStreamAborted = ref(false); // 添加标志，标记当前流是否被中止
   const HISTORY_STORAGE_KEY = 'ai-chat-history';
 
   // 载入本地历史
@@ -70,17 +71,44 @@ export const useChatStore = defineStore('ai-chat', () => {
     }
   }
 
-  function abortChat() {
+  function abortChat(showToast = true) {
+    console.log('[Chat Store] abortChat called, currentStreamAbort:', !!currentStreamAbort.value, 'showToast:', showToast);
+    
+    // 立即设置中止标志，防止回调继续处理数据
+    isStreamAborted.value = true;
+    
     if (currentStreamAbort.value) {
       currentStreamAbort.value();
       currentStreamAbort.value = null;
+      
+      // 如果最后一条消息还在 streaming，将其标记为结束
+      const lastMsg = messages.value[messages.value.length - 1];
+      if (lastMsg && lastMsg.isStreaming) {
+        lastMsg.isStreaming = false;
+        
+        // 如果是自动终止（发送新消息），在消息末尾添加提示
+        if (!showToast && lastMsg.type === 'ai') {
+          const lastSegment = lastMsg.content[lastMsg.content.length - 1];
+          if (lastSegment && lastSegment.type === 'text') {
+            // 只在文本非空时添加提示
+            if (lastSegment.text.trim()) {
+              lastSegment.text += '\n\n_[回复被中断]_';
+            }
+          }
+        }
+      }
+      
+      // 只在手动停止时显示提示，自动停止（发送新消息时）不显示
+      if (showToast) {
+        uni.showToast({ 
+          title: '已停止生成', 
+          icon: 'none',
+          duration: 1500
+        });
+      }
     }
+    
     aiLoading.value = false;
-    // 如果最后一条消息还在 streaming，将其标记为结束
-    const lastMsg = messages.value[messages.value.length - 1];
-    if (lastMsg && lastMsg.isStreaming) {
-      lastMsg.isStreaming = false;
-    }
   }
 
   // === History helpers ===
@@ -194,17 +222,19 @@ export const useChatStore = defineStore('ai-chat', () => {
    * 发送聊天消息并处理流式响应
    */
   async function sendChatMessage(text: string) {
-    // 0. 中断上一次可能的请求
-    abortChat();
+    // 0. 中断上一次可能的请求（静默中断，不显示提示）
+    abortChat(false);
 
     // 1. 确保会话已初始化
     if (!sessionId.value) await initSession();
-    
+
     // 2. 【核心修复】先在 UI 上显示用户的消息
     addUserMessage(text);
-    
+
+    // 重置中止标志，开始新的流
+    isStreamAborted.value = false;
     aiLoading.value = true;
-    
+
     // 3. 创建一个空的 AI 消息占位符
     const aiMessageId = Date.now() + 1;
     const aiMessage = reactive<ChatMessage>({
@@ -216,102 +246,157 @@ export const useChatStore = defineStore('ai-chat', () => {
     });
     messages.value.push(aiMessage);
 
+    const pad2 = (n: number) => n.toString().padStart(2, '0');
+    const pad3 = (n: number) => n.toString().padStart(3, '0');
+    const formatLocalISOStringWithOffset = (d: Date) => {
+      const year = d.getFullYear();
+      const month = pad2(d.getMonth() + 1);
+      const day = pad2(d.getDate());
+      const hours = pad2(d.getHours());
+      const minutes = pad2(d.getMinutes());
+      const seconds = pad2(d.getSeconds());
+      const millis = pad3(d.getMilliseconds());
+
+      // getTimezoneOffset(): minutes behind UTC (e.g. China is -480)
+      const tzOffsetMinutes = -d.getTimezoneOffset();
+      const sign = tzOffsetMinutes >= 0 ? '+' : '-';
+      const abs = Math.abs(tzOffsetMinutes);
+      const offH = pad2(Math.floor(abs / 60));
+      const offM = pad2(abs % 60);
+
+      return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${millis}${sign}${offH}:${offM}`;
+    };
+
+    const now = new Date();
     const payload: ChatRequest = {
       message: text,
       clientContext: {
-        localTime: new Date().toLocaleTimeString(),
-      }
+        // 标准 ISO8601：本地时间 + 偏移（例如 2025-12-25T12:00:00.000+08:00）
+        localTime: formatLocalISOStringWithOffset(now),
+        tzOffsetMinutes: -now.getTimezoneOffset(),
+        timeZone:
+          typeof Intl !== 'undefined'
+            ? Intl.DateTimeFormat().resolvedOptions().timeZone
+            : undefined,
+      },
     };
 
     let currentEvent = '';
 
-    const streamControl = USE_MOCK 
+    const streamControl = USE_MOCK
       ? (() => {
           // 简单的mock实现，避免require路径问题
           const mockResponse = `收到你的消息："${payload.message}"。这是一个模拟的流式回复。我可以帮你推荐菜品，或者制定饮食计划。`;
           const chunks = mockResponse.split('');
           let currentIndex = 0;
-          
+          let stopped = false;
+
           const interval = setInterval(() => {
-            if (currentIndex >= chunks.length) {
+            if (stopped || currentIndex >= chunks.length) {
               clearInterval(interval);
               aiLoading.value = false;
               aiMessage.isStreaming = false;
-              upsertHistoryEntry(sessionId.value, currentScene.value, messages.value);
+              if (!stopped) {
+                upsertHistoryEntry(sessionId.value, currentScene.value, messages.value);
+              }
+              currentStreamAbort.value = null;
               return;
             }
-            
+
             const chunkSize = Math.floor(Math.random() * 3) + 1;
             const chunkContent = chunks.slice(currentIndex, currentIndex + chunkSize).join('');
             currentIndex += chunkSize;
-            
+
             const contentArr = aiMessage.content;
             const lastSegment = contentArr[contentArr.length - 1];
-            
+
             if (lastSegment && lastSegment.type === 'text') {
               lastSegment.text += chunkContent;
             } else {
               contentArr.push({ type: 'text', text: chunkContent });
             }
           }, 100);
-          
+
           return {
             close: () => {
+              console.log('[Mock Stream] close called');
+              stopped = true;
               clearInterval(interval);
-            }
+              aiLoading.value = false;
+              aiMessage.isStreaming = false;
+              currentStreamAbort.value = null;
+            },
           };
         })()
       : streamAIChat(sessionId.value, payload, {
           onEvent: (evt: string) => {
+            if (isStreamAborted.value) return; // 如果已中止，忽略事件
             currentEvent = evt;
           },
           onMessage: (chunk: string) => {
+            if (isStreamAborted.value) {
+              console.log('[Chat Store] Message received after abort, ignoring');
+              return; // 如果已中止，忽略消息
+            }
+            
             if (currentEvent === 'text_chunk') {
-                 const contentArr = aiMessage.content;
-                 const lastSegment = contentArr[contentArr.length - 1];
-                 
-                 if (lastSegment && lastSegment.type === 'text') {
-                   lastSegment.text += chunk;
-                 } else {
-                   contentArr.push({ type: 'text', text: chunk });
-                 }
+              const contentArr = aiMessage.content;
+              const lastSegment = contentArr[contentArr.length - 1];
+
+              if (lastSegment && lastSegment.type === 'text') {
+                lastSegment.text += chunk;
+              } else {
+                contentArr.push({ type: 'text', text: chunk });
+              }
             }
           },
-          onJSON: (json) => {
+          onJSON: json => {
+            if (isStreamAborted.value) return; // 如果已中止，忽略 JSON
+            
             if (currentEvent === 'new_block') {
-                 const segment = json as MessageSegment;
-                 if (segment && segment.type && segment.type !== 'text') {
-                   aiMessage.content.push(segment);
-                 }
+              const segment = json as MessageSegment;
+              if (segment && segment.type && segment.type !== 'text') {
+                aiMessage.content.push(segment);
+              }
             }
           },
-          onError: (err) => {
+          onError: err => {
+            if (isStreamAborted.value) return; // 如果已中止，忽略错误
+            
             console.error('Stream error', err);
             const contentArr = aiMessage.content;
             const lastSegment = contentArr[contentArr.length - 1];
-            
+
             const errorText = `\n[网络请求出错: ${err?.message || '请检查网络'}]`;
             if (lastSegment && lastSegment.type === 'text') {
-                lastSegment.text += errorText;
+              lastSegment.text += errorText;
             } else {
-                contentArr.push({ type: 'text', text: errorText });
+              contentArr.push({ type: 'text', text: errorText });
             }
-            
+
             aiLoading.value = false;
             aiMessage.isStreaming = false;
             currentStreamAbort.value = null;
           },
           onComplete: () => {
+            if (isStreamAborted.value) {
+              console.log('[Chat Store] Complete callback after abort, ignoring');
+              return; // 如果已中止，忽略完成回调
+            }
+            
             aiLoading.value = false;
             aiMessage.isStreaming = false;
             upsertHistoryEntry(sessionId.value, currentScene.value, messages.value);
             currentStreamAbort.value = null;
-          }
+          },
         });
 
     // 保存中断控制器
     if (streamControl && streamControl.close) {
       currentStreamAbort.value = streamControl.close;
+      console.log('[Chat Store] Stream control saved, abort function available');
+    } else {
+      console.warn('[Chat Store] No stream control available');
     }
   }
 
@@ -327,7 +412,7 @@ export const useChatStore = defineStore('ai-chat', () => {
         uni.showToast({ title: res.message || '反馈失败', icon: 'error' });
       }
     } catch (error) {
-      console.error("Feedback submission error:", error);
+      console.error('Feedback submission error:', error);
       uni.showToast({ title: '提交反馈失败', icon: 'error' });
     }
   }
@@ -335,15 +420,45 @@ export const useChatStore = defineStore('ai-chat', () => {
   /**
    * 启动新的会话 (重置)
    */
-  function startNewSession(scene?: string) {
-    abortChat(); // 停止当前可能的生成
+  async function startNewSession(scene?: string | AIScene) {
+    abortChat(false); // 停止当前可能的生成（静默）
     messages.value = [];
     sessionId.value = '';
     // 如果传入了场景则先设置
     if (scene) setScene(scene);
-    initSession(scene);
+    await initSession(scene, true);
   }
-  
+
+  /**
+   * 删除会话（从历史记录和本地存储中移除）
+   */
+  async function removeSession(session: string) {
+    try {
+      const isDeletingCurrentSession = sessionId.value === session;
+      const sceneToKeep = currentScene.value;
+
+      // 调用后端接口删除会话
+      await deleteAISession(session);
+      
+      // 从本地历史记录中删除
+      const idx = historyEntries.value.findIndex(h => h.sessionId === session);
+      if (idx >= 0) {
+        historyEntries.value.splice(idx, 1);
+        persistHistory();
+      }
+
+      // 如果删除的是当前会话：自动创建一个新会话并切换过去
+      if (isDeletingCurrentSession) {
+        await startNewSession(sceneToKeep);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('删除会话失败:', error);
+      throw error;
+    }
+  }
+
   return {
     messages,
     aiLoading,
@@ -357,6 +472,7 @@ export const useChatStore = defineStore('ai-chat', () => {
     submitFeedback,
     startNewSession,
     loadSessionFromHistory,
+    removeSession,
     abortChat,
   };
 });

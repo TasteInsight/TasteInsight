@@ -22,12 +22,24 @@
 
         <!-- 搜索栏 -->
         <div class="mb-6">
-          <input
-            type="text"
-            v-model="searchQuery"
-            placeholder="搜索食堂名称、位置..."
-            class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
-          />
+          <div class="relative">
+            <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" data-icon="carbon:search"></span>
+            <input
+              type="text"
+              v-model="searchQuery"
+              placeholder="搜索食堂名称、位置..."
+              class="w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+            />
+            <button
+              v-if="searchQuery"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              @click="searchQuery = ''"
+              type="button"
+              title="清除搜索"
+            >
+              <span class="iconify" data-icon="carbon:close"></span>
+            </button>
+          </div>
         </div>
 
         <!-- 食堂列表表格 -->
@@ -349,7 +361,7 @@
                     :key="index"
                     class="flex items-center gap-3 p-3 border rounded-lg bg-gray-50"
                   >
-                    <div class="flex-1 grid grid-cols-4 gap-3">
+                    <div class="flex-1 grid grid-cols-5 gap-3">
                       <div>
                         <label class="block text-xs text-gray-500 mb-1">楼层</label>
                         <select
@@ -380,6 +392,18 @@
                           <option value="周六">周六</option>
                           <option value="周日">周日</option>
                           <option value="每天">每天</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label class="block text-xs text-gray-500 mb-1">餐次</label>
+                        <select
+                          v-model="hours.mealType"
+                          class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+                        >
+                          <option value="breakfast">早餐</option>
+                          <option value="lunch">午餐</option>
+                          <option value="dinner">晚餐</option>
+                          <option value="nightsnack">夜宵</option>
                         </select>
                       </div>
                       <div>
@@ -551,6 +575,7 @@ import { useRouter } from 'vue-router'
 import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
+import { showAlert, showConfirm, showConfirmDanger } from '@/composables/useModal'
 
 export default {
   name: 'AddCanteen',
@@ -607,7 +632,7 @@ export default {
         }
       } catch (error) {
         console.error('加载食堂列表失败:', error)
-        alert('加载食堂列表失败，请刷新重试')
+        showAlert('加载食堂列表失败，请刷新重试')
       } finally {
         isLoading.value = false
       }
@@ -634,7 +659,7 @@ export default {
     // 创建新食堂
     const createNewCanteen = () => {
       if (!authStore.hasPermission('canteen:create')) {
-        alert('您没有权限创建食堂')
+        showAlert('您没有权限创建食堂')
         return
       }
       editingCanteen.value = null
@@ -645,7 +670,7 @@ export default {
     // 编辑食堂
     const editCanteen = async (canteen) => {
       if (!authStore.hasPermission('canteen:edit')) {
-        alert('您没有权限编辑食堂')
+        showAlert('您没有权限编辑食堂')
         return
       }
       editingCanteen.value = canteen
@@ -675,6 +700,17 @@ export default {
       // API 格式: { dayOfWeek, slots: [{ mealType, openTime, closeTime }], isClosed, floor: { level, name } }
       // 或者新格式: { floorLevel, schedule: [{ dayOfWeek, slots: [...] }] }
       // 表单格式: { day, open, close, floor }
+      
+      // 英文星期到中文的映射
+      const dayMapping = {
+        'Monday': '周一',
+        'Tuesday': '周二',
+        'Wednesday': '周三',
+        'Thursday': '周四',
+        'Friday': '周五',
+        'Saturday': '周六',
+        'Sunday': '周日',
+      }
       if (canteen.openingHours && Array.isArray(canteen.openingHours)) {
         const flatHours = []
         canteen.openingHours.forEach((item) => {
@@ -682,7 +718,8 @@ export default {
             // 新格式 (grouped by floor)
             item.schedule.forEach((daily) => {
               flatHours.push({
-                day: daily.dayOfWeek,
+                day: dayMapping[daily.dayOfWeek] || daily.dayOfWeek, // 转换为中文
+                mealType: daily.slots?.[0]?.mealType || 'breakfast',
                 open: daily.slots?.[0]?.openTime || '06:30',
                 close: daily.slots?.[0]?.closeTime || '22:00',
                 floor: item.floorLevel || '',
@@ -691,7 +728,8 @@ export default {
           } else {
             // 旧格式
             flatHours.push({
-              day: item.dayOfWeek || item.day || '每天',
+              day: dayMapping[item.dayOfWeek] || item.dayOfWeek || item.day || '每天',
+              mealType: (item.slots && item.slots[0] && item.slots[0].mealType) || 'breakfast',
               open: (item.slots && item.slots[0] && item.slots[0].openTime) || item.open || '06:30',
               close: (item.slots && item.slots[0] && item.slots[0].closeTime) || item.close || '22:00',
               floor: item.floor ? item.floor.level || item.floor : '',
@@ -712,24 +750,28 @@ export default {
     // 删除食堂
     const deleteCanteen = async (canteen) => {
       if (!authStore.hasPermission('canteen:delete')) {
-        alert('您没有权限删除食堂')
+        showAlert('您没有权限删除食堂')
         return
       }
-      if (!confirm(`确定要删除食堂"${canteen.name}"吗？此操作不可恢复！`)) {
+      const confirmed = await showConfirmDanger(
+        `确定要删除食堂"${canteen.name}"吗？此操作不可恢复！`,
+        '确认删除'
+      )
+      if (!confirmed) {
         return
       }
 
       try {
         const response = await canteenApi.deleteCanteen(canteen.id)
         if (response.code === 200) {
-          alert('删除成功！')
+          showAlert('删除成功！')
           loadCanteens()
         } else {
           throw new Error(response.message || '删除失败')
         }
       } catch (error) {
         console.error('删除食堂失败:', error)
-        alert(error instanceof Error ? error.message : '删除食堂失败，请重试')
+        showAlert(error instanceof Error ? error.message : '删除食堂失败，请重试')
       }
     }
 
@@ -757,7 +799,7 @@ export default {
         Array.from(files).forEach((file) => {
           // 验证文件大小
           if (file.size > 10 * 1024 * 1024) {
-            alert(`图片 ${file.name} 大小超过10MB，已跳过`)
+            showAlert(`图片 ${file.name} 大小超过10MB，已跳过`)
             return
           }
 
@@ -795,7 +837,7 @@ export default {
       if (!formData.openingHours) {
         formData.openingHours = []
       }
-      formData.openingHours.push({ day: '每天', open: '06:30', close: '22:00', floor: '' })
+      formData.openingHours.push({ day: '每天', mealType: 'breakfast', open: '06:30', close: '22:00', floor: '' })
     }
 
     const removeOpeningHours = (index) => {
@@ -805,7 +847,7 @@ export default {
     // 添加窗口
     const addWindow = () => {
       if (!availableFloors.value.length) {
-        alert('请先配置并保存楼层信息后再添加窗口')
+        showAlert('请先配置并保存楼层信息后再添加窗口')
         return
       }
       windows.value.push({
@@ -823,20 +865,21 @@ export default {
     const removeWindow = async (index, windowId) => {
       if (windowId) {
         // 如果窗口已保存，需要调用删除接口
-        if (!confirm('确定要删除这个窗口吗？')) {
+        const confirmed = await showConfirm('确定要删除这个窗口吗？', '确认删除')
+        if (!confirmed) {
           return
         }
         try {
           const response = await canteenApi.deleteWindow(windowId)
           if (response.code === 200) {
             windows.value.splice(index, 1)
-            alert('删除成功！')
+            showAlert('删除成功！')
           } else {
             throw new Error(response.message || '删除失败')
           }
         } catch (error) {
           console.error('删除窗口失败:', error)
-          alert(error instanceof Error ? error.message : '删除窗口失败，请重试')
+          showAlert(error instanceof Error ? error.message : '删除窗口失败，请重试')
         }
       } else {
         // 如果窗口未保存，直接移除
@@ -1013,12 +1056,12 @@ export default {
             continue
           }
           if (!window.floor) {
-            alert(`请先为窗口"${window.name}"选择楼层`)
+            showAlert(`请先为窗口"${window.name}"选择楼层`)
             return
           }
           const floorInfo = resolveWindowFloor(window.floor, window.floorLabel || '')
           if (!floorInfo) {
-            alert(`窗口"${window.name}"的楼层信息无效，请检查`)
+            showAlert(`窗口"${window.name}"的楼层信息无效，请检查`)
             return
           }
         }
@@ -1027,7 +1070,7 @@ export default {
         if (formData.openingHours && formData.openingHours.length > 0) {
           for (const hours of formData.openingHours) {
             if (!hours.floor) {
-              alert(`请为营业时间(${hours.day})选择楼层`)
+              showAlert(`请为营业时间(${hours.day})选择楼层`)
               return
             }
           }
@@ -1071,14 +1114,18 @@ export default {
 
             if (imageUrls.length !== formData.imageFiles.length) {
               const failed = formData.imageFiles.length - imageUrls.length
-              if (!confirm(`${failed}张图片处理失败，是否继续保存？`)) {
+              const confirmed = await showConfirm(
+                `${failed}张图片处理失败，是否继续保存？`,
+                '图片处理失败'
+              )
+              if (!confirmed) {
                 isSubmitting.value = false
                 return
               }
             }
           } catch (error) {
             console.error('图片上传失败:', error)
-            alert('图片上传失败，请重试')
+            showAlert('图片上传失败，请重试')
             isSubmitting.value = false
             return
           }
@@ -1108,6 +1155,17 @@ export default {
           openingHours:
             formData.openingHours && formData.openingHours.length > 0
               ? (() => {
+                  // 中文星期到英文的映射
+                  const dayMapping = {
+                    '周一': 'Monday',
+                    '周二': 'Tuesday',
+                    '周三': 'Wednesday',
+                    '周四': 'Thursday',
+                    '周五': 'Friday',
+                    '周六': 'Saturday',
+                    '周日': 'Sunday',
+                  }
+
                   const grouped = new Map()
                   formData.openingHours.forEach((hours) => {
                     const floorInfo = resolveWindowFloor(hours.floor)
@@ -1120,16 +1178,23 @@ export default {
                       })
                     }
 
-                    grouped.get(floorLevel).schedule.push({
-                      dayOfWeek: hours.day,
-                      slots: [
-                        {
-                          mealType: 'default',
-                          openTime: hours.open,
-                          closeTime: hours.close,
-                        },
-                      ],
-                      isClosed: false,
+                    // 如果是"每天"，需要展开为7天
+                    const days = hours.day === '每天'
+                      ? ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+                      : [hours.day]
+
+                    days.forEach(day => {
+                      grouped.get(floorLevel).schedule.push({
+                        dayOfWeek: dayMapping[day] || 'Monday', // 转换为英文
+                        slots: [
+                          {
+                            mealType: hours.mealType || 'breakfast', // 使用用户选择的餐次
+                            openTime: hours.open,
+                            closeTime: hours.close,
+                          },
+                        ],
+                        isClosed: false,
+                      })
                     })
                   })
                   return Array.from(grouped.values())
@@ -1148,7 +1213,7 @@ export default {
             canteenId = response.data.id
             // 更新当前编辑对象，以防有返回的新数据
             editingCanteen.value = { ...editingCanteen.value, ...response.data }
-            alert('食堂信息已更新！')
+            showAlert('食堂信息已更新！')
           } else {
             throw new Error(response.message || '更新食堂失败')
           }
@@ -1159,7 +1224,7 @@ export default {
             canteenId = response.data.id
             editingCanteen.value = response.data // 设置为编辑模式
             viewMode.value = 'edit'
-            alert('食堂创建成功！现在您可以添加窗口信息。')
+            showAlert('食堂创建成功！现在您可以添加窗口信息。')
             isSubmitting.value = false // 结束提交状态，允许继续操作
             return // 不返回列表，停留在编辑页面
           } else {
@@ -1213,7 +1278,7 @@ export default {
         backToList()
       } catch (error) {
         console.error('保存食堂失败:', error)
-        alert(error instanceof Error ? error.message : '保存食堂失败，请重试')
+        showAlert(error instanceof Error ? error.message : '保存食堂失败，请重试')
       } finally {
         isSubmitting.value = false
       }

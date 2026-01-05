@@ -12,7 +12,7 @@
       <!-- 基本信息 -->
       <view class="bg-white px-4 py-4">
         <SkeletonBase width="72px" height="18px" rounded="rounded" class="mb-4" />
-        
+
         <!-- 菜品名称 -->
         <view class="mb-4">
           <SkeletonBase width="80px" height="14px" rounded="rounded" class="mb-2" />
@@ -38,7 +38,7 @@
       <!-- 位置信息 -->
       <view class="bg-white px-4 py-4">
         <SkeletonBase width="72px" height="18px" rounded="rounded" class="mb-4" />
-        
+
         <!-- 选择食堂 -->
         <view class="mb-4">
           <SkeletonBase width="80px" height="14px" rounded="rounded" class="mb-3" />

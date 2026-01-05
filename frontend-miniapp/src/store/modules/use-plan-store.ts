@@ -1,24 +1,20 @@
 // @/stores/use-plan-store.ts
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { 
-  getMealPlans, 
-  createMealPlan, 
+import {
+  getMealPlans,
+  createMealPlan,
   updateMealPlan,
-  deleteMealPlan 
+  deleteMealPlan,
 } from '@/api/modules/meal-plan';
 import { getDishById } from '@/api/modules/dish';
-import type { 
-  MealPlan, 
-  MealPlanRequest, 
-  Dish 
-} from '@/types/api';
+import type { MealPlan, MealPlanRequest, Dish } from '@/types/api';
 import dayjs from 'dayjs';
 
 export type EnrichedMealPlan = Omit<MealPlan, 'dishes'> & {
   dishes: Dish[];
   isCompleted: boolean; // 是否已完成（手动执行为已完成，自动过期为未完成）
-  isExpired: boolean;   // 是否已过期
+  isExpired: boolean; // 是否已过期
 };
 
 export const usePlanStore = defineStore('plan', () => {
@@ -38,7 +34,7 @@ export const usePlanStore = defineStore('plan', () => {
     return [...plans].sort((a, b) => {
       const dateA = dayjs(a.startDate);
       const dateB = dayjs(b.startDate);
-      
+
       // 首先按日期升序排序
       if (dateA.isBefore(dateB, 'day')) {
         return -1;
@@ -46,10 +42,16 @@ export const usePlanStore = defineStore('plan', () => {
       if (dateA.isAfter(dateB, 'day')) {
         return 1;
       }
-      
+
       // 日期相同，按餐时顺序排序
-      const orderA = mealTimeOrder.indexOf(a.mealTime) === -1 ? mealTimeOrder.length : mealTimeOrder.indexOf(a.mealTime);
-      const orderB = mealTimeOrder.indexOf(b.mealTime) === -1 ? mealTimeOrder.length : mealTimeOrder.indexOf(b.mealTime);
+      const orderA =
+        mealTimeOrder.indexOf(a.mealTime) === -1
+          ? mealTimeOrder.length
+          : mealTimeOrder.indexOf(a.mealTime);
+      const orderB =
+        mealTimeOrder.indexOf(b.mealTime) === -1
+          ? mealTimeOrder.length
+          : mealTimeOrder.indexOf(b.mealTime);
       return orderA - orderB;
     });
   };
@@ -62,9 +64,7 @@ export const usePlanStore = defineStore('plan', () => {
       const isCompleted = completedPlanIds.value.has(plan.id);
       return {
         ...plan,
-        dishes: plan.dishes
-          .map(id => dishMap.value[id])
-          .filter(Boolean) as Dish[],
+        dishes: plan.dishes.map(id => dishMap.value[id]).filter(Boolean) as Dish[],
         isCompleted,
         isExpired,
       };
@@ -72,12 +72,12 @@ export const usePlanStore = defineStore('plan', () => {
   });
 
   // 计算属性：当前规划（未过期且未完成）
-  const currentPlans = computed(() => 
+  const currentPlans = computed(() =>
     sortPlans(enrichedPlans.value.filter(p => !p.isExpired && !p.isCompleted))
   );
 
   // 计算属性：历史规划（已过期或已完成）
-  const historyPlans = computed(() => 
+  const historyPlans = computed(() =>
     sortPlans(enrichedPlans.value.filter(p => p.isExpired || p.isCompleted))
   );
 
@@ -88,7 +88,7 @@ export const usePlanStore = defineStore('plan', () => {
     try {
       const response = await getMealPlans();
       allPlans.value = response.data.items || [];
-      
+
       // 批量获取菜品详情
       await fetchAllDishDetails(allPlans.value);
     } catch (err) {
@@ -136,12 +136,12 @@ export const usePlanStore = defineStore('plan', () => {
     try {
       const response = await createMealPlan(planData);
       const newPlan = response.data;
-      
+
       // 更新本地列表
       allPlans.value = [newPlan, ...allPlans.value];
       // 获取新规划的菜品详情
       await fetchAllDishDetails([newPlan]);
-      
+
       return newPlan;
     } catch (err) {
       error.value = err instanceof Error ? err.message : '创建规划失败';
@@ -159,7 +159,7 @@ export const usePlanStore = defineStore('plan', () => {
     try {
       const response = await updateMealPlan(planData, planId);
       const updatedPlan = response.data;
-      
+
       // 更新本地列表
       const index = allPlans.value.findIndex(p => p.id === updatedPlan.id);
       if (index !== -1) {
@@ -169,10 +169,10 @@ export const usePlanStore = defineStore('plan', () => {
         allPlans.value = allPlans.value.filter(p => p.id !== planId);
         allPlans.value = [updatedPlan, ...allPlans.value];
       }
-      
+
       // 获取更新后规划的菜品详情
       await fetchAllDishDetails([updatedPlan]);
-      
+
       return updatedPlan;
     } catch (err) {
       error.value = err instanceof Error ? err.message : '更新规划失败';
@@ -213,7 +213,7 @@ export const usePlanStore = defineStore('plan', () => {
       if (!plan) {
         throw new Error('规划不存在');
       }
-      
+
       // 标记为已完成
       completedPlanIds.value.add(planId);
       // 持久化到本地存储
@@ -262,12 +262,12 @@ export const usePlanStore = defineStore('plan', () => {
     error,
     allPlans,
     selectedPlan,
-    
+
     // 计算属性
     enrichedPlans,
     currentPlans,
     historyPlans,
-    
+
     // 方法
     fetchPlans,
     createPlan,

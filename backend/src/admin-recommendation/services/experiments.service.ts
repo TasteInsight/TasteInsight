@@ -85,7 +85,18 @@ export class ExperimentsService {
     // 验证分组比例之和为 1
     const totalRatio = data.groups.reduce((sum, g) => sum + g.ratio, 0);
     if (Math.abs(totalRatio - 1) > 0.01) {
-      throw new Error('Group ratios must sum to 1');
+      throw new Error('分组占比之和必须为 1');
+    }
+
+    // 验证分组名称不重复
+    const groupNames = data.groups.map((g) => g.name);
+    const duplicateNames = groupNames.filter(
+      (name, index) => groupNames.indexOf(name) !== index,
+    );
+    if (duplicateNames.length > 0) {
+      throw new Error(
+        `分组名称重复: ${[...new Set(duplicateNames)].join(', ')}`,
+      );
     }
 
     const experiment = await this.prisma.experiment.create({
@@ -93,8 +104,8 @@ export class ExperimentsService {
         name: data.name,
         description: data.description,
         trafficRatio: data.trafficRatio,
-        startTime: data.startTime,
-        endTime: data.endTime,
+        startTime: new Date(data.startTime),
+        endTime: data.endTime ? new Date(data.endTime) : null,
         status: 'draft',
         groupItems: {
           create: data.groups.map((g) => ({
@@ -126,41 +137,112 @@ export class ExperimentsService {
     id: string,
     data: UpdateExperimentDto,
   ): Promise<SuccessResponseDto> {
-    // 如果包含 groups，需要验证分组比例之和为 1
+    // 如果包含 groups，需要验证
     if (data.groups) {
+      // 验证分组比例之和为 1
       const totalRatio = data.groups.reduce((sum, g) => sum + g.ratio, 0);
       if (Math.abs(totalRatio - 1) > 0.01) {
-        throw new Error('Group ratios must sum to 1');
+        throw new Error('分组占比之和必须为 1');
+      }
+
+      // 验证分组名称不重复
+      const groupNames = data.groups.map((g) => g.name);
+      const duplicateNames = groupNames.filter(
+        (name, index) => groupNames.indexOf(name) !== index,
+      );
+      if (duplicateNames.length > 0) {
+        throw new Error(
+          `分组名称重复: ${[...new Set(duplicateNames)].join(', ')}`,
+        );
       }
     }
 
     // 提取 groups 字段
     const { groups, ...experimentData } = data;
 
+    // 转换日期字段
+    const updateData: any = { ...experimentData };
+    if (updateData.startTime) {
+      updateData.startTime = new Date(updateData.startTime);
+    }
+    if (updateData.endTime !== undefined) {
+      updateData.endTime = updateData.endTime
+        ? new Date(updateData.endTime)
+        : null;
+    }
+
     // 使用事务更新实验和分组
     const experiment = await this.prisma.$transaction(async (tx) => {
       // 更新实验基本信息
       const updatedExp = await tx.experiment.update({
         where: { id },
-        data: experimentData,
+        data: updateData,
       });
 
-      // 如果提供了 groups，则更新分组
+      // 如果提供了 groups，则增量更新分组
       if (groups && groups.length > 0) {
-        // 删除现有的分组
-        await tx.experimentGroupItem.deleteMany({
+        // 获取现有分组ID列表
+        const existingGroups = await tx.experimentGroupItem.findMany({
           where: { experimentId: id },
+          select: { id: true },
         });
+        const existingGroupIds = new Set(existingGroups.map((g) => g.id));
 
-        // 创建新的分组
-        await tx.experimentGroupItem.createMany({
-          data: groups.map((g) => ({
-            experimentId: id,
-            name: g.name,
-            ratio: g.ratio,
-            config: g.config as any,
-          })),
-        });
+        // 分类处理：有id的更新，没id的新增
+        const groupsToUpdate = groups.filter(
+          (g) => g.id && existingGroupIds.has(g.id),
+        );
+        const groupsToCreate = groups.filter((g) => !g.id);
+
+        // 计算需要删除的分组（现有的但不在新列表中的）
+        const newGroupIds = new Set(
+          groups.filter((g) => g.id).map((g) => g.id),
+        );
+        const groupIdsToDelete = [...existingGroupIds].filter(
+          (id) => !newGroupIds.has(id),
+        );
+
+        // 1. 删除被移除的分组
+        if (groupIdsToDelete.length > 0) {
+          await tx.experimentGroupItem.deleteMany({
+            where: { id: { in: groupIdsToDelete } },
+          });
+          this.logger.log(
+            `Deleted ${groupIdsToDelete.length} groups from experiment ${id}`,
+          );
+        }
+
+        // 2. 更新现有分组
+        for (const g of groupsToUpdate) {
+          await tx.experimentGroupItem.update({
+            where: { id: g.id },
+            data: {
+              name: g.name,
+              ratio: g.ratio,
+              config: g.config as any,
+            },
+          });
+        }
+        if (groupsToUpdate.length > 0) {
+          this.logger.log(
+            `Updated ${groupsToUpdate.length} groups in experiment ${id}`,
+          );
+        }
+
+        // 3. 创建新分组
+        if (groupsToCreate.length > 0) {
+          await tx.experimentGroupItem.createMany({
+            data: groupsToCreate.map((g) => ({
+              experimentId: id,
+              name: g.name,
+              ratio: g.ratio,
+              config: g.config as any,
+            })),
+          });
+          this.logger.log(
+            `Created ${groupsToCreate.length} new groups in experiment ${id}`,
+          );
+        }
       }
 
       return updatedExp;

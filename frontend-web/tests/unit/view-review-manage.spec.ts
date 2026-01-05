@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
     approveComment: vi.fn(),
     rejectComment: vi.fn(),
   },
+  showAlertMock: vi.fn(() => Promise.resolve()),
 }))
 
 vi.mock('@/store/modules/use-auth-store', () => ({
@@ -23,6 +24,12 @@ vi.mock('@/store/modules/use-auth-store', () => ({
 
 vi.mock('@/api/modules/review', () => ({
   reviewApi: mocks.reviewApiMock,
+}))
+
+vi.mock('@/composables/useModal', () => ({
+  showAlert: mocks.showAlertMock,
+  showConfirm: vi.fn(() => Promise.resolve(true)),
+  showConfirmDanger: vi.fn(() => Promise.resolve(true)),
 }))
 
 import ReviewManage from '../../src/views/ReviewManage.vue'
@@ -91,13 +98,11 @@ describe('views/ReviewManage', () => {
     mocks.reviewApiMock.approveComment.mockResolvedValue({ code: 200 })
     mocks.reviewApiMock.rejectComment.mockResolvedValue({ code: 200 })
 
-    vi.spyOn(window, 'alert').mockImplementation(() => undefined)
     vi.spyOn(window, 'addEventListener')
     vi.spyOn(window, 'removeEventListener')
   })
 
   afterEach(() => {
-    ;(window.alert as any).mockRestore?.()
     ;(window.addEventListener as any).mockRestore?.()
     ;(window.removeEventListener as any).mockRestore?.()
   })
@@ -121,7 +126,7 @@ describe('views/ReviewManage', () => {
     wrapper.vm.handlePageChangeReviews(2)
     await flushAll()
 
-    expect(window.alert).toHaveBeenCalledWith('加载评价列表失败，请刷新重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('加载评价列表失败，请刷新重试')
     expect(wrapper.vm.reviews).toEqual([])
 
     wrapper.unmount()
@@ -217,7 +222,7 @@ describe('views/ReviewManage', () => {
     // no permission
     mocks.authStoreMock.hasPermission.mockReturnValueOnce(false)
     await wrapper.vm.handleApproveReview()
-    expect(window.alert).toHaveBeenCalledWith('您没有权限审核评价')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限审核评价')
 
     // missing selectedReview => no-op
     await wrapper.vm.handleApproveReview()
@@ -227,48 +232,48 @@ describe('views/ReviewManage', () => {
     // approve non-200
     mocks.reviewApiMock.approveReview.mockResolvedValueOnce({ code: 400, message: 'bad' })
     await wrapper.vm.handleApproveReview()
-    expect(window.alert).toHaveBeenCalledWith('bad')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('bad')
 
     // approve catch
     mocks.reviewApiMock.approveReview.mockRejectedValueOnce(new Error('boom'))
     await wrapper.vm.handleApproveReview()
-    expect(window.alert).toHaveBeenCalledWith('审核评价失败，请重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('审核评价失败，请重试')
 
     // approve success reload + close detail
     mocks.reviewApiMock.approveReview.mockResolvedValueOnce({ code: 200 })
     await wrapper.vm.handleApproveReview()
-    expect(window.alert).toHaveBeenCalledWith('审核通过')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('审核通过')
     expect(wrapper.vm.selectedReview).toBe(null)
 
     // reject: no permission
     wrapper.vm.openReviewDetail(wrapper.vm.reviews[0])
     mocks.authStoreMock.hasPermission.mockReturnValueOnce(false)
     await wrapper.vm.handleRejectReview()
-    expect(window.alert).toHaveBeenCalledWith('您没有权限审核评价')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限审核评价')
 
     // reject: missing reason
     mocks.authStoreMock.hasPermission.mockReturnValue(true)
     wrapper.vm.rejectReviewReason = ''
     await wrapper.vm.handleRejectReview()
-    expect(window.alert).toHaveBeenCalledWith('请填写拒绝原因')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('请填写拒绝原因')
 
     // reject: non-200
     wrapper.vm.rejectReviewReason = 'no'
     mocks.reviewApiMock.rejectReview.mockResolvedValueOnce({ code: 400, message: 'nope' })
     await wrapper.vm.handleRejectReview()
-    expect(window.alert).toHaveBeenCalledWith('nope')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('nope')
 
     // reject: catch
     mocks.reviewApiMock.rejectReview.mockRejectedValueOnce(new Error('boom'))
     await wrapper.vm.handleRejectReview()
-    expect(window.alert).toHaveBeenCalledWith('拒绝评价失败，请重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('拒绝评价失败，请重试')
 
     // reject: success closes modal + detail and reloads
     wrapper.vm.openRejectReviewModal()
     wrapper.vm.rejectReviewReason = 'reason'
     mocks.reviewApiMock.rejectReview.mockResolvedValueOnce({ code: 200 })
     await wrapper.vm.handleRejectReview()
-    expect(window.alert).toHaveBeenCalledWith('已拒绝')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('已拒绝')
     expect(wrapper.vm.isRejectReviewModalOpen).toBe(false)
     expect(wrapper.vm.selectedReview).toBe(null)
 
@@ -290,7 +295,7 @@ describe('views/ReviewManage', () => {
     // no permission
     mocks.authStoreMock.hasPermission.mockImplementationOnce(() => false)
     await wrapper.vm.handleApproveComment()
-    expect(window.alert).toHaveBeenCalledWith('您没有权限审核评论')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限审核评论')
 
     // no selectedComment => no-op
     await wrapper.vm.handleApproveComment()
@@ -300,48 +305,48 @@ describe('views/ReviewManage', () => {
     // approve non-200
     mocks.reviewApiMock.approveComment.mockResolvedValueOnce({ code: 400, message: 'bad' })
     await wrapper.vm.handleApproveComment()
-    expect(window.alert).toHaveBeenCalledWith('bad')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('bad')
 
     // approve catch
     mocks.reviewApiMock.approveComment.mockRejectedValueOnce(new Error('boom'))
     await wrapper.vm.handleApproveComment()
-    expect(window.alert).toHaveBeenCalledWith('审核评论失败，请重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('审核评论失败，请重试')
 
     // approve success
     mocks.reviewApiMock.approveComment.mockResolvedValueOnce({ code: 200 })
     await wrapper.vm.handleApproveComment()
-    expect(window.alert).toHaveBeenCalledWith('审核通过')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('审核通过')
     expect(wrapper.vm.selectedComment).toBe(null)
 
     // reject: no permission
     wrapper.vm.openCommentDetail(comment)
     mocks.authStoreMock.hasPermission.mockImplementationOnce(() => false)
     await wrapper.vm.handleRejectComment()
-    expect(window.alert).toHaveBeenCalledWith('您没有权限审核评论')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限审核评论')
 
     // reject: missing reason
     mocks.authStoreMock.hasPermission.mockImplementation(() => true)
     wrapper.vm.rejectCommentReason = ''
     await wrapper.vm.handleRejectComment()
-    expect(window.alert).toHaveBeenCalledWith('请填写拒绝原因')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('请填写拒绝原因')
 
     // reject: non-200
     wrapper.vm.rejectCommentReason = 'no'
     mocks.reviewApiMock.rejectComment.mockResolvedValueOnce({ code: 400, message: 'nope' })
     await wrapper.vm.handleRejectComment()
-    expect(window.alert).toHaveBeenCalledWith('nope')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('nope')
 
     // reject: catch
     mocks.reviewApiMock.rejectComment.mockRejectedValueOnce(new Error('boom'))
     await wrapper.vm.handleRejectComment()
-    expect(window.alert).toHaveBeenCalledWith('拒绝评论失败，请重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('拒绝评论失败，请重试')
 
     // reject: success closes modal + detail
     wrapper.vm.openRejectCommentModal()
     wrapper.vm.rejectCommentReason = 'reason'
     mocks.reviewApiMock.rejectComment.mockResolvedValueOnce({ code: 200 })
     await wrapper.vm.handleRejectComment()
-    expect(window.alert).toHaveBeenCalledWith('已拒绝')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('已拒绝')
     expect(wrapper.vm.isRejectCommentModalOpen).toBe(false)
     expect(wrapper.vm.selectedComment).toBe(null)
 
@@ -366,7 +371,7 @@ describe('views/ReviewManage', () => {
     mocks.reviewApiMock.getPendingComments.mockRejectedValueOnce(new Error('boom'))
     wrapper.vm.handlePageChangeComments(2)
     await flushAll()
-    expect(window.alert).toHaveBeenCalledWith('加载评论列表失败，请刷新重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('加载评论列表失败，请刷新重试')
 
     wrapper.unmount()
   })

@@ -19,15 +19,16 @@ describe('useProfile', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Setup mock store - Pinia unwraps refs, so we provide values directly
     mockUserStore = {
       userInfo: { id: 1, nickname: 'Test User' },
       isLoggedIn: true,
-      fetchProfileAction: jest.fn().mockResolvedValue(undefined),
+      fetchProfileAction: jest.fn() as unknown as jest.Mock<any, any>,
       updateLocalUserInfo: jest.fn(),
       logoutAction: jest.fn(),
     };
+    (mockUserStore.fetchProfileAction as jest.Mock).mockResolvedValue(undefined);
     (useUserStore as unknown as jest.Mock).mockReturnValue(mockUserStore);
 
     // Mock uni globals
@@ -46,20 +47,20 @@ describe('useProfile', () => {
 
   it('should fetch profile on mount if logged in', async () => {
     // Mock onMounted to execute the callback immediately
-    (onMounted as jest.Mock).mockImplementation((fn) => fn());
-    
+    (onMounted as jest.Mock).mockImplementation(fn => fn());
+
     useProfile();
-    
+
     expect(mockUserStore.fetchProfileAction).toHaveBeenCalled();
   });
 
   it('should handle fetch profile error', async () => {
     const errorMsg = 'Fetch failed';
     mockUserStore.fetchProfileAction.mockRejectedValue(new Error(errorMsg));
-    
+
     const { fetchProfile, error } = useProfile();
     await fetchProfile();
-    
+
     expect(error.value).toBe(errorMsg);
   });
 
@@ -93,7 +94,7 @@ describe('useProfile', () => {
   it('should handle logout', () => {
     jest.useFakeTimers();
     const { handleLogout } = useProfile();
-    
+
     // Mock showModal success callback
     (uni.showModal as jest.Mock).mockImplementation(({ success }) => {
       success({ confirm: true });
@@ -104,7 +105,7 @@ describe('useProfile', () => {
     expect(uni.showModal).toHaveBeenCalled();
     expect(mockUserStore.logoutAction).toHaveBeenCalled();
     expect(uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ title: '已退出登录' }));
-    
+
     // Check if reLaunch is called (inside setTimeout)
     jest.runAllTimers();
     // We can't easily check reLaunch because it's inside setTimeout which calls uni.reLaunch.
@@ -120,13 +121,13 @@ describe('useProfile', () => {
     // So it should be called.
     // But I need to verify the path.
     // Let's assume it works if runAllTimers runs.
-    
+
     jest.useRealTimers();
   });
 
   it('should not logout if cancelled', () => {
     const { handleLogout } = useProfile();
-    
+
     // Mock showModal cancel callback
     (uni.showModal as jest.Mock).mockImplementation(({ success }) => {
       success({ confirm: false });

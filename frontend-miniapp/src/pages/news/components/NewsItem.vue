@@ -5,7 +5,9 @@
   >
     <!-- 头部：标题 -->
     <view class="mb-2">
-      <text class="text-base font-bold text-gray-900 leading-snug line-clamp-2">{{ news.title }}</text>
+      <text class="text-base font-bold text-gray-900 leading-snug line-clamp-2">{{
+        news.title
+      }}</text>
     </view>
 
     <!-- 中部：摘要 -->
@@ -18,10 +20,7 @@
     <!-- 底部：标签和时间 -->
     <view class="flex justify-between items-center">
       <!-- 左侧标签 -->
-      <view
-        class="px-2 py-1 rounded-md text-xs font-medium"
-        :class="getNewsTagClass(news)"
-      >
+      <view class="px-2 py-1 rounded-md text-xs font-medium" :class="getNewsTagClass(news)">
         {{ getNewsTagText(news) }}
       </view>
 

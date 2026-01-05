@@ -18,7 +18,7 @@ jest.mock('vue', () => {
   const originalVue = jest.requireActual('vue');
   return {
     ...originalVue,
-    onMounted: jest.fn((fn) => fn()),
+    onMounted: jest.fn(fn => fn()),
   };
 });
 
@@ -45,7 +45,7 @@ describe('useAllergens', () => {
 
   it('should load allergens on mount', async () => {
     const { form, loading } = useAllergens();
-    
+
     expect(loading.value).toBe(true);
     await new Promise(process.nextTick);
 
@@ -78,7 +78,7 @@ describe('useAllergens', () => {
     await new Promise(process.nextTick);
 
     form.allergens = 'Peanut, Egg';
-    
+
     (updateUserProfile as jest.Mock).mockResolvedValue({
       code: 200,
       data: { allergens: ['Peanut', 'Egg'] },
@@ -116,7 +116,7 @@ describe('useAllergens', () => {
     await new Promise(process.nextTick);
 
     form.allergens = 'Peanut,  Milk; Egg\nSoy';
-    
+
     (updateUserProfile as jest.Mock).mockResolvedValue({
       code: 200,
       data: { allergens: ['Peanut', 'Milk', 'Egg', 'Soy'] },

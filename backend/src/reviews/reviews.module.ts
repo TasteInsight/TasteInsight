@@ -15,5 +15,6 @@ import { EmbeddingQueueModule } from '@/embedding-queue/embedding-queue.module';
   ],
   controllers: [ReviewsController],
   providers: [ReviewsService, PrismaService, JwtService],
+  exports: [ReviewsService],
 })
 export class ReviewsModule {}

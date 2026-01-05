@@ -20,6 +20,8 @@ const mocks = vi.hoisted(() => ({
     getCanteens: vi.fn(),
     getWindows: vi.fn(),
   },
+  showAlertMock: vi.fn(() => Promise.resolve()),
+  showConfirmDangerMock: vi.fn(() => Promise.resolve(true)),
 }))
 
 vi.mock('@/store/modules/use-auth-store', () => ({
@@ -36,6 +38,12 @@ vi.mock('@/api/modules/review', () => ({
 
 vi.mock('@/api/modules/canteen', () => ({
   canteenApi: mocks.canteenApiMock,
+}))
+
+vi.mock('@/composables/useModal', () => ({
+  showAlert: mocks.showAlertMock,
+  showConfirm: vi.fn(() => Promise.resolve(true)),
+  showConfirmDanger: mocks.showConfirmDangerMock,
 }))
 
 import CommentManage from '../../src/views/CommentManage.vue'
@@ -178,15 +186,11 @@ describe('views/CommentManage', () => {
     mocks.reviewApiMock.deleteReview.mockResolvedValue({ code: 200 })
     mocks.reviewApiMock.deleteComment.mockResolvedValue({ code: 200 })
 
-    vi.spyOn(window, 'alert').mockImplementation(() => undefined)
-    vi.spyOn(window, 'confirm').mockImplementation(() => true)
     vi.spyOn(window, 'open').mockImplementation(() => null)
   })
 
   afterEach(() => {
     vi.useRealTimers()
-    ;(window.alert as any).mockRestore?.()
-    ;(window.confirm as any).mockRestore?.()
     ;(window.open as any).mockRestore?.()
   })
 
@@ -331,30 +335,30 @@ describe('views/CommentManage', () => {
     // no permission
     mocks.authStoreMock.hasPermission.mockReturnValueOnce(false)
     await wrapper.vm.handleDeleteReview(createMockReview({ id: 'rv1' }))
-    expect(window.alert).toHaveBeenCalledWith('您没有权限删除评价')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限删除评价')
 
     // confirm cancel
     mocks.authStoreMock.hasPermission.mockReturnValue(true)
-    ;(window.confirm as any).mockReturnValueOnce(false)
+    mocks.showConfirmDangerMock.mockResolvedValueOnce(false)
     await wrapper.vm.handleDeleteReview(createMockReview({ id: 'rv1' }))
     expect(mocks.reviewApiMock.deleteReview).toHaveBeenCalledTimes(0)
 
     // non-200
     mocks.reviewApiMock.deleteReview.mockResolvedValueOnce({ code: 400, message: 'bad' })
     await wrapper.vm.handleDeleteReview(createMockReview({ id: 'rv1' }))
-    expect(window.alert).toHaveBeenCalledWith('bad')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('bad')
 
     // catch
     mocks.reviewApiMock.deleteReview.mockRejectedValueOnce(new Error('boom'))
     await wrapper.vm.handleDeleteReview(createMockReview({ id: 'rv1' }))
-    expect(window.alert).toHaveBeenCalledWith('删除评价失败，请重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('删除评价失败，请重试')
 
     // comment: no permission + success reload
     mocks.authStoreMock.hasPermission.mockImplementation((p: string) => p === 'comment:delete')
-    ;(window.confirm as any).mockReturnValueOnce(true)
+    mocks.showConfirmDangerMock.mockResolvedValueOnce(true)
     mocks.reviewApiMock.deleteComment.mockResolvedValueOnce({ code: 200 })
     await wrapper.vm.handleDeleteComment(createMockComment({ id: 'cm1' }))
-    expect(window.alert).toHaveBeenCalledWith('删除成功')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('删除成功')
 
     wrapper.unmount()
   })
@@ -364,14 +368,16 @@ describe('views/CommentManage', () => {
       global: { stubs: { Header: true, Pagination: true } },
     })
 
-    expect(wrapper.vm.getImageGridClass(1)).toBe('grid-cols-1')
+    expect(wrapper.vm.getImageGridClass(1)).toBe('grid-cols-1 max-w-md')
     expect(wrapper.vm.getImageGridClass(2)).toBe('grid-cols-2')
     expect(wrapper.vm.getImageGridClass(3)).toBe('grid-cols-3')
     expect(wrapper.vm.getImageGridClass(4)).toBe('grid-cols-2')
     expect(wrapper.vm.getImageGridClass(5)).toBe('grid-cols-3')
 
-    wrapper.vm.previewImage('http://img/x.png', [])
-    expect(window.open).toHaveBeenCalledWith('http://img/x.png', '_blank')
+    wrapper.vm.openImagePreview(['http://img/x.png'], 0)
+    expect(wrapper.vm.imagePreview.show).toBe(true)
+    expect(wrapper.vm.imagePreview.images).toEqual(['http://img/x.png'])
+    expect(wrapper.vm.imagePreview.currentIndex).toBe(0)
 
     wrapper.unmount()
   })
@@ -484,20 +490,20 @@ describe('views/CommentManage', () => {
     await flushAll()
 
     // loadDishes catch - trigger via handleCanteenChange
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
     mocks.dishApiMock.getDishes.mockRejectedValueOnce(new Error('dishes boom'))
     await wrapper.vm.handleCanteenChange()
-    expect(window.alert).toHaveBeenCalledWith('加载菜品列表失败，请刷新重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('加载菜品列表失败，请刷新重试')
 
     // loadReviews catch - trigger via selectDish
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
     wrapper.vm.selectedDishId = 'd1'
     mocks.dishApiMock.getDishReviews.mockRejectedValueOnce(new Error('reviews boom'))
     await wrapper.vm.selectDish(createMockDish({ id: 'd1', name: 'N' }))
-    expect(window.alert).toHaveBeenCalledWith('加载评价列表失败，请重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('加载评价列表失败，请重试')
 
     // loadCommentsForReviews catch
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
     // NOTE: refs returned from setup are auto-unwrapped on `vm`.
     // To hit the `loadCommentsForReviews` catch, we must throw synchronously inside the map callback;
     // Promise.allSettled does not throw for rejected promises.
@@ -510,20 +516,20 @@ describe('views/CommentManage', () => {
     })
     await wrapper.vm.selectDish(createMockDish({ id: 'd1', name: 'N' }))
     await flushAll()
-    expect(window.alert).toHaveBeenCalledWith('加载评论列表失败，请重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('加载评论列表失败，请重试')
 
     // handleDeleteReview catch
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
     mocks.authStoreMock.hasPermission.mockReturnValue(true)
     mocks.reviewApiMock.deleteReview.mockRejectedValueOnce(new Error('del review boom'))
     await wrapper.vm.handleDeleteReview(createMockReview({ id: 'rv1' }))
-    expect(window.alert).toHaveBeenCalledWith('删除评价失败，请重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('删除评价失败，请重试')
 
     // handleDeleteComment catch
-    ;(window.alert as any).mockClear()
+    mocks.showAlertMock.mockClear()
     mocks.reviewApiMock.deleteComment.mockRejectedValueOnce(new Error('del comment boom'))
     await wrapper.vm.handleDeleteComment(createMockComment({ id: 'cm1' }))
-    expect(window.alert).toHaveBeenCalledWith('删除评论失败，请重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('删除评论失败，请重试')
 
     wrapper.unmount()
   })
@@ -575,6 +581,149 @@ describe('views/CommentManage', () => {
     expect(wrapper.vm.dishPage).toBe(1)
     await flushMicrotasks()
     expect(mocks.dishApiMock.getDishes).toHaveBeenCalled()
+
+    wrapper.unmount()
+  })
+
+  it('image preview navigation - next', async () => {
+    const wrapper = shallowMount(CommentManage, {
+      global: { stubs: { Header: true, Pagination: true } },
+    })
+
+    await flushAll()
+
+    // Open preview with multiple images
+    wrapper.vm.openImagePreview(['img1.png', 'img2.png', 'img3.png'], 0)
+    expect(wrapper.vm.imagePreview.currentIndex).toBe(0)
+
+    // Navigate next
+    wrapper.vm.nextImage()
+    expect(wrapper.vm.imagePreview.currentIndex).toBe(1)
+
+    wrapper.vm.nextImage()
+    expect(wrapper.vm.imagePreview.currentIndex).toBe(2)
+
+    wrapper.unmount()
+  })
+
+  it('closeImagePreview hides preview', async () => {
+    const wrapper = shallowMount(CommentManage, {
+      global: { stubs: { Header: true, Pagination: true } },
+    })
+
+    await flushAll()
+
+    wrapper.vm.openImagePreview(['img1.png'], 0)
+    expect(wrapper.vm.imagePreview.show).toBe(true)
+
+    wrapper.vm.closeImagePreview()
+    expect(wrapper.vm.imagePreview.show).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('loadWindows handles empty data', async () => {
+    const wrapper = shallowMount(CommentManage, {
+      global: { stubs: { Header: true, Pagination: true } },
+    })
+
+    await flushAll()
+
+    mocks.canteenApiMock.getWindows.mockResolvedValueOnce({
+      code: 200,
+      data: { items: [] },
+    })
+
+    wrapper.vm.selectedCanteenId = 'c1'
+    await wrapper.vm.handleCanteenChange()
+    await flushMicrotasks()
+
+    expect(wrapper.vm.windows).toEqual([])
+
+    wrapper.unmount()
+  })
+
+  it('loadCanteens handles non-200 response', async () => {
+    mocks.canteenApiMock.getCanteens.mockResolvedValueOnce({
+      code: 500,
+      message: 'Server error',
+    })
+
+    const wrapper = shallowMount(CommentManage, {
+      global: { stubs: { Header: true, Pagination: true } },
+    })
+
+    await flushAll()
+
+    // Should not throw, canteens should be empty or default
+    expect(wrapper.vm.canteens).toBeDefined()
+
+    wrapper.unmount()
+  })
+
+  it('handles delete comment permission denied', async () => {
+    const wrapper = shallowMount(CommentManage, {
+      global: { stubs: { Header: true, Pagination: true } },
+    })
+
+    await flushAll()
+
+    mocks.authStoreMock.hasPermission.mockReturnValueOnce(false)
+    await wrapper.vm.handleDeleteComment(createMockComment({ id: 'cm1' }))
+
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限删除评论')
+
+    wrapper.unmount()
+  })
+
+  it('handles delete comment confirm cancelled', async () => {
+    const wrapper = shallowMount(CommentManage, {
+      global: { stubs: { Header: true, Pagination: true } },
+    })
+
+    await flushAll()
+
+    mocks.authStoreMock.hasPermission.mockReturnValue(true)
+    mocks.showConfirmDangerMock.mockResolvedValueOnce(false)
+
+    await wrapper.vm.handleDeleteComment(createMockComment({ id: 'cm1' }))
+
+    expect(mocks.reviewApiMock.deleteComment).not.toHaveBeenCalled()
+
+    wrapper.unmount()
+  })
+
+  it('handles delete comment non-200 response', async () => {
+    const wrapper = shallowMount(CommentManage, {
+      global: { stubs: { Header: true, Pagination: true } },
+    })
+
+    await flushAll()
+
+    mocks.authStoreMock.hasPermission.mockReturnValue(true)
+    mocks.showConfirmDangerMock.mockResolvedValueOnce(true)
+    mocks.reviewApiMock.deleteComment.mockResolvedValueOnce({
+      code: 400,
+      message: '删除失败',
+    })
+
+    await wrapper.vm.handleDeleteComment(createMockComment({ id: 'cm1' }))
+
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('删除失败')
+
+    wrapper.unmount()
+  })
+
+  it('formatDate handles valid date formats', async () => {
+    const wrapper = shallowMount(CommentManage, {
+      global: { stubs: { Header: true, Pagination: true } },
+    })
+
+    await flushAll()
+
+    // Valid date
+    const result = wrapper.vm.formatDate('2025-01-01T10:00:00')
+    expect(result).toContain('2025')
 
     wrapper.unmount()
   })

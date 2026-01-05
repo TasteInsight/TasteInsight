@@ -59,7 +59,7 @@ function createEmptyForm(): SettingsFormState {
 function parseList(text: string): string[] {
   return text
     .split(/[,，;；\n\r\s]+/)
-    .map((item) => item.trim())
+    .map(item => item.trim())
     .filter(Boolean);
 }
 
@@ -86,7 +86,7 @@ export function useSettings() {
 
   watch(
     userInfo,
-    (info) => {
+    info => {
       syncForm(info);
     },
     { immediate: true }
@@ -121,8 +121,10 @@ export function useSettings() {
         snapshot.avoidIngredientsText = (pref.avoidIngredients ?? []).join(', ');
         snapshot.canteenPreferencesText = (pref.canteenPreferences ?? []).join(', ');
         snapshot.tagPreferencesText = (pref.tagPreferences ?? []).join(', ');
-        snapshot.priceRangeMin = pref.priceRange?.min !== undefined ? String(pref.priceRange.min) : snapshot.priceRangeMin;
-        snapshot.priceRangeMax = pref.priceRange?.max !== undefined ? String(pref.priceRange.max) : snapshot.priceRangeMax;
+        snapshot.priceRangeMin =
+          pref.priceRange?.min !== undefined ? String(pref.priceRange.min) : snapshot.priceRangeMin;
+        snapshot.priceRangeMax =
+          pref.priceRange?.max !== undefined ? String(pref.priceRange.max) : snapshot.priceRangeMax;
 
         if (pref.tastePreferences) {
           snapshot.spicyLevel = pref.tastePreferences.spicyLevel ?? snapshot.spicyLevel;
@@ -130,8 +132,6 @@ export function useSettings() {
           snapshot.saltiness = pref.tastePreferences.saltiness ?? snapshot.saltiness;
           snapshot.oiliness = pref.tastePreferences.oiliness ?? snapshot.oiliness;
         }
-
-    
       }
 
       if (info.settings) {
@@ -144,10 +144,14 @@ export function useSettings() {
         }
 
         if (settings.notificationSettings) {
-          snapshot.newDishAlert = settings.notificationSettings.newDishAlert ?? snapshot.newDishAlert;
-          snapshot.priceChangeAlert = settings.notificationSettings.priceChangeAlert ?? snapshot.priceChangeAlert;
-          snapshot.reviewReplyAlert = settings.notificationSettings.reviewReplyAlert ?? snapshot.reviewReplyAlert;
-          snapshot.weeklyRecommendation = settings.notificationSettings.weeklyRecommendation ?? snapshot.weeklyRecommendation;
+          snapshot.newDishAlert =
+            settings.notificationSettings.newDishAlert ?? snapshot.newDishAlert;
+          snapshot.priceChangeAlert =
+            settings.notificationSettings.priceChangeAlert ?? snapshot.priceChangeAlert;
+          snapshot.reviewReplyAlert =
+            settings.notificationSettings.reviewReplyAlert ?? snapshot.reviewReplyAlert;
+          snapshot.weeklyRecommendation =
+            settings.notificationSettings.weeklyRecommendation ?? snapshot.weeklyRecommendation;
         }
       }
     }
@@ -171,7 +175,7 @@ export function useSettings() {
     if (!isLoggedIn.value || saving.value) {
       return false;
     }
-    return (Object.keys(form) as SettingsField[]).some((field) => hasFieldChanged(field));
+    return (Object.keys(form) as SettingsField[]).some(field => hasFieldChanged(field));
   });
 
   function handleFieldChange(field: SettingsField, value: unknown) {
@@ -222,7 +226,7 @@ export function useSettings() {
       }
 
       const tasteFields: SettingsField[] = ['spicyLevel', 'sweetness', 'saltiness', 'oiliness'];
-      if (tasteFields.some((field) => hasFieldChanged(field))) {
+      if (tasteFields.some(field => hasFieldChanged(field))) {
         preferences.tastePreferences = {
           spicyLevel: form.spicyLevel,
           sweetness: form.sweetness,
@@ -247,7 +251,7 @@ export function useSettings() {
       }
 
       const displayFields: SettingsField[] = ['showCalories', 'showNutrition', 'sortBy'];
-      if (displayFields.some((field) => hasFieldChanged(field))) {
+      if (displayFields.some(field => hasFieldChanged(field))) {
         settings.displaySettings = {
           showCalories: form.showCalories,
           showNutrition: form.showNutrition,
@@ -255,8 +259,13 @@ export function useSettings() {
         };
       }
 
-      const notificationFields: SettingsField[] = ['newDishAlert', 'priceChangeAlert', 'reviewReplyAlert', 'weeklyRecommendation'];
-      if (notificationFields.some((field) => hasFieldChanged(field))) {
+      const notificationFields: SettingsField[] = [
+        'newDishAlert',
+        'priceChangeAlert',
+        'reviewReplyAlert',
+        'weeklyRecommendation',
+      ];
+      if (notificationFields.some(field => hasFieldChanged(field))) {
         settings.notificationSettings = {
           newDishAlert: form.newDishAlert,
           priceChangeAlert: form.priceChangeAlert,
@@ -294,7 +303,7 @@ export function useSettings() {
     uni.showModal({
       title: '退出登录',
       content: '确定要退出登录吗？',
-      success: (res) => {
+      success: res => {
         if (res.confirm) {
           userStore.logoutAction();
           syncForm(null);

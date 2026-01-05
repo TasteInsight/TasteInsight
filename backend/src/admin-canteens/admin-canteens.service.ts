@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { DishSyncService } from '@/dish-sync-queue';
 import { CreateCanteenDto } from './dto/create-canteen.dto';
@@ -19,12 +23,19 @@ export class AdminCanteensService {
   async findAll(
     page: number = 1,
     pageSize: number = 20,
+    adminInfo?: any,
   ): Promise<CanteenListResponseDto> {
     const skip = (page - 1) * pageSize;
 
+    const where: any = {};
+    if (adminInfo?.canteenId) {
+      where.id = adminInfo.canteenId;
+    }
+
     const [total, canteens] = await Promise.all([
-      this.prisma.canteen.count(),
+      this.prisma.canteen.count({ where }),
       this.prisma.canteen.findMany({
+        where,
         skip,
         take: pageSize,
         orderBy: { createdAt: 'desc' },
@@ -57,7 +68,11 @@ export class AdminCanteensService {
     };
   }
 
-  async findOne(id: string): Promise<CanteenResponseDto> {
+  async findOne(id: string, adminInfo?: any): Promise<CanteenResponseDto> {
+    if (adminInfo?.canteenId && adminInfo.canteenId !== id) {
+      throw new ForbiddenException('权限不足');
+    }
+
     const canteen = await this.prisma.canteen.findUnique({
       where: { id },
       include: {
@@ -84,7 +99,12 @@ export class AdminCanteensService {
 
   async create(
     createCanteenDto: CreateCanteenDto,
+    adminInfo?: any,
   ): Promise<CanteenResponseDto> {
+    if (adminInfo?.canteenId) {
+      throw new ForbiddenException('您无权创建新食堂');
+    }
+
     const { windows, floors, ...canteenData } = createCanteenDto;
 
     // Note: floors are currently ignored as there is no field in Canteen model
@@ -130,7 +150,12 @@ export class AdminCanteensService {
   async update(
     id: string,
     updateCanteenDto: UpdateCanteenDto,
+    adminInfo?: any,
   ): Promise<CanteenResponseDto> {
+    if (adminInfo?.canteenId && adminInfo.canteenId !== id) {
+      throw new ForbiddenException('权限不足');
+    }
+
     const {
       windows,
       floors,
@@ -410,7 +435,11 @@ export class AdminCanteensService {
     };
   }
 
-  async remove(id: string): Promise<any> {
+  async remove(id: string, adminInfo?: any): Promise<any> {
+    if (adminInfo?.canteenId && adminInfo.canteenId !== id) {
+      throw new ForbiddenException('权限不足');
+    }
+
     const canteen = await this.prisma.canteen.findUnique({ where: { id } });
     if (!canteen) {
       throw new NotFoundException('食堂不存在');
