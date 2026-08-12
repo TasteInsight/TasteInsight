@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 describe('pages/canteen/composables/use-canteen-data.ts', () => {
   const MODULE_PATH = '@/pages/canteen/composables/use-canteen-data';
 
@@ -117,3 +115,4 @@ describe('pages/canteen/composables/use-canteen-data.ts', () => {
     expect(inst.activeFilter.value).toBe('');
   });
 });
+export {};

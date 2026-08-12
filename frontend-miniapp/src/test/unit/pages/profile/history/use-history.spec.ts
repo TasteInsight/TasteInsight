@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 describe('pages/profile/history/composables/use-history.ts', () => {
   const MODULE_PATH = '@/pages/profile/history/composables/use-history';
 
@@ -76,3 +74,4 @@ describe('pages/profile/history/composables/use-history.ts', () => {
     expect(getBrowseHistory).not.toHaveBeenCalled();
   });
 });
+export {};

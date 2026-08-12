@@ -9,6 +9,7 @@ const flushPromises = () => new Promise<void>((resolve) => queueMicrotask(() => 
 const routerMock = {
   push: vi.fn(),
   replace: vi.fn(),
+  resolve: vi.fn(() => ({ matched: [] })),
   currentRoute: ref({ query: {} as Record<string, unknown> }),
 }
 
@@ -29,6 +30,8 @@ describe('views/Login', () => {
   beforeEach(() => {
     routerMock.push.mockReset()
     routerMock.replace.mockReset()
+    routerMock.resolve.mockReset()
+    routerMock.resolve.mockImplementation(() => ({ matched: [] }))
     routerMock.currentRoute.value = { query: {} }
     authStoreMock.login = vi.fn(async () => ({ data: { permissions: [] } }))
     authStoreMock.hasPermission = vi.fn(() => true)
@@ -68,6 +71,10 @@ describe('views/Login', () => {
 
   it('login success uses query redirect first', async () => {
     routerMock.currentRoute.value = { query: { redirect: '/target' } }
+    routerMock.resolve.mockReturnValue({
+      matched: [{ meta: { requiresAuth: true, requiredPermission: 'news:view' } }],
+    } as any)
+    authStoreMock.hasPermission = vi.fn((permission: string) => permission === 'news:view')
     authStoreMock.login = vi.fn(async () => ({ data: { permissions: [] } }))
 
     const wrapper = mount(Login)
@@ -83,6 +90,10 @@ describe('views/Login', () => {
 
   it('login success uses sessionStorage redirect when query missing', async () => {
     sessionStorage.setItem('login_redirect', '/from-storage')
+    routerMock.resolve.mockReturnValue({
+      matched: [{ meta: { requiresAuth: true, requiredPermission: 'news:view' } }],
+    } as any)
+    authStoreMock.hasPermission = vi.fn((permission: string) => permission === 'news:view')
     authStoreMock.login = vi.fn(async () => ({ data: { permissions: [] } }))
 
     const wrapper = mount(Login)
@@ -97,8 +108,7 @@ describe('views/Login', () => {
   })
 
   it('login success picks first allowed route by permission priority', async () => {
-    // Return permissions from login - include news:view to jump to /news-manage
-    authStoreMock.login = vi.fn(async () => ({ data: { permissions: ['news:view'] } }))
+    authStoreMock.hasPermission = vi.fn((permission: string) => permission === 'dish:view')
 
     const wrapper = mount(Login)
     wrapper.vm.loginForm.username = 'u'
@@ -107,7 +117,37 @@ describe('views/Login', () => {
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
-    expect(routerMock.replace).toHaveBeenCalledWith('/news-manage')
+    expect(routerMock.replace).toHaveBeenCalledWith('/modify-dish')
+  })
+
+  it('login success sends a user with no permissions to /forbidden', async () => {
+    authStoreMock.hasPermission = vi.fn(() => false)
+
+    const wrapper = mount(Login)
+    wrapper.vm.loginForm.username = 'u'
+    wrapper.vm.loginForm.password = '123456'
+
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(routerMock.replace).toHaveBeenCalledWith('/forbidden')
+  })
+
+  it('falls back without an extra guard redirect when saved route is not permitted', async () => {
+    routerMock.currentRoute.value = { query: { redirect: '/single-add' } }
+    routerMock.resolve.mockReturnValue({
+      matched: [{ meta: { requiresAuth: true, requiredPermission: 'dish:create' } }],
+    } as any)
+    authStoreMock.hasPermission = vi.fn((permission: string) => permission === 'dish:view')
+
+    const wrapper = mount(Login)
+    wrapper.vm.loginForm.username = 'u'
+    wrapper.vm.loginForm.password = '123456'
+
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(routerMock.replace).toHaveBeenCalledWith('/modify-dish')
   })
 
   it('login failure shows error in errors and clearLoginError clears state', async () => {

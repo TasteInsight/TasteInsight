@@ -20,10 +20,15 @@ export const authApi = {
 
   /**
    * 刷新 Token
+   * @param refreshToken 当前 refresh token
    * @returns 新的 token 信息
    */
-  async refreshToken(): Promise<ApiResponse<{ token: TokenInfo }>> {
-    const response = await request.post<ApiResponse<{ token: TokenInfo }>>('/auth/refresh')
+  async refreshToken(refreshToken: string): Promise<ApiResponse<{ token: TokenInfo }>> {
+    const response = await request.post<ApiResponse<{ token: TokenInfo }>>(
+      '/auth/refresh',
+      undefined,
+      { headers: { Authorization: `Bearer ${refreshToken}` } },
+    )
     return response
   },
 }

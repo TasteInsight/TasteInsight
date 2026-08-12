@@ -103,6 +103,7 @@ export const reviewApi = {
       page?: number
       pageSize?: number
       status?: 'pending' | 'approved' | 'rejected'
+      targetType?: 'review' | 'comment'
     } = {},
   ): Promise<ApiResponse<PaginationResponse<Report>>> {
     return await request.get<ApiResponse<PaginationResponse<Report>>>('/admin/reports', { params })

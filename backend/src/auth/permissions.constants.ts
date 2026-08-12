@@ -81,6 +81,38 @@ export const ALL_PERMISSIONS: string[] = [
 ];
 
 /**
+ * Permissions required for a granted permission to be usable.
+ * The service layer validates the transitive closure before persisting grants.
+ */
+export const PERMISSION_DEPENDENCIES: Readonly<
+  Record<string, readonly string[]>
+> = {
+  'dish:create': ['canteen:view'],
+  'dish:edit': ['dish:view', 'canteen:view'],
+  'dish:delete': ['dish:view'],
+  'canteen:create': ['canteen:view'],
+  'canteen:edit': ['canteen:view'],
+  'canteen:delete': ['canteen:view'],
+  'review:approve': ['dish:view', 'canteen:view'],
+  'review:delete': ['review:approve'],
+  'comment:approve': ['dish:view', 'canteen:view'],
+  'comment:delete': ['comment:approve'],
+  'upload:approve': ['dish:view', 'canteen:view'],
+  'news:create': ['news:view'],
+  'news:edit': ['news:view'],
+  'news:publish': ['news:view'],
+  'news:revoke': ['news:view'],
+  'news:delete': ['news:view'],
+  'admin:create': ['admin:view', 'canteen:view'],
+  'admin:edit': ['admin:view'],
+  'admin:delete': ['admin:view'],
+  'config:edit': ['config:view'],
+  'experiment:create': ['experiment:view'],
+  'experiment:edit': ['experiment:view'],
+  'experiment:delete': ['experiment:view'],
+};
+
+/**
  * 权限类型
  */
 export type Permission = (typeof ALL_PERMISSIONS)[number];

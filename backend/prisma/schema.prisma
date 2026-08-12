@@ -560,7 +560,7 @@ model AIConfig {
 
 model RecommendationEvent {
   id        String @id @default(cuid())
-  eventType String // impression, click, favorite, review, dislike
+  eventType String // impression, click, favorite, review, like, dislike
   userId    String
   dishId    String
 

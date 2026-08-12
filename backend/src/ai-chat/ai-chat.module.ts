@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { PrismaService } from '@/prisma.service';
 import { AIChatController } from './ai-chat.controller';
 import { AIChatService } from './ai-chat.service';
 import { AIConfigService } from './services/ai-config.service';
@@ -38,7 +37,6 @@ import { ReviewsModule } from '@/reviews/reviews.module';
   ],
   controllers: [AIChatController],
   providers: [
-    PrismaService,
     AIChatService,
     AIConfigService,
     PromptSecurityService,

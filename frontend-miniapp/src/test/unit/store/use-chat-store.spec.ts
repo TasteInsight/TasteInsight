@@ -149,6 +149,29 @@ describe('useChatStore (unit)', () => {
     expect(store.aiLoading).toBe(false);
   });
 
+  test('sendChatMessage ignores completion after a terminal stream error', async () => {
+    const { createAISession, streamAIChat } = require('@/api/modules/ai');
+    const { useChatStore } = require('@/store/modules/use-chat-store');
+
+    (createAISession as jest.Mock).mockResolvedValue({ code: 200, data: { sessionId: 's-err' } });
+    (streamAIChat as jest.Mock).mockImplementation(
+      (_sessionId: string, _payload: any, callbacks: any) => {
+        callbacks.onError?.(new Error('provider failed'));
+        callbacks.onComplete?.();
+        return { close: jest.fn() };
+      }
+    );
+
+    const store = useChatStore();
+    await store.initSession('general_chat', true);
+    await store.sendChatMessage('check');
+
+    const lastAi = store.messages.filter((message: any) => message.type === 'ai').pop() as any;
+    expect(lastAi.content[0].text).toContain('provider failed');
+    expect(lastAi.isStreaming).toBe(false);
+    expect(mockSetStorageSync).not.toHaveBeenCalled();
+  });
+
   test('abortChat calls close and clears streaming state', async () => {
     const { createAISession, streamAIChat } = require('@/api/modules/ai');
     const { useChatStore } = require('@/store/modules/use-chat-store');

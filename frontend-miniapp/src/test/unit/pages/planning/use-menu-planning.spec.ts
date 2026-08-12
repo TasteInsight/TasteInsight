@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 describe('pages/planning/composables/use-menu-planning.ts', () => {
   const MODULE_PATH = '@/pages/planning/composables/use-menu-planning';
 
@@ -139,3 +137,4 @@ describe('pages/planning/composables/use-menu-planning.ts', () => {
     expect(inst.activeTab.value).toBe('history');
   });
 });
+export {};

@@ -3,6 +3,7 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
+  HttpException,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { MessageEvent } from '@nestjs/common';
@@ -13,6 +14,7 @@ import { OpenAIProviderService } from './services/ai-provider/openai-provider.se
 import { ToolRegistryService } from './tools/tool-registry.service';
 import { PromptBuilder } from './utils/prompt-builder.util';
 import { ContentBuilder } from './utils/content-builder.util';
+import { StreamingResponseFilter } from './utils/streaming-response-filter.util';
 import { CreateSessionDto, SessionData } from './dto/session.dto';
 import {
   ClientContextDto,
@@ -71,20 +73,31 @@ export class AIChatService {
       this.handleStreamChat(userId, sessionId, dto, subscriber).catch(
         (error) => {
           this.logger.error('Stream chat error:', error);
-          const errorMessage =
-            error instanceof Error
-              ? error.message
-              : typeof error === 'string'
-                ? error
-                : 'Unknown error';
           subscriber.next({
             type: 'error',
-            data: { error: errorMessage },
+            data: { error: this.getSafeStreamErrorMessage(error) },
           });
           subscriber.complete();
         },
       );
     });
+  }
+
+  private getSafeStreamErrorMessage(error: unknown): string {
+    if (error instanceof HttpException && error.getStatus() < 500) {
+      return error.message;
+    }
+
+    const safeProviderMessages = new Set([
+      '抱歉，我现在无法处理您的请求，请稍后再试。',
+      '抱歉，当前请求过于频繁，请稍后再试。',
+      '抱歉，响应时间过长，请稍后再试。',
+    ]);
+    if (error instanceof Error && safeProviderMessages.has(error.message)) {
+      return error.message;
+    }
+
+    return '抱歉，我现在无法处理您的请求，请稍后再试。';
   }
 
   private async handleStreamChat(
@@ -167,6 +180,7 @@ export class AIChatService {
     // Content to save
     const assistantContent: ContentSegment[] = [];
     let finalTextContent = '';
+    const streamingFilter = new StreamingResponseFilter();
 
     try {
       // Multi-turn conversation loop for tool calling
@@ -189,15 +203,14 @@ export class AIChatService {
           if (chunk.type === 'text' && chunk.content) {
             currentText += chunk.content;
             finalTextContent += chunk.content;
-            // Filter AI response for sensitive information
-            const filteredContent = this.promptSecurity.filterAIResponse(
-              chunk.content,
-            );
+            const filteredContent = streamingFilter.push(chunk.content);
             // Send text chunk to client
-            subscriber.next({
-              type: 'text_chunk',
-              data: filteredContent,
-            });
+            if (filteredContent) {
+              subscriber.next({
+                type: 'text_chunk',
+                data: filteredContent,
+              });
+            }
           } else if (chunk.type === 'tool_call' && chunk.toolCall) {
             hasToolCalls = true;
             const toolCall = chunk.toolCall;
@@ -348,9 +361,21 @@ export class AIChatService {
         );
       }
 
+      const remainingFilteredContent = streamingFilter.flush();
+      if (remainingFilteredContent) {
+        subscriber.next({
+          type: 'text_chunk',
+          data: remainingFilteredContent,
+        });
+      }
+
       // Add final text content if any (before components)
       if (finalTextContent) {
-        assistantContent.unshift(ContentBuilder.text(finalTextContent));
+        assistantContent.unshift(
+          ContentBuilder.text(
+            this.promptSecurity.filterAIResponse(finalTextContent),
+          ),
+        );
       }
 
       // Add warning message at the end if max turns reached
@@ -420,14 +445,27 @@ export class AIChatService {
       messages: items.map((msg) => ({
         role: msg.role as 'user' | 'assistant',
         timestamp: msg.createdAt.toISOString(),
-        content: (Array.isArray(msg.content)
-          ? msg.content
-          : []) as unknown as ContentSegment[],
+        content: this.filterStoredContent(
+          Array.isArray(msg.content)
+            ? (msg.content as unknown as ContentSegment[])
+            : [],
+        ),
       })),
       cursor: hasMore
         ? items[items.length - 1].createdAt.toISOString()
         : undefined,
     };
+  }
+
+  private filterStoredContent(content: ContentSegment[]): ContentSegment[] {
+    return content.map((segment) =>
+      segment.type === 'text'
+        ? {
+            ...segment,
+            data: this.promptSecurity.filterAIResponse(segment.data),
+          }
+        : segment,
+    );
   }
 
   /**

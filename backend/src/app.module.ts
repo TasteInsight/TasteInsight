@@ -1,8 +1,9 @@
 // src/app.module.ts
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { PrismaService } from './prisma.service';
+import { PrismaModule } from './prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { DishesModule } from './dishes/dishes.module';
 import { AdminDishesModule } from './admin-dishes/admin-dishes.module';
@@ -16,6 +17,8 @@ import { AdminAdminsModule } from './admin-admins/admin-admins.module';
 import { AdminNewsModule } from './admin-news/admin-news.module';
 import { AdminConfigModule } from './admin-config/admin-config.module';
 import { AdminRecommendationModule } from './admin-recommendation/admin-recommendation.module';
+import { AdminLogsModule } from './admin-logs/admin-logs.module';
+import { AdminOperationLogInterceptor } from './admin-logs/admin-operation-log.interceptor';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CanteensModule } from './canteens/canteens.module';
 import { ReviewsModule } from './reviews/reviews.module';
@@ -38,6 +41,7 @@ import { join } from 'path';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    PrismaModule,
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -70,6 +74,7 @@ import { join } from 'path';
     AdminNewsModule,
     AdminConfigModule,
     AdminRecommendationModule,
+    AdminLogsModule,
     RecommendationModule,
     EmbeddingQueueModule,
     AIChatModule,
@@ -80,6 +85,12 @@ import { join } from 'path';
     }),
   ],
   controllers: [AppController],
-  providers: [AppService, PrismaService],
+  providers: [
+    AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AdminOperationLogInterceptor,
+    },
+  ],
 })
 export class AppModule {}

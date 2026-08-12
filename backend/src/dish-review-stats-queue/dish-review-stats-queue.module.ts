@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
-import { PrismaService } from '@/prisma.service';
 import { DISH_REVIEW_STATS_QUEUE } from './dish-review-stats.constants';
 import { DishReviewStatsProcessor } from './dish-review-stats.processor';
 import { DishReviewStatsService } from './dish-review-stats.service';
@@ -20,7 +19,7 @@ import { DishReviewStatsService } from './dish-review-stats.service';
       },
     }),
   ],
-  providers: [DishReviewStatsProcessor, DishReviewStatsService, PrismaService],
+  providers: [DishReviewStatsProcessor, DishReviewStatsService],
   exports: [DishReviewStatsService],
 })
 export class DishReviewStatsQueueModule {}

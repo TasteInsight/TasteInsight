@@ -5,7 +5,6 @@ import { EMBEDDING_QUEUE } from './embedding-queue.constants';
 import { EmbeddingQueueProcessor } from './embedding-queue.processor';
 import { EmbeddingQueueService } from './embedding-queue.service';
 import { RecommendationModule } from '@/recommendation/recommendation.module';
-import { PrismaService } from '@/prisma.service';
 
 @Module({
   imports: [
@@ -24,7 +23,7 @@ import { PrismaService } from '@/prisma.service';
       },
     }),
   ],
-  providers: [EmbeddingQueueProcessor, EmbeddingQueueService, PrismaService],
+  providers: [EmbeddingQueueProcessor, EmbeddingQueueService],
   exports: [EmbeddingQueueService],
 })
 export class EmbeddingQueueModule {}

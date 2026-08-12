@@ -544,7 +544,8 @@
             type="button"
             class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
             @click="submitForm"
-            :disabled="isSubmitting || isLoading"
+            :disabled="isSubmitting || isLoading || !authStore.hasPermission('dish:edit')"
+            :title="!authStore.hasPermission('dish:edit') ? '无权限编辑菜品' : '保存修改'"
           >
             <span class="iconify mr-1" data-icon="carbon:save"></span>
             {{ isSubmitting ? '保存中...' : '保存修改' }}
@@ -616,6 +617,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { dishApi } from '@/api/modules/dish'
 import { canteenApi } from '@/api/modules/canteen'
 import { useDishStore } from '@/store/modules/use-dish-store'
+import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import { showAlert, showConfirm } from '@/composables/useModal'
 
@@ -628,6 +630,7 @@ export default {
     const router = useRouter()
     const route = useRoute()
     const dishStore = useDishStore()
+    const authStore = useAuthStore()
     const dishId = ref(route.params.id)
     const isLoading = ref(false)
     const isSubmitting = ref(false)
@@ -1012,6 +1015,11 @@ export default {
     }
 
     const submitForm = async () => {
+      if (!authStore.hasPermission('dish:edit')) {
+        showAlert('您没有权限编辑菜品')
+        return
+      }
+
       // 清除之前的错误
       errors.name = ''
       errors.canteenId = ''
@@ -1289,6 +1297,7 @@ export default {
       removeImage,
       setAsCover,
       submitForm,
+      authStore,
       goBack,
       handleDelete,
     }

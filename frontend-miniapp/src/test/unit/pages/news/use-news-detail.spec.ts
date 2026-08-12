@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 describe('pages/news/composables/use-news-detail.ts', () => {
   const MODULE_PATH = '@/pages/news/composables/use-news-detail';
 
@@ -70,3 +68,4 @@ describe('pages/news/composables/use-news-detail.ts', () => {
     expect((global as any).uni.showToast).toHaveBeenCalled();
   });
 });
+export {};

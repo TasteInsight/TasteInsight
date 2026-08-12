@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 describe('api/modules/admin.ts', () => {
   const MODULE_PATH = '@/api/modules/admin';
 
@@ -44,6 +42,26 @@ describe('api/modules/admin.ts', () => {
     });
 
     expect(res).toHaveProperty('code', 200);
+  });
+
+  test('adminGetDishes passes list filters as GET data', async () => {
+    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+    mockReq.mockResolvedValue({ code: 200, data: { items: [] } });
+    jest.doMock('@/utils/request', () => mockReq);
+
+    const { adminGetDishes } = require(MODULE_PATH);
+    const params = {
+      page: 2,
+      pageSize: 20,
+      canteenId: 'canteen-1',
+      status: 'online',
+      keyword: 'rice',
+    } as const;
+    await adminGetDishes(params);
+
+    expect(mockReq).toHaveBeenCalledWith(
+      expect.objectContaining({ url: '/admin/dishes', method: 'GET', data: params })
+    );
   });
 
   test('adminGetReports calls GET /admin/reports', async () => {
@@ -159,9 +177,14 @@ describe('api/modules/admin.ts', () => {
       adminRejectComment,
     } = require(MODULE_PATH);
 
-    await adminGetPendingReviews();
+    const reviewParams = { page: 2, pageSize: 15 };
+    await adminGetPendingReviews(reviewParams);
     expect(mockReq).toHaveBeenCalledWith(
-      expect.objectContaining({ url: '/admin/reviews/pending', method: 'GET' })
+      expect.objectContaining({
+        url: '/admin/reviews/pending',
+        method: 'GET',
+        data: reviewParams,
+      })
     );
 
     mockReq.mockClear();
@@ -183,9 +206,14 @@ describe('api/modules/admin.ts', () => {
 
     mockReq.mockClear();
     mockReq.mockResolvedValue({ code: 200, data: { items: [] } });
-    await adminGetPendingComments();
+    const commentParams = { page: 3, pageSize: 10 };
+    await adminGetPendingComments(commentParams);
     expect(mockReq).toHaveBeenCalledWith(
-      expect.objectContaining({ url: '/admin/comments/pending', method: 'GET' })
+      expect.objectContaining({
+        url: '/admin/comments/pending',
+        method: 'GET',
+        data: commentParams,
+      })
     );
 
     mockReq.mockClear();
@@ -219,9 +247,10 @@ describe('api/modules/admin.ts', () => {
       adminRejectUpload,
     } = require(MODULE_PATH);
 
-    await adminGetReports({ status: 'pending' });
+    const reportParams = { page: 2, pageSize: 15, status: 'pending' } as const;
+    await adminGetReports(reportParams);
     expect(mockReq).toHaveBeenCalledWith(
-      expect.objectContaining({ url: '/admin/reports', method: 'GET' })
+      expect.objectContaining({ url: '/admin/reports', method: 'GET', data: reportParams })
     );
 
     mockReq.mockClear();
@@ -236,9 +265,14 @@ describe('api/modules/admin.ts', () => {
     );
 
     mockReq.mockClear();
-    await adminGetPendingUploads();
+    const uploadParams = { page: 3, pageSize: 5 };
+    await adminGetPendingUploads(uploadParams);
     expect(mockReq).toHaveBeenCalledWith(
-      expect.objectContaining({ url: '/admin/dishes/uploads/pending', method: 'GET' })
+      expect.objectContaining({
+        url: '/admin/dishes/uploads',
+        method: 'GET',
+        data: { ...uploadParams, status: 'pending' },
+      })
     );
 
     mockReq.mockClear();
@@ -278,9 +312,10 @@ describe('api/modules/admin.ts', () => {
       updateWindow,
     } = require(MODULE_PATH);
 
-    await adminGetSubAdmins();
+    const subAdminParams = { page: 2, pageSize: 30 };
+    await adminGetSubAdmins(subAdminParams);
     expect(mockReq).toHaveBeenCalledWith(
-      expect.objectContaining({ url: '/admin/admins', method: 'GET' })
+      expect.objectContaining({ url: '/admin/admins', method: 'GET', data: subAdminParams })
     );
 
     mockReq.mockClear();
@@ -307,15 +342,24 @@ describe('api/modules/admin.ts', () => {
     );
 
     mockReq.mockClear();
-    await adminGetLogs();
+    const logParams = {
+      page: 2,
+      pageSize: 25,
+      adminId: 'sa1',
+      action: 'update',
+      startDate: '2026-08-01',
+      endDate: '2026-08-12',
+    };
+    await adminGetLogs(logParams);
     expect(mockReq).toHaveBeenCalledWith(
-      expect.objectContaining({ url: '/admin/logs', method: 'GET' })
+      expect.objectContaining({ url: '/admin/logs', method: 'GET', data: logParams })
     );
 
     mockReq.mockClear();
-    await adminGetNews();
+    const newsParams = { page: 4, pageSize: 8 };
+    await adminGetNews(newsParams);
     expect(mockReq).toHaveBeenCalledWith(
-      expect.objectContaining({ url: '/admin/news', method: 'GET' })
+      expect.objectContaining({ url: '/admin/news', method: 'GET', data: newsParams })
     );
 
     mockReq.mockClear();
@@ -356,3 +400,4 @@ describe('api/modules/admin.ts', () => {
     );
   });
 });
+export {};

@@ -13,6 +13,9 @@ const getAuthStore = () => {
   return authStore
 }
 
+const getStoredAuthStorage = (): Storage =>
+  sessionStorage.getItem('admin_token') ? sessionStorage : localStorage
+
 // 导航到登录页
 const navigateToLogin = () => {
   const currentPath = window.location.pathname + window.location.search
@@ -48,10 +51,15 @@ service.interceptors.request.use(
     // 添加认证 token
     // 优先从 auth store 获取 token，如果 store 未初始化则从 storage 获取
     const store = getAuthStore()
-    const token =
-      store?.token || localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token')
+    const token = store?.token || getStoredAuthStorage().getItem('admin_token')
 
-    if (token && config.headers) {
+    const hasAuthorization =
+      config.headers &&
+      (typeof config.headers.has === 'function'
+        ? config.headers.has('Authorization')
+        : Boolean(config.headers.Authorization || config.headers.authorization))
+
+    if (token && config.headers && !hasAuthorization) {
       config.headers.Authorization = `Bearer ${token}`
     }
 
@@ -98,8 +106,9 @@ service.interceptors.response.use(
       // 使用正则匹配包含 /auth/admin/login 或 /auth/wechat/login 的 URL
       const requestUrl = originalRequest.url || ''
       const isLoginRequest = /\/auth\/(admin|wechat)\/login/.test(requestUrl)
+      const isRefreshRequest = /\/auth\/refresh(?:\?|$)/.test(requestUrl)
 
-      if (status === 401 && !originalRequest._retry && !isLoginRequest) {
+      if (status === 401 && !originalRequest._retry && !isLoginRequest && !isRefreshRequest) {
         if (isRefreshing) {
           // 如果正在刷新 token，将请求放入队列
           return new Promise((resolve, reject) => {
@@ -119,9 +128,7 @@ service.interceptors.response.use(
 
         const store = getAuthStore()
         const refreshToken =
-          store?.refreshToken ||
-          localStorage.getItem('admin_refresh_token') ||
-          sessionStorage.getItem('admin_refresh_token')
+          store?.refreshToken || getStoredAuthStorage().getItem('admin_refresh_token')
 
         if (!refreshToken) {
           // 没有 refresh token，直接登出
@@ -140,25 +147,31 @@ service.interceptors.response.use(
         }
 
         try {
-          // 尝试刷新 token
-          const response = await service.post('/auth/refresh', { refreshToken })
-          const newToken = response.data?.token?.accessToken
+          // 使用独立请求刷新，避免刷新请求再次进入本实例的 401 队列
+          const response = await axios.post('/auth/refresh', undefined, {
+            baseURL: config.baseURL,
+            timeout: config.timeout,
+            headers: { Authorization: `Bearer ${refreshToken}` },
+          })
+          const tokenInfo = response.data?.data?.token
+          const newToken = tokenInfo?.accessToken
+          const newRefreshToken = tokenInfo?.refreshToken
 
-          if (newToken) {
-            // 更新 token
+          if (newToken && newRefreshToken) {
+            // 同步更新 store，并使用原有登录的存储位置原子轮换两个 token
             if (store) {
               store.token = newToken
-              if (localStorage.getItem('admin_token')) {
-                localStorage.setItem('admin_token', newToken)
-              } else {
-                sessionStorage.setItem('admin_token', newToken)
-              }
+              store.refreshToken = newRefreshToken
             }
+            const storage = getStoredAuthStorage()
+            storage.setItem('admin_token', newToken)
+            storage.setItem('admin_refresh_token', newRefreshToken)
 
             // 处理队列中的请求
             processQueue(null, newToken)
 
             // 重试原始请求
+            originalRequest.headers = originalRequest.headers || {}
             originalRequest.headers['Authorization'] = 'Bearer ' + newToken
             return service(originalRequest)
           } else {

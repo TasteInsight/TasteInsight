@@ -593,7 +593,6 @@ export interface DishUserCreateRequest {
   allergens?: string[];
   canteenId?: string;
   canteenName: string;
-  floor?: string;
   windowNumber?: string;
   windowName: string;
   availableMealTime: ('breakfast' | 'lunch' | 'dinner' | 'nightsnack')[];
@@ -757,13 +756,6 @@ export interface MealPlanRequest {
 }
 
 /**
- * AI推荐请求
- */
-export interface AIRecommendRequest {
-  userPreference?: Partial<UserPreference>;
-}
-
-/**
  * 推荐反馈请求
  */
 export interface RecommendFeedbackRequest {
@@ -924,13 +916,6 @@ export interface RecommendationItem {
   dish: Dish;
   reason: string;
   score: number;
-}
-
-/**
- * AI推荐响应数据
- */
-export interface AIRecommendData {
-  recommendations: RecommendationItem[];
 }
 
 /**

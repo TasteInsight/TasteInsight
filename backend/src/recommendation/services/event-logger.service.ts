@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import {
   RecommendationEventType,
@@ -13,6 +13,8 @@ import { RecommendationCacheService } from './cache.service';
  */
 @Injectable()
 export class EventLoggerService {
+  private readonly logger = new Logger(EventLoggerService.name);
+
   constructor(
     private prisma: PrismaService,
     private cacheService: RecommendationCacheService,
@@ -56,9 +58,9 @@ export class EventLoggerService {
 
     // 更新 Redis 计数器
     const today = new Date().toISOString().split('T')[0];
-    await Promise.all(
+    await Promise.allSettled(
       dishIds.map((dishId) =>
-        this.cacheService.incrementEventCount(
+        this.incrementEventCountSafely(
           RecommendationEventType.IMPRESSION,
           dishId,
           today,
@@ -90,13 +92,25 @@ export class EventLoggerService {
 
     // 更新 Redis 计数器
     const today = new Date().toISOString().split('T')[0];
-    await this.cacheService.incrementEventCount(
-      event.eventType,
-      event.dishId,
-      today,
-    );
+    await this.incrementEventCountSafely(event.eventType, event.dishId, today);
 
     return created.id;
+  }
+
+  private async incrementEventCountSafely(
+    eventType: string,
+    dishId: string,
+    date: string,
+  ): Promise<void> {
+    try {
+      await this.cacheService.incrementEventCount(eventType, dishId, date);
+    } catch (error) {
+      this.logger.warn(
+        `Failed to increment ${eventType} metric for dish ${dishId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 
   /**
@@ -143,8 +157,14 @@ export class EventLoggerService {
     },
   ): Promise<string> {
     // 收藏行为触发用户特征缓存失效
-    await this.cacheService.invalidateUserFeatures(userId);
-    await this.cacheService.invalidateUserRecommendations(userId);
+    await Promise.allSettled([
+      this.invalidateCacheSafely('user features', () =>
+        this.cacheService.invalidateUserFeatures(userId),
+      ),
+      this.invalidateCacheSafely('user recommendations', () =>
+        this.cacheService.invalidateUserRecommendations(userId),
+      ),
+    ]);
 
     return this.logEvent({
       eventType: RecommendationEventType.FAVORITE,
@@ -157,6 +177,21 @@ export class EventLoggerService {
       groupItemId: context.groupItemId,
       extra: context.extra,
     });
+  }
+
+  private async invalidateCacheSafely(
+    cacheName: string,
+    invalidate: () => Promise<void>,
+  ): Promise<void> {
+    try {
+      await invalidate();
+    } catch (error) {
+      this.logger.warn(
+        `Failed to invalidate ${cacheName}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 
   /**
@@ -186,6 +221,34 @@ export class EventLoggerService {
       experimentId: context.experimentId,
       groupItemId: context.groupItemId,
       extra: _extra,
+    });
+  }
+
+  /**
+   * 记录推荐正反馈。正反馈不等同于收藏，因此使用独立事件类型。
+   */
+  async logLike(
+    userId: string,
+    dishId: string,
+    context: {
+      scene: RecommendationScene;
+      requestId?: string;
+      position?: number;
+      experimentId?: string;
+      groupItemId?: string;
+      extra?: Record<string, any>;
+    },
+  ): Promise<string> {
+    return this.logEvent({
+      eventType: RecommendationEventType.LIKE,
+      userId,
+      dishId,
+      scene: context.scene,
+      requestId: context.requestId,
+      position: context.position,
+      experimentId: context.experimentId,
+      groupItemId: context.groupItemId,
+      extra: context.extra,
     });
   }
 
@@ -266,6 +329,7 @@ export class EventLoggerService {
     clicks: number;
     favorites: number;
     reviews: number;
+    likes: number;
     dislikes: number;
   }> {
     const startDate = new Date();
@@ -293,6 +357,7 @@ export class EventLoggerService {
       clicks: eventCounts[RecommendationEventType.CLICK] || 0,
       favorites: eventCounts[RecommendationEventType.FAVORITE] || 0,
       reviews: eventCounts[RecommendationEventType.REVIEW] || 0,
+      likes: eventCounts[RecommendationEventType.LIKE] || 0,
       dislikes: eventCounts[RecommendationEventType.DISLIKE] || 0,
     };
   }
@@ -373,9 +438,10 @@ export class EventLoggerService {
    */
   async getRequestEventChain(
     requestId: string,
+    userId: string,
   ): Promise<RecommendationEvent[]> {
     const events = await this.prisma.recommendationEvent.findMany({
-      where: { requestId },
+      where: { requestId, userId },
       orderBy: { createdAt: 'asc' },
     });
 
@@ -386,11 +452,11 @@ export class EventLoggerService {
         dishId: e.dishId,
         eventType: e.eventType as RecommendationEventType,
         scene: e.scene as RecommendationScene,
-        requestId: e.requestId || undefined,
-        position: e.position || undefined,
-        score: e.score || undefined,
-        experimentId: e.experimentId || undefined,
-        groupItemId: e.groupItemId || undefined,
+        requestId: e.requestId ?? undefined,
+        position: e.position ?? undefined,
+        score: e.score ?? undefined,
+        experimentId: e.experimentId ?? undefined,
+        groupItemId: e.groupItemId ?? undefined,
         extra: e.extra as Record<string, any> | undefined,
         timestamp: e.createdAt,
       }),

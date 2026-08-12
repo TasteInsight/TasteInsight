@@ -8,6 +8,9 @@ const mocks = vi.hoisted(() => ({
   },
   showAlertMock: vi.fn(() => Promise.resolve()),
   showConfirmMock: vi.fn(() => Promise.resolve(true)),
+  authStoreMock: {
+    hasPermission: vi.fn(() => true),
+  },
 }))
 
 vi.mock('@/api/modules/dish', () => ({
@@ -17,6 +20,10 @@ vi.mock('@/api/modules/dish', () => ({
 vi.mock('@/composables/useModal', () => ({
   showAlert: mocks.showAlertMock,
   showConfirm: mocks.showConfirmMock,
+}))
+
+vi.mock('@/store/modules/use-auth-store', () => ({
+  useAuthStore: () => mocks.authStoreMock,
 }))
 
 import BatchAdd from '../../src/views/BatchAdd.vue'
@@ -32,6 +39,7 @@ describe('views/BatchAdd', () => {
     vi.clearAllMocks()
     mocks.showAlertMock.mockResolvedValue(undefined)
     mocks.showConfirmMock.mockResolvedValue(true)
+    mocks.authStoreMock.hasPermission.mockReturnValue(true)
   })
 
   afterEach(() => {
@@ -243,6 +251,21 @@ describe('views/BatchAdd', () => {
     await wrapper.vm.submitBatchData()
     expect(mocks.showAlertMock).toHaveBeenCalledWith('boom')
 
+    wrapper.unmount()
+  })
+
+  it('submitBatchData rejects missing create permission before confirmation and import', async () => {
+    mocks.authStoreMock.hasPermission.mockReturnValue(false)
+    const wrapper = shallowMount(BatchAdd, {
+      global: { stubs: { Header: true } },
+    })
+    wrapper.vm.parsedData = [{ status: 'valid', name: 'n' }] as any
+
+    await wrapper.vm.submitBatchData()
+
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限创建菜品')
+    expect(mocks.showConfirmMock).not.toHaveBeenCalled()
+    expect(mocks.dishApiMock.confirmBatchImport).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 

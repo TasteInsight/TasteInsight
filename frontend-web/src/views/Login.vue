@@ -187,6 +187,7 @@
 import { ref, reactive, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/modules/use-auth-store'
+import { getFirstAccessibleRoute } from '@/router/access'
 
 export default {
   name: 'Login',
@@ -264,7 +265,7 @@ export default {
       loading.value = true
 
       try {
-        const loginResult = await authStore.login({
+        await authStore.login({
           username: loginForm.username,
           password: loginForm.password,
           remember: loginForm.remember,
@@ -275,33 +276,29 @@ export default {
 
         sessionStorage.removeItem('login_redirect')
         
-        let targetRoute = '/single-add'
-        
-        if (savedRedirect) {
-          targetRoute = savedRedirect
-        } else {
-          // 根据权限跳转到第一个有权限的页面
-          const routePriority = [
-            { path: '/single-add', permission: 'dish:view' },
-            { path: '/modify-dish', permission: 'dish:view' },
-            { path: '/review-dish', permission: 'upload:approve' },
-            { path: '/add-canteen', permission: 'canteen:view' },
-            { path: '/user-manage', permission: 'admin:view' },
-            { path: '/news-manage', permission: 'news:view' },
-            { path: '/report-manage', permission: 'report:handle' },
-          ]
-          
-          // 从 loginResult 获取权限
-          const userPermissions = loginResult?.data?.permissions || []
-          
-          for (const route of routePriority) {
-            // 只检查后端返回的权限列表
-            if (userPermissions.includes(route.permission)) {
-              targetRoute = route.path
-              break
+        const fallbackRoute = getFirstAccessibleRoute(authStore)
+        const canAccessSavedRedirect = (redirect) => {
+          if (!redirect) return false
+
+          const resolved = router.resolve(redirect)
+          if (resolved.matched.length === 0 || resolved.path === '/login') return false
+
+          return resolved.matched.every(({ meta }) => {
+            const requiredPermission = meta.requiredPermission
+            const requiredPermissions = meta.requiredPermissions
+
+            if (requiredPermission && !authStore.hasPermission(requiredPermission)) return false
+            if (
+              Array.isArray(requiredPermissions) &&
+              requiredPermissions.length > 0 &&
+              !requiredPermissions.some((permission) => authStore.hasPermission(permission))
+            ) {
+              return false
             }
-          }
+            return true
+          })
         }
+        const targetRoute = canAccessSavedRedirect(savedRedirect) ? savedRedirect : fallbackRoute
         
         // 使用 Vue Router 进行导航，保持 SPA 行为
         router.replace(targetRoute)

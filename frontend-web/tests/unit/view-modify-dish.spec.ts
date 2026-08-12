@@ -319,6 +319,29 @@ describe('views/ModifyDish', () => {
     wrapper.unmount()
   })
 
+  it('reloads server results when SearchBar emits update:modelValue', async () => {
+    vi.useFakeTimers()
+
+    const wrapper = shallowMount(ModifyDish, {
+      global: { stubs: { Header: true, SearchBar: true, Pagination: true } },
+    })
+    await flushPromises()
+    mocks.dishApiMock.getDishes.mockClear()
+
+    wrapper.findComponent({ name: 'SearchBar' }).vm.$emit('update:modelValue', 'rice')
+    await nextTick()
+    vi.advanceTimersByTime(500)
+    await flushPromises()
+
+    expect(wrapper.vm.searchQuery).toBe('rice')
+    expect(mocks.dishApiMock.getDishes).toHaveBeenCalledTimes(1)
+    expect(mocks.dishApiMock.getDishes).toHaveBeenLastCalledWith(
+      expect.objectContaining({ keyword: 'rice', page: 1 }),
+    )
+
+    wrapper.unmount()
+  })
+
   it('resetFilters clears state and reloads dishes', async () => {
     const wrapper = shallowMount(ModifyDish, {
       global: { stubs: { Header: true, SearchBar: true, Pagination: true } },

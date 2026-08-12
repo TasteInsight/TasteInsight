@@ -486,7 +486,8 @@
             type="button"
             class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
             @click="submitForm"
-            :disabled="isSubmitting"
+            :disabled="isSubmitting || !authStore.hasPermission('dish:create')"
+            :title="!authStore.hasPermission('dish:create') ? '无权限创建菜品' : '保存子项信息'"
           >
             <span class="iconify mr-1" data-icon="carbon:save"></span>
             {{ isSubmitting ? '提交中...' : '保存子项信息' }}
@@ -508,6 +509,7 @@
 import { reactive, ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useDishStore } from '@/store/modules/use-dish-store'
+import { useAuthStore } from '@/store/modules/use-auth-store'
 import { dishApi } from '@/api/modules/dish'
 import Header from '@/components/Layout/Header.vue'
 import { showAlert, showConfirm } from '@/composables/useModal'
@@ -521,6 +523,7 @@ export default {
     const router = useRouter()
     const route = useRoute()
     const dishStore = useDishStore()
+    const authStore = useAuthStore()
     const isSubmitting = ref(false)
 
     const parentDishId = ref(route.query.parentId || '')
@@ -646,6 +649,11 @@ export default {
     }
 
     const submitForm = async () => {
+      if (!authStore.hasPermission('dish:create')) {
+        showAlert('您没有权限创建菜品')
+        return
+      }
+
       // 清除之前的错误
       errors.name = ''
       errors.canteen = ''
@@ -888,6 +896,7 @@ export default {
       removeTag,
       handleImageUpload,
       submitForm,
+      authStore,
       goBack,
       removeImage,
       setAsCover,

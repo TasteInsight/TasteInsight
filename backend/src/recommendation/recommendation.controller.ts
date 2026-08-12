@@ -19,6 +19,7 @@ import {
   GetPersonalizedDishesDto,
   ClickEventDto,
   FavoriteEventDto,
+  LikeEventDto,
   ReviewEventDto,
   DislikeEventDto,
 } from './dto/recommendation-request.dto';
@@ -224,6 +225,32 @@ export class RecommendationController {
   }
 
   /**
+   * 记录推荐正反馈；与收藏行为保持独立语义。
+   */
+  @Post('events/like')
+  @HttpCode(HttpStatus.OK)
+  async logLikeEvent(@Body() dto: LikeEventDto, @Request() req) {
+    const userId = req.user.sub;
+    const eventId = await this.recommendationService.logLikeEvent(
+      userId,
+      dto.dishId,
+      {
+        scene: dto.scene || RecommendationScene.HOME,
+        requestId: dto.requestId,
+        position: dto.position,
+        experimentId: dto.experimentId,
+        groupItemId: dto.groupItemId,
+      },
+    );
+
+    return {
+      code: 200,
+      message: 'success',
+      data: { eventId },
+    };
+  }
+
+  /**
    * 记录负反馈事件
    *
    * 当用户表示不喜欢推荐的菜品时调用
@@ -261,8 +288,11 @@ export class RecommendationController {
    */
   @Get('events/chain/:requestId')
   @HttpCode(HttpStatus.OK)
-  async getEventChain(@Param('requestId') requestId: string) {
-    const events = await this.eventLogger.getRequestEventChain(requestId);
+  async getEventChain(@Param('requestId') requestId: string, @Request() req) {
+    const events = await this.eventLogger.getRequestEventChain(
+      requestId,
+      req.user.sub,
+    );
 
     return {
       code: 200,

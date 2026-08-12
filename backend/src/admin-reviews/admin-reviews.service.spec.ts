@@ -3,6 +3,8 @@ import { AdminReviewsService } from './admin-reviews.service';
 import { PrismaService } from '@/prisma.service';
 import { DishReviewStatsService } from '@/dish-review-stats-queue';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
+import { AdminReviewsController } from './admin-reviews.controller';
+import { PERMISSIONS_KEY } from '@/auth/decorators/permissions.decorator';
 
 const mockPrismaService = {
   review: {
@@ -303,5 +305,20 @@ describe('AdminReviewsService', () => {
         service.getReviewComments('r1', 1, 20, { canteenId: 'c2' }),
       ).rejects.toThrow(ForbiddenException);
     });
+  });
+});
+
+describe('AdminReviewsController permissions', () => {
+  it('allows review or comment deletion duties to read comments for deletion management', () => {
+    const permissions = Reflect.getMetadata(
+      PERMISSIONS_KEY,
+      AdminReviewsController.prototype.getReviewComments,
+    );
+
+    expect(permissions).toEqual([
+      'review:approve',
+      'review:delete',
+      'comment:delete',
+    ]);
   });
 });

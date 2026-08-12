@@ -123,7 +123,7 @@ describe('AdminAdminsService', () => {
       username: 'newadmin',
       password: 'Password123!',
       canteenId: 'canteen-1',
-      permissions: ['read', 'write'],
+      permissions: ['dish:view'],
     };
 
     it('should create a new admin', async () => {
@@ -137,13 +137,19 @@ describe('AdminAdminsService', () => {
         role: 'admin',
         canteenId: 'canteen-1',
         createdBy: 'creator-id',
-        permissions: [{ permission: 'read' }, { permission: 'write' }],
+        permissions: [{ permission: 'dish:view' }],
         canteen: { id: 'canteen-1', name: 'Test' },
         createdAt: new Date(),
         updatedAt: new Date(),
       });
 
-      const result = await service.create('creator-id', null, createDto);
+      const result = await service.create(
+        'creator-id',
+        'superadmin',
+        null,
+        [],
+        createDto,
+      );
 
       expect(result.code).toBe(200);
       expect(result.data.username).toBe('newadmin');
@@ -158,7 +164,7 @@ describe('AdminAdminsService', () => {
       prisma.admin.create.mockRejectedValue({ code: 'P2002' });
 
       await expect(
-        service.create('creator-id', null, createDto),
+        service.create('creator-id', 'superadmin', null, [], createDto),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -179,10 +185,16 @@ describe('AdminAdminsService', () => {
         updatedAt: new Date(),
       });
 
-      await service.create('creator-id', 'creator-canteen', {
-        ...createDto,
-        canteenId: 'creator-canteen',
-      });
+      await service.create(
+        'creator-id',
+        'admin',
+        'creator-canteen',
+        ['dish:view'],
+        {
+          ...createDto,
+          canteenId: 'creator-canteen',
+        },
+      );
 
       expect(prisma.admin.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -195,18 +207,53 @@ describe('AdminAdminsService', () => {
 
     it('should throw ForbiddenException if canteen admin creates admin without canteenId', async () => {
       await expect(
-        service.create('creator-id', 'creator-canteen', {
-          ...createDto,
-          canteenId: undefined,
-        } as any),
+        service.create(
+          'creator-id',
+          'admin',
+          'creator-canteen',
+          ['dish:view'],
+          {
+            ...createDto,
+            canteenId: undefined,
+          } as any,
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 
     it('should throw ForbiddenException if canteen admin creates admin for different canteen', async () => {
       await expect(
-        service.create('creator-id', 'creator-canteen', {
+        service.create(
+          'creator-id',
+          'admin',
+          'creator-canteen',
+          ['dish:view'],
+          {
+            ...createDto,
+            canteenId: 'other-canteen',
+          },
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects unknown, incomplete, and non-owned permission grants', async () => {
+      await expect(
+        service.create('creator-id', 'superadmin', null, [], {
           ...createDto,
-          canteenId: 'other-canteen',
+          permissions: ['unknown:permission'],
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        service.create('creator-id', 'superadmin', null, [], {
+          ...createDto,
+          permissions: ['comment:delete'],
+        }),
+      ).rejects.toThrow('所授权限缺少依赖');
+
+      await expect(
+        service.create('creator-id', 'admin', null, ['dish:view'], {
+          ...createDto,
+          permissions: ['news:view'],
         }),
       ).rejects.toThrow(ForbiddenException);
     });
@@ -294,8 +341,9 @@ describe('AdminAdminsService', () => {
         'superadmin-id',
         'superadmin',
         null,
+        [],
         'target-admin',
-        { permissions: ['read', 'write'] },
+        { permissions: ['dish:view'] },
       );
 
       expect(result.code).toBe(200);
@@ -305,9 +353,14 @@ describe('AdminAdminsService', () => {
       prisma.admin.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.updatePermissions('admin-1', 'admin', null, 'unknown', {
-          permissions: ['read'],
-        }),
+        service.updatePermissions(
+          'admin-1',
+          'admin',
+          null,
+          ['dish:view'],
+          'unknown',
+          { permissions: ['dish:view'] },
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -320,9 +373,14 @@ describe('AdminAdminsService', () => {
       });
 
       await expect(
-        service.updatePermissions('admin-1', 'admin', null, 'target-admin', {
-          permissions: ['read'],
-        }),
+        service.updatePermissions(
+          'admin-1',
+          'admin',
+          null,
+          ['dish:view'],
+          'target-admin',
+          { permissions: ['dish:view'] },
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -339,8 +397,9 @@ describe('AdminAdminsService', () => {
           'superadmin-id',
           'superadmin',
           null,
+          [],
           'target-admin',
-          { permissions: ['read'] },
+          { permissions: ['dish:view'] },
         ),
       ).rejects.toThrow(ForbiddenException);
     });
@@ -358,10 +417,43 @@ describe('AdminAdminsService', () => {
           'admin-1',
           'admin',
           'canteen-1',
+          ['dish:view'],
           'target-admin',
-          { permissions: ['read'], canteenId: null },
+          { permissions: ['dish:view'], canteenId: null },
         ),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects permission escalation and incomplete dependency updates', async () => {
+      prisma.admin.findUnique.mockResolvedValue({
+        id: 'target-admin',
+        role: 'admin',
+        createdBy: 'admin-1',
+        canteenId: null,
+      });
+
+      await expect(
+        service.updatePermissions(
+          'admin-1',
+          'admin',
+          null,
+          ['admin:edit', 'dish:view'],
+          'target-admin',
+          { permissions: ['news:view'] },
+        ),
+      ).rejects.toThrow(ForbiddenException);
+
+      await expect(
+        service.updatePermissions(
+          'admin-1',
+          'admin',
+          null,
+          ['admin:edit', 'comment:delete'],
+          'target-admin',
+          { permissions: ['comment:delete'] },
+        ),
+      ).rejects.toThrow('所授权限缺少依赖');
+      expect(prisma.$transaction).not.toHaveBeenCalled();
     });
   });
 

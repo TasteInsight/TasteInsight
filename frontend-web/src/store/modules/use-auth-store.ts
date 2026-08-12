@@ -3,19 +3,62 @@ import { ref, computed } from 'vue'
 import { authApi } from '@/api/modules/auth'
 import type { LoginCredentials, Admin } from '@/types/api'
 
+const parseStoredValue = <T>(
+  storage: Storage,
+  key: string,
+  fallback: T,
+  isValid: (value: unknown) => value is T,
+): T => {
+  const stored = storage.getItem(key)
+  if (!stored) return fallback
+
+  try {
+    const parsed: unknown = JSON.parse(stored)
+    if (isValid(parsed)) return parsed
+  } catch {
+    // 损坏的持久化值按未登录/无权限处理
+  }
+  storage.removeItem(key)
+
+  return fallback
+}
+
+const AUTH_STORAGE_KEYS = [
+  'admin_token',
+  'admin_refresh_token',
+  'admin_user',
+  'admin_permissions',
+] as const
+
+const clearStoredAuth = () => {
+  for (const storage of [localStorage, sessionStorage]) {
+    AUTH_STORAGE_KEYS.forEach((key) => storage.removeItem(key))
+  }
+}
+
 export const useAuthStore = defineStore('auth', () => {
-  const token = ref<string | null>(
-    localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token'),
-  )
-  const refreshToken = ref<string | null>(
-    localStorage.getItem('admin_refresh_token') || sessionStorage.getItem('admin_refresh_token'),
-  )
+  // A session login is newer than remembered credentials left by an older app version.
+  // Read the whole auth bundle from one storage to avoid mixing two identities.
+  const authStorage = sessionStorage.getItem('admin_token') ? sessionStorage : localStorage
+  if (authStorage === sessionStorage) {
+    AUTH_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key))
+  }
+  const token = ref<string | null>(authStorage.getItem('admin_token'))
+  const refreshToken = ref<string | null>(authStorage.getItem('admin_refresh_token'))
 
   // 初始化用户信息
-  const getStoredUser = (): Admin | null => {
-    const stored = localStorage.getItem('admin_user') || sessionStorage.getItem('admin_user')
-    return stored ? JSON.parse(stored) : null
-  }
+  const getStoredUser = (): Admin | null =>
+    parseStoredValue<Admin | null>(
+      authStorage,
+      'admin_user',
+      null,
+      (value): value is Admin =>
+        typeof value === 'object' &&
+        value !== null &&
+        !Array.isArray(value) &&
+        typeof (value as Partial<Admin>).username === 'string' &&
+        typeof (value as Partial<Admin>).role === 'string',
+    )
 
   const user = ref<Admin | null>(getStoredUser())
   const isAuthenticated = ref<boolean>(!!token.value)
@@ -23,13 +66,16 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoggedIn = computed(() => !!token.value && isAuthenticated.value)
 
   // 获取权限列表
-  const getPermissions = (): string[] => {
-    const stored =
-      localStorage.getItem('admin_permissions') || sessionStorage.getItem('admin_permissions')
-    return stored ? JSON.parse(stored) : []
-  }
+  const getPermissions = (): string[] =>
+    parseStoredValue<string[]>(
+      authStorage,
+      'admin_permissions',
+      [],
+      (value): value is string[] =>
+        Array.isArray(value) && value.every((permission) => typeof permission === 'string'),
+    )
 
-  const permissions = computed(() => getPermissions())
+  const permissions = ref<string[]>(getPermissions())
 
   // 检查是否拥有特定权限
   const hasPermission = (permission: string): boolean => {
@@ -64,9 +110,11 @@ export const useAuthStore = defineStore('auth', () => {
         token.value = tokenInfo.accessToken
         refreshToken.value = tokenInfo.refreshToken
         user.value = admin
+        permissions.value = userPermissions
         isAuthenticated.value = true
 
         // 根据 remember 选项决定存储位置
+        clearStoredAuth()
         if (credentials.remember) {
           localStorage.setItem('admin_token', tokenInfo.accessToken)
           localStorage.setItem('admin_refresh_token', tokenInfo.refreshToken)
@@ -94,7 +142,9 @@ export const useAuthStore = defineStore('auth', () => {
       token.value = null
       refreshToken.value = null
       user.value = null
+      permissions.value = []
       isAuthenticated.value = false
+      clearStoredAuth()
 
       throw error
     }
@@ -104,17 +154,10 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
     refreshToken.value = null
     user.value = null
+    permissions.value = []
     isAuthenticated.value = false
 
-    // 清除所有存储的认证信息
-    localStorage.removeItem('admin_token')
-    localStorage.removeItem('admin_refresh_token')
-    localStorage.removeItem('admin_user')
-    localStorage.removeItem('admin_permissions')
-    sessionStorage.removeItem('admin_token')
-    sessionStorage.removeItem('admin_refresh_token')
-    sessionStorage.removeItem('admin_user')
-    sessionStorage.removeItem('admin_permissions')
+    clearStoredAuth()
   }
 
   return {

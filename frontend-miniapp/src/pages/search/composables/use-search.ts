@@ -31,6 +31,7 @@ export function useSearch() {
   const error = ref('');
   const hasSearched = ref(false);
   const requestToken = ref(0);
+  const submittedKeyword = ref('');
 
   // 分页状态
   const page = ref(1);
@@ -56,6 +57,7 @@ export function useSearch() {
       return;
     }
 
+    const token = ++requestToken.value;
     loading.value = true;
     error.value = '';
     hasSearched.value = true;
@@ -70,8 +72,8 @@ export function useSearch() {
     hasMore.value = true;
 
     try {
-      const token = ++requestToken.value;
       const searchTerm = keyword.value.trim();
+      submittedKeyword.value = searchTerm;
       const normalized = searchTerm.toLowerCase();
 
       // 1) 先尝试匹配食堂
@@ -108,6 +110,7 @@ export function useSearch() {
           windows: [],
           dishes: [],
         };
+        hasMore.value = false;
         return;
       }
 
@@ -136,6 +139,7 @@ export function useSearch() {
         error.value = response.message || '搜索失败';
       }
     } catch (err: any) {
+      if (token !== requestToken.value) return;
       console.error('搜索失败:', err);
       error.value = err.message || '搜索失败，请稍后重试';
       searchResults.value = {
@@ -144,7 +148,9 @@ export function useSearch() {
         dishes: [],
       };
     } finally {
-      loading.value = false;
+      if (token === requestToken.value) {
+        loading.value = false;
+      }
     }
   };
 
@@ -161,8 +167,7 @@ export function useSearch() {
     try {
       const response = await getDishes({
         filter: {},
-        isSuggestion: false,
-        search: { keyword: keyword.value.trim() },
+        search: { keyword: submittedKeyword.value },
         sort: {},
         pagination: { page: nextPage, pageSize: pageSize.value },
       });
@@ -187,7 +192,9 @@ export function useSearch() {
    * 清空搜索结果
    */
   const clearSearch = () => {
+    requestToken.value++;
     keyword.value = '';
+    submittedKeyword.value = '';
     searchResults.value = {
       canteens: [],
       windows: [],
@@ -195,6 +202,8 @@ export function useSearch() {
     };
     error.value = '';
     hasSearched.value = false;
+    loading.value = false;
+    loadingMore.value = false;
     page.value = 1;
     hasMore.value = true;
   };

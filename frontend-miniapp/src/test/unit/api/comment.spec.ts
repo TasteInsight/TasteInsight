@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 describe('api/modules/comment.ts', () => {
   const MODULE_PATH = '@/api/modules/comment';
 
@@ -74,3 +72,4 @@ describe('api/modules/comment.ts', () => {
     });
   });
 });
+export {};

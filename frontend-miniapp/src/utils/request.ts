@@ -115,10 +115,10 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
     }
 
     // --- 阶段二: 发起 uniapp 网络请求 ---
-    // 打印请求信息以便调试（可在开发时查看实际请求 URL）
+    // 仅记录方法和 URL，避免密码、授权码等请求数据进入控制台。
     const fullUrl = config.baseUrl + options.url;
     // eslint-disable-next-line no-console
-    console.log('[request] ->', options.method || 'GET', fullUrl, options.data || {});
+    console.log('[request] ->', options.method || 'GET', fullUrl);
 
     uni.request({
       // 1. 基础配置
@@ -145,9 +145,9 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
         // 类型断言：告诉 TypeScript 响应数据的结构
         const responseData = res.data as ApiResponse<T>;
 
-        // 调试输出响应（开发时可用）
+        // 不打印响应体，避免 access/refresh token 等敏感数据泄露。
         // eslint-disable-next-line no-console
-        console.log('[response] <-', statusCode, responseData, fullUrl);
+        console.log('[response] <-', statusCode, fullUrl);
 
         // 2.1 HTTP 状态码判断
         if (statusCode >= 200 && statusCode < 300) {
@@ -172,6 +172,13 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
             return;
           }
 
+          // 重试后的请求仍然 401 时直接退出，不能再发起一次刷新。
+          if ((options as any)._retry) {
+            handleHttpError(statusCode, responseData);
+            reject(buildUserFriendlyError(new Error(`HTTP ${statusCode}`)));
+            return;
+          }
+
           // 检查是否已有刷新操作在进行
           if (!refreshTokenPromise) {
             // 没有正在进行的刷新，发起新的刷新操作
@@ -179,14 +186,6 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
               // 无论成功还是失败，都清除缓存的promise
               refreshTokenPromise = null;
             });
-          }
-
-          // 如果当前请求已经重试过一次，则不再尝试刷新并重试
-          if ((options as any)._retry) {
-            // 已经重试过，直接登出并返回错误
-            handleHttpError(statusCode, responseData);
-            reject(buildUserFriendlyError(new Error(`HTTP ${statusCode}`)));
-            return;
           }
 
           // 等待刷新完成，然后重试原请求，确保重试时不会携带旧 Authorization
@@ -234,9 +233,9 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
  * @param {number} statusCode - HTTP 状态码
  * @param {any} responseData - 响应数据
  */
-function handleHttpError(statusCode: number, responseData: any): void {
-  // 控制台输出真实错误信息（HTTP 状态码 + 响应体），不要输出用户友好文案
-  console.error(`[request] HTTP ${statusCode} error:`, responseData);
+function handleHttpError(statusCode: number, _responseData: any): void {
+  // 错误响应体可能含内部信息或凭据，因此只记录状态码。
+  console.error(`[request] HTTP ${statusCode} error`);
 
   let message = '';
   switch (statusCode) {

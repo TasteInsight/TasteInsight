@@ -509,8 +509,14 @@ describe('views/NewsManage', () => {
 
     // pagination v-if
     wrapper.vm.pagination.totalPages = 2
+    wrapper.vm.pagination.total = 25
+    wrapper.vm.pagination.pageSize = 10
     await nextTick()
-    expect(wrapper.findComponent({ name: 'Pagination' }).exists()).toBe(true)
+    const pagination = wrapper.findComponent({ name: 'Pagination' })
+    expect(pagination.exists()).toBe(true)
+    expect(pagination.props('total')).toBe(25)
+    expect(pagination.props('pageSize')).toBe(10)
+    expect(pagination.attributes('total-pages')).toBeUndefined()
 
     // create modal open + click overlay to close (covers @click.self)
     wrapper.vm.openCreateModal()

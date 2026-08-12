@@ -655,13 +655,12 @@ export interface GetNewsParams extends PaginationParams {
 export interface OperationLog {
   id: string
   adminId: string
-  adminName: string
+  adminUsername: string
   action: string
-  resource: string
-  resourceId?: string
-  details?: string
-  ipAddress?: string
-  userAgent?: string
+  targetType: string
+  targetId: string
+  details?: Record<string, unknown> | null
+  result: 'success' | 'failure'
   createdAt: string
 }
 

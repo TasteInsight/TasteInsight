@@ -11,6 +11,7 @@
       <div class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
         <div class="flex items-center space-x-4">
           <button
+            v-if="canReview"
             class="px-6 py-2 rounded-lg font-medium transition duration-200"
             :class="
               activeTab === 'reviews'
@@ -23,6 +24,7 @@
             评价审核
           </button>
           <button
+            v-if="canComment"
             class="px-6 py-2 rounded-lg font-medium transition duration-200"
             :class="
               activeTab === 'comments'
@@ -749,6 +751,8 @@ export default defineComponent({
   },
   setup() {
     const authStore = useAuthStore()
+    const canReview = authStore.hasPermission('review:approve')
+    const canComment = authStore.hasPermission('comment:approve')
     
     // 默认状态定义
     const defaultState = {
@@ -759,7 +763,14 @@ export default defineComponent({
     
     // 从缓存恢复状态
     const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
-    const activeTab = ref<'reviews' | 'comments'>(restoredState.activeTab)
+    const restoredTab = restoredState.activeTab as 'reviews' | 'comments'
+    const activeTab = ref<'reviews' | 'comments'>(
+      (restoredTab === 'reviews' && canReview) || (restoredTab === 'comments' && canComment)
+        ? restoredTab
+        : canReview
+          ? 'reviews'
+          : 'comments',
+    )
     
     // 评价相关
     const reviews = ref<PendingReview[]>([])
@@ -826,6 +837,7 @@ export default defineComponent({
     }
 
     const switchTab = (tab: 'reviews' | 'comments') => {
+      if ((tab === 'reviews' && !canReview) || (tab === 'comments' && !canComment)) return
       activeTab.value = tab
       saveState() // 保存状态
       if (tab === 'reviews') {
@@ -1095,7 +1107,11 @@ export default defineComponent({
     }
 
     onMounted(() => {
-      loadReviews()
+      if (activeTab.value === 'reviews') {
+        loadReviews()
+      } else {
+        loadComments()
+      }
       window.addEventListener('keydown', handleKeyDown)
     })
 
@@ -1114,6 +1130,8 @@ export default defineComponent({
 
     return {
       activeTab,
+      canReview,
+      canComment,
       reviews,
       isLoadingReviews,
       currentPageReviews,
@@ -1158,4 +1176,3 @@ export default defineComponent({
   },
 })
 </script>
-

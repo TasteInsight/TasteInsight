@@ -34,6 +34,14 @@ export class AdminAuthGuard implements CanActivate {
         secret: this.configService.get<string>('JWT_SECRET'),
       });
 
+      if (
+        typeof payload.sub !== 'string' ||
+        payload.sub.length === 0 ||
+        payload.tokenUse !== 'access'
+      ) {
+        throw new UnauthorizedException();
+      }
+
       // 检查是否为管理员类型的token
       if (payload.type !== 'admin') {
         throw new ForbiddenException('权限不足');

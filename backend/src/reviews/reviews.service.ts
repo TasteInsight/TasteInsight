@@ -100,8 +100,8 @@ export class ReviewsService {
       },
     });
 
-    // 无论创建还是更新，如果自动审核通过，都需要重新计算统计
-    if (autoApprove) {
+    // 新评价计入统计，或旧评价从 approved 集合移出时，都需要重新计算
+    if (autoApprove || existingReview?.status === 'approved') {
       await this.dishReviewStatsService.recomputeDishStats(
         createReviewDto.dishId,
       );

@@ -107,6 +107,9 @@ async function flushAll() {
 describe('views/CommentManage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.authStoreMock.hasPermission.mockImplementation((permission: string) =>
+      ['review:delete', 'comment:delete', 'dish:view', 'canteen:view'].includes(permission),
+    )
 
     mocks.canteenApiMock.getCanteens.mockResolvedValue({
       code: 200,
@@ -187,6 +190,20 @@ describe('views/CommentManage', () => {
     mocks.reviewApiMock.deleteComment.mockResolvedValue({ code: 200 })
 
     vi.spyOn(window, 'open').mockImplementation(() => null)
+  })
+
+  it('does not request canteen data when the optional canteen filter is unavailable', async () => {
+    mocks.authStoreMock.hasPermission.mockImplementation((permission: string) =>
+      ['comment:delete', 'dish:view'].includes(permission),
+    )
+
+    const wrapper = shallowMount(CommentManage)
+    await flushAll()
+
+    expect(mocks.canteenApiMock.getCanteens).not.toHaveBeenCalled()
+    expect(mocks.dishApiMock.getDishes).toHaveBeenCalled()
+    expect(wrapper.vm.canViewCanteens).toBe(false)
+    wrapper.unmount()
   })
 
   afterEach(() => {

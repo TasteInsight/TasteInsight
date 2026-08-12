@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 describe('api/modules/upload.ts - uploadImage', () => {
   const MODULE_PATH = '@/api/modules/upload';
 
@@ -40,6 +38,42 @@ describe('api/modules/upload.ts - uploadImage', () => {
     const { uploadImage } = require(MODULE_PATH);
     const res = await uploadImage('fp');
     expect(res).toEqual({ url: 'http://a', filename: 'f.jpg' });
+  });
+
+  test('does not log upload response data', async () => {
+    const responseSecret = 'signed-upload-response-do-not-log';
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.doMock('@/mock/mock-adapter', () => ({ USE_MOCK: false }));
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok' }),
+    }));
+
+    (global as any).uni = {
+      uploadFile: ({ success }: any) => {
+        success({
+          statusCode: 200,
+          data: JSON.stringify({
+            code: 200,
+            data: { url: responseSecret, filename: 'f.jpg' },
+          }),
+        });
+      },
+    };
+
+    try {
+      const { uploadImage } = require(MODULE_PATH);
+      await uploadImage('fp');
+
+      const serializedConsoleCalls = JSON.stringify([
+        ...logSpy.mock.calls,
+        ...errorSpy.mock.calls,
+      ]);
+      expect(serializedConsoleCalls).not.toContain(responseSecret);
+    } finally {
+      logSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
   });
 
   test('non-200 statusCode rejects', async () => {
@@ -106,3 +140,4 @@ describe('api/modules/upload.ts - uploadImage', () => {
     await expect(uploadImage('fp')).rejects.toThrow('network');
   });
 });
+export {};

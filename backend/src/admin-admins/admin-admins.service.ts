@@ -17,10 +17,74 @@ import {
   AdminDto,
 } from './dto/admin-response.dto';
 import * as bcrypt from 'bcrypt';
+import {
+  ALL_PERMISSIONS,
+  PERMISSION_DEPENDENCIES,
+} from '@/auth/permissions.constants';
+
+const ALL_PERMISSION_SET = new Set(ALL_PERMISSIONS);
 
 @Injectable()
 export class AdminAdminsService {
   constructor(private prisma: PrismaService) {}
+
+  private validatePermissionGrant(
+    operatorRole: string,
+    operatorPermissions: readonly string[],
+    requestedPermissions: readonly string[],
+  ): void {
+    if (requestedPermissions.length === 0) {
+      throw new BadRequestException('权限列表不能为空');
+    }
+
+    const duplicatePermissions = requestedPermissions.filter(
+      (permission, index) => requestedPermissions.indexOf(permission) !== index,
+    );
+    if (duplicatePermissions.length > 0) {
+      throw new BadRequestException('权限列表包含重复项');
+    }
+
+    const unknownPermissions = requestedPermissions.filter(
+      (permission) => !ALL_PERMISSION_SET.has(permission),
+    );
+    if (unknownPermissions.length > 0) {
+      throw new BadRequestException(
+        `包含未知权限：${unknownPermissions.join(', ')}`,
+      );
+    }
+
+    if (operatorRole !== 'superadmin') {
+      const operatorPermissionSet = new Set(operatorPermissions);
+      const unauthorizedPermissions = requestedPermissions.filter(
+        (permission) => !operatorPermissionSet.has(permission),
+      );
+      if (unauthorizedPermissions.length > 0) {
+        throw new ForbiddenException(
+          `不能授予您未拥有的权限：${unauthorizedPermissions.join(', ')}`,
+        );
+      }
+    }
+
+    const requestedPermissionSet = new Set(requestedPermissions);
+    const requiredPermissions = new Set<string>();
+    const visit = (permission: string) => {
+      for (const dependency of PERMISSION_DEPENDENCIES[permission] ?? []) {
+        if (requiredPermissions.has(dependency)) continue;
+        requiredPermissions.add(dependency);
+        visit(dependency);
+      }
+    };
+    requestedPermissions.forEach(visit);
+
+    const missingDependencies = [...requiredPermissions].filter(
+      (permission) => !requestedPermissionSet.has(permission),
+    );
+    if (missingDependencies.length > 0) {
+      throw new BadRequestException(
+        `所授权限缺少依赖：${missingDependencies.join(', ')}`,
+      );
+    }
+  }
 
   /**
    * 验证食堂ID是否存在（如果提供）
@@ -102,10 +166,18 @@ export class AdminAdminsService {
    */
   async create(
     creatorId: string,
+    creatorRole: string,
     creatorCanteenId: string | null,
+    creatorPermissions: readonly string[],
     createAdminDto: CreateAdminDto,
   ): Promise<AdminResponseDto> {
     const { username, password, canteenId, permissions, role } = createAdminDto;
+
+    this.validatePermissionGrant(
+      creatorRole,
+      creatorPermissions,
+      permissions,
+    );
 
     // 食堂管理员权限校验：
     // 1. 食堂管理员不能创建全校管理员（canteenId 为 null 或 undefined）
@@ -218,6 +290,7 @@ export class AdminAdminsService {
     operatorId: string,
     operatorRole: string,
     operatorCanteenId: string | null,
+    operatorPermissions: readonly string[],
     targetId: string,
     updatePermissionsDto: UpdatePermissionsDto,
   ): Promise<{ code: number; message: string; data: null }> {
@@ -253,6 +326,12 @@ export class AdminAdminsService {
         throw new ForbiddenException('您只能管理所属食堂的管理员');
       }
     }
+
+    this.validatePermissionGrant(
+      operatorRole,
+      operatorPermissions,
+      permissions,
+    );
 
     // 验证食堂存在性
     await this.validateCanteenId(canteenId);

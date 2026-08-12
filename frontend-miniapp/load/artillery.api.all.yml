@@ -90,17 +90,20 @@ scenarios:
           headers:
             Authorization: "Bearer {{ token }}"
 
-      # AI（注意：chat/stream 不建议压测为 HTTP 普通请求；这里压 suggestions/history/recommend）
+      # AI（chat/stream 不适合作为普通 HTTP 请求压测）
       - get:
           url: "/ai/suggestions"
           headers:
             Authorization: "Bearer {{ token }}"
       - post:
-          url: "/ai/recommend"
+          url: "/recommend"
           headers:
             Authorization: "Bearer {{ token }}"
           json:
-            userPreference: {}
+            filter: {}
+            pagination:
+              page: 1
+              pageSize: 10
       - post:
           url: "/ai/sessions"
           headers:

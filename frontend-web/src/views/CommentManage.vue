@@ -34,7 +34,10 @@
           </div>
 
           <!-- 筛选区域 -->
-          <div class="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-100 space-y-3">
+          <div
+            v-if="canViewCanteens"
+            class="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-100 space-y-3"
+          >
             <div class="flex items-center gap-3">
               <span class="text-sm font-medium text-gray-600 whitespace-nowrap">所属食堂</span>
               <div class="relative flex-1">
@@ -415,6 +418,7 @@ export default defineComponent({
   },
   setup() {
     const authStore = useAuthStore()
+    const canViewCanteens = authStore.hasPermission('canteen:view')
 
     // 默认状态定义
     const defaultState = {
@@ -439,8 +443,8 @@ export default defineComponent({
     const selectedDishId = ref<string | null>(restoredState.selectedDishId)
 
     // 筛选相关
-    const selectedCanteenId = ref(restoredState.selectedCanteenId)
-    const selectedWindowId = ref(restoredState.selectedWindowId)
+    const selectedCanteenId = ref(canViewCanteens ? restoredState.selectedCanteenId : '')
+    const selectedWindowId = ref(canViewCanteens ? restoredState.selectedWindowId : '')
     const canteens = ref<any[]>([])
     const windows = ref<any[]>([])
 
@@ -878,7 +882,9 @@ export default defineComponent({
           })
       }
       
-      loadCanteens()
+      if (canViewCanteens) {
+        loadCanteens()
+      }
       loadDishes()
       document.addEventListener('keydown', handleKeyDown)
       
@@ -905,7 +911,9 @@ export default defineComponent({
           })
       }
       
-      loadCanteens()
+      if (canViewCanteens) {
+        loadCanteens()
+      }
       loadDishes()
       if (selectedDishId.value) {
         loadReviews().then(() => {
@@ -920,6 +928,7 @@ export default defineComponent({
 
     return {
       // 菜品列表
+      canViewCanteens,
       dishes,
       searchQuery,
       dishPage,
@@ -975,4 +984,3 @@ export default defineComponent({
   },
 })
 </script>
-

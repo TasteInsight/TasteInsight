@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DishesService } from './dishes.service';
 import { PrismaService } from '@/prisma.service';
-import { RecommendationService } from '@/recommendation/recommendation.service';
 import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { DishDto } from './dto/dish.dto';
@@ -34,10 +33,6 @@ const mockPrismaService = {
   },
 };
 
-const mockRecommendationService = {
-  getRecommendations: jest.fn(),
-};
-
 const mockEmbeddingQueueService = {
   enqueueRefreshUser: jest.fn(),
 };
@@ -45,7 +40,6 @@ const mockEmbeddingQueueService = {
 describe('DishesService', () => {
   let service: DishesService;
   let prisma: typeof mockPrismaService;
-  let recommendationService: typeof mockRecommendationService;
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -54,14 +48,12 @@ describe('DishesService', () => {
       providers: [
         DishesService,
         { provide: PrismaService, useValue: mockPrismaService },
-        { provide: RecommendationService, useValue: mockRecommendationService },
         { provide: EmbeddingQueueService, useValue: mockEmbeddingQueueService },
       ],
     }).compile();
 
     service = module.get<DishesService>(DishesService);
     prisma = mockPrismaService;
-    recommendationService = mockRecommendationService;
   });
 
   it('should be defined', () => {

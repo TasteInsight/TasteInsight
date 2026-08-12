@@ -1,4 +1,4 @@
-import { Injectable, Optional, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { Prisma } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
@@ -66,11 +66,11 @@ export class RecommendationService {
 
   constructor(
     private prisma: PrismaService,
-    @Optional() private cacheService?: RecommendationCacheService,
-    @Optional() private eventLogger?: EventLoggerService,
-    @Optional() private experimentService?: ExperimentService,
-    @Optional() private embeddingService?: EmbeddingService,
-    @Optional() private tokenizerService?: TokenizerService,
+    private cacheService: RecommendationCacheService,
+    private eventLogger: EventLoggerService,
+    private experimentService: ExperimentService,
+    private embeddingService: EmbeddingService,
+    private tokenizerService: TokenizerService,
   ) {}
 
   // ═══════════════════════════════════════════════════════════════════
@@ -2015,6 +2015,27 @@ export class RecommendationService {
     );
 
     return eventId;
+  }
+
+  /**
+   * 记录用户对推荐结果的正反馈。
+   */
+  async logLikeEvent(
+    userId: string,
+    dishId: string,
+    context: {
+      scene: RecommendationScene;
+      requestId?: string;
+      position?: number;
+      experimentId?: string;
+      groupItemId?: string;
+    },
+  ): Promise<string | null> {
+    if (!this.eventLogger) {
+      return null;
+    }
+
+    return this.eventLogger.logLike(userId, dishId, context);
   }
 
   /**

@@ -15,7 +15,7 @@
     </div>
 
     <div class="flex-1 overflow-y-auto min-h-0 sidebar-menu-scroll">
-      <div v-permission="'dish:view'">
+      <div v-permission="'dish:create'">
         <button
           class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
           :class="{ active: activeMenu === 'add' }"
@@ -89,7 +89,6 @@
         <span>新闻管理</span>
       </router-link>
       <router-link
-        v-if="false"
         v-permission="'admin:view'"
         to="/log-view"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
@@ -108,7 +107,7 @@
         <span>举报管理</span>
       </router-link>
       <router-link
-        v-permission="'review:approve'"
+        v-permission="['review:approve', 'comment:approve']"
         to="/review-manage"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/review-manage' }"
@@ -117,7 +116,7 @@
         <span>评价和评论审核</span>
       </router-link>
       <router-link
-        v-permission="'review:delete'"
+        v-if="canAccessCommentManage"
         to="/comment-manage"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/comment-manage' }"
@@ -403,6 +402,11 @@ export default {
 
     const userInfo = computed(() => authStore.user || { username: '管理员' })
     const userPermissions = computed(() => authStore.permissions || [])
+    const canAccessCommentManage = computed(
+      () =>
+        authStore.hasPermission('dish:view') &&
+        authStore.hasAnyPermission(['review:delete', 'comment:delete']),
+    )
 
     // 密码修改相关状态
     const showChangePasswordModal = ref(false)
@@ -663,6 +667,7 @@ export default {
       activeMenu,
       userInfo,
       userPermissions,
+      canAccessCommentManage,
       permissionGroups,
       showPermissionsDropdown,
       userInfoSection,

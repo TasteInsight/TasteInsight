@@ -79,6 +79,8 @@ export enum RecommendationEventType {
   FAVORITE = 'favorite',
   /** 评价 */
   REVIEW = 'review',
+  /** 正反馈 */
+  LIKE = 'like',
   /** 负反馈 */
   DISLIKE = 'dislike',
 }

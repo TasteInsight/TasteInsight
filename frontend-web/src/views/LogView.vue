@@ -89,9 +89,9 @@
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">时间</th>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">管理员</th>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">操作</th>
-              <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">资源</th>
-              <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">资源ID</th>
-              <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">IP地址</th>
+              <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">目标类型</th>
+              <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">目标ID</th>
+              <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">结果</th>
               <th class="py-3 px-6 text-center text-sm font-medium text-gray-500">详情</th>
             </tr>
           </thead>
@@ -101,7 +101,7 @@
                 <div>{{ formatDateTime(log.createdAt) }}</div>
               </td>
               <td class="py-4 px-6">
-                <div class="font-medium">{{ log.adminName || '未知' }}</div>
+                <div class="font-medium">{{ log.adminUsername || '未知' }}</div>
                 <div class="text-xs text-gray-500">{{ log.adminId }}</div>
               </td>
               <td class="py-4 px-6">
@@ -109,9 +109,11 @@
                   {{ getActionLabel(log.action) }}
                 </span>
               </td>
-              <td class="py-4 px-6 text-sm">{{ log.resource || '-' }}</td>
-              <td class="py-4 px-6 text-sm text-gray-500">{{ log.resourceId || '-' }}</td>
-              <td class="py-4 px-6 text-sm text-gray-500">{{ log.ipAddress || '-' }}</td>
+              <td class="py-4 px-6 text-sm">{{ log.targetType || '-' }}</td>
+              <td class="py-4 px-6 text-sm text-gray-500">{{ log.targetId || '-' }}</td>
+              <td class="py-4 px-6 text-sm text-gray-500">
+                {{ log.result === 'success' ? '成功' : '失败' }}
+              </td>
               <td class="py-4 px-6 text-center">
                 <button
                   v-if="log.details"
@@ -205,7 +207,7 @@
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1">管理员</label>
           <p class="text-sm text-gray-800">
-            {{ selectedLog.adminName || '未知' }} ({{ selectedLog.adminId }})
+            {{ selectedLog.adminUsername || '未知' }} ({{ selectedLog.adminId }})
           </p>
         </div>
 
@@ -215,30 +217,27 @@
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1">资源</label>
-          <p class="text-sm text-gray-800">{{ selectedLog.resource || '-' }}</p>
+          <label class="block text-sm font-medium text-gray-600 mb-1">目标类型</label>
+          <p class="text-sm text-gray-800">{{ selectedLog.targetType || '-' }}</p>
         </div>
 
-        <div v-if="selectedLog.resourceId">
-          <label class="block text-sm font-medium text-gray-600 mb-1">资源ID</label>
-          <p class="text-sm text-gray-800">{{ selectedLog.resourceId }}</p>
+        <div v-if="selectedLog.targetId">
+          <label class="block text-sm font-medium text-gray-600 mb-1">目标ID</label>
+          <p class="text-sm text-gray-800">{{ selectedLog.targetId }}</p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-600 mb-1">结果</label>
+          <p class="text-sm text-gray-800">
+            {{ selectedLog.result === 'success' ? '成功' : '失败' }}
+          </p>
         </div>
 
         <div v-if="selectedLog.details">
           <label class="block text-sm font-medium text-gray-600 mb-1">详细信息</label>
           <pre class="text-sm text-gray-800 bg-gray-50 p-3 rounded border overflow-auto">{{
-            selectedLog.details
+            formatDetails(selectedLog.details)
           }}</pre>
-        </div>
-
-        <div v-if="selectedLog.ipAddress">
-          <label class="block text-sm font-medium text-gray-600 mb-1">IP地址</label>
-          <p class="text-sm text-gray-800">{{ selectedLog.ipAddress }}</p>
-        </div>
-
-        <div v-if="selectedLog.userAgent">
-          <label class="block text-sm font-medium text-gray-600 mb-1">用户代理</label>
-          <p class="text-sm text-gray-800 break-all">{{ selectedLog.userAgent }}</p>
         </div>
       </div>
     </div>
@@ -271,6 +270,26 @@ export default {
       endDate: '',
     })
 
+    const formatLocalDateBoundary = (dateString, endOfDay = false) => {
+      const [year, month, day] = dateString.split('-').map(Number)
+      const boundary = new Date(
+        year,
+        month - 1,
+        day,
+        endOfDay ? 23 : 0,
+        endOfDay ? 59 : 0,
+        endOfDay ? 59 : 0,
+        endOfDay ? 999 : 0,
+      )
+      const offsetMinutes = -boundary.getTimezoneOffset()
+      const offsetSign = offsetMinutes >= 0 ? '+' : '-'
+      const absoluteOffset = Math.abs(offsetMinutes)
+      const pad = (value) => String(value).padStart(2, '0')
+      const time = endOfDay ? '23:59:59.999' : '00:00:00.000'
+
+      return `${dateString}T${time}${offsetSign}${pad(Math.floor(absoluteOffset / 60))}:${pad(absoluteOffset % 60)}`
+    }
+
     // 加载日志列表
     const loadLogs = async () => {
       loading.value = true
@@ -288,10 +307,10 @@ export default {
           params.action = filters.action
         }
         if (filters.startDate) {
-          params.startDate = filters.startDate
+          params.startDate = formatLocalDateBoundary(filters.startDate)
         }
         if (filters.endDate) {
-          params.endDate = filters.endDate
+          params.endDate = formatLocalDateBoundary(filters.endDate, true)
         }
 
         const response = await logApi.getLogs(params)
@@ -359,6 +378,8 @@ export default {
       })
     }
 
+    const formatDetails = (details) => JSON.stringify(details, null, 2)
+
     // 获取操作标签
     const getActionLabel = (action) => {
       const actionMap = {
@@ -411,6 +432,8 @@ export default {
       closeLogDetail,
       changePage,
       formatDateTime,
+      formatLocalDateBoundary,
+      formatDetails,
       getActionLabel,
       getActionClass,
     }

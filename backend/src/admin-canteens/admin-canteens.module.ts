@@ -3,7 +3,6 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
 import { AdminCanteensService } from './admin-canteens.service';
 import { AdminCanteensController } from './admin-canteens.controller';
-import { PrismaService } from '@/prisma.service';
 import { DishSyncQueueModule } from '@/dish-sync-queue';
 import { AdminWindowsModule } from '@/admin-windows/admin-windows.module';
 
@@ -15,6 +14,6 @@ import { AdminWindowsModule } from '@/admin-windows/admin-windows.module';
     AdminWindowsModule,
   ],
   controllers: [AdminCanteensController],
-  providers: [AdminCanteensService, PrismaService],
+  providers: [AdminCanteensService],
 })
 export class AdminCanteensModule {}

@@ -1,14 +1,19 @@
 import { ref, reactive, computed } from 'vue';
 import { uploadDish } from '@/api/modules/dish';
 import { getCanteenList } from '@/api/modules/canteen';
+import { uploadImage } from '@/api/modules/upload';
 import type { DishUserCreateRequest, Canteen, Window } from '@/types/api';
+
+type AddDishFormData = DishUserCreateRequest & {
+  floor: string;
+};
 
 /**
  * 新建菜品页面逻辑
  */
 export function useAddDish() {
   // 表单数据
-  const formData = reactive<DishUserCreateRequest>({
+  const formData = reactive<AddDishFormData>({
     name: '',
     price: 0,
     priceUnit: '',
@@ -270,9 +275,34 @@ export function useAddDish() {
     error.value = '';
 
     try {
-      const response = await uploadDish(formData);
+      const uploadedImages = await Promise.all(
+        (formData.images || []).map(async imagePath => {
+          if (/^https?:\/\//i.test(imagePath)) return imagePath;
+          return (await uploadImage(imagePath)).url;
+        })
+      );
+      const dishData: DishUserCreateRequest = {
+        name: formData.name,
+        tags: formData.tags,
+        price: formData.price,
+        priceUnit: formData.priceUnit,
+        description: formData.description,
+        images: uploadedImages,
+        parentDishId: formData.parentDishId,
+        subDishId: formData.subDishId,
+        ingredients: formData.ingredients,
+        allergens: formData.allergens,
+        canteenId: formData.canteenId,
+        canteenName: formData.canteenName,
+        windowNumber: formData.windowNumber,
+        windowName: formData.windowName,
+        availableMealTime: formData.availableMealTime,
+        availableDates: formData.availableDates,
+        status: formData.status,
+      };
+      const response = await uploadDish(dishData);
 
-      if (response.code === 200) {
+      if (response.code === 200 || response.code === 201) {
         uni.showToast({
           title: '提交成功，等待审核',
           icon: 'success',

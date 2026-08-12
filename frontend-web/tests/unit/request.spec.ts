@@ -7,6 +7,7 @@ let responseOnFulfilled: any
 let responseOnRejected: any
 
 const serviceFn: any = vi.fn(async (cfg: any) => ({ retried: true, config: cfg }))
+const rawAxiosPostMock = vi.fn()
 serviceFn.get = vi.fn(async () => ({ ok: true }))
 serviceFn.post = vi.fn(async () => ({ ok: true }))
 serviceFn.put = vi.fn(async () => ({ ok: true }))
@@ -33,6 +34,7 @@ vi.mock('axios', () => {
   return {
     default: {
       create: vi.fn(() => serviceFn),
+      post: rawAxiosPostMock,
     },
     // request.ts imports these as named symbols (even though used as types)
     AxiosInstance: {},
@@ -102,6 +104,10 @@ describe('utils/request', () => {
     serviceFn.put.mockClear()
     serviceFn.delete.mockClear()
     serviceFn.patch.mockClear()
+    rawAxiosPostMock.mockReset()
+    rawAxiosPostMock.mockImplementation(async (url: string, data?: any, config?: any) => ({
+      data: await serviceFn.post(url, data, config),
+    }))
 
     localStorage.clear()
     sessionStorage.clear()
@@ -149,18 +155,44 @@ describe('utils/request', () => {
     expect(out.headers.Authorization).toBe('Bearer s1')
   })
 
+  it('prefers the current session token over stale remembered credentials while the store loads', async () => {
+    localStorage.setItem('admin_token', 'stale-local-token')
+    sessionStorage.setItem('admin_token', 'current-session-token')
+    authStoreShouldBeNull = true
+    await loadFresh()
+
+    const cfg = { headers: {} as Record<string, any> }
+    const out = requestOnFulfilled(cfg)
+
+    expect(out.headers.Authorization).toBe('Bearer current-session-token')
+  })
+
   it('prefers auth store token over storage when store is ready', async () => {
     localStorage.setItem('admin_token', 'storageToken')
     authState.token = 'storeToken'
 
-    await loadOnce()
-    // let getAuthStore dynamic import settle so store becomes available
+    await loadFresh()
+    // First request starts the lazy store import; later requests use the store.
+    requestOnFulfilled({ headers: {} })
     await vi.dynamicImportSettled()
 
     const cfg = { headers: {} as Record<string, any> }
     const out = requestOnFulfilled(cfg)
 
     expect(out.headers.Authorization).toBe('Bearer storeToken')
+  })
+
+  it('preserves an explicit Authorization header for refresh-token requests', async () => {
+    authState.token = 'access-token'
+    await loadOnce()
+    await vi.dynamicImportSettled()
+
+    const cfg = {
+      headers: { Authorization: 'Bearer refresh-token' } as Record<string, any>,
+    }
+    const out = requestOnFulfilled(cfg)
+
+    expect(out.headers.Authorization).toBe('Bearer refresh-token')
   })
 
   it('request interceptor error handler rejects', async () => {
@@ -252,12 +284,10 @@ describe('utils/request', () => {
     localStorage.setItem('admin_token', 'old')
     localStorage.setItem('admin_refresh_token', 'refresh')
 
-    // refresh call returns an object with data.token.accessToken
-    serviceFn.post.mockImplementation(async (url: string) => {
-      if (url === '/auth/refresh') {
-        return { data: { token: { accessToken: 'newToken' } } }
-      }
-      return { ok: true }
+    rawAxiosPostMock.mockResolvedValueOnce({
+      data: {
+        data: { token: { accessToken: 'newToken', refreshToken: 'newRefresh' } },
+      },
     })
 
     await loadOnce()
@@ -277,15 +307,56 @@ describe('utils/request', () => {
     expect(err.config.headers.Authorization).toBe('Bearer newToken')
   })
 
+  it('does not recursively refresh a rejected refresh request', async () => {
+    localStorage.setItem('admin_refresh_token', 'refresh')
+    await loadOnce()
+
+    const err: any = {
+      config: { url: '/auth/refresh', headers: {} },
+      response: { status: 401, data: {} },
+    }
+
+    await expect(responseOnRejected(err)).rejects.toThrow('认证已过期，请重新登录')
+    expect(rawAxiosPostMock).not.toHaveBeenCalled()
+  })
+
+  it('refreshes outside the intercepted service and rotates both stored tokens', async () => {
+    localStorage.setItem('admin_token', 'old')
+    localStorage.setItem('admin_refresh_token', 'refresh-old')
+    rawAxiosPostMock.mockResolvedValueOnce({
+      data: {
+        code: 200,
+        data: { token: { accessToken: 'access-new', refreshToken: 'refresh-new' } },
+      },
+    })
+
+    await loadOnce()
+
+    const err: any = {
+      config: { url: '/admin/dishes', headers: {} },
+      response: { status: 401, data: {} },
+    }
+
+    await responseOnRejected(err)
+
+    expect(rawAxiosPostMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/auth\/refresh$/),
+      undefined,
+      expect.objectContaining({
+        headers: { Authorization: 'Bearer refresh-old' },
+      }),
+    )
+    expect(serviceFn.post).not.toHaveBeenCalled()
+    expect(localStorage.getItem('admin_token')).toBe('access-new')
+    expect(localStorage.getItem('admin_refresh_token')).toBe('refresh-new')
+  })
+
   it('queues requests while refresh is in progress', async () => {
     localStorage.setItem('admin_token', 'old')
     localStorage.setItem('admin_refresh_token', 'refresh')
 
     const d = deferred<any>()
-    serviceFn.post.mockImplementation(async (url: string) => {
-      if (url === '/auth/refresh') return d.promise
-      return { ok: true }
-    })
+    rawAxiosPostMock.mockReturnValueOnce(d.promise)
 
     await loadOnce()
 
@@ -302,7 +373,11 @@ describe('utils/request', () => {
     const p2 = responseOnRejected(err2)
 
     // complete refresh
-    d.resolve({ data: { token: { accessToken: 'newToken2' } } })
+    d.resolve({
+      data: {
+        data: { token: { accessToken: 'newToken2', refreshToken: 'newRefresh2' } },
+      },
+    })
 
     const out1 = await p1
     const out2 = await p2
@@ -318,11 +393,10 @@ describe('utils/request', () => {
     authState.token = 't1'
     authState.refreshToken = 'refresh'
 
-    serviceFn.post.mockImplementation(async (url: string) => {
-      if (url === '/auth/refresh') {
-        return { data: { token: {} } }
-      }
-      return { ok: true }
+    rawAxiosPostMock.mockResolvedValueOnce({
+      data: {
+        data: { token: {} },
+      },
     })
 
     await loadOnce()
@@ -400,11 +474,10 @@ describe('utils/request', () => {
     authState.token = 'oldToken'
     authState.refreshToken = 'refresh'
 
-    serviceFn.post.mockImplementation(async (url: string) => {
-      if (url === '/auth/refresh') {
-        return { data: { token: { accessToken: 'newTokenLS' } } }
-      }
-      return { ok: true }
+    rawAxiosPostMock.mockResolvedValueOnce({
+      data: {
+        data: { token: { accessToken: 'newTokenLS', refreshToken: 'newRefreshLS' } },
+      },
     })
 
     await loadOnce()
@@ -418,7 +491,9 @@ describe('utils/request', () => {
     await responseOnRejected(err)
 
     expect(authState.token).toBe('newTokenLS')
+    expect(authState.refreshToken).toBe('newRefreshLS')
     expect(localStorage.getItem('admin_token')).toBe('newTokenLS')
+    expect(localStorage.getItem('admin_refresh_token')).toBe('newRefreshLS')
   })
 
   it('refresh success persists token to sessionStorage when local token is absent', async () => {
@@ -427,11 +502,10 @@ describe('utils/request', () => {
     authState.token = 'oldToken'
     authState.refreshToken = 'refresh'
 
-    serviceFn.post.mockImplementation(async (url: string) => {
-      if (url === '/auth/refresh') {
-        return { data: { token: { accessToken: 'newTokenSS' } } }
-      }
-      return { ok: true }
+    rawAxiosPostMock.mockResolvedValueOnce({
+      data: {
+        data: { token: { accessToken: 'newTokenSS', refreshToken: 'newRefreshSS' } },
+      },
     })
 
     await loadOnce()
@@ -445,7 +519,9 @@ describe('utils/request', () => {
     await responseOnRejected(err)
 
     expect(authState.token).toBe('newTokenSS')
+    expect(authState.refreshToken).toBe('newRefreshSS')
     expect(sessionStorage.getItem('admin_token')).toBe('newTokenSS')
+    expect(sessionStorage.getItem('admin_refresh_token')).toBe('newRefreshSS')
   })
 
   it('queued requests reject with refresh error when refresh fails', async () => {
@@ -453,10 +529,7 @@ describe('utils/request', () => {
     localStorage.setItem('admin_refresh_token', 'refresh')
 
     const d = deferred<any>()
-    serviceFn.post.mockImplementation(async (url: string) => {
-      if (url === '/auth/refresh') return d.promise
-      return { ok: true }
-    })
+    rawAxiosPostMock.mockReturnValueOnce(d.promise)
 
     await loadOnce()
 
@@ -484,12 +557,7 @@ describe('utils/request', () => {
     // force store to stay unavailable
     authStoreShouldBeNull = true
 
-    serviceFn.post.mockImplementation(async (url: string) => {
-      if (url === '/auth/refresh') {
-        throw new Error('refresh down')
-      }
-      return { ok: true }
-    })
+    rawAxiosPostMock.mockRejectedValueOnce(new Error('refresh down'))
 
     await loadOnce()
 
@@ -538,12 +606,7 @@ describe('utils/request', () => {
     sessionStorage.setItem('admin_token', 't2')
     sessionStorage.setItem('admin_refresh_token', 'refresh2')
 
-    serviceFn.post.mockImplementation(async (url: string) => {
-      if (url === '/auth/refresh') {
-        throw new Error('refresh down')
-      }
-      return { ok: true }
-    })
+    rawAxiosPostMock.mockRejectedValueOnce(new Error('refresh down'))
 
     const err: any = {
       config: { url: '/admin/dishes', headers: {} },
@@ -620,18 +683,19 @@ describe('utils/request', () => {
     ).rejects.toThrow('请求失败，请稍后重试')
   })
 
-  it('refresh success retries request even when store is unavailable (no persistence)', async () => {
+  it('refresh success retries and persists both tokens when store is unavailable', async () => {
     authStoreShouldBeNull = true
     await loadFresh()
 
     localStorage.setItem('admin_token', 'old')
     localStorage.setItem('admin_refresh_token', 'refresh')
 
-    serviceFn.post.mockImplementation(async (url: string) => {
-      if (url === '/auth/refresh') {
-        return { data: { token: { accessToken: 'newTokenNoStore' } } }
-      }
-      return { ok: true }
+    rawAxiosPostMock.mockResolvedValueOnce({
+      data: {
+        data: {
+          token: { accessToken: 'newTokenNoStore', refreshToken: 'newRefreshNoStore' },
+        },
+      },
     })
 
     const err: any = {
@@ -642,7 +706,39 @@ describe('utils/request', () => {
     await responseOnRejected(err)
 
     expect(err.config.headers.Authorization).toBe('Bearer newTokenNoStore')
-    expect(localStorage.getItem('admin_token')).toBe('old')
+    expect(localStorage.getItem('admin_token')).toBe('newTokenNoStore')
+    expect(localStorage.getItem('admin_refresh_token')).toBe('newRefreshNoStore')
+  })
+
+  it('refresh fallback keeps a current session bundle isolated from stale local credentials', async () => {
+    authStoreShouldBeNull = true
+    await loadFresh()
+
+    localStorage.setItem('admin_token', 'stale-local-token')
+    localStorage.setItem('admin_refresh_token', 'stale-local-refresh')
+    sessionStorage.setItem('admin_token', 'current-session-token')
+    sessionStorage.setItem('admin_refresh_token', 'current-session-refresh')
+
+    rawAxiosPostMock.mockResolvedValueOnce({
+      data: {
+        data: { token: { accessToken: 'new-session-token', refreshToken: 'new-session-refresh' } },
+      },
+    })
+
+    await responseOnRejected({
+      config: { url: '/admin/dishes', headers: {} },
+      response: { status: 401, data: {} },
+    })
+
+    expect(rawAxiosPostMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/auth\/refresh$/),
+      undefined,
+      expect.objectContaining({
+        headers: { Authorization: 'Bearer current-session-refresh' },
+      }),
+    )
+    expect(sessionStorage.getItem('admin_token')).toBe('new-session-token')
+    expect(sessionStorage.getItem('admin_refresh_token')).toBe('new-session-refresh')
   })
 
   it('handles missing originalRequest.url by treating it as empty string', async () => {

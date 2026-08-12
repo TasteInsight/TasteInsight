@@ -176,6 +176,29 @@ describe('ReviewsService', () => {
 
       expect(dishReviewStatsService.recomputeDishStats).not.toHaveBeenCalled();
     });
+
+    it('should recompute stats when an approved review becomes pending', async () => {
+      adminConfigService.getBooleanConfigValue.mockResolvedValue(false);
+      prisma.review.findUnique.mockResolvedValue({
+        id: 'r1',
+        dishId: 'd1',
+        userId: 'u1',
+        status: 'approved',
+      });
+      prisma.review.upsert.mockResolvedValue({
+        id: 'r1',
+        status: 'pending',
+        createdAt: new Date(),
+        deletedAt: null,
+        user: { id: 'u1', nickname: 'User', avatar: null },
+      });
+
+      await service.createReview('u1', createDto);
+
+      expect(dishReviewStatsService.recomputeDishStats).toHaveBeenCalledWith(
+        'd1',
+      );
+    });
   });
 
   describe('getReviews', () => {

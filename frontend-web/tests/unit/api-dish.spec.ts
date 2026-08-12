@@ -143,20 +143,6 @@ describe('api/dishApi', () => {
     expect(patchMock).toHaveBeenCalledWith('/admin/dishes/d1/status', { status: 'online' })
   })
 
-  it('batchUpload posts multipart form-data', async () => {
-    postMock.mockResolvedValueOnce({ code: 200 })
-
-    const file = new File(['x'], 'dishes.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    const { dishApi } = await import('@/api/modules/dish')
-    await dishApi.batchUpload(file)
-
-    expect(postMock).toHaveBeenCalledWith(
-      '/admin/dishes/batch',
-      expect.any(FormData),
-      { headers: { 'Content-Type': 'multipart/form-data' } },
-    )
-  })
-
   it('uploadImage posts multipart form-data to /upload/image', async () => {
     postMock.mockResolvedValueOnce({ code: 200 })
 

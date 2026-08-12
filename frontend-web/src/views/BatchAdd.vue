@@ -209,7 +209,8 @@
             <div class="flex space-x-4" v-if="parsedData.length > 0">
               <button 
                 class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                :disabled="validCount + warningCount === 0 || isSubmitting"
+                :disabled="validCount + warningCount === 0 || isSubmitting || !authStore.hasPermission('dish:create')"
+                :title="!authStore.hasPermission('dish:create') ? '无权限创建菜品' : '确认导入'"
                 @click="submitBatchData"
               >
                 <span 
@@ -251,6 +252,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { dishApi } from '@/api/modules/dish'
+import { useAuthStore } from '@/store/modules/use-auth-store'
 import type { BatchParsedDish } from '@/types/api'
 import Header from '@/components/Layout/Header.vue'
 import { showAlert, showConfirm } from '@/composables/useModal'
@@ -261,6 +263,7 @@ const parsedData = ref<BatchParsedDish[]>([])
 const isParsing = ref(false)
 const isSubmitting = ref(false)
 const parseError = ref<string | null>(null)
+const authStore = useAuthStore()
     
     const validCount = computed(() => 
       parsedData.value.filter((item: BatchParsedDish) => item.status === 'valid').length
@@ -349,6 +352,11 @@ const parseError = ref<string | null>(null)
     }
     
     const submitBatchData = async () => {
+      if (!authStore.hasPermission('dish:create')) {
+        showAlert('您没有权限创建菜品')
+        return
+      }
+
       const validItems = parsedData.value.filter(
         (item: BatchParsedDish) => item.status === 'valid' || item.status === 'warning'
       )

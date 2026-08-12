@@ -99,22 +99,6 @@ export const dishApi = {
   },
 
   /**
-   * 批量上传菜品
-   * @param file Excel 文件
-   * @returns 上传结果
-   */
-  async batchUpload(file: File): Promise<ApiResponse<void>> {
-    const formData = new FormData()
-    formData.append('file', file)
-    const response = await request.post<ApiResponse<void>>('/admin/dishes/batch', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    })
-    return response
-  },
-
-  /**
    * 修改菜品状态
    * @param id 菜品 ID
    * @param status 菜品状态（online 或 offline）
@@ -166,7 +150,6 @@ export const dishApi = {
   async parseBatchExcel(file: File): Promise<ApiResponse<BatchParseResponse>> {
     const formData = new FormData()
     formData.append('file', file)
-    // 注意：需要后端实现对应的 /admin/dishes/batch/parse 接口
     return request.post('/admin/dishes/batch/parse', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
@@ -178,7 +161,6 @@ export const dishApi = {
    * @returns 导入结果
    */
   async confirmBatchImport(data: BatchConfirmRequest): Promise<ApiResponse<BatchConfirmResponse>> {
-    // 注意：需要后端实现对应的 /admin/dishes/batch/confirm 接口
     return request.post('/admin/dishes/batch/confirm', data)
   },
 

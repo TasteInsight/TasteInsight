@@ -820,6 +820,21 @@ export default {
       'admin:edit': ['admin:view'],
       'admin:delete': ['admin:view'],
       'config:edit': ['config:view'], // 编辑配置需要查看权限
+      'experiment:create': ['experiment:view'],
+      'experiment:edit': ['experiment:view'],
+      'experiment:delete': ['experiment:view'],
+    }
+
+    const getPermissionClosure = (permissionIds) => {
+      const resolved = new Set()
+      const visit = (permissionId) => {
+        if (resolved.has(permissionId)) return
+        resolved.add(permissionId)
+        ;(permissionDependencies[permissionId] || []).forEach(visit)
+      }
+
+      permissionIds.forEach(visit)
+      return [...resolved]
     }
 
     // 过滤后的管理员列表
@@ -1138,21 +1153,21 @@ export default {
         // 取消选中
         formData.permissions.splice(index, 1)
       } else {
-        // 选中
-        formData.permissions.push(permissionId)
-        
-        // 处理依赖：自动选中所需的权限（但只选择当前用户拥有的）
-        const dependencies = permissionDependencies[permissionId]
-        if (dependencies) {
-          dependencies.forEach(dep => {
-            if (!formData.permissions.includes(dep)) {
-              // 只添加当前用户拥有的依赖权限
-              if (currentUserPermissions.includes(dep)) {
-                formData.permissions.push(dep)
-              }
-            }
-          })
+        const permissionsToAdd = getPermissionClosure([permissionId])
+        const unavailableDependencies = permissionsToAdd.filter(
+          (permission) => !currentUserPermissions.includes(permission),
+        )
+
+        if (unavailableDependencies.length > 0) {
+          errors.permissions = `缺少依赖权限，无法分配：${unavailableDependencies.join(', ')}`
+          return
         }
+
+        permissionsToAdd.forEach((permission) => {
+          if (!formData.permissions.includes(permission)) {
+            formData.permissions.push(permission)
+          }
+        })
       }
     }
 
@@ -1238,6 +1253,14 @@ export default {
         const invalidPermissions = formData.permissions.filter(p => !currentUserPermissions.includes(p))
         if (invalidPermissions.length > 0) {
           errors.permissions = `您没有以下权限，无法分配给子管理员：${invalidPermissions.join(', ')}`
+          hasError = true
+        }
+
+        const missingDependencies = getPermissionClosure(formData.permissions).filter(
+          (permission) => !formData.permissions.includes(permission),
+        )
+        if (missingDependencies.length > 0) {
+          errors.permissions = `所选权限缺少依赖：${missingDependencies.join(', ')}`
           hasError = true
         }
       }

@@ -61,6 +61,14 @@ import UserManage from '../../src/views/UserManage.vue'
 describe('views/UserManage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.authStoreMock.user = { username: 'admin', role: 'staff' }
+    mocks.authStoreMock.permissions = [
+      'admin:view',
+      'canteen:view',
+      'dish:view',
+      'dish:edit',
+      'dish:create',
+    ]
     mocks.canteenApiMock.getCanteens.mockResolvedValue({
       code: 200,
       data: { items: [{ id: 'c1', name: 'C1' }] },
@@ -210,6 +218,51 @@ describe('views/UserManage', () => {
     wrapper.vm.togglePermission('dish:edit')
     expect(wrapper.vm.formData.permissions).not.toContain('dish:edit')
 
+    wrapper.unmount()
+  })
+
+  it('adds transitive dependencies and rejects an incomplete assignable chain', async () => {
+    mocks.authStoreMock.permissions = [
+      'comment:delete',
+      'comment:approve',
+      'dish:view',
+      'canteen:view',
+    ]
+
+    const wrapper = shallowMount(UserManage, { global: { stubs: { Header: true } } })
+    await Promise.resolve()
+
+    wrapper.vm.togglePermission('comment:delete')
+    expect(wrapper.vm.formData.permissions).toEqual(
+      expect.arrayContaining([
+        'comment:delete',
+        'comment:approve',
+        'dish:view',
+        'canteen:view',
+      ]),
+    )
+
+    wrapper.vm.formData.permissions = []
+    mocks.authStoreMock.permissions = ['comment:delete', 'comment:approve']
+    wrapper.vm.togglePermission('comment:delete')
+
+    expect(wrapper.vm.formData.permissions).toEqual([])
+    expect(wrapper.vm.errors.permissions).toContain('dish:view')
+    expect(wrapper.vm.errors.permissions).toContain('canteen:view')
+    wrapper.unmount()
+  })
+
+  it('adds view permission for experiment write permissions', async () => {
+    mocks.authStoreMock.permissions = ['experiment:view', 'experiment:edit']
+
+    const wrapper = shallowMount(UserManage, { global: { stubs: { Header: true } } })
+    await Promise.resolve()
+
+    wrapper.vm.togglePermission('experiment:edit')
+
+    expect(wrapper.vm.formData.permissions).toEqual(
+      expect.arrayContaining(['experiment:view', 'experiment:edit']),
+    )
     wrapper.unmount()
   })
 

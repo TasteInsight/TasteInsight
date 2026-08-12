@@ -48,6 +48,9 @@ async function flushAll() {
 describe('views/ReviewManage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.authStoreMock.hasPermission.mockImplementation((permission: string) =>
+      ['review:approve', 'comment:approve'].includes(permission),
+    )
 
     mocks.reviewApiMock.getPendingReviews.mockResolvedValue({
       code: 200,
@@ -131,6 +134,25 @@ describe('views/ReviewManage', () => {
 
     wrapper.unmount()
     expect(window.removeEventListener).toHaveBeenCalled()
+  })
+
+  it('starts on comments and does not request reviews for a comment-only moderator', async () => {
+    mocks.authStoreMock.hasPermission.mockImplementation(
+      (permission: string) => permission === 'comment:approve',
+    )
+
+    const wrapper = shallowMount(ReviewManage, {
+      global: { stubs: { Header: true, Pagination: true } },
+    })
+    await flushAll()
+
+    expect(wrapper.vm.activeTab).toBe('comments')
+    expect(mocks.reviewApiMock.getPendingReviews).not.toHaveBeenCalled()
+    expect(mocks.reviewApiMock.getPendingComments).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
+    expect(wrapper.text()).not.toContain('评价审核')
+    expect(wrapper.text()).toContain('评论审核')
+
+    wrapper.unmount()
   })
 
   it('switchTab loads reviews or comments and pagination triggers correct loaders', async () => {

@@ -27,6 +27,9 @@ const mocks = vi.hoisted(() => ({
   },
   showAlertMock: vi.fn(() => Promise.resolve()),
   showConfirmMock: vi.fn(() => Promise.resolve(true)),
+  authStoreMock: {
+    hasPermission: vi.fn(() => true),
+  },
 }))
 
 vi.mock('vue-router', () => ({
@@ -50,6 +53,10 @@ vi.mock('@/composables/useModal', () => ({
   showAlert: mocks.showAlertMock,
   showConfirm: mocks.showConfirmMock,
   showConfirmDanger: vi.fn(() => Promise.resolve(true)),
+}))
+
+vi.mock('@/store/modules/use-auth-store', () => ({
+  useAuthStore: () => mocks.authStoreMock,
 }))
 
 import EditDish from '../../src/views/EditDish.vue'
@@ -101,6 +108,7 @@ describe('views/EditDish', () => {
 
     mocks.dishApiMock.uploadImage.mockResolvedValue({ code: 200, data: { url: 'http://img/u.png' } })
     mocks.dishApiMock.updateDish.mockResolvedValue({ code: 200, data: { id: 'd1', name: 'N' } })
+    mocks.authStoreMock.hasPermission.mockReturnValue(true)
 
     ;(globalThis as any).FileReader = FileReaderMock
   })
@@ -307,6 +315,18 @@ describe('views/EditDish', () => {
     await wrapper.vm.submitForm()
     expect(wrapper.vm.errors.subItemPrice).toContain('子项价格必须为有效的数字')
 
+    wrapper.unmount()
+  })
+
+  it('submitForm rejects missing edit permission before upload or update', async () => {
+    mocks.authStoreMock.hasPermission.mockReturnValue(false)
+    const wrapper = shallowMount(EditDish, { global: { stubs: { Header: true } } })
+
+    await wrapper.vm.submitForm()
+
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限编辑菜品')
+    expect(mocks.dishApiMock.uploadImage).not.toHaveBeenCalled()
+    expect(mocks.dishApiMock.updateDish).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 

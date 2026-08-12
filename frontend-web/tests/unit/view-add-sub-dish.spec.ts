@@ -23,6 +23,9 @@ const mocks = vi.hoisted(() => ({
   },
   showAlertMock: vi.fn(() => Promise.resolve()),
   showConfirmMock: vi.fn(() => Promise.resolve(true)),
+  authStoreMock: {
+    hasPermission: vi.fn(() => true),
+  },
 }))
 
 vi.mock('vue-router', () => ({
@@ -41,6 +44,10 @@ vi.mock('@/api/modules/dish', () => ({
 vi.mock('@/composables/useModal', () => ({
   showAlert: mocks.showAlertMock,
   showConfirm: mocks.showConfirmMock,
+}))
+
+vi.mock('@/store/modules/use-auth-store', () => ({
+  useAuthStore: () => mocks.authStoreMock,
 }))
 
 import AddSubDish from '../../src/views/AddSubDish.vue'
@@ -93,6 +100,7 @@ describe('views/AddSubDish', () => {
 
     mocks.showAlertMock.mockResolvedValue(undefined)
     mocks.showConfirmMock.mockResolvedValue(true)
+    mocks.authStoreMock.hasPermission.mockReturnValue(true)
 
     ;(globalThis as any).FileReader = FileReaderMock
     if (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function') {
@@ -208,6 +216,18 @@ describe('views/AddSubDish', () => {
 
     wrapper.unmount()
     wrapper2.unmount()
+  })
+
+  it('submitForm rejects missing create permission before upload or create', async () => {
+    mocks.authStoreMock.hasPermission.mockReturnValue(false)
+    const wrapper = shallowMount(AddSubDish, { global: { stubs: { Header: true } } })
+
+    await wrapper.vm.submitForm()
+
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限创建菜品')
+    expect(mocks.dishApiMock.uploadImage).not.toHaveBeenCalled()
+    expect(mocks.dishApiMock.createDish).not.toHaveBeenCalled()
+    wrapper.unmount()
   })
 
   it('submitForm uploads images: partial fail confirm-cancel stops; throw alerts', async () => {

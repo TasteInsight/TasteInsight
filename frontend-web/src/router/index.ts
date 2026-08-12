@@ -2,24 +2,26 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import { getFirstAccessibleRoute } from './access'
 import MainLayout from '@/components/Layout/MainLayout.vue'
-import SingleAdd from '@/views/SingleAdd.vue'
-import BatchAdd from '@/views/BatchAdd.vue'
-import ModifyDish from '@/views/ModifyDish.vue'
-import EditDish from '@/views/EditDish.vue'
-import AddSubDish from '@/views/AddSubDish.vue'
-import AddCanteen from '@/views/AddCanteen.vue'
-import ReviewDish from '@/views/ReviewDish.vue'
-import ReviewDishDetail from '@/views/ReviewDishDetail.vue'
-import ViewDishDetail from '@/views/ViewDishDetail.vue'
-import UserManage from '@/views/UserManage.vue'
-import NewsManage from '@/views/NewsManage.vue'
-import LogView from '@/views/LogView.vue'
-import ReportManage from '@/views/ReportManage.vue'
-import CommentManage from '@/views/CommentManage.vue'
-import ReviewManage from '@/views/ReviewManage.vue'
-import ConfigManage from '@/views/ConfigManage.vue'
-import ExperimentManage from '@/views/ExperimentManage.vue'
-import Login from '@/views/Login.vue'
+
+const Login = () => import('@/views/Login.vue')
+const Forbidden = () => import('@/views/Forbidden.vue')
+const SingleAdd = () => import('@/views/SingleAdd.vue')
+const BatchAdd = () => import('@/views/BatchAdd.vue')
+const ModifyDish = () => import('@/views/ModifyDish.vue')
+const EditDish = () => import('@/views/EditDish.vue')
+const AddSubDish = () => import('@/views/AddSubDish.vue')
+const AddCanteen = () => import('@/views/AddCanteen.vue')
+const ReviewDish = () => import('@/views/ReviewDish.vue')
+const ReviewDishDetail = () => import('@/views/ReviewDishDetail.vue')
+const ViewDishDetail = () => import('@/views/ViewDishDetail.vue')
+const UserManage = () => import('@/views/UserManage.vue')
+const NewsManage = () => import('@/views/NewsManage.vue')
+const LogView = () => import('@/views/LogView.vue')
+const ReportManage = () => import('@/views/ReportManage.vue')
+const CommentManage = () => import('@/views/CommentManage.vue')
+const ReviewManage = () => import('@/views/ReviewManage.vue')
+const ConfigManage = () => import('@/views/ConfigManage.vue')
+const ExperimentManage = () => import('@/views/ExperimentManage.vue')
 
 const routes = [
   {
@@ -27,6 +29,12 @@ const routes = [
     name: 'Login',
     component: Login,
     meta: { requiresAuth: false },
+  },
+  {
+    path: '/forbidden',
+    name: 'Forbidden',
+    component: Forbidden,
+    meta: { requiresAuth: true },
   },
   {
     path: '/',
@@ -47,13 +55,13 @@ const routes = [
         path: 'single-add',
         name: 'SingleAdd',
         component: SingleAdd,
-        meta: { requiresAuth: true, requiredPermission: 'dish:view' },
+        meta: { requiresAuth: true, requiredPermission: 'dish:create' },
       },
       {
         path: 'batch-add',
         name: 'BatchAdd',
         component: BatchAdd,
-        meta: { requiresAuth: true, requiredPermission: 'dish:view' },
+        meta: { requiresAuth: true, requiredPermission: 'dish:create' },
       },
       {
         path: 'modify-dish',
@@ -65,7 +73,7 @@ const routes = [
         path: 'edit-dish/:id',
         name: 'EditDish',
         component: EditDish,
-        meta: { requiresAuth: true, requiredPermission: 'dish:view' },
+        meta: { requiresAuth: true, requiredPermission: 'dish:edit' },
       },
       {
         path: 'view-dish/:id',
@@ -77,7 +85,7 @@ const routes = [
         path: 'add-sub-dish',
         name: 'AddSubDish',
         component: AddSubDish,
-        meta: { requiresAuth: true, requiredPermission: 'dish:view' },
+        meta: { requiresAuth: true, requiredPermission: 'dish:create' },
       },
       {
         path: 'add-canteen',
@@ -125,13 +133,22 @@ const routes = [
         path: 'comment-manage',
         name: 'CommentManage',
         component: CommentManage,
-        meta: { requiresAuth: true, requiredPermission: 'review:delete', keepAlive: true },
+        meta: {
+          requiresAuth: true,
+          requiredPermission: 'dish:view',
+          requiredPermissions: ['review:delete', 'comment:delete'],
+          keepAlive: true,
+        },
       },
       {
         path: 'review-manage',
         name: 'ReviewManage',
         component: ReviewManage,
-        meta: { requiresAuth: true, requiredPermission: 'review:approve', keepAlive: true },
+        meta: {
+          requiresAuth: true,
+          requiredPermissions: ['review:approve', 'comment:approve'],
+          keepAlive: true,
+        },
       },
       {
         path: 'config-manage',
@@ -165,7 +182,14 @@ router.beforeEach((to, _from, next) => {
     if (authStore.isLoggedIn) {
       // 检查是否有访问该路由的权限
       const requiredPermission = to.meta.requiredPermission as string | undefined
-      if (requiredPermission && !authStore.hasPermission(requiredPermission)) {
+      const requiredPermissions = to.meta.requiredPermissions as string[] | undefined
+      const lacksRequiredPermission =
+        Boolean(requiredPermission) && !authStore.hasPermission(requiredPermission as string)
+      const lacksAnyRequiredPermission =
+        Array.isArray(requiredPermissions) &&
+        requiredPermissions.length > 0 &&
+        !requiredPermissions.some((permission) => authStore.hasPermission(permission))
+      if (lacksRequiredPermission || lacksAnyRequiredPermission) {
         // 没有权限，跳转到第一个有权限的页面
         const firstRoute = getFirstAccessibleRoute(authStore)
         next(firstRoute)

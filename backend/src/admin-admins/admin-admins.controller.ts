@@ -64,7 +64,9 @@ export class AdminAdminsController {
   ) {
     return this.adminAdminsService.create(
       req.admin.id,
+      req.admin.role,
       req.admin.canteenId,
+      req.admin.permissions,
       createAdminDto,
     );
   }
@@ -88,6 +90,7 @@ export class AdminAdminsController {
       req.admin.id,
       req.admin.role,
       req.admin.canteenId,
+      req.admin.permissions,
       id,
       updatePermissionsDto,
     );

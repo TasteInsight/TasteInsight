@@ -1,4 +1,3 @@
-import { jest } from '@jest/globals';
 import { setActivePinia, createPinia } from 'pinia';
 
 // mock global uni storage

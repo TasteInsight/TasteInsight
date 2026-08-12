@@ -282,6 +282,7 @@ export const useChatStore = defineStore('ai-chat', () => {
     };
 
     let currentEvent = '';
+    let streamTerminated = false;
 
     const streamControl = USE_MOCK
       ? (() => {
@@ -361,7 +362,8 @@ export const useChatStore = defineStore('ai-chat', () => {
             }
           },
           onError: err => {
-            if (isStreamAborted.value) return; // 如果已中止，忽略错误
+            if (isStreamAborted.value || streamTerminated) return; // 终态只处理一次
+            streamTerminated = true;
             
             console.error('Stream error', err);
             const contentArr = aiMessage.content;
@@ -379,11 +381,12 @@ export const useChatStore = defineStore('ai-chat', () => {
             currentStreamAbort.value = null;
           },
           onComplete: () => {
-            if (isStreamAborted.value) {
+            if (isStreamAborted.value || streamTerminated) {
               console.log('[Chat Store] Complete callback after abort, ignoring');
               return; // 如果已中止，忽略完成回调
             }
-            
+            streamTerminated = true;
+
             aiLoading.value = false;
             aiMessage.isStreaming = false;
             upsertHistoryEntry(sessionId.value, currentScene.value, messages.value);
@@ -392,7 +395,7 @@ export const useChatStore = defineStore('ai-chat', () => {
         });
 
     // 保存中断控制器
-    if (streamControl && streamControl.close) {
+    if (!streamTerminated && streamControl && streamControl.close) {
       currentStreamAbort.value = streamControl.close;
       console.log('[Chat Store] Stream control saved, abort function available');
     } else {

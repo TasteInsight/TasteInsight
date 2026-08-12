@@ -10,7 +10,7 @@ import {
 import { AuthService } from './auth.service';
 import { WechatLoginDto } from './dto/wechat-login.dto';
 import { AdminLoginDto } from './dto/admin-login.dto';
-import { AuthGuard } from './guards/auth.guard';
+import { RefreshAuthGuard } from './guards/refresh-auth.guard';
 
 @Controller('auth') // 所有路由都带 auth 前缀
 export class AuthController {
@@ -31,11 +31,10 @@ export class AuthController {
     );
   }
 
-  @UseGuards(AuthGuard) // 使用 AuthGuard 保护这个路由
+  @UseGuards(RefreshAuthGuard)
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   refreshToken(@Request() req) {
-    // AuthGuard 会将 user payload 附加到 request 对象上
     const { sub, type } = req.user;
     return this.authService.refreshToken(sub, type);
   }

@@ -12,7 +12,7 @@
         <SearchBar
           v-model="searchQuery"
           placeholder="搜索菜品名称、标签..."
-          @input="handleSearchChange"
+          @update:model-value="handleSearchChange"
         />
 
         <div class="p-4 bg-gray-50 rounded-lg border border-gray-100 flex flex-wrap items-center gap-x-8 gap-y-4">

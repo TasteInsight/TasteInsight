@@ -2,6 +2,7 @@
 import { useAddDish } from '@/pages/add-dish/composables/use-add-dish';
 import { uploadDish } from '@/api/modules/dish';
 import { getCanteenList } from '@/api/modules/canteen';
+import { uploadImage } from '@/api/modules/upload';
 
 // Mock APIs
 jest.mock('@/api/modules/dish', () => ({
@@ -9,6 +10,9 @@ jest.mock('@/api/modules/dish', () => ({
 }));
 jest.mock('@/api/modules/canteen', () => ({
   getCanteenList: jest.fn(),
+}));
+jest.mock('@/api/modules/upload', () => ({
+  uploadImage: jest.fn(),
 }));
 
 // Mock uni-app APIs
@@ -77,7 +81,7 @@ describe('useAddDish', () => {
     expect(isFormValid.value).toBe(true);
   });
 
-  it('should submit form successfully', async () => {
+  it('should upload images and submit an explicit backend DTO for a 201 response', async () => {
     const { submitForm, formData } = useAddDish();
 
     // Setup valid form
@@ -85,13 +89,30 @@ describe('useAddDish', () => {
     formData.price = 10;
     formData.canteenName = 'Canteen A';
     formData.windowName = 'Window 1';
+    formData.floor = '2';
+    formData.images = ['https://cdn.example.com/existing.jpg', 'wxfile://temp-image.jpg'];
     formData.availableMealTime = ['lunch'];
 
-    (uploadDish as jest.Mock).mockResolvedValue({ code: 200 });
+    (uploadImage as jest.Mock).mockResolvedValue({
+      url: 'https://cdn.example.com/dish.jpg',
+      filename: 'dish.jpg',
+    });
+    (uploadDish as jest.Mock).mockResolvedValue({ code: 201 });
 
     const result = await submitForm();
 
-    expect(uploadDish).toHaveBeenCalledWith(formData);
+    expect(uploadImage).toHaveBeenCalledWith('wxfile://temp-image.jpg');
+    expect(uploadImage).toHaveBeenCalledTimes(1);
+    const submittedDto = (uploadDish as jest.Mock).mock.calls[0][0];
+    expect(submittedDto).toEqual(
+      expect.objectContaining({
+        name: 'Test Dish',
+        images: ['https://cdn.example.com/existing.jpg', 'https://cdn.example.com/dish.jpg'],
+        canteenName: 'Canteen A',
+        windowName: 'Window 1',
+      })
+    );
+    expect(submittedDto).not.toHaveProperty('floor');
     expect(result).toBe(true);
     expect(uni.showToast).toHaveBeenCalledWith(
       expect.objectContaining({ title: '提交成功，等待审核' })

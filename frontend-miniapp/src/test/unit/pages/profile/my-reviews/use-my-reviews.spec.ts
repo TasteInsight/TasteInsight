@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 describe('pages/profile/my-reviews/composables/use-my-reviews.ts', () => {
   const MODULE_PATH = '@/pages/profile/my-reviews/composables/use-my-reviews';
 
@@ -64,3 +62,4 @@ describe('pages/profile/my-reviews/composables/use-my-reviews.ts', () => {
     expect((global as any).uni.showToast).toHaveBeenCalled();
   });
 });
+export {};

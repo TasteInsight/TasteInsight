@@ -232,7 +232,8 @@
         <div class="mt-6 flex justify-center" v-if="pagination.totalPages > 1">
           <Pagination
             :current-page="pagination.page"
-            :total-pages="pagination.totalPages"
+            :page-size="pagination.pageSize"
+            :total="pagination.total"
             @page-change="handlePageChange"
           />
         </div>

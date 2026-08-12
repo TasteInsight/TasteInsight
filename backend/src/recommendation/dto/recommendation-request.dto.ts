@@ -162,6 +162,11 @@ export class ClickEventDto extends BaseEventDto {}
 export class FavoriteEventDto extends BaseEventDto {}
 
 /**
+ * 推荐正反馈 DTO
+ */
+export class LikeEventDto extends BaseEventDto {}
+
+/**
  * 评价事件 DTO
  */
 export class ReviewEventDto extends BaseEventDto {

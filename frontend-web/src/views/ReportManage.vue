@@ -481,19 +481,15 @@ export default defineComponent({
         if (statusFilter.value) {
           params.status = statusFilter.value
         }
+        if (targetTypeFilter.value) {
+          params.targetType = targetTypeFilter.value
+        }
 
         const response = await reviewApi.getReports(params)
 
         if (response.code === 200 && response.data) {
-          let items = response.data.items || []
-          
-          // 客户端筛选目标类型
-          if (targetTypeFilter.value) {
-            items = items.filter((item: any) => item.targetType === targetTypeFilter.value)
-          }
-
-          reports.value = items
-          totalReports.value = items.length
+          reports.value = response.data.items || []
+          totalReports.value = response.data.meta?.total ?? reports.value.length
         } else {
           reports.value = []
           totalReports.value = 0

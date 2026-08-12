@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 describe('api/modules/canteen.ts', () => {
   const MODULE_PATH = '@/api/modules/canteen';
 
@@ -79,3 +77,4 @@ describe('api/modules/canteen.ts', () => {
     await expect(getWindowDishes('w1')).rejects.toThrow('boom');
   });
 });
+export {};

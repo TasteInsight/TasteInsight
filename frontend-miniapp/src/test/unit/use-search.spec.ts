@@ -9,6 +9,8 @@ jest.mock('@/api/modules/dish');
 describe('useSearch', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (getCanteenList as jest.Mock).mockReset();
+    (getDishes as jest.Mock).mockReset();
   });
 
   it('should initialize with correct state', () => {
@@ -44,7 +46,7 @@ describe('useSearch', () => {
       },
     });
 
-    const { keyword, search, searchResults } = useSearch();
+    const { keyword, search, loadMore, searchResults, hasMore } = useSearch();
     keyword.value = '食堂';
 
     await search();
@@ -53,6 +55,10 @@ describe('useSearch', () => {
     expect(getDishes).not.toHaveBeenCalled();
     expect(searchResults.value.canteens.length).toBeGreaterThan(0);
     expect(searchResults.value.dishes).toEqual([]);
+    expect(hasMore.value).toBe(false);
+
+    await loadMore();
+    expect(getDishes).not.toHaveBeenCalled();
   });
 
   it('should search successfully', async () => {
@@ -236,5 +242,108 @@ describe('useSearch', () => {
     expect(searchResults.value.dishes.length).toBe(2);
     expect(page.value).toBe(2);
     expect(hasMore.value).toBe(false);
+    expect((getDishes as jest.Mock).mock.calls[1][0]).not.toHaveProperty('isSuggestion');
+  });
+
+  it('should paginate the submitted search term rather than unsubmitted input edits', async () => {
+    (getCanteenList as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: { items: [], meta: { page: 1, pageSize: 50, total: 0, totalPages: 1 } },
+    });
+    (getDishes as jest.Mock)
+      .mockResolvedValueOnce({
+        code: 200,
+        data: {
+          items: [{ id: 1, name: 'Old 1' }],
+          meta: { page: 1, pageSize: 20, total: 2, totalPages: 2 },
+        },
+      })
+      .mockResolvedValueOnce({
+        code: 200,
+        data: {
+          items: [{ id: 2, name: 'Old 2' }],
+          meta: { page: 2, pageSize: 20, total: 2, totalPages: 2 },
+        },
+      });
+
+    const { keyword, search, loadMore } = useSearch();
+    keyword.value = 'old';
+    await search();
+    keyword.value = 'new but not submitted';
+    await loadMore();
+
+    expect((getDishes as jest.Mock).mock.calls[1][0]).toMatchObject({
+      search: { keyword: 'old' },
+      pagination: { page: 2, pageSize: 20 },
+    });
+  });
+
+  it('should ignore a stale rejected search after a newer search succeeds', async () => {
+    let rejectOldSearch!: (error: Error) => void;
+    const oldSearch = new Promise((_, reject) => {
+      rejectOldSearch = reject;
+    });
+
+    (getCanteenList as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: { items: [], meta: { page: 1, pageSize: 50, total: 0, totalPages: 1 } },
+    });
+    (getDishes as jest.Mock)
+      .mockReturnValueOnce(oldSearch)
+      .mockResolvedValueOnce({
+        code: 200,
+        data: {
+          items: [{ id: 2, name: 'New result' }],
+          meta: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
+        },
+      });
+
+    const { keyword, search, searchResults, error } = useSearch();
+    keyword.value = 'old';
+    const firstSearch = search();
+    while ((getDishes as jest.Mock).mock.calls.length < 1) {
+      await Promise.resolve();
+    }
+
+    keyword.value = 'new';
+    await search();
+    rejectOldSearch(new Error('old request failed'));
+    await firstSearch;
+
+    expect(searchResults.value.dishes).toEqual([{ id: 2, name: 'New result' }]);
+    expect(error.value).toBe('');
+  });
+
+  it('should invalidate an in-flight search when results are cleared', async () => {
+    let resolveSearch!: (response: any) => void;
+    const pendingSearch = new Promise(resolve => {
+      resolveSearch = resolve;
+    });
+
+    (getCanteenList as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: { items: [], meta: { page: 1, pageSize: 50, total: 0, totalPages: 1 } },
+    });
+    (getDishes as jest.Mock).mockReturnValue(pendingSearch);
+
+    const { keyword, search, clearSearch, searchResults, hasSearched } = useSearch();
+    keyword.value = 'pending';
+    const searchPromise = search();
+    while ((getDishes as jest.Mock).mock.calls.length < 1) {
+      await Promise.resolve();
+    }
+
+    clearSearch();
+    resolveSearch({
+      code: 200,
+      data: {
+        items: [{ id: 1, name: 'Stale result' }],
+        meta: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
+      },
+    });
+    await searchPromise;
+
+    expect(searchResults.value.dishes).toEqual([]);
+    expect(hasSearched.value).toBe(false);
   });
 });

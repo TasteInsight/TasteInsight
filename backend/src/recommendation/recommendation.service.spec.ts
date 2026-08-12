@@ -81,6 +81,7 @@ const mockEventLogger = {
   logClick: jest.fn(),
   logFavorite: jest.fn(),
   logReview: jest.fn(),
+  logLike: jest.fn(),
   logDislike: jest.fn(),
   getRequestEventChain: jest.fn(),
   getUserFunnel: jest.fn(),
@@ -278,6 +279,21 @@ describe('RecommendationService', () => {
 
       expect(eventId).toBe('event4');
       expect(mockEventLogger.logDislike).toHaveBeenCalled();
+    });
+
+    it('should log like feedback as its own event type', async () => {
+      mockEventLogger.logLike.mockResolvedValue('event5');
+
+      const eventId = await service.logLikeEvent('user1', 'dish1', {
+        scene: RecommendationScene.HOME,
+      });
+
+      expect(eventId).toBe('event5');
+      expect(mockEventLogger.logLike).toHaveBeenCalledWith(
+        'user1',
+        'dish1',
+        expect.objectContaining({ scene: RecommendationScene.HOME }),
+      );
     });
   });
 

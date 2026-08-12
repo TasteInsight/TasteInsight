@@ -9,6 +9,8 @@ import { ToolRegistryService } from './tools/tool-registry.service';
 describe('AIChatService', () => {
   let service: AIChatService;
   let prisma: PrismaService;
+  let promptSecurity: PromptSecurityService;
+  let openaiProvider: OpenAIProviderService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -73,6 +75,8 @@ describe('AIChatService', () => {
 
     service = module.get<AIChatService>(AIChatService);
     prisma = module.get<PrismaService>(PrismaService);
+    promptSecurity = module.get<PromptSecurityService>(PromptSecurityService);
+    openaiProvider = module.get<OpenAIProviderService>(OpenAIProviderService);
   });
 
   it('should be defined', () => {
@@ -212,6 +216,34 @@ describe('AIChatService', () => {
       expect(result.messages[1].role).toBe('assistant');
     });
 
+    it('should defensively filter stored assistant text', async () => {
+      jest.spyOn(prisma.aISession, 'findFirst').mockResolvedValue({
+        id: 'session123',
+        userId: 'user123',
+      } as any);
+      jest.spyOn(prisma.aIMessage, 'findMany').mockResolvedValue([
+        {
+          id: 'msg1',
+          sessionId: 'session123',
+          role: 'assistant',
+          content: [{ type: 'text', data: 'api_key=raw-secret' }],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ] as any);
+      jest
+        .spyOn(promptSecurity, 'filterAIResponse')
+        .mockImplementation((text) =>
+          text.replace(/api_key=raw-secret/gi, '[REDACTED]'),
+        );
+
+      const result = await service.getHistory('user123', 'session123');
+
+      expect(result.messages[0].content).toEqual([
+        { type: 'text', data: '[REDACTED]' },
+      ]);
+    });
+
     it('should throw error for non-existent session', async () => {
       jest.spyOn(prisma.aISession, 'findFirst').mockResolvedValue(null);
 
@@ -246,6 +278,86 @@ describe('AIChatService', () => {
 
       expect(result.messages).toHaveLength(50);
       expect(result).toHaveProperty('cursor');
+    });
+  });
+
+  describe('streamChat', () => {
+    it('should filter the complete assistant text before persistence', async () => {
+      jest.spyOn(prisma.aISession, 'findFirst').mockResolvedValue({
+        id: 'session123',
+        userId: 'user123',
+        scene: 'general_chat',
+        messages: [],
+      } as any);
+      jest.spyOn(prisma.aIMessage, 'create').mockResolvedValue({} as any);
+      jest
+        .spyOn(promptSecurity, 'filterAIResponse')
+        .mockImplementation((text) =>
+          text.replace(/api_key\s*=\s*raw-secret/gi, '[REDACTED]'),
+        );
+      async function* stream() {
+        yield { type: 'text' as const, content: 'api_key ' };
+        yield { type: 'text' as const, content: '= raw-secret' };
+      }
+      jest.spyOn(openaiProvider, 'streamChat').mockReturnValue(stream());
+
+      const streamedEvents: any[] = [];
+      await new Promise<void>((resolve, reject) => {
+        service
+          .streamChat('user123', 'session123', { message: 'hello' })
+          .subscribe({
+            next: (event) => streamedEvents.push(event),
+            complete: resolve,
+            error: reject,
+          });
+      });
+
+      expect(prisma.aIMessage.create).toHaveBeenLastCalledWith({
+        data: {
+          sessionId: 'session123',
+          role: 'assistant',
+          content: [{ type: 'text', data: '[REDACTED]' }],
+        },
+      });
+      const streamedText = streamedEvents
+        .filter((event) => event.type === 'text_chunk')
+        .map((event) => event.data)
+        .join('');
+      expect(streamedText).toBe('[REDACTED]');
+      expect(streamedText).not.toContain('raw-secret');
+    });
+
+    it('should not stream credential suffixes containing punctuation', async () => {
+      jest.spyOn(prisma.aISession, 'findFirst').mockResolvedValue({
+        id: 'session123',
+        userId: 'user123',
+        scene: 'general_chat',
+        messages: [],
+      } as any);
+      jest.spyOn(prisma.aIMessage, 'create').mockResolvedValue({} as any);
+      async function* stream() {
+        yield { type: 'text' as const, content: 'password=p@ss.' };
+        yield { type: 'text' as const, content: 'word/123! next' };
+      }
+      jest.spyOn(openaiProvider, 'streamChat').mockReturnValue(stream());
+
+      const streamedEvents: any[] = [];
+      await new Promise<void>((resolve, reject) => {
+        service
+          .streamChat('user123', 'session123', { message: 'hello' })
+          .subscribe({
+            next: (event) => streamedEvents.push(event),
+            complete: resolve,
+            error: reject,
+          });
+      });
+
+      const streamedText = streamedEvents
+        .filter((event) => event.type === 'text_chunk')
+        .map((event) => event.data)
+        .join('');
+      expect(streamedText).toBe('[REDACTED] next');
+      expect(streamedText).not.toContain('@ss.word/123!');
     });
   });
 

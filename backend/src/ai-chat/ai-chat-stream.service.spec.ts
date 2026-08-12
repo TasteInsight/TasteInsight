@@ -188,6 +188,33 @@ describe('AIChatService - Stream', () => {
         error: (err) => done(err),
       });
     });
+
+    it('should not expose internal database errors to the stream client', (done) => {
+      prisma.aISession.findFirst.mockRejectedValue(
+        new Error('postgresql://db-user:db-password@internal-host/database'),
+      );
+
+      const events: any[] = [];
+      service.streamChat(userId, sessionId, dto).subscribe({
+        next: (event) => events.push(event),
+        complete: () => {
+          try {
+            expect(events).toEqual([
+              {
+                type: 'error',
+                data: { error: '抱歉，我现在无法处理您的请求，请稍后再试。' },
+              },
+            ]);
+            expect(JSON.stringify(events)).not.toContain('db-password');
+            expect(JSON.stringify(events)).not.toContain('internal-host');
+            done();
+          } catch (error) {
+            done(error);
+          }
+        },
+        error: done,
+      });
+    });
   });
 
   // Directly test private methods via 'any' cast if necessary or skip if complexity is too high to simulate via public API

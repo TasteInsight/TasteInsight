@@ -56,7 +56,7 @@ export class AdminReviewsController {
   }
 
   @Get(':reviewId/comments')
-  @RequirePermissions('review:approve')
+  @RequirePermissions('review:approve', 'review:delete', 'comment:delete')
   @HttpCode(HttpStatus.OK)
   async getReviewComments(
     @Param('reviewId') reviewId: string,

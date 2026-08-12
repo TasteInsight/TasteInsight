@@ -31,7 +31,7 @@ export const uploadImage = (filePath: string): Promise<ImageUploadData> => {
         Authorization: `Bearer ${useUserStore().token}`,
       },
       success: res => {
-        console.log('Upload response:', res); // 添加调试日志
+        console.log('Upload response status:', res.statusCode);
         if (res.statusCode === 200 || res.statusCode === 201) {
           try {
             if (!res.data) {
@@ -45,7 +45,7 @@ export const uploadImage = (filePath: string): Promise<ImageUploadData> => {
               reject(new Error(data.message || '上传失败'));
             }
           } catch (parseError) {
-            console.error('解析上传响应失败:', parseError, '原始响应:', res.data);
+            console.error('解析上传响应失败:', parseError);
             reject(new Error('解析服务器响应失败'));
           }
         } else {

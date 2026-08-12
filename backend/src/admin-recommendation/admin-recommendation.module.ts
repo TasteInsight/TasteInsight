@@ -5,7 +5,6 @@ import { AdminRecommendationController } from './admin-recommendation.controller
 import { ExperimentsService } from './services/experiments.service';
 import { RecallQualityService } from './services/recall-quality.service';
 import { RecallMetricsCalculator } from './services/recall-metrics.service';
-import { PrismaService } from '@/prisma.service';
 import { RecommendationModule } from '@/recommendation/recommendation.module';
 
 /**
@@ -20,7 +19,6 @@ import { RecommendationModule } from '@/recommendation/recommendation.module';
   imports: [JwtModule.register({}), ConfigModule, RecommendationModule],
   controllers: [AdminRecommendationController],
   providers: [
-    PrismaService,
     ExperimentsService,
     RecallQualityService,
     RecallMetricsCalculator,

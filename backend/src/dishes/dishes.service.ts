@@ -15,14 +15,12 @@ import {
   DishUploadResponseDto,
   FavoriteStatusResponseDto,
 } from './dto/dish-response.dto';
-import { RecommendationService } from '@/recommendation/recommendation.service';
 import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service';
 
 @Injectable()
 export class DishesService {
   constructor(
     private prisma: PrismaService,
-    private recommendationService: RecommendationService,
     @Optional() private embeddingQueueService?: EmbeddingQueueService,
   ) {}
 

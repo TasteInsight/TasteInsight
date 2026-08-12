@@ -260,4 +260,18 @@ describe('useReviewForm', () => {
     );
     expect(rating.value).toBe(0); // Reset after success
   });
+
+  it('should update an existing review through createReview without deleting first', async () => {
+    const { handleSubmit, rating, content } = useReviewForm();
+    rating.value = 4;
+    content.value = 'Updated review';
+    (createReview as jest.Mock).mockResolvedValue({ code: 201 });
+
+    await handleSubmit('123', undefined, 'existing-review-id');
+
+    expect(deleteReview).not.toHaveBeenCalled();
+    expect(createReview).toHaveBeenCalledWith(
+      expect.objectContaining({ dishId: '123', rating: 4, content: 'Updated review' })
+    );
+  });
 });

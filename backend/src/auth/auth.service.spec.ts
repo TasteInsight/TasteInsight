@@ -370,6 +370,15 @@ describe('AuthService', () => {
       // Password should be removed
       expect(result.data.user).not.toHaveProperty('password');
     });
+
+    it('should not issue tokens when the account no longer exists', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(service.refreshToken('deleted-user', 'user')).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(jwtService.signAsync).not.toHaveBeenCalled();
+    });
   });
 
   describe('validateUser', () => {
@@ -411,6 +420,48 @@ describe('AuthService', () => {
   });
 
   describe('_generateTokens', () => {
+    it('should preserve duration units and mark access and refresh token usage', async () => {
+      const realJwtService = new JwtService();
+      jwtService.signAsync.mockImplementation((payload, options) =>
+        realJwtService.signAsync(payload, options),
+      );
+      configService.get.mockImplementation(
+        (key: string, defaultValue?: string) => {
+          const configs: Record<string, string> = {
+            JWT_SECRET: 'test-secret',
+            JWT_REFRESH_SECRET: 'test-refresh-secret',
+            JWT_EXPIRATION_TIME: '1h',
+            JWT_REFRESH_EXPIRATION_TIME: '7d',
+            ENABLE_MOCK_AUTH: 'true',
+          };
+          return configs[key] ?? defaultValue;
+        },
+      );
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+        openId: 'baseline_user_openid',
+      });
+
+      const result = await service.wechatLogin(
+        'baseline_user_code_placeholder',
+      );
+
+      expect(jwtService.signAsync).toHaveBeenNthCalledWith(
+        1,
+        { sub: 'user-1', type: 'user', tokenUse: 'access' },
+        { secret: 'test-secret', expiresIn: '1h' },
+      );
+      expect(jwtService.signAsync).toHaveBeenNthCalledWith(
+        2,
+        { sub: 'user-1', type: 'user', tokenUse: 'refresh' },
+        { secret: 'test-refresh-secret', expiresIn: '7d' },
+      );
+      const refreshPayload = realJwtService.decode(
+        result.data.token.refreshToken,
+      ) as { iat: number; exp: number };
+      expect(refreshPayload.exp - refreshPayload.iat).toBe(7 * 24 * 60 * 60);
+    });
+
     it('should throw InternalServerErrorException if JWT secrets are missing', async () => {
       configService.get.mockImplementation((key: string) => {
         if (key === 'ENABLE_MOCK_AUTH') return 'true';
@@ -429,6 +480,28 @@ describe('AuthService', () => {
       await expect(
         service.wechatLogin('baseline_user_code_placeholder'),
       ).rejects.toThrow(InternalServerErrorException);
+    });
+
+    it('should reject an invalid JWT expiration configuration', async () => {
+      configService.get.mockImplementation(
+        (key: string, defaultValue?: string) => {
+          if (key === 'ENABLE_MOCK_AUTH') return 'true';
+          if (key === 'JWT_SECRET') return 'test-secret';
+          if (key === 'JWT_REFRESH_SECRET') return 'test-refresh-secret';
+          if (key === 'JWT_EXPIRATION_TIME') return 'forever';
+          if (key === 'JWT_REFRESH_EXPIRATION_TIME') return '7d';
+          return defaultValue;
+        },
+      );
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+        openId: 'baseline_user_openid',
+      });
+
+      await expect(
+        service.wechatLogin('baseline_user_code_placeholder'),
+      ).rejects.toThrow(InternalServerErrorException);
+      expect(jwtService.signAsync).not.toHaveBeenCalled();
     });
   });
 });

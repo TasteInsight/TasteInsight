@@ -4,6 +4,7 @@ import { defineComponent, nextTick } from 'vue'
 
 import Header from '../../src/components/Layout/Header.vue'
 import MainLayout from '../../src/components/Layout/MainLayout.vue'
+import { permission } from '../../src/directives/permission'
 
 const mocks = vi.hoisted(() => ({
   routerPush: vi.fn(),
@@ -27,6 +28,7 @@ const authStoreMock = {
   token: 't',
   permissions: ['dish:view'],
   hasPermission: vi.fn((id: string) => true),
+  hasAnyPermission: vi.fn((ids: string[]) => ids.some((id) => authStoreMock.permissions.includes(id))),
   logout: vi.fn(),
 }
 
@@ -193,6 +195,100 @@ describe('components/Layout', () => {
 
     wrapper.unmount()
     expect(removeSpy).toHaveBeenCalled()
+  })
+
+  it('Sidebar renders the operation log entry for an admin:view user', async () => {
+    routeMock.path = '/log-view'
+    authStoreMock.permissions = ['admin:view']
+    authStoreMock.hasPermission = vi.fn((id: string) => authStoreMock.permissions.includes(id))
+    authStoreMock.hasAnyPermission = vi.fn((ids: string[]) =>
+      ids.some((id) => authStoreMock.permissions.includes(id)),
+    )
+
+    const Comp = (await import('../../src/components/Layout/Sidebar.vue')).default
+    const wrapper = mount(Comp, {
+      global: {
+        directives: { permission },
+        stubs: {
+          'router-link': defineComponent({
+            name: 'RouterLink',
+            props: ['to'],
+            template: '<a :data-to="to"><slot /></a>',
+          }),
+        },
+        mocks: { $route: routeMock },
+      },
+    })
+
+    const logLink = wrapper.find('[data-to="/log-view"]')
+    expect(logLink.exists()).toBe(true)
+    expect(logLink.text()).toContain('操作日志')
+    expect(logLink.classes()).toContain('active')
+
+    wrapper.unmount()
+  })
+
+  it('Sidebar exposes the combined moderation page to a comment-only moderator', async () => {
+    routeMock.path = '/review-manage'
+    authStoreMock.permissions = ['comment:approve']
+    authStoreMock.hasPermission = vi.fn((id: string) => authStoreMock.permissions.includes(id))
+    authStoreMock.hasAnyPermission = vi.fn((ids: string[]) =>
+      ids.some((id) => authStoreMock.permissions.includes(id)),
+    )
+
+    const Comp = (await import('../../src/components/Layout/Sidebar.vue')).default
+    const wrapper = mount(Comp, {
+      global: {
+        directives: { permission },
+        stubs: {
+          'router-link': defineComponent({
+            name: 'RouterLink',
+            props: ['to'],
+            template: '<a :data-to="to"><slot /></a>',
+          }),
+        },
+        mocks: { $route: routeMock },
+      },
+    })
+
+    expect(wrapper.find('[data-to="/review-manage"]').exists()).toBe(true)
+    expect(wrapper.find('[data-to="/comment-manage"]').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('Sidebar only exposes deletion management when dish browsing is also allowed', async () => {
+    routeMock.path = '/comment-manage'
+    authStoreMock.permissions = ['comment:delete']
+    authStoreMock.hasPermission = vi.fn((id: string) => authStoreMock.permissions.includes(id))
+    authStoreMock.hasAnyPermission = vi.fn((ids: string[]) =>
+      ids.some((id) => authStoreMock.permissions.includes(id)),
+    )
+
+    const Comp = (await import('../../src/components/Layout/Sidebar.vue')).default
+    const mountSidebar = () =>
+      mount(Comp, {
+        global: {
+          directives: { permission },
+          stubs: {
+            'router-link': defineComponent({
+              name: 'RouterLink',
+              props: ['to'],
+              template: '<a :data-to="to"><slot /></a>',
+            }),
+          },
+          mocks: { $route: routeMock },
+        },
+      })
+
+    const withoutDishView = mountSidebar()
+    expect(withoutDishView.find('[data-to="/comment-manage"]').exists()).toBe(false)
+    withoutDishView.unmount()
+
+    authStoreMock.permissions = ['comment:delete', 'dish:view']
+    const withDishView = mountSidebar()
+    expect(withDishView.find('[data-to="/comment-manage"]').exists()).toBe(true)
+    withDishView.unmount()
   })
 
   it('Sidebar click-outside closes dropdown', async () => {

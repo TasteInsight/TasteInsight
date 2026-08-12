@@ -411,13 +411,27 @@ export async function installMockApi(page: Page): Promise<void> {
       return json(route, ok({ suggestions: ['今天吃什么？', '帮我制定午餐计划'] }));
     }
 
-    // AI：推荐 & 反馈（当前 e2e 不深测，返回占位）
-    if (method === 'POST' && path.endsWith('/ai/recommend')) {
-      return json(route, ok({ recommendation: '建议：宫保鸡丁（示例）' } as any));
+    if (method === 'POST' && path.endsWith('/recommend')) {
+      return json(route, ok({ items: fixtures.dishes, total: fixtures.dishes.length }));
     }
 
-    if (method === 'POST' && path.endsWith('/ai/recommend/feedback')) {
-      return json(route, ok(null));
+    // 推荐反馈属于推荐域，不由 AI 会话接口处理。
+    if (
+      method === 'POST' &&
+      (path.endsWith('/recommend/events/like') || path.endsWith('/recommend/events/dislike'))
+    ) {
+      return json(route, ok({ eventId: 'e2e-recommendation-event' }));
+    }
+
+    // 投稿页会先走 multipart 图片上传，再提交菜品 DTO。
+    if (method === 'POST' && path.endsWith('/upload/image')) {
+      return json(
+        route,
+        ok({
+          url: 'https://via.placeholder.com/300',
+          filename: 'e2e-upload.jpg',
+        })
+      );
     }
 
     // 菜品上传（默认成功）
