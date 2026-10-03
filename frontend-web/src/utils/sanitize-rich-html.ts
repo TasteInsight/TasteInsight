@@ -66,6 +66,15 @@ export function sanitizeRichHtml(html: string): string {
         const value = originalStyle.getPropertyValue(property)
         if (value) element.style.setProperty(property, value)
       }
+      if (tag === 'img') {
+        for (const property of ['width', 'height']) {
+          const value = originalStyle.getPropertyValue(property)
+          // The editor serializes image sizes as percentages, pixels or auto.
+          if (/^(?:auto|(?:\d+(?:\.\d+)?|\.\d+)(?:px|%))$/.test(value)) {
+            element.style.setProperty(property, value)
+          }
+        }
+      }
       appendSafeNodes(node, element)
       destination.appendChild(element)
     }

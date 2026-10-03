@@ -367,7 +367,7 @@ const authStore = useAuthStore()
       }
       
       const confirmed = await showConfirm(
-        `确定要导入 ${validItems.length} 条数据吗？`,
+        `确定要导入 ${validItems.length} 条数据吗？新菜将提交待审核，匹配的既有菜品将按编辑权限更新。`,
         '确认导入'
       )
       if (!confirmed) {
@@ -384,7 +384,7 @@ const authStore = useAuthStore()
         if (response.code === 200 && response.data) {
           const { successCount, failCount, errors } = response.data
           
-          let message = `导入完成！成功：${successCount} 条`
+          let message = `导入完成！成功处理：${successCount} 条`
           if (failCount > 0) {
             message += `，失败：${failCount} 条`
             if (errors && errors.length > 0) {
@@ -400,6 +400,7 @@ const authStore = useAuthStore()
             }
           }
           
+          message += '\n新菜提交待审核；匹配的既有菜品按编辑权限更新。'
           showAlert(message)
           
           // 重置数据

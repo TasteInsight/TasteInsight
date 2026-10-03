@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { sanitizeRichHtml } from '../../src/utils/sanitize-rich-html'
+import { createEditor } from '@wangeditor/editor'
 
 const parseResult = (html: string): HTMLDivElement => {
   const root = document.createElement('div')
@@ -8,6 +9,47 @@ const parseResult = (html: string): HTMLDivElement => {
 }
 
 describe('sanitizeRichHtml', () => {
+  it.each(['30%', '50%', '100%', '240px', 'auto'])('preserves the real editor image size %s through sanitizing and reloading', (width) => {
+    const editor = createEditor({
+      config: { autoFocus: false },
+      content: [{ type: 'paragraph', children: [
+        { text: '' },
+        { type: 'image', src: 'https://example.com/image.png', alt: '图片', href: '',
+          style: { width, height: 'auto' }, children: [{ text: '' }] },
+        { text: '' },
+      ] }] as any,
+    })
+    const html = editor.getHtml()
+    const original = document.createElement('div')
+    original.innerHTML = html
+    expect(original.querySelector('img')?.style.width).toBe(width)
+    expect(original.querySelector('img')?.style.height).toBe('auto')
+    const clean = sanitizeRichHtml(html)
+    expect(parseResult(clean).querySelector('img')?.style.width).toBe(width)
+    expect(parseResult(clean).querySelector('img')?.style.height).toBe('auto')
+    const restored = createEditor({ config: { autoFocus: false }, html: clean })
+    const roundTrip = document.createElement('div')
+    roundTrip.innerHTML = restored.getHtml()
+    expect(roundTrip.querySelector('img')?.style.width).toBe(width)
+    expect(roundTrip.querySelector('img')?.style.height).toBe('auto')
+  })
+
+  it.each(['calc(100% - 1px)', 'var(--image-width)', '-1px', '10vw', 'expression(alert(1))', 'url(javascript:alert(1))'])('drops non-editor image dimensions %s', (size) => {
+    const root = parseResult(`<img src="/image.png" style="width:${size};height:${size};position:fixed;background-image:url(https://example.com/x)">`)
+    expect(root.querySelector('img')?.style.width).toBe('')
+    expect(root.querySelector('img')?.style.height).toBe('')
+    expect(root.querySelector('img')?.style.position).toBe('')
+    expect(root.querySelector('img')?.style.backgroundImage).toBe('')
+  })
+
+  it('preserves fractional image dimensions without allowing size CSS on other elements', () => {
+    const root = parseResult('<img src="/image.png" style="width:12.5%;height:120.5px"><p style="width:100%;height:80px">正文</p>')
+    expect(root.querySelector('img')?.style.width).toBe('12.5%')
+    expect(root.querySelector('img')?.style.height).toBe('120.5px')
+    expect(root.querySelector('p')?.style.width).toBe('')
+    expect(root.querySelector('p')?.style.height).toBe('')
+  })
+
   it('preserves editor text, safe formatting, tables, images and links', () => {
     const root = parseResult('<h2>标题</h2><p style="text-align:center;color:red"><strong>正文</strong><em>斜体</em></p><table><tbody><tr><td colspan="2">表格</td></tr></tbody></table><img src="/image.png" alt="图片" width="120"><a href="https://example.com/path" target="_blank" rel="opener">链接</a>')
     expect(root.querySelector('h2')?.textContent).toBe('标题')

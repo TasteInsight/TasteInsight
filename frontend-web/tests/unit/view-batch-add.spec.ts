@@ -213,7 +213,9 @@ describe('views/BatchAdd', () => {
     wrapper.vm.uploadedFile = makeFile('ok.xlsx') as any
     wrapper.vm.parsedData = [{ status: 'valid', name: 'n' }] as any
     await wrapper.vm.submitBatchData()
-    expect(mocks.showAlertMock).toHaveBeenCalledWith('导入完成！成功：1 条')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith(
+      '导入完成！成功处理：1 条\n新菜提交待审核；匹配的既有菜品按编辑权限更新。'
+    )
     expect(wrapper.vm.uploadedFile).toBe(null)
     expect(wrapper.vm.parsedData).toEqual([])
 
@@ -235,7 +237,7 @@ describe('views/BatchAdd', () => {
 
     await wrapper.vm.submitBatchData()
     expect(mocks.showAlertMock).toHaveBeenCalledWith(
-      expect.stringContaining('成功：0 条')
+      expect.stringContaining('成功处理：0 条')
     )
 
     // api non-200 => alert error
