@@ -1,23 +1,7 @@
-import { development } from './env';
-import { production } from './env';
-import { mock } from './env';
+import { createEnvConfig } from './env';
 
-// 定义配置类型
-interface Config {
-  baseUrl: string;
-}
-
-let config: Config;
-
-if (process.env.NODE_ENV === 'mock') {
-  // Mock环境
-  config = mock;
-} else if (process.env.NODE_ENV === 'development') {
-  // 开发环境
-  config = development;
-} else {
-  // 生产环境
-  config = production;
-}
+// Vite replaces this expression at build time. Jest reads the same variable at
+// runtime, which keeps the configuration contract independently testable.
+const config = createEnvConfig(process.env.VITE_API_BASE_URL);
 
 export default config;

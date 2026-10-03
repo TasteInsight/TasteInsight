@@ -76,6 +76,7 @@ const {
   dishes,
   dishesLoadingMore,
   hasMore,
+  beginOperation,
   init,
   fetchDishes,
   loadMoreDishes,
@@ -88,11 +89,12 @@ const isInitialLoading = ref(true);
 // 页面加载时获取参数并初始化
 onLoad(async (options: any) => {
   if (options.id) {
+    const isCurrent = beginOperation();
     currentCanteenId.value = options.id;
     try {
-      await init(options.id);
+      await init(options.id, {}, isCurrent);
     } finally {
-      isInitialLoading.value = false;
+      if (isCurrent()) isInitialLoading.value = false;
     }
   } else {
     isInitialLoading.value = false;
@@ -101,27 +103,30 @@ onLoad(async (options: any) => {
 
 // 下拉刷新处理
 onPullDownRefresh(async () => {
+  const isCurrent = beginOperation();
   try {
     if (currentCanteenId.value) {
-      await init(currentCanteenId.value);
-      // 如果有筛选条件，重新应用
-      if (Object.keys(currentFilter.value).length > 0) {
-        await fetchDishes(currentCanteenId.value, currentFilter.value);
-      }
+      const refreshed = await init(currentCanteenId.value, currentFilter.value, isCurrent);
+      if (!refreshed) return;
     }
+    if (!isCurrent()) return;
     uni.showToast({
       title: '刷新成功',
       icon: 'success',
       duration: 1500,
     });
   } catch (err) {
+    if (!isCurrent()) return;
     console.error('下拉刷新失败:', err);
     uni.showToast({
       title: '刷新失败',
       icon: 'none',
     });
   } finally {
-    uni.stopPullDownRefresh();
+    if (isCurrent()) {
+      isInitialLoading.value = false;
+      uni.stopPullDownRefresh();
+    }
   }
 });
 

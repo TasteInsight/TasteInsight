@@ -1,3 +1,7 @@
+jest.mock('@/store/modules/use-user-store', () => ({
+  useUserStore: () => ({ sessionVersion: 0, isLoggedIn: true, userInfo: { id: 'user' } }),
+}));
+
 describe('pages/planning/composables/use-menu-planning.ts', () => {
   const MODULE_PATH = '@/pages/planning/composables/use-menu-planning';
 

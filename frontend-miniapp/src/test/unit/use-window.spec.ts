@@ -1,30 +1,20 @@
-import { useWindowData } from '@/pages/window/composables/use-window-data';
-import { useCanteenStore } from '@/store/modules/use-canteen-store';
-import { getWindowDishes } from '@/api/modules/canteen';
-import { ref } from 'vue';
-
-// Mock Store
-jest.mock('@/store/modules/use-canteen-store', () => ({
-  useCanteenStore: jest.fn(),
+jest.mock('@/store/modules/use-user-store', () => ({
+  useUserStore: () => ({ sessionVersion: 0, isLoggedIn: true, userInfo: { id: 'user' } }),
 }));
+
+import { useWindowData } from '@/pages/window/composables/use-window-data';
+import { getWindowDetail, getWindowDishes } from '@/api/modules/canteen';
 
 // Mock API
 jest.mock('@/api/modules/canteen', () => ({
   getWindowDishes: jest.fn(),
+  getWindowDetail: jest.fn(),
 }));
 
 describe('useWindowData', () => {
-  let mockStore: any;
-
   beforeEach(() => {
-    mockStore = {
-      currentWindow: ref(null),
-      error: ref(null),
-      fetchWindowDetail: jest.fn() as unknown as jest.Mock<any, any>,
-    };
-    mockStore.fetchWindowDetail.mockResolvedValue(undefined);
-    (useCanteenStore as unknown as jest.Mock).mockReturnValue(mockStore);
     jest.clearAllMocks();
+    (getWindowDetail as jest.Mock).mockResolvedValue({ code: 200, data: { id: '123' } });
   });
 
   it('should initialize correctly', async () => {
@@ -38,7 +28,7 @@ describe('useWindowData', () => {
 
     await init(windowId);
 
-    expect(mockStore.fetchWindowDetail).toHaveBeenCalledWith(windowId);
+    expect(getWindowDetail).toHaveBeenCalledWith(windowId);
     expect(getWindowDishes).toHaveBeenCalledWith(windowId, expect.anything());
   });
 
@@ -74,15 +64,15 @@ describe('useWindowData', () => {
   it('should handle fetch window error', async () => {
     const { fetchWindow, error } = useWindowData();
 
-    mockStore.fetchWindowDetail.mockRejectedValue(new Error('Store Error'));
+    (getWindowDetail as jest.Mock).mockRejectedValue(new Error('API Error'));
 
     await fetchWindow('123');
 
-    expect(error.value).toBe('Store Error');
+    expect(error.value).toBe('API Error');
   });
 
   it('should support refresh operations', async () => {
-    const { fetchWindow, fetchDishes } = useWindowData();
+    const { fetchWindow, fetchDishes, beginOperation } = useWindowData();
     const windowId = '123';
     const mockDishes = [{ id: '1', name: 'Dish 1' }];
 
@@ -92,9 +82,10 @@ describe('useWindowData', () => {
     });
 
     // Test refresh operations (similar to pull-to-refresh)
-    await Promise.all([fetchWindow(windowId), fetchDishes(windowId)]);
+    const isCurrent = beginOperation();
+    await Promise.all([fetchWindow(windowId, isCurrent), fetchDishes(windowId, undefined, undefined, isCurrent)]);
 
-    expect(mockStore.fetchWindowDetail).toHaveBeenCalledWith(windowId);
+    expect(getWindowDetail).toHaveBeenCalledWith(windowId);
     expect(getWindowDishes).toHaveBeenCalledWith(windowId, expect.anything());
   });
 });

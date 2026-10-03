@@ -6,6 +6,7 @@ import IndexPage from '@/pages/index/index.vue';
 jest.mock('@dcloudio/uni-app', () => ({
   onPullDownRefresh: jest.fn(),
   onReachBottom: jest.fn(),
+  onShow: jest.fn(),
 }));
 
 // Mock stores

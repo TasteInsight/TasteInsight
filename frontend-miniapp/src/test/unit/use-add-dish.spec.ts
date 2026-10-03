@@ -1,3 +1,7 @@
+jest.mock('@/store/modules/use-user-store', () => ({
+  useUserStore: () => ({ sessionVersion: 0, isLoggedIn: true, userInfo: { id: 'user' } }),
+}));
+
 /// <reference types="jest" />
 import { useAddDish } from '@/pages/add-dish/composables/use-add-dish';
 import { uploadDish } from '@/api/modules/dish';
@@ -23,6 +27,23 @@ jest.mock('@/api/modules/upload', () => ({
 } as any;
 
 describe('useAddDish', () => {
+  it('submits the selected window identity when names are repeated', async () => {
+    const addDish = useAddDish();
+    const windows = [
+      { id: 'window-1', name: '面食', number: '1', floor: { level: '1' } },
+      { id: 'window-2', name: '面食', number: '2', floor: { level: '2' } },
+    ];
+    addDish.selectCanteen({ id: 'canteen', name: '食堂', windows } as any);
+    addDish.selectWindow(windows[1] as any);
+    Object.assign(addDish.formData, { name: '菜', price: 10, availableMealTime: ['lunch'] });
+    (uploadDish as jest.Mock).mockResolvedValue({ code: 201, data: { id: 'upload' } });
+    await addDish.submitForm();
+    expect(uploadDish).toHaveBeenCalledWith(expect.objectContaining({
+      windowId: 'window-2', windowNumber: '2', windowName: '面食',
+    }));
+    addDish.selectCanteen({ id: 'another', name: '另一个食堂', windows: [] } as any);
+    expect(addDish.formData.windowId).toBe('');
+  });
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -82,7 +103,7 @@ describe('useAddDish', () => {
   });
 
   it('should upload images and submit an explicit backend DTO for a 201 response', async () => {
-    const { submitForm, formData } = useAddDish();
+    const { submitForm, formData, chooseImages } = useAddDish();
 
     // Setup valid form
     formData.name = 'Test Dish';
@@ -90,24 +111,27 @@ describe('useAddDish', () => {
     formData.canteenName = 'Canteen A';
     formData.windowName = 'Window 1';
     formData.floor = '2';
-    formData.images = ['https://cdn.example.com/existing.jpg', 'wxfile://temp-image.jpg'];
+    (uni.chooseImage as jest.Mock).mockImplementation(({ success }: any) =>
+      success({ tempFilePaths: ['http://tmp/selected-dish.jpg', 'wxfile://temp-image.jpg'] })
+    );
+    chooseImages();
     formData.availableMealTime = ['lunch'];
 
-    (uploadImage as jest.Mock).mockResolvedValue({
-      url: 'https://cdn.example.com/dish.jpg',
-      filename: 'dish.jpg',
-    });
+    (uploadImage as jest.Mock)
+      .mockResolvedValueOnce({ url: 'https://cdn.example.com/selected-dish.jpg', filename: 'selected-dish.jpg' })
+      .mockResolvedValueOnce({ url: 'https://cdn.example.com/dish.jpg', filename: 'dish.jpg' });
     (uploadDish as jest.Mock).mockResolvedValue({ code: 201 });
 
     const result = await submitForm();
 
     expect(uploadImage).toHaveBeenCalledWith('wxfile://temp-image.jpg');
-    expect(uploadImage).toHaveBeenCalledTimes(1);
+    expect(uploadImage).toHaveBeenCalledWith('http://tmp/selected-dish.jpg');
+    expect(uploadImage).toHaveBeenCalledTimes(2);
     const submittedDto = (uploadDish as jest.Mock).mock.calls[0][0];
     expect(submittedDto).toEqual(
       expect.objectContaining({
         name: 'Test Dish',
-        images: ['https://cdn.example.com/existing.jpg', 'https://cdn.example.com/dish.jpg'],
+        images: ['https://cdn.example.com/selected-dish.jpg', 'https://cdn.example.com/dish.jpg'],
         canteenName: 'Canteen A',
         windowName: 'Window 1',
       })

@@ -35,7 +35,22 @@ describe('request utils', () => {
     mockUserStore = {
       token: null,
       refreshToken: null,
-      logoutAction: jest.fn(),
+      sessionVersion: 0,
+      logoutAction: jest.fn(() => {
+        mockUserStore.sessionVersion += 1;
+        mockUserStore.token = null;
+        mockUserStore.refreshToken = null;
+      }),
+      updateTokens: jest.fn((version: number, accessToken: string, refreshToken?: string) => {
+        if (version !== mockUserStore.sessionVersion) return false;
+        mockUserStore.token = accessToken;
+        mockSetStorageSync('token', accessToken);
+        if (refreshToken) {
+          mockUserStore.refreshToken = refreshToken;
+          mockSetStorageSync('refreshToken', refreshToken);
+        }
+        return true;
+      }),
     };
     (useUserStore as unknown as jest.Mock).mockReturnValue(mockUserStore);
 

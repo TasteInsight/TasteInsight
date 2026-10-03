@@ -13,6 +13,9 @@ const mockShowToast = jest.fn();
 
 // Ensure non-mock stream branch by default
 jest.mock('@/mock/mock-adapter', () => ({ USE_MOCK: false }));
+jest.mock('@/store/modules/use-user-store', () => ({
+  useUserStore: () => ({ sessionVersion: 0, isLoggedIn: true, userInfo: { id: 'user' } }),
+}));
 
 jest.mock('@/api/modules/ai', () => ({
   createAISession: jest.fn(),
@@ -169,7 +172,7 @@ describe('useChatStore (unit)', () => {
     const lastAi = store.messages.filter((message: any) => message.type === 'ai').pop() as any;
     expect(lastAi.content[0].text).toContain('provider failed');
     expect(lastAi.isStreaming).toBe(false);
-    expect(mockSetStorageSync).not.toHaveBeenCalled();
+    expect(mockSetStorageSync).toHaveBeenCalledTimes(1);
   });
 
   test('abortChat calls close and clears streaming state', async () => {

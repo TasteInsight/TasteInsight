@@ -14,6 +14,7 @@ node_modules
 .DS_Store
 dist
 *.local
+.env.production
 
 # Artillery load-test reports
 load-report*.json

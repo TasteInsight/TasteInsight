@@ -82,6 +82,7 @@ const {
   hasMore,
   error,
   dishes,
+  beginOperation,
   init,
   fetchDishes,
   loadMoreDishes,
@@ -94,11 +95,12 @@ const refresherTriggered = ref(false);
 
 onLoad(async (options: any) => {
   if (options.id) {
+    const isCurrent = beginOperation();
     currentWindowId = options.id;
     try {
-      await init(options.id);
+      await init(options.id, isCurrent);
     } finally {
-      isInitialLoading.value = false;
+      if (isCurrent()) isInitialLoading.value = false;
     }
   } else {
     isInitialLoading.value = false;
@@ -110,16 +112,21 @@ onLoad(async (options: any) => {
  */
 const onRefresh = async () => {
   if (!currentWindowId) return;
+  const isCurrent = beginOperation();
 
   refresherTriggered.value = true;
 
   try {
     // 同时刷新窗口信息和菜品列表
-    await Promise.all([fetchWindow(currentWindowId), fetchDishes(currentWindowId)]);
+    await Promise.all([
+      fetchWindow(currentWindowId, isCurrent),
+      fetchDishes(currentWindowId, undefined, undefined, isCurrent),
+    ]);
   } catch (err) {
+    if (!isCurrent()) return;
     console.error('刷新失败:', err);
   } finally {
-    refresherTriggered.value = false;
+    if (isCurrent()) refresherTriggered.value = false;
   }
 };
 
@@ -134,7 +141,7 @@ const onRefreshRestore = () => {
  * 触底上拉加载更多（scroll-view）
  */
 const onLoadMore = async () => {
-  if (!currentWindowId) return;
+  if (!currentWindowId || refresherTriggered.value) return;
   if (!hasMore.value) return;
   await loadMoreDishes(currentWindowId);
 };

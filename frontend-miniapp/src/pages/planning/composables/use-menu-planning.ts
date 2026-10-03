@@ -1,5 +1,6 @@
 // @/composables/use-menu-planning.ts
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
+import { useUserStore } from '@/store/modules/use-user-store';
 import { usePlanStore } from '@/store/modules/use-plan-store';
 import type { EnrichedMealPlan } from '@/store/modules/use-plan-store';
 import type { MealPlanRequest } from '@/types/api';
@@ -8,10 +9,12 @@ export type { EnrichedMealPlan } from '@/store/modules/use-plan-store';
 
 export function useMenuPlanning() {
   const planStore = usePlanStore();
+  const userStore = useUserStore();
   const showDetailDialog = ref(false);
   const showEditDialog = ref(false);
   const showCreateDialog = ref(false);
   const activeTab = ref<'current' | 'history'>('current');
+  const submitting = ref(false);
 
   // 从 store 获取数据
   const loading = computed(() => planStore.loading);
@@ -50,6 +53,7 @@ export function useMenuPlanning() {
 
   // 删除规划
   const deletePlan = async (planId: string) => {
+    const sessionVersion = userStore.sessionVersion;
     try {
       const confirmed = await new Promise<boolean>(resolve => {
         uni.showModal({
@@ -65,10 +69,11 @@ export function useMenuPlanning() {
         });
       });
 
-      if (!confirmed) return;
+      if (!confirmed || userStore.sessionVersion !== sessionVersion) return;
 
       await planStore.removePlan(planId);
     } catch (err) {
+      if (userStore.sessionVersion !== sessionVersion) return;
       console.error('删除失败:', err);
     }
   };
@@ -82,28 +87,37 @@ export function useMenuPlanning() {
     showCreateDialog.value = true;
   };
 
-  // 提交创建
-  const submitCreate = async (planData: MealPlanRequest) => {
+  const savePlan = async (planData: MealPlanRequest, planId?: string) => {
+    if (submitting.value) return;
+    submitting.value = true;
+    const sessionVersion = userStore.sessionVersion;
     try {
-      await planStore.createPlan(planData);
-      showCreateDialog.value = false;
+      if (planId) {
+        await planStore.updatePlan(planId, planData);
+        if (userStore.sessionVersion !== sessionVersion) return;
+        showEditDialog.value = false;
+      } else {
+        await planStore.createPlan(planData);
+        if (userStore.sessionVersion !== sessionVersion) return;
+        showCreateDialog.value = false;
+      }
     } catch (err) {
-      console.error('创建失败:', err);
+      if (userStore.sessionVersion !== sessionVersion) return;
+      console.error('保存规划失败:', err);
       throw err;
+    } finally {
+      if (userStore.sessionVersion === sessionVersion) submitting.value = false;
     }
   };
+
+  // 提交创建
+  const submitCreate = (planData: MealPlanRequest) => savePlan(planData);
 
   // 提交编辑
   const submitEdit = async (planData: MealPlanRequest) => {
     if (!selectedPlan.value) return;
 
-    try {
-      await planStore.updatePlan(selectedPlan.value.id, planData);
-      showEditDialog.value = false;
-    } catch (err) {
-      console.error('更新失败:', err);
-      throw err;
-    }
+    return savePlan(planData, selectedPlan.value.id);
   };
 
   // 关闭对话框
@@ -123,8 +137,10 @@ export function useMenuPlanning() {
 
   // 执行规划（将规划移至历史）
   const executePlan = async (planId: string) => {
+    const sessionVersion = userStore.sessionVersion;
     try {
       await planStore.executePlan(planId);
+      if (userStore.sessionVersion !== sessionVersion) return;
       // 执行成功后关闭详情弹窗
       showDetailDialog.value = false;
       uni.showToast({
@@ -132,6 +148,7 @@ export function useMenuPlanning() {
         icon: 'success',
       });
     } catch (err) {
+      if (userStore.sessionVersion !== sessionVersion) return;
       console.error('执行规划失败:', err);
       uni.showToast({
         title: '执行失败',
@@ -155,9 +172,18 @@ export function useMenuPlanning() {
     await planStore.fetchPlans();
   };
 
+  watch(() => userStore.sessionVersion, () => {
+    showDetailDialog.value = false;
+    showEditDialog.value = false;
+    showCreateDialog.value = false;
+    submitting.value = false;
+    activeTab.value = 'current';
+  }, { flush: 'sync' });
+
   return {
     // 状态
     loading,
+    submitting,
     error,
     currentPlans,
     historyPlans,

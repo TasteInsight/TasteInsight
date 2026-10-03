@@ -1,3 +1,7 @@
+jest.mock('@/store/modules/use-user-store', () => ({
+  useUserStore: () => ({ sessionVersion: 0, isLoggedIn: true, userInfo: { id: 'user' } }),
+}));
+
 import { useMenuPlanning } from '@/pages/planning/composables/use-menu-planning';
 import { usePlanStore } from '@/store/modules/use-plan-store';
 import { ref, reactive, nextTick } from 'vue';
@@ -103,6 +107,35 @@ describe('useMenuPlanning', () => {
 
     expect(mockStore.createPlan).toHaveBeenCalledWith(planData);
     expect(showCreateDialog.value).toBe(false);
+  });
+
+  it('owns pending creation until the request settles and ignores repeated submission', async () => {
+    let resolveCreate!: () => void;
+    mockStore.createPlan.mockImplementation(() => new Promise<void>(resolve => {
+      resolveCreate = resolve;
+    }));
+    const planning = useMenuPlanning();
+    planning.createNewPlan();
+    const first = planning.submitCreate({ dishes: ['dish'] } as any);
+    expect(planning.submitting.value).toBe(true);
+    await planning.submitCreate({ dishes: ['dish'] } as any);
+    expect(mockStore.createPlan).toHaveBeenCalledTimes(1);
+    expect(planning.showCreateDialog.value).toBe(true);
+    resolveCreate();
+    await first;
+    expect(planning.submitting.value).toBe(false);
+    expect(planning.showCreateDialog.value).toBe(false);
+  });
+
+  it('releases pending state after an unsuccessful save so it can be retried', async () => {
+    mockStore.createPlan.mockRejectedValueOnce(new Error('save failed'));
+    const planning = useMenuPlanning();
+    planning.createNewPlan();
+    await expect(planning.submitCreate({} as any)).rejects.toThrow('save failed');
+    expect(planning.submitting.value).toBe(false);
+    expect(planning.showCreateDialog.value).toBe(true);
+    await planning.submitCreate({} as any);
+    expect(mockStore.createPlan).toHaveBeenCalledTimes(2);
   });
 
   it('should handle submitEdit', async () => {

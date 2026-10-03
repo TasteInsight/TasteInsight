@@ -1,15 +1,16 @@
-import { ref, computed } from 'vue';
-import { useCanteenStore } from '@/store/modules/use-canteen-store';
+import { ref, watch, getCurrentScope, onScopeDispose } from 'vue';
+import { useUserStore } from '@/store/modules/use-user-store';
+import { getCanteenDetail, getWindowList } from '@/api/modules/canteen';
 import { getDishes } from '@/api/modules/dish';
-import type { GetDishesRequest, Dish } from '@/types/api';
+import type { GetDishesRequest, Dish, Canteen, Window } from '@/types/api';
 
 export function useCanteenData() {
-  const canteenStore = useCanteenStore();
+  const userStore = useUserStore();
 
-  const canteenInfo = computed(() => canteenStore.currentCanteen);
-  const loading = computed(() => canteenStore.loading);
-  const error = computed(() => canteenStore.error);
-  const windows = computed(() => canteenStore.windowList);
+  const canteenInfo = ref<Canteen | null>(null);
+  const loading = ref(false);
+  const error = ref<string | null>(null);
+  const windows = ref<Window[]>([]);
 
   const dishes = ref<Dish[]>([]);
   const dishesLoading = ref(false);
@@ -19,6 +20,27 @@ export function useCanteenData() {
   const pageSize = 20;
   const currentCanteenId = ref('');
   const currentExtraFilters = ref<GetDishesRequest['filter']>({});
+  let operationVersion = 0;
+  let dishRequestVersion = 0;
+  let disposed = false;
+
+  const captureOperation = () => {
+    const operation = operationVersion;
+    const session = userStore.sessionVersion;
+    return () => !disposed && operation === operationVersion && session === userStore.sessionVersion;
+  };
+
+  const beginOperation = () => {
+    operationVersion += 1;
+    dishRequestVersion += 1;
+    loading.value = false;
+    error.value = null;
+    dishesLoading.value = false;
+    dishesLoadingMore.value = false;
+    return captureOperation();
+  };
+
+  if (getCurrentScope()) onScopeDispose(() => { disposed = true; });
 
   const filters = [
     { key: 'taste', label: '口味' },
@@ -29,19 +51,44 @@ export function useCanteenData() {
   ];
   const activeFilter = ref<string>('');
 
-  const fetchCanteen = async (canteenId: string) => {
-    await canteenStore.fetchCanteenDetail(canteenId).catch(() => {});
+  const fetchCanteen = async (canteenId: string, isCurrent: () => boolean) => {
+    if (!isCurrent()) return false;
+    try {
+      const response = await getCanteenDetail(canteenId);
+      if (!isCurrent()) return false;
+      if (response.code !== 200 || !response.data) throw new Error(response.message || '获取食堂详情失败');
+      canteenInfo.value = response.data;
+      return true;
+    } catch (err) {
+      if (isCurrent()) error.value = err instanceof Error ? err.message : '获取食堂详情失败';
+      return false;
+    }
   };
 
-  const fetchWindows = async (canteenId: string) => {
-    await canteenStore.fetchWindowList(canteenId, { page: 1, pageSize: 50 }).catch(() => {});
+  const fetchWindows = async (canteenId: string, isCurrent: () => boolean) => {
+    if (!isCurrent()) return false;
+    try {
+      const response = await getWindowList(canteenId, { page: 1, pageSize: 50 });
+      if (!isCurrent()) return false;
+      if (response.code !== 200 || !response.data) throw new Error(response.message || '获取窗口列表失败');
+      windows.value = response.data.items;
+      return true;
+    } catch (err) {
+      if (isCurrent()) error.value = err instanceof Error ? err.message : '获取窗口列表失败';
+      return false;
+    }
   };
 
   const fetchDishes = async (
     canteenId: string,
     extraFilters: GetDishesRequest['filter'] = {},
-    reset = true
+    reset = true,
+    isCurrent = captureOperation()
   ) => {
+    if (!isCurrent()) return false;
+    const request = ++dishRequestVersion;
+    const ownsQuery = () => isCurrent() && request === dishRequestVersion;
+    error.value = null;
     if (reset) {
       currentPage.value = 1;
       dishes.value = [];
@@ -58,26 +105,28 @@ export function useCanteenData() {
       search: { keyword: '' },
     };
 
-    if (reset) {
-      dishesLoading.value = true;
-    } else {
-      dishesLoadingMore.value = true;
-    }
+    dishesLoading.value = reset;
+    dishesLoadingMore.value = !reset;
 
     try {
       const res = await getDishes(params);
+      if (!ownsQuery()) return false;
       if (res.code === 200 && res.data) {
         const items = res.data.items || [];
         dishes.value = reset ? items : [...dishes.value, ...items];
         hasMore.value = currentPage.value < res.data.meta.totalPages;
+        return true;
       }
+      return false;
     } catch (err) {
+      if (!ownsQuery()) return false;
       console.error('fetchDishes error', err);
+      error.value = err instanceof Error ? err.message : '获取菜品列表失败';
+      return false;
     } finally {
-      if (reset) {
-        dishesLoading.value = false;
-      } else {
-        dishesLoadingMore.value = false;
+      if (ownsQuery()) {
+        if (reset) dishesLoading.value = false;
+        else dishesLoadingMore.value = false;
       }
     }
   };
@@ -91,22 +140,56 @@ export function useCanteenData() {
     await fetchDishes(currentCanteenId.value, currentExtraFilters.value, false);
   };
 
-  const init = async (canteenId: string) => {
+  const init = async (
+    canteenId: string,
+    extraFilters: GetDishesRequest['filter'] = {},
+    isCurrent = beginOperation()
+  ) => {
+    if (!isCurrent()) return false;
+    const initialDishRequest = dishRequestVersion;
     currentCanteenId.value = canteenId;
-    currentExtraFilters.value = {};
+    currentExtraFilters.value = extraFilters;
     currentPage.value = 1;
     hasMore.value = true;
-    await fetchCanteen(canteenId);
-    await fetchWindows(canteenId);
-    await fetchDishes(canteenId);
+    loading.value = true;
+    dishesLoading.value = true;
+    try {
+      if (!await fetchCanteen(canteenId, isCurrent) || !isCurrent()) return false;
+      if (!await fetchWindows(canteenId, isCurrent) || !isCurrent()) return false;
+      // 新筛选已接管菜品列表时，初始化只完成食堂与窗口刷新。
+      if (initialDishRequest !== dishRequestVersion) return true;
+      return await fetchDishes(canteenId, extraFilters, true, isCurrent);
+    } finally {
+      if (isCurrent()) {
+        loading.value = false;
+        if (initialDishRequest === dishRequestVersion) dishesLoading.value = false;
+      }
+    }
   };
 
   const toggleFilter = (key: string) => {
     activeFilter.value = activeFilter.value === key ? '' : key;
   };
 
+  watch(() => userStore.sessionVersion, () => {
+    operationVersion += 1;
+    dishRequestVersion += 1;
+    canteenInfo.value = null;
+    windows.value = [];
+    loading.value = false;
+    error.value = null;
+    dishes.value = [];
+    dishesLoading.value = false;
+    dishesLoadingMore.value = false;
+    currentCanteenId.value = '';
+    currentExtraFilters.value = {};
+    currentPage.value = 1;
+    hasMore.value = true;
+    activeFilter.value = '';
+  }, { flush: 'sync' });
+
   return {
-    // store-linked
+    // 页面快照
     canteenInfo,
     loading,
     error,
@@ -119,11 +202,10 @@ export function useCanteenData() {
     filters,
     activeFilter,
     // actions
+    beginOperation,
     init,
     fetchDishes,
     loadMoreDishes,
-    fetchCanteen,
-    fetchWindows,
     toggleFilter,
   };
 }

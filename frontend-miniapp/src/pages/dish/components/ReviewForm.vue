@@ -75,6 +75,7 @@
           <button
             v-if="hasFlavorSelection"
             class="px-3 py-1.5 text-sm font-medium text-ts-purple bg-purple-50 border border-purple-200 rounded-full hover:bg-purple-100 active:bg-purple-200 transition-colors duration-200"
+            :disabled="busy"
             @tap="resetFlavorRatings"
           >
             清除选择
@@ -119,16 +120,16 @@
             class="w-full h-24 resize-none focus:outline-none text-base"
             placeholder="分享你的用餐体验吧~"
             maxlength="500"
-            :disabled="submitting"
+            :disabled="busy"
           ></textarea>
 
-          <!-- 图片上传区域 -->
+          <!-- 评价图片 -->
           <view class="flex items-end justify-between mt-2">
             <view class="flex flex-wrap gap-2">
-              <!-- 已上传图片 -->
+              <!-- 已选择图片 -->
               <view v-for="(img, index) in images" :key="index" class="relative w-16 h-16">
                 <image
-                  :src="img"
+                  :src="img.path"
                   class="w-full h-full rounded object-cover border border-gray-100"
                   mode="aspectFill"
                   @tap="handlePreviewImage(index)"
@@ -142,13 +143,13 @@
                 </view>
               </view>
 
-              <!-- 上传按钮 -->
+              <!-- 选择图片 -->
               <view
                 v-if="images.length < 3"
                 class="w-16 h-16 border border-dashed border-gray-300 rounded flex items-center justify-center active:bg-gray-50"
                 @tap="handleChooseImage"
               >
-                <text v-if="!isUploading" class="text-gray-400 text-2xl font-light">+</text>
+                <text v-if="!busy" class="text-gray-400 text-2xl font-light">+</text>
                 <text v-else class="text-gray-400 text-xs">...</text>
               </view>
             </view>
@@ -162,10 +163,10 @@
       <!-- 提交按钮 -->
       <button
         class="w-full h-10 flex items-center justify-center font-medium rounded-md transition-all shadow-lg shadow-purple-200 active:shadow-none bg-purple-900 text-white disabled:bg-gray-300 disabled:text-gray-400 disabled:cursor-not-allowed"
-        :disabled="submitting"
+        :disabled="busy"
         @click="handleSubmit"
       >
-        {{ submitting ? '提交中...' : isEditing ? '更新评价' : '提交评价' }}
+        {{ isSaving ? '保存草稿中...' : submitting ? '提交中...' : isEditing ? '更新评价' : '提交评价' }}
       </button>
     </scroll-view>
   </view>
@@ -174,6 +175,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, nextTick, ref, computed, watch } from 'vue';
 import { useReviewForm } from '../composables/use-review';
+import { useUserStore } from '@/store/modules/use-user-store';
 import type { Review } from '@/types/api';
 
 interface Props {
@@ -190,6 +192,7 @@ interface Emits {
 
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
+const userStore = useUserStore();
 
 const isEditing = computed(() => !!props.existingReviewId);
 
@@ -197,7 +200,8 @@ const {
   rating,
   content,
   images,
-  isUploading,
+  isSaving,
+  busy,
   submitting,
   showFlavorError,
   flavorOptions,
@@ -214,7 +218,8 @@ const {
   clearReviewState,
   hasSavedReviewState,
   handleSubmit: submitForm,
-  uploadImages,
+  addImages,
+  setRemoteImages,
   removeImage,
 } = useReviewForm();
 
@@ -222,7 +227,7 @@ const applyInitialReview = (review: Review) => {
   resetForm();
   rating.value = review.rating || 0;
   content.value = review.content || '';
-  images.value = Array.isArray(review.images) ? [...review.images] : [];
+  setRemoteImages(Array.isArray(review.images) ? review.images : []);
 
   if (review.ratingDetails) {
     flavorRatings.value = {
@@ -234,16 +239,21 @@ const applyInitialReview = (review: Review) => {
   }
 };
 
+let active = true;
+
 // 图片选择
 const handleChooseImage = () => {
-  if (isUploading.value) return;
+  if (!active || busy.value || images.value.length >= 3) return;
+  const sessionVersion = userStore.sessionVersion;
+  const owner = userStore.userInfo?.id;
 
   uni.chooseImage({
     count: 3 - images.value.length,
     sizeType: ['compressed'],
     sourceType: ['album', 'camera'],
     success: res => {
-      uploadImages(res.tempFilePaths as string[]);
+      if (!active || userStore.sessionVersion !== sessionVersion || userStore.userInfo?.id !== owner) return;
+      addImages(res.tempFilePaths as string[]);
     },
   });
 };
@@ -251,8 +261,8 @@ const handleChooseImage = () => {
 // 图片预览
 const handlePreviewImage = (index: number) => {
   uni.previewImage({
-    urls: images.value,
-    current: images.value[index],
+    urls: images.value.map(image => image.path),
+    current: images.value[index].path,
   });
 };
 
@@ -343,6 +353,7 @@ watch(
 
 // 显示tabbar
 onUnmounted(() => {
+  active = false;
   // 移除CSS类
   if (typeof document !== 'undefined' && document?.body) {
     document.body.classList.remove('hide-tabbar');
@@ -358,31 +369,29 @@ onUnmounted(() => {
   }, 200);
 });
 
-const handleClose = () => {
+const handleClose = async () => {
+  if (!active || busy.value) return;
+  const sessionVersion = userStore.sessionVersion;
+  const owner = userStore.userInfo?.id;
   if (isEditing.value) {
     emit('close');
     return;
   }
 
-  if (showResumeDialog.value) {
-    // 如果显示恢复对话框，清除保存的状态并关闭整个组件
-    clearReviewState(props.dishId);
-    emit('close');
-  } else {
-    // 如果显示评价弹窗，保存评价状态（如果有内容）
-    if (rating.value > 0 || content.value.trim() || hasFlavorSelection.value) {
-      saveReviewState(props.dishId);
+  if (!showResumeDialog.value) {
+    if (rating.value > 0 || content.value.trim() || hasFlavorSelection.value || images.value.length) {
+      if (!await saveReviewState(props.dishId)) return;
+    } else {
+      clearReviewState(props.dishId);
     }
-    emit('close');
   }
+  if (active && userStore.sessionVersion === sessionVersion && userStore.userInfo?.id === owner) emit('close');
 };
 
 const handleSubmit = () => {
-  submitForm(
+  return submitForm(
     props.dishId,
     () => {
-      // 提交成功后清除保存的状态
-      clearReviewState(props.dishId);
       emit('success');
     },
     props.existingReviewId
@@ -404,6 +413,8 @@ const startNewReview = () => {
   clearReviewState(props.dishId);
   showResumeDialog.value = false;
 };
+
+defineExpose({ requestClose: handleClose });
 </script>
 
 <style scoped>

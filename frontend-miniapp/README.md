@@ -130,6 +130,12 @@ frontend-miniapp/
 | `use-chat-store` | AI 聊天消息、会话管理 |
 | `use-plan-store` | 菜单规划数据 |
 
+### 登录会话与本地聊天历史
+
+异步请求和聊天流属于发起时的登录会话。退出或切换账号后，旧操作不能更新当前账号的数据、令牌或请求状态，也不能继续提交后续业务请求。
+
+聊天历史按用户 ID 分区保存在本地，切换账号会清空当前聊天视图并加载对应分区。生成中切换会话会保存已接收的内容并终止原流。旧版 `ai-chat-history` 缓存缺少账号归属，升级后保留原数据但不自动加载或迁入任一账号。
+
 ## 环境准备
 
 ### 推荐 IDE
@@ -146,7 +152,13 @@ pnpm install
 
 ### 环境变量
 
-在 `src/config/` 目录下配置 API 地址。
+API 地址由 Vite 模式文件在构建时注入：
+
+- `.env.development`：`http://localhost:3001`
+- `.env.production`：发布构建的完整 HTTPS API 基址（含 `/api/v1`），由 `.env.production.example` 创建，文件不纳入版本管理
+- `.env.mock`：Apifox Mock 地址，使用 `pnpm dev:mock`
+
+机器专属地址写入被 Git 忽略的 `.env.development.local`，例如真机联调所需的局域网 IP。`VITE_*` 会进入小程序产物，不能存放密钥。
 
 ## 运行项目
 
@@ -155,6 +167,7 @@ pnpm install
 ```bash
 # 标准开发模式
 pnpm dev:h5
+```
 
 ### 微信小程序开发模式
 
@@ -167,12 +180,17 @@ pnpm dev:mp-weixin
 ### 生产构建
 
 ```bash
+# 首次构建：复制并填写已配置的 HTTPS API 基址，例如 https://domain.example/api/v1
+cp .env.production.example .env.production
+
 # H5 构建
 pnpm build:h5
 
 # 微信小程序构建
 pnpm build:mp-weixin
 ```
+
+微信小程序正式版要求合法 HTTPS 请求域名。当前网关仅提供 HTTP，恢复 HTTPS 并配置微信请求域名后才能发布。详见 [环境配置与部署](../docs/环境配置与部署.md)。
 
 ## 测试
 
@@ -266,4 +284,3 @@ npx prettier --write "src/**/*.{ts,vue}"
 - 小程序包含 AI 模块，无法以个人主体上线，需使用企业主体
 - 测试需使用体验版，并在微信公众平台添加体验成员权限
 - 登录需同意《用户协议》和《隐私政策》
-

@@ -345,9 +345,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onMounted } from 'vue';
+import { ref, watch, computed, onMounted, onScopeDispose } from 'vue';
 import { useCanteenStore } from '@/store/modules/use-canteen-store';
-import { getWindowDishes } from '@/api/modules/canteen';
+import { useUserStore } from '@/store/modules/use-user-store';
+import { getWindowList, getWindowDishes } from '@/api/modules/canteen';
 import { getDishes } from '@/api/modules/dish';
 import type { EnrichedMealPlan } from '../composables/use-menu-planning';
 import type { MealPlanRequest, Canteen, Window, Dish, GetDishesRequest } from '@/types/api';
@@ -356,6 +357,7 @@ import dayjs from 'dayjs';
 const props = defineProps<{
   visible: boolean;
   plan: EnrichedMealPlan | null;
+  submitting?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -364,10 +366,12 @@ const emit = defineEmits<{
 }>();
 
 const canteenStore = useCanteenStore();
+const userStore = useUserStore();
+let disposed = false;
+onScopeDispose(() => { disposed = true; });
 
 // 基础状态
 const isEdit = computed(() => !!props.plan);
-const submitting = ref(false);
 
 // 表单数据
 const formData = ref<MealPlanRequest & { dishes: string[] }>({
@@ -394,10 +398,22 @@ const totalPages = ref(1);
 const loadingMore = ref(false);
 const hasMore = computed(() => currentPage.value < totalPages.value);
 const requestToken = ref(0);
+let windowRequestToken = 0;
 
 // 食堂和窗口列表
 const canteenList = computed(() => canteenStore.canteenList);
-const windowList = computed(() => canteenStore.windowList);
+const windowList = ref<Window[]>([]);
+
+const captureOwner = () => {
+  const session = userStore.sessionVersion;
+  return () => !disposed && props.visible && session === userStore.sessionVersion;
+};
+
+const beginDishRequest = () => {
+  const token = ++requestToken.value;
+  const ownsPage = captureOwner();
+  return () => ownsPage() && token === requestToken.value;
+};
 
 // 用餐时间选项
 const mealTimeOptions = [
@@ -421,10 +437,13 @@ const filteredDishList = computed(() => {
 
 // 初始化加载食堂列表
 onMounted(async () => {
+  const session = userStore.sessionVersion;
+  const isCurrent = () => !disposed && session === userStore.sessionVersion;
   if (canteenStore.canteenList.length === 0) {
     try {
-      await canteenStore.fetchCanteenList();
+      await canteenStore.fetchCanteenList(undefined, isCurrent);
     } catch (err) {
+      if (!isCurrent()) return;
       console.error('加载食堂列表失败:', err);
     }
   }
@@ -480,14 +499,20 @@ const resetForm = () => {
 
 // 重置筛选状态
 const resetDishFilters = () => {
+  requestToken.value += 1;
+  windowRequestToken += 1;
   searchKeyword.value = '';
   selectedCanteen.value = null;
   selectedWindow.value = null;
+  windowList.value = [];
   dishList.value = [];
+  dishLoading.value = false;
   currentPage.value = 1;
   totalPages.value = 1;
   loadingMore.value = false;
 };
+
+watch(() => userStore.sessionVersion, resetDishFilters, { flush: 'sync' });
 
 // 日期选择
 const onStartDateChange = (e: any) => {
@@ -500,18 +525,28 @@ const onEndDateChange = (e: any) => {
 
 // 选择食堂
 const onCanteenChange = async (e: any) => {
+  const token = ++windowRequestToken;
+  const ownsPage = captureOwner();
+  const isCurrent = () => ownsPage() && token === windowRequestToken;
+  if (!isCurrent()) return;
+  requestToken.value += 1;
   const index = e.detail.value;
   selectedCanteen.value = canteenList.value[index];
   selectedWindow.value = null;
+  windowList.value = [];
   dishList.value = [];
+  dishLoading.value = false;
   currentPage.value = 1;
   totalPages.value = 1;
   loadingMore.value = false;
 
   if (selectedCanteen.value) {
     try {
-      await canteenStore.fetchWindowList(selectedCanteen.value.id, { page: 1, pageSize: 50 });
+      const response = await getWindowList(selectedCanteen.value.id, { page: 1, pageSize: 50 });
+      if (!isCurrent()) return;
+      if (response.code === 200 && response.data) windowList.value = response.data.items;
     } catch (err) {
+      if (!isCurrent()) return;
       console.error('加载窗口列表失败:', err);
     }
   }
@@ -519,9 +554,11 @@ const onCanteenChange = async (e: any) => {
 
 // 选择窗口并加载菜品
 const onWindowChange = async (e: any) => {
+  requestToken.value += 1;
   const index = e.detail.value;
   selectedWindow.value = windowList.value[index];
   dishList.value = [];
+  dishLoading.value = false;
   currentPage.value = 1;
   totalPages.value = 1;
   loadingMore.value = false;
@@ -566,7 +603,9 @@ const handleSearch = async () => {
 
   const keyword = searchKeyword.value.trim();
   if (!keyword) {
+    requestToken.value += 1;
     dishList.value = [];
+    dishLoading.value = false;
     currentPage.value = 1;
     totalPages.value = 1;
     loadingMore.value = false;
@@ -580,15 +619,18 @@ const handleSearch = async () => {
 };
 
 const clearSearch = async () => {
+  requestToken.value += 1;
   searchKeyword.value = '';
   dishList.value = [];
+  dishLoading.value = false;
   currentPage.value = 1;
   totalPages.value = 1;
   loadingMore.value = false;
 };
 
 const loadDishPage = async (page: number, append: boolean) => {
-  const token = ++requestToken.value;
+  const isCurrent = beginDishRequest();
+  if (!isCurrent()) return;
 
   if (append) {
     loadingMore.value = true;
@@ -631,7 +673,7 @@ const loadDishPage = async (page: number, append: boolean) => {
       response = await getDishes(params);
     }
 
-    if (token !== requestToken.value) return;
+    if (!isCurrent()) return;
 
     if (response.code === 200 && response.data?.items) {
       dishList.value = append ? [...dishList.value, ...response.data.items] : response.data.items;
@@ -644,7 +686,7 @@ const loadDishPage = async (page: number, append: boolean) => {
       totalPages.value = page;
     }
   } catch (err) {
-    if (token !== requestToken.value) return;
+    if (!isCurrent()) return;
 
     console.error('加载菜品失败:', err);
     if (!append) {
@@ -656,7 +698,7 @@ const loadDishPage = async (page: number, append: boolean) => {
     }
     totalPages.value = page;
   } finally {
-    if (token !== requestToken.value) return;
+    if (!isCurrent()) return;
     dishLoading.value = false;
     loadingMore.value = false;
   }
@@ -681,7 +723,8 @@ const handleClose = () => {
   emit('close');
 };
 
-const handleSubmit = async () => {
+const handleSubmit = () => {
+  if (props.submitting) return;
   if (
     !formData.value.mealTime ||
     formData.value.dishes.length === 0 ||
@@ -711,12 +754,7 @@ const handleSubmit = async () => {
     return;
   }
 
-  submitting.value = true;
-  try {
-    emit('submit', formData.value);
-  } finally {
-    submitting.value = false;
-  }
+  emit('submit', { ...formData.value, dishes: [...formData.value.dishes] });
 };
 </script>
 

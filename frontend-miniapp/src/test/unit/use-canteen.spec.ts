@@ -1,12 +1,11 @@
-import { useCanteenData } from '@/pages/canteen/composables/use-canteen-data';
-import { useCanteenStore } from '@/store/modules/use-canteen-store';
-import { getDishes } from '@/api/modules/dish';
-import { ref } from 'vue';
-
-// Mock Store
-jest.mock('@/store/modules/use-canteen-store', () => ({
-  useCanteenStore: jest.fn(),
+jest.mock('@/store/modules/use-user-store', () => ({
+  useUserStore: () => ({ sessionVersion: 0, isLoggedIn: true, userInfo: { id: 'user' } }),
 }));
+
+import { useCanteenData } from '@/pages/canteen/composables/use-canteen-data';
+import { getCanteenDetail, getWindowList } from '@/api/modules/canteen';
+import { getDishes } from '@/api/modules/dish';
+jest.mock('@/api/modules/canteen', () => ({ getCanteenDetail: jest.fn(), getWindowList: jest.fn() }));
 
 // Mock API
 jest.mock('@/api/modules/dish', () => ({
@@ -14,19 +13,10 @@ jest.mock('@/api/modules/dish', () => ({
 }));
 
 describe('useCanteenData', () => {
-  let mockStore: any;
-
   beforeEach(() => {
-    mockStore = {
-      currentCanteen: ref(null),
-      loading: ref(false),
-      error: ref(null),
-      windowList: ref([]),
-      fetchCanteenDetail: jest.fn().mockResolvedValue(undefined),
-      fetchWindowList: jest.fn().mockResolvedValue(undefined),
-    };
-    (useCanteenStore as unknown as jest.Mock).mockReturnValue(mockStore);
     jest.clearAllMocks();
+    (getCanteenDetail as jest.Mock).mockResolvedValue({ code: 200, data: { id: '123' } });
+    (getWindowList as jest.Mock).mockResolvedValue({ code: 200, data: { items: [] } });
   });
 
   it('should initialize correctly', async () => {
@@ -35,8 +25,8 @@ describe('useCanteenData', () => {
 
     await init(canteenId);
 
-    expect(mockStore.fetchCanteenDetail).toHaveBeenCalledWith(canteenId);
-    expect(mockStore.fetchWindowList).toHaveBeenCalledWith(canteenId, { page: 1, pageSize: 50 });
+    expect(getCanteenDetail).toHaveBeenCalledWith(canteenId);
+    expect(getWindowList).toHaveBeenCalledWith(canteenId, { page: 1, pageSize: 50 });
     expect(getDishes).toHaveBeenCalled();
   });
 

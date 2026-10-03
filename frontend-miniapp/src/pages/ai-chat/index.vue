@@ -292,7 +292,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, nextTick } from 'vue';
+import { ref, watch, computed, nextTick, onScopeDispose } from 'vue';
 import { useChat } from './composables/use-chat';
 import request from '@/utils/request';
 import { createMealPlan } from '@/api/modules/meal-plan';
@@ -314,6 +314,7 @@ const {
   suggestions,
   isInitialLoading,
   sendMessage,
+  captureOperation,
   resetChat,
   scene,
   setScene,
@@ -447,24 +448,26 @@ const openHistory = () => {
 const closeHistory = () => {
   showHistory.value = false;
 };
-const handleLoadHistory = async (sessionId: string) => {
-  const ok = await loadHistorySession(sessionId);
-  if (ok) {
-    closeHistory();
-    scrollToBottom();
-  } else {
-    uni.showToast({ title: '加载历史失败', icon: 'none' });
-  }
+const handleLoadHistory = (sessionId: string) => {
+  return loadHistorySession(sessionId, loaded => {
+    if (loaded) {
+      closeHistory();
+      scrollToBottom();
+    } else {
+      uni.showToast({ title: '加载历史失败', icon: 'none' });
+    }
+  });
 };
 
-const handleDeleteHistory = async (sessionId: string) => {
+const handleDeleteHistory = (sessionId: string) => {
   // 直接删除，使用 .stop 修饰符阻止事件冒泡
   const wasCurrent = sessionId === currentSessionId.value;
-  await deleteSession(sessionId);
-  if (wasCurrent) {
-    closeHistory();
-    scrollToBottom();
-  }
+  return deleteSession(sessionId, () => {
+    if (wasCurrent) {
+      closeHistory();
+      scrollToBottom();
+    }
+  });
 };
 const handleScenePicker = (e: any) => {
   const idx = Number(e?.detail?.value);
@@ -478,9 +481,35 @@ const handleScenePicker = (e: any) => {
 
 // === 核心业务逻辑：应用规划 ===
 // 期望后端在每个 card_plan 中返回 confirmAction.body，且可直接作为 /meal-plans POST 入参。
+const applyingPlan = ref<(() => boolean) | null>(null);
+let planFollowUpTimer: ReturnType<typeof setTimeout> | null = null;
+const cancelPlanFollowUp = () => {
+  if (planFollowUpTimer === null) return;
+  clearTimeout(planFollowUpTimer);
+  planFollowUpTimer = null;
+};
+const releaseApplyLoading = () => {
+  if (!applyingPlan.value) return;
+  applyingPlan.value = null;
+  uni.hideLoading();
+};
+watch(() => applyingPlan.value?.(), isCurrent => {
+  if (isCurrent === false) releaseApplyLoading();
+}, { flush: 'sync' });
+onScopeDispose(() => {
+  releaseApplyLoading();
+  cancelPlanFollowUp();
+});
+
 const handleApplyPlan = async (
   plan: ComponentMealPlanDraft & { appliedStatus?: 'success' | 'failed' }
 ) => {
+  const ownsOperation = captureOperation();
+  const conversationId = currentSessionId.value;
+  const isCurrent = () => ownsOperation() && currentSessionId.value === conversationId;
+  if (!isCurrent() || applyingPlan.value) return;
+  cancelPlanFollowUp();
+  applyingPlan.value = isCurrent;
   uni.showLoading({ title: '正在应用...' });
 
   try {
@@ -495,8 +524,9 @@ const handleApplyPlan = async (
     }
 
     await createMealPlan({ startDate, endDate, mealTime, dishes });
+    if (!isCurrent()) return;
 
-    uni.hideLoading();
+    releaseApplyLoading();
     uni.showToast({ title: '已应用到日程', icon: 'success' });
     plan.appliedStatus = 'success';
 
@@ -507,11 +537,13 @@ const handleApplyPlan = async (
       console.debug('uni.$emit not available:', e);
     }
 
-    setTimeout(() => {
-      sendMessage('我已确认应用了该饮食规划，请帮我生成后续建议');
+    planFollowUpTimer = setTimeout(() => {
+      planFollowUpTimer = null;
+      if (isCurrent()) void sendMessage('我已确认应用了该饮食规划，请帮我生成后续建议');
     }, 500);
   } catch (error) {
-    uni.hideLoading();
+    if (!isCurrent()) return;
+    releaseApplyLoading();
     uni.showToast({ title: '应用失败，请重试', icon: 'none' });
     console.error(error);
     plan.appliedStatus = 'failed';

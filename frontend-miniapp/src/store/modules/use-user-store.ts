@@ -1,11 +1,16 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue'; // 引入 ref 和 computed
 import { wechatLogin, getUserProfile } from '@/api/modules/user';
-import type { User, UserProfileUpdateRequest } from '@/types/api';
+import type { User } from '@/types/api';
 
 export const useUserStore = defineStore('user', () => {
   const token = ref<string | null>(uni.getStorageSync('token') || null);
   const refreshToken = ref<string | null>(uni.getStorageSync('refreshToken') || null);
+  // 登录/退出切换会话代际；token 轮换保留当前代际。
+  const sessionVersion = ref(0);
+  let profileRequest = 0;
+  // 并发读取可先完成初始化，已应用的新资料不被更早的响应覆盖。
+  let appliedProfileRequest = 0;
 
   const initialUserInfo = (() => {
     const info = uni.getStorageSync('userInfo');
@@ -40,8 +45,11 @@ export const useUserStore = defineStore('user', () => {
    * 微信登录流程
    */
   async function loginAction(code: string): Promise<User> {
+    logoutAction();
+    const loginSession = sessionVersion.value;
     try {
       const loginData = (await wechatLogin(code)).data;
+      assertCurrentSession(loginSession);
       const { token: newToken, user } = loginData;
 
       // 最低要求：必须拿到 accessToken
@@ -50,12 +58,7 @@ export const useUserStore = defineStore('user', () => {
       }
 
       // 先保存 token（以便后续请求能够携带 token 拉取 profile）
-      token.value = newToken.accessToken;
-      uni.setStorageSync('token', newToken.accessToken);
-      if (newToken.refreshToken) {
-        refreshToken.value = newToken.refreshToken;
-        uni.setStorageSync('refreshToken', newToken.refreshToken);
-      }
+      updateTokens(loginSession, newToken.accessToken, newToken.refreshToken);
 
       // 情况1：后端同时返回用户信息，直接做容错处理
       if (user) {
@@ -78,6 +81,7 @@ export const useUserStore = defineStore('user', () => {
         if (!safeUser.id || !safeUser.openId) {
           try {
             await fetchProfileAction();
+            assertCurrentSession(loginSession);
             if (userInfo.value) {
               return userInfo.value;
             }
@@ -90,23 +94,25 @@ export const useUserStore = defineStore('user', () => {
         uni.setStorageSync('userInfo', JSON.stringify(safeUser));
         // 确保获取最新的profile数据
         await fetchProfileAction();
-        return userInfo.value;
+        assertCurrentSession(loginSession);
+        return userInfo.value!;
       }
 
       // 情况2：后端未返回用户信息，仅返回 token，则使用 profile 接口获取
       try {
         await fetchProfileAction();
+        assertCurrentSession(loginSession);
         if (userInfo.value) {
           return userInfo.value;
         }
         throw new Error('登录失败：未能获取到用户信息');
       } catch (err) {
         // 清理已存 token
-        logoutAction();
+        if (sessionVersion.value === loginSession) logoutAction();
         throw err;
       }
     } catch (error) {
-      logoutAction(); // 直接调用函数
+      if (sessionVersion.value === loginSession) logoutAction();
       throw error;
     }
   }
@@ -115,6 +121,7 @@ export const useUserStore = defineStore('user', () => {
    * 退出登录
    */
   function logoutAction(): void {
+    sessionVersion.value += 1;
     token.value = null;
     refreshToken.value = null;
     userInfo.value = null;
@@ -123,26 +130,52 @@ export const useUserStore = defineStore('user', () => {
     uni.removeStorageSync('userInfo');
   }
 
+  function assertCurrentSession(expectedSession: number): void {
+    if (sessionVersion.value !== expectedSession) throw new Error('登录会话已变更');
+  }
+
+  function updateTokens(
+    expectedSession: number,
+    accessToken: string,
+    nextRefreshToken?: string
+  ): boolean {
+    if (sessionVersion.value !== expectedSession) return false;
+    token.value = accessToken;
+    uni.setStorageSync('token', accessToken);
+    if (nextRefreshToken) {
+      refreshToken.value = nextRefreshToken;
+      uni.setStorageSync('refreshToken', nextRefreshToken);
+    }
+    return true;
+  }
+
   /**
    * 从服务器刷新最新的用户信息
    */
-  async function fetchProfileAction(): Promise<void> {
+  async function fetchProfileAction(isOperationCurrent: () => boolean = () => true): Promise<void> {
     if (!isLoggedIn.value) {
       // 直接使用 computed getter
       console.warn('用户未登录，无法获取用户信息');
       return;
     }
 
+    const profileSession = sessionVersion.value;
+    const request = ++profileRequest;
+    const ownsResult = () => sessionVersion.value === profileSession &&
+      request >= appliedProfileRequest && isOperationCurrent();
     try {
       const response = await getUserProfile();
+      if (!ownsResult()) return;
       if (response.code !== 200 || !response.data) {
         throw new Error(response.message || '获取用户信息失败');
       }
 
       const user = response.data;
+      appliedProfileRequest = request;
       userInfo.value = user;
       uni.setStorageSync('userInfo', JSON.stringify(user));
     } catch (error) {
+      if (!ownsResult()) return;
       console.error('获取用户信息失败:', error);
       uni.showToast({
         title: '用户信息刷新失败',
@@ -157,6 +190,7 @@ export const useUserStore = defineStore('user', () => {
    */
   function updateLocalUserInfo(newInfo: Partial<User>): void {
     if (userInfo.value) {
+      appliedProfileRequest = ++profileRequest;
       // 合并新旧信息
       userInfo.value = { ...userInfo.value, ...newInfo };
       uni.setStorageSync('userInfo', JSON.stringify(userInfo.value));
@@ -168,6 +202,7 @@ export const useUserStore = defineStore('user', () => {
     // State
     token,
     refreshToken,
+    sessionVersion,
     userInfo,
     // Getters
     isLoggedIn,
@@ -178,5 +213,6 @@ export const useUserStore = defineStore('user', () => {
     logoutAction,
     fetchProfileAction,
     updateLocalUserInfo,
+    updateTokens,
   };
 });

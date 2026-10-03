@@ -1,5 +1,8 @@
 /// <reference types="jest" />
 import { setActivePinia, createPinia } from 'pinia';
+jest.mock('@/store/modules/use-user-store', () => ({
+  useUserStore: () => ({ sessionVersion: 0, isLoggedIn: true, userInfo: { id: 'user' } }),
+}));
 
 const mockGetStorageSync = jest.fn();
 const mockSetStorageSync = jest.fn();

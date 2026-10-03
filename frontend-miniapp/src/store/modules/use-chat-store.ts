@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
-import { ref, reactive } from 'vue';
+import { ref, reactive, watch } from 'vue';
+import { useUserStore } from './use-user-store';
 import { createAISession, streamAIChat, submitRecommendFeedback, deleteAISession } from '@/api/modules/ai';
 import { USE_MOCK } from '../../mock/mock-adapter';
 import type {
@@ -38,8 +39,17 @@ export interface ChatHistoryEntry {
   messages: ChatMessage[];
 }
 
+type ChatStream = {
+  sessionId: string;
+  scene: AIScene;
+  messages: ChatMessage[];
+  aiMessage: ChatMessage;
+  close?: () => void;
+};
+
 // 转换为 Pinia Setup Store
 export const useChatStore = defineStore('ai-chat', () => {
+  const userStore = useUserStore();
   // === Constants ===
   // 最大历史记录条数：限制存储大小，避免本地存储过大影响性能
   const MAX_HISTORY_ENTRIES = 20;
@@ -49,12 +59,10 @@ export const useChatStore = defineStore('ai-chat', () => {
   const aiLoading = ref(false); // AI 正在回复
   const sessionId = ref<string>('');
   const historyEntries = ref<ChatHistoryEntry[]>([]);
-  const currentStreamAbort = ref<(() => void) | null>(null);
-  const isStreamAborted = ref(false); // 添加标志，标记当前流是否被中止
-  const HISTORY_STORAGE_KEY = 'ai-chat-history';
-
-  // 载入本地历史
-  loadHistoryFromStorage();
+  let activeStream: ChatStream | null = null;
+  let historyOwner: string | null = null;
+  let conversationVersion = 0;
+  let sessionCreation: Promise<boolean> | null = null;
 
   // === Actions (声明为普通函数) ===
 
@@ -72,33 +80,16 @@ export const useChatStore = defineStore('ai-chat', () => {
   }
 
   function abortChat(showToast = true) {
-    console.log('[Chat Store] abortChat called, currentStreamAbort:', !!currentStreamAbort.value, 'showToast:', showToast);
-    
-    // 立即设置中止标志，防止回调继续处理数据
-    isStreamAborted.value = true;
-    
-    if (currentStreamAbort.value) {
-      currentStreamAbort.value();
-      currentStreamAbort.value = null;
-      
-      // 如果最后一条消息还在 streaming，将其标记为结束
-      const lastMsg = messages.value[messages.value.length - 1];
-      if (lastMsg && lastMsg.isStreaming) {
-        lastMsg.isStreaming = false;
-        
-        // 如果是自动终止（发送新消息），在消息末尾添加提示
-        if (!showToast && lastMsg.type === 'ai') {
-          const lastSegment = lastMsg.content[lastMsg.content.length - 1];
-          if (lastSegment && lastSegment.type === 'text') {
-            // 只在文本非空时添加提示
-            if (lastSegment.text.trim()) {
-              lastSegment.text += '\n\n_[回复被中断]_';
-            }
-          }
-        }
+    const stream = activeStream;
+    activeStream = null;
+    if (stream) {
+      stream.aiMessage.isStreaming = false;
+      const lastSegment = stream.aiMessage.content[stream.aiMessage.content.length - 1];
+      if (!showToast && lastSegment?.type === 'text' && lastSegment.text.trim()) {
+        lastSegment.text += '\n\n_[回复被中断]_';
       }
-      
-      // 只在手动停止时显示提示，自动停止（发送新消息时）不显示
+      upsertHistoryEntry(stream.sessionId, stream.scene, stream.messages);
+      stream.close?.();
       if (showToast) {
         uni.showToast({ 
           title: '已停止生成', 
@@ -113,16 +104,18 @@ export const useChatStore = defineStore('ai-chat', () => {
 
   // === History helpers ===
   function persistHistory() {
+    if (!historyOwner) return;
     try {
-      uni.setStorageSync(HISTORY_STORAGE_KEY, historyEntries.value);
+      uni.setStorageSync(`ai-chat-history:${historyOwner}`, historyEntries.value);
     } catch (e) {
       console.error('persistHistory failed', e);
     }
   }
 
   function loadHistoryFromStorage() {
+    if (!historyOwner) return;
     try {
-      const cached = uni.getStorageSync(HISTORY_STORAGE_KEY);
+      const cached = uni.getStorageSync(`ai-chat-history:${historyOwner}`);
       if (cached && Array.isArray(cached)) {
         historyEntries.value = cached as ChatHistoryEntry[];
       }
@@ -159,12 +152,24 @@ export const useChatStore = defineStore('ai-chat', () => {
   }
 
   function loadSessionFromHistory(session: string) {
-    const target = historyEntries.value.find(h => h.sessionId === session);
-    if (!target) return false;
+    const selected = historyEntries.value.find(h => h.sessionId === session);
+    if (!selected) return false;
+    abortChat(false);
+    conversationVersion += 1;
+    sessionCreation = null;
+    const target = historyEntries.value.find(h => h.sessionId === session) || selected;
     messages.value = cloneMessages(target.messages);
     sessionId.value = target.sessionId;
     setScene(target.scene);
     return true;
+  }
+
+  function clearConversation() {
+    abortChat(false);
+    conversationVersion += 1;
+    sessionCreation = null;
+    sessionId.value = '';
+    messages.value = [];
   }
 
   /**
@@ -173,34 +178,43 @@ export const useChatStore = defineStore('ai-chat', () => {
    * @param force 是否强制重新初始化，即使 sessionId 已存在
    */
   async function initSession(scene?: string | AIScene, force = false) {
-    if (sessionId.value && !force) return;
-    // 如果强制重新初始化，清除现有 sessionId
-    if (force) {
-      sessionId.value = '';
-    }
+    if (force) clearConversation();
+    if (sessionId.value) return true;
+    if (sessionCreation) return sessionCreation;
     // validate scene param, prefer passed param if valid
     let sceneToUse = currentScene.value;
     if (scene && (ALLOWED_SCENES as readonly string[]).includes(String(scene))) {
       sceneToUse = scene as AIScene;
     }
     currentScene.value = sceneToUse;
-    try {
-      const res = await createAISession({ scene: sceneToUse });
-      if (res.code === 200 && res.data) {
-        sessionId.value = res.data.sessionId;
-        if (res.data.welcomeMessage) {
-          messages.value.push({
-            id: Date.now() + Math.random(),
-            type: 'ai',
-            content: [{ type: 'text', text: res.data.welcomeMessage }],
-            timestamp: Date.now(),
-          });
-          upsertHistoryEntry(sessionId.value, sceneToUse, messages.value);
+    const version = conversationVersion;
+    const ownerSession = userStore.sessionVersion;
+    const pending = (async () => {
+      try {
+        const res = await createAISession({ scene: sceneToUse });
+        if (version !== conversationVersion || ownerSession !== userStore.sessionVersion) return false;
+        if (res.code === 200 && res.data) {
+          sessionId.value = res.data.sessionId;
+          if (res.data.welcomeMessage) {
+            messages.value.push({
+              id: Date.now() + Math.random(),
+              type: 'ai',
+              content: [{ type: 'text', text: res.data.welcomeMessage }],
+              timestamp: Date.now(),
+            });
+            upsertHistoryEntry(sessionId.value, sceneToUse, messages.value);
+          }
+          return true;
         }
+      } catch (e) {
+        console.error('Failed to create AI session with scene:', sceneToUse, e);
       }
-    } catch (e) {
-      console.error('Failed to create AI session with scene:', sceneToUse, e);
-    }
+      return false;
+    })().finally(() => {
+      if (sessionCreation === pending) sessionCreation = null;
+    });
+    sessionCreation = pending;
+    return pending;
   }
 
   /**
@@ -222,17 +236,15 @@ export const useChatStore = defineStore('ai-chat', () => {
    * 发送聊天消息并处理流式响应
    */
   async function sendChatMessage(text: string) {
-    // 0. 中断上一次可能的请求（静默中断，不显示提示）
+    const version = conversationVersion;
+    const ownerSession = userStore.sessionVersion;
+    if (!sessionId.value && !(await initSession())) return;
+    if (version !== conversationVersion || ownerSession !== userStore.sessionVersion) return;
     abortChat(false);
 
-    // 1. 确保会话已初始化
-    if (!sessionId.value) await initSession();
-
-    // 2. 【核心修复】先在 UI 上显示用户的消息
+    // 先在 UI 上显示用户消息。
     addUserMessage(text);
 
-    // 重置中止标志，开始新的流
-    isStreamAborted.value = false;
     aiLoading.value = true;
 
     // 3. 创建一个空的 AI 消息占位符
@@ -245,6 +257,13 @@ export const useChatStore = defineStore('ai-chat', () => {
       isStreaming: true,
     });
     messages.value.push(aiMessage);
+    const stream: ChatStream = {
+      sessionId: sessionId.value,
+      scene: currentScene.value,
+      messages: messages.value,
+      aiMessage,
+    };
+    activeStream = stream;
 
     const pad2 = (n: number) => n.toString().padStart(2, '0');
     const pad3 = (n: number) => n.toString().padStart(3, '0');
@@ -282,25 +301,33 @@ export const useChatStore = defineStore('ai-chat', () => {
     };
 
     let currentEvent = '';
-    let streamTerminated = false;
+    const appendText = (chunk: string) => {
+      const lastSegment = aiMessage.content[aiMessage.content.length - 1];
+      if (lastSegment?.type === 'text') lastSegment.text += chunk;
+      else aiMessage.content.push({ type: 'text', text: chunk });
+    };
+    const finishStream = () => {
+      if (activeStream !== stream) return;
+      activeStream = null;
+      aiLoading.value = false;
+      aiMessage.isStreaming = false;
+      upsertHistoryEntry(stream.sessionId, stream.scene, stream.messages);
+    };
 
     const streamControl = USE_MOCK
       ? (() => {
-          // 简单的mock实现，避免require路径问题
+          // 模拟流式回复。
           const mockResponse = `收到你的消息："${payload.message}"。这是一个模拟的流式回复。我可以帮你推荐菜品，或者制定饮食计划。`;
           const chunks = mockResponse.split('');
           let currentIndex = 0;
-          let stopped = false;
-
           const interval = setInterval(() => {
-            if (stopped || currentIndex >= chunks.length) {
+            if (activeStream !== stream) {
               clearInterval(interval);
-              aiLoading.value = false;
-              aiMessage.isStreaming = false;
-              if (!stopped) {
-                upsertHistoryEntry(sessionId.value, currentScene.value, messages.value);
-              }
-              currentStreamAbort.value = null;
+              return;
+            }
+            if (currentIndex >= chunks.length) {
+              clearInterval(interval);
+              finishStream();
               return;
             }
 
@@ -308,51 +335,26 @@ export const useChatStore = defineStore('ai-chat', () => {
             const chunkContent = chunks.slice(currentIndex, currentIndex + chunkSize).join('');
             currentIndex += chunkSize;
 
-            const contentArr = aiMessage.content;
-            const lastSegment = contentArr[contentArr.length - 1];
-
-            if (lastSegment && lastSegment.type === 'text') {
-              lastSegment.text += chunkContent;
-            } else {
-              contentArr.push({ type: 'text', text: chunkContent });
-            }
+            appendText(chunkContent);
           }, 100);
 
           return {
             close: () => {
-              console.log('[Mock Stream] close called');
-              stopped = true;
               clearInterval(interval);
-              aiLoading.value = false;
-              aiMessage.isStreaming = false;
-              currentStreamAbort.value = null;
             },
           };
         })()
-      : streamAIChat(sessionId.value, payload, {
+      : streamAIChat(stream.sessionId, payload, {
           onEvent: (evt: string) => {
-            if (isStreamAborted.value) return; // 如果已中止，忽略事件
+            if (activeStream !== stream) return;
             currentEvent = evt;
           },
           onMessage: (chunk: string) => {
-            if (isStreamAborted.value) {
-              console.log('[Chat Store] Message received after abort, ignoring');
-              return; // 如果已中止，忽略消息
-            }
-            
-            if (currentEvent === 'text_chunk') {
-              const contentArr = aiMessage.content;
-              const lastSegment = contentArr[contentArr.length - 1];
-
-              if (lastSegment && lastSegment.type === 'text') {
-                lastSegment.text += chunk;
-              } else {
-                contentArr.push({ type: 'text', text: chunk });
-              }
-            }
+            if (activeStream !== stream) return;
+            if (currentEvent === 'text_chunk') appendText(chunk);
           },
           onJSON: json => {
-            if (isStreamAborted.value) return; // 如果已中止，忽略 JSON
+            if (activeStream !== stream) return;
             
             if (currentEvent === 'new_block') {
               const segment = json as MessageSegment;
@@ -362,45 +364,15 @@ export const useChatStore = defineStore('ai-chat', () => {
             }
           },
           onError: err => {
-            if (isStreamAborted.value || streamTerminated) return; // 终态只处理一次
-            streamTerminated = true;
-            
+            if (activeStream !== stream) return;
             console.error('Stream error', err);
-            const contentArr = aiMessage.content;
-            const lastSegment = contentArr[contentArr.length - 1];
-
-            const errorText = `\n[网络请求出错: ${err?.message || '请检查网络'}]`;
-            if (lastSegment && lastSegment.type === 'text') {
-              lastSegment.text += errorText;
-            } else {
-              contentArr.push({ type: 'text', text: errorText });
-            }
-
-            aiLoading.value = false;
-            aiMessage.isStreaming = false;
-            currentStreamAbort.value = null;
+            appendText(`\n[网络请求出错: ${err?.message || '请检查网络'}]`);
+            finishStream();
           },
-          onComplete: () => {
-            if (isStreamAborted.value || streamTerminated) {
-              console.log('[Chat Store] Complete callback after abort, ignoring');
-              return; // 如果已中止，忽略完成回调
-            }
-            streamTerminated = true;
-
-            aiLoading.value = false;
-            aiMessage.isStreaming = false;
-            upsertHistoryEntry(sessionId.value, currentScene.value, messages.value);
-            currentStreamAbort.value = null;
-          },
+          onComplete: finishStream,
         });
 
-    // 保存中断控制器
-    if (!streamTerminated && streamControl && streamControl.close) {
-      currentStreamAbort.value = streamControl.close;
-      console.log('[Chat Store] Stream control saved, abort function available');
-    } else {
-      console.warn('[Chat Store] No stream control available');
-    }
+    if (activeStream === stream) stream.close = streamControl.close;
   }
 
   /**
@@ -424,12 +396,10 @@ export const useChatStore = defineStore('ai-chat', () => {
    * 启动新的会话 (重置)
    */
   async function startNewSession(scene?: string | AIScene) {
-    abortChat(false); // 停止当前可能的生成（静默）
-    messages.value = [];
-    sessionId.value = '';
+    clearConversation();
     // 如果传入了场景则先设置
     if (scene) setScene(scene);
-    await initSession(scene, true);
+    await initSession(scene);
   }
 
   /**
@@ -437,12 +407,14 @@ export const useChatStore = defineStore('ai-chat', () => {
    */
   async function removeSession(session: string) {
     try {
-      const isDeletingCurrentSession = sessionId.value === session;
       const sceneToKeep = currentScene.value;
+      const ownerSession = userStore.sessionVersion;
 
       // 调用后端接口删除会话
       await deleteAISession(session);
-      
+      if (ownerSession !== userStore.sessionVersion) return false;
+      const isDeletingCurrentSession = sessionId.value === session;
+      if (isDeletingCurrentSession) clearConversation();
       // 从本地历史记录中删除
       const idx = historyEntries.value.findIndex(h => h.sessionId === session);
       if (idx >= 0) {
@@ -452,7 +424,7 @@ export const useChatStore = defineStore('ai-chat', () => {
 
       // 如果删除的是当前会话：自动创建一个新会话并切换过去
       if (isDeletingCurrentSession) {
-        await startNewSession(sceneToKeep);
+        await initSession(sceneToKeep);
       }
       
       return true;
@@ -461,6 +433,18 @@ export const useChatStore = defineStore('ai-chat', () => {
       throw error;
     }
   }
+
+  watch(
+    [() => userStore.sessionVersion, () => userStore.isLoggedIn ? userStore.userInfo?.id : null],
+    ([, owner]) => {
+      clearConversation();
+      historyOwner = owner || null;
+      historyEntries.value = [];
+      setScene('general_chat');
+      loadHistoryFromStorage();
+    },
+    { immediate: true, flush: 'sync' }
+  );
 
   return {
     messages,

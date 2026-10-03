@@ -125,6 +125,7 @@
         ref="editDialogRef"
         :visible="showEditDialog"
         :plan="selectedPlan"
+        :submitting="submitting"
         @close="closeEditDialog"
         @submit="submitEdit"
       />
@@ -134,6 +135,7 @@
         ref="createDialogRef"
         :visible="showCreateDialog"
         :plan="null"
+        :submitting="submitting"
         @close="closeCreateDialog"
         @submit="submitCreate"
       />
@@ -174,6 +176,7 @@ const hasLoaded = ref(false);
 
 const {
   loading,
+  submitting,
   error,
   currentPlans,
   historyPlans,

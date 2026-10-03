@@ -593,6 +593,7 @@ export interface DishUserCreateRequest {
   allergens?: string[];
   canteenId?: string;
   canteenName: string;
+  windowId?: string;
   windowNumber?: string;
   windowName: string;
   availableMealTime: ('breakfast' | 'lunch' | 'dinner' | 'nightsnack')[];
@@ -638,7 +639,7 @@ export interface DishUpdateRequest {
   price?: number;
   description?: string;
   images?: string[];
-  parentDishId?: string;
+  parentDishId?: string | null;
   subDishId?: string[];
   ingredients?: string[];
   allergens?: string[];

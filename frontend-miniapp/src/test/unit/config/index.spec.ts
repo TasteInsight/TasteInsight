@@ -1,28 +1,31 @@
 export {};
 
 describe('config index', () => {
-  const originalEnv = process.env.NODE_ENV;
+  const originalApiBaseUrl = process.env.VITE_API_BASE_URL;
 
   afterEach(() => {
-    process.env.NODE_ENV = originalEnv;
+    if (originalApiBaseUrl === undefined) {
+      delete process.env.VITE_API_BASE_URL;
+    } else {
+      process.env.VITE_API_BASE_URL = originalApiBaseUrl;
+    }
     jest.resetModules();
   });
 
-  test('selects mock config when NODE_ENV is mock', () => {
-    process.env.NODE_ENV = 'mock';
+  test('uses the API URL injected for the current build mode', () => {
+    process.env.VITE_API_BASE_URL = 'http://localhost:3001';
     const cfg = require('@/config').default;
-    expect(cfg.baseUrl).toContain('127.0.0.1');
+    expect(cfg.baseUrl).toBe('http://localhost:3001');
   });
 
-  test('selects development config when NODE_ENV is development', () => {
-    process.env.NODE_ENV = 'development';
+  test('normalizes whitespace and trailing slashes', () => {
+    process.env.VITE_API_BASE_URL = ' https://www.zens.top/api/v1/// ';
     const cfg = require('@/config').default;
-    expect(cfg.baseUrl).toContain('www.zens.top');
+    expect(cfg.baseUrl).toBe('https://www.zens.top/api/v1');
   });
 
-  test('selects production config otherwise', () => {
-    process.env.NODE_ENV = 'production';
-    const cfg = require('@/config').default;
-    expect(cfg.baseUrl).toContain('www.zens.top');
+  test('fails fast when the build did not provide an API URL', () => {
+    delete process.env.VITE_API_BASE_URL;
+    expect(() => require('@/config')).toThrow('VITE_API_BASE_URL');
   });
 });

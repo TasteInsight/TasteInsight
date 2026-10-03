@@ -1,6 +1,8 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { wechatLogin, getUserProfile } from '@/api/modules/user';
+import { shallowMount, flushPromises } from '@vue/test-utils';
+import { useProfile } from '@/pages/profile/composables/use-profile';
 
 // Mock API modules
 jest.mock('@/api/modules/user', () => ({
@@ -57,6 +59,29 @@ describe('useUserStore', () => {
 
   describe('Actions', () => {
     describe('loginAction', () => {
+      it.each([0, 1])('keeps token-only login valid with a mounted profile observer (response %s first)', async first => {
+        const store = useUserStore();
+        const held: Array<(value: any) => void> = [];
+        (wechatLogin as jest.Mock).mockResolvedValue({ data: { token: { accessToken: 'new-token' } } });
+        (getUserProfile as jest.Mock).mockImplementation(() => new Promise(resolve => held.push(resolve)));
+        const wrapper = shallowMount({ template: '<div />', setup() { useProfile(); return {}; } });
+        try {
+          const login = store.loginAction('code').then(value => value, error => error);
+          await flushPromises();
+          expect(held).toHaveLength(2);
+          held[first]({ code: 200, data: { id: '1', openId: 'o1', nickname: first === 0 ? 'older' : 'newer' } });
+          await flushPromises();
+          held[1 - first]({ code: 200, data: { id: '1', openId: 'o1', nickname: first === 0 ? 'newer' : 'older' } });
+          const outcome = await login;
+          await flushPromises();
+          expect(outcome).not.toBeInstanceOf(Error);
+          expect(store.isLoggedIn).toBe(true);
+          expect(store.userInfo?.nickname).toBe('newer');
+        } finally {
+          wrapper.unmount();
+        }
+      });
+
       it('should login successfully with user info returned', async () => {
         const store = useUserStore();
         const mockUser = { id: '1', nickname: 'Test User', avatar: 'avatar.png' };

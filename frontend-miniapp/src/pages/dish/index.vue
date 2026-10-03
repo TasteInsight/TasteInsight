@@ -403,17 +403,20 @@
     <!-- 微信小程序：使用 page-container 拦截返回，确保返回时关闭弹窗而不是返回上一页 -->
     <page-container
       v-if="shouldRenderReviewHelper"
+      :key="reviewHelperKey"
       :show="isReviewFormVisible"
       :overlay="false"
       :duration="300"
       custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
-      @leave="hideReviewForm"
+      @leave="requestReviewFormClose"
+      @afterleave="restoreReviewHelper"
     />
     <!-- #endif -->
 
     <!-- 评价表单弹窗 -->
     <ReviewForm
       v-if="isReviewFormVisible"
+      ref="reviewFormRef"
       :dish-id="dishId"
       :dish-name="dish?.name || ''"
       :existing-review-id="myReview?.id"
@@ -447,7 +450,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, watch } from 'vue';
+import { ref, computed, nextTick, watch, onScopeDispose } from 'vue';
 import { onLoad, onBackPress, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import { useDishDetail } from '@/pages/dish/composables/use-dish-detail';
 import { useUserStore } from '@/store/modules/use-user-store';
@@ -528,6 +531,7 @@ const hasTasteInfo = computed(() => {
 });
 
 const isReviewFormVisible = ref(false);
+const reviewFormRef = ref<InstanceType<typeof ReviewForm> | null>(null);
 const isDetailExpanded = ref(false);
 const isAllCommentsPanelVisible = ref(false);
 const currentCommentsReviewId = ref('');
@@ -538,6 +542,9 @@ const ratingBarsRef = ref();
 // 控制 page-container 的渲染，延迟销毁以避免滚动锁定问题
 const shouldRenderAllCommentsPanel = ref(false);
 const shouldRenderReviewHelper = ref(false);
+const reviewHelperKey = ref(0);
+let active = true;
+onScopeDispose(() => { active = false; });
 
 watch(isAllCommentsPanelVisible, (val: boolean) => {
   if (val) {
@@ -554,7 +561,7 @@ watch(isReviewFormVisible, (val: boolean) => {
     shouldRenderReviewHelper.value = true;
   } else {
     setTimeout(() => {
-      shouldRenderReviewHelper.value = false;
+      if (!isReviewFormVisible.value) shouldRenderReviewHelper.value = false;
     }, 300);
   }
 });
@@ -582,7 +589,7 @@ watch(
 // 拦截返回键，如果有弹窗打开则关闭弹窗而不是返回上一页
 onBackPress(() => {
   if (isReviewFormVisible.value) {
-    isReviewFormVisible.value = false;
+    void requestReviewFormClose();
     return true;
   }
   if (isAllCommentsPanelVisible.value) {
@@ -663,6 +670,10 @@ const goToTagDishes = (tag: string) => {
 };
 
 const goBack = () => {
+  if (isReviewFormVisible.value) {
+    void requestReviewFormClose();
+    return;
+  }
   uni.navigateBack();
 };
 
@@ -691,16 +702,30 @@ const hideReviewForm = () => {
   isReviewFormVisible.value = false;
 };
 
+const requestReviewFormClose = () => reviewFormRef.value?.requestClose();
+
+const restoreReviewHelper = () => {
+  // 原生返回会关闭拦截容器；保存尚未完成时重新建立返回拦截。
+  if (active && isReviewFormVisible.value) reviewHelperKey.value++;
+};
+
 const handleReviewSuccess = async () => {
+  const sessionVersion = userStore.sessionVersion;
+  const owner = userStore.userInfo?.id;
+  const reviewedDishId = dishId.value;
+  const isCurrent = () => active && userStore.sessionVersion === sessionVersion &&
+    userStore.userInfo?.id === owner && dishId.value === reviewedDishId;
   hideReviewForm();
 
   // 等待弹窗关闭动画完成 (300ms duration + buffer)
   await new Promise(resolve => setTimeout(resolve, 350));
+  if (!isCurrent()) return;
 
   // 刷新评价列表和菜品信息
-  if (dishId.value) {
-    await Promise.all([fetchReviews(dishId.value, true), fetchDishDetail(dishId.value)]);
+  if (reviewedDishId) {
+    await Promise.all([fetchReviews(reviewedDishId, true), fetchDishDetail(reviewedDishId)]);
   }
+  if (!isCurrent()) return;
 
   // 刷新评分条状图
   ratingBarsRef.value?.refresh();

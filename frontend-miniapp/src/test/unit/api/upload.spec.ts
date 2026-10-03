@@ -8,6 +8,9 @@ describe('api/modules/upload.ts - uploadImage', () => {
   });
 
   test('mock mode resolves with url and filename', async () => {
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok', sessionVersion: 0 }),
+    }));
     // keep other helpers from mock-adapter and only override USE_MOCK
     const realMock: any = jest.requireActual('@/mock/mock-adapter');
     jest.doMock('@/mock/mock-adapter', () => ({ ...realMock, USE_MOCK: true }));

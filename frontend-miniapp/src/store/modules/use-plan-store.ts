@@ -1,6 +1,7 @@
 // @/stores/use-plan-store.ts
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
+import { useUserStore } from './use-user-store';
 import {
   getMealPlans,
   createMealPlan,
@@ -18,6 +19,7 @@ export type EnrichedMealPlan = Omit<MealPlan, 'dishes'> & {
 };
 
 export const usePlanStore = defineStore('plan', () => {
+  const userStore = useUserStore();
   // 状态
   const loading = ref(false);
   const error = ref<string | null>(null);
@@ -83,25 +85,37 @@ export const usePlanStore = defineStore('plan', () => {
 
   // 获取所有规划
   const fetchPlans = async () => {
+    const sessionVersion = userStore.sessionVersion;
     loading.value = true;
     error.value = null;
     try {
       const response = await getMealPlans();
+      if (userStore.sessionVersion !== sessionVersion) return;
       allPlans.value = response.data.items || [];
+      const legacyCompletedIds = uni.getStorageSync('completedPlanIds');
+      if (Array.isArray(legacyCompletedIds)) {
+        const ownedPlanIds = new Set(allPlans.value.map(plan => plan.id));
+        const restored = legacyCompletedIds.filter(id => ownedPlanIds.has(id));
+        if (restored.length) {
+          restored.forEach(id => completedPlanIds.value.add(id));
+          saveCompletedPlanIds();
+        }
+      }
 
       // 批量获取菜品详情
-      await fetchAllDishDetails(allPlans.value);
+      await fetchAllDishDetails(allPlans.value, sessionVersion);
     } catch (err) {
+      if (userStore.sessionVersion !== sessionVersion) return;
       error.value = err instanceof Error ? err.message : '获取规划列表失败';
       console.error('获取规划失败:', err);
       throw err;
     } finally {
-      loading.value = false;
+      if (userStore.sessionVersion === sessionVersion) loading.value = false;
     }
   };
 
   // 批量获取菜品详情
-  const fetchAllDishDetails = async (plans: MealPlan[]) => {
+  const fetchAllDishDetails = async (plans: MealPlan[], sessionVersion: number) => {
     const dishIds = new Set<string>();
     plans.forEach(plan => {
       plan.dishes.forEach(id => dishIds.add(id));
@@ -113,6 +127,7 @@ export const usePlanStore = defineStore('plan', () => {
       // API 不支持按 ID 列表过滤，改为并行获取单个菜品详情
       const promises = Array.from(dishIds).map(id => getDishById(id));
       const results = await Promise.allSettled(promises);
+      if (userStore.sessionVersion !== sessionVersion) return;
 
       const newDishMap: Record<string, Dish> = {};
       results.forEach(result => {
@@ -125,39 +140,46 @@ export const usePlanStore = defineStore('plan', () => {
 
       dishMap.value = { ...dishMap.value, ...newDishMap };
     } catch (err) {
+      if (userStore.sessionVersion !== sessionVersion) return;
       console.error('批量获取菜品详情失败:', err);
     }
   };
 
   // 创建规划
   const createPlan = async (planData: MealPlanRequest) => {
+    const sessionVersion = userStore.sessionVersion;
     loading.value = true;
     error.value = null;
     try {
       const response = await createMealPlan(planData);
+      if (userStore.sessionVersion !== sessionVersion) throw new Error('登录会话已变更');
       const newPlan = response.data;
 
       // 更新本地列表
       allPlans.value = [newPlan, ...allPlans.value];
       // 获取新规划的菜品详情
-      await fetchAllDishDetails([newPlan]);
+      await fetchAllDishDetails([newPlan], sessionVersion);
+      if (userStore.sessionVersion !== sessionVersion) throw new Error('登录会话已变更');
 
       return newPlan;
     } catch (err) {
+      if (userStore.sessionVersion !== sessionVersion) throw err;
       error.value = err instanceof Error ? err.message : '创建规划失败';
       console.error('创建规划失败:', err);
       throw err;
     } finally {
-      loading.value = false;
+      if (userStore.sessionVersion === sessionVersion) loading.value = false;
     }
   };
 
   // 更新规划
   const updatePlanById = async (planId: string, planData: MealPlanRequest) => {
+    const sessionVersion = userStore.sessionVersion;
     loading.value = true;
     error.value = null;
     try {
       const response = await updateMealPlan(planData, planId);
+      if (userStore.sessionVersion !== sessionVersion) throw new Error('登录会话已变更');
       const updatedPlan = response.data;
 
       // 更新本地列表
@@ -171,31 +193,36 @@ export const usePlanStore = defineStore('plan', () => {
       }
 
       // 获取更新后规划的菜品详情
-      await fetchAllDishDetails([updatedPlan]);
+      await fetchAllDishDetails([updatedPlan], sessionVersion);
+      if (userStore.sessionVersion !== sessionVersion) throw new Error('登录会话已变更');
 
       return updatedPlan;
     } catch (err) {
+      if (userStore.sessionVersion !== sessionVersion) throw err;
       error.value = err instanceof Error ? err.message : '更新规划失败';
       console.error('更新规划失败:', err);
       throw err;
     } finally {
-      loading.value = false;
+      if (userStore.sessionVersion === sessionVersion) loading.value = false;
     }
   };
 
   // 删除规划
   const removePlan = async (planId: string) => {
+    const sessionVersion = userStore.sessionVersion;
     loading.value = true;
     error.value = null;
     try {
       await deleteMealPlan(planId);
+      if (userStore.sessionVersion !== sessionVersion) return;
       allPlans.value = allPlans.value.filter(p => p.id !== planId);
     } catch (err) {
+      if (userStore.sessionVersion !== sessionVersion) return;
       error.value = err instanceof Error ? err.message : '删除规划失败';
       console.error('删除规划失败:', err);
       throw err;
     } finally {
-      loading.value = false;
+      if (userStore.sessionVersion === sessionVersion) loading.value = false;
     }
   };
 
@@ -229,8 +256,10 @@ export const usePlanStore = defineStore('plan', () => {
 
   // 保存已完成规划ID到本地存储
   const saveCompletedPlanIds = () => {
+    const owner = userStore.userInfo?.id;
+    if (!owner) return;
     try {
-      uni.setStorageSync('completedPlanIds', Array.from(completedPlanIds.value));
+      uni.setStorageSync(`completedPlanIds:${owner}`, Array.from(completedPlanIds.value));
     } catch (e) {
       console.error('保存已完成规划失败:', e);
     }
@@ -238,8 +267,10 @@ export const usePlanStore = defineStore('plan', () => {
 
   // 从本地存储加载已完成规划ID
   const loadCompletedPlanIds = () => {
+    const owner = userStore.userInfo?.id;
+    if (!owner) return;
     try {
-      const ids = uni.getStorageSync('completedPlanIds');
+      const ids = uni.getStorageSync(`completedPlanIds:${owner}`);
       if (ids && Array.isArray(ids)) {
         completedPlanIds.value = new Set(ids);
       }
@@ -248,8 +279,19 @@ export const usePlanStore = defineStore('plan', () => {
     }
   };
 
-  // 初始化时加载
-  loadCompletedPlanIds();
+  watch(
+    [() => userStore.sessionVersion, () => userStore.isLoggedIn ? userStore.userInfo?.id : null],
+    () => {
+      allPlans.value = [];
+      dishMap.value = {};
+      selectedPlan.value = null;
+      completedPlanIds.value = new Set();
+      loading.value = false;
+      error.value = null;
+      if (userStore.isLoggedIn) loadCompletedPlanIds();
+    },
+    { immediate: true, flush: 'sync' }
+  );
 
   // 根据ID获取富化后的规划
   const getPlanById = (planId: string): EnrichedMealPlan | undefined => {
