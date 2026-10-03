@@ -1,5 +1,5 @@
 // @/composables/use-menu-planning.ts
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { usePlanStore } from '@/store/modules/use-plan-store';
 import type { EnrichedMealPlan } from '@/store/modules/use-plan-store';
@@ -15,6 +15,17 @@ export function useMenuPlanning() {
   const showCreateDialog = ref(false);
   const activeTab = ref<'current' | 'history'>('current');
   const submitting = ref(false);
+  let dialogVersion = 0;
+  let disposed = false;
+  const invalidateDialog = () => {
+    dialogVersion += 1;
+    submitting.value = false;
+  };
+  const captureDialog = () => {
+    const version = dialogVersion;
+    const session = userStore.sessionVersion;
+    return () => !disposed && version === dialogVersion && session === userStore.sessionVersion;
+  };
 
   // 从 store 获取数据
   const loading = computed(() => planStore.loading);
@@ -35,6 +46,7 @@ export function useMenuPlanning() {
 
   // 查看规划详情
   const viewPlanDetail = (plan: EnrichedMealPlan) => {
+    invalidateDialog();
     // ensure only one dialog is open
     showCreateDialog.value = false;
     showEditDialog.value = false;
@@ -44,6 +56,7 @@ export function useMenuPlanning() {
 
   // 编辑规划
   const editPlan = (plan: EnrichedMealPlan) => {
+    invalidateDialog();
     // ensure only one dialog is open
     showCreateDialog.value = false;
     showDetailDialog.value = false;
@@ -80,6 +93,7 @@ export function useMenuPlanning() {
 
   // 创建新规划
   const createNewPlan = () => {
+    invalidateDialog();
     // ensure only one dialog is open
     showDetailDialog.value = false;
     showEditDialog.value = false;
@@ -88,25 +102,25 @@ export function useMenuPlanning() {
   };
 
   const savePlan = async (planData: MealPlanRequest, planId?: string) => {
-    if (submitting.value) return;
+    if (submitting.value || disposed) return;
     submitting.value = true;
-    const sessionVersion = userStore.sessionVersion;
+    const isCurrent = captureDialog();
     try {
       if (planId) {
         await planStore.updatePlan(planId, planData);
-        if (userStore.sessionVersion !== sessionVersion) return;
+        if (!isCurrent()) return;
         showEditDialog.value = false;
       } else {
         await planStore.createPlan(planData);
-        if (userStore.sessionVersion !== sessionVersion) return;
+        if (!isCurrent()) return;
         showCreateDialog.value = false;
       }
     } catch (err) {
-      if (userStore.sessionVersion !== sessionVersion) return;
+      if (!isCurrent()) return;
       console.error('保存规划失败:', err);
       throw err;
     } finally {
-      if (userStore.sessionVersion === sessionVersion) submitting.value = false;
+      if (isCurrent()) submitting.value = false;
     }
   };
 
@@ -122,25 +136,28 @@ export function useMenuPlanning() {
 
   // 关闭对话框
   const closeDetailDialog = () => {
+    invalidateDialog();
     showDetailDialog.value = false;
     planStore.setSelectedPlan(null);
   };
 
   const closeEditDialog = () => {
+    invalidateDialog();
     showEditDialog.value = false;
     planStore.setSelectedPlan(null);
   };
 
   const closeCreateDialog = () => {
+    invalidateDialog();
     showCreateDialog.value = false;
   };
 
   // 执行规划（将规划移至历史）
   const executePlan = async (planId: string) => {
-    const sessionVersion = userStore.sessionVersion;
+    const isCurrent = captureDialog();
     try {
       await planStore.executePlan(planId);
-      if (userStore.sessionVersion !== sessionVersion) return;
+      if (!isCurrent()) return;
       // 执行成功后关闭详情弹窗
       showDetailDialog.value = false;
       uni.showToast({
@@ -148,7 +165,7 @@ export function useMenuPlanning() {
         icon: 'success',
       });
     } catch (err) {
-      if (userStore.sessionVersion !== sessionVersion) return;
+      if (!isCurrent()) return;
       console.error('执行规划失败:', err);
       uni.showToast({
         title: '执行失败',
@@ -159,6 +176,7 @@ export function useMenuPlanning() {
 
   // 切换标签页
   const switchTab = (tab: 'current' | 'history') => {
+    invalidateDialog();
     // close any open dialogs when switching tabs
     showDetailDialog.value = false;
     showEditDialog.value = false;
@@ -173,12 +191,18 @@ export function useMenuPlanning() {
   };
 
   watch(() => userStore.sessionVersion, () => {
+    invalidateDialog();
     showDetailDialog.value = false;
     showEditDialog.value = false;
     showCreateDialog.value = false;
     submitting.value = false;
     activeTab.value = 'current';
   }, { flush: 'sync' });
+
+  if (getCurrentScope()) onScopeDispose(() => {
+    disposed = true;
+    invalidateDialog();
+  });
 
   return {
     // 状态

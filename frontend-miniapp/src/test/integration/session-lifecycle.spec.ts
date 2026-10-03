@@ -587,12 +587,96 @@ describe('chat page operation ownership', () => {
     } },
   });
   const mealRequest = () => [...requests].reverse().find(item => item.url.endsWith('/meal-plans'));
+  const readCard = (messages = useChatStore().messages) => messages
+    .flatMap(message => message.content)
+    .filter(segment => segment.type === 'card_plan')
+    .flatMap(segment => (segment as any).data)
+    .slice(-1)[0];
+  const storedCard = (session = 'A-session', owner = 'A') => readCard(
+    storage.get(`ai-chat-history:${owner}`).find((entry: any) => entry.sessionId === session).messages
+  );
+  const streamedPlan = async (dishes = ['dish']) => {
+    const store = useChatStore();
+    await store.sendChatMessage('make plan');
+    const callbacks = streams[streams.length - 1].callbacks;
+    const draft = mealPlan();
+    draft.confirmAction.body.dishes = dishes;
+    callbacks.onEvent('new_block');
+    callbacks.onJSON({ type: 'card_plan', data: [draft] });
+    callbacks.onComplete();
+    (streamAIChat as jest.Mock).mockClear();
+    return readCard();
+  };
+
+  test.each(['disposal', 'history selection'])(
+    'a real streamed plan commits to its account history after %s without stale UI effects',
+    async change => {
+      const vm = await page();
+      const source = await streamedPlan();
+      const pending = vm.handleApplyPlan(source);
+      await flushPromises();
+      const application = mealRequest();
+      if (change === 'disposal') wrappers[0].unmount();
+      else await vm.handleLoadHistory('first');
+      application.success(ok({ id: 'committed' }));
+      await pending;
+      expect(source.appliedStatus).toBe('success');
+      expect(storedCard().appliedStatus).toBe('success');
+      expect(uni.$emit).toHaveBeenCalledWith('meal-plan:changed');
+      expect(uni.showToast).not.toHaveBeenCalled();
+      jest.advanceTimersByTime(500);
+      await flushPromises();
+      expect(streamAIChat).not.toHaveBeenCalled();
+      if (change === 'history selection') {
+        await vm.handleLoadHistory('A-session');
+        expect(readCard()).not.toBe(source);
+        expect(readCard().appliedStatus).toBe('success');
+        await vm.handleApplyPlan(readCard());
+        expect(requests.filter(item => item.url.endsWith('/meal-plans'))).toHaveLength(1);
+      }
+    }
+  );
+
+  test.each(['new message', 'history selection', 'new conversation'])(
+    'a committed plan remains applied when %s supersedes its chat continuation',
+    async change => {
+      const vm = await page();
+      const plan = await streamedPlan();
+      const pending = vm.handleApplyPlan(plan);
+      await flushPromises();
+      const application = mealRequest();
+      if (change === 'new message') vm.handleSend('another question');
+      else if (change === 'history selection') await vm.handleLoadHistory('first');
+      else {
+        (createAISession as jest.Mock).mockResolvedValueOnce({ code: 200, data: { sessionId: 'new-conversation', welcomeMessage: 'welcome' } });
+        vm.confirmNewChat();
+      }
+      await flushPromises();
+      expect(uni.hideLoading).toHaveBeenCalledTimes(1);
+      const duplicate = vm.handleApplyPlan(plan);
+      await flushPromises();
+      expect(requests.filter(item => item.url.endsWith('/meal-plans'))).toHaveLength(1);
+      await duplicate;
+      application.success(ok({ id: 'applied-plan' }));
+      await pending;
+      expect(plan).toHaveProperty('appliedStatus', 'success');
+      expect(storedCard().appliedStatus).toBe('success');
+      expect(uni.$emit).toHaveBeenCalledWith('meal-plan:changed');
+      expect(uni.showToast).not.toHaveBeenCalled();
+      const sent = (streamAIChat as jest.Mock).mock.calls.length;
+      jest.advanceTimersByTime(500);
+      await flushPromises();
+      expect(streamAIChat).toHaveBeenCalledTimes(sent);
+      await vm.handleApplyPlan(plan);
+      expect(requests.filter(item => item.url.endsWith('/meal-plans'))).toHaveLength(1);
+    }
+  );
 
   test.each(['login change', 'disposal', 'history selection', 'new conversation', 'new message'])(
     'a successful plan follow-up is canceled after %s during its delay',
     async change => {
       const vm = await page();
-      const plan = mealPlan();
+      const plan = await streamedPlan();
       const applied = vm.handleApplyPlan(plan);
       await flushPromises();
       mealRequest().success(ok({ id: 'A-plan' }));
@@ -622,13 +706,13 @@ describe('chat page operation ownership', () => {
     'a stale plan %s cannot show feedback, emit refresh, or settle the next account loading',
     async outcome => {
       const vm = await page();
-      const oldPlan = mealPlan();
+      const oldPlan = await streamedPlan();
       const old = vm.handleApplyPlan(oldPlan);
       await flushPromises();
       const oldRequest = mealRequest();
       await useUserStore().loginAction('B');
       await useChatStore().initSession();
-      const currentPlan = mealPlan();
+      const currentPlan = await streamedPlan();
       const current = vm.handleApplyPlan(currentPlan);
       await flushPromises();
       const currentRequest = mealRequest();
@@ -644,38 +728,55 @@ describe('chat page operation ownership', () => {
       expect(uni.$emit).not.toHaveBeenCalled();
       expect(uni.hideLoading).toHaveBeenCalledTimes(hidden);
       expect(oldPlan).not.toHaveProperty('appliedStatus');
+      expect(storedCard()).not.toHaveProperty('appliedStatus');
+      expect(storedCard('B-session', 'B')).not.toHaveProperty('appliedStatus');
       expect(streamAIChat).not.toHaveBeenCalled();
       currentRequest.success(ok({ id: 'B-plan' }));
       await current;
       expect(currentPlan).toHaveProperty('appliedStatus', 'success');
+      expect(storedCard('B-session', 'B').appliedStatus).toBe('success');
     }
   );
 
-  test('disposal while applying releases its loading state and suppresses completion effects', async () => {
+  test('reopening the page cannot resubmit a pending plan and receives its committed status', async () => {
     const vm = await page();
-    const plan = mealPlan();
+    const plan = await streamedPlan();
     const pending = vm.handleApplyPlan(plan);
     await flushPromises();
+    const application = mealRequest();
     wrappers[0].unmount();
     expect(uni.hideLoading).toHaveBeenCalledTimes(1);
-    mealRequest().success(ok({ id: 'A-plan' }));
+    const reopened = shallowMount(ChatPage);
+    wrappers.push(reopened);
+    await flushPromises();
+    const current = reopened.vm as any;
+    await current.handleLoadHistory('first');
+    await current.handleLoadHistory('A-session');
+    const reloadedPlan = readCard();
+    expect(reloadedPlan).not.toBe(plan);
+    await current.handleApplyPlan(reloadedPlan);
+    expect(requests.filter(item => item.url.endsWith('/meal-plans'))).toHaveLength(1);
+    application.success(ok({ id: 'A-plan' }));
     await pending;
     jest.advanceTimersByTime(500);
     await flushPromises();
     expect(uni.showToast).not.toHaveBeenCalled();
-    expect(uni.$emit).not.toHaveBeenCalled();
+    expect(uni.$emit).toHaveBeenCalledWith('meal-plan:changed');
     expect(streamAIChat).not.toHaveBeenCalled();
-    expect(plan).not.toHaveProperty('appliedStatus');
+    expect(plan.appliedStatus).toBe('success');
+    expect(reloadedPlan.appliedStatus).toBe('success');
+    expect(storedCard().appliedStatus).toBe('success');
   });
 
   test('a current successful plan refreshes planning and sends exactly one follow-up to its conversation', async () => {
     const vm = await page();
-    const plan = mealPlan();
+    const plan = await streamedPlan();
     const pending = vm.handleApplyPlan(plan);
     await flushPromises();
     mealRequest().success(ok({ id: 'A-plan' }));
     await pending;
     expect(plan).toHaveProperty('appliedStatus', 'success');
+    expect(storedCard().appliedStatus).toBe('success');
     expect(uni.$emit).toHaveBeenCalledWith('meal-plan:changed');
     expect(uni.showToast).toHaveBeenCalledWith({ title: '已应用到日程', icon: 'success' });
     jest.advanceTimersByTime(500);
@@ -686,14 +787,13 @@ describe('chat page operation ownership', () => {
 
   test('applying a second plan replaces the first delayed follow-up without canceling the pending application', async () => {
     const vm = await page();
-    const firstPlan = mealPlan();
+    const firstPlan = await streamedPlan();
     const first = vm.handleApplyPlan(firstPlan);
     await flushPromises();
     mealRequest().success(ok({ id: 'first-plan' }));
     await first;
 
-    const secondPlan = mealPlan();
-    secondPlan.confirmAction.body.dishes = ['second-dish'];
+    const secondPlan = await streamedPlan(['second-dish']);
     const second = vm.handleApplyPlan(secondPlan);
     await flushPromises();
     const secondRequest = mealRequest();
@@ -716,7 +816,7 @@ describe('chat page operation ownership', () => {
 
   test('a current failed plan retains retry feedback and never schedules a follow-up', async () => {
     const vm = await page();
-    const plan = mealPlan();
+    const plan = await streamedPlan();
     const pending = vm.handleApplyPlan(plan);
     await flushPromises();
     mealRequest().success({ statusCode: 500, data: { code: 500, message: 'failure' } });
@@ -724,8 +824,55 @@ describe('chat page operation ownership', () => {
     jest.advanceTimersByTime(500);
     await flushPromises();
     expect(plan).toHaveProperty('appliedStatus', 'failed');
+    expect(storedCard().appliedStatus).toBe('failed');
     expect(uni.showToast).toHaveBeenCalledWith({ title: '应用失败，请重试', icon: 'none' });
     expect(uni.$emit).not.toHaveBeenCalled();
     expect(streamAIChat).not.toHaveBeenCalled();
+  });
+
+  test('a failed archived plan can be reloaded and successfully retried', async () => {
+    const vm = await page();
+    const plan = await streamedPlan();
+    const first = vm.handleApplyPlan(plan);
+    await flushPromises();
+    mealRequest().success({ statusCode: 500, data: { code: 500, message: 'failure' } });
+    await first;
+    await vm.handleLoadHistory('first');
+    await vm.handleLoadHistory('A-session');
+    const reloaded = readCard();
+    expect(reloaded.appliedStatus).toBe('failed');
+    const retry = vm.handleApplyPlan(reloaded);
+    await flushPromises();
+    expect(requests.filter(item => item.url.endsWith('/meal-plans'))).toHaveLength(2);
+    mealRequest().success(ok({ id: 'retry-plan' }));
+    await retry;
+    expect(reloaded.appliedStatus).toBe('success');
+    expect(storedCard().appliedStatus).toBe('success');
+    expect(uni.$emit).toHaveBeenCalledTimes(1);
+  });
+
+  test('an old conversation application cannot dismiss the next conversation application loading', async () => {
+    const vm = await page();
+    const firstPlan = await streamedPlan();
+    const first = vm.handleApplyPlan(firstPlan);
+    await flushPromises();
+    const oldRequest = mealRequest();
+    await vm.handleLoadHistory('first');
+    const nextPlan = await streamedPlan(['next-dish']);
+    const next = vm.handleApplyPlan(nextPlan);
+    await flushPromises();
+    const nextRequest = mealRequest();
+    const hidden = (uni.hideLoading as jest.Mock).mock.calls.length;
+    oldRequest.success(ok({ id: 'old-plan' }));
+    await first;
+    expect(uni.hideLoading).toHaveBeenCalledTimes(hidden);
+    expect(uni.showToast).not.toHaveBeenCalled();
+    expect(storedCard().appliedStatus).toBe('success');
+    expect(storedCard('first')).not.toHaveProperty('appliedStatus');
+    nextRequest.success(ok({ id: 'next-plan' }));
+    await next;
+    expect(storedCard('first').appliedStatus).toBe('success');
+    expect(uni.$emit).toHaveBeenCalledTimes(2);
+    expect(uni.showToast).toHaveBeenCalledTimes(1);
   });
 });

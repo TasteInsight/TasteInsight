@@ -124,7 +124,7 @@ describe('use-display composable', () => {
 
   test('handleSave success and failure', async () => {
     const userStore = useUserStore();
-    userStore.updateLocalUserInfo = jest.fn();
+    userStore.userInfo = { id: 'u1' } as any;
 
     // success
     updateUserProfileMock.mockResolvedValue({ code: 200, data: { id: 'u1' } });
@@ -133,7 +133,7 @@ describe('use-display composable', () => {
     const d = useDisplay();
     const ok = await d.handleSave();
     expect(ok).toBe(true);
-    expect(userStore.updateLocalUserInfo).toHaveBeenCalled();
+    expect(uni.setStorageSync).toHaveBeenCalledWith('userInfo', JSON.stringify(userStore.userInfo));
     expect((global as any).uni.showToast).toHaveBeenCalledWith(
       expect.objectContaining({ icon: 'success' })
     );

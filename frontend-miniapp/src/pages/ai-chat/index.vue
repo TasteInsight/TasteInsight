@@ -295,7 +295,6 @@
 import { ref, watch, computed, nextTick, onScopeDispose } from 'vue';
 import { useChat } from './composables/use-chat';
 import request from '@/utils/request';
-import { createMealPlan } from '@/api/modules/meal-plan';
 import DishCard from './components/DishCard.vue';
 import MarkdownText from './components/MarkdownText.vue';
 import PlanningCard from './components/PlanningCard.vue';
@@ -320,6 +319,7 @@ const {
   setScene,
   historyEntries,
   loadHistorySession,
+  applyMealPlan,
   deleteSession,
   stopStreaming,
 } = useChat();
@@ -481,7 +481,7 @@ const handleScenePicker = (e: any) => {
 
 // === 核心业务逻辑：应用规划 ===
 // 期望后端在每个 card_plan 中返回 confirmAction.body，且可直接作为 /meal-plans POST 入参。
-const applyingPlan = ref<(() => boolean) | null>(null);
+const applyFeedbackOwner = ref<(() => boolean) | null>(null);
 let planFollowUpTimer: ReturnType<typeof setTimeout> | null = null;
 const cancelPlanFollowUp = () => {
   if (planFollowUpTimer === null) return;
@@ -489,11 +489,11 @@ const cancelPlanFollowUp = () => {
   planFollowUpTimer = null;
 };
 const releaseApplyLoading = () => {
-  if (!applyingPlan.value) return;
-  applyingPlan.value = null;
+  if (!applyFeedbackOwner.value) return;
+  applyFeedbackOwner.value = null;
   uni.hideLoading();
 };
-watch(() => applyingPlan.value?.(), isCurrent => {
+watch(() => applyFeedbackOwner.value?.(), isCurrent => {
   if (isCurrent === false) releaseApplyLoading();
 }, { flush: 'sync' });
 onScopeDispose(() => {
@@ -507,36 +507,17 @@ const handleApplyPlan = async (
   const ownsOperation = captureOperation();
   const conversationId = currentSessionId.value;
   const isCurrent = () => ownsOperation() && currentSessionId.value === conversationId;
-  if (!isCurrent() || applyingPlan.value) return;
+  if (!isCurrent() || applyFeedbackOwner.value || plan.appliedStatus === 'success') return;
   cancelPlanFollowUp();
-  applyingPlan.value = isCurrent;
+  applyFeedbackOwner.value = isCurrent;
   uni.showLoading({ title: '正在应用...' });
 
   try {
-    const body = plan.confirmAction?.body;
-    const startDate = body?.startDate;
-    const endDate = body?.endDate;
-    const mealTime = body?.mealTime;
-    const dishes = body?.dishes;
-
-    if (!startDate || !endDate || !mealTime || !Array.isArray(dishes) || dishes.length === 0) {
-      throw new Error('后端未返回可直接应用的规划参数（confirmAction.body）');
-    }
-
-    await createMealPlan({ startDate, endDate, mealTime, dishes });
+    const applied = await applyMealPlan(plan);
     if (!isCurrent()) return;
-
     releaseApplyLoading();
+    if (!applied) return;
     uni.showToast({ title: '已应用到日程', icon: 'success' });
-    plan.appliedStatus = 'success';
-
-    // 通知规划页刷新数据
-    try {
-      uni.$emit('meal-plan:changed');
-    } catch (e) {
-      console.debug('uni.$emit not available:', e);
-    }
-
     planFollowUpTimer = setTimeout(() => {
       planFollowUpTimer = null;
       if (isCurrent()) void sendMessage('我已确认应用了该饮食规划，请帮我生成后续建议');
@@ -546,7 +527,6 @@ const handleApplyPlan = async (
     releaseApplyLoading();
     uni.showToast({ title: '应用失败，请重试', icon: 'none' });
     console.error(error);
-    plan.appliedStatus = 'failed';
   }
 };
 

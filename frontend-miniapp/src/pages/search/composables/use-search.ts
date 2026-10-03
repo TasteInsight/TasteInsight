@@ -59,6 +59,7 @@ export function useSearch() {
 
     const token = ++requestToken.value;
     loading.value = true;
+    loadingMore.value = false;
     error.value = '';
     hasSearched.value = true;
     searchResults.value = {
@@ -97,6 +98,7 @@ export function useSearch() {
           }
         }
       } catch (e) {
+        if (token !== requestToken.value) return;
         // 食堂列表拉取失败时，不中断搜索：继续走菜品搜索作为兜底
         console.error('获取食堂列表失败:', e);
       }
@@ -182,9 +184,10 @@ export function useSearch() {
         hasMore.value = (meta.page ?? page.value) < (meta.totalPages ?? 1);
       }
     } catch (err) {
+      if (token !== requestToken.value) return;
       console.error('加载更多失败:', err);
     } finally {
-      loadingMore.value = false;
+      if (token === requestToken.value) loadingMore.value = false;
     }
   };
 

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, reactive, watch } from 'vue';
 import { useUserStore } from './use-user-store';
 import { createAISession, streamAIChat, submitRecommendFeedback, deleteAISession } from '@/api/modules/ai';
+import { createMealPlan } from '@/api/modules/meal-plan';
 import { USE_MOCK } from '../../mock/mock-adapter';
 import type {
   ChatRequest,
@@ -13,11 +14,13 @@ import type {
 } from '@/types/api';
 import type { AIScene } from '@/types/api';
 
+export type MealPlanCard = ComponentMealPlanDraft & { appliedStatus?: 'success' | 'failed' };
+
 // 消息段类型
 export type MessageSegment =
   | { type: 'text'; text: string }
   | { type: 'card_dish'; data: ComponentDishCard[] }
-  | { type: 'card_plan'; data: ComponentMealPlanDraft[] }
+  | { type: 'card_plan'; data: MealPlanCard[] }
   | { type: 'card_canteen'; data: ComponentCanteenCard[] }
   | { type: 'card_window'; data: ComponentWindowCard[] };
 
@@ -63,6 +66,7 @@ export const useChatStore = defineStore('ai-chat', () => {
   let historyOwner: string | null = null;
   let conversationVersion = 0;
   let sessionCreation: Promise<boolean> | null = null;
+  const pendingPlanApplications = new Set<string>();
 
   // === Actions (声明为普通函数) ===
 
@@ -162,6 +166,71 @@ export const useChatStore = defineStore('ai-chat', () => {
     sessionId.value = target.sessionId;
     setScene(target.scene);
     return true;
+  }
+
+  async function applyMealPlan(plan: MealPlanCard): Promise<boolean> {
+    const conversation = sessionId.value;
+    const session = userStore.sessionVersion;
+    const owner = historyOwner;
+    const ownsAccount = () => session === userStore.sessionVersion && owner === historyOwner;
+    // 消息和内容段只追加，卡片位置在历史记录的深拷贝中保持稳定。
+    let position: { message: number; segment: number; card: number } | undefined;
+    messages.value.some((message, messageIndex) => message.content.some((segment, segmentIndex) => {
+      if (segment.type !== 'card_plan') return false;
+      const card = segment.data.indexOf(plan);
+      if (card < 0) return false;
+      position = { message: messageIndex, segment: segmentIndex, card };
+      return true;
+    }));
+    if (!position || plan.appliedStatus === 'success') return false;
+
+    const { message, segment, card } = position;
+    const application = JSON.stringify([conversation, message, segment, card]);
+    if (pendingPlanApplications.has(application)) return false;
+    pendingPlanApplications.add(application);
+
+    const recordStatus = (status: 'success' | 'failed') => {
+      plan.appliedStatus = status;
+      const updateCard = (target: ChatMessage[]) => {
+        const block = target[message]?.content[segment];
+        if (block?.type === 'card_plan' && block.data[card]) {
+          block.data[card].appliedStatus = status;
+        }
+      };
+      if (sessionId.value === conversation) {
+        updateCard(messages.value);
+        upsertHistoryEntry(conversation, currentScene.value, messages.value);
+      } else {
+        const entry = historyEntries.value.find(item => item.sessionId === conversation);
+        if (entry) {
+          updateCard(entry.messages);
+          persistHistory();
+        }
+      }
+    };
+
+    try {
+      const body = plan.confirmAction?.body;
+      const { startDate, endDate, mealTime, dishes } = body || {};
+      if (!startDate || !endDate || !mealTime || !Array.isArray(dishes) || dishes.length === 0) {
+        throw new Error('后端未返回可直接应用的规划参数（confirmAction.body）');
+      }
+      await createMealPlan({ startDate, endDate, mealTime, dishes });
+      if (!ownsAccount()) return false;
+      recordStatus('success');
+      try {
+        uni.$emit('meal-plan:changed');
+      } catch (error) {
+        console.debug('uni.$emit not available:', error);
+      }
+      return true;
+    } catch (error) {
+      if (!ownsAccount()) return false;
+      recordStatus('failed');
+      throw error;
+    } finally {
+      if (ownsAccount()) pendingPlanApplications.delete(application);
+    }
   }
 
   function clearConversation() {
@@ -437,6 +506,7 @@ export const useChatStore = defineStore('ai-chat', () => {
   watch(
     [() => userStore.sessionVersion, () => userStore.isLoggedIn ? userStore.userInfo?.id : null],
     ([, owner]) => {
+      pendingPlanApplications.clear();
       clearConversation();
       historyOwner = owner || null;
       historyEntries.value = [];
@@ -459,6 +529,7 @@ export const useChatStore = defineStore('ai-chat', () => {
     submitFeedback,
     startNewSession,
     loadSessionFromHistory,
+    applyMealPlan,
     removeSession,
     abortChat,
   };

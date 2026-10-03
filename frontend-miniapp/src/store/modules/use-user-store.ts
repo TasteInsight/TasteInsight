@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue'; // 引入 ref 和 computed
-import { wechatLogin, getUserProfile } from '@/api/modules/user';
-import type { User } from '@/types/api';
+import { wechatLogin, getUserProfile, updateUserProfile } from '@/api/modules/user';
+import type { User, UserProfileUpdateRequest } from '@/types/api';
 
 export const useUserStore = defineStore('user', () => {
   const token = ref<string | null>(uni.getStorageSync('token') || null);
@@ -197,6 +197,36 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  async function updateProfileAction(payload: UserProfileUpdateRequest): Promise<void> {
+    const session = sessionVersion.value;
+    const request = ++profileRequest;
+    const response = await updateUserProfile(payload);
+    if (session !== sessionVersion.value) return;
+    if (response.code !== 200 || !response.data) {
+      throw new Error(response.message || '保存失败');
+    }
+
+    if (request >= appliedProfileRequest) {
+      updateLocalUserInfo(response.data);
+      return;
+    }
+
+    // PUT 返回完整资料；较早的快照不能覆盖其它页面已提交的更新。
+    const refresh = ++profileRequest;
+    try {
+      const current = await getUserProfile();
+      if (session !== sessionVersion.value || refresh < appliedProfileRequest) return;
+      if (current.code !== 200 || !current.data) {
+        throw new Error(current.message || '资料同步失败');
+      }
+      updateLocalUserInfo(current.data);
+    } catch (error) {
+      if (session !== sessionVersion.value || refresh < appliedProfileRequest) return;
+      // 持久化已成功，读回失败仅保留较新的本地资料，不引导重复提交。
+      console.warn('资料已保存，但刷新资料失败:', error);
+    }
+  }
+
   // **必须**返回所有需要暴露给外部的状态、getters 和 actions
   return {
     // State
@@ -212,6 +242,7 @@ export const useUserStore = defineStore('user', () => {
     loginAction,
     logoutAction,
     fetchProfileAction,
+    updateProfileAction,
     updateLocalUserInfo,
     updateTokens,
   };

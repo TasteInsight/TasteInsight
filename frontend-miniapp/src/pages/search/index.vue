@@ -102,15 +102,12 @@
 </template>
 
 <script setup lang="ts">
+import { onReachBottom } from '@dcloudio/uni-app';
 import { useSearch } from './composables/use-search';
 import CanteenResultItem from './components/CanteenResultItem.vue';
 import WindowResultItem from './components/WindowResultItem.vue';
 import DishResultItem from './components/DishResultItem.vue';
 import { SearchSkeleton } from '@/components/skeleton';
-
-// TypeScript: uni-app page lifecycle hooks (e.g., onReachBottom) are injected globally at runtime
-// but may not be visible to the TS compiler in some files. Declare them locally to avoid errors.
-declare function onReachBottom(cb: () => void): void;
 
 const {
   keyword,
@@ -144,15 +141,9 @@ const navigateBack = () => {
   uni.navigateBack();
 };
 
-// 上拉触发（兼容小程序/uni-app）
-// @ts-ignore - uni-app 生命周期在 H5 环境可能未定义
-if (typeof onReachBottom !== 'undefined') {
-  onReachBottom(() => {
-    if (hasMore.value) {
-      loadMore();
-    }
-  });
-}
+onReachBottom(() => {
+  if (hasMore.value) loadMore();
+});
 </script>
 
 <style scoped>

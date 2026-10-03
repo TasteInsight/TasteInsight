@@ -1,4 +1,3 @@
-jest.mock('@/store/modules/use-user-store');
 jest.mock('@/store/modules/use-canteen-store');
 jest.mock('@/api/modules/user');
 
@@ -6,9 +5,9 @@ import { usePreferences } from '@/pages/settings/composables/use-preferences';
 import { updateUserProfile } from '@/api/modules/user';
 import { useUserStore as _useUserStore } from '@/store/modules/use-user-store';
 import { useCanteenStore as _useCanteenStore } from '@/store/modules/use-canteen-store';
+import { createPinia, setActivePinia } from 'pinia';
 
 const mockedUpdate = updateUserProfile as jest.MockedFunction<typeof updateUserProfile>;
-const mockedUseUserStore = _useUserStore as jest.MockedFunction<typeof _useUserStore>;
 const mockedUseCanteenStore = _useCanteenStore as jest.MockedFunction<typeof _useCanteenStore>;
 
 describe('usePreferences', () => {
@@ -17,6 +16,9 @@ describe('usePreferences', () => {
     (global as any).uni = (global as any).uni || {};
     (global as any).uni.showToast = jest.fn();
     (global as any).uni.navigateBack = jest.fn();
+    (global as any).uni.getStorageSync = jest.fn();
+    (global as any).uni.setStorageSync = jest.fn();
+    setActivePinia(createPinia());
 
     const fetchCanteenStub = jest.fn() as unknown as jest.Mock<any, any>;
     fetchCanteenStub.mockResolvedValue(undefined);
@@ -27,11 +29,10 @@ describe('usePreferences', () => {
 
     const fetchProfileStub = jest.fn() as unknown as jest.Mock<any, any>;
     fetchProfileStub.mockResolvedValue(undefined);
-    mockedUseUserStore.mockReturnValue({
-      fetchProfileAction: fetchProfileStub,
-      userInfo: null,
-      updateLocalUserInfo: jest.fn(),
-    } as any);
+    const userStore = _useUserStore();
+    userStore.fetchProfileAction = fetchProfileStub;
+    userStore.userInfo = { id: 'test-user' } as any;
+    userStore.token = 'test-token';
   });
 
   test('onMounted loadPreferences calls canteenStore.fetchCanteenList and userStore.fetchProfileAction when used inside a component', async () => {
@@ -47,7 +48,7 @@ describe('usePreferences', () => {
       canteenList: [],
       fetchCanteenList: fetchCanteen,
     } as any);
-    mockedUseUserStore.mockReturnValue({
+    Object.assign(_useUserStore(), {
       fetchProfileAction: fetchProfile,
       userInfo: {
         preferences: {
@@ -56,7 +57,6 @@ describe('usePreferences', () => {
           favoriteIngredients: ['f'],
         },
       },
-      updateLocalUserInfo: jest.fn(),
     } as any);
 
     const wrapper = mount(
@@ -117,8 +117,6 @@ describe('usePreferences', () => {
   });
 
   test('handleSave success and failure', async () => {
-    const store = mockedUseUserStore.mockReturnValue({ updateLocalUserInfo: jest.fn() } as any);
-
     mockedUpdate.mockResolvedValueOnce({ code: 200, data: { preferences: {} } } as any);
     const s = usePreferences();
     const ok = await s.handleSave();

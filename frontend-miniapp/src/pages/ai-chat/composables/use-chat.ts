@@ -246,6 +246,7 @@ export function useChat() {
     setScene,
     historyEntries: computed(() => chatStore.historyEntries),
     loadHistorySession,
+    applyMealPlan: chatStore.applyMealPlan,
     deleteSession,
     stopStreaming,
   };

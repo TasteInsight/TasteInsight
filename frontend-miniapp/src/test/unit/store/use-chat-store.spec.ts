@@ -1,5 +1,6 @@
 /// <reference types="jest" />
 import { setActivePinia, createPinia } from 'pinia';
+jest.mock('@/api/modules/meal-plan', () => ({ createMealPlan: jest.fn() }));
 
 const mockGetStorageSync = jest.fn();
 const mockSetStorageSync = jest.fn();

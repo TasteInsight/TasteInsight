@@ -1,4 +1,4 @@
-import { ref, reactive, computed, watch } from 'vue';
+import { ref, reactive, computed, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { uploadDish } from '@/api/modules/dish';
 import { getCanteenList } from '@/api/modules/canteen';
@@ -14,6 +14,17 @@ type AddDishFormData = DishUserCreateRequest & {
  */
 export function useAddDish() {
   const userStore = useUserStore();
+  let disposed = false;
+  let navigationTimer: ReturnType<typeof setTimeout> | null = null;
+  const captureOperation = () => {
+    const session = userStore.sessionVersion;
+    return () => !disposed && session === userStore.sessionVersion;
+  };
+  const cancelNavigation = () => {
+    if (navigationTimer === null) return;
+    clearTimeout(navigationTimer);
+    navigationTimer = null;
+  };
   // 表单数据
   const formData = reactive<AddDishFormData>({
     name: '',
@@ -107,20 +118,20 @@ export function useAddDish() {
    * 加载食堂列表
    */
   const loadCanteenList = async () => {
-    const sessionVersion = userStore.sessionVersion;
+    const isCurrent = captureOperation();
     loading.value = true;
     try {
       const response = await getCanteenList({ page: 1, pageSize: 100 });
-      if (userStore.sessionVersion !== sessionVersion) return;
+      if (!isCurrent()) return;
       if (response.code === 200 && response.data) {
         canteenList.value = response.data.items;
       }
     } catch (err: any) {
-      if (userStore.sessionVersion !== sessionVersion) return;
+      if (!isCurrent()) return;
       console.error('加载食堂列表失败:', err);
       error.value = '加载食堂列表失败';
     } finally {
-      if (userStore.sessionVersion === sessionVersion) loading.value = false;
+      if (isCurrent()) loading.value = false;
     }
   };
 
@@ -247,13 +258,13 @@ export function useAddDish() {
    * 选择图片
    */
   const chooseImages = () => {
-    const sessionVersion = userStore.sessionVersion;
+    const isCurrent = captureOperation();
     uni.chooseImage({
       count: 9 - (formData.images?.length || 0),
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
       success: res => {
-        if (userStore.sessionVersion !== sessionVersion) return;
+        if (!isCurrent()) return;
         if (!formData.images) {
           formData.images = [];
         }
@@ -274,7 +285,9 @@ export function useAddDish() {
    */
   const submitForm = async (): Promise<boolean> => {
     if (submitting.value) return false;
-    const sessionVersion = userStore.sessionVersion;
+    const isCurrent = captureOperation();
+    if (!isCurrent()) return false;
+    cancelNavigation();
     if (!isFormValid.value) {
       uni.showToast({
         title: '请填写必填项',
@@ -291,7 +304,7 @@ export function useAddDish() {
       const uploadedImages = await Promise.all(
         (draft.images || []).map(async imagePath => (await uploadImage(imagePath)).url)
       );
-      if (userStore.sessionVersion !== sessionVersion) return false;
+      if (!isCurrent()) return false;
       const dishData: DishUserCreateRequest = {
         name: draft.name,
         tags: draft.tags,
@@ -313,7 +326,7 @@ export function useAddDish() {
         status: draft.status,
       };
       const response = await uploadDish(dishData);
-      if (userStore.sessionVersion !== sessionVersion) return false;
+      if (!isCurrent()) return false;
 
       if (response.code === 200 || response.code === 201) {
         uni.showToast({
@@ -322,8 +335,9 @@ export function useAddDish() {
         });
 
         // 延迟返回上一页
-        setTimeout(() => {
-          if (userStore.sessionVersion === sessionVersion) uni.navigateBack();
+        navigationTimer = setTimeout(() => {
+          navigationTimer = null;
+          if (isCurrent()) uni.navigateBack();
         }, 1500);
 
         return true;
@@ -331,7 +345,7 @@ export function useAddDish() {
         throw new Error(response.message || '提交失败');
       }
     } catch (err: any) {
-      if (userStore.sessionVersion !== sessionVersion) return false;
+      if (!isCurrent()) return false;
       console.error('提交失败:', err);
       error.value = err.message || '提交失败，请稍后重试';
       uni.showToast({
@@ -340,7 +354,7 @@ export function useAddDish() {
       });
       return false;
     } finally {
-      if (userStore.sessionVersion === sessionVersion) submitting.value = false;
+      if (isCurrent()) submitting.value = false;
     }
   };
 
@@ -373,11 +387,17 @@ export function useAddDish() {
   };
 
   watch(() => userStore.sessionVersion, () => {
+    cancelNavigation();
     resetForm();
     canteenList.value = [];
     loading.value = false;
     submitting.value = false;
   }, { flush: 'sync' });
+
+  if (getCurrentScope()) onScopeDispose(() => {
+    disposed = true;
+    cancelNavigation();
+  });
 
   return {
     formData,

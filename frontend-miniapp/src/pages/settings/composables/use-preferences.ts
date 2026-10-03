@@ -1,7 +1,6 @@
 import { reactive, ref, onMounted, computed } from 'vue';
-import { useUserStore } from '@/store/modules/use-user-store';
 import { useCanteenStore } from '@/store/modules/use-canteen-store';
-import { updateUserProfile } from '@/api/modules/user';
+import { useSettingsProfile } from './use-settings-profile';
 import type { UserProfileUpdateRequest, UserPreference } from '@/types/api';
 
 export interface PreferencesForm {
@@ -32,11 +31,7 @@ export const REVERSE_PORTION_LABELS: Record<string, 'small' | 'medium' | 'large'
 };
 
 export function usePreferences() {
-  const userStore = useUserStore();
   const canteenStore = useCanteenStore();
-
-  const saving = ref(false);
-  const loading = ref(true);
 
   const form = reactive<PreferencesForm>({
     spiciness: 0,
@@ -56,6 +51,25 @@ export function usePreferences() {
   const newMeatPreference = ref('');
   const newAvoidIngredient = ref('');
 
+  const { saving, loading, captureOperation, loadProfile, saveProfile } = useSettingsProfile(
+    userInfo => {
+      const pref = userInfo?.preferences;
+      form.spiciness = pref?.tastePreferences?.spicyLevel ?? 0;
+      form.sweetness = pref?.tastePreferences?.sweetness ?? 0;
+      form.saltiness = pref?.tastePreferences?.saltiness ?? 0;
+      form.oiliness = pref?.tastePreferences?.oiliness ?? 0;
+      form.portionSize = pref?.portionSize ?? 'medium';
+      form.meatPreference = [...(pref?.meatPreference ?? [])];
+      form.priceRange = { ...(pref?.priceRange ?? { min: 20, max: 100 }) };
+      form.canteenPreferences = [...(pref?.canteenPreferences ?? [])];
+      form.avoidIngredients = [...(pref?.avoidIngredients ?? [])];
+      form.favoriteIngredients = [...(pref?.favoriteIngredients ?? [])];
+      newFavoriteIngredient.value = '';
+      newMeatPreference.value = '';
+      newAvoidIngredient.value = '';
+    }
+  );
+
   // 食堂列表
   const canteenList = computed(() => canteenStore.canteenList);
 
@@ -63,34 +77,19 @@ export function usePreferences() {
    * 加载用户偏好设置
    */
   async function loadPreferences() {
+    const isCurrent = captureOperation();
     loading.value = true;
     try {
       // 加载食堂列表
       if (canteenStore.canteenList.length === 0) {
-        await canteenStore.fetchCanteenList();
+        await canteenStore.fetchCanteenList(undefined, isCurrent);
       }
-
-      await userStore.fetchProfileAction();
-      const userInfo = userStore.userInfo;
-      if (userInfo?.preferences) {
-        const pref = userInfo.preferences;
-        if (pref.tastePreferences) {
-          form.spiciness = pref.tastePreferences.spicyLevel ?? 0;
-          form.sweetness = pref.tastePreferences.sweetness ?? 0;
-          form.saltiness = pref.tastePreferences.saltiness ?? 0;
-          form.oiliness = pref.tastePreferences.oiliness ?? 0;
-        }
-        form.portionSize = pref.portionSize ?? 'medium';
-        form.meatPreference = pref.meatPreference ?? [];
-        form.priceRange = pref.priceRange ?? { min: 20, max: 100 };
-        form.canteenPreferences = pref.canteenPreferences ?? [];
-        form.avoidIngredients = pref.avoidIngredients ?? [];
-        form.favoriteIngredients = pref.favoriteIngredients ?? [];
-      }
+      if (isCurrent()) await loadProfile();
     } catch (error) {
+      if (!isCurrent()) return;
       console.error('加载用户信息失败:', error);
     } finally {
-      loading.value = false;
+      if (isCurrent()) loading.value = false;
     }
   }
 
@@ -197,48 +196,23 @@ export function usePreferences() {
    */
   async function handleSave(): Promise<boolean> {
     if (!validatePriceRange()) return false;
+    const preferences: Partial<UserPreference> = {
+      tastePreferences: {
+        spicyLevel: form.spiciness,
+        sweetness: form.sweetness,
+        saltiness: form.saltiness,
+        oiliness: form.oiliness,
+      },
+      portionSize: form.portionSize,
+      meatPreference: [...form.meatPreference],
+      priceRange: { ...form.priceRange },
+      canteenPreferences: [...form.canteenPreferences],
+      avoidIngredients: [...form.avoidIngredients],
+      favoriteIngredients: [...form.favoriteIngredients],
+    };
 
-    saving.value = true;
-    try {
-      const preferences: Partial<UserPreference> = {
-        tastePreferences: {
-          spicyLevel: form.spiciness,
-          sweetness: form.sweetness,
-          saltiness: form.saltiness,
-          oiliness: form.oiliness,
-        },
-        portionSize: form.portionSize,
-        meatPreference: form.meatPreference,
-        priceRange: form.priceRange,
-        canteenPreferences: form.canteenPreferences,
-        avoidIngredients: form.avoidIngredients,
-        favoriteIngredients: form.favoriteIngredients,
-      };
-
-      const payload: UserProfileUpdateRequest = { preferences };
-
-      const response = await updateUserProfile(payload);
-      if (response.code !== 200 || !response.data) {
-        throw new Error(response.message || '保存失败');
-      }
-
-      userStore.updateLocalUserInfo(response.data);
-
-      uni.showToast({ title: '保存成功', icon: 'success' });
-
-      setTimeout(() => {
-        uni.navigateBack();
-      }, 1000);
-
-      return true;
-    } catch (error) {
-      console.error('保存失败:', error);
-      const message = error instanceof Error ? error.message : '保存失败';
-      uni.showToast({ title: message, icon: 'none' });
-      return false;
-    } finally {
-      saving.value = false;
-    }
+    const payload: UserProfileUpdateRequest = { preferences };
+    return saveProfile(payload);
   }
 
   // 组件挂载时加载数据

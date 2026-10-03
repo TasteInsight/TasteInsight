@@ -1,6 +1,5 @@
-import { reactive, ref, onMounted } from 'vue';
-import { useUserStore } from '@/store/modules/use-user-store';
-import { updateUserProfile } from '@/api/modules/user';
+import { reactive, onMounted } from 'vue';
+import { useSettingsProfile } from './use-settings-profile';
 import type { UserProfileUpdateRequest } from '@/types/api';
 
 export interface AllergensForm {
@@ -25,32 +24,13 @@ export const COMMON_ALLERGENS = [
 ];
 
 export function useAllergens() {
-  const userStore = useUserStore();
-
-  const saving = ref(false);
-  const loading = ref(true);
-
   const form = reactive<AllergensForm>({
     allergens: '',
   });
 
-  /**
-   * 加载用户过敏原信息
-   */
-  async function loadAllergens() {
-    loading.value = true;
-    try {
-      await userStore.fetchProfileAction();
-      const userInfo = userStore.userInfo;
-      if (userInfo?.allergens) {
-        form.allergens = userInfo.allergens.join(', ');
-      }
-    } catch (error) {
-      console.error('加载用户信息失败:', error);
-    } finally {
-      loading.value = false;
-    }
-  }
+  const { saving, loading, loadProfile, saveProfile } = useSettingsProfile(userInfo => {
+    form.allergens = userInfo?.allergens?.join(', ') || '';
+  });
 
   /**
    * 判断过敏原是否已选中
@@ -96,45 +76,15 @@ export function useAllergens() {
    * 保存设置
    */
   async function handleSave(): Promise<boolean> {
-    saving.value = true;
-    try {
-      const payload: UserProfileUpdateRequest = {
-        allergens: parseAllergenList(form.allergens),
-      };
-
-      const response = await updateUserProfile(payload);
-      if (response.code !== 200 || !response.data) {
-        throw new Error(response.message || '保存失败');
-      }
-
-      userStore.updateLocalUserInfo(response.data);
-
-      uni.showToast({
-        title: '保存成功',
-        icon: 'success',
-      });
-
-      setTimeout(() => {
-        uni.navigateBack();
-      }, 1000);
-
-      return true;
-    } catch (error) {
-      console.error('保存失败:', error);
-      const message = error instanceof Error ? error.message : '保存失败';
-      uni.showToast({
-        title: message,
-        icon: 'none',
-      });
-      return false;
-    } finally {
-      saving.value = false;
-    }
+    const payload: UserProfileUpdateRequest = {
+      allergens: parseAllergenList(form.allergens),
+    };
+    return saveProfile(payload);
   }
 
   // 组件挂载时加载数据
   onMounted(() => {
-    loadAllergens();
+    loadProfile();
   });
 
   return {

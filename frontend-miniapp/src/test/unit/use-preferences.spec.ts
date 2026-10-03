@@ -2,12 +2,10 @@ import { usePreferences } from '@/pages/settings/composables/use-preferences';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { useCanteenStore } from '@/store/modules/use-canteen-store';
 import { updateUserProfile } from '@/api/modules/user';
-import { reactive, ref } from 'vue';
+import { reactive } from 'vue';
+import { createPinia, setActivePinia } from 'pinia';
 
 // Mock Stores
-jest.mock('@/store/modules/use-user-store', () => ({
-  useUserStore: jest.fn(),
-}));
 jest.mock('@/store/modules/use-canteen-store', () => ({
   useCanteenStore: jest.fn(),
 }));
@@ -28,6 +26,9 @@ jest.mock('vue', () => {
 
 // Mock global.uni
 (global as any).uni = {
+  getStorageSync: jest.fn(),
+  setStorageSync: jest.fn(),
+  removeStorageSync: jest.fn(),
   showToast: jest.fn(),
 };
 
@@ -36,6 +37,7 @@ describe('usePreferences', () => {
   let mockCanteenStore: any;
 
   beforeEach(() => {
+    setActivePinia(createPinia());
     mockUserStore = reactive({
       userInfo: {
         preferences: {
@@ -54,10 +56,13 @@ describe('usePreferences', () => {
         },
       },
       fetchProfileAction: jest.fn() as unknown as jest.Mock<any, any>,
-      updateLocalUserInfo: jest.fn(),
     });
     (mockUserStore.fetchProfileAction as jest.Mock).mockResolvedValue(undefined);
-    (useUserStore as unknown as jest.Mock).mockReturnValue(mockUserStore);
+    const actualStore = useUserStore();
+    actualStore.userInfo = mockUserStore.userInfo;
+    actualStore.fetchProfileAction = mockUserStore.fetchProfileAction;
+    actualStore.token = 'test-token';
+    mockUserStore = actualStore;
 
     mockCanteenStore = reactive({
       canteenList: [{ id: 'canteen1', name: 'Canteen 1' }],
@@ -111,7 +116,7 @@ describe('usePreferences', () => {
     expect(saving.value).toBe(false);
     expect(result).toBe(true);
     expect(updateUserProfile).toHaveBeenCalled();
-    expect(mockUserStore.updateLocalUserInfo).toHaveBeenCalled();
+    expect(uni.setStorageSync).toHaveBeenCalledWith('userInfo', JSON.stringify(mockUserStore.userInfo));
     expect(uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ title: '保存成功' }));
   });
 
