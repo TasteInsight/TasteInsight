@@ -1,6 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AdminNewsService } from './admin-news.service';
 import { PrismaService } from '@/prisma.service';
+import { plainToInstance } from 'class-transformer';
+import { validateSync } from 'class-validator';
+import { AdminGetNewsDto } from './dto/news.dto';
+import { CreateNewsDto } from './dto/create-news.dto';
+import { UpdateNewsDto } from './dto/update-news.dto';
 import {
   NotFoundException,
   BadRequestException,
@@ -43,7 +48,105 @@ describe('AdminNewsService', () => {
     expect(service).toBeDefined();
   });
 
+  it('validates publisher identity as omitted, null, or a non-empty string', () => {
+    for (const Dto of [CreateNewsDto, UpdateNewsDto]) {
+      for (const canteenId of [undefined, null, 'c1']) {
+        const dto = Object.assign(new Dto(), {
+          title: 'News', content: 'Content', canteenId,
+        });
+        expect(validateSync(dto, { whitelist: true })).toEqual([]);
+        expect(dto.canteenId).toBe(canteenId);
+      }
+      const invalid = Object.assign(new Dto(), {
+        title: 'News', content: 'Content', canteenId: '',
+      });
+      expect(validateSync(invalid)).toEqual([
+        expect.objectContaining({ property: 'canteenId' }),
+      ]);
+    }
+  });
+
   describe('findAll', () => {
+    it('filters keyword, canteen and publication dates before paging and counting', async () => {
+      prisma.news.findMany.mockResolvedValue([]);
+      prisma.news.count.mockResolvedValue(37);
+      const result = await service.findAll({
+        page: 2,
+        pageSize: 10,
+        status: 'published',
+        keyword: '公告',
+        canteenId: 'c1',
+        startDate: '2026-10-01',
+        endDate: '2026-10-03',
+      });
+      const where = {
+        status: 'published',
+        canteenId: 'c1',
+        title: { contains: '公告', mode: 'insensitive' },
+        publishedAt: {
+          gte: new Date('2026-10-01T00:00:00Z'),
+          lte: new Date('2026-10-03T23:59:59.999Z'),
+        },
+      };
+      expect(prisma.news.count).toHaveBeenCalledWith({ where });
+      expect(prisma.news.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where, skip: 10, take: 10 }),
+      );
+      expect(result.data.meta.total).toBe(37);
+    });
+
+    it('filters draft timestamps exactly and supports whole-school announcements', async () => {
+      prisma.news.findMany.mockResolvedValue([]);
+      prisma.news.count.mockResolvedValue(0);
+      await service.findAll({
+        status: 'draft',
+        canteenId: 'all',
+        startDate: '2026-10-01T08:30:00Z',
+        endDate: '2026-10-03T09:15:00Z',
+      });
+      expect(prisma.news.count).toHaveBeenCalledWith({
+        where: {
+          status: 'draft',
+          canteenId: null,
+          createdAt: {
+            gte: new Date('2026-10-01T08:30:00Z'),
+            lte: new Date('2026-10-03T09:15:00Z'),
+          },
+        },
+      });
+    });
+
+    it('does not allow filters to widen a canteen administrator scope', async () => {
+      await expect(
+        service.findAll({ canteenId: 'other' }, { canteenId: 'own' } as any),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects reversed date ranges before querying', async () => {
+      await expect(
+        service.findAll({ startDate: '2026-10-03', endDate: '2026-10-01' }),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.news.findMany).not.toHaveBeenCalled();
+    });
+
+    it('validates dates and preserves all supported query fields at the request boundary', () => {
+      const query = plainToInstance(AdminGetNewsDto, {
+        keyword: '公告',
+        canteenId: 'all',
+        startDate: '2026-10-01T08:30:00+08:00',
+        endDate: '2026-10-03',
+      });
+      expect(validateSync(query, { whitelist: true })).toEqual([]);
+      expect(query.keyword).toBe('公告');
+      expect(query.canteenId).toBe('all');
+      for (const invalid of ['not-a-date', '2026-02-30']) {
+        expect(
+          validateSync(
+            plainToInstance(AdminGetNewsDto, { startDate: invalid }),
+          ),
+        ).toHaveLength(1);
+      }
+    });
     it('should return list of news', async () => {
       const mockNews = [
         {
@@ -219,6 +322,25 @@ describe('AdminNewsService', () => {
       expect(result.code).toBe(200);
       expect(result.data.canteenId).toBeNull();
     });
+
+    it('allows an unscoped administrator to explicitly create a whole-school announcement', async () => {
+      prisma.news.create.mockResolvedValue({
+        id: 'new-id', ...createDto, canteenId: null, canteenName: null,
+      });
+      await service.createNews({ ...createDto, canteenId: null }, adminInfo);
+      expect(prisma.news.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ canteenId: null, canteenName: null }),
+      });
+      expect(prisma.canteen.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('rejects explicit whole-school creation by a canteen-scoped administrator', async () => {
+      await expect(service.createNews(
+        { ...createDto, canteenId: null },
+        { id: 'scoped', canteenId: 'c1' } as any,
+      )).rejects.toThrow(ForbiddenException);
+      expect(prisma.news.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('updateNews', () => {
@@ -306,23 +428,41 @@ describe('AdminNewsService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('should use admin canteenId if canteen admin', async () => {
+    it('preserves publisher fields when a canteen administrator omits them', async () => {
       const canteenAdmin = { id: 'admin-1', canteenId: 'c1' } as any;
-      prisma.canteen.findUnique.mockResolvedValue({
-        id: 'c1',
-        name: 'Canteen 1',
-      });
-
       await service.updateNews('n1', updateDto, canteenAdmin);
+      expect(prisma.news.update).toHaveBeenCalledWith({ where: { id: 'n1' }, data: updateDto });
+      expect(prisma.canteen.findUnique).not.toHaveBeenCalled();
+    });
 
+    it('clears both publisher fields for an unscoped explicit null update', async () => {
+      await service.updateNews('n1', { canteenId: null }, { canteenId: null } as any);
       expect(prisma.news.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            canteenId: 'c1',
-            canteenName: 'Canteen 1',
-          }),
-        }),
+        { where: { id: 'n1' }, data: { canteenId: null, canteenName: null } },
       );
+      expect(prisma.canteen.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('preserves publisher fields for an unscoped omitted update', async () => {
+      await service.updateNews('n1', updateDto, { canteenId: null } as any);
+      expect(prisma.news.update).toHaveBeenCalledWith({ where: { id: 'n1' }, data: updateDto });
+      expect(prisma.canteen.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('allows a canteen administrator to retain the same explicit publisher', async () => {
+      prisma.canteen.findUnique.mockResolvedValue({ id: 'c1', name: 'Canteen 1' });
+      await service.updateNews('n1', { canteenId: 'c1' }, { canteenId: 'c1' } as any);
+      expect(prisma.news.update).toHaveBeenCalledWith({
+        where: { id: 'n1' }, data: { canteenId: 'c1', canteenName: 'Canteen 1' },
+      });
+    });
+
+    it.each([null, 'c2'])('rejects publisher %s outside a canteen administrator scope', async (canteenId) => {
+      await expect(service.updateNews(
+        'n1', { canteenId }, { canteenId: 'c1' } as any,
+      )).rejects.toThrow(ForbiddenException);
+      expect(prisma.news.update).not.toHaveBeenCalled();
+      expect(prisma.canteen.findUnique).not.toHaveBeenCalled();
     });
   });
 

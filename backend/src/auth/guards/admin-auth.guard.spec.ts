@@ -37,4 +37,21 @@ describe('AdminAuthGuard', () => {
     );
     expect(prisma.admin.findUnique).not.toHaveBeenCalled();
   });
+
+  it('rejects access tokens for a retired administrator', async () => {
+    (jwtService.verifyAsync as jest.Mock).mockResolvedValue({
+      sub: 'retired-admin',
+      type: 'admin',
+      tokenUse: 'access',
+    });
+    (prisma.admin.findUnique as jest.Mock).mockResolvedValue(null);
+    await expect(guard.canActivate(context)).rejects.toThrow(
+      UnauthorizedException,
+    );
+    expect(prisma.admin.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'retired-admin', deletedAt: null },
+      }),
+    );
+  });
 });

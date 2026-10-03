@@ -34,12 +34,15 @@ import { DishReviewStatsQueueModule } from './dish-review-stats-queue';
 import { EmbeddingQueueModule } from './embedding-queue/embedding-queue.module';
 import { RecommendationModule } from './recommendation/recommendation.module';
 import { AIChatModule } from './ai-chat/ai-chat.module';
-import { join } from 'path';
+import { resolve } from 'path';
+import type { ServerResponse } from 'http';
+import { validateEnvironment } from './environment';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      validate: validateEnvironment,
     }),
     PrismaModule,
     BullModule.forRootAsync({
@@ -79,9 +82,27 @@ import { join } from 'path';
     EmbeddingQueueModule,
     AIChatModule,
     UploadModule,
-    ServeStaticModule.forRoot({
-      rootPath: join(process.cwd(), 'uploads'),
-      serveRoot: '/images',
+    ServeStaticModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => [
+        {
+          rootPath: resolve(
+            process.cwd(),
+            configService.get<string>('UPLOAD_LOCAL_PATH', './uploads'),
+          ),
+          serveRoot: '/images',
+          serveStaticOptions: {
+            setHeaders: (response: ServerResponse) => {
+              response.setHeader('X-Content-Type-Options', 'nosniff');
+              response.setHeader(
+                'Content-Security-Policy',
+                "default-src 'none'; sandbox",
+              );
+            },
+          },
+        },
+      ],
     }),
   ],
   controllers: [AppController],

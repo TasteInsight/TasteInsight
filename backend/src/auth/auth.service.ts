@@ -56,14 +56,20 @@ export class AuthService {
     }
 
     const [accessToken, refreshToken] = await Promise.all([
-      this.jwtService.signAsync({ ...payload, tokenUse: 'access' }, {
-        secret: accessTokenSecret,
-        expiresIn: accessTokenExpiresIn,
-      }),
-      this.jwtService.signAsync({ ...payload, tokenUse: 'refresh' }, {
-        secret: refreshTokenSecret,
-        expiresIn: refreshTokenExpiresIn,
-      }),
+      this.jwtService.signAsync(
+        { ...payload, tokenUse: 'access' },
+        {
+          secret: accessTokenSecret,
+          expiresIn: accessTokenExpiresIn,
+        },
+      ),
+      this.jwtService.signAsync(
+        { ...payload, tokenUse: 'refresh' },
+        {
+          secret: refreshTokenSecret,
+          expiresIn: refreshTokenExpiresIn,
+        },
+      ),
     ]);
 
     return { accessToken, refreshToken };
@@ -71,9 +77,7 @@ export class AuthService {
 
   private parseTokenExpiration(value: string): TokenExpiration {
     const normalized = value.trim();
-    if (
-      !/^(?:\d+|\d+(?:\.\d+)?(?:ms|s|m|h|d|w|y))$/.test(normalized)
-    ) {
+    if (!/^(?:\d+|\d+(?:\.\d+)?(?:ms|s|m|h|d|w|y))$/.test(normalized)) {
       throw new InternalServerErrorException(
         `Invalid JWT expiration configuration: ${value}`,
       );
@@ -158,7 +162,7 @@ export class AuthService {
   // --- 功能2: 管理员登录 ---
   async adminLogin(username: string, pass: string) {
     const admin = await this.prisma.admin.findUnique({
-      where: { username },
+      where: { username, deletedAt: null },
       include: {
         permissions: true,
         canteen: true,
@@ -250,6 +254,8 @@ export class AuthService {
   }
 
   validateAdmin(adminId: string): Promise<Admin | null> {
-    return this.prisma.admin.findUnique({ where: { id: adminId } });
+    return this.prisma.admin.findUnique({
+      where: { id: adminId, deletedAt: null },
+    });
   }
 }

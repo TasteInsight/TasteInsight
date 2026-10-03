@@ -39,13 +39,12 @@ postgres-data
 uploads
 
 # Nginx config (not needed in app image)
-nginx.conf
-nginx.conf.example
+nginx*.conf*
 certs
 
 # Docker files (not needed inside image)
 Dockerfile
-docker-compose.yml
+docker-compose*.yml
 .dockerignore
 
 # Test files

@@ -509,7 +509,11 @@ export class RecommendationService {
       this.logger.warn(
         `All recall paths returned empty results (${filterConditions.length} filter conditions), fallback to basic query`,
       );
-      return this.recallByRules(candidateLimit, filterConditions);
+      const fallbackIds = await this.recallByRules(
+        candidateLimit,
+        filterConditions,
+      );
+      fallbackIds.forEach((id) => allDishIds.add(id));
     }
 
     const dishes = await this.prisma.dish.findMany({
@@ -746,7 +750,11 @@ export class RecommendationService {
 
     if (!triggerDish) {
       // 回退到通用召回
-      return this.recallByRules(limit, filterConditions);
+      const ids = await this.recallByRules(limit, filterConditions);
+      return this.prisma.dish.findMany({
+        where: { id: { in: ids }, AND: filterConditions },
+        include: { canteen: true, window: true },
+      });
     }
 
     // 优先使用向量召回（更精准的语义相似度）
@@ -2344,6 +2352,7 @@ export class RecommendationService {
     userId: string,
     limit: number = 20,
     canteenId?: string,
+    mealTime?: string,
   ): Promise<ScoredDish[]> {
     if (!this.embeddingService) {
       this.logger.warn('Embedding service not available');
@@ -2370,6 +2379,9 @@ export class RecommendationService {
     const whereCondition: any = { status: 'online' };
     if (canteenId) {
       whereCondition.canteenId = canteenId;
+    }
+    if (mealTime) {
+      whereCondition.availableMealTime = { has: mealTime };
     }
 
     // 排除用户过敏原
@@ -2506,6 +2518,7 @@ export class RecommendationService {
         userId,
         RECOMMENDATION_LIMITS.MIN_CANDIDATES,
         canteenId,
+        mealTime,
       );
     } else {
       // 否则使用传统的特征匹配

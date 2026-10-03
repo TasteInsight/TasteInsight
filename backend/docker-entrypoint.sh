@@ -1,6 +1,9 @@
 #!/bin/sh
 set -e
 
+DATABASE_URL=$(node dist/src/database-url.js)
+export DATABASE_URL
+
 echo "Running migrations..."
 npx prisma migrate deploy
 

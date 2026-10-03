@@ -1,10 +1,7 @@
 FROM node:22-alpine AS builder
 
-# Use a fast Alpine mirror (Tsinghua) to speed up apk downloads
-RUN printf '%s\n' \
-	"https://mirrors.tuna.tsinghua.edu.cn/alpine/v3.22/main" \
-	"https://mirrors.tuna.tsinghua.edu.cn/alpine/v3.22/community" \
-	> /etc/apk/repositories
+# Keep the base image's Alpine release when selecting a mirror.
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories
 
 # Install dependencies for native modules (bcrypt, etc.)
 RUN apk add --no-cache python3 make g++
@@ -17,7 +14,7 @@ WORKDIR /app
 # Copy package files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml* ./
 
-# Install dependencies (不使用frozen-lockfile，允许更新lockfile)
+# Install the versions recorded in the lockfile.
 RUN pnpm install --frozen-lockfile
 
 # Copy source code
@@ -32,11 +29,8 @@ RUN pnpm run build
 # Production stage
 FROM node:22-alpine
 
-# Use the same fast Alpine mirror in the production stage as well
-RUN printf '%s\n' \
-	"https://mirrors.tuna.tsinghua.edu.cn/alpine/v3.22/main" \
-	"https://mirrors.tuna.tsinghua.edu.cn/alpine/v3.22/community" \
-	> /etc/apk/repositories
+# Keep the runtime repository release aligned with the base image too.
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories
 
 # Install dependencies for native modules runtime
 RUN apk add --no-cache libc6-compat

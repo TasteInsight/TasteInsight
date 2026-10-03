@@ -113,8 +113,6 @@ export class EmbeddingQueueService {
       data,
       {
         ...this.jobOptions,
-        // 用户嵌入更新可以去重，避免频繁更新
-        jobId: `user-embedding-${userId}`,
         removeOnComplete: 50,
       },
     );

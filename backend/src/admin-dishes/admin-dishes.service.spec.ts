@@ -20,6 +20,8 @@ const mockPrismaService = {
         delete: jest.fn(),
     },
     dishUpload: {
+        findFirst: jest.fn(),
+        updateMany: jest.fn(),
         deleteMany: jest.fn(),
         create: jest.fn(),
     },
@@ -32,6 +34,7 @@ const mockPrismaService = {
         count: jest.fn(),
     },
     $transaction: jest.fn((callback) => callback(mockPrismaService)),
+    $queryRaw: jest.fn().mockResolvedValue([]),
 };
 
 const mockEmbeddingService = {

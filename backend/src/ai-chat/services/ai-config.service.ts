@@ -18,19 +18,24 @@ export class AIConfigService {
    * Priority: Environment Variables > Database > Default
    */
   async getProviderConfig(): Promise<AIProviderConfig> {
-    const provider = await this.get('ai.provider', 'openai');
-
     // Environment variables take priority (more secure, per-environment)
+    const envProvider = this.configService.get<string>('AI_PROVIDER');
     const envApiKey = this.configService.get<string>('AI_API_KEY');
     const envModel = this.configService.get<string>('AI_MODEL');
     const envBaseUrl = this.configService.get<string>('AI_BASE_URL');
 
     // Fallback to database if env vars not set
+    const dbProvider = await this.get('ai.provider', '');
     const dbApiKey = await this.get('ai.api_key', '');
     const dbModel = await this.get('ai.model', '');
     const dbBaseUrl = await this.get('ai.base_url', '');
 
     // Final values: env > database > default
+    const provider = (envProvider || dbProvider || 'openai').toLowerCase();
+    if (provider !== 'openai') {
+      throw new Error(`Unsupported AI provider: ${provider}`);
+    }
+
     const finalApiKey = envApiKey || dbApiKey || '';
     const finalModel = envModel || dbModel || 'gpt-4o-mini';
     const finalBaseUrl = envBaseUrl || dbBaseUrl;

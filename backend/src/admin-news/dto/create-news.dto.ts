@@ -15,5 +15,6 @@ export class CreateNewsDto {
 
   @IsString()
   @IsOptional()
-  canteenId?: string;
+  @IsNotEmpty()
+  canteenId?: string | null;
 }

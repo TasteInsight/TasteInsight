@@ -62,7 +62,7 @@ export class AdminDishDto {
   // Availability
   availableMealTime: string[];
   availableDates: any;
-  status: string;
+  status: DishStatus;
 
   // Stats
   averageRating: number;
@@ -71,6 +71,15 @@ export class AdminDishDto {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export type AdminDishUploadDto = Omit<
+  AdminDishDto,
+  'status' | 'subDishId' | 'averageRating' | 'reviewCount'
+> & {
+  status: DishUploadStatus;
+  parentUploadId?: string;
+  approvedDishId?: string;
+};
 
 export class AvailableDateRange {
   @IsNotEmpty()
@@ -142,6 +151,10 @@ export class AdminCreateDishDto {
   @IsOptional()
   @IsString()
   parentDishId?: string;
+
+  @IsOptional()
+  @IsString()
+  parentUploadId?: string;
 
   @IsOptional()
   @IsArray()
@@ -248,7 +261,8 @@ export class AdminUpdateDishDto {
 
   @IsOptional()
   @IsString()
-  parentDishId?: string;
+  @IsNotEmpty()
+  parentDishId?: string | null;
 
   @IsOptional()
   @IsArray()

@@ -1,4 +1,4 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsNotEmpty } from 'class-validator';
 
 export class UpdateNewsDto {
   @IsString()
@@ -15,5 +15,6 @@ export class UpdateNewsDto {
 
   @IsString()
   @IsOptional()
-  canteenId?: string;
+  @IsNotEmpty()
+  canteenId?: string | null;
 }

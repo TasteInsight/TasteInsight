@@ -1,7 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { AppModule } from '@/app.module';
+import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import sharp from 'sharp';
@@ -9,66 +10,27 @@ import sharp from 'sharp';
 describe('UploadController (e2e)', () => {
   let app: NestExpressApplication;
   let accessToken: string;
-  const testImagePath = path.join(__dirname, 'test-image.jpg');
-  const testTextPath = path.join(__dirname, 'test-file.txt');
+  let uploadsDir: string;
+  let testImage: Buffer;
 
   beforeAll(async () => {
-    // Ensure uploads directory exists before app starts
-    const uploadsDir = path.join(process.cwd(), 'uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir);
-    }
-
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication<NestExpressApplication>();
-
-    // Explicitly configure static assets for the test environment
-    // This ensures that supertest can access the files even if ServeStaticModule
-    // behaves differently in the testing module context
-    app.useStaticAssets(uploadsDir, {
-      prefix: '/images',
+    // The HTTP adapter must exist when ServeStaticModule chooses its loader.
+    app = await NestFactory.create<NestExpressApplication>(AppModule, {
+      logger: false,
     });
+
+    uploadsDir = path.resolve(
+      process.cwd(),
+      app.get(ConfigService).get<string>('UPLOAD_LOCAL_PATH', './uploads'),
+    );
 
     await app.init();
 
-    // Create a dummy image file
-    // Create a minimal valid JPEG file buffer
-    const jpegBuffer = Buffer.from([
-      0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01,
-      0x01, 0x01, 0x00, 0x48, 0x00, 0x48, 0x00, 0x00, 0xff, 0xdb, 0x00, 0x43,
-      0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-      0xff, 0xff, 0xff, 0xff, 0xff, 0xc0, 0x00, 0x0b, 0x08, 0x00, 0x01, 0x00,
-      0x01, 0x01, 0x01, 0x11, 0x00, 0xff, 0xc4, 0x00, 0x1f, 0x00, 0x00, 0x01,
-      0x05, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09,
-      0x0a, 0x0b, 0xff, 0xc4, 0x00, 0xb5, 0x10, 0x00, 0x02, 0x01, 0x03, 0x03,
-      0x02, 0x04, 0x03, 0x05, 0x05, 0x04, 0x04, 0x00, 0x00, 0x01, 0x7d, 0x01,
-      0x02, 0x03, 0x00, 0x04, 0x11, 0x05, 0x12, 0x21, 0x31, 0x41, 0x06, 0x13,
-      0x51, 0x61, 0x07, 0x22, 0x71, 0x14, 0x32, 0x81, 0x91, 0xa1, 0x08, 0x23,
-      0x42, 0xb1, 0xc1, 0x15, 0x52, 0xd1, 0xf0, 0x24, 0x33, 0x62, 0x72, 0x82,
-      0x09, 0x0a, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x25, 0x26, 0x27, 0x28, 0x29,
-      0x2a, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x43, 0x44, 0x45, 0x46,
-      0x47, 0x48, 0x49, 0x4a, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x5a,
-      0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6a, 0x73, 0x74, 0x75, 0x76,
-      0x77, 0x78, 0x79, 0x7a, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89, 0x8a,
-      0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9a, 0xa2, 0xa3, 0xa4,
-      0xa5, 0xa6, 0xa7, 0xa8, 0xa9, 0xaa, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7,
-      0xb8, 0xb9, 0xba, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7, 0xc8, 0xc9, 0xca,
-      0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8, 0xd9, 0xda, 0xe1, 0xe2, 0xe3,
-      0xe4, 0xe5, 0xe6, 0xe7, 0xe8, 0xe9, 0xea, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5,
-      0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xff, 0xda, 0x00, 0x0c, 0x03, 0x01, 0x00,
-      0x02, 0x11, 0x03, 0x11, 0x00, 0x3f, 0x00, 0xf9, 0xfe, 0x8a, 0x28, 0xa0,
-      0x0f, 0xff, 0xd9,
-    ]);
-    fs.writeFileSync(testImagePath, jpegBuffer);
-    fs.writeFileSync(testTextPath, 'This is a text file');
+    testImage = await sharp({
+      create: { width: 8, height: 8, channels: 3, background: '#123456' },
+    })
+      .jpeg()
+      .toBuffer();
 
     // Login to get access token
     const adminUsername = process.env.INITIAL_ADMIN_USERNAME || 'testadmin';
@@ -81,13 +43,6 @@ describe('UploadController (e2e)', () => {
   });
 
   afterAll(async () => {
-    // Cleanup
-    if (fs.existsSync(testImagePath)) {
-      fs.unlinkSync(testImagePath);
-    }
-    if (fs.existsSync(testTextPath)) {
-      fs.unlinkSync(testTextPath);
-    }
     await app.close();
   });
 
@@ -96,7 +51,7 @@ describe('UploadController (e2e)', () => {
       const response = await request(app.getHttpServer())
         .post('/upload/image')
         .set('Authorization', `Bearer ${accessToken}`)
-        .attach('file', testImagePath);
+        .attach('file', testImage, 'test-image.jpg');
 
       if (response.status !== 201) {
         console.log('Upload failed:', response.body);
@@ -111,7 +66,7 @@ describe('UploadController (e2e)', () => {
 
       // Verify file exists on disk (assuming local storage)
       const fileName = path.basename(response.body.data.url);
-      const uploadPath = path.join(process.cwd(), 'uploads', fileName);
+      const uploadPath = path.join(uploadsDir, fileName);
       expect(fs.existsSync(uploadPath)).toBe(true);
 
       // Clean up uploaded file
@@ -131,14 +86,14 @@ describe('UploadController (e2e)', () => {
       await request(app.getHttpServer())
         .post('/upload/image')
         .set('Authorization', `Bearer ${accessToken}`)
-        .attach('file', testTextPath)
+        .attach('file', Buffer.from('This is a text file'), 'test-file.txt')
         .expect(400);
     });
 
     it('should fail if not authenticated', async () => {
       await request(app.getHttpServer())
         .post('/upload/image')
-        .attach('file', testImagePath)
+        .attach('file', testImage, 'test-image.jpg')
         .expect(401);
     });
 
@@ -147,17 +102,22 @@ describe('UploadController (e2e)', () => {
       const uploadResponse = await request(app.getHttpServer())
         .post('/upload/image')
         .set('Authorization', `Bearer ${accessToken}`)
-        .attach('file', testImagePath)
+        .attach('file', testImage, 'test-image.jpg')
         .expect(201);
 
       const fileUrl = uploadResponse.body.data.url;
-      const relativeUrl = fileUrl.replace(/^http:\/\/localhost:\d+/, '');
+      const relativeUrl = new URL(fileUrl, 'http://localhost').pathname;
 
       const fileName = path.basename(fileUrl);
-      const uploadPath = path.join(process.cwd(), 'uploads', fileName);
+      const uploadPath = path.join(uploadsDir, fileName);
 
       // Then try to access it
-      await request(app.getHttpServer()).get(relativeUrl).expect(200);
+      await request(app.getHttpServer())
+        .get(relativeUrl)
+        .expect(200)
+        .expect('Content-Type', /image\/jpeg/)
+        .expect('X-Content-Type-Options', 'nosniff')
+        .expect('Content-Security-Policy', "default-src 'none'; sandbox");
 
       // Clean up
       if (fs.existsSync(uploadPath)) {
@@ -195,8 +155,7 @@ describe('UploadController (e2e)', () => {
 
       // Check saved file size
       const savedFilePath = path.join(
-        process.cwd(),
-        'uploads',
+        uploadsDir,
         path.basename(response.body.data.url),
       );
 

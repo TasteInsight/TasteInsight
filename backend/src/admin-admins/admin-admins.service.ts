@@ -117,8 +117,8 @@ export class AdminAdminsService {
     // superadmin 可以看到所有子管理员，普通管理员只能看到自己创建的
     const whereCondition =
       role === 'superadmin'
-        ? { createdBy: { not: null } }
-        : { createdBy: adminId };
+        ? { createdBy: { not: null }, deletedAt: null }
+        : { createdBy: adminId, deletedAt: null };
 
     const [total, admins] = await Promise.all([
       this.prisma.admin.count({ where: whereCondition }),
@@ -173,11 +173,7 @@ export class AdminAdminsService {
   ): Promise<AdminResponseDto> {
     const { username, password, canteenId, permissions, role } = createAdminDto;
 
-    this.validatePermissionGrant(
-      creatorRole,
-      creatorPermissions,
-      permissions,
-    );
+    this.validatePermissionGrant(creatorRole, creatorPermissions, permissions);
 
     // 食堂管理员权限校验：
     // 1. 食堂管理员不能创建全校管理员（canteenId 为 null 或 undefined）
@@ -254,7 +250,7 @@ export class AdminAdminsService {
   ): Promise<{ code: number; message: string; data: null }> {
     // 查找目标管理员
     const targetAdmin = await this.prisma.admin.findUnique({
-      where: { id: targetId },
+      where: { id: targetId, deletedAt: null },
     });
 
     if (!targetAdmin) {
@@ -271,9 +267,10 @@ export class AdminAdminsService {
       throw new ForbiddenException('无法删除该管理员');
     }
 
-    // 删除管理员（权限会因为 onDelete: Cascade 自动删除）
-    await this.prisma.admin.delete({
+    // 保留审计、新闻和管理员层级的归属，认证入口排除已删除账号。
+    await this.prisma.admin.update({
       where: { id: targetId },
+      data: { deletedAt: new Date() },
     });
 
     return {
@@ -298,7 +295,7 @@ export class AdminAdminsService {
 
     // 查找目标管理员
     const targetAdmin = await this.prisma.admin.findUnique({
-      where: { id: targetId },
+      where: { id: targetId, deletedAt: null },
     });
 
     if (!targetAdmin) {
@@ -378,7 +375,7 @@ export class AdminAdminsService {
 
     // 查找当前管理员
     const admin = await this.prisma.admin.findUnique({
-      where: { id: adminId },
+      where: { id: adminId, deletedAt: null },
     });
 
     if (!admin) {
@@ -431,7 +428,7 @@ export class AdminAdminsService {
 
     // 查找目标管理员
     const targetAdmin = await this.prisma.admin.findUnique({
-      where: { id: targetId },
+      where: { id: targetId, deletedAt: null },
     });
 
     if (!targetAdmin) {

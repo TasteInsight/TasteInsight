@@ -11,6 +11,7 @@ import { NewsListResponseDto, NewsResponseDto } from './dto/news-response.dto';
 import { SuccessResponseDto } from '@/common/dto/response.dto';
 import { NewsDto, AdminGetNewsDto } from './dto/news.dto';
 import { AdminInfo } from '@/auth/decorators/current-admin.decorator';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class AdminNewsService {
@@ -20,20 +21,56 @@ export class AdminNewsService {
     query: AdminGetNewsDto,
     adminInfo?: AdminInfo,
   ): Promise<NewsListResponseDto> {
-    const { page = 1, pageSize = 20, status, canteenName } = query;
+    const {
+      page = 1,
+      pageSize = 20,
+      status,
+      canteenName,
+      canteenId,
+      keyword,
+      startDate,
+      endDate,
+    } = query;
     const skip = (page - 1) * pageSize;
 
-    const where: any = {};
+    const where: Prisma.NewsWhereInput = {};
     if (status) {
       where.status = status;
     }
 
     if (adminInfo?.canteenId) {
+      if (canteenId && canteenId !== adminInfo.canteenId) {
+        throw new ForbiddenException('您只能查看所属食堂的新闻');
+      }
       where.canteenId = adminInfo.canteenId;
-    } else if (canteenName) {
+    } else if (canteenId) {
+      where.canteenId = canteenId === 'all' ? null : canteenId;
+    }
+    if (canteenName?.trim()) {
       where.canteenName = {
-        contains: canteenName,
+        contains: canteenName.trim(),
         mode: 'insensitive',
+      };
+    }
+    if (keyword?.trim()) {
+      where.title = { contains: keyword.trim(), mode: 'insensitive' };
+    }
+
+    const dateBoundary = (value: string, end: boolean): Date =>
+      new Date(
+        /^\d{4}-\d{2}-\d{2}$/.test(value)
+          ? `${value}T${end ? '23:59:59.999' : '00:00:00.000'}Z`
+          : value,
+      );
+    const from = startDate ? dateBoundary(startDate, false) : undefined;
+    const to = endDate ? dateBoundary(endDate, true) : undefined;
+    if (from && to && from > to) {
+      throw new BadRequestException('结束时间不能早于开始时间');
+    }
+    if (from || to) {
+      where[status === 'draft' ? 'createdAt' : 'publishedAt'] = {
+        ...(from ? { gte: from } : {}),
+        ...(to ? { lte: to } : {}),
       };
     }
 
@@ -43,7 +80,11 @@ export class AdminNewsService {
         where,
         skip,
         take: pageSize,
-        orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
+        orderBy: [
+          { publishedAt: 'desc' },
+          { createdAt: 'desc' },
+          { id: 'desc' },
+        ],
       }),
     ]);
 
@@ -70,7 +111,7 @@ export class AdminNewsService {
     let canteenId = createNewsDto.canteenId;
 
     if (adminInfo.canteenId) {
-      if (canteenId && canteenId !== adminInfo.canteenId) {
+      if (canteenId !== undefined && canteenId !== adminInfo.canteenId) {
         throw new ForbiddenException('您只能发布所属食堂的新闻');
       }
       canteenId = adminInfo.canteenId;
@@ -131,22 +172,24 @@ export class AdminNewsService {
     // 如果更新了 canteenId，需要同时更新 canteenName
     const updateData: any = { ...updateNewsDto };
 
-    if (adminInfo?.canteenId) {
-      // 强制食堂ID为管理员的食堂
-      updateData.canteenId = adminInfo.canteenId;
-      // 查找并设置食堂名称
-      const canteen = await this.prisma.canteen.findUnique({
-        where: { id: adminInfo.canteenId },
-      });
-      if (canteen) updateData.canteenName = canteen.name;
-    } else if (updateNewsDto.canteenId) {
-      const canteen = await this.prisma.canteen.findUnique({
-        where: { id: updateNewsDto.canteenId },
-      });
-      if (!canteen) {
-        throw new BadRequestException('指定的食堂不存在');
+    if (updateNewsDto.canteenId !== undefined) {
+      if (
+        adminInfo?.canteenId &&
+        updateNewsDto.canteenId !== adminInfo.canteenId
+      ) {
+        throw new ForbiddenException('您只能发布所属食堂的新闻');
       }
-      updateData.canteenName = canteen.name;
+      if (updateNewsDto.canteenId === null) {
+        updateData.canteenName = null;
+      } else {
+        const canteen = await this.prisma.canteen.findUnique({
+          where: { id: updateNewsDto.canteenId },
+        });
+        if (!canteen) {
+          throw new BadRequestException('指定的食堂不存在');
+        }
+        updateData.canteenName = canteen.name;
+      }
     }
 
     const news = await this.prisma.news.update({

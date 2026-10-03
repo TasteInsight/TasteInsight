@@ -3,6 +3,7 @@ import {
   IsNumber,
   IsString,
   IsIn,
+  IsDateString,
   Min,
   Max,
 } from 'class-validator';
@@ -30,6 +31,22 @@ export class AdminGetNewsDto {
   @IsOptional()
   @IsString()
   canteenName?: string;
+
+  @IsOptional()
+  @IsString()
+  keyword?: string;
+
+  @IsOptional()
+  @IsString()
+  canteenId?: string;
+
+  @IsOptional()
+  @IsDateString({ strict: true })
+  startDate?: string;
+
+  @IsOptional()
+  @IsDateString({ strict: true })
+  endDate?: string;
 }
 
 export class NewsDto {

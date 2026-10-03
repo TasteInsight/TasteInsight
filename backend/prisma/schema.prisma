@@ -115,9 +115,12 @@ model Admin {
   handledReports Report[]       @relation("ReportHandler")
   dishUploads    DishUpload[]
 
+  deletedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([deletedAt])
   @@map("admins")
 }
 
@@ -301,6 +304,10 @@ model DishUpload {
   parentDishId String?
   parentDish   Dish?   @relation("DishParentToUpload", fields: [parentDishId], references: [id])
 
+  parentUploadId String?
+  parentUpload   DishUpload?  @relation("UploadHierarchy", fields: [parentUploadId], references: [id], onDelete: Restrict)
+  childUploads   DishUpload[] @relation("UploadHierarchy")
+
   // 菜品信息（与Dish模型类似）
   name        String
   tags        String[]
@@ -342,6 +349,7 @@ model DishUpload {
   @@index([userId])
   @@index([adminId])
   @@index([status])
+  @@index([parentUploadId])
   @@map("dish_uploads")
 }
 

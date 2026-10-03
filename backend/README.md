@@ -109,7 +109,7 @@ backend/
 pnpm install
 ```
 
-### 2. 环境变量配置
+### 2. 本地环境变量配置
 
 复制 `.env.example` 为 `.env` 并填写配置：
 
@@ -117,70 +117,39 @@ pnpm install
 cp .env.example .env
 ```
 
-主要配置项：
+本地后端默认监听 `3001`；`docker-compose.local.yml` 提供端口 `5434` 的 pgvector PostgreSQL 和端口 `6380` 的 Redis，并使用独立的 `tasteinsight-dev` 数据卷。替换 `.env` 中的 `change-me` 值，并使 `DATABASE_URL` 与数据库账号、密码、映射端口一致。已有数据库和 Redis 时，直接填写其连接信息即可。配置项说明见 [环境配置与部署](../docs/环境配置与部署.md)。
 
-```env
-# 数据库
-DATABASE_URL="postgresql://user:password@localhost:5432/tasteinsight"
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=your_password
-POSTGRES_DB=tasteinsight
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
+启动本地基础设施：
 
-# Redis
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=
-
-# JWT
-JWT_SECRET=your_jwt_secret
-JWT_EXPIRES_IN=7d
-JWT_REFRESH_SECRET=your_refresh_secret
-JWT_REFRESH_EXPIRES_IN=30d
-
-# 微信小程序
-WECHAT_APPID=your_appid
-WECHAT_SECRET=your_secret
-
-# AI 服务
-OPENAI_API_KEY=your_openai_key
-OPENAI_BASE_URL=https://api.openai.com/v1
-OPENAI_MODEL=gpt-4o-mini
-
-# 嵌入服务
-EXTERNAL_EMBEDDING_SERVICE_URL=http://localhost:5001
-
-# 阿里云 OSS（可选）
-ALIYUN_OSS_ACCESS_KEY_ID=
-ALIYUN_OSS_ACCESS_KEY_SECRET=
-ALIYUN_OSS_BUCKET=
-ALIYUN_OSS_REGION=
+```bash
+docker compose -f docker-compose.local.yml up -d
 ```
 
 ### 3. 数据库初始化
 
 ```bash
 # 生成 Prisma Client
-pnpm prisma generate
+pnpm exec prisma generate
 
 # 运行数据库迁移
-pnpm prisma migrate deploy
-
-# 填充种子数据（可选）
-pnpm ts-node prisma/seed.ts
+pnpm exec prisma migrate deploy
 ```
+
+`prisma/seed.ts` 和 `prisma/seed_docker.ts` 会先删除现有业务数据，不属于正常初始化步骤。
 
 ## 运行项目
 
 ### 开发模式
 
 ```bash
+# 可选：仅在 EXTERNAL_EMBEDDING_SERVICE_ENABLED=true 时另开终端启动
+pnpm run start:embedding
+
 pnpm run start:dev
 ```
 
 服务启动后访问：
-- API 服务：http://localhost:3000
+- API 服务：http://localhost:3001
 
 ### 生产模式
 
@@ -192,12 +161,17 @@ pnpm run start:prod
 ### Docker 部署
 
 ```bash
-# 构建并启动所有服务（后端、数据库、Redis、嵌入服务）
-docker-compose up -d
+# 全新部署创建生产配置；已有部署先按环境配置文档保留原有凭证
+cp .env.production.example .env.production
+
+# 构建并启动生产服务（当前为 HTTP 网关）
+docker compose --env-file .env.production up -d --build
 
 # 查看日志
-docker-compose logs -f backend
+docker compose --env-file .env.production logs -f backend nginx
 ```
+
+Docker 冷启动会自动执行幂等的 `prisma migrate deploy`，并在管理员表为空时创建初始管理员；`RUN_SEED` 和 `IMPORT_DATA` 默认关闭。外部 Python 嵌入默认关闭且不启动，需要时在 `.env.production` 中同时设置 `EXTERNAL_EMBEDDING_SERVICE_ENABLED=true` 和 `COMPOSE_PROFILES=embedding`。Nginx、HTTPS 恢复、自动部署、升级及停止步骤见 [环境配置与部署](../docs/环境配置与部署.md)。
 
 ## 测试
 
@@ -216,7 +190,7 @@ pnpm run test:unit:ai-chat
 ### E2E 测试
 
 ```bash
-# 准备测试环境（启动测试数据库、Redis、嵌入服务）
+# 准备独立测试数据库后，启动 Redis 和模拟嵌入服务并重建测试数据
 pnpm run test:setup
 
 # 运行全部 E2E 测试
@@ -257,7 +231,7 @@ pnpm run test:e2e:cov
 | `Floor` | 楼层 |
 | `Window` | 窗口 |
 | `Dish` | 菜品 |
-| `DishUpload` | 用户上传菜品（待审核） |
+| `DishUpload` | 用户或管理员提交的菜品（待审核） |
 | `Review` | 评价 |
 | `Comment` | 评论 |
 | `Report` | 举报 |
@@ -266,6 +240,16 @@ pnpm run test:e2e:cov
 | `FavoriteDish` | 收藏菜品 |
 | `BrowseHistory` | 浏览历史 |
 | `AISession` | AI 会话 |
+
+### 管理员与菜品生命周期
+
+管理员删除会设置 `Admin.deletedAt`，保留操作日志、新闻和创建关系。已删除账号不能登录、刷新令牌或访问管理接口，也不出现在可管理账号列表中；其用户名仍保留。
+
+新建菜品返回待审核的 `DishUpload`，审核通过后通过 `approvedDishId` 关联正式 `Dish`。子菜提交时，`parentDishId` 引用正式主菜，`parentUploadId` 引用待审核主菜，两者不能同时设置。关联待审核主菜的子菜须在主菜通过审核后审批，各条记录分别审核。
+
+主菜撤回或删除时，子审核记录保留对来源审核记录的关联，包括已拒绝的记录。删除正式菜品不删除审核历史。旧版或导入的主菜如果没有来源审核记录且仍被子审核记录引用，需要保留该主菜，可通过下架停止展示。
+
+菜品更新接口中，省略字段表示保持原值，空字符串和空数组表示明确清空。列表的筛选与总数计算在服务端分页前执行。
 
 ## Python 嵌入服务
 

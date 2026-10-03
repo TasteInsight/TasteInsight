@@ -22,7 +22,11 @@ class Config:
     DEVICE = os.getenv('PYTHON_EMBEDDING_DEVICE', None)  # None = 自动检测
     
     # 预加载模型
-    PRELOAD_MODELS = os.getenv('PYTHON_EMBEDDING_PRELOAD_MODELS', 'v2,v3').split(',')
+    PRELOAD_MODELS = [
+        version.strip()
+        for version in os.getenv('PYTHON_EMBEDDING_PRELOAD_MODELS', 'v2,v3').split(',')
+        if version.strip()
+    ]
     
     @classmethod
     def get_info(cls) -> dict:
@@ -36,4 +40,3 @@ class Config:
             'device': cls.DEVICE or 'auto',
             'preload_models': cls.PRELOAD_MODELS,
         }
-

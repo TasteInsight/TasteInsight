@@ -86,7 +86,7 @@ describe('AdminAdminsService', () => {
       // superadmin should see all admins with createdBy not null
       expect(prisma.admin.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { createdBy: { not: null } },
+          where: { createdBy: { not: null }, deletedAt: null },
         }),
       );
     });
@@ -112,7 +112,7 @@ describe('AdminAdminsService', () => {
       expect(result.code).toBe(200);
       expect(prisma.admin.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { createdBy: 'admin-1' },
+          where: { createdBy: 'admin-1', deletedAt: null },
         }),
       );
     });
@@ -260,7 +260,36 @@ describe('AdminAdminsService', () => {
   });
 
   describe('remove', () => {
-    it('should delete admin as superadmin', async () => {
+    it.each(['permissions', 'password'])(
+      'cannot restore a retired account through %s changes',
+      async (operation) => {
+        prisma.admin.findUnique.mockImplementation(async ({ where }) =>
+          where.deletedAt === null
+            ? null
+            : { id: 'retired', createdBy: 'creator', deletedAt: new Date() },
+        );
+        const action =
+          operation === 'permissions'
+            ? service.updatePermissions(
+                'creator',
+                'superadmin',
+                null,
+                [],
+                'retired',
+                { permissions: ['dish:view'] },
+              )
+            : service.changeSubAdminPassword(
+                'creator',
+                'superadmin',
+                'retired',
+                { newPassword: 'Password123!' },
+              );
+        await expect(action).rejects.toThrow(NotFoundException);
+        expect(prisma.admin.update).not.toHaveBeenCalled();
+        expect(prisma.adminPermission.createMany).not.toHaveBeenCalled();
+      },
+    );
+    it('retires an admin without deleting audit or news ownership', async () => {
       prisma.admin.findUnique.mockResolvedValue({
         id: 'target-admin',
         role: 'admin',
@@ -275,9 +304,11 @@ describe('AdminAdminsService', () => {
       );
 
       expect(result.code).toBe(200);
-      expect(prisma.admin.delete).toHaveBeenCalledWith({
+      expect(prisma.admin.update).toHaveBeenCalledWith({
         where: { id: 'target-admin' },
+        data: { deletedAt: expect.any(Date) },
       });
+      expect(prisma.admin.delete).not.toHaveBeenCalled();
     });
 
     it('should delete admin created by self', async () => {

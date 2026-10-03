@@ -9,8 +9,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadService } from './upload.service';
-import { AuthGuard } from '@/auth/guards/auth.guard';
-import { CustomFileTypeValidator } from './validators/custom-file-type.validator';
+import { UploadAuthGuard } from './upload-auth.guard';
 import { UploadResponseDto } from './dto/upload.dto';
 import { ConfigService } from '@nestjs/config';
 
@@ -22,22 +21,18 @@ export class UploadController {
   ) {}
 
   @Post('image')
-  @UseGuards(AuthGuard)
+  @UseGuards(UploadAuthGuard)
   @UseInterceptors(FileInterceptor('file'))
   async uploadImage(
     @UploadedFile()
     file: Express.Multer.File,
   ): Promise<UploadResponseDto> {
-    const maxSize = parseInt(
-      this.configService.get('UPLOAD_MAX_FILE_SIZE', '10485760'),
+    const maxSize = this.configService.get<number>(
+      'UPLOAD_MAX_FILE_SIZE',
+      10485760,
     );
     const pipe = new ParseFilePipe({
-      validators: [
-        new MaxFileSizeValidator({ maxSize }),
-        new CustomFileTypeValidator({
-          fileType: /^image\/(jpeg|jpg|png|gif|webp)$/,
-        }),
-      ],
+      validators: [new MaxFileSizeValidator({ maxSize })],
     });
     const validatedFile = await pipe.transform(file);
     return this.uploadService.uploadFile(validatedFile);

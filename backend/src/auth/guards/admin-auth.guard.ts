@@ -49,7 +49,7 @@ export class AdminAuthGuard implements CanActivate {
 
       // 验证管理员是否存在
       const admin = await this.prisma.admin.findUnique({
-        where: { id: payload.sub },
+        where: { id: payload.sub, deletedAt: null },
         include: {
           permissions: true,
         },

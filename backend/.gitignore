@@ -73,11 +73,11 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 # postgres data
 /postgres-data
 
+# Local uploaded images
+/uploads/
+
 # .bak
 *.bak
-
-# Nginx Conf
-nginx.conf
 
 # SSL Certs
 certs/

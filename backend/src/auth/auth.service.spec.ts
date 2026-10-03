@@ -278,6 +278,18 @@ describe('AuthService', () => {
   });
 
   describe('adminLogin', () => {
+    it('excludes retired administrators from login', async () => {
+      prisma.admin.findUnique.mockResolvedValue(null);
+      await expect(service.adminLogin('retired', 'password')).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(prisma.admin.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { username: 'retired', deletedAt: null },
+        }),
+      );
+      expect(jwtService.signAsync).not.toHaveBeenCalled();
+    });
     it('should login admin successfully', async () => {
       const mockAdmin = {
         id: 'admin-1',
@@ -374,9 +386,9 @@ describe('AuthService', () => {
     it('should not issue tokens when the account no longer exists', async () => {
       prisma.user.findUnique.mockResolvedValue(null);
 
-      await expect(service.refreshToken('deleted-user', 'user')).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        service.refreshToken('deleted-user', 'user'),
+      ).rejects.toThrow(UnauthorizedException);
       expect(jwtService.signAsync).not.toHaveBeenCalled();
     });
   });
@@ -401,6 +413,16 @@ describe('AuthService', () => {
   });
 
   describe('validateAdmin', () => {
+    it('excludes retired accounts when refreshing administrator tokens', async () => {
+      prisma.admin.findUnique.mockResolvedValue(null);
+      await expect(
+        service.refreshToken('retired-admin', 'admin'),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(prisma.admin.findUnique).toHaveBeenCalledWith({
+        where: { id: 'retired-admin', deletedAt: null },
+      });
+      expect(jwtService.signAsync).not.toHaveBeenCalled();
+    });
     it('should return admin if found', async () => {
       const mockAdmin = { id: 'admin-1', username: 'admin' };
       prisma.admin.findUnique.mockResolvedValue(mockAdmin);
