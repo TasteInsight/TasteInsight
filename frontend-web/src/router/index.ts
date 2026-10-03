@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import { getFirstAccessibleRoute } from './access'
 import MainLayout from '@/components/Layout/MainLayout.vue'
+import { isDishCompositionRoute, resetDishComposition } from '@/composables/dish-composition'
 
 const Login = () => import('@/views/Login.vue')
 const Forbidden = () => import('@/views/Forbidden.vue')
@@ -169,6 +170,10 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+router.afterEach((to, _from, failure) => {
+  if (!failure && !isDishCompositionRoute(to)) resetDishComposition()
 })
 
 export { getFirstAccessibleRoute }

@@ -57,10 +57,10 @@ frontend-web/
 | 批量导入菜品 | `/batch-add` | Excel 批量导入菜品 |
 | 修改菜品 | `/modify-dish` | 菜品列表管理与编辑 |
 | 编辑菜品 | `/edit-dish/:id` | 编辑指定菜品详情 |
-| 添加子品类 | `/add-sub-dish/:id` | 为菜品添加规格/子品类 |
+| 添加子品类 | `/add-sub-dish` | 为正式或待审父菜品提交规格/子品类 |
 | 查看菜品详情 | `/view-dish/:id` | 查看菜品完整信息 |
 | 添加食堂 | `/add-canteen` | 新增食堂及窗口 |
-| 审核菜品 | `/review-dish` | 审核用户上传的菜品 |
+| 审核菜品 | `/review-dish` | 审核用户和管理员提交的菜品 |
 | 审核菜品详情 | `/review-dish/:id` | 查看待审核菜品详情 |
 | 评价管理 | `/review-manage` | 管理用户评价 |
 | 评论管理 | `/comment-manage` | 管理评论内容 |
@@ -70,6 +70,16 @@ frontend-web/
 | 配置管理 | `/config-manage` | 系统配置（推荐策略等） |
 | 实验管理 | `/experiment-manage` | A/B 测试与实验管理 |
 | 操作日志 | `/log-view` | 查看管理员操作日志 |
+
+### 菜品提交与审批
+
+单个添加和子品类添加创建待审上传记录，提交成功不会直接生成正式菜品。新建父项时，首次进入子项详情会先提交父项，并通过 `parentUploadId` 关联待审子项；从正式菜品编辑页添加的子项使用 `parentDishId`。
+
+审批顺序为父项在先、子项在后。父项批准后生成正式菜品，子项批准时将待审父项关联解析为正式父菜品 id。提交子项不会自动批准任何记录，也不会提前修改正式菜品的子项列表。
+
+### 列表筛选
+
+新闻支持标题、发布食堂、全校公告及开始/结束时间筛选；已发布新闻按发布时间筛选，草稿按创建时间筛选。菜品审核支持名称关键词、食堂和审核状态筛选。所有筛选在服务端分页前执行，总记录数对应当前筛选条件；更改条件会返回第一页。食堂管理员仅查看所属食堂范围。
 
 ## 权限控制
 
@@ -112,12 +122,13 @@ pnpm install
 
 ### 环境变量
 
-创建 `.env.local` 文件：
+项目提交了按 Vite 模式加载的公开配置：
 
-```env
-# 后端 API 地址
-VITE_API_BASE_URL=http://localhost:3000
-```
+- `.env.development`：`http://localhost:3001`
+- `.env.production`：`/api/v1`，通过 Docker 公网网关同源访问
+- `.env.test`：单元测试地址
+
+仅在需要机器专属覆盖时创建被 Git 忽略的 `.env.development.local`。`VITE_*` 会进入浏览器产物，不能存放密码或密钥。
 
 ## 运行项目
 
@@ -187,7 +198,7 @@ docker build -t tasteinsight-frontend-web .
 docker run -d -p 80:80 tasteinsight-frontend-web
 ```
 
-Nginx 配置示例见 `nginx.conf`。
+`frontend-web/nginx.conf` 只托管静态文件、处理 Vue Router 回退和缓存。生产 API 代理由 `backend/nginx.conf` 负责；单独运行这个容器不会提供 `/api/v1`。完整拓扑见 [环境配置与部署](../docs/环境配置与部署.md)。
 
 ## 代码规范
 

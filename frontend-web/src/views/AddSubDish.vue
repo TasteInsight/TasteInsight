@@ -2,7 +2,7 @@
   <div class="p-8 min-h-screen min-w-[1200px]">
     <div class="bg-white rounded-lg container-shadow p-8">
       <Header
-        :title="`添加子项：${subItemName || '子项'}`"
+        :title="`添加子项：${formData.name || '子项'}`"
         description="填写子项详情信息并上传图片"
         header-icon="carbon:add"
       />
@@ -18,8 +18,13 @@
         </div>
       </div>
 
+      <p v-if="isSubmitted" role="status" class="mb-6 text-sm text-gray-600">该子项已提交审核。</p>
+      <p v-else-if="isExpiredComposition" role="status" class="mb-6 text-sm text-gray-600">
+        本次录入已结束，请返回添加新菜品。
+      </p>
+
       <form class="space-y-6">
-        <div class="grid grid-cols-2 gap-6">
+        <fieldset :disabled="isExpiredComposition || isSubmitted || isSubmitting" class="grid grid-cols-2 gap-6 min-w-0">
           <!-- 左侧列 -->
           <div>
             <!-- 食堂信息组（继承自父项，只读显示） -->
@@ -161,7 +166,7 @@
                     class="w-[300px] h-[300px] border-2 border-dashed rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center"
                   >
                     <img
-                      v-if="formData.imageFiles.length > 0"
+                      v-if="formData.imageFiles[0]?.preview"
                       :src="formData.imageFiles[0].preview"
                       alt="封面图"
                       class="w-full h-full object-cover"
@@ -199,7 +204,7 @@
                     class="relative group w-[140px] h-[140px]"
                   >
                     <div class="w-full h-full border rounded-lg overflow-hidden bg-gray-50">
-                      <img :src="img.preview" class="w-full h-full object-cover" />
+                      <img v-if="img.preview" :src="img.preview" class="w-full h-full object-cover" />
                     </div>
 
                     <!-- 操作遮罩 -->
@@ -478,7 +483,7 @@
               />
             </div>
           </div>
-        </div>
+        </fieldset>
 
         <!-- 表单按钮 -->
         <div class="flex space-x-4 pt-6 border-t border-gray-200">
@@ -486,7 +491,7 @@
             type="button"
             class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
             @click="submitForm"
-            :disabled="isSubmitting || !authStore.hasPermission('dish:create')"
+            :disabled="isExpiredComposition || isSubmitted || isSubmitting || !authStore.hasPermission('dish:create')"
             :title="!authStore.hasPermission('dish:create') ? '无权限创建菜品' : '保存子项信息'"
           >
             <span class="iconify mr-1" data-icon="carbon:save"></span>
@@ -496,6 +501,7 @@
             type="button"
             class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"
             @click="goBack"
+            :disabled="isSubmitting"
           >
             取消
           </button>
@@ -506,13 +512,15 @@
 </template>
 
 <script>
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, toRef, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useDishStore } from '@/store/modules/use-dish-store'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import { dishApi } from '@/api/modules/dish'
+import { reviewApi } from '@/api/modules/review'
 import Header from '@/components/Layout/Header.vue'
 import { showAlert, showConfirm } from '@/composables/useModal'
+import { createDishForm, getCompositionSubItem, getDishCompositionVersion } from '@/composables/dish-composition'
+import { authSessionVersion, getAuthSessionVersion } from '@/utils/auth-session'
 
 export default {
   name: 'AddSubDish',
@@ -522,13 +530,26 @@ export default {
   setup() {
     const router = useRouter()
     const route = useRoute()
-    const dishStore = useDishStore()
     const authStore = useAuthStore()
-    const isSubmitting = ref(false)
 
     const parentDishId = ref(route.query.parentId || '')
+    const parentUploadId = ref(route.query.parentUploadId || '')
     const subItemName = ref(route.query.subItemName || '')
     const parentDishName = ref('')
+    const compositionItem = getCompositionSubItem(parentUploadId.value, route.query.subItemTempId)
+    const isSubmitting = compositionItem ? toRef(compositionItem, 'isSubmitting', false) : ref(false)
+    const isExpiredComposition = Boolean(route.query.subItemTempId && !compositionItem)
+    const isSubmitted = computed(() => Boolean(compositionItem?.uploadId))
+    const viewSession = getAuthSessionVersion()
+    const compositionVersion = getDishCompositionVersion()
+    const initialRoute = route.fullPath
+    let active = true
+    onBeforeUnmount(() => { active = false })
+    const ownsDraft = () => viewSession === getAuthSessionVersion() &&
+      (compositionItem
+        ? compositionVersion === getDishCompositionVersion()
+        : active && route.fullPath === initialRoute)
+    const isCurrent = () => active && route.fullPath === initialRoute && ownsDraft()
 
     const newTag = ref('')
 
@@ -541,47 +562,42 @@ export default {
       price: '',
     })
 
-    const formData = reactive({
-      canteen: '',
-      floor: '',
-      windowName: '',
-      windowNumber: '',
-      name: subItemName.value || '',
-      price: 0,
-      description: '',
-      allergens: '',
-      ingredients: '',
-      imageFiles: [], // { id: string, file: File, preview: string }
-      tags: [],
-      spicyLevel: 0,
-      saltiness: 0,
-      sweetness: 0,
-      oiliness: 0,
-      servingTime: {
-        breakfast: false,
-        lunch: true,
-        dinner: true,
-        night: true,
-      },
-      availableDates: [],
+    const formData = reactive(compositionItem?.formData || {
+      ...createDishForm(),
+      name: compositionItem ? toRef(compositionItem, 'name') : subItemName.value || '',
     })
+    if (compositionItem) {
+      compositionItem.formData = formData
+    }
+
+    watch(authSessionVersion, () => {
+      Object.assign(formData, createDishForm())
+      parentDishName.value = ''
+    }, { flush: 'sync' })
 
     // 从父菜品加载信息（如果有）
     onMounted(async () => {
-      if (parentDishId.value) {
+      if (isExpiredComposition) return
+      if (parentUploadId.value || parentDishId.value) {
         try {
-          const response = await dishApi.getDishById(parentDishId.value)
+          const response = parentUploadId.value
+            ? await reviewApi.getPendingUploadById(parentUploadId.value)
+            : await dishApi.getDishById(parentDishId.value)
+          if (!isCurrent()) return
           if (response.code === 200 && response.data) {
             const parentDish = response.data
             // 保存父菜品名称
             parentDishName.value = parentDish.name || ''
             // 继承父菜品的一些信息（食堂、楼层、窗口）
             formData.canteen = parentDish.canteenName || ''
+            formData.canteenId = parentDish.canteenId || ''
+            formData.windowId = parentDish.windowId || ''
             formData.floor = parentDish.floorName || parentDish.floor || ''
             formData.windowName = parentDish.windowName || ''
             formData.windowNumber = parentDish.windowNumber || ''
           }
         } catch (error) {
+          if (!isCurrent()) return
           console.error('加载父菜品信息失败:', error)
         }
       }
@@ -622,13 +638,13 @@ export default {
             return
           }
 
+          const image = reactive({ id: crypto.randomUUID(), file, preview: '' })
+          formData.imageFiles.push(image)
           const reader = new FileReader()
           reader.onload = (e) => {
-            formData.imageFiles.push({
-              id: crypto.randomUUID(),
-              file: file,
-              preview: e.target.result,
-            })
+            if (viewSession !== getAuthSessionVersion() ||
+              (compositionItem && compositionVersion !== getDishCompositionVersion())) return
+            image.preview = e.target.result
           }
           reader.readAsDataURL(file)
         })
@@ -649,6 +665,7 @@ export default {
     }
 
     const submitForm = async () => {
+      if (!isCurrent() || isExpiredComposition || isSubmitted.value || isSubmitting.value) return
       if (!authStore.hasPermission('dish:create')) {
         showAlert('您没有权限创建菜品')
         return
@@ -674,17 +691,12 @@ export default {
         hasError = true
       }
       
-      if (!formData.floor || !formData.floor.trim()) {
-        errors.floor = '食堂楼层不能为空'
-        hasError = true
-      }
-      
       if (!formData.windowName || !formData.windowName.trim()) {
         errors.windowName = '窗口名称不能为空'
         hasError = true
       }
 
-      if (!parentDishId.value) {
+      if (!parentDishId.value && !parentUploadId.value) {
         showAlert('缺少父菜品ID，无法创建子项')
         return
       }
@@ -704,10 +716,6 @@ export default {
         return
       }
 
-      if (isSubmitting.value) {
-        return
-      }
-
       isSubmitting.value = true
 
       try {
@@ -720,6 +728,7 @@ export default {
               dishApi.uploadImage(imgItem.file),
             )
             const results = await Promise.all(uploadPromises)
+            if (!ownsDraft()) return
 
             // 收集成功上传的 URL
             imageUrls = results
@@ -728,19 +737,20 @@ export default {
 
             const failed = formData.imageFiles.length - imageUrls.length
             if (failed > 0) {
+              if (!isCurrent()) return
               const confirmed = await showConfirm(
                 `${failed}张图片上传失败，是否继续提交？`,
                 '图片上传失败'
               )
+              if (!isCurrent()) return
               if (!confirmed) {
-                isSubmitting.value = false
                 return
               }
             }
           } catch (error) {
+            if (!isCurrent()) return
             console.error('图片上传失败:', error)
             showAlert('图片上传失败，请重试')
-            isSubmitting.value = false
             return
           }
         }
@@ -785,6 +795,8 @@ export default {
         // 构建子项创建请求（设置 parentDishId）
         const dishData = {
           name: formData.name,
+          canteenId: formData.canteenId || undefined,
+          windowId: formData.windowId || undefined,
           canteenName: formData.canteen,
           windowName: formData.windowName,
           windowNumber: formData.windowNumber || formData.windowName,
@@ -810,73 +822,43 @@ export default {
             formData.oiliness !== null && formData.oiliness !== undefined ? formData.oiliness : 0,
           availableMealTime: availableMealTime.length > 0 ? availableMealTime : undefined,
           availableDates: availableDates,
-          parentDishId: parentDishId.value, // 设置父菜品ID
-          status: 'offline', // 新创建的菜品默认离线，等待审核
+          ...(parentUploadId.value
+            ? { parentUploadId: parentUploadId.value }
+            : { parentDishId: parentDishId.value }),
         }
 
-        // 3. 调用 API 创建子项（保存为dish）
+        // 子项独立提交审核，正式父子关联由审批流程建立。
         const response = await dishApi.createDish(dishData)
+        if (!ownsDraft()) return
 
         if (response.code === 200 || response.code === 201) {
-          // 4. 将创建的子项添加到 store
-          if (response.data) {
-            dishStore.addDish(response.data)
-
-            // 5. 更新父菜品的 subDishId 列表
-            if (parentDishId.value && response.data.id) {
-              try {
-                // 获取父菜品
-                const parentResponse = await dishApi.getDishById(parentDishId.value)
-                if (parentResponse.code === 200 && parentResponse.data) {
-                  const parentDish = parentResponse.data
-                  const subDishIds = parentDish.subDishId ? [...parentDish.subDishId] : []
-                  if (!subDishIds.includes(response.data.id)) {
-                    subDishIds.push(response.data.id)
-
-                    // 更新父菜品（只更新 subDishId，保留其他字段）
-                    await dishApi.updateDish(parentDishId.value, {
-                      subDishId: subDishIds,
-                    })
-
-                    // 更新 store 中的父菜品
-                    dishStore.updateDish(parentDishId.value, {
-                      ...parentDish,
-                      subDishId: subDishIds,
-                    })
-                  }
-                }
-              } catch (error) {
-                console.error('更新父菜品子项列表失败:', error)
-                // 即使更新失败，子项也已经创建成功
-              }
-            }
+          if (compositionItem) {
+            compositionItem.uploadId = response.data.id
           }
-
-          showAlert('子项添加成功！')
-
-          // 保存完子项后，返回到父项的编辑页面
-          if (parentDishId.value) {
-            router.push({
-              path: `/edit-dish/${parentDishId.value}`,
-              query: { refreshSubDishes: 'true' },
-            })
-          } else {
-            goBack()
-          }
+          if (!isCurrent()) return
+          showAlert('子项已提交审核！')
+          goBack()
         } else {
           throw new Error(response.message || '创建子项失败')
         }
       } catch (error) {
+        if (!isCurrent()) return
         console.error('创建子项失败:', error)
         showAlert(error instanceof Error ? error.message : '创建子项失败，请重试')
       } finally {
-        isSubmitting.value = false
+        if (ownsDraft()) isSubmitting.value = false
       }
     }
 
     const goBack = () => {
-      // 保存完子项后，总是返回到父项的编辑页面
-      if (parentDishId.value) {
+      if (!isCurrent()) return
+      if (isExpiredComposition) {
+        router.push('/single-add')
+      } else if (compositionItem) {
+        router.push('/single-add')
+      } else if (parentUploadId.value) {
+        router.push(authStore.hasPermission('upload:approve') ? '/review-dish' : '/single-add')
+      } else if (parentDishId.value) {
         router.push(`/edit-dish/${parentDishId.value}`)
       } else {
         router.push('/single-add')
@@ -888,6 +870,8 @@ export default {
       errors,
       newTag,
       isSubmitting,
+      isSubmitted,
+      isExpiredComposition,
       subItemName,
       parentDishName,
       addDateRange,

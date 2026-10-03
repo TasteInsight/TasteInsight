@@ -73,6 +73,8 @@ const baseMountOptions = {
 describe('views/ReviewDish', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.getPendingUploadsMock.mockReset()
+    mocks.getCanteensMock.mockReset()
   })
 
   it('loads canteens and pending uploads on mount; maps items and total', async () => {
@@ -174,7 +176,7 @@ describe('views/ReviewDish', () => {
     consoleSpy.mockRestore()
   })
 
-  it('watchers reset page and reload when status/canteen filters change; API gets status only', async () => {
+  it('watchers reset page and send status/canteen filters to the API', async () => {
     mocks.hasPermissionMock.mockReturnValue(true)
 
     mocks.getCanteensMock.mockResolvedValueOnce({ code: 200, data: { items: [] } })
@@ -199,74 +201,38 @@ describe('views/ReviewDish', () => {
     mocks.getPendingUploadsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { total: 0 } } })
 
     wrapper.vm.currentPage = 3
-    wrapper.vm.canteenFilter = '一食堂'
+    wrapper.vm.canteenFilter = 'c1'
     await flushAll()
 
     expect(wrapper.vm.currentPage).toBe(1)
-    expect(mocks.getPendingUploadsMock).toHaveBeenCalledWith({ page: 1, pageSize: 10, status: 'approved' })
+    expect(mocks.getPendingUploadsMock).toHaveBeenCalledWith({ page: 1, pageSize: 10, status: 'approved', canteenId: 'c1' })
 
     wrapper.unmount()
   })
 
-  it('computed filtering covers search/status/canteen client-side filters', async () => {
+  it('fetches matching records across pages with a filtered total', async () => {
     mocks.hasPermissionMock.mockReturnValue(true)
-
     mocks.getCanteensMock.mockResolvedValueOnce({ code: 200, data: { items: [] } })
-    mocks.getPendingUploadsMock.mockResolvedValueOnce({
-      code: 200,
-      data: {
-        items: [
-          { id: '1', name: '红烧肉', canteenName: '一食堂', windowName: 'A', uploaderName: '张三', createdAt: '', status: 'pending', images: [] },
-          { id: '2', name: '青椒肉丝', canteenName: '二食堂', windowName: 'B', uploaderName: '李四', createdAt: '', status: 'approved', images: [] },
-        ],
-        meta: { total: 2 },
-      },
+    const records = Array.from({ length: 11 }, (_, index) => ({
+      id: `u${index}`, name: index === 10 ? 'Target' : 'Other', canteenId: index === 10 ? 'c2' : 'c1',
+      canteenName: index === 10 ? '二食堂' : '一食堂', status: 'pending',
+    }))
+    mocks.getPendingUploadsMock.mockImplementation(async (params: any) => {
+      const filtered = records.filter((item) => !params.keyword || item.name.includes(params.keyword))
+        .filter((item) => !params.canteenId || item.canteenId === params.canteenId)
+      return { code: 200, data: { items: filtered.slice((params.page - 1) * params.pageSize, params.page * params.pageSize), meta: { total: filtered.length } } }
     })
-
     const wrapper = mount(ReviewDish, baseMountOptions)
     await flushAll()
-
-    expect(wrapper.vm.filteredReviewDishes).toHaveLength(2)
-
-    wrapper.vm.searchQuery = '红烧'
+    expect(wrapper.vm.filteredReviewDishes).toHaveLength(10)
+    wrapper.vm.currentPage = 2
+    wrapper.vm.searchQuery = 'Target'
+    wrapper.vm.canteenFilter = 'c2'
     await flushAll()
+    expect(mocks.getPendingUploadsMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 10, keyword: 'Target', canteenId: 'c2' })
     expect(wrapper.vm.filteredReviewDishes).toHaveLength(1)
-    expect(wrapper.vm.filteredReviewDishes[0].id).toBe('1')
-
-    wrapper.vm.searchQuery = ''
-
-    // statusFilter triggers watcher which reloads from API; keep returning the same dataset
-    mocks.getPendingUploadsMock.mockResolvedValueOnce({
-      code: 200,
-      data: {
-        items: [
-          { id: '1', name: '红烧肉', canteenName: '一食堂', windowName: 'A', uploaderName: '张三', createdAt: '', status: 'pending', images: [] },
-          { id: '2', name: '青椒肉丝', canteenName: '二食堂', windowName: 'B', uploaderName: '李四', createdAt: '', status: 'approved', images: [] },
-        ],
-        meta: { total: 2 },
-      },
-    })
-    wrapper.vm.statusFilter = 'approved'
-    await flushAll()
-    expect(wrapper.vm.filteredReviewDishes).toHaveLength(1)
-    expect(wrapper.vm.filteredReviewDishes[0].id).toBe('2')
-
-    // canteenFilter also triggers watcher reload
-    mocks.getPendingUploadsMock.mockResolvedValueOnce({
-      code: 200,
-      data: {
-        items: [
-          { id: '1', name: '红烧肉', canteenName: '一食堂', windowName: 'A', uploaderName: '张三', createdAt: '', status: 'pending', images: [] },
-          { id: '2', name: '青椒肉丝', canteenName: '二食堂', windowName: 'B', uploaderName: '李四', createdAt: '', status: 'approved', images: [] },
-        ],
-        meta: { total: 2 },
-      },
-    })
-    wrapper.vm.canteenFilter = '二食堂'
-    await flushAll()
-    expect(wrapper.vm.filteredReviewDishes).toHaveLength(1)
-    expect(wrapper.vm.filteredReviewDishes[0].id).toBe('2')
-
+    expect(wrapper.vm.filteredReviewDishes[0].id).toBe('u10')
+    expect(wrapper.vm.totalDishes).toBe(1)
     wrapper.unmount()
   })
 

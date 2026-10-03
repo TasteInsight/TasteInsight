@@ -1,13 +1,16 @@
 import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import config from '@/config'
+import { getAuthSessionVersion, invalidateAuthSession } from './auth-session'
 
 // 懒加载 auth store 避免循环依赖
 let authStore: any = null
+let authStoreLoading: Promise<any> | null = null
 const getAuthStore = () => {
-  if (!authStore) {
+  if (!authStoreLoading) {
     // 动态导入避免循环依赖
-    import('@/store/modules/use-auth-store').then((module) => {
+    authStoreLoading = import('@/store/modules/use-auth-store').then((module) => {
       authStore = module.useAuthStore()
+      return authStore
     })
   }
   return authStore
@@ -48,10 +51,18 @@ const service: AxiosInstance = axios.create({
  */
 service.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    const authenticatedConfig = config as InternalAxiosRequestConfig & { _authSessionVersion?: number }
+    if (
+      authenticatedConfig._authSessionVersion !== undefined &&
+      authenticatedConfig._authSessionVersion !== getAuthSessionVersion()
+    ) {
+      throw new Error('登录会话已变更，请重试')
+    }
     // 添加认证 token
     // 优先从 auth store 获取 token，如果 store 未初始化则从 storage 获取
     const store = getAuthStore()
     const token = store?.token || getStoredAuthStorage().getItem('admin_token')
+    authenticatedConfig._authSessionVersion = getAuthSessionVersion()
 
     const hasAuthorization =
       config.headers &&
@@ -70,21 +81,65 @@ service.interceptors.request.use(
   },
 )
 
-// 是否正在刷新 token
-let isRefreshing = false
-// 待重试的请求队列
-let failedQueue: Array<{ resolve: (value: any) => void; reject: (reason?: any) => void }> = []
+interface RefreshSession {
+  version: number
+  storage: Storage
+  store: any
+  token: string | null
+  refreshToken: string | null
+}
 
-// 处理队列中的请求
-const processQueue = (error: any, token: string | null = null) => {
-  failedQueue.forEach((promise) => {
-    if (error) {
-      promise.reject(error)
-    } else {
-      promise.resolve(token)
+let activeRefresh: { session: RefreshSession; promise: Promise<string> } | null = null
+
+const currentToken = (session: RefreshSession): string | null =>
+  session.store?.token || session.storage.getItem('admin_token')
+
+const ownsSession = (session: RefreshSession): boolean =>
+  session.version === getAuthSessionVersion() &&
+  currentToken(session) === session.token &&
+  (session.store?.refreshToken || session.storage.getItem('admin_refresh_token')) ===
+    session.refreshToken
+
+const expireSession = (store: any) => {
+  if (store) {
+    store.logout()
+  } else {
+    invalidateAuthSession()
+    for (const storage of [localStorage, sessionStorage]) {
+      for (const key of ['admin_token', 'admin_refresh_token', 'admin_user', 'admin_permissions']) {
+        storage.removeItem(key)
+      }
     }
-  })
-  failedQueue = []
+  }
+  navigateToLogin()
+}
+
+const refreshSession = async (session: RefreshSession): Promise<string> => {
+  try {
+    if (!session.refreshToken) throw new Error('认证已过期，请重新登录')
+
+    const response = await axios.post('/auth/refresh', undefined, {
+      baseURL: config.baseURL,
+      timeout: config.timeout,
+      headers: { Authorization: `Bearer ${session.refreshToken}` },
+    })
+    if (!ownsSession(session)) throw new Error('登录会话已变更，请重试')
+
+    const tokenInfo = response.data?.data?.token
+    if (!tokenInfo?.accessToken || !tokenInfo?.refreshToken) throw new Error('刷新 token 失败')
+
+    if (session.store) {
+      session.store.token = tokenInfo.accessToken
+      session.store.refreshToken = tokenInfo.refreshToken
+    }
+    session.storage.setItem('admin_token', tokenInfo.accessToken)
+    session.storage.setItem('admin_refresh_token', tokenInfo.refreshToken)
+    return tokenInfo.accessToken
+  } catch (error) {
+    if (!ownsSession(session)) throw new Error('登录会话已变更，请重试')
+    expireSession(session.store)
+    throw new Error('认证已过期，请重新登录')
+  }
 }
 
 /**
@@ -92,11 +147,22 @@ const processQueue = (error: any, token: string | null = null) => {
  */
 service.interceptors.response.use(
   (response: AxiosResponse) => {
+    const version = (response.config as { _authSessionVersion?: number } | undefined)
+      ?._authSessionVersion
+    if (version !== undefined && version !== getAuthSessionVersion()) {
+      return Promise.reject(new Error('登录会话已变更，请重试'))
+    }
     // 返回 response.data，这样调用方直接获得数据
     return response.data as any
   },
   async (error) => {
     const originalRequest = error.config
+    if (
+      originalRequest?._authSessionVersion !== undefined &&
+      originalRequest._authSessionVersion !== getAuthSessionVersion()
+    ) {
+      return Promise.reject(new Error('登录会话已变更，请重试'))
+    }
 
     if (error.response) {
       const { status, data } = error.response
@@ -109,106 +175,41 @@ service.interceptors.response.use(
       const isRefreshRequest = /\/auth\/refresh(?:\?|$)/.test(requestUrl)
 
       if (status === 401 && !originalRequest._retry && !isLoginRequest && !isRefreshRequest) {
-        if (isRefreshing) {
-          // 如果正在刷新 token，将请求放入队列
-          return new Promise((resolve, reject) => {
-            failedQueue.push({ resolve, reject })
-          })
-            .then((token) => {
-              originalRequest.headers['Authorization'] = 'Bearer ' + token
-              return service(originalRequest)
-            })
-            .catch((err) => {
-              return Promise.reject(err)
-            })
-        }
-
         originalRequest._retry = true
-        isRefreshing = true
+        const version = originalRequest._authSessionVersion ?? getAuthSessionVersion()
+        const store = getAuthStore() || (await authStoreLoading)
+        if (version !== getAuthSessionVersion()) throw new Error('登录会话已变更，请重试')
 
-        const store = getAuthStore()
-        const refreshToken =
-          store?.refreshToken || getStoredAuthStorage().getItem('admin_refresh_token')
-
-        if (!refreshToken) {
-          // 没有 refresh token，直接登出
-          if (store) {
-            store.logout()
-          } else {
-            localStorage.removeItem('admin_token')
-            localStorage.removeItem('admin_refresh_token')
-            sessionStorage.removeItem('admin_token')
-            sessionStorage.removeItem('admin_refresh_token')
-          }
-          processQueue(new Error('认证已过期，请重新登录'), null)
-          isRefreshing = false
-          navigateToLogin()
-          return Promise.reject(new Error('认证已过期，请重新登录'))
+        const storage = getStoredAuthStorage()
+        const session: RefreshSession = {
+          version,
+          storage,
+          store,
+          token: store?.token || storage.getItem('admin_token'),
+          refreshToken: store?.refreshToken || storage.getItem('admin_refresh_token'),
         }
 
-        try {
-          // 使用独立请求刷新，避免刷新请求再次进入本实例的 401 队列
-          const response = await axios.post('/auth/refresh', undefined, {
-            baseURL: config.baseURL,
-            timeout: config.timeout,
-            headers: { Authorization: `Bearer ${refreshToken}` },
+        if (!activeRefresh || activeRefresh.session.version !== version) {
+          const attempt = { session, promise: Promise.resolve('') }
+          activeRefresh = attempt
+          attempt.promise = refreshSession(session).finally(() => {
+            if (activeRefresh === attempt) activeRefresh = null
           })
-          const tokenInfo = response.data?.data?.token
-          const newToken = tokenInfo?.accessToken
-          const newRefreshToken = tokenInfo?.refreshToken
-
-          if (newToken && newRefreshToken) {
-            // 同步更新 store，并使用原有登录的存储位置原子轮换两个 token
-            if (store) {
-              store.token = newToken
-              store.refreshToken = newRefreshToken
-            }
-            const storage = getStoredAuthStorage()
-            storage.setItem('admin_token', newToken)
-            storage.setItem('admin_refresh_token', newRefreshToken)
-
-            // 处理队列中的请求
-            processQueue(null, newToken)
-
-            // 重试原始请求
-            originalRequest.headers = originalRequest.headers || {}
-            originalRequest.headers['Authorization'] = 'Bearer ' + newToken
-            return service(originalRequest)
-          } else {
-            throw new Error('刷新 token 失败')
-          }
-        } catch (refreshError) {
-          // 刷新失败，清除认证信息
-          if (store) {
-            store.logout()
-          } else {
-            localStorage.removeItem('admin_token')
-            localStorage.removeItem('admin_refresh_token')
-            sessionStorage.removeItem('admin_token')
-            sessionStorage.removeItem('admin_refresh_token')
-          }
-          processQueue(refreshError, null)
-          navigateToLogin()
-          return Promise.reject(new Error('认证已过期，请重新登录'))
-        } finally {
-          isRefreshing = false
         }
+        const newToken = await activeRefresh.promise
+        if (version !== getAuthSessionVersion() || currentToken(session) !== newToken) {
+          throw new Error('登录会话已变更，请重试')
+        }
+        originalRequest.headers = originalRequest.headers || {}
+        originalRequest.headers.Authorization = `Bearer ${newToken}`
+        return service(originalRequest)
       }
 
       // 如果重试后依然是 401（或者非登录接口直接返回401），强制登出并跳转登录
       // 上面的 if 块如果执行成功会 return Promise，不会执行到这里
       // 所以这里捕获的是：重试后的 401，或者不满足刷新条件的 401
       if (status === 401 && !isLoginRequest) {
-        const store = getAuthStore()
-        if (store) {
-          store.logout()
-        } else {
-          localStorage.removeItem('admin_token')
-          localStorage.removeItem('admin_refresh_token')
-          sessionStorage.removeItem('admin_token')
-          sessionStorage.removeItem('admin_refresh_token')
-        }
-        navigateToLogin()
+        expireSession(getAuthStore())
         return Promise.reject(new Error('认证已过期，请重新登录'))
       }
 

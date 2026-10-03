@@ -547,7 +547,7 @@ describe('utils/request', () => {
 
     d.reject(new Error('refresh fail'))
 
-    await expect(p2).rejects.toThrow('refresh fail')
+    await expect(p2).rejects.toThrow('认证已过期，请重新登录')
     await expect(p1).rejects.toThrow('认证已过期，请重新登录')
   })
 
@@ -708,6 +708,87 @@ describe('utils/request', () => {
     expect(err.config.headers.Authorization).toBe('Bearer newTokenNoStore')
     expect(localStorage.getItem('admin_token')).toBe('newTokenNoStore')
     expect(localStorage.getItem('admin_refresh_token')).toBe('newRefreshNoStore')
+  })
+
+  it.each(['success', 'failure'])('does not apply a late refresh %s to a newer login session', async (result) => {
+    authState.token = 'A-access'
+    authState.refreshToken = 'A-refresh'
+    localStorage.setItem('admin_token', 'A-access')
+    localStorage.setItem('admin_refresh_token', 'A-refresh')
+    const d = deferred<any>()
+    rawAxiosPostMock.mockReturnValueOnce(d.promise)
+    await loadFresh()
+    requestOnFulfilled({ headers: {} })
+    await vi.dynamicImportSettled()
+    const config = requestOnFulfilled({ url: '/admin/news', headers: {} })
+    const pending = responseOnRejected({ config, response: { status: 401, data: {} } })
+    const outcome = pending.then(() => null, (error: Error) => error)
+    await Promise.resolve()
+
+    const { invalidateAuthSession } = await import('@/utils/auth-session')
+    invalidateAuthSession()
+    localStorage.clear()
+    authState.token = 'B-access'
+    authState.refreshToken = 'B-refresh'
+    sessionStorage.setItem('admin_token', 'B-access')
+    sessionStorage.setItem('admin_refresh_token', 'B-refresh')
+    if (result === 'success') {
+      d.resolve({ data: { data: { token: { accessToken: 'A-new', refreshToken: 'A-new-refresh' } } } })
+    } else {
+      d.reject(new Error('A refresh failed'))
+    }
+
+    expect((await outcome)?.message).toContain('登录会话已变更')
+    expect(authState.token).toBe('B-access')
+    expect(authState.refreshToken).toBe('B-refresh')
+    expect(sessionStorage.getItem('admin_token')).toBe('B-access')
+    expect(localStorage.getItem('admin_token')).toBeNull()
+    expect(authState.logout).not.toHaveBeenCalled()
+    expect(pushSpy).not.toHaveBeenCalled()
+    expect(serviceFn).not.toHaveBeenCalled()
+  })
+
+  it('rejects a stale original request instead of refreshing or logging out the current session', async () => {
+    await loadFresh()
+    const config = requestOnFulfilled({ url: '/admin/news', headers: {} })
+    const { invalidateAuthSession } = await import('@/utils/auth-session')
+    invalidateAuthSession()
+    expect(() => requestOnFulfilled(config)).toThrow('登录会话已变更')
+    await expect(responseOnRejected({ config, response: { status: 401, data: {} } })).rejects.toThrow('登录会话已变更')
+    expect(rawAxiosPostMock).not.toHaveBeenCalled()
+    expect(authState.logout).not.toHaveBeenCalled()
+  })
+
+  it('keeps a new-session refresh independent of a still pending old-session refresh', async () => {
+    authState.token = 'A'
+    authState.refreshToken = 'Ar'
+    sessionStorage.setItem('admin_token', 'A')
+    sessionStorage.setItem('admin_refresh_token', 'Ar')
+    const oldRefresh = deferred<any>()
+    const newRefresh = deferred<any>()
+    rawAxiosPostMock.mockReturnValueOnce(oldRefresh.promise).mockReturnValueOnce(newRefresh.promise)
+    await loadFresh()
+    requestOnFulfilled({ headers: {} })
+    await vi.dynamicImportSettled()
+    const oldConfig = requestOnFulfilled({ url: '/admin/news', headers: {} })
+    const oldOutcome = responseOnRejected({ config: oldConfig, response: { status: 401, data: {} } }).catch((error: Error) => error)
+    const { invalidateAuthSession } = await import('@/utils/auth-session')
+    invalidateAuthSession()
+    authState.token = 'B'
+    authState.refreshToken = 'Br'
+    sessionStorage.setItem('admin_token', 'B')
+    sessionStorage.setItem('admin_refresh_token', 'Br')
+    const newConfig = requestOnFulfilled({ url: '/admin/dishes', headers: {} })
+    const newOutcome = responseOnRejected({ config: newConfig, response: { status: 401, data: {} } })
+    oldRefresh.resolve({ data: { data: { token: { accessToken: 'A-new', refreshToken: 'Ar-new' } } } })
+    expect((await oldOutcome).message).toContain('登录会话已变更')
+    newRefresh.resolve({ data: { data: { token: { accessToken: 'B-new', refreshToken: 'Br-new' } } } })
+    await newOutcome
+    expect(authState.token).toBe('B-new')
+    expect(rawAxiosPostMock).toHaveBeenCalledTimes(2)
+    expect(serviceFn).toHaveBeenCalledTimes(1)
+    expect(newConfig._retry).toBe(true)
+    expect(authState.logout).not.toHaveBeenCalled()
   })
 
   it('refresh fallback keeps a current session bundle isolated from stale local credentials', async () => {

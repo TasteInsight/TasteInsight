@@ -6,6 +6,8 @@ import type {
   PendingReview,
   PendingComment,
   Comment,
+  DishUpload,
+  GetPendingParams,
 } from '@/types/api'
 
 /**
@@ -128,9 +130,9 @@ export const reviewApi = {
    * @returns 上传菜品审核列表
    */
   async getPendingUploads(
-    params: { page?: number; pageSize?: number; status?: string } = {},
-  ): Promise<ApiResponse<any>> {
-    return await request.get<ApiResponse<any>>('/admin/dishes/uploads', { params })
+    params: GetPendingParams = {},
+  ): Promise<ApiResponse<PaginationResponse<DishUpload>>> {
+    return await request.get<ApiResponse<PaginationResponse<DishUpload>>>('/admin/dishes/uploads', { params })
   },
 
   /**
@@ -138,8 +140,8 @@ export const reviewApi = {
    * @param id 上传菜品 ID
    * @returns 上传菜品审核详情
    */
-  async getPendingUploadById(id: string): Promise<ApiResponse<any>> {
-    return await request.get<ApiResponse<any>>(`/admin/dishes/uploads/${id}`)
+  async getPendingUploadById(id: string): Promise<ApiResponse<DishUpload>> {
+    return await request.get<ApiResponse<DishUpload>>(`/admin/dishes/uploads/${id}`)
   },
 
   /**

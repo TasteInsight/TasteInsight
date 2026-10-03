@@ -57,7 +57,7 @@
                 class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[150px] transition-all cursor-pointer hover:border-gray-400"
               >
                 <option value="">所有食堂</option>
-                <option v-for="canteen in canteens" :key="canteen.id" :value="canteen.name">
+                <option v-for="canteen in canteens" :key="canteen.id" :value="canteen.id">
                   {{ canteen.name }}
                 </option>
               </select>
@@ -243,31 +243,7 @@ export default {
       rejected: '已拒绝',
     }
 
-    const filteredReviewDishes = computed(() => {
-      // 由于API已经支持分页和筛选，这里主要做客户端筛选（如果需要）
-      let filtered = reviewDishes.value
-
-      // 如果API不支持这些筛选，则在客户端进行筛选
-      if (searchQuery.value) {
-        const query = searchQuery.value.toLowerCase()
-        filtered = filtered.filter(
-          (dish) =>
-            dish.name.toLowerCase().includes(query) ||
-            dish.location.toLowerCase().includes(query) ||
-            dish.submitter.toLowerCase().includes(query),
-        )
-      }
-
-      if (statusFilter.value) {
-        filtered = filtered.filter((dish) => dish.status === statusFilter.value)
-      }
-
-      if (canteenFilter.value) {
-        filtered = filtered.filter((dish) => dish.location.includes(canteenFilter.value))
-      }
-
-      return filtered
-    })
+    const filteredReviewDishes = computed(() => reviewDishes.value)
 
     const viewDishDetail = (dish) => {
       // 保存当前状态后再跳转
@@ -299,6 +275,11 @@ export default {
         const response = await canteenApi.getCanteens({ page: 1, pageSize: 100 })
         if (response.code === 200 && response.data && response.data.items) {
           canteens.value = response.data.items
+          // 旧缓存以食堂名称保存筛选值，查询契约使用食堂 id。
+          const selected = canteenFilter.value
+          if (selected && !canteens.value.some((canteen) => canteen.id === selected)) {
+            canteenFilter.value = canteens.value.find((canteen) => canteen.name === selected)?.id || ''
+          }
         } else {
           canteens.value = []
         }
@@ -308,8 +289,10 @@ export default {
       }
     }
 
+    let uploadsRequestId = 0
     // 加载审核菜品列表
     const loadReviewDishes = async () => {
+      const requestId = ++uploadsRequestId
       isLoading.value = true
       try {
         // 从 API 获取数据
@@ -320,7 +303,10 @@ export default {
         if (statusFilter.value) {
           params.status = statusFilter.value
         }
+        if (searchQuery.value.trim()) params.keyword = searchQuery.value.trim()
+        if (canteenFilter.value) params.canteenId = canteenFilter.value
         const response = await reviewApi.getPendingUploads(params)
+        if (requestId !== uploadsRequestId) return
 
         if (response.code === 200 && response.data && response.data.items) {
           // 转换 API 数据格式
@@ -344,17 +330,18 @@ export default {
           totalDishes.value = 0
         }
       } catch (error) {
+        if (requestId !== uploadsRequestId) return
         console.error('加载审核菜品列表失败:', error)
         // API 失败时使用空数组
         reviewDishes.value = []
         totalDishes.value = 0
       } finally {
-        isLoading.value = false
+        if (requestId === uploadsRequestId) isLoading.value = false
       }
     }
 
     // 监听筛选条件变化，重新加载数据
-    watch([statusFilter, canteenFilter], () => {
+    watch([searchQuery, statusFilter, canteenFilter], () => {
       currentPage.value = 1
       saveState() // 保存状态
       loadReviewDishes()

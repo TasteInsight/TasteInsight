@@ -1,23 +1,19 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
+import config from '@/config'
+import { normalizeApiBaseUrl } from '@/config/env'
 
-describe('config/index', () => {
-  it('uses env baseURL when set', async () => {
-    vi.resetModules()
-
-    const envModule = await import('@/config/env')
-    envModule.env.VITE_API_BASE_URL = 'http://example.test/'
-
-    const configModule = await import('@/config')
-    expect(configModule.default.baseURL).toBe('http://example.test/')
+describe('API configuration', () => {
+  it('normalizes surrounding whitespace and trailing slashes', () => {
+    expect(normalizeApiBaseUrl('  http://example.test/api/v1///  ')).toBe(
+      'http://example.test/api/v1',
+    )
   })
 
-  it('falls back to empty string when env baseURL is empty', async () => {
-    vi.resetModules()
+  it('fails fast instead of silently targeting localhost', () => {
+    expect(() => normalizeApiBaseUrl('')).toThrow('VITE_API_BASE_URL')
+  })
 
-    const envModule = await import('@/config/env')
-    envModule.env.VITE_API_BASE_URL = ''
-
-    const configModule = await import('@/config')
-    expect(configModule.default.baseURL).toBe('')
+  it('loads the endpoint for the current Vite mode', () => {
+    expect(config.baseURL).toBe('http://localhost:3001')
   })
 })

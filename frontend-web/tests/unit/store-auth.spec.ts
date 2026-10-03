@@ -241,6 +241,20 @@ describe('store/use-auth-store', () => {
     expect(store.isLoggedIn).toBe(false)
   })
 
+  it('does not restore a late login after logout', async () => {
+    let finishLogin!: (value: any) => void
+    adminLoginMock.mockReturnValue(new Promise((resolve) => { finishLogin = resolve }))
+    const { useAuthStore } = await import('@/store/modules/use-auth-store')
+    const store = useAuthStore()
+    const login = store.login({ username: 'A', password: 'p' })
+    const outcome = login.catch((error: Error) => error)
+    store.logout()
+    finishLogin({ code: 200, data: { token: { accessToken: 'A', refreshToken: 'Ar' }, admin: { username: 'A', role: 'admin' }, permissions: [] } })
+    expect((await outcome as Error).message).toBe('登录请求已失效')
+    expect(store.isLoggedIn).toBe(false)
+    expect(sessionStorage.getItem('admin_token')).toBeNull()
+  })
+
   it('logout clears storage and state', async () => {
     localStorage.setItem('admin_token', 't')
     localStorage.setItem('admin_refresh_token', 'r')

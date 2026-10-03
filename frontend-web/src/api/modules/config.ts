@@ -2,7 +2,6 @@ import request from '@/utils/request'
 import type {
   ApiResponse,
   PaginationParams,
-  ConfigTemplate,
   ConfigTemplatesResponse,
   GlobalConfigResponse,
   CanteenConfigResponse,
@@ -100,4 +99,3 @@ export const configApi = {
 }
 
 export default configApi
-

@@ -54,6 +54,7 @@ vi.mock('@/composables/useModal', () => ({
 }))
 
 import SingleAdd from '../../src/views/SingleAdd.vue'
+import { resetDishComposition } from '@/composables/dish-composition'
 
 function flushMicrotasks() {
   return Promise.resolve()
@@ -71,6 +72,7 @@ describe('views/SingleAdd', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    resetDishComposition()
 
     mocks.canteenApiMock.getCanteens.mockResolvedValue({
       code: 200,
@@ -320,17 +322,21 @@ describe('views/SingleAdd', () => {
     mocks.dishApiMock.createDish.mockResolvedValueOnce({ code: 201, data: { id: 'd1' } })
     await wrapper.vm.submitForm(true)
 
-    expect(mocks.dishStoreMock.addDish).toHaveBeenCalled()
-    expect(wrapper.vm.parentDishId).toBe('d1')
-    expect(mocks.routerMock.push).toHaveBeenCalledWith('/review-dish')
+    expect(mocks.dishStoreMock.addDish).not.toHaveBeenCalled()
+    expect(wrapper.vm.parentUploadId).toBeNull()
+    expect(wrapper.vm.formData.name).toBe('')
+    expect(mocks.routerMock.push).toHaveBeenCalledWith('/single-add')
 
     // redirect false
+    Object.assign(wrapper.vm.formData, { name: 'n', canteenId: 'c1', windowId: 'w1' })
     mocks.dishApiMock.createDish.mockResolvedValueOnce({ code: 200, data: { id: 'd2' } })
     mocks.showAlertMock.mockClear()
     await wrapper.vm.submitForm(false)
-    expect(mocks.showAlertMock).toHaveBeenCalledWith(expect.stringContaining('父菜品保存成功'))
+    expect(mocks.showAlertMock).toHaveBeenCalledWith(expect.stringContaining('父菜品已提交审核'))
 
     // non-200 -> error message
+    await wrapper.vm.resetForm()
+    Object.assign(wrapper.vm.formData, { name: 'n', canteenId: 'c1', windowId: 'w1' })
     mocks.dishApiMock.createDish.mockResolvedValueOnce({ code: 500, message: 'bad' })
     mocks.showAlertMock.mockClear()
     await wrapper.vm.submitForm(false)
@@ -352,7 +358,7 @@ describe('views/SingleAdd', () => {
     await wrapper.vm.goToSubItemDetail(0)
     expect(mocks.showAlertMock).toHaveBeenCalledWith('请先输入子项名称')
 
-    // when parentDishId missing, it should call submitForm(false)
+    // Submit a pending parent before opening the child form.
     wrapper.vm.formData.subItems = [{ name: '小份', tempId: 't2' }]
     wrapper.vm.formData.name = '父菜品'
     wrapper.vm.formData.canteenId = 'c1'
@@ -364,11 +370,11 @@ describe('views/SingleAdd', () => {
     mocks.dishApiMock.createDish.mockResolvedValueOnce({ code: 200, data: { id: 'pd1' } })
     await wrapper.vm.goToSubItemDetail(0)
 
-    expect(wrapper.vm.parentDishId).toBe('pd1')
+    expect(wrapper.vm.parentUploadId).toBe('pd1')
     expect(mocks.routerMock.push).toHaveBeenCalledWith({
       path: '/add-sub-dish',
       query: expect.objectContaining({
-        parentId: 'pd1',
+        parentUploadId: 'pd1',
         subItemName: '小份',
         subItemTempId: 't2',
         subItemIndex: 0,
@@ -377,7 +383,7 @@ describe('views/SingleAdd', () => {
 
     // failure to create parent dish -> no redirect
     mocks.routerMock.push.mockClear()
-    wrapper.vm.parentDishId = null
+    wrapper.vm.parentUploadId = null
     mocks.dishApiMock.createDish.mockResolvedValueOnce({ code: 500, message: 'bad' })
     await wrapper.vm.goToSubItemDetail(0)
     expect(mocks.routerMock.push).not.toHaveBeenCalled()

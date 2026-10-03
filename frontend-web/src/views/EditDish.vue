@@ -4,7 +4,7 @@
       <Header title="编辑菜品" description="修改菜品信息并提交审核" header-icon="carbon:edit" />
 
       <form class="mt-6 space-y-6">
-        <div class="grid grid-cols-2 gap-6">
+        <fieldset class="grid min-w-0 grid-cols-2 gap-6" :disabled="isSubmitting">
           <!-- 左侧列 -->
           <div>
             <!-- 食堂信息组 -->
@@ -536,7 +536,7 @@
               />
             </div>
           </div>
-        </div>
+        </fieldset>
 
         <!-- 表单按钮 -->
         <div class="flex space-x-4 pt-6 border-t border-gray-200">
@@ -612,7 +612,7 @@
 </template>
 
 <script>
-import { reactive, onMounted, ref, watch } from 'vue'
+import { reactive, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { dishApi } from '@/api/modules/dish'
 import { canteenApi } from '@/api/modules/canteen'
@@ -620,6 +620,7 @@ import { useDishStore } from '@/store/modules/use-dish-store'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import { showAlert, showConfirm } from '@/composables/useModal'
+import { getAuthSessionVersion } from '@/utils/auth-session'
 
 export default {
   name: 'EditDish',
@@ -631,6 +632,10 @@ export default {
     const route = useRoute()
     const dishStore = useDishStore()
     const authStore = useAuthStore()
+    const viewSession = getAuthSessionVersion()
+    let isViewActive = true
+    const ownsView = () => isViewActive && viewSession === getAuthSessionVersion()
+    onBeforeUnmount(() => { isViewActive = false })
     const dishId = ref(route.params.id)
     const isLoading = ref(false)
     const isSubmitting = ref(false)
@@ -684,39 +689,46 @@ export default {
     const loadCanteens = async () => {
       try {
         const response = await canteenApi.getCanteens({ page: 1, pageSize: 100 })
+        if (!ownsView()) return
         if (response.code === 200 && response.data) {
           canteens.value = response.data.items || []
         }
       } catch (error) {
+        if (!ownsView()) return
         console.error('加载食堂列表失败:', error)
       }
     }
 
+    let windowRequest = 0
     const loadWindows = async (canteenId) => {
-      if (!canteenId) {
-        windows.value = []
-        return
-      }
+      if (!ownsView()) return
+      const request = ++windowRequest
+      const ownerId = formData.id
+      const ownsRequest = () => ownsView() && request === windowRequest && formData.id === ownerId && formData.canteenId === canteenId
+      windows.value = []
+      if (!canteenId) return ownsRequest
       try {
         const response = await canteenApi.getWindows(canteenId, { page: 1, pageSize: 100 })
+        if (!ownsRequest()) return
         if (response.code === 200 && response.data) {
           windows.value = response.data.items || []
         }
       } catch (error) {
+        if (!ownsRequest()) return
         console.error('加载窗口列表失败:', error)
         windows.value = []
       }
+      return ownsRequest
     }
 
     const onCanteenChange = () => {
       const selectedCanteen = canteens.value.find((c) => c.id === formData.canteenId)
       if (selectedCanteen) {
         formData.canteen = selectedCanteen.name
-        loadWindows(formData.canteenId)
       } else {
         formData.canteen = ''
-        windows.value = []
       }
+      loadWindows(selectedCanteen ? formData.canteenId : '')
       // 重置窗口选择
       formData.windowId = ''
       formData.windowName = ''
@@ -747,9 +759,11 @@ export default {
       try {
         // 先加载食堂列表
         await loadCanteens()
+        if (!ownsView()) return
 
         // 优先从 API 获取
         const response = await dishApi.getDishById(targetId)
+        if (!ownsView()) return
 
         if (response.code === 200 && response.data) {
           const dish = response.data
@@ -758,11 +772,12 @@ export default {
           throw new Error(response.message || '获取菜品信息失败')
         }
       } catch (error) {
+        if (!ownsView()) return
         console.error('从 API 获取菜品失败:', error)
         showAlert('获取菜品信息失败，请重试')
         router.push('/modify-dish')
       } finally {
-        isLoading.value = false
+        if (ownsView()) isLoading.value = false
       }
     }
 
@@ -775,36 +790,17 @@ export default {
       formData.canteen = dish.canteenName || dish.canteen || ''
       formData.floor = dish.floorName || dish.floor || ''
 
-      // 匹配食堂ID
-      if (formData.canteen) {
-        const foundCanteen = canteens.value.find((c) => c.name === formData.canteen)
-        if (foundCanteen) {
-          formData.canteenId = foundCanteen.id
-          // 加载该食堂的窗口
-          await loadWindows(foundCanteen.id)
-        }
+      formData.canteenId = dish.canteenId || ''
+      const foundCanteen = dish.canteenId
+        ? canteens.value.find((canteen) => canteen.id === dish.canteenId)
+        : canteens.value.find((canteen) => canteen.name === formData.canteen)
+      if (foundCanteen) {
+        formData.canteenId = foundCanteen.id
+        formData.canteen = foundCanteen.name
       }
-
+      formData.windowId = dish.windowId || ''
       formData.windowName = dish.windowName || dish.window || ''
       formData.windowNumber = dish.windowNumber || ''
-
-      // 匹配窗口ID
-      if (formData.windowName && windows.value.length > 0) {
-        // 尝试通过名称和编号匹配窗口
-        const foundWindow = windows.value.find(
-          (w) =>
-            w.name === formData.windowName &&
-            (!formData.windowNumber || w.number === formData.windowNumber),
-        )
-        if (foundWindow) {
-          formData.windowId = foundWindow.id
-          // 确保其他信息一致
-          formData.windowNumber = foundWindow.number
-          if (foundWindow.floor) {
-            formData.floor = foundWindow.floor.name || foundWindow.floor.level || formData.floor
-          }
-        }
-      }
 
       formData.name = dish.name || ''
       formData.description = dish.description || ''
@@ -901,6 +897,26 @@ export default {
       } else {
         formData.availableDates = []
       }
+
+      const ownsWindows = await loadWindows(formData.canteenId)
+      if (!ownsWindows?.()) return
+      // Match legacy records lacking a window ID only against this request's options.
+      if (formData.windowName && windows.value.length > 0) {
+        const foundWindow = dish.windowId
+          ? windows.value.find((window) => window.id === dish.windowId)
+          : windows.value.find(
+              (window) => window.name === formData.windowName &&
+                (!formData.windowNumber || window.number === formData.windowNumber),
+            )
+        if (foundWindow) {
+          formData.windowId = foundWindow.id
+          formData.windowName = foundWindow.name
+          formData.windowNumber = foundWindow.number
+          if (foundWindow.floor) {
+            formData.floor = foundWindow.floor.name || foundWindow.floor.level || formData.floor
+          }
+        }
+      }
     }
 
     // 加载子项列表
@@ -908,10 +924,12 @@ export default {
       try {
         const subDishPromises = subDishIds.map((id) => dishApi.getDishById(id))
         const responses = await Promise.all(subDishPromises)
+        if (!ownsView()) return
         subDishes.value = responses
           .filter((res) => res.code === 200 && res.data)
           .map((res) => res.data)
       } catch (error) {
+        if (!ownsView()) return
         console.error('加载子项列表失败:', error)
         subDishes.value = []
       }
@@ -1015,6 +1033,8 @@ export default {
     }
 
     const submitForm = async () => {
+      if (!ownsView() || isSubmitting.value) return
+
       if (!authStore.hasPermission('dish:edit')) {
         showAlert('您没有权限编辑菜品')
         return
@@ -1071,19 +1091,24 @@ export default {
         return
       }
 
-      if (isSubmitting.value) {
-        return
-      }
-
       isSubmitting.value = true
+      const submitRouteId = route.params.id
+      const ownsSubmission = () => ownsView() && route.params.id === submitRouteId
+      const draft = {
+        ...formData,
+        imageFiles: formData.imageFiles.map((image) => ({ ...image })),
+        tags: [...formData.tags],
+        servingTime: { ...formData.servingTime },
+        availableDates: formData.availableDates.map((range) => ({ ...range })),
+      }
 
       try {
         // 1. 处理所有图片（上传新图片，保留旧图片）
         let imageUrls = []
-        if (formData.imageFiles && formData.imageFiles.length > 0) {
+        if (draft.imageFiles.length > 0) {
           try {
             // 对每个图片项进行处理
-            const processPromises = formData.imageFiles.map(async (imgItem) => {
+            const processPromises = draft.imageFiles.map(async (imgItem) => {
               if (imgItem.isNew && imgItem.file) {
                 // 新图片，需要上传
                 const uploadResponse = await dishApi.uploadImage(imgItem.file)
@@ -1099,51 +1124,48 @@ export default {
             })
 
             const results = await Promise.allSettled(processPromises)
+            if (!ownsSubmission()) return
 
             imageUrls = results
               .filter((result) => result.status === 'fulfilled')
               .map((result) => result.value)
 
-            if (imageUrls.length !== formData.imageFiles.length) {
-              const failed = formData.imageFiles.length - imageUrls.length
+            if (imageUrls.length !== draft.imageFiles.length) {
+              const failed = draft.imageFiles.length - imageUrls.length
               const confirmed = await showConfirm(
                 `${failed}张图片处理失败，是否继续保存？`,
                 '图片处理失败'
               )
-              if (!confirmed) {
-                isSubmitting.value = false
-                return
-              }
+              if (!ownsSubmission() || !confirmed) return
             }
           } catch (error) {
+            if (!ownsSubmission()) return
             console.error('图片处理失败:', error)
             showAlert('图片处理失败，请重试')
-            isSubmitting.value = false
             return
           }
         }
 
         // 2. 构建更新数据
-        // 处理TAG（使用formData.tags数组）
-        const tags = formData.tags && formData.tags.length > 0 ? formData.tags : undefined
+        const tags = draft.tags
 
         // 处理供应时间
         const availableMealTime = []
-        if (formData.servingTime.breakfast) availableMealTime.push('breakfast')
-        if (formData.servingTime.lunch) availableMealTime.push('lunch')
-        if (formData.servingTime.dinner) availableMealTime.push('dinner')
-        if (formData.servingTime.night) availableMealTime.push('nightsnack')
+        if (draft.servingTime.breakfast) availableMealTime.push('breakfast')
+        if (draft.servingTime.lunch) availableMealTime.push('lunch')
+        if (draft.servingTime.dinner) availableMealTime.push('dinner')
+        if (draft.servingTime.night) availableMealTime.push('nightsnack')
 
         // 处理原辅料和过敏原（转换为数组）
-        const ingredients = formData.ingredients
-          ? formData.ingredients
+        const ingredients = draft.ingredients
+          ? draft.ingredients
               .split(/[，,、]/)
               .map((item) => item.trim())
               .filter((item) => item)
           : []
 
-        const allergens = formData.allergens
-          ? formData.allergens
+        const allergens = draft.allergens
+          ? draft.allergens
               .split(/[，,、]/)
               .map((item) => item.trim())
               .filter((item) => item)
@@ -1151,66 +1173,55 @@ export default {
 
         // 处理供应日期段（过滤掉空的日期段）
         const availableDates =
-          formData.availableDates && formData.availableDates.length > 0
-            ? formData.availableDates
+          draft.availableDates.length > 0
+            ? draft.availableDates
                 .filter((range) => range.startDate && range.endDate)
                 .map((range) => ({
                   startDate: range.startDate,
                   endDate: range.endDate,
                 }))
-            : undefined
-
-        // 获取当前菜品信息，保留 subDishId 和 parentDishId
-        let currentDish = null
-        try {
-          const currentResponse = await dishApi.getDishById(formData.id)
-          if (currentResponse.code === 200 && currentResponse.data) {
-            currentDish = currentResponse.data
-          }
-        } catch (error) {
-          console.error('获取当前菜品信息失败:', error)
-        }
+            : []
 
         // 构建菜品更新请求
         const updateData = {
-          name: formData.name,
-          canteenName: formData.canteen,
-          windowName: formData.windowName,
-          windowNumber: formData.windowNumber || formData.windowName, // 如果没有编号，使用窗口名称
+          name: draft.name,
+          canteenId: draft.canteenId,
+          windowId: draft.windowId,
+          canteenName: draft.canteen,
+          windowName: draft.windowName,
+          windowNumber: draft.windowNumber || draft.windowName, // 如果没有编号，使用窗口名称
           price: dishPrice,
-          description: formData.description || undefined,
-          images: imageUrls.length > 0 ? imageUrls : undefined,
+          description: draft.description,
+          images: imageUrls,
           tags: tags,
-          ingredients: ingredients.length > 0 ? ingredients : undefined,
-          allergens: allergens.length > 0 ? allergens : undefined,
+          ingredients,
+          allergens,
           spicyLevel:
-            formData.spicyLevel !== null && formData.spicyLevel !== undefined
-              ? formData.spicyLevel
+            draft.spicyLevel !== null && draft.spicyLevel !== undefined
+              ? draft.spicyLevel
               : 0,
           saltiness:
-            formData.saltiness !== null && formData.saltiness !== undefined
-              ? formData.saltiness
+            draft.saltiness !== null && draft.saltiness !== undefined
+              ? draft.saltiness
               : 0,
           sweetness:
-            formData.sweetness !== null && formData.sweetness !== undefined
-              ? formData.sweetness
+            draft.sweetness !== null && draft.sweetness !== undefined
+              ? draft.sweetness
               : 0,
           oiliness:
-            formData.oiliness !== null && formData.oiliness !== undefined ? formData.oiliness : 0,
-          availableMealTime: availableMealTime.length > 0 ? availableMealTime : undefined,
+            draft.oiliness !== null && draft.oiliness !== undefined ? draft.oiliness : 0,
+          availableMealTime,
           availableDates: availableDates,
           status: 'online', // 修改后直接上线，无需审核
-          // 保留原有的 subDishId 和 parentDishId
-          subDishId: currentDish?.subDishId || undefined,
-          parentDishId: currentDish?.parentDishId || undefined,
         }
 
         // 3. 调用 API 更新菜品
-        const response = await dishApi.updateDish(formData.id, updateData)
+        const response = await dishApi.updateDish(draft.id, updateData)
+        if (!ownsSubmission()) return
 
         if (response.code === 200 && response.data) {
           // 4. 更新 store 中的菜品信息
-          dishStore.updateDish(formData.id, response.data)
+          dishStore.updateDish(draft.id, response.data)
 
           showAlert('菜品信息已更新！')
           router.push('/modify-dish')
@@ -1218,10 +1229,11 @@ export default {
           throw new Error(response.message || '更新菜品失败')
         }
       } catch (error) {
+        if (!ownsSubmission()) return
         console.error('更新菜品失败:', error)
         showAlert(error instanceof Error ? error.message : '更新菜品失败，请重试')
       } finally {
-        isSubmitting.value = false
+        if (ownsView()) isSubmitting.value = false
       }
     }
 

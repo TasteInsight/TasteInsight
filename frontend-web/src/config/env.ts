@@ -1,18 +1,15 @@
-/**
- * 环境变量配置
- */
+export function normalizeApiBaseUrl(value: string | undefined): string {
+  const normalized = value?.trim().replace(/\/+$/, '')
+  if (!normalized) {
+    throw new Error('VITE_API_BASE_URL must be configured for the current mode')
+  }
 
-/**
- * 获取环境变量值
- */
+  return normalized
+}
+
 export const env = {
   /** API 基础地址 */
-  VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/',
-
-  /** APIfox 本地 Mock 配置 - 已禁用，改用真实后端 */
-  VITE_APIFOX_LOCAL_MOCK_ENABLED:
-    import.meta.env.VITE_APIFOX_LOCAL_MOCK_ENABLED === 'false' || false,
-  VITE_APIFOX_LOCAL_MOCK_URL: import.meta.env.VITE_APIFOX_LOCAL_MOCK_URL || '',
+  VITE_API_BASE_URL: normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL),
 
   /** 开发环境 */
   DEV: import.meta.env.DEV,

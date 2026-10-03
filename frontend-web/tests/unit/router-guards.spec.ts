@@ -14,6 +14,7 @@ vi.mock('vue-router', () => {
     createRouter: vi.fn((opts: any) => {
       capturedRoutes = opts.routes
       return {
+        afterEach: vi.fn(),
         beforeEach: (cb: any) => {
           guard = cb
         },

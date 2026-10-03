@@ -155,6 +155,14 @@ export interface Dish {
   updatedAt: string
 }
 
+/** 待审核菜品上传；id 与正式菜品 id 属于不同生命周期。 */
+export interface DishUpload extends Omit<Dish, 'status' | 'parentDishId' | 'subDishId' | 'averageRating' | 'reviewCount'> {
+  status: 'pending' | 'approved' | 'rejected'
+  parentDishId?: string | null
+  parentUploadId?: string | null
+  approvedDishId?: string | null
+}
+
 /**
  * 创建菜品请求
  */
@@ -165,6 +173,7 @@ export interface DishCreateRequest {
   description?: string
   images?: string[]
   parentDishId?: string
+  parentUploadId?: string
   subDishId?: string[]
   ingredients?: string[]
   allergens?: string[]
@@ -173,6 +182,7 @@ export interface DishCreateRequest {
   saltiness?: number
   oiliness?: number
   canteenId?: string
+  windowId?: string
   canteenName: string
   windowNumber?: string
   windowName: string
@@ -190,7 +200,7 @@ export interface DishUpdateRequest {
   price?: number
   description?: string
   images?: string[]
-  parentDishId?: string
+  parentDishId?: string | null
   subDishId?: string[]
   ingredients?: string[]
   allergens?: string[]
@@ -199,6 +209,7 @@ export interface DishUpdateRequest {
   saltiness?: number
   oiliness?: number
   canteenId?: string
+  windowId?: string
   canteenName?: string
   windowNumber?: string
   windowName?: string
@@ -590,6 +601,8 @@ export interface ReportHandleRequest {
  */
 export interface GetPendingParams extends PaginationParams {
   status?: 'pending' | 'approved' | 'rejected'
+  keyword?: string
+  canteenId?: string
 }
 
 // ==================== 新闻相关类型 ====================
@@ -602,8 +615,8 @@ export interface News {
   title: string
   content: string
   summary?: string
-  canteenId?: string
-  canteenName?: string
+  canteenId?: string | null
+  canteenName?: string | null
   author?: string // 兼容旧代码，对应 createdBy
   createdBy?: string
   images?: string[]
@@ -620,7 +633,7 @@ export interface NewsCreateRequest {
   title: string
   content: string
   summary?: string
-  canteenId?: string
+  canteenId?: string | null
   author?: string // 暂时保留
   images?: string[]
   status?: 'draft' | 'published'
@@ -633,7 +646,7 @@ export interface NewsUpdateRequest {
   title?: string
   content?: string
   summary?: string
-  canteenId?: string
+  canteenId?: string | null
   author?: string // 暂时保留
   images?: string[]
   status?: 'draft' | 'published'
@@ -645,6 +658,10 @@ export interface NewsUpdateRequest {
 export interface GetNewsParams extends PaginationParams {
   status?: 'draft' | 'published'
   canteenName?: string
+  keyword?: string
+  canteenId?: string
+  startDate?: string
+  endDate?: string
 }
 
 // ==================== 日志相关类型 ====================

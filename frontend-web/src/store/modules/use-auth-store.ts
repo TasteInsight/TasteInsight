@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authApi } from '@/api/modules/auth'
 import type { LoginCredentials, Admin } from '@/types/api'
+import { getAuthSessionVersion, invalidateAuthSession } from '@/utils/auth-session'
 
 const parseStoredValue = <T>(
   storage: Storage,
@@ -96,12 +97,18 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const login = async (credentials: LoginCredentials & { remember?: boolean }) => {
+    invalidateAuthSession()
+    const loginSession = getAuthSessionVersion()
     try {
       // 调用登录 API
       const response = await authApi.adminLogin({
         username: credentials.username,
         password: credentials.password,
       })
+
+      if (loginSession !== getAuthSessionVersion()) {
+        throw new Error('登录请求已失效')
+      }
 
       if (response.code === 200 && response.data) {
         const { token: tokenInfo, admin, permissions: userPermissions } = response.data
@@ -138,6 +145,7 @@ export const useAuthStore = defineStore('auth', () => {
         throw new Error(response.message || '登录失败')
       }
     } catch (error) {
+      if (loginSession !== getAuthSessionVersion()) throw error
       // 清除可能已保存的 token
       token.value = null
       refreshToken.value = null
@@ -151,6 +159,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const logout = () => {
+    invalidateAuthSession()
     token.value = null
     refreshToken.value = null
     user.value = null
