@@ -784,6 +784,43 @@ describe('AdminConfigService', () => {
   });
 
   describe('getBooleanConfigValue', () => {
+    it.each(['canteen', 'global', 'template', 'default'])(
+      'uses only the supplied transaction for the %s configuration source',
+      async (source) => {
+        const key = ConfigKeys.COMMENT_AUTO_APPROVE;
+        const config = { items: [{ key, value: 'true' }] };
+        const tx = {
+          adminConfig: {
+            findUnique: jest
+              .fn()
+              .mockResolvedValue(source === 'canteen' ? config : null),
+            findFirst: jest
+              .fn()
+              .mockResolvedValue(source === 'global' ? config : null),
+          },
+          adminConfigTemplate: {
+            findUnique: jest
+              .fn()
+              .mockResolvedValue(
+                source === 'template' ? { defaultValue: 'true' } : null,
+              ),
+          },
+        };
+
+        const result = await (service.getBooleanConfigValue as any)(
+          key,
+          'canteen-1',
+          tx,
+        );
+
+        expect(result).toBe(source !== 'default');
+        expect(tx.adminConfig.findUnique).toHaveBeenCalled();
+        expect(prisma.adminConfig.findUnique).not.toHaveBeenCalled();
+        expect(prisma.adminConfig.findFirst).not.toHaveBeenCalled();
+        expect(prisma.adminConfigTemplate.findUnique).not.toHaveBeenCalled();
+      },
+    );
+
     it('should return true for "true" string', async () => {
       const mockCanteenConfig = {
         id: 'config-2',

@@ -31,7 +31,7 @@ describe('Recommendation Module (e2e)', () => {
       RecommendationCacheService,
     );
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
-    await app.init();
+    await app.listen(0, '127.0.0.1');
 
     // Acquire test user login token
     // Using a baseline user code or mock login

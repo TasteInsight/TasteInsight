@@ -288,6 +288,50 @@ describe('AdminUploadsService', () => {
       expect(prisma.dish.create).toHaveBeenCalled();
     });
 
+    it('publishes the pending fields committed after the initial approval read', async () => {
+      const current = {
+        ...mockUpload,
+        price: 28,
+        description: 'updated pending dish',
+      };
+      prisma.dishUpload.findUnique
+        .mockResolvedValueOnce(mockUpload)
+        .mockResolvedValue(current);
+      prisma.dish.create.mockResolvedValue({ id: 'new-dish-id' });
+
+      await service.approveUpload('u1', {});
+
+      expect(prisma.$queryRaw).toHaveBeenCalledWith(expect.anything(), 'u1');
+      expect(prisma.dish.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          price: 28,
+          description: current.description,
+        }),
+      });
+    });
+
+    it('revalidates canteen scope after waiting for the upload lock', async () => {
+      prisma.dishUpload.findUnique
+        .mockResolvedValueOnce(mockUpload)
+        .mockResolvedValue({ ...mockUpload, canteenId: 'c2' });
+
+      await expect(
+        service.approveUpload('u1', { canteenId: 'c1' }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.dish.create).not.toHaveBeenCalled();
+    });
+
+    it('does not publish using a parent relation changed after the initial read', async () => {
+      prisma.dishUpload.findUnique
+        .mockResolvedValueOnce(mockUpload)
+        .mockResolvedValue({ ...mockUpload, parentUploadId: 'new-parent' });
+
+      await expect(service.approveUpload('u1', {})).rejects.toThrow(
+        '关系已变化',
+      );
+      expect(prisma.dish.create).not.toHaveBeenCalled();
+    });
+
     it('should throw NotFoundException if upload not found', async () => {
       prisma.dishUpload.findUnique.mockResolvedValue(null);
 

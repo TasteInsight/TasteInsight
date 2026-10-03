@@ -21,7 +21,7 @@ describe('AdminConfigController (e2e)', () => {
     app = moduleFixture.createNestApplication();
     prisma = app.get<PrismaService>(PrismaService);
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
-    await app.init();
+    await app.listen(0, '127.0.0.1');
 
     // Login as super admin (testadmin - no canteenId)
     const superAdminLogin = await request(app.getHttpServer())

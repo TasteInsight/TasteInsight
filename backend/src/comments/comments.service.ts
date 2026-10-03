@@ -121,6 +121,7 @@ export class CommentsService {
         ? await this.adminConfigService.getBooleanConfigValue(
             ConfigKeys.COMMENT_AUTO_APPROVE,
             dish.canteenId,
+            tx,
           )
         : false;
 

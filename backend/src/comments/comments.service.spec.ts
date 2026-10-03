@@ -156,6 +156,11 @@ describe('CommentsService', () => {
 
       expect(result.code).toBe(201);
       expect(result.message).toBe('评论发布成功');
+      expect(adminConfigService.getBooleanConfigValue).toHaveBeenCalledWith(
+        'comment.autoApprove',
+        'c1',
+        prisma,
+      );
     });
 
     it('should throw NotFoundException if review not found', async () => {

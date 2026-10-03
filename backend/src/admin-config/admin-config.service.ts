@@ -7,6 +7,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
+import { Prisma } from '@prisma/client';
 import {
   UpdateGlobalConfigDto,
   UpdateCanteenConfigDto,
@@ -468,10 +469,11 @@ export class AdminConfigService implements OnModuleInit {
   async getConfigValue(
     key: string,
     canteenId?: string,
+    client: Prisma.TransactionClient = this.prisma,
   ): Promise<string | null> {
     // 1. 如果有食堂ID，先尝试获取食堂配置
     if (canteenId) {
-      const canteenConfig = await this.prisma.adminConfig.findUnique({
+      const canteenConfig = await client.adminConfig.findUnique({
         where: { canteenId },
         include: { items: true },
       });
@@ -483,7 +485,7 @@ export class AdminConfigService implements OnModuleInit {
     }
 
     // 2. 尝试获取全局配置
-    const globalConfig = await this.prisma.adminConfig.findFirst({
+    const globalConfig = await client.adminConfig.findFirst({
       where: { canteenId: null },
       include: { items: true },
     });
@@ -494,7 +496,7 @@ export class AdminConfigService implements OnModuleInit {
     }
 
     // 3. 尝试从数据库模板获取默认值
-    const template = await this.prisma.adminConfigTemplate.findUnique({
+    const template = await client.adminConfigTemplate.findUnique({
       where: { key },
     });
 
@@ -521,8 +523,9 @@ export class AdminConfigService implements OnModuleInit {
   async getBooleanConfigValue(
     key: string,
     canteenId?: string,
+    client: Prisma.TransactionClient = this.prisma,
   ): Promise<boolean> {
-    const value = await this.getConfigValue(key, canteenId);
+    const value = await this.getConfigValue(key, canteenId, client);
 
     // 如果值不存在，使用配置定义中的默认值
     if (value === null) {

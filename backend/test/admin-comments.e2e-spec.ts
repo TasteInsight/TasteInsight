@@ -23,7 +23,7 @@ describe('AdminCommentsController (e2e)', () => {
     app = moduleFixture.createNestApplication();
     prisma = app.get<PrismaService>(PrismaService);
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
-    await app.init();
+    await app.listen(0, '127.0.0.1');
 
     // 获取超级管理员token
     const superAdminLogin = await request(app.getHttpServer())

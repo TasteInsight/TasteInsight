@@ -39,7 +39,7 @@ describe('Dish hierarchy and approval ownership (e2e)', () => {
     app.useGlobalPipes(
       new ValidationPipe({ transform: true, whitelist: true }),
     );
-    await app.init();
+    await app.listen(0, '127.0.0.1');
     prisma = app.get(PrismaService);
     const [first, second] = await Promise.all([
       prisma.canteen.findFirstOrThrow({ where: { name: '第一食堂' } }),

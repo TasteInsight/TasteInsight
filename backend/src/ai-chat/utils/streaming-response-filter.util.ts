@@ -15,7 +15,7 @@ interface SensitiveStart {
  */
 export class StreamingResponseFilter {
   private pending = '';
-  private redacting: SensitiveValueKind | null = null;
+  private redacting: 'awaiting-value' | 'value' | null = null;
 
   push(chunk: string): string {
     this.pending += chunk;
@@ -31,10 +31,16 @@ export class StreamingResponseFilter {
 
     while (this.pending || this.redacting) {
       if (this.redacting) {
-        const endIndex = this.findSensitiveValueEnd(this.redacting);
+        if (this.redacting === 'awaiting-value') {
+          this.pending = this.pending.replace(/^\s+/, '');
+          if (!this.pending && !flush) return output;
+          this.redacting = 'value';
+        }
+
+        const endIndex = this.pending.search(/\s/);
         if (endIndex === -1) {
-          if (!flush) return output;
           this.pending = '';
+          if (!flush) return output;
         } else {
           this.pending = this.pending.slice(endIndex);
         }
@@ -50,7 +56,8 @@ export class StreamingResponseFilter {
         this.pending = this.pending.slice(
           sensitiveStart.index + sensitiveStart.length,
         );
-        this.redacting = sensitiveStart.kind;
+        this.redacting =
+          sensitiveStart.kind === 'credential' ? 'awaiting-value' : 'value';
         continue;
       }
 
@@ -89,12 +96,6 @@ export class StreamingResponseFilter {
       }
     }
     return earliest;
-  }
-
-  private findSensitiveValueEnd(kind: SensitiveValueKind): number {
-    const terminator = /\s/;
-    const match = terminator.exec(this.pending);
-    return match ? match.index : -1;
   }
 
   private findPotentialPrefixStart(): number {

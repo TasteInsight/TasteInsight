@@ -24,7 +24,7 @@ describe('UploadController (e2e)', () => {
       app.get(ConfigService).get<string>('UPLOAD_LOCAL_PATH', './uploads'),
     );
 
-    await app.init();
+    await app.listen(0, '127.0.0.1');
 
     testImage = await sharp({
       create: { width: 8, height: 8, channels: 3, background: '#123456' },

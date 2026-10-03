@@ -3,7 +3,6 @@ import request from 'supertest';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '@/app.module';
 import { PrismaService } from '@/prisma.service';
-import { afterEach } from 'node:test';
 
 describe('ReviewsController (e2e)', () => {
   let app: INestApplication;
@@ -22,7 +21,7 @@ describe('ReviewsController (e2e)', () => {
     app.useGlobalPipes(
       new ValidationPipe({ whitelist: true, transform: true }),
     );
-    await app.init();
+    await app.listen(0, '127.0.0.1');
 
     // 获取测试用户登录token
     const loginResponse = await request(app.getHttpServer())
@@ -538,6 +537,14 @@ describe('ReviewsController (e2e)', () => {
         await prisma.review.deleteMany({
           where: { id: reviewIdToDelete },
         });
+      }
+    });
+
+    afterAll(async () => {
+      if (reviewIdToDelete) {
+        await expect(
+          prisma.review.findUnique({ where: { id: reviewIdToDelete } }),
+        ).resolves.toBeNull();
       }
     });
   });

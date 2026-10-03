@@ -27,7 +27,7 @@ describe('AuthController (e2e)', () => {
     prisma = app.get<PrismaService>(PrismaService);
     httpService = app.get<HttpService>(HttpService);
     app.useGlobalPipes(new ValidationPipe());
-    await app.init();
+    await app.listen(0, '127.0.0.1');
 
     // 确保 baseline 和 secondary 用户存在（使用 upsert 以兼容 seed 数据和独立运行）
     // 同时恢复 nickname，因为其他测试可能会修改它
@@ -56,6 +56,13 @@ describe('AuthController (e2e)', () => {
 
   afterAll(async () => {
     await app.close();
+  });
+
+  it('keeps the test server listening on the IPv4 loopback used by Supertest', () => {
+    expect(app.getHttpServer().address()).toMatchObject({
+      address: '127.0.0.1',
+      family: 'IPv4',
+    });
   });
 
   describe('/auth/wechat/login (POST)', () => {

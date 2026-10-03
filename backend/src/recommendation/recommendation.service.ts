@@ -1117,7 +1117,7 @@ export class RecommendationService {
       .getUserEmbedding(userId)
       .then((existing) => {
         if (!existing) {
-          return this.embeddingService!.generateUserEmbedding(
+          return this.embeddingService.generateUserEmbedding(
             userId,
             userFeatures,
           );
@@ -2241,7 +2241,7 @@ export class RecommendationService {
 
     const scoredDishes = candidateDishes.map((dish) => {
       const dishEmbedding =
-        this.embeddingService!.generateDishEmbeddingLocal(dish);
+        this.embeddingService.generateDishEmbeddingLocal(dish);
       const similarity = this.cosineSimilarity(targetEmbedding, dishEmbedding);
 
       return {

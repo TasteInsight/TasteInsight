@@ -330,11 +330,9 @@ describe('Formal dish hierarchy updates', () => {
       { id: 'window-a', canteenId: 'a', name: 'window-a', number: '1' },
     ];
     prisma.dish.create = jest.fn();
-    prisma.dish.update.mockImplementation(async ({ where, data }) => {
-      const row = dishes.get(where.id);
-      row.canteenId = 'b';
-      Object.assign(row, data);
-      return { ...row };
+    prisma.$queryRaw.mockImplementation(async (_query, id) => {
+      if (id === 'parent') dishes.get('parent').canteenId = 'b';
+      return [];
     });
     const result = await service.confirmBatchImport(
       {
@@ -353,5 +351,6 @@ describe('Formal dish hierarchy updates', () => {
     );
     expect(result.data).toMatchObject({ successCount: 0, failCount: 1 });
     expect(prisma.dish.create).not.toHaveBeenCalled();
+    expect(prisma.dishUpload.create).not.toHaveBeenCalled();
   });
 });

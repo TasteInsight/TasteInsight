@@ -71,7 +71,7 @@ describe('Admin dishes batch APIs (e2e)', () => {
     app = moduleFixture.createNestApplication();
     prisma = app.get<PrismaService>(PrismaService);
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
-    await app.init();
+    await app.listen(0, '127.0.0.1');
 
     const loginRes = await request(app.getHttpServer())
       .post('/auth/admin/login')
@@ -84,6 +84,11 @@ describe('Admin dishes batch APIs (e2e)', () => {
       where: { name: TEST_CANTEEN_NAME },
     });
     if (canteen) {
+      await prisma.dishUpload.updateMany({
+        where: { canteenId: canteen.id },
+        data: { parentUploadId: null },
+      });
+      await prisma.dishUpload.deleteMany({ where: { canteenId: canteen.id } });
       await prisma.dish.deleteMany({ where: { canteenId: canteen.id } });
       await prisma.window.deleteMany({ where: { canteenId: canteen.id } });
       await prisma.floor.deleteMany({ where: { canteenId: canteen.id } });
@@ -133,7 +138,7 @@ describe('Admin dishes batch APIs (e2e)', () => {
   });
 
   describe('/admin/dishes/batch/confirm (POST)', () => {
-    it('should import parsed dishes and create records', async () => {
+    it('should import parsed dishes as pending records linked to their parent upload', async () => {
       const parsedItems = await parseBatchFile();
       const response = await request(app.getHttpServer())
         .post('/admin/dishes/batch/confirm')
@@ -153,21 +158,24 @@ describe('Admin dishes batch APIs (e2e)', () => {
         where: { canteenId: canteen?.id ?? '', name: TEST_WINDOW_NAME },
       });
       expect(window).toBeTruthy();
-      const parentDish = await prisma.dish.findFirst({
+      const parentUpload = await prisma.dishUpload.findFirst({
         where: {
           canteenId: canteen?.id ?? '',
           name: TEST_DISH_NAME,
           parentDishId: null,
         },
       });
-      expect(parentDish).toBeTruthy();
-      const childDish = await prisma.dish.findFirst({
+      expect(parentUpload).toMatchObject({ status: 'pending' });
+      const childUpload = await prisma.dishUpload.findFirst({
         where: {
-          parentDishId: parentDish?.id ?? '',
+          parentUploadId: parentUpload?.id ?? '',
           name: '子菜1',
         },
       });
-      expect(childDish).toBeTruthy();
+      expect(childUpload).toMatchObject({ status: 'pending' });
+      expect(
+        await prisma.dish.count({ where: { canteenId: canteen?.id } }),
+      ).toBe(0);
     });
   });
 });

@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -167,14 +168,11 @@ export class AdminUploadsService {
     // 查找上传记录
     const upload = await this.prisma.dishUpload.findUnique({
       where: { id },
-      include: {
-        canteen: true,
-        window: {
-          include: {
-            floor: true,
-          },
-        },
-        parentDish: true,
+      select: {
+        id: true,
+        canteenId: true,
+        parentDishId: true,
+        parentUploadId: true,
       },
     });
 
@@ -191,6 +189,7 @@ export class AdminUploadsService {
     try {
       await this.prisma.$transaction(async (tx) => {
         let parentDishId = upload.parentDishId;
+        const parentCanteenIds: string[] = [];
         if (upload.parentUploadId) {
           await tx.$queryRaw`SELECT "id" FROM "dish_uploads" WHERE "id" = ${upload.parentUploadId} FOR UPDATE`;
           const parentUpload = await tx.dishUpload.findUnique({
@@ -203,9 +202,7 @@ export class AdminUploadsService {
           ) {
             throw new BadRequestException('请先审核通过父菜品');
           }
-          if (parentUpload.canteenId !== upload.canteenId) {
-            throw new BadRequestException('父子菜品必须属于同一食堂');
-          }
+          parentCanteenIds.push(parentUpload.canteenId);
           parentDishId = parentUpload.approvedDishId;
         }
         if (parentDishId) {
@@ -213,9 +210,34 @@ export class AdminUploadsService {
           const parentDish = await tx.dish.findUnique({
             where: { id: parentDishId },
           });
-          if (!parentDish || parentDish.canteenId !== upload.canteenId) {
-            throw new BadRequestException('父菜品不存在或不属于当前食堂');
-          }
+          if (!parentDish) throw new BadRequestException('父菜品不存在');
+          parentCanteenIds.push(parentDish.canteenId);
+        }
+
+        await tx.$queryRaw`SELECT "id" FROM "dish_uploads" WHERE "id" = ${id} FOR UPDATE`;
+        const currentUpload = await tx.dishUpload.findUnique({
+          where: { id },
+          include: { window: { include: { floor: true } } },
+        });
+        if (!currentUpload) throw new NotFoundException('上传记录不存在');
+        if (
+          adminInfo.canteenId &&
+          currentUpload.canteenId !== adminInfo.canteenId
+        ) {
+          throw new ForbiddenException('权限不足');
+        }
+        if (
+          currentUpload.parentDishId !== upload.parentDishId ||
+          currentUpload.parentUploadId !== upload.parentUploadId
+        ) {
+          throw new ConflictException('父子关系已变化，请重试审核');
+        }
+        if (
+          parentCanteenIds.some(
+            (canteenId) => canteenId !== currentUpload.canteenId,
+          )
+        ) {
+          throw new BadRequestException('父子菜品必须属于同一食堂');
         }
 
         const updateResult = await tx.dishUpload.updateMany({
@@ -229,28 +251,28 @@ export class AdminUploadsService {
         // 创建正式菜品记录
         const dish = await tx.dish.create({
           data: {
-            name: upload.name,
-            tags: upload.tags,
-            price: upload.price,
-            priceUnit: upload.priceUnit,
-            description: upload.description,
-            images: upload.images,
-            ingredients: upload.ingredients,
-            allergens: upload.allergens,
-            spicyLevel: upload.spicyLevel,
-            sweetness: upload.sweetness,
-            saltiness: upload.saltiness,
-            oiliness: upload.oiliness,
-            canteenId: upload.canteenId,
-            canteenName: upload.canteenName,
-            floorId: upload.window?.floorId || null,
-            floorLevel: upload.window?.floor?.level || null,
-            floorName: upload.window?.floor?.name || null,
-            windowId: upload.windowId,
-            windowNumber: upload.windowNumber,
-            windowName: upload.windowName,
-            availableMealTime: upload.availableMealTime,
-            availableDates: upload.availableDates || undefined,
+            name: currentUpload.name,
+            tags: currentUpload.tags,
+            price: currentUpload.price,
+            priceUnit: currentUpload.priceUnit,
+            description: currentUpload.description,
+            images: currentUpload.images,
+            ingredients: currentUpload.ingredients,
+            allergens: currentUpload.allergens,
+            spicyLevel: currentUpload.spicyLevel,
+            sweetness: currentUpload.sweetness,
+            saltiness: currentUpload.saltiness,
+            oiliness: currentUpload.oiliness,
+            canteenId: currentUpload.canteenId,
+            canteenName: currentUpload.canteenName,
+            floorId: currentUpload.window?.floorId || null,
+            floorLevel: currentUpload.window?.floor?.level || null,
+            floorName: currentUpload.window?.floor?.name || null,
+            windowId: currentUpload.windowId,
+            windowNumber: currentUpload.windowNumber,
+            windowName: currentUpload.windowName,
+            availableMealTime: currentUpload.availableMealTime,
+            availableDates: currentUpload.availableDates || undefined,
             parentDishId,
             status: 'online',
             averageRating: 0,

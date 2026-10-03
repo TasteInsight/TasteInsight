@@ -171,6 +171,11 @@ describe('Pending dish hierarchy', () => {
         : child,
     );
     await uploads.approveUpload(child.id, { role: 'superadmin' });
+    expect(prisma.$queryRaw.mock.calls.map((call: any[]) => call[1])).toEqual([
+      parent.id,
+      'approved-parent',
+      child.id,
+    ]);
     expect(prisma.dish.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ parentDishId: 'approved-parent' }),

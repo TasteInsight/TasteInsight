@@ -478,9 +478,10 @@ describe('AuthService', () => {
         { sub: 'user-1', type: 'user', tokenUse: 'refresh' },
         { secret: 'test-refresh-secret', expiresIn: '7d' },
       );
-      const refreshPayload = realJwtService.decode(
-        result.data.token.refreshToken,
-      ) as { iat: number; exp: number };
+      const refreshPayload = realJwtService.decode<{
+        iat: number;
+        exp: number;
+      }>(result.data.token.refreshToken);
       expect(refreshPayload.exp - refreshPayload.iat).toBe(7 * 24 * 60 * 60);
     });
 

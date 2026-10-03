@@ -31,7 +31,7 @@ describe('CommentsController (e2e)', () => {
     jwtService = app.get<JwtService>(JwtService);
     configService = app.get<ConfigService>(ConfigService);
     app.useGlobalPipes(new ValidationPipe());
-    await app.init();
+    await app.listen(0, '127.0.0.1');
 
     const secret = configService.get<string>('JWT_SECRET');
 

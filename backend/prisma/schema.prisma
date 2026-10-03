@@ -100,7 +100,7 @@ model Admin {
   password  String // 应该存储哈希后的密码
   role      String   @default("admin")
   canteenId String?
-  canteen   Canteen? @relation(fields: [canteenId], references: [id])
+  canteen   Canteen? @relation(fields: [canteenId], references: [id], onDelete: Restrict)
 
   createdBy String? // 创建者ID
   creator   Admin?  @relation("AdminHierarchy", fields: [createdBy], references: [id])

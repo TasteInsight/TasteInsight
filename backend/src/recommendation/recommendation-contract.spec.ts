@@ -68,11 +68,9 @@ describe('Recommendation candidate contracts', () => {
       recallDishesByUserEmbedding: jest.fn().mockResolvedValue([]),
     };
     const experiment = {
-      assignUserToExperiment: jest
-        .fn()
-        .mockResolvedValue({
-          recallQuota: { vectorQuota: 1, ruleQuota: 0, collaborativeQuota: 0 },
-        }),
+      assignUserToExperiment: jest.fn().mockResolvedValue({
+        recallQuota: { vectorQuota: 1, ruleQuota: 0, collaborativeQuota: 0 },
+      }),
     };
     service = new RecommendationService(
       prisma as any,

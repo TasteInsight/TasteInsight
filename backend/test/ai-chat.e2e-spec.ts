@@ -7,6 +7,23 @@ import { ToolRegistryService } from '../src/ai-chat/tools/tool-registry.service'
 import { AIConfigService } from '../src/ai-chat/services/ai-config.service';
 import { OpenAIProviderService } from '../src/ai-chat/services/ai-provider/openai-provider.service';
 import { MockAIProviderService } from '../src/ai-chat/services/ai-provider/mock-ai-provider.service';
+import { ChatRequestDto } from '../src/ai-chat/dto/chat.dto';
+
+function requestChatStream(
+  app: INestApplication,
+  token: string,
+  sessionId: string,
+  body: ChatRequestDto,
+) {
+  return request(app.getHttpServer())
+    .post(`/ai/sessions/${sessionId}/chat/stream`)
+    .set('Authorization', `Bearer ${token}`)
+    .set('Accept', 'text/event-stream')
+    .send(body)
+    .buffer(true)
+    .expect(200)
+    .expect('Content-Type', /text\/event-stream/);
+}
 
 describe('AI Chat (e2e)', () => {
   let app: INestApplication;
@@ -37,7 +54,7 @@ describe('AI Chat (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
-    await app.init();
+    await app.listen(0, '127.0.0.1');
 
     prisma = app.get<PrismaService>(PrismaService);
 
@@ -820,98 +837,37 @@ describe('AI Chat (e2e)', () => {
       }
     });
 
-    it('should stream chat response with SSE', (done) => {
-      const events: string[] = [];
-
-      request(app.getHttpServer())
-        .post(`/ai/sessions/${streamTestSessionId}/chat/stream`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .set('Accept', 'text/event-stream')
-        .send({
+    it('should stream chat response with SSE', async () => {
+      const response = await requestChatStream(
+        app,
+        authToken,
+        streamTestSessionId,
+        {
           message: '推荐一些午餐',
           clientContext: {
             localTime: '2025-01-01T12:00:00Z',
           },
-        })
-        .buffer(false)
-        .parse((res, callback) => {
-          res.on('data', (chunk) => {
-            const data = chunk.toString();
-            events.push(data);
-          });
-          res.on('end', () => {
-            callback(null, events);
-          });
-        })
-        .end((err, res) => {
-          if (err) return done(err);
-
-          // Verify we received SSE events
-          expect(events.length).toBeGreaterThan(0);
-
-          // Join all chunks and verify event structure
-          const fullData = events.join('');
-
-          // Should contain at least one text event
-          expect(fullData).toContain('event: text_chunk');
-
-          done();
-        });
+        },
+      );
+      expect(response.text).toContain('event: text_chunk');
     }, 20000); // Increased timeout for multi-turn conversations
 
-    it('should handle SSE connection errors gracefully', (done) => {
-      const events: string[] = [];
-
-      request(app.getHttpServer())
-        .post('/ai/sessions/invalid-session/chat/stream')
-        .set('Authorization', `Bearer ${authToken}`)
-        .set('Accept', 'text/event-stream')
-        .send({
+    it('should handle SSE connection errors gracefully', async () => {
+      const response = await requestChatStream(
+        app,
+        authToken,
+        'invalid-session',
+        {
           message: 'test message',
-        })
-        .buffer(false)
-        .parse((res, callback) => {
-          res.on('data', (chunk) => {
-            events.push(chunk.toString());
-          });
-          res.on('end', () => {
-            callback(null, events);
-          });
-        })
-        .end((err, res) => {
-          if (err) return done(err);
-
-          // Should receive error event in SSE stream
-          const fullData = events.join('');
-          expect(fullData).toContain('event: error');
-
-          done();
-        });
+        },
+      );
+      expect(response.text).toContain('event: error');
     });
 
-    it('should save user message before streaming', async () => {
-      // Send a stream request
-      await new Promise<void>((resolve, reject) => {
-        request(app.getHttpServer())
-          .post(`/ai/sessions/${streamTestSessionId}/chat/stream`)
-          .set('Authorization', `Bearer ${authToken}`)
-          .set('Accept', 'text/event-stream')
-          .send({
-            message: '测试消息保存',
-          })
-          .buffer(false)
-          .parse((res, callback) => {
-            res.on('end', () => callback(null, null));
-          })
-          .end((err) => {
-            if (err)
-              reject(err instanceof Error ? err : new Error(String(err)));
-            else resolve();
-          });
+    it('should save both messages before the stream completes', async () => {
+      await requestChatStream(app, authToken, streamTestSessionId, {
+        message: '测试消息保存',
       });
-
-      // Wait a bit for processing
-      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Verify message was saved
       const messages = await prisma.aIMessage.findMany({
@@ -925,6 +881,9 @@ describe('AI Chat (e2e)', () => {
 
       const content = userMessage!.content as any[];
       expect(content[0].data).toContain('测试消息保存');
+      expect(messages.some((message) => message.role === 'assistant')).toBe(
+        true,
+      );
     }, 15000); // Increased timeout for streaming test
   });
 
@@ -1139,7 +1098,7 @@ describe('Continuous Conversation (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
-    await app.init();
+    await app.listen(0, '127.0.0.1');
 
     prisma = app.get<PrismaService>(PrismaService);
 
@@ -1174,84 +1133,27 @@ describe('Continuous Conversation (e2e)', () => {
 
   it('should maintain context across multiple conversation turns', async () => {
     // Turn 1: Ask about lunch recommendations
-    const turn1Events: string[] = [];
-    await new Promise<void>((resolve, reject) => {
-      request(app.getHttpServer())
-        .post(`/ai/sessions/${sessionId}/chat/stream`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .set('Accept', 'text/event-stream')
-        .send({
-          message: '有什么午餐推荐吗？',
-          clientContext: { localTime: '2025-01-01T12:00:00Z' },
-        })
-        .buffer(false)
-        .parse((res, callback) => {
-          res.on('data', (chunk) => turn1Events.push(chunk.toString()));
-          res.on('end', () => callback(null, turn1Events));
-        })
-        .end((err) => {
-          if (err) reject(err instanceof Error ? err : new Error(String(err)));
-          else resolve();
-        });
+    const turn1 = await requestChatStream(app, authToken, sessionId, {
+      message: '有什么午餐推荐吗？',
+      clientContext: { localTime: '2025-01-01T12:00:00Z' },
     });
 
     // Verify first turn got a response
-    const turn1Data = turn1Events.join('');
-    expect(turn1Data).toContain('event: text_chunk');
-
-    // Wait a bit for message to be saved
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    expect(turn1.text).toContain('event: text_chunk');
 
     // Turn 2: Ask a follow-up question (tests context retention)
-    const turn2Events: string[] = [];
-    await new Promise<void>((resolve, reject) => {
-      request(app.getHttpServer())
-        .post(`/ai/sessions/${sessionId}/chat/stream`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .set('Accept', 'text/event-stream')
-        .send({
-          message: '这些菜有素食选项吗？',
-        })
-        .buffer(false)
-        .parse((res, callback) => {
-          res.on('data', (chunk) => turn2Events.push(chunk.toString()));
-          res.on('end', () => callback(null, turn2Events));
-        })
-        .end((err) => {
-          if (err) reject(err instanceof Error ? err : new Error(String(err)));
-          else resolve();
-        });
+    const turn2 = await requestChatStream(app, authToken, sessionId, {
+      message: '这些菜有素食选项吗？',
     });
 
-    const turn2Data = turn2Events.join('');
-    expect(turn2Data).toContain('event: text_chunk');
-
-    // Wait for second message to be saved
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    expect(turn2.text).toContain('event: text_chunk');
 
     // Turn 3: Reference previous context
-    const turn3Events: string[] = [];
-    await new Promise<void>((resolve, reject) => {
-      request(app.getHttpServer())
-        .post(`/ai/sessions/${sessionId}/chat/stream`)
-        .set('Authorization', `Bearer ${authToken}`)
-        .set('Accept', 'text/event-stream')
-        .send({
-          message: '第一个推荐的是什么？',
-        })
-        .buffer(false)
-        .parse((res, callback) => {
-          res.on('data', (chunk) => turn3Events.push(chunk.toString()));
-          res.on('end', () => callback(null, turn3Events));
-        })
-        .end((err) => {
-          if (err) reject(err instanceof Error ? err : new Error(String(err)));
-          else resolve();
-        });
+    const turn3 = await requestChatStream(app, authToken, sessionId, {
+      message: '第一个推荐的是什么？',
     });
 
-    const turn3Data = turn3Events.join('');
-    expect(turn3Data).toContain('event: text_chunk');
+    expect(turn3.text).toContain('event: text_chunk');
 
     // Verify all messages are saved in the database
     const messages = await prisma.aIMessage.findMany({
