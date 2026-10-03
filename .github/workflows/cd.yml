@@ -32,6 +32,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  DEPLOY_IMAGE_TAG: deploy-${{ github.event.workflow_run.head_sha || github.sha }}-${{ github.run_id }}
   # 1. GitHub Container Registry (原有的)
   GHCR_REGISTRY: ghcr.io
   
@@ -109,7 +110,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_branch || github.ref }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -139,6 +140,7 @@ jobs:
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_BACKEND_IMAGE }}
             ${{ env.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}/${{ env.ALIYUN_BACKEND_REPO }}
           tags: |
+            type=raw,value=${{ env.DEPLOY_IMAGE_TAG }}
             type=semver,pattern={{version}}
             type=sha,prefix=sha-
             type=raw,value=${{ github.event.workflow_run.head_branch }},enable=${{ github.event_name == 'workflow_run' }}
@@ -180,7 +182,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_branch || github.ref }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -209,6 +211,7 @@ jobs:
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_FRONTEND_IMAGE }}
             ${{ env.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}/${{ env.ALIYUN_FRONTEND_REPO }}
           tags: |
+            type=raw,value=${{ env.DEPLOY_IMAGE_TAG }}
             type=semver,pattern={{version}}
             type=sha,prefix=sha-
             type=raw,value=${{ github.event.workflow_run.head_branch }},enable=${{ github.event_name == 'workflow_run' }}
@@ -248,7 +251,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_branch || github.ref }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -275,6 +278,7 @@ jobs:
             ${{ env.GHCR_REGISTRY }}/${{ env.GHCR_EMBEDDING_IMAGE }}
             ${{ env.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}/${{ env.ALIYUN_EMBEDDING_REPO }}
           tags: |
+            type=raw,value=${{ env.DEPLOY_IMAGE_TAG }}
             type=semver,pattern={{version}}
             type=sha,prefix=sha-
             type=raw,value=${{ github.event.workflow_run.head_branch }},enable=${{ github.event_name == 'workflow_run' }}
@@ -313,6 +317,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
@@ -325,32 +331,19 @@ jobs:
           ssh-keyscan -H ${{ secrets.DEV_HOST }} >> ~/.ssh/known_hosts
 
       - name: Create and copy deployment files
+        env:
+          DEPLOY_ENV_FILE: ${{ secrets.DEV_ENV_FILE }}
         run: |
           DEPLOY_TMP=$(mktemp -d)
           trap "rm -rf $DEPLOY_TMP" EXIT
 
           cp backend/docker-compose.yml "$DEPLOY_TMP/docker-compose.yml"
-          
-          cat > "$DEPLOY_TMP/cert.pem" << 'EOF'
-          ${{ secrets.DEV_SSL_CERT }}
-          EOF
-          
-          cat > "$DEPLOY_TMP/private.key" << 'EOF'
-          ${{ secrets.DEV_SSL_KEY }}
-          EOF
-          
-          cat > "$DEPLOY_TMP/.env" << 'EOF'
-          ${{ secrets.DEV_ENV_FILE }}
-          EOF
-          
-          cat > "$DEPLOY_TMP/nginx.conf" << 'EOF'
-          ${{ secrets.DEV_NGINX_CONF }}
-          EOF
+          cp backend/nginx.conf "$DEPLOY_TMP/nginx.conf"
+          printf '%s\n' "$DEPLOY_ENV_FILE" > "$DEPLOY_TMP/.env.production"
+          chmod 600 "$DEPLOY_TMP/.env.production"
           
           scp "$DEPLOY_TMP/docker-compose.yml" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/docker-compose.yml"
-          scp "$DEPLOY_TMP/cert.pem" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/certs/cert.pem"
-          scp "$DEPLOY_TMP/private.key" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/certs/private.key"
-          scp "$DEPLOY_TMP/.env" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/.env"
+          scp "$DEPLOY_TMP/.env.production" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/.env.production"
           scp "$DEPLOY_TMP/nginx.conf" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/nginx.conf"
         shell: bash
         
@@ -365,26 +358,25 @@ jobs:
             cd ${{ secrets.DEV_DEPLOY_PATH }}
 
             # Fail fast if required env vars are missing
-            if ! grep -q '^REDIS_PASSWORD=' .env; then
-              echo "❌ Missing REDIS_PASSWORD in .env" >&2
+            if ! grep -q '^REDIS_PASSWORD=' .env.production; then
+              echo "❌ Missing REDIS_PASSWORD in .env.production" >&2
               exit 1
             fi
             
-            # 设置证书权限
-            chmod 600 certs/private.key
-            chmod 644 certs/cert.pem
+            chmod 600 .env.production
+            docker compose --env-file .env.production config --quiet
 
             echo "${{ secrets.ALIYUN_PASSWORD }}" | docker login ${{ env.ALIYUN_REGISTRY }} -u "${{ secrets.ALIYUN_USERNAME }}" --password-stdin
 
-            export TAG=latest-dev
+            export TAG="${{ env.DEPLOY_IMAGE_TAG }}"
             
             # 这个变量会被传入 docker-compose.yml 中替换 ${IMAGE_REGISTRY}
             export IMAGE_REGISTRY="${{ env.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}"
             
             echo "🚀 Deploying from Registry: $IMAGE_REGISTRY"
             
-            docker compose pull
-            docker compose up -d --remove-orphans
+            docker compose --env-file .env.production pull
+            docker compose --env-file .env.production up -d --remove-orphans
             
             # 清理未使用的镜像
             docker image prune -f
@@ -409,6 +401,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
@@ -421,6 +415,8 @@ jobs:
           ssh-keyscan -H ${{ secrets.PROD_HOST }} >> ~/.ssh/known_hosts
 
       - name: Create and copy deployment files
+        env:
+          DEPLOY_ENV_FILE: ${{ secrets.PROD_ENV_FILE }}
         run: |
           # 创建临时目录存放部署文件
           DEPLOY_TMP=$(mktemp -d)
@@ -428,29 +424,13 @@ jobs:
 
           # 复制 docker-compose.yml
           cp backend/docker-compose.yml "$DEPLOY_TMP/docker-compose.yml"
-          
-          # 使用 heredoc 安全写入敏感文件
-          cat > "$DEPLOY_TMP/cert.pem" << 'EOF'
-          ${{ secrets.PROD_SSL_CERT }}
-          EOF
-          
-          cat > "$DEPLOY_TMP/private.key" << 'EOF'
-          ${{ secrets.PROD_SSL_KEY }}
-          EOF
-          
-          cat > "$DEPLOY_TMP/.env" << 'EOF'
-          ${{ secrets.PROD_ENV_FILE }}
-          EOF
-          
-          cat > "$DEPLOY_TMP/nginx.conf" << 'EOF'
-          ${{ secrets.PROD_NGINX_CONF }}
-          EOF
+          cp backend/nginx.conf "$DEPLOY_TMP/nginx.conf"
+          printf '%s\n' "$DEPLOY_ENV_FILE" > "$DEPLOY_TMP/.env.production"
+          chmod 600 "$DEPLOY_TMP/.env.production"
           
           # 复制文件到服务器
           scp "$DEPLOY_TMP/docker-compose.yml" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/docker-compose.yml"
-          scp "$DEPLOY_TMP/cert.pem" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/certs/cert.pem"
-          scp "$DEPLOY_TMP/private.key" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/certs/private.key"
-          scp "$DEPLOY_TMP/.env" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/.env"
+          scp "$DEPLOY_TMP/.env.production" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/.env.production"
           scp "$DEPLOY_TMP/nginx.conf" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/nginx.conf"
         shell: bash
 
@@ -465,27 +445,26 @@ jobs:
             cd ${{ secrets.PROD_DEPLOY_PATH }}
 
             # Fail fast if required env vars are missing
-            if ! grep -q '^REDIS_PASSWORD=' .env; then
-              echo "❌ Missing REDIS_PASSWORD in .env" >&2
+            if ! grep -q '^REDIS_PASSWORD=' .env.production; then
+              echo "❌ Missing REDIS_PASSWORD in .env.production" >&2
               exit 1
             fi
             
-            # 设置证书权限
-            chmod 600 certs/private.key
-            chmod 644 certs/cert.pem
+            chmod 600 .env.production
+            docker compose --env-file .env.production config --quiet
 
             # 生产环境同样登录阿里云
             echo "${{ secrets.ALIYUN_PASSWORD }}" | docker login ${{ env.ALIYUN_REGISTRY }} -u "${{ secrets.ALIYUN_USERNAME }}" --password-stdin
 
-            export TAG=latest
+            export TAG="${{ env.DEPLOY_IMAGE_TAG }}"
             
             # 生产环境同样指定阿里云源
             export IMAGE_REGISTRY="${{ env.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}"
             
             echo "🚀 Deploying from Registry: $IMAGE_REGISTRY"
             
-            docker compose pull
-            docker compose up -d --remove-orphans
+            docker compose --env-file .env.production pull
+            docker compose --env-file .env.production up -d --remove-orphans
             
             docker image prune -f
             echo "✅ Production deployment completed at $(date)"
