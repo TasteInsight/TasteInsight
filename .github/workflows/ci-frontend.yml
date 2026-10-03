@@ -1,16 +1,7 @@
 name: CI - Frontend
 
 on:
-  push:
-    branches: [main, dev]
-    paths:
-      - 'frontend-web/**'
-      - '.github/workflows/ci-frontend.yml'
-  pull_request:
-    branches: [main, dev]
-    paths:
-      - 'frontend-web/**'
-      - '.github/workflows/ci-frontend.yml'
+  workflow_call:
 
 env:
   NODE_VERSION: '22'
@@ -46,6 +37,5 @@ jobs:
       - name: Build
         run: pnpm build
 
-      # TODO: Enable tests when they are available
-      # - name: Run Unit Tests
-      #   run: pnpm test run
+      - name: Run unit tests
+        run: pnpm test:unit

@@ -5,7 +5,7 @@ on:
   #    - push 到 main → CI 成功 → 自动部署生产
   #    - push 到 dev  → CI 成功 → 自动部署开发
   workflow_run:
-    workflows: ["CI - Backend", "CI - Frontend"]
+    workflows: ["CI - Required Checks"]
     types:
       - completed
     branches: [main, dev]
@@ -55,39 +55,24 @@ jobs:
   check-ci:
     name: Check CI Status
     runs-on: ubuntu-latest
-    # 总是运行，在步骤中检查分支和 CI 状态
+    permissions:
+      contents: read
     outputs:
       should_deploy: ${{ steps.check.outputs.should_deploy }}
-      ci_branch: ${{ steps.check.outputs.ci_branch }}
     steps:
+      - name: Checkout deployment policy
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
       - name: Check CI result
         id: check
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_run" ]; then
-            CI_BRANCH="${{ github.event.workflow_run.head_branch }}"
-            echo "ci_branch=${CI_BRANCH}" >> $GITHUB_OUTPUT
-            
-            # 验证分支是否在允许的列表中
-            if [ "$CI_BRANCH" != "main" ] && [ "$CI_BRANCH" != "dev" ]; then
-              echo "should_deploy=false" >> $GITHUB_OUTPUT
-              echo "❌ CI branch '$CI_BRANCH' is not main or dev, skipping deployment"
-              exit 0
-            fi
-            
-            # 检查 CI 是否成功
-            if [ "${{ github.event.workflow_run.conclusion }}" != "success" ]; then
-              echo "should_deploy=false" >> $GITHUB_OUTPUT
-              echo "❌ CI failed on branch '$CI_BRANCH', skipping deployment"
-              exit 0
-            fi
-            
-            echo "should_deploy=true" >> $GITHUB_OUTPUT
-            echo "✅ CI passed on branch '$CI_BRANCH', proceeding with deployment"
-          else
-            echo "should_deploy=true" >> $GITHUB_OUTPUT
-            echo "ci_branch=" >> $GITHUB_OUTPUT
-            echo "📦 Tag push or manual trigger, proceeding with deployment"
-          fi
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const shouldDeploy = require('./.github/scripts/deployment-gate.cjs');
+            const allowed = await shouldDeploy({ github, context });
+            core.setOutput('should_deploy', String(allowed));
+            core.info(allowed ? 'Deployment checks passed' : 'Deployment skipped');
 
   # 构建后端镜像
   build-backend:

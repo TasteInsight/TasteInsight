@@ -1,16 +1,7 @@
 name: CI - Backend
 
 on:
-  push:
-    branches: [main, dev]
-    paths:
-      - 'backend/**'
-      - '.github/workflows/ci-backend.yml'
-  pull_request:
-    branches: [main, dev]
-    paths:
-      - 'backend/**'
-      - '.github/workflows/ci-backend.yml'
+  workflow_call:
 
 env:
   NODE_VERSION: '22'
@@ -58,6 +49,9 @@ jobs:
 
       - name: Check formatting
         run: pnpm format --check
+
+      - name: Run unit tests
+        run: pnpm test:unit --runInBand
 
       - name: Build
         run: pnpm build
