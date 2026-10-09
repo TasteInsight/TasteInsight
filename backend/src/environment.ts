@@ -1,3 +1,9 @@
+function stringSetting(value: unknown, key: string, fallback = ''): string {
+  const input = value ?? fallback;
+  if (typeof input !== 'string') throw new Error(`${key} must be a string`);
+  return input;
+}
+
 function integerSetting(
   value: unknown,
   key: string,
@@ -23,8 +29,9 @@ export function booleanSetting(value: unknown, key: string): boolean {
 }
 
 export function mockAuthEnabled(environment: Record<string, unknown>): boolean {
+  const NODE_ENV = environment.NODE_ENV;
   return (
-    ['development', 'test'].includes(String(environment.NODE_ENV)) &&
+    (NODE_ENV === 'development' || NODE_ENV === 'test') &&
     booleanSetting(environment.ENABLE_MOCK_AUTH, 'ENABLE_MOCK_AUTH')
   );
 }
@@ -52,14 +59,17 @@ function origin(value: string, key: string): string {
 }
 
 export function corsOrigins(environment: Record<string, unknown>): string[] {
-  const allowed = String(environment.CORS_ALLOWED_ORIGINS ?? '')
+  const allowed = stringSetting(
+    environment.CORS_ALLOWED_ORIGINS,
+    'CORS_ALLOWED_ORIGINS',
+  )
     .split(',')
     .map((v) => v.trim())
     .filter(Boolean)
     .map((v) => origin(v, 'CORS_ALLOWED_ORIGINS'));
   if (environment.APP_URL) {
     try {
-      const appUrl = new URL(String(environment.APP_URL));
+      const appUrl = new URL(stringSetting(environment.APP_URL, 'APP_URL'));
       if (appUrl.username || appUrl.password) throw new Error();
       allowed.push(origin(appUrl.origin, 'APP_URL'));
     } catch {
@@ -93,8 +103,12 @@ const placeholder = /^(?:change[-_]me|your[-_])|placeholder/i;
 export function validateEnvironment(
   environment: Record<string, unknown>,
 ): Record<string, unknown> {
-  const NODE_ENV = environment.NODE_ENV ?? 'development';
-  if (!['development', 'test', 'production'].includes(String(NODE_ENV))) {
+  const NODE_ENV = stringSetting(
+    environment.NODE_ENV,
+    'NODE_ENV',
+    'development',
+  );
+  if (!['development', 'test', 'production'].includes(NODE_ENV)) {
     throw new Error('NODE_ENV must be development, test or production');
   }
   const ENABLE_MOCK_AUTH = booleanSetting(
@@ -176,8 +190,12 @@ export function validateEnvironment(
         );
     }
   }
-  const storage = environment.UPLOAD_STORAGE_TYPE ?? 'local';
-  if (!['local', 'oss'].includes(String(storage)))
+  const storage = stringSetting(
+    environment.UPLOAD_STORAGE_TYPE,
+    'UPLOAD_STORAGE_TYPE',
+    'local',
+  );
+  if (!['local', 'oss'].includes(storage))
     throw new Error('UPLOAD_STORAGE_TYPE must be local or oss');
   if (storage === 'oss')
     for (const key of [

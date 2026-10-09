@@ -1,4 +1,8 @@
-import { validateEnvironment } from './environment';
+import {
+  corsOrigins,
+  mockAuthEnabled,
+  validateEnvironment,
+} from './environment';
 
 describe('validateEnvironment', () => {
   const production = {
@@ -12,6 +16,48 @@ describe('validateEnvironment', () => {
     WECHAT_APPID: 'wx-app',
     WECHAT_SECRET: 'wx-secret',
   };
+  it.each([undefined, null])(
+    'retains defaults for nullish text settings %s',
+    (value) => {
+      const environment = {
+        NODE_ENV: value,
+        UPLOAD_STORAGE_TYPE: value,
+        CORS_ALLOWED_ORIGINS: value,
+        APP_URL: value,
+      };
+      expect(validateEnvironment(environment)).toMatchObject({
+        NODE_ENV: 'development',
+      });
+      expect(corsOrigins(environment)).toEqual([]);
+    },
+  );
+  it.each(['NODE_ENV', 'UPLOAD_STORAGE_TYPE'])(
+    'rejects an empty %s instead of using a default',
+    (key) => {
+      expect(() => validateEnvironment({ [key]: '' })).toThrow(key);
+    },
+  );
+  it('accepts empty optional browser origin settings', () => {
+    const environment = { CORS_ALLOWED_ORIGINS: '', APP_URL: '' };
+    expect(() => validateEnvironment(environment)).not.toThrow();
+    expect(corsOrigins(environment)).toEqual([]);
+  });
+  it.each([
+    { key: 'NODE_ENV', value: ['production'] },
+    { key: 'UPLOAD_STORAGE_TYPE', value: ['oss'] },
+    { key: 'CORS_ALLOWED_ORIGINS', value: ['https://portal.example.org'] },
+    { key: 'APP_URL', value: ['https://api.example.org'] },
+  ])('rejects a non-string $key before coercion', ({ key, value }) => {
+    expect(() => validateEnvironment({ [key]: value })).toThrow(key);
+  });
+  it('does not coerce a non-string environment to enable mock authentication', () => {
+    expect(
+      mockAuthEnabled({
+        NODE_ENV: ['development'],
+        ENABLE_MOCK_AUTH: true,
+      }),
+    ).toBe(false);
+  });
   it.each([
     ['NODE_ENV', 'prodution'],
     ['ENABLE_MOCK_AUTH', 'true'],
