@@ -5,24 +5,35 @@ export interface PermissionChecker {
 // 根据权限获取第一个可访问的页面
 export function getFirstAccessibleRoute(authStore: PermissionChecker): string {
   const routePriority = [
-    { path: '/single-add', permission: 'dish:view' },
-    { path: '/modify-dish', permission: 'dish:view' },
-    { path: '/review-dish', permission: 'upload:approve' },
-    { path: '/add-canteen', permission: 'canteen:view' },
-    { path: '/user-manage', permission: 'admin:view' },
-    { path: '/news-manage', permission: 'news:view' },
-    { path: '/report-manage', permission: 'report:handle' },
-    { path: '/comment-manage', permission: 'review:delete' },
-    { path: '/review-manage', permission: 'review:approve' },
-    { path: '/config-manage', permission: 'config:view' },
-    { path: '/experiment-manage', permission: 'experiment:view' },
+    { path: '/single-add', permissions: ['dish:create'] },
+    { path: '/modify-dish', permissions: ['dish:view'] },
+    { path: '/review-dish', permissions: ['upload:approve'] },
+    { path: '/add-canteen', permissions: ['canteen:view'] },
+    { path: '/user-manage', permissions: ['admin:view'] },
+    { path: '/news-manage', permissions: ['news:view'] },
+    { path: '/report-manage', permissions: ['report:handle'] },
+    {
+      path: '/comment-manage',
+      permissions: ['review:delete', 'comment:delete'],
+      allPermissions: ['dish:view'],
+    },
+    { path: '/review-manage', permissions: ['review:approve', 'comment:approve'] },
+    { path: '/config-manage', permissions: ['config:view'] },
+    { path: '/experiment-manage', permissions: ['experiment:view'] },
   ]
 
   for (const route of routePriority) {
-    if (authStore.hasPermission(route.permission)) {
+    const hasAnyPermission = route.permissions.some((permission) =>
+      authStore.hasPermission(permission),
+    )
+    const hasAllPermissions =
+      !route.allPermissions ||
+      route.allPermissions.every((permission) => authStore.hasPermission(permission))
+
+    if (hasAnyPermission && hasAllPermissions) {
       return route.path
     }
   }
 
-  return '/single-add'
+  return '/forbidden'
 }

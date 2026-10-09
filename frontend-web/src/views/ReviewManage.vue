@@ -11,6 +11,7 @@
       <div class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
         <div class="flex items-center space-x-4">
           <button
+            v-if="canReview"
             class="px-6 py-2 rounded-lg font-medium transition duration-200"
             :class="
               activeTab === 'reviews'
@@ -19,10 +20,11 @@
             "
             @click="switchTab('reviews')"
           >
-            <span class="iconify inline-block mr-2" data-icon="carbon:star"></span>
+            <AppIcon class="iconify inline-block mr-2" icon="carbon:star"></AppIcon>
             评价审核
           </button>
           <button
+            v-if="canComment"
             class="px-6 py-2 rounded-lg font-medium transition duration-200"
             :class="
               activeTab === 'comments'
@@ -31,7 +33,7 @@
             "
             @click="switchTab('comments')"
           >
-            <span class="iconify inline-block mr-2" data-icon="carbon:chat"></span>
+            <AppIcon class="iconify inline-block mr-2" icon="carbon:chat"></AppIcon>
             评论审核
           </button>
         </div>
@@ -53,10 +55,10 @@
           <tbody class="divide-y divide-gray-200">
             <tr v-if="isLoadingReviews">
               <td colspan="6" class="py-8 text-center text-gray-500">
-                <span
+                <AppIcon
                   class="iconify inline-block text-2xl animate-spin"
-                  data-icon="mdi:loading"
-                ></span>
+                  icon="mdi:loading"
+                ></AppIcon>
                 <span class="ml-2">加载中...</span>
               </td>
             </tr>
@@ -98,7 +100,7 @@
               <td class="py-4 px-6">
                 <div class="flex items-center">
                   <span class="text-yellow-500 mr-1">
-                    <span class="iconify" data-icon="carbon:star-filled"></span>
+                    <AppIcon class="iconify" icon="carbon:star-filled"></AppIcon>
                   </span>
                   <span class="font-medium">{{ review.rating }}</span>
                 </div>
@@ -121,7 +123,7 @@
                   class="px-4 py-1 bg-tsinghua-purple text-white rounded text-sm hover:bg-tsinghua-dark transition duration-200 flex items-center justify-center mx-auto"
                   @click="openReviewDetail(review)"
                 >
-                  <span class="iconify inline-block mr-1" data-icon="carbon:view" style="vertical-align: middle;"></span>
+                  <AppIcon class="iconify inline-block mr-1" icon="carbon:view" style="vertical-align: middle;"></AppIcon>
                   详情
                 </button>
               </td>
@@ -146,10 +148,10 @@
           <tbody class="divide-y divide-gray-200">
             <tr v-if="isLoadingComments">
               <td colspan="6" class="py-8 text-center text-gray-500">
-                <span
+                <AppIcon
                   class="iconify inline-block text-2xl animate-spin"
-                  data-icon="mdi:loading"
-                ></span>
+                  icon="mdi:loading"
+                ></AppIcon>
                 <span class="ml-2">加载中...</span>
               </td>
             </tr>
@@ -203,7 +205,7 @@
                   class="px-4 py-1 bg-tsinghua-purple text-white rounded text-sm hover:bg-tsinghua-dark transition duration-200 flex items-center justify-center mx-auto"
                   @click="openCommentDetail(comment)"
                 >
-                  <span class="iconify inline-block mr-1" data-icon="carbon:view" style="vertical-align: middle;"></span>
+                  <AppIcon class="iconify inline-block mr-1" icon="carbon:view" style="vertical-align: middle;"></AppIcon>
                   详情
                 </button>
               </td>
@@ -239,14 +241,14 @@
         <!-- 对话框头部 -->
         <div class="px-8 py-5 border-b border-gray-200 bg-white flex items-center justify-between">
           <h3 class="text-xl font-semibold text-gray-900 flex items-center">
-            <span class="iconify inline-block mr-3 text-tsinghua-purple" data-icon="carbon:star" style="font-size: 24px;"></span>
+            <AppIcon class="iconify inline-block mr-3 text-tsinghua-purple" icon="carbon:star" style="font-size: 24px;"></AppIcon>
             评价详情
           </h3>
           <button
             class="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg p-1.5 transition"
             @click="closeReviewDetail"
           >
-            <span class="iconify text-xl" data-icon="carbon:close"></span>
+            <AppIcon class="iconify text-xl" icon="carbon:close"></AppIcon>
           </button>
         </div>
 
@@ -277,7 +279,7 @@
                   <div class="text-xs text-gray-400 uppercase tracking-wide">评分</div>
                   <div class="flex items-center">
                     <span class="text-yellow-500 mr-1">
-                      <span class="iconify" data-icon="carbon:star-filled"></span>
+                      <AppIcon class="iconify" icon="carbon:star-filled"></AppIcon>
                     </span>
                     <span class="text-sm font-medium text-gray-900">{{ selectedReview.rating }}</span>
                   </div>
@@ -341,7 +343,7 @@
                       class="w-full h-full object-cover"
                     />
                     <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition flex items-center justify-center">
-                      <span class="iconify text-white text-2xl opacity-0 group-hover:opacity-100 transition" data-icon="carbon:zoom-in"></span>
+                      <AppIcon class="iconify text-white text-2xl opacity-0 group-hover:opacity-100 transition" icon="carbon:zoom-in"></AppIcon>
                     </div>
                   </div>
                 </div>
@@ -389,7 +391,7 @@
               :disabled="!authStore.hasPermission('review:approve') || isSubmitting"
               :title="!authStore.hasPermission('review:approve') ? '无权限审核评价' : '拒绝评价'"
             >
-              <span class="iconify inline-block mr-1.5" data-icon="carbon:close" style="font-size: 16px;"></span>
+              <AppIcon class="iconify inline-block mr-1.5" icon="carbon:close" style="font-size: 16px;"></AppIcon>
               拒绝
             </button>
             <button
@@ -398,18 +400,18 @@
               :disabled="!authStore.hasPermission('review:approve') || isSubmitting"
               :title="!authStore.hasPermission('review:approve') ? '无权限审核评价' : '通过评价'"
             >
-              <span
+              <AppIcon
                 v-if="isSubmitting"
                 class="iconify inline-block mr-1.5 animate-spin"
-                data-icon="mdi:loading"
+                icon="mdi:loading"
                 style="font-size: 16px;"
-              ></span>
-              <span v-else class="iconify inline-block mr-1.5" data-icon="carbon:checkmark" style="font-size: 16px;"></span>
+              ></AppIcon>
+              <AppIcon v-else class="iconify inline-block mr-1.5" icon="carbon:checkmark" style="font-size: 16px;"></AppIcon>
               通过
             </button>
           </div>
           <div v-else class="text-sm text-gray-500 text-center py-2">
-            <span class="iconify inline-block mr-1" data-icon="carbon:checkmark-filled" style="color: #10b981;"></span>
+            <AppIcon class="iconify inline-block mr-1" icon="carbon:checkmark-filled" style="color: #10b981;"></AppIcon>
             该评价已{{ selectedReview.status === 'approved' ? '通过' : '拒绝' }}审核
           </div>
         </div>
@@ -426,14 +428,14 @@
         <!-- 对话框头部 -->
         <div class="px-8 py-5 border-b border-gray-200 bg-white flex items-center justify-between">
           <h3 class="text-xl font-semibold text-gray-900 flex items-center">
-            <span class="iconify inline-block mr-3 text-tsinghua-purple" data-icon="carbon:chat" style="font-size: 24px;"></span>
+            <AppIcon class="iconify inline-block mr-3 text-tsinghua-purple" icon="carbon:chat" style="font-size: 24px;"></AppIcon>
             评论详情
           </h3>
           <button
             class="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg p-1.5 transition"
             @click="closeCommentDetail"
           >
-            <span class="iconify text-xl" data-icon="carbon:close"></span>
+            <AppIcon class="iconify text-xl" icon="carbon:close"></AppIcon>
           </button>
         </div>
 
@@ -530,7 +532,7 @@
               :disabled="!authStore.hasPermission('comment:approve') || isSubmitting"
               :title="!authStore.hasPermission('comment:approve') ? '无权限审核评论' : '拒绝评论'"
             >
-              <span class="iconify inline-block mr-1.5" data-icon="carbon:close" style="font-size: 16px;"></span>
+              <AppIcon class="iconify inline-block mr-1.5" icon="carbon:close" style="font-size: 16px;"></AppIcon>
               拒绝
             </button>
             <button
@@ -539,18 +541,18 @@
               :disabled="!authStore.hasPermission('comment:approve') || isSubmitting"
               :title="!authStore.hasPermission('comment:approve') ? '无权限审核评论' : '通过评论'"
             >
-              <span
+              <AppIcon
                 v-if="isSubmitting"
                 class="iconify inline-block mr-1.5 animate-spin"
-                data-icon="mdi:loading"
+                icon="mdi:loading"
                 style="font-size: 16px;"
-              ></span>
-              <span v-else class="iconify inline-block mr-1.5" data-icon="carbon:checkmark" style="font-size: 16px;"></span>
+              ></AppIcon>
+              <AppIcon v-else class="iconify inline-block mr-1.5" icon="carbon:checkmark" style="font-size: 16px;"></AppIcon>
               通过
             </button>
           </div>
           <div v-else class="text-sm text-gray-500 text-center py-2">
-            <span class="iconify inline-block mr-1" data-icon="carbon:checkmark-filled" style="color: #10b981;"></span>
+            <AppIcon class="iconify inline-block mr-1" icon="carbon:checkmark-filled" style="color: #10b981;"></AppIcon>
             该评论已{{ selectedComment.status === 'approved' ? '通过' : '拒绝' }}审核
           </div>
         </div>
@@ -570,7 +572,7 @@
             @click="closeRejectReviewModal"
             class="text-gray-400 hover:text-gray-500 transition-colors"
           >
-            <span class="iconify text-xl" data-icon="carbon:close"></span>
+            <AppIcon class="iconify text-xl" icon="carbon:close"></AppIcon>
           </button>
         </div>
 
@@ -602,11 +604,11 @@
             class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200 flex items-center"
             :disabled="isSubmitting || !rejectReviewReason.trim()"
           >
-            <span
+            <AppIcon
               v-if="isSubmitting"
               class="iconify animate-spin mr-2"
-              data-icon="mdi:loading"
-            ></span>
+              icon="mdi:loading"
+            ></AppIcon>
             确认拒绝
           </button>
         </div>
@@ -626,7 +628,7 @@
             @click="closeRejectCommentModal"
             class="text-gray-400 hover:text-gray-500 transition-colors"
           >
-            <span class="iconify text-xl" data-icon="carbon:close"></span>
+            <AppIcon class="iconify text-xl" icon="carbon:close"></AppIcon>
           </button>
         </div>
 
@@ -658,11 +660,11 @@
             class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200 flex items-center"
             :disabled="isSubmitting || !rejectCommentReason.trim()"
           >
-            <span
+            <AppIcon
               v-if="isSubmitting"
               class="iconify animate-spin mr-2"
-              data-icon="mdi:loading"
-            ></span>
+              icon="mdi:loading"
+            ></AppIcon>
             确认拒绝
           </button>
         </div>
@@ -685,7 +687,7 @@
           class="absolute top-4 right-4 z-10 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition"
           @click="closeImagePreview"
         >
-          <span class="iconify text-2xl" data-icon="carbon:close"></span>
+          <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
         </button>
         
         <!-- 图片 -->
@@ -704,7 +706,7 @@
           @click.stop="previousImage"
           :disabled="imagePreview.currentIndex === 0"
         >
-          <span class="iconify text-2xl" data-icon="carbon:chevron-left"></span>
+          <AppIcon class="iconify text-2xl" icon="carbon:chevron-left"></AppIcon>
         </button>
         <button
           v-if="imagePreview.images.length > 1"
@@ -714,7 +716,7 @@
           @click.stop="nextImage"
           :disabled="imagePreview.currentIndex === imagePreview.images.length - 1"
         >
-          <span class="iconify text-2xl" data-icon="carbon:chevron-right"></span>
+          <AppIcon class="iconify text-2xl" icon="carbon:chevron-right"></AppIcon>
         </button>
         
         <!-- 图片计数 -->
@@ -749,6 +751,8 @@ export default defineComponent({
   },
   setup() {
     const authStore = useAuthStore()
+    const canReview = authStore.hasPermission('review:approve')
+    const canComment = authStore.hasPermission('comment:approve')
     
     // 默认状态定义
     const defaultState = {
@@ -759,7 +763,14 @@ export default defineComponent({
     
     // 从缓存恢复状态
     const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
-    const activeTab = ref<'reviews' | 'comments'>(restoredState.activeTab)
+    const restoredTab = restoredState.activeTab as 'reviews' | 'comments'
+    const activeTab = ref<'reviews' | 'comments'>(
+      (restoredTab === 'reviews' && canReview) || (restoredTab === 'comments' && canComment)
+        ? restoredTab
+        : canReview
+          ? 'reviews'
+          : 'comments',
+    )
     
     // 评价相关
     const reviews = ref<PendingReview[]>([])
@@ -826,6 +837,7 @@ export default defineComponent({
     }
 
     const switchTab = (tab: 'reviews' | 'comments') => {
+      if ((tab === 'reviews' && !canReview) || (tab === 'comments' && !canComment)) return
       activeTab.value = tab
       saveState() // 保存状态
       if (tab === 'reviews') {
@@ -928,7 +940,7 @@ export default defineComponent({
 
       isSubmitting.value = true
       try {
-        const response = await reviewApi.approveReview(selectedReview.value.id)
+        const response = await reviewApi.approveReview(selectedReview.value.id, { expectedUpdatedAt: selectedReview.value.updatedAt })
         if (response.code === 200) {
           showAlert('审核通过')
           await loadReviews()
@@ -938,7 +950,7 @@ export default defineComponent({
         }
       } catch (error) {
         console.error('审核评价失败:', error)
-        showAlert('审核评价失败，请重试')
+        showAlert(error instanceof Error ? error.message : '审核评价失败，请重试')
       } finally {
         isSubmitting.value = false
       }
@@ -957,7 +969,10 @@ export default defineComponent({
 
       isSubmitting.value = true
       try {
-        const response = await reviewApi.rejectReview(selectedReview.value.id, rejectReviewReason.value)
+        const response = await reviewApi.rejectReview(selectedReview.value.id, {
+          reason: rejectReviewReason.value,
+          expectedUpdatedAt: selectedReview.value.updatedAt,
+        })
         if (response.code === 200) {
           showAlert('已拒绝')
           await loadReviews()
@@ -968,7 +983,7 @@ export default defineComponent({
         }
       } catch (error) {
         console.error('拒绝评价失败:', error)
-        showAlert('拒绝评价失败，请重试')
+        showAlert(error instanceof Error ? error.message : '拒绝评价失败，请重试')
       } finally {
         isSubmitting.value = false
       }
@@ -1095,7 +1110,11 @@ export default defineComponent({
     }
 
     onMounted(() => {
-      loadReviews()
+      if (activeTab.value === 'reviews') {
+        loadReviews()
+      } else {
+        loadComments()
+      }
       window.addEventListener('keydown', handleKeyDown)
     })
 
@@ -1114,6 +1133,8 @@ export default defineComponent({
 
     return {
       activeTab,
+      canReview,
+      canComment,
       reviews,
       isLoadingReviews,
       currentPageReviews,
@@ -1158,4 +1179,3 @@ export default defineComponent({
   },
 })
 </script>
-

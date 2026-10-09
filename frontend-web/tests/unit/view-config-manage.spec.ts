@@ -48,8 +48,6 @@ vi.mock('@/composables/useModal', () => ({
 
 import ConfigManage from '../../src/views/ConfigManage.vue'
 
-const flushPromises = () => new Promise<void>((resolve) => queueMicrotask(() => resolve()))
-
 describe('views/ConfigManage', () => {
   beforeEach(() => {
     vi.useRealTimers()
@@ -57,6 +55,33 @@ describe('views/ConfigManage', () => {
 
     mocks.authStoreMock.user = null
     mocks.authStoreMock.hasPermission = vi.fn(() => true)
+    mocks.canteenApiMock.getCanteens.mockResolvedValue({
+      code: 200, data: { items: [], meta: { page: 1, pageSize: 100, total: 0, totalPages: 0 } },
+    })
+  })
+
+  it('shows manual approval as off by default and saves an explicit opt-in as autoApprove=false', async () => {
+    mocks.configApiMock.getGlobalConfig.mockResolvedValue({
+      code: 200, data: { config: null, templates: [
+        { key: 'review.autoApprove', defaultValue: 'true' },
+        { key: 'comment.autoApprove', defaultValue: 'true' },
+      ] },
+    })
+    mocks.configApiMock.updateGlobalConfig.mockResolvedValue({ code: 200, data: null })
+    const wrapper = mount(ConfigManage, { global: { stubs: { Header: true } } })
+    try {
+      await flushPromises()
+      const review = wrapper.get('input[aria-label="评价人工审核"]')
+      const comment = wrapper.get('input[aria-label="回复人工审核"]')
+      expect((review.element as HTMLInputElement).checked).toBe(false)
+      expect((comment.element as HTMLInputElement).checked).toBe(false)
+      await review.setValue(true)
+      await flushPromises()
+      expect(mocks.configApiMock.updateGlobalConfig).toHaveBeenCalledWith({ key: 'review.autoApprove', value: 'false' })
+      await comment.setValue(true)
+      await flushPromises()
+      expect(mocks.configApiMock.updateGlobalConfig).toHaveBeenCalledWith({ key: 'comment.autoApprove', value: 'false' })
+    } finally { wrapper.unmount() }
   })
 
   it('loads global config and falls back to template defaults', async () => {
@@ -88,7 +113,7 @@ describe('views/ConfigManage', () => {
     expect(wrapper.vm.currentCanteenInfo).toContain('全局')
   })
 
-  it('loads canteen effective config and reads key values (missing key => false)', async () => {
+  it('loads canteen effective config and reads key values (missing key => automatic approval)', async () => {
     mocks.authStoreMock.user = { canteenId: 'c1', canteenName: '食堂A' }
 
     mocks.configApiMock.getEffectiveConfig.mockResolvedValue({
@@ -113,14 +138,14 @@ describe('views/ConfigManage', () => {
 
     expect(mocks.configApiMock.getEffectiveConfig).toHaveBeenCalledWith('c1')
     expect(wrapper.vm.reviewAutoApprove).toBe(true)
-    expect(wrapper.vm.commentAutoApprove).toBe(false)
+    expect(wrapper.vm.commentAutoApprove).toBe(true)
     expect(wrapper.vm.currentCanteenInfo).toContain('食堂A')
   })
 
   it('handles loadConfig failure and alerts', async () => {
     mocks.configApiMock.getGlobalConfig.mockResolvedValue({ code: 500, message: 'nope' })
 
-    mount(ConfigManage, {
+    const wrapper = mount(ConfigManage, {
       global: {
         stubs: {
           Header: defineComponent({ name: 'Header', template: '<div />' }),
@@ -130,6 +155,9 @@ describe('views/ConfigManage', () => {
 
     await flushPromises()
     expect(mocks.showAlertMock).toHaveBeenCalled()
+    expect((wrapper.get('input[aria-label="评价人工审核"]').element as HTMLInputElement).disabled).toBe(true)
+    expect((wrapper.get('input[aria-label="回复人工审核"]').element as HTMLInputElement).disabled).toBe(true)
+    wrapper.unmount()
   })
 
   it('rejects changes when lacking permission and restores value', async () => {

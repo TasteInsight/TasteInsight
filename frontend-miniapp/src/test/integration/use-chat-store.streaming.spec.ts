@@ -1,5 +1,6 @@
 /// <reference types="jest" />
 import { setActivePinia, createPinia } from 'pinia';
+jest.mock('@/api/modules/meal-plan', () => ({ createMealPlan: jest.fn() }));
 
 const mockGetStorageSync = jest.fn();
 const mockSetStorageSync = jest.fn();
@@ -13,6 +14,9 @@ const mockShowToast = jest.fn();
 
 // We'll control mock-adapter to enable USE_MOCK behavior
 jest.mock('@/mock/mock-adapter', () => ({ USE_MOCK: true }));
+jest.mock('@/store/modules/use-user-store', () => ({
+  useUserStore: () => ({ sessionVersion: 0, isLoggedIn: true, userInfo: { id: 'user' } }),
+}));
 
 jest.mock('@/api/modules/ai', () => ({
   createAISession: jest.fn(),

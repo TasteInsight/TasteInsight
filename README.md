@@ -78,8 +78,8 @@ TasteInsight/
 
 ### 环境要求
 
-- Node.js 22+
-- pnpm 8+
+- Node.js 22.13+
+- pnpm 11.21.0（与各子项目的 `packageManager` 一致）
 - PostgreSQL 15+
 - Redis 7+
 - Docker & Docker Compose（可选）
@@ -101,17 +101,21 @@ pnpm install
 
 # 配置环境变量
 cp .env.example .env
-# 编辑 .env 填写数据库、Redis、微信、OpenAI 等配置
+# 编辑 .env，默认连接 localhost:5434 的 pgvector PostgreSQL 和
+# localhost:6380 的 Redis
+
+# 如需由项目 Docker 提供本地基础设施
+docker compose -f docker-compose.local.yml up -d
 
 # 初始化数据库
-pnpm prisma generate
-pnpm prisma migrate deploy
+pnpm exec prisma generate
+pnpm exec prisma migrate deploy
 
 # 启动开发服务
 pnpm run start:dev
 ```
 
-后端服务启动在 http://localhost:3000，Swagger 文档在 http://localhost:3000/api
+后端服务启动在 http://localhost:3001。
 
 ### 3. 启动管理端前端
 
@@ -145,8 +149,13 @@ pnpm dev:mp-weixin
 
 ```bash
 cd backend
-docker-compose up -d
+# 全新部署；已有部署先按环境配置文档迁移原有变量
+cp .env.production.example .env.production
+# 替换所有 change-me 配置；当前网关为纯 HTTP
+docker compose --env-file .env.production up -d --build
 ```
+
+完整的开发/生产配置矩阵、Nginx 拓扑、冷启动和数据安全说明见 [环境配置与部署](./docs/环境配置与部署.md)。正常启动不要启用 `RUN_SEED`，seed 脚本会删除现有业务数据。
 
 ## 🧪 测试
 
@@ -159,6 +168,8 @@ cd backend
 pnpm run test:unit
 
 # E2E 测试
+cp .env.test.example .env.test
+# 填写独立 PostgreSQL 测试库的 DATABASE_URL；test:setup 会重建测试数据
 pnpm run test:setup
 pnpm run test:e2e
 pnpm run test:teardown
@@ -205,6 +216,7 @@ pnpm test:load
 - [后端开发规范](./docs/后端开发规范文档.md)
 - [前端开发规范](./docs/前端开发规范文档.md)
 - [数据库开发规范](./docs/数据库开发规范文档.md)
+- [环境配置与部署](./docs/环境配置与部署.md)
 
 
 ## 📄 许可证

@@ -35,7 +35,22 @@ describe('request utils', () => {
     mockUserStore = {
       token: null,
       refreshToken: null,
-      logoutAction: jest.fn(),
+      sessionVersion: 0,
+      logoutAction: jest.fn(() => {
+        mockUserStore.sessionVersion += 1;
+        mockUserStore.token = null;
+        mockUserStore.refreshToken = null;
+      }),
+      updateTokens: jest.fn((version: number, accessToken: string, refreshToken?: string) => {
+        if (version !== mockUserStore.sessionVersion) return false;
+        mockUserStore.token = accessToken;
+        mockSetStorageSync('token', accessToken);
+        if (refreshToken) {
+          mockUserStore.refreshToken = refreshToken;
+          mockSetStorageSync('refreshToken', refreshToken);
+        }
+        return true;
+      }),
     };
     (useUserStore as unknown as jest.Mock).mockReturnValue(mockUserStore);
 
@@ -79,6 +94,35 @@ describe('request utils', () => {
     expect(result).toEqual(responseData);
   });
 
+  it('does not print request or response payloads containing credentials', async () => {
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const requestSecret = 'password-secret-value';
+    const responseSecret = 'refresh-token-secret-value';
+    mockRequest.mockImplementation(opts => {
+      opts.success({
+        statusCode: 200,
+        data: { code: 200, data: { refreshToken: responseSecret } },
+      });
+    });
+
+    await request({
+      url: '/auth/admin/login',
+      method: 'POST',
+      data: { username: 'admin', password: requestSecret },
+    });
+
+    const serializedLogs = JSON.stringify([
+      ...logSpy.mock.calls,
+      ...errorSpy.mock.calls,
+    ]);
+    expect(serializedLogs).not.toContain(requestSecret);
+    expect(serializedLogs).not.toContain(responseSecret);
+
+    logSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
+
   it('should reject on business error (code != 200/201)', async () => {
     const responseData = { code: 400, message: 'Bad Request' };
     mockRequest.mockImplementation(opts => {
@@ -94,6 +138,15 @@ describe('request utils', () => {
     });
 
     await expect(request({ url: '/test' })).rejects.toThrow('网络开小差了，请稍后再试');
+  });
+
+  it('preserves timeout as a failed request with a retryable message', async () => {
+    mockRequest.mockImplementation(opts => {
+      opts.fail({ errMsg: 'request:fail timeout' });
+    });
+
+    await expect(request({ url: '/test' })).rejects.toThrow('请求超时，请重试');
+    expect(mockUserStore.logoutAction).not.toHaveBeenCalled();
   });
 
   it('should handle 401 and refresh token successfully', async () => {
@@ -166,11 +219,97 @@ describe('request utils', () => {
     expect(mockReLaunch).toHaveBeenCalledWith({ url: '/pages/login/index' });
   });
 
+  it('should not start another refresh when the retried request is still unauthorized', async () => {
+    mockUserStore.token = 'expired-token';
+    mockUserStore.refreshToken = 'valid-refresh-token';
+    let refreshRequests = 0;
+
+    mockRequest.mockImplementation((opts: any) => {
+      if (opts.url.includes('/auth/refresh')) {
+        refreshRequests += 1;
+        opts.success({
+          statusCode: 200,
+          data: {
+            code: 200,
+            data: { token: { accessToken: 'new-token', refreshToken: 'new-refresh-token' } },
+          },
+        });
+        return;
+      }
+
+      opts.success({ statusCode: 401, data: { code: 401 } });
+    });
+
+    await expect(request({ url: '/test' })).rejects.toThrow('登录已过期，请重新登录');
+
+    expect(refreshRequests).toBe(1);
+    expect(mockUserStore.logoutAction).toHaveBeenCalledTimes(1);
+  });
+
   it('should handle other HTTP errors (e.g., 500)', async () => {
     mockRequest.mockImplementation(opts => {
       opts.success({ statusCode: 500, data: { message: 'Server Error' } });
     });
 
     await expect(request({ url: '/test' })).rejects.toThrow('网络开小差了，请稍后再试');
+  });
+
+  it('preserves an HTTP status for page-level missing-resource states', async () => {
+    mockRequest.mockImplementation(opts => opts.success({statusCode:404,data:{message:'Not found'}}));
+    await expect(request({url:'/news/missing'})).rejects.toMatchObject({statusCode:404});
+  });
+
+  it('should not log sensitive request or response bodies', async () => {
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const secrets = [
+      'admin-password-do-not-log',
+      'wechat-code-do-not-log',
+      'access-token-do-not-log',
+      'refresh-token-do-not-log',
+      'server-body-do-not-log',
+    ];
+
+    try {
+      mockRequest
+        .mockImplementationOnce(opts => {
+          opts.success({
+            statusCode: 200,
+            data: {
+              code: 200,
+              data: {
+                accessToken: secrets[2],
+                refreshToken: secrets[3],
+              },
+            },
+          });
+        })
+        .mockImplementationOnce(opts => {
+          opts.success({
+            statusCode: 500,
+            data: { message: 'Server Error', debug: secrets[4] },
+          });
+        });
+
+      await request({
+        url: '/auth/admin/login',
+        method: 'POST',
+        data: { password: secrets[0], code: secrets[1] },
+      });
+      await expect(request({ url: '/test' })).rejects.toThrow(
+        '网络开小差了，请稍后再试'
+      );
+
+      const serializedConsoleCalls = JSON.stringify([
+        ...logSpy.mock.calls,
+        ...errorSpy.mock.calls,
+      ]);
+      secrets.forEach(secret => {
+        expect(serializedConsoleCalls).not.toContain(secret);
+      });
+    } finally {
+      logSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
   });
 });

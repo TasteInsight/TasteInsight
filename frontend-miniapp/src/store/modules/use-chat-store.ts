@@ -1,22 +1,148 @@
 import { defineStore } from 'pinia';
-import { ref, reactive } from 'vue';
-import { createAISession, streamAIChat, submitRecommendFeedback, deleteAISession } from '@/api/modules/ai';
+import { ref, reactive, watch } from 'vue';
+import { useUserStore } from './use-user-store';
+import {
+  createAISession,
+  streamAIChat,
+  submitRecommendFeedback,
+  deleteAISession,
+} from '@/api/modules/ai';
+import { createMealPlan } from '@/api/modules/meal-plan';
 import { USE_MOCK } from '../../mock/mock-adapter';
 import type {
   ChatRequest,
   RecommendFeedbackRequest,
   ComponentDishCard,
   ComponentMealPlanDraft,
+  ComponentPreferenceDraft,
   ComponentCanteenCard,
   ComponentWindowCard,
+  UserProfileUpdateRequest,
 } from '@/types/api';
 import type { AIScene } from '@/types/api';
+
+export type MealPlanCard = ComponentMealPlanDraft & { appliedStatus?: 'success' | 'failed' };
+export type PreferenceDraftCard = ComponentPreferenceDraft & {
+  status?: 'saving' | 'saved' | 'dismissed' | 'failed' | 'stale' | 'invalid';
+  error?: string;
+};
+export type ChatDeliveryStatus = 'sending' | 'received' | 'failed' | 'unconfirmed';
+
+const isRecord = (value: unknown): value is Record<string, any> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+const sameValue = (left: unknown, right: unknown): boolean => {
+  if (Array.isArray(left) && Array.isArray(right)) {
+    return JSON.stringify([...left].sort()) === JSON.stringify([...right].sort());
+  }
+  if (isRecord(left) && isRecord(right)) {
+    const keys = Object.keys(left);
+    return (
+      keys.length === Object.keys(right).length &&
+      keys.every(
+        key => Object.prototype.hasOwnProperty.call(right, key) && sameValue(left[key], right[key])
+      )
+    );
+  }
+  return left === right;
+};
+
+function isPreferenceUpdate(value: unknown): value is UserProfileUpdateRequest {
+  if (
+    !isRecord(value) ||
+    !Object.keys(value).length ||
+    Object.keys(value).some(key => key !== 'preferences' && key !== 'allergens')
+  )
+    return false;
+  const isList = (list: unknown) =>
+    Array.isArray(list) && list.every(item => typeof item === 'string' && item.trim().length > 0);
+  if ('allergens' in value && !isList(value.allergens)) return false;
+  if (!('preferences' in value)) return true;
+  const preferences = value.preferences;
+  if (!isRecord(preferences) || !Object.keys(preferences).length) return false;
+  return Object.entries(preferences).every(([key, setting]) => {
+    if (key === 'tagPreferences' || key === 'avoidIngredients') return isList(setting);
+    if (key === 'priceRange') {
+      return (
+        isRecord(setting) &&
+        Object.keys(setting).length === 2 &&
+        typeof setting.min === 'number' &&
+        Number.isFinite(setting.min) &&
+        setting.min >= 0 &&
+        typeof setting.max === 'number' &&
+        Number.isFinite(setting.max) &&
+        setting.max >= setting.min
+      );
+    }
+    if (key === 'tastePreferences') {
+      return (
+        isRecord(setting) &&
+        Object.keys(setting).length > 0 &&
+        Object.entries(setting).every(
+          ([taste, level]) =>
+            ['spicyLevel', 'sweetness', 'saltiness', 'oiliness'].includes(taste) &&
+            typeof level === 'number' &&
+            Number.isInteger(level) &&
+            level >= 0 &&
+            level <= 5
+        )
+      );
+    }
+    return false;
+  });
+}
+
+function preferenceValues(source: UserProfileUpdateRequest, touched: UserProfileUpdateRequest) {
+  const values: Record<string, any> = {};
+  if ('allergens' in touched) values.allergens = source.allergens;
+  if (touched.preferences) {
+    values.preferences = {};
+    for (const [key, setting] of Object.entries(touched.preferences)) {
+      const current = source.preferences?.[key as keyof typeof source.preferences];
+      const fields = isRecord(current) ? (current as Record<string, unknown>) : {};
+      values.preferences[key] = isRecord(setting)
+        ? Object.fromEntries(Object.keys(setting).map(field => [field, fields[field]]))
+        : current;
+    }
+  }
+  return values;
+}
+
+function validPreferenceDraft(draft: PreferenceDraftCard): boolean {
+  const before = draft.previewData?.before;
+  const after = draft.previewData?.after;
+  const action = draft.confirmAction;
+  if (
+    action?.api !== '/user/profile' ||
+    action.method !== 'PUT' ||
+    !isPreferenceUpdate(action.body) ||
+    !isPreferenceUpdate(before) ||
+    !isPreferenceUpdate(after)
+  )
+    return false;
+  const keys = (update: UserProfileUpdateRequest) => ({
+    root: Object.keys(update).sort(),
+    preferences: Object.keys(update.preferences || {}).sort(),
+  });
+  return (
+    sameValue(action.body, after) &&
+    sameValue(keys(before), keys(after)) &&
+    Object.entries(after.preferences || {}).every(([key, setting]) => {
+      if (!isRecord(setting)) return true;
+      const previous = before.preferences?.[key as keyof typeof before.preferences];
+      return (
+        isRecord(previous) &&
+        Object.keys(setting).every(field => Object.prototype.hasOwnProperty.call(previous, field))
+      );
+    })
+  );
+}
 
 // 消息段类型
 export type MessageSegment =
   | { type: 'text'; text: string }
   | { type: 'card_dish'; data: ComponentDishCard[] }
-  | { type: 'card_plan'; data: ComponentMealPlanDraft[] }
+  | { type: 'card_plan'; data: MealPlanCard[] }
+  | { type: 'card_preferences'; data: PreferenceDraftCard[] }
   | { type: 'card_canteen'; data: ComponentCanteenCard[] }
   | { type: 'card_window'; data: ComponentWindowCard[] };
 
@@ -26,7 +152,9 @@ export interface ChatMessage {
   type: 'user' | 'ai'; // 消息发送方
   content: MessageSegment[]; // 支持混排
   timestamp: number;
+  deliveryStatus?: ChatDeliveryStatus;
   isStreaming?: boolean; // 是否正在流式接收中
+  suggestions?: string[];
 }
 
 // 历史会话记录
@@ -38,8 +166,18 @@ export interface ChatHistoryEntry {
   messages: ChatMessage[];
 }
 
+type ChatStream = {
+  sessionId: string;
+  scene: AIScene;
+  messages: ChatMessage[];
+  userMessage: ChatMessage;
+  aiMessage: ChatMessage;
+  close?: () => void;
+};
+
 // 转换为 Pinia Setup Store
 export const useChatStore = defineStore('ai-chat', () => {
+  const userStore = useUserStore();
   // === Constants ===
   // 最大历史记录条数：限制存储大小，避免本地存储过大影响性能
   const MAX_HISTORY_ENTRIES = 20;
@@ -49,12 +187,13 @@ export const useChatStore = defineStore('ai-chat', () => {
   const aiLoading = ref(false); // AI 正在回复
   const sessionId = ref<string>('');
   const historyEntries = ref<ChatHistoryEntry[]>([]);
-  const currentStreamAbort = ref<(() => void) | null>(null);
-  const isStreamAborted = ref(false); // 添加标志，标记当前流是否被中止
-  const HISTORY_STORAGE_KEY = 'ai-chat-history';
-
-  // 载入本地历史
-  loadHistoryFromStorage();
+  let activeStream: ChatStream | null = null;
+  let historyOwner: string | null = null;
+  let conversationVersion = 0;
+  let sessionCreation: Promise<boolean> | null = null;
+  let pendingSend: object | null = null;
+  const pendingPlanApplications = new Set<string>();
+  const pendingPreferenceApplications = new Set<string>();
 
   // === Actions (声明为普通函数) ===
 
@@ -72,59 +211,51 @@ export const useChatStore = defineStore('ai-chat', () => {
   }
 
   function abortChat(showToast = true) {
-    console.log('[Chat Store] abortChat called, currentStreamAbort:', !!currentStreamAbort.value, 'showToast:', showToast);
-    
-    // 立即设置中止标志，防止回调继续处理数据
-    isStreamAborted.value = true;
-    
-    if (currentStreamAbort.value) {
-      currentStreamAbort.value();
-      currentStreamAbort.value = null;
-      
-      // 如果最后一条消息还在 streaming，将其标记为结束
-      const lastMsg = messages.value[messages.value.length - 1];
-      if (lastMsg && lastMsg.isStreaming) {
-        lastMsg.isStreaming = false;
-        
-        // 如果是自动终止（发送新消息），在消息末尾添加提示
-        if (!showToast && lastMsg.type === 'ai') {
-          const lastSegment = lastMsg.content[lastMsg.content.length - 1];
-          if (lastSegment && lastSegment.type === 'text') {
-            // 只在文本非空时添加提示
-            if (lastSegment.text.trim()) {
-              lastSegment.text += '\n\n_[回复被中断]_';
-            }
-          }
-        }
+    const stream = activeStream;
+    activeStream = null;
+    if (stream) {
+      if (stream.userMessage.deliveryStatus === 'sending') {
+        stream.userMessage.deliveryStatus = 'unconfirmed';
       }
-      
-      // 只在手动停止时显示提示，自动停止（发送新消息时）不显示
+      const wasStreaming = stream.aiMessage.isStreaming;
+      stream.aiMessage.isStreaming = false;
+      const lastSegment = stream.aiMessage.content[stream.aiMessage.content.length - 1];
+      if (!showToast && wasStreaming && lastSegment?.type === 'text' && lastSegment.text.trim()) {
+        lastSegment.text += '\n\n_[回复被中断]_';
+      }
+      upsertHistoryEntry(stream.sessionId, stream.scene, stream.messages);
+      stream.close?.();
       if (showToast) {
-        uni.showToast({ 
-          title: '已停止生成', 
+        uni.showToast({
+          title: '已停止生成',
           icon: 'none',
-          duration: 1500
+          duration: 1500,
         });
       }
     }
-    
+
     aiLoading.value = false;
   }
 
   // === History helpers ===
   function persistHistory() {
+    if (!historyOwner) return;
     try {
-      uni.setStorageSync(HISTORY_STORAGE_KEY, historyEntries.value);
+      uni.setStorageSync(`ai-chat-history:${historyOwner}`, historyEntries.value);
     } catch (e) {
       console.error('persistHistory failed', e);
     }
   }
 
   function loadHistoryFromStorage() {
+    if (!historyOwner) return;
     try {
-      const cached = uni.getStorageSync(HISTORY_STORAGE_KEY);
+      const cached = uni.getStorageSync(`ai-chat-history:${historyOwner}`);
       if (cached && Array.isArray(cached)) {
-        historyEntries.value = cached as ChatHistoryEntry[];
+        historyEntries.value = (cached as ChatHistoryEntry[]).map(entry => ({
+          ...entry,
+          messages: restoreMessages(entry.messages),
+        }));
       }
     } catch (e) {
       console.error('loadHistoryFromStorage failed', e);
@@ -133,6 +264,25 @@ export const useChatStore = defineStore('ai-chat', () => {
 
   function cloneMessages(msgs: ChatMessage[]) {
     return JSON.parse(JSON.stringify(msgs)) as ChatMessage[];
+  }
+
+  function restoreMessages(msgs: ChatMessage[]) {
+    const restored = cloneMessages(msgs);
+    for (const message of restored) {
+      if (message.type === 'user' && message.deliveryStatus === 'sending') {
+        message.deliveryStatus = 'unconfirmed';
+      }
+      for (const segment of message.content) {
+        if (segment.type !== 'card_preferences') continue;
+        for (const draft of segment.data) {
+          if (draft.status === 'saving') {
+            draft.status = 'failed';
+            draft.error = '上次保存结果未确认，请重试检查最新偏好。';
+          }
+        }
+      }
+    }
+    return restored;
   }
 
   function upsertHistoryEntry(session: string, scene: AIScene, msgs: ChatMessage[]) {
@@ -159,12 +309,215 @@ export const useChatStore = defineStore('ai-chat', () => {
   }
 
   function loadSessionFromHistory(session: string) {
-    const target = historyEntries.value.find(h => h.sessionId === session);
-    if (!target) return false;
-    messages.value = cloneMessages(target.messages);
+    const selected = historyEntries.value.find(h => h.sessionId === session);
+    if (!selected) return false;
+    abortChat(false);
+    conversationVersion += 1;
+    sessionCreation = null;
+    pendingSend = null;
+    const target = historyEntries.value.find(h => h.sessionId === session) || selected;
+    messages.value = restoreMessages(target.messages);
     sessionId.value = target.sessionId;
     setScene(target.scene);
     return true;
+  }
+
+  async function applyMealPlan(plan: MealPlanCard): Promise<boolean> {
+    const conversation = sessionId.value;
+    const session = userStore.sessionVersion;
+    const owner = historyOwner;
+    const ownsAccount = () => session === userStore.sessionVersion && owner === historyOwner;
+    // 消息和内容段只追加，卡片位置在历史记录的深拷贝中保持稳定。
+    let position: { message: number; segment: number; card: number } | undefined;
+    messages.value.some((message, messageIndex) =>
+      message.content.some((segment, segmentIndex) => {
+        if (segment.type !== 'card_plan') return false;
+        const card = segment.data.indexOf(plan);
+        if (card < 0) return false;
+        position = { message: messageIndex, segment: segmentIndex, card };
+        return true;
+      })
+    );
+    if (!position || plan.appliedStatus === 'success') return false;
+
+    const { message, segment, card } = position;
+    const application = JSON.stringify([conversation, message, segment, card]);
+    if (pendingPlanApplications.has(application)) return false;
+    pendingPlanApplications.add(application);
+
+    const recordStatus = (status: 'success' | 'failed') => {
+      plan.appliedStatus = status;
+      const updateCard = (target: ChatMessage[]) => {
+        const block = target[message]?.content[segment];
+        if (block?.type === 'card_plan' && block.data[card]) {
+          block.data[card].appliedStatus = status;
+        }
+      };
+      if (sessionId.value === conversation) {
+        updateCard(messages.value);
+        upsertHistoryEntry(conversation, currentScene.value, messages.value);
+      } else {
+        const entry = historyEntries.value.find(item => item.sessionId === conversation);
+        if (entry) {
+          updateCard(entry.messages);
+          persistHistory();
+        }
+      }
+    };
+
+    try {
+      const body = plan.confirmAction?.body;
+      const { startDate, endDate, mealTime, dishes } = body || {};
+      if (!startDate || !endDate || !mealTime || !Array.isArray(dishes) || dishes.length === 0) {
+        throw new Error('后端未返回可直接应用的规划参数（confirmAction.body）');
+      }
+      await createMealPlan({ startDate, endDate, mealTime, dishes });
+      if (!ownsAccount()) return false;
+      recordStatus('success');
+      try {
+        uni.$emit('meal-plan:changed');
+      } catch (error) {
+        console.debug('uni.$emit not available:', error);
+      }
+      return true;
+    } catch (error) {
+      if (!ownsAccount()) return false;
+      recordStatus('failed');
+      throw error;
+    } finally {
+      if (ownsAccount()) pendingPlanApplications.delete(application);
+    }
+  }
+
+  function locatePreferenceDraft(draft: PreferenceDraftCard) {
+    if (
+      !historyOwner ||
+      !sessionId.value ||
+      !userStore.isLoggedIn ||
+      historyOwner !== userStore.userInfo?.id
+    )
+      return;
+    for (let message = 0; message < messages.value.length; message++) {
+      const content = messages.value[message].content;
+      for (let segment = 0; segment < content.length; segment++) {
+        const block = content[segment];
+        if (block.type !== 'card_preferences') continue;
+        const card = block.data.indexOf(draft);
+        if (card < 0) continue;
+        const conversation = sessionId.value;
+        const owner = historyOwner;
+        const accountSession = userStore.sessionVersion;
+        const version = conversationVersion;
+        const scene = currentScene.value;
+        const ownsAccount = () =>
+          owner === historyOwner && accountSession === userStore.sessionVersion;
+        const recordStatus = (status: PreferenceDraftCard['status'], error?: string) => {
+          if (!ownsAccount()) return;
+          const updateCard = (target: ChatMessage[]) => {
+            const stored = target[message]?.content[segment];
+            if (stored?.type === 'card_preferences' && stored.data[card]) {
+              stored.data[card].status = status;
+              stored.data[card].error = error;
+            }
+          };
+          draft.status = status;
+          draft.error = error;
+          if (sessionId.value === conversation) {
+            updateCard(messages.value);
+            upsertHistoryEntry(conversation, scene, messages.value);
+          } else {
+            const entry = historyEntries.value.find(item => item.sessionId === conversation);
+            if (entry) {
+              updateCard(entry.messages);
+              persistHistory();
+            }
+          }
+        };
+        return {
+          key: JSON.stringify([conversation, message, segment, card]),
+          ownsAccount,
+          ownsConversation: () =>
+            ownsAccount() && sessionId.value === conversation && version === conversationVersion,
+          recordStatus,
+        };
+      }
+    }
+  }
+
+  async function applyPreferences(
+    draft: PreferenceDraftCard,
+    isOperationCurrent: () => boolean = () => true
+  ): Promise<boolean> {
+    const context = locatePreferenceDraft(draft);
+    if (
+      !context ||
+      !isOperationCurrent() ||
+      pendingPreferenceApplications.has(context.key) ||
+      ['saving', 'saved', 'dismissed', 'stale', 'invalid'].includes(draft.status || '')
+    )
+      return false;
+    if (!validPreferenceDraft(draft)) {
+      context.recordStatus('invalid', '建议内容不完整或操作无效，请重新生成偏好建议。');
+      return false;
+    }
+    if (pendingPreferenceApplications.size) {
+      context.recordStatus('failed', '另一条偏好正在保存，请稍后重试。');
+      return false;
+    }
+    pendingPreferenceApplications.add(context.key);
+    context.recordStatus('saving');
+    const body = JSON.parse(JSON.stringify(draft.confirmAction.body)) as UserProfileUpdateRequest;
+    const ownsConfirmation = () => context.ownsConversation() && isOperationCurrent();
+    try {
+      await userStore.fetchProfileAction(ownsConfirmation);
+      if (!ownsConfirmation()) {
+        context.recordStatus('failed', '保存已取消，偏好未修改。');
+        return false;
+      }
+      const current = preferenceValues(userStore.userInfo || {}, body);
+      if (sameValue(current, preferenceValues(draft.previewData.after, body))) {
+        context.recordStatus('saved');
+        return true;
+      }
+      if (!sameValue(current, preferenceValues(draft.previewData.before, body))) {
+        context.recordStatus('stale', '偏好已发生变化，请重新生成建议后再保存。');
+        return false;
+      }
+      await userStore.updateProfileAction(body);
+      if (!context.ownsAccount()) return false;
+      context.recordStatus('saved');
+      return true;
+    } catch (error) {
+      if (!context.ownsAccount()) return false;
+      context.recordStatus(
+        'failed',
+        `保存失败，请重试。${error instanceof Error ? error.message : '请检查网络连接。'}`
+      );
+      return false;
+    } finally {
+      if (context.ownsAccount()) pendingPreferenceApplications.delete(context.key);
+    }
+  }
+
+  function dismissPreferences(draft: PreferenceDraftCard): boolean {
+    const context = locatePreferenceDraft(draft);
+    if (
+      !context ||
+      pendingPreferenceApplications.has(context.key) ||
+      ['saving', 'saved', 'dismissed'].includes(draft.status || '')
+    )
+      return false;
+    context.recordStatus('dismissed');
+    return true;
+  }
+
+  function clearConversation() {
+    abortChat(false);
+    conversationVersion += 1;
+    sessionCreation = null;
+    pendingSend = null;
+    sessionId.value = '';
+    messages.value = [];
   }
 
   /**
@@ -173,34 +526,44 @@ export const useChatStore = defineStore('ai-chat', () => {
    * @param force 是否强制重新初始化，即使 sessionId 已存在
    */
   async function initSession(scene?: string | AIScene, force = false) {
-    if (sessionId.value && !force) return;
-    // 如果强制重新初始化，清除现有 sessionId
-    if (force) {
-      sessionId.value = '';
-    }
+    if (force) clearConversation();
+    if (sessionId.value) return true;
+    if (sessionCreation) return sessionCreation;
     // validate scene param, prefer passed param if valid
     let sceneToUse = currentScene.value;
     if (scene && (ALLOWED_SCENES as readonly string[]).includes(String(scene))) {
       sceneToUse = scene as AIScene;
     }
     currentScene.value = sceneToUse;
-    try {
-      const res = await createAISession({ scene: sceneToUse });
-      if (res.code === 200 && res.data) {
-        sessionId.value = res.data.sessionId;
-        if (res.data.welcomeMessage) {
-          messages.value.push({
-            id: Date.now() + Math.random(),
-            type: 'ai',
-            content: [{ type: 'text', text: res.data.welcomeMessage }],
-            timestamp: Date.now(),
-          });
-          upsertHistoryEntry(sessionId.value, sceneToUse, messages.value);
+    const version = conversationVersion;
+    const ownerSession = userStore.sessionVersion;
+    const pending = (async () => {
+      try {
+        const res = await createAISession({ scene: sceneToUse });
+        if (version !== conversationVersion || ownerSession !== userStore.sessionVersion)
+          return false;
+        if (res.code === 200 && res.data) {
+          sessionId.value = res.data.sessionId;
+          if (res.data.welcomeMessage) {
+            messages.value.push({
+              id: Date.now() + Math.random(),
+              type: 'ai',
+              content: [{ type: 'text', text: res.data.welcomeMessage }],
+              timestamp: Date.now(),
+            });
+            upsertHistoryEntry(sessionId.value, sceneToUse, messages.value);
+          }
+          return true;
         }
+      } catch (e) {
+        console.error('Failed to create AI session with scene:', sceneToUse, e);
       }
-    } catch (e) {
-      console.error('Failed to create AI session with scene:', sceneToUse, e);
-    }
+      return false;
+    })().finally(() => {
+      if (sessionCreation === pending) sessionCreation = null;
+    });
+    sessionCreation = pending;
+    return pending;
   }
 
   /**
@@ -208,12 +571,12 @@ export const useChatStore = defineStore('ai-chat', () => {
    * @param text 用户输入文本
    */
   function addUserMessage(text: string) {
-    const newMessage: ChatMessage = {
+    const newMessage = reactive<ChatMessage>({
       id: Date.now(),
       type: 'user',
       content: [{ type: 'text', text }],
       timestamp: Date.now(),
-    };
+    });
     messages.value.push(newMessage); // 访问 ref 值需要 .value
     return newMessage;
   }
@@ -221,18 +584,25 @@ export const useChatStore = defineStore('ai-chat', () => {
   /**
    * 发送聊天消息并处理流式响应
    */
-  async function sendChatMessage(text: string) {
-    // 0. 中断上一次可能的请求（静默中断，不显示提示）
+  async function sendChatMessage(text: string): Promise<boolean> {
+    if (!text.trim() || aiLoading.value || pendingSend) return false;
+    const version = conversationVersion;
+    const ownerSession = userStore.sessionVersion;
+    const submission = {};
+    pendingSend = submission;
+    try {
+      if (!sessionId.value && !(await initSession())) return false;
+      if (version !== conversationVersion || ownerSession !== userStore.sessionVersion)
+        return false;
+    } finally {
+      if (pendingSend === submission) pendingSend = null;
+    }
     abortChat(false);
 
-    // 1. 确保会话已初始化
-    if (!sessionId.value) await initSession();
+    // 先在 UI 上显示用户消息。
+    const userMessage = addUserMessage(text);
+    userMessage.deliveryStatus = 'sending';
 
-    // 2. 【核心修复】先在 UI 上显示用户的消息
-    addUserMessage(text);
-
-    // 重置中止标志，开始新的流
-    isStreamAborted.value = false;
     aiLoading.value = true;
 
     // 3. 创建一个空的 AI 消息占位符
@@ -245,6 +615,14 @@ export const useChatStore = defineStore('ai-chat', () => {
       isStreaming: true,
     });
     messages.value.push(aiMessage);
+    const stream: ChatStream = {
+      sessionId: sessionId.value,
+      scene: currentScene.value,
+      messages: messages.value,
+      userMessage,
+      aiMessage,
+    };
+    activeStream = stream;
 
     const pad2 = (n: number) => n.toString().padStart(2, '0');
     const pad3 = (n: number) => n.toString().padStart(3, '0');
@@ -282,122 +660,138 @@ export const useChatStore = defineStore('ai-chat', () => {
     };
 
     let currentEvent = '';
+    const appendText = (chunk: string) => {
+      const lastSegment = aiMessage.content[aiMessage.content.length - 1];
+      if (lastSegment?.type === 'text') lastSegment.text += chunk;
+      else aiMessage.content.push({ type: 'text', text: chunk });
+    };
+    const finishStream = (unconfirmedStatus: 'failed' | 'unconfirmed' = 'unconfirmed') => {
+      if (activeStream !== stream) return;
+      if (userMessage.deliveryStatus === 'sending') {
+        userMessage.deliveryStatus = unconfirmedStatus;
+      }
+      activeStream = null;
+      aiLoading.value = false;
+      aiMessage.isStreaming = false;
+      upsertHistoryEntry(stream.sessionId, stream.scene, stream.messages);
+    };
+    const failStream = (err: any) => {
+      if (activeStream !== stream) return;
+      console.error('Stream error', err);
+      if (aiMessage.isStreaming) appendText(`\n[网络请求出错: ${err?.message || '请检查网络'}]`);
+      finishStream('failed');
+    };
 
-    const streamControl = USE_MOCK
-      ? (() => {
-          // 简单的mock实现，避免require路径问题
-          const mockResponse = `收到你的消息："${payload.message}"。这是一个模拟的流式回复。我可以帮你推荐菜品，或者制定饮食计划。`;
-          const chunks = mockResponse.split('');
-          let currentIndex = 0;
-          let stopped = false;
-
-          const interval = setInterval(() => {
-            if (stopped || currentIndex >= chunks.length) {
-              clearInterval(interval);
-              aiLoading.value = false;
-              aiMessage.isStreaming = false;
-              if (!stopped) {
-                upsertHistoryEntry(sessionId.value, currentScene.value, messages.value);
+    let streamControl: { close: () => void };
+    try {
+      streamControl = USE_MOCK
+        ? (() => {
+            // 模拟流式回复。
+            const mockResponse = `收到你的消息："${payload.message}"。这是一个模拟的流式回复。我可以帮你推荐菜品，或者制定饮食计划。`;
+            const chunks = mockResponse.split('');
+            let currentIndex = 0;
+            const interval = setInterval(() => {
+              if (activeStream !== stream) {
+                clearInterval(interval);
+                return;
               }
-              currentStreamAbort.value = null;
-              return;
-            }
+              if (currentIndex >= chunks.length) {
+                clearInterval(interval);
+                finishStream();
+                return;
+              }
 
-            const chunkSize = Math.floor(Math.random() * 3) + 1;
-            const chunkContent = chunks.slice(currentIndex, currentIndex + chunkSize).join('');
-            currentIndex += chunkSize;
+              const chunkSize = Math.floor(Math.random() * 3) + 1;
+              const chunkContent = chunks.slice(currentIndex, currentIndex + chunkSize).join('');
+              currentIndex += chunkSize;
 
-            const contentArr = aiMessage.content;
-            const lastSegment = contentArr[contentArr.length - 1];
+              appendText(chunkContent);
+            }, 100);
 
-            if (lastSegment && lastSegment.type === 'text') {
-              lastSegment.text += chunkContent;
-            } else {
-              contentArr.push({ type: 'text', text: chunkContent });
-            }
-          }, 100);
-
-          return {
-            close: () => {
-              console.log('[Mock Stream] close called');
-              stopped = true;
-              clearInterval(interval);
-              aiLoading.value = false;
-              aiMessage.isStreaming = false;
-              currentStreamAbort.value = null;
+            return {
+              close: () => {
+                clearInterval(interval);
+              },
+            };
+          })()
+        : streamAIChat(stream.sessionId, payload, {
+            onEvent: (evt: string) => {
+              if (activeStream !== stream) return;
+              currentEvent = evt;
             },
-          };
-        })()
-      : streamAIChat(sessionId.value, payload, {
-          onEvent: (evt: string) => {
-            if (isStreamAborted.value) return; // 如果已中止，忽略事件
-            currentEvent = evt;
-          },
-          onMessage: (chunk: string) => {
-            if (isStreamAborted.value) {
-              console.log('[Chat Store] Message received after abort, ignoring');
-              return; // 如果已中止，忽略消息
-            }
-            
-            if (currentEvent === 'text_chunk') {
-              const contentArr = aiMessage.content;
-              const lastSegment = contentArr[contentArr.length - 1];
-
-              if (lastSegment && lastSegment.type === 'text') {
-                lastSegment.text += chunk;
-              } else {
-                contentArr.push({ type: 'text', text: chunk });
+            onMessage: (chunk: string) => {
+              if (activeStream !== stream) return;
+              if (currentEvent === 'text_chunk' && chunk) {
+                userMessage.deliveryStatus = 'received';
+                appendText(chunk);
               }
-            }
-          },
-          onJSON: json => {
-            if (isStreamAborted.value) return; // 如果已中止，忽略 JSON
-            
-            if (currentEvent === 'new_block') {
-              const segment = json as MessageSegment;
-              if (segment && segment.type && segment.type !== 'text') {
-                aiMessage.content.push(segment);
+            },
+            onJSON: json => {
+              if (activeStream !== stream) return;
+
+              if (
+                currentEvent === 'message_received' &&
+                typeof json?.messageId === 'string' &&
+                json.messageId
+              ) {
+                userMessage.deliveryStatus = 'received';
               }
-            }
-          },
-          onError: err => {
-            if (isStreamAborted.value) return; // 如果已中止，忽略错误
-            
-            console.error('Stream error', err);
-            const contentArr = aiMessage.content;
-            const lastSegment = contentArr[contentArr.length - 1];
-
-            const errorText = `\n[网络请求出错: ${err?.message || '请检查网络'}]`;
-            if (lastSegment && lastSegment.type === 'text') {
-              lastSegment.text += errorText;
-            } else {
-              contentArr.push({ type: 'text', text: errorText });
-            }
-
-            aiLoading.value = false;
-            aiMessage.isStreaming = false;
-            currentStreamAbort.value = null;
-          },
-          onComplete: () => {
-            if (isStreamAborted.value) {
-              console.log('[Chat Store] Complete callback after abort, ignoring');
-              return; // 如果已中止，忽略完成回调
-            }
-            
-            aiLoading.value = false;
-            aiMessage.isStreaming = false;
-            upsertHistoryEntry(sessionId.value, currentScene.value, messages.value);
-            currentStreamAbort.value = null;
-          },
-        });
-
-    // 保存中断控制器
-    if (streamControl && streamControl.close) {
-      currentStreamAbort.value = streamControl.close;
-      console.log('[Chat Store] Stream control saved, abort function available');
-    } else {
-      console.warn('[Chat Store] No stream control available');
+              if (
+                currentEvent === 'reply_complete' &&
+                typeof json?.messageId === 'string' &&
+                json.messageId
+              ) {
+                aiMessage.isStreaming = false;
+                aiLoading.value = false;
+                upsertHistoryEntry(stream.sessionId, stream.scene, stream.messages);
+              }
+              if (
+                currentEvent === 'suggestions' &&
+                !aiMessage.isStreaming &&
+                Array.isArray(json?.suggestions) &&
+                json.suggestions.every((question: unknown) => typeof question === 'string')
+              ) {
+                aiMessage.suggestions = json.suggestions;
+                upsertHistoryEntry(stream.sessionId, stream.scene, stream.messages);
+              }
+              if (currentEvent === 'new_block') {
+                const segment = json as Exclude<MessageSegment, { type: 'text' }>;
+                if (
+                  segment &&
+                  [
+                    'card_dish',
+                    'card_plan',
+                    'card_preferences',
+                    'card_canteen',
+                    'card_window',
+                  ].includes(segment.type) &&
+                  Array.isArray(segment.data)
+                ) {
+                  userMessage.deliveryStatus = 'received';
+                  if (segment.type === 'card_preferences') {
+                    aiMessage.content.push({
+                      type: 'card_preferences',
+                      data: segment.data
+                        .filter(isRecord)
+                        .map(
+                          ({ summary, previewData, confirmAction }) =>
+                            ({ summary, previewData, confirmAction }) as PreferenceDraftCard
+                        ),
+                    });
+                  } else aiMessage.content.push(segment);
+                }
+              }
+            },
+            onError: failStream,
+            onComplete: finishStream,
+          });
+    } catch (error) {
+      failStream(error);
+      return false;
     }
+
+    if (activeStream === stream) stream.close = streamControl.close;
+    return true;
   }
 
   /**
@@ -421,12 +815,10 @@ export const useChatStore = defineStore('ai-chat', () => {
    * 启动新的会话 (重置)
    */
   async function startNewSession(scene?: string | AIScene) {
-    abortChat(false); // 停止当前可能的生成（静默）
-    messages.value = [];
-    sessionId.value = '';
+    clearConversation();
     // 如果传入了场景则先设置
     if (scene) setScene(scene);
-    await initSession(scene, true);
+    await initSession(scene);
   }
 
   /**
@@ -434,12 +826,14 @@ export const useChatStore = defineStore('ai-chat', () => {
    */
   async function removeSession(session: string) {
     try {
-      const isDeletingCurrentSession = sessionId.value === session;
       const sceneToKeep = currentScene.value;
+      const ownerSession = userStore.sessionVersion;
 
       // 调用后端接口删除会话
       await deleteAISession(session);
-      
+      if (ownerSession !== userStore.sessionVersion) return false;
+      const isDeletingCurrentSession = sessionId.value === session;
+      if (isDeletingCurrentSession) clearConversation();
       // 从本地历史记录中删除
       const idx = historyEntries.value.findIndex(h => h.sessionId === session);
       if (idx >= 0) {
@@ -449,15 +843,29 @@ export const useChatStore = defineStore('ai-chat', () => {
 
       // 如果删除的是当前会话：自动创建一个新会话并切换过去
       if (isDeletingCurrentSession) {
-        await startNewSession(sceneToKeep);
+        await initSession(sceneToKeep);
       }
-      
+
       return true;
     } catch (error) {
       console.error('删除会话失败:', error);
       throw error;
     }
   }
+
+  watch(
+    [() => userStore.sessionVersion, () => (userStore.isLoggedIn ? userStore.userInfo?.id : null)],
+    ([, owner]) => {
+      pendingPlanApplications.clear();
+      pendingPreferenceApplications.clear();
+      clearConversation();
+      historyOwner = owner || null;
+      historyEntries.value = [];
+      setScene('general_chat');
+      loadHistoryFromStorage();
+    },
+    { immediate: true, flush: 'sync' }
+  );
 
   return {
     messages,
@@ -472,6 +880,9 @@ export const useChatStore = defineStore('ai-chat', () => {
     submitFeedback,
     startNewSession,
     loadSessionFromHistory,
+    applyMealPlan,
+    applyPreferences,
+    dismissPreferences,
     removeSession,
     abortChat,
   };

@@ -13,20 +13,22 @@ import { mockInterceptor } from '@/mock/mock-adapter';
 import '@/mock/mock-routes';
 
 // 全局刷新token的Promise缓存，避免竞态条件
-let refreshTokenPromise: Promise<void> | null = null;
+let tokenRefresh: { sessionVersion: number; promise: Promise<void> } | null = null;
 
-function buildUserFriendlyError(err: unknown): Error {
+function buildUserFriendlyError(err: unknown, statusCode?: number): Error {
   const wrapped = new Error(toUserFriendlyErrorMessage(err)) as Error & {
     originalError?: unknown;
+    statusCode?: number;
   };
   wrapped.originalError = err;
+  if (statusCode !== undefined) wrapped.statusCode = statusCode;
   return wrapped;
 }
 
 /**
  * 执行token刷新操作，返回Promise以便缓存和等待
  */
-function performTokenRefresh(): Promise<void> {
+function performTokenRefresh(sessionVersion: number, refreshToken: string): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const userStore = useUserStore();
     const refreshUrl = config.baseUrl + '/auth/refresh';
@@ -40,39 +42,40 @@ function performTokenRefresh(): Promise<void> {
       header: {
         'Content-Type': 'application/json',
         // 携带 refresh token，具体视后端要求而定
-        Authorization: `Bearer ${userStore.refreshToken}`,
+        Authorization: `Bearer ${refreshToken}`,
       },
       data: {},
       success: refreshRes => {
+        if (userStore.sessionVersion !== sessionVersion) {
+          reject(new Error('登录会话已变更'));
+          return;
+        }
         const refreshData = refreshRes.data as any; // 简化类型
         if (
           refreshRes.statusCode >= 200 &&
           refreshRes.statusCode < 300 &&
           refreshData.code === 200 &&
-          refreshData.data?.token
+          refreshData.data?.token?.accessToken
         ) {
           // eslint-disable-next-line no-console
           console.log('[request] Token refreshed successfully');
           const newToken = refreshData.data.token;
 
-          // 更新 store 和 storage
-          userStore.token = newToken.accessToken;
-          uni.setStorageSync('token', newToken.accessToken);
-
-          if (newToken.refreshToken) {
-            userStore.refreshToken = newToken.refreshToken;
-            uni.setStorageSync('refreshToken', newToken.refreshToken);
-          }
+          userStore.updateTokens(sessionVersion, newToken.accessToken, newToken.refreshToken);
 
           resolve();
         } else {
           // 刷新失败
-          handleHttpError(401, refreshData);
+          handleHttpError(401, refreshData, sessionVersion);
           reject(buildUserFriendlyError(new Error('HTTP 401')));
         }
       },
       fail: err => {
-        handleHttpError(401, {});
+        if (userStore.sessionVersion !== sessionVersion) {
+          reject(new Error('登录会话已变更'));
+          return;
+        }
+        handleHttpError(401, {}, sessionVersion);
         reject(buildUserFriendlyError(new Error('HTTP 401')));
       },
     });
@@ -86,9 +89,13 @@ function performTokenRefresh(): Promise<void> {
  * @returns {Promise<ApiResponse<T>>} 返回 Promise，resolve 的值是完整的 ApiResponse 对象
  */
 async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>> {
+  const userStore = useUserStore();
+  const sessionVersion = userStore.sessionVersion;
+  const accessToken = userStore.token;
   // --- 阶段零: Mock 拦截 ---
   // 如果开启了 Mock 且匹配到 Mock 路由，直接返回 Mock 数据
   const mockResponse = await mockInterceptor<T>(options);
+  if (userStore.sessionVersion !== sessionVersion) throw new Error('登录会话已变更');
   if (mockResponse !== null) {
     return mockResponse;
   }
@@ -97,16 +104,15 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
     // --- 阶段一: 请求拦截器 ---
     // 在这里，我们对即将发出的请求进行最后加工
 
-    const userStore = useUserStore();
     const header: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
     // 核心：自动为需要授权的接口注入 Token
-    if (userStore.token) {
+    if (accessToken) {
       // 'Authorization' 是后端接口文档中约定的字段
       // 'Bearer ' 是 JWT 规范中推荐的前缀，具体看后端要求
-      header['Authorization'] = `Bearer ${userStore.token}`;
+      header['Authorization'] = `Bearer ${accessToken}`;
     }
 
     // 允许页面传入自定义的 header 覆盖默认值
@@ -115,10 +121,10 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
     }
 
     // --- 阶段二: 发起 uniapp 网络请求 ---
-    // 打印请求信息以便调试（可在开发时查看实际请求 URL）
+    // 仅记录方法和 URL，避免密码、授权码等请求数据进入控制台。
     const fullUrl = config.baseUrl + options.url;
     // eslint-disable-next-line no-console
-    console.log('[request] ->', options.method || 'GET', fullUrl, options.data || {});
+    console.log('[request] ->', options.method || 'GET', fullUrl);
 
     uni.request({
       // 1. 基础配置
@@ -138,6 +144,10 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
 
       // 2. 成功回调
       success: (res: UniApp.RequestSuccessCallbackResult) => {
+        if (userStore.sessionVersion !== sessionVersion) {
+          reject(new Error('登录会话已变更'));
+          return;
+        }
         // --- 阶段三: 响应拦截器 ---
         // 在这里，我们对收到的响应进行预处理
 
@@ -145,9 +155,9 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
         // 类型断言：告诉 TypeScript 响应数据的结构
         const responseData = res.data as ApiResponse<T>;
 
-        // 调试输出响应（开发时可用）
+        // 不打印响应体，避免 access/refresh token 等敏感数据泄露。
         // eslint-disable-next-line no-console
-        console.log('[response] <-', statusCode, responseData, fullUrl);
+        console.log('[response] <-', statusCode, fullUrl);
 
         // 2.1 HTTP 状态码判断
         if (statusCode >= 200 && statusCode < 300) {
@@ -163,47 +173,54 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
           }
         } else if (statusCode === 401) {
           // 401 未授权，尝试刷新 Token
-          const userStore = useUserStore();
-
           // 如果是刷新 token 的请求本身失败了，或者没有 refresh token，则直接退出登录
           if (fullUrl.includes('/auth/refresh') || !userStore.refreshToken) {
-            handleHttpError(statusCode, responseData);
-            reject(buildUserFriendlyError(new Error(`HTTP ${statusCode}`)));
+            handleHttpError(statusCode, responseData, sessionVersion);
+            reject(buildUserFriendlyError(new Error(`HTTP ${statusCode}`), statusCode));
             return;
           }
 
-          // 检查是否已有刷新操作在进行
-          if (!refreshTokenPromise) {
-            // 没有正在进行的刷新，发起新的刷新操作
-            refreshTokenPromise = performTokenRefresh().finally(() => {
-              // 无论成功还是失败，都清除缓存的promise
-              refreshTokenPromise = null;
-            });
-          }
-
-          // 如果当前请求已经重试过一次，则不再尝试刷新并重试
+          // 重试后的请求仍然 401 时直接退出，不能再发起一次刷新。
           if ((options as any)._retry) {
-            // 已经重试过，直接登出并返回错误
-            handleHttpError(statusCode, responseData);
-            reject(buildUserFriendlyError(new Error(`HTTP ${statusCode}`)));
+            handleHttpError(statusCode, responseData, sessionVersion);
+            reject(buildUserFriendlyError(new Error(`HTTP ${statusCode}`), statusCode));
             return;
           }
 
-          // 等待刷新完成，然后重试原请求，确保重试时不会携带旧 Authorization
-          refreshTokenPromise
-            .then(() => {
-              // 刷新成功，重试原请求
-              // 确保不会使用旧的 Authorization header（如果调用方传入了 header.Authorization）
-              const newOptions = {
-                ...(options as any),
-                _retry: true,
-                header: options.header ? { ...options.header } : undefined,
-              } as RequestOptions & { _retry?: boolean };
-              if (newOptions.header && newOptions.header['Authorization']) {
-                delete newOptions.header['Authorization'];
-              }
-              request<T>(newOptions).then(resolve).catch(reject);
-            })
+          const retry = () => {
+            if (userStore.sessionVersion !== sessionVersion) {
+              reject(new Error('登录会话已变更'));
+              return;
+            }
+            const newOptions = {
+              ...(options as any),
+              _retry: true,
+              header: options.header ? { ...options.header } : undefined,
+            } as RequestOptions & { _retry?: boolean };
+            if (newOptions.header && newOptions.header['Authorization']) {
+              delete newOptions.header['Authorization'];
+            }
+            request<T>(newOptions).then(resolve).catch(reject);
+          };
+
+          // 同一会话已完成刷新时，迟到的旧 token 401 直接使用新凭据重试。
+          if (accessToken !== userStore.token) {
+            retry();
+            return;
+          }
+
+          if (!tokenRefresh || tokenRefresh.sessionVersion !== sessionVersion) {
+            const refresh = {
+              sessionVersion,
+              promise: performTokenRefresh(sessionVersion, userStore.refreshToken).finally(() => {
+                if (tokenRefresh === refresh) tokenRefresh = null;
+              }),
+            };
+            tokenRefresh = refresh;
+          }
+
+          tokenRefresh.promise
+            .then(retry)
             .catch(error => {
               // 刷新失败，直接reject
               reject(buildUserFriendlyError(error));
@@ -211,8 +228,8 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
         } else {
           // HTTP 状态码非 2xx，代表请求出错了（404, 500 等）
           // 交给统一的错误处理器
-          handleHttpError(statusCode, responseData);
-          reject(buildUserFriendlyError(new Error(`HTTP ${statusCode}`)));
+          handleHttpError(statusCode, responseData, sessionVersion);
+          reject(buildUserFriendlyError(new Error(`HTTP ${statusCode}`), statusCode));
         }
       },
 
@@ -223,7 +240,9 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
           url: fullUrl,
           err,
         });
-        reject(buildUserFriendlyError(new Error('网络连接异常')));
+        reject(buildUserFriendlyError(
+          new Error(err.errMsg.includes('timeout') ? '请求超时，请重试' : '网络连接异常')
+        ));
       },
     });
   });
@@ -234,9 +253,9 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
  * @param {number} statusCode - HTTP 状态码
  * @param {any} responseData - 响应数据
  */
-function handleHttpError(statusCode: number, responseData: any): void {
-  // 控制台输出真实错误信息（HTTP 状态码 + 响应体），不要输出用户友好文案
-  console.error(`[request] HTTP ${statusCode} error:`, responseData);
+function handleHttpError(statusCode: number, _responseData: any, sessionVersion: number): void {
+  // 错误响应体可能含内部信息或凭据，因此只记录状态码。
+  console.error(`[request] HTTP ${statusCode} error`);
 
   let message = '';
   switch (statusCode) {
@@ -244,6 +263,7 @@ function handleHttpError(statusCode: number, responseData: any): void {
       message = '登录状态已过期，请重新登录';
       // 清除本地的用户信息和 token
       const userStore = useUserStore();
+      if (userStore.sessionVersion !== sessionVersion) return;
       userStore.logoutAction();
       // 跳转到登录页
       uni.reLaunch({

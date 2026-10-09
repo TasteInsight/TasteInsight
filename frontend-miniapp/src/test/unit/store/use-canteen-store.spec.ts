@@ -2,16 +2,25 @@ import { setActivePinia, createPinia } from 'pinia';
 
 jest.mock('@/api/modules/canteen');
 import * as canteenModule from '@/api/modules/canteen';
-const { getCanteenList, getCanteenDetail, getWindowList, getWindowDetail, getWindowDishes } =
-  canteenModule as any;
+const { getCanteenList, getCanteenDetail, getWindowList, getWindowDetail } = canteenModule as any;
+import { getDishes } from '@/api/modules/dish';
 
 import { useCanteenStore } from '@/store/modules/use-canteen-store';
+import { useCanteenData } from '@/pages/canteen/composables/use-canteen-data';
+import { useWindowData } from '@/pages/window/composables/use-window-data';
+jest.mock('@/api/modules/dish', () => ({
+  getDishes: jest
+    .fn()
+    .mockResolvedValue({ code: 200, data: { items: [], meta: { totalPages: 1 } } }),
+}));
 
 describe('store/modules/use-canteen-store', () => {
   beforeEach(() => {
     jest.resetModules();
     jest.clearAllMocks();
     setActivePinia(createPinia());
+    getCanteenDetail.mockResolvedValue({ code: 200, data: { id: 'c1' } });
+    getWindowList.mockResolvedValue({ code: 200, data: { items: [] } });
   });
 
   test('fetchCanteenList sets list and pagination on success', async () => {
@@ -57,61 +66,56 @@ describe('store/modules/use-canteen-store', () => {
     expect(getCanteenList).toHaveBeenCalledTimes(2);
   });
 
-  test('fetchCanteenDetail sets currentCanteen and handles failure', async () => {
+  test('canteen page owns its detail and handles failure', async () => {
     (getCanteenDetail as jest.Mock).mockResolvedValue({ code: 200, data: { id: 'c1', name: 'C' } });
-    const store = useCanteenStore();
-    await store.fetchCanteenDetail('c1');
-    expect(store.currentCanteen?.id).toBe('c1');
+    const page = useCanteenData();
+    await page.init('c1');
+    expect(page.canteenInfo.value?.id).toBe('c1');
 
     (getCanteenDetail as jest.Mock).mockResolvedValue({ code: 400, message: 'Bad' });
-    await expect(store.fetchCanteenDetail('c2')).rejects.toBeTruthy();
+    await expect(page.init('c2')).resolves.toBe(false);
+    expect(page.error.value).toBe('Bad');
   });
 
-  test('fetchWindowList and fetchWindowDetail set windowList/currentWindow', async () => {
+  test('canteen and window pages own their window snapshots', async () => {
     (getWindowList as jest.Mock).mockResolvedValue({
       code: 200,
       data: { items: [{ id: 'w1' }], meta: { totalPages: 1, total: 1, page: 1, pageSize: 9 } },
     });
     (getWindowDetail as jest.Mock).mockResolvedValue({ code: 200, data: { id: 'w1', name: 'W' } });
 
-    const store = useCanteenStore();
-    await store.fetchWindowList('c1');
-    expect(store.windowList.length).toBe(1);
+    const canteen = useCanteenData();
+    await canteen.init('c1');
+    expect(canteen.windows.value.length).toBe(1);
 
-    await store.fetchWindowDetail('w1');
-    expect(store.currentWindow?.id).toBe('w1');
+    const window = useWindowData();
+    await window.fetchWindow('w1');
+    expect(window.windowInfo.value?.id).toBe('w1');
 
     (getWindowDetail as jest.Mock).mockResolvedValue({ code: 500 });
-    await expect(store.fetchWindowDetail('bad')).rejects.toBeTruthy();
+    await expect(window.fetchWindow('bad')).resolves.toBe(false);
+    expect(window.headerError.value).toBe('获取窗口详情失败');
   });
 
-  test('fetchWindowDishes sets dishes and pagination and handles errors', async () => {
-    (getWindowDishes as jest.Mock).mockResolvedValue({
+  test('window page sets dishes and pagination and handles errors', async () => {
+    (getDishes as jest.Mock).mockResolvedValue({
       code: 200,
       data: { items: [{ id: 'd1' }], meta: { totalPages: 1, total: 1, page: 1, pageSize: 9 } },
     });
-    const store = useCanteenStore();
+    const page = useWindowData();
 
-    await store.fetchWindowDishes('w1');
-    expect(store.currentWindowDishes.length).toBe(1);
+    await page.fetchDishes('w1');
+    expect(page.dishes.value.length).toBe(1);
+    expect(page.hasMore.value).toBe(false);
 
-    (getWindowDishes as jest.Mock).mockResolvedValue({ code: 400 });
-    await expect(store.fetchWindowDishes('w2')).rejects.toBeTruthy();
+    (getDishes as jest.Mock).mockResolvedValue({ code: 400 });
+    await expect(page.fetchDishes('w2')).resolves.toBe(false);
+    expect(page.error.value).toBe('获取菜品列表失败');
   });
 
-  test('clearCurrentCanteen/clearCurrentWindow/clearAll reset state', () => {
+  test('clearAll resets shared list state', () => {
     const store = useCanteenStore();
-    store.currentCanteen = { id: 'c' } as any;
-    store.currentWindow = { id: 'w' } as any;
-    store.currentWindowDishes = [{ id: 'd1' } as any];
     store.canteenList = [{ id: 'c1' } as any];
-
-    store.clearCurrentCanteen();
-    expect(store.currentCanteen).toBeNull();
-
-    store.clearCurrentWindow();
-    expect(store.currentWindow).toBeNull();
-    expect(store.currentWindowDishes.length).toBe(0);
 
     store.clearAll();
     expect(store.canteenList.length).toBe(0);

@@ -13,7 +13,6 @@ const dishApiMock = createApiMock([
   'createDish',
   'updateDish',
   'deleteDish',
-  'batchUpload',
   'updateDishStatus',
   'uploadImage',
   'getDishReviews',
@@ -31,7 +30,7 @@ const reviewApiMock = createApiMock([
   'getPendingUploads',
   'approveUpload',
   'rejectUpload',
-  'getDishComments',
+  'getReviewComments',
   'deleteComment',
   'getPendingComments',
 ])
@@ -82,5 +81,13 @@ describe('api/index', () => {
     api.getDishes({ page: 1 } as any)
 
     expect(dishApiMock.getDishes).toHaveBeenCalledTimes(1)
+  })
+
+  it('api.getDishComments delegates to the real review comments method', async () => {
+    const { api } = await import('@/api')
+
+    api.getDishComments('review-1', { page: 2 })
+
+    expect(reviewApiMock.getReviewComments).toHaveBeenCalledWith('review-1', { page: 2 })
   })
 })

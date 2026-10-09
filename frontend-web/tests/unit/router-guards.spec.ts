@@ -14,6 +14,7 @@ vi.mock('vue-router', () => {
     createRouter: vi.fn((opts: any) => {
       capturedRoutes = opts.routes
       return {
+        afterEach: vi.fn(),
         beforeEach: (cb: any) => {
           guard = cb
         },
@@ -85,6 +86,37 @@ describe('router/index route guard & redirect', () => {
     expect(out).toBe('/news-manage')
   })
 
+  it('uses action permissions for dish write routes', () => {
+    const children = capturedRoutes!.find((route: any) => route.path === '/').children
+    const permissionFor = (name: string) =>
+      children.find((route: any) => route.name === name).meta.requiredPermission
+
+    expect(permissionFor('SingleAdd')).toBe('dish:create')
+    expect(permissionFor('BatchAdd')).toBe('dish:create')
+    expect(permissionFor('AddSubDish')).toBe('dish:create')
+    expect(permissionFor('EditDish')).toBe('dish:edit')
+    expect(permissionFor('ViewDishDetail')).toBe('dish:view')
+  })
+
+  it('declares either-permission access for combined moderation routes', () => {
+    const children = capturedRoutes!.find((route: any) => route.path === '/').children
+    const permissionsFor = (name: string) =>
+      children.find((route: any) => route.name === name).meta.requiredPermissions
+
+    expect(permissionsFor('ReviewManage')).toEqual(['review:approve', 'comment:approve'])
+    expect(permissionsFor('CommentManage')).toEqual(['review:delete', 'comment:delete'])
+    expect(
+      children.find((route: any) => route.name === 'CommentManage').meta.requiredPermission,
+    ).toBe('dish:view')
+  })
+
+  it('provides an authenticated route for users with no permissions', () => {
+    const forbidden = capturedRoutes!.find((route: any) => route.path === '/forbidden')
+
+    expect(forbidden).toBeTruthy()
+    expect(forbidden.meta).toEqual({ requiresAuth: true })
+  })
+
   it('requiresAuth route sends unauthenticated users to /login and stores redirect', () => {
     const next = vi.fn()
 
@@ -113,6 +145,21 @@ describe('router/index route guard & redirect', () => {
     expect(next).toHaveBeenCalledWith('/news-manage')
   })
 
+  it('redirects a user with no permissions once to /forbidden', () => {
+    authState.isLoggedIn = true
+    authState.hasPermission = () => false
+
+    const next = vi.fn()
+
+    guard(
+      { meta: { requiresAuth: true, requiredPermission: 'dish:create' }, fullPath: '/single-add' },
+      { path: '/' },
+      next,
+    )
+
+    expect(next).toHaveBeenCalledWith('/forbidden')
+  })
+
   it('logged-in user visiting /login is redirected to first accessible route', () => {
     authState.isLoggedIn = true
     authState.hasPermission = (p: string) => p === 'config:view'
@@ -138,6 +185,68 @@ describe('router/index route guard & redirect', () => {
 
     expect(next).toHaveBeenCalledTimes(1)
     expect(next.mock.calls[0].length).toBe(0)
+  })
+
+  it('allows a route when any required permission is present', () => {
+    authState.isLoggedIn = true
+    authState.hasPermission = (permission: string) => permission === 'comment:approve'
+    const next = vi.fn()
+
+    guard(
+      {
+        meta: {
+          requiresAuth: true,
+          requiredPermissions: ['review:approve', 'comment:approve'],
+        },
+        fullPath: '/review-manage',
+      },
+      { path: '/' },
+      next,
+    )
+
+    expect(next).toHaveBeenCalledTimes(1)
+    expect(next.mock.calls[0].length).toBe(0)
+  })
+
+  it('requires dish browsing as well as one deletion permission for deletion management', () => {
+    authState.isLoggedIn = true
+    authState.hasPermission = (permission: string) => permission === 'comment:delete'
+    const next = vi.fn()
+
+    guard(
+      {
+        meta: {
+          requiresAuth: true,
+          requiredPermission: 'dish:view',
+          requiredPermissions: ['review:delete', 'comment:delete'],
+        },
+        fullPath: '/comment-manage',
+      },
+      { path: '/' },
+      next,
+    )
+
+    expect(next).toHaveBeenCalledWith('/forbidden')
+  })
+
+  it('redirects when none of the required permissions is present', () => {
+    authState.isLoggedIn = true
+    authState.hasPermission = (permission: string) => permission === 'news:view'
+    const next = vi.fn()
+
+    guard(
+      {
+        meta: {
+          requiresAuth: true,
+          requiredPermissions: ['review:approve', 'comment:approve'],
+        },
+        fullPath: '/review-manage',
+      },
+      { path: '/' },
+      next,
+    )
+
+    expect(next).toHaveBeenCalledWith('/news-manage')
   })
 
   it('non-auth route (not /login) calls next() with no args', () => {

@@ -3,7 +3,7 @@
     <!-- 步骤指引 -->
     <div class="bg-blue-50 p-4 rounded-lg">
       <h3 class="font-medium text-blue-700 mb-2 flex items-center space-x-2">
-        <span class="iconify" data-icon="carbon:information"></span>
+        <AppIcon class="iconify" icon="carbon:information"></AppIcon>
         <span>批量添加说明</span>
       </h3>
       <ol class="text-blue-600 space-y-2 list-decimal ml-5">
@@ -22,7 +22,7 @@
         @click="downloadTemplate"
         :disabled="loading"
       >
-        <span class="iconify mr-1" data-icon="carbon:download"></span>
+        <AppIcon class="iconify mr-1" icon="carbon:download"></AppIcon>
         {{ loading ? '下载中...' : '下载Excel模板' }}
       </button>
     </div>
@@ -40,11 +40,11 @@
         @dragover.prevent="isDragging = true"
         @dragleave="isDragging = false"
       >
-        <span
+        <AppIcon
           class="iconify text-5xl mb-3"
           :class="uploadedFile ? 'text-green-500' : 'text-gray-400'"
-          :data-icon="uploadedFile ? 'carbon:checkmark-outline' : 'carbon:document-add'"
-        ></span>
+          :icon="uploadedFile ? 'carbon:checkmark-outline' : 'carbon:document-add'"
+        ></AppIcon>
         <div class="text-center mb-4">
           <p class="text-gray-600 mb-1">点击或拖拽文件到这里上传</p>
           <p class="text-sm text-gray-500">支持.xlsx格式，文件大小不超过10MB</p>
@@ -54,7 +54,7 @@
           @click="triggerFileInput"
           :disabled="loading"
         >
-          <span class="iconify mr-1" data-icon="carbon:upload"></span>
+          <AppIcon class="iconify mr-1" icon="carbon:upload"></AppIcon>
           {{ uploadedFile ? '重新选择文件' : '选择文件' }}
         </button>
         <input
@@ -66,11 +66,11 @@
         />
       </div>
       <p v-if="uploadedFile" class="mt-2 text-green-600 flex items-center">
-        <span class="iconify mr-1" data-icon="carbon:checkmark-filled"></span>
+        <AppIcon class="iconify mr-1" icon="carbon:checkmark-filled"></AppIcon>
         已上传文件: {{ uploadedFile.name }}
       </p>
       <p v-if="uploadError" class="mt-2 text-red-600 flex items-center">
-        <span class="iconify mr-1" data-icon="carbon:warning"></span>
+        <AppIcon class="iconify mr-1" icon="carbon:warning"></AppIcon>
         {{ uploadError }}
       </p>
     </div>
@@ -123,7 +123,7 @@
         :disabled="validCount === 0 || loading"
         @click="submitBatchData"
       >
-        <span class="iconify mr-1" data-icon="carbon:checkmark"></span>
+        <AppIcon class="iconify mr-1" icon="carbon:checkmark"></AppIcon>
         {{ loading ? '导入中...' : `确认导入有效数据 (${validCount}条)` }}
       </button>
       <button

@@ -1,5 +1,6 @@
 {
   "name": "TasteInsight-Management-System",
+  "packageManager": "pnpm@11.21.0",
   "version": "1.0.0",
   "description": "清华大学食堂菜品管理系统",
   "type": "module",
@@ -17,6 +18,7 @@
     "test:e2e:debug": "playwright test --debug"
   },
   "dependencies": {
+    "@iconify/vue": "5.0.3",
     "@wangeditor/editor": "^5.1.23",
     "@wangeditor/editor-for-vue": "^5.1.12",
     "axios": "^1.13.2",

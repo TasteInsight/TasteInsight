@@ -1,0 +1,12 @@
+page,
+:root {
+  --color-price: #2f6b50;
+  --color-rating: #946200;
+  --color-text-muted: #667085;
+  --page-title-font-size: 18px;
+  --page-title-font-weight: 600;
+  --page-title-line-height: 30px;
+  --page-title-font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --page-title-color: #111827;
+  --page-navigation-height: 44px;
+}

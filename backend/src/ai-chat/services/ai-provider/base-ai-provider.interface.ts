@@ -49,5 +49,6 @@ export interface BaseAIProvider {
   streamChat(
     messages: AIMessage[],
     tools: Tool[],
+    signal?: AbortSignal,
   ): AsyncGenerator<StreamChunk, void, unknown>;
 }

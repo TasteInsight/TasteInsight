@@ -140,15 +140,6 @@ registerMockRoute('GET', '/dishes/search', async (url, options) => {
   return mockSuccess(data);
 });
 
-// GET /dishes/:id - 获取菜品详情
-registerMockRoute('GET', '/dishes/:id', async url => {
-  const match = url.match(/\/dishes\/([^/]+)$/);
-  const dishId = match?.[1] || '';
-
-  const data = await mockGetDishById(dishId);
-  return mockSuccess(data);
-});
-
 // POST /dishes - 获取菜品列表
 registerMockRoute('POST', '/dishes', async (url, options) => {
   const params = options.data as any;
@@ -159,6 +150,15 @@ registerMockRoute('POST', '/dishes', async (url, options) => {
 // GET /dishes/images - 获取菜品图片列表
 registerMockRoute('GET', '/dishes/images', async () => {
   const data = await mockGetDishesImages();
+  return mockSuccess(data);
+});
+
+// GET /dishes/:id - 获取菜品详情（静态子路径必须先注册）
+registerMockRoute('GET', '/dishes/:id', async url => {
+  const match = url.match(/\/dishes\/([^/]+)$/);
+  const dishId = match?.[1] || '';
+
+  const data = await mockGetDishById(dishId);
   return mockSuccess(data);
 });
 
@@ -354,14 +354,27 @@ registerMockRoute('GET', '/user/history', async (url, options) => {
 // GET /ai/suggestions - 获取AI提示词
 registerMockRoute('GET', '/ai/suggestions', async (url, options) => {
   // 提取查询参数中的时间信息
-  const clientContext = options.data ? {
-    localTime: options.data.localTime,
-    timeZone: options.data.timeZone,
-    tzOffsetMinutes: options.data.tzOffsetMinutes ? parseInt(options.data.tzOffsetMinutes) : undefined,
+  const requestData = options.data && !Array.isArray(options.data) ? options.data : undefined;
+  const clientContext = requestData ? {
+    localTime: requestData.localTime,
+    timeZone: requestData.timeZone,
+    tzOffsetMinutes: requestData.tzOffsetMinutes
+      ? parseInt(String(requestData.tzOffsetMinutes))
+      : undefined,
   } : undefined;
   
   // mockGetAISuggestions 已经返回了完整的 ApiResponse，不需要再用 mockSuccess 包裹
   return await mockGetAISuggestions(clientContext);
+});
+
+// POST /recommend/events/:feedback - 推荐正/负反馈
+registerMockRoute('POST', '/recommend/events/:feedback', async url => {
+  const feedback = url.match(/\/recommend\/events\/([^/]+)$/)?.[1];
+  if (feedback !== 'like' && feedback !== 'dislike') {
+    return mockError(400, '不支持的推荐反馈类型');
+  }
+
+  return mockSuccess({ eventId: `mock_recommend_${feedback}_${Date.now()}` });
 });
 
 // POST /ai/sessions - 创建会话

@@ -141,7 +141,7 @@ export const API_PATHS = {
         PENDING: '/admin/reviews/pending',
         // POST /admin/reviews/:id/approve - 通过评价
         APPROVE: (id) => `/admin/reviews/${id}/approve`,
-        // POST /admin/reviews/:id/reject - 拒绝评价（需要 body: { reason: string }）
+        // POST /admin/reviews/:id/reject - 拒绝评价（需要 reason 和 expectedUpdatedAt）
         REJECT: (id) => `/admin/reviews/${id}/reject`,
         // DELETE /admin/reviews/:id - 删除评价
         DELETE: (id) => `/admin/reviews/${id}`,

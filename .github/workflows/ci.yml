@@ -1,0 +1,39 @@
+name: CI - Required Checks
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'backend/**'
+      - 'frontend-web/**'
+      - '.github/workflows/**'
+      - '.github/scripts/**'
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - 'backend/**'
+      - 'frontend-web/**'
+      - '.github/workflows/**'
+      - '.github/scripts/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    uses: ./.github/workflows/ci-backend.yml
+  frontend:
+    uses: ./.github/workflows/ci-frontend.yml
+  workflow-checks:
+    name: Deployment Gate Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test .github/scripts/*.test.cjs

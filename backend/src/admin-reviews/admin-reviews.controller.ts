@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { AdminReviewsService } from './admin-reviews.service';
 import { RejectReviewDto } from './dto/reject-review.dto';
+import { ModerateReviewDto } from './dto/moderate-review.dto';
 import { AdminAuthGuard } from '@/auth/guards/admin-auth.guard';
 import { PermissionsGuard } from '@/auth/guards/permissions.guard';
 import { RequirePermissions } from '@/auth/decorators/permissions.decorator';
@@ -40,8 +41,12 @@ export class AdminReviewsController {
   @Post(':id/approve')
   @RequirePermissions('review:approve')
   @HttpCode(HttpStatus.OK)
-  async approveReview(@Param('id') id: string, @Request() req) {
-    return this.adminReviewsService.approveReview(id, req.admin);
+  async approveReview(
+    @Param('id') id: string,
+    @Body() dto: ModerateReviewDto,
+    @Request() req,
+  ) {
+    return this.adminReviewsService.approveReview(id, dto, req.admin);
   }
 
   @Post(':id/reject')
@@ -56,7 +61,7 @@ export class AdminReviewsController {
   }
 
   @Get(':reviewId/comments')
-  @RequirePermissions('review:approve')
+  @RequirePermissions('review:approve', 'review:delete', 'comment:delete')
   @HttpCode(HttpStatus.OK)
   async getReviewComments(
     @Param('reviewId') reviewId: string,

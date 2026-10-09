@@ -10,16 +10,34 @@ export class PromptBuilder {
     const timeInfo = currentTime
       ? `\n\n当前时间：${this.formatTime(currentTime)}\n。`
       : '';
+    const recommendationPolicy = this.getRecommendationPolicy();
 
     switch (scene) {
       case 'meal_planner':
-        return this.getMealPlannerPrompt() + timeInfo;
+        return this.getMealPlannerPrompt() + recommendationPolicy + timeInfo;
       case 'dish_critic':
-        return this.getDishCriticPrompt() + timeInfo;
+        return this.getDishCriticPrompt() + recommendationPolicy + timeInfo;
       case 'general_chat':
       default:
-        return this.getGeneralChatPrompt() + timeInfo;
+        return this.getGeneralChatPrompt() + recommendationPolicy + timeInfo;
     }
+  }
+
+  private static getRecommendationPolicy(): string {
+    return `
+
+推荐与规划策略：
+- 菜品、价格、食材、窗口、供应餐次和评分以查询结果为准；不要把示例或常识当作平台已有菜品，也不要猜测营业信息。
+- 用户未限定食堂时，通常提供2-3个不同食堂的备选方案，按食堂说明菜品和取餐位置。这些方案供用户择一；每份单餐组合集中在同一个食堂。
+- 用户明确指定食堂或选定某个方案后，沿用该地点和已明确的口味、忌口、预算等条件。补充配菜时用候选菜品的 canteenId 查询同一食堂，不能把其他食堂的菜拼进当前组合。
+- 查询时传入用户明确的餐次、价格和食材限制。先取得真实候选，再决定搭配；标签、口味和价格可以支持理由，没有营养数据时不可编造热量、蛋白质含量或医疗效果。
+- 用户要换一道相似菜品时，recommend_dishes 使用 scene="similar" 和真实 triggerDishId；换一批或去掉已选候选时传入 excludeDishIds。其他推荐使用 guess_like，明确今日推荐可使用 today；不能用缺失来源或放宽限制来补齐结果。
+- priceMin/priceMax 是单道菜筛选。用户说整餐预算时，应计算方案中所有菜品总价；创建计划时传入 totalBudget 校验。已保存的价格偏好不是整餐总预算。
+- 单餐通常选1份主菜或套餐，可在同食堂补充合适的配菜；不要把多个完整套餐当成一个人的一餐。每个备选食堂分别生成计划草稿，不把全部备选合并。
+- 用户需要可确认的计划时，先调用 create_meal_plan，再将其完整结果交给 display_content 展示；草稿只供确认，不代表计划已保存。只有用户明确要求单餐跨食堂取餐时才启用 allowCrossCanteen。
+- 没有足够匹配结果时，说明哪些条件限制了选择；保留食堂、预算、过敏原和忌口限制，获得用户同意后再调整。不要用编造菜品补齐方案。
+- get_my_preferences 只读取已保存的饮食偏好。单次请求中的口味或忌口直接作为查询条件，不擅自保存；用户明确要求长期记住或修改设置时，先核对当前偏好，再使用 update_preferences 生成确认卡片。列表提供保留其他项的完整目标值，生成草稿不代表已保存；用户选择保存后以重新读取到的设置为准。
+- 回复先给出当前可用的选择，再解释必要信息。不要在已有合理条件时连续追问；后续问题围绕当前方案回答，不重复通用开场语。`;
   }
 
   /**
@@ -74,9 +92,11 @@ export class PromptBuilder {
 - get_popular_dishes: 获取热门/排行榜菜品
 - get_my_favorites: 获取用户收藏的菜品
 - get_my_history: 获取用户浏览历史
+- get_my_preferences: 读取已保存饮食偏好及过敏原
 - get_canteen_info: 获取食堂信息
 - get_dish_reviews: 获取菜品评价
-- update_preferences: 更新用户偏好
+- update_preferences: 生成偏好变更确认草稿，不直接保存
+- create_meal_plan: 创建可确认的用餐计划草稿
 - display_content: 向用户展示菜品或食堂卡片
 
 使用指南：
@@ -84,7 +104,7 @@ export class PromptBuilder {
 2. 当用户搜索特定菜品时，使用 search_dishes 工具
 3. 当用户询问食堂信息时，使用 get_canteen_info 工具
 4. 根据当前时间智能推荐合适的餐次
-5. 推荐组合/套餐时：优先推荐同一个食堂的菜品，除非用户明确要求跨食堂推荐。这能避免用户为了吃一顿饭跑多个地方。
+5. 区分多个食堂的备选方案与单份餐食的菜品组合，遵循推荐与规划策略
 6. 回复要友好、简洁、有帮助
 
 重要规则：
@@ -108,7 +128,9 @@ export class PromptBuilder {
 - recommend_dishes: 推荐适合的菜品
 - search_dishes: 搜索特定菜品
 - get_canteen_info: 获取食堂信息
-- update_preferences: 更新用户偏好（如添加忌口、过敏原）
+- get_my_preferences: 读取已保存饮食偏好及过敏原
+- update_preferences: 生成偏好变更确认草稿（如添加忌口、过敏原），不直接保存
+- create_meal_plan: 创建可确认的用餐计划草稿
 - display_content: 展示菜品或食堂卡片
 
 规划原则：
@@ -117,7 +139,7 @@ export class PromptBuilder {
 3. 考虑价格预算
 4. 考虑食堂位置和营业时间
 5. 提供多样化的选择，避免重复
-6. 【重要】规划一顿饭的多个菜品时，严格限制在同一个食堂内，除非用户要求多食堂。
+6. 单餐组合集中在一个食堂；跨食堂备选分别形成方案
 
 回复格式：
 - 先了解用户的需求（时间范围、预算、偏好等）
@@ -141,6 +163,7 @@ export class PromptBuilder {
 - recommend_dishes: 推荐相似菜品
 - get_canteen_info: 获取食堂信息
 - get_dish_reviews: 获取菜品评价
+- get_my_preferences: 读取已保存饮食偏好及过敏原
 - display_content: 展示菜品或食堂卡片
 
 点评要点：

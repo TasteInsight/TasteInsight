@@ -24,7 +24,6 @@ export const api = {
   createDish: dishApi.createDish.bind(dishApi),
   updateDish: dishApi.updateDish.bind(dishApi),
   deleteDish: dishApi.deleteDish.bind(dishApi),
-  batchUpload: dishApi.batchUpload.bind(dishApi),
   updateDishStatus: dishApi.updateDishStatus.bind(dishApi),
   uploadImage: dishApi.uploadImage.bind(dishApi),
   getDishReviews: dishApi.getDishReviews.bind(dishApi),
@@ -48,7 +47,7 @@ export const api = {
   getPendingUploads: reviewApi.getPendingUploads.bind(reviewApi),
   approveUpload: reviewApi.approveUpload.bind(reviewApi),
   rejectUpload: reviewApi.rejectUpload.bind(reviewApi),
-  getDishComments: reviewApi.getDishComments.bind(reviewApi),
+  getDishComments: reviewApi.getReviewComments.bind(reviewApi),
   deleteComment: reviewApi.deleteComment.bind(reviewApi),
 
   // 日志管理

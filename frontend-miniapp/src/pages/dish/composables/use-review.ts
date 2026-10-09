@@ -1,17 +1,73 @@
-import { ref, computed, watch } from 'vue';
-import { getReviewsByDish, createReview, deleteReview } from '@/api/modules/review';
+import { ref, computed, watch, getCurrentScope, onScopeDispose } from 'vue';
+import {
+  getOwnReviewByDish,
+  getReviewsByDish,
+  createReview,
+  deleteReview,
+} from '@/api/modules/review';
 import { uploadImage } from '@/api/modules/upload';
+import { useUserStore } from '@/store/modules/use-user-store';
 import type { Review, ReviewCreateRequest, ReviewListData } from '@/types/api';
 
 const REVIEW_STATE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24小时过期时间
+const IMAGE_DRAFT_UNAVAILABLE = new Error('当前平台不支持图片草稿，可继续编辑或提交');
 
 type FlavorKey = 'spicyLevel' | 'sweetness' | 'saltiness' | 'oiliness';
+
+type ReviewImage = { source: 'temporary' | 'saved' | 'remote'; path: string };
+type ReviewState = {
+  rating: number;
+  content: string;
+  images: ReviewImage[];
+  flavorRatings: Record<FlavorKey, number>;
+  timestamp: number;
+};
+
+const saveLocalImage = (tempFilePath: string): Promise<string> => {
+  const fileSystem = uni.getFileSystemManager?.();
+  if (!fileSystem?.saveFile) {
+    return Promise.reject(IMAGE_DRAFT_UNAVAILABLE);
+  }
+  return new Promise((resolve, reject) => {
+    fileSystem.saveFile({
+      tempFilePath,
+      success: result => resolve(result.savedFilePath),
+      fail: reject,
+    });
+  });
+};
+
+const removeLocalImages = (paths: Iterable<string>) => {
+  for (const filePath of new Set(paths)) {
+    try {
+      uni.getFileSystemManager().removeSavedFile({
+        filePath,
+        fail: error => console.warn('清理评价草稿图片失败:', error),
+      });
+    } catch (error) {
+      console.warn('清理评价草稿图片失败:', error);
+    }
+  }
+};
+
+const savedImagePaths = (state?: ReviewState) =>
+  (state?.images || []).filter(image => image.source === 'saved').map(image => image.path);
 
 /**
  * 评价列表相关逻辑
  */
 export function useReview() {
+  const userStore = useUserStore();
+  let disposed = false;
+  let listVersion = 0;
+  let ownVersion = 0;
+  let currentDishId = '';
+  const ownReview = ref<Review | null>(null);
+  const ownReviewLoading = ref(false);
+  const ownReviewLoaded = ref(false);
+  const ownReviewError = ref('');
   const reviews = ref<Review[]>([]);
+  const reviewsInitialized = ref(false);
   const ratingSummary = ref<ReviewListData['rating'] | null>(null);
   const reviewsLoading = ref(false);
   const isInitializing = ref(false);
@@ -19,32 +75,95 @@ export function useReview() {
   const reviewsHasMore = ref(true);
   const reviewsPage = ref(1);
   const reviewsPageSize = 10;
+  let failedReviewRefresh: boolean | null = null;
+
+  const invalidateOwnReview = () => {
+    ownVersion++;
+    ownReviewLoaded.value = false;
+    ownReviewLoading.value = false;
+    ownReviewError.value = '';
+  };
+
+  const reset = () => {
+    listVersion++;
+    invalidateOwnReview();
+    ownReview.value = null;
+    reviews.value = [];
+    reviewsInitialized.value = false;
+    reviewsLoading.value = false;
+    isInitializing.value = false;
+    reviewsError.value = '';
+    failedReviewRefresh = null;
+    reviewsPage.value = 1;
+    reviewsHasMore.value = true;
+    ratingSummary.value = null;
+  };
+  const useDish = (dishId: string) => {
+    if (currentDishId !== dishId) {
+      reset();
+      currentDishId = dishId;
+    }
+  };
+  const fetchOwnReview = async (dishId: string, acceptsResult = () => true): Promise<boolean> => {
+    useDish(dishId);
+    if (disposed) return false;
+    const version = ++ownVersion;
+    const session = userStore.sessionVersion;
+    const owner = userStore.userInfo?.id;
+    const isCurrent = () =>
+      !disposed &&
+      version === ownVersion &&
+      session === userStore.sessionVersion &&
+      owner === userStore.userInfo?.id &&
+      acceptsResult();
+    ownReviewLoading.value = true;
+    ownReviewLoaded.value = false;
+    ownReviewError.value = '';
+    try {
+      const response = await getOwnReviewByDish(dishId);
+      if (!isCurrent()) return false;
+      if (response.code !== 200) throw new Error(response.message || '读取我的评价失败');
+      ownReview.value = response.data;
+      ownReviewLoaded.value = true;
+      return true;
+    } catch (error) {
+      if (isCurrent()) ownReviewError.value = '我的评价暂时无法读取，请重试后再编辑';
+      return false;
+    } finally {
+      if (isCurrent()) ownReviewLoading.value = false;
+    }
+  };
 
   /**
    * 获取评价列表
    */
-  const fetchReviews = async (dishId: string, refresh = false) => {
-    if (reviewsLoading.value) return;
+  const fetchReviews = async (dishId: string, refresh = false, acceptsResult = () => true) => {
+    useDish(dishId);
+    if (reviewsLoading.value && !refresh) return false;
     if (!refresh && !reviewsHasMore.value) return;
+
+    const version = ++listVersion;
+    const session = userStore.sessionVersion;
+    const isCurrent = () =>
+      !disposed &&
+      version === listVersion &&
+      session === userStore.sessionVersion &&
+      acceptsResult();
+    const page = refresh ? 1 : reviewsPage.value;
 
     reviewsLoading.value = true;
     if (refresh) {
       isInitializing.value = true;
     }
     reviewsError.value = '';
-
-    if (refresh) {
-      reviewsPage.value = 1;
-      reviews.value = [];
-      reviewsHasMore.value = true;
-      ratingSummary.value = null;
-    }
+    failedReviewRefresh = null;
 
     try {
       const response = await getReviewsByDish(dishId, {
-        page: reviewsPage.value,
+        page,
         pageSize: reviewsPageSize,
       });
+      if (!isCurrent()) return false;
 
       if (response.code === 200 && response.data) {
         ratingSummary.value = response.data.rating || ratingSummary.value;
@@ -57,23 +176,35 @@ export function useReview() {
         }
 
         // 判断是否还有更多数据
-        if (newReviews.length < reviewsPageSize) {
-          reviewsHasMore.value = false;
-        } else {
-          reviewsPage.value++;
-        }
+        reviewsHasMore.value =
+          response.data.meta?.totalPages != null
+            ? page < response.data.meta.totalPages
+            : newReviews.length === reviewsPageSize;
+        reviewsPage.value = page + 1;
+        reviewsInitialized.value = true;
+        return true;
       } else {
         reviewsError.value = response.message || '获取评价失败';
+        failedReviewRefresh = refresh;
+        return false;
       }
     } catch (err: any) {
+      if (!isCurrent()) return false;
       console.error('获取评价失败:', err);
       reviewsError.value = '网络错误，请稍后重试';
+      failedReviewRefresh = refresh;
+      return false;
     } finally {
-      reviewsLoading.value = false;
-      if (refresh) {
+      if (isCurrent()) {
+        reviewsLoading.value = false;
         isInitializing.value = false;
       }
     }
+  };
+
+  const retryReviews = () => {
+    if (reviewsLoading.value || failedReviewRefresh === null) return Promise.resolve(false);
+    return fetchReviews(currentDishId, failedReviewRefresh);
   };
 
   /**
@@ -82,7 +213,7 @@ export function useReview() {
   const submitReview = async (payload: ReviewCreateRequest) => {
     try {
       const response = await createReview(payload);
-      if (response.code === 200) {
+      if (response.code === 200 || response.code === 201) {
         return response.data;
       } else {
         throw new Error(response.message || '提交失败');
@@ -97,11 +228,14 @@ export function useReview() {
    * 删除评价
    */
   const removeReview = async (reviewId: string) => {
+    const session = userStore.sessionVersion;
     try {
       const res = await deleteReview(reviewId);
+      if (disposed || session !== userStore.sessionVersion) return false;
       if (res.code === 200) {
         // 从列表中移除
         reviews.value = reviews.value.filter(r => r.id !== reviewId);
+        if (ownReview.value?.id === reviewId) ownReview.value = null;
         return true;
       } else {
         throw new Error(res.message || '删除失败');
@@ -112,14 +246,28 @@ export function useReview() {
     }
   };
 
+  watch(() => userStore.sessionVersion, reset, { flush: 'sync' });
+  if (getCurrentScope())
+    onScopeDispose(() => {
+      disposed = true;
+    });
+
   return {
+    ownReview,
+    ownReviewLoading,
+    ownReviewLoaded,
+    ownReviewError,
+    fetchOwnReview,
+    invalidateOwnReview,
     reviews,
+    reviewsInitialized,
     ratingSummary,
     reviewsLoading,
     isInitializing,
     reviewsError,
     reviewsHasMore,
     fetchReviews,
+    retryReviews,
     submitReview,
     removeReview,
   };
@@ -129,11 +277,32 @@ export function useReview() {
  * 评价表单相关逻辑
  */
 export function useReviewForm() {
+  const userStore = useUserStore();
+  const reviewOwner = computed(() => (userStore.isLoggedIn ? userStore.userInfo?.id : null));
+  const reviewStateKey = (dishId: string) =>
+    reviewOwner.value ? `review_state:${reviewOwner.value}:${dishId}` : null;
   const rating = ref(0);
   const content = ref('');
-  const images = ref<string[]>([]);
+  const images = ref<ReviewImage[]>([]);
   const submitting = ref(false);
+  const isSaving = ref(false);
+  const isUploading = ref(false);
+  const busy = computed(() => submitting.value || isSaving.value);
   const showFlavorError = ref(false);
+  const uncommittedFiles = new Set<string>();
+  let disposed = false;
+
+  const captureOwner = () => {
+    const owner = reviewOwner.value;
+    const version = userStore.sessionVersion;
+    return () =>
+      !disposed && !!owner && reviewOwner.value === owner && userStore.sessionVersion === version;
+  };
+
+  const releaseUncommittedFiles = () => {
+    removeLocalImages(uncommittedFiles);
+    uncommittedFiles.clear();
+  };
 
   const flavorOptions: Array<{ key: FlavorKey; label: string; hint: string }> = [
     { key: 'spicyLevel', label: '辣度', hint: '辣味程度' },
@@ -163,10 +332,12 @@ export function useReviewForm() {
   });
 
   const setRating = (star: number) => {
+    if (busy.value) return;
     rating.value = star;
   };
 
   const setFlavorRating = (key: FlavorKey, value: number) => {
+    if (busy.value) return;
     showFlavorError.value = false;
     flavorRatings.value[key] = flavorRatings.value[key] === value ? 0 : value;
   };
@@ -182,6 +353,7 @@ export function useReviewForm() {
   };
 
   const resetForm = () => {
+    releaseUncommittedFiles();
     rating.value = 0;
     content.value = '';
     images.value = [];
@@ -198,94 +370,140 @@ export function useReviewForm() {
   /**
    * 保存评价状态到本地存储
    */
-  const saveReviewState = (dishId: string) => {
-    const state = {
+  const saveReviewState = async (dishId: string) => {
+    const key = reviewStateKey(dishId);
+    const isCurrent = captureOwner();
+    if (!key || !isCurrent() || busy.value) return false;
+    cleanupExpiredStates(key);
+    const selectedImages = [...images.value];
+    const state: ReviewState = {
       rating: rating.value,
       content: content.value,
-      images: images.value,
+      images: selectedImages.map(image => ({ ...image })),
       flavorRatings: { ...flavorRatings.value },
       timestamp: Date.now(),
     };
-    uni.setStorageSync(`review_state_${dishId}`, state);
+    isSaving.value = true;
+    try {
+      for (let index = 0; index < state.images.length; index++) {
+        const image = state.images[index];
+        if (image.source !== 'temporary') continue;
+        const path = await saveLocalImage(image.path);
+        if (!isCurrent()) {
+          removeLocalImages([path]);
+          return false;
+        }
+        uncommittedFiles.add(path);
+        // saveFile 移动临时文件；后续保存失败时仍需保留可重试的路径。
+        image.source = 'saved';
+        image.path = path;
+        Object.assign(selectedImages[index], image);
+      }
+      const previous = uni.getStorageSync(key) as ReviewState | undefined;
+      uni.setStorageSync(key, state);
+      const retained = new Set(savedImagePaths(state));
+      retained.forEach(path => uncommittedFiles.delete(path));
+      removeLocalImages(savedImagePaths(previous).filter(path => !retained.has(path)));
+      return true;
+    } catch (error) {
+      if (!isCurrent()) return false;
+      console.error('保存评价草稿失败:', error);
+      uni.showToast({
+        title:
+          error === IMAGE_DRAFT_UNAVAILABLE
+            ? IMAGE_DRAFT_UNAVAILABLE.message
+            : '草稿保存失败，请重试',
+        icon: 'none',
+      });
+      return false;
+    } finally {
+      if (isCurrent()) isSaving.value = false;
+    }
+  };
+
+  const clearState = (key: string) => {
+    const state = uni.getStorageSync(key) as ReviewState | undefined;
+    uni.removeStorageSync(key);
+    removeLocalImages(savedImagePaths(state));
+  };
+
+  const cleanupExpiredStates = (retainedKey?: string) => {
+    if (!reviewOwner.value) return;
+    const prefix = `review_state:${reviewOwner.value}:`;
+    try {
+      for (const key of uni.getStorageInfoSync().keys) {
+        if (!key.startsWith(prefix) || key === retainedKey) continue;
+        const state = uni.getStorageSync(key) as ReviewState | undefined;
+        if (state && Date.now() - state.timestamp >= REVIEW_STATE_EXPIRY_MS) clearState(key);
+      }
+    } catch (error) {
+      console.warn('清理过期评价草稿失败:', error);
+    }
+  };
+
+  const readReviewState = (dishId: string): ReviewState | null => {
+    const key = reviewStateKey(dishId);
+    if (!key) return null;
+    cleanupExpiredStates();
+    try {
+      const state = uni.getStorageSync(key) as ReviewState | undefined;
+      if (state && typeof state === 'object') {
+        if (Date.now() - state.timestamp < REVIEW_STATE_EXPIRY_MS) return state;
+        clearState(key);
+      }
+    } catch (error) {
+      console.log('读取评价状态失败:', error);
+    }
+    return null;
   };
 
   /**
    * 从本地存储恢复评价状态
    */
   const loadReviewState = (dishId: string) => {
-    try {
-      const state = uni.getStorageSync(`review_state_${dishId}`);
-      if (state && typeof state === 'object') {
-        // 检查是否过期（24小时）
-        const now = Date.now();
-        if (now - state.timestamp < REVIEW_STATE_EXPIRY_MS) {
-          rating.value = state.rating || 0;
-          content.value = state.content || '';
-          images.value = state.images || [];
-          flavorRatings.value = state.flavorRatings
-            ? { ...state.flavorRatings }
-            : {
-                spicyLevel: 0,
-                sweetness: 0,
-                saltiness: 0,
-                oiliness: 0,
-              };
-          return true;
-        }
-      }
-    } catch (error) {
-      console.log('恢复评价状态失败:', error);
-    }
-    return false;
+    if (busy.value || disposed) return false;
+    const state = readReviewState(dishId);
+    if (!state) return false;
+    resetForm();
+    rating.value = state.rating || 0;
+    content.value = state.content || '';
+    images.value = (state.images || []).map(image => ({ ...image }));
+    if (state.flavorRatings) flavorRatings.value = { ...state.flavorRatings };
+    return true;
   };
 
   /**
    * 清除保存的评价状态
    */
   const clearReviewState = (dishId: string) => {
-    uni.removeStorageSync(`review_state_${dishId}`);
+    const key = reviewStateKey(dishId);
+    if (key) clearState(key);
   };
 
   /**
    * 检查是否有保存的评价状态
    */
-  const hasSavedReviewState = (dishId: string) => {
-    try {
-      const state = uni.getStorageSync(`review_state_${dishId}`);
-      if (state && typeof state === 'object') {
-        const now = Date.now();
-        return now - state.timestamp < REVIEW_STATE_EXPIRY_MS;
-      }
-    } catch (error) {
-      console.log('检查评价状态失败:', error);
-    }
-    return false;
-  };
+  const hasSavedReviewState = (dishId: string) => !!readReviewState(dishId);
 
-  const isUploading = ref(false);
-
-  const uploadImages = async (tempFilePaths: string[]) => {
+  const addImages = (tempFilePaths: string[]) => {
+    if (busy.value || disposed) return;
     if (images.value.length + tempFilePaths.length > 3) {
-      uni.showToast({ title: '最多只能上传3张图片', icon: 'none' });
+      uni.showToast({ title: '最多只能选择3张图片', icon: 'none' });
       return;
     }
+    images.value.push(...tempFilePaths.map(path => ({ source: 'temporary' as const, path })));
+  };
 
-    isUploading.value = true;
-    try {
-      const uploadPromises = tempFilePaths.map(path => uploadImage(path));
-      const results = await Promise.all(uploadPromises);
-      const newUrls = results.map(res => res.url);
-      images.value = [...images.value, ...newUrls];
-    } catch (error) {
-      console.error('图片上传失败:', error);
-      uni.showToast({ title: '图片上传失败', icon: 'none' });
-    } finally {
-      isUploading.value = false;
-    }
+  const setRemoteImages = (urls: string[]) => {
+    images.value = urls.map(path => ({ source: 'remote', path }));
   };
 
   const removeImage = (index: number) => {
-    images.value.splice(index, 1);
+    if (busy.value) return;
+    const [image] = images.value.splice(index, 1);
+    if (image?.source === 'saved' && uncommittedFiles.delete(image.path)) {
+      removeLocalImages([image.path]);
+    }
   };
 
   /**
@@ -293,12 +511,12 @@ export function useReviewForm() {
    */
   const handleSubmit = async (
     dishId: string,
-    onSuccess?: () => void,
-    existingReviewId?: string
+    onSuccess?: (review: Review) => void,
+    _existingReviewId?: string
   ) => {
-    if (submitting.value || isUploading.value) return;
-
-    submitting.value = true;
+    const isCurrent = captureOwner();
+    const key = reviewStateKey(dishId);
+    if (busy.value || !isCurrent() || !key) return;
 
     try {
       if (rating.value === 0) {
@@ -306,13 +524,11 @@ export function useReviewForm() {
           title: '请先选择总体评分',
           icon: 'none',
         });
-        submitting.value = false;
         return;
       }
 
       if (!flavorSelectionComplete.value) {
         showFlavorError.value = true;
-        submitting.value = false;
         uni.showToast({
           title: '请选择全部口味评分或全部留空',
           icon: 'none',
@@ -320,32 +536,39 @@ export function useReviewForm() {
         return;
       }
 
+      const selectedImages = images.value.map(image => ({ ...image }));
       const payload: ReviewCreateRequest = {
         dishId,
         rating: rating.value,
         content: content.value.trim(),
-        images: images.value,
+        images: [],
       };
 
       if (hasFlavorSelection.value) {
         payload.ratingDetails = { ...flavorRatings.value };
       }
 
-      // 单人单评：如果已存在评价，提交时覆盖（先删后建，避免后端不支持 update 接口）
-      if (existingReviewId) {
-        try {
-          await deleteReview(existingReviewId);
-        } catch (e) {
-          // 删除失败不阻断创建：可能后端已做 upsert 或旧评价已被删除
-          console.warn('覆盖评价：删除旧评价失败，将继续提交新评价', e);
+      submitting.value = true;
+      for (const image of selectedImages) {
+        if (image.source === 'remote') {
+          payload.images!.push(image.path);
+        } else {
+          isUploading.value = true;
+          const result = await uploadImage(image.path);
+          if (!isCurrent()) return;
+          payload.images!.push(result.url);
         }
       }
+      isUploading.value = false;
 
+      // 后端 createReview 使用 userId + dishId upsert，编辑与新建共用同一原子接口。
       const response = await createReview(payload);
+      if (!isCurrent()) return;
 
       if (response.code === 200 || response.code === 201) {
+        clearState(key);
         resetForm();
-        onSuccess?.();
+        onSuccess?.(response.data);
       } else {
         uni.showToast({
           title: response.message || '提交失败',
@@ -353,21 +576,44 @@ export function useReviewForm() {
         });
       }
     } catch (err: any) {
+      if (!isCurrent()) return;
       console.error('提交评价失败:', err);
       uni.showToast({
-        title: '网络错误，请稍后重试',
+        title: isUploading.value ? '图片上传失败，请重试' : '网络错误，请稍后重试',
         icon: 'none',
       });
     } finally {
-      submitting.value = false;
+      if (isCurrent()) {
+        submitting.value = false;
+        isUploading.value = false;
+      }
     }
   };
+
+  watch(
+    [() => userStore.sessionVersion, reviewOwner],
+    () => {
+      resetForm();
+      submitting.value = false;
+      isSaving.value = false;
+      isUploading.value = false;
+    },
+    { flush: 'sync' }
+  );
+
+  if (getCurrentScope()) {
+    onScopeDispose(() => {
+      disposed = true;
+      releaseUncommittedFiles();
+    });
+  }
 
   return {
     rating,
     content,
     images,
-    isUploading,
+    isSaving,
+    busy,
     submitting,
     showFlavorError,
     flavorOptions,
@@ -384,7 +630,8 @@ export function useReviewForm() {
     clearReviewState,
     hasSavedReviewState,
     handleSubmit,
-    uploadImages,
+    addImages,
+    setRemoteImages,
     removeImage,
   };
 }

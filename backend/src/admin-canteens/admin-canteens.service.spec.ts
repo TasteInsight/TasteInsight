@@ -2,7 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AdminCanteensService } from './admin-canteens.service';
 import { PrismaService } from '@/prisma.service';
 import { DishSyncService } from '@/dish-sync-queue/dish-sync.service';
-import { NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  NotFoundException,
+  ForbiddenException,
+  ConflictException,
+} from '@nestjs/common';
 
 const mockPrismaService = {
   canteen: {
@@ -35,7 +39,13 @@ const mockPrismaService = {
     deleteMany: jest.fn(),
     createMany: jest.fn(),
   },
-  $transaction: jest.fn((ops) => Promise.all(ops)),
+  admin: {
+    count: jest.fn(),
+    updateMany: jest.fn(),
+  },
+  $transaction: jest.fn((ops) =>
+    typeof ops === 'function' ? ops(mockPrismaService) : Promise.all(ops),
+  ),
 };
 
 const mockDishSyncService = {
@@ -303,6 +313,9 @@ describe('AdminCanteensService', () => {
 
   describe('remove', () => {
     beforeEach(() => {
+      prisma.admin.count.mockResolvedValue(0);
+      prisma.admin.updateMany.mockResolvedValue({ count: 0 });
+      prisma.canteen.delete.mockResolvedValue({});
       prisma.canteen.findUnique.mockResolvedValue({
         id: 'c1',
         name: 'Canteen 1',
@@ -319,6 +332,25 @@ describe('AdminCanteensService', () => {
       expect(prisma.canteen.delete).toHaveBeenCalledWith({
         where: { id: 'c1' },
       });
+      expect(prisma.admin.updateMany).toHaveBeenCalledWith({
+        where: { canteenId: 'c1', deletedAt: { not: null } },
+        data: { canteenId: null },
+      });
+    });
+
+    it('rejects deletion while an active administrator is bound', async () => {
+      prisma.admin.count.mockResolvedValue(1);
+
+      await expect(service.remove('c1')).rejects.toThrow(ConflictException);
+
+      expect(prisma.canteen.delete).not.toHaveBeenCalled();
+      expect(prisma.admin.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('reports a conflicting administrator assignment rejected by the foreign key', async () => {
+      prisma.canteen.delete.mockRejectedValue({ code: 'P2003' });
+
+      await expect(service.remove('c1')).rejects.toThrow(ConflictException);
     });
 
     it('should throw NotFoundException if canteen not found', async () => {

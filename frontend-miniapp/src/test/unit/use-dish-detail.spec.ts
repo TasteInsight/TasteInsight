@@ -35,6 +35,11 @@ describe('useDishDetail', () => {
     // Mock useReview
     mockUseReview = {
       reviews: { value: [] },
+      ownReview: { value: null },
+      ownReviewLoading: { value: false },
+      ownReviewLoaded: { value: true },
+      ownReviewError: { value: '' },
+      fetchOwnReview: jest.fn().mockResolvedValue(true),
       reviewsLoading: { value: false },
       isInitializing: { value: false },
       reviewsError: { value: '' },
@@ -78,7 +83,7 @@ describe('useDishDetail', () => {
       await fetchDishDetail(dishId);
 
       // Mock successful removal
-      mockUseReview.removeReview.mockResolvedValueOnce(undefined);
+      mockUseReview.removeReview.mockResolvedValueOnce(true);
       mockUseReview.fetchReviews.mockResolvedValueOnce(undefined);
 
       // Act
@@ -86,7 +91,7 @@ describe('useDishDetail', () => {
 
       // Assert
       expect(mockUseReview.removeReview).toHaveBeenCalledWith(reviewId);
-      expect(mockUseReview.fetchReviews).toHaveBeenCalledWith(dishId, true);
+      expect(mockUseReview.fetchReviews).toHaveBeenCalledWith(dishId, true, expect.any(Function));
       expect(mockShowToast).toHaveBeenCalledWith({ title: '删除成功', icon: 'success' });
     });
 

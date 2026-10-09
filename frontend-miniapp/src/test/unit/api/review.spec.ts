@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 describe('api/modules/review.ts', () => {
   const MODULE_PATH = '@/api/modules/review';
 
@@ -70,3 +68,4 @@ describe('api/modules/review.ts', () => {
     expect(mockReq.mock.calls[0][0]).toMatchObject({ url: '/reviews/r1', method: 'DELETE' });
   });
 });
+export {};

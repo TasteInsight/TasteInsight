@@ -5,6 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
+import { Prisma } from '@prisma/client';
 import { AdminConfigService } from '@/admin-config/admin-config.service';
 import { ConfigKeys } from '@/admin-config/config-definitions';
 import { CreateCommentDto } from './dto/create-comment.dto';
@@ -13,7 +14,6 @@ import {
   CommentResponseDto,
   SuccessResponseDto,
   CommentData,
-  CommentDetailData,
 } from './dto/comment-response.dto';
 import { ReportCommentDto } from './dto/report-comment.dto';
 
@@ -28,12 +28,31 @@ export class CommentsService {
     reviewId: string,
     page = 1,
     pageSize = 10,
+    viewerId: string,
   ): Promise<CommentListResponseDto> {
     const skip = (page - 1) * pageSize;
+    const reviewVisibility = {
+      deletedAt: null,
+      OR: [{ status: 'approved' }, { userId: viewerId }],
+    };
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId, ...reviewVisibility },
+      select: { status: true },
+    });
+    if (!review) throw new NotFoundException('评价不存在或暂不可查看');
+    const where: Prisma.CommentWhereInput = {
+      reviewId,
+      deletedAt: null,
+      review: reviewVisibility,
+      OR: [
+        { status: 'approved' },
+        { userId: viewerId, status: { in: ['pending', 'rejected'] } },
+      ],
+    };
 
     const [items, total] = await Promise.all([
       this.prisma.comment.findMany({
-        where: { reviewId, status: 'approved', deletedAt: null },
+        where,
         include: {
           user: {
             select: {
@@ -46,6 +65,7 @@ export class CommentsService {
             select: {
               id: true,
               userId: true,
+              status: true,
               user: {
                 select: {
                   nickname: true,
@@ -55,12 +75,12 @@ export class CommentsService {
             },
           },
         },
-        orderBy: { createdAt: 'asc' },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
         skip,
         take: pageSize,
       }),
       this.prisma.comment.count({
-        where: { reviewId, status: 'approved', deletedAt: null },
+        where,
       }),
     ]);
 
@@ -68,7 +88,8 @@ export class CommentsService {
       code: 200,
       message: 'success',
       data: {
-        items: items.map((comment) => this.mapToCommentData(comment)),
+        items: items.map((comment) => this.mapToCommentData(comment, viewerId)),
+        canReply: review.status === 'approved',
         meta: {
           total,
           page,
@@ -89,21 +110,25 @@ export class CommentsService {
         await tx.$queryRaw`SELECT id FROM reviews WHERE id = ${dto.reviewId} FOR UPDATE`;
 
       if (!Array.isArray(lockedReviews) || lockedReviews.length === 0) {
-        throw new NotFoundException('评价不存在或未通过审核');
+        throw new NotFoundException('评价不存在或暂不可回复');
       }
 
       const review = await tx.review.findUnique({
         where: { id: dto.reviewId, status: 'approved', deletedAt: null },
       });
       if (!review) {
-        throw new NotFoundException('评价不存在或未通过审核');
+        throw new NotFoundException('评价不存在或暂不可回复');
       }
 
       if (dto.parentCommentId) {
         const parent = await tx.comment.findUnique({
           where: { id: dto.parentCommentId },
         });
-        if (!parent || parent.reviewId !== dto.reviewId) {
+        if (
+          !parent ||
+          parent.reviewId !== dto.reviewId ||
+          parent.status !== 'approved'
+        ) {
           throw new NotFoundException('父评论不存在');
         }
         if (parent.deletedAt) {
@@ -121,6 +146,7 @@ export class CommentsService {
         ? await this.adminConfigService.getBooleanConfigValue(
             ConfigKeys.COMMENT_AUTO_APPROVE,
             dish.canteenId,
+            tx,
           )
         : false;
 
@@ -150,6 +176,7 @@ export class CommentsService {
             select: {
               id: true,
               userId: true,
+              status: true,
               user: {
                 select: {
                   nickname: true,
@@ -163,8 +190,8 @@ export class CommentsService {
 
       return {
         code: 201,
-        message: '评论发布成功',
-        data: this.mapToCommentDetailData(comment),
+        message: '回复已提交',
+        data: this.mapToCommentData(comment, userId),
       };
     });
   }
@@ -226,7 +253,7 @@ export class CommentsService {
     };
   }
 
-  private mapToCommentData(comment: any): CommentData {
+  private mapToCommentData(comment: any, viewerId: string): CommentData {
     return {
       id: comment.id,
       reviewId: comment.reviewId,
@@ -234,23 +261,20 @@ export class CommentsService {
       userNickname: comment.user.nickname,
       userAvatar: comment.user?.avatar,
       content: comment.deletedAt ? '该评论已删除' : comment.content,
+      status: comment.status,
       floor: comment.floor,
       createdAt: comment.createdAt.toISOString(),
-      parentComment: comment.parentComment
-        ? {
-            id: comment.parentComment.id,
-            userId: comment.parentComment.userId,
-            userNickname: comment.parentComment.user.nickname,
-            deleted: !!comment.parentComment.deletedAt,
-          }
-        : null,
-    };
-  }
-
-  private mapToCommentDetailData(comment: any): CommentDetailData {
-    return {
-      ...this.mapToCommentData(comment),
-      status: comment.status,
+      parentComment:
+        comment.parentComment &&
+        (comment.parentComment.status === 'approved' ||
+          comment.parentComment.userId === viewerId)
+          ? {
+              id: comment.parentComment.id,
+              userId: comment.parentComment.userId,
+              userNickname: comment.parentComment.user.nickname,
+              deleted: !!comment.parentComment.deletedAt,
+            }
+          : null,
     };
   }
 }

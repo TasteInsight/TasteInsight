@@ -16,6 +16,7 @@ export class CanteenInfoTool implements BaseTool {
         properties: {
           canteenId: {
             type: 'string',
+            minLength: 1,
             description:
               '可选。食堂ID，仅当用户询问特定食堂时才提供。留空则返回所有食堂。',
           },

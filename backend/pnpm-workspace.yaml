@@ -1,12 +1,13 @@
-packages: []
+packages:
+  - '.'
 
-ignoredBuiltDependencies:
-  - '@nestjs/core'
-
-onlyBuiltDependencies:
-  - '@prisma/client'
-  - '@prisma/engines'
-  - '@scarf/scarf'
-  - bcrypt
-  - prisma
-  - unrs-resolver
+allowBuilds:
+  '@nestjs/core': true
+  '@prisma/client': true
+  '@prisma/engines': true
+  '@scarf/scarf': true
+  bcrypt: true
+  msgpackr-extract: true
+  prisma: true
+  sharp: true
+  unrs-resolver: true

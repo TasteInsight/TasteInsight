@@ -40,6 +40,8 @@ describe('AdminCommentsService', () => {
         id: 'c1',
         reviewId: 'r1',
         userId: 'u1',
+        user: { id: 'u1', nickname: 'User 1', avatar: 'avatar.jpg' },
+        floor: 1,
         content: 'Test comment',
         status: 'pending',
         rejectReason: null,
@@ -63,6 +65,11 @@ describe('AdminCommentsService', () => {
       expect(result.code).toBe(200);
       expect(result.data.items).toHaveLength(1);
       expect(result.data.meta.total).toBe(1);
+      expect(result.data.items[0]).toMatchObject({
+        userNickname: 'User 1',
+        userAvatar: 'avatar.jpg',
+        floor: 1,
+      });
     });
 
     it('should filter by canteenId for canteen admin', async () => {
@@ -70,6 +77,14 @@ describe('AdminCommentsService', () => {
       prisma.comment.count.mockResolvedValue(0);
 
       await service.getPendingComments(1, 20, { canteenId: 'can1' });
+
+      expect(prisma.comment.count).toHaveBeenCalledWith({
+        where: {
+          status: 'pending',
+          deletedAt: null,
+          review: { deletedAt: null, dish: { canteenId: 'can1' } },
+        },
+      });
 
       expect(prisma.comment.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -99,6 +114,25 @@ describe('AdminCommentsService', () => {
     });
   });
 
+  it.each(['approveComment', 'rejectComment'] as const)(
+    'does not %s a soft-deleted comment',
+    async (method) => {
+      prisma.comment.findUnique.mockImplementation(({ where }) =>
+        Promise.resolve(
+          where.deletedAt === null
+            ? null
+            : { id: 'deleted', review: { dish: { canteenId: 'can1' } } },
+        ),
+      );
+      const operation =
+        method === 'approveComment'
+          ? service.approveComment('deleted')
+          : service.rejectComment('deleted', { reason: 'reason' });
+      await expect(operation).rejects.toThrow(NotFoundException);
+      expect(prisma.comment.update).not.toHaveBeenCalled();
+    },
+  );
+
   describe('approveComment', () => {
     beforeEach(() => {
       prisma.comment.findUnique.mockResolvedValue({
@@ -123,7 +157,7 @@ describe('AdminCommentsService', () => {
       expect(result.code).toBe(200);
       expect(result.message).toBe('操作成功');
       expect(prisma.comment.update).toHaveBeenCalledWith({
-        where: { id: 'c1' },
+        where: { id: 'c1', deletedAt: null },
         data: { status: 'approved' },
       });
     });
@@ -170,7 +204,7 @@ describe('AdminCommentsService', () => {
       expect(result.code).toBe(200);
       expect(result.message).toBe('操作成功');
       expect(prisma.comment.update).toHaveBeenCalledWith({
-        where: { id: 'c1' },
+        where: { id: 'c1', deletedAt: null },
         data: {
           status: 'rejected',
           rejectReason: 'Inappropriate content',

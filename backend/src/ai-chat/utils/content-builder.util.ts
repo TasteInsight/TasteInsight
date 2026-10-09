@@ -5,6 +5,7 @@ import {
   ComponentDishCard,
   ComponentCanteenCard,
   ComponentMealPlanDraft,
+  ComponentPreferenceDraft,
 } from '../dto/chat.dto';
 
 export class ContentBuilder {
@@ -46,6 +47,10 @@ export class ContentBuilder {
       type: 'card_plan',
       data: cards,
     };
+  }
+
+  static preferenceCards(cards: ComponentPreferenceDraft[]): ContentSegment {
+    return { type: 'card_preferences', data: cards };
   }
 
   /**

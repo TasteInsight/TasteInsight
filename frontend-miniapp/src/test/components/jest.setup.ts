@@ -1,5 +1,9 @@
 import { config } from '@vue/test-utils';
 
+// Vite injects this value for real builds. Jest does not load Vite mode files,
+// so tests use the committed development endpoint unless a test overrides it.
+process.env.VITE_API_BASE_URL ||= 'http://localhost:3001';
+
 const originalWarn = console.warn;
 console.warn = (...args: any[]) => {
   const first = args[0];

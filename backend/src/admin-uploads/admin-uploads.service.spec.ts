@@ -9,6 +9,7 @@ import {
 
 const mockPrismaService = {
   dishUpload: {
+    findFirst: jest.fn(),
     findMany: jest.fn(),
     count: jest.fn(),
     findUnique: jest.fn(),
@@ -17,10 +18,13 @@ const mockPrismaService = {
     delete: jest.fn(),
   },
   dish: {
+    findUnique: jest.fn(),
+    findFirst: jest.fn(),
     create: jest.fn(),
     delete: jest.fn(),
   },
   $transaction: jest.fn((callback) => callback(mockPrismaService)),
+  $queryRaw: jest.fn().mockResolvedValue([]),
 };
 
 describe('AdminUploadsService', () => {
@@ -46,6 +50,36 @@ describe('AdminUploadsService', () => {
   });
 
   describe('getUploads', () => {
+    it('filters keyword and canteen before counting and paging', async () => {
+      prisma.dishUpload.findMany.mockResolvedValue([]);
+      prisma.dishUpload.count.mockResolvedValue(25);
+      const result = await service.getUploads(
+        { keyword: '鸡肉', canteenId: 'c1', page: 2, pageSize: 10 },
+        {},
+      );
+      const contains = { contains: '鸡肉', mode: 'insensitive' };
+      const where = {
+        canteenId: 'c1',
+        OR: [
+          { name: contains },
+          { canteenName: contains },
+          { windowName: contains },
+          { user: { nickname: contains } },
+          { admin: { username: contains } },
+        ],
+      };
+      expect(prisma.dishUpload.count).toHaveBeenCalledWith({ where });
+      expect(prisma.dishUpload.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where, skip: 10, take: 10 }),
+      );
+      expect(result.data.meta.total).toBe(25);
+    });
+
+    it('does not allow canteen filters to widen administrator scope', async () => {
+      await expect(
+        service.getUploads({ canteenId: 'other' }, { canteenId: 'own' }),
+      ).rejects.toThrow(ForbiddenException);
+    });
     const mockUploads = [
       {
         id: 'u1',
@@ -158,7 +192,7 @@ describe('AdminUploadsService', () => {
     it('should return an upload by id', async () => {
       prisma.dishUpload.findUnique.mockResolvedValue(mockUpload);
 
-      const result = await service.getUploadById('u1', {});
+      const result = await service.getUploadById('u1', { role: 'superadmin' });
 
       expect(result.code).toBe(200);
       expect(result.data.id).toBe('u1');
@@ -185,6 +219,22 @@ describe('AdminUploadsService', () => {
   });
 
   describe('approveUpload', () => {
+    it('copies the submitted price unit into the approved dish', async () => {
+      prisma.dishUpload.findUnique.mockResolvedValue({
+        id: 'unit-upload',
+        canteenId: 'c1',
+        price: 12,
+        priceUnit: '斤',
+      });
+      prisma.dishUpload.updateMany.mockResolvedValue({ count: 1 });
+      prisma.dish.create.mockResolvedValue({ id: 'unit-dish' });
+      await service.approveUpload('unit-upload', {});
+      expect(prisma.dish.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ priceUnit: '斤' }),
+        }),
+      );
+    });
     const mockUpload = {
       id: 'u1',
       name: 'Uploaded Dish',
@@ -236,6 +286,50 @@ describe('AdminUploadsService', () => {
 
       expect(result.code).toBe(200);
       expect(prisma.dish.create).toHaveBeenCalled();
+    });
+
+    it('publishes the pending fields committed after the initial approval read', async () => {
+      const current = {
+        ...mockUpload,
+        price: 28,
+        description: 'updated pending dish',
+      };
+      prisma.dishUpload.findUnique
+        .mockResolvedValueOnce(mockUpload)
+        .mockResolvedValue(current);
+      prisma.dish.create.mockResolvedValue({ id: 'new-dish-id' });
+
+      await service.approveUpload('u1', {});
+
+      expect(prisma.$queryRaw).toHaveBeenCalledWith(expect.anything(), 'u1');
+      expect(prisma.dish.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          price: 28,
+          description: current.description,
+        }),
+      });
+    });
+
+    it('revalidates canteen scope after waiting for the upload lock', async () => {
+      prisma.dishUpload.findUnique
+        .mockResolvedValueOnce(mockUpload)
+        .mockResolvedValue({ ...mockUpload, canteenId: 'c2' });
+
+      await expect(
+        service.approveUpload('u1', { canteenId: 'c1' }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(prisma.dish.create).not.toHaveBeenCalled();
+    });
+
+    it('does not publish using a parent relation changed after the initial read', async () => {
+      prisma.dishUpload.findUnique
+        .mockResolvedValueOnce(mockUpload)
+        .mockResolvedValue({ ...mockUpload, parentUploadId: 'new-parent' });
+
+      await expect(service.approveUpload('u1', {})).rejects.toThrow(
+        '关系已变化',
+      );
+      expect(prisma.dish.create).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if upload not found', async () => {

@@ -30,7 +30,7 @@ describe('MealPlansController (e2e)', () => {
         whitelist: true,
       }),
     );
-    await app.init();
+    await app.listen(0, '127.0.0.1');
 
     // 获取测试用户登录token
     const loginResponse = await request(app.getHttpServer())

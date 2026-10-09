@@ -1,90 +1,86 @@
-// @/pages/profile/history/composables/use-history.ts
-import { ref } from 'vue';
+import { ref, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { getBrowseHistory } from '@/api/modules/user';
+import { useUserStore } from '@/store/modules/use-user-store';
 import type { BrowseHistoryItem } from '@/types/api';
 
 export function useHistory() {
+  const userStore = useUserStore();
   const historyItems = ref<BrowseHistoryItem[]>([]);
   const loading = ref(false);
+  const initialized = ref(false);
   const error = ref<string | null>(null);
-  const currentPage = ref(1);
-  const pageSize = 10;
   const hasMore = ref(true);
+  let currentPage = 0;
+  const pageSize = 10;
+  let requestVersion = 0;
+  let disposed = false;
+  let failedReset = false;
 
-  /**
-   * 获取浏览历史列表
-   */
-  const fetchHistory = async (reset = false) => {
-    if (loading.value) return;
-
+  async function fetchHistory(reset = false): Promise<boolean> {
+    if (disposed || !userStore.isLoggedIn || (loading.value && !reset)) return false;
+    const session = userStore.sessionVersion;
+    const version = ++requestVersion;
+    const isCurrent = () =>
+      !disposed && session === userStore.sessionVersion && version === requestVersion;
+    const firstPage = reset ? 1 : currentPage + 1;
+    const lastPage = reset ? Math.max(1, currentPage) : firstPage;
     loading.value = true;
     error.value = null;
+    failedReset = reset;
 
     try {
-      if (reset) {
-        currentPage.value = 1;
-        historyItems.value = [];
-        hasMore.value = true;
-      }
-
-      const response = await getBrowseHistory({
-        page: currentPage.value,
-        pageSize,
-      });
-
-      if (response.code === 200 && response.data) {
-        const { items, meta } = response.data;
-
-        // 历史记录已经包含了菜品详情
-        if (reset) {
-          historyItems.value = items;
-        } else {
-          historyItems.value.push(...items);
+      const nextItems: BrowseHistoryItem[] = [];
+      let loadedPage = firstPage;
+      let totalPages = 1;
+      for (let page = firstPage; page <= lastPage; page++) {
+        const response = await getBrowseHistory({ page, pageSize });
+        if (!isCurrent()) return false;
+        if (response.code !== 200 || !response.data) {
+          throw new Error(response.message || '获取浏览历史失败');
         }
-
-        // 判断是否还有更多数据
-        hasMore.value = currentPage.value < meta.totalPages;
-      } else {
-        throw new Error(response.message || '获取浏览历史失败');
+        nextItems.push(...response.data.items);
+        loadedPage = page;
+        totalPages = response.data.meta.totalPages;
+        if (page >= totalPages) break;
       }
+      historyItems.value = reset ? nextItems : [...historyItems.value, ...nextItems];
+      currentPage = loadedPage;
+      hasMore.value = loadedPage < totalPages;
+      initialized.value = true;
+      return true;
     } catch (err) {
-      const message = err instanceof Error ? err.message : '获取浏览历史失败';
-      error.value = message;
-      console.error(message, err);
-      uni.showToast({
-        title: message,
-        icon: 'none',
-      });
-      // 加载失败时，认为没有更多数据
-      hasMore.value = false;
+      if (!isCurrent()) return false;
+      error.value = err instanceof Error ? err.message : '获取浏览历史失败';
+      return false;
     } finally {
-      loading.value = false;
+      if (isCurrent()) loading.value = false;
     }
-  };
+  }
 
-  /**
-   * 加载更多
-   */
-  const loadMore = async () => {
-    if (!hasMore.value || loading.value) return;
-    currentPage.value++;
-    await fetchHistory();
-  };
+  const loadMore = (): Promise<boolean> =>
+    hasMore.value ? fetchHistory() : Promise.resolve(false);
+  const refresh = (): Promise<boolean> => fetchHistory(true);
+  const retry = (): Promise<boolean> => fetchHistory(failedReset);
 
-  /**
-   * 刷新列表
-   */
-  const refresh = async () => {
-    await fetchHistory(true);
-  };
+  watch(
+    () => userStore.sessionVersion,
+    () => {
+      requestVersion++;
+      historyItems.value = [];
+      currentPage = 0;
+      loading.value = false;
+      initialized.value = false;
+      error.value = null;
+      hasMore.value = true;
+    },
+    { flush: 'sync' }
+  );
 
-  return {
-    historyItems,
-    loading,
-    error,
-    hasMore,
-    fetchHistory,
-    loadMore,
-    refresh,
-  };
+  if (getCurrentScope())
+    onScopeDispose(() => {
+      disposed = true;
+      requestVersion++;
+    });
+
+  return { historyItems, loading, initialized, error, hasMore, fetchHistory, loadMore, refresh, retry };
 }

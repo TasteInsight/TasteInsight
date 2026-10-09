@@ -88,6 +88,69 @@ describe('OpenAIProviderService', () => {
 
     const mockTools: Tool[] = [];
 
+    it('passes cancellation to the SDK without emitting an error for an aborted request', async () => {
+      service.setConfig(mockConfig);
+      const controller = new AbortController();
+      controller.abort();
+      mockCreate.mockRejectedValueOnce(new Error('request aborted'));
+      const chunks = [];
+      for await (const chunk of service.streamChat(
+        mockMessages,
+        [],
+        controller.signal,
+      ))
+        chunks.push(chunk);
+      expect(chunks).toEqual([]);
+      expect(mockCreate.mock.calls.at(-1)[1]).toEqual({
+        signal: controller.signal,
+      });
+    });
+
+    it('uses the configured model for bounded JSON completion without tools or retries', async () => {
+      service.setConfig(mockConfig);
+      mockCreate.mockResolvedValueOnce({
+        choices: [{ message: { content: '{"suggestions":["在哪个窗口？"]}' } }],
+      });
+      const signal = new AbortController().signal;
+      await expect(service.completeChat(mockMessages, signal)).resolves.toBe(
+        '{"suggestions":["在哪个窗口？"]}',
+      );
+      const [body, options] = mockCreate.mock.calls.at(-1);
+      expect(body).toMatchObject({
+        model: mockConfig.model,
+        stream: false,
+        response_format: { type: 'json_object' },
+        max_completion_tokens: 2048,
+      });
+      expect(body.tools).toBeUndefined();
+      expect(options).toMatchObject({ timeout: 12000, maxRetries: 0 });
+      expect(options.signal.aborted).toBe(false);
+    });
+
+    it('aborts completion including a response body that never finishes', async () => {
+      jest.useFakeTimers();
+      try {
+        service.setConfig(mockConfig);
+        mockCreate.mockImplementationOnce(
+          (_body, { signal }) =>
+            new Promise((_resolve, reject) => {
+              signal.addEventListener(
+                'abort',
+                () => reject(new Error('aborted')),
+                { once: true },
+              );
+            }),
+        );
+        const pending = expect(
+          service.completeChat(mockMessages, new AbortController().signal),
+        ).rejects.toThrow('aborted');
+        jest.advanceTimersByTime(12000);
+        await pending;
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
     it('should throw error when client is not configured', async () => {
       const generator = service.streamChat(mockMessages, mockTools);
 
@@ -195,6 +258,67 @@ describe('OpenAIProviderService', () => {
       const toolCallChunks = chunks.filter((c) => c.type === 'tool_call');
       expect(toolCallChunks.length).toBeGreaterThan(0);
       expect(chunks).toContainEqual({ type: 'done' });
+    });
+
+    it('keeps the call ID across name and argument fragments, including an ID-only first delta', async () => {
+      service.setConfig(mockConfig);
+      mockCreate.mockResolvedValue({
+        async *[Symbol.asyncIterator]() {
+          yield {
+            choices: [
+              {
+                delta: { tool_calls: [{ index: 0, id: 'call-1' }] },
+                finish_reason: null,
+              },
+            ],
+          };
+          yield {
+            choices: [
+              {
+                delta: {
+                  tool_calls: [
+                    {
+                      index: 0,
+                      function: { name: 'display_', arguments: '{"type":' },
+                    },
+                  ],
+                },
+                finish_reason: null,
+              },
+            ],
+          };
+          yield {
+            choices: [
+              {
+                delta: {
+                  tool_calls: [
+                    {
+                      index: 0,
+                      function: {
+                        name: 'content',
+                        arguments: '"dish","ids":["d1"]}',
+                      },
+                    },
+                  ],
+                },
+                finish_reason: null,
+              },
+            ],
+          };
+          yield { choices: [{ delta: {}, finish_reason: 'tool_calls' }] };
+        },
+      });
+      const calls = [];
+      for await (const chunk of service.streamChat(mockMessages, mockTools)) {
+        if (chunk.toolCall) calls.push(chunk.toolCall);
+      }
+      expect(calls.map((call) => call.id)).toEqual(['call-1', 'call-1']);
+      expect(calls.map((call) => call.function.name).join('')).toBe(
+        'display_content',
+      );
+      expect(
+        JSON.parse(calls.map((call) => call.function.arguments).join('')),
+      ).toEqual({ type: 'dish', ids: ['d1'] });
     });
 
     it('should handle multiple tool calls in stream', async () => {

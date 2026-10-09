@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll, beforeEach, afterAll } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, nextTick, ref } from 'vue'
 
@@ -38,6 +38,20 @@ const baseMountOptions = {
 }
 
 describe('views/LogView', () => {
+  const originalTimezone = process.env.TZ
+
+  beforeAll(() => {
+    process.env.TZ = 'Asia/Shanghai'
+  })
+
+  afterAll(() => {
+    if (originalTimezone === undefined) {
+      delete process.env.TZ
+    } else {
+      process.env.TZ = originalTimezone
+    }
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -51,12 +65,12 @@ describe('views/LogView', () => {
             id: 1,
             createdAt: '2025-01-01T00:00:00.000Z',
             adminId: 'a1',
-            adminName: 'admin',
+            adminUsername: 'admin',
             action: 'create',
-            resource: 'dish',
-            resourceId: 'd1',
-            ipAddress: '127.0.0.1',
-            details: '{"k":"v"}',
+            targetType: 'dish',
+            targetId: 'd1',
+            result: 'success',
+            details: { k: 'v' },
           },
         ],
         meta: { totalPages: 3 },
@@ -70,6 +84,14 @@ describe('views/LogView', () => {
     expect(mocks.getLogsMock).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
     expect(wrapper.vm.logs).toHaveLength(1)
     expect(wrapper.vm.totalPages).toBe(3)
+    expect(wrapper.text()).toContain('admin')
+    expect(wrapper.text()).toContain('dish')
+    expect(wrapper.text()).toContain('d1')
+    expect(wrapper.text()).not.toContain('IP地址')
+
+    wrapper.vm.viewLogDetail(wrapper.vm.logs[0])
+    await nextTick()
+    expect(wrapper.text()).toContain('"k": "v"')
 
     // applyFilters adds non-empty filters and resets page
     wrapper.vm.currentPage = 5
@@ -88,9 +110,11 @@ describe('views/LogView', () => {
       pageSize: 20,
       adminId: '100',
       action: 'delete',
-      startDate: '2025-01-01',
-      endDate: '2025-01-31',
+      startDate: expect.stringMatching(/^2025-01-01T00:00:00\.000\+08:00$/),
+      endDate: expect.stringMatching(/^2025-01-31T23:59:59\.999\+08:00$/),
     })
+    expect(wrapper.vm.filters.startDate).toBe('2025-01-01')
+    expect(wrapper.vm.filters.endDate).toBe('2025-01-31')
 
     // resetFilters clears and reloads
     mocks.getLogsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { totalPages: 1 } } })

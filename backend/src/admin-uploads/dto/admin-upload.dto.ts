@@ -30,6 +30,14 @@ export class AdminGetUploadsDto {
     message: '状态必须是 pending, approved 或 rejected',
   })
   status?: string;
+
+  @IsOptional()
+  @IsString()
+  keyword?: string;
+
+  @IsOptional()
+  @IsString()
+  canteenId?: string;
 }
 
 // 拒绝上传的请求体
@@ -45,6 +53,7 @@ export class DishUploadDto {
   name: string;
   tags: string[];
   price: number;
+  priceUnit: string | null;
   description: string | null;
   images: string[];
 
@@ -80,6 +89,7 @@ export class DishUploadDto {
 
   // 父菜品信息
   parentDishId: string | null;
+  parentUploadId: string | null;
   parentDishName: string | null;
 
   createdAt: Date;

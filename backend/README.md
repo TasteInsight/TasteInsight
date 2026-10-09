@@ -101,6 +101,24 @@ backend/
 | `dish-sync-queue` | 菜品数据同步处理 |
 | `embedding-queue` | 菜品嵌入向量生成（调用 Python 服务） |
 
+## AI 对话工具
+
+聊天模型根据问题选择工具并组合多轮调用。查询结果与工具错误回传模型；每次回答最多执行 10 轮工具调用，达到上限后生成不再调用工具的总结。
+
+| 工具 | 行为 |
+| --- | --- |
+| `recommend_dishes` | `scene` 支持 `guess_like`、`today`、`similar`；相似推荐需要真实 `triggerDishId`，`excludeDishIds` 排除替换前的候选。 |
+| `get_my_preferences` | 只读取当前用户的饮食偏好和过敏原，不返回账户身份信息。 |
+| `update_preferences` | 生成包含实际前后值的 `card_preferences` 确认草稿，不写入数据库。 |
+| `create_meal_plan` | 生成计划草稿；默认同一食堂，并校验当前供应、饮食限制及显式整餐预算。 |
+| `display_content` | 根据真实数据展示菜品、食堂或计划卡片；计划重校验同样经过工具注册边界。 |
+
+工具注册时编译 JSON Schema，执行前校验必填字段、类型、枚举、数量和值域，不隐式转换参数或接受未知字段。工具定义声明场景权限，模型可见清单与执行权限一致；`dish_critic` 不提供偏好变更和计划草稿工具。
+
+偏好草稿只在用户点击保存后调用既有 `PUT /user/profile` 接口。前端核对最新字段，处理重复点击、失败重试及账户归属；数据库将组合变更作为一个事务保存。拒绝、保存等卡片状态缓存于当前设备的所属账户。单次用餐条件只影响查询，不自动变成长期偏好。
+
+推荐特征缓存用于复用行为聚合；已保存偏好和过敏原实时读取。相似、个性化列表在分页前按当前菜品和饮食限制重新过滤，避免旧缓存覆盖最新设置。
+
 ## 环境准备
 
 ### 1. 安装依赖
@@ -109,7 +127,7 @@ backend/
 pnpm install
 ```
 
-### 2. 环境变量配置
+### 2. 本地环境变量配置
 
 复制 `.env.example` 为 `.env` 并填写配置：
 
@@ -117,70 +135,39 @@ pnpm install
 cp .env.example .env
 ```
 
-主要配置项：
+本地后端默认监听 `3001`；`docker-compose.local.yml` 提供端口 `5434` 的 pgvector PostgreSQL 和端口 `6380` 的 Redis，并使用独立的 `tasteinsight-dev` 数据卷。替换 `.env` 中的 `change-me` 值，并使 `DATABASE_URL` 与数据库账号、密码、映射端口一致。已有数据库和 Redis 时，直接填写其连接信息即可。配置项说明见 [环境配置与部署](../docs/环境配置与部署.md)。
 
-```env
-# 数据库
-DATABASE_URL="postgresql://user:password@localhost:5432/tasteinsight"
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=your_password
-POSTGRES_DB=tasteinsight
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
+启动本地基础设施：
 
-# Redis
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=
-
-# JWT
-JWT_SECRET=your_jwt_secret
-JWT_EXPIRES_IN=7d
-JWT_REFRESH_SECRET=your_refresh_secret
-JWT_REFRESH_EXPIRES_IN=30d
-
-# 微信小程序
-WECHAT_APPID=your_appid
-WECHAT_SECRET=your_secret
-
-# AI 服务
-OPENAI_API_KEY=your_openai_key
-OPENAI_BASE_URL=https://api.openai.com/v1
-OPENAI_MODEL=gpt-4o-mini
-
-# 嵌入服务
-EXTERNAL_EMBEDDING_SERVICE_URL=http://localhost:5001
-
-# 阿里云 OSS（可选）
-ALIYUN_OSS_ACCESS_KEY_ID=
-ALIYUN_OSS_ACCESS_KEY_SECRET=
-ALIYUN_OSS_BUCKET=
-ALIYUN_OSS_REGION=
+```bash
+docker compose -f docker-compose.local.yml up -d
 ```
 
 ### 3. 数据库初始化
 
 ```bash
 # 生成 Prisma Client
-pnpm prisma generate
+pnpm exec prisma generate
 
 # 运行数据库迁移
-pnpm prisma migrate deploy
-
-# 填充种子数据（可选）
-pnpm ts-node prisma/seed.ts
+pnpm exec prisma migrate deploy
 ```
+
+`prisma/seed.ts` 和 `prisma/seed_docker.ts` 会先删除现有业务数据，不属于正常初始化步骤。
 
 ## 运行项目
 
 ### 开发模式
 
 ```bash
+# 可选：仅在 EXTERNAL_EMBEDDING_SERVICE_ENABLED=true 时另开终端启动
+pnpm run start:embedding
+
 pnpm run start:dev
 ```
 
 服务启动后访问：
-- API 服务：http://localhost:3000
+- API 服务：http://localhost:3001
 
 ### 生产模式
 
@@ -189,15 +176,22 @@ pnpm run build
 pnpm run start:prod
 ```
 
+`start:prod` 固定 `NODE_ENV=production`，只接受进程环境注入，不读取开发 `.env`。生产必须提供有效的数据库、Redis、微信与公网 URL 配置，并使用至少 32 字节且互不相同的 access/refresh 密钥。完整校验与注入方式见 [环境配置与部署](../docs/环境配置与部署.md)。
+
 ### Docker 部署
 
 ```bash
-# 构建并启动所有服务（后端、数据库、Redis、嵌入服务）
-docker-compose up -d
+# 全新部署创建生产配置；已有部署先按环境配置文档保留原有凭证
+cp .env.production.example .env.production
+
+# 构建并启动生产服务（当前为 HTTP 网关）
+docker compose --env-file .env.production up -d --build
 
 # 查看日志
-docker-compose logs -f backend
+docker compose --env-file .env.production logs -f backend nginx
 ```
+
+Docker 冷启动先生成数据库 URL 并校验配置，通过后执行幂等的 `prisma migrate deploy`，管理员表为空时创建初始管理员。生产禁止开启 `ENABLE_MOCK_AUTH`、`RUN_SEED` 和 `IMPORT_DATA`。外部 Python 嵌入默认关闭且不启动，需要时在 `.env.production` 中同时设置 `EXTERNAL_EMBEDDING_SERVICE_ENABLED=true` 和 `COMPOSE_PROFILES=embedding`。Nginx、HTTPS 恢复、自动部署、升级及停止步骤见 [环境配置与部署](../docs/环境配置与部署.md)。
 
 ## 测试
 
@@ -216,7 +210,7 @@ pnpm run test:unit:ai-chat
 ### E2E 测试
 
 ```bash
-# 准备测试环境（启动测试数据库、Redis、嵌入服务）
+# 准备独立测试数据库后，启动 Redis 和模拟嵌入服务并重建测试数据
 pnpm run test:setup
 
 # 运行全部 E2E 测试
@@ -257,7 +251,7 @@ pnpm run test:e2e:cov
 | `Floor` | 楼层 |
 | `Window` | 窗口 |
 | `Dish` | 菜品 |
-| `DishUpload` | 用户上传菜品（待审核） |
+| `DishUpload` | 用户或管理员提交的菜品（待审核） |
 | `Review` | 评价 |
 | `Comment` | 评论 |
 | `Report` | 举报 |
@@ -266,6 +260,26 @@ pnpm run test:e2e:cov
 | `FavoriteDish` | 收藏菜品 |
 | `BrowseHistory` | 浏览历史 |
 | `AISession` | AI 会话 |
+
+### 管理员与菜品生命周期
+
+管理员删除会设置 `Admin.deletedAt`，保留操作日志、新闻和创建关系。已删除账号不能登录、刷新令牌或访问管理接口，也不出现在可管理账号列表中；其用户名仍保留。
+
+新建菜品返回待审核的 `DishUpload`，审核通过后通过 `approvedDishId` 关联正式 `Dish`。子菜提交时，`parentDishId` 引用正式主菜，`parentUploadId` 引用待审核主菜，两者不能同时设置。关联待审核主菜的子菜须在主菜通过审核后审批，各条记录分别审核。
+
+主菜撤回或删除时，子审核记录保留对来源审核记录的关联，包括已拒绝的记录。删除正式菜品不删除审核历史。旧版或导入的主菜如果没有来源审核记录且仍被子审核记录引用，需要保留该主菜，可通过下架停止展示。
+
+菜品更新接口中，省略字段表示保持原值，空字符串和空数组表示明确清空。列表的筛选与总数计算在服务端分页前执行。
+
+### 评价与回复审核
+
+评价和回复默认直接通过。管理台的“人工审核”开关开启时，后端对应的 `review.autoApprove` 或 `comment.autoApprove` 为 `false`。配置优先级为食堂配置、全局配置、模板默认值；升级默认值不会覆盖显式配置，也不会批量通过已有待审内容。菜品投稿审核保持独立。
+
+已通过且未删除的内容对所有登录用户可见。待审核或未通过的内容仅作者和有相应权限的管理员可见，待审评价不计入公开评分。本人评价通过 `GET /dishes/:dishId/reviews/mine` 读取；回复列表按当前用户过滤，并返回每条回复的 `status` 和父评价的 `canReply`。未公开评价及未通过审核的回复不能作为新回复目标。
+
+用户端提交后展示本人内容，编辑框关闭或输入清空作为成功反馈。审核状态在管理端展示，服务端据此控制公开可见性。
+
+评价审核请求必须携带列表返回的 `updatedAt`：通过请求为 `{ "expectedUpdatedAt": "ISO 时间" }`，拒绝请求还需 `reason`。审核原子校验内容快照、待审状态、删除状态和管理员食堂范围；内容更新后旧快照返回 `409`，需要重新读取后审核。
 
 ## Python 嵌入服务
 
@@ -280,5 +294,11 @@ pnpm run test:e2e:cov
 pnpm run format
 
 # ESLint 检查
+pnpm run lint:check
+
+# 格式检查
+pnpm run format:check
+
+# 自动修复可修复的 ESLint 问题
 pnpm run lint
 ```

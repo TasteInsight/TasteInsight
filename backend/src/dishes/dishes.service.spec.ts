@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DishesService } from './dishes.service';
 import { PrismaService } from '@/prisma.service';
-import { RecommendationService } from '@/recommendation/recommendation.service';
 import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { DishDto } from './dto/dish.dto';
@@ -34,10 +33,6 @@ const mockPrismaService = {
   },
 };
 
-const mockRecommendationService = {
-  getRecommendations: jest.fn(),
-};
-
 const mockEmbeddingQueueService = {
   enqueueRefreshUser: jest.fn(),
 };
@@ -45,7 +40,6 @@ const mockEmbeddingQueueService = {
 describe('DishesService', () => {
   let service: DishesService;
   let prisma: typeof mockPrismaService;
-  let recommendationService: typeof mockRecommendationService;
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -54,14 +48,12 @@ describe('DishesService', () => {
       providers: [
         DishesService,
         { provide: PrismaService, useValue: mockPrismaService },
-        { provide: RecommendationService, useValue: mockRecommendationService },
         { provide: EmbeddingQueueService, useValue: mockEmbeddingQueueService },
       ],
     }).compile();
 
     service = module.get<DishesService>(DishesService);
     prisma = mockPrismaService;
-    recommendationService = mockRecommendationService;
   });
 
   it('should be defined', () => {
@@ -229,6 +221,31 @@ describe('DishesService', () => {
       expect(prisma.dish.findMany).toHaveBeenCalled();
     });
 
+    it('combines window, canteen and keyword filtering before pagination', async () => {
+      await service.getDishes(
+        {
+          ...baseQuery,
+          filter: { canteenId: ['c1'], windowId: ['w1'] },
+          search: { keyword: '豆腐' },
+        } as any,
+        'user-1',
+      );
+      const { where } = prisma.dish.findMany.mock.calls[0][0];
+      expect(where.AND).toEqual(
+        expect.arrayContaining([
+          { status: 'online' },
+          { canteenId: { in: ['c1'] } },
+          { windowId: { in: ['w1'] } },
+        ]),
+      );
+      expect(
+        where.AND.some((condition: any) =>
+          condition.OR?.some((value: any) => value.name?.contains === '豆腐'),
+        ),
+      ).toBe(true);
+      expect(prisma.dish.count).toHaveBeenCalledWith({ where });
+    });
+
     it('should filter by tags', async () => {
       await service.getDishes(
         { ...baseQuery, filter: { tag: ['tag1'] } } as any,
@@ -258,7 +275,7 @@ describe('DishesService', () => {
 
       expect(prisma.dish.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          orderBy: { averageRating: 'desc' },
+          orderBy: [{ averageRating: 'desc' }, { id: 'asc' }],
         }),
       );
     });
@@ -271,7 +288,7 @@ describe('DishesService', () => {
 
       expect(prisma.dish.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          orderBy: { price: 'asc' },
+          orderBy: [{ price: 'asc' }, { id: 'asc' }],
         }),
       );
     });
@@ -368,6 +385,31 @@ describe('DishesService', () => {
 
       expect(result.code).toBe(201);
       expect(result.data.status).toBe('pending');
+      expect(prisma.dishUpload.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            windowId: null,
+            windowNumber: null,
+            windowName: '',
+          }),
+        }),
+      );
+    });
+
+    it('rejects an unknown explicit window id even if a fallback name exists', async () => {
+      prisma.window.findUnique.mockResolvedValueOnce(null);
+      prisma.window.findFirst.mockResolvedValueOnce({
+        id: 'other',
+        name: 'Window 1',
+        canteenId: 'c1',
+      });
+      await expect(
+        service.uploadDish(
+          { ...uploadDto, windowId: 'missing', windowName: 'Window 1' } as any,
+          'user-1',
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(prisma.dishUpload.create).not.toHaveBeenCalled();
     });
 
     it('should throw BadRequestException if canteen not found', async () => {

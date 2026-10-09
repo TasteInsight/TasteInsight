@@ -25,7 +25,6 @@ describe('api/dishApi', () => {
     putMock.mockReset()
     deleteMock.mockReset()
     patchMock.mockReset()
-    vi.spyOn(console, 'log').mockImplementation(() => {})
   })
 
   it('getDishById uses direct endpoint when available', async () => {
@@ -38,74 +37,25 @@ describe('api/dishApi', () => {
     expect(res.data.id).toBe('1')
   })
 
-  it('getDishById falls back to list endpoint', async () => {
-    getMock
-      .mockRejectedValueOnce(new Error('404'))
-      .mockResolvedValueOnce({
-        code: 200,
-        data: { items: [{ id: '2', name: 'Y' }], total: 1, page: 1, pageSize: 100 },
-      })
+  it.each(['菜品不存在', '无权限访问该资源', '登录会话已变更，请重试'])(
+    'getDishById preserves detail failure %s without another request', async (message) => {
+      const error = new Error(message)
+      getMock.mockRejectedValueOnce(error)
+      const { dishApi } = await import('@/api/modules/dish')
 
+      await expect(dishApi.getDishById('missing')).rejects.toBe(error)
+      expect(getMock).toHaveBeenCalledTimes(1)
+      expect(getMock).toHaveBeenCalledWith('/admin/dishes/missing')
+    },
+  )
+
+  it('getDishById returns the detail response unchanged for caller validation', async () => {
+    const response = { code: 500, data: null, message: '详情读取失败' }
+    getMock.mockResolvedValueOnce(response)
     const { dishApi } = await import('@/api/modules/dish')
-    const res = await dishApi.getDishById('2')
 
-    expect(getMock).toHaveBeenCalledWith('/admin/dishes/2')
-    expect(console.log).toHaveBeenCalledWith('直接获取失败，尝试通过列表接口获取:', expect.any(Error))
-    expect(getMock).toHaveBeenCalledWith('/admin/dishes', { params: { pageSize: 100 } })
-    expect(res.data.id).toBe('2')
-  })
-
-  it('getDishById falls back to list when direct response is not usable', async () => {
-    getMock
-      .mockResolvedValueOnce({ code: 500, data: null })
-      .mockResolvedValueOnce({
-        code: 200,
-        data: { items: [{ id: '9', name: 'Z' }], total: 1, page: 1, pageSize: 100 },
-      })
-
-    const { dishApi } = await import('@/api/modules/dish')
-    const res = await dishApi.getDishById('9')
-
-    expect(getMock).toHaveBeenCalledWith('/admin/dishes/9')
-    expect(getMock).toHaveBeenCalledWith('/admin/dishes', { params: { pageSize: 100 } })
-    expect(res.data.id).toBe('9')
-  })
-
-  it('getDishById falls back when direct response has code 200 but no data', async () => {
-    getMock
-      .mockResolvedValueOnce({ code: 200, data: null })
-      .mockResolvedValueOnce({
-        code: 200,
-        data: { items: [{ id: '10', name: 'Q' }], total: 1, page: 1, pageSize: 100 },
-      })
-
-    const { dishApi } = await import('@/api/modules/dish')
-    const res = await dishApi.getDishById('10')
-
-    expect(getMock).toHaveBeenCalledWith('/admin/dishes/10')
-    expect(getMock).toHaveBeenCalledWith('/admin/dishes', { params: { pageSize: 100 } })
-    expect(res.data.id).toBe('10')
-  })
-
-  it('getDishById rejects when not found in list', async () => {
-    getMock
-      .mockRejectedValueOnce(new Error('404'))
-      .mockResolvedValueOnce({
-        code: 200,
-        data: { items: [{ id: '3' }], total: 1, page: 1, pageSize: 100 },
-      })
-
-    const { dishApi } = await import('@/api/modules/dish')
-    await expect(dishApi.getDishById('missing')).rejects.toThrow('未找到该菜品')
-  })
-
-  it('getDishById rejects when list endpoint returns no usable data', async () => {
-    getMock
-      .mockRejectedValueOnce(new Error('404'))
-      .mockResolvedValueOnce({ code: 500, data: null })
-
-    const { dishApi } = await import('@/api/modules/dish')
-    await expect(dishApi.getDishById('any')).rejects.toThrow('未找到该菜品')
+    await expect(dishApi.getDishById('d1')).resolves.toBe(response)
+    expect(getMock).toHaveBeenCalledTimes(1)
   })
 
   it('getDishes calls GET /admin/dishes with params', async () => {
@@ -141,20 +91,6 @@ describe('api/dishApi', () => {
     await dishApi.updateDishStatus('d1', 'online')
 
     expect(patchMock).toHaveBeenCalledWith('/admin/dishes/d1/status', { status: 'online' })
-  })
-
-  it('batchUpload posts multipart form-data', async () => {
-    postMock.mockResolvedValueOnce({ code: 200 })
-
-    const file = new File(['x'], 'dishes.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-    const { dishApi } = await import('@/api/modules/dish')
-    await dishApi.batchUpload(file)
-
-    expect(postMock).toHaveBeenCalledWith(
-      '/admin/dishes/batch',
-      expect.any(FormData),
-      { headers: { 'Content-Type': 'multipart/form-data' } },
-    )
   })
 
   it('uploadImage posts multipart form-data to /upload/image', async () => {

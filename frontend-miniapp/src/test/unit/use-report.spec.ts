@@ -1,4 +1,5 @@
 /// <reference types="jest" />
+jest.mock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ sessionVersion: 0 }) }));
 import { useReport } from '@/pages/dish/composables/use-report';
 import { reportReview } from '@/api/modules/review';
 import { reportComment } from '@/api/modules/comment';

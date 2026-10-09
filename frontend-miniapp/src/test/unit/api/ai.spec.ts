@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 describe('api/modules/ai.ts', () => {
   const MODULE_PATH = '@/api/modules/ai';
 
@@ -10,20 +8,22 @@ describe('api/modules/ai.ts', () => {
     delete (global as any).TextEncoder;
   });
 
-  test('getAIRecommendation posts payload', async () => {
+  test.each([
+    ['like', '/recommend/events/like'],
+    ['dislike', '/recommend/events/dislike'],
+  ] as const)('submitRecommendFeedback routes %s to the recommendation API', async (feedback, url) => {
     const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
-    mockReq.mockResolvedValue({ code: 200, data: { items: [] } });
+    mockReq.mockResolvedValue({ code: 200, data: { eventId: 'event-1' } });
     jest.doMock('@/utils/request', () => mockReq);
 
-    const { getAIRecommendation } = require(MODULE_PATH);
-    const payload = { userId: 'u' };
-    await getAIRecommendation(payload as any);
+    const { submitRecommendFeedback } = require(MODULE_PATH);
+    await submitRecommendFeedback({ dishId: 'dish-1', feedback });
 
     expect(mockReq).toHaveBeenCalledTimes(1);
     expect(mockReq.mock.calls[0][0]).toMatchObject({
-      url: '/ai/recommend',
+      url,
       method: 'POST',
-      data: payload,
+      data: { dishId: 'dish-1' },
     });
   });
 
@@ -135,6 +135,30 @@ describe('api/modules/ai.ts', () => {
     expect(onJSON).not.toHaveBeenCalled();
   });
 
+  test('streamAIChat preserves meaningful whitespace in text chunks', () => {
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok' }),
+    }));
+
+    let savedOnChunk: any = null;
+    (global as any).uni = {
+      request: () => ({
+        onChunkReceived: (cb: any) => {
+          savedOnChunk = cb;
+        },
+        abort: jest.fn(),
+      }),
+    };
+
+    const onMessage = jest.fn();
+    const { streamAIChat } = require(MODULE_PATH);
+    streamAIChat('s1', { prompt: 'spacing' } as any, { onMessage });
+
+    savedOnChunk({ data: 'event: text_chunk\ndata:  hello \n\n' });
+
+    expect(onMessage).toHaveBeenCalledWith(' hello ');
+  });
+
   test('streamAIChat falls back to utf8 decoder and handles split multibyte chunks', async () => {
     jest.doMock('@/store/modules/use-user-store', () => ({
       useUserStore: () => ({ token: 'tok' }),
@@ -242,6 +266,104 @@ describe('api/modules/ai.ts', () => {
     savedFail && savedFail({ message: 'network' });
 
     expect(onError).toHaveBeenCalledWith({ message: 'network' });
+  });
+
+  test('streamAIChat reports a non-2xx handshake once and does not complete', () => {
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok' }),
+    }));
+
+    let savedComplete: any = null;
+    (global as any).uni = {
+      request: (opts: any) => {
+        savedComplete = opts.complete;
+        opts.success?.({ statusCode: 401, data: { message: '登录已过期' } });
+        return { onChunkReceived: () => {}, abort: jest.fn() };
+      },
+    };
+
+    const onError = jest.fn();
+    const onComplete = jest.fn();
+    const { streamAIChat } = require(MODULE_PATH);
+    streamAIChat('s1', { prompt: 'err' } as any, { onError, onComplete });
+    savedComplete?.();
+
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0][0]).toEqual(expect.objectContaining({ message: '登录已过期' }));
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  test('streamAIChat turns an SSE error event into the only terminal callback', () => {
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok' }),
+    }));
+
+    let savedOnChunk: any = null;
+    let savedComplete: any = null;
+    (global as any).uni = {
+      request: (opts: any) => {
+        opts.success?.({ statusCode: 200 });
+        savedComplete = opts.complete;
+        return {
+          onChunkReceived: (cb: any) => {
+            savedOnChunk = cb;
+          },
+          abort: jest.fn(),
+        };
+      },
+    };
+
+    const onError = jest.fn();
+    const onComplete = jest.fn();
+    const { streamAIChat } = require(MODULE_PATH);
+    streamAIChat('s1', { prompt: 'err' } as any, { onError, onComplete });
+
+    savedOnChunk({ data: 'event: error\ndata: {"error":"provider failed"}\n\n' });
+    savedComplete?.();
+
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0][0]).toEqual(expect.objectContaining({ message: 'provider failed' }));
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  test('streamAIChat forwards a complete receipt payload but no receipt from HTTP success or after abort', () => {
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok' }),
+    }));
+    let savedOnChunk: any;
+    let savedComplete: any;
+    const abort = jest.fn();
+    (global as any).uni = {
+      request: (opts: any) => {
+        opts.success({ statusCode: 200 });
+        savedComplete = opts.complete;
+        return {
+          onChunkReceived: (callback: any) => { savedOnChunk = callback; },
+          abort,
+        };
+      },
+    };
+    const events: any[] = [];
+    const onComplete = jest.fn();
+    const { streamAIChat } = require(MODULE_PATH);
+    const handle = streamAIChat('session', { message: '午餐' } as any, {
+      onEvent: (event: string) => events.push(event),
+      onJSON: (payload: any) => events.push(payload),
+      onComplete,
+    });
+
+    savedOnChunk({ data: '\n' });
+    savedOnChunk({ data: 'event: message_received\ndata: {"messageId":"persisted' });
+    expect(events).toEqual([]);
+    savedOnChunk({ data: '-message"}\n\n' });
+    expect(events).toEqual(['message_received', { messageId: 'persisted-message' }]);
+
+    handle.close();
+    savedOnChunk({ data: 'event: message_received\ndata: {"messageId":"late"}\n\n' });
+    savedComplete();
+    expect(events).toHaveLength(2);
+    expect(abort).toHaveBeenCalledTimes(1);
+    expect(onComplete).not.toHaveBeenCalled();
   });
 
   test('streamAIChat close() aborts the request task', async () => {
@@ -559,3 +681,4 @@ describe('api/modules/ai.ts', () => {
     expect(onMessage).toHaveBeenCalledWith('x\ny');
   });
 });
+export {};

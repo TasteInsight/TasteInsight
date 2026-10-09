@@ -3,7 +3,7 @@ import {
   InternalServerErrorException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import { PrismaService } from '@/prisma.service';
 import { UserProfileService } from '@/user-profile/user-profile.service';
 import { ConfigService } from '@nestjs/config';
@@ -12,6 +12,7 @@ import { firstValueFrom } from 'rxjs';
 import * as bcrypt from 'bcrypt';
 import type { Admin, User } from '@prisma/client';
 import { ALL_PERMISSIONS } from './permissions.constants';
+import { mockAuthEnabled } from '../environment';
 
 interface WechatAuthResponse {
   openid?: string;
@@ -20,6 +21,8 @@ interface WechatAuthResponse {
   errcode?: number;
   errmsg?: string;
 }
+
+type TokenExpiration = NonNullable<JwtSignOptions['expiresIn']>;
 
 @Injectable()
 export class AuthService {
@@ -36,19 +39,15 @@ export class AuthService {
     sub: string;
     type: 'user' | 'admin';
   }) {
-    // 以 number 类型获取 expiresIn，并确保所有配置存在
     const accessTokenSecret = this.configService.get<string>('JWT_SECRET');
     const refreshTokenSecret =
       this.configService.get<string>('JWT_REFRESH_SECRET');
 
-    // 将时间从 .env (可能是 string) 解析为 number
-    const accessTokenExpiresIn = parseInt(
+    const accessTokenExpiresIn = this.parseTokenExpiration(
       this.configService.get<string>('JWT_EXPIRATION_TIME', '3600'),
-      10,
     );
-    const refreshTokenExpiresIn = parseInt(
+    const refreshTokenExpiresIn = this.parseTokenExpiration(
       this.configService.get<string>('JWT_REFRESH_EXPIRATION_TIME', '604800'),
-      10,
     );
 
     if (!accessTokenSecret || !refreshTokenSecret) {
@@ -58,26 +57,52 @@ export class AuthService {
     }
 
     const [accessToken, refreshToken] = await Promise.all([
-      this.jwtService.signAsync(payload, {
-        secret: accessTokenSecret,
-        expiresIn: accessTokenExpiresIn,
-      }),
-      this.jwtService.signAsync(payload, {
-        secret: refreshTokenSecret,
-        expiresIn: refreshTokenExpiresIn,
-      }),
+      this.jwtService.signAsync(
+        { ...payload, tokenUse: 'access' },
+        {
+          secret: accessTokenSecret,
+          expiresIn: accessTokenExpiresIn,
+        },
+      ),
+      this.jwtService.signAsync(
+        { ...payload, tokenUse: 'refresh' },
+        {
+          secret: refreshTokenSecret,
+          expiresIn: refreshTokenExpiresIn,
+        },
+      ),
     ]);
 
     return { accessToken, refreshToken };
+  }
+
+  private parseTokenExpiration(value: string): TokenExpiration {
+    const normalized = value.trim();
+    if (!/^(?:\d+|\d+(?:\.\d+)?(?:ms|s|m|h|d|w|y))$/.test(normalized)) {
+      throw new InternalServerErrorException(
+        `Invalid JWT expiration configuration: ${value}`,
+      );
+    }
+
+    return /^\d+$/.test(normalized)
+      ? Number(normalized)
+      : (normalized as TokenExpiration);
   }
 
   // --- 功能1: 微信登录 ---
   async wechatLogin(code: string) {
     let openid: string;
 
-    // 特殊处理测试用的 code，使其能匹配 seed 创建的基础用户
-    const enableMock =
-      this.configService.get<string>('ENABLE_MOCK_AUTH') === 'true';
+    const enableMock = mockAuthEnabled({
+      NODE_ENV: this.configService.get('NODE_ENV'),
+      ENABLE_MOCK_AUTH: this.configService.get('ENABLE_MOCK_AUTH'),
+    });
+    const isMockCode =
+      code.startsWith('mock_') ||
+      code === 'baseline_user_code_placeholder' ||
+      code === 'secondary_user_code_placeholder';
+    if (isMockCode && !enableMock)
+      throw new UnauthorizedException('Mock login is disabled');
 
     if (enableMock && code === 'baseline_user_code_placeholder') {
       openid = 'baseline_user_openid';
@@ -145,7 +170,7 @@ export class AuthService {
   // --- 功能2: 管理员登录 ---
   async adminLogin(username: string, pass: string) {
     const admin = await this.prisma.admin.findUnique({
-      where: { username },
+      where: { username, deletedAt: null },
       include: {
         permissions: true,
         canteen: true,
@@ -199,10 +224,7 @@ export class AuthService {
 
   // --- 功能3: 刷新Token ---
   async refreshToken(userId: string, userType: 'user' | 'admin') {
-    // Guard已经验证了用户的身份，我们只需要重新生成token即可
-    const tokens = await this._generateTokens({ sub: userId, type: userType });
-
-    // 获取用户信息
+    // Guard 只证明 token 有效；签发新 token 前仍需确认账号存在。
     let userData;
     if (userType === 'user') {
       userData = await this.validateUser(userId);
@@ -214,6 +236,12 @@ export class AuthService {
         userData = admin;
       }
     }
+
+    if (!userData) {
+      throw new UnauthorizedException('用户不存在或已被删除');
+    }
+
+    const tokens = await this._generateTokens({ sub: userId, type: userType });
 
     return {
       code: 200,
@@ -234,6 +262,8 @@ export class AuthService {
   }
 
   validateAdmin(adminId: string): Promise<Admin | null> {
-    return this.prisma.admin.findUnique({ where: { id: adminId } });
+    return this.prisma.admin.findUnique({
+      where: { id: adminId, deletedAt: null },
+    });
   }
 }

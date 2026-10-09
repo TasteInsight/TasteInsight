@@ -426,9 +426,20 @@ test.describe('Admin Reviews API Tests', () => {
       const nonExistentId = '00000000-0000-0000-0000-000000000000';
       const response = await request.post(`${baseURL}admin/reviews/${nonExistentId}/approve`, {
         headers: { Authorization: `Bearer ${superAdminToken}` },
+        data: { expectedUpdatedAt: '2026-10-08T12:00:00.000Z' },
       });
 
       expect(response.status()).toBe(404);
+    });
+
+    test('should return 400 if expectedUpdatedAt is missing', async ({ request }) => {
+      const nonExistentId = '00000000-0000-0000-0000-000000000000';
+      const response = await request.post(`${baseURL}admin/reviews/${nonExistentId}/approve`, {
+        headers: { Authorization: `Bearer ${superAdminToken}` },
+        data: {},
+      });
+
+      expect(response.status()).toBe(400);
     });
 
     test('should return 403 for normal admin without permission', async ({ request }) => {
@@ -453,7 +464,7 @@ test.describe('Admin Reviews API Tests', () => {
       const nonExistentId = '00000000-0000-0000-0000-000000000000';
       const response = await request.post(`${baseURL}admin/reviews/${nonExistentId}/reject`, {
         headers: { Authorization: `Bearer ${superAdminToken}` },
-        data: { reason: '测试拒绝原因' },
+        data: { reason: '测试拒绝原因', expectedUpdatedAt: '2026-10-08T12:00:00.000Z' },
       });
 
       expect(response.status()).toBe(404);
@@ -463,7 +474,17 @@ test.describe('Admin Reviews API Tests', () => {
       const nonExistentId = '00000000-0000-0000-0000-000000000000';
       const response = await request.post(`${baseURL}admin/reviews/${nonExistentId}/reject`, {
         headers: { Authorization: `Bearer ${superAdminToken}` },
-        data: {},
+        data: { expectedUpdatedAt: '2026-10-08T12:00:00.000Z' },
+      });
+
+      expect(response.status()).toBe(400);
+    });
+
+    test('should return 400 if expectedUpdatedAt is missing', async ({ request }) => {
+      const nonExistentId = '00000000-0000-0000-0000-000000000000';
+      const response = await request.post(`${baseURL}admin/reviews/${nonExistentId}/reject`, {
+        headers: { Authorization: `Bearer ${superAdminToken}` },
+        data: { reason: '测试拒绝原因' },
       });
 
       expect(response.status()).toBe(400);
@@ -585,6 +606,7 @@ test.describe('Admin Reviews Integration Tests', () => {
     
     const response = await request.post(`${baseURL}admin/reviews/${reviewToApprove.id}/approve`, {
       headers: { Authorization: `Bearer ${superAdminToken}` },
+      data: { expectedUpdatedAt: reviewToApprove.updatedAt },
     });
 
     expect(response.ok()).toBe(true);
@@ -605,7 +627,7 @@ test.describe('Admin Reviews Integration Tests', () => {
     
     const response = await request.post(`${baseURL}admin/reviews/${reviewToReject.id}/reject`, {
       headers: { Authorization: `Bearer ${superAdminToken}` },
-      data: { reason },
+      data: { reason, expectedUpdatedAt: reviewToReject.updatedAt },
     });
 
     expect(response.ok()).toBe(true);

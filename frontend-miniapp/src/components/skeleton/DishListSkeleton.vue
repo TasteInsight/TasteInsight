@@ -1,33 +1,22 @@
 <template>
-  <!-- 菜品列表页面骨架屏（适用于历史浏览、我的收藏等） -->
-  <view class="w-full min-h-screen bg-white pb-4">
-    <!-- 标题栏骨架 -->
-    <view class="flex items-center px-4 py-3 border-b border-gray-100">
-      <SkeletonBase width="4px" height="16px" rounded="rounded-full" />
-      <view class="ml-2">
-        <SkeletonBase width="80px" height="18px" rounded="rounded" />
+  <view class="dish-skeleton-list" role="status" aria-label="正在加载菜品">
+    <view v-for="row in rows" :key="row" class="dish-skeleton-row">
+      <view class="skeleton-copy">
+        <SkeletonBase width="68%" height="18px" />
+        <SkeletonBase width="86%" height="13px" />
+        <view class="skeleton-inline"
+          ><SkeletonBase width="48px" height="22px" rounded="rounded-full" /><SkeletonBase
+            width="42px"
+            height="22px"
+            rounded="rounded-full"
+        /></view>
+        <SkeletonBase width="70px" height="16px" />
       </view>
-    </view>
-
-    <!-- 菜品列表骨架 -->
-    <view class="px-4 py-3 space-y-3">
-      <view v-for="i in 5" :key="i" class="flex items-center p-3 bg-gray-50 rounded-xl">
-        <!-- 菜品图片 -->
-        <SkeletonBase width="72px" height="72px" rounded="rounded-lg" />
-        <!-- 菜品信息 -->
-        <view class="flex-1 ml-3 space-y-2">
-          <SkeletonBase width="60%" height="18px" rounded="rounded" />
-          <SkeletonBase width="40%" height="14px" rounded="rounded" />
-          <view class="flex items-center justify-between">
-            <SkeletonBase width="50px" height="14px" rounded="rounded" />
-            <SkeletonBase width="60px" height="20px" rounded="rounded" />
-          </view>
-        </view>
-      </view>
+      <SkeletonBase width="84px" height="84px" rounded="rounded-lg" class="dish-skeleton-media" />
     </view>
   </view>
 </template>
-
 <script setup lang="ts">
 import SkeletonBase from './SkeletonBase.vue';
+withDefaults(defineProps<{ rows?: number }>(), { rows: 3 });
 </script>

@@ -1,6 +1,23 @@
 import { useFilter } from '@/pages/index/composables/use-filter';
 
 describe('useFilter additional branches', () => {
+  it('requires an explicit upper price when the minimum exceeds the default upper bound', () => {
+    const filter = useFilter();
+    filter.customPriceMin.value = '1000';
+    expect(filter.applyFilter()).toBeNull();
+    expect(filter.priceError.value).toContain('最高价');
+    filter.customPriceMax.value = '1200';
+    expect(filter.applyFilter()!.price).toEqual({ min: 1000, max: 1200 });
+  });
+  it.each(['customPriceMin', 'customPriceMax'] as const)(
+    'rejects numeric overflow in %s before publishing a query',
+    field => {
+      const filter = useFilter();
+      filter[field].value = '1e309';
+      expect(filter.applyFilter()).toBeNull();
+      expect(filter.priceError.value).toContain('非负数字');
+    }
+  );
   it('validatePriceInput handles max invalid and min>max', () => {
     const f = useFilter();
     f.customPriceMin.value = '';
@@ -32,21 +49,6 @@ describe('useFilter additional branches', () => {
     f.customRatingMax.value = '4';
     expect(f.validateRatingInput()).toBe(false);
     expect(f.ratingError.value).toMatch(/最低分不能大于最高分/);
-  });
-
-  it('isTasteModified and hasActiveValue for taste', () => {
-    const f = useFilter();
-    expect(f.isTasteModified()).toBe(false);
-    expect(f.hasActiveValue('taste')).toBe(false);
-
-    f.selectedSpicyMin.value = 1;
-    expect(f.isTasteModified()).toBe(true);
-    expect(f.hasActiveValue('taste')).toBe(true);
-  });
-
-  it('hasActiveValue returns false for unknown key', () => {
-    const f = useFilter();
-    expect(f.hasActiveValue('unknown')).toBe(false);
   });
 
   it('saveCurrentState and restoreOriginalState for price and rating', () => {

@@ -1,5 +1,5 @@
 import { BaseResponseDto, PaginationMeta } from '@/common/dto/response.dto';
-import { ReviewData, ReviewDetailData, RatingDto } from './review.dto';
+import { ReviewData, RatingDto } from './review.dto';
 
 export class ReviewListResponseDto extends BaseResponseDto<{
   items: ReviewData[];
@@ -7,6 +7,8 @@ export class ReviewListResponseDto extends BaseResponseDto<{
   rating: RatingDto;
 }> {}
 
-export class ReviewResponseDto extends BaseResponseDto<ReviewDetailData> {}
+export class ReviewResponseDto extends BaseResponseDto<ReviewData> {}
+
+export class OwnReviewResponseDto extends BaseResponseDto<ReviewData | null> {}
 
 export class DeleteReviewResponseDto extends BaseResponseDto<null> {}

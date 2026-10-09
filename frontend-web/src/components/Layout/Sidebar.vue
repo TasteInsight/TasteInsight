@@ -4,7 +4,7 @@
   >
     <div class="px-6 mb-8">
       <div class="flex items-center space-x-3">
-        <span class="iconify text-2xl" data-icon="noto-v1:pot-of-food"></span>
+        <AppIcon class="iconify text-2xl" icon="noto-v1:pot-of-food"></AppIcon>
         <h1 class="text-xl font-bold">食鉴管理平台</h1>
       </div>
       <div class="text-sm opacity-75 mt-2 tracking-wide">清华大学餐饮管理中心</div>
@@ -15,13 +15,13 @@
     </div>
 
     <div class="flex-1 overflow-y-auto min-h-0 sidebar-menu-scroll">
-      <div v-permission="'dish:view'">
+      <div v-permission="'dish:create'">
         <button
           class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
           :class="{ active: activeMenu === 'add' }"
           @click="toggleAddMenu"
         >
-          <span class="iconify" data-icon="carbon:add"></span>
+          <AppIcon class="iconify" icon="carbon:add"></AppIcon>
           <span>菜品添加</span>
         </button>
         <div v-if="showAddSubmenu" class="ml-6 border-l border-white/20 pl-3">
@@ -30,7 +30,7 @@
             class="sidebar-btn w-full py-2 px-3 text-left flex items-center space-x-2 text-base font-normal"
             :class="{ active: $route.path === '/single-add' }"
           >
-            <span class="iconify" data-icon="carbon:document"></span>
+            <AppIcon class="iconify" icon="carbon:document"></AppIcon>
             <span>单项添加</span>
           </router-link>
           <router-link
@@ -38,7 +38,7 @@
             class="sidebar-btn w-full py-2 px-3 text-left flex items-center space-x-2 text-base font-normal"
             :class="{ active: $route.path === '/batch-add' }"
           >
-            <span class="iconify" data-icon="carbon:document-multiple-02"></span>
+            <AppIcon class="iconify" icon="carbon:document-multiple-02"></AppIcon>
             <span>批量添加</span>
           </router-link>
         </div>
@@ -49,7 +49,7 @@
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/modify-dish' }"
       >
-        <span class="iconify" data-icon="clarity:note-edit-line"></span>
+        <AppIcon class="iconify" icon="clarity:note-edit-line"></AppIcon>
         <span>菜品修改</span>
       </router-link>
       <router-link
@@ -58,7 +58,7 @@
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/review-dish' }"
       >
-        <span class="iconify" data-icon="carbon:task-approved"></span>
+        <AppIcon class="iconify" icon="carbon:task-approved"></AppIcon>
         <span>菜品审核</span>
       </router-link>
       <router-link
@@ -67,7 +67,7 @@
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/add-canteen' }"
       >
-        <span class="iconify" data-icon="carbon:restaurant"></span>
+        <AppIcon class="iconify" icon="carbon:restaurant"></AppIcon>
         <span>食堂信息管理</span>
       </router-link>
       <router-link
@@ -76,7 +76,7 @@
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/user-manage' }"
       >
-        <span class="iconify" data-icon="clarity:group-line"></span>
+        <AppIcon class="iconify" icon="clarity:group-line"></AppIcon>
         <span>人员权限管理</span>
       </router-link>
       <router-link
@@ -85,17 +85,16 @@
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/news-manage' }"
       >
-        <span class="iconify" data-icon="carbon:license-draft"></span>
+        <AppIcon class="iconify" icon="carbon:license-draft"></AppIcon>
         <span>新闻管理</span>
       </router-link>
       <router-link
-        v-if="false"
         v-permission="'admin:view'"
         to="/log-view"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/log-view' }"
       >
-        <span class="iconify" data-icon="carbon:document-view"></span>
+        <AppIcon class="iconify" icon="carbon:document-view"></AppIcon>
         <span>操作日志</span>
       </router-link>
       <router-link
@@ -104,25 +103,25 @@
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/report-manage' }"
       >
-        <span class="iconify" data-icon="carbon:warning"></span>
+        <AppIcon class="iconify" icon="carbon:warning"></AppIcon>
         <span>举报管理</span>
       </router-link>
       <router-link
-        v-permission="'review:approve'"
+        v-permission="['review:approve', 'comment:approve']"
         to="/review-manage"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/review-manage' }"
       >
-        <span class="iconify" data-icon="carbon:task-approved"></span>
+        <AppIcon class="iconify" icon="carbon:task-approved"></AppIcon>
         <span>评价和评论审核</span>
       </router-link>
       <router-link
-        v-permission="'review:delete'"
+        v-if="canAccessCommentManage"
         to="/comment-manage"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/comment-manage' }"
       >
-        <span class="iconify" data-icon="carbon:chat"></span>
+        <AppIcon class="iconify" icon="carbon:chat"></AppIcon>
         <span>评论和评价管理</span>
       </router-link>
       <router-link
@@ -131,7 +130,7 @@
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/config-manage' }"
       >
-        <span class="iconify" data-icon="carbon:settings"></span>
+        <AppIcon class="iconify" icon="carbon:settings"></AppIcon>
         <span>系统配置</span>
       </router-link>
       <router-link
@@ -140,7 +139,7 @@
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/experiment-manage' || $route.path.startsWith('/experiment-manage/') }"
       >
-        <span class="iconify" data-icon="carbon:chemistry"></span>
+        <AppIcon class="iconify" icon="carbon:chemistry"></AppIcon>
         <span>推荐配置</span>
       </router-link>
     </div>
@@ -152,20 +151,20 @@
           class="flex items-center space-x-2 opacity-80 cursor-pointer hover:opacity-100 transition flex-1 min-w-0"
           @click="togglePermissionsDropdown"
         >
-          <span class="iconify flex-shrink-0" data-icon="mdi:user-circle-outline"></span>
+          <AppIcon class="iconify flex-shrink-0" icon="mdi:user-circle-outline"></AppIcon>
           <span class="truncate">管理员：{{ userInfo.username || userInfo.name || '管理员' }}</span>
-          <span
+          <AppIcon
             class="iconify text-xs transition-transform flex-shrink-0"
             :class="{ 'rotate-180': showPermissionsDropdown }"
-            data-icon="carbon:chevron-down"
-          ></span>
+            icon="carbon:chevron-down"
+          ></AppIcon>
         </div>
         <button
           class="opacity-70 hover:opacity-100 transition flex-shrink-0 ml-2"
           @click="handleLogout"
           title="退出登录"
         >
-          <span class="iconify" data-icon="carbon:logout"></span>
+          <AppIcon class="iconify" icon="carbon:logout"></AppIcon>
         </button>
       </div>
       <!-- 第二行：食堂信息 -->
@@ -188,7 +187,7 @@
               class="text-gray-400 hover:text-gray-600"
               @click="showPermissionsDropdown = false"
             >
-              <span class="iconify text-sm" data-icon="carbon:close"></span>
+              <AppIcon class="iconify text-sm" icon="carbon:close"></AppIcon>
             </button>
           </div>
 
@@ -208,13 +207,13 @@
                   :key="permission.id"
                   class="flex items-center gap-2 text-xs"
                 >
-                  <span
+                  <AppIcon
                     class="iconify text-xs"
                     :class="hasPermission(permission.id) ? 'text-green-500' : 'text-gray-300'"
-                    :data-icon="
+                    :icon="
                       hasPermission(permission.id) ? 'carbon:checkmark-filled' : 'carbon:close'
                     "
-                  ></span>
+                  ></AppIcon>
                   <span
                     :class="
                       hasPermission(permission.id) ? 'text-gray-800' : 'text-gray-400 line-through'
@@ -236,7 +235,7 @@
             class="w-full mt-4 px-3 py-2 text-sm bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition flex items-center justify-center gap-2"
             @click="openChangePasswordModal"
           >
-            <span class="iconify" data-icon="carbon:password"></span>
+            <AppIcon class="iconify" icon="carbon:password"></AppIcon>
             修改我的密码
           </button>
         </div>
@@ -248,7 +247,7 @@
       <div class="absolute inset-0 bg-black/50" @click="closeChangePasswordModal"></div>
       <div class="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6 mx-4" @click.stop>
         <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <span class="iconify text-tsinghua-purple" data-icon="carbon:password"></span>
+          <AppIcon class="iconify text-tsinghua-purple" icon="carbon:password"></AppIcon>
           修改我的密码
         </h3>
         <form @submit.prevent="handleChangePassword" class="space-y-4">
@@ -271,10 +270,10 @@
                 @click="showCurrentPassword = !showCurrentPassword"
                 class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
               >
-                <span
+                <AppIcon
                   class="iconify text-lg"
-                  :data-icon="showCurrentPassword ? 'carbon:view-off' : 'carbon:view'"
-                ></span>
+                  :icon="showCurrentPassword ? 'carbon:view-off' : 'carbon:view'"
+                ></AppIcon>
               </button>
             </div>
           </div>
@@ -297,10 +296,10 @@
                 @click="showNewPassword = !showNewPassword"
                 class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
               >
-                <span
+                <AppIcon
                   class="iconify text-lg"
-                  :data-icon="showNewPassword ? 'carbon:view-off' : 'carbon:view'"
-                ></span>
+                  :icon="showNewPassword ? 'carbon:view-off' : 'carbon:view'"
+                ></AppIcon>
               </button>
             </div>
           </div>
@@ -323,10 +322,10 @@
                 @click="showConfirmPassword = !showConfirmPassword"
                 class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
               >
-                <span
+                <AppIcon
                   class="iconify text-lg"
-                  :data-icon="showConfirmPassword ? 'carbon:view-off' : 'carbon:view'"
-                ></span>
+                  :icon="showConfirmPassword ? 'carbon:view-off' : 'carbon:view'"
+                ></AppIcon>
               </button>
             </div>
           </div>
@@ -335,29 +334,29 @@
             <p class="font-medium text-gray-600 mb-2">密码要求：</p>
             <ul class="space-y-1">
               <li class="flex items-center gap-2" :class="passwordChecks.length ? 'text-green-600' : 'text-gray-400'">
-                <span class="iconify text-sm" :data-icon="passwordChecks.length ? 'carbon:checkmark-filled' : 'carbon:close'"></span>
+                <AppIcon class="iconify text-sm" :icon="passwordChecks.length ? 'carbon:checkmark-filled' : 'carbon:close'"></AppIcon>
                 至少 8 个字符
               </li>
               <li class="flex items-center gap-2" :class="passwordChecks.uppercase ? 'text-green-600' : 'text-gray-400'">
-                <span class="iconify text-sm" :data-icon="passwordChecks.uppercase ? 'carbon:checkmark-filled' : 'carbon:close'"></span>
+                <AppIcon class="iconify text-sm" :icon="passwordChecks.uppercase ? 'carbon:checkmark-filled' : 'carbon:close'"></AppIcon>
                 包含大写字母（A-Z）
               </li>
               <li class="flex items-center gap-2" :class="passwordChecks.lowercase ? 'text-green-600' : 'text-gray-400'">
-                <span class="iconify text-sm" :data-icon="passwordChecks.lowercase ? 'carbon:checkmark-filled' : 'carbon:close'"></span>
+                <AppIcon class="iconify text-sm" :icon="passwordChecks.lowercase ? 'carbon:checkmark-filled' : 'carbon:close'"></AppIcon>
                 包含小写字母（a-z）
               </li>
               <li class="flex items-center gap-2" :class="passwordChecks.number ? 'text-green-600' : 'text-gray-400'">
-                <span class="iconify text-sm" :data-icon="passwordChecks.number ? 'carbon:checkmark-filled' : 'carbon:close'"></span>
+                <AppIcon class="iconify text-sm" :icon="passwordChecks.number ? 'carbon:checkmark-filled' : 'carbon:close'"></AppIcon>
                 包含数字（0-9）
               </li>
               <li class="flex items-center gap-2" :class="passwordChecks.special ? 'text-green-600' : 'text-gray-400'">
-                <span class="iconify text-sm" :data-icon="passwordChecks.special ? 'carbon:checkmark-filled' : 'carbon:close'"></span>
+                <AppIcon class="iconify text-sm" :icon="passwordChecks.special ? 'carbon:checkmark-filled' : 'carbon:close'"></AppIcon>
                 包含特殊符号（如 !@#$%^&amp;*）
               </li>
             </ul>
           </div>
           <p v-if="passwordError" class="text-sm text-red-500 flex items-center gap-1">
-            <span class="iconify" data-icon="carbon:warning"></span>
+            <AppIcon class="iconify" icon="carbon:warning"></AppIcon>
             {{ passwordError }}
           </p>
           <div class="flex justify-end gap-3 pt-4">
@@ -403,6 +402,11 @@ export default {
 
     const userInfo = computed(() => authStore.user || { username: '管理员' })
     const userPermissions = computed(() => authStore.permissions || [])
+    const canAccessCommentManage = computed(
+      () =>
+        authStore.hasPermission('dish:view') &&
+        authStore.hasAnyPermission(['review:delete', 'comment:delete']),
+    )
 
     // 密码修改相关状态
     const showChangePasswordModal = ref(false)
@@ -663,6 +667,7 @@ export default {
       activeMenu,
       userInfo,
       userPermissions,
+      canAccessCommentManage,
       permissionGroups,
       showPermissionsDropdown,
       userInfoSection,

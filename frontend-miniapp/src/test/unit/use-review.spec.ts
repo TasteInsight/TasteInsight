@@ -1,3 +1,7 @@
+jest.mock('@/store/modules/use-user-store', () => ({
+  useUserStore: () => ({ sessionVersion: 0, isLoggedIn: true, userInfo: { id: 'user' } }),
+}));
+
 /// <reference types="jest" />
 import { useReview, useReviewForm } from '@/pages/dish/composables/use-review';
 import { getReviewsByDish, createReview, deleteReview } from '@/api/modules/review';
@@ -24,6 +28,7 @@ const mockShowToast = jest.fn();
 (global as any).uni = {
   setStorageSync: mockSetStorageSync,
   getStorageSync: mockGetStorageSync,
+  getStorageInfoSync: () => ({ keys: [] }),
   removeStorageSync: mockRemoveStorageSync,
   showToast: mockShowToast,
 };
@@ -199,13 +204,13 @@ describe('useReviewForm', () => {
     expect(flavorRatings.value.spicyLevel).toBe(0);
   });
 
-  it('should save and load review state', () => {
+  it('should save and load review state', async () => {
     const { saveReviewState, loadReviewState, rating } = useReviewForm();
     rating.value = 4;
 
-    saveReviewState('123');
+    await saveReviewState('123');
     expect(mockSetStorageSync).toHaveBeenCalledWith(
-      'review_state_123',
+      'review_state:user:123',
       expect.objectContaining({ rating: 4 })
     );
 
@@ -215,13 +220,11 @@ describe('useReviewForm', () => {
     expect(rating.value).toBe(4);
   });
 
-  it('should upload images', async () => {
-    const { uploadImages, images } = useReviewForm();
-    (uploadImage as jest.Mock).mockResolvedValue({ url: 'http://img.com/1.jpg' });
-
-    await uploadImages(['path/to/img']);
-
-    expect(images.value).toContain('http://img.com/1.jpg');
+  it('should keep selected images local until submission', () => {
+    const { addImages, images } = useReviewForm();
+    addImages(['path/to/img']);
+    expect(uploadImage).not.toHaveBeenCalled();
+    expect(images.value).toEqual([{ source: 'temporary', path: 'path/to/img' }]);
   });
 
   it('should handle submit validation', async () => {
@@ -259,5 +262,19 @@ describe('useReviewForm', () => {
       })
     );
     expect(rating.value).toBe(0); // Reset after success
+  });
+
+  it('should update an existing review through createReview without deleting first', async () => {
+    const { handleSubmit, rating, content } = useReviewForm();
+    rating.value = 4;
+    content.value = 'Updated review';
+    (createReview as jest.Mock).mockResolvedValue({ code: 201 });
+
+    await handleSubmit('123', undefined, 'existing-review-id');
+
+    expect(deleteReview).not.toHaveBeenCalled();
+    expect(createReview).toHaveBeenCalledWith(
+      expect.objectContaining({ dishId: '123', rating: 4, content: 'Updated review' })
+    );
   });
 });

@@ -11,7 +11,7 @@
             <!-- 步骤指引 -->
             <div class="bg-blue-50 p-4 rounded-lg">
               <h3 class="font-medium text-blue-700 mb-2 flex items-center space-x-2">
-                <span class="iconify" data-icon="carbon:information"></span>
+                <AppIcon class="iconify" icon="carbon:information"></AppIcon>
                 <span>批量添加说明</span>
               </h3>
               <ol class="text-blue-600 space-y-2 list-decimal ml-5">
@@ -29,7 +29,7 @@
                 class="px-5 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center"
                 @click="downloadTemplate"
               >
-                <span class="iconify mr-1" data-icon="carbon:download"></span>下载Excel模板
+                <AppIcon class="iconify mr-1" icon="carbon:download"></AppIcon>下载Excel模板
               </button>
             </div>
             
@@ -41,7 +41,7 @@
                 @drop.prevent="handleFileDrop"
                 @dragover.prevent
               >
-                <span class="iconify text-5xl text-gray-400 mb-3" data-icon="carbon:document-add"></span>
+                <AppIcon class="iconify text-5xl text-gray-400 mb-3" icon="carbon:document-add"></AppIcon>
                 <div class="text-center mb-4">
                   <p class="text-gray-600 mb-1">点击或拖拽文件到这里上传</p>
                   <p class="text-sm text-gray-500">支持.xlsx格式，文件大小不超过10MB</p>
@@ -50,7 +50,7 @@
                   class="px-5 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center"
                   @click="triggerFileInput"
                 >
-                  <span class="iconify mr-1" data-icon="carbon:upload"></span>选择文件
+                  <AppIcon class="iconify mr-1" icon="carbon:upload"></AppIcon>选择文件
                 </button>
                 <input 
                   ref="fileInput"
@@ -61,7 +61,7 @@
                 >
               </div>
               <p v-if="uploadedFile" class="mt-2 text-green-600 flex items-center">
-                <span class="iconify mr-1" data-icon="carbon:checkmark-filled"></span>
+                <AppIcon class="iconify mr-1" icon="carbon:checkmark-filled"></AppIcon>
                 已上传文件: {{ uploadedFile.name }}
               </p>
             </div>
@@ -70,7 +70,7 @@
             <div class="border-b pb-6" v-if="parsedData.length > 0 || isParsing">
               <h3 class="font-medium text-gray-700 mb-4">第三步：确认解析结果</h3>
               <div v-if="isParsing" class="text-center py-8">
-                <span class="iconify text-4xl text-tsinghua-purple animate-spin" data-icon="carbon:circle-dash"></span>
+                <AppIcon class="iconify text-4xl text-tsinghua-purple animate-spin" icon="carbon:circle-dash"></AppIcon>
                 <p class="mt-2 text-gray-600">正在解析文件，请稍候...</p>
               </div>
               <div v-else class="overflow-auto max-h-96 border rounded-lg">
@@ -199,7 +199,7 @@
                   class="text-tsinghua-purple hover:text-tsinghua-dark text-sm"
                   @click="exportErrorList"
                 >
-                  <span class="iconify mr-1" data-icon="carbon:download"></span>
+                  <AppIcon class="iconify mr-1" icon="carbon:download"></AppIcon>
                   导出错误列表
                  </button>
               </div>
@@ -209,19 +209,20 @@
             <div class="flex space-x-4" v-if="parsedData.length > 0">
               <button 
                 class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                :disabled="validCount + warningCount === 0 || isSubmitting"
+                :disabled="validCount + warningCount === 0 || isSubmitting || !authStore.hasPermission('dish:create')"
+                :title="!authStore.hasPermission('dish:create') ? '无权限创建菜品' : '确认导入'"
                 @click="submitBatchData"
               >
-                <span 
+                <AppIcon
                   v-if="isSubmitting"
                   class="iconify mr-1 animate-spin" 
-                  data-icon="carbon:circle-dash"
-                ></span>
-                <span 
+                  icon="carbon:circle-dash"
+                ></AppIcon>
+                <AppIcon
                   v-else
                   class="iconify mr-1" 
-                  data-icon="carbon:checkmark"
-                ></span>
+                  icon="carbon:checkmark"
+                ></AppIcon>
                 {{ isSubmitting ? '导入中...' : `确认导入有效数据 (${validCount + warningCount} 条)` }}
               </button>
               <button 
@@ -236,7 +237,7 @@
             <!-- 错误提示 -->
             <div v-if="parseError" class="bg-red-50 border border-red-200 rounded-lg p-4">
               <div class="flex items-start">
-                <span class="iconify text-red-500 mt-1 mr-2" data-icon="carbon:warning"></span>
+                <AppIcon class="iconify text-red-500 mt-1 mr-2" icon="carbon:warning"></AppIcon>
                 <div>
                   <h4 class="font-medium text-red-800">解析失败</h4>
                   <p class="text-sm text-red-600 mt-1">{{ parseError }}</p>
@@ -251,6 +252,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { dishApi } from '@/api/modules/dish'
+import { useAuthStore } from '@/store/modules/use-auth-store'
 import type { BatchParsedDish } from '@/types/api'
 import Header from '@/components/Layout/Header.vue'
 import { showAlert, showConfirm } from '@/composables/useModal'
@@ -261,6 +263,7 @@ const parsedData = ref<BatchParsedDish[]>([])
 const isParsing = ref(false)
 const isSubmitting = ref(false)
 const parseError = ref<string | null>(null)
+const authStore = useAuthStore()
     
     const validCount = computed(() => 
       parsedData.value.filter((item: BatchParsedDish) => item.status === 'valid').length
@@ -349,6 +352,11 @@ const parseError = ref<string | null>(null)
     }
     
     const submitBatchData = async () => {
+      if (!authStore.hasPermission('dish:create')) {
+        showAlert('您没有权限创建菜品')
+        return
+      }
+
       const validItems = parsedData.value.filter(
         (item: BatchParsedDish) => item.status === 'valid' || item.status === 'warning'
       )
@@ -359,7 +367,7 @@ const parseError = ref<string | null>(null)
       }
       
       const confirmed = await showConfirm(
-        `确定要导入 ${validItems.length} 条数据吗？`,
+        `确定要导入 ${validItems.length} 条数据吗？新菜将提交待审核，匹配的既有菜品将按编辑权限更新。`,
         '确认导入'
       )
       if (!confirmed) {
@@ -376,7 +384,7 @@ const parseError = ref<string | null>(null)
         if (response.code === 200 && response.data) {
           const { successCount, failCount, errors } = response.data
           
-          let message = `导入完成！成功：${successCount} 条`
+          let message = `导入完成！成功处理：${successCount} 条`
           if (failCount > 0) {
             message += `，失败：${failCount} 条`
             if (errors && errors.length > 0) {
@@ -392,6 +400,7 @@ const parseError = ref<string | null>(null)
             }
           }
           
+          message += '\n新菜提交待审核；匹配的既有菜品按编辑权限更新。'
           showAlert(message)
           
           // 重置数据

@@ -37,15 +37,16 @@ postgres-data
 
 # Uploads (should be mounted as volume)
 uploads
+uploads-dev
+uploads-test
 
 # Nginx config (not needed in app image)
-nginx.conf
-nginx.conf.example
+nginx*.conf*
 certs
 
 # Docker files (not needed inside image)
 Dockerfile
-docker-compose.yml
+docker-compose*.yml
 .dockerignore
 
 # Test files

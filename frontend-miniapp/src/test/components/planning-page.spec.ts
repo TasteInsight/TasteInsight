@@ -1,7 +1,8 @@
 import { shallowMount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import PlanningPage from '@/pages/planning/index.vue';
-import { ref, computed } from 'vue';
+import { ref, computed, defineComponent } from 'vue';
+import { onBackPress } from '@dcloudio/uni-app';
 
 // Mock uni-app lifecycle hooks
 jest.mock('@dcloudio/uni-app', () => ({
@@ -23,6 +24,7 @@ describe('PlanningPage', () => {
 
     mockUseMenuPlanning = {
       loading: ref(false),
+      initialized: ref(true),
       error: null,
       currentPlans: [],
       historyPlans: [],
@@ -50,8 +52,34 @@ describe('PlanningPage', () => {
     useMenuPlanning.mockReturnValue(mockUseMenuPlanning);
   });
 
-  it('renders skeleton when initially loading', () => {
+  it.each(['Create', 'Edit'])(
+    'native back asks the %s editor to guard unsaved input before leaving',
+    kind => {
+      mockUseMenuPlanning[`show${kind}Dialog`] = ref(true);
+      const requestClose = jest.fn().mockResolvedValue(false);
+      const wrapper = shallowMount(PlanningPage, {
+        global: {
+          stubs: {
+            PlanEditDialog: defineComponent({
+              setup(_, { expose }) {
+                expose({ requestClose });
+                return () => null;
+              },
+            }),
+          },
+        },
+      });
+      const back = (onBackPress as jest.Mock).mock.calls.slice(-1)[0][0];
+      expect(back()).toBe(true);
+      expect(requestClose).toHaveBeenCalledTimes(1);
+      expect(mockUseMenuPlanning[`close${kind}Dialog`]).not.toHaveBeenCalled();
+      wrapper.unmount();
+    }
+  );
+
+  it('keeps fixed controls and withholds data while initially loading', () => {
     mockUseMenuPlanning.loading.value = true;
+    mockUseMenuPlanning.initialized.value = false;
 
     const wrapper = shallowMount(PlanningPage, {
       global: {
@@ -65,7 +93,10 @@ describe('PlanningPage', () => {
       },
     });
 
-    expect(wrapper.findComponent({ name: 'PlanningSkeleton' }).exists()).toBe(true);
+    expect(wrapper.findComponent({ name: 'PlanningSkeleton' }).exists()).toBe(false);
+    expect(wrapper.findAll('[role="tab"]')).toHaveLength(2);
+    expect(wrapper.find('[aria-label="新建规划"]').exists()).toBe(true);
+    expect(wrapper.text()).not.toContain('暂无当前规划');
   });
 
   it('renders tabs when not loading', () => {
@@ -84,7 +115,7 @@ describe('PlanningPage', () => {
     });
 
     expect(wrapper.findComponent({ name: 'PlanningSkeleton' }).exists()).toBe(false);
-    expect(wrapper.findAll('.flex-1.py-3.text-center').length).toBe(2); // current and history tabs
+    expect(wrapper.findAll('[role="tab"]').length).toBe(2);
   });
 
   it('shows current plans count in tab', () => {

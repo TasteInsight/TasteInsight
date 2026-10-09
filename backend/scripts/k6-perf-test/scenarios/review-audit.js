@@ -172,7 +172,7 @@ export default function reviewAuditTest() {
                 // Ref: POST /admin/reviews/:id/approve - src/admin-reviews/admin-reviews.controller.ts:35
                 const response = httpPost(
                     API_PATHS.ADMIN_REVIEWS.APPROVE(selectedReview.id),
-                    {},
+                    { expectedUpdatedAt: selectedReview.updatedAt },
                     token,
                     'approve_review'
                 );
@@ -193,7 +193,7 @@ export default function reviewAuditTest() {
                 const reason = randomChoice(REVIEW_REJECT_REASONS);
                 const response = httpPost(
                     API_PATHS.ADMIN_REVIEWS.REJECT(selectedReview.id),
-                    { reason: reason },
+                    { reason: reason, expectedUpdatedAt: selectedReview.updatedAt },
                     token,
                     'reject_review'
                 );

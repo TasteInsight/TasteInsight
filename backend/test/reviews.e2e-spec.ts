@@ -3,7 +3,6 @@ import request from 'supertest';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { AppModule } from '@/app.module';
 import { PrismaService } from '@/prisma.service';
-import { afterEach } from 'node:test';
 
 describe('ReviewsController (e2e)', () => {
   let app: INestApplication;
@@ -11,6 +10,7 @@ describe('ReviewsController (e2e)', () => {
   let userAccessToken: string;
   let testDishId: string;
   let testReviewId: string;
+  let userId: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -22,7 +22,7 @@ describe('ReviewsController (e2e)', () => {
     app.useGlobalPipes(
       new ValidationPipe({ whitelist: true, transform: true }),
     );
-    await app.init();
+    await app.listen(0, '127.0.0.1');
 
     // 获取测试用户登录token
     const loginResponse = await request(app.getHttpServer())
@@ -30,6 +30,7 @@ describe('ReviewsController (e2e)', () => {
       .send({ code: 'baseline_user_code_placeholder' });
 
     userAccessToken = loginResponse.body.data.token.accessToken;
+    userId = loginResponse.body.data.user.id;
 
     // 获取测试菜品ID（从种子数据中获取）
     const dish = await prisma.dish.findFirst({
@@ -106,8 +107,107 @@ describe('ReviewsController (e2e)', () => {
     });
   });
 
+  describe('/dishes/:dishId/reviews/mine (GET)', () => {
+    let ownDishId: string;
+    let ownReviewId: string;
+
+    beforeAll(async () => {
+      const source = await prisma.dish.findUniqueOrThrow({
+        where: { id: testDishId },
+      });
+      const dish = await prisma.dish.create({
+        data: {
+          name: `Owned review contract ${Date.now()}`,
+          price: 0,
+          images: [],
+          canteenId: source.canteenId,
+          canteenName: source.canteenName,
+          windowId: source.windowId,
+          windowName: source.windowName,
+          availableMealTime: ['lunch'],
+        },
+      });
+      ownDishId = dish.id;
+      const review = await prisma.review.create({
+        data: {
+          dishId: ownDishId,
+          userId,
+          rating: 4,
+          status: 'pending',
+          content: 'Owned pending review',
+          images: [],
+          createdAt: new Date('2020-01-01T00:00:00Z'),
+        },
+      });
+      ownReviewId = review.id;
+    });
+
+    afterAll(async () => {
+      if (ownReviewId)
+        await prisma.review.deleteMany({ where: { id: ownReviewId } });
+      if (ownDishId) await prisma.dish.deleteMany({ where: { id: ownDishId } });
+    });
+
+    it('requires authentication', async () => {
+      await request(app.getHttpServer())
+        .get(`/dishes/${ownDishId}/reviews/mine`)
+        .expect(401);
+    });
+
+    it('returns an old pending review while the public feed excludes it', async () => {
+      const own = await request(app.getHttpServer())
+        .get(`/dishes/${ownDishId}/reviews/mine`)
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .expect(200);
+      expect(own.body.data).toMatchObject({
+        id: ownReviewId,
+        userId,
+        status: 'pending',
+        content: 'Owned pending review',
+      });
+      const publicFeed = await request(app.getHttpServer())
+        .get(`/dishes/${ownDishId}/reviews`)
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .expect(200);
+      expect(publicFeed.body.data.items).toEqual([]);
+      expect(publicFeed.body.data.rating.total).toBe(0);
+    });
+
+    it('ignores a client supplied userId when another account requests private review data', async () => {
+      const secondary = await request(app.getHttpServer())
+        .post('/auth/wechat/login')
+        .send({ code: 'secondary_user_code_placeholder' });
+      const response = await request(app.getHttpServer())
+        .get(`/dishes/${ownDishId}/reviews/mine?userId=${userId}`)
+        .set('Authorization', `Bearer ${secondary.body.data.token.accessToken}`)
+        .expect(200);
+      expect(response.body.data).toBeNull();
+    });
+
+    it('returns rejected content to its owner and null after soft deletion', async () => {
+      await prisma.review.update({
+        where: { id: ownReviewId },
+        data: { status: 'rejected' },
+      });
+      const rejected = await request(app.getHttpServer())
+        .get(`/dishes/${ownDishId}/reviews/mine`)
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .expect(200);
+      expect(rejected.body.data.status).toBe('rejected');
+      await prisma.review.update({
+        where: { id: ownReviewId },
+        data: { deletedAt: new Date() },
+      });
+      const deleted = await request(app.getHttpServer())
+        .get(`/dishes/${ownDishId}/reviews/mine`)
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .expect(200);
+      expect(deleted.body.data).toBeNull();
+    });
+  });
+
   describe('/reviews (POST)', () => {
-    it('should create a review with detailed ratings', async () => {
+    it('should automatically approve and publish a review with detailed ratings by default', async () => {
       // 创建新菜品避免与 seed 数据冲突
       const canteen = await prisma.canteen.findFirst();
       const window = await prisma.window.findFirst();
@@ -149,7 +249,7 @@ describe('ReviewsController (e2e)', () => {
       expect(response.body.data.dishId).toBe(dish1.id);
       expect(response.body.data.rating).toBe(5);
       expect(response.body.data.content).toBe('很好吃！');
-      expect(response.body.data.status).toBe('pending');
+      expect(response.body.data.status).toBe('approved');
 
       // 验证详细评分
       expect(response.body.data.ratingDetails).toBeDefined();
@@ -159,6 +259,30 @@ describe('ReviewsController (e2e)', () => {
       expect(response.body.data.ratingDetails.oiliness).toBe(4);
 
       testReviewId = response.body.data.id;
+
+      const secondaryLogin = await request(app.getHttpServer())
+        .post('/auth/wechat/login')
+        .send({ code: 'secondary_user_code_placeholder' })
+        .expect(200);
+      expect(secondaryLogin.body.data.user.id).not.toBe(userId);
+
+      const publicFeed = await request(app.getHttpServer())
+        .get(`/dishes/${dish1.id}/reviews`)
+        .set(
+          'Authorization',
+          `Bearer ${secondaryLogin.body.data.token.accessToken}`,
+        )
+        .expect(200);
+      expect(publicFeed.body.data.items).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: testReviewId,
+            status: 'approved',
+            content: createReviewDto.content,
+          }),
+        ]),
+      );
+      expect(publicFeed.body.data.rating.total).toBe(1);
 
       // 清理
       await prisma.review.delete({ where: { id: testReviewId } });
@@ -538,6 +662,14 @@ describe('ReviewsController (e2e)', () => {
         await prisma.review.deleteMany({
           where: { id: reviewIdToDelete },
         });
+      }
+    });
+
+    afterAll(async () => {
+      if (reviewIdToDelete) {
+        await expect(
+          prisma.review.findUnique({ where: { id: reviewIdToDelete } }),
+        ).resolves.toBeNull();
       }
     });
   });

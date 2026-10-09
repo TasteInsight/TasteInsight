@@ -1,7 +1,12 @@
+jest.mock('@/store/modules/use-user-store', () => ({
+  useUserStore: () => ({ sessionVersion: 0, isLoggedIn: true, userInfo: { id: 'user' } }),
+}));
+
 /// <reference types="jest" />
 import { useAddDish } from '@/pages/add-dish/composables/use-add-dish';
 import { uploadDish } from '@/api/modules/dish';
 import { getCanteenList } from '@/api/modules/canteen';
+import { uploadImage } from '@/api/modules/upload';
 
 // Mock APIs
 jest.mock('@/api/modules/dish', () => ({
@@ -9,6 +14,9 @@ jest.mock('@/api/modules/dish', () => ({
 }));
 jest.mock('@/api/modules/canteen', () => ({
   getCanteenList: jest.fn(),
+}));
+jest.mock('@/api/modules/upload', () => ({
+  uploadImage: jest.fn(),
 }));
 
 // Mock uni-app APIs
@@ -19,6 +27,63 @@ jest.mock('@/api/modules/canteen', () => ({
 } as any;
 
 describe('useAddDish', () => {
+  it('accepts a free dish without inventing a window and remains terminal after success', async () => {
+    jest.useFakeTimers();
+    const form = useAddDish();
+    form.selectCanteen({ id: 'c', name: 'Canteen', windows: [] } as any);
+    Object.assign(form.formData, { name: 'Free dish', price: 0, availableMealTime: ['lunch'] });
+    (uploadDish as jest.Mock).mockResolvedValue({ code: 201 });
+    expect(await form.submitForm()).toBe(true);
+    expect(form.submitted.value).toBe(true);
+    const payload = (uploadDish as jest.Mock).mock.calls[0][0];
+    expect(payload.windowId).toBeUndefined();
+    expect(payload.windowName).toBeUndefined();
+    expect(await form.submitForm()).toBe(false);
+    expect(uploadDish).toHaveBeenCalledTimes(1);
+    jest.advanceTimersByTime(1500);
+    expect(uni.navigateBack).toHaveBeenCalledTimes(1);
+    jest.useRealTimers();
+  });
+
+  it('exposes field errors and preserves text while retrying location loading', async () => {
+    const form = useAddDish();
+    form.formData.name = 'Preserved';
+    form.formData.price = -1;
+    expect(await form.submitForm()).toBe(false);
+    expect(form.fieldErrors.value).toMatchObject({
+      price: expect.any(String),
+      canteen: expect.any(String),
+      availableMealTime: expect.any(String),
+    });
+    (getCanteenList as jest.Mock).mockRejectedValueOnce(new Error('offline'));
+    await form.loadCanteenList();
+    expect(form.canteenError.value).toBeTruthy();
+    (getCanteenList as jest.Mock).mockResolvedValueOnce({ code: 200, data: { items: [] } });
+    await form.loadCanteenList();
+    expect(form.canteenError.value).toBe('');
+    expect(form.formData.name).toBe('Preserved');
+  });
+  it('submits the selected window identity when names are repeated', async () => {
+    const addDish = useAddDish();
+    const windows = [
+      { id: 'window-1', name: '面食', number: '1', floor: { level: '1' } },
+      { id: 'window-2', name: '面食', number: '2', floor: { level: '2' } },
+    ];
+    addDish.selectCanteen({ id: 'canteen', name: '食堂', windows } as any);
+    addDish.selectWindow(windows[1] as any);
+    Object.assign(addDish.formData, { name: '菜', price: 10, availableMealTime: ['lunch'] });
+    (uploadDish as jest.Mock).mockResolvedValue({ code: 201, data: { id: 'upload' } });
+    await addDish.submitForm();
+    expect(uploadDish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        windowId: 'window-2',
+        windowNumber: '2',
+        windowName: '面食',
+      })
+    );
+    addDish.selectCanteen({ id: 'another', name: '另一个食堂', windows: [] } as any);
+    expect(addDish.formData.windowId).toBe('');
+  });
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -77,21 +142,46 @@ describe('useAddDish', () => {
     expect(isFormValid.value).toBe(true);
   });
 
-  it('should submit form successfully', async () => {
-    const { submitForm, formData } = useAddDish();
+  it('should upload images and submit an explicit backend DTO for a 201 response', async () => {
+    const { submitForm, formData, chooseImages } = useAddDish();
 
     // Setup valid form
     formData.name = 'Test Dish';
     formData.price = 10;
     formData.canteenName = 'Canteen A';
     formData.windowName = 'Window 1';
+    formData.floor = '2';
+    formData.windowId = 'window-1';
+    (uni.chooseImage as jest.Mock).mockImplementation(({ success }: any) =>
+      success({ tempFilePaths: ['http://tmp/selected-dish.jpg', 'wxfile://temp-image.jpg'] })
+    );
+    chooseImages();
+    expect(uploadImage).not.toHaveBeenCalled();
     formData.availableMealTime = ['lunch'];
 
-    (uploadDish as jest.Mock).mockResolvedValue({ code: 200 });
+    (uploadImage as jest.Mock)
+      .mockResolvedValueOnce({
+        url: 'https://cdn.example.com/selected-dish.jpg',
+        filename: 'selected-dish.jpg',
+      })
+      .mockResolvedValueOnce({ url: 'https://cdn.example.com/dish.jpg', filename: 'dish.jpg' });
+    (uploadDish as jest.Mock).mockResolvedValue({ code: 201 });
 
     const result = await submitForm();
 
-    expect(uploadDish).toHaveBeenCalledWith(formData);
+    expect(uploadImage).toHaveBeenCalledWith('wxfile://temp-image.jpg');
+    expect(uploadImage).toHaveBeenCalledWith('http://tmp/selected-dish.jpg');
+    expect(uploadImage).toHaveBeenCalledTimes(2);
+    const submittedDto = (uploadDish as jest.Mock).mock.calls[0][0];
+    expect(submittedDto).toEqual(
+      expect.objectContaining({
+        name: 'Test Dish',
+        images: ['https://cdn.example.com/selected-dish.jpg', 'https://cdn.example.com/dish.jpg'],
+        canteenName: 'Canteen A',
+        windowName: 'Window 1',
+      })
+    );
+    expect(submittedDto).not.toHaveProperty('floor');
     expect(result).toBe(true);
     expect(uni.showToast).toHaveBeenCalledWith(
       expect.objectContaining({ title: '提交成功，等待审核' })
@@ -198,11 +288,11 @@ describe('useAddDish', () => {
     expect(formData.images?.length).toBe(0);
   });
 
-  it('loadCanteenList failure sets error', async () => {
+  it('loadCanteenList failure sets a location-specific error', async () => {
     (getCanteenList as jest.Mock).mockRejectedValue(new Error('bad'));
-    const { loadCanteenList, error } = useAddDish();
+    const { loadCanteenList, canteenError } = useAddDish();
     await loadCanteenList();
-    expect(error.value).toBe('加载食堂列表失败');
+    expect(canteenError.value).toBe('加载食堂列表失败，请重试');
   });
 
   it('submitForm triggers navigateBack after success timeout', async () => {

@@ -1,203 +1,188 @@
 <template>
-  <view class="fixed inset-0 bg-black/40 z-[9999] flex items-end justify-center" @tap="handleClose">
-    <!-- 恢复评价状态对话框 -->
-    <view
-      v-if="showResumeDialog"
-      class="fixed inset-0 bg-black/60 z-[10000] flex items-center justify-center"
-      @tap.stop
-    >
-      <view class="bg-white rounded-lg p-6 mx-4 max-w-sm w-full">
-        <view class="text-center mb-4">
-          <text class="text-lg font-semibold text-gray-800">发现未完成的评价</text>
-        </view>
-        <view class="text-sm text-gray-600 mb-6 text-center">
-          您之前有未完成的评价内容，是否要继续填写？
-        </view>
-        <view class="flex gap-3">
-          <button
-            class="flex-1 h-10 flex items-center justify-center font-medium rounded-md border border-gray-300 text-gray-700"
-            @tap="startNewReview"
-          >
-            新开始
-          </button>
-          <button
-            class="flex-1 h-10 flex items-center justify-center font-medium rounded-md bg-ts-purple text-white"
-            :disabled="isResuming"
-            @tap="resumeReview"
-          >
-            {{ isResuming ? '恢复中...' : '继续填写' }}
-          </button>
-        </view>
-      </view>
-    </view>
-
-    <!-- 评价弹窗 -->
-    <scroll-view
-      v-if="!showResumeDialog"
-      class="review-form-container"
-      scroll-y
-      :scroll-with-animation="true"
-      @tap.stop
-    >
-      <!-- 标题栏 -->
-      <view class="flex justify-center items-center mb-4 pb-4 border-b border-gray-100 relative">
-        <h2 class="text-lg font-bold text-gray-800">{{ isEditing ? '修改评价' : '写评价' }}</h2>
-        <button
-          class="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-gray-400 text-xl rounded-full bg-transparent border-0 after:border-none"
-          @tap="handleClose"
-        >
-          <text>✕</text>
+  <view class="review-overlay" :style="keyboardStyle" @tap="handleClose">
+    <view v-if="showResumeDialog" class="resume-dialog" @tap.stop>
+      <text class="sheet-title">继续未完成的评价？</text>
+      <text class="sheet-hint">本地草稿包含上次填写的内容。</text>
+      <view class="sheet-actions">
+        <button class="sheet-button" @tap="startNewReview">重新填写</button>
+        <button class="sheet-button sheet-primary" :disabled="isResuming" @tap="resumeReview">
+          继续填写
         </button>
       </view>
-
-      <!-- 评分选择 -->
-      <view class="mb-5">
-        <view class="text-sm font-medium text-gray-700 mb-1 text-center">{{ ratingText }}</view>
-        <view class="flex items-center justify-center gap-3 py-1">
-          <text
-            v-for="star in 5"
-            :key="star"
-            class="cursor-pointer inline-block leading-none select-none transition-all duration-200 star-glow"
-            :style="{
-              fontSize: star <= rating ? mainStarSize + 'px' : mainSmallStarSize + 'px',
-              color: star <= rating ? '#fbbf24' : '#d1d5db',
-            }"
-            @tap="setRating(star)"
-            >{{ star <= rating ? '★' : '☆' }}</text
-          >
-        </view>
-      </view>
-
-      <!-- 口味细节评分-->
-      <view v-if="rating > 0" class="mb-5 flavor-section">
-        <view class="flex items-center justify-between mb-3">
-          <view class="text-sm font-medium text-gray-700">口味细节（可选）</view>
-          <button
-            v-if="hasFlavorSelection"
-            class="px-3 py-1.5 text-sm font-medium text-ts-purple bg-purple-50 border border-purple-200 rounded-full hover:bg-purple-100 active:bg-purple-200 transition-colors duration-200"
-            @tap="resetFlavorRatings"
-          >
-            清除选择
-          </button>
-        </view>
-
-        <view
-          v-for="option in flavorOptions"
-          :key="option.key"
-          class="relative flex items-center py-4"
+    </view>
+    <view
+      v-else
+      class="review-sheet"
+      role="dialog"
+      aria-modal="true"
+      :aria-label="isEditing ? '修改评价' : '写评价'"
+      @tap.stop
+    >
+      <view class="sheet-header">
+        <text class="sheet-title">{{ isEditing ? '修改评价' : '写评价' }}</text>
+        <button
+          class="sheet-button sheet-close"
+          aria-label="关闭评价"
+          :disabled="busy || closing"
+          @tap="handleClose"
         >
-          <text class="text-gray-700 text-base font-medium">{{ option.label }}</text>
-          <view class="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-3">
-            <text
-              v-for="star in 5"
-              :key="star"
-              class="cursor-pointer inline-block leading-none select-none transition-all duration-200"
-              :style="{
-                fontSize:
-                  star <= flavorRatings[option.key] ? starSize + 'px' : smallStarSize + 'px',
-                color: star <= flavorRatings[option.key] ? '#fbbf24' : '#d1d5db',
-              }"
-              @tap="setFlavorRating(option.key, star)"
-              >{{ star <= flavorRatings[option.key] ? '★' : '☆' }}</text
+          关闭
+        </button>
+      </view>
+      <scroll-view class="sheet-body" scroll-y :scroll-into-view="scrollIntoView">
+        <view class="sheet-content">
+          <view class="sheet-field overall-rating">
+            <text class="sheet-label">总体评价</text>
+            <text class="sheet-hint">{{ ratingText }}</text>
+            <view class="rating-options">
+              <button
+                v-for="star in 5"
+                :key="star"
+                class="sheet-button rating-option"
+                :class="{ selected: star <= rating }"
+                :aria-label="'总体评分 ' + star + ' 星'"
+                :aria-pressed="star === rating"
+                :disabled="busy"
+                @tap="setRating(star)"
+              >
+                <text aria-hidden="true">{{ star <= rating ? '★' : '☆' }}</text>
+              </button>
+            </view>
+          </view>
+          <view v-if="rating > 0" class="sheet-field">
+            <view class="flavor-heading">
+              <text class="sheet-label">口味强度（选填）</text>
+              <button
+                class="sheet-button"
+                :disabled="busy || !hasFlavorSelection"
+                @tap="resetFlavorRatings"
+              >
+                清除
+              </button>
+            </view>
+            <text class="sheet-hint">四项全部填写或全部留空；数值越高，口味越强。</text>
+            <view v-for="option in flavorOptions" :key="option.key" class="flavor-row">
+              <view class="flavor-label"
+                ><text>{{ option.label }}</text
+                ><text class="sheet-hint">{{
+                  flavorRatings[option.key] ? '强度 ' + flavorRatings[option.key] : '未设置'
+                }}</text></view
+              >
+              <view class="flavor-options">
+                <button
+                  v-for="level in 5"
+                  :key="level"
+                  class="sheet-button flavor-option"
+                  :class="{ selected: level === flavorRatings[option.key] }"
+                  :aria-label="option.label + '强度 ' + level + '，共 5 级'"
+                  :aria-pressed="level === flavorRatings[option.key]"
+                  :disabled="busy"
+                  @tap="setFlavorRating(option.key, level)"
+                >
+                  {{ level }}
+                </button>
+              </view>
+            </view>
+            <text v-if="showFlavorError && !flavorSelectionComplete" class="sheet-error"
+              >请将四项口味全部填写，或清除全部选择。</text
             >
           </view>
-        </view>
-
-        <view v-if="showFlavorError && !flavorSelectionComplete" class="text-xs text-red-500 mt-2">
-          请选择全部口味评分或全部留空
-        </view>
-      </view>
-
-      <!-- 评价内容 -->
-      <view class="mb-5">
-        <view class="text-sm font-medium text-gray-700 mb-3">评价内容</view>
-        <view
-          class="border border-gray-200 rounded-lg bg-white p-3 transition-colors focus-within:border-purple-400"
-        >
-          <textarea
-            v-model="content"
-            class="w-full h-24 resize-none focus:outline-none text-base"
-            placeholder="分享你的用餐体验吧~"
-            maxlength="500"
-            :disabled="submitting"
-          ></textarea>
-
-          <!-- 图片上传区域 -->
-          <view class="flex items-end justify-between mt-2">
-            <view class="flex flex-wrap gap-2">
-              <!-- 已上传图片 -->
-              <view v-for="(img, index) in images" :key="index" class="relative w-16 h-16">
+          <view id="review-content-field" class="sheet-field">
+            <label for="review-content" class="sheet-label">用餐体验（选填）</label>
+            <textarea
+              id="review-content"
+              v-model="content"
+              class="sheet-input review-content-input"
+              aria-label="用餐体验"
+              placeholder="口味、分量或值得分享的细节"
+              maxlength="500"
+              :disabled="busy"
+              :adjust-position="false"
+              @focus="focusField('review-content-field')"
+              @blur="blurField"
+            />
+            <text class="sheet-hint character-count">{{ content.length }}/500</text>
+          </view>
+          <view class="sheet-field">
+            <text class="sheet-label">评价图片（选填）</text>
+            <text class="sheet-hint">最多 3 张，提交评价时上传。</text>
+            <view class="review-images">
+              <view v-for="(img, index) in images" :key="img.path" class="review-image-item">
                 <image
-                  :src="img"
-                  class="w-full h-full rounded object-cover border border-gray-100"
+                  :src="img.path"
+                  class="review-image"
                   mode="aspectFill"
                   @tap="handlePreviewImage(index)"
                 />
-                <!-- 删除按钮 -->
-                <view
-                  class="absolute -top-2 -right-2 w-5 h-5 bg-gray-400 rounded-full flex items-center justify-center z-10"
+                <button
+                  class="sheet-button image-remove"
+                  :aria-label="'移除第 ' + (index + 1) + ' 张图片'"
+                  :disabled="busy"
                   @tap.stop="removeImage(index)"
                 >
-                  <text class="text-white text-xs font-bold">×</text>
-                </view>
+                  移除
+                </button>
               </view>
-
-              <!-- 上传按钮 -->
-              <view
+              <button
                 v-if="images.length < 3"
-                class="w-16 h-16 border border-dashed border-gray-300 rounded flex items-center justify-center active:bg-gray-50"
+                class="sheet-button image-add"
+                :disabled="busy"
                 @tap="handleChooseImage"
               >
-                <text v-if="!isUploading" class="text-gray-400 text-2xl font-light">+</text>
-                <text v-else class="text-gray-400 text-xs">...</text>
-              </view>
+                添加图片
+              </button>
             </view>
-
-            <!-- 字数统计 -->
-            <view class="text-xs text-gray-400 mb-1 ml-2"> {{ content.length }}/500 </view>
           </view>
         </view>
+      </scroll-view>
+      <view class="sheet-footer">
+        <button
+          v-if="draftSaveFailed"
+          class="sheet-button draft-discard"
+          :disabled="busy || closing"
+          @tap="discardDraft"
+        >
+          放弃草稿并关闭
+        </button>
+        <button
+          class="sheet-button sheet-primary"
+          :disabled="busy || closing || (isEditing && !dirty)"
+          @tap="handleSubmit"
+        >
+          {{
+            isSaving ? '保存草稿中…' : submitting ? '提交中…' : isEditing ? '更新评价' : '提交评价'
+          }}
+        </button>
       </view>
-
-      <!-- 提交按钮 -->
-      <button
-        class="w-full h-10 flex items-center justify-center font-medium rounded-md transition-all shadow-lg shadow-purple-200 active:shadow-none bg-purple-900 text-white disabled:bg-gray-300 disabled:text-gray-400 disabled:cursor-not-allowed"
-        :disabled="submitting"
-        @click="handleSubmit"
-      >
-        {{ submitting ? '提交中...' : isEditing ? '更新评价' : '提交评价' }}
-      </button>
-    </scroll-view>
+    </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, nextTick, ref, computed, watch } from 'vue';
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue';
 import { useReviewForm } from '../composables/use-review';
+import { useSheetKeyboard, useSheetInputScroll } from '../composables/use-sheet-keyboard';
+import { useUserStore } from '@/store/modules/use-user-store';
+import { confirmDiscardChanges } from '@/utils/confirm-discard';
 import type { Review } from '@/types/api';
 
-interface Props {
+const props = defineProps<{
   dishId: string;
   dishName: string;
   existingReviewId?: string;
   initialReview?: Review | null;
-}
-
-interface Emits {
-  (e: 'close'): void;
-  (e: 'success'): void;
-}
-
-const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
-
+}>();
+const emit = defineEmits<{ (e: 'close'): void; (e: 'success', review: Review): void }>();
+const userStore = useUserStore();
 const isEditing = computed(() => !!props.existingReviewId);
-
+const { scrollIntoView, focusField, blurField, revealFocusedField } = useSheetInputScroll();
+const keyboardStyle = useSheetKeyboard(revealFocusedField);
 const {
   rating,
   content,
   images,
-  isUploading,
+  isSaving,
+  busy,
   submitting,
   showFlavorError,
   flavorOptions,
@@ -214,269 +199,232 @@ const {
   clearReviewState,
   hasSavedReviewState,
   handleSubmit: submitForm,
-  uploadImages,
+  addImages,
+  setRemoteImages,
   removeImage,
 } = useReviewForm();
-
-const applyInitialReview = (review: Review) => {
-  resetForm();
-  rating.value = review.rating || 0;
-  content.value = review.content || '';
-  images.value = Array.isArray(review.images) ? [...review.images] : [];
-
-  if (review.ratingDetails) {
-    flavorRatings.value = {
-      spicyLevel: review.ratingDetails.spicyLevel ?? 0,
-      sweetness: review.ratingDetails.sweetness ?? 0,
-      saltiness: review.ratingDetails.saltiness ?? 0,
-      oiliness: review.ratingDetails.oiliness ?? 0,
-    };
-  }
-};
-
-// 图片选择
-const handleChooseImage = () => {
-  if (isUploading.value) return;
-
-  uni.chooseImage({
-    count: 3 - images.value.length,
-    sizeType: ['compressed'],
-    sourceType: ['album', 'camera'],
-    success: res => {
-      uploadImages(res.tempFilePaths as string[]);
-    },
+const snapshot = () =>
+  JSON.stringify({
+    rating: rating.value,
+    content: content.value,
+    images: images.value,
+    flavorRatings: flavorRatings.value,
   });
-};
-
-// 图片预览
-const handlePreviewImage = (index: number) => {
-  uni.previewImage({
-    urls: images.value,
-    current: images.value[index],
-  });
-};
-
-// 恢复状态相关
+const baseline = ref(snapshot());
+const dirty = computed(() => snapshot() !== baseline.value);
+const closing = ref(false);
+const draftSaveFailed = ref(false);
 const showResumeDialog = ref(false);
 const isResuming = ref(false);
+let active = true;
+let initializedReviewId = '';
 
-// Tailwind CSS gap-3 的值（0.75rem = 12px，假设 1rem = 16px）
-// 如果修改 Tailwind 配置，请同步更新此常量
-const TAILWIND_GAP_3 = 12; // px
-
-// 响应式星星大小计算
-const screenWidth = ref(375); // 默认值
-const starSize = computed(() => {
-  // 星星总宽度占据屏幕的60%
-  const totalWidth = screenWidth.value * 0.6;
-  // 5个星星 + 4个间隙（使用 Tailwind gap-3 的值）
-  const gap = TAILWIND_GAP_3;
-  const starWidth = (totalWidth - 4 * gap) / 5;
-  return Math.max(24, Math.min(48, starWidth)); // 限制在24px-48px之间
-});
-
-const smallStarSize = computed(() => {
-  return starSize.value * 0.8; // 小星星是正常大小的80%
-});
-
-// 整体评分星星（更大一些）
-const mainStarSize = computed(() => {
-  return starSize.value * 1.2; // 整体评分星星更大
-});
-
-const mainSmallStarSize = computed(() => {
-  return smallStarSize.value * 1.2; // 整体评分小星星也相应更大
-});
-
-// 获取屏幕宽度
-const updateScreenWidth = () => {
-  try {
-    const systemInfo = uni.getSystemInfoSync();
-    screenWidth.value = systemInfo.windowWidth || systemInfo.screenWidth || 375;
-  } catch (error) {
-    console.log('获取屏幕信息失败，使用默认宽度');
-  }
-};
-
-// 隐藏tabbar
-onMounted(() => {
-  // 获取屏幕宽度
-  updateScreenWidth();
-
-  // 编辑模式：不展示“恢复草稿”，始终以历史评价为基础进行修改
-  if (!isEditing.value) {
-    // 检查是否有保存的评价状态
-    if (hasSavedReviewState(props.dishId)) {
-      showResumeDialog.value = true;
-    }
-  }
-
-  nextTick(() => {
-    // 添加CSS类来隐藏tabbar（小程序环境没有 document）
-    if (typeof document !== 'undefined' && document?.body) {
-      document.body.classList.add('hide-tabbar');
-    }
-
-    // 同时尝试API隐藏
-    setTimeout(() => {
-      uni.hideTabBar({
-        animation: true,
-        fail: err => {
-          console.log('API隐藏tabbar失败，使用CSS隐藏');
-        },
-      });
-    }, 100);
-  });
-});
-
-// initialReview 往往是异步拉取后才有值；这里用 watch 确保“修改评价”能稳定回填
 watch(
   () => props.initialReview,
   review => {
-    if (!isEditing.value) return;
-    if (!review) return;
-    showResumeDialog.value = false;
-    applyInitialReview(review);
+    if (!isEditing.value || !review || initializedReviewId === review.id) return;
+    initializedReviewId = review.id;
+    resetForm();
+    rating.value = review.rating || 0;
+    content.value = review.content || '';
+    setRemoteImages(review.images || []);
+    if (review.ratingDetails)
+      flavorRatings.value = {
+        spicyLevel: review.ratingDetails.spicyLevel ?? 0,
+        sweetness: review.ratingDetails.sweetness ?? 0,
+        saltiness: review.ratingDetails.saltiness ?? 0,
+        oiliness: review.ratingDetails.oiliness ?? 0,
+      };
+    baseline.value = snapshot();
   },
   { immediate: true }
 );
 
-// 显示tabbar
-onUnmounted(() => {
-  // 移除CSS类
-  if (typeof document !== 'undefined' && document?.body) {
-    document.body.classList.remove('hide-tabbar');
-  }
-
-  setTimeout(() => {
-    uni.showTabBar({
-      animation: true,
-      fail: err => {
-        console.log('API显示tabbar失败');
-      },
-    });
-  }, 200);
+onMounted(() => {
+  if (!isEditing.value) showResumeDialog.value = hasSavedReviewState(props.dishId);
 });
-
-const handleClose = () => {
-  if (isEditing.value) {
+onUnmounted(() => {
+  active = false;
+});
+const handleChooseImage = () => {
+  if (!active || busy.value || images.value.length >= 3) return;
+  const session = userStore.sessionVersion;
+  const owner = userStore.userInfo?.id;
+  uni.chooseImage({
+    count: 3 - images.value.length,
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+    success: result => {
+      if (active && session === userStore.sessionVersion && owner === userStore.userInfo?.id)
+        addImages(result.tempFilePaths as string[]);
+    },
+  });
+};
+const handlePreviewImage = (index: number) =>
+  uni.previewImage({
+    urls: images.value.map(image => image.path),
+    current: images.value[index].path,
+  });
+const handleClose = async () => {
+  if (!active || busy.value || closing.value) return false;
+  const session = userStore.sessionVersion;
+  const owner = userStore.userInfo?.id;
+  closing.value = true;
+  try {
+    if (isEditing.value) {
+      if (!(await confirmDiscardChanges(dirty.value, '评价的修改尚未提交，确定放弃吗？')))
+        return false;
+    } else if (!showResumeDialog.value) {
+      if (rating.value || content.value.trim() || hasFlavorSelection.value || images.value.length) {
+        if (!(await saveReviewState(props.dishId))) {
+          if (active && session === userStore.sessionVersion && owner === userStore.userInfo?.id)
+            draftSaveFailed.value = true;
+          return false;
+        }
+      } else clearReviewState(props.dishId);
+    }
+    if (!active || session !== userStore.sessionVersion || owner !== userStore.userInfo?.id)
+      return false;
     emit('close');
-    return;
+    return true;
+  } finally {
+    closing.value = false;
   }
-
-  if (showResumeDialog.value) {
-    // 如果显示恢复对话框，清除保存的状态并关闭整个组件
+};
+const discardDraft = async () => {
+  if (!active || busy.value || closing.value) return false;
+  const session = userStore.sessionVersion;
+  const owner = userStore.userInfo?.id;
+  closing.value = true;
+  try {
+    if (!(await confirmDiscardChanges(true, '将放弃这次评价中的文字和图片，确定关闭吗？')))
+      return false;
+    if (!active || session !== userStore.sessionVersion || owner !== userStore.userInfo?.id)
+      return false;
     clearReviewState(props.dishId);
     emit('close');
-  } else {
-    // 如果显示评价弹窗，保存评价状态（如果有内容）
-    if (rating.value > 0 || content.value.trim() || hasFlavorSelection.value) {
-      saveReviewState(props.dishId);
-    }
-    emit('close');
+    return true;
+  } finally {
+    closing.value = false;
   }
 };
-
 const handleSubmit = () => {
-  submitForm(
-    props.dishId,
-    () => {
-      // 提交成功后清除保存的状态
-      clearReviewState(props.dishId);
-      emit('success');
-    },
-    props.existingReviewId
-  );
+  if (closing.value || (isEditing.value && (!props.initialReview || !dirty.value))) return;
+  return submitForm(props.dishId, review => emit('success', review), props.existingReviewId);
 };
-
-// 恢复评价状态
 const resumeReview = () => {
   isResuming.value = true;
-  if (loadReviewState(props.dishId)) {
-    showResumeDialog.value = false;
-  }
+  if (loadReviewState(props.dishId)) showResumeDialog.value = false;
   isResuming.value = false;
 };
-
-// 开始新评价
 const startNewReview = () => {
   resetForm();
   clearReviewState(props.dishId);
   showResumeDialog.value = false;
 };
+defineExpose({ requestClose: handleClose });
 </script>
 
 <style scoped>
-textarea {
-  font-family: inherit;
+@import './review-sheet.css';
+.resume-dialog {
+  align-self: center;
+  width: calc(100% - 40px);
+  max-width: 360px;
+  padding: 24px;
+  box-sizing: border-box;
+  border-radius: 16px;
+  background: #fff;
 }
-
-.review-form-container {
+.resume-dialog > .sheet-title {
+  display: block;
+  margin-bottom: 12px;
+}
+.resume-dialog .sheet-actions {
+  margin-top: 24px;
+}
+.overall-rating {
+  text-align: center;
+}
+.rating-options {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+  gap: 4px;
+}
+.rating-option {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  color: #98a2b3;
+  font-size: 32px;
+}
+.rating-option.selected {
+  color: #d99a12;
+}
+.flavor-heading,
+.flavor-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.flavor-row {
+  margin-top: 16px;
+}
+.flavor-label {
+  font-size: 14px;
+}
+.flavor-options {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.flavor-option {
+  flex: 1;
+  border: 1px solid #d0d5dd;
+}
+.flavor-option.selected {
+  background: #660874;
+  border-color: #660874;
+  color: #fff;
+}
+.review-content-input {
+  height: 120px;
+  margin-top: 12px;
+}
+.character-count {
+  text-align: right;
+  margin-top: 4px;
+}
+.review-images {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 12px;
+}
+.review-image-item {
+  width: 76px;
+}
+.review-image {
+  display: block;
+  width: 76px;
+  height: 76px;
+  border-radius: 10px;
+}
+.image-remove {
+  width: 76px;
+  padding: 8px 0;
+}
+.image-add {
+  width: 76px;
+  height: 76px;
+  padding: 6px;
+  border: 1px dashed #98a2b3;
+}
+.draft-discard {
   width: 100%;
-  max-height: 85vh;
-  background-color: #ffffff;
-  border-radius: 24px 24px 0 0;
-  padding: 20px 16px;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
-  transform: translateY(100%);
-  opacity: 0;
-  animation: slide-up-from-bottom 0.3s ease-out forwards;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  padding-bottom: calc(100px + env(safe-area-inset-bottom));
-  margin-bottom: 80px;
-}
-
-.flavor-section {
-  animation: fade-in 0.3s ease-out;
-}
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slide-up-from-bottom {
-  from {
-    transform: translateY(120%);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(20%);
-    opacity: 1;
-  }
-}
-
-.star-glow {
-  animation: star-glow 0.3s ease;
-}
-
-@keyframes star-glow {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-.review-form-container button::after {
-  border: none;
-}
-
-.hide-tabbar .uni-tabbar,
-.hide-tabbar uni-tabbar {
-  display: none !important;
-  opacity: 0 !important;
-  visibility: hidden !important;
+  margin-bottom: 8px;
 }
 </style>

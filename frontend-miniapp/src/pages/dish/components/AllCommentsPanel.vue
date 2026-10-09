@@ -1,328 +1,376 @@
 <template>
-  <!-- 全部评论面板 -->
+  <!-- #ifdef MP-WEIXIN -->
   <page-container
+    v-if="isVisible"
+    :key="helperKey"
     :show="isVisible"
-    position="bottom"
-    :round="true"
-    :overlay="true"
-    :safe-area-inset-bottom="false"
-    custom-style="height: 85vh; background-color: #fff;"
-    @clickoverlay="handleClose"
-    @afterleave="handleClose"
-  >
-    <view id="acp-root" class="w-full h-full flex flex-col">
-      <!-- 头部 -->
-      <view
-        id="acp-header"
-        class="flex justify-center items-center py-4 px-5 border-b border-gray-200 shrink-0 relative"
-      >
-        <h2 class="text-lg font-semibold text-gray-800">全部回复</h2>
+    :overlay="false"
+    :duration="0"
+    custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
+    @leave="handleClose"
+    @afterleave="restoreHelper"
+  />
+  <!-- #endif -->
+  <view v-if="isVisible" class="review-overlay" :style="keyboardStyle" @tap="handleClose">
+    <view
+      id="acp-root"
+      class="review-sheet"
+      role="dialog"
+      aria-modal="true"
+      aria-label="全部回复"
+      @tap.stop
+    >
+      <view id="acp-header" class="sheet-header">
+        <text class="sheet-title">全部回复</text>
         <button
-          class="absolute right-5 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-gray-500 text-lg rounded-full bg-transparent border-none"
+          class="sheet-button sheet-close"
+          aria-label="关闭回复"
+          :disabled="submitting || closing"
           @tap="handleClose"
         >
-          <text>✕</text>
+          关闭
         </button>
       </view>
-
-      <!-- 评论列表 -->
       <scroll-view
-        class="px-5 flex-1 min-h-0"
-        scroll-y="true"
+        class="sheet-body"
+        scroll-y
         lower-threshold="80"
-        @scrolltolower="handleScrollToLower"
+        @scrolltolower="loadMoreComments"
       >
-        <view
-          v-if="loading && comments.length === 0"
-          class="flex justify-center items-center text-gray-500 h-full"
-        >
-          <text>加载中...</text>
-        </view>
-
-        <view
-          v-else-if="comments.length === 0"
-          class="flex justify-center items-center text-gray-500 h-full"
-        >
-          <text>暂无评论</text>
-        </view>
-
-        <view v-else class="py-4">
+        <view class="sheet-content reply-list" :aria-busy="loading">
+          <view v-if="error && !comments.length" class="comment-state">
+            <text class="sheet-error">{{ error }}</text
+            ><button class="sheet-button" @tap="retryComments">重试</button>
+          </view>
           <view
-            v-for="(comment, index) in comments"
-            :key="comment.id"
-            @tap="selectCommentForReply(comment)"
-            @longpress="(e: any) => handleLongPress(e, comment)"
+            v-else-if="initialized && !loading && !comments.length"
+            class="comment-state sheet-hint"
+            >还没有回复</view
           >
-            <!-- 评论内容区域 -->
-            <view class="py-3">
-              <!-- 用户头像和信息 -->
-              <view class="flex mb-2">
-                <img
-                  :src="comment.userAvatar || '/default-avatar.png'"
-                  class="w-8 h-8 rounded-full mr-3 border border-gray-200 shrink-0"
-                  alt="用户头像"
-                />
-                <view class="flex-1">
-                  <!-- 第一行：用户名和回复目标 -->
-                  <view class="flex items-center mb-1">
-                    <text class="text-ts-purple font-semibold text-sm">{{
-                      comment.userNickname
-                    }}</text>
-                    <!-- 回复目标显示 -->
-                    <template v-if="comment.parentComment && !comment.parentComment.deleted">
-                      <text class="text-gray-500 text-sm ml-2">回复</text>
-                      <text class="text-ts-purple text-sm font-semibold ml-1"
-                        >@{{ comment.parentComment.userNickname }}</text
-                      >
-                    </template>
-                    <text
-                      v-else-if="comment.parentComment?.deleted"
-                      class="text-gray-400 text-sm ml-2"
-                      >回复的评论已删除</text
-                    >
-                  </view>
-                  <!-- 第二行：评论内容 -->
-                  <view class="text-sm text-gray-700 leading-relaxed mb-1">
-                    {{ comment.content }}
-                  </view>
-                  <!-- 第三行：楼层和日期 -->
-                  <view class="flex items-center">
-                    <text class="text-xs text-gray-400 mr-2">{{ comment.floor ?? '--' }}楼</text>
-                    <text class="text-xs text-gray-400">{{ formatDate(comment.createdAt) }}</text>
-                  </view>
-                </view>
+          <view
+            v-for="comment in comments"
+            :key="comment.id"
+            class="comment-row"
+            @longpress="handleLongPress($event, comment)"
+          >
+            <UserAvatar :src="comment.userAvatar" :size="32" :label="comment.userNickname" />
+            <view class="comment-main">
+              <view class="comment-heading">
+                <text class="discussion-author comment-name">{{ comment.userNickname }}</text>
+                <button
+                  class="sheet-button discussion-action comment-more"
+                  :aria-label="'管理 ' + comment.userNickname + ' 的回复'"
+                  aria-haspopup="dialog"
+                  role="button"
+                  tabindex="0"
+                  @tap.stop="handleLongPress($event, comment)"
+                  @keydown.enter.stop.prevent="handleLongPress($event, comment)"
+                  @keydown.space.stop.prevent="handleLongPress($event, comment)"
+                >
+                  <image
+                    class="discussion-more-icon"
+                    src="/static/icons/more-horizontal.png"
+                    mode="aspectFit"
+                    aria-hidden="true"
+                  />
+                </button>
+              </view>
+              <text
+                v-if="comment.parentComment && !comment.parentComment.deleted"
+                class="sheet-hint comment-reply-context"
+                >回复 @{{ comment.parentComment.userNickname }}</text
+              >
+              <text
+                v-else-if="comment.parentComment?.deleted"
+                class="sheet-hint comment-reply-context"
+                >回复的评论已删除</text
+              >
+              <text class="discussion-body comment-content">{{ comment.content }}</text>
+              <view class="discussion-meta comment-meta">
+                <text>{{ comment.floor ?? '--' }}楼 · {{ formatDate(comment.createdAt) }}</text>
+                <button
+                  v-if="comment.status === 'approved' && canReply"
+                  class="sheet-button discussion-action comment-reply-action"
+                  :disabled="submitting"
+                  @tap="selectCommentForReply(comment)"
+                >
+                  回复
+                </button>
               </view>
             </view>
-
-            <!-- 分隔线 -->
-            <view v-if="index < comments.length - 1" class="h-px bg-gray-200 my-3"></view>
           </view>
-
-          <!-- 底部提示：上拉加载更多 / 加载中 / 没有更多了 -->
-          <view class="flex items-center justify-center py-4 text-gray-500 text-sm">
-            <template v-if="loading">
-              <text>加载中...</text>
-            </template>
-            <template v-else-if="hasMore">
-              <text>上拉加载更多</text>
-            </template>
-            <template v-else>
-              <text>没有更多评论了</text>
-            </template>
+          <view v-if="comments.length && (error || loading || hasMore)" class="comment-state">
+            <template v-if="error"
+              ><text class="sheet-error">{{ error }}</text
+              ><button class="sheet-button" @tap="retryComments">重试</button></template
+            >
+            <text v-else-if="loading" class="sheet-hint">加载中…</text>
+            <button v-else-if="hasMore" class="sheet-button" @tap="loadMoreComments">
+              加载更多回复
+            </button>
           </view>
         </view>
       </scroll-view>
-
-      <!-- 底部回复输入框 -->
-      <view id="acp-input" class="border-t border-gray-200 bg-white px-4 pt-3 shrink-0 pb-safe">
-        <view v-if="replyingTo" class="flex items-center mb-2">
-          <text class="text-ts-purple text-xs font-medium flex-1"
-            >回复 @{{ replyingTo?.userNickname }}</text
-          >
+      <view v-if="!initialized || canReply" id="acp-input" class="sheet-footer">
+        <view v-if="replyingTo" class="reply-target">
+          <text class="sheet-hint">回复 @{{ replyingTo.userNickname }}</text>
           <button
-            class="w-5 h-5 flex items-center justify-center text-gray-500 text-sm bg-transparent border-none rounded-full after:border-none"
+            class="sheet-button discussion-action"
+            :disabled="submitting"
+            aria-label="取消回复对象"
             @tap="cancelReply"
           >
-            <text>✕</text>
+            取消回复
           </button>
         </view>
-
-        <view class="flex items-center gap-2">
+        <view class="reply-composer">
           <input
             v-model="replyContent"
-            class="flex-1 py-2 px-3 border border-gray-300 rounded-full text-sm bg-gray-50 focus:border-purple-400 focus:bg-white"
-            :placeholder="replyingTo ? `回复 @${replyingTo.userNickname}...` : '写下你的回复...'"
+            class="sheet-input reply-input"
+            aria-label="回复内容"
+            :disabled="submitting"
+            :adjust-position="false"
+            maxlength="500"
+            placeholder="写下你的回复"
+            placeholder-style="color: #667085"
             @confirm="submitReply"
           />
           <button
-            class="px-4 py-2 border-none rounded-full text-sm font-medium min-w-[60px] transition-all duration-200 after:border-none"
-            :class="
-              canSendReply
-                ? 'bg-gradient-to-br from-purple-700 to-purple-600 text-white'
-                : 'bg-gray-300 text-gray-400'
-            "
+            class="sheet-button sheet-primary reply-send"
             :disabled="!canSendReply"
             @tap="submitReply"
           >
-            发送
+            {{ submitting ? '发送中…' : '发送' }}
           </button>
         </view>
       </view>
-
-      <!-- 长按菜单 -->
-      <LongPressMenu
-        :visible="menuVisible"
-        :can-delete="canDeleteCurrent"
-        @close="closeMenu"
-        @delete="confirmDelete"
-        @report="handleReportFromMenu"
-      />
-
-      <!-- 举报弹窗 (嵌套在 page-container 内部) -->
-      <ReportDialog v-if="isReportVisible" @close="closeReportModal" @submit="submitReport" />
     </view>
-  </page-container>
+    <LongPressMenu
+      :visible="menuVisible"
+      :can-delete="canDeleteCurrent"
+      @close="closeMenu"
+      @delete="confirmDelete"
+      @report="handleReportFromMenu"
+    />
+    <ReportDialog
+      v-if="isReportVisible"
+      ref="reportRef"
+      :submitting="reportSubmitting"
+      @close="closeReportModal"
+      @submit="submitReport"
+    />
+  </view>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed, nextTick, getCurrentInstance } from 'vue';
+import { ref, watch, computed, onUnmounted } from 'vue';
 import type { Comment } from '@/types/api';
 import dayjs from 'dayjs';
 import { useUserStore } from '@/store/modules/use-user-store';
+import UserAvatar from '@/components/UserAvatar.vue';
+import { confirmDiscardChanges } from '@/utils/confirm-discard';
 import ReportDialog from './ReportDialog.vue';
 import LongPressMenu from './LongPressMenu.vue';
-import { useReport } from '@/pages/dish/composables/use-report';
+import { useReport } from '../composables/use-report';
 import { useCommentPanel } from '../composables/use-comment';
+import { useSheetKeyboard } from '../composables/use-sheet-keyboard';
 
+const props = defineProps<{ reviewId: string; isVisible: boolean }>();
+const emit = defineEmits<{ (e: 'close'): void; (e: 'commentAdded'): void }>();
 const userStore = useUserStore();
-
-interface Props {
-  reviewId: string;
-  isVisible: boolean;
-}
-
-interface Emits {
-  (e: 'close'): void;
-  (e: 'commentAdded'): void;
-  (e: 'delete', commentId: string): void;
-}
-
-const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
-
-// 使用评论面板 composable
+const keyboardStyle = useSheetKeyboard();
 const {
   comments,
+  initialized,
   loading,
+  error,
   hasMore,
   replyContent,
   replyingTo,
   canSendReply,
+  canReply,
+  submitting,
   fetchPanelComments,
+  retryComments,
   loadMoreComments,
   selectCommentForReply,
   cancelReply,
-  submitReply: doSubmitReply,
+  submitReply,
   resetPanel,
+  removePanelComment,
 } = useCommentPanel(
   () => props.reviewId,
   () => emit('commentAdded')
 );
-
-const handleScrollToLower = () => {
-  if (loading.value) return;
-  if (!hasMore.value) return;
-  loadMoreComments();
-};
-
-// 长按菜单相关状态
+const {
+  isReportVisible,
+  submitting: reportSubmitting,
+  openReportModal,
+  closeReportModal,
+  submitReport,
+} = useReport();
+const reportRef = ref<InstanceType<typeof ReportDialog> | null>(null);
 const menuVisible = ref(false);
-const currentCommentId = ref('');
 const currentComment = ref<Comment | null>(null);
-
-// 计算当前评论是否可删除
-const canDeleteCurrent = computed(() => {
-  if (!currentComment.value) return false;
-  return currentComment.value.userId === userStore.userInfo?.id;
+const closing = ref(false);
+const helperKey = ref(0);
+let active = true;
+onUnmounted(() => {
+  active = false;
 });
-
-// 长按处理
-const handleLongPress = (_e: any, comment: Comment) => {
-  currentCommentId.value = comment.id;
+const canDeleteCurrent = computed(() => currentComment.value?.userId === userStore.userInfo?.id);
+const handleLongPress = (_event: any, comment: Comment) => {
   currentComment.value = comment;
   menuVisible.value = true;
 };
-
-// 关闭菜单
 const closeMenu = () => {
   menuVisible.value = false;
-  currentCommentId.value = '';
   currentComment.value = null;
 };
-
-// 确认删除
 const confirmDelete = () => {
-  if (!currentCommentId.value) return;
-  handleDelete(currentCommentId.value);
+  const comment = currentComment.value;
   closeMenu();
-};
-
-// 从菜单打开举报
-const handleReportFromMenu = () => {
-  const commentId = currentCommentId.value;
-  closeMenu();
-  openReportModal('comment', commentId);
-};
-
-const { isReportVisible, openReportModal, closeReportModal, submitReport } = useReport();
-
-// 监听面板显示状态
-watch(
-  () => props.isVisible,
-  (visible: boolean) => {
-    if (visible) {
-      nextTick(() => {
-        setTimeout(() => {
-          fetchPanelComments();
-        }, 50);
-      });
-    } else {
-      // 重置状态
-      resetPanel();
-    }
-  }
-);
-
-onMounted(() => {
-  if (props.isVisible) {
-    nextTick(() => {
-      setTimeout(() => {
-        fetchPanelComments();
-      }, 50);
-    });
-  }
-});
-
-const submitReply = () => {
-  doSubmitReply();
-};
-
-const handleClose = () => {
-  emit('close');
-};
-
-const handleDelete = (commentId: string) => {
+  if (!comment || comment.userId !== userStore.userInfo?.id) return;
+  const session = userStore.sessionVersion;
+  const review = props.reviewId;
   uni.showModal({
-    title: '提示',
-    content: '确定要删除这条评论吗？',
-    success: res => {
-      if (res.confirm) {
-        emit('delete', commentId);
-        // 立即从当前列表移除，避免 UI 不更新（父组件删除是异步）
-        comments.value = (comments.value || []).filter(c => c.id !== commentId);
-        // 等父组件删除完成后再刷新（重置分页/楼层）
-        setTimeout(() => {
-          resetPanel();
-          fetchPanelComments();
-        }, 300);
-      }
+    title: '删除回复？',
+    content: '删除后无法恢复。',
+    confirmText: '删除',
+    success: result => {
+      if (
+        result.confirm &&
+        active &&
+        props.isVisible &&
+        review === props.reviewId &&
+        session === userStore.sessionVersion
+      )
+        void removePanelComment(comment.id);
     },
   });
 };
-
-const formatDate = (dateString: string) => {
-  return dayjs(dateString).format('MM-DD HH:mm');
+const handleReportFromMenu = () => {
+  const id = currentComment.value?.id;
+  closeMenu();
+  if (id) openReportModal('comment', id);
 };
+watch(
+  [() => props.isVisible, () => props.reviewId],
+  ([visible]) => {
+    resetPanel();
+    closeMenu();
+    closeReportModal();
+    if (visible) void fetchPanelComments();
+  },
+  { immediate: true, flush: 'sync' }
+);
+const handleClose = async () => {
+  if (isReportVisible.value) return reportRef.value?.requestClose();
+  if (menuVisible.value) {
+    closeMenu();
+    return false;
+  }
+  if (submitting.value || closing.value) return false;
+  const session = userStore.sessionVersion;
+  const review = props.reviewId;
+  closing.value = true;
+  try {
+    if (!(await confirmDiscardChanges(!!replyContent.value.trim(), '回复尚未发送，确定放弃吗？')))
+      return false;
+    if (!active || session !== userStore.sessionVersion || review !== props.reviewId) return false;
+    emit('close');
+    return true;
+  } finally {
+    closing.value = false;
+  }
+};
+const restoreHelper = () => {
+  if (props.isVisible && active) helperKey.value++;
+};
+const formatDate = (date: string) => dayjs(date).format('MM-DD HH:mm');
+defineExpose({ requestClose: handleClose });
 </script>
 
 <style scoped>
-/* 底部安全区域 padding */
-.pb-safe {
-  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+@import './review-sheet.css';
+@import './discussion.css';
+.reply-list {
+  padding: 0 16px 12px;
 }
-
-/* 移除小程序按钮默认边框 */
-button::after {
-  border: none;
+.comment-state {
+  padding: 24px 0;
+  text-align: center;
+}
+.comment-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+.comment-main {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.comment-heading,
+.comment-meta,
+.reply-target {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.comment-heading {
+  min-height: 32px;
+}
+.comment-name {
+  min-width: 0;
+}
+.comment-more {
+  margin: -6px 0;
+}
+.comment-reply-context {
+  margin-top: 8px;
+}
+.comment-content {
+  display: block;
+  margin-top: 8px;
+}
+.comment-meta {
+  min-height: 32px;
+  margin-top: 8px;
+}
+.comment-reply-action {
+  margin: -6px 0;
+}
+.reply-target {
+  margin-bottom: 8px;
+}
+.reply-target > text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.reply-composer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.reply-input {
+  min-width: 0;
+  flex: 1;
+  height: 44px;
+  padding: 8px 12px;
+  line-height: 22px;
+  caret-color: #660874;
+}
+.reply-input:focus,
+.reply-input:focus-within {
+  outline: none;
+  box-shadow: inset 0 0 0 1px #660874;
+}
+.reply-send {
+  width: auto;
+  flex-shrink: 0;
 }
 </style>

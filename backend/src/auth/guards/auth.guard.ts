@@ -30,6 +30,14 @@ export class AuthGuard implements CanActivate {
       const payload = await this.jwtService.verifyAsync(token, {
         secret: this.configService.get<string>('JWT_SECRET'),
       });
+      if (
+        typeof payload.sub !== 'string' ||
+        payload.sub.length === 0 ||
+        payload.type !== 'user' ||
+        payload.tokenUse !== 'access'
+      ) {
+        throw new UnauthorizedException();
+      }
       // 将 payload 附加到请求对象，以便后续处理函数访问
       request['user'] = payload;
     } catch (error) {
@@ -37,6 +45,7 @@ export class AuthGuard implements CanActivate {
       const isExpectedJwtError = [
         'JsonWebTokenError',
         'TokenExpiredError',
+        'UnauthorizedException',
       ].includes(errorName);
 
       if (!isExpectedJwtError) {

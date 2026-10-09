@@ -27,6 +27,9 @@ const mocks = vi.hoisted(() => ({
   },
   showAlertMock: vi.fn(() => Promise.resolve()),
   showConfirmMock: vi.fn(() => Promise.resolve(true)),
+  authStoreMock: {
+    hasPermission: vi.fn(() => true),
+  },
 }))
 
 vi.mock('vue-router', () => ({
@@ -50,6 +53,10 @@ vi.mock('@/composables/useModal', () => ({
   showAlert: mocks.showAlertMock,
   showConfirm: mocks.showConfirmMock,
   showConfirmDanger: vi.fn(() => Promise.resolve(true)),
+}))
+
+vi.mock('@/store/modules/use-auth-store', () => ({
+  useAuthStore: () => mocks.authStoreMock,
 }))
 
 import EditDish from '../../src/views/EditDish.vue'
@@ -101,6 +108,7 @@ describe('views/EditDish', () => {
 
     mocks.dishApiMock.uploadImage.mockResolvedValue({ code: 200, data: { url: 'http://img/u.png' } })
     mocks.dishApiMock.updateDish.mockResolvedValue({ code: 200, data: { id: 'd1', name: 'N' } })
+    mocks.authStoreMock.hasPermission.mockReturnValue(true)
 
     ;(globalThis as any).FileReader = FileReaderMock
   })
@@ -164,6 +172,28 @@ describe('views/EditDish', () => {
     expect(mocks.showAlertMock).toHaveBeenCalledWith('获取菜品信息失败，请重试')
     expect(mocks.routerMock.push).toHaveBeenCalledWith('/modify-dish')
 
+    wrapper.unmount()
+  })
+
+  it('preserves the detail window id when same-named unnumbered windows exist on different floors', async () => {
+    mocks.canteenApiMock.getWindows.mockResolvedValue({ code: 200, data: { items: [
+      { id: 'w-floor1', name: '同名窗口', number: '', floor: { level: '1', name: '一层' } },
+      { id: 'w-floor2', name: '同名窗口', number: '', floor: { level: '2', name: '二层' } },
+    ] } })
+    mocks.dishApiMock.getDishById.mockResolvedValue({ code: 200, data: {
+      id: 'd1', name: 'Dish', canteenId: 'c1', canteenName: 'C1', floorName: '二层',
+      windowId: 'w-floor2', windowName: '同名窗口', windowNumber: '', price: 10, description: 'old',
+    } })
+    const wrapper = shallowMount(EditDish, { global: { stubs: { Header: true } } })
+    await flushAll()
+    expect(wrapper.vm.formData.canteenId).toBe('c1')
+    expect(wrapper.vm.formData.windowId).toBe('w-floor2')
+    expect(wrapper.vm.formData.floor).toBe('二层')
+    wrapper.vm.formData.description = 'updated'
+    await wrapper.vm.submitForm()
+    expect(mocks.dishApiMock.updateDish).toHaveBeenCalledWith('d1', expect.objectContaining({
+      canteenId: 'c1', windowId: 'w-floor2', description: 'updated',
+    }))
     wrapper.unmount()
   })
 
@@ -310,6 +340,18 @@ describe('views/EditDish', () => {
     wrapper.unmount()
   })
 
+  it('submitForm rejects missing edit permission before upload or update', async () => {
+    mocks.authStoreMock.hasPermission.mockReturnValue(false)
+    const wrapper = shallowMount(EditDish, { global: { stubs: { Header: true } } })
+
+    await wrapper.vm.submitForm()
+
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限编辑菜品')
+    expect(mocks.dishApiMock.uploadImage).not.toHaveBeenCalled()
+    expect(mocks.dishApiMock.updateDish).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
   it('submitForm image processing confirm-cancel stops before update', async () => {
     const wrapper = shallowMount(EditDish, { global: { stubs: { Header: true } } })
 
@@ -362,17 +404,11 @@ describe('views/EditDish', () => {
       { startDate: '', endDate: '' },
     ]
 
-    // current dish fetch for preserve ids
-    mocks.dishApiMock.getDishById.mockResolvedValueOnce({
-      code: 200,
-      data: { id: 'd1', subDishId: ['s1'], parentDishId: null },
-    })
-
     mocks.dishApiMock.updateDish.mockResolvedValueOnce({ code: 200, data: { id: 'd1', name: 'N2' } })
     await wrapper.vm.submitForm()
 
-    // 防止上一次提交的 submitting 状态影响后续分支
-    wrapper.vm.isSubmitting = false
+    expect(wrapper.vm.isSubmitting).toBe(false)
+    expect(mocks.dishApiMock.getDishById).not.toHaveBeenCalled()
 
     expect(mocks.dishStoreMock.updateDish).toHaveBeenCalledWith('d1', { id: 'd1', name: 'N2' })
     expect(mocks.showAlertMock).toHaveBeenCalledWith('菜品信息已更新！')
@@ -380,18 +416,30 @@ describe('views/EditDish', () => {
 
     // non-200
     mocks.showAlertMock.mockClear()
-    mocks.dishApiMock.getDishById.mockResolvedValueOnce({ code: 200, data: { id: 'd1' } })
     mocks.dishApiMock.updateDish.mockResolvedValueOnce({ code: 500, message: 'bad' })
     await wrapper.vm.submitForm()
     expect(mocks.showAlertMock).toHaveBeenCalled()
 
     // throw
     mocks.showAlertMock.mockClear()
-    mocks.dishApiMock.getDishById.mockResolvedValueOnce({ code: 200, data: { id: 'd1' } })
     mocks.dishApiMock.updateDish.mockRejectedValueOnce(new Error('boom'))
     await wrapper.vm.submitForm()
     expect(mocks.showAlertMock).toHaveBeenCalled()
 
+    wrapper.unmount()
+  })
+
+  it('sends explicit empty values when clearing existing dish content', async () => {
+    const wrapper = shallowMount(EditDish, { global: { stubs: { Header: true } } })
+    await flushAll()
+    Object.assign(wrapper.vm.formData, {
+      id: 'd1', name: 'N', canteenId: 'c1', canteen: 'C1', windowId: 'w1', windowName: 'W1',
+      description: '', imageFiles: [], tags: [], ingredients: '', allergens: '', availableDates: [],
+      servingTime: { breakfast: false, lunch: false, dinner: false, night: false },
+    })
+    await wrapper.vm.submitForm()
+    const json = JSON.parse(JSON.stringify(mocks.dishApiMock.updateDish.mock.calls[0][1]))
+    expect(json).toMatchObject({ description: '', images: [], tags: [], ingredients: [], allergens: [], availableMealTime: [], availableDates: [] })
     wrapper.unmount()
   })
 

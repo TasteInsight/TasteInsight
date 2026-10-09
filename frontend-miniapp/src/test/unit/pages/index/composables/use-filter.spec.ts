@@ -49,12 +49,8 @@ describe('use-filter composable', () => {
     expect(f.tasteError.value).toMatch(/辣度/);
   });
 
-  test('isTasteModified and getTasteRangeLabel combinations', () => {
+  test('getTasteRangeLabel describes one-sided and closed ranges', () => {
     const f = useFilter();
-    expect(f.isTasteModified()).toBe(false);
-    f.selectedSweetMax.value = 2;
-    expect(f.isTasteModified()).toBe(true);
-
     expect(f.getTasteRangeLabel('spicy', 0, 0)).toBe('不限');
     expect(f.getTasteRangeLabel('spicy', 0, 2)).toContain('最高');
     expect(f.getTasteRangeLabel('spicy', 1, 3)).toBe('微辣 - 辣');
@@ -120,12 +116,12 @@ describe('use-filter composable', () => {
     expect(f.applyFilter()).toBeNull();
   });
 
-  test('resetCurrentFilter and resetAllFilters clear state', () => {
+  test('resetDraft and resetAllFilters clear state', () => {
     const f = useFilter();
     f.activeFilter.value = 'tag';
     f.selectedTags.value = ['a'];
     f.customTags.value = ['b'];
-    f.resetCurrentFilter();
+    f.resetDraft();
     expect(f.selectedTags.value).toEqual([]);
 
     f.selectedPrice.value = '10-15';

@@ -3,8 +3,6 @@ import request from '@/utils/request';
 import config from '@/config';
 import { useUserStore } from '@/store/modules/use-user-store';
 import type {
-  AIRecommendRequest,
-  AIRecommendData,
   RecommendFeedbackRequest,
   CreateAISessionRequest,
   SessionCreateData,
@@ -16,28 +14,15 @@ import type {
 } from '@/types/api';
 
 /**
- * 获取AI推荐 (保持不变)
- */
-export const getAIRecommendation = (
-  requestData: AIRecommendRequest
-): Promise<ApiResponse<AIRecommendData>> => {
-  return request<AIRecommendData>({
-    url: '/ai/recommend',
-    method: 'POST',
-    data: requestData,
-  });
-};
-
-/**
- * 提交推荐反馈 (保持不变)
+ * 提交推荐反馈。反馈属于推荐域，不属于 AI 会话域。
  */
 export const submitRecommendFeedback = (
   feedbackData: RecommendFeedbackRequest
-): Promise<ApiResponse<null>> => {
-  return request<null>({
-    url: '/ai/recommend/feedback',
+): Promise<ApiResponse<{ eventId: string | null }>> => {
+  return request<{ eventId: string | null }>({
+    url: `/recommend/events/${feedbackData.feedback}`,
     method: 'POST',
-    data: feedbackData,
+    data: { dishId: feedbackData.dishId },
   });
 };
 
@@ -121,28 +106,47 @@ function parseSSEEventString(evtString: string, callbacks: AIStreamCallbacks) {
 
   let eventName: string | undefined;
   let dataLines: string[] = [];
-  const lines = evtString.split('\n');
+  const lines = evtString.split(/\r?\n/);
 
   for (const line of lines) {
-    const trimLine = line.trim();
-    if (!trimLine) continue; // 跳过空行
+    if (!line || line.startsWith(':')) continue;
 
-    if (trimLine.startsWith('event:')) {
-      eventName = trimLine.replace('event:', '').trim();
+    const separatorIndex = line.indexOf(':');
+    const field = separatorIndex === -1 ? line : line.slice(0, separatorIndex);
+    let value = separatorIndex === -1 ? '' : line.slice(separatorIndex + 1);
+    // SSE 规范只移除冒号后的一个可选空格；其余空白属于数据本身。
+    if (value.startsWith(' ')) value = value.slice(1);
+
+    if (field === 'event') {
+      eventName = value;
       callbacks.onEvent?.(eventName);
-    } else if (trimLine.startsWith('data:')) {
-      dataLines.push(trimLine.replace('data:', '').trim());
+    } else if (field === 'data') {
+      dataLines.push(value);
     }
   }
 
   if (dataLines.length > 0) {
     const dataStr = dataLines.join('\n');
-    callbacks.onMessage?.(dataStr);
+    let json: any;
     try {
-      const json = JSON.parse(dataStr);
-      callbacks.onJSON?.(json);
+      json = JSON.parse(dataStr);
     } catch (e) {
       // ignore non-json data (e.g. simple text)
+    }
+
+    if (eventName === 'error') {
+      const message =
+        (json && typeof json.error === 'string' && json.error) ||
+        (json && typeof json.message === 'string' && json.message) ||
+        dataStr ||
+        'AI 流式请求失败';
+      callbacks.onError?.(new Error(message));
+      return;
+    }
+
+    callbacks.onMessage?.(dataStr);
+    if (json !== undefined) {
+      callbacks.onJSON?.(json);
     }
   }
 }
@@ -280,57 +284,34 @@ export const streamAIChat = (
   // 主要错误处理应通过 onChunkReceived 中的异常或超时机制实现
   
   let isAborted = false; // 标记是否手动中止
-  
-  const requestTask = uni.request({
-    url,
-    method: 'POST',
-    header,
-    data: payload,
-    enableChunked: true, // 【核心】：开启分块传输
-    // 强制以二进制形式接收 chunk，避免真机把 UTF-8 字节按非 UTF-8 文本提前解码
-    // @ts-ignore: uni.request 的类型定义可能缺少该字段
-    responseType: 'arraybuffer',
-    timeout: 60000, // 建议设置长超时（如60秒），防止AI思考时间过长导致断开
-    success: res => {
-      // 对于流式请求，此回调可能仅表示连接握手成功，不代表数据接收完毕
-      // 不在这里处理业务逻辑
-      console.log('[streamAIChat] Request success (connection established)');
-    },
-    fail: err => {
-      // 注意：流式传输中的网络错误可能不会触发此回调
-      // 主要依赖 complete 回调和外部超时机制处理错误
-      console.log('[streamAIChat] Request failed:', err);
-      if (!isAborted) {
-        callbacks.onError?.(err);
-      }
-    },
-    complete: () => {
-      console.log('[streamAIChat] Request complete, isAborted:', isAborted);
-      
-      // 如果是手动中止，不处理剩余数据，也不调用 onComplete
-      if (isAborted) {
-        console.log('[streamAIChat] Aborted, skipping completion handler');
-        return;
-      }
-      
-      // 处理最后剩余的未完成 UTF-8 字节（包括 TextDecoder 和 fallback 解码器）
-      const remaining = streamDecoder.flush();
-      if (remaining) buffer += remaining;
-      // 处理剩余的 buffer
-      if (buffer) {
-        const events = buffer.split('\n\n');
-        for (const evt of events) {
-          if (evt.trim()) {
-            parseSSEEventString(evt, callbacks);
-          }
-        }
-      }
-      callbacks.onComplete?.();
-    },
-  });
+  let terminalState: 'pending' | 'error' | 'complete' = 'pending';
 
-  // 3. 处理分块数据
-  // 兼容性处理：真机环境可能没有 TextDecoder，必须提供正确的 UTF-8 流式解码 fallback
+  const finishWithError = (error: unknown) => {
+    if (isAborted || terminalState !== 'pending') return;
+    terminalState = 'error';
+    callbacks.onError?.(error);
+  };
+
+  const finishComplete = () => {
+    if (isAborted || terminalState !== 'pending') return;
+    terminalState = 'complete';
+    callbacks.onComplete?.();
+  };
+
+  const guardedCallbacks: AIStreamCallbacks = {
+    onEvent: event => {
+      if (terminalState === 'pending') callbacks.onEvent?.(event);
+    },
+    onMessage: message => {
+      if (terminalState === 'pending') callbacks.onMessage?.(message);
+    },
+    onJSON: json => {
+      if (terminalState === 'pending') callbacks.onJSON?.(json);
+    },
+    onError: finishWithError,
+  };
+
+  // 在请求前初始化，兼容测试适配器或平台同步触发回调的情况。
   const streamDecoder: StreamDecoder =
     typeof TextDecoder !== 'undefined'
       ? (() => {
@@ -343,10 +324,65 @@ export const streamAIChat = (
       : createUtf8StreamDecoder();
   let buffer = '';
 
+  const requestTask = uni.request({
+    url,
+    method: 'POST',
+    header,
+    data: payload,
+    enableChunked: true, // 【核心】：开启分块传输
+    // 强制以二进制形式接收 chunk，避免真机把 UTF-8 字节按非 UTF-8 文本提前解码
+    // @ts-ignore: uni.request 的类型定义可能缺少该字段
+    responseType: 'arraybuffer',
+    timeout: 60000, // 建议设置长超时（如60秒），防止AI思考时间过长导致断开
+    success: res => {
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        const responseData = res.data as any;
+        const message =
+          (responseData && typeof responseData.message === 'string' && responseData.message) ||
+          `AI 请求失败 (${res.statusCode})`;
+        finishWithError(new Error(message));
+        return;
+      }
+      // 对于流式请求，此回调可能仅表示连接握手成功，不代表数据接收完毕
+      // 不在这里处理业务逻辑
+      console.log('[streamAIChat] Request success (connection established)');
+    },
+    fail: err => {
+      // 注意：流式传输中的网络错误可能不会触发此回调
+      // 主要依赖 complete 回调和外部超时机制处理错误
+      console.log('[streamAIChat] Request failed:', err);
+      finishWithError(err);
+    },
+    complete: () => {
+      console.log('[streamAIChat] Request complete, isAborted:', isAborted);
+      
+      // 如果是手动中止，不处理剩余数据，也不调用 onComplete
+      if (isAborted || terminalState !== 'pending') {
+        console.log('[streamAIChat] Aborted, skipping completion handler');
+        return;
+      }
+      
+      // 处理最后剩余的未完成 UTF-8 字节（包括 TextDecoder 和 fallback 解码器）
+      const remaining = streamDecoder.flush();
+      if (remaining) buffer += remaining;
+      // 处理剩余的 buffer
+      if (buffer) {
+        const events = buffer.split('\n\n');
+        for (const evt of events) {
+          if (evt.trim()) {
+            parseSSEEventString(evt, guardedCallbacks);
+          }
+        }
+      }
+      finishComplete();
+    },
+  });
+
+  // 3. 处理分块数据
   // @ts-ignore: uni.request 返回的 requestTask 在 TS 定义中可能缺少 onChunkReceived
   requestTask.onChunkReceived((response: { data: ArrayBuffer | string }) => {
     // 如果已经被中止，忽略所有后续的 chunk
-    if (isAborted) {
+    if (isAborted || terminalState !== 'pending') {
       console.log('[streamAIChat] Chunk received after abort, ignoring');
       return;
     }
@@ -368,7 +404,7 @@ export const streamAIChat = (
       }
 
       for (const evt of events) {
-        parseSSEEventString(evt, callbacks);
+        parseSSEEventString(evt, guardedCallbacks);
       }
     }
   });

@@ -3,8 +3,10 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
+import { Prisma } from '@prisma/client';
 import { AdminGetUploadsDto, DishUploadDto } from './dto/admin-upload.dto';
 
 @Injectable()
@@ -15,10 +17,10 @@ export class AdminUploadsService {
    * 获取上传菜品列表
    */
   async getUploads(query: AdminGetUploadsDto, adminInfo: any) {
-    const { page = 1, pageSize = 20, status } = query;
+    const { page = 1, pageSize = 20, status, keyword, canteenId } = query;
 
     // 构建查询条件
-    const where: any = {};
+    const where: Prisma.DishUploadWhereInput = {};
 
     // 如果指定了状态，则筛选状态，否则返回所有
     if (status) {
@@ -28,6 +30,25 @@ export class AdminUploadsService {
     // 如果管理员有 canteenId 限制，只能查看该食堂的上传
     if (adminInfo.canteenId) {
       where.canteenId = adminInfo.canteenId;
+    }
+    if (canteenId) {
+      if (adminInfo.canteenId && adminInfo.canteenId !== canteenId) {
+        throw new ForbiddenException('权限不足');
+      }
+      where.canteenId = canteenId;
+    }
+    if (keyword?.trim()) {
+      const contains: Prisma.StringFilter = {
+        contains: keyword.trim(),
+        mode: 'insensitive',
+      };
+      where.OR = [
+        { name: contains },
+        { canteenName: contains },
+        { windowName: contains },
+        { user: { nickname: contains } },
+        { admin: { username: contains } },
+      ];
     }
 
     // 查询总数
@@ -60,6 +81,7 @@ export class AdminUploadsService {
             name: true,
           },
         },
+        parentUpload: { select: { id: true, name: true } },
       },
     });
 
@@ -109,6 +131,7 @@ export class AdminUploadsService {
             name: true,
           },
         },
+        parentUpload: { select: { id: true, name: true } },
       },
     });
 
@@ -119,6 +142,16 @@ export class AdminUploadsService {
     // 检查权限：如果管理员有食堂限制，必须匹配
     if (adminInfo.canteenId && upload.canteenId !== adminInfo.canteenId) {
       throw new ForbiddenException('权限不足');
+    }
+
+    const canApprove =
+      adminInfo.role === 'superadmin' ||
+      adminInfo.permissions?.includes('upload:approve');
+    const canReadOwn =
+      upload.adminId === adminInfo.id &&
+      adminInfo.permissions?.includes('dish:create');
+    if (!canApprove && !canReadOwn) {
+      throw new ForbiddenException('无权访问该上传记录');
     }
 
     return {
@@ -135,14 +168,11 @@ export class AdminUploadsService {
     // 查找上传记录
     const upload = await this.prisma.dishUpload.findUnique({
       where: { id },
-      include: {
-        canteen: true,
-        window: {
-          include: {
-            floor: true,
-          },
-        },
-        parentDish: true,
+      select: {
+        id: true,
+        canteenId: true,
+        parentDishId: true,
+        parentUploadId: true,
       },
     });
 
@@ -158,18 +188,62 @@ export class AdminUploadsService {
     // 使用事务确保菜品创建和状态更新的原子性，并在事务内检查状态防止竞态条件
     try {
       await this.prisma.$transaction(async (tx) => {
-        // 在事务内再次检查状态，使用条件更新防止竞态条件
-        const updateResult = await tx.dishUpload.updateMany({
-          where: {
-            id,
-            status: 'pending', // 只有 pending 状态才能被处理
-          },
-          data: {
-            status: 'processing', // 临时状态，防止并发处理
-          },
-        });
+        let parentDishId = upload.parentDishId;
+        const parentCanteenIds: string[] = [];
+        if (upload.parentUploadId) {
+          await tx.$queryRaw`SELECT "id" FROM "dish_uploads" WHERE "id" = ${upload.parentUploadId} FOR UPDATE`;
+          const parentUpload = await tx.dishUpload.findUnique({
+            where: { id: upload.parentUploadId },
+          });
+          if (
+            !parentUpload ||
+            parentUpload.status !== 'approved' ||
+            !parentUpload.approvedDishId
+          ) {
+            throw new BadRequestException('请先审核通过父菜品');
+          }
+          parentCanteenIds.push(parentUpload.canteenId);
+          parentDishId = parentUpload.approvedDishId;
+        }
+        if (parentDishId) {
+          await tx.$queryRaw`SELECT "id" FROM "dishes" WHERE "id" = ${parentDishId} FOR UPDATE`;
+          const parentDish = await tx.dish.findUnique({
+            where: { id: parentDishId },
+          });
+          if (!parentDish) throw new BadRequestException('父菜品不存在');
+          parentCanteenIds.push(parentDish.canteenId);
+        }
 
-        // 如果没有更新任何记录，说明已被其他管理员处理
+        await tx.$queryRaw`SELECT "id" FROM "dish_uploads" WHERE "id" = ${id} FOR UPDATE`;
+        const currentUpload = await tx.dishUpload.findUnique({
+          where: { id },
+          include: { window: { include: { floor: true } } },
+        });
+        if (!currentUpload) throw new NotFoundException('上传记录不存在');
+        if (
+          adminInfo.canteenId &&
+          currentUpload.canteenId !== adminInfo.canteenId
+        ) {
+          throw new ForbiddenException('权限不足');
+        }
+        if (
+          currentUpload.parentDishId !== upload.parentDishId ||
+          currentUpload.parentUploadId !== upload.parentUploadId
+        ) {
+          throw new ConflictException('父子关系已变化，请重试审核');
+        }
+        if (
+          parentCanteenIds.some(
+            (canteenId) => canteenId !== currentUpload.canteenId,
+          )
+        ) {
+          throw new BadRequestException('父子菜品必须属于同一食堂');
+        }
+
+        const updateResult = await tx.dishUpload.updateMany({
+          where: { id, status: 'pending' },
+          data: { status: 'processing' },
+        });
         if (updateResult.count === 0) {
           throw new BadRequestException('该上传已被处理');
         }
@@ -177,28 +251,29 @@ export class AdminUploadsService {
         // 创建正式菜品记录
         const dish = await tx.dish.create({
           data: {
-            name: upload.name,
-            tags: upload.tags,
-            price: upload.price,
-            description: upload.description,
-            images: upload.images,
-            ingredients: upload.ingredients,
-            allergens: upload.allergens,
-            spicyLevel: upload.spicyLevel,
-            sweetness: upload.sweetness,
-            saltiness: upload.saltiness,
-            oiliness: upload.oiliness,
-            canteenId: upload.canteenId,
-            canteenName: upload.canteenName,
-            floorId: upload.window?.floorId || null,
-            floorLevel: upload.window?.floor?.level || null,
-            floorName: upload.window?.floor?.name || null,
-            windowId: upload.windowId,
-            windowNumber: upload.windowNumber,
-            windowName: upload.windowName,
-            availableMealTime: upload.availableMealTime,
-            availableDates: upload.availableDates || undefined,
-            parentDishId: upload.parentDishId,
+            name: currentUpload.name,
+            tags: currentUpload.tags,
+            price: currentUpload.price,
+            priceUnit: currentUpload.priceUnit,
+            description: currentUpload.description,
+            images: currentUpload.images,
+            ingredients: currentUpload.ingredients,
+            allergens: currentUpload.allergens,
+            spicyLevel: currentUpload.spicyLevel,
+            sweetness: currentUpload.sweetness,
+            saltiness: currentUpload.saltiness,
+            oiliness: currentUpload.oiliness,
+            canteenId: currentUpload.canteenId,
+            canteenName: currentUpload.canteenName,
+            floorId: currentUpload.window?.floorId || null,
+            floorLevel: currentUpload.window?.floor?.level || null,
+            floorName: currentUpload.window?.floor?.name || null,
+            windowId: currentUpload.windowId,
+            windowNumber: currentUpload.windowNumber,
+            windowName: currentUpload.windowName,
+            availableMealTime: currentUpload.availableMealTime,
+            availableDates: currentUpload.availableDates || undefined,
+            parentDishId,
             status: 'online',
             averageRating: 0,
             reviewCount: 0,
@@ -248,10 +323,10 @@ export class AdminUploadsService {
       throw new ForbiddenException('权限不足');
     }
 
-    // 使用条件更新防止竞态条件：支持 pending 和 approved 状态
-    // 如果是 approved 状态，还需要删除对应的菜品
+    // 在行锁内读取最新审核状态；已批准记录必须先撤销审核。
     try {
       await this.prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT "id" FROM "dish_uploads" WHERE "id" = ${id} FOR UPDATE`;
         const currentUpload = await tx.dishUpload.findUnique({
           where: { id },
         });
@@ -325,11 +400,54 @@ export class AdminUploadsService {
 
     try {
       await this.prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT "id" FROM "dish_uploads" WHERE "id" = ${id} FOR UPDATE`;
+        const currentUpload = await tx.dishUpload.findUnique({ where: { id } });
+        if (!currentUpload) throw new NotFoundException('上传记录不存在');
         // 如果是已通过状态，删除对应的菜品
-        if (upload.status === 'approved' && upload.approvedDishId) {
+        if (
+          currentUpload.status === 'approved' &&
+          currentUpload.approvedDishId
+        ) {
+          await tx.$queryRaw`SELECT "id" FROM "dishes" WHERE "id" = ${currentUpload.approvedDishId} FOR UPDATE`;
+          const currentDish = await tx.dish.findUnique({
+            where: { id: currentUpload.approvedDishId },
+            select: { canteenId: true },
+          });
+          if (
+            currentDish &&
+            adminInfo.canteenId &&
+            currentDish.canteenId !== adminInfo.canteenId
+          ) {
+            throw new ForbiddenException('无权撤销其他食堂的正式菜品');
+          }
+          const childDish = await tx.dish.findFirst({
+            where: { parentDishId: currentUpload.approvedDishId },
+            select: { id: true },
+          });
+          if (childDish) {
+            throw new BadRequestException('请先撤销或删除已上架子菜品');
+          }
+          const incompatibleChild = await tx.dishUpload.findFirst({
+            where: {
+              parentDishId: currentUpload.approvedDishId,
+              canteenId: { not: currentUpload.canteenId },
+            },
+            select: { id: true },
+          });
+          if (incompatibleChild) {
+            throw new BadRequestException(
+              '子审核记录与原始上传不属于同一食堂，无法撤销',
+            );
+          }
+          await tx.dishUpload.updateMany({
+            where: {
+              parentDishId: currentUpload.approvedDishId,
+            },
+            data: { parentDishId: null, parentUploadId: id },
+          });
           try {
             await tx.dish.delete({
-              where: { id: upload.approvedDishId },
+              where: { id: currentUpload.approvedDishId },
             });
           } catch (error) {
             // 忽略菜品不存在的错误
@@ -374,6 +492,7 @@ export class AdminUploadsService {
       name: upload.name,
       tags: upload.tags,
       price: upload.price,
+      priceUnit: upload.priceUnit,
       description: upload.description,
       images: upload.images,
       ingredients: upload.ingredients,
@@ -397,7 +516,9 @@ export class AdminUploadsService {
       uploaderType,
       uploaderName: uploaderName || null,
       parentDishId: upload.parentDishId,
-      parentDishName: upload.parentDish?.name || null,
+      parentUploadId: upload.parentUploadId || null,
+      parentDishName:
+        upload.parentDish?.name || upload.parentUpload?.name || null,
       createdAt: upload.createdAt,
       updatedAt: upload.updatedAt,
     };

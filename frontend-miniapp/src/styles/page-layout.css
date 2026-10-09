@@ -1,0 +1,24 @@
+page {
+  background: #fff;
+  color: #1f2937;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.page-content,
+.page-viewport {
+  box-sizing: border-box;
+  width: 100%;
+  background: #fff;
+  color: #1f2937;
+}
+.page-content {
+  min-height: calc(100vh - var(--window-top, 0px) - var(--window-bottom, 0px));
+  min-height: calc(100dvh - var(--window-top, 0px) - var(--window-bottom, 0px));
+}
+.page-viewport {
+  height: calc(100vh - var(--window-top, 0px) - var(--window-bottom, 0px));
+  height: calc(100dvh - var(--window-top, 0px) - var(--window-bottom, 0px));
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}

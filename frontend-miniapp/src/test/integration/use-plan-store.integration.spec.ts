@@ -1,3 +1,7 @@
+jest.mock('@/store/modules/use-user-store', () => ({
+  useUserStore: () => ({ sessionVersion: 0, isLoggedIn: true, userInfo: { id: 'user' } }),
+}));
+
 /// <reference types="jest" />
 import { setActivePinia, createPinia } from 'pinia';
 
@@ -128,6 +132,6 @@ describe('usePlanStore integration', () => {
     // After: should be moved to historyPlans
     expect(store.currentPlans.map((p: any) => p.id)).not.toContain('p3');
     expect(store.historyPlans.map((p: any) => p.id)).toContain('p3');
-    expect(mockSetStorageSync).toHaveBeenCalledWith('completedPlanIds', expect.any(Array));
+    expect(mockSetStorageSync).toHaveBeenCalledWith('completedPlanIds:user', expect.any(Array));
   });
 });

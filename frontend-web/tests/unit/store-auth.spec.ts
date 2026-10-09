@@ -45,6 +45,28 @@ describe('store/use-auth-store', () => {
     expect(store.permissions).toEqual([])
   })
 
+  it('removes malformed stored user JSON and starts logged out safely', async () => {
+    localStorage.setItem('admin_user', 'undefined')
+
+    const { useAuthStore } = await import('@/store/modules/use-auth-store')
+    const store = useAuthStore()
+
+    expect(store.user).toBeNull()
+    expect(localStorage.getItem('admin_user')).toBeNull()
+  })
+
+  it('removes malformed permissions and fails closed', async () => {
+    localStorage.setItem('admin_user', JSON.stringify({ username: 'u', role: 'admin' }))
+    localStorage.setItem('admin_permissions', '{broken')
+
+    const { useAuthStore } = await import('@/store/modules/use-auth-store')
+    const store = useAuthStore()
+
+    expect(store.permissions).toEqual([])
+    expect(store.hasPermission('dish:view')).toBe(false)
+    expect(localStorage.getItem('admin_permissions')).toBeNull()
+  })
+
   it('hasPermission/hasAnyPermission checks permissions from storage only', async () => {
     // Note: superadmin role is no longer handled specially in frontend.
     // Permissions are determined solely by backend-provided permission list.
@@ -75,6 +97,28 @@ describe('store/use-auth-store', () => {
     expect(store.user?.username).toBe('u')
     expect(store.permissions).toContain('dish:view')
     expect(store.isLoggedIn).toBe(true)
+  })
+
+  it('restores one coherent session bundle when stale remembered credentials also exist', async () => {
+    localStorage.setItem('admin_token', 'old-local-token')
+    localStorage.setItem('admin_refresh_token', 'old-local-refresh')
+    localStorage.setItem('admin_user', JSON.stringify({ username: 'old-user', role: 'admin' }))
+    localStorage.setItem('admin_permissions', JSON.stringify(['dish:delete']))
+
+    sessionStorage.setItem('admin_token', 'current-session-token')
+    sessionStorage.setItem('admin_refresh_token', 'current-session-refresh')
+    sessionStorage.setItem('admin_user', JSON.stringify({ username: 'current-user', role: 'admin' }))
+    sessionStorage.setItem('admin_permissions', JSON.stringify(['dish:view']))
+
+    const { useAuthStore } = await import('@/store/modules/use-auth-store')
+    const store = useAuthStore()
+
+    expect(store.token).toBe('current-session-token')
+    expect(store.refreshToken).toBe('current-session-refresh')
+    expect(store.user?.username).toBe('current-user')
+    expect(store.permissions).toEqual(['dish:view'])
+    expect(localStorage.getItem('admin_token')).toBeNull()
+    expect(localStorage.getItem('admin_refresh_token')).toBeNull()
   })
 
   it('hasPermission/hasAnyPermission checks stored permissions', async () => {
@@ -111,6 +155,7 @@ describe('store/use-auth-store', () => {
     expect(localStorage.getItem('admin_refresh_token')).toBe('r1')
     expect(localStorage.getItem('admin_permissions')).toContain('dish:view')
     expect(sessionStorage.getItem('admin_token')).toBeNull()
+    expect(store.permissions).toEqual(['dish:view'])
     expect(res).toEqual({
       token: 't1',
       data: { user: { username: 'u1', role: 'admin' }, permissions: ['dish:view'] },
@@ -118,6 +163,8 @@ describe('store/use-auth-store', () => {
   })
 
   it('login stores to sessionStorage when remember=false', async () => {
+    localStorage.setItem('admin_token', 'stale-local-token')
+    localStorage.setItem('admin_refresh_token', 'stale-local-refresh')
     adminLoginMock.mockResolvedValue({
       code: 200,
       message: 'ok',
@@ -136,6 +183,7 @@ describe('store/use-auth-store', () => {
     expect(sessionStorage.getItem('admin_token')).toBe('t2')
     expect(sessionStorage.getItem('admin_refresh_token')).toBe('r2')
     expect(localStorage.getItem('admin_token')).toBeNull()
+    expect(localStorage.getItem('admin_refresh_token')).toBeNull()
   })
 
   it('login throws on non-200 response and clears state', async () => {
@@ -172,6 +220,7 @@ describe('store/use-auth-store', () => {
   })
 
   it('login propagates thrown error and clears state', async () => {
+    localStorage.setItem('admin_token', 'stale-token')
     adminLoginMock.mockRejectedValue(new Error('network'))
 
     const { useAuthStore } = await import('@/store/modules/use-auth-store')
@@ -180,6 +229,7 @@ describe('store/use-auth-store', () => {
     await expect(store.login({ username: 'u', password: 'p' } as any)).rejects.toThrow('network')
     expect(store.token).toBeNull()
     expect(store.isAuthenticated).toBe(false)
+    expect(localStorage.getItem('admin_token')).toBeNull()
   })
 
   it('isLoggedIn depends on both token and isAuthenticated', async () => {
@@ -189,6 +239,20 @@ describe('store/use-auth-store', () => {
     store.token = 't' as any
     store.isAuthenticated = false as any
     expect(store.isLoggedIn).toBe(false)
+  })
+
+  it('does not restore a late login after logout', async () => {
+    let finishLogin!: (value: any) => void
+    adminLoginMock.mockReturnValue(new Promise((resolve) => { finishLogin = resolve }))
+    const { useAuthStore } = await import('@/store/modules/use-auth-store')
+    const store = useAuthStore()
+    const login = store.login({ username: 'A', password: 'p' })
+    const outcome = login.catch((error: Error) => error)
+    store.logout()
+    finishLogin({ code: 200, data: { token: { accessToken: 'A', refreshToken: 'Ar' }, admin: { username: 'A', role: 'admin' }, permissions: [] } })
+    expect((await outcome as Error).message).toBe('登录请求已失效')
+    expect(store.isLoggedIn).toBe(false)
+    expect(sessionStorage.getItem('admin_token')).toBeNull()
   })
 
   it('logout clears storage and state', async () => {
@@ -203,6 +267,7 @@ describe('store/use-auth-store', () => {
     store.logout()
 
     expect(store.token).toBeNull()
+    expect(store.permissions).toEqual([])
     expect(localStorage.getItem('admin_token')).toBeNull()
     expect(localStorage.getItem('admin_permissions')).toBeNull()
   })

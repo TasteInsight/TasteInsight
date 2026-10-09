@@ -1,12 +1,12 @@
-import { ref } from 'vue';
+import { ref, type Ref } from 'vue';
 import type { GetDishesRequest } from '@/types/api';
 
 export const useFilter = () => {
   const filterOptions = [
-    { key: 'taste', label: '口味' },
-    { key: 'price', label: '价格' },
+    { key: 'price', label: '预算' },
     { key: 'rating', label: '评分' },
-    { key: 'mealTime', label: '时段' },
+    { key: 'mealTime', label: '餐时' },
+    { key: 'taste', label: '口味' },
     { key: 'meat', label: '荤素' },
     { key: 'tag', label: '标签' },
     { key: 'avoid', label: '忌口' },
@@ -63,8 +63,8 @@ export const useFilter = () => {
 
   const activeFilter = ref<string>('');
 
-  // 保存原始状态，用于取消修改时恢复
-  const originalStates = ref<Record<string, any>>({});
+  let appliedFilter: GetDishesRequest['filter'] = {};
+  let originalStates: Record<string, (string | number | string[])[]> = {};
 
   const selectedPrice = ref<string>('');
   const selectedRating = ref<number>(0);
@@ -98,19 +98,6 @@ export const useFilter = () => {
   const selectedOilyMin = ref<number>(0);
   const selectedOilyMax = ref<number>(0);
 
-  const isTasteModified = () => {
-    return (
-      selectedSpicyMin.value > 0 ||
-      selectedSpicyMax.value > 0 ||
-      selectedSaltyMin.value > 0 ||
-      selectedSaltyMax.value > 0 ||
-      selectedSweetMin.value > 0 ||
-      selectedSweetMax.value > 0 ||
-      selectedOilyMin.value > 0 ||
-      selectedOilyMax.value > 0
-    );
-  };
-
   const getTasteRangeLabel = (type: string, minVal: number, maxVal: number): string => {
     const labels: Record<string, string[]> = {
       spicy: ['', '微辣', '中辣', '辣', '很辣', '超辣'],
@@ -136,25 +123,27 @@ export const useFilter = () => {
 
     if (!minStr && !maxStr) return true;
 
-    const min = minStr ? Number(minStr) : null;
-    const max = maxStr ? Number(maxStr) : null;
+    const min = minStr ? Number(minStr) : 0;
+    const max = maxStr ? Number(maxStr) : 999;
 
-    if (minStr && (isNaN(min!) || min! < 0)) {
+    if (minStr && (!Number.isFinite(min!) || min! < 0)) {
       priceError.value = '最低价必须是非负数字';
       return false;
     }
-    if (maxStr && (isNaN(max!) || max! < 0)) {
+    if (maxStr && (!Number.isFinite(max!) || max! < 0)) {
       priceError.value = '最高价必须是非负数字';
       return false;
     }
-    if (min !== null && max !== null && min > max) {
-      priceError.value = '最低价不能大于最高价';
+    if (min > max) {
+      priceError.value = maxStr ? '最低价不能大于最高价' : '最低价超过默认上限999元，请填写最高价';
       return false;
     }
     return true;
   };
 
   const onCustomPriceInput = () => {
+    customPriceMin.value = String(customPriceMin.value);
+    customPriceMax.value = String(customPriceMax.value);
     priceError.value = '';
     if (customPriceMin.value || customPriceMax.value) {
       selectedPrice.value = '';
@@ -187,6 +176,8 @@ export const useFilter = () => {
   };
 
   const onCustomRatingInput = () => {
+    customRatingMin.value = String(customRatingMin.value);
+    customRatingMax.value = String(customRatingMax.value);
     ratingError.value = '';
     if (customRatingMin.value || customRatingMax.value) {
       selectedRating.value = 0;
@@ -293,174 +284,147 @@ export const useFilter = () => {
     }
   };
 
-  const hasActiveValue = (key: string): boolean => {
-    switch (key) {
-      case 'price':
-        return (
-          selectedPrice.value !== '' || customPriceMin.value !== '' || customPriceMax.value !== ''
-        );
-      case 'rating':
-        return (
-          selectedRating.value > 0 || customRatingMin.value !== '' || customRatingMax.value !== ''
-        );
-      case 'mealTime':
-        return selectedMealTime.value.length > 0;
-      case 'meat':
-        return selectedMeat.value.length > 0;
-      case 'tag':
-        return selectedTags.value.length > 0 || customTags.value.length > 0;
-      case 'avoid':
-        return selectedAvoid.value.length > 0 || customAvoid.value.length > 0;
-      case 'taste':
-        return isTasteModified();
-      default:
-        return false;
-    }
+  const draftGroups: Record<string, Ref<string | number | string[]>[]> = {
+    price: [selectedPrice, customPriceMin, customPriceMax],
+    rating: [selectedRating, customRatingMin, customRatingMax],
+    mealTime: [selectedMealTime],
+    meat: [selectedMeat],
+    tag: [selectedTags, customTags, customTagInput],
+    avoid: [selectedAvoid, customAvoid, customAvoidInput],
+    taste: [
+      selectedSpicyMin,
+      selectedSpicyMax,
+      selectedSaltyMin,
+      selectedSaltyMax,
+      selectedSweetMin,
+      selectedSweetMax,
+      selectedOilyMin,
+      selectedOilyMax,
+    ],
   };
-
-  const toggleFilter = (key: string) => {
-    if (activeFilter.value === key) {
-      // 如果点击的是当前打开的筛选，关闭它
-      closeFilterPanel();
-    } else {
-      // 如果打开新的筛选，先保存当前状态，然后切换
-      if (activeFilter.value) {
-        saveCurrentState(activeFilter.value);
-      }
-      activeFilter.value = key;
-      saveCurrentState(key);
-    }
+  const copyValue = (value: string | number | string[]) =>
+    Array.isArray(value) ? [...value] : value;
+  const snapshot = () =>
+    Object.fromEntries(
+      Object.entries(draftGroups).map(([key, fields]) => [
+        key,
+        fields.map(field => copyValue(field.value)),
+      ])
+    );
+  const restoreGroup = (key: string, values: (string | number | string[])[]) => {
+    draftGroups[key].forEach((field, index) => {
+      field.value = copyValue(values[index]);
+    });
   };
-
+  const clearErrors = () => {
+    priceError.value = '';
+    ratingError.value = '';
+    tasteError.value = '';
+  };
   const closeFilterPanel = () => {
-    if (activeFilter.value) {
-      // 恢复到原始状态
-      restoreOriginalState(activeFilter.value);
-    }
+    Object.entries(originalStates).forEach(([key, values]) => restoreGroup(key, values));
+    originalStates = {};
+    clearErrors();
     activeFilter.value = '';
   };
-
-  // 保存当前筛选类型的原始状态
-  const saveCurrentState = (filterKey: string) => {
-    switch (filterKey) {
-      case 'price':
-        originalStates.value[filterKey] = {
-          selectedPrice: selectedPrice.value,
-          customPriceMin: customPriceMin.value,
-          customPriceMax: customPriceMax.value,
-          priceError: priceError.value,
-        };
-        break;
-      case 'rating':
-        originalStates.value[filterKey] = {
-          selectedRating: selectedRating.value,
-          customRatingMin: customRatingMin.value,
-          customRatingMax: customRatingMax.value,
-          ratingError: ratingError.value,
-        };
-        break;
-      case 'mealTime':
-        originalStates.value[filterKey] = {
-          selectedMealTime: [...selectedMealTime.value],
-        };
-        break;
-      case 'meat':
-        originalStates.value[filterKey] = {
-          selectedMeat: [...selectedMeat.value],
-        };
-        break;
-      case 'tag':
-        originalStates.value[filterKey] = {
-          selectedTags: [...selectedTags.value],
-          customTags: [...customTags.value],
-          customTagInput: customTagInput.value,
-        };
-        break;
-      case 'avoid':
-        originalStates.value[filterKey] = {
-          selectedAvoid: [...selectedAvoid.value],
-          customAvoid: [...customAvoid.value],
-          customAvoidInput: customAvoidInput.value,
-        };
-        break;
-      case 'taste':
-        originalStates.value[filterKey] = {
-          selectedSpicyMin: selectedSpicyMin.value,
-          selectedSpicyMax: selectedSpicyMax.value,
-          selectedSaltyMin: selectedSaltyMin.value,
-          selectedSaltyMax: selectedSaltyMax.value,
-          selectedSweetMin: selectedSweetMin.value,
-          selectedSweetMax: selectedSweetMax.value,
-          selectedOilyMin: selectedOilyMin.value,
-          selectedOilyMax: selectedOilyMax.value,
-          tasteError: tasteError.value,
-        };
-        break;
+  const toggleFilter = (key: string) => {
+    if (activeFilter.value === key) closeFilterPanel();
+    else {
+      if (!activeFilter.value) originalStates = snapshot();
+      activeFilter.value = key;
     }
   };
 
-  // 恢复到原始状态
-  const restoreOriginalState = (filterKey: string) => {
-    const originalState = originalStates.value[filterKey];
-    if (!originalState) return;
-
-    switch (filterKey) {
-      case 'price':
-        selectedPrice.value = originalState.selectedPrice;
-        customPriceMin.value = originalState.customPriceMin;
-        customPriceMax.value = originalState.customPriceMax;
-        priceError.value = originalState.priceError;
-        break;
-      case 'rating':
-        selectedRating.value = originalState.selectedRating;
-        customRatingMin.value = originalState.customRatingMin;
-        customRatingMax.value = originalState.customRatingMax;
-        ratingError.value = originalState.ratingError;
-        break;
-      case 'mealTime':
-        selectedMealTime.value = [...originalState.selectedMealTime];
-        break;
-      case 'meat':
-        selectedMeat.value = [...originalState.selectedMeat];
-        break;
-      case 'tag':
-        selectedTags.value = [...originalState.selectedTags];
-        customTags.value = [...originalState.customTags];
-        customTagInput.value = originalState.customTagInput;
-        break;
-      case 'avoid':
-        selectedAvoid.value = [...originalState.selectedAvoid];
-        customAvoid.value = [...originalState.customAvoid];
-        customAvoidInput.value = originalState.customAvoidInput;
-        break;
-      case 'taste':
-        selectedSpicyMin.value = originalState.selectedSpicyMin;
-        selectedSpicyMax.value = originalState.selectedSpicyMax;
-        selectedSaltyMin.value = originalState.selectedSaltyMin;
-        selectedSaltyMax.value = originalState.selectedSaltyMax;
-        selectedSweetMin.value = originalState.selectedSweetMin;
-        selectedSweetMax.value = originalState.selectedSweetMax;
-        selectedOilyMin.value = originalState.selectedOilyMin;
-        selectedOilyMax.value = originalState.selectedOilyMax;
-        tasteError.value = originalState.tasteError;
-        break;
+  const syncAppliedFilter = (filter: GetDishesRequest['filter']) => {
+    const draft = snapshot();
+    const previous = appliedFilter;
+    selectedPrice.value = '';
+    customPriceMin.value = '';
+    customPriceMax.value = '';
+    if (filter.price) {
+      const preset = priceOptions.find(
+        option => option.value === filter.price!.min + '-' + filter.price!.max
+      );
+      if (preset) selectedPrice.value = preset.value;
+      else {
+        customPriceMin.value = String(filter.price.min);
+        customPriceMax.value = String(filter.price.max);
+      }
     }
+    selectedRating.value = 0;
+    customRatingMin.value = '';
+    customRatingMax.value = '';
+    if (filter.rating) {
+      const preset = ratingOptions.find(
+        option =>
+          option.value > 0 && option.value === filter.rating!.min && filter.rating!.max === 5
+      );
+      if (preset) selectedRating.value = preset.value;
+      else {
+        customRatingMin.value = String(filter.rating.min);
+        customRatingMax.value = String(filter.rating.max);
+      }
+    }
+    selectedMealTime.value = [...(filter.mealTime || [])];
+    selectedMeat.value = [...(filter.meatPreference || [])];
+    selectedTags.value = (filter.tag || []).filter(value =>
+      tagOptions.some(option => option.value === value)
+    );
+    customTags.value = (filter.tag || []).filter(
+      value => !tagOptions.some(option => option.value === value)
+    );
+    selectedAvoid.value = (filter.avoidIngredients || []).filter(value =>
+      avoidOptions.some(option => option.value === value)
+    );
+    customAvoid.value = (filter.avoidIngredients || []).filter(
+      value => !avoidOptions.some(option => option.value === value)
+    );
+    customTagInput.value = '';
+    customAvoidInput.value = '';
+    const tasteRanges = [
+      [filter.spicyLevel, selectedSpicyMin, selectedSpicyMax],
+      [filter.saltiness, selectedSaltyMin, selectedSaltyMax],
+      [filter.sweetness, selectedSweetMin, selectedSweetMax],
+      [filter.oiliness, selectedOilyMin, selectedOilyMax],
+    ] as const;
+    tasteRanges.forEach(([range, min, max]) => {
+      min.value = range?.min || 0;
+      max.value = range?.max || 0;
+    });
+    clearErrors();
+    if (activeFilter.value) {
+      originalStates = snapshot();
+      const groupFields: Record<string, (keyof GetDishesRequest['filter'])[]> = {
+        price: ['price'],
+        rating: ['rating'],
+        mealTime: ['mealTime'],
+        meat: ['meatPreference'],
+        tag: ['tag'],
+        avoid: ['avoidIngredients'],
+        taste: ['spicyLevel', 'saltiness', 'sweetness', 'oiliness'],
+      };
+      Object.entries(groupFields).forEach(([key, fields]) => {
+        if (
+          fields.every(field => JSON.stringify(previous[field]) === JSON.stringify(filter[field]))
+        )
+          restoreGroup(key, draft[key]);
+      });
+    }
+    appliedFilter = JSON.parse(JSON.stringify(filter));
   };
 
   const selectPrice = (value: string) => {
     selectedPrice.value = selectedPrice.value === value ? '' : value;
-    if (value) {
-      customPriceMin.value = '';
-      customPriceMax.value = '';
-    }
+    customPriceMin.value = '';
+    customPriceMax.value = '';
+    priceError.value = '';
   };
 
   const selectRating = (value: number) => {
     selectedRating.value = selectedRating.value === value ? 0 : value;
-    if (value) {
-      customRatingMin.value = '';
-      customRatingMax.value = '';
-    }
+    customRatingMin.value = '';
+    customRatingMax.value = '';
+    ratingError.value = '';
   };
 
   const toggleMealTime = (value: string) => {
@@ -499,56 +463,28 @@ export const useFilter = () => {
     }
   };
 
-  const resetCurrentFilter = () => {
-    switch (activeFilter.value) {
-      case 'price':
-        selectedPrice.value = '';
-        customPriceMin.value = '';
-        customPriceMax.value = '';
-        priceError.value = '';
-        break;
-      case 'rating':
-        selectedRating.value = 0;
-        customRatingMin.value = '';
-        customRatingMax.value = '';
-        ratingError.value = '';
-        break;
-      case 'mealTime':
-        selectedMealTime.value = [];
-        break;
-      case 'meat':
-        selectedMeat.value = [];
-        break;
-      case 'tag':
-        selectedTags.value = [];
-        customTags.value = [];
-        customTagInput.value = '';
-        break;
-      case 'avoid':
-        selectedAvoid.value = [];
-        customAvoid.value = [];
-        customAvoidInput.value = '';
-        break;
-      case 'taste':
-        selectedSpicyMin.value = 0;
-        selectedSpicyMax.value = 0;
-        selectedSaltyMin.value = 0;
-        selectedSaltyMax.value = 0;
-        selectedSweetMin.value = 0;
-        selectedSweetMax.value = 0;
-        selectedOilyMin.value = 0;
-        selectedOilyMax.value = 0;
-        tasteError.value = '';
-        break;
-    }
-  };
-
   const applyFilter = (): GetDishesRequest['filter'] | null => {
-    if (!validatePriceInput() || !validateRatingInput() || !validateTasteInput()) {
+    const priceValid = validatePriceInput();
+    const ratingValid = validateRatingInput();
+    const tasteValid = validateTasteInput();
+    if (!priceValid || !ratingValid || !tasteValid) {
       return null;
     }
 
-    const filter: GetDishesRequest['filter'] = {};
+    const filter: GetDishesRequest['filter'] = { ...appliedFilter };
+    for (const field of [
+      'price',
+      'rating',
+      'mealTime',
+      'meatPreference',
+      'tag',
+      'avoidIngredients',
+      'spicyLevel',
+      'saltiness',
+      'sweetness',
+      'oiliness',
+    ] as const)
+      delete filter[field];
 
     if (customPriceMin.value || customPriceMax.value) {
       const min = customPriceMin.value ? Number(customPriceMin.value) : 0;
@@ -610,14 +546,12 @@ export const useFilter = () => {
       };
     }
 
-    const currentFilter = activeFilter.value;
     activeFilter.value = '';
-    // 清除已应用的筛选的原始状态，因为修改已确认
-    delete originalStates.value[currentFilter];
+    originalStates = {};
     return filter;
   };
 
-  const resetAllFilters = (): GetDishesRequest['filter'] => {
+  const resetDraft = () => {
     selectedPrice.value = '';
     customPriceMin.value = '';
     customPriceMax.value = '';
@@ -643,7 +577,13 @@ export const useFilter = () => {
     selectedOilyMin.value = 0;
     selectedOilyMax.value = 0;
     tasteError.value = '';
+  };
+
+  const resetAllFilters = (): GetDishesRequest['filter'] => {
+    resetDraft();
     activeFilter.value = '';
+    originalStates = {};
+    appliedFilter = {};
     return {};
   };
 
@@ -681,7 +621,6 @@ export const useFilter = () => {
     selectedSweetMax,
     selectedOilyMin,
     selectedOilyMax,
-    isTasteModified,
     getTasteRangeLabel,
     validatePriceInput,
     onCustomPriceInput,
@@ -694,7 +633,6 @@ export const useFilter = () => {
     removeCustomAvoid,
     clearTasteError,
     onTasteSliderChange,
-    hasActiveValue,
     toggleFilter,
     closeFilterPanel,
     selectPrice,
@@ -703,7 +641,8 @@ export const useFilter = () => {
     toggleMeat,
     toggleTag,
     toggleAvoid,
-    resetCurrentFilter,
+    resetDraft,
+    syncAppliedFilter,
     applyFilter,
     resetAllFilters,
   };

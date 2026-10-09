@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { StorageStrategy } from './strategies/storage.strategy';
 import { LocalStorageStrategy } from './strategies/local-storage.strategy';
@@ -9,7 +9,6 @@ import sharp from 'sharp';
 @Injectable()
 export class UploadService {
   private strategy: StorageStrategy;
-  private readonly logger = new Logger(UploadService.name);
 
   constructor(
     private configService: ConfigService,
@@ -29,31 +28,23 @@ export class UploadService {
   }
 
   async uploadFile(file: Express.Multer.File): Promise<UploadResponseDto> {
-    // Check if file size is greater than 1MB (1024 * 1024 bytes)
-    const ONE_MB = 1024 * 1024;
-    // Only compress images, skip GIFs to preserve animation
-    if (
-      file.size > ONE_MB &&
-      file.mimetype.startsWith('image/') &&
-      file.mimetype !== 'image/gif'
-    ) {
-      this.logger.log(`File size ${file.size} exceeds 1MB, compressing...`);
-      try {
-        const compressedBuffer = await this.compressImage(file.buffer);
-
-        // Update file object with compressed data
-        file.buffer = compressedBuffer;
-        file.size = compressedBuffer.length;
-        // Note: We preserve the original format, so mimetype/filename remains valid
-
-        this.logger.log(`File compressed to ${file.size} bytes`);
-      } catch (error) {
-        // Fallback to original file if compression fails
-        this.logger.error(
-          'Image compression failed, uploading original file',
-          error,
-        );
+    try {
+      const image = sharp(file.buffer, { animated: true }).autoOrient();
+      const { format } = await image.metadata();
+      const extensions = { jpeg: 'jpg', png: 'png', gif: 'gif', webp: 'webp' };
+      if (!format || !(format in extensions)) {
+        throw new Error('Unsupported image format');
       }
+      // Decode every image, including small files, and preserve all GIF frames.
+      file.buffer =
+        file.size > 1024 * 1024 && format !== 'gif'
+          ? await this.compressImage(image)
+          : await image.toBuffer();
+      file.size = file.buffer.length;
+      file.mimetype = `image/${format}`;
+      file.originalname = `image.${extensions[format as keyof typeof extensions]}`;
+    } catch {
+      throw new BadRequestException('请上传完整的 JPEG、PNG、GIF 或 WebP 图片');
     }
 
     const result = await this.strategy.upload(file);
@@ -64,16 +55,12 @@ export class UploadService {
     };
   }
 
-  private async compressImage(buffer: Buffer): Promise<Buffer> {
-    const image = sharp(buffer);
+  private async compressImage(image: sharp.Sharp): Promise<Buffer> {
     const metadata = await image.metadata();
     const format = metadata.format;
 
     // Step 1: Initial compression (Resize to 1920px, Quality 80)
-    let pipeline = image;
-    if (metadata.width && metadata.width > 1920) {
-      pipeline = pipeline.resize({ width: 1920, withoutEnlargement: true });
-    }
+    let pipeline = image.resize({ width: 1920, withoutEnlargement: true });
 
     if (format === 'jpeg' || format === 'jpg') {
       pipeline = pipeline.jpeg({ quality: 80 });
@@ -81,16 +68,13 @@ export class UploadService {
       pipeline = pipeline.png({ quality: 80, palette: true });
     } else if (format === 'webp') {
       pipeline = pipeline.webp({ quality: 80 });
-    } else {
-      // Unsupported format for compression, return original
-      return buffer;
     }
 
     let outputBuffer = await pipeline.toBuffer();
 
     // Step 2: If still > 1MB, aggressive compression (Resize to 1280px, Quality 60)
     if (outputBuffer.length > 1024 * 1024) {
-      const image2 = sharp(outputBuffer);
+      const image2 = sharp(outputBuffer, { animated: true });
       const metadata2 = await image2.metadata();
       const format2 = metadata2.format;
 

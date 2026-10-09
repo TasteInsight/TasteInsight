@@ -80,8 +80,6 @@ export type ExperimentAssignment = ExperimentGroupItemConfig & {
 export interface EmbeddingServiceConfig {
   externalEnabled: boolean;
   externalServiceUrl: string;
-  externalEmbeddingDim: number;
-  embeddingDim: number;
   batchSize: number;
   externalVersion?: string;
 }

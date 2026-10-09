@@ -194,11 +194,12 @@ export class CanteensService {
     const skip = (page - 1) * pageSize;
     const [dishes, total] = await Promise.all([
       this.prisma.dish.findMany({
-        where: { windowId },
+        where: { windowId, status: 'online' },
+        orderBy: [{ averageRating: 'desc' }, { id: 'asc' }],
         skip,
         take: pageSize,
       }),
-      this.prisma.dish.count({ where: { windowId } }),
+      this.prisma.dish.count({ where: { windowId, status: 'online' } }),
     ]);
 
     const items = dishes.map((dish) => DishDto.fromEntity(dish));

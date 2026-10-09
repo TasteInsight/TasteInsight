@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 describe('api/modules/meal-plan.ts', () => {
   const MODULE_PATH = '@/api/modules/meal-plan';
 
@@ -71,3 +69,4 @@ describe('api/modules/meal-plan.ts', () => {
     });
   });
 });
+export {};

@@ -9,6 +9,8 @@ import {
   Max,
   ValidateNested,
   ArrayNotEmpty,
+  IsIn,
+  IsInt,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -62,7 +64,7 @@ export class AdminDishDto {
   // Availability
   availableMealTime: string[];
   availableDates: any;
-  status: string;
+  status: DishStatus;
 
   // Stats
   averageRating: number;
@@ -71,6 +73,15 @@ export class AdminDishDto {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export type AdminDishUploadDto = Omit<
+  AdminDishDto,
+  'status' | 'subDishId' | 'averageRating' | 'reviewCount'
+> & {
+  status: DishUploadStatus;
+  parentUploadId?: string;
+  approvedDishId?: string;
+};
 
 export class AvailableDateRange {
   @IsNotEmpty()
@@ -111,6 +122,25 @@ export class AdminGetDishesDto {
   keyword?: string;
 }
 
+export class AdminGetDishReviewsDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page: number = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  pageSize: number = 20;
+
+  @IsOptional()
+  @IsIn(['pending', 'approved', 'rejected'])
+  status?: 'pending' | 'approved' | 'rejected';
+}
+
 export class AdminCreateDishDto {
   @IsNotEmpty()
   @IsString()
@@ -142,6 +172,10 @@ export class AdminCreateDishDto {
   @IsOptional()
   @IsString()
   parentDishId?: string;
+
+  @IsOptional()
+  @IsString()
+  parentUploadId?: string;
 
   @IsOptional()
   @IsArray()
@@ -248,7 +282,8 @@ export class AdminUpdateDishDto {
 
   @IsOptional()
   @IsString()
-  parentDishId?: string;
+  @IsNotEmpty()
+  parentDishId?: string | null;
 
   @IsOptional()
   @IsArray()

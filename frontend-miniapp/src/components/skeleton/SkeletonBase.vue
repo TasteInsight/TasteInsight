@@ -33,8 +33,13 @@ withDefaults(defineProps<Props>(), {
 
 <style scoped>
 .skeleton-item {
+  flex-shrink: 0;
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 200% 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-animated { animation:none; }
 }
 
 .skeleton-animated {

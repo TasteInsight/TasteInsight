@@ -7,7 +7,7 @@
         class="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition p-2"
         title="关闭"
       >
-        <span class="iconify text-2xl" data-icon="carbon:close"></span>
+        <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
       </button>
 
       <Header title="菜品详情" description="查看菜品信息和评论" header-icon="carbon:view" />
@@ -131,7 +131,7 @@
                 class="border-2 border-dashed rounded-lg h-48 flex items-center justify-center bg-gray-50 overflow-hidden"
               >
                 <div class="text-center p-6">
-                  <span class="iconify text-4xl text-gray-400 mx-auto" data-icon="bi:image"></span>
+                  <AppIcon class="iconify text-4xl text-gray-400 mx-auto" icon="bi:image"></AppIcon>
                   <div class="mt-2 text-gray-500">暂无图片</div>
                 </div>
               </div>
@@ -246,15 +246,15 @@
               <label class="block text-gray-700 font-medium mb-2">供应时间</label>
               <div class="space-y-2">
                 <div class="flex items-center">
-                  <span
+                  <AppIcon
                     class="iconify mr-2"
                     :class="
                       dishData.availableMealTime && dishData.availableMealTime.includes('breakfast')
                         ? 'text-tsinghua-purple'
                         : 'text-gray-300'
                     "
-                    data-icon="carbon:checkmark"
-                  ></span>
+                    icon="carbon:checkmark"
+                  ></AppIcon>
                   <span
                     :class="
                       dishData.availableMealTime && dishData.availableMealTime.includes('breakfast')
@@ -265,15 +265,15 @@
                   >
                 </div>
                 <div class="flex items-center">
-                  <span
+                  <AppIcon
                     class="iconify mr-2"
                     :class="
                       dishData.availableMealTime && dishData.availableMealTime.includes('lunch')
                         ? 'text-tsinghua-purple'
                         : 'text-gray-300'
                     "
-                    data-icon="carbon:checkmark"
-                  ></span>
+                    icon="carbon:checkmark"
+                  ></AppIcon>
                   <span
                     :class="
                       dishData.availableMealTime && dishData.availableMealTime.includes('lunch')
@@ -284,15 +284,15 @@
                   >
                 </div>
                 <div class="flex items-center">
-                  <span
+                  <AppIcon
                     class="iconify mr-2"
                     :class="
                       dishData.availableMealTime && dishData.availableMealTime.includes('dinner')
                         ? 'text-tsinghua-purple'
                         : 'text-gray-300'
                     "
-                    data-icon="carbon:checkmark"
-                  ></span>
+                    icon="carbon:checkmark"
+                  ></AppIcon>
                   <span
                     :class="
                       dishData.availableMealTime && dishData.availableMealTime.includes('dinner')
@@ -303,7 +303,7 @@
                   >
                 </div>
                 <div class="flex items-center">
-                  <span
+                  <AppIcon
                     class="iconify mr-2"
                     :class="
                       dishData.availableMealTime &&
@@ -311,8 +311,8 @@
                         ? 'text-tsinghua-purple'
                         : 'text-gray-300'
                     "
-                    data-icon="carbon:checkmark"
-                  ></span>
+                    icon="carbon:checkmark"
+                  ></AppIcon>
                   <span
                     :class="
                       dishData.availableMealTime &&
@@ -371,7 +371,7 @@
             <div v-if="reviewsData.rating" class="flex items-center gap-2">
               <span class="text-sm text-gray-600">平均评分：</span>
               <div class="flex items-center">
-                <span class="iconify text-yellow-400" data-icon="bxs:star"></span>
+                <AppIcon class="iconify text-yellow-400" icon="bxs:star"></AppIcon>
                 <span class="ml-1 font-medium text-gray-800">{{
                   reviewsData.rating.average.toFixed(1)
                 }}</span>
@@ -387,7 +387,7 @@
             <label class="text-sm text-gray-600">筛选状态：</label>
             <select
               v-model="reviewStatusFilter"
-              @change="loadReviews"
+              @change="handleReviewStatusChange"
               class="px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
             >
               <option value="">全部</option>
@@ -421,10 +421,10 @@
                     v-else
                     class="w-12 h-12 rounded-full bg-tsinghua-purple/20 flex items-center justify-center"
                   >
-                    <span
+                    <AppIcon
                       class="iconify text-tsinghua-purple text-xl"
-                      data-icon="carbon:user"
-                    ></span>
+                      icon="carbon:user"
+                    ></AppIcon>
                   </div>
                 </div>
 
@@ -436,7 +436,7 @@
                         review.userNickname || '匿名用户'
                       }}</span>
                       <div class="flex items-center">
-                        <span class="iconify text-yellow-400" data-icon="bxs:star"></span>
+                        <AppIcon class="iconify text-yellow-400" icon="bxs:star"></AppIcon>
                         <span class="ml-1 text-sm text-gray-600">{{ review.rating }}</span>
                       </div>
                     </div>
@@ -514,11 +514,12 @@
 </template>
 
 <script>
-import { reactive, ref, computed, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { dishApi } from '@/api/modules/dish'
 import Header from '@/components/Layout/Header.vue'
 import { showAlert } from '@/composables/useModal'
+import { getAuthSessionVersion } from '@/utils/auth-session'
 
 export default {
   name: 'ViewDishDetail',
@@ -529,6 +530,9 @@ export default {
     const router = useRouter()
     const route = useRoute()
     const dishId = route.params.id
+    const sessionVersion = getAuthSessionVersion()
+    let mounted = true
+    let reviewRequest = 0
     const isLoading = ref(false)
     const isLoadingReviews = ref(false)
     const reviewStatusFilter = ref('')
@@ -685,6 +689,8 @@ export default {
 
     // 加载评论列表
     const loadReviews = async () => {
+      const request = ++reviewRequest
+      const ownsRequest = () => mounted && request === reviewRequest && sessionVersion === getAuthSessionVersion()
       isLoadingReviews.value = true
       try {
         const params = {
@@ -696,6 +702,7 @@ export default {
         }
 
         const response = await dishApi.getDishReviews(dishId, params)
+        if (!ownsRequest()) return
 
         if (response.code === 200 && response.data) {
           Object.assign(reviewsData, response.data)
@@ -703,6 +710,7 @@ export default {
           throw new Error(response.message || '获取评论失败')
         }
       } catch (error) {
+        if (!ownsRequest()) return
         console.error('获取评论失败:', error)
         // 不显示错误提示，只清空数据
         reviewsData.items = []
@@ -718,11 +726,16 @@ export default {
           detail: {},
         }
       } finally {
-        isLoadingReviews.value = false
+        if (ownsRequest()) isLoadingReviews.value = false
       }
     }
 
     // 切换评论页码
+    const handleReviewStatusChange = () => {
+      currentReviewPage.value = 1
+      loadReviews()
+    }
+
     const changeReviewPage = (page) => {
       if (page >= 1 && page <= reviewsData.meta.totalPages) {
         currentReviewPage.value = page
@@ -757,6 +770,8 @@ export default {
       loadReviews()
     })
 
+    onBeforeUnmount(() => { mounted = false })
+
     return {
       dishData,
       reviewsData,
@@ -769,6 +784,7 @@ export default {
       allergensText,
       ingredientsText,
       loadReviews,
+      handleReviewStatusChange,
       changeReviewPage,
       previewImage,
       formatDate,

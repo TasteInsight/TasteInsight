@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { PrismaService } from '@/prisma.service';
 import { AIChatController } from './ai-chat.controller';
 import { AIChatService } from './ai-chat.service';
 import { AIConfigService } from './services/ai-config.service';
@@ -18,6 +17,7 @@ import { ContentDisplayTool } from './tools/content-display.tool';
 import { DishReviewsTool } from './tools/dish-reviews.tool';
 import { UpdatePreferencesTool } from './tools/update-preferences.tool';
 import { CreateMealPlanTool } from './tools/create-meal-plan.tool';
+import { GetMyPreferencesTool } from './tools/get-my-preferences.tool';
 
 // Import required services from other modules
 import { RecommendationModule } from '@/recommendation/recommendation.module';
@@ -38,7 +38,6 @@ import { ReviewsModule } from '@/reviews/reviews.module';
   ],
   controllers: [AIChatController],
   providers: [
-    PrismaService,
     AIChatService,
     AIConfigService,
     PromptSecurityService,
@@ -54,6 +53,7 @@ import { ReviewsModule } from '@/reviews/reviews.module';
     DishReviewsTool,
     UpdatePreferencesTool,
     CreateMealPlanTool,
+    GetMyPreferencesTool,
   ],
   exports: [AIChatService],
 })
@@ -70,6 +70,7 @@ export class AIChatModule {
     private readonly dishReviewsTool: DishReviewsTool,
     private readonly updatePreferencesTool: UpdatePreferencesTool,
     private readonly createMealPlanTool: CreateMealPlanTool,
+    private readonly getMyPreferencesTool: GetMyPreferencesTool,
   ) {
     // Register all tools on module initialization
     this.toolRegistry.registerTool(this.dishRecommendationTool);
@@ -82,5 +83,6 @@ export class AIChatModule {
     this.toolRegistry.registerTool(this.dishReviewsTool);
     this.toolRegistry.registerTool(this.updatePreferencesTool);
     this.toolRegistry.registerTool(this.createMealPlanTool);
+    this.toolRegistry.registerTool(this.getMyPreferencesTool);
   }
 }

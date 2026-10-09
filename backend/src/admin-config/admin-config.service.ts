@@ -7,6 +7,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
+import { Prisma } from '@prisma/client';
 import {
   UpdateGlobalConfigDto,
   UpdateCanteenConfigDto,
@@ -303,37 +304,40 @@ export class AdminConfigService implements OnModuleInit {
     // 验证值类型
     this.validateValueType(dto.value, template.valueType);
 
-    // 获取或创建全局配置
-    let globalConfig = await this.prisma.adminConfig.findFirst({
-      where: { canteenId: null },
-    });
+    const configItem = await this.prisma.$transaction(async (tx) => {
+      // PostgreSQL 的可空唯一键不约束 NULL，事务锁覆盖全局父配置与配置项的写入。
+      await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext('tasteinsight.admin-config.global'))`;
 
-    if (!globalConfig) {
-      globalConfig = await this.prisma.adminConfig.create({
-        data: { canteenId: null },
+      let globalConfig = await tx.adminConfig.findFirst({
+        where: { canteenId: null },
       });
-    }
 
-    // 更新或创建配置项
-    const configItem = await this.prisma.adminConfigItem.upsert({
-      where: {
-        adminConfigId_key: {
-          adminConfigId: globalConfig.id,
-          key: dto.key,
+      if (!globalConfig) {
+        globalConfig = await tx.adminConfig.create({
+          data: { canteenId: null },
+        });
+      }
+
+      return tx.adminConfigItem.upsert({
+        where: {
+          adminConfigId_key: {
+            adminConfigId: globalConfig.id,
+            key: dto.key,
+          },
         },
-      },
-      update: {
-        value: dto.value,
-      },
-      create: {
-        adminConfigId: globalConfig.id,
-        templateId: template.id,
-        key: dto.key,
-        value: dto.value,
-        valueType: template.valueType,
-        description: template.description,
-        category: template.category,
-      },
+        update: {
+          value: dto.value,
+        },
+        create: {
+          adminConfigId: globalConfig.id,
+          templateId: template.id,
+          key: dto.key,
+          value: dto.value,
+          valueType: template.valueType,
+          description: template.description,
+          category: template.category,
+        },
+      });
     });
 
     return {
@@ -468,10 +472,11 @@ export class AdminConfigService implements OnModuleInit {
   async getConfigValue(
     key: string,
     canteenId?: string,
+    client: Prisma.TransactionClient = this.prisma,
   ): Promise<string | null> {
     // 1. 如果有食堂ID，先尝试获取食堂配置
     if (canteenId) {
-      const canteenConfig = await this.prisma.adminConfig.findUnique({
+      const canteenConfig = await client.adminConfig.findUnique({
         where: { canteenId },
         include: { items: true },
       });
@@ -483,7 +488,7 @@ export class AdminConfigService implements OnModuleInit {
     }
 
     // 2. 尝试获取全局配置
-    const globalConfig = await this.prisma.adminConfig.findFirst({
+    const globalConfig = await client.adminConfig.findFirst({
       where: { canteenId: null },
       include: { items: true },
     });
@@ -494,7 +499,7 @@ export class AdminConfigService implements OnModuleInit {
     }
 
     // 3. 尝试从数据库模板获取默认值
-    const template = await this.prisma.adminConfigTemplate.findUnique({
+    const template = await client.adminConfigTemplate.findUnique({
       where: { key },
     });
 
@@ -521,8 +526,9 @@ export class AdminConfigService implements OnModuleInit {
   async getBooleanConfigValue(
     key: string,
     canteenId?: string,
+    client: Prisma.TransactionClient = this.prisma,
   ): Promise<boolean> {
-    const value = await this.getConfigValue(key, canteenId);
+    const value = await this.getConfigValue(key, canteenId, client);
 
     // 如果值不存在，使用配置定义中的默认值
     if (value === null) {

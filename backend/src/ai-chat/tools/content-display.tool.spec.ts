@@ -2,6 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ContentDisplayTool } from './content-display.tool';
 import { DishesService } from '@/dishes/dishes.service';
 import { CanteensService } from '@/canteens/canteens.service';
+import { CreateMealPlanTool } from './create-meal-plan.tool';
+import { RecommendationService } from '@/recommendation/recommendation.service';
+import { ToolRegistryService } from './tool-registry.service';
 
 const mockDishesService = {
   getDishesByIds: jest.fn(),
@@ -20,6 +23,17 @@ describe('ContentDisplayTool', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ContentDisplayTool,
+        CreateMealPlanTool,
+        ToolRegistryService,
+        {
+          provide: RecommendationService,
+          useValue: {
+            getUserFeaturesWithCache: async () => ({
+              allergens: [],
+              preferences: null,
+            }),
+          },
+        },
         {
           provide: DishesService,
           useValue: mockDishesService,
@@ -32,6 +46,9 @@ describe('ContentDisplayTool', () => {
     }).compile();
 
     tool = module.get<ContentDisplayTool>(ContentDisplayTool);
+    module
+      .get<ToolRegistryService>(ToolRegistryService)
+      .registerTool(module.get<CreateMealPlanTool>(CreateMealPlanTool));
   });
 
   describe('getDefinition', () => {
@@ -61,6 +78,7 @@ describe('ContentDisplayTool', () => {
       userId: 'test-user',
       sessionId: 'test-session',
       localTime: '2025-01-01',
+      scene: 'general_chat',
     };
 
     describe('dish type', () => {
@@ -231,7 +249,129 @@ describe('ContentDisplayTool', () => {
     });
 
     describe('meal_plan type', () => {
-      it('should return meal plan cards for valid data', async () => {
+      const main = {
+        id: 'dish-1',
+        name: '鸡肉饭',
+        price: 15,
+        priceUnit: '份',
+        canteenId: 'c1',
+        status: 'online',
+        availableMealTime: ['lunch'],
+        allergens: [],
+        ingredients: [],
+      };
+      const side = { ...main, id: 'dish-2', name: '清炒时蔬', price: 5 };
+      const body = {
+        startDate: '2026-10-05',
+        endDate: '2026-10-05',
+        mealTime: 'lunch',
+        dishes: ['dish-1', 'dish-2'],
+      };
+      const mealPlanData = {
+        summary: '第一食堂午餐',
+        previewData: {
+          ...body,
+          dishes: [
+            { id: 'dish-1', name: '虚构名称', price: 1 },
+            { id: 'dish-2', name: '旧名称', price: 1 },
+          ],
+        },
+        confirmAction: { api: '/meal-plans', method: 'POST', body },
+      };
+
+      beforeEach(() => {
+        mockDishesService.getDishesByIds.mockResolvedValue({
+          data: { items: [main, side] },
+        });
+      });
+
+      it('rehydrates valid drafts from live data instead of trusting supplied dish details', async () => {
+        const result = await tool.execute(
+          { type: 'meal_plan', data: mealPlanData },
+          mockContext,
+        );
+        expect(result).toHaveLength(1);
+        expect(result[0].previewData.dishes).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              id: 'dish-1',
+              name: '鸡肉饭',
+              price: 15,
+              priceUnit: '份',
+            }),
+          ]),
+        );
+        expect(result[0].confirmAction).toEqual(mealPlanData.confirmAction);
+      });
+
+      it.each([
+        { items: [main], message: '菜品' },
+        { items: [main, { ...side, canteenId: 'c2' }], message: '同一个食堂' },
+      ])(
+        'does not bypass plan constraints through direct display: %o',
+        async ({ items, message }) => {
+          mockDishesService.getDishesByIds.mockResolvedValue({
+            data: { items },
+          });
+          await expect(
+            tool.execute(
+              { type: 'meal_plan', data: mealPlanData },
+              mockContext,
+            ),
+          ).rejects.toThrow(message);
+        },
+      );
+
+      it.each([
+        { ...body, dishes: ['dish-1'] },
+        { ...body, startDate: '2026-10-06' },
+        { ...body, mealTime: 'dinner' },
+      ])(
+        'rejects disagreement between preview and confirmation: %o',
+        async (conflictingBody) => {
+          await expect(
+            tool.execute(
+              {
+                type: 'meal_plan',
+                data: {
+                  ...mealPlanData,
+                  confirmAction: {
+                    ...mealPlanData.confirmAction,
+                    body: conflictingBody,
+                  },
+                },
+              },
+              mockContext,
+            ),
+          ).rejects.toThrow('不一致');
+        },
+      );
+
+      it('preserves explicit constraints and rechecks the whole-meal budget', async () => {
+        mockDishesService.getDishesByIds.mockResolvedValue({
+          data: { items: [main, { ...side, canteenId: 'c2' }] },
+        });
+        const constraints = { allowCrossCanteen: true, totalBudget: 20 };
+        const result = await tool.execute(
+          { type: 'meal_plan', data: { ...mealPlanData, constraints } },
+          mockContext,
+        );
+        expect(result[0].constraints).toEqual(constraints);
+        await expect(
+          tool.execute(
+            {
+              type: 'meal_plan',
+              data: {
+                ...mealPlanData,
+                constraints: { ...constraints, totalBudget: 19 },
+              },
+            },
+            mockContext,
+          ),
+        ).rejects.toThrow('预算');
+      });
+
+      it('rejects non-draft objects', async () => {
         const mealPlanData = {
           date: '2025-01-15',
           meals: [
@@ -249,13 +389,9 @@ describe('ContentDisplayTool', () => {
           ],
         };
 
-        const result = await tool.execute(
-          { type: 'meal_plan', data: mealPlanData },
-          mockContext,
-        );
-
-        expect(result).toHaveLength(1);
-        expect(result[0]).toEqual(mealPlanData);
+        await expect(
+          tool.execute({ type: 'meal_plan', data: mealPlanData }, mockContext),
+        ).rejects.toThrow('计划草稿');
       });
 
       it('should throw error when data is missing for meal_plan type', async () => {

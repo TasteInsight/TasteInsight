@@ -4,7 +4,8 @@
 const chatStoreMock: any = {
   messages: [],
   currentScene: undefined,
-  initSession: jest.fn(() => Promise.resolve()),
+  sessionId: 'test-session',
+  initSession: jest.fn(() => Promise.resolve(true)),
   startNewSession: jest.fn(() => Promise.resolve()),
   sendChatMessage: jest.fn(() => Promise.resolve()),
   setScene: jest.fn((s: string) => {
@@ -17,11 +18,15 @@ const chatStoreMock: any = {
 
 // Return jest.fn() factories to avoid referencing outer-scope variables in module factory
 jest.mock('@/store/modules/use-chat-store', () => ({ useChatStore: jest.fn() }));
+jest.mock('@/store/modules/use-user-store', () => ({
+  useUserStore: () => ({ sessionVersion: 0, userInfo: { id: 'test-user' }, isLoggedIn: true }),
+}));
 jest.mock('@/api/modules/ai', () => ({ getAISuggestions: jest.fn() }));
 
 import { useChat } from '@/pages/ai-chat/composables/use-chat';
 import { useChatStore } from '@/store/modules/use-chat-store';
 import { getAISuggestions } from '@/api/modules/ai';
+import { reactive } from 'vue';
 
 describe('useChat isInitializing', () => {
   beforeEach(() => {
@@ -42,6 +47,13 @@ describe('useChat isInitializing', () => {
   });
 
   it('init sets isInitializing true during init and false afterwards', async () => {
+    const sessionStore = reactive(chatStoreMock);
+    (useChatStore as unknown as jest.Mock).mockReturnValueOnce(sessionStore);
+    sessionStore.sessionId = '';
+    chatStoreMock.initSession.mockImplementationOnce(async () => {
+      sessionStore.sessionId = 'test-session';
+      return true;
+    });
     const { init, isInitializing, isInitialLoading } = useChat();
 
     // Before init, computed should reflect not initialized + empty messages
@@ -68,13 +80,13 @@ describe('useChat isInitializing', () => {
     expect(isInitializing.value).toBe(false);
   });
 
-  it('loadHistorySession true path sets isInitializing and returns true', async () => {
+  it('loadHistorySession restores readiness immediately and returns true', async () => {
     chatStoreMock.loadSessionFromHistory.mockImplementation(() => true);
 
     const { loadHistorySession, isInitializing } = useChat();
     const p = loadHistorySession('sess1');
 
-    expect(isInitializing.value).toBe(true);
+    expect(isInitializing.value).toBe(false);
 
     const ok = await p;
     expect(ok).toBe(true);

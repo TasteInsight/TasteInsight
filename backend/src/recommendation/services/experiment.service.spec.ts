@@ -81,12 +81,63 @@ describe('ExperimentService', () => {
   });
 
   describe('refreshActiveExperiments', () => {
+    it('queues a later committed state behind a delayed database response', async () => {
+      let releaseFirst!: (value: unknown[]) => void;
+      (prisma.experiment!.findMany as jest.Mock)
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              releaseFirst = resolve;
+            }),
+        )
+        .mockResolvedValueOnce([
+          { ...mockExperiment, name: 'Latest committed state' },
+        ]);
+      const first = service.refreshActiveExperiments();
+      await Promise.resolve();
+      await Promise.resolve();
+      const second = service.refreshActiveExperiments();
+      releaseFirst([mockExperiment]);
+      await Promise.all([first, second]);
+      expect(prisma.experiment!.findMany).toHaveBeenCalledTimes(2);
+      expect(service.getActiveExperiments()[0].name).toBe(
+        'Latest committed state',
+      );
+    });
+
+    it('can refresh again after a failed read', async () => {
+      (prisma.experiment!.findMany as jest.Mock)
+        .mockRejectedValueOnce(new Error('database unavailable'))
+        .mockResolvedValueOnce([mockExperiment]);
+      await expect(service.refreshActiveExperiments()).rejects.toThrow(
+        'database unavailable',
+      );
+      await expect(service.refreshActiveExperiments()).resolves.toBeUndefined();
+      expect(service.getActiveExperiments()).toHaveLength(1);
+    });
+    it('settles every concurrent caller after refreshing committed changes', async () => {
+      jest.useFakeTimers();
+      try {
+        const resolved: number[] = [];
+        const first = service
+          .refreshActiveExperiments()
+          .then(() => resolved.push(1));
+        const second = service
+          .refreshActiveExperiments()
+          .then(() => resolved.push(2));
+        await jest.runAllTimersAsync();
+        expect(resolved.sort()).toEqual([1, 2]);
+        await Promise.all([first, second]);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
     it('should load experiments from database', async () => {
       (prisma.experiment!.findMany as jest.Mock).mockResolvedValue([
         mockExperiment,
       ]);
 
-      await service['performRefresh']();
+      await service.refreshActiveExperiments();
 
       expect(prisma.experiment!.findMany).toHaveBeenCalled();
     });
@@ -122,7 +173,7 @@ describe('ExperimentService', () => {
 
     it('should return null when no active experiments', async () => {
       (prisma.experiment!.findMany as jest.Mock).mockResolvedValue([]);
-      await service['performRefresh']();
+      await service.refreshActiveExperiments();
 
       const result = await service.assignUserToExperiment('user-1');
 

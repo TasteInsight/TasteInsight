@@ -22,22 +22,28 @@ export class DishSearchTool implements BaseTool {
         properties: {
           keyword: {
             type: 'string',
+            maxLength: 2000,
             description: '搜索关键词，可以是菜品名称、标签、食材等',
           },
           canteenId: {
             type: 'string',
+            minLength: 1,
             description: '食堂ID或名称（如“紫荆园”、“桃李园”）',
           },
           priceMin: {
             type: 'number',
+            minimum: 0,
             description: '最低价格',
           },
           priceMax: {
             type: 'number',
+            minimum: 0,
             description: '最高价格',
           },
           limit: {
-            type: 'number',
+            type: 'integer',
+            minimum: 1,
+            maximum: 100,
             description: '返回数量，默认10个',
             default: 10,
           },
@@ -54,51 +60,70 @@ export class DishSearchTool implements BaseTool {
           },
           tags: {
             type: 'array',
-            items: { type: 'string' },
+            maxItems: 100,
+            items: { type: 'string', minLength: 1 },
             description: '标签筛选，如["清淡", "川菜"]',
           },
           minRating: {
             type: 'number',
+            minimum: 0,
+            maximum: 5,
             description: '最低评分 (0-5)',
           },
           mealTime: {
             type: 'array',
-            items: { type: 'string' },
+            maxItems: 4,
+            uniqueItems: true,
+            items: {
+              type: 'string',
+              enum: ['breakfast', 'lunch', 'dinner', 'nightsnack'],
+            },
             description: '适用餐次: breakfast, lunch, dinner, nightsnack',
           },
           spicyLevel: {
-            type: 'number',
+            type: 'integer',
+            minimum: 0,
+            maximum: 5,
             description:
               '期望辣度 (0-5)，0为未设置/不要求，1-5分别表示微辣到非常辣',
           },
           sweetness: {
-            type: 'number',
+            type: 'integer',
+            minimum: 0,
+            maximum: 5,
             description:
               '期望甜度 (0-5)，0为未设置/不要求，1-5分别表示微甜到非常甜',
           },
           saltiness: {
-            type: 'number',
+            type: 'integer',
+            minimum: 0,
+            maximum: 5,
             description:
               '期望咸度 (0-5)，0为未设置/不要求，1-5分别表示微咸到非常咸',
           },
           oiliness: {
-            type: 'number',
+            type: 'integer',
+            minimum: 0,
+            maximum: 5,
             description:
               '期望油度 (0-5)，0为未设置/不要求，1-5分别表示清淡到非常油',
           },
           meatPreference: {
             type: 'array',
-            items: { type: 'string' },
+            maxItems: 100,
+            items: { type: 'string', minLength: 1 },
             description: '肉类偏好，如["猪肉", "牛肉", "鸡肉"]',
           },
           avoidIngredients: {
             type: 'array',
-            items: { type: 'string' },
+            maxItems: 100,
+            items: { type: 'string', minLength: 1 },
             description: '要避免的食材，如["香菜", "葱"]',
           },
           favoriteIngredients: {
             type: 'array',
-            items: { type: 'string' },
+            maxItems: 100,
+            items: { type: 'string', minLength: 1 },
             description: '喜欢的食材，如["番茄", "土豆"]',
           },
         },
@@ -127,6 +152,14 @@ export class DishSearchTool implements BaseTool {
       avoidIngredients,
       favoriteIngredients,
     } = params;
+
+    if (
+      priceMin !== undefined &&
+      priceMax !== undefined &&
+      priceMin > priceMax
+    ) {
+      throw new Error('最低价格不能高于最高价格。');
+    }
 
     // Build filter
     const filter: any = {};

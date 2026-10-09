@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 describe('api/modules/dish.ts', () => {
   const MODULE_PATH = '@/api/modules/dish';
 
@@ -86,3 +84,4 @@ describe('api/modules/dish.ts', () => {
     expect(res.code).toBe(201);
   });
 });
+export {};

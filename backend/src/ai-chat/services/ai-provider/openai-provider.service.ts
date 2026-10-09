@@ -25,22 +25,26 @@ export class OpenAIProviderService implements BaseAIProvider {
   async *streamChat(
     messages: AIMessage[],
     tools: Tool[],
+    signal?: AbortSignal,
   ): AsyncGenerator<StreamChunk, void, unknown> {
     if (!this.client || !this.config) {
       throw new Error('AI provider not configured');
     }
 
     try {
-      const stream = await this.client.chat.completions.create({
-        model: this.config.model,
-        messages: messages as OpenAI.Chat.ChatCompletionMessageParam[],
-        tools:
-          tools.length > 0
-            ? (tools as OpenAI.Chat.ChatCompletionTool[])
-            : undefined,
-        stream: true,
-        temperature: 0.7,
-      });
+      const stream = await this.client.chat.completions.create(
+        {
+          model: this.config.model,
+          messages: messages as OpenAI.Chat.ChatCompletionMessageParam[],
+          tools:
+            tools.length > 0
+              ? (tools as OpenAI.Chat.ChatCompletionTool[])
+              : undefined,
+          stream: true,
+          temperature: 0.7,
+        },
+        { signal },
+      );
 
       let isDone = false;
       const toolCallIds = new Map<number, string>(); // Track tool call IDs by index across chunks
@@ -105,6 +109,7 @@ export class OpenAIProviderService implements BaseAIProvider {
         yield { type: 'done' };
       }
     } catch (error) {
+      if (signal?.aborted) return;
       // Log detailed error for debugging
       this.logger.error('OpenAI API error:', {
         message: error instanceof Error ? error.message : String(error),
@@ -147,6 +152,35 @@ export class OpenAIProviderService implements BaseAIProvider {
         type: 'error',
         error: userMessage,
       };
+    }
+  }
+
+  async completeChat(
+    messages: AIMessage[],
+    signal: AbortSignal,
+  ): Promise<string> {
+    if (!this.client || !this.config)
+      throw new Error('AI provider not configured');
+    const deadline = new AbortController();
+    const timer = setTimeout(() => deadline.abort(), 12000);
+    try {
+      const response = await this.client.chat.completions.create(
+        {
+          model: this.config.model,
+          messages: messages as OpenAI.Chat.ChatCompletionMessageParam[],
+          stream: false,
+          max_completion_tokens: 2048,
+          response_format: { type: 'json_object' },
+        },
+        {
+          signal: AbortSignal.any([signal, deadline.signal]),
+          timeout: 12000,
+          maxRetries: 0,
+        },
+      );
+      return response.choices[0]?.message.content || '';
+    } finally {
+      clearTimeout(timer);
     }
   }
 }

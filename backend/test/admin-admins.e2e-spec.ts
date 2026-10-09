@@ -11,6 +11,7 @@ describe('AdminAdminsController (e2e)', () => {
   let adminManagerToken: string;
   let normalAdminToken: string;
   let createdSubAdminId: string;
+  const createdAdminIds: string[] = [];
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -20,7 +21,7 @@ describe('AdminAdminsController (e2e)', () => {
     app = moduleFixture.createNestApplication();
     prisma = app.get<PrismaService>(PrismaService);
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
-    await app.init();
+    await app.listen(0, '127.0.0.1');
 
     // Login as super admin
     const superAdminLogin = await request(app.getHttpServer())
@@ -28,10 +29,33 @@ describe('AdminAdminsController (e2e)', () => {
       .send({ username: 'testadmin', password: 'password123' });
     superAdminToken = superAdminLogin.body.data.token.accessToken;
 
-    // Login as admin manager (has admin:* permissions)
+    const managerCredentials = {
+      username: 'adminsmgrfixture',
+      password: 'ManagerFixture@123',
+    };
+    const manager = await request(app.getHttpServer())
+      .post('/admin/admins')
+      .set('Authorization', `Bearer ${superAdminToken}`)
+      .send({
+        ...managerCredentials,
+        permissions: [
+          'admin:view',
+          'admin:create',
+          'admin:edit',
+          'admin:delete',
+          'dish:view',
+          'dish:edit',
+          'canteen:view',
+        ],
+      })
+      .expect(201);
+    createdAdminIds.push(manager.body.data.id);
+
+    // Login as a manager able to delegate the permissions used by this suite.
     const adminManagerLogin = await request(app.getHttpServer())
       .post('/auth/admin/login')
-      .send({ username: 'adminmanager', password: 'manager123' });
+      .send(managerCredentials)
+      .expect(200);
     adminManagerToken = adminManagerLogin.body.data.token.accessToken;
 
     // Login as normal admin (no admin:* permissions)
@@ -42,11 +66,15 @@ describe('AdminAdminsController (e2e)', () => {
   });
 
   afterAll(async () => {
-    // Cleanup: delete any sub-admin created during tests
-    if (createdSubAdminId) {
-      await prisma.admin.deleteMany({ where: { id: createdSubAdminId } });
+    try {
+      // Remove child fixtures before their creator and preserve audit foreign keys.
+      for (const id of [...createdAdminIds].reverse()) {
+        await prisma.operationLog.deleteMany({ where: { adminId: id } });
+        await prisma.admin.deleteMany({ where: { id } });
+      }
+    } finally {
+      await app.close();
     }
-    await app.close();
   });
 
   describe('/admin/admins (POST) - Create Sub Admin', () => {
@@ -54,7 +82,7 @@ describe('AdminAdminsController (e2e)', () => {
       const createDto = {
         username: 'newsubadmin',
         password: 'Test@123!',
-        permissions: ['dish:view', 'dish:create'],
+        permissions: ['dish:view', 'dish:create', 'canteen:view'],
       };
 
       const response = await request(app.getHttpServer())
@@ -62,6 +90,7 @@ describe('AdminAdminsController (e2e)', () => {
         .set('Authorization', `Bearer ${superAdminToken}`)
         .send(createDto)
         .expect(201);
+      createdAdminIds.push(response.body.data.id);
 
       expect(response.body.code).toBe(200);
       expect(response.body.message).toBe('success');
@@ -87,12 +116,10 @@ describe('AdminAdminsController (e2e)', () => {
         .set('Authorization', `Bearer ${adminManagerToken}`)
         .send(createDto)
         .expect(201);
+      createdAdminIds.push(response.body.data.id);
 
       expect(response.body.code).toBe(200);
       expect(response.body.data.username).toBe(createDto.username);
-
-      // Cleanup
-      await prisma.admin.delete({ where: { id: response.body.data.id } });
     });
 
     it('should create a sub admin with canteenId', async () => {
@@ -111,13 +138,11 @@ describe('AdminAdminsController (e2e)', () => {
         .set('Authorization', `Bearer ${superAdminToken}`)
         .send(createDto)
         .expect(201);
+      createdAdminIds.push(response.body.data.id);
 
       expect(response.body.code).toBe(200);
       expect(response.body.data.canteenId).toBe(canteen?.id);
       expect(response.body.data.canteenName).toBe(canteen?.name);
-
-      // Cleanup
-      await prisma.admin.delete({ where: { id: response.body.data.id } });
     });
 
     it('should return 400 for duplicate username', async () => {
@@ -239,6 +264,7 @@ describe('AdminAdminsController (e2e)', () => {
         .expect(201);
 
       const subAdminId = createResponse.body.data.id;
+      createdAdminIds.push(subAdminId);
 
       // Now list and verify canteenName is included
       const listResponse = await request(app.getHttpServer())
@@ -252,9 +278,6 @@ describe('AdminAdminsController (e2e)', () => {
       expect(createdAdmin).toBeDefined();
       expect(createdAdmin.canteenId).toBe(canteen?.id);
       expect(createdAdmin.canteenName).toBe(canteen?.name);
-
-      // Cleanup
-      await prisma.admin.delete({ where: { id: subAdminId } });
     });
 
     it('should return 403 for normal admin without permission', async () => {
@@ -382,10 +405,11 @@ describe('AdminAdminsController (e2e)', () => {
         .expect(201);
 
       const subAdminId = createResponse.body.data.id;
+      createdAdminIds.push(subAdminId);
 
       // Now update the permissions
       const updateDto = {
-        permissions: ['dish:view', 'dish:edit'],
+        permissions: ['dish:view', 'dish:edit', 'canteen:view'],
       };
 
       const response = await request(app.getHttpServer())
@@ -395,9 +419,6 @@ describe('AdminAdminsController (e2e)', () => {
         .expect(200);
 
       expect(response.body.code).toBe(200);
-
-      // Cleanup
-      await prisma.admin.delete({ where: { id: subAdminId } });
     });
 
     it('should return 404 for non-existent sub admin', async () => {
@@ -439,6 +460,76 @@ describe('AdminAdminsController (e2e)', () => {
   });
 
   describe('/admin/admins/:id (DELETE) - Delete Sub Admin', () => {
+    const expectRetirement = async (
+      id: string,
+      credentials: { username: string; password: string },
+      operatorToken: string,
+    ) => {
+      const login = await request(app.getHttpServer())
+        .post('/auth/admin/login')
+        .send(credentials)
+        .expect(200);
+      const { accessToken, refreshToken } = login.body.data.token;
+      await request(app.getHttpServer())
+        .get('/admin/dishes')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      const before = await prisma.admin.findUniqueOrThrow({
+        where: { id },
+        include: { permissions: true },
+      });
+      const previousList = await request(app.getHttpServer())
+        .get('/admin/admins?pageSize=100')
+        .set('Authorization', `Bearer ${operatorToken}`)
+        .expect(200);
+      expect(previousList.body.data.items).toEqual(
+        expect.arrayContaining([expect.objectContaining({ id })]),
+      );
+
+      const response = await request(app.getHttpServer())
+        .delete(`/admin/admins/${id}`)
+        .set('Authorization', `Bearer ${operatorToken}`)
+        .expect(200);
+      expect(response.body.code).toBe(200);
+      expect(response.body.message).toBe('操作成功');
+
+      const retired = await prisma.admin.findUnique({
+        where: { id },
+        include: { permissions: true },
+      });
+      expect(retired).toMatchObject({
+        id,
+        username: before.username,
+        createdBy: before.createdBy,
+        deletedAt: expect.any(Date),
+        permissions: before.permissions,
+      });
+
+      const currentList = await request(app.getHttpServer())
+        .get('/admin/admins?pageSize=100')
+        .set('Authorization', `Bearer ${operatorToken}`)
+        .expect(200);
+      expect(currentList.body.data.items).not.toEqual(
+        expect.arrayContaining([expect.objectContaining({ id })]),
+      );
+      expect(currentList.body.data.meta.total).toBe(
+        previousList.body.data.meta.total - 1,
+      );
+      await request(app.getHttpServer())
+        .post('/auth/admin/login')
+        .send(credentials)
+        .expect(401);
+      await request(app.getHttpServer())
+        .get('/admin/dishes')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(401);
+      await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .set('Authorization', `Bearer ${refreshToken}`)
+        .expect(401);
+    };
+
     it('should return 403 when adminManager tries to delete another admin sub admin', async () => {
       await request(app.getHttpServer())
         .delete(`/admin/admins/${createdSubAdminId}`)
@@ -460,7 +551,7 @@ describe('AdminAdminsController (e2e)', () => {
         .expect(403);
     });
 
-    it('should delete sub admin with adminManager (own sub admin)', async () => {
+    it('should retire an own sub admin with adminManager', async () => {
       // First, create a sub admin by adminManager
       const createDto = {
         username: 'managertodelete',
@@ -475,39 +566,21 @@ describe('AdminAdminsController (e2e)', () => {
         .expect(201);
 
       const subAdminId = createResponse.body.data.id;
+      createdAdminIds.push(subAdminId);
 
-      // Now delete
-      const response = await request(app.getHttpServer())
-        .delete(`/admin/admins/${subAdminId}`)
-        .set('Authorization', `Bearer ${adminManagerToken}`)
-        .expect(200);
-
-      expect(response.body.code).toBe(200);
-      expect(response.body.message).toBe('操作成功');
-
-      // Verify deletion
-      const deletedAdmin = await prisma.admin.findUnique({
-        where: { id: subAdminId },
-      });
-      expect(deletedAdmin).toBeNull();
+      await expectRetirement(
+        subAdminId,
+        { username: createDto.username, password: createDto.password },
+        adminManagerToken,
+      );
     });
 
-    it('should delete sub admin with superadmin', async () => {
-      const response = await request(app.getHttpServer())
-        .delete(`/admin/admins/${createdSubAdminId}`)
-        .set('Authorization', `Bearer ${superAdminToken}`)
-        .expect(200);
-
-      expect(response.body.code).toBe(200);
-      expect(response.body.message).toBe('操作成功');
-
-      // Verify deletion
-      const deletedAdmin = await prisma.admin.findUnique({
-        where: { id: createdSubAdminId },
-      });
-      expect(deletedAdmin).toBeNull();
-
-      createdSubAdminId = ''; // Prevent cleanup failure
+    it('should retire a sub admin with superadmin', async () => {
+      await expectRetirement(
+        createdSubAdminId,
+        { username: 'newsubadmin', password: 'Test@123!' },
+        superAdminToken,
+      );
     });
   });
 
@@ -525,7 +598,6 @@ describe('AdminAdminsController (e2e)', () => {
   });
 
   describe('/admin/admins/me/password (PUT) - Change Own Password', () => {
-    let testAdminId: string;
     let testAdminToken: string;
     const testAdminPassword = 'TestAdmin@123';
     const newPassword = 'NewTestAdmin@456';
@@ -542,20 +614,13 @@ describe('AdminAdminsController (e2e)', () => {
         })
         .expect(201);
 
-      testAdminId = createResponse.body.data.id;
+      createdAdminIds.push(createResponse.body.data.id);
 
       // Login as the test admin
       const loginResponse = await request(app.getHttpServer())
         .post('/auth/admin/login')
         .send({ username: 'pwdtestadmin', password: testAdminPassword });
       testAdminToken = loginResponse.body.data.token.accessToken;
-    });
-
-    afterAll(async () => {
-      // Cleanup
-      if (testAdminId) {
-        await prisma.admin.deleteMany({ where: { id: testAdminId } });
-      }
     });
 
     it('should change own password successfully', async () => {
@@ -641,13 +706,7 @@ describe('AdminAdminsController (e2e)', () => {
         .expect(201);
 
       subAdminId = createResponse.body.data.id;
-    });
-
-    afterAll(async () => {
-      // Cleanup
-      if (subAdminId) {
-        await prisma.admin.deleteMany({ where: { id: subAdminId } });
-      }
+      createdAdminIds.push(subAdminId);
     });
 
     it('should reset sub admin password with superadmin', async () => {

@@ -21,8 +21,12 @@ const mocks = vi.hoisted(() => ({
     createDish: vi.fn(),
     updateDish: vi.fn(),
   },
+  reviewApiMock: { getPendingUploadById: vi.fn() },
   showAlertMock: vi.fn(() => Promise.resolve()),
   showConfirmMock: vi.fn(() => Promise.resolve(true)),
+  authStoreMock: {
+    hasPermission: vi.fn(() => true),
+  },
 }))
 
 vi.mock('vue-router', () => ({
@@ -37,10 +41,15 @@ vi.mock('@/store/modules/use-dish-store', () => ({
 vi.mock('@/api/modules/dish', () => ({
   dishApi: mocks.dishApiMock,
 }))
+vi.mock('@/api/modules/review', () => ({ reviewApi: mocks.reviewApiMock }))
 
 vi.mock('@/composables/useModal', () => ({
   showAlert: mocks.showAlertMock,
   showConfirm: mocks.showConfirmMock,
+}))
+
+vi.mock('@/store/modules/use-auth-store', () => ({
+  useAuthStore: () => mocks.authStoreMock,
 }))
 
 import AddSubDish from '../../src/views/AddSubDish.vue'
@@ -93,6 +102,7 @@ describe('views/AddSubDish', () => {
 
     mocks.showAlertMock.mockResolvedValue(undefined)
     mocks.showConfirmMock.mockResolvedValue(true)
+    mocks.authStoreMock.hasPermission.mockReturnValue(true)
 
     ;(globalThis as any).FileReader = FileReaderMock
     if (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function') {
@@ -188,7 +198,7 @@ describe('views/AddSubDish', () => {
     await wrapper.vm.submitForm()
     expect(wrapper.vm.errors.name).toBe('请输入菜品名称')
     expect(wrapper.vm.errors.canteen).toBe('食堂名称不能为空')
-    expect(wrapper.vm.errors.floor).toBe('食堂楼层不能为空')
+    expect(wrapper.vm.errors.floor).toBe('')
     expect(wrapper.vm.errors.windowName).toBe('窗口名称不能为空')
     expect(wrapper.vm.errors.price).toContain('价格必须为有效的数字')
 
@@ -208,6 +218,18 @@ describe('views/AddSubDish', () => {
 
     wrapper.unmount()
     wrapper2.unmount()
+  })
+
+  it('submitForm rejects missing create permission before upload or create', async () => {
+    mocks.authStoreMock.hasPermission.mockReturnValue(false)
+    const wrapper = shallowMount(AddSubDish, { global: { stubs: { Header: true } } })
+
+    await wrapper.vm.submitForm()
+
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限创建菜品')
+    expect(mocks.dishApiMock.uploadImage).not.toHaveBeenCalled()
+    expect(mocks.dishApiMock.createDish).not.toHaveBeenCalled()
+    wrapper.unmount()
   })
 
   it('submitForm uploads images: partial fail confirm-cancel stops; throw alerts', async () => {
@@ -248,7 +270,7 @@ describe('views/AddSubDish', () => {
     wrapper.unmount()
   })
 
-  it('submitForm success creates dish, updates parent subDishId, updates store, and redirects', async () => {
+  it('submits a pending child without linking its upload id into a formal dish', async () => {
     const wrapper = shallowMount(AddSubDish, { global: { stubs: { Header: true } } })
     await flushAll(2)
 
@@ -267,33 +289,20 @@ describe('views/AddSubDish', () => {
 
     mocks.dishApiMock.createDish.mockResolvedValueOnce({ code: 201, data: { id: 's1', name: '小份' } })
 
-    // parent fetch for updating subDishId
-    mocks.dishApiMock.getDishById.mockResolvedValueOnce({
-      code: 200,
-      data: { id: 'p1', name: '父菜品', subDishId: ['s0'] },
-    })
-
     await wrapper.vm.submitForm()
 
     expect(mocks.dishApiMock.createDish).toHaveBeenCalled()
-    expect(mocks.dishStoreMock.addDish).toHaveBeenCalledWith({ id: 's1', name: '小份' })
-
-    expect(mocks.dishApiMock.updateDish).toHaveBeenCalledWith('p1', { subDishId: ['s0', 's1'] })
-    expect(mocks.dishStoreMock.updateDish).toHaveBeenCalledWith(
-      'p1',
-      expect.objectContaining({ subDishId: ['s0', 's1'] }),
-    )
-
-    expect(mocks.showAlertMock).toHaveBeenCalledWith('子项添加成功！')
-    expect(mocks.routerMock.push).toHaveBeenCalledWith({
-      path: '/edit-dish/p1',
-      query: { refreshSubDishes: 'true' },
-    })
+    expect(mocks.dishApiMock.createDish).toHaveBeenCalledWith(expect.objectContaining({ parentDishId: 'p1' }))
+    expect(mocks.dishStoreMock.addDish).not.toHaveBeenCalled()
+    expect(mocks.dishApiMock.updateDish).not.toHaveBeenCalled()
+    expect(mocks.dishStoreMock.updateDish).not.toHaveBeenCalled()
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('子项已提交审核！')
+    expect(mocks.routerMock.push).toHaveBeenCalledWith('/edit-dish/p1')
 
     wrapper.unmount()
   })
 
-  it('submitForm handles createDish failure and parent update failure without blocking success', async () => {
+  it('surfaces a failed pending-child submission and allows a later successful submission', async () => {
     const wrapper = shallowMount(AddSubDish, { global: { stubs: { Header: true } } })
     await flushAll(2)
 
@@ -307,14 +316,12 @@ describe('views/AddSubDish', () => {
     await wrapper.vm.submitForm()
     expect(mocks.showAlertMock).toHaveBeenCalledWith(expect.stringContaining('bad'))
 
-    // createDish success but parent update throws
+    // A later successful submission remains pending.
     mocks.showAlertMock.mockClear()
     mocks.dishApiMock.createDish.mockResolvedValueOnce({ code: 200, data: { id: 's2', name: '小份' } })
-    mocks.dishApiMock.getDishById.mockResolvedValueOnce({ code: 200, data: { id: 'p1', subDishId: [] } })
-    mocks.dishApiMock.updateDish.mockRejectedValueOnce(new Error('boom'))
 
     await wrapper.vm.submitForm()
-    expect(mocks.showAlertMock).toHaveBeenCalledWith(expect.stringContaining('子项添加成功'))
+    expect(mocks.showAlertMock).toHaveBeenCalledWith(expect.stringContaining('子项已提交审核'))
 
     wrapper.unmount()
   })
@@ -333,5 +340,30 @@ describe('views/AddSubDish', () => {
 
     wrapper.unmount()
     wrapper2.unmount()
+  })
+
+  it('loads a pending parent from the upload API and submits parentUploadId, not parentDishId', async () => {
+    mocks.routeMock.query = { parentUploadId: 'upload-parent', subItemName: '小份' }
+    mocks.authStoreMock.hasPermission.mockImplementation((permission: string) => permission === 'dish:create')
+    mocks.reviewApiMock.getPendingUploadById.mockResolvedValue({ code: 200, data: {
+      id: 'upload-parent', name: '父项', canteenId: 'c1', canteenName: 'C1',
+      windowId: 'w1', windowName: 'W1', windowNumber: '01', status: 'pending',
+    } })
+    const wrapper = shallowMount(AddSubDish, { global: { stubs: { Header: true } } })
+    await flushAll()
+    expect(mocks.reviewApiMock.getPendingUploadById).toHaveBeenCalledWith('upload-parent')
+    expect(mocks.dishApiMock.getDishById).not.toHaveBeenCalled()
+    expect(wrapper.vm.formData.floor).toBe('')
+
+    await wrapper.vm.submitForm()
+    const sent = mocks.dishApiMock.createDish.mock.calls[0][0]
+    expect(sent.parentUploadId).toBe('upload-parent')
+    expect(sent).not.toHaveProperty('parentDishId')
+    expect(sent.canteenId).toBe('c1')
+    expect(sent.windowId).toBe('w1')
+    expect(mocks.dishApiMock.updateDish).not.toHaveBeenCalled()
+    expect(mocks.dishStoreMock.addDish).not.toHaveBeenCalled()
+    expect(mocks.routerMock.push).toHaveBeenCalledWith('/single-add')
+    wrapper.unmount()
   })
 })

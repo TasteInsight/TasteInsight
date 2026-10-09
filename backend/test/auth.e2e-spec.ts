@@ -27,7 +27,7 @@ describe('AuthController (e2e)', () => {
     prisma = app.get<PrismaService>(PrismaService);
     httpService = app.get<HttpService>(HttpService);
     app.useGlobalPipes(new ValidationPipe());
-    await app.init();
+    await app.listen(0, '127.0.0.1');
 
     // 确保 baseline 和 secondary 用户存在（使用 upsert 以兼容 seed 数据和独立运行）
     // 同时恢复 nickname，因为其他测试可能会修改它
@@ -56,6 +56,13 @@ describe('AuthController (e2e)', () => {
 
   afterAll(async () => {
     await app.close();
+  });
+
+  it('keeps the test server listening on the IPv4 loopback used by Supertest', () => {
+    expect(app.getHttpServer().address()).toMatchObject({
+      address: '127.0.0.1',
+      family: 'IPv4',
+    });
   });
 
   describe('/auth/wechat/login (POST)', () => {
@@ -257,8 +264,9 @@ describe('AuthController (e2e)', () => {
   });
 
   describe('/auth/refresh (POST)', () => {
-    let adminAccessToken: string;
+    let adminRefreshToken: string;
     let userAccessToken: string;
+    let userRefreshToken: string;
     let jwtService: JwtService;
 
     // 同样，依赖 seed 创建的管理员进行登录，获取 token
@@ -267,21 +275,19 @@ describe('AuthController (e2e)', () => {
       const adminResponse = await request(app.getHttpServer())
         .post('/auth/admin/login')
         .send({ username: 'testadmin', password: 'password123' });
-      adminAccessToken = adminResponse.body.data.token.accessToken;
+      adminRefreshToken = adminResponse.body.data.token.refreshToken;
 
       const userResponse = await request(app.getHttpServer())
         .post('/auth/wechat/login')
         .send({ code: 'baseline_user_code_placeholder' });
       userAccessToken = userResponse.body.data.token.accessToken;
+      userRefreshToken = userResponse.body.data.token.refreshToken;
     });
 
-    it('should return a new set of tokens for a valid admin token', async () => {
-      // 等待20ms以确保新token的时间戳不同（JWT时间戳有毫秒精度，无需等待1秒）
-      await new Promise((resolve) => setTimeout(resolve, 20));
-
+    it('should return a new set of tokens for a valid admin refresh token', async () => {
       const response = await request(app.getHttpServer())
         .post('/auth/refresh')
-        .set('Authorization', `Bearer ${adminAccessToken}`)
+        .set('Authorization', `Bearer ${adminRefreshToken}`)
         .expect(200);
 
       expect(response.body.code).toBe(200);
@@ -294,12 +300,10 @@ describe('AuthController (e2e)', () => {
       // 新token应该存在
     });
 
-    it('should return a new set of tokens for a valid user token', async () => {
-      await new Promise((resolve) => setTimeout(resolve, 20));
-
+    it('should return a new set of tokens for a valid user refresh token', async () => {
       const response = await request(app.getHttpServer())
         .post('/auth/refresh')
-        .set('Authorization', `Bearer ${userAccessToken}`)
+        .set('Authorization', `Bearer ${userRefreshToken}`)
         .expect(200);
 
       expect(response.body.code).toBe(200);
@@ -319,6 +323,13 @@ describe('AuthController (e2e)', () => {
         .expect(401);
     });
 
+    it('should fail with 401 for a valid access token', () => {
+      return request(app.getHttpServer())
+        .post('/auth/refresh')
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .expect(401);
+    });
+
     it('should fail with 401 for an expired token', async () => {
       const admin = await prisma.admin.findUnique({
         where: { username: 'testadmin' },
@@ -327,9 +338,9 @@ describe('AuthController (e2e)', () => {
         throw new Error('Seeded admin user not found');
       }
       const expiredToken = await jwtService.signAsync(
-        { sub: admin.id, type: 'admin' },
+        { sub: admin.id, type: 'admin', tokenUse: 'refresh' },
         // 故意签发一个立即过期的 token
-        { secret: process.env.JWT_SECRET, expiresIn: '0s' },
+        { secret: process.env.JWT_REFRESH_SECRET, expiresIn: '0s' },
       );
 
       return request(app.getHttpServer())

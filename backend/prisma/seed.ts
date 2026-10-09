@@ -2,30 +2,15 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { CONFIG_DEFINITIONS } from '../src/admin-config/config-definitions';
+import { clearSeedBusinessData } from './clear-seed-data';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log(`Start seeding ...`);
 
-  // 1. 清空所有数据，确保幂等性
-  // 注意删除顺序，防止外键约束失败
-  await prisma.mealPlanDish.deleteMany({});
-  await prisma.mealPlan.deleteMany({});
-  await prisma.browseHistory.deleteMany({});
-  await prisma.favoriteDish.deleteMany({});
-  await prisma.report.deleteMany({});
-  await prisma.comment.deleteMany({});
-  await prisma.review.deleteMany({});
-  await prisma.dishUpload.deleteMany({});
-  await prisma.dish.deleteMany({});
-  await prisma.window.deleteMany({});
-  await prisma.floor.deleteMany({});
-  await prisma.canteen.deleteMany({});
-  await prisma.user.deleteMany({});
-  await prisma.news.deleteMany({});
-  await prisma.adminPermission.deleteMany({});
-  await prisma.admin.deleteMany({});
+  // 1. 在同一事务中清理待重建实体及其关联业务数据。
+  await clearSeedBusinessData(prisma);
 
   // 2. 创建一个可用于所有测试的【基础管理员】(superadmin)
   const adminUsername = process.env.INITIAL_ADMIN_USERNAME || 'testadmin';

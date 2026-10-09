@@ -1,36 +1,17 @@
 <template>
-  <view class="min-h-screen w-full flex flex-col bg-gray-100 overflow-hidden">
-    <!-- 导航栏区域（在uni-app中通常由pages.json配置，或者使用自定义组件） -->
-
-    <!-- 骨架屏 -->
-    <NewsListSkeleton v-if="loading && list.length === 0 && !isRefreshing" />
-
-    <!-- 列表内容区域，使用页面自身的滚动 -->
-    <view v-else class="flex-1 px-4 box-border pb-6">
-      <view class="text-lg font-semibold text-gray-800 my-4">最新公告</view>
-
-      <!-- 数据列表 -->
-      <view v-if="list.length > 0">
-        <NewsItem v-for="item in list" :key="item.id" :news="item" />
-
-        <!-- 加载状态提示 -->
-        <view class="text-center py-4 text-gray-500 text-sm">
-          <text v-if="loading && list.length > 0">加载中...</text>
-          <text v-else-if="finished">没有更多内容了</text>
-        </view>
+  <view class="page-content news-page">
+    <view class="news-content">
+      <NewsItem v-for="item in list" :key="item.id" :news="item" />
+      <view v-if="error" class="news-state" role="status">
+        <text>{{ error }}</text>
+        <button class="news-retry" :disabled="loading" @click="retry">重试</button>
       </view>
-
-      <!-- 首次加载中/空状态 -->
-      <view v-else class="text-center py-4 text-gray-500 text-sm">
-        <view v-if="!loading && !isRefreshing">
-          <!-- 假设使用 EmptyState 组件 -->
-          <!-- <EmptyState message="暂无最新公告" /> -->
-          <text>暂无最新公告</text>
-        </view>
-      </view>
+      <view v-else-if="initialized && !list.length" class="news-state">暂无公告</view>
+      <view v-else-if="loading && list.length" class="news-state" role="status">加载中…</view>
+      <button v-else-if="list.length && !finished" class="news-retry news-more" @click="loadMore">
+        加载更多
+      </button>
     </view>
-
-    <!-- 底部导航区（在pages.json中配置为tabBar，此处不需重复实现 nav-bar） -->
   </view>
 </template>
 
@@ -38,9 +19,16 @@
 import { onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import { useNewsList } from './composables/use-news-list';
 import NewsItem from './components/NewsItem.vue';
-import { NewsListSkeleton } from '@/components/skeleton';
-
-const { list, loading, finished, isRefreshing, refresh, loadMore: loadMoreData } = useNewsList();
+const {
+  list,
+  loading,
+  initialized,
+  finished,
+  error,
+  retry,
+  refresh,
+  loadMore: loadMoreData,
+} = useNewsList();
 
 const loadMore = () => {
   if (!loading.value && !finished.value) {
@@ -60,13 +48,10 @@ onPullDownRefresh(onRefresh);
 </script>
 
 <style scoped>
-/* 移除原有SCSS样式，使用Tailwind CSS */
-scroll-view {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-view {
-  box-sizing: border-box;
-}
+.news-content { box-sizing:border-box; width:100%; max-width:760px; margin:0 auto; padding:0 20px 24px; }
+.news-state { display:flex; flex-direction:column; align-items:center; gap:12px; padding:32px 16px; color:#667085; font-size:14px; line-height:1.6; text-align:center; }
+.news-retry { min-height:44px; margin:0; padding:8px 20px; border:0; border-radius:10px; background:#f4f4f5; color:#660874; font-size:14px; line-height:28px; }
+.news-retry::after { border:0; }
+.news-more { margin:20px auto 0; }
+.news-retry:focus-visible { outline:2px solid #660874; outline-offset:2px; }
 </style>

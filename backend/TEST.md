@@ -1,42 +1,27 @@
 # 测试说明
 
-## 测试结构
+## 单元测试
 
-本项目包含两种类型的测试：
+`src/**/*.spec.ts` 使用 `package.json` 中的 Jest 配置：
 
-### 1. 单元测试 (Unit Tests)
-- 位置：`src/**/*.spec.ts`
-- 配置：使用 `package.json` 中的 `jest` 配置
-- 运行：（待实现）
-- 说明：`testPathIgnorePatterns` 配置排除了 `test/` 目录，因为该目录专门用于 e2e 测试
+```bash
+pnpm run test:unit
+```
 
-### 2. 端到端测试 (E2E Tests)
-- 位置：`test/**/*.e2e-spec.ts`
-- 配置：使用 `test/jest-e2e.json` 配置
-- 运行：
-  - 设置测试环境：`pnpm run test:setup`
-  - 运行所有 e2e 测试：`pnpm run test:e2e`
-  - 运行认证测试：`pnpm run test:e2e:auth`
-  - 运行菜品测试：`pnpm run test:e2e:dishes`
+## 端到端测试
 
-## 环境配置
+`test/**/*.e2e-spec.ts` 使用 `test/jest-e2e.json`。先准备独立的 pgvector PostgreSQL 数据库，数据库名必须以 `_test` 结尾。`test:setup` 会迁移并重新填充该数据库，现有业务数据会被删除。
 
-### 测试数据库配置
-1. 复制 `.env.test.example` 为 `.env.test`
-2. 在 `.env.test` 中填写实际的数据库凭证
-3. **重要**：不要将包含真实凭证的 `.env.test` 提交到版本控制系统
+```bash
+cp .env.test.example .env.test
+# 填写独立测试数据库的 DATABASE_URL 和 Redis 密码
+pnpm run test:setup
+pnpm run test:e2e
+pnpm run test:teardown
+```
 
-### 测试数据库设置
-测试使用独立的数据库 `taste_insight_test_db`，确保不会影响开发或生产数据库。
+`.env.test` 不纳入版本管理。`test:setup` 从该文件读取连接信息，在宿主机回环地址启动测试 Redis（默认 `6381`）和模拟嵌入服务（默认 `5002`）；PostgreSQL 数据库需事先创建。运行单个 E2E 套件可使用 `pnpm run test:e2e:auth` 等脚本，这些脚本会先执行 `test:setup`。
 
-在运行测试前，请确保：
-1. PostgreSQL 服务正在运行
-2. 测试数据库已创建
-3. `.env.test` 文件中的数据库凭证正确
+E2E 套件在 `beforeAll` 中调用 `await app.listen(0, '127.0.0.1')`，与 Supertest 的 IPv4 请求地址保持一致，并在 `afterAll` 中调用 `await app.close()`。每套测试使用独立的随机端口，服务在该套测试期间保持监听。
 
-## 最佳实践
-
-1. 在提交代码前运行完整的测试套件
-2. 每个新功能都应该包含相应的 e2e 测试
-3. 测试应该是幂等的，可以重复运行
-4. 使用 seed 脚本确保测试数据的一致性
+有限长度的 SSE 测试使用 `.buffer(true)` 等待完整响应结束，再检查事件与持久化结果。`.buffer(false)` 会在收到响应头时返回，不能作为流处理完成的信号。

@@ -1,12 +1,10 @@
 import { useDisplay, SORT_VALUES } from '@/pages/settings/composables/use-display';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { updateUserProfile } from '@/api/modules/user';
-import { reactive, ref } from 'vue';
+import { reactive } from 'vue';
+import { createPinia, setActivePinia } from 'pinia';
 
 // Mock Store
-jest.mock('@/store/modules/use-user-store', () => ({
-  useUserStore: jest.fn(),
-}));
 
 // Mock API
 jest.mock('@/api/modules/user', () => ({
@@ -24,6 +22,9 @@ jest.mock('vue', () => {
 
 // Mock global.uni
 (global as any).uni = {
+  getStorageSync: jest.fn(),
+  setStorageSync: jest.fn(),
+  removeStorageSync: jest.fn(),
   showToast: jest.fn(),
   navigateBack: jest.fn(),
 };
@@ -32,6 +33,7 @@ describe('useDisplay', () => {
   let mockStore: any;
 
   beforeEach(() => {
+    setActivePinia(createPinia());
     mockStore = reactive({
       userInfo: {
         settings: {
@@ -43,9 +45,12 @@ describe('useDisplay', () => {
         },
       },
       fetchProfileAction: jest.fn().mockResolvedValue(undefined),
-      updateLocalUserInfo: jest.fn(),
     });
-    (useUserStore as unknown as jest.Mock).mockReturnValue(mockStore);
+    const actualStore = useUserStore();
+    actualStore.userInfo = mockStore.userInfo;
+    actualStore.fetchProfileAction = mockStore.fetchProfileAction;
+    actualStore.token = 'test-token';
+    mockStore = actualStore;
     jest.clearAllMocks();
   });
 
@@ -104,7 +109,7 @@ describe('useDisplay', () => {
         },
       },
     });
-    expect(mockStore.updateLocalUserInfo).toHaveBeenCalled();
+    expect(uni.setStorageSync).toHaveBeenCalledWith('userInfo', JSON.stringify(mockStore.userInfo));
     expect(uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ title: '保存成功' }));
   });
 

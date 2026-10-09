@@ -8,6 +8,9 @@ const mocks = vi.hoisted(() => ({
   },
   showAlertMock: vi.fn(() => Promise.resolve()),
   showConfirmMock: vi.fn(() => Promise.resolve(true)),
+  authStoreMock: {
+    hasPermission: vi.fn(() => true),
+  },
 }))
 
 vi.mock('@/api/modules/dish', () => ({
@@ -17,6 +20,10 @@ vi.mock('@/api/modules/dish', () => ({
 vi.mock('@/composables/useModal', () => ({
   showAlert: mocks.showAlertMock,
   showConfirm: mocks.showConfirmMock,
+}))
+
+vi.mock('@/store/modules/use-auth-store', () => ({
+  useAuthStore: () => mocks.authStoreMock,
 }))
 
 import BatchAdd from '../../src/views/BatchAdd.vue'
@@ -32,6 +39,7 @@ describe('views/BatchAdd', () => {
     vi.clearAllMocks()
     mocks.showAlertMock.mockResolvedValue(undefined)
     mocks.showConfirmMock.mockResolvedValue(true)
+    mocks.authStoreMock.hasPermission.mockReturnValue(true)
   })
 
   afterEach(() => {
@@ -205,7 +213,9 @@ describe('views/BatchAdd', () => {
     wrapper.vm.uploadedFile = makeFile('ok.xlsx') as any
     wrapper.vm.parsedData = [{ status: 'valid', name: 'n' }] as any
     await wrapper.vm.submitBatchData()
-    expect(mocks.showAlertMock).toHaveBeenCalledWith('导入完成！成功：1 条')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith(
+      '导入完成！成功处理：1 条\n新菜提交待审核；匹配的既有菜品按编辑权限更新。'
+    )
     expect(wrapper.vm.uploadedFile).toBe(null)
     expect(wrapper.vm.parsedData).toEqual([])
 
@@ -227,7 +237,7 @@ describe('views/BatchAdd', () => {
 
     await wrapper.vm.submitBatchData()
     expect(mocks.showAlertMock).toHaveBeenCalledWith(
-      expect.stringContaining('成功：0 条')
+      expect.stringContaining('成功处理：0 条')
     )
 
     // api non-200 => alert error
@@ -243,6 +253,21 @@ describe('views/BatchAdd', () => {
     await wrapper.vm.submitBatchData()
     expect(mocks.showAlertMock).toHaveBeenCalledWith('boom')
 
+    wrapper.unmount()
+  })
+
+  it('submitBatchData rejects missing create permission before confirmation and import', async () => {
+    mocks.authStoreMock.hasPermission.mockReturnValue(false)
+    const wrapper = shallowMount(BatchAdd, {
+      global: { stubs: { Header: true } },
+    })
+    wrapper.vm.parsedData = [{ status: 'valid', name: 'n' }] as any
+
+    await wrapper.vm.submitBatchData()
+
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限创建菜品')
+    expect(mocks.showConfirmMock).not.toHaveBeenCalled()
+    expect(mocks.dishApiMock.confirmBatchImport).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 

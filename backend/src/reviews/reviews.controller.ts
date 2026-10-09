@@ -17,6 +17,7 @@ import {
   ReviewListResponseDto,
   ReviewResponseDto,
   DeleteReviewResponseDto,
+  OwnReviewResponseDto,
 } from './dto/review-response.dto';
 import { ReportReviewResponseDto } from './dto/report-review.dto';
 
@@ -24,6 +25,14 @@ import { ReportReviewResponseDto } from './dto/report-review.dto';
 @UseGuards(AuthGuard)
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
+
+  @Get('dishes/:dishId/reviews/mine')
+  async getOwnReview(
+    @Request() req,
+    @Param('dishId') dishId: string,
+  ): Promise<OwnReviewResponseDto> {
+    return this.reviewsService.getOwnReview(req.user.sub, dishId);
+  }
 
   @Get('dishes/:dishId/reviews')
   async getReviews(

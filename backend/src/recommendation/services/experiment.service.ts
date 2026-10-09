@@ -19,12 +19,7 @@ export class ExperimentService implements OnModuleInit {
   private readonly logger = new Logger(ExperimentService.name);
   // 内存中缓存的活跃实验列表
   private activeExperiments: Map<string, ExperimentConfig> = new Map();
-  // 防抖动定时器
-  private refreshTimer: NodeJS.Timeout | null = null;
-  // 是否正在刷新
-  private isRefreshing = false;
-  // 是否有待处理的刷新请求
-  private pendingRefresh = false;
+  private refreshPromise: Promise<void> = Promise.resolve();
 
   constructor(
     private prisma: PrismaService,
@@ -33,60 +28,18 @@ export class ExperimentService implements OnModuleInit {
 
   async onModuleInit() {
     // 启动时立即加载活跃实验
-    await this.performRefresh();
+    await this.refreshActiveExperiments();
   }
 
   /**
-   * 刷新活跃实验列表（防抖）
-   * 短时间内多次调用只会执行一次刷新
+   * 每次操作等待自己的串行刷新，避免覆盖尚未读取的提交。
    */
   async refreshActiveExperiments(): Promise<void> {
-    // 清除之前的定时器
-    if (this.refreshTimer) {
-      clearTimeout(this.refreshTimer);
-    }
-
-    // 设置防抖动，500ms 内多次调用只执行一次
-    return new Promise((resolve) => {
-      this.refreshTimer = setTimeout(() => {
-        void (async () => {
-          await this.performRefresh();
-          resolve();
-        })();
-      }, 500);
-    });
-  }
-
-  /**
-   * 立即刷新活跃实验列表
-   * 仅在启动时或需要立即刷新时使用
-   */
-  private async performRefresh(): Promise<void> {
-    if (this.isRefreshing) {
-      // 如果正在刷新，标记有待处理的刷新请求
-      this.logger.debug('Refresh already in progress, marking pending refresh');
-      this.pendingRefresh = true;
-      return;
-    }
-
-    // 开始刷新循环，直到没有待处理的请求
-    do {
-      this.pendingRefresh = false;
-      this.isRefreshing = true;
-
-      try {
-        await this.doRefresh();
-      } catch (error) {
-        this.logger.error('Failed to refresh active experiments', error);
-      } finally {
-        this.isRefreshing = false;
-      }
-
-      // 如果刷新期间又有新的请求，继续刷新
-      if (this.pendingRefresh) {
-        this.logger.debug('Pending refresh detected, refreshing again');
-      }
-    } while (this.pendingRefresh);
+    const refresh = this.refreshPromise
+      .catch(() => undefined)
+      .then(() => this.doRefresh());
+    this.refreshPromise = refresh;
+    return refresh;
   }
 
   /**

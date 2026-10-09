@@ -21,6 +21,11 @@ jest.mock('@/pages/dish/composables/use-review', () => {
   return {
     useReview: () => ({
       reviews: ref([]),
+      ownReview: ref(null),
+      ownReviewLoading: ref(false),
+      ownReviewLoaded: ref(true),
+      ownReviewError: ref(''),
+      fetchOwnReview: jest.fn().mockResolvedValue(true),
       reviewsLoading: ref(false),
       isInitializing: ref(false),
       reviewsError: ref(''),

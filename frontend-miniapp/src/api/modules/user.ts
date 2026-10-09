@@ -23,18 +23,6 @@ export const wechatLogin = (code: string): Promise<ApiResponse<LoginData>> => {
 };
 
 /**
- * @summary 刷新Token
- * @description 使用当前Token刷新获取新Token
- */
-export const refreshToken = (): Promise<ApiResponse<LoginData>> => {
-  return request<LoginData>({
-    url: '/auth/refresh',
-    method: 'POST',
-    data: {},
-  });
-};
-
-/**
  * 获取用户信息
  */
 export const getUserProfile = (): Promise<ApiResponse<User>> => {
@@ -115,6 +103,7 @@ export const getMyUploads = (
   return request<PaginatedData<MyUploadItem>>({
     url: '/user/uploads',
     method: 'GET',
+    data: params,
   });
 };
 
@@ -127,5 +116,6 @@ export const getMyReports = (
   return request<PaginatedData<Report>>({
     url: '/user/reports',
     method: 'GET',
+    data: params,
   });
 };

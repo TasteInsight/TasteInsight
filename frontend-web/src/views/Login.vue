@@ -32,7 +32,7 @@
             </label>
             <div class="relative">
               <span class="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
-                <span class="iconify text-base sm:text-lg" data-icon="carbon:user"></span>
+                <AppIcon class="iconify text-base sm:text-lg" icon="carbon:user"></AppIcon>
               </span>
               <input
                 id="username"
@@ -49,7 +49,7 @@
               />
             </div>
             <p v-show="errors.username" class="mt-1.5 sm:mt-2 text-xs sm:text-sm text-red-500 flex items-center">
-              <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+              <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
               {{ errors.username }}
             </p>
           </div>
@@ -61,7 +61,7 @@
             </label>
             <div class="relative">
               <span class="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
-                <span class="iconify text-base sm:text-lg" data-icon="carbon:password"></span>
+                <AppIcon class="iconify text-base sm:text-lg" icon="carbon:password"></AppIcon>
               </span>
               <input
                 id="password"
@@ -81,14 +81,14 @@
                 @click="showPassword = !showPassword"
                 class="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
               >
-                <span
+                <AppIcon
                   class="iconify text-base sm:text-lg"
-                  :data-icon="showPassword ? 'carbon:view-off' : 'carbon:view'"
-                ></span>
+                  :icon="showPassword ? 'carbon:view-off' : 'carbon:view'"
+                ></AppIcon>
               </button>
             </div>
             <p v-show="errors.password" class="mt-1.5 sm:mt-2 text-xs sm:text-sm text-red-500 flex items-center">
-              <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+              <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
               {{ errors.password }}
             </p>
           </div>
@@ -120,12 +120,12 @@
             :disabled="loading"
             class="w-full py-2.5 sm:py-3.5 bg-tsinghua-purple text-white rounded-lg sm:rounded-xl font-semibold hover:bg-tsinghua-dark hover:shadow-lg hover:shadow-tsinghua-purple/30 transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none transform hover:scale-[1.02] active:scale-[0.98] text-sm sm:text-base"
           >
-            <span
+            <AppIcon
               v-show="loading"
               class="iconify animate-spin text-base sm:text-lg"
-              data-icon="carbon:circle-dash"
-            ></span>
-            <span v-show="!loading" class="iconify text-base sm:text-lg" data-icon="carbon:login"></span>
+              icon="carbon:circle-dash"
+            ></AppIcon>
+            <AppIcon v-show="!loading" class="iconify text-base sm:text-lg" icon="carbon:login"></AppIcon>
             <span>{{ loading ? '登录中...' : '登录' }}</span>
           </button>
         </form>
@@ -147,14 +147,14 @@
         <!-- 弹窗头部 -->
         <div class="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
           <h3 class="text-xl sm:text-2xl font-bold text-gray-900 flex items-center space-x-2">
-            <span class="iconify text-tsinghua-purple text-xl sm:text-2xl" data-icon="carbon:password"></span>
+            <AppIcon class="iconify text-tsinghua-purple text-xl sm:text-2xl" icon="carbon:password"></AppIcon>
             <span>忘记密码</span>
           </h3>
           <button
             @click="closeForgotPasswordModal"
             class="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-1 hover:bg-gray-100 rounded-lg"
           >
-            <span class="iconify text-xl sm:text-2xl" data-icon="carbon:close"></span>
+            <AppIcon class="iconify text-xl sm:text-2xl" icon="carbon:close"></AppIcon>
           </button>
         </div>
 
@@ -162,7 +162,7 @@
         <div class="p-4 sm:p-6 space-y-4 sm:space-y-6">
           <!-- 提示图标和信息 -->
           <div class="flex items-start space-x-2 sm:space-x-3">
-            <span class="iconify text-red-500 text-lg sm:text-xl flex-shrink-0 mt-0.5" data-icon="carbon:warning"></span>
+            <AppIcon class="iconify text-red-500 text-lg sm:text-xl flex-shrink-0 mt-0.5" icon="carbon:warning"></AppIcon>
             <p class="text-gray-700 text-sm sm:text-base leading-relaxed">
               如果您忘记了密码，请联系上级管理员重置密码。
             </p>
@@ -187,6 +187,7 @@
 import { ref, reactive, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/modules/use-auth-store'
+import { getFirstAccessibleRoute } from '@/router/access'
 
 export default {
   name: 'Login',
@@ -264,7 +265,7 @@ export default {
       loading.value = true
 
       try {
-        const loginResult = await authStore.login({
+        await authStore.login({
           username: loginForm.username,
           password: loginForm.password,
           remember: loginForm.remember,
@@ -275,33 +276,29 @@ export default {
 
         sessionStorage.removeItem('login_redirect')
         
-        let targetRoute = '/single-add'
-        
-        if (savedRedirect) {
-          targetRoute = savedRedirect
-        } else {
-          // 根据权限跳转到第一个有权限的页面
-          const routePriority = [
-            { path: '/single-add', permission: 'dish:view' },
-            { path: '/modify-dish', permission: 'dish:view' },
-            { path: '/review-dish', permission: 'upload:approve' },
-            { path: '/add-canteen', permission: 'canteen:view' },
-            { path: '/user-manage', permission: 'admin:view' },
-            { path: '/news-manage', permission: 'news:view' },
-            { path: '/report-manage', permission: 'report:handle' },
-          ]
-          
-          // 从 loginResult 获取权限
-          const userPermissions = loginResult?.data?.permissions || []
-          
-          for (const route of routePriority) {
-            // 只检查后端返回的权限列表
-            if (userPermissions.includes(route.permission)) {
-              targetRoute = route.path
-              break
+        const fallbackRoute = getFirstAccessibleRoute(authStore)
+        const canAccessSavedRedirect = (redirect) => {
+          if (!redirect) return false
+
+          const resolved = router.resolve(redirect)
+          if (resolved.matched.length === 0 || resolved.path === '/login') return false
+
+          return resolved.matched.every(({ meta }) => {
+            const requiredPermission = meta.requiredPermission
+            const requiredPermissions = meta.requiredPermissions
+
+            if (requiredPermission && !authStore.hasPermission(requiredPermission)) return false
+            if (
+              Array.isArray(requiredPermissions) &&
+              requiredPermissions.length > 0 &&
+              !requiredPermissions.some((permission) => authStore.hasPermission(permission))
+            ) {
+              return false
             }
-          }
+            return true
+          })
         }
+        const targetRoute = canAccessSavedRedirect(savedRedirect) ? savedRedirect : fallbackRoute
         
         // 使用 Vue Router 进行导航，保持 SPA 行为
         router.replace(targetRoute)

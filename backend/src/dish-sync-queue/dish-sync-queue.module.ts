@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
-import { PrismaService } from '@/prisma.service';
 import { DISH_SYNC_QUEUE } from './dish-sync.constants';
 import { DishSyncProcessor } from './dish-sync.processor';
 import { DishSyncService } from './dish-sync.service';
@@ -20,7 +19,7 @@ import { DishSyncService } from './dish-sync.service';
       },
     }),
   ],
-  providers: [DishSyncProcessor, DishSyncService, PrismaService],
+  providers: [DishSyncProcessor, DishSyncService],
   exports: [DishSyncService],
 })
 export class DishSyncQueueModule {}

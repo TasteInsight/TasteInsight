@@ -2,6 +2,8 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import * as bodyParser from 'body-parser';
+import { ConfigService } from '@nestjs/config';
+import { corsPolicy } from './environment';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -10,11 +12,13 @@ async function bootstrap() {
   app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
 
   // 启用 CORS
-  app.enableCors({
-    origin: true,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    credentials: true,
-  });
+  const config = app.get(ConfigService);
+  app.enableCors(
+    corsPolicy({
+      APP_URL: config.get('APP_URL'),
+      CORS_ALLOWED_ORIGINS: config.get('CORS_ALLOWED_ORIGINS'),
+    }),
+  );
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -28,6 +32,8 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(process.env.PORT ?? 3000);
+  const port = config.get<number>('PORT', 3000);
+
+  await app.listen(port);
 }
 bootstrap();

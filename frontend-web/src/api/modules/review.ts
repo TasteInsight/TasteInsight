@@ -6,6 +6,10 @@ import type {
   PendingReview,
   PendingComment,
   Comment,
+  DishUpload,
+  GetPendingParams,
+  ReviewModerationRequest,
+  ReviewRejectionRequest,
 } from '@/types/api'
 
 /**
@@ -34,18 +38,18 @@ export const reviewApi = {
    * @param id 评价 ID
    * @returns 审核结果
    */
-  async approveReview(id: string): Promise<ApiResponse<void>> {
-    return await request.post<ApiResponse<void>>(`/admin/reviews/${id}/approve`)
+  async approveReview(id: string, data: ReviewModerationRequest): Promise<ApiResponse<void>> {
+    return await request.post<ApiResponse<void>>(`/admin/reviews/${id}/approve`, data)
   },
 
   /**
    * 拒绝评价审核
    * @param id 评价 ID
-   * @param reason 拒绝原因
+   * @param data 拒绝原因及评价版本
    * @returns 审核结果
    */
-  async rejectReview(id: string, reason: string): Promise<ApiResponse<void>> {
-    return await request.post<ApiResponse<void>>(`/admin/reviews/${id}/reject`, { reason })
+  async rejectReview(id: string, data: ReviewRejectionRequest): Promise<ApiResponse<void>> {
+    return await request.post<ApiResponse<void>>(`/admin/reviews/${id}/reject`, data)
   },
 
   /**
@@ -103,6 +107,7 @@ export const reviewApi = {
       page?: number
       pageSize?: number
       status?: 'pending' | 'approved' | 'rejected'
+      targetType?: 'review' | 'comment'
     } = {},
   ): Promise<ApiResponse<PaginationResponse<Report>>> {
     return await request.get<ApiResponse<PaginationResponse<Report>>>('/admin/reports', { params })
@@ -127,9 +132,9 @@ export const reviewApi = {
    * @returns 上传菜品审核列表
    */
   async getPendingUploads(
-    params: { page?: number; pageSize?: number; status?: string } = {},
-  ): Promise<ApiResponse<any>> {
-    return await request.get<ApiResponse<any>>('/admin/dishes/uploads', { params })
+    params: GetPendingParams = {},
+  ): Promise<ApiResponse<PaginationResponse<DishUpload>>> {
+    return await request.get<ApiResponse<PaginationResponse<DishUpload>>>('/admin/dishes/uploads', { params })
   },
 
   /**
@@ -137,8 +142,8 @@ export const reviewApi = {
    * @param id 上传菜品 ID
    * @returns 上传菜品审核详情
    */
-  async getPendingUploadById(id: string): Promise<ApiResponse<any>> {
-    return await request.get<ApiResponse<any>>(`/admin/dishes/uploads/${id}`)
+  async getPendingUploadById(id: string): Promise<ApiResponse<DishUpload>> {
+    return await request.get<ApiResponse<DishUpload>>(`/admin/dishes/uploads/${id}`)
   },
 
   /**

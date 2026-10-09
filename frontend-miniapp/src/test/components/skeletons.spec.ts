@@ -48,7 +48,7 @@ describe('Skeleton components', () => {
   });
 
   const simpleComponents = [
-    { comp: AIChatSkeleton, expectClass: 'rounded-2xl' },
+    { comp: AIChatSkeleton, expectClass: 'rounded' },
     { comp: AddDishSkeleton, expectClass: 'rounded-lg' },
     { comp: AllergensSkeleton, expectClass: 'rounded' },
     { comp: CanteenSkeleton, expectClass: 'rounded' },

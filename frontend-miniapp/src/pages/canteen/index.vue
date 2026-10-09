@@ -1,71 +1,99 @@
 <template>
-  <view class="min-h-screen bg-white">
-    <!-- 骨架屏 -->
-    <CanteenSkeleton v-if="isInitialLoading" />
+  <view class="dish-list-page page-content">
+    <CanteenHeader
+      :canteen="canteenInfo"
+      :loading="loading"
+      :error="error"
+      @retry="retryCanteen"
+    />
 
-    <template v-else>
-      <!-- 搜索栏 -->
-      <view class="px-4">
-        <CanteenSearchBar />
+    <view v-if="currentCanteenId" class="dish-list-search">
+      <SearchBar placeholder="搜索这个食堂的菜品" :search-url="searchUrl" />
+    </view>
+
+    <!-- 窗口列表 -->
+    <CanteenWindowList :windows="windows" @click="goToWindow" />
+
+    <view class="px-4">
+      <CanteenFilterBar
+        ref="filterBarRef"
+        :filter="currentFilter"
+        @filter-change="handleFilterChange"
+      />
+    </view>
+
+    <view class="dish-list-heading"><text class="dish-list-title">菜品</text></view>
+    <view class="dish-list-content" :aria-busy="dishesLoading">
+      <view v-if="dishesLoading && dishes.length" class="dish-list-state">正在更新菜品…</view>
+
+      <view v-if="dishesError" class="dish-list-state" role="alert">
+        <text>{{ dishesError }}</text>
+        <button class="dish-list-action" @click="retryDishes">重新加载</button>
       </view>
 
-      <CanteenHeader :canteen="canteenInfo" />
+      <view v-if="dishes.length > 0">
+        <CanteenDishCard
+          v-for="dish in dishes"
+          :key="dish.id"
+          :dish="dish"
+          @click="goToDishDetail"
+        />
 
-      <!-- 窗口列表 -->
-      <CanteenWindowList :windows="windows" @click="goToWindow" />
-
-      <view class="px-4">
-        <CanteenFilterBar @filter-change="handleFilterChange" />
-      </view>
-
-      <view class="px-4">
-        <view v-if="loading" class="text-center py-8 text-gray-500"> 加载中... </view>
-
-        <view v-else-if="error" class="text-center py-8 text-red-500">
-          {{ error }}
+        <!-- 上拉加载更多：底部提示/动画 -->
+        <view class="dish-list-footer">
+          <template v-if="dishesLoadingMore">
+            <view
+              class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"
+            ></view>
+            <text>加载中...</text>
+          </template>
+          <template v-else-if="hasMore && !dishesError && !dishesLoading">
+            <button class="dish-list-action" @click="loadMoreDishes">加载更多</button>
+          </template>
+          <template v-else-if="!hasMore && !dishesError && !dishesLoading">
+            <text>没有更多了</text>
+          </template>
         </view>
-
-        <view v-else-if="dishes.length > 0">
-          <CanteenDishCard
-            v-for="dish in dishes"
-            :key="dish.id"
-            :dish="dish"
-            @click="goToDishDetail"
-          />
-
-          <!-- 上拉加载更多：底部提示/动画 -->
-          <view class="flex items-center justify-center py-4 text-gray-500 text-sm">
-            <template v-if="dishesLoadingMore">
-              <view
-                class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"
-              ></view>
-              <text>加载中...</text>
-            </template>
-            <template v-else-if="hasMore">
-              <text>上拉加载更多</text>
-            </template>
-            <template v-else>
-              <text>没有更多了</text>
-            </template>
-          </view>
-        </view>
-
-        <view v-else class="text-center py-10 text-gray-500"> 暂无菜品信息 </view>
       </view>
-    </template>
+
+      <view
+        v-else-if="dishesInitialized && !dishesLoading && !dishesError && !error"
+        class="dish-list-state"
+      >
+        <text>暂无菜品信息</text>
+        <text class="dish-list-hint">可以调整筛选条件，或查看其他窗口。</text>
+      </view>
+    </view>
+    <!-- #ifdef MP-WEIXIN -->
+    <page-container
+      :show="isFilterOpen"
+      :overlay="false"
+      :duration="0"
+      :disable-scroll="false"
+      data-testid="canteen-filter-back-helper"
+      custom-style="position: fixed; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
+      @leave="closeFilters"
+    />
+    <!-- #endif -->
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import { onLoad, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
+import { computed, ref } from 'vue';
+import {
+  onLoad,
+  onPullDownRefresh,
+  onReachBottom,
+  onBackPress,
+  onHide,
+  onShow,
+} from '@dcloudio/uni-app';
 import { useCanteenData } from './composables/use-canteen-data';
-import CanteenSearchBar from './components/CanteenSearchBar.vue';
+import SearchBar from '@/components/SearchBar.vue';
 import CanteenFilterBar from './components/CanteenFilterBar.vue';
 import CanteenHeader from './components/CanteenHeader.vue';
 import CanteenDishCard from './components/CanteenDishCard.vue';
 import CanteenWindowList from './components/CanteenWindowList.vue';
-import { CanteenSkeleton } from '@/components/skeleton';
 import type { GetDishesRequest } from '@/types/api';
 
 const {
@@ -74,54 +102,70 @@ const {
   error,
   windows,
   dishes,
+  dishesInitialized,
+  dishesLoading,
+  dishesError,
   dishesLoadingMore,
   hasMore,
+  beginOperation,
   init,
   fetchDishes,
   loadMoreDishes,
+  retryDishes,
+  refreshPreferredSort,
 } = useCanteenData();
 
 const currentCanteenId = ref('');
+const searchUrl = computed(
+  () =>
+    `/pages/search/index?canteenId=${encodeURIComponent(currentCanteenId.value)}&scopeName=${encodeURIComponent(canteenInfo.value?.name || '当前食堂')}`
+);
 const currentFilter = ref<GetDishesRequest['filter']>({});
-const isInitialLoading = ref(true);
+const filterBarRef = ref<InstanceType<typeof CanteenFilterBar> | null>(null);
+const isFilterOpen = computed(() => !!filterBarRef.value?.isOpen);
+const closeFilters = () => filterBarRef.value?.closePanel();
+
+onBackPress(() => {
+  if (!isFilterOpen.value) return false;
+  closeFilters();
+  return true;
+});
+onHide(closeFilters);
 
 // 页面加载时获取参数并初始化
 onLoad(async (options: any) => {
   if (options.id) {
+    const isCurrent = beginOperation();
     currentCanteenId.value = options.id;
-    try {
-      await init(options.id);
-    } finally {
-      isInitialLoading.value = false;
-    }
-  } else {
-    isInitialLoading.value = false;
+    await init(options.id, {}, isCurrent);
   }
 });
 
 // 下拉刷新处理
 onPullDownRefresh(async () => {
+  const isCurrent = beginOperation();
   try {
     if (currentCanteenId.value) {
-      await init(currentCanteenId.value);
-      // 如果有筛选条件，重新应用
-      if (Object.keys(currentFilter.value).length > 0) {
-        await fetchDishes(currentCanteenId.value, currentFilter.value);
-      }
+      const refreshed = await init(currentCanteenId.value, currentFilter.value, isCurrent);
+      if (!refreshed) return;
     }
+    if (!isCurrent()) return;
     uni.showToast({
       title: '刷新成功',
       icon: 'success',
       duration: 1500,
     });
   } catch (err) {
+    if (!isCurrent()) return;
     console.error('下拉刷新失败:', err);
     uni.showToast({
       title: '刷新失败',
       icon: 'none',
     });
   } finally {
-    uni.stopPullDownRefresh();
+    if (isCurrent()) {
+      uni.stopPullDownRefresh();
+    }
   }
 });
 
@@ -135,8 +179,15 @@ const handleFilterChange = (filter: GetDishesRequest['filter']) => {
   }
 };
 
+const retryCanteen = () => init(currentCanteenId.value, currentFilter.value);
+onShow(() => {
+  void refreshPreferredSort();
+});
+
 // 触底上拉加载更多
 onReachBottom(async () => {
-  await loadMoreDishes();
+  if (!dishesError.value) await loadMoreDishes();
 });
 </script>
+
+<style scoped src="@/styles/dish-list-page.css"></style>

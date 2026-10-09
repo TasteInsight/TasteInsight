@@ -114,6 +114,20 @@ describe('EventLoggerService', () => {
         }),
       );
     });
+
+    it('does not fail persisted impressions when cache metrics are unavailable', async () => {
+      cacheService.incrementEventCount.mockRejectedValue(
+        new Error('redis unavailable'),
+      );
+
+      await expect(
+        service.logImpressions('user-1', ['dish-1'], {
+          scene: RecommendationScene.HOME,
+          requestId: 'req-1',
+        }),
+      ).resolves.toBeUndefined();
+      expect(prisma.recommendationEvent.createMany).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('logEvent', () => {
@@ -131,6 +145,19 @@ describe('EventLoggerService', () => {
       expect(result).toBe('event-1');
       expect(prisma.recommendationEvent.create).toHaveBeenCalled();
       expect(cacheService.incrementEventCount).toHaveBeenCalled();
+    });
+
+    it('returns the persisted event when cache metrics are unavailable', async () => {
+      cacheService.incrementEventCount.mockRejectedValue(
+        new Error('redis unavailable'),
+      );
+
+      await expect(
+        service.logClick('user-1', 'dish-1', {
+          scene: RecommendationScene.HOME,
+        }),
+      ).resolves.toBe('event-1');
+      expect(prisma.recommendationEvent.create).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -185,6 +212,22 @@ describe('EventLoggerService', () => {
       expect(cacheService.invalidateUserRecommendations).toHaveBeenCalledWith(
         'user-1',
       );
+    });
+
+    it('persists the favorite event when cache invalidation is unavailable', async () => {
+      cacheService.invalidateUserFeatures.mockRejectedValue(
+        new Error('redis unavailable'),
+      );
+      cacheService.invalidateUserRecommendations.mockRejectedValue(
+        new Error('redis unavailable'),
+      );
+
+      await expect(
+        service.logFavorite('user-1', 'dish-1', {
+          scene: RecommendationScene.HOME,
+        }),
+      ).resolves.toBe('event-1');
+      expect(prisma.recommendationEvent.create).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -246,6 +289,64 @@ describe('EventLoggerService', () => {
             extra: expect.objectContaining({ reason: '不喜欢辣' }),
           }),
         }),
+      );
+    });
+  });
+
+  describe('logLike', () => {
+    it('should log positive feedback without treating it as a favorite', async () => {
+      const result = await service.logLike('user-1', 'dish-1', {
+        scene: RecommendationScene.HOME,
+      });
+
+      expect(result).toBe('event-1');
+      expect(prisma.recommendationEvent.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            eventType: RecommendationEventType.LIKE,
+            userId: 'user-1',
+            dishId: 'dish-1',
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('getRequestEventChain', () => {
+    it('scopes the event chain to the authenticated user', async () => {
+      prisma.recommendationEvent.findMany.mockResolvedValue([]);
+
+      await service.getRequestEventChain('req-1', 'user-1');
+
+      expect(prisma.recommendationEvent.findMany).toHaveBeenCalledWith({
+        where: { requestId: 'req-1', userId: 'user-1' },
+        orderBy: { createdAt: 'asc' },
+      });
+    });
+
+    it('preserves zero-valued position and score fields', async () => {
+      const createdAt = new Date('2026-08-12T12:00:00.000Z');
+      prisma.recommendationEvent.findMany.mockResolvedValue([
+        {
+          id: 'event-1',
+          userId: 'user-1',
+          dishId: 'dish-1',
+          eventType: RecommendationEventType.IMPRESSION,
+          scene: RecommendationScene.HOME,
+          requestId: 'req-1',
+          position: 0,
+          score: 0,
+          experimentId: null,
+          groupItemId: null,
+          extra: null,
+          createdAt,
+        },
+      ]);
+
+      const result = await service.getRequestEventChain('req-1', 'user-1');
+
+      expect(result[0]).toEqual(
+        expect.objectContaining({ position: 0, score: 0 }),
       );
     });
   });

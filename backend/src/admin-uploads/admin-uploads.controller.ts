@@ -32,7 +32,6 @@ export class AdminUploadsController {
   }
 
   @Get(':id')
-  @RequirePermissions('upload:approve')
   @HttpCode(HttpStatus.OK)
   async getUploadById(@Param('id') id: string, @Request() req) {
     return this.adminUploadsService.getUploadById(id, req.admin);

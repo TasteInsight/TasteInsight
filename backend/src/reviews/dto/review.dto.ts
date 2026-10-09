@@ -29,7 +29,6 @@ export class RatingDetailsDto {
 }
 
 export class ReviewData {
-  // 用于列表返回，不包含status字段
   id: string;
   dishId: string;
   userId: string;
@@ -38,12 +37,8 @@ export class ReviewData {
   rating: number;
   ratingDetails?: RatingDetailsDto | null;
   content: string;
+  status: string;
   images: string[];
   createdAt: string;
   deletedAt?: string | null;
-}
-
-export class ReviewDetailData extends ReviewData {
-  // 包含status字段，用于创建返回
-  status: string;
 }

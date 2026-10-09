@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { DishSyncService } from '@/dish-sync-queue';
@@ -440,12 +441,33 @@ export class AdminCanteensService {
       throw new ForbiddenException('权限不足');
     }
 
-    const canteen = await this.prisma.canteen.findUnique({ where: { id } });
-    if (!canteen) {
-      throw new NotFoundException('食堂不存在');
-    }
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const canteen = await tx.canteen.findUnique({ where: { id } });
+        if (!canteen) {
+          throw new NotFoundException('食堂不存在');
+        }
 
-    await this.prisma.canteen.delete({ where: { id } });
+        const activeAdmins = await tx.admin.count({
+          where: { canteenId: id, deletedAt: null },
+        });
+        if (activeAdmins > 0) {
+          throw new ConflictException('仍有活跃管理员绑定此食堂，无法删除');
+        }
+
+        // 退休账号及审计记录保留；活跃绑定由 Restrict 外键保护并发写入。
+        await tx.admin.updateMany({
+          where: { canteenId: id, deletedAt: { not: null } },
+          data: { canteenId: null },
+        });
+        await tx.canteen.delete({ where: { id } });
+      });
+    } catch (error) {
+      if (error?.code === 'P2003') {
+        throw new ConflictException('仍有管理员绑定此食堂，无法删除');
+      }
+      throw error;
+    }
 
     return {
       code: 200,

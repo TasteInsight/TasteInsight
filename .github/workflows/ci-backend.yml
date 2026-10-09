@@ -1,20 +1,11 @@
 name: CI - Backend
 
 on:
-  push:
-    branches: [main, dev]
-    paths:
-      - 'backend/**'
-      - '.github/workflows/ci-backend.yml'
-  pull_request:
-    branches: [main, dev]
-    paths:
-      - 'backend/**'
-      - '.github/workflows/ci-backend.yml'
+  workflow_call:
 
 env:
   NODE_VERSION: '22'
-  PNPM_VERSION: '9'
+  PNPM_VERSION: '11.21.0'
   # CI 测试数据库配置
   CI_DB_USER: ci_test_user
   CI_DB_PASSWORD: ci_test_password_12345
@@ -54,10 +45,13 @@ jobs:
         run: npx prisma generate
 
       - name: Run ESLint
-        run: pnpm lint
+        run: pnpm lint:check
 
       - name: Check formatting
-        run: pnpm format --check
+        run: pnpm format:check
+
+      - name: Run unit tests
+        run: pnpm test:unit --runInBand
 
       - name: Build
         run: pnpm build
@@ -179,7 +173,8 @@ jobs:
         run: pnpm test:e2e:cov
         env:
           # Application
-          APP_PORT: 3000
+          NODE_ENV: test
+          PORT: 3000
           APP_URL: http://localhost:3000
           # Database
           DATABASE_URL: ${{ env.CI_DATABASE_URL }}

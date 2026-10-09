@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 describe('api/modules/user.ts', () => {
   const MODULE_PATH = '@/api/modules/user';
 
@@ -22,18 +20,6 @@ describe('api/modules/user.ts', () => {
       method: 'POST',
       data: { code: 'c1' },
     });
-  });
-
-  test('refreshToken posts to /auth/refresh', async () => {
-    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
-    mockReq.mockResolvedValue({ code: 200 });
-    jest.doMock('@/utils/request', () => mockReq);
-
-    const { refreshToken } = require(MODULE_PATH);
-    await refreshToken();
-
-    expect(mockReq).toHaveBeenCalledTimes(1);
-    expect(mockReq.mock.calls[0][0]).toMatchObject({ url: '/auth/refresh', method: 'POST' });
   });
 
   test('profile endpoints GET/PUT and collections', async () => {
@@ -78,10 +64,19 @@ describe('api/modules/user.ts', () => {
     await clearBrowseHistory();
     expect(mockReq.mock.calls[5][0]).toMatchObject({ url: '/user/history', method: 'DELETE' });
 
-    await getMyUploads();
-    expect(mockReq.mock.calls[6][0]).toMatchObject({ url: '/user/uploads', method: 'GET' });
+    await getMyUploads({ page: 2, pageSize: 5 });
+    expect(mockReq.mock.calls[6][0]).toMatchObject({
+      url: '/user/uploads',
+      method: 'GET',
+      data: { page: 2, pageSize: 5 },
+    });
 
-    await getMyReports();
-    expect(mockReq.mock.calls[7][0]).toMatchObject({ url: '/user/reports', method: 'GET' });
+    await getMyReports({ page: 3, pageSize: 10 });
+    expect(mockReq.mock.calls[7][0]).toMatchObject({
+      url: '/user/reports',
+      method: 'GET',
+      data: { page: 3, pageSize: 10 },
+    });
   });
 });
+export {};

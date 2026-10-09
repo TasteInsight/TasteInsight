@@ -2,11 +2,11 @@ import { mount } from '@vue/test-utils';
 import IndexSkeleton from '@/components/skeleton/IndexSkeleton.vue';
 
 describe('IndexSkeleton', () => {
-  it('renders expected number of skeleton blocks', () => {
+  it('matches search, photo-and-name canteens and right-media recommendation rows', () => {
     const wrapper = mount(IndexSkeleton);
 
-    // See template structure in IndexSkeleton.vue
-    const items = wrapper.findAll('.skeleton-item');
-    expect(items.length).toBe(25);
+    expect(wrapper.findAll('.index-skeleton-canteen')).toHaveLength(3);
+    expect(wrapper.findAll('.dish-skeleton-row')).toHaveLength(3);
+    expect(wrapper.findAll('.skeleton-item').some(node => (node.attributes('style') || '').includes('12rem'))).toBe(false);
   });
 });

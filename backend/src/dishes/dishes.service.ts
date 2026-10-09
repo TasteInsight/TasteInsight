@@ -15,14 +15,12 @@ import {
   DishUploadResponseDto,
   FavoriteStatusResponseDto,
 } from './dto/dish-response.dto';
-import { RecommendationService } from '@/recommendation/recommendation.service';
 import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service';
 
 @Injectable()
 export class DishesService {
   constructor(
     private prisma: PrismaService,
-    private recommendationService: RecommendationService,
     @Optional() private embeddingQueueService?: EmbeddingQueueService,
   ) {}
 
@@ -191,6 +189,9 @@ export class DishesService {
         },
       });
     }
+    if (filter.windowId && filter.windowId.length > 0) {
+      andConditions.push({ windowId: { in: filter.windowId } });
+    }
 
     // 辣度筛选
     // 0 表示未设置，应该保留在结果中（不参与筛选）
@@ -333,7 +334,7 @@ export class DishesService {
     const [items, total] = await Promise.all([
       this.prisma.dish.findMany({
         where,
-        orderBy,
+        orderBy: [orderBy, { id: 'asc' }],
         skip,
         take,
         include: {
@@ -514,6 +515,7 @@ export class DishesService {
       window = await this.prisma.window.findUnique({
         where: { id: windowId },
       });
+      if (!window) throw new BadRequestException('指定的窗口不存在');
       // 验证窗口是否属于该食堂
       if (window && window.canteenId !== canteenId) {
         throw new BadRequestException('指定的窗口不属于该食堂');
@@ -564,9 +566,9 @@ export class DishesService {
         oiliness: uploadDishDto.oiliness ?? 0,
         canteenId: canteenId,
         canteenName: canteenName,
-        windowId: windowId,
-        windowNumber: windowNumber,
-        windowName: windowName,
+        windowId: windowId || null,
+        windowNumber: windowNumber || null,
+        windowName: windowName || '',
         availableMealTime: uploadDishDto.availableMealTime,
         availableDates: uploadDishDto.availableDates as any,
         status: 'pending', // 默认为待审核状态

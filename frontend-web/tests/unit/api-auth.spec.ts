@@ -28,8 +28,10 @@ describe('api/authApi', () => {
     postMock.mockResolvedValueOnce({ code: 200 })
 
     const { authApi } = await import('@/api/modules/auth')
-    await authApi.refreshToken()
+    await authApi.refreshToken('refresh-token')
 
-    expect(postMock).toHaveBeenCalledWith('/auth/refresh')
+    expect(postMock).toHaveBeenCalledWith('/auth/refresh', undefined, {
+      headers: { Authorization: 'Bearer refresh-token' },
+    })
   })
 })

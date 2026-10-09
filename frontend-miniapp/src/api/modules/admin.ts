@@ -67,6 +67,7 @@ export const adminGetDishes = (params?: {
   return request<PaginatedData<Dish>>({
     url: '/admin/dishes',
     method: 'GET',
+    data: params,
   });
 };
 
@@ -134,27 +135,35 @@ export const adminGetPendingReviews = (params?: {
   return request<PaginatedData<PendingReviewItem>>({
     url: '/admin/reviews/pending',
     method: 'GET',
+    data: params,
   });
 };
 
 /**
  * 通过评价审核
  */
-export const adminApproveReview = (reviewId: string): Promise<ApiResponse<null>> => {
+export const adminApproveReview = (
+  reviewId: string,
+  data: { expectedUpdatedAt: string }
+): Promise<ApiResponse<null>> => {
   return request<null>({
     url: `/admin/reviews/${reviewId}/approve`,
     method: 'POST',
+    data,
   });
 };
 
 /**
  * 拒绝评价审核
  */
-export const adminRejectReview = (reviewId: string, reason: string): Promise<ApiResponse<null>> => {
+export const adminRejectReview = (
+  reviewId: string,
+  data: { reason: string; expectedUpdatedAt: string }
+): Promise<ApiResponse<null>> => {
   return request<null>({
     url: `/admin/reviews/${reviewId}/reject`,
     method: 'POST',
-    data: { reason },
+    data,
   });
 };
 
@@ -168,6 +177,7 @@ export const adminGetPendingComments = (params?: {
   return request<PaginatedData<PendingCommentItem>>({
     url: '/admin/comments/pending',
     method: 'GET',
+    data: params,
   });
 };
 
@@ -206,6 +216,7 @@ export const adminGetReports = (params?: {
   return request<PaginatedData<Report>>({
     url: '/admin/reports',
     method: 'GET',
+    data: params,
   });
 };
 
@@ -229,10 +240,12 @@ export const adminHandleReport = (
 export const adminGetPendingUploads = (params?: {
   page?: number;
   pageSize?: number;
+  status?: 'pending' | 'approved' | 'rejected';
 }): Promise<ApiResponse<PaginatedData<PendingUploadItem>>> => {
   return request<PaginatedData<PendingUploadItem>>({
-    url: '/admin/dishes/uploads/pending',
+    url: '/admin/dishes/uploads',
     method: 'GET',
+    data: { status: 'pending', ...params },
   });
 };
 
@@ -271,6 +284,7 @@ export const adminGetSubAdmins = (params?: {
   return request<PaginatedData<AdminListItem>>({
     url: '/admin/admins',
     method: 'GET',
+    data: params,
   });
 };
 
@@ -329,6 +343,7 @@ export const adminGetLogs = (params?: {
   return request<PaginatedData<OperationLog>>({
     url: '/admin/logs',
     method: 'GET',
+    data: params,
   });
 };
 
@@ -346,6 +361,7 @@ export const adminGetNews = (params?: {
   return request<PaginatedData<News>>({
     url: '/admin/news',
     method: 'GET',
+    data: params,
   });
 };
 

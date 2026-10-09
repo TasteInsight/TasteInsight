@@ -73,8 +73,6 @@ describe('EmbeddingService', () => {
         const config: Record<string, any> = {
           EXTERNAL_EMBEDDING_SERVICE_ENABLED: 'false',
           EXTERNAL_EMBEDDING_SERVICE_URL: 'http://localhost:5001',
-          EXTERNAL_EMBEDDING_SERVICE_EMBEDDING_DIM: 256,
-          EMBEDDING_SERVICE_EMBEDDING_DIM: 128,
           EMBEDDING_SERVICE_BATCH_SIZE: 50,
           EXTERNAL_EMBEDDING_SERVICE_VERSION: 'v2',
         };
@@ -489,9 +487,7 @@ describe('EmbeddingService', () => {
     });
 
     it('should return cached embeddings', async () => {
-      const cached = new Map([
-        ['d1', { embedding: [0.1], version: 'v1' }],
-      ]);
+      const cached = new Map([['d1', { embedding: [0.1], version: 'v1' }]]);
       cacheService.getDishEmbeddings.mockResolvedValue(cached);
 
       const result = await service.getDishEmbeddings(['d1']);

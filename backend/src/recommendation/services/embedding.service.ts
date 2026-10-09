@@ -46,14 +46,6 @@ export class EmbeddingService implements OnModuleInit {
         'EXTERNAL_EMBEDDING_SERVICE_URL',
         'http://localhost:5001',
       ),
-      externalEmbeddingDim: this.configService.get<number>(
-        'EXTERNAL_EMBEDDING_SERVICE_EMBEDDING_DIM',
-        256,
-      ),
-      embeddingDim: this.configService.get<number>(
-        'EMBEDDING_SERVICE_EMBEDDING_DIM',
-        featureEncoder.getDimension(),
-      ),
       batchSize: this.configService.get<number>(
         'EMBEDDING_SERVICE_BATCH_SIZE',
         50,

@@ -3,6 +3,7 @@ import { UpdatePreferencesTool } from './update-preferences.tool';
 import { UserProfileService } from '@/user-profile/user-profile.service';
 
 const mockUserProfileService = {
+  getUserProfile: jest.fn(),
   updateUserProfile: jest.fn(),
 };
 
@@ -54,177 +55,68 @@ describe('UpdatePreferencesTool', () => {
   });
 
   describe('execute', () => {
-    const mockContext = {
-      userId: 'test-user',
-      sessionId: 'test-session',
-      localTime: '2025-01-01',
-    };
+    const context = { userId: 'test-user', sessionId: 'test-session' };
 
     beforeEach(() => {
-      mockUserProfileService.updateUserProfile.mockResolvedValue({});
-    });
-
-    it('should update tag preferences', async () => {
-      const result = await tool.execute(
-        { tagPreferences: ['清淡', '高蛋白'] },
-        mockContext,
-      );
-
-      expect(mockUserProfileService.updateUserProfile).toHaveBeenCalledWith(
-        'test-user',
-        {
+      mockUserProfileService.getUserProfile.mockResolvedValue({
+        data: {
           preferences: {
-            tagPreferences: ['清淡', '高蛋白'],
-          },
-        },
-      );
-      expect(result).toBe('User preferences updated successfully');
-    });
-
-    it('should update price range', async () => {
-      const result = await tool.execute(
-        { priceRange: { min: 10, max: 30 } },
-        mockContext,
-      );
-
-      expect(mockUserProfileService.updateUserProfile).toHaveBeenCalledWith(
-        'test-user',
-        {
-          preferences: {
-            priceRange: { min: 10, max: 30 },
-          },
-        },
-      );
-      expect(result).toBe('User preferences updated successfully');
-    });
-
-    it('should update taste preferences', async () => {
-      const result = await tool.execute(
-        {
-          tastePreferences: {
-            spicyLevel: 3,
-            sweetness: 2,
-            saltiness: 3,
-            oiliness: 2,
-          },
-        },
-        mockContext,
-      );
-
-      expect(mockUserProfileService.updateUserProfile).toHaveBeenCalledWith(
-        'test-user',
-        {
-          preferences: {
+            tagPreferences: [],
+            priceRange: { min: 0, max: 50 },
             tastePreferences: {
-              spicyLevel: 3,
-              sweetness: 2,
-              saltiness: 3,
-              oiliness: 2,
+              spicyLevel: 0,
+              sweetness: 0,
+              saltiness: 0,
+              oiliness: 0,
             },
+            avoidIngredients: [],
           },
+          allergens: [],
         },
-      );
-      expect(result).toBe('User preferences updated successfully');
+      });
     });
 
-    it('should update avoid ingredients', async () => {
-      const result = await tool.execute(
-        { avoidIngredients: ['香菜', '葱', '蒜'] },
-        mockContext,
-      );
-
-      expect(mockUserProfileService.updateUserProfile).toHaveBeenCalledWith(
-        'test-user',
-        {
-          preferences: {
-            avoidIngredients: ['香菜', '葱', '蒜'],
+    it.each([
+      { tagPreferences: ['清淡', '高蛋白'] },
+      { priceRange: { min: 10, max: 30 } },
+      {
+        tastePreferences: {
+          spicyLevel: 3,
+          sweetness: 2,
+          saltiness: 3,
+          oiliness: 2,
+        },
+      },
+      { avoidIngredients: ['香菜', '葱', '蒜'] },
+      { allergens: ['花生', '海鲜', '牛奶'] },
+    ])(
+      'creates a confirmable draft for %j instead of persisting it',
+      async (params) => {
+        const draft = await tool.execute(params, context);
+        const { allergens, ...preferences } = params as any;
+        expect(draft.confirmAction).toEqual({
+          api: '/user/profile',
+          method: 'PUT',
+          body: {
+            ...(Object.keys(preferences).length ? { preferences } : {}),
+            ...(allergens !== undefined ? { allergens } : {}),
           },
-        },
+        });
+        expect(mockUserProfileService.getUserProfile).toHaveBeenCalledWith(
+          'test-user',
+        );
+        expect(mockUserProfileService.updateUserProfile).not.toHaveBeenCalled();
+      },
+    );
+
+    it('propagates a profile read failure without attempting a write', async () => {
+      mockUserProfileService.getUserProfile.mockRejectedValueOnce(
+        new Error('Profile unavailable'),
       );
-      expect(result).toBe('User preferences updated successfully');
-    });
-
-    it('should update allergens', async () => {
-      const result = await tool.execute(
-        { allergens: ['花生', '海鲜', '牛奶'] },
-        mockContext,
-      );
-
-      expect(mockUserProfileService.updateUserProfile).toHaveBeenCalledWith(
-        'test-user',
-        {
-          allergens: ['花生', '海鲜', '牛奶'],
-        },
-      );
-      expect(result).toBe('User preferences updated successfully');
-    });
-
-    it('should update multiple preferences at once', async () => {
-      const result = await tool.execute(
-        {
-          tagPreferences: ['清淡'],
-          priceRange: { min: 15, max: 25 },
-          tastePreferences: { spicyLevel: 1, sweetness: 2 },
-          avoidIngredients: ['辣椒'],
-          allergens: ['花生'],
-        },
-        mockContext,
-      );
-
-      expect(mockUserProfileService.updateUserProfile).toHaveBeenCalledWith(
-        'test-user',
-        {
-          preferences: {
-            tagPreferences: ['清淡'],
-            priceRange: { min: 15, max: 25 },
-            tastePreferences: { spicyLevel: 1, sweetness: 2 },
-            avoidIngredients: ['辣椒'],
-          },
-          allergens: ['花生'],
-        },
-      );
-      expect(result).toBe('User preferences updated successfully');
-    });
-
-    it('should handle empty params', async () => {
-      const result = await tool.execute({}, mockContext);
-
-      expect(mockUserProfileService.updateUserProfile).toHaveBeenCalledWith(
-        'test-user',
-        {},
-      );
-      expect(result).toBe('User preferences updated successfully');
-    });
-
-    it('should handle only allergens update', async () => {
-      const result = await tool.execute({ allergens: ['蛋类'] }, mockContext);
-
-      expect(mockUserProfileService.updateUserProfile).toHaveBeenCalledWith(
-        'test-user',
-        {
-          allergens: ['蛋类'],
-        },
-      );
-      expect(result).toBe('User preferences updated successfully');
-    });
-
-    it('should handle partial taste preferences', async () => {
-      const result = await tool.execute(
-        {
-          tastePreferences: { spicyLevel: 0 },
-        },
-        mockContext,
-      );
-
-      expect(mockUserProfileService.updateUserProfile).toHaveBeenCalledWith(
-        'test-user',
-        {
-          preferences: {
-            tastePreferences: { spicyLevel: 0 },
-          },
-        },
-      );
-      expect(result).toBe('User preferences updated successfully');
+      await expect(
+        tool.execute({ allergens: ['花生'] }, context),
+      ).rejects.toThrow('Profile unavailable');
+      expect(mockUserProfileService.updateUserProfile).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { RecommendationController } from './recommendation.controller';
 import { RecommendationService } from './recommendation.service';
-import { PrismaService } from '@/prisma.service';
 import { RecommendationCacheService } from './services/cache.service';
 import { EventLoggerService } from './services/event-logger.service';
 import { ExperimentService } from './services/experiment.service';
@@ -15,7 +14,6 @@ import { ConfigModule } from '@nestjs/config';
   imports: [JwtModule.register({}), ConfigModule],
   controllers: [RecommendationController],
   providers: [
-    PrismaService,
     RecommendationCacheService,
     EventLoggerService,
     ExperimentService,

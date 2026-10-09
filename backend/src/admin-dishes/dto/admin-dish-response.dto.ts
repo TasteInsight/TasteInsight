@@ -35,7 +35,8 @@ export class DishReviewItemData {
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date | null;
-  user: UserBasicInfo;
+  userNickname: string;
+  userAvatar: string | null;
   commentCount: number;
 }
 
@@ -43,6 +44,7 @@ export class DishReviewItemData {
 export class DishReviewListData {
   items: DishReviewItemData[];
   meta: PaginationMeta;
+  rating: { average: number; total: number; detail: Record<string, number> };
 }
 
 // 菜品评价列表响应

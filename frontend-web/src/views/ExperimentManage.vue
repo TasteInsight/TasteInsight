@@ -15,7 +15,7 @@
             @click="!authStore.hasPermission('experiment:create') ? null : createNewExperiment()"
             :title="!authStore.hasPermission('experiment:create') ? '无权限创建' : '创建新实验'"
           >
-            <span class="iconify mr-1" data-icon="carbon:add"></span>
+            <AppIcon class="iconify mr-1" icon="carbon:add"></AppIcon>
             新建实验
           </button>
         </div>
@@ -23,7 +23,7 @@
         <!-- 搜索栏 -->
         <div class="mb-6">
           <div class="relative">
-            <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" data-icon="carbon:search"></span>
+            <AppIcon class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" icon="carbon:search"></AppIcon>
             <input
               type="text"
               v-model="searchQuery"
@@ -38,7 +38,7 @@
               type="button"
               title="清除搜索"
             >
-              <span class="iconify" data-icon="carbon:close"></span>
+              <AppIcon class="iconify" icon="carbon:close"></AppIcon>
             </button>
           </div>
           <p v-if="searchQuery" class="mt-2 text-sm text-gray-500">
@@ -48,7 +48,7 @@
 
         <!-- 实验列表表格 -->
         <div v-if="loading" class="text-center py-12">
-          <span class="iconify text-4xl text-gray-300 animate-spin" data-icon="carbon:circle-dash"></span>
+          <AppIcon class="iconify text-4xl text-gray-300 animate-spin" icon="carbon:circle-dash"></AppIcon>
           <p class="mt-4 text-gray-500">加载中...</p>
         </div>
 
@@ -100,7 +100,7 @@
                       @click.stop="viewExperiment(experiment)"
                       title="查看详情"
                     >
-                      <span class="iconify" data-icon="carbon:view"></span>
+                      <AppIcon class="iconify" icon="carbon:view"></AppIcon>
                     </button>
                     <button
                       v-if="authStore.hasPermission('experiment:edit')"
@@ -108,7 +108,7 @@
                       @click.stop="editExperiment(experiment)"
                       title="编辑"
                     >
-                      <span class="iconify" data-icon="carbon:edit"></span>
+                      <AppIcon class="iconify" icon="carbon:edit"></AppIcon>
                     </button>
                     <button
                       v-if="authStore.hasPermission('experiment:delete')"
@@ -116,7 +116,7 @@
                       @click.stop="deleteExperiment(experiment)"
                       title="删除"
                     >
-                      <span class="iconify" data-icon="carbon:trash-can"></span>
+                      <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
                     </button>
                   </div>
                 </td>
@@ -127,10 +127,10 @@
 
         <!-- 空状态 -->
         <div v-if="filteredExperiments.length === 0 && !loading" class="text-center py-12">
-          <span
+          <AppIcon
             class="iconify text-6xl text-gray-300 mx-auto"
-            data-icon="carbon:chemistry"
-          ></span>
+            icon="carbon:chemistry"
+          ></AppIcon>
           <p class="mt-4 text-gray-500">暂无实验</p>
           <button
             v-if="authStore.hasPermission('experiment:create')"
@@ -159,7 +159,7 @@
         </div>
 
         <div v-if="loading" class="text-center py-12">
-          <span class="iconify text-4xl text-gray-300 animate-spin" data-icon="carbon:circle-dash"></span>
+          <AppIcon class="iconify text-4xl text-gray-300 animate-spin" icon="carbon:circle-dash"></AppIcon>
           <p class="mt-4 text-gray-500">加载中...</p>
         </div>
 
@@ -167,7 +167,7 @@
           <!-- 基本信息 -->
           <div class="border border-gray-200 rounded-lg p-6">
             <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <span class="iconify text-tsinghua-purple" data-icon="carbon:information"></span>
+              <AppIcon class="iconify text-tsinghua-purple" icon="carbon:information"></AppIcon>
               基本信息
             </h3>
             <div class="grid grid-cols-2 gap-4">
@@ -269,7 +269,7 @@
           <div class="border border-gray-200 rounded-lg p-6">
             <div class="flex justify-between items-center mb-4">
               <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                <span class="iconify text-tsinghua-purple" data-icon="carbon:group"></span>
+                <AppIcon class="iconify text-tsinghua-purple" icon="carbon:group"></AppIcon>
                 实验分组
               </h3>
             </div>
@@ -296,7 +296,7 @@
                       @click.stop="editGroup(group, index)"
                       title="编辑分组"
                     >
-                      <span class="iconify" data-icon="carbon:edit"></span>
+                      <AppIcon class="iconify" icon="carbon:edit"></AppIcon>
                     </button>
                     <button
                       v-if="authStore.hasPermission('experiment:edit')"
@@ -304,9 +304,9 @@
                       @click.stop="deleteGroup(index)"
                       title="删除分组"
                     >
-                      <span class="iconify" data-icon="carbon:trash-can"></span>
+                      <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
                     </button>
-                    <span class="iconify text-gray-400" data-icon="carbon:chevron-right"></span>
+                    <AppIcon class="iconify text-gray-400" icon="carbon:chevron-right"></AppIcon>
                   </div>
                 </div>
               </div>
@@ -338,7 +338,7 @@
           <!-- 分组基本信息 -->
           <div class="border border-gray-200 rounded-lg p-6">
             <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <span class="iconify text-tsinghua-purple" data-icon="carbon:information"></span>
+              <AppIcon class="iconify text-tsinghua-purple" icon="carbon:information"></AppIcon>
               分组信息
             </h3>
             <div class="grid grid-cols-2 gap-4">
@@ -356,7 +356,7 @@
           <!-- 权重配置 -->
           <div class="border border-gray-200 rounded-lg p-6">
             <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <span class="iconify text-tsinghua-purple" data-icon="carbon:weight"></span>
+              <AppIcon class="iconify text-tsinghua-purple" icon="carbon:weight"></AppIcon>
               权重配置 (Weights)
             </h3>
             <div v-if="currentGroup.config?.weights" class="space-y-3">
@@ -377,7 +377,7 @@
           <!-- 召回配额配置 -->
           <div class="border border-gray-200 rounded-lg p-6">
             <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              <span class="iconify text-tsinghua-purple" data-icon="carbon:chart-line"></span>
+              <AppIcon class="iconify text-tsinghua-purple" icon="carbon:chart-line"></AppIcon>
               召回配额配置 (Recall Quota)
             </h3>
             <div v-if="currentGroup.config?.recallQuota" class="space-y-3">
@@ -510,7 +510,7 @@
                   @click="distributeGroupRatiosEvenly"
                   title="将所有分组占比均分"
                 >
-                  <span class="iconify mr-1" data-icon="carbon:distribute-horizontal-center"></span>
+                  <AppIcon class="iconify mr-1" icon="carbon:distribute-horizontal-center"></AppIcon>
                   均分占比
                 </button>
                 <button
@@ -518,7 +518,7 @@
                   class="px-4 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition"
                   @click="addGroup"
                 >
-                  <span class="iconify mr-1" data-icon="carbon:add"></span>
+                  <AppIcon class="iconify mr-1" icon="carbon:add"></AppIcon>
                   添加分组
                 </button>
               </div>
@@ -536,7 +536,7 @@
                     class="text-red-500 hover:text-red-700"
                     @click="removeGroup(index)"
                   >
-                    <span class="iconify" data-icon="carbon:trash-can"></span>
+                    <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
                   </button>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
@@ -591,7 +591,7 @@
               class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
               :disabled="isSubmitting"
             >
-              <span class="iconify mr-1" data-icon="carbon:save"></span>
+              <AppIcon class="iconify mr-1" icon="carbon:save"></AppIcon>
               {{ isSubmitting ? '提交中...' : editingExperiment ? '保存修改' : '创建实验' }}
             </button>
             <button
@@ -621,7 +621,7 @@
                 class="p-2 hover:bg-gray-100 rounded-full"
                 @click="closeGroupConfigModal"
               >
-                <span class="iconify" data-icon="carbon:close"></span>
+                <AppIcon class="iconify" icon="carbon:close"></AppIcon>
               </button>
             </div>
           </div>
@@ -629,7 +629,7 @@
             <!-- 权重配置 -->
             <div>
               <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <span class="iconify text-tsinghua-purple" data-icon="carbon:weight"></span>
+                <AppIcon class="iconify text-tsinghua-purple" icon="carbon:weight"></AppIcon>
                 权重配置 (Weights)
               </h4>
               <div class="grid grid-cols-2 gap-4">
@@ -650,7 +650,7 @@
             <!-- 召回配额配置 -->
             <div>
               <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <span class="iconify text-tsinghua-purple" data-icon="carbon:chart-line"></span>
+                <AppIcon class="iconify text-tsinghua-purple" icon="carbon:chart-line"></AppIcon>
                 召回配额配置 (Recall Quota)
               </h4>
               <div class="grid grid-cols-2 gap-4">

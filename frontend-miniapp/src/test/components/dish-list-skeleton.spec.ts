@@ -2,13 +2,12 @@ import { mount } from '@vue/test-utils';
 import DishListSkeleton from '@/components/skeleton/DishListSkeleton.vue';
 
 describe('DishListSkeleton', () => {
-  it('renders expected number of skeleton blocks', () => {
+  it('keeps loading rows flat with text left and media right, without a duplicate header', () => {
     const wrapper = mount(DishListSkeleton);
 
-    // Header: 2 SkeletonBase
-    // List: 5 rows * 5 SkeletonBase each = 25
-    // Total = 27
-    const items = wrapper.findAll('.skeleton-item');
-    expect(items.length).toBe(27);
+    const rows=wrapper.findAll('.dish-skeleton-row');
+    expect(rows).toHaveLength(3);
+    rows.forEach(row=>expect(row.element.lastElementChild?.classList.contains('dish-skeleton-media')).toBe(true));
+    expect(wrapper.find('.dish-list-heading').exists()).toBe(false);
   });
 });

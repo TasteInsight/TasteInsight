@@ -24,7 +24,7 @@
                 <option value="rejected">已拒绝</option>
               </select>
               <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
-                <span class="iconify" data-icon="carbon:chevron-down"></span>
+                <AppIcon class="iconify" icon="carbon:chevron-down"></AppIcon>
               </span>
             </div>
           </div>
@@ -42,7 +42,7 @@
                 <option value="comment">评论</option>
               </select>
               <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
-                <span class="iconify" data-icon="carbon:chevron-down"></span>
+                <AppIcon class="iconify" icon="carbon:chevron-down"></AppIcon>
               </span>
             </div>
           </div>
@@ -53,7 +53,7 @@
               @click="statusFilter = ''; targetTypeFilter = ''; handleFilterChange()"
               class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-gray-200/50 transition-colors"
             >
-              <span class="iconify" data-icon="carbon:reset"></span>
+              <AppIcon class="iconify" icon="carbon:reset"></AppIcon>
               重置筛选
             </button>
           </div>
@@ -75,10 +75,10 @@
           <tbody class="divide-y divide-gray-200">
             <tr v-if="isLoading">
               <td colspan="5" class="py-8 text-center text-gray-500">
-                <span
+                <AppIcon
                   class="iconify inline-block text-2xl animate-spin"
-                  data-icon="mdi:loading"
-                ></span>
+                  icon="mdi:loading"
+                ></AppIcon>
                 <span class="ml-2">加载中...</span>
               </td>
             </tr>
@@ -111,7 +111,7 @@
                     v-if="report.targetType === 'review' && report.targetContent?.images && report.targetContent.images.length > 0"
                     class="ml-2 inline-flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 rounded text-xs text-gray-600"
                   >
-                    <span class="iconify inline-block text-sm" data-icon="carbon:image"></span>
+                    <AppIcon class="iconify inline-block text-sm" icon="carbon:image"></AppIcon>
                     <span>{{ report.targetContent.images.length }} 张</span>
                   </div>
                 </div>
@@ -134,7 +134,7 @@
                   class="px-4 py-1 bg-tsinghua-purple text-white rounded text-sm hover:bg-tsinghua-dark transition duration-200 flex items-center justify-center mx-auto"
                   @click="openDetailDialog(report)"
                 >
-                  <span class="iconify inline-block mr-1" data-icon="carbon:view" style="vertical-align: middle;"></span>
+                  <AppIcon class="iconify inline-block mr-1" icon="carbon:view" style="vertical-align: middle;"></AppIcon>
                   详情
                 </button>
               </td>
@@ -153,14 +153,14 @@
           <!-- 对话框头部 -->
           <div class="px-8 py-5 border-b border-gray-200 bg-white flex items-center justify-between">
             <h3 class="text-xl font-semibold text-gray-900 flex items-center">
-              <span class="iconify inline-block mr-3 text-tsinghua-purple" data-icon="carbon:warning" style="font-size: 24px;"></span>
+              <AppIcon class="iconify inline-block mr-3 text-tsinghua-purple" icon="carbon:warning" style="font-size: 24px;"></AppIcon>
               举报详情
             </h3>
             <button
               class="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg p-1.5 transition"
               @click="closeDetailDialog"
             >
-              <span class="iconify text-xl" data-icon="carbon:close"></span>
+              <AppIcon class="iconify text-xl" icon="carbon:close"></AppIcon>
             </button>
           </div>
 
@@ -265,13 +265,13 @@
                           class="w-full h-full object-cover"
                         />
                         <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition flex items-center justify-center">
-                          <span class="iconify text-white text-2xl opacity-0 group-hover:opacity-100 transition" data-icon="carbon:zoom-in"></span>
+                          <AppIcon class="iconify text-white text-2xl opacity-0 group-hover:opacity-100 transition" icon="carbon:zoom-in"></AppIcon>
                         </div>
                       </div>
                     </div>
                   </div>
                   <div v-if="selectedReport.targetContent.isDeleted" class="mt-3 flex items-center text-xs text-red-600">
-                    <span class="iconify inline-block mr-1.5" data-icon="carbon:warning"></span>
+                    <AppIcon class="iconify inline-block mr-1.5" icon="carbon:warning"></AppIcon>
                     内容已被删除
                   </div>
                 </div>
@@ -292,7 +292,7 @@
                 :disabled="!authStore.hasPermission('review:delete')"
                 :title="!authStore.hasPermission('review:delete') ? '无权限删除评价' : '删除被举报的评价'"
               >
-                <span class="iconify inline-block mr-1.5" data-icon="carbon:trash-can" style="font-size: 16px;"></span>
+                <AppIcon class="iconify inline-block mr-1.5" icon="carbon:trash-can" style="font-size: 16px;"></AppIcon>
                 删除评价
               </button>
               <button
@@ -302,7 +302,7 @@
                 :disabled="!authStore.hasPermission('review:delete')"
                 :title="!authStore.hasPermission('review:delete') ? '无权限删除评论' : '删除被举报的评论'"
               >
-                <span class="iconify inline-block mr-1.5" data-icon="carbon:trash-can" style="font-size: 16px;"></span>
+                <AppIcon class="iconify inline-block mr-1.5" icon="carbon:trash-can" style="font-size: 16px;"></AppIcon>
                 删除评论
               </button>
               <button
@@ -311,12 +311,12 @@
                 :disabled="!authStore.hasPermission('report:handle')"
                 :title="!authStore.hasPermission('report:handle') ? '无权限处理举报' : '拒绝举报'"
               >
-                <span class="iconify inline-block mr-1.5" data-icon="carbon:close" style="font-size: 16px;"></span>
+                <AppIcon class="iconify inline-block mr-1.5" icon="carbon:close" style="font-size: 16px;"></AppIcon>
                 拒绝举报
               </button>
             </div>
             <div v-else class="text-sm text-gray-500 text-center py-2">
-              <span class="iconify inline-block mr-1" data-icon="carbon:checkmark-filled" style="color: #10b981;"></span>
+              <AppIcon class="iconify inline-block mr-1" icon="carbon:checkmark-filled" style="color: #10b981;"></AppIcon>
               该举报已处理
             </div>
           </div>
@@ -347,7 +347,7 @@
           class="absolute top-4 right-4 z-10 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition"
           @click="closeImagePreview"
         >
-          <span class="iconify text-2xl" data-icon="carbon:close"></span>
+          <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
         </button>
         
         <!-- 图片 -->
@@ -366,7 +366,7 @@
           @click.stop="previousImage"
           :disabled="imagePreview.currentIndex === 0"
         >
-          <span class="iconify text-2xl" data-icon="carbon:chevron-left"></span>
+          <AppIcon class="iconify text-2xl" icon="carbon:chevron-left"></AppIcon>
         </button>
         <button
           v-if="imagePreview.images.length > 1"
@@ -376,7 +376,7 @@
           @click.stop="nextImage"
           :disabled="imagePreview.currentIndex === imagePreview.images.length - 1"
         >
-          <span class="iconify text-2xl" data-icon="carbon:chevron-right"></span>
+          <AppIcon class="iconify text-2xl" icon="carbon:chevron-right"></AppIcon>
         </button>
         
         <!-- 图片计数 -->
@@ -481,19 +481,15 @@ export default defineComponent({
         if (statusFilter.value) {
           params.status = statusFilter.value
         }
+        if (targetTypeFilter.value) {
+          params.targetType = targetTypeFilter.value
+        }
 
         const response = await reviewApi.getReports(params)
 
         if (response.code === 200 && response.data) {
-          let items = response.data.items || []
-          
-          // 客户端筛选目标类型
-          if (targetTypeFilter.value) {
-            items = items.filter((item: any) => item.targetType === targetTypeFilter.value)
-          }
-
-          reports.value = items
-          totalReports.value = items.length
+          reports.value = response.data.items || []
+          totalReports.value = response.data.meta?.total ?? reports.value.length
         } else {
           reports.value = []
           totalReports.value = 0

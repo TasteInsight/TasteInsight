@@ -7,6 +7,8 @@ import {
   Min,
   Max,
   IsEnum,
+  IsDefined,
+  IsObject,
   ValidateNested,
   IsNumber,
   ArrayMinSize,
@@ -85,6 +87,11 @@ export class FilterDto {
   @IsArray()
   @IsString({ each: true })
   canteenId?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  windowId?: string[];
 
   // 口味相关筛选
   @IsOptional()
@@ -171,18 +178,26 @@ export class PaginationDto {
 
 // 主请求DTO
 export class GetDishesDto {
+  @IsDefined()
+  @IsObject()
   @ValidateNested()
   @Type(() => FilterDto)
   filter: FilterDto;
 
+  @IsDefined()
+  @IsObject()
   @ValidateNested()
   @Type(() => SearchDto)
   search: SearchDto;
 
+  @IsDefined()
+  @IsObject()
   @ValidateNested()
   @Type(() => SortDto)
   sort: SortDto;
 
+  @IsDefined()
+  @IsObject()
   @ValidateNested()
   @Type(() => PaginationDto)
   pagination: PaginationDto;

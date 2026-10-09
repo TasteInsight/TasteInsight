@@ -15,7 +15,7 @@
               @click="handleClose(false)"
               class="text-gray-400 hover:text-gray-500 transition-colors"
             >
-              <span class="iconify text-xl" data-icon="carbon:close"></span>
+              <AppIcon class="iconify text-xl" icon="carbon:close"></AppIcon>
             </button>
           </div>
 
@@ -41,11 +41,11 @@
               ]"
               :disabled="(button as ButtonConfig).loading"
             >
-              <span
+              <AppIcon
                 v-if="(button as ButtonConfig).loading"
                 class="iconify animate-spin mr-2"
-                data-icon="mdi:loading"
-              ></span>
+                icon="mdi:loading"
+              ></AppIcon>
               {{ (button as ButtonConfig).text }}
             </button>
           </div>

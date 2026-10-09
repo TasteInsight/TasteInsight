@@ -27,7 +27,7 @@ describe('AdminDishesController (e2e)', () => {
     app = moduleFixture.createNestApplication();
     prisma = app.get<PrismaService>(PrismaService);
     app.useGlobalPipes(new ValidationPipe({ transform: true }));
-    await app.init();
+    await app.listen(0, '127.0.0.1');
 
     // 获取超级管理员token
     const superAdminLogin = await request(app.getHttpServer())
@@ -1041,8 +1041,7 @@ describe('AdminDishesController (e2e)', () => {
         (r: any) => r.id === testReviewId,
       );
       expect(found).toBeDefined();
-      expect(found.user).toBeDefined();
-      expect(found.user.nickname).toBeDefined();
+      expect(found.userNickname).toBeDefined();
       expect(found.ratingDetails).toBeDefined();
       expect(found.ratingDetails.spicyLevel).toBe(3);
       expect(found.commentCount).toBeDefined();

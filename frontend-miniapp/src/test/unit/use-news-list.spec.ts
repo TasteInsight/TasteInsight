@@ -141,7 +141,7 @@ describe('useNewsList', () => {
     await new Promise(process.nextTick);
 
     expect(list.value).toEqual([]);
-    expect(finished.value).toBe(true);
+    expect(finished.value).toBe(false);
     expect(loading.value).toBe(false);
     expect(consoleSpy).toHaveBeenCalledWith('API请求错误:', expect.any(Error));
 
@@ -159,9 +159,34 @@ describe('useNewsList', () => {
     await new Promise(process.nextTick);
 
     expect(list.value).toEqual([]);
-    expect(finished.value).toBe(true);
+    expect(finished.value).toBe(false);
     expect(consoleSpy).toHaveBeenCalledWith('获取新闻列表失败:', 'Server Error');
 
     consoleSpy.mockRestore();
+  });
+
+  it('preserves loaded content and retries the same page after an append failure', async () => {
+    (getNewsList as jest.Mock).mockResolvedValueOnce({code:200,data:{items:mockNewsItems,meta:{page:1,pageSize:10,total:20,totalPages:2}}});
+    const news=useNewsList();
+    await new Promise(process.nextTick);
+    (getNewsList as jest.Mock).mockRejectedValueOnce(new Error('offline'));
+    expect(await news.loadMore()).toBe(false);
+    expect(news.list.value).toEqual(mockNewsItems);
+    expect(news.meta.page).toBe(2);
+    expect(news.finished.value).toBe(false);
+    (getNewsList as jest.Mock).mockResolvedValueOnce({code:200,data:{items:[],meta:{page:2,pageSize:10,total:20,totalPages:2}}});
+    expect(await news.retry()).toBe(true);
+    expect(getNewsList).toHaveBeenLastCalledWith({page:2,pageSize:10});
+  });
+
+  it('retains existing content and pagination on a failed refresh', async () => {
+    (getNewsList as jest.Mock).mockResolvedValueOnce({code:200,data:{items:mockNewsItems,meta:{page:1,pageSize:10,total:2,totalPages:1}}});
+    const news=useNewsList();
+    await new Promise(process.nextTick);
+    (getNewsList as jest.Mock).mockRejectedValueOnce(new Error('offline'));
+    expect(await news.refresh()).toBe(false);
+    expect(news.list.value).toEqual(mockNewsItems);
+    expect(news.finished.value).toBe(true);
+    expect(news.meta.page).toBe(2);
   });
 });

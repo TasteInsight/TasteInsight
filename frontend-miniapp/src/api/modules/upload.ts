@@ -1,5 +1,4 @@
 // @/api/modules/upload.ts
-import request from '@/utils/request';
 import type { ImageUploadData } from '@/types/api';
 import config from '@/config';
 import { useUserStore } from '@/store/modules/use-user-store';
@@ -10,10 +9,17 @@ import { USE_MOCK } from '@/mock/mock-adapter';
  * 注意：这个函数需要特殊处理，因为是 multipart/form-data
  */
 export const uploadImage = (filePath: string): Promise<ImageUploadData> => {
+  const userStore = useUserStore();
+  const sessionVersion = userStore.sessionVersion;
+  const accessToken = userStore.token;
   if (USE_MOCK) {
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
       console.log('[Mock] Uploading image:', filePath);
       setTimeout(() => {
+        if (userStore.sessionVersion !== sessionVersion) {
+          reject(new Error('登录会话已变更'));
+          return;
+        }
         resolve({
           url: filePath, // Mock模式下直接返回本地路径
           filename: 'mock_image_' + Date.now() + '.jpg',
@@ -28,10 +34,14 @@ export const uploadImage = (filePath: string): Promise<ImageUploadData> => {
       filePath: filePath,
       name: 'file',
       header: {
-        Authorization: `Bearer ${useUserStore().token}`,
+        Authorization: `Bearer ${accessToken}`,
       },
       success: res => {
-        console.log('Upload response:', res); // 添加调试日志
+        if (userStore.sessionVersion !== sessionVersion) {
+          reject(new Error('登录会话已变更'));
+          return;
+        }
+        console.log('Upload response status:', res.statusCode);
         if (res.statusCode === 200 || res.statusCode === 201) {
           try {
             if (!res.data) {
@@ -45,7 +55,7 @@ export const uploadImage = (filePath: string): Promise<ImageUploadData> => {
               reject(new Error(data.message || '上传失败'));
             }
           } catch (parseError) {
-            console.error('解析上传响应失败:', parseError, '原始响应:', res.data);
+            console.error('解析上传响应失败:', parseError);
             reject(new Error('解析服务器响应失败'));
           }
         } else {
@@ -53,7 +63,7 @@ export const uploadImage = (filePath: string): Promise<ImageUploadData> => {
         }
       },
       fail: err => {
-        reject(err);
+        reject(userStore.sessionVersion === sessionVersion ? err : new Error('登录会话已变更'));
       },
     });
   });

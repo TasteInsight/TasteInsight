@@ -1,7 +1,7 @@
 <template>
   <div class="p-6" :class="{ 'border-b border-gray-200': showBorder }">
     <h2 class="text-2xl font-semibold text-gray-800 mb-1 flex items-center space-x-2">
-      <span class="iconify text-tsinghua-purple" :data-icon="headerIcon"></span>
+      <AppIcon class="iconify text-tsinghua-purple" :icon="headerIcon"></AppIcon>
       <span>{{ title }}</span>
     </h2>
     <p class="text-gray-500">{{ description }}</p>

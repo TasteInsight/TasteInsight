@@ -155,6 +155,14 @@ export interface Dish {
   updatedAt: string
 }
 
+/** 待审核菜品上传；id 与正式菜品 id 属于不同生命周期。 */
+export interface DishUpload extends Omit<Dish, 'status' | 'parentDishId' | 'subDishId' | 'averageRating' | 'reviewCount'> {
+  status: 'pending' | 'approved' | 'rejected'
+  parentDishId?: string | null
+  parentUploadId?: string | null
+  approvedDishId?: string | null
+}
+
 /**
  * 创建菜品请求
  */
@@ -165,6 +173,7 @@ export interface DishCreateRequest {
   description?: string
   images?: string[]
   parentDishId?: string
+  parentUploadId?: string
   subDishId?: string[]
   ingredients?: string[]
   allergens?: string[]
@@ -173,6 +182,7 @@ export interface DishCreateRequest {
   saltiness?: number
   oiliness?: number
   canteenId?: string
+  windowId?: string
   canteenName: string
   windowNumber?: string
   windowName: string
@@ -190,7 +200,7 @@ export interface DishUpdateRequest {
   price?: number
   description?: string
   images?: string[]
-  parentDishId?: string
+  parentDishId?: string | null
   subDishId?: string[]
   ingredients?: string[]
   allergens?: string[]
@@ -199,6 +209,7 @@ export interface DishUpdateRequest {
   saltiness?: number
   oiliness?: number
   canteenId?: string
+  windowId?: string
   canteenName?: string
   windowNumber?: string
   windowName?: string
@@ -287,6 +298,7 @@ export interface BatchConfirmResponse {
  * 楼层信息
  */
 export interface Floor {
+  id?: string
   level: string
   name?: string
 }
@@ -355,7 +367,7 @@ export interface CanteenCreateRequest {
   description?: string
   images?: string[]
   openingHours?: FloorOpeningHours[]
-  floors: Floor[]
+  floors: Omit<Floor, 'id'>[]
 }
 
 /**
@@ -376,7 +388,7 @@ export interface CanteenUpdateRequest {
 export interface WindowCreateRequest {
   name: string
   number?: string
-  floor?: Floor
+  floor?: Omit<Floor, 'id'>
   canteenId: string
   position?: string
   description?: string
@@ -389,7 +401,7 @@ export interface WindowCreateRequest {
 export interface WindowUpdateRequest {
   name?: string
   number?: string
-  floor?: Floor
+  floor?: Omit<Floor, 'id'>
   position?: string
   description?: string
   tags?: string[]
@@ -453,17 +465,17 @@ export interface Review {
   dishId: string
   userId: string
   userNickname?: string
-  userAvatar?: string
+  userAvatar?: string | null
   rating: number
-  content: string
+  content: string | null
   images?: string[]
   status: 'pending' | 'approved' | 'rejected'
   createdAt: string
   ratingDetails?: {
-    spicyLevel?: number
-    sweetness?: number
-    saltiness?: number
-    oiliness?: number
+    spicyLevel?: number | null
+    sweetness?: number | null
+    saltiness?: number | null
+    oiliness?: number | null
   } | null
   rejectReason?: string | null
   updatedAt?: string
@@ -474,7 +486,16 @@ export interface Review {
  */
 export interface PendingReview extends Review {
   dishName: string
-  dishImage?: string
+  dishImage?: string | null
+  updatedAt: string
+}
+
+export interface ReviewModerationRequest {
+  expectedUpdatedAt: string
+}
+
+export interface ReviewRejectionRequest extends ReviewModerationRequest {
+  reason: string
 }
 
 /**
@@ -527,7 +548,7 @@ export interface Comment {
   reviewId: string
   userId: string
   userNickname?: string
-  userAvatar?: string
+  userAvatar?: string | null
   content: string
   status: 'pending' | 'approved' | 'rejected'
   parentComment?: ParentComment | null
@@ -541,7 +562,7 @@ export interface Comment {
  * 待审核评论（包含关联信息）
  */
 export interface PendingComment extends Comment {
-  reviewContent: string
+  reviewContent: string | null
   dishName: string
 }
 
@@ -590,6 +611,8 @@ export interface ReportHandleRequest {
  */
 export interface GetPendingParams extends PaginationParams {
   status?: 'pending' | 'approved' | 'rejected'
+  keyword?: string
+  canteenId?: string
 }
 
 // ==================== 新闻相关类型 ====================
@@ -602,8 +625,8 @@ export interface News {
   title: string
   content: string
   summary?: string
-  canteenId?: string
-  canteenName?: string
+  canteenId?: string | null
+  canteenName?: string | null
   author?: string // 兼容旧代码，对应 createdBy
   createdBy?: string
   images?: string[]
@@ -620,7 +643,7 @@ export interface NewsCreateRequest {
   title: string
   content: string
   summary?: string
-  canteenId?: string
+  canteenId?: string | null
   author?: string // 暂时保留
   images?: string[]
   status?: 'draft' | 'published'
@@ -633,7 +656,7 @@ export interface NewsUpdateRequest {
   title?: string
   content?: string
   summary?: string
-  canteenId?: string
+  canteenId?: string | null
   author?: string // 暂时保留
   images?: string[]
   status?: 'draft' | 'published'
@@ -645,6 +668,10 @@ export interface NewsUpdateRequest {
 export interface GetNewsParams extends PaginationParams {
   status?: 'draft' | 'published'
   canteenName?: string
+  keyword?: string
+  canteenId?: string
+  startDate?: string
+  endDate?: string
 }
 
 // ==================== 日志相关类型 ====================
@@ -655,13 +682,12 @@ export interface GetNewsParams extends PaginationParams {
 export interface OperationLog {
   id: string
   adminId: string
-  adminName: string
+  adminUsername: string
   action: string
-  resource: string
-  resourceId?: string
-  details?: string
-  ipAddress?: string
-  userAgent?: string
+  targetType: string
+  targetId: string
+  details?: Record<string, unknown> | null
+  result: 'success' | 'failure'
   createdAt: string
 }
 
@@ -785,7 +811,7 @@ export interface ConfigTemplatesResponse {
  * 获取全局配置响应
  */
 export interface GlobalConfigResponse {
-  config: AdminConfig
+  config: AdminConfig | null
   templates: ConfigTemplate[]
 }
 
@@ -793,8 +819,8 @@ export interface GlobalConfigResponse {
  * 获取食堂配置响应
  */
 export interface CanteenConfigResponse {
-  config: AdminConfig
-  globalConfig: AdminConfig
+  config: AdminConfig | null
+  globalConfig: AdminConfig | null
   templates: ConfigTemplate[]
 }
 

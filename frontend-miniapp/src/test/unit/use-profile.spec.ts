@@ -24,9 +24,14 @@ describe('useProfile', () => {
     mockUserStore = {
       userInfo: { id: 1, nickname: 'Test User' },
       isLoggedIn: true,
+      sessionVersion: 0,
       fetchProfileAction: jest.fn() as unknown as jest.Mock<any, any>,
+      updateProfileAction: jest.fn().mockResolvedValue(undefined),
       updateLocalUserInfo: jest.fn(),
-      logoutAction: jest.fn(),
+      logoutAction: jest.fn(() => {
+        mockUserStore.isLoggedIn = false;
+        mockUserStore.sessionVersion++;
+      }),
     };
     (mockUserStore.fetchProfileAction as jest.Mock).mockResolvedValue(undefined);
     (useUserStore as unknown as jest.Mock).mockReturnValue(mockUserStore);
@@ -45,13 +50,11 @@ describe('useProfile', () => {
     expect(isLoggedIn.value).toBe(true);
   });
 
-  it('should fetch profile on mount if logged in', async () => {
-    // Mock onMounted to execute the callback immediately
-    (onMounted as jest.Mock).mockImplementation(fn => fn());
-
-    useProfile();
-
-    expect(mockUserStore.fetchProfileAction).toHaveBeenCalled();
+  it('leaves first-load ownership with the page show lifecycle', async () => {
+    const state = useProfile();
+    expect(mockUserStore.fetchProfileAction).not.toHaveBeenCalled();
+    expect(await state.fetchProfile()).toBe(true);
+    expect(mockUserStore.fetchProfileAction).toHaveBeenCalledTimes(1);
   });
 
   it('should handle fetch profile error', async () => {
@@ -73,22 +76,21 @@ describe('useProfile', () => {
     const result = await updateProfile(updateData);
 
     expect(result).toBe(true);
-    expect(updateUserProfile).toHaveBeenCalledWith(updateData);
-    expect(mockUserStore.updateLocalUserInfo).toHaveBeenCalledWith(mockResponse.data);
+    expect(mockUserStore.updateProfileAction).toHaveBeenCalledWith(updateData);
     expect(uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ title: '更新成功' }));
   });
 
   it('should handle update profile error', async () => {
     const updateData = { nickname: 'New Name' };
     const errorMsg = 'Update failed';
-    (updateUserProfile as jest.Mock).mockRejectedValue(new Error(errorMsg));
+    mockUserStore.updateProfileAction.mockRejectedValue(new Error(errorMsg));
 
     const { updateProfile, error } = useProfile();
     const result = await updateProfile(updateData);
 
     expect(result).toBe(false);
     expect(error.value).toBe(errorMsg);
-    expect(uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ title: '更新失败' }));
+    expect(uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ title: errorMsg }));
   });
 
   it('should handle logout', () => {

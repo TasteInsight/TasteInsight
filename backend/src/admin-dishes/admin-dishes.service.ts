@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Optional,
   Logger,
@@ -13,8 +14,10 @@ import {
   AdminUpdateDishDto,
   DishStatus,
   DishUploadStatus,
+  MealTime,
+  AdminGetDishReviewsDto,
 } from './dto/admin-dish.dto';
-import { AdminDishDto } from './dto/admin-dish.dto';
+import { AdminDishDto, AdminDishUploadDto } from './dto/admin-dish.dto';
 import { Canteen, Dish, Floor, Prisma, Window } from '@prisma/client';
 import { promises as fs } from 'fs';
 import * as XLSX from 'xlsx';
@@ -45,16 +48,17 @@ type NormalizedExcelRow = {
   allergensRaw?: string;
 };
 
+type BatchDishReference =
+  | { dishId: string; uploadId?: never }
+  | { uploadId: string; dishId?: never };
+
 type BatchImportCaches = {
   canteens: Map<string, Canteen>;
   floors: Map<string, Floor>;
   windows: Map<string, Window>;
-  parentDishes: Map<string, Dish>;
+  dishes: Map<string, BatchDishReference>;
 };
 
-type PrismaJsonInput =
-  | Prisma.NullableJsonNullValueInput
-  | Prisma.InputJsonValue;
 type BatchErrorType = 'validation' | 'permission' | 'unknown';
 import { EmbeddingService } from '@/recommendation/services/embedding.service';
 import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service';
@@ -91,20 +95,20 @@ export class AdminDishesService {
     过敏原: 'allergensRaw',
   };
 
-  private readonly mealTimeDictionary = new Map<string, string>([
-    ['早餐', 'breakfast'],
-    ['早饭', 'breakfast'],
-    ['午餐', 'lunch'],
-    ['午饭', 'lunch'],
-    ['中餐', 'lunch'],
-    ['晚餐', 'dinner'],
-    ['晚饭', 'dinner'],
-    ['夜宵', 'nightsnack'],
-    ['宵夜', 'nightsnack'],
-    ['breakfast', 'breakfast'],
-    ['lunch', 'lunch'],
-    ['dinner', 'dinner'],
-    ['nightsnack', 'nightsnack'],
+  private readonly mealTimeDictionary = new Map<string, MealTime>([
+    ['早餐', MealTime.BREAKFAST],
+    ['早饭', MealTime.BREAKFAST],
+    ['午餐', MealTime.LUNCH],
+    ['午饭', MealTime.LUNCH],
+    ['中餐', MealTime.LUNCH],
+    ['晚餐', MealTime.DINNER],
+    ['晚饭', MealTime.DINNER],
+    ['夜宵', MealTime.NIGHTSNACK],
+    ['宵夜', MealTime.NIGHTSNACK],
+    ['breakfast', MealTime.BREAKFAST],
+    ['lunch', MealTime.LUNCH],
+    ['dinner', MealTime.DINNER],
+    ['nightsnack', MealTime.NIGHTSNACK],
   ]);
 
   // 管理端获取菜品列表
@@ -257,10 +261,53 @@ export class AdminDishesService {
    * 管理端创建菜品
    */
   async createAdminDish(createDto: AdminCreateDishDto, adminInfo: AdminInfo) {
+    const dishUpload = await this.prisma.$transaction((tx) =>
+      this.createDishUpload(tx, createDto, adminInfo),
+    );
+
+    return {
+      code: 201,
+      message: '创建成功，已提交审核',
+      data: this.mapDishUploadToDto(dishUpload),
+    };
+  }
+
+  private requirePermission(adminInfo: AdminInfo, permission: string) {
+    if (
+      adminInfo.role !== 'superadmin' &&
+      !adminInfo.permissions.includes(permission)
+    ) {
+      throw new ForbiddenException(`权限不足：需要 ${permission}`);
+    }
+  }
+
+  private async createDishUpload(
+    tx: Prisma.TransactionClient,
+    createDto: AdminCreateDishDto,
+    adminInfo: AdminInfo,
+  ) {
+    return tx.dishUpload.create({
+      data: await this.getDishUploadData(tx, createDto, adminInfo),
+      include: {
+        canteen: true,
+        window: { include: { floor: true } },
+        parentDish: true,
+      },
+    });
+  }
+
+  private async getDishUploadData(
+    tx: Prisma.TransactionClient,
+    createDto: AdminCreateDishDto,
+    adminInfo: AdminInfo,
+  ) {
+    if (createDto.parentDishId && createDto.parentUploadId) {
+      throw new BadRequestException('父菜品和待审父记录不能同时指定');
+    }
     // 1. 确定食堂
     let canteenId = createDto.canteenId;
     if (!canteenId && createDto.canteenName) {
-      const canteen = await this.prisma.canteen.findFirst({
+      const canteen = await tx.canteen.findFirst({
         where: { name: createDto.canteenName },
       });
       if (canteen) {
@@ -272,14 +319,14 @@ export class AdminDishesService {
     let window: any = null;
 
     if (createDto.windowId) {
-      window = await this.prisma.window.findUnique({
+      window = await tx.window.findUnique({
         where: { id: createDto.windowId },
         include: { canteen: true, floor: true },
       });
     } else if (canteenId) {
       // 如果未提供 windowId，则需要 canteenId 来按名称或编号查找
       if (createDto.windowName) {
-        window = await this.prisma.window.findFirst({
+        window = await tx.window.findFirst({
           where: {
             canteenId: canteenId,
             name: createDto.windowName,
@@ -289,7 +336,7 @@ export class AdminDishesService {
       }
 
       if (!window && createDto.windowNumber) {
-        window = await this.prisma.window.findFirst({
+        window = await tx.window.findFirst({
           where: {
             canteenId: canteenId,
             number: createDto.windowNumber,
@@ -310,62 +357,80 @@ export class AdminDishesService {
       throw new ForbiddenException('权限不足');
     }
 
-    // 4. 检查父菜品
-    if (createDto.parentDishId) {
-      const parentDish = await this.prisma.dish.findUnique({
-        where: { id: createDto.parentDishId },
+    this.requirePermission(adminInfo, 'dish:create');
+    // 4. 锁定父记录，避免父菜品迁移后写入旧食堂的子审核记录。
+    let parentDishId = createDto.parentDishId;
+    if (createDto.parentUploadId) {
+      await tx.$queryRaw`SELECT "id" FROM "dish_uploads" WHERE "id" = ${createDto.parentUploadId} FOR UPDATE`;
+      const parentUpload = await tx.dishUpload.findUnique({
+        where: { id: createDto.parentUploadId },
+      });
+      if (!parentUpload) {
+        throw new BadRequestException('指定的待审父记录不存在');
+      }
+      if (
+        adminInfo.canteenId &&
+        parentUpload.canteenId !== adminInfo.canteenId
+      ) {
+        throw new ForbiddenException('权限不足');
+      }
+      if (
+        adminInfo.role !== 'superadmin' &&
+        parentUpload.adminId !== adminInfo.id &&
+        !adminInfo.permissions.includes('upload:approve')
+      ) {
+        throw new ForbiddenException('无权访问该待审父记录');
+      }
+      if (parentUpload.canteenId !== window.canteenId) {
+        throw new BadRequestException('父子菜品必须属于同一食堂');
+      }
+      parentDishId = parentUpload.approvedDishId ?? undefined;
+    }
+    if (parentDishId) {
+      await tx.$queryRaw`SELECT "id" FROM "dishes" WHERE "id" = ${parentDishId} FOR UPDATE`;
+      const parentDish = await tx.dish.findUnique({
+        where: { id: parentDishId },
       });
       if (!parentDish) {
         throw new BadRequestException('指定的父菜品不存在');
       }
+      if (adminInfo.canteenId && parentDish.canteenId !== adminInfo.canteenId) {
+        throw new ForbiddenException('权限不足');
+      }
+      if (parentDish.canteenId !== window.canteenId) {
+        throw new BadRequestException('父子菜品必须属于同一食堂');
+      }
     }
 
-    // 5. 创建菜品 (DishUpload)
-    const dishUpload = await this.prisma.dishUpload.create({
-      data: {
-        adminId: adminInfo.id,
-        name: createDto.name,
-        tags: createDto.tags || [],
-        price: createDto.price,
-        priceUnit: createDto.priceUnit,
-        description: createDto.description || '',
-        images: createDto.images || [],
-        parentDishId: createDto.parentDishId,
-        ingredients: createDto.ingredients || [],
-        allergens: createDto.allergens || [],
-        spicyLevel: createDto.spicyLevel || 0,
-        sweetness: createDto.sweetness || 0,
-        saltiness: createDto.saltiness || 0,
-        oiliness: createDto.oiliness || 0,
-
-        // 来自窗口的位置信息
-        canteenId: window.canteenId,
-        canteenName: window.canteen.name,
-        windowId: window.id,
-        windowNumber: window.number,
-        windowName: window.name,
-
-        availableMealTime: createDto.availableMealTime || [],
-        availableDates: createDto.availableDates
-          ? (createDto.availableDates as unknown as Prisma.InputJsonArray)
-          : undefined,
-        status: DishUploadStatus.PENDING,
-      },
-      include: {
-        canteen: true,
-        window: {
-          include: {
-            floor: true,
-          },
-        },
-        parentDish: true,
-      },
-    });
-
     return {
-      code: 201,
-      message: '创建成功，已提交审核',
-      data: this.mapDishUploadToAdminDishDto(dishUpload),
+      adminId: adminInfo.id,
+      name: createDto.name,
+      tags: createDto.tags || [],
+      price: createDto.price,
+      priceUnit: createDto.priceUnit,
+      description: createDto.description || '',
+      images: createDto.images || [],
+      parentDishId: createDto.parentDishId,
+      parentUploadId: createDto.parentUploadId,
+      ingredients: createDto.ingredients || [],
+      allergens: createDto.allergens || [],
+      spicyLevel: createDto.spicyLevel || 0,
+      sweetness: createDto.sweetness || 0,
+      saltiness: createDto.saltiness || 0,
+      oiliness: createDto.oiliness || 0,
+
+      // 来自窗口的位置信息
+      canteenId: window.canteenId,
+      canteenName: window.canteen.name,
+      windowId: window.id,
+      windowNumber: window.number,
+      windowName: window.name,
+
+      availableMealTime: createDto.availableMealTime || [],
+      availableDates: createDto.availableDates
+        ? (createDto.availableDates as unknown as Prisma.InputJsonArray)
+        : undefined,
+      status: DishUploadStatus.PENDING,
     };
   }
 
@@ -377,8 +442,51 @@ export class AdminDishesService {
     updateDto: AdminUpdateDishDto,
     adminInfo: AdminInfo,
   ) {
+    const dish = await this.prisma
+      .$transaction((tx) => this.updateDish(tx, id, updateDto, adminInfo))
+      .catch((error) => {
+        if (
+          error?.code === 'P2034' ||
+          (error?.code === 'P2010' && error.meta?.code === '40P01')
+        ) {
+          throw new ConflictException('菜品层级正在被其他操作修改，请重试');
+        }
+        throw error;
+      });
+
+    await this.refreshUpdatedDishEmbedding(id);
+
+    return {
+      code: 200,
+      message: '更新成功',
+      data: this.mapToAdminDishDto(dish),
+    };
+  }
+
+  private async refreshUpdatedDishEmbedding(id: string) {
+    try {
+      if (this.embeddingQueueService) {
+        await this.embeddingQueueService.enqueueRefreshDish(id);
+      } else if (this.embeddingService) {
+        await this.embeddingService.updateDishEmbedding(id);
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Failed to refresh embedding for dish ${id}: ${error.message}`,
+      );
+    }
+  }
+
+  private async updateDish(
+    tx: Prisma.TransactionClient,
+    id: string,
+    updateDto: AdminUpdateDishDto,
+    adminInfo: AdminInfo,
+  ) {
+    // 与审核、撤销及删除共用菜品行锁，校验等待锁之后的关系。
+    await tx.$queryRaw`SELECT "id" FROM "dishes" WHERE "id" = ${id} FOR UPDATE`;
     // 检查菜品是否存在
-    const existingDish = await this.prisma.dish.findUnique({
+    const existingDish = await tx.dish.findUnique({
       where: { id },
     });
 
@@ -390,6 +498,7 @@ export class AdminDishesService {
     if (adminInfo.canteenId && existingDish.canteenId !== adminInfo.canteenId) {
       throw new ForbiddenException('权限不足');
     }
+    this.requirePermission(adminInfo, 'dish:edit');
 
     // 构建更新数据
     const updateData: any = {};
@@ -428,7 +537,7 @@ export class AdminDishesService {
     let shouldUpdateWindow = false;
 
     if (updateDto.windowId) {
-      window = await this.prisma.window.findUnique({
+      window = await tx.window.findUnique({
         where: { id: updateDto.windowId },
         include: { canteen: true, floor: true },
       });
@@ -437,7 +546,7 @@ export class AdminDishesService {
       // 如果提供了窗口名称或编号，则需要先确定食堂ID
       let canteenId = updateDto.canteenId;
       if (!canteenId && updateDto.canteenName) {
-        const canteen = await this.prisma.canteen.findFirst({
+        const canteen = await tx.canteen.findFirst({
           where: { name: updateDto.canteenName },
         });
         if (canteen) canteenId = canteen.id;
@@ -447,14 +556,14 @@ export class AdminDishesService {
       }
 
       if (updateDto.windowName) {
-        window = await this.prisma.window.findFirst({
+        window = await tx.window.findFirst({
           where: { canteenId, name: updateDto.windowName },
           include: { canteen: true, floor: true },
         });
       }
 
       if (!window && updateDto.windowNumber) {
-        window = await this.prisma.window.findFirst({
+        window = await tx.window.findFirst({
           where: { canteenId, number: updateDto.windowNumber },
           include: { canteen: true, floor: true },
         });
@@ -483,7 +592,25 @@ export class AdminDishesService {
       updateData.windowName = window.name;
     }
 
-    const dish = await this.prisma.dish.update({
+    const canteenId = updateData.canteenId ?? existingDish.canteenId;
+    const parentDishId =
+      updateDto.parentDishId === undefined
+        ? existingDish.parentDishId
+        : updateDto.parentDishId;
+    if (
+      canteenId !== existingDish.canteenId ||
+      parentDishId !== existingDish.parentDishId
+    ) {
+      await this.validateDishHierarchy(
+        tx,
+        existingDish,
+        canteenId,
+        parentDishId,
+        adminInfo,
+      );
+    }
+
+    return tx.dish.update({
       where: { id },
       data: updateData,
       include: {
@@ -494,27 +621,59 @@ export class AdminDishesService {
         subDishes: true,
       },
     });
+  }
 
-    // 异步刷新嵌入（避免阻塞管理端）
-    // 使用 try-catch 确保嵌入服务的错误不会影响菜品更新的主要流程
-    try {
-      if (this.embeddingQueueService) {
-        await this.embeddingQueueService.enqueueRefreshDish(id);
-      } else if (this.embeddingService) {
-        await this.embeddingService.updateDishEmbedding(id);
+  private async validateDishHierarchy(
+    tx: Prisma.TransactionClient,
+    dish: Pick<Dish, 'id' | 'canteenId' | 'parentDishId'>,
+    canteenId: string,
+    parentDishId: string | null,
+    adminInfo: AdminInfo,
+  ): Promise<void> {
+    const visited = new Set([dish.id]);
+    let ancestorId = parentDishId;
+    while (ancestorId) {
+      if (visited.has(ancestorId)) {
+        throw new BadRequestException('菜品父子关系不能形成循环');
       }
-    } catch (error) {
-      this.logger.warn(
-        `Failed to refresh embedding for dish ${id}: ${error.message}`,
-      );
-      // 继续执行，不影响主要的更新流程
+      visited.add(ancestorId);
+      // 持有整条拟议祖先链，防止并发换父使已验证的无环关系失效。
+      await tx.$queryRaw`SELECT "id" FROM "dishes" WHERE "id" = ${ancestorId} FOR UPDATE`;
+      const ancestor = await tx.dish.findUnique({
+        where: { id: ancestorId },
+        select: { canteenId: true, parentDishId: true },
+      });
+      if (!ancestor) throw new BadRequestException('指定的父菜品不存在');
+      if (adminInfo.canteenId && ancestor.canteenId !== adminInfo.canteenId) {
+        throw new ForbiddenException('权限不足');
+      }
+      if (ancestor.canteenId !== canteenId) {
+        throw new BadRequestException('父子菜品必须属于同一食堂');
+      }
+      ancestorId = ancestor.parentDishId;
     }
 
-    return {
-      code: 200,
-      message: '更新成功',
-      data: this.mapToAdminDishDto(dish),
-    };
+    if (canteenId !== dish.canteenId) {
+      const childDish = await tx.dish.findFirst({
+        where: { parentDishId: dish.id, canteenId: { not: canteenId } },
+        select: { id: true },
+      });
+      const childUpload = await tx.dishUpload.findFirst({
+        where: {
+          canteenId: { not: canteenId },
+          OR: [
+            { parentDishId: dish.id },
+            { parentUpload: { approvedDishId: dish.id } },
+          ],
+        },
+        select: { id: true },
+      });
+      if (childDish || childUpload) {
+        throw new BadRequestException(
+          '不能将菜品移到其子菜品或子审核记录之外的食堂',
+        );
+      }
+    }
   }
 
   /**
@@ -543,11 +702,60 @@ export class AdminDishesService {
       throw new BadRequestException('该菜品有子菜品，无法删除');
     }
 
-    // 删除菜品及关联的审核记录
+    // 上传记录保留审核决定及层级，删除正式菜品时仅清除转正指针。
     await this.prisma.$transaction(async (tx) => {
-      // 删除关联的上传审核记录，防止重复上架
-      await tx.dishUpload.deleteMany({
+      await tx.$queryRaw`SELECT "id" FROM "dish_uploads" WHERE "approvedDishId" = ${id} ORDER BY "id" FOR UPDATE`;
+      await tx.$queryRaw`SELECT "id" FROM "dishes" WHERE "id" = ${id} FOR UPDATE`;
+      const currentDish = await tx.dish.findUnique({
+        where: { id },
+        include: { subDishes: true },
+      });
+      if (!currentDish) throw new NotFoundException('菜品不存在');
+      if (
+        adminInfo.canteenId &&
+        currentDish.canteenId !== adminInfo.canteenId
+      ) {
+        throw new ForbiddenException('权限不足');
+      }
+      if (currentDish.subDishes?.length) {
+        throw new BadRequestException('该菜品有子菜品，无法删除');
+      }
+      const sourceUpload = await tx.dishUpload.findFirst({
         where: { approvedDishId: id },
+        select: { id: true, canteenId: true },
+        orderBy: { id: 'asc' },
+      });
+      if (sourceUpload) {
+        const incompatibleChild = await tx.dishUpload.findFirst({
+          where: {
+            parentDishId: id,
+            canteenId: { not: sourceUpload.canteenId },
+          },
+          select: { id: true },
+        });
+        if (incompatibleChild) {
+          throw new BadRequestException(
+            '子审核记录与原始上传不属于同一食堂，无法删除；可先下架',
+          );
+        }
+        await tx.dishUpload.updateMany({
+          where: { parentDishId: id },
+          data: { parentDishId: null, parentUploadId: sourceUpload.id },
+        });
+      } else {
+        const referencedChild = await tx.dishUpload.findFirst({
+          where: { parentDishId: id },
+          select: { id: true },
+        });
+        if (referencedChild) {
+          throw new BadRequestException(
+            '该菜品仍有子审核记录，无法删除；可先下架',
+          );
+        }
+      }
+      await tx.dishUpload.updateMany({
+        where: { approvedDishId: id },
+        data: { approvedDishId: null },
       });
 
       // 删除菜品
@@ -715,11 +923,11 @@ export class AdminDishesService {
         this.prisma.window.findMany(),
       ]);
 
-    const caches: BatchImportCaches = {
+    let caches: BatchImportCaches = {
       canteens: new Map(),
       floors: new Map(),
       windows: new Map(),
-      parentDishes: new Map(),
+      dishes: new Map(),
     };
 
     existingCanteens.forEach((c) => {
@@ -744,7 +952,7 @@ export class AdminDishesService {
       );
     }
 
-    const windowNumberCounters = new Map<string, number>();
+    let windowNumberCounters = new Map<string, number>();
     const errors: Array<{
       index: number;
       message: string;
@@ -765,16 +973,30 @@ export class AdminDishesService {
       }
 
       try {
+        const rowCaches: BatchImportCaches = {
+          canteens: new Map(caches.canteens),
+          floors: new Map(caches.floors),
+          windows: new Map(caches.windows),
+          dishes: new Map(caches.dishes),
+        };
+        const rowCounters = new Map(windowNumberCounters);
+        const updatedDishIds = new Set<string>();
         await this.prisma.$transaction(async (tx) => {
           await this.processSingleBatchItem(
             tx,
             item,
             adminInfo,
             limitedCanteen,
-            caches,
-            windowNumberCounters,
+            rowCaches,
+            rowCounters,
+            updatedDishIds,
           );
         });
+        caches = rowCaches;
+        windowNumberCounters = rowCounters;
+        for (const id of updatedDishIds) {
+          await this.refreshUpdatedDishEmbedding(id);
+        }
         successCount += 1;
       } catch (error) {
         let type: BatchErrorType = 'unknown';
@@ -840,7 +1062,7 @@ export class AdminDishesService {
     };
   }
 
-  private mapDishUploadToAdminDishDto(
+  private mapDishUploadToDto(
     dishUpload: Prisma.DishUploadGetPayload<{
       include: {
         canteen: true;
@@ -848,7 +1070,7 @@ export class AdminDishesService {
         parentDish: true;
       };
     }>,
-  ): AdminDishDto {
+  ): AdminDishUploadDto {
     return {
       id: dishUpload.id,
       name: dishUpload.name,
@@ -858,7 +1080,8 @@ export class AdminDishesService {
       description: dishUpload.description,
       images: dishUpload.images,
       parentDishId: dishUpload.parentDishId || undefined,
-      subDishId: [],
+      parentUploadId: dishUpload.parentUploadId || undefined,
+      approvedDishId: dishUpload.approvedDishId || undefined,
       ingredients: dishUpload.ingredients,
       allergens: dishUpload.allergens,
       spicyLevel: dishUpload.spicyLevel,
@@ -877,8 +1100,6 @@ export class AdminDishesService {
       availableMealTime: dishUpload.availableMealTime as any,
       availableDates: dishUpload.availableDates as any,
       status: dishUpload.status as DishUploadStatus,
-      averageRating: 0,
-      reviewCount: 0,
       createdAt: dishUpload.createdAt,
       updatedAt: dishUpload.updatedAt,
     };
@@ -892,6 +1113,7 @@ export class AdminDishesService {
     page: number = 1,
     pageSize: number = 20,
     adminInfo?: AdminInfo,
+    status?: AdminGetDishReviewsDto['status'],
   ) {
     // 检查菜品是否存在
     const dish = await this.prisma.dish.findUnique({
@@ -908,9 +1130,9 @@ export class AdminDishesService {
     }
 
     const skip = (page - 1) * pageSize;
-    const where = { dishId, deletedAt: null };
+    const where = { dishId, deletedAt: null, ...(status ? { status } : {}) };
 
-    const [total, reviews] = await Promise.all([
+    const [total, reviews, ratingGroups] = await Promise.all([
       this.prisma.review.count({ where }),
       this.prisma.review.findMany({
         where,
@@ -933,6 +1155,11 @@ export class AdminDishesService {
             },
           },
         },
+      }),
+      this.prisma.review.groupBy({
+        by: ['rating'],
+        where: { dishId, deletedAt: null, status: 'approved' },
+        _count: { _all: true },
       }),
     ]);
 
@@ -963,20 +1190,34 @@ export class AdminDishesService {
         createdAt: review.createdAt,
         updatedAt: review.updatedAt,
         deletedAt: review.deletedAt,
-        user: {
-          id: review.user.id,
-          nickname: review.user.nickname,
-          avatar: review.user.avatar,
-        },
+        userNickname: review.user.nickname,
+        userAvatar: review.user.avatar,
         commentCount: review._count.comments,
       };
     });
+
+    const ratingTotal = ratingGroups.reduce(
+      (sum, group) => sum + group._count._all,
+      0,
+    );
+    const ratingSum = ratingGroups.reduce(
+      (sum, group) => sum + group.rating * group._count._all,
+      0,
+    );
+    const detail = Object.fromEntries(
+      ratingGroups.map((group) => [group.rating, group._count._all]),
+    );
 
     return {
       code: 200,
       message: 'success',
       data: {
         items,
+        rating: {
+          average: ratingTotal ? ratingSum / ratingTotal : 0,
+          total: ratingTotal,
+          detail,
+        },
         meta: {
           page,
           pageSize,
@@ -994,6 +1235,7 @@ export class AdminDishesService {
     limitedCanteen: Canteen | null,
     caches: BatchImportCaches,
     windowNumberCounters: Map<string, number>,
+    updatedDishIds: Set<string>,
   ) {
     const canteenName = item.canteenName?.trim() || limitedCanteen?.name || '';
     if (!canteenName) {
@@ -1030,84 +1272,78 @@ export class AdminDishesService {
       caches,
       canteenName,
       limitedCanteen,
+      adminInfo,
     );
 
     if (adminInfo.canteenId && canteen.id !== adminInfo.canteenId) {
       throw new ForbiddenException('无权导入其他食堂的数据');
     }
 
-    const floor = await this.getOrCreateFloor(
-      tx,
-      caches,
-      canteen,
-      item.floorName,
-    );
     const window = await this.getOrCreateWindow(
       tx,
       caches,
       canteen,
-      floor,
+      item.floorName,
       item.windowName,
       item.windowNumber,
       windowNumberCounters,
+      adminInfo,
     );
 
     const mealTimes = this.parseMealTimesFromItem(item);
     const dateRange = this.parseDateRange(item.supplyTime);
-    const availableDates: PrismaJsonInput | undefined = dateRange
+    const availableDates = dateRange
       ? [{ startDate: dateRange.startDate, endDate: dateRange.endDate }]
       : undefined;
     const description = item.description?.trim() || '';
+    const dishData: AdminCreateDishDto = {
+      name: dishName,
+      price,
+      priceUnit,
+      description,
+      tags,
+      ingredients,
+      allergens,
+      windowId: window.id,
+      availableMealTime: mealTimes,
+      availableDates,
+    };
+    const dishKey = this.batchDishKey(window.id, dishName);
 
     if (subDishNames.length > 0) {
-      const parentDish = await this.getOrCreateParentDish(
+      const parent = await this.getOrCreateBatchParent(
         tx,
         caches,
-        dishName,
-        canteen,
-        floor,
-        window,
-        tags,
-        ingredients,
-        allergens,
-        mealTimes,
-        availableDates,
-        description,
+        dishKey,
+        dishData,
+        adminInfo,
       );
 
       for (const subDishName of subDishNames) {
-        await this.upsertDish(tx, {
-          name: subDishName,
-          price,
-          priceUnit,
-          description,
-          tags,
-          ingredients,
-          allergens,
-          canteen,
-          floor,
-          window,
-          availableMealTime: mealTimes,
-          availableDates,
-          parentDishId: parentDish.id,
-        });
+        await this.writeBatchDish(
+          tx,
+          caches,
+          this.batchDishKey(window.id, subDishName, dishName),
+          {
+            ...dishData,
+            name: subDishName,
+            ...(parent.uploadId
+              ? { parentUploadId: parent.uploadId }
+              : { parentDishId: parent.dishId }),
+          },
+          adminInfo,
+          updatedDishIds,
+        );
       }
     } else {
-      await this.upsertDish(tx, {
-        name: dishName,
-        price,
-        priceUnit,
-        description,
-        tags,
-        ingredients,
-        allergens,
-        canteen,
-        floor,
-        window,
-        availableMealTime: mealTimes,
-        availableDates,
-        parentDishId: null,
-      });
+      await this.writeBatchDish(
+        tx,
+        caches,
+        dishKey,
+        dishData,
+        adminInfo,
+        updatedDishIds,
+      );
     }
   }
 
@@ -1116,6 +1352,7 @@ export class AdminDishesService {
     caches: BatchImportCaches,
     canteenName: string,
     limitedCanteen: Canteen | null,
+    adminInfo: AdminInfo,
   ): Promise<Canteen> {
     if (limitedCanteen) {
       const allowedName = this.normalizeName(limitedCanteen.name);
@@ -1139,6 +1376,10 @@ export class AdminDishesService {
 
     let canteen = await tx.canteen.findFirst({ where: { name: canteenName } });
     if (!canteen) {
+      this.requirePermission(adminInfo, 'canteen:create');
+      if (adminInfo.canteenId) {
+        throw new ForbiddenException('您无权创建新食堂');
+      }
       canteen = await tx.canteen.create({
         data: {
           name: canteenName,
@@ -1189,10 +1430,11 @@ export class AdminDishesService {
     tx: Prisma.TransactionClient,
     caches: BatchImportCaches,
     canteen: Canteen,
-    floor: Floor | null,
+    floorName: string | undefined,
     windowName: string,
     windowNumber: string | undefined,
     counters: Map<string, number>,
+    adminInfo: AdminInfo,
   ): Promise<Window> {
     const trimmed = windowName?.trim();
     if (!trimmed) {
@@ -1209,6 +1451,8 @@ export class AdminDishesService {
     });
 
     if (!window) {
+      this.requirePermission(adminInfo, 'canteen:create');
+      const floor = await this.getOrCreateFloor(tx, caches, canteen, floorName);
       const number =
         windowNumber?.trim() ||
         (await this.generateWindowNumber(tx, canteen.id, counters));
@@ -1241,167 +1485,103 @@ export class AdminDishesService {
     return `AUTO-${next}`;
   }
 
-  private async getOrCreateParentDish(
+  private batchDishKey(windowId: string, name: string, parentName?: string) {
+    return JSON.stringify([windowId, name, parentName ?? null]);
+  }
+
+  private async getOrCreateBatchParent(
     tx: Prisma.TransactionClient,
     caches: BatchImportCaches,
-    parentName: string,
-    canteen: Canteen,
-    floor: Floor | null,
-    window: Window,
-    tags: string[],
-    ingredients: string[],
-    allergens: string[],
-    mealTimes: string[],
-    availableDates?: PrismaJsonInput,
-    description?: string,
-  ): Promise<Dish> {
-    const trimmed = parentName.trim();
-    if (!trimmed) {
-      throw new BadRequestException('父菜品名称不能为空');
+    key: string,
+    data: AdminCreateDishDto,
+    adminInfo: AdminInfo,
+  ): Promise<BatchDishReference> {
+    if (caches.dishes.has(key)) {
+      return caches.dishes.get(key)!;
     }
 
-    const key = `${window.id}:${this.normalizeName(trimmed)}`;
-    if (caches.parentDishes.has(key)) {
-      return caches.parentDishes.get(key)!;
-    }
-
-    let parentDish = await tx.dish.findFirst({
+    const parentDish = await tx.dish.findFirst({
       where: {
-        name: trimmed,
-        windowId: window.id,
+        name: data.name,
+        windowId: data.windowId,
         parentDishId: null,
       },
     });
 
-    if (!parentDish) {
-      parentDish = await tx.dish.create({
-        data: {
-          name: trimmed,
-          price: 0,
-          priceUnit: '元',
-          description: description || '',
-          tags,
-          ingredients,
-          allergens,
-          canteenId: canteen.id,
-          canteenName: canteen.name,
-          floorId: floor?.id,
-          floorLevel: floor?.level,
-          floorName: floor?.name,
-          windowId: window.id,
-          windowName: window.name,
-          windowNumber: window.number,
-          availableMealTime: mealTimes,
-          availableDates,
-          status: 'online',
-        },
-      });
-    } else {
-      parentDish = await tx.dish.update({
-        where: { id: parentDish.id },
-        data: {
-          description: description || '',
-          tags,
-          ingredients,
-          allergens,
-          availableMealTime: mealTimes,
-          availableDates,
-          floorId: floor?.id,
-          floorLevel: floor?.level,
-          floorName: floor?.name,
-          windowNumber: window.number,
-        },
-      });
-    }
-
-    caches.parentDishes.set(key, parentDish);
-    return parentDish;
+    // 已存在的父菜品只提供关联；独立菜品行负责更新父菜品本身。
+    const parent: BatchDishReference = parentDish
+      ? { dishId: parentDish.id }
+      : {
+          uploadId: (
+            await this.createDishUpload(tx, { ...data, price: 0 }, adminInfo)
+          ).id,
+        };
+    caches.dishes.set(key, parent);
+    return parent;
   }
 
-  private async upsertDish(
+  private async writeBatchDish(
     tx: Prisma.TransactionClient,
-    params: {
-      name: string;
-      price: number;
-      priceUnit: string;
-      description: string;
-      tags: string[];
-      ingredients: string[];
-      allergens: string[];
-      canteen: Canteen;
-      floor: Floor | null;
-      window: Window;
-      availableMealTime: string[];
-      availableDates?: PrismaJsonInput;
-      parentDishId: string | null;
-    },
+    caches: BatchImportCaches,
+    key: string,
+    data: AdminCreateDishDto,
+    adminInfo: AdminInfo,
+    updatedDishIds: Set<string>,
   ) {
-    const trimmed = params.name.trim();
-    if (!trimmed) {
-      throw new BadRequestException('菜品名称不能为空');
-    }
-
-    const existing = await tx.dish.findFirst({
-      where: {
-        name: trimmed,
-        windowId: params.window.id,
-        parentDishId: params.parentDishId,
-      },
-    });
-
-    if (existing) {
-      await tx.dish.update({
-        where: { id: existing.id },
-        data: {
-          price: params.price,
-          priceUnit: params.priceUnit,
-          description: params.description,
-          tags: params.tags,
-          ingredients: params.ingredients,
-          allergens: params.allergens,
-          availableMealTime: params.availableMealTime,
-          availableDates: params.availableDates,
-          windowNumber: params.window.number,
-          floorId: params.floor?.id,
-          floorLevel: params.floor?.level,
-          floorName: params.floor?.name,
-        },
+    const reference = caches.dishes.get(key);
+    if (reference?.uploadId) {
+      // 与审核共用父记录先于子上传的锁顺序，随后重读本批上传的当前状态。
+      const uploadData = await this.getDishUploadData(tx, data, adminInfo);
+      await tx.$queryRaw`SELECT "id" FROM "dish_uploads" WHERE "id" = ${reference.uploadId} FOR UPDATE`;
+      const upload = await tx.dishUpload.findUnique({
+        where: { id: reference.uploadId },
       });
+      if (!upload) throw new BadRequestException('本批次待审记录已不存在');
+
+      if (upload.status === 'pending') {
+        await tx.dishUpload.update({
+          where: { id: upload.id },
+          data: uploadData,
+        });
+      } else if (upload.status === 'approved' && upload.approvedDishId) {
+        await this.updateDish(tx, upload.approvedDishId, data, adminInfo);
+        updatedDishIds.add(upload.approvedDishId);
+      } else {
+        throw new BadRequestException('本批次待审记录已被处理，无法继续覆盖');
+      }
       return;
     }
 
-    await tx.dish.create({
-      data: {
-        name: trimmed,
-        price: params.price,
-        priceUnit: params.priceUnit,
-        description: params.description,
-        tags: params.tags,
-        ingredients: params.ingredients,
-        allergens: params.allergens,
-        canteenId: params.canteen.id,
-        canteenName: params.canteen.name,
-        floorId: params.floor?.id,
-        floorLevel: params.floor?.level,
-        floorName: params.floor?.name,
-        windowId: params.window.id,
-        windowName: params.window.name,
-        windowNumber: params.window.number,
-        availableMealTime: params.availableMealTime,
-        availableDates: params.availableDates,
-        parentDishId: params.parentDishId,
-        status: 'online',
-      },
-    });
+    const existing = reference?.dishId
+      ? { id: reference.dishId }
+      : data.parentUploadId
+        ? null
+        : await tx.dish.findFirst({
+            where: {
+              name: data.name,
+              windowId: data.windowId,
+              parentDishId: data.parentDishId ?? null,
+            },
+          });
+
+    if (existing) {
+      await this.updateDish(tx, existing.id, data, adminInfo);
+      updatedDishIds.add(existing.id);
+      caches.dishes.set(key, { dishId: existing.id });
+      return;
+    }
+
+    const upload = await this.createDishUpload(tx, data, adminInfo);
+    caches.dishes.set(key, { uploadId: upload.id });
   }
 
-  private parseMealTimesFromItem(item: BatchParsedDishDto): string[] {
+  private parseMealTimesFromItem(item: BatchParsedDishDto): MealTime[] {
     const source =
       item.supplyPeriod && item.supplyPeriod.length > 0
         ? item.supplyPeriod
         : this.extractMealTimesFromText(item.supplyTime);
 
-    const result = new Set<string>();
+    const result = new Set<MealTime>();
     for (const label of source) {
       const trimmed = label.trim();
       if (!trimmed) continue;

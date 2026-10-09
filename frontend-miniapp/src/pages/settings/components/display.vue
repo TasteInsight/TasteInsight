@@ -1,73 +1,86 @@
 <template>
-  <view class="w-full min-h-screen bg-gradient-to-b from-white via-purple-50/20 to-white p-4">
-    <!-- 骨架屏：首次加载时显示 -->
-    <DisplaySettingsSkeleton v-if="loading" />
-
-    <template v-else>
-      <!-- 显示选项 -->
-      <view class="bg-white rounded-2xl p-6 mb-4 shadow-sm">
-        <text class="text-lg font-semibold text-gray-800 mb-4 block">显示选项</text>
-
-        <!-- 显示卡路里 -->
-        <view class="flex justify-between items-center py-3 border-b border-gray-100">
-          <view>
-            <text class="text-base text-gray-700 block">显示卡路里</text>
-            <text class="text-xs text-gray-400 mt-1">在菜品列表中显示热量信息</text>
-          </view>
-          <switch :checked="form.showCalories" color="#82318E" @change="onShowCaloriesChange" />
-        </view>
-
-        <!-- 显示营养信息 -->
-        <view class="flex justify-between items-center py-3">
-          <view>
-            <text class="text-base text-gray-700 block">显示营养信息</text>
-            <text class="text-xs text-gray-400 mt-1">在菜品详情中显示营养成分</text>
-          </view>
-          <switch :checked="form.showNutrition" color="#82318E" @change="onShowNutritionChange" />
-        </view>
-      </view>
-
-      <!-- 排序方式 -->
-      <view class="bg-white rounded-2xl p-6 mb-4 shadow-sm">
-        <text class="text-lg font-semibold text-gray-800 mb-4 block">默认排序方式</text>
-        <picker
-          mode="selector"
-          :range="sortOptions"
-          :value="form.sortByIndex"
-          @change="onSortChange"
+  <SettingsPage v-bind="pageState" :can-save="canSave" @retry="loadProfile" @save="handleSave">
+    <view class="settings-section">
+      <text class="settings-title">显示选项</text>
+      <view class="settings-row">
+        <view
+          ><text class="settings-label">显示卡路里</text
+          ><text class="settings-hint">热量数据待接入</text></view
         >
-          <view class="flex justify-between items-center p-3 border border-gray-200 rounded-lg">
-            <text class="text-base text-gray-700">{{ sortOptions[form.sortByIndex] }}</text>
-            <text class="text-gray-400">›</text>
-          </view>
-        </picker>
+        <switch
+          :checked="form.showCalories"
+          :disabled="!canEdit"
+          color="#660874"
+          aria-label="显示卡路里"
+          @change="onShowCaloriesChange"
+        />
       </view>
-
-      <!-- 保存按钮 -->
-      <button
-        class="w-full py-4 bg-gradient-to-r from-ts-purple to-purple-600 text-white rounded-full text-base font-bold shadow-lg mt-6"
-        :class="{ 'opacity-50': saving }"
-        :disabled="saving"
-        @click="handleSave"
+      <view class="settings-row">
+        <view
+          ><text class="settings-label">显示营养信息</text
+          ><text class="settings-hint">营养数据待接入</text></view
+        >
+        <switch
+          :checked="form.showNutrition"
+          :disabled="!canEdit"
+          color="#660874"
+          aria-label="显示营养信息"
+          @change="onShowNutritionChange"
+        />
+      </view>
+    </view>
+    <view class="settings-section">
+      <text class="settings-title">默认排序方式</text>
+      <picker
+        mode="selector"
+        :range="sortOptions"
+        :value="form.sortByIndex"
+        :disabled="!canEdit"
+        @change="onSortChange"
       >
-        <text>{{ saving ? '保存中...' : '保存设置' }}</text>
-      </button>
-    </template>
-  </view>
+        <view class="settings-field settings-inline"
+          ><text class="sort-label">{{ sortOptions[form.sortByIndex] }}</text
+          ><text class="iconfont icon-chevronright" aria-hidden="true"></text
+        ></view>
+      </picker>
+      <text class="settings-hint sort-hint">用于菜品列表的初始排序</text>
+    </view>
+  </SettingsPage>
 </template>
-
 <script setup lang="ts">
+import { computed } from 'vue';
+import { onBackPress } from '@dcloudio/uni-app';
 import { useDisplay } from '../composables/use-display';
-import { DisplaySettingsSkeleton } from '@/components/skeleton';
-
+import SettingsPage from './SettingsPage.vue';
+const state = useDisplay();
 const {
   form,
-  saving,
-  loading,
+  canEdit,
+  canSave,
+  loadProfile,
   sortOptions,
   onShowCaloriesChange,
   onShowNutritionChange,
   onSortChange,
   handleSave,
-} = useDisplay();
+  handleBackPress,
+} = state;
+const pageState = computed(() => ({
+  loading: state.loading.value,
+  initialized: state.initialized.value,
+  loadError: state.loadError.value,
+  saving: state.saving.value,
+  saved: state.saved.value,
+  dirty: state.dirty.value,
+  restoredDraft: state.restoredDraft.value,
+}));
+onBackPress(handleBackPress);
 </script>
+<style scoped>
+.sort-label {
+  flex: 1;
+}
+.sort-hint {
+  margin-top: 8px;
+}
+</style>

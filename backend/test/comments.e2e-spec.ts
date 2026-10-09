@@ -31,7 +31,7 @@ describe('CommentsController (e2e)', () => {
     jwtService = app.get<JwtService>(JwtService);
     configService = app.get<ConfigService>(ConfigService);
     app.useGlobalPipes(new ValidationPipe());
-    await app.init();
+    await app.listen(0, '127.0.0.1');
 
     const secret = configService.get<string>('JWT_SECRET');
 
@@ -43,7 +43,10 @@ describe('CommentsController (e2e)', () => {
       },
     });
     userId = user.id;
-    userToken = jwtService.sign({ sub: user.id, type: 'user' }, { secret });
+    userToken = jwtService.sign(
+      { sub: user.id, type: 'user', tokenUse: 'access' },
+      { secret },
+    );
 
     // Create a test user 2
     const user2 = await prisma.user.create({
@@ -53,7 +56,10 @@ describe('CommentsController (e2e)', () => {
       },
     });
     user2Id = user2.id;
-    user2Token = jwtService.sign({ sub: user2.id, type: 'user' }, { secret });
+    user2Token = jwtService.sign(
+      { sub: user2.id, type: 'user', tokenUse: 'access' },
+      { secret },
+    );
 
     // Create a test canteen
     const canteen = await prisma.canteen.create({

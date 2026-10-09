@@ -47,7 +47,7 @@ export const CONFIG_DEFINITIONS: ConfigDefinition[] = [
   // ==================== 评价配置 ====================
   {
     key: ConfigKeys.REVIEW_AUTO_APPROVE,
-    defaultValue: 'false',
+    defaultValue: 'true',
     valueType: 'boolean',
     description:
       '是否自动通过评价，开启后用户提交的评价将直接显示，无需管理员审核',
@@ -57,7 +57,7 @@ export const CONFIG_DEFINITIONS: ConfigDefinition[] = [
   // ==================== 评论配置 ====================
   {
     key: ConfigKeys.COMMENT_AUTO_APPROVE,
-    defaultValue: 'false',
+    defaultValue: 'true',
     valueType: 'boolean',
     description:
       '是否自动通过评论，开启后用户提交的评论将直接显示，无需管理员审核',

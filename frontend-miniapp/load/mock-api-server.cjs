@@ -203,9 +203,9 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'GET' && pathname === '/ai/suggestions') {
     return ok(res, ['想吃辣的', '来点清淡的']);
   }
-  if (req.method === 'POST' && pathname === '/ai/recommend') {
+  if (req.method === 'POST' && pathname === '/recommend') {
     await readJson(req);
-    return ok(res, [{ id: 'dish_001', name: '宫保鸡丁' }]);
+    return ok(res, { items: [{ id: 'dish_001', name: '宫保鸡丁' }], total: 1 });
   }
   if (req.method === 'POST' && pathname === '/ai/sessions') {
     await readJson(req);

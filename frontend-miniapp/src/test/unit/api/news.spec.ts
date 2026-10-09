@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 describe('api/modules/news.ts', () => {
   const MODULE_PATH = '@/api/modules/news';
 
@@ -39,3 +37,4 @@ describe('api/modules/news.ts', () => {
     });
   });
 });
+export {};

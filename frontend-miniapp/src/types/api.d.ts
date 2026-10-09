@@ -380,6 +380,10 @@ export interface Comment {
   createdAt: string;
 }
 
+export interface CommentListData extends PaginatedData<Comment> {
+  canReply: boolean;
+}
+
 export interface ParentComment {
   deleted?: boolean;
   /**
@@ -526,6 +530,7 @@ export interface GetDishesRequest {
     // --- 基础筛选 ---
     includeOffline?: boolean;
     canteenId?: string[];
+    windowId?: string[];
     tag?: string[];
 
     // --- 范围筛选 ---
@@ -593,9 +598,9 @@ export interface DishUserCreateRequest {
   allergens?: string[];
   canteenId?: string;
   canteenName: string;
-  floor?: string;
+  windowId?: string;
   windowNumber?: string;
-  windowName: string;
+  windowName?: string;
   availableMealTime: ('breakfast' | 'lunch' | 'dinner' | 'nightsnack')[];
   availableDates?: Array<{
     startDate: string;
@@ -639,7 +644,7 @@ export interface DishUpdateRequest {
   price?: number;
   description?: string;
   images?: string[];
-  parentDishId?: string;
+  parentDishId?: string | null;
   subDishId?: string[];
   ingredients?: string[];
   allergens?: string[];
@@ -754,13 +759,6 @@ export interface MealPlanRequest {
   endDate?: string;
   mealTime?: 'breakfast' | 'lunch' | 'dinner' | 'nightsnack';
   dishes?: string[];
-}
-
-/**
- * AI推荐请求
- */
-export interface AIRecommendRequest {
-  userPreference?: Partial<UserPreference>;
 }
 
 /**
@@ -927,13 +925,6 @@ export interface RecommendationItem {
 }
 
 /**
- * AI推荐响应数据
- */
-export interface AIRecommendData {
-  recommendations: RecommendationItem[];
-}
-
-/**
  * 图片上传响应数据
  */
 export interface ImageUploadData {
@@ -955,6 +946,7 @@ export interface PendingCommentItem extends Comment {
 export interface PendingReviewItem extends Review {
   dishName: string;
   dishImage: string;
+  updatedAt: string;
 }
 
 /**
@@ -1141,6 +1133,19 @@ export interface ComponentMealPlanDraft {
   };
 }
 
+export interface ComponentPreferenceDraft {
+  summary: string;
+  previewData: {
+    before: UserProfileUpdateRequest;
+    after: UserProfileUpdateRequest;
+  };
+  confirmAction: {
+    api: '/user/profile';
+    method: 'PUT';
+    body: UserProfileUpdateRequest;
+  };
+}
+
 // 消息段定义
 export interface SegmentText {
   type: 'text';
@@ -1157,6 +1162,11 @@ export interface SegmentPlanCard {
   data: ComponentMealPlanDraft[];
 }
 
+export interface SegmentPreferenceCard {
+  type: 'card_preferences';
+  data: ComponentPreferenceDraft[];
+}
+
 export interface SegmentCanteenCard {
   type: 'card_canteen';
   data: ComponentCanteenCard[];
@@ -1171,6 +1181,7 @@ export type ChatContentSegment =
   | SegmentText
   | SegmentDishCard
   | SegmentPlanCard
+  | SegmentPreferenceCard
   | SegmentCanteenCard
   | SegmentWindowCard;
 

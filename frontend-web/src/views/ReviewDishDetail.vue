@@ -7,7 +7,7 @@
         class="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition p-2"
         title="关闭"
       >
-        <span class="iconify text-2xl" data-icon="carbon:close"></span>
+        <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
       </button>
 
       <Header
@@ -116,7 +116,7 @@
                 class="border-2 border-dashed rounded-lg h-48 flex items-center justify-center bg-gray-50 overflow-hidden"
               >
                 <div class="text-center p-6">
-                  <span class="iconify text-4xl text-gray-400 mx-auto" data-icon="bi:image"></span>
+                  <AppIcon class="iconify text-4xl text-gray-400 mx-auto" icon="bi:image"></AppIcon>
                   <div class="mt-2 text-gray-500">暂无图片</div>
                 </div>
               </div>
@@ -231,41 +231,41 @@
               <label class="block text-gray-700 font-medium mb-2">供应时间</label>
               <div class="space-y-2">
                 <div class="flex items-center px-4 py-2 border rounded-lg bg-gray-50">
-                  <span
+                  <AppIcon
                     class="iconify mr-2"
                     :class="dishData.servingTime?.breakfast ? 'text-green-500' : 'text-gray-300'"
-                    data-icon="carbon:checkmark"
-                  ></span>
+                    icon="carbon:checkmark"
+                  ></AppIcon>
                   <span :class="dishData.servingTime?.breakfast ? 'text-gray-700' : 'text-gray-400'"
                     >早餐</span
                   >
                 </div>
                 <div class="flex items-center px-4 py-2 border rounded-lg bg-gray-50">
-                  <span
+                  <AppIcon
                     class="iconify mr-2"
                     :class="dishData.servingTime?.lunch ? 'text-green-500' : 'text-gray-300'"
-                    data-icon="carbon:checkmark"
-                  ></span>
+                    icon="carbon:checkmark"
+                  ></AppIcon>
                   <span :class="dishData.servingTime?.lunch ? 'text-gray-700' : 'text-gray-400'"
                     >午餐</span
                   >
                 </div>
                 <div class="flex items-center px-4 py-2 border rounded-lg bg-gray-50">
-                  <span
+                  <AppIcon
                     class="iconify mr-2"
                     :class="dishData.servingTime?.dinner ? 'text-green-500' : 'text-gray-300'"
-                    data-icon="carbon:checkmark"
-                  ></span>
+                    icon="carbon:checkmark"
+                  ></AppIcon>
                   <span :class="dishData.servingTime?.dinner ? 'text-gray-700' : 'text-gray-400'"
                     >晚餐</span
                   >
                 </div>
                 <div class="flex items-center px-4 py-2 border rounded-lg bg-gray-50">
-                  <span
+                  <AppIcon
                     class="iconify mr-2"
                     :class="dishData.servingTime?.night ? 'text-green-500' : 'text-gray-300'"
-                    data-icon="carbon:checkmark"
-                  ></span>
+                    icon="carbon:checkmark"
+                  ></AppIcon>
                   <span :class="dishData.servingTime?.night ? 'text-gray-700' : 'text-gray-400'"
                     >夜宵</span
                   >
@@ -344,7 +344,7 @@
             class="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200 flex items-center justify-center"
             @click="approveDish"
           >
-            <span class="iconify mr-2" data-icon="carbon:checkmark-filled"></span>
+            <AppIcon class="iconify mr-2" icon="carbon:checkmark-filled"></AppIcon>
             批准通过
           </button>
           <button
@@ -352,7 +352,7 @@
             class="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200 flex items-center justify-center"
             @click="openRejectModal"
           >
-            <span class="iconify mr-2" data-icon="carbon:close-filled"></span>
+            <AppIcon class="iconify mr-2" icon="carbon:close-filled"></AppIcon>
             拒绝审核
           </button>
           <button
@@ -360,7 +360,7 @@
             class="flex-1 px-6 py-3 bg-yellow-100 text-yellow-800 rounded-lg hover:bg-yellow-200 transition duration-200 flex items-center justify-center"
             @click="revokeApproval"
           >
-            <span class="iconify mr-2" data-icon="carbon:reset"></span>
+            <AppIcon class="iconify mr-2" icon="carbon:reset"></AppIcon>
             撤销审核结果
           </button>
           <button
@@ -386,7 +386,7 @@
             @click="closeRejectModal"
             class="text-gray-400 hover:text-gray-500 transition-colors"
           >
-            <span class="iconify text-xl" data-icon="carbon:close"></span>
+            <AppIcon class="iconify text-xl" icon="carbon:close"></AppIcon>
           </button>
         </div>
 
@@ -418,11 +418,11 @@
             class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200 flex items-center"
             :disabled="isSubmitting"
           >
-            <span
+            <AppIcon
               v-if="isSubmitting"
               class="iconify animate-spin mr-2"
-              data-icon="mdi:loading"
-            ></span>
+              icon="mdi:loading"
+            ></AppIcon>
             确认拒绝
           </button>
         </div>

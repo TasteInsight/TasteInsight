@@ -1,4 +1,6 @@
-import { jest } from '@jest/globals';
+jest.mock('@/store/modules/use-user-store', () => ({
+  useUserStore: () => ({ sessionVersion: 0, isLoggedIn: true, userInfo: { id: 'user' } }),
+}));
 
 describe('pages/planning/composables/use-menu-planning.ts', () => {
   const MODULE_PATH = '@/pages/planning/composables/use-menu-planning';
@@ -17,7 +19,7 @@ describe('pages/planning/composables/use-menu-planning.ts', () => {
     const { useMenuPlanning } = require(MODULE_PATH);
     const inst = useMenuPlanning();
 
-    const plan = { id: 'p1' } as any;
+    const plan = { id: 'p1', dishesReady: true } as any;
     inst.viewPlanDetail(plan);
     expect(inst.showDetailDialog.value).toBe(true);
     expect(setSelectedPlan).toHaveBeenCalledWith(plan);
@@ -139,3 +141,4 @@ describe('pages/planning/composables/use-menu-planning.ts', () => {
     expect(inst.activeTab.value).toBe('history');
   });
 });
+export {};

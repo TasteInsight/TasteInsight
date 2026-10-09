@@ -64,6 +64,7 @@ describe('views/ReportManage', () => {
             targetContent: { content: 'spam', isDeleted: false, userNickname: 't2' },
           },
         ],
+        meta: { total: 42 },
       },
     })
 
@@ -84,7 +85,7 @@ describe('views/ReportManage', () => {
 
     expect(mocks.reviewApiMock.getReports).toHaveBeenCalledWith({ page: 1, pageSize: 20 })
     expect(wrapper.vm.reports).toHaveLength(2)
-    expect(wrapper.vm.totalReports).toBe(2)
+    expect(wrapper.vm.totalReports).toBe(42)
 
     // status filter affects API params
     wrapper.vm.statusFilter = 'pending'
@@ -94,14 +95,28 @@ describe('views/ReportManage', () => {
 
     expect(mocks.reviewApiMock.getReports).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, status: 'pending' })
 
-    // targetType filter is client-side
+    mocks.reviewApiMock.getReports.mockResolvedValueOnce({
+      code: 200,
+      data: {
+        items: [wrapper.vm.reports[0]],
+        meta: { total: 21 },
+      },
+    })
+
+    // targetType filter is passed to the server and preserves the server total
     wrapper.vm.targetTypeFilter = 'review'
     wrapper.vm.handleFilterChange()
     await flushMicrotasks()
     await nextTick()
 
+    expect(mocks.reviewApiMock.getReports).toHaveBeenLastCalledWith({
+      page: 1,
+      pageSize: 20,
+      status: 'pending',
+      targetType: 'review',
+    })
     expect(wrapper.vm.reports.every((r: any) => r.targetType === 'review')).toBe(true)
-    expect(wrapper.vm.totalReports).toBe(1)
+    expect(wrapper.vm.totalReports).toBe(21)
 
     wrapper.unmount()
   })

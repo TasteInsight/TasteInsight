@@ -6,6 +6,7 @@ import ProfilePage from '@/pages/profile/index.vue';
 // Mock uni-app lifecycle hooks
 jest.mock('@dcloudio/uni-app', () => ({
   onPullDownRefresh: jest.fn(),
+  onShow: jest.fn(),
 }));
 
 // Mock composables
@@ -27,6 +28,7 @@ describe('ProfilePage', () => {
       userInfo,
       isLoggedIn,
       loading,
+      error: ref(null),
       handleLogout: jest.fn(),
       fetchProfile: jest.fn(),
     };
@@ -35,8 +37,9 @@ describe('ProfilePage', () => {
     useProfile.mockReturnValue(mockUseProfile);
   });
 
-  it('renders skeleton when initially loading', () => {
+  it('keeps static profile menus visible without a skeleton during initial loading', () => {
     mockUseProfile.loading.value = true;
+    mockUseProfile.isLoggedIn = true;
 
     const wrapper = shallowMount(ProfilePage, {
       global: {
@@ -47,13 +50,15 @@ describe('ProfilePage', () => {
       },
     });
 
-    // Since hasLoaded starts as false, isInitialLoading should be true when loading is true
-    expect(wrapper.findComponent({ name: 'ProfileSkeleton' }).exists()).toBe(true);
+    expect(wrapper.findComponent({ name: 'ProfileSkeleton' }).exists()).toBe(false);
+    expect(wrapper.findComponent({ name: 'UserHeader' }).exists()).toBe(false);
+    expect(wrapper.findAll('.profile-menu')).toHaveLength(6);
   });
 
   it('renders user header when not loading', () => {
     mockUseProfile.loading.value = false;
     mockUseProfile.isLoggedIn = true;
+    mockUseProfile.userInfo.value = { id: 'user', nickname: '用户' };
 
     const wrapper = shallowMount(ProfilePage, {
       global: {
@@ -81,7 +86,7 @@ describe('ProfilePage', () => {
       },
     });
 
-    expect(wrapper.findAll('.flex.items-center.justify-between.p-4').length).toBeGreaterThan(0);
+    expect(wrapper.findAll('.profile-menu').length).toBeGreaterThan(0);
   });
 
   it('hides menu items when not logged in', () => {
@@ -98,6 +103,6 @@ describe('ProfilePage', () => {
     });
 
     // When not logged in, only the privacy and about menu items should be visible (2 items)
-    expect(wrapper.findAll('.flex.items-center.justify-between.p-4').length).toBe(2);
+    expect(wrapper.findAll('.profile-menu').length).toBe(2);
   });
 });

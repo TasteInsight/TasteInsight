@@ -1,14 +1,17 @@
 <template>
-  <view class="min-h-screen bg-white">
-    <!-- 骨架屏 -->
-    <DishDetailSkeleton v-if="loading && !dish" />
-
+  <view class="dish-page page-content">
     <!-- 错误状态 -->
-    <view v-else-if="error" class="flex items-center justify-center min-h-screen">
+    <view
+      v-if="error"
+      class="flex items-center justify-center py-6"
+      :class="{ 'page-content': !dish }"
+      role="alert"
+    >
       <view class="text-center">
         <text class="text-black">{{ error }}</text>
         <button
           class="mt-4 px-4 py-2 bg-ts-purple text-white rounded-lg border border-ts-purple active:opacity-90 transition-colors"
+          :disabled="loading"
           @click="refresh"
         >
           重试
@@ -17,381 +20,203 @@
     </view>
 
     <!-- 菜品详情内容 -->
-    <view v-else-if="dish" class="pb-16">
-      <!-- 图片轮播 -->
-      <view class="relative" v-if="dish.images && dish.images.length > 0">
+    <view v-if="dish" class="dish-content" :aria-busy="loading">
+      <view v-if="dishImages.length" class="dish-photos">
         <swiper
           class="dish-swiper"
-          :indicator-dots="dish.images.length > 1"
-          :autoplay="true"
-          :interval="3000"
-          :circular="true"
-          indicator-color="rgba(255, 255, 255, 0.5)"
-          indicator-active-color="#8B5CF6"
+          :indicator-dots="dishImages.length > 1"
+          :circular="dishImages.length > 1"
+          indicator-color="rgba(255,255,255,.65)"
+          indicator-active-color="#660874"
         >
-          <swiper-item
-            v-for="(image, index) in dish.images"
-            :key="index"
-            class="relative overflow-hidden"
-          >
-            <!-- 背景模糊层 -->
-            <image :src="image" class="absolute inset-0 w-full h-full blur-bg" mode="aspectFill" />
-            <!-- 渐变遮罩层 - 优化边缘过渡 -->
-            <view
-              class="absolute inset-0 bg-gradient-to-r from-black/10 via-transparent to-black/10 backdrop-blur-sm z-1"
-            ></view>
-
-            <!-- 强力边缘融合层：使用多重box-shadow模拟羽化效果 -->
-            <view
-              class="absolute inset-0 z-5 pointer-events-none"
-              style="box-shadow: inset 0 0 60px 40px rgba(255, 255, 255, 0.5)"
-            >
-            </view>
-
-            <!-- 模糊遮罩层：进一步柔化边界 -->
-            <view
-              class="absolute inset-0 z-6 pointer-events-none bg-gradient-to-r from-white/30 via-transparent to-white/30 backdrop-blur-md"
-            ></view>
-
-            <!-- 主体图片容器 -->
-            <view class="relative w-full h-full flex items-center justify-center z-10">
-              <image
-                :src="image"
-                class="w-full h-full"
-                mode="aspectFit"
-                style="-webkit-mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%); mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%);"
-              />
-            </view>
-
-            <!-- 边缘融合遮罩 -->
-            <view
-              class="absolute inset-0 z-20 pointer-events-none"
-              style="background: radial-gradient(circle, transparent 50%, rgba(255, 255, 255, 0.4) 100%);"
-            >
-            </view>
+          <swiper-item v-for="image in dishImages" :key="image">
+            <image
+              :src="image"
+              class="dish-photo"
+              mode="aspectFill"
+              @error="failedDishImages.push(image)"
+            />
           </swiper-item>
         </swiper>
       </view>
 
-      <!-- 基本信息 -->
-      <view class="bg-white p-4">
-        <view class="flex justify-between items-start mb-2">
-          <view class="flex-1">
-            <h1 class="text-xl font-bold text-gray-800">{{ dish.name }}</h1>
-            <view class="text-sm text-gray-500 mt-1 flex items-center">
-              <text class="iconfont icon-store"></text>
-              <text class="ml-1">{{ dish.canteenName }} · {{ dish.windowName }}</text>
-            </view>
-          </view>
-          <view class="text-right mt-2">
-            <view class="text-lg font-bold text-orange-500"
-              >¥{{ dish.price }}{{ dish.priceUnit ? `/${dish.priceUnit}` : '' }}</view
-            >
-          </view>
-        </view>
-
-        <!-- 标签 -->
-        <view v-if="dish.tags?.length" class="flex flex-wrap gap-2">
-          <span
-            v-for="tag in dish.tags"
-            :key="tag"
-            class="px-3 py-1 bg-blue-50 text-blue-600 text-xs rounded-md cursor-pointer active:bg-blue-100"
-            @click="goToTagDishes(tag)"
+      <view class="dish-summary">
+        <view class="dish-title-row">
+          <text class="dish-title">{{ dish.name }}</text>
+          <text class="dish-price"
+            >¥{{ dish.price
+            }}<text v-if="dish.priceUnit" class="dish-price-unit">/{{ dish.priceUnit }}</text></text
           >
-            #{{ tag }}
-          </span>
         </view>
-
-        <!-- 评分信息 -->
-        <view class="mt-3 py-3 border-t border-gray-100">
-          <view class="flex justify-between items-start">
-            <!-- 左侧评分和评价数量 -->
-            <view class="flex flex-col mt-8 ml-6">
-              <view class="text-xl font-bold text-yellow-500">
-                {{ displayAverageRating === 0 ? '暂无' : `${displayAverageRating.toFixed(1)}分` }}
-              </view>
-              <view class="text-xs text-gray-500 mt-1"> {{ displayReviewCount }} 条评价 </view>
-            </view>
-
-            <!-- 右侧评分比例条状图 -->
-            <RatingBars ref="ratingBarsRef" :dish-id="dish.id" />
-          </view>
+        <view class="dish-location-row">
+          <text class="dish-location">{{ dishLocation }}</text>
+          <button
+            v-if="dish.windowId"
+            class="dish-window-link"
+            data-testid="dish-window"
+            @click="goToWindow"
+          >
+            查看窗口
+          </button>
+        </view>
+        <view v-if="dish.tags?.length" class="dish-tags">
+          <button v-for="tag in dish.tags" :key="tag" class="dish-tag" @click="goToTagDishes(tag)">
+            <TagBadge :label="tag" />
+          </button>
+        </view>
+        <view class="rating-overview" :class="{ 'rating-overview-empty': !displayReviewCount }">
+          <view class="rating-total"
+            ><text class="rating-average">{{
+              displayAverageRating === 0 ? '暂无评分' : displayAverageRating.toFixed(1) + '分'
+            }}</text
+            ><text class="rating-count">{{ displayReviewCount }} 条评价</text></view
+          >
+          <RatingBars v-if="displayReviewCount > 0" ref="ratingBarsRef" :dish-id="dish.id" />
         </view>
       </view>
 
-      <!-- 分隔线 -->
-      <view class="h-3 bg-gray-50 border-t border-b border-gray-100"></view>
-
-      <!-- 详细信息 -->
-      <view class="bg-white p-4">
-        <!-- 标题 - 始终显示 -->
-        <view class="flex justify-between items-center mb-3">
-          <view class="flex items-center">
-            <view class="w-1 h-4 bg-ts-purple rounded-full mr-2"></view>
-            <h2 class="text-lg font-semibold text-gray-800">详细信息</h2>
-          </view>
-          <text
-            v-if="!isDetailExpanded"
-            class="text-sm text-gray-500 cursor-pointer"
-            @click="toggleDetailExpansion"
-            >展开 ↓</text
-          >
-        </view>
-
-        <!-- 供应时间 - 始终显示 -->
-        <view class="detail-section mb-3">
-          <text class="font-bold text-black mr-1 text-sm">供应时间：</text>
-          <text class="detail-text">{{ formatMealTime(dish.availableMealTime) }}</text>
-        </view>
-
-        <view v-show="isDetailExpanded" class="transition-all duration-300 ease-in-out">
-          <!-- 菜品介绍 -->
-          <view v-if="dish.description" class="detail-section">
-            <text class="font-bold text-black mr-1 text-sm">菜品介绍：</text>
-            <text class="detail-text">{{ dish.description }}</text>
-          </view>
-
-          <!-- 主要食材 -->
-          <view v-if="dish.ingredients?.length" class="detail-section">
-            <text class="font-bold text-black mr-1 text-sm">主要食材：</text>
-            <text class="detail-text">{{ dish.ingredients.join('、') }}</text>
-          </view>
-
-          <!-- 过敏原信息 -->
-          <view v-if="dish.allergens?.length" class="detail-section">
-            <text class="font-bold text-black mr-1 text-sm">过敏原信息：</text>
-            <text class="detail-text text-red-600">{{ dish.allergens.join('、') }}</text>
-          </view>
-
-          <!-- 口味信息 -->
-          <view v-if="hasTasteInfo" class="detail-section">
-            <text class="font-bold text-black mr-1 text-sm">口味信息：</text>
-            <view class="mt-2 flex flex-wrap gap-2">
-              <view
-                v-if="dish.spicyLevel !== undefined"
-                class="px-3 py-1 bg-red-50 text-red-600 text-xs rounded-md"
-              >
-                辣度 {{ dish.spicyLevel === 0 ? '暂无' : `${dish.spicyLevel}/5` }}
-              </view>
-              <view
-                v-if="dish.sweetness !== undefined"
-                class="px-3 py-1 bg-yellow-50 text-yellow-600 text-xs rounded-md"
-              >
-                甜度 {{ dish.sweetness === 0 ? '暂无' : `${dish.sweetness}/5` }}
-              </view>
-              <view
-                v-if="dish.saltiness !== undefined"
-                class="px-3 py-1 bg-blue-50 text-blue-600 text-xs rounded-md"
-              >
-                咸度 {{ dish.saltiness === 0 ? '暂无' : `${dish.saltiness}/5` }}
-              </view>
-              <view
-                v-if="dish.oiliness !== undefined"
-                class="px-3 py-1 bg-green-50 text-green-600 text-xs rounded-md"
-              >
-                油腻度 {{ dish.oiliness === 0 ? '暂无' : `${dish.oiliness}/5` }}
-              </view>
-            </view>
-          </view>
-
-          <!-- 父菜品（如果有） -->
-          <view v-if="parentDish" class="detail-section mt-3">
-            <text class="font-bold text-black mr-1 text-sm">所属菜品：</text>
-            <view
-              class="mt-2 bg-gray-50 p-3 rounded-lg flex items-center gap-3 cursor-pointer"
-              @click="goToParentDish"
-            >
-              <image
-                v-if="parentDish.images?.[0]"
-                :src="parentDish.images[0]"
-                class="w-14 h-14 rounded-md object-cover"
-                mode="aspectFill"
-              />
-              <view
-                v-else
-                class="w-14 h-14 bg-gray-200 rounded-md flex items-center justify-center"
-              >
-                <text class="iconfont icon-food text-gray-400"></text>
-              </view>
-              <view class="flex-1 min-w-0">
-                <view class="font-medium text-sm text-gray-800 truncate">{{
-                  parentDish.name
-                }}</view>
-                <view class="text-xs text-red-600 mt-1">¥{{ parentDish.price }}</view>
-              </view>
-              <text class="iconfont icon-chevronright text-gray-400"></text>
-            </view>
-          </view>
-
-          <!-- 子菜品（如果有） -->
-          <view v-if="subDishes.length > 0" class="detail-section mt-3">
-            <text class="font-bold text-black mr-1 text-sm">子菜品：</text>
-            <view class="mt-2 space-y-3">
-              <view
-                v-for="sub in displayedSubDishes"
-                :key="sub.id"
-                class="bg-gray-50 p-3 rounded-lg flex items-center gap-3 cursor-pointer"
-                @click="goToSubDish(sub.id)"
-              >
-                <image
-                  v-if="sub.images?.[0]"
-                  :src="sub.images[0]"
-                  class="w-14 h-14 rounded-md object-cover"
-                  mode="aspectFill"
-                />
-                <view
-                  v-else
-                  class="w-14 h-14 bg-gray-200 rounded-md flex items-center justify-center"
-                >
-                  <text class="iconfont icon-food text-gray-400"></text>
-                </view>
-                <view class="flex-1 min-w-0">
-                  <view class="font-medium text-sm text-gray-800 truncate">{{ sub.name }}</view>
-                  <view class="text-xs text-red-600 mt-1">¥{{ sub.price }}</view>
-                </view>
-                <text class="iconfont icon-chevronright text-gray-400"></text>
-              </view>
-            </view>
-            <!-- 展开/收起子菜品按钮 -->
-            <view v-if="subDishes.length > 3" class="mt-3 text-center">
-              <view
-                class="inline-block text-sm text-gray-500 py-1 cursor-pointer"
-                @click.stop="isSubDishesExpanded = !isSubDishesExpanded"
-              >
-                {{ isSubDishesExpanded ? '收起' : `展开全部 (${subDishes.length}个)` }}
-                <text class="ml-1 text-xs">{{ isSubDishesExpanded ? '↑' : '↓' }}</text>
-              </view>
-            </view>
-          </view>
-
-          <!-- 收起详细信息按钮 - 在最下面 -->
-          <view class="mt-4 pt-3 border-t border-gray-100 text-center">
-            <text class="text-sm text-gray-500 cursor-pointer" @click="toggleDetailExpansion"
-              >收起详细信息 ↑</text
-            >
-          </view>
-        </view>
-      </view>
-
-      <!-- 分隔线 -->
-      <view class="h-3 bg-gray-50 border-t border-b border-gray-100"></view>
-
-      <!-- 我的评价：置顶展示（位于详细信息与用户评价之间） -->
-      <view v-if="myReview" class="bg-white p-4">
-        <view class="flex items-center justify-between mb-3">
-          <view class="flex items-center">
-            <view class="w-1 h-4 bg-ts-purple rounded-full mr-2"></view>
-            <h2 class="text-lg font-semibold text-gray-800">我的评价</h2>
-          </view>
-          <view class="flex items-center gap-3">
-            <view v-if="myReview" class="text-sm text-gray-500" @tap="handleDeleteMyReview"
-              >删除</view
-            >
-            <view class="text-sm text-ts-purple" @tap="showReviewForm">{{
-              myReview ? '修改' : '去评价'
-            }}</view>
-          </view>
-        </view>
-
-        <view
-          v-if="myReview"
-          class="border border-gray-100 rounded-lg p-3 active:bg-gray-50"
-          @tap="showAllCommentsPanel(myReview.id)"
+      <view class="dish-more">
+        <button
+          class="dish-more-toggle"
+          :aria-expanded="isDetailExpanded"
+          @click="toggleDetailExpansion"
         >
-          <view class="flex items-start">
-            <image
-              :src="myReview.userAvatar || '/default-avatar.png'"
-              class="w-10 h-10 rounded-full mr-3 flex-shrink-0"
-              mode="aspectFill"
-            />
+          <text>菜品信息</text><text>{{ isDetailExpanded ? '收起' : '展开' }}</text>
+        </button>
+        <view v-if="isDetailExpanded" class="dish-more-content">
+          <view class="decision-facts">
+            <view class="decision-row"
+              ><text class="decision-label">供应餐时</text
+              ><text class="decision-value">{{
+                formatMealTime(dish.availableMealTime) || '暂未提供'
+              }}</text></view
+            >
+            <view class="decision-taste"><TasteProfile :taste="dish" /></view>
+            <view class="decision-row"
+              ><text class="decision-label">已知过敏原</text
+              ><text class="decision-value">{{
+                dish.allergens?.length ? dish.allergens.join('、') : '暂未提供'
+              }}</text></view
+            >
+          </view>
+          <text class="dish-description">{{ dish.description || '菜品介绍暂未提供' }}</text>
+          <text v-if="dish.ingredients?.length" class="dish-description"
+            >主要食材：{{ dish.ingredients.join('、') }}</text
+          >
+          <button v-if="parentDish" class="dish-related" @click="goToParentDish">
+            <text>所属菜品</text><text>{{ parentDish.name }}</text>
+          </button>
+          <view v-if="subDishes.length" class="dish-related-list">
+            <text class="dish-related-heading">其他规格</text>
+            <button
+              v-for="sub in displayedSubDishes"
+              :key="sub.id"
+              class="dish-related"
+              @click="goToSubDish(sub.id)"
+            >
+              <text>{{ sub.name }}</text
+              ><text>¥{{ sub.price }}</text>
+            </button>
+            <button
+              v-if="subDishes.length > 3"
+              class="dish-more-toggle"
+              @click="isSubDishesExpanded = !isSubDishesExpanded"
+            >
+              {{ isSubDishesExpanded ? '收起' : '展开全部规格（' + subDishes.length + '）' }}
+            </button>
+          </view>
+        </view>
+      </view>
 
-            <view class="flex-1">
-              <view class="font-bold text-purple-900 text-sm">{{ myReview.userNickname }}</view>
-              <view class="flex items-center mt-1">
+      <view v-if="ownReviewLoading || ownReviewError || myReview" class="review-section">
+        <view class="review-section-header">
+          <text class="review-section-title">我的评价</text>
+          <view v-if="myReview && ownReviewLoaded" class="review-own-actions">
+            <button
+              class="review-text-action"
+              :disabled="deletingReview"
+              @tap="handleDeleteMyReview"
+            >
+              {{ deletingReview ? '删除中…' : '删除' }}
+            </button>
+            <button class="review-text-action" :disabled="deletingReview" @tap="showReviewForm">
+              修改
+            </button>
+          </view>
+        </view>
+        <view v-if="ownReviewError" class="review-state">
+          <text>{{ ownReviewError }}</text
+          ><button class="review-text-action" @tap="fetchOwnReview(dishId)">重试</button>
+        </view>
+        <view v-if="myReview" class="own-review">
+          <view class="own-review-heading">
+            <UserAvatar :src="myReview.userAvatar" :label="myReview.userNickname" />
+            <text class="review-author">{{ myReview.userNickname }}</text>
+          </view>
+          <TasteProfile :taste="myReview.ratingDetails" collapsible class="review-rating">
+            <template #summary>
+              <view class="review-stars" :aria-label="'总体评分 ' + myReview.rating + ' 星'">
                 <text
                   v-for="star in 5"
                   :key="star"
-                  class="text-base mr-0.5"
-                  :class="star <= myReview.rating ? 'text-yellow-500' : 'text-gray-300'"
+                  :class="{ 'is-filled': star <= myReview.rating }"
+                  aria-hidden="true"
                   >{{ star <= myReview.rating ? '★' : '☆' }}</text
                 >
               </view>
-
-              <view
-                v-if="myReview.ratingDetails"
-                class="mt-2 text-xs text-gray-500 flex flex-wrap gap-2"
-              >
-                <view class="px-2 py-1 bg-red-50 text-red-600 rounded"
-                  >辣度 {{ myReview.ratingDetails.spicyLevel }}/5</view
-                >
-                <view class="px-2 py-1 bg-yellow-50 text-yellow-600 rounded"
-                  >甜度 {{ myReview.ratingDetails.sweetness }}/5</view
-                >
-                <view class="px-2 py-1 bg-blue-50 text-blue-600 rounded"
-                  >咸度 {{ myReview.ratingDetails.saltiness }}/5</view
-                >
-                <view class="px-2 py-1 bg-green-50 text-green-600 rounded"
-                  >油腻 {{ myReview.ratingDetails.oiliness }}/5</view
-                >
-              </view>
-
-              <view class="text-sm text-gray-700 leading-relaxed mt-2">{{ myReview.content }}</view>
-
-              <view
-                v-if="myReview.images && myReview.images.length > 0"
-                class="flex flex-wrap gap-2 mt-2"
-              >
-                <image
-                  v-for="(img, idx) in myReview.images"
-                  :key="idx"
-                  :src="img"
-                  class="w-20 h-20 rounded object-cover border border-gray-100"
-                  mode="aspectFill"
-                  @tap.stop="previewMyReviewImage(myReview.images, idx)"
-                />
-              </view>
-
-              <view class="text-xs text-gray-400 mt-2">{{
-                formatReviewDate(myReview.createdAt)
-              }}</view>
-            </view>
+            </template>
+          </TasteProfile>
+          <text v-if="myReview.content" class="review-body-text">{{ myReview.content }}</text>
+          <view v-if="ownReviewImages.length" class="own-review-images">
+            <image
+              v-for="(img, idx) in ownReviewImages"
+              :key="img"
+              :src="img"
+              class="own-review-image"
+              mode="aspectFill"
+              @error="failedOwnReviewImages.push(img)"
+              @tap.stop="previewMyReviewImage(ownReviewImages, idx)"
+            />
           </view>
+          <view class="own-review-meta">
+            <text class="review-date">{{ formatReviewDate(myReview.createdAt) }}</text>
+            <button
+              v-if="myReview.status === 'approved' || reviewComments[myReview.id]?.total"
+              class="review-text-action"
+              @tap="showAllCommentsPanel(myReview.id)"
+            >
+              查看回复
+            </button>
+          </view>
+          <text v-if="myReview.status === 'rejected'" class="review-status-hint"
+            >这条评价未能发布，可以修改后重新提交。</text
+          >
+          <CommentList
+            :review-id="myReview.id"
+            :comments-data="reviewComments[myReview.id]"
+            :fetch-comments="fetchComments"
+            @comment-added="handleCommentAdded"
+            @view-all-comments="showAllCommentsPanel(myReview.id)"
+          />
         </view>
-
-        <!-- 我的评价的评论列表 -->
-        <CommentList
-          v-if="myReview"
-          :review-id="myReview.id"
-          :comments-data="reviewComments[myReview.id]"
-          :fetch-comments="fetchComments"
-          @comment-added="handleCommentAdded"
-          @view-all-comments="showAllCommentsPanel(myReview.id)"
-        />
-
-        <view v-else class="text-sm text-gray-400 py-2">你还没有评价过这道菜</view>
       </view>
 
-      <!-- 分隔线 -->
-      <view class="h-3 bg-gray-50 border-t border-b border-gray-100"></view>
-
-      <!-- 评价列表 -->
-      <view class="bg-white p-4">
-        <view class="mb-4">
-          <view class="flex items-center">
-            <view class="w-1 h-4 bg-ts-purple rounded-full mr-2"></view>
-            <h2 class="text-lg font-semibold text-gray-800">用户评价</h2>
-          </view>
-        </view>
+      <view class="review-section">
+        <view class="review-section-header"
+          ><text class="review-section-title">用户评价</text></view
+        >
 
         <ReviewList
           :dish-id="dishId"
           :reviews="otherReviews"
           :loading="reviewsLoading"
+          :initialized="reviewsInitialized"
           :error="reviewsError"
           :has-more="reviewsHasMore"
           :review-comments="reviewComments"
           :fetch-comments="fetchComments"
           @load-more="loadMoreReviews"
+          @retry="retryReviews"
           @view-all-comments="showAllCommentsPanel"
           @report="id => openReportModal('review', id)"
           @delete="handleDeleteReview"
@@ -403,21 +228,24 @@
     <!-- 微信小程序：使用 page-container 拦截返回，确保返回时关闭弹窗而不是返回上一页 -->
     <page-container
       v-if="shouldRenderReviewHelper"
+      :key="reviewHelperKey"
       :show="isReviewFormVisible"
       :overlay="false"
       :duration="300"
       custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
-      @leave="hideReviewForm"
+      @leave="requestReviewFormClose"
+      @afterleave="restoreReviewHelper"
     />
     <!-- #endif -->
 
     <!-- 评价表单弹窗 -->
     <ReviewForm
       v-if="isReviewFormVisible"
+      ref="reviewFormRef"
       :dish-id="dishId"
       :dish-name="dish?.name || ''"
-      :existing-review-id="myReview?.id"
-      :initial-review="myReview"
+      :existing-review-id="reviewFormInitial?.id"
+      :initial-review="reviewFormInitial"
       @close="hideReviewForm"
       @success="handleReviewSuccess"
     />
@@ -425,32 +253,67 @@
     <!-- 全部评论面板 -->
     <AllCommentsPanel
       v-if="shouldRenderAllCommentsPanel"
+      ref="commentsPanelRef"
       :review-id="currentCommentsReviewId"
       :is-visible="isAllCommentsPanelVisible"
       @close="hideAllCommentsPanel"
       @comment-added="handleCommentAdded"
-      @delete="id => removeComment(id, currentCommentsReviewId)"
     />
 
     <!-- 举报弹窗 -->
-    <ReportDialog v-if="isReportVisible" @close="closeReportModal" @submit="submitReport" />
+    <ReportDialog
+      v-if="isReportVisible"
+      ref="reportDialogRef"
+      :submitting="reportSubmitting"
+      @close="closeReportModal"
+      @submit="submitReport"
+    />
+
+    <!-- #ifdef MP-WEIXIN -->
+    <page-container
+      v-if="renderQuickPlanHelper"
+      :show="isQuickPlanVisible"
+      :overlay="false"
+      :duration="0"
+      custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
+      @leave="requestQuickPlanClose"
+      @afterleave="restoreQuickPlanHelper"
+    />
+    <!-- #endif -->
+    <PlanEditDialog
+      v-if="isQuickPlanVisible"
+      ref="quickPlanRef"
+      :visible="isQuickPlanVisible"
+      :plan="null"
+      :initial-dishes="planInitialDishes"
+      :submitting="planSubmitting"
+      @close="closeQuickPlan"
+      @submit="saveQuickPlan"
+    />
 
     <!-- 底部操作栏 -->
     <BottomReviewInput
-      v-if="dish && !isAllCommentsPanelVisible"
+      v-if="dish && !isAllCommentsPanelVisible && !isReviewFormVisible && !isQuickPlanVisible"
       :is-favorited="isFavorited"
       :favorite-loading="favoriteLoading"
+      :has-review="!!myReview"
+      :review-loading="ownReviewLoading"
+      :review-disabled="!ownReviewLoaded || !!ownReviewError || deletingReview"
       @review="showQuickReviewForm"
       @favorite="toggleFavorite"
+      @plan="openQuickPlan"
     />
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, watch } from 'vue';
-import { onLoad, onBackPress, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
+import { ref, computed, nextTick, watch, onScopeDispose } from 'vue';
+import { onLoad, onBackPress, onPullDownRefresh, onReachBottom, onHide } from '@dcloudio/uni-app';
 import { useDishDetail } from '@/pages/dish/composables/use-dish-detail';
 import { useUserStore } from '@/store/modules/use-user-store';
+import { usePlanStore } from '@/store/modules/use-plan-store';
+import PlanEditDialog from '@/components/meal-plan/PlanEditDialog.vue';
+import type { Dish, MealPlanRequest, Review } from '@/types/api';
 import dayjs from 'dayjs';
 import ReviewList from './components/ReviewList.vue';
 import ReviewForm from './components/ReviewForm.vue';
@@ -458,8 +321,10 @@ import BottomReviewInput from './components/BottomReviewInput.vue';
 import AllCommentsPanel from './components/AllCommentsPanel.vue';
 import CommentList from './components/CommentList.vue';
 import RatingBars from './components/RatingBars.vue';
+import TasteProfile from './components/TasteProfile.vue';
+import TagBadge from '@/components/TagBadge.vue';
+import UserAvatar from '@/components/UserAvatar.vue';
 import ReportDialog from './components/ReportDialog.vue';
-import { DishDetailSkeleton } from '@/components/skeleton';
 import { useReport } from '@/pages/dish/composables/use-report';
 
 const dishId = ref('');
@@ -471,34 +336,43 @@ const {
   subDishes,
   parentDish,
   reviews,
+  ownReview: myReview,
+  ownReviewLoading,
+  ownReviewLoaded,
+  ownReviewError,
+  fetchOwnReview,
+  invalidateOwnReview,
+  deletingReview,
   ratingSummary,
   reviewsLoading,
+  reviewsInitialized,
   reviewsError,
   reviewsHasMore,
-  fetchReviews,
+  retryReviews,
   loadMoreReviews,
   reviewComments,
   fetchComments,
   removeReview,
-  removeComment,
   isFavorited,
   favoriteLoading,
   toggleFavorite,
 } = useDishDetail();
 
-const { isReportVisible, openReportModal, closeReportModal, submitReport } = useReport();
+const {
+  isReportVisible,
+  submitting: reportSubmitting,
+  openReportModal,
+  closeReportModal,
+  submitReport,
+} = useReport();
 
 const userStore = useUserStore();
+const planStore = usePlanStore();
 
-const myReview = computed(() => {
-  const uid = userStore.userInfo?.id;
-  if (!uid) return null;
-  const mine = (reviews.value || []).filter(r => r.userId === uid);
-  if (mine.length === 0) return null;
-  return mine
-    .slice()
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-});
+const failedOwnReviewImages = ref<string[]>([]);
+const ownReviewImages = computed(() =>
+  (myReview.value?.images || []).filter(image => !failedOwnReviewImages.value.includes(image))
+);
 
 const displayAverageRating = computed(() => {
   const avg = ratingSummary.value?.average;
@@ -516,35 +390,131 @@ const otherReviews = computed(() => {
   return (reviews.value || []).filter(r => r.userId !== uid);
 });
 
-// 检查是否有口味信息
-const hasTasteInfo = computed(() => {
+const failedDishImages = ref<string[]>([]);
+const dishImages = computed(() =>
+  (dish.value?.images || []).filter(image => !failedDishImages.value.includes(image))
+);
+const dishLocation = computed(() => {
+  const item = dish.value;
   return (
-    dish.value &&
-    (dish.value.spicyLevel !== undefined ||
-      dish.value.sweetness !== undefined ||
-      dish.value.saltiness !== undefined ||
-      dish.value.oiliness !== undefined)
+    [
+      item?.canteenName,
+      item?.floorName || (item?.floorLevel ? item.floorLevel + '楼' : ''),
+      item?.windowName || item?.windowNumber,
+    ]
+      .filter(Boolean)
+      .join(' / ') || '位置信息暂未提供'
   );
 });
+const goToWindow = () => {
+  if (dish.value?.windowId)
+    uni.navigateTo({ url: '/pages/window/index?id=' + encodeURIComponent(dish.value.windowId) });
+};
 
 const isReviewFormVisible = ref(false);
+const reviewFormInitial = ref<Review | null>(null);
+const reviewFormRef = ref<InstanceType<typeof ReviewForm> | null>(null);
+const commentsPanelRef = ref<InstanceType<typeof AllCommentsPanel> | null>(null);
+const reportDialogRef = ref<InstanceType<typeof ReportDialog> | null>(null);
+const quickPlanRef = ref<InstanceType<typeof PlanEditDialog> | null>(null);
+const renderQuickPlanHelper = ref(true);
 const isDetailExpanded = ref(false);
 const isAllCommentsPanelVisible = ref(false);
 const currentCommentsReviewId = ref('');
 const isSubDishesExpanded = ref(false);
-const shouldRefreshDishDetail = ref(false);
 const ratingBarsRef = ref();
 
 // 控制 page-container 的渲染，延迟销毁以避免滚动锁定问题
 const shouldRenderAllCommentsPanel = ref(false);
 const shouldRenderReviewHelper = ref(false);
+const reviewHelperKey = ref(0);
+let active = true;
+onScopeDispose(() => {
+  active = false;
+});
+
+const isQuickPlanVisible = ref(false);
+const planSubmitting = ref(false);
+const planInitialDishes = ref<Dish[]>([]);
+let planDialogVersion = 0;
+
+const closeQuickPlan = () => {
+  planDialogVersion += 1;
+  isQuickPlanVisible.value = false;
+  planSubmitting.value = false;
+};
+const requestQuickPlanClose = () => quickPlanRef.value?.requestClose();
+const restoreQuickPlanHelper = async () => {
+  if (!active || !isQuickPlanVisible.value) return;
+  renderQuickPlanHelper.value = false;
+  await nextTick();
+  if (active && isQuickPlanVisible.value) renderQuickPlanHelper.value = true;
+};
+const openQuickPlan = () => {
+  if (!dish.value || loading.value || dish.value.id !== dishId.value) return;
+  planDialogVersion += 1;
+  renderQuickPlanHelper.value = true;
+  planInitialDishes.value = [dish.value];
+  isQuickPlanVisible.value = true;
+};
+const saveQuickPlan = async (payload: MealPlanRequest): Promise<boolean> => {
+  if (planSubmitting.value || !isQuickPlanVisible.value) return false;
+  const version = planDialogVersion;
+  const session = userStore.sessionVersion;
+  const sourceDish = dishId.value;
+  const isCurrent = () =>
+    active &&
+    isQuickPlanVisible.value &&
+    version === planDialogVersion &&
+    session === userStore.sessionVersion &&
+    sourceDish === dishId.value;
+  planSubmitting.value = true;
+  try {
+    await planStore.createPlan(payload);
+    if (!isCurrent()) return false;
+    closeQuickPlan();
+    uni.showToast({ title: '已加入规划', icon: 'success' });
+    return true;
+  } catch (error) {
+    if (!isCurrent()) return false;
+    uni.showToast({
+      title: error instanceof Error ? error.message : '保存失败，请重试',
+      icon: 'none',
+    });
+    return false;
+  } finally {
+    if (isCurrent()) planSubmitting.value = false;
+  }
+};
+watch(
+  [dishId, () => dish.value?.id, () => userStore.sessionVersion],
+  () => {
+    closeQuickPlan();
+    failedDishImages.value = [];
+  },
+  { flush: 'sync' }
+);
+onScopeDispose(closeQuickPlan);
+onHide(() => {
+  if (planSubmitting.value) closeQuickPlan();
+});
+
+watch(
+  () => userStore.sessionVersion,
+  () => {
+    hideReviewForm();
+    isAllCommentsPanelVisible.value = false;
+    closeReportModal();
+  },
+  { flush: 'sync' }
+);
 
 watch(isAllCommentsPanelVisible, (val: boolean) => {
   if (val) {
     shouldRenderAllCommentsPanel.value = true;
   } else {
     setTimeout(() => {
-      shouldRenderAllCommentsPanel.value = false;
+      if (!isAllCommentsPanelVisible.value) shouldRenderAllCommentsPanel.value = false;
     }, 300);
   }
 });
@@ -554,7 +524,7 @@ watch(isReviewFormVisible, (val: boolean) => {
     shouldRenderReviewHelper.value = true;
   } else {
     setTimeout(() => {
-      shouldRenderReviewHelper.value = false;
+      if (!isReviewFormVisible.value) shouldRenderReviewHelper.value = false;
     }, 300);
   }
 });
@@ -581,16 +551,20 @@ watch(
 
 // 拦截返回键，如果有弹窗打开则关闭弹窗而不是返回上一页
 onBackPress(() => {
+  if (isQuickPlanVisible.value) {
+    void requestQuickPlanClose();
+    return true;
+  }
   if (isReviewFormVisible.value) {
-    isReviewFormVisible.value = false;
+    void requestReviewFormClose();
     return true;
   }
   if (isAllCommentsPanelVisible.value) {
-    hideAllCommentsPanel();
+    void commentsPanelRef.value?.requestClose();
     return true;
   }
   if (isReportVisible.value) {
-    closeReportModal();
+    void reportDialogRef.value?.requestClose();
     return true;
   }
   return false;
@@ -615,7 +589,7 @@ onLoad((options: any) => {
 onPullDownRefresh(async () => {
   try {
     if (dishId.value) {
-      await fetchDishDetail(dishId.value);
+      if (!(await fetchDishDetail(dishId.value))) return;
     }
     uni.showToast({
       title: '刷新成功',
@@ -635,9 +609,10 @@ onPullDownRefresh(async () => {
 
 // 触底上拉：加载更多评价
 onReachBottom(async () => {
+  if (isQuickPlanVisible.value) return;
   if (isAllCommentsPanelVisible.value) return;
   if (isReviewFormVisible.value) return;
-  if (reviewsLoading.value) return;
+  if (reviewsLoading.value || reviewsError.value) return;
   if (!reviewsHasMore.value) return;
   await loadMoreReviews();
 });
@@ -663,6 +638,14 @@ const goToTagDishes = (tag: string) => {
 };
 
 const goBack = () => {
+  if (isQuickPlanVisible.value) {
+    void requestQuickPlanClose();
+    return;
+  }
+  if (isReviewFormVisible.value) {
+    void requestReviewFormClose();
+    return;
+  }
   uni.navigateBack();
 };
 
@@ -684,6 +667,20 @@ const formatMealTime = (mealTimes: string[] | undefined) => {
 };
 
 const showReviewForm = () => {
+  if (
+    !ownReviewLoaded.value ||
+    ownReviewLoading.value ||
+    ownReviewError.value ||
+    deletingReview.value
+  )
+    return;
+  reviewFormInitial.value = myReview.value
+    ? {
+        ...myReview.value,
+        images: [...(myReview.value.images || [])],
+        ratingDetails: myReview.value.ratingDetails ? { ...myReview.value.ratingDetails } : null,
+      }
+    : null;
   isReviewFormVisible.value = true;
 };
 
@@ -691,24 +688,37 @@ const hideReviewForm = () => {
   isReviewFormVisible.value = false;
 };
 
-const handleReviewSuccess = async () => {
+const requestReviewFormClose = () => reviewFormRef.value?.requestClose();
+
+const restoreReviewHelper = () => {
+  // 原生返回会关闭拦截容器；保存尚未完成时重新建立返回拦截。
+  if (active && isReviewFormVisible.value) reviewHelperKey.value++;
+};
+
+const handleReviewSuccess = async (submittedReview?: Review) => {
+  const sessionVersion = userStore.sessionVersion;
+  const owner = userStore.userInfo?.id;
+  const reviewedDishId = dishId.value;
+  const isCurrent = () =>
+    active &&
+    userStore.sessionVersion === sessionVersion &&
+    userStore.userInfo?.id === owner &&
+    dishId.value === reviewedDishId;
+  if (!isCurrent()) return;
+  invalidateOwnReview();
+  if (submittedReview) {
+    myReview.value = submittedReview;
+  }
   hideReviewForm();
 
-  // 等待弹窗关闭动画完成 (300ms duration + buffer)
-  await new Promise(resolve => setTimeout(resolve, 350));
-
   // 刷新评价列表和菜品信息
-  if (dishId.value) {
-    await Promise.all([fetchReviews(dishId.value, true), fetchDishDetail(dishId.value)]);
+  if (reviewedDishId) {
+    await fetchDishDetail(reviewedDishId, isCurrent);
   }
+  if (!isCurrent()) return;
 
   // 刷新评分条状图
   ratingBarsRef.value?.refresh();
-
-  uni.showToast({
-    title: '评价成功',
-    icon: 'success',
-  });
 };
 
 const formatReviewDate = (dateString: string) => {
@@ -723,14 +733,22 @@ const previewMyReviewImage = (urls: string[], current: number) => {
 };
 
 const handleDeleteMyReview = () => {
-  if (!myReview.value) return;
+  if (!myReview.value || deletingReview.value) return;
+  const reviewId = myReview.value.id;
+  const session = userStore.sessionVersion;
   uni.showModal({
     title: '提示',
     content: '确定要删除你的这条评价吗？',
     success: async res => {
-      if (!res.confirm) return;
+      if (
+        !res.confirm ||
+        !active ||
+        session !== userStore.sessionVersion ||
+        reviewId !== myReview.value?.id
+      )
+        return;
       try {
-        await removeReview(myReview.value!.id, () => {
+        await removeReview(reviewId, () => {
           // 刷新评分条状图
           ratingBarsRef.value?.refresh();
         });
@@ -758,17 +776,6 @@ const showAllCommentsPanel = (reviewId: string) => {
 const hideAllCommentsPanel = async () => {
   isAllCommentsPanelVisible.value = false;
   currentCommentsReviewId.value = '';
-
-  if (shouldRefreshDishDetail.value) {
-    shouldRefreshDishDetail.value = false;
-
-    // 等待面板关闭动画完成
-    await new Promise(resolve => setTimeout(resolve, 350));
-
-    if (dishId.value) {
-      await Promise.all([fetchReviews(dishId.value, true), fetchDishDetail(dishId.value)]);
-    }
-  }
 };
 
 const handleCommentAdded = async () => {
@@ -778,9 +785,6 @@ const handleCommentAdded = async () => {
   if (reviewId) {
     await fetchComments(reviewId);
   }
-
-  // 标记需要刷新，待面板关闭后执行
-  shouldRefreshDishDetail.value = true;
 };
 
 const handleDeleteReview = async (reviewId: string) => {
@@ -792,49 +796,320 @@ const handleDeleteReview = async (reviewId: string) => {
 </script>
 
 <style scoped>
+.dish-page {
+  background: #fff;
+  color: #1f2937;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+.dish-content {
+  padding-bottom: calc(88px + env(safe-area-inset-bottom));
+}
 .dish-swiper {
   width: 100%;
-  height: 200px;
+  height: 232px;
 }
-
-swiper {
+.dish-photo {
   width: 100%;
+  height: 100%;
 }
-
-swiper-item {
+.dish-summary {
+  padding: 20px 20px 16px;
+  background: #fff;
+}
+.dish-title-row {
   display: flex;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.dish-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.dish-price {
+  color: var(--color-price, #2f6b50);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+.dish-price-unit {
+  font-size: 12px;
+  font-weight: 400;
+  color: #667085;
+}
+.dish-location-row {
+  display: flex;
   align-items: center;
+  gap: 12px;
+  margin-top: 4px;
 }
-
-/* 旋转动画 */
-.rotate-180 {
-  transform: rotate(180deg);
+.dish-location {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  color: #667085;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 }
-
-/* 背景模糊效果 */
-.blur-bg {
-  filter: blur(20px);
-  transform: scale(1.1); /* 稍微放大避免边缘露白 */
-  opacity: 0.8;
+.dish-page button::after {
+  border: 0;
 }
-
-.transition-transform {
-  transition: transform 0.3s ease;
+.dish-page button:focus-visible {
+  outline: 2px solid #660874;
+  outline-offset: 2px;
 }
-
-.transition-all {
-  transition: all 0.3s ease-in-out;
+.dish-page button:active {
+  opacity: 0.72;
 }
-
-/* 详细信息展开内容样式 */
-.detail-section {
+.dish-window-link {
+  margin: 0;
+  padding: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: #660874;
+  background: #fff;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.dish-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 2px;
+}
+.dish-tag {
+  display: flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  background: #fff;
+  color: #660874;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.dish-tag:active {
+  opacity: 0.7;
+}
+.decision-facts {
+  padding-top: 14px;
+  border-top: 1px solid #e5e7eb;
+}
+.decision-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 10px;
+  line-height: 1.6;
+  font-size: 14px;
+}
+.decision-label {
+  width: 74px;
+  flex-shrink: 0;
+  color: #667085;
+}
+.decision-value {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.decision-taste {
+  margin: 16px 0;
+}
+.dish-more {
+  margin-top: 8px;
+  padding: 0 20px;
+  background: #fff;
+}
+.dish-more-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  margin: 0;
+  padding: 14px 0;
+  background: #fff;
+  min-height: 48px;
+  font-size: 15px;
+  line-height: 1.4;
+  color: #1f2937;
+  text-align: left;
+}
+.dish-more-toggle text:last-child {
+  color: #667085;
+  font-size: 13px;
+}
+.dish-more-content {
+  padding-bottom: 16px;
+}
+.dish-description {
+  display: block;
   margin-bottom: 12px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.dish-related-heading {
+  display: block;
+  color: #667085;
+  font-size: 13px;
+}
+.dish-related {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 0;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 0;
+  color: #660874;
+  text-align: left;
+  font-size: 14px;
   line-height: 1.5;
 }
-
-.detail-text {
+.rating-overview {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding-top: 18px;
+  border-top: 1px solid #e5e7eb;
+}
+.rating-overview-empty .rating-total {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.rating-overview-empty .rating-average {
+  font-size: 16px;
+  color: #667085;
+}
+.rating-total {
+  flex-shrink: 0;
+}
+.rating-average {
+  display: block;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--color-rating, #946200);
+}
+.rating-count {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #667085;
+}
+.review-section {
+  padding: 20px;
+  border-top: 1px solid #e5e7eb;
+}
+.review-section-header,
+.review-own-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.review-section-header {
+  margin-bottom: 12px;
+}
+.review-section-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+.review-text-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 8px;
+  color: #660874;
+  background: #fff;
   font-size: 14px;
-  color: #000000;
+  line-height: 1.5;
+}
+.review-state {
+  color: #667085;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.own-review-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+}
+.review-author {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.65;
+}
+.review-stars {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 2px;
+  color: #98a2b3;
+  font-size: 16px;
+  line-height: 1;
+}
+.review-stars .is-filled {
+  color: #d99a12;
+}
+.review-rating {
+  margin-top: 4px;
+}
+.review-body-text {
+  display: block;
+  margin-top: 12px;
+  font-size: 16px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+.own-review-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.own-review-image {
+  width: 76px;
+  height: 76px;
+  border-radius: 10px;
+}
+.own-review-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+.review-date {
+  color: #667085;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.review-status-hint {
+  display: block;
+  margin-top: 8px;
+  color: #667085;
+  font-size: 14px;
+  line-height: 1.6;
 }
 </style>

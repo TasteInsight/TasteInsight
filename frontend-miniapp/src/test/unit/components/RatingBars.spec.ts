@@ -1,6 +1,4 @@
 import { mount, flushPromises } from '@vue/test-utils';
-import { jest } from '@jest/globals';
-
 describe('RatingBars.vue', () => {
   const COMPONENT_PATH = '@/pages/dish/components/RatingBars.vue';
 

@@ -107,14 +107,13 @@ export class EmbeddingQueueService {
       }
       return;
     }
+    await this.recommendationService?.invalidateUserFeatureCache(userId);
     const data: RefreshUserJobData = { userId };
     const job = await this.embeddingQueue.add(
       EmbeddingJobType.REFRESH_USER,
       data,
       {
         ...this.jobOptions,
-        // 用户嵌入更新可以去重，避免频繁更新
-        jobId: `user-embedding-${userId}`,
         removeOnComplete: 50,
       },
     );

@@ -1,14 +1,33 @@
-import { ref, reactive, computed } from 'vue';
+import { ref, reactive, computed, watch, getCurrentScope, onScopeDispose } from 'vue';
+import { useUserStore } from '@/store/modules/use-user-store';
 import { uploadDish } from '@/api/modules/dish';
 import { getCanteenList } from '@/api/modules/canteen';
+import { uploadImage } from '@/api/modules/upload';
 import type { DishUserCreateRequest, Canteen, Window } from '@/types/api';
+
+type AddDishFormData = DishUserCreateRequest & {
+  name: string;
+  floor: string;
+};
 
 /**
  * 新建菜品页面逻辑
  */
 export function useAddDish() {
+  const userStore = useUserStore();
+  let disposed = false;
+  let navigationTimer: ReturnType<typeof setTimeout> | null = null;
+  const captureOperation = () => {
+    const session = userStore.sessionVersion;
+    return () => !disposed && session === userStore.sessionVersion;
+  };
+  const cancelNavigation = () => {
+    if (navigationTimer === null) return;
+    clearTimeout(navigationTimer);
+    navigationTimer = null;
+  };
   // 表单数据
-  const formData = reactive<DishUserCreateRequest>({
+  const formData = reactive<AddDishFormData>({
     name: '',
     price: 0,
     priceUnit: '',
@@ -19,6 +38,7 @@ export function useAddDish() {
     allergens: [],
     canteenId: '',
     canteenName: '',
+    windowId: '',
     windowNumber: '',
     windowName: '',
     floor: '',
@@ -39,7 +59,31 @@ export function useAddDish() {
   // 状态
   const loading = ref(false);
   const submitting = ref(false);
+  const submitted = ref(false);
+  const busy = computed(() => submitting.value || submitted.value);
   const error = ref('');
+  const canteenError = ref('');
+  const validationAttempted = ref(false);
+  const validationErrors = computed(() => {
+    const errors: Record<string, string> = {};
+    if (!formData.name.trim()) errors.name = '请输入菜品名称';
+    if (!Number.isFinite(formData.price) || formData.price < 0) errors.price = '价格应为 0 或正数';
+    if (!formData.canteenName.trim()) errors.canteen = '请选择所在食堂';
+    if (!formData.availableMealTime.length) errors.availableMealTime = '请选择至少一个供应时段';
+    return errors;
+  });
+  const fieldErrors = computed(() => (validationAttempted.value ? validationErrors.value : {}));
+  const snapshot = () =>
+    JSON.stringify({
+      formData,
+      customTag: customTagInput.value,
+      customAllergen: customAllergenInput.value,
+    });
+  const baseline = ref(snapshot());
+  const dirty = computed(() => !submitted.value && snapshot() !== baseline.value);
+  const markPristine = () => {
+    baseline.value = snapshot();
+  };
 
   // 供应时段选项
   const mealTimeOptions = [
@@ -85,31 +129,31 @@ export function useAddDish() {
   /**
    * 表单是否有效
    */
-  const isFormValid = computed(() => {
-    return (
-      (formData.name?.trim() || '') !== '' &&
-      formData.price > 0 &&
-      (formData.canteenName?.trim() || '') !== '' &&
-      (formData.windowName?.trim() || '') !== '' &&
-      formData.availableMealTime.length > 0
-    );
-  });
+  const isFormValid = computed(() => Object.keys(validationErrors.value).length === 0);
 
   /**
    * 加载食堂列表
    */
   const loadCanteenList = async () => {
+    if (loading.value) return false;
+    const isCurrent = captureOperation();
     loading.value = true;
+    canteenError.value = '';
     try {
       const response = await getCanteenList({ page: 1, pageSize: 100 });
+      if (!isCurrent()) return;
       if (response.code === 200 && response.data) {
         canteenList.value = response.data.items;
+        return true;
       }
+      throw new Error(response.message || '加载食堂列表失败');
     } catch (err: any) {
+      if (!isCurrent()) return;
       console.error('加载食堂列表失败:', err);
-      error.value = '加载食堂列表失败';
+      canteenError.value = '加载食堂列表失败，请重试';
+      return false;
     } finally {
-      loading.value = false;
+      if (isCurrent()) loading.value = false;
     }
   };
 
@@ -122,8 +166,16 @@ export function useAddDish() {
     formData.canteenName = canteen.name;
     windowList.value = canteen.windows || [];
     // 重置窗口选择
+    formData.windowId = '';
     formData.windowNumber = '';
     formData.windowName = '';
+    formData.floor = '';
+  };
+
+  const clearWindow = () => {
+    formData.windowId = '';
+    formData.windowName = '';
+    formData.windowNumber = '';
     formData.floor = '';
   };
 
@@ -131,6 +183,7 @@ export function useAddDish() {
    * 选择窗口
    */
   const selectWindow = (window: Window) => {
+    formData.windowId = window.id;
     formData.windowNumber = window.number || '';
     formData.windowName = window.name;
     formData.floor = window.floor?.level || '';
@@ -234,11 +287,14 @@ export function useAddDish() {
    * 选择图片
    */
   const chooseImages = () => {
+    if (busy.value || (formData.images?.length || 0) >= 9) return;
+    const isCurrent = captureOperation();
     uni.chooseImage({
       count: 9 - (formData.images?.length || 0),
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
       success: res => {
+        if (!isCurrent() || busy.value) return;
         if (!formData.images) {
           formData.images = [];
         }
@@ -258,6 +314,11 @@ export function useAddDish() {
    * 提交表单
    */
   const submitForm = async (): Promise<boolean> => {
+    if (busy.value) return false;
+    const isCurrent = captureOperation();
+    if (!isCurrent()) return false;
+    cancelNavigation();
+    validationAttempted.value = true;
     if (!isFormValid.value) {
       uni.showToast({
         title: '请填写必填项',
@@ -268,19 +329,47 @@ export function useAddDish() {
 
     submitting.value = true;
     error.value = '';
+    const draft = JSON.parse(JSON.stringify(formData)) as AddDishFormData;
 
     try {
-      const response = await uploadDish(formData);
+      const uploadedImages = await Promise.all(
+        (draft.images || []).map(async imagePath => (await uploadImage(imagePath)).url)
+      );
+      if (!isCurrent()) return false;
+      const dishData: DishUserCreateRequest = {
+        name: draft.name.trim(),
+        tags: draft.tags,
+        price: draft.price,
+        priceUnit: draft.priceUnit,
+        description: draft.description,
+        images: uploadedImages,
+        parentDishId: draft.parentDishId,
+        subDishId: draft.subDishId,
+        ingredients: draft.ingredients,
+        allergens: draft.allergens,
+        canteenId: draft.canteenId,
+        canteenName: draft.canteenName,
+        windowId: draft.windowId || undefined,
+        windowNumber: draft.windowId ? draft.windowNumber : undefined,
+        windowName: draft.windowId ? draft.windowName : undefined,
+        availableMealTime: draft.availableMealTime,
+        availableDates: draft.availableDates,
+        status: draft.status,
+      };
+      const response = await uploadDish(dishData);
+      if (!isCurrent()) return false;
 
-      if (response.code === 200) {
+      if (response.code === 200 || response.code === 201) {
+        submitted.value = true;
         uni.showToast({
           title: '提交成功，等待审核',
           icon: 'success',
         });
 
         // 延迟返回上一页
-        setTimeout(() => {
-          uni.navigateBack();
+        navigationTimer = setTimeout(() => {
+          navigationTimer = null;
+          if (isCurrent()) uni.navigateBack();
         }, 1500);
 
         return true;
@@ -288,6 +377,7 @@ export function useAddDish() {
         throw new Error(response.message || '提交失败');
       }
     } catch (err: any) {
+      if (!isCurrent()) return false;
       console.error('提交失败:', err);
       error.value = err.message || '提交失败，请稍后重试';
       uni.showToast({
@@ -296,7 +386,7 @@ export function useAddDish() {
       });
       return false;
     } finally {
-      submitting.value = false;
+      if (isCurrent()) submitting.value = false;
     }
   };
 
@@ -314,6 +404,7 @@ export function useAddDish() {
     formData.allergens = [];
     formData.canteenId = '';
     formData.canteenName = '';
+    formData.windowId = '';
     formData.windowNumber = '';
     formData.windowName = '';
     formData.floor = '';
@@ -325,7 +416,29 @@ export function useAddDish() {
     customAllergens.value = [];
     customTagInput.value = '';
     customAllergenInput.value = '';
+    submitted.value = false;
+    validationAttempted.value = false;
+    markPristine();
   };
+
+  watch(
+    () => userStore.sessionVersion,
+    () => {
+      cancelNavigation();
+      resetForm();
+      canteenList.value = [];
+      canteenError.value = '';
+      loading.value = false;
+      submitting.value = false;
+    },
+    { flush: 'sync' }
+  );
+
+  if (getCurrentScope())
+    onScopeDispose(() => {
+      disposed = true;
+      cancelNavigation();
+    });
 
   return {
     formData,
@@ -334,6 +447,13 @@ export function useAddDish() {
     selectedCanteen,
     loading,
     submitting,
+    submitted,
+    busy,
+    dirty,
+    fieldErrors,
+    canteenError,
+    markPristine,
+    clearWindow,
     error,
     isFormValid,
     mealTimeOptions,

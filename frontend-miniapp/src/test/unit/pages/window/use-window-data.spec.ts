@@ -1,35 +1,33 @@
+jest.mock('@/store/modules/use-user-store', () => ({
+  useUserStore: () => ({ sessionVersion: 0, isLoggedIn: true, userInfo: { id: 'user' } }),
+}));
+
 import { nextTick } from 'vue';
 
 jest.mock('@/api/modules/canteen');
-jest.mock('@/store/modules/use-canteen-store');
+jest.mock('@/api/modules/dish');
 
-import { getWindowDishes } from '@/api/modules/canteen';
+import { getWindowDetail } from '@/api/modules/canteen';
+import { getDishes } from '@/api/modules/dish';
 import { useWindowData } from '@/pages/window/composables/use-window-data';
-import { useCanteenStore as _useCanteenStore } from '@/store/modules/use-canteen-store';
 
-const mockedGetWindowDishes = getWindowDishes as jest.MockedFunction<typeof getWindowDishes>;
-const mockedUseCanteenStore = _useCanteenStore as jest.MockedFunction<typeof _useCanteenStore>;
+const mockedGetWindowDishes = getDishes as jest.MockedFunction<typeof getDishes>;
+const mockedGetWindowDetail = getWindowDetail as jest.MockedFunction<typeof getWindowDetail>;
 
 describe('useWindowData', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  test('fetchWindow handles store fetch error and sets local error', async () => {
-    const fakeStore = {
-      fetchWindowDetail: jest.fn().mockRejectedValue(new Error('store fail')),
-      currentWindow: null,
-      error: '',
-    } as any;
+  test('fetchWindow handles fetch error and sets local error', async () => {
+    mockedGetWindowDetail.mockRejectedValue(new Error('request fail'));
 
-    mockedUseCanteenStore.mockReturnValue(fakeStore);
-
-    const { fetchWindow, error } = useWindowData();
+    const { fetchWindow, headerError } = useWindowData();
 
     await fetchWindow('w1');
 
-    expect(fakeStore.fetchWindowDetail).toHaveBeenCalledWith('w1');
-    expect(error.value).toBe('store fail');
+    expect(mockedGetWindowDetail).toHaveBeenCalledWith('w1');
+    expect(headerError.value).toBe('request fail');
   });
 
   test('fetchDishes success sets dishes, page and hasMore; toggles loading flags', async () => {
@@ -37,11 +35,6 @@ describe('useWindowData', () => {
     mockedGetWindowDishes.mockResolvedValueOnce({
       code: 200,
       data: { items, meta: { page: 1, totalPages: 2 } },
-    } as any);
-    mockedUseCanteenStore.mockReturnValue({
-      currentWindow: null,
-      fetchWindowDetail: jest.fn(),
-      error: '',
     } as any);
 
     const { fetchDishes, dishes, loading, loadingMore, hasMore } = useWindowData();
@@ -65,11 +58,6 @@ describe('useWindowData', () => {
       code: 200,
       data: { items: first, meta: { page: 1, totalPages: 2 } },
     } as any);
-    mockedUseCanteenStore.mockReturnValue({
-      currentWindow: null,
-      fetchWindowDetail: jest.fn(),
-      error: '',
-    } as any);
 
     const composable = useWindowData();
     await composable.fetchDishes('w1', { page: 1, pageSize: 20 });
@@ -88,11 +76,6 @@ describe('useWindowData', () => {
 
   test('fetchDishes failure sets localError and resets flags', async () => {
     mockedGetWindowDishes.mockRejectedValueOnce(new Error('api fail'));
-    mockedUseCanteenStore.mockReturnValue({
-      currentWindow: null,
-      fetchWindowDetail: jest.fn(),
-      error: '',
-    } as any);
 
     const { fetchDishes, error, loading, loadingMore } = useWindowData();
 
@@ -104,11 +87,6 @@ describe('useWindowData', () => {
   });
 
   test('loadMoreDishes returns early when loading or no more', async () => {
-    mockedUseCanteenStore.mockReturnValue({
-      currentWindow: null,
-      fetchWindowDetail: jest.fn(),
-      error: '',
-    } as any);
     mockedGetWindowDishes.mockResolvedValue({
       code: 200,
       data: { items: [], meta: { page: 1, totalPages: 1 } },

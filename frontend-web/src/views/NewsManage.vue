@@ -38,7 +38,7 @@
           :class="authStore.hasPermission('news:create') ? 'bg-tsinghua-purple hover:bg-tsinghua-dark' : 'bg-gray-400 cursor-not-allowed'"
           :title="!authStore.hasPermission('news:create') ? '无权限创建' : '创建新闻'"
         >
-          <span class="iconify" data-icon="carbon:add"></span>
+          <AppIcon class="iconify" icon="carbon:add"></AppIcon>
           <span>创建新闻</span>
         </button>
       </div>
@@ -50,7 +50,7 @@
         <div class="mb-6 space-y-4">
           <!-- 搜索栏 -->
           <div class="relative">
-            <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" data-icon="carbon:search"></span>
+            <AppIcon class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" icon="carbon:search"></AppIcon>
             <input
               type="text"
               v-model="searchQuery"
@@ -64,7 +64,7 @@
               type="button"
               title="清除搜索"
             >
-              <span class="iconify" data-icon="carbon:close"></span>
+              <AppIcon class="iconify" icon="carbon:close"></AppIcon>
             </button>
           </div>
 
@@ -77,14 +77,14 @@
                   v-model="canteenFilter"
                   class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[150px] transition-all cursor-pointer hover:border-gray-400"
                 >
-                  <option value="">全部食堂</option>
-                  <option value="all">全校公告</option>
+                  <option value="">{{ isCanteenScoped ? '所属食堂' : '全部食堂' }}</option>
+                  <option v-if="!isCanteenScoped" value="all">全校公告</option>
                   <option v-for="canteen in canteenList" :key="canteen.id" :value="canteen.id">
                     {{ canteen.name }}
                   </option>
                 </select>
                 <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
-                  <span class="iconify" data-icon="carbon:chevron-down"></span>
+                  <AppIcon class="iconify" icon="carbon:chevron-down"></AppIcon>
                 </span>
               </div>
             </div>
@@ -113,7 +113,7 @@
                 @click="resetFilters"
                 class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-gray-200/50 transition-colors"
               >
-                <span class="iconify" data-icon="carbon:reset"></span>
+                <AppIcon class="iconify" icon="carbon:reset"></AppIcon>
                 重置筛选
               </button>
             </div>
@@ -136,10 +136,10 @@
             <tbody class="divide-y divide-gray-200">
               <tr v-if="isLoading">
                 <td colspan="5" class="py-8 text-center text-gray-500">
-                  <span
+                  <AppIcon
                     class="iconify inline-block text-2xl animate-spin"
-                    data-icon="mdi:loading"
-                  ></span>
+                    icon="mdi:loading"
+                  ></AppIcon>
                   <span class="ml-2">加载中...</span>
                 </td>
               </tr>
@@ -209,7 +209,7 @@
                         class="ml-1 text-gray-400 text-xs"
                         title="如需编辑已发布新闻，请先撤回至草稿状态"
                       >
-                        <span class="iconify" data-icon="mdi:information-outline"></span>
+                        <AppIcon class="iconify" icon="mdi:information-outline"></AppIcon>
                       </span>
                     </template>
 
@@ -232,7 +232,8 @@
         <div class="mt-6 flex justify-center" v-if="pagination.totalPages > 1">
           <Pagination
             :current-page="pagination.page"
-            :total-pages="pagination.totalPages"
+            :page-size="pagination.pageSize"
+            :total="pagination.total"
             @page-change="handlePageChange"
           />
         </div>
@@ -252,7 +253,7 @@
           {{ showEditModal ? '编辑新闻' : '创建新闻' }}
         </h3>
         <button @click="closeModal" class="text-gray-400 hover:text-gray-600 transition">
-          <span class="iconify text-2xl" data-icon="carbon:close"></span>
+          <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
         </button>
       </div>
 
@@ -278,6 +279,7 @@
             >
             <input
               v-model="newsForm.title"
+              :disabled="isSubmitting"
               @input="errors.title = ''"
               type="text"
               required
@@ -288,7 +290,7 @@
               placeholder="请输入新闻标题"
             />
             <p v-if="errors.title" class="mt-1 text-xs text-red-500 flex items-center">
-              <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+              <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
               {{ errors.title }}
             </p>
           </div>
@@ -299,6 +301,7 @@
             >
             <input
               v-model="newsForm.summary"
+              :disabled="isSubmitting"
               @input="errors.summary = ''"
               type="text"
               required
@@ -309,7 +312,7 @@
               placeholder="请输入新闻摘要"
             />
             <p v-if="errors.summary" class="mt-1 text-xs text-red-500 flex items-center">
-              <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+              <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
               {{ errors.summary }}
             </p>
           </div>
@@ -333,6 +336,7 @@
                 :mode="mode"
               />
               <Editor
+                :key="editorVersion"
                 style="height: 400px; overflow-y: hidden"
                 v-model="valueHtml"
                 :defaultConfig="editorConfig"
@@ -341,7 +345,7 @@
               />
             </div>
             <p v-if="errors.content" class="mt-1 text-xs text-red-500 flex items-center">
-              <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+              <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
               {{ errors.content }}
             </p>
           </div>
@@ -354,9 +358,10 @@
               >
               <select
                 v-model="newsForm.canteenId"
+                :disabled="isSubmitting"
                 class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
               >
-                <option value="">全校公告</option>
+                <option v-if="!isCanteenScoped" value="">全校公告</option>
                 <option v-for="canteen in canteenList" :key="canteen.id" :value="canteen.id">
                   {{ canteen.name }}
                 </option>
@@ -369,6 +374,7 @@
               >
               <input
                 v-model="newsForm.publishedAt"
+                :disabled="isSubmitting"
                 type="datetime-local"
                 required
                 class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
@@ -382,6 +388,7 @@
               <button
                 type="button"
                 @click="submitForm('draft')"
+                :disabled="isSubmitting || pendingImageUploads > 0"
                 class="flex-1 px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition duration-200"
               >
                 保存为草稿
@@ -389,6 +396,7 @@
               <button
                 type="button"
                 @click="submitForm('published')"
+                :disabled="isSubmitting || pendingImageUploads > 0"
                 class="flex-1 px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200"
               >
                 立即发布
@@ -400,6 +408,7 @@
               <button
                 type="button"
                 @click="submitForm('draft')"
+                :disabled="isSubmitting || pendingImageUploads > 0"
                 class="flex-1 px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition duration-200"
               >
                 保存为草稿
@@ -407,6 +416,7 @@
               <button
                 type="button"
                 @click="submitForm('published')"
+                :disabled="isSubmitting || pendingImageUploads > 0"
                 class="flex-1 px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200"
               >
                 立即发布
@@ -444,7 +454,7 @@
           aria-label="关闭新闻预览"
           class="text-gray-400 hover:text-gray-600 transition"
         >
-          <span class="iconify text-2xl" data-icon="carbon:close"></span>
+          <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
         </button>
       </div>
 
@@ -479,20 +489,20 @@
 </template>
 
 <script>
-// 1. 引入 Vue 核心功能，添加 shallowRef, onBeforeUnmount
-import { ref, reactive, onMounted, onActivated, onUnmounted, shallowRef, onBeforeUnmount, computed } from 'vue'
-// 2. 引入 wangEditor CSS 和组件
+import { ref, reactive, onMounted, onActivated, onDeactivated, onUnmounted, shallowRef, onBeforeUnmount, computed, watch } from 'vue'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 
 import { newsApi } from '@/api/modules/news'
 import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
-import config from '@/config'
+import request from '@/utils/request'
 import Header from '@/components/Layout/Header.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
 import { showAlert, showConfirm } from '@/composables/useModal'
+import { sanitizeRichHtml } from '@/utils/sanitize-rich-html'
+import { authSessionVersion, getAuthSessionVersion } from '@/utils/auth-session'
 
 const PAGE_STATE_KEY = 'news-manage'
 
@@ -514,6 +524,18 @@ export default {
     const isLoading = ref(false)
     const canteenList = ref([])
     const authStore = useAuthStore()
+    const isCanteenScoped = computed(() => Boolean(authStore.user?.canteenId))
+    const viewSession = getAuthSessionVersion()
+    let isViewActive = true
+    let viewVersion = 0
+    const ownsView = (version = viewVersion) => isViewActive &&
+      viewSession === getAuthSessionVersion() && version === viewVersion
+    const editorVersion = ref(0)
+    const isSubmitting = ref(false)
+    const pendingImageUploads = ref(0)
+    let activeSubmission = null
+    const ownsEditor = (version) => ownsView() && version === editorVersion.value &&
+      (showCreateModal.value || showEditModal.value)
 
     // 默认状态定义
     const defaultState = {
@@ -529,7 +551,7 @@ export default {
     const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
     const currentStatus = ref(restoredState.currentStatus) // 默认显示已发布
     const searchQuery = ref(restoredState.searchQuery)
-    const canteenFilter = ref(restoredState.canteenFilter)
+    const canteenFilter = ref(authStore.user?.canteenId || restoredState.canteenFilter)
     const startDate = ref(restoredState.startDate)
     const endDate = ref(restoredState.endDate)
     
@@ -559,51 +581,62 @@ export default {
 
     const toolbarConfig = {}
 
-    // 构建完整的上传 URL
-    const baseUrl = config.baseURL.endsWith('/') ? config.baseURL.slice(0, -1) : config.baseURL
-    const uploadUrl = `${baseUrl}/upload/image`
-
-    const editorConfig = {
-      placeholder: '请输入新闻内容...',
-      MENU_CONF: {
-        uploadImage: {
-          server: uploadUrl,
-          fieldName: 'file',
-          maxFileSize: 10 * 1024 * 1024, // 10M
-          headers: {
-            Authorization: `Bearer ${authStore.token}`,
-          },
-          // 自定义插入图片
-          customInsert(res, insertFn) {
-            // res 即服务端的返回结果
-            if (res.code === 200 || res.code === 201) {
-              const url = res.data.url
-              const alt = res.data.filename
-              const href = res.data.url
-              insertFn(url, alt, href)
-            } else {
-              showAlert(res.message || '图片上传失败')
-            }
-          },
-          // 错误处理
-          onError(file, err, res) {
-            console.error('上传错误:', err, res)
-            showAlert('图片上传出错: ' + (err.message || '未知错误'))
+    const editorConfig = computed(() => {
+      const version = editorVersion.value
+      return {
+        placeholder: '请输入新闻内容...',
+        MENU_CONF: {
+          uploadImage: {
+            maxFileSize: 10 * 1024 * 1024,
+            async customUpload(file, insertFn) {
+              if (!ownsEditor(version) || isSubmitting.value) return
+              if (file.size > 10 * 1024 * 1024) {
+                showAlert('图片大小不能超过10MB')
+                return
+              }
+              const body = new FormData()
+              body.append('file', file)
+              pendingImageUploads.value += 1
+              try {
+                const response = await request.post('/upload/image', body, {
+                  headers: { 'Content-Type': 'multipart/form-data' },
+                })
+                if (!ownsEditor(version)) return
+                if (response.code !== 200 && response.code !== 201) {
+                  throw new Error(response.message || '图片上传失败')
+                }
+                const { url, filename } = response.data
+                insertFn(url, filename, url)
+              } catch (error) {
+                if (!ownsEditor(version)) return
+                console.error('上传错误:', error)
+                showAlert('图片上传出错: ' + (error instanceof Error ? error.message : '未知错误'))
+              } finally {
+                if (ownsEditor(version)) pendingImageUploads.value -= 1
+              }
+            },
           },
         },
-      },
-    }
-
-    // 组件销毁时，也及时销毁编辑器
-    onBeforeUnmount(() => {
-      const editor = editorRef.value
-      if (editor == null) return
-      editor.destroy()
+      }
     })
 
-    const handleCreated = (editor) => {
-      editorRef.value = editor // 记录 editor 实例
+    const destroyEditor = () => {
+      const editor = editorRef.value
+      editorRef.value = undefined
+      editor?.destroy()
     }
+
+    const handleCreated = computed(() => {
+      const version = editorVersion.value
+      return (editor) => {
+        if (!ownsEditor(version)) {
+          editor.destroy()
+          return
+        }
+        editorRef.value = editor
+        if (isSubmitting.value) editor.disable()
+      }
+    })
     // --- wangEditor 配置 END ---
 
     const pagination = reactive({
@@ -624,20 +657,28 @@ export default {
       title: '',
       content: '',
       summary: '',
-      canteenId: '',
+      canteenId: authStore.user?.canteenId || '',
       publishedAt: '',
       status: 'draft',
     })
 
+    let newsRequestId = 0
     // 加载新闻列表
     const loadNews = async () => {
+      if (!ownsView()) return
+      const requestId = ++newsRequestId
       isLoading.value = true
       try {
         const response = await newsApi.getNews({
           page: pagination.page,
           pageSize: pagination.pageSize,
           status: currentStatus.value,
+          ...(searchQuery.value.trim() ? { keyword: searchQuery.value.trim() } : {}),
+          ...(canteenFilter.value ? { canteenId: canteenFilter.value } : {}),
+          ...(startDate.value ? { startDate: new Date(startDate.value).toISOString() } : {}),
+          ...(endDate.value ? { endDate: new Date(endDate.value).toISOString() } : {}),
         })
+        if (!ownsView() || requestId !== newsRequestId) return
 
         if (response.code === 200 && response.data) {
           if (response.data.items) {
@@ -657,12 +698,22 @@ export default {
           pagination.total = 0
         }
       } catch (error) {
+        if (!ownsView() || requestId !== newsRequestId) return
+        newsList.value = []
+        pagination.total = 0
+        pagination.totalPages = 0
         console.error('加载新闻列表失败:', error)
         showAlert(error instanceof Error ? error.message : '加载新闻列表失败，请重试')
       } finally {
-        isLoading.value = false
+        if (ownsView() && requestId === newsRequestId) isLoading.value = false
       }
     }
+
+    watch([searchQuery, canteenFilter, startDate, endDate], () => {
+      pagination.page = 1
+      saveState()
+      loadNews()
+    })
 
     // 切换状态筛选
     const changeStatus = (status) => {
@@ -699,57 +750,7 @@ export default {
       return canteen ? canteen.name : '未知食堂'
     }
 
-    // 过滤后的新闻列表
-    const filteredNewsList = computed(() => {
-      let filtered = newsList.value
-
-      // 标题搜索
-      if (searchQuery.value) {
-        const query = searchQuery.value.toLowerCase().trim()
-        filtered = filtered.filter((news) =>
-          news.title && news.title.toLowerCase().includes(query)
-        )
-      }
-
-      // 食堂筛选
-      if (canteenFilter.value) {
-        if (canteenFilter.value === 'all') {
-          // 筛选全校公告（canteenId为空或null）
-          filtered = filtered.filter((news) => !news.canteenId)
-        } else {
-          // 筛选指定食堂
-          filtered = filtered.filter((news) => news.canteenId === canteenFilter.value)
-        }
-      }
-
-      // 时间范围筛选
-      if (startDate.value || endDate.value) {
-        filtered = filtered.filter((news) => {
-          const newsDate = currentStatus.value === 'published' 
-            ? (news.publishedAt ? new Date(news.publishedAt) : null)
-            : (news.createdAt ? new Date(news.createdAt) : null)
-          
-          if (!newsDate) return false
-
-          if (startDate.value) {
-            const start = new Date(startDate.value)
-            if (newsDate < start) return false
-          }
-
-          if (endDate.value) {
-            // 创建新的日期对象，避免修改原始对象
-            const end = new Date(endDate.value)
-            // 结束时间设置为当天的23:59:59
-            end.setHours(23, 59, 59, 999)
-            if (newsDate > end) return false
-          }
-
-          return true
-        })
-      }
-
-      return filtered
-    })
+    const filteredNewsList = computed(() => newsList.value)
 
     // 重置筛选
     const resetFilters = () => {
@@ -763,8 +764,15 @@ export default {
     }
 
     const loadCanteens = async () => {
+      if (!ownsView()) return
+      const version = viewVersion
+      if (authStore.user?.canteenId) {
+        canteenList.value = [{ id: authStore.user.canteenId, name: authStore.user.canteenName || '所属食堂' }]
+        return
+      }
       try {
         const response = await canteenApi.getCanteens({ page: 1, pageSize: 100 })
+        if (!ownsView(version)) return
         if (response.code === 200 && response.data) {
           if (response.data.items) {
             canteenList.value = response.data.items
@@ -773,31 +781,38 @@ export default {
           }
         }
       } catch (error) {
+        if (!ownsView(version)) return
         console.error('加载食堂列表失败:', error)
       }
     }
 
     // 重置表单
     const resetForm = () => {
+      editorVersion.value += 1
+      destroyEditor()
+      activeSubmission = null
+      isSubmitting.value = false
+      pendingImageUploads.value = 0
       newsForm.title = ''
       newsForm.content = ''
       newsForm.summary = ''
-      newsForm.canteenId = ''
+      newsForm.canteenId = authStore.user?.canteenId || ''
       newsForm.publishedAt = ''
       newsForm.status = 'draft'
       editingNewsId.value = null
-
-      // 【关键】重置编辑器内容
       valueHtml.value = ''
+      Object.keys(errors).forEach((key) => { errors[key] = '' })
     }
 
     // 打开创建模态框
     const openCreateModal = () => {
+      if (!ownsView()) return
       if (!authStore.hasPermission('news:create')) {
         showAlert('您没有权限创建新闻')
         return
       }
       resetForm()
+      showEditModal.value = false
       showCreateModal.value = true
     }
 
@@ -810,19 +825,20 @@ export default {
 
     // 编辑新闻
     const editNews = (news) => {
+      if (!ownsView()) return
       if (!authStore.hasPermission('news:edit')) {
         showAlert('您没有权限编辑新闻')
         return
       }
+      resetForm()
       editingNewsId.value = news.id
       newsForm.title = news.title || ''
-      newsForm.content = news.content || ''
+      newsForm.content = sanitizeRichHtml(news.content || '')
       newsForm.summary = news.summary || ''
       newsForm.canteenId = news.canteenId || ''
       newsForm.status = news.status || 'draft'
 
-      // 【关键】将新闻内容赋值给编辑器
-      valueHtml.value = news.content || ''
+      valueHtml.value = newsForm.content
 
       if (news.publishedAt) {
         const date = new Date(news.publishedAt)
@@ -838,11 +854,17 @@ export default {
         newsForm.publishedAt = ''
       }
 
+      showCreateModal.value = false
       showEditModal.value = true
     }
 
     // 提交表单
     const submitForm = async (targetStatus) => {
+      if (!ownsView() || isSubmitting.value) return
+      if (pendingImageUploads.value > 0) {
+        showAlert('图片正在上传，请稍后保存')
+        return
+      }
       // 清除之前的错误
       errors.title = ''
       errors.summary = ''
@@ -870,76 +892,81 @@ export default {
         return
       }
 
+      const operation = {
+        version: editorVersion.value,
+        editor: editorRef.value,
+        id: showEditModal.value ? editingNewsId.value : null,
+      }
+      if (!ownsEditor(operation.version)) return
+      const requestData = {
+        title: newsForm.title,
+        content: sanitizeRichHtml(valueHtml.value),
+        summary: newsForm.summary,
+        canteenId: newsForm.canteenId || null,
+      }
+      activeSubmission = operation
+      isSubmitting.value = true
+      operation.editor?.disable()
+
       try {
-        // 【关键】提交前，将编辑器中的 HTML 同步回 newsForm.content
-        newsForm.content = valueHtml.value
-
-        // 基础数据，不包含 status, publishedAt, createdBy 等后端不接受的字段
-        const requestData = {
-          title: newsForm.title,
-          content: newsForm.content,
-          summary: newsForm.summary,
-          canteenId: newsForm.canteenId || undefined, // 如果为空字符串，则不传（全校公告）
+        const response = operation.id
+          ? await newsApi.updateNews(operation.id, requestData)
+          : await newsApi.createNews(requestData)
+        if (!ownsEditor(operation.version)) return
+        if (response.code !== 200 && response.code !== 201) {
+          throw new Error(response.message || '保存失败')
         }
 
-        if (showEditModal.value && editingNewsId.value) {
-          // 更新
-          const response = await newsApi.updateNews(editingNewsId.value, requestData)
-          if (response.code === 200 || response.code === 201) {
-            showAlert('新闻更新成功！')
-            closeModal()
-            loadNews()
-          } else {
-            throw new Error(response.message || '更新失败')
-          }
-        } else {
-          // 创建
-          const response = await newsApi.createNews(requestData)
-
-          if (response.code === 200 || response.code === 201) {
-            const newNewsId = response.data.id
-
-            // 如果用户选择"立即发布"，则额外调用发布接口
-            if (targetStatus === 'published') {
-              try {
-                await newsApi.publishNews(newNewsId)
-                showAlert('新闻创建并发布成功！')
-              } catch (publishError) {
-                console.error('发布失败:', publishError)
-                showAlert('新闻创建成功，但发布失败，请在列表中手动发布')
-              }
-            } else {
-              showAlert('新闻草稿创建成功！')
-              // 如果创建的是草稿，确保当前视图切换到草稿列表
-              if (currentStatus.value !== 'draft') {
-                // 自动切换到草稿箱以便用户看到新创建的内容
-                changeStatus('draft')
-                return // changeStatus 会触发 loadNews
-              }
+        let message = operation.id ? '新闻更新成功！' : '新闻草稿创建成功！'
+        if (targetStatus === 'published') {
+          try {
+            const published = await newsApi.publishNews(operation.id || response.data.id)
+            if (!ownsEditor(operation.version)) return
+            if (published.code !== 200 && published.code !== 201) {
+              throw new Error(published.message || '发布失败')
             }
-
-            closeModal()
-            loadNews()
-          } else {
-            throw new Error(response.message || '创建失败')
+            message = operation.id ? '新闻更新并发布成功！' : '新闻创建并发布成功！'
+          } catch (publishError) {
+            if (!ownsEditor(operation.version)) return
+            console.error('发布失败:', publishError)
+            message = '新闻已保存，但发布失败，请在列表中手动发布'
           }
         }
+
+        showAlert(message)
+        if (!operation.id && targetStatus === 'draft') {
+          currentStatus.value = 'draft'
+          pagination.page = 1
+          saveState()
+        }
+        closeModal()
+        loadNews()
       } catch (error) {
+        if (!ownsEditor(operation.version)) return
         console.error('提交失败:', error)
         showAlert(error instanceof Error ? error.message : '操作失败，请重试')
+      } finally {
+        if (activeSubmission === operation) {
+          activeSubmission = null
+          isSubmitting.value = false
+          operation.editor?.enable()
+        }
       }
     }
 
     // 发布新闻
     const publishNews = async (id) => {
+      const version = viewVersion
+      if (!ownsView(version)) return
       if (!authStore.hasPermission('news:publish')) {
         showAlert('您没有权限发布新闻')
         return
       }
       const confirmed = await showConfirm('确定要发布这条新闻吗？')
-      if (!confirmed) return
+      if (!confirmed || !ownsView(version)) return
       try {
         const response = await newsApi.publishNews(id)
+        if (!ownsView(version)) return
         if (response.code === 200) {
           showAlert('发布成功')
           loadNews()
@@ -947,6 +974,7 @@ export default {
           throw new Error(response.message || '发布失败')
         }
       } catch (error) {
+        if (!ownsView(version)) return
         console.error('发布失败:', error)
         showAlert(error instanceof Error ? error.message : '发布失败，请重试')
       }
@@ -954,14 +982,17 @@ export default {
 
     // 撤回新闻
     const revokeNews = async (id) => {
+      const version = viewVersion
+      if (!ownsView(version)) return
       if (!authStore.hasPermission('news:revoke')) {
         showAlert('您没有权限撤回新闻')
         return
       }
       const confirmed = await showConfirm('确定要撤回这条新闻吗？撤回后将变为草稿状态。')
-      if (!confirmed) return
+      if (!confirmed || !ownsView(version)) return
       try {
         const response = await newsApi.revokeNews(id)
+        if (!ownsView(version)) return
         if (response.code === 200) {
           showAlert('撤回成功，已移至草稿箱')
           loadNews()
@@ -969,20 +1000,24 @@ export default {
           throw new Error(response.message || '撤回失败')
         }
       } catch (error) {
+        if (!ownsView(version)) return
         console.error('撤回失败:', error)
         showAlert(error instanceof Error ? error.message : '撤回失败，请重试')
       }
     }
 
     const deleteNews = async (newsId) => {
+      const version = viewVersion
+      if (!ownsView(version)) return
       if (!authStore.hasPermission('news:delete')) {
         showAlert('您没有权限删除新闻')
         return
       }
       const confirmed = await showConfirm('确定要删除这条新闻吗？')
-      if (!confirmed) return
+      if (!confirmed || !ownsView(version)) return
       try {
         const response = await newsApi.deleteNews(newsId)
+        if (!ownsView(version)) return
         if (response.code === 200 || response.code === 201) {
           showAlert('新闻删除成功！')
           loadNews()
@@ -990,6 +1025,7 @@ export default {
           throw new Error(response.message || '删除失败')
         }
       } catch (error) {
+        if (!ownsView(version)) return
         console.error('删除失败:', error)
         showAlert(error instanceof Error ? error.message : '删除失败，请重试')
       }
@@ -1029,49 +1065,33 @@ export default {
       return `${year}-${month}-${day} ${hours}:${minutes}`
     }
 
-    // 格式化预览内容（处理富文本，让图片自适应）
-    const formattedPreviewContent = computed(() => {
-      if (!previewNewsData.value.content) return ''
-
-      let content = previewNewsData.value.content
-
-      // 0. 移除 html 和 body 标签，防止解析异常
-      content = content.replace(/<\/?html[^>]*>/gi, '').replace(/<\/?body[^>]*>/gi, '')
-
-      // 1. 给 img 标签添加 max-width: 100% 样式
-      content = content.replace(/<img[^>]*>/gi, (match) => {
-        // 如果已经有 style 属性
-        if (match.indexOf('style="') > -1) {
-          return match.replace('style="', 'style="max-width:100%;height:auto;display:block;margin:10px auto;')
-        }
-        // 如果没有 style 属性
-        return match.replace('<img', '<img style="max-width:100%;height:auto;display:block;margin:10px auto;"')
-      })
-
-      // 2. 给 table 添加 max-width: 100%
-      content = content.replace(/<table[^>]*>/gi, (match) => {
-        if (match.indexOf('style="') > -1) {
-          return match.replace('style="', 'style="max-width:100%;box-sizing:border-box;')
-        }
-        return match.replace('<table', '<table style="max-width:100%;box-sizing:border-box;"')
-      })
-
-      // 3. 给 pre 添加样式防止溢出
-      content = content.replace(/<pre[^>]*>/gi, (match) => {
-        if (match.indexOf('style="') > -1) {
-          return match.replace('style="', 'style="max-width:100%;white-space:pre-wrap;word-break:break-all;')
-        }
-        return match.replace('<pre', '<pre style="max-width:100%;white-space:pre-wrap;word-break:break-all;"')
-      })
-
-      return content
-    })
+    const formattedPreviewContent = computed(() =>
+      sanitizeRichHtml(previewNewsData.value.content || ''),
+    )
 
     const handlePageChange = (page) => {
       pagination.page = page
       saveState() // 保存状态
       loadNews()
     }
+
+    const retireView = () => {
+      isViewActive = false
+      viewVersion += 1
+      newsRequestId += 1
+      isLoading.value = false
+      closeModal()
+      closePreviewModal()
+    }
+
+    watch(authSessionVersion, () => {
+      retireView()
+      newsList.value = []
+      pagination.total = 0
+      pagination.totalPages = 0
+    }, { flush: 'sync' })
+    onBeforeUnmount(retireView)
+    onDeactivated(retireView)
 
     onMounted(() => {
       // 状态已在setup()中恢复，这里只需加载数据
@@ -1081,6 +1101,7 @@ export default {
     })
 
     onActivated(() => {
+      isViewActive = true
       // 组件重新激活时仅重新加载数据，避免重复恢复状态覆盖用户修改
       loadCanteens()
       loadNews()
@@ -1104,6 +1125,8 @@ export default {
       currentAdmin,
       currentStatus,
       isLoading,
+      isSubmitting,
+      pendingImageUploads,
       searchQuery,
       canteenFilter,
       startDate,
@@ -1114,6 +1137,7 @@ export default {
       resetFilters,
       // 导出编辑器相关变量
       editorRef,
+      editorVersion,
       valueHtml,
       mode,
       toolbarConfig,
@@ -1135,6 +1159,7 @@ export default {
       formatPreviewTime,
       formattedPreviewContent,
       authStore,
+      isCanteenScoped,
     }
   },
 }

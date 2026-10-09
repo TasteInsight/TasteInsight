@@ -7,6 +7,10 @@
 ### 启动服务
 
 ```bash
+# 完整项目推荐从 backend 目录启动，它会读取 backend/.env：
+pnpm run start:embedding
+
+# 独立运行时需先在 shell 中设置 PYTHON_EMBEDDING_* 和 HF_ENDPOINT：
 # 1. 安装依赖
 pip install -r requirements.txt
 
@@ -15,6 +19,8 @@ python app.py
 
 # 服务在 http://localhost:5001 启动
 ```
+
+默认文本模型为 `sentence-transformers/paraphrase-multilingual-mpnet-base-v2`。首次启动需要下载预训练权重，后续启动复用本地 Hugging Face 缓存。`HF_ENDPOINT` 默认使用 `https://huggingface.co`；自定义模型源需兼容 Hugging Face SDK 的文件元数据及重定向协议，并使用空缓存验证首次下载。
 
 ### 测试服务
 
@@ -34,6 +40,8 @@ curl -X POST http://localhost:5001/embed \
 # 运行测试脚本
 python test_service.py
 ```
+
+服务测试覆盖健康检查、单条与批量嵌入、模型列表和 v3 运行路径。v2 应输出 788 维有限值向量，v3 应输出 256 维向量，两者均进行 L2 归一化。接口成功、维度正确和归一化结果只能验证运行及数据契约，推荐质量需要单独评估。
 
 ### 训练模型（可选）
 
@@ -75,7 +83,9 @@ make train
 | 版本 | 维度 | 需要训练 | 适用场景 |
 |------|------|----------|----------|
 | **v2 (Concat)** | 788 | ❌ | 快速部署、无训练数据 |
-| **v3 (Fusion)** | 256 | ✅ | 生产环境、有训练数据（推荐）|
+| **v3 (Fusion)** | 256 | ✅ | 已训练并评估融合权重的场景 |
+
+v2 使用预训练文本模型与数值特征拼接，无需额外训练融合层。v3 需要在 `PYTHON_EMBEDDING_MODEL_DIR` 中提供 `fusion_v3.pt`；当前实现缺少该文件时会运行随机初始化的融合网络。此时 `/health` 和嵌入接口仍可成功响应，但不能视为完成训练或达到可用的推荐质量。
 
 ## 🔧 常用命令
 
@@ -151,30 +161,37 @@ python-embedding-service/
 
 ```bash
 # 基础配置
-export HOST=0.0.0.0
-export PORT=5001
-export DEFAULT_EMBEDDING_VERSION=v3
-export DEVICE=cuda
+export PYTHON_EMBEDDING_HOST=0.0.0.0
+export PYTHON_EMBEDDING_PORT=5001
+export PYTHON_EMBEDDING_DEFAULT_VERSION=v2
+export PYTHON_EMBEDDING_DEVICE=cpu
+export HF_ENDPOINT=https://huggingface.co
 
 # 启动
 python app.py
 ```
 
-配置示例见 `env.example`
+配置示例见 `env.example`。切换到 v3 前应准备训练权重；使用 GPU 时将 `PYTHON_EMBEDDING_DEVICE` 设置为 `cuda`。
 
 ## 🐳 Docker 部署
 
 ```bash
 # 构建
-docker build -t tasteinsight-embedding .
+docker build --platform linux/amd64 -t tasteinsight-embedding .
 
 # 运行
 docker run -d \
+  --platform linux/amd64 \
   -p 5001:5001 \
-  -e DEFAULT_EMBEDDING_VERSION=v3 \
+  -e PYTHON_EMBEDDING_DEFAULT_VERSION=v2 \
+  -e PYTHON_EMBEDDING_PRELOAD_MODELS=v2 \
+  -e HF_ENDPOINT=https://huggingface.co \
+  -v tasteinsight-embedding-cache:/app/.cache/huggingface \
   -v $(pwd)/saved_models:/app/saved_models \
   tasteinsight-embedding
 ```
+
+模型缓存卷可避免重建容器后重复下载。完整项目的 Compose 使用 `huggingface_cache` 保存预训练模型，使用 `embedding_models` 保存 v3 训练权重。
 
 ## 📊 性能指标
 
@@ -190,7 +207,7 @@ docker run -d \
 A: 建议至少 1,000 菜品和 10,000 用户交互。
 
 **Q: 如何使用 GPU？**  
-A: `export DEVICE=cuda` 或训练时 `--device cuda`
+A: 服务使用 `export PYTHON_EMBEDDING_DEVICE=cuda`；训练脚本使用 `DEVICE=cuda` 或 `--device cuda`。
 
 **Q: 如何添加新模型？**  
 A: 参考 [API_GUIDE.md - 添加新模型](API_GUIDE.md#如何添加新模型)

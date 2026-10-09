@@ -19,10 +19,41 @@ export class DishRecommendationTool implements BaseTool {
     return {
       name: 'recommend_dishes',
       description:
-        '推荐菜品给用户。必须至少指定餐次（breakfast/lunch/dinner/nightsnack）。可选：食堂ID、价格范围等。示例：推荐午餐，价格10-20元。',
+        '按真实菜品数据和已保存偏好推荐某个餐次的候选菜品；自动排除已保存过敏原和忌口。' +
+        '\nscene 默认 guess_like（猜你喜欢）；查找相似菜品或替代品时使用 similar 并提供真实 triggerDishId，今日推荐使用 today。excludeDishIds 用于换一批候选或排除已选菜品；similar 自动排除来源菜品。' +
+        '\n未限定食堂时返回多个食堂的备选菜品，按食堂分组；不同食堂是互相替代的用餐地点，不能合并成一顿饭。' +
+        '\n组合中的配菜不足时，使用返回的 canteenId 再查询该食堂。用户已指定食堂时仅查询该食堂。' +
+        '\npriceMin/priceMax 筛选单道菜价格，整餐预算仍需按所选菜品价格求和，并传给 create_meal_plan 的 totalBudget。' +
+        '\n只依据返回的名称、食材、口味、价格、餐次和评价说明推荐理由；没有营养数据时不可声称精确热量或蛋白质。结果为空时说明限制，不自行放宽食堂、预算或忌口。',
       parameters: {
         type: 'object',
+        additionalProperties: false,
         properties: {
+          scene: {
+            type: 'string',
+            enum: [
+              RecommendationScene.GUESS_LIKE,
+              RecommendationScene.SIMILAR,
+              RecommendationScene.TODAY,
+            ],
+            default: RecommendationScene.GUESS_LIKE,
+            description:
+              '推荐场景：guess_like(猜你喜欢，默认)、similar(相似菜品/替代品)、today(今日推荐)。',
+          },
+          triggerDishId: {
+            type: 'string',
+            minLength: 1,
+            description:
+              '仅用于 similar，且该场景必填。用于查找相似菜品的真实菜品ID，先查询确认；来源菜品自动排除。',
+          },
+          excludeDishIds: {
+            type: 'array',
+            items: { type: 'string', minLength: 1 },
+            maxItems: 100,
+            uniqueItems: true,
+            description:
+              '可选。排除的真实菜品ID；换一批时提供上一批候选，替换某道菜时排除已选菜品。',
+          },
           mealTime: {
             type: 'string',
             enum: ['breakfast', 'lunch', 'dinner', 'nightsnack'],
@@ -31,63 +62,87 @@ export class DishRecommendationTool implements BaseTool {
           },
           canteenId: {
             type: 'string',
-            description: '可选。食堂ID，仅当用户明确指定食堂时才提供。',
+            minLength: 1,
+            description:
+              '可选。食堂ID或名称；用户限定地点或为已选食堂补充同餐配菜时提供。',
           },
           priceMin: {
             type: 'number',
+            minimum: 0,
             description: '可选。最低价格（元），如用户说"10-20元"则为10',
           },
           priceMax: {
             type: 'number',
+            minimum: 0,
             description: '可选。最高价格（元），如用户说"10-20元"则为20',
           },
           limit: {
-            type: 'number',
+            type: 'integer',
+            minimum: 1,
+            maximum: 100,
             description: '推荐数量，默认5个',
             default: 5,
           },
           tags: {
             type: 'array',
-            items: { type: 'string' },
+            items: { type: 'string', minLength: 1 },
+            maxItems: 100,
+            uniqueItems: true,
             description: '偏好标签，如["清淡", "川菜"]',
           },
           minRating: {
             type: 'number',
+            minimum: 0,
+            maximum: 5,
             description: '最低评分 (0-5)',
           },
           spicyLevel: {
-            type: 'number',
+            type: 'integer',
+            minimum: 0,
+            maximum: 5,
             description:
               '期望辣度 (0-5)，0为未设置/不要求，1-5分别表示微辣到非常辣',
           },
           sweetness: {
-            type: 'number',
+            type: 'integer',
+            minimum: 0,
+            maximum: 5,
             description:
               '期望甜度 (0-5)，0为未设置/不要求，1-5分别表示微甜到非常甜',
           },
           saltiness: {
-            type: 'number',
+            type: 'integer',
+            minimum: 0,
+            maximum: 5,
             description:
               '期望咸度 (0-5)，0为未设置/不要求，1-5分别表示微咸到非常咸',
           },
           oiliness: {
-            type: 'number',
+            type: 'integer',
+            minimum: 0,
+            maximum: 5,
             description:
               '期望油度 (0-5)，0为未设置/不要求，1-5分别表示清淡到非常油',
           },
           meatPreference: {
             type: 'array',
-            items: { type: 'string' },
+            items: { type: 'string', minLength: 1 },
+            maxItems: 100,
+            uniqueItems: true,
             description: '肉类偏好，如["猪肉", "牛肉", "鸡肉"]',
           },
           avoidIngredients: {
             type: 'array',
-            items: { type: 'string' },
+            items: { type: 'string', minLength: 1 },
+            maxItems: 100,
+            uniqueItems: true,
             description: '要避免的食材，如["香菜", "葱"]',
           },
           favoriteIngredients: {
             type: 'array',
-            items: { type: 'string' },
+            items: { type: 'string', minLength: 1 },
+            maxItems: 100,
+            uniqueItems: true,
             description: '喜欢的食材，如["番茄", "土豆"]',
           },
         },
@@ -98,6 +153,9 @@ export class DishRecommendationTool implements BaseTool {
 
   async execute(params: any, context: ToolContext): Promise<any[]> {
     const {
+      scene = RecommendationScene.GUESS_LIKE,
+      triggerDishId,
+      excludeDishIds,
       mealTime,
       canteenId,
       priceMin,
@@ -130,10 +188,38 @@ export class DishRecommendationTool implements BaseTool {
       );
     }
 
+    if (
+      priceMin !== undefined &&
+      priceMax !== undefined &&
+      priceMin > priceMax
+    ) {
+      throw new Error('priceMin 必须小于或等于 priceMax');
+    }
+    if (scene === RecommendationScene.SIMILAR && !triggerDishId) {
+      throw new Error('similar 场景必须提供真实菜品ID triggerDishId');
+    }
+    if (triggerDishId && scene !== RecommendationScene.SIMILAR) {
+      throw new Error('triggerDishId 仅能用于 similar 场景');
+    }
+    if (scene === RecommendationScene.SIMILAR) {
+      const source = await this.dishesService.getDishesByIds(
+        [triggerDishId],
+        context.userId,
+      );
+      if (!source.data.items.some((dish) => dish.id === triggerDishId)) {
+        throw new Error(
+          `用于相似推荐的菜品 ${triggerDishId} 不存在，请先查询真实菜品ID`,
+        );
+      }
+    }
+
     // Build filter
     const filter: any = {
       mealTime: [mealTime],
     };
+    if (excludeDishIds?.length) {
+      filter.excludeDishIds = excludeDishIds;
+    }
     if (canteenId) {
       const resolvedId = await this.canteensService.resolveCanteenId(canteenId);
       if (resolvedId) {
@@ -189,14 +275,16 @@ export class DishRecommendationTool implements BaseTool {
       filter.favoriteIngredients = favoriteIngredients;
     }
 
-    // 直接调用推荐服务，使用 GUESS_LIKE 场景（猜你喜欢）
+    // 调用统一推荐服务
     const result = await this.recommendationService.getRecommendations(
       context.userId,
       {
-        scene: RecommendationScene.GUESS_LIKE,
+        scene,
+        ...(triggerDishId ? { triggerDishId } : {}),
         filter,
         search: { keyword: '' },
         pagination: { page: 1, pageSize: limit },
+        userContext: { diversifyCanteens: !canteenId },
       },
     );
 

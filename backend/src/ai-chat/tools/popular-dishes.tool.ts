@@ -32,10 +32,13 @@ export class PopularDishesTool implements BaseTool {
           },
           canteenId: {
             type: 'string',
+            minLength: 1,
             description: '可选。食堂ID。',
           },
           limit: {
-            type: 'number',
+            type: 'integer',
+            minimum: 1,
+            maximum: 100,
             description: '返回数量，默认5个',
             default: 5,
           },
@@ -52,10 +55,10 @@ export class PopularDishesTool implements BaseTool {
     if (canteenId) {
       const resolvedId = await this.canteensService.resolveCanteenId(canteenId);
       if (resolvedId) {
-        filter.canteenId = resolvedId;
+        filter.canteenId = [resolvedId];
       } else {
         // 如果既不是有效ID也不是有效名称，使用不存在的ID
-        filter.canteenId = 'non-existent-id';
+        filter.canteenId = ['non-existent-id'];
       }
     }
 

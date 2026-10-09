@@ -69,6 +69,7 @@ describe('ReviewList', () => {
     dishId: 'dish1',
     reviews: mockReviews,
     loading: false,
+    initialized: true,
     error: '',
     hasMore: false,
     reviewComments: mockReviewComments,
@@ -90,12 +91,13 @@ describe('ReviewList', () => {
     jest.clearAllMocks();
   });
 
-  it('renders loading state when loading and no reviews', () => {
+  it('withholds review content while the first read is pending', () => {
     const wrapper = shallowMount(ReviewList, {
       props: {
         ...defaultProps,
         reviews: [],
         loading: true,
+        initialized: false,
       },
       global: {
         stubs: {
@@ -105,7 +107,8 @@ describe('ReviewList', () => {
       },
     });
 
-    expect(wrapper.text()).toContain('加载中...');
+    expect(wrapper.text()).toBe('');
+    expect(wrapper.get('.review-list').attributes('aria-busy')).toBe('true');
   });
 
   it('renders reviews list when reviews exist', () => {
@@ -133,6 +136,7 @@ describe('ReviewList', () => {
         stubs: {
           CommentList: true,
           LongPressMenu: true,
+          TasteProfile: false,
         },
       },
     });
@@ -143,6 +147,7 @@ describe('ReviewList', () => {
     expect(stars[0].classes()).toContain('text-yellow-500');
     expect(stars[3].classes()).toContain('text-yellow-500');
     expect(stars[4].classes()).toContain('text-gray-300');
+    expect(firstReview.find('.taste-toggle').exists()).toBe(false);
   });
 
   it('renders review images when present', () => {
@@ -161,7 +166,7 @@ describe('ReviewList', () => {
     expect(reviewImages).toHaveLength(2);
   });
 
-  it('renders empty state when no reviews and not loading', () => {
+  it('renders empty state after a successful read with no reviews', () => {
     const wrapper = shallowMount(ReviewList, {
       props: {
         ...defaultProps,
@@ -241,7 +246,7 @@ describe('ReviewList', () => {
       },
     });
 
-    await wrapper.find('.cursor-pointer').trigger('tap.stop');
+    await wrapper.find('.review-load-more').trigger('tap');
 
     expect(wrapper.emitted('loadMore')).toBeTruthy();
   });

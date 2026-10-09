@@ -1,36 +1,41 @@
 <template>
-  <!-- 通知设置页面骨架屏 -->
-  <view class="w-full min-h-screen bg-gradient-to-b from-white via-purple-50/20 to-white p-4">
-    <!-- 通知设置骨架 -->
-    <view class="bg-white rounded-2xl p-6 mb-4 shadow-sm">
-      <SkeletonBase width="80px" height="22px" rounded="rounded" class="mb-4" />
-
-      <!-- 开关项骨架 -->
-      <view
-        v-for="i in 4"
-        :key="i"
-        class="flex justify-between items-center py-3 border-b border-gray-100 last:border-b-0"
-      >
-        <view class="space-y-1">
-          <SkeletonBase width="96px" height="18px" rounded="rounded" />
-          <SkeletonBase width="160px" height="12px" rounded="rounded" />
-        </view>
-        <SkeletonBase width="48px" height="28px" rounded="rounded-full" />
+  <view class="skeleton-form settings-content-skeleton" role="status" aria-label="正在加载通知设置">
+    <view class="settings-skeleton-section">
+      <view v-for="item in 4" :key="item" class="skeleton-inline settings-skeleton-row">
+        <view class="skeleton-copy"
+          ><SkeletonBase width="96px" height="20px" /><SkeletonBase width="90%" height="14px"
+        /></view>
+        <SkeletonBase
+          class="settings-skeleton-toggle"
+          width="48px"
+          height="28px"
+          rounded="rounded-full"
+        />
       </view>
     </view>
-
-    <!-- 说明文字骨架 -->
-    <view class="bg-blue-50 rounded-xl p-4 mb-4">
-      <SkeletonBase width="80%" height="14px" rounded="rounded" />
-    </view>
-
-    <!-- 保存按钮骨架 -->
-    <view class="mt-6">
-      <SkeletonBase width="100%" height="52px" rounded="rounded-full" />
-    </view>
+    <SkeletonBase width="80%" height="14px" />
   </view>
 </template>
-
 <script setup lang="ts">
 import SkeletonBase from './SkeletonBase.vue';
 </script>
+<style scoped>
+.settings-content-skeleton {
+  gap: 24px;
+  padding: 0;
+  background: #fff;
+}
+.settings-skeleton-section {
+  padding-bottom: 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.settings-skeleton-row {
+  gap: 16px;
+  min-height: 64px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+.settings-skeleton-row:last-child {
+  border-bottom: 0;
+}
+</style>
