@@ -5,6 +5,9 @@ import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service
 import { NotFoundException } from '@nestjs/common';
 
 const mockPrismaService = {
+  $transaction: jest.fn(async (operation) => operation(mockPrismaService)),
+  userPreference: { upsert: jest.fn() },
+  userSetting: { upsert: jest.fn() },
   user: {
     create: jest.fn(),
     findUnique: jest.fn(),
@@ -115,6 +118,38 @@ describe('UserProfileService', () => {
   });
 
   describe('updateUserProfile', () => {
+    it('rolls back allergens if the combined preference mutation fails', async () => {
+      const stored = { allergens: ['花生'] };
+      mockPrismaService.user.update.mockImplementationOnce(async (query) => {
+        stored.allergens = query.data.allergens;
+        return stored;
+      });
+      mockPrismaService.userPreference.upsert.mockRejectedValueOnce(
+        new Error('temporary DB failure'),
+      );
+      mockPrismaService.$transaction.mockImplementationOnce(
+        async (operation) => {
+          const before = [...stored.allergens];
+          try {
+            return await operation(mockPrismaService);
+          } catch (error) {
+            stored.allergens = before;
+            throw error;
+          }
+        },
+      );
+      await expect(
+        service.updateUserProfile('u1', {
+          allergens: ['花生', '虾'],
+          preferences: { avoidIngredients: ['香菜'] },
+        }),
+      ).rejects.toThrow('temporary DB failure');
+      expect(mockPrismaService.$transaction).toHaveBeenCalledTimes(1);
+      expect(stored.allergens).toEqual(['花生']);
+      expect(
+        mockEmbeddingQueueService.enqueueRefreshUser,
+      ).not.toHaveBeenCalled();
+    });
     it('should update user profile', async () => {
       // update succeeds
       prisma.user.update.mockResolvedValue({});

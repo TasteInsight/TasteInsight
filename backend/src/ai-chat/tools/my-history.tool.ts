@@ -17,7 +17,9 @@ export class MyHistoryTool implements BaseTool {
         type: 'object',
         properties: {
           limit: {
-            type: 'number',
+            type: 'integer',
+            minimum: 1,
+            maximum: 100,
             description: '返回数量，默认5个',
             default: 5,
           },

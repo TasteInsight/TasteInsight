@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { BaseTool, ToolDefinition, ToolContext } from './base-tool.interface';
 import { DishesService } from '@/dishes/dishes.service';
+import { RecommendationService } from '@/recommendation/recommendation.service';
 
 /**
  * 创建用餐计划工具
@@ -15,42 +16,42 @@ import { DishesService } from '@/dishes/dishes.service';
 export class CreateMealPlanTool implements BaseTool {
   private readonly logger = new Logger(CreateMealPlanTool.name);
 
-  constructor(private readonly dishesService: DishesService) {}
+  constructor(
+    private readonly dishesService: DishesService,
+    private readonly recommendationService: RecommendationService,
+  ) {}
 
   getDefinition(): ToolDefinition {
     return {
       name: 'create_meal_plan',
+      scenes: ['general_chat', 'meal_planner'],
       description:
-        '创建用餐计划。用于为用户生成一份用餐计划。' +
-        '\\n**重要**：你需要先调用 search_dishes 或 recommend_dishes 获取候选菜品，' +
-        '\\n然后根据用户需求从中选择合适的菜品组合（通常1-2个），将菜品ID传给本工具。' +
-        '\\n**选择规则**：' +
-        '\\n1. **同食堂优先**：对于同一顿饭，必须选择同一个食堂的菜品，除非用户明确要求多个食堂。' +
-        '\\n2. **合理搭配**：注意份量和搭配（如：1个主食+1个饮料/小吃，或者1荤+1素）。不要选择多个主食（如两碗面、两个饭套餐）。' +
-        '\\n3. **份量控制**：通常一人一顿饭只需1个主菜或套餐。' +
-        '\\n本工具会生成完整的计划数据，之后需要用 display_content 展示给用户。' +
-        '\\n\\n使用流程示例（你可以选择合适的工具自行决策）：' +
-        '\\n1. 用户：帮我安排明天的午餐，清淡高蛋白' +
-        '\\n2. 调用 recommend_dishes(mealTime="lunch", tags=["清淡","高蛋白"])' +
-        '\\n3. 从返回的菜品中选择1-2个（比如主食+饮料，且都在同一个食堂）' +
-        '\\n4. 调用 create_meal_plan(dishIds=["dish_10001", "dish_10002"], ...)' +
-        '\\n5. 调用 display_content(type="meal_plan", data=<上一步返回的结果>)',
+        '创建一份可确认的用餐计划草稿，不会直接保存计划。先用 recommend_dishes 或 search_dishes 查询真实菜品，再选择同一食堂内通常1-2个菜品。' +
+        '\n多个食堂的推荐是互相替代的方案；每个食堂方案应分别创建草稿，不能把所有候选放进同一顿饭。' +
+        '\n只有用户明确要求跨食堂组合时才设置 allowCrossCanteen=true。整顿饭的预算通过 totalBudget 传入，不能把单道菜的价格范围当作整餐预算。' +
+        '\n根据实际菜品名称、食材、价格和餐次搭配，不要拼接多个套餐或编造营养数据。本工具会校验食堂、供应、过敏原和已保存忌口。' +
+        '\n使用 display_content(type="meal_plan", data=<本工具完整结果>) 展示草稿，保留其中的 constraints 和确认数据。',
       parameters: {
         type: 'object',
         properties: {
           dishIds: {
             type: 'array',
-            items: { type: 'string' },
+            minItems: 1,
+            maxItems: 100,
+            uniqueItems: true,
+            items: { type: 'string', minLength: 1 },
             description:
               '【必填】你选择的菜品ID列表。请确保所有菜品来自同一个食堂（除非用户另有要求），且组合合理（避免多个主食）。',
           },
           startDate: {
             type: 'string',
+            pattern: '^\\d{4}-\\d{2}-\\d{2}$',
             description:
               '【必填】计划开始日期，格式：YYYY-MM-DD。如果用户说"今天"、"明天"等，需要根据当前时间转换为具体日期。',
           },
           endDate: {
             type: 'string',
+            pattern: '^\\d{4}-\\d{2}-\\d{2}$',
             description:
               '【必填】计划结束日期，格式：YYYY-MM-DD。如果是单日计划，与 startDate 相同。',
           },
@@ -63,7 +64,19 @@ export class CreateMealPlanTool implements BaseTool {
           summary: {
             type: 'string',
             description:
-              '【可选】计划摘要。如果不提供，将自动生成。建议格式："为你安排了X月X日午餐，偏清淡高蛋白，控制油脂摄入。"',
+              '可选。根据日期、食堂和真实菜品描述计划，不编造营养数据；不提供时自动生成。',
+          },
+          totalBudget: {
+            type: 'number',
+            minimum: 0,
+            description:
+              '可选。用户明确指定的整顿饭总预算（元），按所有选中菜品价格之和校验。',
+          },
+          allowCrossCanteen: {
+            type: 'boolean',
+            default: false,
+            description:
+              '仅在用户明确要求一顿饭跨食堂取餐时设为true；比较多个食堂的备选方案时保持false。',
           },
         },
         required: ['dishIds', 'startDate', 'endDate', 'mealTime'],
@@ -72,18 +85,42 @@ export class CreateMealPlanTool implements BaseTool {
   }
 
   async execute(params: any, context: ToolContext): Promise<any> {
-    const { dishIds, startDate, endDate, mealTime, summary } = params;
+    const {
+      dishIds,
+      startDate,
+      endDate,
+      mealTime,
+      summary,
+      totalBudget,
+      allowCrossCanteen,
+    } = params;
 
     // 验证必填参数
-    if (!dishIds || !Array.isArray(dishIds) || dishIds.length === 0) {
+    if (
+      !Array.isArray(dishIds) ||
+      dishIds.length === 0 ||
+      dishIds.some((id) => typeof id !== 'string' || !id)
+    ) {
       throw new Error(
-        '缺少菜品ID列表。请先使用 recommend_dishes 或 search_dishes 获取候选菜品，然后从中选择2-3个菜品传递给本工具。',
+        '缺少有效的菜品ID列表。请先查询候选菜品，再从同一食堂选择通常1-2个菜品。',
       );
     }
+    const selectedIds = [...new Set<string>(dishIds)];
 
     // 验证日期格式
     if (!this.isValidDate(startDate) || !this.isValidDate(endDate)) {
-      throw new Error('日期格式无效。请使用 YYYY-MM-DD 格式，例如：2025-12-24');
+      throw new Error('日期无效。请使用有效的 YYYY-MM-DD 日期。');
+    }
+    if (endDate < startDate) {
+      throw new Error('结束日期不能早于开始日期。');
+    }
+    if (
+      totalBudget !== undefined &&
+      (typeof totalBudget !== 'number' ||
+        !Number.isFinite(totalBudget) ||
+        totalBudget < 0)
+    ) {
+      throw new Error('整餐预算必须为非负金额。');
     }
 
     // 验证餐次
@@ -100,13 +137,58 @@ export class CreateMealPlanTool implements BaseTool {
 
     // 获取完整的菜品信息
     const dishesResult = await this.dishesService.getDishesByIds(
-      dishIds,
+      selectedIds,
       context.userId,
     );
     const dishes = dishesResult.data.items;
 
-    if (dishes.length === 0) {
-      throw new Error('未找到指定的菜品。请检查菜品ID是否正确。');
+    if (dishes.length !== selectedIds.length) {
+      throw new Error('部分指定菜品不存在。请重新查询菜品后创建计划。');
+    }
+    if (
+      dishes.some(
+        (dish) =>
+          dish.status !== 'online' ||
+          !dish.availableMealTime.includes(mealTime),
+      )
+    ) {
+      throw new Error('所选菜品当前不供应该餐次。请重新查询可供应的菜品。');
+    }
+    if (
+      allowCrossCanteen !== true &&
+      new Set(dishes.map((dish) => dish.canteenId)).size > 1
+    ) {
+      throw new Error(
+        '一顿饭的菜品必须来自同一个食堂。请将不同食堂的备选方案分别创建计划。',
+      );
+    }
+    const features = await this.recommendationService.getUserFeaturesWithCache(
+      context.userId,
+    );
+    if (
+      dishes.some(
+        (dish) =>
+          dish.allergens.some((allergen) =>
+            features.allergens.includes(allergen),
+          ) ||
+          dish.ingredients.some((ingredient) =>
+            features.preferences?.avoidIngredients.includes(ingredient),
+          ),
+      )
+    ) {
+      throw new Error('所选菜品包含已保存的过敏原或忌口食材。请选择其他菜品。');
+    }
+    const totalPrice = dishes.reduce(
+      (sum, dish) => sum + Math.round(dish.price * 100),
+      0,
+    );
+    if (
+      totalBudget !== undefined &&
+      totalPrice > Math.round(totalBudget * 100)
+    ) {
+      throw new Error(
+        `所选菜品总价${(totalPrice / 100).toFixed(2)}元，超过整餐预算${totalBudget}元。请重新搭配。`,
+      );
     }
 
     // 生成或使用提供的摘要
@@ -129,6 +211,7 @@ export class CreateMealPlanTool implements BaseTool {
           windowId: dish.windowId,
           windowName: dish.windowName,
           price: dish.price,
+          priceUnit: dish.priceUnit,
           averageRating: dish.averageRating,
           allergens: dish.allergens || [],
           tags: dish.tags || [],
@@ -141,9 +224,19 @@ export class CreateMealPlanTool implements BaseTool {
           startDate,
           endDate,
           mealTime,
-          dishes: dishIds,
+          dishes: selectedIds,
         },
       },
+      ...(totalBudget !== undefined || allowCrossCanteen === true
+        ? {
+            constraints: {
+              ...(totalBudget !== undefined ? { totalBudget } : {}),
+              ...(allowCrossCanteen === true
+                ? { allowCrossCanteen: true }
+                : {}),
+            },
+          }
+        : {}),
     };
 
     return mealPlan;
@@ -158,7 +251,9 @@ export class CreateMealPlanTool implements BaseTool {
       return false;
     }
     const date = new Date(dateString);
-    return date instanceof Date && !isNaN(date.getTime());
+    return (
+      !isNaN(date.getTime()) && date.toISOString().slice(0, 10) === dateString
+    );
   }
 
   /**

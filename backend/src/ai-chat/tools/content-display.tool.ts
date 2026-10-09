@@ -8,6 +8,7 @@ import {
   ComponentMealPlanDraft,
 } from '../dto/chat.dto';
 import { OpeningHoursUtil } from '../utils/opening-hours.util';
+import { ToolRegistryService } from './tool-registry.service';
 
 @Injectable()
 export class ContentDisplayTool implements BaseTool {
@@ -16,6 +17,7 @@ export class ContentDisplayTool implements BaseTool {
   constructor(
     private readonly dishesService: DishesService,
     private readonly canteensService: CanteensService,
+    private readonly toolRegistry: ToolRegistryService,
   ) {}
 
   getDefinition(): ToolDefinition {
@@ -24,10 +26,11 @@ export class ContentDisplayTool implements BaseTool {
       description:
         '向用户展示内容卡片（如菜品、食堂信息）。' +
         '\n使用场景：当你需要通过可视化卡片展示菜品或食堂时调用。' +
-        '\n**重要**：此工具不会自动获取数据，必须显式传递参数！' +
+        '\n根据已查询的ID重新读取真实信息，必须显式传递参数。' +
         '\n必须基于之前查询工具（如get_canteen_info、search_dishes等）返回的结果，提取其中的id字段组成ids数组。' +
         '\n示例：如果get_canteen_info返回了[{id:"c1",name:"紫荆园"},{id:"c2",name:"桃李园"}]，' +
-        '则应调用display_content时传递 {type:"canteen", ids:["c1","c2"]}',
+        '则应调用display_content时传递 {type:"canteen", ids:["c1","c2"]}。' +
+        '\nmeal_plan 必须传入 create_meal_plan 返回的完整草稿，保留 previewData、confirmAction 和可选 constraints；本工具会重新校验供应、食堂和预算，不接受手写菜品详情或不一致的确认信息。',
       parameters: {
         type: 'object',
         properties: {
@@ -39,8 +42,12 @@ export class ContentDisplayTool implements BaseTool {
           },
           ids: {
             type: 'array',
+            minItems: 1,
+            maxItems: 100,
+            uniqueItems: true,
             items: {
               type: 'string',
+              minLength: 1,
             },
             description:
               '【必填for dish/canteen】从查询工具返回结果中提取的id字段组成的数组。例如：["id1","id2","id3"]',
@@ -84,7 +91,7 @@ export class ContentDisplayTool implements BaseTool {
           '缺少参数 "data"（类型为 "meal_plan"）。请提供用餐计划对象。',
         );
       }
-      return this.getMealPlanCards(data);
+      return this.getMealPlanCards(data, context);
     } else {
       throw new Error(
         `无效的类型 "${type}"。允许的值为：dish、canteen、meal_plan。`,
@@ -158,14 +165,47 @@ export class ContentDisplayTool implements BaseTool {
     return cards;
   }
 
-  private getMealPlanCards(data: any): ComponentMealPlanDraft[] {
-    // Validate that data is a valid meal plan object
-    if (!data || typeof data !== 'object') {
-      return [];
+  private async getMealPlanCards(
+    data: any,
+    context: ToolContext,
+  ): Promise<ComponentMealPlanDraft[]> {
+    const preview = data?.previewData;
+    const confirmation = data?.confirmAction;
+    const body = confirmation?.body;
+    if (
+      !preview ||
+      !body ||
+      !Array.isArray(preview.dishes) ||
+      !Array.isArray(body.dishes) ||
+      confirmation.api !== '/meal-plans' ||
+      confirmation.method !== 'POST'
+    ) {
+      throw new Error(
+        '用餐计划草稿无效。请使用 create_meal_plan 生成完整草稿。',
+      );
     }
-
-    // Return the meal plan as an array of cards
-    // The data should already be in the correct ComponentMealPlanDraft format
-    return [data];
+    if (
+      preview.startDate !== body.startDate ||
+      preview.endDate !== body.endDate ||
+      preview.mealTime !== body.mealTime ||
+      JSON.stringify(preview.dishes.map((dish) => dish?.id)) !==
+        JSON.stringify(body.dishes)
+    ) {
+      throw new Error('计划预览与确认数据不一致。请重新创建计划草稿。');
+    }
+    const draft = await this.toolRegistry.executeTool(
+      'create_meal_plan',
+      {
+        dishIds: body.dishes,
+        startDate: body.startDate,
+        endDate: body.endDate,
+        mealTime: body.mealTime,
+        summary: data.summary,
+        totalBudget: data.constraints?.totalBudget,
+        allowCrossCanteen: data.constraints?.allowCrossCanteen,
+      },
+      context,
+    );
+    return [draft];
   }
 }

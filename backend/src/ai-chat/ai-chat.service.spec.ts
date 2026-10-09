@@ -61,6 +61,7 @@ describe('AIChatService', () => {
           useValue: {
             setConfig: jest.fn(),
             streamChat: jest.fn(),
+            completeChat: jest.fn().mockResolvedValue('{"suggestions":[]}'),
           },
         },
         {

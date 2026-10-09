@@ -109,7 +109,7 @@ describe('PopularDishesTool', () => {
       );
       expect(mockDishesService.getDishes).toHaveBeenCalledWith(
         expect.objectContaining({
-          filter: { canteenId: 'canteen-123' },
+          filter: { canteenId: ['canteen-123'] },
         }),
         'test-user',
       );
@@ -125,7 +125,7 @@ describe('PopularDishesTool', () => {
 
       expect(mockDishesService.getDishes).toHaveBeenCalledWith(
         expect.objectContaining({
-          filter: { canteenId: 'non-existent-id' },
+          filter: { canteenId: ['non-existent-id'] },
         }),
         'test-user',
       );

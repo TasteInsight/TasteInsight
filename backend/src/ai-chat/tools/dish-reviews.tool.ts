@@ -18,10 +18,13 @@ export class DishReviewsTool implements BaseTool {
         properties: {
           dishId: {
             type: 'string',
+            minLength: 1,
             description: '菜品ID',
           },
           limit: {
-            type: 'number',
+            type: 'integer',
+            minimum: 1,
+            maximum: 100,
             description: '返回评论数量，默认5条',
             default: 5,
           },

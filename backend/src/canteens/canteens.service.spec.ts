@@ -251,7 +251,8 @@ describe('CanteensService', () => {
       expect(result.data.items).toHaveLength(1);
       expect(result.data.meta.total).toBe(1);
       expect(prisma.dish.findMany).toHaveBeenCalledWith({
-        where: { windowId: 'w1' },
+        where: { windowId: 'w1', status: 'online' },
+        orderBy: [{ averageRating: 'desc' }, { id: 'asc' }],
         skip: 0,
         take: 10,
       });
@@ -269,7 +270,8 @@ describe('CanteensService', () => {
       await service.getWindowDishes('w1', 0, 10);
 
       expect(prisma.dish.findMany).toHaveBeenCalledWith({
-        where: { windowId: 'w1' },
+        where: { windowId: 'w1', status: 'online' },
+        orderBy: [{ averageRating: 'desc' }, { id: 'asc' }],
         skip: 0,
         take: 10,
       });

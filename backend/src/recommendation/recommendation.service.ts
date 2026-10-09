@@ -7,6 +7,7 @@ import {
   RECOMMENDATION_WEIGHTS,
   SEARCH_SCENE_WEIGHTS,
   RECOMMENDATION_LIMITS,
+  CACHE_CONFIG,
   RecommendationScene,
   RecommendationEventType,
 } from './constants/recommendation.constants';
@@ -328,7 +329,24 @@ export class RecommendationService {
 
     // 2. 构建筛选条件（排除已看过的菜品）
     const filterConditions = this.buildFilterConditions(
-      dto.filter,
+      {
+        ...dto.filter,
+        avoidIngredients: [
+          ...new Set([
+            ...(userFeatures.preferences?.avoidIngredients || []),
+            ...(dto.filter.avoidIngredients || []),
+          ]),
+        ],
+        excludeDishIds: [
+          ...new Set([
+            ...(dto.filter.excludeDishIds || []),
+            ...(context.scene === RecommendationScene.SIMILAR &&
+            context.triggerDishId
+              ? [context.triggerDishId]
+              : []),
+          ]),
+        ],
+      },
       userFeatures.allergens,
       dto.search,
       dto.userContext,
@@ -358,6 +376,28 @@ export class RecommendationService {
       { triggerDishId: context.triggerDishId },
     );
 
+    const diversifyCanteens =
+      dto.userContext?.diversifyCanteens === true &&
+      !dto.filter.canteenId?.length &&
+      !dto.userContext?.preferredCanteenId;
+    if (diversifyCanteens) {
+      const canteenCandidates = await this.prisma.dish.findMany({
+        where: { AND: filterConditions },
+        distinct: ['canteenId'],
+        orderBy: [{ averageRating: 'desc' }, { reviewCount: 'desc' }],
+        take: pageSize,
+        include: { canteen: true, window: true },
+      });
+      candidateDishes = [
+        ...new Map(
+          [...candidateDishes, ...canteenCandidates].map((dish) => [
+            dish.id,
+            dish,
+          ]),
+        ).values(),
+      ];
+    }
+
     // 5. 如果候选不足，使用降级策略补充
     if (candidateDishes.length < pageSize) {
       this.logger.warn(
@@ -366,7 +406,7 @@ export class RecommendationService {
       const fallbackDishes = await this.getFallbackDishes(
         userId,
         pageSize - candidateDishes.length,
-        seenDishIds,
+        new Set([...seenDishIds, ...candidateDishes.map((dish) => dish.id)]),
         filterConditions,
       );
       candidateDishes = [...candidateDishes, ...fallbackDishes];
@@ -384,13 +424,10 @@ export class RecommendationService {
 
     // 7. 排序并应用多样性
     scoredDishes.sort((a, b) => b.score - a.score);
-    const diversifiedDishes = this.applyDiversityBoost(
-      scoredDishes,
-      seenDishIds,
-    );
-
     // 8. 获取当前页的菜品
-    const pageItems = diversifiedDishes.slice(0, pageSize);
+    const pageItems = diversifyCanteens
+      ? this.selectCanteenOptions(scoredDishes, pageSize)
+      : this.applyDiversityBoost(scoredDishes, seenDishIds).slice(0, pageSize);
 
     // 9. 更新已看过的菜品列表
     if (pageItems.length > 0) {
@@ -794,7 +831,6 @@ export class RecommendationService {
 
     // 回退：基于标签和食堂的传统相似召回
     const conditions: Prisma.DishWhereInput[] = [
-      { id: { not: triggerDishId } },
       { status: 'online' },
       ...filterConditions,
     ];
@@ -975,7 +1011,10 @@ export class RecommendationService {
       const cachedFeatures = await this.cacheService.getUserFeatures(userId);
       if (cachedFeatures) {
         this.logger.debug(`User features cache hit for ${userId}`);
-        return cachedFeatures;
+        return {
+          ...cachedFeatures,
+          ...(await this.getCurrentDietaryFeatures(userId)),
+        };
       }
     }
 
@@ -987,7 +1026,7 @@ export class RecommendationService {
       await this.cacheService.setUserFeatures(userId, features);
     }
 
-    return features;
+    return { ...features, ...(await this.getCurrentDietaryFeatures(userId)) };
   }
 
   /**
@@ -995,11 +1034,9 @@ export class RecommendationService {
    */
   async getUserFeatures(userId: string): Promise<UserFeatures> {
     // 并行获取用户数据
-    const [userPreferences, favoriteDishRecords, browseHistoryRecords, user] =
+    const [dietaryFeatures, favoriteDishRecords, browseHistoryRecords] =
       await Promise.all([
-        this.prisma.userPreference.findUnique({
-          where: { userId },
-        }),
+        this.getCurrentDietaryFeatures(userId),
         this.prisma.favoriteDish.findMany({
           where: { userId },
           orderBy: { addedAt: 'desc' },
@@ -1009,10 +1046,6 @@ export class RecommendationService {
           where: { userId },
           orderBy: { viewedAt: 'desc' },
           take: RECOMMENDATION_LIMITS.MAX_BROWSE_HISTORY,
-        }),
-        this.prisma.user.findUnique({
-          where: { id: userId },
-          select: { allergens: true },
         }),
       ]);
 
@@ -1044,12 +1077,29 @@ export class RecommendationService {
       dishMap,
     );
 
-    // 映射用户偏好
+    return {
+      userId,
+      ...dietaryFeatures,
+      favoriteFeatures,
+      browseFeatures,
+    };
+  }
+
+  private async getCurrentDietaryFeatures(
+    userId: string,
+  ): Promise<Pick<UserFeatures, 'preferences' | 'allergens'>> {
+    const [userPreferences, user] = await Promise.all([
+      this.prisma.userPreference.findUnique({ where: { userId } }),
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { allergens: true },
+      }),
+    ]);
     const preferences: UserPreferenceFeatures | null = userPreferences
       ? {
           tagPreferences: userPreferences.tagPreferences || [],
-          priceMin: userPreferences.priceMin || 0,
-          priceMax: userPreferences.priceMax || 50,
+          priceMin: userPreferences.priceMin ?? 0,
+          priceMax: userPreferences.priceMax ?? 50,
           meatPreference: userPreferences.meatPreference || [],
           avoidIngredients: userPreferences.avoidIngredients || [],
           favoriteIngredients: userPreferences.favoriteIngredients || [],
@@ -1065,10 +1115,7 @@ export class RecommendationService {
       : null;
 
     return {
-      userId,
       preferences,
-      favoriteFeatures,
-      browseFeatures,
       allergens: user?.allergens || [],
     };
   }
@@ -1080,17 +1127,7 @@ export class RecommendationService {
     if (!this.cacheService) {
       return;
     }
-
-    // 使缓存失效
-    await Promise.all([
-      this.cacheService.invalidateUserFeatures(userId),
-      this.cacheService.invalidateUserRecommendations(userId),
-    ]);
-
-    // 使用户嵌入失效（如果有）
-    if (this.embeddingService) {
-      await this.embeddingService.invalidateUserEmbedding(userId);
-    }
+    await this.invalidateUserFeatureCache(userId);
 
     // 预热新缓存
     const features = await this.getUserFeatures(userId);
@@ -1100,6 +1137,15 @@ export class RecommendationService {
     this.ensureUserEmbeddingAsync(userId, features);
 
     this.logger.debug(`User feature cache refreshed for ${userId}`);
+  }
+
+  async invalidateUserFeatureCache(userId: string): Promise<void> {
+    if (!this.cacheService) return;
+    await Promise.all([
+      this.cacheService.invalidateUserFeatures(userId),
+      this.cacheService.invalidateUserRecommendations(userId),
+      this.embeddingService?.invalidateUserEmbedding(userId),
+    ]);
   }
 
   /**
@@ -1244,16 +1290,13 @@ export class RecommendationService {
       conditions.push({ status: 'online' });
     }
 
-    // 过敏原排除（安全优先）
-    if (allergens && allergens.length > 0) {
-      conditions.push({
-        NOT: {
-          allergens: {
-            hasSome: allergens,
-          },
-        },
-      });
+    if (filter.excludeDishIds?.length) {
+      conditions.push({ id: { notIn: filter.excludeDishIds } });
     }
+
+    conditions.push(
+      ...this.buildDietaryFilterConditions(allergens, filter.avoidIngredients),
+    );
 
     // 评分筛选
     if (filter.rating) {
@@ -1302,6 +1345,10 @@ export class RecommendationService {
       });
     }
 
+    if (filter.windowId && filter.windowId.length > 0) {
+      conditions.push({ windowId: { in: filter.windowId } });
+    }
+
     // 辣度筛选
     if (filter.spicyLevel) {
       conditions.push({
@@ -1322,17 +1369,6 @@ export class RecommendationService {
       conditions.push({
         ingredients: {
           hasSome: filter.meatPreference,
-        },
-      });
-    }
-
-    // 避免食材筛选
-    if (filter.avoidIngredients && filter.avoidIngredients.length > 0) {
-      conditions.push({
-        NOT: {
-          ingredients: {
-            hasSome: filter.avoidIngredients,
-          },
         },
       });
     }
@@ -1439,6 +1475,20 @@ export class RecommendationService {
       }
     }
 
+    return conditions;
+  }
+
+  private buildDietaryFilterConditions(
+    allergens: string[] = [],
+    avoidIngredients: string[] = [],
+  ): Prisma.DishWhereInput[] {
+    const conditions: Prisma.DishWhereInput[] = [];
+    if (allergens.length) {
+      conditions.push({ NOT: { allergens: { hasSome: allergens } } });
+    }
+    if (avoidIngredients.length) {
+      conditions.push({ NOT: { ingredients: { hasSome: avoidIngredients } } });
+    }
     return conditions;
   }
 
@@ -2084,7 +2134,7 @@ export class RecommendationService {
     userId?: string,
   ): Promise<{ items: ScoredDish[]; total: number; totalPages: number }> {
     // 尝试从缓存获取完整结果
-    const cacheKey = `similar:${dishId}:${userId || 'anonymous'}`;
+    const cacheKey = `${CACHE_CONFIG.KEY_PREFIX.RECOMMENDATION}${userId || 'anonymous'}:similar:${dishId}`;
     let allScoredDishes: ScoredDish[];
 
     if (this.cacheService) {
@@ -2110,6 +2160,11 @@ export class RecommendationService {
       // 没有缓存服务，直接计算
       allScoredDishes = await this.generateSimilarDishes(dishId, userId);
     }
+
+    allScoredDishes = await this.filterCurrentScoredDishes(
+      allScoredDishes,
+      userId,
+    );
 
     // 应用分页
     const { page, pageSize } = pagination;
@@ -2384,12 +2439,10 @@ export class RecommendationService {
       whereCondition.availableMealTime = { has: mealTime };
     }
 
-    // 排除用户过敏原
-    if (userFeatures.allergens && userFeatures.allergens.length > 0) {
-      whereCondition.NOT = {
-        allergens: { hasSome: userFeatures.allergens },
-      };
-    }
+    whereCondition.AND = this.buildDietaryFilterConditions(
+      userFeatures.allergens,
+      userFeatures.preferences?.avoidIngredients,
+    );
 
     const candidateDishes = await this.prisma.dish.findMany({
       where: whereCondition,
@@ -2453,7 +2506,7 @@ export class RecommendationService {
     const { canteenId, mealTime, pagination } = options;
 
     // 尝试从缓存获取完整结果
-    const cacheKey = `personalized:${userId}:${canteenId || 'all'}:${mealTime || 'all'}`;
+    const cacheKey = `${CACHE_CONFIG.KEY_PREFIX.RECOMMENDATION}${userId}:personalized:${canteenId || 'all'}:${mealTime || 'all'}`;
     let allScoredDishes: ScoredDish[];
 
     if (this.cacheService) {
@@ -2487,6 +2540,15 @@ export class RecommendationService {
         mealTime,
       );
     }
+
+    allScoredDishes = await this.filterCurrentScoredDishes(
+      allScoredDishes,
+      userId,
+      {
+        ...(canteenId ? { canteenId: [canteenId] } : {}),
+        ...(mealTime ? { mealTime: [mealTime] as any } : {}),
+      },
+    );
 
     // 应用分页
     const { page, pageSize } = pagination;
@@ -2531,11 +2593,10 @@ export class RecommendationService {
       if (mealTime) {
         whereCondition.availableMealTime = { has: mealTime };
       }
-      if (userFeatures.allergens && userFeatures.allergens.length > 0) {
-        whereCondition.NOT = {
-          allergens: { hasSome: userFeatures.allergens },
-        };
-      }
+      whereCondition.AND = this.buildDietaryFilterConditions(
+        userFeatures.allergens,
+        userFeatures.preferences?.avoidIngredients,
+      );
 
       const dishes = await this.prisma.dish.findMany({
         where: whereCondition,
@@ -2561,6 +2622,35 @@ export class RecommendationService {
     }
 
     return allScoredDishes;
+  }
+
+  private async filterCurrentScoredDishes(
+    candidates: ScoredDish[],
+    userId?: string,
+    filter: RecommendationRequestDto['filter'] = {},
+  ): Promise<ScoredDish[]> {
+    if (!candidates.length) return [];
+    const dietary = userId
+      ? await this.getCurrentDietaryFeatures(userId)
+      : { allergens: [], preferences: null };
+    const conditions = this.buildFilterConditions(
+      {
+        ...filter,
+        avoidIngredients: dietary.preferences?.avoidIngredients,
+      },
+      dietary.allergens,
+    );
+    const dishes = await this.prisma.dish.findMany({
+      where: {
+        id: { in: candidates.map((item) => item.dish.id) },
+        AND: conditions,
+      },
+      include: { canteen: true, window: true },
+    });
+    const current = new Map(dishes.map((dish) => [dish.id, dish]));
+    return candidates
+      .filter((item) => current.has(item.dish.id))
+      .map((item) => ({ ...item, dish: current.get(item.dish.id)! }));
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -2903,6 +2993,34 @@ export class RecommendationService {
     }
 
     return result;
+  }
+
+  private selectCanteenOptions(
+    scoredDishes: ScoredDish[],
+    limit: number,
+  ): ScoredDish[] {
+    const groups = new Map<string, ScoredDish[]>();
+    for (const dish of scoredDishes) {
+      const canteenId = dish.dish.canteenId;
+      if (!groups.has(canteenId)) groups.set(canteenId, []);
+      groups.get(canteenId)!.push(dish);
+    }
+    const options = [...groups.values()].slice(0, Math.min(3, limit));
+    const selected = options.map(() => [] as ScoredDish[]);
+    let count = 0;
+    for (
+      let depth = 0;
+      count < limit && options.some((group) => group.length > depth);
+      depth++
+    ) {
+      for (let index = 0; index < options.length && count < limit; index++) {
+        if (options[index][depth]) {
+          selected[index].push(options[index][depth]);
+          count++;
+        }
+      }
+    }
+    return selected.flat();
   }
 
   // ═══════════════════════════════════════════════════════════════════

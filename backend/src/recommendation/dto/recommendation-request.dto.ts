@@ -11,6 +11,10 @@ import {
   Max,
   IsDefined,
   IsNotEmptyObject,
+  IsArray,
+  IsNotEmpty,
+  ArrayMaxSize,
+  ArrayUnique,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { RecommendationScene } from '../constants/recommendation.constants';
@@ -24,7 +28,15 @@ import { PartialType } from '@nestjs/swagger';
 /**
  * 推荐过滤条件
  */
-export class RecommendationFilterDto extends FilterDto {}
+export class RecommendationFilterDto extends FilterDto {
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(100)
+  @ArrayUnique()
+  @IsString({ each: true })
+  @IsNotEmpty({ each: true })
+  excludeDishIds?: string[];
+}
 
 /**
  * 推荐搜索条件

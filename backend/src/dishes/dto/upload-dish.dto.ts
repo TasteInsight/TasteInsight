@@ -117,9 +117,9 @@ export class UploadDishDto {
   @IsString()
   windowNumber?: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  windowName: string;
+  windowName?: string;
 
   @IsNotEmpty()
   @IsArray()

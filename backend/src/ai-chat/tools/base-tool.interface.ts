@@ -4,12 +4,14 @@ export interface ToolDefinition {
   name: string;
   description: string;
   parameters: Record<string, any>; // JSON Schema
+  scenes?: Array<'general_chat' | 'meal_planner' | 'dish_critic'>;
 }
 
 export interface ToolContext {
   userId: string;
   sessionId: string;
   localTime?: string;
+  scene?: string;
 }
 
 export interface BaseTool {

@@ -6,6 +6,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import type { UpdateUserPreferencesDto } from '@/user-profile/dto/update-user-profile.dto';
 
 // Client context for chat requests
 export class ClientContextDto {
@@ -55,11 +56,17 @@ export interface SegmentCanteenCard {
   data: ComponentCanteenCard[];
 }
 
+export interface SegmentPreferenceCard {
+  type: 'card_preferences';
+  data: ComponentPreferenceDraft[];
+}
+
 export type ContentSegment =
   | SegmentText
   | SegmentDishCard
   | SegmentPlanCard
-  | SegmentCanteenCard;
+  | SegmentCanteenCard
+  | SegmentPreferenceCard;
 
 // Component data structures
 export interface ComponentDishCard {
@@ -100,6 +107,24 @@ export interface ComponentMealPlanDraft {
     api: string;
     method: string;
     body?: Record<string, any>;
+  };
+}
+
+export interface PreferencePatch {
+  preferences?: Pick<
+    UpdateUserPreferencesDto,
+    'tagPreferences' | 'priceRange' | 'tastePreferences' | 'avoidIngredients'
+  >;
+  allergens?: string[];
+}
+
+export interface ComponentPreferenceDraft {
+  summary: string;
+  previewData: { before: PreferencePatch; after: PreferencePatch };
+  confirmAction: {
+    api: '/user/profile';
+    method: 'PUT';
+    body: PreferencePatch;
   };
 }
 

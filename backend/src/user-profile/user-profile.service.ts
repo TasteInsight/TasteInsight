@@ -94,42 +94,44 @@ export class UserProfileService {
       needRefreshEmbedding = true;
     }
 
-    if (Object.keys(userUpdatePayload).length > 0) {
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: userUpdatePayload,
-      });
-    }
+    await this.prisma.$transaction(async (tx) => {
+      if (Object.keys(userUpdatePayload).length > 0) {
+        await tx.user.update({
+          where: { id: userId },
+          data: userUpdatePayload,
+        });
+      }
 
-    // Update Preferences if provided
-    if (preferences) {
-      const preferenceData = this.mapToUserPreferencesUpdateData(preferences);
+      // Update Preferences if provided
+      if (preferences) {
+        const preferenceData = this.mapToUserPreferencesUpdateData(preferences);
 
-      await this.prisma.userPreference.upsert({
-        where: { userId },
-        create: {
-          userId,
-          ...preferenceData,
-        },
-        update: preferenceData,
-      });
+        await tx.userPreference.upsert({
+          where: { userId },
+          create: {
+            userId,
+            ...preferenceData,
+          },
+          update: preferenceData,
+        });
 
-      // 偏好变化会影响推荐
-      needRefreshEmbedding = true;
-    }
+        // 偏好变化会影响推荐
+        needRefreshEmbedding = true;
+      }
 
-    // Update Settings if provided
-    if (settings) {
-      const settingsData = this.mapToUserSettingsUpdateData(settings);
-      await this.prisma.userSetting.upsert({
-        where: { userId },
-        create: {
-          userId,
-          ...settingsData,
-        },
-        update: settingsData,
-      });
-    }
+      // Update Settings if provided
+      if (settings) {
+        const settingsData = this.mapToUserSettingsUpdateData(settings);
+        await tx.userSetting.upsert({
+          where: { userId },
+          create: {
+            userId,
+            ...settingsData,
+          },
+          update: settingsData,
+        });
+      }
+    });
 
     // 所有更新完成后，统一触发一次嵌入刷新（避免重复）
     if (needRefreshEmbedding && this.embeddingQueueService) {

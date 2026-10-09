@@ -382,9 +382,9 @@ describe('RecommendationService', () => {
       expect(mockPrisma.dish.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            NOT: expect.objectContaining({
-              allergens: { hasSome: ['花生'] },
-            }),
+            AND: expect.arrayContaining([
+              { NOT: { allergens: { hasSome: ['花生'] } } },
+            ]),
           }),
         }),
       );

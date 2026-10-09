@@ -107,6 +107,7 @@ export class EmbeddingQueueService {
       }
       return;
     }
+    await this.recommendationService?.invalidateUserFeatureCache(userId);
     const data: RefreshUserJobData = { userId };
     const job = await this.embeddingQueue.add(
       EmbeddingJobType.REFRESH_USER,

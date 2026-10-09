@@ -9,6 +9,10 @@ import { RecommendationService } from '@/recommendation/recommendation.service';
 describe('EmbeddingQueueService', () => {
   let service: EmbeddingQueueService;
   let mockQueue: any;
+  const recommendation = {
+    refreshUserFeatureCache: jest.fn(),
+    invalidateUserFeatureCache: jest.fn(),
+  };
 
   const mockJob = {
     id: 'test-job-id',
@@ -51,9 +55,7 @@ describe('EmbeddingQueueService', () => {
         },
         {
           provide: RecommendationService,
-          useValue: {
-            refreshUserFeatureCache: jest.fn(),
-          },
+          useValue: recommendation,
         },
       ],
     }).compile();
@@ -89,6 +91,17 @@ describe('EmbeddingQueueService', () => {
     const second = await service.enqueueRefreshUser('same-user');
     expect(first).not.toBe(second);
     expect(mockQueue.add).toHaveBeenCalledTimes(2);
+  });
+
+  it('invalidates saved user constraints before deferring embedding work', async () => {
+    await service.enqueueRefreshUser('user-with-changed-allergens');
+    expect(recommendation.invalidateUserFeatureCache).toHaveBeenCalledWith(
+      'user-with-changed-allergens',
+    );
+    expect(
+      recommendation.invalidateUserFeatureCache.mock.invocationCallOrder[0],
+    ).toBeLessThan(mockQueue.add.mock.invocationCallOrder[0]);
+    expect(recommendation.refreshUserFeatureCache).not.toHaveBeenCalled();
   });
 
   describe('getJobStatus', () => {

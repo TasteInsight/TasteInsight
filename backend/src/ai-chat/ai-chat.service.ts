@@ -5,7 +5,7 @@ import {
   BadRequestException,
   HttpException,
 } from '@nestjs/common';
-import { Observable } from 'rxjs';
+import { Observable, Subscriber } from 'rxjs';
 import { MessageEvent } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { AIConfigService } from './services/ai-config.service';
@@ -15,6 +15,11 @@ import { ToolRegistryService } from './tools/tool-registry.service';
 import { PromptBuilder } from './utils/prompt-builder.util';
 import { ContentBuilder } from './utils/content-builder.util';
 import { StreamingResponseFilter } from './utils/streaming-response-filter.util';
+import {
+  buildFollowUpMessages,
+  parseFollowUpSuggestions,
+  serializeConversationContent,
+} from './utils/follow-up-suggestions.util';
 import { CreateSessionDto, SessionData } from './dto/session.dto';
 import {
   ClientContextDto,
@@ -70,16 +75,23 @@ export class AIChatService {
     dto: ChatRequestDto,
   ): Observable<MessageEvent> {
     return new Observable((subscriber) => {
-      this.handleStreamChat(userId, sessionId, dto, subscriber).catch(
-        (error) => {
-          this.logger.error('Stream chat error:', error);
-          subscriber.next({
-            type: 'error',
-            data: { error: this.getSafeStreamErrorMessage(error) },
-          });
-          subscriber.complete();
-        },
-      );
+      const controller = new AbortController();
+      this.handleStreamChat(
+        userId,
+        sessionId,
+        dto,
+        subscriber,
+        controller.signal,
+      ).catch((error) => {
+        if (controller.signal.aborted) return;
+        this.logger.error('Stream chat error:', error);
+        subscriber.next({
+          type: 'error',
+          data: { error: this.getSafeStreamErrorMessage(error) },
+        });
+        subscriber.complete();
+      });
+      return () => controller.abort();
     });
   }
 
@@ -104,7 +116,8 @@ export class AIChatService {
     userId: string,
     sessionId: string,
     dto: ChatRequestDto,
-    subscriber: any,
+    subscriber: Subscriber<MessageEvent>,
+    signal: AbortSignal,
   ): Promise<void> {
     // Verify session exists and belongs to user
     const session = await this.prisma.aISession.findFirst({
@@ -115,6 +128,7 @@ export class AIChatService {
     if (!session) {
       throw new NotFoundException('Session not found');
     }
+    if (signal.aborted) return;
 
     // Validate user input for security
     const inputValidation = this.promptSecurity.validateUserInput(dto.message);
@@ -132,12 +146,17 @@ export class AIChatService {
     const sanitizedMessage = inputValidation.sanitized;
 
     // Save user message
-    await this.prisma.aIMessage.create({
+    const userMessage = await this.prisma.aIMessage.create({
       data: {
         sessionId,
         role: 'user',
         content: [ContentBuilder.text(sanitizedMessage)] as any,
       },
+    });
+    if (signal.aborted) return;
+    subscriber.next({
+      type: 'message_received',
+      data: { messageId: userMessage.id },
     });
 
     // Get time for chat: format using client's wall-clock time when provided
@@ -157,7 +176,7 @@ export class AIChatService {
     // Add previous messages
     for (const msg of session.messages) {
       const content = msg.content;
-      const textContent = this.extractTextFromContent(
+      const textContent = serializeConversationContent(
         Array.isArray(content) ? content : [],
       );
       conversationMessages.push({
@@ -175,19 +194,40 @@ export class AIChatService {
     // Get AI provider config and tools
     const config = await this.aiConfig.getProviderConfig();
     this.openaiProvider.setConfig(config);
-    const tools = this.toolRegistry.getAllTools();
+    const tools = this.toolRegistry.getAllTools(session.scene);
 
     // Content to save
     const assistantContent: ContentSegment[] = [];
-    let finalTextContent = '';
     const streamingFilter = new StreamingResponseFilter();
+    const emitText = (content: string) => {
+      if (!content) return;
+      const lastSegment = assistantContent.at(-1);
+      if (lastSegment?.type === 'text') {
+        lastSegment.data += content;
+      } else {
+        assistantContent.push(ContentBuilder.text(content));
+      }
+      subscriber.next({ type: 'text_chunk', data: content });
+    };
 
     try {
-      // Multi-turn conversation loop for tool calling
-      const maxTurns = 10; // Prevent infinite loops
+      // Bound tool rounds, reserving a final response without further tools.
+      const maxToolTurns = 10;
       let turn = 0;
 
-      while (turn < maxTurns) {
+      while (turn <= maxToolTurns) {
+        if (signal.aborted) return;
+        const finalSynthesis = turn === maxToolTurns;
+        if (finalSynthesis) {
+          this.logger.warn(
+            `Reached maximum tool turns (${maxToolTurns}); generating final response`,
+          );
+          conversationMessages.push({
+            role: 'system',
+            content:
+              '请立即根据已经查询到的结果完成本次回答，不再查询或执行操作。保留用户的食堂、预算、忌口等限制；明确说明未能完成的部分，不编造结果，也不要把已成功完成的推荐说成失败。',
+          });
+        }
         turn++;
         this.logger.debug(`AI conversation turn ${turn}`);
 
@@ -198,38 +238,34 @@ export class AIChatService {
         // Stream AI response
         for await (const chunk of this.openaiProvider.streamChat(
           conversationMessages,
-          tools,
+          finalSynthesis ? [] : tools,
+          signal,
         )) {
           if (chunk.type === 'text' && chunk.content) {
             currentText += chunk.content;
-            finalTextContent += chunk.content;
-            const filteredContent = streamingFilter.push(chunk.content);
-            // Send text chunk to client
-            if (filteredContent) {
-              subscriber.next({
-                type: 'text_chunk',
-                data: filteredContent,
-              });
-            }
+            emitText(streamingFilter.push(chunk.content));
           } else if (chunk.type === 'tool_call' && chunk.toolCall) {
             hasToolCalls = true;
             const toolCall = chunk.toolCall;
             if (!pendingToolCalls.has(toolCall.id)) {
               pendingToolCalls.set(toolCall.id, {
                 id: toolCall.id,
-                name: toolCall.function.name,
+                name: '',
                 arguments: '',
               });
             }
             const pending = pendingToolCalls.get(toolCall.id);
+            pending.name += toolCall.function.name;
             pending.arguments += toolCall.function.arguments;
           } else if (chunk.type === 'error') {
             throw new Error(chunk.error || 'AI provider error');
           }
         }
+        if (signal.aborted) return;
+        emitText(streamingFilter.flush());
 
         // If no tool calls, conversation is complete
-        if (!hasToolCalls || pendingToolCalls.size === 0) {
+        if (!hasToolCalls || pendingToolCalls.size === 0 || finalSynthesis) {
           this.logger.debug('No tool calls, ending conversation');
           break;
         }
@@ -240,6 +276,7 @@ export class AIChatService {
         let allToolsSucceeded = true;
 
         for (const [id, toolCall] of pendingToolCalls.entries()) {
+          if (signal.aborted) return;
           toolCallsForHistory.push({
             id: toolCall.id,
             type: 'function',
@@ -301,7 +338,12 @@ export class AIChatService {
             const result = await this.toolRegistry.executeTool(
               toolCall.name,
               params,
-              { userId, sessionId, localTime: dto.clientContext?.localTime },
+              {
+                userId,
+                sessionId,
+                scene: session.scene,
+                localTime: dto.clientContext?.localTime,
+              },
             );
 
             // Convert result to content segment and send to client
@@ -361,49 +403,48 @@ export class AIChatService {
         );
       }
 
-      const remainingFilteredContent = streamingFilter.flush();
-      if (remainingFilteredContent) {
-        subscriber.next({
-          type: 'text_chunk',
-          data: remainingFilteredContent,
-        });
-      }
-
-      // Add final text content if any (before components)
-      if (finalTextContent) {
-        assistantContent.unshift(
-          ContentBuilder.text(
-            this.promptSecurity.filterAIResponse(finalTextContent),
-          ),
-        );
-      }
-
-      // Add warning message at the end if max turns reached
-      if (turn >= maxTurns) {
-        this.logger.warn(
-          `Reached maximum turns (${maxTurns}), ending conversation`,
-        );
-        const warningMsg =
-          '抱歉，处理您的请求时遇到了一些困难。请尝试重新表述您的需求。';
-        subscriber.next({
-          type: 'text_chunk',
-          data: warningMsg,
-        });
-        // Add warning message at the end of content array
-        assistantContent.push(ContentBuilder.text(warningMsg));
-      }
-
       // Save assistant message
-      await this.prisma.aIMessage.create({
+      if (signal.aborted) return;
+      const reply = await this.prisma.aIMessage.create({
         data: {
           sessionId,
           role: 'assistant',
           content: assistantContent as any,
         },
       });
+      if (signal.aborted) return;
+      subscriber.next({
+        type: 'reply_complete',
+        data: { messageId: reply.id },
+      });
 
-      // Stream complete - no explicit stop event needed
-      // Frontend handles completion via onComplete callback
+      if (assistantContent.length && !signal.aborted) {
+        try {
+          const raw = await this.openaiProvider.completeChat(
+            buildFollowUpMessages([
+              ...session.messages,
+              {
+                role: 'user',
+                content: [ContentBuilder.text(sanitizedMessage)],
+              },
+              { role: 'assistant', content: assistantContent },
+            ]),
+            signal,
+          );
+          const suggestions = parseFollowUpSuggestions(raw).filter(
+            (question) =>
+              this.promptSecurity.filterAIResponse(question) === question,
+          );
+          if (!signal.aborted && suggestions.length) {
+            subscriber.next({ type: 'suggestions', data: { suggestions } });
+          }
+        } catch {
+          if (!signal.aborted)
+            this.logger.warn(
+              'Follow-up generation failed; completed answer retained',
+            );
+        }
+      }
       subscriber.complete();
     } catch (error) {
       this.logger.error('Stream processing error:', error);
@@ -642,19 +683,14 @@ export class AIChatService {
     return clientTime;
   }
 
-  private extractTextFromContent(content: any[]): string {
-    if (!Array.isArray(content)) return '';
-    return content
-      .filter((seg) => seg.type === 'text')
-      .map((seg) => seg.data)
-      .join('\n');
-  }
-
   private toolResultToSegment(
     toolName: string,
     result: any,
     params?: any,
   ): ContentSegment | null {
+    if (toolName === 'update_preferences') {
+      return ContentBuilder.preferenceCards([result]);
+    }
     if (toolName === 'display_content' && params?.type) {
       const type = params.type;
       if (type === 'dish') {
