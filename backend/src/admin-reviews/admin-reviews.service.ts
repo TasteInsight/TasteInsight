@@ -2,10 +2,12 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { DishReviewStatsService } from '@/dish-review-stats-queue';
 import { RejectReviewDto } from './dto/reject-review.dto';
+import { ModerateReviewDto } from './dto/moderate-review.dto';
 import {
   PendingReviewListResponseDto,
   SuccessResponseDto,
@@ -60,10 +62,10 @@ export class AdminReviewsService {
 
     const items: ReviewItemData[] = reviews.map((review) => {
       const hasDetails =
-        review.spicyLevel ||
-        review.sweetness ||
-        review.saltiness ||
-        review.oiliness;
+        review.spicyLevel !== null ||
+        review.sweetness !== null ||
+        review.saltiness !== null ||
+        review.oiliness !== null;
 
       return {
         id: review.id,
@@ -108,27 +110,10 @@ export class AdminReviewsService {
 
   async approveReview(
     id: string,
+    dto: ModerateReviewDto,
     adminInfo?: any,
   ): Promise<SuccessResponseDto> {
-    const review = await this.prisma.review.findUnique({
-      where: { id, deletedAt: null },
-      include: { dish: true },
-    });
-    if (!review) {
-      throw new NotFoundException('评价不存在');
-    }
-
-    if (adminInfo?.canteenId && review.dish.canteenId !== adminInfo.canteenId) {
-      throw new ForbiddenException('权限不足');
-    }
-
-    await this.prisma.review.update({
-      where: { id },
-      data: { status: 'approved' },
-    });
-
-    await this.dishReviewStatsService.recomputeDishStats(review.dishId);
-
+    await this.moderateReview(id, dto, 'approved', adminInfo);
     return {
       code: 200,
       message: '审核通过',
@@ -141,6 +126,21 @@ export class AdminReviewsService {
     dto: RejectReviewDto,
     adminInfo?: any,
   ): Promise<SuccessResponseDto> {
+    await this.moderateReview(id, dto, 'rejected', adminInfo, dto.reason);
+    return {
+      code: 200,
+      message: '已拒绝',
+      data: null,
+    };
+  }
+
+  private async moderateReview(
+    id: string,
+    dto: ModerateReviewDto,
+    status: 'approved' | 'rejected',
+    adminInfo?: any,
+    reason?: string,
+  ): Promise<void> {
     const review = await this.prisma.review.findUnique({
       where: { id, deletedAt: null },
       include: { dish: true },
@@ -153,21 +153,25 @@ export class AdminReviewsService {
       throw new ForbiddenException('权限不足');
     }
 
-    await this.prisma.review.update({
-      where: { id },
+    const result = await this.prisma.review.updateMany({
+      where: {
+        id,
+        deletedAt: null,
+        status: 'pending',
+        updatedAt: new Date(dto.expectedUpdatedAt),
+        ...(adminInfo?.canteenId ? { dish: { canteenId: adminInfo.canteenId } } : {}),
+      },
       data: {
-        status: 'rejected',
-        rejectReason: dto.reason,
+        status,
+        rejectReason: status === 'rejected' ? reason : null,
       },
     });
 
-    await this.dishReviewStatsService.recomputeDishStats(review.dishId);
+    if (result.count === 0) {
+      throw new ConflictException('评价内容或审核状态已变更，请刷新后重新审核');
+    }
 
-    return {
-      code: 200,
-      message: '已拒绝',
-      data: null,
-    };
+    await this.dishReviewStatsService.recomputeDishStats(review.dishId);
   }
 
   async deleteReview(id: string, adminInfo?: any): Promise<SuccessResponseDto> {
@@ -231,6 +235,14 @@ export class AdminReviewsService {
         take: pageSize,
         orderBy: { createdAt: 'desc' },
         include: {
+          parentComment: {
+            select: {
+              id: true,
+              userId: true,
+              deletedAt: true,
+              user: { select: { nickname: true } },
+            },
+          },
           user: {
             select: {
               id: true,
@@ -254,11 +266,14 @@ export class AdminReviewsService {
       createdAt: comment.createdAt,
       updatedAt: comment.updatedAt,
       deletedAt: comment.deletedAt,
-      user: {
-        id: comment.user.id,
-        nickname: comment.user.nickname,
-        avatar: comment.user.avatar,
-      },
+      userNickname: comment.user.nickname,
+      userAvatar: comment.user.avatar,
+      parentComment: comment.parentComment ? {
+        id: comment.parentComment.id,
+        userId: comment.parentComment.userId,
+        userNickname: comment.parentComment.user.nickname,
+        deleted: comment.parentComment.deletedAt !== null,
+      } : null,
     }));
 
     return {

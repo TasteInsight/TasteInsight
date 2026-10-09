@@ -68,6 +68,46 @@ describe('ReviewsService', () => {
     expect(service).toBeDefined();
   });
 
+  describe('getOwnReview', () => {
+    it.each(['pending', 'rejected', 'approved'])(
+      'returns an owned %s review independently of the public feed',
+      async (status) => {
+        prisma.review.findUnique.mockResolvedValue({
+          id: 'own-review',
+          dishId: 'd1',
+          userId: 'u1',
+          status,
+          rating: 4,
+          content: 'Original review',
+          images: [],
+          createdAt: new Date('2020-01-01'),
+          deletedAt: null,
+          user: { nickname: 'Owner', avatar: null },
+        });
+        const result = await service.getOwnReview('u1', 'd1');
+        expect(result.data).toMatchObject({
+          id: 'own-review',
+          userId: 'u1',
+          status,
+        });
+        expect(prisma.review.findUnique).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: {
+              userId_dishId: { userId: 'u1', dishId: 'd1' },
+              deletedAt: null,
+            },
+          }),
+        );
+        expect(prisma.review.findMany).not.toHaveBeenCalled();
+      },
+    );
+
+    it('returns null when the owned review is absent or soft-deleted', async () => {
+      prisma.review.findUnique.mockResolvedValue(null);
+      expect((await service.getOwnReview('u2', 'd1')).data).toBeNull();
+    });
+  });
+
   describe('createReview', () => {
     const createDto = {
       dishId: 'd1',
@@ -89,6 +129,65 @@ describe('ReviewsService', () => {
       });
       adminConfigService.getBooleanConfigValue.mockResolvedValue(true);
       prisma.review.findUnique.mockResolvedValue(null);
+    });
+
+    it('clears previous flavor detail when an edited review leaves the optional group empty', async () => {
+      prisma.review.upsert.mockResolvedValue({
+        id: 'r1',
+        dishId: 'd1',
+        userId: 'u1',
+        rating: 4,
+        status: 'approved',
+        createdAt: new Date(),
+        user: { nickname: 'User', avatar: null },
+      });
+      await service.createReview('u1', {
+        dishId: 'd1',
+        rating: 4,
+        content: 'Updated',
+        images: [],
+      });
+      expect(prisma.review.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          update: expect.objectContaining({
+            spicyLevel: null,
+            sweetness: null,
+            saltiness: null,
+            oiliness: null,
+          }),
+        }),
+      );
+    });
+
+    it('clears the rejection reason when an edited review is submitted for a new decision', async () => {
+      adminConfigService.getBooleanConfigValue.mockResolvedValue(false);
+      prisma.review.findUnique.mockResolvedValue({
+        id: 'r1',
+        status: 'rejected',
+        rejectReason: '旧内容原因',
+      });
+      prisma.review.upsert.mockResolvedValue({
+        id: 'r1',
+        dishId: 'd1',
+        userId: 'u1',
+        rating: 4,
+        status: 'pending',
+        content: '新的内容',
+        images: [],
+        createdAt: new Date(),
+        user: { nickname: 'User', avatar: null },
+      });
+      await service.createReview('u1', {
+        dishId: 'd1',
+        rating: 4,
+        content: '新的内容',
+        images: [],
+      });
+      expect(prisma.review.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          update: expect.objectContaining({ rejectReason: null }),
+        }),
+      );
     });
 
     it('should create a new review', async () => {
@@ -237,6 +336,42 @@ describe('ReviewsService', () => {
       expect(result.data.items).toHaveLength(1);
       expect(result.data.rating.average).toBe(4);
       expect(result.data.rating.total).toBe(1);
+    });
+
+    it('keeps explicit zero intensities in the public review data', async () => {
+      prisma.review.findMany.mockResolvedValue([
+        {
+          ...mockReviews[0],
+          spicyLevel: 0,
+          sweetness: 0,
+          saltiness: 0,
+          oiliness: 0,
+        },
+      ]);
+      prisma.review.count.mockResolvedValue(1);
+      prisma.review.groupBy.mockResolvedValue([
+        { rating: 4, _count: { rating: 1 } },
+      ]);
+      const result = await service.getReviews('d1', 1, 20);
+      expect(result.data.items[0].ratingDetails).toEqual({
+        spicyLevel: 0,
+        sweetness: 0,
+        saltiness: 0,
+        oiliness: 0,
+      });
+    });
+
+    it('includes the public review status consumed by clients', async () => {
+      prisma.review.findMany.mockResolvedValue([
+        { ...mockReviews[0], status: 'approved' },
+      ]);
+      prisma.review.count.mockResolvedValue(1);
+      prisma.review.groupBy.mockResolvedValue([
+        { rating: 4, _count: { rating: 1 } },
+      ]);
+      expect(
+        (await service.getReviews('d1', 1, 20)).data.items[0],
+      ).toMatchObject({ status: 'approved' });
     });
 
     it('should calculate average rating correctly', async () => {

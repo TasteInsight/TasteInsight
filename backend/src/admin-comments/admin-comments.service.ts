@@ -21,14 +21,10 @@ export class AdminCommentsService {
     adminInfo?: any,
   ): Promise<PendingCommentListResponseDto> {
     const skip = (page - 1) * pageSize;
-    const where: any = { status: 'pending' };
+    const where: any = { status: 'pending', deletedAt: null, review: { deletedAt: null } };
 
     if (adminInfo?.canteenId) {
-      where.review = {
-        dish: {
-          canteenId: adminInfo.canteenId,
-        },
-      };
+      where.review.dish = { canteenId: adminInfo.canteenId };
     }
 
     const [total, comments] = await Promise.all([
@@ -39,6 +35,7 @@ export class AdminCommentsService {
         take: pageSize,
         orderBy: { createdAt: 'desc' },
         include: {
+          user: { select: { nickname: true, avatar: true } },
           review: {
             select: {
               content: true,
@@ -57,6 +54,9 @@ export class AdminCommentsService {
       id: comment.id,
       reviewId: comment.reviewId,
       userId: comment.userId,
+      userNickname: comment.user.nickname,
+      userAvatar: comment.user.avatar,
+      floor: comment.floor,
       content: comment.content,
       status: comment.status,
       rejectReason: comment.rejectReason,
@@ -86,7 +86,7 @@ export class AdminCommentsService {
     adminInfo?: any,
   ): Promise<SuccessResponseDto> {
     const comment = await this.prisma.comment.findUnique({
-      where: { id },
+      where: { id, deletedAt: null },
       include: {
         review: {
           include: {
@@ -107,7 +107,7 @@ export class AdminCommentsService {
     }
 
     await this.prisma.comment.update({
-      where: { id },
+      where: { id, deletedAt: null },
       data: {
         status: 'approved',
       },
@@ -126,7 +126,7 @@ export class AdminCommentsService {
     adminInfo?: any,
   ): Promise<SuccessResponseDto> {
     const comment = await this.prisma.comment.findUnique({
-      where: { id },
+      where: { id, deletedAt: null },
       include: {
         review: {
           include: {
@@ -147,7 +147,7 @@ export class AdminCommentsService {
     }
 
     await this.prisma.comment.update({
-      where: { id },
+      where: { id, deletedAt: null },
       data: {
         status: 'rejected',
         rejectReason: dto.reason,

@@ -6,6 +6,9 @@ export class CommentItemData {
   id: string;
   reviewId: string;
   userId: string;
+  userNickname: string;
+  userAvatar: string | null;
+  floor: number;
   content: string;
   status: string;
   rejectReason: string | null;

@@ -18,6 +18,7 @@ export class CommentData {
   userNickname: string;
   userAvatar: string;
   content: string;
+  status: string;
   parentComment?: ParentCommentData | null;
   createdAt: string;
   floor: number;
@@ -26,12 +27,9 @@ export class CommentData {
 export class CommentListResponseDto extends BaseResponseDto<{
   items: CommentData[];
   meta: PaginationMeta;
+  canReply: boolean;
 }> {}
 
-export class CommentDetailData extends CommentData {
-  status: string;
-}
-
-export class CommentResponseDto extends BaseResponseDto<CommentDetailData> {}
+export class CommentResponseDto extends BaseResponseDto<CommentData> {}
 
 export { SuccessResponseDto };

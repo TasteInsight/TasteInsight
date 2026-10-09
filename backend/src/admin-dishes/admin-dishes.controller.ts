@@ -20,6 +20,7 @@ import {
   AdminCreateDishDto,
   AdminUpdateDishDto,
   AdminUpdateDishStatusDto,
+  AdminGetDishReviewsDto,
 } from './dto/admin-dish.dto';
 import { AdminAuthGuard } from '@/auth/guards/admin-auth.guard';
 import { PermissionsGuard } from '@/auth/guards/permissions.guard';
@@ -96,15 +97,15 @@ export class AdminDishesController {
   @HttpCode(HttpStatus.OK)
   async getDishReviews(
     @Param('id') id: string,
-    @Query('page') page: number = 1,
-    @Query('pageSize') pageSize: number = 20,
+    @Query() query: AdminGetDishReviewsDto,
     @CurrentAdmin() admin: AdminInfo,
   ) {
     return this.adminDishesService.getDishReviews(
       id,
-      Number(page),
-      Number(pageSize),
+      query.page,
+      query.pageSize,
       admin,
+      query.status,
     );
   }
 

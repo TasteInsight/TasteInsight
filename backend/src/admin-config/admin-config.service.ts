@@ -304,37 +304,40 @@ export class AdminConfigService implements OnModuleInit {
     // 验证值类型
     this.validateValueType(dto.value, template.valueType);
 
-    // 获取或创建全局配置
-    let globalConfig = await this.prisma.adminConfig.findFirst({
-      where: { canteenId: null },
-    });
+    const configItem = await this.prisma.$transaction(async (tx) => {
+      // PostgreSQL 的可空唯一键不约束 NULL，事务锁覆盖全局父配置与配置项的写入。
+      await tx.$queryRaw`SELECT 1 AS locked FROM pg_advisory_xact_lock(hashtext('tasteinsight.admin-config.global'))`;
 
-    if (!globalConfig) {
-      globalConfig = await this.prisma.adminConfig.create({
-        data: { canteenId: null },
+      let globalConfig = await tx.adminConfig.findFirst({
+        where: { canteenId: null },
       });
-    }
 
-    // 更新或创建配置项
-    const configItem = await this.prisma.adminConfigItem.upsert({
-      where: {
-        adminConfigId_key: {
-          adminConfigId: globalConfig.id,
-          key: dto.key,
+      if (!globalConfig) {
+        globalConfig = await tx.adminConfig.create({
+          data: { canteenId: null },
+        });
+      }
+
+      return tx.adminConfigItem.upsert({
+        where: {
+          adminConfigId_key: {
+            adminConfigId: globalConfig.id,
+            key: dto.key,
+          },
         },
-      },
-      update: {
-        value: dto.value,
-      },
-      create: {
-        adminConfigId: globalConfig.id,
-        templateId: template.id,
-        key: dto.key,
-        value: dto.value,
-        valueType: template.valueType,
-        description: template.description,
-        category: template.category,
-      },
+        update: {
+          value: dto.value,
+        },
+        create: {
+          adminConfigId: globalConfig.id,
+          templateId: template.id,
+          key: dto.key,
+          value: dto.value,
+          valueType: template.valueType,
+          description: template.description,
+          category: template.category,
+        },
+      });
     });
 
     return {

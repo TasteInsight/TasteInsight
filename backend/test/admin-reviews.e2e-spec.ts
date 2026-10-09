@@ -162,6 +162,7 @@ describe('AdminReviewsController (e2e)', () => {
 
   describe('/admin/reviews/:id/approve (POST)', () => {
     let reviewToApproveId: string;
+    let expectedUpdatedAt: string;
 
     let approveDishId: string;
 
@@ -189,6 +190,7 @@ describe('AdminReviewsController (e2e)', () => {
         },
       });
       reviewToApproveId = review.id;
+      expectedUpdatedAt = review.updatedAt.toISOString();
     });
 
     afterEach(async () => {
@@ -204,6 +206,7 @@ describe('AdminReviewsController (e2e)', () => {
       const response = await request(app.getHttpServer())
         .post(`/admin/reviews/${reviewToApproveId}/approve`)
         .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({ expectedUpdatedAt })
         .expect(200);
 
       expect(response.body.code).toBe(200);
@@ -227,12 +230,14 @@ describe('AdminReviewsController (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/admin/reviews/${nonExistentId}/approve`)
         .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({ expectedUpdatedAt })
         .expect(404);
     });
   });
 
   describe('/admin/reviews/:id/reject (POST)', () => {
     let reviewToRejectId: string;
+    let expectedUpdatedAt: string;
 
     let rejectDishId: string;
 
@@ -260,6 +265,7 @@ describe('AdminReviewsController (e2e)', () => {
         },
       });
       reviewToRejectId = review.id;
+      expectedUpdatedAt = review.updatedAt.toISOString();
     });
 
     afterEach(async () => {
@@ -276,7 +282,7 @@ describe('AdminReviewsController (e2e)', () => {
       const response = await request(app.getHttpServer())
         .post(`/admin/reviews/${reviewToRejectId}/reject`)
         .set('Authorization', `Bearer ${superAdminToken}`)
-        .send({ reason })
+        .send({ reason, expectedUpdatedAt })
         .expect(200);
 
       expect(response.body.code).toBe(200);
@@ -302,7 +308,7 @@ describe('AdminReviewsController (e2e)', () => {
       await request(app.getHttpServer())
         .post(`/admin/reviews/${nonExistentId}/reject`)
         .set('Authorization', `Bearer ${superAdminToken}`)
-        .send({ reason: '测试拒绝' })
+        .send({ reason: '测试拒绝', expectedUpdatedAt })
         .expect(404);
     });
   });
@@ -459,8 +465,7 @@ describe('AdminReviewsController (e2e)', () => {
         (c: any) => c.id === testCommentId,
       );
       expect(found).toBeDefined();
-      expect(found.user).toBeDefined();
-      expect(found.user.nickname).toBeDefined();
+      expect(found.userNickname).toBeDefined();
       expect(found.content).toBe('测试评论内容');
       expect(found.floor).toBe(1);
     });

@@ -14,8 +14,9 @@ import {
   ReviewListResponseDto,
   ReviewResponseDto,
   DeleteReviewResponseDto,
+  OwnReviewResponseDto,
 } from './dto/review-response.dto';
-import { ReviewData, ReviewDetailData } from './dto/review.dto';
+import { ReviewData } from './dto/review.dto';
 import { ReportReviewResponseDto } from './dto/report-review.dto';
 import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service';
 
@@ -27,6 +28,21 @@ export class ReviewsService {
     private dishReviewStatsService: DishReviewStatsService,
     @Optional() private embeddingQueueService?: EmbeddingQueueService,
   ) {}
+
+  async getOwnReview(
+    userId: string,
+    dishId: string,
+  ): Promise<OwnReviewResponseDto> {
+    const review = await this.prisma.review.findUnique({
+      where: { userId_dishId: { userId, dishId }, deletedAt: null },
+      include: { user: { select: { id: true, nickname: true, avatar: true } } },
+    });
+    return {
+      code: 200,
+      message: '获取成功',
+      data: review ? this.mapToReviewData(review) : null,
+    };
+  }
 
   async createReview(
     userId: string,
@@ -70,10 +86,11 @@ export class ReviewsService {
         content: createReviewDto.content,
         images: createReviewDto.images,
         status: autoApprove ? 'approved' : 'pending',
-        spicyLevel: ratingDetails?.spicyLevel,
-        sweetness: ratingDetails?.sweetness,
-        saltiness: ratingDetails?.saltiness,
-        oiliness: ratingDetails?.oiliness,
+        rejectReason: null,
+        spicyLevel: ratingDetails?.spicyLevel ?? null,
+        sweetness: ratingDetails?.sweetness ?? null,
+        saltiness: ratingDetails?.saltiness ?? null,
+        oiliness: ratingDetails?.oiliness ?? null,
         deletedAt: null, // 如果之前被删除，现在恢复
         updatedAt: new Date(),
       },
@@ -117,7 +134,7 @@ export class ReviewsService {
     return {
       code: 201,
       message: isUpdate ? '更新成功' : '创建成功',
-      data: this.mapToReviewDetailData(review),
+      data: this.mapToReviewData(review),
     };
   }
 
@@ -250,11 +267,12 @@ export class ReviewsService {
   }
 
   private mapToReviewData(review: any): ReviewData {
-    const hasDetails =
-      review.spicyLevel ||
-      review.sweetness ||
-      review.saltiness ||
-      review.oiliness;
+    const hasDetails = [
+      review.spicyLevel,
+      review.sweetness,
+      review.saltiness,
+      review.oiliness,
+    ].some((value) => value != null);
 
     return {
       id: review.id,
@@ -272,16 +290,10 @@ export class ReviewsService {
           }
         : null,
       content: review.content,
+      status: review.status,
       images: review.images,
       createdAt: review.createdAt.toISOString(),
       deletedAt: review.deletedAt?.toISOString() ?? null,
-    };
-  }
-
-  private mapToReviewDetailData(review: any): ReviewDetailData {
-    return {
-      ...this.mapToReviewData(review),
-      status: review.status,
     };
   }
 }

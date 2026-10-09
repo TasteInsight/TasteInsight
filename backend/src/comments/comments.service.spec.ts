@@ -59,6 +59,9 @@ describe('CommentsService', () => {
   });
 
   describe('getComments', () => {
+    beforeEach(() => {
+      prisma.review.findUnique.mockResolvedValue({ status: 'approved' });
+    });
     const mockComments = [
       {
         id: 'c1',
@@ -78,11 +81,96 @@ describe('CommentsService', () => {
       },
     ];
 
+    it('returns the moderation state and the ability to reply', async () => {
+      prisma.review.findUnique.mockResolvedValue({ status: 'approved' });
+      prisma.comment.findMany.mockResolvedValue([
+        { ...mockComments[0], status: 'pending' },
+      ]);
+      prisma.comment.count.mockResolvedValue(1);
+      const result = await Reflect.apply(service.getComments, service, [
+        'r1',
+        1,
+        10,
+        'u1',
+      ]);
+      expect(result.data).toMatchObject({ canReply: true });
+      expect(result.data.items[0]).toMatchObject({ status: 'pending' });
+    });
+
+    it('uses the same viewer-specific visibility for items and pagination totals', async () => {
+      prisma.review.findUnique.mockResolvedValue({ status: 'approved' });
+      prisma.comment.findMany.mockResolvedValue([]);
+      prisma.comment.count.mockResolvedValue(0);
+      await Reflect.apply(service.getComments, service, ['r1', 1, 10, 'u1']);
+      const where = {
+        reviewId: 'r1',
+        deletedAt: null,
+        review: {
+          deletedAt: null,
+          OR: [{ status: 'approved' }, { userId: 'u1' }],
+        },
+        OR: [
+          { status: 'approved' },
+          { userId: 'u1', status: { in: ['pending', 'rejected'] } },
+        ],
+      };
+      expect(prisma.comment.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where }),
+      );
+      expect(prisma.comment.count).toHaveBeenCalledWith({ where });
+    });
+
+    it('does not read replies when their review is hidden from the viewer', async () => {
+      prisma.review.findUnique.mockResolvedValue(null);
+      await expect(
+        Reflect.apply(service.getComments, service, ['r1', 1, 10, 'u2']),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.comment.findMany).not.toHaveBeenCalled();
+    });
+
+    it('allows the author to read replies to their unpublished review without allowing new replies', async () => {
+      prisma.review.findUnique.mockResolvedValue({ status: 'pending' });
+      prisma.comment.findMany.mockResolvedValue(mockComments);
+      prisma.comment.count.mockResolvedValue(1);
+      const result = await Reflect.apply(service.getComments, service, [
+        'r1',
+        1,
+        10,
+        'u1',
+      ]);
+      expect(result.data.canReply).toBe(false);
+      expect(result.data.items).toHaveLength(1);
+    });
+
+    it('omits a parent reply that is not visible to the viewer', async () => {
+      prisma.review.findUnique.mockResolvedValue({ status: 'approved' });
+      prisma.comment.findMany.mockResolvedValue([
+        {
+          ...mockComments[0],
+          parentComment: {
+            id: 'hidden-parent',
+            userId: 'other',
+            status: 'rejected',
+            deletedAt: null,
+            user: { nickname: 'Private author' },
+          },
+        },
+      ]);
+      prisma.comment.count.mockResolvedValue(1);
+      const result = await Reflect.apply(service.getComments, service, [
+        'r1',
+        1,
+        10,
+        'u1',
+      ]);
+      expect(result.data.items[0].parentComment).toBeNull();
+    });
+
     it('should return list of comments', async () => {
       prisma.comment.findMany.mockResolvedValue(mockComments);
       prisma.comment.count.mockResolvedValue(1);
 
-      const result = await service.getComments('r1', 1, 10);
+      const result = await service.getComments('r1', 1, 10, 'u1');
 
       expect(result.code).toBe(200);
       expect(result.data.items).toHaveLength(1);
@@ -95,6 +183,7 @@ describe('CommentsService', () => {
         parentComment: {
           id: 'c0',
           userId: 'u0',
+          status: 'approved',
           user: { nickname: 'Parent User' },
           deletedAt: null,
         },
@@ -102,7 +191,7 @@ describe('CommentsService', () => {
       prisma.comment.findMany.mockResolvedValue([commentWithParent]);
       prisma.comment.count.mockResolvedValue(1);
 
-      const result = await service.getComments('r1', 1, 10);
+      const result = await service.getComments('r1', 1, 10, 'u1');
 
       expect(result.data.items[0].parentComment).not.toBeNull();
       expect(result.data.items[0].parentComment?.userNickname).toBe(
@@ -134,6 +223,38 @@ describe('CommentsService', () => {
       adminConfigService.getBooleanConfigValue.mockResolvedValue(true);
     });
 
+    it.each(['pending', 'rejected'])(
+      'does not allow replying to a %s reply',
+      async (status) => {
+        prisma.comment.create.mockResolvedValue({
+          id: 'new-reply',
+          reviewId: 'r1',
+          userId: 'u1',
+          content: createDto.content,
+          floor: 2,
+          status: 'approved',
+          createdAt: new Date(),
+          deletedAt: null,
+          user: { id: 'u1', nickname: 'User 1', avatar: null },
+          parentComment: null,
+        });
+        prisma.comment.findUnique.mockResolvedValue({
+          id: 'hidden-parent',
+          reviewId: 'r1',
+          userId: 'u1',
+          status,
+          deletedAt: null,
+        });
+        await expect(
+          service.createComment('u1', {
+            ...createDto,
+            parentCommentId: 'hidden-parent',
+          }),
+        ).rejects.toThrow(NotFoundException);
+        expect(prisma.comment.create).not.toHaveBeenCalled();
+      },
+    );
+
     it('should create a new comment', async () => {
       prisma.comment.create.mockResolvedValue({
         id: 'c1',
@@ -155,12 +276,31 @@ describe('CommentsService', () => {
       const result = await service.createComment('u1', createDto);
 
       expect(result.code).toBe(201);
-      expect(result.message).toBe('评论发布成功');
+      expect(result.message).toBe('回复已提交');
       expect(adminConfigService.getBooleanConfigValue).toHaveBeenCalledWith(
         'comment.autoApprove',
         'c1',
         prisma,
       );
+    });
+
+    it('acknowledges a pending reply without exposing the moderation workflow in the message', async () => {
+      adminConfigService.getBooleanConfigValue.mockResolvedValue(false);
+      prisma.comment.create.mockResolvedValue({
+        id: 'pending-reply',
+        reviewId: 'r1',
+        userId: 'u1',
+        content: createDto.content,
+        floor: 1,
+        status: 'pending',
+        createdAt: new Date(),
+        deletedAt: null,
+        user: { id: 'u1', nickname: 'User 1', avatar: null },
+        parentComment: null,
+      });
+      const result = await service.createComment('u1', createDto);
+      expect(result.message).toBe('回复已提交');
+      expect(result.data.status).toBe('pending');
     });
 
     it('should throw NotFoundException if review not found', async () => {
@@ -195,6 +335,7 @@ describe('CommentsService', () => {
       prisma.comment.findUnique.mockResolvedValue({
         id: 'parent-c',
         reviewId: 'r1',
+        status: 'approved',
         deletedAt: new Date(),
       });
 

@@ -31,11 +31,13 @@ export class CommentsController {
     @Param('reviewId') reviewId: string,
     @Query('page') page: number = 1,
     @Query('pageSize') pageSize: number = 10,
+    @Request() req,
   ): Promise<CommentListResponseDto> {
     return this.commentsService.getComments(
       reviewId,
       Number(page),
       Number(pageSize),
+      req.user.sub,
     );
   }
 

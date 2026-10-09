@@ -2,7 +2,6 @@ import {
   PaginationMeta,
   BaseResponseDto,
   ReviewRatingDetails,
-  UserBasicInfo,
 } from '@/common/dto/response.dto';
 
 export {
@@ -10,13 +9,20 @@ export {
   ReviewRatingDetails,
 } from '@/common/dto/response.dto';
 
-// 评论用户信息类型别名（使用共享的UserBasicInfo）
-export type CommentUserInfo = UserBasicInfo;
+// 回复目标元信息
+export class ParentCommentInfo {
+  id: string;
+  userId: string;
+  userNickname: string;
+  deleted: boolean;
+}
 
 export class ReviewItemData {
   id: string;
   dishId: string;
   userId: string;
+  userNickname: string;
+  userAvatar: string | null;
   rating: number;
   ratingDetails?: ReviewRatingDetails | null;
   content: string | null;
@@ -51,7 +57,9 @@ export class ReviewCommentItemData {
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date | null;
-  user: CommentUserInfo;
+  userNickname: string;
+  userAvatar: string | null;
+  parentComment: ParentCommentInfo | null;
 }
 
 // 评论列表数据

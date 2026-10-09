@@ -15,6 +15,7 @@ import {
   DishStatus,
   DishUploadStatus,
   MealTime,
+  AdminGetDishReviewsDto,
 } from './dto/admin-dish.dto';
 import { AdminDishDto, AdminDishUploadDto } from './dto/admin-dish.dto';
 import { Canteen, Dish, Floor, Prisma, Window } from '@prisma/client';
@@ -1112,6 +1113,7 @@ export class AdminDishesService {
     page: number = 1,
     pageSize: number = 20,
     adminInfo?: AdminInfo,
+    status?: AdminGetDishReviewsDto['status'],
   ) {
     // 检查菜品是否存在
     const dish = await this.prisma.dish.findUnique({
@@ -1128,9 +1130,9 @@ export class AdminDishesService {
     }
 
     const skip = (page - 1) * pageSize;
-    const where = { dishId, deletedAt: null };
+    const where = { dishId, deletedAt: null, ...(status ? { status } : {}) };
 
-    const [total, reviews] = await Promise.all([
+    const [total, reviews, ratingGroups] = await Promise.all([
       this.prisma.review.count({ where }),
       this.prisma.review.findMany({
         where,
@@ -1153,6 +1155,11 @@ export class AdminDishesService {
             },
           },
         },
+      }),
+      this.prisma.review.groupBy({
+        by: ['rating'],
+        where: { dishId, deletedAt: null, status: 'approved' },
+        _count: { _all: true },
       }),
     ]);
 
@@ -1183,20 +1190,22 @@ export class AdminDishesService {
         createdAt: review.createdAt,
         updatedAt: review.updatedAt,
         deletedAt: review.deletedAt,
-        user: {
-          id: review.user.id,
-          nickname: review.user.nickname,
-          avatar: review.user.avatar,
-        },
+        userNickname: review.user.nickname,
+        userAvatar: review.user.avatar,
         commentCount: review._count.comments,
       };
     });
+
+    const ratingTotal = ratingGroups.reduce((sum, group) => sum + group._count._all, 0);
+    const ratingSum = ratingGroups.reduce((sum, group) => sum + group.rating * group._count._all, 0);
+    const detail = Object.fromEntries(ratingGroups.map(group => [group.rating, group._count._all]));
 
     return {
       code: 200,
       message: 'success',
       data: {
         items,
+        rating: { average: ratingTotal ? ratingSum / ratingTotal : 0, total: ratingTotal, detail },
         meta: {
           page,
           pageSize,

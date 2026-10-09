@@ -1041,8 +1041,7 @@ describe('AdminDishesController (e2e)', () => {
         (r: any) => r.id === testReviewId,
       );
       expect(found).toBeDefined();
-      expect(found.user).toBeDefined();
-      expect(found.user.nickname).toBeDefined();
+      expect(found.userNickname).toBeDefined();
       expect(found.ratingDetails).toBeDefined();
       expect(found.ratingDetails.spicyLevel).toBe(3);
       expect(found.commentCount).toBeDefined();

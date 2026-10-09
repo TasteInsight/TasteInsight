@@ -9,6 +9,8 @@ import {
 import { ConfigKeys, CONFIG_DEFINITIONS } from './config-definitions';
 
 const mockPrismaService = {
+  $transaction: jest.fn(async (callback) => callback(mockPrismaService)),
+  $queryRaw: jest.fn().mockResolvedValue([{ locked: 1 }]),
   canteen: {
     findUnique: jest.fn(),
   },
@@ -298,6 +300,81 @@ describe('AdminConfigService', () => {
   });
 
   describe('updateGlobalConfig', () => {
+    it('writes the global parent and its item inside the locked transaction', async () => {
+      prisma.adminConfigTemplate.findUnique.mockResolvedValue({
+        id: 'template-1',
+        key: ConfigKeys.REVIEW_AUTO_APPROVE,
+        defaultValue: 'true',
+        valueType: 'boolean',
+        description: null,
+        category: 'review',
+      });
+      const events: string[] = [];
+      prisma.adminConfig.findFirst.mockResolvedValue({
+        id: 'outside-transaction',
+      });
+      prisma.adminConfigItem.upsert.mockResolvedValue({
+        id: 'outside-item',
+        adminConfigId: 'outside-transaction',
+        templateId: 'template-1',
+        key: ConfigKeys.REVIEW_AUTO_APPROVE,
+        value: 'false',
+        valueType: 'boolean',
+        description: null,
+        category: 'review',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      const tx = {
+        $queryRaw: jest.fn(async () => {
+          await Promise.resolve();
+          events.push('lock');
+          return [{ locked: 1 }];
+        }),
+        adminConfig: {
+          findFirst: jest.fn(async () => {
+            events.push('find');
+            return null;
+          }),
+          create: jest.fn(async () => {
+            events.push('create');
+            return { id: 'global' };
+          }),
+        },
+        adminConfigItem: {
+          upsert: jest.fn(async () => {
+            events.push('item');
+            return {
+              id: 'item',
+              adminConfigId: 'global',
+              templateId: 'template-1',
+              key: ConfigKeys.REVIEW_AUTO_APPROVE,
+              value: 'false',
+              valueType: 'boolean',
+              description: null,
+              category: 'review',
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            };
+          }),
+        },
+      };
+      prisma.$transaction.mockImplementationOnce(async (callback) =>
+        callback(tx),
+      );
+      const result = await service.updateGlobalConfig('admin', null, {
+        key: ConfigKeys.REVIEW_AUTO_APPROVE,
+        value: 'false',
+      });
+      expect(events).toEqual(['lock', 'find', 'create', 'item']);
+      expect(result.data).toMatchObject({
+        adminConfigId: 'global',
+        value: 'false',
+      });
+      expect(prisma.adminConfig.findFirst).not.toHaveBeenCalled();
+      expect(prisma.adminConfigItem.upsert).not.toHaveBeenCalled();
+    });
+
     it('should update global config for super admin', async () => {
       const mockTemplate = {
         id: 'template-1',
@@ -784,6 +861,17 @@ describe('AdminConfigService', () => {
   });
 
   describe('getBooleanConfigValue', () => {
+    it.each([ConfigKeys.REVIEW_AUTO_APPROVE, ConfigKeys.COMMENT_AUTO_APPROVE])(
+      'automatically approves new content when %s has no persisted configuration',
+      async (key) => {
+        prisma.adminConfig.findUnique.mockResolvedValue(null);
+        prisma.adminConfig.findFirst.mockResolvedValue(null);
+        prisma.adminConfigTemplate.findUnique.mockResolvedValue(null);
+        expect(await service.getBooleanConfigValue(key, 'canteen-1')).toBe(
+          true,
+        );
+      },
+    );
     it.each(['canteen', 'global', 'template', 'default'])(
       'uses only the supplied transaction for the %s configuration source',
       async (source) => {
@@ -813,7 +901,7 @@ describe('AdminConfigService', () => {
           tx,
         );
 
-        expect(result).toBe(source !== 'default');
+        expect(result).toBe(true);
         expect(tx.adminConfig.findUnique).toHaveBeenCalled();
         expect(prisma.adminConfig.findUnique).not.toHaveBeenCalled();
         expect(prisma.adminConfig.findFirst).not.toHaveBeenCalled();
@@ -877,8 +965,7 @@ describe('AdminConfigService', () => {
         'canteen-1',
       );
 
-      // Default for review.autoApprove is 'false' in CONFIG_DEFINITIONS
-      expect(result).toBe(false);
+      expect(result).toBe(true);
     });
 
     it('should use config definition default when value is null', async () => {
@@ -891,7 +978,7 @@ describe('AdminConfigService', () => {
         ConfigKeys.COMMENT_AUTO_APPROVE,
       );
 
-      expect(result).toBe(false);
+      expect(result).toBe(true);
     });
   });
 
