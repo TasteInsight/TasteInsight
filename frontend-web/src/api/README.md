@@ -156,9 +156,12 @@ const pendingReviews = await reviewApi.getPendingReviews({
 // 2. 审核评价
 for (const review of pendingReviews.data.items) {
   if (/* 审核通过条件 */) {
-    await reviewApi.approveReview(review.id)
+    await reviewApi.approveReview(review.id, { expectedUpdatedAt: review.updatedAt })
   } else {
-    await reviewApi.rejectReview(review.id, '内容不符合规范')
+    await reviewApi.rejectReview(review.id, {
+      reason: '内容不符合规范',
+      expectedUpdatedAt: review.updatedAt,
+    })
   }
 }
 ```

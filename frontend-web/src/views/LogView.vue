@@ -37,7 +37,7 @@
                   <option value="reject">审核拒绝</option>
                 </select>
                 <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
-                  <span class="iconify" data-icon="carbon:chevron-down"></span>
+                  <AppIcon class="iconify" icon="carbon:chevron-down"></AppIcon>
                 </span>
               </div>
             </div>
@@ -68,7 +68,7 @@
               class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-gray-200/50 transition-colors"
               @click="resetFilters"
             >
-              <span class="iconify" data-icon="carbon:reset"></span>
+              <AppIcon class="iconify" icon="carbon:reset"></AppIcon>
               重置
             </button>
             <button
@@ -121,7 +121,7 @@
                   @click="viewLogDetail(log)"
                   title="查看详情"
                 >
-                  <span class="iconify" data-icon="carbon:view"></span>
+                  <AppIcon class="iconify" icon="carbon:view"></AppIcon>
                 </button>
                 <span v-else class="text-gray-400">-</span>
               </td>
@@ -132,19 +132,19 @@
 
       <!-- 空状态 -->
       <div v-if="logs.length === 0 && !loading" class="text-center py-12">
-        <span
+        <AppIcon
           class="iconify text-6xl text-gray-300 mx-auto"
-          data-icon="carbon:document-view"
-        ></span>
+          icon="carbon:document-view"
+        ></AppIcon>
         <p class="mt-4 text-gray-500">暂无日志记录</p>
       </div>
 
       <!-- 加载状态 -->
       <div v-if="loading" class="text-center py-12">
-        <span
+        <AppIcon
           class="iconify text-4xl text-gray-400 animate-spin"
-          data-icon="carbon:circle-dash"
-        ></span>
+          icon="carbon:circle-dash"
+        ></AppIcon>
         <p class="mt-4 text-gray-500">加载中...</p>
       </div>
 
@@ -194,7 +194,7 @@
       <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-medium">日志详情</h3>
         <button class="text-gray-400 hover:text-gray-600" @click="closeLogDetail">
-          <span class="iconify text-2xl" data-icon="carbon:close"></span>
+          <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
         </button>
       </div>
 

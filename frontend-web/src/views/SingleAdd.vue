@@ -37,7 +37,7 @@
                     </option>
                   </select>
                   <p v-if="errors.canteenId" class="mt-1 text-xs text-red-500 flex items-center">
-                    <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                    <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                     {{ errors.canteenId }}
                   </p>
                 </div>
@@ -79,7 +79,7 @@
                     </option>
                   </select>
                   <p v-if="errors.windowId" class="mt-1 text-xs text-red-500 flex items-center">
-                    <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                    <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                     {{ errors.windowId }}
                   </p>
                 </div>
@@ -112,7 +112,7 @@
                 placeholder="例如：水煮肉片"
               />
               <p v-if="errors.name" class="mt-1 text-xs text-red-500 flex items-center">
-                <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                 {{ errors.name }}
               </p>
             </div>
@@ -133,7 +133,7 @@
                 min="0"
               />
               <p v-if="errors.price" class="mt-1 text-xs text-red-500 flex items-center">
-                <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                 {{ errors.price }}
               </p>
               <p v-else class="mt-1 text-sm text-gray-500">如不填写，默认为0</p>
@@ -172,7 +172,7 @@
                       class="w-full h-full object-cover"
                     />
                     <div v-else class="text-center p-6 text-gray-400">
-                      <span class="iconify text-4xl mx-auto" data-icon="bi:image"></span>
+                      <AppIcon class="iconify text-4xl mx-auto" icon="bi:image"></AppIcon>
                       <div class="mt-2 font-medium">封面图</div>
                       <p class="text-xs mt-1">点击右侧按钮添加</p>
                     </div>
@@ -188,7 +188,7 @@
                         class="p-2 bg-white/20 text-white rounded-full hover:bg-red-500 transition-colors"
                         title="删除图片"
                       >
-                        <span class="iconify text-xl" data-icon="carbon:trash-can"></span>
+                        <AppIcon class="iconify text-xl" icon="carbon:trash-can"></AppIcon>
                       </button>
                     </div>
                   </div>
@@ -217,7 +217,7 @@
                         class="p-1.5 bg-white/20 text-white rounded-full hover:bg-tsinghua-purple transition-colors"
                         title="设为封面"
                       >
-                        <span class="iconify" data-icon="carbon:image-copy"></span>
+                        <AppIcon class="iconify" icon="carbon:image-copy"></AppIcon>
                       </button>
                       <button
                         type="button"
@@ -225,7 +225,7 @@
                         class="p-1.5 bg-white/20 text-white rounded-full hover:bg-red-500 transition-colors"
                         title="删除图片"
                       >
-                        <span class="iconify" data-icon="carbon:trash-can"></span>
+                        <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
                       </button>
                     </div>
                   </div>
@@ -234,7 +234,7 @@
                   <div
                     class="w-[140px] h-[140px] border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-gray-400 hover:text-tsinghua-purple hover:border-tsinghua-purple transition-colors relative cursor-pointer bg-white"
                   >
-                    <span class="iconify text-3xl mb-1" data-icon="carbon:add"></span>
+                    <AppIcon class="iconify text-3xl mb-1" icon="carbon:add"></AppIcon>
                     <span class="text-sm">添加图片</span>
                     <input
                       type="file"
@@ -268,7 +268,7 @@
                   class="text-tsinghua-purple text-sm flex items-center hover:text-tsinghua-dark"
                   @click="addSubItem"
                 >
-                  <span class="iconify" data-icon="carbon:add-alt"></span>
+                  <AppIcon class="iconify" icon="carbon:add-alt"></AppIcon>
                   添加子项
                 </button>
               </div>
@@ -297,7 +297,7 @@
                       @click="goToSubItemDetail(index)"
                       :disabled="Boolean(item.uploadId) || isSubmitting || !item.name || !item.name.trim()"
                     >
-                      <span class="iconify mr-1" data-icon="carbon:view"></span>
+                      <AppIcon class="iconify mr-1" icon="carbon:view"></AppIcon>
                       {{ item.uploadId ? '已提交审核' : item.isSubmitting ? '提交中...' : '填写详情' }}
                     </button>
                     <button
@@ -307,7 +307,7 @@
                       title="删除子项"
                       :disabled="Boolean(item.uploadId) || item.isSubmitting || isSubmitting"
                     >
-                      <span class="iconify" data-icon="carbon:trash-can"></span>
+                      <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
                     </button>
                   </div>
                 </div>
@@ -341,7 +341,7 @@
                         @click="addTag"
                         class="px-4 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center"
                       >
-                        <span class="iconify mr-1" data-icon="carbon:add-alt"></span>
+                        <AppIcon class="iconify mr-1" icon="carbon:add-alt"></AppIcon>
                         添加
                       </button>
                     </div>
@@ -361,7 +361,7 @@
                           @click="removeTag(index)"
                           class="ml-2 text-tsinghua-purple hover:text-tsinghua-dark"
                         >
-                          <span class="iconify text-xs" data-icon="carbon:close"></span>
+                          <AppIcon class="iconify text-xs" icon="carbon:close"></AppIcon>
                         </button>
                       </span>
                     </div>
@@ -480,7 +480,7 @@
                   class="text-tsinghua-purple text-sm flex items-center hover:text-tsinghua-dark"
                   @click="addDateRange"
                 >
-                  <span class="iconify" data-icon="carbon:add-alt"></span>
+                  <AppIcon class="iconify" icon="carbon:add-alt"></AppIcon>
                   添加日期段
                 </button>
               </div>
@@ -518,7 +518,7 @@
                     @click="removeDateRange(index)"
                     title="删除日期段"
                   >
-                    <span class="iconify" data-icon="carbon:trash-can"></span>
+                    <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
                   </button>
                 </div>
               </div>
@@ -562,7 +562,7 @@
             :disabled="isSubmitting || !authStore.hasPermission('dish:create')"
             :title="!authStore.hasPermission('dish:create') ? '无权限创建' : '保存菜品信息'"
           >
-            <span class="iconify mr-1" data-icon="carbon:save"></span>
+            <AppIcon class="iconify mr-1" icon="carbon:save"></AppIcon>
             {{ isSubmitting ? '提交中...' : parentUploadId ? '完成录入' : '保存菜品信息' }}
           </button>
           <button

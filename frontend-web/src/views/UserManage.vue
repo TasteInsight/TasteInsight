@@ -15,7 +15,7 @@
             @click="!authStore.hasPermission('admin:create') ? null : createNewAdmin()"
             :title="!authStore.hasPermission('admin:create') ? '无权限创建' : '创建子管理员'"
           >
-            <span class="iconify mr-1" data-icon="carbon:add"></span>
+            <AppIcon class="iconify mr-1" icon="carbon:add"></AppIcon>
             创建子管理员
           </button>
         </div>
@@ -24,7 +24,7 @@
         <div class="mb-6 space-y-4">
           <!-- 搜索栏 -->
           <div class="relative">
-            <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" data-icon="carbon:search"></span>
+            <AppIcon class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" icon="carbon:search"></AppIcon>
             <input
               type="text"
               v-model="searchQuery"
@@ -38,7 +38,7 @@
               type="button"
               title="清除搜索"
             >
-              <span class="iconify" data-icon="carbon:close"></span>
+              <AppIcon class="iconify" icon="carbon:close"></AppIcon>
             </button>
           </div>
           
@@ -59,7 +59,7 @@
                   </option>
                 </select>
                 <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
-                  <span class="iconify" data-icon="carbon:chevron-down"></span>
+                  <AppIcon class="iconify" icon="carbon:chevron-down"></AppIcon>
                 </span>
               </div>
             </div>
@@ -70,7 +70,7 @@
                 @click="resetFilters"
                 class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-gray-200/50 transition-colors"
               >
-                <span class="iconify" data-icon="carbon:reset"></span>
+                <AppIcon class="iconify" icon="carbon:reset"></AppIcon>
                 重置筛选
               </button>
             </div>
@@ -111,7 +111,7 @@
                       @click.stop="!authStore.hasPermission('admin:edit') ? null : editAdmin(admin)"
                       :title="!authStore.hasPermission('admin:edit') ? '无权限编辑' : '编辑权限'"
                     >
-                      <span class="iconify" data-icon="carbon:edit"></span>
+                      <AppIcon class="iconify" icon="carbon:edit"></AppIcon>
                     </button>
                     <button
                       class="p-2 rounded-full hover:bg-gray-200"
@@ -119,7 +119,7 @@
                       @click.stop="!authStore.hasPermission('admin:edit') ? null : openResetPasswordModal(admin)"
                       :title="!authStore.hasPermission('admin:edit') ? '无权限修改密码' : '重置密码'"
                     >
-                      <span class="iconify" data-icon="carbon:password"></span>
+                      <AppIcon class="iconify" icon="carbon:password"></AppIcon>
                     </button>
                     <button
                       class="p-2 rounded-full hover:bg-gray-200"
@@ -127,7 +127,7 @@
                       @click.stop="!authStore.hasPermission('admin:delete') ? null : deleteAdmin(admin)"
                       :title="!authStore.hasPermission('admin:delete') ? '无权限删除' : '删除'"
                     >
-                      <span class="iconify" data-icon="carbon:trash-can"></span>
+                      <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
                     </button>
                   </div>
                 </td>
@@ -138,10 +138,10 @@
 
         <!-- 空状态 -->
         <div v-if="filteredAdmins.length === 0 && !loading" class="text-center py-12">
-          <span
+          <AppIcon
             class="iconify text-6xl text-gray-300 mx-auto"
-            data-icon="clarity:group-line"
-          ></span>
+            icon="clarity:group-line"
+          ></AppIcon>
           <p class="mt-4 text-gray-500">暂无子管理员</p>
           <button
             class="mt-4 px-6 py-2 text-white rounded-lg transition duration-200"
@@ -225,7 +225,7 @@
                   required
                 />
                 <p v-if="errors.username" class="mt-1 text-xs text-red-500 flex items-center">
-                  <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                  <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                   {{ errors.username }}
                 </p>
                 <p v-else-if="editingAdmin" class="mt-1 text-sm text-gray-500">用户名创建后不可修改</p>
@@ -264,7 +264,7 @@
                 </div>
                 <div class="text-xs text-gray-500 mt-1">{{ passwordStrengthText }}</div>
                 <p v-if="errors.password" class="mt-1 text-xs text-red-500 flex items-center">
-                  <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                  <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                   {{ errors.password }}
                 </p>
               </div>
@@ -364,7 +364,7 @@
                     maxlength="50"
                   />
                   <p v-if="errors.customRole" class="mt-1 text-xs text-red-500 flex items-center">
-                    <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                    <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                     {{ errors.customRole }}
                   </p>
                   <p v-else class="mt-1 text-xs text-gray-500">
@@ -404,7 +404,7 @@
                     :class="isAllPermissionsSelected ? 'text-red-500 hover:text-red-700' : 'text-tsinghua-purple hover:text-tsinghua-dark'"
                     @click="toggleAllPermissions"
                   >
-                    <span class="iconify mr-1" :data-icon="isAllPermissionsSelected ? 'carbon:checkbox-checked-filled' : 'carbon:checkbox'"></span>
+                    <AppIcon class="iconify mr-1" :icon="isAllPermissionsSelected ? 'carbon:checkbox-checked-filled' : 'carbon:checkbox'"></AppIcon>
                     {{ isAllPermissionsSelected ? '取消全选' : '全部全选' }}
                   </button>
                 </div>
@@ -427,7 +427,7 @@
                         @click="toggleGroupPermissions(permissionGroup)"
                         :title="isGroupSelected(permissionGroup) ? '取消全选该组' : '全选该组'"
                       >
-                        <span class="iconify" :data-icon="isGroupSelected(permissionGroup) ? 'carbon:checkbox-checked-filled' : 'carbon:checkbox'"></span>
+                        <AppIcon class="iconify" :icon="isGroupSelected(permissionGroup) ? 'carbon:checkbox-checked-filled' : 'carbon:checkbox'"></AppIcon>
                         {{ isGroupSelected(permissionGroup) ? '取消全选' : '全选' }}
                       </button>
                     </div>
@@ -464,7 +464,7 @@
               @click="submitForm"
               :disabled="isSubmitting"
             >
-              <span class="iconify mr-1" data-icon="carbon:save"></span>
+              <AppIcon class="iconify mr-1" icon="carbon:save"></AppIcon>
               {{ isSubmitting ? '提交中...' : editingAdmin ? '保存修改' : '创建子管理员' }}
             </button>
             <button
@@ -484,7 +484,7 @@
       <div class="absolute inset-0 bg-black/50" @click="closeResetPasswordModal"></div>
       <div class="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6 mx-4" @click.stop>
         <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <span class="iconify text-orange-500" data-icon="carbon:password"></span>
+          <AppIcon class="iconify text-orange-500" icon="carbon:password"></AppIcon>
           重置密码 - {{ resetPasswordTarget?.username }}
         </h3>
         <form @submit.prevent="handleResetPassword" class="space-y-4">
@@ -530,33 +530,33 @@
             <p class="font-medium text-gray-600 mb-2">密码要求：</p>
             <ul class="space-y-1">
               <li class="flex items-center gap-2" :class="resetPasswordChecks.length ? 'text-green-600' : 'text-gray-400'">
-                <span class="iconify text-sm" :data-icon="resetPasswordChecks.length ? 'carbon:checkmark-filled' : 'carbon:close'"></span>
+                <AppIcon class="iconify text-sm" :icon="resetPasswordChecks.length ? 'carbon:checkmark-filled' : 'carbon:close'"></AppIcon>
                 至少 8 个字符
               </li>
               <li class="flex items-center gap-2" :class="resetPasswordChecks.uppercase ? 'text-green-600' : 'text-gray-400'">
-                <span class="iconify text-sm" :data-icon="resetPasswordChecks.uppercase ? 'carbon:checkmark-filled' : 'carbon:close'"></span>
+                <AppIcon class="iconify text-sm" :icon="resetPasswordChecks.uppercase ? 'carbon:checkmark-filled' : 'carbon:close'"></AppIcon>
                 包含大写字母（A-Z）
               </li>
               <li class="flex items-center gap-2" :class="resetPasswordChecks.lowercase ? 'text-green-600' : 'text-gray-400'">
-                <span class="iconify text-sm" :data-icon="resetPasswordChecks.lowercase ? 'carbon:checkmark-filled' : 'carbon:close'"></span>
+                <AppIcon class="iconify text-sm" :icon="resetPasswordChecks.lowercase ? 'carbon:checkmark-filled' : 'carbon:close'"></AppIcon>
                 包含小写字母（a-z）
               </li>
               <li class="flex items-center gap-2" :class="resetPasswordChecks.number ? 'text-green-600' : 'text-gray-400'">
-                <span class="iconify text-sm" :data-icon="resetPasswordChecks.number ? 'carbon:checkmark-filled' : 'carbon:close'"></span>
+                <AppIcon class="iconify text-sm" :icon="resetPasswordChecks.number ? 'carbon:checkmark-filled' : 'carbon:close'"></AppIcon>
                 包含数字（0-9）
               </li>
               <li class="flex items-center gap-2" :class="resetPasswordChecks.special ? 'text-green-600' : 'text-gray-400'">
-                <span class="iconify text-sm" :data-icon="resetPasswordChecks.special ? 'carbon:checkmark-filled' : 'carbon:close'"></span>
+                <AppIcon class="iconify text-sm" :icon="resetPasswordChecks.special ? 'carbon:checkmark-filled' : 'carbon:close'"></AppIcon>
                 包含特殊符号（如 !@#$%^&amp;*）
               </li>
             </ul>
           </div>
           <p v-if="resetPasswordError" class="text-sm text-red-500 flex items-center gap-1">
-            <span class="iconify" data-icon="carbon:warning"></span>
+            <AppIcon class="iconify" icon="carbon:warning"></AppIcon>
             {{ resetPasswordError }}
           </p>
           <p class="text-sm text-gray-500">
-            <span class="iconify inline-block" data-icon="carbon:information"></span>
+            <AppIcon class="iconify inline-block" icon="carbon:information"></AppIcon>
             密码重置后，请将新密码告知该管理员。建议让管理员登录后立即修改密码。
           </p>
           <div class="flex justify-end gap-3 pt-4">

@@ -1,6 +1,6 @@
 <template>
   <div class="relative">
-    <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" data-icon="carbon:search"></span>
+    <AppIcon class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" icon="carbon:search"></AppIcon>
     <input
       type="text"
       :placeholder="placeholder"
@@ -15,7 +15,7 @@
       type="button"
       title="清除搜索"
     >
-      <span class="iconify" data-icon="carbon:close"></span>
+      <AppIcon class="iconify" icon="carbon:close"></AppIcon>
     </button>
   </div>
 </template>

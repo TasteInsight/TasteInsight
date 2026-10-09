@@ -298,6 +298,7 @@ export interface BatchConfirmResponse {
  * 楼层信息
  */
 export interface Floor {
+  id?: string
   level: string
   name?: string
 }
@@ -366,7 +367,7 @@ export interface CanteenCreateRequest {
   description?: string
   images?: string[]
   openingHours?: FloorOpeningHours[]
-  floors: Floor[]
+  floors: Omit<Floor, 'id'>[]
 }
 
 /**
@@ -387,7 +388,7 @@ export interface CanteenUpdateRequest {
 export interface WindowCreateRequest {
   name: string
   number?: string
-  floor?: Floor
+  floor?: Omit<Floor, 'id'>
   canteenId: string
   position?: string
   description?: string
@@ -400,7 +401,7 @@ export interface WindowCreateRequest {
 export interface WindowUpdateRequest {
   name?: string
   number?: string
-  floor?: Floor
+  floor?: Omit<Floor, 'id'>
   position?: string
   description?: string
   tags?: string[]
@@ -464,17 +465,17 @@ export interface Review {
   dishId: string
   userId: string
   userNickname?: string
-  userAvatar?: string
+  userAvatar?: string | null
   rating: number
-  content: string
+  content: string | null
   images?: string[]
   status: 'pending' | 'approved' | 'rejected'
   createdAt: string
   ratingDetails?: {
-    spicyLevel?: number
-    sweetness?: number
-    saltiness?: number
-    oiliness?: number
+    spicyLevel?: number | null
+    sweetness?: number | null
+    saltiness?: number | null
+    oiliness?: number | null
   } | null
   rejectReason?: string | null
   updatedAt?: string
@@ -485,7 +486,16 @@ export interface Review {
  */
 export interface PendingReview extends Review {
   dishName: string
-  dishImage?: string
+  dishImage?: string | null
+  updatedAt: string
+}
+
+export interface ReviewModerationRequest {
+  expectedUpdatedAt: string
+}
+
+export interface ReviewRejectionRequest extends ReviewModerationRequest {
+  reason: string
 }
 
 /**
@@ -538,7 +548,7 @@ export interface Comment {
   reviewId: string
   userId: string
   userNickname?: string
-  userAvatar?: string
+  userAvatar?: string | null
   content: string
   status: 'pending' | 'approved' | 'rejected'
   parentComment?: ParentComment | null
@@ -552,7 +562,7 @@ export interface Comment {
  * 待审核评论（包含关联信息）
  */
 export interface PendingComment extends Comment {
-  reviewContent: string
+  reviewContent: string | null
   dishName: string
 }
 
@@ -801,7 +811,7 @@ export interface ConfigTemplatesResponse {
  * 获取全局配置响应
  */
 export interface GlobalConfigResponse {
-  config: AdminConfig
+  config: AdminConfig | null
   templates: ConfigTemplate[]
 }
 
@@ -809,8 +819,8 @@ export interface GlobalConfigResponse {
  * 获取食堂配置响应
  */
 export interface CanteenConfigResponse {
-  config: AdminConfig
-  globalConfig: AdminConfig
+  config: AdminConfig | null
+  globalConfig: AdminConfig | null
   templates: ConfigTemplate[]
 }
 

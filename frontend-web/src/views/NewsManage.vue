@@ -38,7 +38,7 @@
           :class="authStore.hasPermission('news:create') ? 'bg-tsinghua-purple hover:bg-tsinghua-dark' : 'bg-gray-400 cursor-not-allowed'"
           :title="!authStore.hasPermission('news:create') ? '无权限创建' : '创建新闻'"
         >
-          <span class="iconify" data-icon="carbon:add"></span>
+          <AppIcon class="iconify" icon="carbon:add"></AppIcon>
           <span>创建新闻</span>
         </button>
       </div>
@@ -50,7 +50,7 @@
         <div class="mb-6 space-y-4">
           <!-- 搜索栏 -->
           <div class="relative">
-            <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" data-icon="carbon:search"></span>
+            <AppIcon class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" icon="carbon:search"></AppIcon>
             <input
               type="text"
               v-model="searchQuery"
@@ -64,7 +64,7 @@
               type="button"
               title="清除搜索"
             >
-              <span class="iconify" data-icon="carbon:close"></span>
+              <AppIcon class="iconify" icon="carbon:close"></AppIcon>
             </button>
           </div>
 
@@ -84,7 +84,7 @@
                   </option>
                 </select>
                 <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
-                  <span class="iconify" data-icon="carbon:chevron-down"></span>
+                  <AppIcon class="iconify" icon="carbon:chevron-down"></AppIcon>
                 </span>
               </div>
             </div>
@@ -113,7 +113,7 @@
                 @click="resetFilters"
                 class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-gray-200/50 transition-colors"
               >
-                <span class="iconify" data-icon="carbon:reset"></span>
+                <AppIcon class="iconify" icon="carbon:reset"></AppIcon>
                 重置筛选
               </button>
             </div>
@@ -136,10 +136,10 @@
             <tbody class="divide-y divide-gray-200">
               <tr v-if="isLoading">
                 <td colspan="5" class="py-8 text-center text-gray-500">
-                  <span
+                  <AppIcon
                     class="iconify inline-block text-2xl animate-spin"
-                    data-icon="mdi:loading"
-                  ></span>
+                    icon="mdi:loading"
+                  ></AppIcon>
                   <span class="ml-2">加载中...</span>
                 </td>
               </tr>
@@ -209,7 +209,7 @@
                         class="ml-1 text-gray-400 text-xs"
                         title="如需编辑已发布新闻，请先撤回至草稿状态"
                       >
-                        <span class="iconify" data-icon="mdi:information-outline"></span>
+                        <AppIcon class="iconify" icon="mdi:information-outline"></AppIcon>
                       </span>
                     </template>
 
@@ -253,7 +253,7 @@
           {{ showEditModal ? '编辑新闻' : '创建新闻' }}
         </h3>
         <button @click="closeModal" class="text-gray-400 hover:text-gray-600 transition">
-          <span class="iconify text-2xl" data-icon="carbon:close"></span>
+          <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
         </button>
       </div>
 
@@ -290,7 +290,7 @@
               placeholder="请输入新闻标题"
             />
             <p v-if="errors.title" class="mt-1 text-xs text-red-500 flex items-center">
-              <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+              <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
               {{ errors.title }}
             </p>
           </div>
@@ -312,7 +312,7 @@
               placeholder="请输入新闻摘要"
             />
             <p v-if="errors.summary" class="mt-1 text-xs text-red-500 flex items-center">
-              <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+              <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
               {{ errors.summary }}
             </p>
           </div>
@@ -345,7 +345,7 @@
               />
             </div>
             <p v-if="errors.content" class="mt-1 text-xs text-red-500 flex items-center">
-              <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+              <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
               {{ errors.content }}
             </p>
           </div>
@@ -454,7 +454,7 @@
           aria-label="关闭新闻预览"
           class="text-gray-400 hover:text-gray-600 transition"
         >
-          <span class="iconify text-2xl" data-icon="carbon:close"></span>
+          <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
         </button>
       </div>
 

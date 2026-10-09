@@ -13,7 +13,7 @@
           <!-- 搜索栏 -->
           <div class="mb-4">
             <div class="relative">
-              <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" data-icon="carbon:search"></span>
+              <AppIcon class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" icon="carbon:search"></AppIcon>
               <input
                 type="text"
                 placeholder="搜索菜品名称..."
@@ -28,7 +28,7 @@
                 type="button"
                 title="清除搜索"
               >
-                <span class="iconify" data-icon="carbon:close"></span>
+                <AppIcon class="iconify" icon="carbon:close"></AppIcon>
               </button>
             </div>
           </div>
@@ -52,7 +52,7 @@
                   </option>
                 </select>
                 <span class="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
-                  <span class="iconify text-sm" data-icon="carbon:chevron-down"></span>
+                  <AppIcon class="iconify text-sm" icon="carbon:chevron-down"></AppIcon>
                 </span>
               </div>
             </div>
@@ -72,7 +72,7 @@
                   </option>
                 </select>
                 <span class="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center" :class="{'opacity-50': !selectedCanteenId}">
-                  <span class="iconify text-sm" data-icon="carbon:chevron-down"></span>
+                  <AppIcon class="iconify text-sm" icon="carbon:chevron-down"></AppIcon>
                 </span>
               </div>
             </div>
@@ -83,7 +83,7 @@
                 @click="resetFilters"
                 class="text-xs text-gray-500 hover:text-tsinghua-purple flex items-center gap-1 px-2 py-1 rounded-md hover:bg-gray-200/50 transition-colors"
               >
-                <span class="iconify text-sm" data-icon="carbon:reset"></span>
+                <AppIcon class="iconify text-sm" icon="carbon:reset"></AppIcon>
                 重置筛选
               </button>
             </div>
@@ -91,7 +91,7 @@
 
           <div class="overflow-auto" style="max-height: calc(100vh - 300px)">
             <div v-if="isLoadingDishes" class="text-center py-8 text-gray-500">
-              <span class="iconify inline-block text-2xl animate-spin" data-icon="mdi:loading"></span>
+              <AppIcon class="iconify inline-block text-2xl animate-spin" icon="mdi:loading"></AppIcon>
               <span class="ml-2">加载中...</span>
             </div>
             <div v-else-if="filteredDishes.length === 0" class="text-center py-8 text-gray-500">
@@ -170,14 +170,14 @@
         <!-- 右侧：评价和评论列表（帖子式展示） -->
         <div class="flex-1">
           <div v-if="!selectedDishId" class="text-center py-16 text-gray-400">
-            <span class="iconify inline-block text-6xl mb-4" data-icon="carbon:chat"></span>
+            <AppIcon class="iconify inline-block text-6xl mb-4" icon="carbon:chat"></AppIcon>
             <p class="text-lg">请选择一个菜品查看评价和评论</p>
           </div>
 
           <div v-else>
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-lg font-semibold flex items-center">
-                <span class="iconify inline-block mr-2" data-icon="carbon:star"></span>
+                <AppIcon class="iconify inline-block mr-2" icon="carbon:star"></AppIcon>
                 评价和评论
               </h3>
               <div class="text-sm text-gray-500">
@@ -186,7 +186,7 @@
             </div>
 
             <div v-if="isLoadingReviews || isLoadingComments" class="text-center py-8 text-gray-500">
-              <span class="iconify inline-block text-2xl animate-spin" data-icon="mdi:loading"></span>
+              <AppIcon class="iconify inline-block text-2xl animate-spin" icon="mdi:loading"></AppIcon>
               <span class="ml-2">加载中...</span>
             </div>
             <div v-else-if="reviews.length === 0" class="text-center py-8 text-gray-500">
@@ -212,7 +212,7 @@
                         <div class="flex items-center gap-2">
                           <span class="font-semibold text-gray-900">{{ review.userNickname || '未知用户' }}</span>
                           <span class="flex items-center text-yellow-500 text-sm">
-                            <span class="iconify inline-block" data-icon="bxs:star"></span>
+                            <AppIcon class="iconify inline-block" icon="bxs:star"></AppIcon>
                             <span class="ml-1 font-medium">{{ review.rating }}</span>
                           </span>
                           <span
@@ -233,7 +233,7 @@
                       :disabled="!authStore.hasPermission('review:delete')"
                       :title="!authStore.hasPermission('review:delete') ? '无权限删除评价' : '删除评价'"
                     >
-                      <span class="iconify inline-block text-sm" data-icon="carbon:trash-can"></span>
+                      <AppIcon class="iconify inline-block text-sm" icon="carbon:trash-can"></AppIcon>
                       删除
                     </button>
                   </div>
@@ -255,7 +255,7 @@
                         class="w-full h-full object-cover"
                       />
                       <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition flex items-center justify-center">
-                        <span class="iconify text-white text-2xl opacity-0 group-hover:opacity-100 transition" data-icon="carbon:zoom-in"></span>
+                        <AppIcon class="iconify text-white text-2xl opacity-0 group-hover:opacity-100 transition" icon="carbon:zoom-in"></AppIcon>
                       </div>
                     </div>
                   </div>
@@ -265,8 +265,8 @@
                 <div v-if="getCommentsByReviewId(review.id).length > 0" class="border-t bg-gray-50">
                   <div class="px-5 py-3 border-b bg-gray-100">
                     <span class="text-sm font-medium text-gray-700">
-                      <span class="iconify inline-block mr-1" data-icon="carbon:chat"></span>
-                      {{ getCommentsByReviewId(review.id).length }} 条评论
+                      <AppIcon class="iconify inline-block mr-1" icon="carbon:chat"></AppIcon>
+                      已加载 {{ getCommentsByReviewId(review.id).length }} / {{ commentPagination[review.id]?.total || 0 }} 条评论
                     </span>
                   </div>
                   <div class="p-4 space-y-3">
@@ -311,14 +311,20 @@
                           :disabled="!authStore.hasPermission('comment:delete')"
                           :title="!authStore.hasPermission('comment:delete') ? '无权限删除评论' : '删除评论'"
                         >
-                          <span class="iconify inline-block text-xs" data-icon="carbon:trash-can"></span>
+                          <AppIcon class="iconify inline-block text-xs" icon="carbon:trash-can"></AppIcon>
                         </button>
                       </div>
                     </div>
                   </div>
                 </div>
-                <div v-else class="border-t px-5 py-4 bg-gray-50">
+                <div v-else-if="!commentPagination[review.id]?.error" class="border-t px-5 py-4 bg-gray-50">
                   <p class="text-sm text-gray-400 text-center">暂无评论</p>
+                </div>
+                <div v-if="commentPagination[review.id] && (commentPagination[review.id].error || commentPagination[review.id].page < commentPagination[review.id].totalPages)" class="border-t px-5 py-3 text-center">
+                  <p v-if="commentPagination[review.id].error" class="mb-2 text-sm text-red-600">评论加载失败，请重试</p>
+                  <button type="button" :disabled="commentPagination[review.id].loading" @click="loadMoreComments(review.id)" class="rounded px-3 py-2 text-sm text-tsinghua-purple hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-tsinghua-purple disabled:opacity-50">
+                    {{ commentPagination[review.id].loading ? '加载中...' : commentPagination[review.id].error ? '重试加载评论' : '加载更多评论' }}
+                  </button>
                 </div>
               </div>
             </div>
@@ -352,7 +358,7 @@
           class="absolute top-4 right-4 z-10 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition"
           @click="closeImagePreview"
         >
-          <span class="iconify text-2xl" data-icon="carbon:close"></span>
+          <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
         </button>
         
         <!-- 图片 -->
@@ -371,7 +377,7 @@
           @click.stop="previousImage"
           :disabled="imagePreview.currentIndex === 0"
         >
-          <span class="iconify text-2xl" data-icon="carbon:chevron-left"></span>
+          <AppIcon class="iconify text-2xl" icon="carbon:chevron-left"></AppIcon>
         </button>
         <button
           v-if="imagePreview.images.length > 1"
@@ -381,7 +387,7 @@
           @click.stop="nextImage"
           :disabled="imagePreview.currentIndex === imagePreview.images.length - 1"
         >
-          <span class="iconify text-2xl" data-icon="carbon:chevron-right"></span>
+          <AppIcon class="iconify text-2xl" icon="carbon:chevron-right"></AppIcon>
         </button>
         
         <!-- 图片计数 -->
@@ -405,6 +411,7 @@ import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
+import { getAuthSessionVersion } from '@/utils/auth-session'
 import type { Dish, Review, Comment } from '@/types/api'
 import { showAlert, showConfirmDanger } from '@/composables/useModal'
 
@@ -418,6 +425,11 @@ export default defineComponent({
   },
   setup() {
     const authStore = useAuthStore()
+    const sessionVersion = getAuthSessionVersion()
+    let mounted = true
+    const ownsView = () => mounted && sessionVersion === getAuthSessionVersion()
+    let reviewRequest = 0
+    let commentsEpoch = 0
     const canViewCanteens = authStore.hasPermission('canteen:view')
 
     // 默认状态定义
@@ -469,8 +481,8 @@ export default defineComponent({
 
     // 评论列表相关
     const commentsMap = ref<Record<string, Comment[]>>({})
-    const commentPage = ref(1)
-    const commentPageSize = ref(10)
+    const commentPageSize = 30
+    const commentPagination = ref<Record<string, { page: number; total: number; totalPages: number; loading: boolean; error: boolean }>>({})
     const totalComments = ref(0)
     const isLoadingComments = ref(false)
 
@@ -604,93 +616,97 @@ export default defineComponent({
     const selectDish = (dish: Dish) => {
       selectedDishId.value = dish.id
       reviewPage.value = 1
-      commentPage.value = 1
       saveState() // 保存状态
-      loadReviews().then(() => {
-        loadCommentsForReviews()
+      return loadReviews().then(loaded => {
+        if (loaded) return loadCommentsForReviews()
       })
     }
 
     // 加载评价列表
     const loadReviews = async () => {
-      if (!selectedDishId.value) return
+      if (!selectedDishId.value || !ownsView()) return false
+      const request = ++reviewRequest
+      const dishId = selectedDishId.value
+      const page = reviewPage.value
+      const ownsRequest = () => ownsView() && request === reviewRequest && dishId === selectedDishId.value && page === reviewPage.value
+      ++commentsEpoch
+      commentsMap.value = {}
+      commentPagination.value = {}
+      totalComments.value = 0
+      isLoadingComments.value = false
 
       isLoadingReviews.value = true
       try {
-        const response = await dishApi.getDishReviews(selectedDishId.value, {
-          page: reviewPage.value,
+        const response = await dishApi.getDishReviews(dishId, {
+          page,
           pageSize: reviewPageSize.value,
         })
 
+        if (!ownsRequest()) return false
         if (response.code === 200 && response.data) {
-          // 映射用户信息到顶层字段
-          reviews.value = (response.data.items || []).map((review: any) => ({
-            ...review,
-            userNickname: review.user?.nickname || review.userNickname,
-            userAvatar: review.user?.avatar || review.userAvatar,
-          }))
+          reviews.value = response.data.items
           totalReviews.value = response.data.meta?.total || 0
+          return true
         } else {
           reviews.value = []
           totalReviews.value = 0
         }
       } catch (error) {
+        if (!ownsRequest()) return false
         console.error('加载评价列表失败:', error)
         showAlert('加载评价列表失败，请重试')
         reviews.value = []
         totalReviews.value = 0
       } finally {
-        isLoadingReviews.value = false
+        if (ownsRequest()) isLoadingReviews.value = false
       }
+      return false
     }
 
     // 加载评论列表（为所有评价加载评论）
     const loadCommentsForReviews = async () => {
-      if (!selectedDishId.value || reviews.value.length === 0) return
-
+      if (!selectedDishId.value || !ownsView()) return
+      const epoch = ++commentsEpoch
+      commentsMap.value = {}
+      commentPagination.value = {}
+      totalComments.value = 0
+      if (reviews.value.length === 0) return
       isLoadingComments.value = true
+      await Promise.all(reviews.value.map(review => loadCommentPage(review.id, 1, epoch)))
+      if (ownsView() && epoch === commentsEpoch) isLoadingComments.value = false
+    }
+
+    const loadCommentPage = async (reviewId: string, page: number, epoch: number) => {
+      const state = commentPagination.value[reviewId] ||= { page: 0, total: 0, totalPages: 0, loading: false, error: false }
+      const ownsRequest = () => ownsView() && epoch === commentsEpoch
+      if (!ownsRequest() || state.loading) return
+      state.loading = true
+      state.error = false
       try {
-        // 为每个评价加载评论
-        const commentPromises = reviews.value.map(review =>
-          reviewApi.getReviewComments(review.id, {
-            page: 1,
-            pageSize: 30, // 加载足够多的评论以便显示
-          })
-        )
-
-        const responses = await Promise.allSettled(commentPromises)
-
-        // 清空之前的评论
-        commentsMap.value = {}
-
-        let totalCommentCount = 0
-        responses.forEach((result, index) => {
-          if (result.status === 'fulfilled' && result.value.code === 200 && result.value.data) {
-            const reviewId = reviews.value[index].id
-            // 映射用户信息到顶层字段
-            commentsMap.value[reviewId] = (result.value.data.items || []).map((comment: any) => ({
-              ...comment,
-              userNickname: comment.user?.nickname || comment.userNickname,
-              userAvatar: comment.user?.avatar || comment.userAvatar,
-              // 处理父评论的用户信息
-              parentComment: comment.parentComment ? {
-                ...comment.parentComment,
-                userNickname: comment.parentComment.user?.nickname || comment.parentComment.userNickname,
-              } : comment.parentComment,
-            }))
-            totalCommentCount += result.value.data.meta?.total || 0
-          }
-        })
-
-        totalComments.value = totalCommentCount
+        const response = await reviewApi.getReviewComments(reviewId, { page, pageSize: commentPageSize })
+        if (!ownsRequest()) return
+        if (response.code !== 200 || !response.data) throw new Error(response.message || '加载评论失败')
+        const existing = page === 1 ? [] : commentsMap.value[reviewId] || []
+        const ids = new Set(existing.map(comment => comment.id))
+        commentsMap.value[reviewId] = [...existing, ...response.data.items.filter(comment => !ids.has(comment.id))]
+        state.page = response.data.meta.page
+        state.total = response.data.meta.total
+        state.totalPages = response.data.meta.totalPages
+        totalComments.value = Object.values(commentPagination.value).reduce((sum, item) => sum + item.total, 0)
       } catch (error) {
+        if (!ownsRequest()) return
+        state.error = true
         console.error('加载评论列表失败:', error)
         showAlert('加载评论列表失败，请重试')
-        commentsMap.value = {}
-        totalComments.value = 0
       } finally {
-        isLoadingComments.value = false
+        if (ownsRequest()) state.loading = false
       }
+    }
+
+    const loadMoreComments = (reviewId: string) => {
+      const state = commentPagination.value[reviewId]
+      if (!state || state.loading || (!state.error && state.page >= state.totalPages)) return
+      return loadCommentPage(reviewId, state.page + 1, commentsEpoch)
     }
 
     // 根据评价ID获取该评价下的所有评论
@@ -771,7 +787,9 @@ export default defineComponent({
         const response = await reviewApi.deleteReview(review.id)
         if (response.code === 200) {
           showAlert('删除成功')
-          loadReviews()
+          loadReviews().then(loaded => {
+            if (loaded) loadCommentsForReviews()
+          })
         } else {
           showAlert(response.message || '删除失败')
         }
@@ -820,8 +838,8 @@ export default defineComponent({
     const handleReviewPageChange = (page: number) => {
       reviewPage.value = page
       saveState() // 保存状态
-      loadReviews().then(() => {
-        loadCommentsForReviews()
+      loadReviews().then(loaded => {
+        if (loaded) loadCommentsForReviews()
       })
     }
 
@@ -890,8 +908,8 @@ export default defineComponent({
       
       // 如果有选中的菜品，加载评价和评论
       if (selectedDishId.value) {
-        loadReviews().then(() => {
-          loadCommentsForReviews()
+        loadReviews().then(loaded => {
+          if (loaded) loadCommentsForReviews()
         })
       }
     })
@@ -916,13 +934,14 @@ export default defineComponent({
       }
       loadDishes()
       if (selectedDishId.value) {
-        loadReviews().then(() => {
-          loadCommentsForReviews()
+        loadReviews().then(loaded => {
+          if (loaded) loadCommentsForReviews()
         })
       }
     })
 
     onUnmounted(() => {
+      mounted = false
       document.removeEventListener('keydown', handleKeyDown)
     })
 
@@ -947,8 +966,9 @@ export default defineComponent({
 
       // 评论列表
       commentsMap,
-      commentPage,
       commentPageSize,
+      commentPagination,
+      loadMoreComments,
       totalComments,
       isLoadingComments,
 

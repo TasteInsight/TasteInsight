@@ -47,7 +47,7 @@
 
               <template v-else-if="column.type === 'rating'">
                 <div class="flex items-center">
-                  <span class="iconify text-yellow-400" data-icon="bxs:star"></span>
+                  <AppIcon class="iconify text-yellow-400" icon="bxs:star"></AppIcon>
                   <span class="ml-1">{{ item[column.key] }}</span>
                 </div>
               </template>
@@ -64,7 +64,7 @@
                     @click="$emit('edit', item)"
                     title="编辑"
                   >
-                    <span class="iconify" data-icon="carbon:edit"></span>
+                    <AppIcon class="iconify" icon="carbon:edit"></AppIcon>
                   </button>
                   <button
                     v-if="actions.includes('delete')"
@@ -72,7 +72,7 @@
                     @click="$emit('delete', item)"
                     title="删除"
                   >
-                    <span class="iconify" data-icon="carbon:trash-can"></span>
+                    <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
                   </button>
                   <button
                     v-if="actions.includes('view')"
@@ -80,7 +80,7 @@
                     @click="$emit('view', item)"
                     title="查看"
                   >
-                    <span class="iconify" data-icon="carbon:view"></span>
+                    <AppIcon class="iconify" icon="carbon:view"></AppIcon>
                   </button>
                 </div>
               </template>
@@ -96,7 +96,7 @@
 
     <!-- 空状态 -->
     <div v-if="paginatedData.length === 0" class="text-center py-12 text-gray-500">
-      <span class="iconify text-4xl mx-auto mb-3" data-icon="carbon:no-image"></span>
+      <AppIcon class="iconify text-4xl mx-auto mb-3" icon="carbon:no-image"></AppIcon>
       <p>暂无数据</p>
     </div>
   </div>

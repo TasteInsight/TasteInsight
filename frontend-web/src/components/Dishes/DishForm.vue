@@ -75,7 +75,7 @@
             @dragleave="isDragging = false"
           >
             <div v-if="!previewImage" class="text-center p-6">
-              <span class="iconify text-4xl text-gray-400 mx-auto" data-icon="bi:image"></span>
+              <AppIcon class="iconify text-4xl text-gray-400 mx-auto" icon="bi:image"></AppIcon>
               <div class="mt-2">点击上传菜品图片</div>
               <p class="text-sm text-gray-500 mt-1">建议尺寸800x800像素，小于10MB</p>
             </div>
@@ -106,7 +106,7 @@
               class="text-tsinghua-purple text-sm flex items-center"
               @click="addSubItem"
             >
-              <span class="iconify" data-icon="carbon:add-alt"></span>
+              <AppIcon class="iconify" icon="carbon:add-alt"></AppIcon>
               添加子项
             </button>
           </div>
@@ -138,7 +138,7 @@
                   @click="removeSubItem(index)"
                   :disabled="formData.subItems.length <= 1"
                 >
-                  <span class="iconify" data-icon="carbon:trash-can"></span>
+                  <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
                 </button>
               </div>
             </div>
@@ -217,7 +217,7 @@
         class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center"
         :disabled="loading"
       >
-        <span class="iconify mr-1" data-icon="carbon:save"></span>
+        <AppIcon class="iconify mr-1" icon="carbon:save"></AppIcon>
         {{ loading ? '保存中...' : submitText }}
       </button>
       <button

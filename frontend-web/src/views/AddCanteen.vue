@@ -15,7 +15,7 @@
             @click="!authStore.hasPermission('canteen:create') ? null : createNewCanteen()"
             :title="!authStore.hasPermission('canteen:create') ? '无权限新建' : '新建食堂'"
           >
-            <span class="iconify mr-1" data-icon="carbon:add"></span>
+            <AppIcon class="iconify mr-1" icon="carbon:add"></AppIcon>
             新建食堂
           </button>
         </div>
@@ -23,7 +23,7 @@
         <!-- 搜索栏 -->
         <div class="mb-6">
           <div class="relative">
-            <span class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" data-icon="carbon:search"></span>
+            <AppIcon class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" icon="carbon:search"></AppIcon>
             <input
               type="text"
               v-model="searchQuery"
@@ -37,7 +37,7 @@
               type="button"
               title="清除搜索"
             >
-              <span class="iconify" data-icon="carbon:close"></span>
+              <AppIcon class="iconify" icon="carbon:close"></AppIcon>
             </button>
           </div>
         </div>
@@ -73,7 +73,7 @@
                       v-else
                       class="w-12 h-12 rounded bg-gray-200 flex items-center justify-center mr-3"
                     >
-                      <span class="iconify text-gray-400" data-icon="carbon:building"></span>
+                      <AppIcon class="iconify text-gray-400" icon="carbon:building"></AppIcon>
                     </div>
                     <div>
                       <div class="font-medium">{{ canteen.name }}</div>
@@ -87,7 +87,7 @@
                 <td class="py-4 px-6">{{ canteen.windows?.length || 0 }} 个窗口</td>
                 <td class="py-4 px-6">
                   <div class="flex items-center">
-                    <span class="iconify text-yellow-400" data-icon="bxs:star"></span>
+                    <AppIcon class="iconify text-yellow-400" icon="bxs:star"></AppIcon>
                     <span class="ml-1">{{ canteen.averageRating?.toFixed(1) || '暂无' }}</span>
                   </div>
                 </td>
@@ -99,7 +99,7 @@
                       @click.stop="!authStore.hasPermission('canteen:edit') ? null : editCanteen(canteen)"
                       :title="!authStore.hasPermission('canteen:edit') ? '无权限编辑' : '编辑'"
                     >
-                      <span class="iconify" data-icon="carbon:edit"></span>
+                      <AppIcon class="iconify" icon="carbon:edit"></AppIcon>
                     </button>
                     <button
                       class="p-2 rounded-full hover:bg-gray-200"
@@ -107,7 +107,7 @@
                       @click.stop="!authStore.hasPermission('canteen:delete') ? null : deleteCanteen(canteen)"
                       :title="!authStore.hasPermission('canteen:delete') ? '无权限删除' : '删除'"
                     >
-                      <span class="iconify" data-icon="carbon:trash-can"></span>
+                      <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
                     </button>
                   </div>
                 </td>
@@ -118,7 +118,7 @@
 
         <!-- 空状态 -->
         <div v-if="filteredCanteens.length === 0" class="text-center py-12">
-          <span class="iconify text-6xl text-gray-300 mx-auto" data-icon="carbon:building"></span>
+          <AppIcon class="iconify text-6xl text-gray-300 mx-auto" icon="carbon:building"></AppIcon>
           <p class="mt-4 text-gray-500">暂无食堂信息</p>
           <button
             class="mt-4 px-6 py-2 text-white rounded-lg transition duration-200"
@@ -168,7 +168,7 @@
                   required
                 />
                 <p v-if="errors.name" class="mt-1 text-xs text-red-500 flex items-center">
-                  <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                  <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                   {{ errors.name }}
                 </p>
               </div>
@@ -189,23 +189,42 @@
                 <label class="block text-gray-700 font-medium mb-2"
                   >楼层信息 <span class="text-red-500">*</span></label
                 >
-                <input
-                  type="text"
-                  v-model="formData.floorInput"
-                  @input="errors.floorInput = ''"
-                  class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
-                  :class="{
-                    'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.floorInput,
-                  }"
-                  placeholder="例如：一层/二层/B1/地下二层（用/分隔）"
-                  required
-                />
-                <p v-if="errors.floorInput" class="mt-1 text-xs text-red-500 flex items-center">
-                  <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
-                  {{ errors.floorInput }}
+                <div class="space-y-3">
+                  <div v-for="(floor, index) in formData.floors" :key="floor.key" class="flex items-end gap-3">
+                    <label class="w-24 flex-shrink-0 text-xs text-gray-500">
+                      层级
+                      <input
+                        type="text"
+                        :value="floor.level"
+                        @change="changeFloorLevel(floor, $event)"
+                        aria-label="楼层层级"
+                        class="mt-1 w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+                        placeholder="例如：1"
+                        required
+                      />
+                    </label>
+                    <label class="flex-1 text-xs text-gray-500">
+                      名称
+                      <input
+                        type="text"
+                        v-model="floor.name"
+                        aria-label="楼层名称"
+                        class="mt-1 w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+                        placeholder="例如：自选餐厅"
+                      />
+                    </label>
+                    <button type="button" class="text-red-500 p-2" title="删除楼层" @click="removeFloor(index)">
+                      <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
+                    </button>
+                  </div>
+                  <button type="button" class="text-tsinghua-purple text-sm" @click="addFloor">添加楼层</button>
+                </div>
+                <p v-if="errors.floors" class="mt-1 text-xs text-red-500 flex items-center">
+                  <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
+                  {{ errors.floors }}
                 </p>
                 <p v-else class="text-sm text-gray-500 mt-1">
-                  请输入楼层信息，支持格式：一层、1F、B1、地下二层等，多层用"/"分隔
+                  每层单独填写层级和名称，例如层级 1、名称“一层”；地下楼层可填写 -1。
                 </p>
               </div>
 
@@ -242,7 +261,7 @@
                         class="w-full h-full object-cover"
                       />
                       <div v-else class="text-center p-6 text-gray-400">
-                        <span class="iconify text-4xl mx-auto" data-icon="bi:image"></span>
+                        <AppIcon class="iconify text-4xl mx-auto" icon="bi:image"></AppIcon>
                         <div class="mt-2 font-medium">封面图</div>
                         <p class="text-xs mt-1">点击右侧按钮添加</p>
                       </div>
@@ -258,7 +277,7 @@
                           class="p-2 bg-white/20 text-white rounded-full hover:bg-red-500 transition-colors"
                           title="删除图片"
                         >
-                          <span class="iconify text-xl" data-icon="carbon:trash-can"></span>
+                          <AppIcon class="iconify text-xl" icon="carbon:trash-can"></AppIcon>
                         </button>
                       </div>
                     </div>
@@ -295,7 +314,7 @@
                             class="p-1.5 bg-white/20 text-white rounded-full hover:bg-tsinghua-purple transition-colors"
                             title="设为封面"
                           >
-                            <span class="iconify" data-icon="carbon:image-copy"></span>
+                            <AppIcon class="iconify" icon="carbon:image-copy"></AppIcon>
                           </button>
                           <button
                             type="button"
@@ -303,7 +322,7 @@
                             class="p-1.5 bg-white/20 text-white rounded-full hover:bg-red-500 transition-colors"
                             title="删除图片"
                           >
-                            <span class="iconify" data-icon="carbon:trash-can"></span>
+                            <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
                           </button>
                         </div>
                       </div>
@@ -312,7 +331,7 @@
                       <div
                         class="flex-shrink-0 w-[140px] h-[200px] border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-gray-400 hover:text-tsinghua-purple hover:border-tsinghua-purple transition-colors relative cursor-pointer bg-white"
                       >
-                        <span class="iconify text-3xl mb-1" data-icon="carbon:add"></span>
+                        <AppIcon class="iconify text-3xl mb-1" icon="carbon:add"></AppIcon>
                         <span class="text-sm">添加图片</span>
                         <input
                           type="file"
@@ -346,7 +365,7 @@
                   class="text-tsinghua-purple text-sm flex items-center hover:text-tsinghua-dark"
                   @click="addOpeningHours"
                 >
-                  <span class="iconify" data-icon="carbon:add-alt"></span>
+                  <AppIcon class="iconify" icon="carbon:add-alt"></AppIcon>
                   添加营业时间
                 </button>
               </div>
@@ -371,9 +390,12 @@
                         >
                           <option value="">通用</option>
                           <option v-if="hours.floor === 'default'" value="default">通用</option>
+                          <option v-if="isUnresolvedFloor(hours.floor)" :value="hours.floor" disabled>
+                            原层级 {{ hours.floor.level }}（请选择具体楼层）
+                          </option>
                           <option
                             v-for="floor in availableFloors"
-                            :key="floor.value"
+                            :key="floor.key"
                             :value="floor.value"
                           >
                             {{ floor.label }}
@@ -434,7 +456,7 @@
                         />
                       </div>
                       <button type="button" class="text-red-500 p-2" title="删除餐次" @click="hours.slots.splice(slotIndex, 1)">
-                        <span class="iconify" data-icon="carbon:trash-can"></span>
+                        <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
                       </button>
                     </div>
                     <button type="button" class="text-tsinghua-purple text-sm" :disabled="hours.isClosed" @click="addMealSlot(hours)">添加餐次</button>
@@ -445,7 +467,7 @@
                       @click="removeOpeningHours(index)"
                       title="删除营业时间"
                     >
-                      <span class="iconify" data-icon="carbon:trash-can"></span>
+                      <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
                     </button>
                   </div>
                 </div>
@@ -455,10 +477,10 @@
               </div>
               <div v-else class="mb-6 bg-blue-50 p-4 rounded-lg border border-blue-100">
                 <div class="flex items-start">
-                  <span
+                  <AppIcon
                     class="iconify text-blue-500 mt-1 mr-2"
-                    data-icon="carbon:information"
-                  ></span>
+                    icon="carbon:information"
+                  ></AppIcon>
                   <div>
                     <h4 class="font-medium text-blue-800">营业时间管理</h4>
                     <p class="text-sm text-blue-600 mt-1">
@@ -479,7 +501,7 @@
                     :disabled="isWindowsLoading || windowsLoadError"
                     @click="addWindow"
                   >
-                    <span class="iconify" data-icon="carbon:add-alt"></span>
+                    <AppIcon class="iconify" icon="carbon:add-alt"></AppIcon>
                     添加窗口
                   </button>
                 </div>
@@ -518,7 +540,7 @@
                           <option value="" disabled>请选择楼层</option>
                           <option
                             v-for="floor in availableFloors"
-                            :key="floor.value"
+                            :key="floor.key"
                             :value="floor.value"
                           >
                             {{ floor.label }}
@@ -541,7 +563,7 @@
                       @click="removeWindow(index, window.id)"
                       title="删除窗口"
                     >
-                      <span class="iconify" data-icon="carbon:trash-can"></span>
+                      <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
                     </button>
                   </div>
                 </div>
@@ -551,10 +573,10 @@
               </div>
               <div v-else class="mb-6 bg-blue-50 p-4 rounded-lg border border-blue-100">
                 <div class="flex items-start">
-                  <span
+                  <AppIcon
                     class="iconify text-blue-500 mt-1 mr-2"
-                    data-icon="carbon:information"
-                  ></span>
+                    icon="carbon:information"
+                  ></AppIcon>
                   <div>
                     <h4 class="font-medium text-blue-800">窗口管理</h4>
                     <p class="text-sm text-blue-600 mt-1">
@@ -574,7 +596,7 @@
               @click="submitForm"
               :disabled="isSubmitting || isLoading || isWindowsLoading || windowsLoadError"
             >
-              <span class="iconify mr-1" data-icon="carbon:save"></span>
+              <AppIcon class="iconify mr-1" icon="carbon:save"></AppIcon>
               {{ isSubmitting ? '提交中...' : editingCanteen ? '保存修改' : '保存食堂信息' }}
             </button>
             <button
@@ -628,22 +650,39 @@ export default {
     const editingCanteen = ref(null) // 当前编辑的食堂
     const canteens = ref([]) // 食堂列表
     const searchQuery = ref('')
+    let floorKey = 0
+    const toFloorDrafts = (floors) => floors.map(({ id, level, name }) => ({
+      key: ++floorKey, id, level, name,
+    }))
 
     const formData = reactive({
       name: '',
       position: '',
       description: '',
       imageFiles: [], // 替换原来的 image 和 imageUrl
-      floorInput: '', // 添加楼层输入字段
+      floors: [],
       openingHours: [],
     })
 
     const windows = ref([]) // 窗口列表
 
+    const isUnresolvedFloor = (floor) => typeof floor === 'object' && !formData.floors.includes(floor)
+
+    const applySavedFloors = (floors, submittedFloors) => {
+      const levelCounts = new Map()
+      for (const floor of floors) levelCounts.set(floor.level, (levelCounts.get(floor.level) || 0) + 1)
+      formData.floors = floors.map(({ id, level, name }) => {
+        const submitted = submittedFloors.find(({ payload }) =>
+          payload.id ? payload.id === id : payload.level === level && levelCounts.get(level) === 1)
+        if (submitted) return Object.assign(submitted.draft, { id, level, name })
+        return toFloorDrafts([{ id, level, name }])[0]
+      })
+    }
+
     // 表单错误状态
     const errors = reactive({
       name: '',
-      floorInput: '',
+      floors: '',
     })
 
     // 过滤后的食堂列表
@@ -690,12 +729,10 @@ export default {
         const response = await canteenApi.getWindows(owner.canteenId, { page: 1, pageSize: 100 })
         if (!isCurrentEditor(owner, version)) return
         if (response.code === 200 && response.data) {
-          // 转换窗口数据，将 floor 信息转换为下拉框可用的值
-          windows.value = (response.data.items || []).map((w) => ({
-            ...w,
-            floor: w.floor ? w.floor.level || '' : '',
-            floorLabel: w.floor ? w.floor.name || w.floor.level || '' : '',
-          }))
+          windows.value = (response.data.items || []).map((w) => {
+            const floor = w.floor && formData.floors.find(floor => floor.id === w.floor.id)
+            return { ...w, floor: floor || '' }
+          })
         } else {
           throw new Error(response.message || '加载窗口列表失败')
         }
@@ -752,14 +789,13 @@ export default {
         }))
       }
 
-      // 处理楼层信息 - 从 canteen.floors 中恢复
-      if (canteen.floors && Array.isArray(canteen.floors) && canteen.floors.length > 0) {
-        formData.floorInput = canteen.floors.map((f) => f.name || f.level).join('/')
-      } else {
-        formData.floorInput = ''
-      }
+      formData.floors = toFloorDrafts(canteen.floors || [])
 
-      formData.openingHours = toOpeningHoursForm(canteen.openingHours)
+      formData.openingHours = toOpeningHoursForm(canteen.openingHours).map(hours => {
+        if (hours.floor === '' || hours.floor === 'default') return hours
+        const floors = formData.floors.filter(floor => floor.level === hours.floor)
+        return { ...hours, floor: floors.length === 1 ? floors[0] : { level: hours.floor } }
+      })
 
       // 加载窗口列表
       await loadWindows(owner)
@@ -807,11 +843,11 @@ export default {
       formData.position = ''
       formData.description = ''
       formData.imageFiles = []
-      formData.floorInput = ''
+      formData.floors = []
       formData.openingHours = []
       windows.value = []
       errors.name = ''
-      errors.floorInput = ''
+      errors.floors = ''
     }
 
     const handleImageUpload = (event) => {
@@ -872,6 +908,39 @@ export default {
       formData.openingHours.splice(index, 1)
     }
 
+    const addFloor = () => {
+      formData.floors.push(...toFloorDrafts([{ level: '', name: '' }]))
+      errors.floors = ''
+    }
+
+    const removeFloor = (index) => {
+      const floor = formData.floors[index]
+      if (windows.value.some(window => window.floor === floor) ||
+        formData.openingHours.some(hours => hours.floor === floor)) {
+        showAlert(`楼层"${floor.name || floor.level}"仍被窗口或营业时间引用，请先重新选择楼层或删除对应条目`)
+        return
+      }
+      formData.floors.splice(index, 1)
+      errors.floors = ''
+    }
+
+    const floorLevelError = (level, currentFloor) => {
+      if (!level.trim()) return '请填写楼层层级'
+      if (level === 'default') return 'default 是通用营业时间的保留值，请填写实际楼层层级'
+      if (formData.floors.some(floor => floor !== currentFloor && floor.level === level)) return '楼层层级不能重复'
+      return ''
+    }
+
+    const changeFloorLevel = (floor, event) => {
+      const level = event.target.value
+      errors.floors = floorLevelError(level, floor)
+      if (errors.floors) {
+        event.target.value = floor.level
+        return
+      }
+      floor.level = level
+    }
+
     // 添加窗口
     const addWindow = () => {
       if (isWindowsLoading.value || windowsLoadError.value) return
@@ -883,7 +952,6 @@ export default {
         name: '',
         number: '',
         floor: '',
-        floorLabel: '',
         position: '',
         description: '',
         tags: [],
@@ -903,11 +971,11 @@ export default {
         }
         try {
           const response = await canteenApi.deleteWindow(windowId)
-          if (!isCurrentEditor(owner, version)) return
+          if (!ownsEditor(owner)) return
           if (response.code === 200) {
             const currentIndex = windows.value.indexOf(target)
             if (currentIndex !== -1) windows.value.splice(currentIndex, 1)
-            showAlert('删除成功！')
+            if (isCurrentEditor(owner, version)) showAlert('删除成功！')
           } else {
             throw new Error(response.message || '删除失败')
           }
@@ -922,89 +990,17 @@ export default {
       }
     }
 
-    // 解析楼层
-    const parseFloorLevel = (str) => {
-      const s = str.trim()
-      const storedFloor = editingCanteen.value?.floors?.find(floor => (floor.name || floor.level) === s)
-      if (storedFloor && /^-?\d+$/.test(storedFloor.level)) return Number(storedFloor.level)
-      let multiplier = 1
-
-      // 处理负数情况（B开头或包含地下）
-      if (s.startsWith('-') || s.toUpperCase().startsWith('B') || s.includes('地下')) {
-        multiplier = -1
-      }
-
-      // 尝试匹配数字
-      const digitMatch = s.match(/\d+/)
-      if (digitMatch) {
-        return parseInt(digitMatch[0]) * multiplier
-      }
-
-      // 中文数字映射
-      const chineseNumbers = {
-        一: 1,
-        二: 2,
-        三: 3,
-        四: 4,
-        五: 5,
-        1: 1,
-        2: 2,
-        3: 3,
-        4: 4,
-        5: 5,
-      }
-
-      // 尝试匹配中文数字
-      for (const [key, val] of Object.entries(chineseNumbers)) {
-        if (s.includes(key)) {
-          return val * multiplier
-        }
-      }
-
-      return null
-    }
-
     // 可选楼层列表
-    const availableFloors = computed(() => {
-      if (!formData.floorInput) return []
+    const availableFloors = computed(() => formData.floors
+      .filter(floor => floor.level.trim() && floor.level !== 'default')
+      .map(floor => ({
+        key: floor.key,
+        value: floor,
+        label: floor.name ? `${floor.name}（${floor.level}层）` : `${floor.level}层`,
+      })))
 
-      const floors = formData.floorInput
-        .split('/')
-        .map((s) => s.trim())
-        .filter((s) => s)
-      const result = []
-
-      for (const floorStr of floors) {
-        const level = parseFloorLevel(floorStr)
-        if (level !== null) {
-          result.push({
-            label: floorStr,
-            value: level.toString(),
-          })
-        }
-      }
-      return result
-    })
-
-    const resolveWindowFloor = (value, fallbackLabel = '') => {
-      if (!value) {
-        return null
-      }
-      const match = availableFloors.value.find((f) => f.value === value)
-      if (match) {
-        return {
-          level: match.value,
-          name: match.label,
-        }
-      }
-      const parsedLevel = parseFloorLevel(String(value))
-      if (parsedLevel !== null) {
-        return {
-          level: parsedLevel.toString(),
-          name: fallbackLabel || String(value),
-        }
-      }
-      return null
+    const resolveWindowFloor = (floor) => {
+      return formData.floors.includes(floor) ? { level: floor.level, name: floor.name } : null
     }
 
     const submitForm = async () => {
@@ -1013,7 +1009,7 @@ export default {
       if (!isCurrentEditor(owner, version) || owner.submitting || owner.loading || owner.loadError) return
       // 清除之前的错误
       errors.name = ''
-      errors.floorInput = ''
+      errors.floors = ''
       
       // 表单验证
       let hasError = false
@@ -1023,70 +1019,19 @@ export default {
         hasError = true
       }
 
-      // 验证楼层输入
-      if (!formData.floorInput || !formData.floorInput.trim()) {
-        errors.floorInput = '请填写楼层信息'
-        hasError = true
-      } else {
-        // 解析楼层
-        const floorInputs = formData.floorInput
-          .split('/')
-          .map((s) => s.trim())
-          .filter((s) => s)
-        const parsedFloors = []
-        const seenLevels = new Set()
-
-        for (const floorStr of floorInputs) {
-          const level = parseFloorLevel(floorStr)
-
-          if (level === null) {
-            errors.floorInput = `无法解析楼层信息: "${floorStr}"`
-            hasError = true
-            break
-          }
-
-          if (level > 5 || level < -2) {
-            errors.floorInput = `楼层范围必须在 -2 到 5 之间，"${floorStr}" 解析为 ${level} 层，超出范围`
-            hasError = true
-            break
-          }
-
-          if (seenLevels.has(level)) {
-            // 允许同名楼层？一般不允许不同名字映射到同一层级，或者允许但提示
-          }
-          seenLevels.add(level)
-          parsedFloors.push({
-            level: level.toString(), // 转换为字符串存储
-            name: floorStr,
-          })
-        }
-
-        if (parsedFloors.length === 0 && !hasError) {
-          errors.floorInput = '请至少输入一个有效的楼层'
-          hasError = true
-        }
-      }
+      errors.floors = formData.floors.length
+        ? formData.floors.map(floor => floorLevelError(floor.level, floor)).find(Boolean) || ''
+        : '请填写楼层信息'
+      if (errors.floors) hasError = true
       
       if (hasError) {
         return
       }
       
-      // 重新解析楼层（如果验证通过）
-      const floorInputs = formData.floorInput
-        .split('/')
-        .map((s) => s.trim())
-        .filter((s) => s)
-      const parsedFloors = []
-      const seenLevels = new Set()
-
-      for (const floorStr of floorInputs) {
-        const level = parseFloorLevel(floorStr)
-        if (level !== null && level <= 5 && level >= -2) {
-          seenLevels.add(level)
-          parsedFloors.push({
-            level: level.toString(),
-            name: floorStr,
-          })
+      for (const hours of formData.openingHours) {
+        if (isUnresolvedFloor(hours.floor)) {
+          showAlert(`营业时间的原楼层"${hours.floor.level}"无法确定，请重新选择楼层或删除该营业时间`)
+          return
         }
       }
 
@@ -1099,7 +1044,7 @@ export default {
             showAlert(`请先为窗口"${window.name}"选择楼层`)
             return
           }
-          const floorInfo = resolveWindowFloor(window.floor, window.floorLabel || '')
+          const floorInfo = resolveWindowFloor(window.floor)
           if (!floorInfo) {
             showAlert(`窗口"${window.name}"的楼层信息无效，请检查`)
             return
@@ -1109,7 +1054,9 @@ export default {
 
       let openingHours
       try {
-        openingHours = fromOpeningHoursForm(formData.openingHours)
+        openingHours = fromOpeningHoursForm(formData.openingHours.map(hours => ({
+          ...hours, floor: typeof hours.floor === 'string' ? hours.floor : hours.floor.level,
+        })))
       } catch (error) {
         showAlert(error.message)
         return
@@ -1118,13 +1065,17 @@ export default {
       // Freeze the submitted resource and payloads before the first async boundary.
       const canteenId = owner.canteenId
       const imageFiles = formData.imageFiles.map(image => ({ ...image }))
+      const floorChanges = formData.floors.map(draft => ({
+        draft,
+        payload: { ...(draft.id ? { id: draft.id } : {}), level: draft.level, name: draft.name },
+      }))
       const windowChanges = windows.value.filter(window => window.name?.trim()).map(window => ({
         id: window.id,
         draft: window,
         payload: {
           name: window.name.trim(),
           number: window.number?.trim() || '',
-          floor: resolveWindowFloor(window.floor, window.floorLabel || ''),
+          floor: resolveWindowFloor(window.floor),
           position: window.position || undefined,
           description: window.description || undefined,
           tags: window.tags?.length ? [...window.tags] : undefined,
@@ -1136,7 +1087,7 @@ export default {
         description: formData.description.trim() || undefined,
         images: [],
         openingHours,
-        floors: parsedFloors,
+        floors: floorChanges.map(({ payload }) => payload),
         ...(canteenId ? {} : { windows: [] }),
       }
       owner.submitting = true
@@ -1194,32 +1145,26 @@ export default {
         requestData.images = imageUrls
 
         // 4. 创建或更新食堂
-        if (canteenId) {
-          // 更新食堂
-          const response = await canteenApi.updateCanteen(canteenId, requestData)
-          if (!ownsSession()) return
-          if (response.code === 200 && response.data) {
-            if (ownsEditor(owner)) {
-              editingCanteen.value = { ...editingCanteen.value, ...response.data }
-            }
-          } else {
-            throw new Error(response.message || '更新食堂失败')
-          }
-        } else {
-          // 创建食堂（窗口已包含在请求中，但现在新建时窗口部分被隐藏，所以为空）
-          const response = await canteenApi.createCanteen(requestData)
-          if (!ownsSession()) return
-          if (response.code === 200 && response.data) {
-            if (ownsEditor(owner)) {
-              owner.canteenId = response.data.id
-              editingCanteen.value = response.data
-            }
-            if (isCurrentEditor(owner, version)) showAlert('食堂创建成功！现在您可以添加窗口信息。')
-            await loadCanteens()
-            return // 不返回列表，停留在编辑页面
-          } else {
-            throw new Error(response.message || '创建食堂失败')
-          }
+        const response = canteenId
+          ? await canteenApi.updateCanteen(canteenId, requestData)
+          : await canteenApi.createCanteen(requestData)
+        if (!ownsSession()) return
+        if (response.code !== 200 || !response.data) {
+          throw new Error(response.message || (canteenId ? '更新食堂失败' : '创建食堂失败'))
+        }
+        if (ownsEditor(owner)) {
+          if (!canteenId) owner.canteenId = response.data.id
+          editingCanteen.value = { ...editingCanteen.value, ...response.data }
+          applySavedFloors(response.data.floors, floorChanges)
+        }
+        const savedLevels = response.data.floors.map(floor => floor.level)
+        if (new Set(savedLevels).size !== savedLevels.length) {
+          throw new Error('食堂已保存，但返回了重复的楼层层级；请修正层级并重新选择窗口或营业时间的楼层后保存')
+        }
+        if (!canteenId) {
+          if (isCurrentEditor(owner, version)) showAlert('食堂创建成功！现在您可以添加窗口信息。')
+          await loadCanteens()
+          return
         }
 
         // 5. 仅在编辑模式下单独保存窗口信息（新建时流程已中断）
@@ -1310,6 +1255,10 @@ export default {
       addOpeningHours,
       addMealSlot,
       removeOpeningHours,
+      addFloor,
+      removeFloor,
+      changeFloorLevel,
+      isUnresolvedFloor,
       addWindow,
       removeWindow,
       retryLoadWindows,

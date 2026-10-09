@@ -34,18 +34,18 @@ describe('api/reviewApi', () => {
     postMock.mockResolvedValueOnce({ code: 200 })
 
     const { reviewApi } = await import('@/api/modules/review')
-    await reviewApi.rejectReview('r1', 'bad')
+    await (reviewApi.rejectReview as any)('r1', { reason: 'bad', expectedUpdatedAt: '2026-10-08T12:00:00.000Z' })
 
-    expect(postMock).toHaveBeenCalledWith('/admin/reviews/r1/reject', { reason: 'bad' })
+    expect(postMock).toHaveBeenCalledWith('/admin/reviews/r1/reject', { reason: 'bad', expectedUpdatedAt: '2026-10-08T12:00:00.000Z' })
   })
 
   it('approveReview posts to approve endpoint', async () => {
     postMock.mockResolvedValueOnce({ code: 200 })
 
     const { reviewApi } = await import('@/api/modules/review')
-    await reviewApi.approveReview('r1')
+    await (reviewApi.approveReview as any)('r1', { expectedUpdatedAt: '2026-10-08T12:00:00.000Z' })
 
-    expect(postMock).toHaveBeenCalledWith('/admin/reviews/r1/approve')
+    expect(postMock).toHaveBeenCalledWith('/admin/reviews/r1/approve', { expectedUpdatedAt: '2026-10-08T12:00:00.000Z' })
   })
 
   it('deleteReview deletes by id', async () => {

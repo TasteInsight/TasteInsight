@@ -33,7 +33,7 @@
                     </option>
                   </select>
                   <p v-if="errors.canteenId" class="mt-1 text-xs text-red-500 flex items-center">
-                    <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                    <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                     {{ errors.canteenId }}
                   </p>
                 </div>
@@ -75,7 +75,7 @@
                     </option>
                   </select>
                   <p v-if="errors.windowId" class="mt-1 text-xs text-red-500 flex items-center">
-                    <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                    <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                     {{ errors.windowId }}
                   </p>
                 </div>
@@ -108,7 +108,7 @@
                 placeholder="例如：水煮肉片"
               />
               <p v-if="errors.name" class="mt-1 text-xs text-red-500 flex items-center">
-                <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                 {{ errors.name }}
               </p>
             </div>
@@ -129,7 +129,7 @@
                 min="0"
               />
               <p v-if="errors.price" class="mt-1 text-xs text-red-500 flex items-center">
-                <span class="iconify mr-1 text-xs" data-icon="carbon:warning"></span>
+                <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                 {{ errors.price }}
               </p>
               <p v-else class="mt-1 text-sm text-gray-500">如不填写，默认为0</p>
@@ -168,7 +168,7 @@
                       class="w-full h-full object-cover"
                     />
                     <div v-else class="text-center p-6 text-gray-400">
-                      <span class="iconify text-4xl mx-auto" data-icon="bi:image"></span>
+                      <AppIcon class="iconify text-4xl mx-auto" icon="bi:image"></AppIcon>
                       <div class="mt-2 font-medium">封面图</div>
                       <p class="text-xs mt-1">点击右侧按钮添加</p>
                     </div>
@@ -184,7 +184,7 @@
                         class="p-2 bg-white/20 text-white rounded-full hover:bg-red-500 transition-colors"
                         title="删除图片"
                       >
-                        <span class="iconify text-xl" data-icon="carbon:trash-can"></span>
+                        <AppIcon class="iconify text-xl" icon="carbon:trash-can"></AppIcon>
                       </button>
                     </div>
                   </div>
@@ -213,7 +213,7 @@
                         class="p-1.5 bg-white/20 text-white rounded-full hover:bg-tsinghua-purple transition-colors"
                         title="设为封面"
                       >
-                        <span class="iconify" data-icon="carbon:image-copy"></span>
+                        <AppIcon class="iconify" icon="carbon:image-copy"></AppIcon>
                       </button>
                       <button
                         type="button"
@@ -221,7 +221,7 @@
                         class="p-1.5 bg-white/20 text-white rounded-full hover:bg-red-500 transition-colors"
                         title="删除图片"
                       >
-                        <span class="iconify" data-icon="carbon:trash-can"></span>
+                        <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
                       </button>
                     </div>
                   </div>
@@ -230,7 +230,7 @@
                   <div
                     class="w-[140px] h-[140px] border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-gray-400 hover:text-tsinghua-purple hover:border-tsinghua-purple transition-colors relative cursor-pointer bg-white"
                   >
-                    <span class="iconify text-3xl mb-1" data-icon="carbon:add"></span>
+                    <AppIcon class="iconify text-3xl mb-1" icon="carbon:add"></AppIcon>
                     <span class="text-sm">添加图片</span>
                     <input
                       type="file"
@@ -259,7 +259,7 @@
                   class="text-tsinghua-purple text-sm flex items-center hover:text-tsinghua-dark"
                   @click="addSubItem"
                 >
-                  <span class="iconify" data-icon="carbon:add-alt"></span>
+                  <AppIcon class="iconify" icon="carbon:add-alt"></AppIcon>
                   添加子项
                 </button>
               </div>
@@ -273,10 +273,10 @@
                   @click="editSubDish(subDish.id)"
                 >
                   <div class="flex items-center flex-1">
-                    <span
+                    <AppIcon
                       class="iconify text-tsinghua-purple mr-2"
-                      data-icon="carbon:dot-mark"
-                    ></span>
+                      icon="carbon:dot-mark"
+                    ></AppIcon>
                     <span class="text-gray-700 font-medium">{{
                       subDish.name || '未命名子项'
                     }}</span>
@@ -287,7 +287,7 @@
                     class="px-4 py-1.5 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center text-sm"
                     @click.stop="editSubDish(subDish.id)"
                   >
-                    <span class="iconify mr-1" data-icon="carbon:edit"></span>
+                    <AppIcon class="iconify mr-1" icon="carbon:edit"></AppIcon>
                     编辑
                   </button>
                 </div>
@@ -301,7 +301,7 @@
             <div v-if="isSubDish" class="mb-6">
               <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                 <div class="flex items-center">
-                  <span class="iconify text-blue-500 mr-2" data-icon="carbon:information"></span>
+                  <AppIcon class="iconify text-blue-500 mr-2" icon="carbon:information"></AppIcon>
                   <span class="text-sm text-blue-700">这是子项菜品，子项不能再添加子项。</span>
                 </div>
               </div>
@@ -328,7 +328,7 @@
                         @click="addTag"
                         class="px-4 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center"
                       >
-                        <span class="iconify mr-1" data-icon="carbon:add-alt"></span>
+                        <AppIcon class="iconify mr-1" icon="carbon:add-alt"></AppIcon>
                         添加
                       </button>
                     </div>
@@ -348,7 +348,7 @@
                           @click="removeTag(index)"
                           class="ml-2 text-tsinghua-purple hover:text-tsinghua-dark"
                         >
-                          <span class="iconify text-xs" data-icon="carbon:close"></span>
+                          <AppIcon class="iconify text-xs" icon="carbon:close"></AppIcon>
                         </button>
                       </span>
                     </div>
@@ -467,7 +467,7 @@
                   class="text-tsinghua-purple text-sm flex items-center hover:text-tsinghua-dark"
                   @click="addDateRange"
                 >
-                  <span class="iconify" data-icon="carbon:add-alt"></span>
+                  <AppIcon class="iconify" icon="carbon:add-alt"></AppIcon>
                   添加日期段
                 </button>
               </div>
@@ -505,7 +505,7 @@
                     @click="removeDateRange(index)"
                     title="删除日期段"
                   >
-                    <span class="iconify" data-icon="carbon:trash-can"></span>
+                    <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
                   </button>
                 </div>
               </div>
@@ -547,7 +547,7 @@
             :disabled="isSubmitting || isLoading || !authStore.hasPermission('dish:edit')"
             :title="!authStore.hasPermission('dish:edit') ? '无权限编辑菜品' : '保存修改'"
           >
-            <span class="iconify mr-1" data-icon="carbon:save"></span>
+            <AppIcon class="iconify mr-1" icon="carbon:save"></AppIcon>
             {{ isSubmitting ? '保存中...' : '保存修改' }}
           </button>
           <button
@@ -557,7 +557,7 @@
             @click="showDeleteConfirm = true"
             :disabled="isSubmitting || isLoading || isDeleting"
           >
-            <span class="iconify mr-1" data-icon="carbon:trash-can"></span>
+            <AppIcon class="iconify mr-1" icon="carbon:trash-can"></AppIcon>
             {{ isDeleting ? '删除中...' : '删除菜品' }}
           </button>
           <button
@@ -579,7 +579,7 @@
     >
       <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
         <div class="flex items-center mb-4">
-          <span class="iconify text-red-500 text-3xl mr-3" data-icon="carbon:warning"></span>
+          <AppIcon class="iconify text-red-500 text-3xl mr-3" icon="carbon:warning"></AppIcon>
           <h3 class="text-lg font-semibold text-gray-800">确认删除菜品</h3>
         </div>
         <p class="text-gray-600 mb-6">
@@ -602,7 +602,7 @@
             @click="handleDelete"
             :disabled="isDeleting"
           >
-            <span class="iconify mr-1" data-icon="carbon:trash-can"></span>
+            <AppIcon class="iconify mr-1" icon="carbon:trash-can"></AppIcon>
             {{ isDeleting ? '删除中...' : '确认删除' }}
           </button>
         </div>

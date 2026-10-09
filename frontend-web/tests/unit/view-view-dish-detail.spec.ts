@@ -234,6 +234,41 @@ describe('views/ViewDishDetail', () => {
     wrapper.unmount()
   })
 
+  it('resets pagination when changing the moderation status filter', async () => {
+    mocks.dishApi.getDishById.mockResolvedValue({ code: 200, data: { id: '1' } })
+    mocks.dishApi.getDishReviews.mockResolvedValue({ code: 200, data: {
+      items: [], meta: { page: 1, pageSize: 10, total: 30, totalPages: 3 },
+      rating: { average: 4.5, total: 20, detail: { '4': 10, '5': 10 } },
+    } })
+    const wrapper = mount(ViewDishDetail, baseMountOptions)
+    await flushAll()
+    wrapper.vm.currentReviewPage = 3
+    await wrapper.find('select').setValue('pending')
+    await flushAll()
+    expect(mocks.dishApi.getDishReviews).toHaveBeenLastCalledWith('1', { page: 1, pageSize: 10, status: 'pending' })
+    wrapper.unmount()
+  })
+
+  it('keeps the most recent status result when an earlier request finishes later', async () => {
+    let resolveOld: (value: any) => void = () => undefined
+    mocks.dishApi.getDishById.mockResolvedValue({ code: 200, data: { id: '1' } })
+    mocks.dishApi.getDishReviews.mockImplementationOnce(() => new Promise(resolve => { resolveOld = resolve }))
+    const wrapper = mount(ViewDishDetail, baseMountOptions)
+    await flushAll()
+    mocks.dishApi.getDishReviews.mockResolvedValueOnce({ code: 200, data: {
+      items: [{ id: 'pending', userNickname: '作者', userAvatar: 'avatar.jpg', status: 'pending', content: '当前筛选', rating: 1 }],
+      meta: { page: 1, pageSize: 10, total: 1, totalPages: 1 }, rating: { average: 4.5, total: 2, detail: {} },
+    } })
+    await wrapper.find('select').setValue('pending')
+    await flushAll()
+    resolveOld({ code: 200, data: { items: [], meta: { total: 0, totalPages: 0 }, rating: { average: 0, total: 0, detail: {} } } })
+    await flushAll()
+    expect(wrapper.vm.reviewsData.items[0]?.id).toBe('pending')
+    expect(wrapper.text()).toContain('作者')
+    expect(wrapper.vm.reviewsData.rating.average).toBe(4.5)
+    wrapper.unmount()
+  })
+
   it('helpers: allergensText/ingredientsText, formatDate, previewImage, goBack', async () => {
     mocks.dishApi.getDishById.mockResolvedValueOnce({ code: 200, data: { id: '1', allergens: ['a', 'b'], ingredients: 'i', images: [] } })
     mocks.dishApi.getDishReviews.mockResolvedValueOnce({

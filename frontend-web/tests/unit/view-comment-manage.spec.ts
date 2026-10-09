@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { shallowMount } from '@vue/test-utils'
+import { shallowMount, flushPromises } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import type { Dish, Review, Comment } from '@/types/api'
 
@@ -97,10 +97,7 @@ function flushMicrotasks() {
 }
 
 async function flushAll() {
-  // enough for: promise chain + nextTick updates
-  await flushMicrotasks()
-  await nextTick()
-  await flushMicrotasks()
+  await flushPromises()
   await nextTick()
 }
 
@@ -338,6 +335,77 @@ describe('views/CommentManage', () => {
     expect(wrapper.vm.getCommentsByReviewId('rv2')).toHaveLength(0)
     expect(wrapper.vm.totalComments).toBe(1)
 
+    wrapper.unmount()
+  })
+
+  it('loads a finite first reply page and appends the next page on demand', async () => {
+    mocks.dishApiMock.getDishReviews.mockResolvedValue({ code: 200, data: {
+      items: [createMockReview()], meta: { page: 1, pageSize: 10, total: 1, totalPages: 1 },
+    } })
+    mocks.reviewApiMock.getReviewComments.mockImplementation((_id, params) => Promise.resolve({
+      code: 200, data: {
+        items: params.page === 1
+          ? Array.from({ length: 30 }, (_, i) => createMockComment({ id: `cm${i}`, floor: i + 1 }))
+          : [createMockComment({ id: 'last', floor: 31, content: '最后一条' })],
+        meta: { page: params.page, pageSize: 30, total: 31, totalPages: 2 },
+      },
+    }))
+    const wrapper = shallowMount(CommentManage)
+    await flushAll()
+    wrapper.vm.selectDish(createMockDish())
+    await flushAll()
+    expect(mocks.reviewApiMock.getReviewComments).toHaveBeenCalledTimes(1)
+    expect(wrapper.vm.getCommentsByReviewId('rv1')).toHaveLength(30)
+    const more = wrapper.findAll('button').find(button => button.text() === '加载更多评论')
+    expect(more).toBeDefined()
+    await more!.trigger('click')
+    await flushAll()
+    expect(mocks.reviewApiMock.getReviewComments).toHaveBeenLastCalledWith('rv1', { page: 2, pageSize: 30 })
+    expect(wrapper.vm.getCommentsByReviewId('rv1')).toHaveLength(31)
+    expect(wrapper.text()).toContain('最后一条')
+    expect(wrapper.findAll('button').some(button => button.text() === '加载更多评论')).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('ignores a reply page completed after switching dishes', async () => {
+    let resolveOld: (value: any) => void = () => undefined
+    mocks.dishApiMock.getDishReviews.mockResolvedValue({ code: 200, data: { items: [createMockReview()], meta: { total: 1 } } })
+    mocks.reviewApiMock.getReviewComments.mockImplementationOnce(() => new Promise(resolve => { resolveOld = resolve }))
+    const wrapper = shallowMount(CommentManage)
+    await flushAll()
+    wrapper.vm.selectDish(createMockDish())
+    await flushAll()
+    mocks.dishApiMock.getDishReviews.mockResolvedValue({ code: 200, data: { items: [createMockReview({ id: 'new-review', dishId: 'd2' })], meta: { total: 1 } } })
+    mocks.reviewApiMock.getReviewComments.mockResolvedValue({ code: 200, data: {
+      items: [createMockComment({ id: 'new-comment', reviewId: 'new-review', content: '当前菜品回复' })],
+      meta: { page: 1, total: 1, totalPages: 1 },
+    } })
+    wrapper.vm.selectDish(createMockDish({ id: 'd2' }))
+    await flushAll()
+    resolveOld({ code: 200, data: { items: [createMockComment({ content: '旧菜品回复' })], meta: { page: 1, total: 1, totalPages: 1 } } })
+    await flushAll()
+    expect(Object.keys(wrapper.vm.commentsMap)).toEqual(['new-review'])
+    expect(wrapper.vm.getCommentsByReviewId('new-review')[0].content).toBe('当前菜品回复')
+    expect(wrapper.vm.totalComments).toBe(1)
+    wrapper.unmount()
+  })
+
+  it('keeps loaded replies and retries only the failed next page', async () => {
+    mocks.dishApiMock.getDishReviews.mockResolvedValue({ code: 200, data: { items: [createMockReview()], meta: { total: 1 } } })
+    mocks.reviewApiMock.getReviewComments
+      .mockResolvedValueOnce({ code: 200, data: { items: [createMockComment()], meta: { page: 1, pageSize: 30, total: 31, totalPages: 2 } } })
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce({ code: 200, data: { items: [createMockComment({ id: 'last' })], meta: { page: 2, pageSize: 30, total: 31, totalPages: 2 } } })
+    const wrapper = shallowMount(CommentManage)
+    await flushAll()
+    await wrapper.vm.selectDish(createMockDish())
+    await wrapper.vm.loadMoreComments('rv1')
+    await flushAll()
+    expect(wrapper.vm.getCommentsByReviewId('rv1')).toHaveLength(1)
+    expect(wrapper.text()).toContain('评论加载失败，请重试')
+    await wrapper.vm.loadMoreComments('rv1')
+    expect(mocks.reviewApiMock.getReviewComments).toHaveBeenLastCalledWith('rv1', { page: 2, pageSize: 30 })
+    expect(wrapper.vm.getCommentsByReviewId('rv1')).toHaveLength(2)
     wrapper.unmount()
   })
 

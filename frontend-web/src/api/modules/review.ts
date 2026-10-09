@@ -8,6 +8,8 @@ import type {
   Comment,
   DishUpload,
   GetPendingParams,
+  ReviewModerationRequest,
+  ReviewRejectionRequest,
 } from '@/types/api'
 
 /**
@@ -36,18 +38,18 @@ export const reviewApi = {
    * @param id 评价 ID
    * @returns 审核结果
    */
-  async approveReview(id: string): Promise<ApiResponse<void>> {
-    return await request.post<ApiResponse<void>>(`/admin/reviews/${id}/approve`)
+  async approveReview(id: string, data: ReviewModerationRequest): Promise<ApiResponse<void>> {
+    return await request.post<ApiResponse<void>>(`/admin/reviews/${id}/approve`, data)
   },
 
   /**
    * 拒绝评价审核
    * @param id 评价 ID
-   * @param reason 拒绝原因
+   * @param data 拒绝原因及评价版本
    * @returns 审核结果
    */
-  async rejectReview(id: string, reason: string): Promise<ApiResponse<void>> {
-    return await request.post<ApiResponse<void>>(`/admin/reviews/${id}/reject`, { reason })
+  async rejectReview(id: string, data: ReviewRejectionRequest): Promise<ApiResponse<void>> {
+    return await request.post<ApiResponse<void>>(`/admin/reviews/${id}/reject`, data)
   },
 
   /**

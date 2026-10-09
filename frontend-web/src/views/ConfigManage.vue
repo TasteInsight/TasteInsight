@@ -10,7 +10,7 @@
       <!-- 食堂信息提示 -->
       <div v-if="currentCanteenInfo" class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <div class="flex items-center gap-2">
-          <span class="iconify text-blue-600" data-icon="carbon:location"></span>
+          <AppIcon class="iconify text-blue-600" icon="carbon:location"></AppIcon>
           <span class="text-sm font-medium text-blue-800">
             {{ currentCanteenInfo }}
           </span>
@@ -20,22 +20,22 @@
       <div class="mt-6">
         <!-- 加载状态 -->
         <div v-if="loading" class="text-center py-12">
-          <span class="iconify text-4xl text-gray-300 animate-spin" data-icon="carbon:circle-dash"></span>
+          <AppIcon class="iconify text-4xl text-gray-300 animate-spin" icon="carbon:circle-dash"></AppIcon>
           <p class="mt-4 text-gray-500">加载中...</p>
         </div>
 
         <!-- 配置表单 -->
         <div v-else class="space-y-6">
-          <!-- 评价自动审核配置 -->
+          <!-- 评价审核配置 -->
           <div class="border border-gray-200 rounded-lg p-6">
             <div class="flex items-start justify-between mb-4">
               <div class="flex-1">
                 <h3 class="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                  <span class="iconify text-tsinghua-purple" data-icon="carbon:star-review"></span>
-                  评价自动审核
+                  <AppIcon class="iconify text-tsinghua-purple" icon="carbon:star-review"></AppIcon>
+                  评价人工审核
                 </h3>
                 <p class="text-sm text-gray-600">
-                  开启后，用户提交的评价将直接显示，无需管理员审核。关闭后，所有评价需要管理员审核通过后才能显示。
+                  默认直接发布。开启后，新提交或修改的评价需要审核；审核前仅作者和管理员可见，通过后公开。
                 </p>
               </div>
             </div>
@@ -44,8 +44,9 @@
               <label class="relative inline-flex items-center cursor-pointer">
                 <input
                   type="checkbox"
-                  v-model="reviewAutoApprove"
-                  :disabled="!authStore.hasPermission('config:edit') || reviewSaving"
+                  v-model="reviewRequiresApproval"
+                  aria-label="评价人工审核"
+                  :disabled="!authStore.hasPermission('config:edit') || reviewSaving || loadError"
                   @change="handleReviewAutoApproveChange"
                   class="sr-only peer"
                 />
@@ -53,36 +54,36 @@
                   :class="toggleSwitchClass"
                 ></div>
                 <span class="ml-3 text-sm font-medium text-gray-700">
-                  {{ reviewAutoApprove ? '已开启' : '已关闭' }}
+                  {{ loadError ? '暂不可读取' : reviewRequiresApproval ? '已开启' : '已关闭 · 直接发布' }}
                 </span>
               </label>
 
               <div v-if="reviewSaving" class="flex items-center gap-2 text-sm text-gray-500">
-                <span class="iconify animate-spin" data-icon="carbon:circle-dash"></span>
+                <AppIcon class="iconify animate-spin" icon="carbon:circle-dash"></AppIcon>
                 <span>保存中...</span>
               </div>
               <div v-else-if="reviewSaveSuccess" class="flex items-center gap-2 text-sm text-green-600">
-                <span class="iconify" data-icon="carbon:checkmark-filled"></span>
+                <AppIcon class="iconify" icon="carbon:checkmark-filled"></AppIcon>
                 <span>保存成功</span>
               </div>
             </div>
 
             <div v-if="!authStore.hasPermission('config:edit')" class="mt-2 text-xs text-gray-500">
-              <span class="iconify" data-icon="carbon:information"></span>
+              <AppIcon class="iconify" icon="carbon:information"></AppIcon>
               您没有编辑配置的权限
             </div>
           </div>
 
-          <!-- 评论自动审核配置 -->
+          <!-- 回复审核配置 -->
           <div class="border border-gray-200 rounded-lg p-6">
             <div class="flex items-start justify-between mb-4">
               <div class="flex-1">
                 <h3 class="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                  <span class="iconify text-tsinghua-purple" data-icon="carbon:chat"></span>
-                  评论自动审核
+                  <AppIcon class="iconify text-tsinghua-purple" icon="carbon:chat"></AppIcon>
+                  回复人工审核
                 </h3>
                 <p class="text-sm text-gray-600">
-                  开启后，用户提交的评论将直接显示，无需管理员审核。关闭后，所有评论需要管理员审核通过后才能显示。
+                  默认直接发布。开启后，新回复需要审核；审核前仅作者和管理员可见，通过后公开。已提交的待审回复仍需单独审核。
                 </p>
               </div>
             </div>
@@ -91,8 +92,9 @@
               <label class="relative inline-flex items-center cursor-pointer">
                 <input
                   type="checkbox"
-                  v-model="commentAutoApprove"
-                  :disabled="!authStore.hasPermission('config:edit') || commentSaving"
+                  v-model="commentRequiresApproval"
+                  aria-label="回复人工审核"
+                  :disabled="!authStore.hasPermission('config:edit') || commentSaving || loadError"
                   @change="handleCommentAutoApproveChange"
                   class="sr-only peer"
                 />
@@ -100,22 +102,22 @@
                   :class="toggleSwitchClass"
                 ></div>
                 <span class="ml-3 text-sm font-medium text-gray-700">
-                  {{ commentAutoApprove ? '已开启' : '已关闭' }}
+                  {{ loadError ? '暂不可读取' : commentRequiresApproval ? '已开启' : '已关闭 · 直接发布' }}
                 </span>
               </label>
 
               <div v-if="commentSaving" class="flex items-center gap-2 text-sm text-gray-500">
-                <span class="iconify animate-spin" data-icon="carbon:circle-dash"></span>
+                <AppIcon class="iconify animate-spin" icon="carbon:circle-dash"></AppIcon>
                 <span>保存中...</span>
               </div>
               <div v-else-if="commentSaveSuccess" class="flex items-center gap-2 text-sm text-green-600">
-                <span class="iconify" data-icon="carbon:checkmark-filled"></span>
+                <AppIcon class="iconify" icon="carbon:checkmark-filled"></AppIcon>
                 <span>保存成功</span>
               </div>
             </div>
 
             <div v-if="!authStore.hasPermission('config:edit')" class="mt-2 text-xs text-gray-500">
-              <span class="iconify" data-icon="carbon:information"></span>
+              <AppIcon class="iconify" icon="carbon:information"></AppIcon>
               您没有编辑配置的权限
             </div>
           </div>
@@ -125,7 +127,7 @@
             <div class="flex items-start justify-between mb-4">
               <div class="flex-1">
                 <h3 class="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                  <span class="iconify text-tsinghua-purple" data-icon="carbon:ai-results"></span>
+                  <AppIcon class="iconify text-tsinghua-purple" icon="carbon:ai-results"></AppIcon>
                   菜品嵌入向量刷新
                 </h3>
                 <p class="text-sm text-gray-600">
@@ -164,23 +166,23 @@
                   @click="handleRefreshCanteenEmbeddings"
                   class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <span 
+                  <AppIcon
                     v-if="embeddingRefreshing"
                     key="icon-loading"
                     class="iconify mr-1 animate-spin" 
-                    data-icon="carbon:circle-dash"
-                  ></span>
-                  <span 
+                    icon="carbon:circle-dash"
+                  ></AppIcon>
+                  <AppIcon
                     v-else
                     key="icon-refresh"
                     class="iconify mr-1" 
-                    data-icon="carbon:refresh"
-                  ></span>
+                    icon="carbon:refresh"
+                  ></AppIcon>
                   {{ embeddingRefreshing ? '刷新中...' : (currentCanteenId ? '刷新当前食堂所有菜品嵌入向量' : '刷新所选食堂所有菜品嵌入向量') }}
                 </button>
 
                 <div v-if="embeddingRefreshSuccess" class="flex items-center gap-2 text-sm text-green-600">
-                  <span class="iconify" data-icon="carbon:checkmark-filled"></span>
+                  <AppIcon class="iconify" icon="carbon:checkmark-filled"></AppIcon>
                   <span>刷新任务已提交</span>
                 </div>
               </div>
@@ -261,7 +263,7 @@
               </div>
 
               <div v-if="!authStore.hasPermission('dish:edit')" class="mt-2 text-xs text-gray-500">
-                <span class="iconify" data-icon="carbon:information"></span>
+                <AppIcon class="iconify" icon="carbon:information"></AppIcon>
                 您没有刷新嵌入向量的权限
               </div>
             </div>
@@ -269,7 +271,7 @@
 
           <!-- 加载失败提示 -->
           <div v-if="loadError" class="text-center py-12">
-            <span class="iconify text-6xl text-gray-300 mx-auto" data-icon="carbon:warning-alt"></span>
+            <AppIcon class="iconify text-6xl text-gray-300 mx-auto" icon="carbon:warning-alt"></AppIcon>
             <p class="mt-4 text-gray-500">配置加载失败，请刷新页面重试</p>
           </div>
         </div>
@@ -294,13 +296,21 @@ export default {
   },
   setup() {
     const authStore = useAuthStore()
-    const loading = ref(false)
+    const loading = ref(true)
     const reviewSaving = ref(false)
     const reviewSaveSuccess = ref(false)
     const commentSaving = ref(false)
     const commentSaveSuccess = ref(false)
-    const reviewAutoApprove = ref(false)
-    const commentAutoApprove = ref(false)
+    const reviewAutoApprove = ref(true)
+    const commentAutoApprove = ref(true)
+    const reviewRequiresApproval = computed({
+      get: () => !reviewAutoApprove.value,
+      set: (required) => { reviewAutoApprove.value = !required },
+    })
+    const commentRequiresApproval = computed({
+      get: () => !commentAutoApprove.value,
+      set: (required) => { commentAutoApprove.value = !required },
+    })
     const configItems = ref([])
     const loadError = ref(false)
 
@@ -334,7 +344,7 @@ export default {
       if (currentCanteenId.value) {
         return '管理当前食堂的配置项（仅影响当前食堂）'
       }
-      return '管理系统全局配置项（影响所有食堂）'
+      return '管理全局默认配置（食堂单独配置优先）'
     })
 
     // 当前食堂信息
@@ -385,13 +395,13 @@ export default {
             if (reviewAutoApproveItem) {
               reviewAutoApprove.value = reviewAutoApproveItem.value === 'true'
             } else {
-              reviewAutoApprove.value = false
+              reviewAutoApprove.value = true
             }
 
             if (commentAutoApproveItem) {
               commentAutoApprove.value = commentAutoApproveItem.value === 'true'
             } else {
-              commentAutoApprove.value = false
+              commentAutoApprove.value = true
             }
 
             // 保存有效配置项用于显示
@@ -882,6 +892,8 @@ export default {
       commentSaveSuccess,
       reviewAutoApprove,
       commentAutoApprove,
+      reviewRequiresApproval,
+      commentRequiresApproval,
       configItems,
       handleReviewAutoApproveChange,
       handleCommentAutoApproveChange,

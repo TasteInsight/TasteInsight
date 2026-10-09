@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { shallowMount } from '@vue/test-utils'
+import { shallowMount, mount, flushPromises } from '@vue/test-utils'
 import { nextTick } from 'vue'
+import { addIcon } from '@iconify/vue'
 import type { PendingComment } from '@/types/api'
 
 const mocks = vi.hoisted(() => ({
@@ -65,6 +66,7 @@ describe('views/ReviewManage', () => {
             rating: 5,
             content: 'nice',
             createdAt: '2025-01-01T10:00:00',
+            updatedAt: '2026-10-08T12:00:00.000Z',
             status: 'pending',
             images: ['a', 'b'],
             ratingDetails: { spicyLevel: 1, sweetness: null, saltiness: 2, oiliness: undefined },
@@ -179,6 +181,59 @@ describe('views/ReviewManage', () => {
     wrapper.unmount()
   })
 
+  it('sends the displayed review version when approving or rejecting', async () => {
+    const wrapper = shallowMount(ReviewManage)
+    await flushAll()
+    wrapper.vm.openReviewDetail(wrapper.vm.reviews[0])
+    await wrapper.vm.handleApproveReview()
+    expect(mocks.reviewApiMock.approveReview).toHaveBeenCalledWith('rv1', { expectedUpdatedAt: '2026-10-08T12:00:00.000Z' })
+    wrapper.vm.openReviewDetail(wrapper.vm.reviews[0])
+    wrapper.vm.rejectReviewReason = '原因'
+    await wrapper.vm.handleRejectReview()
+    expect(mocks.reviewApiMock.rejectReview).toHaveBeenCalledWith('rv1', { reason: '原因', expectedUpdatedAt: '2026-10-08T12:00:00.000Z' })
+    wrapper.unmount()
+  })
+
+  it('displays the snapshot conflict returned by the backend', async () => {
+    const wrapper = shallowMount(ReviewManage)
+    await flushAll()
+    wrapper.vm.openReviewDetail(wrapper.vm.reviews[0])
+    mocks.reviewApiMock.approveReview.mockRejectedValueOnce(new Error('评价内容或审核状态已变更，请刷新后重新审核'))
+    await wrapper.vm.handleApproveReview()
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('评价内容或审核状态已变更，请刷新后重新审核')
+    wrapper.unmount()
+  })
+
+  it('keeps the approval loading transition inside Vue-owned icon nodes', async () => {
+    for (const icon of ['carbon:checkmark', 'mdi:loading']) {
+      addIcon(icon, { body: '<path d="M1 1h1" />', width: 24, height: 24 })
+    }
+    const errors = vi.fn()
+    let resolveApproval: (value: any) => void = () => undefined
+    mocks.reviewApiMock.approveReview.mockImplementationOnce(() => new Promise(resolve => { resolveApproval = resolve }))
+    const wrapper = mount(ReviewManage, { global: { stubs: { Header: true, Pagination: true }, config: { errorHandler: errors } } })
+    await flushPromises()
+    wrapper.vm.openReviewDetail(wrapper.vm.reviews[0])
+    await nextTick()
+    const approve = wrapper.find('button[title="通过评价"]')
+    const legacyIcon = approve.find('span.iconify')
+    if (legacyIcon.exists()) {
+      const replacement = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+      legacyIcon.element.replaceWith(replacement)
+    }
+    await approve.trigger('click')
+    await flushPromises()
+    const captured = errors.mock.calls.map(([error]) => error)
+    const loading = approve.find('svg[data-icon="mdi:loading"]')
+    const loadingAttached = loading.exists() && loading.element.parentElement === approve.element
+    resolveApproval({ code: 200 })
+    await flushPromises()
+    expect(captured).toEqual([])
+    expect(loadingAttached).toBe(true)
+    expect(wrapper.vm.isSubmitting).toBe(false)
+    wrapper.unmount()
+  })
+
   it('open/close detail dialogs and reject modals reset reasons', async () => {
     const wrapper = shallowMount(ReviewManage, {
       global: { stubs: { Header: true, Pagination: true } },
@@ -259,7 +314,7 @@ describe('views/ReviewManage', () => {
     // approve catch
     mocks.reviewApiMock.approveReview.mockRejectedValueOnce(new Error('boom'))
     await wrapper.vm.handleApproveReview()
-    expect(mocks.showAlertMock).toHaveBeenCalledWith('审核评价失败，请重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('boom')
 
     // approve success reload + close detail
     mocks.reviewApiMock.approveReview.mockResolvedValueOnce({ code: 200 })
@@ -288,7 +343,7 @@ describe('views/ReviewManage', () => {
     // reject: catch
     mocks.reviewApiMock.rejectReview.mockRejectedValueOnce(new Error('boom'))
     await wrapper.vm.handleRejectReview()
-    expect(mocks.showAlertMock).toHaveBeenCalledWith('拒绝评价失败，请重试')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('boom')
 
     // reject: success closes modal + detail and reloads
     wrapper.vm.openRejectReviewModal()

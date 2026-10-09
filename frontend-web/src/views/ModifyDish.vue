@@ -30,7 +30,7 @@
                 </option>
               </select>
               <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
-                <span class="iconify" data-icon="carbon:chevron-down"></span>
+                <AppIcon class="iconify" icon="carbon:chevron-down"></AppIcon>
               </span>
             </div>
           </div>
@@ -50,7 +50,7 @@
                 </option>
               </select>
               <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center" :class="{'opacity-50': !selectedCanteenId}">
-                <span class="iconify" data-icon="carbon:chevron-down"></span>
+                <AppIcon class="iconify" icon="carbon:chevron-down"></AppIcon>
               </span>
             </div>
           </div>
@@ -61,7 +61,7 @@
               @click="resetFilters"
               class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-gray-200/50 transition-colors"
             >
-              <span class="iconify" data-icon="carbon:reset"></span>
+              <AppIcon class="iconify" icon="carbon:reset"></AppIcon>
               重置筛选
             </button>
           </div>
@@ -85,10 +85,10 @@
           <tbody class="divide-y divide-gray-200">
             <tr v-if="isLoading">
               <td colspan="7" class="py-8 text-center text-gray-500">
-                <span
+                <AppIcon
                   class="iconify inline-block text-2xl animate-spin"
-                  data-icon="mdi:loading"
-                ></span>
+                  icon="mdi:loading"
+                ></AppIcon>
                 <span class="ml-2">加载中...</span>
               </td>
             </tr>
@@ -118,7 +118,7 @@
               <td class="py-4 px-6 text-tsinghua-purple font-medium">{{ dish.price }}</td>
               <td class="py-4 px-6">
                 <div class="flex items-center">
-                  <span class="iconify text-yellow-400" data-icon="bxs:star"></span>
+                  <AppIcon class="iconify text-yellow-400" icon="bxs:star"></AppIcon>
                   <span class="ml-1">{{ dish.rating }}</span>
                 </div>
               </td>
@@ -129,7 +129,7 @@
                     @click="viewDish(dish)"
                     title="查看"
                   >
-                    <span class="iconify" data-icon="carbon:view"></span>
+                    <AppIcon class="iconify" icon="carbon:view"></AppIcon>
                   </button>
                   <button
                     class="p-2 rounded-full hover:bg-gray-200"
@@ -137,7 +137,7 @@
                     @click="editDish(dish)"
                     :title="!authStore.hasPermission('dish:edit') ? '无权限编辑' : '编辑'"
                   >
-                    <span class="iconify" data-icon="carbon:edit"></span>
+                    <AppIcon class="iconify" icon="carbon:edit"></AppIcon>
                   </button>
                 </div>
               </td>
