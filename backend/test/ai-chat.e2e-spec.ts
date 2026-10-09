@@ -1,9 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import type { Dish } from '@prisma/client';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { PrismaService } from '../src/prisma.service';
 import { ToolRegistryService } from '../src/ai-chat/tools/tool-registry.service';
+import type { ToolContext } from '../src/ai-chat/tools/base-tool.interface';
 import { AIConfigService } from '../src/ai-chat/services/ai-config.service';
 import { OpenAIProviderService } from '../src/ai-chat/services/ai-provider/openai-provider.service';
 import { MockAIProviderService } from '../src/ai-chat/services/ai-provider/mock-ai-provider.service';
@@ -369,6 +371,7 @@ describe('AI Chat (e2e)', () => {
       expect(toolRegistry.hasTool('recommend_dishes')).toBe(true);
       expect(toolRegistry.hasTool('search_dishes')).toBe(true);
       expect(toolRegistry.hasTool('get_canteen_info')).toBe(true);
+      expect(toolRegistry.hasTool('update_preferences')).toBe(true);
       expect(toolRegistry.hasTool('create_meal_plan')).toBe(true);
     });
 
@@ -427,19 +430,77 @@ describe('AI Chat (e2e)', () => {
   });
 
   describe('Tool Execution', () => {
+    let context: ToolContext;
+    let criticContext: ToolContext;
+    let toolSessionIds: string[] = [];
+    let mealPlanDishes: Dish[] = [];
+    const planDate = '2026-10-09';
+
+    beforeAll(async () => {
+      const [session, criticSession] = await prisma.$transaction([
+        prisma.aISession.create({ data: { userId, scene: 'meal_planner' } }),
+        prisma.aISession.create({ data: { userId, scene: 'dish_critic' } }),
+      ]);
+      toolSessionIds = [session.id, criticSession.id];
+      context = {
+        userId: session.userId,
+        sessionId: session.id,
+        scene: session.scene,
+        localTime: `${planDate}T12:00:00Z`,
+      };
+      criticContext = {
+        userId: criticSession.userId,
+        sessionId: criticSession.id,
+        scene: criticSession.scene,
+      };
+
+      const canteen = await prisma.canteen.findFirstOrThrow({
+        orderBy: { id: 'asc' },
+      });
+      mealPlanDishes = await prisma.$transaction(
+        [
+          { name: 'AI E2E 鸡肉饭', price: 12 },
+          { name: 'AI E2E 清炒时蔬', price: 5 },
+        ].map((dish) =>
+          prisma.dish.create({
+            data: {
+              ...dish,
+              tags: [],
+              images: [],
+              ingredients: [],
+              allergens: [],
+              canteenId: canteen.id,
+              canteenName: canteen.name,
+              windowName: 'AI E2E 窗口',
+              status: 'online',
+              availableMealTime: ['lunch'],
+            },
+          }),
+        ),
+      );
+    });
+
+    afterAll(async () => {
+      await Promise.all([
+        prisma.dish.deleteMany({
+          where: { id: { in: mealPlanDishes.map((dish) => dish.id) } },
+        }),
+        prisma.aISession.deleteMany({ where: { id: { in: toolSessionIds } } }),
+      ]);
+    });
+
     it('should execute get_canteen_info tool', async () => {
       const toolRegistry = app.get(ToolRegistryService);
       const result = await toolRegistry.executeTool(
         'get_canteen_info',
         {},
-        { userId, sessionId: 'test' },
+        context,
       );
 
       expect(Array.isArray(result)).toBe(true);
-      if (result.length > 0) {
-        expect(result[0]).toHaveProperty('id');
-        expect(result[0]).toHaveProperty('name');
-      }
+      expect(result.length).toBeGreaterThan(0);
+      expect(result[0]).toHaveProperty('id');
+      expect(result[0]).toHaveProperty('name');
     });
 
     it('should execute recommend_dishes tool', async () => {
@@ -447,7 +508,7 @@ describe('AI Chat (e2e)', () => {
       const result = await toolRegistry.executeTool(
         'recommend_dishes',
         { mealTime: 'lunch' },
-        { userId, sessionId: 'test', localTime: '2025-01-01T12:00:00Z' },
+        context,
       );
 
       expect(Array.isArray(result)).toBe(true);
@@ -458,7 +519,7 @@ describe('AI Chat (e2e)', () => {
       const result = await toolRegistry.executeTool(
         'search_dishes',
         { keyword: '鱼' },
-        { userId, sessionId: 'test' },
+        context,
       );
 
       expect(Array.isArray(result)).toBe(true);
@@ -469,7 +530,7 @@ describe('AI Chat (e2e)', () => {
       const result = await toolRegistry.executeTool(
         'get_my_favorites',
         {},
-        { userId, sessionId: 'test' },
+        context,
       );
 
       expect(Array.isArray(result)).toBe(true);
@@ -480,7 +541,7 @@ describe('AI Chat (e2e)', () => {
       const result = await toolRegistry.executeTool(
         'get_my_history',
         {},
-        { userId, sessionId: 'test' },
+        context,
       );
 
       expect(Array.isArray(result)).toBe(true);
@@ -491,7 +552,7 @@ describe('AI Chat (e2e)', () => {
       const result = await toolRegistry.executeTool(
         'get_popular_dishes',
         { limit: 5 },
-        { userId, sessionId: 'test' },
+        context,
       );
 
       expect(Array.isArray(result)).toBe(true);
@@ -499,126 +560,251 @@ describe('AI Chat (e2e)', () => {
 
     it('should execute dish_reviews tool', async () => {
       const toolRegistry = app.get(ToolRegistryService);
-
-      // Get a dish first
-      const dishes = await prisma.dish.findMany({ take: 1 });
-      if (dishes.length > 0) {
-        const result = await toolRegistry.executeTool(
-          'get_dish_reviews',
-          { dishId: dishes[0].id },
-          { userId, sessionId: 'test' },
-        );
-
-        expect(Array.isArray(result)).toBe(true);
-      }
-    });
-
-    it('should execute update_preferences tool', async () => {
-      const toolRegistry = app.get(ToolRegistryService);
-
-      // Check if tool exists first
-      const hasUpdatePreferences = toolRegistry.hasTool(
-        'update_user_preferences',
+      const result = await toolRegistry.executeTool(
+        'get_dish_reviews',
+        { dishId: mealPlanDishes[0].id },
+        context,
       );
-      const hasAlternateName = toolRegistry.hasTool('update_preferences');
 
-      if (hasUpdatePreferences || hasAlternateName) {
-        const toolName = hasUpdatePreferences
-          ? 'update_user_preferences'
-          : 'update_preferences';
-        const result = await toolRegistry.executeTool(
-          toolName,
+      expect(result).toEqual([]);
+    });
+
+    it('should create a preference confirmation draft without saving it', async () => {
+      const toolRegistry = app.get(ToolRegistryService);
+      const before = await prisma.user.findUniqueOrThrow({
+        where: { id: userId },
+        include: { preferences: true },
+      });
+      const preferences = {
+        tastePreferences: {
+          spicyLevel: ((before.preferences?.spicyLevel ?? 0) + 1) % 6,
+        },
+      };
+      const allergens = before.allergens.includes('花生')
+        ? before.allergens.filter((allergen) => allergen !== '花生')
+        : [...before.allergens, '花生'];
+      const result = await toolRegistry.executeTool(
+        'update_preferences',
+        { ...preferences, allergens },
+        context,
+      );
+
+      expect(result).toEqual({
+        summary: '请核对偏好变更，确认后保存。',
+        previewData: {
+          before: {
+            preferences: {
+              tastePreferences: {
+                spicyLevel: before.preferences?.spicyLevel ?? 0,
+                sweetness: before.preferences?.sweetness ?? 0,
+                saltiness: before.preferences?.saltiness ?? 0,
+                oiliness: before.preferences?.oiliness ?? 0,
+              },
+            },
+            allergens: before.allergens,
+          },
+          after: { preferences, allergens },
+        },
+        confirmAction: {
+          api: '/user/profile',
+          method: 'PUT',
+          body: { preferences, allergens },
+        },
+      });
+      expect(
+        await prisma.user.findUniqueOrThrow({
+          where: { id: userId },
+          include: { preferences: true },
+        }),
+      ).toEqual(before);
+    });
+
+    it('should reject obsolete preference fields', async () => {
+      const toolRegistry = app.get(ToolRegistryService);
+      await expect(
+        toolRegistry.executeTool(
+          'update_preferences',
           { dietary_restrictions: ['vegetarian'] },
-          { userId, sessionId: 'test' },
-        );
-
-        // Result might be a string message or an object with success property
-        expect(result).toBeDefined();
-        if (typeof result === 'string') {
-          expect(result).toContain('updated');
-        } else {
-          expect(result).toHaveProperty('success');
-        }
-      } else {
-        // Tool not registered, skip this test
-        expect(true).toBe(true);
-      }
+          context,
+        ),
+      ).rejects.toThrow(
+        '工具参数无效: 参数 must NOT have additional properties',
+      );
     });
 
-    it('should execute create_meal_plan tool or handle validation', async () => {
+    it('should create and display a same-canteen meal draft without saving it', async () => {
       const toolRegistry = app.get(ToolRegistryService);
+      const before = await prisma.mealPlan.findMany({
+        where: { userId },
+        include: { dishes: true },
+        orderBy: { id: 'asc' },
+      });
+      const dishIds = mealPlanDishes.map((dish) => dish.id);
+      const result = await toolRegistry.executeTool(
+        'create_meal_plan',
+        {
+          dishIds,
+          startDate: planDate,
+          endDate: planDate,
+          mealTime: 'lunch',
+          totalBudget: 17,
+        },
+        context,
+      );
 
-      // Get some dishes first
-      const dishes = await prisma.dish.findMany({ take: 2 });
-      if (dishes.length > 0) {
-        try {
-          // Use proper date format as required by the tool
-          const today = new Date();
-          const dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
-
-          const result = await toolRegistry.executeTool(
-            'create_meal_plan',
-            {
-              dishIds: dishes.map((d) => d.id),
-              startDate: dateStr,
-              endDate: dateStr,
-              mealTime: 'lunch',
-            },
-            { userId, sessionId: 'test' },
-          );
-
-          expect(result).toBeDefined();
-        } catch (error) {
-          // If tool fails due to validation, that's expected
-          expect(error.message).toContain('日期格式');
-        }
-      }
+      expect(result.summary).toBe(`为你安排了${planDate}午餐。`);
+      expect(result.previewData).toMatchObject({
+        startDate: planDate,
+        endDate: planDate,
+        mealTime: 'lunch',
+        dishes: mealPlanDishes.map((dish) => ({
+          id: dish.id,
+          name: dish.name,
+          canteenId: dish.canteenId,
+          price: dish.price,
+        })),
+      });
+      expect(result.previewData.dishes.map((dish) => dish.id)).toEqual(dishIds);
+      expect(result.confirmAction).toEqual({
+        api: '/meal-plans',
+        method: 'POST',
+        body: {
+          startDate: planDate,
+          endDate: planDate,
+          mealTime: 'lunch',
+          dishes: dishIds,
+        },
+      });
+      expect(result.constraints).toEqual({ totalBudget: 17 });
+      await expect(
+        toolRegistry.executeTool(
+          'display_content',
+          { type: 'meal_plan', data: result },
+          context,
+        ),
+      ).resolves.toEqual([result]);
+      expect(
+        await prisma.mealPlan.findMany({
+          where: { userId },
+          include: { dishes: true },
+          orderBy: { id: 'asc' },
+        }),
+      ).toEqual(before);
     });
 
-    it('should execute content_display tool or handle parameter requirements', async () => {
+    it.each([
+      {
+        startDate: '2026-02-31',
+        endDate: '2026-03-03',
+        message: '日期无效。请使用有效的 YYYY-MM-DD 日期。',
+      },
+      {
+        startDate: '2026-10-10',
+        endDate: '2026-10-09',
+        message: '结束日期不能早于开始日期。',
+      },
+    ])('should reject an invalid meal date interval: %j', async (interval) => {
       const toolRegistry = app.get(ToolRegistryService);
+      await expect(
+        toolRegistry.executeTool(
+          'create_meal_plan',
+          {
+            dishIds: mealPlanDishes.map((dish) => dish.id),
+            startDate: interval.startDate,
+            endDate: interval.endDate,
+            mealTime: 'lunch',
+          },
+          context,
+        ),
+      ).rejects.toThrow(interval.message);
+    });
 
-      try {
-        // Get some dishes first for IDs
-        const dishes = await prisma.dish.findMany({ take: 3 });
+    it.each([
+      {
+        mealTime: 'lunch',
+        totalBudget: 16,
+        message: '所选菜品总价17.00元，超过整餐预算16元。请重新搭配。',
+      },
+      {
+        mealTime: 'dinner',
+        totalBudget: 17,
+        message: '所选菜品当前不供应该餐次。请重新查询可供应的菜品。',
+      },
+    ])('should enforce meal constraints: %j', async (constraints) => {
+      const toolRegistry = app.get(ToolRegistryService);
+      await expect(
+        toolRegistry.executeTool(
+          'create_meal_plan',
+          {
+            dishIds: mealPlanDishes.map((dish) => dish.id),
+            startDate: planDate,
+            endDate: planDate,
+            mealTime: constraints.mealTime,
+            totalBudget: constraints.totalBudget,
+          },
+          context,
+        ),
+      ).rejects.toThrow(constraints.message);
+    });
 
-        if (dishes.length > 0) {
-          const result = await toolRegistry.executeTool(
-            'display_content',
-            {
-              type: 'dish',
-              ids: dishes.map((d) => d.id),
-            },
-            { userId, sessionId: 'test' },
-          );
+    it.each(['update_preferences', 'create_meal_plan'])(
+      'should reject %s in dish critic sessions',
+      async (toolName) => {
+        const toolRegistry = app.get(ToolRegistryService);
+        const params =
+          toolName === 'update_preferences'
+            ? { allergens: [] }
+            : {
+                dishIds: mealPlanDishes.map((dish) => dish.id),
+                startDate: planDate,
+                endDate: planDate,
+                mealTime: 'lunch',
+              };
+        expect(
+          toolRegistry
+            .getAllTools(criticContext.scene)
+            .map((tool) => tool.function.name),
+        ).not.toContain(toolName);
+        await expect(
+          toolRegistry.executeTool(toolName, params, criticContext),
+        ).rejects.toThrow(`当前对话场景不可使用工具: ${toolName}`);
+      },
+    );
 
-          expect(Array.isArray(result)).toBe(true);
-        }
-      } catch (error) {
-        // If tool requires specific params, that's expected behavior
-        expect(error).toBeDefined();
-      }
+    it('should display queried dish cards', async () => {
+      const toolRegistry = app.get(ToolRegistryService);
+      const result = await toolRegistry.executeTool(
+        'display_content',
+        {
+          type: 'dish',
+          ids: mealPlanDishes.map((dish) => dish.id),
+        },
+        context,
+      );
+
+      expect(result.map((card) => card.dish.id)).toEqual(
+        mealPlanDishes.map((dish) => dish.id),
+      );
+      expect(result.map((card) => card.dish.name)).toEqual(
+        mealPlanDishes.map((dish) => dish.name),
+      );
     });
 
     it('should throw error for non-existent tool', async () => {
       const toolRegistry = app.get(ToolRegistryService);
       await expect(
-        toolRegistry.executeTool(
-          'non_existent_tool',
-          {},
-          { userId, sessionId: 'test' },
-        ),
-      ).rejects.toThrow();
+        toolRegistry.executeTool('non_existent_tool', {}, context),
+      ).rejects.toThrow('工具未找到: non_existent_tool');
     });
 
-    it('should handle tool execution with invalid parameters', async () => {
+    it('should execute search_dishes with an empty keyword', async () => {
       const toolRegistry = app.get(ToolRegistryService);
 
       // Search with empty keyword should still work
       const result = await toolRegistry.executeTool(
         'search_dishes',
         { keyword: '' },
-        { userId, sessionId: 'test' },
+        context,
       );
 
       expect(Array.isArray(result)).toBe(true);
@@ -632,7 +818,7 @@ describe('AI Chat (e2e)', () => {
         const result = await toolRegistry.executeTool(
           'recommend_dishes',
           { mealTime },
-          { userId, sessionId: 'test', localTime: '2025-01-01T12:00:00Z' },
+          context,
         );
 
         expect(Array.isArray(result)).toBe(true);
@@ -889,6 +1075,7 @@ describe('AI Chat (e2e)', () => {
 
   describe('Tool Calling Chain', () => {
     let chainTestSessionId: string;
+    let context: ToolContext;
 
     beforeEach(async () => {
       const response = await request(app.getHttpServer())
@@ -898,6 +1085,15 @@ describe('AI Chat (e2e)', () => {
         .expect(201);
 
       chainTestSessionId = response.body.data.sessionId;
+      const session = await prisma.aISession.findUniqueOrThrow({
+        where: { id: chainTestSessionId },
+      });
+      context = {
+        userId: session.userId,
+        sessionId: session.id,
+        scene: session.scene,
+        localTime: '2025-01-01T12:00:00Z',
+      };
     });
 
     afterEach(async () => {
@@ -919,7 +1115,7 @@ describe('AI Chat (e2e)', () => {
       const searchResult = await toolRegistry.executeTool(
         'search_dishes',
         { keyword: '鱼' },
-        { userId, sessionId: chainTestSessionId },
+        context,
       );
 
       expect(Array.isArray(searchResult)).toBe(true);
@@ -929,7 +1125,7 @@ describe('AI Chat (e2e)', () => {
       const canteenResult = await toolRegistry.executeTool(
         'get_canteen_info',
         {},
-        { userId, sessionId: chainTestSessionId },
+        context,
       );
 
       expect(Array.isArray(canteenResult)).toBe(true);
@@ -938,11 +1134,7 @@ describe('AI Chat (e2e)', () => {
       const recommendResult = await toolRegistry.executeTool(
         'recommend_dishes',
         { mealTime: 'lunch' },
-        {
-          userId,
-          sessionId: chainTestSessionId,
-          localTime: '2025-01-01T12:00:00Z',
-        },
+        context,
       );
 
       expect(Array.isArray(recommendResult)).toBe(true);
@@ -955,25 +1147,21 @@ describe('AI Chat (e2e)', () => {
       const result1 = await toolRegistry.executeTool(
         'get_canteen_info',
         {},
-        { userId, sessionId: chainTestSessionId },
+        context,
       );
 
       expect(result1).toBeDefined();
 
       // Second tool fails (non-existent tool)
       await expect(
-        toolRegistry.executeTool(
-          'non_existent_tool',
-          {},
-          { userId, sessionId: chainTestSessionId },
-        ),
-      ).rejects.toThrow();
+        toolRegistry.executeTool('non_existent_tool', {}, context),
+      ).rejects.toThrow('工具未找到: non_existent_tool');
 
       // Third tool should still work after a failure
       const result3 = await toolRegistry.executeTool(
         'search_dishes',
         { keyword: '面' },
-        { userId, sessionId: chainTestSessionId },
+        context,
       );
 
       expect(result3).toBeDefined();
@@ -981,13 +1169,6 @@ describe('AI Chat (e2e)', () => {
 
     it('should maintain context across multiple tool calls', async () => {
       const toolRegistry = app.get(ToolRegistryService);
-
-      // Execute tools with the same context
-      const context = {
-        userId,
-        sessionId: chainTestSessionId,
-        localTime: '2025-01-01T12:00:00Z',
-      };
 
       const call1 = await toolRegistry.executeTool(
         'recommend_dishes',
@@ -1016,12 +1197,6 @@ describe('AI Chat (e2e)', () => {
     it('should handle parallel tool execution', async () => {
       const toolRegistry = app.get(ToolRegistryService);
 
-      const context = {
-        userId,
-        sessionId: chainTestSessionId,
-        localTime: '2025-01-01T12:00:00Z',
-      };
-
       // Execute multiple tools in parallel
       const results = await Promise.all([
         toolRegistry.executeTool(
@@ -1048,19 +1223,14 @@ describe('AI Chat (e2e)', () => {
       const validResult = await toolRegistry.executeTool(
         'search_dishes',
         { keyword: '鱼' },
-        { userId, sessionId: chainTestSessionId },
+        context,
       );
 
       expect(validResult).toBeDefined();
 
-      // Invalid parameters should still execute but may return empty
-      const emptyResult = await toolRegistry.executeTool(
-        'search_dishes',
-        { keyword: '' },
-        { userId, sessionId: chainTestSessionId },
-      );
-
-      expect(Array.isArray(emptyResult)).toBe(true);
+      await expect(
+        toolRegistry.executeTool('search_dishes', { keyword: 123 }, context),
+      ).rejects.toThrow('工具参数无效: 参数/keyword must be string');
     });
   });
 });

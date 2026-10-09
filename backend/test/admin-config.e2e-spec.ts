@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import request from 'supertest';
 import { AppModule } from '@/app.module';
 import { PrismaService } from '@/prisma.service';
@@ -12,6 +13,9 @@ describe('AdminConfigController (e2e)', () => {
   let normalAdminToken: string;
   let testCanteenId: string;
   let otherCanteenId: string;
+  let originalConfigs:
+    | Prisma.AdminConfigGetPayload<{ include: { items: true } }>[]
+    | undefined;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -53,10 +57,40 @@ describe('AdminConfigController (e2e)', () => {
       take: 1,
     });
     otherCanteenId = canteens[0]?.id || '';
+
+    originalConfigs = await prisma.adminConfig.findMany({
+      where: {
+        OR: [{ canteenId: null }, { canteenId: testCanteenId }],
+      },
+      include: { items: true },
+    });
   });
 
   afterAll(async () => {
-    await app.close();
+    try {
+      if (originalConfigs) {
+        const configs = originalConfigs;
+        await prisma.$transaction(async (tx) => {
+          await tx.adminConfig.deleteMany({
+            where: {
+              OR: [{ canteenId: null }, { canteenId: testCanteenId }],
+              id: { notIn: configs.map((config) => config.id) },
+            },
+          });
+
+          for (const config of configs) {
+            await tx.adminConfigItem.deleteMany({
+              where: { adminConfigId: config.id },
+            });
+            if (config.items.length > 0) {
+              await tx.adminConfigItem.createMany({ data: config.items });
+            }
+          }
+        });
+      }
+    } finally {
+      await app.close();
+    }
   });
 
   describe('GET /admin/config/templates', () => {
@@ -125,15 +159,6 @@ describe('AdminConfigController (e2e)', () => {
       expect(response.body.code).toBe(200);
       expect(response.body.data.key).toBe('review.autoApprove');
       expect(response.body.data.value).toBe('true');
-
-      // Reset to default
-      await request(app.getHttpServer())
-        .put('/admin/config/global')
-        .set('Authorization', `Bearer ${superAdminToken}`)
-        .send({
-          key: 'review.autoApprove',
-          value: 'false',
-        });
     });
 
     it('should return 403 for canteen admin trying to modify global config', async () => {
@@ -355,15 +380,6 @@ describe('AdminConfigController (e2e)', () => {
       );
       expect(reviewConfig.value).toBe('true');
       expect(reviewConfig.source).toBe('global');
-
-      // Reset global config
-      await request(app.getHttpServer())
-        .put('/admin/config/global')
-        .set('Authorization', `Bearer ${superAdminToken}`)
-        .send({
-          key: 'review.autoApprove',
-          value: 'false',
-        });
     });
 
     it('should override global config with canteen config', async () => {
@@ -409,8 +425,15 @@ describe('AdminConfigController (e2e)', () => {
         .delete(`/admin/config/canteen/${testCanteenId}/review.autoApprove`)
         .set('Authorization', `Bearer ${superAdminToken}`);
 
-      // Try to delete global config (might not exist)
-      // This ensures we test the fallback to default
+      await prisma.adminConfigItem.deleteMany({
+        where: {
+          key: 'review.autoApprove',
+          adminConfig: { canteenId: null },
+        },
+      });
+      const template = await prisma.adminConfigTemplate.findUniqueOrThrow({
+        where: { key: 'review.autoApprove' },
+      });
 
       // Get effective config
       const response = await request(app.getHttpServer())
@@ -421,9 +444,9 @@ describe('AdminConfigController (e2e)', () => {
       const reviewConfig = response.body.data.items.find(
         (i: any) => i.key === 'review.autoApprove',
       );
-      // Should have a value from default source
       expect(reviewConfig).toBeDefined();
-      expect(['global', 'default']).toContain(reviewConfig.source);
+      expect(reviewConfig.source).toBe('default');
+      expect(reviewConfig.value).toBe(template.defaultValue);
     });
   });
 

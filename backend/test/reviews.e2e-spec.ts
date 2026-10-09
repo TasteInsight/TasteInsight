@@ -207,7 +207,7 @@ describe('ReviewsController (e2e)', () => {
   });
 
   describe('/reviews (POST)', () => {
-    it('should create a review with detailed ratings', async () => {
+    it('should automatically approve and publish a review with detailed ratings by default', async () => {
       // 创建新菜品避免与 seed 数据冲突
       const canteen = await prisma.canteen.findFirst();
       const window = await prisma.window.findFirst();
@@ -249,7 +249,7 @@ describe('ReviewsController (e2e)', () => {
       expect(response.body.data.dishId).toBe(dish1.id);
       expect(response.body.data.rating).toBe(5);
       expect(response.body.data.content).toBe('很好吃！');
-      expect(response.body.data.status).toBe('pending');
+      expect(response.body.data.status).toBe('approved');
 
       // 验证详细评分
       expect(response.body.data.ratingDetails).toBeDefined();
@@ -259,6 +259,30 @@ describe('ReviewsController (e2e)', () => {
       expect(response.body.data.ratingDetails.oiliness).toBe(4);
 
       testReviewId = response.body.data.id;
+
+      const secondaryLogin = await request(app.getHttpServer())
+        .post('/auth/wechat/login')
+        .send({ code: 'secondary_user_code_placeholder' })
+        .expect(200);
+      expect(secondaryLogin.body.data.user.id).not.toBe(userId);
+
+      const publicFeed = await request(app.getHttpServer())
+        .get(`/dishes/${dish1.id}/reviews`)
+        .set(
+          'Authorization',
+          `Bearer ${secondaryLogin.body.data.token.accessToken}`,
+        )
+        .expect(200);
+      expect(publicFeed.body.data.items).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: testReviewId,
+            status: 'approved',
+            content: createReviewDto.content,
+          }),
+        ]),
+      );
+      expect(publicFeed.body.data.rating.total).toBe(1);
 
       // 清理
       await prisma.review.delete({ where: { id: testReviewId } });
