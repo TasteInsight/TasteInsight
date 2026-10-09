@@ -38,6 +38,9 @@ importers:
       '@prisma/client':
         specifier: ^6.18.0
         version: 6.18.0(prisma@6.18.0(typescript@5.9.3))(typescript@5.9.3)
+      ajv:
+        specifier: 8.17.1
+        version: 8.17.1
       ali-oss:
         specifier: ^6.23.0
         version: 6.23.0

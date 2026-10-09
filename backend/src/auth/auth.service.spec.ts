@@ -11,6 +11,8 @@ import {
 } from '@nestjs/common';
 import { of, throwError } from 'rxjs';
 import * as bcrypt from 'bcrypt';
+import { AuthGuard } from './guards/auth.guard';
+import type { ExecutionContext } from '@nestjs/common';
 
 // Mock bcrypt
 jest.mock('bcrypt', () => ({
@@ -75,6 +77,7 @@ describe('AuthService', () => {
     configService.get.mockImplementation(
       (key: string, defaultValue?: string) => {
         const configs: Record<string, string> = {
+          NODE_ENV: 'test',
           JWT_SECRET: 'test-secret',
           JWT_REFRESH_SECRET: 'test-refresh-secret',
           JWT_EXPIRATION_TIME: '3600',
@@ -95,8 +98,76 @@ describe('AuthService', () => {
   });
 
   describe('wechatLogin', () => {
+    it.each([
+      ['production', true],
+      ['production', 'true'],
+      ['development', false],
+      ['test', 'false'],
+      ['prodution', true],
+      [undefined, true],
+    ])(
+      'rejects mock code with environment %s and switch %s before external calls',
+      async (NODE_ENV, ENABLE_MOCK_AUTH) => {
+        configService.get.mockImplementation(
+          (key) => ({ NODE_ENV, ENABLE_MOCK_AUTH })[key],
+        );
+        await expect(
+          service.wechatLogin('baseline_user_code_placeholder'),
+        ).rejects.toThrow(UnauthorizedException);
+        expect(httpService.get).not.toHaveBeenCalled();
+        expect(prisma.user.findUnique).not.toHaveBeenCalled();
+        expect(jwtService.signAsync).not.toHaveBeenCalled();
+      },
+    );
+
+    it('issues a signed development token which a distinct production key rejects', async () => {
+      const jwt = new JwtService();
+      jwtService.signAsync.mockImplementation((payload, options) =>
+        jwt.signAsync(payload, options),
+      );
+      configService.get.mockImplementation(
+        (key, fallback) =>
+          ({
+            NODE_ENV: 'development',
+            ENABLE_MOCK_AUTH: true,
+            JWT_SECRET: 'dev-access-secret-'.repeat(3),
+            JWT_REFRESH_SECRET: 'dev-refresh-secret-'.repeat(3),
+          })[key] ?? fallback,
+      );
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'dev-user',
+        openId: 'baseline_user_openid',
+      });
+      const result = await service.wechatLogin(
+        'baseline_user_code_placeholder',
+      );
+      const request = {
+        headers: { authorization: `Bearer ${result.data.token.accessToken}` },
+        user: undefined,
+      };
+      const context = {
+        switchToHttp: () => ({ getRequest: () => request }),
+      } as unknown as ExecutionContext;
+      const devGuard = new AuthGuard(
+        jwt,
+        new ConfigService({ JWT_SECRET: 'dev-access-secret-'.repeat(3) }),
+      );
+      await expect(devGuard.canActivate(context)).resolves.toBe(true);
+      const prodGuard = new AuthGuard(
+        jwt,
+        new ConfigService({
+          JWT_SECRET: 'production-access-secret-'.repeat(3),
+        }),
+      );
+      await expect(prodGuard.canActivate(context)).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(httpService.get).not.toHaveBeenCalled();
+    });
+
     it('should login with baseline_user_code when mock auth is enabled', async () => {
       configService.get.mockImplementation((key: string) => {
+        if (key === 'NODE_ENV') return 'test';
         if (key === 'ENABLE_MOCK_AUTH') return 'true';
         if (key === 'JWT_SECRET') return 'test-secret';
         if (key === 'JWT_REFRESH_SECRET') return 'test-refresh-secret';
@@ -121,6 +192,7 @@ describe('AuthService', () => {
 
     it('should login with secondary_user_code when mock auth is enabled', async () => {
       configService.get.mockImplementation((key: string) => {
+        if (key === 'NODE_ENV') return 'test';
         if (key === 'ENABLE_MOCK_AUTH') return 'true';
         if (key === 'JWT_SECRET') return 'test-secret';
         if (key === 'JWT_REFRESH_SECRET') return 'test-refresh-secret';
@@ -144,6 +216,7 @@ describe('AuthService', () => {
 
     it('should login with mock_ prefix code when mock auth is enabled', async () => {
       configService.get.mockImplementation((key: string) => {
+        if (key === 'NODE_ENV') return 'test';
         if (key === 'ENABLE_MOCK_AUTH') return 'true';
         if (key === 'JWT_SECRET') return 'test-secret';
         if (key === 'JWT_REFRESH_SECRET') return 'test-refresh-secret';
@@ -169,6 +242,7 @@ describe('AuthService', () => {
 
     it('should create new user if not found', async () => {
       configService.get.mockImplementation((key: string) => {
+        if (key === 'NODE_ENV') return 'test';
         if (key === 'ENABLE_MOCK_AUTH') return 'true';
         if (key === 'JWT_SECRET') return 'test-secret';
         if (key === 'JWT_REFRESH_SECRET') return 'test-refresh-secret';
@@ -453,6 +527,7 @@ describe('AuthService', () => {
             JWT_SECRET: 'test-secret',
             JWT_REFRESH_SECRET: 'test-refresh-secret',
             JWT_EXPIRATION_TIME: '1h',
+            NODE_ENV: 'test',
             JWT_REFRESH_EXPIRATION_TIME: '7d',
             ENABLE_MOCK_AUTH: 'true',
           };
@@ -487,6 +562,7 @@ describe('AuthService', () => {
 
     it('should throw InternalServerErrorException if JWT secrets are missing', async () => {
       configService.get.mockImplementation((key: string) => {
+        if (key === 'NODE_ENV') return 'test';
         if (key === 'ENABLE_MOCK_AUTH') return 'true';
         if (key === 'JWT_SECRET') return undefined;
         if (key === 'JWT_REFRESH_SECRET') return undefined;
@@ -508,6 +584,7 @@ describe('AuthService', () => {
     it('should reject an invalid JWT expiration configuration', async () => {
       configService.get.mockImplementation(
         (key: string, defaultValue?: string) => {
+          if (key === 'NODE_ENV') return 'test';
           if (key === 'ENABLE_MOCK_AUTH') return 'true';
           if (key === 'JWT_SECRET') return 'test-secret';
           if (key === 'JWT_REFRESH_SECRET') return 'test-refresh-secret';

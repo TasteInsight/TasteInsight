@@ -173,7 +173,8 @@ jobs:
         run: pnpm test:e2e:cov
         env:
           # Application
-          APP_PORT: 3000
+          NODE_ENV: test
+          PORT: 3000
           APP_URL: http://localhost:3000
           # Database
           DATABASE_URL: ${{ env.CI_DATABASE_URL }}

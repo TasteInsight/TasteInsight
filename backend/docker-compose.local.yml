@@ -1,5 +1,7 @@
 name: tasteinsight-dev
 
+# Development infrastructure only. Run the host backend with start:dev;
+# do not merge this file into the production Compose project.
 services:
   db:
     image: pgvector/pgvector:pg15

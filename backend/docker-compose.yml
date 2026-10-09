@@ -11,7 +11,7 @@ services:
       - REDIS_PORT=6379
       - EXTERNAL_EMBEDDING_SERVICE_URL=http://embedding-service:5001
       - UPLOAD_LOCAL_PATH=/app/uploads
-      - ENABLE_MOCK_AUTH=false
+      # Production preflight rejects maintenance switches supplied as true.
     depends_on:
       db:
         condition: service_healthy

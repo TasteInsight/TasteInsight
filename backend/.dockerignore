@@ -37,6 +37,8 @@ postgres-data
 
 # Uploads (should be mounted as volume)
 uploads
+uploads-dev
+uploads-test
 
 # Nginx config (not needed in app image)
 nginx*.conf*

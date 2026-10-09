@@ -12,6 +12,7 @@ import { firstValueFrom } from 'rxjs';
 import * as bcrypt from 'bcrypt';
 import type { Admin, User } from '@prisma/client';
 import { ALL_PERMISSIONS } from './permissions.constants';
+import { mockAuthEnabled } from '../environment';
 
 interface WechatAuthResponse {
   openid?: string;
@@ -92,9 +93,16 @@ export class AuthService {
   async wechatLogin(code: string) {
     let openid: string;
 
-    // 特殊处理测试用的 code，使其能匹配 seed 创建的基础用户
-    const enableMock =
-      this.configService.get<string>('ENABLE_MOCK_AUTH') === 'true';
+    const enableMock = mockAuthEnabled({
+      NODE_ENV: this.configService.get('NODE_ENV'),
+      ENABLE_MOCK_AUTH: this.configService.get('ENABLE_MOCK_AUTH'),
+    });
+    const isMockCode =
+      code.startsWith('mock_') ||
+      code === 'baseline_user_code_placeholder' ||
+      code === 'secondary_user_code_placeholder';
+    if (isMockCode && !enableMock)
+      throw new UnauthorizedException('Mock login is disabled');
 
     if (enableMock && code === 'baseline_user_code_placeholder') {
       openid = 'baseline_user_openid';

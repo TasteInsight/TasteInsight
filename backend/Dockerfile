@@ -38,6 +38,7 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Install pnpm using corepack (不使用npm)
+ENV NODE_ENV=production
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 # Copy built assets and dependencies from builder

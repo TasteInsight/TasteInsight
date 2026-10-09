@@ -36,11 +36,12 @@ import { RecommendationModule } from './recommendation/recommendation.module';
 import { AIChatModule } from './ai-chat/ai-chat.module';
 import { resolve } from 'path';
 import type { ServerResponse } from 'http';
-import { validateEnvironment } from './environment';
+import { environmentFileOptions, validateEnvironment } from './environment';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
+      ...environmentFileOptions(process.env),
       isGlobal: true,
       validate: validateEnvironment,
     }),

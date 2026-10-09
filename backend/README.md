@@ -101,6 +101,24 @@ backend/
 | `dish-sync-queue` | 菜品数据同步处理 |
 | `embedding-queue` | 菜品嵌入向量生成（调用 Python 服务） |
 
+## AI 对话工具
+
+聊天模型根据问题选择工具并组合多轮调用。查询结果与工具错误回传模型；每次回答最多执行 10 轮工具调用，达到上限后生成不再调用工具的总结。
+
+| 工具 | 行为 |
+| --- | --- |
+| `recommend_dishes` | `scene` 支持 `guess_like`、`today`、`similar`；相似推荐需要真实 `triggerDishId`，`excludeDishIds` 排除替换前的候选。 |
+| `get_my_preferences` | 只读取当前用户的饮食偏好和过敏原，不返回账户身份信息。 |
+| `update_preferences` | 生成包含实际前后值的 `card_preferences` 确认草稿，不写入数据库。 |
+| `create_meal_plan` | 生成计划草稿；默认同一食堂，并校验当前供应、饮食限制及显式整餐预算。 |
+| `display_content` | 根据真实数据展示菜品、食堂或计划卡片；计划重校验同样经过工具注册边界。 |
+
+工具注册时编译 JSON Schema，执行前校验必填字段、类型、枚举、数量和值域，不隐式转换参数或接受未知字段。工具定义声明场景权限，模型可见清单与执行权限一致；`dish_critic` 不提供偏好变更和计划草稿工具。
+
+偏好草稿只在用户点击保存后调用既有 `PUT /user/profile` 接口。前端核对最新字段，处理重复点击、失败重试及账户归属；数据库将组合变更作为一个事务保存。拒绝、保存等卡片状态缓存于当前设备的所属账户。单次用餐条件只影响查询，不自动变成长期偏好。
+
+推荐特征缓存用于复用行为聚合；已保存偏好和过敏原实时读取。相似、个性化列表在分页前按当前菜品和饮食限制重新过滤，避免旧缓存覆盖最新设置。
+
 ## 环境准备
 
 ### 1. 安装依赖
@@ -158,6 +176,8 @@ pnpm run build
 pnpm run start:prod
 ```
 
+`start:prod` 固定 `NODE_ENV=production`，只接受进程环境注入，不读取开发 `.env`。生产必须提供有效的数据库、Redis、微信与公网 URL 配置，并使用至少 32 字节且互不相同的 access/refresh 密钥。完整校验与注入方式见 [环境配置与部署](../docs/环境配置与部署.md)。
+
 ### Docker 部署
 
 ```bash
@@ -171,7 +191,7 @@ docker compose --env-file .env.production up -d --build
 docker compose --env-file .env.production logs -f backend nginx
 ```
 
-Docker 冷启动会自动执行幂等的 `prisma migrate deploy`，并在管理员表为空时创建初始管理员；`RUN_SEED` 和 `IMPORT_DATA` 默认关闭。外部 Python 嵌入默认关闭且不启动，需要时在 `.env.production` 中同时设置 `EXTERNAL_EMBEDDING_SERVICE_ENABLED=true` 和 `COMPOSE_PROFILES=embedding`。Nginx、HTTPS 恢复、自动部署、升级及停止步骤见 [环境配置与部署](../docs/环境配置与部署.md)。
+Docker 冷启动先生成数据库 URL 并校验配置，通过后执行幂等的 `prisma migrate deploy`，管理员表为空时创建初始管理员。生产禁止开启 `ENABLE_MOCK_AUTH`、`RUN_SEED` 和 `IMPORT_DATA`。外部 Python 嵌入默认关闭且不启动，需要时在 `.env.production` 中同时设置 `EXTERNAL_EMBEDDING_SERVICE_ENABLED=true` 和 `COMPOSE_PROFILES=embedding`。Nginx、HTTPS 恢复、自动部署、升级及停止步骤见 [环境配置与部署](../docs/环境配置与部署.md)。
 
 ## 测试
 
@@ -250,6 +270,16 @@ pnpm run test:e2e:cov
 主菜撤回或删除时，子审核记录保留对来源审核记录的关联，包括已拒绝的记录。删除正式菜品不删除审核历史。旧版或导入的主菜如果没有来源审核记录且仍被子审核记录引用，需要保留该主菜，可通过下架停止展示。
 
 菜品更新接口中，省略字段表示保持原值，空字符串和空数组表示明确清空。列表的筛选与总数计算在服务端分页前执行。
+
+### 评价与回复审核
+
+评价和回复默认直接通过。管理台的“人工审核”开关开启时，后端对应的 `review.autoApprove` 或 `comment.autoApprove` 为 `false`。配置优先级为食堂配置、全局配置、模板默认值；升级默认值不会覆盖显式配置，也不会批量通过已有待审内容。菜品投稿审核保持独立。
+
+已通过且未删除的内容对所有登录用户可见。待审核或未通过的内容仅作者和有相应权限的管理员可见，待审评价不计入公开评分。本人评价通过 `GET /dishes/:dishId/reviews/mine` 读取；回复列表按当前用户过滤，并返回每条回复的 `status` 和父评价的 `canReply`。未公开评价及未通过审核的回复不能作为新回复目标。
+
+用户端提交后展示本人内容，编辑框关闭或输入清空作为成功反馈。审核状态在管理端展示，服务端据此控制公开可见性。
+
+评价审核请求必须携带列表返回的 `updatedAt`：通过请求为 `{ "expectedUpdatedAt": "ISO 时间" }`，拒绝请求还需 `reason`。审核原子校验内容快照、待审状态、删除状态和管理员食堂范围；内容更新后旧快照返回 `409`，需要重新读取后审核。
 
 ## Python 嵌入服务
 
