@@ -1196,16 +1196,28 @@ export class AdminDishesService {
       };
     });
 
-    const ratingTotal = ratingGroups.reduce((sum, group) => sum + group._count._all, 0);
-    const ratingSum = ratingGroups.reduce((sum, group) => sum + group.rating * group._count._all, 0);
-    const detail = Object.fromEntries(ratingGroups.map(group => [group.rating, group._count._all]));
+    const ratingTotal = ratingGroups.reduce(
+      (sum, group) => sum + group._count._all,
+      0,
+    );
+    const ratingSum = ratingGroups.reduce(
+      (sum, group) => sum + group.rating * group._count._all,
+      0,
+    );
+    const detail = Object.fromEntries(
+      ratingGroups.map((group) => [group.rating, group._count._all]),
+    );
 
     return {
       code: 200,
       message: 'success',
       data: {
         items,
-        rating: { average: ratingTotal ? ratingSum / ratingTotal : 0, total: ratingTotal, detail },
+        rating: {
+          average: ratingTotal ? ratingSum / ratingTotal : 0,
+          total: ratingTotal,
+          detail,
+        },
         meta: {
           page,
           pageSize,

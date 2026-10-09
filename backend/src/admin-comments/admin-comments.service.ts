@@ -21,7 +21,11 @@ export class AdminCommentsService {
     adminInfo?: any,
   ): Promise<PendingCommentListResponseDto> {
     const skip = (page - 1) * pageSize;
-    const where: any = { status: 'pending', deletedAt: null, review: { deletedAt: null } };
+    const where: any = {
+      status: 'pending',
+      deletedAt: null,
+      review: { deletedAt: null },
+    };
 
     if (adminInfo?.canteenId) {
       where.review.dish = { canteenId: adminInfo.canteenId };

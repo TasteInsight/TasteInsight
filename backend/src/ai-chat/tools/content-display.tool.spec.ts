@@ -356,7 +356,7 @@ describe('ContentDisplayTool', () => {
           { type: 'meal_plan', data: { ...mealPlanData, constraints } },
           mockContext,
         );
-        expect((result[0] as any).constraints).toEqual(constraints);
+        expect(result[0].constraints).toEqual(constraints);
         await expect(
           tool.execute(
             {

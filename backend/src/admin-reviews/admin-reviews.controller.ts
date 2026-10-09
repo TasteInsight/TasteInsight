@@ -41,7 +41,11 @@ export class AdminReviewsController {
   @Post(':id/approve')
   @RequirePermissions('review:approve')
   @HttpCode(HttpStatus.OK)
-  async approveReview(@Param('id') id: string, @Body() dto: ModerateReviewDto, @Request() req) {
+  async approveReview(
+    @Param('id') id: string,
+    @Body() dto: ModerateReviewDto,
+    @Request() req,
+  ) {
     return this.adminReviewsService.approveReview(id, dto, req.admin);
   }
 

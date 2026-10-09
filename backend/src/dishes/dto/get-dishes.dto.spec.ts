@@ -88,7 +88,7 @@ describe('GetDishesDto', () => {
   ])('continues validating nested %s fields', async (section, value) => {
     const errors = await validateRequest({
       ...createRequest(),
-      [section as string]: value,
+      [section]: value,
     });
 
     expect(errors.some((error) => error.property === section)).toBe(true);

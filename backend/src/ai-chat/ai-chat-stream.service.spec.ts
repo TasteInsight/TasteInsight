@@ -236,11 +236,15 @@ describe('AIChatService - Stream', () => {
 
     beforeEach(() => {
       prisma.aISession.findFirst.mockResolvedValue({
-        id: 's1', userId: 'u1', scene: 'general_chat', messages: [],
+        id: 's1',
+        userId: 'u1',
+        scene: 'general_chat',
+        messages: [],
       });
       prisma.aIMessage.create.mockResolvedValue({ id: 'user-message' });
       mockPromptSecurityService.validateUserInput.mockReturnValue({
-        isValid: true, sanitized: 'Hello',
+        isValid: true,
+        sanitized: 'Hello',
       });
       openaiProvider.streamChat.mockReturnValue(createAsyncGenerator([]));
     });
@@ -248,10 +252,14 @@ describe('AIChatService - Stream', () => {
     it('acknowledges only after user persistence and before provider work', async () => {
       let finishSaving!: (message: { id: string }) => void;
       let startedSaving!: () => void;
-      const saveStarted = new Promise<void>((resolve) => { startedSaving = resolve; });
+      const saveStarted = new Promise<void>((resolve) => {
+        startedSaving = resolve;
+      });
       prisma.aIMessage.create.mockImplementationOnce(() => {
         startedSaving();
-        return new Promise((resolve) => { finishSaving = resolve; });
+        return new Promise((resolve) => {
+          finishSaving = resolve;
+        });
       });
       const { events, complete } = collectEvents();
       await saveStarted;
@@ -275,43 +283,60 @@ describe('AIChatService - Stream', () => {
       ]);
     });
 
-    it.each(['session', 'input', 'database'])('does not acknowledge a rejected %s', async (failure) => {
-      if (failure === 'session') prisma.aISession.findFirst.mockResolvedValueOnce(null);
-      if (failure === 'input') {
-        mockPromptSecurityService.validateUserInput.mockReturnValueOnce({
-          isValid: false, sanitized: '',
-        });
-      }
-      if (failure === 'database') {
-        prisma.aIMessage.create.mockRejectedValueOnce(new Error('save failed'));
-      }
+    it.each(['session', 'input', 'database'])(
+      'does not acknowledge a rejected %s',
+      async (failure) => {
+        if (failure === 'session')
+          prisma.aISession.findFirst.mockResolvedValueOnce(null);
+        if (failure === 'input') {
+          mockPromptSecurityService.validateUserInput.mockReturnValueOnce({
+            isValid: false,
+            sanitized: '',
+          });
+        }
+        if (failure === 'database') {
+          prisma.aIMessage.create.mockRejectedValueOnce(
+            new Error('save failed'),
+          );
+        }
 
-      const { events, complete } = collectEvents();
-      await complete;
-      expect(events.map((event) => event.type)).toEqual(['error']);
-      expect(openaiProvider.streamChat).not.toHaveBeenCalled();
-    });
+        const { events, complete } = collectEvents();
+        await complete;
+        expect(events.map((event) => event.type)).toEqual(['error']);
+        expect(openaiProvider.streamChat).not.toHaveBeenCalled();
+      },
+    );
 
     it('retains the receipt when the provider fails before a reply', async () => {
-      openaiProvider.streamChat.mockReturnValueOnce(createAsyncGenerator([
-        { type: 'error', error: 'provider unavailable' },
-      ]));
+      openaiProvider.streamChat.mockReturnValueOnce(
+        createAsyncGenerator([
+          { type: 'error', error: 'provider unavailable' },
+        ]),
+      );
 
       const { events, complete } = collectEvents();
       await complete;
       expect(events).toEqual([
         { type: 'message_received', data: { messageId: 'user-message' } },
-        { type: 'error', data: { error: '抱歉，我现在无法处理您的请求，请稍后再试。' } },
+        {
+          type: 'error',
+          data: { error: '抱歉，我现在无法处理您的请求，请稍后再试。' },
+        },
       ]);
       expect(prisma.aIMessage.create).toHaveBeenCalledTimes(1);
     });
 
     it('acknowledges persistence even when loading provider configuration fails', async () => {
-      mockAIConfigService.getProviderConfig.mockRejectedValueOnce(new Error('configuration unavailable'));
+      mockAIConfigService.getProviderConfig.mockRejectedValueOnce(
+        new Error('configuration unavailable'),
+      );
 
       const { events, complete } = collectEvents();
       await complete;
-      expect(events.map((event) => event.type)).toEqual(['message_received', 'error']);
+      expect(events.map((event) => event.type)).toEqual([
+        'message_received',
+        'error',
+      ]);
       expect(openaiProvider.streamChat).not.toHaveBeenCalled();
     });
 
@@ -322,7 +347,10 @@ describe('AIChatService - Stream', () => {
 
       const { events, complete } = collectEvents();
       await complete;
-      expect(events.map((event) => event.type)).toEqual(['message_received', 'error']);
+      expect(events.map((event) => event.type)).toEqual([
+        'message_received',
+        'error',
+      ]);
     });
   });
 

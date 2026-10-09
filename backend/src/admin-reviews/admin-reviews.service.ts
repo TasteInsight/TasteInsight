@@ -159,7 +159,9 @@ export class AdminReviewsService {
         deletedAt: null,
         status: 'pending',
         updatedAt: new Date(dto.expectedUpdatedAt),
-        ...(adminInfo?.canteenId ? { dish: { canteenId: adminInfo.canteenId } } : {}),
+        ...(adminInfo?.canteenId
+          ? { dish: { canteenId: adminInfo.canteenId } }
+          : {}),
       },
       data: {
         status,
@@ -268,12 +270,14 @@ export class AdminReviewsService {
       deletedAt: comment.deletedAt,
       userNickname: comment.user.nickname,
       userAvatar: comment.user.avatar,
-      parentComment: comment.parentComment ? {
-        id: comment.parentComment.id,
-        userId: comment.parentComment.userId,
-        userNickname: comment.parentComment.user.nickname,
-        deleted: comment.parentComment.deletedAt !== null,
-      } : null,
+      parentComment: comment.parentComment
+        ? {
+            id: comment.parentComment.id,
+            userId: comment.parentComment.userId,
+            userNickname: comment.parentComment.user.nickname,
+            deleted: comment.parentComment.deletedAt !== null,
+          }
+        : null,
     }));
 
     return {

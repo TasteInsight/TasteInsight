@@ -93,10 +93,23 @@ describe('AdminReviewsService', () => {
     });
 
     it('preserves explicitly supplied zero intensity ratings in pending review details', async () => {
-      prisma.review.findMany.mockResolvedValue([{ ...mockReviews[0], spicyLevel: 0, sweetness: 0, saltiness: 0, oiliness: 0 }]);
+      prisma.review.findMany.mockResolvedValue([
+        {
+          ...mockReviews[0],
+          spicyLevel: 0,
+          sweetness: 0,
+          saltiness: 0,
+          oiliness: 0,
+        },
+      ]);
       prisma.review.count.mockResolvedValue(1);
       const result = await service.getPendingReviews();
-      expect(result.data.items[0].ratingDetails).toEqual({ spicyLevel: 0, sweetness: 0, saltiness: 0, oiliness: 0 });
+      expect(result.data.items[0].ratingDetails).toEqual({
+        spicyLevel: 0,
+        sweetness: 0,
+        saltiness: 0,
+        oiliness: 0,
+      });
     });
 
     it('should filter by canteenId for canteen admin', async () => {
@@ -145,12 +158,19 @@ describe('AdminReviewsService', () => {
     it('should approve a review', async () => {
       prisma.review.updateMany.mockResolvedValue({ count: 1 });
 
-      const result = await service.approveReview('r1', { expectedUpdatedAt: '2026-10-08T12:00:00.000Z' });
+      const result = await service.approveReview('r1', {
+        expectedUpdatedAt: '2026-10-08T12:00:00.000Z',
+      });
 
       expect(result.code).toBe(200);
       expect(result.message).toBe('审核通过');
       expect(prisma.review.updateMany).toHaveBeenCalledWith({
-        where: { id: 'r1', deletedAt: null, status: 'pending', updatedAt: new Date('2026-10-08T12:00:00.000Z') },
+        where: {
+          id: 'r1',
+          deletedAt: null,
+          status: 'pending',
+          updatedAt: new Date('2026-10-08T12:00:00.000Z'),
+        },
         data: { status: 'approved', rejectReason: null },
       });
       expect(dishReviewStatsService.recomputeDishStats).toHaveBeenCalledWith(
@@ -161,14 +181,20 @@ describe('AdminReviewsService', () => {
     it('should throw NotFoundException if review not found', async () => {
       prisma.review.findUnique.mockResolvedValue(null);
 
-      await expect(service.approveReview('unknown', { expectedUpdatedAt: '2026-10-08T12:00:00.000Z' })).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.approveReview('unknown', {
+          expectedUpdatedAt: '2026-10-08T12:00:00.000Z',
+        }),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw ForbiddenException if canteen admin has no access', async () => {
       await expect(
-        service.approveReview('r1', { expectedUpdatedAt: '2026-10-08T12:00:00.000Z' }, { canteenId: 'c2' }),
+        service.approveReview(
+          'r1',
+          { expectedUpdatedAt: '2026-10-08T12:00:00.000Z' },
+          { canteenId: 'c2' },
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -194,7 +220,12 @@ describe('AdminReviewsService', () => {
       expect(result.code).toBe(200);
       expect(result.message).toBe('已拒绝');
       expect(prisma.review.updateMany).toHaveBeenCalledWith({
-        where: { id: 'r1', deletedAt: null, status: 'pending', updatedAt: new Date('2026-10-08T12:00:00.000Z') },
+        where: {
+          id: 'r1',
+          deletedAt: null,
+          status: 'pending',
+          updatedAt: new Date('2026-10-08T12:00:00.000Z'),
+        },
         data: {
           status: 'rejected',
           rejectReason: 'Inappropriate',
@@ -209,13 +240,20 @@ describe('AdminReviewsService', () => {
       prisma.review.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.rejectReview('unknown', { reason: 'reason', expectedUpdatedAt: '2026-10-08T12:00:00.000Z' }),
+        service.rejectReview('unknown', {
+          reason: 'reason',
+          expectedUpdatedAt: '2026-10-08T12:00:00.000Z',
+        }),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw ForbiddenException if canteen admin has no access', async () => {
       await expect(
-        service.rejectReview('r1', { reason: 'reason', expectedUpdatedAt: '2026-10-08T12:00:00.000Z' }, { canteenId: 'c2' }),
+        service.rejectReview(
+          'r1',
+          { reason: 'reason', expectedUpdatedAt: '2026-10-08T12:00:00.000Z' },
+          { canteenId: 'c2' },
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -299,18 +337,33 @@ describe('AdminReviewsService', () => {
       expect(result.code).toBe(200);
       expect(result.data.items).toHaveLength(1);
       expect(result.data.meta.total).toBe(1);
-      expect(result.data.items[0]).toMatchObject({ userNickname: 'User 1', userAvatar: 'avatar.jpg', parentComment: null });
+      expect(result.data.items[0]).toMatchObject({
+        userNickname: 'User 1',
+        userAvatar: 'avatar.jpg',
+        parentComment: null,
+      });
     });
 
     it('returns reply target identity even when the parent comment is deleted', async () => {
-      prisma.comment.findMany.mockResolvedValue([{
-        ...mockComments[0], parentCommentId: 'parent',
-        parentComment: { id: 'parent', userId: 'u2', deletedAt: new Date(), user: { nickname: 'Parent author' } },
-      }]);
+      prisma.comment.findMany.mockResolvedValue([
+        {
+          ...mockComments[0],
+          parentCommentId: 'parent',
+          parentComment: {
+            id: 'parent',
+            userId: 'u2',
+            deletedAt: new Date(),
+            user: { nickname: 'Parent author' },
+          },
+        },
+      ]);
       prisma.comment.count.mockResolvedValue(1);
       const result = await service.getReviewComments('r1');
       expect((result.data.items[0] as any).parentComment).toEqual({
-        id: 'parent', userId: 'u2', userNickname: 'Parent author', deleted: true,
+        id: 'parent',
+        userId: 'u2',
+        userNickname: 'Parent author',
+        deleted: true,
       });
     });
 
