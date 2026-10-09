@@ -294,5 +294,11 @@ pnpm run test:e2e:cov
 pnpm run format
 
 # ESLint 检查
+pnpm run lint:check
+
+# 格式检查
+pnpm run format:check
+
+# 自动修复可修复的 ESLint 问题
 pnpm run lint
 ```

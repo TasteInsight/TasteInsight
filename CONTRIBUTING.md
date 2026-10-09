@@ -6,8 +6,8 @@
 
 ## 必需软件
 
-- **Node.js**: >= 22.x
-- **pnpm**: >= 8.x (推荐使用 pnpm)
+- **Node.js**: >= 22.13
+- **pnpm**: 11.21.0（与各子项目的 `packageManager` 一致）
 - **Git**: >= 2.x
 - **Docker**: >= 20.x (用于运行数据库)
 - **PostgreSQL**: >= 15.x
@@ -21,14 +21,16 @@ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
 nvm install 22
 nvm use 22
 
-# 2. 安装 pnpm
-npm install -g pnpm
+# 2. 验证项目指定的 pnpm
+npx --yes pnpm@11.21.0 --version
 
 # 3. 验证安装
 node -v
-pnpm -v
+npx --yes pnpm@11.21.0 --version
 git --version
 ```
+
+已有 pnpm 环境应使用 11.21.0；未配置全局 pnpm 时，可在以下命令中用 `npx --yes pnpm@11.21.0` 替代 `pnpm`，无需修改全局安装。首次调用会按需下载指定版本。
 
 # 获取代码
 

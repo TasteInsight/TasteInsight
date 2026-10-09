@@ -1,5 +1,6 @@
 {
   "name": "tasteinsight-frontend-miniapp",
+  "packageManager": "pnpm@11.21.0",
   "version": "0.0.0",
   "scripts": {
     "dev:mock": "uni --mode mock",

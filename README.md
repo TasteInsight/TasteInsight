@@ -78,8 +78,8 @@ TasteInsight/
 
 ### 环境要求
 
-- Node.js 22+
-- pnpm 8+
+- Node.js 22.13+
+- pnpm 11.21.0（与各子项目的 `packageManager` 一致）
 - PostgreSQL 15+
 - Redis 7+
 - Docker & Docker Compose（可选）

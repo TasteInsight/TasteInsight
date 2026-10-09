@@ -7,7 +7,7 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/re
 RUN apk add --no-cache python3 make g++
 
 # Install pnpm using corepack (不使用npm)
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@11.21.0 --activate
 
 WORKDIR /app
 
@@ -39,7 +39,7 @@ WORKDIR /app
 
 # Install pnpm using corepack (不使用npm)
 ENV NODE_ENV=production
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@11.21.0 --activate
 
 # Copy built assets and dependencies from builder
 COPY --from=builder /app/dist ./dist

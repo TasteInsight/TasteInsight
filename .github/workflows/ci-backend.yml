@@ -5,7 +5,7 @@ on:
 
 env:
   NODE_VERSION: '22'
-  PNPM_VERSION: '9'
+  PNPM_VERSION: '11.21.0'
   # CI 测试数据库配置
   CI_DB_USER: ci_test_user
   CI_DB_PASSWORD: ci_test_password_12345
@@ -45,10 +45,10 @@ jobs:
         run: npx prisma generate
 
       - name: Run ESLint
-        run: pnpm lint
+        run: pnpm lint:check
 
       - name: Check formatting
-        run: pnpm format --check
+        run: pnpm format:check
 
       - name: Run unit tests
         run: pnpm test:unit --runInBand
