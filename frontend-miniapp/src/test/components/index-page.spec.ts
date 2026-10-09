@@ -1,4 +1,4 @@
-import { shallowMount } from '@vue/test-utils';
+import { flushPromises, shallowMount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import IndexPage from '@/pages/index/index.vue';
 
@@ -7,6 +7,8 @@ jest.mock('@dcloudio/uni-app', () => ({
   onPullDownRefresh: jest.fn(),
   onReachBottom: jest.fn(),
   onShow: jest.fn(),
+  onBackPress: jest.fn(),
+  onHide: jest.fn(),
 }));
 
 // Mock stores
@@ -42,6 +44,13 @@ jest.mock('@/api/modules/dish', () => ({
   getDishesImages: jest.fn().mockResolvedValue({
     code: 200,
     data: { images: ['image1.jpg', 'image2.jpg'] },
+  }),
+}));
+jest.mock('@/api/modules/recommendation', () => ({
+  RecommendationScene: { HOME: 'home' },
+  getRecommendations: jest.fn().mockResolvedValue({
+    code: 200,
+    data: { items: [], meta: { page: 1, totalPages: 0 } },
   }),
 }));
 
@@ -83,7 +92,7 @@ describe('IndexPage', () => {
     useUserStore.mockReturnValue(mockUserStore);
   });
 
-  it('renders skeleton when initially loading', () => {
+  it('keeps search and filters mounted without skeletons when initially loading', () => {
     mockCanteenStore.loading = true;
     mockDishesStore.loading = true;
 
@@ -101,7 +110,10 @@ describe('IndexPage', () => {
       },
     });
 
-    expect(wrapper.findComponent({ name: 'IndexSkeleton' }).exists()).toBe(true);
+    expect(wrapper.findComponent({ name: 'IndexSkeleton' }).exists()).toBe(false);
+    expect(wrapper.find('search-bar-stub').exists()).toBe(true);
+    expect(wrapper.find('filter-bar-stub').exists()).toBe(true);
+    expect(wrapper.text()).not.toContain('没有推荐');
   });
 
   it('renders main content when not loading', async () => {
@@ -120,14 +132,14 @@ describe('IndexPage', () => {
     });
 
     // Wait for onMounted to complete and async operations to finish
-    await wrapper.vm.$nextTick();
-    await new Promise(resolve => setTimeout(resolve, 0)); // Wait for promises to resolve
+    await flushPromises();
 
     expect(wrapper.findComponent({ name: 'IndexSkeleton' }).exists()).toBe(false);
   });
 
-  it('shows canteen loading state', async () => {
+  it('keeps the first pending canteen region blank while preserving the page frame', async () => {
     mockCanteenStore.loading = true;
+    mockCanteenStore.fetchCanteenList.mockReturnValue(new Promise(() => {}));
 
     const wrapper = shallowMount(IndexPage, {
       global: {
@@ -144,10 +156,11 @@ describe('IndexPage', () => {
     });
 
     // Wait for onMounted to complete and async operations to finish
-    await wrapper.vm.$nextTick();
-    await new Promise(resolve => setTimeout(resolve, 0));
+    await flushPromises();
 
-    expect(wrapper.text()).toContain('正在加载食堂...');
+    expect(wrapper.get('.home-content').attributes('aria-busy')).toBe('true');
+    expect(wrapper.text()).not.toMatch(/正在加载|没有推荐/);
+    expect(wrapper.find('search-bar-stub').exists()).toBe(true);
   });
 
   it('shows canteen error state', async () => {
@@ -168,8 +181,7 @@ describe('IndexPage', () => {
     });
 
     // Wait for onMounted to complete and async operations to finish
-    await wrapper.vm.$nextTick();
-    await new Promise(resolve => setTimeout(resolve, 0));
+    await flushPromises();
 
     expect(wrapper.text()).toContain('网络错误');
   });

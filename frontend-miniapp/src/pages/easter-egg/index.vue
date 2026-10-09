@@ -1,699 +1,285 @@
 <template>
-  <view class="w-full min-h-screen p-4" :class="isDarkMode ? 'bg-black' : 'bg-gray-50'">
-    <view
-      class="relative rounded-xl p-6 pb-24"
-      :class="isDarkMode ? 'bg-black text-white shadow-sm' : 'bg-white shadow-sm'"
-    >
-      <!-- 控件已移至页面底部 -->
-      <view class="mb-4"></view>
+  <view class="page-content egg-page" :class="{ 'egg-dark': isDarkMode }">
+    <view v-if="isSnowing" class="snow-container" aria-hidden="true">
+      <view
+        v-for="flake in flakes"
+        :key="flake.id"
+        class="snowflake"
+        :style="{
+          left: flake.left + '%',
+          fontSize: flake.size + 'px',
+          animationDuration: flake.duration + 's',
+          animationDelay: flake.delay + 's',
+          opacity: flake.opacity,
+        }"
+        >❄</view
+      >
+    </view>
 
-      <view v-if="isSnowing" class="snow-container">
-        <view
-          v-for="f in flakes"
-          :key="f.id"
-          class="snowflake"
-          :style="{
-            left: `${f.left}%`,
-            fontSize: `${f.size}px`,
-            animationDuration: `${f.duration}s`,
-            animationDelay: `${f.delay}s`,
-            opacity: f.opacity,
-          }"
-          >❄</view
-        >
-      </view>
-      <view class="text-center">
-        <view
-          class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center"
+    <view class="egg-content">
+      <view class="egg-header">
+        <text class="egg-title">食鉴 · 隐藏实验室</text>
+        <text class="egg-muted">你发现了一个不太正经的味觉分支。</text>
+        <button
+          class="egg-button egg-text-button"
+          :aria-expanded="showSecretHint"
           @tap="toggleSecretHint"
         >
-          <text class="text-white text-xl font-bold">秘</text>
-        </view>
-        <text
-          :class="
-            isDarkMode
-              ? 'text-xl font-bold text-white block mt-4'
-              : 'text-xl font-bold text-gray-800 block mt-4'
-          "
-          >食鉴 · 隐藏实验室</text
+          玩法提示
+        </button>
+        <text v-if="showSecretHint" class="egg-note"
+          >每生成 3 道菜会触发一次变异，快速连点还能获得连击奖励。</text
         >
-        <text :class="isDarkMode ? 'text-gray-400 text-sm mt-1' : 'text-gray-500 text-sm mt-1'"
-          >你发现了一个不太正经的味觉分支。</text
-        >
-
-        <view class="mt-4 flex items-center justify-center gap-2">
-          <view
-            :class="
-              isDarkMode
-                ? 'px-3 py-1 rounded-full bg-gray-800'
-                : 'px-3 py-1 rounded-full bg-gray-100'
-            "
-          >
-            <text :class="isDarkMode ? 'text-xs text-gray-300' : 'text-xs text-gray-600'"
-              >已生成 {{ stats.dishesGenerated }} 道菜</text
-            >
-          </view>
-          <view
-            :class="
-              isDarkMode
-                ? 'px-3 py-1 rounded-full bg-gray-800'
-                : 'px-3 py-1 rounded-full bg-gray-100'
-            "
-          >
-            <text :class="isDarkMode ? 'text-xs text-gray-300' : 'text-xs text-gray-600'"
-              >变异 {{ stats.mutations }} 次</text
-            >
-          </view>
-        </view>
-
-        <view v-if="showSecretHint" class="mt-3">
-          <text class="text-xs text-gray-500">小提示：在本页点“生成”3次会触发一次变异。</text>
+        <view class="egg-appearance">
+          <view class="egg-toggle"
+            ><text>夜间模式</text
+            ><switch
+              :checked="isDarkMode"
+              color="#660874"
+              aria-label="夜间模式"
+              @change="toggleDarkMode"
+          /></view>
+          <view class="egg-toggle"
+            ><text>降雪效果</text
+            ><switch
+              :checked="isSnowing"
+              color="#660874"
+              aria-label="降雪效果"
+              @change="toggleSnow"
+          /></view>
         </view>
       </view>
 
-      <view
-        class="mt-6 rounded-xl p-4"
-        :class="isDarkMode ? 'bg-black' : 'bg-gradient-to-r from-purple-50 to-pink-50'"
-      >
-        <view class="flex items-center justify-between">
-          <text class="text-sm font-semibold" :class="isDarkMode ? 'text-white' : 'text-gray-800'"
-            >实验员等级</text
-          >
-          <view
-            :class="
-              isDarkMode ? 'px-2 py-1 rounded-full bg-black' : 'px-2 py-1 rounded-full bg-white'
-            "
-          >
-            <text :class="isDarkMode ? 'text-xs text-gray-300' : 'text-xs text-gray-700'"
-              >Lv. {{ level }}</text
-            >
-          </view>
-        </view>
-
-        <view class="mt-3 flex items-center justify-between">
-          <text class="text-xs text-gray-600">经验：{{ xpInLevel }}/{{ xpToNext }}</text>
-          <text class="text-xs text-gray-600">金币：{{ stats.coins }}</text>
-        </view>
-
+      <view class="egg-section egg-level">
+        <view class="egg-row"
+          ><text class="egg-heading">实验员 Lv. {{ level }}</text
+          ><text class="egg-muted">{{ stats.coins }} 金币</text></view
+        >
         <view
-          :class="
-            isDarkMode
-              ? 'mt-2 w-full h-2 rounded-full bg-gray-800 overflow-hidden'
-              : 'mt-2 w-full h-2 rounded-full bg-white overflow-hidden'
-          "
-        >
-          <view
-            class="h-2 rounded-full bg-purple-600"
-            :style="{ width: `${(xpInLevel / xpToNext) * 100}%` }"
-          ></view>
-        </view>
-
-        <view class="mt-3 flex items-center justify-between">
-          <text class="text-xs text-gray-600">连击最高：{{ stats.bestCombo }}</text>
-          <text class="text-xs text-gray-600">挑战最佳：{{ stats.bestChallengeCount }}</text>
-        </view>
+          class="egg-progress"
+          role="progressbar"
+          :aria-valuenow="xpInLevel"
+          :aria-valuemax="xpToNext"
+          aria-label="实验员经验"
+          ><view :style="{ width: (xpInLevel / xpToNext) * 100 + '%' }"
+        /></view>
+        <text class="egg-muted">经验 {{ xpInLevel }} / {{ xpToNext }}</text>
       </view>
 
-      <view class="mt-6 rounded-xl p-4" :class="isDarkMode ? 'bg-black' : 'bg-gray-50'">
-        <view class="flex items-center justify-between">
-          <text class="text-sm font-semibold" :class="isDarkMode ? 'text-white' : 'text-gray-800'"
-            >今日味觉签</text
-          >
-          <view class="px-2 py-1 rounded-full bg-white">
-            <text class="text-xs text-gray-500">{{ todayKey }}</text>
-          </view>
-        </view>
-        <text
-          :class="
-            isDarkMode
-              ? 'text-gray-300 text-sm leading-relaxed mt-2'
-              : 'text-gray-600 text-sm leading-relaxed mt-2'
-          "
-          >{{ fortune }}</text
+      <view class="egg-section egg-generator">
+        <text class="egg-heading">离谱菜名生成器</text>
+        <text class="egg-dish-name" aria-live="polite">{{ dishName }}</text>
+        <view class="egg-row egg-wrap"
+          ><text class="egg-muted"
+            >连击 {{ comboCount }}{{ comboCount >= 2 ? ' · 奖励加成' : '' }}</text
+          ><text class="egg-muted">灵感 {{ inspiration }} / 10</text></view
         >
+        <text class="egg-muted egg-combo-hint">{{ comboHint }}，每 3 次生成触发变异。</text>
 
-        <view class="flex items-center justify-between mt-4">
-          <button class="px-4 py-2 rounded-lg bg-purple-600 text-white text-sm" @tap="regenerate">
-            再来一签
+        <view class="egg-challenge">
+          <view class="egg-row egg-wrap"
+            ><text class="egg-subheading">10 秒连抽挑战</text
+            ><text class="egg-muted">{{ challenge.count }} / {{ challenge.target }} 道</text></view
+          >
+          <text class="egg-muted"
+            >10 秒内生成 {{ challenge.target }} 道菜，成功奖励
+            {{ CHALLENGE_REWARD_COINS }} 金币。</text
+          >
+          <view
+            class="egg-progress egg-challenge-progress"
+            role="progressbar"
+            aria-label="挑战进度"
+            :aria-valuenow="challenge.count"
+            :aria-valuemax="challenge.target"
+            ><view
+              :style="{ width: Math.min((challenge.count / challenge.target) * 100, 100) + '%' }"
+          /></view>
+          <text
+            v-if="challengeFeedback"
+            class="egg-challenge-feedback egg-muted"
+            aria-live="polite"
+            >{{ challengeFeedback }}</text
+          >
+        </view>
+        <view class="egg-play-actions">
+          <button class="egg-button egg-primary" data-action="generate" @tap="nextDish">
+            生成一道菜
           </button>
           <button
-            :class="
-              isDarkMode
-                ? 'px-4 py-2 rounded-lg bg-gray-800 text-gray-300 text-sm'
-                : 'px-4 py-2 rounded-lg bg-gray-200 text-gray-800 text-sm'
-            "
-            @tap="copyFortune"
-          >
-            复制
-          </button>
-        </view>
-      </view>
-
-      <view class="mt-6 rounded-xl p-4" :class="isDarkMode ? 'bg-black' : 'bg-gray-50'">
-        <text
-          class="text-sm font-semibold block"
-          :class="isDarkMode ? 'text-white' : 'text-gray-800'"
-          >今日任务（点亮就算完成）</text
-        >
-        <text :class="isDarkMode ? 'text-gray-400 text-xs mt-1' : 'text-gray-500 text-xs mt-1'"
-          >全部完成会解锁一条“成就签”。</text
-        >
-
-        <view class="mt-3 space-y-2">
-          <view
-            v-for="mission in missions"
-            :key="mission.id"
-            class="flex items-center justify-between rounded-lg px-3 py-2"
-            :class="
-              isMissionDone(mission.id)
-                ? isDarkMode
-                  ? 'bg-gray-800'
-                  : 'bg-white'
-                : isDarkMode
-                  ? 'bg-gray-900'
-                  : 'bg-gray-100'
-            "
-            @tap="toggleMission(mission.id)"
-          >
-            <view class="flex items-center">
-              <view
-                class="w-5 h-5 rounded-full mr-2 flex items-center justify-center"
-                :class="
-                  isMissionDone(mission.id)
-                    ? isDarkMode
-                      ? 'bg-green-800'
-                      : 'bg-green-100'
-                    : isDarkMode
-                      ? 'bg-gray-800'
-                      : 'bg-gray-200'
-                "
-              >
-                <text
-                  class="text-xs"
-                  :class="
-                    isMissionDone(mission.id)
-                      ? isDarkMode
-                        ? 'text-green-300'
-                        : 'text-green-700'
-                      : isDarkMode
-                        ? 'text-gray-400'
-                        : 'text-gray-500'
-                  "
-                >
-                  {{ isMissionDone(mission.id) ? '✓' : '·' }}
-                </text>
-              </view>
-              <text
-                class="text-sm"
-                :class="
-                  isMissionDone(mission.id)
-                    ? isDarkMode
-                      ? 'text-gray-300'
-                      : 'text-gray-700'
-                    : isDarkMode
-                      ? 'text-gray-400'
-                      : 'text-gray-600'
-                "
-              >
-                {{ mission.text }}
-              </text>
-            </view>
-            <text
-              class="text-xs"
-              :class="
-                isMissionDone(mission.id)
-                  ? 'text-green-600'
-                  : isDarkMode
-                    ? 'text-gray-500'
-                    : 'text-gray-400'
-              "
-            >
-              {{ isMissionDone(mission.id) ? '完成' : '未完成' }}
-            </text>
-          </view>
-        </view>
-      </view>
-
-      <view class="mt-6 rounded-xl p-4" :class="isDarkMode ? 'bg-black' : 'bg-gray-50'">
-        <text
-          class="text-sm font-semibold block"
-          :class="isDarkMode ? 'text-white' : 'text-gray-800'"
-          >AI胡说八道菜名生成器</text
-        >
-        <text :class="isDarkMode ? 'text-gray-300 text-sm mt-2' : 'text-gray-600 text-sm mt-2'">{{
-          dishName
-        }}</text>
-        <view class="mt-2 flex items-center justify-between">
-          <text class="text-gray-500 text-xs">提示：点 3 次会“变异”。</text>
-          <text class="text-gray-500 text-xs">灵感值：{{ inspiration }}/10</text>
-        </view>
-
-        <view
-          :class="
-            isDarkMode
-              ? 'mt-2 w-full h-2 rounded-full bg-gray-800 overflow-hidden'
-              : 'mt-2 w-full h-2 rounded-full bg-gray-200 overflow-hidden'
-          "
-        >
-          <view
-            class="h-2 rounded-full bg-blue-600"
-            :style="{ width: `${Math.min((inspiration / 10) * 100, 100)}%` }"
-          ></view>
-        </view>
-
-        <view class="mt-4">
-          <button
-            class="w-full px-4 py-2 rounded-lg bg-blue-600 text-white text-sm"
-            @tap="nextDish"
-          >
-            生成一道离谱但想吃的菜
-          </button>
-        </view>
-
-        <view class="mt-3 flex items-center justify-between">
-          <view
-            class="px-3 py-1 rounded-full"
-            :class="comboCount >= 2 ? 'bg-yellow-100' : 'bg-gray-100'"
-          >
-            <text class="text-xs" :class="comboCount >= 2 ? 'text-yellow-800' : 'text-gray-600'">
-              连击：{{ comboCount }}{{ comboCount >= 2 ? '（+奖励）' : '' }}
-            </text>
-          </view>
-          <text class="text-xs text-gray-500">{{ comboHint }}</text>
-        </view>
-
-        <view class="mt-3 flex items-center justify-between">
-          <button
-            :class="
-              isDarkMode
-                ? 'px-4 py-2 rounded-lg bg-gray-800 text-gray-300 text-sm'
-                : 'px-4 py-2 rounded-lg bg-gray-200 text-gray-800 text-sm'
-            "
-            @tap="copyDish"
-          >
-            复制菜名
-          </button>
-          <button
-            :class="
-              isDarkMode
-                ? 'px-4 py-2 rounded-lg bg-gray-800 text-gray-300 text-sm'
-                : 'px-4 py-2 rounded-lg bg-gray-200 text-gray-800 text-sm'
-            "
-            @tap="shareText"
-          >
-            复制今日组合
-          </button>
-        </view>
-      </view>
-
-      <view class="mt-6 rounded-xl p-4" :class="isDarkMode ? 'bg-gray-700' : 'bg-gray-50'">
-        <view class="flex items-center justify-between">
-          <text class="text-sm font-semibold" :class="isDarkMode ? 'text-white' : 'text-gray-800'"
-            >称号抽卡（纯属娱乐）</text
-          >
-          <view class="px-2 py-1 rounded-full" :class="isDarkMode ? 'bg-gray-600' : 'bg-white'">
-            <text class="text-xs" :class="isDarkMode ? 'text-gray-300' : 'text-gray-600'"
-              >收藏 {{ stats.titles.length }}</text
-            >
-          </view>
-        </view>
-
-        <view class="mt-2">
-          <text class="text-gray-600 text-sm">当前称号：</text>
-          <text class="text-gray-800 text-sm font-medium">{{ currentTitle }}</text>
-        </view>
-
-        <view class="mt-3 flex items-center justify-between">
-          <button class="px-4 py-2 rounded-lg bg-purple-600 text-white text-sm" @tap="drawTitle">
-            抽一张（-{{ TITLE_COST }}金币）
-          </button>
-          <button
-            class="px-4 py-2 rounded-lg bg-gray-200 text-gray-800 text-sm"
-            @tap="equipRandomTitle"
-          >
-            随机换称号
-          </button>
-        </view>
-
-        <view class="mt-3 flex flex-wrap gap-2">
-          <view
-            v-for="t in previewTitles"
-            :key="t"
-            class="px-3 py-1 rounded-full"
-            :class="isDarkMode ? 'bg-gray-600' : 'bg-white'"
-          >
-            <text class="text-xs" :class="isDarkMode ? 'text-gray-300' : 'text-gray-700'">{{
-              t
-            }}</text>
-          </view>
-          <view
-            v-if="stats.titles.length === 0"
-            class="px-3 py-1 rounded-full"
-            :class="isDarkMode ? 'bg-gray-600' : 'bg-white'"
-          >
-            <text class="text-xs" :class="isDarkMode ? 'text-gray-400' : 'text-gray-400'"
-              >先抽一张试试</text
-            >
-          </view>
-        </view>
-      </view>
-
-      <view class="mt-6 rounded-xl p-4" :class="isDarkMode ? 'bg-gray-700' : 'bg-gray-50'">
-        <view class="flex items-center justify-between">
-          <text class="text-sm font-semibold" :class="isDarkMode ? 'text-white' : 'text-gray-800'"
-            >限时挑战：10秒连抽</text
-          >
-          <view
-            class="px-2 py-1 rounded-full"
-            :class="challenge.active ? 'bg-red-100' : isDarkMode ? 'bg-gray-800' : 'bg-white'"
-          >
-            <text
-              class="text-xs"
-              :class="
-                challenge.active ? 'text-red-700' : isDarkMode ? 'text-gray-300' : 'text-gray-600'
-              "
-            >
-              {{ challenge.active ? `剩余 ${challenge.remaining}s` : '未开始' }}
-            </text>
-          </view>
-        </view>
-
-        <text class="text-gray-600 text-sm mt-2">
-          目标：10秒内生成 {{ challenge.target }} 道菜（当前 {{ challenge.count }}）。
-        </text>
-
-        <view class="mt-3 w-full h-2 rounded-full bg-gray-200 overflow-hidden">
-          <view
-            class="h-2 rounded-full bg-red-500"
-            :style="{ width: `${Math.min((challenge.count / challenge.target) * 100, 100)}%` }"
-          ></view>
-        </view>
-
-        <view class="mt-4 flex items-center justify-between">
-          <button
-            class="px-4 py-2 rounded-lg text-sm"
-            :class="challenge.active ? 'bg-gray-200 text-gray-500' : 'bg-red-600 text-white'"
+            class="egg-button egg-outline"
+            data-action="challenge"
             :disabled="challenge.active"
             @tap="startChallenge"
           >
-            开始挑战
+            {{ challenge.active ? '剩余 ' + challenge.remaining + ' 秒' : '开始挑战' }}
           </button>
-          <text class="text-xs text-gray-500">成功奖励：+{{ CHALLENGE_REWARD_COINS }}金币</text>
         </view>
+        <view class="egg-actions egg-copy-actions"
+          ><button class="egg-button" @tap="copyDish">复制菜名</button
+          ><button class="egg-button" @tap="shareText">复制今日组合</button></view
+        >
       </view>
 
-      <view
-        class="mt-6 rounded-xl p-4"
-        :class="isDarkMode ? 'bg-black' : 'bg-gradient-to-r from-blue-50 to-purple-50'"
-      >
-        <view class="flex items-center justify-between">
-          <text
-            :class="
-              isDarkMode
-                ? 'text-white text-sm font-semibold'
-                : 'text-sm font-semibold text-gray-800'
-            "
-            >味觉参数（纯属娱乐）</text
-          >
+      <view class="egg-section">
+        <view class="egg-row egg-wrap"
+          ><text class="egg-heading">今日味觉签</text
+          ><text class="egg-muted">{{ todayKey }}</text></view
+        >
+        <text class="egg-prose egg-fortune" aria-live="polite">{{ fortune }}</text>
+        <view class="egg-actions"
+          ><button class="egg-button egg-outline" @tap="regenerate">再来一签</button
+          ><button class="egg-button" @tap="copyFortune">复制</button></view
+        >
+      </view>
+
+      <view class="egg-section">
+        <view class="egg-row egg-wrap"
+          ><text class="egg-heading">今日任务</text
+          ><text class="egg-muted">{{ doneMissionsCount }} / {{ missions.length }} 完成</text></view
+        >
+        <text class="egg-muted">点亮就算完成，全部完成可解锁一条成就签。</text>
+        <view class="egg-missions">
           <button
-            :class="
-              isDarkMode
-                ? 'px-3 py-1 rounded-lg bg-black text-gray-300 text-xs'
-                : 'px-3 py-1 rounded-lg bg-white text-gray-700 text-xs'
-            "
-            @tap="randomizeFlavor"
+            v-for="mission in missions"
+            :key="mission.id"
+            class="egg-mission"
+            :class="{ 'egg-mission-done': isMissionDone(mission.id) }"
+            role="checkbox"
+            :aria-checked="isMissionDone(mission.id)"
+            @tap="toggleMission(mission.id)"
           >
-            随机一下
+            <text class="egg-mission-label">{{ mission.text }}</text
+            ><text class="egg-mission-status">{{
+              isMissionDone(mission.id) ? '已完成' : '未完成'
+            }}</text>
           </button>
         </view>
-
-        <view class="mt-3">
-          <view class="flex items-center justify-between">
-            <text :class="isDarkMode ? 'text-gray-400 text-xs' : 'text-xs text-gray-600'"
-              >辣度</text
-            >
-            <text :class="isDarkMode ? 'text-gray-400 text-xs' : 'text-xs text-gray-600'"
-              >{{ heat }}/10</text
-            >
-          </view>
-          <slider :value="heat" :min="0" :max="10" :step="1" @change="onHeatChange" />
-        </view>
-
-        <view class="mt-3">
-          <view class="flex items-center justify-between">
-            <text :class="isDarkMode ? 'text-gray-400 text-xs' : 'text-xs text-gray-600'"
-              >甜度</text
-            >
-            <text :class="isDarkMode ? 'text-gray-400 text-xs' : 'text-xs text-gray-600'"
-              >{{ sweet }}/10</text
-            >
-          </view>
-          <slider :value="sweet" :min="0" :max="10" :step="1" @change="onSweetChange" />
-        </view>
-
-        <view class="mt-3">
-          <view class="flex items-center justify-between">
-            <text :class="isDarkMode ? 'text-gray-400 text-xs' : 'text-xs text-gray-600'"
-              >咸度</text
-            >
-            <text :class="isDarkMode ? 'text-gray-400 text-xs' : 'text-xs text-gray-600'"
-              >{{ salty }}/10</text
-            >
-          </view>
-          <slider :value="salty" :min="0" :max="10" :step="1" @change="onSaltyChange" />
-        </view>
-
-        <view class="mt-3">
-          <view class="flex items-center justify-between">
-            <text :class="isDarkMode ? 'text-gray-400 text-xs' : 'text-xs text-gray-600'"
-              >油腻</text
-            >
-            <text :class="isDarkMode ? 'text-gray-400 text-xs' : 'text-xs text-gray-600'"
-              >{{ oily }}/10</text
-            >
-          </view>
-          <slider :value="oily" :min="0" :max="10" :step="1" @change="onOilyChange" />
-        </view>
-
-        <view class="mt-4">
-          <text :class="isDarkMode ? 'text-gray-300 text-sm' : 'text-gray-700 text-sm'"
-            >你的味觉结论：</text
-          >
-          <text
-            :class="
-              isDarkMode ? 'text-white text-sm font-medium' : 'text-gray-800 text-sm font-medium'
-            "
-            >{{ conclusion }}</text
-          >
-          <view class="mt-2 flex items-center justify-between">
-            <text :class="isDarkMode ? 'text-gray-400 text-xs' : 'text-gray-500 text-xs'"
-              >称号：{{ title }}</text
-            >
-            <text :class="isDarkMode ? 'text-gray-400 text-xs' : 'text-gray-500 text-xs'"
-              >建议：{{ suggestion }}</text
-            >
-          </view>
-        </view>
       </view>
 
-      <view class="mt-6 rounded-xl p-4" :class="isDarkMode ? 'bg-gray-700' : 'bg-gray-50'">
-        <text
-          class="text-sm font-semibold block"
-          :class="isDarkMode ? 'text-white' : 'text-gray-800'"
-          >你的实验记录</text
+      <view class="egg-section">
+        <view class="egg-row egg-wrap"
+          ><text class="egg-heading">称号抽卡</text
+          ><text class="egg-muted">已收藏 {{ stats.titles.length }}</text></view
         >
-        <view class="mt-3 grid grid-cols-2 gap-3">
-          <view :class="isDarkMode ? 'bg-black rounded-lg p-3' : 'bg-white rounded-lg p-3'">
-            <text :class="isDarkMode ? 'text-gray-400 text-xs' : 'text-xs text-gray-500'"
-              >总点击</text
-            >
-            <text
-              :class="
-                isDarkMode
-                  ? 'text-base font-semibold text-white block mt-1'
-                  : 'text-base font-semibold text-gray-800 block mt-1'
-              "
-              >{{ stats.plays }}</text
-            >
-          </view>
-          <view :class="isDarkMode ? 'bg-black rounded-lg p-3' : 'bg-white rounded-lg p-3'">
-            <text :class="isDarkMode ? 'text-gray-400 text-xs' : 'text-xs text-gray-500'"
-              >完成任务</text
-            >
-            <text
-              :class="
-                isDarkMode
-                  ? 'text-base font-semibold text-white block mt-1'
-                  : 'text-base font-semibold text-gray-800 block mt-1'
-              "
-              >{{ doneMissionsCount }}/{{ missions.length }}</text
-            >
-          </view>
-        </view>
-
-        <view
-          :class="isDarkMode ? 'mt-3 bg-gray-800 rounded-lg p-3' : 'mt-3 bg-white rounded-lg p-3'"
+        <text class="egg-muted">纯属娱乐 · 当前称号</text>
+        <text class="egg-current-title">{{ currentTitle }}</text>
+        <view class="egg-actions"
+          ><button class="egg-button egg-outline" @tap="drawTitle">
+            抽一张 · {{ TITLE_COST }} 金币</button
+          ><button class="egg-button" @tap="equipRandomTitle">随机换称号</button></view
         >
-          <text :class="isDarkMode ? 'text-gray-400 text-xs' : 'text-xs text-gray-500'"
-            >连续打卡</text
-          >
-          <view class="flex items-center justify-between mt-1">
-            <text
-              :class="
-                isDarkMode
-                  ? 'text-base font-semibold text-white'
-                  : 'text-base font-semibold text-gray-800'
-              "
-              >{{ stats.streak }} 天</text
-            >
-            <text :class="isDarkMode ? 'text-xs text-gray-400' : 'text-xs text-gray-500'"
-              >历史最高：{{ stats.bestStreak }} 天</text
-            >
-          </view>
-        </view>
-
-        <view class="mt-3 flex items-center justify-between">
-          <button
-            :class="
-              isDarkMode
-                ? 'px-4 py-2 rounded-lg bg-gray-800 text-gray-300 text-sm'
-                : 'px-4 py-2 rounded-lg bg-gray-200 text-gray-800 text-sm'
-            "
-            @tap="resetAll"
-          >
-            清空本页记录
-          </button>
-          <text class="text-gray-400 text-xs">仅影响彩蛋页</text>
-        </view>
-      </view>
-
-      <view class="mt-6 rounded-xl p-4" :class="isDarkMode ? 'bg-gray-700' : 'bg-gray-50'">
-        <text
-          class="text-sm font-semibold block"
-          :class="isDarkMode ? 'text-white' : 'text-gray-800'"
-          >排行榜（本机）</text
+        <view v-if="previewTitles.length" class="egg-badges"
+          ><text v-for="item in previewTitles" :key="item" class="egg-badge">{{ item }}</text></view
         >
-        <text class="text-gray-500 text-xs mt-1">基于你本地的彩蛋页记录统计。</text>
-
-        <view class="mt-3 space-y-2">
-          <view
-            :class="
-              isDarkMode
-                ? 'bg-gray-800 rounded-lg p-3 flex items-center justify-between'
-                : 'bg-white rounded-lg p-3 flex items-center justify-between'
-            "
-          >
-            <text :class="isDarkMode ? 'text-sm text-gray-300' : 'text-sm text-gray-700'"
-              >等级榜</text
-            >
-            <text
-              :class="
-                isDarkMode
-                  ? 'text-sm font-semibold text-white'
-                  : 'text-sm font-semibold text-gray-800'
-              "
-              >Lv. {{ level }}</text
-            >
-          </view>
-          <view
-            :class="
-              isDarkMode
-                ? 'bg-black rounded-lg p-3 flex items-center justify-between'
-                : 'bg-white rounded-lg p-3 flex items-center justify-between'
-            "
-          >
-            <text :class="isDarkMode ? 'text-sm text-gray-300' : 'text-sm text-gray-700'"
-              >连击榜</text
-            >
-            <text
-              :class="
-                isDarkMode
-                  ? 'text-sm font-semibold text-white'
-                  : 'text-sm font-semibold text-gray-800'
-              "
-              >{{ stats.bestCombo }}</text
-            >
-          </view>
-          <view
-            :class="
-              isDarkMode
-                ? 'bg-black rounded-lg p-3 flex items-center justify-between'
-                : 'bg-white rounded-lg p-3 flex items-center justify-between'
-            "
-          >
-            <text :class="isDarkMode ? 'text-sm text-gray-300' : 'text-sm text-gray-700'"
-              >挑战榜（10秒）</text
-            >
-            <text
-              :class="
-                isDarkMode
-                  ? 'text-sm font-semibold text-white'
-                  : 'text-sm font-semibold text-gray-800'
-              "
-              >{{ stats.bestChallengeCount }}</text
-            >
-          </view>
-          <view
-            :class="
-              isDarkMode
-                ? 'bg-black rounded-lg p-3 flex items-center justify-between'
-                : 'bg-white rounded-lg p-3 flex items-center justify-between'
-            "
-          >
-            <text :class="isDarkMode ? 'text-sm text-gray-300' : 'text-sm text-gray-700'"
-              >生成榜</text
-            >
-            <text
-              :class="
-                isDarkMode
-                  ? 'text-sm font-semibold text-white'
-                  : 'text-sm font-semibold text-gray-800'
-              "
-              >{{ stats.dishesGenerated }}</text
-            >
-          </view>
-          <view
-            :class="
-              isDarkMode
-                ? 'bg-black rounded-lg p-3 flex items-center justify-between'
-                : 'bg-white rounded-lg p-3 flex items-center justify-between'
-            "
-          >
-            <text :class="isDarkMode ? 'text-sm text-gray-300' : 'text-sm text-gray-700'"
-              >变异榜</text
-            >
-            <text
-              :class="
-                isDarkMode
-                  ? 'text-sm font-semibold text-white'
-                  : 'text-sm font-semibold text-gray-800'
-              "
-              >{{ stats.mutations }}</text
-            >
-          </view>
-        </view>
+        <text v-else class="egg-muted egg-empty">先抽一张试试</text>
       </view>
 
-      <!-- 底部开关条：夜间 / 下雪 -->
-      <view
-        class="absolute left-4 right-4 bottom-4 flex items-center justify-between p-3 rounded-lg"
-        :class="isDarkMode ? 'bg-black border border-gray-800' : 'bg-white shadow'"
-      >
-        <view class="flex items-center">
-          <text :class="isDarkMode ? 'text-white mr-2' : 'text-gray-800 mr-2'">Dark</text>
-          <switch :checked="isDarkMode" @change="toggleDarkMode" color="#8B5CF6" />
-        </view>
-        <view class="flex items-center">
-          <text :class="isDarkMode ? 'text-gray-300 mr-2' : 'text-gray-700 mr-2'">Let it snow</text>
-          <switch :checked="isSnowing" @change="toggleSnow" color="#38BDF8" />
-        </view>
-      </view>
-
-      <view class="mt-6 text-center">
-        <text :class="isDarkMode ? 'text-gray-400 text-xs' : 'text-gray-400 text-xs'"
-          >提示：这个页面不会出现在任何菜单里。</text
+      <view class="egg-section">
+        <view class="egg-row egg-wrap"
+          ><text class="egg-heading">味觉参数</text
+          ><button class="egg-button egg-text-button" @tap="randomizeFlavor">随机一下</button></view
+        >
+        <text class="egg-muted">纯属娱乐，不会修改你的饮食偏好。</text>
+        <view class="egg-slider"
+          ><view class="egg-row"
+            ><text>辣度</text><text class="egg-muted">{{ heat }} / 10</text></view
+          ><slider
+            :value="heat"
+            :min="0"
+            :max="10"
+            :step="1"
+            :active-color="isDarkMode ? '#d3a0dc' : '#660874'"
+            background-color="#d0d5dd"
+            :block-size="24"
+            aria-label="辣度"
+            @change="onHeatChange"
+        /></view>
+        <view class="egg-slider"
+          ><view class="egg-row"
+            ><text>甜度</text><text class="egg-muted">{{ sweet }} / 10</text></view
+          ><slider
+            :value="sweet"
+            :min="0"
+            :max="10"
+            :step="1"
+            :active-color="isDarkMode ? '#d3a0dc' : '#660874'"
+            background-color="#d0d5dd"
+            :block-size="24"
+            aria-label="甜度"
+            @change="onSweetChange"
+        /></view>
+        <view class="egg-slider"
+          ><view class="egg-row"
+            ><text>咸度</text><text class="egg-muted">{{ salty }} / 10</text></view
+          ><slider
+            :value="salty"
+            :min="0"
+            :max="10"
+            :step="1"
+            :active-color="isDarkMode ? '#d3a0dc' : '#660874'"
+            background-color="#d0d5dd"
+            :block-size="24"
+            aria-label="咸度"
+            @change="onSaltyChange"
+        /></view>
+        <view class="egg-slider"
+          ><view class="egg-row"
+            ><text>油腻度</text><text class="egg-muted">{{ oily }} / 10</text></view
+          ><slider
+            :value="oily"
+            :min="0"
+            :max="10"
+            :step="1"
+            :active-color="isDarkMode ? '#d3a0dc' : '#660874'"
+            background-color="#d0d5dd"
+            :block-size="24"
+            aria-label="油腻度"
+            @change="onOilyChange"
+        /></view>
+        <view class="egg-conclusion"
+          ><text class="egg-prose">{{ conclusion }}</text
+          ><view class="egg-row egg-wrap"
+            ><text class="egg-muted">称号：{{ title }}</text
+            ><text class="egg-muted">建议：{{ suggestion }}</text></view
+          ></view
         >
       </view>
+
+      <view class="egg-section">
+        <text class="egg-heading">实验记录与本机榜单</text>
+        <text class="egg-muted">仅根据本机的彩蛋页记录统计。</text>
+        <view class="egg-records">
+          <view class="egg-record"
+            ><text>等级榜</text><text>Lv. {{ level }}</text></view
+          >
+          <view class="egg-record"
+            ><text>生成榜</text><text>{{ stats.dishesGenerated }} 道</text></view
+          >
+          <view class="egg-record"
+            ><text>变异榜</text><text>{{ stats.mutations }} 次</text></view
+          >
+          <view class="egg-record"
+            ><text>连击最高</text><text>{{ stats.bestCombo }}</text></view
+          >
+          <view class="egg-record"
+            ><text>挑战最佳 · 10 秒</text><text>{{ stats.bestChallengeCount }} 道</text></view
+          >
+          <view class="egg-record"
+            ><text>总点击</text><text>{{ stats.plays }}</text></view
+          >
+          <view class="egg-record"
+            ><text>连续打卡</text><text>{{ stats.streak }} 天</text></view
+          >
+          <view class="egg-record"
+            ><text>连续打卡最高</text><text>{{ stats.bestStreak }} 天</text></view
+          >
+        </view>
+        <view class="egg-actions"
+          ><button class="egg-button egg-reset" @tap="resetAll">清空本页记录</button
+          ><text class="egg-muted">仅影响彩蛋页</text></view
+        >
+      </view>
+      <text class="egg-muted egg-footer">这个页面不会出现在任何菜单里。</text>
     </view>
   </view>
 </template>
@@ -1005,6 +591,7 @@ const comboHint = computed(() => {
   return '快速连点可触发连击';
 });
 
+const challengeFeedback = ref('');
 const challenge = ref({
   active: false,
   remaining: CHALLENGE_SECONDS,
@@ -1013,12 +600,23 @@ const challenge = ref({
 });
 
 let challengeTimer: ReturnType<typeof setInterval> | null = null;
+let challengeRound = 0;
 
 function stopChallengeTimer() {
-  if (challengeTimer) {
+  challengeRound += 1;
+  if (challengeTimer !== null) {
     clearInterval(challengeTimer);
     challengeTimer = null;
   }
+}
+
+function cancelChallenge() {
+  stopChallengeTimer();
+  if (!challenge.value.active) return;
+  challenge.value.active = false;
+  challenge.value.remaining = CHALLENGE_SECONDS;
+  challenge.value.count = 0;
+  challengeFeedback.value = '本轮挑战已取消，可以重新开始。';
 }
 
 function isMissionDone(id: string) {
@@ -1264,9 +862,10 @@ function equipRandomTitle() {
 }
 
 function startChallenge() {
+  if (challenge.value.active) return;
   ensureDailyCheckin();
   stats.value.plays += 1;
-  if (challenge.value.active) return;
+  challengeFeedback.value = '';
 
   challenge.value.active = true;
   challenge.value.remaining = CHALLENGE_SECONDS;
@@ -1275,16 +874,20 @@ function startChallenge() {
   saveStats(stats.value);
 
   stopChallengeTimer();
+  const round = challengeRound;
   challengeTimer = setInterval(() => {
+    if (round !== challengeRound || !challenge.value.active) return;
     challenge.value.remaining -= 1;
     if (challenge.value.remaining <= 0) {
       stopChallengeTimer();
       challenge.value.active = false;
 
       if (challenge.value.count >= challenge.value.target) {
+        challengeFeedback.value = `挑战成功，获得 ${CHALLENGE_REWARD_COINS} 金币。`;
         grant(20, CHALLENGE_REWARD_COINS, '挑战成功 +金币');
         if (typeof uni.vibrateShort === 'function') uni.vibrateShort();
       } else {
+        challengeFeedback.value = '本轮未达到目标，再试一次。';
         grant(3, 0, '挑战失败，再来一次');
       }
       saveStats(stats.value);
@@ -1394,7 +997,10 @@ function resetAll() {
         isSnowing: false,
       };
       didCheckInToday.value = false;
+      isDarkMode.value = false;
       isSnowing.value = false;
+      dishTapCount.value = 0;
+      challengeFeedback.value = '';
       clearFlakes();
       heat.value = 3;
       sweet.value = 2;
@@ -1424,14 +1030,8 @@ function toggleDarkMode(e: any) {
   saveStats(stats.value);
 }
 
-// 生命周期：离开页面时清理定时器
-onHide(() => {
-  stopChallengeTimer();
-});
-
-onUnload(() => {
-  stopChallengeTimer();
-});
+onHide(cancelChallenge);
+onUnload(cancelChallenge);
 
 function generateFortunePreview() {
   const opener = pickOne([
@@ -1541,21 +1141,325 @@ if (isSnowing.value) generateFlakes(14);
 </script>
 
 <style scoped>
-.snow-container {
-  position: absolute;
-  top: 0;
-  left: 0;
+.egg-page {
+  --egg-bg: #fff;
+  --egg-surface: #f4f4f5;
+  --egg-text: #1f2937;
+  --egg-muted: #667085;
+  --egg-border: #e5e7eb;
+  --egg-accent: #660874;
+  --egg-progress: #667085;
+  --egg-snow: #98a2b3;
+  background: var(--egg-bg);
+  color: var(--egg-text);
+  font-family: system-ui, sans-serif;
+}
+.egg-dark {
+  --egg-bg: #161b22;
+  --egg-surface: #252c35;
+  --egg-text: #f3f4f6;
+  --egg-muted: #bdc4ce;
+  --egg-border: #394251;
+  --egg-accent: #d3a0dc;
+  --egg-progress: #bdc4ce;
+  --egg-snow: #fff;
+}
+.egg-content {
+  box-sizing: border-box;
   width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 24px 20px calc(32px + env(safe-area-inset-bottom));
+}
+.egg-header {
+  margin-bottom: 24px;
+}
+.egg-title {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.egg-muted {
+  display: block;
+  color: var(--egg-muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+.egg-note {
+  display: block;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--egg-surface);
+  color: var(--egg-text);
+  font-size: 14px;
+  line-height: 1.65;
+}
+.egg-section {
+  padding: 24px 0;
+  border-top: 1px solid var(--egg-border);
+}
+.egg-heading {
+  display: block;
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+.egg-subheading {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.egg-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.egg-wrap {
+  flex-wrap: wrap;
+}
+.egg-appearance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  padding-top: 8px;
+}
+.egg-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  font-size: 14px;
+}
+.egg-button {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--egg-border);
+  border-radius: 10px;
+  background: var(--egg-bg);
+  color: var(--egg-text);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.egg-button::after,
+.egg-mission::after {
+  border: 0;
+}
+.egg-button:active,
+.egg-mission:active {
+  background: var(--egg-surface);
+}
+.egg-button:focus-visible,
+.egg-mission:focus-visible {
+  outline: 2px solid var(--egg-accent);
+  outline-offset: 3px;
+}
+.egg-button[disabled] {
+  background: var(--egg-surface);
+  color: var(--egg-muted);
+  border-color: var(--egg-border);
+}
+.egg-primary {
+  border-color: #660874;
+  background: #660874;
+  color: #fff;
+  font-weight: 600;
+}
+.egg-primary:active {
+  background: #51065d;
+}
+.egg-outline {
+  border-color: var(--egg-accent);
+  color: var(--egg-accent);
+}
+.egg-text-button {
+  padding: 8px 0;
+  border: 0;
+  color: var(--egg-accent);
+}
+.egg-progress {
+  height: 6px;
+  margin: 12px 0 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--egg-surface);
+}
+.egg-progress > view {
   height: 100%;
+  background: var(--egg-progress);
+  border-radius: inherit;
+}
+.egg-dish-name {
+  display: block;
+  margin: 16px 0;
+  padding: 16px;
+  border-radius: 10px;
+  background: var(--egg-surface);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.egg-combo-hint {
+  margin-top: 4px;
+}
+.egg-challenge {
+  margin-top: 20px;
+}
+.egg-challenge > .egg-muted {
+  margin-top: 4px;
+}
+.egg-challenge-progress > view {
+  background: var(--egg-accent);
+}
+.egg-play-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+.egg-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+}
+.egg-copy-actions .egg-button {
+  flex: 1;
+}
+.egg-prose {
+  display: block;
+  font-size: 16px;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+.egg-fortune {
+  margin-top: 12px;
+}
+.egg-missions {
+  margin-top: 16px;
+}
+.egg-mission {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  margin: 0;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid var(--egg-border);
+  border-radius: 0;
+  background: transparent;
+  color: var(--egg-text);
+  text-align: left;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.egg-mission:last-child {
+  border-bottom: 0;
+}
+.egg-mission-label {
+  flex: 1;
+  min-width: 0;
+}
+.egg-mission-status {
+  flex-shrink: 0;
+  color: var(--egg-muted);
+  font-size: 12px;
+}
+.egg-mission-done .egg-mission-status {
+  color: var(--egg-accent);
+}
+.egg-current-title {
+  display: block;
+  margin-top: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.egg-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+.egg-badge {
+  max-width: 100%;
+  padding: 4px 10px;
+  border: 1px solid var(--egg-border);
+  border-radius: 999px;
+  background: var(--egg-surface);
+  color: var(--egg-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.egg-empty {
+  margin-top: 12px;
+}
+.egg-slider {
+  margin-top: 20px;
+  font-size: 15px;
+}
+.egg-slider slider {
+  margin: 14px 10px 0;
+}
+.egg-conclusion {
+  margin-top: 24px;
+}
+.egg-conclusion .egg-row {
+  margin-top: 12px;
+}
+.egg-records {
+  margin-top: 12px;
+}
+.egg-record {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 44px;
+  border-bottom: 1px solid var(--egg-border);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.egg-record > text:last-child {
+  font-weight: 600;
+}
+.egg-record:last-child {
+  border-bottom: 0;
+}
+.egg-reset {
+  color: var(--egg-muted);
+}
+.egg-footer {
+  padding-top: 8px;
+}
+.snow-container {
+  position: fixed;
+  inset: 0;
   pointer-events: none;
   overflow: hidden;
-  z-index: 50;
+  z-index: 3;
 }
 .snowflake {
   position: absolute;
   top: -10%;
-  color: #fff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  color: var(--egg-snow);
   animation-name: fall;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
@@ -1563,6 +1467,27 @@ if (isSnowing.value) generateFlakes(14);
 @keyframes fall {
   to {
     transform: translateY(110vh) rotate(360deg);
+  }
+}
+@media (max-width: 340px) {
+  .egg-content {
+    padding: 20px 16px calc(24px + env(safe-area-inset-bottom));
+  }
+  .egg-play-actions,
+  .egg-actions {
+    gap: 8px;
+  }
+  .egg-button {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .egg-appearance {
+    gap: 12px 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .snow-container {
+    display: none;
   }
 }
 </style>

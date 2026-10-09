@@ -1,4 +1,4 @@
-import { ref, onMounted, reactive } from 'vue';
+import { ref, onMounted, reactive, getCurrentScope, onScopeDispose } from 'vue';
 import { getNewsList } from '@/api/modules/news';
 import type { News } from '@/types/api';
 
@@ -9,8 +9,16 @@ import type { News } from '@/types/api';
 export function useNewsList(initialParams = {}) {
   const list = ref<News[]>([]); // 新闻列表数据
   const loading = ref(false); // 是否正在加载
+  const initialized = ref(false);
   const finished = ref(false); // 是否加载完毕
   const isRefreshing = ref(false); // 下拉刷新状态
+  const error = ref('');
+  let disposed = false;
+  let failedReset = true;
+  if (getCurrentScope())
+    onScopeDispose(() => {
+      disposed = true;
+    });
 
   const meta = reactive({
     page: 1,
@@ -20,21 +28,20 @@ export function useNewsList(initialParams = {}) {
     ...initialParams,
   });
 
-  const loadData = async (reset = false) => {
-    if (loading.value || (!reset && finished.value)) return;
-
-    if (reset) {
-      meta.page = 1;
-      finished.value = false;
-      isRefreshing.value = true; // 开始刷新
-    }
+  const loadData = async (reset = false): Promise<boolean> => {
+    if (disposed || loading.value || (!reset && finished.value)) return false;
+    const page = reset ? 1 : meta.page;
+    isRefreshing.value = reset;
+    error.value = '';
+    failedReset = reset;
 
     loading.value = true;
     try {
       const res = await getNewsList({
-        page: meta.page,
+        page,
         pageSize: meta.pageSize,
       });
+      if (disposed) return false;
 
       if (res.code === 200 && res.data) {
         const newItems = res.data.items || [];
@@ -48,23 +55,21 @@ export function useNewsList(initialParams = {}) {
         Object.assign(meta, res.data.meta);
         meta.page = meta.page + 1; // 准备加载下一页
 
-        if (meta.page > meta.totalPages) {
-          finished.value = true;
-        }
+        finished.value = meta.page > meta.totalPages;
+        initialized.value = true;
+        return true;
       } else {
         console.error('获取新闻列表失败:', res.message);
-        // 如果是首次加载失败，清空列表并标记完成
-        if (reset) list.value = [];
-        finished.value = true;
+        error.value = '公告加载失败，请重试';
       }
-    } catch (error) {
-      console.error('API请求错误:', error);
-      if (reset) list.value = [];
-      finished.value = true;
+    } catch (cause) {
+      console.error('API请求错误:', cause);
+      if (!disposed) error.value = '公告加载失败，请重试';
     } finally {
       loading.value = false;
       isRefreshing.value = false; // 结束刷新
     }
+    return false;
   };
 
   const refresh = () => loadData(true);
@@ -78,10 +83,13 @@ export function useNewsList(initialParams = {}) {
   return {
     list,
     loading,
+    initialized,
     finished,
     isRefreshing,
+    error,
     meta,
     refresh,
     loadMore,
+    retry: () => loadData(failedReset),
   };
 }

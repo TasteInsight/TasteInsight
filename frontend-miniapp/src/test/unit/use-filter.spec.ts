@@ -111,17 +111,17 @@ describe('useFilter', () => {
     expect(customTags.value).toEqual([]);
   });
 
-  it('should reset current filter', () => {
-    const { activeFilter, selectedPrice, resetCurrentFilter, selectedRating } = useFilter();
+  it('should reset all draft groups', () => {
+    const { activeFilter, selectedPrice, resetDraft, selectedRating } = useFilter();
 
     activeFilter.value = 'price';
     selectedPrice.value = '10-15';
-    resetCurrentFilter();
+    resetDraft();
     expect(selectedPrice.value).toBe('');
 
     activeFilter.value = 'rating';
     selectedRating.value = 4.5;
-    resetCurrentFilter();
+    resetDraft();
     expect(selectedRating.value).toBe(0);
   });
 
@@ -240,19 +240,17 @@ describe('useFilter', () => {
     expect(f.selectedSpicyMin.value).toBe(originalSpicy);
   });
 
-  it('onCustomPriceInput and onCustomRatingInput clear selections and mark active value', () => {
+  it('custom price and rating input clear preset selections', () => {
     const f = useFilter();
     f.selectedPrice.value = '10-15';
     f.customPriceMin.value = '5';
     f.onCustomPriceInput();
     expect(f.selectedPrice.value).toBe('');
-    expect(f.hasActiveValue('price')).toBe(true);
 
     f.selectedRating.value = 4.5;
     f.customRatingMin.value = '3';
     f.onCustomRatingInput();
     expect(f.selectedRating.value).toBe(0);
-    expect(f.hasActiveValue('rating')).toBe(true);
   });
 
   it('applyFilter removes saved original state (via toggleFilter) and handles taste presence', () => {
@@ -287,10 +285,5 @@ describe('useFilter', () => {
     f.selectedOilyMin.value = 1;
     const p3 = f.applyFilter();
     expect(p3!.oiliness).toEqual({ min: 1, max: 5 });
-  });
-
-  it('hasActiveValue returns false for unknown key', () => {
-    const f = useFilter();
-    expect(f.hasActiveValue('unknown')).toBe(false);
   });
 });

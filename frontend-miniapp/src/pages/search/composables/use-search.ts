@@ -1,7 +1,9 @@
-import { ref, computed } from 'vue';
+import { ref, computed, watch, getCurrentScope, onScopeDispose, type Ref } from 'vue';
 import { getCanteenList } from '@/api/modules/canteen';
 import { getDishes } from '@/api/modules/dish';
-import type { Canteen, Window, Dish } from '@/types/api';
+import type { Canteen, Window, Dish, GetDishesRequest } from '@/types/api';
+import { useUserStore } from '@/store/modules/use-user-store';
+import { getPreferredDishSort } from '@/utils/dish-sort';
 
 /**
  * 搜索结果类型
@@ -12,14 +14,20 @@ export interface SearchResults {
   dishes: Dish[];
 }
 
+export interface SearchScope {
+  canteenId?: string;
+  windowId?: string;
+}
+
 /**
  * 搜索逻辑 Composable
  *
  * 搜索逻辑：
- * 1) 先获取食堂列表，若关键词匹配到食堂名称，则优先展示食堂卡片
- * 2) 若没有匹配的食堂，再调用 getDishes 搜索菜品（支持分页/上拉加载）
+ * 全局搜索优先匹配食堂名称；场所搜索仅查询指定食堂或窗口的菜品。
+ * 菜品查询及分页使用已提交的关键词、场所和排序快照。
  */
-export function useSearch() {
+export function useSearch(scope: Ref<SearchScope> = ref({})) {
+  const userStore = useUserStore();
   const keyword = ref('');
   const searchResults = ref<SearchResults>({
     canteens: [],
@@ -29,9 +37,26 @@ export function useSearch() {
   const loading = ref(false);
   const loadingMore = ref(false);
   const error = ref('');
+  const canteenError = ref('');
+  const loadMoreError = ref('');
   const hasSearched = ref(false);
+  const initialized = ref(false);
   const requestToken = ref(0);
   const submittedKeyword = ref('');
+  const preferredSort = () =>
+    getPreferredDishSort(userStore.userInfo?.settings?.displaySettings?.sortBy);
+  let querySort = preferredSort();
+  const scopeFilter = computed<GetDishesRequest['filter']>(() => {
+    if (scope.value.windowId) return { windowId: [scope.value.windowId] };
+    if (scope.value.canteenId) return { canteenId: [scope.value.canteenId] };
+    return {};
+  });
+  let queryFilter: GetDishesRequest['filter'] = {};
+  let disposed = false;
+  if (getCurrentScope())
+    onScopeDispose(() => {
+      disposed = true;
+    });
 
   // 分页状态
   const page = ref(1);
@@ -52,105 +77,113 @@ export function useSearch() {
   /**
    * 执行搜索（初始化第一页）
    */
-  const search = async () => {
-    if (!keyword.value.trim()) {
+  const search = async (searchTerm = keyword.value.trim(), preserveResults = false) => {
+    if (!searchTerm) {
       return;
     }
 
     const token = ++requestToken.value;
+    const session = userStore.sessionVersion;
+    const ownsQuery = () =>
+      !disposed && token === requestToken.value && session === userStore.sessionVersion;
+    const nextFilter = scopeFilter.value;
+    const keepResults =
+      preserveResults ||
+      (searchTerm === submittedKeyword.value &&
+        JSON.stringify(queryFilter) === JSON.stringify(nextFilter));
+    querySort = preferredSort();
+    queryFilter = nextFilter;
     loading.value = true;
     loadingMore.value = false;
     error.value = '';
+    canteenError.value = '';
+    loadMoreError.value = '';
     hasSearched.value = true;
-    searchResults.value = {
-      canteens: [],
-      windows: [],
-      dishes: [],
-    };
-
-    // reset pagination
-    page.value = 1;
-    hasMore.value = true;
-
-    try {
-      const searchTerm = keyword.value.trim();
-      submittedKeyword.value = searchTerm;
-      const normalized = searchTerm.toLowerCase();
-
-      // 1) 先尝试匹配食堂
-      let allCanteens: Canteen[] = [];
-      try {
-        // 逐页拉取，避免食堂数量超过单页导致漏匹配
-        const first = await getCanteenList({ page: 1, pageSize: 50 });
-        if (token !== requestToken.value) return;
-
-        if (first.code === 200 && first.data) {
-          allCanteens = first.data.items || [];
-          const totalPages = first.data.meta?.totalPages ?? 1;
-          for (let pageNum = 2; pageNum <= totalPages; pageNum += 1) {
-            const next = await getCanteenList({ page: pageNum, pageSize: 50 });
-            if (token !== requestToken.value) return;
-            if (next.code === 200 && next.data) {
-              allCanteens = [...allCanteens, ...(next.data.items || [])];
-            } else {
-              break;
-            }
-          }
-        }
-      } catch (e) {
-        if (token !== requestToken.value) return;
-        // 食堂列表拉取失败时，不中断搜索：继续走菜品搜索作为兜底
-        console.error('获取食堂列表失败:', e);
-      }
-
-      const matchedCanteens = allCanteens.filter(c =>
-        (c.name || '').toLowerCase().includes(normalized)
-      );
-      if (matchedCanteens.length > 0) {
-        searchResults.value = {
-          canteens: matchedCanteens,
-          windows: [],
-          dishes: [],
-        };
-        hasMore.value = false;
-        return;
-      }
-
-      // 2) 未匹配到食堂，再搜索菜品（第一页）
-      const response = await getDishes({
-        filter: {},
-        search: {
-          keyword: searchTerm,
-        },
-        sort: {},
-        pagination: {
-          page: page.value,
-          pageSize: pageSize.value,
-        },
-      });
-
-      if (token !== requestToken.value) return;
-
-      if (response.code === 200 && response.data) {
-        searchResults.value.dishes = response.data.items || [];
-        // update pagination state
-        const meta = response.data.meta || { page: page.value, totalPages: 1 };
-        page.value = meta.page || page.value;
-        hasMore.value = (meta.page ?? 1) < (meta.totalPages ?? 1);
-      } else {
-        error.value = response.message || '搜索失败';
-      }
-    } catch (err: any) {
-      if (token !== requestToken.value) return;
-      console.error('搜索失败:', err);
-      error.value = err.message || '搜索失败，请稍后重试';
+    if (!keepResults) {
+      initialized.value = false;
       searchResults.value = {
         canteens: [],
         windows: [],
         dishes: [],
       };
+    }
+
+    // reset pagination
+    hasMore.value = false;
+
+    try {
+      submittedKeyword.value = searchTerm;
+      if (!queryFilter.canteenId && !queryFilter.windowId) {
+        const normalized = searchTerm.toLowerCase();
+        let allCanteens: Canteen[] = [];
+        try {
+          // 逐页拉取，避免食堂数量超过单页导致漏匹配
+          const first = await getCanteenList({ page: 1, pageSize: 50 });
+          if (!ownsQuery()) return;
+
+          if (first.code !== 200 || !first.data)
+            throw new Error(first.message || '食堂搜索失败，请重试');
+          allCanteens = first.data.items || [];
+          const totalPages = first.data.meta?.totalPages ?? 1;
+          for (let pageNum = 2; pageNum <= totalPages; pageNum += 1) {
+            const next = await getCanteenList({ page: pageNum, pageSize: 50 });
+            if (!ownsQuery()) return;
+            if (next.code !== 200 || !next.data)
+              throw new Error(next.message || '食堂搜索失败，请重试');
+            allCanteens = [...allCanteens, ...(next.data.items || [])];
+          }
+        } catch (e) {
+          if (!ownsQuery()) return;
+          // 食堂列表失败时继续搜索菜品
+          console.error('获取食堂列表失败:', e);
+          canteenError.value = e instanceof Error ? e.message : '食堂搜索失败，请重试';
+        }
+
+        const matchedCanteens = allCanteens.filter(c =>
+          (c.name || '').toLowerCase().includes(normalized)
+        );
+        if (matchedCanteens.length > 0) {
+          searchResults.value = {
+            canteens: matchedCanteens,
+            windows: [],
+            dishes: [],
+          };
+          hasMore.value = false;
+          initialized.value = true;
+          return;
+        }
+      }
+
+      const response = await getDishes({
+        filter: { ...queryFilter },
+        search: {
+          keyword: searchTerm,
+        },
+        sort: { ...querySort },
+        pagination: {
+          page: 1,
+          pageSize: pageSize.value,
+        },
+      });
+
+      if (!ownsQuery()) return;
+
+      if (response.code === 200 && response.data) {
+        searchResults.value = { canteens: [], windows: [], dishes: response.data.items || [] };
+        initialized.value = true;
+        // update pagination state
+        const meta = response.data.meta || { page: 1, totalPages: 1 };
+        page.value = meta.page || 1;
+        hasMore.value = (meta.page ?? 1) < (meta.totalPages ?? 1);
+      } else {
+        error.value = response.message || '搜索失败';
+      }
+    } catch (err: any) {
+      if (!ownsQuery()) return;
+      console.error('搜索失败:', err);
+      error.value = err.message || '搜索失败，请稍后重试';
     } finally {
-      if (token === requestToken.value) {
+      if (ownsQuery()) {
         loading.value = false;
       }
     }
@@ -160,21 +193,26 @@ export function useSearch() {
    * 加载下一页（上拉触发）
    */
   const loadMore = async () => {
-    if (!hasSearched.value || loading.value || loadingMore.value || !hasMore.value) return;
+    if (!hasSearched.value || loading.value || loadingMore.value || !hasMore.value || error.value)
+      return;
 
     loadingMore.value = true;
+    loadMoreError.value = '';
     const nextPage = page.value + 1;
     const token = requestToken.value; // do not bump token for loadMore
+    const session = userStore.sessionVersion;
+    const ownsQuery = () =>
+      !disposed && token === requestToken.value && session === userStore.sessionVersion;
 
     try {
       const response = await getDishes({
-        filter: {},
+        filter: { ...queryFilter },
         search: { keyword: submittedKeyword.value },
-        sort: {},
+        sort: { ...querySort },
         pagination: { page: nextPage, pageSize: pageSize.value },
       });
 
-      if (token !== requestToken.value) return;
+      if (!ownsQuery()) return;
 
       if (response.code === 200 && response.data) {
         const items = response.data.items || [];
@@ -182,21 +220,23 @@ export function useSearch() {
         const meta = response.data.meta || { page: nextPage, totalPages: 1 };
         page.value = meta.page || nextPage;
         hasMore.value = (meta.page ?? page.value) < (meta.totalPages ?? 1);
+      } else {
+        loadMoreError.value = response.message || '加载更多失败，请重试';
       }
     } catch (err) {
-      if (token !== requestToken.value) return;
+      if (!ownsQuery()) return;
       console.error('加载更多失败:', err);
+      loadMoreError.value = err instanceof Error ? err.message : '加载更多失败，请重试';
     } finally {
-      if (token === requestToken.value) loadingMore.value = false;
+      if (ownsQuery()) loadingMore.value = false;
     }
   };
 
   /**
    * 清空搜索结果
    */
-  const clearSearch = () => {
+  const resetResults = () => {
     requestToken.value++;
-    keyword.value = '';
     submittedKeyword.value = '';
     searchResults.value = {
       canteens: [],
@@ -204,12 +244,27 @@ export function useSearch() {
       dishes: [],
     };
     error.value = '';
+    canteenError.value = '';
+    loadMoreError.value = '';
     hasSearched.value = false;
+    initialized.value = false;
     loading.value = false;
     loadingMore.value = false;
     page.value = 1;
     hasMore.value = true;
   };
+  const clearSearch = () => {
+    keyword.value = '';
+    resetResults();
+  };
+
+  const refreshPreferredSort = () => {
+    if (hasSearched.value && JSON.stringify(querySort) !== JSON.stringify(preferredSort())) {
+      return search(submittedKeyword.value, true);
+    }
+  };
+  const retrySearch = () => search(submittedKeyword.value, true);
+  watch(() => userStore.sessionVersion, clearSearch, { flush: 'sync' });
 
   /**
    * 跳转到添加菜品页面
@@ -227,13 +282,20 @@ export function useSearch() {
     loading,
     loadingMore,
     error,
+    canteenError,
+    loadMoreError,
+    submittedKeyword,
     hasSearched,
+    initialized,
     page,
     pageSize,
     hasMore,
     search,
     loadMore,
     clearSearch,
+    resetResults,
+    retrySearch,
+    refreshPreferredSort,
     goToAddDish,
   };
 }

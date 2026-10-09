@@ -1,70 +1,72 @@
 <template>
-  <view class="w-full min-h-screen p-4 bg-gray-50">
-    <!-- 骨架屏：首次加载时显示 -->
-    <AllergensSkeleton v-if="loading" />
-
-    <template v-else>
-      <!-- 说明文字 -->
-      <view class="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-4">
-        <text class="text-sm text-blue-700 leading-relaxed"
-          >设置您的过敏原信息，系统会为您过滤包含这些成分的菜品。</text
+  <SettingsPage v-bind="pageState" :can-save="canSave" @retry="loadProfile" @save="handleSave">
+    <view class="settings-note"
+      >过敏原用于过滤推荐菜品。菜品资料可能不完整，就餐前请向窗口核对食材及交叉接触情况。</view
+    >
+    <view class="settings-section">
+      <label for="allergens-input" class="settings-title">过敏原列表</label>
+      <textarea
+        id="allergens-input"
+        v-model="form.allergens"
+        class="settings-field allergens-input"
+        :disabled="!canEdit"
+        placeholder="多个过敏原用逗号分隔"
+        maxlength="200"
+      />
+      <text class="settings-hint allergens-count">{{ form.allergens.length }}/200</text>
+    </view>
+    <view class="settings-section">
+      <text class="settings-title">常见过敏原</text>
+      <view class="settings-options">
+        <button
+          v-for="item in commonAllergens"
+          :key="item"
+          class="settings-button"
+          :class="{ 'settings-option--selected': isSelected(item) }"
+          :aria-pressed="isSelected(item)"
+          :disabled="!canEdit"
+          @click="toggleAllergen(item)"
         >
+          {{ item }}
+        </button>
       </view>
-
-      <!-- 过敏原输入 -->
-      <view class="bg-white rounded-lg p-6 mb-4 shadow-sm">
-        <text class="text-lg font-semibold text-gray-800 mb-4 block">过敏原列表</text>
-        <view class="relative">
-          <textarea
-            v-model="form.allergens"
-            class="w-full p-3 border border-gray-200 rounded-lg text-base focus:border-ts-purple focus:ring-1 focus:ring-purple-100 transition-all"
-            style="min-height: 120px"
-            placeholder="请输入过敏原，多个过敏原用逗号分隔"
-            maxlength="200"
-          />
-          <text class="absolute right-3 bottom-3 text-xs text-gray-400"
-            >{{ form.allergens.length }}/200</text
-          >
-        </view>
-      </view>
-
-      <!-- 常见过敏原快速选择 -->
-      <view class="bg-white rounded-lg p-6 mb-4 shadow-sm">
-        <text class="text-lg font-semibold text-gray-800 mb-4 block">常见过敏原</text>
-        <view class="flex flex-wrap gap-3">
-          <view
-            v-for="item in commonAllergens"
-            :key="item"
-            class="px-4 py-2 rounded-full text-sm border transition-all active:scale-95"
-            :class="
-              isSelected(item)
-                ? 'bg-purple-50 border-ts-purple text-ts-purple font-medium'
-                : 'bg-white border-gray-200 text-gray-600'
-            "
-            @click="toggleAllergen(item)"
-          >
-            <text>{{ item }}</text>
-          </view>
-        </view>
-      </view>
-
-      <!-- 保存按钮 -->
-      <button
-        class="w-full py-3.5 bg-ts-purple text-white rounded-full text-base font-semibold shadow-md active:bg-purple-800 active:scale-[0.99] transition-all mt-8"
-        :class="{ 'opacity-70': saving }"
-        :disabled="saving"
-        @click="handleSave"
-      >
-        <text>{{ saving ? '保存中...' : '保存设置' }}</text>
-      </button>
-    </template>
-  </view>
+    </view>
+  </SettingsPage>
 </template>
-
 <script setup lang="ts">
+import { computed } from 'vue';
+import { onBackPress } from '@dcloudio/uni-app';
 import { useAllergens } from '../composables/use-allergens';
-import { AllergensSkeleton } from '@/components/skeleton';
-
-const { form, saving, loading, commonAllergens, isSelected, toggleAllergen, handleSave } =
-  useAllergens();
+import SettingsPage from './SettingsPage.vue';
+const state = useAllergens();
+const {
+  form,
+  canEdit,
+  canSave,
+  loadProfile,
+  commonAllergens,
+  isSelected,
+  toggleAllergen,
+  handleSave,
+  handleBackPress,
+} = state;
+const pageState = computed(() => ({
+  loading: state.loading.value,
+  initialized: state.initialized.value,
+  loadError: state.loadError.value,
+  saving: state.saving.value,
+  saved: state.saved.value,
+  dirty: state.dirty.value,
+  restoredDraft: state.restoredDraft.value,
+}));
+onBackPress(handleBackPress);
 </script>
+<style scoped>
+.allergens-input {
+  height: 140px;
+}
+.allergens-count {
+  margin-top: 8px;
+  text-align: right;
+}
+</style>

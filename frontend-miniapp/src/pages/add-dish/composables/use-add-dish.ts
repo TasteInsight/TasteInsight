@@ -6,6 +6,7 @@ import { uploadImage } from '@/api/modules/upload';
 import type { DishUserCreateRequest, Canteen, Window } from '@/types/api';
 
 type AddDishFormData = DishUserCreateRequest & {
+  name: string;
   floor: string;
 };
 
@@ -58,7 +59,31 @@ export function useAddDish() {
   // 状态
   const loading = ref(false);
   const submitting = ref(false);
+  const submitted = ref(false);
+  const busy = computed(() => submitting.value || submitted.value);
   const error = ref('');
+  const canteenError = ref('');
+  const validationAttempted = ref(false);
+  const validationErrors = computed(() => {
+    const errors: Record<string, string> = {};
+    if (!formData.name.trim()) errors.name = '请输入菜品名称';
+    if (!Number.isFinite(formData.price) || formData.price < 0) errors.price = '价格应为 0 或正数';
+    if (!formData.canteenName.trim()) errors.canteen = '请选择所在食堂';
+    if (!formData.availableMealTime.length) errors.availableMealTime = '请选择至少一个供应时段';
+    return errors;
+  });
+  const fieldErrors = computed(() => (validationAttempted.value ? validationErrors.value : {}));
+  const snapshot = () =>
+    JSON.stringify({
+      formData,
+      customTag: customTagInput.value,
+      customAllergen: customAllergenInput.value,
+    });
+  const baseline = ref(snapshot());
+  const dirty = computed(() => !submitted.value && snapshot() !== baseline.value);
+  const markPristine = () => {
+    baseline.value = snapshot();
+  };
 
   // 供应时段选项
   const mealTimeOptions = [
@@ -104,32 +129,29 @@ export function useAddDish() {
   /**
    * 表单是否有效
    */
-  const isFormValid = computed(() => {
-    return (
-      (formData.name?.trim() || '') !== '' &&
-      formData.price > 0 &&
-      (formData.canteenName?.trim() || '') !== '' &&
-      (formData.windowName?.trim() || '') !== '' &&
-      formData.availableMealTime.length > 0
-    );
-  });
+  const isFormValid = computed(() => Object.keys(validationErrors.value).length === 0);
 
   /**
    * 加载食堂列表
    */
   const loadCanteenList = async () => {
+    if (loading.value) return false;
     const isCurrent = captureOperation();
     loading.value = true;
+    canteenError.value = '';
     try {
       const response = await getCanteenList({ page: 1, pageSize: 100 });
       if (!isCurrent()) return;
       if (response.code === 200 && response.data) {
         canteenList.value = response.data.items;
+        return true;
       }
+      throw new Error(response.message || '加载食堂列表失败');
     } catch (err: any) {
       if (!isCurrent()) return;
       console.error('加载食堂列表失败:', err);
-      error.value = '加载食堂列表失败';
+      canteenError.value = '加载食堂列表失败，请重试';
+      return false;
     } finally {
       if (isCurrent()) loading.value = false;
     }
@@ -147,6 +169,13 @@ export function useAddDish() {
     formData.windowId = '';
     formData.windowNumber = '';
     formData.windowName = '';
+    formData.floor = '';
+  };
+
+  const clearWindow = () => {
+    formData.windowId = '';
+    formData.windowName = '';
+    formData.windowNumber = '';
     formData.floor = '';
   };
 
@@ -258,13 +287,14 @@ export function useAddDish() {
    * 选择图片
    */
   const chooseImages = () => {
+    if (busy.value || (formData.images?.length || 0) >= 9) return;
     const isCurrent = captureOperation();
     uni.chooseImage({
       count: 9 - (formData.images?.length || 0),
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
       success: res => {
-        if (!isCurrent()) return;
+        if (!isCurrent() || busy.value) return;
         if (!formData.images) {
           formData.images = [];
         }
@@ -284,10 +314,11 @@ export function useAddDish() {
    * 提交表单
    */
   const submitForm = async (): Promise<boolean> => {
-    if (submitting.value) return false;
+    if (busy.value) return false;
     const isCurrent = captureOperation();
     if (!isCurrent()) return false;
     cancelNavigation();
+    validationAttempted.value = true;
     if (!isFormValid.value) {
       uni.showToast({
         title: '请填写必填项',
@@ -306,7 +337,7 @@ export function useAddDish() {
       );
       if (!isCurrent()) return false;
       const dishData: DishUserCreateRequest = {
-        name: draft.name,
+        name: draft.name.trim(),
         tags: draft.tags,
         price: draft.price,
         priceUnit: draft.priceUnit,
@@ -319,8 +350,8 @@ export function useAddDish() {
         canteenId: draft.canteenId,
         canteenName: draft.canteenName,
         windowId: draft.windowId || undefined,
-        windowNumber: draft.windowNumber,
-        windowName: draft.windowName,
+        windowNumber: draft.windowId ? draft.windowNumber : undefined,
+        windowName: draft.windowId ? draft.windowName : undefined,
         availableMealTime: draft.availableMealTime,
         availableDates: draft.availableDates,
         status: draft.status,
@@ -329,6 +360,7 @@ export function useAddDish() {
       if (!isCurrent()) return false;
 
       if (response.code === 200 || response.code === 201) {
+        submitted.value = true;
         uni.showToast({
           title: '提交成功，等待审核',
           icon: 'success',
@@ -384,20 +416,29 @@ export function useAddDish() {
     customAllergens.value = [];
     customTagInput.value = '';
     customAllergenInput.value = '';
+    submitted.value = false;
+    validationAttempted.value = false;
+    markPristine();
   };
 
-  watch(() => userStore.sessionVersion, () => {
-    cancelNavigation();
-    resetForm();
-    canteenList.value = [];
-    loading.value = false;
-    submitting.value = false;
-  }, { flush: 'sync' });
+  watch(
+    () => userStore.sessionVersion,
+    () => {
+      cancelNavigation();
+      resetForm();
+      canteenList.value = [];
+      canteenError.value = '';
+      loading.value = false;
+      submitting.value = false;
+    },
+    { flush: 'sync' }
+  );
 
-  if (getCurrentScope()) onScopeDispose(() => {
-    disposed = true;
-    cancelNavigation();
-  });
+  if (getCurrentScope())
+    onScopeDispose(() => {
+      disposed = true;
+      cancelNavigation();
+    });
 
   return {
     formData,
@@ -406,6 +447,13 @@ export function useAddDish() {
     selectedCanteen,
     loading,
     submitting,
+    submitted,
+    busy,
+    dirty,
+    fieldErrors,
+    canteenError,
+    markPristine,
+    clearWindow,
     error,
     isFormValid,
     mealTimeOptions,

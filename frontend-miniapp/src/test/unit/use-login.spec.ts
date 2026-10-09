@@ -6,6 +6,7 @@ import { ref } from 'vue';
 jest.mock('@/store/modules/use-user-store', () => ({
   useUserStore: jest.fn(),
 }));
+jest.mock('@/config', () => ({__esModule:true, default:{platform:'mp-weixin',testLoginEnabled:false}}));
 
 // Mock uni-app APIs
 (global as any).uni = {
@@ -74,7 +75,7 @@ describe('useLogin', () => {
     expect(loading.value).toBe(false);
     expect(mockUserStore.loginAction).not.toHaveBeenCalled();
     expect(uni.showToast).toHaveBeenCalledWith(
-      expect.objectContaining({ title: '微信登录失败，请检查网络连接' })
+      expect.objectContaining({ title: '微信授权未完成，请重试' })
     );
   });
 

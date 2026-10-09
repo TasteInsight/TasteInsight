@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue';
+import { ref, computed, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { getDishById, favoriteDish, unfavoriteDish } from '@/api/modules/dish';
 import { useUserStore } from '@/store/modules/use-user-store';
 import type { Dish } from '@/types/api';
@@ -12,12 +12,20 @@ export function useDishDetail() {
   // --- 引入新的 Composables ---
   const {
     reviews,
+    ownReview,
+    ownReviewLoading,
+    ownReviewLoaded,
+    ownReviewError,
+    fetchOwnReview,
+    invalidateOwnReview,
     ratingSummary,
     reviewsLoading,
+    reviewsInitialized,
     isInitializing: reviewsInitializing,
     reviewsError,
     reviewsHasMore,
     fetchReviews: fetchReviewsOriginal,
+    retryReviews,
     removeReview: removeReviewOriginal,
     submitReview,
   } = useReview();
@@ -45,6 +53,14 @@ export function useDishDetail() {
   // --- 收藏状态 ---
   const userStore = useUserStore();
   const favoriteLoading = ref(false);
+  const deletingReview = ref(false);
+  let disposed = false;
+  let detailVersion = 0;
+  let currentDishId = '';
+  const captureOperation = () => {
+    const session = userStore.sessionVersion;
+    return () => !disposed && session === userStore.sessionVersion;
+  };
 
   // 计算当前菜品是否已收藏
   const isFavorited = computed(() => {
@@ -55,83 +71,114 @@ export function useDishDetail() {
   /**
    * 获取菜品详情
    */
-  const fetchDishDetail = async (dishId: string) => {
+  const fetchDishDetail = async (dishId: string, acceptsResult = () => true) => {
+    const currentOperation = captureOperation();
+    const version = ++detailVersion;
+    const isCurrent = () => currentOperation() && version === detailVersion && acceptsResult();
+    const loadedPreviewIds = Object.keys(reviewComments.value);
     loading.value = true;
     error.value = '';
-    // 重置其他状态
-    subDishes.value = [];
-    parentDish.value = null;
+    if (currentDishId !== dishId) {
+      currentDishId = dishId;
+      dish.value = null;
+      subDishes.value = [];
+      parentDish.value = null;
+      subDishesLoading.value = false;
+      parentDishLoading.value = false;
+    }
 
     try {
       const response = await getDishById(dishId);
+      if (!isCurrent()) return false;
 
       if (response.code === 200 && response.data) {
         dish.value = response.data;
 
         // 获取详情成功后，并行获取子菜品、父菜品和评价
-        await Promise.all([
-          fetchSubDishes(),
-          fetchParentDish(),
-          fetchReviewsOriginal(dishId, true),
+        const results = await Promise.all([
+          fetchSubDishes(isCurrent),
+          fetchParentDish(isCurrent),
+          fetchReviewsOriginal(dishId, true, isCurrent),
+          fetchOwnReview(dishId, isCurrent),
         ]);
+        if (!isCurrent()) return false;
+        const visibleReviewIds = new Set(reviews.value.map(review => review.id));
+        if (ownReview.value) visibleReviewIds.add(ownReview.value.id);
+        await Promise.all(
+          loadedPreviewIds
+            .filter(reviewId => visibleReviewIds.has(reviewId))
+            .map(reviewId => fetchComments(reviewId, true))
+        );
+        return isCurrent() && results.every(result => result !== false);
       } else {
         error.value = response.message || '获取菜品详情失败';
       }
     } catch (err: any) {
+      if (!isCurrent()) return false;
       const debugError =
         err && typeof err === 'object' && 'originalError' in err ? (err as any).originalError : err;
       console.error('获取菜品详情失败:', debugError);
       error.value = err?.message || '网络开小差了，请稍后再试';
     } finally {
-      loading.value = false;
+      if (isCurrent()) loading.value = false;
     }
+    return false;
   };
 
   /**
    * 获取子菜品列表
    */
-  const fetchSubDishes = async () => {
+  const fetchSubDishes = async (isCurrent: () => boolean): Promise<boolean> => {
     const ids = dish.value?.subDishId || [];
     if (!ids || ids.length === 0) {
       subDishes.value = [];
-      return;
+      return true;
     }
 
     subDishesLoading.value = true;
     try {
       const promises = ids.map((id: string) => getDishById(id));
       const results = await Promise.all(promises);
-      const items = results
-        .filter((r: any) => r && r.code === 200 && r.data)
-        .map((r: any) => r.data);
-      subDishes.value = items;
+      if (!isCurrent()) return false;
+      const failed = results.find(result => result.code !== 200 || !result.data);
+      if (failed) throw new Error(failed.message || '相关规格加载失败，请重试');
+      subDishes.value = results.map(result => result.data!);
+      return true;
     } catch (err) {
+      if (!isCurrent()) return false;
       console.error('加载子菜品失败', err);
+      error.value = err instanceof Error ? err.message : '相关规格加载失败，请重试';
+      return false;
     } finally {
-      subDishesLoading.value = false;
+      if (isCurrent()) subDishesLoading.value = false;
     }
   };
 
   /**
    * 获取父菜品
    */
-  const fetchParentDish = async () => {
+  const fetchParentDish = async (isCurrent: () => boolean): Promise<boolean> => {
     const parentId = dish.value?.parentDishId;
     if (!parentId) {
       parentDish.value = null;
-      return;
+      return true;
     }
 
     parentDishLoading.value = true;
     try {
       const response = await getDishById(parentId);
-      if (response.code === 200 && response.data) {
-        parentDish.value = response.data;
-      }
+      if (!isCurrent()) return false;
+      if (response.code !== 200 || !response.data)
+        throw new Error(response.message || '所属菜品加载失败，请重试');
+      parentDish.value = response.data;
+      return true;
     } catch (err) {
+      if (!isCurrent()) return false;
       console.error('加载父菜品失败', err);
+      error.value = err instanceof Error ? err.message : '所属菜品加载失败，请重试';
+      return false;
     } finally {
-      parentDishLoading.value = false;
+      if (isCurrent()) parentDishLoading.value = false;
     }
   };
 
@@ -140,7 +187,7 @@ export function useDishDetail() {
    */
   const loadMoreReviews = () => {
     if (dish.value?.id) {
-      fetchReviewsOriginal(dish.value.id);
+      return fetchReviewsOriginal(dish.value.id);
     }
   };
 
@@ -148,23 +195,22 @@ export function useDishDetail() {
    * 删除评价 (包装一层以处理 UI 反馈和更新菜品评价数)
    */
   const removeReview = async (reviewId: string, onSuccess?: () => void) => {
+    if (deletingReview.value) return false;
+    const isCurrent = captureOperation();
+    const dishId = dish.value?.id;
+    deletingReview.value = true;
     try {
-      await removeReviewOriginal(reviewId);
-      // 更新菜品评价数
-      if (dish.value && dish.value.reviewCount) {
-        dish.value.reviewCount--;
-      }
-      // 刷新评价列表和菜品详情（更新评分统计）
-      if (dish.value?.id) {
-        await Promise.all([
-          fetchReviewsOriginal(dish.value.id, true),
-          fetchDishDetail(dish.value.id),
-        ]);
-      }
+      if (!(await removeReviewOriginal(reviewId)) || !isCurrent()) return false;
+      if (dishId && dish.value?.id === dishId) await fetchDishDetail(dishId);
+      if (!isCurrent()) return false;
       onSuccess?.();
       uni.showToast({ title: '删除成功', icon: 'success' });
+      return true;
     } catch (err: any) {
-      uni.showToast({ title: err.message || '删除失败', icon: 'none' });
+      if (isCurrent()) uni.showToast({ title: err.message || '删除失败', icon: 'none' });
+      return false;
+    } finally {
+      if (isCurrent()) deletingReview.value = false;
     }
   };
 
@@ -197,11 +243,13 @@ export function useDishDetail() {
 
     favoriteLoading.value = true;
     const dishId = dish.value.id;
+    const isCurrent = captureOperation();
 
     try {
       if (isFavorited.value) {
         // 取消收藏
         const res = await unfavoriteDish(dishId);
+        if (!isCurrent()) return;
         if (res.code === 200) {
           // 更新本地用户信息
           const newFavorites = (userStore.userInfo?.myFavoriteDishes || []).filter(
@@ -215,6 +263,7 @@ export function useDishDetail() {
       } else {
         // 添加收藏
         const res = await favoriteDish(dishId);
+        if (!isCurrent()) return;
         if (res.code === 200) {
           // 更新本地用户信息
           const newFavorites = [...(userStore.userInfo?.myFavoriteDishes || []), dishId];
@@ -225,12 +274,33 @@ export function useDishDetail() {
         }
       }
     } catch (err) {
+      if (!isCurrent()) return;
       console.error('收藏操作失败', err);
       uni.showToast({ title: '网络错误', icon: 'none' });
     } finally {
-      favoriteLoading.value = false;
+      if (isCurrent()) favoriteLoading.value = false;
     }
   };
+
+  watch(
+    () => userStore.sessionVersion,
+    () => {
+      detailVersion++;
+      currentDishId = '';
+      dish.value = null;
+      subDishes.value = [];
+      parentDish.value = null;
+      favoriteLoading.value = false;
+      deletingReview.value = false;
+      loading.value = false;
+      error.value = '';
+    },
+    { flush: 'sync' }
+  );
+  if (getCurrentScope())
+    onScopeDispose(() => {
+      disposed = true;
+    });
 
   return {
     dish,
@@ -245,12 +315,21 @@ export function useDishDetail() {
     parentDishLoading,
 
     reviews,
+    ownReview,
+    ownReviewLoading,
+    ownReviewLoaded,
+    ownReviewError,
+    fetchOwnReview,
+    invalidateOwnReview,
+    deletingReview,
     ratingSummary,
     reviewsLoading,
+    reviewsInitialized,
     reviewsInitializing,
     reviewsError,
     reviewsHasMore,
     fetchReviews: fetchReviewsOriginal,
+    retryReviews,
     loadMoreReviews,
     submitReview,
 

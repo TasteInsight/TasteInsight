@@ -1,14 +1,12 @@
 import { usePreferences } from '@/pages/settings/composables/use-preferences';
 import { useUserStore } from '@/store/modules/use-user-store';
-import { useCanteenStore } from '@/store/modules/use-canteen-store';
+import { getCanteenList } from '@/api/modules/canteen';
 import { updateUserProfile } from '@/api/modules/user';
 import { reactive } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 
 // Mock Stores
-jest.mock('@/store/modules/use-canteen-store', () => ({
-  useCanteenStore: jest.fn(),
-}));
+jest.mock('@/api/modules/canteen', () => ({ getCanteenList: jest.fn() }));
 
 // Mock API
 jest.mock('@/api/modules/user', () => ({
@@ -69,7 +67,10 @@ describe('usePreferences', () => {
       fetchCanteenList: jest.fn() as unknown as jest.Mock<any, any>,
     });
     (mockCanteenStore.fetchCanteenList as jest.Mock).mockResolvedValue(undefined);
-    (useCanteenStore as unknown as jest.Mock).mockReturnValue(mockCanteenStore);
+    (getCanteenList as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: { items: [{ id: 'canteen1', name: 'Canteen 1' }], meta: { totalPages: 1 } },
+    });
 
     jest.clearAllMocks();
   });
@@ -81,7 +82,7 @@ describe('usePreferences', () => {
     expect(loading.value).toBe(true);
     await new Promise(process.nextTick);
 
-    expect(mockCanteenStore.fetchCanteenList).toHaveBeenCalled();
+    expect(getCanteenList).toHaveBeenCalledWith({ page: 1, pageSize: 100 });
     expect(mockUserStore.fetchProfileAction).toHaveBeenCalled();
 
     expect(form.spiciness).toBe(1);
@@ -116,7 +117,10 @@ describe('usePreferences', () => {
     expect(saving.value).toBe(false);
     expect(result).toBe(true);
     expect(updateUserProfile).toHaveBeenCalled();
-    expect(uni.setStorageSync).toHaveBeenCalledWith('userInfo', JSON.stringify(mockUserStore.userInfo));
+    expect(uni.setStorageSync).toHaveBeenCalledWith(
+      'userInfo',
+      JSON.stringify(mockUserStore.userInfo)
+    );
     expect(uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ title: '保存成功' }));
   });
 
@@ -147,7 +151,7 @@ describe('usePreferences', () => {
 
     expect(result).toBe(false);
     expect(uni.showToast).toHaveBeenCalledWith(
-      expect.objectContaining({ title: '最低价格必须小于最高价格' })
+      expect.objectContaining({ title: '最低价格不能高于最高价格' })
     );
     expect(updateUserProfile).not.toHaveBeenCalled();
   });

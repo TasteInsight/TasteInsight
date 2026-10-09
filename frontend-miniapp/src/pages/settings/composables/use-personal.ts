@@ -1,8 +1,7 @@
 import { reactive, ref, onMounted, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
-import { updateUserProfile } from '@/api/modules/user';
 import { uploadImage } from '@/api/modules/upload';
-import type { UserProfileUpdateRequest } from '@/types/api';
+import { useSettingsProfile } from './use-settings-profile';
 
 export interface PersonalForm {
   avatar: string;
@@ -11,260 +10,128 @@ export interface PersonalForm {
 
 export function usePersonal() {
   const userStore = useUserStore();
-  const isTestEnv =
-    typeof process !== 'undefined' && !!process.env && process.env.NODE_ENV === 'test';
-
-  const saving = ref(false);
-  const loading = ref(true);
+  const isTestEnv = typeof process !== 'undefined' && process.env?.NODE_ENV === 'test';
+  const form = reactive<PersonalForm>({ avatar: '', nickname: '' });
   const uploading = ref(false);
-  let disposed = false;
-  let navigationTimer: ReturnType<typeof setTimeout> | null = null;
-  let navigationVersion = 0;
+  const selecting = ref(false);
+  let finishSelection: (() => void) | null = null;
+  const profile = useSettingsProfile(
+    userInfo => {
+      form.avatar = userInfo?.avatar || '';
+      form.nickname = userInfo?.nickname || '';
+    },
+    form,
+    'personal'
+  );
 
-  const captureOperation = () => {
-    const session = userStore.sessionVersion;
-    return () => !disposed && session === userStore.sessionVersion;
-  };
+  async function chooseAvatar(): Promise<void> {
+    if (!profile.canEdit.value || selecting.value || uploading.value) return;
+    const ownsSelection = profile.captureOperation();
+    selecting.value = true;
+    return new Promise<void>(resolve => {
+      const finish = () => {
+        if (ownsSelection()) selecting.value = false;
+        if (finishSelection === finish) finishSelection = null;
+        resolve();
+      };
+      finishSelection = finish;
 
-  const cancelNavigation = () => {
-    navigationVersion += 1;
-    if (navigationTimer === null) return;
-    clearTimeout(navigationTimer);
-    navigationTimer = null;
-  };
-
-  const form = reactive<PersonalForm>({
-    avatar: '',
-    nickname: '',
-  });
-
-  /**
-   * 加载用户信息
-   */
-  async function loadPersonalInfo() {
-    const isCurrent = captureOperation();
-    loading.value = true;
-    try {
-      await userStore.fetchProfileAction(isCurrent);
-      if (!isCurrent()) return;
-      const userInfo = userStore.userInfo;
-      if (userInfo) {
-        form.avatar = userInfo.avatar || '';
-        form.nickname = userInfo.nickname || '';
-      }
-    } catch (error) {
-      if (!isCurrent()) return;
-      console.error('加载用户信息失败:', error);
-    } finally {
-      if (isCurrent()) loading.value = false;
-    }
-  }
-
-  /**
-   * 选择头像
-   */
-  async function chooseAvatar() {
-    const ownsSelection = captureOperation();
-    if (!ownsSelection()) return;
-    cancelNavigation();
-    return new Promise<void>((resolve, reject) => {
       const uploadAvatar = async (filePath: string) => {
-        if (!ownsSelection()) { resolve(); return; }
+        if (!ownsSelection()) {
+          finish();
+          return;
+        }
         uploading.value = true;
         uni.showLoading({ title: '上传中...' });
         try {
           const result = await uploadImage(filePath);
-          if (!ownsSelection()) { resolve(); return; }
+          if (!ownsSelection()) return;
           form.avatar = result.url;
-          uni.hideLoading();
           uni.showToast({ title: '头像上传成功', icon: 'success' });
-          resolve();
         } catch (error) {
-          if (!ownsSelection()) { resolve(); return; }
+          if (!ownsSelection()) return;
           console.error('上传头像失败:', error);
-          uni.hideLoading();
           uni.showToast({ title: '头像上传失败', icon: 'none' });
-          reject(error);
         } finally {
-          if (ownsSelection()) uploading.value = false;
+          if (ownsSelection()) {
+            uploading.value = false;
+            uni.hideLoading();
+          }
+          finish();
         }
       };
+
       uni.chooseImage({
         count: 1,
         sizeType: ['compressed'],
         sourceType: ['album', 'camera'],
-        success: async res => {
-          if (!ownsSelection()) { resolve(); return; }
+        success: res => {
+          if (!ownsSelection()) {
+            finish();
+            return;
+          }
           const tempFilePath = res.tempFilePaths[0];
-
-          // 单测/非运行环境可能没有 navigateTo，回退为直接上传
-          if (isTestEnv || typeof (uni as any).navigateTo !== 'function') {
+          if (isTestEnv) {
             void uploadAvatar(tempFilePath);
             return;
           }
-
-          // 进入裁剪页面，裁剪完成后再上传
           uni.navigateTo({
-            // 同时使用 query + eventChannel：
-            // - query 用 encodeURIComponent 规避非法字符/时序问题（裁剪页可能错过 init 事件）
-            // - eventChannel 仍保留，避免未来扩展参数过长
             url: `/pages/settings/components/avatar-crop?src=${encodeURIComponent(tempFilePath)}`,
             success: navRes => {
-              if (!ownsSelection()) { resolve(); return; }
-              const eventChannel = navRes.eventChannel;
-              eventChannel.emit('init', { src: tempFilePath });
-
-              // 设置超时，如果用户取消裁剪或出错，5分钟后 reject
-              const timeout = setTimeout(
-                () => {
-                  if (ownsSelection()) reject(new Error('裁剪超时或取消'));
-                  else resolve();
-                },
-                5 * 60 * 1000
-              ); // 5分钟
-
-              eventChannel.on('cropped', async (data: { tempFilePath: string }) => {
-                clearTimeout(timeout);
-                if (!ownsSelection()) { resolve(); return; }
-                const croppedPath = data?.tempFilePath;
-                if (!croppedPath) {
-                  reject(new Error('裁剪失败'));
+              if (!ownsSelection()) {
+                finish();
+                return;
+              }
+              navRes.eventChannel.on('cropped', (data: { tempFilePath: string }) => {
+                if (!ownsSelection()) {
+                  finish();
                   return;
                 }
-
-                void uploadAvatar(croppedPath);
+                void uploadAvatar(data.tempFilePath);
               });
+              navRes.eventChannel.on('cancel', finish);
+              navRes.eventChannel.emit('init', { src: tempFilePath });
             },
-            fail: err => {
-              if (!ownsSelection()) { resolve(); return; }
-              console.error('跳转裁剪页面失败:', err);
-              const errMsg = (err as any)?.errMsg ? String((err as any).errMsg) : '';
-              uni.showToast({
-                title: errMsg ? `打开裁剪失败：${errMsg}` : '打开裁剪失败',
-                icon: 'none',
-              });
-              reject(err);
+            fail: () => {
+              if (ownsSelection()) uni.showToast({ title: '打开裁剪失败，请重试', icon: 'none' });
+              finish();
             },
           });
         },
         fail: err => {
-          if (!ownsSelection()) { resolve(); return; }
-          console.error('选择图片失败:', err);
-          uni.showToast({
-            title: '选择图片失败',
-            icon: 'none',
-          });
-          reject(err);
+          if (ownsSelection() && !String(err.errMsg || '').includes('cancel')) {
+            console.error('选择图片失败:', err);
+            uni.showToast({ title: '选择图片失败', icon: 'none' });
+          }
+          finish();
         },
       });
     });
   }
 
-  /**
-   * 验证表单
-   */
-  function validateForm(): boolean {
-    if (!form.nickname.trim()) {
-      uni.showToast({
-        title: '请输入昵称',
-        icon: 'none',
-      });
-      return false;
-    }
-    return true;
-  }
-
-  /**
-   * 保存设置
-   */
   async function handleSave(): Promise<boolean> {
-    if (saving.value || uploading.value) return false;
-    const isCurrent = captureOperation();
-    if (!isCurrent()) return false;
-    if (!validateForm()) return false;
-
-    cancelNavigation();
-    const navigation = navigationVersion;
-    saving.value = true;
-    try {
-      const payload: UserProfileUpdateRequest = {
-        nickname: form.nickname.trim(),
-        avatar: form.avatar.trim() || undefined,
-      };
-
-      const response = await updateUserProfile(payload);
-      if (!isCurrent()) return false;
-      if (response.code !== 200 || !response.data) {
-        throw new Error(response.message || '保存失败');
-      }
-
-      userStore.updateLocalUserInfo(response.data);
-
-      uni.showToast({
-        title: '保存成功',
-        icon: 'success',
-      });
-
-      if (navigation === navigationVersion) {
-        navigationTimer = setTimeout(() => {
-          navigationTimer = null;
-          if (!isCurrent()) return;
-          if (typeof (uni as any).navigateBack === 'function') {
-            uni.navigateBack();
-          }
-        }, 1000);
-      }
-
-      return true;
-    } catch (error) {
-      if (!isCurrent()) return false;
-      console.error('保存失败:', error);
-      const message = error instanceof Error ? error.message : '保存失败';
-      uni.showToast({
-        title: message,
-        icon: 'none',
-      });
+    if (!profile.canEdit.value || uploading.value || selecting.value) return false;
+    if (!form.nickname.trim()) {
+      uni.showToast({ title: '请输入昵称', icon: 'none' });
       return false;
-    } finally {
-      if (isCurrent()) saving.value = false;
     }
+    return profile.saveProfile({
+      nickname: form.nickname.trim(),
+      avatar: form.avatar.trim() || undefined,
+    });
   }
 
-  watch(
-    [() => userStore.sessionVersion, () => userStore.isLoggedIn ? userStore.userInfo?.id : null],
-    () => {
-      cancelNavigation();
-      if (uploading.value) uni.hideLoading();
-      form.avatar = userStore.isLoggedIn ? userStore.userInfo?.avatar || '' : '';
-      form.nickname = userStore.isLoggedIn ? userStore.userInfo?.nickname || '' : '';
-      loading.value = false;
-      saving.value = false;
-      uploading.value = false;
-    },
-    { flush: 'sync' }
-  );
-
-  if (getCurrentScope()) onScopeDispose(() => {
-    disposed = true;
-    cancelNavigation();
+  const releaseSelection = () => {
     if (uploading.value) uni.hideLoading();
     uploading.value = false;
-  });
-
-  // 组件挂载时加载数据
-  onMounted(() => {
-    loadPersonalInfo();
-  });
-
-  return {
-    // 状态
-    form,
-    saving,
-    loading,
-    uploading,
-
-    // 方法
-    chooseAvatar,
-    handleSave,
+    selecting.value = false;
+    finishSelection?.();
   };
+  watch(() => userStore.sessionVersion, releaseSelection, { flush: 'sync' });
+  if (getCurrentScope()) onScopeDispose(releaseSelection);
+  onMounted(() => {
+    void profile.loadProfile();
+  });
+
+  return { form, ...profile, uploading, selecting, chooseAvatar, handleSave };
 }

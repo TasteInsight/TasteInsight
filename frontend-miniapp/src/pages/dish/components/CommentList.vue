@@ -1,40 +1,21 @@
 <template>
-  <view class="mt-2">
-    <!-- 评论容器 - 只显示最多4个 -->
-    <view v-if="displayComments.length > 0" class="ml-4 mt-3">
-      <view class="bg-gray-100 rounded-lg p-3 border border-gray-100">
-        <!-- 评论列表 -->
-        <view class="flex flex-col gap-2">
-          <view v-for="comment in displayComments" :key="comment.id">
-            <view class="text-sm text-gray-700">
-              <text class="text-purple-800 font-normal">{{ comment.userNickname }}</text>
-              <!-- 回复目标显示 -->
-              <template v-if="comment.parentComment && !comment.parentComment.deleted">
-                <text class="text-gray-500 text-sm"> 回复 </text>
-                <text class="text-purple-800 font-normal"
-                  >@{{ comment.parentComment.userNickname }}</text
-                >
-              </template>
-              <text v-else-if="comment.parentComment?.deleted" class="text-gray-400 text-sm">
-                回复的评论已删除</text
-              >
-              <text class="text-gray-700">:</text>
-              {{ comment.content }}
-            </view>
-          </view>
-        </view>
-
-        <!-- 查看全部回复按钮 -->
-        <view class="pt-1 mt-1">
-          <button
-            class="view-all-replies-btn text-purple-800 text-sm font-medium bg-transparent p-0 text-left w-full"
-            @tap="emit('viewAllComments')"
-          >
-            共{{ totalComments }}条回复 ...
-          </button>
-        </view>
+  <view v-if="displayComments.length > 0" class="comment-preview">
+    <view class="comment-preview-list">
+      <view v-for="comment in displayComments" :key="comment.id" class="discussion-body">
+        <text class="discussion-author">{{ comment.userNickname }}</text>
+        <template v-if="comment.parentComment && !comment.parentComment.deleted">
+          <text class="discussion-meta"> 回复 </text>
+          <text class="discussion-author">@{{ comment.parentComment.userNickname }}</text>
+        </template>
+        <text v-else-if="comment.parentComment?.deleted" class="discussion-meta">
+          回复的评论已删除</text
+        >
+        <text>：</text><text>{{ comment.content }}</text>
       </view>
     </view>
+    <button class="discussion-action view-all-replies-btn" @tap.stop="emit('viewAllComments')">
+      查看全部 {{ totalComments }} 条回复
+    </button>
   </view>
 </template>
 
@@ -81,7 +62,23 @@ watch(
 </script>
 
 <style scoped>
-.view-all-replies-btn::after {
-  border: none;
+@import './discussion.css';
+.comment-preview {
+  margin-top: 8px;
+  padding: 8px 12px 0;
+  background: #f4f4f5;
+  border-radius: 10px;
+  overflow-wrap: anywhere;
+}
+.comment-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.view-all-replies-btn {
+  justify-content: flex-start;
+  padding: 0;
+  text-align: left;
+  color: #660874;
 }
 </style>

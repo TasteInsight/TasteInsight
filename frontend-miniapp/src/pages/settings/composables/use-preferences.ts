@@ -1,7 +1,7 @@
-import { reactive, ref, onMounted, computed } from 'vue';
-import { useCanteenStore } from '@/store/modules/use-canteen-store';
+import { reactive, ref, onMounted, computed, getCurrentScope, onScopeDispose } from 'vue';
+import { getCanteenList } from '@/api/modules/canteen';
 import { useSettingsProfile } from './use-settings-profile';
-import type { UserProfileUpdateRequest, UserPreference } from '@/types/api';
+import type { Canteen, UserProfileUpdateRequest, UserPreference } from '@/types/api';
 
 export interface PreferencesForm {
   spiciness: number;
@@ -14,6 +14,11 @@ export interface PreferencesForm {
   canteenPreferences: string[];
   avoidIngredients: string[];
   favoriteIngredients: string[];
+  ingredientDrafts: {
+    favoriteIngredients: string;
+    meatPreference: string;
+    avoidIngredients: string;
+  };
 }
 
 // 口味标签常量
@@ -31,8 +36,6 @@ export const REVERSE_PORTION_LABELS: Record<string, 'small' | 'medium' | 'large'
 };
 
 export function usePreferences() {
-  const canteenStore = useCanteenStore();
-
   const form = reactive<PreferencesForm>({
     spiciness: 0,
     sweetness: 0,
@@ -44,14 +47,30 @@ export function usePreferences() {
     canteenPreferences: [],
     avoidIngredients: [],
     favoriteIngredients: [],
+    ingredientDrafts: { favoriteIngredients: '', meatPreference: '', avoidIngredients: '' },
   });
 
   // 输入框临时值
-  const newFavoriteIngredient = ref('');
-  const newMeatPreference = ref('');
-  const newAvoidIngredient = ref('');
+  const newFavoriteIngredient = computed({
+    get: () => form.ingredientDrafts.favoriteIngredients,
+    set: value => {
+      form.ingredientDrafts.favoriteIngredients = value;
+    },
+  });
+  const newMeatPreference = computed({
+    get: () => form.ingredientDrafts.meatPreference,
+    set: value => {
+      form.ingredientDrafts.meatPreference = value;
+    },
+  });
+  const newAvoidIngredient = computed({
+    get: () => form.ingredientDrafts.avoidIngredients,
+    set: value => {
+      form.ingredientDrafts.avoidIngredients = value;
+    },
+  });
 
-  const { saving, loading, captureOperation, loadProfile, saveProfile } = useSettingsProfile(
+  const profile = useSettingsProfile(
     userInfo => {
       const pref = userInfo?.preferences;
       form.spiciness = pref?.tastePreferences?.spicyLevel ?? 0;
@@ -67,46 +86,60 @@ export function usePreferences() {
       newFavoriteIngredient.value = '';
       newMeatPreference.value = '';
       newAvoidIngredient.value = '';
-    }
+    },
+    form,
+    'preferences'
   );
+  const { loadProfile, saveProfile } = profile;
 
-  // 食堂列表
-  const canteenList = computed(() => canteenStore.canteenList);
+  const canteenList = ref<Canteen[]>([]);
+  const canteensLoading = ref(false);
+  const canteensError = ref('');
+  let directoryDisposed = false;
+  if (getCurrentScope())
+    onScopeDispose(() => {
+      directoryDisposed = true;
+    });
 
-  /**
-   * 加载用户偏好设置
-   */
-  async function loadPreferences() {
-    const isCurrent = captureOperation();
-    loading.value = true;
+  async function loadCanteens(): Promise<boolean> {
+    if (canteensLoading.value || directoryDisposed) return false;
+    canteensLoading.value = true;
+    canteensError.value = '';
     try {
-      // 加载食堂列表
-      if (canteenStore.canteenList.length === 0) {
-        await canteenStore.fetchCanteenList(undefined, isCurrent);
-      }
-      if (isCurrent()) await loadProfile();
+      const directory: Canteen[] = [];
+      let page = 1;
+      let totalPages = 1;
+      do {
+        const response = await getCanteenList({ page, pageSize: 100 });
+        if (directoryDisposed) return false;
+        if (response.code !== 200 || !response.data)
+          throw new Error(response.message || '食堂列表加载失败');
+        directory.push(...response.data.items);
+        totalPages = response.data.meta.totalPages;
+        page++;
+      } while (page <= totalPages);
+      canteenList.value = directory;
+      return true;
     } catch (error) {
-      if (!isCurrent()) return;
-      console.error('加载用户信息失败:', error);
+      if (!directoryDisposed) {
+        canteensError.value = error instanceof Error ? error.message : '食堂列表加载失败';
+      }
+      return false;
     } finally {
-      if (isCurrent()) loading.value = false;
+      if (!directoryDisposed) canteensLoading.value = false;
     }
   }
 
-  /**
-   * 验证价格范围
-   */
-  function validatePriceRange(): boolean {
+  const priceRangeError = computed(() => {
     const { min, max } = form.priceRange;
-    if (min >= max) {
-      uni.showToast({
-        title: '最低价格必须小于最高价格',
-        icon: 'none',
-      });
-      form.priceRange = { min: 20, max: 100 };
-      return false;
-    }
-    return true;
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return '请填写有效的最低价和最高价';
+    if (min < 0 || max < 0) return '价格不能小于 0';
+    if (min > max) return '最低价格不能高于最高价格';
+    return '';
+  });
+
+  function validatePriceRange(): boolean {
+    return !priceRangeError.value;
   }
 
   /**
@@ -169,7 +202,7 @@ export function usePreferences() {
 
   function getCanteenNameById(canteenId: string): string {
     const canteen = canteenList.value.find(c => c.id === canteenId);
-    return canteen ? canteen.name : canteenId;
+    return canteen ? canteen.name : '食堂信息暂不可用';
   }
 
   /**
@@ -195,7 +228,16 @@ export function usePreferences() {
    * 保存设置
    */
   async function handleSave(): Promise<boolean> {
-    if (!validatePriceRange()) return false;
+    if (!profile.canEdit.value) return false;
+    if (!validatePriceRange()) {
+      uni.showToast({ title: priceRangeError.value, icon: 'none' });
+      return false;
+    }
+    for (const field of ['favoriteIngredients', 'meatPreference', 'avoidIngredients'] as const) {
+      const value = form.ingredientDrafts[field].trim();
+      if (value && !form[field].includes(value)) form[field].push(value);
+      form.ingredientDrafts[field] = '';
+    }
     const preferences: Partial<UserPreference> = {
       tastePreferences: {
         spicyLevel: form.spiciness,
@@ -217,18 +259,22 @@ export function usePreferences() {
 
   // 组件挂载时加载数据
   onMounted(() => {
-    loadPreferences();
+    void loadProfile();
+    void loadCanteens();
   });
 
   return {
     // 状态
     form,
-    saving,
-    loading,
+    ...profile,
     newFavoriteIngredient,
     newMeatPreference,
     newAvoidIngredient,
     canteenList,
+    canteensLoading,
+    canteensError,
+    loadCanteens,
+    priceRangeError,
 
     // 常量
     tasteLabels: TASTE_LABELS,

@@ -18,7 +18,14 @@ describe('usePersonal', () => {
     process.env.NODE_ENV = 'test';
     const mockStoreReturn: any = {
       fetchProfileAction: jest.fn() as unknown as jest.Mock<any, any>,
+      isLoggedIn: true,
+      sessionVersion: 0,
       userInfo: { avatar: '', nickname: '' },
+      updateProfileAction: jest.fn(async (payload: any) => {
+        const result = await mockedUpdate(payload);
+        if (result.code !== 200 || !result.data) throw new Error(result.message || '保存失败');
+        mockStoreReturn.updateLocalUserInfo(result.data);
+      }),
       updateLocalUserInfo: jest.fn() as unknown as jest.Mock<any, any>,
     };
     (mockStoreReturn.fetchProfileAction as jest.Mock).mockResolvedValue(undefined);
@@ -43,6 +50,7 @@ describe('usePersonal', () => {
     });
 
     const comp = usePersonal();
+    await comp.loadProfile();
     await comp.chooseAvatar();
 
     expect(mockedUpload).toHaveBeenCalledWith('tmp.jpg');
@@ -50,19 +58,21 @@ describe('usePersonal', () => {
     expect((global as any).uni.showToast).toHaveBeenCalled();
   });
 
-  test('chooseAvatar shows toast on upload failure and rejects', async () => {
+  test('chooseAvatar reports upload failure without an unhandled rejection', async () => {
     mockedUpload.mockRejectedValueOnce(new Error('upfail'));
     (global as any).uni.chooseImage = jest.fn(opts => {
       opts.success({ tempFilePaths: ['tmp.jpg'] });
     });
 
     const comp = usePersonal();
-    await expect(comp.chooseAvatar()).rejects.toThrow('upfail');
+    await comp.loadProfile();
+    await expect(comp.chooseAvatar()).resolves.toBeUndefined();
     expect((global as any).uni.showToast).toHaveBeenCalled();
   });
 
   test('handleSave validates nickname and returns false when empty', async () => {
     const comp = usePersonal();
+    await comp.loadProfile();
     comp.form.nickname = '   ';
     const res = await comp.handleSave();
     expect(res).toBe(false);
@@ -77,6 +87,7 @@ describe('usePersonal', () => {
       (mockStore.updateLocalUserInfo as jest.Mock).mockResolvedValue(undefined);
 
     const comp = usePersonal();
+    await comp.loadProfile();
     comp.form.nickname = 'n';
     comp.form.avatar = 'a';
 
@@ -93,6 +104,7 @@ describe('usePersonal', () => {
     mockedUpdate.mockResolvedValueOnce({ code: 400, message: 'Bad' } as any);
 
     const comp = usePersonal();
+    await comp.loadProfile();
     comp.form.nickname = 'n';
 
     const res = await comp.handleSave();
@@ -125,6 +137,7 @@ describe('usePersonal', () => {
     mockedUpload.mockResolvedValueOnce({ url: 'http://cropped' } as any);
 
     const comp = usePersonal();
+    await comp.loadProfile();
     const p = comp.chooseAvatar();
     // simulate cropped event after handler registered
     capturedChannel.emit('cropped', { tempFilePath: 'crop.jpg' });
@@ -135,11 +148,13 @@ describe('usePersonal', () => {
     expect((global as any).uni.showToast).toHaveBeenCalled();
   });
 
-  test('chooseAvatar navigateTo fail rejects and shows toast', async () => {
+  test('chooseAvatar navigation failure releases selection and shows feedback', async () => {
     process.env.NODE_ENV = 'development';
     (global as any).uni.navigateTo = jest.fn((opts: any) => opts.fail({ errMsg: 'navfail' }));
     const comp = usePersonal();
-    await expect(comp.chooseAvatar()).rejects.toEqual({ errMsg: 'navfail' });
+    await comp.loadProfile();
+    await expect(comp.chooseAvatar()).resolves.toBeUndefined();
+    expect(comp.selecting.value).toBe(false);
     expect((global as any).uni.showToast).toHaveBeenCalled();
   });
 

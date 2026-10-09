@@ -1,80 +1,83 @@
 <template>
-  <view class="w-full min-h-screen bg-gray-50 p-4">
-    <!-- 骨架屏：首次加载时显示 -->
-    <PersonalSettingsSkeleton v-if="loading" />
-
-    <template v-else>
-      <!-- 头像上传区域 -->
-      <view class="bg-white rounded-lg p-6 mb-4 shadow-sm">
-        <text class="text-lg font-semibold text-gray-800 mb-6 block">头像</text>
-        <view class="flex flex-col items-center">
-          <view
-            class="relative mb-6"
-            :class="{ 'border-2 border-gray-300 rounded-full': !form.avatar }"
-          >
-            <image
-              :src="form.avatar || '/static/images/default-avatar.png'"
-              class="w-24 h-24 rounded-full border-4 border-purple-50"
-              mode="aspectFill"
-              :class="{ 'opacity-50': uploading }"
-              @click="!uploading && chooseAvatar()"
-            />
-            <view
-              class="absolute bottom-0 right-0 bg-ts-purple rounded-full p-1.5 border-2 border-white shadow-sm"
-              :class="{ 'opacity-50': uploading }"
-              @click="!uploading && chooseAvatar()"
-            >
-              <text
-                class="iconfont icon-camera text-white"
-                style="font-size: 14px; line-height: 1"
-              ></text>
-            </view>
-            <!-- 上传中遮罩 -->
-            <view
-              v-if="uploading"
-              class="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center"
-            >
-              <text class="text-white text-sm">上传中...</text>
-            </view>
-          </view>
-          <text class="text-gray-500 text-sm mb-2">{{
-            uploading ? '正在上传头像...' : '点击图片或相机图标更换头像'
-          }}</text>
-        </view>
-      </view>
-
-      <!-- 昵称设置 -->
-      <view class="bg-white rounded-lg p-6 mb-4 shadow-sm">
-        <text class="text-lg font-semibold text-gray-800 mb-4 block">昵称</text>
-        <view class="relative border-2 border-gray-300 rounded-lg p-1">
-          <input
-            v-model="form.nickname"
-            class="w-full p-3 pr-12 border border-gray-200 rounded-lg text-base focus:border-ts-purple focus:ring-1 focus:ring-purple-100 transition-all"
-            placeholder="请输入昵称"
-            maxlength="20"
-          />
-          <text class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400"
-            >{{ form.nickname.length }}/20</text
-          >
-        </view>
-      </view>
-
-      <!-- 保存按钮 -->
+  <SettingsPage
+    v-bind="pageState"
+    :can-save="canSave && !uploading && !selecting"
+    @retry="loadProfile"
+    @save="handleSave"
+  >
+    <view class="settings-section">
+      <text class="settings-title">头像</text>
       <button
-        class="w-full py-3.5 bg-ts-purple text-white rounded-full text-base font-semibold shadow-md active:bg-purple-800 active:scale-[0.99] transition-all mt-8"
-        :class="{ 'opacity-70': saving }"
-        :disabled="saving"
-        @click="handleSave"
+        class="avatar-edit settings-button"
+        :disabled="!canEdit || selecting || uploading"
+        @click="chooseAvatar"
       >
-        <text>{{ saving ? '保存中...' : '保存修改' }}</text>
+        <UserAvatar :src="form.avatar" :size="72" label="个人头像" />
+        <view class="avatar-edit-copy">
+          <text class="settings-label">{{ uploading ? '正在上传…' : '更换头像' }}</text>
+          <text class="settings-hint">从相册选择或拍摄照片</text>
+        </view>
+        <text class="iconfont icon-chevronright" aria-hidden="true"></text>
       </button>
-    </template>
-  </view>
+    </view>
+    <view class="settings-section">
+      <label class="settings-title" for="personal-nickname">昵称</label>
+      <input
+        id="personal-nickname"
+        v-model="form.nickname"
+        class="settings-field"
+        :disabled="!canEdit"
+        placeholder="请输入昵称"
+        maxlength="20"
+      />
+      <text class="settings-hint nickname-count">{{ form.nickname.length }}/20</text>
+    </view>
+  </SettingsPage>
 </template>
-
 <script setup lang="ts">
+import { computed } from 'vue';
+import { onBackPress } from '@dcloudio/uni-app';
 import { usePersonal } from '../composables/use-personal';
-import { PersonalSettingsSkeleton } from '@/components/skeleton';
-
-const { form, saving, loading, uploading, chooseAvatar, handleSave } = usePersonal();
+import UserAvatar from '@/components/UserAvatar.vue';
+import SettingsPage from './SettingsPage.vue';
+const state = usePersonal();
+const {
+  form,
+  uploading,
+  selecting,
+  canEdit,
+  canSave,
+  loadProfile,
+  chooseAvatar,
+  handleSave,
+  handleBackPress,
+} = state;
+const pageState = computed(() => ({
+  loading: state.loading.value,
+  initialized: state.initialized.value,
+  loadError: state.loadError.value,
+  saving: state.saving.value,
+  saved: state.saved.value,
+  dirty: state.dirty.value,
+  restoredDraft: state.restoredDraft.value,
+}));
+onBackPress(handleBackPress);
 </script>
+<style scoped>
+.avatar-edit {
+  width: 100%;
+  justify-content: flex-start;
+  gap: 16px;
+  padding: 8px 0;
+  border: 0;
+  text-align: left;
+}
+.avatar-edit-copy {
+  min-width: 0;
+  flex: 1;
+}
+.nickname-count {
+  margin-top: 8px;
+  text-align: right;
+}
+</style>

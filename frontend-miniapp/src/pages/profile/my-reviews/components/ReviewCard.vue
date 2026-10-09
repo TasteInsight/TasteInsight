@@ -1,93 +1,168 @@
 <template>
-  <view class="bg-white p-4 border border-gray-200" @click="$emit('click')">
-    <!-- 评价头部：时间 -->
-    <view class="flex items-center justify-between mb-3">
-      <text class="text-gray-500 text-xs">{{ formattedDate }}</text>
-      <!-- Optional: Status tag could go here -->
-    </view>
-
-    <!-- 评价内容 -->
-    <view v-if="review.content" class="mb-3">
-      <text class="text-gray-800 text-base leading-relaxed">{{ review.content }}</text>
-    </view>
-
-    <!-- 评价图片 -->
-    <view v-if="validImages.length > 0" class="flex flex-wrap gap-2 mb-3">
-      <image
-        v-for="(img, index) in validImages.slice(0, 3)"
-        :key="index"
-        :src="img"
-        class="w-20 h-20 rounded-lg"
-        mode="aspectFill"
-      />
-    </view>
-
-    <!-- 菜品信息 & 评分 -->
-    <view class="flex items-center border-t border-gray-100 pt-3">
-      <!-- 菜品图片 -->
-      <image
-        :src="review.dishImage || '/static/default_dish.png'"
-        class="w-16 h-16 rounded-lg mr-3 flex-shrink-0"
-        mode="aspectFill"
-      />
-
-      <!-- 菜品详情 & 评分 -->
-      <view class="flex-1 flex flex-col justify-between h-16 py-0.5">
-        <view class="flex justify-between items-start">
-          <text class="text-gray-900 font-medium text-base line-clamp-1">{{
-            review.dishName
-          }}</text>
-          <!-- removed top right arrow -->
-        </view>
-
-        <!-- 评分 & 查看详情 -->
-        <view class="flex items-center justify-between mt-auto">
-          <view class="flex items-center">
-            <view class="flex items-center mr-2">
-              <text
-                v-for="star in 5"
-                :key="star"
-                class="iconfont"
-                :class="[star <= review.rating ? 'text-orange-400' : 'text-gray-200', 'icon-star']"
-              ></text>
-            </view>
-            <text class="text-orange-500 font-semibold text-sm">{{
-              review.rating.toFixed(1)
-            }}</text>
-          </view>
-
-          <!-- 查看详情 (Gray text + arrow) -->
-          <view class="flex items-center">
-            <text class="text-gray-400 text-xs mr-0.5">查看详情</text>
-            <text class="iconfont icon-chevronright text-gray-400" data-width="14"></text>
-          </view>
+  <button
+    class="my-review"
+    :aria-label="'查看' + review.dishName + '的评价'"
+    @click="$emit('click')"
+  >
+    <view class="my-review-heading">
+      <view class="my-review-title-block">
+        <text class="my-review-title">{{ review.dishName }}</text>
+        <view class="my-review-meta">
+          <view class="my-review-stars" :aria-label="'评分' + review.rating + '星'"
+            ><text
+              v-for="star in 5"
+              :key="star"
+              class="iconfont icon-star"
+              :class="{ 'star-filled': star <= review.rating }"
+              aria-hidden="true"
+            ></text
+          ></view>
         </view>
       </view>
+      <image
+        v-if="dishImage"
+        :src="dishImage"
+        class="my-review-dish-image"
+        mode="aspectFill"
+        @error="failedImages.add(dishImage)"
+      />
     </view>
-  </view>
+    <text v-if="review.content" class="my-review-content">{{ review.content }}</text>
+    <view v-if="validImages.length" class="my-review-images">
+      <image
+        v-for="img in validImages.slice(0, 3)"
+        :key="img"
+        :src="img"
+        class="my-review-image"
+        mode="aspectFill"
+        @error="failedImages.add(img)"
+      />
+    </view>
+    <view class="my-review-footer"
+      ><text>{{ formattedDate }}</text
+      ><text class="my-review-detail"
+        >查看详情<text class="iconfont icon-chevronright" aria-hidden="true"></text></text
+    ></view>
+  </button>
 </template>
-
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { MyReviewItem } from '@/types/api';
 import dayjs from 'dayjs';
-
-const props = defineProps<{
-  review: MyReviewItem;
-}>();
-
-defineEmits(['click']);
-
-const formattedDate = computed(() => {
-  return dayjs(props.review.createdAt).format('YYYY-MM-DD HH:mm');
-});
-
-/**
- * 过滤无效图片（空字符串或 null）
- * 解决后端返回空字符串导致页面出现空白占位的问题
- */
-const validImages = computed(() => {
-  if (!props.review.images) return [];
-  return props.review.images.filter(img => img && img.trim() !== '');
-});
+const props = defineProps<{ review: MyReviewItem }>();
+defineEmits<{ (e: 'click'): void }>();
+const failedImages = ref(new Set<string>());
+watch(
+  () => [props.review.id, props.review.dishImage, props.review.images],
+  () => {
+    failedImages.value = new Set();
+  }
+);
+const formattedDate = computed(() => dayjs(props.review.createdAt).format('YYYY-MM-DD HH:mm'));
+const dishImage = computed(() =>
+  props.review.dishImage?.trim() && !failedImages.value.has(props.review.dishImage)
+    ? props.review.dishImage
+    : ''
+);
+const validImages = computed(() =>
+  (props.review.images || []).filter(img => img?.trim() && !failedImages.value.has(img))
+);
 </script>
+<style scoped>
+.my-review {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 20px 0;
+  border: 0;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 0;
+  background: #fff;
+  color: #1f2937;
+  text-align: left;
+  font-family: inherit;
+  line-height: 1.5;
+}
+.my-review::after {
+  border: 0;
+}
+.my-review:active {
+  background: #f9fafb;
+}
+.my-review:focus-visible {
+  outline: 2px solid #660874;
+  outline-offset: 2px;
+}
+.my-review-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.my-review-title-block {
+  min-width: 0;
+  flex: 1;
+}
+.my-review-title {
+  display: block;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.my-review-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+.my-review-stars {
+  display: flex;
+  gap: 2px;
+  color: #d0d5dd;
+  font-size: 14px;
+}
+.star-filled {
+  color: #d99a12;
+}
+.my-review-content {
+  display: block;
+  margin-top: 14px;
+  font-size: 16px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.my-review-dish-image {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  border-radius: 10px;
+}
+.my-review-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.my-review-image {
+  width: 72px;
+  height: 72px;
+  border-radius: 10px;
+}
+.my-review-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  color: #667085;
+  font-size: 12px;
+}
+.my-review-detail {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+</style>

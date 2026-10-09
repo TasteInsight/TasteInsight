@@ -1,40 +1,41 @@
 <template>
-  <view
-    class="bg-white rounded-xl p-4 mb-3 border border-gray-100 shadow-sm active:bg-gray-50 transition-all duration-200 cursor-pointer"
+  <button
+    class="news-item"
+    :aria-label="news.title"
     @click="goToDetail(news.id)"
+    @keydown.space.prevent
+    @keyup.enter="goToDetail(news.id)"
+    @keyup.space="goToDetail(news.id)"
   >
     <!-- 头部：标题 -->
-    <view class="mb-2">
-      <text class="text-base font-bold text-gray-900 leading-snug line-clamp-2">{{
-        news.title
-      }}</text>
+    <view class="news-title">
+      <text>{{ news.title }}</text>
     </view>
 
     <!-- 中部：摘要 -->
-    <view class="mb-3">
-      <text class="text-gray-500 text-sm leading-relaxed line-clamp-2 text-justify">
+    <view class="news-summary">
+      <text>
         {{ getNewsSummary(news) }}
       </text>
     </view>
 
     <!-- 底部：标签和时间 -->
-    <view class="flex justify-between items-center">
+    <view class="news-meta">
       <!-- 左侧标签 -->
-      <view class="px-2 py-1 rounded-md text-xs font-medium" :class="getNewsTagClass(news)">
-        {{ getNewsTagText(news) }}
-      </view>
+      <TagBadge :label="getNewsTagText(news)" />
 
       <!-- 右侧时间 -->
-      <view class="text-gray-400 text-xs flex items-center">
+      <view class="news-time">
         <text>{{ news.publishedAt ? formatTime(news.publishedAt) : '' }}</text>
       </view>
     </view>
-  </view>
+  </button>
 </template>
 
 <script setup lang="ts">
 import type { News } from '@/types/api';
 import { useNewsItem } from '../composables/use-news-item';
+import TagBadge from '@/components/TagBadge.vue';
 
 interface Props {
   news: News;
@@ -42,11 +43,54 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const { formatTime, getNewsSummary, getNewsTagText, getNewsTagClass, goToDetail } = useNewsItem();
+const { formatTime, getNewsSummary, getNewsTagText, goToDetail } = useNewsItem();
 </script>
 
 <style scoped>
-view {
+.news-item {
+  display: block;
   box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 22px 0;
+  border: 0;
+  border-bottom: 1px solid #eaecf0;
+  border-radius: 0;
+  background: #fff;
+  color: #1f2937;
+  text-align: left;
+  white-space: normal;
+}
+.news-item::after {
+  border: 0;
+}
+.news-title {
+  font-size: 17px;
+  line-height: 1.5;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.news-summary {
+  margin-top: 8px;
+  color: #667085;
+  font-size: 14px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.news-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 12px;
+}
+.news-time {
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.news-item:focus-visible {
+  outline: 2px solid #660874;
+  outline-offset: 2px;
 }
 </style>

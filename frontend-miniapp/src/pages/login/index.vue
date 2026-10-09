@@ -1,11 +1,6 @@
 <template>
-  <view class="min-h-screen bg-white flex flex-col relative pt-safe">
-    <!-- 背景装饰 -->
-    <view
-      class="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-purple-50 to-white -z-10"
-    ></view>
-
-    <view class="flex-1 flex flex-col items-center justify-center px-8">
+  <view class="page-content login-page">
+    <view class="login-content">
       <LoginForm @login-success="handleLoginSuccess" @login-error="handleLoginError" />
     </view>
   </view>
@@ -56,3 +51,16 @@ function handleLoginError(error: Error) {
   });
 }
 </script>
+<style scoped>
+.login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  padding-top: calc(40px + var(--status-bar-height, 0px));
+}
+.login-content {
+  width: 100%;
+  max-width: 400px;
+}
+</style>

@@ -19,7 +19,7 @@ describe('pages/planning/composables/use-menu-planning.ts', () => {
     const { useMenuPlanning } = require(MODULE_PATH);
     const inst = useMenuPlanning();
 
-    const plan = { id: 'p1' } as any;
+    const plan = { id: 'p1', dishesReady: true } as any;
     inst.viewPlanDetail(plan);
     expect(inst.showDetailDialog.value).toBe(true);
     expect(setSelectedPlan).toHaveBeenCalledWith(plan);

@@ -1,10 +1,18 @@
 <template>
-  <view class="min-h-screen bg-black flex flex-col">
-    <!-- 裁剪区域 -->
-    <view class="flex-1 flex items-center justify-center px-6">
-      <view class="relative" :style="{ width: cropSizePx + 'px', height: cropSizePx + 'px' }">
+  <view class="page-viewport avatar-crop-page">
+    <view class="crop-workspace">
+      <text class="crop-instruction">拖动或双指缩放，调整头像位置</text>
+      <view v-if="loadError" class="crop-error">
+        <text>{{ loadError }}</text>
+        <button class="crop-secondary" @click="initWithSrc(src)">重新加载</button>
+      </view>
+      <view
+        v-else
+        class="crop-frame"
+        :style="{ width: cropSizePx + 'px', height: cropSizePx + 'px' }"
+      >
         <movable-area
-          class="relative overflow-hidden"
+          class="crop-area"
           :style="{ width: cropSizePx + 'px', height: cropSizePx + 'px' }"
         >
           <movable-view
@@ -14,290 +22,296 @@
             :scale="true"
             :scale-min="1"
             :scale-max="4"
+            :animation="false"
             direction="all"
+            :disabled="exporting"
             @change="handleMoveChange"
-            class="absolute"
+            @scale="handleScaleChange"
             :style="{ width: baseDisplayWidth + 'px', height: baseDisplayHeight + 'px' }"
           >
-            <image :src="src" mode="scaleToFill" class="w-full h-full" draggable="false" />
+            <image :src="src" mode="scaleToFill" class="crop-image" draggable="false" />
           </movable-view>
         </movable-area>
-
-        <!-- 圆形裁剪框遮罩：外部半透明，中心圆形透明 -->
-        <view class="absolute inset-0 pointer-events-none">
-          <!-- 外层遮罩用 radial-gradient 做圆形透明洞 -->
-          <view
-            class="w-full h-full"
-            :style="{
-              background:
-                'radial-gradient(circle at center, transparent ' +
-                cropSizePx / 2 +
-                'px, rgba(0,0,0,0.55) ' +
-                (cropSizePx / 2 + 1) +
-                'px)',
-            }"
-          />
-          <!-- 圆形边框 -->
-          <view
-            class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white"
-            :style="{ width: cropSizePx + 'px', height: cropSizePx + 'px' }"
-          />
-        </view>
+        <text v-if="!ready" class="crop-loading">正在读取图片…</text>
+        <view class="crop-mask" />
       </view>
     </view>
-
-    <!-- 操作栏 -->
-    <view class="bg-white px-4 py-4 flex items-center justify-between">
-      <view
-        class="px-6 py-3 rounded-full border border-gray-300 text-gray-700"
-        @click="handleCancel"
-      >
-        取消
-      </view>
-      <view class="px-6 py-3 rounded-full bg-ts-purple text-white" @click="handleConfirm">
-        确定
-      </view>
+    <view class="crop-actions">
+      <button class="crop-secondary" :disabled="exporting" @click="handleCancel">取消</button>
+      <button class="crop-primary" :disabled="!ready || exporting" @click="handleConfirm">
+        {{ exporting ? '生成中…' : '使用头像' }}
+      </button>
     </view>
-
-    <!-- 隐藏画布用于导出裁剪结果 -->
     <canvas
       canvas-id="avatarCropCanvas"
       id="avatarCropCanvas"
-      class="absolute"
-      :style="{
-        left: '-9999px',
-        top: '-9999px',
-        width: outputSizePx + 'px',
-        height: outputSizePx + 'px',
-      }"
+      class="crop-canvas"
+      :style="{ width: outputSizePx + 'px', height: outputSizePx + 'px' }"
     />
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, getCurrentInstance } from 'vue';
-import { onLoad } from '@dcloudio/uni-app';
+import { onLoad, onUnload } from '@dcloudio/uni-app';
 
 const src = ref('');
-
-// 以屏宽为基准：裁剪框为屏宽的 70%，最小 260px，最大 360px
 const systemInfo = uni.getSystemInfoSync();
-const windowWidth = systemInfo.windowWidth || 375;
-const cropSizePx = Math.max(260, Math.min(360, Math.floor(windowWidth * 0.7)));
-
-// 输出尺寸（上传用）：固定正方形，后续展示仍然用圆形
+const cropSizePx = Math.max(
+  120,
+  Math.min(360, (systemInfo.windowWidth || 375) - 40, (systemInfo.windowHeight || 720) - 180)
+);
 const outputSizePx = 400;
-
 const ready = ref(false);
-
-// 原图尺寸
+const exporting = ref(false);
+const loadError = ref('');
 const originalWidth = ref(0);
 const originalHeight = ref(0);
-
-// base 显示尺寸（scale=1 时 movable-view 尺寸），用于保证覆盖裁剪框
 const baseDisplayWidth = ref(0);
 const baseDisplayHeight = ref(0);
-
-// movable-view 状态
 const posX = ref(0);
 const posY = ref(0);
-
-// 真机上 movable-view 缩放 change 事件非常高频：
-// 1) 频繁更新受控 x/y 会导致明显卡顿
-// 2) 这里用“最新值 + 每帧合并一次更新”的方式降低卡顿
-// 3) scale 不做受控绑定（不传 scale-value），避免真机上下一次触摸把缩放重置回 1
-const latestMove = {
-  x: 0,
-  y: 0,
-  scale: 1,
-};
-
-let moveSyncPending = false;
-const scheduleFrame: (cb: () => void) => void =
-  typeof requestAnimationFrame === 'function'
-    ? cb => requestAnimationFrame(cb)
-    : cb => setTimeout(cb, 16);
-
-let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
-
-// uniapp 在部分真机上调用 canvasToTempFilePath / createCanvasContext 需要传入组件实例
-const instanceProxy = getCurrentInstance()?.proxy as any;
+const latestMove = { x: 0, y: 0, scale: 1 };
+const instanceProxy = getCurrentInstance()?.proxy;
+let disposed = false;
+let completed = false;
+let initVersion = 0;
+let loadingSource = '';
+let openerEventChannel:
+  | {
+      emit: (event: string, data?: unknown) => void;
+      on: (event: string, handler: (data: any) => void) => void;
+    }
+  | undefined;
 
 async function initWithSrc(inputSrc: string) {
+  if (inputSrc && (loadingSource === inputSrc || (ready.value && src.value === inputSrc))) return;
+  const version = ++initVersion;
   src.value = inputSrc;
-
-  if (!src.value) {
-    uni.showToast({ title: '图片不存在', icon: 'none' });
-    setTimeout(() => uni.navigateBack(), 800);
+  ready.value = false;
+  loadError.value = '';
+  if (!inputSrc) {
+    loadError.value = '图片不存在，请返回重新选择';
     return;
   }
-
+  loadingSource = inputSrc;
   try {
     const info = await new Promise<UniApp.GetImageInfoSuccessData>((resolve, reject) => {
-      uni.getImageInfo({
-        src: src.value,
-        success: resolve,
-        fail: reject,
-      });
+      uni.getImageInfo({ src: inputSrc, success: resolve, fail: reject });
     });
-
+    if (disposed || version !== initVersion) return;
     originalWidth.value = info.width;
     originalHeight.value = info.height;
-
-    const ratio = info.width / info.height;
-    // 让图片在 scale=1 时至少覆盖裁剪框
-    if (ratio >= 1) {
-      baseDisplayHeight.value = cropSizePx;
-      baseDisplayWidth.value = Math.ceil(cropSizePx * ratio);
-    } else {
-      baseDisplayWidth.value = cropSizePx;
-      baseDisplayHeight.value = Math.ceil(cropSizePx / ratio);
-    }
-
-    // 居中
-    posX.value = Math.floor((cropSizePx - baseDisplayWidth.value) / 2);
-    posY.value = Math.floor((cropSizePx - baseDisplayHeight.value) / 2);
-
-    latestMove.x = posX.value;
-    latestMove.y = posY.value;
-    latestMove.scale = 1;
-
+    const ratio = Math.max(cropSizePx / info.width, cropSizePx / info.height);
+    baseDisplayWidth.value = info.width * ratio;
+    baseDisplayHeight.value = info.height * ratio;
+    posX.value = (cropSizePx - baseDisplayWidth.value) / 2;
+    posY.value = (cropSizePx - baseDisplayHeight.value) / 2;
+    Object.assign(latestMove, { x: posX.value, y: posY.value, scale: 1 });
     ready.value = true;
-  } catch (e) {
-    console.error('getImageInfo failed', e);
-    uni.showToast({ title: '读取图片失败', icon: 'none' });
-    setTimeout(() => uni.navigateBack(), 800);
+  } catch {
+    if (!disposed && version === initVersion) loadError.value = '读取图片失败，请重试';
+  } finally {
+    if (version === initVersion) loadingSource = '';
   }
 }
 
-onLoad(async (options: any) => {
-  // 1) 优先从 opener 的 eventChannel 接收（避免 query 过长导致无法打开页面）
+onLoad((options: any) => {
   const page = (getCurrentPages() as any).slice(-1)[0];
-  const openerEventChannel = page?.getOpenerEventChannel?.();
-  if (openerEventChannel?.on) {
-    openerEventChannel.on('init', (data: { src?: string }) => {
-      if (data?.src) {
-        if (fallbackTimer) {
-          clearTimeout(fallbackTimer);
-          fallbackTimer = null;
-        }
-        initWithSrc(data.src);
-      }
-    });
-  }
-
-  // 2) 兜底：仍支持 query 传 src
+  openerEventChannel = page?.getOpenerEventChannel?.();
+  openerEventChannel?.on('init', (data: { src?: string }) => {
+    if (data?.src) void initWithSrc(data.src);
+  });
   if (options?.src) {
-    if (fallbackTimer) {
-      clearTimeout(fallbackTimer);
-      fallbackTimer = null;
-    }
-    let decoded = '';
+    let decoded = String(options.src);
     try {
-      decoded = decodeURIComponent(String(options.src));
-    } catch (e) {
-      decoded = String(options.src);
-    }
-    initWithSrc(decoded);
-    return;
+      decoded = decodeURIComponent(decoded);
+    } catch {}
+    void initWithSrc(decoded);
+  } else {
+    loadError.value = '图片不存在，请返回重新选择';
   }
-
-  // 3) 若两者都没拿到，给个兜底超时提示（设备慢/时序问题时不应太短）
-  fallbackTimer = setTimeout(() => {
-    if (!src.value) {
-      uni.showToast({ title: '图片不存在', icon: 'none' });
-      setTimeout(() => uni.navigateBack(), 800);
-    }
-    fallbackTimer = null;
-  }, 2000);
 });
 
-function handleMoveChange(e: any) {
-  // e.detail: { x, y, scale }
-  const nextX = Number(e?.detail?.x);
-  const nextY = Number(e?.detail?.y);
-  const nextScale = Number(e?.detail?.scale);
-  // 真机上可能返回 string，这里统一转 number；NaN 则忽略，避免回弹
-  if (Number.isFinite(nextX)) latestMove.x = nextX;
-  if (Number.isFinite(nextY)) latestMove.y = nextY;
-  if (Number.isFinite(nextScale) && nextScale > 0) latestMove.scale = nextScale;
+onUnload(() => {
+  disposed = true;
+  initVersion++;
+  if (exporting.value) uni.hideLoading();
+  if (!completed) openerEventChannel?.emit('cancel');
+});
 
-  if (moveSyncPending) return;
-  moveSyncPending = true;
-  scheduleFrame(() => {
-    moveSyncPending = false;
-    posX.value = latestMove.x;
-    posY.value = latestMove.y;
-  });
+function handleMoveChange(event: { detail: { x: number; y: number } }) {
+  latestMove.x = Number(event.detail.x);
+  latestMove.y = Number(event.detail.y);
+}
+
+function handleScaleChange(event: { detail: { x: number; y: number; scale: number } }) {
+  const { x, y, scale } = event.detail;
+  latestMove.scale = Number(scale);
+  latestMove.x = Number(x);
+  latestMove.y = Number(y);
+  // H5 与 App 的缩放事件返回中心缩放前的平移量，change 返回实际左上角。
+  // #ifdef H5 || APP-PLUS
+  latestMove.x -= (baseDisplayWidth.value * (latestMove.scale - 1)) / 2;
+  latestMove.y -= (baseDisplayHeight.value * (latestMove.scale - 1)) / 2;
+  // #endif
 }
 
 function handleCancel() {
-  uni.navigateBack();
+  if (!exporting.value) uni.navigateBack();
 }
 
 async function handleConfirm() {
-  if (!ready.value) return;
-
-  uni.showLoading({ title: '生成中...' });
-
+  if (!ready.value || exporting.value) return;
+  exporting.value = true;
+  uni.showLoading({ title: '生成中…' });
   try {
-    // 导出时使用最新一次事件里的参数，避免节流导致的“框选与导出不一致”
-    const exportX = Number.isFinite(latestMove.x) ? latestMove.x : posX.value;
-    const exportY = Number.isFinite(latestMove.y) ? latestMove.y : posY.value;
-    const exportScale =
-      Number.isFinite(latestMove.scale) && latestMove.scale > 0 ? latestMove.scale : 1;
-
-    const displayScale = (baseDisplayWidth.value * exportScale) / originalWidth.value;
-
-    // 裁剪框为整个 movable-area (0..cropSizePx)
-    const sx = (0 - exportX) / displayScale;
-    const sy = (0 - exportY) / displayScale;
-    const sWidth = cropSizePx / displayScale;
-    const sHeight = cropSizePx / displayScale;
-
-    // clamp
-    const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
-    const csx = clamp(sx, 0, originalWidth.value);
-    const csy = clamp(sy, 0, originalHeight.value);
-    const csw = clamp(sWidth, 1, originalWidth.value - csx);
-    const csh = clamp(sHeight, 1, originalHeight.value - csy);
-
-    const ctx = instanceProxy
-      ? uni.createCanvasContext('avatarCropCanvas', instanceProxy)
-      : uni.createCanvasContext('avatarCropCanvas');
+    const displayScale = (baseDisplayWidth.value * latestMove.scale) / originalWidth.value;
+    const width = cropSizePx / displayScale;
+    const height = cropSizePx / displayScale;
+    const x = Math.max(0, Math.min(originalWidth.value - width, -latestMove.x / displayScale));
+    const y = Math.max(0, Math.min(originalHeight.value - height, -latestMove.y / displayScale));
+    const ctx = uni.createCanvasContext('avatarCropCanvas', instanceProxy);
     ctx.clearRect(0, 0, outputSizePx, outputSizePx);
-    ctx.drawImage(src.value, csx, csy, csw, csh, 0, 0, outputSizePx, outputSizePx);
-    ctx.draw(false, () => {
-      const options: UniApp.CanvasToTempFilePathOptions = {
-        canvasId: 'avatarCropCanvas',
-        destWidth: outputSizePx,
-        destHeight: outputSizePx,
-        fileType: 'jpg',
-        quality: 0.92,
-        success: res => {
-          uni.hideLoading();
-          const eventChannel = (getCurrentPages() as any).slice(-1)[0].getOpenerEventChannel?.();
-          eventChannel?.emit('cropped', { tempFilePath: res.tempFilePath });
-          uni.navigateBack();
+    ctx.drawImage(src.value, x, y, width, height, 0, 0, outputSizePx, outputSizePx);
+    await new Promise<void>(resolve => ctx.draw(false, resolve));
+    if (disposed) return;
+    const result = await new Promise<UniApp.CanvasToTempFilePathRes>((resolve, reject) => {
+      uni.canvasToTempFilePath(
+        {
+          canvasId: 'avatarCropCanvas',
+          destWidth: outputSizePx,
+          destHeight: outputSizePx,
+          fileType: 'jpg',
+          quality: 0.92,
+          success: resolve,
+          fail: reject,
         },
-        fail: err => {
-          console.error('canvasToTempFilePath fail', err);
-          uni.hideLoading();
-          uni.showToast({ title: '生成失败', icon: 'none' });
-        },
-      };
-
-      // 真机优先传实例，避免找不到 canvas 导致一直转圈
-      if (instanceProxy) {
-        uni.canvasToTempFilePath(options, instanceProxy);
-      } else {
-        uni.canvasToTempFilePath(options);
-      }
+        instanceProxy
+      );
     });
-  } catch (e) {
-    console.error('crop confirm error', e);
+    if (disposed) return;
+    exporting.value = false;
     uni.hideLoading();
-    uni.showToast({ title: '生成失败', icon: 'none' });
+    completed = true;
+    openerEventChannel?.emit('cropped', { tempFilePath: result.tempFilePath });
+    uni.navigateBack();
+  } catch {
+    if (!disposed) uni.showToast({ title: '生成失败，请重试', icon: 'none' });
+  } finally {
+    if (!disposed && exporting.value) {
+      exporting.value = false;
+      uni.hideLoading();
+    }
   }
 }
 </script>
+
+<style scoped>
+.avatar-crop-page {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fff;
+  color: #1f2937;
+}
+.crop-workspace {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 20px;
+}
+.crop-instruction {
+  color: #667085;
+  font-size: 14px;
+  line-height: 1.6;
+  text-align: center;
+}
+.crop-frame {
+  position: relative;
+  flex-shrink: 0;
+}
+.crop-area {
+  overflow: hidden;
+}
+.crop-image {
+  width: 100%;
+  height: 100%;
+}
+.crop-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #667085;
+  font-size: 14px;
+}
+.crop-mask {
+  position: absolute;
+  inset: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 80px rgba(17, 24, 39, 0.62);
+  pointer-events: none;
+}
+.crop-frame {
+  overflow: hidden;
+}
+.crop-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.crop-actions {
+  display: flex;
+  flex-shrink: 0;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px calc(16px + env(safe-area-inset-bottom));
+  background: #fff;
+}
+.crop-primary,
+.crop-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 24px;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+  background: #fff;
+  color: #475467;
+  font-size: 16px;
+  line-height: 1.5;
+}
+.crop-primary {
+  border-color: #660874;
+  background: #660874;
+  color: #fff;
+}
+.crop-primary[disabled],
+.crop-secondary[disabled] {
+  opacity: 0.5;
+}
+.crop-primary::after,
+.crop-secondary::after {
+  border: 0;
+}
+.crop-primary:focus-visible,
+.crop-secondary:focus-visible {
+  outline: 2px solid #660874;
+  outline-offset: 3px;
+}
+.crop-canvas {
+  position: absolute;
+  top: -9999px;
+  left: -9999px;
+}
+</style>

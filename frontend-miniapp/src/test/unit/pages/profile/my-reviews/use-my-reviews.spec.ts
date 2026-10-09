@@ -1,6 +1,12 @@
 describe('pages/profile/my-reviews/composables/use-my-reviews.ts', () => {
   const MODULE_PATH = '@/pages/profile/my-reviews/composables/use-my-reviews';
 
+  beforeEach(() => {
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ isLoggedIn: true, sessionVersion: 0 }),
+    }));
+  });
+
   afterEach(() => {
     jest.resetModules();
     jest.clearAllMocks();
@@ -45,7 +51,7 @@ describe('pages/profile/my-reviews/composables/use-my-reviews.ts', () => {
     expect(inst.hasMore.value).toBe(false);
   });
 
-  test('fetchReviews handles errors and sets hasMore false', async () => {
+  test('fetchReviews exposes errors without marking pagination complete', async () => {
     const getMyReviews = jest.fn() as unknown as jest.Mock<any, any>;
     getMyReviews.mockResolvedValue({ code: 500, message: 'err' });
     jest.doMock('@/api/modules/user', () => ({ getMyReviews }));
@@ -58,8 +64,8 @@ describe('pages/profile/my-reviews/composables/use-my-reviews.ts', () => {
     await inst.fetchReviews(true);
 
     expect(inst.error.value).toBe('err');
-    expect(inst.hasMore.value).toBe(false);
-    expect((global as any).uni.showToast).toHaveBeenCalled();
+    expect(inst.hasMore.value).toBe(true);
+    expect((global as any).uni.showToast).not.toHaveBeenCalled();
   });
 });
 export {};

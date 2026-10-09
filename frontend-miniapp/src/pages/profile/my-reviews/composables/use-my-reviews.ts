@@ -1,89 +1,86 @@
-// @/pages/profile/my-reviews/composables/use-my-reviews.ts
-import { ref } from 'vue';
+import { ref, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { getMyReviews } from '@/api/modules/user';
+import { useUserStore } from '@/store/modules/use-user-store';
 import type { MyReviewItem } from '@/types/api';
 
 export function useMyReviews() {
+  const userStore = useUserStore();
   const reviews = ref<MyReviewItem[]>([]);
   const loading = ref(false);
+  const initialized = ref(false);
   const error = ref<string | null>(null);
-  const currentPage = ref(1);
-  const pageSize = 10;
   const hasMore = ref(true);
+  let currentPage = 0;
+  const pageSize = 10;
+  let requestVersion = 0;
+  let disposed = false;
+  let failedReset = false;
 
-  /**
-   * 获取我的评价列表
-   */
-  const fetchReviews = async (reset = false) => {
-    if (loading.value) return;
-
+  async function fetchReviews(reset = false): Promise<boolean> {
+    if (disposed || !userStore.isLoggedIn || (loading.value && !reset)) return false;
+    const session = userStore.sessionVersion;
+    const version = ++requestVersion;
+    const isCurrent = () =>
+      !disposed && session === userStore.sessionVersion && version === requestVersion;
+    const firstPage = reset ? 1 : currentPage + 1;
+    const lastPage = reset ? Math.max(1, currentPage) : firstPage;
     loading.value = true;
     error.value = null;
+    failedReset = reset;
 
     try {
-      if (reset) {
-        currentPage.value = 1;
-        reviews.value = [];
-        hasMore.value = true;
-      }
-
-      const response = await getMyReviews({
-        page: currentPage.value,
-        pageSize,
-      });
-
-      if (response.code === 200 && response.data) {
-        const { items, meta } = response.data;
-
-        if (reset) {
-          reviews.value = items;
-        } else {
-          reviews.value.push(...items);
+      const nextItems: MyReviewItem[] = [];
+      let loadedPage = firstPage;
+      let totalPages = 1;
+      for (let page = firstPage; page <= lastPage; page++) {
+        const response = await getMyReviews({ page, pageSize });
+        if (!isCurrent()) return false;
+        if (response.code !== 200 || !response.data) {
+          throw new Error(response.message || '获取评价列表失败');
         }
-
-        // 判断是否还有更多数据
-        hasMore.value = currentPage.value < meta.totalPages;
-      } else {
-        throw new Error(response.message || '获取评价列表失败');
+        nextItems.push(...response.data.items);
+        loadedPage = page;
+        totalPages = response.data.meta.totalPages;
+        if (page >= totalPages) break;
       }
+      reviews.value = reset ? nextItems : [...reviews.value, ...nextItems];
+      currentPage = loadedPage;
+      hasMore.value = loadedPage < totalPages;
+      initialized.value = true;
+      return true;
     } catch (err) {
-      const message = err instanceof Error ? err.message : '获取评价列表失败';
-      error.value = message;
-      console.error(message, err);
-      uni.showToast({
-        title: message,
-        icon: 'none',
-      });
-      // 加载失败时，认为没有更多数据
-      hasMore.value = false;
+      if (!isCurrent()) return false;
+      error.value = err instanceof Error ? err.message : '获取评价列表失败';
+      return false;
     } finally {
-      loading.value = false;
+      if (isCurrent()) loading.value = false;
     }
-  };
+  }
 
-  /**
-   * 加载更多
-   */
-  const loadMore = async () => {
-    if (!hasMore.value || loading.value) return;
-    currentPage.value++;
-    await fetchReviews();
-  };
+  const loadMore = (): Promise<boolean> =>
+    hasMore.value ? fetchReviews() : Promise.resolve(false);
+  const refresh = (): Promise<boolean> => fetchReviews(true);
+  const retry = (): Promise<boolean> => fetchReviews(failedReset);
 
-  /**
-   * 刷新列表
-   */
-  const refresh = async () => {
-    await fetchReviews(true);
-  };
+  watch(
+    () => userStore.sessionVersion,
+    () => {
+      requestVersion++;
+      reviews.value = [];
+      currentPage = 0;
+      loading.value = false;
+      initialized.value = false;
+      error.value = null;
+      hasMore.value = true;
+    },
+    { flush: 'sync' }
+  );
 
-  return {
-    reviews,
-    loading,
-    error,
-    hasMore,
-    fetchReviews,
-    loadMore,
-    refresh,
-  };
+  if (getCurrentScope())
+    onScopeDispose(() => {
+      disposed = true;
+      requestVersion++;
+    });
+
+  return { reviews, loading, initialized, error, hasMore, fetchReviews, loadMore, refresh, retry };
 }

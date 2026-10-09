@@ -15,7 +15,7 @@ import { useMenuPlanning } from '@/pages/planning/composables/use-menu-planning'
 import { onPullDownRefresh, onShow } from '@dcloudio/uni-app';
 import ReviewForm from '@/pages/dish/components/ReviewForm.vue';
 
-jest.mock('@dcloudio/uni-app', () => ({ onPullDownRefresh: jest.fn(), onReachBottom: jest.fn(), onShow: jest.fn() }));
+jest.mock('@dcloudio/uni-app', () => ({ onPullDownRefresh: jest.fn(), onReachBottom: jest.fn(), onShow: jest.fn(), onBackPress: jest.fn(), onHide: jest.fn() }));
 
 const storage = new Map<string, any>();
 const requests: any[] = [];
@@ -407,8 +407,10 @@ describe('actual review and avatar upload consumers', () => {
   test('an old avatar upload cannot report failure or finish B uploading', async () => {
     uniMock.chooseImage.mockImplementation(options => options.success({ tempFilePaths: ['/tmp/avatar.jpg'] }));
     const personal = usePersonal();
+    await personal.loadProfile();
     const old = personal.chooseAvatar().catch(() => undefined);
     await useUserStore().loginAction('B');
+    await personal.loadProfile();
     const current = personal.chooseAvatar();
     uploads[0].success({ statusCode: 200, data: JSON.stringify({ code: 200, data: { url: 'https://images.test/A.jpg' } }) });
     await old;
@@ -423,6 +425,7 @@ describe('actual review and avatar upload consumers', () => {
     let selected!: (data: any) => void;
     uniMock.chooseImage.mockImplementation(options => { selected = options.success; });
     const personal = usePersonal();
+    await personal.loadProfile();
     const old = personal.chooseAvatar();
     await useUserStore().loginAction('B');
     selected({ tempFilePaths: ['/tmp/A.jpg'] });
@@ -434,11 +437,12 @@ describe('actual review and avatar upload consumers', () => {
     const originalEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = 'production';
     const personal = usePersonal();
+    await personal.loadProfile();
     process.env.NODE_ENV = originalEnv;
     let cropped!: (data: any) => void;
     uniMock.chooseImage.mockImplementation(options => options.success({ tempFilePaths: ['/tmp/A.jpg'] }));
     uniMock.navigateTo.mockImplementation(options => options.success({ eventChannel: {
-      emit: jest.fn(), on: (_event: string, callback: any) => { cropped = callback; },
+      emit: jest.fn(), on: (event: string, callback: any) => { if (event === 'cropped') cropped = callback; },
     } }));
     const old = personal.chooseAvatar();
     await useUserStore().loginAction('B');
@@ -532,7 +536,8 @@ describe('real home recommendation writer', () => {
     expect(await current).toBe('success');
     expect(vm.currentRequestId).toBe('fresh-profile');
     expect(useUserStore().userInfo?.preferences?.favoriteIngredients).toEqual(['fresh']);
-    expect(vm.isInitialLoading).toBe(false);
+    expect(vm.recommendationsInitialized).toBe(true);
+    expect(wrapper.get('.home-content').attributes('aria-busy')).toBe('false');
   });
 
   test('home preparation preserves a newer local profile update while its fetch is pending', async () => {
@@ -605,9 +610,9 @@ describe('real home recommendation writer', () => {
     expect(vm.currentFilter).toEqual({ tag: ['current'] });
     expect(useDishesStore().dishes.map(dish => dish.id)).toEqual(['cached-dish']);
     expect(useDishesStore().loading).toBe(false);
-    expect(vm.isInitialLoading).toBe(false);
+    expect(vm.recommendationsInitialized).toBe(true);
     expect(wrapper.text()).toContain(error);
-    expect(wrapper.findComponent({ name: 'RecommendItem' }).exists()).toBe(false);
+    expect(wrapper.findComponent({ name: 'RecommendItem' }).exists()).toBe(true);
   });
 
   test.each(['success', 'failure'])('a superseded home preparation %s cannot start or settle the current recommendation run', async outcome => {
@@ -630,7 +635,7 @@ describe('real home recommendation writer', () => {
     await previous;
     expect(vm.recommendError).toBe(error);
     expect(useDishesStore().loading).toBe(false);
-    expect(vm.isInitialLoading).toBe(false);
+    expect(vm.recommendationsInitialized).toBe(true);
   });
 
   test.each(['success', 'failure'])('a superseded same-session %s cannot end the current filter loading', async outcome => {
@@ -689,7 +694,8 @@ describe('real home recommendation writer', () => {
     await flushPromises();
     oldCanteens.success(success({ items: [], meta }));
     await flushPromises();
-    expect((wrapper.vm as any).isInitialLoading).toBe(false);
+    expect((wrapper.vm as any).recommendationsInitialized).toBe(true);
+    expect(wrapper.text()).toContain('没有推荐菜品');
     expect(wrapper.findComponent({ name: 'IndexSkeleton' }).exists()).toBe(false);
     expect(useCanteenStore().canteenList[0].id).toBe('public-canteen');
     expect(useCanteenStore().error).toBeNull();

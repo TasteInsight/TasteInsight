@@ -5,11 +5,13 @@ jest.mock('@/store/modules/use-user-store', () => ({
 import { nextTick } from 'vue';
 
 jest.mock('@/api/modules/canteen');
+jest.mock('@/api/modules/dish');
 
-import { getWindowDishes, getWindowDetail } from '@/api/modules/canteen';
+import { getWindowDetail } from '@/api/modules/canteen';
+import { getDishes } from '@/api/modules/dish';
 import { useWindowData } from '@/pages/window/composables/use-window-data';
 
-const mockedGetWindowDishes = getWindowDishes as jest.MockedFunction<typeof getWindowDishes>;
+const mockedGetWindowDishes = getDishes as jest.MockedFunction<typeof getDishes>;
 const mockedGetWindowDetail = getWindowDetail as jest.MockedFunction<typeof getWindowDetail>;
 
 describe('useWindowData', () => {
@@ -20,12 +22,12 @@ describe('useWindowData', () => {
   test('fetchWindow handles fetch error and sets local error', async () => {
     mockedGetWindowDetail.mockRejectedValue(new Error('request fail'));
 
-    const { fetchWindow, error } = useWindowData();
+    const { fetchWindow, headerError } = useWindowData();
 
     await fetchWindow('w1');
 
     expect(mockedGetWindowDetail).toHaveBeenCalledWith('w1');
-    expect(error.value).toBe('request fail');
+    expect(headerError.value).toBe('request fail');
   });
 
   test('fetchDishes success sets dishes, page and hasMore; toggles loading flags', async () => {

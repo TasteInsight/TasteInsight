@@ -21,6 +21,8 @@ describe('use-profile composable', () => {
       getStorageSync: jest.fn().mockReturnValue(null),
       removeStorageSync: jest.fn(),
     } as any;
+    useUserStore().token = 'tok';
+    useUserStore().userInfo = { id: 'u1' } as any;
     // silence Vue onMounted warnings when composable is used outside setup in unit tests
     jest.spyOn(console, 'warn').mockImplementation(() => {});
   });
@@ -47,14 +49,13 @@ describe('use-profile composable', () => {
 
   test('updateProfile success and failure paths', async () => {
     const userStore = useUserStore();
-    userStore.updateLocalUserInfo = jest.fn();
 
     // success
-    updateUserProfileMock.mockResolvedValue({ data: { id: 'u1', nickname: 'N' } });
+    updateUserProfileMock.mockResolvedValue({ code: 200, data: { id: 'u1', nickname: 'N' } });
     const p = useProfile();
     const ok = await p.updateProfile({} as any);
     expect(ok).toBe(true);
-    expect(userStore.updateLocalUserInfo).toHaveBeenCalledWith({ id: 'u1', nickname: 'N' });
+    expect(userStore.userInfo).toMatchObject({ id: 'u1', nickname: 'N' });
     expect((global as any).uni.showToast).toHaveBeenCalledWith(
       expect.objectContaining({ icon: 'success' })
     );
@@ -72,7 +73,7 @@ describe('use-profile composable', () => {
 
   test('handleLogout confirm and cancel flows', async () => {
     const userStore = useUserStore();
-    userStore.logoutAction = jest.fn();
+    jest.spyOn(userStore, 'logoutAction');
 
     // cancel flow
     (global as any).uni.showModal = jest
@@ -98,7 +99,7 @@ describe('use-profile composable', () => {
     jest.useRealTimers();
   });
 
-  test('onMounted fetch when logged in', async () => {
+  test('mount does not duplicate the page show request', async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
     const userStore = useUserStore();
@@ -120,6 +121,6 @@ describe('use-profile composable', () => {
 
     // allow microtasks
     await Promise.resolve();
-    expect(userStore.fetchProfileAction).toHaveBeenCalled();
+    expect(userStore.fetchProfileAction).not.toHaveBeenCalled();
   });
 });

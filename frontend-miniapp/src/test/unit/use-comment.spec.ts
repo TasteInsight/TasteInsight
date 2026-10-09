@@ -1,4 +1,7 @@
 /// <reference types="jest" />
+jest.mock('@/store/modules/use-user-store', () => ({
+  useUserStore: () => ({ sessionVersion: 0 }),
+}));
 import { useComment, useCommentPanel } from '@/pages/dish/composables/use-comment';
 import { getCommentsByReview, createComment, deleteComment } from '@/api/modules/comment';
 
@@ -184,7 +187,7 @@ describe('useCommentPanel', () => {
 
   it('should handle reply selection', () => {
     const { selectCommentForReply, cancelReply, replyingTo } = useCommentPanel(() => mockReviewId);
-    const comment = { id: '1' } as any;
+    const comment = { id: '1', status: 'approved' } as any;
 
     selectCommentForReply(comment);
     expect(replyingTo.value).toStrictEqual(comment);
@@ -212,7 +215,7 @@ describe('useCommentPanel', () => {
       content: 'Reply',
       parentCommentId: 'parent',
     });
-    expect(mockShowToast).toHaveBeenCalledWith(expect.objectContaining({ title: '回复成功' }));
+    expect(mockShowToast).not.toHaveBeenCalled();
     expect(mockOnCommentAdded).toHaveBeenCalled();
     expect(replyContent.value).toBe('');
     expect(replyingTo.value).toBeNull();
@@ -228,6 +231,173 @@ describe('useCommentPanel', () => {
     expect(mockShowToast).toHaveBeenCalledWith(
       expect.objectContaining({ title: '请输入回复内容' })
     );
+  });
+
+  it('keeps a submitted pending reply visible without a redundant success toast', async () => {
+    const reply = {
+      id: 'pending-reply',
+      reviewId: mockReviewId,
+      userId: 'viewer',
+      userNickname: '作者',
+      userAvatar: '',
+      floor: 1,
+      parentComment: null,
+      content: '待审核回复',
+      status: 'pending',
+      createdAt: '2026-10-08T12:00:00Z',
+    };
+    const panel = useCommentPanel(() => mockReviewId);
+    (getCommentsByReview as jest.Mock)
+      .mockResolvedValueOnce({
+        code: 200,
+        data: {
+          items: [],
+          canReply: true,
+          meta: { page: 1, pageSize: 10, total: 0, totalPages: 0 },
+        },
+      })
+      .mockResolvedValueOnce({
+        code: 200,
+        data: {
+          items: [reply],
+          canReply: true,
+          meta: { page: 1, pageSize: 10, total: 1, totalPages: 1 },
+        },
+      });
+    await panel.fetchPanelComments();
+    panel.replyContent.value = reply.content;
+    (createComment as jest.Mock).mockResolvedValue({ code: 201, message: '已提交', data: reply });
+    expect(await panel.submitReply()).toBe(true);
+    expect(panel.comments.value[0]).toMatchObject({ content: '待审核回复', status: 'pending' });
+    expect(panel.replyContent.value).toBe('');
+    expect(mockShowToast).not.toHaveBeenCalled();
+  });
+
+  it('does not submit a reply when its parent review is not public', async () => {
+    const panel = useCommentPanel(() => mockReviewId);
+    (getCommentsByReview as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: {
+        items: [],
+        canReply: false,
+        meta: { page: 1, pageSize: 10, total: 0, totalPages: 0 },
+      },
+    });
+    await panel.fetchPanelComments();
+    panel.replyContent.value = '保留草稿';
+    expect(panel.canSendReply.value).toBe(false);
+    expect(await panel.submitReply()).toBe(false);
+    expect(createComment).not.toHaveBeenCalled();
+    expect(panel.replyContent.value).toBe('保留草稿');
+  });
+
+  it('keeps a newly saved reply visible beyond page one and merges it once in chronological order', async () => {
+    const makeReply = (floor: number) => ({
+      id: 'reply-' + floor,
+      reviewId: mockReviewId,
+      userId: 'viewer',
+      userNickname: '作者',
+      userAvatar: '',
+      floor,
+      parentComment: null,
+      content: '回复 ' + floor,
+      status: 'pending',
+      createdAt: new Date(Date.UTC(2026, 9, 8, 12, 0, floor)).toISOString(),
+    });
+    const older = Array.from({ length: 10 }, (_, index) => makeReply(index + 1));
+    const saved = makeReply(13);
+    const page = (items: any[], number: number, total: number) => ({
+      code: 200,
+      data: { items, canReply: true, meta: { page: number, pageSize: 10, total, totalPages: 2 } },
+    });
+    (getCommentsByReview as jest.Mock)
+      .mockResolvedValueOnce(page(older, 1, 12))
+      .mockResolvedValueOnce(page(older, 1, 13))
+      .mockResolvedValueOnce(page([makeReply(11), makeReply(12), saved], 2, 13));
+    (createComment as jest.Mock).mockResolvedValue({ code: 201, data: saved });
+    const panel = useCommentPanel(() => mockReviewId);
+    await panel.fetchPanelComments();
+    panel.replyContent.value = saved.content;
+    expect(await panel.submitReply()).toBe(true);
+    expect(panel.comments.value.map(reply => reply.id)).toEqual([
+      ...older.map(reply => reply.id),
+      saved.id,
+    ]);
+    expect(panel.hasMore.value).toBe(true);
+    await panel.loadMoreComments();
+    expect(panel.comments.value.map(reply => reply.id)).toEqual(
+      Array.from({ length: 13 }, (_, index) => 'reply-' + (index + 1))
+    );
+    expect(panel.hasMore.value).toBe(false);
+  });
+
+  it('shows the saved reply even when the follow-up read fails without turning a successful write into failure', async () => {
+    const saved = {
+      id: 'saved',
+      reviewId: mockReviewId,
+      userId: 'viewer',
+      userNickname: '作者',
+      userAvatar: '',
+      floor: 1,
+      parentComment: null,
+      content: '已保存的回复',
+      status: 'pending',
+      createdAt: '2026-10-08T12:00:00Z',
+    };
+    (getCommentsByReview as jest.Mock)
+      .mockResolvedValueOnce({
+        code: 200,
+        data: { items: [], canReply: true, meta: { totalPages: 0 } },
+      })
+      .mockRejectedValueOnce(new Error('timeout'));
+    (createComment as jest.Mock).mockResolvedValue({ code: 201, data: saved });
+    const panel = useCommentPanel(() => mockReviewId);
+    await panel.fetchPanelComments();
+    panel.replyContent.value = saved.content;
+    expect(await panel.submitReply()).toBe(true);
+    expect(panel.comments.value).toEqual([saved]);
+    expect(panel.replyContent.value).toBe('');
+    expect(panel.error.value).toContain('回复加载失败');
+  });
+
+  it('retains a confirmed write through page-one retry and hands it back to the server page when reached', async () => {
+    const replies = Array.from({ length: 26 }, (_, index) => ({
+      id: 'r-' + (index + 1),
+      reviewId: mockReviewId,
+      userId: 'viewer',
+      userNickname: '作者',
+      userAvatar: '',
+      floor: index + 1,
+      parentComment: null,
+      content: '回复 ' + (index + 1),
+      status: 'pending',
+      createdAt: new Date(Date.UTC(2026, 9, 8, 12, 0, index)).toISOString(),
+    }));
+    const page = (number: number, total: number, items: any[]) => ({
+      code: 200,
+      data: { items, canReply: true, meta: { page: number, pageSize: 10, total, totalPages: 3 } },
+    });
+    (getCommentsByReview as jest.Mock)
+      .mockResolvedValueOnce(page(1, 25, replies.slice(0, 10)))
+      .mockRejectedValueOnce(new Error('timeout'))
+      .mockResolvedValueOnce(page(1, 26, replies.slice(0, 10)))
+      .mockResolvedValueOnce(page(2, 26, replies.slice(10, 20)))
+      .mockResolvedValueOnce(
+        page(3, 26, [...replies.slice(20, 25), { ...replies[25], status: 'approved' }])
+      );
+    (createComment as jest.Mock).mockResolvedValue({ code: 201, data: replies[25] });
+    const panel = useCommentPanel(() => mockReviewId);
+    await panel.fetchPanelComments();
+    panel.replyContent.value = replies[25].content;
+    expect(await panel.submitReply()).toBe(true);
+    expect(await panel.retryComments()).toBe(true);
+    expect(panel.comments.value.some(reply => reply.id === replies[25].id)).toBe(true);
+    await panel.loadMoreComments();
+    expect(panel.comments.value.some(reply => reply.id === replies[25].id)).toBe(true);
+    await panel.loadMoreComments();
+    expect(panel.comments.value.map(reply => reply.id)).toEqual(replies.map(reply => reply.id));
+    expect(panel.comments.value[25].status).toBe('approved');
+    expect(panel.hasMore.value).toBe(false);
   });
 
   it('should reset panel', () => {

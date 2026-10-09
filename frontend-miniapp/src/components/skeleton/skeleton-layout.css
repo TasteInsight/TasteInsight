@@ -1,0 +1,79 @@
+.skeleton-page {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 20px;
+  background: #fff;
+}
+.skeleton-page > .skeleton-item {
+  margin-bottom: 20px;
+}
+.skeleton-copy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+}
+.skeleton-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.skeleton-inline > .skeleton-item {
+  flex-shrink: 0;
+}
+.skeleton-filter-row {
+  overflow: hidden;
+  margin: 20px 0 4px;
+}
+.dish-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 0;
+  border-bottom: 1px solid #eaecf0;
+}
+.dish-skeleton-media {
+  flex-shrink: 0;
+}
+.index-skeleton-canteens {
+  display: flex;
+  gap: 12px;
+  overflow: hidden;
+  margin: 20px 0 28px;
+}
+.index-skeleton-canteen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 10px;
+}
+.review-skeleton-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px 0;
+  border-bottom: 1px solid #eaecf0;
+}
+.dish-detail-skeleton-summary {
+  padding-bottom: 20px;
+  border-bottom: 1px solid #eaecf0;
+}
+.skeleton-profile-header {
+  padding: 0 0 28px;
+}
+.skeleton-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 0;
+  border-bottom: 1px solid #eaecf0;
+}
+.skeleton-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 8px 0 24px;
+}

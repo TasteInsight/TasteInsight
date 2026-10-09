@@ -1,226 +1,178 @@
 <template>
-  <view class="w-full min-h-screen bg-gray-50 p-4">
-    <view class="bg-white rounded-xl p-6 shadow-sm">
-      <!-- 应用信息 -->
-      <view class="text-center mb-8" @tap="handleSecretTap">
-        <image src="/static/logo.png" class="w-20 h-20 mx-auto mb-4 rounded-xl" mode="aspectFit" />
-        <text class="text-xl font-bold text-gray-800 block">食鉴 TasteInsight</text>
-        <text class="text-gray-500 text-sm mt-1">Version 1.0.0</text>
-      </view>
-
-      <!-- 功能介绍 -->
-      <view class="mb-8">
-        <text class="text-base font-semibold text-gray-800 mb-4 block">
-          <text class="iconfont icon-school mr-2"></text>关于食鉴
-        </text>
-        <text class="text-gray-600 text-sm leading-relaxed mb-4">
-          食鉴是一款专为高校师生打造的智能食堂评价与推荐小程序。我们致力于通过用户评价、AI推荐和数据分析，为您提供最真实、最有价值的校园餐饮信息。
-        </text>
-
-        <view class="bg-blue-50 rounded-lg p-4 mb-4">
-          <text class="text-sm font-medium text-blue-800 mb-2 block">
-            <text class="iconfont icon-star mr-2"></text>核心功能
-          </text>
-          <text class="text-blue-700 text-sm leading-relaxed">
-            • 智能菜品评价系统：支持文字评价、星级评分、图片上传\n•
-            AI美食推荐：基于您的口味偏好和过敏信息提供个性化推荐\n•
-            食堂窗口导航：实时查看各窗口菜品和价格信息\n• 菜单规划助手：智能生成每日/每周饮食计划\n•
-            社区互动：查看他人评价、参与讨论交流\n• 个人中心：收藏菜品、管理评价历史、设置偏好
-          </text>
-        </view>
-      </view>
-
-      <!-- 技术栈 -->
-      <view class="mb-8">
-        <text class="text-base font-semibold text-gray-800 mb-4 block">
-          <text class="iconfont icon-flash mr-2"></text>技术栈
-        </text>
-        <view class="space-y-3">
-          <view class="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
-            <text class="text-sm font-medium text-gray-700">前端框架</text>
-            <text class="text-xs text-gray-500">Vue 3 + Composition API</text>
-          </view>
-          <view class="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
-            <text class="text-sm font-medium text-gray-700">跨平台框架</text>
-            <text class="text-xs text-gray-500">uni-app</text>
-          </view>
-          <view class="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
-            <text class="text-sm font-medium text-gray-700">样式框架</text>
-            <text class="text-xs text-gray-500">Tailwind CSS</text>
-          </view>
-          <view class="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
-            <text class="text-sm font-medium text-gray-700">状态管理</text>
-            <text class="text-xs text-gray-500">Pinia</text>
-          </view>
-          <view class="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
-            <text class="text-sm font-medium text-gray-700">HTTP客户端</text>
-            <text class="text-xs text-gray-500">Axios</text>
-          </view>
-          <view class="bg-gray-50 rounded-lg p-3 flex items-center justify-between">
-            <text class="text-sm font-medium text-gray-700">图标库</text>
-            <text class="text-xs text-gray-500">@iconify/json</text>
-          </view>
-        </view>
-      </view>
-
-      <!-- 开发团队 -->
-      <view class="mb-8">
-        <text class="text-base font-semibold text-gray-800 mb-4 block">
-          <text class="iconfont icon-team mr-2"></text>开发团队
-        </text>
-        <view class="space-y-3">
-          <view class="flex items-center">
-            <view
-              class="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mr-3"
-            >
-              <text class="text-white font-bold text-sm">T</text>
-            </view>
-            <view>
-              <text class="text-sm font-medium text-gray-700">TasteInsight Team</text>
-              <text class="text-xs text-gray-500">独立开发者</text>
-            </view>
-          </view>
-          <text class="text-gray-600 text-sm leading-relaxed">
-            由热爱技术的开发者创建，致力于为校园生活提供更好的数字化解决方案。
-          </text>
-        </view>
-      </view>
-
-      <!-- 开源项目 -->
-      <view class="mb-8">
-        <text class="text-base font-semibold text-gray-800 mb-4 block">
-          <text class="iconfont icon-link mr-2"></text>开源项目
-        </text>
-        <view class="space-y-2">
-          <view class="flex justify-between items-center py-2 border-b border-gray-100">
-            <text class="text-sm text-gray-700">Vue.js</text>
-            <text class="text-xs text-gray-500">MIT License</text>
-          </view>
-          <view class="flex justify-between items-center py-2 border-b border-gray-100">
-            <text class="text-sm text-gray-700">uni-app</text>
-            <text class="text-xs text-gray-500">Apache-2.0</text>
-          </view>
-          <view class="flex justify-between items-center py-2 border-b border-gray-100">
-            <text class="text-sm text-gray-700">Tailwind CSS</text>
-            <text class="text-xs text-gray-500">MIT License</text>
-          </view>
-          <view class="flex justify-between items-center py-2 border-b border-gray-100">
-            <text class="text-sm text-gray-700">Pinia</text>
-            <text class="text-xs text-gray-500">MIT License</text>
-          </view>
-          <view class="flex justify-between items-center py-2">
-            <text class="text-sm text-gray-700">其他依赖库</text>
-            <text class="text-xs text-gray-500">各种开源协议</text>
-          </view>
-        </view>
-        <text class="text-gray-500 text-xs mt-3">
-          感谢所有开源项目的贡献者，为现代Web开发提供了强大的工具链。
-        </text>
-      </view>
-
-      <!-- 更新日志 -->
-      <view class="mb-8">
-        <text class="text-base font-semibold text-gray-800 mb-4 block">
-          <text class="iconfont icon-document mr-2"></text>版本更新
-        </text>
-        <view class="space-y-3">
-          <view class="border-l-4 border-blue-500 pl-4">
-            <text class="text-sm font-medium text-gray-700">v1.0.0 (2024-12-16)</text>
-            <text class="text-xs text-gray-600 mt-1 block">
-              • ✨ 全新发布：完整的食堂评价和AI推荐功能\n• 🎨 现代化UI设计，支持深色模式\n• 🤖
-              集成AI聊天助手，提供智能美食推荐\n• 📱 优化移动端体验，支持手势操作\n• 🔒
-              增强隐私保护，合规GDPR要求
-            </text>
-          </view>
-        </view>
-      </view>
-
-      <!-- 联系我们 -->
-      <view class="mb-8">
-        <text class="text-base font-semibold text-gray-800 mb-4 block">
-          <text class="iconfont icon-phone mr-2"></text>联系我们
-        </text>
-        <view class="space-y-3">
-          <view class="flex items-center">
-            <view class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
-              <text class="iconfont icon-chat text-green-600"></text>
-            </view>
-            <view>
-              <text class="text-sm text-gray-700">微信公众号</text>
-              <text class="text-xs text-gray-500">tasteinsight_official</text>
-            </view>
-          </view>
-          <view class="flex items-center">
-            <view class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-              <text class="iconfont icon-mail text-blue-600"></text>
-            </view>
-            <view>
-              <text class="text-sm text-gray-700">邮箱反馈</text>
-              <text class="text-xs text-gray-500">feedback@tasteinsight.com</text>
-            </view>
-          </view>
-          <view class="flex items-center">
-            <view class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
-              <text class="iconfont icon-feedback text-purple-600"></text>
-            </view>
-            <view>
-              <text class="text-sm text-gray-700">问题反馈</text>
-              <text class="text-xs text-gray-500">小程序内设置页提交</text>
-            </view>
-          </view>
-        </view>
-      </view>
-
-      <!-- 免责声明 -->
-      <view class="mb-8">
-        <text class="text-base font-semibold text-gray-800 mb-4 block">
-          <text class="iconfont icon-warning mr-2"></text>免责声明
-        </text>
-        <text class="text-gray-600 text-sm leading-relaxed">
-          本小程序提供的菜品评价信息仅供参考，不构成任何形式的消费建议或保证。实际菜品质量可能因季节、厨师等因素有所变化，请以实地考察为准。
-        </text>
-        <text class="text-gray-600 text-sm leading-relaxed mt-2">
-          我们不对因使用本小程序信息而产生的任何直接或间接损失承担责任。如有食物过敏或其他健康问题，请务必咨询专业医生。
-        </text>
-      </view>
-
-      <!-- 底部版权 -->
-      <view class="mt-8 pt-6 border-t border-gray-100 text-center">
-        <text class="text-gray-400 text-xs block mb-2">
-          Copyright © 2024 TasteInsight. All rights reserved.
-        </text>
-        <text class="text-gray-400 text-xs"> 基于 Vue.js 和 uni-app 构建 | 遵循 MIT 开源协议 </text>
+  <view class="page-content settings-page about-page">
+    <view class="about-identity">
+      <button class="about-logo-button" aria-label="食鉴应用标志" @tap="handleSecretTap">
+        <image src="/static/logo.png" class="about-logo" mode="aspectFit" />
+      </button>
+      <view
+        ><text class="about-name">食鉴 TasteInsight</text
+        ><text class="settings-hint">Version 1.0.0</text></view
+      >
+    </view>
+    <view class="settings-section">
+      <text class="about-description"
+        >食鉴是一款面向高校师生的食堂评价与推荐小程序。浏览菜品与评价，记录用餐体验，管理自己的饮食偏好。</text
+      >
+    </view>
+    <view class="settings-section">
+      <text class="settings-title">支持与隐私</text>
+      <button class="settings-button settings-menu about-contact" @click="copyEmail">
+        <view
+          ><text class="settings-label">邮箱反馈</text
+          ><text class="settings-hint">feedback@tasteinsight.com</text></view
+        ><text class="about-action-label">复制</text>
+      </button>
+      <button class="settings-button settings-menu" @click="openPrivacy">
+        <text>用户协议与隐私政策</text
+        ><text class="iconfont icon-chevronright" aria-hidden="true"></text>
+      </button>
+      <view class="settings-row"
+        ><view
+          ><text class="settings-label">微信公众号</text
+          ><text class="settings-hint">tasteinsight_official</text></view
+        ></view
+      >
+    </view>
+    <view class="settings-section">
+      <text class="settings-title">主要功能</text>
+      <text v-for="feature in features" :key="feature" class="about-feature">{{ feature }}</text>
+    </view>
+    <view class="settings-section">
+      <button
+        class="settings-button settings-menu"
+        :aria-expanded="showTechnicalDetails"
+        @click="showTechnicalDetails = !showTechnicalDetails"
+      >
+        <text>技术与开源</text
+        ><text class="about-action-label">{{ showTechnicalDetails ? '收起' : '展开' }}</text>
+      </button>
+      <view v-if="showTechnicalDetails" class="about-technical">
+        <view v-for="item in technologies" :key="item.name" class="settings-row"
+          ><text class="settings-label">{{ item.name }}</text
+          ><text class="settings-hint">{{ item.detail }}</text></view
+        >
+        <text class="settings-hint about-thanks"
+          >感谢开源项目贡献者为应用开发提供的工具与支持。</text
+        >
       </view>
     </view>
+    <view class="settings-section">
+      <text class="settings-title">开发团队</text>
+      <text class="settings-label">TasteInsight Team</text>
+      <text class="settings-hint"
+        >由热爱技术的开发者创建，致力于为校园生活提供更好的数字化解决方案。</text
+      >
+    </view>
+    <view class="settings-section">
+      <text class="settings-title">免责声明</text>
+      <text class="about-description"
+        >菜品评价信息仅供参考，实际菜品质量可能因季节、厨师等因素有所变化，请以实地情况为准。如有食物过敏或其他健康问题，请向窗口核对食材并咨询专业医生。</text
+      >
+    </view>
+    <text class="settings-hint about-copyright"
+      >Copyright © 2024 TasteInsight. All rights reserved.</text
+    >
   </view>
 </template>
-
 <script setup lang="ts">
 import { ref } from 'vue';
-
-const secretTapCount = ref(0);
-const lastTapAt = ref(0);
-
-const MAX_TAP_GAP_MS = 800;
-const REQUIRED_TAPS = 5;
-
+const showTechnicalDetails = ref(false);
+const features = [
+  '菜品星级、文字与图片评价',
+  '基于饮食偏好的 AI 推荐与对话',
+  '浏览食堂、窗口、菜品与价格',
+  '每日与每周饮食规划',
+  '收藏菜品、查看历史与管理个人偏好',
+];
+const technologies = [
+  { name: 'Vue 3', detail: 'MIT License' },
+  { name: 'uni-app', detail: 'Apache-2.0' },
+  { name: 'Tailwind CSS', detail: 'MIT License' },
+  { name: 'Pinia', detail: 'MIT License' },
+];
+let secretTapCount = 0;
+let lastTapAt = 0;
 function handleSecretTap() {
   const now = Date.now();
-  if (now - lastTapAt.value > MAX_TAP_GAP_MS) {
-    secretTapCount.value = 0;
-  }
-  lastTapAt.value = now;
-  secretTapCount.value += 1;
-
-  if (secretTapCount.value >= REQUIRED_TAPS) {
-    secretTapCount.value = 0;
-    uni.showToast({ title: '彩蛋入口已解锁', icon: 'none', duration: 1200 });
-    if (typeof uni.vibrateShort === 'function') {
-      uni.vibrateShort();
-    }
-    setTimeout(() => {
-      uni.navigateTo({ url: '/pages/easter-egg/index' });
-    }, 200);
-  }
+  if (now - lastTapAt > 800) secretTapCount = 0;
+  lastTapAt = now;
+  if (++secretTapCount < 5) return;
+  secretTapCount = 0;
+  uni.showToast({ title: '彩蛋入口已解锁', icon: 'none', duration: 1200 });
+  if (typeof uni.vibrateShort === 'function') uni.vibrateShort();
+  uni.navigateTo({ url: '/pages/easter-egg/index' });
+}
+function copyEmail() {
+  uni.setClipboardData({
+    data: 'feedback@tasteinsight.com',
+    fail: () => uni.showToast({ title: '复制失败，请重试', icon: 'none' }),
+  });
+}
+function openPrivacy() {
+  uni.navigateTo({ url: '/pages/settings/privacy' });
 }
 </script>
+<style scoped>
+.about-identity {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.about-logo-button {
+  width: 64px;
+  height: 64px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+}
+.about-logo-button::after {
+  border: 0;
+}
+.about-logo {
+  width: 64px;
+  height: 64px;
+}
+.about-name {
+  display: block;
+  color: #111827;
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+.about-description {
+  display: block;
+  color: #475467;
+  font-size: 16px;
+  line-height: 1.7;
+}
+.about-contact > view {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.about-action-label {
+  flex-shrink: 0;
+  color: #660874;
+  font-size: 14px;
+}
+.about-feature {
+  display: block;
+  padding: 7px 0;
+  color: #475467;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.about-technical .settings-row {
+  flex-wrap: wrap;
+  min-height: 44px;
+}
+.about-thanks {
+  margin-top: 16px;
+}
+.about-copyright {
+  padding-bottom: 16px;
+}
+</style>

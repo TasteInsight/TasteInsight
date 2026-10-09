@@ -78,20 +78,20 @@ const htmlContent = computed(() => {
 <style scoped>
 /* markdown 内容样式 */
 :deep(.markdown-content) {
-  font-size: 14px;
-  line-height: 1.6;
-  color: #333;
+  font-size: 16px;
+  line-height: 1.65;
+  color: #1f2937;
   word-break: break-word;
 }
 
 :deep(.markdown-body) {
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 16px;
+  line-height: 1.65;
 }
 
 :deep(.markdown-body .md-p) {
   margin: 0.5em 0;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
 :deep(.markdown-body .md-h1),
@@ -168,7 +168,7 @@ const htmlContent = computed(() => {
 }
 
 :deep(.markdown-body .md-a) {
-  color: #1890ff;
+  color: #660874;
   text-decoration: none;
 }
 
@@ -189,5 +189,13 @@ const htmlContent = computed(() => {
   height: auto;
   display: block;
   margin: 0.5em 0;
+}
+
+:deep(.markdown-body > :first-child) {
+  margin-top: 0;
+}
+
+:deep(.markdown-body > :last-child) {
+  margin-bottom: 0;
 }
 </style>

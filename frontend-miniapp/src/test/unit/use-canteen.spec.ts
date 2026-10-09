@@ -5,7 +5,10 @@ jest.mock('@/store/modules/use-user-store', () => ({
 import { useCanteenData } from '@/pages/canteen/composables/use-canteen-data';
 import { getCanteenDetail, getWindowList } from '@/api/modules/canteen';
 import { getDishes } from '@/api/modules/dish';
-jest.mock('@/api/modules/canteen', () => ({ getCanteenDetail: jest.fn(), getWindowList: jest.fn() }));
+jest.mock('@/api/modules/canteen', () => ({
+  getCanteenDetail: jest.fn(),
+  getWindowList: jest.fn(),
+}));
 
 // Mock API
 jest.mock('@/api/modules/dish', () => ({
@@ -16,7 +19,14 @@ describe('useCanteenData', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (getCanteenDetail as jest.Mock).mockResolvedValue({ code: 200, data: { id: '123' } });
-    (getWindowList as jest.Mock).mockResolvedValue({ code: 200, data: { items: [] } });
+    (getWindowList as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: { items: [], meta: { page: 1, pageSize: 50, total: 0, totalPages: 1 } },
+    });
+    (getDishes as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: { items: [], meta: { page: 1, pageSize: 10, total: 0, totalPages: 1 } },
+    });
   });
 
   it('should initialize correctly', async () => {
@@ -31,17 +41,18 @@ describe('useCanteenData', () => {
   });
 
   it('should fetch dishes and update state', async () => {
-    const { fetchDishes, dishes } = useCanteenData();
+    const { fetchDishes, dishes, dishesError } = useCanteenData();
     const mockDishes = [{ id: '1', name: 'Dish 1' }];
 
     (getDishes as jest.Mock).mockResolvedValue({
       code: 200,
-      data: { items: mockDishes },
+      data: { items: mockDishes, meta: { page: 1, pageSize: 20, total: 1, totalPages: 1 } },
     });
 
     await fetchDishes('123');
 
     expect(dishes.value).toEqual(mockDishes);
+    expect(dishesError.value).toBe('');
   });
 
   it('should handle fetch dishes error', async () => {

@@ -1,4 +1,7 @@
 /// <reference types="jest" />
+jest.mock('@/store/modules/use-user-store', () => ({
+  useUserStore: () => ({ sessionVersion: 0 }),
+}));
 import { useReview } from '@/pages/dish/composables/use-review';
 import { getReviewsByDish } from '@/api/modules/review';
 

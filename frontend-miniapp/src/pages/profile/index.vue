@@ -1,212 +1,183 @@
 <template>
-  <view class="w-full h-full min-h-screen bg-gray-50 overflow-hidden flex flex-col relative">
-    <!-- 骨架屏：首次加载时显示 -->
-    <ProfileSkeleton v-if="isInitialLoading" />
-
-    <template v-else>
-      <!-- 紫色背景头部区域 -->
-      <view class="bg-white pt-12 pb-6 px-6">
-        <!-- 用户信息头部 -->
-        <UserHeader
-          :user-info="userInfo"
-          :is-logged-in="isLoggedIn"
-          :loading="loading"
-          @login="handleLogin"
-        />
-      </view>
-
-      <!-- 功能菜单区域 -->
-      <view class="flex-1 px-4 py-4 flex flex-col space-y-4">
-        <!-- 第一组：功能入口 (圆角较小的大框) - 仅登录可见 -->
-        <view v-if="isLoggedIn" class="bg-white rounded-lg shadow-sm overflow-hidden">
-          <view
-            v-for="(item, index) in menuItems"
-            :key="item.id"
-            class="flex items-center justify-between p-4 active:bg-gray-50 transition-colors relative"
-            @click="navigateTo(item.path)"
-          >
-            <view class="flex items-center">
-              <text
-                v-if="item.fontClass"
-                :class="['iconfont text-purple-600 text-xl mr-3', item.fontClass]"
-              ></text>
-              <text
-                v-else
-                class="iconify text-purple-600 text-xl mr-3"
-                :data-icon="item.icon"
-              ></text>
-              <text class="text-gray-800 text-base font-medium">{{ item.title }}</text>
-            </view>
-            <text class="iconfont icon-chevronright text-gray-400" data-width="20"></text>
-
-            <!-- 分隔线 (除了最后一项) -->
-            <view
-              v-if="index < menuItems.length - 1"
-              class="absolute bottom-0 left-4 right-4 h-[1px] bg-gray-200"
-            ></view>
-          </view>
-        </view>
-
-        <!-- 第二组：隐私与关于 - 始终可见 -->
-        <view class="bg-white rounded-lg shadow-sm overflow-hidden">
-          <!-- 隐私 -->
-          <view
-            class="flex items-center justify-between p-4 active:bg-gray-50 transition-colors relative"
-            @click="navigateTo('/pages/settings/privacy')"
-          >
-            <view class="flex items-center">
-              <text class="iconfont icon-shield-lock-outline text-purple-600 text-xl mr-3"></text>
-              <text class="text-gray-800 text-base font-medium">隐私</text>
-            </view>
-            <text class="iconfont icon-chevronright text-gray-400" data-width="20"></text>
-            <view class="absolute bottom-0 left-4 right-4 h-[1px] bg-gray-200"></view>
-          </view>
-
-          <!-- 关于食鉴 -->
-          <view
-            class="flex items-center justify-between p-4 active:bg-gray-50 transition-colors"
-            @click="navigateTo('/pages/settings/about')"
-          >
-            <view class="flex items-center">
-              <text class="iconfont icon-informationoutline text-purple-600 text-xl mr-3"></text>
-              <text class="text-gray-800 text-base font-medium">关于食鉴</text>
-            </view>
-            <view class="flex items-center">
-              <text class="text-gray-400 text-sm mr-2">v1.0.0</text>
-              <text class="iconfont icon-chevronright text-gray-400" data-width="20"></text>
-            </view>
-          </view>
-        </view>
-
-        <!-- 按钮区域 - 仅登录可见 -->
-        <view v-if="isLoggedIn" class="mt-4 space-y-3">
-          <!-- 设置按钮 (如果仍然需要，或者可以移除如果用户意图是用上面的替代) -->
-          <!-- 既然用户没明确说删掉，先保留，但通常这种布局下设置可能会被整合。
-              这里保留为底部按钮风格 -->
-          <view
-            class="bg-white text-gray-700 flex items-center justify-center py-3 px-8 rounded-lg shadow-sm active:bg-gray-50 transition-colors w-full border border-gray-200"
-            @click="navigateTo('/pages/settings/index')"
-          >
-            <text class="iconfont icon-cog text-gray-700" data-width="20"></text>
-            <text class="ml-2 font-medium">更多设置</text>
-          </view>
-
-          <!-- 退出登录按钮 -->
-          <view
-            class="bg-white text-red-500 border border-red-100 flex items-center justify-center py-3 px-8 rounded-lg shadow-sm active:bg-red-50 transition-colors w-full"
-            @click="handleLogout"
-          >
-            <text class="iconfont icon-logout text-red-500" data-width="20"></text>
-            <text class="ml-2 font-medium">退出登录</text>
-          </view>
-        </view>
-      </view>
-    </template>
+  <view class="page-content profile-page">
+    <view class="profile-header" :aria-busy="loading">
+      <UserHeader
+        v-if="userInfo || !isLoggedIn"
+        :user-info="userInfo"
+        :is-logged-in="isLoggedIn"
+        :loading="loading"
+        @login="handleLogin"
+      />
+    </view>
+    <view v-if="error" class="profile-error">
+      <text>{{ error }}</text
+      ><button class="profile-retry" @click="fetchProfile">重新加载</button>
+    </view>
+    <view v-if="isLoggedIn" class="profile-menu-group">
+      <button
+        v-for="item in menuItems"
+        :key="item.id"
+        class="profile-menu"
+        @click="navigateTo(item.path)"
+      >
+        <text :class="['iconfont', item.icon]" aria-hidden="true"></text
+        ><text class="profile-menu-label">{{ item.title }}</text
+        ><text class="iconfont icon-chevronright" aria-hidden="true"></text>
+      </button>
+    </view>
+    <view class="profile-menu-group">
+      <button v-if="isLoggedIn" class="profile-menu" @click="navigateTo('/pages/settings/index')">
+        <text class="iconfont icon-cog" aria-hidden="true"></text
+        ><text class="profile-menu-label">设置</text
+        ><text class="iconfont icon-chevronright" aria-hidden="true"></text>
+      </button>
+      <button class="profile-menu" @click="navigateTo('/pages/settings/privacy')">
+        <text class="iconfont icon-shield-lock-outline" aria-hidden="true"></text
+        ><text class="profile-menu-label">隐私</text
+        ><text class="iconfont icon-chevronright" aria-hidden="true"></text>
+      </button>
+      <button class="profile-menu" @click="navigateTo('/pages/settings/about')">
+        <text class="iconfont icon-informationoutline" aria-hidden="true"></text
+        ><text class="profile-menu-label">关于食鉴</text
+        ><text class="profile-version">v1.0.0</text
+        ><text class="iconfont icon-chevronright" aria-hidden="true"></text>
+      </button>
+    </view>
+    <button v-if="isLoggedIn" class="profile-logout" @click="handleLogout">退出登录</button>
   </view>
 </template>
-
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
-import { onPullDownRefresh } from '@dcloudio/uni-app';
+import { onShow, onPullDownRefresh } from '@dcloudio/uni-app';
 import UserHeader from './components/UserHeader.vue';
 import { useProfile } from './composables/use-profile';
-import { ProfileSkeleton } from '@/components/skeleton';
-
-// 从 use-profile 中获取所需的状态和方法
-const { userInfo, isLoggedIn, loading, handleLogout, fetchProfile } = useProfile();
-
-// 初次加载标记
-const hasLoaded = ref(false);
-const isInitialLoading = computed(() => loading.value && !hasLoaded.value);
-
-// 监听数据加载完成
-watch(loading, newLoading => {
-  if (!newLoading) {
-    hasLoaded.value = true;
-  }
+const { userInfo, isLoggedIn, loading, error, handleLogout, fetchProfile } = useProfile();
+onShow(() => {
+  if (isLoggedIn.value) void fetchProfile();
 });
-
-// 页面挂载时如果数据已加载完成，立即标记为已加载
-onMounted(() => {
-  if (!loading.value) {
-    hasLoaded.value = true;
-  }
-});
-
-// 下拉刷新处理
 onPullDownRefresh(async () => {
   try {
-    if (isLoggedIn.value) {
-      await fetchProfile();
-    }
-    uni.showToast({
-      title: '刷新成功',
-      icon: 'success',
-      duration: 1500,
-    });
-  } catch (err) {
-    console.error('下拉刷新失败:', err);
-    uni.showToast({
-      title: '刷新失败',
-      icon: 'none',
-    });
+    if (await fetchProfile()) uni.showToast({ title: '刷新成功', icon: 'success', duration: 1500 });
   } finally {
     uni.stopPullDownRefresh();
   }
 });
-
-interface MenuItem {
-  id: string;
-  title: string;
-  path: string;
-  icon?: string;
-  fontClass?: string;
-}
-
-const menuItems: MenuItem[] = [
+const menuItems = [
   {
     id: 'reviews',
-    fontClass: 'icon-staroutline',
+    icon: 'icon-staroutline',
     title: '我的评价',
     path: '/pages/profile/my-reviews/index',
   },
   {
-    id: 'history',
-    fontClass: 'icon-history',
-    title: '历史浏览',
-    path: '/pages/profile/history/index',
-  },
-  {
     id: 'favorites',
-    fontClass: 'icon-heart-outline',
+    icon: 'icon-heart-outline',
     title: '我的收藏',
     path: '/pages/profile/my-favorites/index',
   },
+  { id: 'history', icon: 'icon-history', title: '历史浏览', path: '/pages/profile/history/index' },
 ];
-
-/**
- * 使用 Uni-app API 进行页面跳转
- * @param {string} path - 在 pages.json 中定义的页面路径
- */
 function navigateTo(path: string) {
-  uni.navigateTo({
-    url: path,
-    fail: err => {
-      console.error(`跳转失败: ${path}`, err);
-      uni.showToast({
-        title: '页面跳转失败',
-        icon: 'none',
-      });
-    },
-  });
+  uni.navigateTo({ url: path, fail: () => uni.showToast({ title: '页面跳转失败', icon: 'none' }) });
 }
-
-/**
- * 处理登录逻辑
- */
 function handleLogin() {
-  uni.navigateTo({
-    url: '/pages/login/index',
-  });
+  navigateTo('/pages/login/index');
 }
 </script>
+<style scoped>
+.profile-page {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 24px 20px;
+  background: #fff;
+  color: #1f2937;
+}
+.profile-header {
+  box-sizing: border-box;
+  min-height: 106px;
+  padding-bottom: 24px;
+}
+.profile-menu-group {
+  padding: 8px 0;
+  margin-bottom: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+.profile-menu {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 60px;
+  margin: 0;
+  padding: 14px 0;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  color: #475467;
+  text-align: left;
+  font-size: 16px;
+  line-height: 1.5;
+}
+.profile-menu-label {
+  flex: 1;
+  color: #1f2937;
+}
+.profile-menu .iconfont {
+  font-size: 21px;
+}
+.profile-version {
+  color: #667085;
+  font-size: 13px;
+}
+.profile-menu::after,
+.profile-logout::after,
+.profile-retry::after {
+  border: 0;
+}
+.profile-menu:active {
+  background: #f4f4f5;
+}
+.profile-logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin: 8px 0 0;
+  padding: 10px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  color: #b42318;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.profile-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 16px;
+  color: #b42318;
+  font-size: 14px;
+}
+.profile-retry {
+  min-height: 44px;
+  margin: 0;
+  border: 0;
+  background: #fff;
+  color: #660874;
+  font-size: 14px;
+}
+.profile-menu:focus-visible,
+.profile-logout:focus-visible,
+.profile-retry:focus-visible {
+  outline: 2px solid #660874;
+  outline-offset: 2px;
+}
+@media (max-width: 340px) {
+  .profile-page {
+    padding: 20px 16px;
+  }
+}
+</style>

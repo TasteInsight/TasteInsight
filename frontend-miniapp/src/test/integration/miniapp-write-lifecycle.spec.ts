@@ -5,15 +5,17 @@ import { useUserStore } from '@/store/modules/use-user-store';
 import { useSearch } from '@/pages/search/composables/use-search';
 import SearchPage from '@/pages/search/index.vue';
 import PlanningPage from '@/pages/planning/index.vue';
-import PlanEditDialog from '@/pages/planning/components/PlanEditDialog.vue';
+import PlanEditDialog from '@/components/meal-plan/PlanEditDialog.vue';
 import AddDishPage from '@/pages/add-dish/index.vue';
 import PreferencesPage from '@/pages/settings/components/preferences.vue';
 import DisplayPage from '@/pages/settings/components/display.vue';
 import AllergensPage from '@/pages/settings/components/allergens.vue';
 import NotificationsPage from '@/pages/settings/components/notifications.vue';
+import SettingsPage from '@/pages/settings/components/SettingsPage.vue';
 
 jest.mock('@dcloudio/uni-app', () => ({
-  onReachBottom: jest.fn(), onHide: jest.fn(), onBackPress: jest.fn(), onPullDownRefresh: jest.fn(),
+  onLoad: jest.fn(),
+  onReachBottom: jest.fn(), onShow: jest.fn(), onHide: jest.fn(), onBackPress: jest.fn(), onPullDownRefresh: jest.fn(),
 }));
 
 const storage = new Map<string, any>();
@@ -86,11 +88,13 @@ function switchAccount() {
 }
 
 const settingsPages = [
-  ['preferences', PreferencesPage], ['display', DisplayPage],
-  ['allergens', AllergensPage], ['notifications', NotificationsPage],
+  ['preferences', PreferencesPage, (form: any) => { form.favoriteIngredients.push('白菜'); }],
+  ['display', DisplayPage, (form: any) => { form.showCalories = !form.showCalories; }],
+  ['allergens', AllergensPage, (form: any) => { form.allergens = '花生'; }],
+  ['notifications', NotificationsPage, (form: any) => { form.reviewReplyAlert = !form.reviewReplyAlert; }],
 ] as const;
 
-describe.each(settingsPages)('%s settings real page lifecycle', (_name, component) => {
+describe.each(settingsPages)('%s settings real page lifecycle', (_name, component, editDraft) => {
   test('a disposed profile load cannot replace the next page profile', async () => {
     autoProfiles = false;
     const old = await page(component);
@@ -102,7 +106,7 @@ describe.each(settingsPages)('%s settings real page lifecycle', (_name, componen
     request.success(ok({ ...profile(), nickname: 'late profile' }));
     await flushPromises();
     expect(useUserStore().userInfo?.nickname).toBe('current profile');
-    expect((current.vm as any).loading).toBe(false);
+    expect(current.getComponent(SettingsPage).props()).toMatchObject({ loading: false, initialized: true });
     expect(uniMock.showToast).not.toHaveBeenCalled();
   });
 
@@ -141,57 +145,100 @@ describe.each(settingsPages)('%s settings real page lifecycle', (_name, componen
     expect(jest.getTimerCount()).toBe(0);
   });
 
-  test('failed save retains its editable draft and releases saving', async () => {
+  test('failed save retains its edited draft, releases saving, and allows retry', async () => {
     const wrapper = await page(component);
     const vm = wrapper.vm as any;
+    const settings = wrapper.getComponent(SettingsPage);
+    editDraft(vm.form);
+    await flushPromises();
+    expect(settings.props('canSave')).toBe(true);
     const before = JSON.parse(JSON.stringify(vm.form));
     const pending = vm.handleSave();
     await flushPromises();
+    expect(settings.props('saving')).toBe(true);
+    expect(settings.props('canSave')).toBe(false);
     latest('/user/profile', 'PUT').success({ statusCode: 500, data: { code: 500, message: 'save failed' } });
     await expect(pending).resolves.toBe(false);
+    await flushPromises();
     expect(vm.form).toEqual(before);
-    expect(vm.saving).toBe(false);
+    expect(settings.props()).toMatchObject({ saving: false, saved: false, dirty: true, canSave: true });
     expect(uniMock.showToast).toHaveBeenCalledWith({ title: '网络开小差了，请稍后再试', icon: 'none' });
     expect(jest.getTimerCount()).toBe(0);
+    const retry = vm.handleSave();
+    await flushPromises();
+    expect(matching('/user/profile', 'PUT')).toHaveLength(2);
+    latest('/user/profile', 'PUT').success(ok({ ...profile(), ...latest('/user/profile', 'PUT').data }));
+    await expect(retry).resolves.toBe(true);
+    expect(jest.getTimerCount()).toBe(1);
   });
 
   test('an old account completion cannot release a new pending save on the same page', async () => {
     const wrapper = await page(component);
     const vm = wrapper.vm as any;
+    const settings = wrapper.getComponent(SettingsPage);
     const old = vm.handleSave();
     await flushPromises();
     const oldRequest = latest('/user/profile', 'PUT');
     switchAccount();
+    await flushPromises();
+    expect(settings.props('initialized')).toBe(false);
+    await expect(vm.handleSave()).resolves.toBe(false);
+    expect(matching('/user/profile', 'PUT')).toHaveLength(1);
+    autoProfiles = false;
+    const baseline = vm.loadProfile();
+    await flushPromises();
+    const baselineRequest = latest('/user/profile', 'GET');
+    expect(baselineRequest.header.Authorization).toBe('Bearer B-token');
+    expect(settings.props()).toMatchObject({ loading: true, initialized: false, canSave: false });
+    await expect(vm.handleSave()).resolves.toBe(false);
+    expect(matching('/user/profile', 'PUT')).toHaveLength(1);
+    baselineRequest.success(ok(profile('B')));
+    await expect(baseline).resolves.toBe(true);
+    editDraft(vm.form);
     const current = vm.handleSave();
     await flushPromises();
     const currentRequest = latest('/user/profile', 'PUT');
     expect(currentRequest.header.Authorization).toBe('Bearer B-token');
+    expect(matching('/user/profile', 'PUT')).toHaveLength(2);
+    const currentDraft = JSON.parse(JSON.stringify(vm.form));
     oldRequest.success(ok(profile()));
     await expect(old).resolves.toBe(false);
-    expect(vm.saving).toBe(true);
+    await flushPromises();
+    expect(settings.props()).toMatchObject({ saving: true, saved: false, initialized: true });
+    expect(vm.form).toEqual(currentDraft);
     expect(useUserStore().userInfo?.id).toBe('B');
     expect(uniMock.showToast).not.toHaveBeenCalled();
-    currentRequest.success(ok(profile('B')));
+    currentRequest.success(ok({ ...profile('B'), ...currentRequest.data }));
     await expect(current).resolves.toBe(true);
-    expect(vm.saving).toBe(false);
+    await flushPromises();
+    expect(settings.props()).toMatchObject({ saving: false, saved: true, canSave: false });
   });
 
-  test('a second save owns navigation and duplicate pending saves are ignored', async () => {
+  test('pending and completed saves reject repeat writes while the first save owns navigation', async () => {
     const wrapper = await page(component);
     const vm = wrapper.vm as any;
+    const settings = wrapper.getComponent(SettingsPage);
+    editDraft(vm.form);
     const first = vm.handleSave();
+    await expect(vm.handleSave()).resolves.toBe(false);
     await flushPromises();
-    latest('/user/profile', 'PUT').success(ok(profile()));
-    await first;
-    const second = vm.handleSave();
-    const duplicate = vm.handleSave();
+    expect(matching('/user/profile', 'PUT')).toHaveLength(1);
+    expect(settings.props()).toMatchObject({ saving: true, saved: false, canSave: false });
+    expect(jest.getTimerCount()).toBe(0);
+    latest('/user/profile', 'PUT').success(ok({ ...profile(), ...latest('/user/profile', 'PUT').data }));
+    await expect(first).resolves.toBe(true);
     await flushPromises();
-    expect(matching('/user/profile', 'PUT')).toHaveLength(2);
-    await expect(duplicate).resolves.toBe(false);
-    jest.advanceTimersByTime(1000);
+    expect(settings.props()).toMatchObject({ saving: false, saved: true, canSave: false });
+    expect(vm.canEdit).toBe(false);
+    await expect(vm.handleSave()).resolves.toBe(false);
+    await expect(vm.handleSave()).resolves.toBe(false);
+    expect(matching('/user/profile', 'PUT')).toHaveLength(1);
+    expect(uniMock.showToast).toHaveBeenCalledTimes(1);
+    expect(jest.getTimerCount()).toBe(1);
+    jest.advanceTimersByTime(999);
     expect(uniMock.navigateBack).not.toHaveBeenCalled();
-    latest('/user/profile', 'PUT').success(ok(profile()));
-    await second;
+    jest.advanceTimersByTime(1);
+    expect(uniMock.navigateBack).toHaveBeenCalledTimes(1);
     jest.advanceTimersByTime(1000);
     expect(uniMock.navigateBack).toHaveBeenCalledTimes(1);
   });
@@ -378,7 +425,7 @@ test.each(['create', 'edit'])('the real planning %s dialog retains a reopened dr
   const vm = wrapper.vm as any;
   const body = { startDate: '2099-10-03', endDate: '2099-10-03', mealTime: 'lunch', dishes: ['selected'] };
   const open = (id: string) => kind === 'create' ? vm.createNewPlan()
-    : vm.editPlan({ id, ...body, dishes: [{ id: 'selected', name: 'rice' }] });
+    : vm.editPlan({ id, ...body, dishes: [{ id: 'selected', name: 'rice' }], dishesReady: true });
   const close = () => kind === 'create' ? vm.closeCreateDialog() : vm.closeEditDialog();
   const submit = () => kind === 'create' ? vm.submitCreate(body) : vm.submitEdit(body);
   const path = (id: string) => kind === 'create' ? '/meal-plans' : `/meal-plans/${id}`;
@@ -413,7 +460,7 @@ test.each(['create', 'edit'])('a failed planning %s save keeps the current draft
   const vm = wrapper.vm as any;
   const body = { startDate: '2099-10-03', endDate: '2099-10-03', mealTime: 'lunch', dishes: ['selected'] };
   if (kind === 'create') vm.createNewPlan();
-  else vm.editPlan({ id: 'draft', ...body, dishes: [{ id: 'selected', name: 'rice' }] });
+  else vm.editPlan({ id: 'draft', ...body, dishes: [{ id: 'selected', name: 'rice' }], dishesReady: true });
   await flushPromises();
   const dialog = wrapper.findAllComponents(PlanEditDialog)[kind === 'create' ? 1 : 0].vm as any;
   Object.assign(dialog.formData, body);

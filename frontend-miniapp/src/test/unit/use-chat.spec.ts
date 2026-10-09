@@ -7,7 +7,7 @@ const chatStoreMock: any = {
   sessionId: 'test-session',
   initSession: jest.fn(() => Promise.resolve(true)),
   startNewSession: jest.fn(() => Promise.resolve()),
-  sendChatMessage: jest.fn(() => Promise.resolve()),
+  sendChatMessage: jest.fn(() => Promise.resolve(true)),
   setScene: jest.fn((s: string) => {
     chatStoreMock.currentScene = s;
   }),
@@ -26,6 +26,8 @@ jest.mock('@/api/modules/ai', () => ({ getAISuggestions: jest.fn() }));
 import { useChat } from '@/pages/ai-chat/composables/use-chat';
 import { useChatStore } from '@/store/modules/use-chat-store';
 import { getAISuggestions } from '@/api/modules/ai';
+import { flushPromises } from '@vue/test-utils';
+import { reactive } from 'vue';
 
 describe('useChat isInitializing', () => {
   beforeEach(() => {
@@ -42,10 +44,19 @@ describe('useChat isInitializing', () => {
 
     chatStoreMock.messages = [];
     chatStoreMock.currentScene = undefined;
+    chatStoreMock.sendChatMessage.mockResolvedValue(true);
+    chatStoreMock.initSession.mockResolvedValue(true);
     chatStoreMock.loadSessionFromHistory.mockImplementation(() => true);
   });
 
   it('init sets isInitializing true during init and false afterwards', async () => {
+    const sessionStore = reactive(chatStoreMock);
+    (useChatStore as unknown as jest.Mock).mockReturnValueOnce(sessionStore);
+    sessionStore.sessionId = '';
+    chatStoreMock.initSession.mockImplementationOnce(async () => {
+      sessionStore.sessionId = 'test-session';
+      return true;
+    });
     const { init, isInitializing, isInitialLoading } = useChat();
 
     // Before init, computed should reflect not initialized + empty messages
@@ -61,6 +72,22 @@ describe('useChat isInitializing', () => {
     expect(isInitialLoading.value).toBe(false);
   });
 
+  it('init failure exposes retry state and send returns acceptance without waiting for suggestions', async () => {
+    chatStoreMock.initSession.mockResolvedValueOnce(false);
+    const chat = useChat();
+    await chat.init();
+    expect(chat.initialError.value).toBeTruthy();
+    expect(chat.isInitialLoading.value).toBe(false);
+    (getAISuggestions as jest.Mock).mockReturnValue(new Promise(() => {}));
+    let result: boolean | undefined;
+    const pending = chat.sendMessage('午餐').then(value => { result = value; });
+    await flushPromises();
+    expect(result).toBe(true);
+    await pending;
+    chatStoreMock.sendChatMessage.mockResolvedValueOnce(false);
+    expect(await chat.sendMessage('晚餐')).toBe(false);
+  });
+
   it('resetChat sets isInitializing and calls startNewSession', async () => {
     const { resetChat, isInitializing } = useChat();
 
@@ -72,13 +99,13 @@ describe('useChat isInitializing', () => {
     expect(isInitializing.value).toBe(false);
   });
 
-  it('loadHistorySession true path sets isInitializing and returns true', async () => {
+  it('loadHistorySession restores readiness immediately and returns true', async () => {
     chatStoreMock.loadSessionFromHistory.mockImplementation(() => true);
 
     const { loadHistorySession, isInitializing } = useChat();
     const p = loadHistorySession('sess1');
 
-    expect(isInitializing.value).toBe(true);
+    expect(isInitializing.value).toBe(false);
 
     const ok = await p;
     expect(ok).toBe(true);
@@ -118,8 +145,26 @@ describe('useChat isInitializing', () => {
 
     await sendMessage('hello');
     expect(chatStoreMock.sendChatMessage).toHaveBeenCalledWith('hello');
-    // getAISuggestions should have been triggered to refresh suggestions (async)
-    expect(getAISuggestions).toHaveBeenCalled();
+    expect(getAISuggestions).not.toHaveBeenCalled();
+  });
+
+  it('uses message-owned follow-ups for an existing conversation, without fetching generic suggestions', async () => {
+    chatStoreMock.messages = [
+      { type: 'user', content: [{ type: 'text', text: '清淡午餐' }] },
+      { type: 'ai', content: [{ type: 'text', text: '香菇鸡肉饭' }], suggestions: ['在哪个窗口？'] },
+    ];
+    const chat = useChat();
+    await chat.init();
+    expect(chat.suggestions.value).toEqual(['在哪个窗口？']);
+    expect(getAISuggestions).not.toHaveBeenCalled();
+  });
+
+  it('does not replace missing follow-ups with opening templates after an answer', async () => {
+    chatStoreMock.messages = [{ type: 'user' }, { type: 'ai', content: [] }];
+    const chat = useChat();
+    await chat.init();
+    expect(chat.suggestions.value).toEqual([]);
+    expect(getAISuggestions).not.toHaveBeenCalled();
   });
 
   it('sendMessage logs errors on failure', async () => {

@@ -1,6 +1,12 @@
 describe('pages/profile/my-favorites/composables/use-favorites.ts', () => {
   const MODULE_PATH = '@/pages/profile/my-favorites/composables/use-favorites';
 
+  beforeEach(() => {
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ isLoggedIn: true, sessionVersion: 0 }),
+    }));
+  });
+
   afterEach(() => {
     jest.resetModules();
     jest.clearAllMocks();
@@ -14,7 +20,9 @@ describe('pages/profile/my-favorites/composables/use-favorites.ts', () => {
       data: { items: [{ dishId: 'd1' }], meta: { totalPages: 1 } },
     });
     jest.doMock('@/api/modules/user', () => ({ getMyFavorites }));
-    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 't' }) }));
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 't', isLoggedIn: true, sessionVersion: 0 }),
+    }));
 
     const { useFavorites } = require(MODULE_PATH);
     const inst = useFavorites();
@@ -31,7 +39,9 @@ describe('pages/profile/my-favorites/composables/use-favorites.ts', () => {
     unfavoriteDish.mockResolvedValue({ code: 200 });
     jest.doMock('@/api/modules/dish', () => ({ unfavoriteDish }));
     jest.doMock('@/api/modules/user', () => ({ getMyFavorites: jest.fn() }));
-    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 't' }) }));
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 't', isLoggedIn: true, sessionVersion: 0 }),
+    }));
 
     (global as any).uni = { showToast: jest.fn() };
 
@@ -54,7 +64,9 @@ describe('pages/profile/my-favorites/composables/use-favorites.ts', () => {
     unfavoriteDish.mockResolvedValue({ code: 500, message: 'fail' });
     jest.doMock('@/api/modules/dish', () => ({ unfavoriteDish }));
     jest.doMock('@/api/modules/user', () => ({ getMyFavorites: jest.fn() }));
-    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 't' }) }));
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 't', isLoggedIn: true, sessionVersion: 0 }),
+    }));
 
     (global as any).uni = { showToast: jest.fn() };
 
@@ -69,11 +81,13 @@ describe('pages/profile/my-favorites/composables/use-favorites.ts', () => {
     expect((global as any).uni.showToast).toHaveBeenCalled();
   });
 
-  test('fetchFavorites handles errors and sets hasMore false', async () => {
+  test('fetchFavorites exposes errors without marking pagination complete', async () => {
     const getMyFavorites = jest.fn() as unknown as jest.Mock<any, any>;
     getMyFavorites.mockResolvedValue({ code: 400, message: 'bad' });
     jest.doMock('@/api/modules/user', () => ({ getMyFavorites }));
-    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 't' }) }));
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 't', isLoggedIn: true, sessionVersion: 0 }),
+    }));
 
     (global as any).uni = { showToast: jest.fn() };
 
@@ -83,8 +97,8 @@ describe('pages/profile/my-favorites/composables/use-favorites.ts', () => {
     await inst.fetchFavorites(true);
 
     expect(inst.error.value).toBe('bad');
-    expect(inst.hasMore.value).toBe(false);
-    expect((global as any).uni.showToast).toHaveBeenCalled();
+    expect(inst.hasMore.value).toBe(true);
+    expect((global as any).uni.showToast).not.toHaveBeenCalled();
   });
 });
 export {};

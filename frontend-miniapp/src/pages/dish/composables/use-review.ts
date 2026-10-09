@@ -1,5 +1,10 @@
 import { ref, computed, watch, getCurrentScope, onScopeDispose } from 'vue';
-import { getReviewsByDish, createReview, deleteReview } from '@/api/modules/review';
+import {
+  getOwnReviewByDish,
+  getReviewsByDish,
+  createReview,
+  deleteReview,
+} from '@/api/modules/review';
 import { uploadImage } from '@/api/modules/upload';
 import { useUserStore } from '@/store/modules/use-user-store';
 import type { Review, ReviewCreateRequest, ReviewListData } from '@/types/api';
@@ -52,7 +57,17 @@ const savedImagePaths = (state?: ReviewState) =>
  * 评价列表相关逻辑
  */
 export function useReview() {
+  const userStore = useUserStore();
+  let disposed = false;
+  let listVersion = 0;
+  let ownVersion = 0;
+  let currentDishId = '';
+  const ownReview = ref<Review | null>(null);
+  const ownReviewLoading = ref(false);
+  const ownReviewLoaded = ref(false);
+  const ownReviewError = ref('');
   const reviews = ref<Review[]>([]);
+  const reviewsInitialized = ref(false);
   const ratingSummary = ref<ReviewListData['rating'] | null>(null);
   const reviewsLoading = ref(false);
   const isInitializing = ref(false);
@@ -60,32 +75,95 @@ export function useReview() {
   const reviewsHasMore = ref(true);
   const reviewsPage = ref(1);
   const reviewsPageSize = 10;
+  let failedReviewRefresh: boolean | null = null;
+
+  const invalidateOwnReview = () => {
+    ownVersion++;
+    ownReviewLoaded.value = false;
+    ownReviewLoading.value = false;
+    ownReviewError.value = '';
+  };
+
+  const reset = () => {
+    listVersion++;
+    invalidateOwnReview();
+    ownReview.value = null;
+    reviews.value = [];
+    reviewsInitialized.value = false;
+    reviewsLoading.value = false;
+    isInitializing.value = false;
+    reviewsError.value = '';
+    failedReviewRefresh = null;
+    reviewsPage.value = 1;
+    reviewsHasMore.value = true;
+    ratingSummary.value = null;
+  };
+  const useDish = (dishId: string) => {
+    if (currentDishId !== dishId) {
+      reset();
+      currentDishId = dishId;
+    }
+  };
+  const fetchOwnReview = async (dishId: string, acceptsResult = () => true): Promise<boolean> => {
+    useDish(dishId);
+    if (disposed) return false;
+    const version = ++ownVersion;
+    const session = userStore.sessionVersion;
+    const owner = userStore.userInfo?.id;
+    const isCurrent = () =>
+      !disposed &&
+      version === ownVersion &&
+      session === userStore.sessionVersion &&
+      owner === userStore.userInfo?.id &&
+      acceptsResult();
+    ownReviewLoading.value = true;
+    ownReviewLoaded.value = false;
+    ownReviewError.value = '';
+    try {
+      const response = await getOwnReviewByDish(dishId);
+      if (!isCurrent()) return false;
+      if (response.code !== 200) throw new Error(response.message || '读取我的评价失败');
+      ownReview.value = response.data;
+      ownReviewLoaded.value = true;
+      return true;
+    } catch (error) {
+      if (isCurrent()) ownReviewError.value = '我的评价暂时无法读取，请重试后再编辑';
+      return false;
+    } finally {
+      if (isCurrent()) ownReviewLoading.value = false;
+    }
+  };
 
   /**
    * 获取评价列表
    */
-  const fetchReviews = async (dishId: string, refresh = false) => {
-    if (reviewsLoading.value) return;
+  const fetchReviews = async (dishId: string, refresh = false, acceptsResult = () => true) => {
+    useDish(dishId);
+    if (reviewsLoading.value && !refresh) return false;
     if (!refresh && !reviewsHasMore.value) return;
+
+    const version = ++listVersion;
+    const session = userStore.sessionVersion;
+    const isCurrent = () =>
+      !disposed &&
+      version === listVersion &&
+      session === userStore.sessionVersion &&
+      acceptsResult();
+    const page = refresh ? 1 : reviewsPage.value;
 
     reviewsLoading.value = true;
     if (refresh) {
       isInitializing.value = true;
     }
     reviewsError.value = '';
-
-    if (refresh) {
-      reviewsPage.value = 1;
-      reviews.value = [];
-      reviewsHasMore.value = true;
-      ratingSummary.value = null;
-    }
+    failedReviewRefresh = null;
 
     try {
       const response = await getReviewsByDish(dishId, {
-        page: reviewsPage.value,
+        page,
         pageSize: reviewsPageSize,
       });
+      if (!isCurrent()) return false;
 
       if (response.code === 200 && response.data) {
         ratingSummary.value = response.data.rating || ratingSummary.value;
@@ -98,23 +176,35 @@ export function useReview() {
         }
 
         // 判断是否还有更多数据
-        if (newReviews.length < reviewsPageSize) {
-          reviewsHasMore.value = false;
-        } else {
-          reviewsPage.value++;
-        }
+        reviewsHasMore.value =
+          response.data.meta?.totalPages != null
+            ? page < response.data.meta.totalPages
+            : newReviews.length === reviewsPageSize;
+        reviewsPage.value = page + 1;
+        reviewsInitialized.value = true;
+        return true;
       } else {
         reviewsError.value = response.message || '获取评价失败';
+        failedReviewRefresh = refresh;
+        return false;
       }
     } catch (err: any) {
+      if (!isCurrent()) return false;
       console.error('获取评价失败:', err);
       reviewsError.value = '网络错误，请稍后重试';
+      failedReviewRefresh = refresh;
+      return false;
     } finally {
-      reviewsLoading.value = false;
-      if (refresh) {
+      if (isCurrent()) {
+        reviewsLoading.value = false;
         isInitializing.value = false;
       }
     }
+  };
+
+  const retryReviews = () => {
+    if (reviewsLoading.value || failedReviewRefresh === null) return Promise.resolve(false);
+    return fetchReviews(currentDishId, failedReviewRefresh);
   };
 
   /**
@@ -123,7 +213,7 @@ export function useReview() {
   const submitReview = async (payload: ReviewCreateRequest) => {
     try {
       const response = await createReview(payload);
-      if (response.code === 200) {
+      if (response.code === 200 || response.code === 201) {
         return response.data;
       } else {
         throw new Error(response.message || '提交失败');
@@ -138,11 +228,14 @@ export function useReview() {
    * 删除评价
    */
   const removeReview = async (reviewId: string) => {
+    const session = userStore.sessionVersion;
     try {
       const res = await deleteReview(reviewId);
+      if (disposed || session !== userStore.sessionVersion) return false;
       if (res.code === 200) {
         // 从列表中移除
         reviews.value = reviews.value.filter(r => r.id !== reviewId);
+        if (ownReview.value?.id === reviewId) ownReview.value = null;
         return true;
       } else {
         throw new Error(res.message || '删除失败');
@@ -153,14 +246,28 @@ export function useReview() {
     }
   };
 
+  watch(() => userStore.sessionVersion, reset, { flush: 'sync' });
+  if (getCurrentScope())
+    onScopeDispose(() => {
+      disposed = true;
+    });
+
   return {
+    ownReview,
+    ownReviewLoading,
+    ownReviewLoaded,
+    ownReviewError,
+    fetchOwnReview,
+    invalidateOwnReview,
     reviews,
+    reviewsInitialized,
     ratingSummary,
     reviewsLoading,
     isInitializing,
     reviewsError,
     reviewsHasMore,
     fetchReviews,
+    retryReviews,
     submitReview,
     removeReview,
   };
@@ -171,7 +278,7 @@ export function useReview() {
  */
 export function useReviewForm() {
   const userStore = useUserStore();
-  const reviewOwner = computed(() => userStore.isLoggedIn ? userStore.userInfo?.id : null);
+  const reviewOwner = computed(() => (userStore.isLoggedIn ? userStore.userInfo?.id : null));
   const reviewStateKey = (dishId: string) =>
     reviewOwner.value ? `review_state:${reviewOwner.value}:${dishId}` : null;
   const rating = ref(0);
@@ -188,7 +295,8 @@ export function useReviewForm() {
   const captureOwner = () => {
     const owner = reviewOwner.value;
     const version = userStore.sessionVersion;
-    return () => !disposed && !!owner && reviewOwner.value === owner && userStore.sessionVersion === version;
+    return () =>
+      !disposed && !!owner && reviewOwner.value === owner && userStore.sessionVersion === version;
   };
 
   const releaseUncommittedFiles = () => {
@@ -301,7 +409,10 @@ export function useReviewForm() {
       if (!isCurrent()) return false;
       console.error('保存评价草稿失败:', error);
       uni.showToast({
-        title: error === IMAGE_DRAFT_UNAVAILABLE ? IMAGE_DRAFT_UNAVAILABLE.message : '草稿保存失败，请重试',
+        title:
+          error === IMAGE_DRAFT_UNAVAILABLE
+            ? IMAGE_DRAFT_UNAVAILABLE.message
+            : '草稿保存失败，请重试',
         icon: 'none',
       });
       return false;
@@ -400,7 +511,7 @@ export function useReviewForm() {
    */
   const handleSubmit = async (
     dishId: string,
-    onSuccess?: () => void,
+    onSuccess?: (review: Review) => void,
     _existingReviewId?: string
   ) => {
     const isCurrent = captureOwner();
@@ -457,7 +568,7 @@ export function useReviewForm() {
       if (response.code === 200 || response.code === 201) {
         clearState(key);
         resetForm();
-        onSuccess?.();
+        onSuccess?.(response.data);
       } else {
         uni.showToast({
           title: response.message || '提交失败',
@@ -479,12 +590,16 @@ export function useReviewForm() {
     }
   };
 
-  watch([() => userStore.sessionVersion, reviewOwner], () => {
-    resetForm();
-    submitting.value = false;
-    isSaving.value = false;
-    isUploading.value = false;
-  }, { flush: 'sync' });
+  watch(
+    [() => userStore.sessionVersion, reviewOwner],
+    () => {
+      resetForm();
+      submitting.value = false;
+      isSaving.value = false;
+      isUploading.value = false;
+    },
+    { flush: 'sync' }
+  );
 
   if (getCurrentScope()) {
     onScopeDispose(() => {

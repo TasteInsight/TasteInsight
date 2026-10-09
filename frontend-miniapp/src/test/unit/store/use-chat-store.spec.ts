@@ -26,6 +26,25 @@ jest.mock('@/api/modules/ai', () => ({
 }));
 
 describe('useChatStore (unit)', () => {
+  test('send acceptance reports initialization failure and guards concurrent submissions', async () => {
+    const { createAISession, streamAIChat } = require('@/api/modules/ai');
+    const { useChatStore } = require('@/store/modules/use-chat-store');
+    const store = useChatStore();
+    createAISession.mockResolvedValueOnce({ code: 500 });
+    expect(await store.sendChatMessage('午餐')).toBe(false);
+    expect(store.messages).toHaveLength(0);
+    createAISession.mockResolvedValueOnce({ code: 200, data: { sessionId: 'accepted' } });
+    streamAIChat.mockReturnValue({ close: jest.fn() });
+    const first = store.sendChatMessage('午餐');
+    const duplicate = store.sendChatMessage('午餐');
+    expect(await duplicate).toBe(false);
+    expect(await first).toBe(true);
+    expect(store.aiLoading).toBe(true);
+    expect(store.messages.filter((message: any) => message.type === 'user')).toHaveLength(1);
+    expect(await store.sendChatMessage('重复')).toBe(false);
+    store.abortChat(false);
+  });
+
   beforeEach(() => {
     setActivePinia(createPinia());
     jest.clearAllMocks();

@@ -16,6 +16,7 @@ export function useMenuPlanning() {
   const activeTab = ref<'current' | 'history'>('current');
   const submitting = ref(false);
   let dialogVersion = 0;
+  let visibilityVersion = 0;
   let disposed = false;
   const invalidateDialog = () => {
     dialogVersion += 1;
@@ -26,9 +27,18 @@ export function useMenuPlanning() {
     const session = userStore.sessionVersion;
     return () => !disposed && version === dialogVersion && session === userStore.sessionVersion;
   };
+  const captureVisibleOperation = () => {
+    const version = visibilityVersion;
+    const ownsDialog = captureDialog();
+    return () => version === visibilityVersion && ownsDialog();
+  };
+  const handlePageHide = () => {
+    visibilityVersion += 1;
+  };
 
   // 从 store 获取数据
   const loading = computed(() => planStore.loading);
+  const initialized = computed(() => planStore.initialized);
   const error = computed(() => planStore.error);
   const currentPlans = computed(() => planStore.currentPlans);
   const historyPlans = computed(() => planStore.historyPlans);
@@ -39,10 +49,16 @@ export function useMenuPlanning() {
     activeTab.value === 'current' ? currentPlans.value : historyPlans.value
   );
 
+  const refreshPlans = async () => {
+    try {
+      await planStore.fetchPlans();
+    } catch {
+      // 读取错误由 store.error 提供给页面，保留列表和重试入口。
+    }
+  };
+
   // 初始化加载
-  onMounted(async () => {
-    await planStore.fetchPlans();
-  });
+  onMounted(refreshPlans);
 
   // 查看规划详情
   const viewPlanDetail = (plan: EnrichedMealPlan) => {
@@ -56,6 +72,7 @@ export function useMenuPlanning() {
 
   // 编辑规划
   const editPlan = (plan: EnrichedMealPlan) => {
+    if (!plan.dishesReady) return;
     invalidateDialog();
     // ensure only one dialog is open
     showCreateDialog.value = false;
@@ -66,7 +83,7 @@ export function useMenuPlanning() {
 
   // 删除规划
   const deletePlan = async (planId: string) => {
-    const sessionVersion = userStore.sessionVersion;
+    const isCurrent = captureVisibleOperation();
     try {
       const confirmed = await new Promise<boolean>(resolve => {
         uni.showModal({
@@ -82,12 +99,13 @@ export function useMenuPlanning() {
         });
       });
 
-      if (!confirmed || userStore.sessionVersion !== sessionVersion) return;
+      if (!confirmed || !isCurrent()) return;
 
       await planStore.removePlan(planId);
     } catch (err) {
-      if (userStore.sessionVersion !== sessionVersion) return;
+      if (!isCurrent()) return;
       console.error('删除失败:', err);
+      uni.showToast({ title: err instanceof Error ? err.message : '删除规划失败', icon: 'none' });
     }
   };
 
@@ -105,6 +123,7 @@ export function useMenuPlanning() {
     if (submitting.value || disposed) return;
     submitting.value = true;
     const isCurrent = captureDialog();
+    const canShowFeedback = captureVisibleOperation();
     try {
       if (planId) {
         await planStore.updatePlan(planId, planData);
@@ -116,8 +135,9 @@ export function useMenuPlanning() {
         showCreateDialog.value = false;
       }
     } catch (err) {
-      if (!isCurrent()) return;
+      if (!canShowFeedback()) return;
       console.error('保存规划失败:', err);
+      uni.showToast({ title: err instanceof Error ? err.message : '保存规划失败', icon: 'none' });
       throw err;
     } finally {
       if (isCurrent()) submitting.value = false;
@@ -154,21 +174,21 @@ export function useMenuPlanning() {
 
   // 执行规划（将规划移至历史）
   const executePlan = async (planId: string) => {
-    const isCurrent = captureDialog();
+    const isCurrent = captureVisibleOperation();
     try {
       await planStore.executePlan(planId);
       if (!isCurrent()) return;
       // 执行成功后关闭详情弹窗
       showDetailDialog.value = false;
       uni.showToast({
-        title: '规划已执行',
+        title: '已标记吃过',
         icon: 'success',
       });
     } catch (err) {
       if (!isCurrent()) return;
       console.error('执行规划失败:', err);
       uni.showToast({
-        title: '执行失败',
+        title: '标记失败',
         icon: 'none',
       });
     }
@@ -183,11 +203,6 @@ export function useMenuPlanning() {
     showCreateDialog.value = false;
     planStore.setSelectedPlan(null);
     activeTab.value = tab;
-  };
-
-  // 刷新列表
-  const refreshPlans = async () => {
-    await planStore.fetchPlans();
   };
 
   watch(() => userStore.sessionVersion, () => {
@@ -207,6 +222,7 @@ export function useMenuPlanning() {
   return {
     // 状态
     loading,
+    initialized,
     submitting,
     error,
     currentPlans,
@@ -233,5 +249,6 @@ export function useMenuPlanning() {
     executePlan,
     switchTab,
     refreshPlans,
+    handlePageHide,
   };
 }

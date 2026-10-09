@@ -9,6 +9,9 @@ import type {
   ApiResponse,
 } from '@/types/api';
 
+export const getOwnReviewByDish = (dishId: string): Promise<ApiResponse<Review | null>> =>
+  request<Review | null>({ url: `/dishes/${dishId}/reviews/mine`, method: 'GET' });
+
 /**
  * 获取菜品评价列表
  */

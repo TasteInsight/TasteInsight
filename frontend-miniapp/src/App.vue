@@ -50,6 +50,11 @@ function checkLoginStatus() {
 }
 </script>
 <style>
+@import './styles/design-tokens.css';
+@import './styles/page-layout.css';
+@import './styles/page-navigation.css';
+@import './pages/settings/settings-page.css';
+
 /* 隐藏所有元素的点击高亮效果 */
 view,
 scroll-view,

@@ -1,49 +1,12 @@
 <template>
-  <div class="bg-white rounded-lg p-4 mb-2 shadow-sm" @click="handleClick">
-    <div class="flex gap-3">
-      <img
-        v-if="dish.images?.[0]"
-        :src="dish.images[0]"
-        class="w-20 h-20 rounded-lg object-cover"
-      />
-      <div v-else class="w-20 h-20 rounded-lg bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center border border-gray-100">
-        <text class="text-xl">🍜</text>
-      </div>
-      <div class="flex-1">
-        <div class="font-semibold text-gray-800">{{ dish.name }}</div>
-        <div class="text-xs text-gray-500 mt-1">{{ dish.canteenName }} - {{ dish.windowName }}</div>
-        <div class="flex items-center gap-2 mt-2">
-          <div class="text-red-500 font-semibold">¥{{ dish.price }}</div>
-          <div class="text-xs text-yellow-600">
-            ⭐ {{ dish.averageRating === 0 ? '暂无' : dish.averageRating.toFixed(1) }}
-          </div>
-        </div>
-        <div v-if="dish.tags?.length" class="flex flex-wrap gap-1 mt-2">
-          <span
-            v-for="tag in dish.tags.slice(0, 3)"
-            :key="tag"
-            class="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded"
-          >
-            {{ tag }}
-          </span>
-        </div>
-      </div>
-    </div>
-  </div>
+  <DishSummaryCard :dish="dish" @select="goToDetail" />
 </template>
 
 <script setup lang="ts">
+import DishSummaryCard from '@/components/DishSummaryCard.vue';
 import type { Dish } from '@/types/api';
 
-interface Props {
-  dish: Dish;
-}
+defineProps<{ dish: Dish }>();
 
-const props = defineProps<Props>();
-
-const handleClick = () => {
-  uni.navigateTo({
-    url: `/pages/dish/index?id=${props.dish.id}`,
-  });
-};
+const goToDetail = (id: string) => uni.navigateTo({ url: `/pages/dish/index?id=${id}` });
 </script>

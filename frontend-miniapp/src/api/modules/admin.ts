@@ -142,21 +142,28 @@ export const adminGetPendingReviews = (params?: {
 /**
  * 通过评价审核
  */
-export const adminApproveReview = (reviewId: string): Promise<ApiResponse<null>> => {
+export const adminApproveReview = (
+  reviewId: string,
+  data: { expectedUpdatedAt: string }
+): Promise<ApiResponse<null>> => {
   return request<null>({
     url: `/admin/reviews/${reviewId}/approve`,
     method: 'POST',
+    data,
   });
 };
 
 /**
  * 拒绝评价审核
  */
-export const adminRejectReview = (reviewId: string, reason: string): Promise<ApiResponse<null>> => {
+export const adminRejectReview = (
+  reviewId: string,
+  data: { reason: string; expectedUpdatedAt: string }
+): Promise<ApiResponse<null>> => {
   return request<null>({
     url: `/admin/reviews/${reviewId}/reject`,
     method: 'POST',
-    data: { reason },
+    data,
   });
 };
 

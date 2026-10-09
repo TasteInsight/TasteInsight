@@ -28,9 +28,14 @@ export function useAllergens() {
     allergens: '',
   });
 
-  const { saving, loading, loadProfile, saveProfile } = useSettingsProfile(userInfo => {
-    form.allergens = userInfo?.allergens?.join(', ') || '';
-  });
+  const profile = useSettingsProfile(
+    userInfo => {
+      form.allergens = userInfo?.allergens?.join(', ') || '';
+    },
+    form,
+    'allergens'
+  );
+  const { loadProfile, saveProfile } = profile;
 
   /**
    * 判断过敏原是否已选中
@@ -90,8 +95,7 @@ export function useAllergens() {
   return {
     // 状态
     form,
-    saving,
-    loading,
+    ...profile,
 
     // 常量
     commonAllergens: COMMON_ALLERGENS,

@@ -56,7 +56,7 @@ describe('store/modules/use-plan-store', () => {
     expect(store.enrichedPlans[0].dishes[0].id).toBe('d1');
   });
 
-  test('fetchPlans handles dish fetch failures gracefully', async () => {
+  test('fetchPlans rejects incomplete dish data without publishing an editable plan', async () => {
     const mealPlans = [
       {
         id: 'p1',
@@ -72,10 +72,11 @@ describe('store/modules/use-plan-store', () => {
     const consoleErr = jest.spyOn(console, 'error').mockImplementation(() => {});
     const store = usePlanStore();
 
-    await store.fetchPlans();
+    await expect(store.fetchPlans()).rejects.toThrow('fail');
 
-    expect(store.allPlans.length).toBe(1);
-    expect(store.enrichedPlans[0].dishes.length).toBe(0);
+    expect(store.allPlans.length).toBe(0);
+    expect(store.initialized).toBe(false);
+    expect(store.error).toBe('fail');
     expect(consoleErr).toHaveBeenCalled();
     consoleErr.mockRestore();
   });
@@ -239,7 +240,7 @@ describe('store/modules/use-plan-store', () => {
     expect(store.allPlans[0].dishes.length).toBe(0);
   });
 
-  test('fetchPlans ignores non-200 dish responses', async () => {
+  test('fetchPlans treats non-200 required dish responses as a recoverable read failure', async () => {
     const mealPlans = [
       {
         id: 'p2',
@@ -253,10 +254,11 @@ describe('store/modules/use-plan-store', () => {
     (getDishById as jest.Mock).mockResolvedValue({ code: 404, data: null });
 
     const store = usePlanStore();
-    await store.fetchPlans();
+    await expect(store.fetchPlans()).rejects.toThrow('规划菜品资料暂时无法读取');
 
-    // dish returned with non-200 should not populate dish list
-    expect(store.enrichedPlans[0].dishes.length).toBe(0);
+    expect(store.enrichedPlans.length).toBe(0);
+    expect(store.initialized).toBe(false);
+    expect(store.error).toContain('重试');
   });
 
   test('executePlan logs error if storage set fails', async () => {

@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite'
 import uni from '@dcloudio/vite-plugin-uni'
 import { UnifiedViteWeappTailwindcssPlugin as uvwt } from 'weapp-tailwindcss/vite'
 import { createRequire } from 'node:module'
+import { resolveTestLogin } from './src/config/env'
 
 // 判断是否是 H5 或 App 平台，因为只有小程序才需要 weapp-tailwindcss 插件
 const isH5 = process.env.UNI_PLATFORM === 'h5'
@@ -32,10 +33,14 @@ export default defineConfig(({ mode }) => {
   if (!apiBaseUrl) {
     throw new Error(`VITE_API_BASE_URL is missing for Vite mode "${mode}"`)
   }
+  const testLoginEnabled = resolveTestLogin(mode, process.env.VITE_ENABLE_TEST_LOGIN ?? buildEnv.VITE_ENABLE_TEST_LOGIN)
 
   return {
     define: {
       'process.env.VITE_API_BASE_URL': JSON.stringify(apiBaseUrl),
+      'process.env.VITE_BUILD_MODE': JSON.stringify(mode),
+      'process.env.VITE_ENABLE_TEST_LOGIN': JSON.stringify(String(testLoginEnabled)),
+      'process.env.UNI_PLATFORM': JSON.stringify(process.env.UNI_PLATFORM || 'unknown'),
     },
     resolve: {
       // UniApp resolves markdown-it through pnpm's symlinked package path but

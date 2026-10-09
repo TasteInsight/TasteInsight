@@ -4,7 +4,8 @@ TasteInsight 小程序是基于 **UniApp** + **Vue 3** 构建的跨平台应用�
 
 ## 技术栈
 
-- **框架**: UniApp 3.0 + Vue 3.4
+- **框架**: UniApp Vue 3 编译器 5.26 + Vue 3.4.21
+- **构建**: Vite 5.2.8；DCloud 编译器依赖统一锁定为 `3.0.0-5020620260917001`
 - **状态管理**: Pinia 2
 - **样式**: TailwindCSS + Sass
 - **国际化**: Vue I18n
@@ -12,7 +13,7 @@ TasteInsight 小程序是基于 **UniApp** + **Vue 3** 构建的跨平台应用�
 - **单元测试**: Jest 27 + @vue/test-utils
 - **E2E 测试**: Playwright
 - **负载测试**: Artillery
-- **语言**: TypeScript 5
+- **语言**: TypeScript 4.9
 - **包管理器**: pnpm
 
 ## 项目结构
@@ -77,9 +78,9 @@ frontend-miniapp/
 | 搜索 | `/pages/search/index` | 搜索食堂或菜品、上拉加载更多 |
 | 食堂详情 | `/pages/canteen/index` | 食堂信息、窗口列表、菜品筛选 |
 | 窗口详情 | `/pages/window/index` | 窗口信息、菜品列表 |
-| 菜品详情 | `/pages/dish/index` | 菜品信息、评价列表、发布评价、评论回复、收藏 |
+| 菜品详情 | `/pages/dish/index` | 评价列表、发布/编辑评价、口味信息、评论回复、收藏、加入规划 |
 | 新闻公告 | `/pages/news/index` | 新闻列表、详情查看 |
-| 菜单规划 | `/pages/planning/index` | 当前/历史规划、新建/编辑/删除/执行规划 |
+| 菜单规划 | `/pages/planning/index` | 当前/历史规划、新建/编辑/删除、标记已吃 |
 | AI 聊天 | `/pages/ai-chat/index` | AI 对话、流式响应、规划卡片应用、历史会话 |
 | 个人中心 | `/pages/profile/index` | 用户信息、收藏、我的评价、浏览历史 |
 | 设置 | `/pages/settings/index` | 个人信息、偏好/过敏原、显示/通知设置 |
@@ -99,7 +100,7 @@ frontend-miniapp/
 
 #### 评价系统
 - 星级评分（1-5 星）
-- 口味评分（辣度/甜度/咸度/油腻度）
+- 口味强度（辣度/甜度/咸度/油腻度）
 - 图片上传（最多 3 张）
 - 评价草稿本地缓存（24 小时内自动恢复）
 - 评论回复
@@ -107,18 +108,32 @@ frontend-miniapp/
 
 #### AI 聊天
 - 流式响应
-- 建议词推荐
+- 开场问题建议及基于当前回答、最近对话生成的推荐追问
 - 场景切换（随便聊聊/餐单规划/菜品点评）
-- 规划卡片自动应用到菜单规划
+- 规划卡片展开查看，确认后加入菜单规划
 - 历史会话管理
 - Markdown 渲染
+
+正文通过 SSE `text_chunk` / `new_block` 流式返回；`message_received` 表示用户消息已入库，`reply_complete` 表示回答已保存且输入框可以继续发送。后续可选的 `suggestions` 事件返回最多三条上下文追问，生成失败不改变已完成回答。追问随对应消息保存在本机对话历史中，点击后沿用当前会话。
+
+### 开发测试登录
+
+测试登录默认关闭。开发或 E2E 构建可显式设置 `VITE_ENABLE_TEST_LOGIN=true`，同时开发后端需设置 `NODE_ENV=development` 和 `ENABLE_MOCK_AUTH=true`。登录页显示“开发环境”和“开发测试登录”，使用当前设备的独立测试身份，仍通过真实后端签发 JWT；不跳过业务鉴权。
+
+```bash
+VITE_ENABLE_TEST_LOGIN=true pnpm dev:h5
+VITE_ENABLE_TEST_LOGIN=true pnpm build:h5 --mode e2e
+```
+
+生产或其他发布模式误开该开关会使构建失败。生产后端独立拒绝测试身份，前端开关不授予服务器权限。该入口与 `dev:mock` 的本地模拟数据模式分开。H5 的微信授权入口不调用不支持的 API；App 的正式微信授权尚未接通，开发联调使用显式测试入口，不自动回退为测试身份。
 - 菜品/食堂卡片渲染
 
 #### 菜单规划
-- 日期范围选择
-- 用餐时段选择
+- 默认安排单日，可展开日期范围安排多日
+- 从菜品详情加入这一餐，自动带入当前菜品
+- 建议餐次可修改
 - 按窗口/搜索选择菜品
-- 执行规划（移至历史）
+- 标记已吃（移至历史，完成状态按账号保存在当前设备）
 
 ### 状态管理模块
 
@@ -149,6 +164,8 @@ frontend-miniapp/
 ```bash
 pnpm install
 ```
+
+CLI 项目使用 `package.json` 和锁文件中的编译器。HBuilderX 的安装或更新不会替换项目依赖；Android 标准运行基座应与项目编译器保持 5.26 对齐。升级编译器时需同步整组 DCloud 编译器包及配套 Vite、`@dcloudio/types`，单独版本管理的 `@dcloudio/uni-ui` 不使用编译器版本号。
 
 ### 环境变量
 
@@ -191,6 +208,19 @@ pnpm build:mp-weixin
 ```
 
 微信小程序正式版要求合法 HTTPS 请求域名。当前网关仅提供 HTTP，恢复 HTTPS 并配置微信请求域名后才能发布。详见 [环境配置与部署](../docs/环境配置与部署.md)。
+
+### Android 本地运行
+
+从 `frontend-miniapp` 目录生成 App 资源：
+
+```bash
+# Android 模拟器通过 10.0.2.2 访问宿主机；端口按后端实际监听地址调整
+VITE_API_BASE_URL=http://10.0.2.2:3001 pnpm build:app
+```
+
+使用 HBuilderX 5.26 导入生成的 `dist/build/app/` 目录，选择“运行到手机或模拟器”的 Android 标准基座。资源目录已由项目 CLI 编译；Android SDK、模拟器与基座是本地运行所需的独立工具。真机联调使用可访问宿主机的局域网地址，设备上的 `localhost` 不指向开发电脑。
+
+`build:app` 生成运行资源，不生成独立签名 APK。正式 App 发行还需配置应用标识、签名与原生能力。当前登录接口采用微信小程序授权流程，尚未接入原生 App 微信 OAuth；标准基座启动和测试会话下的业务验证不代表原生微信登录可用。
 
 ## 测试
 

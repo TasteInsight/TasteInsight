@@ -1,296 +1,287 @@
 <template>
-  <div class="min-h-screen bg-gray-50 pb-32">
-    <!-- 顶部标题 -->
-    <div class="bg-white px-4 py-4 mb-2">
-      <div class="text-lg font-semibold text-gray-800">添加新菜品</div>
-      <div class="text-sm text-gray-500 mt-1">帮助我们完善菜品信息</div>
-    </div>
-
-    <!-- 表单内容 -->
-    <div class="space-y-2">
-      <!-- 基本信息 -->
-      <div class="bg-white px-4 py-4">
-        <div class="text-sm font-semibold text-gray-700 mb-3">基本信息</div>
-
-        <!-- 菜品名称 -->
-        <div class="mb-4">
-          <div class="text-sm text-gray-600 mb-1">菜品名称 <span class="text-red-500">*</span></div>
-          <input
-            v-model="formData.name"
-            type="text"
-            placeholder="请输入菜品名称"
-            class="w-full h-10 px-3 bg-gray-50 rounded-lg text-sm border-none outline-none"
+  <view class="add-dish-page page-content">
+    <view v-if="submitted" class="submission-success" role="status">
+      <text class="success-title">提交成功</text>
+      <text>菜品信息已送交审核，即将返回。</text>
+    </view>
+    <view class="form-intro">填写菜品信息，带 * 的项目为必填项。</view>
+    <view class="form-section">
+      <text class="section-title">基本信息</text>
+      <view id="field-name" class="form-field">
+        <label for="dish-name" class="field-label">菜品名称 *</label>
+        <input
+          id="dish-name"
+          v-model="formData.name"
+          class="form-input"
+          aria-label="菜品名称"
+          placeholder="例如：番茄炒蛋"
+          :disabled="busy"
+        />
+        <text v-if="fieldErrors.name" class="field-error">{{ fieldErrors.name }}</text>
+      </view>
+      <view id="field-price" class="form-field">
+        <label for="dish-price" class="field-label">价格 *</label>
+        <view class="price-fields">
+          <view class="price-value"
+            ><text>¥</text
+            ><input
+              id="dish-price"
+              v-model.number="formData.price"
+              class="form-input"
+              type="digit"
+              aria-label="菜品价格"
+              placeholder="0.00"
+              :disabled="busy"
+          /></view>
+          <text class="price-divider">/</text
+          ><input
+            v-model="formData.priceUnit"
+            class="form-input price-unit"
+            aria-label="价格单位"
+            placeholder="份"
+            :disabled="busy"
           />
-        </div>
+        </view>
+        <text class="field-hint">价格可为 0；单位选填，例如份、碗、两。</text>
+        <text v-if="fieldErrors.price" class="field-error">{{ fieldErrors.price }}</text>
+      </view>
+      <view class="form-field">
+        <label for="dish-description" class="field-label">菜品介绍</label>
+        <textarea
+          id="dish-description"
+          v-model="formData.description"
+          class="form-input description-input"
+          aria-label="菜品介绍"
+          placeholder="介绍口味、分量或主要食材（选填）"
+          :disabled="busy"
+        />
+      </view>
+    </view>
 
-        <!-- 价格 -->
-        <div class="mb-4">
-          <div class="text-sm text-gray-600 mb-1">价格 <span class="text-red-500">*</span></div>
-          <div class="flex items-center gap-3">
-            <div class="flex items-center flex-1">
-              <span class="text-gray-500 mr-2">￥</span>
-              <input
-                v-model.number="formData.price"
-                type="digit"
-                placeholder="0.00"
-                class="flex-1 h-10 px-3 bg-gray-50 rounded-lg text-sm border-none outline-none"
-              />
-            </div>
-            <div class="flex items-center">
-              <span class="text-gray-400 text-sm mr-2">/</span>
-              <input
-                v-model="formData.priceUnit"
-                type="text"
-                placeholder="两"
-                class="w-16 h-10 px-3 bg-gray-50 rounded-lg text-sm border-none outline-none text-center"
-              />
-            </div>
-          </div>
-          <div class="text-xs text-gray-400 mt-1">价格单位选填，如：两、份、碗等</div>
-        </div>
-
-        <!-- 描述 -->
-        <div>
-          <div class="text-sm text-gray-600 mb-1">菜品描述</div>
-          <textarea
-            v-model="formData.description"
-            placeholder="请输入菜品描述（选填）"
-            class="w-full h-20 px-3 py-2 bg-gray-50 rounded-lg text-sm border-none outline-none resize-none"
-          />
-        </div>
-      </div>
-
-      <!-- 位置信息 -->
-      <div class="bg-white px-4 py-4">
-        <div class="text-sm font-semibold text-gray-700 mb-3">位置信息</div>
-
-        <!-- 选择食堂 -->
-        <div class="mb-4">
-          <div class="text-sm text-gray-600 mb-2">所在食堂 <span class="text-red-500">*</span></div>
-          <div v-if="loading" class="text-gray-400 text-sm">加载中...</div>
-          <div v-else class="grid grid-cols-3 gap-2">
-            <button
-              v-for="canteen in canteenList"
-              :key="canteen.id"
-              class="w-full py-2 px-3 rounded-lg text-sm transition-colors text-left truncate"
-              :class="
-                selectedCanteen?.id === canteen.id
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-600'
-              "
-              @click="selectCanteen(canteen)"
-            >
-              {{ canteen.name }}
-            </button>
-          </div>
-        </div>
-
-        <!-- 选择窗口 -->
-        <div v-if="windowList.length > 0">
-          <div class="text-sm text-gray-600 mb-2">所在窗口 <span class="text-red-500">*</span></div>
-          <div class="grid grid-cols-3 gap-2">
-            <button
-              v-for="window in windowList"
-              :key="window.id"
-              class="w-full py-2 px-3 rounded-lg text-sm transition-colors text-left truncate"
-              :class="
-                formData.windowId === window.id
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-600'
-              "
-              @click="selectWindow(window)"
-            >
-              {{ window.name }}
-              <span v-if="window.floor?.level" class="text-xs opacity-70">
-                ({{ window.floor.level }}楼)
-              </span>
-            </button>
-          </div>
-        </div>
-
-        <!-- 手动输入窗口（当没有窗口列表时） -->
-        <div v-else-if="selectedCanteen">
-          <div class="text-sm text-gray-600 mb-1">窗口名称 <span class="text-red-500">*</span></div>
-          <input
-            v-model="formData.windowName"
-            type="text"
-            placeholder="请输入窗口名称"
-            class="w-full h-10 px-3 bg-gray-50 rounded-lg text-sm border-none outline-none mb-3"
-          />
-          <div class="text-sm text-gray-600 mb-1">窗口号</div>
-          <input
-            v-model="formData.windowNumber"
-            type="text"
-            placeholder="请输入窗口号（选填）"
-            class="w-full h-10 px-3 bg-gray-50 rounded-lg text-sm border-none outline-none"
-          />
-        </div>
-      </div>
-
-      <!-- 供应时段 -->
-      <div class="bg-white px-4 py-4">
-        <div class="text-sm font-semibold text-gray-700 mb-3">
-          供应时段 <span class="text-red-500">*</span>
-        </div>
-        <div class="flex flex-wrap gap-2">
+    <view class="form-section">
+      <text class="section-title">位置与供应</text>
+      <view id="field-canteen" class="form-field">
+        <text class="field-label">所在食堂 *</text>
+        <text v-if="loading" class="field-hint">正在加载食堂…</text>
+        <view v-else-if="canteenError" class="location-state">
+          <text class="field-error">{{ canteenError }}</text
+          ><button class="text-action" @tap="loadCanteenList">重新加载</button>
+        </view>
+        <view v-else-if="!canteenList.length" class="location-state">
+          <text class="field-hint">暂时没有可选食堂。</text
+          ><button class="text-action" @tap="loadCanteenList">刷新食堂</button>
+        </view>
+        <view v-else class="location-grid">
+          <button
+            v-for="canteen in canteenList"
+            :key="canteen.id"
+            class="choice location-choice"
+            :class="{ 'is-selected': selectedCanteen?.id === canteen.id }"
+            :aria-pressed="selectedCanteen?.id === canteen.id"
+            :disabled="busy"
+            @tap="selectCanteen(canteen)"
+          >
+            {{ canteen.name }}
+          </button>
+        </view>
+        <text v-if="fieldErrors.canteen" class="field-error">{{ fieldErrors.canteen }}</text>
+      </view>
+      <view v-if="selectedCanteen" class="form-field">
+        <text class="field-label">所在窗口（选填）</text>
+        <view v-if="windowList.length" class="location-grid">
+          <button
+            class="choice location-choice"
+            :class="{ 'is-selected': !formData.windowId }"
+            :aria-pressed="!formData.windowId"
+            :disabled="busy"
+            @tap="clearWindow"
+          >
+            暂不选择
+          </button>
+          <button
+            v-for="window in windowList"
+            :key="window.id"
+            class="choice location-choice"
+            :class="{ 'is-selected': formData.windowId === window.id }"
+            :aria-pressed="formData.windowId === window.id"
+            :disabled="busy"
+            @tap="selectWindow(window)"
+          >
+            <text>{{ window.name }}</text
+            ><text v-if="window.floor" class="window-floor">{{
+              window.floor.name || window.floor.level + '楼'
+            }}</text>
+          </button>
+        </view>
+        <text v-else class="field-hint">该食堂暂无窗口信息，可直接提交到食堂。</text>
+      </view>
+      <view id="field-availableMealTime" class="form-field">
+        <text class="field-label">供应时段 *</text>
+        <view class="choice-list">
           <button
             v-for="option in mealTimeOptions"
             :key="option.value"
-            class="px-4 py-2 rounded-full text-sm transition-colors"
-            :class="
-              formData.availableMealTime.includes(option.value as any)
-                ? 'bg-green-500 text-white'
-                : 'bg-gray-100 text-gray-600'
-            "
-            @click="toggleMealTime(option.value as any)"
+            class="choice"
+            :class="{ 'is-selected': formData.availableMealTime.includes(option.value as any) }"
+            :aria-pressed="formData.availableMealTime.includes(option.value as any)"
+            :disabled="busy"
+            @tap="toggleMealTime(option.value as any)"
           >
             {{ option.label }}
           </button>
-        </div>
-      </div>
+        </view>
+        <text v-if="fieldErrors.availableMealTime" class="field-error">{{
+          fieldErrors.availableMealTime
+        }}</text>
+      </view>
+    </view>
 
-      <!-- 图片上传 -->
-      <div class="bg-white px-4 py-4">
-        <div class="text-sm font-semibold text-gray-700 mb-3">菜品图片</div>
-        <div class="flex flex-wrap gap-2">
-          <!-- 已上传图片 -->
-          <div v-for="(image, index) in formData.images" :key="index" class="relative w-20 h-20">
-            <image :src="image" class="w-full h-full rounded-lg object-cover" mode="aspectFill" />
-            <button
-              class="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center"
-              @click="removeImage(index)"
-            >
-              ×
-            </button>
-          </div>
-
-          <!-- 添加按钮 -->
+    <view class="form-section">
+      <text class="section-title">菜品图片</text>
+      <text class="field-hint">最多 9 张，提交菜品时上传。</text>
+      <view class="image-list">
+        <view v-for="(image, index) in formData.images" :key="image" class="image-item">
+          <image :src="image" class="dish-image" mode="aspectFill" @tap="previewImage(index)" />
           <button
-            v-if="!formData.images || formData.images.length < 9"
-            class="w-20 h-20 bg-gray-100 rounded-lg flex flex-col items-center justify-center text-gray-400"
-            @click="chooseImages"
+            class="text-action image-remove"
+            :aria-label="'移除第 ' + (index + 1) + ' 张图片'"
+            :disabled="busy"
+            @tap="removeImage(index)"
           >
-            <text class="iconfont icon-plus text-2xl"></text>
-            <span class="text-xs mt-1">添加图片</span>
+            移除
           </button>
-        </div>
-        <div class="text-xs text-gray-400 mt-2">最多上传9张图片</div>
-      </div>
+        </view>
+        <button
+          v-if="!formData.images || formData.images.length < 9"
+          class="image-add"
+          :disabled="busy"
+          @tap="chooseImages"
+        >
+          添加图片
+        </button>
+      </view>
+    </view>
 
-      <!-- 标签 -->
-      <div class="bg-white px-4 py-4">
-        <div class="text-sm font-semibold text-gray-700 mb-3">菜品标签</div>
-        <div class="grid grid-cols-3 gap-2">
-          <button
-            v-for="tag in commonTags"
-            :key="tag"
-            class="w-full px-3 py-1.5 rounded-full text-sm transition-colors text-left truncate"
-            :class="
-              formData.tags?.includes(tag)
-                ? 'bg-blue-100 text-blue-600'
-                : 'bg-gray-100 text-gray-600'
-            "
-            @click="toggleTag(tag)"
+    <view class="form-section">
+      <text class="section-title">菜品标签</text>
+      <view class="choice-list">
+        <button
+          v-for="tag in commonTags"
+          :key="tag"
+          class="choice badge-choice"
+          :class="{ 'is-selected': formData.tags?.includes(tag) }"
+          :aria-pressed="formData.tags?.includes(tag)"
+          :disabled="busy"
+          @tap="toggleTag(tag)"
+        >
+          {{ tag }}
+        </button>
+      </view>
+      <view class="custom-input">
+        <input
+          v-model="customTagInput"
+          class="form-input"
+          aria-label="自定义标签"
+          placeholder="添加自定义标签"
+          :disabled="busy"
+          @confirm="addCustomTag"
+        />
+        <button class="text-action" :disabled="busy || !customTagInput.trim()" @tap="addCustomTag">
+          添加
+        </button>
+      </view>
+      <view v-if="customTags.length" class="custom-tags">
+        <view v-for="tag in customTags" :key="tag" class="custom-tag"
+          ><text>{{ tag }}</text
+          ><button
+            class="text-action"
+            :aria-label="'移除标签 ' + tag"
+            :disabled="busy"
+            @tap="removeCustomTag(tag)"
           >
-            {{ tag }}
-          </button>
-        </div>
-        <div class="mt-3 flex items-center gap-2">
-          <input
-            v-model="customTagInput"
-            type="text"
-            placeholder="输入自定义标签"
-            class="flex-1 h-10 px-3 bg-gray-50 rounded-lg text-sm border-none outline-none"
-            @confirm="addCustomTag"
-          />
-          <button class="px-3 py-2 bg-blue-500 text-white rounded-lg text-sm" @click="addCustomTag">
-            添加
-          </button>
-        </div>
-        <div v-if="customTags.length" class="mt-3 flex flex-wrap gap-2">
-          <view
-            v-for="tag in customTags"
-            :key="tag"
-            class="px-3 py-1.5 rounded-full text-sm bg-blue-500 text-white flex items-center gap-1"
-          >
-            <text>{{ tag }}</text>
-            <text class="text-xs opacity-80" @tap="removeCustomTag(tag)">×</text>
-          </view>
-        </div>
-      </div>
+            移除
+          </button></view
+        >
+      </view>
+    </view>
 
-      <!-- 过敏原 -->
-      <div class="bg-white px-4 py-4">
-        <div class="text-sm font-semibold text-gray-700 mb-3">过敏原信息</div>
-        <div class="text-xs text-gray-500 mb-2">选择该菜品可能含有的过敏原</div>
-        <div class="grid grid-cols-3 gap-2">
-          <button
-            v-for="allergen in commonAllergens"
-            :key="allergen"
-            class="w-full px-3 py-1.5 rounded-full text-sm transition-colors text-left truncate"
-            :class="
-              formData.allergens?.includes(allergen)
-                ? 'bg-orange-100 text-orange-600'
-                : 'bg-gray-100 text-gray-600'
-            "
-            @click="toggleAllergen(allergen)"
+    <view class="form-section">
+      <text class="section-title">已知过敏原</text>
+      <text class="field-hint">仅填写已了解的原料信息；不确定时可留空。</text>
+      <view class="choice-list">
+        <button
+          v-for="allergen in commonAllergens"
+          :key="allergen"
+          class="choice badge-choice"
+          :class="{ 'is-selected': formData.allergens?.includes(allergen) }"
+          :aria-pressed="formData.allergens?.includes(allergen)"
+          :disabled="busy"
+          @tap="toggleAllergen(allergen)"
+        >
+          {{ allergen }}
+        </button>
+      </view>
+      <view class="custom-input">
+        <input
+          v-model="customAllergenInput"
+          class="form-input"
+          aria-label="自定义过敏原"
+          placeholder="添加自定义过敏原"
+          :disabled="busy"
+          @confirm="addCustomAllergen"
+        />
+        <button
+          class="text-action"
+          :disabled="busy || !customAllergenInput.trim()"
+          @tap="addCustomAllergen"
+        >
+          添加
+        </button>
+      </view>
+      <view v-if="customAllergens.length" class="custom-tags">
+        <view v-for="allergen in customAllergens" :key="allergen" class="custom-tag"
+          ><text>{{ allergen }}</text
+          ><button
+            class="text-action"
+            :aria-label="'移除过敏原 ' + allergen"
+            :disabled="busy"
+            @tap="removeCustomAllergen(allergen)"
           >
-            {{ allergen }}
-          </button>
-        </div>
-        <div class="mt-3 flex items-center gap-2">
-          <input
-            v-model="customAllergenInput"
-            type="text"
-            placeholder="输入自定义过敏原"
-            class="flex-1 h-10 px-3 bg-gray-50 rounded-lg text-sm border-none outline-none"
-            @confirm="addCustomAllergen"
-          />
-          <button
-            class="px-3 py-2 bg-orange-500 text-white rounded-lg text-sm"
-            @click="addCustomAllergen"
-          >
-            添加
-          </button>
-        </div>
-        <div v-if="customAllergens.length" class="mt-3 flex flex-wrap gap-2">
-          <view
-            v-for="allergen in customAllergens"
-            :key="allergen"
-            class="px-3 py-1.5 rounded-full text-sm bg-orange-500 text-white flex items-center gap-1"
-          >
-            <text>{{ allergen }}</text>
-            <text class="text-xs opacity-80" @tap="removeCustomAllergen(allergen)">×</text>
-          </view>
-        </div>
-      </div>
-    </div>
+            移除
+          </button></view
+        >
+      </view>
+    </view>
 
-    <!-- 底部提交按钮 -->
-    <div
-      class="fixed bottom-0 left-0 right-0 bg-white px-4 py-3 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] z-[2000]"
-      :style="{ paddingBottom: 'env(safe-area-inset-bottom)' }"
-    >
-      <button
-        class="w-full h-12 rounded-lg text-white font-semibold transition-colors"
-        :class="
-          isFormValid && !submitting
-            ? 'bg-blue-500 active:bg-blue-600'
-            : 'bg-gray-300 cursor-not-allowed'
-        "
-        :disabled="!isFormValid || submitting"
-        @click="submitForm"
-      >
-        {{ submitting ? '提交中...' : '提交菜品' }}
+    <view class="submit-bar" :style="keyboardStyle">
+      <text v-if="error" class="field-error submit-error">{{ error }}</text>
+      <button class="submit-button" :disabled="busy || leaving" @tap="handleSubmit">
+        {{ submitted ? '已提交，等待审核' : submitting ? '提交中…' : '提交菜品' }}
       </button>
-      <div class="text-xs text-gray-400 text-center mt-2">提交后将由管理员审核</div>
-    </div>
-  </div>
+      <text class="field-hint submit-hint">提交后由管理员审核</text>
+    </view>
+    <!-- #ifdef MP-WEIXIN -->
+    <page-container
+      v-if="renderBackHelper"
+      :key="backHelperKey"
+      :show="dirty || submitting"
+      :overlay="false"
+      :duration="0"
+      custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
+      @leave="handleBackHelperLeave"
+      @afterleave="restoreBackHelper"
+    />
+    <!-- #endif -->
+  </view>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { onMounted, ref, onUnmounted, nextTick } from 'vue';
+import { onBackPress } from '@dcloudio/uni-app';
 import { useAddDish } from './composables/use-add-dish';
+import { confirmDiscardChanges } from '@/utils/confirm-discard';
+import { useUserStore } from '@/store/modules/use-user-store';
+import { useSheetKeyboard } from '@/pages/dish/composables/use-sheet-keyboard';
 
 const {
   formData,
@@ -299,7 +290,12 @@ const {
   selectedCanteen,
   loading,
   submitting,
-  isFormValid,
+  submitted,
+  busy,
+  dirty,
+  fieldErrors,
+  canteenError,
+  error,
   mealTimeOptions,
   commonTags,
   commonAllergens,
@@ -310,6 +306,7 @@ const {
   loadCanteenList,
   selectCanteen,
   selectWindow,
+  clearWindow,
   toggleMealTime,
   toggleTag,
   addCustomTag,
@@ -320,36 +317,349 @@ const {
   chooseImages,
   removeImage,
   submitForm,
+  markPristine,
 } = useAddDish();
-
-// 获取URL参数中的关键词
+const userStore = useUserStore();
+const keyboardStyle = useSheetKeyboard();
+const leaving = ref(false);
+const backHelperKey = ref(0);
+const renderBackHelper = ref(true);
+let active = true;
+let allowLeave = false;
+onUnmounted(() => {
+  active = false;
+});
 onMounted(() => {
-  loadCanteenList();
-
-  // 获取传递的关键词参数作为默认菜品名
+  void loadCanteenList();
   const pages = getCurrentPages();
-  const currentPage = pages[pages.length - 1];
-  const options = (currentPage as any)?.options || {};
-
-  if (options.keyword) {
-    formData.name = decodeURIComponent(options.keyword);
+  const options = (pages[pages.length - 1] as any)?.options || {};
+  if (options.keyword) formData.name = decodeURIComponent(options.keyword);
+  markPristine();
+});
+const previewImage = (index: number) =>
+  uni.previewImage({ urls: formData.images || [], current: formData.images![index] });
+const handleSubmit = async () => {
+  if (await submitForm()) return;
+  const field = Object.keys(fieldErrors.value)[0];
+  if (field) {
+    await nextTick();
+    uni.pageScrollTo({ selector: '#field-' + field, duration: 200 });
   }
+};
+const requestLeave = async () => {
+  if (submitting.value || leaving.value) return false;
+  const session = userStore.sessionVersion;
+  leaving.value = true;
+  try {
+    if (!(await confirmDiscardChanges(dirty.value, '菜品信息尚未提交，确定放弃吗？'))) return false;
+    if (!active || session !== userStore.sessionVersion) return false;
+    allowLeave = true;
+    renderBackHelper.value = false;
+    await nextTick();
+    uni.navigateBack();
+    return true;
+  } finally {
+    leaving.value = false;
+  }
+};
+const restoreBackHelper = () => {
+  if (active && !allowLeave && (dirty.value || submitting.value)) backHelperKey.value++;
+};
+const handleBackHelperLeave = () => {
+  if (dirty.value || submitting.value) void requestLeave();
+};
+onBackPress(() => {
+  if (allowLeave || (!dirty.value && !submitting.value)) return false;
+  void requestLeave();
+  return true;
 });
 </script>
 
 <style scoped>
-input,
-textarea {
-  border: none;
-  outline: none;
+.add-dish-page {
+  padding: 0 20px calc(128px + env(safe-area-inset-bottom));
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
 }
-
-button {
-  border: none;
-  outline: none;
+.form-intro {
+  padding: 20px 0 0;
+  color: #667085;
+  font-size: 14px;
+  line-height: 1.6;
 }
-
+.form-section {
+  padding: 24px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+.section-title {
+  display: block;
+  margin-bottom: 16px;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.form-field + .form-field {
+  margin-top: 20px;
+}
+.field-label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.form-input {
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+  font-size: 16px;
+  color: #1f2937;
+  line-height: 1.5;
+}
+.form-input:focus,
+.form-input:focus-within {
+  outline: 2px solid #660874;
+  outline-offset: 1px;
+}
+.description-input {
+  height: 120px;
+}
+.field-hint {
+  display: block;
+  margin-top: 6px;
+  color: #667085;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.field-error {
+  display: block;
+  margin-top: 8px;
+  color: #b42318;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.price-fields,
+.price-value,
+.custom-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.price-value {
+  flex: 1;
+  min-width: 0;
+}
+.price-value .form-input {
+  flex: 1;
+}
+.price-divider {
+  color: #667085;
+}
+.price-unit {
+  flex: 0 0 64px;
+  width: 64px;
+  text-align: center;
+}
+.location-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.choice-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.choice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 10px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  color: #475467;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.location-choice {
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  padding: 10px 12px;
+}
+.window-floor {
+  display: block;
+  font-size: 13px;
+  color: #667085;
+  margin-top: 2px;
+}
+.badge-choice {
+  border-radius: 999px;
+  background: #f4f4f5;
+}
+.choice.is-selected {
+  border-color: #660874;
+  color: #660874;
+}
+.choice:focus-visible,
+.text-action:focus-visible,
+.image-add:focus-visible,
+.submit-button:focus-visible {
+  outline: 2px solid #660874;
+  outline-offset: 2px;
+}
 button::after {
-  border: none;
+  border: 0;
+}
+button[disabled] {
+  opacity: 0.6;
+}
+.text-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 8px;
+  background: #fff;
+  color: #660874;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.location-state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.image-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 16px;
+}
+.image-item,
+.dish-image {
+  width: 80px;
+}
+.dish-image {
+  display: block;
+  height: 80px;
+  border-radius: 10px;
+}
+.image-remove {
+  width: 80px;
+  color: #667085;
+}
+.image-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  margin: 0;
+  padding: 8px;
+  box-sizing: border-box;
+  border: 1px dashed #98a2b3;
+  border-radius: 10px;
+  background: #fff;
+  color: #475467;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.custom-input {
+  margin-top: 16px;
+}
+.custom-input .form-input {
+  flex: 1;
+}
+.custom-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.custom-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding-left: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.submit-bar {
+  position: fixed;
+  z-index: 1000;
+  right: 0;
+  bottom: var(--window-bottom, 0px);
+  left: 0;
+  padding: 12px 20px calc(12px + var(--sheet-safe-bottom, env(safe-area-inset-bottom)));
+  box-sizing: border-box;
+  background: #fff;
+  border-top: 1px solid #e5e7eb;
+}
+.submit-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+  padding: 10px 16px;
+  background: #660874;
+  color: #fff;
+  border: 0;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.submit-hint {
+  text-align: center;
+}
+.submit-error {
+  margin: 0 0 8px;
+}
+.submission-success {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px 0 0;
+  color: #475467;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.success-title {
+  color: #1f2937;
+  font-size: 20px;
+  font-weight: 600;
+}
+@media (max-width: 340px) {
+  .add-dish-page {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
 }
 </style>

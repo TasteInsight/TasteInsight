@@ -40,14 +40,19 @@ describe('pages/news/composables/use-news-detail.ts', () => {
 
     getNewsById.mockResolvedValueOnce({ code: 500, message: 'err' });
     await inst.fetchNewsDetail('n2');
-    expect((global as any).uni.showToast).toHaveBeenCalled();
+    expect(inst.error.value).toBe('公告加载失败，请重试');
+    expect(inst.notFound.value).toBe(false);
 
     getNewsById.mockRejectedValueOnce(new Error('net'));
     await inst.fetchNewsDetail('n3');
-    expect((global as any).uni.showToast).toHaveBeenCalled();
+    expect(inst.error.value).toBe('公告加载失败，请重试');
+    getNewsById.mockRejectedValueOnce(Object.assign(new Error('missing'),{statusCode:404}));
+    await inst.fetchNewsDetail('missing');
+    expect(inst.notFound.value).toBe(true);
+    expect(inst.error.value).toBe('公告不存在或已下架');
   });
 
-  test('initDetailPage calls fetchNewsDetail when id present and shows param error otherwise', () => {
+  test('initDetailPage treats missing identity as an unavailable announcement', () => {
     const getNewsById = jest.fn();
     jest.doMock('@/api/modules/news', () => ({ getNewsById }));
 
@@ -65,7 +70,7 @@ describe('pages/news/composables/use-news-detail.ts', () => {
     (onLoad as any).mockImplementation((cb: any) => cb({}));
     inst.initDetailPage();
 
-    expect((global as any).uni.showToast).toHaveBeenCalled();
+    expect(inst.notFound.value).toBe(true);
   });
 });
 export {};

@@ -41,12 +41,19 @@ describe('usePersonal', () => {
 
   beforeEach(() => {
     mockStore = reactive({
+      isLoggedIn: true,
+      sessionVersion: 0,
       userInfo: {
         nickname: 'Old Nickname',
         avatar: 'old-avatar.jpg',
       },
       fetchProfileAction: jest.fn().mockResolvedValue(undefined),
       updateLocalUserInfo: jest.fn(),
+      updateProfileAction: jest.fn(async (payload: any) => {
+        const result = await updateUserProfile(payload);
+        if (result.code !== 200 || !result.data) throw new Error(result.message || '保存失败');
+        mockStore.updateLocalUserInfo(result.data);
+      }),
     });
     (useUserStore as unknown as jest.Mock).mockReturnValue(mockStore);
     jest.clearAllMocks();
@@ -120,6 +127,7 @@ describe('usePersonal', () => {
 
   it('should handle choose avatar success', async () => {
     const { chooseAvatar, form, uploading } = usePersonal();
+    await new Promise(process.nextTick);
 
     (uploadImage as jest.Mock).mockResolvedValue({
       url: 'uploaded-avatar-url.jpg',
@@ -154,7 +162,7 @@ describe('usePersonal', () => {
       options.success({ tempFilePaths: ['temp-avatar.jpg'] });
     });
 
-    await expect(chooseAvatar()).rejects.toThrow('Upload failed');
+    await expect(chooseAvatar()).resolves.toBeUndefined();
 
     expect(uploadImage).toHaveBeenCalledWith('temp-avatar.jpg');
     expect(form.avatar).toBe(originalAvatar); // Should remain unchanged on failure
@@ -169,13 +177,14 @@ describe('usePersonal', () => {
 
   it('should handle choose avatar failure', async () => {
     const { chooseAvatar } = usePersonal();
+    await new Promise(process.nextTick);
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
     (uni.chooseImage as jest.Mock).mockImplementation(options => {
       options.fail(new Error('Choose failed'));
     });
 
-    await expect(chooseAvatar()).rejects.toThrow('Choose failed');
+    await expect(chooseAvatar()).resolves.toBeUndefined();
 
     expect(consoleSpy).toHaveBeenCalledWith('选择图片失败:', expect.any(Error));
     expect(uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ title: '选择图片失败' }));

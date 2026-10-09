@@ -1,136 +1,131 @@
-jest.mock('@/store/modules/use-canteen-store');
-jest.mock('@/api/modules/user');
-
+import { mount, flushPromises } from '@vue/test-utils';
+import { createPinia, setActivePinia } from 'pinia';
 import { usePreferences } from '@/pages/settings/composables/use-preferences';
 import { updateUserProfile } from '@/api/modules/user';
-import { useUserStore as _useUserStore } from '@/store/modules/use-user-store';
-import { useCanteenStore as _useCanteenStore } from '@/store/modules/use-canteen-store';
-import { createPinia, setActivePinia } from 'pinia';
+import { getCanteenList } from '@/api/modules/canteen';
+import { useUserStore } from '@/store/modules/use-user-store';
 
-const mockedUpdate = updateUserProfile as jest.MockedFunction<typeof updateUserProfile>;
-const mockedUseCanteenStore = _useCanteenStore as jest.MockedFunction<typeof _useCanteenStore>;
+jest.mock('@/api/modules/user');
+jest.mock('@/api/modules/canteen');
+const directoryPage = (items: any[], page = 1, totalPages = 1) => ({
+  code: 200,
+  data: { items, meta: { page, totalPages, pageSize: 100 } },
+});
 
-describe('usePreferences', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    (global as any).uni = (global as any).uni || {};
-    (global as any).uni.showToast = jest.fn();
-    (global as any).uni.navigateBack = jest.fn();
-    (global as any).uni.getStorageSync = jest.fn();
-    (global as any).uni.setStorageSync = jest.fn();
-    setActivePinia(createPinia());
-
-    const fetchCanteenStub = jest.fn() as unknown as jest.Mock<any, any>;
-    fetchCanteenStub.mockResolvedValue(undefined);
-    mockedUseCanteenStore.mockReturnValue({
-      canteenList: [],
-      fetchCanteenList: fetchCanteenStub,
-    } as any);
-
-    const fetchProfileStub = jest.fn() as unknown as jest.Mock<any, any>;
-    fetchProfileStub.mockResolvedValue(undefined);
-    const userStore = _useUserStore();
-    userStore.fetchProfileAction = fetchProfileStub;
-    userStore.userInfo = { id: 'test-user' } as any;
-    userStore.token = 'test-token';
+beforeEach(() => {
+  jest.clearAllMocks();
+  Object.assign(uni, {
+    getStorageSync: jest.fn(),
+    setStorageSync: jest.fn(),
+    removeStorageSync: jest.fn(),
+    showToast: jest.fn(),
+    navigateBack: jest.fn(),
   });
+  setActivePinia(createPinia());
+  const user = useUserStore();
+  user.token = 'token';
+  user.userInfo = {
+    id: 'user',
+    preferences: { tastePreferences: { spicyLevel: 2 }, favoriteIngredients: ['豆腐'] },
+  } as any;
+  user.fetchProfileAction = jest.fn().mockResolvedValue(undefined);
+  (getCanteenList as jest.Mock).mockResolvedValue(directoryPage([{ id: 'c1', name: '第一食堂' }]));
+});
 
-  test('onMounted loadPreferences calls canteenStore.fetchCanteenList and userStore.fetchProfileAction when used inside a component', async () => {
-    const { mount } = require('@vue/test-utils');
-    const { defineComponent } = require('vue');
-
-    const fetchCanteen = jest.fn() as unknown as jest.Mock<any, any>;
-    fetchCanteen.mockResolvedValue(undefined);
-    const fetchProfile = jest.fn() as unknown as jest.Mock<any, any>;
-    fetchProfile.mockResolvedValue(undefined);
-
-    mockedUseCanteenStore.mockReturnValue({
-      canteenList: [],
-      fetchCanteenList: fetchCanteen,
-    } as any);
-    Object.assign(_useUserStore(), {
-      fetchProfileAction: fetchProfile,
-      userInfo: {
-        preferences: {
-          tastePreferences: { spicyLevel: 2 },
-          portionSize: 'large',
-          favoriteIngredients: ['f'],
-        },
-      },
-    } as any);
-
-    const wrapper = mount(
-      defineComponent({
-        setup() {
-          const s = usePreferences();
-          return { s };
-        },
-        template: '<div />',
-      })
-    );
-
-    // allow onMounted async to run
-    await new Promise(r => setTimeout(r, 0));
-
-    expect(fetchCanteen).toHaveBeenCalled();
-    expect(fetchProfile).toHaveBeenCalled();
-    expect(wrapper.vm.s.loading.value).toBe(false);
+it('loads user preferences even when the independent directory fails', async () => {
+  (getCanteenList as jest.Mock).mockRejectedValue(new Error('食堂目录失败'));
+  const wrapper = mount({
+    setup() {
+      return { state: usePreferences() };
+    },
+    template: '<div />',
   });
+  await flushPromises();
+  const state = (wrapper.vm as any).state as ReturnType<typeof usePreferences>;
+  expect(state.initialized.value).toBe(true);
+  expect(state.form.spiciness).toBe(2);
+  expect(state.canteensError.value).toBe('食堂目录失败');
+  expect(state.loading.value).toBe(false);
+  wrapper.unmount();
+});
 
-  test('validatePriceRange resets invalid range and shows toast', () => {
-    const s = usePreferences();
-    s.form.priceRange = { min: 100, max: 10 } as any;
-    const ok = s.validatePriceRange();
-    expect(ok).toBe(false);
-    expect(s.form.priceRange).toEqual({ min: 20, max: 100 });
-    expect((global as any).uni.showToast).toHaveBeenCalled();
-  });
+it.each([
+  [{ min: 100, max: 10 }, false],
+  [{ min: 0, max: 0 }, true],
+  [{ min: -1, max: 10 }, false],
+  [{ min: NaN, max: 10 }, false],
+  [{ min: 1, max: Infinity }, false],
+])('validates %j without mutating the draft', (range, valid) => {
+  const state = usePreferences();
+  state.form.priceRange = { ...range };
+  expect(state.validatePriceRange()).toBe(valid);
+  expect(state.form.priceRange).toEqual(range);
+  expect(uni.showToast).not.toHaveBeenCalled();
+});
 
-  test('addFavoriteIngredient avoids duplicates and clears input', () => {
-    const s = usePreferences();
-    s.form.favoriteIngredients = ['a'];
-    s.newFavoriteIngredient.value = 'a';
-    s.addFavoriteIngredient();
-    expect((global as any).uni.showToast).toHaveBeenCalled();
+it('keeps a two-field price edit through its temporary invalid state', () => {
+  const state = usePreferences();
+  state.form.priceRange = { min: 20, max: 15 };
+  expect(state.validatePriceRange()).toBe(false);
+  state.form.priceRange.min = 5;
+  expect(state.validatePriceRange()).toBe(true);
+  expect(state.form.priceRange).toEqual({ min: 5, max: 15 });
+});
 
-    s.newFavoriteIngredient.value = 'b';
-    s.addFavoriteIngredient();
-    expect(s.form.favoriteIngredients).toContain('b');
-    expect(s.newFavoriteIngredient.value).toBe('');
-  });
+it('loads the full directory and allows a canteen from the second page', async () => {
+  (getCanteenList as jest.Mock)
+    .mockResolvedValueOnce(directoryPage([{ id: 'c1', name: '第一食堂' }], 1, 2))
+    .mockResolvedValueOnce(directoryPage([{ id: 'c2', name: '第二食堂' }], 2, 2));
+  const state = usePreferences();
+  expect(await state.loadCanteens()).toBe(true);
+  expect((getCanteenList as jest.Mock).mock.calls.map(call => call[0])).toEqual([
+    { page: 1, pageSize: 100 },
+    { page: 2, pageSize: 100 },
+  ]);
+  state.onCanteenSelect({ detail: { value: 1 } });
+  expect(state.form.canteenPreferences).toEqual(['c2']);
+  expect(state.getCanteenNameById('c2')).toBe('第二食堂');
+  expect(state.getCanteenNameById('missing')).toBe('食堂信息暂不可用');
+  state.onCanteenSelect({ detail: { value: 1 } });
+  expect(state.form.canteenPreferences).toEqual(['c2']);
+});
 
-  test('onCanteenSelect handles select and duplicate', () => {
-    mockedUseCanteenStore.mockReturnValue({ canteenList: [{ id: 'c1', name: 'C1' }] } as any);
-    const s = usePreferences();
-    s.onCanteenSelect({ detail: { value: 0 } } as any);
-    expect(s.form.canteenPreferences).toContain('c1');
-    // duplicate
-    s.onCanteenSelect({ detail: { value: 0 } } as any);
-    expect((global as any).uni.showToast).toHaveBeenCalled();
-  });
+it('adds and removes ingredients without duplicate entries', () => {
+  const state = usePreferences();
+  state.form.favoriteIngredients = ['豆腐'];
+  state.newFavoriteIngredient.value = '豆腐';
+  state.addFavoriteIngredient();
+  expect(state.form.favoriteIngredients).toEqual(['豆腐']);
+  state.newFavoriteIngredient.value = '番茄';
+  state.addFavoriteIngredient();
+  expect(state.newFavoriteIngredient.value).toBe('');
+  expect(state.form.favoriteIngredients).toEqual(['豆腐', '番茄']);
+  state.removeFavoriteIngredient(0);
+  expect(state.form.favoriteIngredients).toEqual(['番茄']);
+});
 
-  test('getCanteenNameById returns id when not found', () => {
-    mockedUseCanteenStore.mockReturnValue({ canteenList: [{ id: 'c1', name: 'C1' }] } as any);
-    const s = usePreferences();
-    expect(s.getCanteenNameById('c1')).toBe('C1');
-    expect(s.getCanteenNameById('notexist')).toBe('notexist');
-  });
+it('includes pending ingredient text in dirty state and submits it on save', async () => {
+  const state = usePreferences();
+  await state.loadProfile();
+  state.newFavoriteIngredient.value = '番茄';
+  expect(state.dirty.value).toBe(true);
+  (updateUserProfile as jest.Mock).mockResolvedValue({ code: 200, data: { preferences: {} } });
+  expect(await state.handleSave()).toBe(true);
+  expect(updateUserProfile).toHaveBeenCalledWith(
+    expect.objectContaining({
+      preferences: expect.objectContaining({ favoriteIngredients: ['豆腐', '番茄'] }),
+    })
+  );
+  expect(state.saved.value).toBe(true);
+});
 
-  test('handleSave success and failure', async () => {
-    mockedUpdate.mockResolvedValueOnce({ code: 200, data: { preferences: {} } } as any);
-    const s = usePreferences();
-    const ok = await s.handleSave();
-    expect(ok).toBe(true);
-    expect((global as any).uni.showToast).toHaveBeenCalledWith({
-      title: '保存成功',
-      icon: 'success',
-    });
-
-    mockedUpdate.mockResolvedValueOnce({ code: 400, message: 'Bad' } as any);
-    const s2 = usePreferences();
-    s2.form.priceRange = { min: 1, max: 5 } as any;
-    const fail = await s2.handleSave();
-    expect(fail).toBe(false);
-    expect((global as any).uni.showToast).toHaveBeenCalled();
-  });
+it('keeps edits and exposes save failure without claiming success', async () => {
+  const state = usePreferences();
+  await state.loadProfile();
+  state.form.priceRange = { min: 1, max: 5 };
+  (updateUserProfile as jest.Mock).mockResolvedValue({ code: 400, message: '保存失败' });
+  expect(await state.handleSave()).toBe(false);
+  expect(state.form.priceRange).toEqual({ min: 1, max: 5 });
+  expect(state.saved.value).toBe(false);
+  expect(uni.showToast).not.toHaveBeenCalledWith(expect.objectContaining({ icon: 'success' }));
 });

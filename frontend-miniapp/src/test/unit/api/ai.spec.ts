@@ -326,6 +326,46 @@ describe('api/modules/ai.ts', () => {
     expect(onComplete).not.toHaveBeenCalled();
   });
 
+  test('streamAIChat forwards a complete receipt payload but no receipt from HTTP success or after abort', () => {
+    jest.doMock('@/store/modules/use-user-store', () => ({
+      useUserStore: () => ({ token: 'tok' }),
+    }));
+    let savedOnChunk: any;
+    let savedComplete: any;
+    const abort = jest.fn();
+    (global as any).uni = {
+      request: (opts: any) => {
+        opts.success({ statusCode: 200 });
+        savedComplete = opts.complete;
+        return {
+          onChunkReceived: (callback: any) => { savedOnChunk = callback; },
+          abort,
+        };
+      },
+    };
+    const events: any[] = [];
+    const onComplete = jest.fn();
+    const { streamAIChat } = require(MODULE_PATH);
+    const handle = streamAIChat('session', { message: '午餐' } as any, {
+      onEvent: (event: string) => events.push(event),
+      onJSON: (payload: any) => events.push(payload),
+      onComplete,
+    });
+
+    savedOnChunk({ data: '\n' });
+    savedOnChunk({ data: 'event: message_received\ndata: {"messageId":"persisted' });
+    expect(events).toEqual([]);
+    savedOnChunk({ data: '-message"}\n\n' });
+    expect(events).toEqual(['message_received', { messageId: 'persisted-message' }]);
+
+    handle.close();
+    savedOnChunk({ data: 'event: message_received\ndata: {"messageId":"late"}\n\n' });
+    savedComplete();
+    expect(events).toHaveLength(2);
+    expect(abort).toHaveBeenCalledTimes(1);
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
   test('streamAIChat close() aborts the request task', async () => {
     jest.doMock('@/store/modules/use-user-store', () => ({
       useUserStore: () => ({ token: 'tok' }),

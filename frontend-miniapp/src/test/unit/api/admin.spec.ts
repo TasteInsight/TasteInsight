@@ -189,18 +189,23 @@ describe('api/modules/admin.ts', () => {
 
     mockReq.mockClear();
     mockReq.mockResolvedValue({ code: 200, data: null });
-    await adminApproveReview('r1');
+    const snapshot = '2026-10-08T12:00:00.000Z';
+    await adminApproveReview('r1', { expectedUpdatedAt: snapshot });
     expect(mockReq).toHaveBeenCalledWith(
-      expect.objectContaining({ url: '/admin/reviews/r1/approve', method: 'POST' })
+      expect.objectContaining({
+        url: '/admin/reviews/r1/approve',
+        method: 'POST',
+        data: { expectedUpdatedAt: snapshot },
+      })
     );
 
     mockReq.mockClear();
-    await adminRejectReview('r2', 'no');
+    await adminRejectReview('r2', { reason: 'no', expectedUpdatedAt: snapshot });
     expect(mockReq).toHaveBeenCalledWith(
       expect.objectContaining({
         url: '/admin/reviews/r2/reject',
         method: 'POST',
-        data: { reason: 'no' },
+        data: { reason: 'no', expectedUpdatedAt: snapshot },
       })
     );
 

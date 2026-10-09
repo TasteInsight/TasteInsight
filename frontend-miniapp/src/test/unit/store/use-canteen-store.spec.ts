@@ -2,14 +2,16 @@ import { setActivePinia, createPinia } from 'pinia';
 
 jest.mock('@/api/modules/canteen');
 import * as canteenModule from '@/api/modules/canteen';
-const { getCanteenList, getCanteenDetail, getWindowList, getWindowDetail, getWindowDishes } =
-  canteenModule as any;
+const { getCanteenList, getCanteenDetail, getWindowList, getWindowDetail } = canteenModule as any;
+import { getDishes } from '@/api/modules/dish';
 
 import { useCanteenStore } from '@/store/modules/use-canteen-store';
 import { useCanteenData } from '@/pages/canteen/composables/use-canteen-data';
 import { useWindowData } from '@/pages/window/composables/use-window-data';
 jest.mock('@/api/modules/dish', () => ({
-  getDishes: jest.fn().mockResolvedValue({ code: 200, data: { items: [], meta: { totalPages: 1 } } }),
+  getDishes: jest
+    .fn()
+    .mockResolvedValue({ code: 200, data: { items: [], meta: { totalPages: 1 } } }),
 }));
 
 describe('store/modules/use-canteen-store', () => {
@@ -92,11 +94,11 @@ describe('store/modules/use-canteen-store', () => {
 
     (getWindowDetail as jest.Mock).mockResolvedValue({ code: 500 });
     await expect(window.fetchWindow('bad')).resolves.toBe(false);
-    expect(window.error.value).toBe('获取窗口详情失败');
+    expect(window.headerError.value).toBe('获取窗口详情失败');
   });
 
   test('window page sets dishes and pagination and handles errors', async () => {
-    (getWindowDishes as jest.Mock).mockResolvedValue({
+    (getDishes as jest.Mock).mockResolvedValue({
       code: 200,
       data: { items: [{ id: 'd1' }], meta: { totalPages: 1, total: 1, page: 1, pageSize: 9 } },
     });
@@ -106,7 +108,7 @@ describe('store/modules/use-canteen-store', () => {
     expect(page.dishes.value.length).toBe(1);
     expect(page.hasMore.value).toBe(false);
 
-    (getWindowDishes as jest.Mock).mockResolvedValue({ code: 400 });
+    (getDishes as jest.Mock).mockResolvedValue({ code: 400 });
     await expect(page.fetchDishes('w2')).resolves.toBe(false);
     expect(page.error.value).toBe('获取菜品列表失败');
   });

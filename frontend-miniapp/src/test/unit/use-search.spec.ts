@@ -1,10 +1,14 @@
 import { useSearch } from '@/pages/search/composables/use-search';
 import { getCanteenList } from '@/api/modules/canteen';
 import { getDishes } from '@/api/modules/dish';
+import { ref } from 'vue';
 
 // Mock dependencies
 jest.mock('@/api/modules/canteen');
 jest.mock('@/api/modules/dish');
+jest.mock('@/store/modules/use-user-store', () => ({
+  useUserStore: () => ({ sessionVersion: 0, userInfo: null }),
+}));
 
 describe('useSearch', () => {
   beforeEach(() => {
@@ -33,6 +37,43 @@ describe('useSearch', () => {
     expect(getCanteenList).not.toHaveBeenCalled();
     expect(getDishes).not.toHaveBeenCalled();
   });
+
+  it.each([
+    [{ canteenId: 'canteen-1' }, { canteenId: ['canteen-1'] }],
+    [{ windowId: 'window-1' }, { windowId: ['window-1'] }],
+  ])(
+    'keeps venue search and pagination within its submitted scope',
+    async (initialScope, filter) => {
+      (getDishes as jest.Mock)
+        .mockResolvedValueOnce({
+          code: 200,
+          data: { items: [{ id: 'first' }], meta: { page: 1, totalPages: 2 } },
+        })
+        .mockResolvedValueOnce({
+          code: 200,
+          data: { items: [{ id: 'second' }], meta: { page: 2, totalPages: 2 } },
+        });
+      const scope = ref(initialScope);
+      const { keyword, search, loadMore } = useSearch(scope);
+      keyword.value = '食堂';
+      await search();
+      expect(getCanteenList).not.toHaveBeenCalled();
+      expect(getDishes).toHaveBeenLastCalledWith(
+        expect.objectContaining({ filter, search: { keyword: '食堂' } })
+      );
+
+      scope.value = { windowId: 'unsubmitted-window' };
+      keyword.value = '未提交的输入';
+      await loadMore();
+      expect(getDishes).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          filter,
+          search: { keyword: '食堂' },
+          pagination: { page: 2, pageSize: 20 },
+        })
+      );
+    }
+  );
 
   it('should return canteen results first when canteen name matches', async () => {
     (getCanteenList as jest.Mock).mockResolvedValue({
@@ -97,6 +138,33 @@ describe('useSearch', () => {
         search: { keyword: 'test' },
       })
     );
+  });
+
+  it('keeps dish pagination available when the independent canteen scan fails', async () => {
+    (getCanteenList as jest.Mock).mockRejectedValue(new Error('食堂目录暂时不可用'));
+    (getDishes as jest.Mock)
+      .mockResolvedValueOnce({
+        code: 200,
+        data: { items: [{ id: 'first' }], meta: { page: 1, totalPages: 2 } },
+      })
+      .mockResolvedValueOnce({
+        code: 200,
+        data: { items: [{ id: 'second' }], meta: { page: 2, totalPages: 2 } },
+      });
+    const state = useSearch();
+    state.keyword.value = '豆腐';
+
+    await state.search();
+    expect(state.hasMore.value).toBe(true);
+    await state.loadMore();
+
+    expect((getDishes as jest.Mock).mock.calls.map(([query]) => query.pagination.page)).toEqual([
+      1, 2,
+    ]);
+    expect(state.searchResults.value.dishes.map(dish => dish.id)).toEqual(['first', 'second']);
+    expect(state.error.value).toBe('');
+    expect(state.canteenError.value).toBe('食堂目录暂时不可用');
+    expect(state.hasMore.value).toBe(false);
   });
 
   it('should handle search error from API response', async () => {
@@ -288,15 +356,13 @@ describe('useSearch', () => {
       code: 200,
       data: { items: [], meta: { page: 1, pageSize: 50, total: 0, totalPages: 1 } },
     });
-    (getDishes as jest.Mock)
-      .mockReturnValueOnce(oldSearch)
-      .mockResolvedValueOnce({
-        code: 200,
-        data: {
-          items: [{ id: 2, name: 'New result' }],
-          meta: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
-        },
-      });
+    (getDishes as jest.Mock).mockReturnValueOnce(oldSearch).mockResolvedValueOnce({
+      code: 200,
+      data: {
+        items: [{ id: 2, name: 'New result' }],
+        meta: { page: 1, pageSize: 20, total: 1, totalPages: 1 },
+      },
+    });
 
     const { keyword, search, searchResults, error } = useSearch();
     keyword.value = 'old';

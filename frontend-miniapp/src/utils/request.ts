@@ -15,11 +15,13 @@ import '@/mock/mock-routes';
 // 全局刷新token的Promise缓存，避免竞态条件
 let tokenRefresh: { sessionVersion: number; promise: Promise<void> } | null = null;
 
-function buildUserFriendlyError(err: unknown): Error {
+function buildUserFriendlyError(err: unknown, statusCode?: number): Error {
   const wrapped = new Error(toUserFriendlyErrorMessage(err)) as Error & {
     originalError?: unknown;
+    statusCode?: number;
   };
   wrapped.originalError = err;
+  if (statusCode !== undefined) wrapped.statusCode = statusCode;
   return wrapped;
 }
 
@@ -174,14 +176,14 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
           // 如果是刷新 token 的请求本身失败了，或者没有 refresh token，则直接退出登录
           if (fullUrl.includes('/auth/refresh') || !userStore.refreshToken) {
             handleHttpError(statusCode, responseData, sessionVersion);
-            reject(buildUserFriendlyError(new Error(`HTTP ${statusCode}`)));
+            reject(buildUserFriendlyError(new Error(`HTTP ${statusCode}`), statusCode));
             return;
           }
 
           // 重试后的请求仍然 401 时直接退出，不能再发起一次刷新。
           if ((options as any)._retry) {
             handleHttpError(statusCode, responseData, sessionVersion);
-            reject(buildUserFriendlyError(new Error(`HTTP ${statusCode}`)));
+            reject(buildUserFriendlyError(new Error(`HTTP ${statusCode}`), statusCode));
             return;
           }
 
@@ -227,7 +229,7 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
           // HTTP 状态码非 2xx，代表请求出错了（404, 500 等）
           // 交给统一的错误处理器
           handleHttpError(statusCode, responseData, sessionVersion);
-          reject(buildUserFriendlyError(new Error(`HTTP ${statusCode}`)));
+          reject(buildUserFriendlyError(new Error(`HTTP ${statusCode}`), statusCode));
         }
       },
 
@@ -238,7 +240,9 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
           url: fullUrl,
           err,
         });
-        reject(buildUserFriendlyError(new Error('网络连接异常')));
+        reject(buildUserFriendlyError(
+          new Error(err.errMsg.includes('timeout') ? '请求超时，请重试' : '网络连接异常')
+        ));
       },
     });
   });

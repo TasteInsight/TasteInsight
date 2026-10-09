@@ -17,13 +17,18 @@ export function useNotifications() {
     weeklyRecommendation: true,
   });
 
-  const { saving, loading, loadProfile, saveProfile } = useSettingsProfile(userInfo => {
-    const notif = userInfo?.settings?.notificationSettings;
-    form.newDishAlert = notif?.newDishAlert ?? true;
-    form.priceChangeAlert = notif?.priceChangeAlert ?? false;
-    form.reviewReplyAlert = notif?.reviewReplyAlert ?? true;
-    form.weeklyRecommendation = notif?.weeklyRecommendation ?? true;
-  });
+  const profile = useSettingsProfile(
+    userInfo => {
+      const notif = userInfo?.settings?.notificationSettings;
+      form.newDishAlert = notif?.newDishAlert ?? true;
+      form.priceChangeAlert = notif?.priceChangeAlert ?? false;
+      form.reviewReplyAlert = notif?.reviewReplyAlert ?? true;
+      form.weeklyRecommendation = notif?.weeklyRecommendation ?? true;
+    },
+    form,
+    'notifications'
+  );
+  const { loadProfile, saveProfile } = profile;
 
   /**
    * 更新通知设置字段
@@ -58,8 +63,7 @@ export function useNotifications() {
   return {
     // 状态
     form,
-    saving,
-    loading,
+    ...profile,
 
     // 方法
     updateField,

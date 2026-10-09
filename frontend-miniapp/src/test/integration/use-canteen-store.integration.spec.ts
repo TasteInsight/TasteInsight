@@ -8,18 +8,19 @@ import {
   getCanteenDetail,
   getWindowList,
   getWindowDetail,
-  getWindowDishes,
 } from '@/api/modules/canteen';
+import { getDishes } from '@/api/modules/dish';
 
 jest.mock('@/api/modules/canteen', () => ({
   getCanteenList: jest.fn(),
   getCanteenDetail: jest.fn(),
   getWindowList: jest.fn(),
   getWindowDetail: jest.fn(),
-  getWindowDishes: jest.fn(),
 }));
 jest.mock('@/api/modules/dish', () => ({
-  getDishes: jest.fn().mockResolvedValue({ code: 200, data: { items: [], meta: { totalPages: 1 } } }),
+  getDishes: jest
+    .fn()
+    .mockResolvedValue({ code: 200, data: { items: [], meta: { totalPages: 1 } } }),
 }));
 
 describe('useCanteenStore integration', () => {
@@ -94,7 +95,7 @@ describe('useCanteenStore integration', () => {
   it('window dishes: success should set page dishes and pagination', async () => {
     const page = useWindowData();
 
-    (getWindowDishes as jest.Mock).mockResolvedValue({
+    (getDishes as jest.Mock).mockResolvedValue({
       code: 200,
       data: {
         items: [{ id: 'd1', name: 'Dish 1' }],

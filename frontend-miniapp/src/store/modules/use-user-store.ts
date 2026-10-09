@@ -32,7 +32,7 @@ export const useUserStore = defineStore('user', () => {
   /**
    * 用户头像，带默认值
    */
-  const avatar = computed(() => userInfo.value?.avatar || '/static/images/default-avatar.png');
+  const avatar = computed(() => userInfo.value?.avatar || '');
 
   /**
    * 用户昵称，带默认值
@@ -67,7 +67,7 @@ export const useUserStore = defineStore('user', () => {
           id: user.id || '',
           openId: user.openId || '',
           nickname: user.nickname || '微信用户',
-          avatar: user.avatar || '/static/images/default-avatar.png',
+          avatar: user.avatar || '',
           preferences: user.preferences || {},
           allergens: user.allergens || [],
           myFavoriteDishes: user.myFavoriteDishes || [],

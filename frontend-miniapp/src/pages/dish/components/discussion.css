@@ -1,0 +1,61 @@
+.discussion-author,
+.discussion-body {
+  color: #1f2937;
+  font-size: 16px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.discussion-author {
+  font-weight: 600;
+}
+.discussion-body {
+  white-space: pre-wrap;
+}
+.discussion-meta {
+  color: #667085;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.discussion-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 8px;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #667085;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+.discussion-action::after {
+  border: 0;
+}
+.discussion-action.button-hover {
+  background: transparent;
+}
+.discussion-action.button-hover,
+.discussion-action:active {
+  opacity: 0.72;
+}
+.discussion-action:focus-visible {
+  outline: 2px solid #660874;
+  outline-offset: 2px;
+}
+.discussion-action[disabled] {
+  color: #667085;
+  background: transparent;
+  opacity: 0.6;
+}
+.discussion-more-icon {
+  display: block;
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+}

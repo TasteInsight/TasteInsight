@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue';
+import { ref, computed, getCurrentScope, onScopeDispose } from 'vue';
 import { onLoad } from '@dcloudio/uni-app';
 import { getNewsById } from '@/api/modules/news';
 import dayjs from 'dayjs';
@@ -11,6 +11,17 @@ import type { News } from '@/types/api';
 export function useNewsDetail() {
   const newsDetail = ref<News>({} as News);
   const loading = ref<boolean>(false);
+  const initialized = ref(false);
+  const error = ref('');
+  const notFound = ref(false);
+  let currentId = '';
+  let generation = 0;
+  let disposed = false;
+  if (getCurrentScope())
+    onScopeDispose(() => {
+      disposed = true;
+      generation++;
+    });
 
   /**
    * 处理富文本内容，主要是为了让图片自适应屏幕宽度
@@ -77,21 +88,42 @@ export function useNewsDetail() {
    * 获取新闻详情
    * @param id 新闻ID
    */
-  const fetchNewsDetail = async (id: string): Promise<void> => {
+  const fetchNewsDetail = async (id: string): Promise<boolean> => {
+    if (disposed) return false;
+    if (currentId !== id) {
+      currentId = id;
+      newsDetail.value = {} as News;
+      initialized.value = false;
+    }
+    const request = ++generation;
+    const ownsRequest = () => !disposed && request === generation;
+    error.value = '';
+    notFound.value = !id;
+    if (!id) {
+      loading.value = false;
+      return false;
+    }
     loading.value = true;
     try {
       const res = await getNewsById(id);
+      if (!ownsRequest()) return false;
       if (res.code === 200 && res.data) {
         newsDetail.value = res.data;
+        initialized.value = true;
+        return true;
       } else {
-        uni.showToast({ title: '加载失败', icon: 'error' });
+        notFound.value = res.code === 404;
+        error.value = notFound.value ? '公告不存在或已下架' : '公告加载失败，请重试';
       }
-    } catch (error) {
-      console.error('获取新闻详情失败:', error);
-      uni.showToast({ title: '网络错误', icon: 'error' });
+    } catch (cause) {
+      if (!ownsRequest()) return false;
+      console.error('获取新闻详情失败:', cause);
+      notFound.value = (cause as { statusCode?: number })?.statusCode === 404;
+      error.value = notFound.value ? '公告不存在或已下架' : '公告加载失败，请重试';
     } finally {
-      loading.value = false;
+      if (ownsRequest()) loading.value = false;
     }
+    return false;
   };
 
   /**
@@ -100,17 +132,17 @@ export function useNewsDetail() {
    */
   const initDetailPage = (): void => {
     onLoad((options: any) => {
-      if (options.id) {
-        fetchNewsDetail(options.id);
-      } else {
-        uni.showToast({ title: '参数错误', icon: 'none' });
-      }
+      void fetchNewsDetail(options?.id || '');
     });
   };
 
   return {
     newsDetail,
     loading,
+    initialized,
+    error,
+    notFound,
+    retry: () => fetchNewsDetail(currentId),
     formattedContent,
     formatTime,
     fetchNewsDetail,

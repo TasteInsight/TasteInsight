@@ -1,69 +1,71 @@
 <template>
-  <view
-    class="flex py-4 border-b border-gray-100 cursor-pointer bg-white transition-colors relative"
-    :class="{ 'hover:bg-gray-50': !isMobile }"
-    @click="$emit('click')"
-  >
-    <!-- Image -->
-    <image
-      :src="dish.images && dish.images[0] ? dish.images[0] : '/static/default_dish.png'"
-      mode="aspectFill"
-      class="w-24 h-24 rounded-lg mr-4 flex-shrink-0"
-    />
-
-    <!-- Content -->
-    <view class="flex-grow flex flex-col justify-between overflow-hidden">
-      <view>
-        <view class="flex justify-between items-start">
-          <text class="font-semibold text-base text-gray-800 truncate pr-6">{{ dish.name }}</text>
-        </view>
-
-        <text class="text-xs text-gray-500 mt-1 block"
-          >{{ dish.canteenName }} · {{ dish.windowName }}</text
-        >
-
-        <!-- Tags -->
-        <view v-if="dish.tags?.length" class="flex flex-wrap gap-1 mt-1.5 mb-2">
-          <text
-            v-for="tag in dish.tags.slice(0, 3)"
-            :key="tag"
-            class="px-1.5 py-0.5 bg-blue-50 text-blue-600 text-xs rounded"
-          >
-            {{ tag }}
-          </text>
-        </view>
-      </view>
-
-      <view class="flex justify-between items-center mt-auto">
-        <text class="text-orange-500 font-bold text-lg">¥{{ dish.price.toFixed(1) }}</text>
-        <view class="flex items-center bg-yellow-50 px-2 py-1 rounded">
-          <text class="text-yellow-500" style="font-size: 16px; line-height: 1">★</text>
-          <text class="text-yellow-600 ml-1 font-semibold text-sm">{{
-            dish.averageRating === 0 ? '暂无' : dish.averageRating.toFixed(1)
-          }}</text>
-          <text v-if="dish.averageRating !== 0" class="text-gray-400 text-xs ml-1">分</text>
-        </view>
-      </view>
-    </view>
-
-    <!-- Favorite Button (Absolute Positioned) -->
-    <view v-if="showFavorite" class="absolute top-4 right-2 p-2" @click.stop="$emit('unfavorite')">
-      <text class="text-red-500" style="font-size: 20px; line-height: 1">♥</text>
+  <view class="profile-dish">
+    <DishSummaryCard class="profile-dish__summary" :dish="dish" @select="emit('click')" />
+    <view v-if="showFavorite" class="profile-dish__actions">
+      <button
+        class="profile-dish__unfavorite"
+        :aria-label="'取消收藏' + dish.name"
+        :disabled="favoriteDisabled"
+        @click="emit('unfavorite')"
+      >
+        {{ removing ? '取消中…' : '取消收藏' }}
+      </button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import DishSummaryCard from '@/components/DishSummaryCard.vue';
 import type { Dish } from '@/types/api';
 
 defineProps<{
   dish: Dish;
   showFavorite?: boolean;
+  favoriteDisabled?: boolean;
+  removing?: boolean;
 }>();
-
-defineEmits(['click', 'unfavorite']);
-
-// Simple check for mobile environment to optionally disable hover effects if needed
-// In uni-app, hover-class is usually preferred over :hover pseudo-classes
-const isMobile = typeof uni !== 'undefined';
+const emit = defineEmits<{ (e: 'click'): void; (e: 'unfavorite'): void }>();
 </script>
+
+<style scoped>
+.profile-dish {
+  border-bottom: 1px solid #e5e7eb;
+}
+.profile-dish__summary {
+  border-bottom: 0;
+}
+.profile-dish__actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-bottom: 8px;
+}
+.profile-dish__unfavorite {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin: 0;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #660874;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.profile-dish__unfavorite::after {
+  border: 0;
+}
+.profile-dish__unfavorite:active {
+  background: #f4f4f5;
+}
+.profile-dish__unfavorite[disabled] {
+  color: #98a2b3;
+  background: transparent;
+}
+.profile-dish__unfavorite:focus-visible {
+  outline: 2px solid #660874;
+  outline-offset: -2px;
+}
+</style>

@@ -69,7 +69,7 @@ describe('useMenuPlanning', () => {
 
   it('should handle editPlan', () => {
     const { editPlan, showEditDialog } = useMenuPlanning();
-    const plan = { id: '1', name: 'Plan 1' };
+    const plan = { id: '1', name: 'Plan 1', dishesReady: true };
 
     editPlan(plan as any);
 

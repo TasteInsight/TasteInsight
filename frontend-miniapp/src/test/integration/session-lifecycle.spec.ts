@@ -49,6 +49,7 @@ const defer = () => {
   request: mockRequest,
   reLaunch: mockReLaunch,
   showToast: jest.fn(),
+  showModal: jest.fn((options: any) => options.success({ confirm: true })),
   showLoading: jest.fn(),
   hideLoading: jest.fn(),
   $emit: jest.fn(),
@@ -352,7 +353,7 @@ describe('chat session ownership', () => {
     expect(streams[0].close).toHaveBeenCalledTimes(1);
   });
 
-  test('concurrent sends share creation and leave only the latest stream active', async () => {
+  test('concurrent sends share one accepted submission and stale completion cannot stop the next stream', async () => {
     let resolveSession!: (value: any) => void;
     (createAISession as jest.Mock).mockImplementationOnce(() => new Promise(resolve => {
       resolveSession = resolve;
@@ -362,7 +363,12 @@ describe('chat session ownership', () => {
     const second = store.sendChatMessage('second');
     expect(createAISession).toHaveBeenCalledTimes(1);
     resolveSession({ code: 200, data: { sessionId: 'A-session' } });
-    await Promise.all([first, second]);
+    expect(await second).toBe(false);
+    expect(await first).toBe(true);
+    expect(streams).toHaveLength(1);
+    expect(streams[0].close).not.toHaveBeenCalled();
+    store.abortChat(false);
+    expect(await store.sendChatMessage('next')).toBe(true);
     expect(streams).toHaveLength(2);
     expect(streams[0].close).toHaveBeenCalledTimes(1);
     streams[0].callbacks.onComplete();
@@ -380,7 +386,10 @@ describe('chat consumer operation ownership', () => {
   };
   const saveHistory = () => storage.set('ai-chat-history:A', [{
     sessionId: 'saved-session', scene: 'general_chat', updatedAt: 1,
-    messages: [{ id: 1, type: 'user', timestamp: 1, content: [{ type: 'text', text: 'saved' }] }],
+    messages: [
+      { id: 1, type: 'user', timestamp: 1, content: [{ type: 'text', text: 'saved' }] },
+      { id: 2, type: 'ai', timestamp: 2, content: [{ type: 'text', text: 'saved answer' }], suggestions: ['saved follow-up'] },
+    ],
   }]);
 
   beforeEach(() => {
@@ -424,44 +433,36 @@ describe('chat consumer operation ownership', () => {
     expect(chat.suggestions.value).toEqual([]);
   });
 
-  test('history selection supersedes pending initialization without ending the selected loading state', async () => {
+  test('history selection restores its follow-ups without awaiting generic suggestions or obsolete initialization', async () => {
     saveHistory();
     const creation = defer();
-    const suggestions = defer();
     (createAISession as jest.Mock).mockReturnValueOnce(creation.promise);
-    (getAISuggestions as jest.Mock).mockReturnValueOnce(suggestions.promise);
     const chat = consumer();
     const old = chat.init();
     const selected = chat.loadHistorySession('saved-session');
     creation.resolve({ code: 200, data: { sessionId: 'obsolete-session' } });
     await old;
-    expect(getAISuggestions).toHaveBeenCalledTimes(1);
-    expect(chat.isInitializing.value).toBe(true);
+    expect(getAISuggestions).not.toHaveBeenCalled();
     expect(chat.currentSessionId.value).toBe('saved-session');
-    suggestions.resolve({ code: 200, data: { suggestions: ['saved suggestion'] } });
     expect(await selected).toBe(true);
     expect(chat.isInitializing.value).toBe(false);
-    expect(chat.suggestions.value).toEqual(['saved suggestion']);
+    expect(chat.suggestions.value).toEqual(['saved follow-up']);
   });
 
   test('a superseded suggestion response cannot replace or finish the selected conversation', async () => {
     saveHistory();
     const initial = defer();
-    const selected = defer();
     (getAISuggestions as jest.Mock)
-      .mockReturnValueOnce(initial.promise)
-      .mockReturnValueOnce(selected.promise);
+      .mockReturnValueOnce(initial.promise);
     const chat = consumer();
     const old = chat.init();
     await flushPromises();
     const current = chat.loadHistorySession('saved-session');
     initial.resolve({ code: 200, data: { suggestions: ['obsolete suggestion'] } });
     await old;
-    expect(chat.suggestions.value).toEqual([]);
-    expect(chat.isInitializing.value).toBe(true);
-    selected.resolve({ code: 200, data: { suggestions: ['selected suggestion'] } });
     expect(await current).toBe(true);
-    expect(chat.suggestions.value).toEqual(['selected suggestion']);
+    expect(getAISuggestions).toHaveBeenCalledTimes(1);
+    expect(chat.suggestions.value).toEqual(['saved follow-up']);
     expect(chat.isInitializing.value).toBe(false);
   });
 
@@ -494,6 +495,8 @@ describe('chat consumer operation ownership', () => {
     expect(chat.isInitializing.value).toBe(false);
     await chat.init();
     expect(getAISuggestions).toHaveBeenCalledTimes(1);
+    expect(chat.isInitializing.value).toBe(false);
+    await flushPromises();
     expect(chat.suggestions.value).toEqual(['current suggestion']);
     expect(chat.currentSessionId.value).toBe('A-session');
     expect(chat.isInitialLoading.value).toBe(false);
@@ -502,10 +505,10 @@ describe('chat consumer operation ownership', () => {
 
 describe('chat page operation ownership', () => {
   const wrappers: any[] = [];
-  const page = async () => {
+  const page = async (openingOnly = false) => {
     storage.set('ai-chat-history:A', ['first', 'second'].map(sessionId => ({
       sessionId, scene: 'general_chat', updatedAt: 1,
-      messages: [{ id: 1, type: 'user', timestamp: 1, content: [{ type: 'text', text: sessionId }] }],
+      messages: [{ id: 1, type: openingOnly ? 'ai' : 'user', timestamp: 1, content: [{ type: 'text', text: sessionId }] }],
     })));
     const wrapper = shallowMount(ChatPage);
     wrappers.push(wrapper);
@@ -521,37 +524,57 @@ describe('chat page operation ownership', () => {
   });
 
   test.each(['login change', 'disposal'])(
-    'a history selection completing after %s does not show failure feedback',
+    'optional history suggestions finishing after %s cannot affect current ownership or panel state',
     async change => {
-      const vm = await page();
+      const vm = await page(true);
       const suggestions = defer();
       (getAISuggestions as jest.Mock).mockReturnValueOnce(suggestions.promise);
       const pending = vm.handleLoadHistory('first');
-      if (change === 'login change') await useUserStore().loginAction('B');
-      else wrappers[0].unmount();
-      suggestions.resolve({ code: 200, data: { suggestions: ['obsolete'] } });
       await pending;
+      expect(vm.showHistory).toBe(false);
+      expect(useChatStore().sessionId).toBe('first');
+      if (change === 'login change') {
+        await useUserStore().loginAction('B');
+        vm.openHistory();
+      } else wrappers[0].unmount();
+      suggestions.resolve({ code: 200, data: { suggestions: ['obsolete'] } });
+      await flushPromises();
       expect(uni.showToast).not.toHaveBeenCalled();
-      expect(vm.showHistory).toBe(true);
+      expect(vm.showHistory).toBe(change === 'login change');
+      expect(vm.suggestions).not.toContain('obsolete');
+      if (change === 'login change') {
+        expect(useChatStore().sessionId).toBe('');
+        expect(useChatStore().messages).toEqual([]);
+      }
     }
   );
 
-  test('a superseded history selection neither closes the panel nor reports failure', async () => {
-    const vm = await page();
+  test('superseded history suggestions cannot close a reopened panel or replace the selected conversation', async () => {
+    const vm = await page(true);
     const first = defer();
     const second = defer();
     (getAISuggestions as jest.Mock)
       .mockReturnValueOnce(first.promise)
       .mockReturnValueOnce(second.promise);
     const old = vm.handleLoadHistory('first');
-    const current = vm.handleLoadHistory('second');
-    first.resolve({ code: 200, data: { suggestions: ['first'] } });
     await old;
-    expect(uni.showToast).not.toHaveBeenCalled();
-    expect(vm.showHistory).toBe(true);
-    second.resolve({ code: 200, data: { suggestions: ['second'] } });
+    expect(vm.showHistory).toBe(false);
+    vm.openHistory();
+    const current = vm.handleLoadHistory('second');
     await current;
     expect(vm.showHistory).toBe(false);
+    vm.openHistory();
+    first.resolve({ code: 200, data: { suggestions: ['first'] } });
+    await flushPromises();
+    expect(uni.showToast).not.toHaveBeenCalled();
+    expect(vm.showHistory).toBe(true);
+    expect(useChatStore().sessionId).toBe('second');
+    expect(vm.suggestions).not.toContain('first');
+    second.resolve({ code: 200, data: { suggestions: ['second'] } });
+    await flushPromises();
+    expect(vm.showHistory).toBe(true);
+    expect(vm.suggestions).toEqual(['second']);
+    expect(useChatStore().sessionId).toBe('second');
   });
 
   test('an old current-session deletion does not close the new login history panel', async () => {
@@ -778,7 +801,7 @@ describe('chat page operation ownership', () => {
     expect(plan).toHaveProperty('appliedStatus', 'success');
     expect(storedCard().appliedStatus).toBe('success');
     expect(uni.$emit).toHaveBeenCalledWith('meal-plan:changed');
-    expect(uni.showToast).toHaveBeenCalledWith({ title: '已应用到日程', icon: 'success' });
+    expect(uni.showToast).toHaveBeenCalledWith({ title: '已加入我的规划', icon: 'success' });
     jest.advanceTimersByTime(500);
     await flushPromises();
     expect(streamAIChat).toHaveBeenCalledTimes(1);
@@ -825,7 +848,7 @@ describe('chat page operation ownership', () => {
     await flushPromises();
     expect(plan).toHaveProperty('appliedStatus', 'failed');
     expect(storedCard().appliedStatus).toBe('failed');
-    expect(uni.showToast).toHaveBeenCalledWith({ title: '应用失败，请重试', icon: 'none' });
+    expect(uni.showToast).toHaveBeenCalledWith({ title: '加入失败，请重试', icon: 'none' });
     expect(uni.$emit).not.toHaveBeenCalled();
     expect(streamAIChat).not.toHaveBeenCalled();
   });

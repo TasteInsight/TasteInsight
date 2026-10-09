@@ -47,14 +47,6 @@ export function useNewsItem() {
   };
 
   /**
-   * 获取新闻标签样式类名
-   * @param news 新闻对象
-   */
-  const getNewsTagClass = (news: News): string => {
-    return news.canteenName ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600';
-  };
-
-  /**
    * 跳转到新闻详情页
    * @param newsId 新闻ID
    */
@@ -71,7 +63,6 @@ export function useNewsItem() {
     stripHtml,
     getNewsSummary,
     getNewsTagText,
-    getNewsTagClass,
     goToDetail,
   };
 }

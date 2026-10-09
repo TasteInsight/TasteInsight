@@ -140,6 +140,15 @@ describe('request utils', () => {
     await expect(request({ url: '/test' })).rejects.toThrow('网络开小差了，请稍后再试');
   });
 
+  it('preserves timeout as a failed request with a retryable message', async () => {
+    mockRequest.mockImplementation(opts => {
+      opts.fail({ errMsg: 'request:fail timeout' });
+    });
+
+    await expect(request({ url: '/test' })).rejects.toThrow('请求超时，请重试');
+    expect(mockUserStore.logoutAction).not.toHaveBeenCalled();
+  });
+
   it('should handle 401 and refresh token successfully', async () => {
     mockUserStore.token = 'expired-token';
     mockUserStore.refreshToken = 'valid-refresh-token';
@@ -243,6 +252,11 @@ describe('request utils', () => {
     });
 
     await expect(request({ url: '/test' })).rejects.toThrow('网络开小差了，请稍后再试');
+  });
+
+  it('preserves an HTTP status for page-level missing-resource states', async () => {
+    mockRequest.mockImplementation(opts => opts.success({statusCode:404,data:{message:'Not found'}}));
+    await expect(request({url:'/news/missing'})).rejects.toMatchObject({statusCode:404});
   });
 
   it('should not log sensitive request or response bodies', async () => {

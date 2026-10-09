@@ -4,7 +4,7 @@ overrides:
   '@vue/runtime-dom': 3.4.21
   '@vue/runtime-core': 3.4.21
   '@vue/reactivity': 3.4.21
-  '@dcloudio/types': 3.4.19
+  '@dcloudio/types': 3.4.31
 # Vue compilers retain the matching @vue/shared version declared by each package.
 peerDependencyRules:
   ignoreMissing:
@@ -12,11 +12,12 @@ peerDependencyRules:
     - webpack
   allowedVersions:
     vue: 3.4.21
-    '@dcloudio/types': 3.4.19
+    '@dcloudio/types': 3.4.31
 allowBuilds:
   '@parcel/watcher': true
   '@playwright/browser-chromium': true
   core-js: true
+  core-js-pure: false
   esbuild: true
   protobufjs: true
   unix-dgram: true
