@@ -1,8 +1,10 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
+import { enableAutoUnmount, mount } from '@vue/test-utils'
 import { ref } from 'vue'
 
 import Login from '../../src/views/Login.vue'
+
+enableAutoUnmount(afterEach)
 
 const flushPromises = () => new Promise<void>((resolve) => queueMicrotask(() => resolve()))
 
@@ -57,16 +59,20 @@ describe('views/Login', () => {
     expect(wrapper.text()).toContain('至少为6位')
   })
 
-  it('shows/hides forgot password modal', async () => {
-    const wrapper = mount(Login)
+  it('opens a named native password dialog and closes through its cancel event', async () => {
+    const wrapper = mount(Login, { attachTo: document.body })
     expect(wrapper.vm.showForgotPasswordModal).toBe(false)
 
     await wrapper.find('a').trigger('click')
     expect(wrapper.vm.showForgotPasswordModal).toBe(true)
 
-    wrapper.vm.closeForgotPasswordModal()
+    const dialog = document.querySelector<HTMLDialogElement>('dialog[aria-label="忘记密码"]')
+    expect(dialog).not.toBeNull()
+    expect(dialog?.open).toBe(true)
+    dialog?.dispatchEvent(new Event('cancel', { cancelable: true }))
     await flushPromises()
     expect(wrapper.vm.showForgotPasswordModal).toBe(false)
+    wrapper.unmount()
   })
 
   it('login success uses query redirect first', async () => {

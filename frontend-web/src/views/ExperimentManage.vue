@@ -1,9 +1,9 @@
 <template>
-  <div class="p-8 min-h-screen min-w-[1200px]">
-    <div class="bg-white rounded-lg container-shadow p-8">
+  <div class="admin-page">
+    <div class="admin-panel">
       <!-- 列表视图 -->
       <div v-if="viewMode === 'list'">
-        <div class="flex justify-between items-center mb-6">
+        <div class="admin-heading-row">
           <Header
             title="推荐配置管理"
             description="管理推荐系统的A/B测试实验配置"
@@ -52,8 +52,8 @@
           <p class="mt-4 text-gray-500">加载中...</p>
         </div>
 
-        <div v-else class="overflow-auto">
-          <table class="w-full">
+        <div v-else class="admin-table-scroll">
+        <table class="admin-table">
             <thead class="bg-gray-50">
               <tr>
                 <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">实验名称</th>
@@ -144,7 +144,7 @@
 
       <!-- 详情视图 -->
       <div v-else-if="viewMode === 'detail'">
-        <div class="flex justify-between items-center mb-6">
+        <div class="admin-heading-row">
           <Header
             :title="currentExperiment?.name || '实验详情'"
             :description="currentExperiment?.description || '查看实验配置详情'"
@@ -320,7 +320,7 @@
 
       <!-- 分组详情视图 -->
       <div v-else-if="viewMode === 'groupDetail'">
-        <div class="flex justify-between items-center mb-6">
+        <div class="admin-heading-row">
           <Header
             :title="`分组详情: ${currentGroup?.name || ''}`"
             description="查看分组配置的权重和召回配额"
@@ -399,7 +399,7 @@
 
       <!-- 创建/编辑视图 -->
       <div v-else-if="viewMode === 'edit'">
-        <div class="flex justify-between items-center mb-6">
+        <div class="admin-heading-row">
           <Header
             :title="editingExperiment ? '编辑实验' : '创建实验'"
             :description="editingExperiment ? '修改实验配置' : '创建新的A/B测试实验'"
@@ -417,7 +417,7 @@
           <!-- 基本信息 -->
           <div class="border border-gray-200 rounded-lg p-6">
             <h3 class="text-lg font-semibold text-gray-800 mb-4">基本信息</h3>
-            <div class="grid grid-cols-2 gap-6">
+        <div class="admin-form-grid">
               <div>
                 <label class="block text-gray-700 font-medium mb-2">
                   实验名称 <span class="text-red-500">*</span>
@@ -606,10 +606,11 @@
       </div>
 
       <!-- 分组配置编辑弹窗 -->
-      <div
+      <AdminDialog
         v-if="showGroupConfigModal"
-        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-        @mousedown.self="closeGroupConfigModal"
+        :open="showGroupConfigModal"
+        label="分组配置"
+        @close="closeGroupConfigModal"
       >
         <div class="bg-white rounded-lg w-[600px] max-h-[80vh] overflow-auto">
           <div class="p-6 border-b border-gray-200">
@@ -620,6 +621,7 @@
               <button
                 class="p-2 hover:bg-gray-100 rounded-full"
                 @click="closeGroupConfigModal"
+                aria-label="关闭分组配置"
               >
                 <AppIcon class="iconify" icon="carbon:close"></AppIcon>
               </button>
@@ -690,7 +692,7 @@
             </button>
           </div>
         </div>
-      </div>
+      </AdminDialog>
     </div>
   </div>
 </template>
@@ -700,6 +702,7 @@ import { reactive, ref, computed, onMounted } from 'vue'
 import { experimentApi } from '@/api/modules/experiment'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
+import AdminDialog from '@/components/Common/AdminDialog.vue'
 import { showAlert, showConfirmDanger } from '@/composables/useModal'
 import type {
   Experiment,
@@ -712,6 +715,7 @@ export default {
   name: 'ExperimentManage',
   components: {
     Header,
+    AdminDialog,
   },
   setup() {
     const authStore = useAuthStore()

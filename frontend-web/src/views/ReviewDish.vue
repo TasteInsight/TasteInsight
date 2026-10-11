@@ -1,6 +1,6 @@
 <template>
-  <div class="p-8 min-h-screen min-w-[1200px]">
-    <div class="bg-white rounded-lg container-shadow p-8">
+  <div class="admin-page">
+    <div class="admin-panel">
       <Header
         title="菜品审核"
         description="审核待上线的菜品信息"
@@ -30,7 +30,7 @@
         </div>
 
         <!-- 筛选栏 -->
-        <div class="p-4 bg-gray-50 rounded-lg border border-gray-100 flex flex-wrap items-center gap-x-8 gap-y-4">
+        <div class="admin-toolbar">
           <div class="flex items-center gap-3">
             <span class="text-sm font-medium text-gray-600">审核状态</span>
             <div class="relative">
@@ -81,8 +81,8 @@
       </div>
 
       <!-- 审核表格 -->
-      <div class="overflow-auto">
-        <table class="w-full">
+      <div class="admin-table-scroll">
+        <table class="admin-table">
           <thead class="bg-gray-50">
             <tr>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">菜品信息</th>
@@ -114,10 +114,10 @@
             >
               <td class="py-4 px-6">
                 <div class="flex items-center">
-                  <img
-                    :src="dish.image || '/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'"
+                  <AdminImage
+                    :src="dish.image"
                     :alt="dish.name"
-                    class="w-12 h-12 rounded object-cover border mr-3"
+                    image-class="w-12 h-12 rounded object-cover border mr-3"
                   />
                   <div>
                     <div class="font-medium">{{ dish.name }}</div>
@@ -180,6 +180,7 @@ import { reviewApi } from '@/api/modules/review'
 import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
+import AdminImage from '@/components/Common/AdminImage.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
 import { showAlert } from '@/composables/useModal'
@@ -189,6 +190,7 @@ const PAGE_STATE_KEY = 'review-dish'
 export default {
   name: 'ReviewDish',
   components: {
+    AdminImage,
     Header,
     Pagination,
   },

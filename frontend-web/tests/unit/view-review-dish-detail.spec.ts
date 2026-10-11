@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { DOMWrapper, mount } from '@vue/test-utils'
 import { defineComponent, nextTick } from 'vue'
 
 const mocks = vi.hoisted(() => ({
@@ -217,7 +217,12 @@ describe('views/ReviewDishDetail', () => {
     expect(wrapper.vm.isRejectModalOpen).toBe(true)
     expect(wrapper.vm.rejectReason).toBe('')
 
-    wrapper.vm.closeRejectModal()
+    await nextTick()
+    const dialog = new DOMWrapper(document.body).get('dialog[aria-label="拒绝审核"]')
+    expect(dialog.attributes('open')).toBeDefined()
+    await dialog.trigger('click')
+    expect(wrapper.vm.isRejectModalOpen).toBe(true)
+    await dialog.trigger('cancel')
     expect(wrapper.vm.isRejectModalOpen).toBe(false)
 
     wrapper.vm.openRejectModal()

@@ -1,6 +1,6 @@
 <template>
-  <div class="p-8 min-h-screen min-w-[1200px]">
-    <div class="bg-white rounded-lg container-shadow p-8">
+  <div class="admin-page">
+    <div class="admin-panel">
       <Header
         :title="`添加子项：${formData.name || '子项'}`"
         description="填写子项详情信息并上传图片"
@@ -24,7 +24,7 @@
       </p>
 
       <form class="space-y-6">
-        <fieldset :disabled="isExpiredComposition || isSubmitted || isSubmitting" class="grid grid-cols-2 gap-6 min-w-0">
+        <fieldset :disabled="isExpiredComposition || isSubmitted || isSubmitting" class="admin-form-grid">
           <!-- 左侧列 -->
           <div>
             <!-- 食堂信息组（继承自父项，只读显示） -->
@@ -159,33 +159,34 @@
                 ></label
               >
 
-              <div class="flex gap-4 items-start">
+              <div class="admin-media-editor">
                 <!-- 封面图（第一张） -->
                 <div class="relative group flex-shrink-0">
                   <div
-                    class="w-[300px] h-[300px] border-2 border-dashed rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center"
+                    class="w-[300px] max-w-full"
                   >
-                    <img
+                    <AdminImage
                       v-if="formData.imageFiles[0]?.preview"
                       :src="formData.imageFiles[0].preview"
                       alt="封面图"
-                      class="w-full h-full object-cover"
+                      variant="preview"
+                      image-class="w-full aspect-square rounded-lg border-2 object-cover"
                     />
-                    <div v-else class="text-center p-6 text-gray-400">
+                    <div v-else class="text-center p-6 text-gray-500 border-2 border-dashed rounded-lg">
                       <AppIcon class="iconify text-4xl mx-auto" icon="bi:image"></AppIcon>
                       <div class="mt-2 font-medium">封面图</div>
-                      <p class="text-xs mt-1">点击右侧按钮添加</p>
+                      <p class="text-xs mt-1">上传后显示封面</p>
                     </div>
 
-                    <!-- 删除遮罩 -->
+                    <!-- 图片操作 -->
                     <div
                       v-if="formData.imageFiles.length > 0"
-                      class="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center gap-3 transition-all duration-200"
+                      class="flex items-center justify-end gap-3 mt-2"
                     >
                       <button
                         type="button"
                         @click="removeImage(0)"
-                        class="p-2 bg-white/20 text-white rounded-full hover:bg-red-500 transition-colors"
+                        class="p-2 bg-gray-100 text-gray-600 rounded-full hover:text-red-600 transition-colors"
                         title="删除图片"
                       >
                         <AppIcon class="iconify text-xl" icon="carbon:trash-can"></AppIcon>
@@ -201,20 +202,23 @@
                   <div
                     v-for="(img, index) in formData.imageFiles.slice(1)"
                     :key="img.id"
-                    class="relative group w-[140px] h-[140px]"
+                    class="w-[140px]"
                   >
-                    <div class="w-full h-full border rounded-lg overflow-hidden bg-gray-50">
-                      <img v-if="img.preview" :src="img.preview" class="w-full h-full object-cover" />
-                    </div>
+                    <AdminImage
+                      :src="img.preview"
+                      :alt="`菜品图片 ${index + 2}`"
+                      variant="preview"
+                      image-class="w-full aspect-square border rounded-lg object-cover"
+                    />
 
-                    <!-- 操作遮罩 -->
+                    <!-- 图片操作 -->
                     <div
-                      class="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center gap-2 rounded-lg transition-all duration-200"
+                      class="flex items-center justify-end gap-2 mt-2"
                     >
                       <button
                         type="button"
                         @click="setAsCover(index + 1)"
-                        class="p-1.5 bg-white/20 text-white rounded-full hover:bg-tsinghua-purple transition-colors"
+                        class="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:text-tsinghua-purple transition-colors"
                         title="设为封面"
                       >
                         <AppIcon class="iconify" icon="carbon:image-copy"></AppIcon>
@@ -222,7 +226,7 @@
                       <button
                         type="button"
                         @click="removeImage(index + 1)"
-                        class="p-1.5 bg-white/20 text-white rounded-full hover:bg-red-500 transition-colors"
+                        class="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:text-red-600 transition-colors"
                         title="删除图片"
                       >
                         <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
@@ -518,6 +522,7 @@ import { useAuthStore } from '@/store/modules/use-auth-store'
 import { dishApi } from '@/api/modules/dish'
 import { reviewApi } from '@/api/modules/review'
 import Header from '@/components/Layout/Header.vue'
+import AdminImage from '@/components/Common/AdminImage.vue'
 import { showAlert, showConfirm } from '@/composables/useModal'
 import { createDishForm, getCompositionSubItem, getDishCompositionVersion } from '@/composables/dish-composition'
 import { authSessionVersion, getAuthSessionVersion } from '@/utils/auth-session'
@@ -525,6 +530,7 @@ import { authSessionVersion, getAuthSessionVersion } from '@/utils/auth-session'
 export default {
   name: 'AddSubDish',
   components: {
+    AdminImage,
     Header,
   },
   setup() {

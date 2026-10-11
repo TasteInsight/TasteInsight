@@ -1,6 +1,6 @@
 <template>
-  <div class="p-8 min-h-screen min-w-[1200px]">
-    <div class="bg-white rounded-lg container-shadow p-8">
+  <div class="admin-page">
+    <div class="admin-panel">
       <Header
         title="举报管理"
         description="处理用户举报的评价和评论"
@@ -9,12 +9,13 @@
 
       <!-- 筛选区域 -->
       <div class="mb-6 mt-6">
-        <div class="p-4 bg-gray-50 rounded-lg border border-gray-100 flex flex-wrap items-center gap-x-8 gap-y-4">
+        <div class="admin-toolbar">
           <div class="flex items-center gap-3">
             <span class="text-sm font-medium text-gray-600">处理状态</span>
             <div class="relative">
               <select
                 v-model="statusFilter"
+                aria-label="处理状态"
                 @change="handleFilterChange"
                 class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[150px] transition-all cursor-pointer hover:border-gray-400"
               >
@@ -34,6 +35,7 @@
             <div class="relative">
               <select
                 v-model="targetTypeFilter"
+                aria-label="举报类型"
                 @change="handleFilterChange"
                 class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[150px] transition-all cursor-pointer hover:border-gray-400"
               >
@@ -61,8 +63,8 @@
       </div>
 
       <!-- 举报列表表格 -->
-      <div class="overflow-auto">
-        <table class="w-full">
+      <div class="admin-table-scroll">
+        <table class="admin-table">
           <thead class="bg-gray-50">
             <tr>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">举报人</th>
@@ -93,10 +95,11 @@
             >
               <td class="py-4 px-6">
                 <div class="flex items-center">
-                  <img
-                    :src="report.reporter?.avatar || '/default-avatar.png'"
+                  <AdminImage
+                    :src="report.reporter?.avatar"
+                    variant="avatar"
                     :alt="report.reporterNickname || report.reporter?.nickname || '用户'"
-                    class="w-8 h-8 rounded-full mr-2 border border-gray-200"
+                    image-class="w-8 h-8 rounded-full mr-2 border border-gray-200 object-cover"
                   />
                   <span class="text-sm font-medium text-gray-900">{{ report.reporterNickname || report.reporter?.nickname || '未知用户' }}</span>
                 </div>
@@ -106,7 +109,7 @@
                   <div class="text-sm">
                     {{ report.targetType === 'review' ? '评价' : '评论' }}
                   </div>
-                  <!-- 评价图片数量 -->
+                  <!-- 内容图片数量 -->
                   <div 
                     v-if="report.targetType === 'review' && report.targetContent?.images && report.targetContent.images.length > 0"
                     class="ml-2 inline-flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 rounded text-xs text-gray-600"
@@ -144,19 +147,21 @@
       </div>
 
       <!-- 详情对话框 -->
-      <div
+      <AdminDialog
         v-if="selectedReport"
-        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-        @click.self="closeDetailDialog"
+        :open="Boolean(selectedReport)"
+        labelledby="report-detail-title"
+        @close="closeDetailDialog"
       >
         <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
           <!-- 对话框头部 -->
           <div class="px-8 py-5 border-b border-gray-200 bg-white flex items-center justify-between">
-            <h3 class="text-xl font-semibold text-gray-900 flex items-center">
+            <h3 id="report-detail-title" class="text-xl font-semibold text-gray-900 flex items-center">
               <AppIcon class="iconify inline-block mr-3 text-tsinghua-purple" icon="carbon:warning" style="font-size: 24px;"></AppIcon>
               举报详情
             </h3>
             <button
+              aria-label="关闭举报详情"
               class="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg p-1.5 transition"
               @click="closeDetailDialog"
             >
@@ -169,14 +174,15 @@
             <div class="space-y-5">
               <!-- 基本信息 -->
               <div class="bg-white rounded-xl shadow-sm p-6">
-                <div class="grid grid-cols-2 gap-6">
+        <div class="admin-form-grid">
                   <div class="space-y-1">
                     <div class="text-xs text-gray-400 uppercase tracking-wide">举报人</div>
                     <div class="flex items-center">
-                      <img
-                        :src="selectedReport.reporter?.avatar || '/default-avatar.png'"
+                      <AdminImage
+                        :src="selectedReport.reporter?.avatar"
+                        variant="avatar"
                         :alt="selectedReport.reporterNickname || selectedReport.reporter?.nickname || '用户'"
-                        class="w-6 h-6 rounded-full mr-2 border border-gray-200"
+                        image-class="w-6 h-6 rounded-full mr-2 border border-gray-200 object-cover"
                       />
                       <span class="text-sm font-medium text-gray-900">{{ selectedReport.reporterNickname || selectedReport.reporter?.nickname || '未知用户' }}</span>
                     </div>
@@ -232,10 +238,11 @@
                 <div v-if="selectedReport.targetContent">
                   <div class="mb-4 flex items-center">
                     <span class="text-gray-500 text-sm mr-2">发布者：</span>
-                    <img
-                      :src="selectedReport.targetContent.userAvatar || '/default-avatar.png'"
+                    <AdminImage
+                      :src="selectedReport.targetContent.userAvatar"
+                      variant="avatar"
                       :alt="selectedReport.targetContent.userNickname || '用户'"
-                      class="w-6 h-6 rounded-full mr-2 border border-gray-200"
+                      image-class="w-6 h-6 rounded-full mr-2 border border-gray-200 object-cover"
                     />
                     <span class="text-gray-900 font-medium text-sm">
                       {{ selectedReport.targetContent.userNickname || '未知用户' }}
@@ -246,28 +253,23 @@
                       {{ selectedReport.targetContent.content || '（无内容）' }}
                     </div>
                   </div>
-                  <!-- 评价图片数量 -->
+                  <!-- 内容图片 -->
                   <div 
                     v-if="selectedReport.targetType === 'review' && selectedReport.targetContent.images && selectedReport.targetContent.images.length > 0"
                     class="mb-4"
                   >
                     <div class="text-xs text-gray-400 uppercase tracking-wide mb-2">评价图片</div>
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                      <div
+                      <AdminImage
                         v-for="(image, index) in selectedReport.targetContent.images"
                         :key="index"
-                        class="relative group aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100 cursor-pointer hover:border-tsinghua-purple transition"
-                        @click="openImagePreview(selectedReport.targetContent.images, Number(index))"
-                      >
-                        <img
-                          :src="image"
-                          :alt="`评价图片 ${Number(index) + 1}`"
-                          class="w-full h-full object-cover"
-                        />
-                        <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition flex items-center justify-center">
-                          <AppIcon class="iconify text-white text-2xl opacity-0 group-hover:opacity-100 transition" icon="carbon:zoom-in"></AppIcon>
-                        </div>
-                      </div>
+                        :src="image"
+                        :alt="`评价图片 ${Number(index) + 1}`"
+                        variant="preview"
+                        previewable
+                        image-class="w-full aspect-square rounded-lg border border-gray-200 object-cover hover:opacity-90"
+                        @preview="openImagePreview(selectedReport.targetContent.images, Number(index))"
+                      />
                     </div>
                   </div>
                   <div v-if="selectedReport.targetContent.isDeleted" class="mt-3 flex items-center text-xs text-red-600">
@@ -321,7 +323,7 @@
             </div>
           </div>
         </div>
-      </div>
+      </AdminDialog>
 
       <Pagination
         :current-page="currentPage"
@@ -332,15 +334,14 @@
     </div>
 
     <!-- 图片预览对话框 -->
-    <div
+    <AdminDialog
       v-if="imagePreview.show"
-      role="dialog"
-      aria-modal="true"
-      aria-label="图片预览"
-      class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[100]"
-      @click.self="closeImagePreview"
+      :open="imagePreview.show"
+      label="图片预览"
+      @close="closeImagePreview"
+      @keydown="handleImageKeyDown"
     >
-      <div class="relative max-w-7xl max-h-[90vh] mx-4">
+      <div class="admin-image-viewer">
         <!-- 关闭按钮 -->
         <button
           aria-label="关闭图片预览"
@@ -351,10 +352,11 @@
         </button>
         
         <!-- 图片 -->
-        <img
+        <AdminImage
           :src="imagePreview.images[imagePreview.currentIndex]"
           :alt="`评价图片 ${imagePreview.currentIndex + 1}`"
-          class="max-w-full max-h-[90vh] object-contain rounded-lg"
+          variant="preview"
+          image-class="max-w-full max-h-[90vh] object-contain rounded-lg"
         />
         
         <!-- 导航按钮 -->
@@ -387,15 +389,17 @@
           {{ imagePreview.currentIndex + 1 }} / {{ imagePreview.images.length }}
         </div>
       </div>
-    </div>
+    </AdminDialog>
   </div>
 </template>
 
 <script lang="ts">
-import { ref, onMounted, onActivated, onUnmounted, defineComponent } from 'vue'
+import { ref, onMounted, onActivated, defineComponent } from 'vue'
 import { reviewApi } from '@/api/modules/review'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
+import AdminImage from '@/components/Common/AdminImage.vue'
+import AdminDialog from '@/components/Common/AdminDialog.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
 import { showAlert, showConfirm } from '@/composables/useModal'
@@ -405,6 +409,8 @@ const PAGE_STATE_KEY = 'report-manage'
 export default defineComponent({
   name: 'ReportManage',
   components: {
+    AdminImage,
+    AdminDialog,
     Header,
     Pagination,
   },
@@ -678,33 +684,23 @@ export default defineComponent({
     }
 
     // 键盘快捷键支持
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!imagePreview.value.show) return
-      
+    const handleImageKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'ArrowLeft') {
         event.preventDefault()
         previousImage()
       } else if (event.key === 'ArrowRight') {
         event.preventDefault()
         nextImage()
-      } else if (event.key === 'Escape') {
-        event.preventDefault()
-        closeImagePreview()
       }
     }
 
     onMounted(() => {
       loadReports()
-      window.addEventListener('keydown', handleKeyDown)
     })
 
     onActivated(() => {
       // 组件激活时仅重新加载数据，避免重复恢复状态覆盖当前修改
       loadReports()
-    })
-
-    onUnmounted(() => {
-      window.removeEventListener('keydown', handleKeyDown)
     })
 
     return {
@@ -729,6 +725,7 @@ export default defineComponent({
       imagePreview,
       openImagePreview,
       closeImagePreview,
+      handleImageKeyDown,
       previousImage,
       nextImage,
       authStore,

@@ -1,6 +1,6 @@
 <template>
-  <div class="p-8 min-h-screen min-w-[1200px]">
-    <div class="bg-white rounded-lg container-shadow p-8">
+  <div class="admin-page">
+    <div class="admin-panel">
           <Header 
             title="批量添加菜品" 
             description="通过上传表格批量添加多个菜品"

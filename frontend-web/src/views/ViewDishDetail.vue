@@ -1,6 +1,6 @@
 <template>
-  <div class="p-8 min-h-screen min-w-[1200px]">
-    <div class="bg-white rounded-lg container-shadow p-8 relative">
+  <div class="admin-page">
+    <div class="admin-panel relative">
       <!-- 关闭按钮 -->
       <button
         @click="goBack"
@@ -18,7 +18,7 @@
 
       <div v-else class="space-y-6 mt-6">
         <!-- 菜品信息部分 -->
-        <div class="grid grid-cols-2 gap-6">
+        <div class="admin-form-grid">
           <!-- 左侧列 -->
           <div>
             <!-- 食堂信息组 -->
@@ -95,45 +95,32 @@
             <div>
               <label class="block text-gray-700 font-medium mb-2">菜品图片</label>
 
-              <div v-if="dishData.images && dishData.images.length > 0">
-                <!-- 主图展示 -->
-                <div
-                  class="border-2 rounded-lg aspect-square w-full relative flex items-center justify-center bg-gray-50 overflow-hidden mb-4"
-                >
-                  <img
-                    :src="selectedImage || dishData.images[0]"
-                    alt="菜品图片"
-                    class="w-full h-full object-cover cursor-pointer"
-                    @click="previewImage(selectedImage || dishData.images[0])"
-                  />
-                </div>
-
-                <!-- 缩略图列表 -->
-                <div class="flex gap-2 overflow-x-auto pb-2">
-                  <div
-                    v-for="(img, index) in dishData.images"
-                    :key="index"
-                    class="w-20 h-20 flex-shrink-0 border-2 rounded-lg overflow-hidden cursor-pointer transition-all"
-                    :class="{
-                      'border-tsinghua-purple': (selectedImage || dishData.images[0]) === img,
-                      'border-transparent': (selectedImage || dishData.images[0]) !== img,
-                    }"
-                    @mouseenter="selectedImage = img"
-                    @mouseleave="selectedImage = ''"
-                  >
-                    <img :src="img" class="w-full h-full object-cover" />
-                  </div>
-                </div>
-              </div>
-
-              <div
-                v-else
-                class="border-2 border-dashed rounded-lg h-48 flex items-center justify-center bg-gray-50 overflow-hidden"
-              >
-                <div class="text-center p-6">
-                  <AppIcon class="iconify text-4xl text-gray-400 mx-auto" icon="bi:image"></AppIcon>
-                  <div class="mt-2 text-gray-500">暂无图片</div>
-                </div>
+              <AdminImage
+                :src="selectedImage || dishData.images?.[0]"
+                alt="菜品图片"
+                variant="preview"
+                previewable
+                class="w-full mb-4"
+                image-class="w-full aspect-square rounded-lg border-2 object-cover"
+                @preview="previewImage"
+              />
+              <div v-if="dishData.images?.length" class="flex gap-2 overflow-x-auto pb-2">
+                <AdminImage
+                  v-for="(img, index) in dishData.images"
+                  :key="index"
+                  :src="img"
+                  :alt="`菜品图片 ${index + 1}`"
+                  previewable
+                  image-class="w-20 h-20 rounded-lg object-cover"
+                  class="border-2 rounded-lg"
+                  :class="{
+                    'border-tsinghua-purple': (selectedImage || dishData.images[0]) === img,
+                    'border-transparent': (selectedImage || dishData.images[0]) !== img,
+                  }"
+                  @mouseenter="selectedImage = img"
+                  @mouseleave="selectedImage = ''"
+                  @preview="selectedImage = img"
+                />
               </div>
             </div>
           </div>
@@ -411,21 +398,12 @@
               <div class="flex items-start gap-4">
                 <!-- 用户头像 -->
                 <div class="flex-shrink-0">
-                  <img
-                    v-if="review.userAvatar"
+                  <AdminImage
                     :src="review.userAvatar"
-                    :alt="review.userNickname"
-                    class="w-12 h-12 rounded-full object-cover"
+                    :alt="review.userNickname || '用户'"
+                    variant="avatar"
+                    image-class="w-12 h-12 rounded-full object-cover"
                   />
-                  <div
-                    v-else
-                    class="w-12 h-12 rounded-full bg-tsinghua-purple/20 flex items-center justify-center"
-                  >
-                    <AppIcon
-                      class="iconify text-tsinghua-purple text-xl"
-                      icon="carbon:user"
-                    ></AppIcon>
-                  </div>
                 </div>
 
                 <!-- 评论内容 -->
@@ -462,13 +440,15 @@
 
                   <!-- 评论图片 -->
                   <div v-if="review.images && review.images.length > 0" class="flex gap-2 mb-3">
-                    <img
+                    <AdminImage
                       v-for="(img, index) in review.images"
                       :key="index"
                       :src="img"
                       alt="评论图片"
-                      class="w-20 h-20 rounded object-cover cursor-pointer hover:opacity-80"
-                      @click="previewImage(img)"
+                      variant="preview"
+                      previewable
+                      image-class="w-20 h-20 rounded object-cover hover:opacity-80"
+                      @preview="previewImage"
                     />
                   </div>
 
@@ -518,12 +498,14 @@ import { reactive, ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { dishApi } from '@/api/modules/dish'
 import Header from '@/components/Layout/Header.vue'
+import AdminImage from '@/components/Common/AdminImage.vue'
 import { showAlert } from '@/composables/useModal'
 import { getAuthSessionVersion } from '@/utils/auth-session'
 
 export default {
   name: 'ViewDishDetail',
   components: {
+    AdminImage,
     Header,
   },
   setup() {

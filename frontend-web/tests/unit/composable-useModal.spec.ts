@@ -9,6 +9,58 @@ import {
 } from '@/composables/useModal'
 
 describe('composables/useModal', () => {
+  it('restores an opener disabled during confirmation after the caller releases it', async () => {
+    let frame: FrameRequestCallback | undefined
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => { frame = callback; return 1 })
+    const button = document.createElement('button')
+    document.body.append(button)
+    button.focus()
+    const promise = showConfirm('确认操作')
+    button.disabled = true
+    button.blur()
+    closeModal(false)
+    await promise
+    button.disabled = false
+    frame?.(0)
+    expect(document.activeElement).toBe(button)
+    button.remove()
+  })
+
+  it('does not reclaim focus from a subsequent interaction', async () => {
+    let frame: FrameRequestCallback | undefined
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => { frame = callback; return 1 })
+    const opener = document.createElement('button')
+    const next = document.createElement('input')
+    document.body.append(opener, next)
+    opener.focus()
+    const promise = showConfirm('确认操作')
+    closeModal(false)
+    await promise
+    next.focus()
+    frame?.(0)
+    expect(document.activeElement).toBe(next)
+    opener.remove()
+    next.remove()
+  })
+
+  it('does not restore an earlier opener over a newer modal', async () => {
+    const frames: FrameRequestCallback[] = []
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => { frames.push(callback); return frames.length })
+    const opener = document.createElement('button')
+    document.body.append(opener)
+    opener.focus()
+    const first = showConfirm('第一项')
+    opener.blur()
+    closeModal(false)
+    await first
+    const next = showConfirm('第二项')
+    frames[0](0)
+    expect(document.activeElement).not.toBe(opener)
+    closeModal(false)
+    await next
+    opener.remove()
+  })
+
   beforeEach(() => {
     // Reset modal state before each test
     modalState.visible.value = false

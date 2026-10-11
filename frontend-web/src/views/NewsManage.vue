@@ -1,6 +1,6 @@
 <template>
-  <div class="p-8 min-h-screen min-w-[1200px]">
-    <div class="bg-white rounded-lg container-shadow p-8">
+  <div class="admin-page">
+    <div class="admin-panel">
       <Header title="新闻管理" description="管理和发布新闻资讯" header-icon="carbon:license-draft" />
 
       <!-- 创建新闻按钮和状态筛选 -->
@@ -69,7 +69,7 @@
           </div>
 
           <!-- 筛选栏 -->
-          <div class="p-4 bg-gray-50 rounded-lg border border-gray-100 flex flex-wrap items-center gap-x-8 gap-y-4">
+        <div class="admin-toolbar">
             <div class="flex items-center gap-3">
               <span class="text-sm font-medium text-gray-600">发布食堂</span>
               <div class="relative">
@@ -120,8 +120,8 @@
           </div>
         </div>
 
-        <div class="overflow-x-auto">
-          <table class="w-full">
+        <div class="admin-table-scroll">
+        <table class="admin-table">
             <thead class="bg-gray-50">
               <tr>
                 <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">标题</th>
@@ -242,17 +242,20 @@
   </div>
 
   <!-- 创建/编辑新闻模态框 -->
-  <div
+  <AdminDialog
     v-if="showCreateModal || showEditModal"
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]"
-    @click.self="closeModal"
+    :open="showCreateModal || showEditModal"
+    :label="showEditModal ? '编辑新闻' : '创建新闻'"
+    :close-on-escape="editorAuxiliaryPanels.length === 0"
+    @close="closeModal"
+    @keydown="handleEditorKeydown"
   >
     <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[95vh] overflow-y-auto m-4">
       <div class="p-6 border-b border-gray-200 flex items-center justify-between">
         <h3 class="text-xl font-semibold text-gray-800">
           {{ showEditModal ? '编辑新闻' : '创建新闻' }}
         </h3>
-        <button @click="closeModal" class="text-gray-400 hover:text-gray-600 transition">
+        <button @click="closeModal" aria-label="关闭新闻编辑" class="text-gray-400 hover:text-gray-600 transition">
           <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
         </button>
       </div>
@@ -351,7 +354,7 @@
           </div>
           <!-- ================= 富文本编辑器区域 END ================= -->
 
-          <div class="grid grid-cols-2 gap-6">
+        <div class="admin-form-grid">
             <div>
               <label class="block text-gray-700 font-medium mb-2"
                 >发布单位 <span class="text-red-500">*</span></label
@@ -434,16 +437,14 @@
         </form>
       </div>
     </div>
-  </div>
+  </AdminDialog>
 
   <!-- 新闻预览模态框 -->
-  <div
+  <AdminDialog
     v-if="showPreviewModal"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="news-preview-title"
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]"
-    @click.self="closePreviewModal"
+    :open="showPreviewModal"
+    labelledby="news-preview-title"
+    @close="closePreviewModal"
   >
     <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] overflow-hidden m-4 flex flex-col">
       <!-- 预览头部 -->
@@ -485,11 +486,11 @@
         </div>
       </div>
     </div>
-  </div>
+  </AdminDialog>
 </template>
 
 <script>
-import { ref, reactive, onMounted, onActivated, onDeactivated, onUnmounted, shallowRef, onBeforeUnmount, computed, watch } from 'vue'
+import { ref, reactive, onMounted, onActivated, onDeactivated, shallowRef, onBeforeUnmount, computed, watch } from 'vue'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 
@@ -498,6 +499,7 @@ import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import request from '@/utils/request'
 import Header from '@/components/Layout/Header.vue'
+import AdminDialog from '@/components/Common/AdminDialog.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
 import { showAlert, showConfirm } from '@/composables/useModal'
@@ -510,6 +512,7 @@ export default {
   name: 'NewsManage',
   components: {
     Header,
+    AdminDialog,
     Pagination,
     Editor, // 注册 Editor 组件
     Toolbar, // 注册 Toolbar 组件
@@ -573,6 +576,13 @@ export default {
     // --- wangEditor 配置 START ---
     // 编辑器实例，必须用 shallowRef
     const editorRef = shallowRef()
+    const editorAuxiliaryPanels = shallowRef([])
+    let editorPanelEscapeTimer
+
+    const clearEditorPanelEscape = () => {
+      clearTimeout(editorPanelEscapeTimer)
+      editorPanelEscapeTimer = undefined
+    }
 
     // 内容 HTML，直接绑定到 Editor
     const valueHtml = ref('')
@@ -621,8 +631,10 @@ export default {
     })
 
     const destroyEditor = () => {
+      clearEditorPanelEscape()
       const editor = editorRef.value
       editorRef.value = undefined
+      editorAuxiliaryPanels.value = []
       editor?.destroy()
     }
 
@@ -633,10 +645,59 @@ export default {
           editor.destroy()
           return
         }
+        clearEditorPanelEscape()
+        editorAuxiliaryPanels.value = []
         editorRef.value = editor
+        const isCurrentEditor = () => ownsEditor(version) && editorRef.value === editor
+        editor.on('modalOrPanelShow', panel => {
+          if (isCurrentEditor()) {
+            clearEditorPanelEscape()
+            editorAuxiliaryPanels.value = [
+              ...editorAuxiliaryPanels.value.filter(current => current.isShow && current !== panel),
+              panel,
+            ]
+          }
+        })
+        editor.on('modalOrPanelHide', () => {
+          if (isCurrentEditor()) {
+            // The SDK hide event has no panel identity; other panels may still be visible.
+            editorAuxiliaryPanels.value = editorAuxiliaryPanels.value.filter(panel => panel.isShow)
+          }
+        })
+        editor.on('destroyed', () => {
+          if (editorRef.value === editor) {
+            clearEditorPanelEscape()
+            editorAuxiliaryPanels.value = []
+            editorRef.value = undefined
+          }
+        })
         if (isSubmitting.value) editor.disable()
       }
     })
+    const handleEditorKeydown = event => {
+      if (event.key !== 'Escape') return
+      const panel = editorAuxiliaryPanels.value[editorAuxiliaryPanels.value.length - 1]
+      if (!panel) return
+      event.preventDefault()
+      event.stopPropagation()
+      clearEditorPanelEscape()
+      const editor = editorRef.value
+      const version = editorVersion.value
+      const hidePanel = () => {
+        if (!ownsEditor(version) || editorRef.value !== editor ||
+            !editorAuxiliaryPanels.value.includes(panel)) return
+        panel.hide()
+        if (!panel.isShow) editor.restoreSelection()
+      }
+      hidePanel()
+      if (panel.isShow) {
+        // wangEditor ignores hide() during a panel's first 200 ms.
+        editorPanelEscapeTimer = setTimeout(() => {
+          editorPanelEscapeTimer = undefined
+          hidePanel()
+        }, 200)
+      }
+    }
     // --- wangEditor 配置 END ---
 
     const pagination = reactive({
@@ -1031,16 +1092,6 @@ export default {
       }
     }
 
-    // 键盘事件处理（用于预览模态框）
-    const handlePreviewKeyDown = (event) => {
-      if (!showPreviewModal.value) return
-      
-      if (event.key === 'Escape' || event.key === 'Esc') {
-        event.preventDefault()
-        closePreviewModal()
-      }
-    }
-
     // 预览新闻
     const previewNews = (news) => {
       previewNewsData.value = { ...news }
@@ -1097,7 +1148,6 @@ export default {
       // 状态已在setup()中恢复，这里只需加载数据
       loadCanteens()
       loadNews()
-      document.addEventListener('keydown', handlePreviewKeyDown)
     })
 
     onActivated(() => {
@@ -1105,10 +1155,6 @@ export default {
       // 组件重新激活时仅重新加载数据，避免重复恢复状态覆盖用户修改
       loadCanteens()
       loadNews()
-    })
-
-    onUnmounted(() => {
-      document.removeEventListener('keydown', handlePreviewKeyDown)
     })
 
     return {
@@ -1137,6 +1183,8 @@ export default {
       resetFilters,
       // 导出编辑器相关变量
       editorRef,
+      editorAuxiliaryPanels,
+      handleEditorKeydown,
       editorVersion,
       valueHtml,
       mode,

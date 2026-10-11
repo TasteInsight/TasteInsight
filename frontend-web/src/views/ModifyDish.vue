@@ -1,6 +1,6 @@
 <template>
-  <div class="p-8 min-h-screen min-w-[1200px]">
-    <div class="bg-white rounded-lg container-shadow p-8">
+  <div class="admin-page">
+    <div class="admin-panel">
       <Header
         title="菜品管理"
         description="编辑和更新现有菜品信息"
@@ -15,7 +15,7 @@
           @update:model-value="handleSearchChange"
         />
 
-        <div class="p-4 bg-gray-50 rounded-lg border border-gray-100 flex flex-wrap items-center gap-x-8 gap-y-4">
+        <div class="admin-toolbar">
           <div class="flex items-center gap-3">
             <span class="text-sm font-medium text-gray-600">所属食堂</span>
             <div class="relative">
@@ -69,8 +69,8 @@
       </div>
 
       <!-- 菜品表格 -->
-      <div class="overflow-auto">
-        <table class="w-full">
+      <div class="admin-table-scroll">
+        <table class="admin-table">
           <thead class="bg-gray-50">
             <tr>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">菜品名称</th>
@@ -96,27 +96,27 @@
               <td colspan="7" class="py-8 text-center text-gray-500">暂无菜品数据</td>
             </tr>
             <tr v-else v-for="dish in filteredDishes" :key="dish.id" class="table-row">
-              <td class="py-4 px-6">
+              <td class="admin-cell-name">
                 <div class="flex items-center">
-                  <img
-                    :src="dish.image || '/ai/uploads/ai_pics/40/406134/aigp_1760528654.jpeg'"
+                  <AdminImage
+                    :src="dish.image"
                     :alt="dish.name"
-                    class="w-12 h-12 rounded object-cover border mr-3"
+                    image-class="w-12 h-12 rounded object-cover border mr-3"
                   />
                   <div>
                     <div class="font-medium">{{ dish.name }}</div>
-                    <div class="text-sm text-gray-500">#{{ dish.id }}</div>
+                    <span class="admin-record-id" :title="`菜品 ID：${dish.id}`">#{{ dish.id }}</span>
                   </div>
                 </div>
               </td>
-              <td class="py-4 px-6">
+              <td class="admin-cell-location">
                 <div class="font-medium">{{ dish.canteen }}</div>
                 <div class="text-sm text-gray-500">{{ dish.floor }}</div>
               </td>
-              <td class="py-4 px-6">{{ dish.window }}</td>
+              <td class="admin-cell-location">{{ dish.window }}</td>
               <td class="py-4 px-6">{{ dish.cuisine }}</td>
-              <td class="py-4 px-6 text-tsinghua-purple font-medium">{{ dish.price }}</td>
-              <td class="py-4 px-6">
+              <td class="admin-cell-numeric font-medium">{{ dish.price }}</td>
+              <td class="admin-cell-numeric">
                 <div class="flex items-center">
                   <AppIcon class="iconify text-yellow-400" icon="bxs:star"></AppIcon>
                   <span class="ml-1">{{ dish.rating }}</span>
@@ -164,6 +164,7 @@ import { canteenApi } from '@/api/modules/canteen'
 import { useDishStore } from '@/store/modules/use-dish-store'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
+import AdminImage from '@/components/Common/AdminImage.vue'
 import SearchBar from '@/components/Common/SearchBar.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
@@ -174,6 +175,7 @@ const PAGE_STATE_KEY = 'modify-dish'
 export default {
   name: 'ModifyDish',
   components: {
+    AdminImage,
     Header,
     SearchBar,
     Pagination,

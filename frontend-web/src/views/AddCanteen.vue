@@ -1,9 +1,9 @@
 <template>
-  <div class="p-8 min-h-screen min-w-[1200px]">
-    <div class="bg-white rounded-lg container-shadow p-8">
+  <div class="admin-page">
+    <div class="admin-panel">
       <!-- 列表视图 -->
       <div v-if="viewMode === 'list'">
-        <div class="flex justify-between items-center mb-6">
+        <div class="admin-heading-row">
           <Header
             title="食堂信息管理"
             description="管理食堂信息，包括添加、编辑和查看食堂详情"
@@ -43,8 +43,8 @@
         </div>
 
         <!-- 食堂列表表格 -->
-        <div class="overflow-auto">
-          <table class="w-full">
+        <div class="admin-table-scroll">
+        <table class="admin-table">
             <thead class="bg-gray-50">
               <tr>
                 <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">食堂信息</th>
@@ -63,18 +63,11 @@
               >
                 <td class="py-4 px-6">
                   <div class="flex items-center">
-                    <img
-                      v-if="canteen.images && canteen.images.length > 0"
-                      :src="canteen.images[0]"
+                    <AdminImage
+                      :src="canteen.images?.[0]"
                       :alt="canteen.name"
-                      class="w-12 h-12 rounded object-cover border mr-3"
+                      image-class="w-12 h-12 rounded object-cover border mr-3"
                     />
-                    <div
-                      v-else
-                      class="w-12 h-12 rounded bg-gray-200 flex items-center justify-center mr-3"
-                    >
-                      <AppIcon class="iconify text-gray-400" icon="carbon:building"></AppIcon>
-                    </div>
                     <div>
                       <div class="font-medium">{{ canteen.name }}</div>
                       <div class="text-sm text-gray-500">
@@ -133,7 +126,7 @@
 
       <!-- 编辑/新建视图 -->
       <div v-else>
-        <div class="flex justify-between items-center mb-6">
+        <div class="admin-heading-row">
           <Header
             :title="editingCanteen ? '编辑食堂' : '新建食堂'"
             :description="editingCanteen ? '修改食堂信息' : '填写食堂信息并上传图片'"
@@ -148,7 +141,7 @@
         </div>
 
         <form class="space-y-6">
-          <fieldset :disabled="isSubmitting" class="grid grid-cols-2 gap-6">
+          <fieldset :disabled="isSubmitting" class="admin-form-grid">
             <!-- 左侧列 -->
             <div>
               <!-- 食堂名称 -->
@@ -248,33 +241,34 @@
                   ></label
                 >
 
-                <div class="flex gap-6 items-start">
+                <div class="admin-media-editor">
                   <!-- 封面图（第一张） -->
                   <div class="relative group flex-shrink-0">
                     <div
-                      class="w-[300px] h-[300px] border-2 border-dashed rounded-lg bg-gray-50 overflow-hidden flex items-center justify-center"
+                      class="w-[300px] max-w-full"
                     >
-                      <img
+                      <AdminImage
                         v-if="formData.imageFiles.length > 0"
                         :src="formData.imageFiles[0].url"
                         alt="封面图"
-                        class="w-full h-full object-cover"
+                        variant="preview"
+                        image-class="w-full aspect-square rounded-lg border-2 object-cover"
                       />
-                      <div v-else class="text-center p-6 text-gray-400">
+                      <div v-else class="text-center p-6 text-gray-500 border-2 border-dashed rounded-lg">
                         <AppIcon class="iconify text-4xl mx-auto" icon="bi:image"></AppIcon>
                         <div class="mt-2 font-medium">封面图</div>
-                        <p class="text-xs mt-1">点击右侧按钮添加</p>
+                      <p class="text-xs mt-1">上传后显示封面</p>
                       </div>
 
-                      <!-- 删除遮罩 -->
+                      <!-- 图片操作 -->
                       <div
                         v-if="formData.imageFiles.length > 0"
-                        class="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center gap-3 transition-all duration-200"
+                        class="flex items-center justify-end gap-3 mt-2"
                       >
                         <button
                           type="button"
                           @click="removeImage(0)"
-                          class="p-2 bg-white/20 text-white rounded-full hover:bg-red-500 transition-colors"
+                          class="p-2 bg-gray-100 text-gray-600 rounded-full hover:text-red-600 transition-colors"
                           title="删除图片"
                         >
                           <AppIcon class="iconify text-xl" icon="carbon:trash-can"></AppIcon>
@@ -296,22 +290,24 @@
                       <div
                         v-for="(img, index) in formData.imageFiles.slice(1)"
                         :key="img.id"
-                        class="relative group flex-shrink-0 h-[200px]"
+                        class="flex-shrink-0"
                       >
                         <!-- 图片：高度固定，宽度自适应 -->
-                        <img
+                        <AdminImage
                           :src="img.url"
-                          class="h-full w-auto rounded-lg border bg-gray-50 object-contain"
+                          :alt="`食堂图片 ${index + 2}`"
+                          variant="preview"
+                          image-class="h-[200px] w-auto rounded-lg border bg-gray-50 object-contain"
                         />
 
-                        <!-- 操作遮罩 -->
+                        <!-- 图片操作 -->
                         <div
-                          class="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center gap-2 rounded-lg transition-all duration-200"
+                          class="flex items-center justify-end gap-2 mt-2"
                         >
                           <button
                             type="button"
                             @click="setAsCover(index + 1)"
-                            class="p-1.5 bg-white/20 text-white rounded-full hover:bg-tsinghua-purple transition-colors"
+                            class="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:text-tsinghua-purple transition-colors"
                             title="设为封面"
                           >
                             <AppIcon class="iconify" icon="carbon:image-copy"></AppIcon>
@@ -319,7 +315,7 @@
                           <button
                             type="button"
                             @click="removeImage(index + 1)"
-                            class="p-1.5 bg-white/20 text-white rounded-full hover:bg-red-500 transition-colors"
+                            class="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:text-red-600 transition-colors"
                             title="删除图片"
                           >
                             <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
@@ -618,6 +614,7 @@ import { reactive, ref, computed, onMounted, onActivated, onDeactivated, onBefor
 import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
+import AdminImage from '@/components/Common/AdminImage.vue'
 import { showAlert, showConfirm, showConfirmDanger } from '@/composables/useModal'
 import { authSessionVersion, getAuthSessionVersion } from '@/utils/auth-session'
 import { toOpeningHoursForm, fromOpeningHoursForm } from '@/utils/canteen-opening-hours'
@@ -625,6 +622,7 @@ import { toOpeningHoursForm, fromOpeningHoursForm } from '@/utils/canteen-openin
 export default {
   name: 'AddCanteen',
   components: {
+    AdminImage,
     Header,
   },
   setup() {

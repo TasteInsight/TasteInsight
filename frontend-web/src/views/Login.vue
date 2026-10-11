@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-50 px-3 py-6 sm:px-4 sm:py-12">
+  <div class="admin-login min-h-screen flex items-center justify-center bg-gray-50 px-3 py-6 sm:px-4 sm:py-12">
     <!-- 背景装饰 -->
     <div class="absolute inset-0 overflow-hidden pointer-events-none"></div>
 
@@ -138,10 +138,10 @@
     </div>
 
     <!-- 忘记密码弹窗 -->
-    <div
-      v-show="showForgotPasswordModal"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000] p-4"
-      @click.self="closeForgotPasswordModal"
+    <AdminDialog
+      :open="showForgotPasswordModal"
+      label="忘记密码"
+      @close="closeForgotPasswordModal"
     >
       <div class="bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-lg transform transition-all">
         <!-- 弹窗头部 -->
@@ -152,6 +152,7 @@
           </h3>
           <button
             @click="closeForgotPasswordModal"
+            aria-label="关闭忘记密码"
             class="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-1 hover:bg-gray-100 rounded-lg"
           >
             <AppIcon class="iconify text-xl sm:text-2xl" icon="carbon:close"></AppIcon>
@@ -179,7 +180,7 @@
           </div>
         </div>
       </div>
-    </div>
+    </AdminDialog>
   </div>
 </template>
 
@@ -188,9 +189,11 @@ import { ref, reactive, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import { getFirstAccessibleRoute } from '@/router/access'
+import AdminDialog from '@/components/Common/AdminDialog.vue'
 
 export default {
   name: 'Login',
+  components: { AdminDialog },
   setup() {
     const router = useRouter()
     const authStore = useAuthStore()
