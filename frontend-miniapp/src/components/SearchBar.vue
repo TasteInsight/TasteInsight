@@ -237,7 +237,7 @@ const openSearch = () =>
 .discovery-search__label {
   flex: 1;
   min-width: 0;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
@@ -252,6 +252,7 @@ const openSearch = () =>
   color: #1f2937;
   font-family: inherit;
   font-size: 16px;
+  line-height: 1.4;
   caret-color: #660874;
 }
 .discovery-search__input::placeholder {
@@ -269,7 +270,7 @@ const openSearch = () =>
   flex-shrink: 0;
   min-height: 44px;
   margin: 0;
-  padding: 0 3px;
+  padding: 0;
   border: 0;
   border-radius: 10px;
   background: transparent;
@@ -283,9 +284,6 @@ const openSearch = () =>
 .discovery-search__clear {
   width: 44px;
   padding: 0;
-}
-.discovery-search__submit {
-  margin-left: -6px;
 }
 .discovery-search__action {
   display: inline-flex;

@@ -136,7 +136,7 @@
 .sheet-input:focus-within {
   border-color: #660874;
   outline: 2px solid #660874;
-  outline-offset: 1px;
+  outline-offset: -2px;
 }
 .sheet-actions {
   display: flex;
