@@ -12,8 +12,10 @@ import { UploadService } from './upload.service';
 import { UploadAuthGuard } from './upload-auth.guard';
 import { UploadResponseDto } from './dto/upload.dto';
 import { ConfigService } from '@nestjs/config';
+import { AuthRealm } from '@/auth/decorators/auth-realm.decorator';
 
 @Controller('upload')
+@AuthRealm('combined')
 export class UploadController {
   constructor(
     private readonly uploadService: UploadService,
@@ -38,3 +40,11 @@ export class UploadController {
     return this.uploadService.uploadFile(validatedFile);
   }
 }
+
+@Controller('upload')
+@AuthRealm('user')
+export class PublicUploadController extends UploadController {}
+
+@Controller('upload')
+@AuthRealm('admin')
+export class AdminUploadController extends UploadController {}

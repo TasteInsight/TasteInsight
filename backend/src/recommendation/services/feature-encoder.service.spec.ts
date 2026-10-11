@@ -22,6 +22,7 @@ describe('FeatureEncoderService', () => {
   describe('encodeDishFeatures', () => {
     it('should encode basic dish features', () => {
       const dish: DishFeatures = {
+        id: 'dish-1',
         name: '宫保鸡丁',
         tags: ['川菜', '辣'],
         ingredients: ['鸡肉', '花生'],
@@ -44,6 +45,7 @@ describe('FeatureEncoderService', () => {
 
     it('should handle dish with empty arrays', () => {
       const dish: DishFeatures = {
+        id: 'dish-empty-arrays',
         name: '简单菜品',
         tags: [],
         ingredients: [],
@@ -55,16 +57,18 @@ describe('FeatureEncoderService', () => {
         price: 10,
         averageRating: 3.0,
         reviewCount: 0,
-        canteenId: null as any,
+        canteenId: 'canteen-1',
       };
 
       const vector = service.encodeDishFeatures(dish);
 
       expect(vector).toHaveLength(128);
+      expect(vector.every(Number.isFinite)).toBe(true);
     });
 
     it('should handle dish with many tags', () => {
       const dish: DishFeatures = {
+        id: 'dish-many-tags',
         name: '多标签菜品',
         tags: ['川菜', '辣', '下饭', '招牌', '热门', '特色', '经典'],
         ingredients: ['鸡肉', '花生', '辣椒', '葱', '姜', '蒜'],
@@ -89,6 +93,7 @@ describe('FeatureEncoderService', () => {
 
     it('should produce different vectors for different dishes', () => {
       const dish1: DishFeatures = {
+        id: 'dish-1',
         name: '宫保鸡丁',
         tags: ['川菜'],
         ingredients: ['鸡肉'],
@@ -104,6 +109,7 @@ describe('FeatureEncoderService', () => {
       };
 
       const dish2: DishFeatures = {
+        id: 'dish-2',
         name: '清蒸鱼',
         tags: ['粤菜'],
         ingredients: ['鱼'],
@@ -143,13 +149,14 @@ describe('FeatureEncoderService', () => {
           favoriteIngredients: [],
           avoidIngredients: [],
           canteenPreferences: [],
+          portionSize: 'medium',
         },
         allergens: [],
         favoriteFeatures: {
           dishIds: new Set(['dish-1']),
           canteenIds: new Set(['canteen-1']),
           tagWeights: new Map([['川菜', 1]]),
-          ingredients: ['鸡肉'],
+          ingredients: new Set(['鸡肉']),
           avgSpicyLevel: 3,
           avgSweetness: 2,
           avgSaltiness: 2,
@@ -159,6 +166,7 @@ describe('FeatureEncoderService', () => {
         browseFeatures: {
           recentDishIds: new Set(['dish-2']),
           tagWeights: new Map([['川菜', 0.5]]),
+          canteenWeights: new Map<string, number>(),
         },
       };
 
@@ -183,13 +191,14 @@ describe('FeatureEncoderService', () => {
           favoriteIngredients: [],
           avoidIngredients: ['辣椒'],
           canteenPreferences: [],
+          portionSize: 'medium',
         },
         allergens: ['花生', '海鲜'],
         favoriteFeatures: {
           dishIds: new Set(),
           canteenIds: new Set(),
           tagWeights: new Map(),
-          ingredients: [],
+          ingredients: new Set<string>(),
           avgSpicyLevel: 0,
           avgSweetness: 0,
           avgSaltiness: 0,
@@ -199,6 +208,7 @@ describe('FeatureEncoderService', () => {
         browseFeatures: {
           recentDishIds: new Set(),
           tagWeights: new Map(),
+          canteenWeights: new Map<string, number>(),
         },
       };
 
@@ -210,16 +220,16 @@ describe('FeatureEncoderService', () => {
       expect(hasNegative).toBe(true);
     });
 
-    it('should handle empty user features', () => {
+    it('should handle user without preferences or behavior history', () => {
       const user: UserFeatures = {
         userId: 'user-3',
-        preferences: null as any,
+        preferences: null,
         allergens: [],
         favoriteFeatures: {
           dishIds: new Set(),
           canteenIds: new Set(),
           tagWeights: new Map(),
-          ingredients: [],
+          ingredients: new Set<string>(),
           avgSpicyLevel: 0,
           avgSweetness: 0,
           avgSaltiness: 0,
@@ -229,12 +239,14 @@ describe('FeatureEncoderService', () => {
         browseFeatures: {
           recentDishIds: new Set(),
           tagWeights: new Map(),
+          canteenWeights: new Map<string, number>(),
         },
       };
 
       const vector = service.encodeUserFeatures(user);
 
       expect(vector).toHaveLength(128);
+      expect(vector.every(Number.isFinite)).toBe(true);
     });
   });
 
@@ -282,6 +294,7 @@ describe('FeatureEncoderService', () => {
 
     it('should compute similarity between dish and user vectors', () => {
       const dish: DishFeatures = {
+        id: 'dish-1',
         name: '宫保鸡丁',
         tags: ['川菜', '辣'],
         ingredients: ['鸡肉'],
@@ -310,13 +323,14 @@ describe('FeatureEncoderService', () => {
           favoriteIngredients: [],
           avoidIngredients: [],
           canteenPreferences: ['canteen-1'],
+          portionSize: 'medium',
         },
         allergens: [],
         favoriteFeatures: {
           dishIds: new Set(),
           canteenIds: new Set(['canteen-1']),
           tagWeights: new Map([['川菜', 1]]),
-          ingredients: ['鸡肉'],
+          ingredients: new Set(['鸡肉']),
           avgSpicyLevel: 4,
           avgSweetness: 1,
           avgSaltiness: 2,
@@ -326,6 +340,7 @@ describe('FeatureEncoderService', () => {
         browseFeatures: {
           recentDishIds: new Set(),
           tagWeights: new Map(),
+          canteenWeights: new Map<string, number>(),
         },
       };
 

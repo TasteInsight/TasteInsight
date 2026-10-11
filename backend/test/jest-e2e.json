@@ -2,6 +2,7 @@
   "moduleFileExtensions": ["js", "json", "ts"],
   "rootDir": "..",
   "testEnvironment": "node",
+  "setupFiles": ["<rootDir>/test/setup-environment.cjs"],
   "testMatch": ["<rootDir>/test/**/*.e2e-spec.ts"],
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
@@ -9,9 +10,6 @@
   "moduleNameMapper": {
     "^@/(.*)$": "<rootDir>/src/$1"
   },
-  "collectCoverageFrom": [
-    "src/**/*.(t|j)s",
-    "!src/**/*.spec.(t|j)s"
-  ],
+  "collectCoverageFrom": ["src/**/*.(t|j)s", "!src/**/*.spec.(t|j)s"],
   "coverageDirectory": "coverage-e2e"
 }

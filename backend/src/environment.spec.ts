@@ -42,6 +42,31 @@ describe('validateEnvironment', () => {
     expect(() => validateEnvironment(environment)).not.toThrow();
     expect(corsOrigins(environment)).toEqual([]);
   });
+  it('allows configurable public and administrator origins without duplicates', () => {
+    expect(
+      corsOrigins({
+        APP_URL: 'https://api.example.net/base',
+        ADMIN_APP_URL: 'https://admin.example.net:8443/',
+        CORS_ALLOWED_ORIGINS:
+          'https://web.example.net,https://admin.example.net:8443',
+      }),
+    ).toEqual([
+      'https://web.example.net',
+      'https://admin.example.net:8443',
+      'https://api.example.net',
+    ]);
+  });
+  it.each([
+    'https://admin.example.net/path',
+    'https://user:password@admin.example.net',
+    'https://*.example.net',
+    'file:///tmp/admin',
+    ['https://admin.example.net'],
+  ])('rejects an invalid administrator origin %s', (value) => {
+    expect(() => validateEnvironment({ ADMIN_APP_URL: value })).toThrow(
+      'ADMIN_APP_URL',
+    );
+  });
   it.each([
     { key: 'NODE_ENV', value: ['production'] },
     { key: 'UPLOAD_STORAGE_TYPE', value: ['oss'] },
@@ -185,4 +210,29 @@ describe('validateEnvironment', () => {
   ])('rejects invalid %s', (key, value) => {
     expect(() => validateEnvironment({ [key]: value })).toThrow(key);
   });
+});
+
+describe('trusted reverse-proxy configuration', () => {
+  it.each([
+    'true',
+    '1',
+    'loopback',
+    '10.0.0.1/33',
+    '::1/129',
+    '10.0.0.1/-1',
+    '10.0.0.1/8/2',
+    '127.0.0.1,',
+  ])('rejects unsafe trusted proxy value %s', (value) => {
+    expect(() => validateEnvironment({ TRUSTED_PROXY_CIDRS: value })).toThrow(
+      'TRUSTED_PROXY_CIDRS',
+    );
+  });
+  it.each(['', '127.0.0.1/32,::1/128', '172.18.0.0/24', '10.2.3.4'])(
+    'accepts explicit trusted proxies %s',
+    (value) => {
+      expect(() =>
+        validateEnvironment({ TRUSTED_PROXY_CIDRS: value }),
+      ).not.toThrow();
+    },
+  );
 });

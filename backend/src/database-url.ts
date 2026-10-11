@@ -9,7 +9,28 @@ export function createDockerDatabaseUrl(
   if (!password) throw new Error('POSTGRES_PASSWORD is required');
   if (!database) throw new Error('POSTGRES_DB is required');
 
-  const url = new URL('postgresql://db:5432');
+  const host = environment.POSTGRES_HOST || 'db';
+  const port = environment.POSTGRES_PORT || '5432';
+  if (!/^\d+$/.test(port) || Number(port) < 1 || Number(port) > 65535) {
+    throw new Error('POSTGRES_PORT must be an integer from 1 to 65535');
+  }
+  let url: URL;
+  try {
+    url = new URL(`postgresql://${host}:${port}`);
+    if (
+      !url.hostname ||
+      url.username ||
+      url.password ||
+      url.pathname ||
+      url.search ||
+      url.hash ||
+      /[\s/@?#]/.test(host)
+    ) {
+      throw new Error();
+    }
+  } catch {
+    throw new Error('POSTGRES_HOST must be a hostname or an IP address');
+  }
   url.username = encodeURIComponent(user);
   url.password = encodeURIComponent(password);
   url.pathname = `/${encodeURIComponent(database)}`;

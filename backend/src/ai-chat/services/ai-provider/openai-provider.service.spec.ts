@@ -4,6 +4,8 @@ import {
   AIProviderConfig,
   AIMessage,
   Tool,
+  StreamChunk,
+  ToolCall,
 } from './base-ai-provider.interface';
 
 // Mock OpenAI class
@@ -93,7 +95,7 @@ describe('OpenAIProviderService', () => {
       const controller = new AbortController();
       controller.abort();
       mockCreate.mockRejectedValueOnce(new Error('request aborted'));
-      const chunks = [];
+      const chunks: StreamChunk[] = [];
       for await (const chunk of service.streamChat(
         mockMessages,
         [],
@@ -182,7 +184,7 @@ describe('OpenAIProviderService', () => {
       mockCreate.mockResolvedValue(mockStream);
 
       const generator = service.streamChat(mockMessages, mockTools);
-      const chunks = [];
+      const chunks: StreamChunk[] = [];
 
       for await (const chunk of generator) {
         chunks.push(chunk);
@@ -249,7 +251,7 @@ describe('OpenAIProviderService', () => {
       ];
 
       const generator = service.streamChat(mockMessages, toolDefinitions);
-      const chunks = [];
+      const chunks: StreamChunk[] = [];
 
       for await (const chunk of generator) {
         chunks.push(chunk);
@@ -308,7 +310,7 @@ describe('OpenAIProviderService', () => {
           yield { choices: [{ delta: {}, finish_reason: 'tool_calls' }] };
         },
       });
-      const calls = [];
+      const calls: ToolCall[] = [];
       for await (const chunk of service.streamChat(mockMessages, mockTools)) {
         if (chunk.toolCall) calls.push(chunk.toolCall);
       }
@@ -356,7 +358,7 @@ describe('OpenAIProviderService', () => {
       mockCreate.mockResolvedValue(mockStream);
 
       const generator = service.streamChat(mockMessages, mockTools);
-      const chunks = [];
+      const chunks: StreamChunk[] = [];
 
       for await (const chunk of generator) {
         chunks.push(chunk);
@@ -381,7 +383,7 @@ describe('OpenAIProviderService', () => {
       mockCreate.mockResolvedValue(mockStream);
 
       const generator = service.streamChat(mockMessages, mockTools);
-      const chunks = [];
+      const chunks: StreamChunk[] = [];
 
       for await (const chunk of generator) {
         chunks.push(chunk);
@@ -396,7 +398,7 @@ describe('OpenAIProviderService', () => {
       mockCreate.mockRejectedValue(new Error('401 Unauthorized'));
 
       const generator = service.streamChat(mockMessages, mockTools);
-      const chunks = [];
+      const chunks: StreamChunk[] = [];
 
       for await (const chunk of generator) {
         chunks.push(chunk);
@@ -414,7 +416,7 @@ describe('OpenAIProviderService', () => {
       mockCreate.mockRejectedValue(new Error('429 rate_limit exceeded'));
 
       const generator = service.streamChat(mockMessages, mockTools);
-      const chunks = [];
+      const chunks: StreamChunk[] = [];
 
       for await (const chunk of generator) {
         chunks.push(chunk);
@@ -432,7 +434,7 @@ describe('OpenAIProviderService', () => {
       mockCreate.mockRejectedValue(new Error('Request timeout'));
 
       const generator = service.streamChat(mockMessages, mockTools);
-      const chunks = [];
+      const chunks: StreamChunk[] = [];
 
       for await (const chunk of generator) {
         chunks.push(chunk);
@@ -450,7 +452,7 @@ describe('OpenAIProviderService', () => {
       mockCreate.mockRejectedValue(new Error('network connection failed'));
 
       const generator = service.streamChat(mockMessages, mockTools);
-      const chunks = [];
+      const chunks: StreamChunk[] = [];
 
       for await (const chunk of generator) {
         chunks.push(chunk);
@@ -468,7 +470,7 @@ describe('OpenAIProviderService', () => {
       mockCreate.mockRejectedValue(new Error('unknown error occurred'));
 
       const generator = service.streamChat(mockMessages, mockTools);
-      const chunks = [];
+      const chunks: StreamChunk[] = [];
 
       for await (const chunk of generator) {
         chunks.push(chunk);
@@ -486,7 +488,7 @@ describe('OpenAIProviderService', () => {
       mockCreate.mockRejectedValue('string error');
 
       const generator = service.streamChat(mockMessages, mockTools);
-      const chunks = [];
+      const chunks: StreamChunk[] = [];
 
       for await (const chunk of generator) {
         chunks.push(chunk);
@@ -518,7 +520,7 @@ describe('OpenAIProviderService', () => {
       mockCreate.mockResolvedValue(mockStream);
 
       const generator = service.streamChat(mockMessages, mockTools);
-      const chunks = [];
+      const chunks: StreamChunk[] = [];
 
       for await (const chunk of generator) {
         chunks.push(chunk);
@@ -546,7 +548,7 @@ describe('OpenAIProviderService', () => {
       mockCreate.mockResolvedValue(mockStream);
 
       const generator = service.streamChat(mockMessages, mockTools);
-      const chunks = [];
+      const chunks: StreamChunk[] = [];
 
       for await (const chunk of generator) {
         chunks.push(chunk);

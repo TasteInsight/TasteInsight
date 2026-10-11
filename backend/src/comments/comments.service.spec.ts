@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CommentsService } from './comments.service';
 import { PrismaService } from '@/prisma.service';
+import { ReportType } from '@/common/enums';
 import { AdminConfigService } from '@/admin-config/admin-config.service';
 import {
   NotFoundException,
@@ -359,7 +360,7 @@ describe('CommentsService', () => {
       });
 
       const result = await service.reportComment('u1', 'c1', {
-        type: 'spam',
+        type: ReportType.SPAM,
         reason: 'Spam content',
       });
 
@@ -372,7 +373,7 @@ describe('CommentsService', () => {
 
       await expect(
         service.reportComment('u1', 'unknown', {
-          type: 'spam',
+          type: ReportType.SPAM,
           reason: 'spam',
         }),
       ).rejects.toThrow(NotFoundException);

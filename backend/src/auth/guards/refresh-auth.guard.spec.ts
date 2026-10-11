@@ -9,6 +9,8 @@ describe('RefreshAuthGuard', () => {
   };
   const context = {
     switchToHttp: () => ({ getRequest: () => request }),
+    getHandler: () => RefreshAuthGuard.prototype.canActivate,
+    getClass: () => RefreshAuthGuard,
   } as unknown as ExecutionContext;
   const jwtService = { verifyAsync: jest.fn() } as unknown as JwtService;
   const configService = {

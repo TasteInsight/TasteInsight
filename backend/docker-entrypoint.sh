@@ -3,23 +3,5 @@ set -e
 
 DATABASE_URL=$(node dist/src/database-url.js)
 export DATABASE_URL
-node dist/src/environment.js
-
-echo "Running migrations..."
-npx prisma migrate deploy
-
-if [ "$RUN_SEED" = "true" ]; then
-  echo "Running seed_docker.ts..."
-  ./node_modules/.bin/ts-node prisma/seed_docker.ts
-fi
-
-if [ "$IMPORT_DATA" = "true" ]; then
-  if [ ! -f "prisma/DishesofZijingYuan.xlsx" ]; then
-    echo "Error: Excel file prisma/DishesofZijingYuan.xlsx not found!"
-    exit 1
-  fi
-  echo "Running import_canteens.ts..."
-  ./node_modules/.bin/ts-node prisma/import_canteens.ts
-fi
-
+# The selected application root validates its configuration before providers start.
 exec "$@"

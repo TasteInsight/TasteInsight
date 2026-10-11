@@ -59,4 +59,4 @@ EXPOSE 3000
 ENTRYPOINT ["./docker-entrypoint.sh"]
 
 # Start the application
-CMD ["node", "dist/src/main"]
+CMD ["node", "dist/src/main.public"]

@@ -10,6 +10,8 @@ describe('UploadAuthGuard', () => {
   const request = { headers: { authorization: 'Bearer proof' } };
   const context = {
     switchToHttp: () => ({ getRequest: () => request }),
+    getHandler: () => UploadAuthGuard.prototype.canActivate,
+    getClass: () => UploadAuthGuard,
   } as unknown as ExecutionContext;
   const guard = new UploadAuthGuard(
     new AuthGuard(jwt as any, config as any),

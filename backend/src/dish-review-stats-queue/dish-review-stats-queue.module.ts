@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
 import { DISH_REVIEW_STATS_QUEUE } from './dish-review-stats.constants';
-import { DishReviewStatsProcessor } from './dish-review-stats.processor';
 import { DishReviewStatsService } from './dish-review-stats.service';
 
 @Module({
@@ -19,7 +18,7 @@ import { DishReviewStatsService } from './dish-review-stats.service';
       },
     }),
   ],
-  providers: [DishReviewStatsProcessor, DishReviewStatsService],
-  exports: [DishReviewStatsService],
+  providers: [DishReviewStatsService],
+  exports: [DishReviewStatsService, BullModule],
 })
 export class DishReviewStatsQueueModule {}

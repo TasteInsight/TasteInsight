@@ -153,6 +153,8 @@ pnpm exec prisma generate
 pnpm exec prisma migrate deploy
 ```
 
+开发 `AppModule` 在启动时通过 `DatabaseInitializer` 同步系统模板、按需创建首个管理员并准备向量索引；schema 迁移须在启动前显式执行。已有管理员凭据与显式配置保持不变，模板默认值不会自动写成全局配置。
+
 `prisma/seed.ts` 和 `prisma/seed_docker.ts` 会先删除现有业务数据，不属于正常初始化步骤。
 
 ## 运行项目
@@ -173,10 +175,13 @@ pnpm run start:dev
 
 ```bash
 pnpm run build
-pnpm run start:prod
+# 先运行一次迁移 / 初始化，再分别由服务管理器启动三个角色
+NODE_ENV=production node dist/src/main.migrate
+NODE_ENV=production node dist/src/main.public
+# 其他进程同样注入 production：node dist/src/main.admin、node dist/src/main.worker
 ```
 
-`start:prod` 固定 `NODE_ENV=production`，只接受进程环境注入，不读取开发 `.env`。生产必须提供有效的数据库、Redis、微信与公网 URL 配置，并使用至少 32 字节且互不相同的 access/refresh 密钥。完整校验与注入方式见 [环境配置与部署](../docs/环境配置与部署.md)。
+生产进程需要显式注入 `NODE_ENV=production`、`DATABASE_URL` 及自身角色的环境配置，不读取开发 `.env`。公共 API、管理 API 和 worker 分别运行，使用共享 schema；`main.migrate` 统一执行迁移和首次初始化。两个 API 需要 Redis、公共 `APP_URL`，以及至少 32 字节且互不相同的 access/refresh 密钥；完整 Compose / 网关部署还要求管理 `ADMIN_APP_URL`。公共 API 还需配置小程序 `WECHAT_APPID` 和 `WECHAT_SECRET`，微信与 AI 配置仅注入该角色。worker 需要 Redis，但不要求 JWT 或 origin；迁移只需要数据库和可选首次管理员凭据。每个应用根模块在 provider 初始化前完成角色配置校验。完整说明见 [环境配置与部署](../docs/环境配置与部署.md)。
 
 ### Docker 部署
 
@@ -184,14 +189,20 @@ pnpm run start:prod
 # 全新部署创建生产配置；已有部署先按环境配置文档保留原有凭证
 cp .env.production.example .env.production
 
-# 构建并启动生产服务（当前为 HTTP 网关）
-docker compose --env-file .env.production up -d --build
+# 设置 APP_URL、ADMIN_APP_URL 和 TLS 配置后构建、校验并启动
+docker compose --env-file .env.production config --quiet
+docker compose --env-file .env.production build public-api frontend
+docker compose --env-file .env.production run --rm --no-deps nginx nginx -t
+docker compose --env-file .env.production up -d --wait --wait-timeout 180 public-api admin-api worker frontend
+docker compose --env-file .env.production up -d --no-deps --force-recreate --wait --wait-timeout 60 nginx
 
 # 查看日志
-docker compose --env-file .env.production logs -f backend nginx
+docker compose --env-file .env.production logs -f public-api admin-api worker nginx
 ```
 
-Docker 冷启动先生成数据库 URL 并校验配置，通过后执行幂等的 `prisma migrate deploy`，管理员表为空时创建初始管理员。生产禁止开启 `ENABLE_MOCK_AUTH`、`RUN_SEED` 和 `IMPORT_DATA`。外部 Python 嵌入默认关闭且不启动，需要时在 `.env.production` 中同时设置 `EXTERNAL_EMBEDDING_SERVICE_ENABLED=true` 和 `COMPOSE_PROFILES=embedding`。Nginx、HTTPS 恢复、自动部署、升级及停止步骤见 [环境配置与部署](../docs/环境配置与部署.md)。
+Compose 从 `--env-file` 选取配置并按角色注入，未设置的可选字段保持缺省，不整份加载配置文件。模板区分必填项、首次管理员、可选集成与默认调优项；新建管理员时启用并填写 `INITIAL_ADMIN_USERNAME` / `INITIAL_ADMIN_PASSWORD`。Docker 入口生成数据库 URL，各应用根模块校验配置；一次性 `migrate` 作业只等待 PostgreSQL，执行迁移与初始化后才启动三个常驻角色。已有管理员和业务数据保持不变，API / worker 重启不执行初始化。所有生产角色禁止开启 `ENABLE_MOCK_AUTH`、`RUN_SEED` 和 `IMPORT_DATA`。外部 Python 嵌入默认关闭，需要时同时设置 `EXTERNAL_EMBEDDING_SERVICE_ENABLED=true` 和 `COMPOSE_PROFILES=embedding`。已有单进程部署、TLS、数据保留与回滚步骤见 [环境配置与部署](../docs/环境配置与部署.md)。
+
+公共 `APP_URL` 仅提供 `/api/v1` 和 `/images/`，其他路径（包括 `/`、`/login`）返回 404，不跳转到管理站点。管理端通过独立的 `ADMIN_APP_URL` 访问；公共域名的 HTTP 到同一 origin 的 HTTPS 跳转保持可用。
 
 ## 测试
 
@@ -295,6 +306,9 @@ pnpm run format
 
 # ESLint 检查
 pnpm run lint:check
+
+# TypeScript 检查（包含测试文件）
+pnpm run type-check
 
 # 格式检查
 pnpm run format:check

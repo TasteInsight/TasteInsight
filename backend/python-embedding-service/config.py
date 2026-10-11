@@ -14,12 +14,12 @@ class Config:
     DEBUG = os.getenv('PYTHON_EMBEDDING_DEBUG', 'false').lower() == 'true'
     
     # 模型配置
-    TEXT_MODEL = os.getenv('PYTHON_EMBEDDING_TEXT_MODEL', 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2')
-    DEFAULT_VERSION = os.getenv('PYTHON_EMBEDDING_DEFAULT_VERSION', 'v2')
+    TEXT_MODEL = os.getenv('PYTHON_EMBEDDING_TEXT_MODEL') or 'sentence-transformers/paraphrase-multilingual-mpnet-base-v2'
+    DEFAULT_VERSION = os.getenv('PYTHON_EMBEDDING_DEFAULT_VERSION') or 'v2'
     MODEL_DIR = os.getenv('PYTHON_EMBEDDING_MODEL_DIR', 'saved_models')  # 训练好的模型文件目录
     
     # 设备配置
-    DEVICE = os.getenv('PYTHON_EMBEDDING_DEVICE', None)  # None = 自动检测
+    DEVICE = os.getenv('PYTHON_EMBEDDING_DEVICE') or None  # None = 自动检测
     
     # 预加载模型
     PRELOAD_MODELS = [

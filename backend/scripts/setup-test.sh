@@ -1,18 +1,9 @@
 #!/bin/sh
 set -eu
 
-: "${DATABASE_URL:?DATABASE_URL must point to a separate test database}"
+node scripts/test-environment.cjs
 : "${REDIS_PORT:?REDIS_PORT is required}"
 : "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"
-
-test_db_name=$(node -p 'new URL(process.env.DATABASE_URL).pathname.slice(1)')
-case "$test_db_name" in
-  *_test) ;;
-  *)
-    echo "Refusing to seed database '$test_db_name': its name must end in _test" >&2
-    exit 1
-    ;;
-esac
 
 docker rm -f tasteinsight-test-redis >/dev/null 2>&1 || true
 docker run -d --name tasteinsight-test-redis \

@@ -24,6 +24,11 @@ test('backend CI uses the read-only quality checks', () => {
   assert.doesNotMatch(workflow, /run: pnpm format --check/);
 });
 
+test('backend CI checks TypeScript including tests without emitting files', () => {
+  assert.equal(scripts['type-check'], 'tsc --noEmit --incremental false');
+  assert.match(workflow, /run: pnpm type-check\s/);
+});
+
 test('projects, CI and Docker pin the same pnpm version', () => {
   const projects = ['backend', 'frontend-web', 'frontend-miniapp'];
   const packageManagers = projects.map((project) =>

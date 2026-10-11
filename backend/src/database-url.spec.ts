@@ -1,6 +1,42 @@
 import { createDockerDatabaseUrl } from './database-url';
 
 describe('createDockerDatabaseUrl', () => {
+  it.each(['database.internal', '10.2.0.8', '[fd00::8]'])(
+    'supports an independently hosted database at %s',
+    (host) => {
+      const url = new URL(
+        createDockerDatabaseUrl({
+          POSTGRES_HOST: host,
+          POSTGRES_PORT: '6432',
+          POSTGRES_USER: 'service',
+          POSTGRES_PASSWORD: 'private-password',
+          POSTGRES_DB: 'tasteinsight',
+        }),
+      );
+      expect(url.hostname).toBe(host);
+      expect(url.port).toBe('6432');
+      expect(url.searchParams.get('schema')).toBe('public');
+    },
+  );
+
+  it.each([
+    ['POSTGRES_HOST', 'db/path'],
+    ['POSTGRES_HOST', 'user@db'],
+    ['POSTGRES_HOST', 'db?secret=value'],
+    ['POSTGRES_PORT', '65536'],
+    ['POSTGRES_PORT', '-1'],
+    ['POSTGRES_PORT', '5432/path'],
+  ])('rejects invalid %s', (key, value) => {
+    expect(() =>
+      createDockerDatabaseUrl({
+        POSTGRES_USER: 'service',
+        POSTGRES_PASSWORD: 'private-password',
+        POSTGRES_DB: 'tasteinsight',
+        [key]: value,
+      }),
+    ).toThrow(key);
+  });
+
   it('encodes the raw PostgreSQL password for Prisma', () => {
     const url = new URL(
       createDockerDatabaseUrl({

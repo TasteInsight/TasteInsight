@@ -23,13 +23,6 @@ export class EmbeddingService implements OnModuleInit {
   private config: EmbeddingServiceConfig;
   private serviceHealthy = false;
 
-  // 不同版本的嵌入维度
-  private readonly EMBEDDING_DIMENSIONS = {
-    v1: 128, // 本地 TF-IDF + 特征工程
-    v2: 788, // Concat 模型：768 (SBERT) + 20 (数值特征)
-    v3: 256, // Fusion 模型：神经网络融合
-  };
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
@@ -63,9 +56,6 @@ export class EmbeddingService implements OnModuleInit {
     } else {
       this.logger.log('External embedding service is disabled');
     }
-
-    // 确保向量索引存在
-    await this.ensureVectorIndexes();
   }
 
   /**
@@ -73,7 +63,9 @@ export class EmbeddingService implements OnModuleInit {
    */
   async checkExternalEmbeddingServiceHealth(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.config.externalServiceUrl}/health`);
+      const response = await fetch(`${this.config.externalServiceUrl}/health`, {
+        signal: AbortSignal.timeout(5000),
+      });
       if (response.ok) {
         const data = await response.json();
         this.serviceHealthy = data.status === 'healthy';
@@ -89,73 +81,6 @@ export class EmbeddingService implements OnModuleInit {
       this.serviceHealthy = false;
     }
     return false;
-  }
-
-  /**
-   * 确保为每个存在的嵌入版本创建HNSW向量索引
-   *
-   * 自动检测数据库中存在的嵌入版本，并为其创建对应维度的索引
-   * - 使用HNSW索引配合类型转换 (embedding::vector(dimension))
-   * - 支持无维度限制的vector列，通过类型转换指定维度
-   * - 如果索引已存在，则跳过（IF NOT EXISTS）
-   * - 如果版本没有数据，则跳过
-   * - 支持多版本共存
-   */
-  private async ensureVectorIndexes(): Promise<void> {
-    try {
-      // 查询数据库中存在的所有版本及其数量
-      const versions = await this.prisma.$queryRaw<
-        Array<{ version: string; count: bigint }>
-      >`
-        SELECT version, COUNT(*) as count
-        FROM "dish_embeddings"
-        WHERE embedding IS NOT NULL
-        GROUP BY version
-      `;
-
-      if (versions.length === 0) {
-        this.logger.log('No embeddings found, skipping index creation');
-        return;
-      }
-
-      for (const { version, count } of versions) {
-        const dimension = this.EMBEDDING_DIMENSIONS[version];
-
-        if (!dimension) {
-          this.logger.warn(
-            `Unknown embedding version: ${version}, skipping index creation`,
-          );
-          continue;
-        }
-
-        this.logger.log(
-          `Found ${count} ${version} embeddings (${dimension}D), ensuring index...`,
-        );
-
-        try {
-          // 创建版本特定的HNSW索引
-          // 使用类型转换 (embedding::vector(dimension)) 为无维度vector列创建特定维度的索引
-          // 使用 WHERE 子句创建部分索引，只为特定版本的数据建索引
-          // PostgreSQL会在查询时自动选择正确的索引
-          const indexName = `dish_embeddings_embedding_${version}_idx`;
-
-          await this.prisma.$executeRawUnsafe(`
-            CREATE INDEX IF NOT EXISTS "${indexName}"
-            ON "dish_embeddings" USING hnsw ((embedding::vector(${dimension})) vector_cosine_ops)
-            WITH (m = 16, ef_construction = 200)
-            WHERE version = '${version}' AND embedding IS NOT NULL
-          `);
-
-          this.logger.log(`HNSW index for ${version} created/verified`);
-        } catch (error) {
-          this.logger.error(
-            `Failed to create index for ${version}: ${error.message}`,
-          );
-        }
-      }
-    } catch (error) {
-      this.logger.error(`Failed to ensure vector indexes: ${error.message}`);
-    }
   }
 
   /**
@@ -277,6 +202,7 @@ export class EmbeddingService implements OnModuleInit {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(30000),
       });
 
       if (!response.ok) {
@@ -321,6 +247,7 @@ export class EmbeddingService implements OnModuleInit {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(requestBody),
+          signal: AbortSignal.timeout(30000),
         },
       );
 

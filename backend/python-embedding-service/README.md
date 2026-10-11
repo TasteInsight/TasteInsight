@@ -171,7 +171,11 @@ export HF_ENDPOINT=https://huggingface.co
 python app.py
 ```
 
-配置示例见 `env.example`。切换到 v3 前应准备训练权重；使用 GPU 时将 `PYTHON_EMBEDDING_DEVICE` 设置为 `cuda`。
+配置示例见 `env.example`，包含推理默认值、可选训练配置和安全说明；Python 不会自动读取该文件。切换到 v3 前应准备训练权重；使用 GPU 时将 `PYTHON_EMBEDDING_DEVICE` 设置为 `cuda`，未设置或留空时自动选择设备。
+
+完整 Compose 仅转发模型名称、嵌入版本、设备、预加载版本和模型下载源。文本模型与版本的默认值由 `config.py` 管理；未设置或留空使用默认值。镜像中的 Gunicorn 固定监听 `5001`，工作目录 `/app` 下的 `saved_models` 对应挂载卷 `/app/saved_models`。单独使用 `python app.py` 时仍可通过 `PYTHON_EMBEDDING_HOST`、`PYTHON_EMBEDDING_PORT` 和 `PYTHON_EMBEDDING_DEBUG` 调整开发服务器。
+
+独立 Python 启动默认预加载 `v2,v3`；Compose 默认不预加载这两个版本，需要时设置 `PYTHON_EMBEDDING_PRELOAD_MODELS`。文本编码器仍会在服务启动时加载，缺少缓存时下载权重。镜像构建默认 `PRELOAD_MODEL=false`；显式启用时使用同一份 `Config.TEXT_MODEL` 默认值。
 
 ## 🐳 Docker 部署
 
@@ -207,7 +211,7 @@ docker run -d \
 A: 建议至少 1,000 菜品和 10,000 用户交互。
 
 **Q: 如何使用 GPU？**  
-A: 服务使用 `export PYTHON_EMBEDDING_DEVICE=cuda`；训练脚本使用 `DEVICE=cuda` 或 `--device cuda`。
+A: 服务使用 `export PYTHON_EMBEDDING_DEVICE=cuda`；直接运行训练 Python 程序时使用 `--device cuda`。
 
 **Q: 如何添加新模型？**  
 A: 参考 [API_GUIDE.md - 添加新模型](API_GUIDE.md#如何添加新模型)
