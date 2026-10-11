@@ -130,14 +130,15 @@ describe('ExperimentsService', () => {
 
     it('should create experiment with valid data', async () => {
       prisma.experiment.create.mockResolvedValue({
-        id: 'new-exp-1',
         ...mockExperiment,
+        id: 'new-exp-1',
       });
 
       const result = await service.createExperiment(validDto as any);
 
       expect(result.code).toBe(201);
       expect(result.message).toContain('successfully');
+      expect(result.data).toBe('new-exp-1');
       expect(experimentService.refreshActiveExperiments).toHaveBeenCalled();
     });
 

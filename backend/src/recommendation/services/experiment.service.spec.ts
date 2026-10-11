@@ -6,7 +6,15 @@ import { RecommendationCacheService } from './cache.service';
 describe('ExperimentService', () => {
   let service: ExperimentService;
   let prisma: jest.Mocked<Partial<PrismaService>>;
-  let cacheService: jest.Mocked<Partial<RecommendationCacheService>>;
+  let cacheService: jest.Mocked<
+    Pick<
+      RecommendationCacheService,
+      | 'getUserExperimentGroup'
+      | 'setUserExperimentGroup'
+      | 'getExperimentGroupItemWeights'
+      | 'setExperimentGroupItemWeights'
+    >
+  >;
 
   const mockExperiment = {
     id: 'exp-1',
@@ -38,10 +46,9 @@ describe('ExperimentService', () => {
         findMany: jest.fn().mockResolvedValue([]),
       } as any,
       userExperimentAssignment: {
-        findUnique: jest.fn(),
-        create: jest.fn(),
         findMany: jest.fn(),
       } as any,
+      $queryRaw: jest.fn().mockResolvedValue([{ groupItemId: 'group-1' }]),
     };
 
     cacheService = {
@@ -180,9 +187,56 @@ describe('ExperimentService', () => {
       expect(result).toBeNull();
     });
 
+    it('observes experiment changes committed and refreshed by another process', async () => {
+      const adminProcess = new ExperimentService(
+        prisma as PrismaService,
+        cacheService as unknown as RecommendationCacheService,
+      );
+      (prisma.experiment!.findMany as jest.Mock).mockResolvedValue([]);
+      await service.refreshActiveExperiments();
+      (prisma.experiment!.findMany as jest.Mock).mockResolvedValue([
+        { ...mockExperiment, trafficRatio: 1 },
+      ]);
+      cacheService.getUserExperimentGroup.mockResolvedValue('group-1');
+      await adminProcess.refreshActiveExperiments();
+
+      expect(await service.assignUserToExperiment('user-1')).toMatchObject({
+        experimentId: 'exp-1',
+        groupItemId: 'group-1',
+      });
+
+      (prisma.experiment!.findMany as jest.Mock).mockResolvedValue([]);
+      await adminProcess.refreshActiveExperiments();
+      expect(await service.assignUserToExperiment('user-1')).toBeNull();
+    });
+
+    it('uses committed group weights instead of stale shared weight cache', async () => {
+      cacheService.getUserExperimentGroup.mockResolvedValue('group-1');
+      cacheService.getExperimentGroupItemWeights.mockResolvedValue({
+        ...service.getDefaultWeights(),
+        preferenceMatch: 0.1,
+      });
+      (prisma.experiment!.findMany as jest.Mock).mockResolvedValue([
+        {
+          ...mockExperiment,
+          trafficRatio: 1,
+          groupItems: [
+            {
+              ...mockExperiment.groupItems[0],
+              config: { weights: { preferenceMatch: 0.8 } },
+            },
+          ],
+        },
+      ]);
+
+      const result = await service.assignUserToExperiment('user-1');
+
+      expect(result?.resolvedWeights.preferenceMatch).toBe(0.8);
+    });
+
     it('should return cached assignment', async () => {
-      cacheService.getUserExperimentGroup!.mockResolvedValue('group-1');
-      cacheService.getExperimentGroupItemWeights!.mockResolvedValue({
+      cacheService.getUserExperimentGroup.mockResolvedValue('group-1');
+      cacheService.getExperimentGroupItemWeights.mockResolvedValue({
         preferenceMatch: 0.3,
         favoriteSimilarity: 0.2,
         browseRelevance: 0.15,
@@ -202,15 +256,11 @@ describe('ExperimentService', () => {
     });
 
     it('should load assignment from database if not in cache', async () => {
-      cacheService.getUserExperimentGroup!.mockResolvedValue(null);
-      (
-        prisma.userExperimentAssignment!.findUnique as jest.Mock
-      ).mockResolvedValue({
-        userId: 'user-1',
-        experimentId: 'exp-1',
-        groupItemId: 'group-2',
-      });
-      cacheService.getExperimentGroupItemWeights!.mockResolvedValue({
+      cacheService.getUserExperimentGroup.mockResolvedValue(null);
+      (prisma.$queryRaw as jest.Mock).mockResolvedValue([
+        { groupItemId: 'group-2' },
+      ]);
+      cacheService.getExperimentGroupItemWeights.mockResolvedValue({
         preferenceMatch: 0.7,
         favoriteSimilarity: 0.2,
         browseRelevance: 0.15,
@@ -231,20 +281,14 @@ describe('ExperimentService', () => {
     });
 
     it('should create new assignment for new user', async () => {
-      cacheService.getUserExperimentGroup!.mockResolvedValue(null);
-      (
-        prisma.userExperimentAssignment!.findUnique as jest.Mock
-      ).mockResolvedValue(null);
-      (prisma.userExperimentAssignment!.create as jest.Mock).mockResolvedValue({
-        userId: 'new-user',
-        experimentId: 'exp-1',
-        groupItemId: 'group-1',
-      });
-
+      cacheService.getUserExperimentGroup.mockResolvedValue(null);
+      (prisma.experiment!.findMany as jest.Mock).mockResolvedValue([
+        { ...mockExperiment, trafficRatio: 1 },
+      ]);
       const result = await service.assignUserToExperiment('new-user');
 
-      expect(result).toBeDefined();
-      // 新用户分配会调用 create 或直接使用缓存中的值
+      expect(result).toMatchObject({ groupItemId: 'group-1' });
+      expect(prisma.$queryRaw).toHaveBeenCalled();
     });
   });
 
