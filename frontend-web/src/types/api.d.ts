@@ -573,7 +573,7 @@ export interface Report {
   id: string
   reporterId: string
   reporterNickname?: string
-  targetType: 'review' | 'comment'
+  targetType: 'review' | 'comment' | 'post' | 'postComment'
   targetId: string
   type: string
   reason: string
@@ -594,8 +594,13 @@ export interface Report {
     userNickname: string
     userAvatar: string | null
     isDeleted: boolean
-    images?: string[] // 评价图片（仅当targetType为review时存在）
+    images?: string[] // 评价或帖子的图片
   }
+}
+
+export interface GetReportsParams extends PaginationParams {
+  status?: Report['status']
+  targetType?: Report['targetType']
 }
 
 /**

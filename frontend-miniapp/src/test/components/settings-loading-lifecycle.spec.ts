@@ -14,11 +14,24 @@ import UserHeader from '@/pages/profile/components/UserHeader.vue';
 jest.mock('@dcloudio/uni-app', () => ({
   onBackPress: jest.fn(),
   onShow: jest.fn(),
+  onHide: jest.fn(),
   onPullDownRefresh: jest.fn(),
+  onReachBottom: jest.fn(),
 }));
 jest.mock('@/api/modules/user', () => ({
   getUserProfile: jest.fn(),
   updateUserProfile: jest.fn(),
+  getMyReviews: jest
+    .fn()
+    .mockResolvedValue({ code: 200, data: { items: [], meta: { page: 1, totalPages: 0 } } }),
+}));
+jest.mock('@/api/modules/social', () => ({
+  getPosts: jest
+    .fn()
+    .mockResolvedValue({ code: 200, data: { items: [], meta: { page: 1, totalPages: 0 } } }),
+}));
+jest.mock('@/api/modules/notifications', () => ({
+  getUnreadNotificationCount: jest.fn().mockResolvedValue({ code: 200, data: { unreadCount: 0 } }),
 }));
 jest.mock('@/api/modules/canteen', () => ({ getCanteenList: jest.fn() }));
 
@@ -86,6 +99,32 @@ it('renders a successful profile immediately and keeps the page frame', async ()
   wrapper.unmount();
 });
 
+it.each([
+  ['personal', PersonalPage],
+  ['display', DisplayPage],
+  ['preferences', PreferencesPage],
+  ['notifications', NotificationsPage],
+  ['allergens', AllergensPage],
+] as const)(
+  '%s does not save an unchanged profile through its save button',
+  async (_name, Page) => {
+    (getUserProfile as jest.Mock).mockResolvedValue({ code: 200, data: user });
+    const wrapper = mount(Page as any);
+    await flushPromises();
+    const saveBar = wrapper.get('.settings-save-bar');
+    const saveButton = saveBar.get('button');
+    expect(saveBar.text()).toBe('保存修改');
+    expect(saveButton.attributes('disabled')).toBeDefined();
+    await saveButton.trigger('click');
+    for (const key of ['Enter', ' ']) {
+      await saveButton.trigger('keydown', { key });
+      await saveButton.trigger('keyup', { key });
+    }
+    expect(updateUserProfile).not.toHaveBeenCalled();
+    wrapper.unmount();
+  }
+);
+
 it('keeps failed initialization noneditable and offers a successful retry', async () => {
   const response = deferred<any>();
   (getUserProfile as jest.Mock).mockReturnValueOnce(response.promise);
@@ -104,20 +143,22 @@ it('keeps failed initialization noneditable and offers a successful retry', asyn
   wrapper.unmount();
 });
 
-it('keeps profile menus mounted without an unread signed-in profile header', async () => {
+it('keeps personal-space tabs mounted without an unread signed-in profile header', async () => {
   const response = deferred<any>();
   (getUserProfile as jest.Mock).mockReturnValue(response.promise);
   const wrapper = mount(ProfilePage);
   expect(wrapper.findComponent(UserHeader).exists()).toBe(false);
-  expect(wrapper.findAll('.profile-menu')).toHaveLength(6);
+  expect(wrapper.findAll('.profile-tab')).toHaveLength(3);
   const show = (onShow as jest.Mock).mock.calls[0][0];
   show();
   await flushPromises();
-  expect(wrapper.findAll('.profile-menu')).toHaveLength(6);
+  expect(wrapper.findAll('.profile-tab')).toHaveLength(3);
   expect(wrapper.find('.skeleton-item').exists()).toBe(false);
   response.resolve({ code: 200, data: user });
   await flushPromises();
-  expect(wrapper.getComponent(UserHeader).props('userInfo')).toMatchObject({ nickname: user.nickname });
+  expect(wrapper.getComponent(UserHeader).props('userInfo')).toMatchObject({
+    nickname: user.nickname,
+  });
   wrapper.unmount();
 });
 
@@ -131,11 +172,13 @@ it('retains a cached account profile during a failed background refresh', async 
   show();
   await flushPromises();
   expect(wrapper.getComponent(UserHeader).element).toBe(header);
-  expect(wrapper.getComponent(UserHeader).props('userInfo')).toMatchObject({ nickname: user.nickname });
+  expect(wrapper.getComponent(UserHeader).props('userInfo')).toMatchObject({
+    nickname: user.nickname,
+  });
   response.reject(new Error('请求超时，请重试'));
   await flushPromises();
   expect(wrapper.getComponent(UserHeader).element).toBe(header);
   expect(wrapper.get('.profile-error').text()).toContain('请求超时，请重试');
-  expect(wrapper.findAll('.profile-menu')).toHaveLength(6);
+  expect(wrapper.findAll('.profile-tab')).toHaveLength(3);
   wrapper.unmount();
 });

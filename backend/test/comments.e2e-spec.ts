@@ -30,7 +30,7 @@ describe('CommentsController (e2e)', () => {
     prisma = app.get<PrismaService>(PrismaService);
     jwtService = app.get<JwtService>(JwtService);
     configService = app.get<ConfigService>(ConfigService);
-    app.useGlobalPipes(new ValidationPipe());
+    app.useGlobalPipes(new ValidationPipe({ transform: true }));
     await app.listen(0, '127.0.0.1');
 
     const secret = configService.get<string>('JWT_SECRET');
@@ -40,6 +40,14 @@ describe('CommentsController (e2e)', () => {
       data: {
         openId: 'test_comments_user',
         nickname: 'Test Comments User',
+        studentVerification: {
+          create: {
+            status: 'VERIFIED',
+            method: 'MANUAL_REVIEW',
+            verifiedAt: new Date(),
+            expiresAt: new Date(Date.now() + 180 * 86400000),
+          },
+        },
       },
     });
     userId = user.id;
@@ -53,6 +61,14 @@ describe('CommentsController (e2e)', () => {
       data: {
         openId: 'test_comments_user_2',
         nickname: 'Test Comments User 2',
+        studentVerification: {
+          create: {
+            status: 'VERIFIED',
+            method: 'MANUAL_REVIEW',
+            verifiedAt: new Date(),
+            expiresAt: new Date(Date.now() + 180 * 86400000),
+          },
+        },
       },
     });
     user2Id = user2.id;

@@ -41,10 +41,6 @@
   line-height: 1.6;
   text-align: center;
 }
-.dish-list-hint {
-  color: #667085;
-  font-size: 12px;
-}
 .dish-list-footer {
   display: flex;
   align-items: center;

@@ -181,7 +181,7 @@ describe('ReviewList', () => {
       },
     });
 
-    expect(wrapper.text()).toContain('暂无评价，快来抢沙发吧~');
+    expect(wrapper.text()).toBe('还没有评价');
   });
 
   it('renders error state when error exists', () => {

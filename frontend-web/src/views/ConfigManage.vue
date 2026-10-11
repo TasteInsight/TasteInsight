@@ -122,6 +122,30 @@
             </div>
           </div>
 
+          <template v-if="!currentCanteenId">
+            <div v-for="item in communityConfigs" :key="item.key" class="border border-gray-200 rounded-lg p-6">
+              <h3 class="text-lg font-semibold text-gray-800 mb-2">{{ item.label }}</h3>
+              <p class="text-sm text-gray-600">{{ item.description }} 已有待审核内容仍需单独处理，此设置不自动通过历史内容。</p>
+              <div class="mt-4 flex flex-wrap items-center gap-4">
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input
+                    v-model="item.requiresApproval"
+                    type="checkbox"
+                    :aria-label="item.label"
+                    :disabled="!authStore.hasPermission('config:edit') || communitySaving || loadError"
+                    class="sr-only peer"
+                    @change="handleCommunityApprovalChange(item)"
+                  />
+                  <div :class="toggleSwitchClass"></div>
+                  <span class="ml-3 text-sm font-medium text-gray-700">{{ loadError ? '暂不可读取' : item.requiresApproval ? '已开启' : '已关闭 · 直接发布' }}</span>
+                </label>
+                <span v-if="item.saving" class="text-sm text-gray-500" role="status">保存中…</span>
+                <span v-else-if="item.saved" class="text-sm text-green-700" role="status">保存成功</span>
+              </div>
+              <p v-if="!authStore.hasPermission('config:edit')" class="mt-2 text-xs text-gray-500">您没有编辑配置的权限</p>
+            </div>
+          </template>
+
           <!-- 菜品嵌入向量刷新配置 -->
           <div class="border border-gray-200 rounded-lg p-6">
             <div class="flex items-start justify-between mb-4">
@@ -303,6 +327,11 @@ export default {
     const commentSaveSuccess = ref(false)
     const reviewAutoApprove = ref(true)
     const commentAutoApprove = ref(true)
+    const communityConfigs = ref([
+      { key: 'post.autoApprove', label: '社区帖子人工审核', description: '默认直接发布。开启后，新提交或修改的帖子审核通过后公开。', requiresApproval: false, saving: false, saved: false },
+      { key: 'postComment.autoApprove', label: '帖子回复人工审核', description: '默认直接发布。开启后，新帖子回复审核通过后公开。', requiresApproval: false, saving: false, saved: false },
+    ])
+    const communitySaving = computed(() => communityConfigs.value.some(item => item.saving))
     const reviewRequiresApproval = computed({
       get: () => !reviewAutoApprove.value,
       set: (required) => { reviewAutoApprove.value = !required },
@@ -411,6 +440,12 @@ export default {
             const globalConfigData = response.data
             const config = globalConfigData.config
             const templates = globalConfigData.templates
+            communityConfigs.value.forEach(item => {
+              const value = config?.items?.find(configItem => configItem.key === item.key)?.value
+                ?? templates?.find(template => template.key === item.key)?.defaultValue
+                ?? 'true'
+              item.requiresApproval = value !== 'true'
+            })
 
             const reviewAutoApproveItem = config?.items?.find(
               (item) => item.key === reviewAutoApproveKey
@@ -452,6 +487,25 @@ export default {
         showAlert('加载配置失败，请刷新重试')
       } finally {
         loading.value = false
+      }
+    }
+
+    const handleCommunityApprovalChange = async (item) => {
+      if (currentCanteenId.value || !authStore.hasPermission('config:edit') || loadError.value || communitySaving.value) {
+        item.requiresApproval = !item.requiresApproval
+        return
+      }
+      item.saving = true
+      item.saved = false
+      try {
+        const response = await configApi.updateGlobalConfig({ key: item.key, value: item.requiresApproval ? 'false' : 'true' })
+        if (response.code !== 200) throw new Error(response.message || '保存配置失败')
+        item.saved = true
+      } catch (error) {
+        showAlert(error instanceof Error ? error.message : '保存配置失败，请重试')
+        await loadConfig()
+      } finally {
+        item.saving = false
       }
     }
 
@@ -894,6 +948,9 @@ export default {
       commentAutoApprove,
       reviewRequiresApproval,
       commentRequiresApproval,
+      communityConfigs,
+      communitySaving,
+      handleCommunityApprovalChange,
       configItems,
       handleReviewAutoApproveChange,
       handleCommentAutoApproveChange,

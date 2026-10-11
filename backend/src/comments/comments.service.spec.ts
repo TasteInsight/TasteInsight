@@ -1,8 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CommentsService } from './comments.service';
 import { PrismaService } from '@/prisma.service';
-import { ReportType } from '@/common/enums';
 import { AdminConfigService } from '@/admin-config/admin-config.service';
+import { ReportType } from '@/common/enums';
+import { NotificationService } from '@/notifications/notification.service';
 import {
   NotFoundException,
   ForbiddenException,
@@ -45,6 +46,10 @@ describe('CommentsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CommentsService,
+        {
+          provide: NotificationService,
+          useValue: { createReply: jest.fn(), withdraw: jest.fn() },
+        },
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: AdminConfigService, useValue: mockAdminConfigService },
       ],
@@ -366,6 +371,17 @@ describe('CommentsService', () => {
 
       expect(result.code).toBe(201);
       expect(result.message).toBe('举报提交成功');
+      expect(prisma.report.create).toHaveBeenCalledWith({
+        data: {
+          reporterId: 'u1',
+          targetType: 'comment',
+          targetId: 'c1',
+          commentId: 'c1',
+          type: ReportType.SPAM,
+          reason: 'Spam content',
+          status: 'pending',
+        },
+      });
     });
 
     it('should throw NotFoundException if comment not found', async () => {

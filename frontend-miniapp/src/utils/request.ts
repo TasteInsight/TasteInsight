@@ -66,7 +66,6 @@ function performTokenRefresh(sessionVersion: number, refreshToken: string): Prom
           resolve();
         } else {
           // 刷新失败
-          handleHttpError(401, refreshData, sessionVersion);
           reject(buildUserFriendlyError(new Error('HTTP 401')));
         }
       },
@@ -75,7 +74,6 @@ function performTokenRefresh(sessionVersion: number, refreshToken: string): Prom
           reject(new Error('登录会话已变更'));
           return;
         }
-        handleHttpError(401, {}, sessionVersion);
         reject(buildUserFriendlyError(new Error('HTTP 401')));
       },
     });
@@ -109,7 +107,7 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
     };
 
     // 核心：自动为需要授权的接口注入 Token
-    if (accessToken) {
+    if (accessToken && options.auth !== 'none') {
       // 'Authorization' 是后端接口文档中约定的字段
       // 'Bearer ' 是 JWT 规范中推荐的前缀，具体看后端要求
       header['Authorization'] = `Bearer ${accessToken}`;
@@ -172,18 +170,35 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
             reject(buildUserFriendlyError(new Error(responseData.message || '操作失败')));
           }
         } else if (statusCode === 401) {
+          if (options.auth === 'none') {
+            reject(buildUserFriendlyError(new Error(responseData.message || '验证未通过，请重试'), 401));
+            return;
+          }
+          const unauthorized = () => {
+            if (userStore.sessionVersion !== sessionVersion) {
+              reject(new Error('登录会话已变更'));
+              return;
+            }
+            if (options.auth === 'optional') {
+              if (accessToken) userStore.logoutAction();
+              const anonymousHeader = { ...options.header };
+              delete anonymousHeader.Authorization;
+              request<T>({ ...options, auth: 'none', header: anonymousHeader }).then(resolve, reject);
+            } else {
+              handleHttpError(statusCode, responseData, sessionVersion);
+              reject(buildUserFriendlyError(new Error('HTTP 401'), 401));
+            }
+          };
           // 401 未授权，尝试刷新 Token
           // 如果是刷新 token 的请求本身失败了，或者没有 refresh token，则直接退出登录
           if (fullUrl.includes('/auth/refresh') || !userStore.refreshToken) {
-            handleHttpError(statusCode, responseData, sessionVersion);
-            reject(buildUserFriendlyError(new Error(`HTTP ${statusCode}`), statusCode));
+            unauthorized();
             return;
           }
 
           // 重试后的请求仍然 401 时直接退出，不能再发起一次刷新。
           if ((options as any)._retry) {
-            handleHttpError(statusCode, responseData, sessionVersion);
-            reject(buildUserFriendlyError(new Error(`HTTP ${statusCode}`), statusCode));
+            unauthorized();
             return;
           }
 
@@ -221,10 +236,7 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
 
           tokenRefresh.promise
             .then(retry)
-            .catch(error => {
-              // 刷新失败，直接reject
-              reject(buildUserFriendlyError(error));
-            });
+            .catch(unauthorized);
         } else {
           // HTTP 状态码非 2xx，代表请求出错了（404, 500 等）
           // 交给统一的错误处理器

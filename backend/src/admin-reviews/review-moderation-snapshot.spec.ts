@@ -18,6 +18,10 @@ describe('review moderation snapshot', () => {
 
   beforeEach(() => {
     prisma = {
+      $queryRaw: jest.fn(),
+      studentVerification: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'verified' }),
+      },
       review: {
         findUnique: jest.fn().mockResolvedValue({
           id: 'r1',
@@ -31,8 +35,11 @@ describe('review moderation snapshot', () => {
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
     };
-    stats = { recomputeDishStats: jest.fn() };
-    service = new AdminReviewsService(prisma, stats);
+    stats = { recomputeBatch: jest.fn() };
+    prisma.$transaction = jest.fn((callback) => callback(prisma));
+    service = new AdminReviewsService(prisma, stats, {
+      withdrawThread: jest.fn(),
+    } as any);
   });
 
   it.each(['approveReview', 'rejectReview'] as const)(
@@ -54,7 +61,7 @@ describe('review moderation snapshot', () => {
             : { status: 'rejected', rejectReason: '不符合要求' },
       });
       expect(prisma.review.update).not.toHaveBeenCalled();
-      expect(stats.recomputeDishStats).toHaveBeenCalledWith('d1');
+      expect(stats.recomputeBatch).toHaveBeenCalledWith(prisma, ['d1']);
     },
   );
 
@@ -69,7 +76,7 @@ describe('review moderation snapshot', () => {
           admin,
         ),
       ).rejects.toThrow(ConflictException);
-      expect(stats.recomputeDishStats).not.toHaveBeenCalled();
+      expect(stats.recomputeBatch).not.toHaveBeenCalled();
     },
   );
 

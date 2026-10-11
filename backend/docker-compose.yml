@@ -25,6 +25,7 @@ x-runtime-environment: &runtime-environment
   EXTERNAL_EMBEDDING_SERVICE_VERSION:
   EMBEDDING_SERVICE_BATCH_SIZE:
   # API producers and the worker agree on whether external delivery is enabled.
+  NOTIFICATION_WEBHOOK_URL:
 
 x-api-environment: &api-environment
   <<: *runtime-environment
@@ -88,8 +89,30 @@ services:
     <<: *backend
     environment:
       <<: *api-environment
-      WECHAT_APPID: ${WECHAT_APPID:?WECHAT_APPID is required}
-      WECHAT_SECRET: ${WECHAT_SECRET:?WECHAT_SECRET is required}
+      WECHAT_APPID:
+      WECHAT_SECRET:
+      WECHAT_APP_APPID:
+      WECHAT_APP_SECRET:
+      WECHAT_OPEN_PLATFORM_ID:
+      AUTH_CHALLENGE_SECRET:
+      SMS_GATEWAY_URL:
+      SMS_GATEWAY_TOKEN:
+      RESEND_API_KEY:
+      EMAIL_FROM:
+      CAMPUS_EMAIL_DOMAINS:
+      CAMPUS_OAUTH_AUTHORIZATION_URL:
+      CAMPUS_OAUTH_TOKEN_URL:
+      CAMPUS_OAUTH_USERINFO_URL:
+      CAMPUS_OAUTH_CLIENT_ID:
+      CAMPUS_OAUTH_CLIENT_SECRET:
+      CAMPUS_OAUTH_REDIRECT_URI:
+      CAMPUS_OAUTH_SCOPE:
+      CAMPUS_OAUTH_ISSUER:
+      CAMPUS_OAUTH_SUBJECT_CLAIM:
+      CAMPUS_OAUTH_STUDENT_CLAIM:
+      CAMPUS_OAUTH_STUDENT_VALUES:
+      CAMPUS_OAUTH_TOKEN_AUTH_METHOD:
+      CAMPUS_VERIFICATION_DAYS:
       AI_PROVIDER:
       AI_API_KEY:
       AI_MODEL:
@@ -116,6 +139,11 @@ services:
     <<: *backend
     environment:
       <<: *runtime-environment
+      NOTIFICATION_WEBHOOK_SECRET:
+      NOTIFICATION_WEBHOOK_POLL_MS:
+      NOTIFICATION_WEBHOOK_TIMEOUT_MS:
+      NOTIFICATION_WEBHOOK_MAX_ATTEMPTS:
+      NOTIFICATION_WEBHOOK_BACKOFF_MS:
     command: ["node", "dist/src/main.worker"]
     depends_on: *runtime-dependencies
     stop_grace_period: ${WORKER_STOP_GRACE_PERIOD:-90s}

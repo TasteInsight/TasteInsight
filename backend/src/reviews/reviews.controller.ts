@@ -8,10 +8,15 @@ import {
   UseGuards,
   Request,
   Delete,
+  Put,
 } from '@nestjs/common';
 import { ReviewsService } from './reviews.service';
 import { AuthGuard } from '@/auth/guards/auth.guard';
+import { OptionalAuthGuard } from '@/auth/guards/optional-auth.guard';
+import { StudentGuard } from '@/auth/guards/student.guard';
+import { ContentLikesService } from '@/social/content-likes.service';
 import { CreateReviewDto } from './dto/create-review.dto';
+import { ReviewQueryDto } from './dto/review-query.dto';
 import { ReportReviewDto } from './dto/report-review.dto';
 import {
   ReviewListResponseDto,
@@ -22,11 +27,14 @@ import {
 import { ReportReviewResponseDto } from './dto/report-review.dto';
 
 @Controller()
-@UseGuards(AuthGuard)
 export class ReviewsController {
-  constructor(private readonly reviewsService: ReviewsService) {}
+  constructor(
+    private readonly reviewsService: ReviewsService,
+    private readonly likes: ContentLikesService,
+  ) {}
 
   @Get('dishes/:dishId/reviews/mine')
+  @UseGuards(AuthGuard)
   async getOwnReview(
     @Request() req,
     @Param('dishId') dishId: string,
@@ -35,15 +43,22 @@ export class ReviewsController {
   }
 
   @Get('dishes/:dishId/reviews')
+  @UseGuards(OptionalAuthGuard)
   async getReviews(
     @Param('dishId') dishId: string,
-    @Query('page') page: number = 1,
-    @Query('pageSize') pageSize: number = 20,
+    @Query() query: ReviewQueryDto,
+    @Request() req,
   ): Promise<ReviewListResponseDto> {
-    return this.reviewsService.getReviews(dishId, page, pageSize);
+    return this.reviewsService.getReviews(
+      dishId,
+      query.page,
+      query.pageSize,
+      req.user?.sub,
+    );
   }
 
   @Post('reviews')
+  @UseGuards(AuthGuard, StudentGuard)
   async create(
     @Request() req,
     @Body() createReviewDto: CreateReviewDto,
@@ -53,6 +68,7 @@ export class ReviewsController {
   }
 
   @Post('reviews/:id/report')
+  @UseGuards(AuthGuard, StudentGuard)
   async report(
     @Request() req,
     @Param('id') id: string,
@@ -63,11 +79,24 @@ export class ReviewsController {
   }
 
   @Delete('reviews/:id')
+  @UseGuards(AuthGuard)
   async remove(
     @Request() req,
     @Param('id') id: string,
   ): Promise<DeleteReviewResponseDto> {
     const userId = req.user.sub;
     return this.reviewsService.deleteReview(userId, id);
+  }
+
+  @Put('reviews/:id/like')
+  @UseGuards(AuthGuard, StudentGuard)
+  like(@Request() req, @Param('id') id: string) {
+    return this.likes.setLike(req.user.sub, 'review', id, true);
+  }
+
+  @Delete('reviews/:id/like')
+  @UseGuards(AuthGuard, StudentGuard)
+  unlike(@Request() req, @Param('id') id: string) {
+    return this.likes.setLike(req.user.sub, 'review', id, false);
   }
 }

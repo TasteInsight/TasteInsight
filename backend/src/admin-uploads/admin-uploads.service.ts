@@ -6,6 +6,8 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
+import { enqueueDishNotifications } from '@/notifications/notification-events';
+import { withdrawDishNotifications } from '@/notifications/withdraw-dish-notifications';
 import { Prisma } from '@prisma/client';
 import { AdminGetUploadsDto, DishUploadDto } from './dto/admin-upload.dto';
 
@@ -279,6 +281,7 @@ export class AdminUploadsService {
             reviewCount: 0,
           },
         });
+        await enqueueDishNotifications(tx, dish);
 
         // 更新上传记录状态为 approved
         await tx.dishUpload.update({
@@ -446,6 +449,7 @@ export class AdminUploadsService {
             data: { parentDishId: null, parentUploadId: id },
           });
           try {
+            await withdrawDishNotifications(tx, [currentUpload.approvedDishId]);
             await tx.dish.delete({
               where: { id: currentUpload.approvedDishId },
             });

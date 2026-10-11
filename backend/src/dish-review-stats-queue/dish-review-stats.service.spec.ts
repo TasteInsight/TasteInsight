@@ -6,6 +6,8 @@ import { getQueueToken } from '@nestjs/bullmq';
 import { DISH_REVIEW_STATS_QUEUE } from './dish-review-stats.constants';
 
 const mockPrismaService = {
+  $queryRaw: jest.fn().mockResolvedValue([{ id: 'd1' }]),
+  $transaction: jest.fn((work) => work(mockPrismaService)),
   review: {
     aggregate: jest.fn(),
   },

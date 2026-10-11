@@ -380,13 +380,13 @@
                   v-model="formData.canteenId"
                   class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple bg-white"
                 >
-                  <option value="">全校食堂 (所有权限)</option>
+                  <option value="">全局管理范围</option>
                   <option v-for="canteen in canteenList" :key="canteen.id" :value="canteen.id">
                     {{ canteen.name }}
                   </option>
                 </select>
                 <p class="mt-1 text-sm text-gray-500">
-                  选择管理的食堂，留空则代表管理所有食堂。
+                  留空代表全局管理范围，实际操作权限由右侧单独分配。学生身份审核与社区管理仅限全局范围。
                   <span class="text-xs text-gray-400">目前仅支持单选，如需多选请联系系统管理员。</span>
                 </p>
               </div>
@@ -452,6 +452,7 @@
                     </div>
                   </div>
                 </div>
+                <p v-if="errors.permissions" class="mt-2 text-sm text-red-600" role="alert">{{ errors.permissions }}</p>
               </div>
             </div>
           </div>
@@ -590,6 +591,7 @@ import { reactive, ref, computed, onMounted, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
 import { permissionApi } from '@/api/modules/permission'
 import { canteenApi } from '@/api/modules/canteen'
+import { campusPermissionGroups, campusGlobalPermissions } from '@/config/campus-permissions'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import AdminDialog from '@/components/Common/AdminDialog.vue'
@@ -693,6 +695,7 @@ export default {
 
     // 所有权限组定义
     const allPermissionGroups = [
+      ...campusPermissionGroups,
       {
         id: 'dishes',
         name: '菜品管理',
@@ -795,6 +798,7 @@ export default {
       
       // 只显示当前用户拥有的权限
       return allPermissionGroups
+        .filter(group => !authStore.user?.canteenId || !campusPermissionGroups.some(campusGroup => campusGroup.id === group.id))
         .map(group => ({
           ...group,
           permissions: group.permissions.filter(permission => 
@@ -826,6 +830,8 @@ export default {
       'admin:edit': ['admin:view'],
       'admin:delete': ['admin:view'],
       'config:edit': ['config:view'], // 编辑配置需要查看权限
+      'post:approve': ['post:view'],
+      'post:delete': ['post:view'],
       'experiment:create': ['experiment:view'],
       'experiment:edit': ['experiment:view'],
       'experiment:delete': ['experiment:view'],
@@ -1256,6 +1262,10 @@ export default {
       const currentUserPermissions = authStore.permissions || []
       
       if (formData.permissions && formData.permissions.length > 0) {
+        if ((formData.canteenId.trim() || authStore.user?.canteenId) && formData.permissions.some(permission => campusGlobalPermissions.includes(permission))) {
+          errors.permissions = '学生身份审核与社区管理权限仅可分配给全局管理范围，请调整范围或取消相关权限'
+          hasError = true
+        }
         const invalidPermissions = formData.permissions.filter(p => !currentUserPermissions.includes(p))
         if (invalidPermissions.length > 0) {
           errors.permissions = `您没有以下权限，无法分配给子管理员：${invalidPermissions.join(', ')}`

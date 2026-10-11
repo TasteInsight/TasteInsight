@@ -1,23 +1,32 @@
 <template>
   <view class="meal-card" @tap="emit('view')">
-    <view class="meal-card-heading"
-      ><view class="meal-card-title"
+    <view class="meal-card-heading" :class="{ 'meal-card-heading-compact': !showSchedule }"
+      ><view v-if="showSchedule" class="meal-card-title"
         ><text>{{ dateText }}</text
         ><text class="meal-card-time">{{ mealTimeText }}</text></view
       ><view class="meal-card-tools"
-        ><button
+        ><!-- #ifndef MP-WEIXIN -->
+        <IconButton
+          v-if="canPublish || plan.isPublic"
+          :name="plan.isPublic ? 'eye' : 'eye-off'"
+          :label="plan.isPublic ? '设为私密' : '公开这份计划'"
+          :title="plan.isPublic ? '设为私密' : '公开这份计划'"
+          :tone="plan.isPublic ? 'primary' : 'muted'"
+          :pressed="!!plan.isPublic"
+          @click="emit('privacy')" />
+        <!-- #endif -->
+        <IconButton
           v-if="!isHistory"
-          class="meal-card-button"
-          aria-label="编辑规划"
+          name="edit"
+          label="编辑规划"
+          title="编辑规划"
           :disabled="!plan.dishesReady"
-          @tap.stop="emit('edit')"
-        >
-          编辑</button
-        ><button class="meal-card-button" aria-label="删除规划" @tap.stop="emit('delete')">
-          删除
-        </button></view
-      ></view
-    >
+          @click="emit('edit')" /><IconButton
+          name="trash"
+          label="删除规划"
+          title="删除规划"
+          @click="emit('delete')" /></view
+    ></view>
     <view v-for="dish in plan.dishes" :key="dish.id" class="meal-card-dish">
       <image
         v-if="dish.images?.[0] && !failedImages[dish.images[0]]"
@@ -38,25 +47,41 @@
           ><text
             class="meal-card-rating"
             :class="{ 'meal-card-rating-rated': dish.averageRating > 0 }"
-            >{{
-            dish.averageRating ? dish.averageRating.toFixed(1) + '分' : '暂无评分'
-          }}</text></view
+            >{{ dish.averageRating ? dish.averageRating.toFixed(1) + '分' : '暂无评分' }}</text
+          ></view
         ></view
       >
     </view>
     <view class="meal-card-footer"
-      ><text v-if="plan.dishesReady" class="meal-card-total">所列单价合计 ¥{{ totalPrice.toFixed(2) }}</text
+      ><text v-if="plan.dishesReady" class="meal-card-total"
+        >单价合计 ¥{{ totalPrice.toFixed(2) }}</text
       ><text v-else class="meal-card-status">菜品资料尚未完整载入</text
       ><button
-        v-if="!isHistory"
+        v-if="!isHistory || occurrenceDate"
         class="meal-card-button meal-card-complete"
+        :disabled="!plan.isCompleted && actionDate > today"
         @tap.stop="emit('execute')"
       >
-        标记已吃</button
+        {{
+          plan.isCompleted
+            ? '撤销已吃'
+            : actionDate > today
+              ? '尚未到用餐日'
+              : occurrenceDate
+                ? '标记当天已吃'
+                : '标记已吃'
+        }}</button
       ><text v-else class="meal-card-status">{{
         plan.isCompleted ? '已标记吃过' : '未标记吃过'
       }}</text></view
     >
+    <!-- #ifndef MP-WEIXIN -->
+    <view v-if="canPublish && !plan.isExpired" class="meal-card-sharing" @tap.stop>
+      <button class="meal-card-button meal-card-invite" @click="emit('invite')">
+        <UiIcon name="users" :size="18" />发起约饭
+      </button>
+    </view>
+    <!-- #endif -->
   </view>
 </template>
 
@@ -64,13 +89,33 @@
 import { computed, ref } from 'vue';
 import type { EnrichedMealPlan } from '@/store/modules/use-plan-store';
 import dayjs from 'dayjs';
+import UiIcon from '@/components/UiIcon.vue';
+import IconButton from '@/components/IconButton.vue';
+import { campusToday, coversDate, planDateKey } from '../utils/meal-plan-date';
 
-const props = defineProps<{ plan: EnrichedMealPlan; isHistory?: boolean }>();
+const props = withDefaults(
+  defineProps<{
+    plan: EnrichedMealPlan;
+    isHistory?: boolean;
+    occurrenceDate?: string;
+    canPublish?: boolean;
+    today?: string;
+    showSchedule?: boolean;
+  }>(),
+  { today: () => campusToday(), showSchedule: true }
+);
+const actionDate = computed(
+  () =>
+    props.occurrenceDate ||
+    (coversDate(props.plan, props.today) ? props.today : planDateKey(props.plan.startDate))
+);
 const emit = defineEmits<{
   (e: 'view'): void;
   (e: 'edit'): void;
   (e: 'delete'): void;
   (e: 'execute'): void;
+  (e: 'privacy'): void;
+  (e: 'invite'): void;
 }>();
 const failedImages = ref<Record<string, boolean>>({});
 const mealTimeMap = { breakfast: '早餐', lunch: '午餐', dinner: '晚餐', nightsnack: '夜宵' };
@@ -95,12 +140,23 @@ const dateText = computed(() => {
   color: #1f2937;
   font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
+.meal-card-sharing {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
 .meal-card-heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
   padding-bottom: 12px;
+}
+.meal-card-heading-compact {
+  justify-content: flex-end;
+  padding-bottom: 4px;
 }
 .meal-card-title {
   font-size: 16px;
@@ -117,6 +173,11 @@ const dateText = computed(() => {
 .meal-card-tools {
   display: flex;
   flex-shrink: 0;
+}
+.meal-card-invite {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .meal-card-button {
   min-height: 44px;

@@ -5,9 +5,7 @@
         <text>{{ error }}</text
         ><button class="dish-list-action" @click="retry">重新加载</button>
       </view>
-      <view v-else-if="initialized && !reviews.length" class="dish-list-state">
-        <text>暂无评价</text><text class="dish-list-hint">用餐后到菜品详情记录你的体验。</text>
-      </view>
+      <EmptyState v-else-if="initialized && !reviews.length" title="暂无评价" icon="star" />
       <template v-else-if="reviews.length">
         <ReviewCard
           v-for="item in reviews"
@@ -31,6 +29,7 @@
 <script setup lang="ts">
 import { onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import ReviewCard from './components/ReviewCard.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import { useMyReviews } from './composables/use-my-reviews';
 const { reviews, loading, initialized, error, hasMore, loadMore, refresh, retry } = useMyReviews();
 onShow(() => {

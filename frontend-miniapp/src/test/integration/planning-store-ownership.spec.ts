@@ -37,6 +37,7 @@ const uniMock = {
 beforeEach(() => {
   jest.clearAllMocks();
   jest.useFakeTimers();
+  jest.setSystemTime(new Date('2099-10-03T04:00:00Z'));
   jest.spyOn(console, 'log').mockImplementation(() => {});
   jest.spyOn(console, 'error').mockImplementation(() => {});
   storage.clear();
@@ -469,6 +470,10 @@ test.each(['success', 'failure'])('a mark-eaten %s from an earlier visible perio
   const completing = vm.executePlan(outcome === 'success' ? 'existing' : 'missing');
   hidePage();
   showPage();
+  if (outcome === 'success') {
+    await flushPromises();
+    latest('PUT', '/meal-plans/existing/completions/2099-10-03').success(ok({ ...plan('existing'), completedDates: ['2099-10-03'] }));
+  }
   await completing;
   expect(uniMock.showToast).not.toHaveBeenCalled();
   expect(usePlanStore().historyPlans.some(item => item.id === 'existing')).toBe(outcome === 'success');

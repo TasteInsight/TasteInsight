@@ -6,8 +6,11 @@ import { DishReviewStatsService } from '@/dish-review-stats-queue';
 import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ReportType } from '@/common/enums';
+import { NotificationService } from '@/notifications/notification.service';
 
 const mockPrismaService = {
+  $transaction: jest.fn((callback) => callback(mockPrismaService)),
+  $queryRaw: jest.fn(),
   dish: {
     findUnique: jest.fn(),
   },
@@ -30,10 +33,11 @@ const mockAdminConfigService = {
 
 const mockDishReviewStatsService = {
   recomputeDishStats: jest.fn(),
+  recomputeBatch: jest.fn(),
 };
 
 const mockEmbeddingQueueService = {
-  enqueueRefreshUser: jest.fn(),
+  scheduleRefreshUser: jest.fn(),
 };
 
 describe('ReviewsService', () => {
@@ -48,6 +52,10 @@ describe('ReviewsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ReviewsService,
+        {
+          provide: NotificationService,
+          useValue: { withdrawThread: jest.fn(), create: jest.fn() },
+        },
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: AdminConfigService, useValue: mockAdminConfigService },
         {
@@ -216,8 +224,9 @@ describe('ReviewsService', () => {
 
       expect(result.code).toBe(201);
       expect(result.message).toBe('创建成功');
-      expect(dishReviewStatsService.recomputeDishStats).toHaveBeenCalledWith(
-        'd1',
+      expect(dishReviewStatsService.recomputeBatch).toHaveBeenCalledWith(
+        prisma,
+        ['d1'],
       );
     });
 
@@ -273,7 +282,7 @@ describe('ReviewsService', () => {
 
       await service.createReview('u1', createDto);
 
-      expect(dishReviewStatsService.recomputeDishStats).not.toHaveBeenCalled();
+      expect(dishReviewStatsService.recomputeBatch).not.toHaveBeenCalled();
     });
 
     it('should recompute stats when an approved review becomes pending', async () => {
@@ -294,8 +303,9 @@ describe('ReviewsService', () => {
 
       await service.createReview('u1', createDto);
 
-      expect(dishReviewStatsService.recomputeDishStats).toHaveBeenCalledWith(
-        'd1',
+      expect(dishReviewStatsService.recomputeBatch).toHaveBeenCalledWith(
+        prisma,
+        ['d1'],
       );
     });
   });
@@ -450,8 +460,9 @@ describe('ReviewsService', () => {
         where: { id: 'r1' },
         data: { deletedAt: expect.any(Date) },
       });
-      expect(dishReviewStatsService.recomputeDishStats).toHaveBeenCalledWith(
-        'd1',
+      expect(dishReviewStatsService.recomputeBatch).toHaveBeenCalledWith(
+        prisma,
+        ['d1'],
       );
     });
 

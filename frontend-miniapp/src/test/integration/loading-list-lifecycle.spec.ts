@@ -7,11 +7,12 @@ import { getNewsList, getNewsById } from '@/api/modules/news';
 import ReviewsPage from '@/pages/profile/my-reviews/index.vue';
 import FavoritesPage from '@/pages/profile/my-favorites/index.vue';
 import HistoryPage from '@/pages/profile/history/index.vue';
-import NewsPage from '@/pages/news/index.vue';
+import NewsPage from '@/pages/news/components/NewsFeed.vue';
 import NewsDetailPage from '@/pages/news/components/detail.vue';
 import ReviewCard from '@/pages/profile/my-reviews/components/ReviewCard.vue';
 import DishCard from '@/pages/profile/components/ProfileDishCard.vue';
 import NewsItem from '@/pages/news/components/NewsItem.vue';
+import EmptyState from '@/components/EmptyState.vue';
 
 jest.mock('@dcloudio/uni-app', () => ({
   onLoad: jest.fn(),
@@ -55,20 +56,50 @@ const article = (id: string) => ({
   data: { id, title: `${id}公告`, content: `<p>${id}正文</p>` },
 });
 const personalCases = [
-  { name: 'reviews', Page: ReviewsPage, api: getMyReviews, empty: '暂无评价', Card: ReviewCard },
-  { name: 'favorites', Page: FavoritesPage, api: getMyFavorites, empty: '暂无收藏', Card: DishCard },
-  { name: 'history', Page: HistoryPage, api: getBrowseHistory, empty: '暂无浏览历史', Card: DishCard },
+  {
+    name: 'reviews',
+    Page: ReviewsPage,
+    api: getMyReviews,
+    empty: '暂无评价',
+    icon: 'star',
+    Card: ReviewCard,
+  },
+  {
+    name: 'favorites',
+    Page: FavoritesPage,
+    api: getMyFavorites,
+    empty: '暂无收藏',
+    icon: 'bookmark',
+    Card: DishCard,
+  },
+  {
+    name: 'history',
+    Page: HistoryPage,
+    api: getBrowseHistory,
+    empty: '暂无浏览历史',
+    icon: 'history',
+    Card: DishCard,
+  },
 ] as const;
 const listCases = [
   ...personalCases,
-  { name: 'news', Page: NewsPage, api: getNewsList, empty: '暂无公告', Card: NewsItem },
+  {
+    name: 'news',
+    Page: NewsPage,
+    api: getNewsList,
+    empty: '暂无公告',
+    icon: 'info',
+    Card: NewsItem,
+  },
 ] as const;
 const wrappers: VueWrapper[] = [];
 let store: any;
 let consoleError: jest.SpyInstance;
 
 function mountPage(Page: any) {
-  const wrapper = shallowMount(Page);
+  const wrapper = shallowMount(Page, {
+    global: { stubs: { EmptyState: false, UiIcon: false } },
+  });
   wrappers.push(wrapper);
   return wrapper;
 }
@@ -82,11 +113,13 @@ function loadDetail(id: string) {
 }
 
 function expectBlank(wrapper: VueWrapper) {
-  expect(wrapper.find('.page-content').exists()).toBe(true);
+  expect(wrapper.find('.page-content, .news-page').exists()).toBe(true);
   expect(wrapper.html()).not.toMatch(/skeleton/i);
-  expect(wrapper.find('.dish-list-state, .dish-list-footer, .news-state, .article-state').exists()).toBe(
-    false
-  );
+  expect(
+    wrapper
+      .find('.dish-list-state, .dish-list-footer, .news-state, .article-state, .empty-state')
+      .exists()
+  ).toBe(false);
   expect(wrapper.find('button').exists()).toBe(false);
 }
 
@@ -105,7 +138,7 @@ afterEach(() => {
   consoleError.mockRestore();
 });
 
-describe.each(listCases)('$name loading lifecycle', ({ name, Page, api, empty, Card }) => {
+describe.each(listCases)('$name loading lifecycle', ({ name, Page, api, empty, icon, Card }) => {
   it('keeps the first data region blank and renders returned items immediately', async () => {
     const first = deferred();
     (api as jest.Mock).mockReturnValueOnce(first.promise);
@@ -135,6 +168,10 @@ describe.each(listCases)('$name loading lifecycle', ({ name, Page, api, empty, C
     first.resolve(response([]));
     await flushPromises();
     expect(wrapper.text()).toContain(empty);
+    const emptyState = wrapper.getComponent(EmptyState);
+    expect(emptyState.props('icon')).toBe(icon);
+    expect(emptyState.text()).toBe(empty);
+    expect(emptyState.get('.ui-icon').attributes('src')).toBe(`/static/icons/ui/${icon}-muted.png`);
     expect((wrapper.vm as any).initialized).toBe(true);
 
     const refreshing = (wrapper.vm as any).refresh();
@@ -268,7 +305,9 @@ describe('news detail loading lifecycle', () => {
     async failure => {
       const first = deferred();
       const retry = deferred();
-      (getNewsById as jest.Mock).mockReturnValueOnce(first.promise).mockReturnValueOnce(retry.promise);
+      (getNewsById as jest.Mock)
+        .mockReturnValueOnce(first.promise)
+        .mockReturnValueOnce(retry.promise);
       const wrapper = mountPage(NewsDetailPage);
       loadDetail('first');
       if (failure === 'timeout') first.reject(new Error('请求超时，请重试'));
@@ -317,7 +356,9 @@ describe('news detail loading lifecycle', () => {
     await flushPromises();
     const old = deferred();
     const current = deferred();
-    (getNewsById as jest.Mock).mockReturnValueOnce(old.promise).mockReturnValueOnce(current.promise);
+    (getNewsById as jest.Mock)
+      .mockReturnValueOnce(old.promise)
+      .mockReturnValueOnce(current.promise);
     const oldRefresh = (wrapper.vm as any).retry();
     loadDetail('current');
     await nextTick();

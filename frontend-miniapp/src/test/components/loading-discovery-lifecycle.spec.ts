@@ -146,7 +146,7 @@ const mountPage = (component: any, props?: any) => {
 const loadRoute = (options: any) => (onLoad as jest.Mock).mock.calls.at(-1)![0](options);
 const expectUndisclosed = (wrapper: ReturnType<typeof mount>) => {
   expect(wrapper.html()).not.toMatch(/skeleton/i);
-  expect(wrapper.text()).not.toMatch(/暂无|没有符合|没有推荐|想吃点什么|未找到|还没有回复|加载中|正在加载/);
+  expect(wrapper.text()).not.toMatch(/暂无|没有符合|没有推荐|想吃点什么|未找到|还没有回复|还没有评价|加载中|正在加载/);
 };
 
 beforeEach(() => {
@@ -207,10 +207,10 @@ describe('discovery initial loading', () => {
     pending.reject(new Error('offline'));
     await flushPromises();
     expect(wrapper.text()).toContain('加载首页数据失败');
-    expect(wrapper.text()).not.toContain('没有推荐');
+    expect(wrapper.text()).not.toContain('暂无推荐菜品');
     await wrapper.get('.home-text-button').trigger('click');
     await flushPromises();
-    expect(wrapper.text()).toContain('没有推荐菜品');
+    expect(wrapper.text()).toContain('暂无推荐菜品');
   });
 
   test('home retains cached content during refresh and clears its readiness on account change', async () => {
@@ -510,11 +510,11 @@ describe('dish detail and discussions', () => {
     detail.resolve({ code: 200, data: dish() });
     await flushPromises();
     expect(wrapper.text()).toContain('菜品 dish');
-    expect(wrapper.text()).not.toContain('暂无评价');
+    expect(wrapper.text()).not.toContain('还没有评价');
     expect(wrapper.text()).not.toContain('加载中');
     reviews.resolve(itemsResponse());
     await flushPromises();
-    expect(wrapper.text()).toContain('暂无评价');
+    expect(wrapper.text()).toContain('还没有评价');
   });
 
   test('a failed detail refresh keeps existing content visible beside its retry', async () => {
@@ -555,15 +555,15 @@ describe('dish detail and discussions', () => {
       dishId: 'dish', reviews: [], loading: false, error: '', hasMore: false,
       initialized: false, reviewComments: {}, fetchComments: jest.fn(),
     });
-    expect(wrapper.text()).not.toContain('暂无评价');
+    expect(wrapper.text()).not.toContain('还没有评价');
     (getReviewsByDish as jest.Mock).mockRejectedValueOnce(new Error('offline'));
     await review.fetchReviews('dish', true);
     expect((review as any).reviewsInitialized.value).toBe(false);
     await wrapper.setProps({ error: review.reviewsError.value });
-    expect(wrapper.text()).not.toContain('暂无评价');
+    expect(wrapper.text()).not.toContain('还没有评价');
     await review.fetchReviews('dish', true);
     await wrapper.setProps({ initialized: (review as any).reviewsInitialized.value, error: '' });
-    expect(wrapper.text()).toContain('暂无评价');
+    expect(wrapper.text()).toContain('还没有评价');
     mockUser.sessionVersion++;
     expect((review as any).reviewsInitialized.value).toBe(false);
   });

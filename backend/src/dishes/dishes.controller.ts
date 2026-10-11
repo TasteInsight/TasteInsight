@@ -14,11 +14,12 @@ import { DishesService } from './dishes.service';
 import { GetDishesDto, GetDishesByIdsDto } from './dto/get-dishes.dto';
 import { UploadDishDto } from './dto/upload-dish.dto';
 import { AuthGuard } from '@/auth/guards/auth.guard';
+import { OptionalAuthGuard } from '@/auth/guards/optional-auth.guard';
+import { StudentGuard } from '@/auth/guards/student.guard';
 import { RecommendationRequestDto } from '@/recommendation/dto/recommendation-request.dto';
 import { RecommendationService } from '@/recommendation/recommendation.service';
 
 @Controller('dishes')
-@UseGuards(AuthGuard) // 所有接口都需要认证
 export class DishesController {
   constructor(
     private readonly dishesService: DishesService,
@@ -26,6 +27,7 @@ export class DishesController {
   ) {}
 
   @Post('upload')
+  @UseGuards(AuthGuard, StudentGuard)
   @HttpCode(HttpStatus.CREATED)
   uploadDish(@Body() uploadDishDto: UploadDishDto, @Request() req) {
     const userId = req.user.sub;
@@ -33,20 +35,23 @@ export class DishesController {
   }
 
   @Post()
+  @UseGuards(OptionalAuthGuard)
   @HttpCode(HttpStatus.OK)
   getDishes(@Body() getDishesDto: GetDishesDto, @Request() req) {
-    const userId = req.user.sub;
+    const userId = req.user?.sub;
     return this.dishesService.getDishes(getDishesDto, userId);
   }
 
   @Post('by-ids')
+  @UseGuards(OptionalAuthGuard)
   @HttpCode(HttpStatus.OK)
   getDishesByIds(@Body() body: GetDishesByIdsDto, @Request() req) {
-    const userId = req.user.sub;
+    const userId = req.user?.sub;
     return this.dishesService.getDishesByIds(body.ids, userId);
   }
 
   @Post('recommendations')
+  @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.OK)
   getRecommendations(
     @Body() getRecommendationsDto: RecommendationRequestDto,
@@ -60,13 +65,15 @@ export class DishesController {
   }
 
   @Get(':id')
+  @UseGuards(OptionalAuthGuard)
   @HttpCode(HttpStatus.OK)
   getDishById(@Param('id') id: string, @Request() req) {
-    const userId = req.user.sub;
+    const userId = req.user?.sub;
     return this.dishesService.getDishById(id, userId);
   }
 
   @Post(':id/favorite')
+  @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.OK)
   favoriteDish(@Param('id') id: string, @Request() req) {
     const userId = req.user.sub;
@@ -74,6 +81,7 @@ export class DishesController {
   }
 
   @Delete(':id/favorite')
+  @UseGuards(AuthGuard)
   @HttpCode(HttpStatus.OK)
   unfavoriteDish(@Param('id') id: string, @Request() req) {
     const userId = req.user.sub;

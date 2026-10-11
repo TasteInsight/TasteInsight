@@ -61,6 +61,7 @@ describe('router/index route guard & redirect', () => {
   }
 
   beforeEach(async () => {
+    authState.user = { canteenId: null }
     authState.isLoggedIn = false
     authState.hasPermission = (p: string) => p === 'dish:view'
     sessionStorage.clear()
@@ -96,6 +97,26 @@ describe('router/index route guard & redirect', () => {
     expect(permissionFor('AddSubDish')).toBe('dish:create')
     expect(permissionFor('EditDish')).toBe('dish:edit')
     expect(permissionFor('ViewDishDetail')).toBe('dish:view')
+  })
+
+  it.each([
+    ['StudentVerificationManage', 'student:review'],
+    ['CommunityManage', 'post:view'],
+  ])('requires global scope for %s without granting access by role', (name, permission) => {
+    const children = capturedRoutes!.find((route: any) => route.path === '/').children
+    const route = children.find((route: any) => route.name === name)
+    expect(route.meta.requiredPermission).toBe(permission)
+    expect(route.meta.globalOnly).toBe(true)
+    authState.isLoggedIn = true
+    authState.hasPermission = (value: string) => value === permission
+    authState.user = { role: 'superadmin', canteenId: 'c1' }
+    const next = vi.fn()
+    guard({ meta: route.meta, fullPath: `/${route.path}` }, { path: '/' }, next)
+    expect(next).toHaveBeenCalledWith('/forbidden')
+    next.mockReset()
+    authState.user.canteenId = null
+    guard({ meta: route.meta, fullPath: `/${route.path}` }, { path: '/' }, next)
+    expect(next).toHaveBeenCalledWith()
   })
 
   it('declares either-permission access for combined moderation routes', () => {

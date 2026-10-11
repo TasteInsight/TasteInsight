@@ -31,7 +31,8 @@ backend/
 │   ├── admin-uploads/       # 用户上传菜品审核
 │   ├── admin-windows/       # 窗口管理（管理端）
 │   ├── ai-chat/             # AI 聊天服务
-│   ├── auth/                # 用户认证（微信登录）
+│   ├── auth/                # 账号、手机号和各端微信身份
+│   ├── campus-identity/     # 校园资格验证与审核
 │   ├── canteens/            # 食堂接口（用户端）
 │   ├── comments/            # 评论接口
 │   ├── common/              # 公共模块（装饰器、守卫等）
@@ -41,12 +42,18 @@ backend/
 │   ├── embedding-queue/     # 嵌入向量生成队列
 │   ├── meal-plans/          # 菜单规划接口
 │   ├── news/                # 新闻公告接口
+│   ├── notifications/       # 站内消息、通知生成与外推投递
+│   ├── social/              # 社区帖子、回复、点赞与审核
 │   ├── recommendation/      # 智能推荐接口
 │   ├── reviews/             # 评价接口
 │   ├── upload/              # 文件上传服务
 │   ├── user-profile/        # 用户信息接口
-│   ├── app.module.ts        # 应用主模块
-│   ├── main.ts              # 应用入口
+│   ├── app.module.ts        # 开发与集成测试的组合模块
+│   ├── main.ts              # 开发入口
+│   ├── main.public.ts       # 生产用户 API
+│   ├── main.admin.ts        # 生产管理 API
+│   ├── main.worker.ts       # 后台队列与调度
+│   ├── main.migrate.ts      # 迁移与首次初始化
 │   └── prisma.service.ts    # Prisma 数据库服务
 ├── prisma/
 │   ├── schema.prisma        # 数据库模型定义
@@ -55,7 +62,9 @@ backend/
 ├── python-embedding-service/ # Python 嵌入服务
 ├── test/                    # E2E 测试
 ├── scripts/                 # 辅助脚本
-├── docker-compose.yml       # Docker 编排文件
+├── docker-compose.local.yml # 本地数据库与 Redis
+├── docker-compose.yml       # 生产 Docker 编排
+├── nginx.https.conf.template # HTTPS 网关入口模板
 └── Dockerfile               # Docker 构建文件
 ```
 
@@ -65,12 +74,15 @@ backend/
 
 | 模块 | 描述 |
 |------|------|
-| `auth` | 微信小程序授权登录、Token 刷新 |
+| `auth` | 手机验证码、微信小程序/移动应用登录、身份绑定、Token 刷新 |
+| `campus-identity` | 校园 OAuth、校园邮箱验证、学生资格审核与有效期 |
 | `canteens` | 食堂列表、食堂详情、窗口信息 |
 | `dishes` | 菜品列表、详情、搜索、筛选、收藏 |
 | `reviews` | 发布评价、编辑评价、删除评价、评分统计 |
 | `comments` | 评论回复、删除评论 |
-| `meal-plans` | 菜单规划增删改查、执行规划 |
+| `meal-plans` | 日期筛选、逐日完成、计划公开设置、约饭邀请与申请 |
+| `social` | 独立帖子与回复、公开个人主页、幂等点赞、举报与审核 |
+| `notifications` | 消息列表、未读数、已读、每周热门菜品、持久投递 |
 | `news` | 新闻公告列表、详情 |
 | `user-profile` | 用户信息、偏好设置、浏览历史 |
 | `recommendation` | 个性化菜品推荐 |
@@ -90,6 +102,8 @@ backend/
 | `admin-reports` | 举报处理 |
 | `admin-uploads` | 用户上传菜品审核 |
 | `admin-news` | 新闻公告管理（富文本编辑） |
+| `admin/student-verifications` | 全局管理员审核、拒绝或撤销学生资格 |
+| `admin/posts`、`admin/post-comments` | 帖子与回复列表、审核和删除 |
 | `admin-config` | 系统配置（推荐策略、AI 参数等） |
 | `admin-recommendation` | 推荐系统配置与管理 |
 
@@ -181,7 +195,7 @@ NODE_ENV=production node dist/src/main.public
 # 其他进程同样注入 production：node dist/src/main.admin、node dist/src/main.worker
 ```
 
-生产进程需要显式注入 `NODE_ENV=production`、`DATABASE_URL` 及自身角色的环境配置，不读取开发 `.env`。公共 API、管理 API 和 worker 分别运行，使用共享 schema；`main.migrate` 统一执行迁移和首次初始化。两个 API 需要 Redis、公共 `APP_URL`，以及至少 32 字节且互不相同的 access/refresh 密钥；完整 Compose / 网关部署还要求管理 `ADMIN_APP_URL`。公共 API 还需配置小程序 `WECHAT_APPID` 和 `WECHAT_SECRET`，微信与 AI 配置仅注入该角色。worker 需要 Redis，但不要求 JWT 或 origin；迁移只需要数据库和可选首次管理员凭据。每个应用根模块在 provider 初始化前完成角色配置校验。完整说明见 [环境配置与部署](../docs/环境配置与部署.md)。
+生产进程需要显式注入 `NODE_ENV=production`、`DATABASE_URL` 及自身角色的环境配置，不读取开发 `.env`。公共 API、管理 API 和 worker 分别运行，使用共享 schema；`main.migrate` 统一执行迁移和首次初始化。两个 API 需要 Redis、公共 `APP_URL`，以及至少 32 字节且互不相同的 access/refresh 密钥；完整 Compose / 网关部署还要求管理 `ADMIN_APP_URL`。用户身份渠道与 AI 配置仅供公共 API 使用。worker 需要 Redis，但不要求 JWT 或 origin；迁移只需要数据库和可选首次管理员凭据。每个应用根模块在 provider 初始化前完成角色配置校验。完整说明见 [环境配置与部署](../docs/环境配置与部署.md)。
 
 ### Docker 部署
 
@@ -252,7 +266,10 @@ pnpm run test:e2e:cov
 
 | 模型 | 描述 |
 |------|------|
-| `User` | 小程序用户（微信 OpenID 绑定） |
+| `User` | 跨平台账号；内部 ID 为数据归属依据 |
+| `UserIdentity` | 经验证的手机号、AppID 范围 OpenID 与开放平台范围 UnionID |
+| `StudentVerification` | 当前校园资格、证据来源、有效期和审核信息 |
+| `VerificationChallenge`、`CampusOAuthAttempt` | 短效验证挑战与一次性认证流程 |
 | `UserPreference` | 用户偏好（口味、价格、忌口等） |
 | `UserSetting` | 用户设置（通知、显示等） |
 | `Admin` | 管理员账号 |
@@ -286,7 +303,29 @@ pnpm run test:e2e:cov
 
 评价和回复默认直接通过。管理台的“人工审核”开关开启时，后端对应的 `review.autoApprove` 或 `comment.autoApprove` 为 `false`。配置优先级为食堂配置、全局配置、模板默认值；升级默认值不会覆盖显式配置，也不会批量通过已有待审内容。菜品投稿审核保持独立。
 
-已通过且未删除的内容对所有登录用户可见。待审核或未通过的内容仅作者和有相应权限的管理员可见，待审评价不计入公开评分。本人评价通过 `GET /dishes/:dishId/reviews/mine` 读取；回复列表按当前用户过滤，并返回每条回复的 `status` 和父评价的 `canReply`。未公开评价及未通过审核的回复不能作为新回复目标。
+已通过且未删除的内容可供游客浏览。待审核或未通过的内容仅作者和有相应权限的管理员可见，待审评价不计入公开评分。本人评价通过 `GET /dishes/:dishId/reviews/mine` 读取；回复列表按当前用户过滤，并返回每条回复的 `status` 和父评价的 `canReply`。未公开评价及未通过审核的回复不能作为新回复目标。公开发言、发帖、点赞与举报需要当前有效的学生资格；作者仍可撤回自己的历史内容。
+
+### 账号与校园认证
+
+`GET /auth/capabilities` 返回当前可用登录和认证方式。小程序使用 `WECHAT_APPID/WECHAT_SECRET`，Android/iOS 使用 `WECHAT_APP_APPID/WECHAT_APP_SECRET`，两类 OpenID 分别绑定到其 AppID。`WECHAT_OPEN_PLATFORM_ID` 定义共享 UnionID 的开放平台主体。凭据冲突返回 409，不自动合并账号。
+
+手机号按 E.164 传入，例如 `+8613812345678`。`POST /auth/phone/challenges` 发码，`POST /auth/phone/login` 使用 `challengeId/code` 登录。验证码摘要、发送间隔、目标/IP 频率、尝试次数和一次性消费均在服务端执行。`SMS_GATEWAY_URL/TOKEN` 对接 HTTPS 短信网关：请求 `{to,code,expiresIn,purpose}`，带 Bearer 授权与 `Idempotency-Key`，成功响应须含 `messageId`。邮件通过 `RESEND_API_KEY/EMAIL_FROM` 发出；`CAMPUS_EMAIL_DOMAINS` 是准确域名列表，邮箱验证后进入资格审核，不凭域名直接授予学生权限。
+
+校园 OAuth 使用显式配置的授权、令牌、用户信息端点及客户端凭据。`CAMPUS_OAUTH_STUDENT_CLAIM/STUDENT_VALUES` 仅映射校方可信的当前在读属性；缺少该属性时保留人工审核。清华统一身份平台的正式端点、客户端注册、scope 和属性映射应以学校提供的接入材料为准，不使用第三方系统的 AppID。应用不接收校园密码。
+
+OAuth 回调只保存临时证明。原账号还需通过原客户端持有的认证请求和回调页生成的短效确认码完成绑定；确认码不通过状态查询返回。资格写入、一次性消费和过期审核版本检查处于同一事务。校园邮箱审核与撤销需 `student:review` 和全局管理范围；批准必须提供有效期，最长 366 天。权限由服务端实时检查，过期或撤销后已有 access token 也不能继续公开贡献。
+
+反向代理后的验证码 IP 限流需配置 `TRUSTED_PROXY_CIDRS`，仅信任实际代理地址或网段。校园回调 location 不记录带授权码的查询日志。
+
+### 社区、日历与消息
+
+帖子与菜品评价使用独立模型。`post.autoApprove`、`postComment.autoApprove` 默认开启；关闭后作者可见自己的内容，管理员通过后公开。公开主页只投影昵称、头像、已认证身份标识、简介与公开帖子数量，不返回登录身份、认证证据或饮食偏好。
+
+计划日期按校园时区 `Asia/Shanghai` 处理；列表日期过滤为闭区间重叠。完成状态按计划与日期保存，不允许将未来日期标记为已吃。公开计划同时要求有效学生身份、`settings.showMealPlans=true` 和该计划 `isPublic=true`；默认均不公开。约饭邀请单独发布，只公开选定用餐时间、食堂与名额，接受申请在邀请行锁内核对剩余名额。
+
+通知与互动事务同步落库；取消点赞、隐藏或删除内容会撤回关联通知。消息列表、未读数、已读操作均限定当前账号，`scope=service` 只保留菜品、评价和推荐类消息。新品与价格变动生成持久 campaign，每次限量处理收件人并保存进度；周推荐保存真实菜品集合，详情读取时过滤已下架菜品。
+
+配置 `NOTIFICATION_WEBHOOK_URL/SECRET` 可启用外推。网关收到 `eventId/recipientId/type/actor/target/createdAt`，须按 `Idempotency-Key` 去重，并校验原始请求体的 `X-TasteInsight-Signature`（`sha256=` + HMAC-SHA256）。生产使用 HTTPS。数据库 outbox 保存租约、重试及失败状态，投递前重新检查偏好和内容可见性；原生推送或微信订阅的目标映射、模板和用户授权由所接消息网关执行。
 
 用户端提交后展示本人内容，编辑框关闭或输入清空作为成功反馈。审核状态在管理端展示，服务端据此控制公开可见性。
 

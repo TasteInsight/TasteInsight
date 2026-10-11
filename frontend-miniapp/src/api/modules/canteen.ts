@@ -17,6 +17,7 @@ import type { ApiResponse } from '@/types/api';
 export function getCanteenList(params?: PaginationParams): Promise<ApiResponse<CanteenListData>> {
   return request<CanteenListData>({
     url: '/canteens',
+    auth: 'optional',
     method: 'GET',
     data: params,
   });
@@ -31,6 +32,7 @@ export function getCanteenDetail(
 ): Promise<ApiResponse<Canteen>> {
   return request<Canteen>({
     url: `/canteens/${canteenId}`,
+    auth: 'optional',
     method: 'GET',
     data: params,
   });
@@ -45,6 +47,7 @@ export function getWindowList(
 ): Promise<ApiResponse<WindowListData>> {
   return request<WindowListData>({
     url: `/canteens/${canteenId}/windows`,
+    auth: 'optional',
     method: 'GET',
     data: params,
   });
@@ -59,6 +62,7 @@ export function getWindowDetail(
 ): Promise<ApiResponse<Window>> {
   return request<Window>({
     url: `/windows/${windowId}`,
+    auth: 'optional',
     method: 'GET',
     data: params,
   });
@@ -73,6 +77,7 @@ export function getWindowDishes(
 ): Promise<ApiResponse<WindowDishesData>> {
   return request<WindowDishesData>({
     url: `/windows/${windowId}/dishes`,
+    auth: 'optional',
     method: 'GET',
     data: params,
   });

@@ -5,9 +5,11 @@
         <text>{{ error }}</text
         ><button class="dish-list-action" @click="retry">重新加载</button>
       </view>
-      <view v-else-if="initialized && !favoriteItems.length" class="dish-list-state">
-        <text>暂无收藏</text><text class="dish-list-hint">在菜品详情点击收藏，留住想吃的菜。</text>
-      </view>
+      <EmptyState
+        v-else-if="initialized && !favoriteItems.length"
+        title="暂无收藏"
+        icon="bookmark"
+      />
       <template v-else-if="favoriteItems.length">
         <DishCard
           v-for="item in favoriteItems"
@@ -44,6 +46,7 @@
 <script setup lang="ts">
 import { onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import DishCard from '@/pages/profile/components/ProfileDishCard.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import { useFavorites } from './composables/use-favorites';
 const {
   favoriteItems,

@@ -27,6 +27,9 @@ describe('Upload ownership after a formal dish moves', () => {
         }
       : null;
     const prisma: any = {
+      notificationCampaign: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
       dishUpload: {
         findUnique: jest.fn(async () => ({ ...source })),
         findFirst: jest.fn(async ({ where }) => {
@@ -48,6 +51,7 @@ describe('Upload ownership after a formal dish moves', () => {
         delete: jest.fn(async () => dish),
       },
       $queryRaw: jest.fn(async () => []),
+      $executeRaw: jest.fn(async () => 0),
       $transaction: jest.fn(async (callback) => callback(prisma)),
     };
     return {

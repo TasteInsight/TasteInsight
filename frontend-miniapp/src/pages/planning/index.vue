@@ -37,26 +37,49 @@
 
     <!-- #endif -->
 
-    <!-- 标签页 -->
-    <view class="planning-tabs" role="tablist" aria-label="规划分类">
+    <view class="planning-tabs" role="tablist" aria-label="规划视图">
       <button
+        v-for="option in viewOptions"
+        :key="option.value"
         class="planning-button planning-tab"
-        :class="{ 'planning-tab--selected': activeTab === 'current' }"
+        :class="{ 'planning-tab--selected': viewMode === option.value }"
         role="tab"
-        :aria-selected="activeTab === 'current'"
-        @tap="switchTab('current')"
+        :aria-selected="viewMode === option.value"
+        @click="setViewMode(option.value)"
       >
-        <text class="text-sm">当前规划{{ initialized ? ' (' + currentPlans.length + ')' : '' }}</text>
+        {{ option.label }}
       </button>
-      <button
-        class="planning-button planning-tab"
-        :class="{ 'planning-tab--selected': activeTab === 'history' }"
-        role="tab"
-        :aria-selected="activeTab === 'history'"
-        @tap="switchTab('history')"
+    </view>
+    <PlanCalendar
+      v-if="viewMode !== 'list'"
+      :mode="viewMode"
+      :plans="calendarPlans"
+      :today="today"
+      :selected-date="selectedDate"
+      @select="selectDate"
+    />
+
+    <view v-if="viewMode !== 'day'" class="planning-agenda-heading">
+      <UiPicker
+        v-if="viewMode === 'list'"
+        mode="selector"
+        :range="listCategoryLabels"
+        :value="activeTab === 'current' ? 0 : 1"
+        aria-label="规划分类"
+        @change="changeListCategory"
+        ><button class="planning-button planning-filter" aria-label="选择列表范围">
+          <text
+            >{{ activeTab === 'current' ? '当前规划' : '历史规划'
+            }}{{ initialized ? ' (' + displayPlans.length + ')' : '' }}</text
+          >
+          <uni-icons type="down" size="14" color="#667085" aria-hidden="true" /></button
+      ></UiPicker>
+      <text v-else class="planning-agenda-title">{{ selectedDateLabel }}</text>
+      <text
+        v-if="viewMode !== 'list' && initialized && displayPlans.length"
+        class="planning-agenda-count"
+        >{{ displayPlans.length }} 个计划</text
       >
-        <text class="text-sm">历史规划{{ initialized ? ' (' + historyPlans.length + ')' : '' }}</text>
-      </button>
     </view>
 
     <!-- 错误状态 -->
@@ -68,49 +91,48 @@
     </view>
 
     <!-- 空状态 -->
-    <view
-      v-else-if="initialized && displayPlans.length === 0"
-      class="flex flex-col items-center justify-center py-20 px-5"
-    >
-      <text class="text-gray-600 text-base mb-3">{{
-        activeTab === 'current' ? '暂无当前规划' : '暂无历史规划'
-      }}</text>
-      <text v-if="activeTab === 'current'" class="planning-empty-hint"
-        >先选喜欢的菜，再安排一餐。</text
-      >
-      <button
-        v-if="activeTab === 'current'"
-        @tap="createNewPlan"
-        class="planning-button planning-primary"
-      >
-        <text class="text-gray-100">创建第一个规划</text>
-      </button>
-    </view>
+    <EmptyState
+      v-else-if="initialized && displayPlans.length === 0 && viewMode !== 'day'"
+      :title="
+        viewMode === 'list'
+          ? activeTab === 'current'
+            ? '暂无当前规划'
+            : '暂无历史规划'
+          : '这天还没有安排'
+      "
+      icon="calendar"
+    />
 
     <!-- 规划列表（使用页面原生滚动，避免 scroll-view 未设置高度导致无法滚动） -->
-    <view v-if="displayPlans.length" class="planning-list">
-      <view class="flex flex-col items-center w-full">
+    <view
+      v-if="displayPlans.length || (viewMode === 'day' && initialized && !error)"
+      class="planning-list"
+    >
+      <view v-for="group in planGroups" :key="group.key" class="planning-meal-group">
+        <text v-if="viewMode === 'day'" class="planning-meal-title">{{ group.label }}</text>
+        <text v-if="!group.plans.length" class="planning-meal-empty">尚未安排</text>
         <PlanCard
-          v-for="plan in displayPlans"
+          v-for="plan in group.plans"
           :key="plan.id"
           :plan="plan"
-          :is-history="activeTab === 'history'"
+          :is-history="viewMode === 'list' && activeTab === 'history'"
+          :occurrence-date="viewMode === 'list' ? '' : selectedDate"
+          :show-schedule="viewMode !== 'day'"
+          :today="today"
+          :can-publish="canContribute"
           @view="viewPlanDetail(plan)"
           @edit="editPlan(plan)"
           @delete="deletePlan(plan.id)"
           @execute="handleExecutePlan(plan)"
+          @privacy="togglePublicPlan(plan)"
+          @invite="openInvite(plan)"
           class="w-full"
         />
-        <view class="h-5"></view>
       </view>
     </view>
 
     <!-- 详情对话框 -->
-    <PlanDetailDialog
-      :visible="showDetailDialog"
-      :plan="selectedPlan"
-      @close="closeDetailDialog"
-    />
+    <PlanDetailDialog :visible="showDetailDialog" :plan="selectedPlan" @close="closeDetailDialog" />
 
     <!-- 编辑对话框 -->
     <PlanEditDialog
@@ -127,14 +149,30 @@
       ref="createDialogRef"
       :visible="showCreateDialog"
       :plan="null"
+      :initial-date="viewMode === 'list' ? today : selectedDate"
       :submitting="submitting"
       @close="closeCreateDialog"
       @submit="submitCreate"
     />
 
+    <!-- #ifndef MP-WEIXIN -->
+    <DiningInviteSheet
+      :visible="!!invitingPlan"
+      :plan="invitingPlan"
+      :initial-date="selectedDate"
+      @close="invitingPlan = null"
+      @saved="invitingPlan = null"
+    />
+    <!-- #endif -->
+
     <!-- 浮动新建按钮 -->
     <button
-      v-if="activeTab === 'current' && !showCreateDialog && !showEditDialog && !showDetailDialog"
+      v-if="
+        (viewMode !== 'list' || activeTab === 'current') &&
+        !showCreateDialog &&
+        !showEditDialog &&
+        !showDetailDialog
+      "
       class="planning-button planning-new"
       aria-label="新建规划"
       @tap="createNewPlan"
@@ -146,13 +184,86 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, isRef, onMounted, onBeforeUnmount, nextTick } from 'vue';
-import { onHide, onPullDownRefresh, onBackPress } from '@dcloudio/uni-app';
-import { useMenuPlanning } from './composables/use-menu-planning';
+import { ref, computed, watch, isRef, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { onHide, onShow, onPullDownRefresh, onBackPress } from '@dcloudio/uni-app';
+import { useMenuPlanning, type PlanningViewMode } from './composables/use-menu-planning';
 import type { EnrichedMealPlan } from '@/store/modules/use-plan-store';
 import PlanCard from './components/PlanCard.vue';
 import PlanDetailDialog from './components/PlanDetailDialog.vue';
 import PlanEditDialog from '@/components/meal-plan/PlanEditDialog.vue';
+import PlanCalendar from './components/PlanCalendar.vue';
+import UiPicker from '@/components/UiPicker.vue';
+import EmptyState from '@/components/EmptyState.vue';
+import { useUserStore } from '@/store/modules/use-user-store';
+// #ifndef MP-WEIXIN
+import DiningInviteSheet from './components/DiningInviteSheet.vue';
+import { usePlanStore } from '@/store/modules/use-plan-store';
+// #endif
+
+const userStore = useUserStore();
+const viewOptions: { value: PlanningViewMode; label: string }[] = [
+  { value: 'month', label: '月' },
+  { value: 'week', label: '周' },
+  { value: 'day', label: '日' },
+  { value: 'list', label: '列表' },
+];
+const listCategoryLabels = ['当前规划', '历史规划'];
+const canContribute = computed(() => userStore.userInfo?.capabilities?.canContribute === true);
+// #ifndef MP-WEIXIN
+const planStore = usePlanStore();
+const invitingPlan = ref<EnrichedMealPlan | null>(null);
+let socialViewVersion = 0;
+let socialDisposed = false;
+const captureSocialView = () => {
+  const version = socialViewVersion;
+  const session = userStore.sessionVersion;
+  return () =>
+    !socialDisposed && version === socialViewVersion && session === userStore.sessionVersion;
+};
+watch(
+  () => userStore.sessionVersion,
+  () => {
+    invitingPlan.value = null;
+  },
+  { flush: 'sync' }
+);
+const openInvite = (plan: EnrichedMealPlan) => {
+  invitingPlan.value = plan;
+};
+async function togglePublicPlan(plan: EnrichedMealPlan) {
+  const isCurrent = captureSocialView();
+  const makePublic = !plan.isPublic;
+  const confirmed = await new Promise<boolean>(resolve =>
+    uni.showModal({
+      title: makePublic ? '公开这份计划' : '设为私密',
+      content: !makePublic
+        ? '这份计划将不再出现在个人主页。'
+        : userStore.userInfo?.settings?.showMealPlans
+          ? '其他人可以看到这份计划的日期、餐次和菜品。'
+          : '其他人可看到日期、餐次和菜品。还需在个人空间的计划页开启展示。',
+      confirmText: makePublic ? '公开' : '设为私密',
+      success: result => resolve(!!result.confirm),
+      fail: () => resolve(false),
+    })
+  );
+  if (!confirmed || !isCurrent()) return;
+  try {
+    await planStore.updatePlan(plan.id, { isPublic: makePublic });
+    if (isCurrent())
+      uni.showToast({
+        title: !makePublic
+          ? '已设为私密'
+          : userStore.userInfo?.settings?.showMealPlans
+            ? '已设为公开'
+            : '请在个人空间开启计划展示',
+        icon: 'none',
+      });
+  } catch (cause) {
+    if (isCurrent())
+      uni.showToast({ title: cause instanceof Error ? cause.message : '保存失败', icon: 'none' });
+  }
+}
+// #endif
 
 // 弹窗引用
 const editDialogRef = ref<InstanceType<typeof PlanEditDialog> | null>(null);
@@ -184,7 +295,35 @@ const {
   refreshPlans,
   executePlan,
   handlePageHide,
+  handlePageShow,
+  calendarPlans,
+  selectedDate,
+  selectDate,
+  today,
+  viewMode,
+  setViewMode,
 } = useMenuPlanning();
+
+const selectedDateLabel = computed(
+  () =>
+    `${selectedDate.value.slice(0, 4) !== today.value.slice(0, 4) ? selectedDate.value.slice(0, 4) + ' 年 ' : ''}${Number(selectedDate.value.slice(5, 7))} 月 ${Number(selectedDate.value.slice(-2))} 日${selectedDate.value === today.value ? ' · 今天' : ''}`
+);
+const planGroups = computed(() =>
+  viewMode.value === 'day'
+    ? [
+        { key: 'breakfast', label: '早餐' },
+        { key: 'lunch', label: '午餐' },
+        { key: 'dinner', label: '晚餐' },
+        { key: 'nightsnack', label: '夜宵' },
+      ].map(group => ({
+        ...group,
+        plans: displayPlans.value.filter(plan => plan.mealTime === group.key),
+      }))
+    : [{ key: 'all', label: '', plans: displayPlans.value }]
+);
+function changeListCategory(event: { detail: { value: number | string } }) {
+  switchTab(Number(event.detail.value) === 1 ? 'history' : 'current');
+}
 
 // 微信小程序 page-container：延迟销毁以避免关闭弹窗后出现滚动锁定
 const shouldRenderDetailHelper = ref(false);
@@ -248,10 +387,21 @@ if (isRef(showCreateDialog)) {
 onHide(() => {
   handlePageHide();
   if (showDetailDialog.value) closeDetailDialog();
+  // #ifndef MP-WEIXIN
+  socialViewVersion += 1;
+  invitingPlan.value = null;
+  // #endif
 });
+onShow(() => handlePageShow());
 
 // 返回键拦截处理（App/H5 端备用）
 onBackPress(() => {
+  // #ifndef MP-WEIXIN
+  if (invitingPlan.value) {
+    invitingPlan.value = null;
+    return true;
+  }
+  // #endif
   if (showCreateDialog.value) {
     void requestCreateClose();
     return true;
@@ -270,7 +420,7 @@ onBackPress(() => {
 });
 
 const handleExecutePlan = async (plan: EnrichedMealPlan) => {
-  await executePlan(plan.id);
+  await executePlan(plan.id, !plan.isCompleted);
 };
 
 // 下拉刷新处理
@@ -296,6 +446,10 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  // #ifndef MP-WEIXIN
+  socialDisposed = true;
+  socialViewVersion += 1;
+  // #endif
   try {
     uni.$off && uni.$off('meal-plan:changed', refreshPlans);
   } catch (e) {
@@ -307,6 +461,8 @@ onBeforeUnmount(() => {
 <style scoped>
 .planning-page {
   position: relative;
+  max-width: 680px;
+  margin: 0 auto;
   padding-bottom: calc(96px + env(safe-area-inset-bottom));
   background: #fff;
   color: #1f2937;
@@ -316,6 +472,58 @@ onBeforeUnmount(() => {
   display: flex;
   border-bottom: 1px solid #e5e7eb;
   background: #fff;
+  padding: 0 16px;
+}
+.planning-agenda-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px 0;
+  min-height: 44px;
+}
+.planning-agenda-title,
+.planning-meal-title {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.planning-agenda-count,
+.planning-meal-empty {
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.planning-button.planning-filter {
+  gap: 6px;
+  margin-left: -8px;
+  padding: 10px 8px;
+  border: 0;
+  border-radius: 8px;
+  min-height: 44px;
+  background: transparent;
+  color: #1f2937;
+  font-size: var(--field-font-size);
+  line-height: var(--field-line-height);
+  font-weight: 600;
+}
+.planning-button.planning-filter:active {
+  background: #f4f4f5;
+  opacity: 1;
+}
+@media (hover: hover) {
+  .planning-button.planning-filter:hover {
+    background: #f4f4f5;
+  }
+}
+.planning-meal-title {
+  display: block;
+  padding-top: 20px;
+}
+.planning-meal-empty {
+  display: block;
+  padding: 12px 0 20px;
+  border-bottom: 1px solid #e5e7eb;
 }
 .planning-button {
   display: flex;
@@ -343,7 +551,7 @@ onBeforeUnmount(() => {
 }
 .planning-tab {
   flex: 1;
-  min-height: 52px;
+  min-height: 44px;
   padding: 0 4px;
   border-bottom: 2px solid transparent;
   border-radius: 0;
@@ -356,11 +564,6 @@ onBeforeUnmount(() => {
 .planning-primary {
   background: #660874;
   color: #fff;
-}
-.planning-empty-hint {
-  color: #667085;
-  font-size: 14px;
-  margin-bottom: 20px;
 }
 .planning-list {
   box-sizing: border-box;

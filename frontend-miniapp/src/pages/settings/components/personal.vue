@@ -58,7 +58,6 @@ const pageState = computed(() => ({
   loadError: state.loadError.value,
   saving: state.saving.value,
   saved: state.saved.value,
-  dirty: state.dirty.value,
   restoredDraft: state.restoredDraft.value,
 }));
 onBackPress(handleBackPress);

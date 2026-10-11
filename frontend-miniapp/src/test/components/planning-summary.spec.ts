@@ -23,11 +23,11 @@ const plan = {
 } as any;
 
 test('plan cards retain the date range and mark-eaten action without opening details', async () => {
-  const wrapper = mount(PlanCard, { props: { plan } });
+  const wrapper = mount(PlanCard, { props: { plan, today: '2099-10-03' } });
   expect(wrapper.text()).toContain('10月03日 — 10月06日');
   expect(wrapper.text()).toContain(plan.dishes[0].name);
   expect(wrapper.text()).toContain('¥12/两');
-  expect(wrapper.text()).toContain('所列单价合计 ¥12.00');
+  expect(wrapper.text()).toContain('单价合计 ¥12.00');
   expect(wrapper.find('.meal-card-image').exists()).toBe(false);
   expect(wrapper.text()).not.toContain('暂无图片');
   await wrapper.find('.meal-card-complete').trigger('tap');
@@ -52,6 +52,30 @@ test('plan details preserve multi-day information and navigate to the selected d
   wrapper.unmount();
 });
 
+test('day agenda cards preserve per-day completion rules without duplicate schedule labels', async () => {
+  const wrapper = mount(PlanCard, {
+    props: {
+      plan,
+      today: '2099-10-05',
+      occurrenceDate: '2099-10-04',
+      isHistory: true,
+      showSchedule: false,
+      canPublish: true,
+    },
+  });
+  expect(wrapper.find('.meal-card-title').exists()).toBe(false);
+  expect(wrapper.get('.meal-card-complete').attributes('disabled')).toBeUndefined();
+  await wrapper.get('.meal-card-complete').trigger('tap');
+  expect(wrapper.emitted('execute')).toHaveLength(1);
+  await wrapper.setProps({ occurrenceDate: '2099-10-06', isHistory: false });
+  expect(wrapper.get('.meal-card-complete').attributes('disabled')).toBeDefined();
+  expect(wrapper.text()).toContain('尚未到用餐日');
+  expect(wrapper.text()).toContain('发起约饭');
+  await wrapper.setProps({ occurrenceDate: '2099-10-04', plan: { ...plan, isCompleted: true } });
+  expect(wrapper.get('.meal-card-complete').text()).toBe('撤销已吃');
+  wrapper.unmount();
+});
+
 test.each([
   ['card', PlanCard],
   ['detail', PlanDetailDialog],
@@ -65,12 +89,13 @@ test.each([
     const wrapper = mount(component as any, {
       props: { visible: true, plan: withImage('https://images.test/old.jpg') },
     });
-    await wrapper.get('image').trigger('error');
-    expect(wrapper.find('image').exists()).toBe(false);
+    await wrapper.get('.meal-card-image, .meal-detail-image').trigger('error');
     expect(wrapper.find('.meal-card-image, .meal-detail-image').exists()).toBe(false);
     expect(wrapper.text()).not.toContain('暂无图片');
     await wrapper.setProps({ plan: withImage('https://images.test/current.jpg') });
-    expect(wrapper.get('image').attributes('src')).toBe('https://images.test/current.jpg');
+    expect(wrapper.get('.meal-card-image, .meal-detail-image').attributes('src')).toBe(
+      'https://images.test/current.jpg'
+    );
     wrapper.unmount();
   }
 );

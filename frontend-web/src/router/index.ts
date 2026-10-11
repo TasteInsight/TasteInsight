@@ -23,6 +23,8 @@ const CommentManage = () => import('@/views/CommentManage.vue')
 const ReviewManage = () => import('@/views/ReviewManage.vue')
 const ConfigManage = () => import('@/views/ConfigManage.vue')
 const ExperimentManage = () => import('@/views/ExperimentManage.vue')
+const StudentVerificationManage = () => import('@/views/StudentVerificationManage.vue')
+const CommunityManage = () => import('@/views/CommunityManage.vue')
 
 const routes = [
   {
@@ -152,6 +154,18 @@ const routes = [
         },
       },
       {
+        path: 'student-verification-manage',
+        name: 'StudentVerificationManage',
+        component: StudentVerificationManage,
+        meta: { requiresAuth: true, requiredPermission: 'student:review', globalOnly: true },
+      },
+      {
+        path: 'community-manage',
+        name: 'CommunityManage',
+        component: CommunityManage,
+        meta: { requiresAuth: true, requiredPermission: 'post:view', globalOnly: true },
+      },
+      {
         path: 'config-manage',
         name: 'ConfigManage',
         component: ConfigManage,
@@ -194,7 +208,8 @@ router.beforeEach((to, _from, next) => {
         Array.isArray(requiredPermissions) &&
         requiredPermissions.length > 0 &&
         !requiredPermissions.some((permission) => authStore.hasPermission(permission))
-      if (lacksRequiredPermission || lacksAnyRequiredPermission) {
+      const lacksGlobalScope = to.meta.globalOnly && Boolean(authStore.user?.canteenId)
+      if (lacksRequiredPermission || lacksAnyRequiredPermission || lacksGlobalScope) {
         // 没有权限，跳转到第一个有权限的页面
         const firstRoute = getFirstAccessibleRoute(authStore)
         next(firstRoute)

@@ -4,7 +4,7 @@
       class="plan-sheet"
       role="dialog"
       aria-modal="true"
-      :aria-label="isEdit ? '编辑规划' : '加入这一餐'"
+      :aria-label="isEdit ? '编辑规划' : initialDishes?.length ? '加入这一餐' : '新建规划'"
       @tap.stop
       @touchmove.stop
     >
@@ -41,7 +41,7 @@
               </button>
             </view>
             <view class="plan-date-row">
-              <picker
+              <UiPicker
                 class="plan-date"
                 mode="date"
                 :value="formData.startDate"
@@ -51,8 +51,8 @@
                   ><text class="plan-hint">{{ multiDay ? '开始日期' : '日期' }}</text
                   ><text>{{ formData.startDate }}</text></view
                 >
-              </picker>
-              <picker
+              </UiPicker>
+              <UiPicker
                 v-if="multiDay"
                 class="plan-date"
                 mode="date"
@@ -63,7 +63,7 @@
                 <view class="plan-field"
                   ><text class="plan-hint">结束日期</text><text>{{ formData.endDate }}</text></view
                 >
-              </picker>
+              </UiPicker>
             </view>
           </view>
           <view class="plan-section">
@@ -131,34 +131,39 @@
               </button>
               <button class="plan-button plan-search-button" @tap="handleSearch">搜索</button>
             </view>
-            <view class="plan-date-row">
-              <picker
-                class="plan-date"
+            <view class="plan-location-filters">
+              <UiPicker
+                class="plan-location-picker"
                 mode="selector"
                 :range="canteenList"
-                :disabled="canteenLoading && !canteenList.length"
+                :value="selectedCanteenIndex"
+                :disabled="!canteenList.length"
                 range-key="name"
+                aria-label="选择食堂"
                 @change="onCanteenChange"
-                ><view class="plan-select"
-                  >{{
+                ><view class="plan-select">
+                  <text class="plan-select-label">{{
                     selectedCanteen?.name ||
                     (canteenLoading && !canteenList.length ? '正在加载食堂…' : '全部食堂')
-                  }}<text>⌄</text></view
-                ></picker
-              >
-              <picker
+                  }}</text>
+                  <uni-icons class="plan-select-icon" type="down" size="14" color="#667085" aria-hidden="true" />
+                </view></UiPicker>
+              <UiPicker
                 v-if="selectedCanteen"
-                class="plan-date"
+                class="plan-location-picker"
                 mode="selector"
                 :range="windowList"
+                :value="selectedWindowIndex"
                 :disabled="windowLoading || !windowList.length"
                 range-key="name"
+                aria-label="选择窗口"
                 @change="onWindowChange"
-                ><view class="plan-select"
-                  >{{ selectedWindow?.name || (windowLoading ? '正在加载窗口…' : '全部窗口')
-                  }}<text>⌄</text></view
-                ></picker
-              >
+                ><view class="plan-select">
+                  <text class="plan-select-label">{{
+                    selectedWindow?.name || (windowLoading ? '正在加载窗口…' : '全部窗口')
+                  }}</text>
+                  <uni-icons class="plan-select-icon" type="down" size="14" color="#667085" aria-hidden="true" />
+                </view></UiPicker>
             </view>
             <button
               v-if="selectedCanteen"
@@ -249,6 +254,7 @@
 
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onScopeDispose } from 'vue';
+import UiPicker from '@/components/UiPicker.vue';
 import { useCanteenStore } from '@/store/modules/use-canteen-store';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { getWindowList, getCanteenList } from '@/api/modules/canteen';
@@ -264,6 +270,7 @@ const props = defineProps<{
   plan: EnrichedMealPlan | null;
   submitting?: boolean;
   initialDishes?: Dish[];
+  initialDate?: string;
 }>();
 
 const emit = defineEmits<{
@@ -328,6 +335,12 @@ let canteenRequestToken = 0;
 // 食堂和窗口列表
 const canteenList = ref<Canteen[]>([...canteenStore.canteenList]);
 const windowList = ref<Window[]>([]);
+const selectedCanteenIndex = computed(() =>
+  Math.max(0, canteenList.value.findIndex(item => item.id === selectedCanteen.value?.id))
+);
+const selectedWindowIndex = computed(() =>
+  Math.max(0, windowList.value.findIndex(item => item.id === selectedWindow.value?.id))
+);
 
 const captureOwner = () => {
   const session = userStore.sessionVersion;
@@ -382,7 +395,7 @@ onMounted(() => {
 const resetForm = () => {
   const plan = props.plan;
   const dishes = plan?.dishes || props.initialDishes || [];
-  const today = dayjs().format('YYYY-MM-DD');
+  const today = props.initialDate || dayjs().format('YYYY-MM-DD');
   const hour = new Date().getHours();
   const suggested: NonNullable<MealPlanRequest['mealTime']> =
     hour < 10 ? 'breakfast' : hour < 14 ? 'lunch' : hour < 20 ? 'dinner' : 'nightsnack';
@@ -805,12 +818,13 @@ const handleSubmit = () => {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 10px 12px;
-  min-height: 44px;
+  padding: var(--field-padding);
+  min-height: var(--field-min-height);
   box-sizing: border-box;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 15px;
+  border: 1px solid var(--field-border-color);
+  border-radius: var(--field-radius);
+  font-size: var(--field-font-size);
+  line-height: var(--field-line-height);
 }
 .plan-meals {
   display: flex;
@@ -880,16 +894,46 @@ const handleSubmit = () => {
   width: 44px;
   color: #667085 !important;
 }
+.plan-location-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 8px;
+  margin-left: -8px;
+}
+.plan-location-picker {
+  min-width: 0;
+  max-width: 100%;
+}
 .plan-select {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
   min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid #e5e7eb;
+  padding: 10px 8px;
+  border: 0;
   border-radius: 8px;
-  font-size: 14px;
+  background: transparent;
+  font-size: var(--field-font-size);
+  line-height: var(--field-line-height);
+}
+.plan-select-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plan-select-icon {
+  flex-shrink: 0;
+}
+.plan-select:active {
+  background: #f4f4f5;
+}
+@media (hover: hover) {
+  .plan-select:hover {
+    background: #f4f4f5;
+  }
 }
 .plan-empty {
   display: block;

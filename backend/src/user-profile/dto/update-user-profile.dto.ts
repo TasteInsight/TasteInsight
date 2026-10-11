@@ -10,6 +10,7 @@ import {
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -59,6 +60,15 @@ export class NotificationSettingsDto {
   reviewReplyAlert: boolean;
 
   @IsBoolean()
+  likeAlert: boolean;
+
+  @IsBoolean()
+  postReplyAlert: boolean;
+
+  @IsBoolean()
+  diningAlert: boolean;
+
+  @IsBoolean()
   weeklyRecommendation: boolean;
 }
 
@@ -75,6 +85,9 @@ export class DisplaySettingsDto {
 }
 
 export class UserSettingsDto {
+  @IsBoolean()
+  showMealPlans: boolean;
+
   @IsObject()
   @ValidateNested()
   @Type(() => NotificationSettingsDto)
@@ -138,6 +151,10 @@ export class UpdateDisplaySettingsDto extends PartialType(DisplaySettingsDto) {}
 
 export class UpdateUserSettingsDto {
   @IsOptional()
+  @IsBoolean()
+  showMealPlans?: boolean;
+
+  @IsOptional()
   @IsObject()
   @ValidateNested()
   @Type(() => UpdateNotificationSettingsDto)
@@ -195,6 +212,11 @@ export class UpdateUserPreferencesDto {
 }
 
 export class UpdateUserProfileDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(160)
+  bio?: string;
+
   @IsOptional()
   @IsString()
   nickname?: string;

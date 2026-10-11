@@ -2,13 +2,23 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AdminCommentsService } from './admin-comments.service';
 import { PrismaService } from '@/prisma.service';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
+import { NotificationService } from '@/notifications/notification.service';
 
 const mockPrismaService = {
+  studentVerification: {
+    findFirst: jest.fn().mockResolvedValue({ id: 'verified' }),
+  },
+  $transaction: jest.fn((callback) => callback(mockPrismaService)),
+  $queryRaw: jest.fn(),
+  review: {
+    findMany: jest.fn().mockResolvedValue([{ id: 'r1', dishId: 'd1' }]),
+  },
   comment: {
     findMany: jest.fn(),
     count: jest.fn(),
     findUnique: jest.fn(),
     update: jest.fn(),
+    updateMany: jest.fn().mockResolvedValue({ count: 1 }),
   },
 };
 
@@ -22,6 +32,10 @@ describe('AdminCommentsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AdminCommentsService,
+        {
+          provide: NotificationService,
+          useValue: { createReply: jest.fn(), withdraw: jest.fn() },
+        },
         { provide: PrismaService, useValue: mockPrismaService },
       ],
     }).compile();
@@ -137,8 +151,13 @@ describe('AdminCommentsService', () => {
     beforeEach(() => {
       prisma.comment.findUnique.mockResolvedValue({
         id: 'c1',
+        userId: 'u1',
+        reviewId: 'r1',
         status: 'pending',
         review: {
+          userId: 'owner',
+          status: 'approved',
+          deletedAt: null,
           dish: {
             canteenId: 'can1',
           },
@@ -156,9 +175,9 @@ describe('AdminCommentsService', () => {
 
       expect(result.code).toBe(200);
       expect(result.message).toBe('操作成功');
-      expect(prisma.comment.update).toHaveBeenCalledWith({
-        where: { id: 'c1', deletedAt: null },
-        data: { status: 'approved' },
+      expect(prisma.comment.updateMany).toHaveBeenCalledWith({
+        where: { id: 'c1', deletedAt: null, status: 'pending' },
+        data: { status: 'approved', rejectReason: null },
       });
     });
 
@@ -203,8 +222,8 @@ describe('AdminCommentsService', () => {
 
       expect(result.code).toBe(200);
       expect(result.message).toBe('操作成功');
-      expect(prisma.comment.update).toHaveBeenCalledWith({
-        where: { id: 'c1', deletedAt: null },
+      expect(prisma.comment.updateMany).toHaveBeenCalledWith({
+        where: { id: 'c1', deletedAt: null, status: 'pending' },
         data: {
           status: 'rejected',
           rejectReason: 'Inappropriate content',
@@ -233,15 +252,18 @@ describe('AdminCommentsService', () => {
 
   describe('deleteComment', () => {
     beforeEach(() => {
-      prisma.comment.findUnique.mockResolvedValue({
-        id: 'c1',
-        deletedAt: null,
-        review: {
-          dish: {
-            canteenId: 'can1',
+      prisma.comment.findMany.mockResolvedValue([
+        {
+          id: 'c1',
+          reviewId: 'r1',
+          deletedAt: null,
+          review: {
+            dish: {
+              canteenId: 'can1',
+            },
           },
         },
-      });
+      ]);
     });
 
     it('should soft delete a comment', async () => {
@@ -254,14 +276,14 @@ describe('AdminCommentsService', () => {
 
       expect(result.code).toBe(200);
       expect(result.message).toBe('删除成功');
-      expect(prisma.comment.update).toHaveBeenCalledWith({
-        where: { id: 'c1' },
+      expect(prisma.comment.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: ['c1'] }, deletedAt: null },
         data: { deletedAt: expect.any(Date) },
       });
     });
 
     it('should throw NotFoundException if comment not found', async () => {
-      prisma.comment.findUnique.mockResolvedValue(null);
+      prisma.comment.findMany.mockResolvedValue([]);
 
       await expect(service.deleteComment('unknown')).rejects.toThrow(
         NotFoundException,

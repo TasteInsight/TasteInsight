@@ -88,9 +88,17 @@ describe('api/reviewApi', () => {
     getMock.mockResolvedValueOnce({ code: 200 })
 
     const { reviewApi } = await import('@/api/modules/review')
-    await reviewApi.getReports({ page: 2, status: 'pending' } as any)
+    await reviewApi.getReports({ page: 2, status: 'pending' })
 
     expect(getMock).toHaveBeenCalledWith('/admin/reports', { params: { page: 2, status: 'pending' } })
+  })
+
+  it.each(['review', 'comment', 'post', 'postComment'] as const)('preserves the %s report filter and content response', async targetType => {
+    const response = { code: 200, data: { items: [{ id: 'rp1', targetType, targetContent: { images: ['https://images.test/one.png'] } }], meta: { total: 1 } } }
+    getMock.mockResolvedValueOnce(response)
+    const { reviewApi } = await import('@/api/modules/review')
+    await expect(reviewApi.getReports({ page: 2, pageSize: 10, status: 'pending', targetType })).resolves.toBe(response)
+    expect(getMock).toHaveBeenCalledExactlyOnceWith('/admin/reports', { params: { page: 2, pageSize: 10, status: 'pending', targetType } })
   })
 
   it('handleReport posts to handle endpoint with data', async () => {

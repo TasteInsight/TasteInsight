@@ -1,8 +1,13 @@
 <template>
   <button
     class="my-review"
+    role="button"
+    tabindex="0"
     :aria-label="'查看' + review.dishName + '的评价'"
-    @click="$emit('click')"
+    @click="activate"
+    @keydown="handleKeydown"
+    @keyup="handleKeyup"
+    @blur="clearPress"
   >
     <view class="my-review-heading">
       <view class="my-review-title-block">
@@ -49,8 +54,12 @@
 import { computed, ref, watch } from 'vue';
 import type { MyReviewItem } from '@/types/api';
 import dayjs from 'dayjs';
+import { useButtonActivation } from '@/composables/use-button-activation';
 const props = defineProps<{ review: MyReviewItem }>();
-defineEmits<{ (e: 'click'): void }>();
+const emit = defineEmits<{ (e: 'click'): void }>();
+const { activate, handleKeydown, handleKeyup, clearPress } = useButtonActivation(() =>
+  emit('click')
+);
 const failedImages = ref(new Set<string>());
 watch(
   () => [props.review.id, props.review.dishImage, props.review.images],

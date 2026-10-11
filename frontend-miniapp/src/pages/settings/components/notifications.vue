@@ -31,13 +31,15 @@ const pageState = computed(() => ({
   loadError: state.loadError.value,
   saving: state.saving.value,
   saved: state.saved.value,
-  dirty: state.dirty.value,
   restoredDraft: state.restoredDraft.value,
 }));
 const notificationOptions = [
   { key: 'newDishAlert', label: '新菜品提醒', description: '当食堂上架新菜品时通知您' },
   { key: 'priceChangeAlert', label: '价格变动提醒', description: '当收藏菜品价格变动时通知您' },
   { key: 'reviewReplyAlert', label: '评价回复提醒', description: '当您的评价收到回复时通知您' },
+  { key: 'likeAlert', label: '点赞提醒', description: '有人赞了您的评价、帖子或回复' },
+  { key: 'postReplyAlert', label: '帖子回复提醒', description: '有人回复您的帖子或留言' },
+  { key: 'diningAlert', label: '约饭提醒', description: '用餐申请、邀请结果与取消通知' },
   { key: 'weeklyRecommendation', label: '每周推荐', description: '每周为您推荐本周热门菜品' },
 ] as const;
 onBackPress(handleBackPress);

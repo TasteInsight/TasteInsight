@@ -82,7 +82,7 @@ for (const mode of ['http', 'tls', 'external-tls']) {
   });
 }
 
-test('Docker DNS re-resolution and private health are shared across TLS modes', () => {
+test('Docker DNS re-resolution, private health and callback privacy are shared across TLS modes', () => {
   for (const tls of [false, true]) {
     const scheme = tls ? 'https' : 'http';
     const result = render({
@@ -90,7 +90,7 @@ test('Docker DNS re-resolution and private health are shared across TLS modes', 
       GATEWAY_TLS_MODE: tls ? 'on' : 'off',
     });
     assert.equal(result.status, 0, result.stderr);
-    const { common, public: publicRoutes } = result.files;
+    const { common, public: publicRoutes, main } = result.files;
     assert.match(common, /resolver 127\.0\.0\.11 valid=10s ipv6=off;/);
     for (const [upstream, service] of [['public_api', 'public-api:3000'], ['admin_api', 'admin-api:3000'], ['admin_frontend', 'frontend:80']]) {
       assert.ok(common.includes(`zone ${upstream} 64k;`));
@@ -99,9 +99,20 @@ test('Docker DNS re-resolution and private health are shared across TLS modes', 
     assert.match(common, /listen 80 default_server;\s*server_name _;\s*return 444;/);
     assert.match(common, /allow 127\.0\.0\.1;\s*allow ::1;\s*deny all;/);
     for (const target of ['public', 'admin', 'frontend']) assert.ok(common.includes(`location = /health/${target}`));
+    const callback = publicRoutes.match(/location = \/api\/v1\/user\/student-verification\/oauth\/callback\s*\{([^}]+)\}/)[1];
+    assert.match(callback, /access_log off;/);
+    assert.match(callback, /proxy_pass http:\/\/public_api\/user\/student-verification\/oauth\/callback;/);
+    assert.match(callback, /Cache-Control "no-store" always;/);
+    assert.match(callback, /Referrer-Policy "no-referrer" always;/);
     assert.match(publicRoutes, /proxy_buffering off;/);
     assert.match(publicRoutes, /proxy_read_timeout 300s;/);
     assert.match(publicRoutes, /alias \/var\/www\/uploads\//);
+    if (tls) {
+      const redirectCallback = main.match(/location = \/api\/v1\/user\/student-verification\/oauth\/callback\s*\{([^}]+)\}/)[1];
+      assert.match(redirectCallback, /access_log off;/);
+      assert.match(redirectCallback, /Cache-Control "no-store" always;/);
+      assert.match(redirectCallback, /Referrer-Policy "no-referrer" always;/);
+    }
   }
 });
 

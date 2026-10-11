@@ -59,7 +59,9 @@ beforeEach(() => {
   jest.useFakeTimers();
   storage.clear();
   storage.set('token', 'A-token');
-  storage.set('userInfo', JSON.stringify({ id: 'A', nickname: 'A' }));
+  storage.set('userInfo', JSON.stringify({
+    id: 'A', nickname: 'A', capabilities: { canContribute: true },
+  }));
   requests.length = 0;
   (global as any).uni = uniMock;
   uniMock.request.mockImplementation(options => {

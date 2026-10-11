@@ -16,6 +16,7 @@ import type {
 export const getDishById = (id: string): Promise<ApiResponse<Dish>> => {
   return request<Dish>({
     url: `/dishes/${id}`,
+    auth: 'optional',
     method: 'GET',
   });
 };
@@ -26,6 +27,7 @@ export const getDishById = (id: string): Promise<ApiResponse<Dish>> => {
 export const getDishes = (params: GetDishesRequest): Promise<ApiResponse<PaginatedData<Dish>>> => {
   return request<PaginatedData<Dish>>({
     url: '/dishes',
+    auth: 'optional',
     method: 'POST',
     data: params,
   });
@@ -39,6 +41,7 @@ export const getDishesByIds = (
 ): Promise<ApiResponse<PaginatedData<Dish>>> => {
   return request<PaginatedData<Dish>>({
     url: '/dishes/by-ids',
+    auth: 'optional',
     method: 'POST',
     data: { ids },
   });

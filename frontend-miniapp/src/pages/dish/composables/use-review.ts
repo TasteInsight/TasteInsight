@@ -106,6 +106,12 @@ export function useReview() {
   };
   const fetchOwnReview = async (dishId: string, acceptsResult = () => true): Promise<boolean> => {
     useDish(dishId);
+    if (!userStore.isLoggedIn) {
+      invalidateOwnReview();
+      ownReview.value = null;
+      ownReviewLoaded.value = true;
+      return true;
+    }
     if (disposed) return false;
     const version = ++ownVersion;
     const session = userStore.sessionVersion;

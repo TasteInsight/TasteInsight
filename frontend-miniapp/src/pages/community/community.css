@@ -1,0 +1,140 @@
+.campus-page {
+  box-sizing: border-box;
+  max-width: 720px;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 24px 20px calc(32px + env(safe-area-inset-bottom));
+  background: #fff;
+  color: #1f2937;
+}
+.campus-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.campus-title {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.campus-button {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: #fff;
+  color: #660874;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.campus-button::after {
+  border: 0;
+}
+.campus-button:active {
+  background: #f4f4f5;
+}
+.campus-button:focus-visible {
+  outline: 2px solid #660874;
+  outline-offset: 2px;
+}
+.campus-button[disabled] {
+  opacity: 0.5;
+}
+.campus-primary,
+.campus-primary:active {
+  background: #660874;
+  color: #fff;
+}
+.campus-danger {
+  color: #b42318;
+}
+.campus-hint {
+  color: #667085;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.campus-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px 0;
+  color: #b42318;
+  font-size: 14px;
+}
+.campus-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 48px 16px;
+  text-align: center;
+  line-height: 1.7;
+}
+.campus-empty .iconfont {
+  color: #667085;
+  font-size: 32px;
+}
+.campus-tabs {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.campus-tab {
+  position: relative;
+  border-radius: 0;
+  padding: 12px 0;
+  color: #667085;
+}
+.campus-selected {
+  color: #660874;
+  font-weight: 600;
+}
+.campus-selected::before {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #660874;
+  content: '';
+}
+.campus-more {
+  display: flex;
+  margin: 16px auto 0;
+}
+.campus-skeleton {
+  padding: 24px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+.campus-skeleton-line {
+  width: 100%;
+  height: 16px;
+  margin: 12px 0;
+  border-radius: 4px;
+  background: #f4f4f5;
+}
+.campus-skeleton-line:first-child {
+  width: 35%;
+}
+.campus-skeleton-line:last-child {
+  width: 70%;
+}
+@media (max-width: 360px) {
+  .campus-page {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .campus-heading {
+    gap: 8px;
+  }
+}

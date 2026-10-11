@@ -7,20 +7,14 @@ import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
 import { PrismaService } from '@/prisma.service';
 import { UserProfileService } from '@/user-profile/user-profile.service';
 import { ConfigService } from '@nestjs/config';
-import { HttpService } from '@nestjs/axios';
-import { firstValueFrom } from 'rxjs';
 import * as bcrypt from 'bcrypt';
 import type { Admin, User } from '@prisma/client';
 import { ALL_PERMISSIONS } from './permissions.constants';
-import { mockAuthEnabled } from '../environment';
-
-interface WechatAuthResponse {
-  openid?: string;
-  session_key?: string;
-  unionid?: string;
-  errcode?: number;
-  errmsg?: string;
-}
+import {
+  UserIdentityService,
+  type WechatPlatform,
+} from './user-identity.service';
+import { VerificationChallengeService } from './verification-challenge.service';
 
 type TokenExpiration = NonNullable<JwtSignOptions['expiresIn']>;
 
@@ -30,8 +24,9 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private configService: ConfigService,
-    private httpService: HttpService,
+    private identities: UserIdentityService,
     private userProfileService: UserProfileService,
+    private challenges: VerificationChallengeService,
   ) {}
 
   // --- 核心方法：生成 Access Token 和 Refresh Token ---
@@ -90,47 +85,22 @@ export class AuthService {
   }
 
   // --- 功能1: 微信登录 ---
-  async wechatLogin(code: string) {
-    let openid: string;
+  async wechatLogin(code: string, platform: WechatPlatform = 'mp-weixin') {
+    return this.userLogin(await this.identities.wechat(code, platform));
+  }
 
-    const enableMock = mockAuthEnabled({
-      NODE_ENV: this.configService.get('NODE_ENV'),
-      ENABLE_MOCK_AUTH: this.configService.get('ENABLE_MOCK_AUTH'),
-    });
-    const isMockCode =
-      code.startsWith('mock_') ||
-      code === 'baseline_user_code_placeholder' ||
-      code === 'secondary_user_code_placeholder';
-    if (isMockCode && !enableMock)
-      throw new UnauthorizedException('Mock login is disabled');
+  async phoneLogin(challengeId: string, code: string) {
+    const phone = await this.challenges.consume(
+      'PHONE_LOGIN',
+      challengeId,
+      code,
+    );
+    return this.userLogin(await this.identities.phone(phone));
+  }
 
-    if (enableMock && code === 'baseline_user_code_placeholder') {
-      openid = 'baseline_user_openid';
-    } else if (enableMock && code === 'secondary_user_code_placeholder') {
-      openid = 'secondary_user_openid';
-    } else if (enableMock && code.startsWith('mock_')) {
-      // 保留 mock 前缀用于开发测试
-      openid = `mock_openid_for_${code}`;
-    } else {
-      // 生产环境：调用微信接口获取 openid
-      const wechatData = await this.getOpenIdFromWechat(code);
-      if (wechatData.errcode || !wechatData.openid) {
-        throw new UnauthorizedException(
-          `WeChat Login Failed: ${wechatData.errmsg || 'Unknown error, openid missing'}`,
-        );
-      }
-      openid = wechatData.openid;
-    }
-
-    let user = await this.prisma.user.findUnique({
-      where: { openId: openid },
-    });
-
-    if (!user) {
-      user = await this.userProfileService.createUser(openid);
-    }
-
+  private async userLogin(user: User) {
     const tokens = await this._generateTokens({ sub: user.id, type: 'user' });
+    const profile = await this.userProfileService.getUserProfile(user.id);
 
     return {
       code: 200,
@@ -140,31 +110,9 @@ export class AuthService {
           accessToken: tokens.accessToken,
           refreshToken: tokens.refreshToken,
         },
-        user,
+        user: profile.data,
       },
     };
-  }
-
-  private async getOpenIdFromWechat(code: string): Promise<WechatAuthResponse> {
-    const appId = this.configService.get<string>('WECHAT_APPID');
-    const secret = this.configService.get<string>('WECHAT_SECRET');
-
-    if (!appId || !secret) {
-      throw new InternalServerErrorException(
-        'WeChat configuration is missing (WECHAT_APPID or WECHAT_SECRET).',
-      );
-    }
-
-    const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${encodeURIComponent(appId)}&secret=${encodeURIComponent(secret)}&js_code=${encodeURIComponent(code)}&grant_type=authorization_code`;
-
-    try {
-      const { data } = await firstValueFrom(
-        this.httpService.get<WechatAuthResponse>(url),
-      );
-      return data;
-    } catch {
-      throw new InternalServerErrorException('Failed to connect to WeChat API');
-    }
   }
 
   // --- 功能2: 管理员登录 ---
@@ -239,6 +187,10 @@ export class AuthService {
 
     if (!userData) {
       throw new UnauthorizedException('用户不存在或已被删除');
+    }
+
+    if (userType === 'user') {
+      userData = (await this.userProfileService.getUserProfile(userId)).data;
     }
 
     const tokens = await this._generateTokens({ sub: userId, type: userType });

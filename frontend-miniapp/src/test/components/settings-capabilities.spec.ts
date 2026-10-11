@@ -10,7 +10,6 @@ const props = {
   loadError: '',
   saving: false,
   saved: false,
-  dirty: false,
   canSave: false,
   restoredDraft: false,
 };
@@ -28,7 +27,7 @@ it('only offers retry when no successful initialization exists', async () => {
 });
 
 it('keeps saved and pending states disabled and leaves the save action in document flow', async () => {
-  const wrapper = mount(SettingsPage, { props: { ...props, dirty: true, canSave: true } });
+  const wrapper = mount(SettingsPage, { props: { ...props, canSave: true } });
   await wrapper.get('.settings-save-bar button').trigger('click');
   expect(wrapper.emitted('save')).toHaveLength(1);
   await wrapper.setProps({ canSave: false, saving: true });
@@ -36,6 +35,29 @@ it('keeps saved and pending states disabled and leaves the save action in docume
   expect(wrapper.text()).toContain('保存中');
   await wrapper.setProps({ saving: false, saved: true });
   expect(wrapper.text()).toContain('已保存');
+});
+
+it('uses the save button as the sole status display and retains the restored draft notice', async () => {
+  const wrapper = mount(SettingsPage, { props });
+  const saveBar = wrapper.get('.settings-save-bar');
+  const button = saveBar.get('button');
+  expect(saveBar.text()).toBe('保存修改');
+  expect(button.attributes('disabled')).toBeDefined();
+  await button.trigger('click');
+  expect(wrapper.emitted('save')).toBeUndefined();
+
+  await wrapper.setProps({ canSave: true, restoredDraft: true });
+  expect(wrapper.get('.settings-note').text()).toBe('已恢复未保存的修改');
+  expect(saveBar.text()).toBe('保存修改');
+  expect(button.attributes('disabled')).toBeUndefined();
+  await wrapper.setProps({ canSave: false, saving: true });
+  expect(saveBar.text()).toBe('保存中…');
+  expect(button.attributes('aria-busy')).toBe('true');
+  expect(button.get('[aria-live="polite"]').text()).toBe('保存中…');
+  await wrapper.setProps({ saving: false, saved: true, restoredDraft: false });
+  expect(saveBar.text()).toBe('已保存');
+  expect(button.attributes('disabled')).toBeDefined();
+  expect(wrapper.find('.settings-note').exists()).toBe(false);
 });
 
 it('gives settings-home section headings a semibold hierarchy', () => {

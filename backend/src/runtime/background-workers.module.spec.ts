@@ -12,6 +12,9 @@ import { DISH_SYNC_QUEUE } from '@/dish-sync-queue/dish-sync.constants';
 import { DishReviewStatsQueueModule } from '@/dish-review-stats-queue/dish-review-stats-queue.module';
 import { DishReviewStatsProcessor } from '@/dish-review-stats-queue/dish-review-stats.processor';
 import { DISH_REVIEW_STATS_QUEUE } from '@/dish-review-stats-queue/dish-review-stats.constants';
+import { NotificationsModule } from '@/notifications/notifications.module';
+import { NotificationCampaignService } from '@/notifications/notification-campaign.service';
+import { NotificationDispatcher } from '@/notifications/notification-dispatcher.service';
 import { RecommendationModule } from '@/recommendation/recommendation.module';
 import { RecommendationCacheService } from '@/recommendation/services/cache.service';
 import { PrismaModule } from '@/prisma.module';
@@ -27,12 +30,15 @@ describe('background worker composition', () => {
     EmbeddingQueueProcessor,
     DishSyncProcessor,
     DishReviewStatsProcessor,
+    NotificationCampaignService,
+    NotificationDispatcher,
   ];
 
   it.each([
     EmbeddingQueueModule,
     DishSyncQueueModule,
     DishReviewStatsQueueModule,
+    NotificationsModule,
     RecommendationModule,
   ])('%p is provider-only and does not start background work', (module) => {
     expect(

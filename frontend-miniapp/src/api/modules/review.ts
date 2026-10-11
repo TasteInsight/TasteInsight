@@ -21,6 +21,7 @@ export const getReviewsByDish = (
 ): Promise<ApiResponse<ReviewListData>> => {
   return request<ReviewListData>({
     url: `/dishes/${dishId}/reviews`,
+    auth: 'optional',
     method: 'GET',
     data: params,
   });
@@ -60,3 +61,9 @@ export const deleteReview = (reviewId: string): Promise<ApiResponse<null>> => {
     method: 'DELETE',
   });
 };
+
+export const setReviewLike = (id: string, liked: boolean) =>
+  request<{ liked: boolean; likeCount: number }>({
+    url: `/reviews/${encodeURIComponent(id)}/like`,
+    method: liked ? 'PUT' : 'DELETE',
+  });

@@ -160,21 +160,30 @@ describe('CanteensController (e2e)', () => {
     });
   });
 
-  describe('Authorization Tests', () => {
-    it('should require authentication for canteen list', async () => {
-      await request(app.getHttpServer()).get('/canteens').expect(401);
+  describe('Guest Access', () => {
+    it('should return the public canteen list without authentication', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/canteens')
+        .expect(200);
+      expect(response.body.data.items).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: testCanteenId }),
+        ]),
+      );
     });
 
-    it('should require authentication for canteen details', async () => {
-      await request(app.getHttpServer())
+    it('should return public canteen details without authentication', async () => {
+      const response = await request(app.getHttpServer())
         .get(`/canteens/${testCanteenId}`)
-        .expect(401);
+        .expect(200);
+      expect(response.body.data.id).toBe(testCanteenId);
     });
 
-    it('should require authentication for window details', async () => {
-      await request(app.getHttpServer())
+    it('should return public window details without authentication', async () => {
+      const response = await request(app.getHttpServer())
         .get(`/windows/${testWindowId}`)
-        .expect(401);
+        .expect(200);
+      expect(response.body.data.id).toBe(testWindowId);
     });
   });
 

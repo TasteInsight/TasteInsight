@@ -9,19 +9,18 @@
   "pages": [
     //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
     {
-      "path": "pages/login/index",
-      "style": {
-        "navigationBarTitleText": "登录",
-        "navigationStyle": "custom",
-        "disableSwipeBack": true
-      }
-    },
-    {
       "path": "pages/index/index",
       "style": {
         "navigationBarTitleText": "食鉴",
         "navigationBarBackgroundColor": "#FFFFFF",
         "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
       }
     },
     {
@@ -99,6 +98,46 @@
         "navigationBarTitleText": "我的",
         "enablePullDownRefresh": true
       }
+    },
+    {
+      "path": "pages/profile/identity",
+      "style": { "navigationBarTitleText": "账号与校园身份" }
+    },
+    // #ifdef MP-WEIXIN
+    {
+      "path": "pages/profile/campus-auth",
+      "style": { "navigationBarTitleText": "校园统一认证" }
+    },
+    // #endif
+    // #ifndef MP-WEIXIN
+    {
+      "path": "pages/community/index",
+      "style": { "navigationBarTitleText": "校园", "enablePullDownRefresh": true }
+    },
+    {
+      "path": "pages/community/detail",
+      "style": { "navigationBarTitleText": "帖子" }
+    },
+    {
+      "path": "pages/community/editor",
+      "style": { "navigationBarTitleText": "写帖子" }
+    },
+    {
+      "path": "pages/profile/public",
+      "style": { "navigationBarTitleText": "个人主页" }
+    },
+    {
+      "path": "pages/planning/dining",
+      "style": { "navigationBarTitleText": "约饭", "enablePullDownRefresh": true }
+    },
+    // #endif
+    {
+      "path": "pages/notifications/index",
+      "style": { "navigationBarTitleText": "消息", "enablePullDownRefresh": true }
+    },
+    {
+      "path": "pages/notifications/weekly",
+      "style": { "navigationBarTitleText": "本周推荐" }
     },
 
     {
@@ -202,12 +241,22 @@
         "selectedIconPath": "static/tabbar/index-line-active.png",
         "text": "首页"
       },
+      // #ifdef MP-WEIXIN
       {
         "pagePath": "pages/news/index",
         "iconPath": "static/tabbar/news-line.png",
         "selectedIconPath": "static/tabbar/news-line-active.png",
         "text": "新闻"
       },
+      // #endif
+      // #ifndef MP-WEIXIN
+      {
+        "pagePath": "pages/community/index",
+        "iconPath": "static/tabbar/campus-line.png",
+        "selectedIconPath": "static/tabbar/campus-line-active.png",
+        "text": "校园"
+      },
+      // #endif
       {
         "pagePath": "pages/planning/index",
         "iconPath": "static/tabbar/planning-line.png",

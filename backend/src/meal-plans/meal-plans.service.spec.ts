@@ -4,6 +4,10 @@ import { PrismaService } from '@/prisma.service';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 
 const mockPrismaService = {
+  $transaction: jest.fn(async (operation: any) => operation(mockPrismaService)),
+  $queryRaw: jest.fn(),
+  diningInvite: { count: jest.fn().mockResolvedValue(0) },
+  mealPlanCompletion: { deleteMany: jest.fn(), upsert: jest.fn() },
   mealPlan: {
     findMany: jest.fn(),
     findUnique: jest.fn(),
@@ -93,6 +97,9 @@ describe('MealPlansService', () => {
       prisma.mealPlan.findUnique.mockResolvedValue({
         id: 'mp1',
         userId: 'u1',
+        startDate: new Date('2026-10-01'),
+        endDate: new Date('2026-10-03'),
+        mealTime: 'lunch',
       });
     });
 

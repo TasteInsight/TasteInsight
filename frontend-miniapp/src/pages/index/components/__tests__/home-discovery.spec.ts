@@ -5,12 +5,14 @@ import { onPullDownRefresh, onBackPress, onHide } from '@dcloudio/uni-app';
 import IndexPage from '@/pages/index/index.vue';
 import CanteenEntry from '../CanteenList.vue';
 import SearchBar from '@/components/SearchBar.vue';
+import EmptyState from '@/components/EmptyState.vue';
+import FilterBar from '../FilterBar.vue';
 import { useCanteenStore } from '@/store/modules/use-canteen-store';
 import { useDishesStore } from '@/store/modules/use-dishes-store';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { getCanteenList } from '@/api/modules/canteen';
 import { getRecommendations } from '@/api/modules/recommendation';
-import { getDishesByIds } from '@/api/modules/dish';
+import { getDishes, getDishesByIds } from '@/api/modules/dish';
 
 jest.mock('@dcloudio/uni-app', () => ({
   onPullDownRefresh: jest.fn(),
@@ -31,6 +33,13 @@ jest.mock('@/api/modules/recommendation', () => ({
   }),
 }));
 jest.mock('@/api/modules/dish', () => ({
+  getDishes: jest.fn().mockResolvedValue({
+    code: 200,
+    data: {
+      items: [{ id: 'dish-1', name: '宫保鸡丁', price: 15, images: [], averageRating: 4.5 }],
+      meta: { page: 1, totalPages: 1 },
+    },
+  }),
   getDishesByIds: jest.fn().mockResolvedValue({
     code: 200,
     data: {
@@ -39,7 +48,7 @@ jest.mock('@/api/modules/dish', () => ({
   }),
 }));
 
-const mountHome = async (filterBarStub: any = true) => {
+const mountHome = async (filterBarStub: any = true, isLoggedIn = true) => {
   const canteens = reactive({
     canteenList: [
       { id: 'canteen-1', name: '第一食堂' },
@@ -59,7 +68,7 @@ const mountHome = async (filterBarStub: any = true) => {
   (useUserStore as unknown as jest.Mock).mockReturnValue(
     reactive({
       sessionVersion: 1,
-      isLoggedIn: true,
+      isLoggedIn,
       userInfo: null,
       fetchProfileAction: jest.fn().mockResolvedValue(undefined),
     })
@@ -77,6 +86,94 @@ beforeEach(() => {
 });
 
 describe('home discovery connections', () => {
+  test.each([true, false])(
+    'keeps search and canteen discovery without duplicating campus shortcuts (logged in: %s)',
+    async isLoggedIn => {
+      const { wrapper } = await mountHome(true, isLoggedIn);
+      expect(wrapper.findComponent(SearchBar).exists()).toBe(true);
+      expect(wrapper.findAll('.canteen-entry')).toHaveLength(2);
+      expect(wrapper.find('.home-community-links').exists()).toBe(false);
+      expect(wrapper.text()).not.toContain('校园动态');
+      expect(wrapper.text()).not.toContain('约饭');
+      wrapper.unmount();
+    }
+  );
+
+  test.each([true, false])(
+    'shows the shared recommendation empty state only after a successful read (logged in: %s)',
+    async isLoggedIn => {
+      const fetch = (isLoggedIn ? getRecommendations : getDishes) as jest.Mock;
+      let finish!: (value: unknown) => void;
+      fetch.mockReturnValueOnce(new Promise(resolve => (finish = resolve)));
+      const { wrapper } = await mountHome(true, isLoggedIn);
+      expect(wrapper.findComponent(EmptyState).exists()).toBe(false);
+
+      finish({ code: 200, data: { items: [], meta: { page: 1, totalPages: 0 } } });
+      await flushPromises();
+      const empty = wrapper.getComponent(EmptyState);
+      expect(empty.props()).toEqual({ title: '暂无推荐菜品', icon: 'search', actionText: '' });
+      expect(empty.find('button').exists()).toBe(false);
+      expect(wrapper.find('.home-status__hint').exists()).toBe(false);
+      expect(wrapper.find('.home-status--footer').exists()).toBe(false);
+
+      fetch.mockRejectedValueOnce(new Error('recommendations unavailable'));
+      await (onPullDownRefresh as jest.Mock).mock.calls[0][0]();
+      await flushPromises();
+      expect(wrapper.findComponent(EmptyState).exists()).toBe(false);
+      expect(wrapper.get('[role="alert"]').text()).toContain('加载首页数据失败');
+      wrapper.unmount();
+    }
+  );
+
+  test('the filtered empty state clears the active filter and reloads unfiltered recommendations once', async () => {
+    const { wrapper } = await mountHome();
+    (getRecommendations as jest.Mock).mockResolvedValueOnce({
+      code: 200,
+      data: { items: [], meta: { page: 1, totalPages: 0 } },
+    });
+    wrapper.findComponent(FilterBar).vm.$emit('filter-change', { price: { min: 0, max: 5 } });
+    await flushPromises();
+    const empty = wrapper.getComponent(EmptyState);
+    expect(empty.props()).toEqual({
+      title: '没有符合条件的菜品',
+      icon: 'search',
+      actionText: '清除全部筛选',
+    });
+    expect((getRecommendations as jest.Mock).mock.calls[1][0].filter).toEqual({
+      price: { min: 0, max: 5 },
+    });
+
+    await empty.get('button').trigger('click');
+    await flushPromises();
+    expect(getRecommendations).toHaveBeenCalledTimes(3);
+    expect((getRecommendations as jest.Mock).mock.calls[2][0].filter).toEqual({});
+    expect(wrapper.findComponent(FilterBar).props('filter')).toEqual({});
+    expect(wrapper.get('.home-heading').text()).toBe('今日推荐');
+    expect(wrapper.findComponent(EmptyState).exists()).toBe(false);
+    expect(wrapper.findAll('.dish-card')).toHaveLength(1);
+    expect(wrapper.get('.home-status--footer').findComponent(EmptyState).exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  test('a recommendation refresh retains cached dishes without substituting an empty state', async () => {
+    const { wrapper } = await mountHome();
+    let finish!: (value: unknown) => void;
+    (getRecommendations as jest.Mock).mockReturnValueOnce(
+      new Promise(resolve => (finish = resolve))
+    );
+    const refresh = (onPullDownRefresh as jest.Mock).mock.calls[0][0]();
+    await flushPromises();
+    expect(wrapper.findAll('.dish-card')).toHaveLength(1);
+    expect(wrapper.text()).toContain('正在更新菜品');
+    expect(wrapper.findComponent(EmptyState).exists()).toBe(false);
+    finish({ code: 200, data: { items: [], meta: { page: 1, totalPages: 0 } } });
+    await refresh;
+    await flushPromises();
+    expect(wrapper.findAll('.dish-card')).toHaveLength(0);
+    expect(wrapper.getComponent(EmptyState).props('title')).toBe('暂无推荐菜品');
+    wrapper.unmount();
+  });
+
   test('a failed recommendation append keeps existing dishes and retries the same page', async () => {
     (getRecommendations as jest.Mock).mockResolvedValueOnce({
       code: 200,
@@ -216,7 +313,9 @@ describe('canteen photo discovery', () => {
     expect(canteen.get('.canteen-entry__placeholder').text()).toContain('暂无照片');
     const search = mount(SearchBar, { global: { stubs: { 'uni-icons': true } } });
     await search.get('button').trigger('click');
-    expect(uni.navigateTo).toHaveBeenCalledWith(expect.objectContaining({ url: '/pages/search/index' }));
+    expect(uni.navigateTo).toHaveBeenCalledWith(
+      expect.objectContaining({ url: '/pages/search/index' })
+    );
     canteen.unmount();
     search.unmount();
   });

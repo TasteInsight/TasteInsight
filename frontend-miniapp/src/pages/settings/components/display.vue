@@ -31,7 +31,7 @@
     </view>
     <view class="settings-section">
       <text class="settings-title">默认排序方式</text>
-      <picker
+      <UiPicker
         mode="selector"
         :range="sortOptions"
         :value="form.sortByIndex"
@@ -42,13 +42,14 @@
           ><text class="sort-label">{{ sortOptions[form.sortByIndex] }}</text
           ><text class="iconfont icon-chevronright" aria-hidden="true"></text
         ></view>
-      </picker>
+      </UiPicker>
       <text class="settings-hint sort-hint">用于菜品列表的初始排序</text>
     </view>
   </SettingsPage>
 </template>
 <script setup lang="ts">
 import { computed } from 'vue';
+import UiPicker from '@/components/UiPicker.vue';
 import { onBackPress } from '@dcloudio/uni-app';
 import { useDisplay } from '../composables/use-display';
 import SettingsPage from './SettingsPage.vue';
@@ -71,7 +72,6 @@ const pageState = computed(() => ({
   loadError: state.loadError.value,
   saving: state.saving.value,
   saved: state.saved.value,
-  dirty: state.dirty.value,
   restoredDraft: state.restoredDraft.value,
 }));
 onBackPress(handleBackPress);

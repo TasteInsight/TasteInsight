@@ -3,9 +3,11 @@ import { CommentsController } from './comments.controller';
 import { CommentsService } from './comments.service';
 import { JwtService } from '@nestjs/jwt';
 import { AdminConfigModule } from '@/admin-config/admin-config.module';
+import { NotificationsModule } from '@/notifications/notifications.module';
+import { ContentInteractionsModule } from '@/social/content-interactions.module';
 
 @Module({
-  imports: [AdminConfigModule],
+  imports: [AdminConfigModule, NotificationsModule, ContentInteractionsModule],
   controllers: [CommentsController],
   providers: [CommentsService, JwtService],
 })

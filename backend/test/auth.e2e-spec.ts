@@ -97,12 +97,15 @@ describe('AuthController (e2e)', () => {
       expect(response.body.data.token.accessToken).toBeDefined();
       expect(response.body.data.token.refreshToken).toBeDefined();
       expect(response.body.data.user).toBeDefined();
-      expect(response.body.data.user.nickname).toContain('微信用户_');
+      expect(response.body.data.user.nickname).toBe('新用户');
+      expect(response.body.data.user.capabilities.canContribute).toBe(false);
 
       const dbUser = await prisma.user.findUnique({
         where: { id: response.body.data.user.id },
+        include: { studentVerification: true },
       });
       expect(dbUser).not.toBeNull();
+      expect(dbUser?.studentVerification).toBeNull();
     });
 
     it('should return tokens for an existing user (from seed)', async () => {

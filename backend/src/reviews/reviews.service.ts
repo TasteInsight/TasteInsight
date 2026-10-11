@@ -19,6 +19,7 @@ import {
 import { ReviewData } from './dto/review.dto';
 import { ReportReviewResponseDto } from './dto/report-review.dto';
 import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service';
+import { NotificationService } from '@/notifications/notification.service';
 
 @Injectable()
 export class ReviewsService {
@@ -26,6 +27,7 @@ export class ReviewsService {
     private prisma: PrismaService,
     private adminConfigService: AdminConfigService,
     private dishReviewStatsService: DishReviewStatsService,
+    private notifications: NotificationService,
     @Optional() private embeddingQueueService?: EmbeddingQueueService,
   ) {}
 
@@ -35,7 +37,11 @@ export class ReviewsService {
   ): Promise<OwnReviewResponseDto> {
     const review = await this.prisma.review.findUnique({
       where: { userId_dishId: { userId, dishId }, deletedAt: null },
-      include: { user: { select: { id: true, nickname: true, avatar: true } } },
+      include: {
+        user: { select: { id: true, nickname: true, avatar: true } },
+        _count: { select: { likes: true } },
+        likes: { where: { userId }, select: { userId: true } },
+      },
     });
     return {
       code: 200,
@@ -48,89 +54,80 @@ export class ReviewsService {
     userId: string,
     createReviewDto: CreateReviewDto,
   ): Promise<ReviewResponseDto> {
-    const dish = await this.prisma.dish.findUnique({
-      where: { id: createReviewDto.dishId },
-    });
-    if (!dish) {
-      throw new NotFoundException('未找到对应的菜品');
-    }
     const { ratingDetails } = createReviewDto;
-
-    // 根据管理员配置决定评价初始状态
-    const autoApprove = await this.adminConfigService.getBooleanConfigValue(
-      ConfigKeys.REVIEW_AUTO_APPROVE,
-      dish.canteenId,
-    );
-
-    // 检查是否存在已有评论（包括已删除的）
-    const existingReview = await this.prisma.review.findUnique({
-      where: {
-        userId_dishId: {
-          userId: userId,
-          dishId: createReviewDto.dishId,
-        },
-      },
-    });
-
-    // 使用 upsert 确保同一用户对同一菜品只有一个评分
-    // 如果已存在则更新，否则创建新评分
-    const review = await this.prisma.review.upsert({
-      where: {
-        userId_dishId: {
-          userId: userId,
-          dishId: createReviewDto.dishId,
-        },
-      },
-      update: {
-        rating: createReviewDto.rating,
-        content: createReviewDto.content,
-        images: createReviewDto.images,
-        status: autoApprove ? 'approved' : 'pending',
-        rejectReason: null,
-        spicyLevel: ratingDetails?.spicyLevel ?? null,
-        sweetness: ratingDetails?.sweetness ?? null,
-        saltiness: ratingDetails?.saltiness ?? null,
-        oiliness: ratingDetails?.oiliness ?? null,
-        deletedAt: null, // 如果之前被删除，现在恢复
-        updatedAt: new Date(),
-      },
-      create: {
-        dishId: createReviewDto.dishId,
-        userId: userId,
-        rating: createReviewDto.rating,
-        content: createReviewDto.content,
-        images: createReviewDto.images,
-        status: autoApprove ? 'approved' : 'pending',
-        spicyLevel: ratingDetails?.spicyLevel,
-        sweetness: ratingDetails?.sweetness,
-        saltiness: ratingDetails?.saltiness,
-        oiliness: ratingDetails?.oiliness,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            nickname: true,
-            avatar: true,
+    const { review, isUpdate } = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM dishes WHERE id = ${createReviewDto.dishId} FOR UPDATE`;
+      const dish = await tx.dish.findUnique({
+        where: { id: createReviewDto.dishId },
+      });
+      if (!dish) throw new NotFoundException('未找到对应的菜品');
+      const autoApprove = await this.adminConfigService.getBooleanConfigValue(
+        ConfigKeys.REVIEW_AUTO_APPROVE,
+        dish.canteenId,
+        tx,
+      );
+      const existingReview = await tx.review.findUnique({
+        where: {
+          userId_dishId: {
+            userId,
+            dishId: createReviewDto.dishId,
           },
         },
-      },
+      });
+      const saved = await tx.review.upsert({
+        where: {
+          userId_dishId: {
+            userId: userId,
+            dishId: createReviewDto.dishId,
+          },
+        },
+        update: {
+          rating: createReviewDto.rating,
+          content: createReviewDto.content,
+          images: createReviewDto.images,
+          status: autoApprove ? 'approved' : 'pending',
+          rejectReason: null,
+          spicyLevel: ratingDetails?.spicyLevel ?? null,
+          sweetness: ratingDetails?.sweetness ?? null,
+          saltiness: ratingDetails?.saltiness ?? null,
+          oiliness: ratingDetails?.oiliness ?? null,
+          deletedAt: null, // 如果之前被删除，现在恢复
+          updatedAt: new Date(),
+        },
+        create: {
+          dishId: createReviewDto.dishId,
+          userId: userId,
+          rating: createReviewDto.rating,
+          content: createReviewDto.content,
+          images: createReviewDto.images,
+          status: autoApprove ? 'approved' : 'pending',
+          spicyLevel: ratingDetails?.spicyLevel,
+          sweetness: ratingDetails?.sweetness,
+          saltiness: ratingDetails?.saltiness,
+          oiliness: ratingDetails?.oiliness,
+        },
+        include: {
+          _count: { select: { likes: true } },
+          likes: { where: { userId }, select: { userId: true } },
+          user: {
+            select: {
+              id: true,
+              nickname: true,
+              avatar: true,
+            },
+          },
+        },
+      });
+      if (!autoApprove)
+        await this.notifications.withdrawThread(tx, 'review', saved.id);
+      if (autoApprove || existingReview?.status === 'approved') {
+        await this.dishReviewStatsService.recomputeBatch(tx, [dish.id]);
+      }
+      return { review: saved, isUpdate: !!existingReview };
     });
 
-    // 新评价计入统计，或旧评价从 approved 集合移出时，都需要重新计算
-    if (autoApprove || existingReview?.status === 'approved') {
-      await this.dishReviewStatsService.recomputeDishStats(
-        createReviewDto.dishId,
-      );
-    }
+    this.embeddingQueueService?.scheduleRefreshUser(userId);
 
-    // 异步刷新用户嵌入（评价行为反映用户偏好，会影响推荐）
-    if (this.embeddingQueueService) {
-      await this.embeddingQueueService.enqueueRefreshUser(userId);
-    }
-
-    // 根据是否存在已有评论返回不同消息
-    const isUpdate = !!existingReview;
     return {
       code: 201,
       message: isUpdate ? '更新成功' : '创建成功',
@@ -142,6 +139,7 @@ export class ReviewsService {
     dishId: string,
     page: number = 1,
     pageSize: number = 20,
+    viewerId?: string,
   ): Promise<ReviewListResponseDto> {
     const skip = (page - 1) * pageSize;
 
@@ -149,6 +147,10 @@ export class ReviewsService {
       this.prisma.review.findMany({
         where: { dishId, status: 'approved', deletedAt: null },
         include: {
+          _count: { select: { likes: true } },
+          likes: viewerId
+            ? { where: { userId: viewerId }, select: { userId: true } }
+            : false,
           user: {
             select: {
               id: true,
@@ -213,7 +215,7 @@ export class ReviewsService {
     reportReviewDto: ReportReviewDto,
   ): Promise<ReportReviewResponseDto> {
     const review = await this.prisma.review.findUnique({
-      where: { id: reviewId, deletedAt: null },
+      where: { id: reviewId, status: 'approved', deletedAt: null },
     });
     if (!review) {
       throw new NotFoundException('未找到对应的评论');
@@ -242,22 +244,27 @@ export class ReviewsService {
     userId: string,
     reviewId: string,
   ): Promise<DeleteReviewResponseDto> {
-    const review = await this.prisma.review.findUnique({
+    const initial = await this.prisma.review.findUnique({
       where: { id: reviewId },
+      select: { dishId: true },
     });
-    if (!review || review.deletedAt) {
-      throw new NotFoundException('评价不存在');
-    }
-    if (review.userId !== userId) {
-      throw new ForbiddenException('无权删除此评价');
-    }
+    if (!initial) throw new NotFoundException('评价不存在');
 
-    await this.prisma.review.update({
-      where: { id: reviewId },
-      data: { deletedAt: new Date() },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM dishes WHERE id = ${initial.dishId} FOR UPDATE`;
+      const review = await tx.review.findUnique({ where: { id: reviewId } });
+      if (!review || review.deletedAt)
+        throw new NotFoundException('评价不存在');
+      if (review.userId !== userId)
+        throw new ForbiddenException('无权删除此评价');
+      await tx.review.update({
+        where: { id: reviewId },
+        data: { deletedAt: new Date() },
+      });
+      await this.notifications.withdrawThread(tx, 'review', reviewId);
+      await this.dishReviewStatsService.recomputeBatch(tx, [review.dishId]);
     });
-
-    await this.dishReviewStatsService.recomputeDishStats(review.dishId);
+    this.embeddingQueueService?.scheduleRefreshUser(userId);
 
     return {
       code: 200,
@@ -294,6 +301,8 @@ export class ReviewsService {
       images: review.images,
       createdAt: review.createdAt.toISOString(),
       deletedAt: review.deletedAt?.toISOString() ?? null,
+      likeCount: review._count?.likes ?? 0,
+      likedByMe: !!review.likes?.length,
     };
   }
 }

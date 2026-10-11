@@ -6,4 +6,5 @@ export class MealPlanResponseDto extends BaseResponseDto<MealPlanDto> {}
 
 export class MealPlanListResponseDto extends BaseResponseDto<{
   items: MealPlanDto[];
+  meta?: { page: number; pageSize: number; total: number; totalPages: number };
 }> {}

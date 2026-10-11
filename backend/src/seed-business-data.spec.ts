@@ -3,6 +3,8 @@ import { clearSeedBusinessData } from '../prisma/clear-seed-data';
 
 describe('clearSeedBusinessData', () => {
   const models = [
+    'notificationCampaign',
+    'weeklyRecommendationCollection',
     'operationLog',
     'recommendationEvent',
     'userExperimentAssignment',
@@ -12,6 +14,7 @@ describe('clearSeedBusinessData', () => {
     'browseHistory',
     'favoriteDish',
     'report',
+    'post',
     'comment',
     'review',
     'dishUpload',

@@ -31,13 +31,19 @@ const token = (type: 'user' | 'admin', tokenUse = 'access') =>
 
 const publicControllers = [
   'AIChatController',
+  'CampusIdentityController',
   'CanteensController',
   'CommentsController',
+  'DiningInvitesController',
   'DishesController',
+  'IdentityController',
   'MealPlansController',
   'NewsController',
+  'NotificationsController',
+  'PublicMealPlansController',
   'RecommendationController',
   'ReviewsController',
+  'SocialController',
   'UserProfileController',
 ];
 const adminControllers = [
@@ -51,6 +57,8 @@ const adminControllers = [
   'AdminRecommendationController',
   'AdminReportsController',
   'AdminReviewsController',
+  'AdminSocialController',
+  'AdminStudentVerificationController',
   'AdminUploadsController',
   'AdminWindowsController',
 ];
@@ -58,6 +66,7 @@ const adminControllers = [
 async function createHttpApplication(root: Type<unknown>) {
   const auth = {
     refreshToken: jest.fn(async (sub, type) => ({ sub, type })),
+    phoneLogin: jest.fn(async () => ({ code: 200 })),
     wechatLogin: jest.fn(async () => ({ code: 200 })),
     adminLogin: jest.fn(async () => ({ code: 200 })),
   };
@@ -179,14 +188,14 @@ describe.each([
     expect(actual.sort()).toEqual(expected.sort());
   });
 
-  it('has no queue processors in its provider graph', () => {
+  it('has no queue processors or notification schedulers in its provider graph', () => {
     const providers = [...fixture.modules.values()].flatMap((module) =>
       [...module.providers.values()].map((provider) => provider.metatype?.name),
     );
     expect(providers).not.toEqual(
       expect.arrayContaining([
         expect.stringMatching(
-          /^(?:DishSyncProcessor|DishReviewStatsProcessor|EmbeddingQueueProcessor)$/,
+          /^(?:DishSyncProcessor|DishReviewStatsProcessor|EmbeddingQueueProcessor|NotificationDispatcher|NotificationCampaignService)$/,
         ),
       ]),
     );
@@ -199,7 +208,7 @@ describe.each([
       .expect(realm === 'user' ? 404 : 200);
     await request(app.getHttpServer())
       .post('/auth/wechat/login')
-      .send({ code: 'code' })
+      .send({ code: 'code', platform: 'mp-weixin' })
       .expect(realm === 'admin' ? 404 : 200);
     expect(fixture.auth.adminLogin).toHaveBeenCalledTimes(
       realm === 'user' ? 0 : 1,
@@ -268,12 +277,21 @@ describe.each([
   );
 
   it('does not mount routes from the opposite business realm', async () => {
-    for (const path of ['/admin/config/templates']) {
+    for (const path of [
+      '/admin/config/templates',
+      '/admin/posts',
+      '/admin/student-verifications',
+    ]) {
       await request(app.getHttpServer())
         .get(path)
         .expect(realm === 'user' ? 404 : 401);
     }
-    for (const path of ['/user/profile', '/recommend/health']) {
+    for (const path of [
+      '/user/profile',
+      '/notifications',
+      '/user/student-verification',
+      '/recommend/health',
+    ]) {
       await request(app.getHttpServer())
         .get(path)
         .expect(realm === 'admin' ? 404 : 401);

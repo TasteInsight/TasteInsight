@@ -3,16 +3,14 @@ import { AuthService } from './auth.service';
 import { PrismaService } from '@/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { HttpService } from '@nestjs/axios';
+import { UserIdentityService } from './user-identity.service';
+import { VerificationChallengeService } from './verification-challenge.service';
 import { UserProfileService } from '@/user-profile/user-profile.service';
 import {
   UnauthorizedException,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { of, throwError } from 'rxjs';
 import * as bcrypt from 'bcrypt';
-import { AuthGuard } from './guards/auth.guard';
-import type { ExecutionContext } from '@nestjs/common';
 
 // Mock bcrypt
 jest.mock('bcrypt', () => ({
@@ -36,12 +34,11 @@ const mockConfigService = {
   get: jest.fn(),
 };
 
-const mockHttpService = {
-  get: jest.fn(),
-};
+const mockIdentities = { wechat: jest.fn(), phone: jest.fn() };
+const mockChallenges = { consume: jest.fn() };
 
 const mockUserProfileService = {
-  createUser: jest.fn(),
+  getUserProfile: jest.fn(),
 };
 
 describe('AuthService', () => {
@@ -49,7 +46,6 @@ describe('AuthService', () => {
   let prisma: typeof mockPrismaService;
   let jwtService: typeof mockJwtService;
   let configService: typeof mockConfigService;
-  let httpService: typeof mockHttpService;
   let userProfileService: typeof mockUserProfileService;
 
   beforeEach(async () => {
@@ -61,7 +57,8 @@ describe('AuthService', () => {
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
-        { provide: HttpService, useValue: mockHttpService },
+        { provide: UserIdentityService, useValue: mockIdentities },
+        { provide: VerificationChallengeService, useValue: mockChallenges },
         { provide: UserProfileService, useValue: mockUserProfileService },
       ],
     }).compile();
@@ -70,7 +67,6 @@ describe('AuthService', () => {
     prisma = mockPrismaService;
     jwtService = mockJwtService;
     configService = mockConfigService;
-    httpService = mockHttpService;
     userProfileService = mockUserProfileService;
 
     // Default config values
@@ -91,263 +87,72 @@ describe('AuthService', () => {
     );
 
     jwtService.signAsync.mockResolvedValue('mock-token');
+    mockIdentities.wechat.mockImplementation(() =>
+      prisma.user.findUnique({ where: { id: 'user-1' } }),
+    );
+    mockUserProfileService.getUserProfile.mockImplementation(async (id) => ({
+      data: await prisma.user.findUnique({ where: { id } }),
+    }));
   });
 
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
-  describe('wechatLogin', () => {
-    it.each([
-      ['production', true],
-      ['production', 'true'],
-      ['development', false],
-      ['test', 'false'],
-      ['prodution', true],
-      [undefined, true],
-    ])(
-      'rejects mock code with environment %s and switch %s before external calls',
-      async (NODE_ENV, ENABLE_MOCK_AUTH) => {
-        configService.get.mockImplementation(
-          (key) => ({ NODE_ENV, ENABLE_MOCK_AUTH })[key],
-        );
-        await expect(
-          service.wechatLogin('baseline_user_code_placeholder'),
-        ).rejects.toThrow(UnauthorizedException);
-        expect(httpService.get).not.toHaveBeenCalled();
-        expect(prisma.user.findUnique).not.toHaveBeenCalled();
-        expect(jwtService.signAsync).not.toHaveBeenCalled();
-      },
-    );
-
-    it('issues a signed development token which a distinct production key rejects', async () => {
-      const jwt = new JwtService();
-      jwtService.signAsync.mockImplementation((payload, options) =>
-        jwt.signAsync(payload, options),
-      );
-      configService.get.mockImplementation(
-        (key, fallback) =>
-          ({
-            NODE_ENV: 'development',
-            ENABLE_MOCK_AUTH: true,
-            JWT_SECRET: 'dev-access-secret-'.repeat(3),
-            JWT_REFRESH_SECRET: 'dev-refresh-secret-'.repeat(3),
-          })[key] ?? fallback,
-      );
-      prisma.user.findUnique.mockResolvedValue({
-        id: 'dev-user',
-        openId: 'baseline_user_openid',
-      });
-      const result = await service.wechatLogin(
-        'baseline_user_code_placeholder',
-      );
-      const request = {
-        headers: { authorization: `Bearer ${result.data.token.accessToken}` },
-        user: undefined,
-      };
-      const context = {
-        switchToHttp: () => ({ getRequest: () => request }),
-      } as unknown as ExecutionContext;
-      const devGuard = new AuthGuard(
-        jwt,
-        new ConfigService({ JWT_SECRET: 'dev-access-secret-'.repeat(3) }),
-      );
-      await expect(devGuard.canActivate(context)).resolves.toBe(true);
-      const prodGuard = new AuthGuard(
-        jwt,
-        new ConfigService({
-          JWT_SECRET: 'production-access-secret-'.repeat(3),
-        }),
-      );
-      await expect(prodGuard.canActivate(context)).rejects.toThrow(
-        UnauthorizedException,
-      );
-      expect(httpService.get).not.toHaveBeenCalled();
-    });
-
-    it('should login with baseline_user_code when mock auth is enabled', async () => {
-      configService.get.mockImplementation((key: string) => {
-        if (key === 'NODE_ENV') return 'test';
-        if (key === 'ENABLE_MOCK_AUTH') return 'true';
-        if (key === 'JWT_SECRET') return 'test-secret';
-        if (key === 'JWT_REFRESH_SECRET') return 'test-refresh-secret';
-        if (key === 'JWT_EXPIRATION_TIME') return '3600';
-        if (key === 'JWT_REFRESH_EXPIRATION_TIME') return '604800';
-        return null;
-      });
-
-      const mockUser = { id: 'user-1', openId: 'baseline_user_openid' };
-      prisma.user.findUnique.mockResolvedValue(mockUser);
-
-      const result = await service.wechatLogin(
-        'baseline_user_code_placeholder',
-      );
-
-      expect(result.code).toBe(200);
-      expect(result.data.user).toEqual(mockUser);
-      expect(prisma.user.findUnique).toHaveBeenCalledWith({
-        where: { openId: 'baseline_user_openid' },
-      });
-    });
-
-    it('should login with secondary_user_code when mock auth is enabled', async () => {
-      configService.get.mockImplementation((key: string) => {
-        if (key === 'NODE_ENV') return 'test';
-        if (key === 'ENABLE_MOCK_AUTH') return 'true';
-        if (key === 'JWT_SECRET') return 'test-secret';
-        if (key === 'JWT_REFRESH_SECRET') return 'test-refresh-secret';
-        if (key === 'JWT_EXPIRATION_TIME') return '3600';
-        if (key === 'JWT_REFRESH_EXPIRATION_TIME') return '604800';
-        return null;
-      });
-
-      const mockUser = { id: 'user-2', openId: 'secondary_user_openid' };
-      prisma.user.findUnique.mockResolvedValue(mockUser);
-
-      const result = await service.wechatLogin(
-        'secondary_user_code_placeholder',
-      );
-
-      expect(result.code).toBe(200);
-      expect(prisma.user.findUnique).toHaveBeenCalledWith({
-        where: { openId: 'secondary_user_openid' },
-      });
-    });
-
-    it('should login with mock_ prefix code when mock auth is enabled', async () => {
-      configService.get.mockImplementation((key: string) => {
-        if (key === 'NODE_ENV') return 'test';
-        if (key === 'ENABLE_MOCK_AUTH') return 'true';
-        if (key === 'JWT_SECRET') return 'test-secret';
-        if (key === 'JWT_REFRESH_SECRET') return 'test-refresh-secret';
-        if (key === 'JWT_EXPIRATION_TIME') return '3600';
-        if (key === 'JWT_REFRESH_EXPIRATION_TIME') return '604800';
-        return null;
-      });
-
-      prisma.user.findUnique.mockResolvedValue(null);
-      const mockNewUser = {
-        id: 'new-user',
-        openId: 'mock_openid_for_mock_test',
-      };
-      userProfileService.createUser.mockResolvedValue(mockNewUser);
-
-      const result = await service.wechatLogin('mock_test');
-
-      expect(result.code).toBe(200);
-      expect(userProfileService.createUser).toHaveBeenCalledWith(
-        'mock_openid_for_mock_test',
-      );
-    });
-
-    it('should create new user if not found', async () => {
-      configService.get.mockImplementation((key: string) => {
-        if (key === 'NODE_ENV') return 'test';
-        if (key === 'ENABLE_MOCK_AUTH') return 'true';
-        if (key === 'JWT_SECRET') return 'test-secret';
-        if (key === 'JWT_REFRESH_SECRET') return 'test-refresh-secret';
-        if (key === 'JWT_EXPIRATION_TIME') return '3600';
-        if (key === 'JWT_REFRESH_EXPIRATION_TIME') return '604800';
-        return null;
-      });
-
-      prisma.user.findUnique.mockResolvedValue(null);
-      const mockNewUser = { id: 'new-user', openId: 'baseline_user_openid' };
-      userProfileService.createUser.mockResolvedValue(mockNewUser);
-
-      const result = await service.wechatLogin(
-        'baseline_user_code_placeholder',
-      );
-
-      expect(result.code).toBe(200);
-      expect(userProfileService.createUser).toHaveBeenCalledWith(
-        'baseline_user_openid',
-      );
-    });
-
-    it('should call wechat API for real code', async () => {
-      configService.get.mockImplementation((key: string) => {
-        if (key === 'ENABLE_MOCK_AUTH') return 'false';
-        if (key === 'JWT_SECRET') return 'test-secret';
-        if (key === 'JWT_REFRESH_SECRET') return 'test-refresh-secret';
-        if (key === 'JWT_EXPIRATION_TIME') return '3600';
-        if (key === 'JWT_REFRESH_EXPIRATION_TIME') return '604800';
-        if (key === 'WECHAT_APPID') return 'test-appid';
-        if (key === 'WECHAT_SECRET') return 'test-secret';
-        return null;
-      });
-
-      httpService.get.mockReturnValue(
-        of({ data: { openid: 'real-openid', session_key: 'key' } }),
-      );
-      prisma.user.findUnique.mockResolvedValue({
+  describe('user login', () => {
+    it('signs tokens for the resolved identity and returns the profile projection', async () => {
+      const user = { id: 'user-1', openId: null };
+      const profile = {
         id: 'user-1',
-        openId: 'real-openid',
+        nickname: 'User',
+        capabilities: { canContribute: false },
+      };
+      mockIdentities.wechat.mockResolvedValue(user);
+      userProfileService.getUserProfile.mockResolvedValueOnce({
+        data: profile,
       });
-
-      const result = await service.wechatLogin('real-code');
-
-      expect(result.code).toBe(200);
-      expect(httpService.get).toHaveBeenCalled();
+      const result = await service.wechatLogin('provider-code', 'app');
+      expect(mockIdentities.wechat).toHaveBeenCalledWith(
+        'provider-code',
+        'app',
+      );
+      expect(result.data.user).toEqual(profile);
+      expect(result.data.token.accessToken).toBe('mock-token');
     });
 
-    it('should throw UnauthorizedException if wechat returns error', async () => {
-      configService.get.mockImplementation((key: string) => {
-        if (key === 'ENABLE_MOCK_AUTH') return 'false';
-        if (key === 'JWT_SECRET') return 'test-secret';
-        if (key === 'JWT_REFRESH_SECRET') return 'test-refresh-secret';
-        if (key === 'JWT_EXPIRATION_TIME') return '3600';
-        if (key === 'JWT_REFRESH_EXPIRATION_TIME') return '604800';
-        if (key === 'WECHAT_APPID') return 'test-appid';
-        if (key === 'WECHAT_SECRET') return 'test-secret';
-        return null;
-      });
-
-      httpService.get.mockReturnValue(
-        of({ data: { errcode: 40029, errmsg: 'invalid code' } }),
-      );
-
-      await expect(service.wechatLogin('invalid-code')).rejects.toThrow(
+    it('does not issue a token for rejected identity proofs', async () => {
+      mockIdentities.wechat.mockRejectedValueOnce(new UnauthorizedException());
+      await expect(service.wechatLogin('bad-code')).rejects.toBeInstanceOf(
         UnauthorizedException,
       );
+      expect(jwtService.signAsync).not.toHaveBeenCalled();
     });
 
-    it('should throw InternalServerErrorException if wechat config is missing', async () => {
-      configService.get.mockImplementation((key: string) => {
-        if (key === 'ENABLE_MOCK_AUTH') return 'false';
-        if (key === 'JWT_SECRET') return 'test-secret';
-        if (key === 'JWT_REFRESH_SECRET') return 'test-refresh-secret';
-        if (key === 'JWT_EXPIRATION_TIME') return '3600';
-        if (key === 'JWT_REFRESH_EXPIRATION_TIME') return '604800';
-        if (key === 'WECHAT_APPID') return undefined;
-        if (key === 'WECHAT_SECRET') return undefined;
-        return null;
+    it('consumes a phone-login challenge before resolving the phone identity', async () => {
+      mockChallenges.consume.mockResolvedValueOnce('+8613812345678');
+      mockIdentities.phone.mockResolvedValueOnce({
+        id: 'user-1',
+        openId: null,
       });
-
-      await expect(service.wechatLogin('some-code')).rejects.toThrow(
-        InternalServerErrorException,
+      userProfileService.getUserProfile.mockResolvedValueOnce({
+        data: { id: 'user-1' },
+      });
+      await service.phoneLogin('challenge', '123456');
+      expect(mockChallenges.consume).toHaveBeenCalledWith(
+        'PHONE_LOGIN',
+        'challenge',
+        '123456',
       );
+      expect(mockIdentities.phone).toHaveBeenCalledWith('+8613812345678');
     });
 
-    it('should throw InternalServerErrorException if wechat API fails', async () => {
-      configService.get.mockImplementation((key: string) => {
-        if (key === 'ENABLE_MOCK_AUTH') return 'false';
-        if (key === 'JWT_SECRET') return 'test-secret';
-        if (key === 'JWT_REFRESH_SECRET') return 'test-refresh-secret';
-        if (key === 'JWT_EXPIRATION_TIME') return '3600';
-        if (key === 'JWT_REFRESH_EXPIRATION_TIME') return '604800';
-        if (key === 'WECHAT_APPID') return 'test-appid';
-        if (key === 'WECHAT_SECRET') return 'test-secret';
-        return null;
-      });
-
-      httpService.get.mockReturnValue(
-        throwError(() => new Error('Network error')),
-      );
-
-      await expect(service.wechatLogin('some-code')).rejects.toThrow(
-        InternalServerErrorException,
-      );
+    it('never resolves identities or signs tokens after an invalid OTP', async () => {
+      mockChallenges.consume.mockRejectedValueOnce(new UnauthorizedException());
+      await expect(
+        service.phoneLogin('challenge', '000000'),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(mockIdentities.phone).not.toHaveBeenCalled();
+      expect(jwtService.signAsync).not.toHaveBeenCalled();
     });
   });
 

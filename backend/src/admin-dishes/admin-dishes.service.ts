@@ -8,6 +8,8 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
+import { enqueueDishNotifications } from '@/notifications/notification-events';
+import { withdrawDishNotifications } from '@/notifications/withdraw-dish-notifications';
 import {
   AdminGetDishesDto,
   AdminCreateDishDto,
@@ -610,7 +612,7 @@ export class AdminDishesService {
       );
     }
 
-    return tx.dish.update({
+    const updatedDish = await tx.dish.update({
       where: { id },
       data: updateData,
       include: {
@@ -621,6 +623,8 @@ export class AdminDishesService {
         subDishes: true,
       },
     });
+    await enqueueDishNotifications(tx, updatedDish, existingDish);
+    return updatedDish;
   }
 
   private async validateDishHierarchy(
@@ -759,6 +763,7 @@ export class AdminDishesService {
       });
 
       // 删除菜品
+      await withdrawDishNotifications(tx, [id]);
       await tx.dish.delete({
         where: { id },
       });
@@ -775,22 +780,18 @@ export class AdminDishesService {
    * 管理端修改菜品状态
    */
   async updateDishStatus(id: string, status: DishStatus, adminInfo: AdminInfo) {
-    const dish = await this.prisma.dish.findUnique({
-      where: { id },
-    });
-
-    if (!dish) {
-      throw new NotFoundException('菜品不存在');
-    }
-
-    // 检查权限：如果管理员有食堂限制，必须匹配
-    if (adminInfo.canteenId && dish.canteenId !== adminInfo.canteenId) {
-      throw new ForbiddenException('权限不足');
-    }
-
-    await this.prisma.dish.update({
-      where: { id },
-      data: { status },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "dishes" WHERE "id" = ${id} FOR UPDATE`;
+      const dish = await tx.dish.findUnique({ where: { id } });
+      if (!dish) throw new NotFoundException('菜品不存在');
+      if (adminInfo.canteenId && dish.canteenId !== adminInfo.canteenId) {
+        throw new ForbiddenException('权限不足');
+      }
+      const updatedDish = await tx.dish.update({
+        where: { id },
+        data: { status },
+      });
+      await enqueueDishNotifications(tx, updatedDish, dish);
     });
 
     return {

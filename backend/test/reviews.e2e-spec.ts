@@ -90,10 +90,15 @@ describe('ReviewsController (e2e)', () => {
       expect(response.body.data.rating).toBeDefined();
     });
 
-    it('should return 401 without authentication', async () => {
-      await request(app.getHttpServer())
+    it('should return only approved public reviews without authentication', async () => {
+      const response = await request(app.getHttpServer())
         .get(`/dishes/${testDishId}/reviews`)
-        .expect(401);
+        .expect(200);
+      expect(
+        response.body.data.items.every(
+          (review: { status: string }) => review.status === 'approved',
+        ),
+      ).toBe(true);
     });
 
     it('should handle pagination', async () => {
@@ -167,7 +172,6 @@ describe('ReviewsController (e2e)', () => {
       });
       const publicFeed = await request(app.getHttpServer())
         .get(`/dishes/${ownDishId}/reviews`)
-        .set('Authorization', `Bearer ${userAccessToken}`)
         .expect(200);
       expect(publicFeed.body.data.items).toEqual([]);
       expect(publicFeed.body.data.rating.total).toBe(0);
@@ -260,18 +264,8 @@ describe('ReviewsController (e2e)', () => {
 
       testReviewId = response.body.data.id;
 
-      const secondaryLogin = await request(app.getHttpServer())
-        .post('/auth/wechat/login')
-        .send({ code: 'secondary_user_code_placeholder' })
-        .expect(200);
-      expect(secondaryLogin.body.data.user.id).not.toBe(userId);
-
       const publicFeed = await request(app.getHttpServer())
         .get(`/dishes/${dish1.id}/reviews`)
-        .set(
-          'Authorization',
-          `Bearer ${secondaryLogin.body.data.token.accessToken}`,
-        )
         .expect(200);
       expect(publicFeed.body.data.items).toEqual(
         expect.arrayContaining([

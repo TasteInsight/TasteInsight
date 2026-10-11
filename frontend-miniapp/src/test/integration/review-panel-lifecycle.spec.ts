@@ -11,13 +11,18 @@ import {
 } from '@/api/modules/comment';
 import { reportReview } from '@/api/modules/review';
 
-const mockSession = reactive({ sessionVersion: 1, userInfo: { id: 'A' }, isLoggedIn: true });
+const mockSession = reactive({
+  sessionVersion: 1,
+  userInfo: { id: 'A', capabilities: { canContribute: true } },
+  isLoggedIn: true,
+});
 jest.mock('@/store/modules/use-user-store', () => ({ useUserStore: () => mockSession }));
 jest.mock('@/api/modules/comment', () => ({
   getCommentsByReview: jest.fn(),
   createComment: jest.fn(),
   deleteComment: jest.fn(),
   reportComment: jest.fn(),
+  setCommentLike: jest.fn(),
 }));
 jest.mock('@/api/modules/review', () => ({ reportReview: jest.fn() }));
 const scopes: ReturnType<typeof effectScope>[] = [];

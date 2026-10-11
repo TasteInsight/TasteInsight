@@ -76,10 +76,17 @@ describe('DishesController (e2e)', () => {
       expect(response.body.message).toContain('菜品不存在');
     });
 
-    it('should return 401 without auth token', async () => {
-      await request(app.getHttpServer())
+    it('should return public dish details without creating guest browsing history', async () => {
+      const historyCount = await prisma.browseHistory.count({
+        where: { dishId: testDishId },
+      });
+      const response = await request(app.getHttpServer())
         .get(`/dishes/${testDishId}`)
-        .expect(401);
+        .expect(200);
+      expect(response.body.data.id).toBe(testDishId);
+      expect(
+        await prisma.browseHistory.count({ where: { dishId: testDishId } }),
+      ).toBe(historyCount);
     });
   });
 
@@ -281,8 +288,8 @@ describe('DishesController (e2e)', () => {
       );
     });
 
-    it('should return 401 without auth token', async () => {
-      await request(app.getHttpServer())
+    it('should return only online dishes to guests', async () => {
+      const response = await request(app.getHttpServer())
         .post('/dishes')
         .send({
           filter: {},
@@ -290,7 +297,13 @@ describe('DishesController (e2e)', () => {
           sort: {},
           pagination: { page: 1, pageSize: 10 },
         })
-        .expect(401);
+        .expect(200);
+      expect(response.body.data.items.length).toBeGreaterThan(0);
+      expect(
+        response.body.data.items.every(
+          (dish: { status: string }) => dish.status === 'online',
+        ),
+      ).toBe(true);
     });
   });
 

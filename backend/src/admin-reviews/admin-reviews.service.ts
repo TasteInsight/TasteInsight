@@ -3,11 +3,16 @@ import {
   NotFoundException,
   ForbiddenException,
   ConflictException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
+import { Prisma } from '@prisma/client';
+import { AdminInfo } from '@/auth/decorators/current-admin.decorator';
 import { DishReviewStatsService } from '@/dish-review-stats-queue';
 import { RejectReviewDto } from './dto/reject-review.dto';
 import { ModerateReviewDto } from './dto/moderate-review.dto';
+import { NotificationService } from '@/notifications/notification.service';
+import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service';
 import {
   PendingReviewListResponseDto,
   SuccessResponseDto,
@@ -21,7 +26,66 @@ export class AdminReviewsService {
   constructor(
     private prisma: PrismaService,
     private dishReviewStatsService: DishReviewStatsService,
+    private notifications: NotificationService,
+    @Optional() private embeddingQueueService?: EmbeddingQueueService,
   ) {}
+
+  private async deleteReviews(
+    ids: string[],
+    admin?: Pick<AdminInfo, 'canteenId'>,
+  ): Promise<number> {
+    const deleted = await this.prisma.$transaction(async (tx) => {
+      const targets = await tx.review.findMany({
+        where: { id: { in: ids } },
+        select: { dishId: true },
+      });
+      const dishIds = [...new Set(targets.map((row) => row.dishId))].sort();
+      if (dishIds.length)
+        await tx.$queryRaw(
+          Prisma.sql`SELECT id FROM dishes WHERE id IN (${Prisma.join(dishIds)}) ORDER BY id FOR UPDATE`,
+        );
+      await tx.$queryRaw(
+        Prisma.sql`SELECT id FROM reviews WHERE id IN (${Prisma.join([...ids].sort())}) ORDER BY id FOR UPDATE`,
+      );
+      const rows = await tx.review.findMany({
+        where: { id: { in: ids }, deletedAt: null },
+        select: {
+          id: true,
+          dishId: true,
+          userId: true,
+          dish: { select: { canteenId: true } },
+        },
+      });
+      if (rows.length !== ids.length)
+        throw new NotFoundException('部分评价已不存在，请刷新列表');
+      if (
+        admin?.canteenId &&
+        rows.some((row) => row.dish.canteenId !== admin.canteenId)
+      )
+        throw new ForbiddenException('无权删除所选评价');
+      const result = await tx.review.updateMany({
+        where: { id: { in: ids }, deletedAt: null },
+        data: { deletedAt: new Date() },
+      });
+      await this.notifications.withdraw(tx, {
+        OR: [
+          { targetType: 'review', targetId: { in: ids } },
+          { targetType: 'comment', rootId: { in: ids } },
+        ],
+      });
+      await this.dishReviewStatsService.recomputeBatch(
+        tx,
+        rows.map((row) => row.dishId),
+      );
+      return {
+        count: result.count,
+        userIds: [...new Set(rows.map((row) => row.userId))],
+      };
+    });
+    for (const userId of deleted.userIds)
+      this.embeddingQueueService?.scheduleRefreshUser(userId);
+    return deleted.count;
+  }
 
   async getPendingReviews(
     page: number = 1,
@@ -141,60 +205,64 @@ export class AdminReviewsService {
     adminInfo?: any,
     reason?: string,
   ): Promise<void> {
-    const review = await this.prisma.review.findUnique({
+    const initial = await this.prisma.review.findUnique({
       where: { id, deletedAt: null },
-      include: { dish: true },
+      select: { dishId: true },
     });
-    if (!review) {
-      throw new NotFoundException('评价不存在');
-    }
+    if (!initial) throw new NotFoundException('评价不存在');
 
-    if (adminInfo?.canteenId && review.dish.canteenId !== adminInfo.canteenId) {
-      throw new ForbiddenException('权限不足');
-    }
+    const userId = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM dishes WHERE id = ${initial.dishId} FOR UPDATE`;
+      const review = await tx.review.findUnique({
+        where: { id, deletedAt: null },
+        include: { dish: true },
+      });
+      if (!review) throw new NotFoundException('评价不存在');
+      if (adminInfo?.canteenId && review.dish.canteenId !== adminInfo.canteenId)
+        throw new ForbiddenException('权限不足');
+      if (status === 'approved') {
+        const verified = await tx.studentVerification.findFirst({
+          where: {
+            userId: review.userId,
+            status: 'VERIFIED',
+            expiresAt: { gt: new Date() },
+          },
+          select: { id: true },
+        });
+        if (!verified) throw new ConflictException('作者的学生认证已失效');
+      }
+      const result = await tx.review.updateMany({
+        where: {
+          id,
+          deletedAt: null,
+          status: 'pending',
+          updatedAt: new Date(dto.expectedUpdatedAt),
+          ...(adminInfo?.canteenId
+            ? { dish: { canteenId: adminInfo.canteenId } }
+            : {}),
+        },
+        data: {
+          status,
+          rejectReason: status === 'rejected' ? reason : null,
+        },
+      });
 
-    const result = await this.prisma.review.updateMany({
-      where: {
-        id,
-        deletedAt: null,
-        status: 'pending',
-        updatedAt: new Date(dto.expectedUpdatedAt),
-        ...(adminInfo?.canteenId
-          ? { dish: { canteenId: adminInfo.canteenId } }
-          : {}),
-      },
-      data: {
-        status,
-        rejectReason: status === 'rejected' ? reason : null,
-      },
+      if (result.count === 0) {
+        throw new ConflictException(
+          '评价内容或审核状态已变更，请刷新后重新审核',
+        );
+      }
+      if (status === 'rejected')
+        await this.notifications.withdrawThread(tx, 'review', id);
+      await this.dishReviewStatsService.recomputeBatch(tx, [review.dishId]);
+      return review.userId;
     });
-
-    if (result.count === 0) {
-      throw new ConflictException('评价内容或审核状态已变更，请刷新后重新审核');
-    }
-
-    await this.dishReviewStatsService.recomputeDishStats(review.dishId);
+    if (status === 'approved')
+      this.embeddingQueueService?.scheduleRefreshUser(userId);
   }
 
   async deleteReview(id: string, adminInfo?: any): Promise<SuccessResponseDto> {
-    const review = await this.prisma.review.findUnique({
-      where: { id, deletedAt: null },
-      include: { dish: true },
-    });
-    if (!review) {
-      throw new NotFoundException('评价不存在');
-    }
-
-    if (adminInfo?.canteenId && review.dish.canteenId !== adminInfo.canteenId) {
-      throw new ForbiddenException('权限不足');
-    }
-
-    await this.prisma.review.update({
-      where: { id },
-      data: { deletedAt: new Date() },
-    });
-
-    await this.dishReviewStatsService.recomputeDishStats(review.dishId);
+    await this.deleteReviews([id], adminInfo);
 
     return {
       code: 200,

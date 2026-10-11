@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 
 const mockPrismaService = {
+  $queryRaw: jest.fn().mockResolvedValue([]),
   canteen: {
     findMany: jest.fn(),
     count: jest.fn(),
@@ -34,6 +35,7 @@ const mockPrismaService = {
   },
   dish: {
     deleteMany: jest.fn(),
+    findMany: jest.fn().mockResolvedValue([]),
   },
   openingHours: {
     deleteMany: jest.fn(),
@@ -43,6 +45,7 @@ const mockPrismaService = {
     count: jest.fn(),
     updateMany: jest.fn(),
   },
+  diningInvite: { count: jest.fn().mockResolvedValue(0) },
   $transaction: jest.fn((ops) =>
     typeof ops === 'function' ? ops(mockPrismaService) : Promise.all(ops),
   ),
@@ -61,6 +64,8 @@ describe('AdminCanteensService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockPrismaService.diningInvite.count.mockResolvedValue(0);
+    mockPrismaService.dish.findMany.mockResolvedValue([]);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -345,6 +350,14 @@ describe('AdminCanteensService', () => {
 
       expect(prisma.canteen.delete).not.toHaveBeenCalled();
       expect(prisma.admin.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('preserves dining invitation history when deleting a canteen', async () => {
+      prisma.diningInvite.count.mockResolvedValue(1);
+      await expect(service.remove('c1')).rejects.toThrow(
+        '仍有用餐邀请关联此食堂',
+      );
+      expect(prisma.canteen.delete).not.toHaveBeenCalled();
     });
 
     it('reports a conflicting administrator assignment rejected by the foreign key', async () => {

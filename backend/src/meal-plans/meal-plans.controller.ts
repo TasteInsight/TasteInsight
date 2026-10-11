@@ -10,11 +10,14 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  Query,
+  Put,
 } from '@nestjs/common';
 import { MealPlansService } from './meal-plans.service';
 import { CreateMealPlanDto } from './dto/create-meal-plan.dto';
 import { UpdateMealPlanDto } from './dto/update-meal-plan.dto';
 import { AuthGuard } from '@/auth/guards/auth.guard';
+import { MealPlanQueryDto } from './dto/meal-plan-query.dto';
 import {
   MealPlanListResponseDto,
   MealPlanResponseDto,
@@ -28,9 +31,12 @@ export class MealPlansController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
-  getMealPlans(@Request() req: any): Promise<MealPlanListResponseDto> {
+  getMealPlans(
+    @Request() req: any,
+    @Query() query: MealPlanQueryDto,
+  ): Promise<MealPlanListResponseDto> {
     const userId = req.user.sub;
-    return this.mealPlansService.getMealPlans(userId);
+    return this.mealPlansService.getMealPlans(userId, query);
   }
 
   @Post()
@@ -62,5 +68,23 @@ export class MealPlansController {
   ): Promise<SuccessResponseDto> {
     const userId = req.user.sub;
     return this.mealPlansService.deleteMealPlan(id, userId);
+  }
+
+  @Put(':id/completions/:date')
+  completeDate(
+    @Param('id') id: string,
+    @Param('date') date: string,
+    @Request() req: any,
+  ) {
+    return this.mealPlansService.completeDate(id, req.user.sub, date, true);
+  }
+
+  @Delete(':id/completions/:date')
+  uncompleteDate(
+    @Param('id') id: string,
+    @Param('date') date: string,
+    @Request() req: any,
+  ) {
+    return this.mealPlansService.completeDate(id, req.user.sub, date, false);
   }
 }

@@ -5,6 +5,8 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
+import { Prisma } from '@prisma/client';
+import { withdrawDishNotifications } from '@/notifications/withdraw-dish-notifications';
 import { DishSyncService } from '@/dish-sync-queue';
 import { CreateCanteenDto } from './dto/create-canteen.dto';
 import { UpdateCanteenDto } from './dto/update-canteen.dto';
@@ -443,6 +445,7 @@ export class AdminCanteensService {
 
     try {
       await this.prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM canteens WHERE id = ${id} FOR UPDATE`;
         const canteen = await tx.canteen.findUnique({ where: { id } });
         if (!canteen) {
           throw new NotFoundException('食堂不存在');
@@ -455,16 +458,35 @@ export class AdminCanteensService {
           throw new ConflictException('仍有活跃管理员绑定此食堂，无法删除');
         }
 
+        const invitations = await tx.diningInvite.count({
+          where: { canteenId: id },
+        });
+        if (invitations > 0) {
+          throw new ConflictException('仍有用餐邀请关联此食堂，无法删除');
+        }
+
         // 退休账号及审计记录保留；活跃绑定由 Restrict 外键保护并发写入。
         await tx.admin.updateMany({
           where: { canteenId: id, deletedAt: { not: null } },
           data: { canteenId: null },
         });
+        const dishes = await tx.dish.findMany({
+          where: { canteenId: id },
+          select: { id: true },
+        });
+        if (dishes.length)
+          await tx.$queryRaw(
+            Prisma.sql`SELECT id FROM dishes WHERE id IN (${Prisma.join(dishes.map((dish) => dish.id))}) ORDER BY id FOR UPDATE`,
+          );
+        await withdrawDishNotifications(
+          tx,
+          dishes.map((dish) => dish.id),
+        );
         await tx.canteen.delete({ where: { id } });
       });
     } catch (error) {
       if (error?.code === 'P2003') {
-        throw new ConflictException('仍有管理员绑定此食堂，无法删除');
+        throw new ConflictException('食堂仍有关联记录，无法删除');
       }
       throw error;
     }

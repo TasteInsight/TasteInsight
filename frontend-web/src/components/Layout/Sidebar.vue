@@ -135,6 +135,24 @@
         <span>评论和评价管理</span>
       </router-link>
       <router-link
+        v-if="canAccessStudentVerification"
+        to="/student-verification-manage"
+        class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
+        :class="{ active: $route.path === '/student-verification-manage' }"
+      >
+        <AppIcon class="iconify" icon="carbon:user-certification"></AppIcon>
+        <span>学生身份审核</span>
+      </router-link>
+      <router-link
+        v-if="canAccessCommunity"
+        to="/community-manage"
+        class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
+        :class="{ active: $route.path === '/community-manage' }"
+      >
+        <AppIcon class="iconify" icon="carbon:chat"></AppIcon>
+        <span>社区内容管理</span>
+      </router-link>
+      <router-link
         v-permission="'config:view'"
         to="/config-manage"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
@@ -406,6 +424,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import { permissionApi } from '@/api/modules/permission'
 import { showConfirm, showAlert } from '@/composables/useModal'
+import { hasGlobalPermission } from '@/router/access'
+import { campusPermissionGroups } from '@/config/campus-permissions'
 import AdminDialog from '@/components/Common/AdminDialog.vue'
 
 export default {
@@ -424,6 +444,8 @@ export default {
 
     const userInfo = computed(() => authStore.user || { username: '管理员' })
     const userPermissions = computed(() => authStore.permissions || [])
+    const canAccessStudentVerification = computed(() => hasGlobalPermission(authStore, 'student:review'))
+    const canAccessCommunity = computed(() => hasGlobalPermission(authStore, 'post:view'))
     const canAccessCommentManage = computed(
       () =>
         authStore.hasPermission('dish:view') &&
@@ -454,6 +476,7 @@ export default {
 
     // 权限分组定义（与 UserManage 保持一致）
     const permissionGroups = [
+      ...campusPermissionGroups,
       {
         id: 'dishes',
         name: '菜品管理',
@@ -692,6 +715,8 @@ export default {
       userInfo,
       userPermissions,
       canAccessCommentManage,
+      canAccessStudentVerification,
+      canAccessCommunity,
       permissionGroups,
       showPermissionsDropdown,
       userInfoSection,

@@ -121,6 +121,12 @@ export class EmbeddingQueueService {
     return job.id as string;
   }
 
+  scheduleRefreshUser(userId: string): void {
+    void this.enqueueRefreshUser(userId).catch(() => {
+      this.logger.warn(`Recommendation refresh failed for user ${userId}`);
+    });
+  }
+
   /**
    * 获取任务状态
    */

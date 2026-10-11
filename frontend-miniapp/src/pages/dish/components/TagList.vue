@@ -25,10 +25,11 @@
           <text v-else>没有更多了</text>
         </view>
       </view>
-      <view v-else-if="initialized && !loading && !error" class="dish-list-state">
-        <text>暂无相关菜品</text>
-        <text class="dish-list-hint">可以返回食堂，查看其他标签的菜品。</text>
-      </view>
+      <EmptyState
+        v-else-if="initialized && !loading && !error"
+        title="暂无相关菜品"
+        icon="search"
+      />
     </view>
   </view>
 </template>
@@ -41,6 +42,7 @@ import type { Dish } from '@/types/api';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { getPreferredDishSort } from '@/utils/dish-sort';
 import CanteenDishCard from '@/pages/canteen/components/CanteenDishCard.vue';
+import EmptyState from '@/components/EmptyState.vue';
 
 const currentTag = ref('');
 const canteenId = ref('');

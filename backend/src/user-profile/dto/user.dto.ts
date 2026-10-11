@@ -7,9 +7,11 @@ export class UserSettingData extends UserSettingsDto {}
 
 export class UserProfileData {
   id: string;
-  openId: string;
+  openId: string | null;
   nickname: string;
   avatar: string;
+  bio?: string;
+  capabilities?: { canContribute: boolean };
   preferences: UserPreferenceData;
   settings: UserSettingData;
   allergens: string[];

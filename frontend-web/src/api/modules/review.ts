@@ -3,6 +3,8 @@ import type {
   PaginationResponse,
   ApiResponse,
   Report,
+  GetReportsParams,
+  ReportHandleRequest,
   PendingReview,
   PendingComment,
   Comment,
@@ -103,12 +105,7 @@ export const reviewApi = {
    * @returns 举报列表
    */
   async getReports(
-    params: {
-      page?: number
-      pageSize?: number
-      status?: 'pending' | 'approved' | 'rejected'
-      targetType?: 'review' | 'comment'
-    } = {},
+    params: GetReportsParams = {},
   ): Promise<ApiResponse<PaginationResponse<Report>>> {
     return await request.get<ApiResponse<PaginationResponse<Report>>>('/admin/reports', { params })
   },
@@ -121,7 +118,7 @@ export const reviewApi = {
    */
   async handleReport(
     id: string,
-    data: { action: 'delete_content' | 'warn_user' | 'reject_report'; result?: string },
+    data: ReportHandleRequest,
   ): Promise<ApiResponse<void>> {
     return await request.post<ApiResponse<void>>(`/admin/reports/${id}/handle`, data)
   },

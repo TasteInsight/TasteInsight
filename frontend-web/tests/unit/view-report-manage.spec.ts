@@ -1,11 +1,14 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { DOMWrapper, enableAutoUnmount, mount } from '@vue/test-utils'
+import { DOMWrapper, enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
+import type { Report } from '@/types/api'
 
 const mocks = vi.hoisted(() => ({
   authStoreMock: {
-    hasPermission: vi.fn((p: string) => ['review:delete', 'report:handle'].includes(p)),
+    user: { canteenId: null as string | null },
+    hasPermission: vi.fn(),
   },
+  sessionVersion: 0,
   reviewApiMock: {
     getReports: vi.fn(),
     handleReport: vi.fn(),
@@ -28,6 +31,10 @@ vi.mock('@/composables/useModal', () => ({
   showConfirmDanger: vi.fn(() => Promise.resolve(true)),
 }))
 
+vi.mock('@/utils/auth-session', () => ({
+  getAuthSessionVersion: () => mocks.sessionVersion,
+}))
+
 import ReportManage from '../../src/views/ReportManage.vue'
 
 enableAutoUnmount(afterEach)
@@ -36,9 +43,21 @@ function flushMicrotasks() {
   return Promise.resolve()
 }
 
+function mountReportManage() {
+  return mount(ReportManage, {
+    global: { stubs: { Header: true, Pagination: true } },
+  })
+}
+
 describe('views/ReportManage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    sessionStorage.clear()
+    mocks.authStoreMock.user.canteenId = null
+    mocks.authStoreMock.hasPermission.mockImplementation((permission: string) =>
+      ['review:delete', 'comment:delete', 'post:delete', 'report:handle'].includes(permission),
+    )
+    mocks.sessionVersion = 0
 
     mocks.reviewApiMock.getReports.mockResolvedValue({
       code: 200,
@@ -78,9 +97,7 @@ describe('views/ReportManage', () => {
   })
 
   it('loads reports on mount and supports status/targetType filtering', async () => {
-    const wrapper = mount(ReportManage, {
-      global: { stubs: { Header: true, Pagination: true } },
-    })
+    const wrapper = mountReportManage()
 
     await flushMicrotasks()
     await nextTick()
@@ -126,9 +143,7 @@ describe('views/ReportManage', () => {
   it('loadReports handles non-200 and thrown errors', async () => {
     mocks.reviewApiMock.getReports.mockResolvedValueOnce({ code: 500, message: 'bad' })
 
-    const wrapper = mount(ReportManage, {
-      global: { stubs: { Header: true, Pagination: true } },
-    })
+    const wrapper = mountReportManage()
 
     await flushMicrotasks()
     await nextTick()
@@ -149,9 +164,7 @@ describe('views/ReportManage', () => {
   })
 
   it('handlePageChange updates page and reloads', async () => {
-    const wrapper = mount(ReportManage, {
-      global: { stubs: { Header: true, Pagination: true } },
-    })
+    const wrapper = mountReportManage()
 
     await flushMicrotasks()
     await nextTick()
@@ -166,10 +179,8 @@ describe('views/ReportManage', () => {
     wrapper.unmount()
   })
 
-  it('handleDeleteReview covers permission/confirm/success/non-200/catch and updates selectedReport', async () => {
-    const wrapper = mount(ReportManage, {
-      global: { stubs: { Header: true, Pagination: true } },
-    })
+  it('deleting reviews covers permission/confirm/success/non-200/catch and updates selectedReport', async () => {
+    const wrapper = mountReportManage()
 
     await flushMicrotasks()
     await nextTick()
@@ -178,13 +189,13 @@ describe('views/ReportManage', () => {
 
     // permission denied
     mocks.authStoreMock.hasPermission.mockReturnValueOnce(false)
-    await wrapper.vm.handleDeleteReview(report)
-    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限删除评价')
+    await wrapper.vm.handleReport(report, 'delete_content')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限处理举报')
 
     // confirm cancel
     mocks.authStoreMock.hasPermission.mockReturnValue(true)
     mocks.showConfirmMock.mockResolvedValueOnce(false)
-    await wrapper.vm.handleDeleteReview(report)
+    await wrapper.vm.handleReport(report, 'delete_content')
     expect(mocks.reviewApiMock.handleReport).toHaveBeenCalledTimes(0)
 
     // success: reload and update selectedReport from refreshed list
@@ -204,7 +215,7 @@ describe('views/ReportManage', () => {
 
     mocks.showConfirmMock.mockResolvedValueOnce(true)
     mocks.reviewApiMock.handleReport.mockResolvedValueOnce({ code: 200 })
-    await wrapper.vm.handleDeleteReview(report)
+    await wrapper.vm.handleReport(report, 'delete_content')
 
     expect(mocks.reviewApiMock.handleReport).toHaveBeenLastCalledWith('r1', { action: 'delete_content' })
     expect(mocks.showAlertMock).toHaveBeenCalledWith('删除成功')
@@ -213,47 +224,43 @@ describe('views/ReportManage', () => {
 
     // non-200
     mocks.reviewApiMock.handleReport.mockResolvedValueOnce({ code: 400, message: 'nope' })
-    await wrapper.vm.handleDeleteReview(report)
+    await wrapper.vm.handleReport(report, 'delete_content')
     expect(mocks.showAlertMock).toHaveBeenCalledWith('nope')
 
     // catch
     mocks.reviewApiMock.handleReport.mockRejectedValueOnce(new Error('boom'))
-    await wrapper.vm.handleDeleteReview(report)
+    await wrapper.vm.handleReport(report, 'delete_content')
     expect(mocks.showAlertMock).toHaveBeenCalledWith('删除评价失败，请重试')
 
     wrapper.unmount()
   })
 
-  it('handleDeleteComment covers permission/confirm and catch', async () => {
-    const wrapper = mount(ReportManage, {
-      global: { stubs: { Header: true, Pagination: true } },
-    })
+  it('deleting comments covers permission/confirm and catch', async () => {
+    const wrapper = mountReportManage()
 
     await flushMicrotasks()
     await nextTick()
 
-    const report = wrapper.vm.reports.find((r: any) => r.targetType === 'comment')
+    const report = { ...wrapper.vm.reports.find((r: any) => r.targetType === 'comment'), status: 'pending' }
 
     mocks.authStoreMock.hasPermission.mockReturnValueOnce(false)
-    await wrapper.vm.handleDeleteComment(report)
-    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限删除评论')
+    await wrapper.vm.handleReport(report, 'delete_content')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限处理举报')
 
     mocks.authStoreMock.hasPermission.mockReturnValue(true)
     mocks.showConfirmMock.mockResolvedValueOnce(false)
-    await wrapper.vm.handleDeleteComment(report)
+    await wrapper.vm.handleReport(report, 'delete_content')
     expect(mocks.reviewApiMock.handleReport).toHaveBeenCalledTimes(0)
 
     mocks.reviewApiMock.handleReport.mockRejectedValueOnce(new Error('boom'))
-    await wrapper.vm.handleDeleteComment(report)
+    await wrapper.vm.handleReport(report, 'delete_content')
     expect(mocks.showAlertMock).toHaveBeenCalledWith('删除评论失败，请重试')
 
     wrapper.unmount()
   })
 
   it('handleReport handles permission/confirm/success/non-200/catch and sets default result', async () => {
-    const wrapper = mount(ReportManage, {
-      global: { stubs: { Header: true, Pagination: true } },
-    })
+    const wrapper = mountReportManage()
 
     await flushMicrotasks()
     await nextTick()
@@ -303,9 +310,7 @@ describe('views/ReportManage', () => {
   })
 
   it('image preview open/close, navigation, and keyboard shortcuts', async () => {
-    const wrapper = mount(ReportManage, {
-      global: { stubs: { Header: true, Pagination: true } },
-    })
+    const wrapper = mountReportManage()
 
     await flushMicrotasks()
     await nextTick()
@@ -352,6 +357,151 @@ describe('views/ReportManage', () => {
     expect(esc.defaultPrevented).toBe(true)
     expect(wrapper.vm.imagePreview.show).toBe(false)
 
+    wrapper.unmount()
+  })
+
+  const targetCases = [
+    ['review', '评价', 'review:delete', ['https://images.test/review.png']],
+    ['comment', '评论', 'comment:delete', undefined],
+    ['post', '帖子', 'post:delete', ['https://images.test/post.png']],
+    ['postComment', '帖子评论', 'post:delete', undefined],
+  ] as const
+
+  function makeReport(targetType: Report['targetType'], images?: readonly string[]): Report {
+    return {
+      id: `report-${targetType}`,
+      reporterId: 'reporter',
+      targetType,
+      targetId: `content-${targetType}`,
+      type: 'spam',
+      reason: '广告内容',
+      status: 'pending',
+      handleResult: null,
+      handledBy: null,
+      handledAt: null,
+      createdAt: '2026-10-09T10:00:00Z',
+      reporter: { id: 'reporter', nickname: '举报人', avatar: null },
+      targetContent: {
+        content: '被举报内容',
+        userId: 'author',
+        userNickname: '作者',
+        userAvatar: null,
+        isDeleted: false,
+        ...(images ? { images: [...images] } : {}),
+      },
+    }
+  }
+
+  it.each(targetCases)('renders and filters %s with its correct label and images', async (targetType, label, _permission, images) => {
+    const report = makeReport(targetType, images)
+    mocks.reviewApiMock.getReports.mockResolvedValue({ code: 200, data: { items: [report], meta: { total: 1 } } })
+    const wrapper = mountReportManage()
+    await flushPromises()
+
+    expect(wrapper.get(`option[value="${targetType}"]`).text()).toBe(label)
+    expect(wrapper.get('tbody tr').text()).toContain(label)
+    await wrapper.findAll('select')[1].setValue(targetType)
+    await flushPromises()
+    expect(mocks.reviewApiMock.getReports).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, targetType })
+    await wrapper.get('tbody button').trigger('click')
+    const detail = new DOMWrapper(document.body).get('dialog[aria-labelledby="report-detail-title"]')
+    expect(detail.text()).toContain(`删除${label}`)
+
+    if (images) {
+      expect(wrapper.get('tbody tr').text()).toContain('1 张')
+      const thumbnail = detail.get(`button[aria-label="预览${label}图片 1"]`)
+      await thumbnail.get('img').trigger('load')
+      await thumbnail.trigger('click')
+      const preview = new DOMWrapper(document.body).get('dialog[aria-label="图片预览"]')
+      expect(preview.get('img').attributes('src')).toBe(images[0])
+      expect(preview.get('img').attributes('alt')).toBe(`${label}图片 1`)
+      await preview.trigger('cancel')
+      expect(wrapper.vm.imagePreview.show).toBe(false)
+      expect(wrapper.vm.selectedReport?.id).toBe(report.id)
+      expect(detail.attributes('open')).toBeDefined()
+    } else {
+      expect(detail.find('button[aria-label^="预览"]').exists()).toBe(false)
+    }
+    wrapper.unmount()
+  })
+
+  it.each(targetCases)('handles %s deletion with its content permission and the report endpoint', async (targetType, label, permission, images) => {
+    const report = makeReport(targetType, images)
+    mocks.authStoreMock.hasPermission.mockImplementation((value: string) => ['report:handle', permission].includes(value))
+    const wrapper = mountReportManage()
+    await flushPromises()
+    wrapper.vm.openDetailDialog(report)
+    await nextTick()
+    const button = new DOMWrapper(document.body).get('dialog[aria-labelledby="report-detail-title"]').findAll('button').find(item => item.text() === `删除${label}`)!
+    expect(button.attributes('disabled')).toBeUndefined()
+    await button.trigger('click')
+    await flushPromises()
+    expect(mocks.showConfirmMock).toHaveBeenCalledWith(`确定要删除这个${label}吗？此操作不可恢复。`, '确认删除')
+    expect(mocks.reviewApiMock.handleReport).toHaveBeenCalledExactlyOnceWith(report.id, { action: 'delete_content' })
+    wrapper.unmount()
+  })
+
+  it.each(targetCases)('does not delete %s without its own content permission, while rejection stays available', async (targetType, label, permission, images) => {
+    const report = makeReport(targetType, images)
+    mocks.authStoreMock.hasPermission.mockImplementation((value: string) => value !== permission)
+    const wrapper = mountReportManage()
+    await flushPromises()
+    wrapper.vm.openDetailDialog(report)
+    await nextTick()
+    const button = new DOMWrapper(document.body).get('dialog[aria-labelledby="report-detail-title"]').findAll('button').find(item => item.text() === `删除${label}`)!
+    expect(button.attributes('disabled')).toBeDefined()
+    await wrapper.vm.handleReport(report, 'delete_content')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith(`您没有权限删除${label}`)
+    expect(mocks.reviewApiMock.handleReport).not.toHaveBeenCalled()
+    await wrapper.vm.handleReport(report, 'reject_report')
+    expect(mocks.reviewApiMock.handleReport).toHaveBeenCalledExactlyOnceWith(report.id, { action: 'reject_report', result: '举报被拒绝' })
+    wrapper.unmount()
+  })
+
+  it('does not expose or process community reports for a canteen-scoped admin', async () => {
+    mocks.authStoreMock.user.canteenId = 'canteen-1'
+    const wrapper = mountReportManage()
+    await flushPromises()
+    expect(wrapper.find('option[value="review"]').exists()).toBe(true)
+    expect(wrapper.find('option[value="comment"]').exists()).toBe(true)
+    expect(wrapper.find('option[value="post"]').exists()).toBe(false)
+    expect(wrapper.find('option[value="postComment"]').exists()).toBe(false)
+    for (const targetType of ['post', 'postComment'] as const) {
+      await wrapper.vm.handleReport(makeReport(targetType), 'delete_content')
+      await wrapper.vm.handleReport(makeReport(targetType), 'reject_report')
+    }
+    expect(mocks.reviewApiMock.handleReport).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it.each(['permission', 'session'] as const)('rechecks %s after confirmation and blocks duplicate submissions', async reason => {
+    let confirm!: (value: boolean) => void
+    mocks.showConfirmMock.mockReturnValueOnce(new Promise<boolean>(resolve => { confirm = resolve }))
+    const wrapper = mountReportManage()
+    await flushPromises()
+    const report = makeReport('post')
+    const pending = wrapper.vm.handleReport(report, 'delete_content')
+    await wrapper.vm.handleReport(report, 'delete_content')
+    expect(mocks.showConfirmMock).toHaveBeenCalledTimes(1)
+    if (reason === 'permission') mocks.authStoreMock.hasPermission.mockReturnValue(false)
+    else mocks.sessionVersion++
+    confirm(true)
+    await pending
+    expect(mocks.reviewApiMock.handleReport).not.toHaveBeenCalled()
+    expect(wrapper.vm.isHandling).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('does not submit already handled or deleted targets', async () => {
+    const wrapper = mountReportManage()
+    await flushPromises()
+    const handled = makeReport('post')
+    handled.status = 'approved'
+    await wrapper.vm.handleReport(handled, 'delete_content')
+    const deleted = makeReport('postComment')
+    deleted.targetContent!.isDeleted = true
+    await wrapper.vm.handleReport(deleted, 'delete_content')
+    expect(mocks.reviewApiMock.handleReport).not.toHaveBeenCalled()
     wrapper.unmount()
   })
 })

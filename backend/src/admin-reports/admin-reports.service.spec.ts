@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AdminReportsService } from './admin-reports.service';
 import { PrismaService } from '@/prisma.service';
 import { DishReviewStatsService } from '@/dish-review-stats-queue';
+import { NotificationService } from '@/notifications/notification.service';
+import type { AdminInfo } from '@/auth/decorators/current-admin.decorator';
 import {
   NotFoundException,
   BadRequestException,
@@ -9,24 +11,40 @@ import {
 } from '@nestjs/common';
 
 const mockPrismaService = {
+  $transaction: jest.fn((callback) => callback(mockPrismaService)),
+  $queryRaw: jest.fn(),
   report: {
     findMany: jest.fn(),
     count: jest.fn(),
     findUnique: jest.fn(),
     update: jest.fn(),
+    updateMany: jest.fn().mockResolvedValue({ count: 1 }),
   },
   review: {
     findUnique: jest.fn(),
     update: jest.fn(),
+    updateMany: jest.fn().mockResolvedValue({ count: 1 }),
   },
   comment: {
     findUnique: jest.fn(),
     update: jest.fn(),
+    updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+  },
+  post: {
+    updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+  },
+  postComment: {
+    updateMany: jest.fn().mockResolvedValue({ count: 1 }),
   },
 };
 
 const mockDishReviewStatsService = {
   recomputeDishStats: jest.fn(),
+  recomputeBatch: jest.fn(),
+};
+const mockNotifications = {
+  withdrawThread: jest.fn(),
+  withdraw: jest.fn(),
 };
 
 describe('AdminReportsService', () => {
@@ -40,6 +58,10 @@ describe('AdminReportsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AdminReportsService,
+        {
+          provide: NotificationService,
+          useValue: mockNotifications,
+        },
         { provide: PrismaService, useValue: mockPrismaService },
         {
           provide: DishReviewStatsService,
@@ -204,9 +226,10 @@ describe('AdminReportsService', () => {
       );
 
       expect(result.code).toBe(200);
-      expect(prisma.review.update).toHaveBeenCalled();
-      expect(dishReviewStatsService.recomputeDishStats).toHaveBeenCalledWith(
-        'd1',
+      expect(prisma.review.updateMany).toHaveBeenCalled();
+      expect(dishReviewStatsService.recomputeBatch).toHaveBeenCalledWith(
+        prisma,
+        ['d1'],
       );
     });
 
@@ -260,5 +283,129 @@ describe('AdminReportsService', () => {
         ),
       ).rejects.toThrow(ForbiddenException);
     });
+
+    describe.each([
+      {
+        targetType: 'review',
+        permission: 'review:delete',
+        target: {
+          reviewId: 'r1',
+          review: { dishId: 'd1', dish: { canteenId: 'c1' } },
+        },
+      },
+      {
+        targetType: 'comment',
+        permission: 'comment:delete',
+        target: {
+          commentId: 'c1',
+          comment: { reviewId: 'r1', review: { dish: { canteenId: 'c1' } } },
+        },
+      },
+      {
+        targetType: 'post',
+        permission: 'post:delete',
+        target: { postId: 'p1', post: { id: 'p1' } },
+      },
+      {
+        targetType: 'postComment',
+        permission: 'post:delete',
+        target: { postCommentId: 'pc1', postComment: { postId: 'p1' } },
+      },
+    ] as const)(
+      '$targetType deletion permission',
+      ({ targetType, permission, target }) => {
+        const handler: AdminInfo = {
+          id: 'handler',
+          username: 'handler',
+          role: 'admin',
+          canteenId: null,
+          permissions: ['report:handle'],
+        };
+
+        beforeEach(() => {
+          prisma.report.findUnique.mockResolvedValue({
+            id: 'report-1',
+            status: 'pending',
+            targetType,
+            ...target,
+          });
+        });
+
+        it.each([{ permissions: [] }, { permissions: ['dish:delete'] }])(
+          'rejects missing or unrelated delete permissions before any mutation: $permissions',
+          async ({ permissions }) => {
+            await expect(
+              service.handleReport(
+                'report-1',
+                { action: 'delete_content' },
+                {
+                  ...handler,
+                  permissions: ['report:handle', ...permissions],
+                },
+              ),
+            ).rejects.toThrow(ForbiddenException);
+            expect(prisma.report.updateMany).not.toHaveBeenCalled();
+            for (const model of [
+              prisma.review,
+              prisma.comment,
+              prisma.post,
+              prisma.postComment,
+            ]) {
+              expect(model.updateMany).not.toHaveBeenCalled();
+            }
+            expect(mockNotifications.withdraw).not.toHaveBeenCalled();
+            expect(mockNotifications.withdrawThread).not.toHaveBeenCalled();
+            expect(
+              dishReviewStatsService.recomputeDishStats,
+            ).not.toHaveBeenCalled();
+          },
+        );
+
+        it('accepts the matching delete permission', async () => {
+          await expect(
+            service.handleReport(
+              'report-1',
+              { action: 'delete_content' },
+              {
+                ...handler,
+                permissions: ['report:handle', permission],
+              },
+            ),
+          ).resolves.toMatchObject({ code: 200 });
+          expect(prisma[targetType].updateMany).toHaveBeenCalled();
+        });
+
+        it('keeps superadmin deletion available without explicit permission rows', async () => {
+          await expect(
+            service.handleReport(
+              'report-1',
+              { action: 'delete_content' },
+              {
+                ...handler,
+                role: 'superadmin',
+                permissions: [],
+              },
+            ),
+          ).resolves.toMatchObject({ code: 200 });
+        });
+
+        it('allows rejecting reports without a content deletion permission', async () => {
+          await expect(
+            service.handleReport(
+              'report-1',
+              { action: 'reject_report' },
+              handler,
+            ),
+          ).resolves.toMatchObject({ code: 200 });
+          expect(prisma.report.updateMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+              data: expect.objectContaining({ status: 'rejected' }),
+            }),
+          );
+          expect(mockNotifications.withdraw).not.toHaveBeenCalled();
+          expect(mockNotifications.withdrawThread).not.toHaveBeenCalled();
+        });
+      },
+    );
   });
 });

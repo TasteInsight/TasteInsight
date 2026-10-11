@@ -1,6 +1,10 @@
 /// <reference types="jest" />
 jest.mock('@/store/modules/use-user-store', () => ({
-  useUserStore: () => ({ sessionVersion: 0 }),
+  useUserStore: () => ({
+    sessionVersion: 0,
+    isLoggedIn: true,
+    userInfo: { id: 'student', capabilities: { canContribute: true } },
+  }),
 }));
 import { useComment, useCommentPanel } from '@/pages/dish/composables/use-comment';
 import { getCommentsByReview, createComment, deleteComment } from '@/api/modules/comment';

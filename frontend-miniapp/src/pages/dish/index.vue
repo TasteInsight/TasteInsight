@@ -307,6 +307,7 @@
 </template>
 
 <script setup lang="ts">
+import { requireStudent } from '@/utils/student-access';
 import { ref, computed, nextTick, watch, onScopeDispose } from 'vue';
 import { onLoad, onBackPress, onPullDownRefresh, onReachBottom, onHide } from '@dcloudio/uni-app';
 import { useDishDetail } from '@/pages/dish/composables/use-dish-detail';
@@ -578,10 +579,11 @@ const displayedSubDishes = computed(() => {
   return subDishes.value.slice(0, 3);
 });
 
-onLoad((options: any) => {
+onLoad(async (options: Record<string, string | undefined> = {}) => {
   if (options.id) {
     dishId.value = options.id;
-    fetchDishDetail(options.id);
+    const loaded = await fetchDishDetail(options.id);
+    if (loaded && active && options.reviewId) showAllCommentsPanel(options.reviewId);
   }
 });
 
@@ -667,6 +669,7 @@ const formatMealTime = (mealTimes: string[] | undefined) => {
 };
 
 const showReviewForm = () => {
+  if (!requireStudent()) return;
   if (
     !ownReviewLoaded.value ||
     ownReviewLoading.value ||

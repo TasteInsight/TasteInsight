@@ -17,8 +17,6 @@ const api = {
   APP_URL: 'https://api.example.test',
   JWT_SECRET: 'dedicated-access-key'.repeat(2),
   JWT_REFRESH_SECRET: 'dedicated-refresh-key'.repeat(2),
-  WECHAT_APPID: 'fixture-wechat-appid',
-  WECHAT_SECRET: 'fixture-wechat-secret',
 };
 
 describe('runtime configuration composition', () => {
@@ -45,6 +43,7 @@ describe('runtime configuration composition', () => {
         expect(config.get('NODE_ENV')).toBe(environment.NODE_ENV);
         if (role === 'worker' || role === 'migrate') {
           expect(config.get('JWT_SECRET')).toBeUndefined();
+          expect(config.get('AUTH_CHALLENGE_SECRET')).toBeUndefined();
         }
         if (role === 'migrate')
           expect(config.get('REDIS_HOST')).toBeUndefined();

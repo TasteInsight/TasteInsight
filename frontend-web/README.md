@@ -64,6 +64,8 @@ frontend-web/
 | 审核菜品详情 | `/review-dish/:id` | 查看待审核菜品详情 |
 | 评价管理 | `/review-manage` | 管理用户评价 |
 | 评论管理 | `/comment-manage` | 管理评论内容 |
+| 学生认证 | `/student-verification-manage` | 资格申请、通过/拒绝、有效期与撤销 |
+| 社区管理 | `/community-manage` | 帖子及回复的状态筛选、审核与删除 |
 | 举报管理 | `/report-manage` | 处理用户举报 |
 | 用户管理 | `/user-manage` | 管理员账号管理 |
 | 新闻管理 | `/news-manage` | 新闻公告发布与编辑 |
@@ -81,6 +83,12 @@ frontend-web/
 
 新闻支持标题、发布食堂、全校公告及开始/结束时间筛选；已发布新闻按发布时间筛选，草稿按创建时间筛选。菜品审核支持名称关键词、食堂和审核状态筛选。所有筛选在服务端分页前执行，总记录数对应当前筛选条件；更改条件会返回第一页。食堂管理员仅查看所属食堂范围。
 
+### 校园审核
+
+学生认证与社区管理仅对具有相应权限的全局管理员开放。学生申请批准需填写审核依据与有效期；批准、拒绝和撤销使用列表返回的 `updatedAt` 防止旧页面覆盖新申请。校园邮箱控制权与在校资格分开审核。
+
+社区的帖子和回复默认直接发布。系统配置可开启对应人工审核；该设置针对全站生效。用户只能看到自己的未公开内容，管理员审核通过后才公开。
+
 ## 权限控制
 
 系统采用基于权限点的访问控制：
@@ -93,19 +101,22 @@ frontend-web/
 | `dish:delete` | 删除菜品 |
 | `canteen:create` | 创建食堂/窗口 |
 | `upload:approve` | 审核用户上传 |
-| `review:view` | 查看评价 |
 | `review:approve` | 审核评价 |
-| `comment:view` | 查看评论 |
+| `review:delete` | 删除评价 |
 | `comment:approve` | 审核评论 |
-| `report:view` | 查看举报 |
+| `comment:delete` | 删除回复 |
+| `student:review` | 全局学生资格审核与撤销 |
+| `post:view` | 查看社区管理列表 |
+| `post:approve` | 审核帖子与帖子回复 |
+| `post:delete` | 删除帖子与帖子回复 |
 | `report:handle` | 处理举报 |
 | `admin:view` | 查看管理员 |
-| `admin:manage` | 管理管理员 |
+| `admin:create`、`admin:edit`、`admin:delete` | 管理管理员 |
 | `news:view` | 查看新闻 |
-| `news:manage` | 管理新闻 |
+| `news:create`、`news:edit`、`news:delete` | 管理新闻 |
+| `news:publish`、`news:revoke` | 发布与撤销新闻 |
 | `config:view` | 查看配置 |
-| `config:manage` | 管理配置 |
-| `log:view` | 查看日志 |
+| `config:edit` | 管理配置 |
 
 ## 环境准备
 

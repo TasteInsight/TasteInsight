@@ -15,7 +15,7 @@ import { getDishById, getDishes } from '@/api/modules/dish';
 import { getCanteenList } from '@/api/modules/canteen';
 
 jest.mock('@dcloudio/uni-app', () => ({
-  onHide: jest.fn(), onBackPress: jest.fn(), onPullDownRefresh: jest.fn(),
+  onShow: jest.fn(), onHide: jest.fn(), onBackPress: jest.fn(), onPullDownRefresh: jest.fn(),
 }));
 jest.mock('@/api/modules/ai');
 jest.mock('@/api/modules/meal-plan');
@@ -49,6 +49,7 @@ const uniMock = {
 beforeEach(() => {
   jest.resetAllMocks();
   jest.useFakeTimers();
+  jest.setSystemTime(new Date('2099-10-05T04:00:00Z'));
   jest.spyOn(console, 'error').mockImplementation(() => {});
   storage.clear();
   storage.set('token', 'A-token');
@@ -91,7 +92,7 @@ function planningPage(editable = false, cards = false) {
   const wrapper = shallowMount(PlanningPage, {
     global: {
       config: { errorHandler: pageErrors },
-      stubs: { PlanCard: !cards, PlanEditDialog: !editable, 'page-container': true, picker: true, 'uni-icons': true },
+      stubs: { PlanCard: !cards, PlanEditDialog: !editable, EmptyState: false, IconButton: false, UiPicker: false, 'page-container': true, picker: true, 'uni-icons': true },
     },
   });
   wrappers.push(wrapper);
@@ -108,10 +109,10 @@ function expectBlankChat(wrapper: any) {
 
 function expectBlankPlans(wrapper: any) {
   expect(wrapper.findComponent({ name: 'PlanningSkeleton' }).exists()).toBe(false);
-  expect(wrapper.text()).not.toMatch(/暂无当前规划|暂无历史规划|创建第一个规划/);
+  expect(wrapper.text()).not.toMatch(/暂无当前规划|暂无历史规划|这天还没有安排|尚未安排/);
   expect(wrapper.findAllComponents({ name: 'PlanCard' }).length).toBe(0);
-  expect(wrapper.findAll('[role="tab"]').length).toBe(2);
-  expect(wrapper.findAll('[role="tab"]').map((tab: DOMWrapper<Element>) => tab.text())).toEqual(['当前规划', '历史规划']);
+  expect(wrapper.findAll('[aria-label="规划视图"] [role="tab"]').map((tab: DOMWrapper<Element>) => tab.text())).toEqual(['月', '周', '日', '列表']);
+  expect(wrapper.find('[aria-label="规划分类"]').exists()).toBe(false);
   expect(wrapper.find('[aria-label="新建规划"]').exists()).toBe(true);
 }
 
@@ -310,9 +311,12 @@ describe('planning loading lifecycle', () => {
     expect(usePlanStore().initialized).toBe(false);
     read.resolve(ok({ items: [] }));
     await flushPromises();
-    expect(wrapper.text()).toContain('暂无当前规划');
+    expect(wrapper.text()).toContain('这天还没有安排');
     expect(usePlanStore().initialized).toBe(true);
-    await wrapper.findAll('[role="tab"]')[1].trigger('tap');
+    await wrapper.findAll('[aria-label="规划视图"] [role="tab"]')[3].trigger('click');
+    expect(wrapper.text()).toContain('暂无当前规划');
+    wrapper.getComponent({ name: 'picker' }).vm.$emit('change', { detail: { value: 1 } });
+    await nextTick();
     expect(wrapper.text()).toContain('暂无历史规划');
   });
 
@@ -384,7 +388,7 @@ describe('planning loading lifecycle', () => {
     const read = deferred();
     (getMealPlans as jest.Mock).mockReturnValueOnce(read.promise);
     const wrapper = planningPage();
-    expect(wrapper.text()).toContain('暂无当前规划');
+    expect(wrapper.text()).toContain('这天还没有安排');
     expect(wrapper.findComponent({ name: 'PlanningSkeleton' }).exists()).toBe(false);
     read.resolve(ok({ items: [] }));
     await flushPromises();
@@ -417,7 +421,7 @@ describe('planning loading lifecycle', () => {
     await pendingCurrent;
     await nextTick();
     expect(usePlanStore().initialized).toBe(true);
-    expect(wrapper.text()).toContain('暂无当前规划');
+    expect(wrapper.text()).toContain('这天还没有安排');
     expect(wrapper.text()).not.toContain('A 读取失败');
   });
 
@@ -438,8 +442,8 @@ describe('planning loading lifecycle', () => {
     second.resolve(ok(dish('second', 8)));
     await flushPromises();
     expect(wrapper.findAll('.meal-card-dish').length).toBe(2);
-    expect(wrapper.text()).toContain('所列单价合计 ¥15.00');
-    await wrapper.get('[aria-label="编辑规划"]').trigger('tap');
+    expect(wrapper.text()).toContain('单价合计 ¥15.00');
+    await wrapper.get('[aria-label="编辑规划"]').trigger('click');
     const editor = wrapper.findAllComponents(PlanEditDialog)[0].vm as any;
     expect(editor.formData.dishes).toEqual(['first', 'second']);
     (updateMealPlan as jest.Mock).mockResolvedValueOnce(ok({ ...complete, mealTime: 'dinner' }));
@@ -468,7 +472,7 @@ describe('planning loading lifecycle', () => {
     await flushPromises();
     expect(usePlanStore().initialized).toBe(true);
     expect(usePlanStore().currentPlans[0].dishes.map(item => item.id)).toEqual(retried.dishes);
-    await wrapper.get('[aria-label="编辑规划"]').trigger('tap');
+    await wrapper.get('[aria-label="编辑规划"]').trigger('click');
     expect((wrapper.findAllComponents(PlanEditDialog)[0].vm as any).formData.dishes).toEqual(retried.dishes);
     expect(updateMealPlan).not.toHaveBeenCalled();
   });
@@ -478,7 +482,7 @@ describe('planning loading lifecycle', () => {
     const wrapper = planningPage(true, true);
     await flushPromises();
     const store = usePlanStore();
-    await wrapper.get('[aria-label="编辑规划"]').trigger('tap');
+    await wrapper.get('[aria-label="编辑规划"]').trigger('click');
     const editor = wrapper.findAllComponents(PlanEditDialog)[0];
     (editor.vm as any).formData.mealTime = 'dinner';
     const unavailable = deferred();
@@ -489,12 +493,12 @@ describe('planning loading lifecycle', () => {
     const pending = (wrapper.vm as any).refreshPlans();
     await flushPromises();
     expect(store.currentPlans[0].dishes.map(item => item.id)).toEqual(['dish']);
-    expect(wrapper.text()).toContain('所列单价合计 ¥8.00');
+    expect(wrapper.text()).toContain('单价合计 ¥8.00');
     unavailable.reject(new Error('菜品资料读取失败'));
     await pending;
     await nextTick();
     expect(store.currentPlans[0].dishes.map(item => item.id)).toEqual(['dish']);
-    expect(wrapper.text()).toContain('所列单价合计 ¥8.00');
+    expect(wrapper.text()).toContain('单价合计 ¥8.00');
     expect(wrapper.text()).toContain('菜品资料读取失败');
     expect((editor.vm as any).formData.mealTime).toBe('dinner');
     expect(wrapper.findAllComponents(PlanEditDialog)[0].element === editor.element).toBe(true);
@@ -567,7 +571,7 @@ describe('planning loading lifecycle', () => {
     expect(wrapper.find('.meal-card-total').exists()).toBe(false);
     expect(wrapper.get('[aria-label="编辑规划"]').attributes('disabled')).toBeDefined();
     const selectedIds = store.selectedPlan?.dishes.map(item => item.id) || [];
-    await wrapper.get('[aria-label="编辑规划"]').trigger('tap');
+    await wrapper.get('[aria-label="编辑规划"]').trigger('click');
     expect(vm.showEditDialog).toBe(false);
     expect(store.selectedPlan?.dishes.map(item => item.id) || []).toEqual(selectedIds);
     expect(wrapper.text()).toContain('重试');
@@ -575,8 +579,8 @@ describe('planning loading lifecycle', () => {
     await wrapper.findAll('button').find(button => button.text() === '重试')!.trigger('tap');
     await flushPromises();
     expect(store.currentPlans[0].dishesReady).toBe(true);
-    expect(wrapper.text()).toContain('所列单价合计 ¥8.00');
-    await wrapper.get('[aria-label="编辑规划"]').trigger('tap');
+    expect(wrapper.text()).toContain('单价合计 ¥8.00');
+    await wrapper.get('[aria-label="编辑规划"]').trigger('click');
     expect((wrapper.findAllComponents(PlanEditDialog)[0].vm as any).formData.dishes).toEqual(['missing']);
   });
 

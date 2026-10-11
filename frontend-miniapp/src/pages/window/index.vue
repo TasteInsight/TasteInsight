@@ -43,13 +43,11 @@
           />
         </view>
 
-        <view
+        <EmptyState
           v-else-if="dishesInitialized && !loading && !error && !headerError"
-          class="dish-list-state"
-        >
-          <text>暂无菜品信息</text>
-          <text class="dish-list-hint">可以返回食堂，看看其他窗口。</text>
-        </view>
+          title="暂无菜品信息"
+          icon="search"
+        />
 
         <view
           v-if="!loading && !error && (dishes.length > 0 || loadingMore)"
@@ -79,6 +77,7 @@ import { onLoad, onShow } from '@dcloudio/uni-app';
 import { useWindowData } from '@/pages/window/composables/use-window-data';
 import WindowHeader from './components/WindowHeader.vue';
 import SearchBar from '@/components/SearchBar.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import CanteenDishCard from '../canteen/components/CanteenDishCard.vue';
 
 const {

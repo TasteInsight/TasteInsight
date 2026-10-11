@@ -21,7 +21,9 @@ const uploads: any[] = [];
 const saves: any[] = [];
 const wrappers: any[] = [];
 const scopes: ReturnType<typeof effectScope>[] = [];
-const profile = (id: string) => ({ id, openId: `${id}-openid`, nickname: id });
+const profile = (id: string) => ({
+  id, openId: `${id}-openid`, nickname: id, capabilities: { canContribute: true },
+});
 const success = (data: any) => ({ statusCode: 200, data: { code: 200, data } });
 const reviewRequests = () => requests.filter(item => new URL(item.url).pathname === '/reviews');
 const fileSystem = { saveFile: jest.fn(), removeSavedFile: jest.fn() };

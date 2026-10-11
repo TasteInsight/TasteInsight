@@ -271,6 +271,23 @@ describe('components/Layout', () => {
     wrapper.unmount()
   })
 
+  it.each([null, 'c1'])('Sidebar aligns campus menu entries with global scope (%s)', async canteenId => {
+    const previousUser = authStoreMock.user
+    authStoreMock.user = { username: 'admin', canteenId } as any
+    authStoreMock.permissions = ['student:review', 'post:view']
+    authStoreMock.hasPermission = vi.fn(id => authStoreMock.permissions.includes(id))
+    const Comp = (await import('../../src/components/Layout/Sidebar.vue')).default
+    const wrapper = mount(Comp, { global: {
+      directives: { permission },
+      stubs: { 'router-link': defineComponent({ props: ['to'], template: '<a :data-to="to"><slot /></a>' }) },
+      mocks: { $route: routeMock },
+    } })
+    try {
+      expect(wrapper.find('[data-to="/student-verification-manage"]').exists()).toBe(!canteenId)
+      expect(wrapper.find('[data-to="/community-manage"]').exists()).toBe(!canteenId)
+    } finally { wrapper.unmount(); authStoreMock.user = previousUser }
+  })
+
   it('Sidebar only exposes deletion management when dish browsing is also allowed', async () => {
     routeMock.path = '/comment-manage'
     authStoreMock.permissions = ['comment:delete']

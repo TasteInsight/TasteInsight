@@ -15,8 +15,20 @@
         @longpress="(e: any) => handleLongPress(e, review)"
       >
         <view class="review-heading">
+          <!-- #ifndef MP-WEIXIN -->
+          <button
+            class="review-author"
+            :aria-label="'查看 ' + review.userNickname + ' 的主页'"
+            @tap.stop="openAuthor(review.userId)"
+          >
+            <UserAvatar :src="review.userAvatar" :label="review.userNickname" />
+            <text class="discussion-author review-name">{{ review.userNickname }}</text>
+          </button>
+          <!-- #endif -->
+          <!-- #ifdef MP-WEIXIN -->
           <UserAvatar :src="review.userAvatar" :label="review.userNickname" @tap.stop />
           <text class="discussion-author review-name">{{ review.userNickname }}</text>
+          <!-- #endif -->
           <button
             class="discussion-action review-action"
             :aria-label="'管理 ' + review.userNickname + ' 的评价'"
@@ -67,12 +79,27 @@
 
         <view class="flex justify-between items-center mt-2">
           <view class="discussion-meta review-date">{{ formatDate(review.createdAt) }}</view>
-          <button
-            class="discussion-action review-action"
-            @tap.stop="handleViewAllComments(review.id)"
-          >
-            回复
-          </button>
+          <view class="review-actions">
+            <button
+              v-if="review.status === 'approved'"
+              class="discussion-action review-action review-like"
+              :class="{ 'review-liked': isLiked(review) }"
+              :aria-label="isLiked(review) ? '取消点赞' : '点赞评价'"
+              :aria-pressed="isLiked(review)"
+              :disabled="!!pending[review.id]"
+              @tap.stop="toggleLike(review)"
+            >
+              <text class="iconfont icon-heart-outline" aria-hidden="true" /><text>{{
+                likeCount(review) || '赞'
+              }}</text>
+            </button>
+            <button
+              class="discussion-action review-action"
+              @tap.stop="handleViewAllComments(review.id)"
+            >
+              回复
+            </button>
+          </view>
         </view>
 
         <CommentList
@@ -105,7 +132,7 @@
     <!-- 空状态 -->
     <view v-else-if="initialized && !loading" class="text-center py-8 text-gray-400">
       <text class="iconfont icon-comment-outline text-4xl mb-2"></text>
-      <view class="text-sm">暂无评价，快来抢沙发吧~</view>
+      <view class="text-sm">还没有评价</view>
     </view>
 
     <!-- 长按菜单 -->
@@ -128,6 +155,8 @@ import LongPressMenu from './LongPressMenu.vue';
 import UserAvatar from '@/components/UserAvatar.vue';
 import TasteProfile from './TasteProfile.vue';
 import { useUserStore } from '@/store/modules/use-user-store';
+import { setReviewLike } from '@/api/modules/review';
+import { useContentLike } from '../composables/use-content-like';
 
 const userStore = useUserStore();
 
@@ -152,6 +181,14 @@ interface Emits {
 
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
+const { pending, isLiked, likeCount, toggleLike } = useContentLike(
+  () => props.reviews,
+  setReviewLike
+);
+// #ifndef MP-WEIXIN
+const openAuthor = (id: string) =>
+  uni.navigateTo({ url: `/pages/profile/public?id=${encodeURIComponent(id)}` });
+// #endif
 
 // 长按菜单状态
 const menuVisible = ref(false);
@@ -272,6 +309,40 @@ const handleReportFromMenu = () => {
 .review-name {
   flex: 1;
   min-width: 0;
+}
+.review-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  line-height: inherit;
+}
+.review-author::after {
+  border: 0;
+}
+.review-author:focus-visible {
+  outline: 2px solid #660874;
+  outline-offset: 2px;
+}
+.review-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.review-like {
+  gap: 5px;
+}
+.review-liked {
+  color: #660874;
 }
 .review-load-more {
   margin: 0 auto;

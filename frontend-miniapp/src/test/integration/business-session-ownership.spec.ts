@@ -12,7 +12,7 @@ import IndexPage from '@/pages/index/index.vue';
 import { useReviewForm } from '@/pages/dish/composables/use-review';
 import { usePersonal } from '@/pages/settings/composables/use-personal';
 import { useMenuPlanning } from '@/pages/planning/composables/use-menu-planning';
-import { onPullDownRefresh, onShow } from '@dcloudio/uni-app';
+import { onHide, onPullDownRefresh, onShow } from '@dcloudio/uni-app';
 import ReviewForm from '@/pages/dish/components/ReviewForm.vue';
 
 jest.mock('@dcloudio/uni-app', () => ({ onPullDownRefresh: jest.fn(), onReachBottom: jest.fn(), onShow: jest.fn(), onBackPress: jest.fn(), onHide: jest.fn() }));
@@ -455,7 +455,7 @@ describe('actual review and avatar upload consumers', () => {
 describe('real home recommendation writer', () => {
   async function mountReadyHome() {
     autoCanteens = true;
-    const wrapper = shallowMount(IndexPage, { global: { stubs: { swiper: true, 'swiper-item': true, IndexSkeleton: true, SearchBar: true, FilterBar: true, RecommendItem: true, CanteenList: true } } });
+    const wrapper = shallowMount(IndexPage, { global: { stubs: { swiper: true, 'swiper-item': true, IndexSkeleton: true, SearchBar: true, FilterBar: { name: 'FilterBar', template: '<div />', methods: { closePanel: jest.fn() } }, RecommendItem: true, CanteenList: true } } });
     wrappers.push(wrapper);
     await flushPromises();
     latest('/recommend').success(success({ requestId: 'cached-recommendation', items: [{ id: 'cached-dish' }], meta }));
@@ -680,7 +680,7 @@ describe('real home recommendation writer', () => {
   });
 
   test('a cached home completes B initialization when A initial public data is still pending', async () => {
-    const wrapper = shallowMount(IndexPage, { global: { stubs: { swiper: true, 'swiper-item': true, IndexSkeleton: true, SearchBar: true, FilterBar: true, RecommendItem: true, CanteenList: true } } });
+    const wrapper = shallowMount(IndexPage, { global: { stubs: { swiper: true, 'swiper-item': true, IndexSkeleton: true, SearchBar: true, FilterBar: true, RecommendItem: true, CanteenList: true, EmptyState: false } } });
     wrappers.push(wrapper);
     await flushPromises();
     const oldCanteens = latest('/canteens');
@@ -695,10 +695,97 @@ describe('real home recommendation writer', () => {
     oldCanteens.success(success({ items: [], meta }));
     await flushPromises();
     expect((wrapper.vm as any).recommendationsInitialized).toBe(true);
-    expect(wrapper.text()).toContain('没有推荐菜品');
+    expect(wrapper.text()).toContain('暂无推荐菜品');
     expect(wrapper.findComponent({ name: 'IndexSkeleton' }).exists()).toBe(false);
     expect(useCanteenStore().canteenList[0].id).toBe('public-canteen');
     expect(useCanteenStore().error).toBeNull();
+  });
+
+  test('a hidden home waits until shown and loads the current audience only once', async () => {
+    await mountReadyHome();
+    (onHide as jest.Mock).mock.calls[0][0]();
+    const count = requests.length;
+    await useUserStore().loginAction('B');
+    await flushPromises();
+    expect(requests.slice(count).map(item => new URL(item.url).pathname)).toEqual([
+      '/auth/wechat/login', '/user/profile',
+    ]);
+    expect(useDishesStore().dishes).toEqual([]);
+
+    const show = (onShow as jest.Mock).mock.calls[0][0];
+    const recommendationCount = matching('/recommend').length;
+    show();
+    show();
+    await flushPromises();
+    expect(matching('/recommend')).toHaveLength(recommendationCount + 1);
+    expect(latest('/recommend').header.Authorization).toBe('Bearer B-access');
+    latest('/recommend').success(success({ requestId: 'current', items: [], meta }));
+    await flushPromises();
+    show();
+    await flushPromises();
+    expect(matching('/recommend')).toHaveLength(recommendationCount + 1);
+  });
+
+  test('a guest result cannot replace authenticated data when login finishes in the same session', async () => {
+    await mountReadyHome();
+    const transport = uniMock.request.getMockImplementation()!;
+    uniMock.request.mockImplementation(options => {
+      if (new URL(options.url).pathname === '/auth/wechat/login') {
+        requests.push(options);
+        return { abort: jest.fn() };
+      }
+      return transport(options);
+    });
+    const login = useUserStore().loginAction('B');
+    await flushPromises();
+    const guest = latest('/dishes');
+    expect(guest.header.Authorization).toBeUndefined();
+    const session = useUserStore().sessionVersion;
+    latest('/auth/wechat/login').success(success({
+      token: { accessToken: 'B-access', refreshToken: 'B-refresh' }, user: profile('B'),
+    }));
+    await login;
+    await flushPromises();
+    expect(useUserStore().sessionVersion).toBe(session);
+    expect(latest('/recommend').header.Authorization).toBe('Bearer B-access');
+    latest('/recommend').success(success({ requestId: 'signed-in', items: [{ id: 'member-dish' }], meta }));
+    await flushPromises();
+    latest('/dishes/by-ids').success(success({ items: [{ id: 'member-dish' }], meta }));
+    await flushPromises();
+    guest.success(success({ items: [{ id: 'guest-dish' }], meta }));
+    await flushPromises();
+    expect(useDishesStore().dishes.map(dish => dish.id)).toEqual(['member-dish']);
+    expect(useDishesStore().loading).toBe(false);
+  });
+
+  test('preference changes while the home is hidden refresh once when it becomes visible', async () => {
+    await mountReadyHome();
+    (onHide as jest.Mock).mock.calls[0][0]();
+    const requestCount = requests.length;
+    const recommendationCount = matching('/recommend').length;
+    const user = useUserStore();
+    user.updateLocalUserInfo({
+      preferences: { id: 'A-preferences', userId: 'A', tagPreferences: ['清淡'] },
+    });
+    await flushPromises();
+    expect(requests).toHaveLength(requestCount);
+    const transport = uniMock.request.getMockImplementation()!;
+    uniMock.request.mockImplementation(options => {
+      if (new URL(options.url).pathname === '/user/profile') {
+        requests.push(options);
+        options.success(success(user.userInfo));
+        return { abort: jest.fn() };
+      }
+      return transport(options);
+    });
+    const show = (onShow as jest.Mock).mock.calls[0][0];
+    show();
+    show();
+    await flushPromises();
+    expect(matching('/recommend')).toHaveLength(recommendationCount + 1);
+    latest('/recommend').success(success({ requestId: 'updated-preferences', items: [], meta }));
+    await flushPromises();
+    expect(user.userInfo?.preferences?.tagPreferences).toEqual(['清淡']);
   });
   test('showing a cached home tab reloads recommendations for the new login', async () => {
     autoCanteens = true;
