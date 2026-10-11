@@ -159,6 +159,8 @@ pnpm build
 
 构建产物输出到 `dist/` 目录。
 
+开发服务与构建统一使用 [vite.config.ts](./vite.config.ts)。
+
 ### 预览生产构建
 
 ```bash
@@ -166,6 +168,8 @@ pnpm preview
 ```
 
 ## 测试
+
+历史执行结果保存在 [测试报告归档](../docs/archive/test-reports/README.md)。
 
 ### 单元测试
 

@@ -6,7 +6,6 @@ import { logApi } from '@/api/modules/log'
 import { newsApi } from '@/api/modules/news'
 import { canteenApi } from '@/api/modules/canteen'
 import { configApi } from '@/api/modules/config'
-import { recommendApi } from '@/api/modules/recommend'
 import { experimentApi } from '@/api/modules/experiment'
 
 /**
@@ -78,19 +77,6 @@ export const api = {
   getEffectiveConfig: configApi.getEffectiveConfig.bind(configApi),
   deleteCanteenConfigItem: configApi.deleteCanteenConfigItem.bind(configApi),
 
-  // 推荐系统
-  getRecommend: recommendApi.getRecommend.bind(recommendApi),
-  getSimilarRecommend: recommendApi.getSimilarRecommend.bind(recommendApi),
-  getPersonalRecommend: recommendApi.getPersonalRecommend.bind(recommendApi),
-  recordClickEvent: recommendApi.recordClickEvent.bind(recommendApi),
-  recordFavoriteEvent: recommendApi.recordFavoriteEvent.bind(recommendApi),
-  recordReviewEvent: recommendApi.recordReviewEvent.bind(recommendApi),
-  recordDislikeEvent: recommendApi.recordDislikeEvent.bind(recommendApi),
-  getEventChain: recommendApi.getEventChain.bind(recommendApi),
-  getFunnelAnalytics: recommendApi.getFunnelAnalytics.bind(recommendApi),
-  getExperimentGroup: recommendApi.getExperimentGroup.bind(recommendApi),
-  getHealth: recommendApi.getHealth.bind(recommendApi),
-
   // 实验管理
   getExperiments: experimentApi.getExperiments.bind(experimentApi),
   createExperiment: experimentApi.createExperiment.bind(experimentApi),
@@ -115,7 +101,6 @@ export {
   newsApi, // 新闻
   canteenApi, // 食堂
   configApi, // 配置
-  recommendApi, // 推荐系统
   experimentApi, // 实验管理
 }
 
