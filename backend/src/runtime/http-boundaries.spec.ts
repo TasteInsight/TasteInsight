@@ -8,6 +8,8 @@ import request from 'supertest';
 import { PrismaModule } from '@/prisma.module';
 import { PrismaService } from '@/prisma.service';
 import { AuthService } from '@/auth/auth.service';
+import { AdminDishesService } from '@/admin-dishes/admin-dishes.service';
+import { AdminUploadsService } from '@/admin-uploads/admin-uploads.service';
 import { UploadService } from '@/upload/upload.service';
 import { LocalStorageStrategy } from '@/upload/strategies/local-storage.strategy';
 import { OssStorageStrategy } from '@/upload/strategies/oss-storage.strategy';
@@ -64,6 +66,12 @@ const adminControllers = [
 ];
 
 async function createHttpApplication(root: Type<unknown>) {
+  const dishDetails = {
+    getAdminDishById: jest.fn(async (id: string) => ({ id })),
+  };
+  const dishUploads = {
+    getUploads: jest.fn(async () => ({ items: [], total: 0 })),
+  };
   const auth = {
     refreshToken: jest.fn(async (sub, type) => ({ sub, type })),
     phoneLogin: jest.fn(async () => ({ code: 200 })),
@@ -113,6 +121,10 @@ async function createHttpApplication(root: Type<unknown>) {
     .useValue(prisma)
     .overrideProvider(AuthService)
     .useValue(auth)
+    .overrideProvider(AdminDishesService)
+    .useValue(dishDetails)
+    .overrideProvider(AdminUploadsService)
+    .useValue(dishUploads)
     .overrideProvider(UploadService)
     .useValue(upload)
     .overrideProvider(LocalStorageStrategy)
@@ -142,7 +154,15 @@ async function createHttpApplication(root: Type<unknown>) {
     }),
   );
   await app.listen(0, '127.0.0.1');
-  return { app, auth, upload, prisma, modules: module.get(ModulesContainer) };
+  return {
+    app,
+    auth,
+    upload,
+    prisma,
+    dishDetails,
+    dishUploads,
+    modules: module.get(ModulesContainer),
+  };
 }
 
 describe.each([
@@ -198,6 +218,29 @@ describe.each([
           /^(?:DishSyncProcessor|DishReviewStatsProcessor|EmbeddingQueueProcessor|NotificationDispatcher|NotificationCampaignService)$/,
         ),
       ]),
+    );
+  });
+
+  it('routes the upload collection before the parameterized dish detail', async () => {
+    const enabled = realm !== 'user';
+    const response = await request(app.getHttpServer())
+      .get('/admin/dishes/uploads')
+      .set('Authorization', token('admin'))
+      .expect(enabled ? 200 : 404);
+    if (enabled) {
+      expect(response.body).toEqual({ items: [], total: 0 });
+    }
+    expect(fixture.dishUploads.getUploads).toHaveBeenCalledTimes(
+      enabled ? 1 : 0,
+    );
+    expect(fixture.dishDetails.getAdminDishById).not.toHaveBeenCalled();
+
+    await request(app.getHttpServer())
+      .get('/admin/dishes/example-dish')
+      .set('Authorization', token('admin'))
+      .expect(enabled ? 200 : 404);
+    expect(fixture.dishDetails.getAdminDishById).toHaveBeenCalledTimes(
+      enabled ? 1 : 0,
     );
   });
 
