@@ -15,6 +15,7 @@ import {
   UploadedFile,
 } from '@nestjs/common';
 import { AdminDishesService } from './admin-dishes.service';
+import { BatchDeleteDto } from '@/common/dto/batch-delete.dto';
 import {
   AdminGetDishesDto,
   AdminCreateDishDto,
@@ -35,6 +36,16 @@ import type { Express } from 'express';
 @UseGuards(AdminAuthGuard, PermissionsGuard)
 export class AdminDishesController {
   constructor(private readonly adminDishesService: AdminDishesService) {}
+
+  @Post('batch-delete')
+  @RequirePermissions('dish:delete')
+  @HttpCode(HttpStatus.OK)
+  batchDeleteAdminDishes(
+    @Body() body: BatchDeleteDto,
+    @CurrentAdmin() admin: AdminInfo,
+  ) {
+    return this.adminDishesService.batchDeleteAdminDishes(body.ids, admin);
+  }
 
   @Get()
   @RequirePermissions('dish:view')

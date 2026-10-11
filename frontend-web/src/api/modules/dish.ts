@@ -9,6 +9,7 @@ import type {
   DishReviewsData,
   PaginationResponse,
   ApiResponse,
+  BatchDeleteResult,
   ImageUploadResponse,
   BatchParseResponse,
   BatchConfirmResponse,
@@ -69,6 +70,10 @@ export const dishApi = {
   async deleteDish(id: string): Promise<ApiResponse<void>> {
     const response = await request.delete<ApiResponse<void>>(`/admin/dishes/${id}`)
     return response
+  },
+
+  async batchDeleteDishes(ids: string[]): Promise<ApiResponse<BatchDeleteResult>> {
+    return request.post('/admin/dishes/batch-delete', { ids })
   },
 
   /**

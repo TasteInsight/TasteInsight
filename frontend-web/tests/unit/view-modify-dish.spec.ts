@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('vue-router', () => ({
   useRouter: () => mocks.routerMock,
+  useRoute: () => ({ fullPath: '/modify-dish' }),
 }))
 
 vi.mock('@/store/modules/use-auth-store', () => ({

@@ -12,6 +12,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { AdminNewsService } from './admin-news.service';
+import { BatchDeleteDto } from '@/common/dto/batch-delete.dto';
 import { CreateNewsDto } from './dto/create-news.dto';
 import { UpdateNewsDto } from './dto/update-news.dto';
 import { AdminAuthGuard } from '@/auth/guards/admin-auth.guard';
@@ -27,6 +28,16 @@ import { AdminGetNewsDto } from './dto/news.dto';
 @UseGuards(AdminAuthGuard, PermissionsGuard)
 export class AdminNewsController {
   constructor(private readonly adminNewsService: AdminNewsService) {}
+
+  @Post('batch-delete')
+  @RequirePermissions('news:delete')
+  @HttpCode(HttpStatus.OK)
+  batchDeleteNews(
+    @Body() body: BatchDeleteDto,
+    @CurrentAdmin() admin: AdminInfo,
+  ) {
+    return this.adminNewsService.batchDeleteNews(body.ids, admin);
+  }
 
   @Get()
   @RequirePermissions('news:view')

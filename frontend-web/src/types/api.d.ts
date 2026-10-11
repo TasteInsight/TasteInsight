@@ -40,6 +40,10 @@ export interface ApiResponse<T = any> {
   data: T
 }
 
+export interface BatchDeleteResult {
+  deletedCount: number
+}
+
 /**
  * 错误响应
  */

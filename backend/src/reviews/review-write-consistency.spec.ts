@@ -198,6 +198,7 @@ describe('review write consistency', () => {
     'delete',
     'approve',
     'admin-delete',
+    'admin-batch-delete',
     'report-delete',
   ] as const)(
     '%s responds after commit without waiting for a stalled recommendation queue',
@@ -225,11 +226,13 @@ describe('review write consistency', () => {
                 )
               : kind === 'admin-delete'
                 ? f.adminReviews.deleteReview('review', admin)
-                : f.reports.handleReport(
-                    'report',
-                    { action: 'delete_content' },
-                    admin,
-                  );
+                : kind === 'admin-batch-delete'
+                  ? f.adminReviews.batchDeleteReviews(['review'], admin)
+                  : f.reports.handleReport(
+                      'report',
+                      { action: 'delete_content' },
+                      admin,
+                    );
       const nextTurn = new Promise<never>((_resolve, reject) => {
         setImmediate(() =>
           reject(new Error('Response waited for derived refresh')),

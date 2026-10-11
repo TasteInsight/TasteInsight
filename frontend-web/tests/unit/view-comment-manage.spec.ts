@@ -3,6 +3,8 @@ import { shallowMount, flushPromises } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import type { Dish, Review, Comment } from '@/types/api'
 
+vi.mock('vue-router', () => ({ useRoute: () => ({ fullPath: '/comment-manage' }) }))
+
 const mocks = vi.hoisted(() => ({
   authStoreMock: {
     hasPermission: vi.fn((p: string) => ['review:delete', 'comment:delete'].includes(p)),

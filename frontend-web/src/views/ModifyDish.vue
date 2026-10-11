@@ -69,10 +69,30 @@
       </div>
 
       <!-- 菜品表格 -->
+      <BatchActionBar
+        v-if="canDeleteDishes"
+        :count="dishSelection.selectedCount"
+        resource="菜品"
+        :busy="isBatchDeleting"
+        :disabled="isLoading"
+        @clear="dishSelection.clear"
+        @delete="handleBatchDelete"
+      />
       <div class="admin-table-scroll">
         <table class="admin-table">
           <thead class="bg-gray-50">
             <tr>
+              <th v-if="canDeleteDishes" scope="col" class="w-12 px-4 py-3">
+                <input
+                  type="checkbox"
+                  aria-label="全选当前页菜品"
+                  class="h-4 w-4 accent-tsinghua-purple focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tsinghua-purple"
+                  :checked="dishSelection.allSelected"
+                  :indeterminate="dishSelection.someSelected"
+                  :disabled="isLoading || isBatchDeleting || filteredDishes.length === 0"
+                  @change="dishSelection.toggleAll"
+                />
+              </th>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">菜品名称</th>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">食堂/楼层</th>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">窗口</th>
@@ -84,7 +104,7 @@
           </thead>
           <tbody class="divide-y divide-gray-200">
             <tr v-if="isLoading">
-              <td colspan="7" class="py-8 text-center text-gray-500">
+              <td :colspan="canDeleteDishes ? 8 : 7" class="py-8 text-center text-gray-500">
                 <AppIcon
                   class="iconify inline-block text-2xl animate-spin"
                   icon="mdi:loading"
@@ -93,9 +113,19 @@
               </td>
             </tr>
             <tr v-else-if="filteredDishes.length === 0">
-              <td colspan="7" class="py-8 text-center text-gray-500">暂无菜品数据</td>
+              <td :colspan="canDeleteDishes ? 8 : 7" class="py-8 text-center text-gray-500">暂无菜品数据</td>
             </tr>
             <tr v-else v-for="dish in filteredDishes" :key="dish.id" class="table-row">
+              <td v-if="canDeleteDishes" class="px-4 py-4 text-center">
+                <input
+                  type="checkbox"
+                  :aria-label="`选择菜品 ${dish.name}`"
+                  class="h-4 w-4 accent-tsinghua-purple focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tsinghua-purple"
+                  :checked="dishSelection.selectedIds.includes(dish.id)"
+                  :disabled="isBatchDeleting"
+                  @change="dishSelection.toggle(dish.id)"
+                />
+              </td>
               <td class="admin-cell-name">
                 <div class="flex items-center">
                   <AdminImage
@@ -157,8 +187,8 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onActivated, onBeforeUnmount } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, computed, watch, onMounted, onActivated, onDeactivated, onBeforeUnmount } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { dishApi } from '@/api/modules/dish'
 import { canteenApi } from '@/api/modules/canteen'
 import { useDishStore } from '@/store/modules/use-dish-store'
@@ -167,8 +197,11 @@ import Header from '@/components/Layout/Header.vue'
 import AdminImage from '@/components/Common/AdminImage.vue'
 import SearchBar from '@/components/Common/SearchBar.vue'
 import Pagination from '@/components/Common/Pagination.vue'
+import BatchActionBar from '@/components/Common/BatchActionBar.vue'
+import { useBatchSelection } from '@/composables/useBatchSelection'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
-import { showAlert } from '@/composables/useModal'
+import { authSessionVersion, getAuthSessionVersion } from '@/utils/auth-session'
+import { showAlert, showConfirmDanger } from '@/composables/useModal'
 
 const PAGE_STATE_KEY = 'modify-dish'
 
@@ -179,11 +212,19 @@ export default {
     Header,
     SearchBar,
     Pagination,
+    BatchActionBar,
   },
   setup() {
     const router = useRouter()
+    const route = useRoute()
     const dishStore = useDishStore()
     const authStore = useAuthStore()
+    const viewSession = getAuthSessionVersion()
+    let viewActive = true
+    let viewVersion = 0
+    let dishRequest = 0
+    const ownsView = (version = viewVersion) => viewActive &&
+      viewSession === getAuthSessionVersion() && version === viewVersion
     
     // 默认状态定义
     const defaultState = {
@@ -209,6 +250,8 @@ export default {
     const windows = ref([])
     const selectedCanteenId = ref(restoredState.selectedCanteenId)
     const selectedWindowId = ref(restoredState.selectedWindowId)
+    const listContext = computed(() => [searchQuery.value, selectedCanteenId.value,
+      selectedWindowId.value, currentPage.value, pageSize.value])
     
     // 保存页面状态
     const saveState = () => {
@@ -262,7 +305,13 @@ export default {
     }
 
     // 加载菜品列表
-    const loadDishes = async () => {
+    const loadDishes = async (clampPage = false) => {
+      if (!ownsView()) return
+      const request = ++dishRequest
+      const version = viewVersion
+      const context = listContext.value
+      const ownsRequest = () => ownsView(version) && request === dishRequest &&
+        context === listContext.value
       isLoading.value = true
       try {
         const params = {
@@ -281,8 +330,16 @@ export default {
         }
 
         const response = await dishApi.getDishes(params)
+        if (!ownsRequest()) return
 
         if (response.code === 200 && response.data) {
+          const total = response.data.meta?.total || 0
+          const lastPage = Math.max(1, Math.ceil(total / pageSize.value))
+          if (clampPage && currentPage.value > lastPage) {
+            currentPage.value = lastPage
+            saveState()
+            return loadDishes(true)
+          }
           // 转换API数据格式
           dishes.value = response.data.items.map((item) => ({
             id: item.id,
@@ -302,12 +359,13 @@ export default {
           totalDishes.value = 0
         }
       } catch (error) {
+        if (!ownsRequest()) return
         console.error('加载菜品列表失败:', error)
         // API失败时使用空数组
         dishes.value = []
         totalDishes.value = 0
       } finally {
-        isLoading.value = false
+        if (ownsRequest()) isLoading.value = false
       }
     }
 
@@ -327,6 +385,44 @@ export default {
 
       return filtered
     })
+
+    const canDeleteDishes = computed(() => authStore.hasPermission('dish:delete'))
+    const isBatchDeleting = ref(false)
+    const dishSelection = useBatchSelection({
+      ids: () => filteredDishes.value.map(dish => dish.id),
+      context: () => [listContext.value, route.fullPath, authSessionVersion.value],
+      enabled: () => canDeleteDishes.value,
+    })
+
+    const handleBatchDelete = async () => {
+      if (isBatchDeleting.value || isLoading.value || !ownsView() ||
+          !authStore.hasPermission('dish:delete')) return
+      const ids = [...dishSelection.selectedIds.value]
+      if (ids.length === 0 || ids.length > 100) return
+      const context = dishSelection.contextVersion.value
+      const version = viewVersion
+      const ownsOperation = () => ownsView(version) && context === dishSelection.contextVersion.value &&
+        authStore.hasPermission('dish:delete')
+      isBatchDeleting.value = true
+      try {
+        const confirmed = await showConfirmDanger(
+          `确定删除选中的 ${ids.length} 条菜品吗？此操作不可恢复。包含子菜品的菜品不能删除，任一项无法删除时整批不会删除。`,
+          '批量删除菜品', '删除所选菜品',
+        )
+        if (!confirmed || !ownsOperation() ||
+            !ids.every(id => dishSelection.selectedIds.value.includes(id))) return
+        const response = await dishApi.batchDeleteDishes(ids)
+        if (!ownsOperation()) return
+        if (response.code !== 200) throw new Error(response.message || '批量删除失败')
+        dishSelection.clear()
+        showAlert(`已删除 ${response.data.deletedCount} 条菜品`)
+        await loadDishes(true)
+      } catch (error) {
+        if (ownsOperation()) showAlert(error instanceof Error ? error.message : '批量删除失败，请重试')
+      } finally {
+        isBatchDeleting.value = false
+      }
+    }
 
     const viewDish = (dish) => {
       // 保存当前状态后再跳转
@@ -385,6 +481,7 @@ export default {
     })
 
     onActivated(() => {
+      viewActive = true
       // 组件重新激活时仅重新加载数据，状态已在setup()中恢复
       // 如果有选中的食堂且窗口列表为空，则尝试重新加载窗口列表
       if (selectedCanteenId.value && windows.value.length === 0) {
@@ -402,11 +499,27 @@ export default {
     })
 
     onBeforeUnmount(() => {
+      retireView()
       if (window.__modifyDish_clickLogger) {
         window.removeEventListener('click', window.__modifyDish_clickLogger, true)
         delete window.__modifyDish_clickLogger
       }
     })
+
+    const retireView = () => {
+      viewActive = false
+      viewVersion += 1
+      dishRequest += 1
+      dishSelection.clear()
+      if (searchTimeout) clearTimeout(searchTimeout)
+      isLoading.value = false
+    }
+    onDeactivated(retireView)
+    watch(authSessionVersion, () => {
+      retireView()
+      dishes.value = []
+      totalDishes.value = 0
+    }, { flush: 'sync' })
 
     const resetFilters = () => {
       searchQuery.value = ''
@@ -439,6 +552,10 @@ export default {
       handleCanteenChange,
       handleWindowChange,
       resetFilters,
+      canDeleteDishes,
+      dishSelection: reactive(dishSelection),
+      isBatchDeleting,
+      handleBatchDelete,
     }
   },
 }

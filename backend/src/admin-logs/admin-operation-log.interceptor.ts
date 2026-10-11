@@ -7,11 +7,16 @@ import {
 } from '@nestjs/common';
 import { Observable, tap } from 'rxjs';
 import { PrismaService } from '@/prisma.service';
+import {
+  BATCH_DELETE_MAX_IDS,
+  BATCH_DELETE_MAX_ID_LENGTH,
+} from '@/common/dto/batch-delete.dto';
 
 interface AuthenticatedAdminRequest {
   method: string;
   path: string;
   params?: { id?: string };
+  body?: { ids?: unknown };
   admin?: { id?: string };
 }
 
@@ -38,6 +43,7 @@ export class AdminOperationLogInterceptor implements NestInterceptor {
       details: {
         method: request.method,
         path: request.path,
+        ...this.getBatchTargets(request),
       },
     };
 
@@ -69,6 +75,28 @@ export class AdminOperationLogInterceptor implements NestInterceptor {
       typeof request.admin?.id === 'string' &&
       request.admin.id.length > 0
     );
+  }
+
+  private getBatchTargets(request: AuthenticatedAdminRequest): {
+    ids?: string[];
+  } {
+    const ids = request.body?.ids;
+    // Interceptors run before DTO pipes, including for rejected request bodies.
+    if (
+      !/\/batch-delete\/?$/.test(request.path) ||
+      !Array.isArray(ids) ||
+      ids.length === 0 ||
+      ids.length > BATCH_DELETE_MAX_IDS ||
+      !ids.every(
+        (id): id is string =>
+          typeof id === 'string' &&
+          id.length > 0 &&
+          id.length <= BATCH_DELETE_MAX_ID_LENGTH,
+      )
+    ) {
+      return {};
+    }
+    return { ids: [...ids] };
   }
 
   private getResponseId(response: unknown): string | undefined {
@@ -126,7 +154,7 @@ export class AdminOperationLogInterceptor implements NestInterceptor {
     action: string;
     targetType: string;
     targetId: string;
-    details: { method: string; path: string };
+    details: { method: string; path: string; ids?: string[] };
     result: 'success' | 'failure';
   }): Promise<void> {
     try {

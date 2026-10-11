@@ -4,6 +4,8 @@ import { defineComponent, h, KeepAlive, nextTick, ref } from 'vue'
 import { compileStyle, parse } from 'vue/compiler-sfc'
 import NewsManageSource from '../../src/views/NewsManage.vue?raw'
 
+vi.mock('vue-router', () => ({ useRoute: () => ({ fullPath: '/news-manage' }) }))
+
 // wangEditor stubs
 vi.mock('@wangeditor/editor-for-vue', () => ({
   Editor: defineComponent({ name: 'WangEditor', template: '<div />' }),

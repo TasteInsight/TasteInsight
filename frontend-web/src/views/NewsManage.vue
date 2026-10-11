@@ -120,10 +120,30 @@
           </div>
         </div>
 
+        <BatchActionBar
+          v-if="canDeleteNews"
+          :count="newsSelection.selectedCount"
+          resource="新闻"
+          :busy="isBatchDeleting"
+          :disabled="isLoading"
+          @clear="newsSelection.clear"
+          @delete="handleBatchDelete"
+        />
         <div class="admin-table-scroll">
         <table class="admin-table">
             <thead class="bg-gray-50">
               <tr>
+                <th v-if="canDeleteNews" scope="col" class="w-12 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    aria-label="全选当前页新闻"
+                    class="h-4 w-4 accent-tsinghua-purple focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tsinghua-purple"
+                    :checked="newsSelection.allSelected"
+                    :indeterminate="newsSelection.someSelected"
+                    :disabled="isLoading || isBatchDeleting || filteredNewsList.length === 0"
+                    @change="newsSelection.toggleAll"
+                  />
+                </th>
                 <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">标题</th>
                 <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">摘要</th>
                 <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">食堂</th>
@@ -135,7 +155,7 @@
             </thead>
             <tbody class="divide-y divide-gray-200">
               <tr v-if="isLoading">
-                <td colspan="5" class="py-8 text-center text-gray-500">
+                <td :colspan="canDeleteNews ? 6 : 5" class="py-8 text-center text-gray-500">
                   <AppIcon
                     class="iconify inline-block text-2xl animate-spin"
                     icon="mdi:loading"
@@ -144,11 +164,21 @@
                 </td>
               </tr>
               <tr v-else-if="filteredNewsList.length === 0">
-                <td colspan="5" class="py-8 text-center text-gray-500">
+                <td :colspan="canDeleteNews ? 6 : 5" class="py-8 text-center text-gray-500">
                   {{ searchQuery || canteenFilter || startDate || endDate ? '没有找到符合条件的新闻' : `暂无${currentStatus === 'published' ? '已发布' : '未发布'}新闻` }}
                 </td>
               </tr>
               <tr v-else v-for="news in filteredNewsList" :key="news.id" class="hover:bg-gray-50">
+                <td v-if="canDeleteNews" class="px-4 py-4 text-center">
+                  <input
+                    type="checkbox"
+                    :aria-label="`选择新闻 ${news.title}`"
+                    class="h-4 w-4 accent-tsinghua-purple focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tsinghua-purple"
+                    :checked="newsSelection.selectedIds.includes(news.id)"
+                    :disabled="isBatchDeleting"
+                    @change="newsSelection.toggle(news.id)"
+                  />
+                </td>
                 <td class="py-4 px-6">
                   <div class="font-medium text-gray-900">{{ news.title }}</div>
                 </td>
@@ -215,6 +245,7 @@
 
                     <button
                       @click="deleteNews(news.id)"
+                      :disabled="isBatchDeleting"
                       class="px-3 py-1 rounded text-sm transition duration-200"
                       :class="authStore.hasPermission('news:delete') ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
                       :title="!authStore.hasPermission('news:delete') ? '无权限删除' : '删除'"
@@ -491,6 +522,7 @@
 
 <script>
 import { ref, reactive, onMounted, onActivated, onDeactivated, shallowRef, onBeforeUnmount, computed, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 
@@ -501,8 +533,10 @@ import request from '@/utils/request'
 import Header from '@/components/Layout/Header.vue'
 import AdminDialog from '@/components/Common/AdminDialog.vue'
 import Pagination from '@/components/Common/Pagination.vue'
+import BatchActionBar from '@/components/Common/BatchActionBar.vue'
+import { useBatchSelection } from '@/composables/useBatchSelection'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
-import { showAlert, showConfirm } from '@/composables/useModal'
+import { showAlert, showConfirm, showConfirmDanger } from '@/composables/useModal'
 import { sanitizeRichHtml } from '@/utils/sanitize-rich-html'
 import { authSessionVersion, getAuthSessionVersion } from '@/utils/auth-session'
 
@@ -514,10 +548,12 @@ export default {
     Header,
     AdminDialog,
     Pagination,
+    BatchActionBar,
     Editor, // 注册 Editor 组件
     Toolbar, // 注册 Toolbar 组件
   },
   setup() {
+    const route = useRoute()
     const newsList = ref([])
     const showCreateModal = ref(false)
     const showEditModal = ref(false)
@@ -706,6 +742,8 @@ export default {
       total: 0,
       totalPages: 0,
     })
+    const listContext = computed(() => [currentStatus.value, searchQuery.value, canteenFilter.value,
+      startDate.value, endDate.value, pagination.page, pagination.pageSize])
 
     // 表单错误状态
     const errors = reactive({
@@ -725,9 +763,13 @@ export default {
 
     let newsRequestId = 0
     // 加载新闻列表
-    const loadNews = async () => {
+    const loadNews = async (clampPage = false) => {
       if (!ownsView()) return
       const requestId = ++newsRequestId
+      const version = viewVersion
+      const context = listContext.value
+      const ownsRequest = () => ownsView(version) && requestId === newsRequestId &&
+        context === listContext.value
       isLoading.value = true
       try {
         const response = await newsApi.getNews({
@@ -739,10 +781,16 @@ export default {
           ...(startDate.value ? { startDate: new Date(startDate.value).toISOString() } : {}),
           ...(endDate.value ? { endDate: new Date(endDate.value).toISOString() } : {}),
         })
-        if (!ownsView() || requestId !== newsRequestId) return
+        if (!ownsRequest()) return
 
         if (response.code === 200 && response.data) {
           if (response.data.items) {
+            const lastPage = Math.max(1, Math.ceil((response.data.meta?.total || 0) / pagination.pageSize))
+            if (clampPage && pagination.page > lastPage) {
+              pagination.page = lastPage
+              saveState()
+              return loadNews(true)
+            }
             newsList.value = response.data.items
             if (response.data.meta) {
               pagination.total = response.data.meta.total
@@ -759,14 +807,14 @@ export default {
           pagination.total = 0
         }
       } catch (error) {
-        if (!ownsView() || requestId !== newsRequestId) return
+        if (!ownsRequest()) return
         newsList.value = []
         pagination.total = 0
         pagination.totalPages = 0
         console.error('加载新闻列表失败:', error)
         showAlert(error instanceof Error ? error.message : '加载新闻列表失败，请重试')
       } finally {
-        if (ownsView() && requestId === newsRequestId) isLoading.value = false
+        if (ownsRequest()) isLoading.value = false
       }
     }
 
@@ -812,6 +860,44 @@ export default {
     }
 
     const filteredNewsList = computed(() => newsList.value)
+
+    const canDeleteNews = computed(() => authStore.hasPermission('news:delete'))
+    const isBatchDeleting = ref(false)
+    const newsSelection = useBatchSelection({
+      ids: () => filteredNewsList.value.map(news => news.id),
+      context: () => [listContext.value, route.fullPath, authSessionVersion.value],
+      enabled: () => canDeleteNews.value,
+    })
+
+    const handleBatchDelete = async () => {
+      if (isBatchDeleting.value || isLoading.value || !ownsView() ||
+          !authStore.hasPermission('news:delete')) return
+      const ids = [...newsSelection.selectedIds.value]
+      if (ids.length === 0 || ids.length > 100) return
+      const context = newsSelection.contextVersion.value
+      const version = viewVersion
+      const ownsOperation = () => ownsView(version) && context === newsSelection.contextVersion.value &&
+        authStore.hasPermission('news:delete')
+      isBatchDeleting.value = true
+      try {
+        const confirmed = await showConfirmDanger(
+          `确定删除选中的 ${ids.length} 条新闻吗？此操作不可恢复。任一项无法删除时整批不会删除。`,
+          '批量删除新闻', '删除所选新闻',
+        )
+        if (!confirmed || !ownsOperation() ||
+            !ids.every(id => newsSelection.selectedIds.value.includes(id))) return
+        const response = await newsApi.batchDeleteNews(ids)
+        if (!ownsOperation()) return
+        if (response.code !== 200) throw new Error(response.message || '批量删除失败')
+        newsSelection.clear()
+        showAlert(`已删除 ${response.data.deletedCount} 条新闻`)
+        await loadNews(true)
+      } catch (error) {
+        if (ownsOperation()) showAlert(error instanceof Error ? error.message : '批量删除失败，请重试')
+      } finally {
+        isBatchDeleting.value = false
+      }
+    }
 
     // 重置筛选
     const resetFilters = () => {
@@ -1068,6 +1154,7 @@ export default {
     }
 
     const deleteNews = async (newsId) => {
+      if (isBatchDeleting.value) return
       const version = viewVersion
       if (!ownsView(version)) return
       if (!authStore.hasPermission('news:delete')) {
@@ -1131,6 +1218,7 @@ export default {
       viewVersion += 1
       newsRequestId += 1
       isLoading.value = false
+      newsSelection.clear()
       closeModal()
       closePreviewModal()
     }
@@ -1208,6 +1296,10 @@ export default {
       formattedPreviewContent,
       authStore,
       isCanteenScoped,
+      canDeleteNews,
+      newsSelection: reactive(newsSelection),
+      isBatchDeleting,
+      handleBatchDelete,
     }
   },
 }

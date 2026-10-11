@@ -30,6 +30,11 @@ export class AdminReviewsService {
     @Optional() private embeddingQueueService?: EmbeddingQueueService,
   ) {}
 
+  async batchDeleteReviews(ids: string[], admin: AdminInfo) {
+    const deletedCount = await this.deleteReviews(ids, admin);
+    return { code: 200, message: '删除成功', data: { deletedCount } };
+  }
+
   private async deleteReviews(
     ids: string[],
     admin?: Pick<AdminInfo, 'canteenId'>,

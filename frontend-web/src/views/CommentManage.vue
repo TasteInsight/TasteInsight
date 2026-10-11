@@ -187,6 +187,52 @@
               </div>
             </div>
 
+            <div v-if="canDeleteReviews" class="mb-4">
+              <label class="mb-2 inline-flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  aria-label="全选当前页评价"
+                  class="h-4 w-4 accent-tsinghua-purple focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tsinghua-purple"
+                  :checked="reviewSelection.allSelected"
+                  :indeterminate="reviewSelection.someSelected"
+                  :disabled="isLoadingReviews || isLoadingComments || isBatchDeleting || reviews.length === 0"
+                  @change="reviewSelection.toggleAll"
+                />
+                全选当前页评价
+              </label>
+              <BatchActionBar
+                :count="reviewSelection.selectedCount"
+                resource="评价"
+                :busy="isBatchDeleting"
+                :disabled="isLoadingReviews || isLoadingComments"
+                @clear="reviewSelection.clear"
+                @delete="handleBatchDeleteReviews"
+              />
+            </div>
+            <div v-if="canDeleteComments" class="mb-4">
+              <label class="mb-2 inline-flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  aria-label="全选当前已加载评论"
+                  class="h-4 w-4 accent-tsinghua-purple focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tsinghua-purple"
+                  :checked="commentSelection.allSelected"
+                  :indeterminate="commentSelection.someSelected"
+                  :disabled="isLoadingReviews || isLoadingComments || isBatchDeleting || visibleCommentIds.length === 0"
+                  @change="commentSelection.toggleAll"
+                />
+                全选当前已加载评论
+              </label>
+              <BatchActionBar
+                :count="commentSelection.selectedCount"
+                resource="评论"
+                scope="仅当前页已加载评论，每次最多 100 条"
+                :busy="isBatchDeleting"
+                :disabled="isLoadingReviews || isLoadingComments"
+                @clear="commentSelection.clear"
+                @delete="handleBatchDeleteComments"
+              />
+            </div>
+
             <div v-if="isLoadingReviews || isLoadingComments" class="text-center py-8 text-gray-500">
               <AppIcon class="iconify inline-block text-2xl animate-spin" icon="mdi:loading"></AppIcon>
               <span class="ml-2">加载中...</span>
@@ -205,6 +251,15 @@
                 <div class="p-5">
                   <div class="flex items-start justify-between mb-3">
                     <div class="flex items-center flex-1">
+                      <input
+                        v-if="canDeleteReviews"
+                        type="checkbox"
+                        :aria-label="`选择评价 ${review.userNickname || '未知用户'}：${review.content}`"
+                        class="mr-3 h-4 w-4 shrink-0 accent-tsinghua-purple focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tsinghua-purple"
+                        :checked="reviewSelection.selectedIds.includes(review.id)"
+                        :disabled="isBatchDeleting"
+                        @change="reviewSelection.toggle(review.id)"
+                      />
                       <AdminImage
                         :src="review.userAvatar"
                         variant="avatar"
@@ -233,7 +288,7 @@
                     <button
                       class="px-3 py-1.5 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition duration-200 flex items-center gap-1"
                       @click="handleDeleteReview(review)"
-                      :disabled="!authStore.hasPermission('review:delete')"
+                      :disabled="isBatchDeleting || !authStore.hasPermission('review:delete')"
                       :title="!authStore.hasPermission('review:delete') ? '无权限删除评价' : '删除评价'"
                     >
                       <AppIcon class="iconify inline-block text-sm" icon="carbon:trash-can"></AppIcon>
@@ -276,6 +331,15 @@
                       <div class="flex items-start justify-between">
                         <div class="flex-1">
                           <div class="flex items-center mb-2">
+                            <input
+                              v-if="canDeleteComments"
+                              type="checkbox"
+                              :aria-label="`选择评论 ${comment.userNickname || '未知用户'}：${comment.content}`"
+                              class="mr-3 h-4 w-4 shrink-0 accent-tsinghua-purple focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tsinghua-purple"
+                              :checked="commentSelection.selectedIds.includes(comment.id)"
+                              :disabled="isBatchDeleting"
+                              @change="commentSelection.toggle(comment.id)"
+                            />
                             <AdminImage
                               :src="comment.userAvatar"
                               variant="avatar"
@@ -307,7 +371,7 @@
                         <button
                           class="ml-3 px-2 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 transition duration-200 flex items-center gap-1"
                           @click="handleDeleteComment(comment)"
-                          :disabled="!authStore.hasPermission('comment:delete')"
+                          :disabled="isBatchDeleting || !authStore.hasPermission('comment:delete')"
                           :title="!authStore.hasPermission('comment:delete') ? '无权限删除评论' : '删除评论'"
                         >
                           <AppIcon class="iconify inline-block text-xs" icon="carbon:trash-can"></AppIcon>
@@ -321,7 +385,7 @@
                 </div>
                 <div v-if="commentPagination[review.id] && (commentPagination[review.id].error || commentPagination[review.id].page < commentPagination[review.id].totalPages)" class="border-t px-5 py-3 text-center">
                   <p v-if="commentPagination[review.id].error" class="mb-2 text-sm text-red-600">评论加载失败，请重试</p>
-                  <button type="button" :disabled="commentPagination[review.id].loading" @click="loadMoreComments(review.id)" class="rounded px-3 py-2 text-sm text-tsinghua-purple hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-tsinghua-purple disabled:opacity-50">
+                  <button type="button" :disabled="isBatchDeleting || commentPagination[review.id].loading" @click="loadMoreComments(review.id)" class="rounded px-3 py-2 text-sm text-tsinghua-purple hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-tsinghua-purple disabled:opacity-50">
                     {{ commentPagination[review.id].loading ? '加载中...' : commentPagination[review.id].error ? '重试加载评论' : '加载更多评论' }}
                   </button>
                 </div>
@@ -402,7 +466,8 @@
 </template>
 
 <script lang="ts">
-import { ref, computed, onMounted, onActivated, onUnmounted, defineComponent } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onActivated, onDeactivated, onUnmounted, defineComponent } from 'vue'
+import { useRoute } from 'vue-router'
 import { dishApi } from '@/api/modules/dish'
 import { reviewApi } from '@/api/modules/review'
 import { canteenApi } from '@/api/modules/canteen'
@@ -411,8 +476,10 @@ import Header from '@/components/Layout/Header.vue'
 import AdminImage from '@/components/Common/AdminImage.vue'
 import AdminDialog from '@/components/Common/AdminDialog.vue'
 import Pagination from '@/components/Common/Pagination.vue'
+import BatchActionBar from '@/components/Common/BatchActionBar.vue'
+import { useBatchSelection } from '@/composables/useBatchSelection'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
-import { getAuthSessionVersion } from '@/utils/auth-session'
+import { authSessionVersion, getAuthSessionVersion } from '@/utils/auth-session'
 import type { Dish, Review, Comment } from '@/types/api'
 import { showAlert, showConfirmDanger } from '@/composables/useModal'
 
@@ -422,15 +489,20 @@ export default defineComponent({
   name: 'CommentManage',
   components: {
     AdminImage,
-    AdminDialog,
     Header,
+    AdminDialog,
     Pagination,
+    BatchActionBar,
   },
   setup() {
+    const route = useRoute()
     const authStore = useAuthStore()
     const sessionVersion = getAuthSessionVersion()
     let mounted = true
-    const ownsView = () => mounted && sessionVersion === getAuthSessionVersion()
+    let viewActive = true
+    let viewVersion = 0
+    const ownsView = (version = viewVersion) => mounted && viewActive &&
+      sessionVersion === getAuthSessionVersion() && version === viewVersion
     let reviewRequest = 0
     let commentsEpoch = 0
     const canViewCanteens = authStore.hasPermission('canteen:view')
@@ -488,6 +560,25 @@ export default defineComponent({
     const commentPagination = ref<Record<string, { page: number; total: number; totalPages: number; loading: boolean; error: boolean }>>({})
     const totalComments = ref(0)
     const isLoadingComments = ref(false)
+
+    const canDeleteReviews = computed(() => authStore.hasPermission('review:delete'))
+    const canDeleteComments = computed(() => authStore.hasPermission('comment:delete'))
+    const isBatchDeleting = ref(false)
+    const selectionContext = () => [searchQuery.value, selectedCanteenId.value,
+      selectedWindowId.value, dishPage.value, selectedDishId.value, reviewPage.value,
+      reviewPageSize.value, route.fullPath, authSessionVersion.value]
+    const reviewSelection = useBatchSelection({
+      ids: () => reviews.value.map(review => review.id),
+      context: selectionContext,
+      enabled: () => canDeleteReviews.value,
+    })
+    const visibleCommentIds = computed(() => reviews.value.flatMap(review =>
+      (commentsMap.value[review.id] || []).map(comment => comment.id)))
+    const commentSelection = useBatchSelection({
+      ids: () => visibleCommentIds.value,
+      context: selectionContext,
+      enabled: () => canDeleteComments.value,
+    })
 
     // 图片预览相关
     const imagePreview = ref<{
@@ -626,13 +717,15 @@ export default defineComponent({
     }
 
     // 加载评价列表
-    const loadReviews = async () => {
+    const loadReviews = async (clampPage = false): Promise<boolean> => {
       if (!selectedDishId.value || !ownsView()) return false
       const request = ++reviewRequest
       const dishId = selectedDishId.value
       const page = reviewPage.value
-      const ownsRequest = () => ownsView() && request === reviewRequest && dishId === selectedDishId.value && page === reviewPage.value
+      const version = viewVersion
+      const ownsRequest = () => ownsView(version) && request === reviewRequest && dishId === selectedDishId.value && page === reviewPage.value
       ++commentsEpoch
+      reviews.value = []
       commentsMap.value = {}
       commentPagination.value = {}
       totalComments.value = 0
@@ -647,6 +740,12 @@ export default defineComponent({
 
         if (!ownsRequest()) return false
         if (response.code === 200 && response.data) {
+          const lastPage = Math.max(1, Math.ceil((response.data.meta?.total || 0) / reviewPageSize.value))
+          if (clampPage && reviewPage.value > lastPage) {
+            reviewPage.value = lastPage
+            saveState()
+            return loadReviews(true)
+          }
           reviews.value = response.data.items
           totalReviews.value = response.data.meta?.total || 0
           return true
@@ -707,6 +806,7 @@ export default defineComponent({
     }
 
     const loadMoreComments = (reviewId: string) => {
+      if (isBatchDeleting.value) return
       const state = commentPagination.value[reviewId]
       if (!state || state.loading || (!state.error && state.page >= state.totalPages)) return
       return loadCommentPage(reviewId, state.page + 1, commentsEpoch)
@@ -768,6 +868,7 @@ export default defineComponent({
 
     // 删除评价
     const handleDeleteReview = async (review: Review) => {
+      if (isBatchDeleting.value) return
       if (!authStore.hasPermission('review:delete')) {
         showAlert('您没有权限删除评价')
         return
@@ -799,6 +900,7 @@ export default defineComponent({
 
     // 删除评论
     const handleDeleteComment = async (comment: Comment) => {
+      if (isBatchDeleting.value) return
       if (!authStore.hasPermission('comment:delete')) {
         showAlert('您没有权限删除评论')
         return
@@ -823,6 +925,68 @@ export default defineComponent({
       } catch (error) {
         console.error('删除评论失败:', error)
         showAlert('删除评论失败，请重试')
+      }
+    }
+
+    const handleBatchDeleteReviews = async () => {
+      if (isBatchDeleting.value || isLoadingReviews.value || isLoadingComments.value || !ownsView() ||
+          !authStore.hasPermission('review:delete')) return
+      const ids = [...reviewSelection.selectedIds.value]
+      if (ids.length === 0 || ids.length > 100) return
+      const context = reviewSelection.contextVersion.value
+      const version = viewVersion
+      const ownsOperation = () => ownsView(version) && context === reviewSelection.contextVersion.value &&
+        authStore.hasPermission('review:delete')
+      isBatchDeleting.value = true
+      try {
+        const confirmed = await showConfirmDanger(
+          `确定删除选中的 ${ids.length} 条评价吗？此操作不可恢复。任一项无法删除时整批不会删除。`,
+          '批量删除评价', '删除所选评价',
+        )
+        if (!confirmed || !ownsOperation() ||
+            !ids.every(id => reviewSelection.selectedIds.value.includes(id))) return
+        const response = await reviewApi.batchDeleteReviews(ids)
+        if (!ownsOperation()) return
+        if (response.code !== 200) throw new Error(response.message || '批量删除失败')
+        reviewSelection.clear()
+        commentSelection.clear()
+        showAlert(`已删除 ${response.data.deletedCount} 条评价`)
+        const loaded = await loadReviews(true)
+        if (loaded) await loadCommentsForReviews()
+      } catch (error) {
+        if (ownsOperation()) showAlert(error instanceof Error ? error.message : '批量删除失败，请重试')
+      } finally {
+        isBatchDeleting.value = false
+      }
+    }
+
+    const handleBatchDeleteComments = async () => {
+      if (isBatchDeleting.value || isLoadingReviews.value || isLoadingComments.value || !ownsView() ||
+          !authStore.hasPermission('comment:delete')) return
+      const ids = [...commentSelection.selectedIds.value]
+      if (ids.length === 0 || ids.length > 100) return
+      const context = commentSelection.contextVersion.value
+      const version = viewVersion
+      const ownsOperation = () => ownsView(version) && context === commentSelection.contextVersion.value &&
+        authStore.hasPermission('comment:delete')
+      isBatchDeleting.value = true
+      try {
+        const confirmed = await showConfirmDanger(
+          `确定删除选中的 ${ids.length} 条评论吗？此操作不可恢复。未选中的回复会保留。任一项无法删除时整批不会删除。`,
+          '批量删除评论', '删除所选评论',
+        )
+        if (!confirmed || !ownsOperation() ||
+            !ids.every(id => commentSelection.selectedIds.value.includes(id))) return
+        const response = await reviewApi.batchDeleteComments(ids)
+        if (!ownsOperation()) return
+        if (response.code !== 200) throw new Error(response.message || '批量删除失败')
+        commentSelection.clear()
+        showAlert(`已删除 ${response.data.deletedCount} 条评论`)
+        await loadCommentsForReviews()
+      } catch (error) {
+        if (ownsOperation()) showAlert(error instanceof Error ? error.message : '批量删除失败，请重试')
+      } finally {
+        isBatchDeleting.value = false
       }
     }
 
@@ -912,6 +1076,7 @@ export default defineComponent({
     })
 
     onActivated(() => {
+      viewActive = true
       // 组件激活时仅重新加载数据，状态已在setup()中恢复
       // 如果有选中的食堂且窗口列表为空，则尝试重新加载窗口列表
       if (selectedCanteenId.value && windows.value.length === 0) {
@@ -939,7 +1104,29 @@ export default defineComponent({
 
     onUnmounted(() => {
       mounted = false
+      retireView()
     })
+
+    const retireView = () => {
+      viewActive = false
+      viewVersion += 1
+      reviewRequest += 1
+      commentsEpoch += 1
+      reviewSelection.clear()
+      commentSelection.clear()
+      isLoadingReviews.value = false
+      isLoadingComments.value = false
+      if (searchTimeout) clearTimeout(searchTimeout)
+    }
+    onDeactivated(retireView)
+    watch(authSessionVersion, () => {
+      retireView()
+      reviews.value = []
+      commentsMap.value = {}
+      commentPagination.value = {}
+      totalReviews.value = 0
+      totalComments.value = 0
+    }, { flush: 'sync' })
 
     return {
       // 菜品列表
@@ -997,6 +1184,14 @@ export default defineComponent({
       handleWindowChange,
       resetFilters,
       authStore,
+      canDeleteReviews,
+      canDeleteComments,
+      reviewSelection: reactive(reviewSelection),
+      commentSelection: reactive(commentSelection),
+      visibleCommentIds,
+      isBatchDeleting,
+      handleBatchDeleteReviews,
+      handleBatchDeleteComments,
     }
   },
 })
