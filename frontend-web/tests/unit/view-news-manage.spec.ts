@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { enableAutoUnmount, flushPromises, mount, shallowMount } from '@vue/test-utils'
+import { DOMWrapper, enableAutoUnmount, flushPromises, mount, shallowMount } from '@vue/test-utils'
 import { defineComponent, h, KeepAlive, nextTick, ref } from 'vue'
 import { compileStyle, parse } from 'vue/compiler-sfc'
 import NewsManageSource from '../../src/views/NewsManage.vue?raw'
@@ -75,7 +75,258 @@ function flushMicrotasks() {
   return Promise.resolve()
 }
 
+function editorPanelHarness() {
+  const listeners: Record<string, (...args: any[]) => void> = {}
+  const editor = {
+    destroy: vi.fn(() => listeners.destroyed?.()),
+    restoreSelection: vi.fn(),
+    on: (name: string, listener: (...args: any[]) => void) => { listeners[name] = listener },
+  }
+  const createPanel = () => {
+    let showTime = 0
+    const panel = {
+      isShow: false,
+      show() {
+        if (panel.isShow) return
+        showTime = Date.now()
+        panel.isShow = true
+        listeners.modalOrPanelShow(panel)
+      },
+      hide: vi.fn(() => {
+        if (!panel.isShow || Date.now() - showTime < 200) return
+        panel.isShow = false
+        // WangEditor emits no panel argument when a panel is hidden.
+        listeners.modalOrPanelHide()
+      }),
+    }
+    return panel
+  }
+  return { editor, createPanel }
+}
+
+async function pressEditorEscape(dialog: DOMWrapper<Element>) {
+  const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+  dialog.element.dispatchEvent(event)
+  await nextTick()
+  if (!event.defaultPrevented) await dialog.trigger('cancel')
+}
+
 describe('views/NewsManage', () => {
+  it('keeps the news draft when Escape belongs to an editor auxiliary panel', async () => {
+    vi.useFakeTimers()
+    const wrapper = mount(NewsManage, { global: { stubs: { Header: true, Pagination: true } } })
+    await flushPromises()
+    wrapper.vm.openCreateModal()
+    wrapper.vm.newsForm.title = '保留中的草稿'
+    const { editor, createPanel } = editorPanelHarness()
+    wrapper.vm.handleCreated(editor)
+    const panel = createPanel()
+    panel.show()
+    await vi.advanceTimersByTimeAsync(200)
+    await nextTick()
+    const dialog = new DOMWrapper(document.body).get('dialog[aria-label="创建新闻"]')
+    await dialog.trigger('cancel')
+    expect(wrapper.vm.showCreateModal).toBe(true)
+    expect(wrapper.vm.newsForm.title).toBe('保留中的草稿')
+    await pressEditorEscape(dialog)
+    expect(panel.hide).toHaveBeenCalledTimes(1)
+    expect(editor.restoreSelection).toHaveBeenCalledTimes(1)
+    await pressEditorEscape(dialog)
+    expect(wrapper.vm.showCreateModal).toBe(false)
+  })
+
+  it('honors a rapid Escape after the editor panel opening guard without closing the draft', async () => {
+    vi.useFakeTimers()
+    const wrapper = mount(NewsManage, { global: { stubs: { Header: true, Pagination: true } } })
+    await flushPromises()
+    wrapper.vm.openCreateModal()
+    wrapper.vm.newsForm.title = '快速取消工具面板'
+    const { editor, createPanel } = editorPanelHarness()
+    wrapper.vm.handleCreated(editor)
+    const panel = createPanel()
+    panel.show()
+    await nextTick()
+    await pressEditorEscape(new DOMWrapper(document.body).get('dialog[aria-label="创建新闻"]'))
+    expect(panel.hide).toHaveBeenCalledTimes(1)
+    expect(editor.restoreSelection).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(200)
+    expect(panel.hide).toHaveBeenCalledTimes(2)
+    expect(editor.restoreSelection).toHaveBeenCalledTimes(1)
+    expect(wrapper.vm.newsForm.title).toBe('快速取消工具面板')
+    expect(wrapper.vm.showCreateModal).toBe(true)
+  })
+
+  it('dismisses both rapidly opened editor panels before Escape can discard the title and body', async () => {
+    vi.useFakeTimers()
+    const wrapper = mount(NewsManage, { global: { stubs: { Header: true, Pagination: true } } })
+    await flushPromises()
+    wrapper.vm.openCreateModal()
+    wrapper.vm.newsForm.title = '连续工具切换草稿'
+    wrapper.vm.valueHtml = '<p>保留完整正文</p>'
+    const { editor, createPanel } = editorPanelHarness()
+    wrapper.vm.handleCreated(editor)
+    const first = createPanel(), second = createPanel()
+    first.show()
+    await vi.advanceTimersByTimeAsync(33)
+    first.hide()
+    second.show()
+    expect(first.isShow && second.isShow).toBe(true)
+    await vi.advanceTimersByTimeAsync(200)
+    const dialog = new DOMWrapper(document.body).get('dialog[aria-label="创建新闻"]')
+
+    await pressEditorEscape(dialog)
+    expect(second.isShow).toBe(false)
+    expect(first.isShow).toBe(true)
+    await dialog.trigger('cancel')
+    expect(wrapper.vm.showCreateModal).toBe(true)
+    await pressEditorEscape(dialog)
+    expect(first.isShow).toBe(false)
+    expect(wrapper.vm.showCreateModal).toBe(true)
+    expect(wrapper.vm.newsForm.title).toBe('连续工具切换草稿')
+    expect(wrapper.vm.valueHtml).toBe('<p>保留完整正文</p>')
+
+    await pressEditorEscape(dialog)
+    expect(wrapper.vm.showCreateModal).toBe(false)
+  })
+
+  it('keeps a pending editor panel dismissal when another visible panel hides', async () => {
+    vi.useFakeTimers()
+    const wrapper = mount(NewsManage, { global: { stubs: { Header: true, Pagination: true } } })
+    await flushPromises()
+    wrapper.vm.openCreateModal()
+    wrapper.vm.newsForm.title = '等待关闭中的草稿'
+    wrapper.vm.valueHtml = '<p>等待中的正文</p>'
+    const { editor, createPanel } = editorPanelHarness()
+    wrapper.vm.handleCreated(editor)
+    const first = createPanel(), second = createPanel()
+    first.show()
+    await vi.advanceTimersByTimeAsync(33)
+    first.hide()
+    second.show()
+    await nextTick()
+    const dialog = new DOMWrapper(document.body).get('dialog[aria-label="创建新闻"]')
+    await pressEditorEscape(dialog)
+    await vi.advanceTimersByTimeAsync(167)
+    first.hide()
+    await nextTick()
+    await dialog.trigger('cancel')
+    expect(wrapper.vm.showCreateModal).toBe(true)
+    await vi.advanceTimersByTimeAsync(33)
+    expect(second.isShow).toBe(false)
+    expect(editor.restoreSelection).toHaveBeenCalledTimes(1)
+    expect(wrapper.vm.newsForm.title).toBe('等待关闭中的草稿')
+    expect(wrapper.vm.valueHtml).toBe('<p>等待中的正文</p>')
+  })
+
+  it('does not apply a delayed Escape to a newer editor panel', async () => {
+    vi.useFakeTimers()
+    const wrapper = mount(NewsManage, { global: { stubs: { Header: true, Pagination: true } } })
+    await flushPromises()
+    wrapper.vm.openCreateModal()
+    const { editor, createPanel } = editorPanelHarness()
+    wrapper.vm.handleCreated(editor)
+    const first = createPanel(), second = createPanel()
+    first.show()
+    await nextTick()
+    const dialog = new DOMWrapper(document.body).get('dialog[aria-label="创建新闻"]')
+    await pressEditorEscape(dialog)
+    await vi.advanceTimersByTimeAsync(33)
+    first.hide()
+    second.show()
+    await vi.advanceTimersByTimeAsync(200)
+    expect(first.isShow && second.isShow).toBe(true)
+    expect(editor.restoreSelection).not.toHaveBeenCalled()
+    await pressEditorEscape(dialog)
+    expect(second.isShow).toBe(false)
+    expect(first.isShow).toBe(true)
+    expect(wrapper.vm.showCreateModal).toBe(true)
+  })
+
+  it('does not apply a delayed Escape to the same panel after it is reopened', async () => {
+    vi.useFakeTimers()
+    const wrapper = mount(NewsManage, { global: { stubs: { Header: true, Pagination: true } } })
+    await flushPromises()
+    wrapper.vm.openCreateModal()
+    const { editor, createPanel } = editorPanelHarness()
+    wrapper.vm.handleCreated(editor)
+    const panel = createPanel()
+    panel.show()
+    await vi.advanceTimersByTimeAsync(50)
+    await pressEditorEscape(new DOMWrapper(document.body).get('dialog[aria-label="创建新闻"]'))
+    await vi.advanceTimersByTimeAsync(150)
+    panel.hide()
+    panel.show()
+    await vi.advanceTimersByTimeAsync(200)
+    expect(panel.isShow).toBe(true)
+    expect(editor.restoreSelection).not.toHaveBeenCalled()
+    expect(wrapper.vm.showCreateModal).toBe(true)
+  })
+
+  it.each(['close', 'destroy', 'unmount', 'session'])('retires delayed editor panel dismissal on %s', async (action) => {
+    vi.useFakeTimers()
+    const wrapper = mount(NewsManage, { global: { stubs: { Header: true, Pagination: true } } })
+    await flushPromises()
+    wrapper.vm.openCreateModal()
+    const { editor, createPanel } = editorPanelHarness()
+    wrapper.vm.handleCreated(editor)
+    const panel = createPanel()
+    panel.show()
+    await nextTick()
+    await pressEditorEscape(new DOMWrapper(document.body).get('dialog[aria-label="创建新闻"]'))
+    if (action === 'close') wrapper.vm.closeModal()
+    if (action === 'destroy') editor.destroy()
+    if (action === 'unmount') wrapper.unmount()
+    if (action === 'session') invalidateAuthSession()
+    await vi.advanceTimersByTimeAsync(200)
+    expect(panel.hide).toHaveBeenCalledTimes(1)
+    expect(editor.restoreSelection).not.toHaveBeenCalled()
+  })
+
+  it('isolates delayed panel dismissal and old hide events across KeepAlive navigation and a new editor', async () => {
+    vi.useFakeTimers()
+    const visible = ref(true)
+    const host = mount(defineComponent({
+      setup: () => () => h(KeepAlive, null, {
+        default: () => visible.value ? h(NewsManage, { key: 'news' }) : h('div'),
+      }),
+    }), { global: { stubs: { Header: true, Pagination: true } } })
+    await flushPromises()
+    const news = host.findComponent(NewsManage)
+    news.vm.openCreateModal()
+    const old = editorPanelHarness()
+    news.vm.handleCreated(old.editor)
+    const oldPanel = old.createPanel()
+    oldPanel.show()
+    await nextTick()
+    await pressEditorEscape(new DOMWrapper(document.body).get('dialog[aria-label="创建新闻"]'))
+    visible.value = false
+    await nextTick()
+    expect(old.editor.destroy).toHaveBeenCalledTimes(1)
+    visible.value = true
+    await nextTick()
+    news.vm.openCreateModal()
+    news.vm.newsForm.title = '新编辑器草稿'
+    news.vm.valueHtml = '<p>新编辑器正文</p>'
+    const current = editorPanelHarness()
+    news.vm.handleCreated(current.editor)
+    const currentPanel = current.createPanel()
+    currentPanel.show()
+    await vi.advanceTimersByTimeAsync(200)
+    expect(oldPanel.hide).toHaveBeenCalledTimes(1)
+    expect(old.editor.restoreSelection).not.toHaveBeenCalled()
+    oldPanel.hide()
+    oldPanel.show()
+    await nextTick()
+    const dialog = new DOMWrapper(document.body).get('dialog[aria-label="创建新闻"]')
+    await dialog.trigger('cancel')
+    expect(news.vm.showCreateModal).toBe(true)
+    await pressEditorEscape(dialog)
+    expect(currentPanel.isShow).toBe(false)
+    expect(current.editor.restoreSelection).toHaveBeenCalledTimes(1)
+    expect(news.vm.newsForm.title).toBe('新编辑器草稿')
+    expect(news.vm.valueHtml).toBe('<p>新编辑器正文</p>')
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     invalidateAuthSession()
@@ -258,7 +509,7 @@ describe('views/NewsManage', () => {
 
     // handleCreated + onBeforeUnmount destroy
     const destroy = vi.fn()
-    wrapper.vm.handleCreated({ destroy })
+    wrapper.vm.handleCreated({ destroy, on: vi.fn() })
     wrapper.unmount()
     expect(destroy).toHaveBeenCalled()
   })
@@ -526,12 +777,12 @@ describe('views/NewsManage', () => {
     expect(pagination.props('pageSize')).toBe(10)
     expect(pagination.attributes('total-pages')).toBeUndefined()
 
-    // create modal open + click overlay to close (covers @click.self)
+    // Create modal and native backdrop closure.
     wrapper.vm.openCreateModal()
     await nextTick()
     expect(wrapper.text()).toContain('创建新闻')
 
-    const overlay = wrapper.find('.fixed.inset-0')
+    const overlay = new DOMWrapper(document.body).get('dialog[aria-label="创建新闻"]')
     await overlay.trigger('click')
     await nextTick()
     expect(wrapper.vm.showCreateModal).toBe(false)
@@ -544,9 +795,10 @@ describe('views/NewsManage', () => {
     await flushMicrotasks()
     wrapper.vm.previewNews({ id: 'n1', title: 'T', content: '<p><strong>正文</strong><img src="/x" onerror="alert(1)"><a href="&#106;avascript:alert(1)">链接</a></p>' })
     await nextTick()
-    expect(wrapper.find('.news-preview-content strong').text()).toBe('正文')
-    expect(wrapper.find('.news-preview-content img').attributes('onerror')).toBeUndefined()
-    expect(wrapper.find('.news-preview-content a').attributes('href')).toBeUndefined()
+    const preview = new DOMWrapper(document.body).get('.news-preview-content')
+    expect(preview.get('strong').text()).toBe('正文')
+    expect(preview.get('img').attributes('onerror')).toBeUndefined()
+    expect(preview.get('a').attributes('href')).toBeUndefined()
     wrapper.unmount()
   })
 
@@ -562,7 +814,8 @@ describe('views/NewsManage', () => {
     expect(parsed.querySelector('[onmouseover]')).toBeNull()
     expect(parsed.querySelector('p')?.getAttribute('title')).toBe(attributeText)
     expect(parsed.querySelector('img')?.getAttribute('alt')).toBe(attributeText)
-    expect(wrapper.find('.news-preview-content [onmouseover]').exists()).toBe(false)
+    const preview = new DOMWrapper(document.body).get('.news-preview-content')
+    expect(preview.find('[onmouseover]').exists()).toBe(false)
     wrapper.unmount()
   })
 
@@ -578,7 +831,7 @@ describe('views/NewsManage', () => {
       await flushMicrotasks()
       wrapper.vm.previewNews({ id: 'n1', title: 'T', content: '<img src="/x"><table><tbody><tr><td>单元格</td></tr></tbody></table><pre>代码</pre>' })
       await nextTick()
-      const preview = wrapper.find('.news-preview-content')
+      const preview = new DOMWrapper(document.body).get('.news-preview-content')
       const imageStyle = getComputedStyle(preview.find('img').element)
       const tableStyle = getComputedStyle(preview.find('table').element)
       const preStyle = getComputedStyle(preview.find('pre').element)
@@ -773,18 +1026,19 @@ describe('views/NewsManage', () => {
     mocks.newsApiMock.updateNews.mockReturnValueOnce(request.promise)
     const wrapper = mount(NewsManage, { global: { stubs: { Header: true, Pagination: true } } })
     wrapper.vm.editNews(draftNews('A'))
-    const editor = { destroy: vi.fn(), disable: vi.fn(), enable: vi.fn() }
+    const editor = { destroy: vi.fn(), disable: vi.fn(), enable: vi.fn(), on: vi.fn() }
     wrapper.vm.handleCreated(editor)
     const saving = wrapper.vm.submitForm('draft')
     await nextTick()
     expect(editor.disable).toHaveBeenCalledTimes(1)
-    expect(wrapper.find('input[placeholder="请输入新闻标题"]').attributes('disabled')).toBeDefined()
+    const titleInput = new DOMWrapper(document.body).get('dialog[aria-label="编辑新闻"] input[placeholder="请输入新闻标题"]')
+    expect(titleInput.attributes('disabled')).toBeDefined()
     request.reject(new Error('save failed'))
     await saving
     await nextTick()
     expect(wrapper.vm.isSubmitting).toBe(false)
     expect(editor.enable).toHaveBeenCalledTimes(1)
-    expect(wrapper.find('input[placeholder="请输入新闻标题"]').attributes('disabled')).toBeUndefined()
+    expect(titleInput.attributes('disabled')).toBeUndefined()
     expect(wrapper.vm.showEditModal).toBe(true)
     expect(wrapper.vm.newsForm.title).toBe('A')
     expect(mocks.showAlertMock).toHaveBeenCalledWith('save failed')
@@ -861,7 +1115,7 @@ describe('views/NewsManage', () => {
     await flushPromises()
     wrapper.vm.editNews(draftNews('A'))
     const destroyA = vi.fn()
-    wrapper.vm.handleCreated({ destroy: destroyA })
+    wrapper.vm.handleCreated({ destroy: destroyA, on: vi.fn() })
     const uploadA = wrapper.vm.editorConfig.MENU_CONF.uploadImage.customUpload
     const insertA = vi.fn()
     const file = new File(['image'], 'news.png', { type: 'image/png' })
@@ -870,7 +1124,7 @@ describe('views/NewsManage', () => {
     expect(destroyA).toHaveBeenCalledTimes(1)
     wrapper.vm.editNews(draftNews('B'))
     const destroyB = vi.fn()
-    wrapper.vm.handleCreated({ destroy: destroyB })
+    wrapper.vm.handleCreated({ destroy: destroyB, on: vi.fn() })
     const insertB = vi.fn()
     const pendingB = wrapper.vm.editorConfig.MENU_CONF.uploadImage.customUpload(file, insertB)
     mocks.showAlertMock.mockClear()
@@ -900,7 +1154,7 @@ describe('views/NewsManage', () => {
     wrapper.vm.editNews(draftNews('A'))
     const oldCreated = wrapper.vm.handleCreated
     const destroy = vi.fn()
-    oldCreated({ destroy })
+    oldCreated({ destroy, on: vi.fn() })
     const insert = vi.fn()
     const pending = wrapper.vm.editorConfig.MENU_CONF.uploadImage.customUpload(new File(['x'], 'x.png'), insert)
     invalidateAuthSession()

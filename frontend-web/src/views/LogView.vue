@@ -1,6 +1,6 @@
 <template>
-  <div class="p-8 min-h-screen min-w-[1200px]">
-    <div class="bg-white rounded-lg container-shadow p-8">
+  <div class="admin-page">
+    <div class="admin-panel">
       <Header
         title="操作日志"
         description="查看系统操作日志，包括管理员操作记录和详细信息"
@@ -9,8 +9,8 @@
 
       <!-- 筛选区域 -->
       <div class="mb-6 mt-6">
-        <div class="p-4 bg-gray-50 rounded-lg border border-gray-100">
-          <div class="flex flex-wrap items-center gap-x-8 gap-y-4">
+        <div>
+          <div class="admin-toolbar">
             <div class="flex items-center gap-3">
               <span class="text-sm font-medium text-gray-600">管理员</span>
               <input
@@ -82,8 +82,8 @@
       </div>
 
       <!-- 日志列表表格 -->
-      <div class="overflow-auto">
-        <table class="w-full">
+      <div class="admin-table-scroll">
+        <table class="admin-table">
           <thead class="bg-gray-50">
             <tr>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">时间</th>
@@ -182,10 +182,11 @@
   </div>
 
   <!-- 日志详情弹窗 -->
-  <div
+  <AdminDialog
     v-if="selectedLog"
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-    @click="closeLogDetail"
+    :open="Boolean(selectedLog)"
+    label="日志详情"
+    @close="closeLogDetail"
   >
     <div
       class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto"
@@ -193,7 +194,7 @@
     >
       <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-medium">日志详情</h3>
-        <button class="text-gray-400 hover:text-gray-600" @click="closeLogDetail">
+        <button class="text-gray-400 hover:text-gray-600" aria-label="关闭日志详情" @click="closeLogDetail">
           <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
         </button>
       </div>
@@ -241,19 +242,21 @@
         </div>
       </div>
     </div>
-  </div>
+  </AdminDialog>
 </template>
 
 <script>
 import { ref, reactive, onMounted, onActivated } from 'vue'
 import { logApi } from '@/api/modules/log'
 import Header from '@/components/Layout/Header.vue'
+import AdminDialog from '@/components/Common/AdminDialog.vue'
 import { showAlert } from '@/composables/useModal'
 
 export default {
   name: 'LogView',
   components: {
     Header,
+    AdminDialog,
   },
   setup() {
     const loading = ref(false)

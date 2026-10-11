@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount, shallowMount, flushPromises } from '@vue/test-utils'
+import { DOMWrapper, mount, shallowMount, flushPromises } from '@vue/test-utils'
 import { defineComponent, nextTick } from 'vue'
 
 const mocks = vi.hoisted(() => ({
@@ -45,7 +45,6 @@ const baseMountOptions = {
   global: {
     stubs: {
       Header: defineComponent({ name: 'HeaderStub', template: '<div />' }),
-      Teleport: true,
       Transition: false,
     },
   },
@@ -590,17 +589,20 @@ describe('views/ExperimentManage', () => {
     })
 
     it('closeGroupConfigModal closes modal and resets form', async () => {
-      const wrapper = shallowMount(ExperimentManage, baseMountOptions)
+      const wrapper = mount(ExperimentManage, baseMountOptions)
       await flushAll()
 
+      wrapper.vm.createNewExperiment()
       wrapper.vm.showGroupConfigModal = true
       wrapper.vm.groupConfigForm.weights.preferenceMatch = 0.5
-
-      wrapper.vm.closeGroupConfigModal()
       await nextTick()
+      const dialog = new DOMWrapper(document.body).get('dialog[aria-label="分组配置"]')
+      expect(dialog.attributes('open')).toBeDefined()
+      await dialog.trigger('cancel')
 
       expect(wrapper.vm.showGroupConfigModal).toBe(false)
       expect(wrapper.vm.groupConfigForm.weights.preferenceMatch).toBe(0)
+      wrapper.unmount()
     })
 
     it('saveGroupConfig saves config in edit mode', async () => {

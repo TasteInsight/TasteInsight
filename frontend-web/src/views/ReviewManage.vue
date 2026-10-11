@@ -1,6 +1,6 @@
 <template>
-  <div class="p-8 min-h-screen min-w-[1200px]">
-    <div class="bg-white rounded-lg container-shadow p-8">
+  <div class="admin-page">
+    <div class="admin-panel">
       <Header
         title="评价和评论审核"
         description="审核用户提交的评价和评论"
@@ -8,7 +8,7 @@
       />
 
       <!-- 标签页切换 -->
-      <div class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
+      <div class="admin-toolbar mt-4">
         <div class="flex items-center space-x-4">
           <button
             v-if="canReview"
@@ -40,8 +40,8 @@
       </div>
 
       <!-- 评价审核列表表格 -->
-      <div v-if="activeTab === 'reviews'" class="overflow-auto">
-        <table class="w-full">
+      <div v-if="activeTab === 'reviews'" class="admin-table-scroll">
+        <table class="admin-table">
           <thead class="bg-gray-50">
             <tr>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">菜品</th>
@@ -73,11 +73,11 @@
             >
               <td class="py-4 px-6">
                 <div class="flex items-center">
-                  <img
+                  <AdminImage
                     v-if="review.dishImage"
                     :src="review.dishImage"
                     :alt="review.dishName"
-                    class="w-12 h-12 rounded object-cover border mr-3"
+                    image-class="w-12 h-12 rounded object-cover border mr-3"
                   />
                   <div>
                     <div class="font-medium">{{ review.dishName }}</div>
@@ -89,10 +89,11 @@
               </td>
               <td class="py-4 px-6">
                 <div class="flex items-center">
-                  <img
-                    :src="review.userAvatar || '/default-avatar.png'"
+                  <AdminImage
+                    :src="review.userAvatar"
+                    variant="avatar"
                     :alt="review.userNickname || '用户'"
-                    class="w-8 h-8 rounded-full mr-2 border border-gray-200"
+                    image-class="w-8 h-8 rounded-full mr-2 border border-gray-200 object-cover"
                   />
                   <span class="text-sm font-medium text-gray-900">{{ review.userNickname || '未知用户' }}</span>
                 </div>
@@ -133,8 +134,8 @@
       </div>
 
       <!-- 评论审核列表表格 -->
-      <div v-if="activeTab === 'comments'" class="overflow-auto">
-        <table class="w-full">
+      <div v-if="activeTab === 'comments'" class="admin-table-scroll">
+        <table class="admin-table">
           <thead class="bg-gray-50">
             <tr>
               <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">关联评价</th>
@@ -174,10 +175,11 @@
               </td>
               <td class="py-4 px-6">
                 <div class="flex items-center">
-                  <img
-                    :src="comment.userAvatar || '/default-avatar.png'"
+                  <AdminImage
+                    :src="comment.userAvatar"
+                    variant="avatar"
                     :alt="comment.userNickname || '用户'"
-                    class="w-8 h-8 rounded-full mr-2 border border-gray-200"
+                    image-class="w-8 h-8 rounded-full mr-2 border border-gray-200 object-cover"
                   />
                   <span class="text-sm font-medium text-gray-900">{{ comment.userNickname || '未知用户' }}</span>
                 </div>
@@ -232,10 +234,11 @@
     </div>
 
     <!-- 评价详情对话框 -->
-    <div
+    <AdminDialog
       v-if="selectedReview"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-      @click.self="closeReviewDetail"
+      :open="Boolean(selectedReview)"
+      label="评价详情"
+      @close="closeReviewDetail"
     >
       <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
         <!-- 对话框头部 -->
@@ -247,6 +250,7 @@
           <button
             class="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg p-1.5 transition"
             @click="closeReviewDetail"
+            aria-label="关闭评价详情"
           >
             <AppIcon class="iconify text-xl" icon="carbon:close"></AppIcon>
           </button>
@@ -257,7 +261,7 @@
           <div class="space-y-5">
             <!-- 基本信息 -->
             <div class="bg-white rounded-xl shadow-sm p-6">
-              <div class="grid grid-cols-2 gap-6">
+        <div class="admin-form-grid">
                 <div class="space-y-1">
                   <div class="text-xs text-gray-400 uppercase tracking-wide">菜品名称</div>
                   <div class="text-sm font-medium text-gray-900">
@@ -267,10 +271,11 @@
                 <div class="space-y-1">
                   <div class="text-xs text-gray-400 uppercase tracking-wide">用户</div>
                   <div class="flex items-center">
-                    <img
-                      :src="selectedReview.userAvatar || '/default-avatar.png'"
+                    <AdminImage
+                      :src="selectedReview.userAvatar"
+                      variant="avatar"
                       :alt="selectedReview.userNickname || '用户'"
-                      class="w-6 h-6 rounded-full mr-2 border border-gray-200"
+                      image-class="w-6 h-6 rounded-full mr-2 border border-gray-200 object-cover"
                     />
                     <span class="text-sm font-medium text-gray-900">{{ selectedReview.userNickname || '未知用户' }}</span>
                   </div>
@@ -307,10 +312,11 @@
               <h4 class="text-lg font-semibold text-gray-900 mb-4">评价内容</h4>
               <!-- 用户信息 -->
               <div class="flex items-center mb-3 pb-3 border-b border-gray-200">
-                <img
-                  :src="selectedReview.userAvatar || '/default-avatar.png'"
+                <AdminImage
+                  :src="selectedReview.userAvatar"
+                  variant="avatar"
                   :alt="selectedReview.userNickname || '用户'"
-                  class="w-10 h-10 rounded-full mr-3 border-2 border-gray-200"
+                  image-class="w-10 h-10 rounded-full mr-3 border-2 border-gray-200 object-cover"
                 />
                 <div class="flex-1">
                   <div class="flex items-center gap-2">
@@ -331,21 +337,16 @@
               >
                 <div class="text-xs text-gray-400 uppercase tracking-wide mb-2">评价图片</div>
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  <div
+                  <AdminImage
                     v-for="(image, index) in selectedReview.images"
                     :key="index"
-                    class="relative group aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100 cursor-pointer hover:border-tsinghua-purple transition"
-                    @click="openImagePreview(selectedReview.images, index)"
-                  >
-                    <img
-                      :src="image"
-                      :alt="`评价图片 ${index + 1}`"
-                      class="w-full h-full object-cover"
-                    />
-                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition flex items-center justify-center">
-                      <AppIcon class="iconify text-white text-2xl opacity-0 group-hover:opacity-100 transition" icon="carbon:zoom-in"></AppIcon>
-                    </div>
-                  </div>
+                    :src="image"
+                    :alt="`评价图片 ${index + 1}`"
+                    variant="preview"
+                    previewable
+                    image-class="w-full aspect-square rounded-lg border border-gray-200 object-cover hover:opacity-90"
+                    @preview="openImagePreview(selectedReview.images, index)"
+                  />
                 </div>
               </div>
               <!-- 评分详情 -->
@@ -416,13 +417,14 @@
           </div>
         </div>
       </div>
-    </div>
+    </AdminDialog>
 
     <!-- 评论详情对话框 -->
-    <div
+    <AdminDialog
       v-if="selectedComment"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-      @click.self="closeCommentDetail"
+      :open="Boolean(selectedComment)"
+      label="评论详情"
+      @close="closeCommentDetail"
     >
       <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
         <!-- 对话框头部 -->
@@ -434,6 +436,7 @@
           <button
             class="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg p-1.5 transition"
             @click="closeCommentDetail"
+            aria-label="关闭评论详情"
           >
             <AppIcon class="iconify text-xl" icon="carbon:close"></AppIcon>
           </button>
@@ -444,7 +447,7 @@
           <div class="space-y-5">
             <!-- 基本信息 -->
             <div class="bg-white rounded-xl shadow-sm p-6">
-              <div class="grid grid-cols-2 gap-6">
+        <div class="admin-form-grid">
                 <div class="space-y-1">
                   <div class="text-xs text-gray-400 uppercase tracking-wide">关联菜品</div>
                   <div class="text-sm font-medium text-gray-900">
@@ -454,10 +457,11 @@
                 <div class="space-y-1">
                   <div class="text-xs text-gray-400 uppercase tracking-wide">用户</div>
                   <div class="flex items-center">
-                    <img
-                      :src="selectedComment.userAvatar || '/default-avatar.png'"
+                    <AdminImage
+                      :src="selectedComment.userAvatar"
+                      variant="avatar"
                       :alt="selectedComment.userNickname || '用户'"
-                      class="w-6 h-6 rounded-full mr-2 border border-gray-200"
+                      image-class="w-6 h-6 rounded-full mr-2 border border-gray-200 object-cover"
                     />
                     <span class="text-sm font-medium text-gray-900">{{ selectedComment.userNickname || '未知用户' }}</span>
                   </div>
@@ -495,10 +499,11 @@
               <h4 class="text-lg font-semibold text-gray-900 mb-4">评论内容</h4>
               <!-- 用户信息 -->
               <div class="flex items-center mb-3 pb-3 border-b border-gray-200">
-                <img
-                  :src="selectedComment.userAvatar || '/default-avatar.png'"
+                <AdminImage
+                  :src="selectedComment.userAvatar"
+                  variant="avatar"
                   :alt="selectedComment.userNickname || '用户'"
-                  class="w-10 h-10 rounded-full mr-3 border-2 border-gray-200"
+                  image-class="w-10 h-10 rounded-full mr-3 border-2 border-gray-200 object-cover"
                 />
                 <div class="flex-1">
                   <div class="flex items-center gap-2">
@@ -557,19 +562,21 @@
           </div>
         </div>
       </div>
-    </div>
+    </AdminDialog>
 
     <!-- 拒绝评价弹窗 -->
-    <div
+    <AdminDialog
       v-if="isRejectReviewModalOpen"
-      class="fixed inset-0 z-[10000] flex items-center justify-center bg-black bg-opacity-50"
-      @click.self="closeRejectReviewModal"
+      :open="isRejectReviewModalOpen"
+      label="拒绝评价"
+      @close="closeRejectReviewModal"
     >
       <div class="bg-white rounded-lg shadow-xl w-[500px] overflow-hidden animate-fade-in-up">
         <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
           <h3 class="text-lg font-medium text-gray-900">拒绝评价</h3>
           <button
             @click="closeRejectReviewModal"
+            aria-label="关闭拒绝评价"
             class="text-gray-400 hover:text-gray-500 transition-colors"
           >
             <AppIcon class="iconify text-xl" icon="carbon:close"></AppIcon>
@@ -613,19 +620,21 @@
           </button>
         </div>
       </div>
-    </div>
+    </AdminDialog>
 
     <!-- 拒绝评论弹窗 -->
-    <div
+    <AdminDialog
       v-if="isRejectCommentModalOpen"
-      class="fixed inset-0 z-[10000] flex items-center justify-center bg-black bg-opacity-50"
-      @click.self="closeRejectCommentModal"
+      :open="isRejectCommentModalOpen"
+      label="拒绝评论"
+      @close="closeRejectCommentModal"
     >
       <div class="bg-white rounded-lg shadow-xl w-[500px] overflow-hidden animate-fade-in-up">
         <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
           <h3 class="text-lg font-medium text-gray-900">拒绝评论</h3>
           <button
             @click="closeRejectCommentModal"
+            aria-label="关闭拒绝评论"
             class="text-gray-400 hover:text-gray-500 transition-colors"
           >
             <AppIcon class="iconify text-xl" icon="carbon:close"></AppIcon>
@@ -669,18 +678,17 @@
           </button>
         </div>
       </div>
-    </div>
+    </AdminDialog>
 
     <!-- 图片预览对话框 -->
-    <div
+    <AdminDialog
       v-if="imagePreview.show"
-      role="dialog"
-      aria-modal="true"
-      aria-label="图片预览"
-      class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[100]"
-      @click.self="closeImagePreview"
+      :open="imagePreview.show"
+      label="图片预览"
+      @close="closeImagePreview"
+      @keydown="handleImageKeyDown"
     >
-      <div class="relative max-w-7xl max-h-[90vh] mx-4">
+      <div class="admin-image-viewer">
         <!-- 关闭按钮 -->
         <button
           aria-label="关闭图片预览"
@@ -691,10 +699,11 @@
         </button>
         
         <!-- 图片 -->
-        <img
+        <AdminImage
           :src="imagePreview.images[imagePreview.currentIndex]"
           :alt="`评价图片 ${imagePreview.currentIndex + 1}`"
-          class="max-w-full max-h-[90vh] object-contain rounded-lg"
+          variant="preview"
+          image-class="max-w-full max-h-[90vh] object-contain rounded-lg"
         />
         
         <!-- 导航按钮 -->
@@ -727,15 +736,17 @@
           {{ imagePreview.currentIndex + 1 }} / {{ imagePreview.images.length }}
         </div>
       </div>
-    </div>
+    </AdminDialog>
   </div>
 </template>
 
 <script lang="ts">
-import { ref, onMounted, onActivated, onUnmounted, defineComponent } from 'vue'
+import { ref, onMounted, onActivated, defineComponent } from 'vue'
 import { reviewApi } from '@/api/modules/review'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
+import AdminImage from '@/components/Common/AdminImage.vue'
+import AdminDialog from '@/components/Common/AdminDialog.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
 import type { PendingReview, PendingComment } from '@/types/api'
@@ -746,7 +757,9 @@ const PAGE_STATE_KEY = 'review-manage'
 export default defineComponent({
   name: 'ReviewManage',
   components: {
+    AdminImage,
     Header,
+    AdminDialog,
     Pagination,
   },
   setup() {
@@ -1094,18 +1107,13 @@ export default defineComponent({
     }
 
     // 键盘快捷键支持
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!imagePreview.value.show) return
-      
+    const handleImageKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'ArrowLeft') {
         event.preventDefault()
         previousImage()
       } else if (event.key === 'ArrowRight') {
         event.preventDefault()
         nextImage()
-      } else if (event.key === 'Escape') {
-        event.preventDefault()
-        closeImagePreview()
       }
     }
 
@@ -1115,7 +1123,6 @@ export default defineComponent({
       } else {
         loadComments()
       }
-      window.addEventListener('keydown', handleKeyDown)
     })
 
     onActivated(() => {
@@ -1125,10 +1132,6 @@ export default defineComponent({
       } else {
         loadComments()
       }
-    })
-
-    onUnmounted(() => {
-      window.removeEventListener('keydown', handleKeyDown)
     })
 
     return {
@@ -1172,6 +1175,7 @@ export default defineComponent({
       imagePreview,
       openImagePreview,
       closeImagePreview,
+      handleImageKeyDown,
       previousImage,
       nextImage,
       authStore,

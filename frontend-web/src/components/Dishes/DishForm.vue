@@ -68,25 +68,31 @@
         <div>
           <label class="block text-gray-700 font-medium mb-2">菜品图片</label>
           <div
-            class="border-2 border-dashed rounded-lg h-48 relative flex items-center justify-center bg-gray-50"
+            class="border-2 border-dashed rounded-lg relative flex items-center justify-center bg-gray-50"
             :class="{ 'border-tsinghua-purple': isDragging }"
             @drop.prevent="handleFileDrop"
             @dragover.prevent="isDragging = true"
             @dragleave="isDragging = false"
           >
-            <div v-if="!previewImage" class="text-center p-6">
+            <button v-if="!previewImage" type="button" class="text-center p-6 w-full" @click="triggerFileInput">
               <AppIcon class="iconify text-4xl text-gray-400 mx-auto" icon="bi:image"></AppIcon>
               <div class="mt-2">点击上传菜品图片</div>
               <p class="text-sm text-gray-500 mt-1">建议尺寸800x800像素，小于10MB</p>
-            </div>
+            </button>
             <div v-else class="text-center p-6">
-              <img :src="previewImage" alt="预览图" class="max-h-32 mx-auto mb-2 rounded" />
-              <p class="text-sm text-gray-600">点击更换图片</p>
+              <AdminImage
+                :src="previewImage"
+                alt="预览图"
+                variant="preview"
+                image-class="max-h-32 mx-auto rounded"
+                class="mb-2"
+              />
+              <button type="button" class="text-sm text-tsinghua-purple underline" @click="triggerFileInput">更换图片</button>
             </div>
             <input
               ref="fileInput"
               type="file"
-              class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              class="hidden"
               accept="image/*"
               @change="handleFileSelect"
             />
@@ -234,9 +240,11 @@
 
 <script>
 import { ref, reactive, watch, computed } from 'vue'
+import AdminImage from '@/components/Common/AdminImage.vue'
 
 export default {
   name: 'DishForm',
+  components: { AdminImage },
   props: {
     dish: {
       type: Object,

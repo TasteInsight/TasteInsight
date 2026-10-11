@@ -3,6 +3,7 @@ import uni from '@dcloudio/vite-plugin-uni'
 import { UnifiedViteWeappTailwindcssPlugin as uvwt } from 'weapp-tailwindcss/vite'
 import { createRequire } from 'node:module'
 import { resolveTestLogin } from './src/config/env'
+import { uniH5PickerCompat } from './scripts/uni-h5-picker-compat'
 
 // 判断是否是 H5 或 App 平台，因为只有小程序才需要 weapp-tailwindcss 插件
 const isH5 = process.env.UNI_PLATFORM === 'h5'
@@ -53,6 +54,7 @@ export default defineConfig(({ mode }) => {
       minify: 'terser',
     },
     plugins: [
+      isH5 && uniH5PickerCompat(nodeRequire('@dcloudio/uni-h5/package.json').version),
       uni(),
       // 只有在非 H5/App 平台（即小程序平台）时，才启用这个插件
       !WeappTailwindcssDisabled && uvwt({

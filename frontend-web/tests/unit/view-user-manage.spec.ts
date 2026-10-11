@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { mount, shallowMount } from '@vue/test-utils'
+import { DOMWrapper, mount, shallowMount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
 const mocks = vi.hoisted(() => ({
@@ -81,6 +81,22 @@ describe('views/UserManage', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('opens password reset in a native dialog and clears its target on cancel', async () => {
+    const wrapper = mount(UserManage, { global: { stubs: { Header: true } } })
+    try {
+      wrapper.vm.openResetPasswordModal({ id: 'admin-2', username: 'staff' })
+      await nextTick()
+      const dialog = new DOMWrapper(document.body).get('dialog[aria-label="重置密码"]')
+      expect(dialog.attributes('open')).toBeDefined()
+      expect(dialog.get('button[type="submit"]').classes()).toContain('bg-orange-700')
+      await dialog.trigger('cancel')
+      expect(wrapper.vm.showResetPasswordModal).toBe(false)
+      expect(wrapper.vm.resetPasswordTarget).toBeNull()
+    } finally {
+      wrapper.unmount()
+    }
   })
 
   it('loads canteens/admins on mount and supports search + canteen filter', async () => {

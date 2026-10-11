@@ -1,8 +1,7 @@
 <template>
-  <div
-    class="fixed left-0 top-0 w-[260px] h-screen bg-tsinghua-purple text-white flex flex-col py-6 z-[9999] pointer-events-auto"
-  >
-    <div class="px-6 mb-8">
+  <aside class="admin-sidebar" :class="{ 'is-expanded': mobileMenuOpen }" aria-label="管理导航">
+    <div class="admin-sidebar-brand">
+      <div>
       <div class="flex items-center space-x-3">
         <AppIcon class="iconify text-2xl" icon="noto-v1:pot-of-food"></AppIcon>
         <h1 class="text-xl font-bold">食鉴管理平台</h1>
@@ -12,9 +11,20 @@
         <span v-if="userInfo.canteenName">管理食堂：{{ userInfo.canteenName }}</span>
         <span v-else>管理食堂：全校食堂</span>
       </div>
+      </div>
+      <button
+        type="button"
+        class="admin-menu-toggle"
+        :aria-expanded="mobileMenuOpen"
+        aria-controls="admin-navigation"
+        :aria-label="mobileMenuOpen ? '收起管理菜单' : '展开管理菜单'"
+        @click="mobileMenuOpen = !mobileMenuOpen"
+      >
+        <AppIcon :icon="mobileMenuOpen ? 'carbon:close' : 'carbon:menu'" />
+      </button>
     </div>
 
-    <div class="flex-1 overflow-y-auto min-h-0 sidebar-menu-scroll">
+    <nav id="admin-navigation" class="admin-navigation sidebar-menu-scroll" aria-label="管理功能">
       <div v-permission="'dish:create'">
         <button
           class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
@@ -142,13 +152,16 @@
         <AppIcon class="iconify" icon="carbon:chemistry"></AppIcon>
         <span>推荐配置</span>
       </router-link>
-    </div>
+    </nav>
 
-    <div ref="userInfoSection" class="px-6 py-4 text-sm mt-auto mb-1 border-t border-white/20 relative">
+    <div ref="userInfoSection" class="admin-sidebar-account px-5 py-4 text-sm mt-auto border-t border-white/20 relative">
       <!-- 第一行：图标、管理员名称、右侧按钮 -->
       <div class="flex items-center justify-between mb-1">
-        <div
-          class="flex items-center space-x-2 opacity-80 cursor-pointer hover:opacity-100 transition flex-1 min-w-0"
+        <button
+          type="button"
+          class="flex items-center space-x-2 opacity-80 hover:opacity-100 transition flex-1 min-w-0 text-left"
+          :aria-expanded="showPermissionsDropdown"
+          aria-label="查看我的权限"
           @click="togglePermissionsDropdown"
         >
           <AppIcon class="iconify flex-shrink-0" icon="mdi:user-circle-outline"></AppIcon>
@@ -158,11 +171,12 @@
             :class="{ 'rotate-180': showPermissionsDropdown }"
             icon="carbon:chevron-down"
           ></AppIcon>
-        </div>
+        </button>
         <button
-          class="opacity-70 hover:opacity-100 transition flex-shrink-0 ml-2"
+          class="admin-sidebar-logout opacity-80 hover:opacity-100 transition flex-shrink-0 ml-2"
           @click="handleLogout"
           title="退出登录"
+          aria-label="退出登录"
         >
           <AppIcon class="iconify" icon="carbon:logout"></AppIcon>
         </button>
@@ -243,8 +257,13 @@
     </div>
 
     <!-- 修改密码弹窗 -->
-    <div v-if="showChangePasswordModal" class="fixed inset-0 z-[10000] flex items-center justify-center text-gray-900" @click.stop>
-      <div class="absolute inset-0 bg-black/50" @click="closeChangePasswordModal"></div>
+    <AdminDialog
+      v-if="showChangePasswordModal"
+      :open="showChangePasswordModal"
+      label="修改我的密码"
+      class="text-gray-900"
+      @close="closeChangePasswordModal"
+    >
       <div class="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6 mx-4" @click.stop>
         <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
           <AppIcon class="iconify text-tsinghua-purple" icon="carbon:password"></AppIcon>
@@ -333,23 +352,23 @@
           <div class="text-xs bg-gray-50 rounded-lg p-3">
             <p class="font-medium text-gray-600 mb-2">密码要求：</p>
             <ul class="space-y-1">
-              <li class="flex items-center gap-2" :class="passwordChecks.length ? 'text-green-600' : 'text-gray-400'">
+              <li class="flex items-center gap-2" :class="passwordChecks.length ? 'text-green-700' : 'text-gray-500'">
                 <AppIcon class="iconify text-sm" :icon="passwordChecks.length ? 'carbon:checkmark-filled' : 'carbon:close'"></AppIcon>
                 至少 8 个字符
               </li>
-              <li class="flex items-center gap-2" :class="passwordChecks.uppercase ? 'text-green-600' : 'text-gray-400'">
+              <li class="flex items-center gap-2" :class="passwordChecks.uppercase ? 'text-green-700' : 'text-gray-500'">
                 <AppIcon class="iconify text-sm" :icon="passwordChecks.uppercase ? 'carbon:checkmark-filled' : 'carbon:close'"></AppIcon>
                 包含大写字母（A-Z）
               </li>
-              <li class="flex items-center gap-2" :class="passwordChecks.lowercase ? 'text-green-600' : 'text-gray-400'">
+              <li class="flex items-center gap-2" :class="passwordChecks.lowercase ? 'text-green-700' : 'text-gray-500'">
                 <AppIcon class="iconify text-sm" :icon="passwordChecks.lowercase ? 'carbon:checkmark-filled' : 'carbon:close'"></AppIcon>
                 包含小写字母（a-z）
               </li>
-              <li class="flex items-center gap-2" :class="passwordChecks.number ? 'text-green-600' : 'text-gray-400'">
+              <li class="flex items-center gap-2" :class="passwordChecks.number ? 'text-green-700' : 'text-gray-500'">
                 <AppIcon class="iconify text-sm" :icon="passwordChecks.number ? 'carbon:checkmark-filled' : 'carbon:close'"></AppIcon>
                 包含数字（0-9）
               </li>
-              <li class="flex items-center gap-2" :class="passwordChecks.special ? 'text-green-600' : 'text-gray-400'">
+              <li class="flex items-center gap-2" :class="passwordChecks.special ? 'text-green-700' : 'text-gray-500'">
                 <AppIcon class="iconify text-sm" :icon="passwordChecks.special ? 'carbon:checkmark-filled' : 'carbon:close'"></AppIcon>
                 包含特殊符号（如 !@#$%^&amp;*）
               </li>
@@ -377,8 +396,8 @@
           </div>
         </form>
       </div>
-    </div>
-  </div>
+    </AdminDialog>
+  </aside>
 </template>
 
 <script>
@@ -387,14 +406,17 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import { permissionApi } from '@/api/modules/permission'
 import { showConfirm, showAlert } from '@/composables/useModal'
+import AdminDialog from '@/components/Common/AdminDialog.vue'
 
 export default {
   name: 'Sidebar',
+  components: { AdminDialog },
   setup() {
     const route = useRoute()
     const router = useRouter()
     const authStore = useAuthStore()
     const showAddSubmenu = ref(false)
+    const mobileMenuOpen = ref(false)
     const activeMenu = ref('')
     const showPermissionsDropdown = ref(false)
     const userInfoSection = ref(null)
@@ -643,6 +665,7 @@ export default {
     watch(
       () => route.path,
       (newPath) => {
+        mobileMenuOpen.value = false
         if (newPath === '/single-add' || newPath === '/batch-add') {
           showAddSubmenu.value = true
           activeMenu.value = 'add'
@@ -663,6 +686,7 @@ export default {
     })
 
     return {
+      mobileMenuOpen,
       showAddSubmenu,
       activeMenu,
       userInfo,

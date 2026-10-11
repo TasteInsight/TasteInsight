@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { DOMWrapper, mount, flushPromises } from '@vue/test-utils'
 import { defineComponent, nextTick } from 'vue'
 import { addIcon } from '@iconify/vue'
 
@@ -425,9 +425,9 @@ describe('components/Layout', () => {
     expect(wrapper.vm.passwordForm.newPassword).toBe('')
     expect(wrapper.vm.passwordForm.confirmPassword).toBe('')
 
-    // Close password modal
-    wrapper.vm.closeChangePasswordModal()
-    await nextTick()
+    const dialog = new DOMWrapper(document.body).get('dialog[aria-label="修改我的密码"]')
+    expect(dialog.attributes('open')).toBeDefined()
+    await dialog.trigger('cancel')
 
     expect(wrapper.vm.showChangePasswordModal).toBe(false)
 
