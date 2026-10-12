@@ -44,6 +44,9 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
+      - name: Check TypeScript
+        run: pnpm type-check
+
       - name: Run ESLint
         run: pnpm lint:check
 

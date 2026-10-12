@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '@/prisma.service';
 import { AdminLogsService } from './admin-logs.service';
+import { AdminLogQueryDto } from './dto/admin-log-query.dto';
 
 const mockPrismaService = {
   admin: {
@@ -113,10 +114,10 @@ describe('AdminLogsService', () => {
     mockPrismaService.operationLog.findMany.mockResolvedValue([]);
 
     await service.findAll(
-      {
+      Object.assign(new AdminLogQueryDto(), {
         adminId: 'unrelated-admin',
         action: 'update',
-      },
+      }),
       {
         id: 'admin-1',
         username: 'alice',
@@ -140,7 +141,7 @@ describe('AdminLogsService', () => {
       where: expectedWhere,
     });
     expect(mockPrismaService.operationLog.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expectedWhere }),
+      expect.objectContaining({ where: expectedWhere, skip: 0, take: 20 }),
     );
   });
 });

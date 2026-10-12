@@ -4,6 +4,7 @@ import { EmbeddingService } from './embedding.service';
 import { PrismaService } from '@/prisma.service';
 import { RecommendationCacheService } from './cache.service';
 import { FeatureEncoderService } from './feature-encoder.service';
+import { ensureVectorIndexes } from '../utils/ensure-vector-indexes';
 
 describe('EmbeddingService', () => {
   let service: EmbeddingService;
@@ -107,6 +108,43 @@ describe('EmbeddingService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  it('does not perform database initialization or contact disabled providers on startup', async () => {
+    const fetch = jest.spyOn(global, 'fetch');
+    try {
+      await service.onModuleInit();
+      expect(prisma.$queryRaw).not.toHaveBeenCalled();
+      expect(prisma.$executeRawUnsafe).not.toHaveBeenCalled();
+      expect(fetch).not.toHaveBeenCalled();
+    } finally {
+      fetch.mockRestore();
+    }
+  });
+
+  it('bounds external health and embedding HTTP waits', async () => {
+    const fetch = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ status: 'healthy', embedding: [], embeddings: [] }),
+    } as Response);
+    const timeout = jest.spyOn(AbortSignal, 'timeout');
+    try {
+      (service as any).config.externalEnabled = true;
+      await service.checkExternalEmbeddingServiceHealth();
+      await service.generateHybridEmbedding('dish', {} as any);
+      await service.generateHybridEmbeddingsBatch([
+        { text: 'dish', features: {} as any },
+      ]);
+      expect(timeout.mock.calls.map(([duration]) => duration)).toEqual([
+        5000, 30000, 30000,
+      ]);
+      expect(fetch.mock.calls.every(([, options]) => !!options?.signal)).toBe(
+        true,
+      );
+    } finally {
+      fetch.mockRestore();
+      timeout.mockRestore();
+    }
   });
 
   describe('isExternalServiceAvailable', () => {
@@ -395,19 +433,19 @@ describe('EmbeddingService', () => {
   describe('ensureVectorIndexes', () => {
     it('should skip if no embeddings found', async () => {
       prisma.$queryRaw.mockResolvedValue([]);
-      await (service as any).ensureVectorIndexes();
+      await ensureVectorIndexes(prisma);
       expect(prisma.$executeRawUnsafe).not.toHaveBeenCalled();
     });
 
     it('should skip if invalid version', async () => {
       prisma.$queryRaw.mockResolvedValue([{ version: 'unknown', count: 10n }]);
-      await (service as any).ensureVectorIndexes();
+      await ensureVectorIndexes(prisma);
       expect(prisma.$executeRawUnsafe).not.toHaveBeenCalled();
     });
 
     it('should create index for found versions', async () => {
       prisma.$queryRaw.mockResolvedValue([{ version: 'v1', count: 10n }]);
-      await (service as any).ensureVectorIndexes();
+      await ensureVectorIndexes(prisma);
       expect(prisma.$executeRawUnsafe).toHaveBeenCalledWith(
         expect.stringContaining('CREATE INDEX IF NOT EXISTS'),
       );
@@ -417,7 +455,7 @@ describe('EmbeddingService', () => {
       prisma.$queryRaw.mockResolvedValue([{ version: 'v1', count: 10n }]);
       prisma.$executeRawUnsafe.mockRejectedValue(new Error('Index error'));
       // Should not throw
-      await (service as any).ensureVectorIndexes();
+      await ensureVectorIndexes(prisma);
     });
   });
 

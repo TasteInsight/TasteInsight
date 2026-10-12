@@ -1,7 +1,7 @@
 import {
   Injectable,
   OnModuleInit,
-  OnModuleDestroy,
+  OnApplicationShutdown,
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -25,7 +25,7 @@ import { hashToShortString } from '../utils/hash.util';
  */
 @Injectable()
 export class RecommendationCacheService
-  implements OnModuleInit, OnModuleDestroy
+  implements OnModuleInit, OnApplicationShutdown
 {
   private readonly logger = new Logger(RecommendationCacheService.name);
   private redis: Redis;
@@ -43,13 +43,8 @@ export class RecommendationCacheService
       port,
       password: password || undefined,
       db,
-      retryStrategy: (times) => {
-        if (times > 3) {
-          this.logger.error('Redis connection failed after 3 retries');
-          return null;
-        }
-        return Math.min(times * 100, 3000);
-      },
+      maxRetriesPerRequest: 1,
+      retryStrategy: (times) => Math.min(times * 100, 3000),
     });
 
     this.redis.on('error', (err) => {
@@ -61,8 +56,15 @@ export class RecommendationCacheService
     });
   }
 
-  async onModuleDestroy() {
-    await this.redis?.quit();
+  async onApplicationShutdown() {
+    if (!this.redis) return;
+    try {
+      if (this.redis.status === 'ready') await this.redis.quit();
+    } catch {
+      this.logger.warn('Redis cache connection closed during shutdown');
+    } finally {
+      this.redis.disconnect();
+    }
   }
 
   // ==================== 用户特征缓存 ====================

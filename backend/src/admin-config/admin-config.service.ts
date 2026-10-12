@@ -4,7 +4,6 @@ import {
   ForbiddenException,
   BadRequestException,
   Logger,
-  OnModuleInit,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -31,25 +30,17 @@ import {
 } from './config-definitions';
 
 @Injectable()
-export class AdminConfigService implements OnModuleInit {
+export class AdminConfigService {
   private readonly logger = new Logger(AdminConfigService.name);
 
   constructor(private prisma: PrismaService) {}
-
-  /**
-   * 模块初始化时同步配置模板到数据库
-   * 确保所有定义的配置模板都存在于数据库中
-   */
-  async onModuleInit() {
-    await this.syncConfigTemplates();
-  }
 
   /**
    * 同步配置模板定义到数据库
    * - 添加新的配置模板
    * - 更新已存在模板的描述、类别等（不覆盖 defaultValue，因为管理员可能已修改）
    */
-  private async syncConfigTemplates(): Promise<void> {
+  async syncConfigTemplates(): Promise<void> {
     this.logger.log('Syncing config templates to database...');
 
     for (const definition of CONFIG_DEFINITIONS) {

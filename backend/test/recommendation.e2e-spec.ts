@@ -664,12 +664,12 @@ describe('Recommendation Module (e2e)', () => {
       }
     });
 
-    it('should handle MEAL_PLANNING scene', async () => {
+    it('should handle TODAY scene', async () => {
       const response = await request(app.getHttpServer())
         .post('/recommend')
         .set('Authorization', `Bearer ${userAccessToken}`)
         .send({
-          scene: RecommendationScene.MEAL_PLANNING,
+          scene: RecommendationScene.TODAY,
           filter: {},
           pagination: { page: 1, pageSize: 10 },
         })

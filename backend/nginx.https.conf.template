@@ -1,0 +1,42 @@
+# HTTPS gateway template, rendered by gateway-render.sh when GATEWAY_TLS_MODE=on.
+include /etc/nginx/tasteinsight/nginx.common.conf;
+
+ssl_certificate /etc/nginx/tls/${TLS_CERT_FILE};
+ssl_certificate_key /etc/nginx/tls/${TLS_KEY_FILE};
+ssl_protocols TLSv1.2 TLSv1.3;
+ssl_session_cache shared:TLS:10m;
+
+server {
+    listen 443 ssl default_server;
+    ssl_reject_handshake on;
+    return 444;
+}
+
+server {
+    listen 80;
+    server_name ${PUBLIC_HOST};
+
+    location / {
+        return 308 ${PUBLIC_ORIGIN}$request_uri;
+    }
+}
+
+server {
+    listen 80;
+    server_name ${ADMIN_HOST};
+    return 308 ${ADMIN_ORIGIN}$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${PUBLIC_HOST};
+    include /etc/nginx/tasteinsight/nginx.public.conf;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${ADMIN_HOST};
+    include /etc/nginx/tasteinsight/nginx.admin.conf;
+}

@@ -234,7 +234,7 @@ describe('EventLoggerService', () => {
   describe('logReview', () => {
     it('should log review event with rating', async () => {
       const result = await service.logReview('user-1', 'dish-1', {
-        scene: RecommendationScene.DISH_DETAIL,
+        scene: RecommendationScene.HOME,
         rating: 5,
       });
 
@@ -243,6 +243,7 @@ describe('EventLoggerService', () => {
         expect.objectContaining({
           data: expect.objectContaining({
             eventType: RecommendationEventType.REVIEW,
+            scene: RecommendationScene.HOME,
             extra: expect.objectContaining({ rating: 5 }),
           }),
         }),
@@ -251,7 +252,7 @@ describe('EventLoggerService', () => {
 
     it('should update event counts on review', async () => {
       await service.logReview('user-1', 'dish-1', {
-        scene: RecommendationScene.DISH_DETAIL,
+        scene: RecommendationScene.HOME,
         rating: 4,
       });
 

@@ -117,6 +117,8 @@ pnpm run start:dev
 
 后端服务启动在 http://localhost:3001。
 
+开发应用在显式迁移后统一初始化系统模板和首个管理员。完整环境配置及已有数据库的使用方式见 [环境配置与部署](./docs/环境配置与部署.md)。
+
 ### 3. 启动管理端前端
 
 ```bash
@@ -151,11 +153,15 @@ pnpm dev:mp-weixin
 cd backend
 # 全新部署；已有部署先按环境配置文档迁移原有变量
 cp .env.production.example .env.production
-# 替换所有 change-me 配置；当前网关为纯 HTTP
-docker compose --env-file .env.production up -d --build
+# 替换所有占位配置，设置公共 API / 管理站点 origin 和证书目录
+docker compose --env-file .env.production config --quiet
+docker compose --env-file .env.production build public-api frontend
+docker compose --env-file .env.production run --rm --no-deps nginx nginx -t
+docker compose --env-file .env.production up -d --wait --wait-timeout 180 public-api admin-api worker frontend
+docker compose --env-file .env.production up -d --no-deps --force-recreate --wait --wait-timeout 60 nginx
 ```
 
-完整的开发/生产配置矩阵、Nginx 拓扑、冷启动和数据安全说明见 [环境配置与部署](./docs/环境配置与部署.md)。正常启动不要启用 `RUN_SEED`，seed 脚本会删除现有业务数据。
+生产使用同镜像的用户 API、管理 API、worker 与一次性 migrate 作业。`APP_URL` / `ADMIN_APP_URL` 分别配置公共与管理 origin，管理端相对 API 路径保持 `/api/v1`。公共域名仅提供 `/api/v1` 和图片路径，`/`、`/login` 及其他路径返回 404，不跳转管理站点；HTTP 到同一公共 origin 的 HTTPS 跳转仍受支持。已有单进程部署须先按 [环境配置与部署](./docs/环境配置与部署.md) 完成备份及有序切换，保留原项目名、凭据和数据卷。正常启动不要启用 `RUN_SEED`，seed 脚本会删除现有业务数据。
 
 ## 🧪 测试
 

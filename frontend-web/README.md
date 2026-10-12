@@ -202,7 +202,7 @@ docker build -t tasteinsight-frontend-web .
 docker run -d -p 80:80 tasteinsight-frontend-web
 ```
 
-`frontend-web/nginx.conf` 只托管静态文件、处理 Vue Router 回退和缓存。生产 API 代理由 `backend/nginx.conf` 负责；单独运行这个容器不会提供 `/api/v1`。完整拓扑见 [环境配置与部署](../docs/环境配置与部署.md)。
+`frontend-web/nginx.conf` 只托管静态文件、处理 Vue Router 回退和缓存；单独运行这个容器不会提供 `/api/v1`。完整生产部署通过配置的 `ADMIN_APP_URL` 访问管理端，网关将同域 `/api/v1` 转发到 `admin-api`；公共 `APP_URL` 的 `/api/v1` 转发到独立的 `public-api`，图片从 `/images/` 提供。公共域名的 `/`、`/login` 和其他路径返回 404，不跳转管理站点。域名变更不需要重建管理端。完整拓扑与 TLS 配置见 [环境配置与部署](../docs/环境配置与部署.md)。
 
 ## 代码规范
 

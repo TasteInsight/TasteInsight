@@ -1014,37 +1014,79 @@ describe('AdminConfigService', () => {
     });
   });
 
-  describe('syncConfigTemplates (via onModuleInit)', () => {
-    it('should create missing config templates on init', async () => {
-      // All templates missing
+  describe('syncConfigTemplates', () => {
+    afterEach(() => {
+      for (const operation of Object.values(prisma.adminConfig)) {
+        expect(operation).not.toHaveBeenCalled();
+      }
+      for (const operation of Object.values(prisma.adminConfigItem)) {
+        expect(operation).not.toHaveBeenCalled();
+      }
+    });
+
+    it('creates missing templates without materializing global overrides', async () => {
       prisma.adminConfigTemplate.findUnique.mockResolvedValue(null);
       prisma.adminConfigTemplate.create.mockResolvedValue({});
 
-      await service.onModuleInit();
+      await service.syncConfigTemplates();
 
-      // Should attempt to create templates for all definitions
       expect(prisma.adminConfigTemplate.create).toHaveBeenCalledTimes(
         CONFIG_DEFINITIONS.length,
       );
+      for (const definition of CONFIG_DEFINITIONS) {
+        expect(prisma.adminConfigTemplate.create).toHaveBeenCalledWith({
+          data: definition,
+        });
+      }
+      expect(prisma.adminConfigTemplate.update).not.toHaveBeenCalled();
     });
 
-    it('should update existing templates with changed metadata', async () => {
-      const existingTemplate = {
-        id: 'template-1',
-        key: ConfigKeys.REVIEW_AUTO_APPROVE,
-        defaultValue: 'false',
-        valueType: 'boolean',
-        description: 'old description',
-        category: 'old-category',
-      };
-
-      prisma.adminConfigTemplate.findUnique.mockResolvedValue(existingTemplate);
+    it('updates metadata while preserving customized defaults and global overrides', async () => {
+      prisma.adminConfigTemplate.findUnique.mockImplementation(
+        ({ where: { key } }) =>
+          Promise.resolve({
+            ...CONFIG_DEFINITIONS.find((definition) => definition.key === key),
+            id: `template-${key}`,
+            defaultValue: 'false',
+            valueType: 'string',
+            description: 'old description',
+            category: 'old-category',
+          }),
+      );
       prisma.adminConfigTemplate.update.mockResolvedValue({});
 
-      await service.onModuleInit();
+      await service.syncConfigTemplates();
 
-      // Should update templates with changed description/category
-      expect(prisma.adminConfigTemplate.update).toHaveBeenCalled();
+      expect(prisma.adminConfigTemplate.update).toHaveBeenCalledTimes(
+        CONFIG_DEFINITIONS.length,
+      );
+      for (const definition of CONFIG_DEFINITIONS) {
+        expect(prisma.adminConfigTemplate.update).toHaveBeenCalledWith({
+          where: { key: definition.key },
+          data: {
+            description: definition.description,
+            category: definition.category,
+            valueType: definition.valueType,
+          },
+        });
+      }
+      expect(prisma.adminConfigTemplate.create).not.toHaveBeenCalled();
+    });
+
+    it('leaves matching metadata and customized defaults untouched', async () => {
+      prisma.adminConfigTemplate.findUnique.mockImplementation(
+        ({ where: { key } }) =>
+          Promise.resolve({
+            ...CONFIG_DEFINITIONS.find((definition) => definition.key === key),
+            id: `template-${key}`,
+            defaultValue: 'false',
+          }),
+      );
+
+      await service.syncConfigTemplates();
+
+      expect(prisma.adminConfigTemplate.create).not.toHaveBeenCalled();
+      expect(prisma.adminConfigTemplate.update).not.toHaveBeenCalled();
     });
   });
 });

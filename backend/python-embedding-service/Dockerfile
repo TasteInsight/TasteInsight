@@ -47,14 +47,12 @@ ENV HF_HOME=/app/.cache/huggingface
 ENV TRANSFORMERS_CACHE=/app/.cache/huggingface/hub
 RUN mkdir -p /app/.cache/huggingface/hub
 
-# 预下载 Sentence-BERT 模型（可选，通过构建参数控制）
-# - CI 构建：PRELOAD_MODEL=false（快速验证，减少构建时间）
-# - CD 构建：PRELOAD_MODEL=true（生产镜像，首次启动更快）
-# 模型会被烧录到镜像层，增加约 400MB 镜像大小
+# 预下载 Config 中的文本模型（可选，默认关闭）。
+# 启用 PRELOAD_MODEL 会将模型写入镜像层，增加约 400MB 镜像大小。
 ARG PRELOAD_MODEL=false
 RUN if [ "$PRELOAD_MODEL" = "true" ]; then \
         echo "⬇️ Preloading Sentence-BERT model into image..."; \
-        python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/paraphrase-multilingual-mpnet-base-v2')" && \
+        python -c "from config import Config; from sentence_transformers import SentenceTransformer; SentenceTransformer(Config.TEXT_MODEL)" && \
         echo "✅ Model preloaded and cached in image layer"; \
     else \
         echo "⏭️ Skipping model preload (will download on first run, or use volume cache)"; \

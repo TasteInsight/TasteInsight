@@ -1,12 +1,15 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import Redis from 'ioredis';
 import { RecommendationCacheService } from './cache.service';
 
 // Mock ioredis
 jest.mock('ioredis', () => {
   return jest.fn().mockImplementation(() => ({
+    status: 'ready',
     on: jest.fn(),
     quit: jest.fn().mockResolvedValue(undefined),
+    disconnect: jest.fn(),
     get: jest.fn(),
     setex: jest.fn(),
     del: jest.fn(),
@@ -66,11 +69,35 @@ describe('RecommendationCacheService', () => {
   });
 
   afterEach(async () => {
-    await service.onModuleDestroy();
+    await service.onApplicationShutdown();
   });
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  it('keeps reconnecting after an outage while bounding each command retry', () => {
+    const calls = (Redis as unknown as jest.Mock).mock.calls;
+    const options = calls[calls.length - 1][0];
+    for (const attempts of [4, 10, 1000]) {
+      const delay = options.retryStrategy(attempts);
+      expect(delay).toBeGreaterThan(0);
+      expect(delay).toBeLessThanOrEqual(3000);
+    }
+    expect(options.maxRetriesPerRequest).toBe(1);
+  });
+
+  it('cancels disconnected-client retries without waiting for Redis to recover', async () => {
+    mockRedis.status = 'reconnecting';
+    await service.onApplicationShutdown();
+    expect(mockRedis.quit).not.toHaveBeenCalled();
+    expect(mockRedis.disconnect).toHaveBeenCalled();
+  });
+
+  it('still disconnects when a connection drops during graceful cache shutdown', async () => {
+    mockRedis.quit.mockRejectedValueOnce(new Error('connection lost'));
+    await expect(service.onApplicationShutdown()).resolves.toBeUndefined();
+    expect(mockRedis.disconnect).toHaveBeenCalled();
   });
 
   describe('User Features Cache', () => {

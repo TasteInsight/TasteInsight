@@ -1,15 +1,14 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
 import { EMBEDDING_QUEUE } from './embedding-queue.constants';
-import { EmbeddingQueueProcessor } from './embedding-queue.processor';
 import { EmbeddingQueueService } from './embedding-queue.service';
 import { RecommendationModule } from '@/recommendation/recommendation.module';
 
 @Module({
   imports: [
     ConfigModule,
-    forwardRef(() => RecommendationModule),
+    RecommendationModule,
     BullModule.registerQueue({
       name: EMBEDDING_QUEUE,
       defaultJobOptions: {
@@ -23,7 +22,7 @@ import { RecommendationModule } from '@/recommendation/recommendation.module';
       },
     }),
   ],
-  providers: [EmbeddingQueueProcessor, EmbeddingQueueService],
-  exports: [EmbeddingQueueService],
+  providers: [EmbeddingQueueService],
+  exports: [EmbeddingQueueService, BullModule],
 })
 export class EmbeddingQueueModule {}

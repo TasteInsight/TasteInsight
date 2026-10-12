@@ -9,28 +9,9 @@
 - **Node.js**: >= 22.13
 - **pnpm**: 11.21.0（与各子项目的 `packageManager` 一致）
 - **Git**: >= 2.x
-- **Docker**: >= 20.x (用于运行数据库)
-- **PostgreSQL**: >= 15.x
-- **Redis**: >= 7.x
+- **Docker Compose**：用于运行项目提供的本地 pgvector PostgreSQL 和 Redis；也可连接已有的兼容服务。
 
-## 安装步骤
-
-```bash
-# 1. 安装 Node.js (推荐使用 nvm)
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-nvm install 22
-nvm use 22
-
-# 2. 验证项目指定的 pnpm
-npx --yes pnpm@11.21.0 --version
-
-# 3. 验证安装
-node -v
-npx --yes pnpm@11.21.0 --version
-git --version
-```
-
-已有 pnpm 环境应使用 11.21.0；未配置全局 pnpm 时，可在以下命令中用 `npx --yes pnpm@11.21.0` 替代 `pnpm`，无需修改全局安装。首次调用会按需下载指定版本。
+工具链、环境变量与基础设施配置统一维护在 [环境配置与部署](./docs/环境配置与部署.md)。依赖安装使用各子项目提交的锁文件和固定的 pnpm 版本。
 
 # 获取代码
 
@@ -78,104 +59,13 @@ pnpm install
 
 ```
 
-## 配置环境变量
+## 配置并启动本地环境
 
-```bash
-# 后端环境变量
-cd backend
-cp .env.example .env
+按 [环境配置与部署：本地开发](./docs/环境配置与部署.md#本地开发) 完成基础设施、后端、管理端和小程序的配置与启动。开发基础设施使用 `backend/docker-compose.local.yml`，生产编排与测试环境分别配置。
 
-# 编辑 .env 文件，填入您的配置
-# DATABASE_URL="postgresql://postgres:password@localhost:5432/tasteinsight"
-# REDIS_HOST=localhost
-# REDIS_PORT=6379
-# REDIS_PASSWORD=your_redis_password
-# JWT_SECRET=your-super-secret-key
-# JWT_REFRESH_SECRET=another-super-secret-for-refresh-token
-# WECHAT_APPID=your_wechat_appid
-# WECHAT_SECRET=your_wechat_appsecret
-# INITIAL_ADMIN_USERNAME=admin
-# INITIAL_ADMIN_PASSWORD=your_secure_password
+首次启动和拉取新迁移后，先显式执行数据库 schema 迁移；开发应用启动时统一初始化系统模板和首个管理员。普通开发启动不需要运行 seed 或手工模板初始化脚本。
 
-# 前端环境变量
-cd ../frontend-web
-cp .env.example .env
-
-cd ../frontend-miniapp
-cp .env.example .env
-
-# 编辑 .env 文件
-# VITE_API_BASE_URL=http://localhost:3000
-```
-
-## 启动数据库
-
-```bash
-# 使用 Docker Compose 启动数据库
-cd backend
-docker-compose up -d
-
-# 或手动启动 PostgreSQL 和 Redis
-# PostgreSQL
-docker run -d \
-  --name postgres \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=password \
-  -e POSTGRES_DB=tasteinsight \
-  -p 5432:5432 \
-  postgres:17-alpine
-
-# Redis
-docker run -d \
-  --name redis \
-  -p 6379:6379 \
-  redis:7-alpine
-```
-
-## 初始化数据库
-
-```bash
-cd backend
-
-# 运行数据库迁移
-npx prisma migrate dev
-
-# 生成 Prisma Client
-npx prisma generate
-
-# (可选) 填充测试数据
-npx prisma db seed
-
-# (可选) 初始化配置模板
-npx ts-node prisma/init-config-templates.ts
-
-# (可选) 导入食堂数据
-npx ts-node prisma/import_canteens.ts
-```
-
-## 启动开发服务器
-
-```bash
-# 启动后端 (开发模式)
-cd backend
-pnpm run start:dev
-# 后端运行在 http://localhost:3000
-
-# 启动管理端前端 (新开终端)
-cd frontend-web
-pnpm dev
-# 前端运行在 http://localhost:5173
-
-# 启动小程序 (新开终端)
-cd frontend-miniapp
-pnpm dev:mp-weixin
-# 使用微信开发者工具打开 dist/dev/mp-weixin 目录
-
-# (可选) 启动 Python 嵌入服务
-cd backend/python-embedding-service
-python app.py
-# 嵌入服务运行在 http://localhost:5001
-```
+后端 E2E 使用独立测试数据库，环境准备和数据清理边界见 [后端测试说明](./backend/TEST.md)。不要将开发、验收或生产数据库用作测试目标。
 
 # 分支管理
 
@@ -230,19 +120,11 @@ git diff
 
 1. 运行测试
 
-```bash
-# 后端测试
-cd backend
-pnpm test                 # 运行所有测试
-pnpm test:watch          # 监听模式
-pnpm test:cov            # 生成覆盖率报告
-pnpm test:e2e            # 运行 E2E 测试
+按变更范围运行对应测试，并记录实际执行的命令、结果与未覆盖环境：
 
-# 前端测试
-cd frontend-web
-pnpm test                # 运行单元测试
-pnpm test:ui             # 运行 UI 测试
-```
+- [后端测试说明](./backend/TEST.md)
+- [管理端测试](./frontend-web/README.md#测试)
+- [小程序测试](./frontend-miniapp/README.md#测试)
 
 1. 代码检查
 

@@ -29,7 +29,7 @@ on:
 # 防止重复部署
 concurrency:
   group: cd-${{ github.event.workflow_run.head_branch || github.ref_name }}-${{ inputs.environment || 'auto' }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   DEPLOY_IMAGE_TAG: deploy-${{ github.event.workflow_run.head_sha || github.sha }}-${{ github.run_id }}
@@ -282,7 +282,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=embedding
           platforms: linux/amd64
           build-args: |
-            PRELOAD_MODEL=true
+            PRELOAD_MODEL=false
 
   # 部署到开发环境
   deploy-dev:
@@ -323,13 +323,20 @@ jobs:
           trap "rm -rf $DEPLOY_TMP" EXIT
 
           cp backend/docker-compose.yml "$DEPLOY_TMP/docker-compose.yml"
-          cp backend/nginx.conf "$DEPLOY_TMP/nginx.conf"
+          for file in nginx.conf nginx.https.conf.template nginx.common.conf nginx.public.conf nginx.admin.conf gateway-render.sh; do
+            cp "backend/$file" "$DEPLOY_TMP/$file"
+          done
           printf '%s\n' "$DEPLOY_ENV_FILE" > "$DEPLOY_TMP/.env.production"
           chmod 600 "$DEPLOY_TMP/.env.production"
+
+          scp .github/scripts/deploy-release.sh "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/deploy-release.sh"
+          ssh "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}" "cd '${{ secrets.DEV_DEPLOY_PATH }}' && sh deploy-release.sh --check-legacy"
           
           scp "$DEPLOY_TMP/docker-compose.yml" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/docker-compose.yml"
           scp "$DEPLOY_TMP/.env.production" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/.env.production"
-          scp "$DEPLOY_TMP/nginx.conf" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/nginx.conf"
+          for file in nginx.conf nginx.https.conf.template nginx.common.conf nginx.public.conf nginx.admin.conf gateway-render.sh; do
+            scp "$DEPLOY_TMP/$file" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/$file"
+          done
         shell: bash
         
       - name: Deploy to server
@@ -360,11 +367,7 @@ jobs:
             
             echo "🚀 Deploying from Registry: $IMAGE_REGISTRY"
             
-            docker compose --env-file .env.production pull
-            docker compose --env-file .env.production up -d --remove-orphans
-            
-            # 清理未使用的镜像
-            docker image prune -f
+            sh deploy-release.sh
             
             echo "✅ Development deployment completed at $(date)"
 
@@ -409,14 +412,21 @@ jobs:
 
           # 复制 docker-compose.yml
           cp backend/docker-compose.yml "$DEPLOY_TMP/docker-compose.yml"
-          cp backend/nginx.conf "$DEPLOY_TMP/nginx.conf"
+          for file in nginx.conf nginx.https.conf.template nginx.common.conf nginx.public.conf nginx.admin.conf gateway-render.sh; do
+            cp "backend/$file" "$DEPLOY_TMP/$file"
+          done
           printf '%s\n' "$DEPLOY_ENV_FILE" > "$DEPLOY_TMP/.env.production"
           chmod 600 "$DEPLOY_TMP/.env.production"
+
+          scp .github/scripts/deploy-release.sh "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/deploy-release.sh"
+          ssh "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}" "cd '${{ secrets.PROD_DEPLOY_PATH }}' && sh deploy-release.sh --check-legacy"
           
           # 复制文件到服务器
           scp "$DEPLOY_TMP/docker-compose.yml" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/docker-compose.yml"
           scp "$DEPLOY_TMP/.env.production" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/.env.production"
-          scp "$DEPLOY_TMP/nginx.conf" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/nginx.conf"
+          for file in nginx.conf nginx.https.conf.template nginx.common.conf nginx.public.conf nginx.admin.conf gateway-render.sh; do
+            scp "$DEPLOY_TMP/$file" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/$file"
+          done
         shell: bash
 
       - name: Deploy to server
@@ -448,8 +458,5 @@ jobs:
             
             echo "🚀 Deploying from Registry: $IMAGE_REGISTRY"
             
-            docker compose --env-file .env.production pull
-            docker compose --env-file .env.production up -d --remove-orphans
-            
-            docker image prune -f
+            sh deploy-release.sh
             echo "✅ Production deployment completed at $(date)"
