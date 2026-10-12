@@ -122,6 +122,98 @@ describe('AdminOperationLogInterceptor', () => {
     );
   });
 
+  it.each([
+    ['success', '/admin/dishes/batch-delete'],
+    ['failure', '/admin/dishes/batch-delete'],
+    ['success', '/admin/dishes/batch-delete/'],
+    ['failure', '/admin/dishes/batch-delete/'],
+  ] as const)('records batch targets for %s at %s', async (result, path) => {
+    const ids = ['dish-a', 'dish-b'];
+    const originalError = new Error('target is outside the admin scope');
+    const completion = lastValueFrom(
+      interceptor.intercept(
+        createContext(
+          { method: 'POST', path, params: {}, body: { ids, token: 'private' } },
+          'batchDeleteDishes',
+        ),
+        {
+          handle: () =>
+            result === 'success'
+              ? of({ code: 200 })
+              : throwError(() => originalError),
+        },
+      ),
+    );
+    if (result === 'failure') {
+      await expect(completion).rejects.toBe(originalError);
+    } else {
+      await expect(completion).resolves.toEqual({ code: 200 });
+    }
+    await new Promise((resolve) => setImmediate(resolve));
+
+    expect(prisma.operationLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: 'delete',
+        targetId: '-',
+        result,
+        details: { method: 'POST', path, ids },
+      }),
+    });
+    expect(JSON.stringify(prisma.operationLog.create.mock.calls)).not.toContain(
+      'private',
+    );
+  });
+
+  it.each([
+    undefined,
+    'not-an-array',
+    [],
+    [''],
+    [42],
+    [{ password: 'private' }],
+    Array.from({ length: 101 }, (_, index) => `dish-${index}`),
+    ['x'.repeat(129)],
+  ])('omits malformed or unbounded batch targets: %p', async (ids) => {
+    await expect(
+      lastValueFrom(
+        interceptor.intercept(
+          createContext({
+            method: 'POST',
+            path: '/admin/dishes/batch-delete',
+            body: { ids },
+          }),
+          { handle: () => throwError(() => new Error('invalid request')) },
+        ),
+      ),
+    ).rejects.toThrow('invalid request');
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(
+      prisma.operationLog.create.mock.calls[0][0].data.details,
+    ).not.toHaveProperty('ids');
+  });
+
+  it('keeps the complete batch at the supported audit bounds', async () => {
+    const ids = Array.from({ length: 100 }, (_, index) =>
+      `${index}`.padEnd(128, 'x'),
+    );
+    await expect(
+      lastValueFrom(
+        interceptor.intercept(
+          createContext({
+            method: 'POST',
+            path: '/admin/news/batch-delete',
+            body: { ids },
+          }),
+          { handle: () => throwError(() => new Error('not found')) },
+        ),
+      ),
+    ).rejects.toThrow('not found');
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(
+      prisma.operationLog.create.mock.calls[0][0].data.details.ids,
+    ).toEqual(ids);
+  });
+
   it('does not change a success result when log persistence fails', async () => {
     prisma.operationLog.create.mockRejectedValue(new Error('log unavailable'));
     const response = { code: 200, data: { id: 'response-id' } };

@@ -101,7 +101,7 @@ backend/
 | `admin-comments` | 评论审核、批量操作 |
 | `admin-reports` | 举报处理 |
 | `admin-uploads` | 用户上传菜品审核 |
-| `admin-news` | 新闻公告管理（富文本编辑） |
+| `admin-news` | 新闻公告管理（富文本编辑）、批量删除 |
 | `admin/student-verifications` | 全局管理员审核、拒绝或撤销学生资格 |
 | `admin/posts`、`admin/post-comments` | 帖子与回复列表、审核和删除 |
 | `admin-config` | 系统配置（推荐策略、AI 参数等） |
@@ -290,6 +290,10 @@ OAuth 回调只保存临时证明。原账号还需通过原客户端持有的�
 通知与互动事务同步落库；取消点赞、隐藏或删除内容会撤回关联通知。消息列表、未读数、已读操作均限定当前账号，`scope=service` 只保留菜品、评价和推荐类消息。新品与价格变动生成持久 campaign，每次限量处理收件人并保存进度；周推荐保存真实菜品集合，详情读取时过滤已下架菜品。
 
 配置 `NOTIFICATION_WEBHOOK_URL/SECRET` 可启用外推。网关收到 `eventId/recipientId/type/actor/target/createdAt`，须按 `Idempotency-Key` 去重，并校验原始请求体的 `X-TasteInsight-Signature`（`sha256=` + HMAC-SHA256）。生产使用 HTTPS。数据库 outbox 保存租约、重试及失败状态，投递前重新检查偏好和内容可见性；原生推送或微信订阅的目标映射、模板和用户授权由所接消息网关执行。
+
+### 批量删除
+
+`POST /admin/{dishes|news|reviews|comments}/batch-delete` 接收 `{ids}`，每次 1–100 个唯一 ID。校验任一目标不存在、超出食堂权限或不符合删除规则时整批回滚。菜品与新闻硬删除，评价与回复软删除；菜品上传审核历史保留，评价统计和通知撤回同步处理。权限沿用对应的 `*:delete`，审计记录包含整批 ID。
 
 用户端提交后展示本人内容，编辑框关闭或输入清空作为成功反馈。审核状态在管理端展示，服务端据此控制公开可见性。
 

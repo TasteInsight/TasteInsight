@@ -52,6 +52,7 @@ test('tables stay within the workspace at desktop and phone widths', async ({ pa
     await noPageOverflow(page)
     await expect(page.locator('.admin-record-id')).toHaveAttribute('title', `菜品 ID：${dish.id}`)
   }
+  await expect(page.getByRole('button', { name: '批量删除菜品', exact: true })).toHaveCount(0)
   await expect(page.locator('.admin-table img')).toHaveCount(0)
   await page.getByRole('button', { name: '展开管理菜单', exact: true }).click()
   await page.getByRole('link', { name: '新闻管理', exact: true }).click()
@@ -68,6 +69,25 @@ test('upload editors wrap rather than widening narrow forms', async ({ page }) =
   await page.getByRole('button', { name: '新建食堂', exact: true }).click()
   await expect(page.getByRole('heading', { name: '新建食堂' })).toBeVisible()
   await noPageOverflow(page)
+  expect(writes).toEqual([])
+})
+
+test('modal keyboard focus cannot reach the background and cancellation restores the opener', async ({ page }) => {
+  const writes = await prepare(page)
+  await page.goto('/modify-dish')
+  await page.getByRole('checkbox', { name: `选择菜品 ${dish.name}` }).check()
+  const opener = page.getByRole('button', { name: '批量删除菜品', exact: true })
+  await opener.click()
+  const dialog = page.getByRole('dialog', { name: '批量删除菜品', exact: true })
+  await expect(dialog).toBeVisible()
+  expect(await dialog.evaluate(el => el.matches(':modal'))).toBe(true)
+  for (let index = 0; index < 6; index++) {
+    await page.keyboard.press('Tab')
+    expect(await page.evaluate(() => document.activeElement === document.body || !!document.activeElement?.closest('dialog[open]'))).toBe(true)
+  }
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await expect(opener).toBeFocused()
   expect(writes).toEqual([])
 })
 

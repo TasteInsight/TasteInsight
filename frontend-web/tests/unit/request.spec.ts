@@ -195,11 +195,16 @@ describe('utils/request', () => {
     expect(out.headers.Authorization).toBe('Bearer refresh-token')
   })
 
-  it('request interceptor error handler rejects', async () => {
+  it('request interceptor error handler throws synchronously to stop dispatch', async () => {
     await loadOnce()
 
     const err = new Error('bad')
-    await expect(requestOnRejected(err)).rejects.toThrow('bad')
+    expect(() => requestOnRejected(err)).toThrow(err)
+    expect(serviceFn.interceptors.request.use).toHaveBeenLastCalledWith(
+      expect.any(Function),
+      expect.any(Function),
+      { synchronous: true },
+    )
   })
 
   it('response success returns response.data', async () => {

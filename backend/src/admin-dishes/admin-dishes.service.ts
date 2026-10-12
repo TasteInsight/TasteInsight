@@ -776,6 +776,74 @@ export class AdminDishesService {
     };
   }
 
+  async batchDeleteAdminDishes(ids: string[], adminInfo: AdminInfo) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw(
+        Prisma.sql`SELECT id FROM dish_uploads WHERE "approvedDishId" IN (${Prisma.join(ids)}) ORDER BY id FOR UPDATE`,
+      );
+      await tx.$queryRaw(
+        Prisma.sql`SELECT id FROM dishes WHERE id IN (${Prisma.join(ids)}) ORDER BY id FOR UPDATE`,
+      );
+      const dishes = await tx.dish.findMany({
+        where: { id: { in: ids } },
+        select: {
+          id: true,
+          canteenId: true,
+          _count: { select: { subDishes: true } },
+        },
+      });
+      if (dishes.length !== ids.length)
+        throw new NotFoundException('部分菜品已不存在，请刷新列表');
+      if (
+        adminInfo.canteenId &&
+        dishes.some((dish) => dish.canteenId !== adminInfo.canteenId)
+      )
+        throw new ForbiddenException('无权删除所选菜品');
+      if (dishes.some((dish) => dish._count.subDishes > 0))
+        throw new BadRequestException(
+          '所选菜品包含有子菜品的条目，请先处理子菜品',
+        );
+
+      const incompatible = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+        WITH sources AS (
+          SELECT DISTINCT ON ("approvedDishId") id, "approvedDishId", "canteenId"
+          FROM dish_uploads WHERE "approvedDishId" IN (${Prisma.join(ids)})
+          ORDER BY "approvedDishId", id
+        )
+        SELECT child.id FROM dish_uploads child
+        LEFT JOIN sources source ON child."parentDishId" = source."approvedDishId"
+        WHERE child."parentDishId" IN (${Prisma.join(ids)})
+          AND (source.id IS NULL OR child."canteenId" IS DISTINCT FROM source."canteenId")
+        LIMIT 1
+      `);
+      if (incompatible.length)
+        throw new BadRequestException(
+          '部分菜品的子审核记录无法保留，请先处理审核记录或下架菜品',
+        );
+      await tx.$executeRaw(Prisma.sql`
+        WITH sources AS (
+          SELECT DISTINCT ON ("approvedDishId") id, "approvedDishId"
+          FROM dish_uploads WHERE "approvedDishId" IN (${Prisma.join(ids)})
+          ORDER BY "approvedDishId", id
+        )
+        UPDATE dish_uploads child SET "parentDishId" = NULL, "parentUploadId" = source.id,
+          "updatedAt" = CURRENT_TIMESTAMP
+        FROM sources source WHERE child."parentDishId" = source."approvedDishId"
+      `);
+      await tx.dishUpload.updateMany({
+        where: { approvedDishId: { in: ids } },
+        data: { approvedDishId: null },
+      });
+      await withdrawDishNotifications(tx, ids);
+      const result = await tx.dish.deleteMany({ where: { id: { in: ids } } });
+      return {
+        code: 200,
+        message: '删除成功',
+        data: { deletedCount: result.count },
+      };
+    });
+  }
+
   /**
    * 管理端修改菜品状态
    */

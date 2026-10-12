@@ -2,6 +2,7 @@ import request from '@/utils/request'
 import type {
   PaginationResponse,
   ApiResponse,
+  BatchDeleteResult,
   Report,
   GetReportsParams,
   ReportHandleRequest,
@@ -61,6 +62,10 @@ export const reviewApi = {
    */
   async deleteReview(id: string): Promise<ApiResponse<void>> {
     return await request.delete<ApiResponse<void>>(`/admin/reviews/${id}`)
+  },
+
+  async batchDeleteReviews(ids: string[]): Promise<ApiResponse<BatchDeleteResult>> {
+    return request.post('/admin/reviews/batch-delete', { ids })
   },
 
   /**
@@ -197,6 +202,10 @@ export const reviewApi = {
    */
   async deleteComment(id: string): Promise<ApiResponse<void>> {
     return await request.delete<ApiResponse<void>>(`/admin/comments/${id}`)
+  },
+
+  async batchDeleteComments(ids: string[]): Promise<ApiResponse<BatchDeleteResult>> {
+    return request.post('/admin/comments/batch-delete', { ids })
   },
 }
 

@@ -47,7 +47,7 @@ const service: AxiosInstance = axios.create({
 })
 
 /**
- * 请求拦截器 - 添加 token
+ * 请求拦截器 - 同步绑定请求会话和 token
  */
 service.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
@@ -77,8 +77,10 @@ service.interceptors.request.use(
     return config
   },
   (error) => {
-    return Promise.reject(error)
+    // Axios 的同步拦截器必须抛错，返回 rejected Promise 不会阻止请求派发。
+    throw error
   },
+  { synchronous: true },
 )
 
 interface RefreshSession {

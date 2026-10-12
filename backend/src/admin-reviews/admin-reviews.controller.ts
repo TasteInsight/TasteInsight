@@ -17,11 +17,19 @@ import { ModerateReviewDto } from './dto/moderate-review.dto';
 import { AdminAuthGuard } from '@/auth/guards/admin-auth.guard';
 import { PermissionsGuard } from '@/auth/guards/permissions.guard';
 import { RequirePermissions } from '@/auth/decorators/permissions.decorator';
+import { BatchDeleteDto } from '@/common/dto/batch-delete.dto';
 
 @Controller('admin/reviews')
 @UseGuards(AdminAuthGuard, PermissionsGuard)
 export class AdminReviewsController {
   constructor(private readonly adminReviewsService: AdminReviewsService) {}
+
+  @Post('batch-delete')
+  @RequirePermissions('review:delete')
+  @HttpCode(HttpStatus.OK)
+  batchDeleteReviews(@Body() body: BatchDeleteDto, @Request() req) {
+    return this.adminReviewsService.batchDeleteReviews(body.ids, req.admin);
+  }
 
   @Get('pending')
   @RequirePermissions('review:approve')

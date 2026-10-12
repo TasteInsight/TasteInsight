@@ -17,6 +17,31 @@ import { Prisma } from '@prisma/client';
 export class AdminNewsService {
   constructor(private prisma: PrismaService) {}
 
+  async batchDeleteNews(ids: string[], admin: AdminInfo) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw(
+        Prisma.sql`SELECT id FROM news WHERE id IN (${Prisma.join(ids)}) ORDER BY id FOR UPDATE`,
+      );
+      const rows = await tx.news.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, canteenId: true },
+      });
+      if (rows.length !== ids.length)
+        throw new NotFoundException('部分新闻已不存在，请刷新列表');
+      if (
+        admin.canteenId &&
+        rows.some((row) => row.canteenId !== admin.canteenId)
+      )
+        throw new ForbiddenException('无权删除所选新闻');
+      const result = await tx.news.deleteMany({ where: { id: { in: ids } } });
+      return {
+        code: 200,
+        message: '删除成功',
+        data: { deletedCount: result.count },
+      };
+    });
+  }
+
   async findAll(
     query: AdminGetNewsDto,
     adminInfo?: AdminInfo,

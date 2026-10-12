@@ -3,6 +3,7 @@ import type {
   News,
   PaginationResponse,
   ApiResponse,
+  BatchDeleteResult,
   NewsCreateRequest,
   NewsUpdateRequest,
   GetNewsParams,
@@ -47,6 +48,10 @@ export const newsApi = {
    */
   async deleteNews(id: string): Promise<ApiResponse<void>> {
     return await request.delete<ApiResponse<void>>(`/admin/news/${id}`)
+  },
+
+  async batchDeleteNews(ids: string[]): Promise<ApiResponse<BatchDeleteResult>> {
+    return request.post('/admin/news/batch-delete', { ids })
   },
 
   /**

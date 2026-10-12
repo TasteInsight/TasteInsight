@@ -16,11 +16,19 @@ import { RejectCommentDto } from './dto/reject-comment.dto';
 import { AdminAuthGuard } from '@/auth/guards/admin-auth.guard';
 import { PermissionsGuard } from '@/auth/guards/permissions.guard';
 import { RequirePermissions } from '@/auth/decorators/permissions.decorator';
+import { BatchDeleteDto } from '@/common/dto/batch-delete.dto';
 
 @Controller('admin/comments')
 @UseGuards(AdminAuthGuard, PermissionsGuard)
 export class AdminCommentsController {
   constructor(private readonly adminCommentsService: AdminCommentsService) {}
+
+  @Post('batch-delete')
+  @RequirePermissions('comment:delete')
+  @HttpCode(HttpStatus.OK)
+  batchDeleteComments(@Body() body: BatchDeleteDto, @Request() req) {
+    return this.adminCommentsService.batchDeleteComments(body.ids, req.admin);
+  }
 
   @Get('pending')
   @RequirePermissions('comment:approve')

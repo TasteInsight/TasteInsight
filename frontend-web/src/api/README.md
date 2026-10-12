@@ -15,6 +15,8 @@
 | [canteen.ts](./modules/canteen.ts) | `canteenApi` | 食堂与窗口 |
 | [config.ts](./modules/config.ts) | `configApi` | 模板、全局配置、食堂配置与有效配置 |
 | [experiment.ts](./modules/experiment.ts) | `experimentApi` | A/B 实验管理与推荐召回质量评估 |
+| [student-verification.ts](./modules/student-verification.ts) | `studentVerificationApi` | 学生资格审核与撤销 |
+| [community.ts](./modules/community.ts) | `communityApi` | 社区帖子与回复管理 |
 
 ## 导入与类型
 
@@ -28,9 +30,16 @@ const reviews = await reviewApi.getPendingReviews({ page: 1, pageSize: 20 })
 const canteens = await canteenApi.getCanteens()
 ```
 
+学生资格与社区模块从对应文件导入：
+
+```typescript
+import { studentVerificationApi } from '@/api/modules/student-verification'
+import { communityApi } from '@/api/modules/community'
+```
+
 统一入口保留 `api` 兼容对象；它只包含 [index.ts](./index.ts) 中显式列出的方法，新增调用优先使用业务模块。
 
-通用请求和响应类型位于 [api.d.ts](../types/api.d.ts)。
+通用请求和响应类型位于 [api.d.ts](../types/api.d.ts)。学生资格与社区类型分别位于 [student-verification.ts](../types/student-verification.ts) 和 [community.ts](../types/community.ts)。
 
 ## 菜品提交与审批
 
@@ -64,10 +73,10 @@ if (review) {
 }
 ```
 
-拒绝请求还需提供原因。页面应按具体业务处理失败、刷新列表及确认交互。
+拒绝请求还需提供原因。页面应按具体业务处理失败、刷新列表及确认交互；批量删除等方法直接使用相应业务模块。
 
 ## 验证与权限
 
-管理 API 使用管理员 Token，服务端继续校验权限点与食堂范围。客户端按钮可见性不替代接口鉴权。
+管理 API 使用管理员 Token，服务端继续校验权限点与食堂范围。客户端按钮可见性不替代接口鉴权。部署通过独立管理 origin 提供这些接口，公共 API 域名不跳转管理站点。
 
 前端验证命令见 [管理端测试](../../README.md#测试)，接口集成验证见 [后端测试说明](../../../backend/TEST.md)。

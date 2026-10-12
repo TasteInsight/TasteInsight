@@ -22,6 +22,11 @@ export class AdminCommentsService {
     private notifications: NotificationService,
   ) {}
 
+  async batchDeleteComments(ids: string[], admin: AdminInfo) {
+    const deletedCount = await this.deleteComments(ids, admin);
+    return { code: 200, message: '删除成功', data: { deletedCount } };
+  }
+
   private async deleteComments(
     ids: string[],
     admin?: Pick<AdminInfo, 'canteenId'>,
