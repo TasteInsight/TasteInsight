@@ -224,6 +224,8 @@ VITE_API_BASE_URL=http://10.0.2.2:3001 pnpm build:app
 
 ## 测试
 
+历史执行结果保存在 [测试报告归档](../docs/archive/test-reports/README.md)。
+
 ### 单元测试
 
 ```bash
