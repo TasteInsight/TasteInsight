@@ -1,4 +1,5 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import cuid from 'cuid';
 import { PrismaService } from '@/prisma.service';
 import { RecommendationCacheService } from './cache.service';
 import {
@@ -17,7 +18,7 @@ import { normalizedHash } from '../utils/hash.util';
 @Injectable()
 export class ExperimentService implements OnModuleInit {
   private readonly logger = new Logger(ExperimentService.name);
-  // 内存中缓存的活跃实验列表
+  // 最近一次读取的实验快照；分组决策从数据库刷新。
   private activeExperiments: Map<string, ExperimentConfig> = new Map();
   private refreshPromise: Promise<void> = Promise.resolve();
 
@@ -59,7 +60,7 @@ export class ExperimentService implements OnModuleInit {
       },
     });
 
-    this.activeExperiments.clear();
+    const activeExperiments = new Map<string, ExperimentConfig>();
 
     for (const exp of experiments) {
       const config: ExperimentConfig = {
@@ -92,10 +93,11 @@ export class ExperimentService implements OnModuleInit {
         }),
       };
 
-      this.activeExperiments.set(exp.id, config);
+      activeExperiments.set(exp.id, config);
     }
 
-    this.logger.log(`Loaded ${this.activeExperiments.size} active experiments`);
+    this.activeExperiments = activeExperiments;
+    this.logger.debug(`Loaded ${activeExperiments.size} active experiments`);
   }
 
   /**
@@ -108,17 +110,19 @@ export class ExperimentService implements OnModuleInit {
     userId: string,
     _context?: RecommendationContext,
   ): Promise<ExperimentAssignment | null> {
+    await this.refreshActiveExperiments();
+    const activeExperiments = this.activeExperiments;
     // 如果没有活跃实验，返回空
-    if (this.activeExperiments.size === 0) {
+    if (activeExperiments.size === 0) {
       return null;
     }
 
     // 遍历活跃实验，找到用户应该参与的实验
-    for (const [experimentId, experiment] of this.activeExperiments) {
+    for (const [experimentId, experiment] of activeExperiments) {
       // 检查用户是否应该参与这个实验（根据流量比例）
       const shouldParticipate = this.shouldUserParticipate(userId, experiment);
 
-      if (!shouldParticipate) {
+      if (!shouldParticipate || experiment.groupItems.length === 0) {
         continue;
       }
 
@@ -128,30 +132,12 @@ export class ExperimentService implements OnModuleInit {
         experimentId,
       );
 
-      if (!groupItemId) {
-        // 从数据库检查
-        const assignment =
-          await this.prisma.userExperimentAssignment.findUnique({
-            where: {
-              userId_experimentId: {
-                userId,
-                experimentId,
-              },
-            },
-          });
-
-        if (assignment) {
-          groupItemId = assignment.groupItemId;
-          // 缓存到 Redis
-          await this.cacheService.setUserExperimentGroup(
-            userId,
-            experimentId,
-            groupItemId,
-          );
-        } else {
-          // 新用户，需要分配组
-          groupItemId = await this.assignUserToGroupItem(userId, experiment);
-        }
+      if (
+        !experiment.groupItems.some(
+          (group) => group.groupItemId === groupItemId,
+        )
+      ) {
+        groupItemId = await this.assignUserToGroupItem(userId, experiment);
       }
 
       // 获取分组配置
@@ -163,18 +149,9 @@ export class ExperimentService implements OnModuleInit {
         continue;
       }
 
-      // 获取权重配置
-      let weights =
-        await this.cacheService.getExperimentGroupItemWeights(groupItemId);
-
-      if (!weights && groupItem.weights) {
-        // 合并默认权重和实验权重
-        weights = this.mergeWeights(groupItem.weights);
-        await this.cacheService.setExperimentGroupItemWeights(
-          groupItemId,
-          weights,
-        );
-      }
+      const weights = groupItem.weights
+        ? this.mergeWeights(groupItem.weights)
+        : this.getDefaultWeights();
 
       return {
         groupItemId: groupItem.groupItemId,
@@ -183,7 +160,7 @@ export class ExperimentService implements OnModuleInit {
         weights: groupItem.weights,
         recallQuota: groupItem.recallQuota, // 明确返回召回配额
         experimentId,
-        resolvedWeights: weights || this.getDefaultWeights(),
+        resolvedWeights: weights,
       };
     }
 
@@ -208,7 +185,7 @@ export class ExperimentService implements OnModuleInit {
   private async assignUserToGroupItem(
     userId: string,
     experiment: ExperimentConfig,
-  ): Promise<string> {
+  ): Promise<string | null> {
     const normalized = normalizedHash(
       userId + experiment.experimentId + ':group',
     );
@@ -224,23 +201,36 @@ export class ExperimentService implements OnModuleInit {
       }
     }
 
-    // 持久化分配结果
-    await this.prisma.userExperimentAssignment.create({
-      data: {
-        userId,
-        experimentId: experiment.experimentId,
-        groupItemId: selectedGroupItemId,
-      },
-    });
+    // 唯一键串行化同一用户的分配；保留有效分组，修复已删除的分组。
+    const [assignment] = await this.prisma.$queryRaw<
+      Array<{ groupItemId: string }>
+    >`
+      INSERT INTO "user_experiment_assignments" AS assignment
+        ("id", "userId", "experimentId", "groupItemId", "assignedAt")
+      SELECT ${cuid()}, ${userId}, ${experiment.experimentId}, ${selectedGroupItemId}, NOW()
+      WHERE EXISTS (
+        SELECT 1 FROM "experiment_group_items"
+        WHERE "id" = ${selectedGroupItemId}
+          AND "experimentId" = ${experiment.experimentId}
+      )
+      ON CONFLICT ("userId", "experimentId") DO UPDATE
+      SET "groupItemId" = CASE WHEN EXISTS (
+        SELECT 1 FROM "experiment_group_items" AS current_group
+        WHERE current_group."id" = assignment."groupItemId"
+          AND current_group."experimentId" = assignment."experimentId"
+      ) THEN assignment."groupItemId" ELSE EXCLUDED."groupItemId" END
+      RETURNING "groupItemId"
+    `;
+    if (!assignment) return null;
 
     // 缓存到 Redis
     await this.cacheService.setUserExperimentGroup(
       userId,
       experiment.experimentId,
-      selectedGroupItemId,
+      assignment.groupItemId,
     );
 
-    return selectedGroupItemId;
+    return assignment.groupItemId;
   }
 
   /**
@@ -261,6 +251,8 @@ export class ExperimentService implements OnModuleInit {
       groupItemName: string;
     }[]
   > {
+    await this.refreshActiveExperiments();
+    const activeExperiments = this.activeExperiments;
     const assignments = await this.prisma.userExperimentAssignment.findMany({
       where: { userId },
     });
@@ -273,7 +265,7 @@ export class ExperimentService implements OnModuleInit {
     }[] = [];
 
     for (const assignment of assignments) {
-      const experiment = this.activeExperiments.get(assignment.experimentId);
+      const experiment = activeExperiments.get(assignment.experimentId);
       if (!experiment) continue;
 
       const groupItem = experiment.groupItems.find(
