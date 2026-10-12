@@ -82,7 +82,7 @@ describe('Batch dish write permissions and review', () => {
           return upload;
         }),
         create: jest.fn(async ({ data }) => {
-          const upload = { ...data, id: `upload-${uploads.size}` };
+          const upload = { revision: 1, ...data, id: `upload-${uploads.size}` };
           uploads.set(upload.id, upload);
           return upload;
         }),
@@ -298,7 +298,7 @@ describe('Batch dish write permissions and review', () => {
     );
     expect(result.data).toMatchObject({ successCount: 3, failCount: 0 });
     expect([...uploads.values()]).toEqual([
-      expect.objectContaining({ name: item.name, price: 30 }),
+      expect.objectContaining({ name: item.name, price: 30, revision: 3 }),
     ]);
   });
 

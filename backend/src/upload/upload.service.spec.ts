@@ -35,6 +35,7 @@ describe('UploadService', () => {
       { get: () => 'local' } as any,
       local as any,
       oss as any,
+      {} as any,
     );
   });
 
@@ -244,6 +245,7 @@ describe('UploadService', () => {
       { get: () => 'oss' } as any,
       local as any,
       oss as any,
+      {} as any,
     );
     await svc.uploadFile(await imageFile());
     expect(oss.upload).toHaveBeenCalledWith(

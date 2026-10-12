@@ -45,7 +45,9 @@
           <text class="dish-title">{{ dish.name }}</text>
           <text class="dish-price"
             >¥{{ dish.price
-            }}<text v-if="dish.priceUnit" class="dish-price-unit">/{{ dish.priceUnit }}</text></text
+            }}<text v-if="priceUnitSuffix(dish.priceUnit)" class="dish-price-unit">{{
+              priceUnitSuffix(dish.priceUnit)
+            }}</text></text
           >
         </view>
         <view class="dish-location-row">
@@ -127,6 +129,10 @@
           </view>
         </view>
       </view>
+
+      <button class="dish-window-link dish-contribution-link" @click="contributeDish">
+        申请补充资料
+      </button>
 
       <view v-if="ownReviewLoading || ownReviewError || myReview" class="review-section">
         <view class="review-section-header">
@@ -308,6 +314,7 @@
 
 <script setup lang="ts">
 import { requireStudent } from '@/utils/student-access';
+import { priceUnitSuffix } from '@/utils/price-display';
 import { ref, computed, nextTick, watch, onScopeDispose } from 'vue';
 import { onLoad, onBackPress, onPullDownRefresh, onReachBottom, onHide } from '@dcloudio/uni-app';
 import { useDishDetail } from '@/pages/dish/composables/use-dish-detail';
@@ -410,6 +417,12 @@ const dishLocation = computed(() => {
 const goToWindow = () => {
   if (dish.value?.windowId)
     uni.navigateTo({ url: '/pages/window/index?id=' + encodeURIComponent(dish.value.windowId) });
+};
+const contributeDish = () => {
+  if (dish.value && requireStudent())
+    uni.navigateTo({
+      url: '/pages/add-dish/index?targetDishId=' + encodeURIComponent(dish.value.id),
+    });
 };
 
 const isReviewFormVisible = ref(false);
@@ -880,6 +893,9 @@ const handleDeleteReview = async (reviewId: string) => {
   font-size: 13px;
   line-height: 1.4;
   white-space: nowrap;
+}
+.dish-contribution-link {
+  margin: 0 20px 12px;
 }
 .dish-tags {
   display: flex;

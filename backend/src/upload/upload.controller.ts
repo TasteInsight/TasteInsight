@@ -6,6 +6,10 @@ import {
   ParseFilePipe,
   MaxFileSizeValidator,
   UseGuards,
+  Query,
+  Req,
+  BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadService } from './upload.service';
@@ -28,7 +32,13 @@ export class UploadController {
   async uploadImage(
     @UploadedFile()
     file: Express.Multer.File,
+    @Query('purpose') purpose?: string,
+    @Req() request?: { user?: { type: string; sub: string } },
   ): Promise<UploadResponseDto> {
+    if (purpose && purpose !== 'dish-contribution')
+      throw new BadRequestException('不支持的图片用途');
+    if (purpose && request?.user?.type !== 'user')
+      throw new ForbiddenException('菜品贡献图片需要用户身份');
     const maxSize = this.configService.get<number>(
       'UPLOAD_MAX_FILE_SIZE',
       10485760,
@@ -37,7 +47,9 @@ export class UploadController {
       validators: [new MaxFileSizeValidator({ maxSize })],
     });
     const validatedFile = await pipe.transform(file);
-    return this.uploadService.uploadFile(validatedFile);
+    return purpose
+      ? this.uploadService.uploadFile(validatedFile, request!.user!.sub)
+      : this.uploadService.uploadFile(validatedFile);
   }
 }
 

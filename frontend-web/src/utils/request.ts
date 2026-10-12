@@ -227,7 +227,11 @@ service.interceptors.response.use(
 
       // 返回错误信息
       const message = data?.message || data?.error || '请求失败，请稍后重试'
-      return Promise.reject(new Error(message))
+      return Promise.reject(Object.assign(new Error(message), {
+        status,
+        statusCode: status,
+        code: data?.code,
+      }))
     } else if (error.request) {
       return Promise.reject(new Error('网络连接失败，请检查网络'))
     } else {

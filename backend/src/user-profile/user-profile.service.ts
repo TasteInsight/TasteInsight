@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, Optional } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Optional,
+  BadRequestException,
+} from '@nestjs/common';
+import { DishUpload, Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma.service';
 import {
   UpdateUserProfileDto,
@@ -26,6 +32,14 @@ import {
 } from '@/user-profile/dto/user.dto';
 import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service';
 import { isCurrentStudent } from '@/auth/student-status';
+import {
+  assertRevision,
+  contributionSnapshot,
+  prepareContribution,
+} from '@/dishes/contribution-fields';
+import { claimContributionImages } from '@/upload/contribution-images';
+import { UpdateUploadDto } from './dto/update-upload.dto';
+import { DishDto } from '@/dishes/dto/dish.dto';
 
 @Injectable()
 export class UserProfileService {
@@ -296,7 +310,7 @@ export class UserProfileService {
         where: { userId },
         skip,
         take: pageSize,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       }),
       this.prisma.dishUpload.count({ where: { userId } }),
     ]);
@@ -314,6 +328,99 @@ export class UserProfileService {
         },
       },
     };
+  }
+
+  async getMyUpload(userId: string, id: string) {
+    const upload = await this.prisma.dishUpload.findUnique({
+      where: { id, userId },
+      include: { window: { include: { floor: true } } },
+    });
+    if (!upload) throw new NotFoundException('上传记录不存在');
+    const target = upload.targetDishId
+      ? await this.prisma.dish.findUnique({
+          where: { id: upload.targetDishId },
+        })
+      : null;
+    const {
+      requestHash: _hash,
+      refreshPending: _pending,
+      approvedSnapshot: _approved,
+      ...detail
+    } = upload;
+    return {
+      code: 200,
+      message: 'success',
+      data: {
+        ...detail,
+        floorId: upload.window?.floorId ?? null,
+        floorName: upload.window?.floor?.name ?? null,
+        floorLevel: upload.window?.floor?.level ?? null,
+        targetDish: target ? DishDto.fromEntity(target) : null,
+      },
+    };
+  }
+
+  async updateMyUpload(userId: string, id: string, dto: UpdateUploadDto) {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "dish_uploads" WHERE "id" = ${id} FOR UPDATE`;
+      const upload = await tx.dishUpload.findUnique({ where: { id, userId } });
+      if (!upload) throw new NotFoundException('上传记录不存在');
+      assertRevision(upload, dto.revision);
+      if (!['pending', 'rejected'].includes(upload.status))
+        throw new BadRequestException('仅待审核或未通过审核的资料可以修改');
+      if (dto.targetDishId && dto.targetDishId !== upload.targetDishId)
+        throw new BadRequestException('不能变更补全目标');
+      if (
+        dto.parentDishId !== undefined &&
+        dto.parentDishId !== upload.parentDishId
+      )
+        throw new BadRequestException('不能变更父菜品');
+      const target = upload.targetDishId
+        ? await tx.dish.findUnique({ where: { id: upload.targetDishId } })
+        : null;
+      if (upload.targetDishId && !target)
+        throw new NotFoundException('待补全菜品不存在');
+      const data = await prepareContribution(tx, dto, target, upload);
+      await claimContributionImages(
+        tx,
+        userId,
+        data.images.filter((url: string) => !target?.images.includes(url)),
+        id,
+      );
+      await tx.dishUpload.update({
+        where: { id },
+        data: {
+          ...data,
+          status: 'pending',
+          rejectReason: null,
+          revision: upload.revision + 1,
+          ...(target ? { baseSnapshot: contributionSnapshot(target) } : {}),
+        } as Prisma.DishUploadUncheckedUpdateInput,
+      });
+    });
+    return this.getMyUpload(userId, id);
+  }
+
+  async withdrawMyUpload(userId: string, id: string, revision: number) {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "dish_uploads" WHERE "id" = ${id} FOR UPDATE`;
+      const upload = await tx.dishUpload.findUnique({ where: { id, userId } });
+      if (!upload) throw new NotFoundException('上传记录不存在');
+      assertRevision(upload, revision);
+      if (!['pending', 'rejected'].includes(upload.status))
+        throw new BadRequestException('仅待审核或未通过审核的资料可以撤回');
+      const child = await tx.dishUpload.findFirst({
+        where: { parentUploadId: id, status: { not: 'withdrawn' } },
+        select: { id: true },
+      });
+      if (child)
+        throw new BadRequestException('有关联的子菜品记录，暂不可撤回');
+      await tx.dishUpload.update({
+        where: { id },
+        data: { status: 'withdrawn', revision: upload.revision + 1 },
+      });
+    });
+    return { code: 200, message: '已撤回', data: null };
   }
 
   async getMyReports(
@@ -564,14 +671,21 @@ export class UserProfileService {
     };
   }
 
-  private mapToUserUploadDto(upload: any): UserUploadData {
+  private mapToUserUploadDto(upload: DishUpload): UserUploadData {
     return {
       id: upload.id,
       name: upload.name,
+      images: upload.images,
       canteenName: upload.canteenName,
+      windowName: upload.windowName,
       price: upload.price,
+      priceUnit: upload.priceUnit,
       status: upload.status,
       rejectReason: upload.rejectReason,
+      kind: upload.kind ?? 'create',
+      targetDishId: upload.targetDishId ?? null,
+      approvedDishId: upload.approvedDishId ?? null,
+      revision: upload.revision ?? 1,
       createdAt: upload.createdAt.toISOString(),
     };
   }

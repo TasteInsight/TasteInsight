@@ -17,6 +17,7 @@ export type NotificationTarget =
   | 'postComment'
   | 'dining_invite'
   | 'dish'
+  | 'dish_upload'
   | 'week_collection';
 export type NotificationType =
   | 'like'
@@ -28,10 +29,15 @@ export type NotificationType =
   | 'new_dish'
   | 'price_change'
   | 'weekly_recommendation';
+// Review results are transactional service messages for the contributor.
+export type UploadResultNotificationType =
+  | 'upload_approved'
+  | 'upload_rejected'
+  | 'upload_revoked';
 export interface NotificationEvent {
   userId: string;
   actorId: string | null;
-  type: NotificationType;
+  type: NotificationType | UploadResultNotificationType;
   targetType: NotificationTarget;
   targetId: string;
   rootId?: string;
@@ -43,7 +49,11 @@ const actorSelect = { id: true, nickname: true, avatar: true } as const;
 export type NotificationScope = 'all' | 'service';
 const scopeWhere = (scope: NotificationScope) =>
   scope === 'service'
-    ? { targetType: { in: ['review', 'comment', 'dish', 'week_collection'] } }
+    ? {
+        targetType: {
+          in: ['review', 'comment', 'dish', 'week_collection', 'dish_upload'],
+        },
+      }
     : {};
 
 @Injectable()
@@ -79,6 +89,12 @@ export class NotificationService {
     tx: Prisma.TransactionClient,
     event: Pick<Notification, 'userId' | 'type' | 'targetType' | 'targetId'>,
   ): Promise<boolean> {
+    if (event.targetType === 'dish_upload') {
+      return !!(await tx.dishUpload.findFirst({
+        where: { id: event.targetId, userId: event.userId },
+        select: { id: true },
+      }));
+    }
     const settings = await tx.userSetting.findUnique({
       where: { userId: event.userId },
     });
@@ -393,14 +409,48 @@ export class NotificationService {
         ),
       ),
     ];
-    const reviews = reviewIds.length
-      ? await this.prisma.review.findMany({
-          where: { id: { in: reviewIds }, ...publicContent },
-          select: { id: true, dishId: true },
-        })
-      : [];
+    const uploadIds = [
+      ...new Set(
+        items
+          .filter((item) => item.targetType === 'dish_upload')
+          .map((item) => item.targetId),
+      ),
+    ];
+    const publicDishIds = [
+      ...new Set(
+        items
+          .filter((item) => item.targetType === 'dish')
+          .map((item) => item.targetId),
+      ),
+    ];
+    const [reviews, uploads, dishes] = await Promise.all([
+      reviewIds.length
+        ? this.prisma.review.findMany({
+            where: { id: { in: reviewIds }, ...publicContent },
+            select: { id: true, dishId: true },
+          })
+        : [],
+      uploadIds.length
+        ? this.prisma.dishUpload.findMany({
+            where: { userId, id: { in: uploadIds } },
+            select: { id: true, name: true },
+          })
+        : [],
+      publicDishIds.length
+        ? this.prisma.dish.findMany({
+            where: { id: { in: publicDishIds }, status: 'online' },
+            select: { id: true, name: true },
+          })
+        : [],
+    ]);
+    const uploadNames = new Map(
+      uploads.map((upload) => [upload.id, upload.name] as const),
+    );
+    const dishNames = new Map(
+      dishes.map((dish) => [dish.id, dish.name] as const),
+    );
     const dishIds = new Map(
-      reviews.map((review) => [review.id, review.dishId]),
+      reviews.map((review) => [review.id, review.dishId] as const),
     );
     return {
       code: 200,
@@ -412,6 +462,12 @@ export class NotificationService {
           actor: item.actor,
           targetType: item.targetType,
           targetId: item.targetId,
+          subject:
+            item.targetType === 'dish_upload'
+              ? (uploadNames.get(item.targetId) ?? null)
+              : item.targetType === 'dish'
+                ? (dishNames.get(item.targetId) ?? null)
+                : null,
           rootId: item.rootId,
           dishId:
             dishIds.get(

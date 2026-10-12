@@ -1,5 +1,5 @@
 jest.mock('@/store/modules/use-user-store', () => ({
-  useUserStore: () => ({ sessionVersion: 0, isLoggedIn: true, userInfo: { id: 'user' } }),
+  useUserStore: () => ({ sessionVersion: 0, isLoggedIn: true, userInfo: { id: 'user', capabilities: { canContribute: true } } }),
 }));
 
 /// <reference types="jest" />
@@ -21,8 +21,12 @@ jest.mock('@/api/modules/upload', () => ({
 
 // Mock uni-app APIs
 (global as any).uni = {
+  getStorageSync: jest.fn(),
+  setStorageSync: jest.fn(),
+  removeStorageSync: jest.fn(),
   showToast: jest.fn(),
   navigateBack: jest.fn(),
+  redirectTo: jest.fn(),
   chooseImage: jest.fn(),
 } as any;
 
@@ -41,7 +45,7 @@ describe('useAddDish', () => {
     expect(await form.submitForm()).toBe(false);
     expect(uploadDish).toHaveBeenCalledTimes(1);
     jest.advanceTimersByTime(1500);
-    expect(uni.navigateBack).toHaveBeenCalledTimes(1);
+    expect(uni.redirectTo).toHaveBeenCalledTimes(1);
     jest.useRealTimers();
   });
 
@@ -82,7 +86,7 @@ describe('useAddDish', () => {
       })
     );
     addDish.selectCanteen({ id: 'another', name: '另一个食堂', windows: [] } as any);
-    expect(addDish.formData.windowId).toBe('');
+    expect(addDish.formData.windowId).toBe('window-2');
   });
   beforeEach(() => {
     jest.clearAllMocks();
@@ -92,7 +96,7 @@ describe('useAddDish', () => {
     const { formData, loading, submitting, error, isFormValid } = useAddDish();
 
     expect(formData.name).toBe('');
-    expect(formData.price).toBe(0);
+    expect(formData.price).toBe('');
     expect(loading.value).toBe(false);
     expect(submitting.value).toBe(false);
     expect(error.value).toBe('');
@@ -169,8 +173,8 @@ describe('useAddDish', () => {
 
     const result = await submitForm();
 
-    expect(uploadImage).toHaveBeenCalledWith('wxfile://temp-image.jpg');
-    expect(uploadImage).toHaveBeenCalledWith('http://tmp/selected-dish.jpg');
+    expect(uploadImage).toHaveBeenCalledWith('wxfile://temp-image.jpg', { purpose: 'dish-contribution' });
+    expect(uploadImage).toHaveBeenCalledWith('http://tmp/selected-dish.jpg', { purpose: 'dish-contribution' });
     expect(uploadImage).toHaveBeenCalledTimes(2);
     const submittedDto = (uploadDish as jest.Mock).mock.calls[0][0];
     expect(submittedDto).toEqual(
@@ -184,7 +188,7 @@ describe('useAddDish', () => {
     expect(submittedDto).not.toHaveProperty('floor');
     expect(result).toBe(true);
     expect(uni.showToast).toHaveBeenCalledWith(
-      expect.objectContaining({ title: '提交成功，等待审核' })
+      expect.objectContaining({ title: '申请已提交，等待审核' })
     );
   });
 
@@ -206,7 +210,7 @@ describe('useAddDish', () => {
     const result = await submitForm();
 
     expect(result).toBe(false);
-    expect(error.value).toBe('Server Error');
+    expect(error.value).toContain('提交结果尚未确认');
     expect(uni.showToast).toHaveBeenCalledWith(expect.objectContaining({ icon: 'none' }));
   });
 
@@ -217,7 +221,7 @@ describe('useAddDish', () => {
     resetForm();
 
     expect(formData.name).toBe('');
-    expect(formData.price).toBe(0);
+    expect(formData.price).toBe('');
   });
 
   it('should select window and toggle mealtime', () => {
@@ -295,7 +299,7 @@ describe('useAddDish', () => {
     expect(canteenError.value).toBe('加载食堂列表失败，请重试');
   });
 
-  it('submitForm triggers navigateBack after success timeout', async () => {
+  it('submitForm opens owned contributions after success timeout', async () => {
     jest.useFakeTimers();
     const { submitForm, formData } = useAddDish();
     formData.name = 'Test';
@@ -310,7 +314,7 @@ describe('useAddDish', () => {
     expect(res).toBe(true);
     // run timers to execute navigateBack
     jest.runAllTimers();
-    expect(uni.navigateBack as jest.Mock).toHaveBeenCalled();
+    expect(uni.redirectTo as jest.Mock).toHaveBeenCalledWith({ url: '/pages/profile/my-uploads/index' });
     jest.useRealTimers();
   });
 });

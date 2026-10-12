@@ -6,8 +6,15 @@ import {
   Min,
   Max,
   IsIn,
+  IsInt,
+  IsArray,
+  ArrayUnique,
+  IsISO8601,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
+import { PartialType } from '@nestjs/swagger';
+import { UploadDishDto } from '@/dishes/dto/upload-dish.dto';
+import { CONTRIBUTION_FIELDS } from '@/dishes/contribution-fields';
 
 // 获取待审核上传列表的查询参数
 export class AdminGetUploadsDto {
@@ -26,7 +33,7 @@ export class AdminGetUploadsDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(['pending', 'approved', 'rejected'], {
+  @IsIn(['pending', 'approved', 'rejected', 'withdrawn'], {
     message: '状态必须是 pending, approved 或 rejected',
   })
   status?: string;
@@ -42,14 +49,58 @@ export class AdminGetUploadsDto {
 
 // 拒绝上传的请求体
 export class AdminRejectUploadDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  revision?: number;
+
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsNotEmpty({ message: '拒绝原因不能为空' })
   @IsString()
   reason: string;
 }
 
+export class AdminUploadRevisionDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  revision?: number;
+}
+
+export class AdminApproveUploadDto extends AdminUploadRevisionDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  mergeDishId?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  mergeDishUpdatedAt?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsIn(CONTRIBUTION_FIELDS, { each: true })
+  mergeFields?: string[];
+}
+
+export class AdminEditUploadDto extends PartialType(UploadDishDto) {
+  @IsInt()
+  @Min(1)
+  revision: number;
+}
+
 // DishUpload 响应 DTO
 export class DishUploadDto {
   id: string;
+  kind: string;
+  revision: number;
+  targetDishId: string | null;
+  changedFields: string[];
+  baseSnapshot: any;
+  floorId: string | null;
+  floorName: string | null;
+  floorLevel: string | null;
   name: string;
   tags: string[];
   price: number;

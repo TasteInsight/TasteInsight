@@ -42,13 +42,13 @@ function checkLoginStatus() {
     });
     return;
   }
-
 }
 </script>
 <style>
 @import './styles/design-tokens.css';
 @import './styles/page-layout.css';
 @import './styles/page-navigation.css';
+@import './styles/list-interaction.css';
 @import './pages/settings/settings-page.css';
 /* #ifdef H5 */
 @import './styles/feedback.css';
