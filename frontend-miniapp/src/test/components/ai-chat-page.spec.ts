@@ -382,3 +382,27 @@ test('public uni linechange grows the native composer only up to four lines and 
   await nextTick();
   expect(field.attributes('style')).toContain('height: 44px');
 });
+
+test('the H5 composer grows for multiline input, caps its height and resets after clearing', async () => {
+  wrapper = mount(InputBar, { props: { modelValue: '', loading: false } });
+  const field = wrapper.get('textarea');
+  expect(field.attributes('style')).toContain('height: 44px');
+  let contentHeight = 88;
+  Object.defineProperty(field.element, 'scrollHeight', {
+    configurable: true,
+    get: () => contentHeight,
+  });
+  await field.setValue('第一行\n第二行\n第三行');
+  expect(field.attributes('style')).toContain('height: 88px');
+  contentHeight = 200;
+  await field.setValue('第一行\n第二行\n第三行\n第四行\n第五行');
+  expect(field.attributes('style')).toContain('height: 110px');
+  contentHeight = 44;
+  await wrapper.setProps({ modelValue: '一行文字' });
+  await nextTick();
+  expect(field.attributes('style')).toContain('height: 44px');
+  await wrapper.setProps({ modelValue: '' });
+  await nextTick();
+  expect(field.attributes('style')).toContain('height: 44px');
+  expect(wrapper.emitted('send')).toBeUndefined();
+});

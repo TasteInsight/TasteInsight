@@ -158,12 +158,12 @@ const handleKeyup = (event: KeyboardEvent) => {
 .chat-input-bar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
   box-sizing: border-box;
-  padding: 6px 8px 6px 18px;
+  padding: 2px 4px 2px 14px;
   border: none;
-  border-radius: 28px;
+  border-radius: 24px;
   background: #fff;
   box-shadow: 0 4px 16px rgba(31, 41, 55, 0.1);
 }
@@ -182,6 +182,7 @@ const handleKeyup = (event: KeyboardEvent) => {
   outline: none;
   line-height: 22px;
   color: #1f2937;
+  font-family: inherit;
   font-size: 16px;
   caret-color: #660874;
 }
@@ -203,6 +204,7 @@ const handleKeyup = (event: KeyboardEvent) => {
   margin: 0;
   padding: 0;
   width: 44px;
+  height: 44px;
   min-width: 44px;
   min-height: 44px;
   border: 0;
