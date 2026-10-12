@@ -85,9 +85,7 @@ describe('NotificationService', () => {
     await service.getInbox('author', 1, 20, 'service');
     await service.unreadCount('author', 'service');
     await service.read('author', undefined, 'service');
-    const targetType = {
-      in: ['review', 'comment', 'dish', 'week_collection', 'dish_upload'],
-    };
+    const targetType = { in: ['review', 'comment', 'dish', 'week_collection'] };
     expect(tx.notification.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { userId: 'author', withdrawnAt: null, targetType },
@@ -136,69 +134,5 @@ describe('NotificationService', () => {
       targetType: 'dish',
     });
     expect(tx.notification.createMany).not.toHaveBeenCalled();
-  });
-
-  it('adds owned contribution names in one query without exposing another owner record', async () => {
-    const notice = {
-      userId: 'author',
-      actor: null,
-      type: 'upload_approved',
-      targetType: 'dish_upload',
-      rootId: null,
-      readAt: null,
-      createdAt: new Date(0),
-    };
-    tx.notification.findMany = jest.fn().mockResolvedValue([
-      { ...notice, id: 'n1', targetId: 'mine' },
-      { ...notice, id: 'n2', targetId: 'other-owner-or-deleted' },
-      { ...notice, id: 'n3', targetId: 'mine' },
-    ]);
-    tx.notification.count = jest.fn().mockResolvedValue(3);
-    tx.dishUpload = {
-      findMany: jest.fn().mockResolvedValue([{ id: 'mine', name: '番茄炒蛋' }]),
-    };
-    const response = await service.getInbox('author');
-    expect(tx.dishUpload.findMany).toHaveBeenCalledTimes(1);
-    expect(tx.dishUpload.findMany).toHaveBeenCalledWith({
-      where: {
-        userId: 'author',
-        id: { in: ['mine', 'other-owner-or-deleted'] },
-      },
-      select: { id: true, name: true },
-    });
-    expect(response.data.items).toEqual([
-      expect.objectContaining({ id: 'n1', subject: '番茄炒蛋' }),
-      expect.objectContaining({ id: 'n2', subject: null }),
-      expect.objectContaining({ id: 'n3', subject: '番茄炒蛋' }),
-    ]);
-  });
-
-  it('includes names for public dish messages but omits unavailable dish subjects', async () => {
-    const notice = {
-      userId: 'author',
-      actor: null,
-      type: 'new_dish',
-      targetType: 'dish',
-      rootId: null,
-      readAt: null,
-      createdAt: new Date(0),
-    };
-    tx.notification.findMany = jest.fn().mockResolvedValue([
-      { ...notice, id: 'live-notice', targetId: 'live' },
-      { ...notice, id: 'offline-notice', targetId: 'offline' },
-    ]);
-    tx.notification.count = jest.fn().mockResolvedValue(2);
-    tx.dish = {
-      findMany: jest.fn().mockResolvedValue([{ id: 'live', name: '红烧牛肉' }]),
-    };
-    const response = await service.getInbox('author');
-    expect(tx.dish.findMany).toHaveBeenCalledWith({
-      where: { id: { in: ['live', 'offline'] }, status: 'online' },
-      select: { id: true, name: true },
-    });
-    expect(response.data.items).toEqual([
-      expect.objectContaining({ id: 'live-notice', subject: '红烧牛肉' }),
-      expect.objectContaining({ id: 'offline-notice', subject: null }),
-    ]);
   });
 });

@@ -1,7 +1,6 @@
 <template>
   <button
-    class="my-review list-row-action"
-    hover-class="list-row-pressed"
+    class="my-review"
     role="button"
     tabindex="0"
     :aria-label="'查看' + review.dishName + '的评价'"
@@ -96,6 +95,13 @@ const validImages = computed(() =>
 }
 .my-review::after {
   border: 0;
+}
+.my-review:active {
+  background: #f9fafb;
+}
+.my-review:focus-visible {
+  outline: 2px solid #660874;
+  outline-offset: 2px;
 }
 .my-review-heading {
   display: flex;

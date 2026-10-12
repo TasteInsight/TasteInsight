@@ -49,7 +49,7 @@ describe('role-owned environment validation', () => {
   );
 
   it.each(['worker', 'migrate'] as const)(
-    '%s ignores configuration belonging only to login and browser APIs',
+    '%s ignores configuration belonging only to login, uploads and browser APIs',
     (role) => {
       expect(() =>
         validateEnvironment(
@@ -58,6 +58,7 @@ describe('role-owned environment validation', () => {
             JWT_SECRET: 'unrelated-short-key',
             WECHAT_APPID: 'incomplete-wechat-integration',
             CAMPUS_OAUTH_TOKEN_URL: 'not-a-url',
+            UPLOAD_STORAGE_TYPE: 'oss',
             CAMPUS_VERIFICATION_DAYS: 'invalid',
           },
           role,
@@ -65,21 +66,6 @@ describe('role-owned environment validation', () => {
       ).not.toThrow();
     },
   );
-
-  it('worker validates storage used by contribution cleanup while migration ignores it', () => {
-    expect(() =>
-      validateEnvironment(
-        { ...background, UPLOAD_STORAGE_TYPE: 'oss' },
-        'worker',
-      ),
-    ).toThrow('OSS_REGION');
-    expect(() =>
-      validateEnvironment(
-        { ...database, UPLOAD_STORAGE_TYPE: 'oss' },
-        'migrate',
-      ),
-    ).not.toThrow();
-  });
 
   it('migration ignores queue, recommendation and delivery tuning', () => {
     expect(() =>

@@ -16,8 +16,6 @@ import { NotificationsModule } from '@/notifications/notifications.module';
 import { NotificationCampaignService } from '@/notifications/notification-campaign.service';
 import { NotificationDispatcher } from '@/notifications/notification-dispatcher.service';
 import { RecommendationModule } from '@/recommendation/recommendation.module';
-import { ContributionImageCleanup } from '@/upload/contribution-image-cleanup.service';
-import { ContributionPublicationService } from '@/admin-uploads/contribution-publication.service';
 import { RecommendationCacheService } from '@/recommendation/services/cache.service';
 import { PrismaModule } from '@/prisma.module';
 import { PrismaService } from '@/prisma.service';
@@ -34,8 +32,6 @@ describe('background worker composition', () => {
     DishReviewStatsProcessor,
     NotificationCampaignService,
     NotificationDispatcher,
-    ContributionImageCleanup,
-    ContributionPublicationService,
   ];
 
   it.each([

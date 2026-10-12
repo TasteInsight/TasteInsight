@@ -9,37 +9,12 @@ import {
   Min,
   Max,
   ValidateNested,
-  ValidateIf,
-  IsUUID,
-  IsISO8601,
-  ArrayUnique,
-  IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { DishStatus, MealTime } from '@/common/enums';
 import { AvailableDateRangeDto } from '@/dishes/dto/dish.dto';
-import { CONTRIBUTION_FIELDS } from '../contribution-fields';
 
 export class UploadDishDto {
-  @IsOptional()
-  @IsUUID()
-  clientRequestId?: string;
-
-  @IsOptional()
-  @IsString()
-  @IsNotEmpty()
-  targetDishId?: string;
-
-  @IsOptional()
-  @IsISO8601()
-  targetDishUpdatedAt?: string;
-
-  @IsOptional()
-  @IsArray()
-  @ArrayUnique()
-  @IsIn(CONTRIBUTION_FIELDS, { each: true })
-  changedFields?: string[];
-
   @IsOptional()
   @IsString()
   name?: string;
@@ -49,11 +24,10 @@ export class UploadDishDto {
   @IsString({ each: true })
   tags?: string[];
 
-  @ValidateIf((value) => !value.targetDishId || value.price !== undefined)
   @IsNotEmpty()
   @IsNumber()
   @Min(0)
-  price?: number;
+  price: number;
 
   @IsOptional()
   @IsString()
@@ -131,10 +105,9 @@ export class UploadDishDto {
   @IsString()
   canteenId?: string;
 
-  @ValidateIf((value) => !value.targetDishId || value.canteenName !== undefined)
   @IsNotEmpty()
   @IsString()
-  canteenName?: string;
+  canteenName: string;
 
   @IsOptional()
   @IsString()
@@ -148,13 +121,10 @@ export class UploadDishDto {
   @IsString()
   windowName?: string;
 
-  @ValidateIf(
-    (value) => !value.targetDishId || value.availableMealTime !== undefined,
-  )
   @IsNotEmpty()
   @IsArray()
   @IsEnum(MealTime, { each: true })
-  availableMealTime?: MealTime[];
+  availableMealTime: MealTime[];
 
   @IsOptional()
   @IsArray()

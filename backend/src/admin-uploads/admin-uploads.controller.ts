@@ -2,7 +2,6 @@ import {
   Controller,
   Get,
   Post,
-  Patch,
   Body,
   Param,
   Query,
@@ -15,9 +14,6 @@ import { AdminUploadsService } from './admin-uploads.service';
 import {
   AdminGetUploadsDto,
   AdminRejectUploadDto,
-  AdminApproveUploadDto,
-  AdminEditUploadDto,
-  AdminUploadRevisionDto,
 } from './dto/admin-upload.dto';
 import { AdminAuthGuard } from '@/auth/guards/admin-auth.guard';
 import { PermissionsGuard } from '@/auth/guards/permissions.guard';
@@ -44,22 +40,8 @@ export class AdminUploadsController {
   @Post(':id/approve')
   @RequirePermissions('upload:approve')
   @HttpCode(HttpStatus.OK)
-  async approveUpload(
-    @Param('id') id: string,
-    @Request() req,
-    @Body() dto: AdminApproveUploadDto,
-  ) {
-    return this.adminUploadsService.approveUpload(id, req.admin, dto);
-  }
-
-  @Patch(':id')
-  @RequirePermissions('upload:approve')
-  async editUpload(
-    @Param('id') id: string,
-    @Request() req,
-    @Body() dto: AdminEditUploadDto,
-  ) {
-    return this.adminUploadsService.editUpload(id, dto, req.admin);
+  async approveUpload(@Param('id') id: string, @Request() req) {
+    return this.adminUploadsService.approveUpload(id, req.admin);
   }
 
   @Post(':id/reject')
@@ -74,18 +56,13 @@ export class AdminUploadsController {
       id,
       rejectDto.reason,
       req.admin,
-      rejectDto.revision,
     );
   }
 
   @Post(':id/revoke')
   @RequirePermissions('upload:approve')
   @HttpCode(HttpStatus.OK)
-  async revokeUpload(
-    @Param('id') id: string,
-    @Request() req,
-    @Body() dto: AdminUploadRevisionDto,
-  ) {
-    return this.adminUploadsService.revokeUpload(id, req.admin, dto?.revision);
+  async revokeUpload(@Param('id') id: string, @Request() req) {
+    return this.adminUploadsService.revokeUpload(id, req.admin);
   }
 }

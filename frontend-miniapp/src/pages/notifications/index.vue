@@ -1,5 +1,15 @@
 <template>
   <view class="notifications-page" :aria-busy="loading">
+    <view class="notifications-heading"
+      ><button
+        v-if="user.isLoggedIn"
+        class="notification-button"
+        :disabled="markingAll || !unread"
+        @click="markAll"
+      >
+        {{ markingAll ? '标记中…' : '全部已读' }}
+      </button></view
+    >
     <EmptyState
       v-if="!user.isLoggedIn"
       title="登录后查看消息"
@@ -8,60 +18,39 @@
       @action="login"
     />
     <template v-else>
-      <view v-if="loading && !items.length" aria-hidden="true">
-        <view v-for="item in 4" :key="item" class="notification-skeleton">
-          <view class="notification-skeleton-icon" />
-          <view class="notification-skeleton-main"><view /><view /></view>
-        </view>
-      </view>
+      <view v-if="loading && !items.length" aria-hidden="true"
+        ><view v-for="item in 4" :key="item" class="notification-skeleton"><view /><view /></view
+      ></view>
       <EmptyState
         v-else-if="initialized && !items.length && !error"
         title="暂无新消息"
         icon="bell"
       />
-      <view v-if="items.length" class="notification-list">
-        <button
-          v-for="item in items"
-          :key="item.id"
-          class="notification-item list-row-action"
-          hover-class="list-row-pressed"
-          :class="{ 'notification-unread': !item.readAt }"
-          :disabled="!!opening[item.id]"
-          :aria-label="
-            [notificationText(item), item.subject, !item.readAt ? '未读' : '']
-              .filter(Boolean)
-              .join('，')
-          "
-          @click="open(item)"
-        >
-          <UserAvatar v-if="item.actor" :src="item.actor.avatar" :label="item.actor.nickname" />
-          <view v-else class="notification-system" aria-hidden="true">
-            <UiIcon
-              :name="notificationIcon(item)"
-              :size="21"
-              :tone="!item.readAt && item.type === 'upload_approved' ? 'primary' : 'muted'"
-            />
-          </view>
-          <view class="notification-main">
-            <view class="notification-summary">
-              <text class="notification-copy">{{ notificationTitle(item) }}</text>
-              <view class="notification-meta">
-                <text class="notification-date">{{ formatNotificationDate(item.createdAt) }}</text>
-                <view v-if="!item.readAt" class="notification-dot" aria-hidden="true" />
-              </view>
-            </view>
-            <text v-if="item.subject" class="notification-subject">{{ item.subject }}</text>
-          </view>
-        </button>
-      </view>
-      <EmptyState
-        v-if="error && !items.length"
-        :title="error"
-        icon="info"
-        action-text="重新加载"
-        @action="load(failedAppend)"
-      />
-      <view v-else-if="error" class="notification-error" role="alert"
+      <button
+        v-for="item in items"
+        :key="item.id"
+        class="notification-item"
+        :class="{ 'notification-unread': !item.readAt }"
+        :disabled="!!opening[item.id]"
+        :aria-label="notificationText(item) + (!item.readAt ? '，未读' : '')"
+        @click="open(item)"
+      >
+        <UserAvatar v-if="item.actor" :src="item.actor.avatar" :label="item.actor.nickname" /><view
+          v-else
+          class="notification-system"
+          aria-hidden="true"
+          ><UiIcon name="bell" :size="22" /></view
+        ><view class="notification-main"
+          ><text class="notification-copy">{{ notificationText(item) }}</text
+          ><text class="notification-hint notification-date">{{
+            formatDate(item.createdAt)
+          }}</text></view
+        ><view v-if="!item.readAt" class="notification-dot" aria-hidden="true" /><UiIcon
+          name="chevron-right"
+          :size="18"
+        />
+      </button>
+      <view v-if="error" class="notification-error" role="alert"
         ><text>{{ error }}</text
         ><button class="notification-button" @click="load(failedAppend)">重新加载</button></view
       >
@@ -74,21 +63,14 @@
         {{ loading ? '加载中…' : '加载更多' }}
       </button>
     </template>
-    <FloatingActionButton
-      v-if="user.isLoggedIn && (unread > 0 || markingAll)"
-      icon="eye"
-      :label="markingAll ? '标记中…' : '全部已读'"
-      :disabled="markingAll"
-      @click="markAll"
-    />
   </view>
 </template>
 <script setup lang="ts">
 import { computed, nextTick, onScopeDispose, ref, watch } from 'vue';
 import { onShow, onHide, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
+import dayjs from 'dayjs';
 import UserAvatar from '@/components/UserAvatar.vue';
 import EmptyState from '@/components/EmptyState.vue';
-import FloatingActionButton from '@/components/FloatingActionButton.vue';
 import UiIcon from '@/components/UiIcon.vue';
 import {
   getNotifications,
@@ -97,13 +79,7 @@ import {
   readAllNotifications,
   type InboxNotification,
 } from '@/api/modules/notifications';
-import {
-  formatNotificationDate,
-  notificationText,
-  notificationTitle,
-  notificationIcon,
-  notificationDestination,
-} from './notification-content';
+import { notificationText, notificationDestination } from './notification-content';
 import { useUserStore } from '@/store/modules/use-user-store';
 
 const user = useUserStore();
@@ -128,6 +104,7 @@ const capture = () => {
   const generation = epoch;
   return () => active && visible && session === user.sessionVersion && generation === epoch;
 };
+const formatDate = (date: string) => dayjs(date).format('MM-DD HH:mm');
 const login = () => uni.navigateTo({ url: '/pages/login/index' });
 async function load(append = false) {
   if (!user.isLoggedIn || (append && (loading.value || !hasMore.value))) return;
@@ -283,120 +260,89 @@ onReachBottom(() => {
   box-sizing: border-box;
   max-width: 720px;
   margin: 0 auto;
-  padding: 4px 20px calc(88px + env(safe-area-inset-bottom));
+  padding: 20px 20px calc(32px + env(safe-area-inset-bottom));
   background: #fff;
   color: #1f2937;
+}
+.notifications-heading {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 .notification-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
   min-height: 44px;
   margin: 0;
-  padding: 10px 8px;
+  padding: 10px 12px;
   border: 0;
   border-radius: 8px;
-  background: transparent;
+  background: #fff;
   color: #660874;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
-  cursor: pointer;
 }
 .notification-button::after,
 .notification-item::after {
   border: 0;
 }
-.notification-button[disabled] {
-  color: #667085;
-  background: transparent;
-  cursor: default;
-}
+.notification-button[disabled],
 .notification-item[disabled] {
-  opacity: 0.65;
-  cursor: wait;
-  background: #fff;
+  opacity: 0.5;
 }
-.notification-button:focus-visible {
+.notification-button:focus-visible,
+.notification-item:focus-visible {
   outline: 2px solid #660874;
   outline-offset: 2px;
 }
-.notification-button:not([disabled]):active {
+.notification-button:active,
+.notification-item:active {
   background: #f4f4f5;
+}
+.notification-hint {
+  color: #667085;
+  font-size: 14px;
+  line-height: 1.6;
 }
 .notification-item {
   box-sizing: border-box;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   width: 100%;
   margin: 0;
-  padding: 16px 0;
+  padding: 20px 0;
   border: 0;
-  border-bottom: 1px solid #eef0f3;
+  border-bottom: 1px solid #e5e7eb;
   border-radius: 0;
   background: #fff;
   color: #1f2937;
   text-align: left;
   line-height: 1.6;
-  cursor: pointer;
-}
-.notification-item:last-child {
-  border-bottom: 0;
 }
 .notification-main {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 4px;
+  gap: 5px;
   flex: 1;
   min-width: 0;
-  min-height: 40px;
-}
-.notification-summary {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
 }
 .notification-copy {
-  flex: 1;
-  min-width: 0;
-  color: #475467;
   font-size: 15px;
-  font-weight: 500;
-  line-height: 1.5;
   overflow-wrap: anywhere;
 }
 .notification-unread .notification-copy {
-  color: #1f2937;
   font-weight: 600;
 }
-.notification-meta {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  gap: 6px;
-}
 .notification-date {
-  color: #667085;
   font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.5;
-  white-space: nowrap;
-}
-.notification-subject {
-  display: -webkit-box;
-  overflow: hidden;
-  color: #667085;
-  font-size: 14px;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
 }
 .notification-dot {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   flex-shrink: 0;
   border-radius: 50%;
   background: #660874;
@@ -409,7 +355,8 @@ onReachBottom(() => {
   height: 40px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: #f6f7f8;
+  background: #f4f4f5;
+  color: #660874;
 }
 .notification-error {
   display: flex;
@@ -426,36 +373,18 @@ onReachBottom(() => {
   margin: 16px auto 0;
 }
 .notification-skeleton {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 0;
-  border-bottom: 1px solid #eef0f3;
+  padding: 24px 0;
+  border-bottom: 1px solid #e5e7eb;
 }
-.notification-skeleton-icon {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: #f4f4f5;
-}
-.notification-skeleton-main {
-  flex: 1;
-}
-.notification-skeleton-main view {
-  width: 76%;
-  height: 14px;
-  margin: 6px 0;
+.notification-skeleton view {
+  width: 80%;
+  height: 16px;
+  margin: 8px 0;
   border-radius: 4px;
   background: #f4f4f5;
 }
-.notification-skeleton-main view:last-child {
-  width: 52%;
-}
-@media (hover: hover) {
-  .notification-button:not([disabled]):hover {
-    background: #f8f9fa;
-  }
+.notification-skeleton view:last-child {
+  width: 30%;
 }
 @media (max-width: 360px) {
   .notifications-page {

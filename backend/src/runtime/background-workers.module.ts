@@ -10,14 +10,10 @@ import { NotificationCampaignService } from '@/notifications/notification-campai
 import { NotificationDispatcher } from '@/notifications/notification-dispatcher.service';
 import { NotificationsModule } from '@/notifications/notifications.module';
 import { RecommendationModule } from '@/recommendation/recommendation.module';
-import { UploadModule } from '@/upload/upload.module';
-import { ContributionImageCleanup } from '@/upload/contribution-image-cleanup.service';
-import { ContributionPublicationService } from '@/admin-uploads/contribution-publication.service';
 
 @Module({
   imports: [
     RecommendationModule,
-    UploadModule,
     NotificationsModule,
     EmbeddingQueueModule,
     DishSyncQueueModule,
@@ -29,8 +25,6 @@ import { ContributionPublicationService } from '@/admin-uploads/contribution-pub
     DishReviewStatsProcessor,
     NotificationCampaignService,
     NotificationDispatcher,
-    ContributionImageCleanup,
-    ContributionPublicationService,
   ],
   exports: [
     EmbeddingQueueProcessor,

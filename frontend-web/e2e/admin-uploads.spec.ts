@@ -831,18 +831,22 @@ test.describe('Admin Uploads UI Tests', () => {
     await page.waitForSelector('text=菜品审核详情', { state: 'visible', timeout: 15000 });
     
     // Verify main sections (use exact match or label selector to avoid matching sidebar links)
-    await expect(page.getByRole('heading', { name: '提交资料', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: '编辑资料', exact: true })).toBeVisible();
-    await expect(page.getByText('提交人：', { exact: true })).toBeVisible();
-    await expect(page.getByText('提交时间：', { exact: true })).toBeVisible();
+    await expect(page.getByText('食堂信息', { exact: true })).toBeVisible();
+    await expect(page.getByText('窗口信息', { exact: true })).toBeVisible();
+    await expect(page.getByText('菜品名称', { exact: true })).toBeVisible();
+    await expect(page.getByText('菜品描述', { exact: true })).toBeVisible();
+    await expect(page.getByText('菜品图片', { exact: true })).toBeVisible();
+    await expect(page.getByText('供应信息', { exact: true })).toBeVisible();
+    await expect(page.getByText('供应时间', { exact: true })).toBeVisible();
+    await expect(page.getByText('提交信息', { exact: true })).toBeVisible();
     
     // Verify action buttons
-    await expect(page.getByRole('button', { name: '通过审核', exact: true })).toBeVisible();
+    await expect(page.locator('button:has-text("批准通过")')).toBeVisible();
     await expect(page.locator('button:has-text("拒绝审核")')).toBeVisible();
-    await expect(page.getByRole('button', { name: '返回列表', exact: true })).toBeVisible();
+    await expect(page.locator('button:has-text("取消")')).toBeVisible();
   });
 
-  test('should go back to the upload list', async ({ page, request }) => {
+  test('should go back to list when clicking cancel', async ({ page, request }) => {
     // Increase timeout for this test
     test.setTimeout(60000);
     
@@ -855,10 +859,10 @@ test.describe('Admin Uploads UI Tests', () => {
     await page.goto(`/review-dish/${uploadId}`, { timeout: 30000 });
     
     // Wait for page to load
-    await expect(page.getByRole('button', { name: '返回列表', exact: true })).toBeVisible({ timeout: 15000 });
+    await page.waitForSelector('button:has-text("取消")', { state: 'visible', timeout: 15000 });
     
     // Click cancel
-    await page.getByRole('button', { name: '返回列表', exact: true }).click();
+    await page.click('button:has-text("取消")');
     
     // Should navigate back to list
     await page.waitForURL(/\/review-dish$/);
@@ -928,9 +932,16 @@ test.describe('Admin Uploads Workflow Tests', () => {
     await page.goto(`/review-dish/${testUploadIdForApproval}`);
     
     // Wait for page to load
-    await page.getByRole('button', { name: '通过审核', exact: true }).click();
-    await page.getByRole('dialog', { name: '通过审核', exact: true })
-      .getByRole('button', { name: '通过审核', exact: true }).click();
+    await page.waitForSelector('button:has-text("批准通过")', { state: 'visible' });
+    
+    // Handle the confirm dialog
+    page.once('dialog', async dialog => {
+      expect(dialog.type()).toBe('confirm');
+      await dialog.accept();
+    });
+    
+    // Click approve button
+    await page.click('button:has-text("批准通过")');
     
     // Should navigate back to list after approval
     await page.waitForURL(/\/review-dish(\?.*)?$/);
@@ -944,11 +955,14 @@ test.describe('Admin Uploads Workflow Tests', () => {
     // Wait for page to load
     await page.waitForSelector('button:has-text("拒绝审核")', { state: 'visible' });
     
+    // Handle the prompt dialog
+    page.once('dialog', async dialog => {
+      expect(dialog.type()).toBe('prompt');
+      await dialog.accept('E2E UI测试拒绝原因');
+    });
+    
     // Click reject button
-    await page.getByRole('button', { name: '拒绝审核', exact: true }).click();
-    const rejectDialog = page.getByRole('dialog', { name: '拒绝审核', exact: true });
-    await rejectDialog.getByLabel('拒绝原因', { exact: true }).fill('E2E UI测试拒绝原因');
-    await rejectDialog.getByRole('button', { name: '确认拒绝', exact: true }).click();
+    await page.click('button:has-text("拒绝审核")');
     
     // Should navigate back to list after rejection
     await page.waitForURL(/\/review-dish(\?.*)?$/);

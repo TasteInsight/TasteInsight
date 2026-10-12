@@ -3,7 +3,7 @@
     <div class="admin-panel">
       <Header
         title="菜品审核"
-        description=""
+        description="审核待上线的菜品信息"
         header-icon="carbon:task-approved"
       />
 
@@ -42,7 +42,6 @@
                 <option value="pending">待审核</option>
                 <option value="approved">已通过</option>
                 <option value="rejected">已拒绝</option>
-                <option value="withdrawn">已撤回</option>
               </select>
               <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
                 <AppIcon class="iconify" icon="carbon:chevron-down"></AppIcon>
@@ -103,14 +102,8 @@
                 <span class="ml-2">加载中...</span>
               </td>
             </tr>
-            <tr v-else-if="loadError">
-              <td colspan="5" class="py-8 text-center">
-                <p role="alert" class="text-red-700 mb-3">{{ loadError }}</p>
-                <button type="button" class="px-4 py-2 border rounded-lg hover:bg-gray-50" @click="loadReviewDishes">重试</button>
-              </td>
-            </tr>
             <tr v-else-if="filteredReviewDishes.length === 0">
-              <td colspan="5" class="py-8 text-center text-gray-500">{{ statusFilter === 'pending' && !searchQuery.trim() && !canteenFilter ? '暂无待审核菜品' : '暂无符合条件的记录' }}</td>
+              <td colspan="5" class="py-8 text-center text-gray-500">暂无待审核菜品</td>
             </tr>
             <tr
               v-else
@@ -129,7 +122,6 @@
                   <div>
                     <div class="font-medium">{{ dish.name }}</div>
                     <div class="text-sm text-gray-500">{{ dish.location }}</div>
-                    <div class="text-xs text-gray-600 mt-1">{{ dish.kind === 'update' ? '补充资料' : dish.targetDishId ? '归并菜品' : '新增菜品' }}</div>
                   </div>
                 </div>
               </td>
@@ -158,7 +150,7 @@
                   :title="!authStore.hasPermission('upload:approve') ? '无权限审核' : ''"
                 >
                   {{
-                    dish.status === 'withdrawn' ? '查看详情' : dish.status === 'rejected'
+                    dish.status === 'rejected'
                       ? '重新审核'
                       : dish.status === 'approved'
                         ? '已审核'
@@ -171,7 +163,7 @@
         </table>
       </div>
 
-      <Pagination v-if="!loadError"
+      <Pagination
         :current-page="currentPage"
         :page-size="pageSize"
         :total="totalDishes"
@@ -181,9 +173,9 @@
   </div>
 </template>
 
-<script lang="ts">
-import { ref, computed, defineComponent, onMounted, onActivated, watch } from 'vue'
-import { useRouter } from 'vue-router'
+<script>
+import { ref, computed, onMounted, onActivated, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { reviewApi } from '@/api/modules/review'
 import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
@@ -192,28 +184,10 @@ import AdminImage from '@/components/Common/AdminImage.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
 import { showAlert } from '@/composables/useModal'
-import { contributionLocation } from '@/components/Dishes/contribution-fields'
-import type { Canteen, GetPendingParams } from '@/types/api'
-import type { ContributionStatus, DishContribution } from '@/types/dish-contribution'
-
-interface ReviewRow {
-  id: string
-  name: string
-  location: string
-  submitDate: string
-  submitTime: string
-  submitter: string
-  status: ContributionStatus
-  kind: DishContribution['kind']
-  targetDishId?: string | null
-  image: string
-  canteen: string
-  window?: string | null
-}
 
 const PAGE_STATE_KEY = 'review-dish'
 
-export default defineComponent({
+export default {
   name: 'ReviewDish',
   components: {
     AdminImage,
@@ -222,12 +196,13 @@ export default defineComponent({
   },
   setup() {
     const router = useRouter()
+    const route = useRoute()
     const authStore = useAuthStore()
     
     // 默认状态定义
     const defaultState = {
       searchQuery: '',
-      statusFilter: '' as NonNullable<GetPendingParams['status']> | '',
+      statusFilter: '',
       canteenFilter: '',
       currentPage: 1,
     }
@@ -240,7 +215,6 @@ export default defineComponent({
     const currentPage = ref(restoredState.currentPage)
     const pageSize = ref(10)
     const isLoading = ref(false)
-    const loadError = ref('')
     const totalDishes = ref(0)
     
     // 保存页面状态
@@ -254,35 +228,33 @@ export default defineComponent({
     }
 
     // 审核数据
-    const reviewDishes = ref<ReviewRow[]>([])
+    const reviewDishes = ref([])
 
     // 食堂列表
-    const canteens = ref<Canteen[]>([])
+    const canteens = ref([])
 
     const statusClasses = {
       pending: 'bg-yellow-100 text-yellow-800',
       approved: 'bg-green-100 text-green-800',
       rejected: 'bg-red-100 text-red-800',
-      withdrawn: 'bg-gray-100 text-gray-700',
     }
 
     const statusText = {
       pending: '待审核',
       approved: '已通过',
       rejected: '已拒绝',
-      withdrawn: '已撤回',
     }
 
     const filteredReviewDishes = computed(() => reviewDishes.value)
 
-    const viewDishDetail = (dish: Pick<ReviewRow, 'id'>) => {
+    const viewDishDetail = (dish) => {
       // 保存当前状态后再跳转
       saveState()
       // 跳转到审核详情页面
       router.push(`/review-dish/${dish.id}`)
     }
 
-    const reviewDish = (dish: Pick<ReviewRow, 'id'>) => {
+    const reviewDish = (dish) => {
       if (!authStore.hasPermission('upload:approve')) {
         showAlert('您没有权限审核菜品')
         return
@@ -293,7 +265,7 @@ export default defineComponent({
       router.push(`/review-dish/${dish.id}`)
     }
 
-    const handlePageChange = (page: number) => {
+    const handlePageChange = (page) => {
       currentPage.value = page
       saveState() // 保存状态
       loadReviewDishes()
@@ -324,10 +296,9 @@ export default defineComponent({
     const loadReviewDishes = async () => {
       const requestId = ++uploadsRequestId
       isLoading.value = true
-      loadError.value = ''
       try {
         // 从 API 获取数据
-        const params: GetPendingParams = {
+        const params = {
           page: currentPage.value,
           pageSize: pageSize.value,
         }
@@ -344,13 +315,11 @@ export default defineComponent({
           reviewDishes.value = response.data.items.map((item) => ({
             id: item.id,
             name: item.name,
-            location: contributionLocation(item),
+            location: `${item.canteenName || ''}${item.windowName ? '-' + item.windowName : ''}`,
             submitDate: item.createdAt ? new Date(item.createdAt).toLocaleDateString('zh-CN') : '',
             submitTime: item.createdAt ? new Date(item.createdAt).toLocaleTimeString('zh-CN') : '',
             submitter: item.uploaderName || '未知',
             status: item.status || 'pending',
-            kind: item.kind || 'create',
-            targetDishId: item.targetDishId,
             image: item.images && item.images.length > 0 ? item.images[0] : '',
             canteen: item.canteenName,
             window: item.windowName,
@@ -358,11 +327,16 @@ export default defineComponent({
           // 更新总数
           totalDishes.value = response.data.meta?.total || 0
         } else {
-          throw new Error(response.message || '审核列表加载失败，请重试')
+          // API返回失败，使用空数组
+          reviewDishes.value = []
+          totalDishes.value = 0
         }
       } catch (error) {
         if (requestId !== uploadsRequestId) return
-        loadError.value = error instanceof Error ? error.message : '审核列表加载失败，请重试'
+        console.error('加载审核菜品列表失败:', error)
+        // API 失败时使用空数组
+        reviewDishes.value = []
+        totalDishes.value = 0
       } finally {
         if (requestId === uploadsRequestId) isLoading.value = false
       }
@@ -394,7 +368,6 @@ export default defineComponent({
       currentPage,
       pageSize,
       isLoading,
-      loadError,
       totalDishes,
       filteredReviewDishes,
       statusClasses,
@@ -407,5 +380,5 @@ export default defineComponent({
       canteens,
     }
   },
-})
+}
 </script>

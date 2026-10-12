@@ -1,6 +1,5 @@
 import { shallowMount, flushPromises } from '@vue/test-utils';
 import PlanningPage from '@/pages/planning/index.vue';
-import FloatingActionButton from '@/components/FloatingActionButton.vue';
 import { ref, computed, defineComponent, reactive } from 'vue';
 import { onBackPress } from '@dcloudio/uni-app';
 import { useMenuPlanning } from '@/pages/planning/composables/use-menu-planning';
@@ -130,7 +129,7 @@ describe('PlanningPage', () => {
       wrapper.findAll('[aria-label="规划视图"] [role="tab"]').map((tab: any) => tab.text())
     ).toEqual(['月', '周', '日', '列表']);
     expect(viewTab(wrapper, '周').attributes('aria-selected')).toBe('true');
-    expect(wrapper.findComponent(FloatingActionButton).exists()).toBe(true);
+    expect(wrapper.find('[aria-label="新建规划"]').exists()).toBe(true);
     expect(wrapper.text()).not.toMatch(/暂无当前规划|这天还没有安排|尚未安排/);
   });
 
@@ -167,10 +166,10 @@ describe('PlanningPage', () => {
     await wrapper.get('[aria-label="规划分类"]').trigger('change', { detail: { value: 1 } });
     expect(wrapper.get('[aria-label="选择列表范围"]').text()).toContain('历史规划 (1)');
     expect(wrapper.findAllComponents({ name: 'PlanCard' })[0].props('isHistory')).toBe(true);
-    expect(wrapper.findComponent(FloatingActionButton).exists()).toBe(false);
+    expect(wrapper.find('[aria-label="新建规划"]').exists()).toBe(false);
     await viewTab(wrapper, '日').trigger('click');
     expect(model.selectedDate.value).toBe('2026-09-30');
-    expect(wrapper.findComponent(FloatingActionButton).exists()).toBe(true);
+    expect(wrapper.find('[aria-label="新建规划"]').exists()).toBe(true);
     expect(wrapper.findAllComponents({ name: 'PlanEditDialog' })[1].props('initialDate')).toBe(
       '2026-09-30'
     );
@@ -194,21 +193,6 @@ describe('PlanningPage', () => {
     expect(cards.map((card: any) => card.props('plan').id)).toEqual(['breakfast', 'dinner']);
     expect(cards.every((card: any) => card.props('showSchedule') === false)).toBe(true);
     expect(cards[0].props('occurrenceDate')).toBe('2026-10-09');
-  });
-
-  it('uses the shared floating action and hides it while a planning dialog is open', async () => {
-    const wrapper = mountPage();
-    const action = wrapper.getComponent(FloatingActionButton);
-    expect(action.props()).toMatchObject({ label: '新建规划', icon: 'plus' });
-    action.vm.$emit('click');
-    expect(model.createNewPlan).toHaveBeenCalledTimes(1);
-    for (const field of ['showCreateDialog', 'showEditDialog', 'showDetailDialog']) {
-      model[field].value = true;
-      await flushPromises();
-      expect(wrapper.findComponent(FloatingActionButton).exists()).toBe(false);
-      model[field].value = false;
-      await flushPromises();
-    }
   });
 
   it('keeps account-level homepage settings out of planning and preserves private defaults', async () => {

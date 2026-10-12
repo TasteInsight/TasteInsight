@@ -443,16 +443,6 @@ model DishUpload {
   rejectReason   String?
   approvedDishId String? // 审核通过后对应的菜品ID
 
-  kind             String   @default("create") // create, update
-  revision         Int      @default(1)
-  targetDishId     String?
-  changedFields    String[] @default([])
-  clientRequestId  String?
-  requestHash      String?
-  baseSnapshot     Json?
-  approvedSnapshot Json?
-  refreshPending   Boolean  @default(false)
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -460,25 +450,7 @@ model DishUpload {
   @@index([adminId])
   @@index([status])
   @@index([parentUploadId])
-  @@index([targetDishId])
-  @@index([refreshPending])
-  @@unique([userId, clientRequestId])
   @@map("dish_uploads")
-}
-
-model ContributionImage {
-  id          String    @id @default(cuid())
-  userId      String
-  url         String    @unique
-  storageKey  String
-  storageType String
-  uploadId    String?
-  createdAt   DateTime  @default(now())
-  expiresAt   DateTime?
-  deletedAt   DateTime?
-
-  @@index([expiresAt])
-  @@map("contribution_images")
 }
 
 // ==================== 评价和评论模型 ====================

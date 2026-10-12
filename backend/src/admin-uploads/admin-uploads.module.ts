@@ -4,10 +4,9 @@ import { ConfigModule } from '@nestjs/config';
 import { AdminUploadsController } from './admin-uploads.controller';
 import { AdminUploadsService } from './admin-uploads.service';
 import { PermissionsGuard } from '@/auth/guards/permissions.guard';
-import { NotificationsModule } from '@/notifications/notifications.module';
 
 @Module({
-  imports: [JwtModule.register({}), ConfigModule, NotificationsModule],
+  imports: [JwtModule.register({}), ConfigModule],
   controllers: [AdminUploadsController],
   providers: [AdminUploadsService, PermissionsGuard],
 })

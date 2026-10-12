@@ -52,17 +52,10 @@ export class UserHistoryData {
 export class UserUploadData {
   id: string;
   name: string;
-  images: string[];
   canteenName: string;
-  windowName: string;
   price: number;
-  priceUnit: string | null;
   status: string;
   rejectReason: string | null;
-  kind: string;
-  targetDishId: string | null;
-  approvedDishId: string | null;
-  revision: number;
   createdAt: string;
 }
 

@@ -20,8 +20,6 @@ const mockPrismaService = {
   dishUpload: {
     create: jest.fn(),
   },
-  contributionImage: { findMany: jest.fn().mockResolvedValue([]) },
-  $transaction: jest.fn((callback) => callback(mockPrismaService)),
   window: {
     findUnique: jest.fn(),
     findFirst: jest.fn(),
@@ -367,7 +365,6 @@ describe('DishesService', () => {
       price: 15,
       images: ['image.jpg'],
       canteenId: 'c1',
-      availableMealTime: ['lunch'],
     };
 
     beforeEach(() => {
@@ -430,7 +427,6 @@ describe('DishesService', () => {
         price: 15,
         images: ['image.jpg'],
         canteenName: 'Canteen 1',
-        availableMealTime: ['lunch'],
       };
       prisma.canteen.findFirst.mockResolvedValue({
         id: 'c1',

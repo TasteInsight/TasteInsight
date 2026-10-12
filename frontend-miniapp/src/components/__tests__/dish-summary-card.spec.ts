@@ -21,15 +21,6 @@ const dish = (overrides: Partial<Dish> = {}): Dish =>
 beforeEach(() => jest.clearAllMocks());
 
 describe('DishSummaryCard', () => {
-  test.each([['份', '/份'], ['元/份', '/份'], ['元', ''], [null, '']])('normalizes historical price unit %p without changing the dish', (priceUnit, suffix) => {
-    for (const price of [0, 15]) {
-      const original = dish({ price, priceUnit });
-      const wrapper = mount(DishSummaryCard, { props: { dish: original } });
-      expect(wrapper.get('.dish-card__price').text()).toBe(`¥${price.toFixed(1)}${suffix}`);
-      expect(original.priceUnit).toBe(priceUnit);
-      wrapper.unmount();
-    }
-  });
   test('emits the selected dish without owning page navigation', async () => {
     const wrapper = mount(DishSummaryCard, { props: { dish: dish() } });
     await wrapper.get('button').trigger('click');

@@ -529,14 +529,6 @@ describe('utils/request', () => {
     expect(sessionStorage.getItem('admin_refresh_token')).toBe('newRefreshSS')
   })
 
-  it('retains conflict status and business code for contribution revision recovery', async () => {
-    await loadOnce()
-    await expect(responseOnRejected({
-      config: { url: '/admin/dishes/uploads/u1/approve' },
-      response: { status: 409, data: { code: 'CONTRIBUTION_CONFLICT', message: '资料已更新' } },
-    })).rejects.toMatchObject({ message: '资料已更新', status: 409, statusCode: 409, code: 'CONTRIBUTION_CONFLICT' })
-  })
-
   it('queued requests reject with refresh error when refresh fails', async () => {
     localStorage.setItem('admin_token', 'old')
     localStorage.setItem('admin_refresh_token', 'refresh')

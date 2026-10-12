@@ -1,33 +1,19 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { StorageStrategy } from './strategies/storage.strategy';
 import { LocalStorageStrategy } from './strategies/local-storage.strategy';
 import { OssStorageStrategy } from './strategies/oss-storage.strategy';
 import { UploadResponseDto } from './dto/upload.dto';
 import sharp from 'sharp';
-import { PrismaService } from '@/prisma.service';
-import { isCurrentStudent } from '@/auth/student-status';
-import { CONTRIBUTION_IMAGE_TTL_MS } from './contribution-images';
 
 @Injectable()
 export class UploadService {
   private strategy: StorageStrategy;
-  private readonly logger = new Logger(UploadService.name);
-
-  get storageType(): string {
-    return this.configService.get<string>('UPLOAD_STORAGE_TYPE', 'local');
-  }
 
   constructor(
     private configService: ConfigService,
     private localStorageStrategy: LocalStorageStrategy,
     private ossStorageStrategy: OssStorageStrategy,
-    private readonly prisma: PrismaService,
   ) {
     const storageType = this.configService.get<string>(
       'UPLOAD_STORAGE_TYPE',
@@ -41,21 +27,7 @@ export class UploadService {
     }
   }
 
-  async uploadFile(
-    file: Express.Multer.File,
-    contributionUserId?: string,
-  ): Promise<UploadResponseDto> {
-    if (contributionUserId) {
-      const verification = await this.prisma.studentVerification.findUnique({
-        where: { userId: contributionUserId },
-      });
-      if (!isCurrentStudent(verification)) {
-        throw new ForbiddenException({
-          code: 'STUDENT_VERIFICATION_REQUIRED',
-          message: '请先完成有效的在校学生认证',
-        });
-      }
-    }
+  async uploadFile(file: Express.Multer.File): Promise<UploadResponseDto> {
     try {
       const image = sharp(file.buffer, { animated: true }).autoOrient();
       const { format } = await image.metadata();
@@ -76,49 +48,11 @@ export class UploadService {
     }
 
     const result = await this.strategy.upload(file);
-    if (contributionUserId) {
-      try {
-        await this.prisma.contributionImage.create({
-          data: {
-            userId: contributionUserId,
-            url: result.url,
-            storageKey: result.filename,
-            storageType: this.configService.get<string>(
-              'UPLOAD_STORAGE_TYPE',
-              'local',
-            ),
-            expiresAt: new Date(Date.now() + CONTRIBUTION_IMAGE_TTL_MS),
-          },
-        });
-      } catch (error) {
-        await this.strategy
-          .remove(result.filename)
-          .catch(() =>
-            this.logger.error(
-              'Unable to remove an unregistered contribution image',
-            ),
-          );
-        throw error;
-      }
-    }
     return {
       code: 200,
       message: '上传成功',
       data: result,
     };
-  }
-
-  async removeContributionImage(
-    storageType: string,
-    storageKey: string,
-  ): Promise<void> {
-    if (
-      storageType !==
-      this.configService.get<string>('UPLOAD_STORAGE_TYPE', 'local')
-    ) {
-      throw new Error('Image storage configuration changed');
-    }
-    await this.strategy.remove(storageKey);
   }
 
   private async compressImage(image: sharp.Sharp): Promise<Buffer> {

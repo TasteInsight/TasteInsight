@@ -22,16 +22,6 @@ const plan = {
   dishesReady: true,
 } as any;
 
-test.each([['份', '/份'], ['元/份', '/份'], ['元', ''], [null, '']])('planning views normalize historical unit %p without changing stored dishes', (priceUnit, suffix) => {
-  const dishes = [0, 15].map(price => ({ ...plan.dishes[0], id: String(price), price, priceUnit }));
-  for (const [component, selector] of [[PlanCard, '.meal-card-price'], [PlanDetailDialog, '.meal-detail-copy .meal-detail-price']] as const) {
-    const wrapper = mount(component as any, { props: { visible: true, plan: { ...plan, dishes } } });
-    expect(wrapper.findAll(selector).map(price => price.text())).toEqual([`¥0${suffix}`, `¥15${suffix}`]);
-    expect(dishes.map(dish => dish.priceUnit)).toEqual([priceUnit, priceUnit]);
-    wrapper.unmount();
-  }
-});
-
 test('plan cards retain the date range and mark-eaten action without opening details', async () => {
   const wrapper = mount(PlanCard, { props: { plan, today: '2099-10-03' } });
   expect(wrapper.text()).toContain('10月03日 — 10月06日');

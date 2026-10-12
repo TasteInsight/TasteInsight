@@ -14,7 +14,6 @@ export class DishListResponseDto extends BaseResponseDto<{
 export class DishUploadData {
   id: string;
   status: string;
-  revision: number;
 }
 
 // 上传菜品响应

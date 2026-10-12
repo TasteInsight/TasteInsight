@@ -13,22 +13,11 @@ export interface InboxNotification {
     | 'dining_cancelled'
     | 'new_dish'
     | 'price_change'
-    | 'weekly_recommendation'
-    | 'upload_approved'
-    | 'upload_rejected'
-    | 'upload_revoked';
+    | 'weekly_recommendation';
   actor: { id: string; nickname: string; avatar: string } | null;
   targetType:
-    | 'review'
-    | 'comment'
-    | 'post'
-    | 'postComment'
-    | 'dining_invite'
-    | 'dish'
-    | 'week_collection'
-    | 'dish_upload';
+    'review' | 'comment' | 'post' | 'postComment' | 'dining_invite' | 'dish' | 'week_collection';
   targetId: string;
-  subject?: string | null;
   rootId: string | null;
   dishId?: string | null;
   readAt: string | null;

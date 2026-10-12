@@ -12,7 +12,6 @@ import {
 import { EmbeddingService } from '@/recommendation/services/embedding.service';
 import { RecommendationService } from '@/recommendation/recommendation.service';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '@/prisma.service';
 
 @Injectable()
 export class EmbeddingQueueService {
@@ -30,7 +29,6 @@ export class EmbeddingQueueService {
     private readonly configService: ConfigService,
     @Optional() private readonly embeddingService?: EmbeddingService,
     @Optional() private readonly recommendationService?: RecommendationService,
-    @Optional() private readonly prisma?: PrismaService,
   ) {
     this.mode =
       this.configService.get('NODE_ENV') === 'test' ? 'sync' : 'async';
@@ -59,54 +57,16 @@ export class EmbeddingQueueService {
   /**
    * 刷新单个菜品嵌入
    */
-  async enqueueRefreshDish(
-    dishId: string,
-    contribution?: { uploadId: string; revision: number },
-  ): Promise<string | void> {
+  async enqueueRefreshDish(dishId: string): Promise<string | void> {
     if (this.mode === 'sync') {
-      const success = await this.embeddingService?.updateDishEmbedding(dishId);
-      if (contribution) {
-        if (!success) throw new Error('Contribution embedding refresh failed');
-        await this.prisma!.dishUpload.updateMany({
-          where: {
-            id: contribution.uploadId,
-            revision: contribution.revision,
-            approvedDishId: dishId,
-            refreshPending: true,
-          },
-          data: { refreshPending: false },
-        });
-      }
+      await this.embeddingService?.updateDishEmbedding(dishId);
       return;
     }
-    const data: RefreshDishJobData = {
-      dishId,
-      ...(contribution
-        ? {
-            contributionUploadId: contribution.uploadId,
-            contributionRevision: contribution.revision,
-          }
-        : {}),
-    };
-    const jobId = contribution
-      ? `contribution-${contribution.uploadId}-${contribution.revision}`
-      : undefined;
-    if (jobId) {
-      const existing = await this.embeddingQueue.getJob(jobId);
-      if (existing) {
-        const state = await existing.getState();
-        if (
-          state === 'failed' &&
-          Date.now() - (existing.finishedOn ?? 0) >= 60000
-        )
-          await existing.retry('failed');
-        return existing.id;
-      }
-    }
+    const data: RefreshDishJobData = { dishId };
     const job = await this.embeddingQueue.add(
       EmbeddingJobType.REFRESH_DISH,
       data,
-      { ...this.jobOptions, ...(jobId ? { jobId } : {}) },
+      this.jobOptions,
     );
     this.logger.log(`Queued refresh-dish job ${job.id} for dish ${dishId}`);
     return job.id as string;
