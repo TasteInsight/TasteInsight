@@ -5,7 +5,7 @@
       :class="{ 'ai-chat-toolbar-native': hasNativeTitle }"
     >
       <button
-        class="chat-button chat-toolbar-new"
+        class="chat-button chat-toolbar-action chat-toolbar-new"
         hover-class="chat-control-pressed"
         :hover-stay-time="80"
         role="button"
@@ -21,7 +21,7 @@
       </button>
       <text v-if="!hasNativeTitle" class="ai-chat-title page-navigation-title">AI 助手</text>
       <button
-        class="chat-button chat-toolbar-history"
+        class="chat-button chat-toolbar-action chat-toolbar-history"
         hover-class="chat-control-pressed"
         :hover-stay-time="80"
         role="button"
@@ -39,6 +39,7 @@
     <scroll-view
       ref="messageScroller"
       scroll-y
+      :show-scrollbar="false"
       class="ai-chat-messages"
       :scroll-into-view="scrollIntoViewId"
       :scroll-with-animation="false"
@@ -227,7 +228,7 @@
           >
             <view class="chat-close-icon" aria-hidden="true" /></button
         ></view>
-        <scroll-view scroll-y class="chat-history-list">
+        <scroll-view scroll-y :show-scrollbar="false" class="chat-history-list">
           <text v-if="!historyEntries.length" class="chat-history-empty">暂无历史对话</text>
           <view
             v-for="item in historyEntries"
@@ -659,11 +660,44 @@ const deliveryFor = (message: { type: string; deliveryStatus?: string }) =>
   height: 22px;
   flex-shrink: 0;
 }
-.ai-chat-toolbar .chat-toolbar-new,
-.ai-chat-toolbar .chat-toolbar-history {
+.ai-chat-toolbar .chat-toolbar-action {
+  position: relative;
+  z-index: 0;
   gap: 6px;
   padding: 0 8px;
+  background: transparent;
   color: #1f2937;
+}
+.ai-chat-toolbar .chat-toolbar-action::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 6px 0;
+  border-radius: 8px;
+  background: transparent;
+  pointer-events: none;
+  transition: background-color 140ms ease-out;
+}
+.ai-chat-toolbar .chat-toolbar-action.chat-control-pressed:not([disabled]) {
+  background: transparent;
+}
+.ai-chat-toolbar .chat-toolbar-action.chat-control-pressed:not([disabled])::before {
+  background: #f4f4f5;
+}
+.ai-chat-toolbar .chat-toolbar-action:focus-visible {
+  outline: none;
+}
+.ai-chat-toolbar .chat-toolbar-action:focus-visible::before {
+  outline: 2px solid #660874;
+  outline-offset: -2px;
+}
+@media (hover: hover) {
+  .ai-chat-toolbar .chat-toolbar-action:not([disabled]):hover {
+    background: transparent;
+  }
+  .ai-chat-toolbar .chat-toolbar-action:not([disabled]):hover::before {
+    background: #f7f8fa;
+  }
 }
 .chat-toolbar-new {
   justify-self: start;
@@ -713,7 +747,8 @@ const deliveryFor = (message: { type: string; deliveryStatus?: string }) =>
   color: #fff;
 }
 @media (prefers-reduced-motion: reduce) {
-  .chat-button {
+  .chat-button,
+  .ai-chat-toolbar .chat-toolbar-action::before {
     transition: none;
   }
 }
