@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, beforeEach, afterAll } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { DOMWrapper, mount } from '@vue/test-utils'
 import { defineComponent, nextTick, ref } from 'vue'
 
 const mocks = vi.hoisted(() => ({
@@ -91,7 +91,7 @@ describe('views/LogView', () => {
 
     wrapper.vm.viewLogDetail(wrapper.vm.logs[0])
     await nextTick()
-    expect(wrapper.text()).toContain('"k": "v"')
+    expect(new DOMWrapper(document.body).get('dialog[aria-label="日志详情"]').text()).toContain('"k": "v"')
 
     // applyFilters adds non-empty filters and resets page
     wrapper.vm.currentPage = 5

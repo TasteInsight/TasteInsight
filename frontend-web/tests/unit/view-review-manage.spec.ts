@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { shallowMount, mount, flushPromises } from '@vue/test-utils'
+import { DOMWrapper, enableAutoUnmount, shallowMount, mount, flushPromises } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { addIcon } from '@iconify/vue'
 import type { PendingComment } from '@/types/api'
@@ -34,6 +34,8 @@ vi.mock('@/composables/useModal', () => ({
 }))
 
 import ReviewManage from '../../src/views/ReviewManage.vue'
+
+enableAutoUnmount(afterEach)
 
 function flushMicrotasks() {
   return Promise.resolve()
@@ -103,13 +105,6 @@ describe('views/ReviewManage', () => {
     mocks.reviewApiMock.approveComment.mockResolvedValue({ code: 200 })
     mocks.reviewApiMock.rejectComment.mockResolvedValue({ code: 200 })
 
-    vi.spyOn(window, 'addEventListener')
-    vi.spyOn(window, 'removeEventListener')
-  })
-
-  afterEach(() => {
-    ;(window.addEventListener as any).mockRestore?.()
-    ;(window.removeEventListener as any).mockRestore?.()
   })
 
   it('loads pending reviews on mount; handles non-200 and thrown errors', async () => {
@@ -135,7 +130,6 @@ describe('views/ReviewManage', () => {
     expect(wrapper.vm.reviews).toEqual([])
 
     wrapper.unmount()
-    expect(window.removeEventListener).toHaveBeenCalled()
   })
 
   it('starts on comments and does not request reviews for a comment-only moderator', async () => {
@@ -215,7 +209,7 @@ describe('views/ReviewManage', () => {
     await flushPromises()
     wrapper.vm.openReviewDetail(wrapper.vm.reviews[0])
     await nextTick()
-    const approve = wrapper.find('button[title="通过评价"]')
+    const approve = new DOMWrapper(document.body).get('dialog[aria-label="评价详情"] button[title="通过评价"]')
     const legacyIcon = approve.find('span.iconify')
     if (legacyIcon.exists()) {
       const replacement = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
@@ -286,6 +280,23 @@ describe('views/ReviewManage', () => {
     wrapper.vm.closeCommentDetail()
     expect(wrapper.vm.selectedComment).toBe(null)
 
+    wrapper.unmount()
+  })
+
+  it('cancels a rejection dialog without dismissing the underlying review detail', async () => {
+    const wrapper = mount(ReviewManage, { global: { stubs: { Header: true, Pagination: true } } })
+    await flushAll()
+    wrapper.vm.openReviewDetail(wrapper.vm.reviews[0])
+    await nextTick()
+    const detail = new DOMWrapper(document.body).get('dialog[aria-label="评价详情"]')
+    await detail.get('button[title="拒绝评价"]').trigger('click')
+    wrapper.vm.rejectReviewReason = '待核实'
+    const rejection = new DOMWrapper(document.body).get('dialog[aria-label="拒绝评价"]')
+    await rejection.trigger('cancel')
+    expect(wrapper.vm.isRejectReviewModalOpen).toBe(false)
+    expect(wrapper.vm.rejectReviewReason).toBe('')
+    expect(wrapper.vm.selectedReview?.id).toBe('rv1')
+    expect(detail.attributes('open')).toBeDefined()
     wrapper.unmount()
   })
 
@@ -454,7 +465,7 @@ describe('views/ReviewManage', () => {
   })
 
   it('image preview open/close, navigation, and keyboard shortcuts', async () => {
-    const wrapper = shallowMount(ReviewManage, {
+    const wrapper = mount(ReviewManage, {
       global: { stubs: { Header: true, Pagination: true } },
     })
 
@@ -479,21 +490,25 @@ describe('views/ReviewManage', () => {
 
     // keyboard
     wrapper.vm.openImagePreview(['a', 'b'], 0)
+    await nextTick()
+    const preview = new DOMWrapper(document.body).get('dialog[aria-label="图片预览"]')
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+    expect(wrapper.vm.imagePreview.currentIndex).toBe(0)
 
     const right = new KeyboardEvent('keydown', { key: 'ArrowRight', cancelable: true })
-    window.dispatchEvent(right)
+    preview.element.dispatchEvent(right)
     await nextTick()
     expect(right.defaultPrevented).toBe(true)
     expect(wrapper.vm.imagePreview.currentIndex).toBe(1)
 
     const left = new KeyboardEvent('keydown', { key: 'ArrowLeft', cancelable: true })
-    window.dispatchEvent(left)
+    preview.element.dispatchEvent(left)
     await nextTick()
     expect(left.defaultPrevented).toBe(true)
     expect(wrapper.vm.imagePreview.currentIndex).toBe(0)
 
-    const esc = new KeyboardEvent('keydown', { key: 'Escape', cancelable: true })
-    window.dispatchEvent(esc)
+    const esc = new Event('cancel', { cancelable: true })
+    preview.element.dispatchEvent(esc)
     await nextTick()
     expect(esc.defaultPrevented).toBe(true)
     expect(wrapper.vm.imagePreview.show).toBe(false)

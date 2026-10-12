@@ -42,5 +42,6 @@ function navigateTo(path: string) {
 <style scoped>
 .group-title {
   margin-bottom: 8px;
+  font-weight: 650;
 }
 </style>

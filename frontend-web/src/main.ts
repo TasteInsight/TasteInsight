@@ -5,6 +5,7 @@ import pinia from './store'
 import { permission } from './directives/permission'
 import AppIcon from './components/Common/AppIcon.vue'
 import './assets/tailwind.css'
+import './assets/admin-layout.css'
 
 const app = createApp(App)
 

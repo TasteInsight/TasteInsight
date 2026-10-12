@@ -5,6 +5,22 @@ import AppIcon from '@/components/Common/AppIcon.vue'
 
 config.global.components.AppIcon = AppIcon
 
+// JSDOM has no native dialog lifecycle; focus isolation is covered in browser tests.
+if (!HTMLDialogElement.prototype.showModal) {
+  HTMLDialogElement.prototype.showModal = function () {
+    this.setAttribute('open', '')
+  }
+}
+
+if (!HTMLDialogElement.prototype.close) {
+  HTMLDialogElement.prototype.close = function (returnValue?: string) {
+    if (!this.open) return
+    if (returnValue !== undefined) this.returnValue = returnValue
+    this.removeAttribute('open')
+    this.dispatchEvent(new Event('close'))
+  }
+}
+
 // Render the real icon component with local fixtures; unit tests never need the icon API.
 const templates = import.meta.glob('../**/*.vue', { query: '?raw', import: 'default', eager: true })
 const fixture = { body: '<path d="M1 1h1" />', width: 24, height: 24 }

@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
-import { nextTick, ref, reactive } from 'vue'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { mount, flushPromises, enableAutoUnmount } from '@vue/test-utils'
+import { nextTick, ref } from 'vue'
 
 // Create mock state - these will be populated in beforeEach
 let mockModalState: any
@@ -17,6 +17,8 @@ vi.mock('@/composables/useModal', () => ({
 }))
 
 import Modal from '../../src/components/Common/Modal.vue'
+
+enableAutoUnmount(afterEach)
 
 describe('components/Common/Modal', () => {
   beforeEach(() => {
@@ -50,6 +52,8 @@ describe('components/Common/Modal', () => {
 
       expect(wrapper.text()).toContain('测试标题')
       expect(wrapper.text()).toContain('测试消息')
+      expect(wrapper.get('dialog').attributes('aria-label')).toBe('测试标题')
+      expect((wrapper.get('dialog').element as HTMLDialogElement).open).toBe(true)
     })
 
     it('renders when modalState.visible is true', async () => {
@@ -83,11 +87,23 @@ describe('components/Common/Modal', () => {
         },
       })
 
-      expect(wrapper.find('.fixed').exists()).toBe(false)
+      expect((wrapper.get('dialog').element as HTMLDialogElement).open).toBe(false)
+      expect(wrapper.find('h3').exists()).toBe(false)
     })
   })
 
   describe('Close Button', () => {
+    it('honors the global showClose option when no prop override is provided', () => {
+      mockModalState.visible.value = true
+      mockModalState.showClose.value = false
+
+      const wrapper = mount(Modal, {
+        global: { stubs: { Teleport: true } },
+      })
+
+      expect(wrapper.find('button .iconify[data-icon="carbon:close"]').exists()).toBe(false)
+    })
+
     it('shows close button when showClose is true', async () => {
       const wrapper = mount(Modal, {
         props: {
@@ -170,6 +186,19 @@ describe('components/Common/Modal', () => {
   })
 
   describe('Mask Click', () => {
+    it('honors the global mask option when no prop override is provided', async () => {
+      mockModalState.visible.value = true
+      mockModalState.closeOnClickMask.value = false
+
+      const wrapper = mount(Modal, {
+        global: { stubs: { Teleport: true } },
+      })
+
+      await wrapper.get('dialog').trigger('click')
+
+      expect(mockCloseModal).not.toHaveBeenCalled()
+    })
+
     it('closes modal when clicking mask with closeOnClickMask true', async () => {
       const wrapper = mount(Modal, {
         props: {
@@ -185,7 +214,7 @@ describe('components/Common/Modal', () => {
         },
       })
 
-      const mask = wrapper.find('.fixed.inset-0')
+      const mask = wrapper.find('dialog')
       await mask.trigger('click')
       await nextTick()
 
@@ -207,7 +236,7 @@ describe('components/Common/Modal', () => {
         },
       })
 
-      const mask = wrapper.find('.fixed.inset-0')
+      const mask = wrapper.find('dialog')
       await mask.trigger('click')
       await nextTick()
 
@@ -234,6 +263,35 @@ describe('components/Common/Modal', () => {
       await nextTick()
 
       // Should NOT close because we clicked on content, not mask
+      expect(mockCloseModal).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Escape', () => {
+    it('requests cancellation once and does not repeat it when the owner closes', async () => {
+      const wrapper = mount(Modal, {
+        props: { visible: true, title: '确认操作' },
+        global: { stubs: { Teleport: true } },
+      })
+      const event = new Event('cancel', { cancelable: true })
+
+      wrapper.get('dialog').element.dispatchEvent(event)
+      await wrapper.setProps({ visible: false })
+
+      expect(event.defaultPrevented).toBe(true)
+      expect(wrapper.emitted('update:visible')).toEqual([[false]])
+      expect(wrapper.emitted('close')).toEqual([[]])
+    })
+
+    it('honors the global dismissal guard for Escape', () => {
+      mockModalState.visible.value = true
+      mockModalState.closeOnClickMask.value = false
+      const wrapper = mount(Modal, {
+        global: { stubs: { Teleport: true } },
+      })
+
+      wrapper.get('dialog').element.dispatchEvent(new Event('cancel', { cancelable: true }))
+
       expect(mockCloseModal).not.toHaveBeenCalled()
     })
   })

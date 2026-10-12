@@ -1,15 +1,15 @@
 <template>
-  <div class="p-8 min-h-screen min-w-[1200px]">
-    <div class="bg-white rounded-lg container-shadow p-8">
+  <div class="admin-page">
+    <div class="admin-panel">
       <Header
         title="评论和评价管理"
         description="管理菜品的评价和评论，支持删除操作"
         header-icon="carbon:chat"
       />
 
-      <div class="flex gap-6 mt-6">
+      <div class="admin-comment-layout">
         <!-- 左侧：菜品列表 -->
-        <div class="w-1/3 border-r pr-6">
+        <div class="admin-dish-picker">
           <!-- 搜索栏 -->
           <div class="mb-4">
             <div class="relative">
@@ -36,7 +36,7 @@
           <!-- 筛选区域 -->
           <div
             v-if="canViewCanteens"
-            class="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-100 space-y-3"
+            class="admin-toolbar mb-3"
           >
             <div class="flex items-center gap-3">
               <span class="text-sm font-medium text-gray-600 whitespace-nowrap">所属食堂</span>
@@ -89,7 +89,7 @@
             </div>
           </div>
 
-          <div class="overflow-auto" style="max-height: calc(100vh - 300px)">
+          <div class="admin-dish-list">
             <div v-if="isLoadingDishes" class="text-center py-8 text-gray-500">
               <AppIcon class="iconify inline-block text-2xl animate-spin" icon="mdi:loading"></AppIcon>
               <span class="ml-2">加载中...</span>
@@ -97,19 +97,21 @@
             <div v-else-if="filteredDishes.length === 0" class="text-center py-8 text-gray-500">
               暂无菜品数据
             </div>
-            <div
+            <button
               v-else
               v-for="dish in filteredDishes"
               :key="dish.id"
-              class="p-4 mb-2 border rounded-lg cursor-pointer transition duration-200"
+              type="button"
+              class="w-full p-3 mb-2 border rounded-lg text-left transition-colors duration-200"
+              :aria-pressed="selectedDishId === dish.id"
               :class="selectedDishId === dish.id ? 'bg-tsinghua-purple text-white border-tsinghua-purple' : 'hover:bg-gray-50'"
               @click="selectDish(dish)"
             >
               <div class="flex items-center">
-                <img
-                  :src="(dish.images && dish.images.length > 0 ? dish.images[0] : '') || '/default-dish.png'"
+                <AdminImage
+                  :src="dish.images?.[0]"
                   :alt="dish.name"
-                  class="w-12 h-12 rounded object-cover border mr-3"
+                  image-class="w-12 h-12 rounded object-cover border mr-3"
                 />
                 <div class="flex-1">
                   <div class="font-medium">{{ dish.name }}</div>
@@ -123,7 +125,7 @@
                   </div>
                 </div>
               </div>
-            </div>
+            </button>
           </div>
 
           <!-- 紧凑型分页 -->
@@ -203,10 +205,11 @@
                 <div class="p-5">
                   <div class="flex items-start justify-between mb-3">
                     <div class="flex items-center flex-1">
-                      <img
-                        :src="review.userAvatar || '/default-avatar.png'"
+                      <AdminImage
+                        :src="review.userAvatar"
+                        variant="avatar"
                         :alt="review.userNickname || '用户'"
-                        class="w-10 h-10 rounded-full mr-3 border-2 border-gray-200"
+                        image-class="w-10 h-10 rounded-full mr-3 border-2 border-gray-200 object-cover"
                       />
                       <div class="flex-1">
                         <div class="flex items-center gap-2">
@@ -243,21 +246,16 @@
 
                   <!-- 评价图片 -->
                   <div v-if="review.images && review.images.length > 0" class="grid gap-2 mb-4" :class="getImageGridClass(review.images.length)">
-                    <div
+                    <AdminImage
                       v-for="(img, idx) in review.images"
                       :key="idx"
-                      class="relative group aspect-square rounded-lg overflow-hidden border border-gray-200 bg-gray-100 cursor-pointer hover:border-tsinghua-purple transition"
-                      @click="openImagePreview(review.images || [], idx)"
-                    >
-                      <img
-                        :src="img"
-                        :alt="`评价图片${idx + 1}`"
-                        class="w-full h-full object-cover"
-                      />
-                      <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition flex items-center justify-center">
-                        <AppIcon class="iconify text-white text-2xl opacity-0 group-hover:opacity-100 transition" icon="carbon:zoom-in"></AppIcon>
-                      </div>
-                    </div>
+                      :src="img"
+                      :alt="`评价图片${idx + 1}`"
+                      variant="preview"
+                      previewable
+                      image-class="w-full aspect-square rounded-lg border border-gray-200 object-cover hover:opacity-90"
+                      @preview="openImagePreview(review.images || [], idx)"
+                    />
                   </div>
                 </div>
 
@@ -278,10 +276,11 @@
                       <div class="flex items-start justify-between">
                         <div class="flex-1">
                           <div class="flex items-center mb-2">
-                            <img
-                              :src="comment.userAvatar || '/default-avatar.png'"
+                            <AdminImage
+                              :src="comment.userAvatar"
+                              variant="avatar"
                               :alt="comment.userNickname || '用户'"
-                              class="w-7 h-7 rounded-full mr-2 border border-gray-200"
+                              image-class="w-7 h-7 rounded-full mr-2 border border-gray-200 object-cover"
                             />
                             <span class="font-medium text-sm text-gray-900">{{ comment.userNickname || '未知用户' }}</span>
                             <span class="ml-2 text-xs text-gray-500">#{{ comment.floor }}楼</span>
@@ -343,15 +342,14 @@
     </div>
 
     <!-- 图片预览对话框 -->
-    <div
+    <AdminDialog
       v-if="imagePreview.show"
-      role="dialog"
-      aria-modal="true"
-      aria-label="图片预览"
-      class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[100]"
-      @click.self="closeImagePreview"
+      :open="imagePreview.show"
+      label="图片预览"
+      @close="closeImagePreview"
+      @keydown="handleImageKeyDown"
     >
-      <div class="relative max-w-7xl max-h-[90vh] mx-4">
+      <div class="admin-image-viewer">
         <!-- 关闭按钮 -->
         <button
           aria-label="关闭图片预览"
@@ -362,10 +360,11 @@
         </button>
         
         <!-- 图片 -->
-        <img
+        <AdminImage
           :src="imagePreview.images[imagePreview.currentIndex]"
           :alt="`评价图片 ${imagePreview.currentIndex + 1}`"
-          class="max-w-full max-h-[90vh] object-contain rounded-lg"
+          variant="preview"
+          image-class="max-w-full max-h-[90vh] object-contain rounded-lg"
         />
         
         <!-- 导航按钮 -->
@@ -398,7 +397,7 @@
           {{ imagePreview.currentIndex + 1 }} / {{ imagePreview.images.length }}
         </div>
       </div>
-    </div>
+    </AdminDialog>
   </div>
 </template>
 
@@ -409,6 +408,8 @@ import { reviewApi } from '@/api/modules/review'
 import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
+import AdminImage from '@/components/Common/AdminImage.vue'
+import AdminDialog from '@/components/Common/AdminDialog.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
 import { getAuthSessionVersion } from '@/utils/auth-session'
@@ -420,6 +421,8 @@ const PAGE_STATE_KEY = 'comment-manage'
 export default defineComponent({
   name: 'CommentManage',
   components: {
+    AdminImage,
+    AdminDialog,
     Header,
     Pagination,
   },
@@ -753,18 +756,13 @@ export default defineComponent({
     }
 
     // 键盘快捷键支持
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (!imagePreview.value.show) return
-      
+    const handleImageKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'ArrowLeft') {
         event.preventDefault()
         previousImage()
       } else if (event.key === 'ArrowRight') {
         event.preventDefault()
         nextImage()
-      } else if (event.key === 'Escape') {
-        event.preventDefault()
-        closeImagePreview()
       }
     }
 
@@ -904,7 +902,6 @@ export default defineComponent({
         loadCanteens()
       }
       loadDishes()
-      document.addEventListener('keydown', handleKeyDown)
       
       // 如果有选中的菜品，加载评价和评论
       if (selectedDishId.value) {
@@ -942,7 +939,6 @@ export default defineComponent({
 
     onUnmounted(() => {
       mounted = false
-      document.removeEventListener('keydown', handleKeyDown)
     })
 
     return {
@@ -987,6 +983,7 @@ export default defineComponent({
       imagePreview,
       openImagePreview,
       closeImagePreview,
+      handleImageKeyDown,
       previousImage,
       nextImage,
       getDishTotalPages,

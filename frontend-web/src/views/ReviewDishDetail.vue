@@ -1,6 +1,6 @@
 <template>
-  <div class="p-8 min-h-screen min-w-[1200px]">
-    <div class="bg-white rounded-lg container-shadow p-8 relative">
+  <div class="admin-page">
+    <div class="admin-panel relative">
       <!-- 关闭按钮 -->
       <button
         @click="goBack"
@@ -17,7 +17,7 @@
       />
 
       <div class="space-y-6 mt-6">
-        <div class="grid grid-cols-2 gap-6">
+        <div class="admin-form-grid">
           <!-- 左侧列 -->
           <div>
             <!-- 食堂信息组 -->
@@ -80,45 +80,32 @@
             <div>
               <label class="block text-gray-700 font-medium mb-2">菜品图片</label>
 
-              <div v-if="dishData.images && dishData.images.length > 0">
-                <!-- 主图展示 -->
-                <div
-                  class="border-2 rounded-lg aspect-square w-full relative flex items-center justify-center bg-gray-50 overflow-hidden mb-4"
-                >
-                  <img
-                    :src="selectedImage || dishData.images[0]"
-                    alt="菜品图片"
-                    class="w-full h-full object-cover cursor-pointer"
-                    @click="previewImage(selectedImage || dishData.images[0])"
-                  />
-                </div>
-
-                <!-- 缩略图列表 -->
-                <div class="flex gap-2 overflow-x-auto pb-2">
-                  <div
-                    v-for="(img, index) in dishData.images"
-                    :key="index"
-                    class="w-20 h-20 flex-shrink-0 border-2 rounded-lg overflow-hidden cursor-pointer transition-all"
-                    :class="{
-                      'border-tsinghua-purple': (selectedImage || dishData.images[0]) === img,
-                      'border-transparent': (selectedImage || dishData.images[0]) !== img,
-                    }"
-                    @mouseenter="selectedImage = img"
-                    @mouseleave="selectedImage = ''"
-                  >
-                    <img :src="img" class="w-full h-full object-cover" />
-                  </div>
-                </div>
-              </div>
-
-              <div
-                v-else
-                class="border-2 border-dashed rounded-lg h-48 flex items-center justify-center bg-gray-50 overflow-hidden"
-              >
-                <div class="text-center p-6">
-                  <AppIcon class="iconify text-4xl text-gray-400 mx-auto" icon="bi:image"></AppIcon>
-                  <div class="mt-2 text-gray-500">暂无图片</div>
-                </div>
+              <AdminImage
+                :src="selectedImage || dishData.images?.[0]"
+                alt="菜品图片"
+                variant="preview"
+                previewable
+                class="w-full mb-4"
+                image-class="w-full aspect-square rounded-lg border-2 object-cover"
+                @preview="previewImage"
+              />
+              <div v-if="dishData.images?.length" class="flex gap-2 overflow-x-auto pb-2">
+                <AdminImage
+                  v-for="(img, index) in dishData.images"
+                  :key="index"
+                  :src="img"
+                  :alt="`菜品图片 ${index + 1}`"
+                  previewable
+                  image-class="w-20 h-20 rounded-lg object-cover"
+                  class="border-2 rounded-lg"
+                  :class="{
+                    'border-tsinghua-purple': (selectedImage || dishData.images[0]) === img,
+                    'border-transparent': (selectedImage || dishData.images[0]) !== img,
+                  }"
+                  @mouseenter="selectedImage = img"
+                  @mouseleave="selectedImage = ''"
+                  @preview="selectedImage = img"
+                />
               </div>
             </div>
           </div>
@@ -375,15 +362,19 @@
     </div>
 
     <!-- 拒绝审核弹窗 -->
-    <div
+    <AdminDialog
       v-if="isRejectModalOpen"
-      class="fixed inset-0 z-[10000] flex items-center justify-center bg-black bg-opacity-50"
+      :open="isRejectModalOpen"
+      label="拒绝审核"
+      :close-on-backdrop="false"
+      @close="closeRejectModal"
     >
       <div class="bg-white rounded-lg shadow-xl w-[500px] overflow-hidden animate-fade-in-up">
         <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
           <h3 class="text-lg font-medium text-gray-900">拒绝审核</h3>
           <button
             @click="closeRejectModal"
+            aria-label="关闭拒绝审核"
             class="text-gray-400 hover:text-gray-500 transition-colors"
           >
             <AppIcon class="iconify text-xl" icon="carbon:close"></AppIcon>
@@ -427,7 +418,7 @@
           </button>
         </div>
       </div>
-    </div>
+    </AdminDialog>
   </div>
 </template>
 
@@ -437,12 +428,16 @@ import { useRouter, useRoute } from 'vue-router'
 import { reviewApi } from '@/api/modules/review'
 import { dishApi } from '@/api/modules/dish'
 import Header from '@/components/Layout/Header.vue'
+import AdminImage from '@/components/Common/AdminImage.vue'
+import AdminDialog from '@/components/Common/AdminDialog.vue'
 import { showAlert } from '@/composables/useModal'
 
 export default {
   name: 'ReviewDishDetail',
   components: {
+    AdminImage,
     Header,
+    AdminDialog,
   },
   setup() {
     const router = useRouter()

@@ -568,11 +568,17 @@ onReachBottom(async () => {
   min-height: 44px;
   margin: 4px 0 0;
   padding: 0 16px;
-  border: 1px solid #660874;
+  border: 0;
   border-radius: 8px;
-  background: #ffffff;
+  background: transparent;
   color: #660874;
   font-size: 14px;
   line-height: 1.4;
+}
+@media (hover: hover) {
+  .home-text-button:hover,
+  .canteen-retry:hover {
+    background: #f4f4f5;
+  }
 }
 </style>

@@ -1,0 +1,167 @@
+/* 原生反馈入口必须位于业务弹层之上，包括遮罩。 */
+uni-modal {
+  z-index: var(--layer-confirmation);
+}
+
+uni-actionsheet {
+  position: relative;
+  z-index: var(--layer-confirmation);
+}
+
+uni-toast {
+  z-index: var(--layer-toast);
+}
+
+uni-modal .uni-mask,
+uni-actionsheet .uni-actionsheet__mask {
+  background: rgba(17, 24, 39, 0.36);
+}
+
+uni-modal .uni-modal {
+  width: calc(100% - 48px);
+  max-width: 320px;
+  border-radius: 16px;
+  background: #fff;
+  color: #1f2937;
+  box-shadow: 0 16px 48px rgba(17, 24, 39, 0.18);
+  text-align: left;
+}
+
+uni-modal .uni-modal__hd {
+  padding: 20px 20px 0;
+}
+
+uni-modal .uni-modal__title {
+  display: block;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+uni-modal .uni-modal__bd {
+  min-height: 0;
+  max-height: min(50vh, 360px);
+  padding: 12px 20px 20px;
+  color: #667085;
+  font-size: 14px;
+  line-height: 1.6;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+uni-modal .uni-modal__bd:empty {
+  padding-top: 0;
+}
+
+uni-modal .uni-modal__ft {
+  min-height: 48px;
+  font-size: 14px;
+  line-height: 24px;
+}
+
+uni-modal .uni-modal__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 12px 10px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+uni-modal .uni-modal__btn_primary {
+  font-weight: 600;
+}
+
+uni-modal .uni-modal__ft::after,
+uni-modal .uni-modal__btn::after {
+  border-color: #e5e7eb;
+}
+
+uni-modal .uni-modal__btn:active,
+uni-actionsheet .uni-actionsheet__cell:active {
+  background: #f4f4f5;
+}
+
+uni-modal .uni-modal__textarea {
+  box-sizing: border-box;
+  width: calc(100% - 40px);
+  margin: 12px 20px 20px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f7f8fa;
+  color: #1f2937;
+  font-size: 16px;
+  line-height: 1.5;
+  caret-color: #660874;
+}
+
+uni-modal .uni-modal__textarea:focus-visible {
+  outline: 2px solid #660874;
+  outline-offset: 2px;
+}
+
+uni-actionsheet .uni-actionsheet__menu,
+uni-actionsheet .uni-actionsheet__action {
+  overflow: hidden;
+  border-radius: 16px;
+  background: #fff;
+}
+
+uni-actionsheet .uni-actionsheet__cell,
+uni-actionsheet .uni-actionsheet__title {
+  min-height: 48px;
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+uni-actionsheet .uni-actionsheet__title {
+  border-radius: 16px 16px 0 0;
+  border-bottom-color: #e5e7eb;
+  background: #fff;
+  color: #667085;
+}
+
+uni-actionsheet .uni-actionsheet__cell::before {
+  border-top-color: #e5e7eb;
+}
+
+uni-toast .uni-toast,
+uni-toast .uni-simple-toast__text {
+  border-radius: 12px;
+  background: rgba(31, 41, 55, 0.94);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+uni-toast .uni-toast__content {
+  margin-top: 8px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (hover: hover) {
+  uni-modal .uni-modal__btn:hover,
+  uni-actionsheet .uni-actionsheet__cell:hover {
+    background: #f4f4f5;
+  }
+}
+
+@media screen and (min-width: 500px) and (min-height: 500px) {
+  uni-actionsheet .uni-actionsheet__menu {
+    box-shadow: 0 16px 48px rgba(17, 24, 39, 0.18);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  uni-actionsheet .uni-actionsheet {
+    transition: none;
+  }
+}

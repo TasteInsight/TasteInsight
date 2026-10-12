@@ -2,6 +2,8 @@ import { mount } from '@vue/test-utils';
 import SettingsPage from '@/pages/settings/components/SettingsPage.vue';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
+import { parse } from '@vue/compiler-sfc';
+import postcss from 'postcss';
 const props = {
   loading: false,
   initialized: true,
@@ -34,6 +36,46 @@ it('keeps saved and pending states disabled and leaves the save action in docume
   expect(wrapper.text()).toContain('保存中');
   await wrapper.setProps({ saving: false, saved: true });
   expect(wrapper.text()).toContain('已保存');
+});
+
+it('gives settings-home section headings a semibold hierarchy', () => {
+  const { descriptor } = parse(
+    readFileSync(resolve(__dirname, '../../pages/settings/index.vue'), 'utf8')
+  );
+  const declarations: Record<string, string> = {};
+  descriptor.styles.forEach(style =>
+    postcss.parse(style.content).walkRules('.group-title', rule => {
+      rule.walkDecls(declaration => {
+        declarations[declaration.prop] = declaration.value;
+      });
+    })
+  );
+  expect(Number(declarations['font-weight'])).toBeGreaterThanOrEqual(600);
+});
+
+it('keeps a pressed save button neutral as soon as it becomes disabled', async () => {
+  const style = document.createElement('style');
+  style.textContent = readFileSync(
+    resolve(__dirname, '../../pages/settings/settings-page.css'),
+    'utf8'
+  ).replace(/:active/g, '[data-test-active]');
+  document.head.appendChild(style);
+  const wrapper = mount(SettingsPage, { props: { ...props, canSave: true } });
+  document.body.appendChild(wrapper.element);
+  try {
+    const button = wrapper.get('button').element;
+    expect(getComputedStyle(button).backgroundColor).toBe('rgb(102, 8, 116)');
+    button.setAttribute('data-test-active', '');
+    expect(getComputedStyle(button).backgroundColor).toBe('rgb(81, 6, 93)');
+    await wrapper.setProps({ canSave: false, saving: true });
+    expect(getComputedStyle(button).backgroundColor).toBe('rgb(244, 244, 245)');
+    expect(getComputedStyle(button).color).toBe('rgb(152, 162, 179)');
+  } finally {
+    const element = wrapper.element;
+    wrapper.unmount();
+    element.remove();
+    style.remove();
+  }
 });
 
 it('preserves display and notification controls without unsupported support routes', () => {

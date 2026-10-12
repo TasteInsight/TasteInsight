@@ -1,9 +1,9 @@
 <template>
-  <div class="p-6 border-t border-gray-200 flex items-center justify-between">
+  <nav class="admin-pagination" aria-label="分页">
     <div class="text-gray-500 text-sm">
       显示 {{ startIndex }}-{{ endIndex }} 条，共 {{ total }} 条记录
     </div>
-    <div class="flex items-center space-x-2">
+    <div class="admin-pagination-controls">
       <button
         class="px-3 py-1 border rounded text-gray-500 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
         :disabled="currentPage === 1"
@@ -14,6 +14,8 @@
       <button
         v-for="page in pages"
         :key="page"
+        :aria-current="page === currentPage ? 'page' : undefined"
+        :aria-label="`第 ${page} 页`"
         class="px-3 py-1 border rounded"
         :class="
           page === currentPage ? 'bg-tsinghua-purple text-white' : 'text-gray-500 hover:bg-gray-100'
@@ -39,6 +41,7 @@
           @keyup.enter="handleJumpToPage"
           class="w-16 px-2 py-1 border rounded text-center text-sm focus:ring-tsinghua-purple focus:border-tsinghua-purple"
           placeholder="页码"
+          aria-label="跳转页码"
         />
         <span class="text-sm text-gray-500">页</span>
         <button
@@ -49,7 +52,7 @@
         </button>
       </div>
     </div>
-  </div>
+  </nav>
 </template>
 
 <script>

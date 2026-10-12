@@ -61,8 +61,9 @@
   line-height: 24px;
 }
 .settings-field:focus-within {
+  border-color: #660874;
   outline: 2px solid #660874;
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 .settings-row {
   display: flex;
@@ -109,11 +110,6 @@
   outline: 2px solid #660874;
   outline-offset: 2px;
 }
-.settings-button[disabled] {
-  background: #f4f4f5;
-  border-color: #e5e7eb;
-  color: #98a2b3;
-}
 .settings-button--primary {
   background: #660874;
   border-color: #660874;
@@ -122,6 +118,12 @@
 }
 .settings-button--primary:active {
   background: #51065d;
+}
+.settings-button[disabled],
+.settings-button.settings-button--primary[disabled] {
+  background: #f4f4f5;
+  border-color: #e5e7eb;
+  color: #98a2b3;
 }
 .settings-error {
   display: block;

@@ -24,10 +24,11 @@
               <!-- 默认渲染逻辑 -->
               <template v-if="column.type === 'image'">
                 <div class="flex items-center">
-                  <img
+                  <AdminImage
                     :src="getImageUrl(item[column.key])"
                     :alt="item.name"
-                    class="w-12 h-12 rounded object-cover border mr-3"
+                    image-class="w-12 h-12 rounded object-cover border"
+                    class="mr-3"
                   />
                   <div>
                     <div class="font-medium">{{ item.name }}</div>
@@ -104,9 +105,11 @@
 
 <script>
 import { computed } from 'vue'
+import AdminImage from '@/components/Common/AdminImage.vue'
 
 export default {
   name: 'DishTable',
+  components: { AdminImage },
   props: {
     columns: {
       type: Array,

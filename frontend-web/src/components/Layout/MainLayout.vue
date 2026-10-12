@@ -1,8 +1,9 @@
 <template>
-  <div class="w-full min-h-screen flex container-shadow rounded-lg bg-white overflow-hidden">
+  <div class="admin-app">
+    <a class="admin-skip-link" href="#admin-main">跳转到主要内容</a>
     <Sidebar />
 
-    <div class="flex-1 min-h-screen overflow-x-auto overflow-y-auto bg-tsinghua-light ml-[260px]">
+    <main id="admin-main" class="admin-main" tabindex="-1">
       <router-view v-slot="{ Component }">
         <template v-if="$route.meta.keepAlive">
           <keep-alive>
@@ -13,7 +14,7 @@
           <component :is="Component" :key="viewKey" />
         </template>
       </router-view>
-    </div>
+    </main>
   </div>
 </template>
 

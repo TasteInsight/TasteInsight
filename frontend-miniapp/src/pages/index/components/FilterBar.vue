@@ -1,6 +1,6 @@
 <template>
   <view class="filters">
-    <scroll-view scroll-x class="filters__entrances">
+    <scroll-view scroll-x :show-scrollbar="false" class="filters__entrances">
       <view class="filters__primary">
         <button
           role="button"

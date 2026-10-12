@@ -1,62 +1,64 @@
 <template>
-  <Teleport to="body">
-    <Transition name="modal">
-      <div
-        v-if="isVisible"
-        class="fixed inset-0 z-[10000] flex items-center justify-center bg-black bg-opacity-50"
-        @click.self="handleClose(true)"
-      >
-        <div class="bg-white rounded-lg shadow-xl w-[500px] max-w-[90vw] max-h-[90vh] overflow-hidden animate-fade-in-up flex flex-col">
-          <!-- 头部 -->
-          <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center flex-shrink-0">
-            <h3 class="text-lg font-medium text-gray-900">{{ modalTitle }}</h3>
-            <button
-              v-if="modalShowClose"
-              @click="handleClose(false)"
-              class="text-gray-400 hover:text-gray-500 transition-colors"
-            >
-              <AppIcon class="iconify text-xl" icon="carbon:close"></AppIcon>
-            </button>
-          </div>
-
-          <!-- 内容区域 -->
-          <div class="p-6 flex-1 overflow-y-auto">
-            <div v-if="modalMessage" class="text-gray-600 whitespace-pre-wrap">{{ modalMessage }}</div>
-            <slot></slot>
-          </div>
-
-          <!-- 底部按钮 -->
-          <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3 flex-shrink-0">
-            <button
-              v-for="(button, index) in modalButtons"
-              :key="index"
-              @click.stop="handleButtonClick(button as ButtonConfig, index)"
-              :class="[
-                'px-4 py-2 rounded-lg transition duration-200 flex items-center',
-                (button as ButtonConfig).variant === 'primary' 
-                  ? 'bg-tsinghua-purple text-white hover:bg-tsinghua-dark' 
-                  : (button as ButtonConfig).variant === 'danger'
-                  ? 'bg-red-600 text-white hover:bg-red-700'
-                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-              ]"
-              :disabled="(button as ButtonConfig).loading"
-            >
-              <AppIcon
-                v-if="(button as ButtonConfig).loading"
-                class="iconify animate-spin mr-2"
-                icon="mdi:loading"
-              ></AppIcon>
-              {{ (button as ButtonConfig).text }}
-            </button>
-          </div>
-        </div>
+  <AdminDialog
+    :open="isVisible"
+    :label="modalTitle"
+    :close-on-backdrop="modalCloseOnClickMask"
+    :close-on-escape="modalCloseOnClickMask"
+    @close="handleClose(true)"
+  >
+    <div class="bg-white rounded-lg shadow-xl w-[500px] max-w-[90vw] max-h-[90vh] overflow-hidden flex flex-col">
+      <!-- 头部 -->
+      <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center flex-shrink-0">
+        <h3 class="text-lg font-medium text-gray-900">{{ modalTitle }}</h3>
+        <button
+          v-if="modalShowClose"
+          type="button"
+          aria-label="关闭弹窗"
+          @click="handleClose(false)"
+          class="text-gray-400 hover:text-gray-500 transition-colors"
+        >
+          <AppIcon class="iconify text-xl" icon="carbon:close"></AppIcon>
+        </button>
       </div>
-    </Transition>
-  </Teleport>
+
+      <!-- 内容区域 -->
+      <div class="p-6 flex-1 overflow-y-auto">
+        <div v-if="modalMessage" class="text-gray-600 whitespace-pre-wrap">{{ modalMessage }}</div>
+        <slot></slot>
+      </div>
+
+      <!-- 底部按钮 -->
+      <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3 flex-shrink-0">
+        <button
+          v-for="(button, index) in modalButtons"
+          :key="index"
+          type="button"
+          @click.stop="handleButtonClick(button as ButtonConfig, index)"
+          :class="[
+            'px-4 py-2 rounded-lg transition duration-200 flex items-center',
+            (button as ButtonConfig).variant === 'primary'
+              ? 'bg-tsinghua-purple text-white hover:bg-tsinghua-dark'
+              : (button as ButtonConfig).variant === 'danger'
+              ? 'bg-red-600 text-white hover:bg-red-700'
+              : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+          ]"
+          :disabled="(button as ButtonConfig).loading"
+        >
+          <AppIcon
+            v-if="(button as ButtonConfig).loading"
+            class="iconify animate-spin mr-2"
+            icon="mdi:loading"
+          ></AppIcon>
+          {{ (button as ButtonConfig).text }}
+        </button>
+      </div>
+    </div>
+  </AdminDialog>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import AdminDialog from './AdminDialog.vue'
 import { modalState, closeModal } from '@/composables/useModal'
 import type { ButtonConfig } from '@/composables/useModal'
 
@@ -75,7 +77,7 @@ const props = defineProps({
   },
   showClose: {
     type: Boolean,
-    default: true
+    default: undefined
   },
   buttons: {
     type: Array,
@@ -83,7 +85,7 @@ const props = defineProps({
   },
   closeOnClickMask: {
     type: Boolean,
-    default: true
+    default: undefined
   }
 })
 
@@ -93,8 +95,8 @@ const isVisible = computed(() => props.visible || modalState.visible.value)
 const modalTitle = computed(() => props.title || modalState.title.value)
 const modalMessage = computed(() => props.message || modalState.message.value)
 const modalButtons = computed(() => props.buttons.length > 0 ? props.buttons : modalState.buttons.value)
-const modalShowClose = computed(() => props.showClose !== undefined ? props.showClose : modalState.showClose.value)
-const modalCloseOnClickMask = computed(() => props.closeOnClickMask !== undefined ? props.closeOnClickMask : modalState.closeOnClickMask.value)
+const modalShowClose = computed(() => props.showClose ?? (modalState.visible.value ? modalState.showClose.value : true))
+const modalCloseOnClickMask = computed(() => props.closeOnClickMask ?? (modalState.visible.value ? modalState.closeOnClickMask.value : true))
 
 const handleClose = (fromMask: boolean = true) => {
   // 如果是从遮罩层点击，检查是否允许关闭
@@ -162,27 +164,3 @@ const handleButtonClick = async (button: ButtonConfig, index: number) => {
   }
 }
 </script>
-
-<style scoped>
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.3s ease;
-}
-
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-
-.modal-enter-active .animate-fade-in-up,
-.modal-leave-active .animate-fade-in-up {
-  transition: transform 0.3s ease, opacity 0.3s ease;
-}
-
-.modal-enter-from .animate-fade-in-up,
-.modal-leave-to .animate-fade-in-up {
-  opacity: 0;
-  transform: translateY(10px);
-}
-</style>
-

@@ -1,5 +1,8 @@
 import { ref } from 'vue'
 
+let modalRequest = 0
+let opener: HTMLElement | null = null
+
 export interface ButtonConfig {
   text: string
   variant?: 'primary' | 'danger' | 'default'
@@ -28,6 +31,8 @@ export const modalState = {
 
 // 显示Modal
 export function showModal(options: ModalOptions): Promise<boolean> {
+  modalRequest += 1
+  opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
   return new Promise((resolve) => {
     modalState.title.value = options.title || '提示'
     modalState.message.value = options.message || ''
@@ -124,6 +129,9 @@ export function showConfirmDanger(
 
 // 关闭Modal
 export function closeModal(result: boolean = false) {
+  const closedRequest = modalRequest
+  const returnTarget = opener
+  opener = null
   // 先更新visible状态，触发响应式更新
   modalState.visible.value = false
   // 然后resolve Promise
@@ -135,5 +143,13 @@ export function closeModal(result: boolean = false) {
       resolveFn(result)
     })
   }
+  requestAnimationFrame(() => {
+    const active = document.activeElement
+    const nativeNeedsRecovery = active === document.body || active instanceof HTMLDialogElement
+    if (closedRequest === modalRequest && !modalState.visible.value && nativeNeedsRecovery &&
+      returnTarget?.isConnected && !returnTarget.matches(':disabled') && !returnTarget.closest('[inert]')) {
+      returnTarget.focus({ preventScroll: true })
+    }
+  })
 }
 

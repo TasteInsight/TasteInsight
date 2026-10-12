@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { shallowMount } from '@vue/test-utils'
+import { DOMWrapper, mount, shallowMount } from '@vue/test-utils'
 import { reactive, nextTick } from 'vue'
 
 const mocks = vi.hoisted(() => ({
@@ -115,6 +115,30 @@ describe('views/EditDish', () => {
 
   afterEach(() => {
     ;(globalThis as any).FileReader = originalFileReader
+  })
+
+  it('keeps delete confirmation open while deletion is pending and permits cancel afterward', async () => {
+    const wrapper = mount(EditDish, {
+      global: { stubs: { Header: true }, directives: { permission: () => undefined } },
+    })
+    try {
+      await flushAll()
+      wrapper.vm.showDeleteConfirm = true
+      wrapper.vm.isDeleting = true
+      await nextTick()
+      const dialog = new DOMWrapper(document.body).get('dialog[aria-label="确认删除菜品"]')
+      expect(dialog.attributes('open')).toBeDefined()
+      await dialog.trigger('click')
+      await dialog.trigger('cancel')
+      expect(wrapper.vm.showDeleteConfirm).toBe(true)
+
+      wrapper.vm.isDeleting = false
+      await nextTick()
+      await dialog.trigger('cancel')
+      expect(wrapper.vm.showDeleteConfirm).toBe(false)
+    } finally {
+      wrapper.unmount()
+    }
   })
 
   it('mount calls loadDishData; fills canteen/window/image/tag/time/date fields; loads sub dishes', async () => {

@@ -10,7 +10,7 @@ export default {
         tsinghua: {
           purple: '#660874',
           light: '#F5F5F5',
-          dark: '#D93379'
+          dark: '#4D0658'
         }
       },
       fontFamily: {

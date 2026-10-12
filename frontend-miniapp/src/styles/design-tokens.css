@@ -9,4 +9,7 @@ page,
   --page-title-font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --page-title-color: #111827;
   --page-navigation-height: 44px;
+  --layer-picker: 11000;
+  --layer-confirmation: 12000;
+  --layer-toast: 13000;
 }

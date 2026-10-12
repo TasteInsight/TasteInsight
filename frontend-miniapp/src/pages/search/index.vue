@@ -158,7 +158,6 @@ onShow(() => {
   z-index: 10;
   padding: 16px;
   background: #fff;
-  animation: search-arrival 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .search-scope {
   margin-bottom: 16px;
@@ -245,20 +244,5 @@ onShow(() => {
   padding: 12px 0;
   color: #667085;
   font-size: 13px;
-}
-@keyframes search-arrival {
-  from {
-    transform: translateY(6px);
-    opacity: 0.8;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .search-toolbar {
-    animation: none;
-  }
 }
 </style>

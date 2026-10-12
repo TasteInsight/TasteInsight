@@ -16,10 +16,13 @@
           :title="window.name"
           @tap="emit('click', window.id)"
         >
-          <text class="canteen-window-name">{{ window.name }}</text>
-          <text v-if="window.floor?.name || window.floor?.level" class="canteen-window-floor">{{
-            window.floor.name || window.floor.level + '层'
-          }}</text>
+          <view class="canteen-window-copy">
+            <text class="canteen-window-name">{{ window.name }}</text>
+            <text v-if="window.floor?.name || window.floor?.level" class="canteen-window-floor">{{
+              window.floor.name || window.floor.level + '层'
+            }}</text>
+          </view>
+          <uni-icons type="right" size="14" color="#667085" aria-hidden="true" />
         </button>
       </view>
     </scroll-view>
@@ -48,23 +51,23 @@ const emit = defineEmits<{ (e: 'click', id: string): void }>();
 .canteen-windows-row {
   display: inline-flex;
   align-items: stretch;
-  gap: 8px;
+  gap: 24px;
   min-width: 100%;
 }
 .canteen-window {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
+  align-items: center;
+  gap: 10px;
   flex: 0 0 auto;
   min-width: 104px;
   max-width: 160px;
   min-height: 52px;
   margin: 0;
-  padding: 7px 12px;
+  padding: 7px 0;
   box-sizing: border-box;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  background: #fff;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
   font-family: inherit;
   font-size: 14px;
   line-height: 1.5;
@@ -80,6 +83,15 @@ const emit = defineEmits<{ (e: 'click', id: string): void }>();
 }
 .canteen-window:active {
   background: #f4f4f5;
+}
+.canteen-window-copy {
+  flex: 1;
+  min-width: 0;
+}
+@media (hover: hover) {
+  .canteen-window:hover {
+    background: #f4f4f5;
+  }
 }
 .canteen-window-name,
 .canteen-window-floor {

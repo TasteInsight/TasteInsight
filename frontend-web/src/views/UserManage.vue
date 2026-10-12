@@ -1,9 +1,9 @@
 <template>
-  <div class="p-8 min-h-screen min-w-[1200px]">
-    <div class="bg-white rounded-lg container-shadow p-8">
+  <div class="admin-page">
+    <div class="admin-panel">
       <!-- 列表视图 -->
       <div v-if="viewMode === 'list'">
-        <div class="flex justify-between items-center mb-6">
+        <div class="admin-heading-row">
           <Header
             title="人员权限管理"
             description="管理子管理员账号和权限分配"
@@ -43,7 +43,7 @@
           </div>
           
           <!-- 筛选栏 -->
-          <div class="p-4 bg-gray-50 rounded-lg border border-gray-100 flex flex-wrap items-center gap-x-8 gap-y-4">
+        <div class="admin-toolbar">
             <div class="flex items-center gap-3">
               <span class="text-sm font-medium text-gray-600">管理范围</span>
               <div class="relative">
@@ -78,8 +78,8 @@
         </div>
 
         <!-- 管理员列表表格 -->
-        <div class="overflow-auto">
-          <table class="w-full">
+        <div class="admin-table-scroll">
+        <table class="admin-table">
             <thead class="bg-gray-50">
               <tr>
                 <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">用户名</th>
@@ -187,7 +187,7 @@
 
       <!-- 创建/编辑视图 -->
       <div v-else>
-        <div class="flex justify-between items-center mb-6">
+        <div class="admin-heading-row">
           <Header
             :title="editingAdmin ? '编辑子管理员' : '创建子管理员'"
             :description="
@@ -204,7 +204,7 @@
         </div>
 
         <form class="space-y-6">
-          <div class="grid grid-cols-2 gap-6">
+        <div class="admin-form-grid">
             <!-- 左侧列 -->
             <div>
               <!-- 用户名 -->
@@ -480,8 +480,12 @@
     </div>
 
     <!-- 重置子管理员密码的弹窗 -->
-    <div v-if="showResetPasswordModal" class="fixed inset-0 z-50 flex items-center justify-center" @click.stop>
-      <div class="absolute inset-0 bg-black/50" @click="closeResetPasswordModal"></div>
+    <AdminDialog
+      v-if="showResetPasswordModal"
+      :open="showResetPasswordModal"
+      label="重置密码"
+      @close="closeResetPasswordModal"
+    >
       <div class="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6 mx-4" @click.stop>
         <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
           <AppIcon class="iconify text-orange-500" icon="carbon:password"></AppIcon>
@@ -529,23 +533,23 @@
           <div class="text-xs bg-gray-50 rounded-lg p-3">
             <p class="font-medium text-gray-600 mb-2">密码要求：</p>
             <ul class="space-y-1">
-              <li class="flex items-center gap-2" :class="resetPasswordChecks.length ? 'text-green-600' : 'text-gray-400'">
+              <li class="flex items-center gap-2" :class="resetPasswordChecks.length ? 'text-green-700' : 'text-gray-500'">
                 <AppIcon class="iconify text-sm" :icon="resetPasswordChecks.length ? 'carbon:checkmark-filled' : 'carbon:close'"></AppIcon>
                 至少 8 个字符
               </li>
-              <li class="flex items-center gap-2" :class="resetPasswordChecks.uppercase ? 'text-green-600' : 'text-gray-400'">
+              <li class="flex items-center gap-2" :class="resetPasswordChecks.uppercase ? 'text-green-700' : 'text-gray-500'">
                 <AppIcon class="iconify text-sm" :icon="resetPasswordChecks.uppercase ? 'carbon:checkmark-filled' : 'carbon:close'"></AppIcon>
                 包含大写字母（A-Z）
               </li>
-              <li class="flex items-center gap-2" :class="resetPasswordChecks.lowercase ? 'text-green-600' : 'text-gray-400'">
+              <li class="flex items-center gap-2" :class="resetPasswordChecks.lowercase ? 'text-green-700' : 'text-gray-500'">
                 <AppIcon class="iconify text-sm" :icon="resetPasswordChecks.lowercase ? 'carbon:checkmark-filled' : 'carbon:close'"></AppIcon>
                 包含小写字母（a-z）
               </li>
-              <li class="flex items-center gap-2" :class="resetPasswordChecks.number ? 'text-green-600' : 'text-gray-400'">
+              <li class="flex items-center gap-2" :class="resetPasswordChecks.number ? 'text-green-700' : 'text-gray-500'">
                 <AppIcon class="iconify text-sm" :icon="resetPasswordChecks.number ? 'carbon:checkmark-filled' : 'carbon:close'"></AppIcon>
                 包含数字（0-9）
               </li>
-              <li class="flex items-center gap-2" :class="resetPasswordChecks.special ? 'text-green-600' : 'text-gray-400'">
+              <li class="flex items-center gap-2" :class="resetPasswordChecks.special ? 'text-green-700' : 'text-gray-500'">
                 <AppIcon class="iconify text-sm" :icon="resetPasswordChecks.special ? 'carbon:checkmark-filled' : 'carbon:close'"></AppIcon>
                 包含特殊符号（如 !@#$%^&amp;*）
               </li>
@@ -570,14 +574,14 @@
             <button
               type="submit"
               :disabled="isResettingPassword"
-              class="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              class="px-4 py-2 bg-orange-700 text-white rounded-lg hover:bg-orange-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {{ isResettingPassword ? '重置中...' : '确认重置' }}
             </button>
           </div>
         </form>
       </div>
-    </div>
+    </AdminDialog>
   </div>
 </template>
 
@@ -588,6 +592,7 @@ import { permissionApi } from '@/api/modules/permission'
 import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
+import AdminDialog from '@/components/Common/AdminDialog.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
 import { showAlert, showConfirmDanger } from '@/composables/useModal'
 
@@ -597,6 +602,7 @@ export default {
   name: 'UserManage',
   components: {
     Header,
+    AdminDialog,
   },
   setup() {
     const router = useRouter()

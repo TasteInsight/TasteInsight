@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { shallowMount } from '@vue/test-utils'
+import { DOMWrapper, enableAutoUnmount, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
 const mocks = vi.hoisted(() => ({
@@ -29,6 +29,8 @@ vi.mock('@/composables/useModal', () => ({
 }))
 
 import ReportManage from '../../src/views/ReportManage.vue'
+
+enableAutoUnmount(afterEach)
 
 function flushMicrotasks() {
   return Promise.resolve()
@@ -76,7 +78,7 @@ describe('views/ReportManage', () => {
   })
 
   it('loads reports on mount and supports status/targetType filtering', async () => {
-    const wrapper = shallowMount(ReportManage, {
+    const wrapper = mount(ReportManage, {
       global: { stubs: { Header: true, Pagination: true } },
     })
 
@@ -124,7 +126,7 @@ describe('views/ReportManage', () => {
   it('loadReports handles non-200 and thrown errors', async () => {
     mocks.reviewApiMock.getReports.mockResolvedValueOnce({ code: 500, message: 'bad' })
 
-    const wrapper = shallowMount(ReportManage, {
+    const wrapper = mount(ReportManage, {
       global: { stubs: { Header: true, Pagination: true } },
     })
 
@@ -147,7 +149,7 @@ describe('views/ReportManage', () => {
   })
 
   it('handlePageChange updates page and reloads', async () => {
-    const wrapper = shallowMount(ReportManage, {
+    const wrapper = mount(ReportManage, {
       global: { stubs: { Header: true, Pagination: true } },
     })
 
@@ -165,7 +167,7 @@ describe('views/ReportManage', () => {
   })
 
   it('handleDeleteReview covers permission/confirm/success/non-200/catch and updates selectedReport', async () => {
-    const wrapper = shallowMount(ReportManage, {
+    const wrapper = mount(ReportManage, {
       global: { stubs: { Header: true, Pagination: true } },
     })
 
@@ -223,7 +225,7 @@ describe('views/ReportManage', () => {
   })
 
   it('handleDeleteComment covers permission/confirm and catch', async () => {
-    const wrapper = shallowMount(ReportManage, {
+    const wrapper = mount(ReportManage, {
       global: { stubs: { Header: true, Pagination: true } },
     })
 
@@ -249,7 +251,7 @@ describe('views/ReportManage', () => {
   })
 
   it('handleReport handles permission/confirm/success/non-200/catch and sets default result', async () => {
-    const wrapper = shallowMount(ReportManage, {
+    const wrapper = mount(ReportManage, {
       global: { stubs: { Header: true, Pagination: true } },
     })
 
@@ -301,7 +303,7 @@ describe('views/ReportManage', () => {
   })
 
   it('image preview open/close, navigation, and keyboard shortcuts', async () => {
-    const wrapper = shallowMount(ReportManage, {
+    const wrapper = mount(ReportManage, {
       global: { stubs: { Header: true, Pagination: true } },
     })
 
@@ -327,21 +329,25 @@ describe('views/ReportManage', () => {
 
     // keyboard: left/right/escape
     wrapper.vm.openImagePreview(['a', 'b'], 0)
+    await nextTick()
+    const preview = new DOMWrapper(document.body).get('dialog[aria-label="图片预览"]')
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+    expect(wrapper.vm.imagePreview.currentIndex).toBe(0)
 
     const right = new KeyboardEvent('keydown', { key: 'ArrowRight', cancelable: true })
-    window.dispatchEvent(right)
+    preview.element.dispatchEvent(right)
     await nextTick()
     expect(right.defaultPrevented).toBe(true)
     expect(wrapper.vm.imagePreview.currentIndex).toBe(1)
 
     const left = new KeyboardEvent('keydown', { key: 'ArrowLeft', cancelable: true })
-    window.dispatchEvent(left)
+    preview.element.dispatchEvent(left)
     await nextTick()
     expect(left.defaultPrevented).toBe(true)
     expect(wrapper.vm.imagePreview.currentIndex).toBe(0)
 
-    const esc = new KeyboardEvent('keydown', { key: 'Escape', cancelable: true })
-    window.dispatchEvent(esc)
+    const esc = new Event('cancel', { cancelable: true })
+    preview.element.dispatchEvent(esc)
     await nextTick()
     expect(esc.defaultPrevented).toBe(true)
     expect(wrapper.vm.imagePreview.show).toBe(false)
