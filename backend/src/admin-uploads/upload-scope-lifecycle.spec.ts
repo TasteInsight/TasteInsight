@@ -49,7 +49,6 @@ describe('Upload ownership after a formal dish moves', () => {
         findUnique: jest.fn(async () => ({ ...dish })),
         findFirst: jest.fn(async () => null),
         delete: jest.fn(async () => dish),
-        update: jest.fn(async ({ data }) => Object.assign(dish, data)),
       },
       $queryRaw: jest.fn(async () => []),
       $executeRaw: jest.fn(async () => 0),
@@ -84,13 +83,9 @@ describe('Upload ownership after a formal dish moves', () => {
     expect(source).toMatchObject({
       canteenId: 'a',
       status: 'pending',
-      approvedDishId: 'dish',
+      approvedDishId: null,
     });
-    expect(prisma.dish.delete).not.toHaveBeenCalled();
-    expect(prisma.dish.update).toHaveBeenCalledWith({
-      where: { id: 'dish' },
-      data: { status: 'offline' },
-    });
+    expect(prisma.dish.delete).toHaveBeenCalledWith({ where: { id: 'dish' } });
   });
 
   it.each(['revoke', 'delete'])(
@@ -116,20 +111,9 @@ describe('Upload ownership after a formal dish moves', () => {
       else await manage.deleteAdminDish('dish', globalAdmin);
       expect(prisma.dishUpload.updateMany).toHaveBeenCalledWith({
         where: { parentDishId: 'dish' },
-        data: {
-          parentDishId: null,
-          parentUploadId: 'source',
-          revision: { increment: 1 },
-        },
+        data: { parentDishId: null, parentUploadId: 'source' },
       });
-      if (operation === 'delete') expect(prisma.dish.delete).toHaveBeenCalled();
-      else {
-        expect(prisma.dish.delete).not.toHaveBeenCalled();
-        expect(prisma.dish.update).toHaveBeenCalledWith({
-          where: { id: 'dish' },
-          data: { status: 'offline' },
-        });
-      }
+      expect(prisma.dish.delete).toHaveBeenCalled();
     },
   );
 });

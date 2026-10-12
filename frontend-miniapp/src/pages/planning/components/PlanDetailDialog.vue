@@ -47,7 +47,7 @@
                 >{{ dish.canteenName || '食堂信息暂缺'
                 }}{{ dish.windowName ? ' / ' + dish.windowName : '' }}</text
               ><text class="meal-detail-price"
-                >¥{{ dish.price }}{{ priceUnitSuffix(dish.priceUnit) }}</text
+                >¥{{ dish.price }}{{ dish.priceUnit ? '/' + dish.priceUnit : '' }}</text
               ></view
             >
           </button>
@@ -66,7 +66,6 @@
 import { computed, ref } from 'vue';
 import type { EnrichedMealPlan } from '@/store/modules/use-plan-store';
 import dayjs from 'dayjs';
-import { priceUnitSuffix } from '@/utils/price-display';
 
 const props = defineProps<{ visible: boolean; plan: EnrichedMealPlan | null }>();
 const emit = defineEmits<{ close: [] }>();

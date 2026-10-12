@@ -70,17 +70,6 @@
           <UiIcon name="history" :size="18" /><text>浏览记录</text>
         </button>
         <button
-          class="profile-button profile-utility"
-          @click="uploadsButton.activate"
-          @keydown="uploadsButton.handleKeydown"
-          @keyup="uploadsButton.handleKeyup"
-          @blur="uploadsButton.clearPress"
-          role="button"
-          tabindex="0"
-        >
-          <UiIcon name="edit" :size="18" /><text>我的上传</text>
-        </button>
-        <button
           class="profile-button profile-utility profile-manage"
           aria-label="资料管理"
           role="button"
@@ -502,7 +491,6 @@ const openDish = (id: string) => navigateTo('/pages/dish/index?id=' + encodeURIC
 const openHome = () => uni.switchTab({ url: '/pages/index/index' });
 const favoritesButton = useButtonActivation(() => navigateTo('/pages/profile/my-favorites/index'));
 const historyButton = useButtonActivation(() => navigateTo('/pages/profile/history/index'));
-const uploadsButton = useButtonActivation(() => navigateTo('/pages/profile/my-uploads/index'));
 const profileRetryButton = useButtonActivation(
   () => {
     void refreshPage();
@@ -562,7 +550,7 @@ const reviewsMoreButton = useButtonActivation(
 .profile-button::after {
   border: 0;
 }
-.profile-button:not(.profile-tab):active {
+.profile-button:active {
   background: #f4f4f5;
 }
 .profile-button:focus-visible {
@@ -594,7 +582,6 @@ const reviewsMoreButton = useButtonActivation(
 }
 .profile-utilities {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 18px;
   min-height: 44px;
@@ -626,9 +613,6 @@ const reviewsMoreButton = useButtonActivation(
   padding: 8px 0;
   border-radius: 0;
   color: #667085;
-}
-.profile-tab:active {
-  opacity: 0.72;
 }
 .profile-tab-active {
   color: #660874;

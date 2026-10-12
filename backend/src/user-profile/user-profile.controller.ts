@@ -3,9 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  Patch,
-  Post,
-  Param,
   Put,
   Query,
   Request,
@@ -14,8 +11,6 @@ import {
 import { AuthGuard } from '@/auth/guards/auth.guard';
 import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 import { UserProfileService } from './user-profile.service';
-import { StudentGuard } from '@/auth/guards/student.guard';
-import { UpdateUploadDto, UploadRevisionDto } from './dto/update-upload.dto';
 
 @Controller('user')
 @UseGuards(AuthGuard)
@@ -77,31 +72,6 @@ export class UserProfileController {
     @Query('pageSize') pageSize: number = 20,
   ) {
     return this.userService.getMyUploads(req.user.sub, page, pageSize);
-  }
-
-  @Get('uploads/:id')
-  getMyUpload(@Request() req: any, @Param('id') id: string) {
-    return this.userService.getMyUpload(req.user.sub, id);
-  }
-
-  @Patch('uploads/:id')
-  @UseGuards(StudentGuard)
-  updateMyUpload(
-    @Request() req: any,
-    @Param('id') id: string,
-    @Body() dto: UpdateUploadDto,
-  ) {
-    return this.userService.updateMyUpload(req.user.sub, id, dto);
-  }
-
-  @Post('uploads/:id/withdraw')
-  @UseGuards(StudentGuard)
-  withdrawMyUpload(
-    @Request() req: any,
-    @Param('id') id: string,
-    @Body() dto: UploadRevisionDto,
-  ) {
-    return this.userService.withdrawMyUpload(req.user.sub, id, dto.revision);
   }
 
   @Get('reports')

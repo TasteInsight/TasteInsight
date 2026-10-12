@@ -250,8 +250,7 @@ test('keeps tools beside identity and only one compose action in the content tab
   expect(wrapper.find('.profile-toolbar').exists()).toBe(false);
   expect(wrapper.get('.profile-header').findComponent(UserHeader).exists()).toBe(true);
   expect(wrapper.get('.profile-header').find('[aria-label="设置"]').exists()).toBe(true);
-  expect(wrapper.findAll('.profile-utilities button')).toHaveLength(4);
-  expect(wrapper.get('.profile-utilities').text()).toContain('我的上传');
+  expect(wrapper.findAll('.profile-utilities button')).toHaveLength(3);
   expect(wrapper.get('.profile-manage').attributes('aria-label')).toBe('资料管理');
   expect(wrapper.get('.profile-tab-row').find('[aria-label="写动态"]').exists()).toBe(true);
   expect(wrapper.findAll('[aria-label="写动态"]')).toHaveLength(1);

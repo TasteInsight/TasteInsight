@@ -3,7 +3,6 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 const getMock = vi.fn()
 const postMock = vi.fn()
 const deleteMock = vi.fn()
-const patchMock = vi.fn()
 
 vi.mock('@/utils/request', () => {
   return {
@@ -11,7 +10,6 @@ vi.mock('@/utils/request', () => {
       get: getMock,
       post: postMock,
       delete: deleteMock,
-      patch: patchMock,
     },
   }
 })
@@ -21,7 +19,6 @@ describe('api/reviewApi', () => {
     getMock.mockReset()
     postMock.mockReset()
     deleteMock.mockReset()
-    patchMock.mockReset()
   })
 
   it('getPendingReviews uses default pagination', async () => {
@@ -151,19 +148,5 @@ describe('api/reviewApi', () => {
     await reviewApi.deleteComment('c1')
 
     expect(deleteMock).toHaveBeenCalledWith('/admin/comments/c1')
-  })
-
-  it('preserves contribution revision, explicit merge selection and editing fields', async () => {
-    const { reviewApi } = await import('@/api/modules/review')
-    const changes = { revision: 3, price: 0, priceUnit: '元/两', images: ['https://images.test/new.jpg'] }
-    await reviewApi.updateUpload('u1', changes)
-    expect(patchMock).toHaveBeenCalledWith('/admin/dishes/uploads/u1', changes)
-    const approval = { revision: 4, mergeDishId: 'd1', mergeDishUpdatedAt: '2026-10-11T01:00:00.000Z', mergeFields: ['price', 'images'] as const }
-    await reviewApi.approveUpload('u1', { ...approval, mergeFields: [...approval.mergeFields] })
-    expect(postMock).toHaveBeenCalledWith('/admin/dishes/uploads/u1/approve', approval)
-    await reviewApi.rejectUpload('u1', { revision: 4, reason: '价格待核实' })
-    expect(postMock).toHaveBeenCalledWith('/admin/dishes/uploads/u1/reject', { revision: 4, reason: '价格待核实' })
-    await reviewApi.revokeUpload('u1', { revision: 5 })
-    expect(postMock).toHaveBeenCalledWith('/admin/dishes/uploads/u1/revoke', { revision: 5 })
   })
 })

@@ -61,14 +61,14 @@
         </view>
         <view class="search-contribution">
           <text>没找到想要的菜品？</text>
-          <button class="search-button search-link" @tap="goToAddDish">申请新增菜品</button>
+          <button class="search-button search-link" @tap="goToAddDish">添加菜品</button>
         </view>
       </view>
       <EmptyState
         v-else-if="!loading && !error && !canteenError && initialized"
         :title="`未找到“${submittedKeyword}”相关结果`"
         icon="search"
-        action-text="申请新增菜品"
+        action-text="添加这道菜"
         @action="goToAddDish"
       />
     </view>

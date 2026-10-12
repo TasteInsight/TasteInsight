@@ -1,7 +1,7 @@
 <template>
   <button
-    class="dish-card list-row-action"
-    hover-class="list-row-pressed"
+    class="dish-card"
+    hover-class="dish-card--pressed"
     role="button"
     tabindex="0"
     :aria-label="`查看${dish.name}`"
@@ -19,17 +19,13 @@
       <view class="dish-card__footer">
         <text class="dish-card__price"
           >¥{{ dish.price.toFixed(1)
-          }}<text v-if="priceUnitSuffix(dish.priceUnit)" class="dish-card__unit">{{
-            priceUnitSuffix(dish.priceUnit)
-          }}</text></text
+          }}<text v-if="dish.priceUnit" class="dish-card__unit">/{{ dish.priceUnit }}</text></text
         >
         <view class="dish-card__reputation">
           <text v-if="dish.averageRating > 0" class="dish-card__star" aria-hidden="true">★</text>
-          <text
-            class="dish-card__rating"
-            :class="{ 'dish-card__rating--unrated': dish.averageRating <= 0 }"
-            >{{ dish.averageRating > 0 ? `${dish.averageRating.toFixed(1)} 分` : '暂无评分' }}</text
-          >
+          <text class="dish-card__rating" :class="{ 'dish-card__rating--unrated': dish.averageRating <= 0 }">{{
+            dish.averageRating > 0 ? `${dish.averageRating.toFixed(1)} 分` : '暂无评分'
+          }}</text>
           <text
             v-if="dish.reviewCount !== undefined && dish.reviewCount !== null"
             class="dish-card__reviews"
@@ -55,7 +51,6 @@
 import { computed, ref, watch } from 'vue';
 import type { Dish } from '@/types/api';
 import { useButtonActivation } from '@/composables/use-button-activation';
-import { priceUnitSuffix } from '@/utils/price-display';
 import TagBadge from './TagBadge.vue';
 
 const props = defineProps<{ dish: Dish }>();
@@ -73,12 +68,9 @@ watch(
   }
 );
 
-const {
-  activate: selectDish,
-  handleKeydown,
-  handleKeyup,
-  clearPress,
-} = useButtonActivation(() => emit('select', props.dish.id));
+const { activate: selectDish, handleKeydown, handleKeyup, clearPress } = useButtonActivation(() =>
+  emit('select', props.dish.id)
+);
 </script>
 
 <style scoped>
@@ -100,6 +92,14 @@ const {
 }
 .dish-card::after {
   border: 0;
+}
+.dish-card--pressed,
+.dish-card:active {
+  background: #f7f8fa;
+}
+.dish-card:focus-visible {
+  outline: 2px solid #660874;
+  outline-offset: -2px;
 }
 .dish-card__photo {
   flex: 0 0 84px;

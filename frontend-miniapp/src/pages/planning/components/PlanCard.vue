@@ -43,7 +43,7 @@
           }}{{ dish.windowName ? ' / ' + dish.windowName : '' }}</text
         ><view class="meal-card-meta"
           ><text class="meal-card-price"
-            >¥{{ dish.price }}{{ priceUnitSuffix(dish.priceUnit) }}</text
+            >¥{{ dish.price }}{{ dish.priceUnit ? '/' + dish.priceUnit : '' }}</text
           ><text
             class="meal-card-rating"
             :class="{ 'meal-card-rating-rated': dish.averageRating > 0 }"
@@ -92,7 +92,6 @@ import dayjs from 'dayjs';
 import UiIcon from '@/components/UiIcon.vue';
 import IconButton from '@/components/IconButton.vue';
 import { campusToday, coversDate, planDateKey } from '../utils/meal-plan-date';
-import { priceUnitSuffix } from '@/utils/price-display';
 
 const props = withDefaults(
   defineProps<{

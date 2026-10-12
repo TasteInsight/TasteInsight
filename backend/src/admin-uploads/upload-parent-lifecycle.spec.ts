@@ -1,7 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { AdminUploadsService } from './admin-uploads.service';
 import { AdminDishesService } from '@/admin-dishes/admin-dishes.service';
-import { DishStatus } from '@/admin-dishes/dto/admin-dish.dto';
 
 describe('Upload parent identity across lifecycle transitions', () => {
   const admin = {
@@ -30,7 +29,6 @@ describe('Upload parent identity across lifecycle transitions', () => {
           name: '父菜品',
           canteenId: 'canteen',
           parentDishId: null,
-          status: 'online',
         },
       ],
     ]);
@@ -63,8 +61,6 @@ describe('Upload parent identity across lifecycle transitions', () => {
         approvedDishId: 'parent-dish',
         parentDishId: null,
         parentUploadId: null,
-        kind: 'create',
-        targetDishId: null,
       });
     const matches = (row: any, where: any) =>
       Object.entries(where).every(([key, value]) =>
@@ -114,12 +110,7 @@ describe('Upload parent identity across lifecycle transitions', () => {
           let count = 0;
           for (const row of uploads.values())
             if (matches(row, where)) {
-              Object.assign(row, {
-                ...data,
-                ...(data.revision
-                  ? { revision: (row.revision ?? 1) + data.revision.increment }
-                  : {}),
-              });
+              Object.assign(row, data);
               count++;
             }
           return { count };
@@ -147,10 +138,6 @@ describe('Upload parent identity across lifecycle transitions', () => {
           const id = `dish-${nextDish++}`;
           dishes.set(id, { id, ...data });
           return { id, ...data };
-        },
-        update: async ({ where, data }: any) => {
-          Object.assign(dishes.get(where.id), data);
-          return { ...dishes.get(where.id) };
         },
         delete: async ({ where }: any) => {
           dishes.delete(where.id);
@@ -207,6 +194,7 @@ describe('Upload parent identity across lifecycle transitions', () => {
       expect(dishes.get(uploads.get(childId).approvedDishId).parentDishId).toBe(
         parentDishId,
       );
+      expect(parentDishId).not.toBe('parent-dish');
     };
     return { uploads, dishes, review, manage, createChild, restoreAndApprove };
   };
@@ -222,140 +210,6 @@ describe('Upload parent identity across lifecycle transitions', () => {
       parentUploadId: 'parent-upload',
     });
     await state.restoreAndApprove(childId);
-    expect(state.uploads.get('parent-upload').approvedDishId).toBe(
-      'parent-dish',
-    );
-  });
-
-  it.each([false, true])(
-    'preserves the current formal parent relation on reapproval (old parent now child: %s)',
-    async (reverseParent) => {
-      const state = fixture();
-      const uploadId = await state.createChild();
-      await state.review.approveUpload(uploadId, admin, { revision: 1 });
-      const childDishId = state.uploads.get(uploadId).approvedDishId;
-      await state.review.revokeUpload(uploadId, admin, 2);
-      expect(state.uploads.get(uploadId).approvedSnapshot.parentDishId).toBe(
-        'parent-dish',
-      );
-      await state.manage.updateAdminDish(
-        childDishId,
-        { parentDishId: null },
-        admin,
-      );
-      if (reverseParent) {
-        await state.manage.updateAdminDish(
-          'parent-dish',
-          { parentDishId: childDishId },
-          admin,
-        );
-      }
-
-      await state.review.approveUpload(uploadId, admin, { revision: 3 });
-      expect(state.uploads.get(uploadId)).toMatchObject({
-        status: 'approved',
-        revision: 4,
-        approvedDishId: childDishId,
-      });
-      expect(state.dishes.get(childDishId)).toMatchObject({
-        parentDishId: null,
-        status: 'online',
-      });
-      expect(state.dishes.get('parent-dish').parentDishId).toBe(
-        reverseParent ? childDishId : null,
-      );
-    },
-  );
-
-  it('does not revive an obsolete parent relation changed before revocation', async () => {
-    const state = fixture();
-    const uploadId = await state.createChild();
-    await state.review.approveUpload(uploadId, admin, { revision: 1 });
-    const childDishId = state.uploads.get(uploadId).approvedDishId;
-    await state.manage.updateAdminDish(
-      childDishId,
-      { parentDishId: null },
-      admin,
-    );
-    await state.manage.updateAdminDish(
-      'parent-dish',
-      { parentDishId: childDishId, status: DishStatus.OFFLINE },
-      admin,
-    );
-    await state.review.revokeUpload(uploadId, admin, 2);
-    expect(state.uploads.get(uploadId)).toMatchObject({
-      parentDishId: 'parent-dish',
-      approvedSnapshot: { parentDishId: null },
-    });
-    await state.manage.updateDishStatus(
-      'parent-dish',
-      DishStatus.ONLINE,
-      admin,
-    );
-
-    await state.review.approveUpload(uploadId, admin, { revision: 3 });
-    expect(state.uploads.get(uploadId)).toMatchObject({
-      approvedDishId: childDishId,
-      status: 'approved',
-      revision: 4,
-    });
-    expect(state.dishes.get(childDishId)).toMatchObject({
-      parentDishId: null,
-      status: 'online',
-    });
-    expect(state.dishes.get('parent-dish').parentDishId).toBe(childDishId);
-  });
-
-  it('does not require an obsolete parent to be online when restoring a detached dish', async () => {
-    const state = fixture();
-    const uploadId = await state.createChild();
-    await state.review.approveUpload(uploadId, admin, { revision: 1 });
-    const childDishId = state.uploads.get(uploadId).approvedDishId;
-    await state.review.revokeUpload(uploadId, admin, 2);
-    await state.manage.updateAdminDish(
-      childDishId,
-      { parentDishId: null },
-      admin,
-    );
-    await state.manage.updateDishStatus(
-      'parent-dish',
-      DishStatus.OFFLINE,
-      admin,
-    );
-
-    await state.review.approveUpload(uploadId, admin, { revision: 3 });
-    expect(state.dishes.get(childDishId)).toMatchObject({
-      parentDishId: null,
-      status: 'online',
-    });
-  });
-
-  it('validates the current formal parent before restoring a reparented dish', async () => {
-    const state = fixture();
-    const uploadId = await state.createChild();
-    await state.review.approveUpload(uploadId, admin, { revision: 1 });
-    const childDishId = state.uploads.get(uploadId).approvedDishId;
-    await state.review.revokeUpload(uploadId, admin, 2);
-    state.dishes.set('current-parent', {
-      id: 'current-parent',
-      canteenId: 'canteen',
-      parentDishId: null,
-      status: 'offline',
-    });
-    await state.manage.updateAdminDish(
-      childDishId,
-      { parentDishId: 'current-parent' },
-      admin,
-    );
-
-    await expect(
-      state.review.approveUpload(uploadId, admin, { revision: 3 }),
-    ).rejects.toThrow('父菜品不存在或未上架');
-    expect(state.uploads.get(uploadId).status).toBe('pending');
-    expect(state.dishes.get(childDishId)).toMatchObject({
-      parentDishId: 'current-parent',
-      status: 'offline',
-    });
   });
 
   it('retains approved child history after deleting its dish and revoking the parent', async () => {
@@ -374,9 +228,6 @@ describe('Upload parent identity across lifecycle transitions', () => {
       parentUploadId: 'parent-upload',
     });
     await state.restoreAndApprove(childId);
-    expect(state.uploads.get('parent-upload').approvedDishId).toBe(
-      'parent-dish',
-    );
   });
 
   it('preserves every child upload when deleting a dish with a source approval', async () => {
@@ -399,24 +250,6 @@ describe('Upload parent identity across lifecycle transitions', () => {
     expect(
       state.dishes.get(state.uploads.get(pending).approvedDishId).parentDishId,
     ).toBe(state.uploads.get('parent-upload').approvedDishId);
-  });
-
-  it('never uses an accepted correction as the creation source when preserving child references', async () => {
-    const state = fixture();
-    const childId = await state.createChild();
-    const source = state.uploads.get('parent-upload');
-    state.uploads.delete('parent-upload');
-    state.uploads.set('earlier-correction', {
-      id: 'earlier-correction',
-      kind: 'update',
-      targetDishId: 'parent-dish',
-      approvedDishId: 'parent-dish',
-      status: 'approved',
-      canteenId: 'canteen',
-    });
-    state.uploads.set('parent-upload', source);
-    await state.manage.deleteAdminDish('parent-dish', admin);
-    expect(state.uploads.get(childId).parentUploadId).toBe('parent-upload');
   });
 
   it('keeps a source-less legacy parent while any child upload still references it', async () => {

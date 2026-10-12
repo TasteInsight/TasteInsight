@@ -79,14 +79,4 @@ export class OssStorageStrategy implements StorageStrategy {
       throw new InternalServerErrorException('Failed to upload file to OSS');
     }
   }
-
-  async remove(storageKey: string): Promise<void> {
-    if (
-      !this.client ||
-      !/^images\/[0-9a-f-]{36}\.(jpg|png|gif|webp)$/.test(storageKey)
-    ) {
-      throw new Error('Invalid managed OSS image key');
-    }
-    await this.client.delete(storageKey);
-  }
 }

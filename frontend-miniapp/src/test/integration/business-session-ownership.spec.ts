@@ -22,7 +22,7 @@ const requests: any[] = [];
 const uploads: any[] = [];
 const wrappers: any[] = [];
 let autoCanteens = false;
-const profile = (id: string) => ({ id, openId: `${id}-openid`, nickname: id, capabilities: { canContribute: true } });
+const profile = (id: string) => ({ id, openId: `${id}-openid`, nickname: id });
 const success = (data: any) => ({ statusCode: 200, data: { code: 200, data } });
 const meta = { page: 1, pageSize: 10, total: 1, totalPages: 1 };
 const matching = (path: string) => requests.filter(item => new URL(item.url).pathname === path);
@@ -33,7 +33,7 @@ const uniMock = {
   setStorageSync: (key: string, value: any) => storage.set(key, JSON.parse(JSON.stringify(value))),
   removeStorageSync: (key: string) => storage.delete(key),
   request: jest.fn(), uploadFile: jest.fn(), showToast: jest.fn(), navigateBack: jest.fn(),
-  reLaunch: jest.fn(), navigateTo: jest.fn(), redirectTo: jest.fn(), stopPullDownRefresh: jest.fn(),
+  reLaunch: jest.fn(), navigateTo: jest.fn(), stopPullDownRefresh: jest.fn(),
   chooseImage: jest.fn(), showLoading: jest.fn(), hideLoading: jest.fn(),
   showModal: jest.fn(),
   getSystemInfoSync: () => ({ windowWidth: 375 }), hideTabBar: jest.fn(), showTabBar: jest.fn(),
@@ -118,7 +118,6 @@ describe('real multipart and draft request chain', () => {
     expect(matching('/dishes/upload')).toHaveLength(0);
 
     const retry = draft.submitForm();
-    await flushPromises();
     expect(uploads).toHaveLength(2);
     expect(uploads[1].filePath).toBe(path);
     uploads[1].success({ statusCode: 200, data: JSON.stringify({ code: 200, data: { url: 'https://images.test/retried.jpg' } }) });
@@ -154,15 +153,14 @@ describe('real multipart and draft request chain', () => {
     const old = draft.submitForm();
     await flushPromises();
     await useUserStore().loginAction('B');
-    const nextDraft = useAddDish();
-    fillDraft(nextDraft, 'B draft');
-    const current = nextDraft.submitForm();
+    fillDraft(draft, 'B draft');
+    const current = draft.submitForm();
     await flushPromises();
     if (outcome === 'success') uploads[0].success({ statusCode: 200, data: JSON.stringify({ code: 200, data: { url: 'https://images.test/A.jpg' } }) });
     else uploads[0].fail(new Error('old upload failed'));
     await expect(old).resolves.toBe(false);
-    expect(nextDraft.submitting.value).toBe(true);
-    expect(nextDraft.error.value).toBe('');
+    expect(draft.submitting.value).toBe(true);
+    expect(draft.error.value).toBe('');
     expect(matching('/dishes/upload')).toHaveLength(1);
     expect(latest('/dishes/upload')).toMatchObject({
       header: { Authorization: 'Bearer B-access' }, data: { name: 'B draft', images: [] },
@@ -185,7 +183,7 @@ describe('real multipart and draft request chain', () => {
     await pending;
     await useUserStore().loginAction('B');
     jest.advanceTimersByTime(1500);
-    expect(uniMock.redirectTo).not.toHaveBeenCalled();
+    expect(uniMock.navigateBack).not.toHaveBeenCalled();
   });
 });
 

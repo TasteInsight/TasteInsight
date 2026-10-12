@@ -92,7 +92,7 @@ function planningPage(editable = false, cards = false) {
   const wrapper = shallowMount(PlanningPage, {
     global: {
       config: { errorHandler: pageErrors },
-      stubs: { PlanCard: !cards, PlanEditDialog: !editable, EmptyState: false, IconButton: false, UiPicker: false, FloatingActionButton: false, 'page-container': true, picker: true, 'uni-icons': true },
+      stubs: { PlanCard: !cards, PlanEditDialog: !editable, EmptyState: false, IconButton: false, UiPicker: false, 'page-container': true, picker: true, 'uni-icons': true },
     },
   });
   wrappers.push(wrapper);
@@ -343,7 +343,7 @@ describe('planning loading lifecycle', () => {
     const read = deferred();
     (getMealPlans as jest.Mock).mockReturnValueOnce(read.promise);
     const wrapper = planningPage(true);
-    await wrapper.get('[aria-label="新建规划"]').trigger('click');
+    await wrapper.get('[aria-label="新建规划"]').trigger('tap');
     await flushPromises();
     expect(wrapper.findAllComponents(PlanEditDialog).length).toBe(2);
     const editor = wrapper.findAllComponents(PlanEditDialog)[1];

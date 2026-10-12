@@ -1,9 +1,6 @@
 import {
-  formatNotificationDate,
   notificationDestination,
-  notificationIcon,
   notificationText,
-  notificationTitle,
 } from '@/pages/notifications/notification-content';
 import type { InboxNotification } from '@/api/modules/notifications';
 const item = (patch: Partial<InboxNotification>): InboxNotification => ({
@@ -51,29 +48,4 @@ test('labels distinguish likes, replies and service updates without inventing me
   expect(notificationText(item({ type: 'price_change', actor: null }))).toBe(
     '关注的菜品价格有更新'
   );
-});
-
-test('service display titles stay concise while full labels retain the action context', () => {
-  const approved = item({ type: 'upload_approved', actor: null, targetType: 'dish_upload' });
-  expect(notificationTitle(approved)).toBe('菜品资料已采纳');
-  expect(notificationText(approved)).toBe('你提交的菜品资料已采纳');
-  expect(notificationTitle(item({ type: 'upload_rejected' }))).toBe('菜品资料未通过');
-  expect(notificationTitle(item({ type: 'upload_revoked' }))).toBe('菜品资料已退回');
-  expect(notificationTitle(item({ type: 'new_dish' }))).toBe('食堂上新');
-  expect(notificationTitle(item({ type: 'like' }))).toBe('小同学 赞了你的评价');
-});
-
-test('system events use distinct icons from the shared line icon family', () => {
-  expect(notificationIcon(item({ type: 'upload_approved' }))).toBe('shield');
-  expect(notificationIcon(item({ type: 'upload_rejected' }))).toBe('edit');
-  expect(notificationIcon(item({ type: 'upload_revoked' }))).toBe('history');
-  expect(notificationIcon(item({ type: 'new_dish' }))).toBe('plus');
-  expect(notificationIcon(item({ type: 'reply', actor: null }))).toBe('chat');
-});
-
-test('compact dates retain time and include the year for older notifications', () => {
-  const now = new Date('2026-10-12T12:00:00');
-  expect(formatNotificationDate('2026-10-12T08:10:00', now)).toBe('08:10');
-  expect(formatNotificationDate('2026-10-09T08:10:00', now)).toBe('10/9 08:10');
-  expect(formatNotificationDate('2025-10-12T08:10:00', now)).toBe('2025/10/12 08:10');
 });

@@ -1,376 +1,730 @@
 <template>
   <div class="admin-page">
-    <div class="admin-panel">
-      <div class="admin-heading-row">
-        <Header title="菜品审核详情" description="" header-icon="carbon:task-approved" />
-        <button type="button" class="px-4 py-2 border rounded-lg hover:bg-gray-50" @click="goBack">返回列表</button>
-      </div>
+    <div class="admin-panel relative">
+      <!-- 关闭按钮 -->
+      <button
+        @click="goBack"
+        class="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition p-2"
+        title="关闭"
+      >
+        <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
+      </button>
 
-      <div v-if="isLoading" role="status" class="space-y-4 py-6 text-gray-600" aria-live="polite">
-        <p>正在加载提交资料…</p>
-        <div class="h-8 bg-gray-100 rounded w-1/2"></div>
-        <div class="h-24 bg-gray-100 rounded"></div>
-      </div>
-      <div v-else-if="loadError" role="alert" class="py-8 text-center">
-        <p class="text-red-700 mb-4">{{ loadError }}</p>
-        <button type="button" class="px-4 py-2 border rounded-lg hover:bg-gray-50" @click="loadDishData">重试</button>
-      </div>
+      <Header
+        title="菜品审核详情"
+        description="查看菜品信息并决定是否通过审核"
+        header-icon="carbon:task-approved"
+      />
 
-      <div v-else-if="dishData" class="space-y-6">
-        <div v-if="notice" role="status" class="p-4 bg-purple-50 rounded-lg text-sm text-tsinghua-purple">{{ notice }}</div>
-        <div v-if="actionError" role="alert" class="p-4 bg-red-50 rounded-lg text-sm text-red-700">{{ actionError }}</div>
-        <div class="flex flex-wrap justify-between items-start gap-4">
-          <div class="min-w-0">
-            <h3 class="text-xl font-semibold break-words">{{ dishData.name }}</h3>
-            <p class="text-gray-600 mt-1">{{ contributionLocation(dishData) || '未填写位置' }}</p>
-            <p class="text-lg font-medium mt-2">{{ formatContributionPrice(dishData.price, dishData.priceUnit) }}</p>
+      <div class="space-y-6 mt-6">
+        <div class="admin-form-grid">
+          <!-- 左侧列 -->
+          <div>
+            <!-- 食堂信息组 -->
+            <div class="mb-6">
+              <label class="block text-gray-700 font-medium mb-2">食堂信息</label>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm text-gray-600 mb-1">食堂名称</label>
+                  <div class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700">
+                    {{ dishData.canteen || '未填写' }}
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm text-gray-600 mb-1">食堂楼层</label>
+                  <div class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700">
+                    {{ dishData.floor || '未填写' }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 窗口信息 -->
+            <div class="mb-6">
+              <label class="block text-gray-700 font-medium mb-2">窗口信息</label>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm text-gray-600 mb-1">窗口名称</label>
+                  <div class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700">
+                    {{ dishData.windowName || dishData.window || '未填写' }}
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm text-gray-600 mb-1">窗口编号</label>
+                  <div class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700">
+                    {{ dishData.windowNumber || '未填写' }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 菜品名称 -->
+            <div class="mb-6">
+              <label class="block text-gray-700 font-medium mb-2">菜品名称</label>
+              <div class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700 font-medium">
+                {{ dishData.name || '未填写' }}
+              </div>
+            </div>
+
+            <!-- 菜品描述 -->
+            <div class="mb-6">
+              <label class="block text-gray-700 font-medium mb-2">菜品描述</label>
+              <div
+                class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700 min-h-[100px] max-h-[200px] overflow-y-auto"
+              >
+                {{ dishData.description || '未填写' }}
+              </div>
+            </div>
+
+            <!-- 菜品图片 -->
+            <div>
+              <label class="block text-gray-700 font-medium mb-2">菜品图片</label>
+
+              <AdminImage
+                :src="selectedImage || dishData.images?.[0]"
+                alt="菜品图片"
+                variant="preview"
+                previewable
+                class="w-full mb-4"
+                image-class="w-full aspect-square rounded-lg border-2 object-cover"
+                @preview="previewImage"
+              />
+              <div v-if="dishData.images?.length" class="flex gap-2 overflow-x-auto pb-2">
+                <AdminImage
+                  v-for="(img, index) in dishData.images"
+                  :key="index"
+                  :src="img"
+                  :alt="`菜品图片 ${index + 1}`"
+                  previewable
+                  image-class="w-20 h-20 rounded-lg object-cover"
+                  class="border-2 rounded-lg"
+                  :class="{
+                    'border-tsinghua-purple': (selectedImage || dishData.images[0]) === img,
+                    'border-transparent': (selectedImage || dishData.images[0]) !== img,
+                  }"
+                  @mouseenter="selectedImage = img"
+                  @mouseleave="selectedImage = ''"
+                  @preview="selectedImage = img"
+                />
+              </div>
+            </div>
           </div>
-          <div class="flex flex-wrap items-center gap-2 text-sm">
-            <span class="text-gray-700">{{ contributionKind }}</span>
-            <span class="px-2 py-1 rounded-full text-xs font-medium" :class="statusClasses[dishData.status]">{{ statusText[dishData.status] }}</span>
+
+          <!-- 右侧列 -->
+          <div>
+            <!-- 菜品子项 -->
+            <div class="mb-6">
+              <label class="block text-gray-700 font-medium mb-2">菜品子项</label>
+              <div class="space-y-2">
+                <div
+                  v-for="(item, index) in dishData.subItems"
+                  :key="index"
+                  class="flex items-center justify-between px-4 py-2 border rounded-lg bg-gray-50"
+                >
+                  <span class="text-gray-700">{{ item.name || '未命名' }}</span>
+                  <span class="text-tsinghua-purple font-medium">{{
+                    item.price ? `¥${item.price}` : '未定价'
+                  }}</span>
+                </div>
+                <div
+                  v-if="!dishData.subItems || dishData.subItems.length === 0"
+                  class="px-4 py-2 border rounded-lg bg-gray-50 text-gray-500"
+                >
+                  暂无子项
+                </div>
+              </div>
+            </div>
+
+            <!-- 供应信息组 -->
+            <div class="mb-6">
+              <label class="block text-gray-700 font-medium mb-2">供应信息</label>
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm text-gray-600 mb-1">菜系TAG</label>
+                  <div
+                    v-if="dishData.tags && dishData.tags.length > 0"
+                    class="flex flex-wrap gap-2"
+                  >
+                    <span
+                      v-for="(tag, index) in dishData.tags"
+                      :key="index"
+                      class="inline-flex items-center px-3 py-1 bg-tsinghua-purple/10 text-tsinghua-purple rounded-full text-sm"
+                    >
+                      #{{ tag }}
+                    </span>
+                  </div>
+                  <div v-else class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-500">
+                    未设置TAG
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-sm text-gray-600 mb-1">口味指标</label>
+                  <div class="grid grid-cols-4 gap-3">
+                    <div>
+                      <label class="block text-xs text-gray-500 mb-1">辣度</label>
+                      <div
+                        class="w-full px-3 py-2 border rounded-lg bg-gray-50 text-gray-700 text-sm"
+                      >
+                        {{
+                          dishData.spicyLevel !== null && dishData.spicyLevel !== undefined
+                            ? dishData.spicyLevel
+                            : 0
+                        }}
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-xs text-gray-500 mb-1">咸度</label>
+                      <div
+                        class="w-full px-3 py-2 border rounded-lg bg-gray-50 text-gray-700 text-sm"
+                      >
+                        {{
+                          dishData.saltiness !== null && dishData.saltiness !== undefined
+                            ? dishData.saltiness
+                            : 0
+                        }}
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-xs text-gray-500 mb-1">甜度</label>
+                      <div
+                        class="w-full px-3 py-2 border rounded-lg bg-gray-50 text-gray-700 text-sm"
+                      >
+                        {{
+                          dishData.sweetness !== null && dishData.sweetness !== undefined
+                            ? dishData.sweetness
+                            : 0
+                        }}
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-xs text-gray-500 mb-1">油度</label>
+                      <div
+                        class="w-full px-3 py-2 border rounded-lg bg-gray-50 text-gray-700 text-sm"
+                      >
+                        {{
+                          dishData.oiliness !== null && dishData.oiliness !== undefined
+                            ? dishData.oiliness
+                            : 0
+                        }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 供应时间 -->
+            <div class="mb-6">
+              <label class="block text-gray-700 font-medium mb-2">供应时间</label>
+              <div class="space-y-2">
+                <div class="flex items-center px-4 py-2 border rounded-lg bg-gray-50">
+                  <AppIcon
+                    class="iconify mr-2"
+                    :class="dishData.servingTime?.breakfast ? 'text-green-500' : 'text-gray-300'"
+                    icon="carbon:checkmark"
+                  ></AppIcon>
+                  <span :class="dishData.servingTime?.breakfast ? 'text-gray-700' : 'text-gray-400'"
+                    >早餐</span
+                  >
+                </div>
+                <div class="flex items-center px-4 py-2 border rounded-lg bg-gray-50">
+                  <AppIcon
+                    class="iconify mr-2"
+                    :class="dishData.servingTime?.lunch ? 'text-green-500' : 'text-gray-300'"
+                    icon="carbon:checkmark"
+                  ></AppIcon>
+                  <span :class="dishData.servingTime?.lunch ? 'text-gray-700' : 'text-gray-400'"
+                    >午餐</span
+                  >
+                </div>
+                <div class="flex items-center px-4 py-2 border rounded-lg bg-gray-50">
+                  <AppIcon
+                    class="iconify mr-2"
+                    :class="dishData.servingTime?.dinner ? 'text-green-500' : 'text-gray-300'"
+                    icon="carbon:checkmark"
+                  ></AppIcon>
+                  <span :class="dishData.servingTime?.dinner ? 'text-gray-700' : 'text-gray-400'"
+                    >晚餐</span
+                  >
+                </div>
+                <div class="flex items-center px-4 py-2 border rounded-lg bg-gray-50">
+                  <AppIcon
+                    class="iconify mr-2"
+                    :class="dishData.servingTime?.night ? 'text-green-500' : 'text-gray-300'"
+                    icon="carbon:checkmark"
+                  ></AppIcon>
+                  <span :class="dishData.servingTime?.night ? 'text-gray-700' : 'text-gray-400'"
+                    >夜宵</span
+                  >
+                </div>
+              </div>
+            </div>
+
+            <!-- 供应日期段 -->
+            <div class="mb-6">
+              <label class="block text-gray-700 font-medium mb-2">供应日期段</label>
+              <div
+                v-if="dishData.availableDates && dishData.availableDates.length > 0"
+                class="space-y-2"
+              >
+                <div
+                  v-for="(dateRange, index) in dishData.availableDates"
+                  :key="index"
+                  class="px-4 py-2 border rounded-lg bg-gray-50 text-gray-700"
+                >
+                  {{ dateRange.startDate }} 至 {{ dateRange.endDate }}
+                </div>
+              </div>
+              <div v-else class="px-4 py-2 border rounded-lg bg-gray-50 text-gray-500">
+                未设置供应日期段
+              </div>
+            </div>
+
+            <!-- 过敏原 -->
+            <div class="mb-6">
+              <label class="block text-gray-700 font-medium mb-2">过敏原</label>
+              <div class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700">
+                {{ dishData.allergens || '未填写' }}
+              </div>
+            </div>
+
+            <!-- 原辅料 -->
+            <div class="mb-6">
+              <label class="block text-gray-700 font-medium mb-2">原辅料</label>
+              <div class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700">
+                {{ dishData.ingredients || '未填写' }}
+              </div>
+            </div>
+
+            <!-- 提交信息 -->
+            <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div class="text-sm text-gray-600 mb-2">提交信息</div>
+              <div class="space-y-1 text-sm">
+                <div class="flex justify-between">
+                  <span class="text-gray-600">提交人：</span>
+                  <span class="text-gray-800 font-medium">{{ dishData.submitter || '未知' }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">提交时间：</span>
+                  <span class="text-gray-800"
+                    >{{ dishData.submitDate || '' }} {{ dishData.submitTime || '' }}</span
+                  >
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-600">当前状态：</span>
+                  <span
+                    class="px-2 py-1 rounded-full text-xs font-medium"
+                    :class="statusClasses[dishData.status]"
+                  >
+                    {{ statusText[dishData.status] }}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <dl class="flex flex-wrap gap-x-8 gap-y-2 text-sm text-gray-600">
-          <div><dt class="inline">提交人：</dt><dd class="inline text-gray-800">{{ dishData.uploaderName || '未知' }}</dd></div>
-          <div><dt class="inline">提交时间：</dt><dd class="inline text-gray-800">{{ formatDate(dishData.createdAt) }}</dd></div>
-          <div v-if="dishData.parentDishName"><dt class="inline">所属菜品：</dt><dd class="inline text-gray-800">{{ dishData.parentDishName }}</dd></div>
-        </dl>
-        <p v-if="dishData.rejectReason" class="p-4 bg-red-50 rounded-lg text-sm text-red-700">拒绝原因：{{ dishData.rejectReason }}</p>
-        <button v-if="dishData.approvedDishId" type="button" class="text-sm text-tsinghua-purple hover:underline" @click="router.push(`/view-dish/${dishData.approvedDishId}`)">查看已采纳菜品</button>
-
-        <section aria-labelledby="contribution-content-title">
-          <div class="flex flex-wrap justify-between items-center gap-3 border-t pt-5 mb-4">
-            <h3 id="contribution-content-title" class="font-medium text-lg">提交资料</h3>
-            <button v-if="dishData.status === 'pending' && !editing" type="button" :disabled="!canModerate || isSubmitting" class="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" @click="startEditing">编辑资料</button>
-          </div>
-          <ContributionReviewForm v-if="editing" :key="`${dishData.id}:${dishData.revision}`" :upload="dishData" :busy="isSubmitting" @save="saveChanges" @cancel="editing = false" />
-          <div v-else class="flex flex-col md:flex-row items-start gap-6">
-            <div class="w-40 sm:w-48 md:w-56 shrink-0">
-              <AdminImage :src="selectedImage || dishData.images?.[0]" alt="菜品图片" variant="preview" previewable image-class="w-full aspect-square rounded-lg object-cover" @preview="previewImage" />
-              <div v-if="dishData.images && dishData.images.length > 1" class="flex flex-wrap gap-2 mt-3">
-                <button v-for="(image, index) in dishData.images" :key="image" type="button" :aria-label="`查看菜品图片 ${index + 1}`" :aria-pressed="(selectedImage || dishData.images[0]) === image" class="rounded-lg border-2 p-0.5" :class="(selectedImage || dishData.images[0]) === image ? 'border-tsinghua-purple' : 'border-transparent'" @click="selectedImage = image">
-                  <AdminImage :src="image" :alt="`菜品图片 ${index + 1}`" image-class="w-12 h-12 rounded object-cover" />
-                </button>
-              </div>
-            </div>
-            <div class="min-w-0 flex-1 w-full space-y-4">
-              <dl class="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                <div v-for="field in providedDetailFields" :key="field.key" :data-field="field.key" class="flex items-baseline gap-3" :class="{ 'lg:col-span-2': field.key === 'description' || field.key === 'availableDates' }">
-                  <dt class="w-20 shrink-0 text-gray-600">{{ field.label }}</dt>
-                  <dd class="min-w-0 break-words whitespace-pre-wrap">{{ formatContributionField(dishData, field.key) }}</dd>
-                </div>
-              </dl>
-              <div role="group" aria-label="口味" class="flex flex-wrap items-baseline gap-3 text-sm">
-                <span class="w-20 shrink-0 text-gray-600">口味</span>
-                <dl v-if="providedTasteFields.length" class="flex flex-wrap gap-x-5 gap-y-2">
-                  <div v-for="field in providedTasteFields" :key="field.key" :data-field="field.key" class="flex gap-2">
-                    <dt class="text-gray-600">{{ field.label }}</dt>
-                    <dd>{{ formatContributionField(dishData, field.key) }}</dd>
-                  </div>
-                </dl>
-                <span v-else>未提供</span>
-              </div>
-              <p v-if="missingDetailFields.length" data-testid="missing-contribution-fields" class="text-sm text-gray-500">未提供：{{ missingDetailFields.map(field => field.label).join('、') }}</p>
-            </div>
-          </div>
-        </section>
-
-        <section v-if="duplicateCandidates.length && !dishData.targetDishId && dishData.status === 'pending'" aria-labelledby="merge-title" class="border-t pt-5">
-          <h3 id="merge-title" class="text-lg font-medium mb-3">相似菜品</h3>
-          <label for="merge-dish" class="block text-sm font-medium mb-1">新建或归并</label>
-          <select id="merge-dish" v-model="mergeDishId" :disabled="isSubmitting || editing || !canModerate" class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple disabled:bg-gray-50">
-            <option value="">新建菜品</option>
-            <option v-for="candidate in duplicateCandidates" :key="candidate.id" :value="candidate.id">归并至 {{ candidate.name }} · {{ contributionLocation(candidate) }} · {{ formatContributionPrice(candidate.price, candidate.priceUnit) }}{{ candidate.status === 'offline' ? '（已下架）' : '' }}</option>
-          </select>
-        </section>
-
-        <section v-if="comparisonDish" aria-labelledby="comparison-title" class="border-t pt-5">
-          <h3 id="comparison-title" class="text-lg font-medium mb-2">{{ mergeDishId ? '归并字段对比' : '资料变更对比' }}</h3>
-          <p v-if="mergeDishId" class="text-sm text-gray-600 mb-3">勾选要采纳的字段。</p>
-          <p v-if="hasImageChanges" class="text-sm text-gray-600 mb-3">图片将追加到原菜品，不替换已有图片。</p>
-          <div class="admin-table-scroll">
-            <table class="admin-table contribution-comparison text-sm" style="min-width: 0; table-layout: fixed">
-              <colgroup>
-                <col v-if="mergeDishId" style="width: 4rem" />
-                <col style="width: 20%" />
-                <col />
-                <col />
-              </colgroup>
-              <thead><tr><th v-if="mergeDishId" class="p-3 text-left">采纳</th><th class="p-3 text-left">字段</th><th class="p-3 text-left">原菜品资料</th><th class="p-3 text-left">本次提交</th></tr></thead>
-              <tbody class="divide-y divide-gray-200">
-                <tr v-for="field in comparisonFields" :key="field.key" :data-comparison="field.key">
-                  <td v-if="mergeDishId" class="p-3 align-top"><input v-model="mergeFields" type="checkbox" :value="field.key" :aria-label="`采纳${field.label}`" :disabled="isSubmitting || editing || !canModerate" class="accent-tsinghua-purple" /></td>
-                  <th scope="row" class="p-3 text-left align-top font-medium">{{ field.label }}</th>
-                  <td class="p-3 align-top whitespace-pre-wrap break-words">
-                    <div v-if="field.key === 'images'" class="flex flex-wrap gap-2"><AdminImage v-for="(image, index) in comparisonDish.images" :key="image" :src="image" :alt="`原菜品图片 ${index + 1}`" image-class="w-16 h-16 object-cover rounded" /><span v-if="!comparisonDish.images?.length">未填写</span></div>
-                    <span v-else>{{ formatContributionField(comparisonDish, field.key) }}</span>
-                  </td>
-                  <td class="p-3 align-top whitespace-pre-wrap break-words">
-                    <div v-if="field.key === 'images'" class="flex flex-wrap gap-2"><AdminImage v-for="(image, index) in dishData.images" :key="image" :src="image" :alt="`追加菜品图片 ${index + 1}`" image-class="w-16 h-16 object-cover rounded" /><span v-if="!dishData.images?.length">未填写</span></div>
-                    <span v-else>{{ formatContributionField(dishData, field.key) }}</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div v-if="needsBaselineConfirmation && dishData.status === 'pending'" class="mt-4 space-y-2">
-            <p class="text-sm text-gray-600">核对最新原菜品资料后，可将其设为本次审核基线。该操作只更新审核版本，仍需单独批准。</p>
-            <button type="button" :disabled="!canAct" class="px-4 py-2 border rounded-lg text-tsinghua-purple hover:bg-purple-50 disabled:opacity-50" @click="confirmCurrentTarget">确认当前资料并重审</button>
-          </div>
-        </section>
-
-        <p v-if="!canModerate" class="text-sm text-gray-600">您没有权限审核菜品。</p>
-        <div class="flex flex-wrap gap-3 pt-5 border-t border-gray-200">
-          <template v-if="dishData.status === 'pending'">
-            <button type="button" :disabled="!canAct" class="px-5 py-2.5 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark disabled:opacity-50 disabled:cursor-not-allowed" @click="approveDish">{{ mergeDishId ? '通过并归并' : '通过审核' }}</button>
-            <button type="button" :disabled="!canAct" class="px-5 py-2.5 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed" @click="openRejectModal">拒绝审核</button>
-          </template>
-          <button v-else-if="dishData.status !== 'withdrawn'" type="button" :disabled="!canAct" class="px-5 py-2.5 border rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" @click="revokeApproval">撤销审核结果</button>
-          <span v-if="isSubmitting" role="status" class="self-center text-sm text-gray-600">正在处理…</span>
-          <span v-if="editing" class="self-center text-sm text-gray-600">保存或取消修改后继续审核。</span>
+        <!-- 审核操作按钮 -->
+        <div class="flex space-x-4 pt-6 border-t border-gray-200">
+          <button
+            type="button"
+            class="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200 flex items-center justify-center"
+            @click="approveDish"
+          >
+            <AppIcon class="iconify mr-2" icon="carbon:checkmark-filled"></AppIcon>
+            批准通过
+          </button>
+          <button
+            type="button"
+            class="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200 flex items-center justify-center"
+            @click="openRejectModal"
+          >
+            <AppIcon class="iconify mr-2" icon="carbon:close-filled"></AppIcon>
+            拒绝审核
+          </button>
+          <button
+            type="button"
+            class="flex-1 px-6 py-3 bg-yellow-100 text-yellow-800 rounded-lg hover:bg-yellow-200 transition duration-200 flex items-center justify-center"
+            @click="revokeApproval"
+          >
+            <AppIcon class="iconify mr-2" icon="carbon:reset"></AppIcon>
+            撤销审核结果
+          </button>
+          <button
+            type="button"
+            class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"
+            @click="goBack"
+          >
+            取消
+          </button>
         </div>
       </div>
     </div>
 
-    <AdminDialog :open="isRejectModalOpen" label="拒绝审核" :close-on-backdrop="false" :close-on-escape="!isSubmitting" @close="closeRejectModal">
-      <form class="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden" @submit.prevent="confirmReject">
-        <div class="px-6 py-4 border-b"><h3 class="text-lg font-medium">拒绝审核</h3></div>
+    <!-- 拒绝审核弹窗 -->
+    <AdminDialog
+      v-if="isRejectModalOpen"
+      :open="isRejectModalOpen"
+      label="拒绝审核"
+      :close-on-backdrop="false"
+      @close="closeRejectModal"
+    >
+      <div class="bg-white rounded-lg shadow-xl w-[500px] overflow-hidden animate-fade-in-up">
+        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+          <h3 class="text-lg font-medium text-gray-900">拒绝审核</h3>
+          <button
+            @click="closeRejectModal"
+            aria-label="关闭拒绝审核"
+            class="text-gray-400 hover:text-gray-500 transition-colors"
+          >
+            <AppIcon class="iconify text-xl" icon="carbon:close"></AppIcon>
+          </button>
+        </div>
+
         <div class="p-6">
-          <label for="reject-reason" class="block text-sm font-medium mb-2">拒绝原因</label>
-          <textarea id="reject-reason" v-model="rejectReason" :disabled="isSubmitting" :aria-invalid="!!rejectError" :aria-describedby="rejectError ? 'reject-error' : 'reject-help'" rows="4" class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" />
-          <p id="reject-help" class="text-sm text-gray-600 mt-2">请说明需要核实或补充的内容，提交人可修改后重新提交。</p>
-          <p v-if="rejectError" id="reject-error" role="alert" class="text-sm text-red-700 mt-2">{{ rejectError }}</p>
+          <p class="text-gray-600 mb-4">
+            确定要拒绝菜品 <span class="font-medium text-gray-900">"{{ dishData.name }}"</span> 吗？
+          </p>
+
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">拒绝原因</label>
+            <textarea
+              v-model="rejectReason"
+              rows="4"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-shadow resize-none"
+              placeholder="请输入拒绝原因（建议填写，以便用户修改）..."
+            ></textarea>
+          </div>
         </div>
-        <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3">
-          <button type="button" :disabled="isSubmitting" class="px-4 py-2 border rounded-lg hover:bg-gray-100 disabled:opacity-50" @click="closeRejectModal">取消</button>
-          <button type="submit" :disabled="isSubmitting" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50">{{ isSubmitting ? '提交中…' : '确认拒绝' }}</button>
+
+        <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+          <button
+            @click="closeRejectModal"
+            class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition duration-200"
+          >
+            取消
+          </button>
+          <button
+            @click="confirmReject"
+            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200 flex items-center"
+            :disabled="isSubmitting"
+          >
+            <AppIcon
+              v-if="isSubmitting"
+              class="iconify animate-spin mr-2"
+              icon="mdi:loading"
+            ></AppIcon>
+            确认拒绝
+          </button>
         </div>
-      </form>
+      </div>
     </AdminDialog>
   </div>
 </template>
 
-<script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+<script>
+import { reactive, onMounted, ref } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { reviewApi } from '@/api/modules/review'
-import { useAuthStore } from '@/store/modules/use-auth-store'
-import { showConfirm, showConfirmDanger } from '@/composables/useModal'
+import { dishApi } from '@/api/modules/dish'
 import Header from '@/components/Layout/Header.vue'
 import AdminImage from '@/components/Common/AdminImage.vue'
 import AdminDialog from '@/components/Common/AdminDialog.vue'
-import ContributionReviewForm from '@/components/Dishes/ContributionReviewForm.vue'
-import { contributionFields, contributionTasteFields, contributionLocation, formatContributionField, formatContributionPrice } from '@/components/Dishes/contribution-fields'
-import type { ApiResponse } from '@/types/api'
-import type { ContributionApprovalRequest, ContributionField, ContributionFields, ContributionStatus, DishContribution } from '@/types/dish-contribution'
+import { showAlert } from '@/composables/useModal'
 
-const route = useRoute()
-const router = useRouter()
-const authStore = useAuthStore()
-const dishData = ref<DishContribution | null>(null)
-const isLoading = ref(true)
-const loadError = ref('')
-const actionError = ref('')
-const notice = ref('')
-const selectedImage = ref('')
-const editing = ref(false)
-const isSubmitting = ref(false)
-const isRejectModalOpen = ref(false)
-const rejectReason = ref('')
-const rejectError = ref('')
-const mergeDishId = ref('')
-const mergeFields = ref<ContributionField[]>([])
-const needsBaselineConfirmation = ref(false)
-const canModerate = computed(() => authStore.hasPermission('upload:approve'))
-const canAct = computed(() => canModerate.value && !isSubmitting.value && !editing.value)
-const duplicateCandidates = computed(() => (dishData.value?.duplicateCandidates || []).filter(candidate => candidate.canteenId === dishData.value?.canteenId))
-const selectedCandidate = computed(() => duplicateCandidates.value.find(candidate => candidate.id === mergeDishId.value))
-const comparisonDish = computed(() => {
-  const upload = dishData.value
-  if (upload?.status === 'approved' && upload.targetDishId) return upload.baseSnapshot
-  return selectedCandidate.value || upload?.targetDish
-})
-const comparisonFields = computed(() => mergeDishId.value ? contributionFields : contributionFields.filter(field => dishData.value?.changedFields?.includes(field.key)))
-const hasImageChanges = computed(() => (mergeDishId.value ? mergeFields.value : dishData.value?.changedFields || []).includes('images'))
-const contributionKind = computed(() => dishData.value?.kind === 'update' ? '补充资料' : dishData.value?.targetDishId ? '归并菜品' : '新增菜品')
-const detailFields = contributionFields.filter(field => !['name', 'price', 'priceUnit', 'images', ...contributionTasteFields.map(taste => taste.key)].includes(field.key))
-const providedDetailFields = computed(() => detailFields.filter(field => hasFieldContent(field.key)))
-const missingDetailFields = computed(() => detailFields.filter(field => !hasFieldContent(field.key)))
-const providedTasteFields = computed(() => contributionTasteFields.filter(field => (dishData.value?.[field.key] ?? 0) > 0))
-const statusText: Record<ContributionStatus, string> = { pending: '待审核', approved: '已通过', rejected: '已拒绝', withdrawn: '已撤回' }
-const statusClasses: Record<ContributionStatus, string> = { pending: 'bg-yellow-100 text-yellow-800', approved: 'bg-green-100 text-green-800', rejected: 'bg-red-100 text-red-800', withdrawn: 'bg-gray-100 text-gray-700' }
-const formatDate = (value: string) => value ? new Date(value).toLocaleString('zh-CN') : '未记录'
-const previewImage = (url: string) => window.open(url, '_blank')
-const goBack = () => router.push('/review-dish')
-let requestId = 0
+export default {
+  name: 'ReviewDishDetail',
+  components: {
+    AdminImage,
+    Header,
+    AdminDialog,
+  },
+  setup() {
+    const router = useRouter()
+    const route = useRoute()
+    const dishId = route.params.id
+    const isLoading = ref(false)
+    const selectedImage = ref('')
 
-function hasFieldContent(key: ContributionField): boolean {
-  const dish = dishData.value
-  if (!dish) return false
-  if (key === 'windowId') return !!(dish.windowName || dish.windowNumber || dish.floorName || dish.floorLevel)
-  const value = dish[key]
-  return Array.isArray(value) ? value.length > 0 : typeof value === 'string' ? !!value.trim() : value !== null && value !== undefined
-}
+    const dishData = reactive({
+      id: '',
+      name: '',
+      canteen: '',
+      floor: '',
+      windowName: '',
+      windowNumber: '',
+      window: '', // 保留用于兼容
+      description: '',
+      allergens: '',
+      ingredients: '',
+      image: '',
+      imageUrl: '',
+      images: [],
+      subItems: [],
+      tags: [],
+      spicyLevel: 0,
+      saltiness: 0,
+      sweetness: 0,
+      oiliness: 0,
+      servingTime: {
+        breakfast: false,
+        lunch: true,
+        dinner: true,
+        night: true,
+      },
+      availableDates: [],
+      submitter: '',
+      submitDate: '',
+      submitTime: '',
+      status: 'pending',
+    })
 
-function assertSuccess<T>(response: ApiResponse<T>): void {
-  if (response.code !== 200 && response.code !== 201) throw Object.assign(new Error(response.message || '操作失败，请重试'), { status: response.code })
-}
-
-async function loadDishData(): Promise<boolean> {
-  const current = ++requestId
-  isLoading.value = true
-  loadError.value = ''
-  dishData.value = null
-  editing.value = false
-  isRejectModalOpen.value = false
-  mergeDishId.value = ''
-  mergeFields.value = []
-  try {
-    const response = await reviewApi.getPendingUploadById(String(route.params.id))
-    if (current !== requestId) return false
-    assertSuccess(response)
-    if (!response.data) throw new Error('未找到该上传记录')
-    dishData.value = response.data
-    selectedImage.value = ''
-    return true
-  } catch (failure) {
-    if (current === requestId) {
-      dishData.value = null
-      loadError.value = failure instanceof Error ? failure.message : '提交资料加载失败，请重试'
+    const statusClasses = {
+      pending: 'bg-yellow-100 text-yellow-800',
+      approved: 'bg-green-100 text-green-800',
+      rejected: 'bg-red-100 text-red-800',
     }
-    return false
-  } finally { if (current === requestId) isLoading.value = false }
-}
 
-async function handleFailure(failure: unknown) {
-  const message = failure instanceof Error ? failure.message : '操作失败，请重试'
-  const conflict = typeof failure === 'object' && failure !== null && 'status' in failure && failure.status === 409
-  if (conflict) {
-    const refreshed = await loadDishData()
-    needsBaselineConfirmation.value = refreshed && !!dishData.value?.targetDish
-    actionError.value = ''
-    notice.value = refreshed ? `${message}。已刷新最新资料，请重新核对后操作。` : `${message}。请重试加载最新资料后再审核。`
-  } else {
-    actionError.value = message
-    if (isRejectModalOpen.value) rejectError.value = message
-  }
-}
+    const statusText = {
+      pending: '待审核',
+      approved: '已通过',
+      rejected: '已拒绝',
+    }
 
-async function confirmCurrentTarget() {
-  const current = dishData.value
-  if (!current?.targetDish || !canAct.value || current.status !== 'pending') return
-  const targetUpdatedAt = current.targetDish.updatedAt
-  isSubmitting.value = true
-  actionError.value = ''
-  try {
-    if (!await showConfirm('将当前原菜品资料设为审核基线？通过后会采纳本次提交的字段，请先核对上方对比。', '确认审核基线', '确认并重审')) return
-    if (dishData.value !== current || !canModerate.value) return
-    const response = await reviewApi.updateUpload(current.id, { revision: current.revision, targetDishUpdatedAt: targetUpdatedAt })
-    assertSuccess(response)
-    if (dishData.value !== current) return
-    dishData.value = response.data
-    needsBaselineConfirmation.value = false
-    notice.value = '审核基线已更新，请核对后继续审核。'
-  } catch (failure) { if (dishData.value === current) await handleFailure(failure) }
-  finally { isSubmitting.value = false }
-}
+    // 加载菜品信息
+    const loadDishData = async () => {
+      isLoading.value = true
+      try {
+        // 使用正确的 API 获取待审核菜品详情
+        let dish = null
+        try {
+          const response = await reviewApi.getPendingUploadById(dishId.toString())
+          if (response.code === 200 && response.data) {
+            dish = response.data
+          }
+        } catch (error) {
+          console.error('获取待审核菜品详情失败:', error)
+        }
 
-function startEditing() {
-  if (!canAct.value || dishData.value?.status !== 'pending') return
-  actionError.value = ''
-  editing.value = true
-}
+        if (dish) {
+          // 填充数据
+          dishData.id = dish.id || dishId
+          dishData.name = dish.name || ''
+          dishData.canteen = dish.canteenName || ''
+          // 待审核详情接口可能不返回 floor，如果需要可以从 window 对象中获取（如果后端支持）
+          // 目前后端 DTO 没有 floor 字段，暂时置空或移除
+          dishData.floor = ''
+          dishData.windowName = dish.windowName || ''
+          dishData.windowNumber = dish.windowNumber || ''
+          dishData.window = dish.windowName || ''
+          dishData.description = dish.description || ''
 
-async function saveChanges(changes: Partial<ContributionFields>) {
-  const current = dishData.value
-  if (!current || !canModerate.value || isSubmitting.value || current.status !== 'pending') return
-  isSubmitting.value = true
-  actionError.value = ''
-  try {
-    const response = await reviewApi.updateUpload(current.id, { ...changes, revision: current.revision })
-    if (dishData.value !== current) return
-    assertSuccess(response)
-    dishData.value = response.data
-    editing.value = false
-    selectedImage.value = ''
-    mergeDishId.value = ''
-    notice.value = '资料已保存，请核对后继续审核。'
-  } catch (failure) { if (dishData.value === current) await handleFailure(failure) }
-  finally { isSubmitting.value = false }
-}
+          // 处理过敏原
+          if (Array.isArray(dish.allergens)) {
+            dishData.allergens = dish.allergens.join('、')
+          } else {
+            dishData.allergens = dish.allergens || ''
+          }
 
-async function approveDish() {
-  const current = dishData.value
-  if (!current || !canAct.value || current.status !== 'pending') return
-  actionError.value = ''
-  if (mergeDishId.value && (!selectedCandidate.value || !mergeFields.value.length)) { actionError.value = '请选择需要归并的字段'; return }
-  const payload: ContributionApprovalRequest = { revision: current.revision }
-  if (selectedCandidate.value) Object.assign(payload, { mergeDishId: selectedCandidate.value.id, mergeDishUpdatedAt: selectedCandidate.value.updatedAt, mergeFields: [...mergeFields.value] })
-  const destination = selectedCandidate.value ? `归并至“${selectedCandidate.value.name}”，仅采纳所选 ${mergeFields.value.length} 个字段` : current.targetDishId ? '的本次修改应用到原菜品' : '发布为新菜品'
-  isSubmitting.value = true
-  try {
-    if (!await showConfirm(`确定将“${current.name}”${destination}？`, '通过审核', '通过审核')) return
-    if (dishData.value !== current || !canModerate.value) return
-    const response = await reviewApi.approveUpload(current.id, payload)
-    assertSuccess(response)
-    if (dishData.value === current) await router.replace({ name: 'ReviewDish' })
-  } catch (failure) { if (dishData.value === current) await handleFailure(failure) }
-  finally { isSubmitting.value = false }
-}
+          // 处理原辅料
+          if (Array.isArray(dish.ingredients)) {
+            dishData.ingredients = dish.ingredients.join('、')
+          } else {
+            dishData.ingredients = dish.ingredients || ''
+          }
 
-function openRejectModal() {
-  if (!canAct.value || dishData.value?.status !== 'pending') return
-  rejectReason.value = ''
-  rejectError.value = ''
-  isRejectModalOpen.value = true
-}
-function closeRejectModal() { if (!isSubmitting.value) isRejectModalOpen.value = false }
+          // 处理图片
+          if (dish.images && dish.images.length > 0) {
+            dishData.imageUrl = dish.images[0]
+            dishData.image = dish.images[0]
+            dishData.images = dish.images
+          } else if (dish.image) {
+            dishData.imageUrl = dish.image
+            dishData.image = dish.image
+            dishData.images = [dish.image]
+          } else {
+            dishData.images = []
+          }
 
-async function confirmReject() {
-  const current = dishData.value
-  if (!current || !canAct.value || current.status !== 'pending') return
-  const reason = rejectReason.value.trim()
-  if (!reason) { rejectError.value = '请填写拒绝原因'; return }
-  isSubmitting.value = true
-  rejectError.value = ''
-  actionError.value = ''
-  try {
-    const response = await reviewApi.rejectUpload(current.id, { reason, revision: current.revision })
-    assertSuccess(response)
-    if (dishData.value === current) { isRejectModalOpen.value = false; await router.replace({ name: 'ReviewDish' }) }
-  } catch (failure) { if (dishData.value === current) await handleFailure(failure) }
-  finally { isSubmitting.value = false }
-}
+          // 处理标签
+          dishData.tags = dish.tags || []
 
-async function revokeApproval() {
-  const current = dishData.value
-  if (!current || !canAct.value || !['approved', 'rejected'].includes(current.status)) return
-  const consequence = current.status === 'rejected' ? '撤销后恢复待审核。' : current.targetDishId || current.kind === 'update'
-    ? '仅撤回本次修改的字段；如字段存在后续变更，系统会拒绝撤销以保护新资料。菜品 ID、评价、收藏和计划均保留。'
-    : '新发布菜品将下架，菜品 ID、评价、收藏和计划均保留。重新批准时复用原菜品 ID。'
-  isSubmitting.value = true
-  actionError.value = ''
-  try {
-    if (!await showConfirmDanger(`确定撤销“${current.name}”的审核结果？${consequence}`, '撤销审核结果', '撤销')) return
-    if (dishData.value !== current || !canModerate.value) return
-    const response = await reviewApi.revokeUpload(current.id, { revision: current.revision })
-    assertSuccess(response)
-    if (dishData.value === current) await router.replace({ name: 'ReviewDish' })
-  } catch (failure) { if (dishData.value === current) await handleFailure(failure) }
-  finally { isSubmitting.value = false }
-}
+          // 处理口味指标
+          dishData.spicyLevel =
+            dish.spicyLevel !== null && dish.spicyLevel !== undefined ? dish.spicyLevel : 0
+          dishData.saltiness =
+            dish.saltiness !== null && dish.saltiness !== undefined ? dish.saltiness : 0
+          dishData.sweetness =
+            dish.sweetness !== null && dish.sweetness !== undefined ? dish.sweetness : 0
+          dishData.oiliness =
+            dish.oiliness !== null && dish.oiliness !== undefined ? dish.oiliness : 0
 
-watch(mergeDishId, () => { mergeFields.value = []; actionError.value = '' })
-watch(() => route.params.id, () => { notice.value = ''; actionError.value = ''; needsBaselineConfirmation.value = false; void loadDishData() }, { immediate: true })
+          // 处理供应时间
+          if (dish.availableMealTime && Array.isArray(dish.availableMealTime)) {
+            dishData.servingTime = {
+              breakfast: dish.availableMealTime.includes('breakfast'),
+              lunch: dish.availableMealTime.includes('lunch'),
+              dinner: dish.availableMealTime.includes('dinner'),
+              night: dish.availableMealTime.includes('nightsnack'),
+            }
+          }
+
+          // 处理供应日期段
+          dishData.availableDates = dish.availableDates || []
+
+          // 处理子项 (待审核 DTO 中没有 subItems，如果需要后端需添加)
+          dishData.subItems = []
+
+          // 处理提交信息
+          dishData.submitter = dish.uploaderName || ''
+          if (dish.createdAt) {
+            const date = new Date(dish.createdAt)
+            dishData.submitDate = date.toISOString().split('T')[0]
+            dishData.submitTime = date.toTimeString().split(' ')[0]
+          } else {
+            dishData.submitDate = dish.submitDate || ''
+            dishData.submitTime = dish.submitTime || ''
+          }
+
+          // 处理状态
+          dishData.status = dish.status || 'pending'
+        } else {
+          showAlert('未找到该菜品信息')
+          router.push('/review-dish')
+        }
+      } catch (error) {
+        console.error('加载菜品信息失败:', error)
+        showAlert('获取菜品信息失败，请重试')
+        router.push('/review-dish')
+      } finally {
+        isLoading.value = false
+      }
+    }
+
+    // 预览图片
+    const previewImage = (imgUrl) => {
+      window.open(imgUrl, '_blank')
+    }
+
+    // 批准通过
+    const approveDish = async () => {
+      if (!confirm(`确定要批准通过菜品 "${dishData.name}" 吗？`)) {
+        return
+      }
+
+      try {
+        const response = await reviewApi.approveUpload(dishData.id.toString())
+        if (response.code === 200 || response.code === 201) {
+          dishData.status = 'approved'
+          // 返回列表页
+          router.replace({ name: 'ReviewDish' })
+        } else {
+          throw new Error(response.message || '审核失败')
+        }
+      } catch (error) {
+        console.error('批准审核失败:', error)
+        showAlert(error instanceof Error ? error.message : '批准审核失败，请重试')
+      }
+    }
+
+    // 拒绝审核相关状态
+    const isRejectModalOpen = ref(false)
+    const rejectReason = ref('')
+    const isSubmitting = ref(false)
+
+    // 打开拒绝弹窗
+    const openRejectModal = () => {
+      rejectReason.value = ''
+      isRejectModalOpen.value = true
+    }
+
+    // 关闭拒绝弹窗
+    const closeRejectModal = () => {
+      isRejectModalOpen.value = false
+    }
+
+    // 确认拒绝
+    const confirmReject = async () => {
+      if (isSubmitting.value) return
+      isSubmitting.value = true
+
+      try {
+        const response = await reviewApi.rejectUpload(
+          dishData.id.toString(),
+          rejectReason.value || '',
+        )
+        if (response.code === 200 || response.code === 201) {
+          dishData.status = 'rejected'
+          isRejectModalOpen.value = false
+          // 返回列表页
+          router.replace({ name: 'ReviewDish' })
+        } else {
+          throw new Error(response.message || '审核失败')
+        }
+      } catch (error) {
+        console.error('拒绝审核失败:', error)
+        showAlert(error instanceof Error ? error.message : '拒绝审核失败，请重试')
+      } finally {
+        isSubmitting.value = false
+      }
+    }
+
+    // 撤销审核结果
+    const revokeApproval = async () => {
+      if (dishData.status === 'pending') {
+        showAlert('该菜品当前为待审核状态，无需撤销。')
+        return
+      }
+
+      if (
+        !confirm(
+          `确定要撤销菜品 "${dishData.name}" 的审核结果吗？\n撤销后菜品将变为"待审核"状态，如果已上架将被下架。`,
+        )
+      ) {
+        return
+      }
+
+      try {
+        const response = await reviewApi.revokeUpload(dishData.id.toString())
+        if (response.code === 200 || response.code === 201) {
+          dishData.status = 'pending'
+          // 返回列表页
+          router.replace({ name: 'ReviewDish' })
+        } else {
+          throw new Error(response.message || '撤销审核失败')
+        }
+      } catch (error) {
+        console.error('撤销审核失败:', error)
+        showAlert(error instanceof Error ? error.message : '撤销审核失败，请重试')
+      }
+    }
+
+    // 返回
+    const goBack = () => {
+      router.push('/review-dish')
+    }
+
+    onMounted(() => {
+      loadDishData()
+    })
+
+    return {
+      dishData,
+      isLoading,
+      selectedImage,
+      statusClasses,
+      statusText,
+      previewImage,
+      approveDish,
+      revokeApproval,
+      goBack,
+      isRejectModalOpen,
+      rejectReason,
+      isSubmitting,
+      openRejectModal,
+      closeRejectModal,
+      confirmReject,
+    }
+  },
+}
 </script>
-
-<style scoped>
-.contribution-comparison :is(th, td) {
-  overflow-wrap: anywhere;
-}
-
-.contribution-comparison th {
-  white-space: normal;
-}
-</style>

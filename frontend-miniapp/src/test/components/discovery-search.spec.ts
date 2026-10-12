@@ -273,7 +273,7 @@ test('the shared empty state follows a successful empty search and keeps its con
   expect(empty.props()).toEqual({
     title: '未找到“米饭”相关结果',
     icon: 'search',
-    actionText: '申请新增菜品',
+    actionText: '添加这道菜',
   });
   await empty.get('button').trigger('click');
   expect(state.goToAddDish).toHaveBeenCalledTimes(1);

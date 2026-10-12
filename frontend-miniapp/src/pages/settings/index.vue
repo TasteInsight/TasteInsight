@@ -5,8 +5,7 @@
       <button
         v-for="item in group.items"
         :key="item.path"
-        class="settings-button settings-menu list-row-action"
-        hover-class="list-row-pressed"
+        class="settings-button settings-menu"
         @click="item.action.activate"
         @keydown="item.action.handleKeydown"
         @keyup="item.action.handleKeyup"
