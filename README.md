@@ -167,19 +167,7 @@ docker compose --env-file .env.production up -d --no-deps --force-recreate --wai
 
 ### 后端测试
 
-```bash
-cd backend
-
-# 单元测试
-pnpm run test:unit
-
-# E2E 测试
-cp .env.test.example .env.test
-# 填写独立 PostgreSQL 测试库的 DATABASE_URL；test:setup 会重建测试数据
-pnpm run test:setup
-pnpm run test:e2e
-pnpm run test:teardown
-```
+单元测试、独立 E2E 环境准备和运行命令见 [后端测试说明](./backend/TEST.md)。E2E 准备会重建测试数据，不能使用开发、验收或生产数据库。
 
 ### 管理端前端测试
 
@@ -223,6 +211,7 @@ pnpm test:load
 - [前端开发规范](./docs/前端开发规范文档.md)
 - [数据库开发规范](./docs/数据库开发规范文档.md)
 - [环境配置与部署](./docs/环境配置与部署.md)
+- [历史测试报告归档](./docs/archive/test-reports/README.md)
 
 
 ## 📄 许可证

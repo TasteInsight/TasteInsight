@@ -220,45 +220,9 @@ Compose 从 `--env-file` 选取配置并按角色注入，未设置的可选字�
 
 ## 测试
 
-### 单元测试
+单元测试、独立 E2E 环境准备、单套件运行和数据隔离要求见 [测试说明](./TEST.md)。单元测试使用 Mock，不要求数据库；E2E 准备会重建指定的独立测试数据库。
 
-```bash
-# 运行全部单元测试
-pnpm run test:unit
-
-# 运行指定模块测试
-pnpm run test:unit:canteens
-pnpm run test:unit:reviews
-pnpm run test:unit:ai-chat
-```
-
-### E2E 测试
-
-```bash
-# 准备独立测试数据库后，启动 Redis 和模拟嵌入服务并重建测试数据
-pnpm run test:setup
-
-# 运行全部 E2E 测试
-pnpm run test:e2e
-
-# 运行指定模块 E2E 测试
-pnpm run test:e2e:auth
-pnpm run test:e2e:dishes
-pnpm run test:e2e:ai-chat
-
-# 清理测试环境
-pnpm run test:teardown
-```
-
-### 测试覆盖率
-
-```bash
-# 单元测试覆盖率
-pnpm run test:cov
-
-# E2E 测试覆盖率
-pnpm run test:e2e:cov
-```
+既有执行结果与早期菜品 API 测试说明保存在 [历史测试报告归档](../docs/archive/test-reports/README.md)。
 
 ## 数据库模型
 
