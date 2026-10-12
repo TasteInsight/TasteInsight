@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   Optional,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { GetDishesDto, SortOrder } from './dto/get-dishes.dto';
@@ -16,6 +17,12 @@ import {
   FavoriteStatusResponseDto,
 } from './dto/dish-response.dto';
 import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service';
+import {
+  contributionSnapshot,
+  prepareContribution,
+  requestFingerprint,
+} from './contribution-fields';
+import { claimContributionImages } from '@/upload/contribution-images';
 
 @Injectable()
 export class DishesService {
@@ -495,98 +502,53 @@ export class DishesService {
     uploadDishDto: UploadDishDto,
     userId: string,
   ): Promise<DishUploadResponseDto> {
-    // 1. 确定食堂
-    let canteenId = uploadDishDto.canteenId;
-    let canteenName = uploadDishDto.canteenName;
-
-    if (canteenId) {
-      const canteen = await this.prisma.canteen.findUnique({
-        where: { id: canteenId },
-      });
-      if (!canteen) {
-        throw new BadRequestException('指定的食堂不存在');
+    const fingerprint = requestFingerprint(uploadDishDto);
+    const dishUpload = await this.prisma.$transaction(async (tx) => {
+      if (uploadDishDto.clientRequestId) {
+        // Serialize the same user's retry key before the unique-row lookup.
+        await tx.$queryRaw`SELECT 1 FROM pg_advisory_xact_lock(hashtextextended(${`${userId}:${uploadDishDto.clientRequestId}`}, 0))`;
+        const existing = await tx.dishUpload.findUnique({
+          where: {
+            userId_clientRequestId: {
+              userId,
+              clientRequestId: uploadDishDto.clientRequestId,
+            },
+          },
+        });
+        if (existing) {
+          if (existing.requestHash !== fingerprint)
+            throw new ConflictException('请求标识已用于另一份资料，请重新提交');
+          return existing;
+        }
       }
-      canteenName = canteen.name;
-    } else {
-      const canteen = await this.prisma.canteen.findFirst({
-        where: { name: canteenName },
+      const target = uploadDishDto.targetDishId
+        ? await tx.dish.findUnique({
+            where: { id: uploadDishDto.targetDishId },
+          })
+        : null;
+      if (uploadDishDto.targetDishId && !target)
+        throw new NotFoundException('待补全菜品不存在');
+      const data = await prepareContribution(tx, uploadDishDto, target);
+      const created = await tx.dishUpload.create({
+        data: {
+          ...data,
+          userId,
+          status: 'pending',
+          kind: target ? 'update' : 'create',
+          targetDishId: target?.id ?? null,
+          parentDishId: target ? null : (uploadDishDto.parentDishId ?? null),
+          baseSnapshot: target ? contributionSnapshot(target) : undefined,
+          clientRequestId: uploadDishDto.clientRequestId,
+          requestHash: uploadDishDto.clientRequestId ? fingerprint : undefined,
+        } as Prisma.DishUploadUncheckedCreateInput,
       });
-      if (!canteen) {
-        throw new BadRequestException('指定的食堂不存在');
-      }
-      canteenId = canteen.id;
-    }
-
-    // 2. 确定窗口（可选）
-    let windowId = uploadDishDto.windowId;
-    let windowName = uploadDishDto.windowName;
-    let windowNumber = uploadDishDto.windowNumber;
-
-    let window: any = null;
-
-    // 首先尝试按 ID 查找
-    if (windowId) {
-      window = await this.prisma.window.findUnique({
-        where: { id: windowId },
-      });
-      if (!window) throw new BadRequestException('指定的窗口不存在');
-      // 验证窗口是否属于该食堂
-      if (window && window.canteenId !== canteenId) {
-        throw new BadRequestException('指定的窗口不属于该食堂');
-      }
-    }
-
-    // 如果未通过 ID 找到（或未提供 ID），尝试按名称查找
-    if (!window && windowName) {
-      window = await this.prisma.window.findFirst({
-        where: { canteenId, name: windowName },
-      });
-    }
-
-    // 如果仍未找到，尝试按窗口号查找
-    if (!window && windowNumber) {
-      window = await this.prisma.window.findFirst({
-        where: { canteenId, number: windowNumber },
-      });
-    }
-
-    // 如果找到，使用权威信息
-    if (window) {
-      windowId = window.id;
-      windowName = window.name;
-      windowNumber = window.number;
-    } else {
-      // 如果未找到，说明用户提供的信息有误
-      if (windowId || windowName || windowNumber) {
-        throw new BadRequestException('指定的窗口不存在或信息不完整');
-      }
-    }
-
-    // 创建 DishUpload 记录
-    const dishUpload = await this.prisma.dishUpload.create({
-      data: {
+      await claimContributionImages(
+        tx,
         userId,
-        name: uploadDishDto.name || '未命名菜品',
-        tags: uploadDishDto.tags || [],
-        price: uploadDishDto.price,
-        priceUnit: uploadDishDto.priceUnit,
-        description: uploadDishDto.description,
-        images: uploadDishDto.images || [],
-        ingredients: uploadDishDto.ingredients || [],
-        allergens: uploadDishDto.allergens || [],
-        spicyLevel: uploadDishDto.spicyLevel ?? 0,
-        sweetness: uploadDishDto.sweetness ?? 0,
-        saltiness: uploadDishDto.saltiness ?? 0,
-        oiliness: uploadDishDto.oiliness ?? 0,
-        canteenId: canteenId,
-        canteenName: canteenName,
-        windowId: windowId || null,
-        windowNumber: windowNumber || null,
-        windowName: windowName || '',
-        availableMealTime: uploadDishDto.availableMealTime,
-        availableDates: uploadDishDto.availableDates as any,
-        status: 'pending', // 默认为待审核状态
-      },
+        data.images.filter((url: string) => !target?.images.includes(url)),
+        created.id,
+      );
+      return created;
     });
 
     return {
@@ -595,6 +557,7 @@ export class DishesService {
       data: {
         id: dishUpload.id,
         status: dishUpload.status,
+        revision: dishUpload.revision,
       },
     };
   }

@@ -1,7 +1,11 @@
 page {
   background: #fff;
   color: #1f2937;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
 }
 .page-content,
 .page-viewport {
@@ -22,3 +26,13 @@ page {
   flex-direction: column;
   overflow: hidden;
 }
+/* #ifdef H5 */
+html,
+body {
+  scrollbar-width: none;
+}
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+}
+/* #endif */

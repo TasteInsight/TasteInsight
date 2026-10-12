@@ -15,11 +15,6 @@ export class LocalStorageStrategy implements StorageStrategy {
       'UPLOAD_LOCAL_PATH',
       './uploads',
     );
-    // 确保目录存在
-    if (!fs.existsSync(this.uploadPath)) {
-      fs.mkdirSync(this.uploadPath, { recursive: true });
-    }
-
     const appUrl = this.configService.get<string>(
       'APP_URL',
       'http://localhost:3000',
@@ -32,6 +27,7 @@ export class LocalStorageStrategy implements StorageStrategy {
   }
 
   async upload(file: Express.Multer.File): Promise<UploadResult> {
+    await fs.promises.mkdir(this.uploadPath, { recursive: true });
     const fileExt = path.extname(file.originalname);
     const fileName = `${randomUUID()}${fileExt}`;
     const filePath = path.join(this.uploadPath, fileName);
@@ -44,5 +40,16 @@ export class LocalStorageStrategy implements StorageStrategy {
       : `${this.baseUrl}/${fileName}`;
 
     return { url, filename: fileName };
+  }
+
+  async remove(storageKey: string): Promise<void> {
+    if (!/^[0-9a-f-]{36}\.(jpg|png|gif|webp)$/.test(storageKey)) {
+      throw new Error('Invalid managed image key');
+    }
+    try {
+      await fs.promises.unlink(path.join(this.uploadPath, storageKey));
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
   }
 }

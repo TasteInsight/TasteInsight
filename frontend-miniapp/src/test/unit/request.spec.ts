@@ -3,6 +3,8 @@ import { useUserStore } from '@/store/modules/use-user-store';
 import { mockInterceptor } from '@/mock/mock-adapter';
 import config from '@/config';
 import { setActivePinia, createPinia } from 'pinia';
+import { updateMyUpload } from '@/api/modules/user';
+import { updateMealPlan, decideDiningApplication } from '@/api/modules/meal-plan';
 
 // Mock dependencies
 jest.mock('@/store/modules/use-user-store');
@@ -92,6 +94,54 @@ describe('request utils', () => {
 
     const result = await request({ url: '/test' });
     expect(result).toEqual(responseData);
+  });
+
+  it.each([
+    {
+      name: 'contribution edits',
+      send: () => updateMyUpload('upload', {
+        revision: 2, targetDishId: 'dish', changedFields: ['price'], price: 0,
+        canteenName: '食堂', availableMealTime: ['lunch'],
+      }),
+      path: '/user/uploads/upload',
+      body: {
+        revision: 2, targetDishId: 'dish', changedFields: ['price'], price: 0,
+        canteenName: '食堂', availableMealTime: ['lunch'],
+      },
+    },
+    {
+      name: 'meal-plan edits',
+      send: () => updateMealPlan({
+        startDate: '2099-10-12', endDate: '2099-10-12', mealTime: 'lunch', dishes: ['dish'],
+      }, 'plan'),
+      path: '/meal-plans/plan',
+      body: {
+        startDate: '2099-10-12', endDate: '2099-10-12', mealTime: 'lunch', dishes: ['dish'],
+      },
+    },
+    {
+      name: 'dining-application decisions',
+      send: () => decideDiningApplication('invite', 'application', 'accept'),
+      path: '/dining-invites/invite/applications/application',
+      body: { action: 'accept' },
+    },
+  ])('sends $name through the native supported-method boundary', async ({ send, path, body }) => {
+    mockUserStore.token = 'student-token';
+    mockRequest.mockImplementation(opts => {
+      if (!['OPTIONS', 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'TRACE', 'CONNECT'].includes(opts.method)) {
+        opts.fail({ errMsg: 'request:fail invalid method' });
+        return;
+      }
+      opts.success({ statusCode: 200, data: { code: 200, data: { id: 'saved' } } });
+    });
+
+    await expect(send()).resolves.toEqual({ code: 200, data: { id: 'saved' } });
+    expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
+      url: `http://api.test${path}`,
+      method: 'PUT',
+      data: body,
+      header: { 'Content-Type': 'application/json', Authorization: 'Bearer student-token' },
+    }));
   });
 
   it('does not print request or response payloads containing credentials', async () => {

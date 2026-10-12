@@ -1,9 +1,10 @@
 import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
-import { Logger } from '@nestjs/common';
+import { Logger, Optional } from '@nestjs/common';
 import { Job, Queue } from 'bullmq';
 import { InjectQueue } from '@nestjs/bullmq';
 import { EmbeddingService } from '@/recommendation/services/embedding.service';
 import { RecommendationService } from '@/recommendation/recommendation.service';
+import { PrismaService } from '@/prisma.service';
 import {
   EMBEDDING_QUEUE,
   EmbeddingJobType,
@@ -29,6 +30,7 @@ export class EmbeddingQueueProcessor extends WorkerHost {
     private readonly embeddingService: EmbeddingService,
     private readonly recommendationService: RecommendationService,
     @InjectQueue(EMBEDDING_QUEUE) private readonly embeddingQueue: Queue,
+    @Optional() private readonly prisma?: PrismaService,
   ) {
     super();
   }
@@ -111,6 +113,18 @@ export class EmbeddingQueueProcessor extends WorkerHost {
   ): Promise<{ dishId: string; success: boolean }> {
     const { dishId } = data;
     const success = await this.embeddingService.updateDishEmbedding(dishId);
+    if (data.contributionUploadId) {
+      if (!success) throw new Error('Contribution embedding refresh failed');
+      await this.prisma!.dishUpload.updateMany({
+        where: {
+          id: data.contributionUploadId,
+          revision: data.contributionRevision,
+          approvedDishId: dishId,
+          refreshPending: true,
+        },
+        data: { refreshPending: false },
+      });
+    }
     return { dishId, success };
   }
 

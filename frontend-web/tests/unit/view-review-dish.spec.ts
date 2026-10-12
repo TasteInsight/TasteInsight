@@ -77,6 +77,32 @@ describe('views/ReviewDish', () => {
     mocks.getCanteensMock.mockReset()
   })
 
+  it('shows a retryable queue error instead of an empty result for failed reads', async () => {
+    mocks.getCanteensMock.mockResolvedValue({ code: 200, data: { items: [] } })
+    mocks.getPendingUploadsMock.mockRejectedValueOnce(new Error('网络连接失败'))
+    const wrapper = mount(ReviewDish, baseMountOptions)
+    await flushAll()
+    expect(wrapper.text()).toContain('网络连接失败')
+    expect(wrapper.text()).not.toContain('暂无待审核菜品')
+    mocks.getPendingUploadsMock.mockResolvedValueOnce({ code: 200, data: { items: [], meta: { total: 0 } } })
+    const retry = wrapper.findAll('button').find(button => button.text() === '重试')!
+    await retry.trigger('click')
+    await flushAll()
+    expect(wrapper.text()).toContain('暂无')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('does not interpret a non-success API response as an empty queue', async () => {
+    mocks.getCanteensMock.mockResolvedValue({ code: 200, data: { items: [] } })
+    mocks.getPendingUploadsMock.mockResolvedValueOnce({ code: 503, message: '审核服务暂不可用' })
+    const wrapper = mount(ReviewDish, baseMountOptions)
+    await flushAll()
+    expect(wrapper.text()).toContain('审核服务暂不可用')
+    expect(wrapper.text()).not.toContain('暂无待审核菜品')
+    wrapper.unmount()
+  })
+
   it('loads canteens and pending uploads on mount; maps items and total', async () => {
     mocks.hasPermissionMock.mockReturnValue(true)
 

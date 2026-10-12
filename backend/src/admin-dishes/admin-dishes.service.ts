@@ -725,7 +725,7 @@ export class AdminDishesService {
         throw new BadRequestException('该菜品有子菜品，无法删除');
       }
       const sourceUpload = await tx.dishUpload.findFirst({
-        where: { approvedDishId: id },
+        where: { approvedDishId: id, kind: 'create', targetDishId: null },
         select: { id: true, canteenId: true },
         orderBy: { id: 'asc' },
       });
@@ -744,7 +744,11 @@ export class AdminDishesService {
         }
         await tx.dishUpload.updateMany({
           where: { parentDishId: id },
-          data: { parentDishId: null, parentUploadId: sourceUpload.id },
+          data: {
+            parentDishId: null,
+            parentUploadId: sourceUpload.id,
+            revision: { increment: 1 },
+          },
         });
       } else {
         const referencedChild = await tx.dishUpload.findFirst({
@@ -759,7 +763,7 @@ export class AdminDishesService {
       }
       await tx.dishUpload.updateMany({
         where: { approvedDishId: id },
-        data: { approvedDishId: null },
+        data: { approvedDishId: null, revision: { increment: 1 } },
       });
 
       // 删除菜品
@@ -808,6 +812,7 @@ export class AdminDishesService {
         WITH sources AS (
           SELECT DISTINCT ON ("approvedDishId") id, "approvedDishId", "canteenId"
           FROM dish_uploads WHERE "approvedDishId" IN (${Prisma.join(ids)})
+            AND "kind" = 'create' AND "targetDishId" IS NULL
           ORDER BY "approvedDishId", id
         )
         SELECT child.id FROM dish_uploads child
@@ -824,15 +829,16 @@ export class AdminDishesService {
         WITH sources AS (
           SELECT DISTINCT ON ("approvedDishId") id, "approvedDishId"
           FROM dish_uploads WHERE "approvedDishId" IN (${Prisma.join(ids)})
+            AND "kind" = 'create' AND "targetDishId" IS NULL
           ORDER BY "approvedDishId", id
         )
         UPDATE dish_uploads child SET "parentDishId" = NULL, "parentUploadId" = source.id,
-          "updatedAt" = CURRENT_TIMESTAMP
+          "updatedAt" = CURRENT_TIMESTAMP, "revision" = child."revision" + 1
         FROM sources source WHERE child."parentDishId" = source."approvedDishId"
       `);
       await tx.dishUpload.updateMany({
         where: { approvedDishId: { in: ids } },
-        data: { approvedDishId: null },
+        data: { approvedDishId: null, revision: { increment: 1 } },
       });
       await withdrawDishNotifications(tx, ids);
       const result = await tx.dish.deleteMany({ where: { id: { in: ids } } });
@@ -1610,7 +1616,7 @@ export class AdminDishesService {
       if (upload.status === 'pending') {
         await tx.dishUpload.update({
           where: { id: upload.id },
-          data: uploadData,
+          data: { ...uploadData, revision: (upload.revision ?? 1) + 1 },
         });
       } else if (upload.status === 'approved' && upload.approvedDishId) {
         await this.updateDish(tx, upload.approvedDishId, data, adminInfo);

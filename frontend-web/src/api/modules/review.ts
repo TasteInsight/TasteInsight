@@ -9,11 +9,17 @@ import type {
   PendingReview,
   PendingComment,
   Comment,
-  DishUpload,
   GetPendingParams,
   ReviewModerationRequest,
   ReviewRejectionRequest,
 } from '@/types/api'
+import type {
+  DishContribution,
+  ContributionEditRequest,
+  ContributionApprovalRequest,
+  ContributionRejectionRequest,
+  ContributionRevision,
+} from '@/types/dish-contribution'
 
 /**
  * 审核管理 API
@@ -135,8 +141,8 @@ export const reviewApi = {
    */
   async getPendingUploads(
     params: GetPendingParams = {},
-  ): Promise<ApiResponse<PaginationResponse<DishUpload>>> {
-    return await request.get<ApiResponse<PaginationResponse<DishUpload>>>('/admin/dishes/uploads', { params })
+  ): Promise<ApiResponse<PaginationResponse<DishContribution>>> {
+    return await request.get<ApiResponse<PaginationResponse<DishContribution>>>('/admin/dishes/uploads', { params })
   },
 
   /**
@@ -144,8 +150,12 @@ export const reviewApi = {
    * @param id 上传菜品 ID
    * @returns 上传菜品审核详情
    */
-  async getPendingUploadById(id: string): Promise<ApiResponse<DishUpload>> {
-    return await request.get<ApiResponse<DishUpload>>(`/admin/dishes/uploads/${id}`)
+  async getPendingUploadById(id: string): Promise<ApiResponse<DishContribution>> {
+    return await request.get<ApiResponse<DishContribution>>(`/admin/dishes/uploads/${id}`)
+  },
+
+  async updateUpload(id: string, data: ContributionEditRequest): Promise<ApiResponse<DishContribution>> {
+    return request.patch<ApiResponse<DishContribution>>(`/admin/dishes/uploads/${id}`, data)
   },
 
   /**
@@ -153,8 +163,9 @@ export const reviewApi = {
    * @param id 上传菜品 ID
    * @returns 审核结果
    */
-  async approveUpload(id: string): Promise<ApiResponse<void>> {
-    return await request.post<ApiResponse<void>>(`/admin/dishes/uploads/${id}/approve`)
+  async approveUpload(id: string, data?: ContributionApprovalRequest): Promise<ApiResponse<void>> {
+    const url = `/admin/dishes/uploads/${id}/approve`
+    return data ? request.post<ApiResponse<void>>(url, data) : request.post<ApiResponse<void>>(url)
   },
 
   /**
@@ -163,8 +174,8 @@ export const reviewApi = {
    * @param reason 拒绝原因
    * @returns 审核结果
    */
-  async rejectUpload(id: string, reason: string): Promise<ApiResponse<void>> {
-    return await request.post<ApiResponse<void>>(`/admin/dishes/uploads/${id}/reject`, { reason })
+  async rejectUpload(id: string, data: string | ContributionRejectionRequest): Promise<ApiResponse<void>> {
+    return request.post<ApiResponse<void>>(`/admin/dishes/uploads/${id}/reject`, typeof data === 'string' ? { reason: data } : data)
   },
 
   /**
@@ -172,8 +183,9 @@ export const reviewApi = {
    * @param id 上传菜品 ID
    * @returns 审核结果
    */
-  async revokeUpload(id: string): Promise<ApiResponse<void>> {
-    return await request.post<ApiResponse<void>>(`/admin/dishes/uploads/${id}/revoke`)
+  async revokeUpload(id: string, data?: ContributionRevision): Promise<ApiResponse<void>> {
+    const url = `/admin/dishes/uploads/${id}/revoke`
+    return data ? request.post<ApiResponse<void>>(url, data) : request.post<ApiResponse<void>>(url)
   },
 
   /**

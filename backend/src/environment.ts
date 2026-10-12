@@ -328,7 +328,7 @@ export function validateEnvironment(
     RUN_SEED,
     IMPORT_DATA,
   };
-  if (servesApi) {
+  if (servesApi || runsBackground) {
     const storage = stringSetting(
       environment.UPLOAD_STORAGE_TYPE,
       'UPLOAD_STORAGE_TYPE',
@@ -344,6 +344,8 @@ export function validateEnvironment(
         'OSS_BUCKET',
       ])
         required(key);
+  }
+  if (servesApi) {
     validated.UPLOAD_MAX_FILE_SIZE = integerSetting(
       environment.UPLOAD_MAX_FILE_SIZE,
       'UPLOAD_MAX_FILE_SIZE',

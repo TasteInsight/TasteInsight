@@ -63,6 +63,9 @@ describe('Pending dish hierarchy', () => {
           .mockResolvedValue({ id: 'approved-parent', canteenId: 'canteen' }),
         findFirst: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockResolvedValue({ id: 'approved-child' }),
+        update: jest
+          .fn()
+          .mockResolvedValue({ id: 'approved-parent', status: 'offline' }),
         delete: jest.fn(),
       },
       window: { findUnique: jest.fn().mockResolvedValue(window) },
@@ -221,18 +224,23 @@ describe('Pending dish hierarchy', () => {
     await uploads.revokeUpload(parent.id, { role: 'superadmin' });
     expect(prisma.dishUpload.updateMany).toHaveBeenCalledWith({
       where: { parentDishId: 'approved-parent' },
-      data: { parentDishId: null, parentUploadId: parent.id },
+      data: {
+        parentDishId: null,
+        parentUploadId: parent.id,
+        revision: { increment: 1 },
+      },
     });
     expect(
       prisma.dishUpload.updateMany.mock.invocationCallOrder[0],
-    ).toBeLessThan(prisma.dish.delete.mock.invocationCallOrder[0]);
+    ).toBeLessThan(prisma.dish.update.mock.invocationCallOrder[0]);
+    expect(prisma.dish.delete).not.toHaveBeenCalled();
   });
 
   it('retains the approval history and only clears the removed dish pointer', async () => {
     await dishes.deleteAdminDish('approved-parent', creator as any);
     expect(prisma.dishUpload.updateMany).toHaveBeenCalledWith({
       where: { approvedDishId: 'approved-parent' },
-      data: { approvedDishId: null },
+      data: { approvedDishId: null, revision: { increment: 1 } },
     });
     expect(prisma.dishUpload.deleteMany).not.toHaveBeenCalled();
   });

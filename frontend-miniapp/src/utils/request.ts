@@ -6,14 +6,12 @@ import { useUserStore } from '@/store/modules/use-user-store';
 import config from '@/config';
 // 导入类型定义
 import type { RequestOptions, ApiResponse } from '@/types/api';
-import { toUserFriendlyErrorMessage } from '@/utils/user-friendly-error';
+import { createHttpError, toUserFriendlyErrorMessage } from '@/utils/user-friendly-error';
+import { expireSession, refreshAccessToken } from '@/utils/auth-session';
 // 导入 Mock 拦截器
 import { mockInterceptor } from '@/mock/mock-adapter';
 // 初始化 Mock 路由（副作用导入，确保路由被注册）
 import '@/mock/mock-routes';
-
-// 全局刷新token的Promise缓存，避免竞态条件
-let tokenRefresh: { sessionVersion: number; promise: Promise<void> } | null = null;
 
 function buildUserFriendlyError(err: unknown, statusCode?: number): Error {
   const wrapped = new Error(toUserFriendlyErrorMessage(err)) as Error & {
@@ -23,61 +21,6 @@ function buildUserFriendlyError(err: unknown, statusCode?: number): Error {
   wrapped.originalError = err;
   if (statusCode !== undefined) wrapped.statusCode = statusCode;
   return wrapped;
-}
-
-/**
- * 执行token刷新操作，返回Promise以便缓存和等待
- */
-function performTokenRefresh(sessionVersion: number, refreshToken: string): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
-    const userStore = useUserStore();
-    const refreshUrl = config.baseUrl + '/auth/refresh';
-
-    // eslint-disable-next-line no-console
-    console.log('[request] -> Refreshing Token', refreshUrl);
-
-    uni.request({
-      url: refreshUrl,
-      method: 'POST',
-      header: {
-        'Content-Type': 'application/json',
-        // 携带 refresh token，具体视后端要求而定
-        Authorization: `Bearer ${refreshToken}`,
-      },
-      data: {},
-      success: refreshRes => {
-        if (userStore.sessionVersion !== sessionVersion) {
-          reject(new Error('登录会话已变更'));
-          return;
-        }
-        const refreshData = refreshRes.data as any; // 简化类型
-        if (
-          refreshRes.statusCode >= 200 &&
-          refreshRes.statusCode < 300 &&
-          refreshData.code === 200 &&
-          refreshData.data?.token?.accessToken
-        ) {
-          // eslint-disable-next-line no-console
-          console.log('[request] Token refreshed successfully');
-          const newToken = refreshData.data.token;
-
-          userStore.updateTokens(sessionVersion, newToken.accessToken, newToken.refreshToken);
-
-          resolve();
-        } else {
-          // 刷新失败
-          reject(buildUserFriendlyError(new Error('HTTP 401')));
-        }
-      },
-      fail: err => {
-        if (userStore.sessionVersion !== sessionVersion) {
-          reject(new Error('登录会话已变更'));
-          return;
-        }
-        reject(buildUserFriendlyError(new Error('HTTP 401')));
-      },
-    });
-  });
 }
 
 /**
@@ -127,15 +70,7 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
     uni.request({
       // 1. 基础配置
       url: fullUrl, // 自动拼接完整的请求地址
-      method: (options.method || 'GET') as
-        | 'GET'
-        | 'POST'
-        | 'PUT'
-        | 'DELETE'
-        | 'OPTIONS'
-        | 'HEAD'
-        | 'TRACE'
-        | 'CONNECT',
+      method: options.method || 'GET',
       data: options.data || {},
       header: header,
       timeout: options.timeout || 15000, // 默认15秒超时
@@ -171,7 +106,9 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
           }
         } else if (statusCode === 401) {
           if (options.auth === 'none') {
-            reject(buildUserFriendlyError(new Error(responseData.message || '验证未通过，请重试'), 401));
+            reject(
+              buildUserFriendlyError(new Error(responseData.message || '验证未通过，请重试'), 401)
+            );
             return;
           }
           const unauthorized = () => {
@@ -183,7 +120,10 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
               if (accessToken) userStore.logoutAction();
               const anonymousHeader = { ...options.header };
               delete anonymousHeader.Authorization;
-              request<T>({ ...options, auth: 'none', header: anonymousHeader }).then(resolve, reject);
+              request<T>({ ...options, auth: 'none', header: anonymousHeader }).then(
+                resolve,
+                reject
+              );
             } else {
               handleHttpError(statusCode, responseData, sessionVersion);
               reject(buildUserFriendlyError(new Error('HTTP 401'), 401));
@@ -224,24 +164,18 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
             return;
           }
 
-          if (!tokenRefresh || tokenRefresh.sessionVersion !== sessionVersion) {
-            const refresh = {
-              sessionVersion,
-              promise: performTokenRefresh(sessionVersion, userStore.refreshToken).finally(() => {
-                if (tokenRefresh === refresh) tokenRefresh = null;
-              }),
-            };
-            tokenRefresh = refresh;
-          }
-
-          tokenRefresh.promise
+          refreshAccessToken(sessionVersion, accessToken)
             .then(retry)
-            .catch(unauthorized);
+            .catch(err => {
+              if (userStore.sessionVersion !== sessionVersion || err?.statusCode === 401)
+                unauthorized();
+              else reject(err);
+            });
         } else {
           // HTTP 状态码非 2xx，代表请求出错了（404, 500 等）
           // 交给统一的错误处理器
           handleHttpError(statusCode, responseData, sessionVersion);
-          reject(buildUserFriendlyError(new Error(`HTTP ${statusCode}`), statusCode));
+          reject(createHttpError(statusCode, responseData));
         }
       },
 
@@ -252,9 +186,11 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
           url: fullUrl,
           err,
         });
-        reject(buildUserFriendlyError(
-          new Error(err.errMsg.includes('timeout') ? '请求超时，请重试' : '网络连接异常')
-        ));
+        reject(
+          buildUserFriendlyError(
+            new Error(err.errMsg.includes('timeout') ? '请求超时，请重试' : '网络连接异常')
+          )
+        );
       },
     });
   });
@@ -273,14 +209,7 @@ function handleHttpError(statusCode: number, _responseData: any, sessionVersion:
   switch (statusCode) {
     case 401:
       message = '登录状态已过期，请重新登录';
-      // 清除本地的用户信息和 token
-      const userStore = useUserStore();
-      if (userStore.sessionVersion !== sessionVersion) return;
-      userStore.logoutAction();
-      // 跳转到登录页
-      uni.reLaunch({
-        url: '/pages/login/index',
-      });
+      expireSession(sessionVersion);
       break;
     case 403:
       message = '没有权限执行此操作';
