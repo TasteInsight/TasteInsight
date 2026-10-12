@@ -23,6 +23,7 @@ const mockPrismaService = {
   },
   dish: {
     findUnique: jest.fn(),
+    findMany: jest.fn().mockResolvedValue([]),
     findFirst: jest.fn(),
     create: jest.fn(),
     delete: jest.fn(),

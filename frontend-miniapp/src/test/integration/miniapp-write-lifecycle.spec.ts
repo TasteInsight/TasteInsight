@@ -23,7 +23,7 @@ const requests: any[] = [];
 const wrappers: any[] = [];
 let autoProfiles = true;
 const profile = (id = 'A') => ({
-  id, nickname: id, allergens: ['牛奶'],
+  id, nickname: id, allergens: ['牛奶'], capabilities: { canContribute: true },
   preferences: {
     meatPreference: ['牛肉'], priceRange: { min: 10, max: 50 },
     canteenPreferences: ['canteen'], avoidIngredients: ['葱'], favoriteIngredients: ['番茄'],
@@ -38,7 +38,7 @@ const uniMock = {
   getStorageSync: (key: string) => storage.get(key),
   setStorageSync: (key: string, value: any) => storage.set(key, value),
   removeStorageSync: (key: string) => storage.delete(key),
-  request: jest.fn(), showToast: jest.fn(), navigateBack: jest.fn(),
+  request: jest.fn(), showToast: jest.fn(), navigateBack: jest.fn(), redirectTo: jest.fn(), setNavigationBarTitle: jest.fn(),
   chooseImage: jest.fn(), uploadFile: jest.fn(), $on: jest.fn(), $off: jest.fn(),
 };
 
@@ -521,7 +521,7 @@ test.each(['pending', 'timer'])('leaving the real add-dish page cancels its %s n
   if (phase === 'timer') wrapper.unmount();
   expect(jest.getTimerCount()).toBe(0);
   jest.advanceTimersByTime(1500);
-  expect(uniMock.navigateBack).not.toHaveBeenCalled();
+  expect(uniMock.redirectTo).not.toHaveBeenCalled();
 });
 
 test.each(['selection', 'upload'])('a disposed add-dish %s cannot continue to publish a dish', async phase => {

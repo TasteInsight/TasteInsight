@@ -34,7 +34,8 @@
     <text v-if="detail" class="post-content" selectable>{{ post.content }}</text>
     <button
       v-else
-      class="campus-button post-content post-content-link"
+      class="campus-button post-content post-content-link list-row-action"
+      hover-class="list-row-pressed"
       role="button"
       tabindex="0"
       aria-label="查看动态详情"

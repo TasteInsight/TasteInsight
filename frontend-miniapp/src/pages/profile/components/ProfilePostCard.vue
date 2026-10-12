@@ -1,7 +1,8 @@
 <template>
   <button
     class="profile-post-card"
-    :class="{ 'profile-post-card--text': !cover }"
+    :class="{ 'profile-post-card--text': !cover, 'list-row-action': !cover }"
+    hover-class="list-row-pressed"
     role="button"
     tabindex="0"
     :aria-label="'查看动态：' + post.content"
@@ -74,11 +75,12 @@ const { activate, handleKeydown, handleKeyup, clearPress } = useButtonActivation
 .profile-post-card::after {
   border: 0;
 }
-.profile-post-card:focus-visible {
+.profile-post-card:not(.profile-post-card--text):focus-visible {
   outline: 2px solid #660874;
   outline-offset: -2px;
 }
-.profile-post-card:active {
+.profile-post-card:not(.profile-post-card--text):active,
+.profile-post-card.list-row-pressed:not(.profile-post-card--text) {
   background: #f7f8fa;
 }
 .profile-post-cover {
@@ -142,7 +144,7 @@ const { activate, handleKeydown, handleKeyup, clearPress } = useButtonActivation
   font-size: 15px;
 }
 @media (hover: hover) {
-  .profile-post-card:hover {
+  .profile-post-card:not(.profile-post-card--text):hover {
     background: #f7f8fa;
   }
 }

@@ -20,6 +20,16 @@ const toggle = (wrapper: any) => wrapper.get('button[aria-expanded]');
 const apply = (wrapper: any) =>
   wrapper.get('.planning-card-apply');
 
+test.each([['份', '/份'], ['元/份', '/份'], ['元', ''], [null, '']])('AI planning normalizes historical unit %p and preserves zero and its source', async (priceUnit, suffix) => {
+  const plan = makePlan();
+  plan.previewData.dishes = [0, 15].map(price => ({ id: String(price), name: '菜品', price, priceUnit, images: [] }));
+  const wrapper = mount(PlanningCard, { props: { plan } });
+  await toggle(wrapper).trigger('click');
+  expect(wrapper.findAll('.planning-dish-price').map(price => price.text())).toEqual([`¥0.0${suffix}`, `¥15.0${suffix}`]);
+  expect(plan.previewData.dishes.map((dish: any) => dish.priceUnit)).toEqual([priceUnit, priceUnit]);
+  wrapper.unmount();
+});
+
 test('planning starts collapsed with useful context and reveals details only on explicit expansion', async () => {
   const wrapper = mount(PlanningCard, { props: { plan: makePlan() } });
   expect(toggle(wrapper).attributes('aria-expanded')).toBe('false');

@@ -11,6 +11,9 @@ import type {
   ApiResponse,
   BrowseHistoryItem,
   MyUploadItem,
+  MyUploadDetail,
+  DishUserCreateRequest,
+  DishUploadData,
   Report,
 } from '@/types/api';
 
@@ -107,6 +110,20 @@ export const getMyUploads = (
     data: params,
   });
 };
+
+export const getMyUpload = (id: string): Promise<ApiResponse<MyUploadDetail>> =>
+  request<MyUploadDetail>({ url: `/user/uploads/${encodeURIComponent(id)}`, method: 'GET' });
+
+export const updateMyUpload = (
+  id: string,
+  data: DishUserCreateRequest & { revision: number }
+): Promise<ApiResponse<DishUploadData>> =>
+  request<DishUploadData>({ url: `/user/uploads/${encodeURIComponent(id)}`, method: 'PATCH', data });
+
+export const withdrawMyUpload = (id: string, revision: number): Promise<ApiResponse<null>> =>
+  request<null>({
+    url: `/user/uploads/${encodeURIComponent(id)}/withdraw`, method: 'POST', data: { revision },
+  });
 
 /**
  * 获取我的举报

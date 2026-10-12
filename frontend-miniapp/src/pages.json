@@ -201,6 +201,13 @@
       }
     },
     {
+      "path": "pages/profile/my-uploads/index",
+      "style": {
+        "navigationBarTitleText": "我的上传",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
       "path": "pages/profile/my-reviews/index",
       "style": {
         "navigationBarTitleText": "我的评价",
@@ -224,7 +231,7 @@
     {
       "path": "pages/add-dish/index",
       "style": {
-        "navigationBarTitleText": "添加菜品"
+        "navigationBarTitleText": "申请新增菜品"
       }
     }
   ],

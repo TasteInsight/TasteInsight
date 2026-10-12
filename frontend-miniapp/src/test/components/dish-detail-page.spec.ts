@@ -85,6 +85,29 @@ describe('DishDetailPage', () => {
     useUserStore.mockReturnValue(mockUseUserStore);
   });
 
+  it.each([
+    ['份', '/份'],
+    ['元/份', '/份'],
+    ['元', ''],
+    [null, ''],
+  ])('normalizes historical detail price unit %p and keeps zero explicit', (priceUnit, suffix) => {
+    for (const price of [0, 15]) {
+      mockUseDishDetail.dish.value = {
+        id: 'dish',
+        name: '菜品',
+        price,
+        priceUnit,
+        images: [],
+        averageRating: 0,
+        reviewCount: 0,
+      };
+      const wrapper = shallowMount(DishDetailPage);
+      expect(wrapper.get('.dish-price').text()).toBe(`¥${price}${suffix}`);
+      expect(mockUseDishDetail.dish.value.priceUnit).toBe(priceUnit);
+      wrapper.unmount();
+    }
+  });
+
   it('keeps the detail data area undisclosed when loading without a dish', () => {
     mockUseDishDetail.loading.value = true;
     mockUseDishDetail.dish.value = null;

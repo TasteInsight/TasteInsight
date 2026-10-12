@@ -46,7 +46,7 @@
             <view class="flex justify-between items-center mt-2">
               <text class="planning-dish-price"
                 >¥{{ Number(dish.price || 0).toFixed(1)
-                }}{{ dish.priceUnit ? `/${dish.priceUnit}` : '' }}</text
+                }}{{ priceUnitSuffix(dish.priceUnit) }}</text
               >
               <view class="flex items-center" v-if="typeof dish.averageRating === 'number'">
                 <text
@@ -97,6 +97,7 @@
 import { computed, ref } from 'vue';
 import dayjs from 'dayjs';
 import type { ComponentMealPlanDraft } from '@/types/api';
+import { priceUnitSuffix } from '@/utils/price-display';
 
 const props = defineProps<{
   plan: ComponentMealPlanDraft & { appliedStatus?: 'success' | 'failed' };
