@@ -174,7 +174,8 @@ describe('DishDetailPage', () => {
       images: [],
       averageRating: 4,
     };
-    mockUseUserStore.userInfo = { id: 'A' };
+    mockUseUserStore.isLoggedIn = true;
+    mockUseUserStore.userInfo = { id: 'A', capabilities: { canContribute: true } };
     mockUseDishDetail.ownReview.value = {
       id: 'review',
       userId: 'A',
@@ -200,7 +201,8 @@ describe('DishDetailPage', () => {
 
   it('closes a saved review form without a redundant success toast', async () => {
     mockUseDishDetail.dish.value = { id: 'test-dish-id', name: '菜品', price: 0, images: [] };
-    mockUseUserStore.userInfo = { id: 'A' };
+    mockUseUserStore.isLoggedIn = true;
+    mockUseUserStore.userInfo = { id: 'A', capabilities: { canContribute: true } };
     const wrapper = shallowMount(DishDetailPage);
     try {
       wrapper.getComponent({ name: 'BottomReviewInput' }).vm.$emit('review');

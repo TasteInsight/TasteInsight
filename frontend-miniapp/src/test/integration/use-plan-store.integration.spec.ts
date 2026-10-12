@@ -20,6 +20,7 @@ jest.mock('@/api/modules/meal-plan', () => ({
   createMealPlan: jest.fn(),
   updateMealPlan: jest.fn(),
   deleteMealPlan: jest.fn(),
+  setMealPlanCompletion: jest.fn(),
 }));
 
 jest.mock('@/api/modules/dish', () => ({
@@ -104,7 +105,7 @@ describe('usePlanStore integration', () => {
     expect(store.enrichedPlans.find((p: any) => p.id === 'p2')?.dishes[0]?.id).toBe('d3');
   });
 
-  it('executePlan: should mark completed and persist ids', async () => {
+  it('executePlan: should publish the server-confirmed daily completion', async () => {
     const { usePlanStore } = require('@/store/modules/use-plan-store');
 
     const store = usePlanStore();
@@ -127,11 +128,14 @@ describe('usePlanStore integration', () => {
     expect(store.currentPlans.map((p: any) => p.id)).toContain('p3');
     expect(store.historyPlans.map((p: any) => p.id)).not.toContain('p3');
 
+    const { setMealPlanCompletion } = require('@/api/modules/meal-plan');
+    setMealPlanCompletion.mockResolvedValue({ code: 200, data: { ...store.allPlans[0], completedDates: [futureDate] } });
     await store.executePlan('p3');
 
     // After: should be moved to historyPlans
     expect(store.currentPlans.map((p: any) => p.id)).not.toContain('p3');
     expect(store.historyPlans.map((p: any) => p.id)).toContain('p3');
-    expect(mockSetStorageSync).toHaveBeenCalledWith('completedPlanIds:user', expect.any(Array));
+    expect(setMealPlanCompletion).toHaveBeenCalledWith('p3', futureDate, true);
+    expect(mockSetStorageSync).not.toHaveBeenCalled();
   });
 });

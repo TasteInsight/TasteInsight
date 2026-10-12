@@ -16,24 +16,26 @@ import {
   CommentData,
 } from './dto/comment-response.dto';
 import { ReportCommentDto } from './dto/report-comment.dto';
+import { NotificationService } from '@/notifications/notification.service';
 
 @Injectable()
 export class CommentsService {
   constructor(
     private prisma: PrismaService,
     private adminConfigService: AdminConfigService,
+    private notifications: NotificationService,
   ) {}
 
   async getComments(
     reviewId: string,
     page = 1,
     pageSize = 10,
-    viewerId: string,
+    viewerId?: string,
   ): Promise<CommentListResponseDto> {
     const skip = (page - 1) * pageSize;
     const reviewVisibility = {
       deletedAt: null,
-      OR: [{ status: 'approved' }, { userId: viewerId }],
+      OR: [{ status: 'approved' }, ...(viewerId ? [{ userId: viewerId }] : [])],
     };
     const review = await this.prisma.review.findUnique({
       where: { id: reviewId, ...reviewVisibility },
@@ -46,7 +48,9 @@ export class CommentsService {
       review: reviewVisibility,
       OR: [
         { status: 'approved' },
-        { userId: viewerId, status: { in: ['pending', 'rejected'] } },
+        ...(viewerId
+          ? [{ userId: viewerId, status: { in: ['pending', 'rejected'] } }]
+          : []),
       ],
     };
 
@@ -54,6 +58,10 @@ export class CommentsService {
       this.prisma.comment.findMany({
         where,
         include: {
+          _count: { select: { likes: true } },
+          likes: viewerId
+            ? { where: { userId: viewerId }, select: { userId: true } }
+            : false,
           user: {
             select: {
               id: true,
@@ -120,6 +128,7 @@ export class CommentsService {
         throw new NotFoundException('评价不存在或暂不可回复');
       }
 
+      let parentUserId: string | undefined;
       if (dto.parentCommentId) {
         const parent = await tx.comment.findUnique({
           where: { id: dto.parentCommentId },
@@ -134,6 +143,7 @@ export class CommentsService {
         if (parent.deletedAt) {
           throw new BadRequestException('无法回复已删除的评论');
         }
+        parentUserId = parent.userId;
       }
 
       // 获取菜品信息以确定食堂ID
@@ -188,6 +198,16 @@ export class CommentsService {
         },
       });
 
+      if (autoApprove)
+        await this.notifications.createReply(
+          tx,
+          userId,
+          'comment',
+          comment.id,
+          review.id,
+          [review.userId, ...(parentUserId ? [parentUserId] : [])],
+        );
+
       return {
         code: 201,
         message: '回复已提交',
@@ -202,7 +222,12 @@ export class CommentsService {
     dto: ReportCommentDto,
   ): Promise<SuccessResponseDto> {
     const comment = await this.prisma.comment.findUnique({
-      where: { id: commentId, deletedAt: null },
+      where: {
+        id: commentId,
+        status: 'approved',
+        deletedAt: null,
+        review: { status: 'approved', deletedAt: null },
+      },
     });
     if (!comment) {
       throw new NotFoundException('评论不存在');
@@ -241,9 +266,16 @@ export class CommentsService {
       throw new ForbiddenException('无权删除该评论');
     }
 
-    await this.prisma.comment.update({
-      where: { id: commentId },
-      data: { deletedAt: new Date() },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM reviews WHERE id = ${comment.reviewId} FOR UPDATE`;
+      await tx.comment.update({
+        where: { id: commentId },
+        data: { deletedAt: new Date() },
+      });
+      await this.notifications.withdraw(tx, {
+        targetType: 'comment',
+        targetId: commentId,
+      });
     });
 
     return {
@@ -253,7 +285,7 @@ export class CommentsService {
     };
   }
 
-  private mapToCommentData(comment: any, viewerId: string): CommentData {
+  private mapToCommentData(comment: any, viewerId?: string): CommentData {
     return {
       id: comment.id,
       reviewId: comment.reviewId,
@@ -264,6 +296,8 @@ export class CommentsService {
       status: comment.status,
       floor: comment.floor,
       createdAt: comment.createdAt.toISOString(),
+      likeCount: comment._count?.likes ?? 0,
+      likedByMe: !!comment.likes?.length,
       parentComment:
         comment.parentComment &&
         (comment.parentComment.status === 'approved' ||

@@ -11,6 +11,10 @@ export function useProfile() {
   let disposed = false;
   let requestVersion = 0;
   let logoutTimer: ReturnType<typeof setTimeout> | null = null;
+  function invalidate() {
+    requestVersion++;
+    loading.value = false;
+  }
   const captureOperation = () => {
     const session = userStore.sessionVersion;
     const version = ++requestVersion;
@@ -88,5 +92,14 @@ export function useProfile() {
       disposed = true;
       if (logoutTimer) clearTimeout(logoutTimer);
     });
-  return { loading, error, userInfo, isLoggedIn, fetchProfile, updateProfile, handleLogout };
+  return {
+    loading,
+    error,
+    userInfo,
+    isLoggedIn,
+    fetchProfile,
+    updateProfile,
+    handleLogout,
+    invalidate,
+  };
 }

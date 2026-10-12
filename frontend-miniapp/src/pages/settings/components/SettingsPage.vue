@@ -4,7 +4,16 @@
       <view v-if="!initialized && !loading && loadError" class="settings-load-error" role="alert">
         <text class="settings-label">资料未能加载</text>
         <text class="settings-hint">{{ loadError }}</text>
-        <button class="settings-button" :disabled="loading" @click="$emit('retry')">
+        <button
+          class="settings-button"
+          :disabled="loading"
+          @click="retryButton.activate"
+          @keydown="retryButton.handleKeydown"
+          @keyup="retryButton.handleKeyup"
+          @blur="retryButton.clearPress"
+          role="button"
+          tabindex="0"
+        >
           重新加载
         </button>
       </view>
@@ -14,32 +23,45 @@
       </template>
     </view>
     <view v-if="initialized" class="settings-save-bar">
-      <text class="settings-hint" aria-live="polite">{{
-        saved ? '已保存' : saving ? '正在保存…' : dirty ? '有未保存的修改' : '暂无修改'
-      }}</text>
       <button
         class="settings-button settings-button--primary"
         :disabled="!canSave"
-        @click="$emit('save')"
+        :aria-disabled="!canSave"
+        :aria-busy="saving"
+        :tabindex="canSave ? 0 : -1"
+        @click="saveButton.activate"
+        @keydown="saveButton.handleKeydown"
+        @keyup="saveButton.handleKeyup"
+        @blur="saveButton.clearPress"
+        role="button"
       >
-        {{ saved ? '已保存' : saving ? '保存中…' : '保存修改' }}
+        <text aria-live="polite">{{ saved ? '已保存' : saving ? '保存中…' : '保存修改' }}</text>
       </button>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-defineProps<{
+import { useButtonActivation } from '@/composables/use-button-activation';
+
+const props = defineProps<{
   loading: boolean;
   initialized: boolean;
   loadError: string;
   saving: boolean;
   saved: boolean;
-  dirty: boolean;
   canSave: boolean;
   restoredDraft: boolean;
 }>();
-defineEmits<{ (e: 'retry'): void; (e: 'save'): void }>();
+const emit = defineEmits<{ (e: 'retry'): void; (e: 'save'): void }>();
+const retryButton = useButtonActivation(
+  () => emit('retry'),
+  () => props.loading
+);
+const saveButton = useButtonActivation(
+  () => emit('save'),
+  () => !props.canSave
+);
 </script>
 
 <style scoped>
@@ -64,8 +86,7 @@ defineEmits<{ (e: 'retry'): void; (e: 'save'): void }>();
   z-index: 2;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  justify-content: flex-end;
   padding: 16px 0 calc(4px + env(safe-area-inset-bottom));
   background: #fff;
 }

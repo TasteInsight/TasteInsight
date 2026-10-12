@@ -1,7 +1,9 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue'; // 引入 ref 和 computed
 import { wechatLogin, getUserProfile, updateUserProfile } from '@/api/modules/user';
-import type { User, UserProfileUpdateRequest } from '@/types/api';
+import { phoneLogin } from '@/api/modules/auth';
+import { clearCampusOAuthPending } from '@/utils/campus-oauth';
+import type { ApiResponse, LoginData, User, UserProfileUpdateRequest } from '@/types/api';
 
 export const useUserStore = defineStore('user', () => {
   const token = ref<string | null>(uni.getStorageSync('token') || null);
@@ -44,11 +46,11 @@ export const useUserStore = defineStore('user', () => {
   /**
    * 微信登录流程
    */
-  async function loginAction(code: string): Promise<User> {
+  async function loginWith(authenticate: () => Promise<ApiResponse<LoginData>>): Promise<User> {
     logoutAction();
     const loginSession = sessionVersion.value;
     try {
-      const loginData = (await wechatLogin(code)).data;
+      const loginData = (await authenticate()).data;
       assertCurrentSession(loginSession);
       const { token: newToken, user } = loginData;
 
@@ -77,8 +79,8 @@ export const useUserStore = defineStore('user', () => {
           updatedAt: user.updatedAt || new Date().toISOString(),
         } as User;
 
-        // 若缺少关键标识（id 或 openId），尝试通过 profile 接口补全
-        if (!safeUser.id || !safeUser.openId) {
+        // 账号身份以内部 ID 为准，手机号账号不需要微信 OpenID。
+        if (!safeUser.id) {
           try {
             await fetchProfileAction();
             assertCurrentSession(loginSession);
@@ -117,10 +119,19 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  function loginAction(code: string, platform: 'mp-weixin' | 'app' = 'mp-weixin'): Promise<User> {
+    return loginWith(() => wechatLogin(code, platform));
+  }
+
+  function phoneLoginAction(challengeId: string, code: string): Promise<User> {
+    return loginWith(() => phoneLogin(challengeId, code));
+  }
+
   /**
    * 退出登录
    */
   function logoutAction(): void {
+    clearCampusOAuthPending();
     sessionVersion.value += 1;
     token.value = null;
     refreshToken.value = null;
@@ -240,6 +251,7 @@ export const useUserStore = defineStore('user', () => {
     nickname,
     // Actions
     loginAction,
+    phoneLoginAction,
     logoutAction,
     fetchProfileAction,
     updateProfileAction,

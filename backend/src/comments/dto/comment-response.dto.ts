@@ -22,6 +22,8 @@ export class CommentData {
   parentComment?: ParentCommentData | null;
   createdAt: string;
   floor: number;
+  likeCount?: number;
+  likedByMe?: boolean;
 }
 
 export class CommentListResponseDto extends BaseResponseDto<{

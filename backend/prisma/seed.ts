@@ -167,6 +167,9 @@ async function main() {
     data: {
       openId: 'baseline_user_openid',
       nickname: 'Baseline User',
+      studentVerification: {
+        create: { status: 'VERIFIED', method: 'MANUAL_REVIEW', verifiedAt: new Date(), expiresAt: new Date(Date.now() + 180 * 86400000), reviewedById: admin.id },
+      },
       avatar: 'https://example.com/avatar.jpg',
       allergens: ['芒果'],
     }
@@ -177,6 +180,9 @@ async function main() {
     data: {
       openId: 'secondary_user_openid',
       nickname: 'Secondary User',
+      studentVerification: {
+        create: { status: 'VERIFIED', method: 'MANUAL_REVIEW', verifiedAt: new Date(), expiresAt: new Date(Date.now() + 180 * 86400000), reviewedById: admin.id },
+      },
       avatar: 'https://example.com/avatar2.jpg',
       allergens: [],
     },

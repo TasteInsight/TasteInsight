@@ -2,6 +2,8 @@ import type { PrismaClient } from '@prisma/client';
 
 export async function clearSeedBusinessData(prisma: PrismaClient): Promise<void> {
   await prisma.$transaction([
+    prisma.notificationCampaign.deleteMany({}),
+    prisma.weeklyRecommendationCollection.deleteMany({}),
     prisma.operationLog.deleteMany({}),
     // These records reference recreated users/dishes without foreign keys.
     prisma.recommendationEvent.deleteMany({}),
@@ -12,6 +14,7 @@ export async function clearSeedBusinessData(prisma: PrismaClient): Promise<void>
     prisma.browseHistory.deleteMany({}),
     prisma.favoriteDish.deleteMany({}),
     prisma.report.deleteMany({}),
+    prisma.post.deleteMany({}),
     prisma.comment.deleteMany({}),
     prisma.review.deleteMany({}),
     prisma.dishUpload.deleteMany({}),

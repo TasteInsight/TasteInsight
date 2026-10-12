@@ -5,8 +5,14 @@ import { DishReviewStatsService } from '@/dish-review-stats-queue';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { AdminReviewsController } from './admin-reviews.controller';
 import { PERMISSIONS_KEY } from '@/auth/decorators/permissions.decorator';
+import { NotificationService } from '@/notifications/notification.service';
 
 const mockPrismaService = {
+  studentVerification: {
+    findFirst: jest.fn().mockResolvedValue({ id: 'verified' }),
+  },
+  $transaction: jest.fn((callback) => callback(mockPrismaService)),
+  $queryRaw: jest.fn(),
   review: {
     findMany: jest.fn(),
     count: jest.fn(),
@@ -22,6 +28,7 @@ const mockPrismaService = {
 
 const mockDishReviewStatsService = {
   recomputeDishStats: jest.fn(),
+  recomputeBatch: jest.fn(),
 };
 
 describe('AdminReviewsService', () => {
@@ -35,6 +42,10 @@ describe('AdminReviewsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AdminReviewsService,
+        {
+          provide: NotificationService,
+          useValue: { withdrawThread: jest.fn(), withdraw: jest.fn() },
+        },
         { provide: PrismaService, useValue: mockPrismaService },
         {
           provide: DishReviewStatsService,
@@ -173,8 +184,9 @@ describe('AdminReviewsService', () => {
         },
         data: { status: 'approved', rejectReason: null },
       });
-      expect(dishReviewStatsService.recomputeDishStats).toHaveBeenCalledWith(
-        'd1',
+      expect(dishReviewStatsService.recomputeBatch).toHaveBeenCalledWith(
+        prisma,
+        ['d1'],
       );
     });
 
@@ -231,8 +243,9 @@ describe('AdminReviewsService', () => {
           rejectReason: 'Inappropriate',
         },
       });
-      expect(dishReviewStatsService.recomputeDishStats).toHaveBeenCalledWith(
-        'd1',
+      expect(dishReviewStatsService.recomputeBatch).toHaveBeenCalledWith(
+        prisma,
+        ['d1'],
       );
     });
 
@@ -260,12 +273,15 @@ describe('AdminReviewsService', () => {
 
   describe('deleteReview', () => {
     beforeEach(() => {
-      prisma.review.findUnique.mockResolvedValue({
-        id: 'r1',
-        dishId: 'd1',
-        deletedAt: null,
-        dish: { canteenId: 'c1' },
-      });
+      prisma.review.findMany.mockResolvedValue([
+        {
+          id: 'r1',
+          dishId: 'd1',
+          deletedAt: null,
+          dish: { canteenId: 'c1' },
+        },
+      ]);
+      prisma.review.updateMany.mockResolvedValue({ count: 1 });
     });
 
     it('should soft delete a review', async () => {
@@ -275,17 +291,18 @@ describe('AdminReviewsService', () => {
 
       expect(result.code).toBe(200);
       expect(result.message).toBe('删除成功');
-      expect(prisma.review.update).toHaveBeenCalledWith({
-        where: { id: 'r1' },
+      expect(prisma.review.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: ['r1'] }, deletedAt: null },
         data: { deletedAt: expect.any(Date) },
       });
-      expect(dishReviewStatsService.recomputeDishStats).toHaveBeenCalledWith(
-        'd1',
+      expect(dishReviewStatsService.recomputeBatch).toHaveBeenCalledWith(
+        prisma,
+        ['d1'],
       );
     });
 
     it('should throw NotFoundException if review not found', async () => {
-      prisma.review.findUnique.mockResolvedValue(null);
+      prisma.review.findMany.mockResolvedValue([]);
 
       await expect(service.deleteReview('unknown')).rejects.toThrow(
         NotFoundException,

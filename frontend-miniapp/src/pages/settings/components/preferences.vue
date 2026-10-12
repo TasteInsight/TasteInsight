@@ -115,7 +115,7 @@
         ><button class="settings-button" @click="loadCanteens">重试食堂列表</button>
       </view>
       <text v-else-if="canteensLoading" class="settings-hint">正在加载食堂…</text>
-      <picker
+      <UiPicker
         v-else
         mode="selector"
         :range="canteenList"
@@ -129,7 +129,7 @@
           }}</text
           ><text class="iconfont icon-chevronright" aria-hidden="true"></text
         ></view>
-      </picker>
+      </UiPicker>
       <view v-if="form.canteenPreferences.length" class="settings-tags">
         <view v-for="(id, index) in form.canteenPreferences" :key="id" class="settings-tag">
           <text>{{ getCanteenNameById(id) }}</text
@@ -148,6 +148,7 @@
 </template>
 <script setup lang="ts">
 import { computed } from 'vue';
+import UiPicker from '@/components/UiPicker.vue';
 import { onBackPress } from '@dcloudio/uni-app';
 import { usePreferences } from '../composables/use-preferences';
 import SettingsPage from './SettingsPage.vue';
@@ -177,7 +178,6 @@ const pageState = computed(() => ({
   loadError: state.loadError.value,
   saving: state.saving.value,
   saved: state.saved.value,
-  dirty: state.dirty.value,
   restoredDraft: state.restoredDraft.value,
 }));
 const tasteOptions = [

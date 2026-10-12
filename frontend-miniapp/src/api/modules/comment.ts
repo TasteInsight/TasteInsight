@@ -19,6 +19,7 @@ export const getCommentsByReview = (
 ): Promise<ApiResponse<CommentListData>> => {
   return request<CommentListData>({
     url: `/comments/${reviewId}`,
+    auth: 'optional',
     method: 'GET',
     data: params,
   });
@@ -58,3 +59,9 @@ export const deleteComment = (commentId: string): Promise<ApiResponse<null>> => 
     method: 'DELETE',
   });
 };
+
+export const setCommentLike = (id: string, liked: boolean) =>
+  request<{ liked: boolean; likeCount: number }>({
+    url: `/comments/${encodeURIComponent(id)}/like`,
+    method: liked ? 'PUT' : 'DELETE',
+  });

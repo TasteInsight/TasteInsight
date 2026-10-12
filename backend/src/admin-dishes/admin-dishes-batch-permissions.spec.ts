@@ -31,6 +31,9 @@ describe('Batch dish write permissions and review', () => {
     const dishes = new Map<string, any>();
     const uploads = new Map<string, any>();
     const prisma: any = {
+      notificationCampaign: {
+        createMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
       $queryRaw: jest.fn(async () => []),
       canteen: {
         findMany: jest.fn(async () => [canteen]),

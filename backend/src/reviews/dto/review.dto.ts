@@ -41,4 +41,6 @@ export class ReviewData {
   images: string[];
   createdAt: string;
   deletedAt?: string | null;
+  likeCount?: number;
+  likedByMe?: boolean;
 }

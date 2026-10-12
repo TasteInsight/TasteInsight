@@ -4,9 +4,10 @@ import { ConfigModule } from '@nestjs/config';
 import { AdminCommentsController } from './admin-comments.controller';
 import { AdminCommentsService } from './admin-comments.service';
 import { PermissionsGuard } from '@/auth/guards/permissions.guard';
+import { NotificationsModule } from '@/notifications/notifications.module';
 
 @Module({
-  imports: [JwtModule.register({}), ConfigModule],
+  imports: [JwtModule.register({}), ConfigModule, NotificationsModule],
   controllers: [AdminCommentsController],
   providers: [AdminCommentsService, PermissionsGuard],
 })

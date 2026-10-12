@@ -18,7 +18,7 @@ onHide(() => {
 });
 
 /**
- * 检查登录状态，未登录则重定向到登录页
+ * 已有会话的用户直接进入首页，公开页面允许游客浏览。
  */
 function checkLoginStatus() {
   const userStore = useUserStore();
@@ -43,12 +43,6 @@ function checkLoginStatus() {
     return;
   }
 
-  // 如果未登录且不在登录页，跳转到登录页
-  if (!userStore.isLoggedIn && currentPath !== '/pages/login/index') {
-    uni.reLaunch({
-      url: '/pages/login/index',
-    });
-  }
 }
 </script>
 <style>

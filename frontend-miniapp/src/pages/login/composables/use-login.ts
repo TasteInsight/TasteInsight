@@ -1,11 +1,12 @@
 import { ref, getCurrentScope, onScopeDispose } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import config from '@/config';
+import { useWechatAuthorization } from '@/composables/use-wechat-authorization';
 
 export function useLogin() {
   const loading = ref(false);
   const submitted = ref(false);
-  const wechatAvailable = ref(config.platform === 'mp-weixin');
+  const { available: wechatAvailable, authorize: authorizeWechat } = useWechatAuthorization();
   const userStore = useUserStore();
   let disposed = false;
   let navigation: ReturnType<typeof setTimeout> | undefined;
@@ -19,16 +20,25 @@ export function useLogin() {
   /**
    * 微信登录流程
    */
-  async function authenticate(getCode: () => Promise<string>): Promise<void> {
+  async function authenticate(
+    getCode: () => Promise<string>,
+    consume: (code: string) => Promise<unknown> = code => userStore.loginAction(code)
+  ): Promise<void> {
     if (loading.value || submitted.value || disposed) return;
 
     loading.value = true;
     const initialSession = userStore.sessionVersion;
+    const initialOwner = userStore.userInfo?.id;
 
     try {
       const code = await getCode();
-      if (disposed || userStore.sessionVersion !== initialSession) return;
-      await userStore.loginAction(code);
+      if (
+        disposed ||
+        userStore.sessionVersion !== initialSession ||
+        userStore.userInfo?.id !== initialOwner
+      )
+        return;
+      await consume(code);
       if (disposed) return;
       const loggedInSession = userStore.sessionVersion;
       submitted.value = true;
@@ -63,17 +73,18 @@ export function useLogin() {
 
   async function wechatLogin(): Promise<void> {
     if (!wechatAvailable.value) throw new Error('当前平台未配置微信登录');
-    return authenticate(
-      () =>
-        new Promise((resolve, reject) =>
-          uni.login({
-            provider: 'weixin',
-            success: result => resolve(result.code),
-            fail: reject,
-          })
-        )
+    return authenticate(authorizeWechat, code =>
+      config.platform === 'mp-weixin'
+        ? userStore.loginAction(code)
+        : userStore.loginAction(code, 'app')
     );
   }
+
+  const phoneLogin = (challengeId: string, code: string) =>
+    authenticate(
+      async () => code,
+      value => userStore.phoneLoginAction(challengeId, value)
+    );
 
   async function testLogin(): Promise<void> {
     if (!config.testLoginEnabled) throw new Error('开发测试登录未启用');
@@ -94,5 +105,6 @@ export function useLogin() {
     testLogin,
     testLoginEnabled: config.testLoginEnabled,
     wechatLogin,
+    phoneLogin,
   };
 }

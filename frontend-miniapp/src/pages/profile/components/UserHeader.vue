@@ -1,83 +1,116 @@
 <template>
   <view class="user-header">
-    <UserAvatar :src="userInfo?.avatar" :size="72" :label="userInfo?.nickname || '个人头像'" />
-    <view class="user-header-content">
-      <template v-if="isLoggedIn">
-        <text class="user-name">{{ userInfo?.nickname || '正在加载个人资料…' }}</text>
-        <button class="user-action" :disabled="!userInfo" @click="handleEditProfile">
-          编辑资料<text class="iconfont icon-chevronright" aria-hidden="true"></text>
-        </button>
-      </template>
-      <template v-else>
-        <text class="user-name">欢迎来到食鉴</text>
-        <text class="user-hint">登录后管理评价、收藏与饮食偏好</text>
-        <button class="user-action user-action-primary" @click="$emit('login')">立即登录</button>
-      </template>
-    </view>
+    <button
+      class="user-summary"
+      role="button"
+      :tabindex="isLoggedIn && !userInfo ? -1 : 0"
+      :disabled="isLoggedIn && !userInfo"
+      :aria-label="
+        isLoggedIn
+          ? '管理个人资料：' +
+            userInfo?.nickname +
+            (userInfo?.capabilities?.canContribute ? '，已认证学生' : '') +
+            (userInfo?.bio ? '，' + userInfo.bio : '')
+          : '登录食鉴'
+      "
+      @click="activate"
+      @keydown="handleKeydown"
+      @keyup="handleKeyup"
+      @blur="clearPress"
+    >
+      <UserAvatar :src="userInfo?.avatar" :size="52" :label="userInfo?.nickname || '个人头像'" />
+      <view class="user-copy">
+        <view class="user-name-row">
+          <text class="user-name">{{ isLoggedIn ? userInfo?.nickname : '欢迎来到食鉴' }}</text>
+          <UiIcon
+            v-if="userInfo?.capabilities?.canContribute"
+            name="shield"
+            :size="15"
+            tone="primary"
+          />
+        </view>
+        <text class="user-bio">{{
+          isLoggedIn ? userInfo?.bio || '填写个人简介' : '点击登录，记录用餐体验'
+        }}</text>
+      </view>
+    </button>
   </view>
 </template>
 <script setup lang="ts">
 import type { User } from '@/types/api';
 import UserAvatar from '@/components/UserAvatar.vue';
-defineProps<{ userInfo: User | null; isLoggedIn: boolean; loading: boolean }>();
-defineEmits<{ (event: 'login'): void }>();
-function handleEditProfile() {
-  uni.navigateTo({
-    url: '/pages/settings/components/personal',
-    fail: () => uni.showToast({ title: '页面跳转失败', icon: 'none' }),
-  });
-}
+import UiIcon from '@/components/UiIcon.vue';
+import { useButtonActivation } from '@/composables/use-button-activation';
+const props = defineProps<{ userInfo: User | null; isLoggedIn: boolean; loading: boolean }>();
+const emit = defineEmits<{ (event: 'login'): void; (event: 'manage'): void }>();
+const { activate, handleKeydown, handleKeyup, clearPress } = useButtonActivation(
+  () => (props.isLoggedIn ? emit('manage') : emit('login')),
+  () => props.isLoggedIn && !props.userInfo
+);
 </script>
 <style scoped>
 .user-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  width: 100%;
-}
-.user-header-content {
-  min-width: 0;
   flex: 1;
+  min-width: 0;
+}
+.user-summary {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  min-height: 64px;
+  margin: 0;
+  padding: 4px 0;
+  border: 0;
+  border-radius: 8px;
+  background: #fff;
+  color: #1f2937;
+  text-align: left;
+  line-height: 1.5;
+}
+.user-summary::after {
+  border: 0;
+}
+.user-summary:active {
+  background: #f4f4f5;
+}
+.user-summary:focus-visible {
+  outline: 2px solid #660874;
+  outline-offset: 2px;
+}
+.user-summary[disabled] {
+  opacity: 0.5;
+}
+.user-copy {
+  flex: 1;
+  min-width: 0;
+}
+.user-name-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
 }
 .user-name {
   display: block;
+  min-width: 0;
+  overflow: hidden;
   color: #111827;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 650;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.user-hint {
+.user-bio {
   display: block;
-  margin-top: 6px;
+  margin-top: 4px;
+  overflow: hidden;
   color: #667085;
   font-size: 13px;
-  line-height: 1.6;
-}
-.user-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  margin: 8px 0 0;
-  padding: 8px 0;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: #660874;
-  font-size: 14px;
-  line-height: 1.5;
-}
-.user-action::after {
-  border: 0;
-}
-.user-action-primary {
-  padding: 10px 16px;
-  background: #660874;
-  color: #fff;
-}
-.user-action:focus-visible {
-  outline: 2px solid #660874;
-  outline-offset: 2px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

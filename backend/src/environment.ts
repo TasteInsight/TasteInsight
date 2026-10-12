@@ -1,4 +1,9 @@
+import { CAMPUS_OAUTH_REQUIRED_KEYS } from './auth/identity-configuration';
 import { isIP } from 'net';
+import {
+  notificationWebhookConfiguration,
+  notificationWebhookUrl,
+} from './notifications/notification-webhook.config';
 
 export type RuntimeRole =
   | 'public-api'
@@ -124,6 +129,7 @@ export function validateEnvironment(
 ): Record<string, unknown> {
   const servesUsers = role === 'public-api' || role === 'combined';
   const servesApi = servesUsers || role === 'admin-api';
+  const runsBackground = role === 'worker' || role === 'combined';
   const initializesDatabase = role === 'migrate' || role === 'combined';
   const NODE_ENV = stringSetting(
     environment.NODE_ENV,
@@ -145,6 +151,10 @@ export function validateEnvironment(
     if (RUN_SEED) throw new Error('RUN_SEED is forbidden in production');
     if (IMPORT_DATA) throw new Error('IMPORT_DATA is forbidden in production');
   }
+  const get = (key: string) =>
+    key === 'NODE_ENV' ? NODE_ENV : environment[key];
+  if (runsBackground) notificationWebhookConfiguration(get);
+  else if (servesApi) notificationWebhookUrl(get);
   const required = (key: string) => {
     const value = environment[key];
     if (typeof value !== 'string' || !value.trim())
@@ -153,9 +163,75 @@ export function validateEnvironment(
   };
   const configured = (key: string) =>
     typeof environment[key] === 'string' && environment[key].trim().length > 0;
-  if (servesUsers && ['WECHAT_APPID', 'WECHAT_SECRET'].some(configured)) {
-    required('WECHAT_APPID');
-    required('WECHAT_SECRET');
+  if (servesUsers) {
+    for (const pair of [
+      ['WECHAT_APPID', 'WECHAT_SECRET'],
+      ['WECHAT_APP_APPID', 'WECHAT_APP_SECRET'],
+      ['SMS_GATEWAY_URL', 'SMS_GATEWAY_TOKEN'],
+      ['RESEND_API_KEY', 'EMAIL_FROM'],
+      ['CAMPUS_OAUTH_STUDENT_CLAIM', 'CAMPUS_OAUTH_STUDENT_VALUES'],
+    ]) {
+      if (pair.some(configured)) pair.forEach(required);
+    }
+    const oauthEnabled = CAMPUS_OAUTH_REQUIRED_KEYS.some(configured);
+    if (oauthEnabled) CAMPUS_OAUTH_REQUIRED_KEYS.forEach(required);
+    if (
+      configured('SMS_GATEWAY_URL') ||
+      configured('RESEND_API_KEY') ||
+      oauthEnabled
+    ) {
+      const secret = required('AUTH_CHALLENGE_SECRET');
+      if (Buffer.byteLength(secret) < 32 || placeholder.test(secret)) {
+        throw new Error(
+          'AUTH_CHALLENGE_SECRET must be a non-placeholder secret of at least 32 bytes',
+        );
+      }
+    }
+    if (configured('RESEND_API_KEY')) required('CAMPUS_EMAIL_DOMAINS');
+    for (const key of [
+      'SMS_GATEWAY_URL',
+      'CAMPUS_OAUTH_AUTHORIZATION_URL',
+      'CAMPUS_OAUTH_TOKEN_URL',
+      'CAMPUS_OAUTH_USERINFO_URL',
+      'CAMPUS_OAUTH_REDIRECT_URI',
+      'CAMPUS_OAUTH_ISSUER',
+    ]) {
+      if (!configured(key)) continue;
+      try {
+        const url = new URL(required(key));
+        if (
+          url.protocol !== 'https:' ||
+          url.username ||
+          url.password ||
+          url.hash
+        )
+          throw new Error();
+      } catch {
+        throw new Error(
+          `${key} must be an HTTPS URL without credentials or fragments`,
+        );
+      }
+    }
+    if (
+      configured('CAMPUS_OAUTH_TOKEN_AUTH_METHOD') &&
+      !['client_secret_basic', 'client_secret_post'].includes(
+        required('CAMPUS_OAUTH_TOKEN_AUTH_METHOD'),
+      )
+    ) {
+      throw new Error(
+        'CAMPUS_OAUTH_TOKEN_AUTH_METHOD must be client_secret_basic or client_secret_post',
+      );
+    }
+    if (
+      configured('CAMPUS_EMAIL_DOMAINS') &&
+      !required('CAMPUS_EMAIL_DOMAINS')
+        .split(',')
+        .every((domain) =>
+          /^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\.[a-z]{2,}$/i.test(domain.trim()),
+        )
+    ) {
+      throw new Error('CAMPUS_EMAIL_DOMAINS must contain exact email domains');
+    }
   }
   if (role !== 'migrate') {
     const trustedProxies = stringSetting(
@@ -192,10 +268,6 @@ export function validateEnvironment(
       }
       if (environment.JWT_SECRET === environment.JWT_REFRESH_SECRET)
         throw new Error('JWT_REFRESH_SECRET must differ from JWT_SECRET');
-    }
-    if (servesUsers) {
-      required('WECHAT_APPID');
-      required('WECHAT_SECRET');
     }
     if (role !== 'migrate') {
       for (const key of ['REDIS_HOST', 'REDIS_PASSWORD']) required(key);
@@ -277,6 +349,15 @@ export function validateEnvironment(
       'UPLOAD_MAX_FILE_SIZE',
       10485760,
       1,
+    );
+  }
+  if (servesUsers) {
+    validated.CAMPUS_VERIFICATION_DAYS = integerSetting(
+      environment.CAMPUS_VERIFICATION_DAYS,
+      'CAMPUS_VERIFICATION_DAYS',
+      30,
+      1,
+      366,
     );
   }
   if (role !== 'migrate') {

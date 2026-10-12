@@ -64,13 +64,13 @@
           <button class="search-button search-link" @tap="goToAddDish">添加菜品</button>
         </view>
       </view>
-      <view v-else-if="!loading && !error && !canteenError && initialized" class="search-state">
-        <text class="search-empty-title">未找到“{{ submittedKeyword }}”相关结果</text>
-        <text>{{
-          isScoped ? '试试其他菜名，看看这里的选择。' : '试试其他菜名，或按食堂名称搜索。'
-        }}</text>
-        <button class="search-button search-link" @tap="goToAddDish">添加这道菜</button>
-      </view>
+      <EmptyState
+        v-else-if="!loading && !error && !canteenError && initialized"
+        :title="`未找到“${submittedKeyword}”相关结果`"
+        icon="search"
+        action-text="添加这道菜"
+        @action="goToAddDish"
+      />
     </view>
   </view>
 </template>
@@ -80,6 +80,7 @@ import { computed, nextTick, onMounted, ref } from 'vue';
 import { onHide, onLoad, onReachBottom, onShow } from '@dcloudio/uni-app';
 import { useSearch, type SearchScope } from './composables/use-search';
 import SearchBar from '@/components/SearchBar.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import CanteenResultItem from './components/CanteenResultItem.vue';
 import DishResultItem from './components/DishResultItem.vue';
 
@@ -225,11 +226,6 @@ onShow(() => {
 }
 .search-state--compact {
   padding: 16px 0;
-}
-.search-empty-title {
-  color: #1f2937;
-  font-size: 16px;
-  font-weight: 500;
 }
 .search-link {
   color: #660874;

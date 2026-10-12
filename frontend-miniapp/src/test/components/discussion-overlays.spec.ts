@@ -33,6 +33,7 @@ const viewer: User = {
   openId: 'mock_viewer',
   nickname: '阅读者',
   avatar: '',
+  capabilities: { canContribute: true },
   createdAt: '2026-10-08T08:00:00.000Z',
   updatedAt: '2026-10-08T08:00:00.000Z',
 };

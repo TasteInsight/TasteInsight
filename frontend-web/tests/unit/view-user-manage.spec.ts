@@ -99,6 +99,24 @@ describe('views/UserManage', () => {
     }
   })
 
+  it('exposes campus permissions, expands community dependencies, and blocks canteen-scoped assignment', async () => {
+    mocks.authStoreMock.permissions = ['admin:view', 'admin:create', 'canteen:view', 'student:review', 'post:view', 'post:approve', 'post:delete']
+    const wrapper = mount(UserManage, { global: { stubs: { Header: true } } })
+    try {
+      await Promise.resolve()
+      await nextTick()
+      expect(wrapper.vm.permissionGroups.find((group: any) => group.id === 'student').permissions[0].id).toBe('student:review')
+      wrapper.vm.togglePermission('post:approve')
+      expect(wrapper.vm.formData.permissions).toEqual(['post:approve', 'post:view'])
+      wrapper.vm.formData.username = 'test-admin'
+      wrapper.vm.formData.password = 'ValidPassword123!'
+      wrapper.vm.formData.canteenId = 'c1'
+      await wrapper.vm.submitForm()
+      expect(wrapper.vm.errors.permissions).toContain('仅可分配给全局管理范围')
+      expect(mocks.permissionApiMock.createAdmin).not.toHaveBeenCalled()
+    } finally { wrapper.unmount() }
+  })
+
   it('loads canteens/admins on mount and supports search + canteen filter', async () => {
     mocks.permissionApiMock.getAdmins.mockResolvedValueOnce({
       code: 200,

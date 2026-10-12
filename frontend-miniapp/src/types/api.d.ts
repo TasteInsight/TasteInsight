@@ -62,9 +62,11 @@ export interface PaginatedData<T> {
  */
 export interface User {
   id: string;
-  openId: string;
+  openId?: string | null;
   nickname: string;
   avatar: string;
+  bio?: string;
+  capabilities?: { canContribute: boolean };
   preferences?: UserPreference;
   settings?: UserSettings;
   allergens?: string[];
@@ -100,10 +102,14 @@ export interface UserPreference {
 }
 
 export interface UserSettings {
+  showMealPlans?: boolean;
   notificationSettings?: {
     newDishAlert?: boolean;
     priceChangeAlert?: boolean;
     reviewReplyAlert?: boolean;
+    likeAlert?: boolean;
+    postReplyAlert?: boolean;
+    diningAlert?: boolean;
     weeklyRecommendation?: boolean;
   };
   displaySettings?: {
@@ -354,6 +360,8 @@ export interface Review {
   content: string;
   images: string[];
   status: 'pending' | 'approved' | 'rejected';
+  likeCount?: number;
+  likedByMe?: boolean;
   createdAt: string;
 }
 
@@ -377,6 +385,8 @@ export interface Comment {
   parentComment?: null | ParentComment;
   content: string;
   status: 'pending' | 'approved' | 'rejected';
+  likeCount?: number;
+  likedByMe?: boolean;
   createdAt: string;
 }
 
@@ -452,6 +462,8 @@ export interface MealPlan {
   endDate: string;
   mealTime: 'breakfast' | 'lunch' | 'dinner' | 'nightsnack';
   dishes: string[];
+  isPublic?: boolean;
+  completedDates?: string[];
   createdAt: string;
 }
 
@@ -759,6 +771,7 @@ export interface MealPlanRequest {
   endDate?: string;
   mealTime?: 'breakfast' | 'lunch' | 'dinner' | 'nightsnack';
   dishes?: string[];
+  isPublic?: boolean;
 }
 
 /**
@@ -777,6 +790,7 @@ export interface RecommendFeedbackRequest {
  * 更新用户信息请求
  */
 export interface UserProfileUpdateRequest {
+  bio?: string;
   nickname?: string;
   avatar?: string;
   preferences?: Partial<UserPreference>;
@@ -982,6 +996,7 @@ export interface AdminListItem extends Admin {
  * 请求配置选项
  */
 export interface RequestOptions {
+  auth?: 'none' | 'optional' | 'required';
   url: string;
   method?: RequestMethod;
   data?: Record<string, any> | any[];

@@ -161,7 +161,8 @@ describe.each(settingsPages)('%s settings real page lifecycle', (_name, componen
     await expect(pending).resolves.toBe(false);
     await flushPromises();
     expect(vm.form).toEqual(before);
-    expect(settings.props()).toMatchObject({ saving: false, saved: false, dirty: true, canSave: true });
+    expect(settings.props()).toMatchObject({ saving: false, saved: false, canSave: true });
+    expect(vm.state.dirty.value).toBe(true);
     expect(uniMock.showToast).toHaveBeenCalledWith({ title: '网络开小差了，请稍后再试', icon: 'none' });
     expect(jest.getTimerCount()).toBe(0);
     const retry = vm.handleSave();

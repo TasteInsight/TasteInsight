@@ -3,6 +3,7 @@ import { reportReview } from '@/api/modules/review';
 import { reportComment } from '@/api/modules/comment';
 import type { ReportRequest } from '@/types/api';
 import { useUserStore } from '@/store/modules/use-user-store';
+import { requireStudent } from '@/utils/student-access';
 
 export function useReport() {
   const userStore = useUserStore();
@@ -14,6 +15,7 @@ export function useReport() {
   const reportTargetType = ref<'review' | 'comment'>('review');
 
   const openReportModal = (type: 'review' | 'comment', id: string) => {
+    if (!requireStudent()) return;
     dialogVersion++;
     submitting.value = false;
     reportTargetId.value = id;

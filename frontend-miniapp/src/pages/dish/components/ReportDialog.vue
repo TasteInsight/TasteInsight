@@ -33,8 +33,9 @@
         <view class="sheet-content">
           <view class="sheet-field">
             <text class="sheet-label">举报类型</text>
-            <picker
+            <UiPicker
               :range="reportTypes"
+              :value="Math.max(0, selectedTypeIndex)"
               range-key="label"
               :disabled="submitting"
               @change="handleTypeChange"
@@ -42,7 +43,7 @@
               <view class="sheet-input report-picker">{{
                 selectedTypeLabel || '请选择举报类型'
               }}</view>
-            </picker>
+            </UiPicker>
           </view>
           <view id="report-reason-field" class="sheet-field">
             <label for="report-reason" class="sheet-label">详细理由</label>
@@ -73,6 +74,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue';
+import UiPicker from '@/components/UiPicker.vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { confirmDiscardChanges } from '@/utils/confirm-discard';
 import { useSheetKeyboard, useSheetInputScroll } from '../composables/use-sheet-keyboard';

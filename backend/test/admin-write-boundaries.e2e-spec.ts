@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import type { Prisma } from '@prisma/client';
 import { ConflictException } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { AdminCanteensService } from '@/admin-canteens/admin-canteens.service';
@@ -6,6 +7,8 @@ import { AdminConfigService } from '@/admin-config/admin-config.service';
 import { AdminDishesService } from '@/admin-dishes/admin-dishes.service';
 import { AdminUploadsService } from '@/admin-uploads/admin-uploads.service';
 import { CommentsService } from '@/comments/comments.service';
+import { NotificationService } from '@/notifications/notification.service';
+import { ConfigService } from '@nestjs/config';
 import { BatchDishStatus } from '@/admin-dishes/dto/admin-dish-batch.dto';
 import { AdminInfo } from '@/auth/decorators/current-admin.decorator';
 
@@ -148,6 +151,7 @@ describe('Administrator write boundaries (PostgreSQL)', () => {
     const service = new CommentsService(
       singleConnection,
       new AdminConfigService(singleConnection),
+      new NotificationService(singleConnection, new ConfigService()),
     );
     const result = await service.createComment(user.id, {
       reviewId: review.id,
@@ -161,6 +165,7 @@ describe('Administrator write boundaries (PostgreSQL)', () => {
     const service = new CommentsService(
       twoConnections,
       new AdminConfigService(twoConnections),
+      new NotificationService(twoConnections, new ConfigService()),
     );
     const results = await Promise.all(
       ['first', 'second'].map((content) =>
@@ -210,27 +215,22 @@ describe('Administrator write boundaries (PostgreSQL)', () => {
     ).not.toBeNull();
   });
 
-  it('rejects deletion when an active binding commits after the service count', async () => {
+  it('rejects deletion when an active binding commits before the service acquires the canteen lock', async () => {
     const canteen = await createCanteen();
-    const counted = deferred();
+    const locking = deferred();
     const proceed = deferred();
     const transaction = prisma.$transaction.bind(prisma);
     const spy = jest.spyOn(prisma, '$transaction').mockImplementationOnce(((
-      callback,
+      callback: (tx: Prisma.TransactionClient) => Promise<unknown>,
     ) =>
       transaction(async (tx) => {
-        const count = tx.admin.count.bind(tx.admin);
-        tx.admin.count = (async (args) => {
-          const result = await count(args);
-          counted.resolve();
-          await proceed.promise;
-          return result;
-        }) as typeof tx.admin.count;
+        locking.resolve();
+        await proceed.promise;
         return callback(tx);
-      })) as any);
+      })) as typeof prisma.$transaction);
     const deletion = canteens.remove(canteen.id);
     try {
-      await counted.promise;
+      await locking.promise;
       const admin = await createAdmin(canteen.id);
       proceed.resolve();
       await expect(deletion).rejects.toThrow(ConflictException);

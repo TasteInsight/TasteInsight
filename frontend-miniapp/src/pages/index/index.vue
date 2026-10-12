@@ -46,7 +46,9 @@
       </view>
 
       <FilterBar ref="filterBarRef" :filter="currentFilter" @filter-change="handleFilterChange" />
-      <view v-if="dishesStore.loading && topThreeDishes.length" class="home-status">正在更新菜品…</view>
+      <view v-if="dishesStore.loading && topThreeDishes.length" class="home-status"
+        >正在更新菜品…</view
+      >
       <view v-if="recommendError" class="home-status" role="alert">
         <text>{{ recommendError }}</text>
         <button class="home-text-button" @click="retryLoadRecommend">重新加载</button>
@@ -55,18 +57,13 @@
         <RecommendItem v-for="dish in topThreeDishes" :key="dish.id" :dish="dish" />
       </view>
 
-      <view
+      <EmptyState
         v-else-if="recommendationsInitialized && !dishesStore.loading && !recommendError"
-        class="home-status"
-      >
-        <text>{{ hasActiveFilters ? '没有符合条件的菜品' : '今天好像没有推荐菜品哦' }}</text>
-        <text class="home-status__hint">{{
-          hasActiveFilters ? '试试移除部分条件，看看其他选择。' : '可以按食堂浏览，或搜索想吃的菜。'
-        }}</text>
-        <button v-if="hasActiveFilters" class="home-text-button" @click="handleFilterChange({})">
-          清除全部筛选
-        </button>
-      </view>
+        :title="hasActiveFilters ? '没有符合条件的菜品' : '暂无推荐菜品'"
+        icon="search"
+        :action-text="hasActiveFilters ? '清除全部筛选' : ''"
+        @action="handleFilterChange({})"
+      />
 
       <!-- 上拉加载更多：底部提示/动画（仅在有列表或正在加载更多时显示） -->
       <view
@@ -115,6 +112,7 @@ import { onMounted, onScopeDispose, computed, ref, watch } from 'vue';
 import { onPullDownRefresh, onReachBottom, onShow, onBackPress, onHide } from '@dcloudio/uni-app';
 
 import SearchBar from '@/components/SearchBar.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import CanteenItem from './components/CanteenList.vue';
 import RecommendItem from './components/RecommendItem.vue';
 import FilterBar from './components/FilterBar.vue';
@@ -124,7 +122,7 @@ import { useCanteenStore } from '@/store/modules/use-canteen-store';
 import { useDishesStore } from '@/store/modules/use-dishes-store';
 import { useUserStore } from '@/store/modules/use-user-store';
 import type { GetDishesRequest, RecommendationRequest, Dish } from '@/types/api';
-import { getDishesByIds } from '@/api/modules/dish';
+import { getDishes, getDishesByIds } from '@/api/modules/dish';
 import { getRecommendations, RecommendationScene } from '@/api/modules/recommendation';
 
 const canteenStore = useCanteenStore();
@@ -142,7 +140,10 @@ onBackPress(() => {
   closeFilters();
   return true;
 });
-onHide(closeFilters);
+onHide(() => {
+  homeActive = false;
+  closeFilters();
+});
 
 const recommendationsInitialized = ref(false);
 
@@ -164,11 +165,13 @@ onScopeDispose(() => {
   recommendationRun += 1;
 });
 let preparingProfileRun: number | null = null;
-let homeSession = userStore.sessionVersion;
+let homeActive = false;
+const homeAudience = computed(() => `${userStore.sessionVersion}:${userStore.isLoggedIn}`);
+let loadedHomeAudience: string | null = null;
 const canteenLoadMode = ref<'refresh' | 'more'>('refresh');
 
 watch(
-  () => userStore.sessionVersion,
+  homeAudience,
   () => {
     recommendationRun += 1;
     currentRequestId.value = null;
@@ -245,10 +248,10 @@ const fetchRecommendations = async (
     home?: { refreshCanteens: boolean };
   } = { reset: true }
 ): Promise<RecommendationOutcome> => {
-  const sessionVersion = userStore.sessionVersion;
+  const audience = homeAudience.value;
   const run = ++recommendationRun;
   const ownsResult = () =>
-    !disposed && userStore.sessionVersion === sessionVersion && run === recommendationRun;
+    !disposed && homeAudience.value === audience && run === recommendationRun;
   const append = options.append === true;
 
   // 设置加载状态
@@ -264,13 +267,13 @@ const fetchRecommendations = async (
     }
 
     if (options.home) {
-      if (options.home.refreshCanteens || canteenStore.canteenList.length === 0) {
-        canteenLoadMode.value = 'refresh';
-        await canteenStore.fetchCanteenList({ page: 1, pageSize: 9 }, ownsResult);
-        if (!ownsResult()) return 'superseded';
-      }
       preparingProfileRun = run;
       try {
+        if (options.home.refreshCanteens || canteenStore.canteenList.length === 0) {
+          canteenLoadMode.value = 'refresh';
+          await canteenStore.fetchCanteenList({ page: 1, pageSize: 9 }, ownsResult);
+          if (!ownsResult()) return 'superseded';
+        }
         await userStore.fetchProfileAction(ownsResult);
       } finally {
         if (preparingProfileRun === run) preparingProfileRun = null;
@@ -279,6 +282,23 @@ const fetchRecommendations = async (
     }
 
     const page = options.reset ? 1 : currentDishPage.value + 1;
+
+    if (!userStore.isLoggedIn) {
+      const response = await getDishes({
+        filter: currentFilter.value,
+        search: { keyword: '' },
+        sort: { field: 'averageRating', order: 'desc' },
+        pagination: { page, pageSize: 10 },
+      });
+      if (!ownsResult()) return 'superseded';
+      if (response.code !== 200 || !response.data) throw new Error('加载菜品失败');
+      dishesStore.dishes = append
+        ? [...dishesStore.dishes, ...response.data.items]
+        : response.data.items;
+      dishesStore.pagination = response.data.meta;
+      recommendationsInitialized.value = true;
+      return 'success';
+    }
 
     // 构造推荐请求参数，传递 requestId 以维护会话一致性
     const params: RecommendationRequest = {
@@ -382,19 +402,25 @@ function navigateTo(path: string) {
 
 // --- 生命周期 ---
 onShow(() => {
-  if (userStore.isLoggedIn && homeSession !== userStore.sessionVersion) {
-    void loadHomeForSession();
-  }
+  homeActive = true;
+  ensureHomeAudience();
 });
 
 async function loadHomeForSession(refreshCanteens = false): Promise<RecommendationOutcome> {
-  homeSession = userStore.sessionVersion;
+  loadedHomeAudience = homeAudience.value;
   return fetchRecommendations({ reset: true, home: { refreshCanteens } });
 }
 
+function ensureHomeAudience() {
+  if (homeActive && loadedHomeAudience !== homeAudience.value) void loadHomeForSession();
+}
+
 onMounted(() => {
-  void loadHomeForSession();
+  homeActive = true;
+  ensureHomeAudience();
 });
+
+watch(homeAudience, ensureHomeAudience);
 
 // 监听用户信息变化，当偏好设置或显示设置更新时刷新菜品列表
 watch(
@@ -409,6 +435,10 @@ watch(
     const settingsChanged = JSON.stringify(newSettings) !== JSON.stringify(oldSettings);
 
     if (preferencesChanged || settingsChanged) {
+      if (!homeActive) {
+        loadedHomeAudience = null;
+        return;
+      }
       console.log('用户偏好设置或显示设置已更新，刷新今日推荐菜品');
 
       await fetchRecommendations({ reset: true });
@@ -556,9 +586,6 @@ onReachBottom(async () => {
 }
 .home-status--footer {
   padding: 18px 0;
-  font-size: 12px;
-}
-.home-status__hint {
   font-size: 12px;
 }
 .home-text-button {

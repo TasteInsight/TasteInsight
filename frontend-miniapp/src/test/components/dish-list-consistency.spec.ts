@@ -9,6 +9,7 @@ import {
   onShow,
 } from '@dcloudio/uni-app';
 import DishSummaryCard from '@/components/DishSummaryCard.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import FilterBar from '@/pages/index/components/FilterBar.vue';
 import CanteenDishCard from '@/pages/canteen/components/CanteenDishCard.vue';
 import ProfileDishCard from '@/pages/profile/components/ProfileDishCard.vue';
@@ -187,6 +188,8 @@ describe('tag list page', () => {
       expect.objectContaining({ pagination: { page: 1, pageSize: 10 } })
     );
     expect(wrapper.text()).toContain('暂无相关菜品');
+    expect(wrapper.getComponent(EmptyState).props('icon')).toBe('search');
+    expect(wrapper.getComponent(EmptyState).text()).toBe('暂无相关菜品');
   });
 });
 
@@ -301,12 +304,14 @@ describe('canteen and window card consumers', () => {
 
   test('canteen retains dish selection, window selection and page-end loading', async () => {
     const loadMoreDishes = jest.fn();
+    const dishes = ref([dish]);
     (useCanteenData as jest.Mock).mockReturnValue({
       canteenInfo: ref(null),
       loading: ref(false),
       error: ref(''),
       windows: ref([]),
-      dishes: ref([dish]),
+      dishes,
+      dishesInitialized: ref(true),
       dishesLoading: ref(false),
       dishesError: ref(''),
       retryDishes: jest.fn(),
@@ -329,10 +334,15 @@ describe('canteen and window card consumers', () => {
     expect(uni.navigateTo).toHaveBeenLastCalledWith({ url: '/pages/window/index?id=window-1' });
     await (onReachBottom as jest.Mock).mock.calls[0][0]();
     expect(loadMoreDishes).toHaveBeenCalledTimes(1);
+    dishes.value = [];
+    await wrapper.vm.$nextTick();
+    expect(wrapper.getComponent(EmptyState).props('icon')).toBe('search');
+    expect(wrapper.getComponent(EmptyState).text()).toBe('暂无菜品信息');
   });
 
   test('window reuses the summary and keeps scroll loading for the current window', async () => {
     const loadMoreDishes = jest.fn();
+    const dishes = ref([dish]);
     (useWindowData as jest.Mock).mockReturnValue({
       windowInfo: ref(null),
       headerLoading: ref(false),
@@ -343,7 +353,8 @@ describe('canteen and window card consumers', () => {
       loadingMore: ref(false),
       hasMore: ref(true),
       error: ref(''),
-      dishes: ref([dish]),
+      dishes,
+      dishesInitialized: ref(true),
       beginOperation: () => () => true,
       init: jest.fn(),
       fetchDishes: jest.fn(),
@@ -358,5 +369,9 @@ describe('canteen and window card consumers', () => {
     expect(uni.navigateTo).toHaveBeenCalledTimes(1);
     await wrapper.get('[scroll-y]').trigger('scrolltolower');
     expect(loadMoreDishes).toHaveBeenCalledWith('window-1');
+    dishes.value = [];
+    await wrapper.vm.$nextTick();
+    expect(wrapper.getComponent(EmptyState).props('icon')).toBe('search');
+    expect(wrapper.getComponent(EmptyState).text()).toBe('暂无菜品信息');
   });
 });

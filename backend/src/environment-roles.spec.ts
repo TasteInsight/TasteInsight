@@ -15,8 +15,6 @@ const api = {
   JWT_REFRESH_SECRET: 'role-refresh-secret'.repeat(3),
   APP_URL: 'https://api.example.test',
   ADMIN_APP_URL: 'https://admin.example.test',
-  WECHAT_APPID: 'fixture-wechat-appid',
-  WECHAT_SECRET: 'fixture-wechat-secret',
 };
 
 describe('role-owned environment validation', () => {
@@ -59,7 +57,9 @@ describe('role-owned environment validation', () => {
             ...background,
             JWT_SECRET: 'unrelated-short-key',
             WECHAT_APPID: 'incomplete-wechat-integration',
+            CAMPUS_OAUTH_TOKEN_URL: 'not-a-url',
             UPLOAD_STORAGE_TYPE: 'oss',
+            CAMPUS_VERIFICATION_DAYS: 'invalid',
           },
           role,
         ),
@@ -67,13 +67,14 @@ describe('role-owned environment validation', () => {
     },
   );
 
-  it('migration ignores queue and recommendation tuning', () => {
+  it('migration ignores queue, recommendation and delivery tuning', () => {
     expect(() =>
       validateEnvironment(
         {
           ...database,
           REDIS_PORT: 'invalid',
           EMBEDDING_SERVICE_BATCH_SIZE: 'invalid',
+          NOTIFICATION_WEBHOOK_URL: 'invalid',
         },
         'migrate',
       ),
@@ -86,17 +87,50 @@ describe('role-owned environment validation', () => {
         {
           ...api,
           WECHAT_APPID: 'incomplete',
-          WECHAT_SECRET: '',
+          SMS_GATEWAY_URL: 'invalid',
+          CAMPUS_OAUTH_AUTHORIZATION_URL: 'invalid',
+          CAMPUS_VERIFICATION_DAYS: 'invalid',
         },
         'admin-api',
       ),
     ).not.toThrow();
     expect(() =>
-      validateEnvironment(
-        { ...api, WECHAT_APPID: 'incomplete', WECHAT_SECRET: '' },
-        'public-api',
-      ),
+      validateEnvironment({ ...api, WECHAT_APPID: 'incomplete' }, 'public-api'),
     ).toThrow('WECHAT_SECRET');
+  });
+
+  it.each(['public-api', 'admin-api'] as const)(
+    '%s validates the notification target without requiring the worker signing key',
+    (role) => {
+      expect(() =>
+        validateEnvironment(
+          { ...api, NOTIFICATION_WEBHOOK_URL: 'https://notify.example.test' },
+          role,
+        ),
+      ).not.toThrow();
+      expect(() =>
+        validateEnvironment(
+          { ...api, NOTIFICATION_WEBHOOK_URL: 'http://notify.example.test' },
+          role,
+        ),
+      ).toThrow('NOTIFICATION_WEBHOOK_URL');
+    },
+  );
+
+  it('worker enforces signing credentials when external delivery is enabled', () => {
+    const delivery = {
+      ...background,
+      NOTIFICATION_WEBHOOK_URL: 'https://notify.example.test',
+    };
+    expect(() => validateEnvironment(delivery, 'worker')).toThrow(
+      'NOTIFICATION_WEBHOOK_SECRET',
+    );
+    expect(() =>
+      validateEnvironment(
+        { ...delivery, NOTIFICATION_WEBHOOK_SECRET: 'signing-key'.repeat(4) },
+        'worker',
+      ),
+    ).not.toThrow();
   });
 
   it('bootstrap password validation belongs to initialization', () => {

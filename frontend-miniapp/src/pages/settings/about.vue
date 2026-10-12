@@ -1,8 +1,17 @@
 <template>
   <view class="page-content settings-page about-page">
     <view class="about-identity">
-      <button class="about-logo-button" aria-label="食鉴应用标志" @tap="handleSecretTap">
-        <image src="/static/logo.png" class="about-logo" mode="aspectFit" />
+      <button
+        class="about-logo-button"
+        aria-label="食鉴应用标志"
+        role="button"
+        tabindex="0"
+        @tap="secretButton.activate"
+        @keydown="secretButton.handleKeydown"
+        @keyup="secretButton.handleKeyup"
+        @blur="secretButton.clearPress"
+      >
+        <image src="/static/logo.png" class="about-logo" mode="aspectFit" aria-hidden="true" />
       </button>
       <view
         ><text class="about-name">食鉴 TasteInsight</text
@@ -11,27 +20,36 @@
     </view>
     <view class="settings-section">
       <text class="about-description"
-        >食鉴是一款面向高校师生的食堂评价与推荐小程序。浏览菜品与评价，记录用餐体验，管理自己的饮食偏好。</text
+        >食鉴是一款面向校园的食堂菜品点评与推荐应用。浏览菜品与评价，记录用餐体验，管理自己的饮食偏好。</text
       >
     </view>
     <view class="settings-section">
       <text class="settings-title">支持与隐私</text>
-      <button class="settings-button settings-menu about-contact" @click="copyEmail">
-        <view
-          ><text class="settings-label">邮箱反馈</text
-          ><text class="settings-hint">feedback@tasteinsight.com</text></view
-        ><text class="about-action-label">复制</text>
-      </button>
-      <button class="settings-button settings-menu" @click="openPrivacy">
-        <text>用户协议与隐私政策</text
-        ><text class="iconfont icon-chevronright" aria-hidden="true"></text>
-      </button>
-      <view class="settings-row"
-        ><view
-          ><text class="settings-label">微信公众号</text
-          ><text class="settings-hint">tasteinsight_official</text></view
-        ></view
+      <button
+        class="settings-button settings-menu about-contact"
+        role="button"
+        tabindex="0"
+        @click="feedbackButton.activate"
+        @keydown="feedbackButton.handleKeydown"
+        @keyup="feedbackButton.handleKeyup"
+        @blur="feedbackButton.clearPress"
       >
+        <view
+          ><text class="settings-label">项目反馈</text
+          ><text class="settings-hint">GitHub Issues</text></view
+        ><text class="about-action-label">复制链接</text>
+      </button>
+      <button
+        class="settings-button settings-menu"
+        role="button"
+        tabindex="0"
+        @click="privacyButton.activate"
+        @keydown="privacyButton.handleKeydown"
+        @keyup="privacyButton.handleKeyup"
+        @blur="privacyButton.clearPress"
+      >
+        <text>隐私政策</text><text class="iconfont icon-chevronright" aria-hidden="true"></text>
+      </button>
     </view>
     <view class="settings-section">
       <text class="settings-title">主要功能</text>
@@ -41,7 +59,12 @@
       <button
         class="settings-button settings-menu"
         :aria-expanded="showTechnicalDetails"
-        @click="showTechnicalDetails = !showTechnicalDetails"
+        role="button"
+        tabindex="0"
+        @click="technicalButton.activate"
+        @keydown="technicalButton.handleKeydown"
+        @keyup="technicalButton.handleKeyup"
+        @blur="technicalButton.clearPress"
       >
         <text>技术与开源</text
         ><text class="about-action-label">{{ showTechnicalDetails ? '收起' : '展开' }}</text>
@@ -57,31 +80,29 @@
       </view>
     </view>
     <view class="settings-section">
-      <text class="settings-title">开发团队</text>
-      <text class="settings-label">TasteInsight Team</text>
-      <text class="settings-hint"
-        >由热爱技术的开发者创建，致力于为校园生活提供更好的数字化解决方案。</text
-      >
-    </view>
-    <view class="settings-section">
       <text class="settings-title">免责声明</text>
       <text class="about-description"
         >菜品评价信息仅供参考，实际菜品质量可能因季节、厨师等因素有所变化，请以实地情况为准。如有食物过敏或其他健康问题，请向窗口核对食材并咨询专业医生。</text
       >
     </view>
-    <text class="settings-hint about-copyright"
-      >Copyright © 2024 TasteInsight. All rights reserved.</text
-    >
   </view>
 </template>
 <script setup lang="ts">
 import { ref } from 'vue';
+import { onHide, onShow, onUnload } from '@dcloudio/uni-app';
+import { useButtonActivation } from '@/composables/use-button-activation';
+
 const showTechnicalDetails = ref(false);
+const feedbackButton = useButtonActivation(copyFeedbackLink);
+const privacyButton = useButtonActivation(openPrivacy);
+const technicalButton = useButtonActivation(() => {
+  showTechnicalDetails.value = !showTechnicalDetails.value;
+});
 const features = [
   '菜品星级、文字与图片评价',
   '基于饮食偏好的 AI 推荐与对话',
   '浏览食堂、窗口、菜品与价格',
-  '每日与每周饮食规划',
+  '按日、周、月查看饮食规划',
   '收藏菜品、查看历史与管理个人偏好',
 ];
 const technologies = [
@@ -92,19 +113,45 @@ const technologies = [
 ];
 let secretTapCount = 0;
 let lastTapAt = 0;
+let isOpeningSecret = false;
+const secretButton = useButtonActivation(handleSecretTap, () => isOpeningSecret);
+
+function resetSecretSequence() {
+  secretTapCount = 0;
+  lastTapAt = 0;
+  secretButton.clearPress();
+}
+
 function handleSecretTap() {
   const now = Date.now();
   if (now - lastTapAt > 800) secretTapCount = 0;
   lastTapAt = now;
   if (++secretTapCount < 5) return;
-  secretTapCount = 0;
-  uni.showToast({ title: '彩蛋入口已解锁', icon: 'none', duration: 1200 });
-  if (typeof uni.vibrateShort === 'function') uni.vibrateShort();
-  uni.navigateTo({ url: '/pages/easter-egg/index' });
+  resetSecretSequence();
+  isOpeningSecret = true;
+  uni.navigateTo({
+    url: '/pages/easter-egg/index',
+    success: () => {
+      uni.showToast({ title: '彩蛋入口已解锁', icon: 'none', duration: 1200 });
+      if (typeof uni.vibrateShort === 'function') uni.vibrateShort({ fail: () => undefined });
+    },
+    fail: () => {
+      isOpeningSecret = false;
+      uni.showToast({ title: '页面跳转失败，请重试', icon: 'none' });
+    },
+  });
 }
-function copyEmail() {
+
+onShow(() => {
+  isOpeningSecret = false;
+  resetSecretSequence();
+});
+onHide(resetSecretSequence);
+onUnload(resetSecretSequence);
+
+function copyFeedbackLink() {
   uni.setClipboardData({
-    data: 'feedback@tasteinsight.com',
+    data: 'https://github.com/TasteInsight/TasteInsight/issues',
     fail: () => uni.showToast({ title: '复制失败，请重试', icon: 'none' }),
   });
 }
@@ -130,6 +177,10 @@ function openPrivacy() {
 }
 .about-logo-button::after {
   border: 0;
+}
+.about-logo-button:focus-visible {
+  outline: 2px solid #660874;
+  outline-offset: 3px;
 }
 .about-logo {
   width: 64px;
@@ -171,8 +222,5 @@ function openPrivacy() {
 }
 .about-thanks {
   margin-top: 16px;
-}
-.about-copyright {
-  padding-bottom: 16px;
 }
 </style>

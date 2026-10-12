@@ -28,6 +28,8 @@ export const ConfigKeys = {
 
   // 评论相关
   COMMENT_AUTO_APPROVE: 'comment.autoApprove',
+  POST_AUTO_APPROVE: 'post.autoApprove',
+  POST_COMMENT_AUTO_APPROVE: 'postComment.autoApprove',
 
   // 未来可以添加更多配置键...
   // DISH_MAX_IMAGES: 'dish.maxImages',
@@ -44,6 +46,20 @@ export type ConfigKey = (typeof ConfigKeys)[keyof typeof ConfigKeys];
  * 这是系统配置的单一事实来源 (Single Source of Truth)
  */
 export const CONFIG_DEFINITIONS: ConfigDefinition[] = [
+  {
+    key: ConfigKeys.POST_AUTO_APPROVE,
+    defaultValue: 'true',
+    valueType: 'boolean',
+    description: '自动通过社区帖子；关闭后仅作者可见，审核通过后公开',
+    category: 'post',
+  },
+  {
+    key: ConfigKeys.POST_COMMENT_AUTO_APPROVE,
+    defaultValue: 'true',
+    valueType: 'boolean',
+    description: '自动通过帖子回复；关闭后审核通过才公开',
+    category: 'post',
+  },
   // ==================== 评价配置 ====================
   {
     key: ConfigKeys.REVIEW_AUTO_APPROVE,

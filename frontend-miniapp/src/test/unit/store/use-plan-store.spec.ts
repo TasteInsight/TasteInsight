@@ -20,6 +20,7 @@ const getMealPlans = mealPlanModule.getMealPlans as jest.Mock;
 const createMealPlan = mealPlanModule.createMealPlan as jest.Mock;
 const updateMealPlan = mealPlanModule.updateMealPlan as jest.Mock;
 const deleteMealPlan = mealPlanModule.deleteMealPlan as jest.Mock;
+const setMealPlanCompletion = mealPlanModule.setMealPlanCompletion as jest.Mock;
 const getDishById = dishModule.getDishById as jest.Mock;
 import { usePlanStore } from '@/store/modules/use-plan-store';
 
@@ -28,6 +29,10 @@ describe('store/modules/use-plan-store', () => {
     jest.resetModules();
     jest.clearAllMocks();
     setActivePinia(createPinia());
+    setMealPlanCompletion.mockImplementation(async (id: string, date: string, completed: boolean) => {
+      const plan = usePlanStore().allPlans.find(item => item.id === id)!;
+      return { code: 200, data: { ...plan, completedDates: completed ? [...(plan.completedDates || []), date] : (plan.completedDates || []).filter(value => value !== date) } };
+    });
     // ensure global uni mocks remain
     (global as any).uni = (global as any).uni || {
       setStorageSync: jest.fn(),
@@ -173,7 +178,7 @@ describe('store/modules/use-plan-store', () => {
     expect(store.allPlans.find(p => p.id === 'r1')).toBeUndefined();
   });
 
-  test('executePlan marks completed and persists to storage', async () => {
+  test('executePlan persists the selected occurrence through the API', async () => {
     const store = usePlanStore();
     store.allPlans = [
       {
@@ -188,7 +193,8 @@ describe('store/modules/use-plan-store', () => {
     ];
 
     await store.executePlan('ex1');
-    expect((global as any).uni.setStorageSync).toHaveBeenCalled();
+    expect(setMealPlanCompletion).toHaveBeenCalledWith('ex1', '', true);
+    expect((global as any).uni.setStorageSync).not.toHaveBeenCalled();
 
     // execute non-existing plan should throw
     await expect(store.executePlan('no')).rejects.toThrow('规划不存在');
@@ -261,7 +267,7 @@ describe('store/modules/use-plan-store', () => {
     expect(store.error).toContain('重试');
   });
 
-  test('executePlan logs error if storage set fails', async () => {
+  test('executePlan leaves completion unchanged when the server rejects it', async () => {
     const store = usePlanStore();
     store.allPlans = [
       {
@@ -275,21 +281,13 @@ describe('store/modules/use-plan-store', () => {
       },
     ];
 
-    const consoleErr = jest.spyOn(console, 'error').mockImplementation(() => {});
-    (global as any).uni.setStorageSync = jest.fn().mockImplementation(() => {
-      throw new Error('disk fail');
-    });
-
-    await store.executePlan('s1');
-
-    // storage failure should be caught and logged, and the plan marked completed
-    expect(consoleErr).toHaveBeenCalled();
-    expect(store.getPlanById('s1')?.isCompleted).toBeTruthy();
-
-    consoleErr.mockRestore();
+    setMealPlanCompletion.mockRejectedValueOnce(new Error('save failed'));
+    await expect(store.executePlan('s1')).rejects.toThrow('save failed');
+    expect(store.getPlanById('s1')?.isCompleted).toBe(false);
+    expect((global as any).uni.setStorageSync).not.toHaveBeenCalled();
   });
 
-  test('loadCompletedPlanIds logs when storage get fails during init', async () => {
+  test('legacy whole-plan local completion is not read as daily completion authority', async () => {
     // reset modules to simulate init-time behavior
     jest.resetModules();
     const consoleErr = jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -309,7 +307,9 @@ describe('store/modules/use-plan-store', () => {
     const storeModule = await import('@/store/modules/use-plan-store');
     const store2 = storeModule.usePlanStore();
 
-    expect(consoleErr).toHaveBeenCalled();
+    expect(consoleErr).not.toHaveBeenCalled();
+    expect((global as any).uni.getStorageSync).not.toHaveBeenCalled();
+    expect(store2.allPlans).toEqual([]);
 
     // restore
     (global as any).uni = origUni;

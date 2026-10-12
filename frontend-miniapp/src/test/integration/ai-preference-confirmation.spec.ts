@@ -7,7 +7,10 @@ import { createAISession, streamAIChat } from '@/api/modules/ai';
 import { getUserProfile, updateUserProfile } from '@/api/modules/user';
 import { useChat } from '@/pages/ai-chat/composables/use-chat';
 
-jest.mock('@/mock/mock-adapter', () => ({ USE_MOCK: false }));
+jest.mock('@/mock/mock-adapter', () => ({
+  ...jest.requireActual('@/mock/mock-adapter'),
+  USE_MOCK: false,
+}));
 jest.mock('@/api/modules/meal-plan', () => ({ createMealPlan: jest.fn() }));
 jest.mock('@/api/modules/ai', () => ({
   createAISession: jest.fn(),

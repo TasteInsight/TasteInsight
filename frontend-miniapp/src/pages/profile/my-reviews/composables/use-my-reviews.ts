@@ -15,6 +15,10 @@ export function useMyReviews() {
   let requestVersion = 0;
   let disposed = false;
   let failedReset = false;
+  function invalidate() {
+    requestVersion++;
+    loading.value = false;
+  }
 
   async function fetchReviews(reset = false): Promise<boolean> {
     if (disposed || !userStore.isLoggedIn || (loading.value && !reset)) return false;
@@ -82,5 +86,16 @@ export function useMyReviews() {
       requestVersion++;
     });
 
-  return { reviews, loading, initialized, error, hasMore, fetchReviews, loadMore, refresh, retry };
+  return {
+    reviews,
+    loading,
+    initialized,
+    error,
+    hasMore,
+    fetchReviews,
+    loadMore,
+    refresh,
+    retry,
+    invalidate,
+  };
 }

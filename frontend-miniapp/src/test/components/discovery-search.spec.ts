@@ -2,6 +2,7 @@ import { defineComponent, h, nextTick, ref } from 'vue';
 import { mount, flushPromises } from '@vue/test-utils';
 import { onLoad, onHide, onShow } from '@dcloudio/uni-app';
 import SearchBar from '@/components/SearchBar.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import SearchPage from '@/pages/search/index.vue';
 import { useSearch } from '@/pages/search/composables/use-search';
 
@@ -203,7 +204,7 @@ test('UniApp confirm synchronizes its final detail value before emitting submit'
   expect(submitted).toEqual(['米饭']);
 });
 
-test('scoped arrival focuses once and a return to results does not reopen the input', async () => {
+const createSearchState = () => {
   const state = {
     keyword: ref(''),
     searchResults: ref({ canteens: [], windows: [], dishes: [] }),
@@ -212,6 +213,7 @@ test('scoped arrival focuses once and a return to results does not reopen the in
     loadingMore: ref(false),
     hasMore: ref(false),
     error: ref(''),
+    canteenError: ref(''),
     loadMoreError: ref(''),
     submittedKeyword: ref(''),
     hasSearched: ref(false),
@@ -227,6 +229,11 @@ test('scoped arrival focuses once and a return to results does not reopen the in
     goToAddDish: jest.fn(),
   };
   (useSearch as jest.Mock).mockReturnValue(state);
+  return state;
+};
+
+test('scoped arrival focuses once and a return to results does not reopen the input', async () => {
+  const state = createSearchState();
   const wrapper = mount(SearchPage, { global: { stubs: { 'uni-icons': true } } });
   (onLoad as jest.Mock).mock.calls[0][0]({
     windowId: 'window-1',
@@ -251,4 +258,37 @@ test('scoped arrival focuses once and a return to results does not reopen the in
   expect(state.clearSearch).toHaveBeenCalledTimes(1);
   expect(wrapper.findComponent(SearchBar).props('focus')).toBe(true);
   wrapper.unmount();
+});
+
+test('the shared empty state follows a successful empty search and keeps its contribution action', async () => {
+  const state = createSearchState();
+  const wrapper = mount(SearchPage, { global: { stubs: { 'uni-icons': true } } });
+  boundWrappers.push(wrapper);
+  expect(wrapper.findComponent(EmptyState).exists()).toBe(false);
+
+  state.initialized.value = true;
+  state.submittedKeyword.value = '米饭';
+  await nextTick();
+  const empty = wrapper.getComponent(EmptyState);
+  expect(empty.props()).toEqual({
+    title: '未找到“米饭”相关结果',
+    icon: 'search',
+    actionText: '添加这道菜',
+  });
+  await empty.get('button').trigger('click');
+  expect(state.goToAddDish).toHaveBeenCalledTimes(1);
+
+  state.loading.value = true;
+  await nextTick();
+  expect(wrapper.findComponent(EmptyState).exists()).toBe(false);
+  state.loading.value = false;
+  state.error.value = '搜索失败';
+  await nextTick();
+  expect(wrapper.findComponent(EmptyState).exists()).toBe(false);
+  expect(wrapper.text()).toContain('搜索失败');
+  state.error.value = '';
+  state.canteenError.value = '食堂读取失败';
+  await nextTick();
+  expect(wrapper.findComponent(EmptyState).exists()).toBe(false);
+  expect(wrapper.text()).toContain('食堂读取失败');
 });

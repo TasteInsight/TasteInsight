@@ -73,16 +73,22 @@ frontend-miniapp/
 
 | 页面 | 路径 | 功能描述 |
 |------|------|----------|
-| 登录 | `/pages/login/index` | 微信授权登录、隐私协议 |
+| 登录 | `/pages/login/index` | 手机验证码、各端微信登录、隐私协议、游客浏览 |
 | 首页 | `/pages/index/index` | 菜品推荐、多维筛选（口味/价格/评分/时段/荤素/标签/忌口） |
 | 搜索 | `/pages/search/index` | 搜索食堂或菜品、上拉加载更多 |
 | 食堂详情 | `/pages/canteen/index` | 食堂信息、窗口列表、菜品筛选 |
 | 窗口详情 | `/pages/window/index` | 窗口信息、菜品列表 |
 | 菜品详情 | `/pages/dish/index` | 评价列表、发布/编辑评价、口味信息、评论回复、收藏、加入规划 |
-| 新闻公告 | `/pages/news/index` | 新闻列表、详情查看 |
-| 菜单规划 | `/pages/planning/index` | 当前/历史规划、新建/编辑/删除、标记已吃 |
+| 新闻公告 | `/pages/news/index` | 小程序新闻入口；App/H5 从校园页的资讯进入 |
+| 菜单规划 | `/pages/planning/index` | 月/周/日/列表切换、逐日完成、新建/编辑/删除 |
+| 账号与身份 | `/pages/profile/identity` | 登录方式绑定、校园 OAuth 与邮箱验证 |
+| 校园 | `/pages/community/index` | 动态、约饭、资讯三个内容分区（App/H5） |
+| 公开主页 | `/pages/profile/public` | 帖子、简介与主动公开的计划（App/H5） |
+| 约饭详情 | `/pages/planning/dining` | 具体邀请的申请、接受与取消；列表入口在校园页（App/H5） |
+| 消息 | `/pages/notifications/index` | 未读、已读与真实目标跳转 |
+| 周推荐 | `/pages/notifications/weekly` | 已保存的本周热门菜品集合 |
 | AI 聊天 | `/pages/ai-chat/index` | AI 对话、流式响应、规划卡片应用、历史会话 |
-| 个人中心 | `/pages/profile/index` | 用户信息、收藏、我的评价、浏览历史 |
+| 个人空间 | `/pages/profile/index` | 简介、自己的动态/评价/计划、收藏与浏览记录、消息与设置入口 |
 | 设置 | `/pages/settings/index` | 个人信息、偏好/过敏原、显示/通知设置 |
 | 添加菜品 | `/pages/add-dish/index` | 用户上传菜品（待审核） |
 | 彩蛋 | `/pages/easter-egg/index` | 隐藏彩蛋页面 |
@@ -125,15 +131,47 @@ VITE_ENABLE_TEST_LOGIN=true pnpm dev:h5
 VITE_ENABLE_TEST_LOGIN=true pnpm build:h5 --mode e2e
 ```
 
-生产或其他发布模式误开该开关会使构建失败。生产后端独立拒绝测试身份，前端开关不授予服务器权限。该入口与 `dev:mock` 的本地模拟数据模式分开。H5 的微信授权入口不调用不支持的 API；App 的正式微信授权尚未接通，开发联调使用显式测试入口，不自动回退为测试身份。
+生产或其他发布模式误开该开关会使构建失败。生产后端独立拒绝测试身份，前端开关不授予服务器权限，也不自动授予学生资格。该入口与 `dev:mock` 的本地模拟数据模式分开。H5 使用手机号登录，不调用小程序授权 API；App 使用移动应用微信 code 交换，失败不会回退为测试身份。
 - 菜品/食堂卡片渲染
+
+### 平台构建与认证
+
+| 能力 | 微信小程序 | Android / iOS / H5 |
+| --- | --- | --- |
+| 公开菜品、评价与新闻浏览 | 支持游客 | 支持游客 |
+| 手机号、校园邮箱 | 按后端能力配置 | 按后端能力配置 |
+| 微信登录 | 小程序 AppID | 移动 AppID；H5 不调用原生 SDK |
+| 私人计划月/周/日视图、系统消息 | 支持 | 支持 |
+| 新增社区、公开社交主页、约饭 | 不编入页面路由与入口 | 支持 |
+
+平台边界由条件编译确定。微信社交功能的主体、类目及资质以[官方服务类目](https://developers.weixin.qq.com/miniprogram/product/material/)为准；系统通知与用户通讯是不同能力，[微信订阅消息](https://developers.weixin.qq.com/miniprogram/dev/framework/open-ability/subscribe-message.html)另需模板和用户授权。小程序消息请求使用 `scope=service`，不会跳入未打包的社区页面。
+
+App 微信登录需在 HBuilderX 的 `manifest.json` 模块配置启用 OAuth/微信并填写公开 AppID，iOS Universal Links 与开放平台一致，使用自定义基座或正式包。客户端通过 `onlyAuthorize: true` 获取 code，AppSecret 仅保存在服务端；[DCloud 配置说明](https://uniapp.dcloud.net.cn/tutorial/app-oauth-weixin.html)。校园 OAuth 的 App/小程序流程保留原账号的短期请求，完成外部认证后用一次性确认码回到身份页确认；不从任意外部链接自动绑定账号。
+
+App/H5 主导航为首页、校园、规划、问 AI、我的；校园页内部切换动态、约饭与资讯。小程序保留新闻主入口。消息和账号认证位于个人中心，具体帖子、邀请与公告保留独立详情路由。
+
+发言前引导学生认证，最终权限仍由后端实时决定。帖子图片仅在提交时上传，文字草稿按账号保存。月/周/日与列表共享服务器计划；逐日完成在多端同步，公开主页展示需同时打开个人公开设置与单条计划公开设置。
+
+#### 个人空间
+
+“我的”展示个人简介和自己的内容，App/H5 提供动态、评价与计划选项卡，小程序保留评价与私人计划。收藏与浏览记录为私有入口；账号、饮食偏好、显示、通知和退出登录集中在设置页。
+
+消息与设置并入身份栏，资料菜单集中头像昵称、简介、校园身份与访客预览。发动态入口与内容选项卡同行。个人动态采用两列图文卡片，无图片时使用整行文字记录，不重复展示作者身份；互动和编辑操作保留在动态详情中。
+
+“访客预览”读取公开主页接口，仅展示已公开内容。计划的主页展示开关位于“我的 → 计划”，与单条计划的公开设置分别保存；查看页面不会自动开启任一开关。自己的内容列表与访客预览使用不同的读取范围。
+
+#### 共用界面组件
+
+`UiIcon` 提供同族线性图标，`IconButton` 保留 44px 点击区和无障碍名称。网页键盘操作使用 `useButtonActivation`，避免将 UniApp 的按钮宿主当成原生 HTML 按钮。
+
+整块列表的成功空结果使用 `EmptyState`，保留必要的下一步操作；行内缺省信息和分页末尾提示不增加图标。首次读取、请求失败与成功空结果分别处理。确认框和普通操作菜单使用 UniApp 原生接口，统一默认配色；H5 反馈样式集中在 `styles/feedback.css`。H5 的资料菜单使用同族底部面板，支持键盘选择、焦点圈定、Escape 关闭及焦点归还；App／小程序的资料菜单保留原生接口。
 
 #### 菜单规划
 - 默认安排单日，可展开日期范围安排多日
 - 从菜品详情加入这一餐，自动带入当前菜品
 - 建议餐次可修改
 - 按窗口/搜索选择菜品
-- 标记已吃（移至历史，完成状态按账号保存在当前设备）
+- 按日期标记或撤销已吃，完成状态保存到服务器并跨端同步
 
 ### 状态管理模块
 
@@ -273,14 +311,15 @@ pnpm test:load:smoke
 
 ## Mock 模式
 
-项目内置完整的 Mock 数据服务，无需后端即可进行前端开发。
+Mock 模式使用 `src/mock/` 中的本地数据处理已注册接口，适合菜品、食堂、评价等界面的开发。
 
-将 `src/mock/mock-adapter.ts` 文件中的 `USE_MOCK` 设置为 `true` 即可绕过后端，启用 Mock 服务：
+使用专用开发命令启用，无需修改源码：
 
-```typescript
-// src/mock/mock-adapter.ts
-export const USE_MOCK = true;  // 改为 true 启用 Mock 模式
+```bash
+pnpm dev:mock
 ```
+
+本地 Mock 仅在 Vite `mock` 模式启用，`production`、`development`、`e2e` 等模式均关闭。未注册的接口仍请求 `.env.mock` 配置的 API 地址；真实登录与后端业务联调应使用开发环境。
 
 Mock 数据位于 `src/mock/` 目录：
 - `data/` - 静态数据（用户、食堂、菜品、评价等）

@@ -29,6 +29,48 @@ describe('DishSummaryCard', () => {
     wrapper.unmount();
   });
 
+  test.each(['Enter', ' '])(
+    'selects the current dish once for a complete %p key press',
+    async key => {
+      const wrapper = mount(DishSummaryCard, { props: { dish: dish() } });
+      const button = wrapper.get('button');
+      const down = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+      button.element.dispatchEvent(down);
+      await button.trigger('keydown', { key, repeat: true });
+      expect(wrapper.emitted('select')).toBeUndefined();
+      await button.trigger('keyup', { key });
+
+      expect(wrapper.emitted('select')).toEqual([['dish-1']]);
+      expect(down.defaultPrevented).toBe(true);
+      expect(button.attributes('role')).toBe('button');
+      expect(button.attributes('tabindex')).toBe('0');
+      await button.trigger('keyup', { key });
+      expect(wrapper.emitted('select')).toHaveLength(1);
+
+      await wrapper.setProps({ dish: dish({ id: 'dish-2' }) });
+      await button.trigger('keydown', { key });
+      await button.trigger('keyup', { key });
+      expect(wrapper.emitted('select')).toEqual([['dish-1'], ['dish-2']]);
+      expect(uni.navigateTo).not.toHaveBeenCalled();
+      wrapper.unmount();
+    }
+  );
+
+  test('cancels keyboard activation after blur and keeps a pointer click from double selecting', async () => {
+    const wrapper = mount(DishSummaryCard, { props: { dish: dish() } });
+    const button = wrapper.get('button');
+    await button.trigger('keydown', { key: 'Enter' });
+    await button.trigger('blur');
+    await button.trigger('keyup', { key: 'Enter' });
+    expect(wrapper.emitted('select')).toBeUndefined();
+
+    await button.trigger('keydown', { key: ' ' });
+    await button.trigger('click');
+    await button.trigger('keyup', { key: ' ' });
+    expect(wrapper.emitted('select')).toEqual([['dish-1']]);
+    wrapper.unmount();
+  });
+
   test.each([RecommendItem, DishResultItem])(
     'keeps summary and one navigation consistent for each entry point',
     async Component => {

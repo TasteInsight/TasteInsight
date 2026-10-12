@@ -5,5 +5,7 @@ export class MealPlanDto {
   endDate: string;
   mealTime: string;
   dishes: string[];
+  isPublic: boolean;
+  completedDates: string[];
   createdAt: string;
 }

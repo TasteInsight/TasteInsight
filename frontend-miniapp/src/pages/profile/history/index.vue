@@ -5,9 +5,11 @@
         <text>{{ error }}</text
         ><button class="dish-list-action" @click="retry">重新加载</button>
       </view>
-      <view v-else-if="initialized && !historyItems.length" class="dish-list-state">
-        <text>暂无浏览历史</text><text class="dish-list-hint">浏览过的菜品会显示在这里。</text>
-      </view>
+      <EmptyState
+        v-else-if="initialized && !historyItems.length"
+        title="暂无浏览历史"
+        icon="history"
+      />
       <template v-else-if="historyItems.length">
         <DishCard
           v-for="item in historyItems"
@@ -40,6 +42,7 @@
 <script setup lang="ts">
 import { onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import DishCard from '@/pages/profile/components/ProfileDishCard.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import { useHistory } from './composables/use-history';
 const { historyItems, loading, initialized, error, hasMore, loadMore, refresh, retry } = useHistory();
 onShow(() => {

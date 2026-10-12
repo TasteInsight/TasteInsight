@@ -9,9 +9,21 @@
 
     <!-- 登录操作区域 -->
     <view class="login-actions">
+      <view v-if="capabilities?.phone" class="phone-login">
+        <label class="login-label" for="login-phone">手机号</label>
+        <input id="login-phone" v-model="phone" class="login-input" type="tel" maxlength="20" placeholder="输入手机号，可含国际区号" :disabled="loading || submitted || sending" />
+        <view class="code-row">
+          <input v-model="code" class="login-input code-input" type="number" maxlength="6" placeholder="6 位验证码" :disabled="loading || submitted" aria-label="短信验证码" />
+          <button class="code-send" :disabled="!phone.trim() || sending || remaining > 0 || loading || submitted" @click="handleSendCode">{{ sending ? '发送中' : remaining > 0 ? `${remaining}s 后重发` : '获取验证码' }}</button>
+        </view>
+        <text v-if="codeError" class="login-error" role="alert">{{ codeError }}</text>
+        <button class="login-button" :disabled="!canVerify || loading || submitted" @click="handleLogin(() => phoneLogin(challengeId, code))">{{ loading ? '正在登录…' : '验证码登录' }}</button>
+      </view>
+      <text v-if="capabilitiesLoading" class="login-test-note" role="status">正在读取登录方式…</text>
+      <button v-if="capabilitiesError" class="login-secondary" @click="loadCapabilities">登录方式加载失败，点击重试</button>
       <!-- 微信一键登录按钮 -->
       <button
-        v-if="wechatAvailable"
+        v-if="wechatAvailable && canUseWechat"
         class="login-button"
         :disabled="loading || submitted"
         @click="handleWechatLogin"
@@ -19,7 +31,6 @@
       >
         <text>{{ submitted ? '登录成功' : loading ? '正在登录…' : '微信一键登录' }}</text>
       </button>
-      <view v-else class="login-platform-note" role="status">{{ platformNotice }}</view>
       <template v-if="testLoginEnabled">
         <text class="login-environment">开发环境</text>
         <button class="login-button" :disabled="loading || submitted" @click="handleTestLogin">
@@ -27,6 +38,7 @@
         </button>
         <text class="login-test-note">使用当前设备的测试账号</text>
       </template>
+      <button class="login-secondary" @click="browse">先逛逛</button>
     </view>
 
     <!-- 底部协议 -->
@@ -47,17 +59,38 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed, onMounted, onScopeDispose } from 'vue';
 import { useLogin } from '../composables/use-login';
 import config from '@/config';
+import { getAuthCapabilities, sendPhoneCode, type AuthCapabilities } from '@/api/modules/auth';
+import { useVerificationCode } from '@/composables/use-verification-code';
 
-const { loading, submitted, wechatAvailable, wechatLogin, testLogin, testLoginEnabled } =
+const { loading, submitted, wechatAvailable, wechatLogin, phoneLogin, testLogin, testLoginEnabled } =
   useLogin();
-const platformNotice =
-  config.platform === 'h5'
-    ? '请在微信小程序中使用微信登录。'
-    : '当前应用尚未接入微信登录，请使用微信小程序。';
 const agreed = ref(false);
+const capabilities = ref<AuthCapabilities | null>(null);
+const capabilitiesLoading = ref(true);
+const capabilitiesError = ref(false);
+let disposed = false;
+onScopeDispose(() => { disposed = true; });
+const canUseWechat = computed(() => config.platform === 'mp-weixin' ? capabilities.value?.wechatMiniapp : capabilities.value?.wechatApp);
+const { target: phone, code, challengeId, sending, remaining, canVerify, error: codeError, sendCode } = useVerificationCode(sendPhoneCode);
+async function loadCapabilities() {
+  capabilitiesLoading.value = true;
+  capabilitiesError.value = false;
+  try {
+    const result = await getAuthCapabilities();
+    if (!disposed) capabilities.value = result.data;
+  } catch {
+    if (!disposed) capabilitiesError.value = true;
+  } finally { if (!disposed) capabilitiesLoading.value = false; }
+}
+onMounted(loadCapabilities);
+function handleSendCode() {
+  if (!agreed.value) return uni.showToast({ title: '请先同意用户协议和隐私政策', icon: 'none' });
+  void sendCode();
+}
+function browse() { uni.switchTab({ url: '/pages/index/index' }); }
 
 const emit = defineEmits<{
   loginSuccess: [];
@@ -135,6 +168,15 @@ function openAgreement(type: 'user' | 'privacy') {
   flex-direction: column;
   gap: 12px;
 }
+.phone-login { display: flex; flex-direction: column; gap: 12px; }
+.login-label { font-size: 14px; font-weight: 600; color: #344054; }
+.login-input { box-sizing: border-box; height: 48px; padding: 0 14px; background: #f5f5f6; border-radius: 10px; color: #1f2937; font-size: 15px; caret-color: #660874; }
+.code-row { display: flex; gap: 8px; align-items: center; }
+.code-input { min-width: 0; flex: 1; }
+.code-send, .login-secondary { margin: 0; padding: 12px; border: 0; background: transparent; color: #660874; font-size: 14px; line-height: 24px; }
+.code-send::after, .login-secondary::after { border: 0; }
+.code-send[disabled] { color: #667085; background: transparent; }
+.login-error { color: #b42318; font-size: 13px; line-height: 1.5; }
 .login-button {
   display: flex;
   align-items: center;

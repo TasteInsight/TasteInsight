@@ -7,6 +7,8 @@ import {
   IsArray,
   IsNotEmpty,
   ValidateNested,
+  ArrayMaxSize,
+  MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { RatingDetailsDto } from './review.dto';
@@ -29,9 +31,11 @@ export class CreateReviewDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(2000)
   content?: string;
 
   @IsArray()
+  @ArrayMaxSize(3)
   @IsString({ each: true })
   @IsOptional()
   images?: string[];

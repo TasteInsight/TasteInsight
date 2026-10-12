@@ -10,6 +10,7 @@ import { usePersonal } from '@/pages/settings/composables/use-personal';
 import CanteenPage from '@/pages/canteen/index.vue';
 import WindowPage from '@/pages/window/index.vue';
 import PlanEditDialog from '@/components/meal-plan/PlanEditDialog.vue';
+import UiPicker from '@/components/UiPicker.vue';
 
 jest.mock('@dcloudio/uni-app', () => ({
   onLoad: jest.fn(),
@@ -48,6 +49,33 @@ function consumer<T>(factory: () => T) {
   const scope = effectScope();
   scopes.push(scope);
   return { scope, value: scope.run(factory)! };
+}
+
+function planningDialog() {
+  const wrapper = shallowMount(PlanEditDialog, {
+    props: { visible: true, plan: null, initialDate: '2099-10-05' },
+    global: {
+      stubs: {
+        UiPicker: false,
+        picker: {
+          name: 'picker',
+          props: ['mode', 'range', 'rangeKey', 'value', 'disabled', 'fields'],
+          emits: ['change'],
+          template: '<div><slot /></div>',
+        },
+      },
+    },
+  });
+  wrappers.push(wrapper);
+  return wrapper;
+}
+
+function locationPicker(wrapper: ReturnType<typeof planningDialog>, label: string) {
+  const picker = wrapper
+    .findAllComponents(UiPicker)
+    .find(control => control.attributes('aria-label') === label);
+  expect(picker).toBeDefined();
+  return picker!.getComponent({ name: 'picker' });
 }
 
 function switchAccount() {
@@ -214,6 +242,112 @@ test('a page window list cannot replace another live planning dialog selection',
   await loading;
   expect((wrapper.vm as any).windowList[0].id).toBe('planning-window');
   expect(page.windows.value[0].id).toBe('page-window');
+});
+
+test('planning picker events filter dishes and retain selected indices when controls reopen', async () => {
+  const canteens = [
+    { id: 'north', name: '北食堂' },
+    { id: 'south', name: '南食堂' },
+  ];
+  const windows = [
+    { id: 'south-a', name: '一号窗口' },
+    { id: 'south-b', name: '二号窗口' },
+  ];
+  const dish = { id: 'rice', name: '香菇鸡饭', price: 12, images: [] };
+  useCanteenStore().canteenList = canteens as any;
+  const wrapper = planningDialog();
+  await flushPromises();
+  latest('/canteens').success(response({ items: canteens, meta }));
+  await flushPromises();
+  expect(matching('/dishes')).toHaveLength(0);
+  const canteenPicker = locationPicker(wrapper, '选择食堂');
+  expect(canteenPicker.props()).toMatchObject({
+    range: canteens, rangeKey: 'name', value: 0, disabled: false,
+  });
+  canteenPicker.vm.$emit('change', { detail: { value: 1 } });
+  await flushPromises();
+  expect(canteenPicker.props('value')).toBe(1);
+  expect(canteenPicker.text()).toContain('南食堂');
+  expect(locationPicker(wrapper, '选择窗口').props('disabled')).toBe(true);
+  expect(latest('/dishes').data.filter).toEqual({ includeOffline: false, canteenId: ['south'] });
+  latest('/dishes').success(response({ items: [], meta }));
+  latest('/canteens/south/windows').success(response({ items: windows, meta }));
+  await flushPromises();
+
+  const windowPicker = locationPicker(wrapper, '选择窗口');
+  expect(windowPicker.props()).toMatchObject({
+    range: windows, rangeKey: 'name', value: 0, disabled: false,
+  });
+  windowPicker.vm.$emit('change', { detail: { value: 1 } });
+  await flushPromises();
+  expect(windowPicker.props('value')).toBe(1);
+  expect(windowPicker.text()).toContain('二号窗口');
+  expect(latest('/dishes').data).toMatchObject({
+    filter: { includeOffline: false, canteenId: ['south'], windowId: ['south-b'] },
+    pagination: { page: 1, pageSize: 10 },
+  });
+  latest('/dishes').success(response({ items: [dish], meta }));
+  await flushPromises();
+  await wrapper.get('.plan-result').trigger('tap');
+  expect((wrapper.vm as any).formData.dishes).toEqual(['rice']);
+  expect(wrapper.get('.plan-selected-dish').text()).toContain('香菇鸡饭');
+  expect(wrapper.emitted('submit')).toBeUndefined();
+
+  await wrapper.get('.plan-add-toggle').trigger('tap');
+  expect(wrapper.find('[aria-label="选择食堂"]').exists()).toBe(false);
+  await wrapper.get('.plan-add-toggle').trigger('tap');
+  expect(locationPicker(wrapper, '选择食堂').props('value')).toBe(1);
+  expect(locationPicker(wrapper, '选择窗口').props('value')).toBe(1);
+  expect(matching('/canteens/south/windows')).toHaveLength(1);
+  expect(matching('/dishes')).toHaveLength(2);
+  await wrapper.get('[data-testid="plan-save"]').trigger('tap');
+  expect(wrapper.emitted('submit')).toEqual([[expect.objectContaining({
+    startDate: '2099-10-05', endDate: '2099-10-05', dishes: ['rice'],
+  })]]);
+
+  locationPicker(wrapper, '选择食堂').vm.$emit('change', { detail: { value: 0 } });
+  await flushPromises();
+  expect(locationPicker(wrapper, '选择窗口').props()).toMatchObject({
+    range: [], value: 0, disabled: true,
+  });
+  expect(latest('/dishes').data.filter).toEqual({ includeOffline: false, canteenId: ['north'] });
+  expect((wrapper.vm as any).formData.dishes).toEqual(['rice']);
+
+  await wrapper.setProps({ visible: false });
+  await wrapper.setProps({ visible: true });
+  expect(locationPicker(wrapper, '选择食堂').props('value')).toBe(0);
+  expect(locationPicker(wrapper, '选择食堂').text()).toContain('全部食堂');
+  expect(wrapper.find('[aria-label="选择窗口"]').exists()).toBe(false);
+  expect((wrapper.vm as any).formData.dishes).toEqual([]);
+  expect(matching('/dishes')).toHaveLength(3);
+});
+
+test('planning keeps empty canteen pickers disabled until a directory read supplies options', async () => {
+  const wrapper = planningDialog();
+  await flushPromises();
+  expect(locationPicker(wrapper, '选择食堂').props()).toMatchObject({ range: [], disabled: true });
+  expect(wrapper.find('[aria-label="选择窗口"]').exists()).toBe(false);
+  expect(matching('/dishes')).toHaveLength(0);
+  latest('/canteens').success(response({ items: [], meta: { ...meta, total: 0 } }));
+  await flushPromises();
+  expect(locationPicker(wrapper, '选择食堂').props('disabled')).toBe(true);
+
+  await wrapper.setProps({ visible: false });
+  await wrapper.setProps({ visible: true });
+  await flushPromises();
+  expect(locationPicker(wrapper, '选择食堂').props('disabled')).toBe(true);
+  const canteens = [{ id: 'ready', name: '新食堂' }];
+  latest('/canteens').success(response({ items: canteens, meta }));
+  await flushPromises();
+  const picker = locationPicker(wrapper, '选择食堂');
+  expect(picker.props()).toMatchObject({ range: canteens, value: 0, disabled: false });
+  expect(picker.text()).toContain('全部食堂');
+  expect(matching('/dishes')).toHaveLength(0);
+  expect(matching('/canteens/ready/windows')).toHaveLength(0);
+  picker.vm.$emit('change', { detail: { value: 0 } });
+  await flushPromises();
+  expect(matching('/canteens/ready/windows')).toHaveLength(1);
+  expect(latest('/dishes').data.filter).toEqual({ includeOffline: false, canteenId: ['ready'] });
 });
 
 test.each(['selection', 'close', 'session', 'dispose'])(

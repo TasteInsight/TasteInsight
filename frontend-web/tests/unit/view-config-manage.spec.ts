@@ -84,6 +84,58 @@ describe('views/ConfigManage', () => {
     } finally { wrapper.unmount() }
   })
 
+  it('reads and saves both community approval flags only as global config', async () => {
+    mocks.configApiMock.getGlobalConfig.mockResolvedValue({ code: 200, data: { config: { items: [{ key: 'post.autoApprove', value: 'false' }] }, templates: [{ key: 'postComment.autoApprove', defaultValue: 'true' }] } })
+    mocks.configApiMock.updateGlobalConfig.mockResolvedValue({ code: 200 })
+    const wrapper = mount(ConfigManage, { global: { stubs: { Header: true } } })
+    try {
+      await flushPromises()
+      const post = wrapper.get('input[aria-label="社区帖子人工审核"]')
+      const reply = wrapper.get('input[aria-label="帖子回复人工审核"]')
+      expect((post.element as HTMLInputElement).checked).toBe(true)
+      expect((reply.element as HTMLInputElement).checked).toBe(false)
+      await post.setValue(false)
+      await flushPromises()
+      expect(mocks.configApiMock.updateGlobalConfig).toHaveBeenLastCalledWith({ key: 'post.autoApprove', value: 'true' })
+      await reply.setValue(true)
+      await flushPromises()
+      expect(mocks.configApiMock.updateGlobalConfig).toHaveBeenLastCalledWith({ key: 'postComment.autoApprove', value: 'false' })
+      expect(mocks.configApiMock.updateCanteenConfig).not.toHaveBeenCalled()
+    } finally { wrapper.unmount() }
+  })
+
+  it('hides community controls for canteen scope and disallows read-only writes', async () => {
+    mocks.authStoreMock.user = { canteenId: 'c1' }
+    mocks.configApiMock.getEffectiveConfig.mockResolvedValue({ code: 200, data: { items: [] } })
+    let wrapper = mount(ConfigManage, { global: { stubs: { Header: true } } })
+    await flushPromises()
+    expect(wrapper.find('input[aria-label="社区帖子人工审核"]').exists()).toBe(false)
+    wrapper.unmount()
+    mocks.authStoreMock.user = null
+    mocks.authStoreMock.hasPermission.mockReturnValue(false)
+    mocks.configApiMock.getGlobalConfig.mockResolvedValue({ code: 200, data: { config: null, templates: [] } })
+    wrapper = mount(ConfigManage, { global: { stubs: { Header: true } } })
+    try {
+      await flushPromises()
+      expect(wrapper.get('input[aria-label="社区帖子人工审核"]').attributes('disabled')).toBeDefined()
+      await wrapper.vm.handleCommunityApprovalChange(wrapper.vm.communityConfigs[0])
+      expect(mocks.configApiMock.updateGlobalConfig).not.toHaveBeenCalled()
+    } finally { wrapper.unmount() }
+  })
+
+  it('keeps community settings unavailable when a failed save cannot reload its baseline', async () => {
+    mocks.configApiMock.getGlobalConfig.mockResolvedValueOnce({ code: 200, data: { config: null, templates: [] } }).mockRejectedValueOnce(new Error('读取失败'))
+    mocks.configApiMock.updateGlobalConfig.mockRejectedValueOnce(new Error('保存失败'))
+    const wrapper = mount(ConfigManage, { global: { stubs: { Header: true } } })
+    try {
+      await flushPromises()
+      await wrapper.get('input[aria-label="社区帖子人工审核"]').setValue(true)
+      await flushPromises()
+      expect(wrapper.get('input[aria-label="社区帖子人工审核"]').attributes('disabled')).toBeDefined()
+      expect(wrapper.text()).toContain('暂不可读取')
+    } finally { wrapper.unmount() }
+  })
+
   it('loads global config and falls back to template defaults', async () => {
     mocks.configApiMock.getGlobalConfig.mockResolvedValue({
       code: 200,

@@ -38,6 +38,9 @@ describe('Pending dish hierarchy', () => {
 
   beforeEach(() => {
     prisma = {
+      notificationCampaign: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
       dishUpload: {
         findUnique: jest
           .fn()
@@ -64,6 +67,7 @@ describe('Pending dish hierarchy', () => {
       },
       window: { findUnique: jest.fn().mockResolvedValue(window) },
       $queryRaw: jest.fn().mockResolvedValue([]),
+      $executeRaw: jest.fn().mockResolvedValue(0),
       $transaction: jest
         .fn()
         .mockImplementation(async (callback) => callback(prisma)),

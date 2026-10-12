@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AuthModule } from '@/auth/auth.module';
 import { AdminAuthController } from '@/auth/admin-auth.controller';
+import { AdminStudentVerificationController } from '@/campus-identity/admin-student-verification.controller';
 import { AdminAdminsModule } from '@/admin-admins/admin-admins.module';
 import { AdminCanteensModule } from '@/admin-canteens/admin-canteens.module';
 import { AdminCommentsModule } from '@/admin-comments/admin-comments.module';
@@ -16,6 +17,8 @@ import { AdminReportsModule } from '@/admin-reports/admin-reports.module';
 import { AdminReviewsModule } from '@/admin-reviews/admin-reviews.module';
 import { AdminUploadsModule } from '@/admin-uploads/admin-uploads.module';
 import { AdminWindowsModule } from '@/admin-windows/admin-windows.module';
+import { SocialModule } from '@/social/social.module';
+import { AdminSocialController } from '@/social/admin-social.controller';
 import { UploadModule } from '@/upload/upload.module';
 import { AdminUploadController } from '@/upload/upload.controller';
 
@@ -35,8 +38,13 @@ import { AdminUploadController } from '@/upload/upload.controller';
     AdminReportsModule,
     AdminReviewsModule,
     AdminWindowsModule,
+    SocialModule,
   ],
-  controllers: [AdminConfigController],
+  controllers: [
+    AdminConfigController,
+    AdminSocialController,
+    AdminStudentVerificationController,
+  ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: AdminOperationLogInterceptor },
   ],

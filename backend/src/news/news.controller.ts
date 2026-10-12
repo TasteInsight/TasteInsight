@@ -1,6 +1,6 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { NewsService } from './news.service';
-import { AuthGuard } from '@/auth/guards/auth.guard';
+import { OptionalAuthGuard } from '@/auth/guards/optional-auth.guard';
 import { GetNewsDto } from './dto/get-news.dto';
 import {
   NewsListResponseDto,
@@ -8,7 +8,7 @@ import {
 } from '@/news/dto/news-response.dto';
 
 @Controller('news')
-@UseGuards(AuthGuard)
+@UseGuards(OptionalAuthGuard)
 export class NewsController {
   constructor(private readonly newsService: NewsService) {}
 

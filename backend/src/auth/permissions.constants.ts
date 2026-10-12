@@ -55,6 +55,13 @@ export const COMMENT_PERMISSIONS = [
 // 配置管理权限
 export const CONFIG_PERMISSIONS = ['config:view', 'config:edit'] as const;
 
+export const STUDENT_PERMISSIONS = ['student:review'] as const;
+export const POST_PERMISSIONS = [
+  'post:view',
+  'post:approve',
+  'post:delete',
+] as const;
+
 // 实验管理权限
 export const EXPERIMENT_PERMISSIONS = [
   'experiment:view',
@@ -77,6 +84,8 @@ export const ALL_PERMISSIONS: string[] = [
   ...REVIEW_PERMISSIONS,
   ...COMMENT_PERMISSIONS,
   ...CONFIG_PERMISSIONS,
+  ...STUDENT_PERMISSIONS,
+  ...POST_PERMISSIONS,
   ...EXPERIMENT_PERMISSIONS,
 ];
 
@@ -107,6 +116,8 @@ export const PERMISSION_DEPENDENCIES: Readonly<
   'admin:edit': ['admin:view'],
   'admin:delete': ['admin:view'],
   'config:edit': ['config:view'],
+  'post:approve': ['post:view'],
+  'post:delete': ['post:view'],
   'experiment:create': ['experiment:view'],
   'experiment:edit': ['experiment:view'],
   'experiment:delete': ['experiment:view'],

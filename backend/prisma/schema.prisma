@@ -13,21 +13,35 @@ datasource db {
 
 model User {
   id        String   @id @default(cuid())
-  openId    String   @unique
+  openId    String?  @unique
   nickname  String
   avatar    String?
+  bio       String?
   allergens String[] @default([]) // 过敏原列表
 
   // 关联关系
-  preferences    UserPreference?
-  settings       UserSetting?
-  reviews        Review[]
-  comments       Comment[]
-  mealPlans      MealPlan[]
-  uploads        DishUpload[]
-  reports        Report[]
-  favoriteDishes FavoriteDish[]
-  browseHistory  BrowseHistory[]
+  preferences            UserPreference?
+  settings               UserSetting?
+  reviews                Review[]
+  comments               Comment[]
+  mealPlans              MealPlan[]
+  uploads                DishUpload[]
+  reports                Report[]
+  favoriteDishes         FavoriteDish[]
+  browseHistory          BrowseHistory[]
+  identities             UserIdentity[]
+  verificationChallenges VerificationChallenge[]
+  studentVerification    StudentVerification?
+  campusOAuthAttempts    CampusOAuthAttempt[]
+  reviewLikes            ReviewLike[]
+  commentLikes           CommentLike[]
+  posts                  Post[]
+  postComments           PostComment[]
+  postLikes              PostLike[]
+  postCommentLikes       PostCommentLike[]
+  notifications          Notification[]          @relation("NotificationRecipient")
+  notificationActions    Notification[]          @relation("NotificationActor")
+  diningApplications     DiningApplication[]
 
   aiSessions AISession[]
 
@@ -35,6 +49,86 @@ model User {
   updatedAt DateTime @updatedAt
 
   @@map("users")
+}
+
+model UserIdentity {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider   String
+  issuer     String
+  subject    String
+  verifiedAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@unique([provider, issuer, subject])
+  @@index([userId])
+  @@map("user_identities")
+}
+
+model VerificationChallenge {
+  id            String    @id @default(cuid())
+  userId        String?
+  user          User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose       String
+  target        String
+  codeDigest    String
+  ipDigest      String
+  expiresAt     DateTime
+  attempts      Int       @default(0)
+  consumedAt    DateTime?
+  deliveryState String    @default("PENDING")
+  createdAt     DateTime  @default(now())
+
+  @@index([target, purpose, createdAt])
+  @@index([ipDigest, createdAt])
+  @@index([expiresAt])
+  @@map("verification_challenges")
+}
+
+model StudentVerification {
+  id                   String    @id @default(cuid())
+  userId               String    @unique
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schoolCode           String    @default("tsinghua")
+  status               String    @default("PENDING")
+  method               String
+  email                String?
+  emailVerifiedAt      DateTime?
+  studentSubjectDigest String?
+  verifiedAt           DateTime?
+  expiresAt            DateTime?
+  reviewedById         String?
+  reviewer             Admin?    @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt           DateTime?
+  reason               String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@unique([schoolCode, studentSubjectDigest])
+  @@unique([schoolCode, email])
+  @@index([status, updatedAt])
+  @@map("student_verifications")
+}
+
+model CampusOAuthAttempt {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stateDigest      String    @unique
+  codeVerifier     String
+  expiresAt        DateTime
+  consumedAt       DateTime?
+  clientOrigin     String?
+  proof            Json?
+  handoffDigest    String?
+  handoffExpiresAt DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+  @@map("campus_oauth_attempts")
 }
 
 model UserPreference {
@@ -79,7 +173,11 @@ model UserSetting {
   newDishAlert         Boolean @default(true)
   priceChangeAlert     Boolean @default(false)
   reviewReplyAlert     Boolean @default(true)
+  likeAlert            Boolean @default(true)
+  postReplyAlert       Boolean @default(true)
+  diningAlert          Boolean @default(true)
   weeklyRecommendation Boolean @default(true)
+  showMealPlans        Boolean @default(false)
 
   // 显示设置
   showCalories  Boolean @default(true)
@@ -110,10 +208,11 @@ model Admin {
   permissions AdminPermission[]
 
   // 操作记录
-  operationLogs  OperationLog[]
-  createdNews    News[]
-  handledReports Report[]       @relation("ReportHandler")
-  dishUploads    DishUpload[]
+  operationLogs        OperationLog[]
+  createdNews          News[]
+  handledReports       Report[]              @relation("ReportHandler")
+  dishUploads          DishUpload[]
+  studentVerifications StudentVerification[]
 
   deletedAt DateTime?
 
@@ -170,13 +269,14 @@ model Canteen {
   reviewCount   Int   @default(0)
 
   // 关联关系
-  floors       Floor[]
-  windows      Window[]
-  dishes       Dish[]
-  dishUploads  DishUpload[]
-  news         News[]
-  admins       Admin[]
-  adminConfigs AdminConfig[]
+  floors        Floor[]
+  windows       Window[]
+  dishes        Dish[]
+  dishUploads   DishUpload[]
+  news          News[]
+  admins        Admin[]
+  adminConfigs  AdminConfig[]
+  diningInvites DiningInvite[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -378,6 +478,7 @@ model Review {
   // 关联关系
   comments Comment[]
   reports  Report[]
+  likes    ReviewLike[]
 
   deletedAt DateTime?
 
@@ -411,6 +512,7 @@ model Comment {
 
   // 关联关系
   reports Report[]
+  likes   CommentLike[]
 
   deletedAt DateTime?
 
@@ -425,19 +527,182 @@ model Comment {
   @@map("comments")
 }
 
+model ReviewLike {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewId  String
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, reviewId])
+  @@index([reviewId])
+  @@map("review_likes")
+}
+
+model CommentLike {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  commentId String
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, commentId])
+  @@index([commentId])
+  @@map("comment_likes")
+}
+
+model Post {
+  id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
+  content      String
+  images       String[]      @default([])
+  status       String        @default("pending")
+  rejectReason String?
+  deletedAt    DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  comments     PostComment[]
+  likes        PostLike[]
+  reports      Report[]
+
+  @@index([userId, createdAt])
+  @@index([status, deletedAt, createdAt])
+  @@map("posts")
+}
+
+model PostComment {
+  id              String            @id @default(cuid())
+  postId          String
+  post            Post              @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User              @relation(fields: [userId], references: [id])
+  content         String
+  parentCommentId String?
+  parentComment   PostComment?      @relation("PostReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies         PostComment[]     @relation("PostReplies")
+  status          String            @default("pending")
+  rejectReason    String?
+  deletedAt       DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  likes           PostCommentLike[]
+  reports         Report[]
+
+  @@index([postId, createdAt])
+  @@index([parentCommentId])
+  @@map("post_comments")
+}
+
+model PostLike {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, postId])
+  @@index([postId])
+  @@map("post_likes")
+}
+
+model PostCommentLike {
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postCommentId String
+  postComment   PostComment @relation(fields: [postCommentId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+
+  @@id([userId, postCommentId])
+  @@index([postCommentId])
+  @@map("post_comment_likes")
+}
+
+model Notification {
+  id          String              @id @default(cuid())
+  userId      String
+  user        User                @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actorId     String?
+  actor       User?               @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  type        String
+  targetType  String
+  targetId    String
+  rootId      String?
+  dedupeKey   String              @unique
+  readAt      DateTime?
+  withdrawnAt DateTime?
+  createdAt   DateTime            @default(now())
+  outbox      NotificationOutbox?
+
+  @@index([userId, withdrawnAt, readAt, createdAt])
+  @@index([targetType, targetId])
+  @@index([rootId])
+  @@map("notifications")
+}
+
+model NotificationOutbox {
+  id             String       @id @default(cuid())
+  notificationId String       @unique
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  status         String       @default("pending")
+  attempts       Int          @default(0)
+  nextAttemptAt  DateTime     @default(now())
+  lockedUntil    DateTime?
+  lastError      String?
+  deliveredAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@map("notification_outbox")
+}
+
+model NotificationCampaign {
+  id              String    @id @default(cuid())
+  type            String
+  targetId        String
+  dedupeKey       String    @unique
+  recipientCutoff DateTime  @default(now())
+  cursorUserId    String?
+  status          String    @default("pending")
+  attempts        Int       @default(0)
+  nextAttemptAt   DateTime  @default(now())
+  lockedUntil     DateTime?
+  leaseToken      String?
+  lastError       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@index([status, lockedUntil])
+  @@map("notification_campaigns")
+}
+
+model WeeklyRecommendationCollection {
+  weekKey     String   @id
+  dishIds     String[]
+  publishedAt DateTime @default(now())
+
+  @@map("weekly_recommendation_collections")
+}
+
 model Report {
   id         String @id @default(cuid())
   reporterId String
   reporter   User   @relation(fields: [reporterId], references: [id])
 
-  targetType String // review, comment
+  targetType String // review, comment, post, postComment
   targetId   String
 
   // 关联到具体目标（可选，用于方便查询）
-  reviewId  String?
-  review    Review?  @relation(fields: [reviewId], references: [id], onDelete: Cascade)
-  commentId String?
-  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  reviewId      String?
+  review        Review?      @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  commentId     String?
+  comment       Comment?     @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  postId        String?
+  post          Post?        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postCommentId String?
+  postComment   PostComment? @relation(fields: [postCommentId], references: [id], onDelete: Cascade)
 
   type   String // inappropriate, spam, false_info, other
   reason String
@@ -496,9 +761,12 @@ model MealPlan {
   startDate DateTime
   endDate   DateTime
   mealTime  String // breakfast, lunch, dinner, nightsnack
+  isPublic  Boolean  @default(false)
 
   // 关联关系
-  dishes MealPlanDish[]
+  dishes        MealPlanDish[]
+  completions   MealPlanCompletion[]
+  diningInvites DiningInvite[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -516,6 +784,50 @@ model MealPlanDish {
 
   @@unique([mealPlanId, dishId])
   @@map("meal_plan_dishes")
+}
+
+model MealPlanCompletion {
+  id          String   @id @default(cuid())
+  mealPlanId  String
+  mealPlan    MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  date        DateTime @db.Date
+  completedAt DateTime @default(now())
+
+  @@unique([mealPlanId, date])
+  @@map("meal_plan_completions")
+}
+
+model DiningInvite {
+  id           String              @id @default(cuid())
+  mealPlanId   String
+  mealPlan     MealPlan            @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  date         DateTime            @db.Date
+  startsAt     DateTime
+  canteenId    String
+  canteen      Canteen             @relation(fields: [canteenId], references: [id], onDelete: Restrict)
+  capacity     Int
+  status       String              @default("open")
+  applications DiningApplication[]
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@unique([mealPlanId, date])
+  @@index([status, startsAt])
+  @@map("dining_invites")
+}
+
+model DiningApplication {
+  id        String       @id @default(cuid())
+  inviteId  String
+  invite    DiningInvite @relation(fields: [inviteId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    String       @default("pending")
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([inviteId, userId])
+  @@map("dining_applications")
 }
 
 // ==================== AI聊天模型 ====================

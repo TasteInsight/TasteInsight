@@ -25,6 +25,8 @@
 </template>
 
 <script setup lang="ts">
+import config from '@/config';
+import { openCampus } from '@/utils/campus-navigation';
 import { useNewsDetail } from '../composables/use-news-detail';
 
 const {
@@ -38,7 +40,10 @@ const {
   formatTime,
   initDetailPage,
 } = useNewsDetail();
-const backToNews = () => uni.switchTab({ url: '/pages/news/index' });
+const backToNews = () => {
+  if (config.platform === 'mp-weixin') uni.switchTab({ url: '/pages/news/index' });
+  else openCampus('news');
+};
 
 // 初始化详情页
 initDetailPage();

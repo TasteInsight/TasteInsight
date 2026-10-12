@@ -25,6 +25,7 @@ import {
   UserUploadData,
 } from '@/user-profile/dto/user.dto';
 import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service';
+import { isCurrentStudent } from '@/auth/student-status';
 
 @Injectable()
 export class UserProfileService {
@@ -57,6 +58,7 @@ export class UserProfileService {
       include: {
         preferences: true,
         settings: true,
+        studentVerification: true,
         favoriteDishes: { select: { dishId: true } },
         reviews: { select: { id: true } },
         comments: { select: { id: true } },
@@ -354,6 +356,10 @@ export class UserProfileService {
       openId: user.openId,
       nickname: user.nickname,
       avatar: user.avatar || '',
+      bio: user.bio || '',
+      capabilities: {
+        canContribute: isCurrentStudent(user.studentVerification),
+      },
       preferences: this.mapToUserPreferencesDto(user.preferences),
       settings: this.mapToUserSettingsDto(user.settings),
       allergens: user.allergens,
@@ -437,10 +443,14 @@ export class UserProfileService {
     // 处理 settings 为空的情况
     if (!settings) {
       return {
+        showMealPlans: false,
         notificationSettings: {
           newDishAlert: true,
           priceChangeAlert: false,
           reviewReplyAlert: true,
+          likeAlert: true,
+          postReplyAlert: true,
+          diningAlert: true,
           weeklyRecommendation: true,
         },
         displaySettings: {
@@ -452,10 +462,14 @@ export class UserProfileService {
     }
 
     return {
+      showMealPlans: settings.showMealPlans ?? false,
       notificationSettings: {
         newDishAlert: settings.newDishAlert ?? true,
         priceChangeAlert: settings.priceChangeAlert ?? false,
         reviewReplyAlert: settings.reviewReplyAlert ?? true,
+        likeAlert: settings.likeAlert ?? true,
+        postReplyAlert: settings.postReplyAlert ?? true,
+        diningAlert: settings.diningAlert ?? true,
         weeklyRecommendation: settings.weeklyRecommendation ?? true,
       },
       displaySettings: {
@@ -468,9 +482,13 @@ export class UserProfileService {
 
   private mapToUserSettingsUpdateData(settings: UpdateUserSettingsDto) {
     const settingsData: Record<string, any> = {
+      showMealPlans: settings.showMealPlans,
       newDishAlert: settings.notificationSettings?.newDishAlert,
       priceChangeAlert: settings.notificationSettings?.priceChangeAlert,
       reviewReplyAlert: settings.notificationSettings?.reviewReplyAlert,
+      likeAlert: settings.notificationSettings?.likeAlert,
+      postReplyAlert: settings.notificationSettings?.postReplyAlert,
+      diningAlert: settings.notificationSettings?.diningAlert,
       weeklyRecommendation: settings.notificationSettings?.weeklyRecommendation,
       showCalories: settings.displaySettings?.showCalories,
       showNutrition: settings.displaySettings?.showNutrition,

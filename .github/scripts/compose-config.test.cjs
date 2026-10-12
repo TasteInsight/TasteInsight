@@ -20,8 +20,6 @@ const configuration = {
   APP_URL: 'https://api.example.test',
   ADMIN_APP_URL: 'https://admin.example.test',
   COMPOSE_PROJECT_NAME: 'tasteinsight-fixture',
-  WECHAT_APPID: 'fixture-wechat-appid',
-  WECHAT_SECRET: 'fixture-wechat-secret',
 };
 const roles = ['public-api', 'admin-api', 'worker', 'migrate'];
 const runtimeRoles = ['public-api', 'admin-api', 'worker'];
@@ -31,6 +29,7 @@ const optionalGroups = {
   runtime: [
     'REDIS_REC_DB', 'EXTERNAL_EMBEDDING_SERVICE_ENABLED',
     'EXTERNAL_EMBEDDING_SERVICE_VERSION', 'EMBEDDING_SERVICE_BATCH_SIZE',
+    'NOTIFICATION_WEBHOOK_URL',
   ],
   api: [
     'JWT_EXPIRATION_TIME', 'JWT_REFRESH_EXPIRATION_TIME',
@@ -38,7 +37,22 @@ const optionalGroups = {
     'UPLOAD_STORAGE_TYPE', 'UPLOAD_BASE_URL', 'UPLOAD_MAX_FILE_SIZE',
     'OSS_REGION', 'OSS_ACCESS_KEY_ID', 'OSS_ACCESS_KEY_SECRET', 'OSS_BUCKET', 'OSS_CUSTOM_DOMAIN',
   ],
-  public: ['AI_PROVIDER', 'AI_API_KEY', 'AI_MODEL', 'AI_BASE_URL'],
+  public: [
+    'WECHAT_APPID', 'WECHAT_SECRET', 'WECHAT_APP_APPID', 'WECHAT_APP_SECRET',
+    'WECHAT_OPEN_PLATFORM_ID', 'AUTH_CHALLENGE_SECRET', 'SMS_GATEWAY_URL', 'SMS_GATEWAY_TOKEN',
+    'RESEND_API_KEY', 'EMAIL_FROM', 'CAMPUS_EMAIL_DOMAINS',
+    'CAMPUS_OAUTH_AUTHORIZATION_URL', 'CAMPUS_OAUTH_TOKEN_URL', 'CAMPUS_OAUTH_USERINFO_URL',
+    'CAMPUS_OAUTH_CLIENT_ID', 'CAMPUS_OAUTH_CLIENT_SECRET', 'CAMPUS_OAUTH_REDIRECT_URI',
+    'CAMPUS_OAUTH_SCOPE', 'CAMPUS_OAUTH_ISSUER', 'CAMPUS_OAUTH_SUBJECT_CLAIM',
+    'CAMPUS_OAUTH_STUDENT_CLAIM', 'CAMPUS_OAUTH_STUDENT_VALUES',
+    'CAMPUS_OAUTH_TOKEN_AUTH_METHOD', 'CAMPUS_VERIFICATION_DAYS',
+    'AI_PROVIDER', 'AI_API_KEY', 'AI_MODEL', 'AI_BASE_URL',
+  ],
+  worker: [
+    'NOTIFICATION_WEBHOOK_SECRET', 'NOTIFICATION_WEBHOOK_POLL_MS',
+    'NOTIFICATION_WEBHOOK_TIMEOUT_MS', 'NOTIFICATION_WEBHOOK_MAX_ATTEMPTS',
+    'NOTIFICATION_WEBHOOK_BACKOFF_MS',
+  ],
   migrate: ['INITIAL_ADMIN_USERNAME', 'INITIAL_ADMIN_PASSWORD'],
 };
 const optionalKeysFor = (role) => [
@@ -46,6 +60,7 @@ const optionalKeysFor = (role) => [
   ...(runtimeRoles.includes(role) ? optionalGroups.runtime : []),
   ...(apiRoles.includes(role) ? optionalGroups.api : []),
   ...(role === 'public-api' ? optionalGroups.public : []),
+  ...(role === 'worker' ? optionalGroups.worker : []),
   ...(role === 'migrate' ? optionalGroups.migrate : []),
 ];
 const exampleKeys = (content) => [...content.matchAll(/^\s*(?:#\s*)?([A-Z][A-Z0-9_]*)=/gm)]
@@ -136,7 +151,6 @@ test('each role receives only the settings consumed by its application root', ()
     const expectedKeys = [
       'NODE_ENV', 'POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_DB', 'POSTGRES_HOST', 'POSTGRES_PORT',
       ...optionalKeysFor(role),
-      ...(role === 'public-api' ? ['WECHAT_APPID', 'WECHAT_SECRET'] : []),
       ...(runtimeRoles.includes(role)
         ? ['PORT', 'REDIS_HOST', 'REDIS_PORT', 'REDIS_PASSWORD', 'EXTERNAL_EMBEDDING_SERVICE_URL'] : []),
       ...(apiRoles.includes(role)
@@ -196,8 +210,6 @@ test('production example renders with only required credentials replaced', () =>
     ...credentials,
     JWT_SECRET: configuration.JWT_SECRET,
     JWT_REFRESH_SECRET: configuration.JWT_REFRESH_SECRET,
-    WECHAT_APPID: configuration.WECHAT_APPID,
-    WECHAT_SECRET: configuration.WECHAT_SECRET,
   });
   assert.equal(result.status, 0, result.stderr);
   assertSharedCredentials(result.config, credentials);
@@ -234,8 +246,7 @@ test('both templates retain supported capabilities without enabling optional int
     ]) {
       assert.ok(available.has(key), key);
     }
-    for (const key of ['JWT_SECRET', 'JWT_REFRESH_SECRET', ...Object.keys(credentials),
-      ...(index === 1 ? ['WECHAT_APPID', 'WECHAT_SECRET'] : [])]) {
+    for (const key of ['JWT_SECRET', 'JWT_REFRESH_SECRET', ...Object.keys(credentials)]) {
       assert.ok(active.has(key), `required setting remains active: ${key}`);
     }
   }
@@ -435,7 +446,7 @@ test('role connection endpoints may target externally managed infrastructure', (
   }
 });
 
-for (const key of [...Object.keys(credentials), 'JWT_SECRET', 'JWT_REFRESH_SECRET', 'APP_URL', 'ADMIN_APP_URL', 'WECHAT_APPID', 'WECHAT_SECRET']) {
+for (const key of [...Object.keys(credentials), 'JWT_SECRET', 'JWT_REFRESH_SECRET', 'APP_URL', 'ADMIN_APP_URL']) {
   test(`production configuration rejects missing or empty ${key} before creating services`, () => {
     const fileValues = { ...configuration };
     delete fileValues[key];

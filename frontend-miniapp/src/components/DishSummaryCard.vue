@@ -2,8 +2,13 @@
   <button
     class="dish-card"
     hover-class="dish-card--pressed"
+    role="button"
+    tabindex="0"
     :aria-label="`查看${dish.name}`"
     @click="selectDish"
+    @keydown="handleKeydown"
+    @keyup="handleKeyup"
+    @blur="clearPress"
   >
     <view class="dish-card__body">
       <text class="dish-card__name">{{ dish.name }}</text>
@@ -45,6 +50,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import type { Dish } from '@/types/api';
+import { useButtonActivation } from '@/composables/use-button-activation';
 import TagBadge from './TagBadge.vue';
 
 const props = defineProps<{ dish: Dish }>();
@@ -62,7 +68,9 @@ watch(
   }
 );
 
-const selectDish = () => emit('select', props.dish.id);
+const { activate: selectDish, handleKeydown, handleKeyup, clearPress } = useButtonActivation(() =>
+  emit('select', props.dish.id)
+);
 </script>
 
 <style scoped>

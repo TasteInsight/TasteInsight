@@ -151,7 +151,8 @@ describe('useMenuPlanning', () => {
   });
 
   it('should switch tabs and display correct plans', async () => {
-    const { activeTab, displayPlans } = useMenuPlanning();
+    const { activeTab, displayPlans, setViewMode } = useMenuPlanning();
+    setViewMode('list');
 
     mockStore.currentPlans = [{ id: '1' }];
     mockStore.historyPlans = [{ id: '2' }];

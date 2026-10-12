@@ -34,3 +34,29 @@ it('removes failed dish and review images without leaving blank slots', async ()
   await wrapper.trigger('click');
   expect(wrapper.emitted('click')).toHaveLength(1);
 });
+
+it('opens a review once per Enter or Space press and keeps the existing click emit', async () => {
+  const wrapper = mount(ReviewCard, { props: { review: review as any } });
+  expect(wrapper.attributes('role')).toBe('button');
+  expect(wrapper.attributes('tabindex')).toBe('0');
+  expect(wrapper.attributes('aria-label')).toBe('查看番茄炒蛋的评价');
+  await wrapper.trigger('keyup', { key: 'Enter' });
+  expect(wrapper.emitted('click')).toBeUndefined();
+  const down = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+  wrapper.element.dispatchEvent(down);
+  expect(down.defaultPrevented).toBe(true);
+  await wrapper.trigger('keydown', { key: 'Enter', repeat: true });
+  await wrapper.trigger('keyup', { key: 'Enter' });
+  await wrapper.trigger('keyup', { key: 'Enter' });
+  expect(wrapper.emitted('click')).toEqual([[]]);
+  await wrapper.trigger('keydown', { key: ' ' });
+  await wrapper.trigger('blur');
+  await wrapper.trigger('keyup', { key: ' ' });
+  expect(wrapper.emitted('click')).toEqual([[]]);
+  await wrapper.trigger('keydown', { key: ' ' });
+  await wrapper.trigger('keyup', { key: ' ' });
+  expect(wrapper.emitted('click')).toEqual([[], []]);
+  await wrapper.trigger('click');
+  expect(wrapper.emitted('click')).toEqual([[], [], []]);
+  wrapper.unmount();
+});

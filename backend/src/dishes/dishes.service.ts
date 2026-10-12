@@ -25,14 +25,14 @@ export class DishesService {
   ) {}
 
   // 获取菜品详情
-  async getDishById(id: string, userId: string): Promise<DishResponseDto> {
+  async getDishById(id: string, userId?: string): Promise<DishResponseDto> {
     const dish = await this.prisma.dish.findUnique({
-      where: { id },
+      where: { id, ...(!userId ? { status: 'online' } : {}) },
       include: {
         canteen: true,
         window: true,
         parentDish: true,
-        subDishes: true,
+        subDishes: userId ? true : { where: { status: 'online' } },
       },
     });
 
@@ -43,38 +43,44 @@ export class DishesService {
     // 记录用户浏览历史
     // 使用 upsert 操作确保原子性，避免并发请求导致的重复记录
     // 如果记录已存在，更新 viewedAt；否则创建新记录
-    try {
-      await this.prisma.browseHistory.upsert({
-        where: {
-          userId_dishId: {
+    if (userId)
+      try {
+        await this.prisma.browseHistory.upsert({
+          where: {
+            userId_dishId: {
+              userId,
+              dishId: id,
+            },
+          },
+          update: {
+            viewedAt: new Date(),
+          },
+          create: {
             userId,
             dishId: id,
           },
-        },
-        update: {
-          viewedAt: new Date(),
-        },
-        create: {
-          userId,
-          dishId: id,
-        },
-      });
-    } catch (error) {
-      // 记录失败不影响主要功能，静默处理
-      console.warn('Failed to record browse history:', error);
-    }
+        });
+      } catch (error) {
+        // 记录失败不影响主要功能，静默处理
+        console.warn('Failed to record browse history:', error);
+      }
 
     return {
       code: 200,
       message: 'success',
-      data: DishDto.fromEntity(dish),
+      data: DishDto.fromEntity({
+        ...dish,
+        ...(!userId && dish.parentDish?.status !== 'online'
+          ? { parentDishId: null }
+          : {}),
+      }),
     };
   }
 
   // 批量获取菜品详情
   async getDishesByIds(
     ids: string[],
-    userId: string,
+    userId?: string,
   ): Promise<DishListResponseDto> {
     if (!ids || ids.length === 0) {
       return {
@@ -96,12 +102,13 @@ export class DishesService {
     const dishes = await this.prisma.dish.findMany({
       where: {
         id: { in: ids },
+        ...(!userId ? { status: 'online' } : {}),
       },
       include: {
         canteen: true,
         window: true,
         parentDish: true,
-        subDishes: true,
+        subDishes: userId ? true : { where: { status: 'online' } },
       },
     });
 
@@ -111,7 +118,14 @@ export class DishesService {
       .map((id) => dishMap.get(id))
       .filter((dish) => dish != null);
 
-    const items = sortedDishes.map((dish) => DishDto.fromEntity(dish));
+    const items = sortedDishes.map((dish) =>
+      DishDto.fromEntity({
+        ...dish,
+        ...(!userId && dish.parentDish?.status !== 'online'
+          ? { parentDishId: null }
+          : {}),
+      }),
+    );
 
     return {
       code: 200,
@@ -131,7 +145,7 @@ export class DishesService {
   // 获取菜品列表
   async getDishes(
     getDishesDto: GetDishesDto,
-    userId: string,
+    userId?: string,
   ): Promise<DishListResponseDto> {
     const { filter, search, sort, pagination } = getDishesDto;
 
@@ -139,7 +153,7 @@ export class DishesService {
     const andConditions: Prisma.DishWhereInput[] = [];
 
     // 状态筛选：默认只显示 online 的菜品
-    if (!filter.includeOffline) {
+    if (!userId || !filter.includeOffline) {
       andConditions.push({ status: 'online' });
     }
 

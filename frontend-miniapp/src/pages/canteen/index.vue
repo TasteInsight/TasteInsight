@@ -56,13 +56,11 @@
         </view>
       </view>
 
-      <view
+      <EmptyState
         v-else-if="dishesInitialized && !dishesLoading && !dishesError && !error"
-        class="dish-list-state"
-      >
-        <text>暂无菜品信息</text>
-        <text class="dish-list-hint">可以调整筛选条件，或查看其他窗口。</text>
-      </view>
+        title="暂无菜品信息"
+        icon="search"
+      />
     </view>
     <!-- #ifdef MP-WEIXIN -->
     <page-container
@@ -90,6 +88,7 @@ import {
 } from '@dcloudio/uni-app';
 import { useCanteenData } from './composables/use-canteen-data';
 import SearchBar from '@/components/SearchBar.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import CanteenFilterBar from './components/CanteenFilterBar.vue';
 import CanteenHeader from './components/CanteenHeader.vue';
 import CanteenDishCard from './components/CanteenDishCard.vue';

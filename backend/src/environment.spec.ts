@@ -212,7 +212,60 @@ describe('validateEnvironment', () => {
   });
 });
 
-describe('trusted reverse-proxy configuration', () => {
+describe('identity integration configuration', () => {
+  const oauth = {
+    CAMPUS_OAUTH_AUTHORIZATION_URL: 'https://identity.example.org/authorize',
+    CAMPUS_OAUTH_TOKEN_URL: 'https://identity.example.org/token',
+    CAMPUS_OAUTH_USERINFO_URL: 'https://identity.example.org/userinfo',
+    CAMPUS_OAUTH_CLIENT_ID: 'client',
+    CAMPUS_OAUTH_CLIENT_SECRET: 'secret',
+    CAMPUS_OAUTH_REDIRECT_URI:
+      'https://api.example.org/api/v1/user/student-verification/oauth/callback',
+    CAMPUS_OAUTH_SCOPE: 'profile',
+    CAMPUS_OAUTH_ISSUER: 'https://identity.example.org',
+    AUTH_CHALLENGE_SECRET: 'dedicated-challenge-secret'.repeat(2),
+  };
+  it('keeps every optional integration disabled with blank values', () => {
+    expect(() =>
+      validateEnvironment({
+        SMS_GATEWAY_URL: '',
+        SMS_GATEWAY_TOKEN: '',
+        RESEND_API_KEY: '',
+        EMAIL_FROM: '',
+        CAMPUS_OAUTH_AUTHORIZATION_URL: '',
+      }),
+    ).not.toThrow();
+  });
+  it.each([
+    ['WECHAT_APP_APPID', 'WECHAT_APP_SECRET'],
+    ['SMS_GATEWAY_URL', 'SMS_GATEWAY_TOKEN'],
+    ['RESEND_API_KEY', 'EMAIL_FROM'],
+    ['CAMPUS_OAUTH_STUDENT_CLAIM', 'CAMPUS_OAUTH_STUDENT_VALUES'],
+  ])('rejects partial %s configuration', (configuredKey, missingKey) => {
+    expect(() => validateEnvironment({ [configuredKey]: 'value' })).toThrow(
+      missingKey,
+    );
+  });
+  it('requires complete approved OAuth endpoints and a dedicated challenge key', () => {
+    expect(() =>
+      validateEnvironment({
+        CAMPUS_OAUTH_AUTHORIZATION_URL: 'https://identity.example.org/auth',
+      }),
+    ).toThrow('CAMPUS_OAUTH_TOKEN_URL');
+    expect(() =>
+      validateEnvironment({ ...oauth, AUTH_CHALLENGE_SECRET: 'short' }),
+    ).toThrow('AUTH_CHALLENGE_SECRET');
+    expect(() => validateEnvironment(oauth)).not.toThrow();
+  });
+  it.each([
+    'http://identity.example.org/token',
+    'https://user:password@identity.example.org/token',
+    'https://identity.example.org/token#fragment',
+  ])('rejects unsafe token endpoint %s', (value) => {
+    expect(() =>
+      validateEnvironment({ ...oauth, CAMPUS_OAUTH_TOKEN_URL: value }),
+    ).toThrow('CAMPUS_OAUTH_TOKEN_URL');
+  });
   it.each([
     'true',
     '1',
@@ -235,4 +288,17 @@ describe('trusted reverse-proxy configuration', () => {
       ).not.toThrow();
     },
   );
+  it.each(['0', '367', 'invalid'])(
+    'bounds automatic student verification lifetime %s',
+    (value) => {
+      expect(() =>
+        validateEnvironment({ CAMPUS_VERIFICATION_DAYS: value }),
+      ).toThrow('CAMPUS_VERIFICATION_DAYS');
+    },
+  );
+  it('does not accept wildcard campus-email domains', () => {
+    expect(() =>
+      validateEnvironment({ CAMPUS_EMAIL_DOMAINS: '*.tsinghua.edu.cn' }),
+    ).toThrow('CAMPUS_EMAIL_DOMAINS');
+  });
 });

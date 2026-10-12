@@ -53,10 +53,31 @@
             class="comment-row"
             @longpress="handleLongPress($event, comment)"
           >
+            <!-- #ifndef MP-WEIXIN -->
+            <button
+              class="comment-author-avatar"
+              :aria-label="'查看 ' + comment.userNickname + ' 的主页'"
+              @tap.stop="openAuthor(comment.userId)"
+            >
+              <UserAvatar :src="comment.userAvatar" :size="32" :label="comment.userNickname" />
+            </button>
+            <!-- #endif -->
+            <!-- #ifdef MP-WEIXIN -->
             <UserAvatar :src="comment.userAvatar" :size="32" :label="comment.userNickname" />
+            <!-- #endif -->
             <view class="comment-main">
               <view class="comment-heading">
+                <!-- #ifndef MP-WEIXIN -->
+                <button
+                  class="comment-author-name discussion-author comment-name"
+                  @tap.stop="openAuthor(comment.userId)"
+                >
+                  {{ comment.userNickname }}
+                </button>
+                <!-- #endif -->
+                <!-- #ifdef MP-WEIXIN -->
                 <text class="discussion-author comment-name">{{ comment.userNickname }}</text>
+                <!-- #endif -->
                 <button
                   class="sheet-button discussion-action comment-more"
                   :aria-label="'管理 ' + comment.userNickname + ' 的回复'"
@@ -88,14 +109,29 @@
               <text class="discussion-body comment-content">{{ comment.content }}</text>
               <view class="discussion-meta comment-meta">
                 <text>{{ comment.floor ?? '--' }}楼 · {{ formatDate(comment.createdAt) }}</text>
-                <button
-                  v-if="comment.status === 'approved' && canReply"
-                  class="sheet-button discussion-action comment-reply-action"
-                  :disabled="submitting"
-                  @tap="selectCommentForReply(comment)"
-                >
-                  回复
-                </button>
+                <view class="comment-actions">
+                  <button
+                    v-if="comment.status === 'approved' && canReply"
+                    class="sheet-button discussion-action comment-like"
+                    :class="{ 'comment-liked': isLiked(comment) }"
+                    :aria-label="isLiked(comment) ? '取消点赞' : '点赞回复'"
+                    :aria-pressed="isLiked(comment)"
+                    :disabled="!!pending[comment.id]"
+                    @tap.stop="toggleLike(comment)"
+                  >
+                    <text class="iconfont icon-heart-outline" aria-hidden="true" />{{
+                      likeCount(comment) || '赞'
+                    }}
+                  </button>
+                  <button
+                    v-if="comment.status === 'approved' && canReply"
+                    class="sheet-button discussion-action comment-reply-action"
+                    :disabled="submitting"
+                    @tap="selectCommentForReply(comment)"
+                  >
+                    回复
+                  </button>
+                </view>
               </view>
             </view>
           </view>
@@ -174,6 +210,8 @@ import LongPressMenu from './LongPressMenu.vue';
 import { useReport } from '../composables/use-report';
 import { useCommentPanel } from '../composables/use-comment';
 import { useSheetKeyboard } from '../composables/use-sheet-keyboard';
+import { setCommentLike } from '@/api/modules/comment';
+import { useContentLike } from '../composables/use-content-like';
 
 const props = defineProps<{ reviewId: string; isVisible: boolean }>();
 const emit = defineEmits<{ (e: 'close'): void; (e: 'commentAdded'): void }>();
@@ -202,6 +240,14 @@ const {
   () => props.reviewId,
   () => emit('commentAdded')
 );
+const { pending, isLiked, likeCount, toggleLike, resetLikes } = useContentLike(
+  () => comments.value,
+  setCommentLike
+);
+// #ifndef MP-WEIXIN
+const openAuthor = (id: string) =>
+  uni.navigateTo({ url: `/pages/profile/public?id=${encodeURIComponent(id)}` });
+// #endif
 const {
   isReportVisible,
   submitting: reportSubmitting,
@@ -257,6 +303,7 @@ const handleReportFromMenu = () => {
 watch(
   [() => props.isVisible, () => props.reviewId],
   ([visible]) => {
+    resetLikes();
     resetPanel();
     closeMenu();
     closeReportModal();
@@ -326,6 +373,44 @@ defineExpose({ requestClose: handleClose });
 }
 .comment-name {
   min-width: 0;
+}
+.comment-author-avatar,
+.comment-author-name {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #1f2937;
+  font: inherit;
+  line-height: inherit;
+  text-align: left;
+}
+.comment-author-avatar {
+  flex-shrink: 0;
+}
+.comment-author-avatar::after,
+.comment-author-name::after {
+  border: 0;
+}
+.comment-author-avatar:focus-visible,
+.comment-author-name:focus-visible {
+  outline: 2px solid #660874;
+  outline-offset: 2px;
+}
+.comment-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.comment-like {
+  gap: 4px;
+}
+.comment-liked {
+  color: #660874;
 }
 .comment-more {
   margin: -6px 0;

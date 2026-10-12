@@ -6,6 +6,9 @@ export interface NotificationsForm {
   newDishAlert: boolean;
   priceChangeAlert: boolean;
   reviewReplyAlert: boolean;
+  likeAlert: boolean;
+  postReplyAlert: boolean;
+  diningAlert: boolean;
   weeklyRecommendation: boolean;
 }
 
@@ -14,6 +17,9 @@ export function useNotifications() {
     newDishAlert: true,
     priceChangeAlert: false,
     reviewReplyAlert: true,
+    likeAlert: true,
+    postReplyAlert: true,
+    diningAlert: true,
     weeklyRecommendation: true,
   });
 
@@ -23,6 +29,9 @@ export function useNotifications() {
       form.newDishAlert = notif?.newDishAlert ?? true;
       form.priceChangeAlert = notif?.priceChangeAlert ?? false;
       form.reviewReplyAlert = notif?.reviewReplyAlert ?? true;
+      form.likeAlert = notif?.likeAlert ?? true;
+      form.postReplyAlert = notif?.postReplyAlert ?? true;
+      form.diningAlert = notif?.diningAlert ?? true;
       form.weeklyRecommendation = notif?.weeklyRecommendation ?? true;
     },
     form,
@@ -47,6 +56,9 @@ export function useNotifications() {
         newDishAlert: form.newDishAlert,
         priceChangeAlert: form.priceChangeAlert,
         reviewReplyAlert: form.reviewReplyAlert,
+        likeAlert: form.likeAlert,
+        postReplyAlert: form.postReplyAlert,
+        diningAlert: form.diningAlert,
         weeklyRecommendation: form.weeklyRecommendation,
       },
     };

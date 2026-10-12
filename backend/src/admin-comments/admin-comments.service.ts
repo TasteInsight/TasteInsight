@@ -2,9 +2,13 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
+import { Prisma } from '@prisma/client';
+import { AdminInfo } from '@/auth/decorators/current-admin.decorator';
 import { RejectCommentDto } from './dto/reject-comment.dto';
+import { NotificationService } from '@/notifications/notification.service';
 import {
   PendingCommentListResponseDto,
   SuccessResponseDto,
@@ -13,7 +17,66 @@ import {
 
 @Injectable()
 export class AdminCommentsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notifications: NotificationService,
+  ) {}
+
+  private async deleteComments(
+    ids: string[],
+    admin?: Pick<AdminInfo, 'canteenId'>,
+  ): Promise<number> {
+    return this.prisma.$transaction(async (tx) => {
+      const parents = await tx.comment.findMany({
+        where: { id: { in: ids } },
+        select: { reviewId: true },
+      });
+      const reviewIds = [...new Set(parents.map((row) => row.reviewId))].sort();
+      const reviews = await tx.review.findMany({
+        where: { id: { in: reviewIds } },
+        select: { dishId: true },
+      });
+      const dishIds = [...new Set(reviews.map((row) => row.dishId))].sort();
+      if (dishIds.length)
+        await tx.$queryRaw(
+          Prisma.sql`SELECT id FROM dishes WHERE id IN (${Prisma.join(dishIds)}) ORDER BY id FOR UPDATE`,
+        );
+      if (reviewIds.length)
+        await tx.$queryRaw(
+          Prisma.sql`SELECT id FROM reviews WHERE id IN (${Prisma.join(reviewIds)}) ORDER BY id FOR UPDATE`,
+        );
+      await tx.$queryRaw(
+        Prisma.sql`SELECT id FROM comments WHERE id IN (${Prisma.join([...ids].sort())}) ORDER BY id FOR UPDATE`,
+      );
+      const rows = await tx.comment.findMany({
+        where: {
+          id: { in: ids },
+          deletedAt: null,
+          review: { deletedAt: null },
+        },
+        select: {
+          id: true,
+          review: { select: { dish: { select: { canteenId: true } } } },
+        },
+      });
+      if (rows.length !== ids.length)
+        throw new NotFoundException('部分回复已不存在，请刷新列表');
+      if (
+        admin?.canteenId &&
+        rows.some((row) => row.review.dish.canteenId !== admin.canteenId)
+      )
+        throw new ForbiddenException('无权删除所选回复');
+      const result = await tx.comment.updateMany({
+        where: { id: { in: ids }, deletedAt: null },
+        data: { deletedAt: new Date() },
+      });
+      await this.notifications.withdraw(tx, {
+        targetType: 'comment',
+        targetId: { in: ids },
+      });
+      return result.count;
+    });
+  }
 
   async getPendingComments(
     page: number = 1,
@@ -89,32 +152,87 @@ export class AdminCommentsService {
     id: string,
     adminInfo?: any,
   ): Promise<SuccessResponseDto> {
-    const comment = await this.prisma.comment.findUnique({
-      where: { id, deletedAt: null },
-      include: {
-        review: {
-          include: {
-            dish: true,
+    return this.moderateComment(id, true, adminInfo);
+  }
+
+  private async moderateComment(
+    id: string,
+    approved: boolean,
+    adminInfo?: any,
+    reason?: string,
+  ): Promise<SuccessResponseDto> {
+    await this.prisma.$transaction(async (tx) => {
+      const initial = await tx.comment.findUnique({
+        where: { id, deletedAt: null },
+        select: { reviewId: true, review: { select: { dishId: true } } },
+      });
+      if (!initial) throw new NotFoundException('评论不存在');
+      await tx.$queryRaw`SELECT id FROM dishes WHERE id = ${initial.review.dishId} FOR UPDATE`;
+      await tx.$queryRaw`SELECT id FROM reviews WHERE id = ${initial.reviewId} FOR UPDATE`;
+      const comment = await tx.comment.findUnique({
+        where: { id, deletedAt: null },
+        include: {
+          parentComment: { select: { userId: true } },
+          review: {
+            include: {
+              dish: true,
+            },
           },
         },
-      },
-    });
-    if (!comment) {
-      throw new NotFoundException('评论不存在');
-    }
+      });
+      if (!comment) {
+        throw new NotFoundException('评论不存在');
+      }
 
-    if (
-      adminInfo?.canteenId &&
-      comment.review.dish.canteenId !== adminInfo.canteenId
-    ) {
-      throw new ForbiddenException('权限不足');
-    }
+      if (
+        adminInfo?.canteenId &&
+        comment.review.dish.canteenId !== adminInfo.canteenId
+      ) {
+        throw new ForbiddenException('权限不足');
+      }
 
-    await this.prisma.comment.update({
-      where: { id, deletedAt: null },
-      data: {
-        status: 'approved',
-      },
+      if (
+        approved &&
+        (comment.review.status !== 'approved' || comment.review.deletedAt)
+      )
+        throw new ConflictException('评价尚不可公开回复');
+      if (approved) {
+        const verified = await tx.studentVerification.findFirst({
+          where: {
+            userId: comment.userId,
+            status: 'VERIFIED',
+            expiresAt: { gt: new Date() },
+          },
+          select: { id: true },
+        });
+        if (!verified) throw new ConflictException('作者的学生认证已失效');
+      }
+      const result = await tx.comment.updateMany({
+        where: { id, deletedAt: null, status: 'pending' },
+        data: {
+          status: approved ? 'approved' : 'rejected',
+          rejectReason: approved ? null : reason,
+        },
+      });
+      if (!result.count)
+        throw new ConflictException('评论审核状态已变更，请刷新');
+      if (approved)
+        await this.notifications.createReply(
+          tx,
+          comment.userId,
+          'comment',
+          id,
+          comment.reviewId,
+          [
+            comment.review.userId,
+            ...(comment.parentComment ? [comment.parentComment.userId] : []),
+          ],
+        );
+      else
+        await this.notifications.withdraw(tx, {
+          targetType: 'comment',
+          targetId: id,
+        });
     });
 
     return {
@@ -129,71 +247,14 @@ export class AdminCommentsService {
     dto: RejectCommentDto,
     adminInfo?: any,
   ): Promise<SuccessResponseDto> {
-    const comment = await this.prisma.comment.findUnique({
-      where: { id, deletedAt: null },
-      include: {
-        review: {
-          include: {
-            dish: true,
-          },
-        },
-      },
-    });
-    if (!comment) {
-      throw new NotFoundException('评论不存在');
-    }
-
-    if (
-      adminInfo?.canteenId &&
-      comment.review.dish.canteenId !== adminInfo.canteenId
-    ) {
-      throw new ForbiddenException('权限不足');
-    }
-
-    await this.prisma.comment.update({
-      where: { id, deletedAt: null },
-      data: {
-        status: 'rejected',
-        rejectReason: dto.reason,
-      },
-    });
-
-    return {
-      code: 200,
-      message: '操作成功',
-      data: null,
-    };
+    return this.moderateComment(id, false, adminInfo, dto.reason);
   }
 
   async deleteComment(
     id: string,
     adminInfo?: any,
   ): Promise<SuccessResponseDto> {
-    const comment = await this.prisma.comment.findUnique({
-      where: { id, deletedAt: null },
-      include: {
-        review: {
-          include: {
-            dish: true,
-          },
-        },
-      },
-    });
-    if (!comment) {
-      throw new NotFoundException('评论不存在');
-    }
-
-    if (
-      adminInfo?.canteenId &&
-      comment.review.dish.canteenId !== adminInfo.canteenId
-    ) {
-      throw new ForbiddenException('权限不足');
-    }
-
-    await this.prisma.comment.update({
-      where: { id },
-      data: { deletedAt: new Date() },
-    });
+    await this.deleteComments([id], adminInfo);
 
     return {
       code: 200,

@@ -3,29 +3,31 @@ import {
   IsDateString,
   IsEnum,
   IsArray,
-  IsOptional,
+  ValidateIf,
   ArrayUnique,
+  IsBoolean,
 } from 'class-validator';
 import { MealTime } from '@/common/enums';
-import { IsValidDateRange } from '@/common/validators/date-range.validator';
-
-@IsValidDateRange()
 export class UpdateMealPlanDto {
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsDateString()
   startDate?: string;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsDateString()
   endDate?: string;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsEnum(MealTime)
   mealTime?: MealTime;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
   @IsArray()
   @IsString({ each: true })
   @ArrayUnique()
   dishes?: string[];
+
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsBoolean()
+  isPublic?: boolean;
 }

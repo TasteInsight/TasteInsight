@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { DishReviewStatsService } from '@/dish-review-stats-queue';
@@ -13,12 +14,16 @@ import {
   ReportItemData,
 } from './dto/report-response.dto';
 import { AdminInfo } from '@/auth/decorators/current-admin.decorator';
+import { NotificationService } from '@/notifications/notification.service';
+import { EmbeddingQueueService } from '@/embedding-queue/embedding-queue.service';
 
 @Injectable()
 export class AdminReportsService {
   constructor(
     private prisma: PrismaService,
     private dishReviewStatsService: DishReviewStatsService,
+    private notifications: NotificationService,
+    @Optional() private embeddingQueueService?: EmbeddingQueueService,
   ) {}
 
   async getReports(
@@ -68,6 +73,23 @@ export class AdminReportsService {
         take: pageSize,
         orderBy: { createdAt: 'desc' },
         include: {
+          post: {
+            select: {
+              content: true,
+              userId: true,
+              deletedAt: true,
+              images: true,
+              user: { select: { id: true, nickname: true, avatar: true } },
+            },
+          },
+          postComment: {
+            select: {
+              content: true,
+              userId: true,
+              deletedAt: true,
+              user: { select: { id: true, nickname: true, avatar: true } },
+            },
+          },
           reporter: {
             select: {
               id: true,
@@ -129,6 +151,23 @@ export class AdminReportsService {
           userAvatar: report.comment.user.avatar,
           isDeleted: report.comment.deletedAt !== null,
         };
+      } else if (report.targetType === 'post' && report.post) {
+        targetContent = {
+          content: report.post.content,
+          userId: report.post.userId,
+          userNickname: report.post.user.nickname,
+          userAvatar: report.post.user.avatar,
+          isDeleted: report.post.deletedAt !== null,
+          images: report.post.images,
+        };
+      } else if (report.targetType === 'postComment' && report.postComment) {
+        targetContent = {
+          content: report.postComment.content,
+          userId: report.postComment.userId,
+          userNickname: report.postComment.user.nickname,
+          userAvatar: report.postComment.user.avatar,
+          isDeleted: report.postComment.deletedAt !== null,
+        };
       }
 
       return {
@@ -173,113 +212,143 @@ export class AdminReportsService {
     dto: HandleReportDto,
     adminInfo: AdminInfo,
   ): Promise<SuccessResponseDto> {
-    const report = await this.prisma.report.findUnique({
-      where: { id },
-      include: {
-        review: {
-          include: {
-            dish: true,
+    let reviewAuthorId: string | undefined;
+    await this.prisma.$transaction(async (tx) => {
+      const query = {
+        where: { id },
+        include: {
+          post: true,
+          postComment: true,
+          review: {
+            include: {
+              dish: true,
+            },
           },
-        },
-        comment: {
-          include: {
-            review: {
-              include: {
-                dish: true,
+          comment: {
+            include: {
+              review: {
+                include: {
+                  dish: true,
+                },
               },
             },
           },
         },
-      },
-    });
+      } as const;
+      let report = await tx.report.findUnique(query);
 
-    if (!report) {
-      throw new NotFoundException('举报不存在');
-    }
-
-    if (adminInfo.canteenId) {
-      let canteenId: string | undefined;
-      if (report.review) {
-        canteenId = report.review.dish.canteenId;
-      } else if (report.comment) {
-        canteenId = report.comment.review.dish.canteenId;
+      if (!report) {
+        throw new NotFoundException('举报不存在');
+      }
+      const targetReview = report.review ?? report.comment?.review;
+      if (targetReview) {
+        await tx.$queryRaw`SELECT id FROM dishes WHERE id = ${targetReview.dishId} FOR UPDATE`;
+        await tx.$queryRaw`SELECT id FROM reviews WHERE id = ${targetReview.id} FOR UPDATE`;
+        report = await tx.report.findUnique(query);
+        if (!report) throw new NotFoundException('举报不存在');
       }
 
-      if (!canteenId || canteenId !== adminInfo.canteenId) {
-        throw new ForbiddenException('权限不足');
-      }
-    }
-
-    if (report.status !== 'pending') {
-      throw new BadRequestException('该举报已被处理');
-    }
-
-    // 根据不同的 action 进行处理
-    switch (dto.action) {
-      case 'delete_content':
-        // 先更新举报状态为已通过，然后软删除被举报的内容
-        await this.prisma.report.update({
-          where: { id },
-          data: {
-            status: 'approved',
-            handleResult: dto.result || '内容已删除',
-            handledBy: adminInfo.id,
-            handledAt: new Date(),
-          },
-        });
-
-        // 软删除被举报的内容（如果尚未被删除）
-        if (report.targetType === 'review' && report.reviewId) {
-          const review = await this.prisma.review.findUnique({
-            where: { id: report.reviewId },
-          });
-          if (review && !review.deletedAt) {
-            await this.prisma.review.update({
-              where: { id: report.reviewId },
-              data: { deletedAt: new Date() },
-            });
-
-            await this.dishReviewStatsService.recomputeDishStats(review.dishId);
-          }
-        } else if (report.targetType === 'comment' && report.commentId) {
-          const comment = await this.prisma.comment.findUnique({
-            where: { id: report.commentId },
-          });
-          if (comment && !comment.deletedAt) {
-            await this.prisma.comment.update({
-              where: { id: report.commentId },
-              data: { deletedAt: new Date() },
-            });
-          }
+      if (adminInfo.canteenId) {
+        let canteenId: string | undefined;
+        if (report.review) {
+          canteenId = report.review.dish.canteenId;
+        } else if (report.comment) {
+          canteenId = report.comment.review.dish.canteenId;
         }
-        break;
 
-      case 'warn_user':
-        // 警告用户（目前只记录处理结果，后续可扩展用户警告系统）
-        await this.prisma.report.update({
-          where: { id },
-          data: {
-            status: 'approved',
-            handleResult: dto.result || '已警告用户',
-            handledBy: adminInfo.id,
-            handledAt: new Date(),
-          },
-        });
-        break;
+        if (!canteenId || canteenId !== adminInfo.canteenId) {
+          throw new ForbiddenException('权限不足');
+        }
+      }
 
-      case 'reject_report':
-        // 拒绝举报
-        await this.prisma.report.update({
-          where: { id },
-          data: {
-            status: 'rejected',
-            handleResult: dto.result || '举报被拒绝',
-            handledBy: adminInfo.id,
-            handledAt: new Date(),
-          },
-        });
-        break;
-    }
+      if (report.status !== 'pending') {
+        throw new BadRequestException('该举报已被处理');
+      }
+
+      if (dto.action === 'delete_content' && adminInfo.role !== 'superadmin') {
+        const deletePermissions: Record<string, string> = {
+          review: 'review:delete',
+          comment: 'comment:delete',
+          post: 'post:delete',
+          postComment: 'post:delete',
+        };
+        if (
+          !adminInfo.permissions.includes(deletePermissions[report.targetType])
+        ) {
+          throw new ForbiddenException('权限不足');
+        }
+      }
+
+      const result = await tx.report.updateMany({
+        where: { id, status: 'pending' },
+        data: {
+          status: dto.action === 'reject_report' ? 'rejected' : 'approved',
+          handleResult:
+            dto.result ||
+            (dto.action === 'delete_content'
+              ? '内容已删除'
+              : dto.action === 'warn_user'
+                ? '已警告用户'
+                : '举报被拒绝'),
+          handledBy: adminInfo.id,
+          handledAt: new Date(),
+        },
+      });
+      if (!result.count) throw new BadRequestException('该举报已被处理');
+      if (dto.action === 'delete_content') {
+        if (report.targetType === 'review' && report.reviewId) {
+          const deleted = await tx.review.updateMany({
+            where: { id: report.reviewId, deletedAt: null },
+            data: { deletedAt: new Date() },
+          });
+          await this.notifications.withdrawThread(
+            tx,
+            'review',
+            report.reviewId,
+          );
+          if (report.review)
+            await this.dishReviewStatsService.recomputeBatch(tx, [
+              report.review.dishId,
+            ]);
+          if (deleted.count) reviewAuthorId = report.review?.userId;
+        } else if (
+          report.targetType === 'comment' &&
+          report.commentId &&
+          report.comment
+        ) {
+          await tx.comment.updateMany({
+            where: { id: report.commentId, deletedAt: null },
+            data: { deletedAt: new Date() },
+          });
+          await this.notifications.withdraw(tx, {
+            targetType: 'comment',
+            targetId: report.commentId,
+          });
+        } else if (report.targetType === 'post' && report.postId) {
+          await tx.post.updateMany({
+            where: { id: report.postId, deletedAt: null },
+            data: { deletedAt: new Date() },
+          });
+          await this.notifications.withdrawThread(tx, 'post', report.postId);
+        } else if (
+          report.targetType === 'postComment' &&
+          report.postCommentId &&
+          report.postComment
+        ) {
+          await tx.$queryRaw`SELECT id FROM posts WHERE id = ${report.postComment.postId} FOR UPDATE`;
+          await tx.postComment.updateMany({
+            where: { id: report.postCommentId, deletedAt: null },
+            data: { deletedAt: new Date() },
+          });
+          await this.notifications.withdraw(tx, {
+            targetType: 'postComment',
+            targetId: report.postCommentId,
+          });
+        }
+      }
+    });
+    if (reviewAuthorId)
+      this.embeddingQueueService?.scheduleRefreshUser(reviewAuthorId);
 
     return {
       code: 200,

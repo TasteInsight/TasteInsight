@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
-import { AuthGuard } from '@/auth/guards/auth.guard';
+import { OptionalAuthGuard } from '@/auth/guards/optional-auth.guard';
 import { CanteensService } from './canteens.service';
 import {
   CanteenListResponseDto,
@@ -10,7 +10,7 @@ import {
 import { DishListResponseDto } from '@/dishes/dto/dish-response.dto';
 
 @Controller()
-@UseGuards(AuthGuard)
+@UseGuards(OptionalAuthGuard)
 export class CanteensController {
   constructor(private readonly canteensService: CanteensService) {}
 

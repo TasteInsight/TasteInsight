@@ -4,8 +4,10 @@ import { useUserStore } from '@/store/modules/use-user-store';
 import { usePlanStore } from '@/store/modules/use-plan-store';
 import type { EnrichedMealPlan } from '@/store/modules/use-plan-store';
 import type { MealPlanRequest } from '@/types/api';
+import { campusToday, coversDate } from '../utils/meal-plan-date';
 
 export type { EnrichedMealPlan } from '@/store/modules/use-plan-store';
+export type PlanningViewMode = 'month' | 'week' | 'day' | 'list';
 
 export function useMenuPlanning() {
   const planStore = usePlanStore();
@@ -15,6 +17,17 @@ export function useMenuPlanning() {
   const showCreateDialog = ref(false);
   const activeTab = ref<'current' | 'history'>('current');
   const submitting = ref(false);
+  const today = ref(campusToday());
+  const selectedDate = ref(today.value);
+  const viewMode = ref<PlanningViewMode>('week');
+  let midnightTimer: ReturnType<typeof setTimeout> | undefined;
+  const handlePageShow = () => {
+    today.value = campusToday();
+    planStore.refreshClock();
+    clearTimeout(midnightTimer);
+    const nextMidnight = Date.parse(today.value + 'T00:00:00+08:00') + 86400000;
+    midnightTimer = setTimeout(handlePageShow, Math.max(1, nextMidnight - Date.now()));
+  };
   let dialogVersion = 0;
   let visibilityVersion = 0;
   let disposed = false;
@@ -34,6 +47,7 @@ export function useMenuPlanning() {
   };
   const handlePageHide = () => {
     visibilityVersion += 1;
+    clearTimeout(midnightTimer);
   };
 
   // 从 store 获取数据
@@ -45,9 +59,26 @@ export function useMenuPlanning() {
   const selectedPlan = computed(() => planStore.selectedPlan);
 
   // 当前显示的规划列表
-  const displayPlans = computed(() =>
-    activeTab.value === 'current' ? currentPlans.value : historyPlans.value
-  );
+  const calendarPlans = computed(() => planStore.allPlans);
+  const displayPlans = computed(() => {
+    if (viewMode.value === 'list')
+      return activeTab.value === 'current' ? currentPlans.value : historyPlans.value;
+    const mealOrder = ['breakfast', 'lunch', 'dinner', 'nightsnack'];
+    return planStore.enrichedPlans
+      .filter(plan => coversDate(plan, selectedDate.value))
+      .sort((a, b) => mealOrder.indexOf(a.mealTime) - mealOrder.indexOf(b.mealTime))
+      .map(plan => ({
+        ...plan,
+        isCompleted: plan.completedDates?.includes(selectedDate.value) ?? false,
+        isExpired: selectedDate.value < today.value,
+      }));
+  });
+  const selectDate = (date: string) => {
+    selectedDate.value = date;
+  };
+  const setViewMode = (mode: PlanningViewMode) => {
+    viewMode.value = mode;
+  };
 
   const refreshPlans = async () => {
     try {
@@ -173,15 +204,19 @@ export function useMenuPlanning() {
   };
 
   // 执行规划（将规划移至历史）
-  const executePlan = async (planId: string) => {
+  const executePlan = async (planId: string, completed = true) => {
     const isCurrent = captureVisibleOperation();
     try {
-      await planStore.executePlan(planId);
+      await planStore.executePlan(
+        planId,
+        viewMode.value === 'list' ? undefined : selectedDate.value,
+        completed
+      );
       if (!isCurrent()) return;
       // 执行成功后关闭详情弹窗
       showDetailDialog.value = false;
       uni.showToast({
-        title: '已标记吃过',
+        title: completed ? '已标记吃过' : '已撤销标记',
         icon: 'success',
       });
     } catch (err) {
@@ -205,19 +240,28 @@ export function useMenuPlanning() {
     activeTab.value = tab;
   };
 
-  watch(() => userStore.sessionVersion, () => {
-    invalidateDialog();
-    showDetailDialog.value = false;
-    showEditDialog.value = false;
-    showCreateDialog.value = false;
-    submitting.value = false;
-    activeTab.value = 'current';
-  }, { flush: 'sync' });
+  watch(
+    () => userStore.sessionVersion,
+    () => {
+      invalidateDialog();
+      showDetailDialog.value = false;
+      showEditDialog.value = false;
+      showCreateDialog.value = false;
+      submitting.value = false;
+      activeTab.value = 'current';
+      today.value = campusToday();
+      selectedDate.value = today.value;
+      viewMode.value = 'week';
+    },
+    { flush: 'sync' }
+  );
 
-  if (getCurrentScope()) onScopeDispose(() => {
-    disposed = true;
-    invalidateDialog();
-  });
+  if (getCurrentScope())
+    onScopeDispose(() => {
+      disposed = true;
+      clearTimeout(midnightTimer);
+      invalidateDialog();
+    });
 
   return {
     // 状态
@@ -250,5 +294,12 @@ export function useMenuPlanning() {
     switchTab,
     refreshPlans,
     handlePageHide,
+    handlePageShow,
+    calendarPlans,
+    selectedDate,
+    selectDate,
+    today,
+    viewMode,
+    setViewMode,
   };
 }

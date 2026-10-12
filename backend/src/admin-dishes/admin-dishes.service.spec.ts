@@ -11,6 +11,10 @@ import {
 } from '@nestjs/common';
 
 const mockPrismaService = {
+  notificationCampaign: {
+    createMany: jest.fn().mockResolvedValue({ count: 1 }),
+    updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+  },
   dish: {
     findMany: jest.fn(),
     count: jest.fn(),
@@ -35,6 +39,7 @@ const mockPrismaService = {
   },
   $transaction: jest.fn((callback) => callback(mockPrismaService)),
   $queryRaw: jest.fn().mockResolvedValue([]),
+  $executeRaw: jest.fn().mockResolvedValue(0),
 };
 
 const mockEmbeddingService = {
@@ -234,6 +239,7 @@ describe('AdminDishesService', () => {
 
       expect(result.code).toBe(201);
       expect(result.data.name).toBe('New Dish');
+      expect(prisma.notificationCampaign.createMany).not.toHaveBeenCalled();
     });
 
     it('should throw BadRequestException if window not found', async () => {
@@ -265,12 +271,16 @@ describe('AdminDishesService', () => {
       prisma.dish.findUnique.mockResolvedValue({
         id: 'd1',
         name: 'Original Dish',
+        price: 10,
+        priceUnit: null,
+        status: DishStatus.ONLINE,
         window: { canteenId: 'c1' },
       });
       prisma.dish.update.mockResolvedValue({
         id: 'd1',
         name: 'Updated Dish',
         price: 20,
+        priceUnit: null,
         status: DishStatus.ONLINE,
         window: {
           id: 'w1',
@@ -295,6 +305,12 @@ describe('AdminDishesService', () => {
 
       expect(result.code).toBe(200);
       expect(result.data.name).toBe('Updated Dish');
+      expect(prisma.notificationCampaign.createMany).toHaveBeenCalledWith({
+        data: [
+          expect.objectContaining({ type: 'price_change', targetId: 'd1' }),
+        ],
+        skipDuplicates: true,
+      });
     });
 
     it('should throw NotFoundException if dish not found', async () => {

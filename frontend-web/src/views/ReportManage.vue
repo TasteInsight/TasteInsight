@@ -3,7 +3,7 @@
     <div class="admin-panel">
       <Header
         title="举报管理"
-        description="处理用户举报的评价和评论"
+        description="处理用户举报的评价、评论和社区内容"
         header-icon="carbon:warning"
       />
 
@@ -40,8 +40,9 @@
                 class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[150px] transition-all cursor-pointer hover:border-gray-400"
               >
                 <option value="">所有类型</option>
-                <option value="review">评价</option>
-                <option value="comment">评论</option>
+                <option v-for="targetType in availableTargetTypes" :key="targetType" :value="targetType">
+                  {{ reportTargets[targetType].label }}
+                </option>
               </select>
               <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
                 <AppIcon class="iconify" icon="carbon:chevron-down"></AppIcon>
@@ -107,11 +108,11 @@
               <td class="py-4 px-6">
                 <div class="flex items-center space-x-2">
                   <div class="text-sm">
-                    {{ report.targetType === 'review' ? '评价' : '评论' }}
+                    {{ reportTargets[report.targetType].label }}
                   </div>
                   <!-- 内容图片数量 -->
                   <div 
-                    v-if="report.targetType === 'review' && report.targetContent?.images && report.targetContent.images.length > 0"
+                    v-if="report.targetContent?.images?.length"
                     class="ml-2 inline-flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 rounded text-xs text-gray-600"
                   >
                     <AppIcon class="iconify inline-block text-sm" icon="carbon:image"></AppIcon>
@@ -190,7 +191,7 @@
                   <div class="space-y-1">
                     <div class="text-xs text-gray-400 uppercase tracking-wide">举报类型</div>
                     <div class="text-sm font-medium text-gray-900">
-                      {{ selectedReport.targetType === 'review' ? '评价' : '评论' }}
+                      {{ reportTargets[selectedReport.targetType].label }}
                     </div>
                   </div>
                   <div class="space-y-1">
@@ -255,20 +256,20 @@
                   </div>
                   <!-- 内容图片 -->
                   <div 
-                    v-if="selectedReport.targetType === 'review' && selectedReport.targetContent.images && selectedReport.targetContent.images.length > 0"
+                    v-if="selectedReport.targetContent.images?.length"
                     class="mb-4"
                   >
-                    <div class="text-xs text-gray-400 uppercase tracking-wide mb-2">评价图片</div>
+                    <div class="text-xs text-gray-400 uppercase tracking-wide mb-2">{{ reportTargets[selectedReport.targetType].label }}图片</div>
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                       <AdminImage
                         v-for="(image, index) in selectedReport.targetContent.images"
                         :key="index"
                         :src="image"
-                        :alt="`评价图片 ${Number(index) + 1}`"
+                        :alt="`${reportTargets[selectedReport.targetType].label}图片 ${Number(index) + 1}`"
                         variant="preview"
                         previewable
                         image-class="w-full aspect-square rounded-lg border border-gray-200 object-cover hover:opacity-90"
-                        @preview="openImagePreview(selectedReport.targetContent.images, Number(index))"
+                        @preview="openImagePreview(selectedReport.targetContent.images, Number(index), `${reportTargets[selectedReport.targetType].label}图片`)"
                       />
                     </div>
                   </div>
@@ -288,30 +289,20 @@
           <div class="px-6 py-4 border-t bg-white">
             <div v-if="selectedReport.status === 'pending'" class="flex items-center justify-end space-x-3">
               <button
-                v-if="selectedReport.targetType === 'review' && selectedReport.targetContent && !selectedReport.targetContent.isDeleted"
-                class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition duration-200 flex items-center"
-                @click="handleDeleteReview(selectedReport)"
-                :disabled="!authStore.hasPermission('review:delete')"
-                :title="!authStore.hasPermission('review:delete') ? '无权限删除评价' : '删除被举报的评价'"
+                v-if="selectedReport.targetContent && !selectedReport.targetContent.isDeleted"
+                class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                @click="handleReport(selectedReport, 'delete_content')"
+                :disabled="isHandling || !canDeleteContent(selectedReport)"
+                :title="canDeleteContent(selectedReport) ? `删除被举报的${reportTargets[selectedReport.targetType].label}` : `无权限删除${reportTargets[selectedReport.targetType].label}`"
               >
                 <AppIcon class="iconify inline-block mr-1.5" icon="carbon:trash-can" style="font-size: 16px;"></AppIcon>
-                删除评价
+                删除{{ reportTargets[selectedReport.targetType].label }}
               </button>
               <button
-                v-if="selectedReport.targetType === 'comment' && selectedReport.targetContent && !selectedReport.targetContent.isDeleted"
-                class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition duration-200 flex items-center"
-                @click="handleDeleteComment(selectedReport)"
-                :disabled="!authStore.hasPermission('review:delete')"
-                :title="!authStore.hasPermission('review:delete') ? '无权限删除评论' : '删除被举报的评论'"
-              >
-                <AppIcon class="iconify inline-block mr-1.5" icon="carbon:trash-can" style="font-size: 16px;"></AppIcon>
-                删除评论
-              </button>
-              <button
-                class="px-4 py-2 bg-gray-600 text-white rounded-lg text-sm hover:bg-gray-700 transition duration-200 flex items-center"
+                class="px-4 py-2 bg-gray-600 text-white rounded-lg text-sm hover:bg-gray-700 transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                 @click="handleReport(selectedReport, 'reject_report')"
-                :disabled="!authStore.hasPermission('report:handle')"
-                :title="!authStore.hasPermission('report:handle') ? '无权限处理举报' : '拒绝举报'"
+                :disabled="isHandling || !canHandleReport(selectedReport)"
+                :title="canHandleReport(selectedReport) ? '拒绝举报' : '无权限处理举报'"
               >
                 <AppIcon class="iconify inline-block mr-1.5" icon="carbon:close" style="font-size: 16px;"></AppIcon>
                 拒绝举报
@@ -354,7 +345,7 @@
         <!-- 图片 -->
         <AdminImage
           :src="imagePreview.images[imagePreview.currentIndex]"
-          :alt="`评价图片 ${imagePreview.currentIndex + 1}`"
+          :alt="`${imagePreview.label} ${imagePreview.currentIndex + 1}`"
           variant="preview"
           image-class="max-w-full max-h-[90vh] object-contain rounded-lg"
         />
@@ -394,8 +385,9 @@
 </template>
 
 <script lang="ts">
-import { ref, onMounted, onActivated, defineComponent } from 'vue'
+import { ref, computed, onMounted, onActivated, defineComponent } from 'vue'
 import { reviewApi } from '@/api/modules/review'
+import type { GetReportsParams, Report, ReportHandleRequest } from '@/types/api'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import AdminImage from '@/components/Common/AdminImage.vue'
@@ -403,26 +395,38 @@ import AdminDialog from '@/components/Common/AdminDialog.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
 import { showAlert, showConfirm } from '@/composables/useModal'
+import { getAuthSessionVersion } from '@/utils/auth-session'
 
 const PAGE_STATE_KEY = 'report-manage'
+const reportTargets = {
+  review: { label: '评价', deletePermission: 'review:delete', globalOnly: false },
+  comment: { label: '评论', deletePermission: 'comment:delete', globalOnly: false },
+  post: { label: '帖子', deletePermission: 'post:delete', globalOnly: true },
+  postComment: { label: '帖子评论', deletePermission: 'post:delete', globalOnly: true },
+} satisfies Record<Report['targetType'], { label: string; deletePermission: string; globalOnly: boolean }>
 
 export default defineComponent({
   name: 'ReportManage',
   components: {
     AdminImage,
-    AdminDialog,
     Header,
+    AdminDialog,
     Pagination,
   },
   setup() {
     const authStore = useAuthStore()
-    const reports = ref<any[]>([])
+    const reports = ref<Report[]>([])
     const isLoading = ref(false)
+    const isHandling = ref(false)
     const pageSize = ref(20)
     const totalReports = ref(0)
     
     // 默认状态定义
-    const defaultState = {
+    const defaultState: {
+      currentPage: number
+      statusFilter: Report['status'] | ''
+      targetTypeFilter: Report['targetType'] | ''
+    } = {
       currentPage: 1,
       statusFilter: '',
       targetTypeFilter: '',
@@ -433,6 +437,15 @@ export default defineComponent({
     const currentPage = ref(restoredState.currentPage)
     const statusFilter = ref(restoredState.statusFilter)
     const targetTypeFilter = ref(restoredState.targetTypeFilter)
+    const canAccessTargetType = (targetType: Report['targetType']) =>
+      !authStore.user?.canteenId || !reportTargets[targetType].globalOnly
+    const availableTargetTypes = computed(() =>
+      (Object.keys(reportTargets) as Report['targetType'][]).filter(canAccessTargetType),
+    )
+    const canHandleReport = (report: Report) =>
+      authStore.hasPermission('report:handle') && canAccessTargetType(report.targetType)
+    const canDeleteContent = (report: Report) =>
+      canHandleReport(report) && authStore.hasPermission(reportTargets[report.targetType].deletePermission)
     
     // 保存页面状态
     const saveState = () => {
@@ -442,24 +455,26 @@ export default defineComponent({
         targetTypeFilter: targetTypeFilter.value,
       })
     }
-    const selectedReport = ref<any>(null)
+    const selectedReport = ref<Report | null>(null)
     const imagePreview = ref<{
       show: boolean
       images: string[]
       currentIndex: number
+      label: string
     }>({
       show: false,
       images: [],
       currentIndex: 0,
+      label: '内容图片',
     })
 
-    const statusClasses: Record<string, string> = {
+    const statusClasses: Record<Report['status'], string> = {
       pending: 'bg-yellow-100 text-yellow-800',
       approved: 'bg-green-100 text-green-800',
       rejected: 'bg-red-100 text-red-800',
     }
 
-    const statusText: Record<string, string> = {
+    const statusText: Record<Report['status'], string> = {
       pending: '待处理',
       approved: '已处理',
       rejected: '已拒绝',
@@ -480,12 +495,16 @@ export default defineComponent({
     const loadReports = async () => {
       isLoading.value = true
       try {
-        const params: any = {
+        const params: GetReportsParams = {
           page: currentPage.value,
           pageSize: pageSize.value,
         }
         if (statusFilter.value) {
           params.status = statusFilter.value
+        }
+        if (targetTypeFilter.value && !canAccessTargetType(targetTypeFilter.value)) {
+          targetTypeFilter.value = ''
+          saveState()
         }
         if (targetTypeFilter.value) {
           params.targetType = targetTypeFilter.value
@@ -522,111 +541,40 @@ export default defineComponent({
       loadReports()
     }
 
-    const handleDeleteReview = async (report: any) => {
-      if (!authStore.hasPermission('review:delete')) {
-        showAlert('您没有权限删除评价')
-        return
-      }
-
-      const confirmed = await showConfirm('确定要删除这个评价吗？此操作不可恢复。', '确认删除')
-      if (!confirmed) {
-        return
-      }
-
-      try {
-        const response = await reviewApi.handleReport(report.id, { action: 'delete_content' })
-        if (response.code === 200) {
-          showAlert('删除成功')
-          await loadReports()
-          // 如果详情对话框打开，更新选中的举报信息
-          if (selectedReport.value && selectedReport.value.id === report.id) {
-            // 重新加载该举报的详细信息
-            const updatedReport = reports.value.find(r => r.id === report.id)
-            if (updatedReport) {
-              selectedReport.value = updatedReport
-            } else {
-              closeDetailDialog()
-            }
-          }
-        } else {
-          showAlert(response.message || '删除失败')
-        }
-      } catch (error) {
-        console.error('删除评价失败:', error)
-        showAlert('删除评价失败，请重试')
-      }
-    }
-
-    const handleDeleteComment = async (report: any) => {
-      if (!authStore.hasPermission('review:delete')) {
-        showAlert('您没有权限删除评论')
-        return
-      }
-
-      const confirmed = await showConfirm('确定要删除这个评论吗？此操作不可恢复。', '确认删除')
-      if (!confirmed) {
-        return
-      }
-
-      try {
-        const response = await reviewApi.handleReport(report.id, { action: 'delete_content' })
-        if (response.code === 200) {
-          showAlert('删除成功')
-          await loadReports()
-          // 如果详情对话框打开，更新选中的举报信息
-          if (selectedReport.value && selectedReport.value.id === report.id) {
-            // 重新加载该举报的详细信息
-            const updatedReport = reports.value.find(r => r.id === report.id)
-            if (updatedReport) {
-              selectedReport.value = updatedReport
-            } else {
-              closeDetailDialog()
-            }
-          }
-        } else {
-          showAlert(response.message || '删除失败')
-        }
-      } catch (error) {
-        console.error('删除评论失败:', error)
-        showAlert('删除评论失败，请重试')
-      }
-    }
-
-    const handleReport = async (report: any, action: 'reject_report') => {
-      if (!authStore.hasPermission('report:handle')) {
+    const handleReport = async (report: Report, action: 'delete_content' | 'reject_report') => {
+      if (isHandling.value || report.status !== 'pending') return
+      if (!canHandleReport(report)) {
         showAlert('您没有权限处理举报')
         return
       }
-
-      let confirmMessage = ''
-      let defaultResult = ''
-      switch (action) {
-        case 'reject_report':
-          confirmMessage = '确定要拒绝这个举报吗？'
-          defaultResult = '举报被拒绝'
-          break
-      }
-
-      const confirmed = await showConfirm(confirmMessage, '确认操作')
-      if (!confirmed) {
+      const deleting = action === 'delete_content'
+      const target = reportTargets[report.targetType]
+      if (deleting && !canDeleteContent(report)) {
+        showAlert(`您没有权限删除${target.label}`)
         return
       }
+      if (deleting && (!report.targetContent || report.targetContent.isDeleted)) return
 
-      // 构建请求参数，result 为可选字段
-      const requestData: { action: 'reject_report'; result?: string } = {
-        action,
-      }
-      
-      // 根据接口文档，result 是可选的，但我们可以提供默认值
-      if (defaultResult) {
-        requestData.result = defaultResult
-      }
-
+      isHandling.value = true
+      const sessionVersion = getAuthSessionVersion()
       try {
+        const confirmed = await showConfirm(
+          deleting ? `确定要删除这个${target.label}吗？此操作不可恢复。` : '确定要拒绝这个举报吗？',
+          deleting ? '确认删除' : '确认操作',
+        )
+        if (!confirmed || sessionVersion !== getAuthSessionVersion()) return
+        if (!canHandleReport(report) || (deleting && !canDeleteContent(report))) {
+          showAlert('权限已变更，请刷新后重试')
+          return
+        }
+        const requestData: ReportHandleRequest = deleting
+          ? { action }
+          : { action, result: '举报被拒绝' }
         const response = await reviewApi.handleReport(report.id, requestData)
+        if (sessionVersion !== getAuthSessionVersion()) return
 
         if (response.code === 200) {
-          showAlert('处理成功')
+          showAlert(deleting ? '删除成功' : '处理成功')
           await loadReports()
           // 如果详情对话框打开，更新选中的举报信息
           if (selectedReport.value && selectedReport.value.id === report.id) {
@@ -639,15 +587,18 @@ export default defineComponent({
             }
           }
         } else {
-          showAlert(response.message || '处理失败')
+          showAlert(response.message || (deleting ? '删除失败' : '处理失败'))
         }
       } catch (error) {
+        if (sessionVersion !== getAuthSessionVersion()) return
         console.error('处理举报失败:', error)
-        showAlert('处理举报失败，请重试')
+        showAlert(deleting ? `删除${target.label}失败，请重试` : '处理举报失败，请重试')
+      } finally {
+        isHandling.value = false
       }
     }
 
-    const openDetailDialog = (report: any) => {
+    const openDetailDialog = (report: Report) => {
       selectedReport.value = report
     }
 
@@ -655,11 +606,12 @@ export default defineComponent({
       selectedReport.value = null
     }
 
-    const openImagePreview = (images: string[], index: number = 0) => {
+    const openImagePreview = (images: string[], index: number = 0, label = '内容图片') => {
       imagePreview.value = {
         show: true,
         images,
         currentIndex: index,
+        label,
       }
     }
 
@@ -668,6 +620,7 @@ export default defineComponent({
         show: false,
         images: [],
         currentIndex: 0,
+        label: '内容图片',
       }
     }
 
@@ -706,6 +659,7 @@ export default defineComponent({
     return {
       reports,
       isLoading,
+      isHandling,
       currentPage,
       pageSize,
       totalReports,
@@ -717,9 +671,11 @@ export default defineComponent({
       formatDate,
       handlePageChange,
       handleFilterChange,
-      handleDeleteReview,
-      handleDeleteComment,
       handleReport,
+      reportTargets,
+      availableTargetTypes,
+      canHandleReport,
+      canDeleteContent,
       openDetailDialog,
       closeDetailDialog,
       imagePreview,

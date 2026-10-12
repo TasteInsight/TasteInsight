@@ -2,7 +2,19 @@
   <view v-if="displayComments.length > 0" class="comment-preview">
     <view class="comment-preview-list">
       <view v-for="comment in displayComments" :key="comment.id" class="discussion-body">
+        <!-- #ifndef MP-WEIXIN -->
+        <text
+          class="discussion-author preview-author"
+          role="link"
+          tabindex="0"
+          @tap.stop="openAuthor(comment.userId)"
+          @keydown.enter.stop.prevent="openAuthor(comment.userId)"
+          >{{ comment.userNickname }}</text
+        >
+        <!-- #endif -->
+        <!-- #ifdef MP-WEIXIN -->
         <text class="discussion-author">{{ comment.userNickname }}</text>
+        <!-- #endif -->
         <template v-if="comment.parentComment && !comment.parentComment.deleted">
           <text class="discussion-meta"> 回复 </text>
           <text class="discussion-author">@{{ comment.parentComment.userNickname }}</text>
@@ -34,6 +46,10 @@ interface Props {
 }
 
 const props = defineProps<Props>();
+// #ifndef MP-WEIXIN
+const openAuthor = (id: string) =>
+  uni.navigateTo({ url: `/pages/profile/public?id=${encodeURIComponent(id)}` });
+// #endif
 const emit = defineEmits<{
   (e: 'commentAdded'): void;
   (e: 'viewAllComments'): void;
@@ -80,5 +96,9 @@ watch(
   padding: 0;
   text-align: left;
   color: #660874;
+}
+.preview-author:focus-visible {
+  outline: 2px solid #660874;
+  outline-offset: 2px;
 }
 </style>

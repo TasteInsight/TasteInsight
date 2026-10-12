@@ -120,7 +120,7 @@ describe('pages/planning/composables/use-menu-planning.ts', () => {
     const inst = useMenuPlanning();
 
     await inst.executePlan('p1');
-    expect(executePlan).toHaveBeenCalledWith('p1');
+    expect(executePlan).toHaveBeenCalledWith('p1', inst.selectedDate.value, true);
     expect((global as any).uni.showToast).toHaveBeenCalled();
 
     executePlan.mockRejectedValueOnce(new Error('err'));

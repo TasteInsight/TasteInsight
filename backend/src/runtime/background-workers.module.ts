@@ -6,11 +6,15 @@ import { DishSyncQueueModule } from '@/dish-sync-queue/dish-sync-queue.module';
 import { DishSyncProcessor } from '@/dish-sync-queue/dish-sync.processor';
 import { EmbeddingQueueModule } from '@/embedding-queue/embedding-queue.module';
 import { EmbeddingQueueProcessor } from '@/embedding-queue/embedding-queue.processor';
+import { NotificationCampaignService } from '@/notifications/notification-campaign.service';
+import { NotificationDispatcher } from '@/notifications/notification-dispatcher.service';
+import { NotificationsModule } from '@/notifications/notifications.module';
 import { RecommendationModule } from '@/recommendation/recommendation.module';
 
 @Module({
   imports: [
     RecommendationModule,
+    NotificationsModule,
     EmbeddingQueueModule,
     DishSyncQueueModule,
     DishReviewStatsQueueModule,
@@ -19,6 +23,8 @@ import { RecommendationModule } from '@/recommendation/recommendation.module';
     EmbeddingQueueProcessor,
     DishSyncProcessor,
     DishReviewStatsProcessor,
+    NotificationCampaignService,
+    NotificationDispatcher,
   ],
   exports: [
     EmbeddingQueueProcessor,

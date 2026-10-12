@@ -75,6 +75,10 @@ describe('Upload parent identity across lifecycle transitions', () => {
         : null;
     };
     const database: any = {
+      notificationCampaign: {
+        createMany: jest.fn().mockResolvedValue({ count: 1 }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
       window: { findUnique: async () => location },
       dishUpload: {
         findUnique: async ({ where }: any) => readUpload(where.id),
@@ -145,6 +149,7 @@ describe('Upload parent identity across lifecycle transitions', () => {
         },
       },
       $queryRaw: async () => [],
+      $executeRaw: async () => 0,
       $transaction: async (callback: any) => {
         const savedUploads = new Map(
           [...uploads].map(([id, value]) => [id, { ...value }]),

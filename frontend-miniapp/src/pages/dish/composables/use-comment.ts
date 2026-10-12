@@ -2,6 +2,7 @@ import { ref, computed, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { getCommentsByReview, createComment, deleteComment } from '@/api/modules/comment';
 import type { Comment, CommentCreateRequest } from '@/types/api';
 import { useUserStore } from '@/store/modules/use-user-store';
+import { requireStudent } from '@/utils/student-access';
 
 /**
  * 评论状态管理（用于菜品详情页简略显示）
@@ -243,6 +244,7 @@ export function useCommentPanel(reviewId: () => string, onCommentAdded?: () => v
    * 选择评论进行回复
    */
   const selectCommentForReply = (comment: Comment) => {
+    if (!requireStudent()) return;
     if (submitting.value || !canReply.value || comment.status !== 'approved') return;
     replyingTo.value = comment;
   };
@@ -259,6 +261,7 @@ export function useCommentPanel(reviewId: () => string, onCommentAdded?: () => v
    * 提交回复
    */
   const submitReply = async (): Promise<boolean> => {
+    if (!requireStudent()) return false;
     if (submitting.value || disposed) return false;
     if (!replyContent.value.trim()) {
       uni.showToast({

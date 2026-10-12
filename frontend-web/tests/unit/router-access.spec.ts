@@ -1,8 +1,19 @@
 import { describe, expect, it } from 'vitest'
 
-import { getFirstAccessibleRoute } from '@/router/access'
+import { getFirstAccessibleRoute, hasGlobalPermission } from '@/router/access'
 
 describe('router/getFirstAccessibleRoute', () => {
+  it.each([
+    ['student:review', '/student-verification-manage'],
+    ['post:view', '/community-manage'],
+  ])('routes a global account with only %s to its management surface', (permission, path) => {
+    const store = { user: { canteenId: null as string | null }, hasPermission: (value: string) => value === permission }
+    expect(hasGlobalPermission(store, permission)).toBe(true)
+    expect(getFirstAccessibleRoute(store)).toBe(path)
+    store.user.canteenId = 'c1'
+    expect(hasGlobalPermission(store, permission)).toBe(false)
+    expect(getFirstAccessibleRoute(store)).toBe('/forbidden')
+  })
   it('returns first permitted route by priority', () => {
     const authStore = {
       hasPermission: (p: string) => p === 'news:view',

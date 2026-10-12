@@ -5,6 +5,7 @@ import { EmbeddingQueueService } from './embedding-queue.service';
 import { EMBEDDING_QUEUE, EmbeddingJobType } from './embedding-queue.constants';
 import { EmbeddingService } from '@/recommendation/services/embedding.service';
 import { RecommendationService } from '@/recommendation/recommendation.service';
+import { Logger } from '@nestjs/common';
 
 describe('EmbeddingQueueService', () => {
   let service: EmbeddingQueueService;
@@ -65,6 +66,39 @@ describe('EmbeddingQueueService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    jest.restoreAllMocks();
+  });
+
+  it('schedules user refresh without waiting for a stalled queue producer', async () => {
+    mockQueue.add.mockReturnValue(new Promise(() => {}));
+    expect(service.scheduleRefreshUser('author')).toBeUndefined();
+    await Promise.resolve();
+    expect(mockQueue.add).toHaveBeenCalledWith(
+      EmbeddingJobType.REFRESH_USER,
+      { userId: 'author' },
+      expect.any(Object),
+    );
+  });
+
+  it('does not wait for a stalled cache invalidation before returning from scheduling', () => {
+    recommendation.invalidateUserFeatureCache.mockReturnValueOnce(
+      new Promise(() => {}),
+    );
+    expect(service.scheduleRefreshUser('author')).toBeUndefined();
+    expect(recommendation.invalidateUserFeatureCache).toHaveBeenCalledWith(
+      'author',
+    );
+    expect(mockQueue.add).not.toHaveBeenCalled();
+  });
+
+  it('observes a background queue rejection without an unhandled rejection', async () => {
+    const warning = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    mockQueue.add.mockRejectedValueOnce(new Error('Redis unavailable'));
+    service.scheduleRefreshUser('author');
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(warning).toHaveBeenCalledWith(
+      'Recommendation refresh failed for user author',
+    );
   });
 
   describe('enqueueRefreshCanteenDishes', () => {

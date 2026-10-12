@@ -8,6 +8,10 @@ import {
 } from '@nestjs/common';
 
 const mockPrismaService = {
+  notificationCampaign: {
+    createMany: jest.fn().mockResolvedValue({ count: 1 }),
+    updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+  },
   dishUpload: {
     findFirst: jest.fn(),
     findMany: jest.fn(),
@@ -25,6 +29,7 @@ const mockPrismaService = {
   },
   $transaction: jest.fn((callback) => callback(mockPrismaService)),
   $queryRaw: jest.fn().mockResolvedValue([]),
+  $executeRaw: jest.fn().mockResolvedValue(0),
 };
 
 describe('AdminUploadsService', () => {
@@ -273,10 +278,10 @@ describe('AdminUploadsService', () => {
     });
 
     it('should approve an upload and create a new dish', async () => {
-      prisma.dish.create.mockResolvedValue({
+      prisma.dish.create.mockImplementation(async ({ data }) => ({
         id: 'new-dish-id',
-        name: 'Uploaded Dish',
-      });
+        ...data,
+      }));
       prisma.dishUpload.update.mockResolvedValue({
         ...mockUpload,
         status: 'approved',
@@ -286,6 +291,15 @@ describe('AdminUploadsService', () => {
 
       expect(result.code).toBe(200);
       expect(prisma.dish.create).toHaveBeenCalled();
+      expect(prisma.notificationCampaign.createMany).toHaveBeenCalledWith({
+        data: [
+          expect.objectContaining({
+            type: 'new_dish',
+            targetId: 'new-dish-id',
+          }),
+        ],
+        skipDuplicates: true,
+      });
     });
 
     it('publishes the pending fields committed after the initial approval read', async () => {
@@ -297,7 +311,10 @@ describe('AdminUploadsService', () => {
       prisma.dishUpload.findUnique
         .mockResolvedValueOnce(mockUpload)
         .mockResolvedValue(current);
-      prisma.dish.create.mockResolvedValue({ id: 'new-dish-id' });
+      prisma.dish.create.mockImplementation(async ({ data }) => ({
+        id: 'new-dish-id',
+        ...data,
+      }));
 
       await service.approveUpload('u1', {});
 

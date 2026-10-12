@@ -12,6 +12,7 @@ export const getNewsList = (params?: {
 }): Promise<ApiResponse<PaginatedData<News>>> => {
   return request<PaginatedData<News>>({
     url: '/news',
+    auth: 'optional',
     method: 'GET',
     data: params,
   });
@@ -23,6 +24,7 @@ export const getNewsList = (params?: {
 export const getNewsById = (id: string): Promise<ApiResponse<News>> => {
   return request<News>({
     url: `/news/${id}`,
+    auth: 'optional',
     method: 'GET',
   });
 };
