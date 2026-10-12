@@ -496,10 +496,34 @@ describe('Campus community lifecycle (PostgreSQL)', () => {
     const applications = await prisma.diningApplication.findMany({
       where: { inviteId: id },
     });
+    for (const method of ['put', 'patch'] as const) {
+      const path = `/dining-invites/${id}/applications/${applications[0].id}`;
+      await request(app.getHttpServer())
+        [method](path)
+        .send({ action: 'accept' })
+        .expect(401);
+      await request(app.getHttpServer())
+        [method](path)
+        .set('Authorization', `Bearer ${secondStudent}`)
+        .send({ action: 'accept' })
+        .expect(403);
+      await request(app.getHttpServer())
+        [method](path)
+        .set('Authorization', `Bearer ${student}`)
+        .send({ action: 'invalid' })
+        .expect(400);
+    }
+    expect(
+      await prisma.diningApplication.count({
+        where: { inviteId: id, status: 'accepted' },
+      }),
+    ).toBe(0);
     const decisions = await Promise.all(
-      applications.map((application) =>
+      applications.map((application, index) =>
         request(app.getHttpServer())
-          .patch(`/dining-invites/${id}/applications/${application.id}`)
+          [
+            index === 0 ? 'put' : 'patch'
+          ](`/dining-invites/${id}/applications/${application.id}`)
           .set('Authorization', `Bearer ${student}`)
           .send({ action: 'accept' }),
       ),
@@ -541,5 +565,12 @@ describe('Campus community lifecycle (PostgreSQL)', () => {
       .set('Authorization', `Bearer ${secondStudent}`)
       .send({ content: '撤销后不得发布' })
       .expect(403);
+    for (const method of ['put', 'patch'] as const) {
+      await request(app.getHttpServer())
+        [method]('/dining-invites/invite/applications/application')
+        .set('Authorization', `Bearer ${secondStudent}`)
+        .send({ action: 'accept' })
+        .expect(403);
+    }
   });
 });

@@ -19,6 +19,8 @@ export interface RefreshCanteenDishesJobData {
 /** 刷新单个菜品嵌入任务数据 */
 export interface RefreshDishJobData {
   dishId: string;
+  contributionUploadId?: string;
+  contributionRevision?: number;
 }
 
 /** 批量刷新菜品嵌入任务数据 */

@@ -68,10 +68,7 @@ describe('api/modules/upload.ts - uploadImage', () => {
       const { uploadImage } = require(MODULE_PATH);
       await uploadImage('fp');
 
-      const serializedConsoleCalls = JSON.stringify([
-        ...logSpy.mock.calls,
-        ...errorSpy.mock.calls,
-      ]);
+      const serializedConsoleCalls = JSON.stringify([...logSpy.mock.calls, ...errorSpy.mock.calls]);
       expect(serializedConsoleCalls).not.toContain(responseSecret);
     } finally {
       logSpy.mockRestore();
@@ -92,7 +89,10 @@ describe('api/modules/upload.ts - uploadImage', () => {
     };
 
     const { uploadImage } = require(MODULE_PATH);
-    await expect(uploadImage('fp')).rejects.toThrow('上传失败: 500');
+    await expect(uploadImage('fp')).rejects.toMatchObject({
+      statusCode: 500,
+      message: '网络开小差了，请稍后再试',
+    });
   });
 
   test('empty response data rejects with server message', async () => {
@@ -109,6 +109,14 @@ describe('api/modules/upload.ts - uploadImage', () => {
 
     const { uploadImage } = require(MODULE_PATH);
     await expect(uploadImage('fp')).rejects.toThrow('服务器未返回数据');
+  });
+
+  test('preserves a gateway HTML 413 as an actionable size error', async () => {
+    jest.doMock('@/mock/mock-adapter', () => ({ USE_MOCK: false }));
+    jest.doMock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ token: 'tok' }) }));
+    (global as any).uni = { uploadFile: ({ success }: any) => success({ statusCode: 413, data: '<html>Request Entity Too Large</html>' }) };
+    const { uploadImage } = require(MODULE_PATH);
+    await expect(uploadImage('fp')).rejects.toMatchObject({ statusCode: 413, message: '上传内容过大，请压缩图片后重试' });
   });
 
   test('invalid JSON rejects with parse error', async () => {

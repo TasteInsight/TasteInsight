@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Request,
   UseGuards,
@@ -57,7 +58,7 @@ export class DiningInvitesController {
     return this.invites.apply(id, req.user.sub);
   }
 
-  @Patch('dining-invites/:id/applications/:applicationId')
+  @Put('dining-invites/:id/applications/:applicationId')
   @UseGuards(StudentGuard)
   decide(
     @Param('id') id: string,
@@ -66,6 +67,17 @@ export class DiningInvitesController {
     @Body() dto: DecideDiningApplicationDto,
   ) {
     return this.invites.decide(id, applicationId, req.user.sub, dto.action);
+  }
+
+  @Patch('dining-invites/:id/applications/:applicationId')
+  @UseGuards(StudentGuard)
+  patchDecision(
+    @Param('id') id: string,
+    @Param('applicationId') applicationId: string,
+    @Request() req: { user: { sub: string } },
+    @Body() dto: DecideDiningApplicationDto,
+  ) {
+    return this.decide(id, applicationId, req, dto);
   }
 
   @Delete('dining-invites/:id/applications/me')

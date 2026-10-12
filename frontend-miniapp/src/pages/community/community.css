@@ -38,10 +38,10 @@
 .campus-button::after {
   border: 0;
 }
-.campus-button:active {
+.campus-button:not(.list-row-action):not(.campus-tab):active {
   background: #f4f4f5;
 }
-.campus-button:focus-visible {
+.campus-button:not(.list-row-action):focus-visible {
   outline: 2px solid #660874;
   outline-offset: 2px;
 }
@@ -94,6 +94,9 @@
   border-radius: 0;
   padding: 12px 0;
   color: #667085;
+}
+.campus-tab:active {
+  opacity: 0.72;
 }
 .campus-selected {
   color: #660874;

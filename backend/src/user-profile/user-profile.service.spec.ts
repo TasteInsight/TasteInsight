@@ -311,6 +311,11 @@ describe('UserProfileService', () => {
           id: 'up1',
           userId: 'u1',
           name: 'Uploaded Dish',
+          canteenName: '一食堂',
+          windowName: '家常菜',
+          price: 15,
+          priceUnit: '份',
+          images: ['https://media.test/dish.jpg'],
           status: 'pending',
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -323,6 +328,22 @@ describe('UserProfileService', () => {
 
       expect(result.code).toBe(200);
       expect(result.data.items).toHaveLength(1);
+      expect(result.data.items[0]).toEqual(
+        expect.objectContaining({
+          name: 'Uploaded Dish',
+          canteenName: '一食堂',
+          windowName: '家常菜',
+          price: 15,
+          priceUnit: '份',
+          images: ['https://media.test/dish.jpg'],
+        }),
+      );
+      expect(prisma.dishUpload.findMany).toHaveBeenCalledWith({
+        where: { userId: 'u1' },
+        skip: 0,
+        take: 20,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      });
     });
   });
 

@@ -143,25 +143,44 @@ describe('MealPlansController (e2e)', () => {
     });
   });
 
-  describe('/meal-plans/:id (PATCH)', () => {
+  describe.each(['put', 'patch'] as const)('/meal-plans/:id (%s)', (method) => {
     it('should update a meal plan', async () => {
       const updateData = {
         dishes: [testDishId2],
       };
 
       const response = await request(app.getHttpServer())
-        .patch(`/meal-plans/${testMealPlanId}`)
+        [method](`/meal-plans/${testMealPlanId}`)
         .set('Authorization', `Bearer ${userAccessToken}`)
         .send(updateData);
 
       expect(response.status).toBe(200);
       expect(response.body.code).toBe(200);
       expect(response.body.data.dishes).toEqual([testDishId2]);
+      const stored = await prisma.mealPlanDish.findMany({
+        where: { mealPlanId: testMealPlanId },
+      });
+      expect(stored.map((item) => item.dishId)).toEqual([testDishId2]);
+    });
+
+    it('should require an access token', async () => {
+      await request(app.getHttpServer())
+        [method](`/meal-plans/${testMealPlanId}`)
+        .send({ dishes: [testDishId1] })
+        .expect(401);
+    });
+
+    it('should validate the update body', async () => {
+      await request(app.getHttpServer())
+        [method](`/meal-plans/${testMealPlanId}`)
+        .set('Authorization', `Bearer ${userAccessToken}`)
+        .send({ mealTime: 'invalid' })
+        .expect(400);
     });
 
     it('should return 404 for non-existent meal plan', async () => {
       const response = await request(app.getHttpServer())
-        .patch('/meal-plans/invalid-id')
+        [method]('/meal-plans/invalid-id')
         .set('Authorization', `Bearer ${userAccessToken}`)
         .send({ dishes: [] });
 

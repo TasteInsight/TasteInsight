@@ -619,7 +619,7 @@ export interface ReportHandleRequest {
  * 获取待审核列表参数
  */
 export interface GetPendingParams extends PaginationParams {
-  status?: 'pending' | 'approved' | 'rejected'
+  status?: 'pending' | 'approved' | 'rejected' | 'withdrawn'
   keyword?: string
   canteenId?: string
 }

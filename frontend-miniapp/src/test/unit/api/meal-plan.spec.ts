@@ -39,7 +39,7 @@ describe('api/modules/meal-plan.ts', () => {
     expect(res.code).toBe(201);
   });
 
-  test('updateMealPlan PATCHes with id', async () => {
+  test('updateMealPlan PUTs with id', async () => {
     const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
     mockReq.mockResolvedValue({ code: 200, data: { id: 'm1' } });
     jest.doMock('@/utils/request', () => mockReq);
@@ -50,7 +50,7 @@ describe('api/modules/meal-plan.ts', () => {
     expect(mockReq).toHaveBeenCalledTimes(1);
     expect(mockReq.mock.calls[0][0]).toMatchObject({
       url: '/meal-plans/m1',
-      method: 'PATCH',
+      method: 'PUT',
     });
   });
 

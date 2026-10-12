@@ -34,7 +34,10 @@ const optionalGroups = {
   api: [
     'JWT_EXPIRATION_TIME', 'JWT_REFRESH_EXPIRATION_TIME',
     'CORS_ALLOWED_ORIGINS', 'TRUSTED_PROXY_CIDRS',
-    'UPLOAD_STORAGE_TYPE', 'UPLOAD_BASE_URL', 'UPLOAD_MAX_FILE_SIZE',
+    'UPLOAD_BASE_URL', 'UPLOAD_MAX_FILE_SIZE',
+  ],
+  storage: [
+    'UPLOAD_STORAGE_TYPE',
     'OSS_REGION', 'OSS_ACCESS_KEY_ID', 'OSS_ACCESS_KEY_SECRET', 'OSS_BUCKET', 'OSS_CUSTOM_DOMAIN',
   ],
   public: [
@@ -58,6 +61,7 @@ const optionalGroups = {
 const optionalKeysFor = (role) => [
   ...optionalGroups.common,
   ...(runtimeRoles.includes(role) ? optionalGroups.runtime : []),
+  ...(runtimeRoles.includes(role) ? optionalGroups.storage : []),
   ...(apiRoles.includes(role) ? optionalGroups.api : []),
   ...(role === 'public-api' ? optionalGroups.public : []),
   ...(role === 'worker' ? optionalGroups.worker : []),
@@ -154,7 +158,8 @@ test('each role receives only the settings consumed by its application root', ()
       ...(runtimeRoles.includes(role)
         ? ['PORT', 'REDIS_HOST', 'REDIS_PORT', 'REDIS_PASSWORD', 'EXTERNAL_EMBEDDING_SERVICE_URL'] : []),
       ...(apiRoles.includes(role)
-        ? ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'APP_URL', 'ADMIN_APP_URL', 'UPLOAD_LOCAL_PATH'] : []),
+        ? ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'APP_URL', 'ADMIN_APP_URL'] : []),
+      ...(runtimeRoles.includes(role) ? ['UPLOAD_LOCAL_PATH'] : []),
     ];
     assert.deepEqual(Object.keys(environment).sort(), expectedKeys.sort(), role);
     for (const key of optionalKeysFor(role)) {

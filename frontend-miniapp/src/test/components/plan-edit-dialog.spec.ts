@@ -35,6 +35,18 @@ beforeEach(() => {
   });
 });
 
+test.each([['份', '/份'], ['元/份', '/份'], ['元', ''], [null, '']])('normalizes historical picker price unit %p and keeps zero explicit', async (priceUnit, suffix) => {
+  setActivePinia(createPinia());
+  const wrapper = mount(PlanEditDialog, { props: { visible: true, plan: null } });
+  await flushPromises();
+  const originals = [0, 15].map(price => ({ id: String(price), name: '菜品', price, priceUnit }));
+  (wrapper.vm as any).dishList = originals;
+  await wrapper.vm.$nextTick();
+  expect(wrapper.findAll('.plan-result').map(row => row.findAll('.plan-hint')[1].text())).toEqual([`¥0${suffix}`, `¥15${suffix}`]);
+  expect(originals.map(dish => dish.priceUnit)).toEqual([priceUnit, priceUnit]);
+  wrapper.unmount();
+});
+
 test('window and keyword compose a server query, and clearing keyword keeps the window', async () => {
   setActivePinia(createPinia());
   const wrapper = mount(PlanEditDialog, { props: { visible: true, plan: null } });

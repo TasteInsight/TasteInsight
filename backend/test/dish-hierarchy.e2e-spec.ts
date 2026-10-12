@@ -267,13 +267,15 @@ describe('Dish hierarchy and approval ownership (e2e)', () => {
       .post(`/admin/dishes/uploads/${uploadId}/revoke`)
       .set('Authorization', `Bearer ${globalToken}`)
       .expect(200);
-    expect(await prisma.dish.findUnique({ where: { id: dishId } })).toBeNull();
+    expect(
+      await prisma.dish.findUniqueOrThrow({ where: { id: dishId } }),
+    ).toMatchObject({ id: dishId, status: 'offline', canteenId: canteenB });
     expect(
       await prisma.dishUpload.findUniqueOrThrow({ where: { id: uploadId } }),
     ).toMatchObject({
       canteenId: canteenA,
       status: 'pending',
-      approvedDishId: null,
+      approvedDishId: dishId,
     });
   });
 

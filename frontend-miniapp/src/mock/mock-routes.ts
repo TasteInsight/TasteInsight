@@ -273,8 +273,8 @@ registerMockRoute('POST', '/meal-plans', async (url, options) => {
   return mockSuccess(data);
 });
 
-// PATCH /meal-plans/:id - 更新用餐计划
-registerMockRoute('PATCH', '/meal-plans/:id', async (url, options) => {
+// PUT /meal-plans/:id - 更新用餐计划
+registerMockRoute('PUT', '/meal-plans/:id', async (url, options) => {
   const match = url.match(/\/meal-plans\/([^/]+)$/);
   const planId = match?.[1] || '';
   const planData = options.data as any;

@@ -748,6 +748,9 @@ describe('AdminUploadsController (e2e)', () => {
     });
 
     it('should revoke approved upload for super admin', async () => {
+      const before = await prisma.dishUpload.findUniqueOrThrow({
+        where: { id: testRevokeApprovedId },
+      });
       const response = await request(app.getHttpServer())
         .post(`/admin/dishes/uploads/${testRevokeApprovedId}/revoke`)
         .set('Authorization', `Bearer ${superAdminToken}`)
@@ -760,7 +763,12 @@ describe('AdminUploadsController (e2e)', () => {
         where: { id: testRevokeApprovedId },
       });
       expect(upload?.status).toBe('pending');
-      expect(upload?.approvedDishId).toBeNull();
+      expect(upload?.approvedDishId).toBe(before.approvedDishId);
+      expect(
+        await prisma.dish.findUniqueOrThrow({
+          where: { id: before.approvedDishId! },
+        }),
+      ).toMatchObject({ status: 'offline' });
     });
 
     it('should revoke rejected upload for super admin', async () => {
@@ -1143,7 +1151,24 @@ describe('AdminUploadsController (e2e)', () => {
       });
     });
 
-    it('should revoke approved upload to pending and delete created dish', async () => {
+    it('should preserve dish identity and engagement when revoking and reapproving', async () => {
+      const before = await prisma.dishUpload.findUniqueOrThrow({
+        where: { id: uploadToRevokeApprovedId },
+      });
+      const dishId = before.approvedDishId!;
+      const review = await prisma.review.create({
+        data: {
+          userId: before.userId!,
+          dishId,
+          rating: 4,
+          content: '保留已有评价',
+          images: [],
+          status: 'approved',
+        },
+      });
+      const favorite = await prisma.favoriteDish.create({
+        data: { userId: before.userId!, dishId },
+      });
       const response = await request(app.getHttpServer())
         .post(`/admin/dishes/uploads/${uploadToRevokeApprovedId}/revoke`)
         .set('Authorization', `Bearer ${superAdminToken}`)
@@ -1156,7 +1181,40 @@ describe('AdminUploadsController (e2e)', () => {
         where: { id: uploadToRevokeApprovedId },
       });
       expect(upload?.status).toBe('pending');
-      expect(upload?.approvedDishId).toBeNull();
+      expect(upload?.approvedDishId).toBe(dishId);
+      expect(
+        await prisma.dish.findUniqueOrThrow({ where: { id: dishId } }),
+      ).toMatchObject({ status: 'offline' });
+      expect(
+        await prisma.review.findUnique({ where: { id: review.id } }),
+      ).toEqual(review);
+      expect(
+        await prisma.favoriteDish.findUnique({ where: { id: favorite.id } }),
+      ).toEqual(favorite);
+
+      await request(app.getHttpServer())
+        .post(`/admin/dishes/uploads/${uploadToRevokeApprovedId}/approve`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({ revision: upload!.revision })
+        .expect(200);
+
+      expect(
+        await prisma.dishUpload.findUniqueOrThrow({
+          where: { id: uploadToRevokeApprovedId },
+        }),
+      ).toMatchObject({ status: 'approved', approvedDishId: dishId });
+      expect(
+        await prisma.dish.findUniqueOrThrow({ where: { id: dishId } }),
+      ).toMatchObject({ status: 'online' });
+      expect(
+        await prisma.dish.count({ where: { name: '测试撤销Approved' } }),
+      ).toBe(1);
+      expect(
+        await prisma.review.findUnique({ where: { id: review.id } }),
+      ).toEqual(review);
+      expect(
+        await prisma.favoriteDish.findUnique({ where: { id: favorite.id } }),
+      ).toEqual(favorite);
     });
 
     it('should revoke rejected upload to pending', async () => {
@@ -1182,7 +1240,7 @@ describe('AdminUploadsController (e2e)', () => {
         .send({ reason: '试图拒绝已通过的' })
         .expect(400);
 
-      expect(response.body.message).toContain('该记录已通过审核，无法直接拒绝');
+      expect(response.body.message).toContain('已通过记录请先撤销审核');
 
       const upload = await prisma.dishUpload.findUnique({
         where: { id: uploadToFailRejectId },

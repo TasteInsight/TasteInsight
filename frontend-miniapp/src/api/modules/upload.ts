@@ -1,70 +1,80 @@
-// @/api/modules/upload.ts
 import type { ImageUploadData } from '@/types/api';
 import config from '@/config';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { USE_MOCK } from '@/mock/mock-adapter';
+import { expireSession, refreshAccessToken } from '@/utils/auth-session';
+import { createHttpError } from '@/utils/user-friendly-error';
 
-/**
- * 上传图片
- * 注意：这个函数需要特殊处理，因为是 multipart/form-data
- */
-export const uploadImage = (filePath: string): Promise<ImageUploadData> => {
-  const userStore = useUserStore();
-  const sessionVersion = userStore.sessionVersion;
-  const accessToken = userStore.token;
+export interface ImageUploadOptions {
+  purpose?: 'dish-contribution';
+}
+
+export const uploadImage = async (
+  filePath: string,
+  options: ImageUploadOptions = {}
+): Promise<ImageUploadData> => {
+  const user = useUserStore();
+  const sessionVersion = user.sessionVersion;
+  const assertSession = () => {
+    if (user.sessionVersion !== sessionVersion) throw new Error('登录会话已变更');
+  };
   if (USE_MOCK) {
-    return new Promise((resolve, reject) => {
-      console.log('[Mock] Uploading image:', filePath);
-      setTimeout(() => {
-        if (userStore.sessionVersion !== sessionVersion) {
-          reject(new Error('登录会话已变更'));
-          return;
-        }
-        resolve({
-          url: filePath, // Mock模式下直接返回本地路径
-          filename: 'mock_image_' + Date.now() + '.jpg',
-        });
-      }, 500);
-    });
+    await new Promise(resolve => setTimeout(resolve, 500));
+    assertSession();
+    return { url: filePath, filename: 'mock_image_' + Date.now() + '.jpg' };
   }
 
-  return new Promise((resolve, reject) => {
-    uni.uploadFile({
-      url: config.baseUrl + '/upload/image',
-      filePath: filePath,
-      name: 'file',
-      header: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      success: res => {
-        if (userStore.sessionVersion !== sessionVersion) {
-          reject(new Error('登录会话已变更'));
-          return;
-        }
-        console.log('Upload response status:', res.statusCode);
-        if (res.statusCode === 200 || res.statusCode === 201) {
+  const send = (): Promise<UniApp.UploadFileSuccessCallbackResult> =>
+    new Promise((resolve, reject) => {
+      assertSession();
+      uni.uploadFile({
+        url:
+          config.baseUrl + '/upload/image' + (options.purpose ? '?purpose=dish-contribution' : ''),
+        filePath,
+        name: 'file',
+        header: { Authorization: `Bearer ${user.token}` },
+        timeout: 30000,
+        success: resolve,
+        fail: err => {
           try {
-            if (!res.data) {
-              reject(new Error('服务器未返回数据'));
-              return;
-            }
-            const data = JSON.parse(res.data);
-            if (data.code === 200 || data.code === 201) {
-              resolve(data.data);
-            } else {
-              reject(new Error(data.message || '上传失败'));
-            }
-          } catch (parseError) {
-            console.error('解析上传响应失败:', parseError);
-            reject(new Error('解析服务器响应失败'));
+            assertSession();
+            reject(err);
+          } catch (error) {
+            reject(error);
           }
-        } else {
-          reject(new Error(`上传失败: ${res.statusCode}`));
-        }
-      },
-      fail: err => {
-        reject(userStore.sessionVersion === sessionVersion ? err : new Error('登录会话已变更'));
-      },
+        },
+      });
     });
-  });
+
+  const accessToken = user.token;
+  let response = await send();
+  assertSession();
+  if (response.statusCode === 401) {
+    try {
+      await refreshAccessToken(sessionVersion, accessToken);
+    } catch (error: any) {
+      assertSession();
+      if (error?.statusCode === 401) expireSession(sessionVersion);
+      throw error;
+    }
+    assertSession();
+    response = await send();
+    assertSession();
+  }
+
+  let body: any;
+  try {
+    body = response.data ? JSON.parse(response.data) : null;
+  } catch {
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      throw new Error('解析服务器响应失败');
+    }
+  }
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    if (response.statusCode === 401) expireSession(sessionVersion);
+    throw createHttpError(response.statusCode, body);
+  }
+  if (!body) throw new Error('服务器未返回数据');
+  if (body.code !== 200 && body.code !== 201) throw new Error(body.message || '上传失败');
+  return body.data;
 };

@@ -49,7 +49,7 @@ export class MealPlansController {
     return this.mealPlansService.createMealPlan(userId, createMealPlanDto);
   }
 
-  @Patch(':id')
+  @Put(':id')
   @HttpCode(HttpStatus.OK)
   updateMealPlan(
     @Param('id') id: string,
@@ -58,6 +58,16 @@ export class MealPlansController {
   ): Promise<MealPlanResponseDto> {
     const userId = req.user.sub;
     return this.mealPlansService.updateMealPlan(id, userId, updateMealPlanDto);
+  }
+
+  @Patch(':id')
+  @HttpCode(HttpStatus.OK)
+  patchMealPlan(
+    @Param('id') id: string,
+    @Body() updateMealPlanDto: UpdateMealPlanDto,
+    @Request() req: { user: { sub: string } },
+  ): Promise<MealPlanResponseDto> {
+    return this.updateMealPlan(id, updateMealPlanDto, req);
   }
 
   @Delete(':id')

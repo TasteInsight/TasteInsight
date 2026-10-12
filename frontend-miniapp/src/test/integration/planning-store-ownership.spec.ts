@@ -117,20 +117,20 @@ test('reopened edits of one plan reach the server in submission order', async ()
   vm.editPlan(vm.currentPlans[0]);
   const old = vm.submitEdit(body('breakfast'));
   await flushPromises();
-  const first = latest('PATCH', '/meal-plans/existing');
+  const first = latest('PUT', '/meal-plans/existing');
   vm.closeEditDialog();
   vm.editPlan(vm.currentPlans[0]);
   const current = vm.submitEdit(body('dinner'));
   await flushPromises();
 
-  expect(matching('PATCH', '/meal-plans/existing')).toHaveLength(1);
+  expect(matching('PUT', '/meal-plans/existing')).toHaveLength(1);
   expect(first.data).toEqual(body('breakfast'));
   first.success(ok(plan('existing', 'breakfast')));
   await old;
   await flushPromises();
   expect(vm.showEditDialog).toBe(true);
   expect(vm.submitting).toBe(true);
-  const second = latest('PATCH', '/meal-plans/existing');
+  const second = latest('PUT', '/meal-plans/existing');
   expect(second).not.toBe(first);
   expect(second.data).toEqual(body('dinner'));
   second.success(ok(plan('existing', 'dinner')));
@@ -148,11 +148,11 @@ test('writes to different plans remain concurrent and retain both successful sna
   const first = store.updatePlan('first', body('breakfast'));
   const second = store.updatePlan('second', body('dinner'));
   await flushPromises();
-  expect(matching('PATCH', '/meal-plans/first')).toHaveLength(1);
-  expect(matching('PATCH', '/meal-plans/second')).toHaveLength(1);
-  latest('PATCH', '/meal-plans/second').success(ok(plan('second', 'dinner')));
+  expect(matching('PUT', '/meal-plans/first')).toHaveLength(1);
+  expect(matching('PUT', '/meal-plans/second')).toHaveLength(1);
+  latest('PUT', '/meal-plans/second').success(ok(plan('second', 'dinner')));
   await second;
-  latest('PATCH', '/meal-plans/first').success(ok(plan('first', 'breakfast')));
+  latest('PUT', '/meal-plans/first').success(ok(plan('first', 'breakfast')));
   await first;
   expect(store.allPlans.map(item => item.mealTime)).toEqual(['breakfast', 'dinner']);
 });
@@ -165,10 +165,10 @@ test('a queued update retains the submitted fields and dish ids when its draft c
   draft.mealTime = 'lunch';
   draft.dishes!.push('later-selection');
   await flushPromises();
-  matching('PATCH', '/meal-plans/existing')[0].success(ok(plan('existing', 'breakfast')));
+  matching('PUT', '/meal-plans/existing')[0].success(ok(plan('existing', 'breakfast')));
   await first;
   await flushPromises();
-  const queuedRequest = latest('PATCH', '/meal-plans/existing');
+  const queuedRequest = latest('PUT', '/meal-plans/existing');
   expect(queuedRequest.data).toEqual(body('dinner'));
   queuedRequest.success(ok(plan('existing', 'dinner')));
   await second;
@@ -182,7 +182,7 @@ test.each(['success', 'failure'])('delete waits for a pending update that ends i
   const deleting = store.removePlan('existing');
   await flushPromises();
   expect(matching('DELETE', '/meal-plans/existing')).toHaveLength(0);
-  latest('PATCH', '/meal-plans/existing').success(outcome === 'success'
+  latest('PUT', '/meal-plans/existing').success(outcome === 'success'
     ? ok(plan('existing', 'breakfast')) : failure);
   await updated;
   await flushPromises();
@@ -201,7 +201,7 @@ test.each(['success', 'failure'])('a list %s overlapping a committed write reads
   const staleRead = latest('GET');
   const saving = store.updatePlan('existing', body('dinner'));
   await flushPromises();
-  latest('PATCH', '/meal-plans/existing').success(ok(plan('existing', 'dinner')));
+  latest('PUT', '/meal-plans/existing').success(ok(plan('existing', 'dinner')));
   await saving;
   expect(store.loading).toBe(true);
   staleRead.success(outcome === 'success' ? ok({ items: [plan('existing')] }) : failure);
@@ -226,7 +226,7 @@ test('a pending write remains visible when a later read returns before its respo
   await flushPromises();
   latest('GET').success(ok({ items: [plan('existing')] }));
   await fetching;
-  latest('PATCH', '/meal-plans/existing').success(ok(plan('existing', 'dinner')));
+  latest('PUT', '/meal-plans/existing').success(ok(plan('existing', 'dinner')));
   await saving;
   expect(store.allPlans[0].mealTime).toBe('dinner');
 });
@@ -261,7 +261,7 @@ test.each(['update', 'delete'])('a delayed create response preserves a later %s 
     vm.editPlan(vm.currentPlans[0]);
     const updating = vm.submitEdit(body('dinner'));
     await flushPromises();
-    latest('PATCH', '/meal-plans/created').success(ok(plan('created', 'dinner')));
+    latest('PUT', '/meal-plans/created').success(ok(plan('created', 'dinner')));
     await updating;
   } else {
     const deleting = vm.deletePlan('created');
@@ -342,7 +342,7 @@ test('current save failure reports feedback without hiding the list or clearing 
   const rejected = expect(saving).rejects.toThrow('网络开小差了，请稍后再试');
   await flushPromises();
   expect(vm.loading).toBe(false);
-  latest('PATCH', '/meal-plans/existing').success(failure);
+  latest('PUT', '/meal-plans/existing').success(failure);
   await rejected;
   await flushPromises();
   expect(vm.error).toBeNull();
@@ -361,14 +361,14 @@ test('a failed deletion reports feedback and releases a queued update', async ()
   await flushPromises();
   const saving = usePlanStore().updatePlan('existing', body('dinner'));
   await flushPromises();
-  expect(matching('PATCH', '/meal-plans/existing')).toHaveLength(0);
+  expect(matching('PUT', '/meal-plans/existing')).toHaveLength(0);
   latest('DELETE', '/meal-plans/existing').success(failure);
   await deleting;
   await flushPromises();
   expect(vm.error).toBeNull();
   expect(wrapper.findAllComponents({ name: 'PlanCard' })).toHaveLength(1);
   expect(uniMock.showToast).toHaveBeenCalledWith({ title: '网络开小差了，请稍后再试', icon: 'none' });
-  latest('PATCH', '/meal-plans/existing').success(ok(plan('existing', 'dinner')));
+  latest('PUT', '/meal-plans/existing').success(ok(plan('existing', 'dinner')));
   await saving;
   expect(usePlanStore().allPlans[0].mealTime).toBe('dinner');
 });
@@ -383,11 +383,11 @@ test('an edit queued after a successful deletion fails without restoring the del
   const saving = vm.submitEdit(body('dinner'));
   const rejected = expect(saving).rejects.toThrow();
   await flushPromises();
-  expect(matching('PATCH', '/meal-plans/existing')).toHaveLength(0);
+  expect(matching('PUT', '/meal-plans/existing')).toHaveLength(0);
   latest('DELETE', '/meal-plans/existing').success(ok(null));
   await deleting;
   await flushPromises();
-  latest('PATCH', '/meal-plans/existing').success({
+  latest('PUT', '/meal-plans/existing').success({
     statusCode: 404, data: { code: 404, message: '饮食计划不存在' },
   });
   await rejected;
@@ -508,7 +508,7 @@ test.each([
   Object.assign(dialog.formData, body('dinner'));
   const saving = vm.submitEdit(body('dinner')).catch((err: unknown) => err);
   await flushPromises();
-  const request = latest('PATCH', '/meal-plans/existing');
+  const request = latest('PUT', '/meal-plans/existing');
   hidePage();
   await flushPromises();
   if (returnedFirst) showPage();
@@ -516,7 +516,7 @@ test.each([
   expect(vm.showEditDialog).toBe(true);
   expect(dialog.formData).toMatchObject(body('dinner'));
   await vm.submitEdit(body('breakfast'));
-  expect(matching('PATCH', '/meal-plans/existing')).toHaveLength(1);
+  expect(matching('PUT', '/meal-plans/existing')).toHaveLength(1);
 
   request.success(outcome === 'success' ? ok(plan('existing', 'dinner')) : failure);
   await saving;
@@ -532,8 +532,8 @@ test.each([
   const nextSave = vm.submitEdit(body('breakfast'));
   await flushPromises();
   expect(vm.submitting).toBe(true);
-  expect(matching('PATCH', '/meal-plans/existing')).toHaveLength(2);
-  latest('PATCH', '/meal-plans/existing').success(ok(plan('existing', 'breakfast')));
+  expect(matching('PUT', '/meal-plans/existing')).toHaveLength(2);
+  latest('PUT', '/meal-plans/existing').success(ok(plan('existing', 'breakfast')));
   await nextSave;
   expect(vm.submitting).toBe(false);
   expect(vm.showEditDialog).toBe(false);
@@ -565,15 +565,15 @@ test('account changes cancel unsent writes without blocking the new account queu
   const queued = store.updatePlan('existing', body('dinner')).catch(error => error);
   const deleting = store.removePlan('existing').catch(error => error);
   await flushPromises();
-  const oldRequest = latest('PATCH', '/meal-plans/existing');
-  expect(matching('PATCH', '/meal-plans/existing')).toHaveLength(1);
+  const oldRequest = latest('PUT', '/meal-plans/existing');
+  expect(matching('PUT', '/meal-plans/existing')).toHaveLength(1);
   const user = useUserStore();
   user.logoutAction();
   user.token = 'B-token';
   user.userInfo = { id: 'B', nickname: 'B' } as any;
   const current = store.updatePlan('existing', body('lunch'));
   await flushPromises();
-  const currentRequest = latest('PATCH', '/meal-plans/existing');
+  const currentRequest = latest('PUT', '/meal-plans/existing');
   expect(currentRequest).not.toBe(oldRequest);
   expect(currentRequest.header.Authorization).toBe('Bearer B-token');
   currentRequest.success(ok({ ...plan('existing'), userId: 'B' }));
@@ -581,7 +581,7 @@ test('account changes cancel unsent writes without blocking the new account queu
   oldRequest.success(ok(plan('existing', 'breakfast')));
   const outcomes = await Promise.all([first, queued, deleting]);
   expect(outcomes.every(result => result instanceof Error)).toBe(true);
-  expect(matching('PATCH', '/meal-plans/existing')).toHaveLength(2);
+  expect(matching('PUT', '/meal-plans/existing')).toHaveLength(2);
   expect(matching('DELETE', '/meal-plans/existing')).toHaveLength(0);
   expect(store.allPlans).toEqual([{ ...plan('existing'), userId: 'B' }]);
   expect(store.error).toBeNull();

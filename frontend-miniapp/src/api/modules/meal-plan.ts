@@ -39,7 +39,7 @@ export const updateMealPlan = (
 ): Promise<ApiResponse<MealPlan>> => {
   return request<MealPlan>({
     url: `/meal-plans/${id}`,
-    method: 'PATCH',
+    method: 'PUT',
     data: planData,
   });
 };
@@ -114,7 +114,7 @@ export const decideDiningApplication = (
 ) =>
   request<DiningInvite>({
     url: `/dining-invites/${encodeURIComponent(id)}/applications/${encodeURIComponent(applicationId)}`,
-    method: 'PATCH',
+    method: 'PUT',
     data: { action },
   });
 export const withdrawDiningApplication = (id: string) =>

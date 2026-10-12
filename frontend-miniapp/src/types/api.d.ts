@@ -7,7 +7,7 @@
 /**
  * HTTP 请求方法
  */
-export type RequestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+export type RequestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
 /**
  * 分页元信息
@@ -598,6 +598,10 @@ export interface GetDishesRequest {
  * 用户上传菜品请求
  */
 export interface DishUserCreateRequest {
+  clientRequestId?: string;
+  targetDishId?: string;
+  targetDishUpdatedAt?: string;
+  changedFields?: DishContributionField[];
   name?: string;
   tags?: string[];
   price: number;
@@ -608,6 +612,10 @@ export interface DishUserCreateRequest {
   subDishId?: string[];
   ingredients?: string[];
   allergens?: string[];
+  spicyLevel?: number;
+  sweetness?: number;
+  saltiness?: number;
+  oiliness?: number;
   canteenId?: string;
   canteenName: string;
   windowId?: string;
@@ -863,8 +871,14 @@ export interface AdminLoginData {
  */
 export interface DishUploadData {
   id: string;
-  status: 'pending';
+  status: DishContributionStatus;
+  revision: number;
 }
+
+export type DishContributionStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn';
+export type DishContributionField = 'name' | 'tags' | 'price' | 'priceUnit' | 'description' | 'images'
+  | 'ingredients' | 'allergens' | 'spicyLevel' | 'sweetness' | 'saltiness' | 'oiliness'
+  | 'windowId' | 'windowName' | 'windowNumber' | 'availableMealTime' | 'availableDates';
 
 /**
  * 评价列表扩展数据
@@ -895,9 +909,31 @@ export interface MyUploadItem {
   name: string;
   canteenName: string;
   price: number;
-  status: 'pending' | 'approved' | 'rejected';
+  status: DishContributionStatus;
+  kind?: 'create' | 'update';
+  targetDishId?: string | null;
+  approvedDishId?: string | null;
+  revision: number;
+  images?: string[];
+  priceUnit?: string | null;
+  windowName?: string | null;
   rejectReason?: string | null;
   createdAt: string;
+}
+
+export interface MyUploadDetail extends Omit<DishUserCreateRequest, 'status' | 'targetDishId'> {
+  id: string;
+  name: string;
+  status: DishContributionStatus;
+  kind: 'create' | 'update';
+  targetDishId?: string | null;
+  approvedDishId?: string | null;
+  revision: number;
+  rejectReason?: string | null;
+  createdAt: string;
+  floorLevel?: string | null;
+  baseSnapshot?: Partial<Dish> | null;
+  targetDish?: Dish | null;
 }
 
 /**

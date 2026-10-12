@@ -5,4 +5,5 @@ export interface UploadResult {
 
 export interface StorageStrategy {
   upload(file: Express.Multer.File): Promise<UploadResult>;
+  remove(storageKey: string): Promise<void>;
 }

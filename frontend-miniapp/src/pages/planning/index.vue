@@ -166,20 +166,17 @@
     <!-- #endif -->
 
     <!-- 浮动新建按钮 -->
-    <button
+    <FloatingActionButton
       v-if="
         (viewMode !== 'list' || activeTab === 'current') &&
         !showCreateDialog &&
         !showEditDialog &&
         !showDetailDialog
       "
-      class="planning-button planning-new"
-      aria-label="新建规划"
-      @tap="createNewPlan"
-    >
-      <uni-icons type="plus" size="22" color="#ffffff" aria-hidden="true" />
-      <text>新建规划</text>
-    </button>
+      label="新建规划"
+      icon="plus"
+      @click="createNewPlan"
+    />
   </view>
 </template>
 
@@ -194,6 +191,7 @@ import PlanEditDialog from '@/components/meal-plan/PlanEditDialog.vue';
 import PlanCalendar from './components/PlanCalendar.vue';
 import UiPicker from '@/components/UiPicker.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import FloatingActionButton from '@/components/FloatingActionButton.vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 // #ifndef MP-WEIXIN
 import DiningInviteSheet from './components/DiningInviteSheet.vue';
@@ -569,16 +567,5 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
   width: 100%;
   padding: 8px 20px 0;
-}
-.planning-new {
-  position: fixed;
-  right: 20px;
-  bottom: calc(var(--window-bottom, 0px) + 20px + env(safe-area-inset-bottom));
-  z-index: 30;
-  gap: 8px;
-  min-height: 48px;
-  background: #660874;
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(17, 24, 39, 0.14);
 }
 </style>

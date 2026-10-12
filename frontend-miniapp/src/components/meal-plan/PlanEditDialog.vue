@@ -203,7 +203,7 @@
                   >{{ dish.canteenName || '食堂信息暂缺'
                   }}{{ dish.windowName ? ' / ' + dish.windowName : '' }}</text
                 ><text class="plan-hint"
-                  >¥{{ dish.price }}{{ dish.priceUnit ? '/' + dish.priceUnit : '' }}</text
+                  >¥{{ dish.price }}{{ priceUnitSuffix(dish.priceUnit) }}</text
                 ></view
               >
               <text class="plan-result-action">{{
@@ -260,6 +260,7 @@ import { useUserStore } from '@/store/modules/use-user-store';
 import { getWindowList, getCanteenList } from '@/api/modules/canteen';
 import { getDishes } from '@/api/modules/dish';
 import { getPreferredDishSort } from '@/utils/dish-sort';
+import { priceUnitSuffix } from '@/utils/price-display';
 import { confirmDiscardChanges } from '@/utils/confirm-discard';
 import type { EnrichedMealPlan } from '@/store/modules/use-plan-store';
 import type { MealPlanRequest, Canteen, Window, Dish, GetDishesRequest } from '@/types/api';

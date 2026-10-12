@@ -1190,10 +1190,12 @@ export class RecommendationService {
     const canteenIds = new Set<string>();
     const ingredients = new Set<string>();
     const dishIds = new Set<string>();
-    let totalSpicy = 0;
-    let totalSweet = 0;
-    let totalSalty = 0;
-    let totalOily = 0;
+    const tastes = {
+      spicyLevel: { total: 0, count: 0 },
+      sweetness: { total: 0, count: 0 },
+      saltiness: { total: 0, count: 0 },
+      oiliness: { total: 0, count: 0 },
+    };
     let totalPrice = 0;
     let validCount = 0;
 
@@ -1206,10 +1208,15 @@ export class RecommendationService {
         });
         canteenIds.add(dish.canteenId);
         dish.ingredients?.forEach((ing: string) => ingredients.add(ing));
-        totalSpicy += dish.spicyLevel || 0;
-        totalSweet += dish.sweetness || 0;
-        totalSalty += dish.saltiness || 0;
-        totalOily += dish.oiliness || 0;
+        for (const dimension of Object.keys(tastes) as Array<
+          keyof typeof tastes
+        >) {
+          // Zero is the catalog's unknown sentinel, not a taste observation.
+          if (dish[dimension] > 0) {
+            tastes[dimension].total += dish[dimension];
+            tastes[dimension].count++;
+          }
+        }
         totalPrice += dish.price || 0;
         validCount++;
       }
@@ -1219,10 +1226,18 @@ export class RecommendationService {
       tagWeights,
       canteenIds,
       ingredients,
-      avgSpicyLevel: validCount > 0 ? totalSpicy / validCount : 0,
-      avgSweetness: validCount > 0 ? totalSweet / validCount : 0,
-      avgSaltiness: validCount > 0 ? totalSalty / validCount : 0,
-      avgOiliness: validCount > 0 ? totalOily / validCount : 0,
+      avgSpicyLevel: tastes.spicyLevel.count
+        ? tastes.spicyLevel.total / tastes.spicyLevel.count
+        : 0,
+      avgSweetness: tastes.sweetness.count
+        ? tastes.sweetness.total / tastes.sweetness.count
+        : 0,
+      avgSaltiness: tastes.saltiness.count
+        ? tastes.saltiness.total / tastes.saltiness.count
+        : 0,
+      avgOiliness: tastes.oiliness.count
+        ? tastes.oiliness.total / tastes.oiliness.count
+        : 0,
       avgPrice: validCount > 0 ? totalPrice / validCount : 0,
       dishIds,
     };
