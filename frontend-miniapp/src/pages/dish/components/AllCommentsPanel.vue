@@ -38,9 +38,15 @@
         @scrolltolower="loadMoreComments"
       >
         <view class="sheet-content reply-list" :aria-busy="loading">
-          <view v-if="error && !comments.length" class="comment-state">
-            <text class="sheet-error">{{ error }}</text
-            ><button class="sheet-button" @tap="retryComments">重试</button>
+          <view v-if="error && !comments.length" class="error-feedback" role="alert">
+            <text class="error-feedback__message">{{ error }}</text
+            ><button
+              class="error-feedback__action"
+              hover-class="error-feedback__action--pressed"
+              @tap="retryComments"
+            >
+              重试
+            </button>
           </view>
           <view
             v-else-if="initialized && !loading && !comments.length"
@@ -135,10 +141,19 @@
               </view>
             </view>
           </view>
-          <view v-if="comments.length && (error || loading || hasMore)" class="comment-state">
+          <view
+            v-if="comments.length && (error || loading || hasMore)"
+            :class="error ? 'error-feedback' : 'comment-state'"
+          >
             <template v-if="error"
-              ><text class="sheet-error">{{ error }}</text
-              ><button class="sheet-button" @tap="retryComments">重试</button></template
+              ><text class="error-feedback__message">{{ error }}</text
+              ><button
+                class="error-feedback__action"
+                hover-class="error-feedback__action--pressed"
+                @tap="retryComments"
+              >
+                重试
+              </button></template
             >
             <text v-else-if="loading" class="sheet-hint">加载中…</text>
             <button v-else-if="hasMore" class="sheet-button" @tap="loadMoreComments">

@@ -5,15 +5,21 @@
         ><view class="campus-skeleton-line" /><view class="campus-skeleton-line" /><view
           class="campus-skeleton-line" /></view
     ></template>
-    <view v-if="error" class="campus-error" role="alert"
-      ><text>{{ error }}</text
-      ><button class="campus-button" @click="load">重新加载</button></view
+    <view v-if="error" class="campus-error error-feedback" role="alert"
+      ><text class="error-feedback__message">{{ error }}</text
+      ><button
+        class="error-feedback__action"
+        hover-class="error-feedback__action--pressed"
+        @click="load"
+      >
+        重新加载
+      </button></view
     >
     <template v-if="post">
       <PostCard :post="post" detail @manage="managePost" @reply="focusReply" />
       <view class="reply-heading"
         ><text class="reply-title">回复</text
-        ><text class="campus-hint">{{ totalComments }}</text></view
+        ><text v-if="commentsReady" class="campus-hint">{{ totalComments }}</text></view
       >
       <view v-if="commentsReady && !comments.length && !commentsError" class="campus-empty"
         ><text>还没有回复</text
@@ -71,9 +77,13 @@
           >
         </view>
       </view>
-      <view v-if="commentsError" class="campus-error" role="alert"
-        ><text>{{ commentsError }}</text
-        ><button class="campus-button" @click="loadComments(commentsFailedAppend)">
+      <view v-if="commentsError" class="campus-error error-feedback" role="alert"
+        ><text class="error-feedback__message">{{ commentsError }}</text
+        ><button
+          class="error-feedback__action"
+          hover-class="error-feedback__action--pressed"
+          @click="loadComments(commentsFailedAppend)"
+        >
           重试
         </button></view
       >
@@ -222,8 +232,6 @@ async function load() {
     await loadComments();
   } catch (cause) {
     if (current() && request === postRequest) {
-      post.value = null;
-      comments.value = [];
       error.value = cause instanceof Error ? cause.message : '动态加载失败，请重试';
     }
   } finally {

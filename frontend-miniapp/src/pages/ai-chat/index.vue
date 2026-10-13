@@ -50,12 +50,12 @@
       @keydown="handleReadingKeydown"
     >
       <view class="ai-chat-transcript">
-        <view v-if="initialError" class="chat-state" role="status">
-          <text class="chat-state-title">连接暂时不可用</text
-          ><text class="chat-state-description">{{ initialError }}</text>
+        <view v-if="initialError" class="error-feedback" role="alert">
+          <text class="error-feedback__title">连接暂时不可用</text
+          ><text class="error-feedback__message">{{ initialError }}</text>
           <button
-            class="chat-button chat-button-primary"
-            hover-class="chat-control-pressed"
+            class="error-feedback__action"
+            hover-class="error-feedback__action--pressed"
             :hover-stay-time="80"
             role="button"
             tabindex="0"

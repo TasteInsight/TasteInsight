@@ -54,16 +54,15 @@
           </view>
         </button>
       </view>
-      <EmptyState
-        v-if="error && !items.length"
-        :title="error"
-        icon="info"
-        action-text="重新加载"
-        @action="load(failedAppend)"
-      />
-      <view v-else-if="error" class="notification-error" role="alert"
-        ><text>{{ error }}</text
-        ><button class="notification-button" @click="load(failedAppend)">重新加载</button></view
+      <view v-if="error" class="notification-error error-feedback" role="alert"
+        ><text class="error-feedback__message">{{ error }}</text
+        ><button
+          class="error-feedback__action"
+          hover-class="error-feedback__action--pressed"
+          @click="load(failedAppend)"
+        >
+          重新加载
+        </button></view
       >
       <button
         v-else-if="hasMore && items.length"
@@ -410,16 +409,6 @@ onReachBottom(() => {
   flex-shrink: 0;
   border-radius: 50%;
   background: #f6f7f8;
-}
-.notification-error {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 20px 0;
-  color: #b42318;
-  font-size: 14px;
 }
 .notification-more {
   display: flex;

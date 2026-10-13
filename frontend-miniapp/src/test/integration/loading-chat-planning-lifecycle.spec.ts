@@ -65,7 +65,6 @@ beforeEach(() => {
   (getDishes as jest.Mock).mockResolvedValue(ok({ items: [], meta: { page: 1, totalPages: 1 } }));
   (getCanteenList as jest.Mock).mockResolvedValue(ok({ items: [], meta: { page: 1, totalPages: 1 } }));
 });
-
 afterEach(() => {
   wrappers.splice(0).forEach(wrapper => wrapper.unmount());
   jest.clearAllTimers();
@@ -188,7 +187,7 @@ describe('chat loading lifecycle', () => {
     expect(wrapper.text()).not.toContain('今天想吃什么？');
     const retry = deferred();
     (createAISession as jest.Mock).mockReturnValueOnce(retry.promise);
-    await wrapper.get('.chat-button-primary').trigger('click');
+    await wrapper.get('.error-feedback__action').trigger('click');
     expectBlankChat(wrapper);
     expect(wrapper.findComponent(InputBar).props('modelValue')).toBe('保留问题');
     retry.resolve(session('retry'));

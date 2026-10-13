@@ -8,9 +8,15 @@
       <text v-if="loading && !verification" class="identity-hint" role="status"
         >正在读取身份信息…</text
       >
-      <view v-if="loadError" class="identity-error" role="alert"
-        ><text>{{ loadError }}</text
-        ><button class="identity-link" @click="load">重新加载</button></view
+      <view v-if="loadError" class="error-feedback" role="alert"
+        ><text class="error-feedback__message">{{ loadError }}</text
+        ><button
+          class="error-feedback__action"
+          hover-class="error-feedback__action--pressed"
+          @click="load"
+        >
+          重新加载
+        </button></view
       >
       <template v-if="verification">
         <view class="identity-summary">

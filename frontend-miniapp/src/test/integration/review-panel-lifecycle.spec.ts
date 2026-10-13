@@ -198,7 +198,7 @@ it.each(['send', 'delete'])(
       } else await panel.removePanelComment('1-0');
       await flushPromises();
       expect(panel.error).toBeTruthy();
-      await wrapper.get('.comment-state button').trigger('tap');
+      await wrapper.get('.error-feedback__action').trigger('tap');
       await flushPromises();
       expect((getCommentsByReview as jest.Mock).mock.calls.map(call => call[1].page)).toEqual([
         1, 2, 1, 1,

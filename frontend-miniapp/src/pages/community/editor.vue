@@ -54,9 +54,16 @@
         </view>
       </template>
     </view>
-    <view v-if="error" class="campus-error" role="alert"
-      ><text>{{ error }}</text
-      ><button v-if="!ready" class="campus-button" @click="initialize">重新加载</button></view
+    <view v-if="error" class="campus-error error-feedback" role="alert"
+      ><text class="error-feedback__message">{{ error }}</text
+      ><button
+        v-if="!ready"
+        class="error-feedback__action"
+        hover-class="error-feedback__action--pressed"
+        @click="initialize"
+      >
+        重新加载
+      </button></view
     >
     <view v-if="loading && !ready" class="campus-skeleton" aria-hidden="true"
       ><view class="campus-skeleton-line" /><view class="campus-skeleton-line" /><view

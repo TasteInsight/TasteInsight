@@ -292,7 +292,7 @@ describe('DishDetailPage', () => {
     action.vm.$emit('review');
     await wrapper.vm.$nextTick();
     expect(wrapper.findComponent({ name: 'ReviewForm' }).exists()).toBe(false);
-    await wrapper.get('.review-state button').trigger('tap');
+    await wrapper.get('.error-feedback__action').trigger('tap');
     expect(mockUseDishDetail.fetchOwnReview).toHaveBeenCalledWith('test-dish-id');
     wrapper.unmount();
   });

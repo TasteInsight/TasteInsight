@@ -8,9 +8,15 @@
     </view>
     <view class="dish-list-content" :aria-busy="loading">
       <view v-if="loading && dishes.length" class="dish-list-footer">正在更新菜品…</view>
-      <view v-if="error" class="dish-list-state">
-        <text>{{ error }}</text>
-        <button class="dish-list-action" @click="loadDishes(!errorIsAppend)">重新加载</button>
+      <view v-if="error" class="error-feedback" role="alert">
+        <text class="error-feedback__message">{{ error }}</text>
+        <button
+          class="error-feedback__action"
+          hover-class="error-feedback__action--pressed"
+          @click="loadDishes(!errorIsAppend)"
+        >
+          重新加载
+        </button>
       </view>
       <view v-if="dishes.length > 0">
         <CanteenDishCard

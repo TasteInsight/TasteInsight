@@ -77,6 +77,29 @@ async function show() {
   (onShow as jest.Mock).mock.calls[0][0]();
   await flushPromises();
 }
+
+test('initial profile failure replaces dependent content without issuing another failing read', async () => {
+  user.userInfo = null;
+  user.fetchProfileAction.mockRejectedValueOnce(new Error('资料读取失败'));
+  const wrapper = mountPage();
+  await show();
+  expect(wrapper.text()).toContain('资料读取失败');
+  expect(wrapper.findAll('.error-feedback')).toHaveLength(1);
+  expect(wrapper.find('.profile-tab-row').exists()).toBe(false);
+  expect(wrapper.find('.profile-content').exists()).toBe(false);
+  expect(getPosts).not.toHaveBeenCalled();
+  expect(getMyReviews).not.toHaveBeenCalled();
+  user.fetchProfileAction.mockImplementationOnce(async () => {
+    user.userInfo = { id: 'A', nickname: '已恢复昵称' };
+  });
+  (getPosts as jest.Mock).mockResolvedValueOnce(pageResult([{ id: 'recovered-post' }]));
+  await wrapper.get('.error-feedback__action').trigger('click');
+  await flushPromises();
+  expect(wrapper.find('.profile-tab-row').exists()).toBe(true);
+  expect(wrapper.getComponent(UserHeader).props('userInfo')?.nickname).toBe('已恢复昵称');
+  expect(getPosts).toHaveBeenCalledTimes(1);
+  expect(wrapper.getComponent(ProfilePostCard).props('post').id).toBe('recovered-post');
+});
 async function tab(wrapper: any, name: string) {
   const target = wrapper.findAll('[role="tab"]').find((item: any) => item.text() === name);
   await target.trigger('click');
@@ -152,7 +175,7 @@ test('reviews use the existing review cards and retry an initial failure without
   expect(wrapper.findComponent(EmptyState).exists()).toBe(false);
   const review = { id: 'review', dishId: 'dish', dishName: '番茄炒蛋', content: '很下饭' };
   (getMyReviews as jest.Mock).mockResolvedValue(pageResult([review]));
-  await wrapper.get('.profile-content .profile-retry').trigger('click');
+  await wrapper.get('.profile-content .error-feedback__action').trigger('click');
   await flushPromises();
   expect(wrapper.getComponent(ReviewCard).props('review')).toEqual(review);
   wrapper.getComponent(ReviewCard).vm.$emit('click');
@@ -175,7 +198,7 @@ test('keeps loaded posts during a failed refresh and supports pagination', async
   (getPosts as jest.Mock).mockResolvedValueOnce(
     pageResult([{ id: 'two', status: 'approved' }], 2, 2)
   );
-  await wrapper.get('.profile-content .profile-retry').trigger('click');
+  await wrapper.get('.profile-content .error-feedback__action').trigger('click');
   await flushPromises();
   expect(getPosts).toHaveBeenLastCalledWith({ page: 2, pageSize: 20 }, true);
   expect(wrapper.findAllComponents(ProfilePostCard)).toHaveLength(2);

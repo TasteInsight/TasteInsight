@@ -1,11 +1,16 @@
 <template>
   <view class="page-content settings-page settings-form-page">
     <view class="settings-form-body" :aria-busy="loading">
-      <view v-if="!initialized && !loading && loadError" class="settings-load-error" role="alert">
-        <text class="settings-label">资料未能加载</text>
-        <text class="settings-hint">{{ loadError }}</text>
+      <view
+        v-if="!initialized && !loading && loadError"
+        class="settings-load-error error-feedback"
+        role="alert"
+      >
+        <text class="error-feedback__title">资料未能加载</text>
+        <text class="error-feedback__message">{{ loadError }}</text>
         <button
-          class="settings-button"
+          class="error-feedback__action"
+          hover-class="error-feedback__action--pressed"
           :disabled="loading"
           @click="retryButton.activate"
           @keydown="retryButton.handleKeydown"
@@ -72,13 +77,6 @@ const saveButton = useButtonActivation(
 .settings-form-body {
   flex: 1;
   min-width: 0;
-}
-.settings-load-error {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 32px 0;
 }
 .settings-save-bar {
   position: sticky;

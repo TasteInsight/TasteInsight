@@ -59,5 +59,5 @@ test('expired or withdrawn collections remain an explicit load error with retry'
   const wrapper = await page();
   expect(wrapper.text()).toContain('本期推荐不存在');
   expect(wrapper.find('.weekly-dish').exists()).toBe(false);
-  expect(wrapper.get('.weekly-button').text()).toBe('重新加载');
+  expect(wrapper.get('.error-feedback__action').text()).toBe('重新加载');
 });

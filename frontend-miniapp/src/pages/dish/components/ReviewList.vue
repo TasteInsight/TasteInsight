@@ -1,8 +1,14 @@
 <template>
   <view class="review-list" :aria-busy="loading">
-    <view v-if="error && reviews.length === 0" class="review-error">
-      <text>{{ error }}</text
-      ><button class="discussion-action review-action" @tap="emit('retry')">重试</button>
+    <view v-if="error && reviews.length === 0" class="review-error error-feedback" role="alert">
+      <text class="error-feedback__message">{{ error }}</text
+      ><button
+        class="error-feedback__action"
+        hover-class="error-feedback__action--pressed"
+        @tap="emit('retry')"
+      >
+        重试
+      </button>
     </view>
 
     <!-- 评论列表 -->
@@ -113,9 +119,15 @@
 
       <!-- 加载更多 -->
       <view class="text-center py-4">
-        <view v-if="error" class="review-error"
-          ><text>{{ error }}</text
-          ><button class="discussion-action review-action" @tap="emit('retry')">重试</button></view
+        <view v-if="error" class="review-error error-feedback" role="alert"
+          ><text class="error-feedback__message">{{ error }}</text
+          ><button
+            class="error-feedback__action"
+            hover-class="error-feedback__action--pressed"
+            @tap="emit('retry')"
+          >
+            重试
+          </button></view
         >
         <button
           v-else-if="hasMore && !loading"
@@ -352,11 +364,5 @@ const handleReportFromMenu = () => {
 }
 .review-rating {
   margin-top: 4px;
-}
-.review-error {
-  padding: 16px 0;
-  color: #b42318;
-  font-size: 14px;
-  text-align: center;
 }
 </style>

@@ -1,67 +1,71 @@
 <template>
   <view class="dish-list-page page-content">
-    <CanteenHeader
-      :canteen="canteenInfo"
-      :loading="loading"
-      :error="error"
-      @retry="retryCanteen"
-    />
+    <CanteenHeader :canteen="canteenInfo" :loading="loading" :error="error" @retry="retryCanteen" />
 
     <view v-if="currentCanteenId" class="dish-list-search">
       <SearchBar placeholder="搜索这个食堂的菜品" :search-url="searchUrl" />
     </view>
 
-    <!-- 窗口列表 -->
-    <CanteenWindowList :windows="windows" @click="goToWindow" />
+    <template v-if="!error || dishesInitialized">
+      <!-- 窗口列表 -->
+      <CanteenWindowList :windows="windows" @click="goToWindow" />
 
-    <view class="px-4">
-      <CanteenFilterBar
-        ref="filterBarRef"
-        :filter="currentFilter"
-        @filter-change="handleFilterChange"
-      />
-    </view>
-
-    <view class="dish-list-heading"><text class="dish-list-title">菜品</text></view>
-    <view class="dish-list-content" :aria-busy="dishesLoading">
-      <view v-if="dishesLoading && dishes.length" class="dish-list-state">正在更新菜品…</view>
-
-      <view v-if="dishesError" class="dish-list-state" role="alert">
-        <text>{{ dishesError }}</text>
-        <button class="dish-list-action" @click="retryDishes">重新加载</button>
-      </view>
-
-      <view v-if="dishes.length > 0">
-        <CanteenDishCard
-          v-for="dish in dishes"
-          :key="dish.id"
-          :dish="dish"
-          @click="goToDishDetail"
+      <view class="px-4">
+        <CanteenFilterBar
+          ref="filterBarRef"
+          :filter="currentFilter"
+          @filter-change="handleFilterChange"
         />
-
-        <!-- 上拉加载更多：底部提示/动画 -->
-        <view class="dish-list-footer">
-          <template v-if="dishesLoadingMore">
-            <view
-              class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"
-            ></view>
-            <text>加载中...</text>
-          </template>
-          <template v-else-if="hasMore && !dishesError && !dishesLoading">
-            <button class="dish-list-action" @click="loadMoreDishes">加载更多</button>
-          </template>
-          <template v-else-if="!hasMore && !dishesError && !dishesLoading">
-            <text>没有更多了</text>
-          </template>
-        </view>
       </view>
 
-      <EmptyState
-        v-else-if="dishesInitialized && !dishesLoading && !dishesError && !error"
-        title="暂无菜品信息"
-        icon="search"
-      />
-    </view>
+      <view class="dish-list-heading"><text class="dish-list-title">菜品</text></view>
+      <view class="dish-list-content" :aria-busy="dishesLoading">
+        <view v-if="dishesLoading && dishes.length" class="dish-list-state">正在更新菜品…</view>
+
+        <view v-if="dishesError" class="error-feedback" role="alert">
+          <text class="error-feedback__message">{{ dishesError }}</text>
+          <button
+            class="error-feedback__action"
+            hover-class="error-feedback__action--pressed"
+            @click="retryDishes"
+          >
+            重新加载
+          </button>
+        </view>
+
+        <view v-if="dishes.length > 0">
+          <CanteenDishCard
+            v-for="dish in dishes"
+            :key="dish.id"
+            :dish="dish"
+            @click="goToDishDetail"
+          />
+
+          <!-- 上拉加载更多：底部提示/动画 -->
+          <view class="dish-list-footer">
+            <template v-if="dishesLoadingMore">
+              <view
+                class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"
+              ></view>
+              <text>加载中...</text>
+            </template>
+            <template v-else-if="hasMore && !dishesError && !dishesLoading">
+              <button class="dish-list-action" @click="loadMoreDishes">加载更多</button>
+            </template>
+            <template v-else-if="!hasMore && !dishesError && !dishesLoading">
+              <text>没有更多了</text>
+            </template>
+          </view>
+        </view>
+
+        <EmptyState
+          v-else-if="dishesInitialized && !dishesLoading && !dishesError && !error"
+          title="暂无菜品信息"
+          icon="search"
+        />
+      </view>
+    </template>
+
     <!-- #ifdef MP-WEIXIN -->
     <page-container
       :show="isFilterOpen"

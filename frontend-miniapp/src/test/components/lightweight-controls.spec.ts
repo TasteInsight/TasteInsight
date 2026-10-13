@@ -6,9 +6,10 @@ import { mount } from '@vue/test-utils';
 import CanteenWindowList from '@/pages/canteen/components/CanteenWindowList.vue';
 
 function declarations(file: string, selector: string) {
-  const { descriptor } = parse(readFileSync(resolve(__dirname, '../../', file), 'utf8'));
+  const source = readFileSync(resolve(__dirname, '../../', file), 'utf8');
+  const styles = file.endsWith('.css') ? [{ content: source }] : parse(source).descriptor.styles;
   const result: Record<string, string> = {};
-  for (const style of descriptor.styles) {
+  for (const style of styles) {
     postcss.parse(style.content).walkRules(rule => {
       if (!rule.selectors.includes(selector)) return;
       rule.walkDecls(declaration => {
@@ -60,11 +61,12 @@ test('navigation buttons suppress the native outline while preserving keyboard f
     declarations('pages/canteen/components/CanteenWindowList.vue', '.canteen-window:focus-visible')
       .outline
   ).toBe('2px solid #660874');
-  for (const selector of ['.home-text-button', '.canteen-retry']) {
-    expect(declarations('pages/index/index.vue', `${selector}::after`).border).toBe('0');
-    expect(declarations('pages/index/index.vue', `${selector}:focus-visible`).outline).toBe(
-      '2px solid #660874'
-    );
+  for (const [file, selector] of [
+    ['pages/index/index.vue', '.home-text-button'],
+    ['styles/error-feedback.css', '.error-feedback__action'],
+  ]) {
+    expect(declarations(file, `${selector}::after`).border).toBe('0');
+    expect(declarations(file, `${selector}:focus-visible`).outline).toBe('2px solid #660874');
   }
 });
 

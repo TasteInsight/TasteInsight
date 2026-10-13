@@ -61,16 +61,6 @@
   font-size: 14px;
   line-height: 1.6;
 }
-.campus-error {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 20px 0;
-  color: #b42318;
-  font-size: 14px;
-}
 .campus-empty {
   display: flex;
   flex-direction: column;

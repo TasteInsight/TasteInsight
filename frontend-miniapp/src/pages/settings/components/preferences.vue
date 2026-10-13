@@ -110,9 +110,15 @@
 
     <view class="settings-section">
       <text class="settings-title">偏好食堂</text>
-      <view v-if="canteensError" class="directory-error">
-        <text class="settings-error">{{ canteensError }}</text
-        ><button class="settings-button" @click="loadCanteens">重试食堂列表</button>
+      <view v-if="canteensError" class="directory-error error-feedback" role="alert">
+        <text class="error-feedback__message">{{ canteensError }}</text
+        ><button
+          class="error-feedback__action"
+          hover-class="error-feedback__action--pressed"
+          @click="loadCanteens"
+        >
+          重试食堂列表
+        </button>
       </view>
       <text v-else-if="canteensLoading" class="settings-hint">正在加载食堂…</text>
       <UiPicker
@@ -251,12 +257,6 @@ onBackPress(handleBackPress);
 }
 .canteen-picker-label {
   flex: 1;
-}
-.directory-error {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
 }
 .settings-tag-remove .iconfont {
   display: inline-block;

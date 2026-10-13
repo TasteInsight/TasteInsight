@@ -51,7 +51,7 @@ it('offers a location retry and no unsupported free-text window input', async ()
   (wrapper.vm as any).formData.name = 'Draft';
   const canteen = { id: 'c', name: 'Canteen', windows: [] };
   (getCanteenList as jest.Mock).mockResolvedValueOnce({ code: 200, data: { items: [canteen] } });
-  await wrapper.get('.location-state button').trigger('tap');
+  await wrapper.get('.error-feedback__action').trigger('tap');
   await flushPromises();
   await wrapper.get('.location-choice').trigger('tap');
   expect((wrapper.vm as any).formData.name).toBe('Draft');

@@ -50,43 +50,49 @@
         {{ option.label }}
       </button>
     </view>
-    <PlanCalendar
-      v-if="viewMode !== 'list'"
-      :mode="viewMode"
-      :plans="calendarPlans"
-      :today="today"
-      :selected-date="selectedDate"
-      @select="selectDate"
-    />
+    <template v-if="!error || initialized">
+      <PlanCalendar
+        v-if="viewMode !== 'list'"
+        :mode="viewMode"
+        :plans="calendarPlans"
+        :today="today"
+        :selected-date="selectedDate"
+        @select="selectDate"
+      />
 
-    <view v-if="viewMode !== 'day'" class="planning-agenda-heading">
-      <UiPicker
-        v-if="viewMode === 'list'"
-        mode="selector"
-        :range="listCategoryLabels"
-        :value="activeTab === 'current' ? 0 : 1"
-        aria-label="规划分类"
-        @change="changeListCategory"
-        ><button class="planning-button planning-filter" aria-label="选择列表范围">
-          <text
-            >{{ activeTab === 'current' ? '当前规划' : '历史规划'
-            }}{{ initialized ? ' (' + displayPlans.length + ')' : '' }}</text
-          >
-          <uni-icons type="down" size="14" color="#667085" aria-hidden="true" /></button
-      ></UiPicker>
-      <text v-else class="planning-agenda-title">{{ selectedDateLabel }}</text>
-      <text
-        v-if="viewMode !== 'list' && initialized && displayPlans.length"
-        class="planning-agenda-count"
-        >{{ displayPlans.length }} 个计划</text
-      >
-    </view>
+      <view v-if="viewMode !== 'day'" class="planning-agenda-heading">
+        <UiPicker
+          v-if="viewMode === 'list'"
+          mode="selector"
+          :range="listCategoryLabels"
+          :value="activeTab === 'current' ? 0 : 1"
+          aria-label="规划分类"
+          @change="changeListCategory"
+          ><button class="planning-button planning-filter" aria-label="选择列表范围">
+            <text
+              >{{ activeTab === 'current' ? '当前规划' : '历史规划'
+              }}{{ initialized ? ' (' + displayPlans.length + ')' : '' }}</text
+            >
+            <uni-icons type="down" size="14" color="#667085" aria-hidden="true" /></button
+        ></UiPicker>
+        <text v-else class="planning-agenda-title">{{ selectedDateLabel }}</text>
+        <text
+          v-if="viewMode !== 'list' && initialized && displayPlans.length"
+          class="planning-agenda-count"
+          >{{ displayPlans.length }} 个计划</text
+        >
+      </view>
+    </template>
 
     <!-- 错误状态 -->
-    <view v-if="error" class="flex flex-col items-center justify-center py-20 px-5" role="status">
-      <text class="text-black mb-4">{{ error }}</text>
-      <button @tap="refreshPlans" class="planning-button planning-primary">
-        <text class="text-white">重试</text>
+    <view v-if="error" class="error-feedback" role="alert">
+      <text class="error-feedback__message">{{ error }}</text>
+      <button
+        @tap="refreshPlans"
+        class="error-feedback__action"
+        hover-class="error-feedback__action--pressed"
+      >
+        <text>重试</text>
       </button>
     </view>
 

@@ -1,10 +1,16 @@
 <template>
   <view class="page-viewport avatar-crop-page">
     <view class="crop-workspace">
-      <text class="crop-instruction">拖动或双指缩放，调整头像位置</text>
-      <view v-if="loadError" class="crop-error">
-        <text>{{ loadError }}</text>
-        <button class="crop-secondary" @click="initWithSrc(src)">重新加载</button>
+      <text v-if="!loadError" class="crop-instruction">拖动或双指缩放，调整头像位置</text>
+      <view v-if="loadError" class="crop-error error-feedback" role="alert">
+        <text class="error-feedback__message">{{ loadError }}</text>
+        <button
+          class="error-feedback__action"
+          hover-class="error-feedback__action--pressed"
+          @click="initWithSrc(src)"
+        >
+          重新加载
+        </button>
       </view>
       <view
         v-else
@@ -38,7 +44,12 @@
     </view>
     <view class="crop-actions">
       <button class="crop-secondary" :disabled="exporting" @click="handleCancel">取消</button>
-      <button class="crop-primary" :disabled="!ready || exporting" @click="handleConfirm">
+      <button
+        v-if="!loadError"
+        class="crop-primary"
+        :disabled="!ready || exporting"
+        @click="handleConfirm"
+      >
         {{ exporting ? '生成中…' : '使用头像' }}
       </button>
     </view>
@@ -261,12 +272,6 @@ async function handleConfirm() {
 }
 .crop-frame {
   overflow: hidden;
-}
-.crop-error {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
 }
 .crop-actions {
   display: flex;

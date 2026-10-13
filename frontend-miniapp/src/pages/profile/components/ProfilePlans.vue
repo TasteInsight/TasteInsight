@@ -27,10 +27,11 @@
       >
         管理计划<UiIcon name="chevron-right" :size="15" /></button
     ></view>
-    <view v-if="planStore.error" class="profile-plan-error" role="alert"
-      ><text>{{ planStore.error }}</text
+    <view v-if="planStore.error" class="profile-plan-error error-feedback" role="alert"
+      ><text class="error-feedback__message">{{ planStore.error }}</text
       ><button
-        class="profile-plan-button"
+        class="error-feedback__action"
+        hover-class="error-feedback__action--pressed"
         :disabled="planStore.loading"
         @click="retryButton.activate"
         @keydown="retryButton.handleKeydown"
@@ -234,15 +235,5 @@ onScopeDispose(() => {
   font-size: 14px;
   font-weight: 600;
   line-height: 1.6;
-}
-.profile-plan-error {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 12px 0;
-  color: #b42318;
-  font-size: 14px;
 }
 </style>

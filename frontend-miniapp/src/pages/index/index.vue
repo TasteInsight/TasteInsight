@@ -5,92 +5,128 @@
       <!-- 搜索栏 -->
       <SearchBar class="home-search" />
 
-      <!-- 食堂栏目 -->
-      <scroll-view
-        v-if="canteenStore.canteenList.length"
-        scroll-x
-        :show-scrollbar="false"
-        :lower-threshold="80"
-        class="canteen-scroll"
-        aria-label="按食堂浏览"
-        @scrolltolower="!canteenStore.error && loadMoreCanteens()"
-      >
-        <view class="canteen-row">
-          <CanteenItem
-            v-for="canteen in canteenStore.canteenList"
-            :key="canteen.id"
-            :canteen="canteen"
-            @click="navigateTo(`/pages/canteen/index?id=${canteen.id}`)"
-          />
-          <button
-            v-if="canteensHasMore && !canteenStore.error"
-            class="canteen-more"
-            :disabled="canteenStore.loadingMore"
-            @click="loadMoreCanteens"
-          >
-            <text class="canteen-more__icon" aria-hidden="true">›</text>
-            <text>{{ canteenStore.loadingMore ? '加载中…' : '更多食堂' }}</text>
-          </button>
-        </view>
-      </scroll-view>
-      <view v-if="canteenStore.error" class="canteen-feedback">
-        <text>{{ canteenStore.error }}</text>
-        <button class="canteen-retry" data-testid="canteen-retry" @click="retryCanteens">
-          重试加载
+      <view v-if="homeError && !topThreeDishes.length" class="error-feedback" role="alert">
+        <text class="error-feedback__title">首页暂时无法加载</text>
+        <text class="error-feedback__message">{{ homeError }}</text>
+        <button
+          class="error-feedback__action"
+          hover-class="error-feedback__action--pressed"
+          @click="retryCanteens"
+        >
+          重新加载
         </button>
       </view>
+      <template v-else>
+        <!-- 食堂栏目 -->
+        <scroll-view
+          v-if="canteenStore.canteenList.length"
+          scroll-x
+          :show-scrollbar="false"
+          :lower-threshold="80"
+          class="canteen-scroll"
+          aria-label="按食堂浏览"
+          @scrolltolower="!canteenStore.error && loadMoreCanteens()"
+        >
+          <view class="canteen-row">
+            <CanteenItem
+              v-for="canteen in canteenStore.canteenList"
+              :key="canteen.id"
+              :canteen="canteen"
+              @click="navigateTo(`/pages/canteen/index?id=${canteen.id}`)"
+            />
+            <button
+              v-if="canteensHasMore && !canteenStore.error"
+              class="canteen-more"
+              :disabled="canteenStore.loadingMore"
+              @click="loadMoreCanteens"
+            >
+              <text class="canteen-more__icon" aria-hidden="true">›</text>
+              <text>{{ canteenStore.loadingMore ? '加载中…' : '更多食堂' }}</text>
+            </button>
+          </view>
+        </scroll-view>
+        <view
+          v-if="homeError || canteenStore.error"
+          class="canteen-feedback error-feedback"
+          role="alert"
+        >
+          <text class="error-feedback__message">{{ homeError || canteenStore.error }}</text>
+          <button
+            class="error-feedback__action"
+            hover-class="error-feedback__action--pressed"
+            data-testid="canteen-retry"
+            @click="retryCanteens"
+          >
+            重试加载
+          </button>
+        </view>
 
-      <!-- 菜品列表 -->
-      <view class="home-heading">
-        {{ hasActiveFilters ? '筛选结果' : '今日推荐' }}
-      </view>
+        <!-- 菜品列表 -->
+        <view class="home-heading">
+          {{ hasActiveFilters ? '筛选结果' : '今日推荐' }}
+        </view>
 
-      <FilterBar ref="filterBarRef" :filter="currentFilter" @filter-change="handleFilterChange" />
-      <view v-if="dishesStore.loading && topThreeDishes.length" class="home-status"
-        >正在更新菜品…</view
-      >
-      <view v-if="recommendError" class="home-status" role="alert">
-        <text>{{ recommendError }}</text>
-        <button class="home-text-button" @click="retryLoadRecommend">重新加载</button>
-      </view>
-      <view v-if="topThreeDishes.length > 0">
-        <RecommendItem v-for="dish in topThreeDishes" :key="dish.id" :dish="dish" />
-      </view>
+        <FilterBar ref="filterBarRef" :filter="currentFilter" @filter-change="handleFilterChange" />
+        <view v-if="dishesStore.loading && topThreeDishes.length" class="home-status"
+          >正在更新菜品…</view
+        >
+        <view v-if="recommendError" class="error-feedback" role="alert">
+          <text class="error-feedback__message">{{ recommendError }}</text>
+          <button
+            class="error-feedback__action"
+            hover-class="error-feedback__action--pressed"
+            @click="retryLoadRecommend"
+          >
+            重新加载
+          </button>
+        </view>
+        <view v-if="topThreeDishes.length > 0">
+          <RecommendItem v-for="dish in topThreeDishes" :key="dish.id" :dish="dish" />
+        </view>
 
-      <EmptyState
-        v-else-if="recommendationsInitialized && !dishesStore.loading && !recommendError"
-        :title="hasActiveFilters ? '没有符合条件的菜品' : '暂无推荐菜品'"
-        icon="search"
-        :action-text="hasActiveFilters ? '清除全部筛选' : ''"
-        @action="handleFilterChange({})"
-      />
+        <EmptyState
+          v-else-if="
+            recommendationsInitialized && !dishesStore.loading && !homeError && !recommendError
+          "
+          :title="hasActiveFilters ? '没有符合条件的菜品' : '暂无推荐菜品'"
+          icon="search"
+          :action-text="hasActiveFilters ? '清除全部筛选' : ''"
+          @action="handleFilterChange({})"
+        />
 
-      <!-- 上拉加载更多：底部提示/动画（仅在有列表或正在加载更多时显示） -->
-      <view
-        v-if="
-          !dishesStore.loading &&
-          !recommendError &&
-          (topThreeDishes.length > 0 || dishesStore.loadingMore || dishesHasMore)
-        "
-        class="home-status home-status--footer"
-      >
-        <template v-if="dishesStore.loadingMore">
-          <view
-            class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"
-          ></view>
-          <text>加载中...</text>
-        </template>
-        <template v-else-if="recommendMoreError">
-          <text>{{ recommendMoreError }}</text>
-          <button class="home-text-button" @click="loadMoreRecommendations">重试加载更多</button>
-        </template>
-        <template v-else-if="dishesHasMore">
-          <button class="home-text-button" @click="loadMoreRecommendations">加载更多</button>
-        </template>
-        <template v-else>
-          <text>没有更多了</text>
-        </template>
-      </view>
+        <!-- 上拉加载更多：底部提示/动画（仅在有列表或正在加载更多时显示） -->
+        <view
+          v-if="
+            !dishesStore.loading &&
+            !recommendError &&
+            (topThreeDishes.length > 0 || dishesStore.loadingMore || dishesHasMore)
+          "
+          :class="recommendMoreError ? 'error-feedback' : 'home-status home-status--footer'"
+        >
+          <template v-if="dishesStore.loadingMore">
+            <view
+              class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"
+            ></view>
+            <text>加载中...</text>
+          </template>
+          <template v-else-if="recommendMoreError">
+            <text class="error-feedback__message">{{ recommendMoreError }}</text>
+            <button
+              class="error-feedback__action"
+              hover-class="error-feedback__action--pressed"
+              @click="loadMoreRecommendations"
+            >
+              重试加载更多
+            </button>
+          </template>
+          <template v-else-if="dishesHasMore">
+            <button class="home-text-button" @click="loadMoreRecommendations">加载更多</button>
+          </template>
+          <template v-else>
+            <text>没有更多了</text>
+          </template>
+        </view>
+      </template>
     </view>
 
     <!-- #ifdef MP-WEIXIN -->
@@ -124,6 +160,7 @@ import { useUserStore } from '@/store/modules/use-user-store';
 import type { GetDishesRequest, RecommendationRequest, Dish } from '@/types/api';
 import { getDishes, getDishesByIds } from '@/api/modules/dish';
 import { getRecommendations, RecommendationScene } from '@/api/modules/recommendation';
+import { toUserFriendlyErrorMessage } from '@/utils/user-friendly-error';
 
 const canteenStore = useCanteenStore();
 const dishesStore = useDishesStore();
@@ -155,6 +192,7 @@ const hasActiveFilters = computed(() => {
   return Object.keys(currentFilter.value).length > 0;
 });
 
+const homeError = ref<string | null>(null);
 // 推荐菜品加载错误状态
 const recommendError = ref<string | null>(null);
 const recommendMoreError = ref('');
@@ -175,6 +213,7 @@ watch(
   () => {
     recommendationRun += 1;
     currentRequestId.value = null;
+    homeError.value = null;
     recommendError.value = null;
     recommendMoreError.value = '';
     recommendationsInitialized.value = false;
@@ -232,7 +271,7 @@ const loadMoreCanteens = async () => {
 
 const retryCanteens = async () => {
   if (canteenStore.loading || canteenStore.loadingMore) return;
-  if (canteenLoadMode.value === 'more') await loadMoreCanteens();
+  if (!homeError.value && canteenLoadMode.value === 'more') await loadMoreCanteens();
   else await loadHomeForSession(true);
 };
 
@@ -259,6 +298,7 @@ const fetchRecommendations = async (
   dishesStore.loading = !append;
   recommendMoreError.value = '';
   if (!append) recommendError.value = null;
+  if (options.home) homeError.value = null;
 
   try {
     // 如果是重置，清空 requestId，让后端生成新的
@@ -275,6 +315,11 @@ const fetchRecommendations = async (
           if (!ownsResult()) return 'superseded';
         }
         await userStore.fetchProfileAction(ownsResult);
+      } catch (error) {
+        if (!ownsResult()) return 'superseded';
+        homeError.value = toUserFriendlyErrorMessage(error);
+        console.error('加载首页数据失败:', error);
+        return 'failed';
       } finally {
         if (preparingProfileRun === run) preparingProfileRun = null;
       }
@@ -523,17 +568,14 @@ onReachBottom(async () => {
   line-height: 1.4;
 }
 .canteen-more::after,
-.canteen-retry::after,
 .home-text-button::after {
   border: 0;
 }
 .canteen-more:active,
-.canteen-retry:active,
 .home-text-button:active {
   background: #f4f4f5;
 }
 .canteen-more:focus-visible,
-.canteen-retry:focus-visible,
 .home-text-button:focus-visible {
   outline: 2px solid #660874;
   outline-offset: -2px;
@@ -548,30 +590,6 @@ onReachBottom(async () => {
   margin-bottom: 2px;
   font-size: 27px;
   line-height: 1;
-}
-.canteen-feedback {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 8px;
-  color: #667085;
-  font-size: 12px;
-  line-height: 1.5;
-}
-.canteen-retry {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  margin: 0;
-  padding: 0 8px;
-  border: 0;
-  background: transparent;
-  color: #660874;
-  font-size: 12px;
-  line-height: 1.4;
 }
 .home-status {
   display: flex;
@@ -603,8 +621,7 @@ onReachBottom(async () => {
   line-height: 1.4;
 }
 @media (hover: hover) {
-  .home-text-button:hover,
-  .canteen-retry:hover {
+  .home-text-button:hover {
     background: #f4f4f5;
   }
 }

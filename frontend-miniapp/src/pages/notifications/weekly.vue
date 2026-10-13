@@ -4,9 +4,15 @@
       ><text class="weekly-hint">{{ week }} 起</text></view
     >
     <view v-if="loading && !items.length" class="weekly-state" role="status">正在加载推荐…</view>
-    <view v-if="error" class="weekly-error" role="alert"
-      ><text>{{ error }}</text
-      ><button class="weekly-button" @click="load">重新加载</button></view
+    <view v-if="error" class="weekly-error error-feedback" role="alert"
+      ><text class="error-feedback__message">{{ error }}</text
+      ><button
+        class="error-feedback__action"
+        hover-class="error-feedback__action--pressed"
+        @click="load"
+      >
+        重新加载
+      </button></view
     >
     <EmptyState v-else-if="initialized && !items.length" title="本期暂无可查看的菜品" icon="star" />
     <DishSummaryCard
@@ -120,38 +126,11 @@ onPullDownRefresh(async () => {
   font-size: 14px;
   line-height: 1.6;
 }
-.weekly-state,
-.weekly-error {
+.weekly-state {
   padding: 32px 0;
   color: #667085;
   font-size: 15px;
   text-align: center;
-}
-.weekly-error {
-  color: #b42318;
-}
-.weekly-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  margin: 12px auto;
-  padding: 8px 16px;
-  border: 0;
-  border-radius: 8px;
-  color: #660874;
-  background: #fff;
-  font-size: 14px;
-}
-.weekly-button::after {
-  border: 0;
-}
-.weekly-button:focus-visible {
-  outline: 2px solid #660874;
-  outline-offset: 2px;
-}
-.weekly-button:active {
-  background: #f4f4f5;
 }
 @media (max-width: 360px) {
   .weekly-page {

@@ -1,8 +1,14 @@
 <template>
   <view class="add-dish-page page-content">
-    <view v-if="initializationError" class="location-state form-section" role="alert">
-      <text class="field-error">{{ initializationError }}</text>
-      <button class="text-action" @tap="initialize()">重新加载</button>
+    <view v-if="initializationError" class="error-feedback" role="alert">
+      <text class="error-feedback__message">{{ initializationError }}</text>
+      <button
+        class="error-feedback__action"
+        hover-class="error-feedback__action--pressed"
+        @tap="initialize()"
+      >
+        重新加载
+      </button>
     </view>
     <AddDishSkeleton v-else-if="initializing" />
     <template v-else>
@@ -95,9 +101,15 @@
             >{{ formData.canteenName }}（补充资料时不可更换食堂）</text
           >
           <text v-else-if="loading" class="field-hint">正在加载食堂…</text>
-          <view v-else-if="canteenError" class="location-state">
-            <text class="field-error">{{ canteenError }}</text
-            ><button class="text-action" @tap="loadCanteenList">重新加载</button>
+          <view v-else-if="canteenError" class="error-feedback" role="alert">
+            <text class="error-feedback__message">{{ canteenError }}</text
+            ><button
+              class="error-feedback__action"
+              hover-class="error-feedback__action--pressed"
+              @tap="loadCanteenList"
+            >
+              重新加载
+            </button>
           </view>
           <view v-else-if="!canteenList.length" class="location-state">
             <text class="field-hint">暂时没有可选食堂。</text
