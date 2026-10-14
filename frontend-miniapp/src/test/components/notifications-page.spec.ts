@@ -115,9 +115,11 @@ test('an empty failed inbox uses the shared retry state without a disabled toolb
   (getNotifications as jest.Mock).mockRejectedValueOnce(new Error('连接失败，请重试'));
   const wrapper = await page();
   expect(wrapper.findComponent(FloatingActionButton).exists()).toBe(false);
-  expect(wrapper.get('.empty-state__title').text()).toBe('连接失败，请重试');
-  expect(wrapper.get('.empty-state__action').text()).toBe('重新加载');
-  await wrapper.get('.empty-state__action').trigger('click');
+  expect(wrapper.findAll('.error-feedback')).toHaveLength(1);
+  expect(wrapper.text()).not.toContain('暂无新消息');
+  expect(wrapper.get('.error-feedback__message').text()).toBe('连接失败，请重试');
+  expect(wrapper.get('.error-feedback__action').text()).toBe('重新加载');
+  await wrapper.get('.error-feedback__action').trigger('click');
   await flushPromises();
   expect(getNotifications).toHaveBeenCalledTimes(2);
   expect(wrapper.find('.notification-item').exists()).toBe(true);

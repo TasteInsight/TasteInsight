@@ -9,14 +9,27 @@
     />
     <template v-else>
       <ReviewListSkeleton v-if="loading && !initialized" />
-      <view v-if="error" class="upload-error" role="alert"
-        ><text>{{ error }}</text
-        ><button class="upload-action" :disabled="loading" @click="retry">重新加载</button></view
+      <view v-if="error" class="error-feedback" role="alert"
+        ><text class="error-feedback__message">{{ error }}</text
+        ><button
+          class="error-feedback__action"
+          hover-class="error-feedback__action--pressed"
+          :disabled="loading"
+          @click="retry"
+        >
+          重新加载
+        </button></view
       >
       <text v-if="actionError" class="upload-error" role="alert">{{ actionError }}</text>
-      <view v-if="focusError" class="upload-error" role="alert">
-        <text>{{ focusError }}</text>
-        <button v-if="focusId" class="upload-action" :disabled="loading" @click="refresh()">
+      <view v-if="focusError" class="error-feedback" role="alert">
+        <text class="error-feedback__message">{{ focusError }}</text>
+        <button
+          v-if="focusId"
+          class="error-feedback__action"
+          hover-class="error-feedback__action--pressed"
+          :disabled="loading"
+          @click="refresh()"
+        >
           重试
         </button>
       </view>

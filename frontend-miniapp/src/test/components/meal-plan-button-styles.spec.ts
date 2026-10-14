@@ -48,7 +48,11 @@ test.each(components)(
       const classes = button.props
         .find((prop: any) => prop.name === 'class')
         ?.value?.content.split(/\s+/);
-      expect(classes).toContain(buttonClass);
+      expect(classes).toEqual(
+        expect.arrayContaining([
+          classes?.includes('error-feedback__action') ? 'error-feedback__action' : buttonClass,
+        ])
+      );
     });
     const selectors: string[] = [];
     descriptor.styles.forEach(style =>

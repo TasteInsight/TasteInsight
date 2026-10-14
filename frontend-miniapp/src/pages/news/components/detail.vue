@@ -13,12 +13,25 @@
         </view>
       </view>
 
-      <view v-if="error || notFound" class="article-state" role="alert">
-        <text>{{ notFound ? '公告不存在或已下架' : error }}</text>
-        <button v-if="!notFound" class="article-action" :disabled="loading" @click="retry">
+      <view v-if="error || notFound" class="article-state error-feedback" role="alert">
+        <text class="error-feedback__message">{{ notFound ? '公告不存在或已下架' : error }}</text>
+        <button
+          v-if="!notFound"
+          class="error-feedback__action"
+          hover-class="error-feedback__action--pressed"
+          :disabled="loading"
+          @click="retry"
+        >
           重试
         </button>
-        <button v-else class="article-action" @click="backToNews">返回公告列表</button>
+        <button
+          v-else
+          class="error-feedback__action"
+          hover-class="error-feedback__action--pressed"
+          @click="backToNews"
+        >
+          返回公告列表
+        </button>
       </view>
     </view>
   </view>
@@ -80,34 +93,5 @@ initDetailPage();
   font-size: 16px;
   line-height: 1.8;
   overflow-wrap: anywhere;
-}
-.article-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  padding: 48px 12px;
-  color: #667085;
-  font-size: 14px;
-  line-height: 1.6;
-  text-align: center;
-}
-.article-action {
-  min-height: 44px;
-  margin: 0;
-  padding: 8px 20px;
-  border: 0;
-  border-radius: 10px;
-  background: #f4f4f5;
-  color: #660874;
-  font-size: 14px;
-  line-height: 28px;
-}
-.article-action::after {
-  border: 0;
-}
-.article-action:focus-visible {
-  outline: 2px solid #660874;
-  outline-offset: 2px;
 }
 </style>

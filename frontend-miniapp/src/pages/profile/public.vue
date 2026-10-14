@@ -1,9 +1,10 @@
 <template>
   <view class="campus-page public-profile" :aria-busy="loading">
-    <view v-if="error" class="campus-error" role="alert"
-      ><text>{{ error }}</text
+    <view v-if="error" class="campus-error error-feedback" role="alert"
+      ><text class="error-feedback__message">{{ error }}</text
       ><button
-        class="campus-button"
+        class="error-feedback__action"
+        hover-class="error-feedback__action--pressed"
         role="button"
         :tabindex="loading ? -1 : 0"
         :disabled="loading"
@@ -60,10 +61,11 @@
           icon="chat"
         />
         <PostCard v-for="post in posts" :key="post.id" :post="post" />
-        <view v-if="postsError" class="campus-error" role="alert"
-          ><text>{{ postsError }}</text
+        <view v-if="postsError" class="campus-error error-feedback" role="alert"
+          ><text class="error-feedback__message">{{ postsError }}</text
           ><button
-            class="campus-button"
+            class="error-feedback__action"
+            hover-class="error-feedback__action--pressed"
             role="button"
             :tabindex="postsLoading ? -1 : 0"
             :disabled="postsLoading"
@@ -122,10 +124,11 @@
               ><text class="campus-hint">{{ dish.canteenName }} · {{ dish.windowName }}</text></view
             ><UiIcon name="chevron-right" :size="16" /></button
         ></view>
-        <view v-if="plansError" class="campus-error" role="alert"
-          ><text>{{ plansError }}</text
+        <view v-if="plansError" class="campus-error error-feedback" role="alert"
+          ><text class="error-feedback__message">{{ plansError }}</text
           ><button
-            class="campus-button"
+            class="error-feedback__action"
+            hover-class="error-feedback__action--pressed"
             role="button"
             :tabindex="plansLoading ? -1 : 0"
             :disabled="plansLoading"
@@ -225,7 +228,6 @@ async function loadProfile() {
     else await loadPlans();
   } catch (cause) {
     if (current() && request === profileRequest) {
-      profile.value = null;
       error.value = cause instanceof Error ? cause.message : '主页加载失败，请重试';
     }
   } finally {

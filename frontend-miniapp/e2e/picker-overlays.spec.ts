@@ -336,7 +336,7 @@ test('list filter stays lightweight while sharing typography and selector colors
   await expect(save).toHaveCSS('background-color', 'rgb(102, 8, 116)');
 });
 
-test('home retry is a frameless secondary action and still reloads recommendations', async ({
+test('home retry uses the shared error action and reloads recommendations', async ({
   page,
 }, testInfo) => {
   let dishReads = 0;
@@ -380,7 +380,7 @@ test('home retry is a frameless secondary action and still reloads recommendatio
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await gotoUniPage(page, '/pages/index/index');
-  const retry = page.locator('.home-text-button').filter({ hasText: /^重新加载$/ });
+  const retry = page.locator('.error-feedback__action').filter({ hasText: '重新加载' });
   await expect(retry).toBeVisible();
   await expect(retry).toHaveCSS('border-top-width', '0px');
   expect(await retry.evaluate(el => getComputedStyle(el, '::after').borderTopWidth)).toBe('0px');

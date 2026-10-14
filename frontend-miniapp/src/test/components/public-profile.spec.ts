@@ -1,6 +1,6 @@
 import { flushPromises, shallowMount } from '@vue/test-utils';
 import { reactive } from 'vue';
-import { onLoad, onShow } from '@dcloudio/uni-app';
+import { onLoad, onShow, onPullDownRefresh } from '@dcloudio/uni-app';
 import Page from '@/pages/profile/public.vue';
 import { getPublicProfile, getPublicMealPlans, getPosts } from '@/api/modules/social';
 import { useUserStore } from '@/store/modules/use-user-store';
@@ -66,6 +66,29 @@ function deferred() {
   });
   return { promise, resolve, reject };
 }
+
+test('profile refresh failure retains the public header and posts and retry restores the complete view', async () => {
+  (getPosts as jest.Mock).mockResolvedValueOnce({
+    code: 200,
+    data: { items: [{ id: 'retained' }], meta: { page: 1, totalPages: 1 } },
+  });
+  const wrapper = await page('B');
+  (getPublicProfile as jest.Mock).mockRejectedValueOnce(new Error('主页刷新失败'));
+  await (onPullDownRefresh as jest.Mock).mock.calls.slice(-1)[0][0]();
+  await flushPromises();
+  expect(wrapper.find('.public-header').exists()).toBe(true);
+  expect(wrapper.find('post-card-stub').exists()).toBe(true);
+  expect(wrapper.text()).toContain('主页刷新失败');
+  (getPosts as jest.Mock).mockResolvedValueOnce({
+    code: 200,
+    data: { items: [{ id: 'fresh' }], meta: { page: 1, totalPages: 1 } },
+  });
+  await wrapper.get('.error-feedback__action').trigger('click');
+  await flushPromises();
+  expect(wrapper.find('.error-feedback').exists()).toBe(false);
+  expect((wrapper.vm as any).posts.map((item: any) => item.id)).toEqual(['fresh']);
+  expect(getPublicProfile).toHaveBeenLastCalledWith('B');
+});
 async function press(button: any, key = 'Enter') {
   const down = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
   button.element.dispatchEvent(down);

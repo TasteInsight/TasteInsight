@@ -29,10 +29,11 @@
         />
       </view>
     </view>
-    <view v-if="error" class="profile-error" role="alert">
-      <text>{{ error }}</text
+    <view v-if="error" class="profile-error error-feedback" role="alert">
+      <text class="error-feedback__message">{{ error }}</text
       ><button
-        class="profile-button profile-retry"
+        class="error-feedback__action"
+        hover-class="error-feedback__action--pressed"
         :disabled="loading"
         @click="profileRetryButton.activate"
         @keydown="profileRetryButton.handleKeydown"
@@ -45,7 +46,7 @@
       </button>
     </view>
     <ProfileBioEditor v-if="editingBio && userInfo" ref="bioEditor" @close="editingBio = false" />
-    <template v-if="isLoggedIn">
+    <template v-if="isLoggedIn && (!error || userInfo)">
       <view class="profile-utilities" aria-label="个人记录">
         <button
           class="profile-button profile-utility"
@@ -160,10 +161,11 @@
         <view v-if="posts.length" class="profile-post-grid">
           <ProfilePostCard v-for="post in posts" :key="post.id" :post="post" />
         </view>
-        <view v-if="postsError" class="profile-error" role="alert"
-          ><text>{{ postsError }}</text
+        <view v-if="postsError" class="profile-error error-feedback" role="alert"
+          ><text class="error-feedback__message">{{ postsError }}</text
           ><button
-            class="profile-button profile-retry"
+            class="error-feedback__action"
+            hover-class="error-feedback__action--pressed"
             :disabled="postsLoading"
             @click="postsRetryButton.activate"
             @keydown="postsRetryButton.handleKeydown"
@@ -204,10 +206,11 @@
           :review="review"
           @click="openDish(review.dishId)"
         />
-        <view v-if="reviewsError" class="profile-error" role="alert"
-          ><text>{{ reviewsError }}</text
+        <view v-if="reviewsError" class="profile-error error-feedback" role="alert"
+          ><text class="error-feedback__message">{{ reviewsError }}</text
           ><button
-            class="profile-button profile-retry"
+            class="error-feedback__action"
+            hover-class="error-feedback__action--pressed"
             :disabled="reviewsLoading"
             @click="reviewsRetryButton.activate"
             @keydown="reviewsRetryButton.handleKeydown"
@@ -372,7 +375,8 @@ async function refreshPage() {
   const session = user.sessionVersion;
   const version = ++pageVersion;
   void loadUnread();
-  await fetchProfile();
+  const profileLoaded = await fetchProfile();
+  if (!profileLoaded && !userInfo.value) return;
   if (active && visible.value && version === pageVersion && session === user.sessionVersion)
     await loadContent();
 }
@@ -652,19 +656,8 @@ const reviewsMoreButton = useButtonActivation(
   gap: 12px;
   padding-top: 12px;
 }
-.profile-retry,
 .profile-more {
   color: #660874;
-}
-.profile-error {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 12px 0;
-  color: #b42318;
-  font-size: 14px;
 }
 .profile-more {
   display: flex;

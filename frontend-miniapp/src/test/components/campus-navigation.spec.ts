@@ -120,6 +120,49 @@ test('guest dining section offers login without firing an unauthorized request o
   expect(uni.navigateTo).toHaveBeenCalledWith({ url: '/pages/login/index' });
 });
 
+test('dining append retry keeps all loaded pages and refresh failure preserves the recovered list', async () => {
+  const invite = (page: number) => ({
+    id: 'invite-' + page,
+    host: { id: 'campus-test', nickname: '同学' + page },
+    date: '2026-10-20',
+    mealTime: 'lunch',
+    startsAt: '2026-10-20T04:00:00Z',
+    canteen: { name: '食堂' },
+    capacity: 2,
+    acceptedCount: 0,
+    applications: [],
+    status: 'open',
+  });
+  let failedPage = 3;
+  (getDiningInvites as jest.Mock).mockImplementation(async (_mine, page) => {
+    if (page === failedPage) throw new Error('网络中断');
+    return { code: 200, data: { items: [invite(page)], meta: { page, totalPages: 3 } } };
+  });
+  const wrapper = mountPage(DiningInvites);
+  await flushPromises();
+  await (wrapper.vm as any).loadMore();
+  await flushPromises();
+  await (wrapper.vm as any).loadMore();
+  await flushPromises();
+  expect(wrapper.findAll('.dining-invite')).toHaveLength(2);
+  expect(wrapper.find('.dining-more').exists()).toBe(false);
+  failedPage = 0;
+  await wrapper.get('.error-feedback__action').trigger('click');
+  await flushPromises();
+  expect(getDiningInvites).toHaveBeenLastCalledWith(false, 3);
+  expect(wrapper.findAll('.dining-invite')).toHaveLength(3);
+  failedPage = 1;
+  await (wrapper.vm as any).refresh();
+  await flushPromises();
+  expect(wrapper.findAll('.dining-invite')).toHaveLength(3);
+  expect(wrapper.find('.dining-more').exists()).toBe(false);
+  failedPage = 0;
+  await wrapper.get('.error-feedback__action').trigger('click');
+  await flushPromises();
+  expect(getDiningInvites).toHaveBeenLastCalledWith(false, 1);
+  expect(wrapper.find('.error-feedback').exists()).toBe(false);
+});
+
 test('inactive dining panels wait until visible to fetch and ignore hidden in-flight results', async () => {
   let resolve!: (value: unknown) => void;
   (getDiningInvites as jest.Mock).mockReturnValue(

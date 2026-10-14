@@ -1,9 +1,15 @@
 <template>
   <view class="page-content dish-list-page">
     <view class="dish-list-content">
-      <view v-if="error && reviews.length === 0" class="dish-list-state" role="alert">
-        <text>{{ error }}</text
-        ><button class="dish-list-action" @click="retry">重新加载</button>
+      <view v-if="error && reviews.length === 0" class="error-feedback" role="alert">
+        <text class="error-feedback__message">{{ error }}</text
+        ><button
+          class="error-feedback__action"
+          hover-class="error-feedback__action--pressed"
+          @click="retry"
+        >
+          重新加载
+        </button>
       </view>
       <EmptyState v-else-if="initialized && !reviews.length" title="暂无评价" icon="star" />
       <template v-else-if="reviews.length">
@@ -13,9 +19,16 @@
           :review="item"
           @click="goToDishDetail(item.dishId)"
         />
-        <view v-if="error" class="dish-list-state list-append-error" role="alert">
-          <text>{{ error }}</text
-          ><button class="dish-list-action" :disabled="loading" @click="retry">重试</button>
+        <view v-if="error" class="error-feedback" role="alert">
+          <text class="error-feedback__message">{{ error }}</text
+          ><button
+            class="error-feedback__action"
+            hover-class="error-feedback__action--pressed"
+            :disabled="loading"
+            @click="retry"
+          >
+            重试
+          </button>
         </view>
         <view v-else class="dish-list-footer">
           <text v-if="loading">加载中…</text>
@@ -53,9 +66,3 @@ function goToDishDetail(dishId: string) {
 }
 </script>
 <style scoped src="@/styles/dish-list-page.css"></style>
-<style scoped>
-.list-append-error {
-  min-height: 0;
-  padding: 20px 0;
-}
-</style>

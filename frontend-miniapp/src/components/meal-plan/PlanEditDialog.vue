@@ -146,8 +146,14 @@
                     selectedCanteen?.name ||
                     (canteenLoading && !canteenList.length ? '正在加载食堂…' : '全部食堂')
                   }}</text>
-                  <uni-icons class="plan-select-icon" type="down" size="14" color="#667085" aria-hidden="true" />
-                </view></UiPicker>
+                  <uni-icons
+                    class="plan-select-icon"
+                    type="down"
+                    size="14"
+                    color="#667085"
+                    aria-hidden="true"
+                  /> </view
+              ></UiPicker>
               <UiPicker
                 v-if="selectedCanteen"
                 class="plan-location-picker"
@@ -162,8 +168,14 @@
                   <text class="plan-select-label">{{
                     selectedWindow?.name || (windowLoading ? '正在加载窗口…' : '全部窗口')
                   }}</text>
-                  <uni-icons class="plan-select-icon" type="down" size="14" color="#667085" aria-hidden="true" />
-                </view></UiPicker>
+                  <uni-icons
+                    class="plan-select-icon"
+                    type="down"
+                    size="14"
+                    color="#667085"
+                    aria-hidden="true"
+                  /> </view
+              ></UiPicker>
             </view>
             <button
               v-if="selectedCanteen"
@@ -172,18 +184,36 @@
             >
               清除位置筛选
             </button>
-            <view v-if="canteenError" class="plan-feedback" role="alert">
-              <text>{{ canteenError }}</text>
-              <button class="plan-button plan-text-button" @tap="loadCanteens">重新加载食堂</button>
+            <view v-if="canteenError" class="plan-feedback error-feedback" role="alert">
+              <text class="error-feedback__message">{{ canteenError }}</text>
+              <button
+                class="error-feedback__action"
+                hover-class="error-feedback__action--pressed"
+                @tap="loadCanteens"
+              >
+                重新加载食堂
+              </button>
             </view>
-            <view v-if="windowError" class="plan-feedback" role="alert">
-              <text>{{ windowError }}</text>
-              <button class="plan-button plan-text-button" @tap="retryWindows">重新加载窗口</button>
+            <view v-if="windowError" class="plan-feedback error-feedback" role="alert">
+              <text class="error-feedback__message">{{ windowError }}</text>
+              <button
+                class="error-feedback__action"
+                hover-class="error-feedback__action--pressed"
+                @tap="retryWindows"
+              >
+                重新加载窗口
+              </button>
             </view>
             <view v-if="dishLoading" class="plan-empty">正在加载菜品…</view>
-            <view v-if="dishError" class="plan-feedback" role="alert">
-              <text>{{ dishError }}</text>
-              <button class="plan-button plan-text-button" @tap="retryDishPage">重新加载</button>
+            <view v-if="dishError" class="plan-feedback error-feedback" role="alert">
+              <text class="error-feedback__message">{{ dishError }}</text>
+              <button
+                class="error-feedback__action"
+                hover-class="error-feedback__action--pressed"
+                @tap="retryDishPage"
+              >
+                重新加载
+              </button>
             </view>
             <view v-if="!dishLoading && !dishError && !dishList.length" class="plan-empty">{{
               selectedCanteen || submittedKeyword
@@ -337,10 +367,16 @@ let canteenRequestToken = 0;
 const canteenList = ref<Canteen[]>([...canteenStore.canteenList]);
 const windowList = ref<Window[]>([]);
 const selectedCanteenIndex = computed(() =>
-  Math.max(0, canteenList.value.findIndex(item => item.id === selectedCanteen.value?.id))
+  Math.max(
+    0,
+    canteenList.value.findIndex(item => item.id === selectedCanteen.value?.id)
+  )
 );
 const selectedWindowIndex = computed(() =>
-  Math.max(0, windowList.value.findIndex(item => item.id === selectedWindow.value?.id))
+  Math.max(
+    0,
+    windowList.value.findIndex(item => item.id === selectedWindow.value?.id)
+  )
 );
 
 const captureOwner = () => {
@@ -942,15 +978,6 @@ const handleSubmit = () => {
   font-size: 13px;
   line-height: 1.6;
   color: #667085;
-}
-.plan-feedback {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px 12px;
-  color: #667085;
-  font-size: 13px;
-  line-height: 1.6;
 }
 .plan-sheet .plan-result {
   display: flex;

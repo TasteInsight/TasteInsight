@@ -49,6 +49,26 @@ it.each([
   wrapper.unmount();
 });
 
+it('shows only recovery and cancellation when the source image cannot be read', async () => {
+  (uni.getImageInfo as jest.Mock).mockImplementation(options => options.fail({}));
+  const wrapper = mount(AvatarCrop);
+  (onLoad as jest.Mock).mock.calls[0][0]({ src: 'original.jpg' });
+  await flushPromises();
+  expect(wrapper.text()).toContain('读取图片失败');
+  expect(wrapper.find('.crop-instruction').exists()).toBe(false);
+  expect(wrapper.find('.crop-frame').exists()).toBe(false);
+  expect(wrapper.find('.crop-primary').exists()).toBe(false);
+  expect(wrapper.text()).toContain('取消');
+  (uni.getImageInfo as jest.Mock).mockImplementation(options =>
+    options.success({ width: 400, height: 400 })
+  );
+  await wrapper.get('.error-feedback__action').trigger('click');
+  await flushPromises();
+  expect(wrapper.find('.crop-instruction').exists()).toBe(true);
+  expect(wrapper.find('.crop-primary').exists()).toBe(true);
+  wrapper.unmount();
+});
+
 it('retains scale when a subsequent drag event only contains x and y', async () => {
   (uni.getImageInfo as jest.Mock).mockImplementation(options =>
     options.success({ width: 800, height: 400 })

@@ -1,6 +1,6 @@
 import { flushPromises, shallowMount } from '@vue/test-utils';
 import { reactive } from 'vue';
-import { onLoad, onShow, onHide } from '@dcloudio/uni-app';
+import { onLoad, onShow, onHide, onPullDownRefresh } from '@dcloudio/uni-app';
 import Page from '@/pages/community/detail.vue';
 import PostCard from '@/pages/community/components/PostCard.vue';
 import {
@@ -98,6 +98,36 @@ async function page() {
   await flushPromises();
   return wrapper;
 }
+test('failed reply loading keeps the post and withholds an unverified reply count', async () => {
+  (getPostComments as jest.Mock).mockRejectedValueOnce(new Error('回复读取失败'));
+  const wrapper = await page();
+  expect(wrapper.findComponent(PostCard).exists()).toBe(true);
+  expect(wrapper.text()).toContain('回复读取失败');
+  expect(wrapper.find('.reply-heading .campus-hint').exists()).toBe(false);
+  await wrapper.get('.error-feedback__action').trigger('click');
+  await flushPromises();
+  expect(wrapper.get('.reply-heading .campus-hint').text()).toBe('0');
+});
+
+test('a failed post refresh retains the post, replies and composer draft until recovery', async () => {
+  (getPostComments as jest.Mock).mockResolvedValueOnce(comments([reply('retained')]));
+  const wrapper = await page();
+  (wrapper.vm as any).content = '尚未发送的回复';
+  (getPost as jest.Mock).mockRejectedValueOnce(new Error('刷新失败'));
+  await (onPullDownRefresh as jest.Mock).mock.calls.slice(-1)[0][0]();
+  await flushPromises();
+  expect(wrapper.findComponent(PostCard).exists()).toBe(true);
+  expect(wrapper.findAll('.post-reply')).toHaveLength(1);
+  expect((wrapper.vm as any).content).toBe('尚未发送的回复');
+  expect(wrapper.text()).toContain('刷新失败');
+  (getPostComments as jest.Mock).mockResolvedValueOnce(comments([reply('fresh')]));
+  await wrapper.get('.error-feedback__action').trigger('click');
+  await flushPromises();
+  expect(wrapper.find('.error-feedback').exists()).toBe(false);
+  expect((wrapper.vm as any).comments.map((item: any) => item.id)).toEqual(['fresh']);
+  expect((wrapper.vm as any).content).toBe('尚未发送的回复');
+});
+
 test('shows the owner pending reply as ordinary content and does not offer unavailable interactions', async () => {
   (getPostComments as jest.Mock).mockResolvedValue(comments([reply('pending', 'pending')]));
   const wrapper = await page();

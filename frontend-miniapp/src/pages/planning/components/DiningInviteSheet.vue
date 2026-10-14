@@ -1,12 +1,6 @@
 <template>
   <view v-if="visible" class="invite-overlay" @tap="close" @touchmove.stop.prevent>
-    <view
-      class="invite-sheet"
-      role="dialog"
-      aria-modal="true"
-      aria-label="发起约饭"
-      @tap.stop
-    >
+    <view class="invite-sheet" role="dialog" aria-modal="true" aria-label="发起约饭" @tap.stop>
       <view class="invite-heading"
         ><text>发起约饭</text
         ><button class="invite-button" aria-label="关闭邀请" :disabled="saving" @click="close">
@@ -61,9 +55,14 @@
           >
         </UiPicker>
       </view>
-      <view v-if="error" class="invite-error" role="alert"
-        ><text>{{ error }}</text
-        ><button v-if="!canteens.length" class="invite-button" @click="loadCanteens">
+      <view v-if="error" class="invite-error error-feedback" role="alert"
+        ><text class="error-feedback__message">{{ error }}</text
+        ><button
+          v-if="!canteens.length"
+          class="error-feedback__action"
+          hover-class="error-feedback__action--pressed"
+          @click="loadCanteens"
+        >
           重试
         </button></view
       >
@@ -271,14 +270,5 @@ onScopeDispose(() => {
 }
 .invite-button:active {
   opacity: 0.72;
-}
-.invite-error {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 12px;
-  color: #b42318;
-  font-size: 13px;
 }
 </style>

@@ -21,15 +21,26 @@
       <view v-if="loading && hasResults" class="search-state search-state--compact"
         >正在更新结果…</view
       >
-      <view v-if="canteenError" class="search-state" role="alert">
-        <text>食堂搜索未完成：{{ canteenError }}</text>
-        <button class="search-button search-link" :disabled="loading" @tap="retrySearch">
+      <view v-if="canteenError && (hasResults || !error)" class="error-feedback" role="alert">
+        <text class="error-feedback__message">食堂搜索未完成：{{ canteenError }}</text>
+        <button
+          class="error-feedback__action"
+          hover-class="error-feedback__action--pressed"
+          :disabled="loading"
+          @tap="retrySearch"
+        >
           重试食堂搜索
         </button>
       </view>
-      <view v-if="error" class="search-state" role="alert">
-        <text>{{ error }}</text>
-        <button class="search-button search-link" @tap="retrySearch">重新搜索</button>
+      <view v-if="error" class="error-feedback" role="alert">
+        <text class="error-feedback__message">{{ error }}</text>
+        <button
+          class="error-feedback__action"
+          hover-class="error-feedback__action--pressed"
+          @tap="retrySearch"
+        >
+          重新搜索
+        </button>
       </view>
       <view v-if="hasResults">
         <view v-if="searchResults.canteens.length" class="search-results">
@@ -43,11 +54,17 @@
         <view v-if="searchResults.dishes.length" class="search-results">
           <text class="search-heading">菜品 · 已显示 {{ searchResults.dishes.length }} 道</text>
           <DishResultItem v-for="dish in searchResults.dishes" :key="dish.id" :dish="dish" />
-          <view class="search-state search-state--compact">
+          <view :class="loadMoreError ? 'error-feedback' : 'search-state search-state--compact'">
             <text v-if="loadingMore">正在加载更多…</text>
             <template v-else-if="loadMoreError">
-              <text>{{ loadMoreError }}</text>
-              <button class="search-button search-link" @tap="loadMore">重试加载更多</button>
+              <text class="error-feedback__message">{{ loadMoreError }}</text>
+              <button
+                class="error-feedback__action"
+                hover-class="error-feedback__action--pressed"
+                @tap="loadMore"
+              >
+                重试加载更多
+              </button>
             </template>
             <button
               v-else-if="hasMore && !loading && !error"

@@ -39,9 +39,15 @@
       <UiIcon name="shield" :size="16" /><text>认证后可参与约饭</text
       ><UiIcon name="chevron-right" :size="16" />
     </button>
-    <view v-if="error" class="dining-error" role="alert"
-      ><text>{{ error }}</text
-      ><button class="dining-button" @click="load(false)">重新加载</button></view
+    <view v-if="error" class="dining-error error-feedback" role="alert"
+      ><text class="error-feedback__message">{{ error }}</text
+      ><button
+        class="error-feedback__action"
+        hover-class="error-feedback__action--pressed"
+        @click="load(failedAppend)"
+      >
+        重新加载
+      </button></view
     >
     <view v-if="loading && !items.length" class="dining-loading" role="status">正在加载邀请…</view>
     <EmptyState
@@ -131,7 +137,7 @@
       </view>
     </view>
     <button
-      v-if="page < totalPages"
+      v-if="!error && page < totalPages"
       class="dining-button dining-more"
       :disabled="loading"
       @click="load(true)"
@@ -172,6 +178,7 @@ const items = ref<DiningInvite[]>([]);
 const loading = ref(false);
 const initialized = ref(false);
 const error = ref('');
+const failedAppend = ref(false);
 const busy = ref<Record<string, boolean>>({});
 const page = ref(1);
 const totalPages = ref(1);
@@ -229,8 +236,10 @@ async function load(append = false) {
     totalPages.value = response.data.meta.totalPages;
     initialized.value = true;
   } catch (cause) {
-    if (current() && request === version)
+    if (current() && request === version) {
+      failedAppend.value = append;
       error.value = cause instanceof Error ? cause.message : '邀请加载失败，请重试';
+    }
   } finally {
     if (current() && request === version) loading.value = false;
   }
@@ -463,15 +472,6 @@ onScopeDispose(() => {
 }
 .dining-empty .dining-hint {
   margin-top: 10px;
-}
-.dining-error {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  color: #b42318;
-  padding: 16px 0;
-  font-size: 14px;
 }
 .dining-more {
   margin: 16px auto;

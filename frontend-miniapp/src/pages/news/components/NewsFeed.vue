@@ -2,9 +2,16 @@
   <view class="news-page">
     <view class="news-content">
       <NewsItem v-for="item in list" :key="item.id" :news="item" />
-      <view v-if="error" class="news-state" role="status">
-        <text>{{ error }}</text>
-        <button class="news-retry" :disabled="loading" @click="retry">重试</button>
+      <view v-if="error" class="error-feedback" role="alert">
+        <text class="error-feedback__message">{{ error }}</text>
+        <button
+          class="error-feedback__action"
+          hover-class="error-feedback__action--pressed"
+          :disabled="loading"
+          @click="retry"
+        >
+          重试
+        </button>
       </view>
       <EmptyState v-else-if="initialized && !list.length" title="暂无公告" icon="info" />
       <view v-else-if="loading && list.length" class="news-state" role="status">加载中…</view>

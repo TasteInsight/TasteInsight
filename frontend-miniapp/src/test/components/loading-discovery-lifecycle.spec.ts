@@ -156,12 +156,13 @@ beforeEach(() => {
     .forEach(mock => (mock as jest.Mock).mockReset());
   mockUser.sessionVersion++;
   mockUser.userInfo.settings.displaySettings.sortBy = 'rating';
-  mockUser.fetchProfileAction.mockResolvedValue(undefined);
+  mockUser.fetchProfileAction.mockReset().mockResolvedValue(undefined);
   mockCanteens.canteenList = [];
   mockCanteens.pagination = null;
   mockCanteens.loading = false;
+  mockCanteens.loadingMore = false;
   mockCanteens.error = null;
-  mockCanteens.fetchCanteenList.mockResolvedValue(undefined);
+  mockCanteens.fetchCanteenList.mockReset().mockResolvedValue(undefined);
   mockDishes.dishes = [];
   mockDishes.pagination = null;
   mockDishes.loading = false;
@@ -183,8 +184,55 @@ afterEach(() => {
   wrappers.splice(0).forEach(wrapper => wrapper.unmount());
   scopes.splice(0).forEach(scope => scope.stop());
 });
-
 describe('discovery initial loading', () => {
+  test('a failed home preparation has one error and retries the complete loading chain', async () => {
+    mockCanteens.fetchCanteenList
+      .mockImplementationOnce(async () => {
+        mockCanteens.error = '网络开小差了，请稍后再试';
+        throw new Error(mockCanteens.error);
+      })
+      .mockImplementationOnce(async () => {
+        mockCanteens.error = null;
+        mockCanteens.canteenList = [{ id: 'canteen', name: '食堂' }];
+      });
+    (getRecommendations as jest.Mock).mockResolvedValueOnce(
+      recommendationResponse([{ id: 'dish' }])
+    );
+    const wrapper = mountPage(HomePage);
+    await flushPromises();
+    expect(wrapper.findAll('.error-feedback')).toHaveLength(1);
+    expect(wrapper.text()).toContain('网络开小差了，请稍后再试');
+    expect(wrapper.text()).not.toContain('加载首页数据失败');
+    expect(wrapper.find('search-bar-stub').exists()).toBe(true);
+    expect(wrapper.find('filter-bar-stub').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('今日推荐');
+    expect(getRecommendations).not.toHaveBeenCalled();
+    await wrapper.get('.error-feedback__action').trigger('click');
+    await flushPromises();
+    expect(mockCanteens.fetchCanteenList).toHaveBeenCalledTimes(2);
+    expect(mockUser.fetchProfileAction).toHaveBeenCalledTimes(1);
+    expect(getRecommendations).toHaveBeenCalledTimes(1);
+    expect(wrapper.find('.error-feedback').exists()).toBe(false);
+    expect(wrapper.text()).toContain('菜品 dish');
+    expect(wrapper.find('filter-bar-stub').exists()).toBe(true);
+  });
+
+
+  test('a failed profile preparation retries the profile before requesting recommendations', async () => {
+    mockUser.fetchProfileAction.mockRejectedValueOnce(new Error('资料暂时无法加载'));
+    const wrapper = mountPage(HomePage);
+    await flushPromises();
+    expect(wrapper.findAll('.error-feedback')).toHaveLength(1);
+    expect(wrapper.text()).toContain('资料暂时无法加载');
+    expect(wrapper.text()).not.toContain('今日推荐');
+    expect(getRecommendations).not.toHaveBeenCalled();
+    await wrapper.get('.error-feedback__action').trigger('click');
+    await flushPromises();
+    expect(mockUser.fetchProfileAction).toHaveBeenCalledTimes(2);
+    expect(getRecommendations).toHaveBeenCalledTimes(1);
+    expect(wrapper.find('.error-feedback').exists()).toBe(false);
+  });
+
   test('home keeps search and filtering mounted until recommendations resolve', async () => {
     const pending = deferred();
     (getRecommendations as jest.Mock).mockReturnValueOnce(pending.promise);
@@ -198,6 +246,25 @@ describe('discovery initial loading', () => {
     expect(wrapper.text()).toContain('菜品 dish');
   });
 
+  test('a failed home refresh keeps usable recommendations with one error', async () => {
+    (getRecommendations as jest.Mock).mockResolvedValueOnce(
+      recommendationResponse([{ id: 'dish' }])
+    );
+    const wrapper = mountPage(HomePage);
+    await flushPromises();
+    mockCanteens.fetchCanteenList.mockImplementationOnce(async () => {
+      mockCanteens.error = '网络开小差了，请稍后再试';
+      throw new Error(mockCanteens.error);
+    });
+    await (onPullDownRefresh as jest.Mock).mock.calls[0][0]();
+    await flushPromises();
+    expect(wrapper.findAll('.error-feedback')).toHaveLength(1);
+    expect(wrapper.text()).toContain('菜品 dish');
+    expect(wrapper.text()).toContain('今日推荐');
+    expect(wrapper.text()).not.toContain('首页暂时无法加载');
+  });
+
+
   test('home shows an empty result only after success and never after failure', async () => {
     const pending = deferred();
     (getRecommendations as jest.Mock).mockReturnValueOnce(pending.promise);
@@ -208,7 +275,7 @@ describe('discovery initial loading', () => {
     await flushPromises();
     expect(wrapper.text()).toContain('加载首页数据失败');
     expect(wrapper.text()).not.toContain('暂无推荐菜品');
-    await wrapper.get('.home-text-button').trigger('click');
+    await wrapper.get('.error-feedback__action').trigger('click');
     await flushPromises();
     expect(wrapper.text()).toContain('暂无推荐菜品');
   });
@@ -250,6 +317,7 @@ describe('discovery initial loading', () => {
     await flushPromises();
     expect(wrapper.text()).toContain('场所名称');
     expect(wrapper.text()).toContain('暂无菜品信息');
+    expect(wrapper.find('.dish-list-heading').exists()).toBe(true);
   });
 
   test.each([
@@ -262,10 +330,46 @@ describe('discovery initial loading', () => {
     await flushPromises();
     expect(wrapper.text()).toContain('连接中断');
     expect(wrapper.text()).not.toContain('暂无');
+    expect(wrapper.find('.dish-list-heading').exists()).toBe(false);
+    expect(wrapper.find('canteen-filter-bar-stub').exists()).toBe(false);
+    expect(wrapper.find('search-bar-stub').exists()).toBe(true);
     await wrapper.get('button').trigger('tap');
     await flushPromises();
     expect(wrapper.text()).toContain('暂无菜品信息');
   });
+
+  test('failed canteen window preparation withholds the dependent dish section', async () => {
+    (getWindowList as jest.Mock).mockRejectedValueOnce(new Error('窗口读取失败'));
+    const wrapper = mountPage(CanteenPage);
+    await loadRoute({ id: 'canteen' });
+    await flushPromises();
+    expect(wrapper.text()).toContain('食堂');
+    expect(wrapper.text()).toContain('窗口读取失败');
+    expect(wrapper.find('.dish-list-heading').exists()).toBe(false);
+    expect(wrapper.find('canteen-filter-bar-stub').exists()).toBe(false);
+    expect(getDishes).not.toHaveBeenCalled();
+  });
+
+
+  test.each([
+    ['canteen', CanteenPage, getCanteenDetail],
+    ['window', WindowPage, getWindowDetail],
+  ])(
+    '%s retains loaded dishes and their heading during metadata refresh failure',
+    async (name, component, api) => {
+      (getDishes as jest.Mock).mockResolvedValue(itemsResponse([dish()]));
+      const wrapper = mountPage(component);
+      await loadRoute({ id: name });
+      await flushPromises();
+      (api as jest.Mock).mockRejectedValueOnce(new Error('刷新失败'));
+      await loadRoute({ id: name });
+      await flushPromises();
+      expect(wrapper.text()).toContain('刷新失败');
+      expect(wrapper.text()).toContain('菜品 dish');
+      expect(wrapper.find('.dish-list-heading').exists()).toBe(true);
+    }
+  );
+
 
   test('tag route context stays visible while its first result is undisclosed', async () => {
     const pending = deferred();
@@ -327,6 +431,23 @@ describe('place result ownership', () => {
 });
 
 describe('search outcomes', () => {
+  test('failure of every search source produces one retry area and keeps the search input', async () => {
+    (getCanteenList as jest.Mock).mockRejectedValueOnce(new Error('连接中断'));
+    (getDishes as jest.Mock).mockRejectedValueOnce(new Error('连接中断'));
+    const wrapper = mountPage(SearchPage);
+    (wrapper.vm as any).keyword = '豆腐';
+    await (wrapper.vm as any).handleSearch();
+    await flushPromises();
+    expect(wrapper.findAll('.error-feedback')).toHaveLength(1);
+    expect(wrapper.find('search-bar-stub').exists()).toBe(true);
+    expect(wrapper.find('.search-results').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('未找到');
+    await wrapper.get('.error-feedback__action').trigger('tap');
+    await flushPromises();
+    expect(wrapper.find('.error-feedback').exists()).toBe(false);
+    expect(getDishes).toHaveBeenCalledTimes(2);
+  });
+
   test('initial and first pending search preserve the toolbar with no default or skeleton content', async () => {
     const pending = deferred();
     (getDishes as jest.Mock).mockReturnValueOnce(pending.promise);
@@ -683,7 +804,7 @@ describe('dish detail and discussions', () => {
     await flushPromises();
     expect(wrapper.text()).toContain('回复加载失败');
     expect(wrapper.text()).not.toContain('还没有回复');
-    await wrapper.get('.comment-state button').trigger('tap');
+    await wrapper.get('.error-feedback__action').trigger('tap');
     await flushPromises();
     expect(wrapper.text()).toContain('还没有回复');
     expect((wrapper.vm as any).replyContent).toBe('未发送的回复');

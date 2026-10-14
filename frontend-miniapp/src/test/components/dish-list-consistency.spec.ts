@@ -182,7 +182,7 @@ describe('tag list page', () => {
     expect(wrapper.text()).toContain('网络错误，请稍后重试');
     expect(wrapper.text()).not.toContain('暂无相关菜品');
     (getDishes as jest.Mock).mockResolvedValueOnce(pageResponse([]));
-    await wrapper.get('.dish-list-action').trigger('click');
+    await wrapper.get('.error-feedback__action').trigger('click');
     await flushPromises();
     expect(getDishes).toHaveBeenLastCalledWith(
       expect.objectContaining({ pagination: { page: 1, pageSize: 10 } })
@@ -236,7 +236,7 @@ describe('saved dish pages', () => {
     await flushPromises();
     expect(wrapper.text()).toContain('列表加载失败');
     expect(wrapper.text()).not.toContain(emptyText);
-    await wrapper.get('.dish-list-action').trigger('click');
+    await wrapper.get('.error-feedback__action').trigger('click');
     await flushPromises();
     expect(api).toHaveBeenLastCalledWith({ page: 1, pageSize: 10 });
     expect(wrapper.findComponent(DishSummaryCard).exists()).toBe(true);

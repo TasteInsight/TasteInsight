@@ -49,6 +49,7 @@ function checkLoginStatus() {
 @import './styles/page-layout.css';
 @import './styles/page-navigation.css';
 @import './styles/list-interaction.css';
+@import './styles/error-feedback.css';
 @import './pages/settings/settings-page.css';
 /* #ifdef H5 */
 @import './styles/feedback.css';

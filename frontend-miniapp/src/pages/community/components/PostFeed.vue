@@ -41,9 +41,15 @@
       icon="chat"
     />
     <PostCard v-for="post in posts" :key="post.id" :post="post" />
-    <view v-if="error" class="campus-error" role="alert"
-      ><text>{{ error }}</text
-      ><button class="campus-button" @click="retry">重新加载</button></view
+    <view v-if="error" class="campus-error error-feedback" role="alert"
+      ><text class="error-feedback__message">{{ error }}</text
+      ><button
+        class="error-feedback__action"
+        hover-class="error-feedback__action--pressed"
+        @click="retry"
+      >
+        重新加载
+      </button></view
     >
     <button
       v-else-if="hasMore && posts.length"

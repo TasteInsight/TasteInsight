@@ -45,7 +45,7 @@ afterEach(() => {
 it('keeps the configured version and labels the privacy-only destination accurately', async () => {
   const wrapper = setup();
   const manifest = readFileSync(resolve(__dirname, '../../manifest.json'), 'utf8');
-  const version = manifest.match(/"versionName":\s*"([^"]+)"/)![1];
+  const version = manifest.match(/"versionName"\s*:\s*"([^"]+)"/)![1];
   expect(wrapper.text()).toContain(`Version ${version}`);
   expect(wrapper.text()).not.toContain('彩蛋');
   expect(wrapper.text()).not.toContain('用户协议');

@@ -1,22 +1,16 @@
 <template>
   <view class="dish-page page-content">
     <!-- 错误状态 -->
-    <view
-      v-if="error"
-      class="flex items-center justify-center py-6"
-      :class="{ 'page-content': !dish }"
-      role="alert"
-    >
-      <view class="text-center">
-        <text class="text-black">{{ error }}</text>
-        <button
-          class="mt-4 px-4 py-2 bg-ts-purple text-white rounded-lg border border-ts-purple active:opacity-90 transition-colors"
-          :disabled="loading"
-          @click="refresh"
-        >
-          重试
-        </button>
-      </view>
+    <view v-if="error" class="error-feedback" role="alert">
+      <text class="error-feedback__message">{{ error }}</text>
+      <button
+        class="error-feedback__action"
+        hover-class="error-feedback__action--pressed"
+        :disabled="loading"
+        @click="refresh"
+      >
+        重试
+      </button>
     </view>
 
     <!-- 菜品详情内容 -->
@@ -150,9 +144,15 @@
             </button>
           </view>
         </view>
-        <view v-if="ownReviewError" class="review-state">
-          <text>{{ ownReviewError }}</text
-          ><button class="review-text-action" @tap="fetchOwnReview(dishId)">重试</button>
+        <view v-if="ownReviewError" class="error-feedback" role="alert">
+          <text class="error-feedback__message">{{ ownReviewError }}</text
+          ><button
+            class="error-feedback__action"
+            hover-class="error-feedback__action--pressed"
+            @tap="fetchOwnReview(dishId)"
+          >
+            重试
+          </button>
         </view>
         <view v-if="myReview" class="own-review">
           <view class="own-review-heading">

@@ -1,8 +1,13 @@
 <template>
   <view class="canteen-header" :aria-busy="loading">
-    <view v-if="error" class="canteen-header__feedback" role="alert">
-      <text>{{ error }}</text>
-      <button class="canteen-header__retry" :disabled="loading" @tap="emit('retry')">
+    <view v-if="error" class="canteen-header__feedback error-feedback" role="alert">
+      <text class="error-feedback__message">{{ error }}</text>
+      <button
+        class="error-feedback__action"
+        hover-class="error-feedback__action--pressed"
+        :disabled="loading"
+        @tap="emit('retry')"
+      >
         重新加载
       </button>
     </view>
@@ -118,31 +123,5 @@ const previewImage = (index: number) => {
   font-weight: 650;
   line-height: 1.4;
   overflow-wrap: anywhere;
-}
-.canteen-header__feedback {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 12px 16px;
-  color: #667085;
-  font-size: 14px;
-}
-.canteen-header__retry {
-  min-height: 44px;
-  margin: 0;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 8px;
-  background: #fff;
-  color: #660874;
-  font-size: 14px;
-}
-.canteen-header__retry::after {
-  border: 0;
-}
-.canteen-header__retry:focus-visible {
-  outline: 2px solid #660874;
 }
 </style>

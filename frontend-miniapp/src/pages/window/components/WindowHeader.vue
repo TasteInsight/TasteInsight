@@ -1,8 +1,13 @@
 <template>
   <view class="window-header" :aria-busy="loading">
-    <view v-if="error" class="window-header-feedback" role="alert">
-      <text>{{ error }}</text
-      ><button class="window-header-action" :disabled="loading" @tap="emit('retry')">
+    <view v-if="error" class="window-header-feedback error-feedback" role="alert">
+      <text class="error-feedback__message">{{ error }}</text
+      ><button
+        class="error-feedback__action"
+        hover-class="error-feedback__action--pressed"
+        :disabled="loading"
+        @tap="emit('retry')"
+      >
         重新加载
       </button>
     </view>
@@ -49,31 +54,5 @@ const locationText = computed(() => {
 .window-header {
   padding: 16px;
   background: #fff;
-}
-.window-header-feedback {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  color: #667085;
-  font-size: 14px;
-}
-.window-header-action {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  margin: 0;
-  padding: 0 12px;
-  border: 0;
-  background: #fff;
-  color: #660874;
-  font-size: 14px;
-  line-height: 1.5;
-}
-.window-header-action::after {
-  border: 0;
-}
-.window-header-action:focus-visible {
-  outline: 2px solid #660874;
 }
 </style>

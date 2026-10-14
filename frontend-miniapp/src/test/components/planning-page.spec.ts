@@ -134,6 +134,20 @@ describe('PlanningPage', () => {
     expect(wrapper.text()).not.toMatch(/暂无当前规划|这天还没有安排|尚未安排/);
   });
 
+  it('replaces unread calendar data and its agenda heading with the initial error', async () => {
+    model.initialized.value = false;
+    model.error.value = '规划读取失败';
+    const wrapper = mountPage();
+    expect(wrapper.text()).toContain('规划读取失败');
+    expect(wrapper.find('plan-calendar-stub').exists()).toBe(false);
+    expect(wrapper.find('.planning-agenda-heading').exists()).toBe(false);
+    expect(wrapper.findAll('[aria-label="规划视图"] [role="tab"]')).toHaveLength(4);
+    model.initialized.value = true;
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('plan-calendar-stub').exists()).toBe(true);
+    expect(wrapper.find('.planning-agenda-heading').exists()).toBe(true);
+  });
+
   it('switches all calendar views and the list without clearing the selected date', async () => {
     model.selectedDate.value = '2027-01-02';
     const wrapper = mountPage();
