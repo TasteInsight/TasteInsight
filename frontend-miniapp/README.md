@@ -296,18 +296,19 @@ pnpm test:e2e:report
 pnpm test:perf
 ```
 
-### 负载测试
+### API 压测
+
+API 压测统一由仓库根目录的 [perf](../perf/README.md) 提供，使用真实后端和独立测试数据。
 
 ```bash
-# 启动 Mock API 服务
-pnpm load:mock-api
-
-# 运行负载测试
-pnpm test:load
-
-# 冒烟测试
+# 创建一次性数据库、缓存和后端，验证全部 API 场景后回收
 pnpm test:load:smoke
+
+# 使用已准备的隔离测试部署和私有配置
+pnpm test:load --env-file /path/to/perf.env
 ```
+
+`test:perf` 保留为浏览器页面性能基线，使用 Mock API 测量前端渲染与资源加载。
 
 ## Mock 模式
 

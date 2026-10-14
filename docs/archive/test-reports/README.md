@@ -23,6 +23,8 @@
 
 ## 当前测试入口
 
+- [统一 API 压测](../../../perf/README.md)：k6 场景、隔离数据、负载方案与结果判定。
+
 - [后端测试说明](../../../backend/TEST.md)：单元测试、独立 E2E 环境及数据隔离。
 - [管理端测试](../../../frontend-web/README.md#测试)：Vitest 与 Playwright。
 - [小程序测试](../../../frontend-miniapp/README.md#测试)：单元、E2E、性能与负载测试。

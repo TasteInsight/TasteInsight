@@ -1,0 +1,9 @@
+{
+  "name": "tasteinsight-api-performance",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "smoke": "node local.mjs --profile smoke"
+  }
+}

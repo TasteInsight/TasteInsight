@@ -192,9 +192,11 @@ pnpm test
 # E2E 测试
 pnpm test:e2e
 
-# 负载测试
-pnpm test:load
+# 隔离环境 API 冒烟压测
+pnpm test:load:smoke
 ```
+
+API 压测的负载方案、测试数据和结果判定见 [统一压测说明](./perf/README.md)。
 
 ## 📖 文档
 
