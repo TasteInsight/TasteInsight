@@ -23,7 +23,8 @@ x-backup-env: &backup-env
 
 services:
   configure:
-    image: python:3.12-alpine
+    build: ./status
+    user: "0:0"
     profiles: [tools]
     env_file: .env
     volumes:
@@ -113,6 +114,7 @@ services:
 
   backup:
     build: ./backup
+    stop_grace_period: 45s
     environment: *backup-env
     volumes:
       - uploads:/uploads:ro

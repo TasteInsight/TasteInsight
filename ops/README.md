@@ -72,7 +72,7 @@ docker compose --env-file .env -f compose.yml run --rm backup init
 docker compose --env-file .env -f compose.yml up -d
 ```
 
-配置生成失败时修正对应环境变量后重新生成。配置变更后重建相应容器，例如修改公告后运行 `up -d status`；修改探测或告警参数后重新运行 `configure`，再重启 `prometheus blackbox alertmanager`。
+配置生成任务复用状态页的已打补丁 Python 镜像，以运维身份写入配置目录，运行期间禁用网络。首次 `run configure` 会构建该镜像。配置生成失败时修正对应环境变量后重新生成。配置变更后重建相应容器，例如修改公告后运行 `up -d status`；修改探测或告警参数后重新运行 `configure`，再重启 `prometheus blackbox alertmanager`。
 
 Linux 主机上将 `MONITOR_HOST=true`，重新生成配置，然后使用 `docker compose --env-file .env -f compose.yml --profile host up -d`。主机采集器只读挂载根文件系统、使用主机 PID 命名空间。Docker Desktop 中看到的是 Linux 虚拟机资源；线上主机指标需在实际 Linux 主机验收。
 
@@ -88,7 +88,9 @@ RESTIC_REPOSITORY=s3:https://s3.example.com/tasteinsight-backups
 
 阿里云 OSS 等 S3 兼容服务应按该服务的 endpoint、region 和访问策略配置，并执行一次备份及隔离恢复验证。备份密码需独立保管；丢失密码会导致加密快照无法恢复。对象存储桶保持私有。生产仓库凭据仅交给备份进程和恢复操作，公共状态页与 Grafana不持有这些凭据。
 
-每次备份生成 PostgreSQL 自定义格式归档、本地上传文件归档和包含 SHA-256 的清单，再上传为一个 restic 快照。成功快照时间与保留策略结果分别记录；清理失败会独立告警。进程锁防止同一工作卷上同时执行备份、初始化或检查。
+备份运行镜像只保留 PostgreSQL 15 客户端、Python 和 restic，客户端与运行时固定使用 Alpine 3.24。restic 使用官方 `v0.19.1` 源码、Go `1.27.2` 及固定的安全补丁模块构建；升级后应复测备份、恢复、退出清理并扫描最终镜像。
+
+每次备份生成 PostgreSQL 自定义格式归档、本地上传文件归档和包含 SHA-256 的清单，再上传为一个 restic 快照。成功快照时间与保留策略结果分别记录；清理失败会独立告警。失败时先释放临时归档空间，再记录失败状态。进程锁防止同一工作卷上同时执行备份、初始化或检查。
 
 数据库归档是 PostgreSQL 一致性快照；文件归档与数据库快照在不同时间采集。要求二者严格对应时，在维护窗口暂停业务写入、等待后台任务收敛后执行一次备份。当前上传备份覆盖配置的本地上传卷；使用 OSS 保存业务图片时，需要另外启用该媒体桶的版本保护或备份策略。
 
@@ -103,6 +105,19 @@ docker compose --env-file .env -f compose.yml run --rm backup check
 docker compose --env-file .env -f compose.yml up -d backup
 ```
 
+备份进程响应 SIGTERM / SIGINT，会先通知正在运行的工具退出并等待其清理仓库锁。命令超时同样先进行有界清理；Compose 预留 45 秒退出时间。停机期间的指标写入错误会记录到日志，停止请求仍会退出调度器。
+
+主机断电、SIGKILL 或存储网络故障可能留下 restic 锁。发现锁冲突后，先确认所有使用该仓库的备份和恢复任务已停止，再由运维人员执行：
+
+```sh
+docker compose --env-file .env -f compose.yml stop backup
+docker compose --env-file .env -f compose.yml run --rm --entrypoint restic backup unlock
+docker compose --env-file .env -f compose.yml run --rm backup check
+docker compose --env-file .env -f compose.yml up -d backup
+```
+
+`unlock` 使用默认的失效锁检查，保留仍有效的锁。工具不会自动移除其他任务的锁。
+
 `check` 读取仓库全部数据并验证，可能产生对象存储读取费用。`list` 返回完整快照 ID。恢复前在 `.env` 设置 `RESTORE_SNAPSHOT`、独立的 `RESTORE_PROJECT_NAME` 和 `RESTORE_DB_PASSWORD`：
 
 ```sh
@@ -111,7 +126,7 @@ docker compose --env-file .env -f restore.yml up -d --wait restore-db
 docker compose --env-file .env -f restore.yml run --rm restore
 ```
 
-恢复工具只接受完整快照 ID，先核验目标数据库和文件目录为空，再校验归档摘要并恢复。数据库恢复使用单事务和遇错退出。恢复日志输出表行数、上传文件数量、快照 ID 和发布版本。对照业务关键记录进一步验收，并记录恢复耗时；演练通过后再制定生产切换步骤。
+恢复工具只接受完整快照 ID，先核验目标数据库和文件目录为空，再校验归档摘要并恢复。数据库恢复使用单事务和遇错退出。恢复后的媒体目录使用 `0755`、文件使用 `0644`，供 Nginx 读取；归档工作目录保持私有。恢复日志输出表行数、上传文件数量、快照 ID 和发布版本。对照业务关键记录进一步验收，并记录恢复耗时；演练通过后再制定生产切换步骤。
 
 恢复使用新数据库与独立上传卷，保留结果以便检查。失败后的临时目录也会保留；选择新的恢复项目重新演练。生产切换需单独核对账号权限、应用版本、迁移兼容性、对象存储和 Redis 后台任务。恢复到过去的数据库时间点时，应先暂停 worker，并按业务需求重建或核对队列，避免重放旧任务。
 
@@ -137,6 +152,6 @@ docker build -t tasteinsight-ops-backup:test ops/backup
 python3 ops/tests/integration_backup.py
 ```
 
-集成演练使用随机命名并带测试标签的 Docker 网络、数据库和数据卷，覆盖加密快照、全仓库校验、PostgreSQL 外键与向量数据、上传文件恢复、非空目标拒绝和失败备份保留成功时间。仅清理该次演练创建的资源。
+集成演练使用随机命名并带测试标签的 Docker 网络、数据库和数据卷，覆盖加密快照、全仓库校验、PostgreSQL 外键与向量数据、上传文件恢复、非空目标拒绝、Nginx 对恢复媒体的实际 HTTP 读取、命令超时、SIGTERM/SIGINT 停止、磁盘耗尽后的失败告警状态及成功时间保留。仅清理该次演练创建的资源。
 
 生成监控配置后，可以使用镜像内的 `promtool check config`、`promtool check rules` 和 `promtool test rules` 校验配置及 `tests/alerts.test.yml` 中的过期规则。测试文件中的 `/config/alerts.yml` 对应生成目录的只读挂载。
