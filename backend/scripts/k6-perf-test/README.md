@@ -41,26 +41,29 @@ docker pull grafana/k6
 
 ### 2. 配置测试环境
 
-编辑 `config.js` 文件，修改以下配置：
+通过环境变量配置目标和凭据：
 
-```javascript
-// 测试目标 API 地址
-export const BASE_URL = 'https://www.zens.top';
+| 变量 | 含义 |
+| --- | --- |
+| `ENV` | `local` 或 `production`，默认 `production`；仅显式 `local` 启用本地默认值 |
+| `BASE_URL` | API 完整基础地址，包含部署所需的 `/api/v1` 等前缀；生产模式必填，本地默认 `http://localhost/api/v1` |
+| `INITIAL_ADMIN_USERNAME` / `INITIAL_ADMIN_PASSWORD` | 管理员凭据，也支持 `ADMIN_USERNAME` / `ADMIN_PASSWORD`；本地默认 `testadmin` / `password123` |
+| `K6_MOCK_USER_CODE_BASELINE` / `K6_MOCK_USER_CODE_SECONDARY` | 客户端测试身份；生产模式下登录所用身份必须显式配置 |
 
-// 管理员账号
-export const ADMIN_CREDENTIALS = {
-    username: 'your_admin_username',
-    password: 'your_admin_password',
-};
-```
-
-或者通过环境变量配置：
+环境类型完全由 `ENV` 决定。文档中的 `https://api.example.invalid` 是占位地址，运行时请配置自己的测试服务地址。
 
 ```bash
-export BASE_URL="https://your-api-server.com"
-export ADMIN_USERNAME="your_admin"
-export ADMIN_PASSWORD="your_password"
+# 本地 Docker 测试
+export ENV=local
+
+# 自定义测试部署（凭据从本地环境或私有配置文件加载）
+export ENV=production
+export BASE_URL="https://api.example.invalid/api/v1"
 ```
+
+`run-prod-test.sh` 从 `backend/.env` 加载配置；可用 `K6_ENV_FILE=/path/to/perf.env` 指定私有配置文件。该脚本固定使用 `ENV=production`，并要求 `BASE_URL`、`INITIAL_ADMIN_USERNAME` 和 `INITIAL_ADMIN_PASSWORD`。配置文件使用 shell 赋值语法，凭据保留在版本管理之外。
+
+客户端场景依赖后端 Mock 微信登录，应在允许 Mock 认证的隔离测试部署中运行。`ENV` 控制压测工具的目标与凭据策略，后端运行模式由服务端配置。
 
 ### 3. 运行测试
 
@@ -78,7 +81,7 @@ k6 run scenarios/moderation.js
 k6 run scenarios/dish-lifecycle.js
 
 # 使用环境变量运行
-k6 run -e BASE_URL=https://your-api.com -e ADMIN_USERNAME=admin -e ADMIN_PASSWORD=123456 main.js
+ENV=local k6 run main.js
 ```
 
 ## 📊 测试场景说明
@@ -209,7 +212,7 @@ k6 run --out experimental-prometheus-rw main.js
 ```bash
 docker run -i --rm \
   -v $(pwd):/scripts \
-  -e BASE_URL=https://your-api.com \
+  -e BASE_URL=https://api.example.invalid/api/v1 \
   -e ADMIN_USERNAME=admin \
   -e ADMIN_PASSWORD=password \
   grafana/k6 run /scripts/main.js
@@ -268,3 +271,11 @@ k6 run --http-debug main.js
 ## 📄 许可证
 
 MIT License
+
+## 配置回归测试
+
+```bash
+node --experimental-vm-modules --test backend/scripts/k6-perf-test/tests/config.test.cjs
+```
+
+从仓库根目录运行。测试覆盖环境选择、凭据规则、目标参数传递和脚本失败退出；HTTP 与 k6 命令使用测试替身。

@@ -15,21 +15,12 @@
  */
 import http from 'k6/http';
 import { check } from 'k6';
-import { BASE_URL, DEFAULT_HEADERS } from '../config.js';
+import { BASE_URL, DEFAULT_HEADERS, IS_PRODUCTION } from '../config.js';
 
 // ==================== Mock 用户凭证配置 ====================
 // 从环境变量读取，如未提供则使用默认值（仅用于本地调试）
-const BASELINE_CODE = __ENV.K6_MOCK_USER_CODE_BASELINE || 'baseline_user_code_placeholder';
-const SECONDARY_CODE = __ENV.K6_MOCK_USER_CODE_SECONDARY || 'secondary_user_code_placeholder';
-
-// 生产环境检测
-const isProduction = __ENV.ENV === 'production' || BASE_URL.includes('zens.top');
-
-// 安全警告：生产环境必须通过环境变量传入凭证
-if (isProduction && (!__ENV.K6_MOCK_USER_CODE_BASELINE || !__ENV.K6_MOCK_USER_CODE_SECONDARY)) {
-    console.warn('⚠️ [安全警告] 生产环境建议通过环境变量传递 Mock 用户凭证');
-    console.warn('⚠️ 请使用: source ../../.env && k6 run -e K6_MOCK_USER_CODE_BASELINE=$K6_MOCK_USER_CODE_BASELINE ...');
-}
+const BASELINE_CODE = __ENV.K6_MOCK_USER_CODE_BASELINE || (IS_PRODUCTION ? null : 'baseline_user_code_placeholder');
+const SECONDARY_CODE = __ENV.K6_MOCK_USER_CODE_SECONDARY || (IS_PRODUCTION ? null : 'secondary_user_code_placeholder');
 
 // 测试用户配置（从环境变量读取）
 export const TEST_USERS = {
@@ -57,6 +48,10 @@ export function clientLogin(userType = 'baseline') {
     const user = TEST_USERS[userType];
     if (!user) {
         throw new Error(`Unknown user type: ${userType}. Use 'baseline' or 'secondary'.`);
+    }
+
+    if (!user.code) {
+        throw new Error(`K6_MOCK_USER_CODE_${userType.toUpperCase()} is required for ENV=production`);
     }
 
     const url = `${BASE_URL}/auth/wechat/login`;

@@ -7,6 +7,8 @@
  * 本测试套件针对 TasteInsight 后端管理端 API 进行性能测试，
  * 包含 8 个核心业务场景的测试用例。
  * 
+ * 运行前设置 ENV=local，或设置 ENV=production 与 BASE_URL，并配置对应凭据。
+ *
  * 【使用方法】
  * 
  * 1. 运行所有场景：
@@ -23,7 +25,7 @@
  *    k6 run scenarios/content-moderation.js
  * 
  * 3. 自定义配置（通过环境变量）：
- *    k6 run -e BASE_URL=https://your-api.com main.js
+ *    k6 run -e BASE_URL=https://api.example.invalid main.js
  *    k6 run -e ADMIN_USERNAME=your_admin -e ADMIN_PASSWORD=your_password main.js
  * 
  * 4. 生成 HTML 报告：
@@ -34,9 +36,10 @@
  *    k6 run --vus 10 --duration 5m main.js
  * 
  * 【环境变量】
- * - BASE_URL: API 基础地址（默认: https://www.zens.top）
- * - ADMIN_USERNAME: 管理员用户名（默认: admin）
- * - ADMIN_PASSWORD: 管理员密码（默认: admin123456）
+ * - ENV: local 或 production（默认 production）
+ * - BASE_URL: API 基础地址（生产模式必填；本地默认 http://localhost/api/v1）
+ * - ADMIN_USERNAME: 管理员用户名（本地默认: testadmin；生产模式通过环境变量配置）
+ * - ADMIN_PASSWORD: 管理员密码（本地默认: password123；生产模式通过环境变量配置）
  * - ENABLE_DELETE: 是否启用删除操作（默认: false）- 用于内容审核场景
  * 
  * 【代码核实总结】
@@ -88,7 +91,7 @@ import reviewAuditTest from './scenarios/review-audit.js';
 import contentModerationTest from './scenarios/content-moderation.js';
 
 // 导入配置
-import { SCENARIOS, THRESHOLDS } from './config.js';
+import { BASE_URL, SCENARIOS, THRESHOLDS } from './config.js';
 
 // ==================== 自定义指标 ====================
 export const scenarioCounter = new Counter('scenario_executions');
@@ -403,7 +406,7 @@ export function setup() {
     console.log('TasteInsight API 性能测试开始');
     console.log('========================================');
     console.log(`时间: ${new Date().toISOString()}`);
-    console.log(`Base URL: ${__ENV.BASE_URL || 'https://www.zens.top'}`);
+    console.log(`Base URL: ${BASE_URL}`);
     console.log('========================================');
     
     // 可以在这里执行一些初始化操作，如预热请求

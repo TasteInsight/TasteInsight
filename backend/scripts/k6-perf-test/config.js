@@ -1,14 +1,8 @@
 /**
  * K6 性能测试配置文件
  * 
- * 【代码核实】
- * - 根据 main.ts 检查，后端本身没有使用 setGlobalPrefix，因此 API 无前缀
- * - 但 Docker 环境使用 Nginx 反向代理，路由前缀为 /api/v1
- * - 线上环境直接连接后端，无 /api/v1 前缀
- * 
- * 【环境说明】
- * - 本地 Docker: http://localhost/api/v1 (Nginx 反向代理)
- * - 线上生产环境: https://www.zens.top (直连后端)
+ * ENV=local 使用本地 Docker 默认地址；ENV=production 要求提供 BASE_URL。
+ * BASE_URL 包含部署所需的路径前缀，例如 /api/v1。
  * 
  * 【路由前缀总结】
  * - 登录接口: POST /auth/admin/login
@@ -20,27 +14,19 @@
  */
 
 // ==================== 环境配置 ====================
-// 预定义环境配置
-const ENVIRONMENTS = {
-    // 本地 Docker 环境（通过 Nginx 反向代理）
-    local: 'http://localhost/api/v1',
-    // 线上生产环境（也需要 /api/v1 前缀）
-    production: 'https://www.zens.top/api/v1',
-};
+// 未指定环境时沿用生产凭据保护；本地默认值需要显式 ENV=local。
+export const TEST_ENV = __ENV.ENV || 'production';
+if (TEST_ENV !== 'local' && TEST_ENV !== 'production') {
+    throw new Error('ENV must be local or production');
+}
+export const IS_PRODUCTION = TEST_ENV === 'production';
+export const BASE_URL = (__ENV.BASE_URL || (IS_PRODUCTION ? '' : 'http://localhost/api/v1')).trim().replace(/\/+$/, '');
+if (!BASE_URL) {
+    throw new Error('BASE_URL is required for ENV=production');
+}
 
-/**
- * 根据环境变量选择 BASE_URL
- * 
- * 使用方法：
- *   本地测试: k6 run -e ENV=local main.js
- *   线上测试: k6 run -e ENV=production main.js
- *   自定义URL: k6 run -e BASE_URL=http://your-server.com main.js
- */
-export const BASE_URL = __ENV.BASE_URL || ENVIRONMENTS[__ENV.ENV] || ENVIRONMENTS.production;
-
-// 打印当前使用的环境（调试用）
 console.log(`[K6 Config] Using BASE_URL: ${BASE_URL}`);
-console.log(`[K6 Config] Environment: ${__ENV.ENV || 'production (default)'}`);
+console.log(`[K6 Config] Environment: ${TEST_ENV}`);
 
 // ==================== 管理员账号配置 ====================
 /**
@@ -63,22 +49,19 @@ console.log(`[K6 Config] Environment: ${__ENV.ENV || 'production (default)'}`);
  *       -e INITIAL_ADMIN_PASSWORD=$INITIAL_ADMIN_PASSWORD main.js
  */
 
-// 生产环境检测
-const isProduction = __ENV.ENV === 'production' || BASE_URL.includes('zens.top');
-
 // 凭证配置（生产环境必须通过环境变量传入）
 const username = __ENV.INITIAL_ADMIN_USERNAME || __ENV.ADMIN_USERNAME;
 const password = __ENV.INITIAL_ADMIN_PASSWORD || __ENV.ADMIN_PASSWORD;
 
 // 生产环境安全检查
-if (isProduction && (!username || !password)) {
+if (IS_PRODUCTION && (!username || !password)) {
     console.error('⚠️ [安全警告] 生产环境必须通过 -e INITIAL_ADMIN_USERNAME=xxx -e INITIAL_ADMIN_PASSWORD=xxx 传递凭证！');
     console.error('⚠️ 请使用: source ../../.env && k6 run -e INITIAL_ADMIN_USERNAME=$INITIAL_ADMIN_USERNAME -e INITIAL_ADMIN_PASSWORD=$INITIAL_ADMIN_PASSWORD -e ENV=production main.js');
 }
 
 // 仅本地环境允许使用默认值（用于调试）
-const defaultUsername = isProduction ? null : 'testadmin';
-const defaultPassword = isProduction ? null : 'password123';
+const defaultUsername = IS_PRODUCTION ? null : 'testadmin';
+const defaultPassword = IS_PRODUCTION ? null : 'password123';
 
 export const ADMIN_CREDENTIALS = {
     username: username || defaultUsername,

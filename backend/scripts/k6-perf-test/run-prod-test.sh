@@ -13,10 +13,10 @@
 #   ./run-prod-test.sh scenario dish-status
 #
 
-set -e
+set -eo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ENV_FILE="${SCRIPT_DIR}/../../.env"
+ENV_FILE="${K6_ENV_FILE:-${SCRIPT_DIR}/../../.env}"
 
 # 颜色定义
 RED='\033[0;31m'
@@ -32,6 +32,7 @@ echo -e "${YELLOW}========================================${NC}"
 if [ ! -f "$ENV_FILE" ]; then
     echo -e "${RED}错误: 找不到 .env 文件: $ENV_FILE${NC}"
     echo "请确保 backend/.env 文件存在并包含以下变量:"
+    echo "  BASE_URL=https://api.example.invalid/api/v1"
     echo "  INITIAL_ADMIN_USERNAME=xxx"
     echo "  INITIAL_ADMIN_PASSWORD=xxx"
     exit 1
@@ -44,6 +45,11 @@ source "$ENV_FILE"
 set +a
 
 # 验证必要变量
+if [ -z "${BASE_URL//[[:space:]]/}" ]; then
+    echo -e "${RED}错误: 请在环境变量或配置文件中设置 BASE_URL${NC}"
+    exit 1
+fi
+
 if [ -z "$INITIAL_ADMIN_USERNAME" ] || [ -z "$INITIAL_ADMIN_PASSWORD" ]; then
     echo -e "${RED}错误: .env 文件中缺少 INITIAL_ADMIN_USERNAME 或 INITIAL_ADMIN_PASSWORD${NC}"
     exit 1
@@ -69,6 +75,7 @@ case "${1:-connectivity}" in
     connectivity|conn|c)
         echo "  └─ 运行连通性测试..."
         k6 run -e ENV=production \
+            -e BASE_URL="$BASE_URL" \
             -e INITIAL_ADMIN_USERNAME="$INITIAL_ADMIN_USERNAME" \
             -e INITIAL_ADMIN_PASSWORD="$INITIAL_ADMIN_PASSWORD" \
             connectivity-test.js
@@ -77,6 +84,7 @@ case "${1:-connectivity}" in
         echo "  └─ 运行完整测试套件..."
         TIMESTAMP=$(date +%Y%m%d_%H%M%S)
         k6 run -e ENV=production \
+            -e BASE_URL="$BASE_URL" \
             -e INITIAL_ADMIN_USERNAME="$INITIAL_ADMIN_USERNAME" \
             -e INITIAL_ADMIN_PASSWORD="$INITIAL_ADMIN_PASSWORD" \
             --out json="prod_result_${TIMESTAMP}.json" \
@@ -99,6 +107,7 @@ case "${1:-connectivity}" in
         fi
         echo "  └─ 运行单场景: $2..."
         k6 run -e ENV=production \
+            -e BASE_URL="$BASE_URL" \
             -e INITIAL_ADMIN_USERNAME="$INITIAL_ADMIN_USERNAME" \
             -e INITIAL_ADMIN_PASSWORD="$INITIAL_ADMIN_PASSWORD" \
             --iterations 3 --vus 1 \

@@ -11,6 +11,8 @@
  * ⚠️ 重要：需要启用 Mock 认证才能运行此测试
  * 在后端 .env 文件中添加：ENABLE_MOCK_AUTH=true
  *
+ * 运行前设置 ENV=local，或设置 ENV=production 与 BASE_URL，并配置对应凭据。
+ *
  * 【使用方法】
  *
  * 1. 运行所有客户端场景：
@@ -23,7 +25,7 @@
  *    k6 run scenarios/client-planning.js   # 饮食规划
  *
  * 3. 自定义配置（通过环境变量）：
- *    k6 run -e BASE_URL=https://your-api.com/api/v1 main-client.js
+ *    k6 run -e BASE_URL=https://api.example.invalid/api/v1 main-client.js
  *
  * 4. 生成 HTML 报告：
  *    k6 run --out json=client-results.json main-client.js
@@ -32,7 +34,8 @@
  *    k6 run --vus 10 --duration 5m main-client.js
  *
  * 【环境变量】
- * - BASE_URL: API 基础地址（默认: https://www.zens.top/api/v1）
+ * - ENV: local 或 production（默认 production）
+ * - BASE_URL: API 基础地址（生产模式必填；本地默认 http://localhost/api/v1）
  *
  * 【测试场景说明】
  *
@@ -246,7 +249,7 @@ export function setup() {
     console.log('TasteInsight 客户端 API 性能测试开始');
     console.log('========================================');
     console.log(`时间: ${new Date().toISOString()}`);
-    console.log(`Base URL: ${__ENV.BASE_URL || 'https://www.zens.top/api/v1'}`);
+    console.log(`Base URL: ${BASE_URL}`);
     console.log('');
     console.log('⚠️  注意: 需要启用 Mock 认证');
     console.log('   请确保后端 .env 中设置: ENABLE_MOCK_AUTH=true');
