@@ -33,13 +33,9 @@ describe('Campus community lifecycle (PostgreSQL)', () => {
       .overrideProvider(VerificationDeliveryService)
       .useValue({
         assertAvailable: () => undefined,
-        send: async (
-          _purpose: string,
-          _target: string,
-          code: string,
-          id: string,
-        ) => {
+        send: (_purpose: string, _target: string, code: string, id: string) => {
           codes.set(id, code);
+          return Promise.resolve();
         },
       })
       .compile();
@@ -54,6 +50,7 @@ describe('Campus community lifecycle (PostgreSQL)', () => {
     await app.listen(0, '127.0.0.1');
     prisma = app.get(PrismaService);
     const config = app.get(ConfigService);
+    config.set('AUTH_LOGIN_METHODS', 'phone,wechatMiniapp,wechatApp');
     config.set(
       'AUTH_CHALLENGE_SECRET',
       'isolated-campus-contract-secret-at-least-32-characters',

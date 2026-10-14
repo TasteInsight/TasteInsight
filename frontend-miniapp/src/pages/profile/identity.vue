@@ -38,46 +38,17 @@
           }}</text>
         </view>
         <view
-          v-if="!verification.canContribute && capabilities?.campusOAuth"
+          v-if="!verification.canContribute && campusMethods.campusOAuth"
           class="identity-section"
         >
           <text class="identity-section-title">校园统一认证</text>
           <text class="identity-hint">完成校方授权后，返回这里确认绑定。</text>
-          <button class="identity-primary" :disabled="busy" @click="authorize">前往认证</button>
-          <view v-if="pendingOAuth" class="identity-binding">
-            <text class="identity-detail"
-              >绑定账号 {{ pendingOAuth.account.nickname
-              }}{{ pendingOAuth.account.phone ? `（${pendingOAuth.account.phone}）` : '' }}</text
-            >
-            <text class="identity-detail identity-account-id"
-              >账号 ID：{{ pendingOAuth.ownerId }}</text
-            >
-            <text class="identity-hint"
-              >从认证完成页面复制确认码，在 3 分钟内粘贴并确认。请勿使用他人提供的确认码。</text
-            >
-            <input
-              v-model="handoffCode"
-              class="identity-input"
-              type="text"
-              maxlength="43"
-              placeholder="粘贴一次性确认码"
-              aria-label="校园身份一次性确认码"
-              :disabled="busy"
-            />
-            <button
-              class="identity-primary"
-              :disabled="busy || !validHandoffCode"
-              @click="submitOAuth"
-            >
-              确认绑定到当前账号
-            </button>
-            <button class="identity-link" :disabled="busy" @click="cancelOAuth">
-              取消本次认证
-            </button>
-          </view>
+          <button class="identity-primary" :disabled="busy" @click="authorize('VERIFICATION')">
+            前往认证
+          </button>
         </view>
         <view
-          v-if="!verification.canContribute && capabilities?.campusEmail"
+          v-if="!verification.canContribute && campusMethods.campusEmail"
           class="identity-section"
         >
           <text class="identity-section-title">校园邮箱验证</text>
@@ -120,25 +91,46 @@
             验证并提交申请
           </button>
         </view>
-        <view class="identity-section">
+        <view v-if="hasAccountMethods" class="identity-section">
           <text class="identity-section-title">登录方式</text>
-          <view class="identity-account-row"
+          <view v-if="configuredLogins.phone || identities?.phone" class="identity-account-row"
             ><text>手机号</text><text>{{ identities?.phone || '未绑定' }}</text></view
           >
-          <view class="identity-account-row"
+          <view
+            v-if="
+              configuredLogins.wechatMiniapp ||
+              configuredLogins.wechatApp ||
+              identities?.wechat.miniapp ||
+              identities?.wechat.app
+            "
+            class="identity-account-row"
             ><text>微信</text
             ><text>{{
               identities?.wechat.miniapp || identities?.wechat.app ? '已绑定' : '未绑定'
             }}</text></view
           >
+          <view
+            v-if="configuredLogins.campusOAuth || identities?.campusOAuth"
+            class="identity-account-row"
+          >
+            <text>校园账号</text><text>{{ identities?.campusOAuth ? '已绑定' : '未绑定' }}</text>
+          </view>
           <button
-            v-if="capabilities?.phone && !identities?.phone"
+            v-if="configuredLogins.campusOAuth && !identities?.campusOAuth"
+            class="identity-link"
+            :disabled="busy"
+            @click="authorize('LOGIN_BIND')"
+          >
+            绑定校园账号
+          </button>
+          <button
+            v-if="configuredLogins.phone && !identities?.phone"
             class="identity-link"
             @click="showPhoneForm = !showPhoneForm"
           >
             {{ showPhoneForm ? '收起' : '绑定手机号' }}
           </button>
-          <view v-if="showPhoneForm" class="identity-binding">
+          <view v-if="showPhoneForm && configuredLogins.phone" class="identity-binding">
             <input
               v-model="phone"
               class="identity-input"
@@ -185,6 +177,44 @@
             绑定当前微信
           </button>
         </view>
+        <view v-if="pendingOAuth" class="identity-section identity-binding">
+          <text class="identity-section-title">{{
+            pendingOAuth.purpose === 'LOGIN_BIND' ? '绑定校园登录方式' : '确认校园身份'
+          }}</text>
+          <text class="identity-detail"
+            >绑定账号 {{ pendingOAuth.account.nickname
+            }}{{ pendingOAuth.account.phone ? `（${pendingOAuth.account.phone}）` : '' }}</text
+          >
+          <text class="identity-detail identity-account-id"
+            >账号 ID：{{ pendingOAuth.ownerId }}</text
+          >
+          <text class="identity-hint"
+            >从认证完成页面复制确认码，在 3 分钟内粘贴并确认。请勿使用他人提供的确认码。</text
+          >
+          <input
+            v-model="handoffCode"
+            class="identity-input"
+            type="text"
+            maxlength="43"
+            placeholder="粘贴一次性确认码"
+            :aria-label="
+              pendingOAuth.purpose === 'LOGIN_BIND'
+                ? '校园登录一次性确认码'
+                : '校园身份一次性确认码'
+            "
+            :disabled="busy"
+          />
+          <button
+            class="identity-primary"
+            :disabled="busy || !validHandoffCode"
+            @click="submitOAuth"
+          >
+            确认绑定到当前账号
+          </button>
+          <button class="identity-link" :disabled="busy" @click="cancelOAuth">
+            {{ pendingOAuth.purpose === 'LOGIN_BIND' ? '取消本次绑定' : '取消本次认证' }}
+          </button>
+        </view>
         <text v-if="actionError" class="identity-error" role="alert">{{ actionError }}</text>
         <text class="identity-hint identity-privacy">手机号与认证邮箱不会展示在公开主页。</text>
       </template>
@@ -201,11 +231,16 @@ import { useVerificationCode } from '@/composables/use-verification-code';
 import { useWechatAuthorization } from '@/composables/use-wechat-authorization';
 import {
   getAuthCapabilities,
+  verificationMethods,
+  loginMethods,
   getStudentVerification,
   getAccountIdentities,
   sendCampusEmailCode,
   verifyCampusEmail,
   startCampusOAuth,
+  startCampusLoginBinding,
+  completeCampusLoginBinding,
+  type CampusOAuthPurpose,
   completeCampusOAuth,
   sendBindingPhoneCode,
   bindPhone,
@@ -224,9 +259,28 @@ import {
 } from '@/utils/campus-oauth';
 
 const userStore = useUserStore();
-const { available: wechatAvailable, authorize: authorizeWechat } = useWechatAuthorization();
 const verification = ref<StudentVerification | null>(null);
 const capabilities = ref<AuthCapabilities | null>(null);
+const configuredLogins = computed(() => loginMethods(capabilities.value));
+const hasAccountMethods = computed(
+  () =>
+    Object.values(configuredLogins.value).some(Boolean) ||
+    Boolean(
+      identities.value?.phone ||
+      identities.value?.campusOAuth ||
+      Object.values(identities.value?.wechat ?? {}).some(Boolean)
+    )
+);
+const campusMethods = computed(() => verificationMethods(capabilities.value));
+const wechatEnabled = computed(() =>
+  Boolean(
+    config.platform === 'mp-weixin'
+      ? configuredLogins.value.wechatMiniapp
+      : configuredLogins.value.wechatApp
+  )
+);
+const { available: wechatAvailable, authorize: authorizeWechat } =
+  useWechatAuthorization(wechatEnabled);
 const identities = ref<AccountIdentities | null>(null);
 const loading = ref(false);
 const busy = ref(false);
@@ -319,9 +373,9 @@ const canBindWechat = computed(
   () =>
     wechatAvailable.value &&
     (config.platform === 'mp-weixin'
-      ? capabilities.value?.wechatMiniapp && !identities.value?.wechat.miniapp
+      ? configuredLogins.value.wechatMiniapp && !identities.value?.wechat.miniapp
       : ['app', 'app-plus'].includes(config.platform) &&
-        capabilities.value?.wechatApp &&
+        configuredLogins.value.wechatApp &&
         !identities.value?.wechat.app)
 );
 function login() {
@@ -414,11 +468,13 @@ function cancelOAuth() {
 }
 function submitOAuth() {
   return perform(async isCurrent => {
-    const { attemptId, handoffCode: code } = campusOAuthCompletion(
-      userStore.userInfo?.id,
-      handoffCode.value
-    );
-    await completeCampusOAuth(attemptId, code);
+    const {
+      attemptId,
+      handoffCode: code,
+      purpose,
+    } = campusOAuthCompletion(userStore.userInfo?.id, handoffCode.value);
+    if (purpose === 'LOGIN_BIND') await completeCampusLoginBinding(attemptId, code);
+    else await completeCampusOAuth(attemptId, code);
     if (isCurrent()) cancelOAuth();
   });
 }
@@ -446,14 +502,19 @@ function submitWechat() {
     return bindWechat(code, config.platform === 'mp-weixin' ? 'mp-weixin' : 'app');
   });
 }
-function authorize() {
+function authorize(purpose: CampusOAuthPurpose) {
   return perform(async isCurrent => {
     const owner = userStore.userInfo?.id;
     if (!owner) throw new Error('请先登录，再发起校园认证');
     cancelOAuth();
     // #ifdef MP-WEIXIN
     if (config.platform === 'mp-weixin') {
-      uni.navigateTo({ url: '/pages/profile/campus-auth' });
+      uni.navigateTo({
+        url:
+          purpose === 'LOGIN_BIND'
+            ? '/pages/profile/campus-auth?purpose=LOGIN_BIND'
+            : '/pages/profile/campus-auth',
+      });
       return;
     }
     // #endif
@@ -463,7 +524,9 @@ function authorize() {
     popup = openedPopup;
     // #endif
     try {
-      const result = await startCampusOAuth();
+      const result = await (purpose === 'LOGIN_BIND'
+        ? startCampusLoginBinding()
+        : startCampusOAuth());
       if (!isCurrent()) {
         // #ifdef H5
         openedPopup?.close();

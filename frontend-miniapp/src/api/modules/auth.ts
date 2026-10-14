@@ -1,13 +1,62 @@
 import type { ApiResponse, LoginData } from '@/types/api';
 import request from '@/utils/request';
 
+export interface LoginMethods {
+  phone: boolean;
+  wechatMiniapp: boolean;
+  wechatApp: boolean;
+  campusOAuth: boolean;
+}
+export interface CampusVerificationMethods {
+  campusEmail: boolean;
+  campusOAuth: boolean;
+}
 export interface AuthCapabilities {
+  loginMethods?: LoginMethods;
+  verificationMethods?: CampusVerificationMethods;
   phone: boolean;
   wechatMiniapp: boolean;
   wechatApp: boolean;
   campusEmail: boolean;
   campusOAuth: boolean;
 }
+
+export function loginMethods(capabilities: AuthCapabilities | null): LoginMethods {
+  return (
+    capabilities?.loginMethods ?? {
+      phone: Boolean(capabilities?.phone),
+      wechatMiniapp: Boolean(capabilities?.wechatMiniapp),
+      wechatApp: Boolean(capabilities?.wechatApp),
+      campusOAuth: false,
+    }
+  );
+}
+export function verificationMethods(
+  capabilities: AuthCapabilities | null
+): CampusVerificationMethods {
+  return (
+    capabilities?.verificationMethods ?? {
+      campusEmail: Boolean(capabilities?.campusEmail),
+      campusOAuth: Boolean(capabilities?.campusOAuth),
+    }
+  );
+}
+
+export interface CampusLoginStart {
+  attemptId: string;
+  authorizationUrl: string;
+  expiresAt: string;
+  loginVerifier: string;
+}
+export interface CampusLoginTicket {
+  attemptId: string;
+  handoffCode: string;
+  loginVerifier: string;
+}
+export const startCampusLogin = () =>
+  request<CampusLoginStart>({ url: '/auth/campus/oauth', method: 'POST', auth: 'none', data: {} });
+export const campusLogin = (data: CampusLoginTicket) =>
+  request<LoginData>({ url: '/auth/campus/login', method: 'POST', auth: 'none', data });
 
 export interface VerificationChallenge {
   challengeId: string;
@@ -26,6 +75,7 @@ export interface StudentVerification {
 }
 
 export interface AccountIdentities {
+  campusOAuth?: boolean;
   phone?: string;
   wechat: { miniapp: boolean; app: boolean };
 }
@@ -70,7 +120,9 @@ export const verifyCampusEmail = (challengeId: string, code: string) =>
     method: 'POST',
     data: { challengeId, code },
   });
+export type CampusOAuthPurpose = 'VERIFICATION' | 'LOGIN_BIND';
 export interface CampusOAuthStart {
+  purpose?: CampusOAuthPurpose;
   attemptId: string;
   authorizationUrl: string;
   expiresAt: string;
@@ -81,6 +133,14 @@ export const startCampusOAuth = () =>
     url: '/user/student-verification/oauth',
     method: 'POST',
     data: {},
+  });
+export const startCampusLoginBinding = () =>
+  request<CampusOAuthStart>({ url: '/user/identities/campus/oauth', method: 'POST', data: {} });
+export const completeCampusLoginBinding = (attemptId: string, handoffCode: string) =>
+  request<{ completed: true }>({
+    url: '/user/identities/campus/oauth/complete',
+    method: 'POST',
+    data: { attemptId, handoffCode },
   });
 export const completeCampusOAuth = (attemptId: string, handoffCode: string) =>
   request<{ completed: true; status: 'VERIFIED' | 'PENDING' }>({

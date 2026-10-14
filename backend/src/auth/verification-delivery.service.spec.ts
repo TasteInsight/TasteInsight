@@ -17,32 +17,30 @@ describe('VerificationDeliveryService', () => {
     http as unknown as HttpService,
   );
   beforeEach(() => jest.resetAllMocks());
-  it('uses the documented HTTPS SMS gateway contract', async () => {
-    http.post.mockReturnValue(of({ data: { messageId: 'accepted-id' } }));
-    await service.send(
-      'PHONE_LOGIN',
-      '+8613812345678',
-      '123456',
-      'challenge-id',
-    );
-    expect(http.post).toHaveBeenCalledWith(
-      'https://sms.example.org/send',
-      {
-        to: '+8613812345678',
-        code: '123456',
-        expiresIn: 300,
-        purpose: 'PHONE_LOGIN',
-      },
-      expect.objectContaining({
-        headers: {
-          Authorization: 'Bearer gateway-secret',
-          'Idempotency-Key': 'challenge-id',
+  it.each(['PHONE_LOGIN', 'PHONE_BIND'] as const)(
+    'sends %s through the SMS gateway',
+    async (purpose) => {
+      http.post.mockReturnValue(of({ data: { messageId: 'accepted-id' } }));
+      await service.send(purpose, '+8613812345678', '123456', 'challenge-id');
+      expect(http.post).toHaveBeenCalledWith(
+        'https://sms.example.org/send',
+        {
+          to: '+8613812345678',
+          code: '123456',
+          expiresIn: 300,
+          purpose,
         },
-        timeout: 10000,
-        maxRedirects: 0,
-      }),
-    );
-  });
+        expect.objectContaining({
+          headers: {
+            Authorization: 'Bearer gateway-secret',
+            'Idempotency-Key': 'challenge-id',
+          },
+          timeout: 10000,
+          maxRedirects: 0,
+        }),
+      );
+    },
+  );
   it('sends campus email through the real Resend API with its returned delivery ID', async () => {
     http.post.mockReturnValue(of({ data: { id: 'resend-delivery-id' } }));
     await service.send(

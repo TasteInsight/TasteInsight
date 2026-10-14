@@ -105,6 +105,10 @@
     },
     // #ifdef MP-WEIXIN
     {
+      "path": "pages/login/campus-auth",
+      "style": { "navigationBarTitleText": "校园账号登录" }
+    },
+    {
       "path": "pages/profile/campus-auth",
       "style": { "navigationBarTitleText": "校园统一认证" }
     },

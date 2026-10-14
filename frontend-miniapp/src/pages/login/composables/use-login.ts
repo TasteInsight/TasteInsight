@@ -1,12 +1,17 @@
-import { ref, getCurrentScope, onScopeDispose } from 'vue';
+import { ref, getCurrentScope, onScopeDispose, type Ref } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
+import type { CampusLoginTicket } from '@/api/modules/auth';
 import config from '@/config';
 import { useWechatAuthorization } from '@/composables/use-wechat-authorization';
 
-export function useLogin() {
+export function useLogin(wechatEnabled?: Ref<boolean>) {
   const loading = ref(false);
   const submitted = ref(false);
-  const { available: wechatAvailable, authorize: authorizeWechat } = useWechatAuthorization();
+  const {
+    available: wechatAvailable,
+    checking: wechatProviderLoading,
+    authorize: authorizeWechat,
+  } = useWechatAuthorization(wechatEnabled);
   const userStore = useUserStore();
   let disposed = false;
   let navigation: ReturnType<typeof setTimeout> | undefined;
@@ -18,7 +23,7 @@ export function useLogin() {
     });
 
   /**
-   * 微信登录流程
+   * 执行授权和登录，防止过期会话应用授权结果
    */
   async function authenticate(
     getCode: () => Promise<string>,
@@ -86,6 +91,12 @@ export function useLogin() {
       value => userStore.phoneLoginAction(challengeId, value)
     );
 
+  const campusLogin = (ticket: CampusLoginTicket) =>
+    authenticate(
+      async () => ticket.handoffCode,
+      () => userStore.campusLoginAction(ticket)
+    );
+
   async function testLogin(): Promise<void> {
     if (!config.testLoginEnabled) throw new Error('开发测试登录未启用');
     return authenticate(async () => {
@@ -102,9 +113,11 @@ export function useLogin() {
     loading,
     submitted,
     wechatAvailable,
+    wechatProviderLoading,
     testLogin,
     testLoginEnabled: config.testLoginEnabled,
     wechatLogin,
     phoneLogin,
+    campusLogin,
   };
 }

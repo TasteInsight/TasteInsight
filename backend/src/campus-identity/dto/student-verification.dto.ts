@@ -54,6 +54,12 @@ export class CompleteCampusOAuthDto {
   handoffCode: string;
 }
 
+export class CampusLoginDto extends CompleteCampusOAuthDto {
+  @IsString()
+  @Matches(/^[A-Za-z0-9_-]{43}$/)
+  loginVerifier: string;
+}
+
 export class StudentDecisionDto {
   @IsIn(['APPROVE', 'REJECT', 'REVOKE'])
   decision: 'APPROVE' | 'REJECT' | 'REVOKE';

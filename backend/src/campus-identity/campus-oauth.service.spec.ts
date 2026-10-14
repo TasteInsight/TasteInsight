@@ -5,14 +5,18 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
+import type { CampusOAuthAttempt } from '@prisma/client';
 import { PrismaService } from '@/prisma.service';
 import { createHash } from 'crypto';
 import { of, throwError } from 'rxjs';
+import { UserIdentityService } from '@/auth/user-identity.service';
 import { CampusOAuthService } from './campus-oauth.service';
 
 describe('CampusOAuthService', () => {
   const settings: Record<string, string | number> = {};
-  const attempts = new Map<string, any>();
+  const attempts = new Map<string, CampusOAuthAttempt>();
+  let previousVerification: Record<string, unknown> | null;
+  let subjectOwner: { userId: string } | null;
   const tx = {
     $executeRaw: jest.fn(),
     campusOAuthAttempt: {
@@ -34,14 +38,21 @@ describe('CampusOAuthService', () => {
   const config = {
     get: (key: string, fallback?: unknown) => settings[key] ?? fallback,
   };
+  const identities = { campus: jest.fn() };
   const service = new CampusOAuthService(
     prisma as unknown as PrismaService,
     config as ConfigService,
     http as unknown as HttpService,
+    identities as unknown as UserIdentityService,
   );
   beforeEach(() => {
     jest.resetAllMocks();
     attempts.clear();
+    previousVerification = null;
+    subjectOwner = null;
+    identities.campus.mockImplementation((_tx, _subject, id) =>
+      Promise.resolve({ id: id ?? 'campus-user' }),
+    );
     Object.keys(settings).forEach((key) => delete settings[key]);
     Object.assign(settings, {
       AUTH_CHALLENGE_SECRET: 'test-challenge-key'.repeat(3),
@@ -91,9 +102,12 @@ describe('CampusOAuthService', () => {
       const matches =
         attempt &&
         Object.entries(where).every(([key, expected]) => {
+          const actual = attempt[key as keyof CampusOAuthAttempt];
           if (expected && typeof expected === 'object' && 'gt' in expected)
-            return attempt[key] > (expected as { gt: Date }).gt;
-          return attempt[key] === expected;
+            return (
+              actual instanceof Date && actual > (expected as { gt: Date }).gt
+            );
+          return actual === expected;
         });
       if (!matches) return Promise.resolve({ count: 0 });
       Object.assign(attempt, data);
@@ -110,11 +124,13 @@ describe('CampusOAuthService', () => {
     tx.campusOAuthAttempt.update.mockImplementation(({ where, data }) => {
       const attempt = [...attempts.values()].find(
         (item) => item.id === where.id,
-      );
+      )!;
       Object.assign(attempt, data);
       return Promise.resolve(attempt);
     });
-    tx.studentVerification.findUnique.mockResolvedValue(null);
+    tx.studentVerification.findUnique.mockImplementation(({ where }) =>
+      Promise.resolve(where.userId ? previousVerification : subjectOwner),
+    );
     http.post.mockReturnValue(
       of({ data: { access_token: 'campus-token', token_type: 'Bearer' } }),
     );
@@ -140,7 +156,7 @@ describe('CampusOAuthService', () => {
     const state = url.searchParams.get('state')!;
     const attempt = attempts.get(
       createHash('sha256').update(state).digest('hex'),
-    );
+    )!;
     expect(attempt.userId).toBe('alice');
     expect(attempt.clientOrigin).toBe('https://app.example.org');
     expect(start.account).toEqual({
@@ -173,8 +189,9 @@ describe('CampusOAuthService', () => {
     expect(attempt.handoffDigest).toBe(
       createHash('sha256').update(result.handoffCode).digest('hex'),
     );
+    const proof = attempt.proof as { capturedAt: string };
     expect(
-      attempt.handoffExpiresAt.getTime() - Date.parse(attempt.proof.capturedAt),
+      attempt.handoffExpiresAt!.getTime() - Date.parse(proof.capturedAt),
     ).toBe(180000);
     expect(JSON.stringify(attempt)).not.toContain(result.handoffCode);
     expect(await service.complete('alice', result)).toEqual({
@@ -297,10 +314,10 @@ describe('CampusOAuthService', () => {
   });
   it('does not overwrite an administrator decision newer than the OAuth attempt', async () => {
     const state = await begin();
-    tx.studentVerification.findUnique.mockResolvedValue({
+    previousVerification = {
       status: 'REVOKED',
       updatedAt: new Date(Date.now() + 1000),
-    });
+    };
     const handoff = await service.callback({ state, code: 'code' });
     await expect(service.complete('alice', handoff)).rejects.toBeInstanceOf(
       ConflictException,
@@ -385,10 +402,10 @@ describe('CampusOAuthService', () => {
       state: await begin(),
       code: 'code',
     });
-    tx.studentVerification.findUnique.mockResolvedValue({
+    previousVerification = {
       status: 'REVOKED',
       updatedAt: new Date(Date.now() + 1000),
-    });
+    };
     await expect(service.complete('alice', handoff)).rejects.toBeInstanceOf(
       ConflictException,
     );
@@ -403,5 +420,199 @@ describe('CampusOAuthService', () => {
     await expect(service.complete('alice', handoff)).rejects.toBeInstanceOf(
       ConflictException,
     );
+  });
+  const anonymousHandoff = async () => {
+    settings.AUTH_LOGIN_METHODS = 'campusOAuth';
+    const start = await service.startLogin(
+      '127.0.0.1',
+      'https://app.example.org',
+    );
+    const state = new URL(start.authorizationUrl).searchParams.get('state')!;
+    const handoff = await service.callback({ state, code: 'provider-code' });
+    return {
+      start,
+      handoff,
+      ticket: {
+        attemptId: start.attemptId,
+        handoffCode: handoff.handoffCode,
+        loginVerifier: start.loginVerifier,
+      },
+    };
+  };
+  it('logs in with verification disabled without reading or writing student qualification, and consumes once', async () => {
+    settings.CAMPUS_VERIFICATION_METHODS = '';
+    const { start, handoff, ticket } = await anonymousHandoff();
+    expect(start).not.toHaveProperty('account');
+    expect(handoff).toMatchObject({ purpose: 'LOGIN', account: undefined });
+    expect(handoff).not.toHaveProperty('loginVerifier');
+    expect(start.authorizationUrl).not.toContain(start.loginVerifier);
+    expect(JSON.stringify([...attempts.values()])).not.toContain(
+      start.loginVerifier,
+    );
+    await expect(service.complete('alice', handoff)).rejects.toMatchObject({
+      response: { code: 'VERIFICATION_METHOD_DISABLED' },
+    });
+    await expect(
+      service.login({ ...ticket, loginVerifier: 'x'.repeat(43) }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(identities.campus).not.toHaveBeenCalled();
+    expect(await service.login(ticket)).toEqual({ id: 'campus-user' });
+    expect(tx.studentVerification.findUnique).not.toHaveBeenCalled();
+    expect(tx.studentVerification.upsert).not.toHaveBeenCalled();
+    await expect(service.login(ticket)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+  });
+  it('blocks a disabled campus login while keeping verification available', async () => {
+    const { ticket } = await anonymousHandoff();
+    settings.AUTH_LOGIN_METHODS = '';
+    await expect(service.login(ticket)).rejects.toMatchObject({
+      response: { code: 'LOGIN_METHOD_DISABLED' },
+    });
+    expect(identities.campus).not.toHaveBeenCalled();
+    await expect(service.startLogin('127.0.0.1')).rejects.toMatchObject({
+      response: { code: 'LOGIN_METHOD_DISABLED' },
+    });
+    await expect(service.start('alice')).resolves.toHaveProperty('account');
+  });
+  it('blocks verification after a policy change at callback and completion', async () => {
+    const state = await begin();
+    settings.CAMPUS_VERIFICATION_METHODS = '';
+    await expect(
+      service.callback({ state, code: 'provider-code' }),
+    ).rejects.toMatchObject({
+      response: { code: 'VERIFICATION_METHOD_DISABLED' },
+    });
+    expect(http.post).not.toHaveBeenCalled();
+    settings.CAMPUS_VERIFICATION_METHODS = 'campusOAuth';
+    const handoff = await service.callback({
+      state: await begin(),
+      code: 'provider-code',
+    });
+    settings.CAMPUS_VERIFICATION_METHODS = '';
+    await expect(service.complete('alice', handoff)).rejects.toMatchObject({
+      response: { code: 'VERIFICATION_METHOD_DISABLED' },
+    });
+    expect(tx.studentVerification.upsert).not.toHaveBeenCalled();
+  });
+  it('allows campus login while retaining an administrator revocation', async () => {
+    const { ticket } = await anonymousHandoff();
+    previousVerification = {
+      status: 'REVOKED',
+      reviewedAt: new Date(0),
+      updatedAt: new Date(0),
+    };
+    await expect(service.login(ticket)).resolves.toEqual({ id: 'campus-user' });
+    expect(tx.studentVerification.upsert).not.toHaveBeenCalled();
+  });
+  it('limits anonymous requests by a keyed IP digest without saving the IP', async () => {
+    settings.AUTH_LOGIN_METHODS = 'campusOAuth';
+    await service.startLogin('192.0.2.10');
+    expect(tx.campusOAuthAttempt.create.mock.calls[0][0].data).toMatchObject({
+      userId: null,
+      purpose: 'LOGIN',
+      ipDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
+    expect(JSON.stringify([...attempts.values()])).not.toContain('192.0.2.10');
+    tx.campusOAuthAttempt.count.mockResolvedValue(20);
+    await expect(service.startLogin('192.0.2.10')).rejects.toThrow('频繁');
+  });
+
+  it('completes campus verification without creating or resolving a login identity', async () => {
+    settings.AUTH_LOGIN_METHODS = '';
+    const handoff = await service.callback({
+      state: await begin(),
+      code: 'code',
+    });
+    await expect(service.complete('alice', handoff)).resolves.toMatchObject({
+      status: 'VERIFIED',
+    });
+    expect(identities.campus).not.toHaveBeenCalled();
+    expect(tx.studentVerification.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          userId: 'alice',
+          status: 'VERIFIED',
+        }),
+      }),
+    );
+  });
+  it('binds a login identity independently of verification and rejects cross-purpose completion', async () => {
+    settings.AUTH_LOGIN_METHODS = 'campusOAuth';
+    const start = await service.startBinding('alice');
+    const handoff = await service.callback({
+      state: new URL(start.authorizationUrl).searchParams.get('state')!,
+      code: 'code',
+    });
+    await expect(service.complete('alice', handoff)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    settings.CAMPUS_VERIFICATION_METHODS = '';
+    await expect(
+      service.completeBinding('bob', handoff),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.completeBinding('alice', handoff)).resolves.toEqual({
+      completed: true,
+    });
+    expect(identities.campus).toHaveBeenCalledWith(
+      tx,
+      expect.any(String),
+      'alice',
+    );
+    expect(tx.studentVerification.findUnique).not.toHaveBeenCalled();
+    expect(tx.studentVerification.upsert).not.toHaveBeenCalled();
+    await expect(
+      service.completeBinding('alice', handoff),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+  it('applies the login allowlist to binding start, callback and completion', async () => {
+    await expect(service.startBinding('alice')).rejects.toMatchObject({
+      response: { code: 'LOGIN_METHOD_DISABLED' },
+    });
+    settings.AUTH_LOGIN_METHODS = 'campusOAuth';
+    const first = await service.startBinding('alice');
+    settings.AUTH_LOGIN_METHODS = '';
+    await expect(
+      service.callback({
+        state: new URL(first.authorizationUrl).searchParams.get('state')!,
+        code: 'code',
+      }),
+    ).rejects.toMatchObject({ response: { code: 'LOGIN_METHOD_DISABLED' } });
+    settings.AUTH_LOGIN_METHODS = 'campusOAuth';
+    const second = await service.startBinding('alice');
+    const handoff = await service.callback({
+      state: new URL(second.authorizationUrl).searchParams.get('state')!,
+      code: 'code',
+    });
+    settings.AUTH_LOGIN_METHODS = '';
+    await expect(
+      service.completeBinding('alice', handoff),
+    ).rejects.toMatchObject({ response: { code: 'LOGIN_METHOD_DISABLED' } });
+    expect(identities.campus).not.toHaveBeenCalled();
+  });
+  it('checks the verification policy again after the login callback', async () => {
+    const { ticket } = await anonymousHandoff();
+    settings.CAMPUS_VERIFICATION_METHODS = 'campusEmail';
+    await expect(service.login(ticket)).resolves.toEqual({ id: 'campus-user' });
+    expect(tx.studentVerification.upsert).not.toHaveBeenCalled();
+  });
+  it('does not modify an existing qualification when OAuth verification is disabled', async () => {
+    const { ticket } = await anonymousHandoff();
+    previousVerification = {
+      userId: 'campus-user',
+      status: 'VERIFIED',
+      updatedAt: new Date(0),
+      reviewedAt: null,
+    };
+    settings.CAMPUS_VERIFICATION_METHODS = '';
+    await service.login(ticket);
+    expect(tx.studentVerification.findUnique).not.toHaveBeenCalled();
+    expect(tx.studentVerification.upsert).not.toHaveBeenCalled();
+  });
+  it('allows login without transferring a campus qualification belonging to another account', async () => {
+    const { ticket } = await anonymousHandoff();
+    subjectOwner = { userId: 'qualification-only-owner' };
+    await expect(service.login(ticket)).resolves.toEqual({ id: 'campus-user' });
+    expect(tx.studentVerification.upsert).not.toHaveBeenCalled();
   });
 });

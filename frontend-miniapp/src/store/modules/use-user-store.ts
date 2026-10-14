@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue'; // 引入 ref 和 computed
 import { wechatLogin, getUserProfile, updateUserProfile } from '@/api/modules/user';
-import { phoneLogin } from '@/api/modules/auth';
+import { campusLogin, type CampusLoginTicket, phoneLogin } from '@/api/modules/auth';
+import { clearCampusLoginPending } from '@/utils/campus-login';
 import { clearCampusOAuthPending } from '@/utils/campus-oauth';
 import type { ApiResponse, LoginData, User, UserProfileUpdateRequest } from '@/types/api';
 
@@ -44,10 +45,13 @@ export const useUserStore = defineStore('user', () => {
   // ==================== Actions ====================
 
   /**
-   * 微信登录流程
+   * 建立登录会话
    */
-  async function loginWith(authenticate: () => Promise<ApiResponse<LoginData>>): Promise<User> {
-    logoutAction();
+  async function loginWith(
+    authenticate: () => Promise<ApiResponse<LoginData>>,
+    preserveCampusLogin = false
+  ): Promise<User> {
+    resetSession(preserveCampusLogin);
     const loginSession = sessionVersion.value;
     try {
       const loginData = (await authenticate()).data;
@@ -68,7 +72,7 @@ export const useUserStore = defineStore('user', () => {
         const safeUser: User = {
           id: user.id || '',
           openId: user.openId || '',
-          nickname: user.nickname || '微信用户',
+          nickname: user.nickname || '用户',
           avatar: user.avatar || '',
           preferences: user.preferences || {},
           allergens: user.allergens || [],
@@ -110,11 +114,11 @@ export const useUserStore = defineStore('user', () => {
         throw new Error('登录失败：未能获取到用户信息');
       } catch (err) {
         // 清理已存 token
-        if (sessionVersion.value === loginSession) logoutAction();
+        if (sessionVersion.value === loginSession) resetSession(preserveCampusLogin);
         throw err;
       }
     } catch (error) {
-      if (sessionVersion.value === loginSession) logoutAction();
+      if (sessionVersion.value === loginSession) resetSession(preserveCampusLogin);
       throw error;
     }
   }
@@ -128,9 +132,21 @@ export const useUserStore = defineStore('user', () => {
   }
 
   /**
-   * 退出登录
+   * 使用校园授权建立登录会话
    */
+  function campusLoginAction(ticket: CampusLoginTicket): Promise<User> {
+    return loginWith(() => campusLogin(ticket), true).then(user => {
+      clearCampusLoginPending();
+      return user;
+    });
+  }
+
   function logoutAction(): void {
+    resetSession();
+  }
+
+  function resetSession(preserveCampusLogin = false): void {
+    if (!preserveCampusLogin) clearCampusLoginPending();
     clearCampusOAuthPending();
     sessionVersion.value += 1;
     token.value = null;
@@ -172,8 +188,10 @@ export const useUserStore = defineStore('user', () => {
 
     const profileSession = sessionVersion.value;
     const request = ++profileRequest;
-    const ownsResult = () => sessionVersion.value === profileSession &&
-      request >= appliedProfileRequest && isOperationCurrent();
+    const ownsResult = () =>
+      sessionVersion.value === profileSession &&
+      request >= appliedProfileRequest &&
+      isOperationCurrent();
     try {
       const response = await getUserProfile();
       if (!ownsResult()) return;
@@ -252,6 +270,7 @@ export const useUserStore = defineStore('user', () => {
     // Actions
     loginAction,
     phoneLoginAction,
+    campusLoginAction,
     logoutAction,
     fetchProfileAction,
     updateProfileAction,

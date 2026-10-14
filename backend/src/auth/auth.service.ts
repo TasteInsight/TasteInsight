@@ -14,6 +14,8 @@ import {
   UserIdentityService,
   type WechatPlatform,
 } from './user-identity.service';
+import { CampusOAuthService } from '@/campus-identity/campus-oauth.service';
+import { CampusLoginDto } from '@/campus-identity/dto/student-verification.dto';
 import { VerificationChallengeService } from './verification-challenge.service';
 
 type TokenExpiration = NonNullable<JwtSignOptions['expiresIn']>;
@@ -27,6 +29,7 @@ export class AuthService {
     private identities: UserIdentityService,
     private userProfileService: UserProfileService,
     private challenges: VerificationChallengeService,
+    private campusOAuth: CampusOAuthService,
   ) {}
 
   // --- 核心方法：生成 Access Token 和 Refresh Token ---
@@ -98,6 +101,14 @@ export class AuthService {
     return this.userLogin(await this.identities.phone(phone));
   }
 
+  startCampusLogin(ip: string, origin?: string) {
+    return this.campusOAuth.startLogin(ip, origin);
+  }
+
+  async campusLogin(dto: CampusLoginDto) {
+    return this.userLogin(await this.campusOAuth.login(dto));
+  }
+
   private async userLogin(user: User) {
     const tokens = await this._generateTokens({ sub: user.id, type: 'user' });
     const profile = await this.userProfileService.getUserProfile(user.id);
@@ -129,21 +140,19 @@ export class AuthService {
       throw new UnauthorizedException('用户名或密码错误');
     }
 
-    const isPasswordMatching = await bcrypt.compare(pass, admin.password);
+    const {
+      password,
+      permissions: permissionsRelation,
+      canteen,
+      ...adminData
+    } = admin;
+    const isPasswordMatching = await bcrypt.compare(pass, password);
 
     if (!isPasswordMatching) {
       throw new UnauthorizedException('用户名或密码错误');
     }
 
     const tokens = await this._generateTokens({ sub: admin.id, type: 'admin' });
-
-    // 从返回结果中移除密码和权限关联
-    const {
-      password: _password,
-      permissions: permissionsRelation,
-      canteen,
-      ...adminData
-    } = admin;
 
     // 提取权限字符串数组
     let permissions = permissionsRelation.map((p) => p.permission);
@@ -177,12 +186,7 @@ export class AuthService {
     if (userType === 'user') {
       userData = await this.validateUser(userId);
     } else {
-      const adminData = await this.validateAdmin(userId);
-      // 移除密码字段
-      if (adminData) {
-        const { password: _password, ...admin } = adminData;
-        userData = admin;
-      }
+      userData = await this.validateAdmin(userId);
     }
 
     if (!userData) {
@@ -213,9 +217,10 @@ export class AuthService {
     return this.prisma.user.findUnique({ where: { id: userId } });
   }
 
-  validateAdmin(adminId: string): Promise<Admin | null> {
+  validateAdmin(adminId: string): Promise<Omit<Admin, 'password'> | null> {
     return this.prisma.admin.findUnique({
       where: { id: adminId, deletedAt: null },
+      omit: { password: true },
     });
   }
 }

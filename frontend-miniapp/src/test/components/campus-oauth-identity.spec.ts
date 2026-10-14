@@ -15,12 +15,15 @@ jest.mock('@/config', () => ({
 }));
 jest.mock('@/store/modules/use-user-store', () => ({ useUserStore: jest.fn() }));
 jest.mock('@/api/modules/auth', () => ({
+  ...jest.requireActual('@/api/modules/auth'),
   getAuthCapabilities: jest.fn(),
   getStudentVerification: jest.fn(),
   getAccountIdentities: jest.fn(),
   sendCampusEmailCode: jest.fn(),
   verifyCampusEmail: jest.fn(),
   startCampusOAuth: jest.fn(),
+  startCampusLoginBinding: jest.fn(),
+  completeCampusLoginBinding: jest.fn(),
   completeCampusOAuth: jest.fn(),
   sendBindingPhoneCode: jest.fn(),
   bindPhone: jest.fn(),
@@ -62,6 +65,10 @@ beforeEach(() => {
   (auth.getAuthCapabilities as jest.Mock).mockResolvedValue({ data: { campusOAuth: true } });
   (auth.getAccountIdentities as jest.Mock).mockResolvedValue({ data: { wechat: {} } });
   (auth.startCampusOAuth as jest.Mock).mockResolvedValue({ data: start() });
+  (auth.startCampusLoginBinding as jest.Mock).mockResolvedValue({
+    data: { ...start(), purpose: 'LOGIN_BIND' },
+  });
+  (auth.completeCampusLoginBinding as jest.Mock).mockResolvedValue({ data: { completed: true } });
   (auth.completeCampusOAuth as jest.Mock).mockResolvedValue({
     data: { completed: true, status: 'VERIFIED' },
   });
@@ -89,6 +96,29 @@ function dispatch(source = popup, origin = 'https://api.example', attemptId = 'a
     })
   );
 }
+test('omits an unbound phone number when phone identity is disabled', async () => {
+  const wrapper = await page();
+  expect(wrapper.findAll('.identity-account-row').some(row => row.text().includes('手机号'))).toBe(
+    false
+  );
+  expect(wrapper.find('input[type="tel"]').exists()).toBe(false);
+});
+
+test('disabled mobile WeChat does not probe the optional OAuth module', async () => {
+  config.platform = 'app';
+  await page();
+  expect(uni.getProvider).not.toHaveBeenCalled();
+});
+
+test('keeps an existing masked phone identity visible when new phone binding is disabled', async () => {
+  (auth.getAccountIdentities as jest.Mock).mockResolvedValue({
+    data: { phone: '138****8000', wechat: {} },
+  });
+  const wrapper = await page();
+  expect(wrapper.text()).toContain('138****8000');
+  expect(wrapper.findAll('button').some(item => item.text() === '绑定手机号')).toBe(false);
+});
+
 test('a valid callback fills the code but never grants or refreshes privileges until explicit completion', async () => {
   const wrapper = await page();
   (user.fetchProfileAction as jest.Mock).mockClear();
@@ -280,4 +310,105 @@ test('a late identity read cannot replace the new account data', async () => {
   await flushPromises();
   expect(wrapper.text()).toContain('+8613900139000');
   expect(wrapper.text()).not.toContain('+8613800138000');
+});
+
+test('keeps campus login binding distinct from revoked student qualification and hides disabled unbound methods', async () => {
+  (auth.getAuthCapabilities as jest.Mock).mockResolvedValue({
+    data: {
+      phone: false,
+      wechatMiniapp: false,
+      wechatApp: false,
+      campusEmail: false,
+      campusOAuth: false,
+      loginMethods: { phone: false, wechatMiniapp: false, wechatApp: false, campusOAuth: true },
+      verificationMethods: { campusEmail: false, campusOAuth: false },
+    },
+  });
+  (auth.getAccountIdentities as jest.Mock).mockResolvedValue({
+    data: { campusOAuth: true, wechat: { miniapp: false, app: false } },
+  });
+  (auth.getStudentVerification as jest.Mock).mockResolvedValue({
+    data: { status: 'REVOKED', canContribute: false },
+  });
+  const wrapper = await page();
+  expect(wrapper.text()).toContain('校园账号已绑定');
+  expect(wrapper.findAll('.identity-account-row').map(row => row.text())).toEqual([
+    '校园账号已绑定',
+  ]);
+  expect(wrapper.text()).not.toContain('发起统一认证');
+});
+
+test('hides the login-method section when every method is disabled and no identities are bound', async () => {
+  (auth.getAuthCapabilities as jest.Mock).mockResolvedValue({
+    data: {
+      phone: false,
+      wechatMiniapp: false,
+      wechatApp: false,
+      campusEmail: false,
+      campusOAuth: false,
+    },
+  });
+  (auth.getAccountIdentities as jest.Mock).mockResolvedValue({
+    data: { wechat: { miniapp: false, app: false }, campusOAuth: false },
+  });
+  const wrapper = await page();
+  expect(wrapper.text()).not.toContain('登录方式');
+  expect(wrapper.findAll('.identity-account-row')).toHaveLength(0);
+});
+
+test('binds campus login independently when student verification is disabled', async () => {
+  (auth.getAuthCapabilities as jest.Mock).mockResolvedValue({
+    data: {
+      loginMethods: { phone: false, wechatMiniapp: false, wechatApp: false, campusOAuth: true },
+      verificationMethods: { campusEmail: false, campusOAuth: false },
+    },
+  });
+  const wrapper = await page();
+  expect(button(wrapper, '前往认证')).toBeUndefined();
+  await button(wrapper, '绑定校园账号').trigger('click');
+  await flushPromises();
+  expect(auth.startCampusLoginBinding).toHaveBeenCalledTimes(1);
+  expect(auth.startCampusOAuth).not.toHaveBeenCalled();
+  expect(readCampusOAuthPending('alice')?.purpose).toBe('LOGIN_BIND');
+  window.dispatchEvent(
+    new MessageEvent('message', {
+      source: popup,
+      origin: 'https://api.example',
+      data: {
+        type: 'tasteinsight:campus-oauth',
+        purpose: 'LOGIN_BIND',
+        attemptId: 'attempt-a',
+        handoffCode: code,
+      },
+    })
+  );
+  await flushPromises();
+  await button(wrapper, '确认绑定到当前账号').trigger('click');
+  await flushPromises();
+  expect(auth.completeCampusLoginBinding).toHaveBeenCalledWith('attempt-a', code);
+  expect(auth.completeCampusOAuth).not.toHaveBeenCalled();
+});
+
+test('miniapp login binding selects the binding endpoint on its owner-bound web-view', async () => {
+  config.platform = 'mp-weixin';
+  const wrapper = shallowMount(CampusAuth);
+  wrappers.push(wrapper);
+  await (onLoad as jest.Mock).mock.calls.slice(-1)[0][0]({ purpose: 'LOGIN_BIND' });
+  await flushPromises();
+  expect(auth.startCampusLoginBinding).toHaveBeenCalledTimes(1);
+  expect(auth.startCampusOAuth).not.toHaveBeenCalled();
+  expect(readCampusOAuthPending('alice')?.purpose).toBe('LOGIN_BIND');
+});
+
+test('uses grouped login capabilities for the WeChat binding action', async () => {
+  config.platform = 'mp-weixin';
+  (auth.getAuthCapabilities as jest.Mock).mockResolvedValue({
+    data: {
+      wechatMiniapp: false,
+      loginMethods: { phone: false, wechatMiniapp: true, wechatApp: false, campusOAuth: false },
+      verificationMethods: { campusEmail: false, campusOAuth: false },
+    },
+  });
+  const wrapper = await page();
+  expect(button(wrapper, '绑定当前微信')).toBeDefined();
 });

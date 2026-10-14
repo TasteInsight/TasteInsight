@@ -18,6 +18,37 @@ const api = {
 };
 
 describe('role-owned environment validation', () => {
+  it('validates the login method allowlist only in user-facing roles', () => {
+    const environment = { ...api, AUTH_LOGIN_METHODS: 'email' };
+    expect(() => validateEnvironment(environment, 'public-api')).toThrow(
+      'AUTH_LOGIN_METHODS',
+    );
+    expect(() => validateEnvironment(environment, 'combined')).toThrow(
+      'AUTH_LOGIN_METHODS',
+    );
+    for (const role of ['admin-api', 'worker', 'migrate'] as const)
+      expect(() => validateEnvironment(environment, role)).not.toThrow();
+    expect(() =>
+      validateEnvironment({ ...api, AUTH_LOGIN_METHODS: '' }, 'public-api'),
+    ).not.toThrow();
+  });
+
+  it('validates verification policy only in user-facing roles', () => {
+    const environment = { ...api, CAMPUS_VERIFICATION_METHODS: 'phone' };
+    for (const role of ['public-api', 'combined'] as const)
+      expect(() => validateEnvironment(environment, role)).toThrow(
+        'CAMPUS_VERIFICATION_METHODS',
+      );
+    for (const role of ['admin-api', 'worker', 'migrate'] as const)
+      expect(() => validateEnvironment(environment, role)).not.toThrow();
+    expect(() =>
+      validateEnvironment(
+        { ...api, CAMPUS_VERIFICATION_METHODS: '' },
+        'public-api',
+      ),
+    ).not.toThrow();
+  });
+
   it('migration requires the database but no HTTP, authentication or queue configuration', () => {
     expect(() => validateEnvironment(database, 'migrate')).not.toThrow();
     expect(() =>

@@ -3,7 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 
-export type ChallengePurpose = 'PHONE_LOGIN' | 'PHONE_BIND' | 'SCHOOL_EMAIL';
+import {
+  challengeDefinition,
+  type ChallengePurpose,
+} from './verification-purpose';
 
 @Injectable()
 export class VerificationDeliveryService {
@@ -14,7 +17,7 @@ export class VerificationDeliveryService {
 
   assertAvailable(purpose: ChallengePurpose): void {
     const keys =
-      purpose === 'SCHOOL_EMAIL'
+      challengeDefinition(purpose).channel === 'email'
         ? ['RESEND_API_KEY', 'EMAIL_FROM']
         : ['SMS_GATEWAY_URL', 'SMS_GATEWAY_TOKEN'];
     if (keys.some((key) => !this.config.get<string>(key)?.trim())) {
@@ -29,21 +32,23 @@ export class VerificationDeliveryService {
     id: string,
   ): Promise<void> {
     this.assertAvailable(purpose);
-    const email = purpose === 'SCHOOL_EMAIL';
+    const definition = challengeDefinition(purpose);
+    const email = definition.channel === 'email';
     const endpoint = email
       ? 'https://api.resend.com/emails'
       : this.config.get<string>('SMS_GATEWAY_URL')!;
     const token = this.config.get<string>(
       email ? 'RESEND_API_KEY' : 'SMS_GATEWAY_TOKEN',
     );
-    const payload = email
-      ? {
-          from: this.config.get<string>('EMAIL_FROM'),
-          to: [to],
-          subject: 'TasteInsight 校园邮箱验证码',
-          text: `验证码：${code}。5分钟内有效，请勿向他人透露。邮箱验证完成后，学生资格申请需经审核。`,
-        }
-      : { to, code, expiresIn: 300, purpose };
+    const payload =
+      definition.channel === 'email'
+        ? {
+            from: this.config.get<string>('EMAIL_FROM'),
+            to: [to],
+            subject: definition.subject,
+            text: definition.text(code),
+          }
+        : { to, code, expiresIn: 300, purpose };
     try {
       const { data } = await firstValueFrom(
         this.http.post(endpoint, payload, {

@@ -3,12 +3,14 @@ import {
   Controller,
   Get,
   HttpCode,
+  Header,
   HttpStatus,
   Post,
   Request,
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { CampusLoginDto } from '@/campus-identity/dto/student-verification.dto';
 import { AuthService } from './auth.service';
 import { AuthRealm } from './decorators/auth-realm.decorator';
 import { PhoneChallengeDto, VerifyChallengeDto } from './dto/phone-login.dto';
@@ -33,6 +35,24 @@ export class PublicAuthController {
       message: 'success',
       data: identityCapabilities((key) => this.config.get(key)),
     };
+  }
+
+  @Post('campus/oauth')
+  @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'no-store')
+  async startCampusLogin(@Request() req) {
+    return {
+      code: 200,
+      message: 'success',
+      data: await this.authService.startCampusLogin(req.ip, req.headers.origin),
+    };
+  }
+
+  @Post('campus/login')
+  @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'no-store')
+  campusLogin(@Body() dto: CampusLoginDto) {
+    return this.authService.campusLogin(dto);
   }
 
   @Post('phone/challenges')

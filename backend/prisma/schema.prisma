@@ -112,22 +112,26 @@ model StudentVerification {
 }
 
 model CampusOAuthAttempt {
-  id               String    @id @default(cuid())
-  userId           String
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  stateDigest      String    @unique
-  codeVerifier     String
-  expiresAt        DateTime
-  consumedAt       DateTime?
-  clientOrigin     String?
-  proof            Json?
-  handoffDigest    String?
-  handoffExpiresAt DateTime?
-  completedAt      DateTime?
-  createdAt        DateTime  @default(now())
+  id                  String    @id @default(cuid())
+  userId              String?
+  user                User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose             String    @default("VERIFICATION")
+  loginVerifierDigest String?
+  ipDigest            String?
+  stateDigest         String    @unique
+  codeVerifier        String
+  expiresAt           DateTime
+  consumedAt          DateTime?
+  clientOrigin        String?
+  proof               Json?
+  handoffDigest       String?
+  handoffExpiresAt    DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime  @default(now())
 
   @@index([userId, createdAt])
   @@index([expiresAt])
+  @@index([purpose, ipDigest, createdAt])
   @@map("campus_oauth_attempts")
 }
 

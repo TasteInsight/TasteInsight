@@ -3,6 +3,7 @@ import {
   InternalServerErrorException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { PrismaService } from '@/prisma.service';
@@ -15,6 +16,7 @@ describe('UserIdentityService', () => {
     $executeRaw: jest.fn(),
     user: { findUnique: jest.fn(), create: jest.fn() },
     userIdentity: { findMany: jest.fn(), upsert: jest.fn() },
+    studentVerification: { findUnique: jest.fn() },
   };
   const prisma = { ...tx, $transaction: jest.fn() };
   const http = { get: jest.fn() };
@@ -39,6 +41,8 @@ describe('UserIdentityService', () => {
     });
     prisma.$transaction.mockImplementation((callback) => callback(tx));
     tx.userIdentity.findMany.mockResolvedValue([]);
+    tx.studentVerification.findUnique.mockResolvedValue(null);
+    settings.CAMPUS_OAUTH_ISSUER = 'https://school.example';
     tx.user.findUnique.mockImplementation(({ where }) =>
       Promise.resolve(where.id ? { ...user, id: where.id } : null),
     );
@@ -47,6 +51,18 @@ describe('UserIdentityService', () => {
       of({ data: { openid: 'openid', unionid: 'unionid' } }),
     );
   });
+  it.each(['mp-weixin', 'app'] as const)(
+    'rejects disabled %s authorization before contacting WeChat',
+    async (platform) => {
+      settings.AUTH_LOGIN_METHODS = '';
+      await expect(service.wechat('code', platform)).rejects.toMatchObject({
+        response: { code: 'LOGIN_METHOD_DISABLED' },
+      });
+      expect(http.get).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    },
+  );
+
   it('uses the mini-program exchange and app-scoped identity', async () => {
     expect(await service.wechat('code')).toEqual(user);
     expect(http.get).toHaveBeenCalledWith(
@@ -216,14 +232,61 @@ describe('UserIdentityService', () => {
     tx.userIdentity.findMany.mockResolvedValue([
       { provider: 'PHONE', subject: '+8613812345678' },
       {
+        provider: 'CAMPUS_OAUTH',
+        issuer: 'https://school.example',
+        subject: 'private-campus-digest',
+      },
+      {
         provider: 'WECHAT_OPENID',
         issuer: 'mini-app',
         subject: 'private-openid',
       },
     ]);
     expect(await service.list('user')).toEqual({
+      campusOAuth: true,
       phone: '+86****5678',
       wechat: { miniapp: true, app: false },
     });
+  });
+  it('resolves campus login from login identities without looking up campus qualifications', async () => {
+    tx.studentVerification.findUnique.mockResolvedValue({
+      userId: 'user',
+    });
+    const result = await service.campus(
+      tx as unknown as Prisma.TransactionClient,
+      'digest',
+    );
+    expect(result.id).toBe('user');
+    expect(tx.studentVerification.findUnique).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(tx.userIdentity.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          provider: 'CAMPUS_OAUTH',
+          issuer: 'https://school.example',
+          subject: 'digest',
+          userId: 'user',
+        }),
+      }),
+    );
+  });
+  it('rejects a campus identity owned by another account without merging owners', async () => {
+    tx.userIdentity.findMany.mockResolvedValue([
+      {
+        provider: 'CAMPUS_OAUTH',
+        issuer: 'https://school.example',
+        subject: 'digest',
+        userId: 'other',
+      },
+    ]);
+    await expect(
+      service.campus(
+        tx as unknown as Prisma.TransactionClient,
+        'digest',
+        'user',
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(tx.userIdentity.upsert).not.toHaveBeenCalled();
+    expect(tx.user.create).not.toHaveBeenCalled();
   });
 });

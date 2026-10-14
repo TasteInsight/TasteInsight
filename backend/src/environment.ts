@@ -1,4 +1,8 @@
-import { CAMPUS_OAUTH_REQUIRED_KEYS } from './auth/identity-configuration';
+import {
+  CAMPUS_OAUTH_REQUIRED_KEYS,
+  configuredLoginMethods,
+  configuredVerificationMethods,
+} from './auth/identity-configuration';
 import { isIP } from 'net';
 import {
   notificationWebhookConfiguration,
@@ -164,6 +168,8 @@ export function validateEnvironment(
   const configured = (key: string) =>
     typeof environment[key] === 'string' && environment[key].trim().length > 0;
   if (servesUsers) {
+    configuredLoginMethods(environment.AUTH_LOGIN_METHODS);
+    configuredVerificationMethods(environment.CAMPUS_VERIFICATION_METHODS);
     for (const pair of [
       ['WECHAT_APPID', 'WECHAT_SECRET'],
       ['WECHAT_APP_APPID', 'WECHAT_APP_SECRET'],

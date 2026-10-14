@@ -91,6 +91,8 @@ services:
     <<: *backend
     environment:
       <<: *api-environment
+      AUTH_LOGIN_METHODS:
+      CAMPUS_VERIFICATION_METHODS:
       WECHAT_APPID:
       WECHAT_SECRET:
       WECHAT_APP_APPID:
