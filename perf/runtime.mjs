@@ -59,7 +59,7 @@ export function acquireFixtureLock(path) {
   } finally {
     closeSync(fd);
   }
-  return () => unlinkSync(lock);
+  return Object.assign(() => unlinkSync(lock), { fixturePath: resolve(path) });
 }
 export function command(binary, args, options = {}) {
   const { signal, timeout = 300000, ...spawnOptions } = options;

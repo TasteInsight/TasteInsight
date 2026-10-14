@@ -11,11 +11,14 @@ import {
   stopChild,
   acquireFixtureLock,
 } from "./runtime.mjs";
+import { readinessReader } from "./browser/readiness.mjs";
 const here = dirname(fileURLToPath(import.meta.url));
-export async function run(env, { signal } = {}) {
+export async function run(env, { signal, onWorkloadStart, fixtureLease } = {}) {
   const config = readConfig(env);
   const fixturePath = resolve(config.fixturesFile);
-  const releaseLock = acquireFixtureLock(fixturePath);
+  if (fixtureLease && fixtureLease.fixturePath !== fixturePath)
+    throw new Error("Fixture lease target mismatch");
+  const releaseLock = fixtureLease || acquireFixtureLock(fixturePath);
   let child;
   try {
     const manifest = validateManifest(
@@ -57,15 +60,25 @@ export async function run(env, { signal } = {}) {
         stdio: ["ignore", "pipe", "pipe"],
       },
     );
+    let loadWindow;
+    const ready = readinessReader(executionId, (window) => {
+      loadWindow = window;
+      onWorkloadStart?.(window);
+    });
+    child.stdout.on("data", ready);
+    child.stderr.on("data", ready);
     child.stdout.pipe(log, { end: false });
     child.stderr.pipe(log, { end: false });
     const interrupt = () => void stopChild(child);
     signal?.addEventListener("abort", interrupt, { once: true });
-    let code;
+    let code, finishedAt;
     try {
       code = await new Promise((resolve, reject) => {
         child.once("error", reject);
-        child.once("close", (code) => resolve(code));
+        child.once("close", (code) => {
+          finishedAt = Date.now();
+          resolve(code);
+        });
       });
     } finally {
       signal?.removeEventListener("abort", interrupt);
@@ -85,7 +98,8 @@ export async function run(env, { signal } = {}) {
     );
     privateJson(resolve(output, "verdict.json"), {
       ...verdict,
-      finishedAt: new Date().toISOString(),
+      finishedAt: new Date(finishedAt).toISOString(),
+      loadWindow,
     });
     console.log(
       `API performance ${verdict.passed ? "PASS" : "FAIL"}: ${output}`,
@@ -94,10 +108,20 @@ export async function run(env, { signal } = {}) {
       throw new Error(
         `API performance failed: ${verdict.failedMetrics.join("; ") || `k6 exit ${code}`}`,
       );
-    return { output, summary };
+    return {
+      output,
+      summary,
+      load: loadWindow
+        ? {
+            passed: true,
+            startedAt: loadWindow.startedAt,
+            finishedAt: Math.min(finishedAt, loadWindow.scheduledEndAt),
+          }
+        : undefined,
+    };
   } finally {
     if (child) await stopChild(child);
-    releaseLock();
+    if (!fixtureLease) releaseLock();
   }
 }
 if (

@@ -1,9 +1,16 @@
 {
-  "name": "tasteinsight-api-performance",
+  "name": "tasteinsight-performance",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "smoke": "node local.mjs --profile smoke"
+    "smoke": "node local.mjs --profile smoke",
+    "frontend": "node frontend.mjs",
+    "frontend:local": "node frontend-local.mjs"
+  },
+  "packageManager": "pnpm@11.21.0",
+  "devDependencies": {
+    "@playwright/test": "1.62.1",
+    "web-vitals": "5.1.0"
   }
 }

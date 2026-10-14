@@ -39,13 +39,15 @@
     "test:components": "jest src/test/components",
     "test:components:watch": "jest src/test/components --watch",
     "test:e2e": "playwright test",
-    "test:perf": "playwright test -c playwright.perf.config.ts --workers=1",
+    "test:perf": "node ../perf/frontend-local.mjs",
     "test:load": "node ../perf/run.mjs",
     "test:load:smoke": "node ../perf/local.mjs --profile smoke",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
     "type-check": "vue-tsc --noEmit",
-    "postinstall": "weapp-tw patch"
+    "postinstall": "weapp-tw patch",
+    "test:perf:mock": "playwright test -c playwright.perf.config.ts --workers=1",
+    "test:perf:remote": "node ../perf/frontend.mjs"
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-5020620260917001",

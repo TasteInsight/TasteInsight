@@ -15,7 +15,9 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
-    "test:e2e:debug": "playwright test --debug"
+    "test:e2e:debug": "playwright test --debug",
+    "test:perf": "node ../perf/frontend-local.mjs",
+    "test:perf:remote": "node ../perf/frontend.mjs"
   },
   "dependencies": {
     "@iconify/vue": "5.0.3",

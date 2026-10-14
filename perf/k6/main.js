@@ -6,6 +6,7 @@ import {
   validateManifest,
   activeJourneys,
   selectJourney,
+  durationSeconds,
 } from "../config.mjs";
 import { api } from "./api.js";
 import { journeys } from "./journeys.js";
@@ -15,6 +16,7 @@ const manifest = validateManifest(
   JSON.parse(open(__ENV.FIXTURES_FILE)),
   config,
 );
+let announced = false;
 const started = new Counter("journeys_started");
 const finished = new Counter("journeys_finished");
 const success = new Rate("business_success");
@@ -83,6 +85,15 @@ export default function () {
     );
     completed.add(1, { journey: name });
     passed = true;
+    if (!announced && config.profile !== "smoke") {
+      announced = true;
+      const end =
+        exec.scenario.startTime +
+        durationSeconds(config.duration) *
+          (config.profile === "stress" ? 3 : 1) *
+          1000;
+      console.log(`__PERF_READY__${__ENV.EXECUTION_ID}:${end}!`);
+    }
   } catch (error) {
     console.error(`${name}: ${error.message}`);
   } finally {

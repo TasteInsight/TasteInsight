@@ -1,6 +1,6 @@
 # API 性能测试
 
-本目录提供统一的 k6 API 压测入口。测试覆盖真实 HTTP、身份鉴权、业务写入与后台队列；页面渲染性能由 `frontend-miniapp` 的 Playwright 测试独立验证。
+本目录提供统一的 k6 API 压测入口，以及 [H5 和管理端发布页面性能测试](FRONTEND.md)。测试覆盖真实 HTTP、身份鉴权、业务写入、后台队列和后端承压时的浏览器操作。
 
 ## 快速开始
 
@@ -17,8 +17,9 @@ node perf/local.mjs --env-file perf/.env --profile load
 # 配置与运行器回归测试
 node --test perf/tests/*.test.mjs
 
-# 真实隔离集成矩阵：重复运行、四种负载方案的短程验证、无效令牌与中断回收
-node --test perf/tests/*.integration.mjs
+# 完整集成矩阵需先按 FRONTEND.md 安装前端、perf 依赖及 Chromium
+# 顺序执行，避免多个测试同时构建同一后端产物
+node --test --test-concurrency=1 perf/tests/*.integration.mjs
 ```
 
 本地运行器创建独占 PostgreSQL/Redis，编译当前后端，启动 public/admin/worker 三个生产入口，并生成独立签名密钥和测试账号。Mock 登录保持关闭。完成、失败或收到 SIGINT/SIGTERM 后，运行器停止自己创建的进程，清理测试数据，验证无关对照记录仍存在，再移除自己的容器。数据库和缓存仅绑定本机回环地址。
@@ -111,3 +112,7 @@ API 删除产生的软删除记录和审核记录会在本轮运行内累积；�
 ### 旧入口迁移
 
 `backend/scripts/k6-perf-test` 的 4 类客户端与 8 类管理场景已迁入本套件。Artillery 中有效的资料、设置、通知、食堂/窗口、新闻、AI 会话/历史和管理列表请求已合并。旧 `/user/settings` 的读写改用当前 `/user/profile` 的 `settings` 契约；旧 `/admin/users` 在当前后端没有对应路由。旧固定 Mock 资源 ID 已由本次运行清单替代。
+
+## 发布页面与后端承压联测
+
+[浏览器性能套件](FRONTEND.md) 提供 H5 和管理端的 production 构建基线，以及真实后端承压时的登录、搜索、收藏和编辑流程。入口为 `node perf/frontend-local.mjs`（自动隔离环境）和 `node perf/frontend.mjs --env-file perf/.env`（已准备的测试部署）。

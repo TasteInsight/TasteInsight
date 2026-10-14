@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { run } from "../run.mjs";
 import { readConfig, buildOptions } from "../config.mjs";
 import { journeyNames } from "../k6/journeys.js";
-import { cliEnv } from "../runtime.mjs";
+import { cliEnv, acquireFixtureLock } from "../runtime.mjs";
 import { manifest } from "./helpers.mjs";
 function fixture(mode = "success") {
   const dir = mkdtempSync(join(tmpdir(), "api-perf-runner-"));
@@ -132,6 +132,26 @@ test("env file uses literal dotenv values, relative paths and explicit flag prec
     assert.equal(env.VALUE, "$(touch should-not-execute)");
     assert.throws(() => cliEnv(["--env-file"], {}), /Missing value/);
   } finally {
+    f.dispose();
+  }
+});
+
+test("borrowed fixture lease stays held after workload exits", async () => {
+  const f = fixture();
+  const lease = acquireFixtureLock(f.path);
+  try {
+    await run(f.env, { fixtureLease: lease });
+    assert.ok(existsSync(f.path + ".lock"));
+    await assert.rejects(run(f.env), /EEXIST/);
+    await assert.rejects(
+      run(
+        { ...f.env, FIXTURES_FILE: f.path + ".other" },
+        { fixtureLease: lease },
+      ),
+      /lease target mismatch/,
+    );
+  } finally {
+    lease();
     f.dispose();
   }
 });

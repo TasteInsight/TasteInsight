@@ -57,8 +57,7 @@ frontend-miniapp/
 │   ├── pages.json           # 页面路由配置
 │   └── uni.scss             # 全局 SCSS 变量
 ├── e2e/                     # E2E 测试
-├── e2e-perf/                # 性能测试
-├── load/                    # 负载测试
+├── e2e-perf/                # Mock 渲染回归
 ├── dist/                    # 构建输出
 │   ├── build/mp-weixin/     # 微信小程序构建产物
 │   └── dev/mp-weixin/       # 微信小程序开发产物
@@ -290,10 +289,17 @@ pnpm test:e2e:ui
 pnpm test:e2e:report
 ```
 
-### 性能测试
+### 发布页面性能
+
+[统一浏览器套件](../perf/FRONTEND.md) 使用 H5 和管理端发布构建、真实测试后端，以及 k6 业务负载。
 
 ```bash
+# 自动准备隔离环境，执行基线与承压流程后回收
 pnpm test:perf
+# 连接已准备的测试部署
+pnpm test:perf:remote --env-file /private/path/perf.env
+# 开发模式 Mock 渲染回归
+pnpm test:perf:mock
 ```
 
 ### API 压测
@@ -308,7 +314,7 @@ pnpm test:load:smoke
 pnpm test:load --env-file /path/to/perf.env
 ```
 
-`test:perf` 保留为浏览器页面性能基线，使用 Mock API 测量前端渲染与资源加载。
+`test:perf:mock` 使用开发服务器与 Mock API，适合前端开发回归。发布性能验收使用 `test:perf`。
 
 ## Mock 模式
 
