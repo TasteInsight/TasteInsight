@@ -1,0 +1,33 @@
+# Host Nginx example; replace certificate paths and confirm DNS before enabling.
+server {
+    listen 443 ssl;
+    server_name status.example.invalid;
+    ssl_certificate /etc/nginx/tls/status/fullchain.pem;
+    ssl_certificate_key /etc/nginx/tls/status/private.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    location / {
+        proxy_pass http://127.0.0.1:8088;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+}
+server {
+    listen 443 ssl;
+    server_name monitor.example.invalid;
+    ssl_certificate /etc/nginx/tls/monitor/fullchain.pem;
+    ssl_certificate_key /etc/nginx/tls/monitor/private.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    # Optional: restrict this host to a VPN range or identity-aware proxy.
+    location / {
+        proxy_pass http://127.0.0.1:3300;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+    location /api/live/ {
+        proxy_pass http://127.0.0.1:3300;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+    }
+}

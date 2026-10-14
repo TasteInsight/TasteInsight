@@ -1,0 +1,41 @@
+name: ${RESTORE_PROJECT_NAME:-tasteinsight-restore}
+services:
+  restore-db:
+    image: pgvector/pgvector:pg15
+    environment:
+      POSTGRES_DB: restored
+      POSTGRES_USER: restore
+      POSTGRES_PASSWORD: ${RESTORE_DB_PASSWORD:?Set RESTORE_DB_PASSWORD}
+    volumes: [restore-db:/var/lib/postgresql/data]
+    networks: [restore]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U restore -d restored"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  restore:
+    build: ./backup
+    command: [restore]
+    environment:
+      PGHOST: restore-db
+      PGDATABASE: restored
+      PGUSER: restore
+      PGPASSWORD: ${RESTORE_DB_PASSWORD:?Set RESTORE_DB_PASSWORD}
+      PGCONNECT_TIMEOUT: "10"
+      RESTIC_REPOSITORY: ${RESTIC_REPOSITORY:?Set RESTIC_REPOSITORY}
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD:?Set RESTIC_PASSWORD}
+      AWS_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_ACCESS_KEY:-}
+      AWS_DEFAULT_REGION: ${BACKUP_S3_REGION:-us-east-1}
+      RESTORE_SNAPSHOT: ${RESTORE_SNAPSHOT:?Set full RESTORE_SNAPSHOT id}
+    volumes: [restore-work:/work, restore-uploads:/restored-uploads]
+    networks: [restore, egress]
+    depends_on:
+      restore-db: {condition: service_healthy}
+networks:
+  restore: {internal: true}
+  egress:
+volumes:
+  restore-db:
+  restore-work:
+  restore-uploads:

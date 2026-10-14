@@ -1,0 +1,44 @@
+{
+  "rule_files": [
+    "/config/alerts.yml"
+  ],
+  "evaluation_interval": "1m",
+  "tests": [
+    {
+      "interval": "1m",
+      "input_series": [],
+      "alert_rule_test": [
+        {
+          "eval_time": "6m",
+          "alertname": "BackupOverdue",
+          "exp_alerts": [
+            {
+              "exp_labels": {
+                "severity": "warning"
+              },
+              "exp_annotations": {
+                "summary": "有效备份已过期或尚未建立"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "interval": "1m",
+      "input_series": [
+        {
+          "series": "tasteinsight_backup_last_success_timestamp_seconds",
+          "values": "1+60x10"
+        }
+      ],
+      "alert_rule_test": [
+        {
+          "eval_time": "6m",
+          "alertname": "BackupOverdue",
+          "exp_alerts": []
+        }
+      ]
+    }
+  ]
+}
