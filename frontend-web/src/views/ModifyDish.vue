@@ -217,7 +217,7 @@ export default {
   setup() {
     const router = useRouter()
     const route = useRoute()
-    const dishStore = useDishStore()
+    useDishStore()
     const authStore = useAuthStore()
     const viewSession = getAuthSessionVersion()
     let viewActive = true

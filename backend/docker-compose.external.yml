@@ -1,0 +1,24 @@
+# Explicit external-dependency mode. Supply external addresses in the selected env file.
+# Keep one bundled service by enabling local-db or local-redis when using this overlay.
+x-external-runtime: &external-runtime
+  depends_on:
+    db:
+      required: false
+    redis:
+      required: false
+
+services:
+  db:
+    profiles: [local-db]
+  redis:
+    profiles: [local-redis]
+  migrate:
+    depends_on:
+      db:
+        required: false
+  public-api:
+    <<: *external-runtime
+  admin-api:
+    <<: *external-runtime
+  worker:
+    <<: *external-runtime

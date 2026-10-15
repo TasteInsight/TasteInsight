@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import theme from '../../tailwind.config.js'
+import theme from '../../tailwind.config'
 
 function luminance(hex: string) {
   const channels = hex.replace('#', '').match(/../g)!.map(value => parseInt(value, 16) / 255)

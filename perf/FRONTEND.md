@@ -29,7 +29,7 @@ FRONTEND_SAMPLES=3 RATE=4 MAX_VUS=6 DURATION=90s node perf/frontend-local.mjs
 
 ## 自己部署的隔离测试后端
 
-部署 public/admin/worker，连接专用空数据库和独立 Redis。数据库名使用 `tasteinsight_perf_<16位十六进制>`；详细准备条件见 [API 压测](README.md)。真实测试部署可位于开发、预发布或专用性能环境，硬件和数据规模决定结果的适用范围。
+部署 public/admin/worker，连接专用空数据库和独立 Redis。测试部署保持 `INITIAL_ADMIN_USERNAME` / `INITIAL_ADMIN_PASSWORD` 未配置，数据准备由 fixture 命令完成。迁移只创建表结构与系统模板；准备前保持用户、管理员和食堂表为空，seed 会填充这些表，因此使用未执行 seed 的专用库。已初始化业务账号的部署应另建专用空库。数据库名使用 `tasteinsight_perf_<16位十六进制>`；详细准备条件见 [API 压测](README.md)。真实测试部署可位于开发、预发布或专用性能环境，硬件和数据规模决定结果的适用范围。
 
 复制 `perf/.env.example` 为私有配置，并填写：
 
@@ -90,7 +90,7 @@ FCP/LCP 属于首次文档加载；SPA 后续路由操作使用 actionMs。CLS �
 
 ## 配置与判定
 
-可通过私有 `.env` 文件、环境变量或 `--env-file` 配置。环境变量优先于文件；API 配置和 `--profile` 规则沿用 [API 压测](README.md)。
+默认读取套件目录中的 `perf/.env`；缺失时使用默认参数。`--env-file` 选择另一份配置并替代默认文件；显式指定的文件缺失时失败。环境变量优先于文件；API 配置和 `--profile` 规则沿用 [API 压测](README.md)。
 
 | 变量 | 默认值 / 说明 |
 | --- | --- |
@@ -104,7 +104,7 @@ FCP/LCP 属于首次文档加载；SPA 后续路由操作使用 actionMs。CLS �
 | K6_BIN | 默认 `k6`；可填绝对路径 |
 | RESULTS_DIR | 默认 `perf/results` |
 
-复制的 API 示例文件含 `PROFILE=smoke`，运行浏览器 hybrid 前需改为 `load`。负载持续时间必须覆盖整个承压浏览器阶段；增加样本数量时相应增加 DURATION。
+共享示例将 `PROFILE` 保持为注释，API 入口默认 `smoke`，浏览器入口默认 `load`。显式指定其他 PROFILE 时，hybrid 会拒绝运行；可用 `--profile load` 覆盖。负载持续时间必须覆盖整个承压浏览器阶段；增加样本数量时相应增加 DURATION。
 
 k6 首次成功完成业务后才启动承压浏览器。每个浏览器样本的完整时间窗必须位于 k6 固定负载区间内，API 工作负载也必须通过全部阈值。k6 提前退出、负载时间过短、缺少页面指标/样本、同源请求失败、API 业务错误、运行时异常或在途请求未完成均判失败。失败不重试，不通过延长测量区间伪造负载重叠。外部资源来源会记录在样本中，外部网络可影响结果。
 

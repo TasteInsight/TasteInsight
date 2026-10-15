@@ -588,7 +588,6 @@
 
 <script>
 import { reactive, ref, computed, onMounted, onActivated } from 'vue'
-import { useRouter } from 'vue-router'
 import { permissionApi } from '@/api/modules/permission'
 import { canteenApi } from '@/api/modules/canteen'
 import { campusPermissionGroups, campusGlobalPermissions } from '@/config/campus-permissions'
@@ -607,7 +606,6 @@ export default {
     AdminDialog,
   },
   setup() {
-    const router = useRouter()
     const authStore = useAuthStore()
     const isSubmitting = ref(false)
     const loading = ref(false)

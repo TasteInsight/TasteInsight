@@ -48,3 +48,8 @@ playwright-report/
 # Test coverage
 coverage/
 *.lcov
+
+# Private environment targets; keep only the public example.
+.env
+.env.*
+!.env.example

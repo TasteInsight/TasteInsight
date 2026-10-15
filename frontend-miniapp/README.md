@@ -206,13 +206,9 @@ CLI 项目使用 `package.json` 和锁文件中的编译器。HBuilderX 的安�
 
 ### 环境变量
 
-API 地址由 Vite 模式文件在构建时注入：
+开发模式默认连接 `http://localhost:3001`，无需配置文件。连接开发服务器或真机联调时，在 `.env.development.local` 设置 `VITE_API_BASE_URL`。发布构建从进程环境或 `.env.production.local` 获取显式 API 地址。
 
-- `.env.development`：`http://localhost:3001`
-- `.env.production`：发布构建的完整 HTTPS API 基址（含 `/api/v1`），由 `.env.production.example` 创建，文件不纳入版本管理
-- `.env.mock`：Apifox Mock 地址，使用 `pnpm dev:mock`
-
-机器专属地址写入被 Git 忽略的 `.env.development.local`，例如真机联调所需的局域网 IP。`VITE_*` 会进入小程序产物，不能存放密钥。
+每个前端只维护一份 `.env.example`。Vite 的公共配置、模式配置及 `.local` 覆盖机制保持可用；`VITE_*` 会进入产物，只能填写公开参数。本地应用与基础设施的运行方式见 [环境配置与部署](../docs/环境配置与部署.md)。
 
 ## 运行项目
 
@@ -235,7 +231,8 @@ pnpm dev:mp-weixin
 
 ```bash
 # 首次构建：复制并填写已配置的 HTTPS API 基址，例如 https://domain.example/api/v1
-cp .env.production.example .env.production
+cp .env.example .env.production.local
+# 取消注释并填写 VITE_API_BASE_URL
 
 # H5 构建
 pnpm build:h5
@@ -244,7 +241,7 @@ pnpm build:h5
 pnpm build:mp-weixin
 ```
 
-微信小程序正式版要求合法 HTTPS 请求域名。当前网关仅提供 HTTP，恢复 HTTPS 并配置微信请求域名后才能发布。详见 [环境配置与部署](../docs/环境配置与部署.md)。
+微信小程序正式版要求合法 HTTPS 请求域名。部署时可启用网关 TLS 或由外部反向代理终止 TLS，并在微信平台配置合法请求域名。详见 [环境配置与部署](../docs/环境配置与部署.md)。
 
 ### Android 本地运行
 
@@ -257,7 +254,7 @@ VITE_API_BASE_URL=http://10.0.2.2:3001 pnpm build:app
 
 使用 HBuilderX 5.26 导入生成的 `dist/build/app/` 目录，选择“运行到手机或模拟器”的 Android 标准基座。资源目录已由项目 CLI 编译；Android SDK、模拟器与基座是本地运行所需的独立工具。真机联调使用可访问宿主机的局域网地址，设备上的 `localhost` 不指向开发电脑。
 
-`build:app` 生成运行资源，不生成独立签名 APK。正式 App 发行还需配置应用标识、签名与原生能力。当前登录接口采用微信小程序授权流程，尚未接入原生 App 微信 OAuth；标准基座启动和测试会话下的业务验证不代表原生微信登录可用。
+`build:app` 生成运行资源，不生成独立签名 APK。正式 App 发行还需配置应用标识、签名与原生能力。原生微信登录使用 App OAuth，后端配置 `WECHAT_APP_APPID` / `WECHAT_APP_SECRET`，客户端配置对应开放平台应用和原生登录能力；跨端 UnionID 关联还需 `WECHAT_OPEN_PLATFORM_ID`。正式登录需使用匹配签名的安装包与真实微信账号验收。
 
 ## 测试
 
@@ -326,7 +323,7 @@ Mock 模式使用 `src/mock/` 中的本地数据处理已注册接口，适合�
 pnpm dev:mock
 ```
 
-本地 Mock 仅在 Vite `mock` 模式启用，`production`、`development`、`e2e` 等模式均关闭。未注册的接口仍请求 `.env.mock` 配置的 API 地址；真实登录与后端业务联调应使用开发环境。
+本地 Mock 仅在 Vite `mock` 模式启用，`production`、`development`、`e2e` 等模式均关闭。未注册的接口仍请求 `VITE_API_BASE_URL` 指定的地址，缺省为本地后端；真实登录与后端业务联调应使用开发环境。
 
 Mock 数据位于 `src/mock/` 目录：
 - `data/` - 静态数据（用户、食堂、菜品、评价等）

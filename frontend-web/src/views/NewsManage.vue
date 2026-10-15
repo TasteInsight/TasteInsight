@@ -363,19 +363,12 @@
                 'border-red-400': errors.content,
               }"
             >
-              <Toolbar
-                style="border-bottom: 1px solid #ccc"
-                :editor="editorRef"
-                :defaultConfig="toolbarConfig"
-                :mode="mode"
-              />
-              <Editor
+              <NewsEditor
                 :key="editorVersion"
-                style="height: 400px; overflow-y: hidden"
                 v-model="valueHtml"
-                :defaultConfig="editorConfig"
-                :mode="mode"
-                @onCreated="handleCreated"
+                :editor="editorRef"
+                :config="editorConfig"
+                @created="handleCreated"
               />
             </div>
             <p v-if="errors.content" class="mt-1 text-xs text-red-500 flex items-center">
@@ -422,7 +415,7 @@
               <button
                 type="button"
                 @click="submitForm('draft')"
-                :disabled="isSubmitting || pendingImageUploads > 0"
+                :disabled="!editorRef || isSubmitting || pendingImageUploads > 0"
                 class="flex-1 px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition duration-200"
               >
                 保存为草稿
@@ -430,7 +423,7 @@
               <button
                 type="button"
                 @click="submitForm('published')"
-                :disabled="isSubmitting || pendingImageUploads > 0"
+                :disabled="!editorRef || isSubmitting || pendingImageUploads > 0"
                 class="flex-1 px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200"
               >
                 立即发布
@@ -442,7 +435,7 @@
               <button
                 type="button"
                 @click="submitForm('draft')"
-                :disabled="isSubmitting || pendingImageUploads > 0"
+                :disabled="!editorRef || isSubmitting || pendingImageUploads > 0"
                 class="flex-1 px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition duration-200"
               >
                 保存为草稿
@@ -450,7 +443,7 @@
               <button
                 type="button"
                 @click="submitForm('published')"
-                :disabled="isSubmitting || pendingImageUploads > 0"
+                :disabled="!editorRef || isSubmitting || pendingImageUploads > 0"
                 class="flex-1 px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200"
               >
                 立即发布
@@ -523,8 +516,7 @@
 <script>
 import { ref, reactive, onMounted, onActivated, onDeactivated, shallowRef, onBeforeUnmount, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import '@wangeditor/editor/dist/css/style.css'
-import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
+import NewsEditor from '@/components/News/NewsEditor.vue'
 
 import { newsApi } from '@/api/modules/news'
 import { canteenApi } from '@/api/modules/canteen'
@@ -549,8 +541,7 @@ export default {
     AdminDialog,
     Pagination,
     BatchActionBar,
-    Editor, // 注册 Editor 组件
-    Toolbar, // 注册 Toolbar 组件
+    NewsEditor,
   },
   setup() {
     const route = useRoute()
@@ -622,10 +613,6 @@ export default {
 
     // 内容 HTML，直接绑定到 Editor
     const valueHtml = ref('')
-
-    const mode = 'default' // 或 'simple'
-
-    const toolbarConfig = {}
 
     const editorConfig = computed(() => {
       const version = editorVersion.value
@@ -1007,7 +994,7 @@ export default {
 
     // 提交表单
     const submitForm = async (targetStatus) => {
-      if (!ownsView() || isSubmitting.value) return
+      if (!ownsView() || !editorRef.value || isSubmitting.value) return
       if (pendingImageUploads.value > 0) {
         showAlert('图片正在上传，请稍后保存')
         return
@@ -1275,8 +1262,6 @@ export default {
       handleEditorKeydown,
       editorVersion,
       valueHtml,
-      mode,
-      toolbarConfig,
       editorConfig,
       handleCreated,
       // 导出其他方法

@@ -104,8 +104,10 @@ export DB_PASSWORD=your_password
 
 # 方式 2: 使用 .env 文件
 cp env.example .env
-# 编辑 .env 填入实际值
-source .env
+# 编辑 .env 填入实际值；将文件内的变量导出给训练进程
+set -a
+. ./.env
+set +a
 ```
 
 ---

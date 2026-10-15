@@ -1,22 +1,22 @@
 name: tasteinsight-dev
 
-# Development infrastructure only. Run the host backend with start:dev;
-# do not merge this file into the production Compose project.
+# Shared infrastructure definitions. Standalone use exposes loopback ports for host development.
+# docker-compose.yml extends these services and removes their published ports.
 services:
   db:
     image: pgvector/pgvector:pg15
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
     ports:
-      - "127.0.0.1:${POSTGRES_EXPOSE_PORT:-5434}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-${POSTGRES_EXPOSE_PORT:-5434}}:5432"
     volumes:
       - db-data:/var/lib/postgresql/data
     networks:
       - db_net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER:?POSTGRES_USER is required}", "-d", "${POSTGRES_DB:?POSTGRES_DB is required}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -24,15 +24,15 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"]
     ports:
-      - "127.0.0.1:${REDIS_EXPOSE_PORT:-6380}:6379"
+      - "127.0.0.1:${REDIS_PORT:-${REDIS_EXPOSE_PORT:-6380}}:6379"
     volumes:
       - redis-data:/data
     networks:
       - db_net
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -43,5 +43,5 @@ volumes:
   redis-data:
 
 networks:
-  db_net:
-    internal: true
+  # Host development requires published loopback ports; production defines its own internal network.
+  db_net: {}

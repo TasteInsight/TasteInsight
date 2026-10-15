@@ -19,3 +19,10 @@ export function createEnvConfig(apiBaseUrl: string | undefined): EnvConfig {
 
   return { baseUrl };
 }
+
+export function resolveApiBaseUrl(mode: string, value: string | undefined): string {
+  const defaultUrl = ['development', 'mock', 'e2e', 'test'].includes(mode)
+    ? 'http://localhost:3001'
+    : undefined;
+  return createEnvConfig(value ?? defaultUrl).baseUrl;
+}

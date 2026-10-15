@@ -25,6 +25,28 @@ describe('runtime configuration composition', () => {
     process.env = original;
   });
 
+  it('publishes a generated connection to both Nest and Prisma environment', async () => {
+    process.env = {
+      NODE_ENV: 'production',
+      POSTGRES_HOST: '127.0.0.1',
+      POSTGRES_PORT: '5544',
+      POSTGRES_USER: 'fixture',
+      POSTGRES_PASSWORD: 'secret/@#%',
+      POSTGRES_DB: 'generated',
+    };
+    const module = await Test.createTestingModule({
+      imports: [RuntimeConfigurationModule.forRole('migrate')],
+    }).compile();
+    try {
+      const url = module.get(ConfigService).get<string>('DATABASE_URL')!;
+      expect(process.env.DATABASE_URL).toBe(url);
+      expect(new URL(url).port).toBe('5544');
+      expect(decodeURIComponent(new URL(url).password)).toBe('secret/@#%');
+    } finally {
+      await module.close();
+    }
+  });
+
   it.each<{ role: RuntimeRole; environment: NodeJS.ProcessEnv }>([
     { role: 'migrate', environment: database },
     { role: 'worker', environment: background },

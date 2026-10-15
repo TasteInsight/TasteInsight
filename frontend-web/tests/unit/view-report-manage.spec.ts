@@ -241,7 +241,9 @@ describe('views/ReportManage', () => {
     await flushMicrotasks()
     await nextTick()
 
-    const report = { ...wrapper.vm.reports.find((r: any) => r.targetType === 'comment'), status: 'pending' }
+    const source = wrapper.vm.reports.find(r => r.targetType === 'comment')
+    if (!source) throw new Error('Expected the comment report fixture')
+    const report = { ...source, status: 'pending' as const }
 
     mocks.authStoreMock.hasPermission.mockReturnValueOnce(false)
     await wrapper.vm.handleReport(report, 'delete_content')

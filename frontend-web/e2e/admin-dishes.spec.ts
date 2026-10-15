@@ -6,7 +6,7 @@ import process from 'node:process';
 const baseURL = API_BASE_URL.endsWith('/') ? API_BASE_URL : `${API_BASE_URL}/`;
 
 test.describe('Admin Dish Management', () => {
-  let createdDishId: string;
+  const createdDishId = '';
   let apiToken: string;
 
   // Helper to clean up test data by prefix
@@ -50,7 +50,9 @@ test.describe('Admin Dish Management', () => {
     await loginAsAdmin(page);
     
     // Get API token for cleanup
-    apiToken = await getApiToken(request, TEST_ACCOUNTS.superAdmin.username, TEST_ACCOUNTS.superAdmin.password);
+    const token = await getApiToken(request, TEST_ACCOUNTS.superAdmin.username, TEST_ACCOUNTS.superAdmin.password);
+    if (!token) throw new Error('Superadmin authentication failed');
+    apiToken = token;
     
     // Clean up any residual test data before each test
     await cleanupTestData(request, apiToken, 'E2E Test Dish');

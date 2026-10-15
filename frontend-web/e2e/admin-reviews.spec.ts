@@ -127,7 +127,7 @@ test.describe('Admin Reviews UI Tests', () => {
 
     const reviewsData = await reviewsResponse.json();
     if (!reviewsData.data.items || reviewsData.data.items.length === 0) {
-      test.skip('No pending reviews available');
+      test.skip(true, 'No pending reviews available');
       return;
     }
 
@@ -171,7 +171,7 @@ test.describe('Admin Reviews UI Tests', () => {
 
     const commentsData = await commentsResponse.json();
     if (!commentsData.data.items || commentsData.data.items.length === 0) {
-      test.skip('No pending comments available');
+      test.skip(true, 'No pending comments available');
       return;
     }
 
@@ -756,7 +756,7 @@ test.describe('Review Manage UI Tests', () => {
 
     const reviewsData = await reviewsResponse.json();
     if (!reviewsData.data.items || reviewsData.data.items.length === 0) {
-      test.skip('No pending reviews available');
+      test.skip(true, 'No pending reviews available');
       return;
     }
 
@@ -800,7 +800,7 @@ test.describe('Review Manage UI Tests', () => {
 
     const commentsData = await commentsResponse.json();
     if (!commentsData.data.items || commentsData.data.items.length === 0) {
-      test.skip('No pending comments available');
+      test.skip(true, 'No pending comments available');
       return;
     }
 

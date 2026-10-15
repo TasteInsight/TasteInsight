@@ -26,7 +26,9 @@ cp .env.example .env
 chmod 600 .env
 ```
 
-编辑 `.env` 中的值。含 `$`、`#` 或空格的密钥使用 Compose 支持的单引号包裹；将 `.env`、生成的配置和备份密钥保存在运维账号可读的位置。环境示例中的空凭据需要填写。`generated/` 和 `.env` 已加入忽略规则。
+默认使用当前运维目录的 `.env`；也可在全部命令中统一指定 `--env-file .env.server` 等私有配置文件。生成器和服务均使用 Compose 选中的配置，Shell 同名变量优先。生成器只接收探测、告警及规则参数。
+
+编辑选中配置文件中的值。含 `$`、`#` 或空格的密钥使用 Compose 支持的单引号包裹；将 `.env`、生成的配置和备份密钥保存在运维账号可读的位置。环境示例中的空凭据需要填写。`generated/` 和 `.env` 已加入忽略规则。
 
 | 配置 | 用途 |
 | --- | --- |
@@ -35,9 +37,10 @@ chmod 600 .env
 | `PUBLIC_HEALTH_URL` / `ADMIN_HEALTH_URL` / `WORKER_HEALTH_URL` | 拆分进程的内部健康检查 |
 | `GRAFANA_ROOT_URL` / `GRAFANA_ADMIN_*` | 管理员访问地址和首次启动账号 |
 | `GRAFANA_SECURE_COOKIE` | HTTPS 使用 `true`；本地 HTTP 隧道验证使用 `false` |
-| `BACKUP_DB_*` | 数据库连接，账号需要读取全部业务表与序列 |
+| `BACKUP_DB_*` | 数据库地址、端口、库名和备份凭据；账号需要读取全部业务表与序列 |
+| `BACKUP_DB_SSLMODE` | 备份与 PostgreSQL 监控共用的 TLS 模式；同机示例为 `disable`，要求 TLS 时填写 `require` |
 | `METRICS_DB_*` | 专用监控账号，建议授予 `pg_monitor` 与目标库 CONNECT |
-| `METRICS_REDIS_*` | Redis 监控连接 |
+| `METRICS_REDIS_HOST` / `METRICS_REDIS_PORT` / `METRICS_REDIS_PASSWORD` | Redis 监控地址、端口和口令；默认地址 `redis`、端口 `6379` |
 | `RESTIC_REPOSITORY` / `RESTIC_PASSWORD` | 加密备份仓库与加密密码 |
 | `BACKUP_S3_*` | S3 兼容对象存储访问凭据与 region |
 | `BACKUP_INTERVAL_SECONDS` | 两次成功备份之间的等待时间，默认 86400 秒 |
@@ -49,6 +52,8 @@ chmod 600 .env
 | `ALERT_WEBHOOK_URL` | 接收 Alertmanager 标准 JSON 的地址 |
 | `SMTP_*` / `ALERT_EMAIL_TO` | SMTP 邮件发送配置，要求 TLS |
 | `MONITOR_HOST` | Linux 主机指标采集开关，配合 `host` profile |
+
+PostgreSQL 备份与监控共用 `BACKUP_DB_HOST`、`BACKUP_DB_PORT`、`BACKUP_DB_NAME` 和显式设置的 `BACKUP_DB_SSLMODE`，分别使用备份账号与监控账号。连接外置服务时，将这些地址与 `METRICS_REDIS_HOST` / `METRICS_REDIS_PORT` 配置为运维容器可访问的实际端点；业务与运维各自读取自己的 env 文件。旧配置省略 TLS 模式时保留兼容行为：备份使用 `prefer`，监控使用 `disable`。`require` 要求连接加密；需要验证服务端身份时，使用 `verify-full`，并通过 Compose override 为两个客户端挂载 CA、配置各自的证书路径，参见 [PostgreSQL TLS 说明](https://www.postgresql.org/docs/15/libpq-ssl.html)。隔离恢复仍连接恢复编排自己的数据库。
 
 网络和卷名称可通过 `docker inspect` 核对。业务连接使用 external network / volume，名称错误时启动失败。监控数据库账号示例（在目标数据库以管理员执行）：
 

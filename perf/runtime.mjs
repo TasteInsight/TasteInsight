@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import {
   readFileSync,
+  existsSync,
   mkdirSync,
   writeFileSync,
   renameSync,
@@ -10,6 +11,7 @@ import {
   unlinkSync,
 } from "node:fs";
 import { randomUUID } from "node:crypto";
+import { fileURLToPath } from "node:url";
 import { parseEnv } from "node:util";
 import { resolve, dirname, isAbsolute } from "node:path";
 export function cliEnv(argv, ambient = process.env) {
@@ -22,6 +24,12 @@ export function cliEnv(argv, ambient = process.env) {
     if (!argv[i] || argv[i].startsWith("--"))
       throw new Error(`Missing value for ${arg}`);
   }
+  const defaultFile = fileURLToPath(new URL(".env", import.meta.url));
+  file = file
+    ? resolve(file)
+    : existsSync(defaultFile)
+      ? defaultFile
+      : undefined;
   const env = {
     ...(file ? parseEnv(readFileSync(resolve(file), "utf8")) : {}),
     ...ambient,

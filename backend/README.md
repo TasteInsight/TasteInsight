@@ -149,7 +149,7 @@ pnpm install
 cp .env.example .env
 ```
 
-本地后端默认监听 `3001`；`docker-compose.local.yml` 提供端口 `5434` 的 pgvector PostgreSQL 和端口 `6380` 的 Redis，并使用独立的 `tasteinsight-dev` 数据卷。替换 `.env` 中的 `change-me` 值，并使 `DATABASE_URL` 与数据库账号、密码、映射端口一致。已有数据库和 Redis 时，直接填写其连接信息即可。配置项说明见 [环境配置与部署](../docs/环境配置与部署.md)。
+本地后端默认监听 `3001`；`docker-compose.local.yml` 提供端口 `5434` 的 pgvector PostgreSQL 和端口 `6380` 的 Redis，并使用独立的 `tasteinsight-dev` 数据卷。替换 `.env` 中的 `change-me` 值。后端、Prisma CLI 和维护脚本共用 `POSTGRES_*` 自动生成数据库连接；本地 Compose 的映射端口使用同一份 `POSTGRES_PORT` / `REDIS_PORT`。已有数据库和 Redis 时，直接填写其连接信息即可。配置项说明见 [环境配置与部署](../docs/环境配置与部署.md)。
 
 启动本地基础设施：
 
@@ -195,7 +195,7 @@ NODE_ENV=production node dist/src/main.public
 # 其他进程同样注入 production：node dist/src/main.admin、node dist/src/main.worker
 ```
 
-生产进程需要显式注入 `NODE_ENV=production`、`DATABASE_URL` 及自身角色的环境配置，不读取开发 `.env`。公共 API、管理 API 和 worker 分别运行，使用共享 schema；`main.migrate` 统一执行迁移和首次初始化。两个 API 需要 Redis、公共 `APP_URL`，以及至少 32 字节且互不相同的 access/refresh 密钥；完整 Compose / 网关部署还要求管理 `ADMIN_APP_URL`。用户身份渠道与 AI 配置仅供公共 API 使用。worker 需要 Redis，但不要求 JWT 或 origin；迁移只需要数据库和可选首次管理员凭据。每个应用根模块在 provider 初始化前完成角色配置校验。完整说明见 [环境配置与部署](../docs/环境配置与部署.md)。
+生产进程需要显式注入 `NODE_ENV=production`、数据库连接参数及自身角色的环境配置（数据库可用 `POSTGRES_*` 或完整 `DATABASE_URL`），不读取开发 `.env`。公共 API、管理 API 和 worker 分别运行，使用共享 schema；`main.migrate` 统一执行迁移和首次初始化。两个 API 需要 Redis、公共 `APP_URL`，以及至少 32 字节且互不相同的 access/refresh 密钥；完整 Compose / 网关部署还要求管理 `ADMIN_APP_URL`。用户身份渠道与 AI 配置仅供公共 API 使用。worker 需要 Redis，但不要求 JWT 或 origin；迁移只需要数据库和可选首次管理员凭据。每个应用根模块在 provider 初始化前完成角色配置校验。完整说明见 [环境配置与部署](../docs/环境配置与部署.md)。
 
 ### Docker 部署
 
@@ -214,9 +214,11 @@ docker compose --env-file .env.production up -d --no-deps --force-recreate --wai
 docker compose --env-file .env.production logs -f public-api admin-api worker nginx
 ```
 
-Compose 从 `--env-file` 选取配置并按角色注入，未设置的可选字段保持缺省，不整份加载配置文件。模板区分必填项、首次管理员、可选集成与默认调优项；新建管理员时启用并填写 `INITIAL_ADMIN_USERNAME` / `INITIAL_ADMIN_PASSWORD`。Docker 入口生成数据库 URL，各应用根模块校验配置；一次性 `migrate` 作业只等待 PostgreSQL，执行迁移与初始化后才启动三个常驻角色。已有管理员和业务数据保持不变，API / worker 重启不执行初始化。所有生产角色禁止开启 `ENABLE_MOCK_AUTH`、`RUN_SEED` 和 `IMPORT_DATA`。外部 Python 嵌入默认关闭，需要时同时设置 `EXTERNAL_EMBEDDING_SERVICE_ENABLED=true` 和 `COMPOSE_PROFILES=embedding`。已有单进程部署、TLS、数据保留与回滚步骤见 [环境配置与部署](../docs/环境配置与部署.md)。
+Compose 从 `--env-file` 选取配置并按角色注入，未设置的可选字段保持缺省，不整份加载配置文件。模板列出必填项和首次管理员，可选能力集中在 [环境变量参考](../docs/环境变量参考.md)；新建管理员时启用并填写 `INITIAL_ADMIN_USERNAME` / `INITIAL_ADMIN_PASSWORD`。Docker 入口生成数据库 URL，各应用根模块校验配置；一次性 `migrate` 作业只等待 PostgreSQL，执行迁移与初始化后才启动三个常驻角色。已有管理员和业务数据保持不变，API / worker 重启不执行初始化。所有生产角色禁止开启 `ENABLE_MOCK_AUTH`、`RUN_SEED` 和 `IMPORT_DATA`。嵌入调用默认关闭。启用外部嵌入时设置 `EXTERNAL_EMBEDDING_SERVICE_ENABLED=true` 和目标 URL；使用随应用部署的 Python 容器时再启用 `embedding` profile。已有单进程部署、TLS、数据保留与回滚步骤见 [环境配置与部署](../docs/环境配置与部署.md)。
 
 公共 `APP_URL` 仅提供 `/api/v1` 和 `/images/`，其他路径（包括 `/`、`/login`）返回 404，不跳转到管理站点。管理端通过独立的 `ADMIN_APP_URL` 访问；公共域名的 HTTP 到同一 origin 的 HTTPS 跳转保持可用。
+
+本地通过 `pnpm start:dev` 开发应用，需要 Docker 数据库和 Redis 时启动 `docker-compose.local.yml`；已有裸机或远程依赖时直接填写连接地址。服务器默认使用完整单机容器栈，独立数据库或 Redis 部署可叠加 `docker-compose.external.yml`。基础设施定义由主编排复用。组合方式和数据迁移边界见 [环境配置与部署](../docs/环境配置与部署.md)。
 
 ## 测试
 

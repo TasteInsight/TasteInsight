@@ -84,6 +84,8 @@ TasteInsight/
 - Redis 7+
 - Docker & Docker Compose（可选）
 
+本地应用开发、Docker 或独立基础设施，以及完整单机容器部署的配置矩阵见 [环境配置与部署](docs/环境配置与部署.md)。前端开发默认无需环境文件，特殊目标使用 `.env.<mode>.local` 覆盖。
+
 ### 1. 克隆项目
 
 ```bash
@@ -121,6 +123,8 @@ pnpm run start:dev
 
 ### 3. 启动管理端前端
 
+另开终端，从仓库根目录执行。
+
 ```bash
 cd frontend-web
 
@@ -134,6 +138,8 @@ pnpm dev
 管理端访问 http://localhost:5173
 
 ### 4. 启动小程序前端
+
+另开终端，从仓库根目录执行。
 
 ```bash
 cd frontend-miniapp

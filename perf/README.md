@@ -28,7 +28,7 @@ node --test --test-concurrency=1 perf/tests/*.integration.mjs
 
 ## 配置
 
-`--env-file` 读取独立压测文件，系统环境变量覆盖文件值，`--profile` 覆盖 PROFILE。后端的 `.env` 不参与加载。目标环境名称与负载方案独立。
+默认读取 `perf/.env`，路径固定相对于本套件目录，文件不存在时使用环境变量与默认值。`--env-file` 选择另一份独立文件并替代默认文件；显式指定的文件缺失时失败。系统环境变量覆盖文件值，`--profile` 覆盖 PROFILE。后端的 `.env` 不参与加载。目标环境名称与负载方案独立。
 
 | 配置 | 含义 |
 | --- | --- |
@@ -53,7 +53,7 @@ node --test --test-concurrency=1 perf/tests/*.integration.mjs
 
 准备过程只接受 `tasteinsight_perf_<16位十六进制>` 命名的专用空数据库。API 写入只引用所属资源或从本次创建请求返回并校验归属的资源。审核流程自行创建待审数据，数据耗尽会使业务契约失败。准备、运行和清理共用排他文件锁；重复运行使用独立 executionId 避免软删除用户名冲突；准备未完成、身份不足、令牌临近过期或目标不匹配时停止执行。
 
-已有隔离部署的数据库先执行正常迁移，应用配置使用该数据库及独立 Redis。将下列私有变量加入压测文件：`FIXTURE_DATABASE_URL`、`FIXTURE_JWT_SECRET`、`FIXTURE_JWT_REFRESH_SECRET`。签名密钥应与测试后端一致。
+已有隔离部署的数据库先执行正常迁移，应用配置使用该数据库及独立 Redis。测试部署保持 `INITIAL_ADMIN_USERNAME` / `INITIAL_ADMIN_PASSWORD` 未配置，数据准备由 fixture 命令完成。迁移只创建表结构与系统模板；准备前保持用户、管理员和食堂表为空，seed 会填充这些表，因此使用未执行 seed 的专用库。已初始化业务账号的部署应另建专用空库。将下列私有变量加入压测文件：`FIXTURE_DATABASE_URL`、`FIXTURE_JWT_SECRET`、`FIXTURE_JWT_REFRESH_SECRET`。签名密钥应与测试后端一致。
 
 ```bash
 node perf/fixtures-cli.mjs prepare --env-file /private/path/perf.env

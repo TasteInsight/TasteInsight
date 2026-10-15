@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { shallowMount } from '@vue/test-utils'
 import { defineComponent } from 'vue'
 
-const flushPromises = () => new Promise((resolve) => queueMicrotask(resolve))
+const flushPromises = () => new Promise<void>((resolve) => queueMicrotask(resolve))
 
 // ---- Global mocks for common dependencies in views ----
 vi.mock('vue-router', () => {
