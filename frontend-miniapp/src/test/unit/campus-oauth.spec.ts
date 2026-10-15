@@ -41,6 +41,7 @@ test('persists only the owner-bound pending attempt, never the authorization URL
   expect(campusOAuthCompletion('alice', ` ${code} `)).toEqual({
     attemptId: 'attempt-a',
     handoffCode: code,
+    purpose: 'VERIFICATION',
   });
 });
 test('a copied authorization URL or handoff alone cannot establish a pending attempt', () => {
@@ -103,4 +104,24 @@ test('cancellation clears the local attempt and malformed codes are rejected bef
   expect(() => campusOAuthCompletion('alice', '123456')).toThrow('完整确认码');
   clearCampusOAuthPending();
   expect(() => campusOAuthCompletion('alice', code)).toThrow('重新发起认证');
+});
+
+test('keeps login-binding confirmation separate from campus-verification messages', () => {
+  const popup = {} as Window;
+  saveCampusOAuthPending('alice', { ...start(), purpose: 'LOGIN_BIND' });
+  const event = {
+    origin: 'https://api.example',
+    source: popup,
+    data: { type: 'tasteinsight:campus-oauth', attemptId: 'attempt-a', handoffCode: code },
+  };
+  expect(campusOAuthMessage(event, popup, 'https://api.example', 'alice')).toBeNull();
+  expect(
+    campusOAuthMessage(
+      { ...event, data: { ...event.data, purpose: 'LOGIN_BIND' } },
+      popup,
+      'https://api.example',
+      'alice'
+    )
+  ).toBe(code);
+  expect(campusOAuthCompletion('alice', code)).toMatchObject({ purpose: 'LOGIN_BIND' });
 });

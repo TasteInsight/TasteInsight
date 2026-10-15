@@ -8,8 +8,10 @@ import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { createHash } from 'crypto';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/prisma.service';
 import { mockAuthEnabled } from '@/environment';
+import { assertLoginMethodEnabled } from './identity-configuration';
 
 type Identity = { provider: string; issuer: string; subject: string };
 export type WechatPlatform = 'mp-weixin' | 'app';
@@ -44,6 +46,9 @@ export class UserIdentityService {
           identity.issuer === this.config.get(key),
       );
     return {
+      campusOAuth: identities.some(
+        (identity) => identity.provider === 'CAMPUS_OAUTH',
+      ),
       ...(phone ? { phone: `${phone.slice(0, 3)}****${phone.slice(-4)}` } : {}),
       wechat: {
         miniapp: hasWechat('WECHAT_APPID'),
@@ -57,6 +62,10 @@ export class UserIdentityService {
     platform: WechatPlatform = 'mp-weixin',
     userId?: string,
   ) {
+    assertLoginMethodEnabled(
+      platform === 'app' ? 'wechatApp' : 'wechatMiniapp',
+      (key) => this.config.get(key),
+    );
     const isMock =
       code.startsWith('mock_') ||
       code === 'baseline_user_code_placeholder' ||
@@ -138,76 +147,94 @@ export class UserIdentityService {
     userId?: string,
     legacyOpenId?: string,
   ) {
-    return this.prisma.$transaction(async (tx) => {
-      const locks = identities.map(
-        (identity) =>
-          `identity:${createHash('sha256').update(JSON.stringify(identity)).digest('hex')}`,
-      );
-      if (userId) locks.push(`identity-owner:${userId}`);
-      locks.sort();
-      for (const lock of locks)
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lock}, 0))`;
-      const existing = await tx.userIdentity.findMany({
-        where: { OR: identities },
+    return this.prisma.$transaction((tx) =>
+      this.resolveInTransaction(tx, identities, userId, legacyOpenId),
+    );
+  }
+
+  async campus(tx: Prisma.TransactionClient, subject: string, userId?: string) {
+    const identity = {
+      provider: 'CAMPUS_OAUTH',
+      issuer: this.config.get<string>('CAMPUS_OAUTH_ISSUER', ''),
+      subject,
+    };
+    return this.resolveInTransaction(tx, [identity], userId);
+  }
+
+  private async resolveInTransaction(
+    tx: Prisma.TransactionClient,
+    identities: Identity[],
+    userId?: string,
+    legacyOpenId?: string,
+  ) {
+    const locks = identities.map(
+      (identity) =>
+        `identity:${createHash('sha256').update(JSON.stringify(identity)).digest('hex')}`,
+    );
+    if (userId) locks.push(`identity-owner:${userId}`);
+    locks.sort();
+    for (const lock of locks)
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lock}, 0))`;
+    const existing = await tx.userIdentity.findMany({
+      where: { OR: identities },
+    });
+    if (userId) {
+      const bound = await tx.userIdentity.findMany({
+        where: {
+          userId,
+          OR: identities.map(({ provider, issuer }) => ({
+            provider,
+            issuer,
+          })),
+        },
       });
-      if (userId) {
-        const bound = await tx.userIdentity.findMany({
-          where: {
-            userId,
-            OR: identities.map(({ provider, issuer }) => ({
-              provider,
-              issuer,
-            })),
-          },
-        });
-        if (
-          bound.some((previous) =>
-            identities.some(
-              (identity) =>
-                identity.provider === previous.provider &&
-                identity.issuer === previous.issuer &&
-                identity.subject !== previous.subject,
-            ),
-          )
-        ) {
-          throw new ConflictException({
-            code: 'IDENTITY_ALREADY_BOUND',
-            message: '当前账号已绑定此登录方式，请联系管理员处理更换',
-          });
-        }
-      }
-      const legacy = legacyOpenId
-        ? await tx.user.findUnique({ where: { openId: legacyOpenId } })
-        : null;
-      const owners = new Set(existing.map((identity) => identity.userId));
-      if (legacy) owners.add(legacy.id);
-      if (userId) owners.add(userId);
-      if (owners.size > 1) {
+      if (
+        bound.some((previous) =>
+          identities.some(
+            (identity) =>
+              identity.provider === previous.provider &&
+              identity.issuer === previous.issuer &&
+              identity.subject !== previous.subject,
+          ),
+        )
+      ) {
         throw new ConflictException({
           code: 'IDENTITY_ALREADY_BOUND',
-          message: '该登录方式已绑定其他账号，请使用原账号登录',
+          message: '当前账号已绑定此登录方式，请联系管理员处理更换',
         });
       }
-      const owner = owners.values().next().value;
-      const user = owner
-        ? await tx.user.findUnique({ where: { id: owner } })
-        : await tx.user.create({
-            data: {
-              ...(legacyOpenId ? { openId: legacyOpenId } : {}),
-              nickname: '新用户',
-              preferences: { create: {} },
-              settings: { create: {} },
-            },
-          });
-      if (!user) throw new UnauthorizedException('账号不存在');
-      for (const identity of identities) {
-        await tx.userIdentity.upsert({
-          where: { provider_issuer_subject: identity },
-          create: { ...identity, userId: user.id, verifiedAt: new Date() },
-          update: { verifiedAt: new Date() },
+    }
+    const legacy = legacyOpenId
+      ? await tx.user.findUnique({ where: { openId: legacyOpenId } })
+      : null;
+    const owners = new Set(existing.map((identity) => identity.userId));
+    if (legacy) owners.add(legacy.id);
+    if (userId) owners.add(userId);
+    if (owners.size > 1) {
+      throw new ConflictException({
+        code: 'IDENTITY_ALREADY_BOUND',
+        message: '该登录方式已绑定其他账号，请使用原账号登录',
+      });
+    }
+    const owner = owners.values().next().value;
+    const user = owner
+      ? await tx.user.findUnique({ where: { id: owner } })
+      : await tx.user.create({
+          data: {
+            ...(legacyOpenId ? { openId: legacyOpenId } : {}),
+            nickname: '新用户',
+            preferences: { create: {} },
+            settings: { create: {} },
+          },
         });
-      }
-      return user;
-    });
+    if (!user) throw new UnauthorizedException('账号不存在');
+    for (const identity of identities) {
+      await tx.userIdentity.upsert({
+        where: { provider_issuer_subject: identity },
+        create: { ...identity, userId: user.id, verifiedAt: new Date() },
+        update: { verifiedAt: new Date() },
+      });
+    }
+    return user;
   }
 }

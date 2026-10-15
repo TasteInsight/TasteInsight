@@ -3,10 +3,13 @@ import {
   Controller,
   Get,
   HttpCode,
+  Header,
   Post,
   Request,
   UseGuards,
 } from '@nestjs/common';
+import { CampusOAuthService } from '@/campus-identity/campus-oauth.service';
+import { CompleteCampusOAuthDto } from '@/campus-identity/dto/student-verification.dto';
 import { AuthGuard } from './guards/auth.guard';
 import { UserIdentityService } from './user-identity.service';
 import { VerificationChallengeService } from './verification-challenge.service';
@@ -19,6 +22,7 @@ export class IdentityController {
   constructor(
     private readonly identities: UserIdentityService,
     private readonly challenges: VerificationChallengeService,
+    private readonly campusOAuth: CampusOAuthService,
   ) {}
 
   @Get()
@@ -27,6 +31,34 @@ export class IdentityController {
       code: 200,
       message: 'success',
       data: await this.identities.list(req.user.sub),
+    };
+  }
+
+  @Post('campus/oauth')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  async startCampusBinding(@Request() req) {
+    return {
+      code: 200,
+      message: 'success',
+      data: await this.campusOAuth.startBinding(
+        req.user.sub,
+        req.headers.origin,
+      ),
+    };
+  }
+
+  @Post('campus/oauth/complete')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  async completeCampusBinding(
+    @Request() req,
+    @Body() dto: CompleteCampusOAuthDto,
+  ) {
+    return {
+      code: 200,
+      message: '校园登录方式已绑定',
+      data: await this.campusOAuth.completeBinding(req.user.sub, dto),
     };
   }
 

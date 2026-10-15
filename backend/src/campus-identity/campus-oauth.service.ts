@@ -8,14 +8,21 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
-import { createHash, randomBytes, randomUUID } from 'crypto';
+import { createHash, createHmac, randomBytes, randomUUID } from 'crypto';
 import { PrismaService } from '@/prisma.service';
 import { Prisma } from '@prisma/client';
-import { identityCapabilities } from '@/auth/identity-configuration';
+import {
+  identityCapabilities,
+  assertLoginMethodEnabled,
+  assertVerificationMethodEnabled,
+  configuredVerificationMethods,
+} from '@/auth/identity-configuration';
+import { UserIdentityService } from '@/auth/user-identity.service';
 import { corsOrigins } from '@/environment';
 import {
   CampusOAuthCallbackDto,
   CompleteCampusOAuthDto,
+  CampusLoginDto,
 } from './dto/student-verification.dto';
 
 type CampusProof = {
@@ -45,15 +52,25 @@ export class CampusOAuthService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly http: HttpService,
+    private readonly identities: UserIdentityService,
   ) {}
 
   private setting(key: string): string {
     return this.config.get<string>(`CAMPUS_OAUTH_${key}`, '');
   }
 
-  private assertConfigured() {
-    if (!identityCapabilities((key) => this.config.get(key)).campusOAuth) {
-      throw new ServiceUnavailableException('清华统一身份认证尚未开通');
+  private assertConfigured(purpose: string = 'VERIFICATION') {
+    const get = (key: string) => this.config.get(key);
+    if (purpose === 'VERIFICATION')
+      assertVerificationMethodEnabled('campusOAuth', get);
+    else assertLoginMethodEnabled('campusOAuth', get);
+    const capabilities = identityCapabilities(get);
+    if (
+      !(purpose === 'VERIFICATION'
+        ? capabilities.verificationMethods.campusOAuth
+        : capabilities.loginMethods.campusOAuth)
+    ) {
+      throw new ServiceUnavailableException('校园统一身份认证尚未开通');
     }
   }
 
@@ -80,7 +97,35 @@ export class CampusOAuthService {
   }
 
   async start(userId: string, origin?: string) {
-    this.assertConfigured();
+    const result = await this.begin('VERIFICATION', origin, userId);
+    return {
+      ...result,
+      account: result.account!,
+      purpose: 'VERIFICATION' as const,
+    };
+  }
+
+  async startBinding(userId: string, origin?: string) {
+    const result = await this.begin('LOGIN_BIND', origin, userId);
+    return {
+      ...result,
+      account: result.account!,
+      purpose: 'LOGIN_BIND' as const,
+    };
+  }
+
+  async startLogin(ip: string, origin?: string) {
+    const result = await this.begin('LOGIN', origin, undefined, ip);
+    return { ...result, loginVerifier: result.loginVerifier! };
+  }
+
+  private async begin(
+    purpose: 'LOGIN' | 'VERIFICATION' | 'LOGIN_BIND',
+    origin?: string,
+    userId?: string,
+    ip?: string,
+  ) {
+    this.assertConfigured(purpose);
     if (
       origin &&
       !corsOrigins({
@@ -90,22 +135,46 @@ export class CampusOAuthService {
     ) {
       throw new BadRequestException('请从食鉴应用发起认证');
     }
-    const account = await this.account(userId);
+    const account = userId ? await this.account(userId) : undefined;
+    const loginVerifier =
+      purpose === 'LOGIN' ? randomBytes(32).toString('base64url') : undefined;
+    const ipDigest =
+      purpose === 'LOGIN'
+        ? createHmac(
+            'sha256',
+            this.config.get<string>('AUTH_CHALLENGE_SECRET')!,
+          )
+            .update(`campus-login:${ip}`)
+            .digest('hex')
+        : null;
     const attemptId = randomUUID();
     const state = randomBytes(32).toString('base64url');
     const codeVerifier = randomBytes(32).toString('base64url');
     const now = new Date();
     await this.prisma.$transaction(async (tx) => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`campus-oauth:${userId}`}, 0))`;
+      const scope =
+        purpose === 'LOGIN'
+          ? `campus-login:${ipDigest}`
+          : `campus-oauth:${userId}`;
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${scope}, 0))`;
       const count = await tx.campusOAuthAttempt.count({
-        where: { userId, createdAt: { gt: new Date(now.getTime() - 900000) } },
+        where: {
+          purpose,
+          ...(purpose === 'LOGIN' ? { ipDigest } : { userId }),
+          createdAt: { gt: new Date(now.getTime() - 900000) },
+        },
       });
-      if (count >= 5)
+      if (count >= (purpose === 'LOGIN' ? 20 : 5))
         throw new BadRequestException('认证请求过于频繁，请稍后重试');
       await tx.campusOAuthAttempt.create({
         data: {
           id: attemptId,
-          userId,
+          userId: userId ?? null,
+          purpose,
+          ipDigest,
+          loginVerifierDigest: loginVerifier
+            ? createHash('sha256').update(loginVerifier).digest('hex')
+            : null,
           clientOrigin: origin ?? null,
           stateDigest: createHash('sha256').update(state).digest('hex'),
           codeVerifier,
@@ -131,12 +200,12 @@ export class CampusOAuthService {
       authorizationUrl: authorization.toString(),
       // Covers the authorization window, provider request timeouts and handoff TTL.
       expiresAt: new Date(now.getTime() + 900000).toISOString(),
-      account,
+      ...(account ? { account } : {}),
+      ...(loginVerifier ? { loginVerifier } : {}),
     };
   }
 
   async callback(dto: CampusOAuthCallbackDto) {
-    this.assertConfigured();
     const stateDigest = createHash('sha256').update(dto.state).digest('hex');
     const attempt = await this.prisma.$transaction(async (tx) => {
       const reserved = await tx.campusOAuthAttempt.updateMany({
@@ -148,6 +217,7 @@ export class CampusOAuthService {
     });
     if (!attempt)
       throw new BadRequestException('认证请求无效或已过期，请重新发起');
+    this.assertConfigured(attempt.purpose);
     if (
       dto.error ||
       !dto.code ||
@@ -260,19 +330,97 @@ export class CampusOAuthService {
       handoffCode,
       handoffExpiresAt: handoffExpiresAt.toISOString(),
       clientOrigin: attempt.clientOrigin,
-      account: await this.account(attempt.userId),
+      purpose: attempt.purpose,
+      account: attempt.userId ? await this.account(attempt.userId) : undefined,
     };
   }
 
   async complete(userId: string, dto: CompleteCampusOAuthDto) {
+    const result = await this.finish('VERIFICATION', dto, userId);
+    return { completed: true, status: result.status! };
+  }
+
+  async login(dto: CampusLoginDto) {
+    return (await this.finish('LOGIN', dto)).user!;
+  }
+
+  async completeBinding(userId: string, dto: CompleteCampusOAuthDto) {
+    await this.finish('LOGIN_BIND', dto, userId);
+    return { completed: true };
+  }
+
+  private async recordVerification(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    proof: CampusProof,
+    createdAt: Date,
+    automatic: boolean,
+  ) {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`campus-subject:${proof.studentSubjectDigest}`}, 0))`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`campus:${userId}`}, 0))`;
+    const previous = await tx.studentVerification.findUnique({
+      where: { userId },
+    });
+    const owner = await tx.studentVerification.findUnique({
+      where: {
+        schoolCode_studentSubjectDigest: {
+          schoolCode: 'tsinghua',
+          studentSubjectDigest: proof.studentSubjectDigest,
+        },
+      },
+    });
+    if (owner && owner.userId !== userId) {
+      if (automatic) return previous?.status ?? null;
+      throw new ConflictException('该校园身份已用于其他账号，请联系管理员处理');
+    }
+    if (
+      previous &&
+      (previous.updatedAt > createdAt || (automatic && previous.reviewedAt))
+    ) {
+      if (automatic) return previous.status;
+      throw new ConflictException('认证状态已更新，请返回应用查看');
+    }
+    const status = proof.active ? 'VERIFIED' : 'PENDING';
+    const data = {
+      schoolCode: 'tsinghua',
+      method: 'SCHOOL_ASSERTION',
+      studentSubjectDigest: proof.studentSubjectDigest,
+      status,
+      verifiedAt: proof.active ? new Date(proof.capturedAt) : null,
+      expiresAt: proof.expiresAt ? new Date(proof.expiresAt) : null,
+      reviewedById: null,
+      reviewedAt: null,
+      reason: proof.active ? null : '校方账号已验证，当前在读资格待审核',
+    };
+    await tx.studentVerification.upsert({
+      where: { userId },
+      create: { ...data, userId },
+      update: data,
+    });
+    return status;
+  }
+
+  private async finish(
+    purpose: 'LOGIN' | 'VERIFICATION' | 'LOGIN_BIND',
+    dto: CompleteCampusOAuthDto | CampusLoginDto,
+    userId?: string,
+  ) {
+    this.assertConfigured(purpose);
     const now = new Date();
-    let status: 'VERIFIED' | 'PENDING';
     try {
-      await this.prisma.$transaction(async (tx) => {
+      return await this.prisma.$transaction(async (tx) => {
         const consumed = await tx.campusOAuthAttempt.updateMany({
           where: {
             id: dto.attemptId,
-            userId,
+            purpose,
+            userId: purpose === 'LOGIN' ? null : userId,
+            ...(purpose === 'LOGIN'
+              ? {
+                  loginVerifierDigest: createHash('sha256')
+                    .update((dto as CampusLoginDto).loginVerifier)
+                    .digest('hex'),
+                }
+              : {}),
             handoffDigest: createHash('sha256')
               .update(dto.handoffCode)
               .digest('hex'),
@@ -281,40 +429,45 @@ export class CampusOAuthService {
           },
           data: { completedAt: now },
         });
-        if (consumed.count !== 1) {
-          throw new BadRequestException('确认码无效或已过期，请重新发起认证');
-        }
+        if (consumed.count !== 1)
+          throw new BadRequestException('确认码无效或已过期，请重新发起');
         const attempt = await tx.campusOAuthAttempt.findUniqueOrThrow({
           where: { id: dto.attemptId },
         });
         const proof = attempt.proof as CampusProof;
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`campus:${userId}`}, 0))`;
-        const previous = await tx.studentVerification.findUnique({
-          where: { userId },
-        });
-        if (previous && previous.updatedAt > attempt.createdAt)
-          throw new ConflictException('认证状态已更新，请返回应用查看');
-        status = proof.active ? 'VERIFIED' : 'PENDING';
-        const data = {
-          schoolCode: 'tsinghua',
-          method: 'SCHOOL_ASSERTION',
-          studentSubjectDigest: proof.studentSubjectDigest,
-          status,
-          verifiedAt: proof.active ? new Date(proof.capturedAt) : null,
-          expiresAt: proof.expiresAt ? new Date(proof.expiresAt) : null,
-          reviewedById: null,
-          reviewedAt: null,
-          reason: proof.active ? null : '校方账号已验证，当前在读资格待审核',
-        };
-        await tx.studentVerification.upsert({
-          where: { userId },
-          create: { ...data, userId },
-          update: data,
-        });
+        const user =
+          purpose === 'VERIFICATION'
+            ? null
+            : await this.identities.campus(
+                tx,
+                proof.studentSubjectDigest,
+                userId,
+              );
+        const shouldVerify =
+          purpose === 'VERIFICATION' ||
+          (purpose === 'LOGIN' &&
+            configuredVerificationMethods(
+              this.config.get('CAMPUS_VERIFICATION_METHODS'),
+            ).includes('campusOAuth'));
+        const status = shouldVerify
+          ? await this.recordVerification(
+              tx,
+              user?.id ?? userId!,
+              proof,
+              attempt.createdAt,
+              purpose === 'LOGIN',
+            )
+          : null;
         await tx.campusOAuthAttempt.update({
           where: { id: attempt.id },
-          data: { proof: Prisma.DbNull, handoffDigest: null },
+          data: {
+            proof: Prisma.DbNull,
+            handoffDigest: null,
+            loginVerifierDigest: null,
+            ...(user ? { userId: user.id } : {}),
+          },
         });
+        return { user, status };
       });
     } catch (error) {
       if ((error as { code?: string }).code === 'P2002')
@@ -323,6 +476,5 @@ export class CampusOAuthService {
         );
       throw error;
     }
-    return { completed: true, status: status! };
   }
 }

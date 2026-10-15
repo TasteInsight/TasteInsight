@@ -3,7 +3,8 @@ type Handoff = {
   handoffCode: string;
   handoffExpiresAt: string;
   clientOrigin: string | null;
-  account: { id: string; nickname: string; phone?: string };
+  purpose?: string;
+  account?: { id: string; nickname: string; phone?: string };
 };
 
 const escapeHtml = (value: string) =>
@@ -16,16 +17,29 @@ const escapeHtml = (value: string) =>
   );
 
 export function campusOAuthPage(nonce: string, handoff?: Handoff): string {
-  const title = handoff ? '确认学生身份绑定' : '认证未完成';
+  const login = handoff?.purpose === 'LOGIN';
+  const binding = handoff?.purpose === 'LOGIN_BIND';
+  const title = handoff
+    ? login
+      ? '确认校园账号登录'
+      : binding
+        ? '确认校园登录绑定'
+        : '确认学生身份绑定'
+    : '认证未完成';
+  const account = handoff?.account;
   const content = handoff
-    ? `<p>请核对即将绑定的食鉴账号。</p>
-      <dl><dt>昵称</dt><dd>${escapeHtml(handoff.account.nickname)}</dd>
-      <dt>账号 ID</dt><dd>${escapeHtml(handoff.account.id)}</dd>
-      ${handoff.account.phone ? `<dt>登录手机号</dt><dd>${escapeHtml(handoff.account.phone)}</dd>` : ''}</dl>
-      <p>仅为自己发起认证的账号继续操作。如果这不是你的账号，请关闭此页。</p>
-      <button id="confirm" type="button">确认此账号，返回食鉴绑定</button>
+    ? `${
+        login
+          ? '<p>校方授权已完成。请返回发起本次授权的食鉴登录页面，确认登录。</p>'
+          : `<p>${binding ? '该校园账号将用于登录以下食鉴账号，请核对后继续。' : '请核对即将绑定校园身份的食鉴账号。'}</p>
+      <dl><dt>昵称</dt><dd>${escapeHtml(account!.nickname)}</dd>
+      <dt>账号 ID</dt><dd>${escapeHtml(account!.id)}</dd>
+      ${account!.phone ? `<dt>登录手机号</dt><dd>${escapeHtml(account!.phone)}</dd>` : ''}</dl>
+      <p>仅为自己发起认证的账号继续操作。如果这不是你的账号，请关闭此页。</p>`
+      }
+      <button id="confirm" type="button">${login ? '返回食鉴确认登录' : '确认此账号，返回食鉴绑定'}</button>
       <section id="handoff" hidden data-attempt="${escapeHtml(handoff.attemptId)}" data-origin="${escapeHtml(handoff.clientOrigin ?? '')}" data-expiry="${escapeHtml(handoff.handoffExpiresAt)}">
-        <p>复制确认码，返回食鉴的「校园身份」页面，粘贴后确认绑定。确认码有效期为 3 分钟，请勿发给他人。</p>
+        <p>复制确认码，返回食鉴的「${login ? '登录' : '校园身份'}」页面，粘贴后${login ? '确认登录' : '确认绑定'}。确认码有效期为 3 分钟，请勿发给他人。</p>
         <label for="code">一次性确认码</label><textarea id="code" readonly rows="2" spellcheck="false">${escapeHtml(handoff.handoffCode)}</textarea>
         <button id="copy" type="button">复制确认码</button>
       </section><p id="message" role="status" aria-live="polite"></p>
@@ -55,16 +69,16 @@ export function campusOAuthPage(nonce: string, handoff?: Handoff): string {
         section.hidden = false; confirm.disabled = true;
         const targetOrigin = section.dataset.origin;
         if (targetOrigin && window.opener) {
-          window.opener.postMessage({ type: 'tasteinsight:campus-oauth', attemptId: section.dataset.attempt, handoffCode: code.value }, targetOrigin);
+          window.opener.postMessage({ type: '${login ? 'tasteinsight:campus-login' : 'tasteinsight:campus-oauth'}', ${binding ? "purpose: 'LOGIN_BIND'," : ''} attemptId: section.dataset.attempt, handoffCode: code.value }, targetOrigin);
         }
-        message.textContent = '请返回食鉴确认绑定；尚未授予学生权限。';
+        message.textContent = '${login ? '请返回食鉴确认登录。' : binding ? '请返回食鉴确认绑定登录方式。' : '请返回食鉴确认绑定；尚未授予学生权限。'}';
       });
       copy.addEventListener('click', async () => {
         if (expired()) return;
         try {
           if (!navigator.clipboard) throw new Error();
           await navigator.clipboard.writeText(code.value);
-          message.textContent = '确认码已复制，请返回食鉴粘贴并确认绑定。';
+          message.textContent = '确认码已复制，请返回食鉴粘贴并${login ? '确认登录' : '确认绑定'}。';
         } catch {
           code.focus(); code.select();
           message.textContent = '请长按或手动复制已选中的确认码。';

@@ -1,14 +1,14 @@
-import { effectScope } from 'vue';
+import { effectScope, ref, type Ref } from 'vue';
 import config from '@/config';
 import { useWechatAuthorization } from '@/composables/use-wechat-authorization';
 
 jest.mock('@/config', () => ({ __esModule: true, default: { platform: 'mp-weixin' } }));
 
 const scopes: ReturnType<typeof effectScope>[] = [];
-function authorization() {
+function authorization(enabled?: Ref<boolean>) {
   const scope = effectScope();
   scopes.push(scope);
-  return { scope, ...scope.run(useWechatAuthorization)! };
+  return { scope, ...scope.run(() => useWechatAuthorization(enabled))! };
 }
 
 beforeEach(() => {
@@ -60,4 +60,31 @@ test('provider discovery cannot reactivate a disposed scope', async () => {
   expect(auth.available.value).toBe(false);
   await expect(auth.authorize()).rejects.toThrow('当前平台未配置微信登录');
   expect(uni.login).not.toHaveBeenCalled();
+});
+
+test('disabled native WeChat does not probe an optional OAuth module', async () => {
+  config.platform = 'app';
+  const enabled = ref(false);
+  const auth = authorization(enabled);
+  expect(uni.getProvider).not.toHaveBeenCalled();
+  await expect(auth.authorize()).rejects.toThrow('当前平台未配置微信登录');
+  expect(uni.login).not.toHaveBeenCalled();
+  enabled.value = true;
+  expect(auth.checking.value).toBe(true);
+  const discovery = (uni.getProvider as jest.Mock).mock.calls[0][0];
+  enabled.value = false;
+  discovery.success({ provider: ['weixin'] });
+  expect(auth.available.value).toBe(false);
+  expect(auth.checking.value).toBe(false);
+});
+
+test('miniapp policy changes availability without invoking a native provider API', () => {
+  const enabled = ref(false);
+  const auth = authorization(enabled);
+  expect(auth.available.value).toBe(false);
+  enabled.value = true;
+  expect(auth.available.value).toBe(true);
+  enabled.value = false;
+  expect(auth.available.value).toBe(false);
+  expect(uni.getProvider).not.toHaveBeenCalled();
 });

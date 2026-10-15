@@ -4,12 +4,13 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { VerificationChallenge } from '@prisma/client';
 import { PrismaService } from '@/prisma.service';
 import { VerificationChallengeService } from './verification-challenge.service';
 import { VerificationDeliveryService } from './verification-delivery.service';
 
 describe('VerificationChallengeService', () => {
-  const records = new Map<string, any>();
+  const records = new Map<string, VerificationChallenge>();
   const challenges = {
     findFirst: jest.fn(),
     count: jest.fn(),
@@ -21,14 +22,21 @@ describe('VerificationChallengeService', () => {
   const tx = { verificationChallenge: challenges, $executeRaw: jest.fn() };
   const prisma = { ...tx, $transaction: jest.fn() };
   const delivery = { assertAvailable: jest.fn(), send: jest.fn() };
+  const settings = {
+    AUTH_CHALLENGE_SECRET: 'challenge-secret'.repeat(4),
+    AUTH_LOGIN_METHODS: 'phone',
+    CAMPUS_VERIFICATION_METHODS: 'campusEmail,campusOAuth',
+  };
   const service = new VerificationChallengeService(
     prisma as unknown as PrismaService,
-    new ConfigService({ AUTH_CHALLENGE_SECRET: 'challenge-secret'.repeat(4) }),
+    new ConfigService(settings),
     delivery as unknown as VerificationDeliveryService,
   );
 
   beforeEach(() => {
     jest.resetAllMocks();
+    settings.AUTH_LOGIN_METHODS = 'phone';
+    settings.CAMPUS_VERIFICATION_METHODS = 'campusEmail,campusOAuth';
     records.clear();
     prisma.$transaction.mockImplementation((callback) => callback(tx));
     challenges.findFirst.mockResolvedValue(null);
@@ -39,11 +47,12 @@ describe('VerificationChallengeService', () => {
         attempts: 0,
         deliveryState: 'PENDING',
         consumedAt: null,
+        createdAt: new Date(),
       });
       return Promise.resolve(data);
     });
     challenges.update.mockImplementation(({ where, data }) => {
-      Object.assign(records.get(where.id), data);
+      Object.assign(records.get(where.id)!, data);
       return Promise.resolve(records.get(where.id));
     });
     challenges.findUniqueOrThrow.mockImplementation(({ where }) =>
@@ -64,6 +73,81 @@ describe('VerificationChallengeService', () => {
       item.attempts += data.attempts.increment;
       return Promise.resolve({ count: 1 });
     });
+  });
+
+  it.each(['PHONE_LOGIN', 'PHONE_BIND'] as const)(
+    'rejects disabled %s before storing a phone number or delivering SMS',
+    async (purpose) => {
+      settings.AUTH_LOGIN_METHODS = '';
+      await expect(
+        service.issue(purpose, '+8613812345678', '127.0.0.1'),
+      ).rejects.toMatchObject({ response: { code: 'LOGIN_METHOD_DISABLED' } });
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(delivery.send).not.toHaveBeenCalled();
+    },
+  );
+
+  it('rejects a pending phone challenge after the channel is disabled', async () => {
+    const { challengeId } = await service.issue(
+      'PHONE_LOGIN',
+      '+8613812345678',
+      '127.0.0.1',
+    );
+    const code = delivery.send.mock.calls[0][2];
+    settings.AUTH_LOGIN_METHODS = '';
+    await expect(
+      service.consume('PHONE_LOGIN', challengeId, code),
+    ).rejects.toMatchObject({ response: { code: 'LOGIN_METHOD_DISABLED' } });
+    expect(records.get(challengeId)!.consumedAt).toBeNull();
+  });
+
+  it('rejects disabled campus email before delivery and blocks pending completion', async () => {
+    settings.CAMPUS_VERIFICATION_METHODS = '';
+    await expect(
+      service.issue(
+        'SCHOOL_EMAIL',
+        'student@example.org',
+        '127.0.0.1',
+        'alice',
+      ),
+    ).rejects.toMatchObject({
+      response: { code: 'VERIFICATION_METHOD_DISABLED' },
+    });
+    expect(delivery.send).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    settings.CAMPUS_VERIFICATION_METHODS = 'campusEmail';
+    const { challengeId } = await service.issue(
+      'SCHOOL_EMAIL',
+      'student@example.org',
+      '127.0.0.1',
+      'alice',
+    );
+    const code = delivery.send.mock.calls[0][2];
+    settings.CAMPUS_VERIFICATION_METHODS = '';
+    await expect(
+      service.consume('SCHOOL_EMAIL', challengeId, code, 'alice'),
+    ).rejects.toMatchObject({
+      response: { code: 'VERIFICATION_METHOD_DISABLED' },
+    });
+    expect(records.get(challengeId)!.consumedAt).toBeNull();
+  });
+
+  it('keeps campus email verification independent of phone login policy', async () => {
+    settings.AUTH_LOGIN_METHODS = '';
+    await expect(
+      service.issue(
+        'SCHOOL_EMAIL',
+        'student@example.org',
+        '127.0.0.1',
+        'alice',
+      ),
+    ).resolves.toHaveProperty('challengeId');
+    expect(delivery.send).toHaveBeenCalledWith(
+      'SCHOOL_EMAIL',
+      'student@example.org',
+      expect.any(String),
+      expect.any(String),
+    );
   });
 
   it('sends a six-digit code but only returns challenge metadata and stores a keyed digest', async () => {
@@ -99,7 +183,7 @@ describe('VerificationChallengeService', () => {
     await expect(
       service.consume('PHONE_LOGIN', challengeId, code),
     ).rejects.toBeInstanceOf(BadRequestException);
-    expect(records.get(challengeId).consumedAt).toBeInstanceOf(Date);
+    expect(records.get(challengeId)!.consumedAt).toBeInstanceOf(Date);
   });
   it('commits wrong-attempt increments and rejects a correct sixth attempt', async () => {
     const { challengeId } = await service.issue(
@@ -113,7 +197,7 @@ describe('VerificationChallengeService', () => {
       await expect(
         service.consume('PHONE_LOGIN', challengeId, wrong),
       ).rejects.toBeInstanceOf(BadRequestException);
-    expect(records.get(challengeId).attempts).toBe(5);
+    expect(records.get(challengeId)!.attempts).toBe(5);
     await expect(
       service.consume('PHONE_LOGIN', challengeId, code),
     ).rejects.toBeInstanceOf(BadRequestException);
@@ -142,7 +226,7 @@ describe('VerificationChallengeService', () => {
       '+8613812345678',
       '127.0.0.1',
     );
-    records.get(challengeId).expiresAt = new Date(0);
+    records.get(challengeId)!.expiresAt = new Date(0);
     await expect(
       service.consume(
         'PHONE_LOGIN',
@@ -177,5 +261,24 @@ describe('VerificationChallengeService', () => {
     await expect(
       service.consume('PHONE_LOGIN', id, delivery.send.mock.calls[0][2]),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+  it('keeps a campus email challenge out of login and login-binding purposes', async () => {
+    const { challengeId } = await service.issue(
+      'SCHOOL_EMAIL',
+      'student@example.org',
+      '127.0.0.1',
+      'alice',
+    );
+    const code = delivery.send.mock.calls[0][2];
+    await expect(
+      service.consume('PHONE_BIND', challengeId, code, 'alice'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      service.consume('PHONE_LOGIN', challengeId, code),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(records.get(challengeId)!.consumedAt).toBeNull();
+    await expect(
+      service.consume('SCHOOL_EMAIL', challengeId, code, 'alice'),
+    ).resolves.toBe('student@example.org');
   });
 });

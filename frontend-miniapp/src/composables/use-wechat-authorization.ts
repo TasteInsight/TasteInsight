@@ -1,26 +1,44 @@
-import { getCurrentScope, onScopeDispose, ref } from 'vue';
+import { getCurrentScope, onScopeDispose, ref, watch, type Ref } from 'vue';
 import config from '@/config';
 
-export function useWechatAuthorization() {
-  const available = ref(config.platform === 'mp-weixin');
+export function useWechatAuthorization(enabled: Ref<boolean> = ref(true)) {
+  const available = ref(false);
+  const checking = ref(false);
   let disposed = false;
+  let discoveryVersion = 0;
 
-  if (['app', 'app-plus'].includes(config.platform)) {
-    uni.getProvider({
-      service: 'oauth',
-      success: result => {
-        if (!disposed) available.value = result.provider.some(provider => provider === 'weixin');
-      },
-      fail: () => {
-        if (!disposed) available.value = false;
-      },
-    });
-  }
+  watch(
+    enabled,
+    active => {
+      const version = ++discoveryVersion;
+      available.value = active && config.platform === 'mp-weixin';
+      checking.value = false;
+      if (!active || !['app', 'app-plus'].includes(config.platform)) return;
+      checking.value = true;
+      uni.getProvider({
+        service: 'oauth',
+        success: result => {
+          if (!disposed && version === discoveryVersion) {
+            available.value = result.provider.some(provider => provider === 'weixin');
+            checking.value = false;
+          }
+        },
+        fail: () => {
+          if (!disposed && version === discoveryVersion) {
+            available.value = false;
+            checking.value = false;
+          }
+        },
+      });
+    },
+    { immediate: true, flush: 'sync' }
+  );
 
   if (getCurrentScope())
     onScopeDispose(() => {
       disposed = true;
       available.value = false;
+      checking.value = false;
     });
 
   function authorize(): Promise<string> {
@@ -35,5 +53,5 @@ export function useWechatAuthorization() {
     );
   }
 
-  return { available, authorize };
+  return { available, checking, authorize };
 }

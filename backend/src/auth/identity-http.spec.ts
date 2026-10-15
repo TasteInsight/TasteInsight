@@ -24,6 +24,8 @@ describe('Identity HTTP contracts', () => {
   const secret = 'http-contract-access-secret'.repeat(2);
   const auth = {
     phoneLogin: jest.fn(),
+    campusLogin: jest.fn(),
+    startCampusLogin: jest.fn(),
     wechatLogin: jest.fn(),
     adminLogin: jest.fn(),
     refreshToken: jest.fn(),
@@ -37,11 +39,78 @@ describe('Identity HTTP contracts', () => {
     list: jest.fn(),
     decide: jest.fn(),
   };
-  const oauth = { start: jest.fn(), callback: jest.fn(), complete: jest.fn() };
+  const oauth = {
+    start: jest.fn(),
+    callback: jest.fn(),
+    complete: jest.fn(),
+    startBinding: jest.fn(),
+    completeBinding: jest.fn(),
+  };
   const admin = { findUnique: jest.fn() };
   const bearer = (sub = 'user', type = 'user') =>
     `Bearer ${jwt.sign({ sub, type, tokenUse: 'access' }, { secret })}`;
 
+  it('starts campus login anonymously and requires both the callback code and client verifier', async () => {
+    auth.startCampusLogin.mockResolvedValue({
+      attemptId: 'attempt',
+      loginVerifier: 'v'.repeat(43),
+    });
+    const start = await request(app.getHttpServer())
+      .post('/auth/campus/oauth')
+      .set('Origin', 'https://app.example')
+      .send({})
+      .expect(200);
+    expect(start.headers['cache-control']).toBe('no-store');
+    expect(auth.startCampusLogin).toHaveBeenCalledWith(
+      expect.any(String),
+      'https://app.example',
+    );
+    await request(app.getHttpServer())
+      .post('/auth/campus/login')
+      .send({ attemptId: 'attempt', handoffCode: 'c'.repeat(43) })
+      .expect(400);
+    auth.campusLogin.mockResolvedValue({ code: 200, data: { token: {} } });
+    await request(app.getHttpServer())
+      .post('/auth/campus/login')
+      .send({
+        attemptId: 'attempt',
+        handoffCode: 'c'.repeat(43),
+        loginVerifier: 'v'.repeat(43),
+      })
+      .expect(200);
+    expect(auth.campusLogin).toHaveBeenCalledTimes(1);
+  });
+
+  it('requires the authenticated account for campus login binding and uses its own endpoints', async () => {
+    await request(app.getHttpServer())
+      .post('/user/identities/campus/oauth')
+      .send({})
+      .expect(401);
+    await request(app.getHttpServer())
+      .post('/user/identities/campus/oauth/complete')
+      .send({ attemptId: 'attempt', handoffCode: 'x'.repeat(43) })
+      .expect(401);
+    oauth.startBinding.mockResolvedValue({
+      attemptId: 'binding-attempt',
+      purpose: 'LOGIN_BIND',
+    });
+    await request(app.getHttpServer())
+      .post('/user/identities/campus/oauth')
+      .set('Authorization', bearer('alice'))
+      .send({})
+      .expect(200);
+    expect(oauth.startBinding).toHaveBeenCalledWith('alice', undefined);
+    await request(app.getHttpServer())
+      .post('/user/identities/campus/oauth/complete')
+      .set('Authorization', bearer('alice'))
+      .send({ attemptId: 'binding-attempt', handoffCode: 'x'.repeat(43) })
+      .expect(200);
+    expect(oauth.completeBinding).toHaveBeenCalledWith('alice', {
+      attemptId: 'binding-attempt',
+      handoffCode: 'x'.repeat(43),
+    });
+    expect(oauth.complete).not.toHaveBeenCalled();
+  });
   beforeAll(async () => {
     const module = await Test.createTestingModule({
       controllers: [
@@ -116,7 +185,7 @@ describe('Identity HTTP contracts', () => {
     const response = await request(app.getHttpServer())
       .get('/auth/capabilities')
       .expect(200);
-    expect(response.body.data).toEqual({
+    expect(response.body.data).toMatchObject({
       phone: false,
       wechatMiniapp: false,
       wechatApp: false,

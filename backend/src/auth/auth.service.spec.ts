@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { CampusOAuthService } from '@/campus-identity/campus-oauth.service';
 import { AuthService } from './auth.service';
 import { PrismaService } from '@/prisma.service';
 import { JwtService } from '@nestjs/jwt';
@@ -35,6 +36,7 @@ const mockConfigService = {
 };
 
 const mockIdentities = { wechat: jest.fn(), phone: jest.fn() };
+const mockCampusOAuth = { startLogin: jest.fn(), login: jest.fn() };
 const mockChallenges = { consume: jest.fn() };
 
 const mockUserProfileService = {
@@ -54,6 +56,7 @@ describe('AuthService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
+        { provide: CampusOAuthService, useValue: mockCampusOAuth },
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
@@ -187,6 +190,11 @@ describe('AuthService', () => {
       expect(result.data.admin.username).toBe('admin');
       expect(result.data.permissions).toEqual(['read']);
       expect(result.data.admin.canteenName).toBe('Test Canteen');
+      expect(bcrypt.compare).toHaveBeenCalledWith(
+        'password',
+        'hashed-password',
+      );
+      expect(result.data.admin).not.toHaveProperty('password');
     });
 
     it('should return all permissions for superadmin', async () => {
@@ -250,7 +258,6 @@ describe('AuthService', () => {
       const mockAdmin = {
         id: 'admin-1',
         username: 'admin',
-        password: 'hashed-password',
       };
       prisma.admin.findUnique.mockResolvedValue(mockAdmin);
 
@@ -258,7 +265,10 @@ describe('AuthService', () => {
 
       expect(result.code).toBe(200);
       expect(result.data.token.accessToken).toBe('mock-token');
-      // Password should be removed
+      expect(prisma.admin.findUnique).toHaveBeenCalledWith({
+        where: { id: 'admin-1', deletedAt: null },
+        omit: { password: true },
+      });
       expect(result.data.user).not.toHaveProperty('password');
     });
 
@@ -299,6 +309,7 @@ describe('AuthService', () => {
       ).rejects.toThrow(UnauthorizedException);
       expect(prisma.admin.findUnique).toHaveBeenCalledWith({
         where: { id: 'retired-admin', deletedAt: null },
+        omit: { password: true },
       });
       expect(jwtService.signAsync).not.toHaveBeenCalled();
     });

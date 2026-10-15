@@ -7,10 +7,11 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { createHmac, randomInt, randomUUID, timingSafeEqual } from 'crypto';
 import { PrismaService } from '@/prisma.service';
+import { VerificationDeliveryService } from './verification-delivery.service';
 import {
-  VerificationDeliveryService,
+  assertChallengeEnabled,
   type ChallengePurpose,
-} from './verification-delivery.service';
+} from './verification-purpose';
 
 @Injectable()
 export class VerificationChallengeService {
@@ -34,6 +35,7 @@ export class VerificationChallengeService {
     ip: string,
     userId?: string,
   ) {
+    assertChallengeEnabled(purpose, (key) => this.config.get(key));
     this.delivery.assertAvailable(purpose);
     const id = randomUUID();
     const code = randomInt(1000000).toString().padStart(6, '0');
@@ -104,6 +106,7 @@ export class VerificationChallengeService {
     code: string,
     userId?: string,
   ): Promise<string> {
+    assertChallengeEnabled(purpose, (key) => this.config.get(key));
     const digest = this.digest(`code:${id}:${code}`);
     const result = await this.prisma.$transaction(async (tx) => {
       const reserved = await tx.verificationChallenge.updateMany({

@@ -9,18 +9,95 @@
 
     <!-- 登录操作区域 -->
     <view class="login-actions">
-      <view v-if="capabilities?.phone" class="phone-login">
+      <view v-if="methods.phone" class="phone-login">
         <label class="login-label" for="login-phone">手机号</label>
-        <input id="login-phone" v-model="phone" class="login-input" type="tel" maxlength="20" placeholder="输入手机号，可含国际区号" :disabled="loading || submitted || sending" />
+        <input
+          id="login-phone"
+          v-model="phone"
+          class="login-input"
+          type="tel"
+          maxlength="20"
+          placeholder="输入手机号，可含国际区号"
+          :disabled="loading || submitted || sending"
+        />
         <view class="code-row">
-          <input v-model="code" class="login-input code-input" type="number" maxlength="6" placeholder="6 位验证码" :disabled="loading || submitted" aria-label="短信验证码" />
-          <button class="code-send" :disabled="!phone.trim() || sending || remaining > 0 || loading || submitted" @click="handleSendCode">{{ sending ? '发送中' : remaining > 0 ? `${remaining}s 后重发` : '获取验证码' }}</button>
+          <input
+            v-model="code"
+            class="login-input code-input"
+            type="number"
+            maxlength="6"
+            placeholder="6 位验证码"
+            :disabled="loading || submitted"
+            aria-label="短信验证码"
+          />
+          <button
+            class="code-send"
+            :disabled="!phone.trim() || sending || remaining > 0 || loading || submitted"
+            @click="handleSendCode"
+          >
+            {{ sending ? '发送中' : remaining > 0 ? `${remaining}s 后重发` : '获取验证码' }}
+          </button>
         </view>
         <text v-if="codeError" class="login-error" role="alert">{{ codeError }}</text>
-        <button class="login-button" :disabled="!canVerify || loading || submitted" @click="handleLogin(() => phoneLogin(challengeId, code))">{{ loading ? '正在登录…' : '验证码登录' }}</button>
+        <button
+          class="login-button"
+          :disabled="!canVerify || loading || submitted"
+          @click="handleLogin(() => phoneLogin(challengeId, code))"
+        >
+          {{ loading ? '正在登录…' : '验证码登录' }}
+        </button>
       </view>
-      <text v-if="capabilitiesLoading" class="login-test-note" role="status">正在读取登录方式…</text>
-      <button v-if="capabilitiesError" class="login-secondary" @click="loadCapabilities">登录方式加载失败，点击重试</button>
+      <text
+        v-if="capabilitiesLoading || wechatProviderLoading"
+        class="login-test-note"
+        role="status"
+        >正在读取登录方式…</text
+      >
+      <button v-if="capabilitiesError" class="login-secondary" @click="loadCapabilities">
+        登录方式加载失败，点击重试
+      </button>
+      <view
+        v-if="
+          !capabilitiesLoading && !wechatProviderLoading && !capabilitiesError && !hasLoginMethod
+        "
+        class="error-feedback"
+        role="alert"
+      >
+        <text class="error-feedback__title">暂时无法登录</text>
+        <text class="error-feedback__message">请稍后再试，或先浏览公开内容。</text>
+        <button class="error-feedback__action" @click="loadCapabilities">重新加载</button>
+      </view>
+      <view v-if="methods.campusOAuth" class="campus-login">
+        <button
+          class="login-button"
+          :disabled="loading || submitted || campusStarting"
+          @click="startCampus"
+        >
+          {{ campusStarting ? '正在打开授权…' : '校园账号登录' }}
+        </button>
+        <view v-if="campusPending" class="phone-login">
+          <text class="login-test-note">校方授权完成后，返回此页并粘贴一次性确认码。</text>
+          <input
+            v-model="campusCode"
+            class="login-input"
+            maxlength="43"
+            placeholder="一次性确认码"
+            aria-label="校园登录确认码"
+            :disabled="loading || submitted"
+          />
+          <button
+            class="login-button"
+            :disabled="campusCode.trim().length !== 43 || loading || submitted"
+            @click="completeCampus"
+          >
+            确认登录
+          </button>
+          <button class="login-secondary" :disabled="loading || submitted" @click="cancelCampus">
+            取消本次授权
+          </button>
+        </view>
+        <text v-if="campusError" class="login-error" role="alert">{{ campusError }}</text>
+      </view>
       <!-- 微信一键登录按钮 -->
       <button
         v-if="wechatAvailable && canUseWechat"
@@ -42,7 +119,7 @@
     </view>
 
     <!-- 底部协议 -->
-    <view class="login-agreement">
+    <view v-if="hasLoginMethod" class="login-agreement">
       <view class="agreement-row">
         <checkbox-group @change="handleAgreementChange">
           <label class="agreement-toggle">
@@ -62,19 +139,66 @@
 import { ref, computed, onMounted, onScopeDispose } from 'vue';
 import { useLogin } from '../composables/use-login';
 import config from '@/config';
-import { getAuthCapabilities, sendPhoneCode, type AuthCapabilities } from '@/api/modules/auth';
+import {
+  getAuthCapabilities,
+  sendPhoneCode,
+  type AuthCapabilities,
+  loginMethods,
+} from '@/api/modules/auth';
+import { campusLoginTicket } from '@/utils/campus-login';
+import { useCampusLogin } from '../composables/use-campus-login';
 import { useVerificationCode } from '@/composables/use-verification-code';
 
-const { loading, submitted, wechatAvailable, wechatLogin, phoneLogin, testLogin, testLoginEnabled } =
-  useLogin();
 const agreed = ref(false);
 const capabilities = ref<AuthCapabilities | null>(null);
 const capabilitiesLoading = ref(true);
 const capabilitiesError = ref(false);
+const methods = computed(() => loginMethods(capabilities.value));
+const canUseCampus = computed(() => methods.value.campusOAuth);
+const {
+  pending: campusPending,
+  code: campusCode,
+  starting: campusStarting,
+  error: campusError,
+  start: authorizeCampus,
+  cancel: cancelCampus,
+  reload: reloadCampus,
+} = useCampusLogin(canUseCampus);
+const canUseWechat = computed(() =>
+  Boolean(config.platform === 'mp-weixin' ? methods.value.wechatMiniapp : methods.value.wechatApp)
+);
+const {
+  loading,
+  submitted,
+  wechatAvailable,
+  wechatProviderLoading,
+  wechatLogin,
+  phoneLogin,
+  campusLogin,
+  testLogin,
+  testLoginEnabled,
+} = useLogin(canUseWechat);
 let disposed = false;
-onScopeDispose(() => { disposed = true; });
-const canUseWechat = computed(() => config.platform === 'mp-weixin' ? capabilities.value?.wechatMiniapp : capabilities.value?.wechatApp);
-const { target: phone, code, challengeId, sending, remaining, canVerify, error: codeError, sendCode } = useVerificationCode(sendPhoneCode);
+onScopeDispose(() => {
+  disposed = true;
+});
+const hasLoginMethod = computed(
+  () =>
+    methods.value.phone ||
+    methods.value.campusOAuth ||
+    (wechatAvailable.value && canUseWechat.value) ||
+    testLoginEnabled
+);
+const {
+  target: phone,
+  code,
+  challengeId,
+  sending,
+  remaining,
+  canVerify,
+  error: codeError,
+  sendCode,
+} = useVerificationCode(sendPhoneCode);
 async function loadCapabilities() {
   capabilitiesLoading.value = true;
   capabilitiesError.value = false;
@@ -83,14 +207,37 @@ async function loadCapabilities() {
     if (!disposed) capabilities.value = result.data;
   } catch {
     if (!disposed) capabilitiesError.value = true;
-  } finally { if (!disposed) capabilitiesLoading.value = false; }
+  } finally {
+    if (!disposed) capabilitiesLoading.value = false;
+  }
 }
 onMounted(loadCapabilities);
+function startCampus() {
+  if (!agreed.value) return uni.showToast({ title: '请先同意用户协议和隐私政策', icon: 'none' });
+  void authorizeCampus();
+}
+async function completeCampus() {
+  if (!canUseCampus.value) return;
+  await handleLogin(async () => {
+    campusError.value = '';
+    let ticket: ReturnType<typeof campusLoginTicket>;
+    try {
+      ticket = campusLoginTicket(campusCode.value);
+    } catch (error) {
+      campusError.value = error instanceof Error ? error.message : '登录确认失败，请重试';
+      reloadCampus();
+      throw error;
+    }
+    await campusLogin(ticket);
+  });
+}
 function handleSendCode() {
   if (!agreed.value) return uni.showToast({ title: '请先同意用户协议和隐私政策', icon: 'none' });
   void sendCode();
 }
-function browse() { uni.switchTab({ url: '/pages/index/index' }); }
+function browse() {
+  uni.switchTab({ url: '/pages/index/index' });
+}
 
 const emit = defineEmits<{
   loginSuccess: [];
@@ -168,15 +315,58 @@ function openAgreement(type: 'user' | 'privacy') {
   flex-direction: column;
   gap: 12px;
 }
-.phone-login { display: flex; flex-direction: column; gap: 12px; }
-.login-label { font-size: 14px; font-weight: 600; color: #344054; }
-.login-input { box-sizing: border-box; height: 48px; padding: 0 14px; background: #f5f5f6; border-radius: 10px; color: #1f2937; font-size: 15px; caret-color: #660874; }
-.code-row { display: flex; gap: 8px; align-items: center; }
-.code-input { min-width: 0; flex: 1; }
-.code-send, .login-secondary { margin: 0; padding: 12px; border: 0; background: transparent; color: #660874; font-size: 14px; line-height: 24px; }
-.code-send::after, .login-secondary::after { border: 0; }
-.code-send[disabled] { color: #667085; background: transparent; }
-.login-error { color: #b42318; font-size: 13px; line-height: 1.5; }
+.phone-login {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.login-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #344054;
+}
+.login-input {
+  box-sizing: border-box;
+  height: 48px;
+  padding: 0 14px;
+  background: #f5f5f6;
+  border-radius: 10px;
+  color: #1f2937;
+  font-size: 15px;
+  caret-color: #660874;
+}
+.code-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.code-input {
+  min-width: 0;
+  flex: 1;
+}
+.code-send,
+.login-secondary {
+  margin: 0;
+  padding: 12px;
+  border: 0;
+  background: transparent;
+  color: #660874;
+  font-size: 14px;
+  line-height: 24px;
+}
+.code-send::after,
+.login-secondary::after {
+  border: 0;
+}
+.code-send[disabled] {
+  color: #667085;
+  background: transparent;
+}
+.login-error {
+  color: #b42318;
+  font-size: 13px;
+  line-height: 1.5;
+}
 .login-button {
   display: flex;
   align-items: center;

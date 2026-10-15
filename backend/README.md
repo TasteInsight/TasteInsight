@@ -271,7 +271,24 @@ Compose 从 `--env-file` 选取配置并按角色注入，未设置的可选字�
 
 ### 账号与校园认证
 
+`AUTH_LOGIN_METHODS` 是公共 API 的登录方式白名单，支持 `phone`、`wechatMiniapp`、`wechatApp`、`campusOAuth`，使用逗号分隔。默认值为 `wechatMiniapp,wechatApp`；启用手机验证码登录与绑定时显式设置为 `phone,wechatMiniapp,wechatApp`。空字符串关闭全部登录方式。每种方式还需满足对应凭据与验证码服务配置，客户端依据能力接口展示入口，服务端在身份验证前执行相同白名单校验。已有账号保留原身份和有效会话。
+
+`CAMPUS_VERIFICATION_METHODS` 独立控制校园身份认证方式，支持 `campusEmail` 和 `campusOAuth`，默认启用两种方式，空字符串关闭全部校园认证方式及登录后的自动认证。每种方式还需配置对应服务商。关闭方式后，服务端拒绝新的发起请求及未完成的验证码或 OAuth 确认请求；已取得的身份认证按其原有效期和审核状态生效。
+
+例如：
+
+```dotenv
+AUTH_LOGIN_METHODS=wechatMiniapp,wechatApp,campusOAuth
+CAMPUS_VERIFICATION_METHODS=campusEmail,campusOAuth
+```
+
+`GET /auth/capabilities` 分别返回 `loginMethods` 和 `verificationMethods`；原扁平字段保留供已安装客户端使用。校园 OAuth 登录通过登录凭据识别账号；同时开启校园 OAuth 认证时，登录流程依据校方可信在读声明更新学生资格，缺少可信在读信息时进入待审核状态。关闭校园 OAuth 认证后，登录保留已有校园资格及其有效期。校园资格已有其他账号归属时，登录保留原归属及当前账号的资格状态。管理员已审核的状态在登录时保留。校园邮箱验证提交认证申请，审核通过后获得学生资格。
+
+校园 OAuth 登录使用 `POST /auth/campus/oauth` 发起，沿用 `CAMPUS_OAUTH_REDIRECT_URI` 回调，客户端通过 `POST /auth/campus/login` 提交一次性确认码及发起设备的 `loginVerifier`。校园账号通过 `UserIdentity` 中的登录凭据关联食鉴账号。校园认证记录保存在 `StudentVerification`，用于学生资格及权限判断。用户可在“登录方式”中单独绑定校园账号，对应 `POST /user/identities/campus/oauth` 和 `POST /user/identities/campus/oauth/complete`。绑定受登录方式开关控制，只更新登录凭据；校园认证入口只更新校园资格。H5 使用授权弹窗，Android 使用系统浏览器，微信小程序使用独立 web-view 登录页；小程序需配置校方授权及 API 回调域名为业务域名。回调页提供一次性确认码供返回应用后确认，确认码有效期为 3 分钟。
+
 `GET /auth/capabilities` 返回当前可用登录和认证方式。小程序使用 `WECHAT_APPID/WECHAT_SECRET`，Android/iOS 使用 `WECHAT_APP_APPID/WECHAT_APP_SECRET`，两类 OpenID 分别绑定到其 AppID。`WECHAT_OPEN_PLATFORM_ID` 定义共享 UnionID 的开放平台主体。凭据冲突返回 409，不自动合并账号。
+
+登录方式的配置规则集中在 `src/auth/identity-configuration.ts`。扩展新的登录方式时，在此声明方法标识、凭据要求与验证码需求，再接入身份验证接口和客户端表单。验证成功后的身份通过 `UserIdentity` 的 `provider/issuer/subject` 关联账号，继续使用统一的用户资料与 JWT 签发流程。普通邮箱登录接入时应增加独立的 `EMAIL_LOGIN` 验证用途及 `EMAIL` 登录身份，账号通过 `UserIdentity` 识别。`verification-purpose.ts` 集中定义验证码的渠道、模板和所属开关；邮件发送、摘要、限流与一次性消费可复用。`SCHOOL_EMAIL` 及 `StudentVerification.email` 负责校园资格申请与审核。
 
 手机号按 E.164 传入，例如 `+8613812345678`。`POST /auth/phone/challenges` 发码，`POST /auth/phone/login` 使用 `challengeId/code` 登录。验证码摘要、发送间隔、目标/IP 频率、尝试次数和一次性消费均在服务端执行。`SMS_GATEWAY_URL/TOKEN` 对接 HTTPS 短信网关：请求 `{to,code,expiresIn,purpose}`，带 Bearer 授权与 `Idempotency-Key`，成功响应须含 `messageId`。邮件通过 `RESEND_API_KEY/EMAIL_FROM` 发出；`CAMPUS_EMAIL_DOMAINS` 是准确域名列表，邮箱验证后进入资格审核，不凭域名直接授予学生权限。
 
