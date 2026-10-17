@@ -420,8 +420,9 @@ export interface Admin {
   id: string
   username: string
   role: string
-  canteenId?: string | null
-  canteenName?: string | null
+  scope: 'GLOBAL' | 'CANTEENS'
+  canteenIds: string[]
+  canteens: { id: string; name: string }[]
   createdBy?: string | null
   createdAt: string
 }
@@ -440,14 +441,17 @@ export interface CreateAdminRequest {
   username: string
   password: string
   role?: string // 角色为可选字段，可以是预设角色或自定义角色
-  canteenId?: string
-  permissions?: string[]
+  scope: 'GLOBAL' | 'CANTEENS'
+  canteenIds: string[]
+  permissions: string[]
 }
 
 /**
  * 更新管理员权限请求
  */
 export interface UpdateAdminPermissionsRequest {
+  scope: 'GLOBAL' | 'CANTEENS'
+  canteenIds: string[]
   permissions: string[]
 }
 

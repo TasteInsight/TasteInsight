@@ -13,7 +13,8 @@ describe('Formal dish hierarchy updates', () => {
     id: 'admin',
     username: 'admin',
     role: 'superadmin',
-    canteenId: null,
+    scope: 'GLOBAL' as const,
+    canteenIds: [],
     permissions: [],
   };
 
@@ -93,7 +94,12 @@ describe('Formal dish hierarchy updates', () => {
       service.updateAdminDish(
         'dish',
         { parentDishId: 'other' },
-        { ...admin, role: 'admin', canteenId: 'a' },
+        {
+          ...admin,
+          role: 'admin',
+          scope: 'CANTEENS' as const,
+          canteenIds: ['a'],
+        },
       ),
     ).rejects.toThrow(ForbiddenException);
     expect(prisma.dish.update).not.toHaveBeenCalled();
@@ -253,7 +259,12 @@ describe('Formal dish hierarchy updates', () => {
       service.updateAdminDish(
         'dish',
         { name: 'Updated' },
-        { ...admin, role: 'admin', canteenId: 'a' },
+        {
+          ...admin,
+          role: 'admin',
+          scope: 'CANTEENS' as const,
+          canteenIds: ['a'],
+        },
       ),
     ).rejects.toThrow(ForbiddenException);
   });

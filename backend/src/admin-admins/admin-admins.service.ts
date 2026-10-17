@@ -1,3 +1,5 @@
+import { AdminCanteenScope, isGlobalScope } from '@/auth/admin-scope';
+import { Prisma } from '@prisma/client';
 import {
   Injectable,
   NotFoundException,
@@ -86,19 +88,93 @@ export class AdminAdminsService {
     }
   }
 
-  /**
-   * 验证食堂ID是否存在（如果提供）
-   */
-  private async validateCanteenId(
-    canteenId: string | null | undefined,
+  private async validateScopeGrant(
+    operator: AdminCanteenScope,
+    requested: AdminCanteenScope,
   ): Promise<void> {
-    if (canteenId !== undefined && canteenId !== null) {
-      const canteen = await this.prisma.canteen.findUnique({
-        where: { id: canteenId },
+    if (requested.scope === 'GLOBAL' && requested.canteenIds.length) {
+      throw new BadRequestException('全局范围无需指定食堂');
+    }
+    if (requested.scope === 'CANTEENS' && !requested.canteenIds.length) {
+      throw new BadRequestException('请至少选择一个食堂');
+    }
+    this.assertScopeSubset(operator, requested);
+    if (requested.canteenIds.length) {
+      const canteens = await this.prisma.canteen.findMany({
+        where: { id: { in: requested.canteenIds } },
+        select: { id: true },
       });
-      if (!canteen) {
+      if (canteens.length !== requested.canteenIds.length) {
         throw new BadRequestException('指定的食堂不存在');
       }
+    }
+  }
+
+  private assertScopeSubset(
+    parent: AdminCanteenScope,
+    child: AdminCanteenScope,
+  ): void {
+    if (
+      !isGlobalScope(parent) &&
+      (child.scope === 'GLOBAL' ||
+        child.canteenIds.some((id) => !parent.canteenIds.includes(id)))
+    ) {
+      throw new ForbiddenException('授权范围必须包含在上级管理范围内');
+    }
+  }
+
+  private async lockAdmin(tx: Prisma.TransactionClient, id: string) {
+    await tx.$queryRaw`SELECT id FROM admins WHERE id = ${id} FOR UPDATE`;
+    const admin = await tx.admin.findUnique({
+      where: { id },
+      include: { canteens: { select: { canteenId: true } }, permissions: true },
+    });
+    if (!admin) throw new ForbiddenException('管理员不存在');
+    return {
+      ...admin,
+      canteenIds: admin.canteens.map((canteen) => canteen.canteenId),
+    };
+  }
+
+  private async restrictSubAdminGrants(
+    tx: Prisma.TransactionClient,
+    parentId: string,
+    parentScope: AdminCanteenScope,
+    parentPermissions: readonly string[],
+  ): Promise<void> {
+    const children = await tx.admin.findMany({
+      where: { createdBy: parentId },
+      include: { canteens: { select: { canteenId: true } }, permissions: true },
+    });
+    for (const child of children) {
+      const scope = isGlobalScope(parentScope) ? child.scope : 'CANTEENS';
+      const canteenIds = isGlobalScope(parentScope)
+        ? child.canteens.map((canteen) => canteen.canteenId)
+        : child.scope === 'GLOBAL'
+          ? parentScope.canteenIds
+          : child.canteens
+              .map((canteen) => canteen.canteenId)
+              .filter((id) => parentScope.canteenIds.includes(id));
+      const permissions = child.permissions
+        .map((item) => item.permission)
+        .filter((permission) => parentPermissions.includes(permission));
+      await tx.admin.update({
+        where: { id: child.id },
+        data: {
+          scope,
+          canteens: {
+            deleteMany: {},
+            create: canteenIds.map((canteenId) => ({ canteenId })),
+          },
+          permissions: { deleteMany: { permission: { notIn: permissions } } },
+        },
+      });
+      await this.restrictSubAdminGrants(
+        tx,
+        child.id,
+        { scope, canteenIds },
+        permissions,
+      );
     }
   }
 
@@ -129,7 +205,9 @@ export class AdminAdminsService {
         orderBy: { createdAt: 'desc' },
         include: {
           permissions: true,
-          canteen: true,
+          canteens: {
+            select: { canteen: { select: { id: true, name: true } } },
+          },
         },
       }),
     ]);
@@ -138,8 +216,9 @@ export class AdminAdminsService {
       id: admin.id,
       username: admin.username,
       role: admin.role,
-      canteenId: admin.canteenId,
-      canteenName: admin.canteen?.name ?? null,
+      scope: admin.scope,
+      canteenIds: admin.canteens.map((entry) => entry.canteen.id),
+      canteens: admin.canteens.map((entry) => entry.canteen),
       createdBy: admin.createdBy,
       permissions: admin.permissions.map((p) => p.permission),
       createdAt: admin.createdAt,
@@ -167,28 +246,16 @@ export class AdminAdminsService {
   async create(
     creatorId: string,
     creatorRole: string,
-    creatorCanteenId: string | null,
+    creatorScope: AdminCanteenScope,
     creatorPermissions: readonly string[],
     createAdminDto: CreateAdminDto,
   ): Promise<AdminResponseDto> {
-    const { username, password, canteenId, permissions, role } = createAdminDto;
+    const { username, password, scope, canteenIds, permissions, role } =
+      createAdminDto;
 
     this.validatePermissionGrant(creatorRole, creatorPermissions, permissions);
 
-    // 食堂管理员权限校验：
-    // 1. 食堂管理员不能创建全校管理员（canteenId 为 null 或 undefined）
-    // 2. 食堂管理员只能创建属于同一食堂的管理员
-    if (creatorCanteenId) {
-      if (!canteenId) {
-        throw new ForbiddenException('您无权创建全校管理员');
-      }
-      if (canteenId !== creatorCanteenId) {
-        throw new ForbiddenException('您只能创建所属食堂的管理员');
-      }
-    }
-
-    // 验证食堂存在性
-    await this.validateCanteenId(canteenId);
+    await this.validateScopeGrant(creatorScope, { scope, canteenIds });
 
     // 加密密码
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -199,21 +266,43 @@ export class AdminAdminsService {
 
     // 创建管理员及其权限，通过捕获数据库唯一约束错误来处理竞态条件
     try {
-      const admin = await this.prisma.admin.create({
-        data: {
-          username,
-          password: hashedPassword,
-          role: finalRole,
-          canteenId: canteenId || null,
-          createdBy: creatorId,
-          permissions: {
-            create: permissions.map((permission) => ({ permission })),
+      const admin = await this.prisma.$transaction(async (tx) => {
+        const creator = await this.lockAdmin(tx, creatorId);
+        if (creator.deletedAt) throw new ForbiddenException('管理员已停用');
+        if (
+          creator.role !== 'superadmin' &&
+          !creator.permissions.some(
+            (item) => item.permission === 'admin:create',
+          )
+        )
+          throw new ForbiddenException('缺少创建管理员权限');
+        this.assertScopeSubset(creator, { scope, canteenIds });
+        this.validatePermissionGrant(
+          creator.role,
+          creator.permissions.map((item) => item.permission),
+          permissions,
+        );
+        return tx.admin.create({
+          data: {
+            username,
+            password: hashedPassword,
+            role: finalRole,
+            scope,
+            canteens: {
+              create: canteenIds.map((canteenId) => ({ canteenId })),
+            },
+            createdBy: creatorId,
+            permissions: {
+              create: permissions.map((permission) => ({ permission })),
+            },
           },
-        },
-        include: {
-          permissions: true,
-          canteen: true,
-        },
+          include: {
+            permissions: true,
+            canteens: {
+              select: { canteen: { select: { id: true, name: true } } },
+            },
+          },
+        });
       });
 
       return {
@@ -223,8 +312,9 @@ export class AdminAdminsService {
           id: admin.id,
           username: admin.username,
           role: admin.role,
-          canteenId: admin.canteenId,
-          canteenName: admin.canteen?.name ?? null,
+          scope: admin.scope,
+          canteenIds: admin.canteens.map((entry) => entry.canteen.id),
+          canteens: admin.canteens.map((entry) => entry.canteen),
           createdBy: admin.createdBy,
           permissions: admin.permissions.map((p) => p.permission),
           createdAt: admin.createdAt,
@@ -286,16 +376,21 @@ export class AdminAdminsService {
   async updatePermissions(
     operatorId: string,
     operatorRole: string,
-    operatorCanteenId: string | null,
+    operatorScope: AdminCanteenScope,
     operatorPermissions: readonly string[],
     targetId: string,
     updatePermissionsDto: UpdatePermissionsDto,
   ): Promise<{ code: number; message: string; data: null }> {
-    const { permissions, canteenId } = updatePermissionsDto;
+    const { permissions, scope, canteenIds } = updatePermissionsDto;
 
     // 查找目标管理员
     const targetAdmin = await this.prisma.admin.findUnique({
       where: { id: targetId, deletedAt: null },
+      include: {
+        creator: {
+          select: { scope: true, canteens: { select: { canteenId: true } } },
+        },
+      },
     });
 
     if (!targetAdmin) {
@@ -311,18 +406,19 @@ export class AdminAdminsService {
     if (!targetAdmin.createdBy) {
       throw new ForbiddenException('无法更新该管理员的权限');
     }
+    const parentId = targetAdmin.createdBy;
 
-    // 食堂管理员权限校验（更新管理范围时）
-    if (operatorCanteenId && canteenId !== undefined) {
-      // 食堂管理员不能将子管理员设置为全校管理员
-      if (canteenId === null) {
-        throw new ForbiddenException('您无权将管理员设置为全校管理员');
-      }
-      // 食堂管理员不能将子管理员分配到其他食堂
-      if (canteenId !== operatorCanteenId) {
-        throw new ForbiddenException('您只能管理所属食堂的管理员');
-      }
-    }
+    if (targetAdmin.creator)
+      this.assertScopeSubset(
+        {
+          scope: targetAdmin.creator.scope,
+          canteenIds: targetAdmin.creator.canteens.map(
+            (canteen) => canteen.canteenId,
+          ),
+        },
+        { scope, canteenIds },
+      );
+    await this.validateScopeGrant(operatorScope, { scope, canteenIds });
 
     this.validatePermissionGrant(
       operatorRole,
@@ -330,18 +426,49 @@ export class AdminAdminsService {
       permissions,
     );
 
-    // 验证食堂存在性
-    await this.validateCanteenId(canteenId);
-
     // 使用事务更新权限
     await this.prisma.$transaction(async (tx) => {
-      // 首先更新管理范围（食堂）
-      if (canteenId !== undefined) {
-        await tx.admin.update({
-          where: { id: targetId },
-          data: { canteenId: canteenId ?? null },
-        });
-      }
+      // 授权参与者按账号 ID 统一顺序加锁。
+      const [firstId, secondId] = [operatorId, parentId].sort();
+      const first = await this.lockAdmin(tx, firstId);
+      const second =
+        secondId === firstId ? first : await this.lockAdmin(tx, secondId);
+      const operator = operatorId === firstId ? first : second;
+      const parent = parentId === firstId ? first : second;
+      if (operator.deletedAt) throw new ForbiddenException('管理员已停用');
+      if (
+        operator.role !== 'superadmin' &&
+        !operator.permissions.some((item) => item.permission === 'admin:edit')
+      )
+        throw new ForbiddenException('缺少编辑管理员权限');
+      this.assertScopeSubset(operator, { scope, canteenIds });
+      this.validatePermissionGrant(
+        operator.role,
+        operator.permissions.map((item) => item.permission),
+        permissions,
+      );
+      this.assertScopeSubset(parent, { scope, canteenIds });
+      this.validatePermissionGrant(
+        parent.role,
+        parent.permissions.map((item) => item.permission),
+        permissions,
+      );
+      await tx.admin.update({
+        where: { id: targetId },
+        data: {
+          scope,
+          canteens: {
+            deleteMany: {},
+            create: canteenIds.map((canteenId) => ({ canteenId })),
+          },
+        },
+      });
+      await this.restrictSubAdminGrants(
+        tx,
+        targetId,
+        { scope, canteenIds },
+        permissions,
+      );
 
       // 删除现有权限
       await tx.adminPermission.deleteMany({

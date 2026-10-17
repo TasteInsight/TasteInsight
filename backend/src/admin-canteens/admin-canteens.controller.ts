@@ -43,6 +43,13 @@ export class AdminCanteensController {
     );
   }
 
+  // 授权范围内的选择器元数据供已认证管理员使用，仅返回 ID 和名称。
+  @Get('options')
+  @HttpCode(HttpStatus.OK)
+  async findOptions(@Request() req) {
+    return this.adminCanteensService.findOptions(req.admin);
+  }
+
   @Get(':id')
   @RequirePermissions('canteen:view')
   @HttpCode(HttpStatus.OK)

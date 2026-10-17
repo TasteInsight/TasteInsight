@@ -86,7 +86,7 @@ describe('pending dish composition routing', () => {
     auth = useAuthStore()
     auth.token = 'session-a'
     auth.isAuthenticated = true
-    auth.user = { id: 'admin-a', username: 'a', role: 'admin' } as any
+    auth.user = { scope: 'GLOBAL' as const, canteenIds: [], canteens: [], id: 'admin-a', username: 'a', role: 'admin' } as any
     uploads = new Map()
     mocks.createDish.mockImplementation(async (data) => {
       const upload = { ...data, id: `upload-${uploads.size + 1}` }
@@ -545,7 +545,7 @@ describe('pending dish composition routing', () => {
     await router.push('/login')
     auth.token = 'session-b'
     auth.isAuthenticated = true
-    auth.user = { id: 'admin-b', username: 'b', role: 'admin' } as any
+    auth.user = { scope: 'GLOBAL' as const, canteenIds: [], canteens: [], id: 'admin-b', username: 'b', role: 'admin' } as any
     auth.permissions = ['dish:create']
     await router.push('/single-add')
     await settle()

@@ -57,7 +57,8 @@ describe('Atomic administrator content deletion (PostgreSQL)', () => {
           username: `${prefix}-${admins.length}`,
           password: 'unused-token-fixture',
           role,
-          canteenId,
+          scope: canteenId ? 'CANTEENS' : 'GLOBAL',
+          canteens: { create: canteenId ? [{ canteenId: canteenId }] : [] },
           permissions: {
             create: permissions.map((permission) => ({ permission })),
           },

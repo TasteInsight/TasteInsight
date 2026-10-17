@@ -83,12 +83,12 @@ async function getAdminManagerToken(apiRequest: APIRequestContext): Promise<stri
 async function createSubAdminViaApi(
   apiRequest: APIRequestContext,
   token: string,
-  data: { username: string; password: string; permissions: string[]; canteenId?: string }
+  data: { username: string; password: string; permissions: string[]; scope?: 'GLOBAL' | 'CANTEENS'; canteenIds?: string[] }
 ): Promise<{ id: string; username: string } | null> {
   try {
     const response = await apiRequest.post(`${baseURL}admin/admins`, {
       headers: { Authorization: `Bearer ${token}` },
-      data,
+      data: { scope: 'GLOBAL', canteenIds: [], ...data },
     });
     if (response.ok()) {
       const result = await response.json();
@@ -241,7 +241,7 @@ test.describe('Admin Sub-Admin Management - UI Tests', () => {
     expect(token).toBeTruthy();
     
     const username = generateUsername('batch');
-    const admin = await createSubAdminViaApi(request, token!, {
+    const admin = await createSubAdminViaApi(request, token!, { scope: 'GLOBAL', canteenIds: [],
       username,
       password: 'Test@123!',
       permissions: ['dish:view'],
@@ -524,10 +524,10 @@ test.describe('Admin Sub-Admin API Tests', () => {
     const token = await getSuperAdminToken(request);
     expect(token).toBeTruthy();
 
-    const createDto = {
+    const createDto = { scope: 'GLOBAL', canteenIds: [], canteens: [],
       username: generateUsername('api'),
       password: 'Test@123!',
-      permissions: ['dish:view', 'dish:create'],
+      permissions: ['dish:view', 'canteen:view', 'dish:create'],
     };
 
     const response = await request.post(`${baseURL}admin/admins`, {
@@ -551,7 +551,7 @@ test.describe('Admin Sub-Admin API Tests', () => {
     const token = await getAdminManagerToken(request);
     expect(token).toBeTruthy();
 
-    const createDto = {
+    const createDto = { scope: 'GLOBAL', canteenIds: [], canteens: [],
       username: generateUsername('mgr'),
       password: 'Test@456!',
       permissions: ['canteen:view'],
@@ -580,7 +580,7 @@ test.describe('Admin Sub-Admin API Tests', () => {
 
     // First create an admin
     const username = generateUsername('dup');
-    const createDto = {
+    const createDto = { scope: 'GLOBAL', canteenIds: [], canteens: [],
       username,
       password: 'Test@123!',
       permissions: ['dish:view'],
@@ -609,7 +609,7 @@ test.describe('Admin Sub-Admin API Tests', () => {
     const token = await getSuperAdminToken(request);
     expect(token).toBeTruthy();
 
-    const createDto = {
+    const createDto = { scope: 'GLOBAL', canteenIds: [], canteens: [],
       username: generateUsername('weak'),
       password: 'weak', // Too weak
       permissions: ['dish:view'],
@@ -631,7 +631,7 @@ test.describe('Admin Sub-Admin API Tests', () => {
     );
     expect(token).toBeTruthy();
 
-    const createDto = {
+    const createDto = { scope: 'GLOBAL', canteenIds: [], canteens: [],
       username: generateUsername('unauth'),
       password: 'Test@123!',
       permissions: ['dish:view'],
@@ -696,7 +696,7 @@ test.describe('Admin Sub-Admin API Tests', () => {
     expect(token).toBeTruthy();
 
     // First create an admin
-    const createDto = {
+    const createDto = { scope: 'GLOBAL', canteenIds: [], canteens: [],
       username: generateUsername('upd'),
       password: 'Test@123!',
       permissions: ['dish:view'],
@@ -711,7 +711,7 @@ test.describe('Admin Sub-Admin API Tests', () => {
     createdSubAdminId = createData.data.id;
 
     // Now update permissions
-    const updateDto = {
+    const updateDto = { scope: 'GLOBAL', canteenIds: [], canteens: [],
       permissions: ['dish:view', 'dish:edit', 'canteen:view'],
     };
 
@@ -733,7 +733,7 @@ test.describe('Admin Sub-Admin API Tests', () => {
     const token = await getSuperAdminToken(request);
     expect(token).toBeTruthy();
 
-    const updateDto = {
+    const updateDto = { scope: 'GLOBAL', canteenIds: [], canteens: [],
       permissions: ['dish:view'],
     };
 
@@ -753,7 +753,7 @@ test.describe('Admin Sub-Admin API Tests', () => {
     expect(superToken).toBeTruthy();
 
     // First create an admin
-    const createDto = {
+    const createDto = { scope: 'GLOBAL', canteenIds: [], canteens: [],
       username: generateUsername('perm'),
       password: 'Test@123!',
       permissions: ['dish:view'],
@@ -775,8 +775,8 @@ test.describe('Admin Sub-Admin API Tests', () => {
     );
     expect(normalToken).toBeTruthy();
 
-    const updateDto = {
-      permissions: ['dish:view', 'dish:edit'],
+    const updateDto = { scope: 'GLOBAL', canteenIds: [], canteens: [],
+      permissions: ['dish:view', 'canteen:view', 'dish:edit'],
     };
 
     const updateResponse = await request.put(
@@ -795,7 +795,7 @@ test.describe('Admin Sub-Admin API Tests', () => {
     expect(token).toBeTruthy();
 
     // First create an admin
-    const createDto = {
+    const createDto = { scope: 'GLOBAL', canteenIds: [], canteens: [],
       username: generateUsername('del'),
       password: 'Test@123!',
       permissions: ['dish:view'],
@@ -836,7 +836,7 @@ test.describe('Admin Sub-Admin API Tests', () => {
     expect(superToken).toBeTruthy();
 
     // First create an admin
-    const createDto = {
+    const createDto = { scope: 'GLOBAL', canteenIds: [], canteens: [],
       username: generateUsername('delu'),
       password: 'Test@123!',
       permissions: ['dish:view'],
@@ -918,7 +918,7 @@ test.describe('Admin Manager Permission Tests', () => {
     expect(mgrToken).toBeTruthy();
 
     // Create a sub-admin
-    const createDto = {
+    const createDto = { scope: 'GLOBAL', canteenIds: [], canteens: [],
       username: generateUsername('mown'),
       password: 'Test@789!',
       permissions: ['dish:view'],
@@ -934,7 +934,7 @@ test.describe('Admin Manager Permission Tests', () => {
     createdByManagerId = createData.data.id;
 
     // Update permissions
-    const updateDto = {
+    const updateDto = { scope: 'GLOBAL', canteenIds: [], canteens: [],
       permissions: ['dish:view', 'dish:edit'],
     };
 
@@ -965,7 +965,7 @@ test.describe('Admin Manager Permission Tests', () => {
     const superToken = await getSuperAdminToken(request);
     expect(superToken).toBeTruthy();
 
-    const createDto = {
+    const createDto = { scope: 'GLOBAL', canteenIds: [], canteens: [],
       username: generateUsername('ssub'),
       password: 'Test@123!',
       permissions: ['dish:view'],
@@ -984,7 +984,7 @@ test.describe('Admin Manager Permission Tests', () => {
       const mgrToken = await getAdminManagerToken(request);
       expect(mgrToken).toBeTruthy();
 
-      const updateDto = {
+      const updateDto = { scope: 'GLOBAL', canteenIds: [], canteens: [],
         permissions: ['dish:view', 'dish:edit'],
       };
 
@@ -1008,7 +1008,7 @@ test.describe('Admin Manager Permission Tests', () => {
     const superToken = await getSuperAdminToken(request);
     expect(superToken).toBeTruthy();
 
-    const createDto = {
+    const createDto = { scope: 'GLOBAL', canteenIds: [], canteens: [],
       username: generateUsername('ssub'),
       password: 'Test@123!',
       permissions: ['dish:view'],

@@ -61,7 +61,7 @@ describe('AdminUploadsService', () => {
       prisma.dishUpload.count.mockResolvedValue(25);
       const result = await service.getUploads(
         { keyword: '鸡肉', canteenId: 'c1', page: 2, pageSize: 10 },
-        {},
+        { scope: 'GLOBAL' as const, canteenIds: [] },
       );
       const contains = { contains: '鸡肉', mode: 'insensitive' };
       const where = {
@@ -83,7 +83,10 @@ describe('AdminUploadsService', () => {
 
     it('does not allow canteen filters to widen administrator scope', async () => {
       await expect(
-        service.getUploads({ canteenId: 'other' }, { canteenId: 'own' }),
+        service.getUploads(
+          { canteenId: 'other' },
+          { scope: 'CANTEENS' as const, canteenIds: ['own'] },
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
     const mockUploads = [
@@ -127,7 +130,10 @@ describe('AdminUploadsService', () => {
       prisma.dishUpload.findMany.mockResolvedValue(mockUploads);
       prisma.dishUpload.count.mockResolvedValue(1);
 
-      const result = await service.getUploads({ page: 1, pageSize: 20 }, {});
+      const result = await service.getUploads(
+        { page: 1, pageSize: 20 },
+        { scope: 'GLOBAL' as const, canteenIds: [] },
+      );
 
       expect(result.code).toBe(200);
       expect(result.data.items).toHaveLength(1);
@@ -138,7 +144,10 @@ describe('AdminUploadsService', () => {
       prisma.dishUpload.findMany.mockResolvedValue([]);
       prisma.dishUpload.count.mockResolvedValue(0);
 
-      await service.getUploads({ status: 'pending' }, {});
+      await service.getUploads(
+        { status: 'pending' },
+        { scope: 'GLOBAL' as const, canteenIds: [] },
+      );
 
       expect(prisma.dishUpload.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -151,11 +160,14 @@ describe('AdminUploadsService', () => {
       prisma.dishUpload.findMany.mockResolvedValue([]);
       prisma.dishUpload.count.mockResolvedValue(0);
 
-      await service.getUploads({}, { canteenId: 'c1' });
+      await service.getUploads(
+        {},
+        { scope: 'CANTEENS' as const, canteenIds: ['c1'] },
+      );
 
       expect(prisma.dishUpload.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ canteenId: 'c1' }),
+          where: expect.objectContaining({ canteenId: { in: ['c1'] } }),
         }),
       );
     });
@@ -198,7 +210,12 @@ describe('AdminUploadsService', () => {
     it('should return an upload by id', async () => {
       prisma.dishUpload.findUnique.mockResolvedValue(mockUpload);
 
-      const result = await service.getUploadById('u1', { role: 'superadmin' });
+      const result = await service.getUploadById('u1', {
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+        canteens: [],
+        role: 'superadmin',
+      });
 
       expect(result.code).toBe(200);
       expect(result.data.id).toBe('u1');
@@ -207,9 +224,12 @@ describe('AdminUploadsService', () => {
     it('should throw NotFoundException if upload not found', async () => {
       prisma.dishUpload.findUnique.mockResolvedValue(null);
 
-      await expect(service.getUploadById('unknown', {})).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.getUploadById('unknown', {
+          scope: 'GLOBAL' as const,
+          canteenIds: [],
+        }),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw ForbiddenException if canteen admin has no access', async () => {
@@ -219,7 +239,10 @@ describe('AdminUploadsService', () => {
       });
 
       await expect(
-        service.getUploadById('u1', { canteenId: 'c1' }),
+        service.getUploadById('u1', {
+          scope: 'CANTEENS' as const,
+          canteenIds: ['c1'],
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -234,7 +257,10 @@ describe('AdminUploadsService', () => {
       });
       prisma.dishUpload.updateMany.mockResolvedValue({ count: 1 });
       prisma.dish.create.mockResolvedValue({ id: 'unit-dish' });
-      await service.approveUpload('unit-upload', {});
+      await service.approveUpload('unit-upload', {
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+      });
       expect(prisma.dish.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ priceUnit: '斤' }),
@@ -288,7 +314,10 @@ describe('AdminUploadsService', () => {
         status: 'approved',
       });
 
-      const result = await service.approveUpload('u1', {});
+      const result = await service.approveUpload('u1', {
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+      });
 
       expect(result.code).toBe(200);
       expect(prisma.dish.create).toHaveBeenCalled();
@@ -317,7 +346,10 @@ describe('AdminUploadsService', () => {
         ...data,
       }));
 
-      await service.approveUpload('u1', {});
+      await service.approveUpload('u1', {
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+      });
 
       expect(prisma.$queryRaw).toHaveBeenCalledWith(expect.anything(), 'u1');
       expect(prisma.dish.create).toHaveBeenCalledWith({
@@ -334,7 +366,10 @@ describe('AdminUploadsService', () => {
         .mockResolvedValue({ ...mockUpload, canteenId: 'c2' });
 
       await expect(
-        service.approveUpload('u1', { canteenId: 'c1' }),
+        service.approveUpload('u1', {
+          scope: 'CANTEENS' as const,
+          canteenIds: ['c1'],
+        }),
       ).rejects.toThrow(ForbiddenException);
       expect(prisma.dish.create).not.toHaveBeenCalled();
     });
@@ -344,26 +379,35 @@ describe('AdminUploadsService', () => {
         .mockResolvedValueOnce(mockUpload)
         .mockResolvedValue({ ...mockUpload, parentUploadId: 'new-parent' });
 
-      await expect(service.approveUpload('u1', {})).rejects.toThrow(
-        '关系已变化',
-      );
+      await expect(
+        service.approveUpload('u1', {
+          scope: 'GLOBAL' as const,
+          canteenIds: [],
+        }),
+      ).rejects.toThrow('关系已变化');
       expect(prisma.dish.create).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException if upload not found', async () => {
       prisma.dishUpload.findUnique.mockResolvedValue(null);
 
-      await expect(service.approveUpload('unknown', {})).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.approveUpload('unknown', {
+          scope: 'GLOBAL' as const,
+          canteenIds: [],
+        }),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw BadRequestException if already processed', async () => {
       prisma.dishUpload.updateMany.mockResolvedValue({ count: 0 });
 
-      await expect(service.approveUpload('u1', {})).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.approveUpload('u1', {
+          scope: 'GLOBAL' as const,
+          canteenIds: [],
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw ForbiddenException if canteen admin has no access', async () => {
@@ -373,7 +417,10 @@ describe('AdminUploadsService', () => {
       });
 
       await expect(
-        service.approveUpload('u1', { canteenId: 'c1' }),
+        service.approveUpload('u1', {
+          scope: 'CANTEENS' as const,
+          canteenIds: ['c1'],
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -394,7 +441,10 @@ describe('AdminUploadsService', () => {
         rejectReason: 'Invalid data',
       });
 
-      const result = await service.rejectUpload('u1', 'Invalid data', {});
+      const result = await service.rejectUpload('u1', 'Invalid data', {
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+      });
 
       expect(result.code).toBe(200);
     });
@@ -403,7 +453,10 @@ describe('AdminUploadsService', () => {
       prisma.dishUpload.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.rejectUpload('unknown', 'reason', {}),
+        service.rejectUpload('unknown', 'reason', {
+          scope: 'GLOBAL' as const,
+          canteenIds: [],
+        }),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -414,9 +467,12 @@ describe('AdminUploadsService', () => {
         canteenId: 'c1',
       });
 
-      await expect(service.rejectUpload('u1', 'reason', {})).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.rejectUpload('u1', 'reason', {
+          scope: 'GLOBAL' as const,
+          canteenIds: [],
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw ForbiddenException if canteen admin has no access', async () => {
@@ -427,7 +483,10 @@ describe('AdminUploadsService', () => {
       });
 
       await expect(
-        service.rejectUpload('u1', 'reason', { canteenId: 'c1' }),
+        service.rejectUpload('u1', 'reason', {
+          scope: 'CANTEENS' as const,
+          canteenIds: ['c1'],
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -449,7 +508,10 @@ describe('AdminUploadsService', () => {
         status: 'pending',
       });
 
-      const result = await service.revokeUpload('u1', {});
+      const result = await service.revokeUpload('u1', {
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+      });
 
       expect(result.code).toBe(200);
     });
@@ -457,9 +519,12 @@ describe('AdminUploadsService', () => {
     it('should throw NotFoundException if upload not found', async () => {
       prisma.dishUpload.findUnique.mockResolvedValue(null);
 
-      await expect(service.revokeUpload('unknown', {})).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.revokeUpload('unknown', {
+          scope: 'GLOBAL' as const,
+          canteenIds: [],
+        }),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should return success if already pending', async () => {
@@ -469,7 +534,10 @@ describe('AdminUploadsService', () => {
         canteenId: 'c1',
       });
 
-      const result = await service.revokeUpload('u1', {});
+      const result = await service.revokeUpload('u1', {
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+      });
 
       expect(result.code).toBe(200);
       expect(result.message).toBe('已是待审核状态');
@@ -484,7 +552,10 @@ describe('AdminUploadsService', () => {
       });
 
       await expect(
-        service.revokeUpload('u1', { canteenId: 'c1' }),
+        service.revokeUpload('u1', {
+          scope: 'CANTEENS' as const,
+          canteenIds: ['c1'],
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
   });

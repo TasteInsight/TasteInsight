@@ -1,4 +1,9 @@
 import {
+  canAccessCanteen,
+  canteenScopeFilter,
+  isGlobalScope,
+} from '@/auth/admin-scope';
+import {
   Injectable,
   NotFoundException,
   BadRequestException,
@@ -50,7 +55,7 @@ export class AdminUploadsService {
   ) {}
 
   private assertScope(upload: { canteenId: string }, adminInfo: any) {
-    if (adminInfo.canteenId && upload.canteenId !== adminInfo.canteenId)
+    if (!canAccessCanteen(adminInfo, upload.canteenId))
       throw new ForbiddenException('权限不足');
   }
 
@@ -75,7 +80,8 @@ export class AdminUploadsService {
     const { page = 1, pageSize = 20, status, keyword, canteenId } = query;
     const where: Prisma.DishUploadWhereInput = {};
     if (status) where.status = status;
-    if (adminInfo.canteenId) where.canteenId = adminInfo.canteenId;
+    if (!isGlobalScope(adminInfo))
+      where.canteenId = canteenScopeFilter(adminInfo);
     if (canteenId) {
       this.assertScope({ canteenId }, adminInfo);
       where.canteenId = canteenId;
@@ -139,10 +145,7 @@ export class AdminUploadsService {
         })
       : null;
     const visibleTarget =
-      target &&
-      (!adminInfo.canteenId || target.canteenId === adminInfo.canteenId)
-        ? target
-        : null;
+      target && canAccessCanteen(adminInfo, target.canteenId) ? target : null;
     const candidates =
       canApprove && !upload.targetDishId
         ? await this.prisma.dish.findMany({

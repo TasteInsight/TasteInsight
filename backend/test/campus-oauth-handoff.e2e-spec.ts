@@ -137,7 +137,11 @@ describe('campus OAuth handoff (PostgreSQL and HTTP)', () => {
     jwt = app.get(JwtService);
     adminId = (
       await prisma.admin.create({
-        data: { username: prefix, password: 'unused-test-hash' },
+        data: {
+          scope: 'GLOBAL',
+          username: prefix,
+          password: 'unused-test-hash',
+        },
       })
     ).id;
   });

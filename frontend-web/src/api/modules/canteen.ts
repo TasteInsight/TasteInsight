@@ -27,6 +27,10 @@ export const canteenApi = {
     })
   },
 
+  async getCanteenOptions(): Promise<ApiResponse<{ items: Pick<Canteen, 'id' | 'name'>[] }>> {
+    return request.get('/admin/canteens/options')
+  },
+
   /**
    * 创建食堂
    * @param data 食堂数据

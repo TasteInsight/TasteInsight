@@ -1,3 +1,4 @@
+import { AdminCanteenScope, isGlobalScope } from '@/auth/admin-scope';
 import {
   ConflictException,
   ForbiddenException,
@@ -375,14 +376,15 @@ export class SocialService {
     return success(null, 201);
   }
 
-  private assertCommunityAdmin(admin: { canteenId?: string | null }) {
-    if (admin.canteenId) throw new ForbiddenException('社区管理需要全站权限');
+  private assertCommunityAdmin(admin: AdminCanteenScope) {
+    if (!isGlobalScope(admin))
+      throw new ForbiddenException('社区管理需要全站权限');
   }
 
   async adminList(
     type: 'post' | 'postComment',
     query: AdminSocialQueryDto,
-    admin: { canteenId?: string | null },
+    admin: AdminCanteenScope,
   ) {
     this.assertCommunityAdmin(admin);
     const where = {
@@ -428,7 +430,7 @@ export class SocialService {
     id: string,
     dto: ModeratePostDto,
     approved: boolean,
-    admin: { canteenId?: string | null },
+    admin: AdminCanteenScope,
     reason?: string,
   ) {
     this.assertCommunityAdmin(admin);
@@ -506,7 +508,7 @@ export class SocialService {
   async adminDelete(
     type: 'post' | 'postComment',
     id: string,
-    admin: { canteenId?: string | null },
+    admin: AdminCanteenScope,
   ) {
     this.assertCommunityAdmin(admin);
     await this.prisma.$transaction(async (tx) => {

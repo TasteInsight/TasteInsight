@@ -37,6 +37,8 @@ describe('AdminAdminsController (e2e)', () => {
       .post('/admin/admins')
       .set('Authorization', `Bearer ${superAdminToken}`)
       .send({
+        scope: 'GLOBAL',
+        canteenIds: [],
         ...managerCredentials,
         permissions: [
           'admin:view',
@@ -80,6 +82,8 @@ describe('AdminAdminsController (e2e)', () => {
   describe('/admin/admins (POST) - Create Sub Admin', () => {
     it('should create a new sub admin with superadmin', async () => {
       const createDto = {
+        scope: 'GLOBAL',
+        canteenIds: [],
         username: 'newsubadmin',
         password: 'Test@123!',
         permissions: ['dish:view', 'dish:create', 'canteen:view'],
@@ -106,6 +110,8 @@ describe('AdminAdminsController (e2e)', () => {
 
     it('should create a sub admin with adminManager', async () => {
       const createDto = {
+        scope: 'GLOBAL',
+        canteenIds: [],
         username: 'managersubadmin',
         password: 'Test@456!',
         permissions: ['canteen:view'],
@@ -129,7 +135,8 @@ describe('AdminAdminsController (e2e)', () => {
       const createDto = {
         username: 'canteensubadmin',
         password: 'Test@789!',
-        canteenId: canteen?.id,
+        scope: 'CANTEENS',
+        canteenIds: [canteen?.id],
         permissions: ['dish:view'],
       };
 
@@ -141,12 +148,14 @@ describe('AdminAdminsController (e2e)', () => {
       createdAdminIds.push(response.body.data.id);
 
       expect(response.body.code).toBe(200);
-      expect(response.body.data.canteenId).toBe(canteen?.id);
-      expect(response.body.data.canteenName).toBe(canteen?.name);
+      expect(response.body.data.canteenIds).toEqual([canteen?.id]);
+      expect(response.body.data.canteens[0]?.name).toBe(canteen?.name);
     });
 
     it('should return 400 for duplicate username', async () => {
       const createDto = {
+        scope: 'GLOBAL',
+        canteenIds: [],
         username: 'newsubadmin', // Already created above
         password: 'Test@123!',
         permissions: ['dish:view'],
@@ -163,6 +172,8 @@ describe('AdminAdminsController (e2e)', () => {
 
     it('should return 400 for invalid password format', async () => {
       const createDto = {
+        scope: 'GLOBAL',
+        canteenIds: [],
         username: 'invalidpwdadmin',
         password: 'weak', // Too weak
         permissions: ['dish:view'],
@@ -181,7 +192,8 @@ describe('AdminAdminsController (e2e)', () => {
       const createDto = {
         username: 'invalidcanteen',
         password: 'Test@123!',
-        canteenId: 'non-existent-canteen-id',
+        scope: 'CANTEENS',
+        canteenIds: ['non-existent-canteen-id'],
         permissions: ['dish:view'],
       };
 
@@ -196,6 +208,8 @@ describe('AdminAdminsController (e2e)', () => {
 
     it('should return 403 for normal admin without permission', async () => {
       const createDto = {
+        scope: 'GLOBAL',
+        canteenIds: [],
         username: 'unauthorizedcreate',
         password: 'Test@123!',
         permissions: ['dish:view'],
@@ -253,7 +267,8 @@ describe('AdminAdminsController (e2e)', () => {
       const createDto = {
         username: 'testcanteenname',
         password: 'Test@123!',
-        canteenId: canteen?.id,
+        scope: 'CANTEENS',
+        canteenIds: [canteen?.id],
         permissions: ['dish:view'],
       };
 
@@ -276,8 +291,8 @@ describe('AdminAdminsController (e2e)', () => {
         (admin: any) => admin.id === subAdminId,
       );
       expect(createdAdmin).toBeDefined();
-      expect(createdAdmin.canteenId).toBe(canteen?.id);
-      expect(createdAdmin.canteenName).toBe(canteen?.name);
+      expect(createdAdmin.canteenIds).toEqual([canteen?.id]);
+      expect(createdAdmin.canteens[0]?.name).toBe(canteen?.name);
     });
 
     it('should return 403 for normal admin without permission', async () => {
@@ -291,6 +306,8 @@ describe('AdminAdminsController (e2e)', () => {
   describe('/admin/admins/:id/permissions (PUT) - Update Permissions', () => {
     it('should update sub admin permissions with superadmin', async () => {
       const updateDto = {
+        scope: 'GLOBAL',
+        canteenIds: [],
         permissions: ['dish:view', 'dish:edit', 'canteen:view'],
       };
 
@@ -322,12 +339,16 @@ describe('AdminAdminsController (e2e)', () => {
       // 先让目标子管理员绑定到 canteens[0]
       await prisma.admin.update({
         where: { id: createdSubAdminId },
-        data: { canteenId: canteens[0].id },
+        data: {
+          scope: 'CANTEENS',
+          canteens: { deleteMany: {}, create: [{ canteenId: canteens[0].id }] },
+        },
       });
 
       const updateDto = {
         permissions: ['dish:view'],
-        canteenId: canteens[1].id,
+        scope: 'CANTEENS',
+        canteenIds: [canteens[1].id],
       };
 
       const response = await request(app.getHttpServer())
@@ -341,7 +362,15 @@ describe('AdminAdminsController (e2e)', () => {
       const updatedAdmin = await prisma.admin.findUnique({
         where: { id: createdSubAdminId },
       });
-      expect(updatedAdmin?.canteenId).toBe(canteens[1].id);
+      expect(updatedAdmin?.scope).toBe('CANTEENS');
+      expect(
+        await prisma.canteen.count({
+          where: {
+            id: canteens[1].id,
+            admins: { some: { adminId: createdSubAdminId } },
+          },
+        }),
+      ).toBe(1);
     });
 
     it('should update sub admin canteenId to null (all canteens scope) with superadmin', async () => {
@@ -353,12 +382,19 @@ describe('AdminAdminsController (e2e)', () => {
 
       await prisma.admin.update({
         where: { id: createdSubAdminId },
-        data: { canteenId: canteen.id },
+        data: {
+          scope: canteen.id ? 'CANTEENS' : 'GLOBAL',
+          canteens: {
+            deleteMany: {},
+            create: canteen.id ? [{ canteenId: canteen.id }] : [],
+          },
+        },
       });
 
       const updateDto = {
         permissions: ['dish:view'],
-        canteenId: null, // 设置为 null 表示管理所有食堂
+        scope: 'GLOBAL',
+        canteenIds: [], // 设置为 null 表示管理所有食堂
       };
 
       const response = await request(app.getHttpServer())
@@ -372,13 +408,14 @@ describe('AdminAdminsController (e2e)', () => {
       const updatedAdmin = await prisma.admin.findUnique({
         where: { id: createdSubAdminId },
       });
-      expect(updatedAdmin?.canteenId).toBeNull();
+      expect(updatedAdmin?.scope).toBe('GLOBAL');
     });
 
     it('should return 400 for non-existent canteenId when updating permissions', async () => {
       const updateDto = {
         permissions: ['dish:view'],
-        canteenId: 'non-existent-canteen-id',
+        scope: 'CANTEENS',
+        canteenIds: ['non-existent-canteen-id'],
       };
 
       const response = await request(app.getHttpServer())
@@ -393,6 +430,8 @@ describe('AdminAdminsController (e2e)', () => {
     it('should update permissions for own sub admin with adminManager', async () => {
       // First, create a sub admin by adminManager
       const createDto = {
+        scope: 'GLOBAL',
+        canteenIds: [],
         username: 'managertoupdate',
         password: 'Test@123!',
         permissions: ['dish:view'],
@@ -409,6 +448,8 @@ describe('AdminAdminsController (e2e)', () => {
 
       // Now update the permissions
       const updateDto = {
+        scope: 'GLOBAL',
+        canteenIds: [],
         permissions: ['dish:view', 'dish:edit', 'canteen:view'],
       };
 
@@ -423,6 +464,8 @@ describe('AdminAdminsController (e2e)', () => {
 
     it('should return 404 for non-existent sub admin', async () => {
       const updateDto = {
+        scope: 'GLOBAL',
+        canteenIds: [],
         permissions: ['dish:view'],
       };
 
@@ -436,6 +479,8 @@ describe('AdminAdminsController (e2e)', () => {
     it('should return 403 when updating another admin sub admin', async () => {
       // Try to update a sub admin created by superadmin using adminManager token
       const updateDto = {
+        scope: 'GLOBAL',
+        canteenIds: [],
         permissions: ['dish:view'],
       };
 
@@ -448,6 +493,8 @@ describe('AdminAdminsController (e2e)', () => {
 
     it('should return 403 for normal admin without permission', async () => {
       const updateDto = {
+        scope: 'GLOBAL',
+        canteenIds: [],
         permissions: ['dish:view'],
       };
 
@@ -554,6 +601,8 @@ describe('AdminAdminsController (e2e)', () => {
     it('should retire an own sub admin with adminManager', async () => {
       // First, create a sub admin by adminManager
       const createDto = {
+        scope: 'GLOBAL',
+        canteenIds: [],
         username: 'managertodelete',
         password: 'Test@123!',
         permissions: ['dish:view'],
@@ -608,6 +657,8 @@ describe('AdminAdminsController (e2e)', () => {
         .post('/admin/admins')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .send({
+          scope: 'GLOBAL',
+          canteenIds: [],
           username: 'pwdtestadmin',
           password: testAdminPassword,
           permissions: ['dish:view'],
@@ -699,6 +750,8 @@ describe('AdminAdminsController (e2e)', () => {
         .post('/admin/admins')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .send({
+          scope: 'GLOBAL',
+          canteenIds: [],
           username: 'subadminpwdtest',
           password: subAdminPassword,
           permissions: ['dish:view'],

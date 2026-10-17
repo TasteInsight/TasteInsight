@@ -94,9 +94,12 @@ describe('AdminWindowsService', () => {
         floor: null,
       });
 
-      await expect(service.findOne('w1', { canteenId: 'c1' })).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        service.findOne('w1', {
+          scope: 'CANTEENS' as const,
+          canteenIds: ['c1'],
+        }),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -141,7 +144,10 @@ describe('AdminWindowsService', () => {
 
     it('should throw ForbiddenException if admin has no access', async () => {
       await expect(
-        service.findAllByCanteen('c1', 1, 20, { canteenId: 'c2' }),
+        service.findAllByCanteen('c1', 1, 20, {
+          scope: 'CANTEENS' as const,
+          canteenIds: ['c2'],
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -191,7 +197,10 @@ describe('AdminWindowsService', () => {
 
     it('should throw ForbiddenException if admin has no access', async () => {
       await expect(
-        service.create(createDto, { canteenId: 'c2' }),
+        service.create(createDto, {
+          scope: 'CANTEENS' as const,
+          canteenIds: ['c2'],
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -294,7 +303,10 @@ describe('AdminWindowsService', () => {
 
     it('should throw ForbiddenException if admin has no access', async () => {
       await expect(
-        service.update('w1', updateDto, { canteenId: 'c2' }),
+        service.update('w1', updateDto, {
+          scope: 'CANTEENS' as const,
+          canteenIds: ['c2'],
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -378,9 +390,12 @@ describe('AdminWindowsService', () => {
     });
 
     it('should throw ForbiddenException if admin has no access', async () => {
-      await expect(service.remove('w1', { canteenId: 'c2' })).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        service.remove('w1', {
+          scope: 'CANTEENS' as const,
+          canteenIds: ['c2'],
+        }),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('should throw BadRequestException if window has dishes', async () => {

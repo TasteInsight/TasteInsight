@@ -39,7 +39,7 @@ for (const target of targetTypes) {
       localStorage.clear()
       sessionStorage.clear()
       sessionStorage.setItem('admin_token', 'report-content-ui-test')
-      sessionStorage.setItem('admin_user', JSON.stringify({ id: 'admin', username: '举报测试管理员', role: 'admin' }))
+      sessionStorage.setItem('admin_user', JSON.stringify({ scope: 'GLOBAL', canteenIds: [], canteens: [], id: 'admin', username: '举报测试管理员', role: 'admin' }))
       sessionStorage.setItem('admin_permissions', JSON.stringify(['report:handle', permission]))
     }, target.permission)
 

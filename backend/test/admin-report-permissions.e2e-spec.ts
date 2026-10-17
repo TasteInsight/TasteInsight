@@ -66,6 +66,7 @@ describe('reported content deletion permissions (PostgreSQL and HTTP)', () => {
     for (const role of ['admin', 'superadmin']) {
       const admin = await prisma.admin.create({
         data: {
+          scope: 'GLOBAL',
           username: `${prefix}-${role}`,
           password: 'unused-test-hash',
           role,
@@ -145,7 +146,7 @@ describe('reported content deletion permissions (PostgreSQL and HTTP)', () => {
   beforeEach(async () => {
     await prisma.admin.update({
       where: { id: handlerId },
-      data: { canteenId: null },
+      data: { scope: 'GLOBAL', canteens: { deleteMany: {} } },
     });
     await prisma.adminPermission.deleteMany({ where: { adminId: handlerId } });
     await Promise.all([
@@ -293,7 +294,13 @@ describe('reported content deletion permissions (PostgreSQL and HTTP)', () => {
       await setPermissions(['report:handle', permission]);
       await prisma.admin.update({
         where: { id: handlerId },
-        data: { canteenId: canteenIds[1] },
+        data: {
+          scope: canteenIds[1] ? 'CANTEENS' : 'GLOBAL',
+          canteens: {
+            deleteMany: {},
+            create: canteenIds[1] ? [{ canteenId: canteenIds[1] }] : [],
+          },
+        },
       });
       await handle(report.id, 'delete_content').expect(403);
       expect(

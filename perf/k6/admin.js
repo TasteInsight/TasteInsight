@@ -217,12 +217,13 @@ export function permissionLifecycle(call, s, unique) {
     {
       username,
       password: s.admin.password,
-      canteenId: s.canteenId,
+      scope: "CANTEENS",
+      canteenIds: [s.canteenId],
       permissions: ["dish:view"],
     },
     "create_admin",
     (d) =>
-      hasId(d) && d.createdBy === s.admin.id && d.canteenId === s.canteenId,
+      hasId(d) && d.createdBy === s.admin.id && d.scope === "CANTEENS" && d.canteenIds?.length === 1 && d.canteenIds[0] === s.canteenId,
     [201],
   );
   try {
@@ -230,7 +231,7 @@ export function permissionLifecycle(call, s, unique) {
       "admin",
       "PUT",
       `/admin/admins/${admin.id}/permissions`,
-      { permissions: ["dish:view", "canteen:view", "dish:edit"] },
+      { scope: "CANTEENS", canteenIds: [s.canteenId], permissions: ["dish:view", "canteen:view", "dish:edit"] },
       "update_admin_permissions",
       ok,
     );

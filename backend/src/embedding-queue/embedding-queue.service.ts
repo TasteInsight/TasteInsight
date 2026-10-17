@@ -170,6 +170,23 @@ export class EmbeddingQueueService {
   /**
    * 获取任务状态
    */
+  async getDishJobTarget(
+    jobId: string,
+  ): Promise<{ canteenId?: string; dishIds?: string[] } | null> {
+    const job = await this.embeddingQueue.getJob(jobId);
+    if (!job) return null;
+    switch (job.name as EmbeddingJobType) {
+      case EmbeddingJobType.REFRESH_CANTEEN_DISHES:
+        return { canteenId: job.data.canteenId };
+      case EmbeddingJobType.REFRESH_DISH:
+        return { dishIds: [job.data.dishId] };
+      case EmbeddingJobType.REFRESH_DISHES_BATCH:
+        return { dishIds: job.data.dishIds };
+      default:
+        return null;
+    }
+  }
+
   async getJobStatus(jobId: string) {
     const job = await this.embeddingQueue.getJob(jobId);
     if (!job) return null;

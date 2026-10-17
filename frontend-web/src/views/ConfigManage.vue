@@ -7,6 +7,14 @@
         header-icon="carbon:settings"
       />
 
+      <label class="mt-6 block admin-label">
+        配置范围
+        <select v-model="configCanteenId" class="mt-1.5 w-full max-w-sm admin-input" :disabled="loading || reviewSaving || commentSaving || communitySaving" @change="loadConfig">
+          <option v-if="isGlobalAdmin" value="">全局默认配置</option>
+          <option v-for="canteen in configCanteens" :key="canteen.id" :value="canteen.id">{{ canteen.name }}</option>
+        </select>
+      </label>
+
       <!-- 食堂信息提示 -->
       <div v-if="currentCanteenInfo" class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <div class="flex items-center gap-2">
@@ -122,7 +130,7 @@
             </div>
           </div>
 
-          <template v-if="!currentCanteenId">
+          <template v-if="isGlobalAdmin && !currentCanteenId">
             <div v-for="item in communityConfigs" :key="item.key" class="border border-gray-200 rounded-lg p-6">
               <h3 class="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
                 <AppIcon class="iconify text-tsinghua-purple" :icon="item.icon"></AppIcon>
@@ -308,7 +316,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onActivated, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onActivated, onDeactivated, onBeforeUnmount } from 'vue'
 import { configApi } from '@/api/modules/config'
 import { dishApi } from '@/api/modules/dish'
 import { canteenApi } from '@/api/modules/canteen'
@@ -360,11 +368,11 @@ export default {
     const loadingCanteens = ref(false)
     const selectedCanteenId = ref('')
 
-    // 当前管理员的食堂ID
-    const currentCanteenId = computed(() => authStore.user?.canteenId || null)
-
-    // 当前管理员的食堂名称
-    const currentCanteenName = computed(() => authStore.user?.canteenName || null)
+    const isGlobalAdmin = computed(() => authStore.user?.scope === 'GLOBAL')
+    const configCanteenId = ref(isGlobalAdmin.value ? '' : authStore.user?.canteenIds[0] || '')
+    const configCanteens = computed(() => isGlobalAdmin.value ? canteenList.value : authStore.user?.canteens || [])
+    const currentCanteenId = computed(() => configCanteenId.value || null)
+    const currentCanteenName = computed(() => configCanteens.value.find(canteen => canteen.id === configCanteenId.value)?.name || null)
 
     // Toggle switch 的类名（避免引号冲突）
     const toggleSwitchClass = computed(() => {
@@ -381,6 +389,7 @@ export default {
 
     // 当前食堂信息
     const currentCanteenInfo = computed(() => {
+      if (!isGlobalAdmin.value && !currentCanteenId.value) return '暂无授权食堂，请联系上级管理员调整范围'
       if (!currentCanteenId.value) {
         return '您正在管理全局配置（所有食堂）'
       }
@@ -395,24 +404,33 @@ export default {
     })
 
 
-    // 加载配置（根据管理员是否有食堂ID决定加载全局还是食堂配置）
+    let viewActive = false
+    let configRequest = 0
+
+    // 加载当前范围的配置，仅接收最新请求的结果。
     const loadConfig = async () => {
+      if (!viewActive) return
+      const request = ++configRequest
+      const canteenId = currentCanteenId.value
       loading.value = true
       try {
+        if (!isGlobalAdmin.value && !canteenId) throw new Error('暂无授权食堂')
         let response
-        if (currentCanteenId.value) {
+        if (canteenId) {
           // 有食堂ID，使用有效配置API获取实际生效的配置值（食堂配置 > 全局配置 > 默认值）
-          response = await configApi.getEffectiveConfig(currentCanteenId.value)
+          response = await configApi.getEffectiveConfig(canteenId)
         } else {
           // 没有食堂ID，加载全局配置
           response = await configApi.getGlobalConfig()
         }
 
+        if (request !== configRequest) return
+
         if (response.code === 200 && response.data) {
           const reviewAutoApproveKey = 'review.autoApprove'
           const commentAutoApproveKey = 'comment.autoApprove'
 
-          if (currentCanteenId.value) {
+          if (canteenId) {
             // 食堂配置：从有效配置列表中查找
             const effectiveConfigData = response.data
             const effectiveItems = effectiveConfigData.items || []
@@ -485,16 +503,17 @@ export default {
           throw new Error(response.message || '获取配置失败')
         }
       } catch (error) {
+        if (request !== configRequest) return
         console.error('加载配置失败:', error)
         loadError.value = true
         showAlert('加载配置失败，请刷新重试')
       } finally {
-        loading.value = false
+        if (request === configRequest) loading.value = false
       }
     }
 
     const handleCommunityApprovalChange = async (item) => {
-      if (currentCanteenId.value || !authStore.hasPermission('config:edit') || loadError.value || communitySaving.value) {
+      if (!isGlobalAdmin.value || currentCanteenId.value || !authStore.hasPermission('config:edit') || loadError.value || communitySaving.value) {
         item.requiresApproval = !item.requiresApproval
         return
       }
@@ -606,14 +625,14 @@ export default {
 
     // 加载食堂列表（仅全局管理员需要）
     const loadCanteenList = async () => {
-      if (currentCanteenId.value) {
-        // 有食堂ID的管理员不需要加载列表
+      if (!isGlobalAdmin.value) {
+        canteenList.value = authStore.user?.canteens || []
         return
       }
 
       loadingCanteens.value = true
       try {
-        const response = await canteenApi.getCanteens({ pageSize: 100 })
+        const response = await canteenApi.getCanteenOptions()
         if (response.code === 200 && response.data) {
           canteenList.value = response.data.items || []
         }
@@ -922,25 +941,31 @@ export default {
       return classMap[status] || 'bg-gray-100 text-gray-700'
     }
 
-    onMounted(async () => {
-      // 直接加载配置，食堂名称从管理员信息中获取
-      await loadConfig()
-      // 如果是全局管理员，加载食堂列表
-      await loadCanteenList()
-    })
+    const activateView = () => {
+      if (viewActive) return
+      viewActive = true
+      loadConfig()
+      loadCanteenList()
+    }
 
-    onActivated(async () => {
-      await loadConfig()
-      // 如果是全局管理员，加载食堂列表
-      await loadCanteenList()
-    })
+    const deactivateView = () => {
+      viewActive = false
+      configRequest += 1
+    }
 
+    onMounted(activateView)
+    onActivated(activateView)
+    onDeactivated(deactivateView)
     onBeforeUnmount(() => {
-      // 组件卸载时停止轮询
+      deactivateView()
       stopPolling()
     })
 
     return {
+      isGlobalAdmin,
+      configCanteenId,
+      configCanteens,
+      loadConfig,
       loading,
       loadError,
       reviewSaving,

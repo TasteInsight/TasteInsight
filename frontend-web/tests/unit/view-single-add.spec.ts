@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
     back: vi.fn(),
   },
   authStoreMock: {
-    user: { id: 'a1', username: 'admin' },
+    user: {scope: 'GLOBAL' as 'GLOBAL' | 'CANTEENS', canteenIds: [], canteens: [],  id: 'a1', username: 'admin' },
     token: 'token',
     permissions: ['dish:create'],
     hasPermission: vi.fn((p: string) => p === 'dish:create'),

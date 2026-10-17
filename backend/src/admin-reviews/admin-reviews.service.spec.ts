@@ -127,12 +127,15 @@ describe('AdminReviewsService', () => {
       prisma.review.findMany.mockResolvedValue([]);
       prisma.review.count.mockResolvedValue(0);
 
-      await service.getPendingReviews(1, 20, { canteenId: 'c1' });
+      await service.getPendingReviews(1, 20, {
+        scope: 'CANTEENS' as const,
+        canteenIds: ['c1'],
+      });
 
       expect(prisma.review.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
-            dish: { canteenId: 'c1' },
+            dish: { canteenId: { in: ['c1'] } },
           }),
         }),
       );
@@ -205,7 +208,7 @@ describe('AdminReviewsService', () => {
         service.approveReview(
           'r1',
           { expectedUpdatedAt: '2026-10-08T12:00:00.000Z' },
-          { canteenId: 'c2' },
+          { scope: 'CANTEENS' as const, canteenIds: ['c2'] },
         ),
       ).rejects.toThrow(ForbiddenException);
     });
@@ -265,7 +268,7 @@ describe('AdminReviewsService', () => {
         service.rejectReview(
           'r1',
           { reason: 'reason', expectedUpdatedAt: '2026-10-08T12:00:00.000Z' },
-          { canteenId: 'c2' },
+          { scope: 'CANTEENS' as const, canteenIds: ['c2'] },
         ),
       ).rejects.toThrow(ForbiddenException);
     });
@@ -311,7 +314,10 @@ describe('AdminReviewsService', () => {
 
     it('should throw ForbiddenException if canteen admin has no access', async () => {
       await expect(
-        service.deleteReview('r1', { canteenId: 'c2' }),
+        service.deleteReview('r1', {
+          scope: 'CANTEENS' as const,
+          canteenIds: ['c2'],
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -394,7 +400,10 @@ describe('AdminReviewsService', () => {
 
     it('should throw ForbiddenException if canteen admin has no access', async () => {
       await expect(
-        service.getReviewComments('r1', 1, 20, { canteenId: 'c2' }),
+        service.getReviewComments('r1', 1, 20, {
+          scope: 'CANTEENS' as const,
+          canteenIds: ['c2'],
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
   });

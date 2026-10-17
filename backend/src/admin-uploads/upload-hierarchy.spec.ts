@@ -6,7 +6,9 @@ describe('Pending dish hierarchy', () => {
   const creator = {
     id: 'creator',
     role: 'admin',
-    canteenId: 'canteen',
+    scope: 'CANTEENS' as const,
+    canteenIds: ['canteen'],
+    canteens: [{ id: 'canteen', name: 'canteen' }],
     permissions: ['dish:create'],
   };
   const window = {
@@ -166,7 +168,12 @@ describe('Pending dish hierarchy', () => {
 
   it('requires the parent upload to be approved before approving a child', async () => {
     await expect(
-      uploads.approveUpload(child.id, { role: 'superadmin' }),
+      uploads.approveUpload(child.id, {
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+        canteens: [],
+        role: 'superadmin',
+      }),
     ).rejects.toThrow(BadRequestException);
     expect(prisma.dish.create).not.toHaveBeenCalled();
   });
@@ -177,7 +184,12 @@ describe('Pending dish hierarchy', () => {
         ? { ...parent, status: 'approved', approvedDishId: 'approved-parent' }
         : child,
     );
-    await uploads.approveUpload(child.id, { role: 'superadmin' });
+    await uploads.approveUpload(child.id, {
+      scope: 'GLOBAL' as const,
+      canteenIds: [],
+      canteens: [],
+      role: 'superadmin',
+    });
     expect(prisma.$queryRaw.mock.calls.map((call: any[]) => call[1])).toEqual([
       parent.id,
       'approved-parent',
@@ -198,7 +210,12 @@ describe('Pending dish hierarchy', () => {
     );
     prisma.dish.findUnique.mockResolvedValue(null);
     await expect(
-      uploads.approveUpload(child.id, { role: 'superadmin' }),
+      uploads.approveUpload(child.id, {
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+        canteens: [],
+        role: 'superadmin',
+      }),
     ).rejects.toThrow(BadRequestException);
   });
 
@@ -210,7 +227,12 @@ describe('Pending dish hierarchy', () => {
     });
     prisma.dish.findFirst.mockResolvedValue({ id: 'approved-child' });
     await expect(
-      uploads.revokeUpload(parent.id, { role: 'superadmin' }),
+      uploads.revokeUpload(parent.id, {
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+        canteens: [],
+        role: 'superadmin',
+      }),
     ).rejects.toThrow(BadRequestException);
     expect(prisma.dish.delete).not.toHaveBeenCalled();
   });
@@ -221,7 +243,12 @@ describe('Pending dish hierarchy', () => {
       status: 'approved',
       approvedDishId: 'approved-parent',
     });
-    await uploads.revokeUpload(parent.id, { role: 'superadmin' });
+    await uploads.revokeUpload(parent.id, {
+      scope: 'GLOBAL' as const,
+      canteenIds: [],
+      canteens: [],
+      role: 'superadmin',
+    });
     expect(prisma.dishUpload.updateMany).toHaveBeenCalledWith({
       where: { parentDishId: 'approved-parent' },
       data: {
@@ -275,7 +302,12 @@ describe('Pending dish hierarchy', () => {
       return [];
     });
     await expect(
-      uploads.rejectUpload(parent.id, '原因', { role: 'superadmin' }),
+      uploads.rejectUpload(parent.id, '原因', {
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+        canteens: [],
+        role: 'superadmin',
+      }),
     ).rejects.toThrow(BadRequestException);
     expect(prisma.dishUpload.update).not.toHaveBeenCalled();
     expect(prisma.dish.delete).not.toHaveBeenCalled();

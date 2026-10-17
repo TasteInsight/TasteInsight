@@ -8,7 +8,9 @@ describe('Upload parent identity across lifecycle transitions', () => {
     id: 'admin',
     username: 'admin',
     role: 'superadmin',
-    canteenId: null,
+    scope: 'GLOBAL' as const,
+    canteenIds: [],
+    canteens: [],
     permissions: [],
   };
   const location = {
