@@ -12,13 +12,13 @@
     <div class="flex flex-wrap items-center gap-2">
       <button
         type="button"
-        class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-700 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-tsinghua-purple disabled:cursor-not-allowed disabled:opacity-50"
+        class="focus-visible:outline focus-visible:outline-2 focus-visible:outline-tsinghua-purple disabled:cursor-not-allowed disabled:opacity-50 admin-button admin-button-secondary"
         :disabled="busy || count === 0"
         @click="$emit('clear')"
       >取消选择</button>
       <button
         type="button"
-        class="rounded-lg bg-red-600 px-4 py-2 font-medium text-white hover:bg-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+        class="bg-red-600 font-medium text-white hover:bg-red-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:cursor-not-allowed disabled:opacity-50 admin-button"
         :disabled="busy || disabled || count === 0 || count > 100"
         @click="$emit('delete')"
       >{{ busy ? '处理中…' : `批量删除${resource}` }}</button>

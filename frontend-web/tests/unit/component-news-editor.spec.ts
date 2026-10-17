@@ -14,6 +14,7 @@ function deferred<T>() {
 beforeEach(() => vi.resetModules())
 afterEach(() => {
   vi.doUnmock('@wangeditor/editor-for-vue')
+  vi.doUnmock('@wangeditor/editor')
   vi.doUnmock('@wangeditor/editor/dist/css/style.css')
 })
 
@@ -24,9 +25,12 @@ async function fixture() {
   const cssLoad = vi.fn(() => css.promise)
   vi.doMock('@wangeditor/editor-for-vue', sdkLoad)
   vi.doMock('@wangeditor/editor/dist/css/style.css', cssLoad)
+  vi.doMock('@wangeditor/editor', () => ({
+    DomEditor: { getTextarea: () => ({ onDOMSelectionChange: { cancel: vi.fn() } }) },
+  }))
   const { default: NewsEditor } = await import('../../src/components/News/NewsEditor.vue')
   const props = { modelValue: '<p>stored draft</p>', config: { placeholder: 'Content' } }
-  const instance = { id: 'editor' }
+  const instance = { id: 'editor', on: vi.fn() }
   const Editor = defineComponent({
     props: ['modelValue', 'defaultConfig'],
     emits: ['onCreated', 'update:modelValue'],

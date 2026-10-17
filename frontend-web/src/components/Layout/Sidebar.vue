@@ -282,14 +282,16 @@
       class="text-gray-900"
       @close="closeChangePasswordModal"
     >
-      <div class="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6 mx-4" @click.stop>
-        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <AppIcon class="iconify text-tsinghua-purple" icon="carbon:password"></AppIcon>
-          修改我的密码
-        </h3>
-        <form @submit.prevent="handleChangePassword" class="space-y-4">
+      <div class="relative w-full max-w-md mx-4 admin-dialog-panel" @click.stop>
+        <div class="admin-dialog-header">
+          <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+            <AppIcon class="iconify text-tsinghua-purple" icon="carbon:password"></AppIcon>
+            修改我的密码
+          </h3>
+        </div>
+        <form @submit.prevent="handleChangePassword" class="space-y-4 admin-dialog-body">
           <div>
-            <label class="block text-gray-700 font-medium mb-2">
+            <label class="block text-gray-700 font-medium mb-2 admin-label">
               当前密码 <span class="text-red-500">*</span>
             </label>
             <div class="relative">
@@ -297,7 +299,7 @@
                 :type="showCurrentPassword ? 'text' : 'password'"
                 :value="passwordForm.currentPassword"
                 @input="handlePasswordInput('currentPassword', $event)"
-                class="password-input w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-tsinghua-purple focus:border-tsinghua-purple focus:outline-none"
+                class="password-input w-full pr-10 text-gray-900 focus:outline-none admin-input"
                 :class="{ 'border-red-400 bg-red-50': passwordError }"
                 placeholder="请输入当前密码"
                 autocomplete="current-password"
@@ -305,7 +307,7 @@
               <button
                 type="button"
                 @click="showCurrentPassword = !showCurrentPassword"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors admin-icon-button"
               >
                 <AppIcon
                   class="iconify text-lg"
@@ -315,7 +317,7 @@
             </div>
           </div>
           <div>
-            <label class="block text-gray-700 font-medium mb-2">
+            <label class="block text-gray-700 font-medium mb-2 admin-label">
               新密码 <span class="text-red-500">*</span>
             </label>
             <div class="relative">
@@ -323,7 +325,7 @@
                 :type="showNewPassword ? 'text' : 'password'"
                 :value="passwordForm.newPassword"
                 @input="handlePasswordInput('newPassword', $event)"
-                class="password-input w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-tsinghua-purple focus:border-tsinghua-purple focus:outline-none"
+                class="password-input w-full pr-10 text-gray-900 focus:outline-none admin-input"
                 :class="{ 'border-red-400 bg-red-50': passwordError }"
                 placeholder="请输入新密码"
                 autocomplete="new-password"
@@ -331,7 +333,7 @@
               <button
                 type="button"
                 @click="showNewPassword = !showNewPassword"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors admin-icon-button"
               >
                 <AppIcon
                   class="iconify text-lg"
@@ -341,7 +343,7 @@
             </div>
           </div>
           <div>
-            <label class="block text-gray-700 font-medium mb-2">
+            <label class="block text-gray-700 font-medium mb-2 admin-label">
               确认新密码 <span class="text-red-500">*</span>
             </label>
             <div class="relative">
@@ -349,7 +351,7 @@
                 :type="showConfirmPassword ? 'text' : 'password'"
                 :value="passwordForm.confirmPassword"
                 @input="handlePasswordInput('confirmPassword', $event)"
-                class="password-input w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-tsinghua-purple focus:border-tsinghua-purple focus:outline-none"
+                class="password-input w-full pr-10 text-gray-900 focus:outline-none admin-input"
                 :class="{ 'border-red-400 bg-red-50': passwordError }"
                 placeholder="请再次输入新密码"
                 autocomplete="new-password"
@@ -357,7 +359,7 @@
               <button
                 type="button"
                 @click="showConfirmPassword = !showConfirmPassword"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors admin-icon-button"
               >
                 <AppIcon
                   class="iconify text-lg"
@@ -396,18 +398,18 @@
             <AppIcon class="iconify" icon="carbon:warning"></AppIcon>
             {{ passwordError }}
           </p>
-          <div class="flex justify-end gap-3 pt-4">
+          <div class="flex justify-end gap-3 pt-4 admin-actions">
             <button
               type="button"
               @click="closeChangePasswordModal"
-              class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
+              class="border border-gray-300 text-gray-700 hover:bg-gray-100 transition admin-button"
             >
               取消
             </button>
             <button
               type="submit"
               :disabled="isChangingPassword"
-              class="px-4 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition disabled:opacity-50 disabled:cursor-not-allowed"
+              class="transition disabled:opacity-50 disabled:cursor-not-allowed admin-button admin-button-primary"
             >
               {{ isChangingPassword ? '修改中...' : '确认修改' }}
             </button>

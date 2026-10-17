@@ -26,7 +26,7 @@
             <div class="border-t border-b py-6">
               <h3 class="font-medium text-gray-700 mb-4">第一步：下载批量导入模板</h3>
               <button 
-                class="px-5 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center"
+                class="transition duration-200 flex items-center admin-button admin-button-primary"
                 @click="downloadTemplate"
               >
                 <AppIcon class="iconify mr-1" icon="carbon:download"></AppIcon>下载Excel模板
@@ -47,7 +47,7 @@
                   <p class="text-sm text-gray-500">支持.xlsx格式，文件大小不超过10MB</p>
                 </div>
                 <button 
-                  class="px-5 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center"
+                  class="transition duration-200 flex items-center admin-button admin-button-primary"
                   @click="triggerFileInput"
                 >
                   <AppIcon class="iconify mr-1" icon="carbon:upload"></AppIcon>选择文件
@@ -69,7 +69,7 @@
             <!-- 解析结果预览 -->
             <div class="border-b pb-6" v-if="parsedData.length > 0 || isParsing">
               <h3 class="font-medium text-gray-700 mb-4">第三步：确认解析结果</h3>
-              <div v-if="isParsing" class="text-center py-8">
+              <div v-if="isParsing" class="admin-state">
                 <AppIcon class="iconify text-4xl text-tsinghua-purple animate-spin" icon="carbon:circle-dash"></AppIcon>
                 <p class="mt-2 text-gray-600">正在解析文件，请稍候...</p>
               </div>
@@ -196,7 +196,7 @@
                 <p>共解析{{ parsedData.length }}条数据，{{ validCount }}条有效，{{ warningCount }}条警告，{{ invalidCount }}条无效</p>
                 <button 
                   v-if="parsedData.length > 0"
-                  class="text-tsinghua-purple hover:text-tsinghua-dark text-sm"
+                  class="text-tsinghua-purple hover:text-tsinghua-dark admin-button"
                   @click="exportErrorList"
                 >
                   <AppIcon class="iconify mr-1" icon="carbon:download"></AppIcon>
@@ -208,7 +208,7 @@
             <!-- 提交按钮 -->
             <div class="flex space-x-4" v-if="parsedData.length > 0">
               <button 
-                class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                class="transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed admin-button admin-button-primary"
                 :disabled="validCount + warningCount === 0 || isSubmitting || !authStore.hasPermission('dish:create')"
                 :title="!authStore.hasPermission('dish:create') ? '无权限创建菜品' : '确认导入'"
                 @click="submitBatchData"
@@ -226,7 +226,7 @@
                 {{ isSubmitting ? '导入中...' : `确认导入有效数据 (${validCount + warningCount} 条)` }}
               </button>
               <button 
-                class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"
+                class="border border-gray-300 text-gray-700 hover:bg-gray-100 transition duration-200 admin-button"
                 :disabled="isSubmitting"
                 @click="resetBatchData"
               >

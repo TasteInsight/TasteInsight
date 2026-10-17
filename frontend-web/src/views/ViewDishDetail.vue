@@ -4,7 +4,7 @@
       <!-- 关闭按钮 -->
       <button
         @click="goBack"
-        class="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition p-2"
+        class="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition admin-icon-button"
         title="关闭"
       >
         <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
@@ -23,16 +23,16 @@
           <div>
             <!-- 食堂信息组 -->
             <div class="mb-6">
-              <label class="block text-gray-700 font-medium mb-2">食堂信息</label>
+              <label class="block text-gray-700 font-medium mb-2 admin-label">食堂信息</label>
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm text-gray-600 mb-1">食堂名称</label>
+                  <label class="block text-gray-600 mb-1 admin-label">食堂名称</label>
                   <div class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700">
                     {{ dishData.canteenName || dishData.canteen || '未填写' }}
                   </div>
                 </div>
                 <div>
-                  <label class="block text-sm text-gray-600 mb-1">食堂楼层</label>
+                  <label class="block text-gray-600 mb-1 admin-label">食堂楼层</label>
                   <div class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700">
                     {{ dishData.floor || '未填写' }}
                   </div>
@@ -42,16 +42,16 @@
 
             <!-- 窗口信息 -->
             <div class="mb-6">
-              <label class="block text-gray-700 font-medium mb-2">窗口信息</label>
+              <label class="block text-gray-700 font-medium mb-2 admin-label">窗口信息</label>
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm text-gray-600 mb-1">窗口名称</label>
+                  <label class="block text-gray-600 mb-1 admin-label">窗口名称</label>
                   <div class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700">
                     {{ dishData.windowName || dishData.window || '未填写' }}
                   </div>
                 </div>
                 <div>
-                  <label class="block text-sm text-gray-600 mb-1">窗口编号</label>
+                  <label class="block text-gray-600 mb-1 admin-label">窗口编号</label>
                   <div class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700">
                     {{ dishData.windowNumber || '未填写' }}
                   </div>
@@ -61,7 +61,7 @@
 
             <!-- 菜品名称 -->
             <div class="mb-6">
-              <label class="block text-gray-700 font-medium mb-2">菜品名称</label>
+              <label class="block text-gray-700 font-medium mb-2 admin-label">菜品名称</label>
               <div class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700 font-medium">
                 {{ dishData.name || '未填写' }}
               </div>
@@ -69,7 +69,7 @@
 
             <!-- 菜品价格 -->
             <div class="mb-6">
-              <label class="block text-gray-700 font-medium mb-2">菜品价格（元）</label>
+              <label class="block text-gray-700 font-medium mb-2 admin-label">菜品价格（元）</label>
               <div
                 class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700 font-medium text-tsinghua-purple"
               >
@@ -83,7 +83,7 @@
 
             <!-- 菜品描述 -->
             <div class="mb-6">
-              <label class="block text-gray-700 font-medium mb-2">菜品描述</label>
+              <label class="block text-gray-700 font-medium mb-2 admin-label">菜品描述</label>
               <div
                 class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700 min-h-[100px] max-h-[200px] overflow-y-auto"
               >
@@ -93,7 +93,7 @@
 
             <!-- 菜品图片 -->
             <div>
-              <label class="block text-gray-700 font-medium mb-2">菜品图片</label>
+              <label class="block text-gray-700 font-medium mb-2 admin-label">菜品图片</label>
 
               <AdminImage
                 :src="selectedImage || dishData.images?.[0]"
@@ -129,7 +129,7 @@
           <div>
             <!-- 菜品子项 -->
             <div class="mb-6">
-              <label class="block text-gray-700 font-medium mb-2">菜品子项</label>
+              <label class="block text-gray-700 font-medium mb-2 admin-label">菜品子项</label>
               <div class="space-y-2">
                 <div
                   v-for="(item, index) in dishData.subItems"
@@ -152,10 +152,10 @@
 
             <!-- 供应信息组 -->
             <div class="mb-6">
-              <label class="block text-gray-700 font-medium mb-2">供应信息</label>
+              <label class="block text-gray-700 font-medium mb-2 admin-label">供应信息</label>
               <div class="space-y-4">
                 <div>
-                  <label class="block text-sm text-gray-600 mb-1">菜系TAG</label>
+                  <label class="block text-gray-600 mb-1 admin-label">菜系TAG</label>
                   <div
                     v-if="dishData.tags && dishData.tags.length > 0"
                     class="flex flex-wrap gap-2"
@@ -173,10 +173,10 @@
                   </div>
                 </div>
                 <div>
-                  <label class="block text-sm text-gray-600 mb-1">口味指标</label>
+                  <label class="block text-gray-600 mb-1 admin-label">口味指标</label>
                   <div class="grid grid-cols-4 gap-3">
                     <div>
-                      <label class="block text-xs text-gray-500 mb-1">辣度</label>
+                      <label class="block text-gray-500 mb-1 admin-label">辣度</label>
                       <div
                         class="w-full px-3 py-2 border rounded-lg bg-gray-50 text-gray-700 text-sm"
                       >
@@ -188,7 +188,7 @@
                       </div>
                     </div>
                     <div>
-                      <label class="block text-xs text-gray-500 mb-1">咸度</label>
+                      <label class="block text-gray-500 mb-1 admin-label">咸度</label>
                       <div
                         class="w-full px-3 py-2 border rounded-lg bg-gray-50 text-gray-700 text-sm"
                       >
@@ -200,7 +200,7 @@
                       </div>
                     </div>
                     <div>
-                      <label class="block text-xs text-gray-500 mb-1">甜度</label>
+                      <label class="block text-gray-500 mb-1 admin-label">甜度</label>
                       <div
                         class="w-full px-3 py-2 border rounded-lg bg-gray-50 text-gray-700 text-sm"
                       >
@@ -212,7 +212,7 @@
                       </div>
                     </div>
                     <div>
-                      <label class="block text-xs text-gray-500 mb-1">油度</label>
+                      <label class="block text-gray-500 mb-1 admin-label">油度</label>
                       <div
                         class="w-full px-3 py-2 border rounded-lg bg-gray-50 text-gray-700 text-sm"
                       >
@@ -230,7 +230,7 @@
 
             <!-- 供应时间 -->
             <div class="mb-6">
-              <label class="block text-gray-700 font-medium mb-2">供应时间</label>
+              <label class="block text-gray-700 font-medium mb-2 admin-label">供应时间</label>
               <div class="space-y-2">
                 <div class="flex items-center">
                   <AppIcon
@@ -315,7 +315,7 @@
 
             <!-- 供应日期段 -->
             <div class="mb-6">
-              <label class="block text-gray-700 font-medium mb-2">供应日期段</label>
+              <label class="block text-gray-700 font-medium mb-2 admin-label">供应日期段</label>
               <div
                 v-if="dishData.availableDates && dishData.availableDates.length > 0"
                 class="space-y-2"
@@ -335,7 +335,7 @@
 
             <!-- 过敏原 -->
             <div class="mb-6">
-              <label class="block text-gray-700 font-medium mb-2">过敏原</label>
+              <label class="block text-gray-700 font-medium mb-2 admin-label">过敏原</label>
               <div class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700">
                 {{ allergensText || '未填写' }}
               </div>
@@ -343,7 +343,7 @@
 
             <!-- 原辅料 -->
             <div>
-              <label class="block text-gray-700 font-medium mb-2">原辅料</label>
+              <label class="block text-gray-700 font-medium mb-2 admin-label">原辅料</label>
               <div class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700">
                 {{ ingredientsText || '未填写' }}
               </div>
@@ -371,11 +371,11 @@
 
           <!-- 评论筛选 -->
           <div class="mb-4 flex items-center gap-3">
-            <label class="text-sm text-gray-600">筛选状态：</label>
+            <label class="text-gray-600 admin-label">筛选状态：</label>
             <select
               v-model="reviewStatusFilter"
               @change="handleReviewStatusChange"
-              class="px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+              class="admin-input"
             >
               <option value="">全部</option>
               <option value="pending">待审核</option>
@@ -468,7 +468,7 @@
                 <button
                   @click="changeReviewPage(currentReviewPage - 1)"
                   :disabled="currentReviewPage <= 1"
-                  class="px-4 py-2 border rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="border hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed admin-button"
                 >
                   上一页
                 </button>
@@ -478,7 +478,7 @@
                 <button
                   @click="changeReviewPage(currentReviewPage + 1)"
                   :disabled="currentReviewPage >= reviewsData.meta.totalPages"
-                  class="px-4 py-2 border rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="border hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed admin-button"
                 >
                   下一页
                 </button>
@@ -486,7 +486,7 @@
             </div>
           </div>
 
-          <div v-else class="text-center py-10 text-gray-500">暂无评论</div>
+          <div v-else class="admin-state">暂无评论</div>
         </div>
       </div>
     </div>

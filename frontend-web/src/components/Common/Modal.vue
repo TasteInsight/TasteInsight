@@ -6,42 +6,39 @@
     :close-on-escape="modalCloseOnClickMask"
     @close="handleClose(true)"
   >
-    <div class="bg-white rounded-lg shadow-xl w-[500px] max-w-[90vw] max-h-[90vh] overflow-hidden flex flex-col">
+    <div class="w-[500px] max-w-[90vw] max-h-[90vh] overflow-hidden flex flex-col admin-dialog-panel">
       <!-- 头部 -->
-      <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center flex-shrink-0">
+      <div class="flex justify-between items-center flex-shrink-0 admin-dialog-header">
         <h3 class="text-lg font-medium text-gray-900">{{ modalTitle }}</h3>
         <button
           v-if="modalShowClose"
           type="button"
           aria-label="关闭弹窗"
           @click="handleClose(false)"
-          class="text-gray-400 hover:text-gray-500 transition-colors"
+          class="text-gray-400 hover:text-gray-500 transition-colors admin-icon-button"
         >
           <AppIcon class="iconify text-xl" icon="carbon:close"></AppIcon>
         </button>
       </div>
 
       <!-- 内容区域 -->
-      <div class="p-6 flex-1 overflow-y-auto">
+      <div class="flex-1 overflow-y-auto admin-dialog-body">
         <div v-if="modalMessage" class="text-gray-600 whitespace-pre-wrap">{{ modalMessage }}</div>
         <slot></slot>
       </div>
 
       <!-- 底部按钮 -->
-      <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3 flex-shrink-0">
-        <button
+      <div class="flex justify-end flex-shrink-0 admin-dialog-footer">
+        <button class="admin-button"
           v-for="(button, index) in modalButtons"
           :key="index"
           type="button"
           @click.stop="handleButtonClick(button as ButtonConfig, index)"
-          :class="[
-            'px-4 py-2 rounded-lg transition duration-200 flex items-center',
-            (button as ButtonConfig).variant === 'primary'
-              ? 'bg-tsinghua-purple text-white hover:bg-tsinghua-dark'
-              : (button as ButtonConfig).variant === 'danger'
+          :class="(button as ButtonConfig).variant === 'primary'
+            ? 'admin-button-primary'
+            : (button as ButtonConfig).variant === 'danger'
               ? 'bg-red-600 text-white hover:bg-red-700'
-              : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
-          ]"
+              : 'admin-button-secondary'"
           :disabled="(button as ButtonConfig).loading"
         >
           <AppIcon

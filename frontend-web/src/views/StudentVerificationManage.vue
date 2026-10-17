@@ -7,14 +7,14 @@
         header-icon="carbon:user-certification"
       />
       <div class="moderation-body">
-        <p v-if="!canReview" class="moderation-state" role="status">
+        <p v-if="!canReview" class="admin-state" role="status">
           学生认证仅限拥有审核权限的全局管理员处理。
         </p>
         <template v-else>
           <div class="admin-toolbar moderation-toolbar">
-            <label
+            <label class="admin-label"
               >认证状态
-              <select
+              <select class="admin-input"
                 v-model="status"
                 aria-label="认证状态"
                 :disabled="loading || submitting"
@@ -26,7 +26,7 @@
               </select>
             </label>
             <button
-              class="moderation-button"
+              class="admin-button admin-button-secondary"
               :disabled="loading || submitting"
               @click="loadList(currentPage)"
             >
@@ -49,7 +49,7 @@
               <h3 id="student-detail-title" class="text-lg font-semibold">
                 {{ selected.user.nickname }} · 认证详情
               </h3>
-              <button class="moderation-button" :disabled="submitting" @click="selected = null">
+              <button class="admin-button admin-button-secondary" :disabled="submitting" @click="selected = null">
                 关闭详情
               </button>
             </div>
@@ -100,9 +100,9 @@
               @submit.prevent="submitDecision"
             >
               <fieldset :disabled="submitting" class="space-y-4">
-                <label
+                <label class="admin-label"
                   >处理结果
-                  <select v-model="decision" aria-label="处理结果">
+                  <select class="admin-input" v-model="decision" aria-label="处理结果">
                     <template v-if="selected.status === 'PENDING'">
                       <option value="APPROVE">通过认证</option>
                       <option value="REJECT">拒绝申请</option>
@@ -110,14 +110,14 @@
                     <option v-else value="REVOKE">撤销认证</option>
                   </select>
                 </label>
-                <label v-if="decision === 'APPROVE'"
+                <label class="admin-label" v-if="decision === 'APPROVE'"
                   >有效期至
-                  <input v-model="expiresAt" aria-label="有效期至" type="datetime-local" required />
+                  <input class="admin-input" v-model="expiresAt" aria-label="有效期至" type="datetime-local" required />
                   <span class="moderation-help">须晚于当前时间，且不超过 366 天。</span>
                 </label>
-                <label
+                <label class="admin-label"
                   >审核依据
-                  <textarea
+                  <textarea class="admin-textarea"
                     v-model="reason"
                     aria-label="审核依据"
                     rows="3"
@@ -126,22 +126,22 @@
                     placeholder="填写核验依据或处理原因"
                   />
                 </label>
-                <p v-if="decisionError" role="alert" class="moderation-error">
+                <p v-if="decisionError" role="alert" class="admin-error">
                   {{ decisionError }}
                 </p>
-                <div class="moderation-actions">
+                <div class="admin-actions">
                   <button
                     v-if="needsRefresh"
                     type="button"
-                    class="moderation-button"
+                    class="admin-button admin-button-secondary"
                     @click="loadList(currentPage)"
                   >
                     重新读取申请
                   </button>
                   <button
                     v-else
-                    class="moderation-button"
-                    :class="decision === 'APPROVE' ? 'moderation-primary' : 'moderation-danger'"
+                    class="admin-button"
+                    :class="decision === 'APPROVE' ? 'admin-button-primary' : 'admin-button-danger'"
                     type="submit"
                   >
                     {{ submitting ? '正在处理…' : decisionLabels[decision] }}
@@ -152,20 +152,20 @@
           </section>
 
           <div :aria-busy="loading">
-            <p v-if="loading" class="moderation-state" role="status">正在读取认证申请…</p>
-            <div v-else-if="loadError" class="moderation-state" role="alert">
-              <p class="moderation-error">{{ loadError }}</p>
-              <button class="moderation-button mt-3" @click="loadList(currentPage)">重试</button>
+            <p v-if="loading" class="admin-state" role="status">正在读取认证申请…</p>
+            <div v-else-if="loadError" class="admin-state admin-state-error" role="alert">
+              <p class="admin-error">{{ loadError }}</p>
+              <button class="mt-3 admin-button admin-button-secondary" @click="loadList(currentPage)">重试</button>
             </div>
-            <p v-else-if="items.length === 0" class="moderation-state">
+            <p v-else-if="items.length === 0" class="admin-state">
               暂无{{ statusLabels[status] }}的认证申请，可切换状态查看其他记录。
             </p>
-            <div v-else class="moderation-table-scroll">
-              <table class="moderation-table">
+            <div v-else class="admin-table-scroll">
+              <table class="admin-table admin-table-top">
                 <caption class="sr-only">
                   学生认证申请列表
                 </caption>
-                <thead>
+                <thead class="bg-gray-50">
                   <tr>
                     <th scope="col">申请人</th>
                     <th scope="col">校园邮箱</th>
@@ -174,7 +174,7 @@
                     <th scope="col">操作</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody class="divide-y divide-gray-200">
                   <tr v-for="item in items" :key="item.id">
                     <td>
                       {{ item.user.nickname }}
@@ -190,7 +190,7 @@
                     </td>
                     <td>
                       <button
-                        class="moderation-button"
+                        class="admin-button admin-button-compact admin-button-secondary"
                         :disabled="submitting"
                         @click="selectItem(item)"
                       >
