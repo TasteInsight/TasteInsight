@@ -11,7 +11,9 @@ const admin = {
   id: 'admin',
   username: 'admin',
   role: 'superadmin',
-  canteenId: null,
+  scope: 'GLOBAL' as const,
+  canteenIds: [],
+  canteens: [],
   permissions: [],
 };
 
@@ -382,7 +384,11 @@ describe('review write consistency', () => {
         f.state.canteenId = 'other';
         return Promise.resolve([]);
       });
-      const scope = { ...admin, canteenId: 'canteen' };
+      const scope = {
+        ...admin,
+        scope: 'CANTEENS' as const,
+        canteenIds: ['canteen'],
+      };
       const operation =
         kind === 'review'
           ? f.adminReviews.approveReview(
@@ -411,7 +417,11 @@ describe('review write consistency', () => {
       f.beforeTransaction(() => {
         f.state.canteenId = 'other';
       });
-      const scope = { ...admin, canteenId: 'canteen' };
+      const scope = {
+        ...admin,
+        scope: 'CANTEENS' as const,
+        canteenIds: ['canteen'],
+      };
       const operation =
         kind === 'review'
           ? f.adminReviews.deleteReview('review', scope)

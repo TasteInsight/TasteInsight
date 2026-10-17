@@ -90,13 +90,16 @@ describe('AdminCommentsService', () => {
       prisma.comment.findMany.mockResolvedValue([]);
       prisma.comment.count.mockResolvedValue(0);
 
-      await service.getPendingComments(1, 20, { canteenId: 'can1' });
+      await service.getPendingComments(1, 20, {
+        scope: 'CANTEENS' as const,
+        canteenIds: ['can1'],
+      });
 
       expect(prisma.comment.count).toHaveBeenCalledWith({
         where: {
           status: 'pending',
           deletedAt: null,
-          review: { deletedAt: null, dish: { canteenId: 'can1' } },
+          review: { deletedAt: null, dish: { canteenId: { in: ['can1'] } } },
         },
       });
 
@@ -105,7 +108,7 @@ describe('AdminCommentsService', () => {
           where: expect.objectContaining({
             review: expect.objectContaining({
               dish: expect.objectContaining({
-                canteenId: 'can1',
+                canteenId: { in: ['can1'] },
               }),
             }),
           }),
@@ -191,7 +194,10 @@ describe('AdminCommentsService', () => {
 
     it('should throw ForbiddenException if canteen admin has no access', async () => {
       await expect(
-        service.approveComment('c1', { canteenId: 'can2' }),
+        service.approveComment('c1', {
+          scope: 'CANTEENS' as const,
+          canteenIds: ['can2'],
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -244,7 +250,7 @@ describe('AdminCommentsService', () => {
         service.rejectComment(
           'c1',
           { reason: 'reason' },
-          { canteenId: 'can2' },
+          { scope: 'CANTEENS' as const, canteenIds: ['can2'] },
         ),
       ).rejects.toThrow(ForbiddenException);
     });
@@ -292,7 +298,10 @@ describe('AdminCommentsService', () => {
 
     it('should throw ForbiddenException if canteen admin has no access', async () => {
       await expect(
-        service.deleteComment('c1', { canteenId: 'can2' }),
+        service.deleteComment('c1', {
+          scope: 'CANTEENS' as const,
+          canteenIds: ['can2'],
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
   });

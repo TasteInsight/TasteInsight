@@ -132,7 +132,7 @@ describe('edit dish operation session ownership', () => {
         const username = data.username
         return response(config, { code: 200, data: {
           token: { accessToken: `token-${username}`, refreshToken: `refresh-${username}` },
-          admin: { id: username, username, role: 'admin' }, permissions: ['dish:view', 'dish:edit'],
+          admin: {scope: 'GLOBAL' as 'GLOBAL' | 'CANTEENS', canteenIds: [], canteens: [],  id: username, username, role: 'admin' }, permissions: ['dish:view', 'dish:edit'],
         } })
       }
       if (url === '/admin/canteens') return response(config, { code: 200, data: { items: [{ id: 'c1', name: 'C1' }] } })

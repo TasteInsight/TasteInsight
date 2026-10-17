@@ -29,8 +29,25 @@ const mockPrismaService = {
   },
   canteen: {
     findUnique: jest.fn(),
+    findMany: jest.fn(),
   },
-  $transaction: jest.fn((callback) => callback(mockPrismaService)),
+  $queryRaw: jest.fn(),
+  $transaction: jest.fn((callback) =>
+    callback({
+      ...mockPrismaService,
+      admin: {
+        ...mockPrismaService.admin,
+        findUnique: jest.fn(async ({ where }) => ({
+          id: where.id,
+          role: 'superadmin',
+          scope: 'GLOBAL',
+          canteens: [],
+          permissions: [],
+          deletedAt: null,
+        })),
+      },
+    }),
+  ),
 };
 
 describe('AdminAdminsService', () => {
@@ -39,6 +56,10 @@ describe('AdminAdminsService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockPrismaService.canteen.findMany.mockImplementation(async ({ where }) =>
+      where.id.in.map((id) => ({ id })),
+    );
+    mockPrismaService.admin.findMany.mockResolvedValue([]);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -62,7 +83,9 @@ describe('AdminAdminsService', () => {
           id: 'admin-1',
           username: 'admin1',
           role: 'admin',
-          canteenId: 'c1',
+          scope: 'CANTEENS' as const,
+          canteenIds: ['c1'],
+          canteens: [{ canteenId: 'c1', canteen: { id: 'c1', name: 'c1' } }],
           createdBy: 'superadmin-id',
           permissions: [{ permission: 'read' }],
           canteen: { id: 'c1', name: 'Canteen 1' },
@@ -94,6 +117,9 @@ describe('AdminAdminsService', () => {
     it('should return list of admins created by admin', async () => {
       const mockAdmins = [
         {
+          scope: 'GLOBAL' as const,
+          canteenIds: [],
+          canteens: [],
           id: 'subadmin-1',
           username: 'subadmin',
           role: 'admin',
@@ -122,7 +148,8 @@ describe('AdminAdminsService', () => {
     const createDto = {
       username: 'newadmin',
       password: 'Password123!',
-      canteenId: 'canteen-1',
+      scope: 'CANTEENS' as const,
+      canteenIds: ['canteen-1'],
       permissions: ['dish:view'],
     };
 
@@ -135,7 +162,14 @@ describe('AdminAdminsService', () => {
         id: 'new-admin-id',
         username: 'newadmin',
         role: 'admin',
-        canteenId: 'canteen-1',
+        scope: 'CANTEENS' as const,
+        canteenIds: ['canteen-1'],
+        canteens: [
+          {
+            canteenId: 'canteen-1',
+            canteen: { id: 'canteen-1', name: 'canteen-1' },
+          },
+        ],
         createdBy: 'creator-id',
         permissions: [{ permission: 'dish:view' }],
         canteen: { id: 'canteen-1', name: 'Test' },
@@ -146,7 +180,7 @@ describe('AdminAdminsService', () => {
       const result = await service.create(
         'creator-id',
         'superadmin',
-        null,
+        { scope: 'GLOBAL', canteenIds: [] },
         [],
         createDto,
       );
@@ -164,7 +198,13 @@ describe('AdminAdminsService', () => {
       prisma.admin.create.mockRejectedValue({ code: 'P2002' });
 
       await expect(
-        service.create('creator-id', 'superadmin', null, [], createDto),
+        service.create(
+          'creator-id',
+          'superadmin',
+          { scope: 'GLOBAL', canteenIds: [] },
+          [],
+          createDto,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -177,7 +217,14 @@ describe('AdminAdminsService', () => {
         id: 'new-admin-id',
         username: 'newadmin',
         role: 'admin',
-        canteenId: 'creator-canteen',
+        scope: 'CANTEENS' as const,
+        canteenIds: ['creator-canteen'],
+        canteens: [
+          {
+            canteenId: 'creator-canteen',
+            canteen: { id: 'creator-canteen', name: 'creator-canteen' },
+          },
+        ],
         createdBy: 'creator-id',
         permissions: [],
         canteen: { id: 'creator-canteen', name: 'Creator Canteen' },
@@ -188,18 +235,20 @@ describe('AdminAdminsService', () => {
       await service.create(
         'creator-id',
         'admin',
-        'creator-canteen',
+        { scope: 'CANTEENS', canteenIds: ['creator-canteen'] },
         ['dish:view'],
         {
           ...createDto,
-          canteenId: 'creator-canteen',
+          scope: 'CANTEENS' as const,
+          canteenIds: ['creator-canteen'],
         },
       );
 
       expect(prisma.admin.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            canteenId: 'creator-canteen',
+            scope: 'CANTEENS',
+            canteens: { create: [{ canteenId: 'creator-canteen' }] },
           }),
         }),
       );
@@ -210,11 +259,12 @@ describe('AdminAdminsService', () => {
         service.create(
           'creator-id',
           'admin',
-          'creator-canteen',
+          { scope: 'CANTEENS', canteenIds: ['creator-canteen'] },
           ['dish:view'],
           {
             ...createDto,
-            canteenId: undefined,
+            scope: 'GLOBAL' as const,
+            canteenIds: [],
           } as any,
         ),
       ).rejects.toThrow(ForbiddenException);
@@ -225,11 +275,12 @@ describe('AdminAdminsService', () => {
         service.create(
           'creator-id',
           'admin',
-          'creator-canteen',
+          { scope: 'CANTEENS', canteenIds: ['creator-canteen'] },
           ['dish:view'],
           {
             ...createDto,
-            canteenId: 'other-canteen',
+            scope: 'CANTEENS' as const,
+            canteenIds: ['other-canteen'],
           },
         ),
       ).rejects.toThrow(ForbiddenException);
@@ -237,24 +288,33 @@ describe('AdminAdminsService', () => {
 
     it('rejects unknown, incomplete, and non-owned permission grants', async () => {
       await expect(
-        service.create('creator-id', 'superadmin', null, [], {
-          ...createDto,
-          permissions: ['unknown:permission'],
-        }),
+        service.create(
+          'creator-id',
+          'superadmin',
+          { scope: 'GLOBAL', canteenIds: [] },
+          [],
+          { ...createDto, permissions: ['unknown:permission'] },
+        ),
       ).rejects.toThrow(BadRequestException);
 
       await expect(
-        service.create('creator-id', 'superadmin', null, [], {
-          ...createDto,
-          permissions: ['comment:delete'],
-        }),
+        service.create(
+          'creator-id',
+          'superadmin',
+          { scope: 'GLOBAL', canteenIds: [] },
+          [],
+          { ...createDto, permissions: ['comment:delete'] },
+        ),
       ).rejects.toThrow('所授权限缺少依赖');
 
       await expect(
-        service.create('creator-id', 'admin', null, ['dish:view'], {
-          ...createDto,
-          permissions: ['news:view'],
-        }),
+        service.create(
+          'creator-id',
+          'admin',
+          { scope: 'GLOBAL', canteenIds: [] },
+          ['dish:view'],
+          { ...createDto, permissions: ['news:view'] },
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -273,10 +333,10 @@ describe('AdminAdminsService', () => {
             ? service.updatePermissions(
                 'creator',
                 'superadmin',
-                null,
+                { scope: 'GLOBAL', canteenIds: [] },
                 [],
                 'retired',
-                { permissions: ['dish:view'] },
+                { scope: 'GLOBAL', canteenIds: [], permissions: ['dish:view'] },
               )
             : service.changeSubAdminPassword(
                 'creator',
@@ -291,6 +351,9 @@ describe('AdminAdminsService', () => {
     );
     it('retires an admin without deleting audit or news ownership', async () => {
       prisma.admin.findUnique.mockResolvedValue({
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+        canteens: [],
         id: 'target-admin',
         role: 'admin',
         createdBy: 'other-admin',
@@ -313,6 +376,9 @@ describe('AdminAdminsService', () => {
 
     it('should delete admin created by self', async () => {
       prisma.admin.findUnique.mockResolvedValue({
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+        canteens: [],
         id: 'target-admin',
         role: 'admin',
         createdBy: 'admin-1',
@@ -334,6 +400,9 @@ describe('AdminAdminsService', () => {
 
     it('should throw ForbiddenException if trying to delete admin without createdBy', async () => {
       prisma.admin.findUnique.mockResolvedValue({
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+        canteens: [],
         id: 'admin-1',
         role: 'admin',
         createdBy: null,
@@ -346,6 +415,9 @@ describe('AdminAdminsService', () => {
 
     it('should throw ForbiddenException if not creator and not superadmin', async () => {
       prisma.admin.findUnique.mockResolvedValue({
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+        canteens: [],
         id: 'target-admin',
         role: 'admin',
         createdBy: 'other-admin',
@@ -357,13 +429,93 @@ describe('AdminAdminsService', () => {
     });
   });
 
+  it.each(['create', 'updatePermissions'] as const)(
+    'rejects %s after its action permission was revoked while waiting for the lock',
+    async (action) => {
+      const actor = {
+        id: 'actor',
+        role: 'admin',
+        scope: 'GLOBAL',
+        canteens: [],
+        permissions: [{ permission: 'dish:view' }],
+        deletedAt: null,
+      };
+      prisma.admin.findUnique.mockResolvedValue({
+        id: 'target',
+        createdBy: actor.id,
+      });
+      prisma.$transaction.mockImplementationOnce((callback) =>
+        callback({
+          ...prisma,
+          admin: {
+            ...prisma.admin,
+            findUnique: jest.fn().mockResolvedValue(actor),
+          },
+        }),
+      );
+      const previousPermissions = [
+        'dish:view',
+        'canteen:view',
+        'admin:view',
+        'admin:create',
+        'admin:edit',
+      ];
+      const requested = {
+        scope: 'CANTEENS' as const,
+        canteenIds: ['c1'],
+        permissions: ['dish:view'],
+      };
+      const operation =
+        action === 'create'
+          ? service.create(
+              'actor',
+              'admin',
+              { scope: 'GLOBAL', canteenIds: [] },
+              previousPermissions,
+              { ...requested, username: 'new', password: 'Password123!' },
+            )
+          : service.updatePermissions(
+              'actor',
+              'admin',
+              { scope: 'GLOBAL', canteenIds: [] },
+              previousPermissions,
+              'target',
+              requested,
+            );
+      await expect(operation).rejects.toThrow(ForbiddenException);
+      expect(prisma.admin.create).not.toHaveBeenCalled();
+      expect(prisma.admin.update).not.toHaveBeenCalled();
+    },
+  );
+
+  it('keeps a superadmin grant inside the target creator scope', async () => {
+    prisma.admin.findUnique.mockResolvedValue({
+      id: 'leaf',
+      createdBy: 'parent',
+      creator: { scope: 'CANTEENS', canteens: [{ id: 'c1' }] },
+    });
+    await expect(
+      service.updatePermissions(
+        'root',
+        'superadmin',
+        { scope: 'GLOBAL', canteenIds: [] },
+        [],
+        'leaf',
+        { scope: 'CANTEENS', canteenIds: ['c2'], permissions: ['dish:view'] },
+      ),
+    ).rejects.toThrow(ForbiddenException);
+    expect(prisma.admin.update).not.toHaveBeenCalled();
+  });
+
   describe('updatePermissions', () => {
     it('should update permissions as superadmin', async () => {
       prisma.admin.findUnique.mockResolvedValue({
         id: 'target-admin',
         role: 'admin',
         createdBy: 'other-admin',
-        canteenId: null,
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+        canteens: [],
       });
       prisma.adminPermission.deleteMany.mockResolvedValue({});
       prisma.adminPermission.createMany.mockResolvedValue({});
@@ -371,10 +523,10 @@ describe('AdminAdminsService', () => {
       const result = await service.updatePermissions(
         'superadmin-id',
         'superadmin',
-        null,
+        { scope: 'GLOBAL', canteenIds: [] },
         [],
         'target-admin',
-        { permissions: ['dish:view'] },
+        { scope: 'GLOBAL', canteenIds: [], permissions: ['dish:view'] },
       );
 
       expect(result.code).toBe(200);
@@ -387,10 +539,10 @@ describe('AdminAdminsService', () => {
         service.updatePermissions(
           'admin-1',
           'admin',
-          null,
+          { scope: 'GLOBAL', canteenIds: [] },
           ['dish:view'],
           'unknown',
-          { permissions: ['dish:view'] },
+          { scope: 'GLOBAL', canteenIds: [], permissions: ['dish:view'] },
         ),
       ).rejects.toThrow(NotFoundException);
     });
@@ -400,17 +552,19 @@ describe('AdminAdminsService', () => {
         id: 'target-admin',
         role: 'admin',
         createdBy: 'other-admin',
-        canteenId: null,
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+        canteens: [],
       });
 
       await expect(
         service.updatePermissions(
           'admin-1',
           'admin',
-          null,
+          { scope: 'GLOBAL', canteenIds: [] },
           ['dish:view'],
           'target-admin',
-          { permissions: ['dish:view'] },
+          { scope: 'GLOBAL', canteenIds: [], permissions: ['dish:view'] },
         ),
       ).rejects.toThrow(ForbiddenException);
     });
@@ -420,17 +574,19 @@ describe('AdminAdminsService', () => {
         id: 'target-admin',
         role: 'superadmin',
         createdBy: null,
-        canteenId: null,
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+        canteens: [],
       });
 
       await expect(
         service.updatePermissions(
           'superadmin-id',
           'superadmin',
-          null,
+          { scope: 'GLOBAL', canteenIds: [] },
           [],
           'target-admin',
-          { permissions: ['dish:view'] },
+          { scope: 'GLOBAL', canteenIds: [], permissions: ['dish:view'] },
         ),
       ).rejects.toThrow(ForbiddenException);
     });
@@ -440,17 +596,28 @@ describe('AdminAdminsService', () => {
         id: 'target-admin',
         role: 'admin',
         createdBy: 'admin-1',
-        canteenId: 'canteen-1',
+        scope: 'CANTEENS' as const,
+        canteenIds: ['canteen-1'],
+        canteens: [
+          {
+            canteenId: 'canteen-1',
+            canteen: { id: 'canteen-1', name: 'canteen-1' },
+          },
+        ],
       });
 
       await expect(
         service.updatePermissions(
           'admin-1',
           'admin',
-          'canteen-1',
+          { scope: 'CANTEENS', canteenIds: ['canteen-1'] },
           ['dish:view'],
           'target-admin',
-          { permissions: ['dish:view'], canteenId: null },
+          {
+            permissions: ['dish:view'],
+            scope: 'GLOBAL' as const,
+            canteenIds: [],
+          },
         ),
       ).rejects.toThrow(ForbiddenException);
     });
@@ -460,17 +627,19 @@ describe('AdminAdminsService', () => {
         id: 'target-admin',
         role: 'admin',
         createdBy: 'admin-1',
-        canteenId: null,
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+        canteens: [],
       });
 
       await expect(
         service.updatePermissions(
           'admin-1',
           'admin',
-          null,
+          { scope: 'GLOBAL', canteenIds: [] },
           ['admin:edit', 'dish:view'],
           'target-admin',
-          { permissions: ['news:view'] },
+          { scope: 'GLOBAL', canteenIds: [], permissions: ['news:view'] },
         ),
       ).rejects.toThrow(ForbiddenException);
 
@@ -478,10 +647,10 @@ describe('AdminAdminsService', () => {
         service.updatePermissions(
           'admin-1',
           'admin',
-          null,
+          { scope: 'GLOBAL', canteenIds: [] },
           ['admin:edit', 'comment:delete'],
           'target-admin',
-          { permissions: ['comment:delete'] },
+          { scope: 'GLOBAL', canteenIds: [], permissions: ['comment:delete'] },
         ),
       ).rejects.toThrow('所授权限缺少依赖');
       expect(prisma.$transaction).not.toHaveBeenCalled();
@@ -555,6 +724,9 @@ describe('AdminAdminsService', () => {
   describe('changeSubAdminPassword', () => {
     it('should change sub-admin password as superadmin', async () => {
       prisma.admin.findUnique.mockResolvedValue({
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+        canteens: [],
         id: 'target-admin',
         role: 'admin',
         createdBy: 'other-admin',
@@ -573,6 +745,9 @@ describe('AdminAdminsService', () => {
 
     it('should change sub-admin password as creator', async () => {
       prisma.admin.findUnique.mockResolvedValue({
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+        canteens: [],
         id: 'target-admin',
         role: 'admin',
         createdBy: 'admin-1',
@@ -601,6 +776,9 @@ describe('AdminAdminsService', () => {
 
     it('should throw ForbiddenException if not creator and not superadmin', async () => {
       prisma.admin.findUnique.mockResolvedValue({
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+        canteens: [],
         id: 'target-admin',
         role: 'admin',
         createdBy: 'other-admin',
@@ -615,6 +793,9 @@ describe('AdminAdminsService', () => {
 
     it('should throw ForbiddenException for admin without createdBy', async () => {
       prisma.admin.findUnique.mockResolvedValue({
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+        canteens: [],
         id: 'target-admin',
         role: 'admin',
         createdBy: null,

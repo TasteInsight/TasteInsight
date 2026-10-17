@@ -147,7 +147,8 @@ export async function provision(
             username: slot.admin.username,
             password: passwordHash,
             role: "superadmin",
-            canteenId: slot.canteenId,
+            scope: "CANTEENS",
+            canteens: { create: [{ canteenId: slot.canteenId }] },
           },
         });
         await tx.news.create({

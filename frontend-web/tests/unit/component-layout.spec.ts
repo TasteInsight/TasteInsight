@@ -25,7 +25,7 @@ const routeMock = {
 }
 
 const authStoreMock = {
-  user: { username: 'u' },
+  user: {scope: 'GLOBAL' as 'GLOBAL' | 'CANTEENS', canteenIds: [], canteens: [],  username: 'u' },
   token: 't',
   permissions: ['dish:view'],
   hasPermission: vi.fn((id: string) => true),
@@ -149,7 +149,7 @@ describe('components/Layout', () => {
     const removeSpy = vi.spyOn(document, 'removeEventListener')
 
     routeMock.path = '/single-add'
-    authStoreMock.user = { username: 'admin' }
+    authStoreMock.user = {scope: 'GLOBAL' as 'GLOBAL' | 'CANTEENS', canteenIds: [], canteens: [],  username: 'admin' }
     authStoreMock.logout.mockClear()
     mocks.routerPush.mockClear()
 
@@ -273,7 +273,7 @@ describe('components/Layout', () => {
 
   it.each([null, 'c1'])('Sidebar aligns campus menu entries with global scope (%s)', async canteenId => {
     const previousUser = authStoreMock.user
-    authStoreMock.user = { username: 'admin', canteenId } as any
+    authStoreMock.user = {canteenIds: [], canteens: [], username: 'admin', scope: canteenId ? 'CANTEENS' : 'GLOBAL' } as any
     authStoreMock.permissions = ['student:review', 'post:view']
     authStoreMock.hasPermission = vi.fn(id => authStoreMock.permissions.includes(id))
     const Comp = (await import('../../src/components/Layout/Sidebar.vue')).default
@@ -359,7 +359,7 @@ describe('components/Layout', () => {
 
   it('Sidebar renders no-permission styles and supports close button + logout cancel', async () => {
     routeMock.path = '/'
-    authStoreMock.user = { username: 'admin' }
+    authStoreMock.user = {scope: 'GLOBAL' as 'GLOBAL' | 'CANTEENS', canteenIds: [], canteens: [],  username: 'admin' }
     authStoreMock.hasPermission = vi.fn((id: string) => id === 'dish:view')
     authStoreMock.logout.mockClear()
     mocks.routerPush.mockClear()

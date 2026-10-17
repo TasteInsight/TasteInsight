@@ -179,7 +179,12 @@ describe('AdminReportsService', () => {
   });
 
   describe('handleReport', () => {
-    const adminInfo = { id: 'admin-1', canteenId: null, role: 'superadmin' };
+    const adminInfo = {
+      id: 'admin-1',
+      scope: 'GLOBAL' as const,
+      canteenIds: [],
+      role: 'superadmin',
+    };
 
     beforeEach(() => {
       prisma.report.findUnique.mockResolvedValue({
@@ -273,7 +278,12 @@ describe('AdminReportsService', () => {
     });
 
     it('should throw ForbiddenException if canteen admin has no access', async () => {
-      const canteenAdmin = { id: 'admin-1', canteenId: 'c2', role: 'admin' };
+      const canteenAdmin = {
+        id: 'admin-1',
+        scope: 'CANTEENS' as const,
+        canteenIds: ['c2'],
+        role: 'admin',
+      };
 
       await expect(
         service.handleReport(
@@ -318,7 +328,8 @@ describe('AdminReportsService', () => {
           id: 'handler',
           username: 'handler',
           role: 'admin',
-          canteenId: null,
+          scope: 'GLOBAL' as const,
+          canteenIds: [],
           permissions: ['report:handle'],
         };
 

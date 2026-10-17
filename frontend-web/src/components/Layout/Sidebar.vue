@@ -7,10 +7,7 @@
         <h1 class="text-xl font-bold">食鉴管理平台</h1>
       </div>
       <div class="text-sm opacity-75 mt-2 tracking-wide">清华大学餐饮管理中心</div>
-      <div v-if="userInfo.canteenName || !userInfo.canteenId" class="text-xs opacity-70 mt-1">
-        <span v-if="userInfo.canteenName">管理食堂：{{ userInfo.canteenName }}</span>
-        <span v-else>管理食堂：全校食堂</span>
-      </div>
+      <div class="text-xs opacity-70 mt-1">{{ formatAdminScope(userInfo) }}</div>
       </div>
       <button
         type="button"
@@ -200,10 +197,7 @@
         </button>
       </div>
       <!-- 第二行：食堂信息 -->
-      <div v-if="userInfo.canteenName || !userInfo.canteenId" class="pl-7 text-xs opacity-70">
-        <span v-if="userInfo.canteenName">{{ userInfo.canteenName }}</span>
-        <span v-else>全校食堂</span>
-      </div>
+      <div class="pl-7 text-xs opacity-70">{{ formatAdminScope(userInfo) }}</div>
 
       <!-- 权限下拉框 -->
       <div
@@ -421,6 +415,7 @@
 </template>
 
 <script>
+import { formatAdminScope } from '@/utils/admin-scope'
 import { ref, reactive, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/modules/use-auth-store'
@@ -444,7 +439,7 @@ export default {
     const userInfoSection = ref(null)
     const permissionsDropdown = ref(null)
 
-    const userInfo = computed(() => authStore.user || { username: '管理员' })
+    const userInfo = computed(() => authStore.user || { username: '管理员', scope: 'CANTEENS', canteens: [] })
     const userPermissions = computed(() => authStore.permissions || [])
     const canAccessStudentVerification = computed(() => hasGlobalPermission(authStore, 'student:review'))
     const canAccessCommunity = computed(() => hasGlobalPermission(authStore, 'post:view'))
@@ -711,6 +706,7 @@ export default {
     })
 
     return {
+      formatAdminScope,
       mobileMenuOpen,
       showAddSubmenu,
       activeMenu,

@@ -37,6 +37,7 @@ describe('database initialization ownership', () => {
     expect(prisma.admin.create).toHaveBeenCalledTimes(1);
     const { data } = prisma.admin.create.mock.calls[0][0];
     expect(data).toMatchObject({
+      scope: 'GLOBAL',
       username: settings.INITIAL_ADMIN_USERNAME,
       role: 'superadmin',
     });

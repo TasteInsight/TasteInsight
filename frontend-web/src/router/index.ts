@@ -208,7 +208,7 @@ router.beforeEach((to, _from, next) => {
         Array.isArray(requiredPermissions) &&
         requiredPermissions.length > 0 &&
         !requiredPermissions.some((permission) => authStore.hasPermission(permission))
-      const lacksGlobalScope = to.meta.globalOnly && Boolean(authStore.user?.canteenId)
+      const lacksGlobalScope = to.meta.globalOnly && authStore.user?.scope !== 'GLOBAL'
       if (lacksRequiredPermission || lacksAnyRequiredPermission || lacksGlobalScope) {
         // 没有权限，跳转到第一个有权限的页面
         const firstRoute = getFirstAccessibleRoute(authStore)

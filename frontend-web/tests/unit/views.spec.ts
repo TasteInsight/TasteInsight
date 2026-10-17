@@ -27,7 +27,7 @@ vi.mock('vue-router', () => {
 
 vi.mock('@/store/modules/use-auth-store', () => {
   const store = {
-    user: { username: 'admin', name: 'admin' },
+    user: {scope: 'GLOBAL' as 'GLOBAL' | 'CANTEENS', canteenIds: [], canteens: [],  username: 'admin', name: 'admin' },
     token: 'token',
     permissions: [
       'dish:view',
@@ -68,6 +68,7 @@ vi.mock('@/api/modules/dish', () => ({
 vi.mock('@/api/modules/canteen', () => ({
   canteenApi: {
     getCanteens: vi.fn(async () => ({ code: 200, data: { items: [] } })),
+    getCanteenOptions: vi.fn(async () => ({ code: 200, data: { items: [] } })),
     getWindows: vi.fn(async () => ({ code: 200, data: { items: [] } })),
     createCanteen: vi.fn(async () => ({ code: 200, data: {} })),
     updateCanteen: vi.fn(async () => ({ code: 200, data: {} })),

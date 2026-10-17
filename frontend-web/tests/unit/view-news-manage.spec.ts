@@ -15,7 +15,7 @@ vi.mock('@wangeditor/editor/dist/css/style.css', () => ({}))
 
 const mocks = vi.hoisted(() => ({
   authStoreMock: {
-    user: { id: 'a1', username: 'admin' },
+    user: {scope: 'GLOBAL' as 'GLOBAL' | 'CANTEENS', canteenIds: [], canteens: [],  id: 'a1', username: 'admin' },
     token: 'token',
     hasPermission: vi.fn((p: string) =>
       ['news:view', 'news:create', 'news:edit', 'news:publish', 'news:revoke', 'news:delete'].includes(p),
@@ -30,7 +30,7 @@ const mocks = vi.hoisted(() => ({
     revokeNews: vi.fn(),
   },
   canteenApiMock: {
-    getCanteens: vi.fn(),
+    getCanteenOptions: vi.fn(),
   },
   showAlertMock: vi.fn(() => Promise.resolve()),
   showConfirmMock: vi.fn(() => Promise.resolve(true)),
@@ -363,7 +363,7 @@ describe('views/NewsManage', () => {
     mocks.authStoreMock.token = 'token'
     mocks.requestPostMock.mockReset()
 
-    mocks.canteenApiMock.getCanteens.mockResolvedValue({
+    mocks.canteenApiMock.getCanteenOptions.mockResolvedValue({
       code: 200,
       data: { items: [{ id: 'c1', name: 'C1' }] },
     })
@@ -392,7 +392,7 @@ describe('views/NewsManage', () => {
     await flushMicrotasks()
     await nextTick()
 
-    expect(mocks.canteenApiMock.getCanteens).toHaveBeenCalled()
+    expect(mocks.canteenApiMock.getCanteenOptions).toHaveBeenCalled()
     expect(mocks.newsApiMock.getNews).toHaveBeenCalled()
 
     expect(wrapper.vm.editorConfig.MENU_CONF.uploadImage.customUpload).toBeTypeOf('function')
@@ -482,7 +482,7 @@ describe('views/NewsManage', () => {
 
   it('loadCanteens supports array data and logs on failure', async () => {
     // array data branch
-    mocks.canteenApiMock.getCanteens.mockResolvedValueOnce({
+    mocks.canteenApiMock.getCanteenOptions.mockResolvedValueOnce({
       code: 200,
       data: [{ id: 'c9', name: 'C9' }],
     })
@@ -496,7 +496,7 @@ describe('views/NewsManage', () => {
 
     // catch branch logs
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    mocks.canteenApiMock.getCanteens.mockRejectedValueOnce(new Error('canteen boom'))
+    mocks.canteenApiMock.getCanteenOptions.mockRejectedValueOnce(new Error('canteen boom'))
     shallowMount(NewsManage, {
       global: { stubs: { Header: true, Pagination: true } },
     })
@@ -900,15 +900,15 @@ describe('views/NewsManage', () => {
 
   it('limits canteen-scoped managers to their own publisher and filters', async () => {
     const originalUser = mocks.authStoreMock.user
-    mocks.authStoreMock.user = { id: 'a1', username: 'admin', canteenId: 'c1', canteenName: 'C1' } as any
+    mocks.authStoreMock.user = { id: 'a1', username: 'admin', scope: 'CANTEENS' as 'GLOBAL' | 'CANTEENS', canteenIds: ['c1'], canteens: [{id: 'c1', name: 'c1'}], canteenName: 'C1' } as any
     const wrapper = mount(NewsManage, { global: { stubs: { Header: true, Pagination: true } } })
     await flushMicrotasks()
     await nextTick()
-    expect(mocks.canteenApiMock.getCanteens).not.toHaveBeenCalled()
+    expect(mocks.canteenApiMock.getCanteenOptions).not.toHaveBeenCalled()
     expect(wrapper.find('option[value="all"]').exists()).toBe(false)
     wrapper.vm.openCreateModal()
     expect(wrapper.vm.newsForm.canteenId).toBe('c1')
-    expect(mocks.newsApiMock.getNews).toHaveBeenCalledWith(expect.objectContaining({ canteenId: 'c1' }))
+    expect(mocks.newsApiMock.getNews).toHaveBeenCalledWith(expect.not.objectContaining({ canteenId: 'c1' }))
     wrapper.vm.newsForm.title = '所属食堂公告'
     wrapper.vm.newsForm.summary = '摘要'
     wrapper.vm.valueHtml = '<p>正文</p>'

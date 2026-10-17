@@ -1,4 +1,10 @@
 import {
+  AdminCanteenScope,
+  canAccessCanteen,
+  canteenScopeFilter,
+  isGlobalScope,
+} from '@/auth/admin-scope';
+import {
   Injectable,
   NotFoundException,
   ForbiddenException,
@@ -23,16 +29,25 @@ export class AdminCanteensService {
     private dishSyncService: DishSyncService,
   ) {}
 
+  async findOptions(admin: AdminCanteenScope) {
+    const items = await this.prisma.canteen.findMany({
+      where: { id: canteenScopeFilter(admin) },
+      select: { id: true, name: true },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+    });
+    return { code: 200, message: 'success', data: { items } };
+  }
+
   async findAll(
     page: number = 1,
     pageSize: number = 20,
-    adminInfo?: any,
+    adminInfo?: AdminCanteenScope,
   ): Promise<CanteenListResponseDto> {
     const skip = (page - 1) * pageSize;
 
     const where: any = {};
-    if (adminInfo?.canteenId) {
-      where.id = adminInfo.canteenId;
+    if (!isGlobalScope(adminInfo)) {
+      where.id = canteenScopeFilter(adminInfo);
     }
 
     const [total, canteens] = await Promise.all([
@@ -71,8 +86,11 @@ export class AdminCanteensService {
     };
   }
 
-  async findOne(id: string, adminInfo?: any): Promise<CanteenResponseDto> {
-    if (adminInfo?.canteenId && adminInfo.canteenId !== id) {
+  async findOne(
+    id: string,
+    adminInfo?: AdminCanteenScope,
+  ): Promise<CanteenResponseDto> {
+    if (!canAccessCanteen(adminInfo, id)) {
       throw new ForbiddenException('权限不足');
     }
 
@@ -102,9 +120,9 @@ export class AdminCanteensService {
 
   async create(
     createCanteenDto: CreateCanteenDto,
-    adminInfo?: any,
+    adminInfo?: AdminCanteenScope,
   ): Promise<CanteenResponseDto> {
-    if (adminInfo?.canteenId) {
+    if (!isGlobalScope(adminInfo)) {
       throw new ForbiddenException('您无权创建新食堂');
     }
 
@@ -153,9 +171,9 @@ export class AdminCanteensService {
   async update(
     id: string,
     updateCanteenDto: UpdateCanteenDto,
-    adminInfo?: any,
+    adminInfo?: AdminCanteenScope,
   ): Promise<CanteenResponseDto> {
-    if (adminInfo?.canteenId && adminInfo.canteenId !== id) {
+    if (!canAccessCanteen(adminInfo, id)) {
       throw new ForbiddenException('权限不足');
     }
 
@@ -438,8 +456,8 @@ export class AdminCanteensService {
     };
   }
 
-  async remove(id: string, adminInfo?: any): Promise<any> {
-    if (adminInfo?.canteenId && adminInfo.canteenId !== id) {
+  async remove(id: string, adminInfo?: AdminCanteenScope): Promise<any> {
+    if (!canAccessCanteen(adminInfo, id)) {
       throw new ForbiddenException('权限不足');
     }
 
@@ -452,7 +470,7 @@ export class AdminCanteensService {
         }
 
         const activeAdmins = await tx.admin.count({
-          where: { canteenId: id, deletedAt: null },
+          where: { canteens: { some: { canteenId: id } }, deletedAt: null },
         });
         if (activeAdmins > 0) {
           throw new ConflictException('仍有活跃管理员绑定此食堂，无法删除');
@@ -465,10 +483,8 @@ export class AdminCanteensService {
           throw new ConflictException('仍有用餐邀请关联此食堂，无法删除');
         }
 
-        // 退休账号及审计记录保留；活跃绑定由 Restrict 外键保护并发写入。
-        await tx.admin.updateMany({
-          where: { canteenId: id, deletedAt: { not: null } },
-          data: { canteenId: null },
+        await tx.adminCanteen.deleteMany({
+          where: { canteenId: id, admin: { deletedAt: { not: null } } },
         });
         const dishes = await tx.dish.findMany({
           where: { canteenId: id },

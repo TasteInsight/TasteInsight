@@ -7,7 +7,8 @@ describe('Batch dish write permissions and review', () => {
     id: 'admin',
     username: 'creator',
     role: 'admin',
-    canteenId: null,
+    scope: 'GLOBAL' as const,
+    canteenIds: [],
     permissions: ['dish:create'],
   };
   const item = {
@@ -182,7 +183,8 @@ describe('Batch dish write permissions and review', () => {
       { dishes: [item] },
       {
         ...creator,
-        canteenId: 'canteen',
+        scope: 'CANTEENS' as const,
+        canteenIds: ['canteen'],
         permissions: ['dish:create', 'dish:edit'],
       },
     );

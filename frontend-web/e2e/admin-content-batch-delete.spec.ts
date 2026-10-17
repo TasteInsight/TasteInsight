@@ -38,7 +38,7 @@ for (const resource of resources) {
       localStorage.clear()
       sessionStorage.clear()
       sessionStorage.setItem('admin_token', 'batch-delete-ui-test')
-      sessionStorage.setItem('admin_user', JSON.stringify({ id: 'ui-test', username: '界面测试管理员', role: 'admin' }))
+      sessionStorage.setItem('admin_user', JSON.stringify({ scope: 'GLOBAL', canteenIds: [], canteens: [], id: 'ui-test', username: '界面测试管理员', role: 'admin' }))
       sessionStorage.setItem('admin_permissions', JSON.stringify([
         'dish:view', 'dish:delete', 'news:view', 'news:delete', 'review:delete', 'comment:delete', 'canteen:view',
       ]))

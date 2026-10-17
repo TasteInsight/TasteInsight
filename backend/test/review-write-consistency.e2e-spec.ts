@@ -33,7 +33,9 @@ describe('review mutation consistency (PostgreSQL)', () => {
     id: '',
     username: 'review-test-admin',
     role: 'superadmin',
-    canteenId: null,
+    scope: 'GLOBAL' as const,
+    canteenIds: [],
+    canteens: [],
     permissions: [],
   };
 
@@ -45,6 +47,7 @@ describe('review mutation consistency (PostgreSQL)', () => {
     admin.id = (
       await db.admin.create({
         data: {
+          scope: 'GLOBAL',
           username: prefix,
           password: 'unused-token-fixture',
           role: 'superadmin',
@@ -283,7 +286,13 @@ describe('review mutation consistency (PostgreSQL)', () => {
         where: { id: review.dishId },
         data: { canteenId: canteenIds[1] },
       });
-      const scoped = { ...admin, role: 'admin', canteenId: canteenIds[0] };
+      const scoped = {
+        ...admin,
+        role: 'admin',
+        scope: 'CANTEENS' as const,
+        canteenIds: [canteenIds[0]],
+        canteens: [{ id: canteenIds[0], name: canteenIds[0] }],
+      };
       await expect(
         kind === 'review'
           ? adminReviews.deleteReview(review.id, scoped)

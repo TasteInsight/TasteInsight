@@ -1,4 +1,6 @@
 import {
+  IsIn,
+  ArrayUnique,
   IsArray,
   IsNotEmpty,
   IsOptional,
@@ -32,9 +34,14 @@ export class CreateAdminDto {
   @MaxLength(50)
   role?: string;
 
-  @IsString()
-  @IsOptional()
-  canteenId?: string | null;
+  @IsIn(['GLOBAL', 'CANTEENS'])
+  scope: 'GLOBAL' | 'CANTEENS';
+
+  @IsArray()
+  @ArrayUnique()
+  @IsString({ each: true })
+  @IsNotEmpty({ each: true })
+  canteenIds: string[];
 
   @IsArray()
   @IsString({ each: true })

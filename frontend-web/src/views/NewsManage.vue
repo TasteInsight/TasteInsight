@@ -77,7 +77,7 @@
                   v-model="canteenFilter"
                   class="appearance-none pr-10 bg-white min-w-[150px] transition-all cursor-pointer hover:border-gray-400 admin-input"
                 >
-                  <option value="">{{ isCanteenScoped ? '所属食堂' : '全部食堂' }}</option>
+                  <option value="">不限食堂</option>
                   <option v-if="!isCanteenScoped" value="all">全校公告</option>
                   <option v-for="canteen in canteenList" :key="canteen.id" :value="canteen.id">
                     {{ canteen.name }}
@@ -388,7 +388,7 @@
                 :disabled="isSubmitting"
                 class="w-full admin-input"
               >
-                <option v-if="!isCanteenScoped" value="">全校公告</option>
+                <option value="">{{ isCanteenScoped ? '请选择食堂' : '全校公告' }}</option>
                 <option v-for="canteen in canteenList" :key="canteen.id" :value="canteen.id">
                   {{ canteen.name }}
                 </option>
@@ -554,7 +554,7 @@ export default {
     const isLoading = ref(false)
     const canteenList = ref([])
     const authStore = useAuthStore()
-    const isCanteenScoped = computed(() => Boolean(authStore.user?.canteenId))
+    const isCanteenScoped = computed(() => authStore.user?.scope === 'CANTEENS')
     const viewSession = getAuthSessionVersion()
     let isViewActive = true
     let viewVersion = 0
@@ -581,7 +581,7 @@ export default {
     const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
     const currentStatus = ref(restoredState.currentStatus) // 默认显示已发布
     const searchQuery = ref(restoredState.searchQuery)
-    const canteenFilter = ref(authStore.user?.canteenId || restoredState.canteenFilter)
+    const canteenFilter = ref(restoredState.canteenFilter)
     const startDate = ref(restoredState.startDate)
     const endDate = ref(restoredState.endDate)
     
@@ -743,7 +743,7 @@ export default {
       title: '',
       content: '',
       summary: '',
-      canteenId: authStore.user?.canteenId || '',
+      canteenId: (authStore.user?.canteenIds.length === 1 ? authStore.user.canteenIds[0] : ''),
       publishedAt: '',
       status: 'draft',
     })
@@ -900,12 +900,12 @@ export default {
     const loadCanteens = async () => {
       if (!ownsView()) return
       const version = viewVersion
-      if (authStore.user?.canteenId) {
-        canteenList.value = [{ id: authStore.user.canteenId, name: authStore.user.canteenName || '所属食堂' }]
+      if (isCanteenScoped.value) {
+        canteenList.value = authStore.user?.canteens || []
         return
       }
       try {
-        const response = await canteenApi.getCanteens({ page: 1, pageSize: 100 })
+        const response = await canteenApi.getCanteenOptions()
         if (!ownsView(version)) return
         if (response.code === 200 && response.data) {
           if (response.data.items) {
@@ -930,7 +930,7 @@ export default {
       newsForm.title = ''
       newsForm.content = ''
       newsForm.summary = ''
-      newsForm.canteenId = authStore.user?.canteenId || ''
+      newsForm.canteenId = (authStore.user?.canteenIds.length === 1 ? authStore.user.canteenIds[0] : '')
       newsForm.publishedAt = ''
       newsForm.status = 'draft'
       editingNewsId.value = null

@@ -4,8 +4,9 @@ export class AdminDto {
   id: string;
   username: string;
   role: string;
-  canteenId: string | null;
-  canteenName: string | null;
+  scope: 'GLOBAL' | 'CANTEENS';
+  canteenIds: string[];
+  canteens: { id: string; name: string }[];
   createdBy: string | null;
   permissions: string[];
   createdAt: Date;

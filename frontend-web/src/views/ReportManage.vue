@@ -438,7 +438,7 @@ export default defineComponent({
     const statusFilter = ref(restoredState.statusFilter)
     const targetTypeFilter = ref(restoredState.targetTypeFilter)
     const canAccessTargetType = (targetType: Report['targetType']) =>
-      !authStore.user?.canteenId || !reportTargets[targetType].globalOnly
+      authStore.user?.scope === 'GLOBAL' || !reportTargets[targetType].globalOnly
     const availableTargetTypes = computed(() =>
       (Object.keys(reportTargets) as Report['targetType'][]).filter(canAccessTargetType),
     )

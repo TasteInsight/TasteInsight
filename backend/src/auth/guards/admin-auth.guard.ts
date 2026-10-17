@@ -52,6 +52,7 @@ export class AdminAuthGuard implements CanActivate {
         where: { id: payload.sub, deletedAt: null },
         include: {
           permissions: true,
+          canteens: { select: { canteenId: true } },
         },
       });
 
@@ -64,7 +65,8 @@ export class AdminAuthGuard implements CanActivate {
         id: admin.id,
         username: admin.username,
         role: admin.role,
-        canteenId: admin.canteenId,
+        scope: admin.scope,
+        canteenIds: admin.canteens.map((canteen) => canteen.canteenId),
         permissions: admin.permissions.map((p) => p.permission),
       };
     } catch (error) {

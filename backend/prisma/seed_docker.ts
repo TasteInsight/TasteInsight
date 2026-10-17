@@ -44,6 +44,7 @@ async function main() {
       username: adminUsername,
       password: hashedPassword,
       role: 'superadmin',
+      scope: 'GLOBAL',
     },
   });
   console.log(`Created baseline admin: ${admin.username}`);
@@ -57,6 +58,7 @@ async function main() {
       username: process.env.K6_ADMIN_USERNAME || 'k6admin',
       password: k6HashedPassword,
       role: 'superadmin',
+      scope: 'GLOBAL',
     },
   });
   console.log(`Created K6 performance test admin: ${k6Admin.username}`);
@@ -69,6 +71,7 @@ async function main() {
       username: 'normaladmin',
       password: normalAdminPassword,
       role: 'admin',
+      scope: 'GLOBAL',
     },
   });
   console.log(`Created normal admin: ${normalAdmin.username}`);
@@ -89,6 +92,7 @@ async function main() {
       username: 'limitedadmin',
       password: limitedAdminPassword,
       role: 'admin',
+      scope: 'GLOBAL',
     },
   });
   console.log(`Created limited admin: ${limitedAdmin.username}`);
@@ -115,6 +119,7 @@ async function main() {
       username: 'revieweradmin',
       password: reviewerAdminPassword,
       role: 'admin',
+      scope: 'GLOBAL',
     },
   });
   console.log(`Created reviewer admin: ${reviewerAdmin.username}`);
@@ -145,6 +150,7 @@ async function main() {
       username: 'adminmanager',
       password: adminManagerPassword,
       role: 'admin',
+      scope: 'GLOBAL',
     },
   });
   console.log(`Created admin manager: ${adminManager.username}`);
@@ -179,6 +185,7 @@ async function main() {
       username: 'subadmin',
       password: subAdminPassword,
       role: 'admin',
+      scope: 'GLOBAL',
       createdBy: adminManager.id,
     },
   });
@@ -229,6 +236,7 @@ async function main() {
       username: 'canteenadmin',
       password: canteenAdminPassword,
       role: 'admin',
+      scope: 'GLOBAL',
     },
   });
   console.log(`Created canteen admin: ${canteenAdmin.username}`);
@@ -290,7 +298,7 @@ async function main() {
   // 更新食堂管理员，绑定到第一食堂
   await prisma.admin.update({
     where: { id: canteenAdmin.id },
-    data: { canteenId: canteen1.id },
+    data: { scope: 'CANTEENS', canteens: { deleteMany: {}, create: [{ canteenId: canteen1.id }] } },
   });
   console.log(`Updated canteenadmin with canteenId: ${canteen1.id}`);
 

@@ -52,8 +52,8 @@
                   @change="handleFilterChange"
                   class="appearance-none pr-10 bg-white min-w-[200px] transition-all cursor-pointer hover:border-gray-400 admin-input"
                 >
-                  <option value="">全部食堂</option>
-                  <option value="all">全校食堂</option>
+                  <option value="">不限管理范围</option>
+                  <option value="all">全局范围</option>
                   <option v-for="canteen in canteenList" :key="canteen.id" :value="canteen.id">
                     {{ canteen.name }}
                   </option>
@@ -101,7 +101,7 @@
                     {{ getRoleLabel(admin.role) }}
                   </span>
                 </td>
-                <td class="py-4 px-6 text-sm">{{ getCanteenName(admin.canteenId) }}</td>
+                <td class="py-4 px-6 text-sm">{{ formatAdminScope(admin) }}</td>
                 <td class="py-4 px-6 text-sm text-gray-500">{{ formatDate(admin.createdAt) }}</td>
                 <td class="py-4 px-6 text-center" @click.stop>
                   <div class="flex items-center justify-center gap-2">
@@ -376,19 +376,23 @@
               <!-- 管理范围 -->
               <div class="mb-6">
                 <label class="block text-gray-700 font-medium mb-2 admin-label">管理范围（食堂）</label>
-                <select
-                  v-model="formData.canteenId"
-                  class="w-full bg-white admin-input"
-                >
-                  <option value="">全局管理范围</option>
-                  <option v-for="canteen in canteenList" :key="canteen.id" :value="canteen.id">
-                    {{ canteen.name }}
-                  </option>
+                <select v-model="formData.scope" class="w-full bg-white admin-input">
+                  <option v-if="authStore.user?.scope === 'GLOBAL'" value="GLOBAL">全局范围</option>
+                  <option value="CANTEENS">指定食堂</option>
                 </select>
-                <p class="mt-1 text-sm text-gray-500">
-                  留空代表全局管理范围，实际操作权限由右侧单独分配。学生身份审核与社区管理仅限全局范围。
-                  <span class="text-xs text-gray-400">目前仅支持单选，如需多选请联系系统管理员。</span>
+                <fieldset v-if="formData.scope === 'CANTEENS'" class="mt-3 space-y-2 rounded-lg border border-gray-200 p-3 max-h-48 overflow-auto">
+                  <legend class="px-1 text-sm text-gray-600">授权食堂（可多选）</legend>
+                  <label v-for="canteen in canteenList" :key="canteen.id" class="flex items-center gap-2 text-sm text-gray-700">
+                    <input v-model="formData.canteenIds" type="checkbox" :value="canteen.id" class="accent-tsinghua-purple" />
+                    {{ canteen.name }}
+                  </label>
+                  <p v-if="!canteenList.length" class="text-sm text-gray-500">暂无可授权食堂</p>
+                </fieldset>
+                <p v-if="errors.scope" class="mt-1 text-sm text-red-500">{{ errors.scope }}</p>
+                <p class="mt-2 text-sm text-gray-500">
+                  操作权限单独分配。指定食堂范围至少选择一个食堂；学生身份审核与社区管理仅限全局范围。
                 </p>
+                <p v-if="editingAdmin" class="mt-1 text-sm text-gray-500">缩小范围会同步收窄其下级账号的食堂范围。</p>
               </div>
             </div>
 
@@ -589,6 +593,7 @@
 </template>
 
 <script>
+import { formatAdminScope } from '@/utils/admin-scope'
 import { reactive, ref, computed, onMounted, onActivated } from 'vue'
 import { permissionApi } from '@/api/modules/permission'
 import { canteenApi } from '@/api/modules/canteen'
@@ -673,6 +678,7 @@ export default {
       password: '',
       permissions: '',
       customRole: '',
+      scope: '',
     })
 
     const formData = reactive({
@@ -680,7 +686,8 @@ export default {
       password: '',
       role: '',
       customRole: '',
-      canteenId: '',
+      scope: authStore.user?.scope || 'CANTEENS',
+      canteenIds: [...(authStore.user?.canteenIds || [])],
       permissions: [],
     })
 
@@ -798,7 +805,7 @@ export default {
       
       // 只显示当前用户拥有的权限
       return allPermissionGroups
-        .filter(group => !authStore.user?.canteenId || !campusPermissionGroups.some(campusGroup => campusGroup.id === group.id))
+        .filter(group => authStore.user?.scope === 'GLOBAL' || !campusPermissionGroups.some(campusGroup => campusGroup.id === group.id))
         .map(group => ({
           ...group,
           permissions: group.permissions.filter(permission => 
@@ -866,11 +873,11 @@ export default {
       // 食堂筛选
       if (canteenFilter.value) {
         if (canteenFilter.value === 'all') {
-          // 筛选全校食堂（canteenId为空或null）
-          filtered = filtered.filter((admin) => !admin.canteenId)
+          // 筛选全局范围账号
+          filtered = filtered.filter((admin) => admin.scope === 'GLOBAL')
         } else {
           // 筛选指定食堂
-          filtered = filtered.filter((admin) => admin.canteenId === canteenFilter.value)
+          filtered = filtered.filter((admin) => admin.scope === 'GLOBAL' || admin.canteenIds.includes(canteenFilter.value))
         }
       }
 
@@ -916,20 +923,13 @@ export default {
     // 加载食堂列表
     const loadCanteens = async () => {
       try {
-        const response = await canteenApi.getCanteens({ page: 1, pageSize: 100 })
+        const response = await canteenApi.getCanteenOptions()
         if (response.code === 200 && response.data) {
           canteenList.value = response.data.items || []
         }
       } catch (error) {
         console.error('加载食堂列表失败:', error)
       }
-    }
-
-    // 获取食堂名称
-    const getCanteenName = (canteenId) => {
-      if (!canteenId) return '全校食堂'
-      const canteen = canteenList.value.find((c) => c.id === canteenId)
-      return canteen ? canteen.name : canteenId
     }
 
     // 加载子管理员列表
@@ -988,7 +988,8 @@ export default {
         formData.customRole = ''
       }
       
-      formData.canteenId = admin.canteenId || ''
+      formData.scope = admin.scope
+      formData.canteenIds = [...admin.canteenIds]
 
       // 加载权限信息
       // 后端已为 superadmin 返回所有权限，前端只需检查权限列表
@@ -1042,7 +1043,8 @@ export default {
       formData.password = 'Tsinghua@2025'
       formData.role = ''
       formData.customRole = ''
-      formData.canteenId = ''
+      formData.scope = authStore.user?.scope || 'CANTEENS'
+      formData.canteenIds = [...(authStore.user?.canteenIds || [])]
       formData.permissions = []
     }
 
@@ -1237,6 +1239,7 @@ export default {
       errors.password = ''
       errors.permissions = ''
       errors.customRole = ''
+      errors.scope = ''
       
       // 表单验证
       let hasError = false
@@ -1251,6 +1254,11 @@ export default {
         hasError = true
       }
 
+      if (formData.scope === 'CANTEENS' && !formData.canteenIds.length) {
+        errors.scope = '请至少选择一个食堂'
+        hasError = true
+      }
+
       // 验证权限：创建管理员时至少需要选择一个权限
       if (!editingAdmin.value && (!formData.permissions || formData.permissions.length === 0)) {
         errors.permissions = '请至少选择一个权限'
@@ -1262,7 +1270,7 @@ export default {
       const currentUserPermissions = authStore.permissions || []
       
       if (formData.permissions && formData.permissions.length > 0) {
-        if ((formData.canteenId.trim() || authStore.user?.canteenId) && formData.permissions.some(permission => campusGlobalPermissions.includes(permission))) {
+        if ((formData.scope !== 'GLOBAL') && formData.permissions.some(permission => campusGlobalPermissions.includes(permission))) {
           errors.permissions = '学生身份审核与社区管理权限仅可分配给全局管理范围，请调整范围或取消相关权限'
           hasError = true
         }
@@ -1302,11 +1310,11 @@ export default {
       try {
         if (editingAdmin.value) {
           // 更新管理员权限
-          const trimmedCanteenId = formData.canteenId.trim();
           const response = await permissionApi.updateAdminPermissions(
             editingAdmin.value.id,
             formData.permissions,
-            trimmedCanteenId || null,
+            formData.scope,
+            formData.scope === 'GLOBAL' ? [] : formData.canteenIds,
           )
 
           if (response.code === 200) {
@@ -1326,7 +1334,8 @@ export default {
           const createData = {
             username: formData.username.trim(),
             password: formData.password.trim(),
-            canteenId: formData.canteenId.trim() || undefined,
+            scope: formData.scope,
+            canteenIds: formData.scope === 'GLOBAL' ? [] : formData.canteenIds,
             permissions: formData.permissions,
             role: finalRole,
           }
@@ -1542,7 +1551,7 @@ export default {
       resetFilters,
       formatDate,
       getRoleLabel,
-      getCanteenName,
+      formatAdminScope,
       canteenList,
       authStore,
       // 重置子管理员密码相关

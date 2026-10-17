@@ -31,7 +31,8 @@ describe('UploadAuthGuard', () => {
       prisma.admin.findUnique.mockResolvedValue({
         id: 'account',
         permissions: [],
-        canteenId: null,
+        scope: 'GLOBAL',
+        canteens: [],
       });
       await expect(guard.canActivate(context)).resolves.toBe(true);
     },

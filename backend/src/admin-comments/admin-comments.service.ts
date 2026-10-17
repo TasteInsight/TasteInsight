@@ -1,4 +1,10 @@
 import {
+  AdminCanteenScope,
+  canAccessCanteen,
+  canteenScopeFilter,
+  isGlobalScope,
+} from '@/auth/admin-scope';
+import {
   Injectable,
   NotFoundException,
   ForbiddenException,
@@ -29,7 +35,7 @@ export class AdminCommentsService {
 
   private async deleteComments(
     ids: string[],
-    admin?: Pick<AdminInfo, 'canteenId'>,
+    admin?: AdminCanteenScope,
   ): Promise<number> {
     return this.prisma.$transaction(async (tx) => {
       const parents = await tx.comment.findMany({
@@ -67,8 +73,7 @@ export class AdminCommentsService {
       if (rows.length !== ids.length)
         throw new NotFoundException('部分回复已不存在，请刷新列表');
       if (
-        admin?.canteenId &&
-        rows.some((row) => row.review.dish.canteenId !== admin.canteenId)
+        rows.some((row) => !canAccessCanteen(admin, row.review.dish.canteenId))
       )
         throw new ForbiddenException('无权删除所选回复');
       const result = await tx.comment.updateMany({
@@ -86,7 +91,7 @@ export class AdminCommentsService {
   async getPendingComments(
     page: number = 1,
     pageSize: number = 20,
-    adminInfo?: any,
+    adminInfo?: AdminCanteenScope,
   ): Promise<PendingCommentListResponseDto> {
     const skip = (page - 1) * pageSize;
     const where: any = {
@@ -95,8 +100,8 @@ export class AdminCommentsService {
       review: { deletedAt: null },
     };
 
-    if (adminInfo?.canteenId) {
-      where.review.dish = { canteenId: adminInfo.canteenId };
+    if (!isGlobalScope(adminInfo)) {
+      where.review.dish = { canteenId: canteenScopeFilter(adminInfo) };
     }
 
     const [total, comments] = await Promise.all([
@@ -155,7 +160,7 @@ export class AdminCommentsService {
 
   async approveComment(
     id: string,
-    adminInfo?: any,
+    adminInfo?: AdminCanteenScope,
   ): Promise<SuccessResponseDto> {
     return this.moderateComment(id, true, adminInfo);
   }
@@ -163,7 +168,7 @@ export class AdminCommentsService {
   private async moderateComment(
     id: string,
     approved: boolean,
-    adminInfo?: any,
+    adminInfo?: AdminCanteenScope,
     reason?: string,
   ): Promise<SuccessResponseDto> {
     await this.prisma.$transaction(async (tx) => {
@@ -189,10 +194,7 @@ export class AdminCommentsService {
         throw new NotFoundException('评论不存在');
       }
 
-      if (
-        adminInfo?.canteenId &&
-        comment.review.dish.canteenId !== adminInfo.canteenId
-      ) {
+      if (!canAccessCanteen(adminInfo, comment.review.dish.canteenId)) {
         throw new ForbiddenException('权限不足');
       }
 
@@ -250,14 +252,14 @@ export class AdminCommentsService {
   async rejectComment(
     id: string,
     dto: RejectCommentDto,
-    adminInfo?: any,
+    adminInfo?: AdminCanteenScope,
   ): Promise<SuccessResponseDto> {
     return this.moderateComment(id, false, adminInfo, dto.reason);
   }
 
   async deleteComment(
     id: string,
-    adminInfo?: any,
+    adminInfo?: AdminCanteenScope,
   ): Promise<SuccessResponseDto> {
     await this.deleteComments([id], adminInfo);
 
