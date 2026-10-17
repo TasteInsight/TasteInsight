@@ -12,7 +12,7 @@
         <div class="flex items-center space-x-4">
           <button
             v-if="canReview"
-            class="px-6 py-2 rounded-lg font-medium transition duration-200"
+            class="font-medium transition duration-200 admin-button"
             :class="
               activeTab === 'reviews'
                 ? 'bg-tsinghua-purple text-white'
@@ -25,7 +25,7 @@
           </button>
           <button
             v-if="canComment"
-            class="px-6 py-2 rounded-lg font-medium transition duration-200"
+            class="font-medium transition duration-200 admin-button"
             :class="
               activeTab === 'comments'
                 ? 'bg-tsinghua-purple text-white'
@@ -54,7 +54,7 @@
           </thead>
           <tbody class="divide-y divide-gray-200">
             <tr v-if="isLoadingReviews">
-              <td colspan="6" class="py-8 text-center text-gray-500">
+              <td colspan="6" class="admin-state">
                 <AppIcon
                   class="iconify inline-block text-2xl animate-spin"
                   icon="mdi:loading"
@@ -63,7 +63,7 @@
               </td>
             </tr>
             <tr v-else-if="reviews.length === 0">
-              <td colspan="6" class="py-8 text-center text-gray-500">暂无待审核评价</td>
+              <td colspan="6" class="admin-state">暂无待审核评价</td>
             </tr>
             <tr
               v-else
@@ -121,7 +121,7 @@
               </td>
               <td class="py-4 px-6 text-center" @click.stop>
                 <button
-                  class="px-4 py-1 bg-tsinghua-purple text-white rounded text-sm hover:bg-tsinghua-dark transition duration-200 flex items-center justify-center mx-auto"
+                  class="transition duration-200 flex items-center justify-center mx-auto admin-button admin-button-compact admin-button-primary"
                   @click="openReviewDetail(review)"
                 >
                   <AppIcon class="iconify inline-block mr-1" icon="carbon:view" style="vertical-align: middle;"></AppIcon>
@@ -148,7 +148,7 @@
           </thead>
           <tbody class="divide-y divide-gray-200">
             <tr v-if="isLoadingComments">
-              <td colspan="6" class="py-8 text-center text-gray-500">
+              <td colspan="6" class="admin-state">
                 <AppIcon
                   class="iconify inline-block text-2xl animate-spin"
                   icon="mdi:loading"
@@ -157,7 +157,7 @@
               </td>
             </tr>
             <tr v-else-if="comments.length === 0">
-              <td colspan="6" class="py-8 text-center text-gray-500">暂无待审核评论</td>
+              <td colspan="6" class="admin-state">暂无待审核评论</td>
             </tr>
             <tr
               v-else
@@ -204,7 +204,7 @@
               </td>
               <td class="py-4 px-6 text-center" @click.stop>
                 <button
-                  class="px-4 py-1 bg-tsinghua-purple text-white rounded text-sm hover:bg-tsinghua-dark transition duration-200 flex items-center justify-center mx-auto"
+                  class="transition duration-200 flex items-center justify-center mx-auto admin-button admin-button-compact admin-button-primary"
                   @click="openCommentDetail(comment)"
                 >
                   <AppIcon class="iconify inline-block mr-1" icon="carbon:view" style="vertical-align: middle;"></AppIcon>
@@ -240,15 +240,15 @@
       label="评价详情"
       @close="closeReviewDetail"
     >
-      <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+      <div class="max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col admin-dialog-panel">
         <!-- 对话框头部 -->
-        <div class="px-8 py-5 border-b border-gray-200 bg-white flex items-center justify-between">
+        <div class="bg-white flex items-center justify-between admin-dialog-header">
           <h3 class="text-xl font-semibold text-gray-900 flex items-center">
             <AppIcon class="iconify inline-block mr-3 text-tsinghua-purple" icon="carbon:star" style="font-size: 24px;"></AppIcon>
             评价详情
           </h3>
           <button
-            class="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg p-1.5 transition"
+            class="text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition admin-icon-button"
             @click="closeReviewDetail"
             aria-label="关闭评价详情"
           >
@@ -257,7 +257,7 @@
         </div>
 
         <!-- 对话框内容 -->
-        <div class="px-8 py-6 overflow-y-auto flex-1 bg-gray-50">
+        <div class="overflow-y-auto flex-1 bg-gray-50 admin-dialog-body">
           <div class="space-y-5">
             <!-- 基本信息 -->
             <div class="bg-white rounded-xl shadow-sm p-6">
@@ -384,10 +384,10 @@
         </div>
 
         <!-- 对话框底部操作按钮 -->
-        <div class="px-6 py-4 border-t bg-white">
-          <div v-if="selectedReview.status === 'pending'" class="flex items-center justify-end space-x-3">
+        <div class="admin-dialog-footer">
+          <div v-if="selectedReview.status === 'pending'" class="flex flex-wrap items-center justify-end gap-3 w-full">
             <button
-              class="px-4 py-2 bg-gray-600 text-white rounded-lg text-sm hover:bg-gray-700 transition duration-200 flex items-center"
+              class="bg-gray-600 text-white hover:bg-gray-700 transition duration-200 flex items-center admin-button"
               @click="openRejectReviewModal"
               :disabled="!authStore.hasPermission('review:approve') || isSubmitting"
               :title="!authStore.hasPermission('review:approve') ? '无权限审核评价' : '拒绝评价'"
@@ -396,7 +396,7 @@
               拒绝
             </button>
             <button
-              class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition duration-200 flex items-center"
+              class="bg-green-600 text-white hover:bg-green-700 transition duration-200 flex items-center admin-button"
               @click="handleApproveReview"
               :disabled="!authStore.hasPermission('review:approve') || isSubmitting"
               :title="!authStore.hasPermission('review:approve') ? '无权限审核评价' : '通过评价'"
@@ -426,15 +426,15 @@
       label="评论详情"
       @close="closeCommentDetail"
     >
-      <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+      <div class="max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col admin-dialog-panel">
         <!-- 对话框头部 -->
-        <div class="px-8 py-5 border-b border-gray-200 bg-white flex items-center justify-between">
+        <div class="bg-white flex items-center justify-between admin-dialog-header">
           <h3 class="text-xl font-semibold text-gray-900 flex items-center">
             <AppIcon class="iconify inline-block mr-3 text-tsinghua-purple" icon="carbon:chat" style="font-size: 24px;"></AppIcon>
             评论详情
           </h3>
           <button
-            class="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg p-1.5 transition"
+            class="text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition admin-icon-button"
             @click="closeCommentDetail"
             aria-label="关闭评论详情"
           >
@@ -443,7 +443,7 @@
         </div>
 
         <!-- 对话框内容 -->
-        <div class="px-8 py-6 overflow-y-auto flex-1 bg-gray-50">
+        <div class="overflow-y-auto flex-1 bg-gray-50 admin-dialog-body">
           <div class="space-y-5">
             <!-- 基本信息 -->
             <div class="bg-white rounded-xl shadow-sm p-6">
@@ -529,10 +529,10 @@
         </div>
 
         <!-- 对话框底部操作按钮 -->
-        <div class="px-6 py-4 border-t bg-white">
-          <div v-if="selectedComment.status === 'pending'" class="flex items-center justify-end space-x-3">
+        <div class="admin-dialog-footer">
+          <div v-if="selectedComment.status === 'pending'" class="flex flex-wrap items-center justify-end gap-3 w-full">
             <button
-              class="px-4 py-2 bg-gray-600 text-white rounded-lg text-sm hover:bg-gray-700 transition duration-200 flex items-center"
+              class="bg-gray-600 text-white hover:bg-gray-700 transition duration-200 flex items-center admin-button"
               @click="openRejectCommentModal"
               :disabled="!authStore.hasPermission('comment:approve') || isSubmitting"
               :title="!authStore.hasPermission('comment:approve') ? '无权限审核评论' : '拒绝评论'"
@@ -541,7 +541,7 @@
               拒绝
             </button>
             <button
-              class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition duration-200 flex items-center"
+              class="bg-green-600 text-white hover:bg-green-700 transition duration-200 flex items-center admin-button"
               @click="handleApproveComment"
               :disabled="!authStore.hasPermission('comment:approve') || isSubmitting"
               :title="!authStore.hasPermission('comment:approve') ? '无权限审核评论' : '通过评论'"
@@ -571,44 +571,44 @@
       label="拒绝评价"
       @close="closeRejectReviewModal"
     >
-      <div class="bg-white rounded-lg shadow-xl w-[500px] overflow-hidden animate-fade-in-up">
-        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+      <div class="w-[500px] overflow-hidden animate-fade-in-up admin-dialog-panel">
+        <div class="flex justify-between items-center admin-dialog-header">
           <h3 class="text-lg font-medium text-gray-900">拒绝评价</h3>
           <button
             @click="closeRejectReviewModal"
             aria-label="关闭拒绝评价"
-            class="text-gray-400 hover:text-gray-500 transition-colors"
+            class="text-gray-400 hover:text-gray-500 transition-colors admin-icon-button"
           >
             <AppIcon class="iconify text-xl" icon="carbon:close"></AppIcon>
           </button>
         </div>
 
-        <div class="p-6">
+        <div class="admin-dialog-body">
           <p class="text-gray-600 mb-4">
             确定要拒绝这条评价吗？
           </p>
 
           <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2">拒绝原因</label>
+            <label class="block font-medium text-gray-700 mb-2 admin-label">拒绝原因</label>
             <textarea
               v-model="rejectReviewReason"
               rows="4"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-shadow resize-none"
+              class="w-full focus:outline-none transition-shadow resize-none admin-textarea"
               placeholder="请输入拒绝原因（建议填写，以便用户了解）..."
             ></textarea>
           </div>
         </div>
 
-        <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+        <div class="flex justify-end admin-dialog-footer">
           <button
             @click="closeRejectReviewModal"
-            class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition duration-200"
+            class="transition duration-200 admin-button admin-button-secondary"
           >
             取消
           </button>
           <button
             @click="handleRejectReview"
-            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200 flex items-center"
+            class="bg-red-600 text-white hover:bg-red-700 transition duration-200 flex items-center admin-button"
             :disabled="isSubmitting || !rejectReviewReason.trim()"
           >
             <AppIcon
@@ -629,44 +629,44 @@
       label="拒绝评论"
       @close="closeRejectCommentModal"
     >
-      <div class="bg-white rounded-lg shadow-xl w-[500px] overflow-hidden animate-fade-in-up">
-        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+      <div class="w-[500px] overflow-hidden animate-fade-in-up admin-dialog-panel">
+        <div class="flex justify-between items-center admin-dialog-header">
           <h3 class="text-lg font-medium text-gray-900">拒绝评论</h3>
           <button
             @click="closeRejectCommentModal"
             aria-label="关闭拒绝评论"
-            class="text-gray-400 hover:text-gray-500 transition-colors"
+            class="text-gray-400 hover:text-gray-500 transition-colors admin-icon-button"
           >
             <AppIcon class="iconify text-xl" icon="carbon:close"></AppIcon>
           </button>
         </div>
 
-        <div class="p-6">
+        <div class="admin-dialog-body">
           <p class="text-gray-600 mb-4">
             确定要拒绝这条评论吗？
           </p>
 
           <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2">拒绝原因</label>
+            <label class="block font-medium text-gray-700 mb-2 admin-label">拒绝原因</label>
             <textarea
               v-model="rejectCommentReason"
               rows="4"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-shadow resize-none"
+              class="w-full focus:outline-none transition-shadow resize-none admin-textarea"
               placeholder="请输入拒绝原因（建议填写，以便用户了解）..."
             ></textarea>
           </div>
         </div>
 
-        <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
+        <div class="flex justify-end admin-dialog-footer">
           <button
             @click="closeRejectCommentModal"
-            class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition duration-200"
+            class="transition duration-200 admin-button admin-button-secondary"
           >
             取消
           </button>
           <button
             @click="handleRejectComment"
-            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition duration-200 flex items-center"
+            class="bg-red-600 text-white hover:bg-red-700 transition duration-200 flex items-center admin-button"
             :disabled="isSubmitting || !rejectCommentReason.trim()"
           >
             <AppIcon
@@ -692,7 +692,7 @@
         <!-- 关闭按钮 -->
         <button
           aria-label="关闭图片预览"
-          class="absolute top-4 right-4 z-10 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition"
+          class="absolute top-4 right-4 z-10 text-white bg-black bg-opacity-50 rounded-full hover:bg-opacity-75 transition admin-icon-button"
           @click="closeImagePreview"
         >
           <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
@@ -711,7 +711,7 @@
           v-if="imagePreview.images.length > 1"
           aria-label="上一张图片"
           :aria-disabled="imagePreview.currentIndex === 0"
-          class="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full p-3 hover:bg-opacity-75 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          class="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full hover:bg-opacity-75 transition disabled:opacity-50 disabled:cursor-not-allowed admin-icon-button"
           @click.stop="previousImage"
           :disabled="imagePreview.currentIndex === 0"
         >
@@ -721,7 +721,7 @@
           v-if="imagePreview.images.length > 1"
           aria-label="下一张图片"
           :aria-disabled="imagePreview.currentIndex === imagePreview.images.length - 1"
-          class="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full p-3 hover:bg-opacity-75 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          class="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full hover:bg-opacity-75 transition disabled:opacity-50 disabled:cursor-not-allowed admin-icon-button"
           @click.stop="nextImage"
           :disabled="imagePreview.currentIndex === imagePreview.images.length - 1"
         >

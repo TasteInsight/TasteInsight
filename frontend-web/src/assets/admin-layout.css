@@ -148,14 +148,6 @@
   min-width: 0;
 }
 
-.admin-toolbar :is(input:not([type='checkbox']), select) {
-  height: 40px;
-  max-width: 100%;
-  font-size: 14px;
-  line-height: 20px;
-  border-color: #d1d5db;
-  border-radius: 8px;
-}
 
 .admin-table-scroll {
   width: 100%;
@@ -314,6 +306,75 @@
 .admin-app ::selection {
   color: #1f2937;
   background: #e5e7eb;
+}
+
+
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-state {
+  padding: 32px 16px;
+  color: #667085;
+  font-size: 14px;
+  line-height: 22px;
+  text-align: center;
+}
+
+.admin-table td.admin-state { padding: 32px 16px; }
+.admin-error,
+.admin-state-error { color: #b91c1c; }
+.admin-table-top td { vertical-align: top; }
+
+/* Dialog content shares spacing while each view keeps its content width and scrolling. */
+:where(.admin-dialog-panel) { max-width: 100%; }
+
+.admin-dialog-panel {
+  margin-block: auto;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 16px 48px rgb(17 24 39 / 20%);
+}
+
+.admin-dialog-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.admin-dialog-header > div:only-child { width: 100%; min-width: 0; }
+.admin-dialog-header h3 { font-size: 18px; line-height: 26px; }
+.admin-dialog-body { padding: 24px; }
+
+.admin-dialog-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.admin-dialog-body .admin-actions {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+@media (max-width: 639px) {
+  .admin-input,
+  .admin-textarea { font-size: 16px; }
+  .admin-dialog-header,
+  .admin-dialog-body,
+  .admin-dialog-footer { padding: 16px; }
+  .admin-dialog-footer > .admin-button { flex: 1; }
 }
 
 @media (max-width: 1023px) {

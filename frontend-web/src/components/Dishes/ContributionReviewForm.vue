@@ -4,35 +4,35 @@
       <div class="admin-form-grid">
         <div class="space-y-4">
           <div>
-            <label for="upload-name" class="block text-sm font-medium mb-1">菜品名称</label>
-            <input id="upload-name" v-model="draft.name" required class="review-input" />
+            <label for="upload-name" class="block font-medium mb-1 admin-label">菜品名称</label>
+            <input id="upload-name" v-model="draft.name" required class="review-input admin-input" />
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label for="upload-price" class="block text-sm font-medium mb-1">价格</label>
-              <input id="upload-price" v-model.number="draft.price" type="number" min="0" step="0.01" required class="review-input" />
+              <label for="upload-price" class="block font-medium mb-1 admin-label">价格</label>
+              <input id="upload-price" v-model.number="draft.price" type="number" min="0" step="0.01" required class="review-input admin-input" />
             </div>
             <div>
-              <label for="upload-price-unit" class="block text-sm font-medium mb-1">价格单位</label>
-              <input id="upload-price-unit" v-model="draft.priceUnit" class="review-input" placeholder="例如：元/份" />
+              <label for="upload-price-unit" class="block font-medium mb-1 admin-label">价格单位</label>
+              <input id="upload-price-unit" v-model="draft.priceUnit" class="review-input admin-input" placeholder="例如：元/份" />
             </div>
           </div>
           <div>
-            <label for="upload-window" class="block text-sm font-medium mb-1">{{ upload.canteenName }} · 窗口</label>
-            <select id="upload-window" v-model="draft.windowId" class="review-input" :disabled="windowsLoading || !!windowsError">
+            <label for="upload-window" class="block font-medium mb-1 admin-label">{{ upload.canteenName }} · 窗口</label>
+            <select id="upload-window" v-model="draft.windowId" class="review-input admin-input" :disabled="windowsLoading || !!windowsError">
               <option :value="upload.windowId || null">{{ upload.windowName || '未填写窗口' }}（当前）</option>
               <option v-for="window in otherWindows" :key="window.id" :value="window.id">
                 {{ window.floor?.name || window.floor?.level || '' }} · {{ window.name }}
               </option>
             </select>
             <p v-if="windowsError" role="alert" class="text-sm text-red-700 mt-1">
-              {{ windowsError }} <button type="button" class="underline" @click="loadWindows">重试窗口列表</button>
+              {{ windowsError }} <button type="button" class="underline admin-button" @click="loadWindows">重试窗口列表</button>
             </p>
             <p v-else class="text-sm text-gray-600 mt-1">{{ selectedWindow?.floor?.name || floorLabel(upload) || '未填写楼层' }} · 编号 {{ selectedWindow?.number || upload.windowNumber || '未填写' }}</p>
           </div>
           <div>
-            <label for="upload-description" class="block text-sm font-medium mb-1">菜品描述</label>
-            <textarea id="upload-description" v-model="draft.description" rows="4" class="review-input" />
+            <label for="upload-description" class="block font-medium mb-1 admin-label">菜品描述</label>
+            <textarea id="upload-description" v-model="draft.description" rows="4" class="review-input admin-textarea" />
           </div>
           <div>
             <span class="block text-sm font-medium mb-2">菜品图片</span>
@@ -40,14 +40,14 @@
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div v-for="(image, index) in draft.images" :key="image" class="min-w-0">
                 <AdminImage :src="image" :alt="`菜品图片 ${index + 1}`" image-class="w-full aspect-square rounded-lg object-cover" />
-                <div class="flex justify-between gap-2 text-sm mt-1">
-                  <button v-if="index > 0" type="button" class="text-tsinghua-purple hover:underline" @click="moveCover(index)">设为首图</button>
+                <div class="review-image-actions flex flex-wrap items-center justify-between gap-1 text-sm mt-1">
+                  <button v-if="index > 0" type="button" class="text-tsinghua-purple hover:underline admin-button admin-button-compact" @click="moveCover(index)">设为首图</button>
                   <span v-else class="text-gray-600">首图</span>
-                  <button type="button" class="text-red-700 hover:underline" :aria-label="`移除菜品图片 ${index + 1}`" @click="draft.images.splice(index, 1)">移除</button>
+                  <button type="button" class="text-red-700 hover:underline admin-button admin-button-compact" :aria-label="`移除菜品图片 ${index + 1}`" @click="draft.images.splice(index, 1)">移除</button>
                 </div>
               </div>
             </div>
-            <label for="upload-images" class="block text-sm mt-3 mb-1">添加图片</label>
+            <label for="upload-images" class="block mt-3 mb-1 admin-label">添加图片</label>
             <input id="upload-images" type="file" accept="image/*" multiple class="block w-full text-sm" @change="addImages" />
           </div>
         </div>
@@ -56,8 +56,8 @@
             <legend class="text-sm font-medium mb-2">口味</legend>
             <div class="grid grid-cols-2 gap-3">
               <div v-for="taste in tasteFields" :key="taste.key">
-                <label :for="`upload-${taste.key}`" class="block text-sm mb-1">{{ taste.label }}</label>
-                <select :id="`upload-${taste.key}`" v-model="draft[taste.key]" class="review-input">
+                <label :for="`upload-${taste.key}`" class="block mb-1 admin-label">{{ taste.label }}</label>
+                <select :id="`upload-${taste.key}`" v-model="draft[taste.key]" class="review-input admin-input">
                   <option :value="draft[taste.key] === null ? null : 0">未提供</option>
                   <option v-for="value in [1, 2, 3, 4, 5]" :key="value" :value="value">{{ value }}</option>
                 </select>
@@ -75,18 +75,18 @@
           <fieldset>
             <legend class="text-sm font-medium mb-2">供应日期段</legend>
             <div v-for="(range, index) in draft.availableDates" :key="index" class="flex flex-wrap items-end gap-2 mb-3">
-              <label class="min-w-0 flex-1 text-sm">开始日期<input v-model="range.startDate" type="date" required class="review-input mt-1" /></label>
-              <label class="min-w-0 flex-1 text-sm">结束日期<input v-model="range.endDate" type="date" required class="review-input mt-1" /></label>
-              <button type="button" class="p-2 text-red-700 hover:underline" :aria-label="`移除供应日期段 ${index + 1}`" @click="draft.availableDates.splice(index, 1)">移除</button>
+              <label class="min-w-0 flex-1 admin-label">开始日期<input v-model="range.startDate" type="date" required class="review-input mt-1 admin-input" /></label>
+              <label class="min-w-0 flex-1 admin-label">结束日期<input v-model="range.endDate" type="date" required class="review-input mt-1 admin-input" /></label>
+              <button type="button" class="text-red-700 hover:underline admin-button" :aria-label="`移除供应日期段 ${index + 1}`" @click="draft.availableDates.splice(index, 1)">移除</button>
             </div>
-            <button type="button" class="text-sm text-tsinghua-purple hover:underline" @click="draft.availableDates.push({ startDate: '', endDate: '' })">添加日期段</button>
+            <button type="button" class="text-tsinghua-purple hover:underline admin-button" @click="draft.availableDates.push({ startDate: '', endDate: '' })">添加日期段</button>
           </fieldset>
           <details class="border-t pt-4">
             <summary class="font-medium cursor-pointer text-sm">标签、原辅料与过敏原</summary>
             <div class="space-y-4 mt-4">
               <div v-for="field in listFields" :key="field.key">
-                <label :for="`upload-${field.key}`" class="block text-sm mb-1">{{ field.label }}</label>
-                <input :id="`upload-${field.key}`" v-model="lists[field.key]" class="review-input" placeholder="用顿号或逗号分隔" />
+                <label :for="`upload-${field.key}`" class="block mb-1 admin-label">{{ field.label }}</label>
+                <input :id="`upload-${field.key}`" v-model="lists[field.key]" class="review-input admin-input" placeholder="用顿号或逗号分隔" />
               </div>
             </div>
           </details>
@@ -95,9 +95,9 @@
     </fieldset>
     <p v-if="error" role="alert" class="text-sm text-red-700">{{ error }}</p>
     <p v-if="uploading" role="status" class="text-sm text-gray-600">正在上传图片…</p>
-    <div class="flex flex-wrap gap-3">
-      <button type="submit" :disabled="busy || uploading" class="px-5 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark disabled:opacity-50">{{ busy ? '保存中…' : '保存修改' }}</button>
-      <button type="button" :disabled="busy || uploading" class="px-5 py-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50" @click="$emit('cancel')">取消编辑</button>
+    <div class="flex flex-wrap gap-3 admin-actions">
+      <button type="submit" :disabled="busy || uploading" class="disabled:opacity-50 admin-button admin-button-primary">{{ busy ? '保存中…' : '保存修改' }}</button>
+      <button type="button" :disabled="busy || uploading" class="border hover:bg-gray-50 disabled:opacity-50 admin-button" @click="$emit('cancel')">取消编辑</button>
     </div>
   </form>
 </template>
@@ -185,7 +185,6 @@ onMounted(loadWindows)
 </script>
 
 <style scoped>
-.review-input { width: 100%; min-width: 0; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.5rem; background: white; }
-.review-input:focus-visible { outline: 2px solid #660874; outline-offset: 2px; }
-.review-input:disabled { background: #f9fafb; color: #6b7280; }
+.review-input { width: 100%; }
+.review-image-actions .admin-button { padding-inline: 4px; }
 </style>

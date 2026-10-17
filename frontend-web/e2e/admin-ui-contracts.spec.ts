@@ -191,3 +191,46 @@ test('nested previews retain their top-layer order across KeepAlive navigation',
   await expect(detail).toBeVisible()
   expect(writes).toEqual([])
 })
+
+for (const action of ['cancel', 'save', 'navigate'] as const) {
+  test(`${action} clears queued selection updates when the news editor closes`, async ({ page }) => {
+    const errors: string[] = []
+    page.on('pageerror', error => errors.push(error.message))
+    const writes = await prepare(page)
+    const saved: unknown[] = []
+    await page.route('**/admin/news', async route => {
+      if (route.request().method() !== 'POST') return route.fallback()
+      saved.push(route.request().postDataJSON())
+      return route.fulfill({ json: { code: 201, data: { id: 'lifecycle-draft' } } })
+    })
+    await page.goto('/modify-dish')
+    await page.getByRole('link', { name: '新闻管理', exact: true }).click()
+    await page.getByRole('button', { name: '创建新闻', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: '创建新闻', exact: true })
+    await dialog.getByPlaceholder('请输入新闻标题', { exact: true }).fill('关闭前的草稿')
+    await dialog.getByPlaceholder('请输入新闻摘要', { exact: true }).fill('选区回调验收')
+    await dialog.locator('[contenteditable="true"]').pressSequentially('关闭前的正文')
+    await page.clock.install({ time: new Date('2030-01-01T00:00:00Z') })
+    await page.clock.pauseAt(new Date('2030-01-01T00:00:01Z'))
+    await dialog.evaluate((element, action) => {
+      document.dispatchEvent(new Event('selectionchange'))
+      document.dispatchEvent(new Event('selectionchange'))
+      if (action === 'navigate') return
+      const label = action === 'save' ? '保存为草稿' : '取消'
+      const button = Array.from(element.querySelectorAll('button')).find(button => button.textContent?.trim() === label)!
+      button.click()
+    }, action)
+    if (action === 'navigate') {
+      await page.goBack()
+      await expect(page.getByRole('heading', { name: '菜品管理', exact: true })).toBeVisible()
+    }
+    await expect(dialog).toBeHidden()
+    await page.clock.runFor(250)
+    expect(errors).toEqual([])
+    expect(saved).toHaveLength(action === 'save' ? 1 : 0)
+    if (action === 'save') {
+      expect(saved[0]).toMatchObject({ content: expect.stringContaining('关闭前的正文') })
+    }
+    expect(writes).toEqual([])
+  })
+}

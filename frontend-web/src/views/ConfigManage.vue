@@ -19,7 +19,7 @@
 
       <div class="mt-6">
         <!-- 加载状态 -->
-        <div v-if="loading" class="text-center py-12">
+        <div v-if="loading" class="admin-state">
           <AppIcon class="iconify text-4xl text-gray-300 animate-spin" icon="carbon:circle-dash"></AppIcon>
           <p class="mt-4 text-gray-500">加载中...</p>
         </div>
@@ -124,7 +124,10 @@
 
           <template v-if="!currentCanteenId">
             <div v-for="item in communityConfigs" :key="item.key" class="border border-gray-200 rounded-lg p-6">
-              <h3 class="text-lg font-semibold text-gray-800 mb-2">{{ item.label }}</h3>
+              <h3 class="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                <AppIcon class="iconify text-tsinghua-purple" :icon="item.icon"></AppIcon>
+                {{ item.label }}
+              </h3>
               <p class="text-sm text-gray-600">{{ item.description }} 已有待审核内容仍需单独处理，此设置不自动通过历史内容。</p>
               <div class="mt-4 flex flex-wrap items-center gap-4">
                 <label class="relative inline-flex items-center cursor-pointer">
@@ -163,12 +166,12 @@
             <div class="mt-4 space-y-4">
               <!-- 食堂选择（仅全局管理员显示） -->
               <div v-if="!currentCanteenId" class="mb-4">
-                <label class="block text-sm font-medium text-gray-700 mb-2">
+                <label class="block font-medium text-gray-700 mb-2 admin-label">
                   选择要刷新的食堂
                 </label>
                 <select
                   v-model="selectedCanteenId"
-                  class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                  class="w-full admin-input"
                   :disabled="embeddingRefreshing || loadingCanteens"
                 >
                   <option value="" disabled>请选择食堂</option>
@@ -188,7 +191,7 @@
                   :key="'refresh-btn-' + embeddingRefreshing"
                   :disabled="!authStore.hasPermission('dish:edit') || embeddingRefreshing || (!currentCanteenId && !selectedCanteenId)"
                   @click="handleRefreshCanteenEmbeddings"
-                  class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed admin-button admin-button-primary"
                 >
                   <AppIcon
                     v-if="embeddingRefreshing"
@@ -232,7 +235,7 @@
                       type="button"
                       @click="handleCancelJob"
                       :disabled="cancelling"
-                      class="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
+                      class="text-red-500 hover:text-red-700 disabled:opacity-50 admin-button"
                       :title="(jobStatus.status === 'processing' || jobStatus.status === 'active') ? '任务将在下一个检查点停止' : ''"
                     >
                       {{ cancelling ? '取消中...' : '取消任务' }}
@@ -294,7 +297,7 @@
           </div>
 
           <!-- 加载失败提示 -->
-          <div v-if="loadError" class="text-center py-12">
+          <div v-if="loadError" class="admin-state admin-state-error">
             <AppIcon class="iconify text-6xl text-gray-300 mx-auto" icon="carbon:warning-alt"></AppIcon>
             <p class="mt-4 text-gray-500">配置加载失败，请刷新页面重试</p>
           </div>
@@ -328,8 +331,8 @@ export default {
     const reviewAutoApprove = ref(true)
     const commentAutoApprove = ref(true)
     const communityConfigs = ref([
-      { key: 'post.autoApprove', label: '社区帖子人工审核', description: '默认直接发布。开启后，新提交或修改的帖子审核通过后公开。', requiresApproval: false, saving: false, saved: false },
-      { key: 'postComment.autoApprove', label: '帖子回复人工审核', description: '默认直接发布。开启后，新帖子回复审核通过后公开。', requiresApproval: false, saving: false, saved: false },
+      { key: 'post.autoApprove', icon: 'carbon:chat', label: '社区帖子人工审核', description: '默认直接发布。开启后，新提交或修改的帖子审核通过后公开。', requiresApproval: false, saving: false, saved: false },
+      { key: 'postComment.autoApprove', icon: 'carbon:reply', label: '帖子回复人工审核', description: '默认直接发布。开启后，新帖子回复审核通过后公开。', requiresApproval: false, saving: false, saved: false },
     ])
     const communitySaving = computed(() => communityConfigs.value.some(item => item.saving))
     const reviewRequiresApproval = computed({

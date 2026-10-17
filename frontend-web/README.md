@@ -20,6 +20,8 @@ TasteInsight 管理端是基于 **Vue 3** + **Vite** 构建的后台管理系统
 
 页面按路由加载。新闻富文本编辑器的脚本与样式在打开创建或编辑窗口时加载；列表和预览共用轻量页面代码。编辑器就绪后才允许保存或发布，同一页面会话内再次打开可复用模块缓存。资源加载失败时保留表单并提示先保留填写内容、刷新页面重试。
 
+编辑器依赖固定为 `@wangeditor/editor@5.1.23`。`NewsEditor` 在实例销毁时取消 SDK 排队的选区节流任务，覆盖取消编辑、草稿保存和路由离开。该清理使用 SDK 内部句柄；升级时需核对上游销毁实现，并运行 `e2e/admin-ui-contracts.spec.ts` 中对应的浏览器回归。
+
 Vite 保持默认 500 kB 单块警告。wangEditor 5 的发行模块内置编辑核心、菜单和上传等能力，构建仍可能提示编辑器异步块较大。评估时同时查看进入页面的请求量、首次打开编辑器的等待时间和实际传输压缩；`pnpm build` 输出的 gzip 数值是估算，服务端响应决定线上传输大小。
 
 Docker 静态服务为文本资源启用 gzip，并返回 `Vary: Accept-Encoding`。HTML 使用 `no-store`，带内容哈希的资源使用长期缓存。独立静态托管或 CDN 需配置对应压缩与缓存策略。发布页面的基线和后端承压测试见 [浏览器性能测试](../perf/frontend.md)。
@@ -57,6 +59,12 @@ frontend-web/
 ├── tsconfig.json            # TypeScript 配置
 └── playwright.config.ts     # Playwright 配置
 ```
+
+## 管理页面样式
+
+子页面使用 `admin-page`、`admin-panel` 和公共 `Header`。基础控件复用 `admin-input`、`admin-textarea`、`admin-label`、`admin-button` 与 `admin-icon-button`；主要、次要和危险操作通过相应按钮样式表达，表格和分页使用紧凑按钮。字段校验、业务状态颜色、宽度和网格由页面保留。
+
+列表复用 `admin-table-scroll` / `admin-table`，长文本审核行使用 `admin-table-top`。空、加载反馈采用 `admin-state`，错误采用 `admin-error` 或 `admin-state-error`。弹窗继续使用 `AdminDialog` 管理焦点和关闭行为，内容采用 `admin-dialog-panel`、`admin-dialog-header`、`admin-dialog-body`、`admin-dialog-footer`；表单内部操作行使用 `admin-actions`。原生控件定义集中在 `src/assets/tailwind.css` 的 `components` 层，页面工具类可覆盖业务状态与尺寸；页面、表格和弹窗布局集中在 `src/assets/admin-layout.css`，业务模块样式负责内容排版。
 
 ## 功能模块
 

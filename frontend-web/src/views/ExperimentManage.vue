@@ -10,7 +10,7 @@
             header-icon="carbon:chemistry"
           />
           <button
-            class="px-6 py-2 text-white rounded-lg transition duration-200 flex items-center"
+            class="text-white transition duration-200 flex items-center admin-button"
             :class="authStore.hasPermission('experiment:create') ? 'bg-tsinghua-purple hover:bg-tsinghua-dark' : 'bg-gray-400 cursor-not-allowed'"
             @click="!authStore.hasPermission('experiment:create') ? null : createNewExperiment()"
             :title="!authStore.hasPermission('experiment:create') ? '无权限创建' : '创建新实验'"
@@ -28,12 +28,12 @@
               type="text"
               v-model="searchQuery"
               placeholder="搜索实验名称或描述..."
-              class="w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+              class="w-full pl-10 pr-10 admin-input"
               @input="() => {}"
             />
             <button
               v-if="searchQuery"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 admin-icon-button"
               @click="searchQuery = ''"
               type="button"
               title="清除搜索"
@@ -47,7 +47,7 @@
         </div>
 
         <!-- 实验列表表格 -->
-        <div v-if="loading" class="text-center py-12">
+        <div v-if="loading" class="admin-state">
           <AppIcon class="iconify text-4xl text-gray-300 animate-spin" icon="carbon:circle-dash"></AppIcon>
           <p class="mt-4 text-gray-500">加载中...</p>
         </div>
@@ -96,7 +96,7 @@
                 <td class="py-4 px-6 text-center" @click.stop>
                   <div class="flex items-center justify-center gap-2">
                     <button
-                      class="p-2 rounded-full hover:bg-gray-200 text-tsinghua-purple"
+                      class="rounded-full hover:bg-gray-200 text-tsinghua-purple admin-icon-button"
                       @click.stop="viewExperiment(experiment)"
                       title="查看详情"
                     >
@@ -104,7 +104,7 @@
                     </button>
                     <button
                       v-if="authStore.hasPermission('experiment:edit')"
-                      class="p-2 rounded-full hover:bg-gray-200 text-tsinghua-purple"
+                      class="rounded-full hover:bg-gray-200 text-tsinghua-purple admin-icon-button"
                       @click.stop="editExperiment(experiment)"
                       title="编辑"
                     >
@@ -112,7 +112,7 @@
                     </button>
                     <button
                       v-if="authStore.hasPermission('experiment:delete')"
-                      class="p-2 rounded-full hover:bg-gray-200 text-red-500"
+                      class="rounded-full hover:bg-gray-200 text-red-500 admin-icon-button"
                       @click.stop="deleteExperiment(experiment)"
                       title="删除"
                     >
@@ -126,7 +126,7 @@
         </div>
 
         <!-- 空状态 -->
-        <div v-if="filteredExperiments.length === 0 && !loading" class="text-center py-12">
+        <div v-if="filteredExperiments.length === 0 && !loading" class="admin-state">
           <AppIcon
             class="iconify text-6xl text-gray-300 mx-auto"
             icon="carbon:chemistry"
@@ -134,7 +134,7 @@
           <p class="mt-4 text-gray-500">暂无实验</p>
           <button
             v-if="authStore.hasPermission('experiment:create')"
-            class="mt-4 px-6 py-2 text-white rounded-lg transition duration-200 bg-tsinghua-purple hover:bg-tsinghua-dark"
+            class="mt-4 transition duration-200 admin-button admin-button-primary"
             @click="createNewExperiment()"
           >
             创建第一个实验
@@ -151,14 +151,14 @@
             header-icon="carbon:chemistry"
           />
           <button
-            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"
+            class="border border-gray-300 text-gray-700 hover:bg-gray-100 transition duration-200 admin-button"
             @click="backToList"
           >
             返回列表
           </button>
         </div>
 
-        <div v-if="loading" class="text-center py-12">
+        <div v-if="loading" class="admin-state">
           <AppIcon class="iconify text-4xl text-gray-300 animate-spin" icon="carbon:circle-dash"></AppIcon>
           <p class="mt-4 text-gray-500">加载中...</p>
         </div>
@@ -172,11 +172,11 @@
             </h3>
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="text-sm font-medium text-gray-600">实验名称</label>
+                <label class="font-medium text-gray-600 admin-label">实验名称</label>
                 <p class="mt-1 text-gray-800">{{ currentExperiment.name }}</p>
               </div>
               <div>
-                <label class="text-sm font-medium text-gray-600">状态</label>
+                <label class="font-medium text-gray-600 admin-label">状态</label>
                 <p class="mt-1">
                   <span
                     class="px-2 py-1 text-xs rounded-full"
@@ -194,32 +194,32 @@
                 </p>
               </div>
               <div>
-                <label class="text-sm font-medium text-gray-600">创建时间</label>
+                <label class="font-medium text-gray-600 admin-label">创建时间</label>
                 <p class="mt-1 text-gray-800">{{ formatDate(currentExperiment.createdAt) }}</p>
               </div>
               <div>
-                <label class="text-sm font-medium text-gray-600">生效开始时间</label>
+                <label class="font-medium text-gray-600 admin-label">生效开始时间</label>
                 <p class="mt-1 text-gray-800">{{ formatDate(currentExperiment.startTime) }}</p>
               </div>
               <div>
-                <label class="text-sm font-medium text-gray-600">生效结束时间</label>
+                <label class="font-medium text-gray-600 admin-label">生效结束时间</label>
                 <p class="mt-1 text-gray-800">
                   {{ currentExperiment.endTime ? formatDate(currentExperiment.endTime) : '永久有效' }}
                 </p>
               </div>
               <div>
-                <label class="text-sm font-medium text-gray-600">流量占比</label>
+                <label class="font-medium text-gray-600 admin-label">流量占比</label>
                 <p class="mt-1 text-gray-800">{{ (currentExperiment.trafficRatio * 100).toFixed(1) }}%</p>
               </div>
               <div v-if="currentExperiment.description" class="col-span-2">
-                <label class="text-sm font-medium text-gray-600">描述</label>
+                <label class="font-medium text-gray-600 admin-label">描述</label>
                 <p class="mt-1 text-gray-800">{{ currentExperiment.description }}</p>
               </div>
             </div>
             <div class="mt-4 flex gap-2">
               <button
                 v-if="authStore.hasPermission('experiment:edit')"
-                class="px-4 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition"
+                class="transition admin-button admin-button-primary"
                 @click="editExperiment(currentExperiment)"
               >
                 编辑实验
@@ -227,7 +227,7 @@
               <!-- 草稿状态：可以启动 -->
               <button
                 v-if="authStore.hasPermission('experiment:edit') && currentExperiment.status === 'draft'"
-                class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
+                class="bg-green-500 text-white hover:bg-green-600 transition admin-button"
                 @click="enableExperiment(currentExperiment)"
               >
                 启动实验
@@ -235,14 +235,14 @@
               <!-- 运行中状态：可以暂停或完成 -->
               <button
                 v-if="authStore.hasPermission('experiment:edit') && currentExperiment.status === 'running'"
-                class="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition"
+                class="bg-yellow-500 text-white hover:bg-yellow-600 transition admin-button"
                 @click="disableExperiment(currentExperiment)"
               >
                 暂停实验
               </button>
               <button
                 v-if="authStore.hasPermission('experiment:edit') && currentExperiment.status === 'running'"
-                class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+                class="bg-blue-500 text-white hover:bg-blue-600 transition admin-button"
                 @click="completeExperiment(currentExperiment)"
               >
                 完成实验
@@ -250,14 +250,14 @@
               <!-- 暂停状态：可以恢复或完成 -->
               <button
                 v-if="authStore.hasPermission('experiment:edit') && currentExperiment.status === 'paused'"
-                class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition"
+                class="bg-green-500 text-white hover:bg-green-600 transition admin-button"
                 @click="enableExperiment(currentExperiment)"
               >
                 恢复实验
               </button>
               <button
                 v-if="authStore.hasPermission('experiment:edit') && currentExperiment.status === 'paused'"
-                class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+                class="bg-blue-500 text-white hover:bg-blue-600 transition admin-button"
                 @click="completeExperiment(currentExperiment)"
               >
                 完成实验
@@ -292,7 +292,7 @@
                   <div class="flex items-center gap-2">
                     <button
                       v-if="authStore.hasPermission('experiment:edit')"
-                      class="p-2 rounded-full hover:bg-gray-200 text-tsinghua-purple"
+                      class="rounded-full hover:bg-gray-200 text-tsinghua-purple admin-icon-button"
                       @click.stop="editGroup(group, index)"
                       title="编辑分组"
                     >
@@ -300,7 +300,7 @@
                     </button>
                     <button
                       v-if="authStore.hasPermission('experiment:edit')"
-                      class="p-2 rounded-full hover:bg-gray-200 text-red-500"
+                      class="rounded-full hover:bg-gray-200 text-red-500 admin-icon-button"
                       @click.stop="deleteGroup(index)"
                       title="删除分组"
                     >
@@ -311,7 +311,7 @@
                 </div>
               </div>
             </div>
-            <div v-if="!currentExperiment.groups || currentExperiment.groups.length === 0" class="text-center py-8 text-gray-500">
+            <div v-if="!currentExperiment.groups || currentExperiment.groups.length === 0" class="admin-state">
               暂无实验分组
             </div>
           </div>
@@ -327,7 +327,7 @@
             header-icon="carbon:settings"
           />
           <button
-            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"
+            class="border border-gray-300 text-gray-700 hover:bg-gray-100 transition duration-200 admin-button"
             @click="backToDetail"
           >
             返回详情
@@ -343,11 +343,11 @@
             </h3>
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="text-sm font-medium text-gray-600">分组名称</label>
+                <label class="font-medium text-gray-600 admin-label">分组名称</label>
                 <p class="mt-1 text-gray-800">{{ currentGroup.name }}</p>
               </div>
               <div>
-                <label class="text-sm font-medium text-gray-600">组内占比</label>
+                <label class="font-medium text-gray-600 admin-label">组内占比</label>
                 <p class="mt-1 text-gray-800">{{ (currentGroup.ratio * 100).toFixed(1) }}%</p>
               </div>
             </div>
@@ -369,7 +369,7 @@
                 <span class="text-sm text-gray-800 font-mono">{{ value }}</span>
               </div>
             </div>
-            <div v-else class="text-center py-8 text-gray-500">
+            <div v-else class="admin-state">
               未配置权重
             </div>
           </div>
@@ -390,7 +390,7 @@
                 <span class="text-sm text-gray-800 font-mono">{{ formatPercentage(value) }}%</span>
               </div>
             </div>
-            <div v-else class="text-center py-8 text-gray-500">
+            <div v-else class="admin-state">
               未配置召回配额
             </div>
           </div>
@@ -406,7 +406,7 @@
             header-icon="carbon:chemistry"
           />
           <button
-            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"
+            class="border border-gray-300 text-gray-700 hover:bg-gray-100 transition duration-200 admin-button"
             @click="backToList"
           >
             返回列表
@@ -419,13 +419,13 @@
             <h3 class="text-lg font-semibold text-gray-800 mb-4">基本信息</h3>
         <div class="admin-form-grid">
               <div>
-                <label class="block text-gray-700 font-medium mb-2">
+                <label class="block text-gray-700 font-medium mb-2 admin-label">
                   实验名称 <span class="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   v-model="formData.name"
-                  class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                  class="w-full admin-input"
                   :class="{ 'border-red-400 bg-red-50': errors.name }"
                   placeholder="请输入实验名称"
                   required
@@ -433,16 +433,16 @@
                 <p v-if="errors.name" class="mt-1 text-xs text-red-500">{{ errors.name }}</p>
               </div>
               <div>
-                <label class="block text-gray-700 font-medium mb-2">描述</label>
+                <label class="block text-gray-700 font-medium mb-2 admin-label">描述</label>
                 <input
                   type="text"
                   v-model="formData.description"
-                  class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                  class="w-full admin-input"
                   placeholder="请输入实验描述（可选）"
                 />
               </div>
               <div>
-                <label class="block text-gray-700 font-medium mb-2">
+                <label class="block text-gray-700 font-medium mb-2 admin-label">
                   流量占比 <span class="text-red-500">*</span>
                 </label>
                 <div class="flex items-center gap-2">
@@ -452,7 +452,7 @@
                     min="0"
                     max="1"
                     step="0.01"
-                    class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                    class="w-full admin-input"
                     :class="{ 'border-red-400 bg-red-50': errors.trafficRatio }"
                     placeholder="0.1"
                     required
@@ -462,13 +462,13 @@
                 <p v-if="errors.trafficRatio" class="mt-1 text-xs text-red-500">{{ errors.trafficRatio }}</p>
               </div>
               <div>
-                <label class="block text-gray-700 font-medium mb-2">
+                <label class="block text-gray-700 font-medium mb-2 admin-label">
                   生效开始时间 <span class="text-red-500">*</span>
                 </label>
                 <input
                   type="datetime-local"
                   v-model="formData.startTime"
-                  class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                  class="w-full admin-input"
                   :class="{ 'border-red-400 bg-red-50': errors.startTime }"
                   required
                 />
@@ -476,11 +476,11 @@
                 <p class="mt-1 text-xs text-gray-500">实验启动后，只有在此时间之后才会真正生效</p>
               </div>
               <div>
-                <label class="block text-gray-700 font-medium mb-2">生效结束时间</label>
+                <label class="block text-gray-700 font-medium mb-2 admin-label">生效结束时间</label>
                 <input
                   type="datetime-local"
                   v-model="formData.endTime"
-                  class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                  class="w-full admin-input"
                   placeholder="可选"
                 />
                 <p class="mt-1 text-xs text-gray-500">留空表示永久有效，直到手动完成实验</p>
@@ -506,7 +506,7 @@
                 <button
                   v-if="formData.groups.length >= 2"
                   type="button"
-                  class="px-3 py-2 border border-tsinghua-purple text-tsinghua-purple rounded-lg hover:bg-tsinghua-purple/10 transition text-sm"
+                  class="border border-tsinghua-purple text-tsinghua-purple hover:bg-tsinghua-purple/10 transition admin-button"
                   @click="distributeGroupRatiosEvenly"
                   title="将所有分组占比均分"
                 >
@@ -515,7 +515,7 @@
                 </button>
                 <button
                   type="button"
-                  class="px-4 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition"
+                  class="transition admin-button admin-button-primary"
                   @click="addGroup"
                 >
                   <AppIcon class="iconify mr-1" icon="carbon:add"></AppIcon>
@@ -533,7 +533,7 @@
                   <h4 class="font-medium text-gray-800">分组 {{ index + 1 }}</h4>
                   <button
                     type="button"
-                    class="text-red-500 hover:text-red-700"
+                    class="text-red-500 hover:text-red-700 admin-icon-button"
                     @click="removeGroup(index)"
                   >
                     <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
@@ -541,19 +541,19 @@
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                   <div>
-                    <label class="block text-sm font-medium text-gray-600 mb-1">
+                    <label class="block font-medium text-gray-600 mb-1 admin-label">
                       分组名称 <span class="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       v-model="group.name"
-                      class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                      class="w-full admin-input"
                       placeholder="例如：对照组"
                       required
                     />
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-600 mb-1">
+                    <label class="block font-medium text-gray-600 mb-1 admin-label">
                       组内占比 <span class="text-red-500">*</span>
                     </label>
                     <input
@@ -562,7 +562,7 @@
                       min="0"
                       max="1"
                       step="0.01"
-                      class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                      class="w-full admin-input"
                       placeholder="0.5"
                       required
                     />
@@ -571,7 +571,7 @@
                 <div class="mt-4">
                   <button
                     type="button"
-                    class="text-sm text-tsinghua-purple hover:text-tsinghua-dark"
+                    class="text-tsinghua-purple hover:text-tsinghua-dark admin-button"
                     @click="editGroupConfig(group, index)"
                   >
                     配置权重和召回配额 →
@@ -579,16 +579,16 @@
                 </div>
               </div>
             </div>
-            <div v-if="formData.groups.length === 0" class="text-center py-8 text-gray-500">
+            <div v-if="formData.groups.length === 0" class="admin-state">
               请至少添加一个实验分组
             </div>
           </div>
 
           <!-- 表单按钮 -->
-          <div class="flex space-x-4 pt-6 border-t border-gray-200">
+          <div class="flex pt-6 border-t border-gray-200 admin-actions">
             <button
               type="submit"
-              class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+              class="transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed admin-button admin-button-primary"
               :disabled="isSubmitting"
             >
               <AppIcon class="iconify mr-1" icon="carbon:save"></AppIcon>
@@ -596,7 +596,7 @@
             </button>
             <button
               type="button"
-              class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"
+              class="border border-gray-300 text-gray-700 hover:bg-gray-100 transition duration-200 admin-button"
               @click="backToList"
             >
               取消
@@ -612,14 +612,14 @@
         label="分组配置"
         @close="closeGroupConfigModal"
       >
-        <div class="bg-white rounded-lg w-[600px] max-h-[80vh] overflow-auto">
-          <div class="p-6 border-b border-gray-200">
+        <div class="w-[600px] max-h-[80vh] overflow-auto admin-dialog-panel">
+          <div class="admin-dialog-header">
             <div class="flex justify-between items-center">
               <h3 class="text-lg font-semibold text-gray-800">
                 配置分组: {{ editingGroupData?.name || '新分组' }}
               </h3>
               <button
-                class="p-2 hover:bg-gray-100 rounded-full"
+                class="hover:bg-gray-100 rounded-full admin-icon-button"
                 @click="closeGroupConfigModal"
                 aria-label="关闭分组配置"
               >
@@ -627,7 +627,7 @@
               </button>
             </div>
           </div>
-          <div class="p-6 space-y-6">
+          <div class="space-y-6 admin-dialog-body">
             <!-- 权重配置 -->
             <div>
               <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
@@ -636,14 +636,14 @@
               </h4>
               <div class="grid grid-cols-2 gap-4">
                 <div v-for="(label, key) in weightLabels" :key="key">
-                  <label class="block text-sm text-gray-600 mb-1">{{ label }}</label>
+                  <label class="block text-gray-600 mb-1 admin-label">{{ label }}</label>
                   <input
                     type="number"
                     v-model.number="groupConfigForm.weights[key]"
                     min="0"
                     max="1"
                     step="0.01"
-                    class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+                    class="w-full admin-input"
                     placeholder="0.0 - 1.0"
                   />
                 </div>
@@ -657,7 +657,7 @@
               </h4>
               <div class="grid grid-cols-2 gap-4">
                 <div v-for="(label, key) in recallQuotaLabels" :key="key">
-                  <label class="block text-sm text-gray-600 mb-1">{{ label }}</label>
+                  <label class="block text-gray-600 mb-1 admin-label">{{ label }}</label>
                   <div class="flex items-center gap-2">
                     <input
                       type="number"
@@ -665,7 +665,7 @@
                       min="0"
                       max="1"
                       step="0.01"
-                      class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+                      class="w-full admin-input"
                       placeholder="0.0 - 1.0"
                     />
                     <span class="text-gray-500 text-sm">×100%</span>
@@ -677,15 +677,15 @@
               </p>
             </div>
           </div>
-          <div class="p-6 border-t border-gray-200 flex justify-end gap-3">
+          <div class="flex justify-end gap-3 admin-dialog-footer">
             <button
-              class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
+              class="border border-gray-300 text-gray-700 hover:bg-gray-100 transition admin-button"
               @click="closeGroupConfigModal"
             >
               取消
             </button>
             <button
-              class="px-4 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition"
+              class="transition admin-button admin-button-primary"
               @click="saveGroupConfig"
             >
               保存配置

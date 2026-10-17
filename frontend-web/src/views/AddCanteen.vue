@@ -10,7 +10,7 @@
             header-icon="carbon:restaurant"
           />
           <button
-            class="px-6 py-2 text-white rounded-lg transition duration-200 flex items-center"
+            class="text-white transition duration-200 flex items-center admin-button"
             :class="authStore.hasPermission('canteen:create') ? 'bg-tsinghua-purple hover:bg-tsinghua-dark' : 'bg-gray-400 cursor-not-allowed'"
             @click="!authStore.hasPermission('canteen:create') ? null : createNewCanteen()"
             :title="!authStore.hasPermission('canteen:create') ? '无权限新建' : '新建食堂'"
@@ -28,11 +28,11 @@
               type="text"
               v-model="searchQuery"
               placeholder="搜索食堂名称、位置..."
-              class="w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+              class="w-full pl-10 pr-10 admin-input"
             />
             <button
               v-if="searchQuery"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 admin-icon-button"
               @click="searchQuery = ''"
               type="button"
               title="清除搜索"
@@ -87,7 +87,7 @@
                 <td class="py-4 px-6 text-center" @click.stop>
                   <div class="flex items-center justify-center gap-2">
                     <button
-                      class="p-2 rounded-full hover:bg-gray-200"
+                      class="rounded-full hover:bg-gray-200 admin-icon-button"
                       :class="authStore.hasPermission('canteen:edit') ? 'text-tsinghua-purple' : 'text-gray-400 cursor-not-allowed'"
                       @click.stop="!authStore.hasPermission('canteen:edit') ? null : editCanteen(canteen)"
                       :title="!authStore.hasPermission('canteen:edit') ? '无权限编辑' : '编辑'"
@@ -95,7 +95,7 @@
                       <AppIcon class="iconify" icon="carbon:edit"></AppIcon>
                     </button>
                     <button
-                      class="p-2 rounded-full hover:bg-gray-200"
+                      class="rounded-full hover:bg-gray-200 admin-icon-button"
                       :class="authStore.hasPermission('canteen:delete') ? 'text-red-500' : 'text-gray-400 cursor-not-allowed'"
                       @click.stop="!authStore.hasPermission('canteen:delete') ? null : deleteCanteen(canteen)"
                       :title="!authStore.hasPermission('canteen:delete') ? '无权限删除' : '删除'"
@@ -110,11 +110,11 @@
         </div>
 
         <!-- 空状态 -->
-        <div v-if="filteredCanteens.length === 0" class="text-center py-12">
+        <div v-if="filteredCanteens.length === 0" class="admin-state">
           <AppIcon class="iconify text-6xl text-gray-300 mx-auto" icon="carbon:building"></AppIcon>
           <p class="mt-4 text-gray-500">暂无食堂信息</p>
           <button
-            class="mt-4 px-6 py-2 text-white rounded-lg transition duration-200"
+            class="mt-4 text-white transition duration-200 admin-button"
             :class="authStore.hasPermission('canteen:create') ? 'bg-tsinghua-purple hover:bg-tsinghua-dark' : 'bg-gray-400 cursor-not-allowed'"
             @click="!authStore.hasPermission('canteen:create') ? null : createNewCanteen()"
             :title="!authStore.hasPermission('canteen:create') ? '无权限新建' : '创建第一个食堂'"
@@ -133,7 +133,7 @@
             header-icon="carbon:restaurant"
           />
           <button
-            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"
+            class="border border-gray-300 text-gray-700 hover:bg-gray-100 transition duration-200 admin-button"
             @click="backToList"
           >
             返回列表
@@ -146,14 +146,14 @@
             <div>
               <!-- 食堂名称 -->
               <div class="mb-6">
-                <label class="block text-gray-700 font-medium mb-2">
+                <label class="block text-gray-700 font-medium mb-2 admin-label">
                   食堂名称 <span class="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   v-model="formData.name"
                   @input="errors.name = ''"
-                  class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                  class="w-full admin-input"
                   :class="{
                     'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.name,
                   }"
@@ -168,49 +168,49 @@
 
               <!-- 食堂位置 -->
               <div class="mb-6">
-                <label class="block text-gray-700 font-medium mb-2">食堂位置</label>
+                <label class="block text-gray-700 font-medium mb-2 admin-label">食堂位置</label>
                 <input
                   type="text"
                   v-model="formData.position"
-                  class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                  class="w-full admin-input"
                   placeholder="例如：清华大学紫荆公寓区"
                 />
               </div>
 
               <!-- 楼层信息 -->
               <div class="mb-6">
-                <label class="block text-gray-700 font-medium mb-2"
+                <label class="block text-gray-700 font-medium mb-2 admin-label"
                   >楼层信息 <span class="text-red-500">*</span></label
                 >
                 <div class="space-y-3">
                   <div v-for="(floor, index) in formData.floors" :key="floor.key" class="flex items-end gap-3">
-                    <label class="w-24 flex-shrink-0 text-xs text-gray-500">
+                    <label class="w-24 flex-shrink-0 text-gray-500 admin-label">
                       层级
                       <input
                         type="text"
                         :value="floor.level"
                         @change="changeFloorLevel(floor, $event)"
                         aria-label="楼层层级"
-                        class="mt-1 w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+                        class="mt-1 w-full admin-input"
                         placeholder="例如：1"
                         required
                       />
                     </label>
-                    <label class="flex-1 text-xs text-gray-500">
+                    <label class="flex-1 text-gray-500 admin-label">
                       名称
                       <input
                         type="text"
                         v-model="floor.name"
                         aria-label="楼层名称"
-                        class="mt-1 w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+                        class="mt-1 w-full admin-input"
                         placeholder="例如：自选餐厅"
                       />
                     </label>
-                    <button type="button" class="text-red-500 p-2" title="删除楼层" @click="removeFloor(index)">
+                    <button type="button" class="text-red-500 admin-icon-button" title="删除楼层" @click="removeFloor(index)">
                       <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
                     </button>
                   </div>
-                  <button type="button" class="text-tsinghua-purple text-sm" @click="addFloor">添加楼层</button>
+                  <button type="button" class="text-tsinghua-purple admin-button" @click="addFloor">添加楼层</button>
                 </div>
                 <p v-if="errors.floors" class="mt-1 text-xs text-red-500 flex items-center">
                   <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
@@ -223,10 +223,10 @@
 
               <!-- 食堂描述 -->
               <div class="mb-6">
-                <label class="block text-gray-700 font-medium mb-2">食堂描述</label>
+                <label class="block text-gray-700 font-medium mb-2 admin-label">食堂描述</label>
                 <textarea
                   v-model="formData.description"
-                  class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple resize-none"
+                  class="w-full resize-none admin-textarea"
                   rows="4"
                   placeholder="请输入食堂描述..."
                 ></textarea>
@@ -234,7 +234,7 @@
 
               <!-- 食堂图片上传 -->
               <div>
-                <label class="block text-gray-700 font-medium mb-2"
+                <label class="block text-gray-700 font-medium mb-2 admin-label"
                   >食堂图片
                   <span class="text-sm text-gray-500 font-normal"
                     >（第一张将作为封面图，封面图将进行正方形裁剪，其他图片保留原比例）</span
@@ -268,7 +268,7 @@
                         <button
                           type="button"
                           @click="removeImage(0)"
-                          class="p-2 bg-gray-100 text-gray-600 rounded-full hover:text-red-600 transition-colors"
+                          class="text-gray-600 rounded-full hover:text-red-600 transition-colors admin-icon-button admin-button-secondary"
                           title="删除图片"
                         >
                           <AppIcon class="iconify text-xl" icon="carbon:trash-can"></AppIcon>
@@ -307,7 +307,7 @@
                           <button
                             type="button"
                             @click="setAsCover(index + 1)"
-                            class="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:text-tsinghua-purple transition-colors"
+                            class="text-gray-600 rounded-full hover:text-tsinghua-purple transition-colors admin-icon-button admin-button-secondary"
                             title="设为封面"
                           >
                             <AppIcon class="iconify" icon="carbon:image-copy"></AppIcon>
@@ -315,7 +315,7 @@
                           <button
                             type="button"
                             @click="removeImage(index + 1)"
-                            class="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:text-red-600 transition-colors"
+                            class="text-gray-600 rounded-full hover:text-red-600 transition-colors admin-icon-button admin-button-secondary"
                             title="删除图片"
                           >
                             <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
@@ -354,11 +354,11 @@
             <!-- 营业时间 -->
             <div class="mb-6">
               <div class="flex justify-between items-center mb-2">
-                <label class="block text-gray-700 font-medium">营业时间</label>
+                <label class="block text-gray-700 font-medium admin-label">营业时间</label>
                 <button
                   v-if="editingCanteen"
                   type="button"
-                  class="text-tsinghua-purple text-sm flex items-center hover:text-tsinghua-dark"
+                  class="text-tsinghua-purple flex items-center hover:text-tsinghua-dark admin-button"
                   @click="addOpeningHours"
                 >
                   <AppIcon class="iconify" icon="carbon:add-alt"></AppIcon>
@@ -379,10 +379,10 @@
                     <div class="flex-1 space-y-3">
                     <div class="grid grid-cols-3 gap-3 items-end">
                       <div>
-                        <label class="block text-xs text-gray-500 mb-1">楼层</label>
+                        <label class="block text-gray-500 mb-1 admin-label">楼层</label>
                         <select
                           v-model="hours.floor"
-                          class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+                          class="w-full admin-input"
                         >
                           <option value="">通用</option>
                           <option v-if="hours.floor === 'default'" value="default">通用</option>
@@ -399,10 +399,10 @@
                         </select>
                       </div>
                       <div>
-                        <label class="block text-xs text-gray-500 mb-1">星期</label>
+                        <label class="block text-gray-500 mb-1 admin-label">星期</label>
                         <select
                           v-model="hours.day"
-                          class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+                          class="w-full admin-input"
                         >
                           <option value="周一">周一</option>
                           <option value="周二">周二</option>
@@ -421,11 +421,11 @@
                     </div>
                     <div v-for="(slot, slotIndex) in hours.slots" :key="slotIndex" class="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 items-end">
                       <div>
-                        <label class="block text-xs text-gray-500 mb-1">餐次</label>
+                        <label class="block text-gray-500 mb-1 admin-label">餐次</label>
                         <select
                           v-model="slot.mealType"
                           :disabled="hours.isClosed"
-                          class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+                          class="w-full admin-input"
                         >
                           <option value="breakfast">早餐</option>
                           <option value="lunch">午餐</option>
@@ -434,32 +434,32 @@
                         </select>
                       </div>
                       <div>
-                        <label class="block text-xs text-gray-500 mb-1">开始时间</label>
+                        <label class="block text-gray-500 mb-1 admin-label">开始时间</label>
                         <input
                           type="time"
                           v-model="slot.openTime"
                           :disabled="hours.isClosed"
-                          class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+                          class="w-full admin-input"
                         />
                       </div>
                       <div>
-                        <label class="block text-xs text-gray-500 mb-1">结束时间</label>
+                        <label class="block text-gray-500 mb-1 admin-label">结束时间</label>
                         <input
                           type="time"
                           v-model="slot.closeTime"
                           :disabled="hours.isClosed"
-                          class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+                          class="w-full admin-input"
                         />
                       </div>
-                      <button type="button" class="text-red-500 p-2" title="删除餐次" @click="hours.slots.splice(slotIndex, 1)">
+                      <button type="button" class="text-red-500 admin-icon-button" title="删除餐次" @click="hours.slots.splice(slotIndex, 1)">
                         <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
                       </button>
                     </div>
-                    <button type="button" class="text-tsinghua-purple text-sm" :disabled="hours.isClosed" @click="addMealSlot(hours)">添加餐次</button>
+                    <button type="button" class="text-tsinghua-purple admin-button" :disabled="hours.isClosed" @click="addMealSlot(hours)">添加餐次</button>
                     </div>
                     <button
                       type="button"
-                      class="text-red-500 hover:text-red-700 px-2"
+                      class="text-red-500 hover:text-red-700 admin-icon-button"
                       @click="removeOpeningHours(index)"
                       title="删除营业时间"
                     >
@@ -490,10 +490,10 @@
               <!-- 窗口管理 -->
               <div class="mb-6" v-if="editingCanteen">
                 <div class="flex justify-between items-center mb-2">
-                  <label class="block text-gray-700 font-medium">窗口管理</label>
+                  <label class="block text-gray-700 font-medium admin-label">窗口管理</label>
                   <button
                     type="button"
-                    class="text-tsinghua-purple text-sm flex items-center hover:text-tsinghua-dark"
+                    class="text-tsinghua-purple flex items-center hover:text-tsinghua-dark admin-button"
                     :disabled="isWindowsLoading || windowsLoadError"
                     @click="addWindow"
                   >
@@ -505,7 +505,7 @@
                 <p v-if="isWindowsLoading" role="status" class="text-sm text-gray-500">正在加载窗口...</p>
                 <div v-else-if="windowsLoadError" role="alert" class="text-sm text-red-500">
                   窗口加载失败，请重试后保存。
-                  <button type="button" class="underline" @click="retryLoadWindows">重试</button>
+                  <button type="button" class="underline admin-button" @click="retryLoadWindows">重试</button>
                 </div>
                 <div v-else-if="windows.length > 0" class="max-h-[400px] overflow-y-auto space-y-3 pr-2">
                   <div
@@ -515,23 +515,23 @@
                   >
                     <div class="flex-1 grid grid-cols-3 gap-3">
                       <div>
-                        <label class="block text-xs text-gray-500 mb-1"
+                        <label class="block text-gray-500 mb-1 admin-label"
                           >窗口名称 <span class="text-red-500">*</span></label
                         >
                         <input
                           type="text"
                           v-model="window.name"
-                          class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+                          class="w-full admin-input"
                           placeholder="例如：川湘风味"
                         />
                       </div>
                       <div>
-                        <label class="block text-xs text-gray-500 mb-1"
+                        <label class="block text-gray-500 mb-1 admin-label"
                           >窗口所在楼层 <span class="text-red-500">*</span></label
                         >
                         <select
                           v-model="window.floor"
-                          class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+                          class="w-full admin-input"
                         >
                           <option value="" disabled>请选择楼层</option>
                           <option
@@ -544,18 +544,18 @@
                         </select>
                       </div>
                       <div>
-                        <label class="block text-xs text-gray-500 mb-1">窗口编号</label>
+                        <label class="block text-gray-500 mb-1 admin-label">窗口编号</label>
                         <input
                           type="text"
                           v-model="window.number"
-                          class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+                          class="w-full admin-input"
                           placeholder="例如：01、A01（选填）"
                         />
                       </div>
                     </div>
                     <button
                       type="button"
-                      class="text-red-500 hover:text-red-700 px-2"
+                      class="text-red-500 hover:text-red-700 admin-icon-button"
                       @click="removeWindow(index, window.id)"
                       title="删除窗口"
                     >
@@ -585,10 +585,10 @@
           </fieldset>
 
           <!-- 表单按钮 -->
-          <div class="flex space-x-4 pt-6 border-t border-gray-200">
+          <div class="flex pt-6 border-t border-gray-200 admin-actions">
             <button
               type="button"
-              class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+              class="transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed admin-button admin-button-primary"
               @click="submitForm"
               :disabled="isSubmitting || isLoading || isWindowsLoading || windowsLoadError"
             >
@@ -597,7 +597,7 @@
             </button>
             <button
               type="button"
-              class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"
+              class="border border-gray-300 text-gray-700 hover:bg-gray-100 transition duration-200 admin-button"
               @click="backToList"
             >
               取消

@@ -29,32 +29,32 @@
           <div>
             <!-- 食堂信息组（继承自父项，只读显示） -->
             <div class="mb-6">
-              <label class="block text-gray-700 font-medium mb-2"
+              <label class="block text-gray-700 font-medium mb-2 admin-label"
                 >食堂信息 <span class="text-red-500">*</span>
                 <span class="text-xs text-gray-500 font-normal">（继承自父项）</span></label
               >
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm text-gray-600 mb-1"
+                  <label class="block text-gray-600 mb-1 admin-label"
                     >食堂名称 <span class="text-red-500">*</span></label
                   >
                   <input
                     type="text"
                     v-model="formData.canteen"
-                    class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700"
+                    class="w-full bg-gray-50 text-gray-700 admin-input"
                     placeholder="例如：紫荆园"
                     readonly
                     required
                   />
                 </div>
                 <div>
-                  <label class="block text-sm text-gray-600 mb-1"
+                  <label class="block text-gray-600 mb-1 admin-label"
                     >食堂楼层 <span class="text-red-500">*</span></label
                   >
                   <input
                     type="text"
                     v-model="formData.floor"
-                    class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700"
+                    class="w-full bg-gray-50 text-gray-700 admin-input"
                     placeholder="例如：一层、二层"
                     readonly
                     required
@@ -65,30 +65,30 @@
 
             <!-- 窗口信息（继承自父项，只读显示） -->
             <div class="mb-6">
-              <label class="block text-gray-700 font-medium mb-2"
+              <label class="block text-gray-700 font-medium mb-2 admin-label"
                 >窗口信息
                 <span class="text-xs text-gray-500 font-normal">（继承自父项）</span></label
               >
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm text-gray-600 mb-1"
+                  <label class="block text-gray-600 mb-1 admin-label"
                     >窗口名称 <span class="text-red-500">*</span></label
                   >
                   <input
                     type="text"
                     v-model="formData.windowName"
-                    class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700"
+                    class="w-full bg-gray-50 text-gray-700 admin-input"
                     placeholder="例如：川湘风味"
                     readonly
                     required
                   />
                 </div>
                 <div>
-                  <label class="block text-sm text-gray-600 mb-1">窗口编号</label>
+                  <label class="block text-gray-600 mb-1 admin-label">窗口编号</label>
                   <input
                     type="text"
                     v-model="formData.windowNumber"
-                    class="w-full px-4 py-2 border rounded-lg bg-gray-50 text-gray-700"
+                    class="w-full bg-gray-50 text-gray-700 admin-input"
                     placeholder="例如：01、A01（可选）"
                     readonly
                   />
@@ -98,14 +98,14 @@
 
             <!-- 菜品名称 -->
             <div class="mb-6">
-              <label class="block text-gray-700 font-medium mb-2"
+              <label class="block text-gray-700 font-medium mb-2 admin-label"
                 >菜品名称 <span class="text-red-500">*</span></label
               >
               <input
                 type="text"
                 v-model="formData.name"
                 @input="errors.name = ''"
-                class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                class="w-full admin-input"
                 :class="{
                   'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.name,
                 }"
@@ -119,12 +119,12 @@
 
             <!-- 菜品价格 -->
             <div class="mb-6">
-              <label class="block text-gray-700 font-medium mb-2">菜品价格（元）</label>
+              <label class="block text-gray-700 font-medium mb-2 admin-label">菜品价格（元）</label>
               <input
                 type="number"
                 v-model.number="formData.price"
                 @input="errors.price = ''"
-                class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                class="w-full admin-input"
                 :class="{
                   'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.price,
                 }"
@@ -141,10 +141,10 @@
 
             <!-- 菜品描述 -->
             <div class="mb-6">
-              <label class="block text-gray-700 font-medium mb-2">菜品描述</label>
+              <label class="block text-gray-700 font-medium mb-2 admin-label">菜品描述</label>
               <textarea
                 v-model="formData.description"
-                class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple resize-none"
+                class="w-full resize-none admin-textarea"
                 rows="4"
                 placeholder="请输入菜品描述..."
               ></textarea>
@@ -152,7 +152,7 @@
 
             <!-- 菜品图片上传 -->
             <div>
-              <label class="block text-gray-700 font-medium mb-2"
+              <label class="block text-gray-700 font-medium mb-2 admin-label"
                 >菜品图片
                 <span class="text-sm text-gray-500 font-normal"
                   >（第一张将作为封面图，支持多图上传）</span
@@ -186,7 +186,7 @@
                       <button
                         type="button"
                         @click="removeImage(0)"
-                        class="p-2 bg-gray-100 text-gray-600 rounded-full hover:text-red-600 transition-colors"
+                        class="text-gray-600 rounded-full hover:text-red-600 transition-colors admin-icon-button admin-button-secondary"
                         title="删除图片"
                       >
                         <AppIcon class="iconify text-xl" icon="carbon:trash-can"></AppIcon>
@@ -218,7 +218,7 @@
                       <button
                         type="button"
                         @click="setAsCover(index + 1)"
-                        class="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:text-tsinghua-purple transition-colors"
+                        class="text-gray-600 rounded-full hover:text-tsinghua-purple transition-colors admin-icon-button admin-button-secondary"
                         title="设为封面"
                       >
                         <AppIcon class="iconify" icon="carbon:image-copy"></AppIcon>
@@ -226,7 +226,7 @@
                       <button
                         type="button"
                         @click="removeImage(index + 1)"
-                        class="p-1.5 bg-gray-100 text-gray-600 rounded-full hover:text-red-600 transition-colors"
+                        class="text-gray-600 rounded-full hover:text-red-600 transition-colors admin-icon-button admin-button-secondary"
                         title="删除图片"
                       >
                         <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
@@ -260,24 +260,24 @@
           <div>
             <!-- 供应信息组 -->
             <div class="mb-6">
-              <label class="block text-gray-700 font-medium mb-2">供应信息</label>
+              <label class="block text-gray-700 font-medium mb-2 admin-label">供应信息</label>
               <div class="space-y-4">
                 <div>
-                  <label class="block text-sm text-gray-600 mb-1">菜系TAG</label>
+                  <label class="block text-gray-600 mb-1 admin-label">菜系TAG</label>
                   <div class="space-y-2">
                     <!-- TAG 输入和添加按钮 -->
                     <div class="flex gap-2">
                       <input
                         type="text"
                         v-model="newTag"
-                        class="flex-1 px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                        class="flex-1 admin-input"
                         placeholder="输入TAG，例如：麻辣、油腻、日料等"
                         @keyup.enter="addTag"
                       />
                       <button
                         type="button"
                         @click="addTag"
-                        class="px-4 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center"
+                        class="transition duration-200 flex items-center admin-button admin-button-primary"
                       >
                         <AppIcon class="iconify mr-1" icon="carbon:add-alt"></AppIcon>
                         添加
@@ -297,7 +297,7 @@
                         <button
                           type="button"
                           @click="removeTag(index)"
-                          class="ml-2 text-tsinghua-purple hover:text-tsinghua-dark"
+                          class="ml-2 text-tsinghua-purple hover:text-tsinghua-dark admin-icon-button"
                         >
                           <AppIcon class="iconify text-xs" icon="carbon:close"></AppIcon>
                         </button>
@@ -309,16 +309,16 @@
                   </div>
                 </div>
                 <div>
-                  <label class="block text-sm text-gray-600 mb-1"
+                  <label class="block text-gray-600 mb-1 admin-label"
                     >口味指标（0-5分，0为无，5为最高，默认为0）</label
                   >
                   <div class="grid grid-cols-4 gap-3">
                     <div>
-                      <label class="block text-xs text-gray-500 mb-1">辣度</label>
+                      <label class="block text-gray-500 mb-1 admin-label">辣度</label>
                       <input
                         type="number"
                         v-model.number="formData.spicyLevel"
-                        class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                        class="w-full admin-input"
                         placeholder="0"
                         min="0"
                         max="5"
@@ -326,11 +326,11 @@
                       />
                     </div>
                     <div>
-                      <label class="block text-xs text-gray-500 mb-1">咸度</label>
+                      <label class="block text-gray-500 mb-1 admin-label">咸度</label>
                       <input
                         type="number"
                         v-model.number="formData.saltiness"
-                        class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                        class="w-full admin-input"
                         placeholder="0"
                         min="0"
                         max="5"
@@ -338,11 +338,11 @@
                       />
                     </div>
                     <div>
-                      <label class="block text-xs text-gray-500 mb-1">甜度</label>
+                      <label class="block text-gray-500 mb-1 admin-label">甜度</label>
                       <input
                         type="number"
                         v-model.number="formData.sweetness"
-                        class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                        class="w-full admin-input"
                         placeholder="0"
                         min="0"
                         max="5"
@@ -350,11 +350,11 @@
                       />
                     </div>
                     <div>
-                      <label class="block text-xs text-gray-500 mb-1">油度</label>
+                      <label class="block text-gray-500 mb-1 admin-label">油度</label>
                       <input
                         type="number"
                         v-model.number="formData.oiliness"
-                        class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                        class="w-full admin-input"
                         placeholder="0"
                         min="0"
                         max="5"
@@ -368,7 +368,7 @@
 
             <!-- 供应时间 -->
             <div class="mb-6">
-              <label class="block text-gray-700 font-medium mb-2">供应时间</label>
+              <label class="block text-gray-700 font-medium mb-2 admin-label">供应时间</label>
               <div class="space-y-2">
                 <div class="flex items-center">
                   <input
@@ -377,7 +377,7 @@
                     v-model="formData.servingTime.breakfast"
                     class="mr-2 h-4 w-4 text-tsinghua-purple"
                   />
-                  <label for="breakfast">早餐</label>
+                  <label class="admin-label" for="breakfast">早餐</label>
                 </div>
                 <div class="flex items-center">
                   <input
@@ -386,7 +386,7 @@
                     v-model="formData.servingTime.lunch"
                     class="mr-2 h-4 w-4 text-tsinghua-purple"
                   />
-                  <label for="lunch">午餐</label>
+                  <label class="admin-label" for="lunch">午餐</label>
                 </div>
                 <div class="flex items-center">
                   <input
@@ -395,7 +395,7 @@
                     v-model="formData.servingTime.dinner"
                     class="mr-2 h-4 w-4 text-tsinghua-purple"
                   />
-                  <label for="dinner">晚餐</label>
+                  <label class="admin-label" for="dinner">晚餐</label>
                 </div>
                 <div class="flex items-center">
                   <input
@@ -404,7 +404,7 @@
                     v-model="formData.servingTime.night"
                     class="mr-2 h-4 w-4 text-tsinghua-purple"
                   />
-                  <label for="night-food">夜宵</label>
+                  <label class="admin-label" for="night-food">夜宵</label>
                 </div>
               </div>
             </div>
@@ -412,10 +412,10 @@
             <!-- 供应日期段 -->
             <div class="mb-6">
               <div class="flex justify-between items-center mb-2">
-                <label class="block text-gray-700 font-medium">供应日期段</label>
+                <label class="block text-gray-700 font-medium admin-label">供应日期段</label>
                 <button
                   type="button"
-                  class="text-tsinghua-purple text-sm flex items-center hover:text-tsinghua-dark"
+                  class="text-tsinghua-purple flex items-center hover:text-tsinghua-dark admin-button"
                   @click="addDateRange"
                 >
                   <AppIcon class="iconify" icon="carbon:add-alt"></AppIcon>
@@ -433,26 +433,26 @@
                 >
                   <div class="flex-1 grid grid-cols-2 gap-3">
                     <div>
-                      <label class="block text-xs text-gray-500 mb-1">开始日期</label>
+                      <label class="block text-gray-500 mb-1 admin-label">开始日期</label>
                       <input
                         type="date"
                         v-model="dateRange.startDate"
-                        class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+                        class="w-full admin-input"
                       />
                     </div>
                     <div>
-                      <label class="block text-xs text-gray-500 mb-1">结束日期</label>
+                      <label class="block text-gray-500 mb-1 admin-label">结束日期</label>
                       <input
                         type="date"
                         v-model="dateRange.endDate"
-                        class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple text-sm"
+                        class="w-full admin-input"
                         :min="dateRange.startDate"
                       />
                     </div>
                   </div>
                   <button
                     type="button"
-                    class="text-red-500 hover:text-red-700 px-2"
+                    class="text-red-500 hover:text-red-700 admin-icon-button"
                     @click="removeDateRange(index)"
                     title="删除日期段"
                   >
@@ -467,22 +467,22 @@
 
             <!-- 过敏原 -->
             <div class="mb-6">
-              <label class="block text-gray-700 font-medium mb-2">过敏原</label>
+              <label class="block text-gray-700 font-medium mb-2 admin-label">过敏原</label>
               <input
                 type="text"
                 v-model="formData.allergens"
-                class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                class="w-full admin-input"
                 placeholder="例如：花生、牛奶、鸡蛋等"
               />
             </div>
 
             <!-- 原辅料 -->
             <div>
-              <label class="block text-gray-700 font-medium mb-2">原辅料</label>
+              <label class="block text-gray-700 font-medium mb-2 admin-label">原辅料</label>
               <input
                 type="text"
                 v-model="formData.ingredients"
-                class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                class="w-full admin-input"
                 placeholder="例如：猪肉、豆芽、辣椒、花椒等"
               />
             </div>
@@ -490,10 +490,10 @@
         </fieldset>
 
         <!-- 表单按钮 -->
-        <div class="flex space-x-4 pt-6 border-t border-gray-200">
+        <div class="flex pt-6 border-t border-gray-200 admin-actions">
           <button
             type="button"
-            class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+            class="transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed admin-button admin-button-primary"
             @click="submitForm"
             :disabled="isExpiredComposition || isSubmitted || isSubmitting || !authStore.hasPermission('dish:create')"
             :title="!authStore.hasPermission('dish:create') ? '无权限创建菜品' : '保存子项信息'"
@@ -503,7 +503,7 @@
           </button>
           <button
             type="button"
-            class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"
+            class="border border-gray-300 text-gray-700 hover:bg-gray-100 transition duration-200 admin-button"
             @click="goBack"
             :disabled="isSubmitting"
           >

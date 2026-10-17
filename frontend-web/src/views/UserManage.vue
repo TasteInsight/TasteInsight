@@ -10,7 +10,7 @@
             header-icon="clarity:group-line"
           />
           <button
-            class="px-6 py-2 text-white rounded-lg transition duration-200 flex items-center"
+            class="text-white transition duration-200 flex items-center admin-button"
             :class="authStore.hasPermission('admin:create') ? 'bg-tsinghua-purple hover:bg-tsinghua-dark' : 'bg-gray-400 cursor-not-allowed'"
             @click="!authStore.hasPermission('admin:create') ? null : createNewAdmin()"
             :title="!authStore.hasPermission('admin:create') ? '无权限创建' : '创建子管理员'"
@@ -29,11 +29,11 @@
               type="text"
               v-model="searchQuery"
               placeholder="搜索用户名、角色（权限组合）..."
-              class="w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+              class="w-full pl-10 pr-10 admin-input"
             />
             <button
               v-if="searchQuery"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 admin-icon-button"
               @click="searchQuery = ''"
               type="button"
               title="清除搜索"
@@ -50,7 +50,7 @@
                 <select
                   v-model="canteenFilter"
                   @change="handleFilterChange"
-                  class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[200px] transition-all cursor-pointer hover:border-gray-400"
+                  class="appearance-none pr-10 bg-white min-w-[200px] transition-all cursor-pointer hover:border-gray-400 admin-input"
                 >
                   <option value="">全部食堂</option>
                   <option value="all">全校食堂</option>
@@ -68,7 +68,7 @@
               <button
                 v-if="canteenFilter || searchQuery"
                 @click="resetFilters"
-                class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-gray-200/50 transition-colors"
+                class="text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 hover:bg-gray-200/50 transition-colors admin-button"
               >
                 <AppIcon class="iconify" icon="carbon:reset"></AppIcon>
                 重置筛选
@@ -106,7 +106,7 @@
                 <td class="py-4 px-6 text-center" @click.stop>
                   <div class="flex items-center justify-center gap-2">
                     <button
-                      class="p-2 rounded-full hover:bg-gray-200"
+                      class="rounded-full hover:bg-gray-200 admin-icon-button"
                       :class="authStore.hasPermission('admin:edit') ? 'text-tsinghua-purple' : 'text-gray-400 cursor-not-allowed'"
                       @click.stop="!authStore.hasPermission('admin:edit') ? null : editAdmin(admin)"
                       :title="!authStore.hasPermission('admin:edit') ? '无权限编辑' : '编辑权限'"
@@ -114,7 +114,7 @@
                       <AppIcon class="iconify" icon="carbon:edit"></AppIcon>
                     </button>
                     <button
-                      class="p-2 rounded-full hover:bg-gray-200"
+                      class="rounded-full hover:bg-gray-200 admin-icon-button"
                       :class="authStore.hasPermission('admin:edit') ? 'text-orange-500' : 'text-gray-400 cursor-not-allowed'"
                       @click.stop="!authStore.hasPermission('admin:edit') ? null : openResetPasswordModal(admin)"
                       :title="!authStore.hasPermission('admin:edit') ? '无权限修改密码' : '重置密码'"
@@ -122,7 +122,7 @@
                       <AppIcon class="iconify" icon="carbon:password"></AppIcon>
                     </button>
                     <button
-                      class="p-2 rounded-full hover:bg-gray-200"
+                      class="rounded-full hover:bg-gray-200 admin-icon-button"
                       :class="authStore.hasPermission('admin:delete') ? 'text-red-500' : 'text-gray-400 cursor-not-allowed'"
                       @click.stop="!authStore.hasPermission('admin:delete') ? null : deleteAdmin(admin)"
                       :title="!authStore.hasPermission('admin:delete') ? '无权限删除' : '删除'"
@@ -137,14 +137,14 @@
         </div>
 
         <!-- 空状态 -->
-        <div v-if="filteredAdmins.length === 0 && !loading" class="text-center py-12">
+        <div v-if="filteredAdmins.length === 0 && !loading" class="admin-state">
           <AppIcon
             class="iconify text-6xl text-gray-300 mx-auto"
             icon="clarity:group-line"
           ></AppIcon>
           <p class="mt-4 text-gray-500">暂无子管理员</p>
           <button
-            class="mt-4 px-6 py-2 text-white rounded-lg transition duration-200"
+            class="mt-4 text-white transition duration-200 admin-button"
             :class="authStore.hasPermission('admin:create') ? 'bg-tsinghua-purple hover:bg-tsinghua-dark' : 'bg-gray-400 cursor-not-allowed'"
             @click="!authStore.hasPermission('admin:create') ? null : createNewAdmin()"
             :title="!authStore.hasPermission('admin:create') ? '无权限创建' : '创建第一个子管理员'"
@@ -158,7 +158,7 @@
           <button
             @click="changePage(currentPage - 1)"
             :disabled="currentPage === 1"
-            class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed admin-button"
           >
             上一页
           </button>
@@ -166,7 +166,7 @@
             v-for="page in totalPages"
             :key="page"
             @click="changePage(page)"
-            class="px-4 py-2 border rounded-lg transition"
+            class="border transition admin-button"
             :class="
               currentPage === page
                 ? 'bg-tsinghua-purple text-white border-tsinghua-purple'
@@ -178,7 +178,7 @@
           <button
             @click="changePage(currentPage + 1)"
             :disabled="currentPage === totalPages"
-            class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed admin-button"
           >
             下一页
           </button>
@@ -196,7 +196,7 @@
             header-icon="clarity:group-line"
           />
           <button
-            class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"
+            class="border border-gray-300 text-gray-700 hover:bg-gray-100 transition duration-200 admin-button"
             @click="backToList"
           >
             返回列表
@@ -209,14 +209,14 @@
             <div>
               <!-- 用户名 -->
               <div class="mb-6">
-                <label class="block text-gray-700 font-medium mb-2">
+                <label class="block text-gray-700 font-medium mb-2 admin-label">
                   用户名 <span class="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   v-model="formData.username"
                   @input="errors.username = ''"
-                  class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                  class="w-full admin-input"
                   :class="{
                     'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.username,
                   }"
@@ -233,7 +233,7 @@
 
               <!-- 密码 -->
               <div v-if="!editingAdmin" class="mb-6">
-                <label class="block text-gray-700 font-medium mb-2">
+                <label class="block text-gray-700 font-medium mb-2 admin-label">
                   初始密码 <span class="text-red-500">*</span>
                 </label>
                 <div class="flex gap-2">
@@ -241,7 +241,7 @@
                     v-model="formData.password"
                     @input="errors.password = ''"
                     type="text"
-                    class="flex-1 px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                    class="flex-1 admin-input"
                     :class="{
                       'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.password,
                     }"
@@ -250,7 +250,7 @@
                   <button
                     type="button"
                     @click="generatePassword"
-                    class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                    class="border border-gray-300 hover:bg-gray-50 transition admin-button"
                   >
                     随机生成
                   </button>
@@ -271,7 +271,7 @@
 
               <!-- 角色 -->
               <div class="mb-6">
-                <label class="block text-gray-700 font-medium mb-2">
+                <label class="block text-gray-700 font-medium mb-2 admin-label">
                   角色（权限组合）
                 </label>
                 <div class="grid grid-cols-2 gap-3">
@@ -349,14 +349,14 @@
                 
                 <!-- 自定义角色输入框 -->
                 <div v-if="formData.role === 'custom'" class="mt-3">
-                  <label class="block text-sm text-gray-600 mb-1">
+                  <label class="block text-gray-600 mb-1 admin-label">
                     自定义角色名称
                   </label>
                   <input
                     type="text"
                     v-model="formData.customRole"
                     @input="errors.customRole = ''"
-                    class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                    class="w-full admin-input"
                     :class="{
                       'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.customRole,
                     }"
@@ -375,10 +375,10 @@
 
               <!-- 管理范围 -->
               <div class="mb-6">
-                <label class="block text-gray-700 font-medium mb-2">管理范围（食堂）</label>
+                <label class="block text-gray-700 font-medium mb-2 admin-label">管理范围（食堂）</label>
                 <select
                   v-model="formData.canteenId"
-                  class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple bg-white"
+                  class="w-full bg-white admin-input"
                 >
                   <option value="">全局管理范围</option>
                   <option v-for="canteen in canteenList" :key="canteen.id" :value="canteen.id">
@@ -397,10 +397,10 @@
               <!-- 权限配置 -->
               <div class="mb-6">
                 <div class="flex justify-between items-center mb-2">
-                  <label class="block text-gray-700 font-medium">权限配置</label>
+                  <label class="block text-gray-700 font-medium admin-label">权限配置</label>
                   <button
                     type="button"
-                    class="text-sm flex items-center transition-colors"
+                    class="flex items-center transition-colors admin-button"
                     :class="isAllPermissionsSelected ? 'text-red-500 hover:text-red-700' : 'text-tsinghua-purple hover:text-tsinghua-dark'"
                     @click="toggleAllPermissions"
                   >
@@ -422,7 +422,7 @@
                       </div>
                       <button
                         type="button"
-                        class="text-xs px-2 py-1 rounded transition-colors flex items-center gap-1"
+                        class="transition-colors flex items-center gap-1 admin-button"
                         :class="isGroupSelected(permissionGroup) ? 'text-red-500 hover:bg-red-50' : 'text-tsinghua-purple hover:bg-purple-50'"
                         @click="toggleGroupPermissions(permissionGroup)"
                         :title="isGroupSelected(permissionGroup) ? '取消全选该组' : '全选该组'"
@@ -445,7 +445,7 @@
                           @change="togglePermission(permission.id)"
                           class="w-4 h-4 text-tsinghua-purple border-gray-300 rounded focus:ring-tsinghua-purple"
                         />
-                        <label :for="permission.id" class="text-sm text-gray-700 cursor-pointer">
+                        <label :for="permission.id" class="text-gray-700 cursor-pointer admin-label">
                           {{ permission.label }}
                         </label>
                       </div>
@@ -458,10 +458,10 @@
           </div>
 
           <!-- 表单按钮 -->
-          <div class="flex space-x-4 pt-6 border-t border-gray-200">
+          <div class="flex pt-6 border-t border-gray-200 admin-actions">
             <button
               type="button"
-              class="px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+              class="transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed admin-button admin-button-primary"
               @click="submitForm"
               :disabled="isSubmitting"
             >
@@ -470,7 +470,7 @@
             </button>
             <button
               type="button"
-              class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"
+              class="border border-gray-300 text-gray-700 hover:bg-gray-100 transition duration-200 admin-button"
               @click="backToList"
             >
               取消
@@ -487,14 +487,16 @@
       label="重置密码"
       @close="closeResetPasswordModal"
     >
-      <div class="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6 mx-4" @click.stop>
-        <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <AppIcon class="iconify text-orange-500" icon="carbon:password"></AppIcon>
-          重置密码 - {{ resetPasswordTarget?.username }}
-        </h3>
-        <form @submit.prevent="handleResetPassword" class="space-y-4">
+      <div class="relative w-full max-w-md mx-4 admin-dialog-panel" @click.stop>
+        <div class="admin-dialog-header">
+          <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+            <AppIcon class="iconify text-orange-500" icon="carbon:password"></AppIcon>
+            重置密码 - {{ resetPasswordTarget?.username }}
+          </h3>
+        </div>
+        <form @submit.prevent="handleResetPassword" class="space-y-4 admin-dialog-body">
           <div>
-            <label class="block text-gray-700 font-medium mb-2">
+            <label class="block text-gray-700 font-medium mb-2 admin-label">
               新密码 <span class="text-red-500">*</span>
             </label>
             <div class="flex gap-2">
@@ -502,7 +504,7 @@
                 type="text"
                 :value="resetPasswordForm.newPassword"
                 @input="handleResetPasswordInput('newPassword', $event)"
-                class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple focus:border-tsinghua-purple focus:outline-none"
+                class="flex-1 focus:outline-none admin-input"
                 :class="{ 'border-red-400 bg-red-50': resetPasswordError }"
                 placeholder="请输入新密码"
                 autocomplete="new-password"
@@ -510,21 +512,21 @@
               <button
                 type="button"
                 @click="generateResetPassword"
-                class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition whitespace-nowrap"
+                class="border border-gray-300 hover:bg-gray-50 transition whitespace-nowrap admin-button"
               >
                 随机生成
               </button>
             </div>
           </div>
           <div>
-            <label class="block text-gray-700 font-medium mb-2">
+            <label class="block text-gray-700 font-medium mb-2 admin-label">
               确认新密码 <span class="text-red-500">*</span>
             </label>
             <input
               type="text"
               :value="resetPasswordForm.confirmPassword"
               @input="handleResetPasswordInput('confirmPassword', $event)"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple focus:border-tsinghua-purple focus:outline-none"
+              class="w-full focus:outline-none admin-input"
               :class="{ 'border-red-400 bg-red-50': resetPasswordError }"
               placeholder="请再次输入新密码"
               autocomplete="new-password"
@@ -564,18 +566,18 @@
             <AppIcon class="iconify inline-block" icon="carbon:information"></AppIcon>
             密码重置后，请将新密码告知该管理员。建议让管理员登录后立即修改密码。
           </p>
-          <div class="flex justify-end gap-3 pt-4">
+          <div class="flex justify-end gap-3 pt-4 admin-actions">
             <button
               type="button"
               @click="closeResetPasswordModal"
-              class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition"
+              class="border border-gray-300 text-gray-700 hover:bg-gray-100 transition admin-button"
             >
               取消
             </button>
             <button
               type="submit"
               :disabled="isResettingPassword"
-              class="px-4 py-2 bg-orange-700 text-white rounded-lg hover:bg-orange-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              class="bg-orange-700 text-white hover:bg-orange-800 transition disabled:opacity-50 disabled:cursor-not-allowed admin-button"
             >
               {{ isResettingPassword ? '重置中...' : '确认重置' }}
             </button>
