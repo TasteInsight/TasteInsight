@@ -50,8 +50,6 @@ test.describe('Admin Batch Add Dish', () => {
     const downloadButton = page.locator('button:has-text("下载Excel模板")');
     await expect(downloadButton).toBeVisible();
     
-    // Set up download listener
-    const downloadPromise = page.waitForEvent('download').catch(() => null);
     await downloadButton.click();
     
     // Note: Template download might show an alert if not implemented

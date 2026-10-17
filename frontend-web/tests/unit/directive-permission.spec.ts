@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { h, type DirectiveBinding } from 'vue'
 import { permission } from '@/directives/permission'
 
 const hasPermissionMock = vi.fn()
@@ -13,6 +14,11 @@ vi.mock('@/store/modules/use-auth-store', () => {
   }
 })
 
+function mountPermission(el: HTMLElement, value: unknown) {
+  const binding: DirectiveBinding = { value, oldValue: undefined, arg: undefined, modifiers: {}, instance: null, dir: permission }
+  permission.mounted!(el, binding, h('button'), null)
+}
+
 describe('directives/permission', () => {
   beforeEach(() => {
     hasPermissionMock.mockReset()
@@ -26,7 +32,7 @@ describe('directives/permission', () => {
     const el = document.createElement('button')
     parent.appendChild(el)
 
-    permission.mounted!(el as any, { value: ['a', 'b'] } as any)
+    mountPermission(el, ['a', 'b'])
 
     expect(parent.contains(el)).toBe(false)
   })
@@ -38,7 +44,7 @@ describe('directives/permission', () => {
     const el = document.createElement('button')
     parent.appendChild(el)
 
-    permission.mounted!(el as any, { value: ['a', 'b'] } as any)
+    mountPermission(el, ['a', 'b'])
 
     expect(parent.contains(el)).toBe(true)
   })
@@ -50,7 +56,7 @@ describe('directives/permission', () => {
     const el = document.createElement('button')
     parent.appendChild(el)
 
-    permission.mounted!(el as any, { value: 'dish:view' } as any)
+    mountPermission(el, 'dish:view')
 
     expect(parent.contains(el)).toBe(true)
   })
@@ -62,7 +68,7 @@ describe('directives/permission', () => {
     const el = document.createElement('button')
     parent.appendChild(el)
 
-    permission.mounted!(el as any, { value: 'dish:edit' } as any)
+    mountPermission(el, 'dish:edit')
 
     expect(parent.contains(el)).toBe(false)
   })
@@ -72,6 +78,6 @@ describe('directives/permission', () => {
     const el = document.createElement('button')
     parent.appendChild(el)
 
-    expect(() => permission.mounted!(el as any, { value: null } as any)).toThrow('need roles!')
+    expect(() => mountPermission(el, null)).toThrow('need roles!')
   })
 })

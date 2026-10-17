@@ -465,5 +465,8 @@ export async function installMockApi(page: Page): Promise<void> {
   // 仅拦截后端域名/端口，避免影响 Vite/uni-app 的模块与静态资源加载
   await page.route('**://127.0.0.1:4523/**', handleBackend);
   await page.route('**://localhost:4523/**', handleBackend);
-  await page.route('**://www.zens.top/**', handleBackend);
+  if (process.env.VITE_API_BASE_URL) {
+    const apiBaseUrl = process.env.VITE_API_BASE_URL.trim().replace(/\/+$/, '');
+    await page.route(`${apiBaseUrl}/**`, handleBackend);
+  }
 }

@@ -4,8 +4,7 @@ node_modules
 # Build output (will be rebuilt in container)
 dist
 
-# Test files
-e2e
+# Test reports
 test-results
 playwright-report
 coverage

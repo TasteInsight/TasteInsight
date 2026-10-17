@@ -5,7 +5,7 @@ TasteInsight 管理端是基于 **Vue 3** + **Vite** 构建的后台管理系统
 ## 技术栈
 
 - **框架**: Vue 3.5 + Composition API
-- **构建工具**: Vite 5
+- **构建工具**: Vite 7
 - **状态管理**: Pinia 2
 - **路由**: Vue Router 4
 - **样式**: TailwindCSS 3
@@ -15,6 +15,16 @@ TasteInsight 管理端是基于 **Vue 3** + **Vite** 构建的后台管理系统
 - **E2E 测试**: Playwright
 - **语言**: TypeScript 5
 - **包管理器**: pnpm
+
+## 发布资源与加载
+
+页面按路由加载。新闻富文本编辑器的脚本与样式在打开创建或编辑窗口时加载；列表和预览共用轻量页面代码。编辑器就绪后才允许保存或发布，同一页面会话内再次打开可复用模块缓存。资源加载失败时保留表单并提示先保留填写内容、刷新页面重试。
+
+Vite 保持默认 500 kB 单块警告。wangEditor 5 的发行模块内置编辑核心、菜单和上传等能力，构建仍可能提示编辑器异步块较大。评估时同时查看进入页面的请求量、首次打开编辑器的等待时间和实际传输压缩；`pnpm build` 输出的 gzip 数值是估算，服务端响应决定线上传输大小。
+
+Docker 静态服务为文本资源启用 gzip，并返回 `Vary: Accept-Encoding`。HTML 使用 `no-store`，带内容哈希的资源使用长期缓存。独立静态托管或 CDN 需配置对应压缩与缓存策略。发布页面的基线和后端承压测试见 [浏览器性能测试](../perf/frontend.md)。
+
+`patches/` 中的 pnpm 补丁为 `@wangeditor/editor-for-vue@5.1.12` 补齐其已有声明文件的 `types` 导出；运行时代码保持上游实现。补丁由锁文件固定，Docker 在安装依赖前复制补丁目录。升级依赖时需检查上游导出是否已修复，并复验类型检查和发布构建。
 
 ## 项目结构
 
@@ -43,7 +53,7 @@ frontend-web/
 ├── e2e/                     # E2E 测试
 ├── index.html               # HTML 入口
 ├── vite.config.ts           # Vite 配置
-├── tailwind.config.js       # TailwindCSS 配置
+├── tailwind.config.ts       # TailwindCSS 配置
 ├── tsconfig.json            # TypeScript 配置
 └── playwright.config.ts     # Playwright 配置
 ```
@@ -135,13 +145,9 @@ pnpm install
 
 ### 环境变量
 
-项目提交了按 Vite 模式加载的公开配置：
+开发和测试默认请求 `http://localhost:3001`，发布构建默认使用同源 `/api/v1`。默认运行无需创建环境文件。
 
-- `.env.development`：`http://localhost:3001`
-- `.env.production`：`/api/v1`，通过 Docker 公网网关同源访问
-- `.env.test`：单元测试地址
-
-仅在需要机器专属覆盖时创建被 Git 忽略的 `.env.development.local`。`VITE_*` 会进入浏览器产物，不能存放密码或密钥。
+需要覆盖时，参考 `.env.example`：开发目标写入 `.env.development.local`，发布目标写入 `.env.production.local`；进程环境变量优先。自定义 Vite mode 继续可用。`VITE_*` 会进入浏览器产物，只能填写公开参数。本地开发与服务器部署命令见 [环境配置与部署](../docs/环境配置与部署.md)。
 
 ## 运行项目
 
@@ -161,7 +167,7 @@ pnpm build
 
 构建产物输出到 `dist/` 目录。
 
-开发服务与构建统一使用 [vite.config.ts](./vite.config.ts)。
+开发服务与构建统一使用 [vite.config.ts](./vite.config.ts)。发布目标保留 ES2020、Chrome 87、Edge 88、Firefox 78 和 Safari 14 的语法兼容范围。
 
 ### 预览生产构建
 
@@ -172,6 +178,21 @@ pnpm preview
 ## 测试
 
 历史执行结果保存在 [测试报告归档](../docs/archive/test-reports/README.md)。
+
+### 类型检查
+
+```bash
+pnpm type-check
+```
+
+使用 Vue 官方 `vue-tsc` 检查业务 TypeScript、Vue 单文件组件中的 TypeScript 与模板、Vite 等工具配置、单元测试和 E2E 测试。根 `tsconfig.json` 统一运行各项目，缓存写入 `node_modules/.tmp`。该命令独立于发布构建和运行测试；提交前依次执行类型检查、代码检查、单元测试及构建。
+
+```bash
+pnpm type-check
+pnpm lint
+pnpm test:unit
+pnpm build
+```
 
 ### 单元测试
 
@@ -220,9 +241,14 @@ docker run -d -p 80:80 tasteinsight-frontend-web
 ## 代码规范
 
 ```bash
-# ESLint 检查与修复
+# ESLint 检查
 pnpm lint
+
+# 自动修复可修复的规则
+pnpm lint:fix
 ```
+
+ESLint 配置使用原生 ESM，支持现有 JavaScript 与 TypeScript Vue 组件。应用检查 Vue/TypeScript 基础规则；测试检查聚焦用例、断言用法与 Playwright 异步调用。代码格式由 Prettier 配置统一。
 
 ## 许可证
 

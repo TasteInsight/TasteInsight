@@ -19,9 +19,9 @@ describe('config index', () => {
   });
 
   test('normalizes whitespace and trailing slashes', () => {
-    process.env.VITE_API_BASE_URL = ' https://www.zens.top/api/v1/// ';
+    process.env.VITE_API_BASE_URL = ' https://api.example.invalid/api/v1/// ';
     const cfg = require('@/config').default;
-    expect(cfg.baseUrl).toBe('https://www.zens.top/api/v1');
+    expect(cfg.baseUrl).toBe('https://api.example.invalid/api/v1');
   });
 
   test('fails fast when the build did not provide an API URL', () => {

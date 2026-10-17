@@ -323,6 +323,7 @@ jobs:
           trap "rm -rf $DEPLOY_TMP" EXIT
 
           cp backend/docker-compose.yml "$DEPLOY_TMP/docker-compose.yml"
+          cp backend/docker-compose.local.yml "$DEPLOY_TMP/docker-compose.local.yml"
           for file in nginx.conf nginx.https.conf.template nginx.common.conf nginx.public.conf nginx.admin.conf gateway-render.sh; do
             cp "backend/$file" "$DEPLOY_TMP/$file"
           done
@@ -333,6 +334,7 @@ jobs:
           ssh "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}" "cd '${{ secrets.DEV_DEPLOY_PATH }}' && sh deploy-release.sh --check-legacy"
           
           scp "$DEPLOY_TMP/docker-compose.yml" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/docker-compose.yml"
+          scp "$DEPLOY_TMP/docker-compose.local.yml" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/docker-compose.local.yml"
           scp "$DEPLOY_TMP/.env.production" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/.env.production"
           for file in nginx.conf nginx.https.conf.template nginx.common.conf nginx.public.conf nginx.admin.conf gateway-render.sh; do
             scp "$DEPLOY_TMP/$file" "${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:${{ secrets.DEV_DEPLOY_PATH }}/$file"
@@ -412,6 +414,7 @@ jobs:
 
           # 复制 docker-compose.yml
           cp backend/docker-compose.yml "$DEPLOY_TMP/docker-compose.yml"
+          cp backend/docker-compose.local.yml "$DEPLOY_TMP/docker-compose.local.yml"
           for file in nginx.conf nginx.https.conf.template nginx.common.conf nginx.public.conf nginx.admin.conf gateway-render.sh; do
             cp "backend/$file" "$DEPLOY_TMP/$file"
           done
@@ -423,6 +426,7 @@ jobs:
           
           # 复制文件到服务器
           scp "$DEPLOY_TMP/docker-compose.yml" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/docker-compose.yml"
+          scp "$DEPLOY_TMP/docker-compose.local.yml" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/docker-compose.local.yml"
           scp "$DEPLOY_TMP/.env.production" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/.env.production"
           for file in nginx.conf nginx.https.conf.template nginx.common.conf nginx.public.conf nginx.admin.conf gateway-render.sh; do
             scp "$DEPLOY_TMP/$file" "${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:${{ secrets.PROD_DEPLOY_PATH }}/$file"

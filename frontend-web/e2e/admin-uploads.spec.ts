@@ -130,7 +130,7 @@ async function deleteDish(request: any, token: string, id: string): Promise<bool
 async function cleanupTestData(request: any, token: string): Promise<void> {
   try {
     // Get all pending uploads and clean up test-created ones
-    const pendingUploads = await getPendingUploads(request, token);
+    const pendingUploads: Array<{ id: string; name: string }> = await getPendingUploads(request, token);
     for (const upload of pendingUploads) {
       if (upload.name?.startsWith(TEST_UPLOAD_PREFIX)) {
         // Reject the upload to clean it up
@@ -329,7 +329,7 @@ test.describe('Admin Uploads API Tests', () => {
       });
       expect(pendingResponse.ok()).toBe(true);
       const pendingData = await pendingResponse.json();
-      const pendingUploads = pendingData.data?.items || [];
+      const pendingUploads: Array<{ id: string; name: string }> = pendingData.data?.items || [];
       expect(pendingUploads.some(upload => upload.id === pendingUploadId)).toBe(true);
       expect(pendingUploads.some(upload => upload.id === approveUploadId)).toBe(false);
       expect(pendingUploads.some(upload => upload.id === rejectUploadId)).toBe(false);
@@ -341,7 +341,7 @@ test.describe('Admin Uploads API Tests', () => {
       });
       expect(approvedResponse.ok()).toBe(true);
       const approvedData = await approvedResponse.json();
-      const approvedUploads = approvedData.data?.items || [];
+      const approvedUploads: Array<{ id: string; name: string }> = approvedData.data?.items || [];
       expect(approvedUploads.some(upload => upload.id === approveUploadId)).toBe(true);
       expect(approvedUploads.some(upload => upload.id === pendingUploadId)).toBe(false);
       expect(approvedUploads.some(upload => upload.id === rejectUploadId)).toBe(false);
@@ -353,7 +353,7 @@ test.describe('Admin Uploads API Tests', () => {
       });
       expect(rejectedResponse.ok()).toBe(true);
       const rejectedData = await rejectedResponse.json();
-      const rejectedUploads = rejectedData.data?.items || [];
+      const rejectedUploads: Array<{ id: string; name: string }> = rejectedData.data?.items || [];
       expect(rejectedUploads.some(upload => upload.id === rejectUploadId)).toBe(true);
       expect(rejectedUploads.some(upload => upload.id === pendingUploadId)).toBe(false);
       expect(rejectedUploads.some(upload => upload.id === approveUploadId)).toBe(false);
@@ -365,7 +365,7 @@ test.describe('Admin Uploads API Tests', () => {
       });
       expect(allResponse.ok()).toBe(true);
       const allData = await allResponse.json();
-      const allUploads = allData.data?.items || [];
+      const allUploads: Array<{ id: string; name: string }> = allData.data?.items || [];
       expect(allUploads.some(upload => upload.id === pendingUploadId)).toBe(true);
       expect(allUploads.some(upload => upload.id === approveUploadId)).toBe(true);
       expect(allUploads.some(upload => upload.id === rejectUploadId)).toBe(true);

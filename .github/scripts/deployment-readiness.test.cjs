@@ -21,7 +21,7 @@ for (const environment of ['dev', 'prod']) {
     assert.match(job, /sh deploy-release\.sh\n/);
     const configurationCopy = job.indexOf('scp "$DEPLOY_TMP/docker-compose.yml"');
     assert.ok(configurationCopy > job.indexOf('sh deploy-release.sh --check-legacy'));
-    for (const file of gatewayFiles) assert.ok(job.includes(file), file);
+    for (const file of [...gatewayFiles, 'docker-compose.local.yml']) assert.ok(job.includes(file), file);
     assert.ok(job.indexOf('deployment completed') > job.lastIndexOf('sh deploy-release.sh'));
     assert.doesNotMatch(job, /--remove-orphans|image prune|down\s+-v/);
   });

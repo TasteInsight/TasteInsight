@@ -11,13 +11,13 @@ export const permission: ObjectDirective = {
       const hasPermission = authStore.hasAnyPermission(permissionRoles)
 
       if (!hasPermission) {
-        el.parentNode && el.parentNode.removeChild(el)
+        if (el.parentNode) el.parentNode.removeChild(el)
       }
     } else if (value && typeof value === 'string') {
       const hasPermission = authStore.hasPermission(value)
       
       if (!hasPermission) {
-        el.parentNode && el.parentNode.removeChild(el)
+        if (el.parentNode) el.parentNode.removeChild(el)
       }
     } else {
       throw new Error(`need roles! Like v-permission="['admin','editor']" or v-permission="'admin'"`)

@@ -25,7 +25,7 @@ const roles = ['public-api', 'admin-api', 'worker', 'migrate'];
 const runtimeRoles = ['public-api', 'admin-api', 'worker'];
 const apiRoles = ['public-api', 'admin-api'];
 const optionalGroups = {
-  common: ['RUN_SEED', 'IMPORT_DATA', 'ENABLE_MOCK_AUTH'],
+  common: ['RUN_SEED', 'IMPORT_DATA', 'ENABLE_MOCK_AUTH', 'POSTGRES_SSLMODE', 'DATABASE_URL'],
   runtime: [
     'REDIS_REC_DB', 'EXTERNAL_EMBEDDING_SERVICE_ENABLED',
     'EXTERNAL_EMBEDDING_SERVICE_VERSION', 'EMBEDDING_SERVICE_BATCH_SIZE',
@@ -89,6 +89,7 @@ function resolveCompose(fileValues = configuration, overrides = {}, fileName = '
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'tasteinsight-compose-config-'));
   try {
     fs.writeFileSync(path.join(directory, 'docker-compose.yml'), source);
+    fs.copyFileSync(path.join(backend, 'docker-compose.local.yml'), path.join(directory, 'docker-compose.local.yml'));
     fs.writeFileSync(path.join(directory, fileName), typeof fileValues === 'string' ? fileValues :
       Object.entries(fileValues).map(([key, value]) => `${key}='${value}'`).join('\n'));
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
@@ -235,9 +236,10 @@ test('production example renders with only required credentials replaced', () =>
   assert.equal(nginx.ports.find((port) => port.target === 443).published, '443');
 });
 
-test('both templates retain supported capabilities without enabling optional integrations', () => {
+test('compact templates and the shared reference retain every optional capability', () => {
+  const reference = fs.readFileSync(path.join(backend, '../docs/环境变量参考.md'), 'utf8');
   for (const [index, template] of templates.entries()) {
-    const available = new Set([...template.matchAll(/^\s*(?:#\s*)?([A-Z][A-Z0-9_]*)=/gm)]
+    const available = new Set([...(template + '\n' + reference).matchAll(/^\s*(?:#\s*)?([A-Z][A-Z0-9_]*)=/gm)]
       .map((match) => match[1]));
     const active = new Set([...template.matchAll(/^([A-Z][A-Z0-9_]*)=/gm)]
       .map((match) => match[1]));
@@ -258,43 +260,21 @@ test('both templates retain supported capabilities without enabling optional int
     }
   }
   for (const setting of [
-    'NODE_ENV=development', 'PORT=3001', 'POSTGRES_EXPOSE_PORT=5434',
-    'REDIS_HOST=localhost', 'REDIS_PORT=6380', 'REDIS_EXPOSE_PORT=6380',
+    'NODE_ENV=development', 'PORT=3001', 'POSTGRES_HOST=localhost', 'POSTGRES_PORT=5434',
+    'REDIS_HOST=localhost', 'REDIS_PORT=6380',
     'UPLOAD_LOCAL_PATH=./uploads-dev',
   ]) {
     assert.ok(templates[0].split('\n').includes(setting), `development connection: ${setting}`);
   }
-  assert.match(templates[0], /^DATABASE_URL=.*@localhost:5434\/tasteinsight_dev\?schema=public$/m);
+  assert.doesNotMatch(templates[0], /^(DATABASE_URL|POSTGRES_EXPOSE_PORT|REDIS_EXPOSE_PORT)=/m);
 });
 
-test('environment examples keep shared settings in the same relative order', () => {
-  for (const [index, left] of examples.entries()) {
-    assert.equal(new Set(left.keys).size, left.keys.length, `${left.name}: duplicate setting`);
-    for (const right of examples.slice(index + 1)) {
-      assert.deepEqual(
-        left.keys.filter((key) => right.keys.includes(key)),
-        right.keys.filter((key) => left.keys.includes(key)),
-        `${left.name} and ${right.name}: shared setting order`,
-      );
-    }
-  }
-});
-
-test('environment-specific settings follow the shared backend settings', () => {
-  const shared = new Set(examples[0].keys.filter((key) => examples[1].keys.includes(key)));
-  for (const example of examples) {
-    const boundary = example.content.indexOf('# --- Environment-specific: ');
-    assert.ok(boundary >= 0, `${example.name}: environment-specific section`);
-    assert.deepEqual(
-      exampleKeys(example.content.slice(0, boundary)),
-      example.keys.filter((key) => shared.has(key)),
-      `${example.name}: shared section`,
-    );
-    assert.deepEqual(
-      exampleKeys(example.content.slice(boundary)),
-      example.keys.filter((key) => !shared.has(key)),
-      `${example.name}: environment-specific section`,
-    );
+test('examples contain no duplicate assignments and keep test data isolated', () => {
+  for (const example of examples) assert.equal(new Set(example.keys).size, example.keys.length, example.name);
+  assert.match(examples[2].content, /^NODE_ENV=test$/m);
+  assert.match(examples[2].content, /^DATABASE_URL=.*\/tasteinsight_test\?schema=public$/m);
+  for (const template of templates) {
+    assert.ok(template.split('\n').filter(line => /^[A-Z][A-Z0-9_]*=/.test(line)).length < 30);
   }
 });
 

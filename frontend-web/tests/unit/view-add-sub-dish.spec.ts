@@ -25,7 +25,7 @@ const mocks = vi.hoisted(() => ({
   showAlertMock: vi.fn(() => Promise.resolve()),
   showConfirmMock: vi.fn(() => Promise.resolve(true)),
   authStoreMock: {
-    hasPermission: vi.fn(() => true),
+    hasPermission: vi.fn<(permission: string) => boolean>(() => true),
   },
 }))
 

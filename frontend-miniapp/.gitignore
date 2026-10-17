@@ -30,3 +30,8 @@ playwright-report/
 *.njsproj
 *.sln
 *.sw?
+
+# Private environment targets; keep only the public example.
+.env
+.env.*
+!.env.example

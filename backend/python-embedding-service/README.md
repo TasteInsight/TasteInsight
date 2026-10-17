@@ -2,27 +2,29 @@
 
 基于深度学习的菜品嵌入向量生成服务，支持文本和数值特征融合。
 
-## 🚀 5 分钟快速开始
+## 🚀 快速开始
 
 ### 启动服务
 
+使用 Python 3.9–3.12，与固定依赖版本兼容；容器使用 Python 3.10。完整项目从仓库根目录准备独立 Python 环境，再进入后端启动。以下命令适用于 Linux/macOS shell，激活环境后 `pnpm start:embedding` 使用该环境的 Python：
+
 ```bash
-# 完整项目推荐从 backend 目录启动，它会读取 backend/.env：
+cd backend
+python3 -m venv python-embedding-service/.venv
+. python-embedding-service/.venv/bin/activate
+python -m pip install -r python-embedding-service/requirements.txt
 pnpm run start:embedding
-
-# 独立运行时需先在 shell 中设置 PYTHON_EMBEDDING_* 和 HF_ENDPOINT：
-# 1. 安装依赖
-pip install -r requirements.txt
-
-# 2. 启动服务
-python app.py
-
-# 服务在 http://localhost:5001 启动
 ```
+
+独立运行时，在 `backend/python-embedding-service` 目录创建并激活虚拟环境，安装同一份 `requirements.txt`，在 shell 中设置所需 `PYTHON_EMBEDDING_*` 和 `HF_ENDPOINT`，然后执行 `python app.py`。默认监听 `http://localhost:5001`。
+
+PyTorch 固定为 `2.2.0`：Linux x86_64 可从配置的官方 CPU 索引选择对应 CPU 构建，macOS / ARM64 使用适配本机平台的发行包。
 
 默认文本模型为 `sentence-transformers/paraphrase-multilingual-mpnet-base-v2`。首次启动需要下载预训练权重，后续启动复用本地 Hugging Face 缓存。`HF_ENDPOINT` 默认使用 `https://huggingface.co`；自定义模型源需兼容 Hugging Face SDK 的文件元数据及重定向协议，并使用空缓存验证首次下载。
 
 ### 测试服务
+
+另开终端进入 `backend/python-embedding-service` 并激活 `.venv`。以下测试、训练和 Make 命令均从该目录执行；请求地址使用服务的实际监听端口。
 
 ```bash
 # 健康检查

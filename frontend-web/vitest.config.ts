@@ -16,12 +16,7 @@ export default mergeConfig(
         reporter: ['text', 'html', 'lcov'],
         reportsDirectory: './coverage',
         include: ['src/**/*.{ts,tsx,js,jsx,vue}'],
-        exclude: [
-          'src/main.ts',
-          'src/env.d.ts',
-          'src/shims-vue.d.ts',
-          '**/*.d.ts',
-        ],
+        exclude: ['src/main.ts', 'src/env.d.ts', '**/*.d.ts'],
       },
     },
   }),
