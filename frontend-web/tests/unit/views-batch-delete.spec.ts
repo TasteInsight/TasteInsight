@@ -9,7 +9,7 @@ import { invalidateAuthSession } from '@/utils/auth-session'
 
 const mocks = vi.hoisted(() => ({
   route: { fullPath: '/manage' },
-  auth: { user: { id: 'admin' }, hasPermission: vi.fn() },
+  auth: { user: {scope: 'GLOBAL' as 'GLOBAL' | 'CANTEENS', canteenIds: [], canteens: [],  id: 'admin' }, hasPermission: vi.fn() },
   dish: { getDishes: vi.fn(), getDishReviews: vi.fn(), batchDeleteDishes: vi.fn(), deleteDish: vi.fn() },
   news: { getNews: vi.fn(), batchDeleteNews: vi.fn(), deleteNews: vi.fn() },
   review: { getReviewComments: vi.fn(), batchDeleteReviews: vi.fn(), batchDeleteComments: vi.fn(), deleteReview: vi.fn(), deleteComment: vi.fn() },
@@ -63,7 +63,7 @@ const cases = [
 const global = { stubs: { Header: true, SearchBar: true, Pagination: true } }
 
 async function setupView(resource: typeof cases[number]) {
-  const wrapper = mount(resource.component as any, { global })
+  const wrapper = mount(resource.component, { global })
   await flushPromises()
   if (resource.component === CommentManage) {
     await wrapper.vm.selectDish(dishes[0])
@@ -229,7 +229,7 @@ describe('batch page and reply boundaries', () => {
     const response = deferred()
     const load = resource.component === ModifyDish ? mocks.dish.getDishes : mocks.news.getNews
     load.mockReturnValueOnce(response.promise)
-    const wrapper = mount(resource.component as any, { global })
+    const wrapper = mount(resource.component, { global })
     permissions.value = allPermissions.filter(permission => permission !== resource.permission)
     response.resolve(pageData(resource.component === ModifyDish ? dishes : news))
     await flushPromises()

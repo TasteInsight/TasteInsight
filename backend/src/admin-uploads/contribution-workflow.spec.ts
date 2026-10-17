@@ -16,7 +16,9 @@ import { DishStatus } from '@/admin-dishes/dto/admin-dish.dto';
 const admin = {
   id: 'admin',
   username: 'admin',
-  canteenId: null,
+  scope: 'GLOBAL' as const,
+  canteenIds: [],
+  canteens: [],
   role: 'superadmin',
   permissions: ['upload:approve'],
 };
@@ -747,7 +749,7 @@ describe('Contribution workflow', () => {
       review.editUpload(
         record.id,
         { revision: 1, price: 0 },
-        { ...admin, canteenId: 'other' },
+        { ...admin, scope: 'CANTEENS' as const, canteenIds: ['other'] },
       ),
     ).rejects.toThrow(ForbiddenException);
   });

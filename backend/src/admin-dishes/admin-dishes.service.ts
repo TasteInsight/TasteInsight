@@ -1,4 +1,10 @@
 import {
+  canAccessCanteen,
+  canteenScopeFilter,
+  defaultCanteenId,
+  isGlobalScope,
+} from '@/auth/admin-scope';
+import {
   Injectable,
   NotFoundException,
   BadRequestException,
@@ -128,14 +134,14 @@ export class AdminDishesService {
     const where: any = {};
 
     // 如果管理员有canteenId限制，则只能查看该食堂的菜品
-    if (adminInfo.canteenId) {
-      where.canteenId = adminInfo.canteenId;
+    if (!isGlobalScope(adminInfo)) {
+      where.canteenId = canteenScopeFilter(adminInfo);
     }
 
     // 如果指定了食堂ID
     if (canteenId) {
       // 检查权限：如果管理员有食堂限制，必须匹配
-      if (adminInfo.canteenId && adminInfo.canteenId !== canteenId) {
+      if (!canAccessCanteen(adminInfo, canteenId)) {
         throw new ForbiddenException('权限不足');
       }
       where.canteenId = canteenId;
@@ -154,7 +160,7 @@ export class AdminDishesService {
       }
 
       // 优先使用查询参数中的 canteenId，其次使用管理员绑定的 canteenId
-      const effectiveCanteenId = canteenId ?? adminInfo.canteenId;
+      const effectiveCanteenId = canteenId;
 
       // 如果管理员有食堂限制，验证窗口是否属于该食堂
       if (effectiveCanteenId && window.canteenId !== effectiveCanteenId) {
@@ -162,7 +168,7 @@ export class AdminDishesService {
       }
 
       // 如果管理员有食堂限制，确保窗口属于该食堂
-      if (adminInfo.canteenId && window.canteenId !== adminInfo.canteenId) {
+      if (!canAccessCanteen(adminInfo, window.canteenId)) {
         throw new ForbiddenException('权限不足：该窗口不属于您管理的食堂');
       }
 
@@ -238,7 +244,7 @@ export class AdminDishesService {
     }
 
     // 检查权限：如果管理员有食堂限制，必须匹配
-    if (adminInfo.canteenId && dish.canteenId !== adminInfo.canteenId) {
+    if (!canAccessCanteen(adminInfo, dish.canteenId)) {
       throw new ForbiddenException('权限不足');
     }
 
@@ -355,7 +361,7 @@ export class AdminDishesService {
     }
 
     // 3. 检查权限
-    if (adminInfo.canteenId && window.canteenId !== adminInfo.canteenId) {
+    if (!canAccessCanteen(adminInfo, window.canteenId)) {
       throw new ForbiddenException('权限不足');
     }
 
@@ -370,10 +376,7 @@ export class AdminDishesService {
       if (!parentUpload) {
         throw new BadRequestException('指定的待审父记录不存在');
       }
-      if (
-        adminInfo.canteenId &&
-        parentUpload.canteenId !== adminInfo.canteenId
-      ) {
+      if (!canAccessCanteen(adminInfo, parentUpload.canteenId)) {
         throw new ForbiddenException('权限不足');
       }
       if (
@@ -396,7 +399,7 @@ export class AdminDishesService {
       if (!parentDish) {
         throw new BadRequestException('指定的父菜品不存在');
       }
-      if (adminInfo.canteenId && parentDish.canteenId !== adminInfo.canteenId) {
+      if (!canAccessCanteen(adminInfo, parentDish.canteenId)) {
         throw new ForbiddenException('权限不足');
       }
       if (parentDish.canteenId !== window.canteenId) {
@@ -497,7 +500,7 @@ export class AdminDishesService {
     }
 
     // 检查权限：如果管理员有食堂限制，只能编辑该食堂的菜品
-    if (adminInfo.canteenId && existingDish.canteenId !== adminInfo.canteenId) {
+    if (!canAccessCanteen(adminInfo, existingDish.canteenId)) {
       throw new ForbiddenException('权限不足');
     }
     this.requirePermission(adminInfo, 'dish:edit');
@@ -580,7 +583,7 @@ export class AdminDishesService {
         );
       }
 
-      if (adminInfo.canteenId && window.canteenId !== adminInfo.canteenId) {
+      if (!canAccessCanteen(adminInfo, window.canteenId)) {
         throw new ForbiddenException('不能将菜品移动到其他食堂');
       }
 
@@ -648,7 +651,7 @@ export class AdminDishesService {
         select: { canteenId: true, parentDishId: true },
       });
       if (!ancestor) throw new BadRequestException('指定的父菜品不存在');
-      if (adminInfo.canteenId && ancestor.canteenId !== adminInfo.canteenId) {
+      if (!canAccessCanteen(adminInfo, ancestor.canteenId)) {
         throw new ForbiddenException('权限不足');
       }
       if (ancestor.canteenId !== canteenId) {
@@ -697,7 +700,7 @@ export class AdminDishesService {
     }
 
     // 检查权限：如果管理员有食堂限制，只能删除该食堂的菜品
-    if (adminInfo.canteenId && dish.canteenId !== adminInfo.canteenId) {
+    if (!canAccessCanteen(adminInfo, dish.canteenId)) {
       throw new ForbiddenException('权限不足');
     }
 
@@ -715,10 +718,7 @@ export class AdminDishesService {
         include: { subDishes: true },
       });
       if (!currentDish) throw new NotFoundException('菜品不存在');
-      if (
-        adminInfo.canteenId &&
-        currentDish.canteenId !== adminInfo.canteenId
-      ) {
+      if (!canAccessCanteen(adminInfo, currentDish.canteenId)) {
         throw new ForbiddenException('权限不足');
       }
       if (currentDish.subDishes?.length) {
@@ -798,10 +798,7 @@ export class AdminDishesService {
       });
       if (dishes.length !== ids.length)
         throw new NotFoundException('部分菜品已不存在，请刷新列表');
-      if (
-        adminInfo.canteenId &&
-        dishes.some((dish) => dish.canteenId !== adminInfo.canteenId)
-      )
+      if (dishes.some((dish) => !canAccessCanteen(adminInfo, dish.canteenId)))
         throw new ForbiddenException('无权删除所选菜品');
       if (dishes.some((dish) => dish._count.subDishes > 0))
         throw new BadRequestException(
@@ -858,7 +855,7 @@ export class AdminDishesService {
       await tx.$queryRaw`SELECT "id" FROM "dishes" WHERE "id" = ${id} FOR UPDATE`;
       const dish = await tx.dish.findUnique({ where: { id } });
       if (!dish) throw new NotFoundException('菜品不存在');
-      if (adminInfo.canteenId && dish.canteenId !== adminInfo.canteenId) {
+      if (!canAccessCanteen(adminInfo, dish.canteenId)) {
         throw new ForbiddenException('权限不足');
       }
       const updatedDish = await tx.dish.update({
@@ -887,10 +884,9 @@ export class AdminDishesService {
       throw new BadRequestException('文件大小不能超过 10MB');
     }
 
-    const limitedCanteen = adminInfo.canteenId
-      ? await this.prisma.canteen.findUnique({
-          where: { id: adminInfo.canteenId },
-        })
+    const defaultId = defaultCanteenId(adminInfo);
+    const limitedCanteen = defaultId
+      ? await this.prisma.canteen.findUnique({ where: { id: defaultId } })
       : null;
 
     const buffer = await this.readUploadedFile(file);
@@ -946,6 +942,7 @@ export class AdminDishesService {
         floorMap,
         windowMap,
         limitedCanteen,
+        adminInfo,
       );
       items.push(item);
     }
@@ -985,10 +982,9 @@ export class AdminDishesService {
       throw new BadRequestException('没有可导入的数据');
     }
 
-    const limitedCanteen = adminInfo.canteenId
-      ? await this.prisma.canteen.findUnique({
-          where: { id: adminInfo.canteenId },
-        })
+    const defaultId = defaultCanteenId(adminInfo);
+    const limitedCanteen = defaultId
+      ? await this.prisma.canteen.findUnique({ where: { id: defaultId } })
       : null;
 
     const [existingCanteens, existingFloors, existingWindows] =
@@ -1200,7 +1196,7 @@ export class AdminDishesService {
     }
 
     // 检查权限
-    if (adminInfo?.canteenId && dish.canteenId !== adminInfo.canteenId) {
+    if (!canAccessCanteen(adminInfo, dish.canteenId)) {
       throw new ForbiddenException('权限不足');
     }
 
@@ -1350,7 +1346,7 @@ export class AdminDishesService {
       adminInfo,
     );
 
-    if (adminInfo.canteenId && canteen.id !== adminInfo.canteenId) {
+    if (!canAccessCanteen(adminInfo, canteen.id)) {
       throw new ForbiddenException('无权导入其他食堂的数据');
     }
 
@@ -1446,13 +1442,16 @@ export class AdminDishesService {
     }
 
     if (caches.canteens.has(normalized)) {
-      return caches.canteens.get(normalized)!;
+      const canteen = caches.canteens.get(normalized)!;
+      if (!canAccessCanteen(adminInfo, canteen.id))
+        throw new ForbiddenException('导入食堂不在您的管理范围内');
+      return canteen;
     }
 
     let canteen = await tx.canteen.findFirst({ where: { name: canteenName } });
     if (!canteen) {
       this.requirePermission(adminInfo, 'canteen:create');
-      if (adminInfo.canteenId) {
+      if (!isGlobalScope(adminInfo)) {
         throw new ForbiddenException('您无权创建新食堂');
       }
       canteen = await tx.canteen.create({
@@ -1463,6 +1462,8 @@ export class AdminDishesService {
       });
     }
 
+    if (!canAccessCanteen(adminInfo, canteen.id))
+      throw new ForbiddenException('导入食堂不在您的管理范围内');
     caches.canteens.set(normalized, canteen);
     return canteen;
   }
@@ -1838,6 +1839,7 @@ export class AdminDishesService {
     floorMap: Map<string, Floor>,
     windowMap: Map<string, Window>,
     limitedCanteen: Canteen | null,
+    adminInfo: AdminInfo,
   ): BatchParsedDishDto {
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -1876,7 +1878,13 @@ export class AdminDishesService {
     const matchedCanteen = normalizedCanteen
       ? canteenMap.get(normalizedCanteen)
       : null;
-    if (!matchedCanteen && canteenName) {
+    if (
+      !isGlobalScope(adminInfo) &&
+      !canAccessCanteen(adminInfo, matchedCanteen?.id)
+    ) {
+      errors.push('导入食堂不在您的管理范围内');
+    }
+    if (!matchedCanteen && canteenName && isGlobalScope(adminInfo)) {
       warnings.push('食堂不存在，导入时将自动创建');
     }
 
@@ -1971,7 +1979,7 @@ export class AdminDishesService {
     }
 
     // 检查权限
-    if (adminInfo.canteenId && adminInfo.canteenId !== dish.canteenId) {
+    if (!canAccessCanteen(adminInfo, dish.canteenId)) {
       throw new ForbiddenException('权限不足');
     }
 
@@ -2029,7 +2037,7 @@ export class AdminDishesService {
     }
 
     // 检查权限
-    if (adminInfo.canteenId && adminInfo.canteenId !== canteenId) {
+    if (!canAccessCanteen(adminInfo, canteenId)) {
       throw new ForbiddenException('权限不足');
     }
 
@@ -2079,7 +2087,31 @@ export class AdminDishesService {
   /**
    * 获取嵌入任务状态
    */
-  async getEmbeddingJobStatus(jobId: string) {
+  private async assertEmbeddingJobScope(
+    jobId: string,
+    admin: AdminInfo,
+  ): Promise<void> {
+    const target = await this.embeddingQueueService!.getDishJobTarget(jobId);
+    if (!target) throw new NotFoundException('菜品嵌入任务不存在');
+    if (target.canteenId) {
+      if (!canAccessCanteen(admin, target.canteenId))
+        throw new ForbiddenException('任务不在您的管理范围内');
+      return;
+    }
+    const dishIds = target.dishIds!;
+    const dishes = await this.prisma.dish.findMany({
+      where: { id: { in: dishIds } },
+      select: { id: true, canteenId: true },
+    });
+    if (
+      dishes.length !== dishIds.length ||
+      dishes.some((dish) => !canAccessCanteen(admin, dish.canteenId))
+    ) {
+      throw new ForbiddenException('任务不在您的管理范围内');
+    }
+  }
+
+  async getEmbeddingJobStatus(jobId: string, admin: AdminInfo) {
     if (!this.embeddingQueueService) {
       return {
         code: 200,
@@ -2088,6 +2120,7 @@ export class AdminDishesService {
       };
     }
 
+    await this.assertEmbeddingJobScope(jobId, admin);
     const status = await this.embeddingQueueService.getJobStatus(jobId);
 
     if (!status) {
@@ -2108,7 +2141,7 @@ export class AdminDishesService {
   /**
    * 取消嵌入任务
    */
-  async cancelEmbeddingJob(jobId: string) {
+  async cancelEmbeddingJob(jobId: string, admin: AdminInfo) {
     if (!this.embeddingQueueService) {
       return {
         code: 400,
@@ -2117,6 +2150,7 @@ export class AdminDishesService {
       };
     }
 
+    await this.assertEmbeddingJobScope(jobId, admin);
     const result = await this.embeddingQueueService.cancelJob(jobId);
 
     return {

@@ -1,0 +1,7 @@
+.env
+.env.*
+!.env.example
+results/
+*.lock
+fixtures*.json
+node_modules/

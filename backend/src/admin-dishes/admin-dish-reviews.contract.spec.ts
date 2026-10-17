@@ -3,7 +3,13 @@ import { AdminDishesService } from './admin-dishes.service';
 import { AdminDishesController } from './admin-dishes.controller';
 
 describe('admin dish review contract', () => {
-  const admin = { id: 'a1', canteenId: 'c1', role: 'admin' };
+  const admin = {
+    id: 'a1',
+    scope: 'CANTEENS' as const,
+    canteenIds: ['c1'],
+    canteens: [{ id: 'c1', name: 'c1' }],
+    role: 'admin',
+  };
   const user = { id: 'u1', nickname: '作者', avatar: 'avatar.jpg' };
   let prisma: any;
   let service: AdminDishesService;
@@ -96,7 +102,11 @@ describe('admin dish review contract', () => {
 
   it('does not query another canteen review rows or statistics', async () => {
     await expect(
-      service.getDishReviews('d1', 1, 10, { ...admin, canteenId: 'c2' } as any),
+      service.getDishReviews('d1', 1, 10, {
+        ...admin,
+        scope: 'CANTEENS' as const,
+        canteenIds: ['c2'],
+      } as any),
     ).rejects.toThrow(ForbiddenException);
     expect(prisma.review.findMany).not.toHaveBeenCalled();
     expect(prisma.review.groupBy).not.toHaveBeenCalled();

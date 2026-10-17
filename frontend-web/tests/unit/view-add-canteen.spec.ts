@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
     back: vi.fn(),
   },
   authStoreMock: {
-    user: { id: 'a1', username: 'admin' },
+    user: {scope: 'GLOBAL' as 'GLOBAL' | 'CANTEENS', canteenIds: [], canteens: [],  id: 'a1', username: 'admin' },
     token: 'token',
     permissions: ['canteen:view', 'canteen:create', 'canteen:edit', 'canteen:delete'],
     hasPermission: vi.fn((p: string) =>
@@ -326,7 +326,7 @@ describe('views/AddCanteen', () => {
     const wrapper = shallowMount(AddCanteen, { global: { stubs: { Header: true } } })
     await wrapper.vm.editCanteen(source)
     await nextTick()
-    const times = wrapper.findAll('input[type="time"]')
+    const times = wrapper.findAll<HTMLInputElement>('input[type="time"]')
     expect(times).toHaveLength(4)
     await times[2].setValue('11:30')
     expect(source.openingHours[0].schedule[0].slots[1].openTime).toBe('11:00')
@@ -388,10 +388,10 @@ describe('views/AddCanteen', () => {
     ] } })
     const wrapper = mount(AddCanteen, { global: { stubs: { Header: true } } })
     await wrapper.vm.editCanteen(source)
-    const names = wrapper.findAll('input[aria-label="楼层名称"]')
+    const names = wrapper.findAll<HTMLInputElement>('input[aria-label="楼层名称"]')
     expect(names).toHaveLength(2)
     expect(names[0].element.value).toBe('自选/套餐')
-    const floorSelect = wrapper.get('select')
+    const floorSelect = wrapper.get<HTMLSelectElement>('select')
     expect(floorSelect.findAll('option').map(option => option.text())).toEqual([
       '请选择楼层', '自选/套餐（01层）', '自选/套餐（2层）',
     ])
@@ -417,8 +417,8 @@ describe('views/AddCanteen', () => {
     await wrapper.vm.editCanteen({ id: 'A', name: '食堂A', floors, openingHours: [] })
     await wrapper.findAll('button[title="删除楼层"]')[1].trigger('click')
     await wrapper.findAll('button').find(button => button.text() === '添加楼层')!.trigger('click')
-    await wrapper.findAll('input[aria-label="楼层层级"]')[1].setValue('-1')
-    await wrapper.findAll('input[aria-label="楼层名称"]')[1].setValue('地下/风味')
+    await wrapper.findAll<HTMLInputElement>('input[aria-label="楼层层级"]')[1].setValue('-1')
+    await wrapper.findAll<HTMLInputElement>('input[aria-label="楼层名称"]')[1].setValue('地下/风味')
     await wrapper.vm.submitForm()
     expect(mocks.canteenApiMock.updateCanteen.mock.calls[0][1].floors).toEqual([
       floors[0], { level: '-1', name: '地下/风味' },
@@ -437,7 +437,7 @@ describe('views/AddCanteen', () => {
     ] } })
     const wrapper = mount(AddCanteen, { global: { stubs: { Header: true } } })
     await wrapper.vm.editCanteen({ id: 'A', name: '食堂A', floors, openingHours })
-    const level = wrapper.findAll('input[aria-label="楼层层级"]')[0]
+    const level = wrapper.findAll<HTMLInputElement>('input[aria-label="楼层层级"]')[0]
     await level.setValue('2')
     expect(wrapper.vm.errors.floors).toBe('楼层层级不能重复')
     expect(level.element.value).toBe('01')
@@ -466,7 +466,7 @@ describe('views/AddCanteen', () => {
     ] } })
     const wrapper = mount(AddCanteen, { global: { stubs: { Header: true } } })
     await wrapper.vm.editCanteen({ id: 'A', name: '食堂A', floors, openingHours: [] })
-    await wrapper.findAll('input[aria-label="楼层层级"]')[0].setValue('3')
+    await wrapper.findAll<HTMLInputElement>('input[aria-label="楼层层级"]')[0].setValue('3')
     await wrapper.vm.submitForm()
     expect(mocks.canteenApiMock.updateWindow).toHaveBeenCalledWith('w1', expect.objectContaining({ floor: { level: '3', name: '一层' } }))
     expect(mocks.canteenApiMock.updateWindow).toHaveBeenCalledWith('w2', expect.objectContaining({ floor: { level: '1', name: '1F' } }))
@@ -481,7 +481,7 @@ describe('views/AddCanteen', () => {
     mocks.canteenApiMock.getWindows.mockResolvedValue({ code: 200, data: { items: [] } })
     const wrapper = mount(AddCanteen, { global: { stubs: { Header: true } } })
     await wrapper.vm.editCanteen({ id: 'A', name: '食堂A', floors, openingHours: [{ floorLevel: '1', schedule }] })
-    await wrapper.findAll('input[aria-label="楼层层级"]')[0].setValue('3')
+    await wrapper.findAll<HTMLInputElement>('input[aria-label="楼层层级"]')[0].setValue('3')
     await wrapper.vm.submitForm()
     expect(mocks.canteenApiMock.updateCanteen).not.toHaveBeenCalled()
     expect(mocks.showAlertMock).toHaveBeenCalledWith(expect.stringContaining('无法确定'))
@@ -515,8 +515,8 @@ describe('views/AddCanteen', () => {
     const wrapper = mount(AddCanteen, { global: { stubs: { Header: true } } })
     await wrapper.vm.editCanteen({ id: 'A', name: '食堂A', floors, openingHours })
     await wrapper.findAll('button').find(button => button.text() === '添加楼层')!.trigger('click')
-    await wrapper.findAll('input[aria-label="楼层层级"]')[1].setValue('2')
-    await wrapper.findAll('input[aria-label="楼层名称"]')[1].setValue('自选')
+    await wrapper.findAll<HTMLInputElement>('input[aria-label="楼层层级"]')[1].setValue('2')
+    await wrapper.findAll<HTMLInputElement>('input[aria-label="楼层名称"]')[1].setValue('自选')
     await wrapper.vm.submitForm()
     expect(mocks.canteenApiMock.updateCanteen).not.toHaveBeenCalled()
     expect(mocks.showAlertMock).toHaveBeenCalledWith(expect.stringContaining('无法确定'))
@@ -535,7 +535,7 @@ describe('views/AddCanteen', () => {
     const loading = wrapper.vm.editCanteen({ id: 'A', name: '食堂A', floors, openingHours: [] })
     if (mode === 'retry') await loading
     await nextTick()
-    const levels = wrapper.findAll('input[aria-label="楼层层级"]')
+    const levels = wrapper.findAll<HTMLInputElement>('input[aria-label="楼层层级"]')
     await levels[0].setValue('3')
     await levels[1].setValue('1')
     if (mode === 'retry') {
@@ -548,7 +548,7 @@ describe('views/AddCanteen', () => {
     await loading
     expect(wrapper.vm.windows[0].floor.level).toBe('3')
     expect(wrapper.vm.windows[0].floor).toBe(wrapper.vm.formData.floors[0])
-    expect(wrapper.get('select').find('option:checked').text()).toBe('清真（3层）')
+    expect(wrapper.get<HTMLSelectElement>('select').find('option:checked').text()).toBe('清真（3层）')
     await wrapper.vm.submitForm()
     expect(mocks.canteenApiMock.updateWindow).toHaveBeenCalledWith('w1', expect.objectContaining({
       floor: { level: '3', name: '清真' },
@@ -568,7 +568,7 @@ describe('views/AddCanteen', () => {
     const loading = wrapper.vm.editCanteen({ id: 'A', name: '食堂A', floors, openingHours: [] })
     await nextTick()
     await wrapper.findAll('button[title="删除楼层"]')[0].trigger('click')
-    await wrapper.get('input[aria-label="楼层层级"]').setValue('1')
+    await wrapper.get<HTMLInputElement>('input[aria-label="楼层层级"]').setValue('1')
     pending.resolve({ code: 200, data: { items: [{ id: 'w1', name: '清真窗口', floor: floors[0] }] } })
     await loading
     expect(wrapper.vm.windows[0].floor).toBe('')
@@ -590,7 +590,7 @@ describe('views/AddCanteen', () => {
     mocks.canteenApiMock.getWindows.mockResolvedValue({ code: 200, data: { items: [] } })
     const wrapper = mount(AddCanteen, { global: { stubs: { Header: true } } })
     await wrapper.vm.editCanteen({ id: 'A', name: '食堂A', floors, openingHours })
-    const level = wrapper.findAll('input[aria-label="楼层层级"]')[0]
+    const level = wrapper.findAll<HTMLInputElement>('input[aria-label="楼层层级"]')[0]
     await level.setValue('default')
     expect(wrapper.vm.errors.floors).toContain('保留')
     expect(level.element.value).toBe('1')
@@ -614,7 +614,7 @@ describe('views/AddCanteen', () => {
     await wrapper.vm.submitForm()
     expect(mocks.canteenApiMock.updateCanteen).not.toHaveBeenCalled()
     expect(wrapper.vm.errors.floors).toContain('保留')
-    await wrapper.get('input[aria-label="楼层层级"]').setValue('01')
+    await wrapper.get<HTMLInputElement>('input[aria-label="楼层层级"]').setValue('01')
     expect(wrapper.vm.windows[0].floor.level).toBe('01')
     expect(wrapper.vm.formData.openingHours.map((hours: any) => hours.floor)).toEqual(['default', ''])
     await wrapper.vm.submitForm()
@@ -639,7 +639,7 @@ describe('views/AddCanteen', () => {
     await wrapper.findAll('button[title="删除楼层"]')[0].trigger('click')
     expect(wrapper.vm.formData.floors.map((floor: any) => floor.id)).toEqual(['f1', 'f2'])
     expect(mocks.showAlertMock).toHaveBeenCalledWith(expect.stringContaining('先重新选择楼层或删除'))
-    await wrapper.findAll('input[aria-label="楼层层级"]')[1].setValue('1')
+    await wrapper.findAll<HTMLInputElement>('input[aria-label="楼层层级"]')[1].setValue('1')
     expect(wrapper.vm.errors.floors).toBe('楼层层级不能重复')
     await wrapper.vm.submitForm()
     expect(mocks.canteenApiMock.updateCanteen.mock.calls[0][1]).toEqual(expect.objectContaining({ floors, openingHours }))
@@ -671,7 +671,7 @@ describe('views/AddCanteen', () => {
     }
     await wrapper.findAll('button[title="删除楼层"]')[0].trigger('click')
     expect(wrapper.vm.formData.floors.map((floor: any) => floor.id)).toEqual(['f2'])
-    await wrapper.get('input[aria-label="楼层层级"]').setValue('1')
+    await wrapper.get<HTMLInputElement>('input[aria-label="楼层层级"]').setValue('1')
     await wrapper.vm.submitForm()
     expect(mocks.canteenApiMock.updateCanteen.mock.calls[0][1]).toEqual(expect.objectContaining({
       floors: [{ id: 'f2', level: '1', name: '二层' }],
@@ -1009,13 +1009,13 @@ describe('views/AddCanteen', () => {
     if (mode === 'create') {
       editor.vm.createNewCanteen()
       await nextTick()
-      await editor.get('input[placeholder="例如：紫荆园"]').setValue('食堂A')
+      await editor.get<HTMLInputElement>('input[placeholder="例如：紫荆园"]').setValue('食堂A')
     } else {
       await editor.vm.editCanteen(source)
     }
     await editor.findAll('button').find(button => button.text() === '添加楼层')!.trigger('click')
-    await editor.findAll('input[aria-label="楼层层级"]').at(-1)!.setValue('2')
-    await editor.findAll('input[aria-label="楼层名称"]').at(-1)!.setValue('自选/套餐')
+    await editor.findAll<HTMLInputElement>('input[aria-label="楼层层级"]').at(-1)!.setValue('2')
+    await editor.findAll<HTMLInputElement>('input[aria-label="楼层名称"]').at(-1)!.setValue('自选/套餐')
     const saving = editor.vm.submitForm()
     wrapper.vm.show = false
     await nextTick()
@@ -1056,13 +1056,13 @@ describe('views/AddCanteen', () => {
     await editor.vm.editCanteen({ id: 'A', name: '食堂A', floors: [floor], openingHours: [] })
     const originalFloor = editor.vm.formData.floors[0]
     await editor.findAll('button').find(button => button.text() === '添加楼层')!.trigger('click')
-    await editor.findAll('input[aria-label="楼层层级"]')[1].setValue('2')
-    await editor.findAll('input[aria-label="楼层名称"]')[1].setValue('自选')
+    await editor.findAll<HTMLInputElement>('input[aria-label="楼层层级"]')[1].setValue('2')
+    await editor.findAll<HTMLInputElement>('input[aria-label="楼层名称"]')[1].setValue('自选')
     const newFloor = editor.vm.formData.floors[1]
     await editor.findAll('button').find(button => button.text() === '添加营业时间')!.trigger('click')
     await editor.findAll('select')[0].findAll('option').find(option => option.text() === '自选（2层）')!.setValue()
     await editor.findAll('button').find(button => button.text() === '添加窗口')!.trigger('click')
-    await editor.get('input[placeholder="例如：川湘风味"]').setValue('新窗口')
+    await editor.get<HTMLInputElement>('input[placeholder="例如：川湘风味"]').setValue('新窗口')
     await editor.findAll('select').at(-1)!.findAll('option').find(option => option.text() === '自选（2层）')!.setValue()
     const saving = editor.vm.submitForm()
     wrapper.vm.show = false
@@ -1080,7 +1080,7 @@ describe('views/AddCanteen', () => {
     expect(mocks.showAlertMock).not.toHaveBeenCalled()
     wrapper.vm.show = true
     await nextTick()
-    await editor.findAll('input[aria-label="楼层层级"]')[0].setValue('3')
+    await editor.findAll<HTMLInputElement>('input[aria-label="楼层层级"]')[0].setValue('3')
     await editor.vm.submitForm()
     expect(mocks.canteenApiMock.createWindow).toHaveBeenCalledTimes(1)
     expect(mocks.canteenApiMock.updateWindow).toHaveBeenCalledWith('w-new', expect.objectContaining({ floor: { level: '3', name: '自选' } }))
@@ -1131,7 +1131,7 @@ describe('views/AddCanteen', () => {
     expect(mocks.showAlertMock).not.toHaveBeenCalled()
     wrapper.vm.show = true
     await nextTick()
-    await editor.findAll('input[aria-label="楼层层级"]')[2].setValue('3')
+    await editor.findAll<HTMLInputElement>('input[aria-label="楼层层级"]')[2].setValue('3')
     await editor.vm.submitForm()
     expect(mocks.canteenApiMock.updateCanteen).toHaveBeenCalledTimes(1)
     expect(mocks.showAlertMock).toHaveBeenCalledWith(expect.stringContaining('无法确定'))
@@ -1180,7 +1180,7 @@ describe('views/AddCanteen', () => {
     pending.resolve({ code: 200, data: { ...editableCanteen('A'), floors: [{ id: 'A-f1', level: '2', name: '自选' }] } })
     await saving
     expect(wrapper.vm.formData.floors.map(({ id, level, name }: any) => ({ id, level, name }))).toEqual(floorsB)
-    expect(wrapper.get('input[aria-label="楼层层级"]').element.value).toBe('01')
+    expect(wrapper.get<HTMLInputElement>('input[aria-label="楼层层级"]').element.value).toBe('01')
     wrapper.unmount()
   })
 
@@ -1189,7 +1189,7 @@ describe('views/AddCanteen', () => {
     mocks.canteenApiMock.updateCanteen.mockRejectedValueOnce(new Error('offline'))
     const wrapper = mount(AddCanteen, { global: { stubs: { Header: true } } })
     await wrapper.vm.editCanteen({ ...editableCanteen('A'), floors: [{ id: 'f1', level: '01', name: '一层' }] })
-    await wrapper.get('input[aria-label="楼层名称"]').setValue('清真/风味区')
+    await wrapper.get<HTMLInputElement>('input[aria-label="楼层名称"]').setValue('清真/风味区')
     await wrapper.vm.submitForm()
     expect(wrapper.vm.formData.floors[0]).toEqual(expect.objectContaining({ id: 'f1', level: '01', name: '清真/风味区' }))
     expect(wrapper.vm.viewMode).toBe('edit')

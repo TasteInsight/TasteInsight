@@ -75,7 +75,13 @@ describe('AdminDishesService', () => {
   });
 
   describe('getAdminDishes', () => {
-    const adminInfo = { id: 'admin-1', canteenId: null, role: 'superadmin' };
+    const adminInfo = {
+      id: 'admin-1',
+      scope: 'GLOBAL' as const,
+      canteenIds: [],
+      canteens: [],
+      role: 'superadmin',
+    };
     const mockDishes = [
       {
         id: 'd1',
@@ -137,7 +143,13 @@ describe('AdminDishesService', () => {
   });
 
   describe('getAdminDishById', () => {
-    const adminInfo = { id: 'admin-1', canteenId: null, role: 'superadmin' };
+    const adminInfo = {
+      id: 'admin-1',
+      scope: 'GLOBAL' as const,
+      canteenIds: [],
+      canteens: [],
+      role: 'superadmin',
+    };
     const mockDish = {
       id: 'd1',
       name: 'Dish 1',
@@ -183,7 +195,13 @@ describe('AdminDishesService', () => {
     });
 
     it('should throw ForbiddenException if canteen admin has no access', async () => {
-      const canteenAdmin = { id: 'admin-1', canteenId: 'c2', role: 'admin' };
+      const canteenAdmin = {
+        id: 'admin-1',
+        scope: 'CANTEENS' as const,
+        canteenIds: ['c2'],
+        canteens: [{ id: 'c2', name: 'c2' }],
+        role: 'admin',
+      };
       prisma.dish.findUnique.mockResolvedValue(mockDish);
 
       await expect(
@@ -193,7 +211,13 @@ describe('AdminDishesService', () => {
   });
 
   describe('createAdminDish', () => {
-    const adminInfo = { id: 'admin-1', canteenId: null, role: 'superadmin' };
+    const adminInfo = {
+      id: 'admin-1',
+      scope: 'GLOBAL' as const,
+      canteenIds: [],
+      canteens: [],
+      role: 'superadmin',
+    };
     const createDto = {
       name: 'New Dish',
       description: 'Description',
@@ -252,7 +276,13 @@ describe('AdminDishesService', () => {
     });
 
     it('should throw ForbiddenException if canteen admin creates dish for different canteen', async () => {
-      const canteenAdmin = { id: 'admin-1', canteenId: 'c2', role: 'admin' };
+      const canteenAdmin = {
+        id: 'admin-1',
+        scope: 'CANTEENS' as const,
+        canteenIds: ['c2'],
+        canteens: [{ id: 'c2', name: 'c2' }],
+        role: 'admin',
+      };
 
       await expect(
         service.createAdminDish(createDto as any, canteenAdmin as any),
@@ -261,7 +291,13 @@ describe('AdminDishesService', () => {
   });
 
   describe('updateAdminDish', () => {
-    const adminInfo = { id: 'admin-1', canteenId: null, role: 'superadmin' };
+    const adminInfo = {
+      id: 'admin-1',
+      scope: 'GLOBAL' as const,
+      canteenIds: [],
+      canteens: [],
+      role: 'superadmin',
+    };
     const updateDto = {
       name: 'Updated Dish',
       price: 20,
@@ -322,7 +358,13 @@ describe('AdminDishesService', () => {
     });
 
     it('should throw ForbiddenException if canteen admin has no access', async () => {
-      const canteenAdmin = { id: 'admin-1', canteenId: 'c2', role: 'admin' };
+      const canteenAdmin = {
+        id: 'admin-1',
+        scope: 'CANTEENS' as const,
+        canteenIds: ['c2'],
+        canteens: [{ id: 'c2', name: 'c2' }],
+        role: 'admin',
+      };
 
       await expect(
         service.updateAdminDish('d1', updateDto as any, canteenAdmin as any),
@@ -331,7 +373,13 @@ describe('AdminDishesService', () => {
   });
 
   describe('deleteAdminDish', () => {
-    const adminInfo = { id: 'admin-1', canteenId: null, role: 'superadmin' };
+    const adminInfo = {
+      id: 'admin-1',
+      scope: 'GLOBAL' as const,
+      canteenIds: [],
+      canteens: [],
+      role: 'superadmin',
+    };
 
     beforeEach(() => {
       prisma.dish.findUnique.mockResolvedValue({
@@ -358,7 +406,13 @@ describe('AdminDishesService', () => {
     });
 
     it('should throw ForbiddenException if canteen admin has no access', async () => {
-      const canteenAdmin = { id: 'admin-1', canteenId: 'c2', role: 'admin' };
+      const canteenAdmin = {
+        id: 'admin-1',
+        scope: 'CANTEENS' as const,
+        canteenIds: ['c2'],
+        canteens: [{ id: 'c2', name: 'c2' }],
+        role: 'admin',
+      };
       prisma.dish.findUnique.mockResolvedValue({
         id: 'd1',
         window: { canteenId: 'c1' },
@@ -372,7 +426,13 @@ describe('AdminDishesService', () => {
   });
 
   describe('updateDishStatus', () => {
-    const adminInfo = { id: 'admin-1', canteenId: null, role: 'superadmin' };
+    const adminInfo = {
+      id: 'admin-1',
+      scope: 'GLOBAL' as const,
+      canteenIds: [],
+      canteens: [],
+      role: 'superadmin',
+    };
 
     beforeEach(() => {
       prisma.dish.findUnique.mockResolvedValue({
@@ -410,7 +470,13 @@ describe('AdminDishesService', () => {
     });
 
     it('should throw ForbiddenException if canteen admin has no access', async () => {
-      const canteenAdmin = { id: 'admin-1', canteenId: 'c2', role: 'admin' };
+      const canteenAdmin = {
+        id: 'admin-1',
+        scope: 'CANTEENS' as const,
+        canteenIds: ['c2'],
+        canteens: [{ id: 'c2', name: 'c2' }],
+        role: 'admin',
+      };
 
       await expect(
         service.updateDishStatus('d1', DishStatus.ONLINE, canteenAdmin as any),

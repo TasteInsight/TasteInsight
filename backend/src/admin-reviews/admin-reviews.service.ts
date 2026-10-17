@@ -1,4 +1,10 @@
 import {
+  AdminCanteenScope,
+  canAccessCanteen,
+  canteenScopeFilter,
+  isGlobalScope,
+} from '@/auth/admin-scope';
+import {
   Injectable,
   NotFoundException,
   ForbiddenException,
@@ -37,7 +43,7 @@ export class AdminReviewsService {
 
   private async deleteReviews(
     ids: string[],
-    admin?: Pick<AdminInfo, 'canteenId'>,
+    admin?: AdminCanteenScope,
   ): Promise<number> {
     const deleted = await this.prisma.$transaction(async (tx) => {
       const targets = await tx.review.findMany({
@@ -63,10 +69,7 @@ export class AdminReviewsService {
       });
       if (rows.length !== ids.length)
         throw new NotFoundException('部分评价已不存在，请刷新列表');
-      if (
-        admin?.canteenId &&
-        rows.some((row) => row.dish.canteenId !== admin.canteenId)
-      )
+      if (rows.some((row) => !canAccessCanteen(admin, row.dish.canteenId)))
         throw new ForbiddenException('无权删除所选评价');
       const result = await tx.review.updateMany({
         where: { id: { in: ids }, deletedAt: null },
@@ -95,13 +98,13 @@ export class AdminReviewsService {
   async getPendingReviews(
     page: number = 1,
     pageSize: number = 20,
-    adminInfo?: any,
+    adminInfo?: AdminCanteenScope,
   ): Promise<PendingReviewListResponseDto> {
     const skip = (page - 1) * pageSize;
     const where: any = { status: 'pending', deletedAt: null };
 
-    if (adminInfo?.canteenId) {
-      where.dish = { canteenId: adminInfo.canteenId };
+    if (!isGlobalScope(adminInfo)) {
+      where.dish = { canteenId: canteenScopeFilter(adminInfo) };
     }
 
     const [total, reviews] = await Promise.all([
@@ -180,7 +183,7 @@ export class AdminReviewsService {
   async approveReview(
     id: string,
     dto: ModerateReviewDto,
-    adminInfo?: any,
+    adminInfo?: AdminCanteenScope,
   ): Promise<SuccessResponseDto> {
     await this.moderateReview(id, dto, 'approved', adminInfo);
     return {
@@ -193,7 +196,7 @@ export class AdminReviewsService {
   async rejectReview(
     id: string,
     dto: RejectReviewDto,
-    adminInfo?: any,
+    adminInfo?: AdminCanteenScope,
   ): Promise<SuccessResponseDto> {
     await this.moderateReview(id, dto, 'rejected', adminInfo, dto.reason);
     return {
@@ -207,7 +210,7 @@ export class AdminReviewsService {
     id: string,
     dto: ModerateReviewDto,
     status: 'approved' | 'rejected',
-    adminInfo?: any,
+    adminInfo?: AdminCanteenScope,
     reason?: string,
   ): Promise<void> {
     const initial = await this.prisma.review.findUnique({
@@ -223,7 +226,7 @@ export class AdminReviewsService {
         include: { dish: true },
       });
       if (!review) throw new NotFoundException('评价不存在');
-      if (adminInfo?.canteenId && review.dish.canteenId !== adminInfo.canteenId)
+      if (!canAccessCanteen(adminInfo, review.dish.canteenId))
         throw new ForbiddenException('权限不足');
       if (status === 'approved') {
         const verified = await tx.studentVerification.findFirst({
@@ -242,8 +245,8 @@ export class AdminReviewsService {
           deletedAt: null,
           status: 'pending',
           updatedAt: new Date(dto.expectedUpdatedAt),
-          ...(adminInfo?.canteenId
-            ? { dish: { canteenId: adminInfo.canteenId } }
+          ...(!isGlobalScope(adminInfo)
+            ? { dish: { canteenId: canteenScopeFilter(adminInfo) } }
             : {}),
         },
         data: {
@@ -266,7 +269,10 @@ export class AdminReviewsService {
       this.embeddingQueueService?.scheduleRefreshUser(userId);
   }
 
-  async deleteReview(id: string, adminInfo?: any): Promise<SuccessResponseDto> {
+  async deleteReview(
+    id: string,
+    adminInfo?: AdminCanteenScope,
+  ): Promise<SuccessResponseDto> {
     await this.deleteReviews([id], adminInfo);
 
     return {
@@ -283,7 +289,7 @@ export class AdminReviewsService {
     reviewId: string,
     page: number = 1,
     pageSize: number = 20,
-    adminInfo?: any,
+    adminInfo?: AdminCanteenScope,
   ): Promise<ReviewCommentListResponseDto> {
     // 检查评价是否存在
     const review = await this.prisma.review.findUnique({
@@ -295,7 +301,7 @@ export class AdminReviewsService {
       throw new NotFoundException('评价不存在');
     }
 
-    if (adminInfo?.canteenId && review.dish.canteenId !== adminInfo.canteenId) {
+    if (!canAccessCanteen(adminInfo, review.dish.canteenId)) {
       throw new ForbiddenException('权限不足');
     }
 

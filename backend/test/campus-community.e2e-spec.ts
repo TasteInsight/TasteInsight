@@ -59,6 +59,7 @@ describe('Campus community lifecycle (PostgreSQL)', () => {
     const jwt = app.get(JwtService);
     const admin = await prisma.admin.create({
       data: {
+        scope: 'GLOBAL',
         username: prefix,
         password: 'unused-test-token-fixture',
         role: 'superadmin',

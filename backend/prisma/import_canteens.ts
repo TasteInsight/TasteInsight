@@ -1,6 +1,7 @@
 import { Prisma, PrismaClient } from '@prisma/client';
 import * as XLSX from 'xlsx';
 import * as path from 'path';
+import { loadDatabaseEnvironment } from '../src/database-url';
 
 type ImportRow = {
   rowNumber: number;
@@ -137,6 +138,7 @@ export async function importCanteensFromExcel(
 ) {
   const rows = readImportRows(filePath);
   const windowRows = groupByKey(rows, windowNameKey);
+  loadDatabaseEnvironment();
   const prisma = new PrismaClient();
   try {
     return await prisma.$transaction(

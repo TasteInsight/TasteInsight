@@ -47,7 +47,11 @@ describe('service notifications (PostgreSQL)', () => {
     ).id;
     adminId = (
       await prisma.admin.create({
-        data: { username: prefix, password: 'test-only-unused-hash' },
+        data: {
+          scope: 'GLOBAL',
+          username: prefix,
+          password: 'test-only-unused-hash',
+        },
       })
     ).id;
     notifications = new NotificationService(prisma, config);
@@ -144,7 +148,9 @@ describe('service notifications (PostgreSQL)', () => {
     id: adminId,
     username: prefix,
     role: 'superadmin',
-    canteenId: null,
+    scope: 'GLOBAL' as const,
+    canteenIds: [],
+    canteens: [],
     permissions: [],
   });
 

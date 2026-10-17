@@ -3,7 +3,7 @@
     <div class="admin-panel">
       <Header
         title="菜品审核"
-        description=""
+        description="审核用户和管理员提交的菜品及补充资料"
         header-icon="carbon:task-approved"
       />
 
@@ -15,12 +15,12 @@
           <input
             type="text"
             placeholder="搜索菜品名称..."
-            class="w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+            class="w-full pl-10 pr-10 admin-input"
             v-model="searchQuery"
           />
           <button
             v-if="searchQuery"
-            class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 admin-icon-button"
             @click="searchQuery = ''"
             type="button"
             title="清除搜索"
@@ -36,7 +36,7 @@
             <div class="relative">
               <select
                 v-model="statusFilter"
-                class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[150px] transition-all cursor-pointer hover:border-gray-400"
+                class="appearance-none pr-10 bg-white min-w-[150px] transition-all cursor-pointer hover:border-gray-400 admin-input"
               >
                 <option value="">所有状态</option>
                 <option value="pending">待审核</option>
@@ -55,7 +55,7 @@
             <div class="relative">
               <select
                 v-model="canteenFilter"
-                class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[150px] transition-all cursor-pointer hover:border-gray-400"
+                class="appearance-none pr-10 bg-white min-w-[150px] transition-all cursor-pointer hover:border-gray-400 admin-input"
               >
                 <option value="">所有食堂</option>
                 <option v-for="canteen in canteens" :key="canteen.id" :value="canteen.id">
@@ -72,7 +72,7 @@
             <button
               v-if="statusFilter || canteenFilter || searchQuery"
               @click="statusFilter = ''; canteenFilter = ''; searchQuery = ''"
-              class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-gray-200/50 transition-colors"
+              class="text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 hover:bg-gray-200/50 transition-colors admin-button"
             >
               <AppIcon class="iconify" icon="carbon:reset"></AppIcon>
               重置筛选
@@ -95,7 +95,7 @@
           </thead>
           <tbody class="divide-y divide-gray-200">
             <tr v-if="isLoading">
-              <td colspan="5" class="py-8 text-center text-gray-500">
+              <td colspan="5" class="admin-state">
                 <AppIcon
                   class="iconify inline-block text-2xl animate-spin"
                   icon="mdi:loading"
@@ -104,13 +104,13 @@
               </td>
             </tr>
             <tr v-else-if="loadError">
-              <td colspan="5" class="py-8 text-center">
+              <td colspan="5" class="admin-state">
                 <p role="alert" class="text-red-700 mb-3">{{ loadError }}</p>
-                <button type="button" class="px-4 py-2 border rounded-lg hover:bg-gray-50" @click="loadReviewDishes">重试</button>
+                <button type="button" class="border hover:bg-gray-50 admin-button admin-button-compact" @click="loadReviewDishes">重试</button>
               </td>
             </tr>
             <tr v-else-if="filteredReviewDishes.length === 0">
-              <td colspan="5" class="py-8 text-center text-gray-500">{{ statusFilter === 'pending' && !searchQuery.trim() && !canteenFilter ? '暂无待审核菜品' : '暂无符合条件的记录' }}</td>
+              <td colspan="5" class="admin-state">{{ statusFilter === 'pending' && !searchQuery.trim() && !canteenFilter ? '暂无待审核菜品' : '暂无符合条件的记录' }}</td>
             </tr>
             <tr
               v-else
@@ -148,7 +148,7 @@
               </td>
               <td class="py-4 px-6 text-center" @click.stop>
                 <button
-                  class="px-3 py-1 text-white rounded text-sm transition duration-200"
+                  class="text-white transition duration-200 admin-button admin-button-compact"
                   :class="[
                     !authStore.hasPermission('upload:approve') ? 'bg-gray-400 cursor-not-allowed' :
                     dish.status === 'approved' ? 'bg-green-600 hover:bg-green-700' : 

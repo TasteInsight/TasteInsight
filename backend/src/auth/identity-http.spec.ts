@@ -176,7 +176,9 @@ describe('Identity HTTP contracts', () => {
       id: 'admin',
       username: 'admin',
       role: 'admin',
-      canteenId: null,
+      scope: 'GLOBAL' as const,
+      canteenIds: [],
+      canteens: [],
       permissions: [{ permission: 'student:review' }],
     });
   });
@@ -366,7 +368,11 @@ describe('Identity HTTP contracts', () => {
     admin.findUnique.mockResolvedValueOnce({
       id: 'admin',
       role: 'admin',
-      canteenId: 'canteen',
+      scope: 'CANTEENS' as const,
+      canteenIds: ['canteen'],
+      canteens: [
+        { canteenId: 'canteen', canteen: { id: 'canteen', name: 'canteen' } },
+      ],
       permissions: [{ permission: 'student:review' }],
     });
     await request(app.getHttpServer())
@@ -376,7 +382,9 @@ describe('Identity HTTP contracts', () => {
     admin.findUnique.mockResolvedValueOnce({
       id: 'admin',
       role: 'admin',
-      canteenId: null,
+      scope: 'GLOBAL' as const,
+      canteenIds: [],
+      canteens: [],
       permissions: [],
     });
     await request(app.getHttpServer())

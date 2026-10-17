@@ -8,7 +8,7 @@
         <!-- 状态筛选 -->
         <div class="flex space-x-4">
           <button
-            class="px-4 py-2 rounded-lg transition-colors"
+            class="transition-colors admin-button"
             :class="
               currentStatus === 'published'
                 ? 'bg-tsinghua-purple text-white'
@@ -19,7 +19,7 @@
             已发布
           </button>
           <button
-            class="px-4 py-2 rounded-lg transition-colors"
+            class="transition-colors admin-button"
             :class="
               currentStatus === 'draft'
                 ? 'bg-tsinghua-purple text-white'
@@ -34,7 +34,7 @@
         <!-- 创建新闻按钮 -->
         <button
           @click="openCreateModal"
-          class="px-6 py-2 text-white rounded-lg transition duration-200 flex items-center space-x-2"
+          class="text-white transition duration-200 flex items-center space-x-2 admin-button"
           :class="authStore.hasPermission('news:create') ? 'bg-tsinghua-purple hover:bg-tsinghua-dark' : 'bg-gray-400 cursor-not-allowed'"
           :title="!authStore.hasPermission('news:create') ? '无权限创建' : '创建新闻'"
         >
@@ -55,11 +55,11 @@
               type="text"
               v-model="searchQuery"
               placeholder="输入新闻标题进行搜索..."
-              class="w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+              class="w-full pl-10 pr-10 admin-input"
             />
             <button
               v-if="searchQuery"
-              class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 admin-icon-button"
               @click="searchQuery = ''"
               type="button"
               title="清除搜索"
@@ -75,9 +75,9 @@
               <div class="relative">
                 <select
                   v-model="canteenFilter"
-                  class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[150px] transition-all cursor-pointer hover:border-gray-400"
+                  class="appearance-none pr-10 bg-white min-w-[150px] transition-all cursor-pointer hover:border-gray-400 admin-input"
                 >
-                  <option value="">{{ isCanteenScoped ? '所属食堂' : '全部食堂' }}</option>
+                  <option value="">不限食堂</option>
                   <option v-if="!isCanteenScoped" value="all">全校公告</option>
                   <option v-for="canteen in canteenList" :key="canteen.id" :value="canteen.id">
                     {{ canteen.name }}
@@ -94,7 +94,7 @@
               <input
                 type="datetime-local"
                 v-model="startDate"
-                class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm transition-all hover:border-gray-400"
+                class="bg-white transition-all hover:border-gray-400 admin-input"
               />
             </div>
 
@@ -103,7 +103,7 @@
               <input
                 type="datetime-local"
                 v-model="endDate"
-                class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm transition-all hover:border-gray-400"
+                class="bg-white transition-all hover:border-gray-400 admin-input"
               />
             </div>
 
@@ -111,7 +111,7 @@
               <button
                 v-if="searchQuery || canteenFilter || startDate || endDate"
                 @click="resetFilters"
-                class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-gray-200/50 transition-colors"
+                class="text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 hover:bg-gray-200/50 transition-colors admin-button"
               >
                 <AppIcon class="iconify" icon="carbon:reset"></AppIcon>
                 重置筛选
@@ -195,11 +195,11 @@
                   }}
                 </td>
                 <td class="py-4 px-6 text-center">
-                  <div class="flex items-center justify-center space-x-2">
+                  <div class="flex flex-wrap items-center justify-center gap-2">
                     <!-- 预览按钮（所有状态都可预览） -->
                     <button
                       @click="previewNews(news)"
-                      class="px-3 py-1 rounded text-sm transition duration-200 bg-purple-100 text-purple-700 hover:bg-purple-200"
+                      class="transition duration-200 bg-purple-100 text-purple-700 hover:bg-purple-200 admin-button admin-button-compact"
                       title="预览新闻"
                     >
                       预览
@@ -209,7 +209,7 @@
                     <template v-if="currentStatus === 'draft'">
                       <button
                         @click="publishNews(news.id)"
-                        class="px-3 py-1 rounded text-sm transition duration-200"
+                        class="transition duration-200 admin-button admin-button-compact"
                         :class="authStore.hasPermission('news:publish') ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
                         :title="!authStore.hasPermission('news:publish') ? '无权限发布' : '发布'"
                       >
@@ -217,7 +217,7 @@
                       </button>
                       <button
                         @click="editNews(news)"
-                        class="px-3 py-1 rounded text-sm transition duration-200"
+                        class="transition duration-200 admin-button admin-button-compact"
                         :class="authStore.hasPermission('news:edit') ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
                         :title="!authStore.hasPermission('news:edit') ? '无权限编辑' : '编辑'"
                       >
@@ -229,7 +229,7 @@
                     <template v-else>
                       <button
                         @click="revokeNews(news.id)"
-                        class="px-3 py-1 rounded text-sm transition duration-200"
+                        class="transition duration-200 admin-button admin-button-compact"
                         :class="authStore.hasPermission('news:revoke') ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
                         :title="!authStore.hasPermission('news:revoke') ? '无权限撤回' : '如需编辑已发布新闻，请先撤回至草稿状态'"
                       >
@@ -246,7 +246,7 @@
                     <button
                       @click="deleteNews(news.id)"
                       :disabled="isBatchDeleting"
-                      class="px-3 py-1 rounded text-sm transition duration-200"
+                      class="transition duration-200 admin-button admin-button-compact"
                       :class="authStore.hasPermission('news:delete') ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
                       :title="!authStore.hasPermission('news:delete') ? '无权限删除' : '删除'"
                     >
@@ -281,26 +281,26 @@
     @close="closeModal"
     @keydown="handleEditorKeydown"
   >
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[95vh] overflow-y-auto m-4">
-      <div class="p-6 border-b border-gray-200 flex items-center justify-between">
+    <div class="w-full max-w-5xl max-h-[95vh] overflow-y-auto m-4 admin-dialog-panel">
+      <div class="flex items-center justify-between admin-dialog-header">
         <h3 class="text-xl font-semibold text-gray-800">
           {{ showEditModal ? '编辑新闻' : '创建新闻' }}
         </h3>
-        <button @click="closeModal" aria-label="关闭新闻编辑" class="text-gray-400 hover:text-gray-600 transition">
+        <button @click="closeModal" aria-label="关闭新闻编辑" class="text-gray-400 hover:text-gray-600 transition admin-icon-button">
           <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
         </button>
       </div>
 
-      <div class="p-6">
+      <div class="admin-dialog-body">
         <form @submit.prevent="submitForm" class="space-y-6">
           <!-- 发布人信息 -->
           <div>
-            <label class="block text-gray-700 font-medium mb-2">发布人</label>
+            <label class="block text-gray-700 font-medium mb-2 admin-label">发布人</label>
             <input
               :value="currentAdmin?.username || currentAdmin?.id || '未知'"
               type="text"
               disabled
-              class="w-full px-4 py-2 border rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
+              class="w-full bg-gray-100 text-gray-500 cursor-not-allowed admin-input"
             />
             <p class="mt-1 text-sm text-gray-500">
               发布人ID: {{ currentAdmin?.id || '未知' }} (自动填充)
@@ -308,7 +308,7 @@
           </div>
 
           <div>
-            <label class="block text-gray-700 font-medium mb-2"
+            <label class="block text-gray-700 font-medium mb-2 admin-label"
               >标题 <span class="text-red-500">*</span></label
             >
             <input
@@ -317,7 +317,7 @@
               @input="errors.title = ''"
               type="text"
               required
-              class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+              class="w-full admin-input"
               :class="{
                 'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.title,
               }"
@@ -330,7 +330,7 @@
           </div>
 
           <div>
-            <label class="block text-gray-700 font-medium mb-2"
+            <label class="block text-gray-700 font-medium mb-2 admin-label"
               >摘要 <span class="text-red-500">*</span></label
             >
             <input
@@ -339,7 +339,7 @@
               @input="errors.summary = ''"
               type="text"
               required
-              class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+              class="w-full admin-input"
               :class="{
                 'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400': errors.summary,
               }"
@@ -353,7 +353,7 @@
 
           <!-- ================= 富文本编辑器区域 START ================= -->
           <div>
-            <label class="block text-gray-700 font-medium mb-2"
+            <label class="block text-gray-700 font-medium mb-2 admin-label"
               >内容 <span class="text-red-500">*</span></label
             >
             <div 
@@ -363,19 +363,12 @@
                 'border-red-400': errors.content,
               }"
             >
-              <Toolbar
-                style="border-bottom: 1px solid #ccc"
-                :editor="editorRef"
-                :defaultConfig="toolbarConfig"
-                :mode="mode"
-              />
-              <Editor
+              <NewsEditor
                 :key="editorVersion"
-                style="height: 400px; overflow-y: hidden"
                 v-model="valueHtml"
-                :defaultConfig="editorConfig"
-                :mode="mode"
-                @onCreated="handleCreated"
+                :editor="editorRef"
+                :config="editorConfig"
+                @created="handleCreated"
               />
             </div>
             <p v-if="errors.content" class="mt-1 text-xs text-red-500 flex items-center">
@@ -387,15 +380,15 @@
 
         <div class="admin-form-grid">
             <div>
-              <label class="block text-gray-700 font-medium mb-2"
+              <label class="block text-gray-700 font-medium mb-2 admin-label"
                 >发布单位 <span class="text-red-500">*</span></label
               >
               <select
                 v-model="newsForm.canteenId"
                 :disabled="isSubmitting"
-                class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                class="w-full admin-input"
               >
-                <option v-if="!isCanteenScoped" value="">全校公告</option>
+                <option value="">{{ isCanteenScoped ? '请选择食堂' : '全校公告' }}</option>
                 <option v-for="canteen in canteenList" :key="canteen.id" :value="canteen.id">
                   {{ canteen.name }}
                 </option>
@@ -403,7 +396,7 @@
             </div>
 
             <div>
-              <label class="block text-gray-700 font-medium mb-2"
+              <label class="block text-gray-700 font-medium mb-2 admin-label"
                 >发布时间 <span class="text-red-500">*</span></label
               >
               <input
@@ -411,27 +404,27 @@
                 :disabled="isSubmitting"
                 type="datetime-local"
                 required
-                class="w-full px-4 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                class="w-full admin-input"
               />
             </div>
           </div>
 
-          <div class="flex space-x-4 pt-4 border-t border-gray-200">
+          <div class="flex pt-4 border-t border-gray-200 admin-actions">
             <!-- 创建模式：保存草稿 或 立即发布 -->
             <template v-if="!showEditModal">
               <button
                 type="button"
                 @click="submitForm('draft')"
-                :disabled="isSubmitting || pendingImageUploads > 0"
-                class="flex-1 px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition duration-200"
+                :disabled="!editorRef || isSubmitting || pendingImageUploads > 0"
+                class="flex-1 transition duration-200 admin-button admin-button-secondary"
               >
                 保存为草稿
               </button>
               <button
                 type="button"
                 @click="submitForm('published')"
-                :disabled="isSubmitting || pendingImageUploads > 0"
-                class="flex-1 px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200"
+                :disabled="!editorRef || isSubmitting || pendingImageUploads > 0"
+                class="flex-1 transition duration-200 admin-button admin-button-primary"
               >
                 立即发布
               </button>
@@ -442,16 +435,16 @@
               <button
                 type="button"
                 @click="submitForm('draft')"
-                :disabled="isSubmitting || pendingImageUploads > 0"
-                class="flex-1 px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition duration-200"
+                :disabled="!editorRef || isSubmitting || pendingImageUploads > 0"
+                class="flex-1 transition duration-200 admin-button admin-button-secondary"
               >
                 保存为草稿
               </button>
               <button
                 type="button"
                 @click="submitForm('published')"
-                :disabled="isSubmitting || pendingImageUploads > 0"
-                class="flex-1 px-6 py-2 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark transition duration-200"
+                :disabled="!editorRef || isSubmitting || pendingImageUploads > 0"
+                class="flex-1 transition duration-200 admin-button admin-button-primary"
               >
                 立即发布
               </button>
@@ -460,7 +453,7 @@
             <button
               type="button"
               @click="closeModal"
-              class="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition duration-200"
+              class="border border-gray-300 text-gray-700 hover:bg-gray-100 transition duration-200 admin-button"
             >
               取消
             </button>
@@ -477,14 +470,14 @@
     labelledby="news-preview-title"
     @close="closePreviewModal"
   >
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] overflow-hidden m-4 flex flex-col">
+    <div class="w-full max-w-4xl max-h-[95vh] overflow-hidden m-4 flex flex-col admin-dialog-panel">
       <!-- 预览头部 -->
-      <div class="p-6 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+      <div class="flex items-center justify-between flex-shrink-0 admin-dialog-header">
         <h3 id="news-preview-title" class="text-xl font-semibold text-gray-800">新闻预览</h3>
         <button
           @click="closePreviewModal"
           aria-label="关闭新闻预览"
-          class="text-gray-400 hover:text-gray-600 transition"
+          class="text-gray-400 hover:text-gray-600 transition admin-icon-button"
         >
           <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
         </button>
@@ -523,8 +516,7 @@
 <script>
 import { ref, reactive, onMounted, onActivated, onDeactivated, shallowRef, onBeforeUnmount, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import '@wangeditor/editor/dist/css/style.css'
-import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
+import NewsEditor from '@/components/News/NewsEditor.vue'
 
 import { newsApi } from '@/api/modules/news'
 import { canteenApi } from '@/api/modules/canteen'
@@ -549,8 +541,7 @@ export default {
     AdminDialog,
     Pagination,
     BatchActionBar,
-    Editor, // 注册 Editor 组件
-    Toolbar, // 注册 Toolbar 组件
+    NewsEditor,
   },
   setup() {
     const route = useRoute()
@@ -563,7 +554,7 @@ export default {
     const isLoading = ref(false)
     const canteenList = ref([])
     const authStore = useAuthStore()
-    const isCanteenScoped = computed(() => Boolean(authStore.user?.canteenId))
+    const isCanteenScoped = computed(() => authStore.user?.scope === 'CANTEENS')
     const viewSession = getAuthSessionVersion()
     let isViewActive = true
     let viewVersion = 0
@@ -590,7 +581,7 @@ export default {
     const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
     const currentStatus = ref(restoredState.currentStatus) // 默认显示已发布
     const searchQuery = ref(restoredState.searchQuery)
-    const canteenFilter = ref(authStore.user?.canteenId || restoredState.canteenFilter)
+    const canteenFilter = ref(restoredState.canteenFilter)
     const startDate = ref(restoredState.startDate)
     const endDate = ref(restoredState.endDate)
     
@@ -622,10 +613,6 @@ export default {
 
     // 内容 HTML，直接绑定到 Editor
     const valueHtml = ref('')
-
-    const mode = 'default' // 或 'simple'
-
-    const toolbarConfig = {}
 
     const editorConfig = computed(() => {
       const version = editorVersion.value
@@ -756,7 +743,7 @@ export default {
       title: '',
       content: '',
       summary: '',
-      canteenId: authStore.user?.canteenId || '',
+      canteenId: (authStore.user?.canteenIds.length === 1 ? authStore.user.canteenIds[0] : ''),
       publishedAt: '',
       status: 'draft',
     })
@@ -913,12 +900,12 @@ export default {
     const loadCanteens = async () => {
       if (!ownsView()) return
       const version = viewVersion
-      if (authStore.user?.canteenId) {
-        canteenList.value = [{ id: authStore.user.canteenId, name: authStore.user.canteenName || '所属食堂' }]
+      if (isCanteenScoped.value) {
+        canteenList.value = authStore.user?.canteens || []
         return
       }
       try {
-        const response = await canteenApi.getCanteens({ page: 1, pageSize: 100 })
+        const response = await canteenApi.getCanteenOptions()
         if (!ownsView(version)) return
         if (response.code === 200 && response.data) {
           if (response.data.items) {
@@ -943,7 +930,7 @@ export default {
       newsForm.title = ''
       newsForm.content = ''
       newsForm.summary = ''
-      newsForm.canteenId = authStore.user?.canteenId || ''
+      newsForm.canteenId = (authStore.user?.canteenIds.length === 1 ? authStore.user.canteenIds[0] : '')
       newsForm.publishedAt = ''
       newsForm.status = 'draft'
       editingNewsId.value = null
@@ -1007,7 +994,7 @@ export default {
 
     // 提交表单
     const submitForm = async (targetStatus) => {
-      if (!ownsView() || isSubmitting.value) return
+      if (!ownsView() || !editorRef.value || isSubmitting.value) return
       if (pendingImageUploads.value > 0) {
         showAlert('图片正在上传，请稍后保存')
         return
@@ -1275,8 +1262,6 @@ export default {
       handleEditorKeydown,
       editorVersion,
       valueHtml,
-      mode,
-      toolbarConfig,
       editorConfig,
       handleCreated,
       // 导出其他方法

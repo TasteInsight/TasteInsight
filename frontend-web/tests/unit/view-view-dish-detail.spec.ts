@@ -35,8 +35,8 @@ vi.mock('@/composables/useModal', () => ({
 import ViewDishDetail from '../../src/views/ViewDishDetail.vue'
 
 const flushAll = async () => {
-  await new Promise((resolve) => queueMicrotask(resolve))
-  await new Promise((resolve) => queueMicrotask(resolve))
+  await new Promise<void>((resolve) => queueMicrotask(resolve))
+  await new Promise<void>((resolve) => queueMicrotask(resolve))
   await nextTick()
 }
 

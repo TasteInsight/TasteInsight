@@ -15,7 +15,7 @@ vi.mock('@wangeditor/editor/dist/css/style.css', () => ({}))
 
 const mocks = vi.hoisted(() => ({
   authStoreMock: {
-    user: { id: 'a1', username: 'admin' },
+    user: {scope: 'GLOBAL' as 'GLOBAL' | 'CANTEENS', canteenIds: [], canteens: [],  id: 'a1', username: 'admin' },
     token: 'token',
     hasPermission: vi.fn((p: string) =>
       ['news:view', 'news:create', 'news:edit', 'news:publish', 'news:revoke', 'news:delete'].includes(p),
@@ -30,7 +30,7 @@ const mocks = vi.hoisted(() => ({
     revokeNews: vi.fn(),
   },
   canteenApiMock: {
-    getCanteens: vi.fn(),
+    getCanteenOptions: vi.fn(),
   },
   showAlertMock: vi.fn(() => Promise.resolve()),
   showConfirmMock: vi.fn(() => Promise.resolve(true)),
@@ -73,6 +73,14 @@ const draftNews = (id: string) => ({
   id, title: id, summary: `${id} summary`, content: `<p>${id}</p>`, status: 'draft',
 })
 
+// Save-flow tests start with an initialized editor, as the browser does after loading.
+function submitReadyForm(wrapper: { vm: InstanceType<typeof NewsManage> }, status: string) {
+  if (!wrapper.vm.editorRef) {
+    wrapper.vm.handleCreated({ destroy: vi.fn(), on: vi.fn(), disable: vi.fn(), enable: vi.fn() })
+  }
+  return wrapper.vm.submitForm(status)
+}
+
 function flushMicrotasks() {
   return Promise.resolve()
 }
@@ -106,7 +114,7 @@ function editorPanelHarness() {
   return { editor, createPanel }
 }
 
-async function pressEditorEscape(dialog: DOMWrapper<Element>) {
+async function pressEditorEscape(dialog: Pick<DOMWrapper<Element>, 'element' | 'trigger'>) {
   const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
   dialog.element.dispatchEvent(event)
   await nextTick()
@@ -114,6 +122,26 @@ async function pressEditorEscape(dialog: DOMWrapper<Element>) {
 }
 
 describe('views/NewsManage', () => {
+  it('blocks save and publish until the current editor is ready', async () => {
+    const wrapper = mount(NewsManage, { global: { stubs: { Header: true, Pagination: true, NewsEditor: true } } })
+    await flushPromises()
+    wrapper.vm.editNews(draftNews('loading'))
+    await nextTick()
+    const dialog = new DOMWrapper(document.body).get('dialog[aria-label="编辑新闻"]')
+    const saveButtons = dialog.findAll('button').filter(button => /保存|发布/.test(button.text()))
+    expect(saveButtons.length).toBeGreaterThan(0)
+    expect(saveButtons.every(button => button.attributes('disabled') !== undefined)).toBe(true)
+    await wrapper.vm.submitForm('draft')
+    await wrapper.vm.submitForm('published')
+    expect(mocks.newsApiMock.updateNews).not.toHaveBeenCalled()
+    expect(mocks.newsApiMock.publishNews).not.toHaveBeenCalled()
+    wrapper.vm.handleCreated({ destroy: vi.fn(), on: vi.fn(), disable: vi.fn(), enable: vi.fn() })
+    await nextTick()
+    expect(saveButtons.every(button => button.attributes('disabled') === undefined)).toBe(true)
+    await wrapper.vm.submitForm('draft')
+    expect(mocks.newsApiMock.updateNews).toHaveBeenCalledWith('loading', expect.any(Object))
+  })
+
   it('keeps the news draft when Escape belongs to an editor auxiliary panel', async () => {
     vi.useFakeTimers()
     const wrapper = mount(NewsManage, { global: { stubs: { Header: true, Pagination: true } } })
@@ -335,7 +363,7 @@ describe('views/NewsManage', () => {
     mocks.authStoreMock.token = 'token'
     mocks.requestPostMock.mockReset()
 
-    mocks.canteenApiMock.getCanteens.mockResolvedValue({
+    mocks.canteenApiMock.getCanteenOptions.mockResolvedValue({
       code: 200,
       data: { items: [{ id: 'c1', name: 'C1' }] },
     })
@@ -364,7 +392,7 @@ describe('views/NewsManage', () => {
     await flushMicrotasks()
     await nextTick()
 
-    expect(mocks.canteenApiMock.getCanteens).toHaveBeenCalled()
+    expect(mocks.canteenApiMock.getCanteenOptions).toHaveBeenCalled()
     expect(mocks.newsApiMock.getNews).toHaveBeenCalled()
 
     expect(wrapper.vm.editorConfig.MENU_CONF.uploadImage.customUpload).toBeTypeOf('function')
@@ -454,7 +482,7 @@ describe('views/NewsManage', () => {
 
   it('loadCanteens supports array data and logs on failure', async () => {
     // array data branch
-    mocks.canteenApiMock.getCanteens.mockResolvedValueOnce({
+    mocks.canteenApiMock.getCanteenOptions.mockResolvedValueOnce({
       code: 200,
       data: [{ id: 'c9', name: 'C9' }],
     })
@@ -468,7 +496,7 @@ describe('views/NewsManage', () => {
 
     // catch branch logs
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    mocks.canteenApiMock.getCanteens.mockRejectedValueOnce(new Error('canteen boom'))
+    mocks.canteenApiMock.getCanteenOptions.mockRejectedValueOnce(new Error('canteen boom'))
     shallowMount(NewsManage, {
       global: { stubs: { Header: true, Pagination: true } },
     })
@@ -552,11 +580,13 @@ describe('views/NewsManage', () => {
       global: { stubs: { Header: true, Pagination: true } },
     })
 
+    wrapper.vm.openCreateModal()
+
     // validation failures
     wrapper.vm.newsForm.title = ''
     wrapper.vm.newsForm.summary = ''
     wrapper.vm.valueHtml = ''
-    await wrapper.vm.submitForm('draft')
+    await submitReadyForm(wrapper, 'draft')
     expect(wrapper.vm.errors.title).toBe('请输入标题')
     expect(wrapper.vm.errors.summary).toBe('请输入摘要')
     expect(wrapper.vm.errors.content).toBe('请输入内容')
@@ -567,7 +597,7 @@ describe('views/NewsManage', () => {
     wrapper.vm.valueHtml = '<p>c</p>'
     wrapper.vm.showCreateModal = true
     mocks.newsApiMock.createNews.mockResolvedValueOnce({ code: 201, data: { id: 'n2' } })
-    await wrapper.vm.submitForm('published')
+    await submitReadyForm(wrapper, 'published')
     expect(mocks.newsApiMock.createNews).toHaveBeenCalled()
     expect(mocks.newsApiMock.publishNews).toHaveBeenCalledWith('n2')
 
@@ -580,7 +610,7 @@ describe('views/NewsManage', () => {
     mocks.newsApiMock.createNews.mockResolvedValueOnce({ code: 200, data: { id: 'n3' } })
     mocks.newsApiMock.publishNews.mockRejectedValueOnce(new Error('publish bad'))
     mocks.showAlertMock.mockClear()
-    await wrapper.vm.submitForm('published')
+    await submitReadyForm(wrapper, 'published')
     expect(mocks.showAlertMock).toHaveBeenCalled()
 
     // create draft when currentStatus != draft triggers changeStatus and early return
@@ -591,7 +621,7 @@ describe('views/NewsManage', () => {
     wrapper.vm.currentStatus = 'published'
     mocks.newsApiMock.createNews.mockResolvedValueOnce({ code: 200, data: { id: 'n4' } })
     const callsBefore = mocks.newsApiMock.getNews.mock.calls.length
-    await wrapper.vm.submitForm('draft')
+    await submitReadyForm(wrapper, 'draft')
     // submitForm calls the inner changeStatus() closure directly; assert its observable effects
     expect(wrapper.vm.currentStatus).toBe('draft')
     expect(wrapper.vm.pagination.page).toBe(1)
@@ -610,7 +640,7 @@ describe('views/NewsManage', () => {
       publishedAt: null,
     })
     mocks.newsApiMock.updateNews.mockResolvedValueOnce({ code: 200 })
-    await wrapper.vm.submitForm('draft')
+    await submitReadyForm(wrapper, 'draft')
     expect(mocks.newsApiMock.updateNews).toHaveBeenCalledWith('e1', expect.any(Object))
 
     wrapper.unmount()
@@ -870,19 +900,19 @@ describe('views/NewsManage', () => {
 
   it('limits canteen-scoped managers to their own publisher and filters', async () => {
     const originalUser = mocks.authStoreMock.user
-    mocks.authStoreMock.user = { id: 'a1', username: 'admin', canteenId: 'c1', canteenName: 'C1' } as any
+    mocks.authStoreMock.user = { id: 'a1', username: 'admin', scope: 'CANTEENS' as 'GLOBAL' | 'CANTEENS', canteenIds: ['c1'], canteens: [{id: 'c1', name: 'c1'}], canteenName: 'C1' } as any
     const wrapper = mount(NewsManage, { global: { stubs: { Header: true, Pagination: true } } })
     await flushMicrotasks()
     await nextTick()
-    expect(mocks.canteenApiMock.getCanteens).not.toHaveBeenCalled()
+    expect(mocks.canteenApiMock.getCanteenOptions).not.toHaveBeenCalled()
     expect(wrapper.find('option[value="all"]').exists()).toBe(false)
     wrapper.vm.openCreateModal()
     expect(wrapper.vm.newsForm.canteenId).toBe('c1')
-    expect(mocks.newsApiMock.getNews).toHaveBeenCalledWith(expect.objectContaining({ canteenId: 'c1' }))
+    expect(mocks.newsApiMock.getNews).toHaveBeenCalledWith(expect.not.objectContaining({ canteenId: 'c1' }))
     wrapper.vm.newsForm.title = '所属食堂公告'
     wrapper.vm.newsForm.summary = '摘要'
     wrapper.vm.valueHtml = '<p>正文</p>'
-    await wrapper.vm.submitForm('draft')
+    await submitReadyForm(wrapper, 'draft')
     expect(mocks.newsApiMock.createNews).toHaveBeenCalledWith(expect.objectContaining({ canteenId: 'c1' }))
     wrapper.unmount()
     mocks.authStoreMock.user = originalUser
@@ -895,10 +925,10 @@ describe('views/NewsManage', () => {
     const wrapper = shallowMount(NewsManage, { global: { stubs: { Header: true, Pagination: true } } })
     await flushPromises()
     wrapper.vm.editNews(draftNews('A'))
-    const saveA = wrapper.vm.submitForm('draft')
+    const saveA = submitReadyForm(wrapper, 'draft')
     wrapper.vm.closeModal()
     wrapper.vm.editNews(draftNews('B'))
-    const saveB = wrapper.vm.submitForm('draft')
+    const saveB = submitReadyForm(wrapper, 'draft')
     mocks.showAlertMock.mockClear()
     mocks.newsApiMock.getNews.mockClear()
 
@@ -930,7 +960,7 @@ describe('views/NewsManage', () => {
       wrapper.vm.openCreateModal()
       Object.assign(wrapper.vm.newsForm, draftNews('new'))
       wrapper.vm.valueHtml = '<p>new</p>'
-      const saving = wrapper.vm.submitForm('published')
+      const saving = submitReadyForm(wrapper, 'published')
       if (boundary === 'close') wrapper.vm.closeModal()
       if (boundary === 'unmount') wrapper.unmount()
       if (boundary === 'session') invalidateAuthSession()
@@ -967,8 +997,8 @@ describe('views/NewsManage', () => {
       wrapper.vm.valueHtml = '<p>saved</p>'
     }
     api.mockClear()
-    const first = wrapper.vm.submitForm('published')
-    const duplicate = wrapper.vm.submitForm('published')
+    const first = submitReadyForm(wrapper, 'published')
+    const duplicate = submitReadyForm(wrapper, 'published')
     expect(api).toHaveBeenCalledTimes(1)
     expect(wrapper.vm.isSubmitting).toBe(true)
     wrapper.vm.newsForm.title = 'later title'
@@ -993,7 +1023,7 @@ describe('views/NewsManage', () => {
     const wrapper = shallowMount(NewsManage, { global: { stubs: { Header: true, Pagination: true } } })
     await flushPromises()
     wrapper.vm.editNews(draftNews('A'))
-    const saving = wrapper.vm.submitForm('published')
+    const saving = submitReadyForm(wrapper, 'published')
     await flushPromises()
     expect(mocks.newsApiMock.publishNews).toHaveBeenCalledWith('A')
     wrapper.vm.closeModal()
@@ -1014,7 +1044,7 @@ describe('views/NewsManage', () => {
     wrapper.vm.openCreateModal()
     Object.assign(wrapper.vm.newsForm, draftNews('new'))
     wrapper.vm.valueHtml = '<p>new</p>'
-    await wrapper.vm.submitForm('draft')
+    await submitReadyForm(wrapper, 'draft')
     expect(wrapper.vm.currentStatus).toBe('draft')
     expect(wrapper.vm.showCreateModal).toBe(false)
     expect(wrapper.vm.isSubmitting).toBe(false)
@@ -1030,7 +1060,7 @@ describe('views/NewsManage', () => {
     wrapper.vm.editNews(draftNews('A'))
     const editor = { destroy: vi.fn(), disable: vi.fn(), enable: vi.fn(), on: vi.fn() }
     wrapper.vm.handleCreated(editor)
-    const saving = wrapper.vm.submitForm('draft')
+    const saving = submitReadyForm(wrapper, 'draft')
     await nextTick()
     expect(editor.disable).toHaveBeenCalledTimes(1)
     const titleInput = new DOMWrapper(document.body).get('dialog[aria-label="编辑新闻"] input[placeholder="请输入新闻标题"]')
@@ -1044,7 +1074,7 @@ describe('views/NewsManage', () => {
     expect(wrapper.vm.showEditModal).toBe(true)
     expect(wrapper.vm.newsForm.title).toBe('A')
     expect(mocks.showAlertMock).toHaveBeenCalledWith('save failed')
-    await wrapper.vm.submitForm('draft')
+    await submitReadyForm(wrapper, 'draft')
     expect(wrapper.vm.showEditModal).toBe(false)
   })
 
@@ -1062,7 +1092,7 @@ describe('views/NewsManage', () => {
     await flushPromises()
     const news = host.findComponent(NewsManage)
     news.vm.editNews(draftNews('A'))
-    const saving = news.vm.submitForm('published')
+    const saving = submitReadyForm(news, 'published')
     const deleting = news.vm.deleteNews('A')
     visible.value = false
     await nextTick()
@@ -1089,7 +1119,7 @@ describe('views/NewsManage', () => {
     wrapper.vm.editNews({ ...draftNews('safe'), content: '<p><a href="javascript:alert(1)">safe</a><img src="/x" onerror="alert(1)"></p>' })
     expect(wrapper.vm.valueHtml).not.toMatch(/javascript:|onerror/)
     wrapper.vm.valueHtml = '<p><strong>safe</strong><img src="/x" onerror="alert(1)"></p>'
-    await wrapper.vm.submitForm('draft')
+    await submitReadyForm(wrapper, 'draft')
     const payload = mocks.newsApiMock.updateNews.mock.calls[0][1]
     expect(payload.content).toContain('<strong>safe</strong>')
     expect(payload.content).not.toContain('onerror')
@@ -1104,7 +1134,7 @@ describe('views/NewsManage', () => {
       wrapper.vm.valueHtml = '<p>A</p>'
     }
     wrapper.vm.newsForm.canteenId = ''
-    await wrapper.vm.submitForm('draft')
+    await submitReadyForm(wrapper, 'draft')
     const api = kind === 'create' ? mocks.newsApiMock.createNews : mocks.newsApiMock.updateNews
     expect(api.mock.calls[0][kind === 'create' ? 0 : 1].canteenId).toBeNull()
   })
@@ -1135,7 +1165,7 @@ describe('views/NewsManage', () => {
     expect(insertA).not.toHaveBeenCalled()
     expect(wrapper.vm.pendingImageUploads).toBe(1)
     expect(destroyB).not.toHaveBeenCalled()
-    await wrapper.vm.submitForm('draft')
+    await submitReadyForm(wrapper, 'draft')
     expect(mocks.newsApiMock.updateNews).not.toHaveBeenCalled()
 
     second.resolve({ code: 201, data: { url: '/B.png', filename: 'B.png' } })

@@ -5,7 +5,7 @@ import type { Report } from '@/types/api'
 
 const mocks = vi.hoisted(() => ({
   authStoreMock: {
-    user: { canteenId: null as string | null },
+    user: { scope: 'GLOBAL' as 'GLOBAL' | 'CANTEENS', canteenIds: [], canteens: [] },
     hasPermission: vi.fn(),
   },
   sessionVersion: 0,
@@ -53,7 +53,7 @@ describe('views/ReportManage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     sessionStorage.clear()
-    mocks.authStoreMock.user.canteenId = null
+    mocks.authStoreMock.user.scope = 'GLOBAL'
     mocks.authStoreMock.hasPermission.mockImplementation((permission: string) =>
       ['review:delete', 'comment:delete', 'post:delete', 'report:handle'].includes(permission),
     )
@@ -241,7 +241,9 @@ describe('views/ReportManage', () => {
     await flushMicrotasks()
     await nextTick()
 
-    const report = { ...wrapper.vm.reports.find((r: any) => r.targetType === 'comment'), status: 'pending' }
+    const source = wrapper.vm.reports.find(r => r.targetType === 'comment')
+    if (!source) throw new Error('Expected the comment report fixture')
+    const report = { ...source, status: 'pending' as const }
 
     mocks.authStoreMock.hasPermission.mockReturnValueOnce(false)
     await wrapper.vm.handleReport(report, 'delete_content')
@@ -459,7 +461,7 @@ describe('views/ReportManage', () => {
   })
 
   it('does not expose or process community reports for a canteen-scoped admin', async () => {
-    mocks.authStoreMock.user.canteenId = 'canteen-1'
+    mocks.authStoreMock.user.scope = 'CANTEENS'
     const wrapper = mountReportManage()
     await flushPromises()
     expect(wrapper.find('option[value="review"]').exists()).toBe(true)

@@ -1,3 +1,4 @@
+import type { AdminInfo } from '@/auth/decorators/current-admin.decorator';
 import {
   Controller,
   Get,
@@ -25,13 +26,7 @@ import { RequirePermissions } from '@/auth/decorators/permissions.decorator';
 import { Request } from 'express';
 
 interface AdminRequest extends Request {
-  admin: {
-    id: string;
-    username: string;
-    role: string;
-    canteenId: string | null;
-    permissions: string[];
-  };
+  admin: AdminInfo;
 }
 
 @Controller('admin/admins')
@@ -65,7 +60,7 @@ export class AdminAdminsController {
     return this.adminAdminsService.create(
       req.admin.id,
       req.admin.role,
-      req.admin.canteenId,
+      req.admin,
       req.admin.permissions,
       createAdminDto,
     );
@@ -89,7 +84,7 @@ export class AdminAdminsController {
     return this.adminAdminsService.updatePermissions(
       req.admin.id,
       req.admin.role,
-      req.admin.canteenId,
+      req.admin,
       req.admin.permissions,
       id,
       updatePermissionsDto,

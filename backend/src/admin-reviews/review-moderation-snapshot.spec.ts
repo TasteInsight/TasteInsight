@@ -11,7 +11,12 @@ import { RejectReviewDto } from './dto/reject-review.dto';
 
 describe('review moderation snapshot', () => {
   const expectedUpdatedAt = '2026-10-08T12:00:00.000Z';
-  const admin = { id: 'a1', canteenId: 'c1' };
+  const admin = {
+    id: 'a1',
+    scope: 'CANTEENS' as const,
+    canteenIds: ['c1'],
+    canteens: [{ id: 'c1', name: 'c1' }],
+  };
   let prisma: any;
   let stats: any;
   let service: AdminReviewsService;
@@ -53,7 +58,7 @@ describe('review moderation snapshot', () => {
           deletedAt: null,
           status: 'pending',
           updatedAt: new Date(expectedUpdatedAt),
-          dish: { canteenId: 'c1' },
+          dish: { canteenId: { in: ['c1'] } },
         },
         data:
           method === 'approveReview'
@@ -93,7 +98,7 @@ describe('review moderation snapshot', () => {
       (service.approveReview as any)(
         'r1',
         { expectedUpdatedAt },
-        { canteenId: 'c2' },
+        { scope: 'CANTEENS', canteenIds: ['c2'] },
       ),
     ).rejects.toThrow(ForbiddenException);
     expect(prisma.review.updateMany).not.toHaveBeenCalled();

@@ -4,13 +4,13 @@
     <input
       type="text"
       :placeholder="placeholder"
-      class="w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+      class="w-full pl-10 pr-10 admin-input"
       :value="modelValue"
       @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
     />
     <button
       v-if="modelValue"
-      class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+      class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 admin-icon-button"
       @click="$emit('update:modelValue', '')"
       type="button"
       title="清除搜索"

@@ -10,10 +10,11 @@ async function prepare(page: Page) {
   const writes: string[] = []
   await page.addInitScript(() => {
     sessionStorage.setItem('admin_token', 'style-contract-test')
-    sessionStorage.setItem('admin_user', JSON.stringify({ id: 'ui-admin', username: '界面验收', role: 'admin' }))
+    sessionStorage.setItem('admin_user', JSON.stringify({ scope: 'GLOBAL', canteenIds: [], canteens: [], id: 'ui-admin', username: '界面验收', role: 'admin' }))
     sessionStorage.setItem('admin_permissions', JSON.stringify([
       'dish:view', 'dish:create', 'dish:edit', 'dish:delete', 'canteen:view', 'canteen:create',
       'admin:view', 'admin:edit', 'news:view', 'news:create', 'report:handle', 'review:delete',
+      'config:view', 'config:edit',
     ]))
   })
   const list = (items: unknown[]) => ({ code: 200, data: { items, meta: { page: 1, pageSize: 20, total: items.length, totalPages: 1 } } })
@@ -25,9 +26,10 @@ async function prepare(page: Page) {
     }
     if (!['fetch', 'xhr'].includes(request.resourceType())) return route.continue()
     if (request.method() !== 'GET') { writes.push(path); return route.abort() }
+    if (path.endsWith('/admin/canteens/options')) return route.fulfill({ json: list([{ id: 'c1', name: '第一食堂' }, { id: 'c2', name: '第二食堂' }]) })
     if (path.endsWith('/admin/dishes')) return route.fulfill({ json: list([dish]) })
     if (path.endsWith(`/admin/dishes/${dish.id}`)) return route.fulfill({ json: { code: 200, data: dish } })
-    if (path.endsWith('/admin/admins')) return route.fulfill({ json: list([{ id: 'sub', username: '子管理员', role: 'admin', createdAt: '2026-10-09T10:00:00Z' }]) })
+    if (path.endsWith('/admin/admins')) return route.fulfill({ json: list([{ scope: 'GLOBAL', canteenIds: [], canteens: [], id: 'sub', username: '子管理员', role: 'admin', createdAt: '2026-10-09T10:00:00Z' }]) })
     if (path.endsWith('/admin/reports')) return route.fulfill({ json: list([{
       id: 'report', targetType: 'review', targetId: 'review', type: 'spam', reason: '内容核验',
       status: 'pending', createdAt: '2026-10-09T10:00:00Z', reporterNickname: '同学甲',
@@ -190,4 +192,112 @@ test('nested previews retain their top-layer order across KeepAlive navigation',
   await expect(image).toBeHidden()
   await expect(detail).toBeVisible()
   expect(writes).toEqual([])
+})
+
+for (const action of ['cancel', 'save', 'navigate'] as const) {
+  test(`${action} clears queued selection updates when the news editor closes`, async ({ page }) => {
+    const errors: string[] = []
+    page.on('pageerror', error => errors.push(error.message))
+    const writes = await prepare(page)
+    const saved: unknown[] = []
+    await page.route('**/admin/news', async route => {
+      if (route.request().method() !== 'POST') return route.fallback()
+      saved.push(route.request().postDataJSON())
+      return route.fulfill({ json: { code: 201, data: { id: 'lifecycle-draft' } } })
+    })
+    await page.goto('/modify-dish')
+    await page.getByRole('link', { name: '新闻管理', exact: true }).click()
+    await page.getByRole('button', { name: '创建新闻', exact: true }).click()
+    const dialog = page.getByRole('dialog', { name: '创建新闻', exact: true })
+    await dialog.getByPlaceholder('请输入新闻标题', { exact: true }).fill('关闭前的草稿')
+    await dialog.getByPlaceholder('请输入新闻摘要', { exact: true }).fill('选区回调验收')
+    await dialog.locator('[contenteditable="true"]').pressSequentially('关闭前的正文')
+    await page.clock.install({ time: new Date('2030-01-01T00:00:00Z') })
+    await page.clock.pauseAt(new Date('2030-01-01T00:00:01Z'))
+    await dialog.evaluate((element, action) => {
+      document.dispatchEvent(new Event('selectionchange'))
+      document.dispatchEvent(new Event('selectionchange'))
+      if (action === 'navigate') return
+      const label = action === 'save' ? '保存为草稿' : '取消'
+      const button = Array.from(element.querySelectorAll('button')).find(button => button.textContent?.trim() === label)!
+      button.click()
+    }, action)
+    if (action === 'navigate') {
+      await page.goBack()
+      await expect(page.getByRole('heading', { name: '菜品管理', exact: true })).toBeVisible()
+    }
+    await expect(dialog).toBeHidden()
+    await page.clock.runFor(250)
+    expect(errors).toEqual([])
+    expect(saved).toHaveLength(action === 'save' ? 1 : 0)
+    if (action === 'save') {
+      expect(saved[0]).toMatchObject({ content: expect.stringContaining('关闭前的正文') })
+    }
+    expect(writes).toEqual([])
+  })
+}
+
+
+test('admin scope choices distinguish global filtering and support two selected canteens', async ({ page }) => {
+  const writes = await prepare(page)
+  await page.goto('/user-manage')
+  await expect(page.getByRole('option', { name: '不限管理范围', exact: true })).toHaveCount(1)
+  await expect(page.getByRole('option', { name: '全局范围', exact: true })).toHaveCount(1)
+  await page.getByRole('button', { name: '编辑权限', exact: true }).click()
+  await page.getByRole('combobox').filter({ has: page.getByRole('option', { name: '指定食堂', exact: true }) }).selectOption('CANTEENS')
+  const choices = page.getByRole('group', { name: '授权食堂（可多选）' })
+  await choices.getByRole('checkbox', { name: '第一食堂', exact: true }).check()
+  await choices.getByRole('checkbox', { name: '第二食堂', exact: true }).check()
+  await expect(choices.getByRole('checkbox', { name: '第一食堂', exact: true })).toBeChecked()
+  await expect(choices.getByRole('checkbox', { name: '第二食堂', exact: true })).toBeChecked()
+  await page.setViewportSize({ width: 390, height: 844 })
+  await noPageOverflow(page)
+  expect(writes).toEqual([])
+})
+
+
+test('configuration keeps the selected canteen policy when an earlier activation responds late', async ({ page }) => {
+  const writes = await prepare(page)
+  let globalRequests = 0
+  let releaseFirst!: () => void
+  const firstResponse = new Promise<void>(resolve => { releaseFirst = resolve })
+  await page.route('**/admin/config/global', async route => {
+    globalRequests += 1
+    if (globalRequests === 1) await firstResponse
+    await route.fulfill({ json: { code: 200, data: { config: { items: [
+      { key: 'review.autoApprove', value: 'true' },
+      { key: 'comment.autoApprove', value: 'true' },
+    ] }, templates: [] } } })
+  })
+  await page.route('**/admin/config/canteen/c2/effective', route => route.fulfill({
+    json: { code: 200, data: { items: [
+      { key: 'review.autoApprove', value: 'false' },
+      { key: 'comment.autoApprove', value: 'false' },
+    ] } },
+  }))
+  try {
+    await page.goto('/config-manage')
+    const target = page.getByRole('combobox', { name: '配置范围', exact: true })
+    await expect(target).toBeDisabled()
+    await expect.poll(() => globalRequests).toBe(1)
+    await page.getByRole('link', { name: '新闻管理', exact: true }).click()
+    await expect(page.getByRole('heading', { name: '新闻管理', exact: true })).toBeVisible()
+    await page.getByRole('link', { name: '系统配置', exact: true }).click()
+    await expect(target).toBeEnabled()
+    expect(globalRequests).toBe(2)
+    await target.selectOption('c2')
+    const review = page.getByRole('checkbox', { name: '评价人工审核', exact: true })
+    const comment = page.getByRole('checkbox', { name: '回复人工审核', exact: true })
+    await expect(review).toBeChecked()
+    await expect(comment).toBeChecked()
+    const staleResponse = page.waitForResponse(response => response.url().endsWith('/admin/config/global'))
+    releaseFirst()
+    await (await staleResponse).finished()
+    await page.waitForLoadState('networkidle')
+    await expect(target).toHaveValue('c2')
+    await expect(review).toBeChecked()
+    await expect(comment).toBeChecked()
+    await expect(review).toBeEnabled()
+    expect(writes).toEqual([])
+  } finally { releaseFirst() }
 })

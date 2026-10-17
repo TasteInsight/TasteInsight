@@ -30,7 +30,7 @@ const student = {
   email: 'student@example.edu',
   emailVerifiedAt: updatedAt,
   updatedAt,
-  user: { nickname: '同学甲' },
+  user: {scope: 'GLOBAL' as 'GLOBAL' | 'CANTEENS', canteenIds: [], canteens: [],  nickname: '同学甲' },
   reason: null,
   expiresAt: null,
   verifiedAt: null,
@@ -63,7 +63,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   setActivePinia(createPinia())
   auth = useAuthStore()
-  auth.user = { id: 'admin1', username: '管理员', role: 'staff', canteenId: null } as Admin
+  auth.user = { id: 'admin1', username: '管理员', role: 'staff', scope: 'GLOBAL', canteenIds: [], canteens: [], createdAt: '2026-10-17T00:00:00Z' } as Admin
   auth.permissions = ['student:review', 'post:view', 'post:approve', 'post:delete']
   mocks.students.list.mockResolvedValue(listResponse([student]))
   mocks.students.decide.mockResolvedValue({ code: 200 })
@@ -108,7 +108,7 @@ describe('student verification management', () => {
   it.each(['scope', 'permission'])(
     'does not request student records without global review access (%s)',
     async (mode) => {
-      if (mode === 'scope') auth.user!.canteenId = 'c1'
+      if (mode === 'scope') auth.user!.scope = 'CANTEENS'
       else auth.permissions = []
       wrapper = mount(StudentVerificationManage)
       await flushPromises()
@@ -213,7 +213,7 @@ describe('student verification management', () => {
     wrapper = mount(StudentVerificationManage)
     await flushPromises()
     const signal = mocks.students.list.mock.calls[0][1] as AbortSignal
-    auth.user!.canteenId = 'c1'
+    auth.user!.scope = 'CANTEENS'
     await nextTick()
     expect(signal.aborted).toBe(true)
     expect(wrapper.text()).not.toContain(student.email)
@@ -316,7 +316,7 @@ describe('community management', () => {
   })
 
   it('does not fetch community content for a scoped admin even with permission strings', async () => {
-    auth.user!.canteenId = 'c1'
+    auth.user!.scope = 'CANTEENS'
     wrapper = mount(CommunityManage)
     await flushPromises()
     expect(mocks.community.list).not.toHaveBeenCalled()

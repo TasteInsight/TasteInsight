@@ -108,6 +108,7 @@ async function main() {
       username,
       password: await bcrypt.hash(password, 10),
       role: 'superadmin',
+      scope: 'GLOBAL',
     },
   });
   const admin = await adminCall('/auth/admin/login', null, 'POST', {

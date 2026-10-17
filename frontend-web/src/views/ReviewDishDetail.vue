@@ -2,8 +2,8 @@
   <div class="admin-page">
     <div class="admin-panel">
       <div class="admin-heading-row">
-        <Header title="菜品审核详情" description="" header-icon="carbon:task-approved" />
-        <button type="button" class="px-4 py-2 border rounded-lg hover:bg-gray-50" @click="goBack">返回列表</button>
+        <Header title="菜品审核详情" description="查看提交资料，处理菜品审核" header-icon="carbon:task-approved" />
+        <button type="button" class="border hover:bg-gray-50 admin-button" @click="goBack">返回列表</button>
       </div>
 
       <div v-if="isLoading" role="status" class="space-y-4 py-6 text-gray-600" aria-live="polite">
@@ -11,9 +11,9 @@
         <div class="h-8 bg-gray-100 rounded w-1/2"></div>
         <div class="h-24 bg-gray-100 rounded"></div>
       </div>
-      <div v-else-if="loadError" role="alert" class="py-8 text-center">
+      <div v-else-if="loadError" role="alert" class="admin-state admin-state-error">
         <p class="text-red-700 mb-4">{{ loadError }}</p>
-        <button type="button" class="px-4 py-2 border rounded-lg hover:bg-gray-50" @click="loadDishData">重试</button>
+        <button type="button" class="border hover:bg-gray-50 admin-button" @click="loadDishData">重试</button>
       </div>
 
       <div v-else-if="dishData" class="space-y-6">
@@ -37,19 +37,19 @@
           <div v-if="dishData.parentDishName"><dt class="inline">所属菜品：</dt><dd class="inline text-gray-800">{{ dishData.parentDishName }}</dd></div>
         </dl>
         <p v-if="dishData.rejectReason" class="p-4 bg-red-50 rounded-lg text-sm text-red-700">拒绝原因：{{ dishData.rejectReason }}</p>
-        <button v-if="dishData.approvedDishId" type="button" class="text-sm text-tsinghua-purple hover:underline" @click="router.push(`/view-dish/${dishData.approvedDishId}`)">查看已采纳菜品</button>
+        <button v-if="dishData.approvedDishId" type="button" class="text-tsinghua-purple hover:underline admin-button" @click="router.push(`/view-dish/${dishData.approvedDishId}`)">查看已采纳菜品</button>
 
         <section aria-labelledby="contribution-content-title">
           <div class="flex flex-wrap justify-between items-center gap-3 border-t pt-5 mb-4">
             <h3 id="contribution-content-title" class="font-medium text-lg">提交资料</h3>
-            <button v-if="dishData.status === 'pending' && !editing" type="button" :disabled="!canModerate || isSubmitting" class="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" @click="startEditing">编辑资料</button>
+            <button v-if="dishData.status === 'pending' && !editing" type="button" :disabled="!canModerate || isSubmitting" class="border hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed admin-button" @click="startEditing">编辑资料</button>
           </div>
           <ContributionReviewForm v-if="editing" :key="`${dishData.id}:${dishData.revision}`" :upload="dishData" :busy="isSubmitting" @save="saveChanges" @cancel="editing = false" />
           <div v-else class="flex flex-col md:flex-row items-start gap-6">
             <div class="w-40 sm:w-48 md:w-56 shrink-0">
               <AdminImage :src="selectedImage || dishData.images?.[0]" alt="菜品图片" variant="preview" previewable image-class="w-full aspect-square rounded-lg object-cover" @preview="previewImage" />
               <div v-if="dishData.images && dishData.images.length > 1" class="flex flex-wrap gap-2 mt-3">
-                <button v-for="(image, index) in dishData.images" :key="image" type="button" :aria-label="`查看菜品图片 ${index + 1}`" :aria-pressed="(selectedImage || dishData.images[0]) === image" class="rounded-lg border-2 p-0.5" :class="(selectedImage || dishData.images[0]) === image ? 'border-tsinghua-purple' : 'border-transparent'" @click="selectedImage = image">
+                <button v-for="(image, index) in dishData.images" :key="image" type="button" :aria-label="`查看菜品图片 ${index + 1}`" :aria-pressed="(selectedImage || dishData.images[0]) === image" class="border-2 admin-icon-button" :class="(selectedImage || dishData.images[0]) === image ? 'border-tsinghua-purple' : 'border-transparent'" @click="selectedImage = image">
                   <AdminImage :src="image" :alt="`菜品图片 ${index + 1}`" image-class="w-12 h-12 rounded object-cover" />
                 </button>
               </div>
@@ -78,8 +78,8 @@
 
         <section v-if="duplicateCandidates.length && !dishData.targetDishId && dishData.status === 'pending'" aria-labelledby="merge-title" class="border-t pt-5">
           <h3 id="merge-title" class="text-lg font-medium mb-3">相似菜品</h3>
-          <label for="merge-dish" class="block text-sm font-medium mb-1">新建或归并</label>
-          <select id="merge-dish" v-model="mergeDishId" :disabled="isSubmitting || editing || !canModerate" class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple disabled:bg-gray-50">
+          <label for="merge-dish" class="block font-medium mb-1 admin-label">新建或归并</label>
+          <select id="merge-dish" v-model="mergeDishId" :disabled="isSubmitting || editing || !canModerate" class="w-full disabled:bg-gray-50 admin-input">
             <option value="">新建菜品</option>
             <option v-for="candidate in duplicateCandidates" :key="candidate.id" :value="candidate.id">归并至 {{ candidate.name }} · {{ contributionLocation(candidate) }} · {{ formatContributionPrice(candidate.price, candidate.priceUnit) }}{{ candidate.status === 'offline' ? '（已下架）' : '' }}</option>
           </select>
@@ -116,17 +116,17 @@
           </div>
           <div v-if="needsBaselineConfirmation && dishData.status === 'pending'" class="mt-4 space-y-2">
             <p class="text-sm text-gray-600">核对最新原菜品资料后，可将其设为本次审核基线。该操作只更新审核版本，仍需单独批准。</p>
-            <button type="button" :disabled="!canAct" class="px-4 py-2 border rounded-lg text-tsinghua-purple hover:bg-purple-50 disabled:opacity-50" @click="confirmCurrentTarget">确认当前资料并重审</button>
+            <button type="button" :disabled="!canAct" class="border text-tsinghua-purple hover:bg-purple-50 disabled:opacity-50 admin-button" @click="confirmCurrentTarget">确认当前资料并重审</button>
           </div>
         </section>
 
         <p v-if="!canModerate" class="text-sm text-gray-600">您没有权限审核菜品。</p>
         <div class="flex flex-wrap gap-3 pt-5 border-t border-gray-200">
           <template v-if="dishData.status === 'pending'">
-            <button type="button" :disabled="!canAct" class="px-5 py-2.5 bg-tsinghua-purple text-white rounded-lg hover:bg-tsinghua-dark disabled:opacity-50 disabled:cursor-not-allowed" @click="approveDish">{{ mergeDishId ? '通过并归并' : '通过审核' }}</button>
-            <button type="button" :disabled="!canAct" class="px-5 py-2.5 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed" @click="openRejectModal">拒绝审核</button>
+            <button type="button" :disabled="!canAct" class="disabled:opacity-50 disabled:cursor-not-allowed admin-button admin-button-primary" @click="approveDish">{{ mergeDishId ? '通过并归并' : '通过审核' }}</button>
+            <button type="button" :disabled="!canAct" class="border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed admin-button" @click="openRejectModal">拒绝审核</button>
           </template>
-          <button v-else-if="dishData.status !== 'withdrawn'" type="button" :disabled="!canAct" class="px-5 py-2.5 border rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed" @click="revokeApproval">撤销审核结果</button>
+          <button v-else-if="dishData.status !== 'withdrawn'" type="button" :disabled="!canAct" class="border hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed admin-button" @click="revokeApproval">撤销审核结果</button>
           <span v-if="isSubmitting" role="status" class="self-center text-sm text-gray-600">正在处理…</span>
           <span v-if="editing" class="self-center text-sm text-gray-600">保存或取消修改后继续审核。</span>
         </div>
@@ -134,17 +134,17 @@
     </div>
 
     <AdminDialog :open="isRejectModalOpen" label="拒绝审核" :close-on-backdrop="false" :close-on-escape="!isSubmitting" @close="closeRejectModal">
-      <form class="bg-white rounded-lg shadow-xl w-full max-w-lg overflow-hidden" @submit.prevent="confirmReject">
-        <div class="px-6 py-4 border-b"><h3 class="text-lg font-medium">拒绝审核</h3></div>
-        <div class="p-6">
-          <label for="reject-reason" class="block text-sm font-medium mb-2">拒绝原因</label>
-          <textarea id="reject-reason" v-model="rejectReason" :disabled="isSubmitting" :aria-invalid="!!rejectError" :aria-describedby="rejectError ? 'reject-error' : 'reject-help'" rows="4" class="w-full px-3 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple" />
+      <form class="w-full max-w-lg overflow-hidden admin-dialog-panel" @submit.prevent="confirmReject">
+        <div class="admin-dialog-header"><h3 class="text-lg font-medium">拒绝审核</h3></div>
+        <div class="admin-dialog-body">
+          <label for="reject-reason" class="block font-medium mb-2 admin-label">拒绝原因</label>
+          <textarea id="reject-reason" v-model="rejectReason" :disabled="isSubmitting" :aria-invalid="!!rejectError" :aria-describedby="rejectError ? 'reject-error' : 'reject-help'" rows="4" class="w-full admin-textarea" />
           <p id="reject-help" class="text-sm text-gray-600 mt-2">请说明需要核实或补充的内容，提交人可修改后重新提交。</p>
           <p v-if="rejectError" id="reject-error" role="alert" class="text-sm text-red-700 mt-2">{{ rejectError }}</p>
         </div>
-        <div class="px-6 py-4 bg-gray-50 flex justify-end gap-3">
-          <button type="button" :disabled="isSubmitting" class="px-4 py-2 border rounded-lg hover:bg-gray-100 disabled:opacity-50" @click="closeRejectModal">取消</button>
-          <button type="submit" :disabled="isSubmitting" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50">{{ isSubmitting ? '提交中…' : '确认拒绝' }}</button>
+        <div class="admin-dialog-footer">
+          <button type="button" :disabled="isSubmitting" class="border hover:bg-gray-100 disabled:opacity-50 admin-button" @click="closeRejectModal">取消</button>
+          <button type="submit" :disabled="isSubmitting" class="bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 admin-button">{{ isSubmitting ? '提交中…' : '确认拒绝' }}</button>
         </div>
       </form>
     </AdminDialog>

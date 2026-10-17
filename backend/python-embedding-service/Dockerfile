@@ -12,26 +12,10 @@ RUN apt-get update && apt-get install -y \
 RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/ && \
     pip config set global.trusted-host pypi.tuna.tsinghua.edu.cn
 
-# 第一步：单独安装 PyTorch（最大的依赖，单独一层方便缓存）
-# 使用 BuildKit 缓存挂载加速下载
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --extra-index-url https://download.pytorch.org/whl/cpu torch==2.2.0+cpu
-
-# 第二步：安装其他核心依赖（变化较少的依赖）
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install \
-    flask==3.0.0 \
-    gunicorn==21.2.0 \
-    numpy==1.26.3 \
-    transformers==4.37.2 \
-    sentence-transformers==2.5.1 \
-    psycopg2-binary==2.9.9 \
-    tqdm==4.66.1
-
-# 第三步：复制 requirements.txt 并安装剩余依赖（如果有）
+# 固定依赖统一由 requirements.txt 管理，下载缓存跨构建复用。
 COPY requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install -r requirements.txt || true
+    pip install -r requirements.txt
 
 # 复制应用代码
 COPY app.py config.py ./

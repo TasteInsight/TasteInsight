@@ -5,7 +5,7 @@
     </div>
     <div class="admin-pagination-controls">
       <button
-        class="px-3 py-1 border rounded text-gray-500 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+        class="border text-gray-500 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed admin-button admin-button-compact"
         :disabled="currentPage === 1"
         @click="$emit('page-change', currentPage - 1)"
       >
@@ -16,7 +16,7 @@
         :key="page"
         :aria-current="page === currentPage ? 'page' : undefined"
         :aria-label="`第 ${page} 页`"
-        class="px-3 py-1 border rounded"
+        class="border admin-button admin-button-compact"
         :class="
           page === currentPage ? 'bg-tsinghua-purple text-white' : 'text-gray-500 hover:bg-gray-100'
         "
@@ -25,7 +25,7 @@
         {{ page }}
       </button>
       <button
-        class="px-3 py-1 border rounded text-gray-500 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+        class="border text-gray-500 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed admin-button admin-button-compact"
         :disabled="currentPage === totalPages"
         @click="$emit('page-change', currentPage + 1)"
       >
@@ -39,13 +39,13 @@
           :max="totalPages"
           v-model.number="inputPage"
           @keyup.enter="handleJumpToPage"
-          class="w-16 px-2 py-1 border rounded text-center text-sm focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+          class="w-16 text-center admin-input"
           placeholder="页码"
           aria-label="跳转页码"
         />
         <span class="text-sm text-gray-500">页</span>
         <button
-          class="px-3 py-1 bg-tsinghua-purple text-white rounded text-sm hover:bg-tsinghua-dark transition duration-200"
+          class="transition duration-200 admin-button admin-button-compact admin-button-primary"
           @click="handleJumpToPage"
         >
           确定

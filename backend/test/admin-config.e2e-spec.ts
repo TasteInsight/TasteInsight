@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import * as bcrypt from 'bcrypt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -11,6 +13,7 @@ describe('AdminConfigController (e2e)', () => {
   let superAdminToken: string;
   let canteenAdminToken: string;
   let normalAdminToken: string;
+  let scopeFixtureId: string;
   let testCanteenId: string;
   let otherCanteenId: string;
   let originalConfigs:
@@ -33,10 +36,29 @@ describe('AdminConfigController (e2e)', () => {
       .send({ username: 'testadmin', password: 'password123' });
     superAdminToken = superAdminLogin.body.data.token.accessToken;
 
-    // Login as canteen admin (canteenadmin - has canteenId)
+    const canteen = await prisma.canteen.findFirstOrThrow();
+    testCanteenId = canteen.id;
+    const username = `cfg-${randomUUID().slice(0, 12)}`;
+    const password = 'ConfigFixture@123';
+    const scopeFixture = await prisma.admin.create({
+      data: {
+        username,
+        password: await bcrypt.hash(password, 10),
+        role: 'admin',
+        scope: 'CANTEENS',
+        canteens: { create: [{ canteenId: testCanteenId }] },
+        permissions: {
+          create: ['config:view', 'config:edit'].map((permission) => ({
+            permission,
+          })),
+        },
+      },
+    });
+    scopeFixtureId = scopeFixture.id;
     const canteenAdminLogin = await request(app.getHttpServer())
       .post('/auth/admin/login')
-      .send({ username: 'canteenadmin', password: 'canteen123' });
+      .send({ username, password })
+      .expect(200);
     canteenAdminToken = canteenAdminLogin.body.data.token.accessToken;
 
     // Login as normal admin (只有 dish:view 权限)
@@ -44,12 +66,6 @@ describe('AdminConfigController (e2e)', () => {
       .post('/auth/admin/login')
       .send({ username: 'normaladmin', password: 'admin123' });
     normalAdminToken = normalAdminLogin.body.data.token.accessToken;
-
-    // Get test canteen ID (canteen that canteenadmin belongs to)
-    const canteenAdmin = await prisma.admin.findUnique({
-      where: { username: 'canteenadmin' },
-    });
-    testCanteenId = canteenAdmin?.canteenId || '';
 
     // Get other canteen ID for permission tests
     const canteens = await prisma.canteen.findMany({
@@ -87,6 +103,12 @@ describe('AdminConfigController (e2e)', () => {
             }
           }
         });
+      }
+      if (scopeFixtureId) {
+        await prisma.operationLog.deleteMany({
+          where: { adminId: scopeFixtureId },
+        });
+        await prisma.admin.delete({ where: { id: scopeFixtureId } });
       }
     } finally {
       await app.close();

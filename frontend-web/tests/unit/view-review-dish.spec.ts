@@ -274,13 +274,13 @@ describe('views/ReviewDish', () => {
     expect(mocks.routerPushMock).toHaveBeenCalledWith('/review-dish/9')
 
     mocks.routerPushMock.mockClear()
-    wrapper.vm.reviewDish({ id: '8', status: 'pending' })
+    wrapper.vm.reviewDish({ id: '8' })
     expect(mocks.routerPushMock).toHaveBeenCalledWith('/review-dish/8')
 
     mocks.routerPushMock.mockClear()
     mocks.hasPermissionMock.mockReturnValue(false)
 
-    wrapper.vm.reviewDish({ id: '7', status: 'pending' })
+    wrapper.vm.reviewDish({ id: '7' })
     expect(mocks.showAlertMock).toHaveBeenCalledWith('您没有权限审核菜品')
     expect(mocks.routerPushMock).not.toHaveBeenCalled()
 

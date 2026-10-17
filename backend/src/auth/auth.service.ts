@@ -132,7 +132,7 @@ export class AuthService {
       where: { username, deletedAt: null },
       include: {
         permissions: true,
-        canteen: true,
+        canteens: { select: { canteen: { select: { id: true, name: true } } } },
       },
     });
 
@@ -143,7 +143,7 @@ export class AuthService {
     const {
       password,
       permissions: permissionsRelation,
-      canteen,
+      canteens,
       ...adminData
     } = admin;
     const isPasswordMatching = await bcrypt.compare(pass, password);
@@ -172,7 +172,8 @@ export class AuthService {
         },
         admin: {
           ...adminData,
-          canteenName: canteen?.name ?? null,
+          canteens: canteens.map((entry) => entry.canteen),
+          canteenIds: canteens.map((entry) => entry.canteen.id),
         },
         permissions,
       },

@@ -122,7 +122,10 @@ describe('AdminNewsService', () => {
 
     it('does not allow filters to widen a canteen administrator scope', async () => {
       await expect(
-        service.findAll({ canteenId: 'other' }, { canteenId: 'own' } as any),
+        service.findAll({ canteenId: 'other' }, {
+          scope: 'CANTEENS' as const,
+          canteenIds: ['own'],
+        } as any),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -194,11 +197,15 @@ describe('AdminNewsService', () => {
       prisma.news.findMany.mockResolvedValue([]);
       prisma.news.count.mockResolvedValue(0);
 
-      await service.findAll({}, { id: 'admin-1', canteenId: 'c1' } as any);
+      await service.findAll({}, {
+        id: 'admin-1',
+        scope: 'CANTEENS' as const,
+        canteenIds: ['c1'],
+      } as any);
 
       expect(prisma.news.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ canteenId: 'c1' }),
+          where: expect.objectContaining({ canteenId: { in: ['c1'] } }),
         }),
       );
     });
@@ -227,7 +234,11 @@ describe('AdminNewsService', () => {
       canteenId: 'c1',
     };
 
-    const adminInfo = { id: 'admin-1', canteenId: null } as any;
+    const adminInfo = {
+      id: 'admin-1',
+      scope: 'GLOBAL' as const,
+      canteenIds: [],
+    } as any;
 
     it('should create a new news', async () => {
       prisma.canteen.findUnique.mockResolvedValue({
@@ -264,7 +275,11 @@ describe('AdminNewsService', () => {
     });
 
     it('should use admin canteenId if provided', async () => {
-      const canteenAdmin = { id: 'admin-1', canteenId: 'c1' } as any;
+      const canteenAdmin = {
+        id: 'admin-1',
+        scope: 'CANTEENS' as const,
+        canteenIds: ['c1'],
+      } as any;
       prisma.canteen.findUnique.mockResolvedValue({
         id: 'c1',
         name: 'Canteen 1',
@@ -296,7 +311,11 @@ describe('AdminNewsService', () => {
     });
 
     it('should throw ForbiddenException if canteen admin tries to create for different canteen', async () => {
-      const canteenAdmin = { id: 'admin-1', canteenId: 'c1' } as any;
+      const canteenAdmin = {
+        id: 'admin-1',
+        scope: 'CANTEENS' as const,
+        canteenIds: ['c1'],
+      } as any;
 
       await expect(
         service.createNews({ ...createDto, canteenId: 'c2' }, canteenAdmin),
@@ -345,7 +364,8 @@ describe('AdminNewsService', () => {
       await expect(
         service.createNews({ ...createDto, canteenId: null }, {
           id: 'scoped',
-          canteenId: 'c1',
+          scope: 'CANTEENS' as const,
+          canteenIds: ['c1'],
         } as any),
       ).rejects.toThrow(ForbiddenException);
       expect(prisma.news.create).not.toHaveBeenCalled();
@@ -397,7 +417,10 @@ describe('AdminNewsService', () => {
 
     it('should throw ForbiddenException if admin has no access', async () => {
       await expect(
-        service.updateNews('n1', updateDto, { canteenId: 'c2' } as any),
+        service.updateNews('n1', updateDto, {
+          scope: 'CANTEENS' as const,
+          canteenIds: ['c2'],
+        } as any),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -438,7 +461,11 @@ describe('AdminNewsService', () => {
     });
 
     it('preserves publisher fields when a canteen administrator omits them', async () => {
-      const canteenAdmin = { id: 'admin-1', canteenId: 'c1' } as any;
+      const canteenAdmin = {
+        id: 'admin-1',
+        scope: 'CANTEENS' as const,
+        canteenIds: ['c1'],
+      } as any;
       await service.updateNews('n1', updateDto, canteenAdmin);
       expect(prisma.news.update).toHaveBeenCalledWith({
         where: { id: 'n1' },
@@ -449,7 +476,8 @@ describe('AdminNewsService', () => {
 
     it('clears both publisher fields for an unscoped explicit null update', async () => {
       await service.updateNews('n1', { canteenId: null }, {
-        canteenId: null,
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
       } as any);
       expect(prisma.news.update).toHaveBeenCalledWith({
         where: { id: 'n1' },
@@ -459,7 +487,10 @@ describe('AdminNewsService', () => {
     });
 
     it('preserves publisher fields for an unscoped omitted update', async () => {
-      await service.updateNews('n1', updateDto, { canteenId: null } as any);
+      await service.updateNews('n1', updateDto, {
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+      } as any);
       expect(prisma.news.update).toHaveBeenCalledWith({
         where: { id: 'n1' },
         data: updateDto,
@@ -473,7 +504,8 @@ describe('AdminNewsService', () => {
         name: 'Canteen 1',
       });
       await service.updateNews('n1', { canteenId: 'c1' }, {
-        canteenId: 'c1',
+        scope: 'CANTEENS' as const,
+        canteenIds: ['c1'],
       } as any);
       expect(prisma.news.update).toHaveBeenCalledWith({
         where: { id: 'n1' },
@@ -485,7 +517,10 @@ describe('AdminNewsService', () => {
       'rejects publisher %s outside a canteen administrator scope',
       async (canteenId) => {
         await expect(
-          service.updateNews('n1', { canteenId }, { canteenId: 'c1' } as any),
+          service.updateNews('n1', { canteenId }, {
+            scope: 'CANTEENS' as const,
+            canteenIds: ['c1'],
+          } as any),
         ).rejects.toThrow(ForbiddenException);
         expect(prisma.news.update).not.toHaveBeenCalled();
         expect(prisma.canteen.findUnique).not.toHaveBeenCalled();
@@ -527,7 +562,10 @@ describe('AdminNewsService', () => {
 
     it('should throw ForbiddenException if admin has no access', async () => {
       await expect(
-        service.publishNews('n1', { canteenId: 'c2' } as any),
+        service.publishNews('n1', {
+          scope: 'CANTEENS' as const,
+          canteenIds: ['c2'],
+        } as any),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -566,7 +604,10 @@ describe('AdminNewsService', () => {
 
     it('should throw ForbiddenException if admin has no access', async () => {
       await expect(
-        service.revokeNews('n1', { canteenId: 'c2' } as any),
+        service.revokeNews('n1', {
+          scope: 'CANTEENS' as const,
+          canteenIds: ['c2'],
+        } as any),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -598,7 +639,10 @@ describe('AdminNewsService', () => {
 
     it('should throw ForbiddenException if admin has no access', async () => {
       await expect(
-        service.deleteNews('n1', { canteenId: 'c2' } as any),
+        service.deleteNews('n1', {
+          scope: 'CANTEENS' as const,
+          canteenIds: ['c2'],
+        } as any),
       ).rejects.toThrow(ForbiddenException);
     });
   });

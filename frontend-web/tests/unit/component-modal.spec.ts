@@ -258,7 +258,7 @@ describe('components/Common/Modal', () => {
       })
 
       // Click on modal content (inner div), not the mask
-      const modalContent = wrapper.find('.bg-white.rounded-lg')
+      const modalContent = wrapper.find('.admin-dialog-panel')
       await modalContent.trigger('click')
       await nextTick()
 
@@ -315,7 +315,7 @@ describe('components/Common/Modal', () => {
         },
       })
 
-      const buttons = wrapper.findAll('.bg-gray-50 button')
+      const buttons = wrapper.findAll('.admin-dialog-footer button')
       expect(buttons).toHaveLength(2)
       expect(buttons[0].text()).toBe('取消')
       expect(buttons[1].text()).toBe('确定')
@@ -336,7 +336,7 @@ describe('components/Common/Modal', () => {
         },
       })
 
-      const buttons = wrapper.findAll('.bg-gray-50 button')
+      const buttons = wrapper.findAll('.admin-dialog-footer button')
       expect(buttons).toHaveLength(1)
       expect(buttons[0].text()).toBe('删除')
       expect(buttons[0].classes()).toContain('bg-red-600')
@@ -361,9 +361,9 @@ describe('components/Common/Modal', () => {
         },
       })
 
-      const buttons = wrapper.findAll('.bg-gray-50 button')
-      expect(buttons[0].classes()).toContain('bg-white')
-      expect(buttons[1].classes()).toContain('bg-tsinghua-purple')
+      const buttons = wrapper.findAll('.admin-dialog-footer button')
+      expect(buttons[0].classes()).toContain('admin-button-secondary')
+      expect(buttons[1].classes()).toContain('admin-button-primary')
       expect(buttons[2].classes()).toContain('bg-red-600')
     })
 
@@ -384,7 +384,7 @@ describe('components/Common/Modal', () => {
         },
       })
 
-      const button = wrapper.find('.bg-gray-50 button')
+      const button = wrapper.find('.admin-dialog-footer button')
       await button.trigger('click')
       await nextTick()
 
@@ -407,7 +407,7 @@ describe('components/Common/Modal', () => {
         },
       })
 
-      const button = wrapper.find('.bg-gray-50 button')
+      const button = wrapper.find('.admin-dialog-footer button')
       await button.trigger('click')
       await flushPromises()
 
@@ -431,7 +431,7 @@ describe('components/Common/Modal', () => {
         },
       })
 
-      const button = wrapper.find('.bg-gray-50 button')
+      const button = wrapper.find('.admin-dialog-footer button')
       await button.trigger('click')
       await nextTick()
 
@@ -456,7 +456,7 @@ describe('components/Common/Modal', () => {
         },
       })
 
-      const button = wrapper.find('.bg-gray-50 button')
+      const button = wrapper.find('.admin-dialog-footer button')
       await button.trigger('click')
       await nextTick()
 
@@ -482,7 +482,7 @@ describe('components/Common/Modal', () => {
         },
       })
 
-      const button = wrapper.find('.bg-gray-50 button')
+      const button = wrapper.find('.admin-dialog-footer button')
       await button.trigger('click')
       await nextTick()
 
@@ -505,7 +505,7 @@ describe('components/Common/Modal', () => {
         },
       })
 
-      const loadingIcon = wrapper.find('.bg-gray-50 button .iconify[data-icon="mdi:loading"]')
+      const loadingIcon = wrapper.find('.admin-dialog-footer button .iconify[data-icon="mdi:loading"]')
       expect(loadingIcon.exists()).toBe(true)
     })
 
@@ -524,7 +524,7 @@ describe('components/Common/Modal', () => {
         },
       })
 
-      const button = wrapper.find('.bg-gray-50 button')
+      const button = wrapper.find('.admin-dialog-footer button')
       await button.trigger('click')
       await nextTick()
 

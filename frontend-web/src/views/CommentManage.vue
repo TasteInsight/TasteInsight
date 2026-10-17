@@ -17,13 +17,13 @@
               <input
                 type="text"
                 placeholder="搜索菜品名称..."
-                class="w-full pl-10 pr-10 py-2 border rounded-lg focus:ring-tsinghua-purple focus:border-tsinghua-purple"
+                class="w-full pl-10 pr-10 admin-input"
                 v-model="searchQuery"
                 @input="handleSearchChange"
               />
               <button
                 v-if="searchQuery"
-                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 admin-icon-button"
                 @click="searchQuery = ''; handleSearchChange()"
                 type="button"
                 title="清除搜索"
@@ -44,7 +44,7 @@
                 <select
                   v-model="selectedCanteenId"
                   @change="handleCanteenChange"
-                  class="appearance-none w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm transition-all cursor-pointer hover:border-gray-400"
+                  class="appearance-none w-full pr-10 bg-white transition-all cursor-pointer hover:border-gray-400 admin-input"
                 >
                   <option value="">全部食堂</option>
                   <option v-for="canteen in canteens" :key="canteen.id" :value="canteen.id">
@@ -63,7 +63,7 @@
                 <select
                   v-model="selectedWindowId"
                   @change="handleWindowChange"
-                  class="appearance-none w-full pl-3 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm transition-all cursor-pointer hover:border-gray-400 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:border-gray-200"
+                  class="appearance-none w-full pr-10 bg-white transition-all cursor-pointer hover:border-gray-400 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:border-gray-200 admin-input"
                   :disabled="!selectedCanteenId"
                 >
                   <option value="">全部窗口</option>
@@ -81,7 +81,7 @@
               <button
                 v-if="selectedCanteenId || selectedWindowId || searchQuery"
                 @click="resetFilters"
-                class="text-xs text-gray-500 hover:text-tsinghua-purple flex items-center gap-1 px-2 py-1 rounded-md hover:bg-gray-200/50 transition-colors"
+                class="text-gray-500 hover:text-tsinghua-purple flex items-center gap-1 hover:bg-gray-200/50 transition-colors admin-button"
               >
                 <AppIcon class="iconify text-sm" icon="carbon:reset"></AppIcon>
                 重置筛选
@@ -90,11 +90,11 @@
           </div>
 
           <div class="admin-dish-list">
-            <div v-if="isLoadingDishes" class="text-center py-8 text-gray-500">
+            <div v-if="isLoadingDishes" class="admin-state">
               <AppIcon class="iconify inline-block text-2xl animate-spin" icon="mdi:loading"></AppIcon>
               <span class="ml-2">加载中...</span>
             </div>
-            <div v-else-if="filteredDishes.length === 0" class="text-center py-8 text-gray-500">
+            <div v-else-if="filteredDishes.length === 0" class="admin-state">
               暂无菜品数据
             </div>
             <button
@@ -102,7 +102,7 @@
               v-for="dish in filteredDishes"
               :key="dish.id"
               type="button"
-              class="w-full p-3 mb-2 border rounded-lg text-left transition-colors duration-200"
+              class="w-full p-3 mb-2 rounded-lg border text-left transition-colors duration-200"
               :aria-pressed="selectedDishId === dish.id"
               :class="selectedDishId === dish.id ? 'bg-tsinghua-purple text-white border-tsinghua-purple' : 'hover:bg-gray-50'"
               @click="selectDish(dish)"
@@ -130,23 +130,23 @@
 
           <!-- 紧凑型分页 -->
           <div v-if="totalDishes > 0" class="mt-4 pt-4 border-t border-gray-200">
-            <div class="flex items-center justify-between gap-2">
+            <div class="flex flex-wrap items-center justify-between gap-2">
               <div class="text-gray-500 text-xs whitespace-nowrap flex-shrink-0">
                 共 {{ totalDishes }} 条
               </div>
-              <div class="flex items-center gap-1 flex-1 justify-end min-w-0">
+              <div class="flex flex-wrap items-center gap-1 flex-1 justify-end min-w-0">
                 <button
-                  class="px-2 py-1 text-xs border rounded text-gray-500 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0"
+                  class="border text-gray-500 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0 admin-button admin-button-compact"
                   :disabled="dishPage === 1"
                   @click="handleDishPageChange(dishPage - 1)"
                 >
                   上一页
                 </button>
-                <div class="flex items-center gap-1">
+                <div class="flex flex-wrap items-center gap-1">
                   <button
                     v-for="page in getDishPaginationPages()"
                     :key="page"
-                    class="px-2 py-1 text-xs border rounded min-w-[28px] text-center flex-shrink-0"
+                    class="border min-w-[28px] text-center flex-shrink-0 admin-button admin-button-compact"
                     :class="
                       page === dishPage
                         ? 'bg-tsinghua-purple text-white border-tsinghua-purple'
@@ -158,7 +158,7 @@
                   </button>
                 </div>
                 <button
-                  class="px-2 py-1 text-xs border rounded text-gray-500 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0"
+                  class="border text-gray-500 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0 admin-button admin-button-compact"
                   :disabled="dishPage === getDishTotalPages()"
                   @click="handleDishPageChange(dishPage + 1)"
                 >
@@ -233,11 +233,11 @@
               />
             </div>
 
-            <div v-if="isLoadingReviews || isLoadingComments" class="text-center py-8 text-gray-500">
+            <div v-if="isLoadingReviews || isLoadingComments" class="admin-state">
               <AppIcon class="iconify inline-block text-2xl animate-spin" icon="mdi:loading"></AppIcon>
               <span class="ml-2">加载中...</span>
             </div>
-            <div v-else-if="reviews.length === 0" class="text-center py-8 text-gray-500">
+            <div v-else-if="reviews.length === 0" class="admin-state">
               暂无评价
             </div>
             <div v-else class="space-y-6">
@@ -286,7 +286,7 @@
                       </div>
                     </div>
                     <button
-                      class="px-3 py-1.5 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition duration-200 flex items-center gap-1"
+                      class="bg-red-600 text-white hover:bg-red-700 transition duration-200 flex items-center gap-1 admin-button"
                       @click="handleDeleteReview(review)"
                       :disabled="isBatchDeleting || !authStore.hasPermission('review:delete')"
                       :title="!authStore.hasPermission('review:delete') ? '无权限删除评价' : '删除评价'"
@@ -369,7 +369,7 @@
                           </div>
                         </div>
                         <button
-                          class="ml-3 px-2 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 transition duration-200 flex items-center gap-1"
+                          class="ml-3 bg-red-600 text-white hover:bg-red-700 transition duration-200 flex items-center gap-1 admin-icon-button"
                           @click="handleDeleteComment(comment)"
                           :disabled="isBatchDeleting || !authStore.hasPermission('comment:delete')"
                           :title="!authStore.hasPermission('comment:delete') ? '无权限删除评论' : '删除评论'"
@@ -385,7 +385,7 @@
                 </div>
                 <div v-if="commentPagination[review.id] && (commentPagination[review.id].error || commentPagination[review.id].page < commentPagination[review.id].totalPages)" class="border-t px-5 py-3 text-center">
                   <p v-if="commentPagination[review.id].error" class="mb-2 text-sm text-red-600">评论加载失败，请重试</p>
-                  <button type="button" :disabled="isBatchDeleting || commentPagination[review.id].loading" @click="loadMoreComments(review.id)" class="rounded px-3 py-2 text-sm text-tsinghua-purple hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-tsinghua-purple disabled:opacity-50">
+                  <button type="button" :disabled="isBatchDeleting || commentPagination[review.id].loading" @click="loadMoreComments(review.id)" class="text-tsinghua-purple hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-tsinghua-purple disabled:opacity-50 admin-button">
                     {{ commentPagination[review.id].loading ? '加载中...' : commentPagination[review.id].error ? '重试加载评论' : '加载更多评论' }}
                   </button>
                 </div>
@@ -417,7 +417,7 @@
         <!-- 关闭按钮 -->
         <button
           aria-label="关闭图片预览"
-          class="absolute top-4 right-4 z-10 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition"
+          class="absolute top-4 right-4 z-10 text-white bg-black bg-opacity-50 rounded-full hover:bg-opacity-75 transition admin-icon-button"
           @click="closeImagePreview"
         >
           <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
@@ -436,7 +436,7 @@
           v-if="imagePreview.images.length > 1"
           aria-label="上一张图片"
           :aria-disabled="imagePreview.currentIndex === 0"
-          class="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full p-3 hover:bg-opacity-75 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          class="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full hover:bg-opacity-75 transition disabled:opacity-50 disabled:cursor-not-allowed admin-icon-button"
           @click.stop="previousImage"
           :disabled="imagePreview.currentIndex === 0"
         >
@@ -446,7 +446,7 @@
           v-if="imagePreview.images.length > 1"
           aria-label="下一张图片"
           :aria-disabled="imagePreview.currentIndex === imagePreview.images.length - 1"
-          class="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full p-3 hover:bg-opacity-75 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          class="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full hover:bg-opacity-75 transition disabled:opacity-50 disabled:cursor-not-allowed admin-icon-button"
           @click.stop="nextImage"
           :disabled="imagePreview.currentIndex === imagePreview.images.length - 1"
         >

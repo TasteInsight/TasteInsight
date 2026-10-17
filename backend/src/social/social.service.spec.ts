@@ -204,7 +204,11 @@ describe('SocialService', () => {
   });
   it('keeps community moderation outside a canteen administrator scope', async () => {
     await expect(
-      service.adminList('post', { page: 1, pageSize: 20 }, { canteenId: 'c1' }),
+      service.adminList(
+        'post',
+        { page: 1, pageSize: 20 },
+        { scope: 'CANTEENS', canteenIds: ['c1'] },
+      ),
     ).rejects.toThrow(ForbiddenException);
     expect(tx.post.findMany).not.toHaveBeenCalled();
   });
@@ -217,7 +221,7 @@ describe('SocialService', () => {
         'p1',
         { expectedUpdatedAt: now.toISOString() },
         true,
-        {},
+        { scope: 'GLOBAL', canteenIds: [] },
       ),
     ).rejects.toThrow(ConflictException);
     expect(tx.post.updateMany).not.toHaveBeenCalled();

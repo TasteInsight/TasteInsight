@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { shallowMount } from '@vue/test-utils'
 import { defineComponent } from 'vue'
 
-const flushPromises = () => new Promise((resolve) => queueMicrotask(resolve))
+const flushPromises = () => new Promise<void>((resolve) => queueMicrotask(resolve))
 
 // ---- Global mocks for common dependencies in views ----
 vi.mock('vue-router', () => {
@@ -27,7 +27,7 @@ vi.mock('vue-router', () => {
 
 vi.mock('@/store/modules/use-auth-store', () => {
   const store = {
-    user: { username: 'admin', name: 'admin' },
+    user: {scope: 'GLOBAL' as 'GLOBAL' | 'CANTEENS', canteenIds: [], canteens: [],  username: 'admin', name: 'admin' },
     token: 'token',
     permissions: [
       'dish:view',
@@ -68,6 +68,7 @@ vi.mock('@/api/modules/dish', () => ({
 vi.mock('@/api/modules/canteen', () => ({
   canteenApi: {
     getCanteens: vi.fn(async () => ({ code: 200, data: { items: [] } })),
+    getCanteenOptions: vi.fn(async () => ({ code: 200, data: { items: [] } })),
     getWindows: vi.fn(async () => ({ code: 200, data: { items: [] } })),
     createCanteen: vi.fn(async () => ({ code: 200, data: {} })),
     updateCanteen: vi.fn(async () => ({ code: 200, data: {} })),

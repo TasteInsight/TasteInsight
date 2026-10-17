@@ -1,11 +1,11 @@
 {
   "include": [
-    "vite.config.*",
-    "vitest.config.*",
-    "cypress.config.*",
-    "nightwatch.conf.*",
-    "playwright.config.*",
-    "eslint.config.*"
+    "vite.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "eslint.config.mjs",
+    "postcss.config.js",
+    "tailwind.config.ts"
   ],
   "compilerOptions": {
     "composite": true,
@@ -16,6 +16,10 @@
     "strict": true,
     "noEmit": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
-    "types": ["node"]
+    "types": ["node"],
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "allowJs": true,
+    "checkJs": true
   }
 }

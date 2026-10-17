@@ -1,4 +1,9 @@
 import {
+  AdminCanteenScope,
+  canAccessCanteen,
+  isGlobalScope,
+} from '@/auth/admin-scope';
+import {
   Injectable,
   NotFoundException,
   ForbiddenException,
@@ -114,9 +119,9 @@ export class AdminConfigService {
    */
   async getCanteenConfig(
     canteenId: string,
-    adminCanteenId?: string,
+    adminScope?: AdminCanteenScope,
   ): Promise<CanteenConfigResponseDto> {
-    if (adminCanteenId && adminCanteenId !== canteenId) {
+    if (!canAccessCanteen(adminScope, canteenId)) {
       throw new ForbiddenException('您只能查看自己所属食堂的配置');
     }
 
@@ -159,9 +164,9 @@ export class AdminConfigService {
    */
   async getEffectiveConfig(
     canteenId: string,
-    adminCanteenId?: string,
+    adminScope?: AdminCanteenScope,
   ): Promise<EffectiveConfigListResponseDto> {
-    if (adminCanteenId && adminCanteenId !== canteenId) {
+    if (!canAccessCanteen(adminScope, canteenId)) {
       throw new ForbiddenException('您只能查看自己所属食堂的配置');
     }
 
@@ -275,11 +280,11 @@ export class AdminConfigService {
    */
   async updateGlobalConfig(
     adminId: string,
-    adminCanteenId: string | null,
+    adminScope: AdminCanteenScope,
     dto: UpdateGlobalConfigDto,
   ): Promise<ConfigItemResponseDto> {
     // 验证权限：必须是全局管理员（没有绑定食堂）
-    if (adminCanteenId) {
+    if (!isGlobalScope(adminScope)) {
       throw new ForbiddenException('只有全局管理员可以修改全局配置');
     }
 
@@ -344,12 +349,12 @@ export class AdminConfigService {
    */
   async updateCanteenConfig(
     adminId: string,
-    adminCanteenId: string | null,
+    adminScope: AdminCanteenScope,
     canteenId: string,
     dto: UpdateCanteenConfigDto,
   ): Promise<ConfigItemResponseDto> {
     // 验证权限：必须是超级管理员或该食堂的管理员
-    if (adminCanteenId && adminCanteenId !== canteenId) {
+    if (!canAccessCanteen(adminScope, canteenId)) {
       throw new ForbiddenException('您只能修改自己所属食堂的配置');
     }
 
@@ -421,12 +426,12 @@ export class AdminConfigService {
    */
   async deleteCanteenConfigItem(
     adminId: string,
-    adminCanteenId: string | null,
+    adminScope: AdminCanteenScope,
     canteenId: string,
     key: string,
   ): Promise<ConfigSuccessResponseDto> {
     // 验证权限
-    if (adminCanteenId && adminCanteenId !== canteenId) {
+    if (!canAccessCanteen(adminScope, canteenId)) {
       throw new ForbiddenException('您只能修改自己所属食堂的配置');
     }
 
