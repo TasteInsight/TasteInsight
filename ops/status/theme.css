@@ -1,0 +1,320 @@
+/* Uptime Kuma 2.5.6 · paste into the status page's Custom CSS field. */
+html:has(.main:not(.edit) .overall-status) {
+  --bs-primary: #18784b;
+  --bs-danger: #b83f3f;
+  --bs-warning: #946200;
+  --maintenance: #385bb8;
+}
+
+body:has(.main:not(.edit) .overall-status) {
+  --status-bg: #ffffff;
+  --status-text: #202524;
+  --status-muted: #626b67;
+  --status-line: #e2e7e4;
+  --status-soft: #f6f8f7;
+  background: var(--status-bg);
+  color: var(--status-text);
+}
+
+html:has(.dark .main:not(.edit) .overall-status) {
+  --bs-primary: #6bd6a3;
+  --bs-danger: #f68e8e;
+  --bs-warning: #e5ba66;
+  --maintenance: #a5b8ff;
+}
+
+body.dark:has(.main:not(.edit) .overall-status) {
+  --status-bg: #171b19;
+  --status-text: #e5eae7;
+  --status-muted: #a9b4ad;
+  --status-line: #364139;
+  --status-soft: #202722;
+}
+
+.container:has(> .main:not(.edit) .overall-status) {
+  max-width: 880px;
+  margin-top: 52px !important;
+  padding-inline: 28px;
+}
+
+.main:not(.edit):has(.overall-status) {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  color: var(--status-text);
+}
+
+.main:not(.edit) .title-flex {
+  gap: 12px;
+  margin-bottom: 36px !important;
+  font-size: 23px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.025em;
+}
+
+.main:not(.edit) .logo {
+  width: 34px;
+  height: 34px;
+  margin-right: 0 !important;
+  object-fit: contain;
+}
+
+.main:not(.edit) .logo-wrapper {
+  flex-shrink: 0;
+}
+
+.main:not(.edit) :is(.title-flex, .overall-status, .group-title, .past-incidents-title) {
+  color: var(--status-text);
+}
+
+/* Scope every override to the public view; Kuma's editor keeps its own layout. */
+.main:not(.edit) .shadow-box {
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.main:not(.edit) .overall-status {
+  padding: 22px 0 28px !important;
+  margin-bottom: 18px !important;
+  border-bottom: 1px solid var(--status-line);
+  font-size: 25px;
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: -0.025em;
+}
+
+.main:not(.edit) .overall-status svg {
+  margin-right: 8px;
+  font-size: 20px;
+}
+
+.main:not(.edit) .overall-status .ok { color: var(--bs-primary); }
+.main:not(.edit) .overall-status .warning { color: var(--bs-warning); }
+.main:not(.edit) .overall-status .danger { color: var(--bs-danger); }
+.main:not(.edit) .overall-status .status-maintenance { color: var(--maintenance); }
+.main:not(.edit) .overall-status svg:not(.ok):not(.warning):not(.danger):not(.status-maintenance) { color: var(--status-muted) !important; }
+
+.main:not(.edit) [data-testid="description"] {
+  margin-bottom: 36px !important;
+  padding: 0 !important;
+  color: var(--status-muted);
+  font-size: 14px;
+}
+
+.main:not(.edit) :is([data-testid="description"], .incident-content, .content) p:last-child {
+  margin-bottom: 0;
+}
+
+.main:not(.edit) :is(.group-title, .past-incidents-title) {
+  margin-bottom: 16px !important;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: -0.015em;
+}
+
+.main:not(.edit) .group-title .collapse-toggle {
+  padding-block: 8px;
+}
+
+.main:not(.edit) .group-title .chevron {
+  color: var(--status-muted);
+  font-size: 12px;
+}
+
+.main:not(.edit) .shadow-box.monitor-list {
+  margin-top: 0 !important;
+  border: 1px solid var(--status-line);
+  border-radius: 12px;
+}
+
+.main:not(.edit) .monitor-list .item {
+  padding: 20px;
+  border-radius: 0;
+  transition: none;
+}
+
+.main:not(.edit) .monitor-list .item + .item {
+  border-top: 1px solid var(--status-line);
+}
+
+.main:not(.edit) .monitor-list .item:hover {
+  background: transparent;
+}
+
+.main:not(.edit) .monitor-list .row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 28px;
+  align-items: center;
+  margin: 0;
+}
+
+.main:not(.edit) .monitor-list .row > div {
+  min-width: 0;
+  width: auto;
+  padding: 0;
+}
+
+.main:not(.edit) .monitor-list .info {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  white-space: normal;
+  overflow: visible;
+}
+
+.main:not(.edit) .item-name {
+  flex: 1;
+  order: -1;
+  min-width: 0;
+  padding: 0;
+  color: var(--status-text);
+  font-weight: 500;
+}
+
+.main:not(.edit) .info .badge {
+  flex-shrink: 0;
+  min-width: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent !important;
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: inherit;
+}
+
+.main:not(.edit) .info .bg-primary { color: var(--bs-primary); }
+.main:not(.edit) .info .bg-danger { color: var(--bs-danger); }
+.main:not(.edit) .info .bg-warning { color: var(--bs-warning); }
+.main:not(.edit) .info .bg-maintenance { color: var(--maintenance) !important; }
+.main:not(.edit) .info .bg-secondary { color: var(--status-muted); }
+
+.main:not(.edit) .hp-bar-big { --beat-empty-color: var(--status-soft); }
+.main:not(.edit) .word { color: var(--status-muted); }
+
+.main:not(.edit) .past-incidents-section {
+  margin-top: 44px;
+}
+
+.main:not(.edit) .incident-date-group {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--status-line);
+}
+
+.main:not(.edit) .incident-date-header {
+  margin: 0;
+  color: var(--status-muted);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.8;
+}
+
+.main:not(.edit) .incident-group { padding: 0; }
+
+.main:not(.edit) .incident-group .incident-list .incident-item,
+.main:not(.edit) .incident-group .incident-list .incident-item.resolved {
+  padding: 0 0 24px;
+  border-radius: 0;
+  opacity: 1;
+  background: transparent;
+  transition: none;
+}
+
+.main:not(.edit) .incident-group .incident-list .incident-item .incident-style-indicator {
+  width: 6px;
+  min-height: 0;
+  height: 6px;
+  margin-top: 9px;
+  margin-right: 14px;
+  border-radius: 50%;
+}
+
+.main:not(.edit) .incident-title {
+  color: var(--status-text);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.65;
+}
+
+.main:not(.edit) .incident-content {
+  color: var(--status-muted);
+  font-size: 14px;
+}
+
+.main:not(.edit) :is(.incident-meta, .date, .refresh-info) {
+  color: var(--status-muted) !important;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.8;
+}
+
+/* Retain the severity color of active notices and maintenance. */
+.main:not(.edit) .alert {
+  padding: 20px 24px !important;
+  border: 1px solid currentColor;
+  border-radius: 12px;
+  color: var(--status-text);
+  background: var(--status-soft) !important;
+}
+
+.main:not(.edit) .alert.bg-danger { color: var(--bs-danger); }
+.main:not(.edit) .alert.bg-warning { color: var(--bs-warning); }
+.main:not(.edit) .alert.bg-maintenance { color: var(--maintenance) !important; }
+.main:not(.edit) .alert.bg-primary { color: var(--bs-primary); }
+.main:not(.edit) .alert .alert-heading { font-size: 17px; line-height: 1.5; }
+.main:not(.edit) .alert .date { color: inherit !important; }
+
+.main:not(.edit) footer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 48px !important;
+  padding-top: 20px;
+  border-top: 1px solid var(--status-line);
+  color: var(--status-muted);
+  text-align: left;
+  font-size: 12px;
+}
+
+.main:not(.edit) footer :is(p, .refresh-info) { margin: 0; }
+.main:not(.edit) footer .alert-heading { padding: 0 !important; }
+.main:not(.edit) footer .refresh-info { opacity: 1; display: flex; flex-wrap: wrap; gap: 4px 20px; }
+
+.main:not(.edit) a { color: var(--bs-primary); text-underline-offset: 3px; }
+.main:not(.edit) a:hover { text-decoration: underline; }
+.main:not(.edit) :focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 3px; }
+.main:not(.edit) ::selection { background: var(--status-line); color: var(--status-text); }
+
+@media (max-width: 640px) {
+  .container:has(> .main:not(.edit) .overall-status) {
+    margin-top: 28px !important;
+    padding-inline: 20px;
+  }
+  .main:not(.edit) .title-flex { font-size: 20px; margin-bottom: 24px !important; }
+  .main:not(.edit) .logo { width: 28px; height: 28px; }
+  .main:not(.edit) .overall-status { padding-block: 16px 24px !important; font-size: 22px; }
+  .main:not(.edit) [data-testid="description"] { margin-bottom: 28px !important; }
+  .main:not(.edit) .monitor-list .item { padding: 18px 16px; }
+  .main:not(.edit) .monitor-list .row { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .main:not(.edit) .incident-date-group { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .main:not(.edit) .past-incidents-section { margin-top: 32px; }
+  .main:not(.edit) footer { margin-top: 32px !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .main:not(.edit) *, .main:not(.edit) *::before, .main:not(.edit) *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

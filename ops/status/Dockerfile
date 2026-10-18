@@ -1,7 +1,7 @@
-FROM python:3.12-alpine3.24
+FROM nginx:1.28-alpine
 RUN apk upgrade --no-cache
-WORKDIR /app
-COPY server.py index.html app.js style.css ./
-USER 65534:65534
+COPY nginx.conf.template /etc/nginx/status.conf.template
+COPY start.sh /start.sh
+USER 101:101
 EXPOSE 8080
-CMD ["python", "server.py"]
+ENTRYPOINT ["/bin/sh", "/start.sh"]

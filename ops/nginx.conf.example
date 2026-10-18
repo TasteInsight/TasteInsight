@@ -1,4 +1,7 @@
 # Host Nginx example; replace certificate paths and confirm DNS before enabling.
+# 8088 is the public allowlist gateway. Port 3301 is private Kuma administration.
+# Containerized Nginx: join ONLY the status gateway to its edge network and use
+# status:8080. Keep uptime-kuma off the edge network; never proxy it publicly.
 server {
     listen 443 ssl;
     server_name status.example.invalid;

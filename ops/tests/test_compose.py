@@ -33,7 +33,22 @@ class ComposeConfigTests(unittest.TestCase):
             selected.write_text("".join(f"{key}={value}\n" for key, value in values.items()))
             result = subprocess.run(["docker", "compose", "--env-file", str(selected), "-f", str(target / "compose.yml"), "--profile", "tools", "config", "--format", "json"], capture_output=True, text=True,
                 env={"PATH": os.environ["PATH"], "HOME": os.environ["HOME"], "PROBE_CATALOG_URL": "https://shell.example.invalid/catalog"}, check=True)
-            env = {key: value for key, value in json.loads(result.stdout)["services"]["configure"]["environment"].items() if value is not None}
+            model = json.loads(result.stdout)
+            env = {key: value for key, value in model["services"]["configure"]["environment"].items() if value is not None}
+            status = model["services"]["status"]
+            kuma = model["services"]["uptime-kuma"]
+            self.assertEqual(status["environment"]["STATUS_PUBLIC_ENABLED"], "false")
+            self.assertEqual(status["ports"][0]["host_ip"], "127.0.0.1")
+            self.assertEqual(kuma["ports"][0]["host_ip"], "127.0.0.1")
+            self.assertEqual(set(status["networks"]), {"status-private", "status-edge"})
+            self.assertEqual(set(kuma["networks"]), {"status-private", "app"})
+            self.assertTrue(model["networks"]["status-private"]["internal"])
+            self.assertTrue(status["read_only"])
+            self.assertEqual(status["tmpfs"], ["/tmp:uid=101,gid=101,mode=0700"])
+            self.assertEqual(kuma["user"], "1000:1000")
+            self.assertEqual(set(kuma["environment"]), {"UPTIME_KUMA_DB_TYPE"})
+            self.assertEqual(kuma["volumes"][0]["source"], "kuma-data")
+            self.assertTrue(model["services"]["configure"]["build"]["context"].endswith("/configure"))
             config = render.configuration(env)
             probe = config["prometheus.yml"]["scrape_configs"][0]["static_configs"][0]["targets"][0]
             self.assertEqual(probe, "https://shell.example.invalid/catalog")
