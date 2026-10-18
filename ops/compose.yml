@@ -24,7 +24,7 @@ x-backup-env: &backup-env
 
 services:
   configure:
-    build: ./status
+    build: ./configure
     user: "0:0"
     profiles: [tools]
     environment:
@@ -99,14 +99,28 @@ services:
     networks: [monitoring]
     restart: unless-stopped
 
+  # Public HTTP gateway. Never proxy the public hostname directly to Kuma.
   status:
     build: ./status
     environment:
-      PROMETHEUS_URL: http://prometheus:9090
-      STATUS_NOTICE: ${STATUS_NOTICE:-}
+      STATUS_PUBLIC_ENABLED: ${STATUS_PUBLIC_ENABLED:-false}
+      STATUS_PAGE_SLUG: ${STATUS_PAGE_SLUG:-public}
     ports: ["127.0.0.1:${STATUS_PORT:-8088}:8080"]
-    networks: [monitoring]
+    networks: [status-private, status-edge]
     read_only: true
+    tmpfs: ["/tmp:uid=101,gid=101,mode=0700"]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:2.5.6
+    user: "1000:1000"
+    environment:
+      UPTIME_KUMA_DB_TYPE: sqlite
+    ports: ["127.0.0.1:${KUMA_ADMIN_PORT:-3301}:3001"]
+    volumes: [kuma-data:/app/data]
+    networks: [status-private, app]
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     restart: unless-stopped
@@ -157,6 +171,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  kuma-data:
   prometheus-data:
   alertmanager-data:
   grafana-data:
@@ -166,6 +181,9 @@ volumes:
     external: true
     name: ${APP_UPLOADS_VOLUME:?Set existing APP_UPLOADS_VOLUME}
 networks:
+  status-edge:
+  status-private:
+    internal: true
   monitoring:
   backup-egress:
   app:

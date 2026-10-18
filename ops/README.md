@@ -1,21 +1,84 @@
 # TasteInsight 运维
 
-独立 Compose 运维栈提供公开服务状态、登录保护的 Grafana、Prometheus 指标与告警，以及 PostgreSQL / 本地上传文件的加密备份和隔离恢复。
+独立 Compose 运维栈使用 [Uptime Kuma](https://github.com/louislam/uptime-kuma) 提供公开状态页、故障公告和探测历史；Prometheus、Grafana、Alertmanager 提供内部监控与告警；restic 保存 PostgreSQL / 本地上传文件的加密备份。
 
 ## 访问与网络
 
 | 入口 | 默认绑定 | 权限 |
 | --- | --- | --- |
-| 状态页 | `127.0.0.1:8088` | 只读公开摘要，通过 HTTPS 反向代理发布 |
+| 状态页网关 | `127.0.0.1:8088` | 指定状态页的只读入口，通过 HTTPS 反向代理发布 |
+| Uptime Kuma 管理端 | `127.0.0.1:3301` | SSH 隧道或 VPN，加 Kuma 独立账号与双因素认证 |
 | Grafana | `127.0.0.1:3300` | 登录后访问；可叠加 VPN 或身份代理 |
 | Prometheus、Alertmanager、exporter | Docker 网络 | 内部访问 |
 | 备份与恢复 | 运维命令 | 服务器运维账号 |
 
-状态页和管理员入口使用部署环境配置的域名；管理员也可以通过 SSH 隧道访问 Grafana。生产反向代理示例见 `nginx.conf.example`。两个端口均保持回环绑定，公网仅发布经过选择的 HTTPS 入口。
+公网状态域名只转发到 `status:8080` 网关（宿主机访问为 `127.0.0.1:8088`）。Kuma 的宿主机 `3301` 端口供私有管理使用（容器内部为 `3001`）。宿主机 Nginx 示例见 `nginx.conf.example`；容器 Nginx 使用专用边缘网络，只将 `status` 加入该网络。Kuma 与网关使用独立内部网络，Kuma 另接业务网络执行健康探测。
 
-公开页面只展示菜品与食堂、校园社区、管理服务的运行状态和维护公告。外部只读路由与对应 API 内部健康检查共同决定状态：已知故障显示异常；采集缺失、数据过期或 Prometheus 不可达显示状态暂不可用。状态结果包含固定字段，不返回探测地址、指标标签、数据库信息和错误详情。维护公告为 `STATUS_NOTICE` 中的纯文本。
+网关默认关闭。启用后仅放行指定 slug 的页面、状态与心跳 API、故障历史、RSS、manifest、前端静态资源和 PNG 状态页 Logo；只接受 GET / HEAD。管理页面、初始化接口、Socket.IO（轮询与 WebSocket）、metrics、push、单监控 badge 及其他状态页全部返回 404。Kuma 管理员账号不复用业务管理员账号。
 
-当前状态页展示当前探测结果。监控历史保留在私有 Grafana；公开事件时间线、订阅通知可单独扩展。
+## Uptime Kuma 初始化与发布
+
+固定使用 Uptime Kuma `2.5.6`，SQLite 数据位于 `kuma-data` 卷。通过下面的隧道初始化，SSH 用户和地址按部署环境填写：
+
+```sh
+ssh -N -L 3301:127.0.0.1:3301 ops@server.example.invalid
+```
+
+打开 `http://127.0.0.1:3301`，创建管理员、启用双因素认证并妥善保管认证密钥。保留 Kuma 登录验证；将管理入口放在 SSH 隧道、VPN 或受身份代理保护的私网入口中。默认 Compose 以 UID/GID 1000 运行 Kuma，使用本地命名卷；迁移已有数据时核对卷权限。
+
+1. 在 Kuma 中创建三个 **Group** 监控，名称为“菜品与食堂”“校园社区”“管理服务”。
+2. 每组创建两个子监控：公开业务路由和对应 API 的内部健康检查。公开路由使用下表的地址，类型为 HTTP(s)，接受 `200–299`；内部检查使用 HTTP(s) JSON Query，查询 `status`，期望 `ok`。间隔建议 60 秒、超时 10 秒、重试 1 次；Group 也保持启用。保持 TLS 验证。
+3. 新建状态页，slug 与 `STATUS_PAGE_SLUG` 一致，默认 `public`。按下方“品牌与文案”填写名称、简介、页脚，并上传项目 Logo。只把三个 Group 加入公开页，保持“显示链接”“显示标签”“证书详情”关闭；内部子监控留在管理端。
+4. 在 Kuma「设置 → 反向代理」启用“信任代理”，使 RSS 使用网关传递的 HTTPS 协议。公网 Nginx 应覆盖 `Host` 和 `X-Forwarded-Proto`，按示例设置。
+5. 用隐私窗口核对页面内容，再设置 `STATUS_PUBLIC_ENABLED=true`，执行 `docker compose --env-file .env -f compose.yml up -d status`，发布 HTTPS 入口。
+
+| 公开 Group | 业务路由 | 内部健康检查 |
+| --- | --- | --- |
+| 菜品与食堂 | `PROBE_CATALOG_URL` 的值 | `PUBLIC_HEALTH_URL` 的值 |
+| 校园社区 | `PROBE_COMMUNITY_URL` 的值 | `PUBLIC_HEALTH_URL` 的值 |
+| 管理服务 | `PROBE_ADMIN_URL` 的值 | `ADMIN_HEALTH_URL` 的值 |
+
+表中变量仍由 Prometheus / blackbox 使用。Kuma 的监控地址在其管理端录入并保存在数据卷中；变更服务地址时同步更新这两处。Kuma 自行探测、计算可用率和保存历史，Prometheus 保留现有指标、规则与历史。公开页只添加 Group 可保留“业务路由与内部健康共同决定状态”的语义；Group 的已暂停子项会被忽略，维护时使用 Kuma 维护功能并关联状态页，避免通过暂停子项掩盖故障。
+
+故障公告及处理进展在 Kuma 状态页编辑入口维护，解决后保留历史；计划维护在 Kuma 的维护页面配置并关联监控和状态页。RSS 可订阅 `https://status.example.invalid/status/public/rss`（自定义 slug 时替换路径）。公开数据包含显示名称、监控 ID / 类型、心跳时间、响应耗时、可用率、公告及维护内容。显示链接或标签会额外公开相应字段。所有上传的状态页 Logo 均为公开静态资源，公告、CSS、Logo 和公开名称中只填写适合公开的内容。
+
+公开范围以网关的 `STATUS_PUBLIC_ENABLED` 和 `STATUS_PAGE_SLUG` 为准；Kuma 的域名映射与页面显示设置用于页面导航。关闭发布时设 `STATUS_PUBLIC_ENABLED=false` 并重建 `status`，整个公开入口返回 503。修改 slug 时同步修改 Kuma 与环境变量。网关屏蔽第三方脚本、外部图片和 iframe；页面统计功能保持关闭。心跳按页面配置的间隔自动获取，后端心跳缓存约一分钟。公告、维护信息、服务列表和主题在页面加载时获取，后端页面缓存约五分钟；已打开的页面需重新加载才能读取这些变更。页脚的“最后更新时间”表示最近一次成功获取心跳数据的时间，请求失败时保留先前显示的结果。历史从启用探测后累积。
+
+Kuma 告警通道默认留空，已有 Alertmanager 按 `ALERT_CHANNEL` 发送告警。需要增加 Kuma 通知时单独配置并验收，明确接收人及去重策略。RSS 是公开订阅入口，邮件与即时通信通知需要另行配置发送渠道。
+
+### 品牌与文案
+
+在 Kuma 状态页编辑器中配置：
+
+| 字段 | 内容 |
+| --- | --- |
+| 名称 | TasteInsight 服务状态 |
+| Logo | [项目图标](../frontend-web/src/assets/images/TasteInsight_Icon.png)，与管理端和用户端共用 |
+| 简介 | 查看服务运行状态、故障进展与维护安排。 |
+| 页脚 | 可用率按最近 24 小时内的探测结果统计。 |
+
+上传 Logo 后，Kuma 同时更新页面标识与站点图标，并将图片保存在数据卷中。故障记录和维护公告按实际事件发布；时间、影响范围和处理进展由运维人员维护。
+
+### 公开页主题
+
+`status/theme.css` 是适配 Uptime Kuma `2.5.6` 的公开页主题。主题使用系统字体、细分隔线和紧凑服务列表；手机上心跳条独占一行，长名称自动换行；同时支持浅色、深色和减少动态效果偏好。
+
+1. 通过私有管理入口登录，打开对应状态页，选择“编辑状态页面”。
+2. 将 `status/theme.css` 的完整内容粘贴到 **Custom CSS（自定义 CSS）**，保存。
+3. 在公开入口刷新，检查服务折叠、心跳悬浮详情、公告与手机布局。主题跟随 Kuma 的明暗主题设置。
+
+CSS 存储在 Kuma 数据卷中，重建网关或升级发布目录后继续保留。修改仓库文件后需重新粘贴保存；清空 Custom CSS 即可恢复默认样式。主题只作用于状态页的浏览视图，编辑器、监控配置和访问控制继续使用 Kuma 及网关原有逻辑。主题使用 Kuma 的类名和布局，升级 Kuma 后按上述步骤复核。
+
+### 从旧状态页升级
+
+保留运维项目名、已有卷、生成配置和业务备份仓库。`configure` 现在使用独立 Python 构建目录；`status` 为 Nginx 网关；新服务为 `uptime-kuma`。先检查服务器 Compose override：移除 `status` / `configure` 旧 Python 镜像的固定引用，更新为本次构建产物或使用仓库构建配置。`status` 可继续使用原边缘网络别名和 8080 容器端口，Kuma 管理端始终留在私网。
+
+```sh
+docker compose --env-file .env -f compose.yml build configure status
+docker compose --env-file .env -f compose.yml up -d uptime-kuma status
+```
+
+按上文完成初始化后开启公开入口。旧 `STATUS_NOTICE` 改为在 Kuma 编辑公告，旧 `/api/status` 接口由 Kuma 状态页 API 取代。Prometheus、Grafana、业务备份卷继续使用原数据。状态页替换期间公众入口会短暂不可用，业务 API 与管理端独立运行。
 
 ## 环境配置
 
@@ -35,6 +98,8 @@ chmod 600 .env
 | `APP_NETWORK` / `APP_DATABASE_NETWORK` / `APP_UPLOADS_VOLUME` | 已部署业务的实际网络和上传卷名称 |
 | `PROBE_*_URL` | 三项公开只读探测，须核对线上路径和预期 2xx |
 | `PUBLIC_HEALTH_URL` / `ADMIN_HEALTH_URL` / `WORKER_HEALTH_URL` | 拆分进程的内部健康检查 |
+| `STATUS_PUBLIC_ENABLED` / `STATUS_PAGE_SLUG` | 公开开关和唯一公开页 slug；默认 `false` / `public`，slug 使用 1–64 个小写字母、数字或连字符 |
+| `STATUS_PORT` / `KUMA_ADMIN_PORT` | 回环绑定的公开网关 / Kuma 管理端端口，默认 8088 / 3301 |
 | `GRAFANA_ROOT_URL` / `GRAFANA_ADMIN_*` | 管理员访问地址和首次启动账号 |
 | `GRAFANA_SECURE_COOKIE` | HTTPS 使用 `true`；本地 HTTP 隧道验证使用 `false` |
 | `BACKUP_DB_*` | 数据库地址、端口、库名和备份凭据；账号需要读取全部业务表与序列 |
@@ -70,14 +135,14 @@ GRANT pg_monitor TO tasteinsight_monitor;
 
 ```sh
 docker compose --env-file .env -f compose.yml config --quiet
+docker compose --env-file .env -f compose.yml build configure backup status
 docker compose --env-file .env -f compose.yml run --rm configure
-docker compose --env-file .env -f compose.yml build backup status
 # 仅首次创建全新备份仓库时执行。
 docker compose --env-file .env -f compose.yml run --rm backup init
 docker compose --env-file .env -f compose.yml up -d
 ```
 
-配置生成任务复用状态页的已打补丁 Python 镜像，以运维身份写入配置目录，运行期间禁用网络。首次 `run configure` 会构建该镜像。配置生成失败时修正对应环境变量后重新生成。配置变更后重建相应容器，例如修改公告后运行 `up -d status`；修改探测或告警参数后重新运行 `configure`，再重启 `prometheus blackbox alertmanager`。
+配置生成任务使用独立的已打补丁 Python 镜像，以运维身份写入配置目录，运行期间禁用网络。配置生成失败时修正对应环境变量后重新生成。修改探测或告警参数后重新运行 `configure`，再重启 `prometheus blackbox alertmanager`。首次启动后按前文完成 Kuma 私有初始化和公开页配置。
 
 Linux 主机上将 `MONITOR_HOST=true`，重新生成配置，然后使用 `docker compose --env-file .env -f compose.yml --profile host up -d`。主机采集器只读挂载根文件系统、使用主机 PID 命名空间。Docker Desktop 中看到的是 Linux 虚拟机资源；线上主机指标需在实际 Linux 主机验收。
 
@@ -135,6 +200,33 @@ docker compose --env-file .env -f restore.yml run --rm restore
 
 恢复使用新数据库与独立上传卷，保留结果以便检查。失败后的临时目录也会保留；选择新的恢复项目重新演练。生产切换需单独核对账号权限、应用版本、迁移兼容性、对象存储和 Redis 后台任务。恢复到过去的数据库时间点时，应先暂停 worker，并按业务需求重建或核对队列，避免重放旧任务。
 
+### Kuma 数据备份与恢复
+
+业务定时备份覆盖 PostgreSQL 和上传文件。Kuma 的账号、监控配置、SQLite 历史和公告位于独立卷，需要另行备份。升级 Kuma 前以及更改监控或公告后，在维护窗口停止 Kuma 后导出完整 `/app/data`，确保 SQLite、WAL 与上传文件一致。归档含账号及通知凭据，按私密数据管理。
+
+下面的命令从 `ops` 目录执行，使用已有 restic 仓库和独立的 `uptime-kuma` 标签。执行前停止定时备份，结束后恢复两个服务；发生错误时保留归档并检查日志后再继续。
+
+```sh
+umask 077
+mkdir -p kuma-backups
+docker compose --env-file .env -f compose.yml stop backup uptime-kuma
+docker compose --env-file .env -f compose.yml run --rm -T --no-deps --entrypoint tar uptime-kuma -C /app/data -czf - . > kuma-backups/data.tar.gz
+tar -tzf kuma-backups/data.tar.gz > /dev/null
+docker compose --env-file .env -f compose.yml run --rm --no-deps -v "$PWD/kuma-backups:/kuma-backups:ro" --entrypoint sh backup -c 'exec restic backup --host "$BACKUP_HOST" --tag uptime-kuma /kuma-backups'
+docker compose --env-file .env -f compose.yml up -d uptime-kuma backup
+```
+
+Kuma 快照使用独立保留策略；业务定时清理只处理 `tasteinsight` 标签。可使用 `run --rm --entrypoint restic backup snapshots --tag uptime-kuma` 查找快照，使用 `restic dump` 从所选完整快照 ID 提取 `/kuma-backups/data.tar.gz`。业务数据库恢复使用 `tasteinsight` 标签的快照。
+
+恢复时先在隔离项目创建空的 Kuma 数据卷，保持公开网关关闭，再将归档解压到该卷；保持 UID/GID 1000。下面以已经解密下载的 `kuma-backups/data.tar.gz` 为例，`KUMA_RESTORE_VOLUME` 填写新建空卷名：
+
+```sh
+docker volume create "$KUMA_RESTORE_VOLUME"
+docker run --rm -i --network none --user 1000:1000 -v "$KUMA_RESTORE_VOLUME:/app/data" --entrypoint sh louislam/uptime-kuma:2.5.6 -c 'test -z "$(ls -A /app/data)" && exec tar -C /app/data -xzf -' < kuma-backups/data.tar.gz
+```
+
+用相同 Kuma 版本和该卷启动仅回环绑定的隔离实例，先隔离探测网络，避免恢复出的通知重复发送；验证登录、监控列表、公告和历史后再安排切换。回滚版本时配套恢复升级前数据，数据库迁移后的卷保留用于排查。`kuma-backups/` 已忽略于版本管理。
+
 ## 告警验收
 
 内置规则覆盖服务探测、采集失败、数据库/Redis 不可用、API 错误率与延迟、队列积压/失败、磁盘/内存、证书到期、备份过期/失败和保留策略失败。
@@ -155,8 +247,12 @@ pnpm --dir backend exec jest --watchman=false --runInBand src/runtime/metrics.sp
 pnpm --dir backend type-check
 docker build -t tasteinsight-ops-backup:test ops/backup
 python3 ops/tests/integration_backup.py
+docker build -t tasteinsight-status-gateway:test ops/status
+python3 ops/tests/integration_status.py
 ```
 
 集成演练使用随机命名并带测试标签的 Docker 网络、数据库和数据卷，覆盖加密快照、全仓库校验、PostgreSQL 外键与向量数据、上传文件恢复、非空目标拒绝、Nginx 对恢复媒体的实际 HTTP 读取、命令超时、SIGTERM/SIGINT 停止、磁盘耗尽后的失败告警状态及成功时间保留。仅清理该次演练创建的资源。
 
 生成监控配置后，可以使用镜像内的 `promtool check config`、`promtool check rules` 和 `promtool test rules` 校验配置及 `tests/alerts.test.yml` 中的过期规则。测试文件中的 `/config/alerts.yml` 对应生成目录的只读挂载。
+
+状态页集成验证使用隔离的真实 Kuma 和网关容器，检查首次初始化关闭、公开白名单、管理登录、Socket.IO 隔离、私有监控隐藏、故障与恢复、公告历史、容器重建及完整数据卷导出恢复。浏览器验收应覆盖桌面和手机宽度、公开页面请求、私有管理登录，以及 HTTPS 反向代理。镜像升级后重跑路由边界测试，核对上游新增的公开资源与 API。
