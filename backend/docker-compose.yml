@@ -8,6 +8,8 @@ x-database-environment: &database-environment
   POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
   POSTGRES_HOST: ${POSTGRES_HOST:-db}
   POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+  POSTGRES_SSLMODE:
+  DATABASE_URL:
   # Every production root rejects unsafe legacy startup switches.
   RUN_SEED:
   IMPORT_DATA:
@@ -191,18 +193,10 @@ services:
     restart: unless-stopped
 
   redis:
-    image: redis:7-alpine
-    volumes:
-      - redis-data:/data
-    networks:
-      - db_net
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"]
-    restart: unless-stopped
+    extends:
+      file: docker-compose.local.yml
+      service: redis
+    ports: !reset []
 
   nginx:
     # Open-source upstream DNS re-resolution requires Nginx >= 1.27.3.
@@ -214,8 +208,8 @@ services:
       TLS_CERT_FILE: ${TLS_CERT_FILE:-fullchain.pem}
       TLS_KEY_FILE: ${TLS_KEY_FILE:-private.key}
     ports:
-      - "${HTTP_PORT:-8080}:80"
-      - "${HTTPS_PORT:-8443}:443"
+      - "${GATEWAY_BIND_HOST:-0.0.0.0}:${HTTP_PORT:-8080}:80"
+      - "${GATEWAY_BIND_HOST:-0.0.0.0}:${HTTPS_PORT:-8443}:443"
     volumes:
       - ./gateway-render.sh:/docker-entrypoint.d/40-tasteinsight-gateway.sh:ro
       - ./nginx.conf:/etc/tasteinsight/nginx/nginx.conf:ro
@@ -248,21 +242,10 @@ services:
     restart: unless-stopped
 
   db:
-    image: pgvector/pgvector:pg15
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER:?POSTGRES_USER is required}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-      - POSTGRES_DB=${POSTGRES_DB:?POSTGRES_DB is required}
-    volumes:
-      - db-data:/var/lib/postgresql/data
-    networks:
-      - db_net
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:?POSTGRES_USER is required} -d ${POSTGRES_DB:?POSTGRES_DB is required}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
+    extends:
+      file: docker-compose.local.yml
+      service: db
+    ports: !reset []
 
 volumes:
   db-data:

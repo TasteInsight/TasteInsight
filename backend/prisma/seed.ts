@@ -4,6 +4,9 @@ import * as bcrypt from 'bcrypt';
 import { CONFIG_DEFINITIONS } from '../src/admin-config/config-definitions';
 import { clearSeedBusinessData } from './clear-seed-data';
 
+import { loadDatabaseEnvironment } from '../src/database-url';
+
+loadDatabaseEnvironment();
 const prisma = new PrismaClient();
 
 async function main() {

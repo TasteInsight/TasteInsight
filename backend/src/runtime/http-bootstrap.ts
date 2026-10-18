@@ -3,10 +3,21 @@ import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import * as bodyParser from 'body-parser';
 import { corsPolicy } from '../environment';
+import { getQueueToken } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { createMetrics } from './metrics';
 
-export async function bootstrapHttp(module: Type<unknown>) {
+export async function bootstrapHttp(
+  module: Type<unknown>,
+  queueNames: string[] = [],
+) {
   const app = await NestFactory.create(module);
   app.enableShutdownHooks();
+  const metrics = createMetrics(
+    queueNames.map((name) => app.get<Queue>(getQueueToken(name))),
+  );
+  app.use(metrics.middleware);
+  app.getHttpAdapter().get('/metrics', metrics.handle);
   app.use(bodyParser.json({ limit: '10mb' }));
   app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
 

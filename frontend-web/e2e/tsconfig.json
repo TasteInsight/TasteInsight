@@ -1,4 +1,14 @@
 {
-  "extends": "@tsconfig/node22/tsconfig.json",
-  "include": ["./**/*"]
+  "include": ["./**/*.ts"],
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "composite": true,
+    "types": ["node"],
+    "tsBuildInfoFile": "../node_modules/.tmp/tsconfig.e2e.tsbuildinfo"
+  }
 }

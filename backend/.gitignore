@@ -90,3 +90,9 @@ certs/
 # performance test results
 scripts/k6-perf-test/k6-results.json
 scripts/k6-perf-test/prod_result.json
+
+# Private deployment targets; only public templates belong in Git.
+.env.*
+!.env.example
+!.env.production.example
+!.env.test.example

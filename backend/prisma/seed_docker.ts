@@ -3,6 +3,9 @@ import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { clearSeedBusinessData } from './clear-seed-data';
 
+import { loadDatabaseEnvironment } from '../src/database-url';
+
+loadDatabaseEnvironment();
 const prisma = new PrismaClient();
 
 // ==================== K6 性能测试专用配置 ====================

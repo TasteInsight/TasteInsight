@@ -1,5 +1,5 @@
 import { test, expect, APIRequestContext, Page } from '@playwright/test';
-import { loginAsAdmin, getApiToken, TEST_ACCOUNTS, API_BASE_URL } from './utils';
+import { loginAsAdmin, getApiToken, TEST_ACCOUNTS, API_BASE_URL, handleDialogOrModal } from './utils';
 
 // API base URL for direct API calls
 const baseURL = API_BASE_URL.endsWith('/') ? API_BASE_URL : `${API_BASE_URL}/`;
@@ -56,12 +56,14 @@ async function cleanupTestAdmins(apiRequest: APIRequestContext) {
 /**
  * Helper function to get superadmin API token
  */
-async function getSuperAdminToken(apiRequest: APIRequestContext): Promise<string | null> {
-  return await getApiToken(
+async function getSuperAdminToken(apiRequest: APIRequestContext): Promise<string> {
+  const token = await getApiToken(
     apiRequest,
     TEST_ACCOUNTS.superAdmin.username,
     TEST_ACCOUNTS.superAdmin.password
   );
+  if (!token) throw new Error('Superadmin authentication failed');
+  return token;
 }
 
 /**

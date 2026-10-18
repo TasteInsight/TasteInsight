@@ -5,3 +5,6 @@ allowBuilds:
   es5-ext: true
   esbuild: true
   vue-demi: true
+
+patchedDependencies:
+  '@wangeditor/editor-for-vue@5.1.12': patches/@wangeditor__editor-for-vue@5.1.12.patch

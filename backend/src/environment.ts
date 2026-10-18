@@ -4,6 +4,7 @@ import {
   configuredVerificationMethods,
 } from './auth/identity-configuration';
 import { isIP } from 'net';
+import { resolveDatabaseUrl } from './database-url';
 import {
   notificationWebhookConfiguration,
   notificationWebhookUrl,
@@ -131,6 +132,17 @@ export function validateEnvironment(
   environment: Record<string, unknown>,
   role: RuntimeRole = 'combined',
 ): Record<string, unknown> {
+  if (
+    environment.DATABASE_URL === undefined &&
+    (environment.POSTGRES_USER !== undefined ||
+      environment.POSTGRES_PASSWORD !== undefined ||
+      environment.POSTGRES_DB !== undefined)
+  ) {
+    environment = {
+      ...environment,
+      DATABASE_URL: resolveDatabaseUrl(environment),
+    };
+  }
   const servesUsers = role === 'public-api' || role === 'combined';
   const servesApi = servesUsers || role === 'admin-api';
   const runsBackground = role === 'worker' || role === 'combined';

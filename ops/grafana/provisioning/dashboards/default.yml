@@ -1,0 +1,13 @@
+{
+  "apiVersion": 1,
+  "providers": [
+    {
+      "name": "TasteInsight",
+      "type": "file",
+      "options": {
+        "path": "/var/lib/grafana/dashboards"
+      },
+      "allowUiUpdates": false
+    }
+  ]
+}
