@@ -1,23 +1,24 @@
+/* H5 框架样式按需注入，应用覆盖使用更高优先级以保持加载顺序无关。 */
 /* 原生反馈入口必须位于业务弹层之上，包括遮罩。 */
-uni-modal {
+body uni-modal {
   z-index: var(--layer-confirmation);
 }
 
-uni-actionsheet {
+body uni-actionsheet {
   position: relative;
   z-index: var(--layer-confirmation);
 }
 
-uni-toast {
+body uni-toast {
   z-index: var(--layer-toast);
 }
 
-uni-modal .uni-mask,
-uni-actionsheet .uni-actionsheet__mask {
+body uni-modal .uni-mask,
+body uni-actionsheet .uni-actionsheet__mask {
   background: rgba(17, 24, 39, 0.36);
 }
 
-uni-modal .uni-modal {
+body uni-modal .uni-modal {
   width: calc(100% - 48px);
   max-width: 320px;
   border-radius: 16px;
@@ -27,11 +28,11 @@ uni-modal .uni-modal {
   text-align: left;
 }
 
-uni-modal .uni-modal__hd {
+body uni-modal .uni-modal__hd {
   padding: 20px 20px 0;
 }
 
-uni-modal .uni-modal__title {
+body uni-modal .uni-modal__title {
   display: block;
   color: #111827;
   font-size: 16px;
@@ -41,7 +42,7 @@ uni-modal .uni-modal__title {
   overflow-wrap: anywhere;
 }
 
-uni-modal .uni-modal__bd {
+body uni-modal .uni-modal__bd {
   min-height: 0;
   max-height: min(50vh, 360px);
   padding: 12px 20px 20px;
@@ -52,17 +53,17 @@ uni-modal .uni-modal__bd {
   overflow-wrap: anywhere;
 }
 
-uni-modal .uni-modal__bd:empty {
+body uni-modal .uni-modal__bd:empty {
   padding-top: 0;
 }
 
-uni-modal .uni-modal__ft {
+body uni-modal .uni-modal__ft {
   min-height: 48px;
   font-size: 14px;
   line-height: 24px;
 }
 
-uni-modal .uni-modal__btn {
+body uni-modal .uni-modal__btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -72,21 +73,21 @@ uni-modal .uni-modal__btn {
   overflow-wrap: anywhere;
 }
 
-uni-modal .uni-modal__btn_primary {
+body uni-modal .uni-modal__btn_primary {
   font-weight: 600;
 }
 
-uni-modal .uni-modal__ft::after,
-uni-modal .uni-modal__btn::after {
+body uni-modal .uni-modal__ft::after,
+body uni-modal .uni-modal__btn::after {
   border-color: #e5e7eb;
 }
 
-uni-modal .uni-modal__btn:active,
-uni-actionsheet .uni-actionsheet__cell:active {
+body uni-modal .uni-modal__btn:active,
+body uni-actionsheet .uni-actionsheet__cell:active {
   background: #f4f4f5;
 }
 
-uni-modal .uni-modal__textarea {
+body uni-modal .uni-modal__textarea {
   box-sizing: border-box;
   width: calc(100% - 40px);
   margin: 12px 20px 20px;
@@ -100,20 +101,20 @@ uni-modal .uni-modal__textarea {
   caret-color: #660874;
 }
 
-uni-modal .uni-modal__textarea:focus-visible {
+body uni-modal .uni-modal__textarea:focus-visible {
   outline: 2px solid #660874;
   outline-offset: 2px;
 }
 
-uni-actionsheet .uni-actionsheet__menu,
-uni-actionsheet .uni-actionsheet__action {
+body uni-actionsheet .uni-actionsheet__menu,
+body uni-actionsheet .uni-actionsheet__action {
   overflow: hidden;
   border-radius: 16px;
   background: #fff;
 }
 
-uni-actionsheet .uni-actionsheet__cell,
-uni-actionsheet .uni-actionsheet__title {
+body uni-actionsheet .uni-actionsheet__cell,
+body uni-actionsheet .uni-actionsheet__title {
   min-height: 48px;
   padding: 12px 16px;
   font-size: 14px;
@@ -121,19 +122,19 @@ uni-actionsheet .uni-actionsheet__title {
   overflow-wrap: anywhere;
 }
 
-uni-actionsheet .uni-actionsheet__title {
+body uni-actionsheet .uni-actionsheet__title {
   border-radius: 16px 16px 0 0;
   border-bottom-color: #e5e7eb;
   background: #fff;
   color: #667085;
 }
 
-uni-actionsheet .uni-actionsheet__cell::before {
+body uni-actionsheet .uni-actionsheet__cell::before {
   border-top-color: #e5e7eb;
 }
 
-uni-toast .uni-toast,
-uni-toast .uni-simple-toast__text {
+body uni-toast .uni-toast,
+body uni-toast .uni-simple-toast__text {
   border-radius: 12px;
   background: rgba(31, 41, 55, 0.94);
   color: #fff;
@@ -141,27 +142,27 @@ uni-toast .uni-simple-toast__text {
   line-height: 1.5;
 }
 
-uni-toast .uni-toast__content {
+body uni-toast .uni-toast__content {
   margin-top: 8px;
   white-space: normal;
   overflow-wrap: anywhere;
 }
 
 @media (hover: hover) {
-  uni-modal .uni-modal__btn:hover,
-  uni-actionsheet .uni-actionsheet__cell:hover {
+  body uni-modal .uni-modal__btn:hover,
+  body uni-actionsheet .uni-actionsheet__cell:hover {
     background: #f4f4f5;
   }
 }
 
 @media screen and (min-width: 500px) and (min-height: 500px) {
-  uni-actionsheet .uni-actionsheet__menu {
+  body uni-actionsheet .uni-actionsheet__menu {
     box-shadow: 0 16px 48px rgba(17, 24, 39, 0.18);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  uni-actionsheet .uni-actionsheet {
+  body uni-actionsheet .uni-actionsheet {
     transition: none;
   }
 }

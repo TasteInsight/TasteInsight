@@ -1,32 +1,51 @@
 import { test, expect } from '@playwright/test';
+import type { Review } from '../src/types/api';
 import { installMockApi } from './helpers/mock-api';
 import { defaultLoggedInSeed, gotoUniPage, seedUniStorage } from './helpers/uni';
 
-test.describe('Review and Comment flow', () => {
-  test.beforeEach(async ({ page }) => {
-    await installMockApi(page);
-    await seedUniStorage(page, defaultLoggedInSeed);
+test('submits a review and displays the returned content', async ({ page }) => {
+  await installMockApi(page);
+  const userInfo = { ...defaultLoggedInSeed.userInfo, capabilities: { canContribute: true } };
+  await seedUniStorage(page, { ...defaultLoggedInSeed, userInfo });
+  await page.route('**/user/profile', route => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    return route.fulfill({
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      json: { code: 200, data: userInfo },
+    });
   });
-
-  test('submits review and comment on dish detail', async ({ page }) => {
-    // 进入菜品详情页
-    await gotoUniPage(page, '/pages/dish/index?id=dish_001');
-    await expect(page.getByText('宫保鸡丁').first()).toBeVisible();
-
-    // 查找评价输入框（使用更通用的定位器）
-    const reviewTextarea = page.locator('textarea').first();
-    if (await reviewTextarea.isVisible()) {
-      await reviewTextarea.fill('这道菜很好吃！');
-
-      // 查找提交按钮（可能有多种文本）
-      const submitButton = page.getByRole('button', { name: /提交|发布|发送/ }).first();
-      await submitButton.click();
-
-      // 等待评价提交成功（检查是否有成功提示或UI变化）
-      await page.waitForTimeout(1000);
-
-      // 验证提交成功（可能有toast消息或评价数量变化）
-      // 这里简化验证，只要没有错误就算成功
-    }
+  let savedReview: Review | null = null;
+  await page.route('**/dishes/dish_001/reviews/mine', route => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    return route.fulfill({
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      json: { code: 200, data: savedReview },
+    });
   });
+  await page.route('**/reviews', async route => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    savedReview = {
+      ...route.request().postDataJSON(),
+      id: 'e2e-review',
+      userId: 'e2e-user',
+      userNickname: 'E2E用户',
+      userAvatar: '',
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+    await route.fulfill({
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      status: 201,
+      json: { code: 201, data: savedReview },
+    });
+  });
+  await gotoUniPage(page, '/pages/dish/index?id=dish_001');
+  await page.getByLabel('写评价', { exact: true }).click();
+  const editor = page.getByRole('dialog', { name: '写评价', exact: true });
+  await editor.getByLabel('总体评分 5 星', { exact: true }).click();
+  await editor.getByLabel('用餐体验', { exact: true }).locator('textarea').fill('这道菜很好吃！');
+  await editor.locator('.sheet-primary').click();
+  await expect(editor).toBeHidden();
+  await expect(page.getByText('这道菜很好吃！', { exact: true })).toBeVisible();
+  expect(savedReview).toMatchObject({ dishId: 'dish_001', rating: 5, content: '这道菜很好吃！' });
 });

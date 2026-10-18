@@ -13,16 +13,16 @@ test.describe('Canteen -> Window', () => {
     await expect(page).toHaveURL(/\/pages\/canteen\/index\?id=canteen_001/);
 
     // 食堂页关键内容
-    await expect(page.getByText('窗口列表')).toBeVisible();
+    await expect(page.getByText('按窗口浏览')).toBeVisible();
 
     // 进入窗口页
-    await page.getByText('川味窗口').first().click();
+    await page.getByLabel('浏览川味窗口', { exact: true }).click();
     await expect(page).toHaveURL(/\/pages\/window\/index\?id=window_001/);
 
     // 窗口页：显示窗口名
     await expect(page.getByText('川味窗口').first()).toBeVisible();
 
-    // 你刚刚改的需求：不展示窗口编号（例如 #101）
+    // 窗口详情使用名称标识。
     await expect(page.getByText('#101')).toHaveCount(0);
   });
 });

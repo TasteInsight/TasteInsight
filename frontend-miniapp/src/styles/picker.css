@@ -1,4 +1,5 @@
-.uni-picker-container {
+/* H5 框架样式按需注入，应用覆盖使用更高优先级以保持加载顺序无关。 */
+body .uni-picker-container {
   z-index: var(--layer-picker);
   color: #1f2937;
   font-family:
@@ -10,83 +11,83 @@
   --uni-picker-arrow-color: #fff;
 }
 
-.uni-picker-container .uni-picker-mask {
+body .uni-picker-container .uni-picker-mask {
   background: rgba(17, 24, 39, 0.36);
 }
 
-.uni-picker-container .uni-picker-custom {
+body .uni-picker-container .uni-picker-custom {
   overflow: hidden;
   border-radius: 16px 16px 0 0;
   background: #fff;
   box-shadow: 0 -8px 32px rgba(17, 24, 39, 0.08);
 }
 
-.uni-picker-container .uni-picker-header {
+body .uni-picker-container .uni-picker-header {
   height: 48px;
   border-radius: 16px 16px 0 0;
   background: #fff;
 }
 
-.uni-picker-container .uni-picker-header::after {
+body .uni-picker-container .uni-picker-header::after {
   border-color: #e5e7eb;
 }
 
-.uni-picker-container .uni-picker-action {
+body .uni-picker-container .uni-picker-action {
   min-width: 64px;
   padding: 0 20px;
   font-size: 14px;
   line-height: 48px;
 }
 
-.uni-picker-container .uni-picker-action.uni-picker-action-cancel {
+body .uni-picker-container .uni-picker-action.uni-picker-action-cancel {
   color: #667085;
 }
 
-.uni-picker-container .uni-picker-action.uni-picker-action-confirm {
+body .uni-picker-container .uni-picker-action.uni-picker-action-confirm {
   color: #660874;
   font-weight: 600;
 }
 
-.uni-picker-container .uni-picker-content,
-.uni-picker-container .uni-picker-select {
+body .uni-picker-container .uni-picker-content,
+body .uni-picker-container .uni-picker-select {
   background: #fff;
 }
 
 /* 滚轮行高由框架的滚动计算决定，保留原生的 34px。 */
-.uni-picker-container .uni-picker-item {
+body .uni-picker-container .uni-picker-item {
   color: #1f2937;
   font-size: 16px;
   font-weight: 400;
 }
 
-.uni-picker-container .uni-picker-action:active {
+body .uni-picker-container .uni-picker-action:active {
   background: #f4f4f5;
 }
 
 @media screen and (min-width: 500px) and (min-height: 500px) {
-  .uni-picker-container .uni-picker-mask {
+  body .uni-picker-container .uni-picker-mask {
     background: transparent;
   }
 
-  .uni-picker-container .uni-picker-custom {
+  body .uni-picker-container .uni-picker-custom {
     border-radius: 12px;
     box-shadow: 0 6px 20px rgba(17, 24, 39, 0.1);
   }
 
-  .uni-picker-container .uni-picker-header {
+  body .uni-picker-container .uni-picker-header {
     border-radius: 12px 12px 0 0;
   }
 
-  .uni-picker-container .uni-picker-content {
+  body .uni-picker-container .uni-picker-content {
     border-radius: 0 0 12px 12px;
   }
 
-  .uni-picker-container .uni-picker-select {
+  body .uni-picker-container .uni-picker-select {
     padding: 6px;
     border-radius: 12px;
   }
 
-  .uni-selector-select .uni-picker-select .uni-picker-item {
+  body .uni-selector-select .uni-picker-select .uni-picker-item {
     height: 34px;
     padding: 0 12px;
     border-radius: 8px;
@@ -94,11 +95,11 @@
     text-align: left;
   }
 
-  .uni-selector-select .uni-picker-item:hover {
+  body .uni-selector-select .uni-picker-item:hover {
     background: #f4f4f5;
   }
 
-  .uni-selector-select .uni-picker-item.selected {
+  body .uni-selector-select .uni-picker-item.selected {
     background: #f4f4f5;
     color: #660874;
     font-weight: 600;
@@ -106,7 +107,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .uni-picker-container .uni-picker-custom {
+  body .uni-picker-container .uni-picker-custom {
     transition: none;
   }
 }

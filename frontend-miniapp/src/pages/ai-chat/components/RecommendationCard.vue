@@ -58,9 +58,8 @@ const submitFeedback = (feedback: 'like' | 'dislike') => {
 };
 </script>
 
-<style scoped lang="scss">
+<style scoped>
 .recommendation-card {
-  /* 模拟 prototype card 样式 */
   background: white;
   border-radius: 12px;
   padding: 12px;
@@ -97,10 +96,10 @@ const submitFeedback = (feedback: 'like' | 'dislike') => {
 .ai-reason {
   margin-top: 6px;
   font-size: 12px;
+}
 
-  .text-primary {
-    color: #82318e;
-  }
+.ai-reason .text-primary {
+  color: #82318e;
 }
 
 .feedback-actions {

@@ -1,4 +1,5 @@
 import type { Page, Route, Request } from '@playwright/test';
+import type { MealPlan } from '../../src/types/api';
 
 type ApiResponse<T> = { code: number; message?: string; data: T };
 
@@ -152,6 +153,7 @@ function tryParseJson(text: string | null): any {
 export async function installMockApi(page: Page): Promise<void> {
   // 为每个 page 持有独立状态，避免并发测试互相污染
   const favoriteDishIds = new Set<string>();
+  const mealPlans = new Map<string, MealPlan>();
 
   const handleBackend = async (route: Route) => {
     const req = route.request();
@@ -374,30 +376,30 @@ export async function installMockApi(page: Page): Promise<void> {
       return json(route, ok(item));
     }
 
-    // 饮食规划列表（规划页首次加载用；e2e 里默认空）
     if (method === 'GET' && path.endsWith('/meal-plans')) {
-      return json(route, ok({ items: [] }));
+      return json(route, ok({ items: Array.from(mealPlans.values()) }));
     }
 
-    // 创建规划
     if (method === 'POST' && path.endsWith('/meal-plans')) {
       const body = tryParseJson(req.postData());
-      const newPlan = {
-        id: `plan_${Date.now()}`,
-        name: body?.name || '新规划',
-        description: body?.description || '',
-        startDate: body?.startDate || new Date().toISOString().split('T')[0],
-        endDate: body?.endDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        meals: body?.meals || [],
+      const newPlan: MealPlan = {
+        id: `plan_${mealPlans.size + 1}`,
+        userId: fixtures.user.id,
+        startDate: body.startDate,
+        endDate: body.endDate,
+        mealTime: body.mealTime,
+        dishes: body.dishes,
+        isPublic: body.isPublic ?? false,
+        completedDates: [],
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       };
-      return json(route, ok(newPlan));
+      mealPlans.set(newPlan.id, newPlan);
+      return json(route, { code: 201, data: newPlan }, 201);
     }
 
-    // 删除规划
     const deletePlanMatch = path.match(/\/meal-plans\/([^/]+)$/);
     if (method === 'DELETE' && deletePlanMatch) {
+      mealPlans.delete(deletePlanMatch[1]);
       return json(route, ok(null));
     }
 

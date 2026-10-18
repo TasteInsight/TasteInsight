@@ -5,7 +5,7 @@ const baseURL = process.env.E2E_BASE_URL || 'http://localhost:5173';
 export default defineConfig({
   testDir: './e2e',
   testIgnore: ['**/_*.spec.ts'],
-  timeout: 60_000,  // 增加到 60s
+  timeout: 60_000,
   expect: {
     timeout: 10_000,
   },
@@ -18,11 +18,10 @@ export default defineConfig({
     video: 'retain-on-failure',
   },
   webServer: {
-    command:
-      process.env.E2E_WEB_SERVER_COMMAND ||
-      'pnpm dev:mock',
+    command: process.env.E2E_WEB_SERVER_COMMAND || 'pnpm dev:h5 --mode e2e',
+    env: { VITE_API_BASE_URL: 'http://127.0.0.1:4523' },
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !!process.env.E2E_BASE_URL && !process.env.CI,
     timeout: 120_000,
   },
   projects: [
@@ -33,5 +32,5 @@ export default defineConfig({
       },
     },
   ],
-  workers: 1,  // 减少到 1 worker 避免并发问题
+  workers: 1,
 });

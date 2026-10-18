@@ -107,6 +107,27 @@ test('password reset is above the sidebar without allowing a business write', as
   expect(writes).toEqual([])
 })
 
+test('news lists defer the editor SDK until the editing dialog opens', async ({ page }) => {
+  const scripts: string[] = []
+  page.on('request', request => {
+    const path = new URL(request.url()).pathname
+    const editorScript = /\/assets\/index\.esm-[^/]+\.js$/.test(path) ||
+      path.endsWith('/node_modules/.vite/deps/@wangeditor_editor.js')
+    if (request.resourceType() === 'script' && editorScript) {
+      scripts.push(request.url())
+    }
+  })
+  await prepare(page)
+  await page.goto('/news-manage')
+  const create = page.getByRole('button', { name: '创建新闻', exact: true })
+  await expect(create).toBeVisible()
+  expect(scripts).toEqual([])
+  await create.click()
+  const dialog = page.getByRole('dialog', { name: '创建新闻', exact: true })
+  await expect(dialog.locator('[contenteditable="true"]')).toBeVisible()
+  expect(scripts.length).toBeGreaterThan(0)
+})
+
 test('Escape closes an editor tool panel without discarding the news draft', async ({ page }) => {
   const writes = await prepare(page)
   await page.goto('/news-manage')

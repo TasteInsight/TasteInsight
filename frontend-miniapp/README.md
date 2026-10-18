@@ -7,14 +7,20 @@ TasteInsight 小程序是基于 **UniApp** + **Vue 3** 构建的跨平台应用�
 - **框架**: UniApp Vue 3 编译器 5.26 + Vue 3.4.21
 - **构建**: Vite 5.2.8；DCloud 编译器依赖统一锁定为 `3.0.0-5020620260917001`
 - **状态管理**: Pinia 2
-- **样式**: TailwindCSS + Sass
+- **样式**: TailwindCSS + CSS
 - **国际化**: Vue I18n
 - **Markdown 渲染**: markdown-it + mp-html
 - **单元测试**: Jest 27 + @vue/test-utils
 - **E2E 测试**: Playwright
-- **负载测试**: Artillery
+- **负载测试**: k6（统一 API 压测）
 - **语言**: TypeScript 4.9
 - **包管理器**: pnpm
+
+## 发布构建与依赖维护
+
+本地 Mock 路由和夹具仅在 `mock` 模式加载，首个请求等待路由注册完成。H5、小程序和 App 的正式构建使用真实 API，构建器会移除 Mock 路由及其数据依赖。
+
+图标字体通过 CSS 相对路径引用，由各平台构建器解析资源地址。应用组件使用普通 CSS。`@dcloudio/uni-ui@1.5.12` 的 `uni-icons` 使用纯 CSS，但上游声明为 SCSS；`patches/` 中的 pnpm 补丁修正该声明，保留字体、条件编译和组件行为。补丁由锁文件固定，升级组件库时复核样式声明并重跑三端构建与图标加载检查。实际引入 SCSS 时仍需评估 UniApp 编译器的 Sass API 兼容性。
 
 ## 项目结构
 
@@ -275,6 +281,8 @@ pnpm test:components:watch
 
 ### E2E 测试
 
+Playwright 默认启动 `e2e` 模式的 H5 开发服务，测试通过 HTTP 拦截提供接口夹具，API 地址固定为 `http://127.0.0.1:4523`。执行前保持 5173 端口空闲。`dev:mock` 使用应用内模拟服务，适合手动演示；HTTP 夹具测试使用 `e2e` 或发布构建。
+
 ```bash
 # 运行 E2E 测试
 pnpm test:e2e
@@ -285,6 +293,18 @@ pnpm test:e2e:ui
 # 查看测试报告
 pnpm test:e2e:report
 ```
+
+发布构建回归可复用本地静态预览服务：
+
+```bash
+VITE_API_BASE_URL=http://127.0.0.1:4523 pnpm build:h5
+# 终端一：启动发布预览
+python3 -m http.server 4174 --bind 127.0.0.1 --directory dist/build/h5
+# 终端二：使用已有预览运行相同用例
+E2E_BASE_URL=http://127.0.0.1:4174 pnpm test:e2e
+```
+
+这些用例验证浏览器交互和前端接口契约，真实后端与数据库联调见下方统一浏览器套件。
 
 ### 发布页面性能
 

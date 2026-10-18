@@ -7,7 +7,6 @@ const { authState, pushSpy } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/store/modules/use-auth-store', () => ({ useAuthStore: () => authState }))
-vi.mock('@/router', () => ({ default: { push: pushSpy } }))
 
 type OwnedConfig = InternalAxiosRequestConfig & { _authSessionVersion?: number }
 type Dispatch = { url?: string; token: unknown; version?: number; data: unknown }
@@ -71,7 +70,9 @@ beforeEach(async () => {
     })
     return respond(config)
   }
-  request = (await import('@/utils/request')).default
+  const module = await import('@/utils/request')
+  request = module.default
+  module.setLoginRedirect((redirect) => pushSpy({ path: '/login', query: { redirect } }))
   dishApi = (await import('@/api/modules/dish')).dishApi
   session = await import('@/utils/auth-session')
 })

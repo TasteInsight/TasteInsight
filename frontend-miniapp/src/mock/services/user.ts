@@ -17,6 +17,8 @@ import {
   STORAGE_KEYS,
 } from '../data/user';
 
+import { mockGetDishById } from './dish';
+
 // 模拟网络延迟
 const mockDelay = () => new Promise(resolve => setTimeout(resolve, Math.random() * 600 + 200));
 
@@ -254,7 +256,6 @@ export const mockAddFavorite = async (dishId: string): Promise<void> => {
 
   try {
     // 获取菜品详情
-    const { mockGetDishById } = await import('../services/dish');
     const dish = await mockGetDishById(dishId);
 
     if (!dish) {
