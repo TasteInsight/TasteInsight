@@ -19,20 +19,22 @@
       :default-config="config"
       mode="default"
       @update:model-value="emit('update:modelValue', $event)"
-      @on-created="emit('created', $event)"
+      @on-created="handleCreated"
     />
   </template>
 </template>
 
 <script lang="ts">
-let editorResources: Promise<typeof import('@wangeditor/editor-for-vue')> | undefined
+type EditorResources = typeof import('@wangeditor/editor-for-vue') & Pick<typeof import('@wangeditor/editor'), 'DomEditor'>
+let editorResources: Promise<EditorResources> | undefined
 
 function loadEditorResources() {
   // Vite caches failed CSS preloads. Keep the rejection until a full page reload.
   return editorResources ??= Promise.all([
     import('@wangeditor/editor-for-vue'),
     import('@wangeditor/editor/dist/css/style.css'),
-  ]).then(([editor]) => editor)
+    import('@wangeditor/editor'),
+  ]).then(([editor, , { DomEditor }]) => ({ ...editor, DomEditor }))
 }
 </script>
 
@@ -50,8 +52,17 @@ const emit = defineEmits<{
   created: [editor: IDomEditor]
 }>()
 
-const components = shallowRef<typeof import('@wangeditor/editor-for-vue')>()
+const components = shallowRef<EditorResources>()
 const loadFailed = ref(false)
+
+function handleCreated(editor: IDomEditor) {
+  // wangEditor 5.1.23 unbinds the listener but leaves its throttled selection update queued.
+  const textarea = components.value!.DomEditor.getTextarea(editor) as unknown as {
+    onDOMSelectionChange: { cancel(): void }
+  }
+  editor.on('destroyed', () => textarea.onDOMSelectionChange.cancel())
+  emit('created', editor)
+}
 
 onMounted(async () => {
   try {

@@ -47,6 +47,7 @@ describe('AdminNewsController (e2e)', () => {
     const hashedPassword = await bcrypt.hash('123456', 10);
     const viewOnlyAdmin = await prisma.admin.create({
       data: {
+        scope: 'GLOBAL',
         username: 'newsviewadmin',
         password: hashedPassword,
         role: 'admin',
@@ -65,6 +66,7 @@ describe('AdminNewsController (e2e)', () => {
     // 4. Create no-access admin
     const noAccessAdmin = await prisma.admin.create({
       data: {
+        scope: 'GLOBAL',
         username: 'newsnoaccess',
         password: hashedPassword,
         role: 'admin',

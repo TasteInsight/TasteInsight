@@ -10,6 +10,7 @@ import {
 
 const mockPrismaService = {
   $queryRaw: jest.fn().mockResolvedValue([]),
+  adminCanteen: { deleteMany: jest.fn() },
   canteen: {
     findMany: jest.fn(),
     count: jest.fn(),
@@ -118,12 +119,15 @@ describe('AdminCanteensService', () => {
       prisma.canteen.findMany.mockResolvedValue(mockCanteens);
       prisma.canteen.count.mockResolvedValue(1);
 
-      const result = await service.findAll(1, 20, { canteenId: 'c1' });
+      const result = await service.findAll(1, 20, {
+        scope: 'CANTEENS' as const,
+        canteenIds: ['c1'],
+      });
 
       expect(result.code).toBe(200);
       expect(prisma.canteen.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: 'c1' },
+          where: { id: { in: ['c1'] } },
         }),
       );
     });
@@ -155,9 +159,12 @@ describe('AdminCanteensService', () => {
     });
 
     it('should throw ForbiddenException if admin has no access', async () => {
-      await expect(service.findOne('c2', { canteenId: 'c1' })).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        service.findOne('c2', {
+          scope: 'CANTEENS' as const,
+          canteenIds: ['c1'],
+        }),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -189,7 +196,10 @@ describe('AdminCanteensService', () => {
 
     it('should throw ForbiddenException if canteen admin tries to create', async () => {
       await expect(
-        service.create(createDto, { canteenId: 'c1' }),
+        service.create(createDto, {
+          scope: 'CANTEENS' as const,
+          canteenIds: ['c1'],
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -269,7 +279,10 @@ describe('AdminCanteensService', () => {
 
     it('should throw ForbiddenException if admin has no access', async () => {
       await expect(
-        service.update('c1', updateDto, { canteenId: 'c2' }),
+        service.update('c1', updateDto, {
+          scope: 'CANTEENS' as const,
+          canteenIds: ['c2'],
+        }),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -337,9 +350,8 @@ describe('AdminCanteensService', () => {
       expect(prisma.canteen.delete).toHaveBeenCalledWith({
         where: { id: 'c1' },
       });
-      expect(prisma.admin.updateMany).toHaveBeenCalledWith({
-        where: { canteenId: 'c1', deletedAt: { not: null } },
-        data: { canteenId: null },
+      expect(prisma.admin.count).toHaveBeenCalledWith({
+        where: { canteens: { some: { canteenId: 'c1' } }, deletedAt: null },
       });
     });
 
@@ -375,9 +387,12 @@ describe('AdminCanteensService', () => {
     });
 
     it('should throw ForbiddenException if admin has no access', async () => {
-      await expect(service.remove('c1', { canteenId: 'c2' })).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        service.remove('c1', {
+          scope: 'CANTEENS' as const,
+          canteenIds: ['c2'],
+        }),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 });

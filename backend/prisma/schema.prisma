@@ -196,13 +196,18 @@ model UserSetting {
 
 // ==================== 管理员相关模型 ====================
 
+enum AdminScope {
+  GLOBAL
+  CANTEENS
+}
+
 model Admin {
-  id        String   @id @default(cuid())
-  username  String   @unique
-  password  String // 应该存储哈希后的密码
-  role      String   @default("admin")
-  canteenId String?
-  canteen   Canteen? @relation(fields: [canteenId], references: [id], onDelete: Restrict)
+  id       String         @id @default(cuid())
+  username String         @unique
+  password String // 应该存储哈希后的密码
+  role     String         @default("admin")
+  scope    AdminScope     @default(CANTEENS)
+  canteens AdminCanteen[]
 
   createdBy String? // 创建者ID
   creator   Admin?  @relation("AdminHierarchy", fields: [createdBy], references: [id])
@@ -225,6 +230,17 @@ model Admin {
 
   @@index([deletedAt])
   @@map("admins")
+}
+
+model AdminCanteen {
+  adminId   String  @map("A")
+  canteenId String  @map("B")
+  admin     Admin   @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  canteen   Canteen @relation(fields: [canteenId], references: [id], onDelete: Restrict)
+
+  @@id([adminId, canteenId], map: "_AdminCanteens_AB_pkey")
+  @@index([canteenId], map: "_AdminCanteens_B_index")
+  @@map("_AdminCanteens")
 }
 
 model AdminPermission {
@@ -278,7 +294,7 @@ model Canteen {
   dishes        Dish[]
   dishUploads   DishUpload[]
   news          News[]
-  admins        Admin[]
+  admins        AdminCanteen[]
   adminConfigs  AdminConfig[]
   diningInvites DiningInvite[]
 

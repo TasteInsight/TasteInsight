@@ -41,11 +41,11 @@ describe('api/permissionApi', () => {
     putMock.mockResolvedValueOnce({ code: 200 })
 
     const { permissionApi } = await import('@/api/modules/permission')
-    await permissionApi.updateAdminPermissions('a1', ['p1'], 'c1')
+    await permissionApi.updateAdminPermissions('a1', ['p1'], 'CANTEENS', ['c1'])
 
     expect(putMock).toHaveBeenCalledWith('/admin/admins/a1/permissions', {
       permissions: ['p1'],
-      canteenId: 'c1',
+      scope: 'CANTEENS', canteenIds: ['c1'],
     })
   })
 
@@ -71,10 +71,10 @@ describe('api/permissionApi', () => {
     putMock.mockResolvedValueOnce({ code: 200 })
 
     const { permissionApi } = await import('@/api/modules/permission')
-    await permissionApi.updateAdminPermissions('a1', ['p1'])
+    await permissionApi.updateAdminPermissions('a1', ['p1'], 'GLOBAL', [])
 
     expect(putMock).toHaveBeenCalledWith('/admin/admins/a1/permissions', {
-      permissions: ['p1'],
+      permissions: ['p1'], scope: 'GLOBAL', canteenIds: [],
     })
   })
 
@@ -82,11 +82,11 @@ describe('api/permissionApi', () => {
     putMock.mockResolvedValueOnce({ code: 200 })
 
     const { permissionApi } = await import('@/api/modules/permission')
-    await permissionApi.updateAdminPermissions('a1', ['p1'], null)
+    await permissionApi.updateAdminPermissions('a1', ['p1'], 'GLOBAL', [])
 
     expect(putMock).toHaveBeenCalledWith('/admin/admins/a1/permissions', {
       permissions: ['p1'],
-      canteenId: null,
+      scope: 'GLOBAL', canteenIds: [],
     })
   })
 })

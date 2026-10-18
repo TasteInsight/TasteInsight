@@ -1,3 +1,4 @@
+import { isGlobalScope } from '@/auth/admin-scope';
 import {
   Body,
   Controller,
@@ -26,7 +27,7 @@ export class AdminStudentVerificationController {
   constructor(private readonly campus: CampusIdentityService) {}
 
   private requireGlobalAdmin(req) {
-    if (req.admin.canteenId)
+    if (!isGlobalScope(req.admin))
       throw new ForbiddenException('学生认证仅限全局管理员处理');
   }
 

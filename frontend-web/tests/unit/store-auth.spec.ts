@@ -56,7 +56,7 @@ describe('store/use-auth-store', () => {
   })
 
   it('removes malformed permissions and fails closed', async () => {
-    localStorage.setItem('admin_user', JSON.stringify({ username: 'u', role: 'admin' }))
+    localStorage.setItem('admin_user', JSON.stringify({ scope: 'GLOBAL' as const, canteenIds: [], canteens: [], username: 'u', role: 'admin' }))
     localStorage.setItem('admin_permissions', '{broken')
 
     const { useAuthStore } = await import('@/store/modules/use-auth-store')
@@ -74,7 +74,7 @@ describe('store/use-auth-store', () => {
 
     const { useAuthStore } = await import('@/store/modules/use-auth-store')
     const store = useAuthStore()
-    store.user = { username: 'any', role: 'superadmin' } as any
+    store.user = { scope: 'GLOBAL' as const, canteenIds: [], canteens: [], username: 'any', role: 'superadmin' } as any
 
     // Even superadmin only has permissions that are explicitly stored
     expect(store.hasPermission('dish:view')).toBe(true)
@@ -86,7 +86,7 @@ describe('store/use-auth-store', () => {
   it('initializes token/refresh/user from storage', async () => {
     sessionStorage.setItem('admin_token', 'st')
     sessionStorage.setItem('admin_refresh_token', 'sr')
-    sessionStorage.setItem('admin_user', JSON.stringify({ username: 'u', role: 'admin' }))
+    sessionStorage.setItem('admin_user', JSON.stringify({ scope: 'GLOBAL' as const, canteenIds: [], canteens: [], username: 'u', role: 'admin' }))
     sessionStorage.setItem('admin_permissions', JSON.stringify(['dish:view']))
 
     const { useAuthStore } = await import('@/store/modules/use-auth-store')
@@ -102,12 +102,12 @@ describe('store/use-auth-store', () => {
   it('restores one coherent session bundle when stale remembered credentials also exist', async () => {
     localStorage.setItem('admin_token', 'old-local-token')
     localStorage.setItem('admin_refresh_token', 'old-local-refresh')
-    localStorage.setItem('admin_user', JSON.stringify({ username: 'old-user', role: 'admin' }))
+    localStorage.setItem('admin_user', JSON.stringify({ scope: 'GLOBAL' as const, canteenIds: [], canteens: [], username: 'old-user', role: 'admin' }))
     localStorage.setItem('admin_permissions', JSON.stringify(['dish:delete']))
 
     sessionStorage.setItem('admin_token', 'current-session-token')
     sessionStorage.setItem('admin_refresh_token', 'current-session-refresh')
-    sessionStorage.setItem('admin_user', JSON.stringify({ username: 'current-user', role: 'admin' }))
+    sessionStorage.setItem('admin_user', JSON.stringify({ scope: 'GLOBAL' as const, canteenIds: [], canteens: [], username: 'current-user', role: 'admin' }))
     sessionStorage.setItem('admin_permissions', JSON.stringify(['dish:view']))
 
     const { useAuthStore } = await import('@/store/modules/use-auth-store')
@@ -126,7 +126,7 @@ describe('store/use-auth-store', () => {
 
     const { useAuthStore } = await import('@/store/modules/use-auth-store')
     const store = useAuthStore()
-    store.user = { username: 'u', role: 'admin' } as any
+    store.user = { scope: 'GLOBAL' as const, canteenIds: [], canteens: [], username: 'u', role: 'admin' } as any
 
     expect(store.hasPermission('dish:view')).toBe(true)
     expect(store.hasPermission('missing')).toBe(false)
@@ -141,7 +141,7 @@ describe('store/use-auth-store', () => {
       message: 'ok',
       data: {
         token: { accessToken: 't1', refreshToken: 'r1' },
-        admin: { username: 'u1', role: 'admin' },
+        admin: { scope: 'GLOBAL' as const, canteenIds: [], canteens: [], username: 'u1', role: 'admin' },
         permissions: ['dish:view'],
       },
     })
@@ -158,7 +158,7 @@ describe('store/use-auth-store', () => {
     expect(store.permissions).toEqual(['dish:view'])
     expect(res).toEqual({
       token: 't1',
-      data: { user: { username: 'u1', role: 'admin' }, permissions: ['dish:view'] },
+      data: { user: { scope: 'GLOBAL' as const, canteenIds: [], canteens: [], username: 'u1', role: 'admin' }, permissions: ['dish:view'] },
     })
   })
 
@@ -170,7 +170,7 @@ describe('store/use-auth-store', () => {
       message: 'ok',
       data: {
         token: { accessToken: 't2', refreshToken: 'r2' },
-        admin: { username: 'u2', role: 'admin' },
+        admin: { scope: 'GLOBAL' as const, canteenIds: [], canteens: [], username: 'u2', role: 'admin' },
         permissions: ['news:view'],
       },
     })
@@ -249,7 +249,7 @@ describe('store/use-auth-store', () => {
     const login = store.login({ username: 'A', password: 'p' })
     const outcome = login.catch((error: Error) => error)
     store.logout()
-    finishLogin({ code: 200, data: { token: { accessToken: 'A', refreshToken: 'Ar' }, admin: { username: 'A', role: 'admin' }, permissions: [] } })
+    finishLogin({ code: 200, data: { token: { accessToken: 'A', refreshToken: 'Ar' }, admin: { scope: 'GLOBAL' as const, canteenIds: [], canteens: [], username: 'A', role: 'admin' }, permissions: [] } })
     expect((await outcome as Error).message).toBe('登录请求已失效')
     expect(store.isLoggedIn).toBe(false)
     expect(sessionStorage.getItem('admin_token')).toBeNull()
@@ -258,7 +258,7 @@ describe('store/use-auth-store', () => {
   it('logout clears storage and state', async () => {
     localStorage.setItem('admin_token', 't')
     localStorage.setItem('admin_refresh_token', 'r')
-    localStorage.setItem('admin_user', JSON.stringify({ username: 'u', role: 'admin' }))
+    localStorage.setItem('admin_user', JSON.stringify({ scope: 'GLOBAL' as const, canteenIds: [], canteens: [], username: 'u', role: 'admin' }))
     localStorage.setItem('admin_permissions', JSON.stringify(['dish:view']))
 
     const { useAuthStore } = await import('@/store/modules/use-auth-store')

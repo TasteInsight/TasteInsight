@@ -7,10 +7,10 @@ describe('router/getFirstAccessibleRoute', () => {
     ['student:review', '/student-verification-manage'],
     ['post:view', '/community-manage'],
   ])('routes a global account with only %s to its management surface', (permission, path) => {
-    const store = { user: { canteenId: null as string | null }, hasPermission: (value: string) => value === permission }
+    const store = { user: { scope: 'GLOBAL' as 'GLOBAL' | 'CANTEENS' }, hasPermission: (value: string) => value === permission }
     expect(hasGlobalPermission(store, permission)).toBe(true)
     expect(getFirstAccessibleRoute(store)).toBe(path)
-    store.user.canteenId = 'c1'
+    store.user.scope = 'CANTEENS'
     expect(hasGlobalPermission(store, permission)).toBe(false)
     expect(getFirstAccessibleRoute(store)).toBe('/forbidden')
   })

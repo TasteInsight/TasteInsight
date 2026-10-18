@@ -1,4 +1,9 @@
 import {
+  canAccessCanteen,
+  canteenScopeFilter,
+  defaultCanteenId,
+} from '@/auth/admin-scope';
+import {
   Injectable,
   NotFoundException,
   BadRequestException,
@@ -28,10 +33,7 @@ export class AdminNewsService {
       });
       if (rows.length !== ids.length)
         throw new NotFoundException('部分新闻已不存在，请刷新列表');
-      if (
-        admin.canteenId &&
-        rows.some((row) => row.canteenId !== admin.canteenId)
-      )
+      if (rows.some((row) => !canAccessCanteen(admin, row.canteenId)))
         throw new ForbiddenException('无权删除所选新闻');
       const result = await tx.news.deleteMany({ where: { id: { in: ids } } });
       return {
@@ -63,13 +65,12 @@ export class AdminNewsService {
       where.status = status;
     }
 
-    if (adminInfo?.canteenId) {
-      if (canteenId && canteenId !== adminInfo.canteenId) {
-        throw new ForbiddenException('您只能查看所属食堂的新闻');
-      }
-      where.canteenId = adminInfo.canteenId;
-    } else if (canteenId) {
-      where.canteenId = canteenId === 'all' ? null : canteenId;
+    where.canteenId = canteenScopeFilter(adminInfo);
+    if (canteenId) {
+      const targetCanteenId = canteenId === 'all' ? null : canteenId;
+      if (!canAccessCanteen(adminInfo, targetCanteenId))
+        throw new ForbiddenException('新闻不在您的管理范围内');
+      where.canteenId = targetCanteenId;
     }
     if (canteenName?.trim()) {
       where.canteenName = {
@@ -135,11 +136,10 @@ export class AdminNewsService {
     let canteenName: string | null = null;
     let canteenId = createNewsDto.canteenId;
 
-    if (adminInfo.canteenId) {
-      if (canteenId !== undefined && canteenId !== adminInfo.canteenId) {
-        throw new ForbiddenException('您只能发布所属食堂的新闻');
-      }
-      canteenId = adminInfo.canteenId;
+    canteenId =
+      canteenId === undefined ? defaultCanteenId(adminInfo) : canteenId;
+    if (!canAccessCanteen(adminInfo, canteenId)) {
+      throw new ForbiddenException('请选择管理范围内的食堂');
     }
 
     if (canteenId) {
@@ -183,10 +183,7 @@ export class AdminNewsService {
       throw new NotFoundException('新闻不存在');
     }
 
-    if (
-      adminInfo?.canteenId &&
-      existingNews.canteenId !== adminInfo.canteenId
-    ) {
+    if (!canAccessCanteen(adminInfo, existingNews.canteenId)) {
       throw new ForbiddenException('权限不足');
     }
 
@@ -198,10 +195,7 @@ export class AdminNewsService {
     const updateData: any = { ...updateNewsDto };
 
     if (updateNewsDto.canteenId !== undefined) {
-      if (
-        adminInfo?.canteenId &&
-        updateNewsDto.canteenId !== adminInfo.canteenId
-      ) {
+      if (!canAccessCanteen(adminInfo, updateNewsDto.canteenId)) {
         throw new ForbiddenException('您只能发布所属食堂的新闻');
       }
       if (updateNewsDto.canteenId === null) {
@@ -241,10 +235,7 @@ export class AdminNewsService {
       throw new NotFoundException('新闻不存在');
     }
 
-    if (
-      adminInfo?.canteenId &&
-      existingNews.canteenId !== adminInfo.canteenId
-    ) {
+    if (!canAccessCanteen(adminInfo, existingNews.canteenId)) {
       throw new ForbiddenException('权限不足');
     }
 
@@ -275,10 +266,7 @@ export class AdminNewsService {
       throw new NotFoundException('新闻不存在');
     }
 
-    if (
-      adminInfo?.canteenId &&
-      existingNews.canteenId !== adminInfo.canteenId
-    ) {
+    if (!canAccessCanteen(adminInfo, existingNews.canteenId)) {
       throw new ForbiddenException('权限不足');
     }
 
@@ -309,10 +297,7 @@ export class AdminNewsService {
       throw new NotFoundException('新闻不存在');
     }
 
-    if (
-      adminInfo?.canteenId &&
-      existingNews.canteenId !== adminInfo.canteenId
-    ) {
+    if (!canAccessCanteen(adminInfo, existingNews.canteenId)) {
       throw new ForbiddenException('权限不足');
     }
 

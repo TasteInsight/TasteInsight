@@ -174,12 +174,16 @@ describe('AuthService', () => {
     });
     it('should login admin successfully', async () => {
       const mockAdmin = {
+        scope: 'CANTEENS' as const,
+        canteens: [
+          { canteen: { id: 'canteen-1', name: '食堂一' } },
+          { canteen: { id: 'canteen-2', name: '食堂二' } },
+        ],
         id: 'admin-1',
         username: 'admin',
         password: 'hashed-password',
         role: 'admin',
         permissions: [{ permission: 'read' }],
-        canteen: { name: 'Test Canteen' },
       };
       prisma.admin.findUnique.mockResolvedValue(mockAdmin);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
@@ -189,7 +193,12 @@ describe('AuthService', () => {
       expect(result.code).toBe(200);
       expect(result.data.admin.username).toBe('admin');
       expect(result.data.permissions).toEqual(['read']);
-      expect(result.data.admin.canteenName).toBe('Test Canteen');
+      expect(result.data.admin.scope).toBe('CANTEENS');
+      expect(result.data.admin.canteens).toEqual([
+        { id: 'canteen-1', name: '食堂一' },
+        { id: 'canteen-2', name: '食堂二' },
+      ]);
+      expect(result.data.admin.canteenIds).toEqual(['canteen-1', 'canteen-2']);
       expect(bcrypt.compare).toHaveBeenCalledWith(
         'password',
         'hashed-password',
@@ -199,12 +208,13 @@ describe('AuthService', () => {
 
     it('should return all permissions for superadmin', async () => {
       const mockAdmin = {
+        scope: 'GLOBAL' as const,
+        canteens: [],
         id: 'admin-1',
         username: 'superadmin',
         password: 'hashed-password',
         role: 'superadmin',
         permissions: [],
-        canteen: null,
       };
       prisma.admin.findUnique.mockResolvedValue(mockAdmin);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
@@ -213,7 +223,7 @@ describe('AuthService', () => {
 
       expect(result.code).toBe(200);
       expect(result.data.permissions.length).toBeGreaterThan(0);
-      expect(result.data.admin.canteenName).toBe(null);
+      expect(result.data.admin.canteens).toEqual([]);
     });
 
     it('should throw UnauthorizedException if admin not found', async () => {
@@ -226,12 +236,13 @@ describe('AuthService', () => {
 
     it('should throw UnauthorizedException if password is wrong', async () => {
       const mockAdmin = {
+        scope: 'GLOBAL' as const,
+        canteens: [],
         id: 'admin-1',
         username: 'admin',
         password: 'hashed-password',
         role: 'admin',
         permissions: [],
-        canteen: null,
       };
       prisma.admin.findUnique.mockResolvedValue(mockAdmin);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);

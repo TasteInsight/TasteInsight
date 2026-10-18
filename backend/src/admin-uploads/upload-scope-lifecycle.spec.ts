@@ -7,7 +7,9 @@ describe('Upload ownership after a formal dish moves', () => {
     id: 'global',
     username: 'global',
     role: 'superadmin',
-    canteenId: null,
+    scope: 'GLOBAL' as const,
+    canteenIds: [],
+    canteens: [],
     permissions: [],
   };
   const fixture = (hasChild = false, dishCanteen = 'b') => {
@@ -70,7 +72,9 @@ describe('Upload ownership after a formal dish moves', () => {
       review.revokeUpload('source', {
         ...globalAdmin,
         role: 'admin',
-        canteenId: 'a',
+        scope: 'CANTEENS' as const,
+        canteenIds: ['a'],
+        canteens: [{ id: 'a', name: 'a' }],
       }),
     ).rejects.toThrow(ForbiddenException);
     expect(prisma.dish.delete).not.toHaveBeenCalled();

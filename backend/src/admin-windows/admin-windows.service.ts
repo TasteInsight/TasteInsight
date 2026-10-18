@@ -1,3 +1,4 @@
+import { AdminCanteenScope, canAccessCanteen } from '@/auth/admin-scope';
 import {
   Injectable,
   NotFoundException,
@@ -94,7 +95,10 @@ export class AdminWindowsService {
     return newFloor.id;
   }
 
-  async findOne(id: string, adminInfo?: any): Promise<WindowResponseDto> {
+  async findOne(
+    id: string,
+    adminInfo?: AdminCanteenScope,
+  ): Promise<WindowResponseDto> {
     const window = await this.prisma.window.findUnique({
       where: { id },
       include: {
@@ -106,7 +110,7 @@ export class AdminWindowsService {
       throw new NotFoundException('窗口不存在');
     }
 
-    if (adminInfo?.canteenId && window.canteenId !== adminInfo.canteenId) {
+    if (!canAccessCanteen(adminInfo, window.canteenId)) {
       throw new ForbiddenException('权限不足');
     }
 
@@ -121,9 +125,9 @@ export class AdminWindowsService {
     canteenId: string,
     page: number = 1,
     pageSize: number = 20,
-    adminInfo?: any,
+    adminInfo?: AdminCanteenScope,
   ): Promise<WindowListResponseDto> {
-    if (adminInfo?.canteenId && adminInfo.canteenId !== canteenId) {
+    if (!canAccessCanteen(adminInfo, canteenId)) {
       throw new ForbiddenException('权限不足');
     }
 
@@ -171,11 +175,11 @@ export class AdminWindowsService {
 
   async create(
     createWindowDto: CreateWindowDto,
-    adminInfo?: any,
+    adminInfo?: AdminCanteenScope,
   ): Promise<WindowResponseDto> {
     const { canteenId, floor, ...windowData } = createWindowDto;
 
-    if (adminInfo?.canteenId && adminInfo.canteenId !== canteenId) {
+    if (!canAccessCanteen(adminInfo, canteenId)) {
       throw new ForbiddenException('权限不足');
     }
 
@@ -217,7 +221,7 @@ export class AdminWindowsService {
   async update(
     id: string,
     updateWindowDto: UpdateWindowDto,
-    adminInfo?: any,
+    adminInfo?: AdminCanteenScope,
   ): Promise<WindowResponseDto> {
     const { floor, ...windowData } = updateWindowDto;
 
@@ -229,10 +233,7 @@ export class AdminWindowsService {
       throw new NotFoundException('窗口不存在');
     }
 
-    if (
-      adminInfo?.canteenId &&
-      existingWindow.canteenId !== adminInfo.canteenId
-    ) {
+    if (!canAccessCanteen(adminInfo, existingWindow.canteenId)) {
       throw new ForbiddenException('权限不足');
     }
 
@@ -289,7 +290,7 @@ export class AdminWindowsService {
     };
   }
 
-  async remove(id: string, adminInfo?: any): Promise<any> {
+  async remove(id: string, adminInfo?: AdminCanteenScope): Promise<any> {
     const window = await this.prisma.window.findUnique({
       where: { id },
       include: {
@@ -301,7 +302,7 @@ export class AdminWindowsService {
       throw new NotFoundException('窗口不存在');
     }
 
-    if (adminInfo?.canteenId && window.canteenId !== adminInfo.canteenId) {
+    if (!canAccessCanteen(adminInfo, window.canteenId)) {
       throw new ForbiddenException('权限不足');
     }
 

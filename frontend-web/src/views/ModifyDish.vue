@@ -22,7 +22,7 @@
               <select
                 v-model="selectedCanteenId"
                 @change="handleCanteenChange"
-                class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[200px] transition-all cursor-pointer hover:border-gray-400"
+                class="appearance-none pr-10 bg-white min-w-[200px] transition-all cursor-pointer hover:border-gray-400 admin-input"
               >
                 <option value="">全部食堂</option>
                 <option v-for="canteen in canteens" :key="canteen.id" :value="canteen.id">
@@ -41,7 +41,7 @@
               <select
                 v-model="selectedWindowId"
                 @change="handleWindowChange"
-                class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[200px] transition-all cursor-pointer hover:border-gray-400 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:border-gray-200"
+                class="appearance-none pr-10 bg-white min-w-[200px] transition-all cursor-pointer hover:border-gray-400 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:border-gray-200 admin-input"
                 :disabled="!selectedCanteenId"
               >
                 <option value="">全部窗口</option>
@@ -59,7 +59,7 @@
             <button
               v-if="selectedCanteenId || searchQuery"
               @click="resetFilters"
-              class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-gray-200/50 transition-colors"
+              class="text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 hover:bg-gray-200/50 transition-colors admin-button"
             >
               <AppIcon class="iconify" icon="carbon:reset"></AppIcon>
               重置筛选
@@ -155,14 +155,14 @@
               <td class="py-4 px-6 text-center">
                 <div class="flex items-center justify-center gap-2">
                   <button
-                    class="p-2 rounded-full hover:bg-gray-200 text-tsinghua-purple"
+                    class="rounded-full hover:bg-gray-200 text-tsinghua-purple admin-icon-button"
                     @click="viewDish(dish)"
                     title="查看"
                   >
                     <AppIcon class="iconify" icon="carbon:view"></AppIcon>
                   </button>
                   <button
-                    class="p-2 rounded-full hover:bg-gray-200"
+                    class="rounded-full hover:bg-gray-200 admin-icon-button"
                     :class="authStore.hasPermission('dish:edit') ? 'text-tsinghua-purple' : 'text-gray-400 cursor-not-allowed'"
                     @click="editDish(dish)"
                     :title="!authStore.hasPermission('dish:edit') ? '无权限编辑' : '编辑'"

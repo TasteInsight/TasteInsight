@@ -65,7 +65,8 @@ describe('Dish hierarchy and approval ownership (e2e)', () => {
           username: id,
           password: hashedPassword,
           role,
-          canteenId,
+          scope: canteenId ? 'CANTEENS' : 'GLOBAL',
+          canteens: { create: canteenId ? [{ canteenId: canteenId }] : [] },
           permissions: {
             create: ['dish:view', 'dish:edit', 'upload:approve'].map(
               (permission) => ({ permission }),

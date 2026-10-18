@@ -1,11 +1,11 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { DOMWrapper, mount, shallowMount } from '@vue/test-utils'
+import { DOMWrapper, mount, flushPromises, shallowMount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 
 const mocks = vi.hoisted(() => ({
   routerMock: { push: vi.fn() },
   authStoreMock: {
-    user: { username: 'admin', role: 'staff' },
+    user: { scope: 'GLOBAL' as const, canteenIds: [], canteens: [], username: 'admin', role: 'staff' },
     permissions: ['admin:view', 'canteen:view', 'dish:view', 'dish:edit', 'dish:create'],
     token: 't',
     hasPermission: vi.fn((p: string) =>
@@ -28,7 +28,7 @@ const mocks = vi.hoisted(() => ({
     updateAdminPermissions: vi.fn(),
   },
   canteenApiMock: {
-    getCanteens: vi.fn(),
+    getCanteenOptions: vi.fn(),
   },
   showAlertMock: vi.fn(() => Promise.resolve()),
   showConfirmDangerMock: vi.fn(() => Promise.resolve(true)),
@@ -61,7 +61,7 @@ import UserManage from '../../src/views/UserManage.vue'
 describe('views/UserManage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.authStoreMock.user = { username: 'admin', role: 'staff' }
+    mocks.authStoreMock.user = { scope: 'GLOBAL' as const, canteenIds: [], canteens: [], username: 'admin', role: 'staff' }
     mocks.authStoreMock.permissions = [
       'admin:view',
       'canteen:view',
@@ -69,7 +69,7 @@ describe('views/UserManage', () => {
       'dish:edit',
       'dish:create',
     ]
-    mocks.canteenApiMock.getCanteens.mockResolvedValue({
+    mocks.canteenApiMock.getCanteenOptions.mockResolvedValue({
       code: 200,
       data: { items: [{ id: 'c1', name: 'C1' }] },
     })
@@ -81,6 +81,27 @@ describe('views/UserManage', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('creates an account with two selected canteens from the native multi-select controls', async () => {
+    mocks.canteenApiMock.getCanteenOptions.mockResolvedValue({ code: 200, data: { items: [{ id: 'c1', name: '食堂一' }, { id: 'c2', name: '食堂二' }] } })
+    mocks.permissionApiMock.createAdmin.mockResolvedValue({ code: 200, data: { id: 'new' } })
+    const wrapper = mount(UserManage, { global: { stubs: { Header: true } } })
+    try {
+      await flushPromises()
+      wrapper.vm.createNewAdmin()
+      wrapper.vm.formData.scope = 'CANTEENS'
+      wrapper.vm.formData.username = 'operator'
+      wrapper.vm.formData.password = 'Password123!'
+      wrapper.vm.formData.permissions = ['dish:view']
+      await nextTick()
+      const options = wrapper.findAll('fieldset input[type="checkbox"]')
+      expect(options).toHaveLength(2)
+      await options[0].setValue(true)
+      await options[1].setValue(true)
+      await wrapper.vm.submitForm()
+      expect(mocks.permissionApiMock.createAdmin).toHaveBeenCalledWith(expect.objectContaining({ scope: 'CANTEENS', canteenIds: ['c1', 'c2'] }))
+    } finally { wrapper.unmount() }
   })
 
   it('opens password reset in a native dialog and clears its target on cancel', async () => {
@@ -110,7 +131,8 @@ describe('views/UserManage', () => {
       expect(wrapper.vm.formData.permissions).toEqual(['post:approve', 'post:view'])
       wrapper.vm.formData.username = 'test-admin'
       wrapper.vm.formData.password = 'ValidPassword123!'
-      wrapper.vm.formData.canteenId = 'c1'
+      wrapper.vm.formData.scope = 'CANTEENS'
+      wrapper.vm.formData.canteenIds = ['c1']
       await wrapper.vm.submitForm()
       expect(wrapper.vm.errors.permissions).toContain('仅可分配给全局管理范围')
       expect(mocks.permissionApiMock.createAdmin).not.toHaveBeenCalled()
@@ -122,8 +144,8 @@ describe('views/UserManage', () => {
       code: 200,
       data: {
         items: [
-          { id: 1, username: 'alice', role: 'kitchen_operator', canteenId: 'c1', createdAt: '2025-01-01' },
-          { id: 2, username: 'bob', role: 'custom_role', canteenId: null, createdAt: '2025-01-02' },
+          { id: 1, username: 'alice', role: 'kitchen_operator', scope: 'CANTEENS', canteenIds: ['c1'], canteens: [{ id: 'c1', name: 'c1' }], createdAt: '2025-01-01' },
+          { id: 2, username: 'bob', role: 'custom_role', scope: 'GLOBAL', canteenIds: [], canteens: [], createdAt: '2025-01-02' },
         ],
         meta: { totalPages: 2 },
       },
@@ -136,7 +158,7 @@ describe('views/UserManage', () => {
     await Promise.resolve()
     await nextTick()
 
-    expect(mocks.canteenApiMock.getCanteens).toHaveBeenCalled()
+    expect(mocks.canteenApiMock.getCanteenOptions).toHaveBeenCalled()
     expect(mocks.permissionApiMock.getAdmins).toHaveBeenCalled()
     expect(wrapper.vm.totalPages).toBe(2)
 
@@ -152,11 +174,10 @@ describe('views/UserManage', () => {
     expect(wrapper.vm.filteredAdmins).toHaveLength(1)
     expect(wrapper.vm.filteredAdmins[0].username).toBe('bob')
 
-    // specific canteen
+    // A global account also manages the selected canteen.
     wrapper.vm.canteenFilter = 'c1'
     await nextTick()
-    expect(wrapper.vm.filteredAdmins).toHaveLength(1)
-    expect(wrapper.vm.filteredAdmins[0].username).toBe('alice')
+    expect(wrapper.vm.filteredAdmins.map((admin: { username: string }) => admin.username)).toEqual(['alice', 'bob'])
 
     wrapper.unmount()
   })
@@ -199,7 +220,7 @@ describe('views/UserManage', () => {
 
   it('editAdmin fills form for preset vs custom role and filters permissions based on current user', async () => {
     // user is not superadmin => should filter assigned perms
-    mocks.authStoreMock.user = { username: 'admin', role: 'staff' } as any
+    mocks.authStoreMock.user = { scope: 'GLOBAL' as const, canteenIds: [], canteens: [], username: 'admin', role: 'staff' } as any
     mocks.authStoreMock.permissions = ['dish:view', 'dish:edit']
 
     const wrapper = shallowMount(UserManage, { global: { stubs: { Header: true } } })
@@ -209,7 +230,7 @@ describe('views/UserManage', () => {
       id: 1,
       username: 'u1',
       role: 'kitchen_operator',
-      canteenId: 'c1',
+      scope: 'CANTEENS', canteenIds: ['c1'], canteens: [{ id: 'c1', name: 'c1' }],
       permissions: ['dish:view', 'dish:edit', 'admin:delete'],
     })
 
@@ -218,7 +239,7 @@ describe('views/UserManage', () => {
     expect(wrapper.vm.formData.customRole).toBe('')
     expect(wrapper.vm.formData.permissions).toEqual(['dish:view', 'dish:edit'])
 
-    await wrapper.vm.editAdmin({
+    await wrapper.vm.editAdmin({ scope: 'GLOBAL' as const, canteenIds: [], canteens: [],
       id: 2,
       username: 'u2',
       role: 'my_custom',
@@ -343,7 +364,8 @@ describe('views/UserManage', () => {
 
     wrapper.vm.formData.username = ' new '
     wrapper.vm.formData.password = ' pw '
-    wrapper.vm.formData.canteenId = ' '
+    wrapper.vm.formData.scope = 'GLOBAL'
+    wrapper.vm.formData.canteenIds = []
     wrapper.vm.formData.permissions = ['dish:view']
     wrapper.vm.formData.role = 'admin'
 
@@ -361,10 +383,11 @@ describe('views/UserManage', () => {
 
     // create path success will backToList() + resetForm(); re-fill required fields for edit validation
     wrapper.vm.formData.username = 'u'
-    wrapper.vm.formData.canteenId = ' c1 '
+    wrapper.vm.formData.scope = 'CANTEENS'
+    wrapper.vm.formData.canteenIds = ['c1']
     wrapper.vm.formData.permissions = ['dish:view']
     await wrapper.vm.submitForm()
-    expect(mocks.permissionApiMock.updateAdminPermissions).toHaveBeenCalledWith(9, ['dish:view'], 'c1')
+    expect(mocks.permissionApiMock.updateAdminPermissions).toHaveBeenCalledWith(9, ['dish:view'], 'CANTEENS', ['c1'])
 
     // delete confirm false
     mocks.showConfirmDangerMock.mockResolvedValueOnce(false)
@@ -432,7 +455,7 @@ describe('views/UserManage', () => {
     expect(wrapper.vm.currentPage).toBe(1)
 
     // superadmin permissionGroups shows all groups (backend returns all permissions for superadmin)
-    mocks.authStoreMock.user = { username: 'sa', role: 'superadmin' } as any
+    mocks.authStoreMock.user = { scope: 'GLOBAL' as const, canteenIds: [], canteens: [], username: 'sa', role: 'superadmin' } as any
     // For superadmin, backend returns all permissions
     mocks.authStoreMock.permissions = [
       'dish:view', 'dish:create', 'dish:edit', 'dish:delete',
@@ -458,7 +481,7 @@ describe('views/UserManage', () => {
   })
 
   it('submitForm blocks invalid permissions assignment and respects isSubmitting guard', async () => {
-    mocks.authStoreMock.user = { username: 'admin', role: 'staff' } as any
+    mocks.authStoreMock.user = { scope: 'GLOBAL' as const, canteenIds: [], canteens: [], username: 'admin', role: 'staff' } as any
     mocks.authStoreMock.permissions = ['admin:view', 'canteen:view']
 
     const wrapper = shallowMount(UserManage, { global: { stubs: { Header: true } } })

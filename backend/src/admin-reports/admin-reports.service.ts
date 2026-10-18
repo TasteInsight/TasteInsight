@@ -1,4 +1,9 @@
 import {
+  canAccessCanteen,
+  canteenScopeFilter,
+  isGlobalScope,
+} from '@/auth/admin-scope';
+import {
   Injectable,
   NotFoundException,
   BadRequestException,
@@ -44,12 +49,12 @@ export class AdminReportsService {
       where.targetType = targetType;
     }
 
-    if (adminInfo?.canteenId) {
+    if (!isGlobalScope(adminInfo)) {
       where.OR = [
         {
           review: {
             dish: {
-              canteenId: adminInfo.canteenId,
+              canteenId: canteenScopeFilter(adminInfo),
             },
           },
         },
@@ -57,7 +62,7 @@ export class AdminReportsService {
           comment: {
             review: {
               dish: {
-                canteenId: adminInfo.canteenId,
+                canteenId: canteenScopeFilter(adminInfo),
               },
             },
           },
@@ -248,7 +253,7 @@ export class AdminReportsService {
         if (!report) throw new NotFoundException('举报不存在');
       }
 
-      if (adminInfo.canteenId) {
+      if (!isGlobalScope(adminInfo)) {
         let canteenId: string | undefined;
         if (report.review) {
           canteenId = report.review.dish.canteenId;
@@ -256,7 +261,7 @@ export class AdminReportsService {
           canteenId = report.comment.review.dish.canteenId;
         }
 
-        if (!canteenId || canteenId !== adminInfo.canteenId) {
+        if (!canAccessCanteen(adminInfo, canteenId)) {
           throw new ForbiddenException('权限不足');
         }
       }

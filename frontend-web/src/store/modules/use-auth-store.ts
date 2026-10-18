@@ -58,10 +58,18 @@ export const useAuthStore = defineStore('auth', () => {
         value !== null &&
         !Array.isArray(value) &&
         typeof (value as Partial<Admin>).username === 'string' &&
-        typeof (value as Partial<Admin>).role === 'string',
+        typeof (value as Partial<Admin>).role === 'string' &&
+        ['GLOBAL', 'CANTEENS'].includes((value as Partial<Admin>).scope || '') &&
+        Array.isArray((value as Partial<Admin>).canteenIds) &&
+        Array.isArray((value as Partial<Admin>).canteens),
     )
 
   const user = ref<Admin | null>(getStoredUser())
+  if (token.value && !user.value) {
+    clearStoredAuth()
+    token.value = null
+    refreshToken.value = null
+  }
   const isAuthenticated = ref<boolean>(!!token.value)
 
   const isLoggedIn = computed(() => !!token.value && isAuthenticated.value)

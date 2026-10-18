@@ -17,7 +17,7 @@
                 v-model="statusFilter"
                 aria-label="处理状态"
                 @change="handleFilterChange"
-                class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[150px] transition-all cursor-pointer hover:border-gray-400"
+                class="appearance-none pr-10 bg-white min-w-[150px] transition-all cursor-pointer hover:border-gray-400 admin-input"
               >
                 <option value="">所有状态</option>
                 <option value="pending">待处理</option>
@@ -37,7 +37,7 @@
                 v-model="targetTypeFilter"
                 aria-label="举报类型"
                 @change="handleFilterChange"
-                class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[150px] transition-all cursor-pointer hover:border-gray-400"
+                class="appearance-none pr-10 bg-white min-w-[150px] transition-all cursor-pointer hover:border-gray-400 admin-input"
               >
                 <option value="">所有类型</option>
                 <option v-for="targetType in availableTargetTypes" :key="targetType" :value="targetType">
@@ -54,7 +54,7 @@
             <button
               v-if="statusFilter || targetTypeFilter"
               @click="statusFilter = ''; targetTypeFilter = ''; handleFilterChange()"
-              class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-gray-200/50 transition-colors"
+              class="text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 hover:bg-gray-200/50 transition-colors admin-button"
             >
               <AppIcon class="iconify" icon="carbon:reset"></AppIcon>
               重置筛选
@@ -77,7 +77,7 @@
           </thead>
           <tbody class="divide-y divide-gray-200">
             <tr v-if="isLoading">
-              <td colspan="5" class="py-8 text-center text-gray-500">
+              <td colspan="5" class="admin-state">
                 <AppIcon
                   class="iconify inline-block text-2xl animate-spin"
                   icon="mdi:loading"
@@ -86,7 +86,7 @@
               </td>
             </tr>
             <tr v-else-if="reports.length === 0">
-              <td colspan="5" class="py-8 text-center text-gray-500">暂无举报记录</td>
+              <td colspan="5" class="admin-state">暂无举报记录</td>
             </tr>
             <tr
               v-else
@@ -135,7 +135,7 @@
               </td>
               <td class="py-4 px-6 text-center" @click.stop>
                 <button
-                  class="px-4 py-1 bg-tsinghua-purple text-white rounded text-sm hover:bg-tsinghua-dark transition duration-200 flex items-center justify-center mx-auto"
+                  class="transition duration-200 flex items-center justify-center mx-auto admin-button admin-button-compact admin-button-primary"
                   @click="openDetailDialog(report)"
                 >
                   <AppIcon class="iconify inline-block mr-1" icon="carbon:view" style="vertical-align: middle;"></AppIcon>
@@ -154,16 +154,16 @@
         labelledby="report-detail-title"
         @close="closeDetailDialog"
       >
-        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col admin-dialog-panel">
           <!-- 对话框头部 -->
-          <div class="px-8 py-5 border-b border-gray-200 bg-white flex items-center justify-between">
+          <div class="bg-white flex items-center justify-between admin-dialog-header">
             <h3 id="report-detail-title" class="text-xl font-semibold text-gray-900 flex items-center">
               <AppIcon class="iconify inline-block mr-3 text-tsinghua-purple" icon="carbon:warning" style="font-size: 24px;"></AppIcon>
               举报详情
             </h3>
             <button
               aria-label="关闭举报详情"
-              class="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg p-1.5 transition"
+              class="text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition admin-icon-button"
               @click="closeDetailDialog"
             >
               <AppIcon class="iconify text-xl" icon="carbon:close"></AppIcon>
@@ -171,7 +171,7 @@
           </div>
 
           <!-- 对话框内容 -->
-          <div class="px-8 py-6 overflow-y-auto flex-1 bg-gray-50">
+          <div class="overflow-y-auto flex-1 bg-gray-50 admin-dialog-body">
             <div class="space-y-5">
               <!-- 基本信息 -->
               <div class="bg-white rounded-xl shadow-sm p-6">
@@ -286,11 +286,11 @@
           </div>
 
           <!-- 对话框底部操作按钮 -->
-          <div class="px-6 py-4 border-t bg-white">
-            <div v-if="selectedReport.status === 'pending'" class="flex items-center justify-end space-x-3">
+          <div class="admin-dialog-footer">
+            <div v-if="selectedReport.status === 'pending'" class="flex flex-wrap items-center justify-end gap-3 w-full">
               <button
                 v-if="selectedReport.targetContent && !selectedReport.targetContent.isDeleted"
-                class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                class="bg-red-600 text-white hover:bg-red-700 transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed admin-button"
                 @click="handleReport(selectedReport, 'delete_content')"
                 :disabled="isHandling || !canDeleteContent(selectedReport)"
                 :title="canDeleteContent(selectedReport) ? `删除被举报的${reportTargets[selectedReport.targetType].label}` : `无权限删除${reportTargets[selectedReport.targetType].label}`"
@@ -299,7 +299,7 @@
                 删除{{ reportTargets[selectedReport.targetType].label }}
               </button>
               <button
-                class="px-4 py-2 bg-gray-600 text-white rounded-lg text-sm hover:bg-gray-700 transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                class="bg-gray-600 text-white hover:bg-gray-700 transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed admin-button"
                 @click="handleReport(selectedReport, 'reject_report')"
                 :disabled="isHandling || !canHandleReport(selectedReport)"
                 :title="canHandleReport(selectedReport) ? '拒绝举报' : '无权限处理举报'"
@@ -336,7 +336,7 @@
         <!-- 关闭按钮 -->
         <button
           aria-label="关闭图片预览"
-          class="absolute top-4 right-4 z-10 text-white bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75 transition"
+          class="absolute top-4 right-4 z-10 text-white bg-black bg-opacity-50 rounded-full hover:bg-opacity-75 transition admin-icon-button"
           @click="closeImagePreview"
         >
           <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
@@ -355,7 +355,7 @@
           v-if="imagePreview.images.length > 1"
           aria-label="上一张图片"
           :aria-disabled="imagePreview.currentIndex === 0"
-          class="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full p-3 hover:bg-opacity-75 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          class="absolute left-4 top-1/2 -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full hover:bg-opacity-75 transition disabled:opacity-50 disabled:cursor-not-allowed admin-icon-button"
           @click.stop="previousImage"
           :disabled="imagePreview.currentIndex === 0"
         >
@@ -365,7 +365,7 @@
           v-if="imagePreview.images.length > 1"
           aria-label="下一张图片"
           :aria-disabled="imagePreview.currentIndex === imagePreview.images.length - 1"
-          class="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full p-3 hover:bg-opacity-75 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          class="absolute right-4 top-1/2 -translate-y-1/2 text-white bg-black bg-opacity-50 rounded-full hover:bg-opacity-75 transition disabled:opacity-50 disabled:cursor-not-allowed admin-icon-button"
           @click.stop="nextImage"
           :disabled="imagePreview.currentIndex === imagePreview.images.length - 1"
         >
@@ -438,7 +438,7 @@ export default defineComponent({
     const statusFilter = ref(restoredState.statusFilter)
     const targetTypeFilter = ref(restoredState.targetTypeFilter)
     const canAccessTargetType = (targetType: Report['targetType']) =>
-      !authStore.user?.canteenId || !reportTargets[targetType].globalOnly
+      authStore.user?.scope === 'GLOBAL' || !reportTargets[targetType].globalOnly
     const availableTargetTypes = computed(() =>
       (Object.keys(reportTargets) as Report['targetType'][]).filter(canAccessTargetType),
     )

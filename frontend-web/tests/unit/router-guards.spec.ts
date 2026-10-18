@@ -61,7 +61,7 @@ describe('router/index route guard & redirect', () => {
   }
 
   beforeEach(async () => {
-    authState.user = { canteenId: null }
+    authState.user = { scope: 'GLOBAL' as 'GLOBAL' | 'CANTEENS', canteenIds: [], canteens: [] }
     authState.isLoggedIn = false
     authState.hasPermission = (p: string) => p === 'dish:view'
     sessionStorage.clear()
@@ -109,12 +109,12 @@ describe('router/index route guard & redirect', () => {
     expect(route.meta.globalOnly).toBe(true)
     authState.isLoggedIn = true
     authState.hasPermission = (value: string) => value === permission
-    authState.user = { role: 'superadmin', canteenId: 'c1' }
+    authState.user = { role: 'superadmin', scope: 'CANTEENS', canteenIds: ['c1'], canteens: [{ id: 'c1', name: 'c1' }] }
     const next = vi.fn()
     guard({ meta: route.meta, fullPath: `/${route.path}` }, { path: '/' }, next)
     expect(next).toHaveBeenCalledWith('/forbidden')
     next.mockReset()
-    authState.user.canteenId = null
+    authState.user.scope = 'GLOBAL'
     guard({ meta: route.meta, fullPath: `/${route.path}` }, { path: '/' }, next)
     expect(next).toHaveBeenCalledWith()
   })

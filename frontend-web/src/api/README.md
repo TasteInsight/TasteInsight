@@ -79,4 +79,6 @@ if (review) {
 
 管理 API 使用管理员 Token，服务端继续校验权限点与食堂范围。客户端按钮可见性不替代接口鉴权。部署通过独立管理 origin 提供这些接口，公共 API 域名不跳转管理站点。
 
+管理员授权请求使用 `scope`（`GLOBAL` / `CANTEENS`）、`canteenIds` 和 `permissions`。登录结果和人员列表同时提供食堂名称列表 `canteens`。资源自身的 `canteenId` 表示单个目标食堂。完整授权和迁移规则见 [管理员范围与授权](../../../backend/README.md#管理员范围与授权)。
+
 前端验证命令见 [管理端测试](../../README.md#测试)，接口集成验证见 [后端测试说明](../../../backend/TEST.md)。

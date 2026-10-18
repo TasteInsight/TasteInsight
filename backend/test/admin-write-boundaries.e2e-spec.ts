@@ -91,12 +91,13 @@ describe('Administrator write boundaries (PostgreSQL)', () => {
       data: {
         username: `${prefix}-admin-${adminIds.length}`,
         password: 'unused-test-hash',
-        canteenId,
+        scope: canteenId ? 'CANTEENS' : 'GLOBAL',
+        canteens: { create: canteenId ? [{ canteenId: canteenId }] : [] },
         deletedAt: retired ? new Date() : null,
       },
     });
     adminIds.push(admin.id);
-    return admin;
+    return { ...admin, canteenIds: canteenId ? [canteenId] : [] };
   }
 
   async function createReview() {
@@ -188,8 +189,15 @@ describe('Administrator write boundaries (PostgreSQL)', () => {
       prisma.canteen.delete({ where: { id: canteen.id } }),
     ).rejects.toMatchObject({ code: 'P2003' });
     expect(
-      await prisma.admin.findUnique({ where: { id: admin.id } }),
-    ).toMatchObject({ canteenId: canteen.id, deletedAt: null });
+      await prisma.admin.findUnique({
+        where: { id: admin.id },
+        include: { canteens: true },
+      }),
+    ).toMatchObject({
+      scope: 'CANTEENS',
+      canteens: [{ canteenId: canteen.id }],
+      deletedAt: null,
+    });
   });
 
   it('retains retired accounts and their operation history when deleting the canteen', async () => {
@@ -208,8 +216,15 @@ describe('Administrator write boundaries (PostgreSQL)', () => {
       code: 200,
     });
     expect(
-      await prisma.admin.findUnique({ where: { id: admin.id } }),
-    ).toMatchObject({ canteenId: null, deletedAt: admin.deletedAt });
+      await prisma.admin.findUnique({
+        where: { id: admin.id },
+        include: { canteens: true },
+      }),
+    ).toMatchObject({
+      scope: 'CANTEENS',
+      canteens: [],
+      deletedAt: admin.deletedAt,
+    });
     expect(
       await prisma.operationLog.findUnique({ where: { id: log.id } }),
     ).not.toBeNull();
@@ -235,8 +250,15 @@ describe('Administrator write boundaries (PostgreSQL)', () => {
       proceed.resolve();
       await expect(deletion).rejects.toThrow(ConflictException);
       expect(
-        await prisma.admin.findUnique({ where: { id: admin.id } }),
-      ).toMatchObject({ canteenId: canteen.id, deletedAt: null });
+        await prisma.admin.findUnique({
+          where: { id: admin.id },
+          include: { canteens: true },
+        }),
+      ).toMatchObject({
+        scope: 'CANTEENS',
+        canteens: [{ canteenId: canteen.id }],
+        deletedAt: null,
+      });
     } finally {
       proceed.resolve();
       spy.mockRestore();

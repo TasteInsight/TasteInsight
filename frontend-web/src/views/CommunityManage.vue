@@ -7,14 +7,14 @@
         header-icon="carbon:chat"
       />
       <div class="moderation-body">
-        <p v-if="!canView" class="moderation-state" role="status">
+        <p v-if="!canView" class="admin-state" role="status">
           社区内容仅限拥有查看权限的全局管理员管理。
         </p>
         <template v-else>
           <div class="admin-toolbar moderation-toolbar">
-            <label
+            <label class="admin-label"
               >内容类型
-              <select
+              <select class="admin-input"
                 v-model="contentType"
                 aria-label="内容类型"
                 :disabled="loading || submitting"
@@ -24,9 +24,9 @@
                 <option value="post-comments">帖子回复</option>
               </select>
             </label>
-            <label
+            <label class="admin-label"
               >审核状态
-              <select
+              <select class="admin-input"
                 v-model="status"
                 aria-label="审核状态"
                 :disabled="loading || submitting"
@@ -39,7 +39,7 @@
               </select>
             </label>
             <button
-              class="moderation-button"
+              class="admin-button admin-button-secondary"
               :disabled="loading || submitting"
               @click="loadList(currentPage)"
             >
@@ -60,7 +60,7 @@
           >
             <div class="flex flex-wrap items-center justify-between gap-3">
               <h3 id="community-detail-title" class="text-lg font-semibold">{{ typeLabel }}原文</h3>
-              <button class="moderation-button" :disabled="submitting" @click="selected = null">
+              <button class="admin-button admin-button-secondary" :disabled="submitting" @click="selected = null">
                 关闭详情
               </button>
             </div>
@@ -106,9 +106,9 @@
             <p v-if="selected.rejectReason" class="moderation-help">
               拒绝原因：{{ selected.rejectReason }}
             </p>
-            <label v-if="selected.status === 'pending' && canApprove"
+            <label class="admin-label" v-if="selected.status === 'pending' && canApprove"
               >拒绝原因（拒绝时必填）
-              <textarea
+              <textarea class="admin-textarea"
                 v-model="rejectReason"
                 aria-label="拒绝原因"
                 rows="3"
@@ -117,11 +117,11 @@
                 placeholder="说明未通过审核的原因"
               />
             </label>
-            <p v-if="actionError" role="alert" class="moderation-error">{{ actionError }}</p>
-            <div class="moderation-actions">
+            <p v-if="actionError" role="alert" class="admin-error">{{ actionError }}</p>
+            <div class="admin-actions">
               <button
                 v-if="needsRefresh"
-                class="moderation-button"
+                class="admin-button admin-button-secondary"
                 :disabled="submitting"
                 @click="loadList(currentPage)"
               >
@@ -130,14 +130,14 @@
               <template v-else>
                 <template v-if="selected.status === 'pending' && canApprove">
                   <button
-                    class="moderation-button moderation-primary"
+                    class="admin-button admin-button-primary"
                     :disabled="submitting"
                     @click="moderate('approve')"
                   >
                     通过审核
                   </button>
                   <button
-                    class="moderation-button moderation-danger"
+                    class="admin-button admin-button-danger"
                     :disabled="submitting"
                     @click="moderate('reject')"
                   >
@@ -146,7 +146,7 @@
                 </template>
                 <button
                   v-if="canDelete"
-                  class="moderation-button moderation-danger"
+                  class="admin-button admin-button-danger"
                   :disabled="submitting"
                   @click="moderate('delete')"
                 >
@@ -160,22 +160,22 @@
           </section>
 
           <div :aria-busy="loading">
-            <p v-if="loading" class="moderation-state" role="status">正在读取{{ typeLabel }}…</p>
-            <div v-else-if="loadError" class="moderation-state" role="alert">
-              <p class="moderation-error">{{ loadError }}</p>
-              <button class="moderation-button mt-3" @click="loadList(currentPage)">重试</button>
+            <p v-if="loading" class="admin-state" role="status">正在读取{{ typeLabel }}…</p>
+            <div v-else-if="loadError" class="admin-state admin-state-error" role="alert">
+              <p class="admin-error">{{ loadError }}</p>
+              <button class="mt-3 admin-button admin-button-secondary" @click="loadList(currentPage)">重试</button>
             </div>
-            <p v-else-if="items.length === 0" class="moderation-state">
+            <p v-else-if="items.length === 0" class="admin-state">
               当前筛选条件下暂无{{ typeLabel }}，可切换状态或内容类型。
             </p>
-            <div v-else class="moderation-table-scroll">
-              <table class="moderation-table">
+            <div v-else class="admin-table-scroll">
+              <table class="admin-table admin-table-top">
                 <caption class="sr-only">
                   社区{{
                     typeLabel
                   }}列表
                 </caption>
-                <thead>
+                <thead class="bg-gray-50">
                   <tr>
                     <th scope="col">作者</th>
                     <th scope="col">内容</th>
@@ -184,7 +184,7 @@
                     <th scope="col">操作</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody class="divide-y divide-gray-200">
                   <tr v-for="item in items" :key="item.id">
                     <td>{{ item.userNickname }}</td>
                     <td class="max-w-sm">
@@ -201,7 +201,7 @@
                     </td>
                     <td>
                       <button
-                        class="moderation-button"
+                        class="admin-button admin-button-compact admin-button-secondary"
                         :disabled="submitting"
                         @click="selectItem(item)"
                       >

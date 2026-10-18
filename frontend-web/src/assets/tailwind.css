@@ -2,6 +2,108 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  /* Shared native controls. Layout utilities remain available to each business form. */
+  .admin-input,
+  .admin-textarea {
+    min-width: 0;
+    max-width: 100%;
+    padding: 8px 12px;
+    color: #1f2937;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 22px;
+  }
+
+  .admin-input { height: 40px; }
+  .admin-textarea { min-height: 96px; resize: vertical; }
+
+  .admin-input:disabled,
+  .admin-textarea:disabled {
+    color: #667085;
+    background: #f3f4f6;
+    cursor: not-allowed;
+  }
+
+  .admin-label {
+    display: block;
+    color: #374151;
+    font-size: 14px;
+    line-height: 22px;
+    font-weight: 500;
+  }
+
+  .admin-toolbar .admin-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .admin-button,
+  .admin-icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-style: solid;
+    border-radius: 8px;
+    transition: color 150ms, background-color 150ms, border-color 150ms;
+  }
+
+  .admin-button {
+    min-height: 40px;
+    padding: 8px 16px;
+    font-size: 14px;
+    line-height: 22px;
+    font-weight: 500;
+  }
+
+  .admin-button > .iconify { margin-inline: 0; flex-shrink: 0; }
+
+  .admin-button-compact {
+    white-space: nowrap;
+    min-height: 36px;
+    padding: 4px 12px;
+  }
+
+  .admin-icon-button {
+    min-width: 32px;
+    min-height: 32px;
+    padding: 4px;
+  }
+
+  .admin-button-primary {
+    color: white;
+    background: #660874;
+    border-color: transparent;
+  }
+
+  .admin-button-primary:not(:disabled):hover { background: #4d0658; }
+
+  .admin-button-secondary {
+    color: #374151;
+    background: white;
+    border: 1px solid #d1d5db;
+  }
+
+  .admin-button-secondary:not(:disabled):hover { background: #f9fafb; }
+
+  .admin-button-danger {
+    color: #b91c1c;
+    background: white;
+    border: 1px solid #fca5a5;
+  }
+
+  .admin-button-danger:not(:disabled):hover { background: #fef2f2; }
+
+  :is(.admin-button, .admin-icon-button):disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
 .container-shadow {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }

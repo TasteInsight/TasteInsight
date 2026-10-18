@@ -8,78 +8,71 @@
       />
 
       <!-- 筛选区域 -->
-      <div class="mb-6 mt-6">
-        <div>
-          <div class="admin-toolbar">
-            <div class="flex items-center gap-3">
-              <span class="text-sm font-medium text-gray-600">管理员</span>
-              <input
-                type="text"
-                v-model="filters.adminId"
-                placeholder="管理员ID"
-                class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm w-32 transition-all hover:border-gray-400"
-              />
-            </div>
+      <form class="my-6 flex flex-wrap items-end gap-3" @submit.prevent="applyFilters">
+        <label class="min-w-[168px] flex-1 admin-label">
+          管理员
+          <input
+            type="text"
+            v-model="filters.adminId"
+            placeholder="管理员ID"
+            class="mt-1.5 w-full bg-white transition-all hover:border-gray-400 admin-input"
+          />
+        </label>
 
-            <div class="flex items-center gap-3">
-              <span class="text-sm font-medium text-gray-600">操作类型</span>
-              <div class="relative">
-                <select
-                  v-model="filters.action"
-                  class="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm min-w-[120px] transition-all cursor-pointer hover:border-gray-400"
-                >
-                  <option value="">全部操作</option>
-                  <option value="create">创建</option>
-                  <option value="update">更新</option>
-                  <option value="delete">删除</option>
-                  <option value="view">查看</option>
-                  <option value="approve">审核通过</option>
-                  <option value="reject">审核拒绝</option>
-                </select>
-                <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
-                  <AppIcon class="iconify" icon="carbon:chevron-down"></AppIcon>
-                </span>
-              </div>
-            </div>
-
-            <div class="flex items-center gap-3">
-              <span class="text-sm font-medium text-gray-600">开始日期</span>
-              <input
-                type="date"
-                v-model="filters.startDate"
-                class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm transition-all hover:border-gray-400"
-              />
-            </div>
-
-            <div class="flex items-center gap-3">
-              <span class="text-sm font-medium text-gray-600">结束日期</span>
-              <input
-                type="date"
-                v-model="filters.endDate"
-                :min="filters.startDate"
-                class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsinghua-purple/20 focus:border-tsinghua-purple bg-white text-sm transition-all hover:border-gray-400"
-              />
-            </div>
-          </div>
-
-          <!-- 筛选按钮 -->
-          <div class="flex justify-end gap-3 mt-4">
-            <button
-              class="text-sm text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 px-3 py-1.5 rounded-md hover:bg-gray-200/50 transition-colors"
-              @click="resetFilters"
+        <label class="min-w-[168px] flex-1 admin-label">
+          操作类型
+          <span class="relative block mt-1.5">
+            <select
+              v-model="filters.action"
+              class="appearance-none pr-10 w-full bg-white transition-all cursor-pointer hover:border-gray-400 admin-input"
             >
-              <AppIcon class="iconify" icon="carbon:reset"></AppIcon>
-              重置
-            </button>
-            <button
-              class="px-4 py-2 bg-tsinghua-purple text-white text-sm rounded-lg hover:bg-tsinghua-dark transition duration-200"
-              @click="applyFilters"
-            >
-              查询
-            </button>
-          </div>
+              <option value="">全部操作</option>
+              <option value="create">创建</option>
+              <option value="update">更新</option>
+              <option value="delete">删除</option>
+              <option value="view">查看</option>
+              <option value="approve">审核通过</option>
+              <option value="reject">审核拒绝</option>
+            </select>
+            <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
+              <AppIcon class="iconify" icon="carbon:chevron-down"></AppIcon>
+            </span>
+          </span>
+        </label>
+
+        <label class="min-w-[168px] flex-1 admin-label">
+          开始日期
+          <input
+            type="date"
+            v-model="filters.startDate"
+            class="mt-1.5 w-full bg-white transition-all hover:border-gray-400 admin-input"
+          />
+        </label>
+
+        <label class="min-w-[168px] flex-1 admin-label">
+          结束日期
+          <input
+            type="date"
+            v-model="filters.endDate"
+            :min="filters.startDate"
+            class="mt-1.5 w-full bg-white transition-all hover:border-gray-400 admin-input"
+          />
+        </label>
+
+        <div class="ml-auto flex items-center gap-3">
+          <button
+            type="button"
+            class="text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 hover:bg-gray-200/50 transition-colors admin-button"
+            @click="resetFilters"
+          >
+            <AppIcon class="iconify" icon="carbon:reset"></AppIcon>
+            重置
+          </button>
+          <button type="submit" class="transition duration-200 admin-button admin-button-primary">
+            查询
+          </button>
         </div>
-      </div>
+      </form>
 
       <!-- 日志列表表格 -->
       <div class="admin-table-scroll">
@@ -117,7 +110,7 @@
               <td class="py-4 px-6 text-center">
                 <button
                   v-if="log.details"
-                  class="p-2 rounded-full hover:bg-gray-200 text-tsinghua-purple"
+                  class="rounded-full hover:bg-gray-200 text-tsinghua-purple admin-icon-button"
                   @click="viewLogDetail(log)"
                   title="查看详情"
                 >
@@ -131,7 +124,7 @@
       </div>
 
       <!-- 空状态 -->
-      <div v-if="logs.length === 0 && !loading" class="text-center py-12">
+      <div v-if="logs.length === 0 && !loading" class="admin-state">
         <AppIcon
           class="iconify text-6xl text-gray-300 mx-auto"
           icon="carbon:document-view"
@@ -140,7 +133,7 @@
       </div>
 
       <!-- 加载状态 -->
-      <div v-if="loading" class="text-center py-12">
+      <div v-if="loading" class="admin-state">
         <AppIcon
           class="iconify text-4xl text-gray-400 animate-spin"
           icon="carbon:circle-dash"
@@ -153,7 +146,7 @@
         <button
           @click="changePage(currentPage - 1)"
           :disabled="currentPage === 1"
-          class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed admin-button"
         >
           上一页
         </button>
@@ -161,7 +154,7 @@
           v-for="page in totalPages"
           :key="page"
           @click="changePage(page)"
-          class="px-4 py-2 border rounded-lg transition"
+          class="border transition admin-button"
           :class="
             currentPage === page
               ? 'bg-tsinghua-purple text-white border-tsinghua-purple'
@@ -173,7 +166,7 @@
         <button
           @click="changePage(currentPage + 1)"
           :disabled="currentPage === totalPages"
-          class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed admin-button"
         >
           下一页
         </button>
@@ -189,53 +182,53 @@
     @close="closeLogDetail"
   >
     <div
-      class="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto"
+      class="max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto admin-dialog-panel"
       @click.stop
     >
-      <div class="flex justify-between items-center mb-4">
+      <div class="flex justify-between items-center admin-dialog-header">
         <h3 class="text-lg font-medium">日志详情</h3>
-        <button class="text-gray-400 hover:text-gray-600" aria-label="关闭日志详情" @click="closeLogDetail">
+        <button class="text-gray-400 hover:text-gray-600 admin-icon-button" aria-label="关闭日志详情" @click="closeLogDetail">
           <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
         </button>
       </div>
 
-      <div class="space-y-4">
+      <div class="space-y-4 admin-dialog-body">
         <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1">时间</label>
+          <label class="block font-medium text-gray-600 mb-1 admin-label">时间</label>
           <p class="text-sm text-gray-800">{{ formatDateTime(selectedLog.createdAt) }}</p>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1">管理员</label>
+          <label class="block font-medium text-gray-600 mb-1 admin-label">管理员</label>
           <p class="text-sm text-gray-800">
             {{ selectedLog.adminUsername || '未知' }} ({{ selectedLog.adminId }})
           </p>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1">操作</label>
+          <label class="block font-medium text-gray-600 mb-1 admin-label">操作</label>
           <p class="text-sm text-gray-800">{{ getActionLabel(selectedLog.action) }}</p>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1">目标类型</label>
+          <label class="block font-medium text-gray-600 mb-1 admin-label">目标类型</label>
           <p class="text-sm text-gray-800">{{ selectedLog.targetType || '-' }}</p>
         </div>
 
         <div v-if="selectedLog.targetId">
-          <label class="block text-sm font-medium text-gray-600 mb-1">目标ID</label>
+          <label class="block font-medium text-gray-600 mb-1 admin-label">目标ID</label>
           <p class="text-sm text-gray-800">{{ selectedLog.targetId }}</p>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-600 mb-1">结果</label>
+          <label class="block font-medium text-gray-600 mb-1 admin-label">结果</label>
           <p class="text-sm text-gray-800">
             {{ selectedLog.result === 'success' ? '成功' : '失败' }}
           </p>
         </div>
 
         <div v-if="selectedLog.details">
-          <label class="block text-sm font-medium text-gray-600 mb-1">详细信息</label>
+          <label class="block font-medium text-gray-600 mb-1 admin-label">详细信息</label>
           <pre class="text-sm text-gray-800 bg-gray-50 p-3 rounded border overflow-auto">{{
             formatDetails(selectedLog.details)
           }}</pre>

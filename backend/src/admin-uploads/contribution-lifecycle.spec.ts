@@ -52,7 +52,10 @@ describe('Contribution review lifecycle', () => {
 
   it('unpublishes a created dish without deleting its identity or engagements', async () => {
     const { service, prisma, upload, dish } = fixture();
-    await service.revokeUpload('upload', {});
+    await service.revokeUpload('upload', {
+      scope: 'GLOBAL' as const,
+      canteenIds: [],
+    });
     expect(prisma.dish.delete).not.toHaveBeenCalled();
     expect(dish.status).toBe('offline');
     expect(upload.approvedDishId).toBe('dish');
@@ -62,9 +65,12 @@ describe('Contribution review lifecycle', () => {
   it('rejects whitespace-only rejection reasons', async () => {
     const { service, upload, prisma } = fixture();
     upload.status = 'pending';
-    await expect(service.rejectUpload('upload', '   ', {})).rejects.toThrow(
-      BadRequestException,
-    );
+    await expect(
+      service.rejectUpload('upload', '   ', {
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+      }),
+    ).rejects.toThrow(BadRequestException);
     expect(prisma.dishUpload.update).not.toHaveBeenCalled();
   });
 
@@ -72,7 +78,11 @@ describe('Contribution review lifecycle', () => {
     const { service, upload, prisma } = fixture();
     upload.status = 'pending';
     await expect(
-      (service.approveUpload as any)('upload', {}, { revision: 1 }),
+      (service.approveUpload as any)(
+        'upload',
+        { scope: 'GLOBAL', canteenIds: [] },
+        { revision: 1 },
+      ),
     ).rejects.toThrow(ConflictException);
     expect(prisma.dish.create).not.toHaveBeenCalled();
   });
@@ -86,9 +96,12 @@ describe('Contribution review lifecycle', () => {
       approvedSnapshot: { price: 9 },
       changedFields: ['price'],
     });
-    await expect(service.revokeUpload('upload', {})).rejects.toThrow(
-      ConflictException,
-    );
+    await expect(
+      service.revokeUpload('upload', {
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+      }),
+    ).rejects.toThrow(ConflictException);
     expect(prisma.dish.delete).not.toHaveBeenCalled();
     expect(prisma.dish.update).not.toHaveBeenCalled();
   });

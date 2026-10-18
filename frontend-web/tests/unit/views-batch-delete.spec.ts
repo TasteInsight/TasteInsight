@@ -9,7 +9,7 @@ import { invalidateAuthSession } from '@/utils/auth-session'
 
 const mocks = vi.hoisted(() => ({
   route: { fullPath: '/manage' },
-  auth: { user: { id: 'admin' }, hasPermission: vi.fn() },
+  auth: { user: {scope: 'GLOBAL' as 'GLOBAL' | 'CANTEENS', canteenIds: [], canteens: [],  id: 'admin' }, hasPermission: vi.fn() },
   dish: { getDishes: vi.fn(), getDishReviews: vi.fn(), batchDeleteDishes: vi.fn(), deleteDish: vi.fn() },
   news: { getNews: vi.fn(), batchDeleteNews: vi.fn(), deleteNews: vi.fn() },
   review: { getReviewComments: vi.fn(), batchDeleteReviews: vi.fn(), batchDeleteComments: vi.fn(), deleteReview: vi.fn(), deleteComment: vi.fn() },

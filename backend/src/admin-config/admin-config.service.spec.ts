@@ -362,10 +362,14 @@ describe('AdminConfigService', () => {
       prisma.$transaction.mockImplementationOnce(async (callback) =>
         callback(tx),
       );
-      const result = await service.updateGlobalConfig('admin', null, {
-        key: ConfigKeys.REVIEW_AUTO_APPROVE,
-        value: 'false',
-      });
+      const result = await service.updateGlobalConfig(
+        'admin',
+        { scope: 'GLOBAL', canteenIds: [] },
+        {
+          key: ConfigKeys.REVIEW_AUTO_APPROVE,
+          value: 'false',
+        },
+      );
       expect(events).toEqual(['lock', 'find', 'create', 'item']);
       expect(result.data).toMatchObject({
         adminConfigId: 'global',
@@ -405,10 +409,14 @@ describe('AdminConfigService', () => {
       prisma.adminConfig.findFirst.mockResolvedValue(mockGlobalConfig);
       prisma.adminConfigItem.upsert.mockResolvedValue(mockConfigItem);
 
-      const result = await service.updateGlobalConfig('admin-1', null, {
-        key: 'review.autoApprove',
-        value: 'true',
-      });
+      const result = await service.updateGlobalConfig(
+        'admin-1',
+        { scope: 'GLOBAL', canteenIds: [] },
+        {
+          key: 'review.autoApprove',
+          value: 'true',
+        },
+      );
 
       expect(result.code).toBe(200);
       expect(result.data.value).toBe('true');
@@ -416,10 +424,14 @@ describe('AdminConfigService', () => {
 
     it('should throw ForbiddenException for canteen admin', async () => {
       await expect(
-        service.updateGlobalConfig('admin-1', 'canteen-1', {
-          key: 'review.autoApprove',
-          value: 'true',
-        }),
+        service.updateGlobalConfig(
+          'admin-1',
+          { scope: 'CANTEENS', canteenIds: ['canteen-1'] },
+          {
+            key: 'review.autoApprove',
+            value: 'true',
+          },
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -427,10 +439,14 @@ describe('AdminConfigService', () => {
       prisma.adminConfigTemplate.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.updateGlobalConfig('admin-1', null, {
-          key: 'non.existent.key',
-          value: 'true',
-        }),
+        service.updateGlobalConfig(
+          'admin-1',
+          { scope: 'GLOBAL', canteenIds: [] },
+          {
+            key: 'non.existent.key',
+            value: 'true',
+          },
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -444,10 +460,14 @@ describe('AdminConfigService', () => {
       prisma.adminConfigTemplate.findUnique.mockResolvedValue(mockTemplate);
 
       await expect(
-        service.updateGlobalConfig('admin-1', null, {
-          key: 'review.autoApprove',
-          value: 'invalid',
-        }),
+        service.updateGlobalConfig(
+          'admin-1',
+          { scope: 'GLOBAL', canteenIds: [] },
+          {
+            key: 'review.autoApprove',
+            value: 'invalid',
+          },
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -482,10 +502,14 @@ describe('AdminConfigService', () => {
       prisma.adminConfig.create.mockResolvedValue(mockNewGlobalConfig);
       prisma.adminConfigItem.upsert.mockResolvedValue(mockConfigItem);
 
-      const result = await service.updateGlobalConfig('admin-1', null, {
-        key: 'review.autoApprove',
-        value: 'true',
-      });
+      const result = await service.updateGlobalConfig(
+        'admin-1',
+        { scope: 'GLOBAL', canteenIds: [] },
+        {
+          key: 'review.autoApprove',
+          value: 'true',
+        },
+      );
 
       expect(prisma.adminConfig.create).toHaveBeenCalledWith({
         data: { canteenId: null },
@@ -512,10 +536,14 @@ describe('AdminConfigService', () => {
       prisma.adminConfig.findFirst.mockResolvedValue(mockGlobalConfig);
 
       await expect(
-        service.updateGlobalConfig('admin-1', null, {
-          key: 'some.json.config',
-          value: 'invalid json',
-        }),
+        service.updateGlobalConfig(
+          'admin-1',
+          { scope: 'GLOBAL', canteenIds: [] },
+          {
+            key: 'some.json.config',
+            value: 'invalid json',
+          },
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -537,10 +565,14 @@ describe('AdminConfigService', () => {
       prisma.adminConfig.findFirst.mockResolvedValue(mockGlobalConfig);
 
       await expect(
-        service.updateGlobalConfig('admin-1', null, {
-          key: 'some.number.config',
-          value: 'not-a-number',
-        }),
+        service.updateGlobalConfig(
+          'admin-1',
+          { scope: 'GLOBAL', canteenIds: [] },
+          {
+            key: 'some.number.config',
+            value: 'not-a-number',
+          },
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -574,10 +606,14 @@ describe('AdminConfigService', () => {
       prisma.adminConfig.findFirst.mockResolvedValue(mockGlobalConfig);
       prisma.adminConfigItem.upsert.mockResolvedValue(mockConfigItem);
 
-      const result = await service.updateGlobalConfig('admin-1', null, {
-        key: 'some.string.config',
-        value: 'any string value',
-      });
+      const result = await service.updateGlobalConfig(
+        'admin-1',
+        { scope: 'GLOBAL', canteenIds: [] },
+        {
+          key: 'some.string.config',
+          value: 'any string value',
+        },
+      );
 
       expect(result.code).toBe(200);
       expect(result.data.value).toBe('any string value');
@@ -618,7 +654,7 @@ describe('AdminConfigService', () => {
 
       const result = await service.updateCanteenConfig(
         'admin-1',
-        null, // super admin
+        { scope: 'GLOBAL', canteenIds: [] }, // super admin
         'canteen-1',
         { key: 'review.autoApprove', value: 'true' },
       );
@@ -660,7 +696,7 @@ describe('AdminConfigService', () => {
 
       const result = await service.updateCanteenConfig(
         'admin-1',
-        'canteen-1', // canteen admin
+        { scope: 'CANTEENS', canteenIds: ['canteen-1'] }, // canteen admin
         'canteen-1',
         { key: 'review.autoApprove', value: 'true' },
       );
@@ -672,7 +708,7 @@ describe('AdminConfigService', () => {
       await expect(
         service.updateCanteenConfig(
           'admin-1',
-          'canteen-2', // different canteen
+          { scope: 'CANTEENS', canteenIds: ['canteen-2'] }, // different canteen
           'canteen-1',
           { key: 'review.autoApprove', value: 'true' },
         ),
@@ -683,10 +719,15 @@ describe('AdminConfigService', () => {
       prisma.canteen.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.updateCanteenConfig('admin-1', null, 'not-exist', {
-          key: 'review.autoApprove',
-          value: 'true',
-        }),
+        service.updateCanteenConfig(
+          'admin-1',
+          { scope: 'GLOBAL', canteenIds: [] },
+          'not-exist',
+          {
+            key: 'review.autoApprove',
+            value: 'true',
+          },
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -697,10 +738,15 @@ describe('AdminConfigService', () => {
       prisma.adminConfigTemplate.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.updateCanteenConfig('admin-1', null, 'canteen-1', {
-          key: 'non.existent.key',
-          value: 'true',
-        }),
+        service.updateCanteenConfig(
+          'admin-1',
+          { scope: 'GLOBAL', canteenIds: [] },
+          'canteen-1',
+          {
+            key: 'non.existent.key',
+            value: 'true',
+          },
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -738,7 +784,7 @@ describe('AdminConfigService', () => {
 
       const result = await service.updateCanteenConfig(
         'admin-1',
-        null,
+        { scope: 'GLOBAL', canteenIds: [] },
         'canteen-1',
         { key: 'review.autoApprove', value: 'true' },
       );
@@ -760,7 +806,7 @@ describe('AdminConfigService', () => {
 
       const result = await service.deleteCanteenConfigItem(
         'admin-1',
-        null,
+        { scope: 'GLOBAL', canteenIds: [] },
         'canteen-1',
         'review.autoApprove',
       );
@@ -773,7 +819,7 @@ describe('AdminConfigService', () => {
       await expect(
         service.deleteCanteenConfigItem(
           'admin-1',
-          'canteen-2',
+          { scope: 'CANTEENS', canteenIds: ['canteen-2'] },
           'canteen-1',
           'review.autoApprove',
         ),
@@ -786,7 +832,7 @@ describe('AdminConfigService', () => {
       await expect(
         service.deleteCanteenConfigItem(
           'admin-1',
-          null,
+          { scope: 'GLOBAL', canteenIds: [] },
           'canteen-1',
           'review.autoApprove',
         ),

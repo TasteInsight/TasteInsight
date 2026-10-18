@@ -67,11 +67,7 @@ export class AdminConfigController {
     @Body() dto: UpdateGlobalConfigDto,
   ): Promise<ConfigItemResponseDto> {
     const admin = req.admin;
-    return this.adminConfigService.updateGlobalConfig(
-      admin.id,
-      admin.canteenId,
-      dto,
-    );
+    return this.adminConfigService.updateGlobalConfig(admin.id, admin, dto);
   }
 
   /**
@@ -84,10 +80,7 @@ export class AdminConfigController {
     @Param('canteenId') canteenId: string,
     @Req() req: any,
   ): Promise<CanteenConfigResponseDto> {
-    return this.adminConfigService.getCanteenConfig(
-      canteenId,
-      req.admin.canteenId,
-    );
+    return this.adminConfigService.getCanteenConfig(canteenId, req.admin);
   }
 
   /**
@@ -100,10 +93,7 @@ export class AdminConfigController {
     @Param('canteenId') canteenId: string,
     @Req() req: any,
   ): Promise<EffectiveConfigListResponseDto> {
-    return this.adminConfigService.getEffectiveConfig(
-      canteenId,
-      req.admin.canteenId,
-    );
+    return this.adminConfigService.getEffectiveConfig(canteenId, req.admin);
   }
 
   /**
@@ -120,7 +110,7 @@ export class AdminConfigController {
     const admin = req.admin;
     return this.adminConfigService.updateCanteenConfig(
       admin.id,
-      admin.canteenId,
+      admin,
       canteenId,
       dto,
     );
@@ -140,7 +130,7 @@ export class AdminConfigController {
     const admin = req.admin;
     return this.adminConfigService.deleteCanteenConfigItem(
       admin.id,
-      admin.canteenId,
+      admin,
       canteenId,
       key,
     );

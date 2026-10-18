@@ -60,7 +60,8 @@ describe('AdminLogsService', () => {
         id: 'superadmin-1',
         username: 'root',
         role: 'superadmin',
-        canteenId: null,
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
         permissions: ['admin:view'],
       },
     );
@@ -122,7 +123,8 @@ describe('AdminLogsService', () => {
         id: 'admin-1',
         username: 'alice',
         role: 'admin',
-        canteenId: 'canteen-1',
+        scope: 'CANTEENS' as const,
+        canteenIds: ['canteen-1'],
         permissions: ['admin:view'],
       },
     );

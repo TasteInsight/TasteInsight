@@ -177,14 +177,20 @@ export class AdminDishesController {
   @Get('embedding/job/:jobId')
   @RequirePermissions('dish:view')
   @HttpCode(HttpStatus.OK)
-  async getEmbeddingJobStatus(@Param('jobId') jobId: string) {
-    return this.adminDishesService.getEmbeddingJobStatus(jobId);
+  async getEmbeddingJobStatus(
+    @Param('jobId') jobId: string,
+    @CurrentAdmin() admin: AdminInfo,
+  ) {
+    return this.adminDishesService.getEmbeddingJobStatus(jobId, admin);
   }
 
   @Delete('embedding/job/:jobId')
   @RequirePermissions('dish:edit')
   @HttpCode(HttpStatus.OK)
-  async cancelEmbeddingJob(@Param('jobId') jobId: string) {
-    return this.adminDishesService.cancelEmbeddingJob(jobId);
+  async cancelEmbeddingJob(
+    @Param('jobId') jobId: string,
+    @CurrentAdmin() admin: AdminInfo,
+  ) {
+    return this.adminDishesService.cancelEmbeddingJob(jobId, admin);
   }
 }
