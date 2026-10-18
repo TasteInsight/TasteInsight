@@ -26,3 +26,5 @@ allowBuilds:
   unix-dgram: true
   vue-demi: true
   weapp-tailwindcss: true
+patchedDependencies:
+  '@dcloudio/uni-ui@1.5.12': patches/@dcloudio__uni-ui@1.5.12.patch

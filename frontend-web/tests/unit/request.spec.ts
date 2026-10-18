@@ -43,15 +43,7 @@ vi.mock('axios', () => {
   }
 })
 
-const pushSpy = vi.fn(async () => undefined)
-
-vi.mock('@/router', () => {
-  return {
-    default: {
-      push: pushSpy,
-    },
-  }
-})
+const pushSpy = vi.fn<(target: unknown) => Promise<void>>().mockResolvedValue(undefined)
 
 const authState: any = {
   token: null as string | null,
@@ -64,11 +56,9 @@ const authState: any = {
   }),
 }
 
-let authStoreShouldBeNull = false
-
 vi.mock('@/store/modules/use-auth-store', () => {
   return {
-    useAuthStore: () => (authStoreShouldBeNull ? null : authState),
+    useAuthStore: () => authState,
   }
 })
 
@@ -76,7 +66,12 @@ describe('utils/request', () => {
   let loaded = false
   const loadOnce = async () => {
     if (!loaded) {
-      await import('@/utils/request')
+      // Model the session bundle that useAuthStore hydrates during app startup.
+      const storage = sessionStorage.getItem('admin_token') ? sessionStorage : localStorage
+      authState.token ??= storage.getItem('admin_token')
+      authState.refreshToken ??= storage.getItem('admin_refresh_token')
+      const { setLoginRedirect } = await import('@/utils/request')
+      setLoginRedirect((redirect) => pushSpy({ path: '/login', query: { redirect } }))
       loaded = true
     }
   }
@@ -98,6 +93,8 @@ describe('utils/request', () => {
   }
 
   beforeEach(async () => {
+    loaded = false
+    vi.resetModules()
     serviceFn.mockClear()
     serviceFn.get.mockClear()
     serviceFn.post.mockClear()
@@ -115,13 +112,11 @@ describe('utils/request', () => {
     authState.token = null
     authState.refreshToken = null
     authState.logout.mockClear()
-    authStoreShouldBeNull = false
 
     pushSpy.mockClear()
   })
 
   afterEach(async () => {
-    // Avoid "fetch pending" warnings from unresolved dynamic imports
     await vi.dynamicImportSettled()
   })
 
@@ -155,10 +150,9 @@ describe('utils/request', () => {
     expect(out.headers.Authorization).toBe('Bearer s1')
   })
 
-  it('prefers the current session token over stale remembered credentials while the store loads', async () => {
+  it('prefers the current session token over stale remembered credentials in the initialized store', async () => {
     localStorage.setItem('admin_token', 'stale-local-token')
     sessionStorage.setItem('admin_token', 'current-session-token')
-    authStoreShouldBeNull = true
     await loadFresh()
 
     const cfg = { headers: {} as Record<string, any> }
@@ -167,15 +161,11 @@ describe('utils/request', () => {
     expect(out.headers.Authorization).toBe('Bearer current-session-token')
   })
 
-  it('prefers auth store token over storage when store is ready', async () => {
+  it('uses the current auth store token from the first request', async () => {
     localStorage.setItem('admin_token', 'storageToken')
     authState.token = 'storeToken'
 
     await loadFresh()
-    // First request starts the lazy store import; later requests use the store.
-    requestOnFulfilled({ headers: {} })
-    await vi.dynamicImportSettled()
-
     const cfg = { headers: {} as Record<string, any> }
     const out = requestOnFulfilled(cfg)
 
@@ -277,7 +267,7 @@ describe('utils/request', () => {
 
     await expect(responseOnRejected(err)).rejects.toThrow('认证已过期，请重新登录')
 
-    // navigateToLogin uses dynamic import and does not await router.push
+    // Navigation is asynchronous.
     await vi.dynamicImportSettled()
     await Promise.resolve()
 
@@ -441,37 +431,39 @@ describe('utils/request', () => {
     expect(pushSpy).toHaveBeenCalled()
   })
 
-  it('navigateToLogin falls back to window.location.href when router import fails', async () => {
-    // Trigger the navigateToLogin() .catch() branch by making router.push throw,
-    // which rejects the promise chain from the preceding dynamic import().
-    pushSpy.mockImplementationOnce(() => {
-      throw new Error('push failed')
-    })
+  it.each(['throw', 'reject'])(
+    'navigation %s falls back to the full login URL',
+    async (failure) => {
+      pushSpy.mockImplementationOnce(() => {
+        if (failure === 'throw') throw new Error('push failed')
+        return Promise.reject(new Error('push failed'))
+      })
 
-    // jsdom's Location has non-configurable accessors; stub global to capture href writes
-    vi.stubGlobal('location', {
-      pathname: '/x',
-      search: '?a=1',
-      href: 'http://localhost/',
-    } as any)
+      // jsdom's Location has non-configurable accessors; stub global to capture href writes
+      vi.stubGlobal('location', {
+        pathname: '/x',
+        search: '?a=1',
+        href: 'http://localhost/',
+      } as any)
 
-    await loadOnce()
+      await loadOnce()
 
-    const err: any = {
-      config: { url: '/admin/dishes', headers: {}, _retry: true },
-      response: { status: 401, data: {} },
-    }
+      const err: any = {
+        config: { url: '/admin/dishes', headers: {}, _retry: true },
+        response: { status: 401, data: {} },
+      }
 
-    await expect(responseOnRejected(err)).rejects.toThrow('认证已过期，请重新登录')
+      await expect(responseOnRejected(err)).rejects.toThrow('认证已过期，请重新登录')
 
-    await vi.dynamicImportSettled()
-    await Promise.resolve()
+      await vi.dynamicImportSettled()
+      await Promise.resolve()
 
-    expect(pushSpy).toHaveBeenCalled()
-    expect((window.location as any).href).toBe('/login?redirect=%2Fx%3Fa%3D1')
+      expect(pushSpy).toHaveBeenCalled()
+      expect((window.location as any).href).toBe('/login?redirect=%2Fx%3Fa%3D1')
 
-    vi.unstubAllGlobals()
-  })
+      vi.unstubAllGlobals()
+    },
+  )
 
   it('refresh success updates store token and persists to localStorage when local token exists', async () => {
     localStorage.setItem('admin_token', 'oldToken')
@@ -531,10 +523,17 @@ describe('utils/request', () => {
 
   it('retains conflict status and business code for contribution revision recovery', async () => {
     await loadOnce()
-    await expect(responseOnRejected({
-      config: { url: '/admin/dishes/uploads/u1/approve' },
-      response: { status: 409, data: { code: 'CONTRIBUTION_CONFLICT', message: '资料已更新' } },
-    })).rejects.toMatchObject({ message: '资料已更新', status: 409, statusCode: 409, code: 'CONTRIBUTION_CONFLICT' })
+    await expect(
+      responseOnRejected({
+        config: { url: '/admin/dishes/uploads/u1/approve' },
+        response: { status: 409, data: { code: 'CONTRIBUTION_CONFLICT', message: '资料已更新' } },
+      }),
+    ).rejects.toMatchObject({
+      message: '资料已更新',
+      status: 409,
+      statusCode: 409,
+      code: 'CONTRIBUTION_CONFLICT',
+    })
   })
 
   it('queued requests reject with refresh error when refresh fails', async () => {
@@ -562,98 +561,6 @@ describe('utils/request', () => {
 
     await expect(p2).rejects.toThrow('认证已过期，请重新登录')
     await expect(p1).rejects.toThrow('认证已过期，请重新登录')
-  })
-
-  it('refresh failure clears storage when store is not ready', async () => {
-    localStorage.setItem('admin_token', 't1')
-    localStorage.setItem('admin_refresh_token', 'refresh')
-    // force store to stay unavailable
-    authStoreShouldBeNull = true
-
-    rawAxiosPostMock.mockRejectedValueOnce(new Error('refresh down'))
-
-    await loadOnce()
-
-    const err: any = {
-      config: { url: '/admin/dishes', headers: {} },
-      response: { status: 401, data: {} },
-    }
-
-    await expect(responseOnRejected(err)).rejects.toThrow('认证已过期，请重新登录')
-
-    expect(localStorage.getItem('admin_token')).toBeNull()
-    expect(localStorage.getItem('admin_refresh_token')).toBeNull()
-  })
-
-  it('401 without refresh token clears both local & session when store is unavailable', async () => {
-    authStoreShouldBeNull = true
-    await loadFresh()
-
-    localStorage.setItem('admin_token', 't1')
-    localStorage.setItem('admin_refresh_token', 'r1')
-    sessionStorage.setItem('admin_token', 't2')
-    sessionStorage.setItem('admin_refresh_token', 'r2')
-    // remove refresh token so the code takes the "!refreshToken" branch
-    localStorage.removeItem('admin_refresh_token')
-    sessionStorage.removeItem('admin_refresh_token')
-
-    const err: any = {
-      config: { url: '/admin/dishes', headers: {} },
-      response: { status: 401, data: {} },
-    }
-
-    await expect(responseOnRejected(err)).rejects.toThrow('认证已过期，请重新登录')
-
-    expect(localStorage.getItem('admin_token')).toBeNull()
-    expect(localStorage.getItem('admin_refresh_token')).toBeNull()
-    expect(sessionStorage.getItem('admin_token')).toBeNull()
-    expect(sessionStorage.getItem('admin_refresh_token')).toBeNull()
-  })
-
-  it('refresh failure clears both local & session when store is unavailable', async () => {
-    authStoreShouldBeNull = true
-    await loadFresh()
-
-    localStorage.setItem('admin_token', 't1')
-    localStorage.setItem('admin_refresh_token', 'refresh')
-    sessionStorage.setItem('admin_token', 't2')
-    sessionStorage.setItem('admin_refresh_token', 'refresh2')
-
-    rawAxiosPostMock.mockRejectedValueOnce(new Error('refresh down'))
-
-    const err: any = {
-      config: { url: '/admin/dishes', headers: {} },
-      response: { status: 401, data: {} },
-    }
-
-    await expect(responseOnRejected(err)).rejects.toThrow('认证已过期，请重新登录')
-
-    expect(localStorage.getItem('admin_token')).toBeNull()
-    expect(localStorage.getItem('admin_refresh_token')).toBeNull()
-    expect(sessionStorage.getItem('admin_token')).toBeNull()
-    expect(sessionStorage.getItem('admin_refresh_token')).toBeNull()
-  })
-
-  it('forced logout branch clears storage when store is unavailable', async () => {
-    authStoreShouldBeNull = true
-    await loadFresh()
-
-    localStorage.setItem('admin_token', 't1')
-    localStorage.setItem('admin_refresh_token', 'r1')
-    sessionStorage.setItem('admin_token', 't2')
-    sessionStorage.setItem('admin_refresh_token', 'r2')
-
-    const err: any = {
-      config: { url: '/admin/dishes', headers: {}, _retry: true },
-      response: { status: 401, data: {} },
-    }
-
-    await expect(responseOnRejected(err)).rejects.toThrow('认证已过期，请重新登录')
-
-    expect(localStorage.getItem('admin_token')).toBeNull()
-    expect(localStorage.getItem('admin_refresh_token')).toBeNull()
-    expect(sessionStorage.getItem('admin_token')).toBeNull()
-    expect(sessionStorage.getItem('admin_refresh_token')).toBeNull()
   })
 
   it('wechat login 401 returns friendly message', async () => {
@@ -696,70 +603,51 @@ describe('utils/request', () => {
     ).rejects.toThrow('请求失败，请稍后重试')
   })
 
-  it('refresh success retries and persists both tokens when store is unavailable', async () => {
-    authStoreShouldBeNull = true
-    await loadFresh()
+  it.each(['success', 'failure'])(
+    'does not apply a late refresh %s to a newer login session',
+    async (result) => {
+      authState.token = 'A-access'
+      authState.refreshToken = 'A-refresh'
+      localStorage.setItem('admin_token', 'A-access')
+      localStorage.setItem('admin_refresh_token', 'A-refresh')
+      const d = deferred<any>()
+      rawAxiosPostMock.mockReturnValueOnce(d.promise)
+      await loadFresh()
+      requestOnFulfilled({ headers: {} })
+      await vi.dynamicImportSettled()
+      const config = requestOnFulfilled({ url: '/admin/news', headers: {} })
+      const pending = responseOnRejected({ config, response: { status: 401, data: {} } })
+      const outcome = pending.then(
+        () => null,
+        (error: Error) => error,
+      )
+      await Promise.resolve()
 
-    localStorage.setItem('admin_token', 'old')
-    localStorage.setItem('admin_refresh_token', 'refresh')
+      const { invalidateAuthSession } = await import('@/utils/auth-session')
+      invalidateAuthSession()
+      localStorage.clear()
+      authState.token = 'B-access'
+      authState.refreshToken = 'B-refresh'
+      sessionStorage.setItem('admin_token', 'B-access')
+      sessionStorage.setItem('admin_refresh_token', 'B-refresh')
+      if (result === 'success') {
+        d.resolve({
+          data: { data: { token: { accessToken: 'A-new', refreshToken: 'A-new-refresh' } } },
+        })
+      } else {
+        d.reject(new Error('A refresh failed'))
+      }
 
-    rawAxiosPostMock.mockResolvedValueOnce({
-      data: {
-        data: {
-          token: { accessToken: 'newTokenNoStore', refreshToken: 'newRefreshNoStore' },
-        },
-      },
-    })
-
-    const err: any = {
-      config: { url: '/admin/dishes', headers: {} },
-      response: { status: 401, data: {} },
-    }
-
-    await responseOnRejected(err)
-
-    expect(err.config.headers.Authorization).toBe('Bearer newTokenNoStore')
-    expect(localStorage.getItem('admin_token')).toBe('newTokenNoStore')
-    expect(localStorage.getItem('admin_refresh_token')).toBe('newRefreshNoStore')
-  })
-
-  it.each(['success', 'failure'])('does not apply a late refresh %s to a newer login session', async (result) => {
-    authState.token = 'A-access'
-    authState.refreshToken = 'A-refresh'
-    localStorage.setItem('admin_token', 'A-access')
-    localStorage.setItem('admin_refresh_token', 'A-refresh')
-    const d = deferred<any>()
-    rawAxiosPostMock.mockReturnValueOnce(d.promise)
-    await loadFresh()
-    requestOnFulfilled({ headers: {} })
-    await vi.dynamicImportSettled()
-    const config = requestOnFulfilled({ url: '/admin/news', headers: {} })
-    const pending = responseOnRejected({ config, response: { status: 401, data: {} } })
-    const outcome = pending.then(() => null, (error: Error) => error)
-    await Promise.resolve()
-
-    const { invalidateAuthSession } = await import('@/utils/auth-session')
-    invalidateAuthSession()
-    localStorage.clear()
-    authState.token = 'B-access'
-    authState.refreshToken = 'B-refresh'
-    sessionStorage.setItem('admin_token', 'B-access')
-    sessionStorage.setItem('admin_refresh_token', 'B-refresh')
-    if (result === 'success') {
-      d.resolve({ data: { data: { token: { accessToken: 'A-new', refreshToken: 'A-new-refresh' } } } })
-    } else {
-      d.reject(new Error('A refresh failed'))
-    }
-
-    expect((await outcome)?.message).toContain('登录会话已变更')
-    expect(authState.token).toBe('B-access')
-    expect(authState.refreshToken).toBe('B-refresh')
-    expect(sessionStorage.getItem('admin_token')).toBe('B-access')
-    expect(localStorage.getItem('admin_token')).toBeNull()
-    expect(authState.logout).not.toHaveBeenCalled()
-    expect(pushSpy).not.toHaveBeenCalled()
-    expect(serviceFn).not.toHaveBeenCalled()
-  })
+      expect((await outcome)?.message).toContain('登录会话已变更')
+      expect(authState.token).toBe('B-access')
+      expect(authState.refreshToken).toBe('B-refresh')
+      expect(sessionStorage.getItem('admin_token')).toBe('B-access')
+      expect(localStorage.getItem('admin_token')).toBeNull()
+      expect(authState.logout).not.toHaveBeenCalled()
+      expect(pushSpy).not.toHaveBeenCalled()
+      expect(serviceFn).not.toHaveBeenCalled()
+    },
+  )
 
   it('rejects a stale original request instead of refreshing or logging out the current session', async () => {
     await loadFresh()
@@ -767,7 +655,9 @@ describe('utils/request', () => {
     const { invalidateAuthSession } = await import('@/utils/auth-session')
     invalidateAuthSession()
     expect(() => requestOnFulfilled(config)).toThrow('登录会话已变更')
-    await expect(responseOnRejected({ config, response: { status: 401, data: {} } })).rejects.toThrow('登录会话已变更')
+    await expect(
+      responseOnRejected({ config, response: { status: 401, data: {} } }),
+    ).rejects.toThrow('登录会话已变更')
     expect(rawAxiosPostMock).not.toHaveBeenCalled()
     expect(authState.logout).not.toHaveBeenCalled()
   })
@@ -784,7 +674,10 @@ describe('utils/request', () => {
     requestOnFulfilled({ headers: {} })
     await vi.dynamicImportSettled()
     const oldConfig = requestOnFulfilled({ url: '/admin/news', headers: {} })
-    const oldOutcome = responseOnRejected({ config: oldConfig, response: { status: 401, data: {} } }).catch((error: Error) => error)
+    const oldOutcome = responseOnRejected({
+      config: oldConfig,
+      response: { status: 401, data: {} },
+    }).catch((error: Error) => error)
     const { invalidateAuthSession } = await import('@/utils/auth-session')
     invalidateAuthSession()
     authState.token = 'B'
@@ -792,10 +685,17 @@ describe('utils/request', () => {
     sessionStorage.setItem('admin_token', 'B')
     sessionStorage.setItem('admin_refresh_token', 'Br')
     const newConfig = requestOnFulfilled({ url: '/admin/dishes', headers: {} })
-    const newOutcome = responseOnRejected({ config: newConfig, response: { status: 401, data: {} } })
-    oldRefresh.resolve({ data: { data: { token: { accessToken: 'A-new', refreshToken: 'Ar-new' } } } })
+    const newOutcome = responseOnRejected({
+      config: newConfig,
+      response: { status: 401, data: {} },
+    })
+    oldRefresh.resolve({
+      data: { data: { token: { accessToken: 'A-new', refreshToken: 'Ar-new' } } },
+    })
     expect((await oldOutcome).message).toContain('登录会话已变更')
-    newRefresh.resolve({ data: { data: { token: { accessToken: 'B-new', refreshToken: 'Br-new' } } } })
+    newRefresh.resolve({
+      data: { data: { token: { accessToken: 'B-new', refreshToken: 'Br-new' } } },
+    })
     await newOutcome
     expect(authState.token).toBe('B-new')
     expect(rawAxiosPostMock).toHaveBeenCalledTimes(2)
@@ -804,14 +704,12 @@ describe('utils/request', () => {
     expect(authState.logout).not.toHaveBeenCalled()
   })
 
-  it('refresh fallback keeps a current session bundle isolated from stale local credentials', async () => {
-    authStoreShouldBeNull = true
-    await loadFresh()
-
+  it('refresh keeps a current session bundle isolated from stale local credentials', async () => {
     localStorage.setItem('admin_token', 'stale-local-token')
     localStorage.setItem('admin_refresh_token', 'stale-local-refresh')
     sessionStorage.setItem('admin_token', 'current-session-token')
     sessionStorage.setItem('admin_refresh_token', 'current-session-refresh')
+    await loadFresh()
 
     rawAxiosPostMock.mockResolvedValueOnce({
       data: {
@@ -836,7 +734,6 @@ describe('utils/request', () => {
   })
 
   it('handles missing originalRequest.url by treating it as empty string', async () => {
-    authStoreShouldBeNull = true
     await loadFresh()
 
     const err: any = {

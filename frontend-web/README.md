@@ -24,9 +24,11 @@ TasteInsight 管理端是基于 **Vue 3** + **Vite** 构建的后台管理系统
 
 Vite 保持默认 500 kB 单块警告。wangEditor 5 的发行模块内置编辑核心、菜单和上传等能力，构建仍可能提示编辑器异步块较大。评估时同时查看进入页面的请求量、首次打开编辑器的等待时间和实际传输压缩；`pnpm build` 输出的 gzip 数值是估算，服务端响应决定线上传输大小。
 
-Docker 静态服务为文本资源启用 gzip，并返回 `Vary: Accept-Encoding`。HTML 使用 `no-store`，带内容哈希的资源使用长期缓存。独立静态托管或 CDN 需配置对应压缩与缓存策略。发布页面的基线和后端承压测试见 [浏览器性能测试](../perf/frontend.md)。
+Docker 静态服务为文本资源启用 gzip，并返回 `Vary: Accept-Encoding`。HTML 使用 `no-store`，带内容哈希的资源使用长期缓存。独立静态托管或 CDN 需配置对应压缩与缓存策略。发布页面的基线和后端承压测试见 [浏览器性能测试](../perf/FRONTEND.md)。
 
 `patches/` 中的 pnpm 补丁为 `@wangeditor/editor-for-vue@5.1.12` 补齐其已有声明文件的 `types` 导出；运行时代码保持上游实现。补丁由锁文件固定，Docker 在安装依赖前复制补丁目录。升级依赖时需检查上游导出是否已修复，并复验类型检查和发布构建。
+
+浏览器兼容性数据由 Autoprefixer / Browserslist 间接使用。可在本目录运行 `pnpm update --no-save caniuse-lite baseline-browser-mapping` 更新锁文件中的数据版本，再验证类型检查、构建和页面回归。
 
 ## 项目结构
 

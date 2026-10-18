@@ -10,8 +10,9 @@ import { createHttpError, toUserFriendlyErrorMessage } from '@/utils/user-friend
 import { expireSession, refreshAccessToken } from '@/utils/auth-session';
 // 导入 Mock 拦截器
 import { mockInterceptor } from '@/mock/mock-adapter';
-// 初始化 Mock 路由（副作用导入，确保路由被注册）
-import '@/mock/mock-routes';
+// The build-time mode keeps fixtures out of release bundles and initializes mock routes once.
+const mockRoutesReady =
+  process.env.VITE_BUILD_MODE === 'mock' ? import('@/mock/mock-routes') : undefined;
 
 function buildUserFriendlyError(err: unknown, statusCode?: number): Error {
   const wrapped = new Error(toUserFriendlyErrorMessage(err)) as Error & {
@@ -35,6 +36,10 @@ async function request<T = any>(options: RequestOptions): Promise<ApiResponse<T>
   const accessToken = userStore.token;
   // --- 阶段零: Mock 拦截 ---
   // 如果开启了 Mock 且匹配到 Mock 路由，直接返回 Mock 数据
+  if (mockRoutesReady) {
+    await mockRoutesReady;
+    if (userStore.sessionVersion !== sessionVersion) throw new Error('登录会话已变更');
+  }
   const mockResponse = await mockInterceptor<T>(options);
   if (userStore.sessionVersion !== sessionVersion) throw new Error('登录会话已变更');
   if (mockResponse !== null) {

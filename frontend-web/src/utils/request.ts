@@ -1,40 +1,33 @@
 import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import config from '@/config'
-import { getAuthSessionVersion, invalidateAuthSession } from './auth-session'
+import { getAuthSessionVersion } from './auth-session'
+import { useAuthStore } from '@/store/modules/use-auth-store'
 
-// 懒加载 auth store 避免循环依赖
-let authStore: any = null
-let authStoreLoading: Promise<any> | null = null
-const getAuthStore = () => {
-  if (!authStoreLoading) {
-    // 动态导入避免循环依赖
-    authStoreLoading = import('@/store/modules/use-auth-store').then((module) => {
-      authStore = module.useAuthStore()
-      return authStore
-    })
-  }
-  return authStore
-}
+type AuthStore = ReturnType<typeof useAuthStore>
+
+// Requests run after app.use(pinia); defer store access until the request starts.
+const getAuthStore = (): AuthStore => useAuthStore()
 
 const getStoredAuthStorage = (): Storage =>
   sessionStorage.getItem('admin_token') ? sessionStorage : localStorage
 
-// 导航到登录页
-const navigateToLogin = () => {
+const reloadAtLogin = (returnTo: string) => {
+  window.location.href = `/login?redirect=${encodeURIComponent(returnTo)}`
+}
+
+let loginRedirect: (returnTo: string) => unknown = reloadAtLogin
+
+export const setLoginRedirect = (redirect: typeof loginRedirect): void => {
+  loginRedirect = redirect
+}
+
+const navigateToLogin = async () => {
   const currentPath = window.location.pathname + window.location.search
-  // 动态导入 router 避免循环依赖
-  import('@/router')
-    .then((module) => {
-      const router = module.default
-      router.push({
-        path: '/login',
-        query: { redirect: currentPath },
-      })
-    })
-    .catch(() => {
-      // 降级处理
-      window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`
-    })
+  try {
+    await loginRedirect(currentPath)
+  } catch {
+    reloadAtLogin(currentPath)
+  }
 }
 
 /**
@@ -51,17 +44,18 @@ const service: AxiosInstance = axios.create({
  */
 service.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const authenticatedConfig = config as InternalAxiosRequestConfig & { _authSessionVersion?: number }
+    const authenticatedConfig = config as InternalAxiosRequestConfig & {
+      _authSessionVersion?: number
+    }
     if (
       authenticatedConfig._authSessionVersion !== undefined &&
       authenticatedConfig._authSessionVersion !== getAuthSessionVersion()
     ) {
       throw new Error('登录会话已变更，请重试')
     }
-    // 添加认证 token
-    // 优先从 auth store 获取 token，如果 store 未初始化则从 storage 获取
+    // Use the store initialized by Pinia as the current session source.
     const store = getAuthStore()
-    const token = store?.token || getStoredAuthStorage().getItem('admin_token')
+    const token = store.token
     authenticatedConfig._authSessionVersion = getAuthSessionVersion()
 
     const hasAuthorization =
@@ -86,33 +80,22 @@ service.interceptors.request.use(
 interface RefreshSession {
   version: number
   storage: Storage
-  store: any
+  store: AuthStore
   token: string | null
   refreshToken: string | null
 }
 
 let activeRefresh: { session: RefreshSession; promise: Promise<string> } | null = null
 
-const currentToken = (session: RefreshSession): string | null =>
-  session.store?.token || session.storage.getItem('admin_token')
+const currentToken = (session: RefreshSession): string | null => session.store.token
 
 const ownsSession = (session: RefreshSession): boolean =>
   session.version === getAuthSessionVersion() &&
   currentToken(session) === session.token &&
-  (session.store?.refreshToken || session.storage.getItem('admin_refresh_token')) ===
-    session.refreshToken
+  session.store.refreshToken === session.refreshToken
 
-const expireSession = (store: any) => {
-  if (store) {
-    store.logout()
-  } else {
-    invalidateAuthSession()
-    for (const storage of [localStorage, sessionStorage]) {
-      for (const key of ['admin_token', 'admin_refresh_token', 'admin_user', 'admin_permissions']) {
-        storage.removeItem(key)
-      }
-    }
-  }
+const expireSession = (store: AuthStore) => {
+  store.logout()
   navigateToLogin()
 }
 
@@ -130,10 +113,8 @@ const refreshSession = async (session: RefreshSession): Promise<string> => {
     const tokenInfo = response.data?.data?.token
     if (!tokenInfo?.accessToken || !tokenInfo?.refreshToken) throw new Error('刷新 token 失败')
 
-    if (session.store) {
-      session.store.token = tokenInfo.accessToken
-      session.store.refreshToken = tokenInfo.refreshToken
-    }
+    session.store.token = tokenInfo.accessToken
+    session.store.refreshToken = tokenInfo.refreshToken
     session.storage.setItem('admin_token', tokenInfo.accessToken)
     session.storage.setItem('admin_refresh_token', tokenInfo.refreshToken)
     return tokenInfo.accessToken
@@ -179,7 +160,7 @@ service.interceptors.response.use(
       if (status === 401 && !originalRequest._retry && !isLoginRequest && !isRefreshRequest) {
         originalRequest._retry = true
         const version = originalRequest._authSessionVersion ?? getAuthSessionVersion()
-        const store = getAuthStore() || (await authStoreLoading)
+        const store = getAuthStore()
         if (version !== getAuthSessionVersion()) throw new Error('登录会话已变更，请重试')
 
         const storage = getStoredAuthStorage()
@@ -187,8 +168,8 @@ service.interceptors.response.use(
           version,
           storage,
           store,
-          token: store?.token || storage.getItem('admin_token'),
-          refreshToken: store?.refreshToken || storage.getItem('admin_refresh_token'),
+          token: store.token,
+          refreshToken: store.refreshToken,
         }
 
         if (!activeRefresh || activeRefresh.session.version !== version) {
@@ -227,11 +208,13 @@ service.interceptors.response.use(
 
       // 返回错误信息
       const message = data?.message || data?.error || '请求失败，请稍后重试'
-      return Promise.reject(Object.assign(new Error(message), {
-        status,
-        statusCode: status,
-        code: data?.code,
-      }))
+      return Promise.reject(
+        Object.assign(new Error(message), {
+          status,
+          statusCode: status,
+          code: data?.code,
+        }),
+      )
     } else if (error.request) {
       return Promise.reject(new Error('网络连接失败，请检查网络'))
     } else {

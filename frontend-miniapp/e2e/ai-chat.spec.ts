@@ -11,7 +11,7 @@ test.describe('AI Chat', () => {
   test('loads chat page with top actions', async ({ page }) => {
     await gotoUniPage(page, '/pages/ai-chat/index');
 
-    await expect(page.getByText('新建对话').first()).toBeVisible();
-    await expect(page.getByText('历史记录').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: '新对话', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '历史对话', exact: true })).toBeVisible();
   });
 });

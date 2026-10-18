@@ -6,10 +6,9 @@
  */
 
 import type { ApiResponse, RequestOptions } from '@/types/api';
-import config from '@/config';
 
 // Mock 配置
-export const USE_MOCK = config.mode === 'mock';
+export const USE_MOCK = process.env.VITE_BUILD_MODE === 'mock';
 // Mock 处理函数类型
 type MockHandler<T = any> = (
   url: string,

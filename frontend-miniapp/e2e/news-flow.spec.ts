@@ -9,23 +9,14 @@ test.describe('News', () => {
   });
 
   test('lists news and opens detail', async ({ page }) => {
-    // 先进入首页，再通过 tabBar 进入“新闻”页（更贴近真实用户路径）
     await gotoUniPage(page, '/pages/index/index');
-    await page.getByText('新闻').first().click();
-
-    const timeoutOverlay = page.getByText('The connection timed out, click the screen to try again.').first();
-    const latestNotice = page.getByText('最新公告').first();
-
-    if (await timeoutOverlay.isVisible().catch(() => false)) {
-      await timeoutOverlay.click().catch(() => undefined);
-    }
-
-    await expect(latestNotice).toBeVisible();
+    await page.getByText('校园', { exact: true }).click();
+    await page.getByRole('tab', { name: '资讯', exact: true }).click();
 
     const title = '食堂营业时间调整通知';
-    await page.getByText(title).first().click();
+    await page.getByLabel(title, { exact: true }).click();
 
     await expect(page.getByText(title).first()).toBeVisible();
-    await expect(page.getByText('发布人：').first()).toBeVisible();
+    await expect(page.getByText('本周起，一食堂晚餐结束时间调整为 20:00。')).toBeVisible();
   });
 });
