@@ -5,6 +5,13 @@
     @retry="loadProfile"
     @save="handleSave"
   >
+    <view v-if="profileSubmission" class="settings-note" role="status">
+      {{
+        profileSubmission.status === 'rejected'
+          ? `资料审核未通过：${profileSubmission.reason || '请修改后重新提交'}`
+          : '公开资料审核中，通过后展示'
+      }}
+    </view>
     <view class="settings-section">
       <text class="settings-title">头像</text>
       <button
@@ -43,6 +50,7 @@ import SettingsPage from './SettingsPage.vue';
 const state = usePersonal();
 const {
   form,
+  profileSubmission,
   uploading,
   selecting,
   canEdit,

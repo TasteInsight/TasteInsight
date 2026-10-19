@@ -50,7 +50,7 @@
                 <select
                   v-model="canteenFilter"
                   @change="handleFilterChange"
-                  class="appearance-none pr-10 bg-white min-w-[200px] transition-all cursor-pointer hover:border-gray-400 admin-input"
+                  class="bg-white min-w-[200px] transition-all cursor-pointer hover:border-gray-400 admin-input"
                 >
                   <option value="">不限管理范围</option>
                   <option value="all">全局范围</option>
@@ -58,9 +58,6 @@
                     {{ canteen.name }}
                   </option>
                 </select>
-                <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
-                  <AppIcon class="iconify" icon="carbon:chevron-down"></AppIcon>
-                </span>
               </div>
             </div>
 

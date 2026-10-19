@@ -45,7 +45,8 @@ export function useProfile() {
     try {
       await userStore.updateProfileAction(data);
       if (!isCurrent()) return false;
-      uni.showToast({ title: '更新成功', icon: 'success' });
+      const pending = userStore.userInfo?.publicProfileSubmission && ['nickname', 'avatar', 'bio'].some(key => key in data);
+      uni.showToast({ title: pending ? '资料已提交审核' : '更新成功', icon: pending ? 'none' : 'success' });
       return true;
     } catch (err) {
       if (isCurrent()) {

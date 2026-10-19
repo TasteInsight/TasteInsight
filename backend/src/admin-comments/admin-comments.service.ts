@@ -1,3 +1,4 @@
+import { ModerationSubmissionService } from '@/content-moderation/moderation-submission.service';
 import {
   AdminCanteenScope,
   canAccessCanteen,
@@ -6,6 +7,7 @@ import {
 } from '@/auth/admin-scope';
 import {
   Injectable,
+  Optional,
   NotFoundException,
   ForbiddenException,
   ConflictException,
@@ -26,6 +28,7 @@ export class AdminCommentsService {
   constructor(
     private prisma: PrismaService,
     private notifications: NotificationService,
+    @Optional() private readonly moderation?: ModerationSubmissionService,
   ) {}
 
   async batchDeleteComments(ids: string[], admin: AdminInfo) {
@@ -80,6 +83,7 @@ export class AdminCommentsService {
         where: { id: { in: ids }, deletedAt: null },
         data: { deletedAt: new Date() },
       });
+      for (const id of ids) await this.moderation?.cancel(tx, 'comment', id);
       await this.notifications.withdraw(tx, {
         targetType: 'comment',
         targetId: { in: ids },
@@ -204,6 +208,12 @@ export class AdminCommentsService {
       )
         throw new ConflictException('评价尚不可公开回复');
       if (approved) {
+        await this.moderation?.assertApprovable(
+          tx,
+          'comment',
+          id,
+          comment.updatedAt.toISOString(),
+        );
         const verified = await tx.studentVerification.findFirst({
           where: {
             userId: comment.userId,
@@ -223,6 +233,13 @@ export class AdminCommentsService {
       });
       if (!result.count)
         throw new ConflictException('评论审核状态已变更，请刷新');
+      await this.moderation?.complete(
+        tx,
+        'comment',
+        id,
+        comment.updatedAt.toISOString(),
+        approved,
+      );
       if (approved)
         await this.notifications.createReply(
           tx,

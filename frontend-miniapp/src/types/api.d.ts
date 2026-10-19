@@ -67,6 +67,7 @@ export interface User {
   avatar: string;
   bio?: string;
   capabilities?: { canContribute: boolean };
+  publicProfileSubmission?: { status: string; fields: Record<string, string | null>; reason: string | null } | null;
   preferences?: UserPreference;
   settings?: UserSettings;
   allergens?: string[];

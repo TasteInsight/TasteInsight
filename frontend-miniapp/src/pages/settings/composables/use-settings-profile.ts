@@ -6,7 +6,8 @@ import type { User, UserProfileUpdateRequest } from '@/types/api';
 export function useSettingsProfile(
   applyProfile: (profile: User | null) => void,
   form: object,
-  section: string
+  section: string,
+  serializeForm: (value: object) => string = JSON.stringify
 ) {
   const userStore = useUserStore();
   const saving = ref(false);
@@ -17,7 +18,7 @@ export function useSettingsProfile(
   const restoredDraft = ref(false);
   const baseline = ref('');
   const dirty = computed(
-    () => initialized.value && !saved.value && JSON.stringify(form) !== baseline.value
+    () => initialized.value && !saved.value && serializeForm(form) !== baseline.value
   );
   const canEdit = computed(
     () => initialized.value && !loading.value && !saving.value && !saved.value
@@ -56,7 +57,7 @@ export function useSettingsProfile(
       if (!isCurrent()) return false;
       if (!userStore.isLoggedIn || !userStore.userInfo) throw new Error('请登录后重新加载');
       applyProfile(userStore.userInfo);
-      baseline.value = JSON.stringify(form);
+      baseline.value = serializeForm(form);
       draftKey = userStore.userInfo.id ? `settings-draft:${userStore.userInfo.id}:${section}` : '';
       initialized.value = true;
       restoredDraft.value = false;
@@ -66,13 +67,19 @@ export function useSettingsProfile(
           try {
             const draft = JSON.parse(stored);
             if (
-              draft.baseline === baseline.value &&
+              serializeForm(JSON.parse(draft.baseline)) === baseline.value &&
               draft.value &&
               typeof draft.value === 'object'
             ) {
               for (const key of Object.keys(form)) {
                 if (Object.prototype.hasOwnProperty.call(draft.value, key)) {
-                  (form as Record<string, unknown>)[key] = draft.value[key];
+                  const currentValue = (form as Record<string, unknown>)[key];
+                  if (
+                    serializeForm({ [key]: currentValue }) !==
+                    serializeForm({ [key]: draft.value[key] })
+                  ) {
+                    (form as Record<string, unknown>)[key] = draft.value[key];
+                  }
                 }
               }
               restoredDraft.value = dirty.value;
@@ -99,7 +106,7 @@ export function useSettingsProfile(
     const isCurrent = captureOperation();
     if (!isCurrent()) return false;
     saving.value = true;
-    const snapshot = JSON.stringify(form);
+    const snapshot = serializeForm(form);
     try {
       await userStore.updateProfileAction(payload);
       if (!isCurrent()) return false;
@@ -107,7 +114,13 @@ export function useSettingsProfile(
       saved.value = true;
       restoredDraft.value = false;
       removeDraft();
-      uni.showToast({ title: '保存成功', icon: 'success' });
+      const pending =
+        userStore.userInfo?.publicProfileSubmission &&
+        ['nickname', 'avatar', 'bio'].some(key => key in payload);
+      uni.showToast({
+        title: pending ? '资料已提交审核' : '保存成功',
+        icon: pending ? 'none' : 'success',
+      });
       navigationTimer = setTimeout(() => {
         navigationTimer = null;
         if (isCurrent()) uni.navigateBack();
@@ -129,7 +142,7 @@ export function useSettingsProfile(
     try {
       const confirmed = await confirmDiscardChanges(dirty.value, '放弃未保存的修改？');
       if (!confirmed || !isCurrent()) return false;
-      baseline.value = JSON.stringify(form);
+      baseline.value = serializeForm(form);
       removeDraft();
       return true;
     } finally {
@@ -153,6 +166,7 @@ export function useSettingsProfile(
       cancelNavigation();
       loadVersion++;
       applyProfile(null);
+      removeDraft();
       draftKey = '';
       baseline.value = '';
       initialized.value = false;

@@ -67,6 +67,15 @@ describe('useProfile', () => {
     expect(error.value).toBe(errorMsg);
   });
 
+  it('reports pending public field updates while ordinary settings retain their success message', async () => {
+    mockUserStore.userInfo.publicProfileSubmission = { status: 'manual', fields: { nickname: '待审昵称' }, reason: null };
+    const { updateProfile } = useProfile();
+    expect(await updateProfile({ nickname: '待审昵称' })).toBe(true);
+    expect(uni.showToast).toHaveBeenLastCalledWith({ title: '资料已提交审核', icon: 'none' });
+    expect(await updateProfile({ allergens: ['花生'] })).toBe(true);
+    expect(uni.showToast).toHaveBeenLastCalledWith({ title: '更新成功', icon: 'success' });
+  });
+
   it('should update profile successfully', async () => {
     const updateData = { nickname: 'New Name' };
     const mockResponse = { data: { id: 1, nickname: 'New Name' } };

@@ -1,3 +1,5 @@
+import { ModerationPublicController } from '@/content-moderation/moderation-public.controller';
+import { ModerationProcessingModule } from '@/content-moderation/moderation-processing.module';
 import { Module } from '@nestjs/common';
 import { AuthModule } from '@/auth/auth.module';
 import { PublicAuthController } from '@/auth/public-auth.controller';
@@ -23,6 +25,7 @@ import { PublicUploadController } from '@/upload/upload.controller';
 
 @Module({
   imports: [
+    ModerationProcessingModule,
     AuthModule,
     DishesModule,
     CanteensModule,
@@ -37,6 +40,7 @@ import { PublicUploadController } from '@/upload/upload.controller';
     AIChatModule,
   ],
   controllers: [
+    ModerationPublicController,
     IdentityController,
     CampusIdentityController,
     UserProfileController,

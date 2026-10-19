@@ -48,7 +48,7 @@ import { confirmDiscardChanges } from '@/utils/confirm-discard';
 import { useButtonActivation } from '@/composables/use-button-activation';
 const emit = defineEmits<{ (event: 'close'): void }>();
 const user = useUserStore();
-const originalBio = user.userInfo?.bio || '';
+const originalBio = user.userInfo?.publicProfileSubmission?.fields.bio ?? user.userInfo?.bio ?? '';
 const bio = ref(originalBio);
 const saving = ref(false);
 const error = ref('');
@@ -79,7 +79,10 @@ async function save() {
   error.value = '';
   try {
     await user.updateProfileAction({ bio: bio.value.trim() });
-    if (current()) emit('close');
+    if (current()) {
+      if (user.userInfo?.publicProfileSubmission) uni.showToast({ title: '简介已提交审核', icon: 'none' });
+      emit('close');
+    }
   } catch (cause) {
     if (current()) error.value = cause instanceof Error ? cause.message : '简介保存失败，请重试';
   } finally {

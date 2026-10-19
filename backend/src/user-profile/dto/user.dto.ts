@@ -12,6 +12,11 @@ export class UserProfileData {
   avatar: string;
   bio?: string;
   capabilities?: { canContribute: boolean };
+  publicProfileSubmission?: {
+    status: string;
+    fields: Record<string, string | null>;
+    reason: string | null;
+  } | null;
   preferences: UserPreferenceData;
   settings: UserSettingData;
   allergens: string[];

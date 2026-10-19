@@ -1,316 +1,457 @@
 <template>
-  <div class="admin-page">
-    <div class="admin-panel">
-      <Header
-        title="系统配置管理"
-        :description="configDescription"
-        header-icon="carbon:settings"
-      />
-
-      <label class="mt-6 block admin-label">
-        配置范围
-        <select v-model="configCanteenId" class="mt-1.5 w-full max-w-sm admin-input" :disabled="loading || reviewSaving || commentSaving || communitySaving" @change="loadConfig">
-          <option v-if="isGlobalAdmin" value="">全局默认配置</option>
-          <option v-for="canteen in configCanteens" :key="canteen.id" :value="canteen.id">{{ canteen.name }}</option>
-        </select>
-      </label>
-
-      <!-- 食堂信息提示 -->
-      <div v-if="currentCanteenInfo" class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <div class="flex items-center gap-2">
-          <AppIcon class="iconify text-blue-600" icon="carbon:location"></AppIcon>
-          <span class="text-sm font-medium text-blue-800">
+  <div class="admin-page config-page">
+    <div class="admin-panel config-panel">
+      <Header title="系统配置管理" :description="configDescription" header-icon="carbon:settings" />
+      <nav class="settings-nav" aria-label="系统配置分区">
+        <button
+          type="button"
+          class="settings-nav-button"
+          :class="{ 'is-active': activeView === 'settings' }"
+          :aria-pressed="activeView === 'settings'"
+          @click="showModerationView('settings')"
+        >
+          审核设置
+        </button>
+        <button
+          v-if="canManageGlobalModeration"
+          type="button"
+          class="settings-nav-button"
+          :class="{ 'is-active': activeView === 'tasks' }"
+          :aria-pressed="activeView === 'tasks'"
+          @click="showModerationView('tasks')"
+        >
+          审核待办
+        </button>
+        <button
+          type="button"
+          class="settings-nav-button"
+          :class="{ 'is-active': activeView === 'maintenance' }"
+          :aria-pressed="activeView === 'maintenance'"
+          @click="showModerationView('maintenance')"
+        >
+          系统维护
+        </button>
+      </nav>
+      <div v-show="activeView === 'settings'">
+        <ContentModerationSettings
+          ref="moderationSettings"
+          v-if="canManageGlobalModeration"
+          :can-edit="authStore.hasPermission('config:edit')"
+          @enabled="unifiedModerationEnabled = $event"
+          @busy="moderationSaving = $event"
+          @state="moderationPolicyState = $event"
+          @dirty="moderationDirty = $event"
+        />
+        <details
+          :open="!unifiedModerationEnabled || moderationPolicyError || loadError"
+          class="settings-section settings-rules"
+        >
+          <summary class="settings-rule-summary">
+            <span class="text-lg font-semibold text-gray-800">{{
+              unifiedModerationEnabled ? '人工备用规则' : '人工审核规则'
+            }}</span>
+          </summary>
+          <p
+            v-if="moderationPolicyState === 'loading'"
+            class="mt-2 text-sm leading-6 text-gray-600"
+            role="status"
+          >
+            正在读取统一审核状态，人工审核规则暂时锁定。
+          </p>
+          <p
+            v-else-if="moderationPolicyError"
+            role="alert"
+            class="mt-2 text-sm leading-6 text-red-700"
+          >
+            统一审核状态读取失败，请刷新页面重试。人工审核设置暂时锁定。
+          </p>
+          <p
+            v-else-if="unifiedModerationEnabled"
+            class="mt-2 text-sm leading-6 text-gray-600"
+            role="status"
+          >
+            统一内容审核已启用，以下规则保留为备用，关闭统一审核后生效。
+          </p>
+          <p v-else class="mt-2 text-sm leading-6 text-gray-600">
+            按内容类型设置人工审核。已提交的待审内容需单独处理。
+          </p>
+          <div class="settings-scope-row mt-5">
+            <label for="config-scope" class="admin-label">规则适用范围</label>
+            <select
+              id="config-scope"
+              v-model="configCanteenId"
+              class="w-full sm:max-w-xs admin-input"
+              :disabled="
+                loading || reviewSaving || commentSaving || communitySaving || moderationSaving
+              "
+              @change="loadConfig"
+            >
+              <option v-if="isGlobalAdmin" value="">全局默认配置</option>
+              <option v-for="canteen in configCanteens" :key="canteen.id" :value="canteen.id">
+                {{ canteen.name }}
+              </option>
+            </select>
+          </div>
+          <p v-if="currentCanteenInfo" class="mt-2 text-sm leading-6 text-gray-600">
             {{ currentCanteenInfo }}
-          </span>
-        </div>
-      </div>
-
-      <div class="mt-6">
-        <!-- 加载状态 -->
-        <div v-if="loading" class="admin-state">
-          <AppIcon class="iconify text-4xl text-gray-300 animate-spin" icon="carbon:circle-dash"></AppIcon>
-          <p class="mt-4 text-gray-500">加载中...</p>
-        </div>
-
-        <!-- 配置表单 -->
-        <div v-else class="space-y-6">
-          <!-- 评价审核配置 -->
-          <div class="border border-gray-200 rounded-lg p-6">
-            <div class="flex items-start justify-between mb-4">
-              <div class="flex-1">
-                <h3 class="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                  <AppIcon class="iconify text-tsinghua-purple" icon="carbon:star-review"></AppIcon>
-                  评价人工审核
-                </h3>
-                <p class="text-sm text-gray-600">
-                  默认直接发布。开启后，新提交或修改的评价需要审核；审核前仅作者和管理员可见，通过后公开。
-                </p>
-              </div>
-            </div>
-
-            <div class="mt-4 flex items-center gap-4">
-              <label class="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  v-model="reviewRequiresApproval"
-                  aria-label="评价人工审核"
-                  :disabled="!authStore.hasPermission('config:edit') || reviewSaving || loadError"
-                  @change="handleReviewAutoApproveChange"
-                  class="sr-only peer"
-                />
-                <div
-                  :class="toggleSwitchClass"
-                ></div>
-                <span class="ml-3 text-sm font-medium text-gray-700">
-                  {{ loadError ? '暂不可读取' : reviewRequiresApproval ? '已开启' : '已关闭 · 直接发布' }}
-                </span>
-              </label>
-
-              <div v-if="reviewSaving" class="flex items-center gap-2 text-sm text-gray-500">
-                <AppIcon class="iconify animate-spin" icon="carbon:circle-dash"></AppIcon>
-                <span>保存中...</span>
-              </div>
-              <div v-else-if="reviewSaveSuccess" class="flex items-center gap-2 text-sm text-green-600">
-                <AppIcon class="iconify" icon="carbon:checkmark-filled"></AppIcon>
-                <span>保存成功</span>
-              </div>
-            </div>
-
-            <div v-if="!authStore.hasPermission('config:edit')" class="mt-2 text-xs text-gray-500">
-              <AppIcon class="iconify" icon="carbon:information"></AppIcon>
-              您没有编辑配置的权限
-            </div>
+          </p>
+          <div v-if="loading" class="py-8 text-sm text-gray-600" role="status">
+            加载人工审核规则…
           </div>
-
-          <!-- 回复审核配置 -->
-          <div class="border border-gray-200 rounded-lg p-6">
-            <div class="flex items-start justify-between mb-4">
-              <div class="flex-1">
-                <h3 class="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                  <AppIcon class="iconify text-tsinghua-purple" icon="carbon:chat"></AppIcon>
-                  回复人工审核
-                </h3>
-                <p class="text-sm text-gray-600">
-                  默认直接发布。开启后，新回复需要审核；审核前仅作者和管理员可见，通过后公开。已提交的待审回复仍需单独审核。
-                </p>
+          <div v-else class="mt-4 divide-y divide-gray-200">
+            <!-- 评价审核配置 -->
+            <div class="settings-rule">
+              <div class="settings-rule-copy">
+                <div class="flex-1">
+                  <h3 class="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
+                    <AppIcon
+                      class="iconify text-tsinghua-purple"
+                      icon="carbon:star-review"
+                    ></AppIcon>
+                    评价人工审核
+                  </h3>
+                  <p class="text-sm text-gray-600">新提交或修改的评价，经人工审核后公开。</p>
+                </div>
               </div>
-            </div>
 
-            <div class="mt-4 flex items-center gap-4">
-              <label class="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  v-model="commentRequiresApproval"
-                  aria-label="回复人工审核"
-                  :disabled="!authStore.hasPermission('config:edit') || commentSaving || loadError"
-                  @change="handleCommentAutoApproveChange"
-                  class="sr-only peer"
-                />
-                <div
-                  :class="toggleSwitchClass"
-                ></div>
-                <span class="ml-3 text-sm font-medium text-gray-700">
-                  {{ loadError ? '暂不可读取' : commentRequiresApproval ? '已开启' : '已关闭 · 直接发布' }}
-                </span>
-              </label>
-
-              <div v-if="commentSaving" class="flex items-center gap-2 text-sm text-gray-500">
-                <AppIcon class="iconify animate-spin" icon="carbon:circle-dash"></AppIcon>
-                <span>保存中...</span>
-              </div>
-              <div v-else-if="commentSaveSuccess" class="flex items-center gap-2 text-sm text-green-600">
-                <AppIcon class="iconify" icon="carbon:checkmark-filled"></AppIcon>
-                <span>保存成功</span>
-              </div>
-            </div>
-
-            <div v-if="!authStore.hasPermission('config:edit')" class="mt-2 text-xs text-gray-500">
-              <AppIcon class="iconify" icon="carbon:information"></AppIcon>
-              您没有编辑配置的权限
-            </div>
-          </div>
-
-          <template v-if="isGlobalAdmin && !currentCanteenId">
-            <div v-for="item in communityConfigs" :key="item.key" class="border border-gray-200 rounded-lg p-6">
-              <h3 class="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                <AppIcon class="iconify text-tsinghua-purple" :icon="item.icon"></AppIcon>
-                {{ item.label }}
-              </h3>
-              <p class="text-sm text-gray-600">{{ item.description }} 已有待审核内容仍需单独处理，此设置不自动通过历史内容。</p>
-              <div class="mt-4 flex flex-wrap items-center gap-4">
-                <label class="relative inline-flex items-center cursor-pointer">
+              <div class="settings-rule-controls flex flex-wrap items-center gap-3">
+                <label
+                  class="relative inline-flex items-center cursor-pointer has-[:disabled]:cursor-not-allowed"
+                >
                   <input
-                    v-model="item.requiresApproval"
                     type="checkbox"
-                    :aria-label="item.label"
-                    :disabled="!authStore.hasPermission('config:edit') || communitySaving || loadError"
+                    v-model="reviewRequiresApproval"
+                    aria-label="评价人工审核"
+                    :disabled="
+                      !authStore.hasPermission('config:edit') ||
+                      unifiedModerationEnabled ||
+                      moderationPolicyState !== 'ready' ||
+                      reviewSaving ||
+                      loadError
+                    "
+                    @change="handleReviewAutoApproveChange"
                     class="sr-only peer"
-                    @change="handleCommunityApprovalChange(item)"
                   />
                   <div :class="toggleSwitchClass"></div>
-                  <span class="ml-3 text-sm font-medium text-gray-700">{{ loadError ? '暂不可读取' : item.requiresApproval ? '已开启' : '已关闭 · 直接发布' }}</span>
+                  <span class="ml-3 text-sm font-medium text-gray-700">
+                    {{ approvalStatus(reviewRequiresApproval) }}
+                  </span>
                 </label>
-                <span v-if="item.saving" class="text-sm text-gray-500" role="status">保存中…</span>
-                <span v-else-if="item.saved" class="text-sm text-green-700" role="status">保存成功</span>
-              </div>
-              <p v-if="!authStore.hasPermission('config:edit')" class="mt-2 text-xs text-gray-500">您没有编辑配置的权限</p>
-            </div>
-          </template>
 
-          <!-- 菜品嵌入向量刷新配置 -->
-          <div class="border border-gray-200 rounded-lg p-6">
-            <div class="flex items-start justify-between mb-4">
-              <div class="flex-1">
-                <h3 class="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                  <AppIcon class="iconify text-tsinghua-purple" icon="carbon:ai-results"></AppIcon>
-                  菜品嵌入向量刷新
-                </h3>
-                <p class="text-sm text-gray-600">
-                  刷新菜品嵌入向量可以更新推荐算法的数据，提高推荐准确性。批量刷新将处理指定食堂的所有菜品，可能需要较长时间。
-                </p>
-              </div>
-            </div>
-
-            <div class="mt-4 space-y-4">
-              <!-- 食堂选择（仅全局管理员显示） -->
-              <div v-if="!currentCanteenId" class="mb-4">
-                <label class="block font-medium text-gray-700 mb-2 admin-label">
-                  选择要刷新的食堂
-                </label>
-                <select
-                  v-model="selectedCanteenId"
-                  class="w-full admin-input"
-                  :disabled="embeddingRefreshing || loadingCanteens"
+                <div v-if="reviewSaving" class="flex items-center gap-2 text-sm text-gray-500">
+                  <AppIcon class="iconify animate-spin" icon="carbon:circle-dash"></AppIcon>
+                  <span>保存中...</span>
+                </div>
+                <div
+                  v-else-if="reviewSaveSuccess"
+                  class="flex items-center gap-2 text-sm text-green-600"
                 >
-                  <option value="" disabled>请选择食堂</option>
-                  <option v-for="canteen in canteenList" :key="canteen.id" :value="canteen.id">
-                    {{ canteen.name }}
-                  </option>
-                </select>
-                <p v-if="loadingCanteens" class="mt-1 text-xs text-gray-500">
-                  加载食堂列表中...
-                </p>
-              </div>
-
-              <!-- 批量刷新按钮 -->
-              <div class="flex items-center gap-4">
-                <button
-                  type="button"
-                  :key="'refresh-btn-' + embeddingRefreshing"
-                  :disabled="!authStore.hasPermission('dish:edit') || embeddingRefreshing || (!currentCanteenId && !selectedCanteenId)"
-                  @click="handleRefreshCanteenEmbeddings"
-                  class="transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed admin-button admin-button-primary"
-                >
-                  <AppIcon
-                    v-if="embeddingRefreshing"
-                    key="icon-loading"
-                    class="iconify mr-1 animate-spin" 
-                    icon="carbon:circle-dash"
-                  ></AppIcon>
-                  <AppIcon
-                    v-else
-                    key="icon-refresh"
-                    class="iconify mr-1" 
-                    icon="carbon:refresh"
-                  ></AppIcon>
-                  {{ embeddingRefreshing ? '刷新中...' : (currentCanteenId ? '刷新当前食堂所有菜品嵌入向量' : '刷新所选食堂所有菜品嵌入向量') }}
-                </button>
-
-                <div v-if="embeddingRefreshSuccess" class="flex items-center gap-2 text-sm text-green-600">
                   <AppIcon class="iconify" icon="carbon:checkmark-filled"></AppIcon>
-                  <span>刷新任务已提交</span>
+                  <span>保存成功</span>
                 </div>
               </div>
 
-              <!-- 任务状态显示 -->
-              <div v-if="currentJobId" class="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                <div class="flex items-center justify-between mb-2">
-                  <div class="flex items-center gap-2">
-                    <span class="text-sm font-medium text-gray-700">任务状态</span>
-                    <span
-                      v-if="jobStatus"
-                      class="px-2 py-1 rounded text-xs font-medium"
-                      :class="getJobStatusClass(jobStatus.status)"
-                    >
-                      {{ getJobStatusText(jobStatus.status) }}
-                    </span>
-                  </div>
-                  <div
-                    v-if="jobStatus && (jobStatus.status === 'pending' || jobStatus.status === 'waiting' || jobStatus.status === 'processing' || jobStatus.status === 'active')"
-                    class="flex items-center gap-2"
-                  >
-                    <button
-                      type="button"
-                      @click="handleCancelJob"
-                      :disabled="cancelling"
-                      class="text-red-500 hover:text-red-700 disabled:opacity-50 admin-button"
-                      :title="(jobStatus.status === 'processing' || jobStatus.status === 'active') ? '任务将在下一个检查点停止' : ''"
-                    >
-                      {{ cancelling ? '取消中...' : '取消任务' }}
-                    </button>
-                  </div>
-                </div>
-
-                <!-- 进度条 -->
-                <div v-if="jobStatus && (jobStatus.progress || jobStatus.returnValue)" class="mt-3">
-                  <!-- 如果 progress 是对象，包含 total, processed 等信息 -->
-                  <div v-if="typeof jobStatus.progress === 'object' && jobStatus.progress">
-                    <div class="flex items-center justify-between text-xs text-gray-600 mb-1">
-                      <span>进度: {{ jobStatus.progress.processed || 0 }} / {{ jobStatus.progress.total || 0 }}</span>
-                      <span>{{ jobStatus.progress.total > 0 ? Math.round((jobStatus.progress.processed / jobStatus.progress.total) * 100) : 0 }}%</span>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        class="bg-tsinghua-purple h-2 rounded-full transition-all duration-300"
-                        :style="{ width: `${jobStatus.progress.total > 0 ? (jobStatus.progress.processed / jobStatus.progress.total) * 100 : 0}%` }"
-                      ></div>
-                    </div>
-                    <div v-if="jobStatus.progress.failed > 0" class="mt-2 text-xs text-red-600">
-                      失败: {{ jobStatus.progress.failed }} 个
-                    </div>
-                  </div>
-                  <!-- 如果 progress 是数字 -->
-                  <div v-else-if="typeof jobStatus.progress === 'number'">
-                    <div class="flex items-center justify-between text-xs text-gray-600 mb-1">
-                      <span>进度: {{ jobStatus.progress }}%</span>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        class="bg-tsinghua-purple h-2 rounded-full transition-all duration-300"
-                        :style="{ width: `${jobStatus.progress}%` }"
-                      ></div>
-                    </div>
-                  </div>
-                  <!-- 如果有 returnValue，显示完成信息 -->
-                  <div v-if="jobStatus.returnValue && typeof jobStatus.returnValue === 'object'">
-                    <div class="text-xs text-gray-600 mt-2">
-                      <div v-if="jobStatus.returnValue.count !== undefined">
-                        已处理: {{ jobStatus.returnValue.count }} 个菜品
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 消息提示 -->
-                <div v-if="jobStatus?.message" class="mt-2 text-xs text-gray-600">
-                  {{ jobStatus.message }}
-                </div>
-              </div>
-
-              <div v-if="!authStore.hasPermission('dish:edit')" class="mt-2 text-xs text-gray-500">
+              <div
+                v-if="!authStore.hasPermission('config:edit')"
+                class="settings-rule-permission text-sm text-gray-600"
+              >
                 <AppIcon class="iconify" icon="carbon:information"></AppIcon>
-                您没有刷新嵌入向量的权限
+                您没有编辑配置的权限
               </div>
             </div>
-          </div>
 
-          <!-- 加载失败提示 -->
-          <div v-if="loadError" class="admin-state admin-state-error">
-            <AppIcon class="iconify text-6xl text-gray-300 mx-auto" icon="carbon:warning-alt"></AppIcon>
-            <p class="mt-4 text-gray-500">配置加载失败，请刷新页面重试</p>
+            <!-- 回复审核配置 -->
+            <div class="settings-rule">
+              <div class="settings-rule-copy">
+                <div class="flex-1">
+                  <h3 class="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
+                    <AppIcon class="iconify text-tsinghua-purple" icon="carbon:chat"></AppIcon>
+                    回复人工审核
+                  </h3>
+                  <p class="text-sm text-gray-600">新提交的评价回复，经人工审核后公开。</p>
+                </div>
+              </div>
+
+              <div class="settings-rule-controls flex flex-wrap items-center gap-3">
+                <label
+                  class="relative inline-flex items-center cursor-pointer has-[:disabled]:cursor-not-allowed"
+                >
+                  <input
+                    type="checkbox"
+                    v-model="commentRequiresApproval"
+                    aria-label="回复人工审核"
+                    :disabled="
+                      !authStore.hasPermission('config:edit') ||
+                      unifiedModerationEnabled ||
+                      moderationPolicyState !== 'ready' ||
+                      commentSaving ||
+                      loadError
+                    "
+                    @change="handleCommentAutoApproveChange"
+                    class="sr-only peer"
+                  />
+                  <div :class="toggleSwitchClass"></div>
+                  <span class="ml-3 text-sm font-medium text-gray-700">
+                    {{ approvalStatus(commentRequiresApproval) }}
+                  </span>
+                </label>
+
+                <div v-if="commentSaving" class="flex items-center gap-2 text-sm text-gray-500">
+                  <AppIcon class="iconify animate-spin" icon="carbon:circle-dash"></AppIcon>
+                  <span>保存中...</span>
+                </div>
+                <div
+                  v-else-if="commentSaveSuccess"
+                  class="flex items-center gap-2 text-sm text-green-600"
+                >
+                  <AppIcon class="iconify" icon="carbon:checkmark-filled"></AppIcon>
+                  <span>保存成功</span>
+                </div>
+              </div>
+
+              <div
+                v-if="!authStore.hasPermission('config:edit')"
+                class="settings-rule-permission text-sm text-gray-600"
+              >
+                <AppIcon class="iconify" icon="carbon:information"></AppIcon>
+                您没有编辑配置的权限
+              </div>
+            </div>
+
+            <template v-if="isGlobalAdmin && !currentCanteenId">
+              <div v-for="item in communityConfigs" :key="item.key" class="settings-rule">
+                <div class="settings-rule-copy">
+                  <h3 class="text-base font-semibold text-gray-800 mb-1 flex items-center gap-2">
+                    <AppIcon class="text-tsinghua-purple" :icon="item.icon" />{{ item.label }}
+                  </h3>
+                  <p class="text-sm leading-6 text-gray-600">{{ item.description }}</p>
+                </div>
+                <div class="settings-rule-controls flex flex-wrap items-center gap-3">
+                  <label
+                    class="relative inline-flex items-center cursor-pointer has-[:disabled]:cursor-not-allowed"
+                  >
+                    <input
+                      v-model="item.requiresApproval"
+                      type="checkbox"
+                      :aria-label="item.label"
+                      :disabled="
+                        !authStore.hasPermission('config:edit') ||
+                        unifiedModerationEnabled ||
+                        moderationPolicyState !== 'ready' ||
+                        communitySaving ||
+                        loadError
+                      "
+                      class="sr-only peer"
+                      @change="handleCommunityApprovalChange(item)"
+                    />
+                    <span :class="toggleSwitchClass"></span>
+                    <span class="ml-3 text-sm font-medium text-gray-700">{{
+                      approvalStatus(item.requiresApproval)
+                    }}</span>
+                  </label>
+                  <span v-if="item.saving" class="text-sm text-gray-600" role="status"
+                    >保存中…</span
+                  >
+                  <span v-else-if="item.saved" class="text-sm text-green-700" role="status"
+                    >保存成功</span
+                  >
+                </div>
+                <p
+                  v-if="!authStore.hasPermission('config:edit')"
+                  class="settings-rule-permission text-sm text-gray-600"
+                >
+                  您没有编辑配置的权限
+                </p>
+              </div>
+            </template>
+            <p v-if="loadError" class="pt-4 text-sm text-red-700" role="alert">
+              配置加载失败，请刷新页面重试
+            </p>
+          </div>
+        </details>
+      </div>
+      <ContentModerationTasks
+        v-if="canManageGlobalModeration && tasksVisited"
+        v-show="activeView === 'tasks'"
+        :can-edit="authStore.hasPermission('config:edit')"
+      />
+      <section
+        v-show="activeView === 'maintenance'"
+        class="settings-section settings-maintenance"
+        aria-labelledby="maintenance-title"
+      >
+        <div class="flex items-start justify-between mb-4">
+          <div class="flex-1">
+            <h3
+              id="maintenance-title"
+              class="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2"
+            >
+              <AppIcon class="iconify text-tsinghua-purple" icon="carbon:ai-results"></AppIcon>
+              菜品嵌入向量刷新
+            </h3>
+            <p class="text-sm text-gray-600">
+              更新所选食堂的菜品推荐数据，批量任务可能需要较长时间。
+            </p>
           </div>
         </div>
-      </div>
+
+        <div class="mt-4 space-y-4">
+          <!-- 维护目标独立于人工审核规则范围。 -->
+          <div class="mb-4 max-w-sm">
+            <label for="embedding-canteen" class="mb-2 admin-label"> 选择要刷新的食堂 </label>
+            <select
+              id="embedding-canteen"
+              v-model="selectedCanteenId"
+              class="w-full admin-input"
+              :disabled="embeddingRefreshing || loadingCanteens"
+            >
+              <option value="" disabled>请选择食堂</option>
+              <option v-for="canteen in canteenList" :key="canteen.id" :value="canteen.id">
+                {{ canteen.name }}
+              </option>
+            </select>
+            <p v-if="loadingCanteens" class="mt-1 text-xs text-gray-500">加载食堂列表中...</p>
+          </div>
+
+          <!-- 批量刷新按钮 -->
+          <div class="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              :key="'refresh-btn-' + embeddingRefreshing"
+              :disabled="
+                !authStore.hasPermission('dish:edit') || embeddingRefreshing || !selectedCanteenId
+              "
+              @click="handleRefreshCanteenEmbeddings"
+              class="transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed admin-button admin-button-primary"
+            >
+              <AppIcon
+                v-if="embeddingRefreshing"
+                key="icon-loading"
+                class="iconify mr-1 animate-spin"
+                icon="carbon:circle-dash"
+              ></AppIcon>
+              <AppIcon
+                v-else
+                key="icon-refresh"
+                class="iconify mr-1"
+                icon="carbon:refresh"
+              ></AppIcon>
+              {{ embeddingRefreshing ? '刷新中…' : '刷新推荐数据' }}
+            </button>
+
+            <div
+              v-if="embeddingRefreshSuccess"
+              class="flex items-center gap-2 text-sm text-green-600"
+            >
+              <AppIcon class="iconify" icon="carbon:checkmark-filled"></AppIcon>
+              <span>刷新任务已提交</span>
+            </div>
+          </div>
+
+          <!-- 任务状态显示 -->
+          <div v-if="currentJobId" class="mt-6 border-t border-gray-200 pt-5">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-medium text-gray-700">任务状态</span>
+                <span
+                  v-if="jobStatus"
+                  class="px-2 py-1 rounded text-xs font-medium"
+                  :class="getJobStatusClass(jobStatus.status)"
+                >
+                  {{ getJobStatusText(jobStatus.status) }}
+                </span>
+              </div>
+              <div
+                v-if="
+                  jobStatus &&
+                  (jobStatus.status === 'pending' ||
+                    jobStatus.status === 'waiting' ||
+                    jobStatus.status === 'processing' ||
+                    jobStatus.status === 'active')
+                "
+                class="flex items-center gap-2"
+              >
+                <button
+                  type="button"
+                  @click="handleCancelJob"
+                  :disabled="cancelling"
+                  class="text-red-500 hover:text-red-700 disabled:opacity-50 admin-button"
+                  :title="
+                    jobStatus.status === 'processing' || jobStatus.status === 'active'
+                      ? '任务将在下一个检查点停止'
+                      : ''
+                  "
+                >
+                  {{ cancelling ? '取消中...' : '取消任务' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- 进度条 -->
+            <div v-if="jobStatus && (jobStatus.progress || jobStatus.returnValue)" class="mt-3">
+              <!-- 如果 progress 是对象，包含 total, processed 等信息 -->
+              <div v-if="typeof jobStatus.progress === 'object' && jobStatus.progress">
+                <div class="flex items-center justify-between text-xs text-gray-600 mb-1">
+                  <span
+                    >进度: {{ jobStatus.progress.processed || 0 }} /
+                    {{ jobStatus.progress.total || 0 }}</span
+                  >
+                  <span
+                    >{{
+                      jobStatus.progress.total > 0
+                        ? Math.round(
+                            (jobStatus.progress.processed / jobStatus.progress.total) * 100,
+                          )
+                        : 0
+                    }}%</span
+                  >
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    class="bg-tsinghua-purple h-2 rounded-full transition-all duration-300"
+                    :style="{
+                      width: `${jobStatus.progress.total > 0 ? (jobStatus.progress.processed / jobStatus.progress.total) * 100 : 0}%`,
+                    }"
+                  ></div>
+                </div>
+                <div v-if="jobStatus.progress.failed > 0" class="mt-2 text-xs text-red-600">
+                  失败: {{ jobStatus.progress.failed }} 个
+                </div>
+              </div>
+              <!-- 如果 progress 是数字 -->
+              <div v-else-if="typeof jobStatus.progress === 'number'">
+                <div class="flex items-center justify-between text-xs text-gray-600 mb-1">
+                  <span>进度: {{ jobStatus.progress }}%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    class="bg-tsinghua-purple h-2 rounded-full transition-all duration-300"
+                    :style="{ width: `${jobStatus.progress}%` }"
+                  ></div>
+                </div>
+              </div>
+              <!-- 如果有 returnValue，显示完成信息 -->
+              <div v-if="jobStatus.returnValue && typeof jobStatus.returnValue === 'object'">
+                <div class="text-xs text-gray-600 mt-2">
+                  <div v-if="jobStatus.returnValue.count !== undefined">
+                    已处理: {{ jobStatus.returnValue.count }} 个菜品
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 消息提示 -->
+            <div v-if="jobStatus?.message" class="mt-2 text-xs text-gray-600">
+              {{ jobStatus.message }}
+            </div>
+          </div>
+
+          <div v-if="!authStore.hasPermission('dish:edit')" class="mt-2 text-xs text-gray-500">
+            <AppIcon class="iconify" icon="carbon:information"></AppIcon>
+            您没有刷新嵌入向量的权限
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 </template>
@@ -318,20 +459,47 @@
 <script>
 import { ref, computed, onMounted, onActivated, onDeactivated, onBeforeUnmount } from 'vue'
 import { configApi } from '@/api/modules/config'
+import { contentModerationApi } from '@/api/modules/content-moderation'
 import { dishApi } from '@/api/modules/dish'
 import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
-import { showAlert } from '@/composables/useModal'
+import ContentModerationSettings from '@/components/ContentModerationSettings.vue'
+import ContentModerationTasks from '@/components/ContentModerationTasks.vue'
+import { showAlert, showConfirm } from '@/composables/useModal'
 
 export default {
   name: 'ConfigManage',
   components: {
     Header,
+    ContentModerationSettings,
+    ContentModerationTasks,
+  },
+  async beforeRouteLeave() {
+    if (!this.moderationDirty) return true
+    const leave = await showConfirm(
+      '审核设置有未保存的修改，离开后将丢弃这些修改。',
+      '离开审核设置',
+      '丢弃并离开',
+      '继续编辑',
+    )
+    if (leave) this.$refs.moderationSettings?.resetDraft()
+    return leave
   },
   setup() {
     const authStore = useAuthStore()
     const loading = ref(true)
+    const unifiedModerationEnabled = ref(false)
+    const moderationSaving = ref(false)
+    const moderationPolicyState = ref('loading')
+    const moderationPolicyError = computed(() => moderationPolicyState.value === 'error')
+    const moderationDirty = ref(false)
+    const activeView = ref('settings')
+    const tasksVisited = ref(false)
+    const showModerationView = (view) => {
+      activeView.value = view
+      if (view === 'tasks') tasksVisited.value = true
+    }
     const reviewSaving = ref(false)
     const reviewSaveSuccess = ref(false)
     const commentSaving = ref(false)
@@ -339,17 +507,37 @@ export default {
     const reviewAutoApprove = ref(true)
     const commentAutoApprove = ref(true)
     const communityConfigs = ref([
-      { key: 'post.autoApprove', icon: 'carbon:chat', label: '社区帖子人工审核', description: '默认直接发布。开启后，新提交或修改的帖子审核通过后公开。', requiresApproval: false, saving: false, saved: false },
-      { key: 'postComment.autoApprove', icon: 'carbon:reply', label: '帖子回复人工审核', description: '默认直接发布。开启后，新帖子回复审核通过后公开。', requiresApproval: false, saving: false, saved: false },
+      {
+        key: 'post.autoApprove',
+        icon: 'carbon:chat',
+        label: '社区帖子人工审核',
+        description: '新提交或修改的社区帖子，经人工审核后公开。',
+        requiresApproval: false,
+        saving: false,
+        saved: false,
+      },
+      {
+        key: 'postComment.autoApprove',
+        icon: 'carbon:reply',
+        label: '帖子回复人工审核',
+        description: '新提交的帖子回复，经人工审核后公开。',
+        requiresApproval: false,
+        saving: false,
+        saved: false,
+      },
     ])
-    const communitySaving = computed(() => communityConfigs.value.some(item => item.saving))
+    const communitySaving = computed(() => communityConfigs.value.some((item) => item.saving))
     const reviewRequiresApproval = computed({
       get: () => !reviewAutoApprove.value,
-      set: (required) => { reviewAutoApprove.value = !required },
+      set: (required) => {
+        reviewAutoApprove.value = !required
+      },
     })
     const commentRequiresApproval = computed({
       get: () => !commentAutoApprove.value,
-      set: (required) => { commentAutoApprove.value = !required },
+      set: (required) => {
+        commentAutoApprove.value = !required
+      },
     })
     const configItems = ref([])
     const loadError = ref(false)
@@ -366,43 +554,45 @@ export default {
     // 食堂列表（用于全局管理员选择）
     const canteenList = ref([])
     const loadingCanteens = ref(false)
-    const selectedCanteenId = ref('')
+    const selectedCanteenId = ref(
+      authStore.user?.scope === 'GLOBAL' ? '' : authStore.user?.canteenIds[0] || '',
+    )
 
     const isGlobalAdmin = computed(() => authStore.user?.scope === 'GLOBAL')
+    const canManageGlobalModeration = computed(
+      () => isGlobalAdmin.value && authStore.hasPermission('config:view'),
+    )
+    const approvalStatus = (required) => {
+      if (loadError.value || moderationPolicyError.value) return '暂不可读取'
+      if (moderationPolicyState.value === 'loading') return '正在读取审核状态'
+      if (unifiedModerationEnabled.value) return required ? '备用 · 人工审核' : '备用 · 直接发布'
+      return required ? '已开启 · 人工审核' : '已关闭 · 直接发布'
+    }
     const configCanteenId = ref(isGlobalAdmin.value ? '' : authStore.user?.canteenIds[0] || '')
-    const configCanteens = computed(() => isGlobalAdmin.value ? canteenList.value : authStore.user?.canteens || [])
+    const configCanteens = computed(() =>
+      isGlobalAdmin.value ? canteenList.value : authStore.user?.canteens || [],
+    )
     const currentCanteenId = computed(() => configCanteenId.value || null)
-    const currentCanteenName = computed(() => configCanteens.value.find(canteen => canteen.id === configCanteenId.value)?.name || null)
+    const currentCanteenName = computed(
+      () =>
+        configCanteens.value.find((canteen) => canteen.id === configCanteenId.value)?.name || null,
+    )
 
     // Toggle switch 的类名（避免引号冲突）
     const toggleSwitchClass = computed(() => {
-      return "w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-tsinghua-purple/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-tsinghua-purple"
+      return "w-11 h-6 bg-gray-200 admin-switch-track rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-tsinghua-purple peer-disabled:opacity-50"
     })
 
-    // 配置描述文本
-    const configDescription = computed(() => {
-      if (currentCanteenId.value) {
-        return '管理当前食堂的配置项（仅影响当前食堂）'
-      }
-      return '管理全局默认配置（食堂单独配置优先）'
-    })
+    const configDescription = computed(() =>
+      isGlobalAdmin.value ? '管理审核策略、内容待办与系统维护' : '管理授权食堂的审核规则与系统维护',
+    )
 
-    // 当前食堂信息
     const currentCanteenInfo = computed(() => {
-      if (!isGlobalAdmin.value && !currentCanteenId.value) return '暂无授权食堂，请联系上级管理员调整范围'
-      if (!currentCanteenId.value) {
-        return '您正在管理全局配置（所有食堂）'
-      }
-      
-      // 直接使用管理员的 canteenName 字段
-      if (currentCanteenName.value) {
-        return `您正在管理食堂配置：${currentCanteenName.value}（仅影响该食堂）`
-      }
-      
-      // 如果 canteenName 不存在，显示ID作为后备
-      return `您正在管理食堂配置（食堂ID: ${currentCanteenId.value}）`
+      if (!isGlobalAdmin.value && !currentCanteenId.value)
+        return '暂无授权食堂，请联系上级管理员调整范围'
+      if (!currentCanteenId.value) return '食堂单独配置优先于全局默认配置。'
+      return `当前规则适用于${currentCanteenName.value || currentCanteenId.value}。`
     })
-
 
     let viewActive = false
     let configRequest = 0
@@ -413,18 +603,25 @@ export default {
       const request = ++configRequest
       const canteenId = currentCanteenId.value
       loading.value = true
+      if (!isGlobalAdmin.value) moderationPolicyState.value = 'loading'
       try {
         if (!isGlobalAdmin.value && !canteenId) throw new Error('暂无授权食堂')
-        let response
-        if (canteenId) {
-          // 有食堂ID，使用有效配置API获取实际生效的配置值（食堂配置 > 全局配置 > 默认值）
-          response = await configApi.getEffectiveConfig(canteenId)
-        } else {
-          // 没有食堂ID，加载全局配置
-          response = await configApi.getGlobalConfig()
-        }
+        const configPromise = canteenId
+          ? configApi.getEffectiveConfig(canteenId)
+          : configApi.getGlobalConfig()
+        const policyPromise = isGlobalAdmin.value
+          ? Promise.resolve(null)
+          : contentModerationApi.getPolicy().catch(() => null)
+        const [response, policyResponse] = await Promise.all([configPromise, policyPromise])
 
         if (request !== configRequest) return
+        if (!isGlobalAdmin.value) {
+          moderationPolicyState.value =
+            policyResponse?.code === 200 && policyResponse.data ? 'ready' : 'error'
+          unifiedModerationEnabled.value = moderationPolicyError.value
+            ? false
+            : policyResponse.data.enabled
+        }
 
         if (response.code === 200 && response.data) {
           const reviewAutoApproveKey = 'review.autoApprove'
@@ -434,12 +631,12 @@ export default {
             // 食堂配置：从有效配置列表中查找
             const effectiveConfigData = response.data
             const effectiveItems = effectiveConfigData.items || []
-            
+
             const reviewAutoApproveItem = effectiveItems.find(
-              (item) => item.key === reviewAutoApproveKey
+              (item) => item.key === reviewAutoApproveKey,
             )
             const commentAutoApproveItem = effectiveItems.find(
-              (item) => item.key === commentAutoApproveKey
+              (item) => item.key === commentAutoApproveKey,
             )
 
             if (reviewAutoApproveItem) {
@@ -461,18 +658,19 @@ export default {
             const globalConfigData = response.data
             const config = globalConfigData.config
             const templates = globalConfigData.templates
-            communityConfigs.value.forEach(item => {
-              const value = config?.items?.find(configItem => configItem.key === item.key)?.value
-                ?? templates?.find(template => template.key === item.key)?.defaultValue
-                ?? 'true'
+            communityConfigs.value.forEach((item) => {
+              const value =
+                config?.items?.find((configItem) => configItem.key === item.key)?.value ??
+                templates?.find((template) => template.key === item.key)?.defaultValue ??
+                'true'
               item.requiresApproval = value !== 'true'
             })
 
             const reviewAutoApproveItem = config?.items?.find(
-              (item) => item.key === reviewAutoApproveKey
+              (item) => item.key === reviewAutoApproveKey,
             )
             const commentAutoApproveItem = config?.items?.find(
-              (item) => item.key === commentAutoApproveKey
+              (item) => item.key === commentAutoApproveKey,
             )
 
             if (reviewAutoApproveItem) {
@@ -513,14 +711,25 @@ export default {
     }
 
     const handleCommunityApprovalChange = async (item) => {
-      if (!isGlobalAdmin.value || currentCanteenId.value || !authStore.hasPermission('config:edit') || loadError.value || communitySaving.value) {
+      if (
+        !isGlobalAdmin.value ||
+        currentCanteenId.value ||
+        !authStore.hasPermission('config:edit') ||
+        moderationPolicyState.value !== 'ready' ||
+        unifiedModerationEnabled.value ||
+        loadError.value ||
+        communitySaving.value
+      ) {
         item.requiresApproval = !item.requiresApproval
         return
       }
       item.saving = true
       item.saved = false
       try {
-        const response = await configApi.updateGlobalConfig({ key: item.key, value: item.requiresApproval ? 'false' : 'true' })
+        const response = await configApi.updateGlobalConfig({
+          key: item.key,
+          value: item.requiresApproval ? 'false' : 'true',
+        })
         if (response.code !== 200) throw new Error(response.message || '保存配置失败')
         item.saved = true
       } catch (error) {
@@ -536,6 +745,16 @@ export default {
       if (!authStore.hasPermission('config:edit')) {
         showAlert('您没有编辑配置的权限')
         reviewAutoApprove.value = !reviewAutoApprove.value // 恢复原值
+        return
+      }
+
+      if (
+        moderationPolicyState.value !== 'ready' ||
+        unifiedModerationEnabled.value ||
+        loadError.value ||
+        reviewSaving.value
+      ) {
+        reviewAutoApprove.value = !reviewAutoApprove.value
         return
       }
 
@@ -582,6 +801,16 @@ export default {
       if (!authStore.hasPermission('config:edit')) {
         showAlert('您没有编辑配置的权限')
         commentAutoApprove.value = !commentAutoApprove.value // 恢复原值
+        return
+      }
+
+      if (
+        moderationPolicyState.value !== 'ready' ||
+        unifiedModerationEnabled.value ||
+        loadError.value ||
+        commentSaving.value
+      ) {
+        commentAutoApprove.value = !commentAutoApprove.value
         return
       }
 
@@ -651,7 +880,7 @@ export default {
       }
 
       // 确定要刷新的食堂ID
-      const canteenIdToRefresh = currentCanteenId.value || selectedCanteenId.value
+      const canteenIdToRefresh = selectedCanteenId.value
 
       if (!canteenIdToRefresh) {
         showAlert('请选择要刷新的食堂')
@@ -665,15 +894,15 @@ export default {
 
       try {
         const response = await dishApi.refreshDishesEmbeddingByCanteen(canteenIdToRefresh)
-        
+
         console.log('刷新任务响应:', response)
-        
+
         if (response && response.code === 200 && response.data) {
           embeddingRefreshSuccess.value = true
           const jobId = response.data.jobId
-          
+
           console.log('获取到的jobId:', jobId)
-          
+
           if (jobId) {
             // 有jobId，异步模式，开始轮询
             currentJobId.value = jobId
@@ -708,23 +937,23 @@ export default {
         clearTimeout(pollingIntervalRef.value)
         pollingIntervalRef.value = null
       }
-      
+
       // 标记轮询为活跃状态
       isPollingActive.value = true
-      
+
       // 定义递归轮询函数
       const poll = async () => {
         // 如果轮询已停止，不再继续
         if (!isPollingActive.value) return
-        
+
         await checkJobStatus(jobId)
-        
+
         // 检查轮询状态，如果仍然活跃，安排下一次轮询
         if (isPollingActive.value) {
           pollingIntervalRef.value = setTimeout(poll, 2000)
         }
       }
-      
+
       // 立即开始第一次轮询
       poll()
     }
@@ -824,14 +1053,14 @@ export default {
 
       try {
         const response = await dishApi.getEmbeddingJobStatus(jobId)
-        
+
         // 再次检查轮询状态，因为在等待响应期间可能已被停止
         if (!isPollingActive.value) {
           return
         }
-        
+
         console.log('任务状态响应:', response)
-        
+
         // 确保正确获取响应数据
         let statusData = null
         if (response && response.code === 200) {
@@ -841,7 +1070,7 @@ export default {
           // 如果响应直接包含status字段，说明data就是状态数据
           statusData = response
         }
-        
+
         if (statusData) {
           // 更新任务状态
           // 后端返回的是 state 字段，不是 status
@@ -853,7 +1082,7 @@ export default {
             // 映射 BullMQ 的状态到我们的状态
             state: taskStatus,
           }
-          
+
           // 将 BullMQ 的状态映射到我们的状态格式
           // BullMQ 状态: 'waiting' | 'active' | 'completed' | 'failed' | 'delayed' | 'paused'
           let mappedStatus = taskStatus
@@ -862,12 +1091,12 @@ export default {
           } else if (taskStatus === 'active') {
             mappedStatus = 'processing'
           }
-          
+
           normalizedStatus.status = mappedStatus
           jobStatus.value = normalizedStatus
-          
+
           console.log('任务状态更新:', normalizedStatus, '原始状态:', taskStatus)
-          
+
           // 如果任务完成或失败，停止轮询并重置UI状态
           if (mappedStatus === 'completed' || mappedStatus === 'failed') {
             // 先停止轮询，清除定时器
@@ -879,15 +1108,17 @@ export default {
             // 重置UI状态
             embeddingRefreshing.value = false
             embeddingRefreshSuccess.value = false
-            
+
             if (mappedStatus === 'completed') {
               showAlert('嵌入向量刷新完成')
             } else {
-              showAlert(`嵌入向量刷新失败: ${normalizedStatus.failedReason || normalizedStatus.message || '未知错误'}`)
+              showAlert(
+                `嵌入向量刷新失败: ${normalizedStatus.failedReason || normalizedStatus.message || '未知错误'}`,
+              )
             }
             return
           }
-          
+
           // 如果状态是pending或processing，继续轮询
           if (mappedStatus === 'pending' || mappedStatus === 'processing') {
             // 继续轮询，不做任何操作
@@ -963,6 +1194,13 @@ export default {
 
     return {
       isGlobalAdmin,
+      canManageGlobalModeration,
+      activeView,
+      tasksVisited,
+      showModerationView,
+      moderationDirty,
+      moderationPolicyState,
+      approvalStatus,
       configCanteenId,
       configCanteens,
       loadConfig,
@@ -984,6 +1222,9 @@ export default {
       handleCommentAutoApproveChange,
       authStore,
       configDescription,
+      unifiedModerationEnabled,
+      moderationSaving,
+      moderationPolicyError,
       currentCanteenInfo,
       toggleSwitchClass,
       // 菜品嵌入刷新相关
@@ -1009,5 +1250,115 @@ export default {
 <style scoped>
 .container-shadow {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+</style>
+
+<style scoped>
+.config-page {
+  max-width: 1040px;
+}
+.config-panel {
+  padding: 24px 32px;
+}
+.settings-nav {
+  display: flex;
+  gap: 8px;
+  padding-top: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+.settings-nav-button {
+  min-height: 44px;
+  padding: 12px 16px;
+  border-bottom: 2px solid transparent;
+  color: #4b5563;
+  font-size: 14px;
+  font-weight: 600;
+  transition:
+    color 150ms,
+    border-color 150ms;
+}
+.settings-nav-button:hover,
+.settings-nav-button.is-active {
+  color: #660874;
+}
+.settings-nav-button.is-active {
+  border-bottom-color: #660874;
+}
+.config-panel :deep(.settings-section) {
+  min-width: 0;
+  padding-block: 28px;
+}
+.config-panel :deep(.settings-section + .settings-rules) {
+  border-top: 1px solid #e5e7eb;
+}
+.config-panel :deep(.settings-section-heading) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 44rem;
+}
+.config-panel :deep(.settings-policy-form) {
+  max-width: 44rem;
+}
+.settings-rule-summary {
+  display: list-item;
+  cursor: pointer;
+}
+.settings-rule-summary::marker {
+  color: #660874;
+}
+.settings-scope-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.settings-rule {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding-block: 20px;
+}
+.settings-rule-copy {
+  min-width: 0;
+}
+.settings-rule-copy p {
+  max-width: 52ch;
+  line-height: 1.7;
+}
+.settings-rule-permission {
+  grid-column: 1 / -1;
+}
+.settings-maintenance {
+  max-width: 44rem;
+}
+.config-panel :deep(.settings-task-copy) {
+  max-width: 72ch;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 640px) {
+  .config-panel {
+    padding: 16px;
+  }
+  .settings-nav {
+    gap: 4px;
+  }
+  .settings-nav-button {
+    padding-inline: 12px;
+  }
+  .config-panel :deep(.settings-section) {
+    padding-block: 24px;
+  }
+  .settings-scope-row {
+    display: grid;
+    gap: 8px;
+  }
+  .settings-rule {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
 }
 </style>

@@ -121,3 +121,34 @@ it('only confirms changed drafts and preserves changes when leaving is canceled'
   expect(await state.requestLeave()).toBe(true);
   expect(state.dirty.value).toBe(false);
 });
+
+it('reports pending public edits while ordinary preference updates keep their own save message', async () => {
+  store.userInfo.publicProfileSubmission = {
+    status: 'manual',
+    fields: { nickname: '待审昵称' },
+    reason: null,
+  };
+  const first = setup();
+  await first.state.loadProfile();
+  first.form.nickname = '待审昵称';
+  expect(await first.state.saveProfile({ nickname: '待审昵称' })).toBe(true);
+  expect(uni.showToast).toHaveBeenLastCalledWith({ title: '资料已提交审核', icon: 'none' });
+  const second = setup();
+  await second.state.loadProfile();
+  expect(await second.state.saveProfile({ allergens: ['花生'] })).toBe(true);
+  expect(uni.showToast).toHaveBeenLastCalledWith({ title: '保存成功', icon: 'success' });
+});
+
+it('removes account-owned persisted form drafts when the session changes', async () => {
+  const { state, form } = setup();
+  await state.loadProfile();
+  storage.set(
+    'settings-draft:a:personal',
+    JSON.stringify({ baseline: JSON.stringify(form), value: { nickname: '未提交' } })
+  );
+  form.nickname = '未提交';
+  store.sessionVersion++;
+  expect(form.nickname).toBe('');
+  expect(state.initialized.value).toBe(false);
+  expect(storage.has('settings-draft:a:personal')).toBe(false);
+});

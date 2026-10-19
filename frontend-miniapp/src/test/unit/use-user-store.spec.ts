@@ -198,6 +198,18 @@ describe('useUserStore', () => {
     });
 
     describe('updateLocalUserInfo', () => {
+      it('clears a stale moderation draft when the server returns an explicit null', () => {
+        const store = useUserStore();
+        store.userInfo = { id: 'u1', nickname: '公开昵称', avatar: '', publicProfileSubmission: {
+          status: 'manual', fields: { nickname: '待审昵称' }, reason: null,
+        } } as any;
+        store.updateLocalUserInfo({ nickname: '审核通过的昵称', publicProfileSubmission: null });
+        expect(store.userInfo?.publicProfileSubmission).toBeNull();
+        expect(store.userInfo?.nickname).toBe('审核通过的昵称');
+        const calls = mockSetStorageSync.mock.calls;
+        expect(JSON.parse(calls[calls.length - 1][1]).publicProfileSubmission).toBeNull();
+      });
+
       it('should update local state and storage', () => {
         const store = useUserStore();
         store.userInfo = { id: '1', nickname: 'Old Name' } as any;

@@ -71,6 +71,7 @@
     "test:perf:smoke": "node ../perf/local.mjs --profile smoke"
   },
   "dependencies": {
+    "@alicloud/pop-core": "^1.8.0",
     "@nestjs/axios": "^4.0.1",
     "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.0.1",
@@ -92,6 +93,7 @@
     "class-validator": "^0.14.2",
     "cuid": "^3.0.0",
     "dotenv": "^17.2.3",
+    "fast-xml-parser": "^5.11.2",
     "ioredis": "^5.8.2",
     "openai": "^6.15.0",
     "reflect-metadata": "^0.2.2",
@@ -99,6 +101,7 @@
     "sharp": "^0.34.5",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^9.0.1",
+    "wechat-crypto": "^0.0.2",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

@@ -1,3 +1,5 @@
+import { ModerationDispatcher } from '@/content-moderation/moderation-dispatcher.service';
+import { ModerationProcessingModule } from '@/content-moderation/moderation-processing.module';
 import { Module, OnModuleDestroy } from '@nestjs/common';
 import { Worker } from 'bullmq';
 import { DishReviewStatsQueueModule } from '@/dish-review-stats-queue/dish-review-stats-queue.module';
@@ -16,6 +18,7 @@ import { ContributionPublicationService } from '@/admin-uploads/contribution-pub
 
 @Module({
   imports: [
+    ModerationProcessingModule,
     RecommendationModule,
     UploadModule,
     NotificationsModule,
@@ -24,6 +27,7 @@ import { ContributionPublicationService } from '@/admin-uploads/contribution-pub
     DishReviewStatsQueueModule,
   ],
   providers: [
+    ModerationDispatcher,
     EmbeddingQueueProcessor,
     DishSyncProcessor,
     DishReviewStatsProcessor,

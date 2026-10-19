@@ -1,3 +1,4 @@
+import { ModerationCoreModule } from '@/content-moderation/moderation-core.module';
 import { Module } from '@nestjs/common';
 import { CommentsController } from './comments.controller';
 import { CommentsService } from './comments.service';
@@ -7,7 +8,12 @@ import { NotificationsModule } from '@/notifications/notifications.module';
 import { ContentInteractionsModule } from '@/social/content-interactions.module';
 
 @Module({
-  imports: [AdminConfigModule, NotificationsModule, ContentInteractionsModule],
+  imports: [
+    ModerationCoreModule,
+    AdminConfigModule,
+    NotificationsModule,
+    ContentInteractionsModule,
+  ],
   controllers: [CommentsController],
   providers: [CommentsService, JwtService],
 })

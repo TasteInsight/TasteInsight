@@ -24,7 +24,7 @@
           <span class="relative block mt-1.5">
             <select
               v-model="filters.action"
-              class="appearance-none pr-10 w-full bg-white transition-all cursor-pointer hover:border-gray-400 admin-input"
+              class="w-full bg-white transition-all cursor-pointer hover:border-gray-400 admin-input"
             >
               <option value="">全部操作</option>
               <option value="create">创建</option>
@@ -34,9 +34,6 @@
               <option value="approve">审核通过</option>
               <option value="reject">审核拒绝</option>
             </select>
-            <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
-              <AppIcon class="iconify" icon="carbon:chevron-down"></AppIcon>
-            </span>
           </span>
         </label>
 

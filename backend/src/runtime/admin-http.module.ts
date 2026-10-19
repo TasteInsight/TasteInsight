@@ -1,3 +1,5 @@
+import { ModerationAdminController } from '@/content-moderation/moderation-admin.controller';
+import { ModerationProcessingModule } from '@/content-moderation/moderation-processing.module';
 import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AuthModule } from '@/auth/auth.module';
@@ -24,6 +26,7 @@ import { AdminUploadController } from '@/upload/upload.controller';
 
 @Module({
   imports: [
+    ModerationProcessingModule,
     AuthModule,
     AdminAdminsModule,
     AdminCanteensModule,
@@ -41,6 +44,7 @@ import { AdminUploadController } from '@/upload/upload.controller';
     SocialModule,
   ],
   controllers: [
+    ModerationAdminController,
     AdminConfigController,
     AdminSocialController,
     AdminStudentVerificationController,

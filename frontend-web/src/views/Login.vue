@@ -41,7 +41,7 @@
                 required
                 placeholder="请输入用户名"
                 @input="clearLoginError"
-                class="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3.5 text-sm sm:text-base border border-gray-200 rounded-lg sm:rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-tsinghua-purple focus:border-tsinghua-purple outline-none transition-all duration-200 placeholder:text-gray-400"
+                class="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3.5 text-sm sm:text-base border border-gray-200 rounded-lg sm:rounded-xl bg-gray-50 focus:bg-white focus:border-tsinghua-purple outline-none transition-all duration-200 placeholder:text-gray-400"
                 :class="{
                   'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400':
                     errors.username,
@@ -70,7 +70,7 @@
                 required
                 placeholder="请输入密码"
                 @input="clearLoginError"
-                class="w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-2.5 sm:py-3.5 text-sm sm:text-base border border-gray-200 rounded-lg sm:rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-tsinghua-purple focus:border-tsinghua-purple outline-none transition-all duration-200 placeholder:text-gray-400"
+                class="w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-2.5 sm:py-3.5 text-sm sm:text-base border border-gray-200 rounded-lg sm:rounded-xl bg-gray-50 focus:bg-white focus:border-tsinghua-purple outline-none transition-all duration-200 placeholder:text-gray-400"
                 :class="{
                   'border-red-400 bg-red-50 focus:ring-red-400 focus:border-red-400':
                     errors.password,
@@ -99,7 +99,7 @@
               <input
                 v-model="loginForm.remember"
                 type="checkbox"
-                class="w-4 h-4 text-tsinghua-purple border-gray-300 rounded focus:ring-2 focus:ring-tsinghua-purple focus:ring-offset-0 cursor-pointer transition-colors"
+                class="w-4 h-4 text-tsinghua-purple border-gray-300 rounded cursor-pointer transition-colors"
               />
               <span class="ml-2 text-xs sm:text-sm text-gray-600 group-hover:text-gray-900 transition-colors"
                 >记住我</span

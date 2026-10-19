@@ -3,7 +3,7 @@
     <a class="admin-skip-link" href="#admin-main">跳转到主要内容</a>
     <Sidebar />
 
-    <main id="admin-main" class="admin-main" tabindex="-1">
+    <main id="admin-main" class="admin-main admin-focus-target" tabindex="-1">
       <router-view v-slot="{ Component }">
         <template v-if="$route.meta.keepAlive">
           <keep-alive>

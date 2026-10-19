@@ -1,3 +1,4 @@
+import { ModerationCoreModule } from '@/content-moderation/moderation-core.module';
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
@@ -7,7 +8,12 @@ import { PermissionsGuard } from '@/auth/guards/permissions.guard';
 import { NotificationsModule } from '@/notifications/notifications.module';
 
 @Module({
-  imports: [JwtModule.register({}), ConfigModule, NotificationsModule],
+  imports: [
+    ModerationCoreModule,
+    JwtModule.register({}),
+    ConfigModule,
+    NotificationsModule,
+  ],
   controllers: [AdminCommentsController],
   providers: [AdminCommentsService, PermissionsGuard],
 })

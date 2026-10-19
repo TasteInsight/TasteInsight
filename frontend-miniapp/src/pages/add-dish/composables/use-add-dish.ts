@@ -5,6 +5,7 @@ import { getMyUpload, updateMyUpload } from '@/api/modules/user';
 import { getCanteenList } from '@/api/modules/canteen';
 import { uploadImage } from '@/api/modules/upload';
 import { requireStudent } from '@/utils/student-access';
+import { moderationImageIdentity as imageIdentity } from '@/utils/moderation-image';
 import type {
   DishUserCreateRequest,
   DishContributionField,
@@ -96,9 +97,13 @@ const toForm = (value: any): FormData => {
   form.floor = value.floorLevel || '';
   return form;
 };
-const equivalent = (left: unknown, right: unknown) => {
-  if (Array.isArray(left) && Array.isArray(right))
-    return JSON.stringify([...left].sort()) === JSON.stringify([...right].sort());
+
+const equivalent = (left: unknown, right: unknown, field?: DishContributionField) => {
+  if (Array.isArray(left) && Array.isArray(right)) {
+    const comparable = (values: any[]) =>
+      field === 'images' ? [...new Set(values.map(imageIdentity))] : [...values].sort();
+    return JSON.stringify(comparable(left)) === JSON.stringify(comparable(right));
+  }
   return JSON.stringify(left ?? '') === JSON.stringify(right ?? '');
 };
 
@@ -344,7 +349,8 @@ export function useAddDish() {
     });
   };
   const isExistingImage = (path: string) =>
-    !!targetDishId.value && !!formBaseline?.images?.includes(path);
+    !!targetDishId.value &&
+    !!formBaseline?.images?.some(existing => imageIdentity(existing) === imageIdentity(path));
   const removeImage = (index: number) => {
     const path = formData.images?.[index];
     if (path && !formLocked.value && !isExistingImage(path)) formData.images!.splice(index, 1);
@@ -504,9 +510,14 @@ export function useAddDish() {
       const currentTargetVersion = targetDishUpdatedAt;
       pending.value = (uni.getStorageSync(submissionKey()) || null) as PendingSubmission | null;
       if (draft?.version === 1 && draft.revision === revision.value && !readOnly.value) {
+        const remotePreviews = new Map(
+          (formData.images || []).map(path => [imageIdentity(path), path])
+        );
         Object.assign(formData, clone(draft.form));
         formData.images = draft.images.map(image => {
           const restored = restoreDraftImage(image);
+          if (restored.source === 'remote')
+            restored.path = remotePreviews.get(imageIdentity(restored.path)) || restored.path;
           images.set(restored.path, restored);
           if (restored.source === 'embedded') restoredBlobUrls.add(restored.path);
           return restored.path;
@@ -577,7 +588,8 @@ export function useAddDish() {
               : field === 'name'
                 ? draft.name.trim()
                 : draft[field],
-            formBaseline![field]
+            formBaseline![field],
+            field
           )
       );
       if (payload.changedFields.includes('windowId')) {
@@ -673,7 +685,7 @@ export function useAddDish() {
           const matches = fields.every(
             field =>
               pending.value!.payload[field] === undefined ||
-              equivalent(saved[field], pending.value!.payload[field])
+              equivalent(saved[field], pending.value!.payload[field], field)
           );
           if (saved.status === 'pending' && matches) {
             complete(saved.id);

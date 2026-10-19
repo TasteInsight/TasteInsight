@@ -1,3 +1,4 @@
+import { ModerationDispatcher } from '@/content-moderation/moderation-dispatcher.service';
 import 'reflect-metadata';
 import { MODULE_METADATA } from '@nestjs/common/constants';
 import { BullModule, getQueueToken } from '@nestjs/bullmq';
@@ -29,6 +30,7 @@ import {
 
 describe('background worker composition', () => {
   const workers = [
+    ModerationDispatcher,
     EmbeddingQueueProcessor,
     DishSyncProcessor,
     DishReviewStatsProcessor,

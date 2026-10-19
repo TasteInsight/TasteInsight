@@ -26,10 +26,17 @@ export class LocalStorageStrategy implements StorageStrategy {
     );
   }
 
-  async upload(file: Express.Multer.File): Promise<UploadResult> {
+  async upload(
+    file: Express.Multer.File,
+    privateFile = false,
+  ): Promise<UploadResult> {
     await fs.promises.mkdir(this.uploadPath, { recursive: true });
     const fileExt = path.extname(file.originalname);
-    const fileName = `${randomUUID()}${fileExt}`;
+    const fileName = `${privateFile ? '.moderation/' : ''}${randomUUID()}${fileExt}`;
+    if (privateFile)
+      await fs.promises.mkdir(path.join(this.uploadPath, '.moderation'), {
+        recursive: true,
+      });
     const filePath = path.join(this.uploadPath, fileName);
 
     await fs.promises.writeFile(filePath, file.buffer);
@@ -42,8 +49,16 @@ export class LocalStorageStrategy implements StorageStrategy {
     return { url, filename: fileName };
   }
 
+  async read(storageKey: string): Promise<Buffer> {
+    if (!/^\.moderation\/[0-9a-f-]{36}\.(jpg|png|gif|webp)$/.test(storageKey))
+      throw new Error('Invalid managed image key');
+    return fs.promises.readFile(path.join(this.uploadPath, storageKey));
+  }
+
   async remove(storageKey: string): Promise<void> {
-    if (!/^[0-9a-f-]{36}\.(jpg|png|gif|webp)$/.test(storageKey)) {
+    if (
+      !/^(?:\.moderation\/)?[0-9a-f-]{36}\.(jpg|png|gif|webp)$/.test(storageKey)
+    ) {
       throw new Error('Invalid managed image key');
     }
     try {

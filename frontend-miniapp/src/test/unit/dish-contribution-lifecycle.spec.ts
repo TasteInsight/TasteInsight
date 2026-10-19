@@ -450,3 +450,86 @@ test.each([{ targetDishId: 'dish' }, { uploadId: 'upload' }])(
     expect(form.formData.name).toBe('面条');
   }
 );
+
+const managedImage = 'https://api.example.test/content-moderation/images/asset_identity_123456';
+const oldPreview = managedImage + '?expires=1000&signature=old';
+const freshPreview = managedImage + '?expires=2000&signature=fresh';
+const managedUpload = () => ({
+  ...target,
+  id: 'upload',
+  kind: 'update',
+  revision: 1,
+  status: 'pending',
+  targetDishId: 'dish',
+  images: [oldPreview],
+  baseSnapshot: { ...target, images: [managedImage] },
+  targetDish: { ...target, images: [managedImage] },
+});
+
+test('recognizes target images across refreshed signatures and submits only text changes', async () => {
+  (getMyUpload as jest.Mock).mockResolvedValue({ code: 200, data: managedUpload() });
+  (updateMyUpload as jest.Mock).mockResolvedValue({
+    code: 200,
+    data: { id: 'upload', revision: 2, status: 'pending' },
+  });
+  const form = state();
+  await form.initialize({ uploadId: 'upload' });
+  expect(form.isExistingImage(oldPreview)).toBe(true);
+  form.removeImage(0);
+  expect(form.formData.images).toEqual([oldPreview]);
+  form.formData.description = '只改文字';
+  expect(await form.submitForm()).toBe(true);
+  expect((updateMyUpload as jest.Mock).mock.calls[0][1].changedFields).toEqual(['description']);
+});
+
+test.each([false, true])(
+  'confirms a saved update by image identity while preserving order changes: reordered=%s',
+  async reordered => {
+    const another = 'https://api.example.test/content-moderation/images/another_asset_123456';
+    const original = {
+      ...target,
+      id: 'upload',
+      kind: 'create',
+      revision: 4,
+      status: 'rejected',
+      images: [oldPreview, another],
+    };
+    (getMyUpload as jest.Mock).mockResolvedValue({ code: 200, data: original });
+    (updateMyUpload as jest.Mock).mockRejectedValueOnce(new Error('network timeout'));
+    const form = state();
+    await form.initialize({ uploadId: 'upload' });
+    form.formData.price = 10;
+    expect(await form.submitForm()).toBe(false);
+    const payload = (updateMyUpload as jest.Mock).mock.calls[0][1];
+    (getMyUpload as jest.Mock).mockResolvedValue({
+      code: 200,
+      data: {
+        ...payload,
+        id: 'upload',
+        revision: 5,
+        status: 'pending',
+        images: reordered ? [another, freshPreview] : [freshPreview, another],
+      },
+    });
+    expect(await form.submitForm()).toBe(!reordered);
+    expect(updateMyUpload).toHaveBeenCalledTimes(1);
+    if (reordered) expect(form.conflict.value).toBe('upload');
+  }
+);
+
+test('restores text drafts with the current authorized remote image preview', async () => {
+  (getMyUpload as jest.Mock).mockResolvedValue({ code: 200, data: managedUpload() });
+  const first = state();
+  await first.initialize({ uploadId: 'upload' });
+  first.formData.description = '保存的文字';
+  expect(await first.saveDraft()).toBe(true);
+  scopes.splice(0).forEach(scope => scope.stop());
+  (getMyUpload as jest.Mock).mockResolvedValue({
+    code: 200,
+    data: { ...managedUpload(), images: [freshPreview] },
+  });
+  const restored = state();
+  await restored.initialize({ uploadId: 'upload' });
+  expect(restored.formData.description).toBe('保存的文字');
+  expect(restored.formData.images).toEqual([freshPreview]);
+});
