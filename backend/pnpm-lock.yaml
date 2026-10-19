@@ -89,6 +89,9 @@ importers:
       rxjs:
         specifier: ^7.8.1
         version: 7.8.2
+      sanitize-html:
+        specifier: 2.17.0
+        version: 2.17.0
       sharp:
         specifier: ^0.34.5
         version: 0.34.5
@@ -138,6 +141,9 @@ importers:
       '@types/node':
         specifier: ^22.10.7
         version: 22.18.12
+      '@types/sanitize-html':
+        specifier: ^2.16.2
+        version: 2.16.2
       '@types/supertest':
         specifier: ^6.0.2
         version: 6.0.3

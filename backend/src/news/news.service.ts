@@ -73,6 +73,9 @@ export class NewsService {
   private mapToNewsDto(news: any): NewsDto {
     return {
       id: news.id,
+      sourceName: news.sourceName,
+      sourceUrl: news.sourceUrl,
+      sourcePublishedAt: news.sourcePublishedAt,
       title: news.title,
       content: news.content,
       summary: news.summary,

@@ -634,6 +634,9 @@ export interface GetPendingParams extends PaginationParams {
  * 新闻信息
  */
 export interface News {
+  sourceName?: string | null;
+  sourceUrl?: string | null;
+  sourcePublishedAt?: string | null;
   id: string
   title: string
   content: string

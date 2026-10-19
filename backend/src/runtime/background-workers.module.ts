@@ -1,5 +1,7 @@
 import { ModerationDispatcher } from '@/content-moderation/moderation-dispatcher.service';
 import { ModerationProcessingModule } from '@/content-moderation/moderation-processing.module';
+import { NewsSourcesModule } from '@/news-sources/news-sources.module';
+import { NewsSourcesProcessor } from '@/news-sources/news-sources.processor';
 import { Module, OnModuleDestroy } from '@nestjs/common';
 import { Worker } from 'bullmq';
 import { DishReviewStatsQueueModule } from '@/dish-review-stats-queue/dish-review-stats-queue.module';
@@ -19,6 +21,7 @@ import { ContributionPublicationService } from '@/admin-uploads/contribution-pub
 @Module({
   imports: [
     ModerationProcessingModule,
+    NewsSourcesModule,
     RecommendationModule,
     UploadModule,
     NotificationsModule,
@@ -28,6 +31,7 @@ import { ContributionPublicationService } from '@/admin-uploads/contribution-pub
   ],
   providers: [
     ModerationDispatcher,
+    NewsSourcesProcessor,
     EmbeddingQueueProcessor,
     DishSyncProcessor,
     DishReviewStatsProcessor,
@@ -37,6 +41,7 @@ import { ContributionPublicationService } from '@/admin-uploads/contribution-pub
     ContributionPublicationService,
   ],
   exports: [
+    NewsSourcesProcessor,
     EmbeddingQueueProcessor,
     DishSyncProcessor,
     DishReviewStatsProcessor,
@@ -48,12 +53,13 @@ export class BackgroundWorkersModule implements OnModuleDestroy {
     private readonly embedding: EmbeddingQueueProcessor,
     private readonly dishSync: DishSyncProcessor,
     private readonly reviewStats: DishReviewStatsProcessor,
+    private readonly newsSources: NewsSourcesProcessor,
   ) {}
 
   async onModuleDestroy(): Promise<void> {
     // Drain consumers before shared DB and cache application-shutdown hooks.
     await Promise.all(
-      [this.embedding, this.dishSync, this.reviewStats].map(
+      [this.embedding, this.dishSync, this.reviewStats, this.newsSources].map(
         async (processor) => {
           let worker: Worker;
           try {

@@ -35,6 +35,7 @@ const mocks = vi.hoisted(() => ({
   showAlertMock: vi.fn(() => Promise.resolve()),
   showConfirmMock: vi.fn(() => Promise.resolve(true)),
   requestPostMock: vi.fn(),
+  sourceCapabilitiesMock: vi.fn(),
 }))
 
 vi.mock('@/store/modules/use-auth-store', () => ({
@@ -43,6 +44,10 @@ vi.mock('@/store/modules/use-auth-store', () => ({
 
 vi.mock('@/api/modules/news', () => ({
   newsApi: mocks.newsApiMock,
+}))
+
+vi.mock('@/api/modules/news-sources', () => ({
+  newsSourcesApi: { capabilities: mocks.sourceCapabilitiesMock },
 }))
 
 vi.mock('@/api/modules/canteen', () => ({
@@ -58,6 +63,7 @@ vi.mock('@/composables/useModal', () => ({
 }))
 
 import NewsManage from '../../src/views/NewsManage.vue'
+import NewsSources from '../../src/components/News/NewsSources.vue'
 import { invalidateAuthSession } from '../../src/utils/auth-session'
 
 enableAutoUnmount(afterEach)
@@ -362,6 +368,9 @@ describe('views/NewsManage', () => {
     invalidateAuthSession()
     mocks.authStoreMock.token = 'token'
     mocks.requestPostMock.mockReset()
+    mocks.sourceCapabilitiesMock.mockReset().mockResolvedValue({
+      code: 200, data: { configured: true, adminUrl: null },
+    })
 
     mocks.canteenApiMock.getCanteenOptions.mockResolvedValue({
       code: 200,
@@ -646,6 +655,218 @@ describe('views/NewsManage', () => {
     wrapper.unmount()
   })
 
+  it('keeps source navigation absent until deployment capabilities are known', async () => {
+    const pending = deferred<any>()
+    mocks.sourceCapabilitiesMock.mockReturnValue(pending.promise)
+    const wrapper = shallowMount(NewsManage)
+    expect(wrapper.find('[role="tablist"]').exists()).toBe(false)
+    expect(wrapper.findComponent(NewsSources).exists()).toBe(false)
+    pending.resolve({ code: 200, data: { configured: false, adminUrl: null } })
+    await flushPromises()
+    expect(wrapper.find('[role="tablist"]').exists()).toBe(false)
+    expect(wrapper.findComponent(NewsSources).exists()).toBe(false)
+    expect(wrapper.get('#news-content-panel').isVisible()).toBe(true)
+    expect(wrapper.get('#news-content-panel').attributes('role')).toBeUndefined()
+    expect(wrapper.get('#news-content-panel').attributes('aria-labelledby')).toBeUndefined()
+    expect(wrapper.findComponent({name: 'Header'}).attributes('description')).not.toContain('公众号')
+  })
+
+  it('discovers the service without fetching subscriptions or source records', async () => {
+    mocks.sourceCapabilitiesMock.mockResolvedValue({
+      code: 200, data: { configured: true, adminUrl: 'http://localhost:8001/' },
+    })
+    const wrapper = shallowMount(NewsManage)
+    await flushPromises()
+    expect(mocks.sourceCapabilitiesMock).toHaveBeenCalledTimes(1)
+    await wrapper.get('#news-tab-sources').trigger('click')
+    expect(wrapper.get('.news-service-link').attributes('href')).toBe('http://localhost:8001/')
+  })
+
+  it('keeps manual news usable when capability discovery fails', async () => {
+    mocks.sourceCapabilitiesMock.mockRejectedValue(new Error('offline'))
+    const wrapper = shallowMount(NewsManage)
+    await flushPromises()
+    expect(wrapper.find('[role="tablist"]').exists()).toBe(false)
+    expect(wrapper.get('#news-content-panel').isVisible()).toBe(true)
+    expect(mocks.newsApiMock.getNews).toHaveBeenCalled()
+  })
+
+  it('ignores capability responses from a retired administrator session', async () => {
+    const pending = deferred<any>()
+    mocks.sourceCapabilitiesMock.mockReturnValue(pending.promise)
+    const wrapper = shallowMount(NewsManage)
+    invalidateAuthSession()
+    pending.resolve({ code: 200, data: { configured: true, adminUrl: 'http://localhost:8001/' } })
+    await flushPromises()
+    expect(wrapper.find('[role="tablist"]').exists()).toBe(false)
+    expect(wrapper.findComponent(NewsSources).exists()).toBe(false)
+  })
+
+  it('rechecks deployment after returning and retains known capabilities on transient errors', async () => {
+    const visible = ref(true)
+    const Shell = defineComponent({ setup: () => () => h(KeepAlive, null, {
+      default: () => visible.value ? h(NewsManage) : h('div', 'other'),
+    }) })
+    const wrapper = mount(Shell, {global: {stubs: {Header: true, Pagination: true, NewsSources: true}}})
+    await flushPromises()
+    expect(mocks.sourceCapabilitiesMock).toHaveBeenCalledTimes(1)
+    await wrapper.get('#news-tab-sources').trigger('click')
+    visible.value = false
+    await nextTick()
+    mocks.sourceCapabilitiesMock.mockRejectedValueOnce(new Error('temporary'))
+    visible.value = true
+    await flushPromises()
+    expect(wrapper.get('#news-tab-sources').attributes('aria-selected')).toBe('true')
+    visible.value = false
+    await nextTick()
+    mocks.sourceCapabilitiesMock.mockResolvedValueOnce({code: 200, data: {configured: false, adminUrl: null}})
+    visible.value = true
+    await flushPromises()
+    expect(wrapper.find('[role="tablist"]').exists()).toBe(false)
+    expect(wrapper.get('#news-content-panel').isVisible()).toBe(true)
+  })
+
+  it('separates news and source workspaces with keyboard-accessible tabs', async () => {
+    const wrapper = shallowMount(NewsManage, {attachTo:document.body,global:{stubs:{Header:true,Pagination:true}}})
+    await flushPromises()
+    expect(wrapper.get('#news-tab-content').attributes('aria-selected')).toBe('true')
+    expect(wrapper.findComponent(NewsSources).props('active')).toBe(false)
+    await wrapper.get('#news-tab-content').trigger('keydown',{key:'ArrowRight'})
+    expect(wrapper.get('#news-tab-sources').attributes('aria-selected')).toBe('true')
+    expect(wrapper.findComponent(NewsSources).props('active')).toBe(true)
+    expect(wrapper.get('#news-content-panel').isVisible()).toBe(false)
+    await nextTick();expect(document.activeElement?.id).toBe('news-tab-sources')
+    mocks.newsApiMock.getNews.mockClear();wrapper.findComponent(NewsSources).vm.$emit('imported');await flushPromises();expect(mocks.newsApiMock.getNews).toHaveBeenCalledTimes(1)
+    await wrapper.get('#news-tab-sources').trigger('keydown',{key:'Home'});expect(wrapper.findComponent(NewsSources).props('active')).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('places the WeRSS service shortcut outside the tabs and source list', async () => {
+    const wrapper = shallowMount(NewsManage, { global: { stubs: { Header: true, Pagination: true } } })
+    await flushPromises()
+    expect(wrapper.find('.news-service-link').exists()).toBe(false)
+    wrapper.findComponent(NewsSources).vm.$emit('panelUrl', 'https://rss.school.example/')
+    await wrapper.get('#news-tab-sources').trigger('click')
+    const link = wrapper.get('.news-service-link')
+    expect(link.attributes('href')).toBe('https://rss.school.example/')
+    expect(link.attributes('target')).toBe('_blank')
+    expect(link.attributes('rel')).toBe('noopener noreferrer')
+    expect(link.attributes('aria-label')).toContain('新窗口')
+    expect(wrapper.get('[role="tablist"]').find('a').exists()).toBe(false)
+    expect(wrapper.get('#news-sources-panel').find('a').exists()).toBe(false)
+    wrapper.findComponent(NewsSources).vm.$emit('panelUrl', null)
+    await nextTick()
+    expect(wrapper.find('.news-service-link').exists()).toBe(false)
+    wrapper.findComponent(NewsSources).vm.$emit('panelUrl', 'https://rss.school.example/')
+    await wrapper.get('#news-tab-content').trigger('click')
+    expect(wrapper.find('.news-service-link').exists()).toBe(false)
+  })
+
+  it('limits the service shortcut to source administrators', async () => {
+    const originalPermissions = mocks.authStoreMock.hasPermission.getMockImplementation()!
+    mocks.authStoreMock.hasPermission.mockImplementation(permission => permission === 'news:view')
+    try {
+      const wrapper = shallowMount(NewsManage, { global: { stubs: { Header: true, Pagination: true } } })
+      await flushPromises()
+      wrapper.findComponent(NewsSources).vm.$emit('panelUrl', 'https://rss.school.example/')
+      await wrapper.get('#news-tab-sources').trigger('click')
+      expect(wrapper.find('.news-service-link').exists()).toBe(false)
+    } finally {
+      mocks.authStoreMock.hasPermission.mockImplementation(originalPermissions)
+    }
+  })
+
+  it('preserves imported article HTML when saving metadata without opening the editor', async () => {
+    const wrapper = shallowMount(NewsManage, { global: { stubs: { Header: true, Pagination: true } } })
+    const content = '<section style="padding:20px;height:40px;white-space:pre-wrap;word-break:break-all;color:#123456"><p>公众号排版</p><img src="https://mmbiz.qpic.cn/image" /></section>'
+    wrapper.vm.editNews({id:'wx',title:'原文',summary:'摘要',content,canteenId:null,status:'draft',sourceUrl:'https://mp.weixin.qq.com/s/a',publishedAt:null})
+    wrapper.vm.newsForm.title = '修改标题'
+    expect(wrapper.vm.preserveImportedContent).toBe(true)
+    await wrapper.vm.submitForm('draft')
+    expect(mocks.newsApiMock.updateNews).toHaveBeenCalledWith('wx',expect.objectContaining({title:'修改标题',content}))
+    wrapper.unmount()
+  })
+
+  it.each([
+    ['draft', ['预览', '编辑', '发布', '删除']],
+    ['published', ['预览', '撤回', '删除']],
+  ] as const)('keeps %s row actions visible and in workflow order', async (status, labels) => {
+    const wrapper = shallowMount(NewsManage, {
+      global: { stubs: { Header: true, Pagination: true } },
+    })
+    await flushPromises()
+    wrapper.vm.currentStatus = status
+    wrapper.vm.newsList = [{ ...draftNews('操作示例'), status }]
+    await nextTick()
+
+    const actions = wrapper.get('[role="group"][aria-label="新闻 操作示例 的操作"]')
+    expect(actions.findAll('button').map(button => button.text())).toEqual(labels)
+    expect(actions.findAll('button').every(button => button.attributes('disabled') === undefined)).toBe(true)
+    await actions.get('button').trigger('click')
+    expect(wrapper.vm.showPreviewModal).toBe(true)
+    expect(wrapper.vm.previewNewsData.title).toBe('操作示例')
+  })
+
+  it.each(['draft', 'published'] as const)('disables unauthorized %s actions while keeping preview available', async (status) => {
+    const originalPermissions = mocks.authStoreMock.hasPermission.getMockImplementation()!
+    mocks.authStoreMock.hasPermission.mockImplementation(permission => permission === 'news:view')
+    try {
+      const wrapper = shallowMount(NewsManage, {
+        global: { stubs: { Header: true, Pagination: true } },
+      })
+      await flushPromises()
+      wrapper.vm.currentStatus = status
+      wrapper.vm.newsList = [{ ...draftNews('受限新闻'), status }]
+      await nextTick()
+
+      const create = wrapper.get('button[title="无权限创建"]')
+      expect(create.attributes('disabled')).toBeDefined()
+      await create.trigger('click')
+      expect(wrapper.vm.showCreateModal).toBe(false)
+      const buttons = wrapper.get('[role="group"][aria-label="新闻 受限新闻 的操作"]').findAll('button')
+      expect(buttons[0].attributes('disabled')).toBeUndefined()
+      for (const button of buttons.slice(1)) {
+        expect(button.attributes('disabled')).toBeDefined()
+        expect(button.attributes('title')).toContain('无权限')
+        await button.trigger('click')
+      }
+      expect(mocks.showConfirmMock).not.toHaveBeenCalled()
+      expect(mocks.showAlertMock).not.toHaveBeenCalled()
+      expect(wrapper.vm.showEditModal).toBe(false)
+      expect(mocks.newsApiMock.publishNews).not.toHaveBeenCalled()
+      expect(mocks.newsApiMock.revokeNews).not.toHaveBeenCalled()
+      expect(mocks.newsApiMock.deleteNews).not.toHaveBeenCalled()
+    } finally {
+      mocks.authStoreMock.hasPermission.mockImplementation(originalPermissions)
+    }
+  })
+
+  it.each(['draft', 'published'] as const)('disables %s row mutations throughout batch deletion', async (status) => {
+    const wrapper = shallowMount(NewsManage, {
+      global: { stubs: { Header: true, Pagination: true } },
+    })
+    await flushPromises()
+    wrapper.vm.currentStatus = status
+    wrapper.vm.newsList = [{ ...draftNews('批量处理中'), status }]
+    wrapper.vm.isBatchDeleting = true
+    await nextTick()
+
+    const buttons = wrapper.get('[role="group"][aria-label="新闻 批量处理中 的操作"]').findAll('button')
+    expect(buttons[0].attributes('disabled')).toBeUndefined()
+    for (const button of buttons.slice(1)) {
+      expect(button.attributes('disabled')).toBeDefined()
+      await button.trigger('click')
+    }
+    expect(mocks.showConfirmMock).not.toHaveBeenCalled()
+    expect(wrapper.vm.showEditModal).toBe(false)
+    expect(mocks.newsApiMock.publishNews).not.toHaveBeenCalled()
+    expect(mocks.newsApiMock.revokeNews).not.toHaveBeenCalled()
+    expect(mocks.newsApiMock.deleteNews).not.toHaveBeenCalled()
+    wrapper.vm.isBatchDeleting = false
+    await nextTick()
+    expect(buttons.every(button => button.attributes('disabled') === undefined)).toBe(true)
+  })
+
   it('publish/revoke/delete honor permission + confirm branches and handle failures', async () => {
     const wrapper = shallowMount(NewsManage, {
       global: { stubs: { Header: true, Pagination: true } },
@@ -789,14 +1010,14 @@ describe('views/NewsManage', () => {
     expect(wrapper.text()).toContain('未知食堂')
     expect(wrapper.text()).toContain('全校公告')
 
-    // list rows in published: revoke button + info icon hint text
+    // Published rows expose the editing prerequisite on the revoke action.
     wrapper.vm.currentStatus = 'published'
     wrapper.vm.newsList = [{ id: 'p1', title: 'P', summary: '', content: '', canteenId: null, publishedAt: null }]
     await nextTick()
     expect(wrapper.text()).toContain('撤回')
     const revokeBtn = wrapper.findAll('button').find((b) => b.text().includes('撤回'))
     expect(revokeBtn?.attributes('title') || '').toContain('如需编辑已发布新闻')
-    expect(wrapper.find('span[title*="如需编辑已发布新闻"]').exists()).toBe(true)
+    expect(wrapper.find('span[title*="如需编辑已发布新闻"]').exists()).toBe(false)
 
     // pagination v-if
     wrapper.vm.pagination.totalPages = 2

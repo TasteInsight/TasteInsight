@@ -7,10 +7,30 @@
           <text>{{ newsDetail.canteenName || '全校公告' }}</text>
           <text>{{ newsDetail.publishedAt ? formatTime(newsDetail.publishedAt) : '' }}</text>
         </view>
+        <view v-if="newsDetail.sourceName" class="article-source"
+          ><text>来源：{{ newsDetail.sourceName }}</text></view
+        >
         <view class="article-body">
           <!-- 使用处理后的富文本内容，支持图片自适应 -->
-          <rich-text :nodes="formattedContent"></rich-text>
+          <MpHtml
+            v-if="newsDetail.sourceUrl"
+            :content="newsDetail.content"
+            :preview-img="true"
+            :scroll-table="true"
+            :tag-style="{
+              img: 'max-width:100%;height:auto;',
+              section: 'max-width:100%;box-sizing:border-box;',
+            }"
+          />
+          <rich-text v-else :nodes="formattedContent"></rich-text>
         </view>
+        <button
+          v-if="originalArticleUrl(newsDetail.sourceUrl)"
+          class="original-link"
+          @click="openNewsOriginal(newsDetail.sourceUrl)"
+        >
+          查看微信原文
+        </button>
       </view>
 
       <view v-if="error || notFound" class="article-state error-feedback" role="alert">
@@ -38,6 +58,8 @@
 </template>
 
 <script setup lang="ts">
+import MpHtml from 'mp-html/dist/uni-app/components/mp-html/mp-html.vue';
+import { openNewsOriginal, originalArticleUrl } from '@/utils/news-original';
 import config from '@/config';
 import { openCampus } from '@/utils/campus-navigation';
 import { useNewsDetail } from '../composables/use-news-detail';
@@ -84,6 +106,26 @@ initDetailPage();
   color: #667085;
   font-size: 13px;
   line-height: 1.6;
+}
+.article-source {
+  margin-bottom: 20px;
+  color: #667085;
+  font-size: 13px;
+}
+.original-link {
+  margin: 28px 0 0;
+  padding: 12px 0;
+  background: transparent;
+  color: #660874;
+  font-size: 15px;
+  text-align: left;
+}
+.original-link::after {
+  border: 0;
+}
+.original-link:focus-visible {
+  outline: 2px solid #660874;
+  outline-offset: 4px;
 }
 .article-body {
   max-width: 100%;

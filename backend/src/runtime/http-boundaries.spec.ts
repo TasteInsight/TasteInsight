@@ -1,3 +1,4 @@
+import { NEWS_SYNC_QUEUE } from '@/news-sources/news-sources.queue';
 import { INestApplication, Type, ValidationPipe } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ModulesContainer } from '@nestjs/core';
@@ -65,6 +66,7 @@ const adminControllers = [
   'AdminUploadsController',
   'AdminWindowsController',
   'ModerationAdminController',
+  'NewsSourcesController',
 ];
 
 async function createHttpApplication(root: Type<unknown>) {
@@ -144,8 +146,13 @@ async function createHttpApplication(root: Type<unknown>) {
     DISH_SYNC_QUEUE,
     DISH_REVIEW_STATS_QUEUE,
     EMBEDDING_QUEUE,
+    NEWS_SYNC_QUEUE,
   ]) {
-    builder.overrideProvider(getQueueToken(name)).useValue({});
+    builder
+      .overrideProvider(getQueueToken(name))
+      .useValue(
+        name === NEWS_SYNC_QUEUE ? { removeJobScheduler: jest.fn() } : {},
+      );
   }
   const module = await builder.compile();
   const app = module.createNestApplication();
@@ -219,7 +226,7 @@ describe.each([
     expect(providers).not.toEqual(
       expect.arrayContaining([
         expect.stringMatching(
-          /^(?:DishSyncProcessor|DishReviewStatsProcessor|EmbeddingQueueProcessor|NotificationDispatcher|NotificationCampaignService|ModerationDispatcher)$/,
+          /^(?:DishSyncProcessor|DishReviewStatsProcessor|EmbeddingQueueProcessor|NotificationDispatcher|NotificationCampaignService|ModerationDispatcher|NewsSourcesProcessor)$/,
         ),
       ]),
     );

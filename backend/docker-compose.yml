@@ -40,6 +40,10 @@ x-runtime-environment: &runtime-environment
   MODERATION_WECHAT_AES_KEY:
   MODERATION_MEDIA_SECRET:
   MODERATION_PUBLIC_BASE_URL:
+  WERSS_BASE_URL:
+  WERSS_ADMIN_URL:
+  WERSS_ACCESS_KEY:
+  WERSS_SECRET_KEY:
 
 x-upload-storage-environment: &upload-storage-environment
   UPLOAD_STORAGE_TYPE:
@@ -141,6 +145,9 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+      werss:
+        condition: service_healthy
+        required: false
       embedding-service:
         condition: service_healthy
         required: false
@@ -163,6 +170,50 @@ services:
     command: ["node", "dist/src/main.worker"]
     depends_on: *runtime-dependencies
     stop_grace_period: ${WORKER_STOP_GRACE_PERIOD:-90s}
+
+  werss:
+    profiles: [werss]
+    build:
+      context: ./werss
+    image: ${WERSS_IMAGE:-${IMAGE_REGISTRY:-ghcr.io/tasteinsight}/tasteinsight-werss:${TAG:-latest}}
+    environment:
+      TZ: Asia/Shanghai
+      DB: sqlite:////app/data/db.db
+      PORT: "8001"
+      DEBUG: "False"
+      ENABLE_JOB: "True"
+      USERNAME: ${WERSS_USERNAME:-admin}
+      PASSWORD: ${WERSS_PASSWORD:-}
+      SECRET_KEY: ${WERSS_SESSION_SECRET:-}
+      RSS_BASE_URL: ${WERSS_ADMIN_URL:-${ADMIN_APP_URL}/werss/}
+      RSS_FULL_CONTEXT: "True"
+      GATHER.MODEL: ${WERSS_GATHER_MODEL:-weread_mp}
+      GATHER.CONTENT: "True"
+      GATHER.CLEAN_HTML: "False"
+      MAX_PAGE: "2"
+      SPAN_INTERVAL: "30"
+    # Profile services are parsed even when inactive; validate their secrets at startup.
+    command:
+      - /bin/sh
+      - -ec
+      - >-
+        : "$${PASSWORD:?Set WERSS_PASSWORD before starting WeRSS}";
+        : "$${SECRET_KEY:?Set WERSS_SESSION_SECRET before starting WeRSS}";
+        exec /app/start.sh
+    ports:
+      - "127.0.0.1:${WERSS_PORT:-8001}:8001"
+    volumes:
+      - werss_data:/app/data
+    shm_size: 512mb
+    networks:
+      - tasteinsight_net
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
+    restart: unless-stopped
 
   embedding-service:
     profiles: [embedding]
@@ -215,6 +266,8 @@ services:
       APP_URL: ${APP_URL:?APP_URL is required}
       ADMIN_APP_URL: ${ADMIN_APP_URL:?ADMIN_APP_URL is required}
       GATEWAY_TLS_MODE: ${GATEWAY_TLS_MODE:-off}
+      WERSS_BASE_URL:
+      WERSS_ADMIN_URL:
       TLS_CERT_FILE: ${TLS_CERT_FILE:-fullchain.pem}
       TLS_KEY_FILE: ${TLS_KEY_FILE:-private.key}
     ports:
@@ -227,6 +280,7 @@ services:
       - ./nginx.common.conf:/etc/tasteinsight/nginx/nginx.common.conf:ro
       - ./nginx.public.conf:/etc/tasteinsight/nginx/nginx.public.conf:ro
       - ./nginx.admin.conf:/etc/tasteinsight/nginx/nginx.admin.conf:ro
+      - ./nginx.werss.conf:/etc/tasteinsight/nginx/nginx.werss.conf:ro
       - ${TLS_CERTS_PATH:-./certs}:/etc/nginx/tls:ro
       - uploads_data:/var/www/uploads:ro
     depends_on:
@@ -258,6 +312,7 @@ services:
     ports: !reset []
 
 volumes:
+  werss_data:
   db-data:
   uploads_data:
   redis-data:

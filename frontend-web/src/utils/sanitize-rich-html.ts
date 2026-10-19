@@ -1,12 +1,57 @@
+import DOMPurify from 'dompurify'
+
 const HTML_NAMESPACE = 'http://www.w3.org/1999/xhtml'
 const ALLOWED_TAGS = new Set([
-  'p', 'div', 'span', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'del', 'a', 'img',
-  'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'pre', 'code', 'ul', 'ol', 'li',
-  'table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th', 'hr',
+  'section',
+  'figure',
+  'figcaption',
+  'p',
+  'div',
+  'span',
+  'br',
+  'strong',
+  'b',
+  'em',
+  'i',
+  'u',
+  's',
+  'del',
+  'a',
+  'img',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'blockquote',
+  'pre',
+  'code',
+  'ul',
+  'ol',
+  'li',
+  'colgroup',
+  'col',
+  'table',
+  'thead',
+  'tbody',
+  'tfoot',
+  'tr',
+  'td',
+  'th',
+  'hr',
 ])
 const ALLOWED_STYLES = [
-  'text-align', 'text-indent', 'line-height', 'font-size', 'font-family',
-  'font-weight', 'font-style', 'color', 'background-color', 'text-decoration',
+  'text-align',
+  'text-indent',
+  'line-height',
+  'font-size',
+  'font-family',
+  'font-weight',
+  'font-style',
+  'color',
+  'background-color',
+  'text-decoration',
 ]
 
 const safeUrl = (value: string, image: boolean): string | null => {
@@ -20,9 +65,13 @@ const safeUrl = (value: string, image: boolean): string | null => {
 }
 
 /** Keep the editor's display HTML without executable elements or attributes. */
-export function sanitizeRichHtml(html: string): string {
+export function sanitizeRichHtml(html: string, preserveLayout = false): string {
   const source = document.createElement('template')
-  source.innerHTML = html
+  source.innerHTML = DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [...ALLOWED_TAGS],
+    ADD_ATTR: ['target'],
+    FORBID_TAGS: ['svg', 'math'],
+  })
   const output = document.createElement('div')
 
   const appendSafeNodes = (parent: Node, destination: Node): void => {
@@ -53,9 +102,14 @@ export function sanitizeRichHtml(html: string): string {
         }
       }
 
-      const numberAttributes = tag === 'img' ? ['width', 'height']
-        : tag === 'td' || tag === 'th' ? ['colspan', 'rowspan']
-        : tag === 'ol' ? ['start'] : []
+      const numberAttributes =
+        tag === 'img'
+          ? ['width', 'height']
+          : tag === 'td' || tag === 'th'
+            ? ['colspan', 'rowspan']
+            : tag === 'ol'
+              ? ['start']
+              : []
       for (const attribute of numberAttributes) {
         const value = node.getAttribute(attribute)
         if (value && /^\d+$/.test(value)) element.setAttribute(attribute, value)
@@ -65,6 +119,56 @@ export function sanitizeRichHtml(html: string): string {
       for (const property of ALLOWED_STYLES) {
         const value = originalStyle.getPropertyValue(property)
         if (value) element.style.setProperty(property, value)
+      }
+      if (preserveLayout) {
+        for (const property of [
+          'padding',
+          'padding-top',
+          'padding-bottom',
+          'padding-left',
+          'padding-right',
+          'margin',
+          'margin-top',
+          'margin-bottom',
+          'margin-left',
+          'margin-right',
+          'height',
+          'white-space',
+          'word-break',
+          'width',
+          'max-width',
+          'min-width',
+          'border-radius',
+          'border-width',
+          'border-style',
+          'border-color',
+          'display',
+          'box-sizing',
+          'letter-spacing',
+          'vertical-align',
+          'overflow',
+          'align-self',
+          'align-items',
+          'justify-content',
+          'flex-direction',
+          'flex-wrap',
+          'gap',
+          'grid-template-columns',
+          'grid-template-rows',
+          'grid-column-start',
+          'grid-column-end',
+          'grid-row-start',
+          'grid-row-end',
+        ]) {
+          const value = originalStyle.getPropertyValue(property)
+          if (value && /^[\w\s#.,()%\-'\u4e00-\u9fff]+$/.test(value))
+            element.style.setProperty(property, value)
+        }
+      }
+      if (preserveLayout) {
+        const aspectRatio = originalStyle.getPropertyValue('aspect-ratio')
+        if (/^(?:auto|\d+(?:\.\d+)?(?:\s*\/\s*\d+(?:\.\d+)?)?)$/.test(aspectRatio))
+          element.style.setProperty('aspect-ratio', aspectRatio)
       }
       if (tag === 'img') {
         for (const property of ['width', 'height']) {

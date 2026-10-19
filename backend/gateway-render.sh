@@ -61,6 +61,18 @@ case "${GATEWAY_TLS_MODE:-off}" in
     *) fail 'GATEWAY_TLS_MODE must be off or on' ;;
 esac
 
+# The optional collector is resolved on demand so a missing profile leaves the gateway healthy.
+WERSS_PROXY_ORIGIN=${WERSS_BASE_URL:-}
+case "${WERSS_ADMIN_URL:-$ADMIN_ORIGIN/werss/}" in
+    "$ADMIN_ORIGIN/werss"|"$ADMIN_ORIGIN/werss/") ;;
+    *) WERSS_PROXY_ORIGIN= ;;
+esac
+if [ -n "$WERSS_PROXY_ORIGIN" ]; then
+    origin_host "$WERSS_PROXY_ORIGIN" WERSS_BASE_URL >/dev/null
+    WERSS_PROXY_ORIGIN=${WERSS_PROXY_ORIGIN%/}
+fi
+export WERSS_PROXY_ORIGIN
+
 export PUBLIC_HOST ADMIN_HOST PUBLIC_ORIGIN ADMIN_ORIGIN PUBLIC_SCHEME ADMIN_SCHEME TLS_CERT_FILE TLS_KEY_FILE
 template_dir=${1:-/etc/tasteinsight/nginx}
 output_dir=${2:-/etc/nginx}
@@ -70,3 +82,9 @@ for fragment in nginx.common.conf nginx.public.conf nginx.admin.conf; do
     envsubst "$variables" < "$template_dir/$fragment" > "$output_dir/tasteinsight/$fragment"
 done
 envsubst "$variables" < "$template_dir/$template" > "$output_dir/conf.d/default.conf"
+
+if [ -n "$WERSS_PROXY_ORIGIN" ]; then
+    envsubst '${WERSS_PROXY_ORIGIN} ${ADMIN_SCHEME}' < "$template_dir/nginx.werss.conf" > "$output_dir/tasteinsight/nginx.werss.conf"
+else
+    printf '%s\n' 'location = /werss { return 404; }' 'location ^~ /werss/ { return 404; }' > "$output_dir/tasteinsight/nginx.werss.conf"
+fi

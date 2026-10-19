@@ -1,3 +1,4 @@
+import { NewsSourcesProcessor } from '@/news-sources/news-sources.processor';
 import {
   Controller,
   Get,
@@ -19,15 +20,19 @@ export class WorkerHealthController {
     private readonly embedding: EmbeddingQueueProcessor,
     private readonly dishSync: DishSyncProcessor,
     private readonly reviewStats: DishReviewStatsProcessor,
+    private readonly newsSources: NewsSourcesProcessor,
   ) {}
 
   @Get()
   async getHealth(): Promise<{ status: 'ok' }> {
     let deadline: ReturnType<typeof setTimeout> | undefined;
     try {
-      const workers = [this.embedding, this.dishSync, this.reviewStats].map(
-        (processor) => processor.worker,
-      );
+      const workers = [
+        this.embedding,
+        this.dishSync,
+        this.reviewStats,
+        this.newsSources,
+      ].map((processor) => processor.worker);
       if (
         workers.some(
           (worker) =>

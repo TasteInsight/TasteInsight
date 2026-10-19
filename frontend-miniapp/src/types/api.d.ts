@@ -442,6 +442,9 @@ export interface Report {
  * 新闻模型
  */
 export interface News {
+  sourceName?: string | null;
+  sourceUrl?: string | null;
+  sourcePublishedAt?: string | null;
   id: string;
   title: string;
   content: string;

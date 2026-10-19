@@ -30,6 +30,7 @@ function render(overrides = {}) {
         common: read('tasteinsight/nginx.common.conf'),
         public: read('tasteinsight/nginx.public.conf'),
         admin: read('tasteinsight/nginx.admin.conf'),
+        werss: read('tasteinsight/nginx.werss.conf'),
       },
     };
   } finally {
@@ -145,4 +146,50 @@ test('same virtual host, invalid TLS mode and unsafe certificate filenames fail 
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /Gateway configuration:/);
   }
+});
+
+
+test('WeRSS is unavailable by default and scoped to the admin origin when configured', () => {
+  const disabled = render();
+  assert.equal(disabled.status, 0, disabled.stderr);
+  assert.match(disabled.files.werss, /location \^~ \/werss\/ \{ return 404; \}/);
+  assert.doesNotMatch(disabled.files.werss, /proxy_pass/);
+  for (const mode of ['off', 'on']) {
+    const enabled = render({APP_URL: 'https://api.example.test', ADMIN_APP_URL: 'https://admin.example.test', GATEWAY_TLS_MODE: mode, WERSS_BASE_URL: 'http://werss:8001/'});
+    assert.equal(enabled.status, 0, enabled.stderr);
+    const {admin, public: publicRoutes, werss} = enabled.files;
+    assert.match(admin, /include \/etc\/nginx\/tasteinsight\/nginx\.werss\.conf;/);
+    assert.doesNotMatch(publicRoutes, /werss/);
+    assert.ok(werss.includes('set $werss_origin http://werss:8001;'));
+    assert.ok(werss.includes('rewrite ^/werss/(.*)$ /$1 break;'));
+    assert.ok(werss.includes('proxy_pass $werss_origin;'));
+    assert.ok(werss.includes('proxy_set_header Upgrade $http_upgrade;'));
+    assert.ok(werss.includes('proxy_set_header X-Forwarded-Proto https;'));
+    assert.ok(werss.includes('access_log off;'));
+    assert.doesNotMatch(werss, /\$\{[A-Z_]+\}/);
+  }
+});
+
+test('WeRSS proxy rejects credentials and non-origin targets', () => {
+  for (const address of ['ftp://werss:8001', 'http://u:p@werss:8001', 'http://werss:8001/path', 'http://werss:8001?query=1']) {
+    const result = render({WERSS_BASE_URL: address});
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /WERSS_BASE_URL/);
+  }
+});
+
+
+test('an explicitly external WeRSS panel keeps its interface outside the admin origin', () => {
+  const result = render({WERSS_BASE_URL: 'https://collector.example.test', WERSS_ADMIN_URL: 'https://collector.example.test/'});
+  assert.equal(result.status, 0, result.stderr);
+  assert.doesNotMatch(result.files.werss, /proxy_pass/);
+  assert.match(result.files.werss, /return 404;/);
+});
+
+test('WeRSS upload responses use a sandbox and the interface retains WebSocket proxy headers', () => {
+  const result = render({WERSS_BASE_URL: 'http://werss:8001'});
+  assert.equal(result.status, 0, result.stderr);
+  assert.ok(result.files.common.includes('~^/files(?:/|$) "default-src \'none\'; sandbox";'));
+  assert.ok(result.files.werss.includes('add_header Content-Security-Policy $werss_content_policy always;'));
+  assert.ok(result.files.werss.includes('add_header X-Content-Type-Options nosniff always;'));
 });

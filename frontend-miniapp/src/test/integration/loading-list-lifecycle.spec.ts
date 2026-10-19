@@ -284,6 +284,27 @@ it.each(personalCases)(
 );
 
 describe('news detail loading lifecycle', () => {
+  it('passes an imported article to the rich renderer and offers its original link', async () => {
+    const content = '<section style="padding:12px"><p>公众号正文</p></section>';
+    (getNewsById as jest.Mock).mockResolvedValueOnce({
+      code: 200,
+      data: {
+        id: 'imported',
+        title: '公众号公告',
+        content,
+        sourceName: '食在清华',
+        sourceUrl: 'https://mp.weixin.qq.com/s/imported',
+      },
+    });
+    const wrapper = mountPage(NewsDetailPage);
+    loadDetail('imported');
+    await flushPromises();
+    const renderer = wrapper.findComponent({ name: 'MpHtml' });
+    expect(renderer.props()).toMatchObject({ content, previewImg: true, scrollTable: true });
+    expect(wrapper.find('.article-source').text()).toContain('食在清华');
+    expect(wrapper.find('.original-link').text()).toBe('查看微信原文');
+  });
+
   it('keeps the first data region blank before and during its route read', async () => {
     const first = deferred();
     (getNewsById as jest.Mock).mockReturnValueOnce(first.promise);
