@@ -1,4 +1,6 @@
 import { ModerationDispatcher } from '@/content-moderation/moderation-dispatcher.service';
+import { NewsSourcesProcessor } from '@/news-sources/news-sources.processor';
+import { NEWS_SYNC_QUEUE } from '@/news-sources/news-sources.queue';
 import 'reflect-metadata';
 import { MODULE_METADATA } from '@nestjs/common/constants';
 import { BullModule, getQueueToken } from '@nestjs/bullmq';
@@ -31,6 +33,7 @@ import {
 describe('background worker composition', () => {
   const workers = [
     ModerationDispatcher,
+    NewsSourcesProcessor,
     EmbeddingQueueProcessor,
     DishSyncProcessor,
     DishReviewStatsProcessor,
@@ -95,6 +98,7 @@ describe('background worker composition', () => {
       embedding as any,
       dishSync as any,
       reviewStats as any,
+      { worker: { close: jest.fn().mockResolvedValue(undefined) } } as any,
     );
     let closed = false;
     const shutdown = module.onModuleDestroy().then(() => (closed = true));
@@ -114,6 +118,7 @@ describe('background worker composition', () => {
       },
     });
     const module = new BackgroundWorkersModule(
+      notStarted as any,
       notStarted as any,
       notStarted as any,
       notStarted as any,
@@ -154,14 +159,20 @@ describe('background worker composition', () => {
         onApplicationShutdown: () => shutdown.push('cache'),
       });
     for (const queue of [
+      NEWS_SYNC_QUEUE,
       EMBEDDING_QUEUE,
       DISH_SYNC_QUEUE,
       DISH_REVIEW_STATS_QUEUE,
     ]) {
-      builder.overrideProvider(getQueueToken(queue)).useValue({});
+      builder
+        .overrideProvider(getQueueToken(queue))
+        .useValue(
+          queue === NEWS_SYNC_QUEUE ? { removeJobScheduler: jest.fn() } : {},
+        );
     }
     const module = await builder.compile();
     for (const processor of [
+      NewsSourcesProcessor,
       EmbeddingQueueProcessor,
       DishSyncProcessor,
       DishReviewStatsProcessor,
@@ -184,11 +195,12 @@ describe('background worker composition', () => {
     } finally {
       await module.close();
     }
-    expect(shutdown.slice(0, 3).sort()).toEqual([
+    expect(shutdown.slice(0, 4).sort()).toEqual([
       'DishReviewStatsProcessor',
       'DishSyncProcessor',
       'EmbeddingQueueProcessor',
+      'NewsSourcesProcessor',
     ]);
-    expect(shutdown.slice(3).sort()).toEqual(['cache', 'database']);
+    expect(shutdown.slice(4).sort()).toEqual(['cache', 'database']);
   });
 });

@@ -181,3 +181,52 @@ test("database health checks preserve literal usernames and database names", () 
   const { services } = config(["docker-compose.local.yml"], { POSTGRES_USER: "app user", POSTGRES_DB: "app data" });
   assert.deepEqual(services.db.healthcheck.test, ["CMD", "pg_isready", "-U", "app user", "-d", "app data"]);
 });
+
+
+test("WeRSS is optional and shares only connection configuration with API and worker", () => {
+  const defaults = config().services;
+  assert.equal(defaults.werss, undefined);
+  assert.equal(defaults["admin-api"].environment.WERSS_BASE_URL, null);
+  for (const name of ["public-api", "admin-api", "worker"]) {
+    assert.equal(defaults[name].depends_on.werss.required, false);
+    assert.equal(defaults[name].depends_on.werss.condition, "service_healthy");
+  }
+  const enabled = config(undefined, {
+    COMPOSE_PROFILES: "werss", WERSS_BASE_URL: "http://werss:8001",
+    WERSS_ADMIN_URL: "https://rss.school.example", WERSS_ACCESS_KEY: "ak",
+    WERSS_SECRET_KEY: "sk", WERSS_PASSWORD: "fixture-password", WERSS_SESSION_SECRET: "fixture-session",
+  });
+  const service = enabled.services.werss;
+  assert.equal(service.ports[0].host_ip, "127.0.0.1");
+  assert.equal(service.ports[0].target, 8001);
+  assert.equal(service.environment.DB, "sqlite:////app/data/db.db");
+  assert.equal(service.environment.PASSWORD, "fixture-password");
+  assert.equal(service.environment.SECRET_KEY, "fixture-session");
+  assert.match(service.image, /tasteinsight-werss:/);
+  assert.ok(service.build.context.endsWith("/backend/werss"));
+  assert.equal(service.environment.JWT_SECRET, undefined);
+  assert.equal(service.environment.POSTGRES_PASSWORD, undefined);
+  assert.equal(service.environment.WERSS_SECRET_KEY, undefined);
+  assert.equal(service.volumes[0].source, "werss_data");
+  assert.ok(service.healthcheck);
+  for (const name of ["admin-api", "worker"]) {
+    assert.equal(enabled.services[name].environment.WERSS_BASE_URL, "http://werss:8001");
+    assert.equal(enabled.services[name].environment.WERSS_ACCESS_KEY, "ak");
+    assert.equal(enabled.services[name].environment.WERSS_PASSWORD, undefined);
+    assert.equal(enabled.services[name].environment.WERSS_SESSION_SECRET, undefined);
+  }
+});
+
+test("WeRSS supports bundled profiles, external infrastructure, and an external collector independently", () => {
+  const both = config(undefined, {COMPOSE_PROFILES: "embedding,werss", WERSS_PORT: "18001"}).services;
+  assert.ok(both.werss);
+  assert.ok(both["embedding-service"]);
+  assert.equal(both.werss.ports[0].published, "18001");
+  const mixed = config(["docker-compose.yml", "docker-compose.external.yml"], {COMPOSE_PROFILES: "werss"}).services;
+  assert.ok(mixed.werss);
+  assert.equal(mixed.db, undefined);
+  assert.equal(mixed.redis, undefined);
+  const external = config(undefined, {WERSS_BASE_URL: "https://collector.example.invalid", WERSS_ACCESS_KEY: "ak", WERSS_SECRET_KEY: "sk"}).services;
+  assert.equal(external.werss, undefined);
+  assert.equal(external["admin-api"].environment.WERSS_BASE_URL, "https://collector.example.invalid");
+});

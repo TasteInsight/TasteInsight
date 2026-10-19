@@ -95,4 +95,17 @@ describe('sanitizeRichHtml', () => {
     expect(root.querySelector('[onclick],[onerror]')).toBeNull()
     expect(root.textContent).toBe('普通正文')
   })
+  it('preserves safe article grid overlays',()=>{
+    const html=sanitizeRichHtml('<section style="display:grid;aspect-ratio:2.9155 / 1;grid-template-columns:100%;grid-template-rows:100%"><section style="grid-column-start:1;grid-row-start:1">标题</section></section>',true)
+    expect(html).toContain('aspect-ratio: 2.9155 / 1');expect(html).toContain('grid-template-columns: 100%');expect(html).toContain('grid-row-start: 1')
+  })
+  it('preserves safe article spacing, whitespace and table columns for imported previews', () => {
+    const html = sanitizeRichHtml('<section style="height:40px;white-space:pre-wrap;word-break:break-all">a  b</section><table><colgroup><col style="width:30%"><col style="width:70%"></colgroup></table>',true)
+    expect(html).toContain('height: 40px')
+    expect(html).toContain('white-space: pre-wrap')
+    expect(html).toContain('word-break: break-all')
+    expect(html).toContain('<colgroup>')
+    expect(html).toContain('width: 30%')
+  })
+
 })

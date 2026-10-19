@@ -1,0 +1,386 @@
+--- a/index.html
++++ b/index.html
+@@ -8,7 +8,7 @@
+   <meta http-equiv="language" content="zh-CN" />
+   <meta http-equiv="Pragma" content="no-cache">
+   <meta http-equiv="Expires" content="0">
+-  <link rel="icon" type="image/svg+xml" href="/static/logo.svg" />
++  <link rel="icon" type="image/svg+xml" href="%BASE_URL%static/logo.svg" />
+   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+   <meta generator="we-mp-rss" />
+   <meta powered-by="https://github.com/rachelos/we-mp-rss" />
+--- a/src/utils/constants.ts
++++ b/src/utils/constants.ts
+@@ -1,9 +1,10 @@
+-export const RES_BASE_URL = "/static/res/logo/"
++import { publicUrl } from '@/utils/public-url'
++export const RES_BASE_URL = publicUrl("/static/res/logo/")
+ export const Avatar = (url) => {
+   // if (url.startsWith('http://') || url.startsWith('https://')) {
+   //     return `${RES_BASE_URL}${url}`;
+   //   }
+-    return url;
++    return publicUrl(url);
+ }
+ export const ProxyImage=(content) =>{
+   return content;
+--- a/src/App.vue
++++ b/src/App.vue
+@@ -136,8 +136,8 @@
+         </a-space>
+       </div>
+       <div class="header-right" v-if="hasLogined">
+-        <a-link href="/views/home" target="_blank" style="margin-right: 20px;">Views</a-link>
+-        <a-link href="/api/docs" target="_blank" style="margin-right: 20px;">Docs</a-link>
++        <a-link :href="publicUrl('/views/home')" target="_blank" style="margin-right: 20px;">Views</a-link>
++        <a-link :href="publicUrl('/api/docs')" target="_blank" style="margin-right: 20px;">Docs</a-link>
+         <a-link href="https://gitee.com/rachel_os/we-mp-rss" target="_blank" style="margin-right: 20px;">Gitee</a-link>
+         <a-link href="https://github.com/rachelos/we-mp-rss" target="_blank" style="margin-right: 20px;">GitHub</a-link>
+         <a-tooltip content="GitHub或者Google账户注册登录，获得首月5美元奖励。注册180+天的GitHub账户还可以解锁每月5美元的额度赠送。" position="bottom">
+@@ -160,7 +160,7 @@
+         <a-dropdown position="br" trigger="click">
+           <div class="user-info">
+             <a-avatar :size="36">
+-              <img v-if="userInfo.avatar" :src="userInfo.avatar" alt="avatar">
++              <img v-if="userInfo.avatar" :src="publicUrl(userInfo.avatar)" alt="avatar">
+               <icon-user v-else />
+             </a-avatar>
+             <span class="username">{{ userInfo.username }}</span>
+@@ -255,6 +255,8 @@
+ </template>
+ 
+ <script setup lang="ts">
++import { publicUrl } from '@/utils/public-url'
++
+ import translate from 'i18n-jsautotranslate'
+ import { ref,watchEffect, computed, onMounted, watch, provide } from 'vue'
+ import { Modal } from '@arco-design/web-vue/es/modal'
+@@ -322,7 +324,7 @@
+ // 提供给子页面（如微信读书管理页）在扫码成功后刷新顶栏授权状态
+ provide('refreshWereadStatus', fetchWereadStatus)
+ const appTitle = computed(() => import.meta.env.VITE_APP_TITLE || '微信公众号订阅助手')
+-const logo = ref("/static/logo.svg")
++const logo = ref(publicUrl("/static/logo.svg"))
+ const router = useRouter()
+ const route = useRoute()
+ const collapsed = ref(false)
+--- a/src/views/AddSubscription.vue
++++ b/src/views/AddSubscription.vue
+@@ -87,6 +87,8 @@
+ </template>
+ 
+ <script setup lang="ts">
++import { publicUrl } from '@/utils/public-url'
++
+ import { ref, watch } from 'vue'
+ import { useRouter } from 'vue-router'
+ import { Message, Modal } from '@arco-design/web-vue'
+@@ -96,7 +98,7 @@
+ const loading = ref(false)
+ const isFetching = ref(false)
+ const searchResults = ref([])
+-const avatar_url = ref('/static/default-avatar.png')
++const avatar_url = ref(publicUrl('/static/default-avatar.png'))
+ const formRef = ref(null)
+ const form = ref({
+   name: '',
+--- a/src/views/article/ArticleListDesktop.vue
++++ b/src/views/article/ArticleListDesktop.vue
+@@ -349,6 +349,8 @@
+ </template>
+ 
+ <script setup lang="ts">
++import { publicUrl } from '@/utils/public-url'
++
+ import { Avatar } from '@/utils/constants'
+ import { translatePage, setCurrentLanguage } from '@/utils/translate';
+ import { ref, onMounted, h, nextTick, watch, computed, resolveComponent } from 'vue'
+@@ -611,7 +613,7 @@
+             h(isRead ? IconCheck : IconClose)
+           ]),
+           h('a', {
+-            href: issourceUrl.value ? record.url || '#' : "/views/article/" + record.id,
++            href: issourceUrl.value ? record.url || '#' : publicUrl("/views/article/" + record.id),
+             title: record.title,
+             target: '_blank',
+             style: {
+@@ -965,12 +967,12 @@
+     search = "/search/" + searchText.value;
+   }
+   if (!activeMpId.value) {
+-    window.open(`/feed${search}/all.${format}`, '_blank')
++    window.open(publicUrl(`/feed${search}/all.${format}`), '_blank')
+     return
+   }
+   const activeMp = mpList.value.find(item => item.id === activeMpId.value)
+   if (activeMp) {
+-    window.open(`/feed${search}/${activeMpId.value}.${format}`, '_blank')
++    window.open(publicUrl(`/feed${search}/${activeMpId.value}.${format}`), '_blank')
+   }
+ }
+ 
+@@ -1307,7 +1309,7 @@
+       mpList.value.unshift({
+         id: FEATURED_MP_ID,
+         name: FEATURED_MP_NAME,
+-        avatar: '/static/logo.svg',
++        avatar: publicUrl('/static/logo.svg'),
+         mp_intro: '用户手动添加的精选文章',
+         article_count: 0,
+         status: 1
+@@ -1316,7 +1318,7 @@
+       mpList.value.unshift({
+         id: '',
+         name: '全部',
+-        avatar: '/static/logo.svg',
++        avatar: publicUrl('/static/logo.svg'),
+         mp_intro: '显示所有公众号文章',
+         article_count: res.total || 0,
+         status: 1
+--- a/src/views/article/ArticleListMobile.vue
++++ b/src/views/article/ArticleListMobile.vue
+@@ -179,6 +179,8 @@
+ </template>
+ 
+ <script setup lang="ts">
++import { publicUrl } from '@/utils/public-url'
++
+ import { formatDateTime,formatTimestamp } from '@/utils/date'
+ import { Avatar } from '@/utils/constants'
+ import { ref, onMounted, computed, watch } from 'vue'
+@@ -430,7 +432,7 @@
+         mpList.value.unshift({
+           id: '',
+           name: '全部',
+-          avatar: '/static/logo.svg',
++          avatar: publicUrl('/static/logo.svg'),
+           mp_intro: '显示所有公众号文章',
+           status: 1
+         })
+--- a/src/utils/browserNotification.ts
++++ b/src/utils/browserNotification.ts
+@@ -1,3 +1,4 @@
++import { publicUrl } from '@/utils/public-url'
+ /**
+  * 浏览器通知工具 - 用于检测新文章并通过标题闪烁和声音提醒用户
+  */
+@@ -116,7 +117,7 @@
+       if (Notification.permission === 'granted') {
+         new Notification('WeRSS - 新文章通知', {
+           body: `检测到 ${newCount} 篇新文章`,
+-          icon: '/static/logo.svg'
++          icon: publicUrl('/static/logo.svg')
+         })
+       }
+     }
+--- a/src/views/Login.vue
++++ b/src/views/Login.vue
+@@ -67,13 +67,15 @@
+         <span class="divider">|</span>
+         <a-link href="https://gitee.com/rachel_os/we-mp-rss" target="_blank">Gitee</a-link>
+         <span class="divider">|</span>
+-        <a-link href="/api/docs" target="_blank">Docs</a-link>
++        <a-link :href="publicUrl('/api/docs')" target="_blank">Docs</a-link>
+       </div>
+     </div>
+   </div>
+ </template>
+ 
+ <script setup lang="ts">
++import { publicUrl } from '@/utils/public-url'
++
+ import { ref, computed } from 'vue'
+ import { useRouter } from 'vue-router'
+ import { Message } from '@arco-design/web-vue'
+--- a/src/views/TagList.vue
++++ b/src/views/TagList.vue
+@@ -1,4 +1,6 @@
+ <script setup lang="ts">
++import { publicUrl } from '@/utils/public-url'
++
+ import { ref, onMounted, onBeforeUnmount } from 'vue'
+ import { ExportTags, ImportTags } from '@/api/export'
+ import { listTags, deleteTag } from '@/api/tagManagement'
+@@ -180,7 +182,7 @@
+           <a-table-column title="操作">
+             <template #cell="{ record }">
+               <a-space>
+-                <a-link type="primary" target="_blank" :href="`/feed/tag/${record.id}.rss`">
++                <a-link type="primary" target="_blank" :href="publicUrl(`/feed/tag/${record.id}.rss`)">
+                   订阅
+                 </a-link>
+                 <a-button type="text" @click="$router.push(`/tags/edit/${record.id}`)">
+--- a/src/views/WechatStatus.vue
++++ b/src/views/WechatStatus.vue
+@@ -115,6 +115,8 @@
+ </template>
+ 
+ <script setup lang="ts">
++import { publicUrl } from '@/utils/public-url'
++
+ import { ref, onMounted, inject } from 'vue'
+ import { Message } from '@arco-design/web-vue'
+ import { getSysInfo } from '@/api/sysInfo'
+@@ -154,7 +156,7 @@
+   switching.value = true
+   try {
+     // 调用切换账号 API
+-    const response = await fetch('/api/v1/wx/auth/switch', {
++    const response = await fetch(publicUrl('/api/v1/wx/auth/switch'), {
+       method: 'POST',
+       headers: {
+         'Authorization': `Bearer ${localStorage.getItem('token')}`
+--- a/src/views/TaskQueueView.vue
++++ b/src/views/TaskQueueView.vue
+@@ -219,6 +219,8 @@
+ </template>
+ 
+ <script setup lang="ts">
++import { publicUrl } from '@/utils/public-url'
++
+ import { ref, onMounted, onUnmounted } from 'vue'
+ import { Message } from '@arco-design/web-vue'
+ import {
+@@ -292,7 +294,7 @@
+ const getWsUrl = () => {
+   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+   const host = window.location.host
+-  const apiBase = '/api/v1/wx'
++  const apiBase = publicUrl('/api/v1/wx')
+   const token = getToken()
+   const tokenParam = token ? `?token=${encodeURIComponent(token)}` : ''
+   return `${protocol}//${host}${apiBase}/task-queue/ws${tokenParam}`
+--- a/src/components/WereadAuthQrcode.vue
++++ b/src/components/WereadAuthQrcode.vue
+@@ -59,6 +59,8 @@
+ </template>
+ 
+ <script lang="ts" setup>
++import { publicUrl } from '@/utils/public-url'
++
+ import { ref, onUnmounted } from 'vue'
+ import {
+   getWereadQrCode,
+@@ -101,7 +103,7 @@
+       return
+     }
+ 
+-    qrcodeUrl.value = codeUrl
++    qrcodeUrl.value = publicUrl(codeUrl)
+     uid = res?.uid || ''
+     loading.value = false
+ 
+@@ -197,7 +199,7 @@
+     const res = await getWereadQrCode() as any
+     const codeUrl = res?.code
+     if (codeUrl) {
+-      qrcodeUrl.value = codeUrl
++      qrcodeUrl.value = publicUrl(codeUrl)
+       uid = res?.uid || ''
+       statusMsg.value = '等待扫码...'
+       startPolling()
+--- a/src/components/WechatAuthQrcode.vue
++++ b/src/components/WechatAuthQrcode.vue
+@@ -32,6 +32,8 @@
+ </template>
+ 
+ <script lang="ts" setup>
++import { publicUrl } from '@/utils/public-url'
++
+ import { ref } from 'vue'
+ import { QRCode, checkQRCodeStatus } from '@/api/auth'
+ import { Message } from '@arco-design/web-vue'
+@@ -53,7 +55,7 @@
+     
+     // 获取二维码
+     const res = await QRCode()
+-    qrcodeUrl.value = res?.code
++    qrcodeUrl.value = publicUrl(res?.code)
+     loading.value = false
+ 
+     // 开始检查授权状态
+--- a/src/api/auth.ts
++++ b/src/api/auth.ts
+@@ -1,3 +1,4 @@
++import { publicUrl } from '@/utils/public-url'
+ import http from './http'
+ import axios from 'axios'
+ import { Message } from '@arco-design/web-vue'
+@@ -52,7 +53,7 @@
+           reject(new Error('获取二维码超时'));
+           return;
+         }
+-        axios.head(res?.code).then(response => {
++        axios.head(publicUrl(res?.code)).then(response => {
+           if(response.status==200){
+             console.log(response)
+             clearInterval(qrCodeIntervalId);
+--- a/src/views/Login.vue
++++ b/src/views/Login.vue
+@@ -107,7 +107,6 @@
+             localStorage.setItem('token_expire', 
+               Date.now() + (res.expires_in * 1000))
+         
+-            console.log('Token stored:', localStorage.getItem('token')) // 调试日志
+         
+             // 处理重定向
+             const redirect = router.currentRoute.value.query.redirect
+--- a/src/views/article/ArticleListMobile.vue
++++ b/src/views/article/ArticleListMobile.vue
+@@ -135 +135 @@
+-        <a-link href="/add-subscription"  style="float:left;">
++        <a-link :href="publicUrl('/add-subscription')"  style="float:left;">
+@@ -173 +173 @@
+-      <div v-html="currentArticle.content"></div>
++      <div v-html="sanitizeArticle(currentArticle.content)"></div>
+@@ -181,0 +182 @@
++import { sanitizeArticle } from '@/utils/sanitize-article'
+--- a/src/views/article/ArticleTimeListMobile.vue
++++ b/src/views/article/ArticleTimeListMobile.vue
+@@ -73 +73 @@
+-      <a-link href="/add-subscription" style="float:left;">
++      <a-link :href="publicUrl('/add-subscription')" style="float:left;">
+@@ -91 +91 @@
+-      <div v-html="currentArticle.content"></div>
++      <div v-html="sanitizeArticle(currentArticle.content)"></div>
+@@ -99,0 +100,2 @@
++import { sanitizeArticle } from '@/utils/sanitize-article'
++import { publicUrl } from '@/utils/public-url'
+--- a/src/views/article/ArticleListDesktop.vue
++++ b/src/views/article/ArticleListDesktop.vue
+@@ -351,0 +352 @@
++import { sanitizeArticle } from '@/utils/sanitize-article'
+@@ -1486 +1487 @@
+-  contentDiv.innerHTML = currentArticle.value.content || '';
++  contentDiv.innerHTML = sanitizeArticle(currentArticle.value.content);
+--- a/src/components/ExportRecords.vue
++++ b/src/components/ExportRecords.vue
+@@ -21,0 +22 @@
++import { publicUrl } from '@/utils/public-url'
+@@ -135 +136 @@
+-    window.open(record.download_url, '_blank');
++    window.open(publicUrl(record.download_url), '_blank');
+--- a/index.html
++++ b/index.html
+@@ -16 +15,0 @@
+-  <script src="https://hm.baidu.com/hm.js?975de8724ac02eb7e6d2357bb95c067d"></script>
+--- a/src/views/Login.vue
++++ b/src/views/Login.vue
+@@ -137,3 +137,5 @@
+ .login-container {
+-  height: 100vh;
++  min-height: 100vh;
++  display: flex;
++  flex-direction: column;
+   padding: 0;
+@@ -159,3 +161,3 @@
+   display: flex;
+-  height: 100%;
++  flex: 1;
+   transition: all 0.3s ease;
+@@ -422,3 +424,4 @@
+ .login-footer {
+-  position: absolute;
++  position: static;
++  flex-shrink: 0;
+   bottom: 0;

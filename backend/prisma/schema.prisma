@@ -218,6 +218,7 @@ model Admin {
 
   // 操作记录
   operationLogs        OperationLog[]
+  newsSources          NewsSource[]
   createdNews          News[]
   handledReports       Report[]              @relation("ReportHandler")
   dishUploads          DishUpload[]
@@ -293,6 +294,7 @@ model Canteen {
   windows       Window[]
   dishes        Dish[]
   dishUploads   DishUpload[]
+  newsSources   NewsSource[]
   news          News[]
   admins        AdminCanteen[]
   adminConfigs  AdminConfig[]
@@ -1045,7 +1047,49 @@ model DishEmbedding {
 
 // ==================== 新闻模型 ====================
 
+model NewsSource {
+  id String @id @default(cuid())
+  mpId String @unique
+  name String
+  canteenId String?
+  canteen Canteen? @relation(fields: [canteenId], references: [id], onDelete: Restrict)
+  createdBy String
+  creator Admin @relation(fields: [createdBy], references: [id])
+  enabled Boolean @default(true)
+  autoPublish Boolean @default(false)
+  intervalMinutes Int @default(30)
+  keyword String @default("")
+  nextSyncAt DateTime @default(now())
+  syncLeaseUntil DateTime?
+  lastSyncAt DateTime?
+  lastError String?
+  lastImportedCount Int @default(0)
+  imports NewsImport[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([enabled, nextSyncAt])
+  @@index([canteenId])
+  @@map("news_sources")
+}
+
+model NewsImport {
+  sourceId String
+  source NewsSource @relation(fields: [sourceId], references: [id])
+  articleId String
+  newsId String? @unique
+  news News? @relation(fields: [newsId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  @@id([sourceId, articleId])
+  @@map("news_imports")
+}
+
 model News {
+  sourceName String?
+  sourceUrl String?
+  sourcePublishedAt DateTime?
+  importedFrom NewsImport?
   id          String    @id @default(cuid())
   title       String
   content     String    @db.Text

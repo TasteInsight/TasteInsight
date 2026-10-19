@@ -1,3 +1,4 @@
+import { cleanNewsContent } from '@/news-sources/news-content';
 import {
   canAccessCanteen,
   canteenScopeFilter,
@@ -155,6 +156,7 @@ export class AdminNewsService {
     const news = await this.prisma.news.create({
       data: {
         ...createNewsDto,
+        content: cleanNewsContent(createNewsDto.content),
         canteenId,
         canteenName,
         createdBy: adminInfo.id,
@@ -193,6 +195,8 @@ export class AdminNewsService {
 
     // 如果更新了 canteenId，需要同时更新 canteenName
     const updateData: any = { ...updateNewsDto };
+    if (updateNewsDto.content !== undefined)
+      updateData.content = cleanNewsContent(updateNewsDto.content);
 
     if (updateNewsDto.canteenId !== undefined) {
       if (!canAccessCanteen(adminInfo, updateNewsDto.canteenId)) {
@@ -315,6 +319,9 @@ export class AdminNewsService {
   private mapToNewsDto(news: any): NewsDto {
     return {
       id: news.id,
+      sourceName: news.sourceName,
+      sourceUrl: news.sourceUrl,
+      sourcePublishedAt: news.sourcePublishedAt,
       title: news.title,
       content: news.content,
       summary: news.summary,

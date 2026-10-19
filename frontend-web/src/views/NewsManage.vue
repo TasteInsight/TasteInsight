@@ -1,41 +1,62 @@
 <template>
   <div class="admin-page">
     <div class="admin-panel">
-      <Header title="新闻管理" description="管理和发布新闻资讯" header-icon="carbon:license-draft" />
+      <Header title="新闻管理" :description="sourcesConfigured ? '管理校园新闻与公众号内容来源' : '管理校园新闻内容与发布状态'" header-icon="carbon:license-draft" :show-border="false" />
+
+      <div v-if="sourcesConfigured" class="news-workspace-navigation">
+      <div class="news-workspace-tabs" role="tablist" aria-label="新闻管理视图">
+        <button id="news-tab-content" type="button" role="tab" :aria-selected="activeSection === 'content'" :tabindex="activeSection === 'content' ? 0 : -1" aria-controls="news-content-panel" :class="{ 'is-selected': activeSection === 'content' }" @click="changeNewsSection('content')" @keydown.right.prevent="changeNewsSection('sources', true)" @keydown.left.prevent="changeNewsSection('sources', true)" @keydown.home.prevent="changeNewsSection('content', true)" @keydown.end.prevent="changeNewsSection('sources', true)">
+          <AppIcon icon="carbon:document" aria-hidden="true" />新闻内容
+        </button>
+        <button id="news-tab-sources" type="button" role="tab" :aria-selected="activeSection === 'sources'" :tabindex="activeSection === 'sources' ? 0 : -1" aria-controls="news-sources-panel" :class="{ 'is-selected': activeSection === 'sources' }" @click="changeNewsSection('sources')" @keydown.right.prevent="changeNewsSection('content', true)" @keydown.left.prevent="changeNewsSection('content', true)" @keydown.home.prevent="changeNewsSection('content', true)" @keydown.end.prevent="changeNewsSection('sources', true)">
+          <AppIcon icon="carbon:rss" aria-hidden="true" />公众号来源
+        </button>
+      </div>
+        <a
+          v-if="activeSection === 'sources' && werssAdminUrl && authStore.hasPermission('news:create')"
+          class="news-service-link"
+          :href="werssAdminUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="打开 WeRSS 管理面板（新窗口）"
+          title="管理公众号订阅与采集授权（新窗口）"
+        >
+          WeRSS 面板<AppIcon icon="carbon:launch" aria-hidden="true" />
+        </a>
+      </div>
+      <section v-if="sourcesConfigured" id="news-sources-panel" v-show="activeSection === 'sources'" role="tabpanel" aria-labelledby="news-tab-sources">
+        <NewsSources :active="activeSection === 'sources'" :canteens="canteenList" @imported="loadNews()" @panel-url="werssAdminUrl = $event" />
+      </section>
+      <section id="news-content-panel" v-show="activeSection === 'content'" :role="sourcesConfigured ? 'tabpanel' : undefined" :aria-labelledby="sourcesConfigured ? 'news-tab-content' : undefined">
 
       <!-- 创建新闻按钮和状态筛选 -->
-      <div class="mt-6 flex items-center justify-between">
+      <div class="news-content-toolbar">
         <!-- 状态筛选 -->
-        <div class="flex space-x-4">
+        <div class="news-status-filter" aria-label="新闻发布状态">
           <button
-            class="transition-colors admin-button"
-            :class="
-              currentStatus === 'published'
-                ? 'bg-tsinghua-purple text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            "
+            class="news-status-button"
+            :aria-pressed="currentStatus === 'published'"
+            :class="{ 'is-selected': currentStatus === 'published' }"
             @click="changeStatus('published')"
           >
             已发布
           </button>
           <button
-            class="transition-colors admin-button"
-            :class="
-              currentStatus === 'draft'
-                ? 'bg-tsinghua-purple text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            "
+            class="news-status-button"
+            :aria-pressed="currentStatus === 'draft'"
+            :class="{ 'is-selected': currentStatus === 'draft' }"
             @click="changeStatus('draft')"
           >
-            未发布 (草稿)
+            草稿箱
           </button>
         </div>
         
         <!-- 创建新闻按钮 -->
         <button
           @click="openCreateModal"
-          class="text-white transition duration-200 flex items-center space-x-2 admin-button"
-          :class="authStore.hasPermission('news:create') ? 'bg-tsinghua-purple hover:bg-tsinghua-dark' : 'bg-gray-400 cursor-not-allowed'"
+          type="button"
+          class="admin-button admin-button-primary news-create-button"
+          :disabled="!authStore.hasPermission('news:create')"
           :title="!authStore.hasPermission('news:create') ? '无权限创建' : '创建新闻'"
         >
           <AppIcon class="iconify" icon="carbon:add"></AppIcon>
@@ -127,7 +148,15 @@
           @delete="handleBatchDelete"
         />
         <div class="admin-table-scroll">
-        <table class="admin-table">
+        <table class="admin-table news-table">
+            <colgroup>
+              <col v-if="canDeleteNews" class="news-col-selection" />
+              <col />
+              <col class="news-col-summary" />
+              <col class="news-col-canteen" />
+              <col class="news-col-time" />
+              <col class="news-col-actions" />
+            </colgroup>
             <thead class="bg-gray-50">
               <tr>
                 <th v-if="canDeleteNews" scope="col" class="w-12 px-4 py-3">
@@ -176,7 +205,7 @@
                     @change="newsSelection.toggle(news.id)"
                   />
                 </td>
-                <td class="py-4 px-6">
+                <td class="py-4 px-6 news-title-cell">
                   <div class="font-medium text-gray-900">{{ news.title }}</div>
                 </td>
                 <td class="py-4 px-6">
@@ -192,63 +221,58 @@
                   }}
                 </td>
                 <td class="py-4 px-6 text-center">
-                  <div class="flex flex-wrap items-center justify-center gap-2">
-                    <!-- 预览按钮（所有状态都可预览） -->
+                  <div class="news-row-actions" role="group" :aria-label="`新闻 ${news.title} 的操作`">
                     <button
+                      type="button"
                       @click="previewNews(news)"
-                      class="transition duration-200 bg-purple-100 text-purple-700 hover:bg-purple-200 admin-button admin-button-compact"
+                      class="admin-button admin-button-compact admin-button-secondary news-row-action"
                       title="预览新闻"
                     >
                       预览
                     </button>
 
-                    <!-- 未发布状态操作 -->
                     <template v-if="currentStatus === 'draft'">
                       <button
-                        @click="publishNews(news.id)"
-                        class="transition duration-200 admin-button admin-button-compact"
-                        :class="authStore.hasPermission('news:publish') ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
-                        :title="!authStore.hasPermission('news:publish') ? '无权限发布' : '发布'"
-                      >
-                        发布
-                      </button>
-                      <button
+                        type="button"
                         @click="editNews(news)"
-                        class="transition duration-200 admin-button admin-button-compact"
-                        :class="authStore.hasPermission('news:edit') ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
-                        :title="!authStore.hasPermission('news:edit') ? '无权限编辑' : '编辑'"
+                        class="admin-button admin-button-compact admin-button-secondary news-row-action"
+                        :disabled="!authStore.hasPermission('news:edit') || isBatchDeleting"
+                        :title="!authStore.hasPermission('news:edit') ? '无权限编辑' : '编辑新闻'"
                       >
                         编辑
                       </button>
-                    </template>
-
-                    <!-- 已发布状态操作 -->
-                    <template v-else>
                       <button
-                        @click="revokeNews(news.id)"
-                        class="transition duration-200 admin-button admin-button-compact"
-                        :class="authStore.hasPermission('news:revoke') ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
-                        :title="!authStore.hasPermission('news:revoke') ? '无权限撤回' : '如需编辑已发布新闻，请先撤回至草稿状态'"
+                        type="button"
+                        @click="publishNews(news.id)"
+                        class="admin-button admin-button-compact news-row-action news-row-action-publish"
+                        :disabled="!authStore.hasPermission('news:publish') || isBatchDeleting"
+                        :title="!authStore.hasPermission('news:publish') ? '无权限发布' : '发布新闻'"
                       >
-                        撤回
+                        发布
                       </button>
-                      <span
-                        class="ml-1 text-gray-400 text-xs"
-                        title="如需编辑已发布新闻，请先撤回至草稿状态"
-                      >
-                        <AppIcon class="iconify" icon="mdi:information-outline"></AppIcon>
-                      </span>
                     </template>
-
                     <button
-                      @click="deleteNews(news.id)"
-                      :disabled="isBatchDeleting"
-                      class="transition duration-200 admin-button admin-button-compact"
-                      :class="authStore.hasPermission('news:delete') ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
-                      :title="!authStore.hasPermission('news:delete') ? '无权限删除' : '删除'"
+                      v-else
+                      type="button"
+                      @click="revokeNews(news.id)"
+                      class="admin-button admin-button-compact admin-button-secondary news-row-action"
+                      :disabled="!authStore.hasPermission('news:revoke') || isBatchDeleting"
+                      :title="!authStore.hasPermission('news:revoke') ? '无权限撤回' : '如需编辑已发布新闻，请先撤回至草稿状态'"
                     >
-                      删除
+                      撤回
                     </button>
+
+                    <span class="news-row-danger-action">
+                      <button
+                        type="button"
+                        @click="deleteNews(news.id)"
+                        :disabled="!authStore.hasPermission('news:delete') || isBatchDeleting"
+                        class="admin-button admin-button-compact news-row-action news-row-action-delete"
+                        :title="!authStore.hasPermission('news:delete') ? '无权限删除' : '删除新闻'"
+                      >
+                        删除
+                      </button>
+                    </span>
                   </div>
                 </td>
               </tr>
@@ -266,6 +290,7 @@
           />
         </div>
       </div>
+      </section>
     </div>
   </div>
 
@@ -360,7 +385,12 @@
                 'border-red-400': errors.content,
               }"
             >
-              <NewsEditor
+              <div v-if="preserveImportedContent" class="p-4">
+                <p class="mb-3 text-sm text-gray-600">已保留公众号原文排版。编辑正文后，编辑器会调整部分样式。</p>
+                <button type="button" class="admin-button bg-gray-100 mb-4" @click="preserveImportedContent = false">编辑正文</button>
+                <div class="news-preview-content" v-html="sanitizeRichHtml(newsForm.content, true)"></div>
+              </div>
+              <NewsEditor v-else
                 :key="editorVersion"
                 v-model="valueHtml"
                 :editor="editorRef"
@@ -493,6 +523,7 @@
               <span>{{ previewNewsData.publishedAt ? formatPreviewTime(previewNewsData.publishedAt) : (previewNewsData.createdAt ? formatPreviewTime(previewNewsData.createdAt) : '') }}</span>
             </div>
             
+            <p v-if="previewNewsData.sourceUrl" class="mb-4 text-sm text-gray-600">来源：{{ previewNewsData.sourceName }} <a :href="previewNewsData.sourceUrl" target="_blank" rel="noopener noreferrer" class="underline text-tsinghua-purple">查看微信原文</a></p>
             <!-- 内容（富文本） -->
             <div 
               class="text-base leading-relaxed text-gray-800 overflow-hidden break-words w-full news-preview-content"
@@ -511,11 +542,13 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted, onActivated, onDeactivated, shallowRef, onBeforeUnmount, computed, watch } from 'vue'
+import { nextTick, ref, reactive, onMounted, onActivated, onDeactivated, shallowRef, onBeforeUnmount, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import NewsEditor from '@/components/News/NewsEditor.vue'
+import NewsSources from '@/components/News/NewsSources.vue'
 
 import { newsApi } from '@/api/modules/news'
+import { newsSourcesApi } from '@/api/modules/news-sources'
 import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import request from '@/utils/request'
@@ -539,15 +572,25 @@ export default {
     Pagination,
     BatchActionBar,
     NewsEditor,
+    NewsSources,
   },
   setup() {
     const route = useRoute()
+    const activeSection = ref('content')
+    const sourcesConfigured = ref(false)
+    const werssAdminUrl = ref(null)
+    const changeNewsSection = (section, focus = false) => {
+      if (section === 'sources' && !sourcesConfigured.value) return
+      activeSection.value = section
+      if (focus) void nextTick(() => document.getElementById(`news-tab-${section}`)?.focus())
+    }
     const newsList = ref([])
     const showCreateModal = ref(false)
     const showEditModal = ref(false)
     const showPreviewModal = ref(false)
     const previewNewsData = ref({})
     const editingNewsId = ref(null)
+    const preserveImportedContent = ref(false)
     const isLoading = ref(false)
     const canteenList = ref([])
     const authStore = useAuthStore()
@@ -557,6 +600,19 @@ export default {
     let viewVersion = 0
     const ownsView = (version = viewVersion) => isViewActive &&
       viewSession === getAuthSessionVersion() && version === viewVersion
+    const loadSourceCapabilities = async () => {
+      if (!ownsView()) return
+      const version = viewVersion
+      try {
+        const response = await newsSourcesApi.capabilities()
+        if (!ownsView(version) || response.code !== 200) return
+        sourcesConfigured.value = response.data.configured
+        werssAdminUrl.value = response.data.adminUrl
+        if (!sourcesConfigured.value) changeNewsSection('content')
+      } catch {
+        // Preserve known deployment capabilities during a temporary API failure.
+      }
+    }
     const editorVersion = ref(0)
     const isSubmitting = ref(false)
     const pendingImageUploads = ref(0)
@@ -924,6 +980,7 @@ export default {
       activeSubmission = null
       isSubmitting.value = false
       pendingImageUploads.value = 0
+      preserveImportedContent.value = false
       newsForm.title = ''
       newsForm.content = ''
       newsForm.summary = ''
@@ -963,13 +1020,14 @@ export default {
       }
       resetForm()
       editingNewsId.value = news.id
+      preserveImportedContent.value = Boolean(news.sourceUrl)
       newsForm.title = news.title || ''
-      newsForm.content = sanitizeRichHtml(news.content || '')
+      newsForm.content = news.sourceUrl ? news.content || '' : sanitizeRichHtml(news.content || '')
       newsForm.summary = news.summary || ''
       newsForm.canteenId = news.canteenId || ''
       newsForm.status = news.status || 'draft'
 
-      valueHtml.value = newsForm.content
+      valueHtml.value = sanitizeRichHtml(newsForm.content, Boolean(news.sourceUrl))
 
       if (news.publishedAt) {
         const date = new Date(news.publishedAt)
@@ -991,7 +1049,7 @@ export default {
 
     // 提交表单
     const submitForm = async (targetStatus) => {
-      if (!ownsView() || !editorRef.value || isSubmitting.value) return
+      if (!ownsView() || (!editorRef.value && !preserveImportedContent.value) || isSubmitting.value) return
       if (pendingImageUploads.value > 0) {
         showAlert('图片正在上传，请稍后保存')
         return
@@ -1031,7 +1089,7 @@ export default {
       if (!ownsEditor(operation.version)) return
       const requestData = {
         title: newsForm.title,
-        content: sanitizeRichHtml(valueHtml.value),
+        content: preserveImportedContent.value ? newsForm.content : sanitizeRichHtml(valueHtml.value),
         summary: newsForm.summary,
         canteenId: newsForm.canteenId || null,
       }
@@ -1188,7 +1246,7 @@ export default {
     }
 
     const formattedPreviewContent = computed(() =>
-      sanitizeRichHtml(previewNewsData.value.content || ''),
+      sanitizeRichHtml(previewNewsData.value.content || '', Boolean(previewNewsData.value.sourceUrl)),
     )
 
     const handlePageChange = (page) => {
@@ -1210,6 +1268,9 @@ export default {
     watch(authSessionVersion, () => {
       retireView()
       newsList.value = []
+      sourcesConfigured.value = false
+      werssAdminUrl.value = null
+      activeSection.value = 'content'
       pagination.total = 0
       pagination.totalPages = 0
     }, { flush: 'sync' })
@@ -1220,16 +1281,26 @@ export default {
       // 状态已在setup()中恢复，这里只需加载数据
       loadCanteens()
       loadNews()
+      loadSourceCapabilities()
     })
 
     onActivated(() => {
+      const wasInactive = !isViewActive
       isViewActive = true
+      if (wasInactive) loadSourceCapabilities()
       // 组件重新激活时仅重新加载数据，避免重复恢复状态覆盖用户修改
       loadCanteens()
       loadNews()
     })
 
     return {
+      activeSection,
+      sourcesConfigured,
+      werssAdminUrl,
+      changeNewsSection,
+      loadNews,
+      preserveImportedContent,
+      sanitizeRichHtml,
       newsList,
       filteredNewsList,
       showCreateModal,
@@ -1288,6 +1359,99 @@ export default {
 </script>
 
 <style scoped>
+.news-workspace-navigation { display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid #e5e7eb; }
+.news-workspace-tabs { display: flex; flex-shrink: 0; gap: 28px; }
+.news-service-link { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 0; color: #667085; font-size: 13px; white-space: nowrap; text-decoration: none; }
+.news-service-link svg { width: 14px; height: 14px; }
+.news-service-link:hover { color: #660874; text-decoration: underline; text-underline-offset: 4px; }
+.news-service-link:focus-visible { outline: 2px solid #660874; outline-offset: 4px; border-radius: 4px; }
+.news-workspace-tabs > button { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 8px 0 12px; margin-bottom: -1px; border-bottom: 2px solid transparent; color: #667085; font-size: 14px; font-weight: 500; transition: color 150ms, border-color 150ms; }
+.news-workspace-tabs > button:hover { color: #660874; }
+.news-workspace-tabs > button.is-selected { color: #660874; border-bottom-color: #660874; }
+.news-workspace-tabs > button:focus-visible, .news-status-button:focus-visible { outline: 2px solid #660874; outline-offset: 4px; border-radius: 4px; }
+.news-workspace-tabs svg { width: 18px; height: 18px; }
+.news-content-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-top: 24px; }
+.news-status-filter { display: flex; align-items: center; gap: 4px; padding: 4px; background: #f3f4f6; border-radius: 8px; }
+.news-status-button { min-height: 34px; padding: 6px 16px; border: 1px solid transparent; border-radius: 6px; color: #4b5563; font-size: 13px; line-height: 20px; font-weight: 500; }
+.news-status-button:hover { color: #660874; }
+.news-status-button.is-selected { color: #660874; background: white; border-color: #e5e7eb; }
+@media (max-width: 600px) { .news-workspace-navigation { gap: 12px; } .news-workspace-tabs { gap: 20px; } .news-workspace-tabs svg { display: none; } .news-content-toolbar { gap: 12px; } .news-status-button { padding-inline: 12px; } }
+@media (prefers-reduced-motion: reduce) { .news-workspace-tabs > button { transition: none; } }
+
+/* Keep article text and row actions readable inside the horizontally scrolling table. */
+.news-table { table-layout: fixed; min-width: 984px; }
+.news-col-selection { width: 48px; }
+.news-col-summary { width: 216px; }
+.news-col-canteen { width: 88px; }
+.news-col-time { width: 128px; }
+.news-col-actions { width: 328px; }
+.news-title-cell { overflow-wrap: anywhere; }
+
+.news-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: max-content;
+  margin-inline: auto;
+}
+
+.news-row-action {
+  min-width: 60px;
+  border-width: 1px;
+}
+
+.news-row-action.admin-button-secondary {
+  border-color: #e5e7eb;
+}
+
+.news-row-action-publish {
+  color: #660874;
+  background: #f5edf7;
+  border-color: #e7d6eb;
+}
+
+.news-row-action-publish:not(:disabled):hover {
+  background: #ecdfef;
+  border-color: #cba7d2;
+}
+
+.news-row-action:not(:disabled):active {
+  background: #f3f4f6;
+}
+
+.news-row-action-publish:not(:disabled):active {
+  background: #e7d6eb;
+}
+
+.news-row-danger-action {
+  display: inline-flex;
+  margin-left: 4px;
+  padding-left: 10px;
+  border-left: 1px solid #e5e7eb;
+}
+
+.news-row-action-delete {
+  color: #b91c1c;
+  background: transparent;
+  border-color: transparent;
+}
+
+.news-row-action-delete:not(:disabled):hover,
+.news-row-action-delete:not(:disabled):active {
+  background: #fef2f2;
+}
+
+.news-row-action:focus-visible,
+.news-create-button:focus-visible {
+  outline: 2px solid #660874;
+  outline-offset: 3px;
+}
+
+@media (pointer: coarse) {
+  .news-row-action { min-height: 44px; }
+}
+
 /* 新闻预览内容样式，与小程序保持一致 */
 .news-preview-content {
   word-wrap: break-word;

@@ -11,7 +11,7 @@ const cd = read('.github/workflows/cd.yml');
 const deploy = read('.github/scripts/deploy-release.sh');
 const gatewayFiles = [
   'nginx.conf', 'nginx.https.conf.template', 'nginx.common.conf',
-  'nginx.public.conf', 'nginx.admin.conf', 'gateway-render.sh',
+  'nginx.public.conf', 'nginx.admin.conf', 'nginx.werss.conf', 'gateway-render.sh',
 ];
 
 for (const environment of ['dev', 'prod']) {
@@ -121,4 +121,13 @@ test('a newer workflow does not cancel a deployment in progress', () => {
 test('embedding images do not download models during the default CD build', () => {
   assert.match(cd, /PRELOAD_MODEL=false/);
   assert.doesNotMatch(cd, /PRELOAD_MODEL=true/);
+});
+
+
+test('release publishes the subpath-aware WeRSS image with the web UI matrix', () => {
+  const job = cd.match(/  build-frontend:([\s\S]*?)(?=\n  # 构建嵌入|$)/)[1];
+  assert.match(job, /context: \.\/backend\/werss/);
+  assert.match(job, /aliyun_repo: tasteinsight-werss/);
+  assert.match(job, /context: \$\{\{ matrix\.context \}\}/);
+  assert.match(job, /github\.repository \}\}-\$\{\{ matrix\.suffix/);
 });

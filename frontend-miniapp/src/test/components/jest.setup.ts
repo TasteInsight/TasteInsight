@@ -4,6 +4,14 @@ import { config } from '@vue/test-utils';
 // so tests use the committed development endpoint unless a test overrides it.
 process.env.VITE_API_BASE_URL ||= 'http://localhost:3001';
 
+// mp-html relies on uni build preprocessing and native rendering APIs.
+// Component tests inspect its input at the application boundary.
+jest.mock('mp-html/dist/uni-app/components/mp-html/mp-html.vue', () => ({
+  name: 'MpHtml',
+  props: ['content', 'previewImg', 'scrollTable', 'tagStyle'],
+  template: '<div><slot /></div>',
+}));
+
 const originalWarn = console.warn;
 console.warn = (...args: any[]) => {
   const first = args[0];
