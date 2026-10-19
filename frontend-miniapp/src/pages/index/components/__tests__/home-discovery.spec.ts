@@ -106,12 +106,16 @@ describe('home discovery connections', () => {
       let finish!: (value: unknown) => void;
       fetch.mockReturnValueOnce(new Promise(resolve => (finish = resolve)));
       const { wrapper } = await mountHome(true, isLoggedIn);
-      expect(wrapper.findComponent(EmptyState).exists()).toBe(false);
+      expect(wrapper.findComponent(EmptyState).props('loading')).toBe(true);
 
       finish({ code: 200, data: { items: [], meta: { page: 1, totalPages: 0 } } });
       await flushPromises();
       const empty = wrapper.getComponent(EmptyState);
-      expect(empty.props()).toEqual({ title: '暂无推荐菜品', icon: 'search', actionText: '' });
+      expect(empty.props()).toMatchObject({
+        title: '暂无推荐菜品',
+        icon: 'search',
+        actionText: '',
+      });
       expect(empty.find('button').exists()).toBe(false);
       expect(wrapper.find('.home-status__hint').exists()).toBe(false);
       expect(wrapper.find('.home-status--footer').exists()).toBe(false);
@@ -134,7 +138,7 @@ describe('home discovery connections', () => {
     wrapper.findComponent(FilterBar).vm.$emit('filter-change', { price: { min: 0, max: 5 } });
     await flushPromises();
     const empty = wrapper.getComponent(EmptyState);
-    expect(empty.props()).toEqual({
+    expect(empty.props()).toMatchObject({
       title: '没有符合条件的菜品',
       icon: 'search',
       actionText: '清除全部筛选',

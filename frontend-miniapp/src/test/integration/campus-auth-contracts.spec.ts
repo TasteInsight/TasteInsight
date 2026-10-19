@@ -68,7 +68,9 @@ test('a guest cannot contribute even with a stale verified profile in local stat
   const panel = inScope(() => useCommentPanel(() => 'review'));
   panel.replyContent.value = '回复';
   expect(await panel.submitReply()).toBe(false);
-  expect(uniMock.navigateTo).toHaveBeenCalledWith({ url: '/pages/login/index' });
+  expect(uniMock.navigateTo).toHaveBeenCalledWith(
+    expect.objectContaining({ url: '/pages/login/index' })
+  );
   expect(uniMock.showModal).not.toHaveBeenCalled();
   expect(requests).toEqual([]);
 });

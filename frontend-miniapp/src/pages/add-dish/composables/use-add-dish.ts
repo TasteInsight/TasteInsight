@@ -464,7 +464,7 @@ export function useAddDish() {
   };
   const initialize = async (route: RouteOptions = options): Promise<boolean> => {
     options = { ...route };
-    if (!requireStudent()) {
+    if (!userStore.isLoggedIn || !userStore.userInfo?.capabilities?.canContribute) {
       initializationError.value = '完成校园身份认证后即可提交菜品申请';
       return false;
     }
@@ -754,6 +754,12 @@ export function useAddDish() {
       initializationError.value = '账号已切换，请重新打开资料提交页面';
     },
     { flush: 'sync' }
+  );
+  watch(
+    () => userStore.isLoggedIn && userStore.userInfo?.capabilities?.canContribute,
+    allowed => {
+      if (allowed && !disposed && !ready && !initializing.value) void initialize();
+    }
   );
   if (getCurrentScope())
     onScopeDispose(() => {

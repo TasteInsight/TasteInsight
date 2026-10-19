@@ -154,6 +154,7 @@ export interface ChatMessage {
   timestamp: number;
   deliveryStatus?: ChatDeliveryStatus;
   isStreaming?: boolean; // 是否正在流式接收中
+  replyStatus?: 'failed' | 'stopped' | 'interrupted';
   suggestions?: string[];
 }
 
@@ -210,28 +211,19 @@ export const useChatStore = defineStore('ai-chat', () => {
     }
   }
 
-  function abortChat(showToast = true) {
+  function abortChat(userRequested = true) {
     const stream = activeStream;
     activeStream = null;
     if (stream) {
       if (stream.userMessage.deliveryStatus === 'sending') {
         stream.userMessage.deliveryStatus = 'unconfirmed';
       }
-      const wasStreaming = stream.aiMessage.isStreaming;
-      stream.aiMessage.isStreaming = false;
-      const lastSegment = stream.aiMessage.content[stream.aiMessage.content.length - 1];
-      if (!showToast && wasStreaming && lastSegment?.type === 'text' && lastSegment.text.trim()) {
-        lastSegment.text += '\n\n_[回复被中断]_';
+      if (stream.aiMessage.isStreaming) {
+        stream.aiMessage.replyStatus = userRequested ? 'stopped' : 'interrupted';
       }
+      stream.aiMessage.isStreaming = false;
       upsertHistoryEntry(stream.sessionId, stream.scene, stream.messages);
       stream.close?.();
-      if (showToast) {
-        uni.showToast({
-          title: '已停止生成',
-          icon: 'none',
-          duration: 1500,
-        });
-      }
     }
 
     aiLoading.value = false;
@@ -269,6 +261,10 @@ export const useChatStore = defineStore('ai-chat', () => {
   function restoreMessages(msgs: ChatMessage[]) {
     const restored = cloneMessages(msgs);
     for (const message of restored) {
+      if (message.type === 'ai' && message.isStreaming) {
+        message.isStreaming = false;
+        message.replyStatus = 'interrupted';
+      }
       if (message.type === 'user' && message.deliveryStatus === 'sending') {
         message.deliveryStatus = 'unconfirmed';
       }
@@ -526,6 +522,7 @@ export const useChatStore = defineStore('ai-chat', () => {
    * @param force 是否强制重新初始化，即使 sessionId 已存在
    */
   async function initSession(scene?: string | AIScene, force = false) {
+    if (!userStore.isLoggedIn) return false;
     if (force) clearConversation();
     if (sessionId.value) return true;
     if (sessionCreation) return sessionCreation;
@@ -678,7 +675,7 @@ export const useChatStore = defineStore('ai-chat', () => {
     const failStream = (err: any) => {
       if (activeStream !== stream) return;
       console.error('Stream error', err);
-      if (aiMessage.isStreaming) appendText(`\n[网络请求出错: ${err?.message || '请检查网络'}]`);
+      if (aiMessage.isStreaming) aiMessage.replyStatus = 'failed';
       finishStream('failed');
     };
 
@@ -783,7 +780,11 @@ export const useChatStore = defineStore('ai-chat', () => {
               }
             },
             onError: failStream,
-            onComplete: finishStream,
+            onComplete: () => {
+              if (activeStream !== stream) return;
+              if (aiMessage.isStreaming) aiMessage.replyStatus = 'interrupted';
+              finishStream();
+            },
           });
     } catch (error) {
       failStream(error);

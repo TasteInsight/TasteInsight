@@ -72,11 +72,11 @@ it.each([
   ['preferences', PreferencesPage],
   ['notifications', NotificationsPage],
   ['allergens', AllergensPage],
-] as const)('%s keeps a blank data area until its profile read succeeds', (_name, Page) => {
+] as const)('%s shows loading feedback until its profile read succeeds', (_name, Page) => {
   const wrapper = mount(Page as any);
   expect(wrapper.findAll('.page-content')).toHaveLength(1);
   expect(wrapper.find('.skeleton-item').exists()).toBe(false);
-  expect(wrapper.get('.settings-form-body').text()).toBe('');
+  expect(wrapper.get('.settings-form-body').text()).toBe('正在加载设置…');
   expect(wrapper.find('.settings-section').exists()).toBe(false);
   expect(wrapper.find('.settings-load-error').exists()).toBe(false);
   expect(wrapper.find('.settings-save-bar').exists()).toBe(false);

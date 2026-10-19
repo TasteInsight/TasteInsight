@@ -87,7 +87,7 @@ describe('useUserStore (integration)', () => {
     expect(mockRemoveStorageSync).toHaveBeenCalledWith('token');
   });
 
-  it('fetchProfileAction: response code != 200 triggers toast and rethrow', async () => {
+  it('fetchProfileAction: response code != 200 propagates a page-owned error', async () => {
     const store = getStore();
     store.token = 'valid-token';
 
@@ -98,9 +98,7 @@ describe('useUserStore (integration)', () => {
     });
 
     await expect(store.fetchProfileAction()).rejects.toThrow('server error');
-    expect(mockShowToast).toHaveBeenCalledWith(
-      expect.objectContaining({ title: '用户信息刷新失败', icon: 'none' })
-    );
+    expect(mockShowToast).not.toHaveBeenCalled();
   });
 
   it('updateLocalUserInfo merges fields without dropping existing ones', () => {

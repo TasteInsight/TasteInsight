@@ -112,14 +112,13 @@ function loadDetail(id: string) {
   (onLoad as jest.Mock).mock.calls[0][0]({ id });
 }
 
-function expectBlank(wrapper: VueWrapper) {
+function expectPendingContent(wrapper: VueWrapper) {
   expect(wrapper.find('.page-content, .news-page').exists()).toBe(true);
   expect(wrapper.html()).not.toMatch(/skeleton/i);
   expect(
-    wrapper
-      .find('.dish-list-state, .dish-list-footer, .news-state, .article-state, .empty-state')
-      .exists()
+    wrapper.find('.dish-list-state, .dish-list-footer, .news-state, .article-state').exists()
   ).toBe(false);
+  expect(wrapper.findAllComponents(EmptyState).every(state => state.props('loading'))).toBe(true);
   expect(wrapper.find('button').exists()).toBe(false);
 }
 
@@ -139,14 +138,14 @@ afterEach(() => {
 });
 
 describe.each(listCases)('$name loading lifecycle', ({ name, Page, api, empty, icon, Card }) => {
-  it('keeps the first data region blank and renders returned items immediately', async () => {
+  it('keeps initial data undisclosed while loading and renders returned items immediately', async () => {
     const first = deferred();
     (api as jest.Mock).mockReturnValueOnce(first.promise);
     const wrapper = mountPage(Page);
-    expectBlank(wrapper);
+    expectPendingContent(wrapper);
     startList(name);
     await nextTick();
-    expectBlank(wrapper);
+    expectPendingContent(wrapper);
     expect((wrapper.vm as any).initialized).toBe(false);
 
     first.resolve(response([item('first')]));
@@ -164,7 +163,7 @@ describe.each(listCases)('$name loading lifecycle', ({ name, Page, api, empty, i
     const wrapper = mountPage(Page);
     startList(name);
     await nextTick();
-    expectBlank(wrapper);
+    expectPendingContent(wrapper);
     first.resolve(response([]));
     await flushPromises();
     expect(wrapper.text()).toContain(empty);
@@ -203,7 +202,7 @@ describe.each(listCases)('$name loading lifecycle', ({ name, Page, api, empty, i
       expect(wrapper.html()).not.toMatch(/skeleton/i);
 
       await wrapper.find('button').trigger('click');
-      expectBlank(wrapper);
+      expectPendingContent(wrapper);
       expect(api).toHaveBeenLastCalledWith({ page: 1, pageSize: 10 });
       retry.resolve(response([]));
       await flushPromises();
@@ -266,13 +265,13 @@ it.each(personalCases)(
     store.sessionVersion++;
     store.userInfo = { id: 'b' };
     await nextTick();
-    expectBlank(wrapper);
+    expectPendingContent(wrapper);
     expect((wrapper.vm as any).initialized).toBe(false);
     const currentRefresh = (wrapper.vm as any).refresh();
     old.resolve(response([item('old-account')]));
     await oldRefresh;
     await nextTick();
-    expectBlank(wrapper);
+    expectPendingContent(wrapper);
     expect((wrapper.vm as any).loading).toBe(true);
     expect((wrapper.vm as any).initialized).toBe(false);
     current.resolve(response([]));
@@ -305,15 +304,15 @@ describe('news detail loading lifecycle', () => {
     expect(wrapper.find('.original-link').text()).toBe('查看微信原文');
   });
 
-  it('keeps the first data region blank before and during its route read', async () => {
+  it('keeps initial data undisclosed while loading before and during its route read', async () => {
     const first = deferred();
     (getNewsById as jest.Mock).mockReturnValueOnce(first.promise);
     const wrapper = mountPage(NewsDetailPage);
-    expectBlank(wrapper);
+    expectPendingContent(wrapper);
     expect(getNewsById).not.toHaveBeenCalled();
     loadDetail('first');
     await nextTick();
-    expectBlank(wrapper);
+    expectPendingContent(wrapper);
     first.resolve(article('first'));
     await flushPromises();
     expect(wrapper.find('.article-title').text()).toBe('first公告');
@@ -338,7 +337,7 @@ describe('news detail loading lifecycle', () => {
       expect(wrapper.find('button').text()).toBe('重试');
       expect((wrapper.vm as any).initialized).toBe(false);
       await wrapper.find('button').trigger('click');
-      expectBlank(wrapper);
+      expectPendingContent(wrapper);
       retry.resolve(article('first'));
       await flushPromises();
       expect(wrapper.find('.article-title').text()).toBe('first公告');
@@ -383,13 +382,13 @@ describe('news detail loading lifecycle', () => {
     const oldRefresh = (wrapper.vm as any).retry();
     loadDetail('current');
     await nextTick();
-    expectBlank(wrapper);
+    expectPendingContent(wrapper);
     expect(wrapper.find('.article-title').exists()).toBe(false);
     expect((wrapper.vm as any).initialized).toBe(false);
     old.resolve(article('old'));
     await oldRefresh;
     await nextTick();
-    expectBlank(wrapper);
+    expectPendingContent(wrapper);
     expect((wrapper.vm as any).loading).toBe(true);
     current.resolve(article('current'));
     await flushPromises();

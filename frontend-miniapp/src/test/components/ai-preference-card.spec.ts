@@ -1,3 +1,4 @@
+jest.mock('@dcloudio/uni-app', () => ({ onShow: jest.fn() }));
 import { mount, shallowMount } from '@vue/test-utils';
 import { ref, nextTick } from 'vue';
 import PreferenceCard from '@/pages/ai-chat/components/PreferenceCard.vue';
@@ -153,6 +154,7 @@ test('the real page places preference proposals outside chat bubbles and wires o
   jest.useFakeTimers();
   const proposal = makeDraft();
   const chat = {
+    isLoggedIn: ref(true),
     messages: ref<any[]>([
       { id: 10, type: 'ai', content: [{ type: 'card_preferences', data: [proposal] }] },
     ]),

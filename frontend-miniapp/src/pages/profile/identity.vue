@@ -1,14 +1,22 @@
 <template>
-  <view class="identity-page">
-    <view v-if="!userStore.isLoggedIn" class="identity-empty">
-      <text>登录后管理账号与校园身份</text>
-      <button class="identity-primary" @click="login">去登录</button>
-    </view>
+  <view class="identity-page page-content page-state-layout">
+    <EmptyState
+      v-if="!userStore.isLoggedIn"
+      class="page-state-region"
+      title="登录后管理账号与校园身份"
+      icon="shield"
+      action-text="登录"
+      @action="login"
+    />
     <template v-else>
       <text v-if="loading && !verification" class="identity-hint" role="status"
         >正在读取身份信息…</text
       >
-      <view v-if="loadError" class="error-feedback" role="alert"
+      <view
+        v-if="loadError"
+        :class="{ 'page-state-region': !verification }"
+        class="error-feedback"
+        role="alert"
         ><text class="error-feedback__message">{{ loadError }}</text
         ><button
           class="error-feedback__action"
@@ -223,6 +231,9 @@
 </template>
 
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import { openLogin } from '@/utils/login-navigation';
+
 import { computed, nextTick, ref, onScopeDispose, watch } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import config from '@/config';
@@ -379,7 +390,7 @@ const canBindWechat = computed(
         !identities.value?.wechat.app)
 );
 function login() {
-  uni.navigateTo({ url: '/pages/login/index' });
+  openLogin();
 }
 async function load() {
   pendingOAuth.value = readCampusOAuthPending(userStore.userInfo?.id);

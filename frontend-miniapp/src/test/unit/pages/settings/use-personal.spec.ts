@@ -1,3 +1,4 @@
+jest.mock('@dcloudio/uni-app', () => ({ onShow: jest.fn() }));
 jest.mock('@/store/modules/use-user-store');
 jest.mock('@/api/modules/user');
 jest.mock('@/api/modules/upload');

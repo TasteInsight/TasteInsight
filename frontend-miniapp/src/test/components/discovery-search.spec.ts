@@ -270,7 +270,7 @@ test('the shared empty state follows a successful empty search and keeps its con
   state.submittedKeyword.value = '米饭';
   await nextTick();
   const empty = wrapper.getComponent(EmptyState);
-  expect(empty.props()).toEqual({
+  expect(empty.props()).toMatchObject({
     title: '未找到“米饭”相关结果',
     icon: 'search',
     actionText: '申请新增菜品',
@@ -280,7 +280,7 @@ test('the shared empty state follows a successful empty search and keeps its con
 
   state.loading.value = true;
   await nextTick();
-  expect(wrapper.findComponent(EmptyState).exists()).toBe(false);
+  expect(wrapper.getComponent(EmptyState).props('loading')).toBe(true);
   state.loading.value = false;
   state.error.value = '搜索失败';
   await nextTick();
@@ -291,4 +291,21 @@ test('the shared empty state follows a successful empty search and keeps its con
   await nextTick();
   expect(wrapper.findComponent(EmptyState).exists()).toBe(false);
   expect(wrapper.text()).toContain('食堂读取失败');
+});
+
+test('successful nonempty search displays results without the empty-result state', async () => {
+  const state = createSearchState();
+  state.initialized.value = true;
+  state.hasResults.value = true;
+  state.searchResults.value = {
+    canteens: [],
+    windows: [],
+    dishes: [{ id: 'dish', name: '米饭', images: [], tags: [], price: 2 } as never],
+  };
+  const wrapper = mount(SearchPage, {
+    global: { stubs: { 'uni-icons': true, DishResultItem: true } },
+  });
+  boundWrappers.push(wrapper);
+  expect(wrapper.findComponent({ name: 'DishResultItem' }).exists()).toBe(true);
+  expect(wrapper.findComponent(EmptyState).exists()).toBe(false);
 });

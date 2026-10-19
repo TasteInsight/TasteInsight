@@ -206,10 +206,6 @@ export const useUserStore = defineStore('user', () => {
     } catch (error) {
       if (!ownsResult()) return;
       console.error('获取用户信息失败:', error);
-      uni.showToast({
-        title: '用户信息刷新失败',
-        icon: 'none',
-      });
       throw error;
     }
   }

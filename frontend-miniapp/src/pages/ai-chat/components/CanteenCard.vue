@@ -101,7 +101,7 @@ const handleKeyup = (event: KeyboardEvent) => {
   display: block;
   margin-top: 4px;
   color: #667085;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.5;
 }
 .canteen-card:focus-visible {

@@ -391,3 +391,49 @@ test('home retry uses the shared error action and reloads recommendations', asyn
   await expect(retry).toHaveCount(0);
   expect(dishReads).toBe(2);
 });
+
+for (const width of [320, 390, 1280]) {
+  test(`planning date and list controls keep their typography and alignment at ${width}px`, async ({
+    page,
+  }) => {
+    await installPlanningApi(page);
+    await page.setViewportSize({ width, height: 900 });
+    await gotoUniPage(page, '/pages/planning/index');
+    const headers = [];
+    for (const name of ['周', '日', '列表']) {
+      await page.getByRole('tab', { name, exact: true }).click();
+      const control = page.locator(name === '列表' ? '.planning-filter' : '.calendar-period');
+      await expect(control).toBeVisible();
+      if (name !== '列表') {
+        const label = control.locator('.calendar-period-text');
+        expect(await label.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(
+          true
+        );
+      }
+      headers.push(
+        await control.evaluate(element => {
+          const style = getComputedStyle(element);
+          const box = element.getBoundingClientRect();
+          const label = element.firstElementChild!.getBoundingClientRect();
+          return {
+            top: box.top,
+            height: box.height,
+            left: label.left,
+            font: style.fontSize,
+            weight: style.fontWeight,
+            line: style.lineHeight,
+          };
+        })
+      );
+    }
+    expect(headers.map(header => header.height)).toEqual([44, 44, 44]);
+    expect(new Set(headers.map(header => header.top)).size).toBe(1);
+    expect(new Set(headers.map(header => header.left)).size).toBe(1);
+    expect(headers.map(header => [header.font, header.weight, header.line])).toEqual(
+      Array(3).fill(['16px', '600', '24px'])
+    );
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true
+    );
+  });
+}

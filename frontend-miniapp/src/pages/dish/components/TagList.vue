@@ -1,14 +1,19 @@
 <template>
-  <view class="dish-list-page page-content">
+  <view class="dish-list-page page-content page-state-layout">
     <view class="dish-list-heading">
       <text class="dish-list-title">#{{ currentTag }}</text>
       <text class="dish-list-caption">{{
         canteenName ? canteenName + ' · 相关菜品' : '相关菜品'
       }}</text>
     </view>
-    <view class="dish-list-content" :aria-busy="loading">
+    <view class="dish-list-content page-state-content" :aria-busy="loading">
       <view v-if="loading && dishes.length" class="dish-list-footer">正在更新菜品…</view>
-      <view v-if="error" class="error-feedback" role="alert">
+      <view
+        v-if="error"
+        :class="{ 'page-state-region': !dishes.length }"
+        class="error-feedback"
+        role="alert"
+      >
         <text class="error-feedback__message">{{ error }}</text>
         <button
           class="error-feedback__action"
@@ -32,6 +37,13 @@
         </view>
       </view>
       <EmptyState
+        v-else-if="loading && !dishes.length && !error"
+        class="page-state-region"
+        title="正在加载…"
+        loading
+      />
+      <EmptyState
+        class="page-state-region"
         v-else-if="initialized && !loading && !error"
         title="暂无相关菜品"
         icon="search"

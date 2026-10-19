@@ -11,21 +11,24 @@ describe('api/modules/ai.ts', () => {
   test.each([
     ['like', '/recommend/events/like'],
     ['dislike', '/recommend/events/dislike'],
-  ] as const)('submitRecommendFeedback routes %s to the recommendation API', async (feedback, url) => {
-    const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
-    mockReq.mockResolvedValue({ code: 200, data: { eventId: 'event-1' } });
-    jest.doMock('@/utils/request', () => mockReq);
+  ] as const)(
+    'submitRecommendFeedback routes %s to the recommendation API',
+    async (feedback, url) => {
+      const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
+      mockReq.mockResolvedValue({ code: 200, data: { eventId: 'event-1' } });
+      jest.doMock('@/utils/request', () => mockReq);
 
-    const { submitRecommendFeedback } = require(MODULE_PATH);
-    await submitRecommendFeedback({ dishId: 'dish-1', feedback });
+      const { submitRecommendFeedback } = require(MODULE_PATH);
+      await submitRecommendFeedback({ dishId: 'dish-1', feedback });
 
-    expect(mockReq).toHaveBeenCalledTimes(1);
-    expect(mockReq.mock.calls[0][0]).toMatchObject({
-      url,
-      method: 'POST',
-      data: { dishId: 'dish-1' },
-    });
-  });
+      expect(mockReq).toHaveBeenCalledTimes(1);
+      expect(mockReq.mock.calls[0][0]).toMatchObject({
+        url,
+        method: 'POST',
+        data: { dishId: 'dish-1' },
+      });
+    }
+  );
 
   test('getAIHistory GETs with cursor when provided', async () => {
     const mockReq = jest.fn() as unknown as jest.Mock<any, any>;
@@ -277,7 +280,7 @@ describe('api/modules/ai.ts', () => {
     (global as any).uni = {
       request: (opts: any) => {
         savedComplete = opts.complete;
-        opts.success?.({ statusCode: 401, data: { message: '登录已过期' } });
+        opts.success?.({ statusCode: 403, data: { message: '没有访问权限' } });
         return { onChunkReceived: () => {}, abort: jest.fn() };
       },
     };
@@ -289,7 +292,7 @@ describe('api/modules/ai.ts', () => {
     savedComplete?.();
 
     expect(onError).toHaveBeenCalledTimes(1);
-    expect(onError.mock.calls[0][0]).toEqual(expect.objectContaining({ message: '登录已过期' }));
+    expect(onError.mock.calls[0][0]).toEqual(expect.objectContaining({ message: '没有访问权限' }));
     expect(onComplete).not.toHaveBeenCalled();
   });
 
@@ -322,7 +325,9 @@ describe('api/modules/ai.ts', () => {
     savedComplete?.();
 
     expect(onError).toHaveBeenCalledTimes(1);
-    expect(onError.mock.calls[0][0]).toEqual(expect.objectContaining({ message: 'provider failed' }));
+    expect(onError.mock.calls[0][0]).toEqual(
+      expect.objectContaining({ message: 'provider failed' })
+    );
     expect(onComplete).not.toHaveBeenCalled();
   });
 
@@ -338,7 +343,9 @@ describe('api/modules/ai.ts', () => {
         opts.success({ statusCode: 200 });
         savedComplete = opts.complete;
         return {
-          onChunkReceived: (callback: any) => { savedOnChunk = callback; },
+          onChunkReceived: (callback: any) => {
+            savedOnChunk = callback;
+          },
           abort,
         };
       },

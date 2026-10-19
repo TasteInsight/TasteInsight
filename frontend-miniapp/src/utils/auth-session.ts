@@ -64,5 +64,4 @@ export function expireSession(sessionVersion: number): void {
   const user = useUserStore();
   if (user.sessionVersion !== sessionVersion) return;
   user.logoutAction();
-  uni.reLaunch({ url: '/pages/login/index' });
 }

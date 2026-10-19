@@ -1,6 +1,7 @@
 <template>
-  <view class="dining-page" :aria-busy="loading">
+  <view class="dining-page page-state-content" :aria-busy="loading">
     <EmptyState
+      class="page-state-region"
       v-if="!user.isLoggedIn"
       title="登录后查看约饭邀请"
       icon="users"
@@ -39,7 +40,11 @@
       <UiIcon name="shield" :size="16" /><text>认证后可参与约饭</text
       ><UiIcon name="chevron-right" :size="16" />
     </button>
-    <view v-if="error" class="dining-error error-feedback" role="alert"
+    <view
+      v-if="error"
+      :class="{ 'page-state-region': !items.length }"
+      class="dining-error error-feedback"
+      role="alert"
       ><text class="error-feedback__message">{{ error }}</text
       ><button
         class="error-feedback__action"
@@ -51,6 +56,7 @@
     >
     <view v-if="loading && !items.length" class="dining-loading" role="status">正在加载邀请…</view>
     <EmptyState
+      class="page-state-region"
       v-else-if="initialized && !items.length && !error"
       :title="mine ? '还没有邀请或申请' : '暂时没有可加入的邀请'"
       icon="users"
@@ -148,6 +154,8 @@
 </template>
 
 <script setup lang="ts">
+import { openLogin } from '@/utils/login-navigation';
+
 import { computed, nextTick, onScopeDispose, ref, watch } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import {
@@ -318,7 +326,7 @@ watch(
   },
   { flush: 'sync' }
 );
-const login = () => uni.navigateTo({ url: '/pages/login/index' });
+const login = () => openLogin();
 const verifyIdentity = () => uni.navigateTo({ url: '/pages/profile/identity' });
 defineExpose({
   refresh: () => load(false),

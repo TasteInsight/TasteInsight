@@ -225,5 +225,7 @@ test('guests see a login action and never make inbox requests', async () => {
   const wrapper = await page();
   expect(getNotifications).not.toHaveBeenCalled();
   await wrapper.get('.empty-state__action').trigger('click');
-  expect(uni.navigateTo).toHaveBeenCalledWith({ url: '/pages/login/index' });
+  expect(uni.navigateTo).toHaveBeenCalledWith(
+    expect.objectContaining({ url: '/pages/login/index' })
+  );
 });

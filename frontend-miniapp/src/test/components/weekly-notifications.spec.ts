@@ -2,6 +2,8 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { reactive } from 'vue';
 import { onLoad, onShow } from '@dcloudio/uni-app';
 import Page from '@/pages/notifications/weekly.vue';
+import { openLogin } from '@/utils/login-navigation';
+jest.mock('@/utils/login-navigation', () => ({ openLogin: jest.fn() }));
 import { getWeeklyNotificationCollection } from '@/api/modules/notifications';
 import { useUserStore } from '@/store/modules/use-user-store';
 jest.mock('@dcloudio/uni-app', () => ({
@@ -60,4 +62,23 @@ test('expired or withdrawn collections remain an explicit load error with retry'
   expect(wrapper.text()).toContain('本期推荐不存在');
   expect(wrapper.find('.weekly-dish').exists()).toBe(false);
   expect(wrapper.get('.error-feedback__action').text()).toBe('重新加载');
+});
+
+test('guest weekly recommendations offer explicit login and resume after returning', async () => {
+  user.isLoggedIn = false;
+  const wrapper = await page();
+  expect(getWeeklyNotificationCollection).not.toHaveBeenCalled();
+  expect(wrapper.text()).toContain('登录后查看本周推荐');
+  await wrapper.get('button').trigger('click');
+  expect(openLogin).toHaveBeenCalledTimes(1);
+  (getWeeklyNotificationCollection as jest.Mock).mockResolvedValue({
+    code: 200,
+    data: { items: [] },
+  });
+  user.isLoggedIn = true;
+  user.sessionVersion++;
+  (onShow as jest.Mock).mock.calls.slice(-1)[0][0]();
+  await flushPromises();
+  expect(getWeeklyNotificationCollection).toHaveBeenCalledWith('2026-10-05');
+  expect(wrapper.text()).toContain('本期暂无可查看的菜品');
 });

@@ -1,9 +1,10 @@
+import { openLogin } from '@/utils/login-navigation';
 import { useUserStore } from '@/store/modules/use-user-store';
 
 export function requireStudent(): boolean {
   const user = useUserStore();
   if (!user.isLoggedIn) {
-    uni.navigateTo({ url: '/pages/login/index' });
+    openLogin();
     return false;
   }
   if (user.userInfo?.capabilities?.canContribute) return true;
@@ -12,7 +13,9 @@ export function requireStudent(): boolean {
     content: '认证后即可发布评价和参与互动。',
     confirmText: '去认证',
     cancelText: '继续浏览',
-    success: result => { if (result.confirm) uni.navigateTo({ url: '/pages/profile/identity' }); },
+    success: result => {
+      if (result.confirm) uni.navigateTo({ url: '/pages/profile/identity' });
+    },
   });
   return false;
 }

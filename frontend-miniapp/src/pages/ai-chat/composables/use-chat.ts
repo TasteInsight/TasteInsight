@@ -115,6 +115,7 @@ export function useChat() {
   };
 
   const init = async (s?: string) => {
+    if (!userStore.isLoggedIn) return;
     // 如果传入 scene 则更新
     if (s) setScene(s);
 
@@ -266,6 +267,7 @@ export function useChat() {
     chatStore.applyPreferences(draft, captureOperation());
 
   return {
+    isLoggedIn: computed(() => userStore.isLoggedIn),
     messages: computed(() => chatStore.messages),
     aiLoading: computed(() => chatStore.aiLoading),
     currentSessionId: computed(() => chatStore.sessionId),

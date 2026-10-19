@@ -1,3 +1,4 @@
+jest.mock('@dcloudio/uni-app', () => ({ onShow: jest.fn() }));
 import { usePreferences } from '@/pages/settings/composables/use-preferences';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { getCanteenList } from '@/api/modules/canteen';

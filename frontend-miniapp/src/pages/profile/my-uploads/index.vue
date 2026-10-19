@@ -1,6 +1,11 @@
 <template>
-  <view class="uploads-page page-content" :aria-busy="loading">
+  <view
+    class="uploads-page page-content page-state-layout"
+    :class="{ 'uploads-page--state': !user.isLoggedIn }"
+    :aria-busy="loading"
+  >
     <EmptyState
+      class="page-state-region"
       v-if="!user.isLoggedIn"
       title="登录后查看上传记录"
       icon="edit"
@@ -9,7 +14,11 @@
     />
     <template v-else>
       <ReviewListSkeleton v-if="loading && !initialized" />
-      <view v-if="error" class="error-feedback" role="alert"
+      <view
+        v-if="error"
+        class="error-feedback"
+        :class="{ 'page-state-region': !items.length && !detachedUpload }"
+        role="alert"
         ><text class="error-feedback__message">{{ error }}</text
         ><button
           class="error-feedback__action"
@@ -34,6 +43,7 @@
         </button>
       </view>
       <EmptyState
+        class="page-state-region"
         v-if="initialized && !items.length && !detachedUpload && !error"
         title="暂无上传记录"
         icon="edit"
@@ -84,6 +94,8 @@
   </view>
 </template>
 <script setup lang="ts">
+import { openLogin } from '@/utils/login-navigation';
+
 import { computed, nextTick, ref, watch, onScopeDispose } from 'vue';
 import { onLoad, onShow, onHide, onPullDownRefresh } from '@dcloudio/uni-app';
 import EmptyState from '@/components/EmptyState.vue';
@@ -197,7 +209,7 @@ onPullDownRefresh(async () => {
     uni.stopPullDownRefresh();
   }
 });
-const login = () => uni.navigateTo({ url: '/pages/login/index' });
+const login = () => openLogin();
 const createContribution = () => {
   if (requireStudent()) uni.navigateTo({ url: '/pages/add-dish/index' });
 };
@@ -232,6 +244,9 @@ async function confirmWithdraw(item: MyUploadItem) {
   padding: 0 20px calc(96px + env(safe-area-inset-bottom));
   background: #fff;
   color: #1f2937;
+}
+.uploads-page--state {
+  padding-bottom: 0;
 }
 .upload-error {
   color: #b42318;

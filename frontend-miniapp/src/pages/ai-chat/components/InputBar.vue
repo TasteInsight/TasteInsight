@@ -32,6 +32,7 @@
     <textarea
       v-if="!isH5"
       class="chat-input chat-input-native"
+      placeholder-style="color: #667085; font-size: 16px; font-weight: 400; line-height: 22px; font-family: inherit;"
       aria-label="消息输入"
       placeholder="聊聊口味，或问问今天吃什么"
       :value="modelValue"
@@ -160,7 +161,7 @@ const handleKeyup = (event: KeyboardEvent) => {
 <style scoped>
 .chat-input-bar {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px;
   width: 100%;
   box-sizing: border-box;

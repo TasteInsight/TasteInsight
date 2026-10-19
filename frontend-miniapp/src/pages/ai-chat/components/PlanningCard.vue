@@ -34,29 +34,26 @@
     </view>
 
     <template v-if="!collapsed">
-      <view v-if="plan.summary" class="mb-3">
-        <text class="text-sm text-gray-600 leading-relaxed block">{{ plan.summary }}</text>
-      </view>
+      <text v-if="plan.summary" class="planning-summary">{{ plan.summary }}</text>
 
       <view v-if="preview?.dishes?.length">
         <view v-for="dish in preview.dishes" :key="dish.id" class="planning-dish">
           <view class="planning-dish-info">
-            <text class="font-medium text-base block">{{ dish.name }}</text>
-            <text class="text-sm text-gray-500 mt-1 block">{{ dish.canteenName }}</text>
-            <view class="flex justify-between items-center mt-2">
+            <text class="planning-dish-name">{{ dish.name }}</text>
+            <text class="planning-dish-location">{{ dish.canteenName }}</text>
+            <view class="planning-dish-details">
               <text class="planning-dish-price"
                 >¥{{ Number(dish.price || 0).toFixed(1)
                 }}{{ priceUnitSuffix(dish.priceUnit) }}</text
               >
-              <view class="flex items-center" v-if="typeof dish.averageRating === 'number'">
-                <text
-                  class="planning-dish-rating"
-                  :class="{ 'planning-dish-rating-rated': dish.averageRating > 0 }"
-                  >{{
-                    dish.averageRating === 0 ? '暂无评分' : `${dish.averageRating.toFixed(1)} 分`
-                  }}</text
-                >
-              </view>
+              <text
+                v-if="typeof dish.averageRating === 'number'"
+                class="planning-dish-rating"
+                :class="{ 'planning-dish-rating-rated': dish.averageRating > 0 }"
+                >{{
+                  dish.averageRating === 0 ? '暂无评分' : `${dish.averageRating.toFixed(1)} 分`
+                }}</text
+              >
             </view>
           </view>
           <image
@@ -191,11 +188,19 @@ const handleApply = () => {
   border-radius: 12px;
   background: #fff;
 }
+.planning-summary {
+  display: block;
+  margin-bottom: 12px;
+  color: #4b5563;
+  font-size: 14px;
+  line-height: 1.65;
+}
 .planning-card-date {
   display: block;
   color: #667085;
   font-size: 13px;
   font-weight: 400;
+  line-height: 1.5;
   margin-top: 2px;
 }
 .planning-header-icon {
@@ -220,6 +225,28 @@ const handleApply = () => {
   min-width: 0;
   overflow-wrap: anywhere;
 }
+.planning-dish-name {
+  display: block;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.planning-dish-location {
+  display: block;
+  margin-top: 4px;
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.planning-dish-details {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 8px;
+  line-height: 1.5;
+}
 .planning-dish-price {
   color: var(--color-price, #2f6b50);
   font-size: 14px;
@@ -227,7 +254,7 @@ const handleApply = () => {
 }
 .planning-dish-rating {
   color: #667085;
-  font-size: 12px;
+  font-size: 13px;
 }
 .planning-dish-rating-rated {
   color: var(--color-rating, #946200);

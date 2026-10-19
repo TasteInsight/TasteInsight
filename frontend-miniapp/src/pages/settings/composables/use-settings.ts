@@ -1,3 +1,4 @@
+import { openLogin } from '@/utils/login-navigation';
 import { reactive, ref, computed, watch } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { useUserStore } from '@/store/modules/use-user-store';
@@ -317,7 +318,7 @@ export function useSettings() {
   }
 
   function goLogin() {
-    uni.navigateTo({ url: '/pages/login/index' });
+    openLogin();
   }
 
   return {

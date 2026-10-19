@@ -35,6 +35,7 @@ it.each([
   async (_name, Page, useList, itemsKey, cardName) => {
     const refresh = jest.fn().mockResolvedValue(false);
     const state = {
+      isLoggedIn: ref(true),
       [itemsKey]: ref([{ id: 'r', dishId: 'd', dishName: '菜品', rating: 4, content: '评价内容' }]),
       loading: ref(false),
       error: ref('网络错误'),

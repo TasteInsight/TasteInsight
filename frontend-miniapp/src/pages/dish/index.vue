@@ -1,7 +1,7 @@
 <template>
-  <view class="dish-page page-content">
+  <view class="dish-page page-content page-state-layout">
     <!-- 错误状态 -->
-    <view v-if="error" class="error-feedback" role="alert">
+    <view v-if="error" :class="{ 'page-state-region': !dish }" class="error-feedback" role="alert">
       <text class="error-feedback__message">{{ error }}</text>
       <button
         class="error-feedback__action"
@@ -13,6 +13,12 @@
       </button>
     </view>
 
+    <EmptyState
+      v-if="loading && !dish && !error"
+      class="page-state-region"
+      title="正在加载菜品…"
+      loading
+    />
     <!-- 菜品详情内容 -->
     <view v-if="dish" class="dish-content" :aria-busy="loading">
       <view v-if="dishImages.length" class="dish-photos">
@@ -313,6 +319,7 @@
 </template>
 
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
 import { requireStudent } from '@/utils/student-access';
 import { priceUnitSuffix } from '@/utils/price-display';
 import { ref, computed, nextTick, watch, onScopeDispose } from 'vue';
@@ -606,17 +613,8 @@ onPullDownRefresh(async () => {
     if (dishId.value) {
       if (!(await fetchDishDetail(dishId.value))) return;
     }
-    uni.showToast({
-      title: '刷新成功',
-      icon: 'success',
-      duration: 1500,
-    });
   } catch (err) {
     console.error('下拉刷新失败:', err);
-    uni.showToast({
-      title: '刷新失败',
-      icon: 'none',
-    });
   } finally {
     uni.stopPullDownRefresh();
   }

@@ -1,7 +1,9 @@
+jest.mock('@dcloudio/uni-app', () => ({ onShow: jest.fn() }));
 import { mount, shallowMount, flushPromises } from '@vue/test-utils';
 import { ref, nextTick } from 'vue';
 import ChatPage from '@/pages/ai-chat/index.vue';
 import InputBar from '@/pages/ai-chat/components/InputBar.vue';
+import SuggestionChips from '@/pages/ai-chat/components/SuggestionChips.vue';
 import { useChat } from '@/pages/ai-chat/composables/use-chat';
 
 jest.mock('@/pages/ai-chat/composables/use-chat', () => ({ useChat: jest.fn() }));
@@ -22,6 +24,7 @@ const input = async (text: string) =>
 beforeEach(() => {
   jest.useFakeTimers();
   chat = {
+    isLoggedIn: ref(true),
     messages: ref<any[]>([]),
     currentSessionId: ref('s1'),
     aiLoading: ref(false),
@@ -55,6 +58,46 @@ const render = () =>
   (wrapper = shallowMount(ChatPage, {
     global: { stubs: { InputBar: false, 'page-container': true, picker: true } },
   }));
+
+test('one native back container closes either chat overlay while preserving the draft', async () => {
+  render();
+  await input('尚未发送的草稿');
+  expect(wrapper.findAll('page-container-stub')).toHaveLength(1);
+  const nativeBack = wrapper.get('page-container-stub');
+  for (const [action, label] of [
+    ['历史', '历史对话'],
+    ['新对话', '开始新对话'],
+  ]) {
+    await button(action).trigger('click');
+    expect(nativeBack.attributes('show')).toBe('true');
+    expect(wrapper.find(`[role="dialog"][aria-label="${label}"]`).exists()).toBe(true);
+    await nativeBack.trigger('leave');
+    expect(nativeBack.attributes('show')).toBe('false');
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
+    expect(wrapper.findComponent(InputBar).props('modelValue')).toBe('尚未发送的草稿');
+  }
+  expect(chat.resetChat).not.toHaveBeenCalled();
+  expect(chat.loadHistorySession).not.toHaveBeenCalled();
+});
+
+test.each(['历史', '新对话'])(
+  'session expiry clears the private draft and %s overlay before another login',
+  async action => {
+    render();
+    await input('账号 A 的未发送草稿');
+    await button(action).trigger('click');
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(true);
+    chat.isLoggedIn.value = false;
+    await nextTick();
+    expect(wrapper.findComponent(InputBar).exists()).toBe(false);
+    chat.isLoggedIn.value = true;
+    chat.currentSessionId.value = 'account-b-session';
+    await nextTick();
+    expect(wrapper.findComponent(InputBar).props('modelValue')).toBe('');
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
+    expect(wrapper.get('page-container-stub').attributes('show')).toBe('false');
+  }
+);
 
 test('composer is a sibling after the message scroll during initialization and retry state', async () => {
   chat.isInitialLoading.value = true;
@@ -205,14 +248,27 @@ test('streaming keeps draft editable and stop usable without duplicate send', as
   expect(chat.sendMessage).not.toHaveBeenCalled();
 });
 
-test('focusing the composer yields suggestion space and restores chips after blur', async () => {
+test('suggested questions belong to the transcript and stay available while composing', async () => {
   chat.suggestions.value = ['清淡午餐'];
   render();
-  expect(wrapper.find('suggestion-chips-stub').exists()).toBe(true);
+  const suggestions = wrapper.get('.ai-chat-messages').get('suggestion-chips-stub');
+  expect(wrapper.get('.ai-chat-footer').find('suggestion-chips-stub').exists()).toBe(false);
   await wrapper.findComponent(InputBar).get('textarea').trigger('focus');
-  expect(wrapper.find('suggestion-chips-stub').exists()).toBe(false);
-  await wrapper.findComponent(InputBar).get('textarea').trigger('blur');
-  expect(wrapper.find('suggestion-chips-stub').exists()).toBe(true);
+  expect(suggestions.exists()).toBe(true);
+  wrapper.getComponent(SuggestionChips).vm.$emit('select', '清淡午餐');
+  await flushPromises();
+  expect(chat.sendMessage).toHaveBeenCalledWith('清淡午餐');
+});
+
+test('late suggested questions follow the latest reply into view', async () => {
+  render();
+  chat.suggestions.value = ['清淡午餐'];
+  await flushPromises();
+  jest.advanceTimersByTime(20);
+  await nextTick();
+  expect(wrapper.get('.ai-chat-messages').attributes('scroll-into-view')).toBe(
+    'chat-bottom-anchor'
+  );
 });
 
 test('layout-driven scroll changes do not opt out of following the latest answer', async () => {
@@ -275,6 +331,51 @@ test.each(['wheel', 'touch', 'keyboard', 'scrollbar'])(
     );
     expect(latest.attributes('aria-hidden')).toBe('true');
     expect(latest.attributes('disabled')).toBeDefined();
+  }
+);
+
+test.each(['wheel', 'scrollbar'])(
+  '%s reading pauses auto-follow after guest login and after logging in again',
+  async gesture => {
+    chat.isLoggedIn.value = false;
+    render();
+    expect(wrapper.find('.ai-chat-messages').exists()).toBe(false);
+    for (const session of ['first-login', 'second-login']) {
+      chat.isLoggedIn.value = true;
+      chat.currentSessionId.value = session;
+      chat.messages.value = [
+        {
+          id: session,
+          type: 'ai',
+          content: [{ type: 'text', text: '回复内容' }],
+          timestamp: Date.now(),
+        },
+      ];
+      await nextTick();
+      const scroll = wrapper.get('.ai-chat-messages');
+      scroll.element.dispatchEvent(new CustomEvent('scroll', { detail: { scrollTop: 50 } }));
+      await nextTick();
+      if (gesture === 'wheel') await scroll.trigger('wheel', { deltaY: -50 });
+      else {
+        scroll.element.scrollTop = 50;
+        await scroll.trigger('mousedown', { button: 0 });
+      }
+      chat.messages.value[0].content[0].text += '继续回复';
+      await nextTick();
+      jest.advanceTimersByTime(500);
+      await nextTick();
+      expect(button('回到最新').attributes('aria-hidden')).toBe('false');
+      expect(scroll.attributes('scroll-into-view') || '').toBe('');
+      await button('回到最新').trigger('click');
+      await nextTick();
+      jest.advanceTimersByTime(20);
+      await nextTick();
+      expect(scroll.attributes('scroll-into-view')).toBe('chat-bottom-anchor');
+      chat.isLoggedIn.value = false;
+      chat.currentSessionId.value = '';
+      await nextTick();
+      expect(wrapper.find('.ai-chat-messages').exists()).toBe(false);
+    }
   }
 );
 
@@ -405,4 +506,40 @@ test('the H5 composer grows for multiline input, caps its height and resets afte
   await nextTick();
   expect(field.attributes('style')).toContain('height: 44px');
   expect(wrapper.emitted('send')).toBeUndefined();
+});
+
+test.each([
+  ['failed', '回复失败，请稍后重试'],
+  ['stopped', '已停止回复'],
+  ['interrupted', '回复已中断'],
+])('renders the %s outcome separately from AI content', (status, label) => {
+  chat.messages.value = [
+    {
+      id: 1,
+      type: 'ai',
+      content: [{ type: 'text', text: '已生成的内容' }],
+      timestamp: Date.now(),
+      replyStatus: status,
+    },
+  ];
+  render();
+  expect(wrapper.get('.chat-message-status').text()).toBe(label);
+  expect(wrapper.get('.chat-message-status').attributes('role')).toBe('status');
+  expect(wrapper.get('.chat-bubble').text()).not.toContain(label);
+  expect(wrapper.findAll('.chat-message-status')).toHaveLength(1);
+});
+
+test('an empty failed answer shows a status without an empty answer bubble', () => {
+  chat.messages.value = [
+    {
+      id: 1,
+      type: 'ai',
+      content: [{ type: 'text', text: '' }],
+      timestamp: Date.now(),
+      replyStatus: 'failed',
+    },
+  ];
+  render();
+  expect(wrapper.find('.chat-bubble').exists()).toBe(false);
+  expect(wrapper.get('.chat-message-status').text()).toBe('回复失败，请稍后重试');
 });

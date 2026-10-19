@@ -130,6 +130,7 @@ export const usePlanStore = defineStore('plan', () => {
 
   // 获取所有规划
   const fetchPlans = async () => {
+    if (!userStore.isLoggedIn) return;
     refreshClock();
     const sessionVersion = userStore.sessionVersion;
     const request = ++listRequest;

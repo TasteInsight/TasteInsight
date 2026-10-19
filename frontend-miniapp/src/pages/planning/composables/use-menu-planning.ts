@@ -24,6 +24,7 @@ export function useMenuPlanning() {
   const handlePageShow = () => {
     today.value = campusToday();
     planStore.refreshClock();
+    if (userStore.isLoggedIn && !planStore.initialized && !planStore.loading) void refreshPlans();
     clearTimeout(midnightTimer);
     const nextMidnight = Date.parse(today.value + 'T00:00:00+08:00') + 86400000;
     midnightTimer = setTimeout(handlePageShow, Math.max(1, nextMidnight - Date.now()));
@@ -81,6 +82,7 @@ export function useMenuPlanning() {
   };
 
   const refreshPlans = async () => {
+    if (!userStore.isLoggedIn || planStore.loading) return;
     try {
       await planStore.fetchPlans();
     } catch {

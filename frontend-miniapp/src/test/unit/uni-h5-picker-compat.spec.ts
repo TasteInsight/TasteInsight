@@ -8,41 +8,108 @@ const runtimePath = join(dirname(packagePath), 'dist/uni-h5.es.js');
 const source = readFileSync(runtimePath, 'utf8');
 const transform = uniH5PickerCompat(version).transform as Function;
 
-it('restores cancelled wheel state on open using the installed runtime without editing it', () => {
-  const result = transform(source, runtimePath);
-  const method = result.code.match(
+function picker() {
+  const { code } = transform(source, runtimePath);
+  const setup = code.match(/function usePickerMethods\([^)]*\) \{([\s\S]*?)(?=  const isiPad)/)![1];
+  const showMethod = code.match(
     /function _show\(event\) \{[\s\S]*?(?=\n  function _getFormData)/
   )![0];
+  const closeMethod = code.match(/function _close\(\) \{[\s\S]*?(?=\n  function _select)/)![0];
   const state = { valueChangeSource: 'click', valueSync: 1, valueArray: [0], visible: false };
-  const node = { remove: jest.fn(), style: {} };
-  const parent = { appendChild: jest.fn() };
+  const node = { remove: jest.fn(), style: { display: 'none' } };
+  const parent = { appendChild: jest.fn(), prepend: jest.fn() };
   const restoreValue = jest.fn(() => {
     state.valueArray = [state.valueSync];
   });
-  const show = new Function(
+  const dispose = jest.fn();
+  const methods = new Function(
     'props2',
     'state2',
     '_setValueArray',
     'pickerRef',
+    'rootRef',
     'document',
+    'onBeforeUnmount',
     'setTimeout',
-    `${method}; return _show;`
+    'clearTimeout',
+    `${setup}; ${showMethod}; ${closeMethod}; return { show: _show, close: _close };`
   )(
     { disabled: false },
     state,
     restoreValue,
     { value: node },
+    { value: parent },
     { querySelector: () => parent },
-    (callback: Function) => callback()
+    dispose,
+    setTimeout,
+    clearTimeout
   );
-  show({
-    currentTarget: { getBoundingClientRect: () => ({ top: 0, left: 0, width: 100, height: 48 }) },
-  });
+  const open = () => {
+    methods.show({
+      currentTarget: { getBoundingClientRect: () => ({ top: 0, left: 0, width: 100, height: 48 }) },
+    });
+    jest.advanceTimersByTime(20);
+  };
+  return { ...methods, open, state, node, parent, restoreValue, dispose };
+}
+
+beforeEach(() => jest.useFakeTimers());
+afterEach(() => {
+  jest.clearAllTimers();
+  jest.useRealTimers();
+});
+
+it('restores cancelled wheel state on open using the installed runtime without editing it', () => {
+  const { open, state, restoreValue, parent, node } = picker();
+  open();
   expect(state.valueArray).toEqual([1]);
   expect(state.visible).toBe(true);
   expect(restoreValue).toHaveBeenCalledTimes(1);
   expect(parent.appendChild).toHaveBeenCalledWith(node);
   expect(readFileSync(runtimePath, 'utf8')).toBe(source);
+});
+
+it('keeps a rapidly reopened picker visible after the previous close transition finishes', () => {
+  const { open, close, node, state, parent } = picker();
+  open();
+  close();
+  jest.advanceTimersByTime(200);
+  open();
+  jest.advanceTimersByTime(300);
+  expect(state.visible).toBe(true);
+  expect(node.style.display).toBe('block');
+  expect(parent.prepend).not.toHaveBeenCalled();
+  close();
+  jest.advanceTimersByTime(260);
+  expect(node.style.display).toBe('none');
+  expect(parent.prepend).toHaveBeenCalledTimes(1);
+});
+
+it('replaces repeated close timers and keeps another picker independent', () => {
+  const first = picker();
+  const second = picker();
+  first.open();
+  first.close();
+  jest.advanceTimersByTime(200);
+  first.close();
+  second.open();
+  jest.advanceTimersByTime(100);
+  expect(first.node.style.display).toBe('block');
+  jest.advanceTimersByTime(160);
+  expect(first.node.style.display).toBe('none');
+  expect(first.parent.prepend).toHaveBeenCalledTimes(1);
+  expect(second.node.style.display).toBe('block');
+  expect(second.parent.prepend).not.toHaveBeenCalled();
+});
+
+it('cancels pending close work when the picker is unmounted', () => {
+  const { open, close, dispose, parent } = picker();
+  open();
+  close();
+  expect(dispose).toHaveBeenCalledTimes(1);
+  dispose.mock.calls[0][0]();
+  jest.advanceTimersByTime(300);
+  expect(parent.prepend).not.toHaveBeenCalled();
 });
 
 it('does not transform unrelated modules', () => {

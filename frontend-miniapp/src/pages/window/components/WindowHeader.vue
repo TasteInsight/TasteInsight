@@ -1,6 +1,11 @@
 <template>
   <view class="window-header" :aria-busy="loading">
-    <view v-if="error" class="window-header-feedback error-feedback" role="alert">
+    <view
+      v-if="error"
+      class="window-header-feedback error-feedback"
+      :class="{ 'page-state-region': !window }"
+      role="alert"
+    >
       <text class="error-feedback__message">{{ error }}</text
       ><button
         class="error-feedback__action"
@@ -11,6 +16,7 @@
         重新加载
       </button>
     </view>
+    <EmptyState v-if="loading && !window && !error" title="正在加载窗口…" loading />
     <template v-if="window">
       <view class="flex items-center justify-between">
         <view class="text-xl font-bold text-gray-800">{{ window.name }}</view>
@@ -30,6 +36,7 @@
 </template>
 
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
 import { computed } from 'vue';
 import type { Window } from '@/types/api';
 import TagBadge from '@/components/TagBadge.vue';
@@ -52,6 +59,8 @@ const locationText = computed(() => {
 </script>
 <style scoped>
 .window-header {
+  display: flex;
+  flex-direction: column;
   padding: 16px;
   background: #fff;
 }

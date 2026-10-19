@@ -68,7 +68,7 @@ beforeEach(() => {
 afterEach(() => wrappers.splice(0).forEach(wrapper => wrapper.unmount()));
 function mountPage() {
   const wrapper = shallowMount(ProfilePage, {
-    global: { stubs: { IconButton: false, ProfileActionsSheet: false } },
+    global: { stubs: { IconButton: false, ProfileActionsSheet: false, UserHeader: false } },
   });
   wrappers.push(wrapper);
   return wrapper;
@@ -273,9 +273,12 @@ test('keeps tools beside identity and only one compose action in the content tab
   expect(wrapper.find('.profile-toolbar').exists()).toBe(false);
   expect(wrapper.get('.profile-header').findComponent(UserHeader).exists()).toBe(true);
   expect(wrapper.get('.profile-header').find('[aria-label="设置"]').exists()).toBe(true);
-  expect(wrapper.findAll('.profile-utilities button')).toHaveLength(4);
-  expect(wrapper.get('.profile-utilities').text()).toContain('我的上传');
-  expect(wrapper.get('.profile-manage').attributes('aria-label')).toBe('资料管理');
+  expect(wrapper.findAll('.profile-utilities button').map(button => button.text())).toEqual([
+    '收藏',
+    '历史',
+    '上传',
+  ]);
+  expect(wrapper.find('.profile-manage').exists()).toBe(false);
   expect(wrapper.get('.profile-tab-row').find('[aria-label="写动态"]').exists()).toBe(true);
   expect(wrapper.findAll('[aria-label="写动态"]')).toHaveLength(1);
   expect(wrapper.getComponent(EmptyState).props('actionText')).toBe('');
@@ -289,7 +292,7 @@ test('the compact profile menu retains editing, identity and visitor preview wit
     [2, '/pages/profile/identity'],
     [3, '/pages/profile/public?id=A'],
   ] as const) {
-    await wrapper.get('.profile-manage').trigger('click');
+    await wrapper.get('.user-summary').trigger('click');
     const menu = wrapper.getComponent(ProfileActionsSheet);
     expect(menu.props('items')).toEqual(['头像与昵称', '个人简介', '账号与校园身份', '访客预览']);
     menu.vm.$emit('select', index);
@@ -297,7 +300,7 @@ test('the compact profile menu retains editing, identity and visitor preview wit
     expect(uni.navigateTo).toHaveBeenLastCalledWith(expect.objectContaining({ url }));
     expect(wrapper.findComponent(ProfileActionsSheet).exists()).toBe(false);
   }
-  await wrapper.get('.profile-manage').trigger('click');
+  await wrapper.get('.user-summary').trigger('click');
   wrapper.getComponent(ProfileActionsSheet).vm.$emit('select', 1);
   await flushPromises();
   expect(wrapper.findComponent(ProfileBioEditor).exists()).toBe(true);
@@ -307,7 +310,7 @@ test('the compact profile menu retains editing, identity and visitor preview wit
 test('an old profile menu cannot open the previous account after a session change', async () => {
   const wrapper = mountPage();
   await show();
-  await wrapper.get('.profile-manage').trigger('click');
+  await wrapper.get('.user-summary').trigger('click');
   const select = (wrapper.getComponent(ProfileActionsSheet).vm.$.vnode.props as any).onSelect;
   user.userInfo = { id: 'B', nickname: '同学B' };
   user.sessionVersion++;
@@ -321,7 +324,7 @@ test('an old profile menu cannot open the previous account after a session chang
 test('keyboard profile management opens a focusable local dialog instead of the H5 native action sheet', async () => {
   const wrapper = mountPage();
   document.body.appendChild(wrapper.element);
-  const trigger = wrapper.get('.profile-manage');
+  const trigger = wrapper.get('.user-summary');
   (trigger.element as HTMLElement).focus();
   await trigger.trigger('keydown', { key: 'Enter' });
   await trigger.trigger('keyup', { key: 'Enter' });
@@ -362,7 +365,7 @@ test('keyboard profile management opens a focusable local dialog instead of the 
 test('page hiding closes profile actions and rejects a late selection without restoring hidden focus', async () => {
   const wrapper = mountPage();
   document.body.appendChild(wrapper.element);
-  const trigger = wrapper.get('.profile-manage');
+  const trigger = wrapper.get('.user-summary');
   (trigger.element as HTMLElement).focus();
   await trigger.trigger('click');
   await flushPromises();
@@ -377,7 +380,7 @@ test('page hiding closes profile actions and rejects a late selection without re
 
 test('the page back handler closes the local menu without leaving a back interceptor', async () => {
   const wrapper = mountPage();
-  await wrapper.get('.profile-manage').trigger('click');
+  await wrapper.get('.user-summary').trigger('click');
   const back = (onBackPress as jest.Mock).mock.calls[0][0];
   expect(back()).toBe(true);
   await flushPromises();

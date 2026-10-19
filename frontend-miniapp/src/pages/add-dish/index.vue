@@ -1,6 +1,26 @@
 <template>
-  <view class="add-dish-page page-content">
-    <view v-if="initializationError" class="error-feedback" role="alert">
+  <view
+    class="add-dish-page page-content page-state-layout"
+    :class="{ 'add-dish-page--state': !userStore.isLoggedIn }"
+  >
+    <EmptyState
+      v-if="!userStore.isLoggedIn"
+      class="page-state-region"
+      title="登录后申请新增菜品"
+      icon="edit"
+      action-text="登录"
+      @action="openLogin"
+    />
+    <EmptyState
+      v-else-if="!userStore.userInfo?.capabilities?.canContribute"
+      class="page-state-region"
+      title="认证后可提交菜品申请"
+      description="完成校园身份认证后，即可申请新增或补充菜品资料。"
+      icon="shield"
+      action-text="去认证"
+      @action="openIdentity"
+    />
+    <view v-else-if="initializationError" class="error-feedback page-state-region" role="alert">
       <text class="error-feedback__message">{{ initializationError }}</text>
       <button
         class="error-feedback__action"
@@ -395,6 +415,8 @@
 </template>
 
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
+import { openLogin } from '@/utils/login-navigation';
 import { onMounted, ref, onUnmounted, nextTick } from 'vue';
 import { onBackPress, onHide } from '@dcloudio/uni-app';
 import { useAddDish } from './composables/use-add-dish';
@@ -457,6 +479,7 @@ const {
   submitForm,
 } = useAddDish();
 const userStore = useUserStore();
+const openIdentity = () => uni.navigateTo({ url: '/pages/profile/identity' });
 const keyboardStyle = useSheetKeyboard();
 const leaving = ref(false);
 const optionalExpanded = ref(false);
@@ -576,6 +599,9 @@ onBackPress(() => {
     -apple-system,
     BlinkMacSystemFont,
     sans-serif;
+}
+.add-dish-page--state {
+  padding-bottom: 0;
 }
 .draft-status,
 .optional-toggle {

@@ -1,5 +1,5 @@
 <template>
-  <view class="profile-plans" :aria-busy="planStore.loading">
+  <view class="profile-plans page-state-content" :aria-busy="planStore.loading">
     <!-- #ifndef MP-WEIXIN -->
     <view class="profile-plan-visibility">
       <view class="profile-plan-visibility-copy"
@@ -27,7 +27,11 @@
       >
         管理计划<UiIcon name="chevron-right" :size="15" /></button
     ></view>
-    <view v-if="planStore.error" class="profile-plan-error error-feedback" role="alert"
+    <view
+      v-if="planStore.error"
+      class="profile-plan-error error-feedback"
+      :class="{ 'page-state-region': !plans.length }"
+      role="alert"
       ><text class="error-feedback__message">{{ planStore.error }}</text
       ><button
         class="error-feedback__action"
@@ -44,6 +48,7 @@
       </button></view
     >
     <EmptyState
+      class="page-state-region"
       v-if="planStore.initialized && !plans.length && !planStore.error"
       title="还没有饮食计划"
       icon="calendar"

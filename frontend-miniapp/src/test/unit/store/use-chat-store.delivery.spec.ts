@@ -21,16 +21,20 @@ const mockUser = reactive({
 });
 const storage = new Map<string, any>();
 const streams: { callbacks: AIStreamCallbacks; close: jest.Mock }[] = [];
-const copy = (value: any) => value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+const copy = (value: any) => (value === undefined ? undefined : JSON.parse(JSON.stringify(value)));
 const receive = (callbacks: AIStreamCallbacks) => {
   callbacks.onEvent?.('message_received');
   callbacks.onJSON?.({ messageId: 'persisted-message' });
 };
 const userMessage = (store: ReturnType<typeof useChatStore>) =>
   store.messages.filter(message => message.type === 'user').slice(-1)[0];
-const delivery = (store: ReturnType<typeof useChatStore>) => (userMessage(store) as any)?.deliveryStatus;
-const savedDelivery = () => storage.get('ai-chat-history:A')?.[0]?.messages
-  .filter((message: any) => message.type === 'user').slice(-1)[0]?.deliveryStatus;
+const delivery = (store: ReturnType<typeof useChatStore>) =>
+  (userMessage(store) as any)?.deliveryStatus;
+const savedDelivery = () =>
+  storage
+    .get('ai-chat-history:A')?.[0]
+    ?.messages.filter((message: any) => message.type === 'user')
+    .slice(-1)[0]?.deliveryStatus;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -45,7 +49,8 @@ beforeEach(() => {
   };
   setActivePinia(createPinia());
   (createAISession as jest.Mock).mockReset().mockImplementation(async () => ({
-    code: 200, data: { sessionId: `${mockUser.userInfo.id}-session` },
+    code: 200,
+    data: { sessionId: `${mockUser.userInfo.id}-session` },
   }));
   (streamAIChat as jest.Mock).mockReset().mockImplementation((_session, _payload, callbacks) => {
     const stream = { callbacks, close: jest.fn() };
@@ -103,7 +108,10 @@ describe('contextual follow-up ownership', () => {
     completeReply(old);
     if (ending === 'stop') store.abortChat();
     else if (ending === 'new-session') await store.startNewSession();
-    else { mockUser.sessionVersion++; mockUser.userInfo = { id: 'B' }; }
+    else {
+      mockUser.sessionVersion++;
+      mockUser.userInfo = { id: 'B' };
+    }
     suggest(old);
     expect(store.messages.every(message => !(message as any).suggestions)).toBe(true);
   });
@@ -113,7 +121,10 @@ describe('contextual follow-up ownership', () => {
     await store.sendChatMessage('午餐');
     completeReply(streams[0].callbacks);
     streams[0].callbacks.onError?.(new Error('follow-up connection lost'));
-    expect(store.messages[1].content).toEqual([{ type: 'text', text: '第二食堂的香菇鸡肉饭比较清淡。' }]);
+    expect(store.messages[1].content).toEqual([
+      { type: 'text', text: '第二食堂的香菇鸡肉饭比较清淡。' },
+    ]);
+    expect(store.messages[1]).not.toHaveProperty('replyStatus');
     expect(store.aiLoading).toBe(false);
     expect(delivery(store)).toBe('received');
   });
@@ -166,42 +177,54 @@ describe('chat user-message delivery', () => {
     const store = useChatStore();
     await store.sendChatMessage('午餐');
     const observed: string[] = [];
-    const stop = watch(() => delivery(store), status => observed.push(status), { flush: 'sync' });
+    const stop = watch(
+      () => delivery(store),
+      status => observed.push(status),
+      { flush: 'sync' }
+    );
     receive(streams[0].callbacks);
     stop();
     expect(observed).toEqual(['received']);
-    expect(store.messages.filter(message => message.type === 'ai')[0].content)
-      .toEqual([{ type: 'text', text: '' }]);
+    expect(store.messages.filter(message => message.type === 'ai')[0].content).toEqual([
+      { type: 'text', text: '' },
+    ]);
   });
 
-  test.each([null, {}, { type: 'text', text: 'wrong event' }, { type: 'unknown', data: [] }, { type: 'card_dish' }])(
-    'does not confirm an invalid new_block payload %j', async payload => {
-      const store = useChatStore();
-      await store.sendChatMessage('午餐');
-      streams[0].callbacks.onEvent?.('new_block');
-      streams[0].callbacks.onJSON?.(payload);
-      expect(delivery(store)).toBe('sending');
-    }
-  );
-
-  test.each(['complete', 'stop', 'error'])('settles an unconfirmed %s without inventing receipt', async ending => {
+  test.each([
+    null,
+    {},
+    { type: 'text', text: 'wrong event' },
+    { type: 'unknown', data: [] },
+    { type: 'card_dish' },
+  ])('does not confirm an invalid new_block payload %j', async payload => {
     const store = useChatStore();
     await store.sendChatMessage('午餐');
-    const callbacks = streams[0].callbacks;
-    if (ending === 'stop') store.abortChat();
-    else if (ending === 'error') {
-      callbacks.onEvent?.('error');
-      callbacks.onError?.(new Error('request failed'));
-    } else callbacks.onComplete?.();
-
-    const expected = ending === 'error' ? 'failed' : 'unconfirmed';
-    expect(delivery(store)).toBe(expected);
-    expect(savedDelivery()).toBe(expected);
-    expect(store.aiLoading).toBe(false);
-    expect(store.messages.every(message => !message.isStreaming)).toBe(true);
-    receive(callbacks);
-    expect(delivery(store)).toBe(expected);
+    streams[0].callbacks.onEvent?.('new_block');
+    streams[0].callbacks.onJSON?.(payload);
+    expect(delivery(store)).toBe('sending');
   });
+
+  test.each(['complete', 'stop', 'error'])(
+    'settles an unconfirmed %s without inventing receipt',
+    async ending => {
+      const store = useChatStore();
+      await store.sendChatMessage('午餐');
+      const callbacks = streams[0].callbacks;
+      if (ending === 'stop') store.abortChat();
+      else if (ending === 'error') {
+        callbacks.onEvent?.('error');
+        callbacks.onError?.(new Error('request failed'));
+      } else callbacks.onComplete?.();
+
+      const expected = ending === 'error' ? 'failed' : 'unconfirmed';
+      expect(delivery(store)).toBe(expected);
+      expect(savedDelivery()).toBe(expected);
+      expect(store.aiLoading).toBe(false);
+      expect(store.messages.every(message => !message.isStreaming)).toBe(true);
+      receive(callbacks);
+      expect(delivery(store)).toBe(expected);
+    }
+  );
 
   test.each(['complete', 'stop', 'error'])('keeps the confirmed receipt after %s', async ending => {
     const store = useChatStore();
@@ -218,7 +241,9 @@ describe('chat user-message delivery', () => {
   });
 
   test('cleans up a synchronous transport failure and rejects local send acceptance', async () => {
-    (streamAIChat as jest.Mock).mockImplementationOnce(() => { throw new Error('request unavailable'); });
+    (streamAIChat as jest.Mock).mockImplementationOnce(() => {
+      throw new Error('request unavailable');
+    });
     const store = useChatStore();
     await expect(store.sendChatMessage('午餐')).resolves.toBe(false);
     expect(delivery(store)).toBe('failed');
@@ -247,8 +272,11 @@ describe('chat user-message delivery', () => {
     oldCallbacks.onError?.(new Error('late error'));
     oldCallbacks.onComplete?.();
 
-    expect(store.messages.filter(message => message.type === 'user')
-      .map(message => (message as any).deliveryStatus)).toEqual(['unconfirmed', 'sending']);
+    expect(
+      store.messages
+        .filter(message => message.type === 'user')
+        .map(message => (message as any).deliveryStatus)
+    ).toEqual(['unconfirmed', 'sending']);
     expect(store.aiLoading).toBe(true);
     expect(JSON.stringify(store.messages)).not.toContain('late error');
   });
@@ -273,26 +301,43 @@ describe('chat user-message delivery', () => {
 
   test('restores pending history as unconfirmed while keeping legacy messages unknown', () => {
     const states = [undefined, 'sending', 'received', 'failed', 'unconfirmed'];
-    storage.set('ai-chat-history:A', [{
-      sessionId: 'saved', scene: 'general_chat', updatedAt: 1,
-      messages: states.map((deliveryStatus, index) => ({
-        id: index, type: 'user', timestamp: index,
-        content: [{ type: 'text', text: `message ${index}` }],
-        ...(deliveryStatus ? { deliveryStatus } : {}),
-      })),
-    }]);
+    storage.set('ai-chat-history:A', [
+      {
+        sessionId: 'saved',
+        scene: 'general_chat',
+        updatedAt: 1,
+        messages: states.map((deliveryStatus, index) => ({
+          id: index,
+          type: 'user',
+          timestamp: index,
+          content: [{ type: 'text', text: `message ${index}` }],
+          ...(deliveryStatus ? { deliveryStatus } : {}),
+        })),
+      },
+    ]);
     const store = useChatStore();
     expect(store.loadSessionFromHistory('saved')).toBe(true);
-    expect(store.messages.map(message => (message as any).deliveryStatus))
-      .toEqual([undefined, 'unconfirmed', 'received', 'failed', 'unconfirmed']);
+    expect(store.messages.map(message => (message as any).deliveryStatus)).toEqual([
+      undefined,
+      'unconfirmed',
+      'received',
+      'failed',
+      'unconfirmed',
+    ]);
     expect(store.messages[0]).not.toHaveProperty('deliveryStatus');
   });
 
   test('keeps received delivery when switching history and ignores the old receipt owner', async () => {
-    storage.set('ai-chat-history:A', [{
-      sessionId: 'saved', scene: 'general_chat', updatedAt: 1,
-      messages: [{ id: 1, type: 'user', timestamp: 1, content: [{ type: 'text', text: 'legacy' }] }],
-    }]);
+    storage.set('ai-chat-history:A', [
+      {
+        sessionId: 'saved',
+        scene: 'general_chat',
+        updatedAt: 1,
+        messages: [
+          { id: 1, type: 'user', timestamp: 1, content: [{ type: 'text', text: 'legacy' }] },
+        ],
+      },
+    ]);
     const store = useChatStore();
     await store.sendChatMessage('current');
     receive(streams[0].callbacks);
@@ -301,5 +346,128 @@ describe('chat user-message delivery', () => {
     expect(delivery(store)).toBeUndefined();
     expect(store.loadSessionFromHistory('A-session')).toBe(true);
     expect(delivery(store)).toBe('received');
+  });
+});
+
+describe('AI reply outcomes', () => {
+  test.each(['', '已经生成的回答'])(
+    'marks premature EOF for %j as interrupted and keeps it in history',
+    async text => {
+      const store = useChatStore();
+      await store.sendChatMessage('午餐');
+      const callbacks = streams[0].callbacks;
+      if (text) {
+        callbacks.onEvent?.('text_chunk');
+        callbacks.onMessage?.(text);
+      }
+      callbacks.onComplete?.();
+      expect(store.messages[1]).toMatchObject({
+        isStreaming: false,
+        replyStatus: 'interrupted',
+        content: [{ type: 'text', text }],
+      });
+      expect(storage.get('ai-chat-history:A')[0].messages[1].replyStatus).toBe('interrupted');
+      expect(store.aiLoading).toBe(false);
+      expect(store.loadSessionFromHistory('A-session')).toBe(true);
+      expect(store.messages[1].replyStatus).toBe('interrupted');
+    }
+  );
+
+  test('keeps an explicitly completed reply successful when the transport closes or fails later', async () => {
+    const store = useChatStore();
+    await store.sendChatMessage('午餐');
+    const callbacks = streams[0].callbacks;
+    callbacks.onEvent?.('text_chunk');
+    callbacks.onMessage?.('完整回答');
+    callbacks.onEvent?.('reply_complete');
+    callbacks.onJSON?.({ messageId: 'reply' });
+    callbacks.onComplete?.();
+    callbacks.onError?.(new Error('late failure'));
+    expect(store.messages[1].replyStatus).toBeUndefined();
+    expect(store.messages[1].isStreaming).toBe(false);
+  });
+
+  test.each(['', '已经生成的回答'])(
+    'keeps an error outside the reply body %j and persists its outcome',
+    async text => {
+      const store = useChatStore();
+      await store.sendChatMessage('午餐');
+      const callbacks = streams[0].callbacks;
+      if (text) {
+        callbacks.onEvent?.('text_chunk');
+        callbacks.onMessage?.(text);
+      }
+      callbacks.onError?.(new Error('抱歉，我现在无法处理您的请求，请稍后再试。'));
+      callbacks.onError?.(new Error('late duplicate error'));
+      callbacks.onComplete?.();
+      const reply = store.messages[1];
+      expect(reply.content).toEqual([{ type: 'text', text }]);
+      expect(reply).toMatchObject({ replyStatus: 'failed', isStreaming: false });
+      expect(storage.get('ai-chat-history:A')[0].messages[1]).toMatchObject({
+        replyStatus: 'failed',
+        content: [{ type: 'text', text }],
+      });
+      expect(JSON.stringify(storage.get('ai-chat-history:A'))).not.toMatch(
+        /抱歉|网络请求出错|late duplicate/
+      );
+      expect(store.aiLoading).toBe(false);
+    }
+  );
+
+  test.each([
+    [true, 'stopped'],
+    [false, 'interrupted'],
+  ] as const)(
+    'records a user-requested=%s interruption without changing the answer',
+    async (userRequested, status) => {
+      const store = useChatStore();
+      await store.sendChatMessage('午餐');
+      streams[0].callbacks.onEvent?.('text_chunk');
+      streams[0].callbacks.onMessage?.('已经生成的回答');
+      store.abortChat(userRequested);
+      streams[0].callbacks.onError?.(new Error('late error'));
+      expect(store.messages[1]).toMatchObject({
+        content: [{ type: 'text', text: '已经生成的回答' }],
+        replyStatus: status,
+        isStreaming: false,
+      });
+      expect(uni.showToast).not.toHaveBeenCalled();
+      expect(streams[0].close).toHaveBeenCalledTimes(1);
+      expect(storage.get('ai-chat-history:A')[0].messages[1].replyStatus).toBe(status);
+    }
+  );
+
+  test('restores an unfinished cached reply as interrupted while retaining known outcomes', () => {
+    storage.set('ai-chat-history:A', [
+      {
+        sessionId: 'saved',
+        scene: 'general_chat',
+        updatedAt: 1,
+        messages: [
+          {
+            id: 1,
+            type: 'ai',
+            timestamp: 1,
+            isStreaming: true,
+            content: [{ type: 'text', text: '已有内容' }],
+          },
+          {
+            id: 2,
+            type: 'ai',
+            timestamp: 2,
+            replyStatus: 'failed',
+            content: [{ type: 'text', text: '' }],
+          },
+        ],
+      },
+    ]);
+    const store = useChatStore();
+    expect(store.loadSessionFromHistory('saved')).toBe(true);
+    expect(store.messages[0]).toMatchObject({
+      isStreaming: false,
+      replyStatus: 'interrupted',
+      content: [{ type: 'text', text: '已有内容' }],
+    });
+    expect(store.messages[1].replyStatus).toBe('failed');
   });
 });

@@ -1,11 +1,18 @@
 <template>
-  <view class="home-page page-content">
+  <view class="home-page page-content page-state-layout">
     <!-- 主内容区 -->
-    <view class="home-content" :aria-busy="dishesStore.loading || canteenStore.loading">
+    <view
+      class="home-content page-state-content"
+      :aria-busy="dishesStore.loading || canteenStore.loading"
+    >
       <!-- 搜索栏 -->
       <SearchBar class="home-search" />
 
-      <view v-if="homeError && !topThreeDishes.length" class="error-feedback" role="alert">
+      <view
+        v-if="homeError && !topThreeDishes.length"
+        class="error-feedback page-state-region"
+        role="alert"
+      >
         <text class="error-feedback__title">首页暂时无法加载</text>
         <text class="error-feedback__message">{{ homeError }}</text>
         <button
@@ -70,7 +77,12 @@
         <view v-if="dishesStore.loading && topThreeDishes.length" class="home-status"
           >正在更新菜品…</view
         >
-        <view v-if="recommendError" class="error-feedback" role="alert">
+        <view
+          v-if="recommendError"
+          class="error-feedback"
+          :class="{ 'page-state-region': !topThreeDishes.length }"
+          role="alert"
+        >
           <text class="error-feedback__message">{{ recommendError }}</text>
           <button
             class="error-feedback__action"
@@ -85,6 +97,13 @@
         </view>
 
         <EmptyState
+          v-else-if="dishesStore.loading && !recommendationsInitialized && !recommendError"
+          class="page-state-region"
+          title="正在加载推荐…"
+          loading
+        />
+        <EmptyState
+          class="page-state-region"
           v-else-if="
             recommendationsInitialized && !dishesStore.loading && !homeError && !recommendError
           "
@@ -497,17 +516,11 @@ watch(
  * 重置 requestId 以获取不同的推荐内容
  */
 onPullDownRefresh(async () => {
-  const sessionVersion = userStore.sessionVersion;
-  const outcome = await loadHomeForSession(true);
-  if (userStore.sessionVersion !== sessionVersion) return;
-  uni.stopPullDownRefresh();
-  if (outcome === 'superseded') return;
-  const refreshed = outcome === 'success';
-  uni.showToast({
-    title: refreshed ? '刷新成功' : '刷新失败',
-    icon: refreshed ? 'success' : 'none',
-    duration: 1500,
-  });
+  try {
+    await loadHomeForSession(true);
+  } finally {
+    uni.stopPullDownRefresh();
+  }
 });
 
 /**
@@ -531,7 +544,6 @@ onReachBottom(async () => {
   color: #1f2937;
 }
 .home-content {
-  min-height: inherit;
   padding: 16px;
   background: #ffffff;
   box-sizing: border-box;

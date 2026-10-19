@@ -1,9 +1,17 @@
 <template>
-  <view class="page-content settings-page settings-form-page">
-    <view class="settings-form-body" :aria-busy="loading">
+  <view class="page-content settings-page settings-form-page page-state-layout">
+    <EmptyState
+      v-if="!user.isLoggedIn"
+      class="page-state-region"
+      title="登录后管理个人设置"
+      icon="settings"
+      action-text="登录"
+      @action="openLogin"
+    />
+    <view v-else class="settings-form-body page-state-content" :aria-busy="loading">
       <view
         v-if="!initialized && !loading && loadError"
-        class="settings-load-error error-feedback"
+        class="settings-load-error error-feedback page-state-region"
         role="alert"
       >
         <text class="error-feedback__title">资料未能加载</text>
@@ -22,12 +30,18 @@
           重新加载
         </button>
       </view>
+      <EmptyState
+        v-if="loading && !initialized"
+        class="page-state-region"
+        title="正在加载设置…"
+        loading
+      />
       <template v-if="initialized">
         <view v-if="restoredDraft" class="settings-note">已恢复未保存的修改</view>
         <slot />
       </template>
     </view>
-    <view v-if="initialized" class="settings-save-bar">
+    <view v-if="user.isLoggedIn && initialized" class="settings-save-bar">
       <button
         class="settings-button settings-button--primary"
         :disabled="!canSave"
@@ -47,8 +61,12 @@
 </template>
 
 <script setup lang="ts">
+import { useUserStore } from '@/store/modules/use-user-store';
+import { openLogin } from '@/utils/login-navigation';
+import EmptyState from '@/components/EmptyState.vue';
 import { useButtonActivation } from '@/composables/use-button-activation';
 
+const user = useUserStore();
 const props = defineProps<{
   loading: boolean;
   initialized: boolean;

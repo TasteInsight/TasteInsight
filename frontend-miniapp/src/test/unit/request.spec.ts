@@ -99,24 +99,43 @@ describe('request utils', () => {
   it.each([
     {
       name: 'contribution edits',
-      send: () => updateMyUpload('upload', {
-        revision: 2, targetDishId: 'dish', changedFields: ['price'], price: 0,
-        canteenName: '食堂', availableMealTime: ['lunch'],
-      }),
+      send: () =>
+        updateMyUpload('upload', {
+          revision: 2,
+          targetDishId: 'dish',
+          changedFields: ['price'],
+          price: 0,
+          canteenName: '食堂',
+          availableMealTime: ['lunch'],
+        }),
       path: '/user/uploads/upload',
       body: {
-        revision: 2, targetDishId: 'dish', changedFields: ['price'], price: 0,
-        canteenName: '食堂', availableMealTime: ['lunch'],
+        revision: 2,
+        targetDishId: 'dish',
+        changedFields: ['price'],
+        price: 0,
+        canteenName: '食堂',
+        availableMealTime: ['lunch'],
       },
     },
     {
       name: 'meal-plan edits',
-      send: () => updateMealPlan({
-        startDate: '2099-10-12', endDate: '2099-10-12', mealTime: 'lunch', dishes: ['dish'],
-      }, 'plan'),
+      send: () =>
+        updateMealPlan(
+          {
+            startDate: '2099-10-12',
+            endDate: '2099-10-12',
+            mealTime: 'lunch',
+            dishes: ['dish'],
+          },
+          'plan'
+        ),
       path: '/meal-plans/plan',
       body: {
-        startDate: '2099-10-12', endDate: '2099-10-12', mealTime: 'lunch', dishes: ['dish'],
+        startDate: '2099-10-12',
+        endDate: '2099-10-12',
+        mealTime: 'lunch',
+        dishes: ['dish'],
       },
     },
     {
@@ -128,7 +147,11 @@ describe('request utils', () => {
   ])('sends $name through the native supported-method boundary', async ({ send, path, body }) => {
     mockUserStore.token = 'student-token';
     mockRequest.mockImplementation(opts => {
-      if (!['OPTIONS', 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'TRACE', 'CONNECT'].includes(opts.method)) {
+      if (
+        !['OPTIONS', 'GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'TRACE', 'CONNECT'].includes(
+          opts.method
+        )
+      ) {
         opts.fail({ errMsg: 'request:fail invalid method' });
         return;
       }
@@ -136,12 +159,14 @@ describe('request utils', () => {
     });
 
     await expect(send()).resolves.toEqual({ code: 200, data: { id: 'saved' } });
-    expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
-      url: `http://api.test${path}`,
-      method: 'PUT',
-      data: body,
-      header: { 'Content-Type': 'application/json', Authorization: 'Bearer student-token' },
-    }));
+    expect(mockRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: `http://api.test${path}`,
+        method: 'PUT',
+        data: body,
+        header: { 'Content-Type': 'application/json', Authorization: 'Bearer student-token' },
+      })
+    );
   });
 
   it('does not print request or response payloads containing credentials', async () => {
@@ -162,10 +187,7 @@ describe('request utils', () => {
       data: { username: 'admin', password: requestSecret },
     });
 
-    const serializedLogs = JSON.stringify([
-      ...logSpy.mock.calls,
-      ...errorSpy.mock.calls,
-    ]);
+    const serializedLogs = JSON.stringify([...logSpy.mock.calls, ...errorSpy.mock.calls]);
     expect(serializedLogs).not.toContain(requestSecret);
     expect(serializedLogs).not.toContain(responseSecret);
 
@@ -244,7 +266,7 @@ describe('request utils', () => {
 
     await expect(request({ url: '/test' })).rejects.toThrow('登录已过期，请重新登录');
     expect(mockUserStore.logoutAction).toHaveBeenCalled();
-    expect(mockReLaunch).toHaveBeenCalledWith({ url: '/pages/login/index' });
+    expect(mockReLaunch).not.toHaveBeenCalled();
   });
 
   it('should logout if refresh token fails', async () => {
@@ -266,7 +288,7 @@ describe('request utils', () => {
     await expect(request({ url: '/test' })).rejects.toThrow('登录已过期，请重新登录');
     // The refresh failure logic calls handleHttpError(401)
     expect(mockUserStore.logoutAction).toHaveBeenCalled();
-    expect(mockReLaunch).toHaveBeenCalledWith({ url: '/pages/login/index' });
+    expect(mockReLaunch).not.toHaveBeenCalled();
   });
 
   it('should not start another refresh when the retried request is still unauthorized', async () => {
@@ -305,8 +327,10 @@ describe('request utils', () => {
   });
 
   it('preserves an HTTP status for page-level missing-resource states', async () => {
-    mockRequest.mockImplementation(opts => opts.success({statusCode:404,data:{message:'Not found'}}));
-    await expect(request({url:'/news/missing'})).rejects.toMatchObject({statusCode:404});
+    mockRequest.mockImplementation(opts =>
+      opts.success({ statusCode: 404, data: { message: 'Not found' } })
+    );
+    await expect(request({ url: '/news/missing' })).rejects.toMatchObject({ statusCode: 404 });
   });
 
   it('should not log sensitive request or response bodies', async () => {
@@ -346,14 +370,9 @@ describe('request utils', () => {
         method: 'POST',
         data: { password: secrets[0], code: secrets[1] },
       });
-      await expect(request({ url: '/test' })).rejects.toThrow(
-        '网络开小差了，请稍后再试'
-      );
+      await expect(request({ url: '/test' })).rejects.toThrow('网络开小差了，请稍后再试');
 
-      const serializedConsoleCalls = JSON.stringify([
-        ...logSpy.mock.calls,
-        ...errorSpy.mock.calls,
-      ]);
+      const serializedConsoleCalls = JSON.stringify([...logSpy.mock.calls, ...errorSpy.mock.calls]);
       secrets.forEach(secret => {
         expect(serializedConsoleCalls).not.toContain(secret);
       });

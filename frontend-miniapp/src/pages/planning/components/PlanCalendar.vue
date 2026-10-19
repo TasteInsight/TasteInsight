@@ -3,7 +3,7 @@
     <view class="calendar-heading">
       <UiPicker class="calendar-date-picker" mode="date" :value="anchor" @change="pickDate">
         <button class="calendar-control calendar-period" :aria-label="'选择日期，当前 ' + anchor">
-          <text>{{ periodLabel }}</text>
+          <text class="calendar-period-text">{{ periodLabel }}</text>
           <uni-icons type="down" size="14" color="#667085" aria-hidden="true" />
         </button>
       </UiPicker>
@@ -108,14 +108,9 @@ function goToday() {
 </script>
 
 <style scoped>
-.plan-calendar {
-  padding: 8px 16px 12px;
-  border-bottom: 1px solid #e5e7eb;
-}
 .calendar-heading {
   display: flex;
   align-items: center;
-  gap: 4px;
 }
 .calendar-date-picker {
   flex: 1;
@@ -134,16 +129,22 @@ function goToday() {
   background: transparent;
   color: #475467;
   font-size: 13px;
+  line-height: var(--field-line-height);
 }
 .calendar-period {
   justify-content: flex-start;
   gap: 6px;
-  padding-left: 0;
+  padding: 0;
   color: #1f2937;
-  font-size: 16px;
+  font-size: var(--field-font-size);
   font-weight: 600;
-  line-height: 1.5;
   text-align: left;
+}
+.calendar-period-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .calendar-control::after,
 .calendar-day::after {
@@ -211,9 +212,6 @@ function goToday() {
 .plan-calendar-week .calendar-day {
   min-height: 52px;
   font-size: 16px;
-}
-.plan-calendar-day {
-  padding-bottom: 8px;
 }
 .calendar-control:focus-visible,
 .calendar-day:focus-visible {

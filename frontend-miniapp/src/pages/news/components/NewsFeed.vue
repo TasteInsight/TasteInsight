@@ -1,8 +1,13 @@
 <template>
-  <view class="news-page">
-    <view class="news-content">
+  <view class="news-page page-state-content">
+    <view class="news-content page-state-content">
       <NewsItem v-for="item in list" :key="item.id" :news="item" />
-      <view v-if="error" class="error-feedback" role="alert">
+      <view
+        v-if="error"
+        class="error-feedback"
+        :class="{ 'page-state-region': !list.length }"
+        role="alert"
+      >
         <text class="error-feedback__message">{{ error }}</text>
         <button
           class="error-feedback__action"
@@ -13,7 +18,18 @@
           重试
         </button>
       </view>
-      <EmptyState v-else-if="initialized && !list.length" title="暂无公告" icon="info" />
+      <EmptyState
+        class="page-state-region"
+        v-else-if="initialized && !list.length"
+        title="暂无公告"
+        icon="info"
+      />
+      <EmptyState
+        v-else-if="loading && !list.length"
+        class="page-state-region"
+        title="正在加载公告…"
+        loading
+      />
       <view v-else-if="loading && list.length" class="news-state" role="status">加载中…</view>
       <button v-else-if="list.length && !finished" class="news-retry news-more" @click="loadMore">
         加载更多

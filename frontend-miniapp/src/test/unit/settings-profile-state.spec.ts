@@ -1,4 +1,6 @@
-import { effectScope, reactive, type EffectScope } from 'vue';
+import { effectScope, reactive, nextTick, type EffectScope } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
+jest.mock('@dcloudio/uni-app', () => ({ onShow: jest.fn() }));
 import { useSettingsProfile } from '@/pages/settings/composables/use-settings-profile';
 import { useUserStore } from '@/store/modules/use-user-store';
 
@@ -25,6 +27,7 @@ function setup() {
 }
 
 beforeEach(() => {
+  jest.clearAllMocks();
   jest.useFakeTimers();
   storage.clear();
   store = reactive({
@@ -151,4 +154,25 @@ it('removes account-owned persisted form drafts when the session changes', async
   expect(form.nickname).toBe('');
   expect(state.initialized.value).toBe(false);
   expect(storage.has('settings-draft:a:personal')).toBe(false);
+});
+
+it('resumes an uninitialized settings form when its page is shown after login', async () => {
+  store.isLoggedIn = false;
+  store.userInfo = null;
+  const { state, form } = setup();
+  expect(await state.loadProfile()).toBe(false);
+  store.fetchProfileAction.mockClear();
+  store.isLoggedIn = true;
+  store.userInfo = { id: 'b', nickname: '返回账号' };
+  await nextTick();
+  expect(store.fetchProfileAction).not.toHaveBeenCalled();
+  expect(onShow).toHaveBeenCalledTimes(1);
+  await (onShow as jest.Mock).mock.calls[0][0]();
+  await nextTick();
+  expect(state.initialized.value).toBe(true);
+  expect(form.nickname).toBe('返回账号');
+  form.nickname = '编辑中的昵称';
+  await (onShow as jest.Mock).mock.calls[0][0]();
+  expect(form.nickname).toBe('编辑中的昵称');
+  expect(store.fetchProfileAction).toHaveBeenCalledTimes(1);
 });

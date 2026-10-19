@@ -149,6 +149,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onScopeDispose } from 'vue';
+import { returnFromLogin } from '@/utils/login-navigation';
 import { useLogin } from '../composables/use-login';
 import config from '@/config';
 import {
@@ -180,6 +181,7 @@ const canUseWechat = computed(() =>
   Boolean(config.platform === 'mp-weixin' ? methods.value.wechatMiniapp : methods.value.wechatApp)
 );
 const {
+  cancel: cancelAuthentication,
   loading,
   submitted,
   wechatAvailable,
@@ -247,8 +249,11 @@ function handleSendCode() {
   if (!agreed.value) return uni.showToast({ title: '请先同意用户协议和隐私政策', icon: 'none' });
   void sendCode();
 }
+defineExpose({ loading, submitted });
 function browse() {
-  uni.switchTab({ url: '/pages/index/index' });
+  cancelAuthentication();
+  cancelCampus();
+  returnFromLogin();
 }
 
 const emit = defineEmits<{
@@ -278,7 +283,7 @@ async function handleLogin(login: () => Promise<void>) {
       return;
     }
     await login();
-    emit('loginSuccess');
+    if (!disposed && submitted.value) emit('loginSuccess');
   } catch (error) {
     console.error('登录失败:', error);
   }
