@@ -22,6 +22,7 @@
         <text class="sheet-title">举报内容</text>
         <button
           class="sheet-button sheet-close"
+          :class="{ 'is-disabled': submitting || closing }"
           :disabled="submitting || closing"
           aria-label="关闭举报"
           @tap="close"
@@ -63,8 +64,20 @@
         </view>
       </scroll-view>
       <view class="sheet-footer sheet-actions">
-        <button class="sheet-button" :disabled="submitting || closing" @tap="close">取消</button>
-        <button class="sheet-button sheet-primary" :disabled="submitting || closing" @tap="submit">
+        <button
+          class="sheet-button"
+          :class="{ 'is-disabled': submitting || closing }"
+          :disabled="submitting || closing"
+          @tap="close"
+        >
+          取消
+        </button>
+        <button
+          class="sheet-button sheet-primary"
+          :class="{ 'is-disabled': submitting || closing }"
+          :disabled="submitting || closing"
+          @tap="submit"
+        >
           {{ submitting ? '提交中…' : '提交举报' }}
         </button>
       </view>

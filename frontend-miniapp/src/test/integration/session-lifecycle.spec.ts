@@ -1,3 +1,4 @@
+jest.mock('@dcloudio/uni-app', () => ({ onShow: jest.fn() }));
 import { createPinia, setActivePinia } from 'pinia';
 import { flushPromises, shallowMount } from '@vue/test-utils';
 import { effectScope, type EffectScope } from 'vue';
@@ -38,7 +39,9 @@ const ok = (data: any) => ({ statusCode: 200, data: { code: 200, data } });
 const unauthorized = () => ({ statusCode: 401, data: { code: 401 } });
 const defer = () => {
   let resolve!: (value: any) => void;
-  const promise = new Promise<any>(done => { resolve = done; });
+  const promise = new Promise<any>(done => {
+    resolve = done;
+  });
   return { promise, resolve };
 };
 
@@ -85,32 +88,36 @@ beforeEach(() => {
     return { close: stream.close };
   });
   (getAISuggestions as jest.Mock).mockReset().mockResolvedValue({
-    code: 200, data: { suggestions: ['current suggestion'] },
+    code: 200,
+    data: { suggestions: ['current suggestion'] },
   });
   (deleteAISession as jest.Mock).mockReset().mockResolvedValue({ code: 200 });
 });
 
 describe('request session ownership', () => {
-  test.each(['success', 'failure'])('ignores an old refresh %s after another login', async outcome => {
-    const store = useUserStore();
-    const pending = request({ url: '/user/profile' });
-    const rejected = expect(pending).rejects.toThrow();
-    await flushPromises();
-    requests[0].success(unauthorized());
-    const refresh = requests[1];
-    store.logoutAction();
-    await store.loginAction('B');
+  test.each(['success', 'failure'])(
+    'ignores an old refresh %s after another login',
+    async outcome => {
+      const store = useUserStore();
+      const pending = request({ url: '/user/profile' });
+      const rejected = expect(pending).rejects.toThrow();
+      await flushPromises();
+      requests[0].success(unauthorized());
+      const refresh = requests[1];
+      store.logoutAction();
+      await store.loginAction('B');
 
-    if (outcome === 'success') refresh.success(ok(login('A').data));
-    else refresh.fail({ errMsg: 'refresh failed' });
-    await rejected;
+      if (outcome === 'success') refresh.success(ok(login('A').data));
+      else refresh.fail({ errMsg: 'refresh failed' });
+      await rejected;
 
-    expect(store.userInfo!.id).toBe('B');
-    expect(store.token).toBe('B-access');
-    expect(storage.get('refreshToken')).toBe('B-refresh');
-    expect(requests).toHaveLength(2);
-    expect(mockReLaunch).not.toHaveBeenCalled();
-  });
+      expect(store.userInfo!.id).toBe('B');
+      expect(store.token).toBe('B-access');
+      expect(storage.get('refreshToken')).toBe('B-refresh');
+      expect(requests).toHaveLength(2);
+      expect(mockReLaunch).not.toHaveBeenCalled();
+    }
+  );
 
   test('a pending refresh cannot restore a logged-out session', async () => {
     const store = useUserStore();
@@ -126,19 +133,22 @@ describe('request session ownership', () => {
     expect(requests).toHaveLength(2);
   });
 
-  test.each([200, 401])('rejects an old HTTP %i without affecting the new session', async status => {
-    const store = useUserStore();
-    const pending = request({ url: '/user/profile' });
-    const rejected = expect(pending).rejects.toThrow();
-    await flushPromises();
-    store.logoutAction();
-    await store.loginAction('B');
-    requests[0].success(status === 200 ? ok(user('A')) : unauthorized());
-    await rejected;
-    expect(store.token).toBe('B-access');
-    expect(requests).toHaveLength(1);
-    expect(mockReLaunch).not.toHaveBeenCalled();
-  });
+  test.each([200, 401])(
+    'rejects an old HTTP %i without affecting the new session',
+    async status => {
+      const store = useUserStore();
+      const pending = request({ url: '/user/profile' });
+      const rejected = expect(pending).rejects.toThrow();
+      await flushPromises();
+      store.logoutAction();
+      await store.loginAction('B');
+      requests[0].success(status === 200 ? ok(user('A')) : unauthorized());
+      await rejected;
+      expect(store.token).toBe('B-access');
+      expect(requests).toHaveLength(1);
+      expect(mockReLaunch).not.toHaveBeenCalled();
+    }
+  );
 
   test('parallel 401 responses share a refresh for the same session', async () => {
     const first = request({ url: '/first' });
@@ -174,9 +184,12 @@ describe('request session ownership', () => {
 
   test('a late profile response cannot replace the new account profile', async () => {
     let resolveProfile!: (value: any) => void;
-    (getUserProfile as jest.Mock).mockImplementationOnce(() => new Promise(resolve => {
-      resolveProfile = resolve;
-    }));
+    (getUserProfile as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveProfile = resolve;
+        })
+    );
     const store = useUserStore();
     const profile = store.fetchProfileAction();
     store.logoutAction();
@@ -211,9 +224,12 @@ describe('request session ownership', () => {
 
   test('a superseded login result cannot overwrite or log out a newer login', async () => {
     let resolveLogin!: (value: any) => void;
-    (wechatLogin as jest.Mock).mockImplementationOnce(() => new Promise(resolve => {
-      resolveLogin = resolve;
-    }));
+    (wechatLogin as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveLogin = resolve;
+        })
+    );
     const store = useUserStore();
     const old = store.loginAction('A');
     const rejected = expect(old).rejects.toThrow();
@@ -254,9 +270,14 @@ describe('chat session ownership', () => {
     expect(streams[0].close).toHaveBeenCalledTimes(1);
     expect(store.messages).toEqual([]);
     expect(store.historyEntries).toEqual([]);
-    expect(storage.get('ai-chat-history:A')[0].messages).toEqual(expect.arrayContaining([
-      expect.objectContaining({ type: 'user', content: [{ type: 'text', text: 'A private prompt' }] }),
-    ]));
+    expect(storage.get('ai-chat-history:A')[0].messages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'user',
+          content: [{ type: 'text', text: 'A private prompt' }],
+        }),
+      ])
+    );
 
     await useUserStore().loginAction('B');
     await store.initSession();
@@ -285,10 +306,16 @@ describe('chat session ownership', () => {
   });
 
   test('loading history saves and stops the outgoing stream before replacing messages', async () => {
-    storage.set('ai-chat-history:A', [{
-      sessionId: 'saved-session', scene: 'dish_critic', updatedAt: 1,
-      messages: [{ id: 1, type: 'user', timestamp: 1, content: [{ type: 'text', text: 'saved' }] }],
-    }]);
+    storage.set('ai-chat-history:A', [
+      {
+        sessionId: 'saved-session',
+        scene: 'dish_critic',
+        updatedAt: 1,
+        messages: [
+          { id: 1, type: 'user', timestamp: 1, content: [{ type: 'text', text: 'saved' }] },
+        ],
+      },
+    ]);
     const store = useChatStore();
     await store.sendChatMessage('in-flight prompt');
     streams[0].callbacks.onEvent('text_chunk');
@@ -299,7 +326,9 @@ describe('chat session ownership', () => {
     streams[0].callbacks.onMessage('late answer');
     streams[0].callbacks.onComplete();
     expect(store.messages[0].content).toEqual([{ type: 'text', text: 'saved' }]);
-    const saved = storage.get('ai-chat-history:A').find((entry: any) => entry.sessionId === 'A-session');
+    const saved = storage
+      .get('ai-chat-history:A')
+      .find((entry: any) => entry.sessionId === 'A-session');
     expect(JSON.stringify(saved.messages)).toContain('in-flight prompt');
     expect(JSON.stringify(saved.messages)).toContain('partial answer');
     expect(JSON.stringify(saved.messages)).not.toContain('late answer');
@@ -308,9 +337,12 @@ describe('chat session ownership', () => {
 
   test('a late session creation cannot override a new account session', async () => {
     let resolveSession!: (value: any) => void;
-    (createAISession as jest.Mock).mockImplementationOnce(() => new Promise(resolve => {
-      resolveSession = resolve;
-    }));
+    (createAISession as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveSession = resolve;
+        })
+    );
     const store = useChatStore();
     const oldInit = store.initSession();
     await useUserStore().loginAction('B');
@@ -322,9 +354,14 @@ describe('chat session ownership', () => {
   });
 
   test('an error terminal saves received content before switching history and returning', async () => {
-    storage.set('ai-chat-history:A', [{
-      sessionId: 'saved-session', scene: 'general_chat', updatedAt: 1, messages: [],
-    }]);
+    storage.set('ai-chat-history:A', [
+      {
+        sessionId: 'saved-session',
+        scene: 'general_chat',
+        updatedAt: 1,
+        messages: [],
+      },
+    ]);
     const store = useChatStore();
     await store.sendChatMessage('failed stream prompt');
     streams[0].callbacks.onEvent('text_chunk');
@@ -335,16 +372,32 @@ describe('chat session ownership', () => {
     expect(store.loadSessionFromHistory('A-session')).toBe(true);
     expect(JSON.stringify(store.messages)).toContain('failed stream prompt');
     expect(JSON.stringify(store.messages)).toContain('received text');
-    expect(JSON.stringify(store.messages)).toContain('provider failed');
+    expect(JSON.stringify(store.messages)).not.toContain('provider failed');
+    expect(store.messages[store.messages.length - 1].replyStatus).toBe('failed');
     expect(store.messages.every(message => !message.isStreaming)).toBe(true);
   });
 
   test('saving the outgoing stream at the history limit does not prevent loading the selected entry', async () => {
-    storage.set('ai-chat-history:A', Array.from({ length: 20 }, (_, index) => ({
-      sessionId: `saved-${index}`, scene: 'general_chat', updatedAt: index,
-      messages: [{ id: index, type: 'user', timestamp: index, content: [{ type: 'text', text: `saved ${index}` }] }],
-    })));
-    (createAISession as jest.Mock).mockResolvedValueOnce({ code: 200, data: { sessionId: 'A-session' } });
+    storage.set(
+      'ai-chat-history:A',
+      Array.from({ length: 20 }, (_, index) => ({
+        sessionId: `saved-${index}`,
+        scene: 'general_chat',
+        updatedAt: index,
+        messages: [
+          {
+            id: index,
+            type: 'user',
+            timestamp: index,
+            content: [{ type: 'text', text: `saved ${index}` }],
+          },
+        ],
+      }))
+    );
+    (createAISession as jest.Mock).mockResolvedValueOnce({
+      code: 200,
+      data: { sessionId: 'A-session' },
+    });
     const store = useChatStore();
     await store.sendChatMessage('new conversation');
     expect(store.loadSessionFromHistory('saved-19')).toBe(true);
@@ -355,9 +408,12 @@ describe('chat session ownership', () => {
 
   test('concurrent sends share one accepted submission and stale completion cannot stop the next stream', async () => {
     let resolveSession!: (value: any) => void;
-    (createAISession as jest.Mock).mockImplementationOnce(() => new Promise(resolve => {
-      resolveSession = resolve;
-    }));
+    (createAISession as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          resolveSession = resolve;
+        })
+    );
     const store = useChatStore();
     const first = store.sendChatMessage('first');
     const second = store.sendChatMessage('second');
@@ -384,13 +440,24 @@ describe('chat consumer operation ownership', () => {
     scopes.push(scope);
     return scope.run(useChat)!;
   };
-  const saveHistory = () => storage.set('ai-chat-history:A', [{
-    sessionId: 'saved-session', scene: 'general_chat', updatedAt: 1,
-    messages: [
-      { id: 1, type: 'user', timestamp: 1, content: [{ type: 'text', text: 'saved' }] },
-      { id: 2, type: 'ai', timestamp: 2, content: [{ type: 'text', text: 'saved answer' }], suggestions: ['saved follow-up'] },
-    ],
-  }]);
+  const saveHistory = () =>
+    storage.set('ai-chat-history:A', [
+      {
+        sessionId: 'saved-session',
+        scene: 'general_chat',
+        updatedAt: 1,
+        messages: [
+          { id: 1, type: 'user', timestamp: 1, content: [{ type: 'text', text: 'saved' }] },
+          {
+            id: 2,
+            type: 'ai',
+            timestamp: 2,
+            content: [{ type: 'text', text: 'saved answer' }],
+            suggestions: ['saved follow-up'],
+          },
+        ],
+      },
+    ]);
 
   beforeEach(() => {
     warning = jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -406,9 +473,12 @@ describe('chat consumer operation ownership', () => {
       const creation = defer();
       (createAISession as jest.Mock).mockReturnValueOnce(creation.promise);
       const chat = consumer();
-      const pending = action === 'initialize'
-        ? chat.init()
-        : action === 'new session' ? chat.resetChat() : chat.sendMessage('A message');
+      const pending =
+        action === 'initialize'
+          ? chat.init()
+          : action === 'new session'
+            ? chat.resetChat()
+            : chat.sendMessage('A message');
       await useUserStore().loginAction('B');
       creation.resolve({ code: 200, data: { sessionId: 'late-A', welcomeMessage: 'A welcome' } });
       await pending;
@@ -452,8 +522,7 @@ describe('chat consumer operation ownership', () => {
   test('a superseded suggestion response cannot replace or finish the selected conversation', async () => {
     saveHistory();
     const initial = defer();
-    (getAISuggestions as jest.Mock)
-      .mockReturnValueOnce(initial.promise);
+    (getAISuggestions as jest.Mock).mockReturnValueOnce(initial.promise);
     const chat = consumer();
     const old = chat.init();
     await flushPromises();
@@ -506,17 +575,31 @@ describe('chat consumer operation ownership', () => {
 describe('chat page operation ownership', () => {
   const wrappers: any[] = [];
   const page = async (openingOnly = false) => {
-    storage.set('ai-chat-history:A', ['first', 'second'].map(sessionId => ({
-      sessionId, scene: 'general_chat', updatedAt: 1,
-      messages: [{ id: 1, type: openingOnly ? 'ai' : 'user', timestamp: 1, content: [{ type: 'text', text: sessionId }] }],
-    })));
+    storage.set(
+      'ai-chat-history:A',
+      ['first', 'second'].map(sessionId => ({
+        sessionId,
+        scene: 'general_chat',
+        updatedAt: 1,
+        messages: [
+          {
+            id: 1,
+            type: openingOnly ? 'ai' : 'user',
+            timestamp: 1,
+            content: [{ type: 'text', text: sessionId }],
+          },
+        ],
+      }))
+    );
     const wrapper = shallowMount(ChatPage);
     wrappers.push(wrapper);
     await flushPromises();
     (wrapper.vm as any).openHistory();
     return wrapper.vm as any;
   };
-  beforeEach(() => { jest.useFakeTimers(); });
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
   afterEach(() => {
     wrappers.splice(0).forEach(wrapper => wrapper.unmount());
     jest.clearAllTimers();
@@ -583,6 +666,9 @@ describe('chat page operation ownership', () => {
     (deleteAISession as jest.Mock).mockReturnValueOnce(deletion.promise);
     const pending = vm.handleDeleteHistory('A-session');
     await useUserStore().loginAction('B');
+    expect(vm.showHistory).toBe(false);
+    vm.openHistory();
+    expect(vm.showHistory).toBe(true);
     deletion.resolve({ code: 200 });
     await pending;
     expect(vm.showHistory).toBe(true);
@@ -605,19 +691,27 @@ describe('chat page operation ownership', () => {
   });
 
   const mealPlan = () => ({
-    confirmAction: { body: {
-      startDate: '2026-10-03', endDate: '2026-10-03', mealTime: 'lunch', dishes: ['dish'],
-    } },
+    confirmAction: {
+      body: {
+        startDate: '2026-10-03',
+        endDate: '2026-10-03',
+        mealTime: 'lunch',
+        dishes: ['dish'],
+      },
+    },
   });
   const mealRequest = () => [...requests].reverse().find(item => item.url.endsWith('/meal-plans'));
-  const readCard = (messages = useChatStore().messages) => messages
-    .flatMap(message => message.content)
-    .filter(segment => segment.type === 'card_plan')
-    .flatMap(segment => (segment as any).data)
-    .slice(-1)[0];
-  const storedCard = (session = 'A-session', owner = 'A') => readCard(
-    storage.get(`ai-chat-history:${owner}`).find((entry: any) => entry.sessionId === session).messages
-  );
+  const readCard = (messages = useChatStore().messages) =>
+    messages
+      .flatMap(message => message.content)
+      .filter(segment => segment.type === 'card_plan')
+      .flatMap(segment => (segment as any).data)
+      .slice(-1)[0];
+  const storedCard = (session = 'A-session', owner = 'A') =>
+    readCard(
+      storage.get(`ai-chat-history:${owner}`).find((entry: any) => entry.sessionId === session)
+        .messages
+    );
   const streamedPlan = async (dishes = ['dish']) => {
     const store = useChatStore();
     await store.sendChatMessage('make plan');
@@ -671,7 +765,10 @@ describe('chat page operation ownership', () => {
       if (change === 'new message') vm.handleSend('another question');
       else if (change === 'history selection') await vm.handleLoadHistory('first');
       else {
-        (createAISession as jest.Mock).mockResolvedValueOnce({ code: 200, data: { sessionId: 'new-conversation', welcomeMessage: 'welcome' } });
+        (createAISession as jest.Mock).mockResolvedValueOnce({
+          code: 200,
+          data: { sessionId: 'new-conversation', welcomeMessage: 'welcome' },
+        });
         vm.confirmNewChat();
       }
       await flushPromises();
@@ -741,9 +838,11 @@ describe('chat page operation ownership', () => {
       const currentRequest = mealRequest();
       expect(currentRequest.header.Authorization).toBe('Bearer B-access');
       const hidden = (uni.hideLoading as jest.Mock).mock.calls.length;
-      oldRequest.success(outcome === 'success'
-        ? ok({ id: 'A-plan' })
-        : { statusCode: 500, data: { code: 500, message: 'old failure' } });
+      oldRequest.success(
+        outcome === 'success'
+          ? ok({ id: 'A-plan' })
+          : { statusCode: 500, data: { code: 500, message: 'old failure' } }
+      );
       await old;
       jest.advanceTimersByTime(500);
       await flushPromises();

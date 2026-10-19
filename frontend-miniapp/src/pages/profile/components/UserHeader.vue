@@ -4,6 +4,7 @@
       class="user-summary"
       role="button"
       :tabindex="isLoggedIn && !userInfo ? -1 : 0"
+      :class="{ 'is-disabled': isLoggedIn && !userInfo }"
       :disabled="isLoggedIn && !userInfo"
       :aria-label="
         isLoggedIn
@@ -82,7 +83,7 @@ const { activate, handleKeydown, handleKeyup, clearPress } = useButtonActivation
   outline: 2px solid #660874;
   outline-offset: 2px;
 }
-.user-summary[disabled] {
+.user-summary.is-disabled {
   opacity: 0.5;
 }
 .user-copy {

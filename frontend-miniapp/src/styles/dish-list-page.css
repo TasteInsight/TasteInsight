@@ -76,3 +76,7 @@
   outline: 2px solid #660874;
   outline-offset: 2px;
 }
+
+.dish-list-search--before-state {
+  order: -1;
+}

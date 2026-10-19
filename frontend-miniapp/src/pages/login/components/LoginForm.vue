@@ -32,6 +32,9 @@
           />
           <button
             class="code-send"
+            :class="{
+              'is-disabled': !phone.trim() || sending || remaining > 0 || loading || submitted,
+            }"
             :disabled="!phone.trim() || sending || remaining > 0 || loading || submitted"
             @click="handleSendCode"
           >
@@ -41,6 +44,7 @@
         <text v-if="codeError" class="login-error" role="alert">{{ codeError }}</text>
         <button
           class="login-button"
+          :class="{ 'is-disabled': !canVerify || loading || submitted }"
           :disabled="!canVerify || loading || submitted"
           @click="handleLogin(() => phoneLogin(challengeId, code))"
         >
@@ -70,6 +74,7 @@
       <view v-if="methods.campusOAuth" class="campus-login">
         <button
           class="login-button"
+          :class="{ 'is-disabled': loading || submitted || campusStarting }"
           :disabled="loading || submitted || campusStarting"
           @click="startCampus"
         >
@@ -87,6 +92,7 @@
           />
           <button
             class="login-button"
+            :class="{ 'is-disabled': campusCode.trim().length !== 43 || loading || submitted }"
             :disabled="campusCode.trim().length !== 43 || loading || submitted"
             @click="completeCampus"
           >
@@ -102,6 +108,7 @@
       <button
         v-if="wechatAvailable && canUseWechat"
         class="login-button"
+        :class="{ 'is-disabled': loading || submitted }"
         :disabled="loading || submitted"
         @click="handleWechatLogin"
         hover-class="none"
@@ -110,7 +117,12 @@
       </button>
       <template v-if="testLoginEnabled">
         <text class="login-environment">开发环境</text>
-        <button class="login-button" :disabled="loading || submitted" @click="handleTestLogin">
+        <button
+          class="login-button"
+          :class="{ 'is-disabled': loading || submitted }"
+          :disabled="loading || submitted"
+          @click="handleTestLogin"
+        >
           {{ submitted ? '登录成功' : loading ? '正在登录…' : '开发测试登录' }}
         </button>
         <text class="login-test-note">使用当前设备的测试账号</text>
@@ -137,6 +149,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onScopeDispose } from 'vue';
+import { returnFromLogin } from '@/utils/login-navigation';
 import { useLogin } from '../composables/use-login';
 import config from '@/config';
 import {
@@ -168,6 +181,7 @@ const canUseWechat = computed(() =>
   Boolean(config.platform === 'mp-weixin' ? methods.value.wechatMiniapp : methods.value.wechatApp)
 );
 const {
+  cancel: cancelAuthentication,
   loading,
   submitted,
   wechatAvailable,
@@ -235,8 +249,11 @@ function handleSendCode() {
   if (!agreed.value) return uni.showToast({ title: '请先同意用户协议和隐私政策', icon: 'none' });
   void sendCode();
 }
+defineExpose({ loading, submitted });
 function browse() {
-  uni.switchTab({ url: '/pages/index/index' });
+  cancelAuthentication();
+  cancelCampus();
+  returnFromLogin();
 }
 
 const emit = defineEmits<{
@@ -266,7 +283,7 @@ async function handleLogin(login: () => Promise<void>) {
       return;
     }
     await login();
-    emit('loginSuccess');
+    if (!disposed && submitted.value) emit('loginSuccess');
   } catch (error) {
     console.error('登录失败:', error);
   }
@@ -358,7 +375,7 @@ function openAgreement(type: 'user' | 'privacy') {
 .login-secondary::after {
   border: 0;
 }
-.code-send[disabled] {
+.code-send.is-disabled {
   color: #667085;
   background: transparent;
 }
@@ -386,7 +403,7 @@ function openAgreement(type: 'user' | 'privacy') {
 .login-button::after {
   border: 0;
 }
-.login-button[disabled] {
+.login-button.is-disabled {
   background: #eaecf0;
   color: #667085;
 }

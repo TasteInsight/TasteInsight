@@ -1,3 +1,4 @@
+jest.mock('@dcloudio/uni-app', () => ({ onShow: jest.fn() }));
 import { setActivePinia, createPinia } from 'pinia';
 import { mount } from '@vue/test-utils';
 import { useDisplay, SORT_VALUES } from '@/pages/settings/composables/use-display';

@@ -1,5 +1,5 @@
 <template>
-  <view class="campus-page" :aria-busy="loading">
+  <view class="campus-page page-state-content" :aria-busy="loading">
     <view class="campus-heading">
       <view class="campus-tabs" role="tablist" aria-label="动态范围"
         ><button
@@ -36,12 +36,17 @@
           class="campus-skeleton-line" /></view
     ></template>
     <EmptyState
+      class="page-state-region"
       v-else-if="initialized && !posts.length && !error"
       :title="mine ? '还没有发布动态' : '还没有校园动态'"
       icon="chat"
     />
     <PostCard v-for="post in posts" :key="post.id" :post="post" />
-    <view v-if="error" class="campus-error error-feedback" role="alert"
+    <view
+      v-if="error"
+      :class="{ 'page-state-region': !posts.length }"
+      class="campus-error error-feedback"
+      role="alert"
       ><text class="error-feedback__message">{{ error }}</text
       ><button
         class="error-feedback__action"
@@ -62,6 +67,8 @@
   </view>
 </template>
 <script setup lang="ts">
+import { openLogin } from '@/utils/login-navigation';
+
 import { nextTick, ref, watch } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { requireStudent } from '@/utils/student-access';
@@ -81,7 +88,7 @@ const { posts, loading, initialized, error, hasMore, load, retry, reset, invalid
 );
 function switchFeed(value: boolean) {
   if (value && !user.isLoggedIn) {
-    uni.navigateTo({ url: '/pages/login/index' });
+    openLogin();
     return;
   }
   if (mine.value === value) return;

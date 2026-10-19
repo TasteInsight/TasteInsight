@@ -1,4 +1,5 @@
 import { computed, ref, watch, getCurrentScope, onScopeDispose } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { confirmDiscardChanges } from '@/utils/confirm-discard';
 import type { User, UserProfileUpdateRequest } from '@/types/api';
@@ -178,6 +179,11 @@ export function useSettingsProfile(
     },
     { flush: 'sync' }
   );
+
+  onShow(() => {
+    if (userStore.isLoggedIn && !disposed && !initialized.value && !loading.value)
+      return loadProfile();
+  });
 
   if (getCurrentScope())
     onScopeDispose(() => {

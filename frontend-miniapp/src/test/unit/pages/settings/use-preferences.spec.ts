@@ -1,3 +1,4 @@
+jest.mock('@dcloudio/uni-app', () => ({ onShow: jest.fn() }));
 import { mount, flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { usePreferences } from '@/pages/settings/composables/use-preferences';

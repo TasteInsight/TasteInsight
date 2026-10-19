@@ -1,3 +1,4 @@
+jest.mock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ isLoggedIn: true }) }));
 import * as Vue from 'vue';
 import { mount, type VueWrapper } from '@vue/test-utils';
 import { parse, compileScript } from '@vue/compiler-sfc';

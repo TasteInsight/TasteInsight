@@ -42,11 +42,17 @@
           查看菜品<UiIcon name="chevron-right" :size="14" />
         </button>
         <template v-if="item.status === 'pending' || item.status === 'rejected'">
-          <button class="upload-action" :disabled="actionsDisabled" @click="emit('edit')">
+          <button
+            class="upload-action"
+            :class="{ 'is-disabled': actionsDisabled }"
+            :disabled="actionsDisabled"
+            @click="emit('edit')"
+          >
             修改资料
           </button>
           <button
             class="upload-action upload-secondary"
+            :class="{ 'is-disabled': actionsDisabled }"
             :disabled="actionsDisabled"
             @click="emit('withdraw')"
           >
@@ -224,7 +230,7 @@ const formatDate = (date: string) => dayjs(date).format('YYYY-MM-DD HH:mm');
 .upload-action:active {
   background: #f9f5fa;
 }
-.upload-action[disabled] {
+.upload-action.is-disabled {
   opacity: 0.55;
 }
 .upload-secondary {

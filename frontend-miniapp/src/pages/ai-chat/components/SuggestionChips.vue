@@ -1,25 +1,24 @@
 <template>
-  <scroll-view scroll-x class="suggestion-scroll" :show-scrollbar="false">
-    <view class="suggestions">
-      <button
-        v-for="(suggestion, index) in suggestions"
-        :key="index"
-        class="suggestion-chip"
-        hover-class="suggestion-chip-pressed"
-        :hover-stay-time="80"
-        role="button"
-        tabindex="0"
-        :aria-label="suggestion"
-        :disabled="disabled"
-        @click="select(suggestion)"
-        @keydown="handleKeydown"
-        @keyup="handleKeyup($event, suggestion)"
-        @blur="pressed = false"
-      >
-        {{ suggestion }}
-      </button>
-    </view>
-  </scroll-view>
+  <view class="suggestions" role="group" aria-label="推荐问题">
+    <button
+      v-for="(suggestion, index) in suggestions"
+      :key="index"
+      class="suggestion-chip"
+      hover-class="suggestion-chip-pressed"
+      :hover-stay-time="80"
+      role="button"
+      tabindex="0"
+      :aria-label="suggestion"
+      :class="{ 'is-disabled': disabled }"
+      :disabled="disabled"
+      @click="select(suggestion)"
+      @keydown="handleKeydown"
+      @keyup="handleKeyup($event, suggestion)"
+      @blur="pressed = false"
+    >
+      {{ suggestion }}
+    </button>
+  </view>
 </template>
 <script setup lang="ts">
 import { ref } from 'vue';
@@ -45,22 +44,22 @@ const handleKeyup = (event: KeyboardEvent, text: string) => {
 };
 </script>
 <style scoped>
-.suggestion-scroll {
-  width: 100%;
-}
 .suggestions {
   display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: 8px;
-  padding: 0 0 8px;
 }
 .suggestion-chip {
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   min-height: 44px;
   max-width: 260px;
   margin: 0;
-  padding: 0 10px;
+  padding: 8px 10px;
   border: 1px solid #eceef1;
   border-radius: 999px;
   background: #fff;
@@ -68,6 +67,7 @@ const handleKeyup = (event: KeyboardEvent, text: string) => {
   font-size: 13px;
   line-height: 1.5;
   white-space: normal;
+  overflow-wrap: anywhere;
   text-align: left;
   cursor: pointer;
   transition: background-color 140ms ease-out;
@@ -79,15 +79,15 @@ const handleKeyup = (event: KeyboardEvent, text: string) => {
   outline: 2px solid #660874;
   outline-offset: -2px;
 }
-.suggestion-chip[disabled] {
+.suggestion-chip.is-disabled {
   color: #667085;
   background: #fff;
 }
-.suggestion-chip.suggestion-chip-pressed:not([disabled]) {
+.suggestion-chip.suggestion-chip-pressed:not(.is-disabled) {
   background: #f4f4f5;
 }
 @media (hover: hover) {
-  .suggestion-chip:not([disabled]):hover {
+  .suggestion-chip:not(.is-disabled):hover {
     background: #f7f8fa;
   }
 }

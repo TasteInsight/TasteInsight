@@ -12,7 +12,7 @@ import NotificationsSkeleton from '@/components/skeleton/NotificationsSkeleton.v
 import AllergensSkeleton from '@/components/skeleton/AllergensSkeleton.vue';
 import { COMMON_ALLERGENS } from '@/pages/settings/composables/use-allergens';
 
-jest.mock('@dcloudio/uni-app', () => ({ onBackPress: jest.fn() }));
+jest.mock('@dcloudio/uni-app', () => ({ onBackPress: jest.fn(), onShow: jest.fn() }));
 jest.mock('@/api/modules/user', () => ({
   getUserProfile: jest.fn(),
   updateUserProfile: jest.fn(),
@@ -42,13 +42,13 @@ it.each([
   ['notifications', NotificationsPage, NotificationsSkeleton],
   ['allergens', AllergensPage, AllergensSkeleton],
 ] as const)(
-  '%s keeps the existing page viewport blank until profile initialization succeeds',
+  '%s keeps the existing viewport with loading feedback until profile initialization succeeds',
   (_name, Page) => {
     const wrapper = mount(Page as any);
     expect(wrapper.findAll('.page-content')).toHaveLength(1);
     expect(wrapper.findAll('.settings-page')).toHaveLength(1);
     expect(wrapper.find('.skeleton-item').exists()).toBe(false);
-    expect(wrapper.get('.settings-form-body').text()).toBe('');
+    expect(wrapper.get('.settings-form-body').text()).toBe('正在加载设置…');
     expect(wrapper.get('.settings-form-body').attributes('aria-busy')).toBe('true');
     expect(wrapper.find('.settings-save-bar').exists()).toBe(false);
     wrapper.unmount();

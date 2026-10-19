@@ -17,7 +17,12 @@ import { useReview } from '@/pages/dish/composables/use-review';
 import { useCommentPanel } from '@/pages/dish/composables/use-comment';
 import { getRecommendations } from '@/api/modules/recommendation';
 import { getDishes, getDishesByIds, getDishById } from '@/api/modules/dish';
-import { getCanteenDetail, getCanteenList, getWindowDetail, getWindowList } from '@/api/modules/canteen';
+import {
+  getCanteenDetail,
+  getCanteenList,
+  getWindowDetail,
+  getWindowList,
+} from '@/api/modules/canteen';
 import { getOwnReviewByDish, getReviewsByDish } from '@/api/modules/review';
 import { getCommentsByReview } from '@/api/modules/comment';
 
@@ -54,7 +59,9 @@ jest.mock('@dcloudio/uni-app', () => ({
 jest.mock('@/store/modules/use-user-store', () => ({ useUserStore: () => mockUser }));
 jest.mock('@/store/modules/use-canteen-store', () => ({ useCanteenStore: () => mockCanteens }));
 jest.mock('@/store/modules/use-dishes-store', () => ({ useDishesStore: () => mockDishes }));
-jest.mock('@/store/modules/use-plan-store', () => ({ usePlanStore: () => ({ createPlan: jest.fn() }) }));
+jest.mock('@/store/modules/use-plan-store', () => ({
+  usePlanStore: () => ({ createPlan: jest.fn() }),
+}));
 jest.mock('@/api/modules/recommendation', () => ({
   RecommendationScene: { HOME: 'home' },
   getRecommendations: jest.fn(),
@@ -105,7 +112,12 @@ const recommendationResponse = (items: any[] = []) => ({
   data: { ...itemsResponse(items).data, requestId: 'recommendation' },
 });
 const dish = (id = 'dish') => ({
-  id, name: `菜品 ${id}`, price: 8, images: [], tags: [], reviewCount: 0,
+  id,
+  name: `菜品 ${id}`,
+  price: 8,
+  images: [],
+  tags: [],
+  reviewCount: 0,
 });
 const wrappers: ReturnType<typeof mount>[] = [];
 const scopes: ReturnType<typeof effectScope>[] = [];
@@ -122,9 +134,18 @@ const mountPage = (component: any, props?: any) => {
         SearchBar: true,
         FilterBar: true,
         CanteenFilterBar: true,
-        RecommendItem: { props: ['dish'], template: '<div class="result-dish">{{ dish.name }}</div>' },
-        CanteenDishCard: { props: ['dish'], template: '<div class="result-dish">{{ dish.name }}</div>' },
-        DishResultItem: { props: ['dish'], template: '<div class="result-dish">{{ dish.name }}</div>' },
+        RecommendItem: {
+          props: ['dish'],
+          template: '<div class="result-dish">{{ dish.name }}</div>',
+        },
+        CanteenDishCard: {
+          props: ['dish'],
+          template: '<div class="result-dish">{{ dish.name }}</div>',
+        },
+        DishResultItem: {
+          props: ['dish'],
+          template: '<div class="result-dish">{{ dish.name }}</div>',
+        },
         RatingBars: true,
         ReviewForm: true,
         BottomReviewInput: true,
@@ -133,7 +154,7 @@ const mountPage = (component: any, props?: any) => {
         CommentList: true,
         LongPressMenu: true,
         ReportDialog: true,
-        'swiper': true,
+        swiper: true,
         'swiper-item': true,
         'page-container': true,
         'uni-icons': true,
@@ -146,14 +167,26 @@ const mountPage = (component: any, props?: any) => {
 const loadRoute = (options: any) => (onLoad as jest.Mock).mock.calls.at(-1)![0](options);
 const expectUndisclosed = (wrapper: ReturnType<typeof mount>) => {
   expect(wrapper.html()).not.toMatch(/skeleton/i);
-  expect(wrapper.text()).not.toMatch(/暂无|没有符合|没有推荐|想吃点什么|未找到|还没有回复|还没有评价|加载中|正在加载/);
+  expect(wrapper.text()).not.toMatch(
+    /暂无|没有符合|没有推荐|想吃点什么|未找到|还没有回复|还没有评价/
+  );
 };
 
 beforeEach(() => {
   jest.clearAllMocks();
-  [getDishes, getDishesByIds, getDishById, getRecommendations, getCanteenDetail, getWindowDetail,
-    getWindowList, getCanteenList, getReviewsByDish, getOwnReviewByDish, getCommentsByReview]
-    .forEach(mock => (mock as jest.Mock).mockReset());
+  [
+    getDishes,
+    getDishesByIds,
+    getDishById,
+    getRecommendations,
+    getCanteenDetail,
+    getWindowDetail,
+    getWindowList,
+    getCanteenList,
+    getReviewsByDish,
+    getOwnReviewByDish,
+    getCommentsByReview,
+  ].forEach(mock => (mock as jest.Mock).mockReset());
   mockUser.sessionVersion++;
   mockUser.userInfo.settings.displaySettings.sortBy = 'rating';
   mockUser.fetchProfileAction.mockReset().mockResolvedValue(undefined);
@@ -171,9 +204,15 @@ beforeEach(() => {
   (getDishes as jest.Mock).mockResolvedValue(itemsResponse());
   (getDishesByIds as jest.Mock).mockResolvedValue(itemsResponse([dish()]));
   (getCanteenList as jest.Mock).mockResolvedValue(itemsResponse());
-  (getCanteenDetail as jest.Mock).mockResolvedValue({ code: 200, data: { id: 'canteen', name: '食堂' } });
+  (getCanteenDetail as jest.Mock).mockResolvedValue({
+    code: 200,
+    data: { id: 'canteen', name: '食堂' },
+  });
   (getWindowList as jest.Mock).mockResolvedValue(itemsResponse());
-  (getWindowDetail as jest.Mock).mockResolvedValue({ code: 200, data: { id: 'window', name: '窗口' } });
+  (getWindowDetail as jest.Mock).mockResolvedValue({
+    code: 200,
+    data: { id: 'window', name: '窗口' },
+  });
   (getDishById as jest.Mock).mockResolvedValue({ code: 200, data: dish() });
   (getReviewsByDish as jest.Mock).mockResolvedValue(itemsResponse());
   (getOwnReviewByDish as jest.Mock).mockResolvedValue({ code: 200, data: null });
@@ -216,7 +255,6 @@ describe('discovery initial loading', () => {
     expect(wrapper.text()).toContain('菜品 dish');
     expect(wrapper.find('filter-bar-stub').exists()).toBe(true);
   });
-
 
   test('a failed profile preparation retries the profile before requesting recommendations', async () => {
     mockUser.fetchProfileAction.mockRejectedValueOnce(new Error('资料暂时无法加载'));
@@ -264,7 +302,6 @@ describe('discovery initial loading', () => {
     expect(wrapper.text()).not.toContain('首页暂时无法加载');
   });
 
-
   test('home shows an empty result only after success and never after failure', async () => {
     const pending = deferred();
     (getRecommendations as jest.Mock).mockReturnValueOnce(pending.promise);
@@ -281,7 +318,9 @@ describe('discovery initial loading', () => {
   });
 
   test('home retains cached content during refresh and clears its readiness on account change', async () => {
-    (getRecommendations as jest.Mock).mockResolvedValueOnce(recommendationResponse([{ id: 'dish' }]));
+    (getRecommendations as jest.Mock).mockResolvedValueOnce(
+      recommendationResponse([{ id: 'dish' }])
+    );
     const wrapper = mountPage(HomePage);
     await flushPromises();
     const pending = deferred();
@@ -297,28 +336,49 @@ describe('discovery initial loading', () => {
     await refreshing;
     await flushPromises();
     expect(wrapper.text()).not.toContain('stale');
+    expect(uni.stopPullDownRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  test('canteen ends pull-to-refresh after its session expires', async () => {
+    const wrapper = mountPage(CanteenPage);
+    await loadRoute({ id: 'canteen' });
+    await flushPromises();
+    const pending = deferred();
+    (getCanteenDetail as jest.Mock).mockReturnValueOnce(pending.promise);
+    const refreshing = (onPullDownRefresh as jest.Mock).mock.calls[0][0]();
+    await flushPromises();
+    mockUser.sessionVersion++;
+    await wrapper.vm.$nextTick();
+    pending.resolve({ code: 200, data: { id: 'canteen', name: 'stale canteen' } });
+    await refreshing;
+    await flushPromises();
+    expect(wrapper.text()).not.toContain('stale canteen');
+    expect(uni.stopPullDownRefresh).toHaveBeenCalledTimes(1);
   });
 
   test.each([
     ['canteen', CanteenPage, getCanteenDetail, 'canteen-filter-bar-stub'],
     ['window', WindowPage, getWindowDetail, null],
-  ])('%s preserves its route search and withholds uninitialized header and dishes', async (_name, component, api, filter) => {
-    const pending = deferred();
-    (api as jest.Mock).mockReturnValueOnce(pending.promise);
-    const wrapper = mountPage(component);
-    expectUndisclosed(wrapper);
-    const loading = loadRoute({ id: _name });
-    await flushPromises();
-    expect(wrapper.find('search-bar-stub').exists()).toBe(true);
-    if (filter) expect(wrapper.find(filter).exists()).toBe(true);
-    expectUndisclosed(wrapper);
-    pending.resolve({ code: 200, data: { id: _name, name: '场所名称' } });
-    await loading;
-    await flushPromises();
-    expect(wrapper.text()).toContain('场所名称');
-    expect(wrapper.text()).toContain('暂无菜品信息');
-    expect(wrapper.find('.dish-list-heading').exists()).toBe(true);
-  });
+  ])(
+    '%s preserves its route search and withholds uninitialized header and dishes',
+    async (_name, component, api, filter) => {
+      const pending = deferred();
+      (api as jest.Mock).mockReturnValueOnce(pending.promise);
+      const wrapper = mountPage(component);
+      expectUndisclosed(wrapper);
+      const loading = loadRoute({ id: _name });
+      await flushPromises();
+      expect(wrapper.find('search-bar-stub').exists()).toBe(true);
+      if (filter) expect(wrapper.find(filter).exists()).toBe(true);
+      expectUndisclosed(wrapper);
+      pending.resolve({ code: 200, data: { id: _name, name: '场所名称' } });
+      await loading;
+      await flushPromises();
+      expect(wrapper.text()).toContain('场所名称');
+      expect(wrapper.text()).toContain('暂无菜品信息');
+      expect(wrapper.find('.dish-list-heading').exists()).toBe(true);
+    }
+  );
 
   test.each([
     ['canteen', CanteenPage, getCanteenDetail],
@@ -350,7 +410,6 @@ describe('discovery initial loading', () => {
     expect(getDishes).not.toHaveBeenCalled();
   });
 
-
   test.each([
     ['canteen', CanteenPage, getCanteenDetail],
     ['window', WindowPage, getWindowDetail],
@@ -370,6 +429,14 @@ describe('discovery initial loading', () => {
     }
   );
 
+  test('tag results exclude the empty-result state after a successful nonempty read', async () => {
+    (getDishes as jest.Mock).mockResolvedValueOnce(itemsResponse([dish()]));
+    const wrapper = mountPage(TagPage);
+    await loadRoute({ tag: '清淡', canteenId: 'canteen' });
+    await flushPromises();
+    expect(wrapper.text()).toContain('菜品 dish');
+    expect(wrapper.text()).not.toContain('暂无相关菜品');
+  });
 
   test('tag route context stays visible while its first result is undisclosed', async () => {
     const pending = deferred();
@@ -398,36 +465,42 @@ describe('place result ownership', () => {
   test.each([
     ['canteen', useCanteenData, getCanteenDetail, 'dishesInitialized'],
     ['window', useWindowData, getWindowDetail, 'dishesInitialized'],
-  ])('%s clears old route content and successful emptiness while the next route is pending', async (_name, setup, api, readiness) => {
-    const page = scoped(setup as any) as any;
-    await page.init('old');
-    expect(page[readiness].value).toBe(true);
-    const pending = deferred();
-    (api as jest.Mock).mockReturnValueOnce(pending.promise);
-    const loading = page.init('new');
-    expect(page[readiness].value).toBe(false);
-    expect((page.canteenInfo || page.windowInfo).value).toBeNull();
-    pending.resolve({ code: 200, data: { id: 'new', name: '新场所' } });
-    await loading;
-    expect(page[readiness].value).toBe(true);
-  });
+  ])(
+    '%s clears old route content and successful emptiness while the next route is pending',
+    async (_name, setup, api, readiness) => {
+      const page = scoped(setup as any) as any;
+      await page.init('old');
+      expect(page[readiness].value).toBe(true);
+      const pending = deferred();
+      (api as jest.Mock).mockReturnValueOnce(pending.promise);
+      const loading = page.init('new');
+      expect(page[readiness].value).toBe(false);
+      expect((page.canteenInfo || page.windowInfo).value).toBeNull();
+      pending.resolve({ code: 200, data: { id: 'new', name: '新场所' } });
+      await loading;
+      expect(page[readiness].value).toBe(true);
+    }
+  );
 
-  test.each([useCanteenData, useWindowData])('retains an existing dish list through refresh failure and account reset removes successful-read state', async setup => {
-    (getDishes as jest.Mock).mockResolvedValueOnce(itemsResponse([dish()]));
-    const page = scoped(setup as any) as any;
-    await page.fetchDishes('place');
-    const pending = deferred();
-    (getDishes as jest.Mock).mockReturnValueOnce(pending.promise);
-    const refreshing = page.fetchDishes('place');
-    expect(page.dishes.value).toEqual([dish()]);
-    pending.reject(new Error('offline'));
-    await refreshing;
-    expect(page.dishes.value).toEqual([dish()]);
-    expect(page.dishesInitialized.value).toBe(true);
-    mockUser.sessionVersion++;
-    expect(page.dishes.value).toEqual([]);
-    expect(page.dishesInitialized.value).toBe(false);
-  });
+  test.each([useCanteenData, useWindowData])(
+    'retains an existing dish list through refresh failure and account reset removes successful-read state',
+    async setup => {
+      (getDishes as jest.Mock).mockResolvedValueOnce(itemsResponse([dish()]));
+      const page = scoped(setup as any) as any;
+      await page.fetchDishes('place');
+      const pending = deferred();
+      (getDishes as jest.Mock).mockReturnValueOnce(pending.promise);
+      const refreshing = page.fetchDishes('place');
+      expect(page.dishes.value).toEqual([dish()]);
+      pending.reject(new Error('offline'));
+      await refreshing;
+      expect(page.dishes.value).toEqual([dish()]);
+      expect(page.dishesInitialized.value).toBe(true);
+      mockUser.sessionVersion++;
+      expect(page.dishes.value).toEqual([]);
+      expect(page.dishesInitialized.value).toBe(false);
+    }
+  );
 });
 
 describe('search outcomes', () => {
@@ -505,7 +578,8 @@ describe('search outcomes', () => {
     expect(wrapper.text()).toContain('食堂目录暂时不可用');
     expect(wrapper.text()).toContain('菜品 first');
     expect(search.error).toBe('');
-    const button = (label: string) => wrapper.findAll('button').find(item => item.text() === label)!;
+    const button = (label: string) =>
+      wrapper.findAll('button').find(item => item.text() === label)!;
     expect(button('重试食堂搜索').exists()).toBe(true);
     await button('加载更多').trigger('tap');
     await flushPromises();
@@ -652,7 +726,10 @@ describe('dish detail and discussions', () => {
 
   test('same-dish refresh retains related data while a route replacement hides old detail', async () => {
     const detail = scoped(useDishDetail);
-    (getDishById as jest.Mock).mockResolvedValueOnce({ code: 200, data: { ...dish(), parentDishId: 'parent' } });
+    (getDishById as jest.Mock).mockResolvedValueOnce({
+      code: 200,
+      data: { ...dish(), parentDishId: 'parent' },
+    });
     (getDishById as jest.Mock).mockResolvedValueOnce({ code: 200, data: dish('parent') });
     await detail.fetchDishDetail('dish');
     const pending = deferred();
@@ -673,8 +750,14 @@ describe('dish detail and discussions', () => {
   test('review list reserves emptiness for a successful review read', async () => {
     const review = scoped(useReview);
     const wrapper = mountPage(ReviewList, {
-      dishId: 'dish', reviews: [], loading: false, error: '', hasMore: false,
-      initialized: false, reviewComments: {}, fetchComments: jest.fn(),
+      dishId: 'dish',
+      reviews: [],
+      loading: false,
+      error: '',
+      hasMore: false,
+      initialized: false,
+      reviewComments: {},
+      fetchComments: jest.fn(),
     });
     expect(wrapper.text()).not.toContain('还没有评价');
     (getReviewsByDish as jest.Mock).mockRejectedValueOnce(new Error('offline'));
@@ -689,28 +772,47 @@ describe('dish detail and discussions', () => {
     expect((review as any).reviewsInitialized.value).toBe(false);
   });
 
-  test.each([1, 2])('populated review refresh retry rereads page one when the prior result has %i total pages', async totalPages => {
-    const review = (id: string) => ({ id, userId: 'other', userNickname: '食客', rating: 4, content: id, images: [] });
-    (getReviewsByDish as jest.Mock)
-      .mockResolvedValueOnce(itemsResponse([review('cached')], 1, totalPages))
-      .mockRejectedValueOnce(new Error('refresh failed'))
-      .mockResolvedValueOnce(itemsResponse([review('fresh')], 1, 1));
-    const wrapper = mountPage(DishPage);
-    loadRoute({ id: 'dish' });
-    await flushPromises();
-    expect(wrapper.text()).toContain('cached');
-    expect(await (wrapper.vm as any).fetchDishDetail('dish')).toBe(false);
-    await flushPromises();
-    expect(wrapper.text()).toContain('cached');
-    await wrapper.get('.review-error button').trigger('tap');
-    await flushPromises();
-    expect((getReviewsByDish as jest.Mock).mock.calls.map(([, pagination]) => pagination.page)).toEqual([1, 1, 1]);
-    expect(wrapper.text()).toContain('fresh');
-    expect(wrapper.text()).not.toContain('cached');
-  });
+  test.each([1, 2])(
+    'populated review refresh retry rereads page one when the prior result has %i total pages',
+    async totalPages => {
+      const review = (id: string) => ({
+        id,
+        userId: 'other',
+        userNickname: '食客',
+        rating: 4,
+        content: id,
+        images: [],
+      });
+      (getReviewsByDish as jest.Mock)
+        .mockResolvedValueOnce(itemsResponse([review('cached')], 1, totalPages))
+        .mockRejectedValueOnce(new Error('refresh failed'))
+        .mockResolvedValueOnce(itemsResponse([review('fresh')], 1, 1));
+      const wrapper = mountPage(DishPage);
+      loadRoute({ id: 'dish' });
+      await flushPromises();
+      expect(wrapper.text()).toContain('cached');
+      expect(await (wrapper.vm as any).fetchDishDetail('dish')).toBe(false);
+      await flushPromises();
+      expect(wrapper.text()).toContain('cached');
+      await wrapper.get('.review-error button').trigger('tap');
+      await flushPromises();
+      expect(
+        (getReviewsByDish as jest.Mock).mock.calls.map(([, pagination]) => pagination.page)
+      ).toEqual([1, 1, 1]);
+      expect(wrapper.text()).toContain('fresh');
+      expect(wrapper.text()).not.toContain('cached');
+    }
+  );
 
   test('review append failure retries the same next page without replacing the cached first page', async () => {
-    const review = (id: string) => ({ id, userId: 'other', userNickname: '食客', rating: 4, content: id, images: [] });
+    const review = (id: string) => ({
+      id,
+      userId: 'other',
+      userNickname: '食客',
+      rating: 4,
+      content: id,
+      images: [],
+    });
     (getReviewsByDish as jest.Mock)
       .mockResolvedValueOnce(itemsResponse([review('first')], 1, 2))
       .mockRejectedValueOnce(new Error('append failed'))
@@ -723,12 +825,21 @@ describe('dish detail and discussions', () => {
     expect(wrapper.text()).toContain('first');
     await wrapper.get('.review-error button').trigger('tap');
     await flushPromises();
-    expect((getReviewsByDish as jest.Mock).mock.calls.map(([, pagination]) => pagination.page)).toEqual([1, 2, 2]);
+    expect(
+      (getReviewsByDish as jest.Mock).mock.calls.map(([, pagination]) => pagination.page)
+    ).toEqual([1, 2, 2]);
     expect((wrapper.vm as any).reviews.map((item: any) => item.id)).toEqual(['first', 'second']);
   });
 
   test('reach-bottom cannot append past a failed populated review refresh before its explicit retry', async () => {
-    const review = (id: string) => ({ id, userId: 'other', userNickname: '食客', rating: 4, content: id, images: [] });
+    const review = (id: string) => ({
+      id,
+      userId: 'other',
+      userNickname: '食客',
+      rating: 4,
+      content: id,
+      images: [],
+    });
     (getReviewsByDish as jest.Mock)
       .mockResolvedValueOnce(itemsResponse([review('cached')], 1, 2))
       .mockRejectedValueOnce(new Error('refresh failed'))
@@ -746,50 +857,70 @@ describe('dish detail and discussions', () => {
     expect(wrapper.text()).toContain('cached');
     await wrapper.get('.review-error button').trigger('tap');
     await flushPromises();
-    expect((getReviewsByDish as jest.Mock).mock.calls.map(([, pagination]) => pagination.page)).toEqual([1, 1, 1]);
+    expect(
+      (getReviewsByDish as jest.Mock).mock.calls.map(([, pagination]) => pagination.page)
+    ).toEqual([1, 1, 1]);
     expect(wrapper.text()).toContain('fresh');
   });
 
   test.each([
-    ['parent', 'first'], ['sub', 'first'],
-    ['parent', 'cached'], ['sub', 'cached'],
-  ])('%s relation timeout on a %s read exposes whole-detail retry and preserves any existing navigation', async (relation, phase) => {
-    let failRelation = phase === 'first';
-    const currentDish = { ...dish(), ...(relation === 'parent' ? { parentDishId: 'related' } : { subDishId: ['related'] }) };
-    (getDishById as jest.Mock).mockImplementation((id: string) => {
-      if (id === 'dish') return Promise.resolve({ code: 200, data: currentDish });
-      return failRelation
-        ? Promise.reject(new Error('请求超时，请重试'))
-        : Promise.resolve({ code: 200, data: dish('related') });
-    });
-    const wrapper = mountPage(DishPage);
-    (wrapper.vm as any).dishId = 'dish';
-    if (phase === 'cached') {
-      expect(await (wrapper.vm as any).fetchDishDetail('dish')).toBe(true);
-      failRelation = true;
+    ['parent', 'first'],
+    ['sub', 'first'],
+    ['parent', 'cached'],
+    ['sub', 'cached'],
+  ])(
+    '%s relation timeout on a %s read exposes whole-detail retry and preserves any existing navigation',
+    async (relation, phase) => {
+      let failRelation = phase === 'first';
+      const currentDish = {
+        ...dish(),
+        ...(relation === 'parent' ? { parentDishId: 'related' } : { subDishId: ['related'] }),
+      };
+      (getDishById as jest.Mock).mockImplementation((id: string) => {
+        if (id === 'dish') return Promise.resolve({ code: 200, data: currentDish });
+        return failRelation
+          ? Promise.reject(new Error('请求超时，请重试'))
+          : Promise.resolve({ code: 200, data: dish('related') });
+      });
+      const wrapper = mountPage(DishPage);
+      (wrapper.vm as any).dishId = 'dish';
+      if (phase === 'cached') {
+        expect(await (wrapper.vm as any).fetchDishDetail('dish')).toBe(true);
+        failRelation = true;
+      }
+      expect(await (wrapper.vm as any).fetchDishDetail('dish')).toBe(false);
+      await flushPromises();
+      expect(wrapper.text()).toContain('请求超时');
+      expect(wrapper.text()).toContain('菜品 dish');
+      const related =
+        relation === 'parent' ? (wrapper.vm as any).parentDish : (wrapper.vm as any).subDishes[0];
+      expect(related?.id).toBe(phase === 'cached' ? 'related' : undefined);
+      failRelation = false;
+      await wrapper.get('[role="alert"] button').trigger('click');
+      await flushPromises();
+      expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+      await wrapper.get('.dish-more-toggle').trigger('click');
+      expect(wrapper.text()).toContain('菜品 related');
     }
-    expect(await (wrapper.vm as any).fetchDishDetail('dish')).toBe(false);
-    await flushPromises();
-    expect(wrapper.text()).toContain('请求超时');
-    expect(wrapper.text()).toContain('菜品 dish');
-    const related = relation === 'parent' ? (wrapper.vm as any).parentDish : (wrapper.vm as any).subDishes[0];
-    expect(related?.id).toBe(phase === 'cached' ? 'related' : undefined);
-    failRelation = false;
-    await wrapper.get('[role="alert"] button').trigger('click');
-    await flushPromises();
-    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
-    await wrapper.get('.dish-more-toggle').trigger('click');
-    expect(wrapper.text()).toContain('菜品 related');
-  });
+  );
 
-  test.each(['parent', 'sub'])('%s relation API rejection is not a successful detail read', async relation => {
-    const detail = scoped(useDishDetail);
-    (getDishById as jest.Mock)
-      .mockResolvedValueOnce({ code: 200, data: { ...dish(), ...(relation === 'parent' ? { parentDishId: 'related' } : { subDishId: ['related'] }) } })
-      .mockResolvedValueOnce({ code: 503, message: '关联菜品读取失败，请重试' });
-    expect(await detail.fetchDishDetail('dish')).toBe(false);
-    expect(detail.error.value).toContain('关联菜品读取失败');
-  });
+  test.each(['parent', 'sub'])(
+    '%s relation API rejection is not a successful detail read',
+    async relation => {
+      const detail = scoped(useDishDetail);
+      (getDishById as jest.Mock)
+        .mockResolvedValueOnce({
+          code: 200,
+          data: {
+            ...dish(),
+            ...(relation === 'parent' ? { parentDishId: 'related' } : { subDishId: ['related'] }),
+          },
+        })
+        .mockResolvedValueOnce({ code: 503, message: '关联菜品读取失败，请重试' });
+      expect(await detail.fetchDishDetail('dish')).toBe(false);
+      expect(detail.error.value).toContain('关联菜品读取失败');
+    }
+  );
 
   test('reply panel keeps its composer while pending, then gives retry instead of a false empty result', async () => {
     const pending = deferred();

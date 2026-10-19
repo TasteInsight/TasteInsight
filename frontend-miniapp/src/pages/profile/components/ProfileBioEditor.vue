@@ -16,6 +16,7 @@
       <text class="profile-bio-count">{{ bio.length }} / 160</text>
       <button
         class="profile-bio-button"
+        :class="{ 'is-disabled': saving }"
         :disabled="saving"
         @click="cancelButton.activate"
         @keydown="cancelButton.handleKeydown"
@@ -28,6 +29,7 @@
       </button>
       <button
         class="profile-bio-button profile-bio-save"
+        :class="{ 'is-disabled': saving || bio.trim() === originalBio }"
         :disabled="saving || bio.trim() === originalBio"
         @click="saveButton.activate"
         @keydown="saveButton.handleKeydown"
@@ -168,7 +170,7 @@ onScopeDispose(() => {
 .profile-bio-button:active {
   background: #f4f4f5;
 }
-.profile-bio-button[disabled] {
+.profile-bio-button.is-disabled {
   opacity: 0.5;
 }
 .profile-bio-save,

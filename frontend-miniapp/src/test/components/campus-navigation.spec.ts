@@ -117,7 +117,9 @@ test('guest dining section offers login without firing an unauthorized request o
   expect(uni.navigateTo).not.toHaveBeenCalled();
   expect(wrapper.text()).toContain('登录后查看约饭邀请');
   await wrapper.get('.empty-state__action').trigger('click');
-  expect(uni.navigateTo).toHaveBeenCalledWith({ url: '/pages/login/index' });
+  expect(uni.navigateTo).toHaveBeenCalledWith(
+    expect.objectContaining({ url: '/pages/login/index' })
+  );
 });
 
 test('dining append retry keeps all loaded pages and refresh failure preserves the recovered list', async () => {

@@ -32,6 +32,7 @@
     <textarea
       v-if="!isH5"
       class="chat-input chat-input-native"
+      placeholder-style="color: #667085; font-size: 16px; font-weight: 400; line-height: 22px; font-family: inherit;"
       aria-label="消息输入"
       placeholder="聊聊口味，或问问今天吃什么"
       :value="modelValue"
@@ -52,7 +53,10 @@
       class="chat-input-action"
       hover-class="chat-input-action-pressed"
       :hover-stay-time="80"
-      :class="{ 'chat-input-action-stop': loading }"
+      :class="[
+        { 'chat-input-action-stop': loading },
+        { 'is-disabled': !loading && (busy || !modelValue.trim()) },
+      ]"
       role="button"
       tabindex="0"
       :aria-label="loading ? '停止回复' : busy ? '正在连接' : '发送消息'"
@@ -157,7 +161,7 @@ const handleKeyup = (event: KeyboardEvent) => {
 <style scoped>
 .chat-input-bar {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px;
   width: 100%;
   box-sizing: border-box;
@@ -219,7 +223,7 @@ const handleKeyup = (event: KeyboardEvent) => {
 .chat-input-action::after {
   border: none;
 }
-.chat-input-action[disabled] {
+.chat-input-action.is-disabled {
   background: #667085;
   opacity: 0.55;
 }
@@ -230,14 +234,14 @@ const handleKeyup = (event: KeyboardEvent) => {
 .chat-input-action-stop {
   background: #f4f4f5;
 }
-.chat-input-action.chat-input-action-pressed:not([disabled]):not(.chat-input-action-stop) {
+.chat-input-action.chat-input-action-pressed:not(.is-disabled):not(.chat-input-action-stop) {
   background: #50065b;
 }
 .chat-input-action-stop.chat-input-action-pressed {
   background: #e5e7eb;
 }
 @media (hover: hover) {
-  .chat-input-action:not([disabled]):not(.chat-input-action-stop):hover {
+  .chat-input-action:not(.is-disabled):not(.chat-input-action-stop):hover {
     background: #50065b;
   }
   .chat-input-action-stop:hover {

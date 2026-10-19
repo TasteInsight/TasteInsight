@@ -36,3 +36,25 @@ body::-webkit-scrollbar {
   display: none;
 }
 /* #endif */
+
+/* 页面与内容区域共同分配状态展示空间，头部保留自然高度。 */
+.page-state-layout,
+.page-state-content {
+  display: flex;
+  flex-direction: column;
+}
+.page-state-content {
+  flex: 1;
+  min-height: 0;
+  box-sizing: border-box;
+}
+.page-state-region {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 180px;
+}

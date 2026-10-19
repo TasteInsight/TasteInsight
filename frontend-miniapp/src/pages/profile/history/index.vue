@@ -1,7 +1,19 @@
 <template>
-  <view class="page-content dish-list-page">
-    <view class="dish-list-content">
-      <view v-if="error && historyItems.length === 0" class="error-feedback" role="alert">
+  <view class="page-content dish-list-page page-state-layout">
+    <EmptyState
+      v-if="!isLoggedIn"
+      class="page-state-region"
+      title="登录后查看个人记录"
+      icon="user"
+      action-text="登录"
+      @action="openLogin"
+    />
+    <view v-else class="dish-list-content page-state-content">
+      <view
+        v-if="error && historyItems.length === 0"
+        class="error-feedback page-state-region"
+        role="alert"
+      >
         <text class="error-feedback__message">{{ error }}</text
         ><button
           class="error-feedback__action"
@@ -12,9 +24,16 @@
         </button>
       </view>
       <EmptyState
+        class="page-state-region"
         v-else-if="initialized && !historyItems.length"
         title="暂无浏览历史"
         icon="history"
+      />
+      <EmptyState
+        v-else-if="loading && !initialized"
+        class="page-state-region"
+        title="正在加载…"
+        loading
       />
       <template v-else-if="historyItems.length">
         <DishCard
@@ -53,11 +72,12 @@
   </view>
 </template>
 <script setup lang="ts">
+import { openLogin } from '@/utils/login-navigation';
 import { onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import DishCard from '@/pages/profile/components/ProfileDishCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import { useHistory } from './composables/use-history';
-const { historyItems, loading, initialized, error, hasMore, loadMore, refresh, retry } =
+const { isLoggedIn, historyItems, loading, initialized, error, hasMore, loadMore, refresh, retry } =
   useHistory();
 onShow(() => {
   void refresh();
@@ -67,7 +87,7 @@ onReachBottom(() => {
 });
 onPullDownRefresh(async () => {
   try {
-    if (await refresh()) uni.showToast({ title: '刷新成功', icon: 'success', duration: 1500 });
+    await refresh();
   } finally {
     uni.stopPullDownRefresh();
   }

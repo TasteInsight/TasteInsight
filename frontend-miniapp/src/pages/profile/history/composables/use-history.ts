@@ -1,4 +1,4 @@
-import { ref, watch, getCurrentScope, onScopeDispose } from 'vue';
+import { computed, ref, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { getBrowseHistory } from '@/api/modules/user';
 import { useUserStore } from '@/store/modules/use-user-store';
 import type { BrowseHistoryItem } from '@/types/api';
@@ -82,5 +82,16 @@ export function useHistory() {
       requestVersion++;
     });
 
-  return { historyItems, loading, initialized, error, hasMore, fetchHistory, loadMore, refresh, retry };
+  return {
+    isLoggedIn: computed(() => userStore.isLoggedIn),
+    historyItems,
+    loading,
+    initialized,
+    error,
+    hasMore,
+    fetchHistory,
+    loadMore,
+    refresh,
+    retry,
+  };
 }

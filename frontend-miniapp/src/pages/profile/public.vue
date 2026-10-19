@@ -1,6 +1,10 @@
 <template>
-  <view class="campus-page public-profile" :aria-busy="loading">
-    <view v-if="error" class="campus-error error-feedback" role="alert"
+  <view class="campus-page public-profile page-content page-state-layout" :aria-busy="loading">
+    <view
+      v-if="error"
+      :class="{ 'page-state-region': !profile }"
+      class="campus-error error-feedback"
+      role="alert"
       ><text class="error-feedback__message">{{ error }}</text
       ><button
         class="error-feedback__action"
@@ -56,6 +60,7 @@
       >
       <template v-if="tab === 'posts'">
         <EmptyState
+          class="page-state-region"
           v-if="postsReady && !posts.length && !postsError"
           title="还没有公开动态"
           icon="chat"
@@ -93,6 +98,7 @@
       </template>
       <template v-else>
         <EmptyState
+          class="page-state-region"
           v-if="plansReady && !plans.length && !plansError"
           title="还没有公开计划"
           icon="calendar"

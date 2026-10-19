@@ -220,3 +220,21 @@ test('a stale login response after logout cannot restore tokens or its ticket', 
   expect(user.token).toBeNull();
   expect(readCampusLoginPending()).toBeNull();
 });
+
+test('explicit cancellation invalidates an authorization request still in flight', async () => {
+  page();
+  let finish!: (value: unknown) => void;
+  (startCampusLogin as jest.Mock).mockImplementation(
+    () =>
+      new Promise(resolve => {
+        finish = resolve;
+      })
+  );
+  const work = flow.start();
+  flow.cancel();
+  expect(flow.starting.value).toBe(false);
+  finish({ data: start() });
+  await work;
+  expect(readCampusLoginPending()).toBeNull();
+  expect(flow.pending.value).toBeNull();
+});

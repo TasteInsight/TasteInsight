@@ -1,5 +1,5 @@
 <template>
-  <view class="page-content profile-page">
+  <view class="page-content profile-page page-state-layout">
     <view class="profile-header" :aria-busy="loading">
       <UserHeader
         v-if="userInfo || !isLoggedIn"
@@ -29,7 +29,12 @@
         />
       </view>
     </view>
-    <view v-if="error" class="profile-error error-feedback" role="alert">
+    <view
+      v-if="error"
+      :class="{ 'page-state-region': !userInfo }"
+      class="profile-error error-feedback"
+      role="alert"
+    >
       <text class="error-feedback__message">{{ error }}</text
       ><button
         class="error-feedback__action"
@@ -68,7 +73,7 @@
           role="button"
           tabindex="0"
         >
-          <UiIcon name="history" :size="18" /><text>浏览记录</text>
+          <UiIcon name="history" :size="18" /><text>历史</text>
         </button>
         <button
           class="profile-button profile-utility"
@@ -79,21 +84,7 @@
           role="button"
           tabindex="0"
         >
-          <UiIcon name="edit" :size="18" /><text>我的上传</text>
-        </button>
-        <button
-          class="profile-button profile-utility profile-manage"
-          aria-label="资料管理"
-          role="button"
-          :tabindex="userInfo ? 0 : -1"
-          :disabled="!userInfo"
-          @click="manageButton.activate"
-          @keydown="manageButton.handleKeydown"
-          @keyup="manageButton.handleKeyup"
-          @blur="manageButton.clearPress"
-        >
-          <UiIcon name="edit" :size="16" /><text>资料</text
-          ><UiIcon name="chevron-down" :size="13" />
+          <UiIcon name="edit" :size="18" /><text>上传</text>
         </button>
       </view>
       <view class="profile-tab-row">
@@ -152,8 +143,13 @@
         <!-- #endif -->
       </view>
       <!-- #ifndef MP-WEIXIN -->
-      <view v-if="activeTab === 'posts'" class="profile-content" :aria-busy="postsLoading">
+      <view
+        v-if="activeTab === 'posts'"
+        class="profile-content page-state-content"
+        :aria-busy="postsLoading"
+      >
         <EmptyState
+          class="page-state-region"
           v-if="postsReady && !posts.length && !postsError"
           title="还没有动态"
           icon="chat"
@@ -161,7 +157,11 @@
         <view v-if="posts.length" class="profile-post-grid">
           <ProfilePostCard v-for="post in posts" :key="post.id" :post="post" />
         </view>
-        <view v-if="postsError" class="profile-error error-feedback" role="alert"
+        <view
+          v-if="postsError"
+          :class="{ 'page-state-region': !posts.length }"
+          class="profile-error error-feedback"
+          role="alert"
           ><text class="error-feedback__message">{{ postsError }}</text
           ><button
             class="error-feedback__action"
@@ -192,8 +192,13 @@
         </button>
       </view>
       <!-- #endif -->
-      <view v-if="activeTab === 'reviews'" class="profile-content" :aria-busy="reviewsLoading">
+      <view
+        v-if="activeTab === 'reviews'"
+        class="profile-content page-state-content"
+        :aria-busy="reviewsLoading"
+      >
         <EmptyState
+          class="page-state-region"
           v-if="reviewsReady && !reviews.length && !reviewsError"
           title="还没有评价"
           icon="star"
@@ -206,7 +211,11 @@
           :review="review"
           @click="openDish(review.dishId)"
         />
-        <view v-if="reviewsError" class="profile-error error-feedback" role="alert"
+        <view
+          v-if="reviewsError"
+          :class="{ 'page-state-region': !reviews.length }"
+          class="profile-error error-feedback"
+          role="alert"
           ><text class="error-feedback__message">{{ reviewsError }}</text
           ><button
             class="error-feedback__action"
@@ -236,7 +245,12 @@
           {{ reviewsLoading ? '加载中…' : '加载更多' }}
         </button>
       </view>
-      <ProfilePlans v-if="activeTab === 'plans'" ref="plansPane" :active="visible" />
+      <ProfilePlans
+        class="page-state-content"
+        v-if="activeTab === 'plans'"
+        ref="plansPane"
+        :active="visible"
+      />
     </template>
     <!-- #ifdef H5 -->
     <ProfileActionsSheet
@@ -250,6 +264,8 @@
   </view>
 </template>
 <script setup lang="ts">
+import { openLogin } from '@/utils/login-navigation';
+
 import { nextTick, onScopeDispose, ref, shallowRef, watch } from 'vue';
 import { onShow, onHide, onPullDownRefresh, onReachBottom, onBackPress } from '@dcloudio/uni-app';
 import UiIcon from '@/components/UiIcon.vue';
@@ -500,8 +516,7 @@ function manageProfile() {
   });
   // #endif
 }
-const manageButton = useButtonActivation(manageProfile, () => !userInfo.value);
-const handleLogin = () => navigateTo('/pages/login/index');
+const handleLogin = () => openLogin();
 const openDish = (id: string) => navigateTo('/pages/dish/index?id=' + encodeURIComponent(id));
 const openHome = () => uni.switchTab({ url: '/pages/index/index' });
 const favoritesButton = useButtonActivation(() => navigateTo('/pages/profile/my-favorites/index'));
@@ -609,9 +624,6 @@ const reviewsMoreButton = useButtonActivation(
   padding: 8px 0;
   gap: 6px;
   font-size: 13px;
-}
-.profile-manage {
-  margin-left: auto;
 }
 .profile-tab-row {
   display: flex;

@@ -2,6 +2,8 @@
 import request from '@/utils/request';
 import config from '@/config';
 import { useUserStore } from '@/store/modules/use-user-store';
+import { expireSession, refreshAccessToken } from '@/utils/auth-session';
+import { createHttpError } from '@/utils/user-friendly-error';
 import type {
   RecommendFeedbackRequest,
   CreateAISessionRequest,
@@ -27,7 +29,7 @@ export const submitRecommendFeedback = (
 };
 
 /**
- * 创建新的对话会话 (保持不变)
+ * 创建新的对话会话
  */
 export const createAISession = (
   payload: CreateAISessionRequest
@@ -58,7 +60,7 @@ export const getAISuggestions = (clientContext?: {
   if (clientContext?.tzOffsetMinutes !== undefined) {
     params.tzOffsetMinutes = String(clientContext.tzOffsetMinutes);
   }
-  
+
   return request<SuggestionData>({
     url: '/ai/suggestions',
     method: 'GET',
@@ -67,7 +69,7 @@ export const getAISuggestions = (clientContext?: {
 };
 
 /**
- * 获取历史聊天记录 (保持不变)
+ * 获取历史聊天记录
  */
 export const getAIHistory = (
   sessionId: string,
@@ -84,9 +86,7 @@ export const getAIHistory = (
 /**
  * 删除聊天会话
  */
-export const deleteAISession = (
-  sessionId: string
-): Promise<ApiResponse<null>> => {
+export const deleteAISession = (sessionId: string): Promise<ApiResponse<null>> => {
   return request<null>({
     url: `/ai/sessions/${sessionId}`,
     method: 'DELETE',
@@ -266,157 +266,132 @@ export const streamAIChat = (
 ) => {
   const url = `${config.baseUrl}/ai/sessions/${sessionId}/chat/stream`;
   const userStore = useUserStore();
-
-  // 1. 构造 Header (需要手动携带 Token，因为不走 request.ts 拦截器)
-  const header: Record<string, string> = {
-    'Content-Type': 'application/json',
-    Accept: 'text/event-stream',
-  };
-  if (userStore.token) {
-    header['Authorization'] = `Bearer ${userStore.token}`;
-  }
-
-  // 2. 发起分块请求
-  // 注意：对于 enableChunked: true 的流式请求，success/fail/complete 回调的行为可能不一致
-  // - success: 可能在连接建立时触发，不代表数据传输完成
-  // - fail: 可能在连接失败时触发，但流式传输中的错误可能不触发此回调
-  // - complete: 在连接关闭时触发，可用于清理资源
-  // 主要错误处理应通过 onChunkReceived 中的异常或超时机制实现
-  
-  let isAborted = false; // 标记是否手动中止
+  const sessionVersion = userStore.sessionVersion;
+  let isAborted = false;
   let terminalState: 'pending' | 'error' | 'complete' = 'pending';
+  let activeAttempt: object | null = null;
+  let requestTask: UniApp.RequestTask | undefined;
+  const isCurrentStream = () =>
+    !isAborted && terminalState === 'pending' && userStore.sessionVersion === sessionVersion;
 
   const finishWithError = (error: unknown) => {
-    if (isAborted || terminalState !== 'pending') return;
+    if (!isCurrentStream()) return;
     terminalState = 'error';
     callbacks.onError?.(error);
   };
-
-  const finishComplete = () => {
-    if (isAborted || terminalState !== 'pending') return;
-    terminalState = 'complete';
-    callbacks.onComplete?.();
+  const failAuthentication = (error: any) => {
+    if (!isCurrentStream()) return;
+    finishWithError(error);
+    if (error?.statusCode === 401) expireSession(sessionVersion);
+  };
+  const recoverAuthentication = async (accessToken: string | null) => {
+    try {
+      await refreshAccessToken(sessionVersion, accessToken);
+      if (isCurrentStream()) send(true);
+    } catch (error) {
+      failAuthentication(error);
+    }
   };
 
-  const guardedCallbacks: AIStreamCallbacks = {
-    onEvent: event => {
-      if (terminalState === 'pending') callbacks.onEvent?.(event);
-    },
-    onMessage: message => {
-      if (terminalState === 'pending') callbacks.onMessage?.(message);
-    },
-    onJSON: json => {
-      if (terminalState === 'pending') callbacks.onJSON?.(json);
-    },
-    onError: finishWithError,
-  };
+  function send(retried = false) {
+    const attempt = {};
+    activeAttempt = attempt;
+    const isCurrentAttempt = () => isCurrentStream() && activeAttempt === attempt;
+    const accessToken = userStore.token;
+    const header: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+    };
+    if (accessToken) header.Authorization = `Bearer ${accessToken}`;
+    let deliveredEvent = false;
+    const guardedCallbacks: AIStreamCallbacks = {
+      onEvent: event => {
+        if (!isCurrentAttempt()) return;
+        deliveredEvent = true;
+        callbacks.onEvent?.(event);
+      },
+      onMessage: message => {
+        if (!isCurrentAttempt()) return;
+        deliveredEvent = true;
+        callbacks.onMessage?.(message);
+      },
+      onJSON: json => {
+        if (isCurrentAttempt()) callbacks.onJSON?.(json);
+      },
+      onError: error => {
+        if (isCurrentAttempt()) finishWithError(error);
+      },
+    };
+    // 每次 HTTP 尝试独立解码，旧请求的残留数据随该次尝试结束。
+    const streamDecoder: StreamDecoder =
+      typeof TextDecoder !== 'undefined'
+        ? (() => {
+            const decoder = new TextDecoder('utf-8');
+            return {
+              decode: (data: ArrayBuffer) => decoder.decode(data, { stream: true }),
+              flush: () => decoder.decode(),
+            };
+          })()
+        : createUtf8StreamDecoder();
+    let buffer = '';
 
-  // 在请求前初始化，兼容测试适配器或平台同步触发回调的情况。
-  const streamDecoder: StreamDecoder =
-    typeof TextDecoder !== 'undefined'
-      ? (() => {
-          const decoder = new TextDecoder('utf-8');
-          return {
-            decode: (data: ArrayBuffer) => decoder.decode(data, { stream: true }),
-            flush: () => decoder.decode(),
-          };
-        })()
-      : createUtf8StreamDecoder();
-  let buffer = '';
-
-  const requestTask = uni.request({
-    url,
-    method: 'POST',
-    header,
-    data: payload,
-    enableChunked: true, // 【核心】：开启分块传输
-    // 强制以二进制形式接收 chunk，避免真机把 UTF-8 字节按非 UTF-8 文本提前解码
-    // @ts-ignore: uni.request 的类型定义可能缺少该字段
-    responseType: 'arraybuffer',
-    timeout: 60000, // 建议设置长超时（如60秒），防止AI思考时间过长导致断开
-    success: res => {
-      if (res.statusCode < 200 || res.statusCode >= 300) {
-        const responseData = res.data as any;
-        const message =
-          (responseData && typeof responseData.message === 'string' && responseData.message) ||
-          `AI 请求失败 (${res.statusCode})`;
-        finishWithError(new Error(message));
-        return;
-      }
-      // 对于流式请求，此回调可能仅表示连接握手成功，不代表数据接收完毕
-      // 不在这里处理业务逻辑
-      console.log('[streamAIChat] Request success (connection established)');
-    },
-    fail: err => {
-      // 注意：流式传输中的网络错误可能不会触发此回调
-      // 主要依赖 complete 回调和外部超时机制处理错误
-      console.log('[streamAIChat] Request failed:', err);
-      finishWithError(err);
-    },
-    complete: () => {
-      console.log('[streamAIChat] Request complete, isAborted:', isAborted);
-      
-      // 如果是手动中止，不处理剩余数据，也不调用 onComplete
-      if (isAborted || terminalState !== 'pending') {
-        console.log('[streamAIChat] Aborted, skipping completion handler');
-        return;
-      }
-      
-      // 处理最后剩余的未完成 UTF-8 字节（包括 TextDecoder 和 fallback 解码器）
-      const remaining = streamDecoder.flush();
-      if (remaining) buffer += remaining;
-      // 处理剩余的 buffer
-      if (buffer) {
-        const events = buffer.split('\n\n');
-        for (const evt of events) {
-          if (evt.trim()) {
-            parseSSEEventString(evt, guardedCallbacks);
+    const task = uni.request({
+      url,
+      method: 'POST',
+      header,
+      data: payload,
+      enableChunked: true,
+      responseType: 'arraybuffer',
+      timeout: 60000,
+      success: res => {
+        if (!isCurrentAttempt()) return;
+        if (res.statusCode === 401) {
+          if (retried || deliveredEvent) {
+            failAuthentication(createHttpError(401));
+          } else {
+            // 401 在业务处理前被拒绝；仅此情形允许轮换凭据后重试一次。
+            activeAttempt = null;
+            void recoverAuthentication(accessToken);
           }
+        } else if (res.statusCode < 200 || res.statusCode >= 300) {
+          finishWithError(createHttpError(res.statusCode, res.data));
         }
-      }
-      finishComplete();
-    },
-  });
+      },
+      fail: error => {
+        if (isCurrentAttempt()) finishWithError(error);
+      },
+      complete: () => {
+        if (!isCurrentAttempt()) return;
+        buffer += streamDecoder.flush();
+        for (const event of buffer.split('\n\n')) {
+          if (event.trim()) parseSSEEventString(event, guardedCallbacks);
+        }
+        if (!isCurrentAttempt()) return;
+        terminalState = 'complete';
+        callbacks.onComplete?.();
+      },
+    }) as UniApp.RequestTask & {
+      onChunkReceived(callback: (response: { data: ArrayBuffer | string }) => void): void;
+    };
+    requestTask = task;
 
-  // 3. 处理分块数据
-  // @ts-ignore: uni.request 返回的 requestTask 在 TS 定义中可能缺少 onChunkReceived
-  requestTask.onChunkReceived((response: { data: ArrayBuffer | string }) => {
-    // 如果已经被中止，忽略所有后续的 chunk
-    if (isAborted || terminalState !== 'pending') {
-      console.log('[streamAIChat] Chunk received after abort, ignoring');
-      return;
-    }
-    
-    if (response && response.data) {
-      // 解码二进制数据（优先 ArrayBuffer；极端情况下若 SDK 返回 string，则尝试兼容）
-      const chunk =
+    task.onChunkReceived(response => {
+      if (!isCurrentAttempt() || !response?.data) return;
+      buffer +=
         typeof response.data === 'string' ? response.data : streamDecoder.decode(response.data);
-      buffer += chunk;
-
-      // 按双换行符切割 SSE 事件
       const events = buffer.split('\n\n');
+      buffer = events.pop() || '';
+      for (const event of events) parseSSEEventString(event, guardedCallbacks);
+    });
+  }
 
-      // 最后一个元素可能是不完整的（粘包），留到下一次处理
-      if (buffer.endsWith('\n\n')) {
-        buffer = '';
-      } else {
-        buffer = events.pop() || '';
-      }
-
-      for (const evt of events) {
-        parseSSEEventString(evt, guardedCallbacks);
-      }
-    }
-  });
-
-  // 返回控制句柄，允许外部中断请求
+  send();
   return {
     close: () => {
-      console.log('[streamAIChat] Abort called, requestTask:', !!requestTask);
-      isAborted = true; // 标记为已中止
+      isAborted = true;
+      activeAttempt = null;
       try {
-        requestTask.abort();
-        console.log('[streamAIChat] RequestTask aborted successfully');
+        requestTask?.abort();
       } catch (error) {
         console.error('[streamAIChat] Error aborting request:', error);
       }

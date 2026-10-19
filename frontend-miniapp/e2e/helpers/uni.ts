@@ -13,8 +13,7 @@ export function uniHashRoute(pagePath: string): string {
 }
 
 export async function seedUniStorage(page: Page, seed: UniStorageSeed): Promise<void> {
-  // 关键点：App.vue 会在 onLaunch 里检查登录态并可能 reLaunch 到登录页。
-  // 因此必须在“首次加载应用代码之前”就把 token 写入 storage。
+  // 在应用初始化前写入隔离的测试会话。
   await page.addInitScript((data: UniStorageSeed) => {
     localStorage.setItem('token', data.token);
     if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);

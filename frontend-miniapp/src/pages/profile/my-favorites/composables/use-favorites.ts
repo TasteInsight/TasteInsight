@@ -1,4 +1,4 @@
-import { ref, watch, getCurrentScope, onScopeDispose } from 'vue';
+import { computed, ref, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { getMyFavorites } from '@/api/modules/user';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { unfavoriteDish } from '@/api/modules/dish';
@@ -120,6 +120,7 @@ export function useFavorites() {
     });
 
   return {
+    isLoggedIn: computed(() => userStore.isLoggedIn),
     favoriteItems,
     loading,
     initialized,

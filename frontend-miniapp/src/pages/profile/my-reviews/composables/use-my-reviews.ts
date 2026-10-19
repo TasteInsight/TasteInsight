@@ -1,4 +1,4 @@
-import { ref, watch, getCurrentScope, onScopeDispose } from 'vue';
+import { computed, ref, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { getMyReviews } from '@/api/modules/user';
 import { useUserStore } from '@/store/modules/use-user-store';
 import type { MyReviewItem } from '@/types/api';
@@ -87,6 +87,7 @@ export function useMyReviews() {
     });
 
   return {
+    isLoggedIn: computed(() => userStore.isLoggedIn),
     reviews,
     loading,
     initialized,

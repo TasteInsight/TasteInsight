@@ -1,3 +1,4 @@
+jest.mock('@/store/modules/use-user-store', () => ({ useUserStore: () => ({ isLoggedIn: true }) }));
 import { mount } from '@vue/test-utils';
 import SettingsPage from '@/pages/settings/components/SettingsPage.vue';
 import { readFileSync } from 'fs';

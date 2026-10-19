@@ -262,7 +262,10 @@ test('planning picker events filter dishes and retain selected indices when cont
   expect(matching('/dishes')).toHaveLength(0);
   const canteenPicker = locationPicker(wrapper, '选择食堂');
   expect(canteenPicker.props()).toMatchObject({
-    range: canteens, rangeKey: 'name', value: 0, disabled: false,
+    range: canteens,
+    rangeKey: 'name',
+    value: 0,
+    disabled: false,
   });
   canteenPicker.vm.$emit('change', { detail: { value: 1 } });
   await flushPromises();
@@ -276,7 +279,10 @@ test('planning picker events filter dishes and retain selected indices when cont
 
   const windowPicker = locationPicker(wrapper, '选择窗口');
   expect(windowPicker.props()).toMatchObject({
-    range: windows, rangeKey: 'name', value: 0, disabled: false,
+    range: windows,
+    rangeKey: 'name',
+    value: 0,
+    disabled: false,
   });
   windowPicker.vm.$emit('change', { detail: { value: 1 } });
   await flushPromises();
@@ -301,14 +307,22 @@ test('planning picker events filter dishes and retain selected indices when cont
   expect(matching('/canteens/south/windows')).toHaveLength(1);
   expect(matching('/dishes')).toHaveLength(2);
   await wrapper.get('[data-testid="plan-save"]').trigger('tap');
-  expect(wrapper.emitted('submit')).toEqual([[expect.objectContaining({
-    startDate: '2099-10-05', endDate: '2099-10-05', dishes: ['rice'],
-  })]]);
+  expect(wrapper.emitted('submit')).toEqual([
+    [
+      expect.objectContaining({
+        startDate: '2099-10-05',
+        endDate: '2099-10-05',
+        dishes: ['rice'],
+      }),
+    ],
+  ]);
 
   locationPicker(wrapper, '选择食堂').vm.$emit('change', { detail: { value: 0 } });
   await flushPromises();
   expect(locationPicker(wrapper, '选择窗口').props()).toMatchObject({
-    range: [], value: 0, disabled: true,
+    range: [],
+    value: 0,
+    disabled: true,
   });
   expect(latest('/dishes').data.filter).toEqual({ includeOffline: false, canteenId: ['north'] });
   expect((wrapper.vm as any).formData.dishes).toEqual(['rice']);
@@ -456,7 +470,7 @@ test('an old canteen refresh cannot issue filtered requests or show feedback in 
   expect(matching('/dishes')).toHaveLength(before);
   await pending;
   expect(uniMock.showToast).not.toHaveBeenCalled();
-  expect(uniMock.stopPullDownRefresh).not.toHaveBeenCalled();
+  expect(uniMock.stopPullDownRefresh).toHaveBeenCalledTimes(1);
 });
 
 test.each(['success', 'failure'])(
@@ -469,7 +483,8 @@ test.each(['success', 'failure'])(
     const firstRequest = latest('/canteens/canteen');
     const refresh = (onPullDownRefresh as jest.Mock).mock.calls[0][0]();
     await flushPromises();
-    if (outcome === 'failure') latest('/canteens/canteen').fail({ errMsg: 'request:fail refresh failed' });
+    if (outcome === 'failure')
+      latest('/canteens/canteen').fail({ errMsg: 'request:fail refresh failed' });
     else {
       latest('/canteens/canteen').success(response({ id: 'canteen' }));
       await flushPromises();
@@ -586,26 +601,29 @@ async function initializePersonal(personal: ReturnType<typeof usePersonal>) {
   await loading;
 }
 
-test.each(['dispose', 'session'])('profile navigation is canceled on %s without canceling the next page timer', async change => {
-  const old = consumer(usePersonal);
-  await initializePersonal(old.value);
-  old.value.form.nickname = 'old saved name';
-  const pending = old.value.handleSave();
-  await flushPromises();
-  latest('/user/profile').success(response({ nickname: 'old saved name' }));
-  await pending;
-  if (change === 'dispose') old.scope.stop();
-  else switchAccount();
-  const current = consumer(usePersonal);
-  await initializePersonal(current.value);
-  current.value.form.nickname = 'current saved name';
-  const currentSave = current.value.handleSave();
-  await flushPromises();
-  latest('/user/profile').success(response({ nickname: 'current saved name' }));
-  await currentSave;
-  jest.advanceTimersByTime(1000);
-  expect(uniMock.navigateBack).toHaveBeenCalledTimes(1);
-});
+test.each(['dispose', 'session'])(
+  'profile navigation is canceled on %s without canceling the next page timer',
+  async change => {
+    const old = consumer(usePersonal);
+    await initializePersonal(old.value);
+    old.value.form.nickname = 'old saved name';
+    const pending = old.value.handleSave();
+    await flushPromises();
+    latest('/user/profile').success(response({ nickname: 'old saved name' }));
+    await pending;
+    if (change === 'dispose') old.scope.stop();
+    else switchAccount();
+    const current = consumer(usePersonal);
+    await initializePersonal(current.value);
+    current.value.form.nickname = 'current saved name';
+    const currentSave = current.value.handleSave();
+    await flushPromises();
+    latest('/user/profile').success(response({ nickname: 'current saved name' }));
+    await currentSave;
+    jest.advanceTimersByTime(1000);
+    expect(uniMock.navigateBack).toHaveBeenCalledTimes(1);
+  }
+);
 
 test('a disposed avatar picker cannot start uploads or navigate to cropping', async () => {
   const old = consumer(usePersonal);
@@ -620,21 +638,24 @@ test('a disposed avatar picker cannot start uploads or navigate to cropping', as
   await pending;
 });
 
-test.each([false, true])('a pending or completed save blocks a new avatar selection: %s', async chooseBeforeSaveFinishes => {
-  const { value: personal } = consumer(usePersonal);
-  await initializePersonal(personal);
-  personal.form.nickname = 'saved name';
-  const saving = personal.handleSave();
-  await flushPromises();
-  if (chooseBeforeSaveFinishes) await personal.chooseAvatar();
-  latest('/user/profile').success(response({ nickname: 'saved name' }));
-  await saving;
-  if (!chooseBeforeSaveFinishes) await personal.chooseAvatar();
-  expect(uniMock.chooseImage).not.toHaveBeenCalled();
-  expect(uniMock.uploadFile).not.toHaveBeenCalled();
-  jest.advanceTimersByTime(1000);
-  expect(uniMock.navigateBack).toHaveBeenCalledTimes(1);
-});
+test.each([false, true])(
+  'a pending or completed save blocks a new avatar selection: %s',
+  async chooseBeforeSaveFinishes => {
+    const { value: personal } = consumer(usePersonal);
+    await initializePersonal(personal);
+    personal.form.nickname = 'saved name';
+    const saving = personal.handleSave();
+    await flushPromises();
+    if (chooseBeforeSaveFinishes) await personal.chooseAvatar();
+    latest('/user/profile').success(response({ nickname: 'saved name' }));
+    await saving;
+    if (!chooseBeforeSaveFinishes) await personal.chooseAvatar();
+    expect(uniMock.chooseImage).not.toHaveBeenCalled();
+    expect(uniMock.uploadFile).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(1000);
+    expect(uniMock.navigateBack).toHaveBeenCalledTimes(1);
+  }
+);
 
 test('a disposed crop callback cannot upload or hide a later page loading state', async () => {
   const previousEnvironment = process.env.NODE_ENV;
@@ -675,7 +696,10 @@ test('a disposed avatar upload releases only its loading state and ignores its l
   expect(current.value.uploading.value).toBe(true);
   expect(uniMock.hideLoading).toHaveBeenCalledTimes(1);
   expect(uniMock.showToast).not.toHaveBeenCalled();
-  uniMock.uploadFile.mock.calls[1][0].success({ statusCode: 200, data: JSON.stringify({ code: 200, data: { url: 'https://images.test/current.jpg' } }) });
+  uniMock.uploadFile.mock.calls[1][0].success({
+    statusCode: 200,
+    data: JSON.stringify({ code: 200, data: { url: 'https://images.test/current.jpg' } }),
+  });
   await pendingCurrent;
   expect(current.value.form.avatar).toBe('https://images.test/current.jpg');
   expect(uniMock.hideLoading).toHaveBeenCalledTimes(2);

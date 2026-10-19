@@ -20,21 +20,16 @@ const md = new MarkdownIt({
   typographer: true, // 启用一些语言中立的替换和引号美化
 });
 
-// 为输出的 HTML 元素添加 class，避免在小程序端使用标签选择器导致兼容性问题
-md.renderer.rules.paragraph_open = () => '<p class="md-p">';
-md.renderer.rules.paragraph_close = () => '</p>';
-md.renderer.rules.heading_open = (tokens: any[], idx: number) => {
-  const tag = tokens[idx].tag; // e.g., h1
-  return `<${tag} class="md-${tag}">`;
+// 为原生富文本节点添加类名，同时保留 markdown-it 生成的属性。
+const renderToken = md.renderer.renderToken.bind(md.renderer);
+md.renderer.renderToken = (tokens: any[], idx: number, options: any) => {
+  const token = tokens[idx];
+  if (token.nesting !== -1 && token.tag) {
+    token.attrJoin('class', `md-${token.tag}`);
+    if (token.block && token.level === 0) token.attrJoin('class', 'md-block');
+  }
+  return renderToken(tokens, idx, options);
 };
-md.renderer.rules.heading_close = (tokens: any[], idx: number) => `</${tokens[idx].tag}>`;
-md.renderer.rules.bullet_list_open = () => '<ul class="md-ul">';
-md.renderer.rules.ordered_list_open = () => '<ol class="md-ol">';
-md.renderer.rules.list_item_open = () => '<li class="md-li">';
-md.renderer.rules.blockquote_open = () => '<blockquote class="md-blockquote">';
-md.renderer.rules.table_open = () => '<table class="md-table">';
-md.renderer.rules.th_open = () => '<th class="md-th">';
-md.renderer.rules.td_open = () => '<td class="md-td">';
 
 md.renderer.rules.fence = (tokens: any[], idx: number) => {
   const token: any = tokens[idx];
@@ -42,24 +37,13 @@ md.renderer.rules.fence = (tokens: any[], idx: number) => {
   const lang = info.split(/\s+/g)[0];
   const code = md.utils.escapeHtml(token.content);
   const langClass = lang ? ` language-${md.utils.escapeHtml(lang)}` : '';
-  return `<pre class="md-pre"><code class="md-code${langClass}">${code}</code></pre>`;
+  return `<pre class="md-pre md-block"><code class="md-code${langClass}">${code}</code></pre>`;
 };
+
+md.renderer.rules.code_block = md.renderer.rules.fence;
 
 md.renderer.rules.code_inline = (tokens: any[], idx: number) =>
   `<code class="md-code-inline">${md.utils.escapeHtml(tokens[idx].content)}</code>`;
-
-md.renderer.rules.image = (tokens: any[], idx: number) => {
-  const token: any = tokens[idx];
-  const src = token.attrGet
-    ? token.attrGet('src')
-    : (token.attrs && token.attrs.find((a: any) => a[0] === 'src')?.[1]) || '';
-  const alt = md.utils.escapeHtml(token.content || '');
-  const title =
-    token.attrGet && token.attrGet('title')
-      ? ` title="${md.utils.escapeHtml(token.attrGet('title'))}"`
-      : '';
-  return `<img class="md-img" src="${md.utils.escapeHtml(src)}" alt="${alt}"${title} />`;
-};
 
 // 将 markdown 转换为 HTML，并添加样式类包装
 const htmlContent = computed(() => {
@@ -180,7 +164,7 @@ const htmlContent = computed(() => {
   font-style: italic;
 }
 
-:deep(.markdown-body .md-del) {
+:deep(.markdown-body .md-s) {
   text-decoration: line-through;
 }
 
@@ -191,11 +175,11 @@ const htmlContent = computed(() => {
   margin: 0.5em 0;
 }
 
-:deep(.markdown-body > :first-child) {
+:deep(.markdown-body > .md-block:first-child) {
   margin-top: 0;
 }
 
-:deep(.markdown-body > :last-child) {
+:deep(.markdown-body > .md-block:last-child) {
   margin-bottom: 0;
 }
 </style>

@@ -2,6 +2,7 @@ import { ref, getCurrentScope, onScopeDispose, type Ref } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import type { CampusLoginTicket } from '@/api/modules/auth';
 import config from '@/config';
+import { returnFromLogin } from '@/utils/login-navigation';
 import { useWechatAuthorization } from '@/composables/use-wechat-authorization';
 
 export function useLogin(wechatEnabled?: Ref<boolean>) {
@@ -14,12 +15,25 @@ export function useLogin(wechatEnabled?: Ref<boolean>) {
   } = useWechatAuthorization(wechatEnabled);
   const userStore = useUserStore();
   let disposed = false;
-  let navigation: ReturnType<typeof setTimeout> | undefined;
+  let operation = 0;
+  let exchangeSession: number | undefined;
+  function cancel() {
+    operation++;
+    if (
+      loading.value &&
+      !submitted.value &&
+      exchangeSession !== undefined &&
+      userStore.sessionVersion === exchangeSession
+    )
+      userStore.logoutAction();
+    exchangeSession = undefined;
+    loading.value = false;
+  }
 
   if (getCurrentScope())
     onScopeDispose(() => {
       disposed = true;
-      if (navigation) clearTimeout(navigation);
+      cancel();
     });
 
   /**
@@ -31,6 +45,8 @@ export function useLogin(wechatEnabled?: Ref<boolean>) {
   ): Promise<void> {
     if (loading.value || submitted.value || disposed) return;
 
+    const attempt = ++operation;
+    const current = () => !disposed && attempt === operation;
     loading.value = true;
     const initialSession = userStore.sessionVersion;
     const initialOwner = userStore.userInfo?.id;
@@ -38,14 +54,15 @@ export function useLogin(wechatEnabled?: Ref<boolean>) {
     try {
       const code = await getCode();
       if (
-        disposed ||
+        !current() ||
         userStore.sessionVersion !== initialSession ||
         userStore.userInfo?.id !== initialOwner
       )
         return;
-      await consume(code);
-      if (disposed) return;
-      const loggedInSession = userStore.sessionVersion;
+      const exchange = consume(code);
+      exchangeSession = userStore.sessionVersion;
+      await exchange;
+      if (!current()) return;
       submitted.value = true;
 
       uni.showToast({
@@ -53,12 +70,15 @@ export function useLogin(wechatEnabled?: Ref<boolean>) {
         icon: 'success',
       });
 
-      // 3. 登录成功后跳转到首页
-      navigation = setTimeout(() => {
-        if (!disposed && userStore.sessionVersion === loggedInSession)
-          uni.switchTab({ url: '/pages/index/index' });
-      }, 500);
+      returnFromLogin();
     } catch (error: any) {
+      if (
+        !current() ||
+        (exchangeSession !== undefined &&
+          userStore.sessionVersion !== exchangeSession &&
+          userStore.isLoggedIn)
+      )
+        return;
       let errorMessage = '登录失败，请重试';
       if (error?.errMsg?.includes('login:fail')) {
         errorMessage = '微信授权未完成，请重试';
@@ -72,7 +92,10 @@ export function useLogin(wechatEnabled?: Ref<boolean>) {
 
       throw error;
     } finally {
-      loading.value = false;
+      if (current()) {
+        loading.value = false;
+        exchangeSession = undefined;
+      }
     }
   }
 
@@ -110,6 +133,7 @@ export function useLogin(wechatEnabled?: Ref<boolean>) {
   }
 
   return {
+    cancel,
     loading,
     submitted,
     wechatAvailable,

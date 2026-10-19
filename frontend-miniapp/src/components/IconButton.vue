@@ -1,7 +1,7 @@
 <template>
   <button
     class="icon-button"
-    :class="{ 'icon-button--inverse': tone === 'inverse' }"
+    :class="{ 'icon-button--inverse': tone === 'inverse', 'is-disabled': disabled }"
     role="button"
     :tabindex="disabled ? -1 : 0"
     :aria-label="label"
@@ -64,7 +64,7 @@ const { activate, handleKeydown, handleKeyup, clearPress } = useButtonActivation
   border: 0;
 }
 
-.icon-button:not([disabled]):active {
+.icon-button:not(.is-disabled):active {
   background: #f4f4f5;
 }
 
@@ -73,7 +73,7 @@ const { activate, handleKeydown, handleKeyup, clearPress } = useButtonActivation
   outline-offset: 2px;
 }
 
-.icon-button--inverse:not([disabled]):active {
+.icon-button--inverse:not(.is-disabled):active {
   background: rgba(255, 255, 255, 0.16);
 }
 
@@ -81,18 +81,18 @@ const { activate, handleKeydown, handleKeyup, clearPress } = useButtonActivation
   outline-color: #fff;
 }
 
-.icon-button[disabled] {
+.icon-button.is-disabled {
   background: transparent;
   opacity: 0.45;
   cursor: default;
 }
 
 @media (hover: hover) {
-  .icon-button:not([disabled]):hover {
+  .icon-button:not(.is-disabled):hover {
     background: #f4f4f5;
   }
 
-  .icon-button--inverse:not([disabled]):hover {
+  .icon-button--inverse:not(.is-disabled):hover {
     background: rgba(255, 255, 255, 0.16);
   }
 }

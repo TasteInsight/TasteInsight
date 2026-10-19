@@ -1,6 +1,11 @@
 <template>
-  <view class="notifications-page" :aria-busy="loading">
+  <view
+    class="notifications-page page-state-layout page-content"
+    :class="{ 'notifications-page--state': !user.isLoggedIn || !unread }"
+    :aria-busy="loading"
+  >
     <EmptyState
+      class="page-state-region"
       v-if="!user.isLoggedIn"
       title="登录后查看消息"
       icon="bell"
@@ -15,6 +20,7 @@
         </view>
       </view>
       <EmptyState
+        class="page-state-region"
         v-else-if="initialized && !items.length && !error"
         title="暂无新消息"
         icon="bell"
@@ -54,7 +60,11 @@
           </view>
         </button>
       </view>
-      <view v-if="error" class="notification-error error-feedback" role="alert"
+      <view
+        v-if="error"
+        class="notification-error error-feedback"
+        :class="{ 'page-state-region': !items.length }"
+        role="alert"
         ><text class="error-feedback__message">{{ error }}</text
         ><button
           class="error-feedback__action"
@@ -83,6 +93,8 @@
   </view>
 </template>
 <script setup lang="ts">
+import { openLogin } from '@/utils/login-navigation';
+
 import { computed, nextTick, onScopeDispose, ref, watch } from 'vue';
 import { onShow, onHide, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import UserAvatar from '@/components/UserAvatar.vue';
@@ -127,7 +139,7 @@ const capture = () => {
   const generation = epoch;
   return () => active && visible && session === user.sessionVersion && generation === epoch;
 };
-const login = () => uni.navigateTo({ url: '/pages/login/index' });
+const login = () => openLogin();
 async function load(append = false) {
   if (!user.isLoggedIn || (append && (loading.value || !hasMore.value))) return;
   const current = capture();
@@ -285,6 +297,9 @@ onReachBottom(() => {
   padding: 4px 20px calc(88px + env(safe-area-inset-bottom));
   background: #fff;
   color: #1f2937;
+}
+.notifications-page--state {
+  padding-bottom: 0;
 }
 .notification-button {
   display: inline-flex;

@@ -1,192 +1,223 @@
 <template>
-  <view class="planning-page page-content" :aria-busy="loading">
-    <!-- #ifdef MP-WEIXIN -->
-    <!-- 微信小程序专用：统一在父组件管理 page-container 拦截返回事件 -->
-    <!-- 详情弹窗 -->
-    <page-container
-      v-if="shouldRenderDetailHelper"
-      :show="showDetailDialog"
-      :overlay="false"
-      :duration="300"
-      :disable-scroll="false"
-      custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
-      @leave="closeDetailDialog"
-    />
-
-    <!-- 编辑弹窗 -->
-    <page-container
-      v-if="shouldRenderEditHelper"
-      :show="showEditDialog"
-      :overlay="false"
-      :duration="300"
-      :disable-scroll="false"
-      custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
-      @leave="requestEditClose(true)"
-    />
-
-    <!-- 新建弹窗 -->
-    <page-container
-      v-if="shouldRenderCreateHelper"
-      :show="showCreateDialog"
-      :overlay="false"
-      :duration="300"
-      :disable-scroll="false"
-      custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
-      @leave="requestCreateClose(true)"
-    />
-
-    <!-- #endif -->
-
-    <view class="planning-tabs" role="tablist" aria-label="规划视图">
-      <button
-        v-for="option in viewOptions"
-        :key="option.value"
-        class="planning-button planning-tab"
-        :class="{ 'planning-tab--selected': viewMode === option.value }"
-        role="tab"
-        :aria-selected="viewMode === option.value"
-        @click="setViewMode(option.value)"
-      >
-        {{ option.label }}
-      </button>
+  <view
+    class="planning-page page-content page-state-layout"
+    :class="{ 'planning-page--state': !userStore.isLoggedIn }"
+    :aria-busy="loading"
+  >
+    <view v-if="!userStore.isLoggedIn" class="page-state-region">
+      <EmptyState
+        title="登录后查看饮食规划"
+        icon="calendar"
+        action-text="登录"
+        @action="openLogin"
+      />
     </view>
-    <template v-if="!error || initialized">
-      <PlanCalendar
-        v-if="viewMode !== 'list'"
-        :mode="viewMode"
-        :plans="calendarPlans"
-        :today="today"
-        :selected-date="selectedDate"
-        @select="selectDate"
+    <template v-else>
+      <!-- #ifdef MP-WEIXIN -->
+      <!-- 微信小程序专用：统一在父组件管理 page-container 拦截返回事件 -->
+      <!-- 详情弹窗 -->
+      <page-container
+        v-if="shouldRenderDetailHelper"
+        :show="showDetailDialog"
+        :overlay="false"
+        :duration="300"
+        :disable-scroll="false"
+        custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
+        @leave="closeDetailDialog"
       />
 
-      <view v-if="viewMode !== 'day'" class="planning-agenda-heading">
-        <UiPicker
-          v-if="viewMode === 'list'"
-          mode="selector"
-          :range="listCategoryLabels"
-          :value="activeTab === 'current' ? 0 : 1"
-          aria-label="规划分类"
-          @change="changeListCategory"
-          ><button class="planning-button planning-filter" aria-label="选择列表范围">
-            <text
-              >{{ activeTab === 'current' ? '当前规划' : '历史规划'
-              }}{{ initialized ? ' (' + displayPlans.length + ')' : '' }}</text
-            >
-            <uni-icons type="down" size="14" color="#667085" aria-hidden="true" /></button
-        ></UiPicker>
-        <text v-else class="planning-agenda-title">{{ selectedDateLabel }}</text>
-        <text
-          v-if="viewMode !== 'list' && initialized && displayPlans.length"
-          class="planning-agenda-count"
-          >{{ displayPlans.length }} 个计划</text
+      <!-- 编辑弹窗 -->
+      <page-container
+        v-if="shouldRenderEditHelper"
+        :show="showEditDialog"
+        :overlay="false"
+        :duration="300"
+        :disable-scroll="false"
+        custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
+        @leave="requestEditClose(true)"
+      />
+
+      <!-- 新建弹窗 -->
+      <page-container
+        v-if="shouldRenderCreateHelper"
+        :show="showCreateDialog"
+        :overlay="false"
+        :duration="300"
+        :disable-scroll="false"
+        custom-style="position: absolute; width: 0; height: 0; overflow: hidden; opacity: 0; pointer-events: none;"
+        @leave="requestCreateClose(true)"
+      />
+
+      <!-- #endif -->
+
+      <view class="planning-tabs" role="tablist" aria-label="规划视图">
+        <button
+          v-for="option in viewOptions"
+          :key="option.value"
+          class="planning-button planning-tab"
+          :class="{ 'planning-tab--selected': viewMode === option.value }"
+          role="tab"
+          :aria-selected="viewMode === option.value"
+          @click="setViewMode(option.value)"
         >
+          {{ option.label }}
+        </button>
       </view>
-    </template>
+      <template v-if="!error || initialized">
+        <view class="planning-controls">
+          <PlanCalendar
+            v-if="viewMode !== 'list'"
+            :mode="viewMode"
+            :plans="calendarPlans"
+            :today="today"
+            :selected-date="selectedDate"
+            @select="selectDate"
+          />
+          <UiPicker
+            v-else
+            mode="selector"
+            :range="listCategoryLabels"
+            :value="activeTab === 'current' ? 0 : 1"
+            aria-label="规划分类"
+            @change="changeListCategory"
+            ><button class="planning-button planning-filter" aria-label="选择列表范围">
+              <text
+                >{{ activeTab === 'current' ? '当前规划' : '历史规划'
+                }}{{ initialized ? ' (' + displayPlans.length + ')' : '' }}</text
+              >
+              <uni-icons type="down" size="14" color="#667085" aria-hidden="true" /></button
+          ></UiPicker>
+        </view>
 
-    <!-- 错误状态 -->
-    <view v-if="error" class="error-feedback" role="alert">
-      <text class="error-feedback__message">{{ error }}</text>
-      <button
-        @tap="refreshPlans"
-        class="error-feedback__action"
-        hover-class="error-feedback__action--pressed"
+        <view v-if="viewMode === 'month' || viewMode === 'week'" class="planning-agenda-heading">
+          <text class="planning-agenda-title">{{ selectedDateLabel }}</text>
+          <text v-if="initialized && displayPlans.length" class="planning-agenda-count"
+            >{{ displayPlans.length }} 个计划</text
+          >
+        </view>
+      </template>
+
+      <!-- 错误状态 -->
+      <view
+        v-if="error"
+        class="error-feedback"
+        :class="{ 'page-state-region': !displayPlans.length }"
+        role="alert"
       >
-        <text>重试</text>
-      </button>
-    </view>
-
-    <!-- 空状态 -->
-    <EmptyState
-      v-else-if="initialized && displayPlans.length === 0 && viewMode !== 'day'"
-      :title="
-        viewMode === 'list'
-          ? activeTab === 'current'
-            ? '暂无当前规划'
-            : '暂无历史规划'
-          : '这天还没有安排'
-      "
-      icon="calendar"
-    />
-
-    <!-- 规划列表（使用页面原生滚动，避免 scroll-view 未设置高度导致无法滚动） -->
-    <view
-      v-if="displayPlans.length || (viewMode === 'day' && initialized && !error)"
-      class="planning-list"
-    >
-      <view v-for="group in planGroups" :key="group.key" class="planning-meal-group">
-        <text v-if="viewMode === 'day'" class="planning-meal-title">{{ group.label }}</text>
-        <text v-if="!group.plans.length" class="planning-meal-empty">尚未安排</text>
-        <PlanCard
-          v-for="plan in group.plans"
-          :key="plan.id"
-          :plan="plan"
-          :is-history="viewMode === 'list' && activeTab === 'history'"
-          :occurrence-date="viewMode === 'list' ? '' : selectedDate"
-          :show-schedule="viewMode !== 'day'"
-          :today="today"
-          :can-publish="canContribute"
-          @view="viewPlanDetail(plan)"
-          @edit="editPlan(plan)"
-          @delete="deletePlan(plan.id)"
-          @execute="handleExecutePlan(plan)"
-          @privacy="togglePublicPlan(plan)"
-          @invite="openInvite(plan)"
-          class="w-full"
-        />
+        <text class="error-feedback__message">{{ error }}</text>
+        <button
+          @tap="refreshPlans"
+          class="error-feedback__action"
+          hover-class="error-feedback__action--pressed"
+        >
+          <text>重试</text>
+        </button>
       </view>
-    </view>
 
-    <!-- 详情对话框 -->
-    <PlanDetailDialog :visible="showDetailDialog" :plan="selectedPlan" @close="closeDetailDialog" />
+      <EmptyState
+        v-if="loading && !initialized && !error"
+        class="page-state-region"
+        title="正在加载规划…"
+        loading
+      />
+      <!-- 空状态 -->
+      <EmptyState
+        class="page-state-region"
+        v-else-if="!error && initialized && displayPlans.length === 0 && viewMode !== 'day'"
+        :title="
+          viewMode === 'list'
+            ? activeTab === 'current'
+              ? '暂无当前规划'
+              : '暂无历史规划'
+            : '这天还没有安排'
+        "
+        icon="calendar"
+      />
 
-    <!-- 编辑对话框 -->
-    <PlanEditDialog
-      ref="editDialogRef"
-      :visible="showEditDialog"
-      :plan="selectedPlan"
-      :submitting="submitting"
-      @close="closeEditDialog"
-      @submit="submitEdit"
-    />
+      <!-- 规划列表（使用页面原生滚动，避免 scroll-view 未设置高度导致无法滚动） -->
+      <view
+        v-if="displayPlans.length || (viewMode === 'day' && initialized && !error)"
+        class="planning-list"
+      >
+        <view v-for="group in planGroups" :key="group.key" class="planning-meal-group">
+          <text v-if="viewMode === 'day'" class="planning-meal-title">{{ group.label }}</text>
+          <text v-if="!group.plans.length" class="planning-meal-empty">尚未安排</text>
+          <PlanCard
+            v-for="plan in group.plans"
+            :key="plan.id"
+            :plan="plan"
+            :is-history="viewMode === 'list' && activeTab === 'history'"
+            :occurrence-date="viewMode === 'list' ? '' : selectedDate"
+            :show-schedule="viewMode !== 'day'"
+            :today="today"
+            :can-publish="canContribute"
+            @view="viewPlanDetail(plan)"
+            @edit="editPlan(plan)"
+            @delete="deletePlan(plan.id)"
+            @execute="handleExecutePlan(plan)"
+            @privacy="togglePublicPlan(plan)"
+            @invite="openInvite(plan)"
+            class="w-full"
+          />
+        </view>
+      </view>
 
-    <!-- 创建对话框 -->
-    <PlanEditDialog
-      ref="createDialogRef"
-      :visible="showCreateDialog"
-      :plan="null"
-      :initial-date="viewMode === 'list' ? today : selectedDate"
-      :submitting="submitting"
-      @close="closeCreateDialog"
-      @submit="submitCreate"
-    />
+      <!-- 详情对话框 -->
+      <PlanDetailDialog
+        :visible="showDetailDialog"
+        :plan="selectedPlan"
+        @close="closeDetailDialog"
+      />
 
-    <!-- #ifndef MP-WEIXIN -->
-    <DiningInviteSheet
-      :visible="!!invitingPlan"
-      :plan="invitingPlan"
-      :initial-date="selectedDate"
-      @close="invitingPlan = null"
-      @saved="invitingPlan = null"
-    />
-    <!-- #endif -->
+      <!-- 编辑对话框 -->
+      <PlanEditDialog
+        ref="editDialogRef"
+        :visible="showEditDialog"
+        :plan="selectedPlan"
+        :submitting="submitting"
+        @close="closeEditDialog"
+        @submit="submitEdit"
+      />
 
-    <!-- 浮动新建按钮 -->
-    <FloatingActionButton
-      v-if="
-        (viewMode !== 'list' || activeTab === 'current') &&
-        !showCreateDialog &&
-        !showEditDialog &&
-        !showDetailDialog
-      "
-      label="新建规划"
-      icon="plus"
-      @click="createNewPlan"
-    />
+      <!-- 创建对话框 -->
+      <PlanEditDialog
+        ref="createDialogRef"
+        :visible="showCreateDialog"
+        :plan="null"
+        :initial-date="viewMode === 'list' ? today : selectedDate"
+        :submitting="submitting"
+        @close="closeCreateDialog"
+        @submit="submitCreate"
+      />
+
+      <!-- #ifndef MP-WEIXIN -->
+      <DiningInviteSheet
+        :visible="!!invitingPlan"
+        :plan="invitingPlan"
+        :initial-date="selectedDate"
+        @close="invitingPlan = null"
+        @saved="invitingPlan = null"
+      />
+      <!-- #endif -->
+
+      <!-- 浮动新建按钮 -->
+      <FloatingActionButton
+        v-if="
+          (viewMode !== 'list' || activeTab === 'current') &&
+          !showCreateDialog &&
+          !showEditDialog &&
+          !showDetailDialog
+        "
+        label="新建规划"
+        icon="plus"
+        @click="createNewPlan"
+      />
+    </template>
   </view>
 </template>
 
 <script setup lang="ts">
+import { openLogin } from '@/utils/login-navigation';
 import { ref, computed, watch, isRef, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { onHide, onShow, onPullDownRefresh, onBackPress } from '@dcloudio/uni-app';
 import { useMenuPlanning, type PlanningViewMode } from './composables/use-menu-planning';
@@ -472,11 +503,18 @@ onBeforeUnmount(() => {
   color: #1f2937;
   font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
+.planning-page--state {
+  padding-bottom: 0;
+}
 .planning-tabs {
   display: flex;
   border-bottom: 1px solid #e5e7eb;
   background: #fff;
   padding: 0 16px;
+}
+.planning-controls {
+  padding: 8px 20px 12px;
+  border-bottom: 1px solid #e5e7eb;
 }
 .planning-agenda-heading {
   display: flex;
@@ -500,8 +538,10 @@ onBeforeUnmount(() => {
 }
 .planning-button.planning-filter {
   gap: 6px;
-  margin-left: -8px;
-  padding: 10px 8px;
+  justify-content: flex-start;
+  margin: 0;
+  padding: 0 8px 0 0;
+  text-align: left;
   border: 0;
   border-radius: 8px;
   min-height: 44px;

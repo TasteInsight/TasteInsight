@@ -1,340 +1,359 @@
 <template>
   <view class="ai-chat-page">
-    <view
-      class="ai-chat-toolbar page-navigation-bar"
-      :class="{ 'ai-chat-toolbar-native': hasNativeTitle }"
-    >
-      <button
-        class="chat-button chat-toolbar-action chat-toolbar-new"
-        hover-class="chat-control-pressed"
-        :hover-stay-time="80"
-        role="button"
-        tabindex="0"
-        aria-label="新对话"
-        @click="handleNewChat"
-        @keydown="handleActionKeydown"
-        @keyup="handleActionKeyup($event, handleNewChat)"
-        @blur="keyPressed = false"
-      >
-        <image class="chat-tool-icon" src="/static/icons/chat-new.png" aria-hidden="true" />
-        <text>新对话</text>
-      </button>
-      <text v-if="!hasNativeTitle" class="ai-chat-title page-navigation-title">AI 助手</text>
-      <button
-        class="chat-button chat-toolbar-action chat-toolbar-history"
-        hover-class="chat-control-pressed"
-        :hover-stay-time="80"
-        role="button"
-        tabindex="0"
-        aria-label="历史对话"
-        @click="openHistory"
-        @keydown="handleActionKeydown"
-        @keyup="handleActionKeyup($event, openHistory)"
-        @blur="keyPressed = false"
-      >
-        <image class="chat-tool-icon" src="/static/icons/history.png" aria-hidden="true" />
-        <text>历史</text>
-      </button>
+    <view v-if="!isLoggedIn" class="page-state-region">
+      <EmptyState title="登录后使用 AI 助手" icon="chat" action-text="登录" @action="openLogin" />
     </view>
-    <scroll-view
-      ref="messageScroller"
-      scroll-y
-      :show-scrollbar="false"
-      class="ai-chat-messages"
-      :scroll-into-view="scrollIntoViewId"
-      :scroll-with-animation="false"
-      @scroll="handleScroll"
-      @scrolltolower="handleScrollToLower"
-      @touchstart="handleTouchStart"
-      @touchmove="handleTouchMove"
-      @keydown="handleReadingKeydown"
-    >
-      <view class="ai-chat-transcript">
-        <view v-if="initialError" class="error-feedback" role="alert">
-          <text class="error-feedback__title">连接暂时不可用</text
-          ><text class="error-feedback__message">{{ initialError }}</text>
-          <button
-            class="error-feedback__action"
-            hover-class="error-feedback__action--pressed"
-            :hover-stay-time="80"
-            role="button"
-            tabindex="0"
-            @click="retryConnection"
-            @keydown="handleActionKeydown"
-            @keyup="handleActionKeyup($event, retryConnection)"
-            @blur="keyPressed = false"
-          >
-            重试连接
-          </button>
-        </view>
-        <view v-else-if="!isInitialLoading && messages.length === 0" class="chat-state">
-          <text class="chat-state-title">今天想吃什么？</text
-          ><text class="chat-state-description">告诉我你的口味，或选择下方的问题开始。</text>
-        </view>
-        <template v-else>
-          <view
-            v-for="message in messages"
-            :key="message.id"
-            :id="`msg-${message.id}`"
-            class="chat-message"
-          >
-            <template v-for="(segment, segmentIndex) in message.content" :key="segmentIndex">
-              <view
-                v-if="segment.type === 'text' ? segment.text.trim() : segment.data.length"
-                class="chat-segment"
-                :class="{
-                  'chat-segment-user': message.type === 'user',
-                  'chat-segment-text': segment.type === 'text',
-                  'chat-segment-card': segment.type !== 'text',
-                }"
-              >
-                <view
-                  v-if="segment.type === 'text'"
-                  class="chat-bubble"
-                  :class="message.type === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai'"
-                >
-                  <MarkdownText v-if="message.type === 'ai'" :content="segment.text" />
-                  <text v-else :user-select="true" class="chat-user-text">{{ segment.text }}</text>
-                </view>
-                <view
-                  v-else-if="segment.type === 'card_dish'"
-                  class="chat-card-stack chat-card-stack-dishes"
-                  role="group"
-                  aria-label="推荐菜品"
-                >
-                  <template v-for="(dish, dishIndex) in segment.data" :key="dishIndex">
-                    <view v-if="dish?.dish" class="chat-dish-row"><DishCard :dish="dish" /></view>
-                  </template>
-                </view>
-                <view
-                  v-else-if="segment.type === 'card_preferences'"
-                  class="chat-card-stack chat-card-stack-preferences"
-                >
-                  <PreferenceCard
-                    v-for="(preference, preferenceIndex) in segment.data"
-                    :key="`${currentSessionId}:${message.id}:${segmentIndex}:${preferenceIndex}`"
-                    :draft="preference"
-                    @save="applyPreferences"
-                    @dismiss="dismissPreferences"
-                  />
-                </view>
-                <view
-                  v-else-if="segment.type === 'card_plan'"
-                  class="chat-card-stack chat-card-stack-plans"
-                >
-                  <PlanningCard
-                    v-for="(plan, planIndex) in segment.data"
-                    :key="`${currentSessionId}:${message.id}:${segmentIndex}:${planIndex}`"
-                    :plan="plan"
-                    @apply="handleApplyPlan"
-                  />
-                </view>
-                <view v-else-if="segment.type === 'card_canteen'" class="chat-card-stack"
-                  ><CanteenCard v-for="(canteen, i) in segment.data" :key="i" :canteen="canteen"
-                /></view>
-                <view v-else-if="segment.type === 'card_window'" class="chat-card-stack"
-                  ><WindowCard v-for="(window, i) in segment.data" :key="i" :window="window"
-                /></view>
-              </view>
-            </template>
-            <view v-if="message.type === 'user'" class="chat-message-meta">
-              <text class="chat-timestamp">{{ formatTimeShort(message.timestamp) }}</text>
-              <view
-                v-if="deliveryFor(message)"
-                class="chat-delivery-status"
-                role="status"
-                :aria-label="deliveryFor(message)!.label"
-              >
-                <image
-                  v-if="deliveryFor(message)!.icon"
-                  class="chat-delivery-icon"
-                  :src="deliveryFor(message)!.icon"
-                  aria-hidden="true"
-                />
-                <text v-if="deliveryFor(message)!.text">{{ deliveryFor(message)!.text }}</text>
-              </view>
-            </view>
-          </view>
-          <text v-if="aiLoading" class="chat-reply-status" role="status">正在回复…</text>
-        </template>
-        <view id="chat-bottom-anchor" class="chat-bottom-anchor" />
-      </view>
-    </scroll-view>
-    <view class="ai-chat-footer">
-      <button
-        class="chat-button chat-latest"
-        hover-class="chat-control-pressed"
-        :hover-stay-time="80"
-        :class="{ 'chat-latest-visible': !followingLatest }"
-        role="button"
-        aria-label="回到最新"
-        :aria-hidden="followingLatest"
-        :tabindex="followingLatest ? -1 : 0"
-        :disabled="followingLatest"
-        @click="returnToLatest"
-        @keydown="handleActionKeydown"
-        @keyup="handleActionKeyup($event, returnToLatest)"
-        @blur="keyPressed = false"
+    <template v-else>
+      <view
+        class="ai-chat-toolbar page-navigation-bar"
+        :class="{ 'ai-chat-toolbar-native': hasNativeTitle }"
       >
-        <image class="chat-latest-icon" src="/static/icons/chevron-down.png" aria-hidden="true" />
-      </button>
-      <SuggestionChips
-        v-if="suggestions.length && !aiLoading && !composerFocused"
-        :suggestions="suggestions"
-        :disabled="sending || isInitializing"
-        @select="handleSuggestionSelect"
-      />
-      <InputBar
-        v-model="draft"
-        :loading="aiLoading"
-        :busy="sending || isInitializing"
-        @send="handleSend"
-        @stop="handleStopStreaming"
-        @focus="composerFocused = true"
-        @blur="composerFocused = false"
-      />
-    </view>
-    <!-- #ifdef MP-WEIXIN -->
-    <page-container
-      :show="showHistory"
-      :overlay="false"
-      :duration="0"
-      custom-style="position:absolute;width:0;height:0;overflow:hidden;opacity:0;pointer-events:none;"
-      @leave="closeHistory"
-    />
-    <page-container
-      :show="showNewChatModal"
-      :overlay="false"
-      :duration="0"
-      custom-style="position:absolute;width:0;height:0;overflow:hidden;opacity:0;pointer-events:none;"
-      @leave="cancelNewChat"
-    />
-    <!-- #endif -->
-    <view v-if="showHistory" class="chat-overlay chat-history-overlay" @click="closeHistory">
-      <view class="chat-history" role="dialog" aria-label="历史对话" @click.stop>
-        <view class="chat-dialog-header"
-          ><text class="chat-dialog-title">历史对话</text
-          ><button
-            class="chat-button"
-            hover-class="chat-control-pressed"
-            :hover-stay-time="80"
-            role="button"
-            tabindex="0"
-            aria-label="关闭历史对话"
-            @click="closeHistory"
-            @keydown="handleActionKeydown"
-            @keyup="handleActionKeyup($event, closeHistory)"
-            @blur="keyPressed = false"
-          >
-            <view class="chat-close-icon" aria-hidden="true" /></button
-        ></view>
-        <scroll-view scroll-y :show-scrollbar="false" class="chat-history-list">
-          <text v-if="!historyEntries.length" class="chat-history-empty">暂无历史对话</text>
-          <view
-            v-for="item in historyEntries"
-            :key="item.sessionId"
-            class="chat-history-row"
-            :class="{ 'chat-history-current': item.sessionId === currentSessionId }"
-          >
-            <button
-              class="chat-history-open"
-              hover-class="chat-control-pressed"
-              :hover-stay-time="80"
-              role="button"
-              tabindex="0"
-              :aria-current="item.sessionId === currentSessionId ? 'true' : undefined"
-              :aria-label="`打开对话：${item.title || '对话'}`"
-              @click="handleLoadHistory(item.sessionId)"
-              @keydown="handleActionKeydown"
-              @keyup="handleActionKeyup($event, () => handleLoadHistory(item.sessionId))"
-              @blur="keyPressed = false"
-            >
-              <view class="chat-history-heading">
-                <text class="chat-history-title">{{ item.title || '对话' }}</text>
-                <text v-if="item.sessionId === currentSessionId" class="chat-history-current-label"
-                  >当前</text
-                >
-              </view>
-              <text class="chat-history-meta"
-                >{{ sceneLabelMap[item.scene] || '对话' }} · {{ formatTime(item.updatedAt) }}</text
-              >
-            </button>
-            <button
-              class="chat-button chat-history-delete"
-              hover-class="chat-control-pressed"
-              :hover-stay-time="80"
-              role="button"
-              tabindex="0"
-              :aria-label="`删除对话：${item.title || '对话'}`"
-              @click.stop="handleDeleteHistory(item.sessionId)"
-              @keydown="handleActionKeydown"
-              @keyup="handleActionKeyup($event, () => handleDeleteHistory(item.sessionId))"
-              @blur="keyPressed = false"
-            >
-              <view class="chat-delete-icon" aria-hidden="true" />
-            </button>
-          </view>
-        </scroll-view>
-      </view>
-    </view>
-    <view v-if="showNewChatModal" class="chat-overlay chat-modal-overlay" @click="cancelNewChat">
-      <view class="chat-dialog" role="dialog" aria-label="开始新对话" @click.stop>
-        <text class="chat-dialog-title">新对话</text
-        ><text class="chat-state-description">选择对话主题</text>
-        <view class="chat-scenes" role="group" aria-label="对话主题"
-          ><button
-            v-for="option in sceneOptions"
-            :key="option.value"
-            class="chat-scene-option"
-            hover-class="chat-control-pressed"
-            :hover-stay-time="80"
-            role="button"
-            tabindex="0"
-            :aria-pressed="selectedScene === option.value"
-            :class="{ 'chat-scene-selected': selectedScene === option.value }"
-            @click="selectedScene = option.value"
-            @keydown="handleActionKeydown"
-            @keyup="handleActionKeyup($event, () => (selectedScene = option.value))"
-            @blur="keyPressed = false"
-          >
-            <text>{{ option.label }}</text>
-            <view class="chat-scene-indicator" aria-hidden="true">
-              <view v-if="selectedScene === option.value" class="chat-scene-check" />
-            </view></button
-        ></view>
-        <view class="chat-dialog-actions"
-          ><button
-            class="chat-button"
-            hover-class="chat-control-pressed"
-            :hover-stay-time="80"
-            role="button"
-            tabindex="0"
-            @click="cancelNewChat"
-            @keydown="handleActionKeydown"
-            @keyup="handleActionKeyup($event, cancelNewChat)"
-            @blur="keyPressed = false"
-          >
-            取消</button
-          ><button
-            class="chat-button chat-button-primary"
-            hover-class="chat-control-pressed"
-            :hover-stay-time="80"
-            role="button"
-            tabindex="0"
-            @click="confirmNewChat"
-            @keydown="handleActionKeydown"
-            @keyup="handleActionKeyup($event, confirmNewChat)"
-            @blur="keyPressed = false"
-          >
-            开始对话
-          </button></view
+        <button
+          class="chat-button chat-toolbar-action chat-toolbar-new"
+          hover-class="chat-control-pressed"
+          :hover-stay-time="80"
+          role="button"
+          tabindex="0"
+          aria-label="新对话"
+          @click="handleNewChat"
+          @keydown="handleActionKeydown"
+          @keyup="handleActionKeyup($event, handleNewChat)"
+          @blur="keyPressed = false"
         >
+          <image class="chat-tool-icon" src="/static/icons/chat-new.png" aria-hidden="true" />
+          <text>新对话</text>
+        </button>
+        <text v-if="!hasNativeTitle" class="ai-chat-title page-navigation-title">AI 助手</text>
+        <button
+          class="chat-button chat-toolbar-action chat-toolbar-history"
+          hover-class="chat-control-pressed"
+          :hover-stay-time="80"
+          role="button"
+          tabindex="0"
+          aria-label="历史对话"
+          @click="openHistory"
+          @keydown="handleActionKeydown"
+          @keyup="handleActionKeyup($event, openHistory)"
+          @blur="keyPressed = false"
+        >
+          <image class="chat-tool-icon" src="/static/icons/history.png" aria-hidden="true" />
+          <text>历史</text>
+        </button>
       </view>
-    </view>
+      <scroll-view
+        ref="messageScroller"
+        scroll-y
+        :show-scrollbar="false"
+        class="ai-chat-messages"
+        :scroll-into-view="scrollIntoViewId"
+        :scroll-with-animation="false"
+        @scroll="handleScroll"
+        @scrolltolower="handleScrollToLower"
+        @touchstart="handleTouchStart"
+        @touchmove="handleTouchMove"
+        @keydown="handleReadingKeydown"
+      >
+        <view class="ai-chat-transcript" :class="{ 'chat-transcript-state': !messages.length }">
+          <view v-if="initialError" class="error-feedback page-state-region" role="alert">
+            <text class="error-feedback__title">连接暂时不可用</text
+            ><text class="error-feedback__message">{{ initialError }}</text>
+            <button
+              class="error-feedback__action"
+              hover-class="error-feedback__action--pressed"
+              :hover-stay-time="80"
+              role="button"
+              tabindex="0"
+              @click="retryConnection"
+              @keydown="handleActionKeydown"
+              @keyup="handleActionKeyup($event, retryConnection)"
+              @blur="keyPressed = false"
+            >
+              重试连接
+            </button>
+          </view>
+          <EmptyState
+            v-else-if="isInitialLoading && !messages.length"
+            class="page-state-region"
+            title="正在连接 AI 助手…"
+            loading
+          />
+          <view v-else-if="messages.length === 0" class="chat-state page-state-region">
+            <text class="chat-state-title">今天想吃什么？</text
+            ><text class="chat-state-description">告诉我你的口味，或选择下方的问题开始。</text>
+          </view>
+          <template v-else>
+            <view
+              v-for="message in messages"
+              :key="message.id"
+              :id="`msg-${message.id}`"
+              class="chat-message"
+            >
+              <template v-for="(segment, segmentIndex) in message.content" :key="segmentIndex">
+                <view
+                  v-if="segment.type === 'text' ? segment.text.trim() : segment.data.length"
+                  class="chat-segment"
+                  :class="{
+                    'chat-segment-user': message.type === 'user',
+                    'chat-segment-text': segment.type === 'text',
+                    'chat-segment-card': segment.type !== 'text',
+                  }"
+                >
+                  <view
+                    v-if="segment.type === 'text'"
+                    class="chat-bubble"
+                    :class="message.type === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai'"
+                  >
+                    <MarkdownText v-if="message.type === 'ai'" :content="segment.text" />
+                    <text v-else :user-select="true" class="chat-user-text">{{
+                      segment.text
+                    }}</text>
+                  </view>
+                  <view
+                    v-else-if="segment.type === 'card_dish'"
+                    class="chat-card-stack chat-card-stack-dishes"
+                    role="group"
+                    aria-label="推荐菜品"
+                  >
+                    <template v-for="(dish, dishIndex) in segment.data" :key="dishIndex">
+                      <view v-if="dish?.dish" class="chat-dish-row"><DishCard :dish="dish" /></view>
+                    </template>
+                  </view>
+                  <view
+                    v-else-if="segment.type === 'card_preferences'"
+                    class="chat-card-stack chat-card-stack-preferences"
+                  >
+                    <PreferenceCard
+                      v-for="(preference, preferenceIndex) in segment.data"
+                      :key="`${currentSessionId}:${message.id}:${segmentIndex}:${preferenceIndex}`"
+                      :draft="preference"
+                      @save="applyPreferences"
+                      @dismiss="dismissPreferences"
+                    />
+                  </view>
+                  <view
+                    v-else-if="segment.type === 'card_plan'"
+                    class="chat-card-stack chat-card-stack-plans"
+                  >
+                    <PlanningCard
+                      v-for="(plan, planIndex) in segment.data"
+                      :key="`${currentSessionId}:${message.id}:${segmentIndex}:${planIndex}`"
+                      :plan="plan"
+                      @apply="handleApplyPlan"
+                    />
+                  </view>
+                  <view v-else-if="segment.type === 'card_canteen'" class="chat-card-stack"
+                    ><CanteenCard v-for="(canteen, i) in segment.data" :key="i" :canteen="canteen"
+                  /></view>
+                  <view v-else-if="segment.type === 'card_window'" class="chat-card-stack"
+                    ><WindowCard v-for="(window, i) in segment.data" :key="i" :window="window"
+                  /></view>
+                </view>
+              </template>
+              <view v-if="message.type === 'user'" class="chat-message-meta">
+                <text class="chat-timestamp">{{ formatTimeShort(message.timestamp) }}</text>
+                <view
+                  v-if="deliveryFor(message)"
+                  class="chat-delivery-status"
+                  role="status"
+                  :aria-label="deliveryFor(message)!.label"
+                >
+                  <image
+                    v-if="deliveryFor(message)!.icon"
+                    class="chat-delivery-icon"
+                    :src="deliveryFor(message)!.icon"
+                    aria-hidden="true"
+                  />
+                  <text v-if="deliveryFor(message)!.text">{{ deliveryFor(message)!.text }}</text>
+                </view>
+              </view>
+              <text
+                v-if="message.type === 'ai' && message.replyStatus"
+                class="chat-message-status"
+                role="status"
+                >{{ replyStates[message.replyStatus] }}</text
+              >
+            </view>
+            <text v-if="aiLoading" class="chat-reply-status" role="status">正在回复…</text>
+          </template>
+          <SuggestionChips
+            v-if="suggestions.length && !aiLoading"
+            :suggestions="suggestions"
+            :disabled="sending || isInitializing"
+            @select="handleSuggestionSelect"
+          />
+          <view id="chat-bottom-anchor" class="chat-bottom-anchor" />
+        </view>
+      </scroll-view>
+      <view class="ai-chat-footer">
+        <button
+          class="chat-button chat-latest"
+          hover-class="chat-control-pressed"
+          :hover-stay-time="80"
+          :class="{ 'chat-latest-visible': !followingLatest }"
+          role="button"
+          aria-label="回到最新"
+          :aria-hidden="followingLatest"
+          :tabindex="followingLatest ? -1 : 0"
+          :disabled="followingLatest"
+          @click="returnToLatest"
+          @keydown="handleActionKeydown"
+          @keyup="handleActionKeyup($event, returnToLatest)"
+          @blur="keyPressed = false"
+        >
+          <image class="chat-latest-icon" src="/static/icons/chevron-down.png" aria-hidden="true" />
+        </button>
+        <InputBar
+          v-model="draft"
+          :loading="aiLoading"
+          :busy="sending || isInitializing"
+          @send="handleSend"
+          @stop="handleStopStreaming"
+          @focus="scrollToBottom"
+          @blur="scrollToBottom"
+        />
+        <text class="chat-content-notice">内容由 AI 生成，结果仅供参考</text>
+      </view>
+      <!-- #ifdef MP-WEIXIN -->
+      <page-container
+        :show="showHistory || showNewChatModal"
+        :overlay="false"
+        :duration="0"
+        custom-style="position:absolute;width:0;height:0;overflow:hidden;opacity:0;pointer-events:none;"
+        @leave="closeChatOverlay"
+      />
+      <!-- #endif -->
+      <view v-if="showHistory" class="chat-overlay chat-history-overlay" @click="closeHistory">
+        <view class="chat-history" role="dialog" aria-label="历史对话" @click.stop>
+          <view class="chat-dialog-header"
+            ><text class="chat-dialog-title">历史对话</text
+            ><button
+              class="chat-button"
+              hover-class="chat-control-pressed"
+              :hover-stay-time="80"
+              role="button"
+              tabindex="0"
+              aria-label="关闭历史对话"
+              @click="closeHistory"
+              @keydown="handleActionKeydown"
+              @keyup="handleActionKeyup($event, closeHistory)"
+              @blur="keyPressed = false"
+            >
+              <view class="chat-close-icon" aria-hidden="true" /></button
+          ></view>
+          <scroll-view scroll-y :show-scrollbar="false" class="chat-history-list">
+            <text v-if="!historyEntries.length" class="chat-history-empty">暂无历史对话</text>
+            <view
+              v-for="item in historyEntries"
+              :key="item.sessionId"
+              class="chat-history-row"
+              :class="{ 'chat-history-current': item.sessionId === currentSessionId }"
+            >
+              <button
+                class="chat-history-open"
+                hover-class="chat-control-pressed"
+                :hover-stay-time="80"
+                role="button"
+                tabindex="0"
+                :aria-current="item.sessionId === currentSessionId ? 'true' : undefined"
+                :aria-label="`打开对话：${item.title || '对话'}`"
+                @click="handleLoadHistory(item.sessionId)"
+                @keydown="handleActionKeydown"
+                @keyup="handleActionKeyup($event, () => handleLoadHistory(item.sessionId))"
+                @blur="keyPressed = false"
+              >
+                <view class="chat-history-heading">
+                  <text class="chat-history-title">{{ item.title || '对话' }}</text>
+                  <text
+                    v-if="item.sessionId === currentSessionId"
+                    class="chat-history-current-label"
+                    >当前</text
+                  >
+                </view>
+                <text class="chat-history-meta"
+                  >{{ sceneLabelMap[item.scene] || '对话' }} ·
+                  {{ formatTime(item.updatedAt) }}</text
+                >
+              </button>
+              <button
+                class="chat-button chat-history-delete"
+                hover-class="chat-control-pressed"
+                :hover-stay-time="80"
+                role="button"
+                tabindex="0"
+                :aria-label="`删除对话：${item.title || '对话'}`"
+                @click.stop="handleDeleteHistory(item.sessionId)"
+                @keydown="handleActionKeydown"
+                @keyup="handleActionKeyup($event, () => handleDeleteHistory(item.sessionId))"
+                @blur="keyPressed = false"
+              >
+                <view class="chat-delete-icon" aria-hidden="true" />
+              </button>
+            </view>
+          </scroll-view>
+        </view>
+      </view>
+      <view v-if="showNewChatModal" class="chat-overlay chat-modal-overlay" @click="cancelNewChat">
+        <view class="chat-dialog" role="dialog" aria-label="开始新对话" @click.stop>
+          <text class="chat-dialog-title">新对话</text
+          ><text class="chat-state-description">选择对话主题</text>
+          <view class="chat-scenes" role="group" aria-label="对话主题"
+            ><button
+              v-for="option in sceneOptions"
+              :key="option.value"
+              class="chat-scene-option"
+              hover-class="chat-control-pressed"
+              :hover-stay-time="80"
+              role="button"
+              tabindex="0"
+              :aria-pressed="selectedScene === option.value"
+              :class="{ 'chat-scene-selected': selectedScene === option.value }"
+              @click="selectedScene = option.value"
+              @keydown="handleActionKeydown"
+              @keyup="handleActionKeyup($event, () => (selectedScene = option.value))"
+              @blur="keyPressed = false"
+            >
+              <text>{{ option.label }}</text>
+              <view class="chat-scene-indicator" aria-hidden="true">
+                <view v-if="selectedScene === option.value" class="chat-scene-check" />
+              </view></button
+          ></view>
+          <view class="chat-dialog-actions"
+            ><button
+              class="chat-button"
+              hover-class="chat-control-pressed"
+              :hover-stay-time="80"
+              role="button"
+              tabindex="0"
+              @click="cancelNewChat"
+              @keydown="handleActionKeydown"
+              @keyup="handleActionKeyup($event, cancelNewChat)"
+              @blur="keyPressed = false"
+            >
+              取消</button
+            ><button
+              class="chat-button chat-button-primary"
+              hover-class="chat-control-pressed"
+              :hover-stay-time="80"
+              role="button"
+              tabindex="0"
+              @click="confirmNewChat"
+              @keydown="handleActionKeydown"
+              @keyup="handleActionKeyup($event, confirmNewChat)"
+              @blur="keyPressed = false"
+            >
+              开始对话
+            </button></view
+          >
+        </view>
+      </view>
+    </template>
   </view>
 </template>
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted, onScopeDispose } from 'vue';
+import { openLogin } from '@/utils/login-navigation';
+import EmptyState from '@/components/EmptyState.vue';
+import { ref, watch, nextTick, onScopeDispose } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import { useChat } from './composables/use-chat';
 import DishCard from './components/DishCard.vue';
 import MarkdownText from './components/MarkdownText.vue';
@@ -346,6 +365,7 @@ import InputBar from './components/InputBar.vue';
 import SuggestionChips from './components/SuggestionChips.vue';
 import type { ComponentMealPlanDraft, AIScene } from '@/types/api';
 const {
+  isLoggedIn,
   messages,
   aiLoading,
   currentSessionId,
@@ -366,8 +386,10 @@ const {
   deleteSession,
   stopStreaming,
 } = useChat();
+onShow(() => {
+  if (isLoggedIn.value && !currentSessionId.value && !isInitializing.value) void init();
+});
 const draft = ref('');
-const composerFocused = ref(false);
 const sending = ref(false);
 const scrollIntoViewId = ref('');
 const messageScroller = ref<{ $el?: HTMLElement } | null>(null);
@@ -375,6 +397,16 @@ const followingLatest = ref(true);
 const showHistory = ref(false);
 const showNewChatModal = ref(false);
 const selectedScene = ref<AIScene>('general_chat');
+watch(
+  isLoggedIn,
+  loggedIn => {
+    if (loggedIn) return;
+    draft.value = '';
+    showHistory.value = false;
+    showNewChatModal.value = false;
+  },
+  { flush: 'sync' }
+);
 const sceneOptions: { value: AIScene; label: string }[] = [
   { value: 'general_chat', label: '聊聊吃什么' },
   { value: 'dish_critic', label: '菜品点评' },
@@ -435,19 +467,22 @@ const handleWheel = (event: WheelEvent) => {
   if (event.deltaY < 0) pauseFollowing();
 };
 // #ifdef H5
-let scrollElement: HTMLElement | undefined;
 const handleScrollbarPointer = (event: MouseEvent) => {
   if (event.button === 0 && (event.target as HTMLElement).scrollTop > 0) pauseFollowing();
 };
-onMounted(() => {
-  scrollElement = messageScroller.value?.$el;
-  scrollElement?.addEventListener('wheel', handleWheel, { passive: true });
-  scrollElement?.addEventListener('mousedown', handleScrollbarPointer);
-});
-onScopeDispose(() => {
-  scrollElement?.removeEventListener('wheel', handleWheel);
-  scrollElement?.removeEventListener('mousedown', handleScrollbarPointer);
-});
+watch(
+  () => messageScroller.value?.$el,
+  (element, _, onCleanup) => {
+    if (!element) return;
+    element.addEventListener('wheel', handleWheel, { passive: true });
+    element.addEventListener('mousedown', handleScrollbarPointer);
+    onCleanup(() => {
+      element.removeEventListener('wheel', handleWheel);
+      element.removeEventListener('mousedown', handleScrollbarPointer);
+    });
+  },
+  { flush: 'post' }
+);
 // #endif
 const handleTouchStart = (event: any) => {
   touchY = event.touches[0].clientY;
@@ -464,7 +499,7 @@ const handleScrollToLower = () => {
   followingLatest.value = true;
 };
 watch(() => messages.value, scrollToBottom, { deep: true });
-watch(composerFocused, scrollToBottom);
+watch(suggestions, scrollToBottom);
 watch(currentSessionId, () => {
   latestScrollTop = 0;
   sending.value = false;
@@ -511,6 +546,10 @@ const openHistory = () => {
 };
 const closeHistory = () => {
   showHistory.value = false;
+};
+const closeChatOverlay = () => {
+  closeHistory();
+  cancelNewChat();
 };
 const handleLoadHistory = (sessionId: string) =>
   loadHistorySession(sessionId, loaded => {
@@ -608,6 +647,11 @@ const formatTimeShort = (timestamp: number) => {
     ? `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
     : `${date.getMonth() + 1}/${date.getDate()}`;
 };
+const replyStates = {
+  failed: '回复失败，请稍后重试',
+  stopped: '已停止回复',
+  interrupted: '回复已中断',
+};
 const deliveryStates: Record<string, { label: string; icon?: string; text?: string }> = {
   sending: { label: '发送中', icon: '/static/icons/history.png' },
   received: { label: '服务端已接收', icon: '/static/icons/check-double.png' },
@@ -624,6 +668,12 @@ const deliveryFor = (message: { type: string; deliveryStatus?: string }) =>
     : undefined;
 </script>
 <style scoped>
+.chat-transcript-state {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
 .ai-chat-page {
   --chat-accent: #660874;
   display: flex;
@@ -641,6 +691,9 @@ const deliveryFor = (message: { type: string; deliveryStatus?: string }) =>
 .ai-chat-toolbar {
   --navigation-inset-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
   flex-shrink: 0;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
@@ -678,10 +731,10 @@ const deliveryFor = (message: { type: string; deliveryStatus?: string }) =>
   pointer-events: none;
   transition: background-color 140ms ease-out;
 }
-.ai-chat-toolbar .chat-toolbar-action.chat-control-pressed:not([disabled]) {
+.ai-chat-toolbar .chat-toolbar-action.chat-control-pressed {
   background: transparent;
 }
-.ai-chat-toolbar .chat-toolbar-action.chat-control-pressed:not([disabled])::before {
+.ai-chat-toolbar .chat-toolbar-action.chat-control-pressed::before {
   background: #f4f4f5;
 }
 .ai-chat-toolbar .chat-toolbar-action:focus-visible {
@@ -692,10 +745,10 @@ const deliveryFor = (message: { type: string; deliveryStatus?: string }) =>
   outline-offset: -2px;
 }
 @media (hover: hover) {
-  .ai-chat-toolbar .chat-toolbar-action:not([disabled]):hover {
+  .ai-chat-toolbar .chat-toolbar-action:hover {
     background: transparent;
   }
-  .ai-chat-toolbar .chat-toolbar-action:not([disabled]):hover::before {
+  .ai-chat-toolbar .chat-toolbar-action:hover::before {
     background: #f7f8fa;
   }
 }
@@ -739,10 +792,10 @@ const deliveryFor = (message: { type: string; deliveryStatus?: string }) =>
   background: #660874;
   color: #fff;
 }
-.chat-button.chat-control-pressed:not([disabled]) {
+.chat-button.chat-control-pressed {
   background: #f4f4f5;
 }
-.chat-button-primary.chat-control-pressed:not([disabled]) {
+.chat-button-primary.chat-control-pressed {
   background: #50065b;
   color: #fff;
 }
@@ -859,6 +912,16 @@ const deliveryFor = (message: { type: string; deliveryStatus?: string }) =>
   flex-direction: column;
   gap: 12px;
 }
+.chat-message-status {
+  display: block;
+  margin-top: 0;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 20px;
+}
+.chat-segment ~ .chat-message-status {
+  margin-top: 8px;
+}
 .chat-reply-status {
   display: block;
   color: #667085;
@@ -877,6 +940,14 @@ const deliveryFor = (message: { type: string; deliveryStatus?: string }) =>
   margin: 0 auto;
   padding: 12px 20px 20px;
   background: #fff;
+}
+.chat-content-notice {
+  display: block;
+  margin-top: 8px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 20px;
+  text-align: center;
 }
 .chat-latest {
   position: absolute;
@@ -899,8 +970,7 @@ const deliveryFor = (message: { type: string; deliveryStatus?: string }) =>
     transform 140ms ease-in,
     visibility 0s linear 140ms;
 }
-.chat-latest,
-.chat-latest[disabled] {
+.chat-latest {
   background: #fff;
   border: 0;
 }
@@ -925,10 +995,10 @@ const deliveryFor = (message: { type: string; deliveryStatus?: string }) =>
   .chat-latest:hover {
     background: #f7f8fa;
   }
-  .chat-button:not(.chat-button-primary):not([disabled]):hover {
+  .chat-button:not(.chat-button-primary):hover {
     background: #f7f8fa;
   }
-  .chat-button-primary:not([disabled]):hover {
+  .chat-button-primary:hover {
     background: #50065b;
   }
   .chat-history-open:hover,
@@ -1250,9 +1320,6 @@ const deliveryFor = (message: { type: string; deliveryStatus?: string }) =>
   .ai-chat-footer {
     padding-top: 6px;
     padding-bottom: 8px;
-  }
-  .ai-chat-footer :deep(.suggestion-scroll) {
-    display: none;
   }
 }
 @media (max-width: 340px) {

@@ -1,7 +1,19 @@
 <template>
-  <view class="page-content dish-list-page">
-    <view class="dish-list-content">
-      <view v-if="error && reviews.length === 0" class="error-feedback" role="alert">
+  <view class="page-content dish-list-page page-state-layout">
+    <EmptyState
+      v-if="!isLoggedIn"
+      class="page-state-region"
+      title="登录后查看个人记录"
+      icon="user"
+      action-text="登录"
+      @action="openLogin"
+    />
+    <view v-else class="dish-list-content page-state-content">
+      <view
+        v-if="error && reviews.length === 0"
+        class="error-feedback page-state-region"
+        role="alert"
+      >
         <text class="error-feedback__message">{{ error }}</text
         ><button
           class="error-feedback__action"
@@ -11,7 +23,18 @@
           重新加载
         </button>
       </view>
-      <EmptyState v-else-if="initialized && !reviews.length" title="暂无评价" icon="star" />
+      <EmptyState
+        class="page-state-region"
+        v-else-if="initialized && !reviews.length"
+        title="暂无评价"
+        icon="star"
+      />
+      <EmptyState
+        v-else-if="loading && !initialized"
+        class="page-state-region"
+        title="正在加载…"
+        loading
+      />
       <template v-else-if="reviews.length">
         <ReviewCard
           v-for="item in reviews"
@@ -40,11 +63,13 @@
   </view>
 </template>
 <script setup lang="ts">
+import { openLogin } from '@/utils/login-navigation';
 import { onShow, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import ReviewCard from './components/ReviewCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import { useMyReviews } from './composables/use-my-reviews';
-const { reviews, loading, initialized, error, hasMore, loadMore, refresh, retry } = useMyReviews();
+const { isLoggedIn, reviews, loading, initialized, error, hasMore, loadMore, refresh, retry } =
+  useMyReviews();
 onShow(() => {
   void refresh();
 });
@@ -53,7 +78,7 @@ onReachBottom(() => {
 });
 onPullDownRefresh(async () => {
   try {
-    if (await refresh()) uni.showToast({ title: '刷新成功', icon: 'success', duration: 1500 });
+    await refresh();
   } finally {
     uni.stopPullDownRefresh();
   }

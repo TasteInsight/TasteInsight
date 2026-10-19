@@ -12,69 +12,82 @@
       lower-threshold="80"
       @scrolltolower="onLoadMore"
     >
-      <!-- 窗口信息 -->
-      <WindowHeader
-        :window="windowInfo"
-        :loading="headerLoading"
-        :error="headerError"
-        @retry="retryHeader"
-      />
+      <view class="window-content page-state-layout">
+        <!-- 窗口信息 -->
+        <WindowHeader
+          :class="{ 'page-state-content': !!headerError && !dishesInitialized }"
+          :window="windowInfo"
+          :loading="headerLoading"
+          :error="headerError"
+          @retry="retryHeader"
+        />
 
-      <view v-if="currentWindowId" class="dish-list-search">
-        <SearchBar placeholder="搜索这个窗口的菜品" :search-url="searchUrl" />
-      </view>
-
-      <template v-if="!headerError || dishesInitialized">
-        <!-- 菜品列表 -->
-        <view class="dish-list-heading"><text class="dish-list-title">窗口菜品</text></view>
-        <view class="dish-list-content" :aria-busy="loading">
-          <view v-if="loading && dishes.length" class="dish-list-state">正在更新菜品…</view>
-
-          <view v-if="error" class="error-feedback" role="alert">
-            <text class="error-feedback__message">{{ error }}</text>
-            <button
-              class="error-feedback__action"
-              hover-class="error-feedback__action--pressed"
-              @click="retryDishes"
-            >
-              重新加载
-            </button>
-          </view>
-
-          <view v-if="dishes.length > 0">
-            <CanteenDishCard
-              v-for="dish in dishes"
-              :key="dish.id"
-              :dish="dish"
-              @click="goToDishDetail"
-            />
-          </view>
-
-          <EmptyState
-            v-else-if="dishesInitialized && !loading && !error && !headerError"
-            title="暂无菜品信息"
-            icon="search"
-          />
-
-          <view
-            v-if="!loading && !error && (dishes.length > 0 || loadingMore)"
-            class="dish-list-footer"
-          >
-            <template v-if="loadingMore">
-              <view
-                class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"
-              ></view>
-              <text>加载中...</text>
-            </template>
-            <template v-else-if="hasMore">
-              <button class="dish-list-action" @click="onLoadMore">加载更多</button>
-            </template>
-            <template v-else>
-              <text>没有更多了</text>
-            </template>
-          </view>
+        <view
+          v-if="currentWindowId"
+          :class="{ 'dish-list-search--before-state': headerError && !dishesInitialized }"
+          class="dish-list-search"
+        >
+          <SearchBar placeholder="搜索这个窗口的菜品" :search-url="searchUrl" />
         </view>
-      </template>
+
+        <template v-if="!headerError || dishesInitialized">
+          <!-- 菜品列表 -->
+          <view class="dish-list-heading"><text class="dish-list-title">窗口菜品</text></view>
+          <view class="dish-list-content page-state-content" :aria-busy="loading">
+            <view v-if="loading && dishes.length" class="dish-list-state">正在更新菜品…</view>
+
+            <view
+              v-if="error"
+              :class="{ 'page-state-region': !dishes.length }"
+              class="error-feedback"
+              role="alert"
+            >
+              <text class="error-feedback__message">{{ error }}</text>
+              <button
+                class="error-feedback__action"
+                hover-class="error-feedback__action--pressed"
+                @click="retryDishes"
+              >
+                重新加载
+              </button>
+            </view>
+
+            <view v-if="dishes.length > 0">
+              <CanteenDishCard
+                v-for="dish in dishes"
+                :key="dish.id"
+                :dish="dish"
+                @click="goToDishDetail"
+              />
+            </view>
+
+            <EmptyState
+              class="page-state-region"
+              v-else-if="dishesInitialized && !loading && !error && !headerError"
+              title="暂无菜品信息"
+              icon="search"
+            />
+
+            <view
+              v-if="!loading && !error && (dishes.length > 0 || loadingMore)"
+              class="dish-list-footer"
+            >
+              <template v-if="loadingMore">
+                <view
+                  class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"
+                ></view>
+                <text>加载中...</text>
+              </template>
+              <template v-else-if="hasMore">
+                <button class="dish-list-action" @click="onLoadMore">加载更多</button>
+              </template>
+              <template v-else>
+                <text>没有更多了</text>
+              </template>
+            </view>
+          </view>
+        </template>
+      </view>
     </scroll-view>
   </view>
 </template>
@@ -170,6 +183,9 @@ const goToDishDetail = (id: string) => uni.navigateTo({ url: `/pages/dish/index?
 
 <style scoped src="@/styles/dish-list-page.css"></style>
 <style scoped>
+.window-content {
+  min-height: 100%;
+}
 .window-scroll {
   flex: 1;
   height: 0;

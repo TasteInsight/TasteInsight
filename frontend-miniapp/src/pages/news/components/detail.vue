@@ -1,6 +1,12 @@
 <template>
-  <view class="page-content news-detail">
-    <view class="news-article">
+  <view class="page-content news-detail page-state-layout">
+    <view class="news-article page-state-content">
+      <EmptyState
+        v-if="loading && !initialized && !error"
+        class="page-state-region"
+        title="正在加载公告…"
+        loading
+      />
       <view v-if="initialized && newsDetail.id">
         <view class="article-title">{{ newsDetail.title }}</view>
         <view class="article-meta">
@@ -33,7 +39,12 @@
         </button>
       </view>
 
-      <view v-if="error || notFound" class="article-state error-feedback" role="alert">
+      <view
+        v-if="error || notFound"
+        class="article-state error-feedback"
+        :class="{ 'page-state-region': !newsDetail.id }"
+        role="alert"
+      >
         <text class="error-feedback__message">{{ notFound ? '公告不存在或已下架' : error }}</text>
         <button
           v-if="!notFound"
@@ -60,6 +71,7 @@
 <script setup lang="ts">
 import MpHtml from 'mp-html/dist/uni-app/components/mp-html/mp-html.vue';
 import { openNewsOriginal, originalArticleUrl } from '@/utils/news-original';
+import EmptyState from '@/components/EmptyState.vue';
 import config from '@/config';
 import { openCampus } from '@/utils/campus-navigation';
 import { useNewsDetail } from '../composables/use-news-detail';

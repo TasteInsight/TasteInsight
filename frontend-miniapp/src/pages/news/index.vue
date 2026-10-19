@@ -1,5 +1,7 @@
 <template>
-  <view class="page-content"><NewsFeed ref="feed" /></view>
+  <view class="page-content page-state-layout"
+    ><NewsFeed ref="feed" class="page-state-content"
+  /></view>
 </template>
 <script setup lang="ts">
 import { ref } from 'vue';

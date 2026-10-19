@@ -14,15 +14,23 @@ jest.mock('@/api/modules/auth', () => ({
 const mockWechatLogin = jest.fn();
 const mockCampusLogin = jest.fn();
 let mockWechatAvailable = true;
+const mockSubmitted = require('vue').ref(false);
 let mockWechatProviderPending = false;
 jest.mock('@/pages/login/composables/use-login', () => ({
   useLogin: () => ({
     loading: require('vue').ref(false),
-    submitted: require('vue').ref(false),
+    submitted: mockSubmitted,
     wechatAvailable: require('vue').ref(mockWechatAvailable),
     wechatProviderLoading: require('vue').ref(mockWechatProviderPending),
-    wechatLogin: mockWechatLogin,
-    campusLogin: mockCampusLogin,
+    cancel: jest.fn(),
+    wechatLogin: async () => {
+      await mockWechatLogin();
+      mockSubmitted.value = true;
+    },
+    campusLogin: async (ticket: any) => {
+      await mockCampusLogin(ticket);
+      mockSubmitted.value = true;
+    },
     testLoginEnabled: false,
   }),
 }));
@@ -47,6 +55,7 @@ const mountForm = () =>
 beforeEach(() => {
   jest.clearAllMocks();
   mockWechatAvailable = true;
+  mockSubmitted.value = false;
   mockWechatProviderPending = false;
   setActivePinia(createPinia());
   (getAuthCapabilities as jest.Mock).mockResolvedValue({

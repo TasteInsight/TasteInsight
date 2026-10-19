@@ -17,6 +17,7 @@ export function useCampusLogin(enabled: Ref<boolean>) {
   const starting = ref(false);
   const error = ref('');
   let disposed = false;
+  let generation = 0;
   let popup: Window | null = null;
   const reload = () => {
     if (user.isLoggedIn) clearCampusLoginPending();
@@ -26,6 +27,8 @@ export function useCampusLogin(enabled: Ref<boolean>) {
   onMounted(reload);
   onShow(reload);
   function cancel() {
+    generation++;
+    starting.value = false;
     clearCampusLoginPending();
     pending.value = null;
     code.value = '';
@@ -79,6 +82,7 @@ export function useCampusLogin(enabled: Ref<boolean>) {
     }
     // #endif
     const session = user.sessionVersion;
+    const attempt = ++generation;
     starting.value = true;
     // #ifdef H5
     const openedPopup = window.open('about:blank', '_blank');
@@ -86,7 +90,7 @@ export function useCampusLogin(enabled: Ref<boolean>) {
     // #endif
     try {
       const response = await startCampusLogin();
-      if (disposed || session !== user.sessionVersion || !enabled.value) {
+      if (disposed || attempt !== generation || session !== user.sessionVersion || !enabled.value) {
         // #ifdef H5
         openedPopup?.close();
         // #endif
@@ -104,10 +108,10 @@ export function useCampusLogin(enabled: Ref<boolean>) {
       // #ifdef H5
       openedPopup?.close();
       // #endif
-      if (!disposed && session === user.sessionVersion)
+      if (!disposed && attempt === generation && session === user.sessionVersion)
         error.value = cause instanceof Error ? cause.message : '登录页面暂时无法打开，请重试';
     } finally {
-      if (!disposed) starting.value = false;
+      if (!disposed && attempt === generation) starting.value = false;
     }
   }
   return { pending, code, starting, error, start, cancel, reload };

@@ -1,8 +1,18 @@
 <template>
-  <view class="dish-list-page page-content">
-    <CanteenHeader :canteen="canteenInfo" :loading="loading" :error="error" @retry="retryCanteen" />
+  <view class="dish-list-page page-content page-state-layout">
+    <CanteenHeader
+      :class="{ 'page-state-content': !!error && !dishesInitialized }"
+      :canteen="canteenInfo"
+      :loading="loading"
+      :error="error"
+      @retry="retryCanteen"
+    />
 
-    <view v-if="currentCanteenId" class="dish-list-search">
+    <view
+      v-if="currentCanteenId"
+      :class="{ 'dish-list-search--before-state': error && !dishesInitialized }"
+      class="dish-list-search"
+    >
       <SearchBar placeholder="搜索这个食堂的菜品" :search-url="searchUrl" />
     </view>
 
@@ -19,10 +29,15 @@
       </view>
 
       <view class="dish-list-heading"><text class="dish-list-title">菜品</text></view>
-      <view class="dish-list-content" :aria-busy="dishesLoading">
+      <view class="dish-list-content page-state-content" :aria-busy="dishesLoading">
         <view v-if="dishesLoading && dishes.length" class="dish-list-state">正在更新菜品…</view>
 
-        <view v-if="dishesError" class="error-feedback" role="alert">
+        <view
+          v-if="dishesError"
+          :class="{ 'page-state-region': !dishes.length }"
+          class="error-feedback"
+          role="alert"
+        >
           <text class="error-feedback__message">{{ dishesError }}</text>
           <button
             class="error-feedback__action"
@@ -59,6 +74,7 @@
         </view>
 
         <EmptyState
+          class="page-state-region"
           v-else-if="dishesInitialized && !dishesLoading && !dishesError && !error"
           title="暂无菜品信息"
           icon="search"
@@ -153,22 +169,11 @@ onPullDownRefresh(async () => {
       if (!refreshed) return;
     }
     if (!isCurrent()) return;
-    uni.showToast({
-      title: '刷新成功',
-      icon: 'success',
-      duration: 1500,
-    });
   } catch (err) {
     if (!isCurrent()) return;
     console.error('下拉刷新失败:', err);
-    uni.showToast({
-      title: '刷新失败',
-      icon: 'none',
-    });
   } finally {
-    if (isCurrent()) {
-      uni.stopPullDownRefresh();
-    }
+    uni.stopPullDownRefresh();
   }
 });
 

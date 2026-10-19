@@ -93,9 +93,8 @@ describe('use-profile composable', () => {
     expect((global as any).uni.showToast).toHaveBeenCalledWith(
       expect.objectContaining({ icon: 'success' })
     );
-    // run timers to trigger reLaunch
     jest.advanceTimersByTime(500);
-    expect((global as any).uni.reLaunch).toHaveBeenCalledWith({ url: '/pages/login/index' });
+    expect((global as any).uni.reLaunch).not.toHaveBeenCalled();
     jest.useRealTimers();
   });
 

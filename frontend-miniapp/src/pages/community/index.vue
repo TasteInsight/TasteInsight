@@ -1,5 +1,5 @@
 <template>
-  <view class="campus-hub page-content">
+  <view class="campus-hub page-content page-state-layout">
     <view class="campus-sections" role="tablist" aria-label="校园内容">
       <button
         v-for="item in sections"
@@ -17,7 +17,7 @@
         {{ item.label }}
       </button>
     </view>
-    <view :key="section" class="campus-panel">
+    <view :key="section" class="campus-panel page-state-content">
       <PostFeed v-if="section === 'posts'" ref="panel" :active="visible" />
       <DiningInvites v-else-if="section === 'dining'" ref="panel" :active="visible" />
       <NewsFeed v-else ref="panel" />

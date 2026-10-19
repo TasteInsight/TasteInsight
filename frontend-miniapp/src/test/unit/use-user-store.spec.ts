@@ -58,26 +58,42 @@ describe('useUserStore', () => {
 
   describe('Actions', () => {
     describe('loginAction', () => {
-      it.each([0, 1])('keeps token-only login valid with a concurrent profile request (response %s first)', async first => {
-        const store = useUserStore();
-        const held: Array<(value: any) => void> = [];
-        (wechatLogin as jest.Mock).mockResolvedValue({ data: { token: { accessToken: 'new-token' } } });
-        (getUserProfile as jest.Mock).mockImplementation(() => new Promise(resolve => held.push(resolve)));
-          const login = store.loginAction('code').then(value => value, error => error);
+      it.each([0, 1])(
+        'keeps token-only login valid with a concurrent profile request (response %s first)',
+        async first => {
+          const store = useUserStore();
+          const held: Array<(value: any) => void> = [];
+          (wechatLogin as jest.Mock).mockResolvedValue({
+            data: { token: { accessToken: 'new-token' } },
+          });
+          (getUserProfile as jest.Mock).mockImplementation(
+            () => new Promise(resolve => held.push(resolve))
+          );
+          const login = store.loginAction('code').then(
+            value => value,
+            error => error
+          );
           await flushPromises();
           const concurrentProfile = store.fetchProfileAction();
           await flushPromises();
           expect(held).toHaveLength(2);
-          held[first]({ code: 200, data: { id: '1', openId: 'o1', nickname: first === 0 ? 'older' : 'newer' } });
+          held[first]({
+            code: 200,
+            data: { id: '1', openId: 'o1', nickname: first === 0 ? 'older' : 'newer' },
+          });
           await flushPromises();
-          held[1 - first]({ code: 200, data: { id: '1', openId: 'o1', nickname: first === 0 ? 'newer' : 'older' } });
+          held[1 - first]({
+            code: 200,
+            data: { id: '1', openId: 'o1', nickname: first === 0 ? 'newer' : 'older' },
+          });
           const outcome = await login;
           await concurrentProfile;
           await flushPromises();
           expect(outcome).not.toBeInstanceOf(Error);
           expect(store.isLoggedIn).toBe(true);
           expect(store.userInfo?.nickname).toBe('newer');
-      });
+        }
+      );
 
       it('should login successfully with user info returned', async () => {
         const store = useUserStore();
@@ -192,7 +208,7 @@ describe('useUserStore', () => {
         const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
 
         await expect(store.fetchProfileAction()).rejects.toThrow('Fetch Error');
-        expect(mockShowToast).toHaveBeenCalled();
+        expect(mockShowToast).not.toHaveBeenCalled();
         consoleSpy.mockRestore();
       });
     });

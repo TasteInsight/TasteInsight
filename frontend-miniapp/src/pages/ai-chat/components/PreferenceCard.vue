@@ -36,6 +36,7 @@
         :hover-stay-time="80"
         role="button"
         :tabindex="saveDisabled ? -1 : 0"
+        :class="{ 'is-disabled': saveDisabled }"
         :disabled="saveDisabled"
         :aria-disabled="saveDisabled"
         @click="handleAction('save')"
@@ -51,6 +52,7 @@
         :hover-stay-time="80"
         role="button"
         :tabindex="dismissDisabled ? -1 : 0"
+        :class="{ 'is-disabled': dismissDisabled }"
         :disabled="dismissDisabled"
         :aria-disabled="dismissDisabled"
         @click="handleAction('dismiss')"
@@ -292,15 +294,15 @@ const handleKeyup = (event: KeyboardEvent, action: Action) => {
   color: #4b5563;
   background: #f4f4f5;
 }
-.preference-action[disabled] {
+.preference-action.is-disabled {
   color: #667085;
   background: #f7f8fa;
   cursor: default;
 }
-.preference-save.preference-control-pressed:not([disabled]) {
+.preference-save.preference-control-pressed:not(.is-disabled) {
   background: #50065b;
 }
-.preference-dismiss.preference-control-pressed:not([disabled]) {
+.preference-dismiss.preference-control-pressed:not(.is-disabled) {
   background: #e5e7eb;
 }
 .preference-action:focus-visible {
@@ -308,10 +310,10 @@ const handleKeyup = (event: KeyboardEvent, action: Action) => {
   outline-offset: 2px;
 }
 @media (hover: hover) {
-  .preference-save:not([disabled]):hover {
+  .preference-save:not(.is-disabled):hover {
     background: #50065b;
   }
-  .preference-dismiss:not([disabled]):hover {
+  .preference-dismiss:not(.is-disabled):hover {
     background: #e5e7eb;
   }
 }

@@ -10,7 +10,6 @@ export function useProfile() {
   const isLoggedIn = computed(() => userStore.isLoggedIn);
   let disposed = false;
   let requestVersion = 0;
-  let logoutTimer: ReturnType<typeof setTimeout> | null = null;
   function invalidate() {
     requestVersion++;
     loading.value = false;
@@ -67,14 +66,7 @@ export function useProfile() {
       success: res => {
         if (!res.confirm || disposed || session !== userStore.sessionVersion) return;
         userStore.logoutAction();
-        const loggedOutSession = userStore.sessionVersion;
         uni.showToast({ title: '已退出登录', icon: 'success' });
-        logoutTimer = setTimeout(() => {
-          logoutTimer = null;
-          if (!disposed && loggedOutSession === userStore.sessionVersion && !userStore.isLoggedIn) {
-            uni.reLaunch({ url: '/pages/login/index' });
-          }
-        }, 500);
       },
     });
   }
@@ -91,7 +83,6 @@ export function useProfile() {
   if (getCurrentScope())
     onScopeDispose(() => {
       disposed = true;
-      if (logoutTimer) clearTimeout(logoutTimer);
     });
   return {
     loading,

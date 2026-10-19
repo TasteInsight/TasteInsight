@@ -1,6 +1,11 @@
 <template>
   <view class="canteen-header" :aria-busy="loading">
-    <view v-if="error" class="canteen-header__feedback error-feedback" role="alert">
+    <view
+      v-if="error"
+      class="canteen-header__feedback error-feedback"
+      :class="{ 'page-state-region': !canteen }"
+      role="alert"
+    >
       <text class="error-feedback__message">{{ error }}</text>
       <button
         class="error-feedback__action"
@@ -11,6 +16,7 @@
         重新加载
       </button>
     </view>
+    <EmptyState v-if="loading && !canteen && !error" title="正在加载食堂…" loading />
     <template v-if="canteen">
       <!-- 轮播图 -->
       <swiper
@@ -49,6 +55,7 @@
 </template>
 
 <script setup lang="ts">
+import EmptyState from '@/components/EmptyState.vue';
 import { computed, ref, watch } from 'vue';
 import type { Canteen } from '@/types/api';
 
@@ -110,6 +117,10 @@ const previewImage = (index: number) => {
 };
 </script>
 <style scoped>
+.canteen-header {
+  display: flex;
+  flex-direction: column;
+}
 .canteen-header {
   background: #fff;
 }

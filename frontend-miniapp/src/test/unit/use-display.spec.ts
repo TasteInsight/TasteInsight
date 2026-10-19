@@ -1,3 +1,4 @@
+jest.mock('@dcloudio/uni-app', () => ({ onShow: jest.fn() }));
 import { useDisplay, SORT_VALUES } from '@/pages/settings/composables/use-display';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { updateUserProfile } from '@/api/modules/user';

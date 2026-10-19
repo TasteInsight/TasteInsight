@@ -167,7 +167,8 @@ describe('useChatStore (unit)', () => {
     const lastAi = aiMessages[aiMessages.length - 1];
     const textSeg = lastAi.content.find((s: any) => s.type === 'text');
 
-    expect(textSeg.text).toMatch(/网络请求出错/);
+    expect(textSeg.text).toBe('partial');
+    expect(lastAi.replyStatus).toBe('failed');
     expect(lastAi.isStreaming).toBe(false);
     expect(store.aiLoading).toBe(false);
   });
@@ -190,7 +191,8 @@ describe('useChatStore (unit)', () => {
     await store.sendChatMessage('check');
 
     const lastAi = store.messages.filter((message: any) => message.type === 'ai').pop() as any;
-    expect(lastAi.content[0].text).toContain('provider failed');
+    expect(lastAi.content[0].text).toBe('');
+    expect(lastAi.replyStatus).toBe('failed');
     expect(lastAi.isStreaming).toBe(false);
     expect(mockSetStorageSync).toHaveBeenCalledTimes(1);
   });

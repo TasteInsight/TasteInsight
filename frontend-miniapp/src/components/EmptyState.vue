@@ -1,7 +1,9 @@
 <template>
-  <view class="empty-state">
-    <UiIcon :name="icon" :size="28" />
+  <view class="empty-state" :role="role" :aria-busy="loading">
+    <view v-if="loading" class="empty-state__spinner" aria-hidden="true" />
+    <UiIcon v-else :name="icon" :size="28" />
     <text class="empty-state__title">{{ title }}</text>
+    <text v-if="description" class="empty-state__description">{{ description }}</text>
     <button
       v-if="actionText"
       class="empty-state__action"
@@ -21,10 +23,23 @@
 import UiIcon, { type UiIconName } from './UiIcon.vue';
 import { useButtonActivation } from '@/composables/use-button-activation';
 
-withDefaults(defineProps<{ title: string; icon?: UiIconName; actionText?: string }>(), {
-  icon: 'info',
-  actionText: '',
-});
+withDefaults(
+  defineProps<{
+    title: string;
+    description?: string;
+    icon?: UiIconName;
+    actionText?: string;
+    loading?: boolean;
+    role?: 'status' | 'alert';
+  }>(),
+  {
+    description: '',
+    loading: false,
+    role: 'status',
+    icon: 'info',
+    actionText: '',
+  }
+);
 
 const emit = defineEmits<{ (event: 'action'): void }>();
 const { activate, handleKeydown, handleKeyup, clearPress } = useButtonActivation(() =>
@@ -50,6 +65,33 @@ const { activate, handleKeydown, handleKeyup, clearPress } = useButtonActivation
   font-size: 14px;
   line-height: 1.5;
   overflow-wrap: anywhere;
+}
+
+.empty-state__description {
+  max-width: 32ch;
+  color: #667085;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.empty-state__spinner {
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #660874;
+  border-radius: 50%;
+  animation: state-spin 800ms linear infinite;
+}
+@keyframes state-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .empty-state__spinner {
+    animation: none;
+  }
 }
 
 .empty-state__action {

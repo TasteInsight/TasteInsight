@@ -88,7 +88,7 @@
 .sheet-button:active {
   opacity: 0.72;
 }
-.sheet-button[disabled] {
+.sheet-button.is-disabled {
   color: #667085;
   background: #f4f4f5;
   opacity: 0.7;

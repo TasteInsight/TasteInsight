@@ -1,5 +1,5 @@
 <template>
-  <view class="search-page page-content">
+  <view class="search-page page-content page-state-layout">
     <view class="search-toolbar">
       <view v-if="isScoped" class="search-scope">
         <text class="search-scope__name">{{
@@ -17,7 +17,7 @@
         @blur="inputFocused = false"
       />
     </view>
-    <view class="search-content" :aria-busy="loading">
+    <view class="search-content page-state-content" :aria-busy="loading">
       <view v-if="loading && hasResults" class="search-state search-state--compact"
         >正在更新结果…</view
       >
@@ -32,7 +32,12 @@
           重试食堂搜索
         </button>
       </view>
-      <view v-if="error" class="error-feedback" role="alert">
+      <view
+        v-if="error"
+        :class="{ 'page-state-region': !hasResults }"
+        class="error-feedback"
+        role="alert"
+      >
         <text class="error-feedback__message">{{ error }}</text>
         <button
           class="error-feedback__action"
@@ -82,6 +87,13 @@
         </view>
       </view>
       <EmptyState
+        v-else-if="loading && !hasResults && !error && !canteenError"
+        class="page-state-region"
+        title="正在加载…"
+        loading
+      />
+      <EmptyState
+        class="page-state-region"
         v-else-if="!loading && !error && !canteenError && initialized"
         :title="`未找到“${submittedKeyword}”相关结果`"
         icon="search"
