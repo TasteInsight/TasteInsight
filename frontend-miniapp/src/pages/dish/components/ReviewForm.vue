@@ -5,7 +5,12 @@
       <text class="sheet-hint">本地草稿包含上次填写的内容。</text>
       <view class="sheet-actions">
         <button class="sheet-button" @tap="startNewReview">重新填写</button>
-        <button class="sheet-button sheet-primary" :disabled="isResuming" @tap="resumeReview">
+        <button
+          class="sheet-button sheet-primary"
+          :class="{ 'is-disabled': isResuming }"
+          :disabled="isResuming"
+          @tap="resumeReview"
+        >
           继续填写
         </button>
       </view>
@@ -23,6 +28,7 @@
         <button
           class="sheet-button sheet-close"
           aria-label="关闭评价"
+          :class="{ 'is-disabled': busy || closing }"
           :disabled="busy || closing"
           @tap="handleClose"
         >
@@ -39,7 +45,7 @@
                 v-for="star in 5"
                 :key="star"
                 class="sheet-button rating-option"
-                :class="{ selected: star <= rating }"
+                :class="{ selected: star <= rating, 'is-disabled': busy }"
                 :aria-label="'总体评分 ' + star + ' 星'"
                 :aria-pressed="star === rating"
                 :disabled="busy"
@@ -54,6 +60,7 @@
               <text class="sheet-label">口味强度（选填）</text>
               <button
                 class="sheet-button"
+                :class="{ 'is-disabled': busy || !hasFlavorSelection }"
                 :disabled="busy || !hasFlavorSelection"
                 @tap="resetFlavorRatings"
               >
@@ -73,7 +80,10 @@
                   v-for="level in 5"
                   :key="level"
                   class="sheet-button flavor-option"
-                  :class="{ selected: level === flavorRatings[option.key] }"
+                  :class="{
+                    selected: level === flavorRatings[option.key],
+                    'is-disabled': busy,
+                  }"
                   :aria-label="option.label + '强度 ' + level + '，共 5 级'"
                   :aria-pressed="level === flavorRatings[option.key]"
                   :disabled="busy"
@@ -117,6 +127,7 @@
                 <button
                   class="sheet-button image-remove"
                   :aria-label="'移除第 ' + (index + 1) + ' 张图片'"
+                  :class="{ 'is-disabled': busy }"
                   :disabled="busy"
                   @tap.stop="removeImage(index)"
                 >
@@ -126,6 +137,7 @@
               <button
                 v-if="images.length < 3"
                 class="sheet-button image-add"
+                :class="{ 'is-disabled': busy }"
                 :disabled="busy"
                 @tap="handleChooseImage"
               >
@@ -139,6 +151,7 @@
         <button
           v-if="draftSaveFailed"
           class="sheet-button draft-discard"
+          :class="{ 'is-disabled': busy || closing }"
           :disabled="busy || closing"
           @tap="discardDraft"
         >
@@ -146,6 +159,7 @@
         </button>
         <button
           class="sheet-button sheet-primary"
+          :class="{ 'is-disabled': busy || closing || (isEditing && !dirty) }"
           :disabled="busy || closing || (isEditing && !dirty)"
           @tap="handleSubmit"
         >

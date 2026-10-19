@@ -5,6 +5,7 @@
       <button
         class="profile-dish__unfavorite"
         :aria-label="'取消收藏' + dish.name"
+        :class="{ 'is-disabled': favoriteDisabled }"
         :disabled="favoriteDisabled"
         @click="emit('unfavorite')"
       >
@@ -60,7 +61,7 @@ const emit = defineEmits<{ (e: 'click'): void; (e: 'unfavorite'): void }>();
 .profile-dish__unfavorite:active {
   background: #f4f4f5;
 }
-.profile-dish__unfavorite[disabled] {
+.profile-dish__unfavorite.is-disabled {
   color: #98a2b3;
   background: transparent;
 }

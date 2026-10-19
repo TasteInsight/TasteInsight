@@ -52,7 +52,10 @@
       class="chat-input-action"
       hover-class="chat-input-action-pressed"
       :hover-stay-time="80"
-      :class="{ 'chat-input-action-stop': loading }"
+      :class="[
+        { 'chat-input-action-stop': loading },
+        { 'is-disabled': !loading && (busy || !modelValue.trim()) },
+      ]"
       role="button"
       tabindex="0"
       :aria-label="loading ? '停止回复' : busy ? '正在连接' : '发送消息'"
@@ -219,7 +222,7 @@ const handleKeyup = (event: KeyboardEvent) => {
 .chat-input-action::after {
   border: none;
 }
-.chat-input-action[disabled] {
+.chat-input-action.is-disabled {
   background: #667085;
   opacity: 0.55;
 }
@@ -230,14 +233,14 @@ const handleKeyup = (event: KeyboardEvent) => {
 .chat-input-action-stop {
   background: #f4f4f5;
 }
-.chat-input-action.chat-input-action-pressed:not([disabled]):not(.chat-input-action-stop) {
+.chat-input-action.chat-input-action-pressed:not(.is-disabled):not(.chat-input-action-stop) {
   background: #50065b;
 }
 .chat-input-action-stop.chat-input-action-pressed {
   background: #e5e7eb;
 }
 @media (hover: hover) {
-  .chat-input-action:not([disabled]):not(.chat-input-action-stop):hover {
+  .chat-input-action:not(.is-disabled):not(.chat-input-action-stop):hover {
     background: #50065b;
   }
   .chat-input-action-stop:hover {

@@ -10,6 +10,7 @@
         role="button"
         tabindex="0"
         :aria-label="suggestion"
+        :class="{ 'is-disabled': disabled }"
         :disabled="disabled"
         @click="select(suggestion)"
         @keydown="handleKeydown"
@@ -79,15 +80,15 @@ const handleKeyup = (event: KeyboardEvent, text: string) => {
   outline: 2px solid #660874;
   outline-offset: -2px;
 }
-.suggestion-chip[disabled] {
+.suggestion-chip.is-disabled {
   color: #667085;
   background: #fff;
 }
-.suggestion-chip.suggestion-chip-pressed:not([disabled]) {
+.suggestion-chip.suggestion-chip-pressed:not(.is-disabled) {
   background: #f4f4f5;
 }
 @media (hover: hover) {
-  .suggestion-chip:not([disabled]):hover {
+  .suggestion-chip:not(.is-disabled):hover {
     background: #f7f8fa;
   }
 }

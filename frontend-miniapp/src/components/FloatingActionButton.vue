@@ -4,6 +4,7 @@
     role="button"
     :tabindex="disabled ? -1 : 0"
     :aria-label="label"
+    :class="{ 'is-disabled': disabled }"
     :disabled="disabled"
     @click="activate"
     @keydown="handleKeydown"
@@ -57,10 +58,10 @@ const { activate, handleKeydown, handleKeyup, clearPress } = useButtonActivation
   outline: 2px solid #660874;
   outline-offset: 3px;
 }
-.floating-action-button:not([disabled]):active {
+.floating-action-button:not(.is-disabled):active {
   opacity: 0.72;
 }
-.floating-action-button[disabled] {
+.floating-action-button.is-disabled {
   background: #660874;
   color: #fff;
   opacity: 0.55;

@@ -89,7 +89,10 @@
             <button
               v-if="review.status === 'approved'"
               class="discussion-action review-action review-like"
-              :class="{ 'review-liked': isLiked(review) }"
+              :class="[
+                { 'review-liked': isLiked(review) },
+                { 'is-disabled': !!pending[review.id] },
+              ]"
               :aria-label="isLiked(review) ? '取消点赞' : '点赞评价'"
               :aria-pressed="isLiked(review)"
               :disabled="!!pending[review.id]"

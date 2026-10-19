@@ -79,6 +79,7 @@
             role="button"
             :tabindex="plan.appliedStatus === 'success' ? -1 : 0"
             :aria-disabled="plan.appliedStatus === 'success'"
+            :class="{ 'is-disabled': plan.appliedStatus === 'success' }"
             :disabled="plan.appliedStatus === 'success'"
             @click="handleApply"
             @keydown="handleApplyKeydown"
@@ -270,21 +271,21 @@ const handleApply = () => {
 .planning-card-apply::after {
   border: none;
 }
-.planning-card-apply[disabled] {
+.planning-card-apply.is-disabled {
   color: #667085;
   background: #f7f8fa;
 }
-.planning-card-apply:not([disabled]):active {
+.planning-card-apply:not(.is-disabled):active {
   opacity: 0.8;
 }
-.planning-card-apply.planning-control-pressed:not([disabled]) {
+.planning-card-apply.planning-control-pressed:not(.is-disabled) {
   background: #50065b;
 }
 .planning-card-toggle.planning-control-pressed {
   background: #f4f4f5;
 }
 @media (hover: hover) {
-  .planning-card-apply:not([disabled]):hover {
+  .planning-card-apply:not(.is-disabled):hover {
     background: #50065b;
   }
   .planning-card-toggle:hover {

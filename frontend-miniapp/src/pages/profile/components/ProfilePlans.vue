@@ -219,9 +219,6 @@ onScopeDispose(() => {
 .profile-plan-button:active {
   background: #f4f4f5;
 }
-.profile-plan-button[disabled] {
-  opacity: 0.5;
-}
 .profile-plan {
   padding-top: 16px;
 }

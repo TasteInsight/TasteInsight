@@ -25,6 +25,7 @@
         <button
           class="sheet-button sheet-close"
           aria-label="关闭回复"
+          :class="{ 'is-disabled': submitting || closing }"
           :disabled="submitting || closing"
           @tap="handleClose"
         >
@@ -119,7 +120,10 @@
                   <button
                     v-if="comment.status === 'approved' && canReply"
                     class="sheet-button discussion-action comment-like"
-                    :class="{ 'comment-liked': isLiked(comment) }"
+                    :class="[
+                      { 'comment-liked': isLiked(comment) },
+                      { 'is-disabled': !!pending[comment.id] },
+                    ]"
                     :aria-label="isLiked(comment) ? '取消点赞' : '点赞回复'"
                     :aria-pressed="isLiked(comment)"
                     :disabled="!!pending[comment.id]"
@@ -132,6 +136,7 @@
                   <button
                     v-if="comment.status === 'approved' && canReply"
                     class="sheet-button discussion-action comment-reply-action"
+                    :class="{ 'is-disabled': submitting }"
                     :disabled="submitting"
                     @tap="selectCommentForReply(comment)"
                   >
@@ -167,6 +172,7 @@
           <text class="sheet-hint">回复 @{{ replyingTo.userNickname }}</text>
           <button
             class="sheet-button discussion-action"
+            :class="{ 'is-disabled': submitting }"
             :disabled="submitting"
             aria-label="取消回复对象"
             @tap="cancelReply"
@@ -188,6 +194,7 @@
           />
           <button
             class="sheet-button sheet-primary reply-send"
+            :class="{ 'is-disabled': !canSendReply }"
             :disabled="!canSendReply"
             @tap="submitReply"
           >
@@ -447,7 +454,7 @@ defineExpose({ requestClose: handleClose });
 .reply-target {
   margin-bottom: 8px;
 }
-.reply-target > text {
+.reply-target > .sheet-hint {
   min-width: 0;
   overflow-wrap: anywhere;
 }

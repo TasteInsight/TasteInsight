@@ -30,12 +30,14 @@ test('dish names lead the reply typography while planning remains secondary', ()
 test('reply edges do not add margins to the spacing owned by neighboring content', () => {
   expect(styleFor('index.vue', '.chat-bubble')['margin-bottom']).toBe('0');
   expect(
-    styleFor('components/MarkdownText.vue', ':deep(.markdown-body > :first-child)')['margin-top']
+    styleFor('components/MarkdownText.vue', ':deep(.markdown-body > .md-block:first-child)')[
+      'margin-top'
+    ]
   ).toBe('0');
   expect(
-    styleFor('components/MarkdownText.vue', ':deep(.markdown-body > :last-child)')['margin-bottom']
+    styleFor('components/MarkdownText.vue', ':deep(.markdown-body > .md-block:last-child)')[
+      'margin-bottom'
+    ]
   ).toBe('0');
-  expect(
-    styleFor('index.vue', '.chat-segment + .chat-segment-text')['margin-top']
-  ).toBe('16px');
+  expect(styleFor('index.vue', '.chat-segment + .chat-segment-text')['margin-top']).toBe('16px');
 });
