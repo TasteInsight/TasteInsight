@@ -53,7 +53,7 @@
 
           <section
             v-if="selected"
-            class="moderation-detail"
+            class="moderation-detail admin-focus-target"
             aria-labelledby="community-detail-title"
             tabindex="-1"
             ref="detailPanel"

@@ -18,6 +18,10 @@ export async function bootstrapHttp(
   );
   app.use(metrics.middleware);
   app.getHttpAdapter().get('/metrics', metrics.handle);
+  app.use(
+    '/content-moderation/wechat/callback',
+    bodyParser.text({ type: ['text/xml', 'application/xml'], limit: '1mb' }),
+  );
   app.use(bodyParser.json({ limit: '10mb' }));
   app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
 

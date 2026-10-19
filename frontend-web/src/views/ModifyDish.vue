@@ -22,16 +22,13 @@
               <select
                 v-model="selectedCanteenId"
                 @change="handleCanteenChange"
-                class="appearance-none pr-10 bg-white min-w-[200px] transition-all cursor-pointer hover:border-gray-400 admin-input"
+                class="bg-white min-w-[200px] transition-all cursor-pointer hover:border-gray-400 admin-input"
               >
                 <option value="">全部食堂</option>
                 <option v-for="canteen in canteens" :key="canteen.id" :value="canteen.id">
                   {{ canteen.name }}
                 </option>
               </select>
-              <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
-                <AppIcon class="iconify" icon="carbon:chevron-down"></AppIcon>
-              </span>
             </div>
           </div>
 
@@ -41,7 +38,7 @@
               <select
                 v-model="selectedWindowId"
                 @change="handleWindowChange"
-                class="appearance-none pr-10 bg-white min-w-[200px] transition-all cursor-pointer hover:border-gray-400 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:border-gray-200 admin-input"
+                class="bg-white min-w-[200px] transition-all cursor-pointer hover:border-gray-400 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:border-gray-200 admin-input"
                 :disabled="!selectedCanteenId"
               >
                 <option value="">全部窗口</option>
@@ -49,9 +46,6 @@
                   {{ window.name }}
                 </option>
               </select>
-              <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center" :class="{'opacity-50': !selectedCanteenId}">
-                <AppIcon class="iconify" icon="carbon:chevron-down"></AppIcon>
-              </span>
             </div>
           </div>
 

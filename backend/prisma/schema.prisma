@@ -1121,3 +1121,60 @@ model AdminConfigItem {
   @@unique([adminConfigId, key])
   @@map("admin_config_items")
 }
+
+model ContentModerationSettings {
+  id        String   @id @default("global")
+  enabled   Boolean  @default(false)
+  provider  String   @default("aliyun")
+  mode      String   @default("machine")
+  updatedAt DateTime @updatedAt
+
+  @@map("content_moderation_settings")
+}
+
+model ContentModerationTask {
+  id             String   @id @default(cuid())
+  targetType     String
+  targetId       String
+  userId         String
+  version        String
+  provider       String
+  mode           String
+  status         String
+  text           String
+  images         String[] @default([])
+  profilePatch   Json?
+  results        Json     @default("{}")
+  reason         String?
+  attempts       Int      @default(0)
+  lockedUntil    DateTime?
+  callbackDeadline DateTime?
+  nextAttemptAt  DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@index([targetType, targetId, createdAt])
+  @@map("content_moderation_tasks")
+}
+
+model ContentModerationAsset {
+  id          String   @id @default(cuid())
+  userId      String
+  storageType String
+  storageKey  String
+  mimeType    String
+  animated    Boolean  @default(false)
+  approved    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@map("content_moderation_assets")
+}
+
+model ContentModerationReceipt {
+  traceId   String   @id
+  decision  String
+  createdAt DateTime @default(now())
+
+  @@map("content_moderation_receipts")
+}

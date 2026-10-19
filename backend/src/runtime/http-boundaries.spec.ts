@@ -40,6 +40,7 @@ const publicControllers = [
   'DishesController',
   'IdentityController',
   'MealPlansController',
+  'ModerationPublicController',
   'NewsController',
   'NotificationsController',
   'PublicMealPlansController',
@@ -63,6 +64,7 @@ const adminControllers = [
   'AdminStudentVerificationController',
   'AdminUploadsController',
   'AdminWindowsController',
+  'ModerationAdminController',
 ];
 
 async function createHttpApplication(root: Type<unknown>) {
@@ -217,7 +219,7 @@ describe.each([
     expect(providers).not.toEqual(
       expect.arrayContaining([
         expect.stringMatching(
-          /^(?:DishSyncProcessor|DishReviewStatsProcessor|EmbeddingQueueProcessor|NotificationDispatcher|NotificationCampaignService)$/,
+          /^(?:DishSyncProcessor|DishReviewStatsProcessor|EmbeddingQueueProcessor|NotificationDispatcher|NotificationCampaignService|ModerationDispatcher)$/,
         ),
       ]),
     );

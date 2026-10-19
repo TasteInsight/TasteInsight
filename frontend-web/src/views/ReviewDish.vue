@@ -36,7 +36,7 @@
             <div class="relative">
               <select
                 v-model="statusFilter"
-                class="appearance-none pr-10 bg-white min-w-[150px] transition-all cursor-pointer hover:border-gray-400 admin-input"
+                class="bg-white min-w-[150px] transition-all cursor-pointer hover:border-gray-400 admin-input"
               >
                 <option value="">所有状态</option>
                 <option value="pending">待审核</option>
@@ -44,9 +44,6 @@
                 <option value="rejected">已拒绝</option>
                 <option value="withdrawn">已撤回</option>
               </select>
-              <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
-                <AppIcon class="iconify" icon="carbon:chevron-down"></AppIcon>
-              </span>
             </div>
           </div>
 
@@ -55,16 +52,13 @@
             <div class="relative">
               <select
                 v-model="canteenFilter"
-                class="appearance-none pr-10 bg-white min-w-[150px] transition-all cursor-pointer hover:border-gray-400 admin-input"
+                class="bg-white min-w-[150px] transition-all cursor-pointer hover:border-gray-400 admin-input"
               >
                 <option value="">所有食堂</option>
                 <option v-for="canteen in canteens" :key="canteen.id" :value="canteen.id">
                   {{ canteen.name }}
                 </option>
               </select>
-              <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
-                <AppIcon class="iconify" icon="carbon:chevron-down"></AppIcon>
-              </span>
             </div>
           </div>
 

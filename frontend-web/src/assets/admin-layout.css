@@ -10,7 +10,7 @@
   margin-left: var(--admin-sidebar-width);
 }
 
-.admin-main:focus {
+.admin-focus-target:focus {
   outline: none;
 }
 
@@ -286,7 +286,7 @@
   opacity: 1;
 }
 
-:is(.admin-app, .admin-dialog, .admin-login) :is(button, a):focus-visible {
+:is(.admin-app, .admin-dialog, .admin-login) :is(button, a, summary):focus-visible {
   outline: 2px solid #660874;
   outline-offset: 3px;
 }
@@ -296,11 +296,34 @@
   outline-offset: -3px;
 }
 
-:is(.admin-app, .admin-dialog, .admin-login) :is(input, select, textarea):focus-visible {
-  border-color: #660874;
+:is(.admin-app, .admin-dialog, .admin-login) :is(input, select, textarea):not([type='checkbox'], [type='radio'], .sr-only):focus-visible {
   outline: 2px solid #660874;
-  outline-offset: -1px;
+  outline-offset: -2px;
   box-shadow: none;
+}
+
+:is(.admin-app, .admin-dialog, .admin-login) input:is([type='checkbox'], [type='radio']):not(.sr-only):focus-visible {
+  outline: 2px solid #660874;
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+:is(.admin-app, .admin-dialog) input.sr-only:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+:is(.admin-app, .admin-dialog) .peer:focus-visible + .admin-switch-track {
+  outline: 2px solid #660874;
+  outline-offset: 3px;
+}
+
+@media (forced-colors: active) {
+  select.admin-input {
+    appearance: auto;
+    padding-inline-end: 12px;
+    background-image: none;
+  }
 }
 
 .admin-app ::selection {

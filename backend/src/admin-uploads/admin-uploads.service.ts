@@ -1,3 +1,7 @@
+import { contributionModerationText } from '@/content-moderation/moderation.types';
+import { rejectContribution } from '@/dishes/reject-contribution';
+import { ModerationSubmissionService } from '@/content-moderation/moderation-submission.service';
+import { ModerationAssetsService } from '@/content-moderation/moderation-assets.service';
 import {
   canAccessCanteen,
   canteenScopeFilter,
@@ -52,6 +56,8 @@ export class AdminUploadsService {
   constructor(
     private prisma: PrismaService,
     @Optional() private notifications?: NotificationService,
+    @Optional() private readonly moderation?: ModerationSubmissionService,
+    @Optional() private readonly moderationAssets?: ModerationAssetsService,
   ) {}
 
   private assertScope(upload: { canteenId: string }, adminInfo: any) {
@@ -190,7 +196,8 @@ export class AdminUploadsService {
         throw new BadRequestException('仅待审核资料可以编辑');
       const edited = CONTRIBUTION_FIELDS.filter(
         (field) =>
-          dto[field] !== undefined && !sameValue(dto[field], upload[field]),
+          dto[field] !== undefined &&
+          !sameValue(dto[field], upload[field], field),
       );
       const target = upload.targetDishId
         ? await tx.dish.findUnique({ where: { id: upload.targetDishId } })
@@ -215,10 +222,11 @@ export class AdminUploadsService {
         await claimContributionImages(
           tx,
           upload.userId,
-          data.images.filter((url: string) => !target?.images.includes(url)),
+          data.images,
           id,
+          target?.images ?? [],
         );
-      await tx.dishUpload.update({
+      const saved = await tx.dishUpload.update({
         where: { id },
         data: {
           ...data,
@@ -228,6 +236,18 @@ export class AdminUploadsService {
             : {}),
         } as Prisma.DishUploadUncheckedUpdateInput,
       });
+      if (saved.userId) {
+        const policy = await this.moderation?.policy(tx);
+        if (policy)
+          await this.moderation!.submit(tx, policy, {
+            targetType: 'dishUpload',
+            targetId: id,
+            userId: saved.userId,
+            version: String(saved.revision),
+            text: contributionModerationText(saved),
+            images: saved.images,
+          });
+      }
     });
     return this.getUploadById(id, adminInfo);
   }
@@ -276,6 +296,13 @@ export class AdminUploadsService {
       if (!current) throw new NotFoundException('上传记录不存在');
       this.assertScope(current, adminInfo);
       assertRevision(current, dto.revision);
+      await this.moderation?.assertApprovable(
+        tx,
+        'dishUpload',
+        id,
+        String(current.revision),
+      );
+      await this.moderationAssets?.approve(tx, current.images);
       if (
         current.approvedDishId !== upload.approvedDishId ||
         current.targetDishId !== upload.targetDishId ||
@@ -357,7 +384,8 @@ export class AdminUploadsService {
             );
           const draftAtRevocation = current.baseSnapshot as Prisma.JsonObject;
           const editedFields = CONTRIBUTION_FIELDS.filter(
-            (field) => !sameValue(current[field], draftAtRevocation[field]),
+            (field) =>
+              !sameValue(current[field], draftAtRevocation[field], field),
           );
           assertBaseline(previous, current.approvedSnapshot, editedFields);
           const patch = changedDishData(current, previous, editedFields);
@@ -405,6 +433,14 @@ export class AdminUploadsService {
           ...(selectedFields ? { changedFields: selectedFields } : {}),
         },
       });
+      await this.moderation?.complete(
+        tx,
+        'dishUpload',
+        id,
+        String(current.revision),
+        true,
+        current.images,
+      );
       await this.resultNotification(tx, current, 'upload_approved', revision);
     });
     return { code: 200, message: '审核通过，菜品已入库', data: null };
@@ -428,12 +464,14 @@ export class AdminUploadsService {
         throw new BadRequestException(
           '该记录无法直接拒绝，已通过记录请先撤销审核',
         );
-      const revision = (current.revision ?? 1) + 1;
-      await tx.dishUpload.update({
-        where: { id },
-        data: { status: 'rejected', rejectReason: trimmed, revision },
-      });
-      await this.resultNotification(tx, current, 'upload_rejected', revision);
+      await rejectContribution(tx, current, trimmed, this.notifications);
+      await this.moderation?.complete(
+        tx,
+        'dishUpload',
+        id,
+        String(current.revision),
+        false,
+      );
     });
     return { code: 200, message: '已拒绝', data: null };
   }
@@ -471,7 +509,7 @@ export class AdminUploadsService {
               !approved ||
               !baseline ||
               Object.keys(approved).some(
-                (field) => !sameValue(dish[field], approved[field]),
+                (field) => !sameValue(dish[field], approved[field], field),
               )
             )
               throw new ConflictException(
@@ -516,6 +554,13 @@ export class AdminUploadsService {
                 revision: { increment: 1 },
               },
             });
+            if (this.moderation) {
+              const children = await tx.dishUpload.findMany({
+                where: { parentUploadId: id, status: 'pending' },
+              });
+              for (const child of children)
+                await this.submitContentCheck(tx, child);
+            }
             await withdrawDishNotifications(tx, [dish.id], 'offline');
             await tx.dish.update({
               where: { id: dish.id },
@@ -527,7 +572,7 @@ export class AdminUploadsService {
         }
       }
       const revision = (current.revision ?? 1) + 1;
-      await tx.dishUpload.update({
+      const pending = await tx.dishUpload.update({
         where: { id },
         data: {
           status: 'pending',
@@ -542,6 +587,7 @@ export class AdminUploadsService {
           ...(refreshed ? { refreshPending: true } : {}),
         },
       });
+      await this.submitContentCheck(tx, pending);
       await this.resultNotification(tx, current, 'upload_revoked', revision);
     });
     return {
@@ -553,6 +599,22 @@ export class AdminUploadsService {
     };
   }
 
+  private async submitContentCheck(
+    tx: Prisma.TransactionClient,
+    upload: DishUpload,
+  ) {
+    if (!this.moderation || !upload.userId) return;
+    const policy = await this.moderation.policy(tx);
+    await this.moderation.submit(tx, policy, {
+      targetType: 'dishUpload',
+      targetId: upload.id,
+      userId: upload.userId,
+      version: String(upload.revision),
+      text: contributionModerationText(upload),
+      images: upload.images,
+    });
+  }
+
   private mapToDishUploadDto(upload: any): DishUploadDto {
     return {
       id: upload.id,
@@ -561,7 +623,8 @@ export class AdminUploadsService {
       price: upload.price,
       priceUnit: upload.priceUnit,
       description: upload.description,
-      images: upload.images,
+      images:
+        this.moderationAssets?.previewImages(upload.images) ?? upload.images,
       ingredients: upload.ingredients,
       allergens: upload.allergens,
       spicyLevel: upload.spicyLevel,

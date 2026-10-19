@@ -1,3 +1,5 @@
+import { contributionModerationText } from '@/content-moderation/moderation.types';
+import { ModerationSubmissionService } from '@/content-moderation/moderation-submission.service';
 import {
   Injectable,
   NotFoundException,
@@ -29,6 +31,7 @@ export class DishesService {
   constructor(
     private prisma: PrismaService,
     @Optional() private embeddingQueueService?: EmbeddingQueueService,
+    @Optional() private readonly moderation?: ModerationSubmissionService,
   ) {}
 
   // 获取菜品详情
@@ -545,9 +548,20 @@ export class DishesService {
       await claimContributionImages(
         tx,
         userId,
-        data.images.filter((url: string) => !target?.images.includes(url)),
+        data.images,
         created.id,
+        target?.images ?? [],
       );
+      const policy = await this.moderation?.policy(tx);
+      if (policy)
+        await this.moderation!.submit(tx, policy, {
+          targetType: 'dishUpload',
+          targetId: created.id,
+          userId,
+          version: String(created.revision),
+          text: contributionModerationText(created),
+          images: created.images,
+        });
       return created;
     });
 

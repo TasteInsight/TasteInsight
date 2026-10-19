@@ -44,7 +44,10 @@ export class OssStorageStrategy implements StorageStrategy {
     }
   }
 
-  async upload(file: Express.Multer.File): Promise<UploadResult> {
+  async upload(
+    file: Express.Multer.File,
+    privateFile = false,
+  ): Promise<UploadResult> {
     if (!this.client) {
       this.logger.error(
         'OSS client is not initialized. Check your configuration.',
@@ -54,10 +57,16 @@ export class OssStorageStrategy implements StorageStrategy {
 
     const fileExt = path.extname(file.originalname);
     // 使用 randomUUID 生成唯一文件名，并存放在 images 目录下
-    const fileName = `images/${randomUUID()}${fileExt}`;
+    const fileName = `${privateFile ? 'moderation-private' : 'images'}/${randomUUID()}${fileExt}`;
 
     try {
-      const result = await this.client.put(fileName, file.buffer);
+      const result = await this.client.put(
+        fileName,
+        file.buffer,
+        privateFile
+          ? { headers: { 'x-oss-object-acl': 'private' } }
+          : undefined,
+      );
       let url = result.url;
 
       // 处理自定义域名
@@ -80,10 +89,23 @@ export class OssStorageStrategy implements StorageStrategy {
     }
   }
 
+  async read(storageKey: string): Promise<Buffer> {
+    if (
+      !/^moderation-private\/[0-9a-f-]{36}\.(jpg|png|gif|webp)$/.test(
+        storageKey,
+      )
+    )
+      throw new Error('Invalid managed image key');
+    const result = await this.client.get(storageKey);
+    return result.content as Buffer;
+  }
+
   async remove(storageKey: string): Promise<void> {
     if (
       !this.client ||
-      !/^images\/[0-9a-f-]{36}\.(jpg|png|gif|webp)$/.test(storageKey)
+      !/^(?:images|moderation-private)\/[0-9a-f-]{36}\.(jpg|png|gif|webp)$/.test(
+        storageKey,
+      )
     ) {
       throw new Error('Invalid managed OSS image key');
     }

@@ -1,3 +1,7 @@
+import { contributionModerationText } from '@/content-moderation/moderation.types';
+import { randomUUID } from 'crypto';
+import { ModerationSubmissionService } from '@/content-moderation/moderation-submission.service';
+import { ModerationAssetsService } from '@/content-moderation/moderation-assets.service';
 import {
   Injectable,
   NotFoundException,
@@ -46,6 +50,8 @@ export class UserProfileService {
   constructor(
     private prisma: PrismaService,
     @Optional() private embeddingQueueService?: EmbeddingQueueService,
+    @Optional() private readonly moderation?: ModerationSubmissionService,
+    @Optional() private readonly moderationAssets?: ModerationAssetsService,
   ) {}
 
   // 创建用户入口（由用户模块负责），缺省值由数据库默认值提供
@@ -84,11 +90,32 @@ export class UserProfileService {
     }
 
     const u: any = user;
-
+    const data = this.mapToUserProfileDto(u);
+    if (this.moderation) {
+      data.publicProfileSubmission = null;
+      const latest = await this.prisma.contentModerationTask.findFirst({
+        where: { targetType: 'profile', targetId: userId },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      });
+      if (latest && !['approved', 'superseded'].includes(latest.status)) {
+        const fields = {
+          ...((latest.profilePatch ?? {}) as Record<string, string | null>),
+        };
+        if (fields.avatar)
+          fields.avatar =
+            this.moderationAssets?.previewImages([fields.avatar])[0] ??
+            fields.avatar;
+        data.publicProfileSubmission = {
+          status: latest.status,
+          fields,
+          reason: latest.reason,
+        };
+      }
+    }
     return {
       code: 200,
       message: 'success',
-      data: this.mapToUserProfileDto(u),
+      data,
     };
   }
 
@@ -110,7 +137,67 @@ export class UserProfileService {
       needRefreshEmbedding = true;
     }
 
+    let submitted = false;
     await this.prisma.$transaction(async (tx) => {
+      if (this.moderation) {
+        await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId} FOR UPDATE`;
+        const policy = await this.moderation.policy(tx);
+        const profilePatch = Object.fromEntries(
+          Object.entries(userUpdatePayload).filter(([key]) =>
+            ['nickname', 'avatar', 'bio'].includes(key),
+          ),
+        ) as Record<string, string>;
+        if (Object.keys(profilePatch).length) {
+          // Merge pending edits so changing the bio preserves a pending nickname.
+          const previous = await tx.contentModerationTask.findFirst({
+            where: {
+              targetType: 'profile',
+              targetId: userId,
+              status: {
+                in: [
+                  'queued',
+                  'processing',
+                  'waiting',
+                  'ready',
+                  'manual',
+                  'failed',
+                ],
+              },
+            },
+            orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          });
+          const patch = {
+            ...((previous?.profilePatch ?? {}) as Record<string, string>),
+            ...profilePatch,
+          };
+          await this.moderation.submit(tx, policy, {
+            targetType: 'profile',
+            targetId: userId,
+            userId,
+            version: randomUUID(),
+            text: [patch.nickname, patch.bio].filter(Boolean).join('\n'),
+            images: patch.avatar ? [patch.avatar] : [],
+            profilePatch: patch,
+          });
+          if (!policy.enabled) {
+            await tx.contentModerationTask.updateMany({
+              where: {
+                targetType: 'profile',
+                targetId: userId,
+                status: 'rejected',
+              },
+              data: { status: 'superseded', lockedUntil: null },
+            });
+            if (profilePatch.avatar)
+              await this.moderationAssets?.approve(tx, [profilePatch.avatar]);
+          }
+          if (policy.enabled) {
+            submitted = true;
+            for (const key of Object.keys(profilePatch))
+              delete userUpdatePayload[key];
+          }
+        }
+      }
       if (Object.keys(userUpdatePayload).length > 0) {
         await tx.user.update({
           where: { id: userId },
@@ -154,7 +241,9 @@ export class UserProfileService {
       await this.embeddingQueueService.enqueueRefreshUser(userId);
     }
 
-    return this.getUserProfile(userId);
+    const response = await this.getUserProfile(userId);
+    if (submitted) response.message = '公开资料已提交审核';
+    return response;
   }
 
   async getMyReviews(
@@ -352,6 +441,8 @@ export class UserProfileService {
       message: 'success',
       data: {
         ...detail,
+        images:
+          this.moderationAssets?.previewImages(upload.images) ?? upload.images,
         floorId: upload.window?.floorId ?? null,
         floorName: upload.window?.floor?.name ?? null,
         floorLevel: upload.window?.floor?.level ?? null,
@@ -384,10 +475,11 @@ export class UserProfileService {
       await claimContributionImages(
         tx,
         userId,
-        data.images.filter((url: string) => !target?.images.includes(url)),
+        data.images,
         id,
+        target?.images ?? [],
       );
-      await tx.dishUpload.update({
+      const saved = await tx.dishUpload.update({
         where: { id },
         data: {
           ...data,
@@ -397,6 +489,16 @@ export class UserProfileService {
           ...(target ? { baseSnapshot: contributionSnapshot(target) } : {}),
         } as Prisma.DishUploadUncheckedUpdateInput,
       });
+      const policy = await this.moderation?.policy(tx);
+      if (policy)
+        await this.moderation!.submit(tx, policy, {
+          targetType: 'dishUpload',
+          targetId: id,
+          userId,
+          version: String(saved.revision),
+          text: contributionModerationText(saved),
+          images: saved.images,
+        });
     });
     return this.getMyUpload(userId, id);
   }
@@ -419,6 +521,7 @@ export class UserProfileService {
         where: { id },
         data: { status: 'withdrawn', revision: upload.revision + 1 },
       });
+      await this.moderation?.cancel(tx, 'dishUpload', id);
     });
     return { code: 200, message: '已撤回', data: null };
   }
@@ -632,7 +735,8 @@ export class UserProfileService {
           }
         : null,
       content: review.content || '',
-      images: review.images,
+      images:
+        this.moderationAssets?.previewImages(review.images) ?? review.images,
       status: review.status,
       createdAt: review.createdAt.toISOString(),
       dishName: review.dish.name,
@@ -675,7 +779,8 @@ export class UserProfileService {
     return {
       id: upload.id,
       name: upload.name,
-      images: upload.images,
+      images:
+        this.moderationAssets?.previewImages(upload.images) ?? upload.images,
       canteenName: upload.canteenName,
       windowName: upload.windowName,
       price: upload.price,

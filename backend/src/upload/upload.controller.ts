@@ -48,8 +48,16 @@ export class UploadController {
     });
     const validatedFile = await pipe.transform(file);
     return purpose
-      ? this.uploadService.uploadFile(validatedFile, request!.user!.sub)
-      : this.uploadService.uploadFile(validatedFile);
+      ? this.uploadService.uploadFile(
+          validatedFile,
+          request!.user!.sub,
+          request!.user!.sub,
+        )
+      : this.uploadService.uploadFile(
+          validatedFile,
+          undefined,
+          request?.user?.type === 'user' ? request.user.sub : undefined,
+        );
   }
 }
 

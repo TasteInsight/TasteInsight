@@ -1,7 +1,8 @@
-import { reactive, ref, onMounted, watch, getCurrentScope, onScopeDispose } from 'vue';
+import { computed, reactive, ref, onMounted, watch, getCurrentScope, onScopeDispose } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { uploadImage } from '@/api/modules/upload';
 import { useSettingsProfile } from './use-settings-profile';
+import { moderationImageIdentity } from '@/utils/moderation-image';
 
 export interface PersonalForm {
   avatar: string;
@@ -17,11 +18,20 @@ export function usePersonal() {
   let finishSelection: (() => void) | null = null;
   const profile = useSettingsProfile(
     userInfo => {
-      form.avatar = userInfo?.avatar || '';
-      form.nickname = userInfo?.nickname || '';
+      const submitted = userInfo?.publicProfileSubmission?.fields;
+      form.avatar = submitted?.avatar ?? userInfo?.avatar ?? '';
+      form.nickname = submitted?.nickname ?? userInfo?.nickname ?? '';
     },
     form,
-    'personal'
+    'personal',
+    value =>
+      JSON.stringify(value, (key, field) =>
+        key === 'avatar' && typeof field === 'string' ? moderationImageIdentity(field) : field
+      )
+  );
+
+  const profileSubmission = computed(() =>
+    profile.initialized.value ? userStore.userInfo?.publicProfileSubmission : null
   );
 
   async function chooseAvatar(): Promise<void> {
@@ -133,5 +143,5 @@ export function usePersonal() {
     void profile.loadProfile();
   });
 
-  return { form, ...profile, uploading, selecting, chooseAvatar, handleSave };
+  return { form, ...profile, profileSubmission, uploading, selecting, chooseAvatar, handleSave };
 }

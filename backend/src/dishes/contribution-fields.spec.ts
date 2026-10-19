@@ -1,5 +1,12 @@
 import { BadRequestException } from '@nestjs/common';
-import { prepareContribution } from './contribution-fields';
+import {
+  prepareContribution,
+  sameValue,
+  changedDishData,
+  requestFingerprint,
+  assertBaseline,
+  contributionSnapshot,
+} from './contribution-fields';
 
 describe('Contribution parent authority', () => {
   const input = {
@@ -63,4 +70,65 @@ describe('Contribution parent authority', () => {
       });
     },
   );
+});
+
+describe('Contribution managed image identity', () => {
+  const asset =
+    'https://api.example.test/content-moderation/images/asset_identity_123456';
+  const first = `${asset}?expires=1000&signature=first`,
+    refreshed = `${asset}?expires=2000&signature=second`;
+  const another =
+    'https://api.example.test/content-moderation/images/another_asset_123456';
+  it('deduplicates managed identities when preparing and publishing images while preserving order', async () => {
+    const tx = {
+      canteen: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'c', name: '食堂' }),
+      },
+    } as any;
+    const input = {
+      name: '菜品',
+      price: 2,
+      availableMealTime: [],
+      canteenId: 'c',
+      images: [another, first, refreshed],
+    };
+    expect((await prepareContribution(tx, input)).images).toEqual([
+      another,
+      asset,
+    ]);
+    expect(
+      changedDishData({ images: [refreshed, another] }, { images: [first] }, [
+        'images',
+      ]).images,
+    ).toEqual([asset, another]);
+  });
+  it('compares image fields and snapshots by identity and retains image order changes', () => {
+    expect(sameValue([first, another], [refreshed, another], 'images')).toBe(
+      true,
+    );
+    expect(sameValue([first, another], [another, refreshed], 'images')).toBe(
+      false,
+    );
+    expect(() =>
+      assertBaseline({ images: [refreshed] }, { images: [first] }, ['images']),
+    ).not.toThrow();
+    expect(contributionSnapshot({ images: [first, refreshed] }).images).toEqual(
+      [asset],
+    );
+  });
+  it('keeps request identity stable across refreshed previews while retaining ordinary URL parameters', () => {
+    expect(requestFingerprint({ images: [first], clientRequestId: 'a' })).toBe(
+      requestFingerprint({ images: [refreshed], clientRequestId: 'a' }),
+    );
+    expect(requestFingerprint({ images: [first, another] })).not.toBe(
+      requestFingerprint({ images: [another, refreshed] }),
+    );
+    expect(
+      sameValue(
+        ['https://cdn.example.test/image?version=1'],
+        ['https://cdn.example.test/image?version=2'],
+        'images',
+      ),
+    ).toBe(false);
+  });
 });

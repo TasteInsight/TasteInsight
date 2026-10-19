@@ -41,7 +41,7 @@
           <section
             v-if="selected"
             ref="detailPanel"
-            class="moderation-detail"
+            class="moderation-detail admin-focus-target"
             aria-labelledby="student-detail-title"
             tabindex="-1"
           >

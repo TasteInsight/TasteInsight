@@ -1,3 +1,4 @@
+import { canonicalModerationImageUrls } from '@/upload/moderation-image-url';
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { Prisma, Dish } from '@prisma/client';
 import { createHash } from 'crypto';
@@ -64,16 +65,29 @@ export function contributionSnapshot(
     [...dishFields, 'canteenId', 'parentDishId', 'status', 'updatedAt'].map(
       (field) => [
         field,
-        dish[field] instanceof Date
-          ? dish[field].toISOString()
-          : (dish[field] ?? null),
+        field === 'images' && Array.isArray(dish[field])
+          ? canonicalModerationImageUrls(dish[field])
+          : dish[field] instanceof Date
+            ? dish[field].toISOString()
+            : (dish[field] ?? null),
       ],
     ),
   );
 }
 
-export function sameValue(left: unknown, right: unknown): boolean {
-  return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
+export function sameValue(
+  left: unknown,
+  right: unknown,
+  field?: string,
+): boolean {
+  const comparable = (value: unknown) =>
+    field === 'images' && Array.isArray(value)
+      ? canonicalModerationImageUrls(value)
+      : value;
+  return (
+    JSON.stringify(comparable(left) ?? null) ===
+    JSON.stringify(comparable(right) ?? null)
+  );
 }
 
 export function publicationFields(fields: string[]): string[] {
@@ -97,7 +111,10 @@ export function changedDishData(
     publicationFields(fields).map((field) => [
       field,
       field === 'images'
-        ? [...new Set([...(target.images ?? []), ...(upload.images ?? [])])]
+        ? canonicalModerationImageUrls([
+            ...(target.images ?? []),
+            ...(upload.images ?? []),
+          ])
         : field === 'floorId'
           ? (upload.window?.floorId ?? null)
           : field === 'floorLevel'
@@ -117,7 +134,7 @@ export function assertBaseline(
   if (
     !snapshot ||
     publicationFields(fields).some(
-      (field) => !sameValue(target[field], snapshot[field]),
+      (field) => !sameValue(target[field], snapshot[field], field),
     )
   ) {
     throw new ConflictException('正式菜品资料已变化，请刷新并重新提交审核');
@@ -139,7 +156,16 @@ export function requestFingerprint(input: Record<string, any>): string {
           )
         : value;
   return createHash('sha256')
-    .update(JSON.stringify(canonical(input)))
+    .update(
+      JSON.stringify(
+        canonical({
+          ...input,
+          ...(Array.isArray(input.images)
+            ? { images: canonicalModerationImageUrls(input.images) }
+            : {}),
+        }),
+      ),
+    )
     .digest('hex');
 }
 
@@ -237,7 +263,7 @@ export async function prepareContribution(
     price: source.price,
     priceUnit: source.priceUnit ?? null,
     description: source.description ?? null,
-    images: [...new Set(source.images ?? [])],
+    images: canonicalModerationImageUrls(source.images ?? []),
     ingredients: source.ingredients ?? [],
     allergens: source.allergens ?? [],
     spicyLevel: source.spicyLevel ?? 0,

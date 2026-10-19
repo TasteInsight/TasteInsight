@@ -1,3 +1,5 @@
+import { ModerationSubmissionService } from '@/content-moderation/moderation-submission.service';
+import { ModerationAssetsService } from '@/content-moderation/moderation-assets.service';
 import {
   Injectable,
   NotFoundException,
@@ -29,6 +31,8 @@ export class ReviewsService {
     private dishReviewStatsService: DishReviewStatsService,
     private notifications: NotificationService,
     @Optional() private embeddingQueueService?: EmbeddingQueueService,
+    @Optional() private readonly moderation?: ModerationSubmissionService,
+    @Optional() private readonly moderationAssets?: ModerationAssetsService,
   ) {}
 
   async getOwnReview(
@@ -61,11 +65,14 @@ export class ReviewsService {
         where: { id: createReviewDto.dishId },
       });
       if (!dish) throw new NotFoundException('未找到对应的菜品');
-      const autoApprove = await this.adminConfigService.getBooleanConfigValue(
-        ConfigKeys.REVIEW_AUTO_APPROVE,
-        dish.canteenId,
-        tx,
-      );
+      const policy = await this.moderation?.policy(tx);
+      const autoApprove =
+        !policy?.enabled &&
+        (await this.adminConfigService.getBooleanConfigValue(
+          ConfigKeys.REVIEW_AUTO_APPROVE,
+          dish.canteenId,
+          tx,
+        ));
       const existingReview = await tx.review.findUnique({
         where: {
           userId_dishId: {
@@ -118,6 +125,16 @@ export class ReviewsService {
           },
         },
       });
+      if (policy)
+        await this.moderation!.submit(tx, policy, {
+          targetType: 'review',
+          targetId: saved.id,
+          userId,
+          version: saved.updatedAt.toISOString(),
+          text: saved.content ?? '',
+          images: saved.images,
+        });
+      if (autoApprove) await this.moderationAssets?.approve(tx, saved.images);
       if (!autoApprove)
         await this.notifications.withdrawThread(tx, 'review', saved.id);
       if (autoApprove || existingReview?.status === 'approved') {
@@ -261,6 +278,7 @@ export class ReviewsService {
         where: { id: reviewId },
         data: { deletedAt: new Date() },
       });
+      await this.moderation?.cancel(tx, 'review', reviewId);
       await this.notifications.withdrawThread(tx, 'review', reviewId);
       await this.dishReviewStatsService.recomputeBatch(tx, [review.dishId]);
     });
@@ -298,7 +316,11 @@ export class ReviewsService {
         : null,
       content: review.content,
       status: review.status,
-      images: review.images,
+      images:
+        review.status === 'approved'
+          ? review.images
+          : (this.moderationAssets?.previewImages(review.images) ??
+            review.images),
       createdAt: review.createdAt.toISOString(),
       deletedAt: review.deletedAt?.toISOString() ?? null,
       likeCount: review._count?.likes ?? 0,

@@ -1,5 +1,7 @@
+import { ModerationSubmissionService } from '@/content-moderation/moderation-submission.service';
 import {
   Injectable,
+  Optional,
   NotFoundException,
   ForbiddenException,
   BadRequestException,
@@ -24,6 +26,7 @@ export class CommentsService {
     private prisma: PrismaService,
     private adminConfigService: AdminConfigService,
     private notifications: NotificationService,
+    @Optional() private readonly moderation?: ModerationSubmissionService,
   ) {}
 
   async getComments(
@@ -152,13 +155,15 @@ export class CommentsService {
       });
 
       // 根据管理员配置决定评论初始状态
-      const autoApprove = dish
-        ? await this.adminConfigService.getBooleanConfigValue(
-            ConfigKeys.COMMENT_AUTO_APPROVE,
-            dish.canteenId,
-            tx,
-          )
-        : false;
+      const policy = await this.moderation?.policy(tx);
+      const autoApprove =
+        dish && !policy?.enabled
+          ? await this.adminConfigService.getBooleanConfigValue(
+              ConfigKeys.COMMENT_AUTO_APPROVE,
+              dish.canteenId,
+              tx,
+            )
+          : false;
 
       const count = await tx.comment.count({
         where: { reviewId: dto.reviewId },
@@ -198,6 +203,14 @@ export class CommentsService {
         },
       });
 
+      if (policy)
+        await this.moderation!.submit(tx, policy, {
+          targetType: 'comment',
+          targetId: comment.id,
+          userId,
+          version: comment.updatedAt.toISOString(),
+          text: comment.content,
+        });
       if (autoApprove)
         await this.notifications.createReply(
           tx,
@@ -272,6 +285,7 @@ export class CommentsService {
         where: { id: commentId },
         data: { deletedAt: new Date() },
       });
+      await this.moderation?.cancel(tx, 'comment', commentId);
       await this.notifications.withdraw(tx, {
         targetType: 'comment',
         targetId: commentId,

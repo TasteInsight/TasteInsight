@@ -1,3 +1,4 @@
+import { canonicalModerationImageUrls } from './moderation-image-url';
 import { ForbiddenException, GoneException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
@@ -9,10 +10,15 @@ export async function claimContributionImages(
   userId: string,
   urls: string[],
   uploadId: string,
+  targetImages: string[] = [],
 ): Promise<void> {
-  if (!urls.length) return;
+  const existing = new Set(canonicalModerationImageUrls(targetImages));
+  const added = canonicalModerationImageUrls(urls).filter(
+    (url) => !existing.has(url),
+  );
+  if (!added.length) return;
   const managed = await tx.contributionImage.findMany({
-    where: { url: { in: [...new Set(urls)] } },
+    where: { url: { in: added } },
     orderBy: { id: 'asc' },
   });
   // Existing clients and catalog images predate this asset ledger.

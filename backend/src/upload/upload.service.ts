@@ -1,3 +1,7 @@
+import { canonicalModerationImageUrl } from './moderation-image-url';
+import { Optional } from '@nestjs/common';
+import { ModerationSettingsService } from '@/content-moderation/moderation-settings.service';
+import { ModerationAssetsService } from '@/content-moderation/moderation-assets.service';
 import {
   BadRequestException,
   ForbiddenException,
@@ -28,6 +32,8 @@ export class UploadService {
     private localStorageStrategy: LocalStorageStrategy,
     private ossStorageStrategy: OssStorageStrategy,
     private readonly prisma: PrismaService,
+    @Optional() private readonly moderationSettings?: ModerationSettingsService,
+    @Optional() private readonly moderationAssets?: ModerationAssetsService,
   ) {
     const storageType = this.configService.get<string>(
       'UPLOAD_STORAGE_TYPE',
@@ -44,6 +50,7 @@ export class UploadService {
   async uploadFile(
     file: Express.Multer.File,
     contributionUserId?: string,
+    userId?: string,
   ): Promise<UploadResponseDto> {
     if (contributionUserId) {
       const verification = await this.prisma.studentVerification.findUnique({
@@ -56,9 +63,11 @@ export class UploadService {
         });
       }
     }
+    let animated = false;
     try {
       const image = sharp(file.buffer, { animated: true }).autoOrient();
-      const { format } = await image.metadata();
+      const { format, pages } = await image.metadata();
+      animated = (pages ?? 1) > 1;
       const extensions = { jpeg: 'jpg', png: 'png', gif: 'gif', webp: 'webp' };
       if (!format || !(format in extensions)) {
         throw new Error('Unsupported image format');
@@ -75,13 +84,17 @@ export class UploadService {
       throw new BadRequestException('请上传完整的 JPEG、PNG、GIF 或 WebP 图片');
     }
 
-    const result = await this.strategy.upload(file);
+    const policy = userId ? await this.moderationSettings?.policy() : undefined;
+    const result =
+      policy?.enabled && userId
+        ? await this.moderationAssets!.stage(file, userId, animated)
+        : await this.strategy.upload(file);
     if (contributionUserId) {
       try {
         await this.prisma.contributionImage.create({
           data: {
             userId: contributionUserId,
-            url: result.url,
+            url: canonicalModerationImageUrl(result.url),
             storageKey: result.filename,
             storageType: this.configService.get<string>(
               'UPLOAD_STORAGE_TYPE',

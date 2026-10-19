@@ -1,3 +1,5 @@
+import { ModerationSubmissionService } from '@/content-moderation/moderation-submission.service';
+import { ModerationAssetsService } from '@/content-moderation/moderation-assets.service';
 import {
   AdminCanteenScope,
   canAccessCanteen,
@@ -34,6 +36,8 @@ export class AdminReviewsService {
     private dishReviewStatsService: DishReviewStatsService,
     private notifications: NotificationService,
     @Optional() private embeddingQueueService?: EmbeddingQueueService,
+    @Optional() private readonly moderation?: ModerationSubmissionService,
+    @Optional() private readonly moderationAssets?: ModerationAssetsService,
   ) {}
 
   async batchDeleteReviews(ids: string[], admin: AdminInfo) {
@@ -75,6 +79,7 @@ export class AdminReviewsService {
         where: { id: { in: ids }, deletedAt: null },
         data: { deletedAt: new Date() },
       });
+      for (const id of ids) await this.moderation?.cancel(tx, 'review', id);
       await this.notifications.withdraw(tx, {
         OR: [
           { targetType: 'review', targetId: { in: ids } },
@@ -155,7 +160,8 @@ export class AdminReviewsService {
             }
           : null,
         content: review.content,
-        images: review.images,
+        images:
+          this.moderationAssets?.previewImages(review.images) ?? review.images,
         status: review.status,
         rejectReason: review.rejectReason,
         createdAt: review.createdAt,
@@ -229,6 +235,12 @@ export class AdminReviewsService {
       if (!canAccessCanteen(adminInfo, review.dish.canteenId))
         throw new ForbiddenException('权限不足');
       if (status === 'approved') {
+        await this.moderation?.assertApprovable(
+          tx,
+          'review',
+          id,
+          review.updatedAt.toISOString(),
+        );
         const verified = await tx.studentVerification.findFirst({
           where: {
             userId: review.userId,
@@ -260,6 +272,14 @@ export class AdminReviewsService {
           '评价内容或审核状态已变更，请刷新后重新审核',
         );
       }
+      await this.moderation?.complete(
+        tx,
+        'review',
+        id,
+        review.updatedAt.toISOString(),
+        status === 'approved',
+        review.images,
+      );
       if (status === 'rejected')
         await this.notifications.withdrawThread(tx, 'review', id);
       await this.dishReviewStatsService.recomputeBatch(tx, [review.dishId]);

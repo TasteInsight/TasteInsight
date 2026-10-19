@@ -1,3 +1,4 @@
+import { ModerationCoreModule } from '@/content-moderation/moderation-core.module';
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
@@ -10,6 +11,7 @@ import { EmbeddingQueueModule } from '@/embedding-queue/embedding-queue.module';
 
 @Module({
   imports: [
+    ModerationCoreModule,
     JwtModule.register({}),
     ConfigModule,
     DishReviewStatsQueueModule,

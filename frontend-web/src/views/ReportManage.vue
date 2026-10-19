@@ -17,16 +17,13 @@
                 v-model="statusFilter"
                 aria-label="处理状态"
                 @change="handleFilterChange"
-                class="appearance-none pr-10 bg-white min-w-[150px] transition-all cursor-pointer hover:border-gray-400 admin-input"
+                class="bg-white min-w-[150px] transition-all cursor-pointer hover:border-gray-400 admin-input"
               >
                 <option value="">所有状态</option>
                 <option value="pending">待处理</option>
                 <option value="approved">已处理</option>
                 <option value="rejected">已拒绝</option>
               </select>
-              <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
-                <AppIcon class="iconify" icon="carbon:chevron-down"></AppIcon>
-              </span>
             </div>
           </div>
 
@@ -37,16 +34,13 @@
                 v-model="targetTypeFilter"
                 aria-label="举报类型"
                 @change="handleFilterChange"
-                class="appearance-none pr-10 bg-white min-w-[150px] transition-all cursor-pointer hover:border-gray-400 admin-input"
+                class="bg-white min-w-[150px] transition-all cursor-pointer hover:border-gray-400 admin-input"
               >
                 <option value="">所有类型</option>
                 <option v-for="targetType in availableTargetTypes" :key="targetType" :value="targetType">
                   {{ reportTargets[targetType].label }}
                 </option>
               </select>
-              <span class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500 flex items-center">
-                <AppIcon class="iconify" icon="carbon:chevron-down"></AppIcon>
-              </span>
             </div>
           </div>
 

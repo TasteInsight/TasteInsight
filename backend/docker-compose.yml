@@ -28,6 +28,18 @@ x-runtime-environment: &runtime-environment
   EMBEDDING_SERVICE_BATCH_SIZE:
   # API producers and the worker agree on whether external delivery is enabled.
   NOTIFICATION_WEBHOOK_URL:
+  # Content moderation producers, administration and worker share one provider configuration.
+  WECHAT_APPID:
+  WECHAT_SECRET:
+  MODERATION_ALIYUN_ACCESS_KEY_ID:
+  MODERATION_ALIYUN_ACCESS_KEY_SECRET:
+  MODERATION_ALIYUN_REGION:
+  MODERATION_ALIYUN_TEXT_SERVICE:
+  MODERATION_ALIYUN_IMAGE_SERVICE:
+  MODERATION_WECHAT_TOKEN:
+  MODERATION_WECHAT_AES_KEY:
+  MODERATION_MEDIA_SECRET:
+  MODERATION_PUBLIC_BASE_URL:
 
 x-upload-storage-environment: &upload-storage-environment
   UPLOAD_STORAGE_TYPE:
@@ -95,8 +107,6 @@ services:
       <<: *api-environment
       AUTH_LOGIN_METHODS:
       CAMPUS_VERIFICATION_METHODS:
-      WECHAT_APPID:
-      WECHAT_SECRET:
       WECHAT_APP_APPID:
       WECHAT_APP_SECRET:
       WECHAT_OPEN_PLATFORM_ID:

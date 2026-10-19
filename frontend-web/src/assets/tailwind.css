@@ -18,12 +18,21 @@
   }
 
   .admin-input { height: 40px; }
+
+  select.admin-input {
+    appearance: none;
+    padding-inline-end: 40px;
+    background-image: url('./icons/chevron-down.svg');
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+  }
   .admin-textarea { min-height: 96px; resize: vertical; }
 
   .admin-input:disabled,
   .admin-textarea:disabled {
     color: #667085;
-    background: #f3f4f6;
+    background-color: #f3f4f6;
     cursor: not-allowed;
   }
 

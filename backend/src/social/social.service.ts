@@ -1,8 +1,11 @@
+import { ModerationSubmissionService } from '@/content-moderation/moderation-submission.service';
+import { ModerationAssetsService } from '@/content-moderation/moderation-assets.service';
 import { AdminCanteenScope, isGlobalScope } from '@/auth/admin-scope';
 import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Optional,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -38,6 +41,8 @@ export class SocialService {
     private readonly prisma: PrismaService,
     private readonly config: AdminConfigService,
     private readonly notifications: NotificationService,
+    @Optional() private readonly moderation?: ModerationSubmissionService,
+    @Optional() private readonly moderationAssets?: ModerationAssetsService,
   ) {}
 
   private postInclude(viewerId?: string) {
@@ -76,7 +81,10 @@ export class SocialService {
       userNickname: post.user.nickname,
       userAvatar: post.user.avatar,
       content: post.content,
-      images: post.images,
+      images:
+        post.userId === viewerId
+          ? (this.moderationAssets?.previewImages(post.images) ?? post.images)
+          : post.images,
       status: post.status,
       ...(post.userId === viewerId ? { rejectReason: post.rejectReason } : {}),
       likeCount: post._count?.likes ?? 0,
@@ -177,12 +185,15 @@ export class SocialService {
 
   async createPost(userId: string, dto: CreatePostDto) {
     const post = await this.prisma.$transaction(async (tx) => {
-      const approved = await this.config.getBooleanConfigValue(
-        'post.autoApprove',
-        undefined,
-        tx,
-      );
-      return tx.post.create({
+      const policy = await this.moderation?.policy(tx);
+      const approved =
+        !policy?.enabled &&
+        (await this.config.getBooleanConfigValue(
+          'post.autoApprove',
+          undefined,
+          tx,
+        ));
+      const saved = await tx.post.create({
         data: {
           userId,
           content: dto.content,
@@ -191,6 +202,17 @@ export class SocialService {
         },
         include: this.postInclude(userId),
       });
+      if (policy)
+        await this.moderation!.submit(tx, policy, {
+          targetType: 'post',
+          targetId: saved.id,
+          userId,
+          version: saved.updatedAt.toISOString(),
+          text: saved.content,
+          images: saved.images,
+        });
+      if (approved) await this.moderationAssets?.approve(tx, saved.images);
+      return saved;
     });
     return success(this.mapPost(post, userId), 201);
   }
@@ -204,11 +226,14 @@ export class SocialService {
       if (!existing) throw new NotFoundException('动态不存在');
       if (existing.userId !== userId)
         throw new ForbiddenException('无权修改这条动态');
-      const approved = await this.config.getBooleanConfigValue(
-        'post.autoApprove',
-        undefined,
-        tx,
-      );
+      const policy = await this.moderation?.policy(tx);
+      const approved =
+        !policy?.enabled &&
+        (await this.config.getBooleanConfigValue(
+          'post.autoApprove',
+          undefined,
+          tx,
+        ));
       const result = await tx.post.updateMany({
         where: {
           id,
@@ -226,10 +251,21 @@ export class SocialService {
       if (!result.count)
         throw new ConflictException('动态已变更，请刷新后重新编辑');
       if (!approved) await this.notifications.withdrawThread(tx, 'post', id);
-      return tx.post.findUniqueOrThrow({
+      const saved = await tx.post.findUniqueOrThrow({
         where: { id },
         include: this.postInclude(userId),
       });
+      if (policy)
+        await this.moderation!.submit(tx, policy, {
+          targetType: 'post',
+          targetId: id,
+          userId,
+          version: saved.updatedAt.toISOString(),
+          text: saved.content,
+          images: saved.images,
+        });
+      if (approved) await this.moderationAssets?.approve(tx, saved.images);
+      return saved;
     });
     return success(this.mapPost(post, userId));
   }
@@ -242,6 +278,7 @@ export class SocialService {
       if (post.userId !== userId)
         throw new ForbiddenException('无权删除这条动态');
       await tx.post.update({ where: { id }, data: { deletedAt: new Date() } });
+      await this.moderation?.cancel(tx, 'post', id);
       await this.notifications.withdrawThread(tx, 'post', id);
     });
     return success();
@@ -296,11 +333,14 @@ export class SocialService {
         if (!parent) throw new NotFoundException('回复对象不存在或暂不可回复');
         parentUserId = parent.userId;
       }
-      const approved = await this.config.getBooleanConfigValue(
-        'postComment.autoApprove',
-        undefined,
-        tx,
-      );
+      const policy = await this.moderation?.policy(tx);
+      const approved =
+        !policy?.enabled &&
+        (await this.config.getBooleanConfigValue(
+          'postComment.autoApprove',
+          undefined,
+          tx,
+        ));
       const saved = await tx.postComment.create({
         data: {
           userId,
@@ -311,6 +351,14 @@ export class SocialService {
         },
         include: this.commentInclude(userId),
       });
+      if (policy)
+        await this.moderation!.submit(tx, policy, {
+          targetType: 'postComment',
+          targetId: saved.id,
+          userId,
+          version: saved.updatedAt.toISOString(),
+          text: saved.content,
+        });
       if (approved)
         await this.notifications.createReply(
           tx,
@@ -334,6 +382,7 @@ export class SocialService {
       if (existing.userId !== userId)
         throw new ForbiddenException('无权删除这条回复');
       await tx.$queryRaw`SELECT id FROM posts WHERE id = ${existing.postId} FOR UPDATE`;
+      await this.moderation?.cancel(tx, 'postComment', id);
       await tx.postComment.update({
         where: { id, deletedAt: null },
         data: { deletedAt: new Date() },
@@ -413,6 +462,13 @@ export class SocialService {
     return success({
       items: items.map((item) => ({
         ...item,
+        ...('images' in item
+          ? {
+              images:
+                this.moderationAssets?.previewImages(item.images) ??
+                item.images,
+            }
+          : {}),
         userNickname: item.user.nickname,
         userAvatar: item.user.avatar,
       })),
@@ -444,6 +500,12 @@ export class SocialService {
         type === 'post' ? id : (initial as { postId: string }).postId;
       await tx.$queryRaw`SELECT id FROM posts WHERE id = ${rootId} FOR UPDATE`;
       if (approved) {
+        await this.moderation?.assertApprovable(
+          tx,
+          type,
+          id,
+          dto.expectedUpdatedAt,
+        );
         const verified = await tx.studentVerification.findFirst({
           where: {
             userId: initial.userId,
@@ -468,6 +530,14 @@ export class SocialService {
         const result = await tx.post.updateMany({ where, data });
         if (!result.count)
           throw new ConflictException('内容或审核状态已变更，请刷新');
+        await this.moderation?.complete(
+          tx,
+          type,
+          id,
+          dto.expectedUpdatedAt,
+          approved,
+          (initial as { images: string[] }).images,
+        );
         if (!approved) await this.notifications.withdrawThread(tx, 'post', id);
       } else {
         const root = await tx.post.findFirst({
@@ -479,6 +549,13 @@ export class SocialService {
         const result = await tx.postComment.updateMany({ where, data });
         if (!result.count)
           throw new ConflictException('内容或审核状态已变更，请刷新');
+        await this.moderation?.complete(
+          tx,
+          type,
+          id,
+          dto.expectedUpdatedAt,
+          approved,
+        );
         if (approved && root) {
           const comment = await tx.postComment.findUniqueOrThrow({
             where: { id },
@@ -519,6 +596,7 @@ export class SocialService {
       if (!item) throw new NotFoundException('内容不存在');
       const rootId = type === 'post' ? id : (item as { postId: string }).postId;
       await tx.$queryRaw`SELECT id FROM posts WHERE id = ${rootId} FOR UPDATE`;
+      await this.moderation?.cancel(tx, type, id);
       if (type === 'post') {
         await tx.post.update({
           where: { id, deletedAt: null },

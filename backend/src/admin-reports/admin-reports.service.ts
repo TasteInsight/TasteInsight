@@ -1,3 +1,4 @@
+import { ModerationSubmissionService } from '@/content-moderation/moderation-submission.service';
 import {
   canAccessCanteen,
   canteenScopeFilter,
@@ -29,6 +30,7 @@ export class AdminReportsService {
     private dishReviewStatsService: DishReviewStatsService,
     private notifications: NotificationService,
     @Optional() private embeddingQueueService?: EmbeddingQueueService,
+    @Optional() private readonly moderation?: ModerationSubmissionService,
   ) {}
 
   async getReports(
@@ -301,6 +303,11 @@ export class AdminReportsService {
       });
       if (!result.count) throw new BadRequestException('该举报已被处理');
       if (dto.action === 'delete_content') {
+        await this.moderation?.cancel(
+          tx,
+          report.targetType as 'review' | 'comment' | 'post' | 'postComment',
+          report.targetId,
+        );
         if (report.targetType === 'review' && report.reviewId) {
           const deleted = await tx.review.updateMany({
             where: { id: report.reviewId, deletedAt: null },

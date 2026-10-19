@@ -34,6 +34,7 @@
         }}</text>
       </view>
     </button>
+    <text v-if="isLoggedIn && userInfo?.publicProfileSubmission" class="user-moderation-status" role="status">{{ userInfo.publicProfileSubmission.status === 'rejected' ? `资料审核未通过：${userInfo.publicProfileSubmission.reason || '请修改后重新提交'}` : '公开资料审核中，通过后展示' }}</text>
   </view>
 </template>
 <script setup lang="ts">
@@ -49,6 +50,7 @@ const { activate, handleKeydown, handleKeyup, clearPress } = useButtonActivation
 );
 </script>
 <style scoped>
+.user-moderation-status { display: block; margin-top: 6px; color: #667085; font-size: 13px; line-height: 1.6; }
 .user-header {
   flex: 1;
   min-width: 0;
