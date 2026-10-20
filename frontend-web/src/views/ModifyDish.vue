@@ -96,20 +96,8 @@
               <th class="py-3 px-6 text-center text-sm font-medium text-gray-500">操作</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-200">
-            <tr v-if="isLoading">
-              <td :colspan="canDeleteDishes ? 8 : 7" class="py-8 text-center text-gray-500">
-                <AppIcon
-                  class="iconify inline-block text-2xl animate-spin"
-                  icon="mdi:loading"
-                ></AppIcon>
-                <span class="ml-2">加载中...</span>
-              </td>
-            </tr>
-            <tr v-else-if="filteredDishes.length === 0">
-              <td :colspan="canDeleteDishes ? 8 : 7" class="py-8 text-center text-gray-500">暂无菜品数据</td>
-            </tr>
-            <tr v-else v-for="dish in filteredDishes" :key="dish.id" class="table-row">
+          <tbody v-if="!isLoading" class="divide-y divide-gray-200">
+            <tr v-for="dish in filteredDishes" :key="dish.id" class="table-row">
               <td v-if="canDeleteDishes" class="px-4 py-4 text-center">
                 <input
                   type="checkbox"
@@ -168,6 +156,16 @@
             </tr>
           </tbody>
         </table>
+      </div>
+      <div v-if="isLoading" class="admin-state">
+        <AppIcon
+          class="iconify inline-block text-2xl animate-spin"
+          icon="mdi:loading"
+        ></AppIcon>
+        <span class="ml-2">加载中...</span>
+      </div>
+      <div v-else-if="filteredDishes.length === 0" class="admin-state">
+        暂无菜品数据
       </div>
 
       <Pagination

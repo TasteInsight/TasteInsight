@@ -114,6 +114,7 @@ const handleButtonClick = async (button: ButtonConfig, index: number) => {
   if (button.loading) {
     return
   }
+  const owner = modalState.resolve
 
   let shouldClose = true
   let result: boolean = false
@@ -127,6 +128,7 @@ const handleButtonClick = async (button: ButtonConfig, index: number) => {
           modalState.buttons.value[index].loading = true
         }
         const resolvedResult = await handlerResult
+        if (owner !== modalState.resolve) return
         if (modalState.buttons.value[index]) {
           modalState.buttons.value[index].loading = false
         }
@@ -139,6 +141,7 @@ const handleButtonClick = async (button: ButtonConfig, index: number) => {
         shouldClose = true
       }
     } catch (error) {
+      if (owner !== modalState.resolve) return
       if (modalState.buttons.value[index]) {
         modalState.buttons.value[index].loading = false
       }

@@ -3,12 +3,12 @@
     <div class="admin-panel">
       <Header title="新闻管理" :description="sourcesConfigured ? '管理校园新闻与公众号内容来源' : '管理校园新闻内容与发布状态'" header-icon="carbon:license-draft" :show-border="false" />
 
-      <div v-if="sourcesConfigured" class="news-workspace-navigation">
-      <div class="news-workspace-tabs" role="tablist" aria-label="新闻管理视图">
-        <button id="news-tab-content" type="button" role="tab" :aria-selected="activeSection === 'content'" :tabindex="activeSection === 'content' ? 0 : -1" aria-controls="news-content-panel" :class="{ 'is-selected': activeSection === 'content' }" @click="changeNewsSection('content')" @keydown.right.prevent="changeNewsSection('sources', true)" @keydown.left.prevent="changeNewsSection('sources', true)" @keydown.home.prevent="changeNewsSection('content', true)" @keydown.end.prevent="changeNewsSection('sources', true)">
+      <div v-if="sourcesConfigured" class="admin-tabs news-workspace-navigation">
+      <div class="admin-tab-list" role="tablist" aria-label="新闻管理视图">
+        <button id="news-tab-content" type="button" class="admin-tab" role="tab" :aria-selected="activeSection === 'content'" :tabindex="activeSection === 'content' ? 0 : -1" aria-controls="news-content-panel" @click="changeNewsSection('content')" @keydown.right.prevent="changeNewsSection('sources', true)" @keydown.left.prevent="changeNewsSection('sources', true)" @keydown.home.prevent="changeNewsSection('content', true)" @keydown.end.prevent="changeNewsSection('sources', true)">
           <AppIcon icon="carbon:document" aria-hidden="true" />新闻内容
         </button>
-        <button id="news-tab-sources" type="button" role="tab" :aria-selected="activeSection === 'sources'" :tabindex="activeSection === 'sources' ? 0 : -1" aria-controls="news-sources-panel" :class="{ 'is-selected': activeSection === 'sources' }" @click="changeNewsSection('sources')" @keydown.right.prevent="changeNewsSection('content', true)" @keydown.left.prevent="changeNewsSection('content', true)" @keydown.home.prevent="changeNewsSection('content', true)" @keydown.end.prevent="changeNewsSection('sources', true)">
+        <button id="news-tab-sources" type="button" class="admin-tab" role="tab" :aria-selected="activeSection === 'sources'" :tabindex="activeSection === 'sources' ? 0 : -1" aria-controls="news-sources-panel" @click="changeNewsSection('sources')" @keydown.right.prevent="changeNewsSection('content', true)" @keydown.left.prevent="changeNewsSection('content', true)" @keydown.home.prevent="changeNewsSection('content', true)" @keydown.end.prevent="changeNewsSection('sources', true)">
           <AppIcon icon="carbon:rss" aria-hidden="true" />公众号来源
         </button>
       </div>
@@ -50,7 +50,7 @@
             草稿箱
           </button>
         </div>
-        
+
         <!-- 创建新闻按钮 -->
         <button
           @click="openCreateModal"
@@ -148,7 +148,7 @@
           @delete="handleBatchDelete"
         />
         <div class="admin-table-scroll">
-        <table class="admin-table news-table">
+          <table class="admin-table news-table">
             <colgroup>
               <col v-if="canDeleteNews" class="news-col-selection" />
               <col />
@@ -179,22 +179,8 @@
                 <th class="py-3 px-6 text-center text-sm font-medium text-gray-500">操作</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200">
-              <tr v-if="isLoading">
-                <td :colspan="canDeleteNews ? 6 : 5" class="py-8 text-center text-gray-500">
-                  <AppIcon
-                    class="iconify inline-block text-2xl animate-spin"
-                    icon="mdi:loading"
-                  ></AppIcon>
-                  <span class="ml-2">加载中...</span>
-                </td>
-              </tr>
-              <tr v-else-if="filteredNewsList.length === 0">
-                <td :colspan="canDeleteNews ? 6 : 5" class="py-8 text-center text-gray-500">
-                  {{ searchQuery || canteenFilter || startDate || endDate ? '没有找到符合条件的新闻' : `暂无${currentStatus === 'published' ? '已发布' : '未发布'}新闻` }}
-                </td>
-              </tr>
-              <tr v-else v-for="news in filteredNewsList" :key="news.id" class="hover:bg-gray-50">
+            <tbody v-if="!isLoading" class="divide-y divide-gray-200">
+              <tr v-for="news in filteredNewsList" :key="news.id" class="hover:bg-gray-50">
                 <td v-if="canDeleteNews" class="px-4 py-4 text-center">
                   <input
                     type="checkbox"
@@ -230,7 +216,6 @@
                     >
                       预览
                     </button>
-
                     <template v-if="currentStatus === 'draft'">
                       <button
                         type="button"
@@ -261,7 +246,6 @@
                     >
                       撤回
                     </button>
-
                     <span class="news-row-danger-action">
                       <button
                         type="button"
@@ -279,9 +263,19 @@
             </tbody>
           </table>
         </div>
+        <div v-if="isLoading" class="admin-state">
+          <AppIcon
+            class="iconify inline-block text-2xl animate-spin"
+            icon="mdi:loading"
+          ></AppIcon>
+          <span class="ml-2">加载中...</span>
+        </div>
+        <div v-else-if="filteredNewsList.length === 0" class="admin-state">
+          {{ searchQuery || canteenFilter || startDate || endDate ? '没有找到符合条件的新闻' : `暂无${currentStatus === 'published' ? '已发布' : '未发布'}新闻` }}
+        </div>
 
         <!-- 分页 -->
-        <div class="mt-6 flex justify-center" v-if="pagination.totalPages > 1">
+        <div class="mt-6" v-if="pagination.totalPages > 1">
           <Pagination
             :current-page="pagination.page"
             :page-size="pagination.pageSize"
@@ -345,7 +339,7 @@
               }"
               placeholder="请输入新闻标题"
             />
-            <p v-if="errors.title" class="mt-1 text-xs text-red-500 flex items-center">
+            <p v-if="errors.title" class="mt-1 text-xs text-red-500 flex items-center admin-field-error">
               <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
               {{ errors.title }}
             </p>
@@ -367,7 +361,7 @@
               }"
               placeholder="请输入新闻摘要"
             />
-            <p v-if="errors.summary" class="mt-1 text-xs text-red-500 flex items-center">
+            <p v-if="errors.summary" class="mt-1 text-xs text-red-500 flex items-center admin-field-error">
               <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
               {{ errors.summary }}
             </p>
@@ -378,8 +372,8 @@
             <label class="block text-gray-700 font-medium mb-2 admin-label"
               >内容 <span class="text-red-500">*</span></label
             >
-            <div 
-              style="border: 1px solid #ccc; z-index: 100" 
+            <div
+              style="border: 1px solid #ccc; z-index: 100"
               class="rounded-lg overflow-hidden"
               :class="{
                 'border-red-400': errors.content,
@@ -398,7 +392,7 @@
                 @created="handleCreated"
               />
             </div>
-            <p v-if="errors.content" class="mt-1 text-xs text-red-500 flex items-center">
+            <p v-if="errors.content" class="mt-1 text-xs text-red-500 flex items-center admin-field-error">
               <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
               {{ errors.content }}
             </p>
@@ -516,20 +510,20 @@
           <div v-if="previewNewsData.id" class="pb-5">
             <!-- 标题 -->
             <div class="text-2xl font-bold mb-2.5 leading-relaxed">{{ previewNewsData.title }}</div>
-            
+
             <!-- 发布信息 -->
             <div class="flex justify-between text-gray-500 text-sm mb-5 pb-2.5 border-b border-gray-200">
               <span>{{ previewNewsData.canteenName || '全校公告' }}</span>
               <span>{{ previewNewsData.publishedAt ? formatPreviewTime(previewNewsData.publishedAt) : (previewNewsData.createdAt ? formatPreviewTime(previewNewsData.createdAt) : '') }}</span>
             </div>
-            
+
             <p v-if="previewNewsData.sourceUrl" class="mb-4 text-sm text-gray-600">来源：{{ previewNewsData.sourceName }} <a :href="previewNewsData.sourceUrl" target="_blank" rel="noopener noreferrer" class="underline text-tsinghua-purple">查看微信原文</a></p>
             <!-- 内容（富文本） -->
-            <div 
+            <div
               class="text-base leading-relaxed text-gray-800 overflow-hidden break-words w-full news-preview-content"
               v-html="formattedPreviewContent"
             ></div>
-            
+
             <!-- 发布人信息 -->
             <div class="mt-6 pt-2 border-t border-dashed border-gray-200 text-gray-500 text-xs text-right">
               <span>发布人：{{ previewNewsData.createdBy || '管理员' }}</span>
@@ -1363,24 +1357,18 @@ export default {
 </script>
 
 <style scoped>
-.news-workspace-navigation { display: flex; align-items: center; justify-content: space-between; gap: 20px; border-bottom: 1px solid #e5e7eb; }
-.news-workspace-tabs { display: flex; flex-shrink: 0; gap: 28px; }
+.news-workspace-navigation { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .news-service-link { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 0; color: #667085; font-size: 13px; white-space: nowrap; text-decoration: none; }
 .news-service-link svg { width: 14px; height: 14px; }
 .news-service-link:hover { color: #660874; text-decoration: underline; text-underline-offset: 4px; }
 .news-service-link:focus-visible { outline: 2px solid #660874; outline-offset: 4px; border-radius: 4px; }
-.news-workspace-tabs > button { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 8px 0 12px; margin-bottom: -1px; border-bottom: 2px solid transparent; color: #667085; font-size: 14px; font-weight: 500; transition: color 150ms, border-color 150ms; }
-.news-workspace-tabs > button:hover { color: #660874; }
-.news-workspace-tabs > button.is-selected { color: #660874; border-bottom-color: #660874; }
-.news-workspace-tabs > button:focus-visible, .news-status-button:focus-visible { outline: 2px solid #660874; outline-offset: 4px; border-radius: 4px; }
-.news-workspace-tabs svg { width: 18px; height: 18px; }
+.news-status-button:focus-visible { outline: 2px solid #660874; outline-offset: 4px; border-radius: 4px; }
 .news-content-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-top: 24px; }
 .news-status-filter { display: flex; align-items: center; gap: 4px; padding: 4px; background: #f3f4f6; border-radius: 8px; }
 .news-status-button { min-height: 34px; padding: 6px 16px; border: 1px solid transparent; border-radius: 6px; color: #4b5563; font-size: 13px; line-height: 20px; font-weight: 500; }
 .news-status-button:hover { color: #660874; }
 .news-status-button.is-selected { color: #660874; background: white; border-color: #e5e7eb; }
-@media (max-width: 600px) { .news-workspace-navigation { gap: 12px; } .news-workspace-tabs { gap: 20px; } .news-workspace-tabs svg { display: none; } .news-content-toolbar { gap: 12px; } .news-status-button { padding-inline: 12px; } }
-@media (prefers-reduced-motion: reduce) { .news-workspace-tabs > button { transition: none; } }
+@media (max-width: 600px) { .news-workspace-navigation { gap: 12px; } .news-content-toolbar { gap: 12px; } .news-status-button { padding-inline: 12px; } }
 
 /* Keep article text and row actions readable inside the horizontally scrolling table. */
 .news-table { table-layout: fixed; min-width: 984px; }

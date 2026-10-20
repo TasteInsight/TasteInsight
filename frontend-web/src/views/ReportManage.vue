@@ -69,21 +69,8 @@
               <th class="py-3 px-6 text-center text-sm font-medium text-gray-500">操作</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-200">
-            <tr v-if="isLoading">
-              <td colspan="5" class="admin-state">
-                <AppIcon
-                  class="iconify inline-block text-2xl animate-spin"
-                  icon="mdi:loading"
-                ></AppIcon>
-                <span class="ml-2">加载中...</span>
-              </td>
-            </tr>
-            <tr v-else-if="reports.length === 0">
-              <td colspan="5" class="admin-state">暂无举报记录</td>
-            </tr>
+          <tbody v-if="!isLoading" class="divide-y divide-gray-200">
             <tr
-              v-else
               v-for="report in reports"
               :key="report.id"
               class="hover:bg-gray-50"
@@ -105,7 +92,7 @@
                     {{ reportTargets[report.targetType].label }}
                   </div>
                   <!-- 内容图片数量 -->
-                  <div 
+                  <div
                     v-if="report.targetContent?.images?.length"
                     class="ml-2 inline-flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 rounded text-xs text-gray-600"
                   >
@@ -139,6 +126,16 @@
             </tr>
           </tbody>
         </table>
+      </div>
+      <div v-if="isLoading" class="admin-state">
+        <AppIcon
+          class="iconify inline-block text-2xl animate-spin"
+          icon="mdi:loading"
+        ></AppIcon>
+        <span class="ml-2">加载中...</span>
+      </div>
+      <div v-else-if="reports.length === 0" class="admin-state">
+        暂无举报记录
       </div>
 
       <!-- 详情对话框 -->
@@ -204,7 +201,7 @@
                     </span>
                   </div>
                 </div>
-                
+
                 <div v-if="selectedReport.handleResult" class="mt-6 pt-6 border-t border-gray-100">
                   <div class="text-xs text-gray-400 uppercase tracking-wide mb-2">处理结果</div>
                   <div class="text-sm text-gray-700">
@@ -249,7 +246,7 @@
                     </div>
                   </div>
                   <!-- 内容图片 -->
-                  <div 
+                  <div
                     v-if="selectedReport.targetContent.images?.length"
                     class="mb-4"
                   >
@@ -335,7 +332,7 @@
         >
           <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
         </button>
-        
+
         <!-- 图片 -->
         <AdminImage
           :src="imagePreview.images[imagePreview.currentIndex]"
@@ -343,7 +340,7 @@
           variant="preview"
           image-class="max-w-full max-h-[90vh] object-contain rounded-lg"
         />
-        
+
         <!-- 导航按钮 -->
         <button
           v-if="imagePreview.images.length > 1"
@@ -365,7 +362,7 @@
         >
           <AppIcon class="iconify text-2xl" icon="carbon:chevron-right"></AppIcon>
         </button>
-        
+
         <!-- 图片计数 -->
         <div
           v-if="imagePreview.images.length > 1"

@@ -5,42 +5,33 @@
         title="评价和评论审核"
         description="审核用户提交的评价和评论"
         header-icon="carbon:task-approved"
+        :show-border="false"
       />
 
-      <!-- 标签页切换 -->
-      <div class="admin-toolbar mt-4">
-        <div class="flex items-center space-x-4">
-          <button
-            v-if="canReview"
-            class="font-medium transition duration-200 admin-button"
-            :class="
-              activeTab === 'reviews'
-                ? 'bg-tsinghua-purple text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
-            "
-            @click="switchTab('reviews')"
-          >
-            <AppIcon class="iconify inline-block mr-2" icon="carbon:star"></AppIcon>
-            评价审核
-          </button>
-          <button
-            v-if="canComment"
-            class="font-medium transition duration-200 admin-button"
-            :class="
-              activeTab === 'comments'
-                ? 'bg-tsinghua-purple text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
-            "
-            @click="switchTab('comments')"
-          >
-            <AppIcon class="iconify inline-block mr-2" icon="carbon:chat"></AppIcon>
-            评论审核
-          </button>
-        </div>
-      </div>
+      <nav class="admin-tabs mb-6" aria-label="评价和评论审核视图">
+        <button
+          v-if="canReview"
+          type="button"
+          class="admin-tab"
+          :aria-pressed="activeTab === 'reviews'"
+          @click="switchTab('reviews')"
+        >
+          <AppIcon icon="carbon:star" aria-hidden="true" />评价审核
+        </button>
+        <button
+          v-if="canComment"
+          type="button"
+          class="admin-tab"
+          :aria-pressed="activeTab === 'comments'"
+          @click="switchTab('comments')"
+        >
+          <AppIcon icon="carbon:chat" aria-hidden="true" />评论审核
+        </button>
+      </nav>
 
       <!-- 评价审核列表表格 -->
-      <div v-if="activeTab === 'reviews'" class="admin-table-scroll">
+      <template v-if="activeTab === 'reviews'">
+      <div class="admin-table-scroll">
         <table class="admin-table">
           <thead class="bg-gray-50">
             <tr>
@@ -52,21 +43,8 @@
               <th class="py-3 px-6 text-center text-sm font-medium text-gray-500">操作</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-200">
-            <tr v-if="isLoadingReviews">
-              <td colspan="6" class="admin-state">
-                <AppIcon
-                  class="iconify inline-block text-2xl animate-spin"
-                  icon="mdi:loading"
-                ></AppIcon>
-                <span class="ml-2">加载中...</span>
-              </td>
-            </tr>
-            <tr v-else-if="reviews.length === 0">
-              <td colspan="6" class="admin-state">暂无待审核评价</td>
-            </tr>
+          <tbody v-if="!isLoadingReviews" class="divide-y divide-gray-200">
             <tr
-              v-else
               v-for="review in reviews"
               :key="review.id"
               class="hover:bg-gray-50"
@@ -132,9 +110,21 @@
           </tbody>
         </table>
       </div>
+      <div v-if="isLoadingReviews" class="admin-state">
+        <AppIcon
+          class="iconify inline-block text-2xl animate-spin"
+          icon="mdi:loading"
+        ></AppIcon>
+        <span class="ml-2">加载中...</span>
+      </div>
+      <div v-else-if="reviews.length === 0" class="admin-state">
+        暂无待审核评价
+      </div>
+      </template>
 
       <!-- 评论审核列表表格 -->
-      <div v-if="activeTab === 'comments'" class="admin-table-scroll">
+      <template v-if="activeTab === 'comments'">
+      <div class="admin-table-scroll">
         <table class="admin-table">
           <thead class="bg-gray-50">
             <tr>
@@ -146,21 +136,8 @@
               <th class="py-3 px-6 text-center text-sm font-medium text-gray-500">操作</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-200">
-            <tr v-if="isLoadingComments">
-              <td colspan="6" class="admin-state">
-                <AppIcon
-                  class="iconify inline-block text-2xl animate-spin"
-                  icon="mdi:loading"
-                ></AppIcon>
-                <span class="ml-2">加载中...</span>
-              </td>
-            </tr>
-            <tr v-else-if="comments.length === 0">
-              <td colspan="6" class="admin-state">暂无待审核评论</td>
-            </tr>
+          <tbody v-if="!isLoadingComments" class="divide-y divide-gray-200">
             <tr
-              v-else
               v-for="comment in comments"
               :key="comment.id"
               class="hover:bg-gray-50"
@@ -215,6 +192,17 @@
           </tbody>
         </table>
       </div>
+      <div v-if="isLoadingComments" class="admin-state">
+        <AppIcon
+          class="iconify inline-block text-2xl animate-spin"
+          icon="mdi:loading"
+        ></AppIcon>
+        <span class="ml-2">加载中...</span>
+      </div>
+      <div v-else-if="comments.length === 0" class="admin-state">
+        暂无待审核评论
+      </div>
+      </template>
 
       <!-- 分页 -->
       <Pagination
@@ -331,7 +319,7 @@
                 </div>
               </div>
               <!-- 评价图片 -->
-              <div 
+              <div
                 v-if="selectedReview.images && selectedReview.images.length > 0"
                 class="mt-4"
               >
@@ -350,7 +338,7 @@
                 </div>
               </div>
               <!-- 评分详情 -->
-              <div 
+              <div
                 v-if="selectedReview.ratingDetails"
                 class="mt-4 grid grid-cols-2 gap-4"
               >
@@ -396,7 +384,7 @@
               拒绝
             </button>
             <button
-              class="bg-green-600 text-white hover:bg-green-700 transition duration-200 flex items-center admin-button"
+              class="transition duration-200 flex items-center admin-button admin-button-primary"
               @click="handleApproveReview"
               :disabled="!authStore.hasPermission('review:approve') || isSubmitting"
               :title="!authStore.hasPermission('review:approve') ? '无权限审核评价' : '通过评价'"
@@ -541,7 +529,7 @@
               拒绝
             </button>
             <button
-              class="bg-green-600 text-white hover:bg-green-700 transition duration-200 flex items-center admin-button"
+              class="transition duration-200 flex items-center admin-button admin-button-primary"
               @click="handleApproveComment"
               :disabled="!authStore.hasPermission('comment:approve') || isSubmitting"
               :title="!authStore.hasPermission('comment:approve') ? '无权限审核评论' : '通过评论'"
@@ -697,7 +685,7 @@
         >
           <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
         </button>
-        
+
         <!-- 图片 -->
         <AdminImage
           :src="imagePreview.images[imagePreview.currentIndex]"
@@ -705,7 +693,7 @@
           variant="preview"
           image-class="max-w-full max-h-[90vh] object-contain rounded-lg"
         />
-        
+
         <!-- 导航按钮 -->
         <button
           v-if="imagePreview.images.length > 1"
@@ -727,7 +715,7 @@
         >
           <AppIcon class="iconify text-2xl" icon="carbon:chevron-right"></AppIcon>
         </button>
-        
+
         <!-- 图片计数 -->
         <div
           v-if="imagePreview.images.length > 1"

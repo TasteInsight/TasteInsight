@@ -160,36 +160,14 @@
           </button>
         </div>
 
-        <!-- 分页 -->
-        <div v-if="totalPages > 1" class="flex justify-center gap-2 mt-6">
-          <button
-            @click="changePage(currentPage - 1)"
-            :disabled="currentPage === 1"
-            class="border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed admin-button"
-          >
-            上一页
-          </button>
-          <button
-            v-for="page in totalPages"
-            :key="page"
-            @click="changePage(page)"
-            class="border transition admin-button"
-            :class="
-              currentPage === page
-                ? 'bg-tsinghua-purple text-white border-tsinghua-purple'
-                : 'border-gray-300 hover:bg-gray-50'
-            "
-          >
-            {{ page }}
-          </button>
-          <button
-            @click="changePage(currentPage + 1)"
-            :disabled="currentPage === totalPages"
-            class="border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed admin-button"
-          >
-            下一页
-          </button>
-        </div>
+        <Pagination
+          v-if="totalPages > 1"
+          class="mt-6"
+          :current-page="currentPage"
+          :page-size="pageSize"
+          :total="total"
+          @page-change="changePage"
+        />
       </div>
 
       <!-- 创建/编辑视图 -->
@@ -231,7 +209,7 @@
                   :disabled="!!editingAdmin"
                   required
                 />
-                <p v-if="errors.username" class="mt-1 text-xs text-red-500 flex items-center">
+                <p v-if="errors.username" class="mt-1 text-xs text-red-500 flex items-center admin-field-error">
                   <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                   {{ errors.username }}
                 </p>
@@ -270,7 +248,7 @@
                   ></div>
                 </div>
                 <div class="text-xs text-gray-500 mt-1">{{ passwordStrengthText }}</div>
-                <p v-if="errors.password" class="mt-1 text-xs text-red-500 flex items-center">
+                <p v-if="errors.password" class="mt-1 text-xs text-red-500 flex items-center admin-field-error">
                   <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                   {{ errors.password }}
                 </p>
@@ -370,7 +348,7 @@
                     placeholder="请输入自定义角色名称，例如：数据分析师、运营专员等"
                     maxlength="50"
                   />
-                  <p v-if="errors.customRole" class="mt-1 text-xs text-red-500 flex items-center">
+                  <p v-if="errors.customRole" class="mt-1 text-xs text-red-500 flex items-center admin-field-error">
                     <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                     {{ errors.customRole }}
                   </p>
@@ -395,7 +373,7 @@
                   </label>
                   <p v-if="!canteenList.length" class="text-sm text-gray-500">暂无可授权食堂</p>
                 </fieldset>
-                <p v-if="errors.scope" class="mt-1 text-sm text-red-500">{{ errors.scope }}</p>
+                <p v-if="errors.scope" class="mt-1 text-sm text-red-500 admin-field-error">{{ errors.scope }}</p>
                 <p class="mt-2 text-sm text-gray-500">
                   操作权限单独分配。指定食堂范围至少选择一个食堂；学生身份审核、社区管理和推荐实验仅限全局范围。
                 </p>
@@ -463,7 +441,7 @@
                     </div>
                   </div>
                 </div>
-                <p v-if="errors.permissions" class="mt-2 text-sm text-red-600" role="alert">{{ errors.permissions }}</p>
+                <p v-if="errors.permissions" class="mt-2 text-sm text-red-600 admin-field-error" role="alert">{{ errors.permissions }}</p>
               </div>
             </div>
           </div>
@@ -599,7 +577,7 @@
               </li>
             </ul>
           </div>
-          <p v-if="resetPasswordError" class="text-sm text-red-500 flex items-center gap-1">
+          <p v-if="resetPasswordError" class="text-sm text-red-500 flex items-center gap-1 admin-field-error">
             <AppIcon class="iconify" icon="carbon:warning"></AppIcon>
             {{ resetPasswordError }}
           </p>
@@ -638,6 +616,7 @@ import { generateAdminPassword } from '@/utils/admin-password'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import AdminDialog from '@/components/Common/AdminDialog.vue'
+import Pagination from '@/components/Common/Pagination.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
 import { showConfirmDanger } from '@/composables/useModal'
 import { useNotification } from '@/composables/useNotification'
@@ -649,6 +628,7 @@ export default {
   components: {
     Header,
     AdminDialog,
+    Pagination,
   },
   setup() {
     const notify = useNotification()
@@ -708,6 +688,7 @@ export default {
     const currentPage = ref(restoredState.currentPage)
     const pageSize = ref(10)
     const totalPages = ref(1)
+    const total = ref(0)
     
     // 保存页面状态
     const saveState = () => {
@@ -858,6 +839,7 @@ export default {
         if (response.code === 200 && response.data) {
           adminList.value = response.data.items || []
           totalPages.value = response.data.meta?.totalPages || 1
+          total.value = response.data.meta?.total ?? 0
         } else {
           throw new Error(response.message || '获取管理员列表失败')
         }
@@ -1466,6 +1448,8 @@ export default {
       loading,
       currentPage,
       totalPages,
+      total,
+      pageSize,
       passwordStrengthClass,
       passwordStrengthWidth,
       passwordStrengthText,

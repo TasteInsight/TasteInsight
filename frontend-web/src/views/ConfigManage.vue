@@ -1,12 +1,11 @@
 <template>
-  <div class="admin-page config-page">
+  <div class="admin-page">
     <div class="admin-panel config-panel">
-      <Header title="系统配置管理" :description="configDescription" header-icon="carbon:settings" />
-      <nav class="settings-nav" aria-label="系统配置分区">
+      <Header title="系统配置管理" :description="configDescription" header-icon="carbon:settings" :show-border="false" />
+      <nav class="admin-tabs" aria-label="系统配置分区">
         <button
           type="button"
-          class="settings-nav-button"
-          :class="{ 'is-active': activeView === 'settings' }"
+          class="admin-tab"
           :aria-pressed="activeView === 'settings'"
           v-if="canViewConfig"
           @click="showModerationView('settings')"
@@ -16,8 +15,7 @@
         <button
           v-if="canManageGlobalModeration"
           type="button"
-          class="settings-nav-button"
-          :class="{ 'is-active': activeView === 'tasks' }"
+          class="admin-tab"
           :aria-pressed="activeView === 'tasks'"
           @click="showModerationView('tasks')"
         >
@@ -25,8 +23,7 @@
         </button>
         <button
           type="button"
-          class="settings-nav-button"
-          :class="{ 'is-active': activeView === 'maintenance' }"
+          class="admin-tab"
           :aria-pressed="activeView === 'maintenance'"
           @click="showModerationView('maintenance')"
         >
@@ -239,7 +236,7 @@
                   <span v-if="item.saving" class="text-sm text-gray-600" role="status"
                     >保存中…</span
                   >
-                  <span v-else-if="item.saved" class="text-sm text-green-700" role="status"
+                  <span v-else-if="item.saved" class="admin-field-success" role="status"
                     >保存成功</span
                   >
                 </div>
@@ -251,7 +248,7 @@
                 </p>
               </div>
             </template>
-            <p v-if="loadError" class="pt-4 text-sm text-red-700" role="alert">
+            <p v-if="loadError" class="pt-4 text-sm text-red-700 admin-field-error" role="alert">
               配置加载失败，请刷新页面重试
             </p>
           </div>
@@ -1248,42 +1245,6 @@ export default {
 .settings-rule-summary {
   display: list-item;
   cursor: pointer;
-.container-shadow {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-</style>
-
-<style scoped>
-.config-page {
-  max-width: 1040px;
-}
-.config-panel {
-  padding: 24px 32px;
-}
-.settings-nav {
-  display: flex;
-  gap: 8px;
-  padding-top: 8px;
-  border-bottom: 1px solid #e5e7eb;
-}
-.settings-nav-button {
-  min-height: 44px;
-  padding: 12px 16px;
-  border-bottom: 2px solid transparent;
-  color: #4b5563;
-  font-size: 14px;
-  font-weight: 600;
-  transition:
-    color 150ms,
-    border-color 150ms;
-}
-.settings-nav-button:hover,
-.settings-nav-button.is-active {
-  color: #660874;
-}
-.settings-nav-button.is-active {
-  border-bottom-color: #660874;
-}
 }
 .settings-rule-summary::marker {
   color: #660874;
@@ -1332,12 +1293,3 @@ export default {
   }
 }
 </style>
-  .config-panel {
-    padding: 16px;
-  }
-  .settings-nav {
-    gap: 4px;
-  }
-  .settings-nav-button {
-    padding-inline: 12px;
-  }

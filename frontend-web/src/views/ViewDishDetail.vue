@@ -1,16 +1,12 @@
 <template>
   <div class="admin-page">
     <div class="admin-panel relative">
-      <!-- 关闭按钮 -->
-      <button
-        @click="goBack"
-        class="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition admin-icon-button"
-        title="关闭"
-      >
-        <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
-      </button>
-
-      <Header title="菜品详情" description="查看菜品信息和评论" header-icon="carbon:view" />
+      <div class="admin-heading-row">
+        <Header title="菜品详情" description="查看菜品信息和评论" header-icon="carbon:view" />
+        <button @click="goBack" class="admin-button admin-button-secondary">
+          <AppIcon icon="carbon:arrow-left" aria-hidden="true" />返回列表
+        </button>
+      </div>
 
       <div v-if="isLoading" class="flex justify-center items-center py-20">
         <div class="text-gray-500">加载中...</div>

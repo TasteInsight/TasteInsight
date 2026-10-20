@@ -216,7 +216,7 @@
                 <p class="mt-1 text-gray-800">{{ currentExperiment.description }}</p>
               </div>
             </div>
-            <div class="mt-4 flex gap-2">
+            <div class="mt-4 admin-actions">
               <button
                 v-if="authStore.hasPermission('experiment:edit')"
                 class="transition admin-button admin-button-primary"
@@ -227,7 +227,7 @@
               <!-- 草稿状态：可以启动 -->
               <button
                 v-if="authStore.hasPermission('experiment:edit') && currentExperiment.status === 'draft'"
-                class="bg-green-500 text-white hover:bg-green-600 transition admin-button"
+                class="transition admin-button admin-button-secondary"
                 @click="enableExperiment(currentExperiment)"
               >
                 启动实验
@@ -235,14 +235,14 @@
               <!-- 运行中状态：可以暂停或完成 -->
               <button
                 v-if="authStore.hasPermission('experiment:edit') && currentExperiment.status === 'running'"
-                class="bg-yellow-500 text-white hover:bg-yellow-600 transition admin-button"
+                class="transition admin-button admin-button-secondary"
                 @click="disableExperiment(currentExperiment)"
               >
                 暂停实验
               </button>
               <button
                 v-if="authStore.hasPermission('experiment:edit') && currentExperiment.status === 'running'"
-                class="bg-blue-500 text-white hover:bg-blue-600 transition admin-button"
+                class="transition admin-button admin-button-secondary"
                 @click="completeExperiment(currentExperiment)"
               >
                 完成实验
@@ -250,14 +250,14 @@
               <!-- 暂停状态：可以恢复或完成 -->
               <button
                 v-if="authStore.hasPermission('experiment:edit') && currentExperiment.status === 'paused'"
-                class="bg-green-500 text-white hover:bg-green-600 transition admin-button"
+                class="transition admin-button admin-button-secondary"
                 @click="enableExperiment(currentExperiment)"
               >
                 恢复实验
               </button>
               <button
                 v-if="authStore.hasPermission('experiment:edit') && currentExperiment.status === 'paused'"
-                class="bg-blue-500 text-white hover:bg-blue-600 transition admin-button"
+                class="transition admin-button admin-button-secondary"
                 @click="completeExperiment(currentExperiment)"
               >
                 完成实验
@@ -430,7 +430,7 @@
                   placeholder="请输入实验名称"
                   required
                 />
-                <p v-if="errors.name" class="mt-1 text-xs text-red-500">{{ errors.name }}</p>
+                <p v-if="errors.name" class="mt-1 text-xs text-red-500 admin-field-error">{{ errors.name }}</p>
               </div>
               <div>
                 <label class="block text-gray-700 font-medium mb-2 admin-label">描述</label>
@@ -459,7 +459,7 @@
                   />
                   <span class="text-gray-500">(0-1之间的小数)</span>
                 </div>
-                <p v-if="errors.trafficRatio" class="mt-1 text-xs text-red-500">{{ errors.trafficRatio }}</p>
+                <p v-if="errors.trafficRatio" class="mt-1 text-xs text-red-500 admin-field-error">{{ errors.trafficRatio }}</p>
               </div>
               <div>
                 <label class="block text-gray-700 font-medium mb-2 admin-label">
@@ -472,7 +472,7 @@
                   :class="{ 'border-red-400 bg-red-50': errors.startTime }"
                   required
                 />
-                <p v-if="errors.startTime" class="mt-1 text-xs text-red-500">{{ errors.startTime }}</p>
+                <p v-if="errors.startTime" class="mt-1 text-xs text-red-500 admin-field-error">{{ errors.startTime }}</p>
                 <p class="mt-1 text-xs text-gray-500">实验启动后，只有在此时间之后才会真正生效</p>
               </div>
               <div>
