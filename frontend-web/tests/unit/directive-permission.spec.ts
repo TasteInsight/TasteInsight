@@ -25,7 +25,7 @@ describe('directives/permission', () => {
     hasAnyPermissionMock.mockReset()
   })
 
-  it('removes element when array permissions are not satisfied', () => {
+  it('hides element when array permissions are not satisfied', () => {
     hasAnyPermissionMock.mockReturnValue(false)
 
     const parent = document.createElement('div')
@@ -34,7 +34,7 @@ describe('directives/permission', () => {
 
     mountPermission(el, ['a', 'b'])
 
-    expect(parent.contains(el)).toBe(false)
+    expect(el.style.display).toBe('none')
   })
 
   it('keeps element when array permissions are satisfied', () => {
@@ -61,7 +61,7 @@ describe('directives/permission', () => {
     expect(parent.contains(el)).toBe(true)
   })
 
-  it('removes element when string permission is not satisfied', () => {
+  it('hides element when string permission is not satisfied', () => {
     hasPermissionMock.mockReturnValue(false)
 
     const parent = document.createElement('div')
@@ -70,7 +70,7 @@ describe('directives/permission', () => {
 
     mountPermission(el, 'dish:edit')
 
-    expect(parent.contains(el)).toBe(false)
+    expect(el.style.display).toBe('none')
   })
 
   it('throws when binding value is invalid', () => {
@@ -78,6 +78,6 @@ describe('directives/permission', () => {
     const el = document.createElement('button')
     parent.appendChild(el)
 
-    expect(() => mountPermission(el, null)).toThrow('need roles!')
+    expect(() => mountPermission(el, null)).toThrow('需要有效的权限名称或权限列表')
   })
 })

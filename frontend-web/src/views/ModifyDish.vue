@@ -8,7 +8,7 @@
       />
 
       <!-- 搜索和筛选区域 -->
-      <div class="mt-6 mb-6 space-y-4">
+      <div class="mt-6 admin-filters">
         <SearchBar
           v-model="searchQuery"
           placeholder="搜索菜品名称、标签..."
@@ -49,9 +49,8 @@
             </div>
           </div>
 
-          <div class="ml-auto flex items-center">
+          <div v-if="selectedCanteenId || searchQuery" class="ml-auto flex items-center">
             <button
-              v-if="selectedCanteenId || searchQuery"
               @click="resetFilters"
               class="text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 hover:bg-gray-200/50 transition-colors admin-button"
             >
@@ -96,20 +95,8 @@
               <th class="py-3 px-6 text-center text-sm font-medium text-gray-500">操作</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-200">
-            <tr v-if="isLoading">
-              <td :colspan="canDeleteDishes ? 8 : 7" class="py-8 text-center text-gray-500">
-                <AppIcon
-                  class="iconify inline-block text-2xl animate-spin"
-                  icon="mdi:loading"
-                ></AppIcon>
-                <span class="ml-2">加载中...</span>
-              </td>
-            </tr>
-            <tr v-else-if="filteredDishes.length === 0">
-              <td :colspan="canDeleteDishes ? 8 : 7" class="py-8 text-center text-gray-500">暂无菜品数据</td>
-            </tr>
-            <tr v-else v-for="dish in filteredDishes" :key="dish.id" class="table-row">
+          <tbody v-if="!isLoading" class="divide-y divide-gray-200">
+            <tr v-for="dish in filteredDishes" :key="dish.id" class="table-row">
               <td v-if="canDeleteDishes" class="px-4 py-4 text-center">
                 <input
                   type="checkbox"
@@ -169,6 +156,16 @@
           </tbody>
         </table>
       </div>
+      <div v-if="isLoading" class="admin-state">
+        <AppIcon
+          class="iconify inline-block text-2xl animate-spin"
+          icon="mdi:loading"
+        ></AppIcon>
+        <span class="ml-2">加载中...</span>
+      </div>
+      <div v-else-if="filteredDishes.length === 0" class="admin-state">
+        暂无菜品数据
+      </div>
 
       <Pagination
         :current-page="currentPage"
@@ -195,7 +192,8 @@ import BatchActionBar from '@/components/Common/BatchActionBar.vue'
 import { useBatchSelection } from '@/composables/useBatchSelection'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
 import { authSessionVersion, getAuthSessionVersion } from '@/utils/auth-session'
-import { showAlert, showConfirmDanger } from '@/composables/useModal'
+import { showConfirmDanger } from '@/composables/useModal'
+import { useNotification } from '@/composables/useNotification'
 
 const PAGE_STATE_KEY = 'modify-dish'
 
@@ -209,6 +207,7 @@ export default {
     BatchActionBar,
   },
   setup() {
+    const notify = useNotification()
     const router = useRouter()
     const route = useRoute()
     useDishStore()
@@ -219,7 +218,7 @@ export default {
     let dishRequest = 0
     const ownsView = (version = viewVersion) => viewActive &&
       viewSession === getAuthSessionVersion() && version === viewVersion
-    
+
     // 默认状态定义
     const defaultState = {
       searchQuery: '',
@@ -227,10 +226,10 @@ export default {
       selectedCanteenId: '',
       selectedWindowId: '',
     }
-    
+
     // 从缓存恢复状态
     const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
-    
+
     const searchQuery = ref(restoredState.searchQuery)
     const showFilter = ref(false)
     const currentPage = ref(restoredState.currentPage)
@@ -238,7 +237,7 @@ export default {
     const isLoading = ref(false)
     const dishes = ref([])
     const totalDishes = ref(0)
-    
+
     // 筛选相关
     const canteens = ref([])
     const windows = ref([])
@@ -246,7 +245,7 @@ export default {
     const selectedWindowId = ref(restoredState.selectedWindowId)
     const listContext = computed(() => [searchQuery.value, selectedCanteenId.value,
       selectedWindowId.value, currentPage.value, pageSize.value])
-    
+
     // 保存页面状态
     const saveState = () => {
       savePageState(PAGE_STATE_KEY, {
@@ -273,7 +272,7 @@ export default {
     const handleCanteenChange = async () => {
       selectedWindowId.value = '' // 重置窗口选择
       windows.value = [] // 清空窗口列表
-      
+
       // 重新加载菜品
       currentPage.value = 1
       saveState() // 保存状态
@@ -314,7 +313,7 @@ export default {
           keyword: searchQuery.value || undefined,
           status: undefined, // 获取所有状态的菜品
         }
-        
+
         // 添加筛选参数
         if (selectedCanteenId.value) {
           params.canteenId = selectedCanteenId.value
@@ -409,10 +408,10 @@ export default {
         if (!ownsOperation()) return
         if (response.code !== 200) throw new Error(response.message || '批量删除失败')
         dishSelection.clear()
-        showAlert(`已删除 ${response.data.deletedCount} 条菜品`)
+        notify.success(`已删除 ${response.data.deletedCount} 条菜品`)
         await loadDishes(true)
       } catch (error) {
-        if (ownsOperation()) showAlert(error instanceof Error ? error.message : '批量删除失败，请重试')
+        if (ownsOperation()) notify.error(error instanceof Error ? error.message : '批量删除失败，请重试')
       } finally {
         isBatchDeleting.value = false
       }
@@ -427,7 +426,7 @@ export default {
 
     const editDish = (dish) => {
       if (!authStore.hasPermission('dish:edit')) {
-        showAlert('您没有权限编辑菜品')
+        notify.error('您没有权限编辑菜品')
         return
       }
       // 保存当前状态后再跳转
@@ -457,7 +456,7 @@ export default {
 
     onMounted(() => {
       loadCanteens()
-      
+
       // 恢复状态后，如果有选中的食堂，需要加载窗口列表
       if (selectedCanteenId.value) {
         canteenApi.getWindows(selectedCanteenId.value, { page: 1, pageSize: 100 })
@@ -470,7 +469,7 @@ export default {
             console.error('加载窗口列表失败:', err)
           })
       }
-      
+
       loadDishes()
     })
 

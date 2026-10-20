@@ -351,7 +351,12 @@ describe('AuthController (e2e)', () => {
         throw new Error('Seeded admin user not found');
       }
       const expiredToken = await jwtService.signAsync(
-        { sub: admin.id, type: 'admin', tokenUse: 'refresh' },
+        {
+          sub: admin.id,
+          type: 'admin',
+          sessionVersion: admin.sessionVersion,
+          tokenUse: 'refresh',
+        },
         // 故意签发一个立即过期的 token
         { secret: process.env.JWT_REFRESH_SECRET, expiresIn: '0s' },
       );

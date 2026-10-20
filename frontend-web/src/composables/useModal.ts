@@ -1,7 +1,13 @@
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+import { authSessionVersion } from '@/utils/auth-session'
 
 let modalRequest = 0
 let opener: HTMLElement | null = null
+const pending: {
+  options: ModalOptions
+  resolve: (value: boolean) => void
+  opener: HTMLElement | null
+}[] = []
 
 export interface ButtonConfig {
   text: string
@@ -26,55 +32,51 @@ export const modalState = {
   buttons: ref<ButtonConfig[]>([]),
   showClose: ref(true),
   closeOnClickMask: ref(true),
-  resolve: null as ((value: boolean) => void) | null
+  resolve: null as ((value: boolean) => void) | null,
 }
 
 // 显示Modal
 export function showModal(options: ModalOptions): Promise<boolean> {
-  modalRequest += 1
-  opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
   return new Promise((resolve) => {
-    modalState.title.value = options.title || '提示'
-    modalState.message.value = options.message || ''
-    modalState.showClose.value = options.showClose !== false
-    modalState.closeOnClickMask.value = options.closeOnClickMask !== false
-
-    if (options.buttons && options.buttons.length > 0) {
-      modalState.buttons.value = options.buttons.map((btn) => ({
-        text: btn.text,
-        variant: btn.variant || 'default',
-        handler: btn.handler,
-        loading: false
-      }))
-    } else {
-      modalState.buttons.value = [
-        {
-          text: '确定',
-          variant: 'primary',
-          handler: undefined,
-          loading: false
-        }
-      ]
+    const request = {
+      options,
+      resolve,
+      opener: document.activeElement instanceof HTMLElement ? document.activeElement : null,
     }
-
-    modalState.resolve = resolve
-    modalState.visible.value = true
+    if (modalState.visible.value) pending.push(request)
+    else activate(request)
   })
 }
 
-// 显示Alert（只有确定按钮）
-export function showAlert(message: string, title: string = '提示'): Promise<void> {
-  return showModal({
-    title,
-    message,
-    buttons: [
+function activate(request: (typeof pending)[number]) {
+  modalRequest += 1
+  opener = request.opener
+  const { options, resolve } = request
+  modalState.title.value = options.title || '提示'
+  modalState.message.value = options.message || ''
+  modalState.showClose.value = options.showClose !== false
+  modalState.closeOnClickMask.value = options.closeOnClickMask !== false
+
+  if (options.buttons && options.buttons.length > 0) {
+    modalState.buttons.value = options.buttons.map((btn) => ({
+      text: btn.text,
+      variant: btn.variant || 'default',
+      handler: btn.handler,
+      loading: false,
+    }))
+  } else {
+    modalState.buttons.value = [
       {
         text: '确定',
         variant: 'primary',
-        handler: () => true
-      }
+        handler: undefined,
+        loading: false,
+      },
     ]
-  }).then(() => {})
+  }
+
+  modalState.resolve = resolve
+  modalState.visible.value = true
 }
 
 // 显示Confirm（确定+取消按钮）
@@ -82,7 +84,7 @@ export function showConfirm(
   message: string,
   title: string = '确认',
   confirmText: string = '确定',
-  cancelText: string = '取消'
+  cancelText: string = '取消',
 ): Promise<boolean> {
   return showModal({
     title,
@@ -91,14 +93,14 @@ export function showConfirm(
       {
         text: cancelText,
         variant: 'default',
-        handler: () => false
+        handler: () => false,
       },
       {
         text: confirmText,
         variant: 'primary',
-        handler: () => true
-      }
-    ]
+        handler: () => true,
+      },
+    ],
   })
 }
 
@@ -107,7 +109,7 @@ export function showConfirmDanger(
   message: string,
   title: string = '确认',
   confirmText: string = '确定',
-  cancelText: string = '取消'
+  cancelText: string = '取消',
 ): Promise<boolean> {
   return showModal({
     title,
@@ -116,14 +118,14 @@ export function showConfirmDanger(
       {
         text: cancelText,
         variant: 'default',
-        handler: () => false
+        handler: () => false,
       },
       {
         text: confirmText,
         variant: 'danger',
-        handler: () => true
-      }
-    ]
+        handler: () => true,
+      },
+    ],
   })
 }
 
@@ -146,10 +148,25 @@ export function closeModal(result: boolean = false) {
   requestAnimationFrame(() => {
     const active = document.activeElement
     const nativeNeedsRecovery = active === document.body || active instanceof HTMLDialogElement
-    if (closedRequest === modalRequest && !modalState.visible.value && nativeNeedsRecovery &&
-      returnTarget?.isConnected && !returnTarget.matches(':disabled') && !returnTarget.closest('[inert]')) {
+    if (
+      closedRequest === modalRequest &&
+      !modalState.visible.value &&
+      nativeNeedsRecovery &&
+      returnTarget?.isConnected &&
+      !returnTarget.matches(':disabled') &&
+      !returnTarget.closest('[inert]')
+    ) {
       returnTarget.focus({ preventScroll: true })
     }
   })
+  Promise.resolve().then(() => {
+    if (!modalState.visible.value && pending.length) activate(pending.shift()!)
+  })
 }
 
+export function cancelModals() {
+  for (const request of pending.splice(0)) request.resolve(false)
+  closeModal(false)
+}
+
+watch(authSessionVersion, cancelModals, { flush: 'sync' })

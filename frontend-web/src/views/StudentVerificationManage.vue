@@ -126,7 +126,7 @@
                     placeholder="填写核验依据或处理原因"
                   />
                 </label>
-                <p v-if="decisionError" role="alert" class="admin-error">
+                <p v-if="decisionError" role="alert" class="admin-error admin-field-error">
                   {{ decisionError }}
                 </p>
                 <div class="admin-actions">

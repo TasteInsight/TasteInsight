@@ -92,7 +92,7 @@
         <p class="mt-1">凭证与图片访问地址由服务器环境变量管理，请联系部署管理员完成配置。</p>
       </details>
       <p v-if="!canEdit" class="text-sm text-gray-600">当前权限可查看审核配置。</p>
-      <p v-if="saveError" role="alert" class="text-sm text-red-700">{{ saveError }}</p>
+      <p v-if="saveError" role="alert" class="text-sm text-red-700 admin-field-error">{{ saveError }}</p>
       <div v-if="canEdit" class="flex flex-wrap items-center gap-3 border-t border-gray-200 pt-4">
         <button
           type="submit"

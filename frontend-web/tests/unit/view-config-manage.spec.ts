@@ -1,3 +1,4 @@
+vi.mock('@/composables/useNotification', () => ({ useNotification: () => ({ success: mocks.showAlertMock, error: mocks.showAlertMock, info: mocks.showAlertMock }), notify: { success: mocks.showAlertMock, error: mocks.showAlertMock, info: mocks.showAlertMock } }))
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { defineComponent, h, KeepAlive, nextTick, ref } from 'vue'
@@ -594,7 +595,7 @@ describe('views/ConfigManage', () => {
     expect(wrapper.find('input[aria-label="社区帖子人工审核"]').exists()).toBe(false)
     wrapper.unmount()
     mocks.authStoreMock.user = { scope: 'GLOBAL', canteenIds: [], canteens: [] }
-    mocks.authStoreMock.hasPermission.mockReturnValue(false)
+    mocks.authStoreMock.hasPermission.mockImplementation((permission: string) => permission === 'config:view')
     mocks.configApiMock.getGlobalConfig.mockResolvedValue({
       code: 200,
       data: { config: null, templates: [] },
@@ -769,9 +770,7 @@ describe('views/ConfigManage', () => {
       value: 'true',
     })
 
-    expect(wrapper.vm.reviewSaveSuccess).toBe(true)
-    vi.advanceTimersByTime(3000)
-    expect(wrapper.vm.reviewSaveSuccess).toBe(false)
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('审核规则已保存')
 
     vi.useRealTimers()
   })
@@ -1128,10 +1127,7 @@ describe('views/ConfigManage', () => {
       key: 'comment.autoApprove',
       value: 'true',
     })
-    expect(wrapper.vm.commentSaveSuccess).toBe(true)
-
-    vi.advanceTimersByTime(3000)
-    expect(wrapper.vm.commentSaveSuccess).toBe(false)
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('审核规则已保存')
 
     vi.useRealTimers()
   })

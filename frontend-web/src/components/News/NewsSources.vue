@@ -37,13 +37,10 @@
       <p>{{ editingId ? editingName : '选择已订阅的公众号，设置文章同步与发布方式。' }}</p>
     </div>
 
-    <div v-if="error || pollingError" class="source-feedback source-feedback-error" role="alert">
+    <div v-if="error || pollingError" class="admin-feedback admin-feedback-error" role="alert">
       <AppIcon icon="carbon:warning" aria-hidden="true" />
       <span>{{ error || pollingError }}</span>
       <button type="button" :disabled="loading || busy" @click="load">重新加载</button>
-    </div>
-    <div v-if="notice" class="source-feedback source-feedback-success" role="status">
-      <AppIcon icon="carbon:checkmark-outline" aria-hidden="true" /><span>{{ notice }}</span>
     </div>
 
     <template v-if="!showForm">
@@ -377,6 +374,7 @@
   </div>
 </template>
 <script setup lang="ts">
+import { useNotification } from '@/composables/useNotification'
 import {
   computed,
   nextTick,
@@ -391,6 +389,7 @@ import AppIcon from '@/components/Common/AppIcon.vue'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import { getAuthSessionVersion } from '@/utils/auth-session'
 import { newsSourcesApi, type NewsSource } from '@/api/modules/news-sources'
+const notify = useNotification()
 const props = withDefaults(
   defineProps<{ canteens: { id: string; name: string }[]; active?: boolean }>(),
   { active: true },
@@ -407,7 +406,6 @@ const configured = ref(false),
   showForm = ref(false)
 const pollingError = ref(''),
   error = ref(''),
-  notice = ref(''),
   editingId = ref(''),
   editingName = ref('')
 const listHeading = ref<HTMLElement | null>(null),
@@ -459,7 +457,6 @@ function beginCreate() {
   reset()
   showForm.value = true
   error.value = ''
-  notice.value = ''
   focusForm()
 }
 function closeForm() {
@@ -481,7 +478,6 @@ function edit(s: NewsSource) {
   })
   showForm.value = true
   error.value = ''
-  notice.value = ''
   focusForm()
 }
 async function refresh() {
@@ -522,7 +518,6 @@ async function save() {
   const v = generation
   busy.value = true
   error.value = ''
-  notice.value = ''
   try {
     const data = {
       autoPublish: form.autoPublish,
@@ -536,9 +531,9 @@ async function save() {
       : await newsSourcesApi.create({ ...data, mpId: form.mpId })
     if (!owns(v)) return
     if (res.code !== 200 && res.code !== 201) throw new Error(res.message)
-    notice.value = data.autoPublish
+    notify.success(data.autoPublish
       ? '来源设置已保存，新同步文章将直接发布。'
-      : '来源设置已保存，新同步文章将存为草稿。'
+      : '来源设置已保存，新同步文章将存为草稿。')
     closeForm()
     await refresh()
   } catch (e) {
@@ -555,7 +550,7 @@ async function sync(s: NewsSource) {
     const res = await newsSourcesApi.sync(s.id)
     if (!owns(v)) return
     if (res.code !== 200 && res.code !== 201) throw new Error(res.message)
-    notice.value = '已加入同步队列，结果将在此处自动更新。'
+    notify.info('已加入同步队列，结果将在此处自动更新。')
     await refresh()
   } catch (e) {
     if (owns(v)) error.value = e instanceof Error ? e.message : '同步请求失败'
@@ -612,7 +607,7 @@ onBeforeUnmount(() => {
   --source-text: #1f2937;
   --source-muted: #667085;
   --source-line: #e5e7eb;
-  padding-top: 28px;
+  padding-top: 24px;
   color: var(--source-text);
 }
 .news-sources ::selection {
@@ -855,39 +850,7 @@ onBeforeUnmount(() => {
   max-width: 64ch;
   margin: 12px 0 0 24px;
 }
-.source-feedback {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin: 0 0 20px;
-  padding: 12px 16px;
-  font-size: 13px;
-  line-height: 22px;
-  border-radius: 8px;
-}
-.source-feedback > svg {
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  margin-top: 2px;
-}
-.source-feedback > span {
-  flex: 1;
-  overflow-wrap: anywhere;
-}
-.source-feedback button {
-  flex-shrink: 0;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.source-feedback-error {
-  background: #fef2f2;
-  color: #991b1b;
-}
-.source-feedback-success {
-  background: #f0fdf4;
-  color: #166534;
-}
+
 .source-loading,
 .source-empty {
   display: flex;
@@ -1172,9 +1135,6 @@ onBeforeUnmount(() => {
   }
 }
 @media (max-width: 600px) {
-  .news-sources {
-    padding-top: 24px;
-  }
   .sources-heading {
     align-items: flex-start;
     gap: 16px;

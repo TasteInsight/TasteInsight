@@ -1,16 +1,12 @@
 <template>
   <div class="admin-page">
     <div class="admin-panel relative">
-      <!-- 关闭按钮 -->
-      <button
-        @click="goBack"
-        class="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition admin-icon-button"
-        title="关闭"
-      >
-        <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
-      </button>
-
-      <Header title="菜品详情" description="查看菜品信息和评论" header-icon="carbon:view" />
+      <div class="admin-heading-row">
+        <Header title="菜品详情" description="查看菜品信息和评论" header-icon="carbon:view" />
+        <button @click="goBack" class="admin-button admin-button-secondary">
+          <AppIcon icon="carbon:arrow-left" aria-hidden="true" />返回列表
+        </button>
+      </div>
 
       <div v-if="isLoading" class="flex justify-center items-center py-20">
         <div class="text-gray-500">加载中...</div>
@@ -459,31 +455,10 @@
               </div>
             </div>
 
-            <!-- 分页 -->
-            <div
-              v-if="reviewsData.meta && reviewsData.meta.totalPages > 1"
-              class="flex justify-center mt-6"
-            >
-              <div class="flex items-center gap-2">
-                <button
-                  @click="changeReviewPage(currentReviewPage - 1)"
-                  :disabled="currentReviewPage <= 1"
-                  class="border hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed admin-button"
-                >
-                  上一页
-                </button>
-                <span class="px-4 py-2 text-sm text-gray-600">
-                  第 {{ currentReviewPage }} / {{ reviewsData.meta.totalPages }} 页
-                </span>
-                <button
-                  @click="changeReviewPage(currentReviewPage + 1)"
-                  :disabled="currentReviewPage >= reviewsData.meta.totalPages"
-                  class="border hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed admin-button"
-                >
-                  下一页
-                </button>
-              </div>
-            </div>
+            <Pagination v-if="reviewsData.meta && reviewsData.meta.totalPages > 1"
+              class="mt-6" label="菜品评价分页" :current-page="currentReviewPage"
+              :page-size="reviewPageSize" :total="reviewsData.meta.total"
+              :disabled="isLoadingReviews" @page-change="changeReviewPage" />
           </div>
 
           <div v-else class="admin-state">暂无评论</div>
@@ -498,22 +473,26 @@ import { reactive, ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { dishApi } from '@/api/modules/dish'
 import Header from '@/components/Layout/Header.vue'
+import Pagination from '@/components/Common/Pagination.vue'
 import AdminImage from '@/components/Common/AdminImage.vue'
-import { showAlert } from '@/composables/useModal'
+import { useNotification } from '@/composables/useNotification'
 import { getAuthSessionVersion } from '@/utils/auth-session'
 
 export default {
   name: 'ViewDishDetail',
   components: {
     AdminImage,
+    Pagination,
     Header,
   },
   setup() {
+    const notify = useNotification()
     const router = useRouter()
     const route = useRoute()
     const dishId = route.params.id
     const sessionVersion = getAuthSessionVersion()
     let mounted = true
+    const ownsView = () => mounted && sessionVersion === getAuthSessionVersion()
     let reviewRequest = 0
     const isLoading = ref(false)
     const isLoadingReviews = ref(false)
@@ -591,6 +570,7 @@ export default {
       isLoading.value = true
       try {
         const response = await dishApi.getDishById(dishId)
+        if (!ownsView()) return
 
         if (response.code === 200 && response.data) {
           const dish = response.data
@@ -636,11 +616,12 @@ export default {
           throw new Error(response.message || '获取菜品信息失败')
         }
       } catch (error) {
+        if (!ownsView()) return
         console.error('获取菜品信息失败:', error)
-        showAlert('获取菜品信息失败，请重试')
+        notify.error('获取菜品信息失败，请重试')
         router.push('/modify-dish')
       } finally {
-        isLoading.value = false
+        if (ownsView()) isLoading.value = false
       }
     }
 
@@ -653,6 +634,7 @@ export default {
       try {
         const subDishPromises = subDishIds.map((id) => dishApi.getDishById(id))
         const responses = await Promise.allSettled(subDishPromises)
+        if (!ownsView()) return
         dishData.subItems = responses
           .filter(
             (result) =>
@@ -664,6 +646,7 @@ export default {
             price: result.value.data.price || 0,
           }))
       } catch (error) {
+        if (!ownsView()) return
         console.error('加载子项列表失败:', error)
         dishData.subItems = []
       }
@@ -672,7 +655,7 @@ export default {
     // 加载评论列表
     const loadReviews = async () => {
       const request = ++reviewRequest
-      const ownsRequest = () => mounted && request === reviewRequest && sessionVersion === getAuthSessionVersion()
+      const ownsRequest = () => ownsView() && request === reviewRequest
       isLoadingReviews.value = true
       try {
         const params = {
@@ -761,6 +744,7 @@ export default {
       isLoadingReviews,
       reviewStatusFilter,
       currentReviewPage,
+      reviewPageSize,
       selectedImage,
       dishImage,
       allergensText,

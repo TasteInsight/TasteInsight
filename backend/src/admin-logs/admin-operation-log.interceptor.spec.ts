@@ -1,6 +1,7 @@
 import { CallHandler, ExecutionContext } from '@nestjs/common';
 import { lastValueFrom, of, throwError } from 'rxjs';
 import { AdminOperationLogInterceptor } from './admin-operation-log.interceptor';
+import { AdminAdminsController } from '@/admin-admins/admin-admins.controller';
 
 describe('AdminOperationLogInterceptor', () => {
   const prisma = {
@@ -79,15 +80,15 @@ describe('AdminOperationLogInterceptor', () => {
   });
 
   it.each([
-    ['publishNews', 'update'],
-    ['revokeUpload', 'update'],
+    ['publishNews', 'publish'],
+    ['revokeUpload', 'revoke'],
     ['handleReport', 'update'],
-    ['enableExperiment', 'update'],
-    ['disableExperiment', 'update'],
-    ['completeExperiment', 'update'],
+    ['enableExperiment', 'enable'],
+    ['disableExperiment', 'disable'],
+    ['completeExperiment', 'complete'],
     ['refreshDishEmbedding', 'update'],
-    ['changeOwnPassword', 'update'],
-    ['updatePermissions', 'update'],
+    ['changeOwnPassword', 'password'],
+    ['updatePermissions', 'permissions'],
     ['confirmBatchImport', 'create'],
   ])('normalizes %s to %s', async (handlerName, expectedAction) => {
     await lastValueFrom(
@@ -120,6 +121,54 @@ describe('AdminOperationLogInterceptor', () => {
         data: expect.objectContaining({ result: 'failure' }),
       }),
     );
+  });
+
+  describe.each([
+    ['create', 'POST', 'admin:create'],
+    ['remove', 'DELETE', 'admin:retire'],
+    ['updatePermissions', 'PUT', 'admin:permissions'],
+    ['handover', 'POST', 'admin:handover'],
+    ['changeOwnPassword', 'PUT', 'admin:password:change'],
+    ['changeSubAdminPassword', 'PUT', 'admin:password:reset'],
+  ] as const)('%s transactional audit', (handler, method, action) => {
+    const context = () => {
+      const result = createContext(
+        { method },
+        handler,
+        'AdminAdminsController',
+      );
+      jest
+        .spyOn(result, 'getHandler')
+        .mockReturnValue(AdminAdminsController.prototype[handler]);
+      jest.spyOn(result, 'getClass').mockReturnValue(AdminAdminsController);
+      return result;
+    };
+
+    it('uses the canonical action for failures', async () => {
+      const originalError = new Error('request failed');
+      await expect(
+        lastValueFrom(
+          interceptor.intercept(context(), {
+            handle: () => throwError(() => originalError),
+          }),
+        ),
+      ).rejects.toBe(originalError);
+      expect(prisma.operationLog.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ action, result: 'failure' }),
+      });
+    });
+
+    it('leaves successful audit ownership with the transaction', async () => {
+      const response = { code: 200 };
+      await expect(
+        lastValueFrom(
+          interceptor.intercept(context(), {
+            handle: () => of(response),
+          }),
+        ),
+      ).resolves.toBe(response);
+      expect(prisma.operationLog.create).not.toHaveBeenCalled();
+    });
   });
 
   it.each([

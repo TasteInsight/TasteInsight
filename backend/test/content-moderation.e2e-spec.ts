@@ -185,7 +185,7 @@ describe('unified content moderation (PostgreSQL + HTTP)', () => {
         },
       });
       return new JwtService().sign(
-        { sub: admin.id, type: 'admin', tokenUse: 'access' },
+        { sub: admin.id, type: 'admin', sessionVersion: 0, tokenUse: 'access' },
         { secret: process.env.JWT_SECRET },
       );
     };

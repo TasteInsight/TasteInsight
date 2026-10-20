@@ -1,3 +1,4 @@
+vi.mock('@/composables/useNotification', () => ({ useNotification: () => ({ success: mocks.showAlertMock, error: mocks.showAlertMock, info: mocks.showAlertMock }), notify: { success: mocks.showAlertMock, error: mocks.showAlertMock, info: mocks.showAlertMock } }))
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { DOMWrapper, mount, flushPromises, shallowMount } from '@vue/test-utils'
 import { nextTick } from 'vue'
@@ -24,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   permissionApiMock: {
     getAdmins: vi.fn(),
     deleteAdmin: vi.fn(),
+    handoverAdmin: vi.fn(),
     createAdmin: vi.fn(),
     updateAdminPermissions: vi.fn(),
   },
@@ -38,9 +40,7 @@ vi.mock('vue-router', () => ({
   useRouter: () => mocks.routerMock,
 }))
 
-vi.mock('@/store/modules/use-auth-store', () => ({
-  useAuthStore: () => mocks.authStoreMock,
-}))
+vi.mock('@/store/modules/use-auth-store', async () => { const { authorization } = await import('../fixtures/authorization'); return { useAuthStore: () => Object.assign(mocks.authStoreMock, { authorization }) } })
 
 vi.mock('@/api/modules/permission', () => ({
   permissionApi: mocks.permissionApiMock,
@@ -81,6 +81,102 @@ describe('views/UserManage', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('saves role names and displays ordinary administrators without a custom technical label', async () => {
+    const wrapper = shallowMount(UserManage)
+    try {
+      await flushPromises()
+      await wrapper.vm.editAdmin({ id: 'role-account', username: 'staff', role: 'admin', scope: 'GLOBAL', canteenIds: [], permissions: ['dish:view'] })
+      expect(wrapper.vm.getRoleLabel('admin')).toBe('普通管理员')
+      expect(wrapper.vm.formData.role).toBe('')
+      wrapper.vm.formData.role = 'custom'
+      wrapper.vm.formData.customRole = '  运营专员  '
+      mocks.permissionApiMock.updateAdminPermissions.mockResolvedValueOnce({ code: 200 })
+      await wrapper.vm.submitForm()
+      expect(mocks.permissionApiMock.updateAdminPermissions).toHaveBeenCalledWith('role-account', ['dish:view'], 'GLOBAL', [], '运营专员')
+    } finally { wrapper.unmount() }
+  })
+
+  it('reflects partial selections in native group and global checkboxes and counts', async () => {
+    const wrapper = mount(UserManage, { global: { stubs: { Header: true } } })
+    try {
+      await flushPromises()
+      await wrapper.vm.editAdmin({ id: 'partial', username: 'staff', role: 'admin', scope: 'GLOBAL', canteenIds: [], permissions: ['dish:view'] })
+      await nextTick()
+      const global = wrapper.get('input[aria-label="全选可分配权限"]')
+      const group = wrapper.get('input[aria-label="全选菜品管理权限"]')
+      expect((global.element as HTMLInputElement).indeterminate).toBe(true)
+      expect((group.element as HTMLInputElement).indeterminate).toBe(true)
+      expect(wrapper.get('[data-permission-selection="all"]').text()).toContain('已选 1 / 5 项')
+      await global.setValue(true)
+      expect((global.element as HTMLInputElement).checked).toBe(true)
+      expect((global.element as HTMLInputElement).indeterminate).toBe(false)
+      expect(wrapper.get('[data-permission-selection="all"]').text()).toContain('已选 5 / 5 项')
+      await wrapper.get('input[id="canteen:view"]').setValue(false)
+      expect(wrapper.vm.formData.permissions).toEqual(expect.arrayContaining(['admin:view', 'dish:view']))
+      expect(wrapper.vm.formData.permissions).toHaveLength(2)
+      expect((group.element as HTMLInputElement).indeterminate).toBe(true)
+      expect(wrapper.get('[data-permission-selection="all"]').text()).toContain('已选 2 / 5 项')
+      await global.setValue(true)
+      await global.setValue(false)
+      expect((group.element as HTMLInputElement).checked).toBe(false)
+      expect((group.element as HTMLInputElement).indeterminate).toBe(false)
+      expect(wrapper.get('[data-permission-selection="all"]').text()).toContain('已选 0 / 5 项')
+    } finally { wrapper.unmount() }
+  })
+
+  it('opens a handover before retiring a manager and submits the selected replacement atomically', async () => {
+    const source = { id: 'old', username: '原负责人', scope: 'GLOBAL', directReportCount: 2 }
+    const replacement = { id: 'new', username: '新负责人', scope: 'GLOBAL', managerId: 'root' }
+    const descendant = { id: 'child', username: '下属', scope: 'GLOBAL', managerId: 'old' }
+    mocks.permissionApiMock.getAdmins.mockResolvedValue({ code: 200, data: { items: [source, replacement, descendant], meta: { totalPages: 1 } } })
+    mocks.permissionApiMock.handoverAdmin.mockResolvedValue({ code: 200 })
+    const wrapper = mount(UserManage, { global: { stubs: { Header: true, AdminDialog: { template: '<div><slot /></div>' } } } })
+    try {
+      await flushPromises()
+      await wrapper.vm.deleteAdmin(source)
+      await flushPromises()
+      expect(mocks.permissionApiMock.deleteAdmin).not.toHaveBeenCalled()
+      expect(wrapper.vm.handoverRetireSource).toBe(true)
+      const select = wrapper.get('#handover-manager')
+      expect(select.findAll('option').map(option => option.text())).toEqual(['请选择新负责人', '新负责人 · 全局范围'])
+      await select.setValue('new')
+      expect(wrapper.text()).toContain('确认移交并停用')
+      await wrapper.vm.submitHandover()
+      expect(mocks.permissionApiMock.handoverAdmin).toHaveBeenCalledWith('old', 'new', true)
+      expect(wrapper.vm.handoverTarget).toBeNull()
+    } finally { wrapper.unmount() }
+  })
+
+  it('keeps the handover open with the server validation error and supports transfer without retirement', async () => {
+    const wrapper = shallowMount(UserManage)
+    try {
+      await flushPromises()
+      await wrapper.vm.openHandover({ id: 'old', username: '原负责人' })
+      wrapper.vm.handoverManagerId = 'new'
+      mocks.permissionApiMock.handoverAdmin.mockRejectedValue(new Error('新负责人的权限须覆盖下属的现有权限'))
+      await wrapper.vm.submitHandover()
+      expect(mocks.permissionApiMock.handoverAdmin).toHaveBeenCalledWith('old', 'new', false)
+      expect(wrapper.vm.handoverTarget?.id).toBe('old')
+      expect(wrapper.vm.handoverError).toContain('新负责人的权限须覆盖')
+      expect(wrapper.vm.handoverSubmitting).toBe(false)
+    } finally { wrapper.unmount() }
+  })
+
+  it('keeps paginated replacement loading from reopening a cancelled handover', async () => {
+    const wrapper = shallowMount(UserManage)
+    try {
+      await flushPromises()
+      let resolve!: (value: unknown) => void
+      mocks.permissionApiMock.getAdmins.mockImplementationOnce(() => new Promise(done => { resolve = done }))
+      const pending = wrapper.vm.openHandover({ id: 'old', username: '原负责人' })
+      wrapper.vm.closeHandover()
+      resolve({ code: 200, data: { items: [{ id: 'new', username: '新负责人' }], meta: { totalPages: 1 } } })
+      await pending
+      expect(wrapper.vm.handoverTarget).toBeNull()
+      expect(wrapper.vm.handoverCandidates).toEqual([])
+    } finally { wrapper.unmount() }
   })
 
   it('creates an account with two selected canteens from the native multi-select controls', async () => {
@@ -213,7 +309,7 @@ describe('views/UserManage', () => {
 
     expect(wrapper.vm.viewMode).toBe('edit')
     expect(wrapper.vm.editingAdmin).toBe(null)
-    expect(wrapper.vm.formData.password).toBe('Tsinghua@2025')
+    expect(wrapper.vm.formData.password).toHaveLength(16)
 
     wrapper.unmount()
   })
@@ -387,7 +483,7 @@ describe('views/UserManage', () => {
     wrapper.vm.formData.canteenIds = ['c1']
     wrapper.vm.formData.permissions = ['dish:view']
     await wrapper.vm.submitForm()
-    expect(mocks.permissionApiMock.updateAdminPermissions).toHaveBeenCalledWith(9, ['dish:view'], 'CANTEENS', ['c1'])
+    expect(mocks.permissionApiMock.updateAdminPermissions).toHaveBeenCalledWith(9, ['dish:view'], 'CANTEENS', ['c1'], 'admin')
 
     // delete confirm false
     mocks.showConfirmDangerMock.mockResolvedValueOnce(false)
@@ -430,10 +526,8 @@ describe('views/UserManage', () => {
     await nextTick()
     expect(wrapper.vm.passwordStrengthClass).toBe('bg-green-500')
 
-    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
-    wrapper.vm.generatePassword()
-    expect(wrapper.vm.formData.password).toHaveLength(12)
-    randomSpy.mockRestore()
+        wrapper.vm.generatePassword()
+    expect(wrapper.vm.formData.password).toHaveLength(16)
 
     // selectRole: selecting same role again cancels
     wrapper.vm.formData.permissions = ['dish:view']

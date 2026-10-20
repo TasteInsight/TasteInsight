@@ -1,5 +1,8 @@
 .admin-moderation .moderation-body {
-  @apply pt-4 space-y-5;
+  @apply pt-6 space-y-6;
+}
+.admin-moderation .moderation-toolbar {
+  padding-block: 0;
 }
 .admin-moderation .moderation-detail :is(select, input, textarea) {
   @apply mt-2 w-full;

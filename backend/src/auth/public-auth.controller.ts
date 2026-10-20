@@ -81,7 +81,7 @@ export class PublicAuthController {
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   refreshToken(@Request() req) {
-    const { sub, type } = req.user;
-    return this.authService.refreshToken(sub, type);
+    const { sub, type, sessionVersion } = req.user;
+    return this.authService.refreshToken(sub, type, sessionVersion);
   }
 }

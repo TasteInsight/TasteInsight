@@ -1,3 +1,4 @@
+vi.mock('@/composables/useNotification', () => ({ useNotification: () => ({ success: mocks.showAlert, error: mocks.showAlert, info: mocks.showAlert }), notify: { success: mocks.showAlert, error: mocks.showAlert, info: mocks.showAlert } }))
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
@@ -84,6 +85,7 @@ describe('pending dish composition routing', () => {
     pinia = createPinia()
     setActivePinia(pinia)
     auth = useAuthStore()
+    vi.spyOn(auth, 'refreshSession').mockResolvedValue(undefined)
     auth.token = 'session-a'
     auth.isAuthenticated = true
     auth.user = { scope: 'GLOBAL' as const, canteenIds: [], canteens: [], id: 'admin-a', username: 'a', role: 'admin' } as any

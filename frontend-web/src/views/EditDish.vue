@@ -32,7 +32,7 @@
                       {{ canteen.name }}
                     </option>
                   </select>
-                  <p v-if="errors.canteenId" class="mt-1 text-xs text-red-500 flex items-center">
+                  <p v-if="errors.canteenId" class="mt-1 text-xs text-red-500 flex items-center admin-field-error">
                     <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                     {{ errors.canteenId }}
                   </p>
@@ -74,7 +74,7 @@
                       {{ window.name }}
                     </option>
                   </select>
-                  <p v-if="errors.windowId" class="mt-1 text-xs text-red-500 flex items-center">
+                  <p v-if="errors.windowId" class="mt-1 text-xs text-red-500 flex items-center admin-field-error">
                     <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                     {{ errors.windowId }}
                   </p>
@@ -107,7 +107,7 @@
                 }"
                 placeholder="例如：水煮肉片"
               />
-              <p v-if="errors.name" class="mt-1 text-xs text-red-500 flex items-center">
+              <p v-if="errors.name" class="mt-1 text-xs text-red-500 flex items-center admin-field-error">
                 <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                 {{ errors.name }}
               </p>
@@ -128,7 +128,7 @@
                 step="0.01"
                 min="0"
               />
-              <p v-if="errors.price" class="mt-1 text-xs text-red-500 flex items-center">
+              <p v-if="errors.price" class="mt-1 text-xs text-red-500 flex items-center admin-field-error">
                 <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                 {{ errors.price }}
               </p>
@@ -253,7 +253,7 @@
           <div>
             <!-- 菜品子项（仅父菜品显示） -->
             <div v-if="!isSubDish" class="mb-6">
-              <div class="flex justify-between items-center mb-2">
+              <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
                 <label class="block text-gray-700 font-medium admin-label">
                   菜品子项
                   <span class="text-sm text-gray-500 font-normal ml-1">（点击子项可进入编辑）</span>
@@ -273,15 +273,15 @@
                 <div
                   v-for="(subDish, index) in subDishes"
                   :key="subDish.id || index"
-                  class="flex items-center justify-between p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
+                  class="flex flex-wrap items-center justify-between gap-3 p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
                   @click="editSubDish(subDish.id)"
                 >
-                  <div class="flex items-center flex-1">
+                  <div class="flex min-w-0 flex-wrap items-center flex-1 gap-2">
                     <AppIcon
                       class="iconify text-tsinghua-purple mr-2"
                       icon="carbon:dot-mark"
                     ></AppIcon>
-                    <span class="text-gray-700 font-medium">{{
+                    <span class="min-w-0 break-words text-gray-700 font-medium">{{
                       subDish.name || '未命名子项'
                     }}</span>
                     <span class="ml-3 text-sm text-gray-500">¥{{ subDish.price || 0 }}</span>
@@ -630,7 +630,8 @@ import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import AdminImage from '@/components/Common/AdminImage.vue'
 import AdminDialog from '@/components/Common/AdminDialog.vue'
-import { showAlert, showConfirm } from '@/composables/useModal'
+import { showConfirm } from '@/composables/useModal'
+import { useNotification } from '@/composables/useNotification'
 import { getAuthSessionVersion } from '@/utils/auth-session'
 
 export default {
@@ -641,6 +642,7 @@ export default {
     AdminDialog,
   },
   setup() {
+    const notify = useNotification()
     const router = useRouter()
     const route = useRoute()
     const dishStore = useDishStore()
@@ -787,7 +789,7 @@ export default {
       } catch (error) {
         if (!ownsView()) return
         console.error('从 API 获取菜品失败:', error)
-        showAlert('获取菜品信息失败，请重试')
+        notify.error('获取菜品信息失败，请重试')
         router.push('/modify-dish')
       } finally {
         if (ownsView()) isLoading.value = false
@@ -997,7 +999,7 @@ export default {
         formData.tags.push(tag)
         newTag.value = ''
       } else if (formData.tags.includes(tag)) {
-        showAlert('该TAG已存在')
+        notify.info('该TAG已存在')
       }
     }
 
@@ -1011,7 +1013,7 @@ export default {
         Array.from(files).forEach((file) => {
           // 验证文件大小
           if (file.size > 10 * 1024 * 1024) {
-            showAlert(`图片 ${file.name} 大小超过10MB，已跳过`)
+            notify.info(`图片 ${file.name} 大小超过10MB，已跳过`)
             return
           }
 
@@ -1049,7 +1051,7 @@ export default {
       if (!ownsView() || isSubmitting.value) return
 
       if (!authStore.hasPermission('dish:edit')) {
-        showAlert('您没有权限编辑菜品')
+        notify.error('您没有权限编辑菜品')
         return
       }
 
@@ -1154,7 +1156,7 @@ export default {
           } catch (error) {
             if (!ownsSubmission()) return
             console.error('图片处理失败:', error)
-            showAlert('图片处理失败，请重试')
+            notify.error('图片处理失败，请重试')
             return
           }
         }
@@ -1236,7 +1238,7 @@ export default {
           // 4. 更新 store 中的菜品信息
           dishStore.updateDish(draft.id, response.data)
 
-          showAlert('菜品信息已更新！')
+          notify.success('菜品信息已更新！')
           router.push('/modify-dish')
         } else {
           throw new Error(response.message || '更新菜品失败')
@@ -1244,7 +1246,7 @@ export default {
       } catch (error) {
         if (!ownsSubmission()) return
         console.error('更新菜品失败:', error)
-        showAlert(error instanceof Error ? error.message : '更新菜品失败，请重试')
+        notify.error(error instanceof Error ? error.message : '更新菜品失败，请重试')
       } finally {
         if (ownsView()) isSubmitting.value = false
       }
@@ -1265,7 +1267,7 @@ export default {
         const response = await dishApi.deleteDish(formData.id)
 
         if (response.code === 200) {
-          showAlert('菜品删除成功！')
+          notify.success('菜品删除成功！')
           // 更新 store 中的菜品列表（如果 store 有相关方法）
           router.push('/modify-dish')
         } else {
@@ -1273,7 +1275,7 @@ export default {
         }
       } catch (error) {
         console.error('删除菜品失败:', error)
-        showAlert(error instanceof Error ? error.message : '删除菜品失败，请重试')
+        notify.error(error instanceof Error ? error.message : '删除菜品失败，请重试')
       } finally {
         isDeleting.value = false
         showDeleteConfirm.value = false

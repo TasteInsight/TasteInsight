@@ -4,6 +4,8 @@ import { AdminLogsService } from './admin-logs.service';
 import { AdminLogQueryDto } from './dto/admin-log-query.dto';
 
 const mockPrismaService = {
+  $transaction: jest.fn(async (callback) => callback(mockPrismaService)),
+  $queryRaw: jest.fn(),
   admin: {
     findMany: jest.fn(),
   },
@@ -106,10 +108,12 @@ describe('AdminLogsService', () => {
     });
   });
 
-  it('scopes a regular admin to self and directly created admins', async () => {
-    mockPrismaService.admin.findMany.mockResolvedValue([
+  it('scopes a regular admin to self and all descendant admins', async () => {
+    mockPrismaService.$queryRaw.mockResolvedValue([
+      { id: 'admin-1' },
       { id: 'sub-admin-1' },
       { id: 'sub-admin-2' },
+      { id: 'grandchild' },
     ]);
     mockPrismaService.operationLog.count.mockResolvedValue(0);
     mockPrismaService.operationLog.findMany.mockResolvedValue([]);
@@ -131,14 +135,23 @@ describe('AdminLogsService', () => {
 
     const expectedWhere = {
       AND: [
-        { adminId: { in: ['admin-1', 'sub-admin-1', 'sub-admin-2'] } },
+        {
+          adminId: {
+            in: ['admin-1', 'sub-admin-1', 'sub-admin-2', 'grandchild'],
+          },
+        },
         { adminId: 'unrelated-admin', action: 'update' },
       ],
     };
-    expect(mockPrismaService.admin.findMany).toHaveBeenCalledWith({
-      where: { createdBy: 'admin-1' },
-      select: { id: true },
-    });
+    expect(mockPrismaService.$transaction).toHaveBeenCalledWith(
+      expect.any(Function),
+      {
+        isolationLevel: 'RepeatableRead',
+      },
+    );
+    expect(mockPrismaService.$queryRaw).toHaveBeenCalledWith(
+      expect.objectContaining({ values: ['admin-1'] }),
+    );
     expect(mockPrismaService.operationLog.count).toHaveBeenCalledWith({
       where: expectedWhere,
     });

@@ -4,14 +4,19 @@ import {
   IsArray,
   IsNotEmpty,
   IsString,
-  ArrayMinSize,
+  IsOptional,
+  MaxLength,
 } from 'class-validator';
 
 export class UpdatePermissionsDto {
   @IsArray()
   @IsString({ each: true })
-  @ArrayMinSize(1, { message: '权限列表不能为空' })
   permissions: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  role?: string;
 
   @IsIn(['GLOBAL', 'CANTEENS'])
   scope: 'GLOBAL' | 'CANTEENS';

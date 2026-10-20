@@ -84,20 +84,25 @@ describe('AdminNewsController (e2e)', () => {
   });
 
   afterAll(async () => {
-    // Cleanup
-    if (createdNewsId) {
-      await prisma.news.deleteMany({ where: { id: createdNewsId } });
+    try {
+      if (createdNewsId) {
+        await prisma.news.deleteMany({ where: { id: createdNewsId } });
+      }
+      if (testCanteenId) {
+        await prisma.canteen.deleteMany({ where: { id: testCanteenId } });
+      }
+      const fixtureAdminIds = [viewOnlyAdminId, noAccessAdminId].filter(
+        Boolean,
+      );
+      await prisma.operationLog.deleteMany({
+        where: { adminId: { in: fixtureAdminIds } },
+      });
+      await prisma.admin.deleteMany({
+        where: { id: { in: fixtureAdminIds } },
+      });
+    } finally {
+      await app.close();
     }
-    if (testCanteenId) {
-      await prisma.canteen.deleteMany({ where: { id: testCanteenId } });
-    }
-    if (viewOnlyAdminId) {
-      await prisma.admin.delete({ where: { id: viewOnlyAdminId } });
-    }
-    if (noAccessAdminId) {
-      await prisma.admin.delete({ where: { id: noAccessAdminId } });
-    }
-    await app.close();
   });
 
   describe('/admin/news (POST)', () => {

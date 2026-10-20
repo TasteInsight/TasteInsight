@@ -15,6 +15,20 @@ describe('components/Common/Pagination', () => {
     expect(wrapper.text()).toContain('显示 11-20 条，共 35 条记录')
   })
 
+  it('renders an empty range and prevents navigation without records', async () => {
+    const wrapper = mount(Pagination, { props: { currentPage: 1, total: 0 } })
+
+    expect(wrapper.text()).toContain('显示 0-0 条，共 0 条记录')
+    expect(wrapper.findAll('[aria-current="page"]')).toHaveLength(0)
+    expect(wrapper.find('input').attributes('disabled')).toBeDefined()
+    for (const button of wrapper.findAll('button')) {
+      expect(button.attributes('disabled')).toBeDefined()
+      await button.trigger('click')
+    }
+    await wrapper.find('input').trigger('keyup.enter')
+    expect(wrapper.emitted('page-change')).toBeUndefined()
+  })
+
   it('caps endIndex at total when last page is partial', () => {
     const wrapper = mount(Pagination, {
       props: {
@@ -83,7 +97,7 @@ describe('components/Common/Pagination', () => {
       .find((b) => b.text().trim() === '2')
 
     expect(page2, 'page 2 button exists').toBeTruthy()
-    expect(page2!.classes()).toContain('bg-tsinghua-purple')
+    expect(page2!.classes()).toContain('admin-button-primary')
   })
 
   it('jump sanitizes invalid input and clamps to totalPages', async () => {
@@ -100,6 +114,19 @@ describe('components/Common/Pagination', () => {
     await input.setValue('999')
     await wrapper.findAll('button')[wrapper.findAll('button').length - 1]!.trigger('click')
     expect(wrapper.emitted('page-change')?.[wrapper.emitted('page-change')!.length - 1]).toEqual([5])
+  })
+
+  it('normalizes fractional jump values to an integer page', async () => {
+    const wrapper = mount(Pagination, {
+      props: { currentPage: 1, pageSize: 10, total: 50 },
+    })
+
+    const input = wrapper.find('input[type="number"]')
+    await input.setValue('3.5')
+    await input.trigger('keyup.enter')
+
+    expect(wrapper.emitted('page-change')).toEqual([[3]])
+    expect((input.element as HTMLInputElement).value).toBe('3')
   })
 
   it('jump triggers on Enter key', async () => {
@@ -123,6 +150,23 @@ describe('components/Common/Pagination', () => {
     await wrapper.findAll('button')[wrapper.findAll('button').length - 1]!.trigger('click')
 
     expect(wrapper.emitted('page-change')?.[wrapper.emitted('page-change')!.length - 1]).toEqual([1])
+  })
+
+  it('supports compact contexts and accessible pagination names', () => {
+    const wrapper = mount(Pagination, { props: { total: 50, showJump: false, label: '菜品分页' } })
+    expect(wrapper.get('nav').attributes('aria-label')).toBe('菜品分页')
+    expect(wrapper.find('input').exists()).toBe(false)
+    expect(wrapper.text()).toContain('下一页')
+  })
+
+  it('disables every navigation control while the owning task is busy', async () => {
+    const wrapper = mount(Pagination, { props: { total: 50, disabled: true } })
+    for (const button of wrapper.findAll('button')) {
+      expect(button.attributes('disabled')).toBeDefined()
+      await button.trigger('click')
+    }
+    await wrapper.get('input').trigger('keyup.enter')
+    expect(wrapper.emitted('page-change')).toBeUndefined()
   })
 
   it('syncs inputPage when currentPage prop changes', async () => {

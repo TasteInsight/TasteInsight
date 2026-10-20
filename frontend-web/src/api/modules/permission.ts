@@ -53,6 +53,17 @@ export const permissionApi = {
     return await request.delete<ApiResponse<void>>(`/admin/admins/${adminId}`)
   },
 
+  async handoverAdmin(
+    adminId: string,
+    newManagerId: string,
+    retireSource = false,
+  ): Promise<ApiResponse<void>> {
+    return await request.post<ApiResponse<void>>(`/admin/admins/${adminId}/handover`, {
+      newManagerId,
+      retireSource,
+    })
+  },
+
   /**
    * 更新子管理员权限
    * @param adminId 管理员 ID
@@ -66,11 +77,13 @@ export const permissionApi = {
     permissions: string[],
     scope: 'GLOBAL' | 'CANTEENS',
     canteenIds: string[],
+    role?: string,
   ): Promise<ApiResponse<void>> {
     return await request.put<ApiResponse<void>>(`/admin/admins/${adminId}/permissions`, {
       permissions,
       scope,
       canteenIds,
+      ...(role === undefined ? {} : { role }),
     })
   },
 

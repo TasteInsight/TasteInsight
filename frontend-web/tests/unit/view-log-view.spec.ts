@@ -1,3 +1,4 @@
+vi.mock('@/composables/useNotification', () => ({ useNotification: () => ({ success: mocks.showAlertMock, error: mocks.showAlertMock, info: mocks.showAlertMock }), notify: { success: mocks.showAlertMock, error: mocks.showAlertMock, info: mocks.showAlertMock } }))
 import { describe, it, expect, vi, beforeAll, beforeEach, afterAll } from 'vitest'
 import { DOMWrapper, mount } from '@vue/test-utils'
 import { defineComponent, nextTick, ref } from 'vue'
@@ -214,6 +215,9 @@ describe('views/LogView', () => {
 
     expect(wrapper.vm.getActionLabel('create')).toBe('创建')
     expect(wrapper.vm.getActionLabel('logout')).toBe('退出')
+    expect(wrapper.vm.getActionLabel('admin:handover')).toBe('移交下属')
+    expect(wrapper.get('option[value="admin:handover"]').text()).toBe('移交下属')
+    expect(wrapper.get('option[value="admin:create"]').text()).toBe('创建管理员')
     expect(wrapper.vm.getActionLabel('weird')).toBe('weird')
 
     expect(wrapper.vm.getActionClass('delete')).toContain('bg-red')

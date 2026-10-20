@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
+import { GLOBAL_ONLY_PERMISSIONS } from '../permissions.constants';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -28,14 +29,13 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('权限不足');
     }
 
-    // 超级管理员拥有所有权限
-    if (admin.role === 'superadmin') {
-      return true;
-    }
-
     // 检查是否拥有所需的任一权限
-    const hasPermission = requiredPermissions.some((permission) =>
-      admin.permissions.includes(permission),
+    const hasPermission = requiredPermissions.some(
+      (permission) =>
+        (admin.role === 'superadmin' ||
+          admin.permissions.includes(permission)) &&
+        (!GLOBAL_ONLY_PERMISSIONS.includes(permission) ||
+          admin.scope === 'GLOBAL'),
     );
 
     if (!hasPermission) {

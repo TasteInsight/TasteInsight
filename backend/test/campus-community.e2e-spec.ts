@@ -67,7 +67,7 @@ describe('Campus community lifecycle (PostgreSQL)', () => {
     });
     adminId = admin.id;
     adminToken = jwt.sign(
-      { sub: admin.id, type: 'admin', tokenUse: 'access' },
+      { sub: admin.id, type: 'admin', sessionVersion: 0, tokenUse: 'access' },
       { secret: config.get<string>('JWT_SECRET') },
     );
     const createUser = async (verified: boolean) => {

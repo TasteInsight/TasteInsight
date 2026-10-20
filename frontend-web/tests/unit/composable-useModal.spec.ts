@@ -2,7 +2,6 @@ import { describe, expect, it, beforeEach, vi } from 'vitest'
 import {
   modalState,
   showModal,
-  showAlert,
   showConfirm,
   showConfirmDanger,
   closeModal,
@@ -125,38 +124,6 @@ describe('composables/useModal', () => {
 
       closeModal()
       await promise
-    })
-  })
-
-  describe('showAlert', () => {
-    it('shows alert with message and default title', async () => {
-      const promise = showAlert('Alert Message')
-
-      expect(modalState.visible.value).toBe(true)
-      expect(modalState.title.value).toBe('提示')
-      expect(modalState.message.value).toBe('Alert Message')
-      expect(modalState.buttons.value.length).toBe(1)
-      expect(modalState.buttons.value[0].text).toBe('确定')
-
-      closeModal(true)
-      await promise
-    })
-
-    it('shows alert with custom title', async () => {
-      const promise = showAlert('Message', 'Custom Title')
-
-      expect(modalState.title.value).toBe('Custom Title')
-      expect(modalState.message.value).toBe('Message')
-
-      closeModal(true)
-      await promise
-    })
-
-    it('returns void (undefined) after close', async () => {
-      const promise = showAlert('Test')
-      closeModal(true)
-      const result = await promise
-      expect(result).toBeUndefined()
     })
   })
 
@@ -307,18 +274,6 @@ describe('composables/useModal', () => {
   })
 
   describe('button handler invocation', () => {
-    it('showAlert button handler returns true when invoked', async () => {
-      const promise = showAlert('Test message')
-      
-      // Get the button handler and invoke it
-      const handler = modalState.buttons.value[0].handler
-      expect(handler).toBeDefined()
-      const result = handler!()
-      expect(result).toBe(true)
-      
-      closeModal(true)
-      await promise
-    })
 
     it('showConfirm cancel button handler returns false', async () => {
       const promise = showConfirm('Test?')

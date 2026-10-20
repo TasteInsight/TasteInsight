@@ -52,6 +52,11 @@ describe('AdminAdminsController (e2e)', () => {
       })
       .expect(201);
     createdAdminIds.push(manager.body.data.id);
+    // This suite exercises delegated account management after password setup.
+    await prisma.admin.update({
+      where: { id: manager.body.data.id },
+      data: { mustChangePassword: false },
+    });
 
     // Login as a manager able to delegate the permissions used by this suite.
     const adminManagerLogin = await request(app.getHttpServer())
@@ -512,10 +517,37 @@ describe('AdminAdminsController (e2e)', () => {
       credentials: { username: string; password: string },
       operatorToken: string,
     ) => {
-      const login = await request(app.getHttpServer())
+      const initialLogin = await request(app.getHttpServer())
         .post('/auth/admin/login')
         .send(credentials)
         .expect(200);
+      expect(initialLogin.body.data.admin.mustChangePassword).toBe(true);
+      const initialToken = initialLogin.body.data.token.accessToken;
+      await request(app.getHttpServer())
+        .get('/admin/dishes')
+        .set('Authorization', `Bearer ${initialToken}`)
+        .expect(403);
+      const activeCredentials = {
+        username: credentials.username,
+        password: 'RetiredFixture@123',
+      };
+      await request(app.getHttpServer())
+        .put('/admin/admins/me/password')
+        .set('Authorization', `Bearer ${initialToken}`)
+        .send({
+          currentPassword: credentials.password,
+          newPassword: activeCredentials.password,
+        })
+        .expect(200);
+      await request(app.getHttpServer())
+        .get('/admin/dishes')
+        .set('Authorization', `Bearer ${initialToken}`)
+        .expect(401);
+      const login = await request(app.getHttpServer())
+        .post('/auth/admin/login')
+        .send(activeCredentials)
+        .expect(200);
+      expect(login.body.data.admin.mustChangePassword).toBe(false);
       const { accessToken, refreshToken } = login.body.data.token;
       await request(app.getHttpServer())
         .get('/admin/dishes')
@@ -565,7 +597,7 @@ describe('AdminAdminsController (e2e)', () => {
       );
       await request(app.getHttpServer())
         .post('/auth/admin/login')
-        .send(credentials)
+        .send(activeCredentials)
         .expect(401);
       await request(app.getHttpServer())
         .get('/admin/dishes')

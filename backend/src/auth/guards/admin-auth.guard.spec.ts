@@ -54,4 +54,23 @@ describe('AdminAuthGuard', () => {
       }),
     );
   });
+
+  it('rejects an access token issued before the password was changed', async () => {
+    (jwtService.verifyAsync as jest.Mock).mockResolvedValue({
+      sub: 'admin-1',
+      type: 'admin',
+      tokenUse: 'access',
+      sessionVersion: 1,
+    });
+    (prisma.admin.findUnique as jest.Mock).mockResolvedValue({
+      id: 'admin-1',
+      sessionVersion: 2,
+      permissions: [],
+      canteens: [],
+    });
+    await expect(guard.canActivate(context)).rejects.toThrow(
+      UnauthorizedException,
+    );
+    expect(request.admin).toBeUndefined();
+  });
 });

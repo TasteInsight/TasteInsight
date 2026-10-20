@@ -16,6 +16,7 @@ import {
 import { AdminAdminsService } from './admin-admins.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdatePermissionsDto } from './dto/update-permissions.dto';
+import { HandoverAdminDto } from './dto/handover-admin.dto';
 import {
   ChangeOwnPasswordDto,
   ChangeSubAdminPasswordDto,
@@ -24,9 +25,13 @@ import { AdminAuthGuard } from '@/auth/guards/admin-auth.guard';
 import { PermissionsGuard } from '@/auth/guards/permissions.guard';
 import { RequirePermissions } from '@/auth/decorators/permissions.decorator';
 import { Request } from 'express';
+import {
+  ADMIN_AUDIT_ACTIONS,
+  AuditInTransaction,
+} from '@/admin-logs/admin-audit';
 
 interface AdminRequest extends Request {
-  admin: AdminInfo;
+  admin: AdminInfo & { sessionVersion: number };
 }
 
 @Controller('admin/admins')
@@ -51,6 +56,7 @@ export class AdminAdminsController {
   }
 
   @Post()
+  @AuditInTransaction(ADMIN_AUDIT_ACTIONS.create)
   @RequirePermissions('admin:create')
   @HttpCode(HttpStatus.CREATED)
   async create(
@@ -63,17 +69,25 @@ export class AdminAdminsController {
       req.admin,
       req.admin.permissions,
       createAdminDto,
+      req.admin.sessionVersion,
     );
   }
 
   @Delete(':id')
+  @AuditInTransaction(ADMIN_AUDIT_ACTIONS.retire)
   @RequirePermissions('admin:delete')
   @HttpCode(HttpStatus.OK)
   async remove(@Req() req: AdminRequest, @Param('id') id: string) {
-    return this.adminAdminsService.remove(req.admin.id, req.admin.role, id);
+    return this.adminAdminsService.remove(
+      req.admin.id,
+      req.admin.role,
+      id,
+      req.admin.sessionVersion,
+    );
   }
 
   @Put(':id/permissions')
+  @AuditInTransaction(ADMIN_AUDIT_ACTIONS.permissions)
   @RequirePermissions('admin:edit')
   @HttpCode(HttpStatus.OK)
   async updatePermissions(
@@ -88,6 +102,24 @@ export class AdminAdminsController {
       req.admin.permissions,
       id,
       updatePermissionsDto,
+      req.admin.sessionVersion,
+    );
+  }
+
+  @Post(':id/handover')
+  @AuditInTransaction(ADMIN_AUDIT_ACTIONS.handover)
+  @RequirePermissions('admin:edit')
+  @HttpCode(HttpStatus.OK)
+  async handover(
+    @Req() req: AdminRequest,
+    @Param('id') id: string,
+    @Body() dto: HandoverAdminDto,
+  ) {
+    return this.adminAdminsService.handover(
+      req.admin.id,
+      id,
+      dto,
+      req.admin.sessionVersion,
     );
   }
 
@@ -96,6 +128,7 @@ export class AdminAdminsController {
    * 任何已登录的管理员都可以修改自己的密码，无需特殊权限
    */
   @Put('me/password')
+  @AuditInTransaction(ADMIN_AUDIT_ACTIONS.changePassword)
   @HttpCode(HttpStatus.OK)
   async changeOwnPassword(
     @Req() req: AdminRequest,
@@ -104,6 +137,7 @@ export class AdminAdminsController {
     return this.adminAdminsService.changeOwnPassword(
       req.admin.id,
       changePasswordDto,
+      req.admin.sessionVersion,
     );
   }
 
@@ -112,6 +146,7 @@ export class AdminAdminsController {
    * 需要 admin:edit 权限
    */
   @Put(':id/password')
+  @AuditInTransaction(ADMIN_AUDIT_ACTIONS.resetPassword)
   @RequirePermissions('admin:edit')
   @HttpCode(HttpStatus.OK)
   async changeSubAdminPassword(
@@ -124,6 +159,7 @@ export class AdminAdminsController {
       req.admin.role,
       id,
       changePasswordDto,
+      req.admin.sessionVersion,
     );
   }
 }

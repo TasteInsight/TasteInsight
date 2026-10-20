@@ -8,7 +8,7 @@
       />
 
       <!-- 搜索和筛选区域 -->
-      <div class="mt-6 mb-6 space-y-4">
+      <div class="mt-6 admin-filters">
         <!-- 搜索栏 -->
         <div class="relative">
           <AppIcon class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" icon="carbon:search"></AppIcon>
@@ -62,9 +62,8 @@
             </div>
           </div>
 
-          <div class="ml-auto flex items-center">
+          <div v-if="statusFilter || canteenFilter || searchQuery" class="ml-auto flex items-center">
             <button
-              v-if="statusFilter || canteenFilter || searchQuery"
               @click="statusFilter = ''; canteenFilter = ''; searchQuery = ''"
               class="text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 hover:bg-gray-200/50 transition-colors admin-button"
             >
@@ -87,27 +86,8 @@
               <th class="py-3 px-6 text-center text-sm font-medium text-gray-500">操作</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-200">
-            <tr v-if="isLoading">
-              <td colspan="5" class="admin-state">
-                <AppIcon
-                  class="iconify inline-block text-2xl animate-spin"
-                  icon="mdi:loading"
-                ></AppIcon>
-                <span class="ml-2">加载中...</span>
-              </td>
-            </tr>
-            <tr v-else-if="loadError">
-              <td colspan="5" class="admin-state">
-                <p role="alert" class="text-red-700 mb-3">{{ loadError }}</p>
-                <button type="button" class="border hover:bg-gray-50 admin-button admin-button-compact" @click="loadReviewDishes">重试</button>
-              </td>
-            </tr>
-            <tr v-else-if="filteredReviewDishes.length === 0">
-              <td colspan="5" class="admin-state">{{ statusFilter === 'pending' && !searchQuery.trim() && !canteenFilter ? '暂无待审核菜品' : '暂无符合条件的记录' }}</td>
-            </tr>
+          <tbody v-if="!isLoading && !loadError" class="divide-y divide-gray-200">
             <tr
-              v-else
               v-for="dish in filteredReviewDishes"
               :key="dish.id"
               class="table-row cursor-pointer hover:bg-gray-50"
@@ -145,7 +125,7 @@
                   class="text-white transition duration-200 admin-button admin-button-compact"
                   :class="[
                     !authStore.hasPermission('upload:approve') ? 'bg-gray-400 cursor-not-allowed' :
-                    dish.status === 'approved' ? 'bg-green-600 hover:bg-green-700' : 
+                    dish.status === 'approved' ? 'bg-green-600 hover:bg-green-700' :
                     'bg-tsinghua-purple hover:bg-tsinghua-dark'
                   ]"
                   @click="reviewDish(dish)"
@@ -163,6 +143,20 @@
             </tr>
           </tbody>
         </table>
+      </div>
+      <div v-if="isLoading" class="admin-state">
+        <AppIcon
+          class="iconify inline-block text-2xl animate-spin"
+          icon="mdi:loading"
+        ></AppIcon>
+        <span class="ml-2">加载中...</span>
+      </div>
+      <div v-else-if="loadError" class="admin-state">
+        <p role="alert" class="text-red-700 mb-3">{{ loadError }}</p>
+        <button type="button" class="border hover:bg-gray-50 admin-button admin-button-compact" @click="loadReviewDishes">重试</button>
+      </div>
+      <div v-else-if="filteredReviewDishes.length === 0" class="admin-state">
+        {{ statusFilter === 'pending' && !searchQuery.trim() && !canteenFilter ? '暂无待审核菜品' : '暂无符合条件的记录' }}
       </div>
 
       <Pagination v-if="!loadError"
@@ -185,7 +179,7 @@ import Header from '@/components/Layout/Header.vue'
 import AdminImage from '@/components/Common/AdminImage.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
-import { showAlert } from '@/composables/useModal'
+import { useNotification } from '@/composables/useNotification'
 import { contributionLocation } from '@/components/Dishes/contribution-fields'
 import type { Canteen, GetPendingParams } from '@/types/api'
 import type { ContributionStatus, DishContribution } from '@/types/dish-contribution'
@@ -215,9 +209,10 @@ export default defineComponent({
     Pagination,
   },
   setup() {
+    const notify = useNotification()
     const router = useRouter()
     const authStore = useAuthStore()
-    
+
     // 默认状态定义
     const defaultState = {
       searchQuery: '',
@@ -225,7 +220,7 @@ export default defineComponent({
       canteenFilter: '',
       currentPage: 1,
     }
-    
+
     // 从缓存恢复状态
     const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
     const searchQuery = ref(restoredState.searchQuery)
@@ -236,7 +231,7 @@ export default defineComponent({
     const isLoading = ref(false)
     const loadError = ref('')
     const totalDishes = ref(0)
-    
+
     // 保存页面状态
     const saveState = () => {
       savePageState(PAGE_STATE_KEY, {
@@ -278,7 +273,7 @@ export default defineComponent({
 
     const reviewDish = (dish: Pick<ReviewRow, 'id'>) => {
       if (!authStore.hasPermission('upload:approve')) {
-        showAlert('您没有权限审核菜品')
+        notify.error('您没有权限审核菜品')
         return
       }
       // 保存当前状态后再跳转

@@ -14,6 +14,8 @@ export interface AdminInfo extends AdminCanteenScope {
   role: string;
   /** 管理员权限列表 */
   permissions: string[];
+  sessionVersion?: number;
+  mustChangePassword?: boolean;
 }
 
 /**

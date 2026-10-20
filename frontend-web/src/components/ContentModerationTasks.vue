@@ -129,49 +129,29 @@
                 取消
               </button>
             </div>
-            <p v-if="decisionError" class="text-sm text-red-700" role="alert">
+            <p v-if="decisionError" class="text-sm text-red-700 admin-field-error" role="alert">
               {{ decisionError }}
             </p>
           </form>
         </div>
       </li>
     </ul>
-    <p v-if="decisionSuccess" class="mt-4 text-sm text-green-700" role="status">
-      {{ decisionSuccess }}
-    </p>
-    <nav
-      v-if="meta && meta.totalPages > 1"
-      aria-label="审核待办分页"
-      class="mt-5 flex flex-wrap items-center gap-3"
-    >
-      <button
-        type="button"
-        class="admin-button admin-button-secondary"
-        :disabled="loading || !!deciding || page <= 1"
-        @click="goPage(page - 1)"
-      >
-        上一页
-      </button>
-      <span class="text-sm text-gray-600">第 {{ page }} / {{ meta.totalPages }} 页</span>
-      <button
-        type="button"
-        class="admin-button admin-button-secondary"
-        :disabled="loading || !!deciding || page >= meta.totalPages"
-        @click="goPage(page + 1)"
-      >
-        下一页
-      </button>
-    </nav>
+    <Pagination v-if="meta && meta.totalPages > 1" class="mt-5" label="审核待办分页"
+      :current-page="page" :page-size="meta.pageSize" :total="meta.total"
+      :disabled="loading || !!deciding" @page-change="goPage" />
   </section>
 </template>
 
 <script setup lang="ts">
+import Pagination from '@/components/Common/Pagination.vue'
+import { useNotification } from '@/composables/useNotification'
 import { nextTick, onMounted, ref } from 'vue'
 import {
   contentModerationApi,
   type ModerationTask,
   type ModerationTasks,
 } from '@/api/modules/content-moderation'
+const notify = useNotification()
 
 const props = defineProps<{ canEdit: boolean }>()
 const taskSection = ref<HTMLElement | null>(null)
@@ -185,7 +165,6 @@ const selectedId = ref<string | null>(null)
 const reason = ref('')
 const deciding = ref<string | null>(null)
 const decisionError = ref('')
-const decisionSuccess = ref('')
 const targetLabels: Record<string, string> = {
   profile: '用户资料',
   review: '菜品评价',
@@ -207,7 +186,6 @@ async function startDecision(id: string) {
   selectedId.value = id
   reason.value = ''
   decisionError.value = ''
-  decisionSuccess.value = ''
   await nextTick()
   taskSection.value?.querySelector<HTMLTextAreaElement>('textarea')?.focus()
 }
@@ -242,7 +220,6 @@ async function loadTasks(restoreFocus = false) {
 }
 function changeStatus() {
   page.value = 1
-  decisionSuccess.value = ''
   void loadTasks(true)
 }
 function goPage(value: number) {
@@ -261,7 +238,7 @@ async function decide(task: ModerationTask, approved: boolean) {
       ...(reason.value.trim() ? { reason: reason.value.trim() } : {}),
     })
     if (response.code !== 200) throw new Error()
-    decisionSuccess.value = approved ? '已通过审核' : '已拒绝该内容'
+    notify.success(approved ? '已通过审核' : '已拒绝该内容')
     nextId = tasks.value[tasks.value.findIndex((item) => item.id === task.id) + 1]?.id
     if (tasks.value.length === 1 && page.value > 1) page.value -= 1
     await loadTasks()

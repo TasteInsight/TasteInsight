@@ -8,7 +8,7 @@
       />
 
       <!-- 筛选区域 -->
-      <div class="mb-6 mt-6">
+      <div class="mt-6 admin-filters">
         <div class="admin-toolbar">
           <div class="flex items-center gap-3">
             <span class="text-sm font-medium text-gray-600">处理状态</span>
@@ -44,9 +44,8 @@
             </div>
           </div>
 
-          <div class="ml-auto flex items-center">
+          <div v-if="statusFilter || targetTypeFilter" class="ml-auto flex items-center">
             <button
-              v-if="statusFilter || targetTypeFilter"
               @click="statusFilter = ''; targetTypeFilter = ''; handleFilterChange()"
               class="text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 hover:bg-gray-200/50 transition-colors admin-button"
             >
@@ -69,21 +68,8 @@
               <th class="py-3 px-6 text-center text-sm font-medium text-gray-500">操作</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-200">
-            <tr v-if="isLoading">
-              <td colspan="5" class="admin-state">
-                <AppIcon
-                  class="iconify inline-block text-2xl animate-spin"
-                  icon="mdi:loading"
-                ></AppIcon>
-                <span class="ml-2">加载中...</span>
-              </td>
-            </tr>
-            <tr v-else-if="reports.length === 0">
-              <td colspan="5" class="admin-state">暂无举报记录</td>
-            </tr>
+          <tbody v-if="!isLoading" class="divide-y divide-gray-200">
             <tr
-              v-else
               v-for="report in reports"
               :key="report.id"
               class="hover:bg-gray-50"
@@ -105,7 +91,7 @@
                     {{ reportTargets[report.targetType].label }}
                   </div>
                   <!-- 内容图片数量 -->
-                  <div 
+                  <div
                     v-if="report.targetContent?.images?.length"
                     class="ml-2 inline-flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 rounded text-xs text-gray-600"
                   >
@@ -139,6 +125,16 @@
             </tr>
           </tbody>
         </table>
+      </div>
+      <div v-if="isLoading" class="admin-state">
+        <AppIcon
+          class="iconify inline-block text-2xl animate-spin"
+          icon="mdi:loading"
+        ></AppIcon>
+        <span class="ml-2">加载中...</span>
+      </div>
+      <div v-else-if="reports.length === 0" class="admin-state">
+        暂无举报记录
       </div>
 
       <!-- 详情对话框 -->
@@ -204,7 +200,7 @@
                     </span>
                   </div>
                 </div>
-                
+
                 <div v-if="selectedReport.handleResult" class="mt-6 pt-6 border-t border-gray-100">
                   <div class="text-xs text-gray-400 uppercase tracking-wide mb-2">处理结果</div>
                   <div class="text-sm text-gray-700">
@@ -249,7 +245,7 @@
                     </div>
                   </div>
                   <!-- 内容图片 -->
-                  <div 
+                  <div
                     v-if="selectedReport.targetContent.images?.length"
                     class="mb-4"
                   >
@@ -335,7 +331,7 @@
         >
           <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
         </button>
-        
+
         <!-- 图片 -->
         <AdminImage
           :src="imagePreview.images[imagePreview.currentIndex]"
@@ -343,7 +339,7 @@
           variant="preview"
           image-class="max-w-full max-h-[90vh] object-contain rounded-lg"
         />
-        
+
         <!-- 导航按钮 -->
         <button
           v-if="imagePreview.images.length > 1"
@@ -365,7 +361,7 @@
         >
           <AppIcon class="iconify text-2xl" icon="carbon:chevron-right"></AppIcon>
         </button>
-        
+
         <!-- 图片计数 -->
         <div
           v-if="imagePreview.images.length > 1"
@@ -388,7 +384,8 @@ import AdminImage from '@/components/Common/AdminImage.vue'
 import AdminDialog from '@/components/Common/AdminDialog.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
-import { showAlert, showConfirm } from '@/composables/useModal'
+import { showConfirm } from '@/composables/useModal'
+import { useNotification } from '@/composables/useNotification'
 import { getAuthSessionVersion } from '@/utils/auth-session'
 
 const PAGE_STATE_KEY = 'report-manage'
@@ -408,13 +405,14 @@ export default defineComponent({
     Pagination,
   },
   setup() {
+    const notify = useNotification()
     const authStore = useAuthStore()
     const reports = ref<Report[]>([])
     const isLoading = ref(false)
     const isHandling = ref(false)
     const pageSize = ref(20)
     const totalReports = ref(0)
-    
+
     // 默认状态定义
     const defaultState: {
       currentPage: number
@@ -425,7 +423,7 @@ export default defineComponent({
       statusFilter: '',
       targetTypeFilter: '',
     }
-    
+
     // 从缓存恢复状态
     const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
     const currentPage = ref(restoredState.currentPage)
@@ -440,7 +438,7 @@ export default defineComponent({
       authStore.hasPermission('report:handle') && canAccessTargetType(report.targetType)
     const canDeleteContent = (report: Report) =>
       canHandleReport(report) && authStore.hasPermission(reportTargets[report.targetType].deletePermission)
-    
+
     // 保存页面状态
     const saveState = () => {
       savePageState(PAGE_STATE_KEY, {
@@ -515,7 +513,7 @@ export default defineComponent({
         }
       } catch (error) {
         console.error('加载举报列表失败:', error)
-        showAlert('加载举报列表失败，请刷新重试')
+        notify.error('加载举报列表失败，请刷新重试')
         reports.value = []
         totalReports.value = 0
       } finally {
@@ -538,13 +536,13 @@ export default defineComponent({
     const handleReport = async (report: Report, action: 'delete_content' | 'reject_report') => {
       if (isHandling.value || report.status !== 'pending') return
       if (!canHandleReport(report)) {
-        showAlert('您没有权限处理举报')
+        notify.error('您没有权限处理举报')
         return
       }
       const deleting = action === 'delete_content'
       const target = reportTargets[report.targetType]
       if (deleting && !canDeleteContent(report)) {
-        showAlert(`您没有权限删除${target.label}`)
+        notify.error(`您没有权限删除${target.label}`)
         return
       }
       if (deleting && (!report.targetContent || report.targetContent.isDeleted)) return
@@ -558,7 +556,7 @@ export default defineComponent({
         )
         if (!confirmed || sessionVersion !== getAuthSessionVersion()) return
         if (!canHandleReport(report) || (deleting && !canDeleteContent(report))) {
-          showAlert('权限已变更，请刷新后重试')
+          notify.info('权限已变更，请刷新后重试')
           return
         }
         const requestData: ReportHandleRequest = deleting
@@ -568,7 +566,7 @@ export default defineComponent({
         if (sessionVersion !== getAuthSessionVersion()) return
 
         if (response.code === 200) {
-          showAlert(deleting ? '删除成功' : '处理成功')
+          notify.success(deleting ? '删除成功' : '处理成功')
           await loadReports()
           // 如果详情对话框打开，更新选中的举报信息
           if (selectedReport.value && selectedReport.value.id === report.id) {
@@ -581,12 +579,12 @@ export default defineComponent({
             }
           }
         } else {
-          showAlert(response.message || (deleting ? '删除失败' : '处理失败'))
+          notify.error(response.message || (deleting ? '删除失败' : '处理失败'))
         }
       } catch (error) {
         if (sessionVersion !== getAuthSessionVersion()) return
         console.error('处理举报失败:', error)
-        showAlert(deleting ? `删除${target.label}失败，请重试` : '处理举报失败，请重试')
+        notify.error(deleting ? `删除${target.label}失败，请重试` : '处理举报失败，请重试')
       } finally {
         isHandling.value = false
       }

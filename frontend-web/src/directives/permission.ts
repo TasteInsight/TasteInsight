@@ -1,27 +1,26 @@
-import { ObjectDirective } from 'vue'
+import { watchEffect, type ObjectDirective } from 'vue'
 import { useAuthStore } from '@/store/modules/use-auth-store'
+
+const bindings = new WeakMap<HTMLElement, { stop: () => void; display: string }>()
 
 export const permission: ObjectDirective = {
   mounted(el, binding) {
-    const { value } = binding
     const authStore = useAuthStore()
-    
-    if (value && value instanceof Array && value.length > 0) {
-      const permissionRoles = value
-      const hasPermission = authStore.hasAnyPermission(permissionRoles)
-
-      if (!hasPermission) {
-        if (el.parentNode) el.parentNode.removeChild(el)
-      }
-    } else if (value && typeof value === 'string') {
-      const hasPermission = authStore.hasPermission(value)
-      
-      if (!hasPermission) {
-        if (el.parentNode) el.parentNode.removeChild(el)
-      }
-    } else {
-      throw new Error(`need roles! Like v-permission="['admin','editor']" or v-permission="'admin'"`)
+    const value = binding.value
+    if (!(typeof value === 'string' && value.length) && !(Array.isArray(value) && value.length)) {
+      throw new Error('需要有效的权限名称或权限列表')
     }
-  }
+    const display = el.style.display
+    const stop = watchEffect(() => {
+      const visible = Array.isArray(value)
+        ? authStore.hasAnyPermission(value)
+        : authStore.hasPermission(value)
+      el.style.display = visible ? display : 'none'
+    })
+    bindings.set(el, { stop, display })
+  },
+  beforeUnmount(el) {
+    bindings.get(el)?.stop()
+    bindings.delete(el)
+  },
 }
-

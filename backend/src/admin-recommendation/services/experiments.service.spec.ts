@@ -3,6 +3,7 @@ import { ExperimentsService } from './experiments.service';
 import { PrismaService } from '@/prisma.service';
 import { ExperimentService } from '@/recommendation/services/experiment.service';
 import { NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 describe('ExperimentsService', () => {
   let service: ExperimentsService;
@@ -247,6 +248,46 @@ describe('ExperimentsService', () => {
       expect(prisma.experiment.delete).toHaveBeenCalledWith({
         where: { id: 'exp-1' },
       });
+    });
+  });
+  describe.each([
+    ['updateExperiment', '$transaction'],
+    ['deleteExperiment', 'delete'],
+    ['enableExperiment', 'update'],
+    ['disableExperiment', 'update'],
+    ['completeExperiment', 'update'],
+  ] as const)('%s failure handling', (method, operation) => {
+    const invoke = () =>
+      method === 'updateExperiment'
+        ? service.updateExperiment('missing-id', { name: 'Updated' })
+        : service[method]('missing-id');
+
+    function rejectMutation(error: Error) {
+      if (operation === '$transaction') {
+        prisma.$transaction = jest.fn().mockRejectedValue(error);
+      } else {
+        prisma.experiment[operation].mockRejectedValue(error);
+      }
+    }
+
+    it('returns 404 when the target no longer exists', async () => {
+      rejectMutation(
+        new Prisma.PrismaClientKnownRequestError('Record not found', {
+          code: 'P2025',
+          clientVersion: Prisma.prismaVersion.client,
+        }),
+      );
+
+      await expect(invoke()).rejects.toThrow(NotFoundException);
+      expect(experimentService.refreshActiveExperiments).not.toHaveBeenCalled();
+    });
+
+    it('preserves unexpected database errors', async () => {
+      const error = new Error('Database unavailable');
+      rejectMutation(error);
+
+      await expect(invoke()).rejects.toBe(error);
+      expect(experimentService.refreshActiveExperiments).not.toHaveBeenCalled();
     });
   });
 });

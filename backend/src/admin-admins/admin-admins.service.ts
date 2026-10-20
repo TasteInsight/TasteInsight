@@ -1,14 +1,27 @@
+import {
+  ADMIN_AUDIT_ACTIONS,
+  grantSnapshot,
+  logAdminChange,
+} from '@/admin-logs/admin-audit';
 import { AdminCanteenScope, isGlobalScope } from '@/auth/admin-scope';
+import {
+  lockAdminHierarchy,
+  selfAndDescendantAdminIds,
+  bumpAdminHierarchyVersions,
+} from '@/auth/admin-hierarchy';
 import { Prisma } from '@prisma/client';
 import {
   Injectable,
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  ConflictException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdatePermissionsDto } from './dto/update-permissions.dto';
+import { HandoverAdminDto } from './dto/handover-admin.dto';
 import {
   ChangeOwnPasswordDto,
   ChangeSubAdminPasswordDto,
@@ -22,6 +35,7 @@ import * as bcrypt from 'bcrypt';
 import {
   ALL_PERMISSIONS,
   PERMISSION_DEPENDENCIES,
+  GLOBAL_ONLY_PERMISSIONS,
 } from '@/auth/permissions.constants';
 
 const ALL_PERMISSION_SET = new Set(ALL_PERMISSIONS);
@@ -30,15 +44,35 @@ const ALL_PERMISSION_SET = new Set(ALL_PERMISSIONS);
 export class AdminAdminsService {
   constructor(private prisma: PrismaService) {}
 
+  private normalizeRoleName(role?: string): string {
+    const name = role?.trim() || 'admin';
+    if (['superadmin', 'super_admin'].includes(name)) {
+      throw new BadRequestException('该角色名称由系统保留，请选择其他名称');
+    }
+    return name;
+  }
+
+  private validatePermissionScope(
+    scope: 'GLOBAL' | 'CANTEENS',
+    permissions: readonly string[],
+  ) {
+    if (
+      scope === 'CANTEENS' &&
+      permissions.some((permission) =>
+        GLOBAL_ONLY_PERMISSIONS.includes(permission),
+      )
+    ) {
+      throw new BadRequestException(
+        '学生身份审核、社区管理和推荐实验权限仅可分配给全局管理范围',
+      );
+    }
+  }
+
   private validatePermissionGrant(
     operatorRole: string,
     operatorPermissions: readonly string[],
     requestedPermissions: readonly string[],
   ): void {
-    if (requestedPermissions.length === 0) {
-      throw new BadRequestException('权限列表不能为空');
-    }
-
     const duplicatePermissions = requestedPermissions.filter(
       (permission, index) => requestedPermissions.indexOf(permission) !== index,
     );
@@ -136,6 +170,27 @@ export class AdminAdminsService {
     };
   }
 
+  private async lockActor(
+    tx: Prisma.TransactionClient,
+    id: string,
+    authenticatedSessionVersion: number,
+  ) {
+    const actor = await this.lockAdmin(tx, id);
+    if (
+      actor.deletedAt ||
+      actor.sessionVersion !== authenticatedSessionVersion
+    ) {
+      throw new UnauthorizedException('登录会话已失效，请重新登录');
+    }
+    if (actor.mustChangePassword) {
+      throw new ForbiddenException({
+        code: 'ADMIN_PASSWORD_CHANGE_REQUIRED',
+        message: '请先修改初始密码',
+      });
+    }
+    return actor;
+  }
+
   private async restrictSubAdminGrants(
     tx: Prisma.TransactionClient,
     parentId: string,
@@ -143,7 +198,7 @@ export class AdminAdminsService {
     parentPermissions: readonly string[],
   ): Promise<void> {
     const children = await tx.admin.findMany({
-      where: { createdBy: parentId },
+      where: { managerId: parentId },
       include: { canteens: { select: { canteenId: true } }, permissions: true },
     });
     for (const child of children) {
@@ -179,7 +234,7 @@ export class AdminAdminsService {
   }
 
   /**
-   * 获取当前管理员创建的子管理员列表
+   * 获取当前管理员管理的子管理员列表
    */
   async findAll(
     adminId: string,
@@ -189,21 +244,26 @@ export class AdminAdminsService {
   ): Promise<AdminListResponseDto> {
     const skip = (page - 1) * pageSize;
 
-    // 根据角色决定查询条件
-    // superadmin 可以看到所有子管理员，普通管理员只能看到自己创建的
+    // 按当前管理关系查询
+    // superadmin 可以查看全部子管理员，普通管理员查看直属下属
     const whereCondition =
       role === 'superadmin'
-        ? { createdBy: { not: null }, deletedAt: null }
-        : { createdBy: adminId, deletedAt: null };
+        ? { managerId: { not: null } }
+        : { managerId: adminId };
+    const where = {
+      ...whereCondition,
+      OR: [{ deletedAt: null }, { reports: { some: {} } }],
+    };
 
     const [total, admins] = await Promise.all([
-      this.prisma.admin.count({ where: whereCondition }),
+      this.prisma.admin.count({ where }),
       this.prisma.admin.findMany({
-        where: whereCondition,
+        where,
         skip,
         take: pageSize,
         orderBy: { createdAt: 'desc' },
         include: {
+          _count: { select: { reports: true } },
           permissions: true,
           canteens: {
             select: { canteen: { select: { id: true, name: true } } },
@@ -220,6 +280,9 @@ export class AdminAdminsService {
       canteenIds: admin.canteens.map((entry) => entry.canteen.id),
       canteens: admin.canteens.map((entry) => entry.canteen),
       createdBy: admin.createdBy,
+      managerId: admin.managerId,
+      deletedAt: admin.deletedAt,
+      directReportCount: admin._count?.reports ?? 0,
       permissions: admin.permissions.map((p) => p.permission),
       createdAt: admin.createdAt,
       updatedAt: admin.updatedAt,
@@ -249,25 +312,33 @@ export class AdminAdminsService {
     creatorScope: AdminCanteenScope,
     creatorPermissions: readonly string[],
     createAdminDto: CreateAdminDto,
+    authenticatedSessionVersion: number,
   ): Promise<AdminResponseDto> {
     const { username, password, scope, canteenIds, permissions, role } =
       createAdminDto;
 
+    if (permissions.length === 0) {
+      throw new BadRequestException('权限列表不能为空');
+    }
+    const finalRole = this.normalizeRoleName(role);
+
     this.validatePermissionGrant(creatorRole, creatorPermissions, permissions);
 
     await this.validateScopeGrant(creatorScope, { scope, canteenIds });
+    this.validatePermissionScope(scope, permissions);
 
     // 加密密码
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 确定角色：如果提供了 role 则使用，否则默认为 'admin'
-    // 不允许创建 superadmin 角色的子管理员
-    const finalRole = role && role !== 'superadmin' ? role : 'admin';
-
     // 创建管理员及其权限，通过捕获数据库唯一约束错误来处理竞态条件
     try {
       const admin = await this.prisma.$transaction(async (tx) => {
-        const creator = await this.lockAdmin(tx, creatorId);
+        await lockAdminHierarchy(tx);
+        const creator = await this.lockActor(
+          tx,
+          creatorId,
+          authenticatedSessionVersion,
+        );
         if (creator.deletedAt) throw new ForbiddenException('管理员已停用');
         if (
           creator.role !== 'superadmin' &&
@@ -282,16 +353,18 @@ export class AdminAdminsService {
           creator.permissions.map((item) => item.permission),
           permissions,
         );
-        return tx.admin.create({
+        const created = await tx.admin.create({
           data: {
             username,
             password: hashedPassword,
             role: finalRole,
+            mustChangePassword: true,
             scope,
             canteens: {
               create: canteenIds.map((canteenId) => ({ canteenId })),
             },
             createdBy: creatorId,
+            managerId: creatorId,
             permissions: {
               create: permissions.map((permission) => ({ permission })),
             },
@@ -303,6 +376,17 @@ export class AdminAdminsService {
             },
           },
         });
+        await bumpAdminHierarchyVersions(tx, [creatorId]);
+        await logAdminChange(
+          tx,
+          creatorId,
+          ADMIN_AUDIT_ACTIONS.create,
+          created.id,
+          {
+            after: { scope, canteenIds, permissions, role: finalRole },
+          },
+        );
+        return created;
       });
 
       return {
@@ -316,6 +400,7 @@ export class AdminAdminsService {
           canteenIds: admin.canteens.map((entry) => entry.canteen.id),
           canteens: admin.canteens.map((entry) => entry.canteen),
           createdBy: admin.createdBy,
+          managerId: admin.managerId,
           permissions: admin.permissions.map((p) => p.permission),
           createdAt: admin.createdAt,
           updatedAt: admin.updatedAt,
@@ -337,6 +422,7 @@ export class AdminAdminsService {
     operatorId: string,
     operatorRole: string,
     targetId: string,
+    authenticatedSessionVersion: number,
   ): Promise<{ code: number; message: string; data: null }> {
     // 查找目标管理员
     const targetAdmin = await this.prisma.admin.findUnique({
@@ -347,20 +433,58 @@ export class AdminAdminsService {
       throw new NotFoundException('子管理员不存在');
     }
 
-    // 检查权限：只能删除自己创建的子管理员，superadmin 可以删除任何子管理员
-    if (operatorRole !== 'superadmin' && targetAdmin.createdBy !== operatorId) {
+    // 检查权限：只能删除直属子管理员，superadmin 可以删除任何子管理员
+    if (operatorRole !== 'superadmin' && targetAdmin.managerId !== operatorId) {
       throw new ForbiddenException('权限不足');
     }
 
-    // 不能删除非子管理员（即没有 createdBy 的管理员）
-    if (!targetAdmin.createdBy) {
+    // 不能删除非子管理员（即没有上级的管理员）
+    if (!targetAdmin.managerId) {
       throw new ForbiddenException('无法删除该管理员');
     }
 
     // 保留审计、新闻和管理员层级的归属，认证入口排除已删除账号。
-    await this.prisma.admin.update({
-      where: { id: targetId },
-      data: { deletedAt: new Date() },
+    await this.prisma.$transaction(async (tx) => {
+      await lockAdminHierarchy(tx);
+      const operator = await this.lockActor(
+        tx,
+        operatorId,
+        authenticatedSessionVersion,
+      );
+      if (
+        operator.deletedAt ||
+        (operator.role !== 'superadmin' &&
+          !operator.permissions.some(
+            (item) => item.permission === 'admin:delete',
+          ))
+      ) {
+        throw new ForbiddenException('缺少停用管理员权限');
+      }
+      const target = await this.lockAdmin(tx, targetId);
+      if (
+        target.deletedAt ||
+        !target.managerId ||
+        (operator.role !== 'superadmin' && target.managerId !== operatorId)
+      ) {
+        throw new ForbiddenException('无法停用该管理员');
+      }
+      if (await tx.admin.count({ where: { managerId: targetId } })) {
+        throw new BadRequestException('请先选择新负责人并移交下属管理员');
+      }
+      await tx.admin.updateMany({
+        where: { id: targetId, deletedAt: null },
+        data: { deletedAt: new Date(), sessionVersion: { increment: 1 } },
+      });
+      await bumpAdminHierarchyVersions(tx, [target.managerId]);
+      await logAdminChange(
+        tx,
+        operatorId,
+        ADMIN_AUDIT_ACTIONS.retire,
+        targetId,
+        {
+          affectedAdminIds: [targetId],
+        },
+      );
     });
 
     return {
@@ -368,6 +492,117 @@ export class AdminAdminsService {
       message: '操作成功',
       data: null,
     };
+  }
+
+  async handover(
+    operatorId: string,
+    sourceId: string,
+    { newManagerId, retireSource = false }: HandoverAdminDto,
+    authenticatedSessionVersion: number,
+  ): Promise<{ code: number; message: string; data: null }> {
+    await this.prisma.$transaction(async (tx) => {
+      await lockAdminHierarchy(tx);
+      const operator = await this.lockActor(
+        tx,
+        operatorId,
+        authenticatedSessionVersion,
+      );
+      const source = await this.lockAdmin(tx, sourceId);
+      const recipient = await this.lockAdmin(tx, newManagerId);
+      const can = (permission: string) =>
+        operator.role === 'superadmin' ||
+        operator.permissions.some((item) => item.permission === permission);
+      if (
+        operator.deletedAt ||
+        !can('admin:edit') ||
+        (retireSource && !can('admin:delete'))
+      ) {
+        throw new ForbiddenException('缺少移交或停用管理员权限');
+      }
+      if (
+        !source.managerId ||
+        sourceId === operatorId ||
+        (operator.role !== 'superadmin' && source.managerId !== operatorId)
+      ) {
+        throw new ForbiddenException('只能移交所管理账号的下属');
+      }
+      if (
+        recipient.deletedAt ||
+        (operator.role !== 'superadmin' &&
+          recipient.id !== operatorId &&
+          recipient.managerId !== operatorId)
+      ) {
+        throw new ForbiddenException('新负责人必须为您本人或所管理的有效账号');
+      }
+      const descendants = await selfAndDescendantAdminIds(tx, sourceId);
+      if (descendants.includes(newManagerId)) {
+        throw new BadRequestException('新负责人须位于待移交的下属层级之外');
+      }
+      const moving = await tx.admin.findMany({
+        where: { id: { in: descendants.filter((id) => id !== sourceId) } },
+        include: {
+          canteens: { select: { canteenId: true } },
+          permissions: true,
+        },
+      });
+      const reports = moving.filter((report) => report.managerId === sourceId);
+      if (!reports.length)
+        throw new BadRequestException('该管理员暂无下属可移交');
+      const recipientPermissions = new Set(
+        recipient.permissions.map((item) => item.permission),
+      );
+      for (const report of moving) {
+        this.assertScopeSubset(recipient, {
+          scope: report.scope,
+          canteenIds: report.canteens.map((item) => item.canteenId),
+        });
+        if (
+          recipient.role !== 'superadmin' &&
+          report.permissions.some(
+            (item) => !recipientPermissions.has(item.permission),
+          )
+        ) {
+          throw new BadRequestException(
+            `新负责人的权限须覆盖下属“${report.username}”的现有权限`,
+          );
+        }
+      }
+      const reportIds = reports.map((report) => report.id);
+      await tx.admin.updateMany({
+        where: { id: { in: reportIds } },
+        data: { managerId: newManagerId },
+      });
+      await bumpAdminHierarchyVersions(tx, [sourceId, newManagerId]);
+      await logAdminChange(
+        tx,
+        operatorId,
+        ADMIN_AUDIT_ACTIONS.handover,
+        sourceId,
+        {
+          previousManagerId: sourceId,
+          newManagerId,
+          directReportIds: reportIds,
+          affectedAdminIds: descendants.filter((id) => id !== sourceId),
+          retireSource,
+        },
+      );
+      if (retireSource && !source.deletedAt) {
+        await tx.admin.update({
+          where: { id: sourceId },
+          data: { deletedAt: new Date(), sessionVersion: { increment: 1 } },
+        });
+        await logAdminChange(
+          tx,
+          operatorId,
+          ADMIN_AUDIT_ACTIONS.retire,
+          sourceId,
+          {
+            affectedAdminIds: [sourceId],
+          },
+        );
+      }
+    });
+    return { code: 200, message: '移交成功', data: null };
   }
 
   /**
@@ -380,14 +615,20 @@ export class AdminAdminsService {
     operatorPermissions: readonly string[],
     targetId: string,
     updatePermissionsDto: UpdatePermissionsDto,
+    authenticatedSessionVersion: number,
   ): Promise<{ code: number; message: string; data: null }> {
     const { permissions, scope, canteenIds } = updatePermissionsDto;
+    const role =
+      updatePermissionsDto.role === undefined
+        ? undefined
+        : this.normalizeRoleName(updatePermissionsDto.role);
+    this.validatePermissionScope(scope, permissions);
 
     // 查找目标管理员
     const targetAdmin = await this.prisma.admin.findUnique({
       where: { id: targetId, deletedAt: null },
       include: {
-        creator: {
+        manager: {
           select: { scope: true, canteens: { select: { canteenId: true } } },
         },
       },
@@ -397,22 +638,21 @@ export class AdminAdminsService {
       throw new NotFoundException('子管理员不存在');
     }
 
-    // 检查权限：只能更新自己创建的子管理员权限，superadmin 可以更新任何子管理员权限
-    if (operatorRole !== 'superadmin' && targetAdmin.createdBy !== operatorId) {
+    // 检查权限：只能更新直属子管理员权限，superadmin 可以更新任何子管理员权限
+    if (operatorRole !== 'superadmin' && targetAdmin.managerId !== operatorId) {
       throw new ForbiddenException('权限不足');
     }
 
     // 不能更新非子管理员的权限
-    if (!targetAdmin.createdBy) {
+    if (!targetAdmin.managerId) {
       throw new ForbiddenException('无法更新该管理员的权限');
     }
-    const parentId = targetAdmin.createdBy;
 
-    if (targetAdmin.creator)
+    if (targetAdmin.manager)
       this.assertScopeSubset(
         {
-          scope: targetAdmin.creator.scope,
-          canteenIds: targetAdmin.creator.canteens.map(
+          scope: targetAdmin.manager.scope,
+          canteenIds: targetAdmin.manager.canteens.map(
             (canteen) => canteen.canteenId,
           ),
         },
@@ -428,13 +668,23 @@ export class AdminAdminsService {
 
     // 使用事务更新权限
     await this.prisma.$transaction(async (tx) => {
-      // 授权参与者按账号 ID 统一顺序加锁。
-      const [firstId, secondId] = [operatorId, parentId].sort();
-      const first = await this.lockAdmin(tx, firstId);
-      const second =
-        secondId === firstId ? first : await this.lockAdmin(tx, secondId);
-      const operator = operatorId === firstId ? first : second;
-      const parent = parentId === firstId ? first : second;
+      await lockAdminHierarchy(tx);
+      const operator = await this.lockActor(
+        tx,
+        operatorId,
+        authenticatedSessionVersion,
+      );
+      const target = await this.lockAdmin(tx, targetId);
+      if (target.deletedAt || !target.managerId) {
+        throw new ForbiddenException('无法更新该管理员的权限');
+      }
+      if (operator.role !== 'superadmin' && target.managerId !== operatorId) {
+        throw new ForbiddenException('权限不足');
+      }
+      const parent =
+        target.managerId === operatorId
+          ? operator
+          : await this.lockAdmin(tx, target.managerId);
       if (operator.deletedAt) throw new ForbiddenException('管理员已停用');
       if (
         operator.role !== 'superadmin' &&
@@ -453,10 +703,12 @@ export class AdminAdminsService {
         parent.permissions.map((item) => item.permission),
         permissions,
       );
+      const before = { ...grantSnapshot(target), role: target.role };
       await tx.admin.update({
         where: { id: targetId },
         data: {
           scope,
+          ...(role === undefined ? {} : { role }),
           canteens: {
             deleteMany: {},
             create: canteenIds.map((canteenId) => ({ canteenId })),
@@ -482,6 +734,17 @@ export class AdminAdminsService {
           permission,
         })),
       });
+      await logAdminChange(
+        tx,
+        operatorId,
+        ADMIN_AUDIT_ACTIONS.permissions,
+        targetId,
+        {
+          before,
+          after: { scope, canteenIds, permissions, role: role ?? target.role },
+          affectedAdminIds: await selfAndDescendantAdminIds(tx, targetId),
+        },
+      );
     });
 
     return {
@@ -497,6 +760,7 @@ export class AdminAdminsService {
   async changeOwnPassword(
     adminId: string,
     changePasswordDto: ChangeOwnPasswordDto,
+    authenticatedSessionVersion: number,
   ): Promise<{ code: number; message: string; data: null }> {
     const { currentPassword, newPassword } = changePasswordDto;
 
@@ -507,6 +771,10 @@ export class AdminAdminsService {
 
     if (!admin) {
       throw new NotFoundException('管理员不存在');
+    }
+
+    if (admin.sessionVersion !== authenticatedSessionVersion) {
+      throw new UnauthorizedException('登录会话已失效，请重新登录');
     }
 
     // 验证当前密码
@@ -529,9 +797,27 @@ export class AdminAdminsService {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     // 更新密码
-    await this.prisma.admin.update({
-      where: { id: adminId },
-      data: { password: hashedPassword },
+    await this.prisma.$transaction(async (tx) => {
+      const changed = await tx.admin.updateMany({
+        where: {
+          id: adminId,
+          deletedAt: null,
+          sessionVersion: authenticatedSessionVersion,
+        },
+        data: {
+          password: hashedPassword,
+          sessionVersion: { increment: 1 },
+          mustChangePassword: false,
+        },
+      });
+      if (!changed.count) throw new ConflictException('密码已更新，请重新登录');
+      await logAdminChange(
+        tx,
+        adminId,
+        ADMIN_AUDIT_ACTIONS.changePassword,
+        adminId,
+        {},
+      );
     });
 
     return {
@@ -543,13 +829,14 @@ export class AdminAdminsService {
 
   /**
    * 修改子管理员的密码
-   * 只有创建该子管理员的管理员或 superadmin 可以修改
+   * 只有该子管理员的直属上级或 superadmin 可以修改
    */
   async changeSubAdminPassword(
     operatorId: string,
     operatorRole: string,
     targetId: string,
     changePasswordDto: ChangeSubAdminPasswordDto,
+    authenticatedSessionVersion: number,
   ): Promise<{ code: number; message: string; data: null }> {
     const { newPassword } = changePasswordDto;
 
@@ -562,13 +849,13 @@ export class AdminAdminsService {
       throw new NotFoundException('子管理员不存在');
     }
 
-    // 检查权限：只能修改自己创建的子管理员密码，superadmin 可以修改任何子管理员密码
-    if (operatorRole !== 'superadmin' && targetAdmin.createdBy !== operatorId) {
+    // 检查权限：只能修改直属子管理员密码，superadmin 可以修改任何子管理员密码
+    if (operatorRole !== 'superadmin' && targetAdmin.managerId !== operatorId) {
       throw new ForbiddenException('权限不足');
     }
 
-    // 不能修改非子管理员的密码（即没有 createdBy 的管理员）
-    if (!targetAdmin.createdBy) {
+    // 不能修改非子管理员的密码（即没有上级的管理员）
+    if (!targetAdmin.managerId) {
       throw new ForbiddenException('无法修改该管理员的密码');
     }
 
@@ -576,9 +863,41 @@ export class AdminAdminsService {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     // 更新密码
-    await this.prisma.admin.update({
-      where: { id: targetId },
-      data: { password: hashedPassword },
+    await this.prisma.$transaction(async (tx) => {
+      await lockAdminHierarchy(tx);
+      const operator = await this.lockActor(
+        tx,
+        operatorId,
+        authenticatedSessionVersion,
+      );
+      const target = await this.lockAdmin(tx, targetId);
+      if (
+        operator.deletedAt ||
+        target.deletedAt ||
+        !target.managerId ||
+        (operator.role !== 'superadmin' &&
+          (target.managerId !== operatorId ||
+            !operator.permissions.some(
+              (item) => item.permission === 'admin:edit',
+            )))
+      ) {
+        throw new ForbiddenException('无法重置该管理员的密码');
+      }
+      await tx.admin.update({
+        where: { id: targetId },
+        data: {
+          password: hashedPassword,
+          sessionVersion: { increment: 1 },
+          mustChangePassword: true,
+        },
+      });
+      await logAdminChange(
+        tx,
+        operatorId,
+        ADMIN_AUDIT_ACTIONS.resetPassword,
+        targetId,
+        {},
+      );
     });
 
     return {

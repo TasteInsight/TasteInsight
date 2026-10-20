@@ -5,7 +5,9 @@ import {
   Logger,
   NestInterceptor,
 } from '@nestjs/common';
-import { Observable, tap } from 'rxjs';
+import { Observable, mergeMap, catchError } from 'rxjs';
+import { Reflector } from '@nestjs/core';
+import { AUDIT_IN_TRANSACTION } from './admin-audit';
 import { PrismaService } from '@/prisma.service';
 import {
   BATCH_DELETE_MAX_IDS,
@@ -18,6 +20,7 @@ interface AuthenticatedAdminRequest {
   params?: { id?: string };
   body?: { ids?: unknown };
   admin?: { id?: string };
+  operationLogAttempted?: boolean;
 }
 
 @Injectable()
@@ -25,7 +28,10 @@ export class AdminOperationLogInterceptor implements NestInterceptor {
   private readonly logger = new Logger(AdminOperationLogInterceptor.name);
   private readonly readMethods = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly reflector: Reflector = new Reflector(),
+  ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const request = context
@@ -36,9 +42,14 @@ export class AdminOperationLogInterceptor implements NestInterceptor {
       return next.handle();
     }
 
+    const transactionAudit = this.reflector.getAllAndOverride<{
+      action?: string;
+    }>(AUDIT_IN_TRANSACTION, [context.getHandler(), context.getClass()]);
     const baseLog = {
       adminId: request.admin!.id!,
-      action: this.normalizeAction(context.getHandler().name, request.method),
+      action:
+        transactionAudit?.action ??
+        this.normalizeAction(context.getHandler().name, request.method),
       targetType: context.getClass().name,
       details: {
         method: request.method,
@@ -48,22 +59,29 @@ export class AdminOperationLogInterceptor implements NestInterceptor {
     };
 
     return next.handle().pipe(
-      tap({
-        next: (response) => {
-          const responseId = this.getResponseId(response);
-          void this.persistLog({
-            ...baseLog,
-            targetId: request.params?.id || responseId || '-',
-            result: 'success',
-          });
-        },
-        error: () => {
-          void this.persistLog({
-            ...baseLog,
-            targetId: request.params?.id || '-',
-            result: 'failure',
-          });
-        },
+      mergeMap(async (response) => {
+        if (transactionAudit) return response;
+        request.operationLogAttempted = true;
+        const responseId = this.getResponseId(response);
+        await this.persistLog({
+          ...baseLog,
+          targetId: request.params?.id || responseId || '-',
+          result:
+            typeof (response as { code?: number })?.code === 'number' &&
+            (response as { code: number }).code >= 400
+              ? 'failure'
+              : 'success',
+        });
+        return response;
+      }),
+      catchError(async (error) => {
+        request.operationLogAttempted = true;
+        await this.persistLog({
+          ...baseLog,
+          targetId: request.params?.id || '-',
+          result: 'failure',
+        });
+        throw error;
       }),
     );
   }
@@ -115,6 +133,13 @@ export class AdminOperationLogInterceptor implements NestInterceptor {
 
   private normalizeAction(handlerName: string, method: string): string {
     const normalizedHandler = handlerName.toLowerCase();
+    if (normalizedHandler.includes('publish')) return 'publish';
+    if (normalizedHandler.includes('revoke')) return 'revoke';
+    if (normalizedHandler.includes('permissions')) return 'permissions';
+    if (normalizedHandler.includes('password')) return 'password';
+    if (normalizedHandler.includes('disable')) return 'disable';
+    if (normalizedHandler.includes('enable')) return 'enable';
+    if (normalizedHandler.includes('complete')) return 'complete';
     if (normalizedHandler.includes('confirmbatchimport')) {
       return 'create';
     }

@@ -36,7 +36,7 @@
                       {{ canteen.name }}
                     </option>
                   </select>
-                  <p v-if="errors.canteenId" class="mt-1 text-xs text-red-500 flex items-center">
+                  <p v-if="errors.canteenId" class="mt-1 text-xs text-red-500 flex items-center admin-field-error">
                     <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                     {{ errors.canteenId }}
                   </p>
@@ -78,7 +78,7 @@
                       {{ window.name }}
                     </option>
                   </select>
-                  <p v-if="errors.windowId" class="mt-1 text-xs text-red-500 flex items-center">
+                  <p v-if="errors.windowId" class="mt-1 text-xs text-red-500 flex items-center admin-field-error">
                     <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                     {{ errors.windowId }}
                   </p>
@@ -111,7 +111,7 @@
                 }"
                 placeholder="例如：水煮肉片"
               />
-              <p v-if="errors.name" class="mt-1 text-xs text-red-500 flex items-center">
+              <p v-if="errors.name" class="mt-1 text-xs text-red-500 flex items-center admin-field-error">
                 <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                 {{ errors.name }}
               </p>
@@ -132,7 +132,7 @@
                 step="0.01"
                 min="0"
               />
-              <p v-if="errors.price" class="mt-1 text-xs text-red-500 flex items-center">
+              <p v-if="errors.price" class="mt-1 text-xs text-red-500 flex items-center admin-field-error">
                 <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                 {{ errors.price }}
               </p>
@@ -260,7 +260,7 @@
           <div>
             <!-- 菜品子项（可选） -->
             <div class="mb-6">
-              <div class="flex justify-between items-center mb-2">
+              <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
                 <label class="block text-gray-700 font-medium admin-label">
                   菜品子项
                   <span class="text-sm text-gray-500 font-normal ml-1"
@@ -282,9 +282,9 @@
                 <div
                   v-for="(item, index) in formData.subItems"
                   :key="index"
-                  class="flex items-center justify-between p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                  class="flex flex-wrap items-center justify-between gap-3 p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
                 >
-                  <div class="flex-1">
+                  <div class="w-full min-w-0 sm:w-auto sm:flex-1">
                     <input
                       type="text"
                       v-model="item.name"
@@ -294,7 +294,7 @@
                       :disabled="Boolean(item.uploadId) || item.isSubmitting || isSubmitting"
                     />
                   </div>
-                  <div class="flex items-center gap-2 ml-4">
+                  <div class="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       class="transition duration-200 flex items-center admin-button admin-button-primary"
@@ -591,7 +591,8 @@ import { dishApi } from '@/api/modules/dish'
 import { canteenApi } from '@/api/modules/canteen'
 import Header from '@/components/Layout/Header.vue'
 import AdminImage from '@/components/Common/AdminImage.vue'
-import { showAlert, showConfirm } from '@/composables/useModal'
+import { showConfirm } from '@/composables/useModal'
+import { useNotification } from '@/composables/useNotification'
 import { dishComposition, getDishCompositionVersion, resetDishComposition } from '@/composables/dish-composition'
 import { getAuthSessionVersion } from '@/utils/auth-session'
 
@@ -602,6 +603,7 @@ export default {
     Header,
   },
   setup() {
+    const notify = useNotification()
     const router = useRouter()
     const authStore = useAuthStore()
     const isSubmitting = ref(false)
@@ -714,7 +716,7 @@ export default {
       if (!isCurrent(version) || isSubmitting.value) return
       const subItem = formData.subItems[index]
       if (!subItem || !subItem.name || !subItem.name.trim()) {
-        showAlert('请先输入子项名称')
+        notify.info('请先输入子项名称')
         return
       }
       if (subItem.uploadId) return
@@ -757,7 +759,7 @@ export default {
         formData.tags.push(tag)
         newTag.value = ''
       } else if (formData.tags.includes(tag)) {
-        showAlert('该TAG已存在')
+        notify.info('该TAG已存在')
       }
     }
 
@@ -772,7 +774,7 @@ export default {
         Array.from(files).forEach((file) => {
           // 验证文件大小
           if (file.size > 10 * 1024 * 1024) {
-            showAlert(`图片 ${file.name} 大小超过10MB，已跳过`)
+            notify.info(`图片 ${file.name} 大小超过10MB，已跳过`)
             return
           }
 
@@ -809,7 +811,7 @@ export default {
       const version = getDishCompositionVersion()
       if (!isCurrent(version) || isSubmitting.value) return
       if (!authStore.hasPermission('dish:create')) {
-        showAlert('您没有权限创建菜品')
+        notify.error('您没有权限创建菜品')
         return
       }
       if (parentUploadId.value) {
@@ -895,7 +897,7 @@ export default {
           } catch (error) {
             if (!isCurrent(version)) return
             console.error('图片上传失败:', error)
-            showAlert('图片上传失败，请重试')
+            notify.error('图片上传失败，请重试')
             isSubmitting.value = false
             return
           }
@@ -980,11 +982,11 @@ export default {
           }
 
           if (redirect && formData.subItems.length === 0) {
-            showAlert('菜品提交成功，已进入审核列表！')
+            notify.success('菜品提交成功，已进入审核列表！')
             clearForm()
             router.push(authStore.hasPermission('upload:approve') ? '/review-dish' : '/single-add')
           } else {
-            showAlert('父菜品已提交审核！')
+            notify.success('父菜品已提交审核！')
           }
         } else {
           throw new Error(response.message || '创建菜品失败')
@@ -992,7 +994,7 @@ export default {
       } catch (error) {
         if (!isCurrent(version)) return
         console.error('创建菜品失败:', error)
-        showAlert(error instanceof Error ? error.message : '创建菜品失败，请重试')
+        notify.error(error instanceof Error ? error.message : '创建菜品失败，请重试')
       } finally {
         isSubmitting.value = false
       }

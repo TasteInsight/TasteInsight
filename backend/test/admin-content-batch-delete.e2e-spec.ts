@@ -66,7 +66,7 @@ describe('Atomic administrator content deletion (PostgreSQL)', () => {
       });
       admins.push(row.id);
       return jwt.sign(
-        { sub: row.id, type: 'admin', tokenUse: 'access' },
+        { sub: row.id, type: 'admin', sessionVersion: 0, tokenUse: 'access' },
         { secret },
       );
     };

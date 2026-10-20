@@ -7,40 +7,30 @@
         header-icon="carbon:task-approved"
       />
 
-      <!-- 标签页切换 -->
-      <div class="admin-toolbar mt-4">
-        <div class="flex items-center space-x-4">
-          <button
-            v-if="canReview"
-            class="font-medium transition duration-200 admin-button"
-            :class="
-              activeTab === 'reviews'
-                ? 'bg-tsinghua-purple text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
-            "
-            @click="switchTab('reviews')"
-          >
-            <AppIcon class="iconify inline-block mr-2" icon="carbon:star"></AppIcon>
-            评价审核
-          </button>
-          <button
-            v-if="canComment"
-            class="font-medium transition duration-200 admin-button"
-            :class="
-              activeTab === 'comments'
-                ? 'bg-tsinghua-purple text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
-            "
-            @click="switchTab('comments')"
-          >
-            <AppIcon class="iconify inline-block mr-2" icon="carbon:chat"></AppIcon>
-            评论审核
-          </button>
-        </div>
-      </div>
+      <nav class="admin-tabs mb-6" aria-label="评价和评论审核视图">
+        <button
+          v-if="canReview"
+          type="button"
+          class="admin-tab"
+          :aria-pressed="activeTab === 'reviews'"
+          @click="switchTab('reviews')"
+        >
+          <AppIcon icon="carbon:star" aria-hidden="true" />评价审核
+        </button>
+        <button
+          v-if="canComment"
+          type="button"
+          class="admin-tab"
+          :aria-pressed="activeTab === 'comments'"
+          @click="switchTab('comments')"
+        >
+          <AppIcon icon="carbon:chat" aria-hidden="true" />评论审核
+        </button>
+      </nav>
 
       <!-- 评价审核列表表格 -->
-      <div v-if="activeTab === 'reviews'" class="admin-table-scroll">
+      <template v-if="activeTab === 'reviews'">
+      <div class="admin-table-scroll">
         <table class="admin-table">
           <thead class="bg-gray-50">
             <tr>
@@ -52,21 +42,8 @@
               <th class="py-3 px-6 text-center text-sm font-medium text-gray-500">操作</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-200">
-            <tr v-if="isLoadingReviews">
-              <td colspan="6" class="admin-state">
-                <AppIcon
-                  class="iconify inline-block text-2xl animate-spin"
-                  icon="mdi:loading"
-                ></AppIcon>
-                <span class="ml-2">加载中...</span>
-              </td>
-            </tr>
-            <tr v-else-if="reviews.length === 0">
-              <td colspan="6" class="admin-state">暂无待审核评价</td>
-            </tr>
+          <tbody v-if="!isLoadingReviews" class="divide-y divide-gray-200">
             <tr
-              v-else
               v-for="review in reviews"
               :key="review.id"
               class="hover:bg-gray-50"
@@ -132,9 +109,21 @@
           </tbody>
         </table>
       </div>
+      <div v-if="isLoadingReviews" class="admin-state">
+        <AppIcon
+          class="iconify inline-block text-2xl animate-spin"
+          icon="mdi:loading"
+        ></AppIcon>
+        <span class="ml-2">加载中...</span>
+      </div>
+      <div v-else-if="reviews.length === 0" class="admin-state">
+        暂无待审核评价
+      </div>
+      </template>
 
       <!-- 评论审核列表表格 -->
-      <div v-if="activeTab === 'comments'" class="admin-table-scroll">
+      <template v-if="activeTab === 'comments'">
+      <div class="admin-table-scroll">
         <table class="admin-table">
           <thead class="bg-gray-50">
             <tr>
@@ -146,21 +135,8 @@
               <th class="py-3 px-6 text-center text-sm font-medium text-gray-500">操作</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-200">
-            <tr v-if="isLoadingComments">
-              <td colspan="6" class="admin-state">
-                <AppIcon
-                  class="iconify inline-block text-2xl animate-spin"
-                  icon="mdi:loading"
-                ></AppIcon>
-                <span class="ml-2">加载中...</span>
-              </td>
-            </tr>
-            <tr v-else-if="comments.length === 0">
-              <td colspan="6" class="admin-state">暂无待审核评论</td>
-            </tr>
+          <tbody v-if="!isLoadingComments" class="divide-y divide-gray-200">
             <tr
-              v-else
               v-for="comment in comments"
               :key="comment.id"
               class="hover:bg-gray-50"
@@ -215,6 +191,17 @@
           </tbody>
         </table>
       </div>
+      <div v-if="isLoadingComments" class="admin-state">
+        <AppIcon
+          class="iconify inline-block text-2xl animate-spin"
+          icon="mdi:loading"
+        ></AppIcon>
+        <span class="ml-2">加载中...</span>
+      </div>
+      <div v-else-if="comments.length === 0" class="admin-state">
+        暂无待审核评论
+      </div>
+      </template>
 
       <!-- 分页 -->
       <Pagination
@@ -331,7 +318,7 @@
                 </div>
               </div>
               <!-- 评价图片 -->
-              <div 
+              <div
                 v-if="selectedReview.images && selectedReview.images.length > 0"
                 class="mt-4"
               >
@@ -350,7 +337,7 @@
                 </div>
               </div>
               <!-- 评分详情 -->
-              <div 
+              <div
                 v-if="selectedReview.ratingDetails"
                 class="mt-4 grid grid-cols-2 gap-4"
               >
@@ -396,7 +383,7 @@
               拒绝
             </button>
             <button
-              class="bg-green-600 text-white hover:bg-green-700 transition duration-200 flex items-center admin-button"
+              class="transition duration-200 flex items-center admin-button admin-button-primary"
               @click="handleApproveReview"
               :disabled="!authStore.hasPermission('review:approve') || isSubmitting"
               :title="!authStore.hasPermission('review:approve') ? '无权限审核评价' : '通过评价'"
@@ -541,7 +528,7 @@
               拒绝
             </button>
             <button
-              class="bg-green-600 text-white hover:bg-green-700 transition duration-200 flex items-center admin-button"
+              class="transition duration-200 flex items-center admin-button admin-button-primary"
               @click="handleApproveComment"
               :disabled="!authStore.hasPermission('comment:approve') || isSubmitting"
               :title="!authStore.hasPermission('comment:approve') ? '无权限审核评论' : '通过评论'"
@@ -697,7 +684,7 @@
         >
           <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
         </button>
-        
+
         <!-- 图片 -->
         <AdminImage
           :src="imagePreview.images[imagePreview.currentIndex]"
@@ -705,7 +692,7 @@
           variant="preview"
           image-class="max-w-full max-h-[90vh] object-contain rounded-lg"
         />
-        
+
         <!-- 导航按钮 -->
         <button
           v-if="imagePreview.images.length > 1"
@@ -727,7 +714,7 @@
         >
           <AppIcon class="iconify text-2xl" icon="carbon:chevron-right"></AppIcon>
         </button>
-        
+
         <!-- 图片计数 -->
         <div
           v-if="imagePreview.images.length > 1"
@@ -750,7 +737,7 @@ import AdminDialog from '@/components/Common/AdminDialog.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
 import type { PendingReview, PendingComment } from '@/types/api'
-import { showAlert } from '@/composables/useModal'
+import { useNotification } from '@/composables/useNotification'
 
 const PAGE_STATE_KEY = 'review-manage'
 
@@ -763,17 +750,18 @@ export default defineComponent({
     Pagination,
   },
   setup() {
+    const notify = useNotification()
     const authStore = useAuthStore()
     const canReview = authStore.hasPermission('review:approve')
     const canComment = authStore.hasPermission('comment:approve')
-    
+
     // 默认状态定义
     const defaultState = {
       activeTab: 'reviews',
       currentPageReviews: 1,
       currentPageComments: 1,
     }
-    
+
     // 从缓存恢复状态
     const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
     const restoredTab = restoredState.activeTab as 'reviews' | 'comments'
@@ -784,7 +772,7 @@ export default defineComponent({
           ? 'reviews'
           : 'comments',
     )
-    
+
     // 评价相关
     const reviews = ref<PendingReview[]>([])
     const isLoadingReviews = ref(false)
@@ -793,13 +781,13 @@ export default defineComponent({
     const selectedReview = ref<PendingReview | null>(null)
     const isRejectReviewModalOpen = ref(false)
     const rejectReviewReason = ref('')
-    
+
     // 评论相关
     const comments = ref<PendingComment[]>([])
     const isLoadingComments = ref(false)
     const currentPageComments = ref(restoredState.currentPageComments)
     const totalComments = ref(0)
-    
+
     // 保存页面状态
     const saveState = () => {
       savePageState(PAGE_STATE_KEY, {
@@ -811,7 +799,7 @@ export default defineComponent({
     const selectedComment = ref<PendingComment | null>(null)
     const isRejectCommentModalOpen = ref(false)
     const rejectCommentReason = ref('')
-    
+
     // 通用
     const pageSize = ref(20)
     const isSubmitting = ref(false)
@@ -878,7 +866,7 @@ export default defineComponent({
         }
       } catch (error) {
         console.error('加载评价列表失败:', error)
-        showAlert('加载评价列表失败，请刷新重试')
+        notify.error('加载评价列表失败，请刷新重试')
         reviews.value = []
         totalReviews.value = 0
       } finally {
@@ -904,7 +892,7 @@ export default defineComponent({
         }
       } catch (error) {
         console.error('加载评论列表失败:', error)
-        showAlert('加载评论列表失败，请刷新重试')
+        notify.error('加载评论列表失败，请刷新重试')
         comments.value = []
         totalComments.value = 0
       } finally {
@@ -945,7 +933,7 @@ export default defineComponent({
 
     const handleApproveReview = async () => {
       if (!authStore.hasPermission('review:approve')) {
-        showAlert('您没有权限审核评价')
+        notify.error('您没有权限审核评价')
         return
       }
 
@@ -955,15 +943,15 @@ export default defineComponent({
       try {
         const response = await reviewApi.approveReview(selectedReview.value.id, { expectedUpdatedAt: selectedReview.value.updatedAt })
         if (response.code === 200) {
-          showAlert('审核通过')
+          notify.success('审核通过')
           await loadReviews()
           closeReviewDetail()
         } else {
-          showAlert(response.message || '审核失败')
+          notify.error(response.message || '审核失败')
         }
       } catch (error) {
         console.error('审核评价失败:', error)
-        showAlert(error instanceof Error ? error.message : '审核评价失败，请重试')
+        notify.error(error instanceof Error ? error.message : '审核评价失败，请重试')
       } finally {
         isSubmitting.value = false
       }
@@ -971,12 +959,12 @@ export default defineComponent({
 
     const handleRejectReview = async () => {
       if (!authStore.hasPermission('review:approve')) {
-        showAlert('您没有权限审核评价')
+        notify.error('您没有权限审核评价')
         return
       }
 
       if (!selectedReview.value || !rejectReviewReason.value.trim()) {
-        showAlert('请填写拒绝原因')
+        notify.info('请填写拒绝原因')
         return
       }
 
@@ -987,16 +975,16 @@ export default defineComponent({
           expectedUpdatedAt: selectedReview.value.updatedAt,
         })
         if (response.code === 200) {
-          showAlert('已拒绝')
+          notify.success('已拒绝')
           await loadReviews()
           closeRejectReviewModal()
           closeReviewDetail()
         } else {
-          showAlert(response.message || '拒绝失败')
+          notify.error(response.message || '拒绝失败')
         }
       } catch (error) {
         console.error('拒绝评价失败:', error)
-        showAlert(error instanceof Error ? error.message : '拒绝评价失败，请重试')
+        notify.error(error instanceof Error ? error.message : '拒绝评价失败，请重试')
       } finally {
         isSubmitting.value = false
       }
@@ -1023,7 +1011,7 @@ export default defineComponent({
 
     const handleApproveComment = async () => {
       if (!authStore.hasPermission('comment:approve')) {
-        showAlert('您没有权限审核评论')
+        notify.error('您没有权限审核评论')
         return
       }
 
@@ -1033,15 +1021,15 @@ export default defineComponent({
       try {
         const response = await reviewApi.approveComment(selectedComment.value.id)
         if (response.code === 200) {
-          showAlert('审核通过')
+          notify.success('审核通过')
           await loadComments()
           closeCommentDetail()
         } else {
-          showAlert(response.message || '审核失败')
+          notify.error(response.message || '审核失败')
         }
       } catch (error) {
         console.error('审核评论失败:', error)
-        showAlert('审核评论失败，请重试')
+        notify.error('审核评论失败，请重试')
       } finally {
         isSubmitting.value = false
       }
@@ -1049,12 +1037,12 @@ export default defineComponent({
 
     const handleRejectComment = async () => {
       if (!authStore.hasPermission('comment:approve')) {
-        showAlert('您没有权限审核评论')
+        notify.error('您没有权限审核评论')
         return
       }
 
       if (!selectedComment.value || !rejectCommentReason.value.trim()) {
-        showAlert('请填写拒绝原因')
+        notify.info('请填写拒绝原因')
         return
       }
 
@@ -1062,16 +1050,16 @@ export default defineComponent({
       try {
         const response = await reviewApi.rejectComment(selectedComment.value.id, rejectCommentReason.value)
         if (response.code === 200) {
-          showAlert('已拒绝')
+          notify.success('已拒绝')
           await loadComments()
           closeRejectCommentModal()
           closeCommentDetail()
         } else {
-          showAlert(response.message || '拒绝失败')
+          notify.error(response.message || '拒绝失败')
         }
       } catch (error) {
         console.error('拒绝评论失败:', error)
-        showAlert('拒绝评论失败，请重试')
+        notify.error('拒绝评论失败，请重试')
       } finally {
         isSubmitting.value = false
       }

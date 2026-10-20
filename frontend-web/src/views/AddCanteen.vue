@@ -160,7 +160,7 @@
                   placeholder="例如：紫荆园"
                   required
                 />
-                <p v-if="errors.name" class="mt-1 text-xs text-red-500 flex items-center">
+                <p v-if="errors.name" class="mt-1 text-xs text-red-500 flex items-center admin-field-error">
                   <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                   {{ errors.name }}
                 </p>
@@ -212,7 +212,7 @@
                   </div>
                   <button type="button" class="text-tsinghua-purple admin-button" @click="addFloor">添加楼层</button>
                 </div>
-                <p v-if="errors.floors" class="mt-1 text-xs text-red-500 flex items-center">
+                <p v-if="errors.floors" class="mt-1 text-xs text-red-500 flex items-center admin-field-error">
                   <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                   {{ errors.floors }}
                 </p>
@@ -615,7 +615,8 @@ import { canteenApi } from '@/api/modules/canteen'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import AdminImage from '@/components/Common/AdminImage.vue'
-import { showAlert, showConfirm, showConfirmDanger } from '@/composables/useModal'
+import { showConfirm, showConfirmDanger } from '@/composables/useModal'
+import { useNotification } from '@/composables/useNotification'
 import { authSessionVersion, getAuthSessionVersion } from '@/utils/auth-session'
 import { toOpeningHoursForm, fromOpeningHoursForm } from '@/utils/canteen-opening-hours'
 
@@ -626,6 +627,7 @@ export default {
     Header,
   },
   setup() {
+    const notify = useNotification()
     const authStore = useAuthStore()
     const editorSession = ref(null)
     const isSubmitting = computed(() => editorSession.value?.submitting || false)
@@ -712,7 +714,7 @@ export default {
       } catch (error) {
         if (!isCurrent()) return
         console.error('加载食堂列表失败:', error)
-        showAlert('加载食堂列表失败，请刷新重试')
+        notify.error('加载食堂列表失败，请刷新重试')
       } finally {
         if (isCurrent()) isLoading.value = false
       }
@@ -751,7 +753,7 @@ export default {
     // 创建新食堂
     const createNewCanteen = () => {
       if (!authStore.hasPermission('canteen:create')) {
-        showAlert('您没有权限创建食堂')
+        notify.error('您没有权限创建食堂')
         return
       }
       if (!active || !ownsSession()) return
@@ -764,7 +766,7 @@ export default {
     // 编辑食堂
     const editCanteen = async (canteen) => {
       if (!authStore.hasPermission('canteen:edit')) {
-        showAlert('您没有权限编辑食堂')
+        notify.error('您没有权限编辑食堂')
         return
       }
       if (!active || !ownsSession()) return
@@ -802,7 +804,7 @@ export default {
     // 删除食堂
     const deleteCanteen = async (canteen) => {
       if (!authStore.hasPermission('canteen:delete')) {
-        showAlert('您没有权限删除食堂')
+        notify.error('您没有权限删除食堂')
         return
       }
       const confirmed = await showConfirmDanger(
@@ -816,14 +818,14 @@ export default {
       try {
         const response = await canteenApi.deleteCanteen(canteen.id)
         if (response.code === 200) {
-          showAlert('删除成功！')
+          notify.success('删除成功！')
           loadCanteens()
         } else {
           throw new Error(response.message || '删除失败')
         }
       } catch (error) {
         console.error('删除食堂失败:', error)
-        showAlert(error instanceof Error ? error.message : '删除食堂失败，请重试')
+        notify.error(error instanceof Error ? error.message : '删除食堂失败，请重试')
       }
     }
 
@@ -856,7 +858,7 @@ export default {
         Array.from(files).forEach((file) => {
           // 验证文件大小
           if (file.size > 10 * 1024 * 1024) {
-            showAlert(`图片 ${file.name} 大小超过10MB，已跳过`)
+            notify.info(`图片 ${file.name} 大小超过10MB，已跳过`)
             return
           }
 
@@ -915,7 +917,7 @@ export default {
       const floor = formData.floors[index]
       if (windows.value.some(window => window.floor === floor) ||
         formData.openingHours.some(hours => hours.floor === floor)) {
-        showAlert(`楼层"${floor.name || floor.level}"仍被窗口或营业时间引用，请先重新选择楼层或删除对应条目`)
+        notify.info(`楼层"${floor.name || floor.level}"仍被窗口或营业时间引用，请先重新选择楼层或删除对应条目`)
         return
       }
       formData.floors.splice(index, 1)
@@ -943,7 +945,7 @@ export default {
     const addWindow = () => {
       if (isWindowsLoading.value || windowsLoadError.value) return
       if (!availableFloors.value.length) {
-        showAlert('请先配置并保存楼层信息后再添加窗口')
+        notify.info('请先配置并保存楼层信息后再添加窗口')
         return
       }
       windows.value.push({
@@ -973,14 +975,14 @@ export default {
           if (response.code === 200) {
             const currentIndex = windows.value.indexOf(target)
             if (currentIndex !== -1) windows.value.splice(currentIndex, 1)
-            if (isCurrentEditor(owner, version)) showAlert('删除成功！')
+            if (isCurrentEditor(owner, version)) notify.success('删除成功！')
           } else {
             throw new Error(response.message || '删除失败')
           }
         } catch (error) {
           if (!isCurrentEditor(owner, version)) return
           console.error('删除窗口失败:', error)
-          showAlert(error instanceof Error ? error.message : '删除窗口失败，请重试')
+          notify.error(error instanceof Error ? error.message : '删除窗口失败，请重试')
         }
       } else {
         // 如果窗口未保存，直接移除
@@ -1028,7 +1030,7 @@ export default {
       
       for (const hours of formData.openingHours) {
         if (isUnresolvedFloor(hours.floor)) {
-          showAlert(`营业时间的原楼层"${hours.floor.level}"无法确定，请重新选择楼层或删除该营业时间`)
+          notify.error(`营业时间的原楼层"${hours.floor.level}"无法确定，请重新选择楼层或删除该营业时间`)
           return
         }
       }
@@ -1039,12 +1041,12 @@ export default {
             continue
           }
           if (!window.floor) {
-            showAlert(`请先为窗口"${window.name}"选择楼层`)
+            notify.info(`请先为窗口"${window.name}"选择楼层`)
             return
           }
           const floorInfo = resolveWindowFloor(window.floor)
           if (!floorInfo) {
-            showAlert(`窗口"${window.name}"的楼层信息无效，请检查`)
+            notify.error(`窗口"${window.name}"的楼层信息无效，请检查`)
             return
           }
         }
@@ -1056,7 +1058,7 @@ export default {
           ...hours, floor: typeof hours.floor === 'string' ? hours.floor : hours.floor.level,
         })))
       } catch (error) {
-        showAlert(error.message)
+        notify.error(error.message)
         return
       }
 
@@ -1134,7 +1136,7 @@ export default {
           } catch (error) {
             if (!isCurrentEditor(owner, version)) return
             console.error('图片上传失败:', error)
-            showAlert('图片上传失败，请重试')
+            notify.error('图片上传失败，请重试')
             return
           }
         }
@@ -1160,7 +1162,7 @@ export default {
           throw new Error('食堂已保存，但返回了重复的楼层层级；请修正层级并重新选择窗口或营业时间的楼层后保存')
         }
         if (!canteenId) {
-          if (isCurrentEditor(owner, version)) showAlert('食堂创建成功！现在您可以添加窗口信息。')
+          if (isCurrentEditor(owner, version)) notify.success('食堂创建成功！现在您可以添加窗口信息。')
           await loadCanteens()
           return
         }
@@ -1194,13 +1196,13 @@ export default {
         // 5. 重新加载列表并返回
         await loadCanteens()
         if (isCurrentEditor(owner, version)) {
-          showAlert('食堂信息已更新！')
+          notify.success('食堂信息已更新！')
           backToList()
         }
       } catch (error) {
         if (!isCurrentEditor(owner, version)) return
         console.error('保存食堂失败:', error)
-        showAlert(error instanceof Error ? error.message : '保存食堂失败，请重试')
+        notify.error(error instanceof Error ? error.message : '保存食堂失败，请重试')
       } finally {
         owner.submitting = false
       }

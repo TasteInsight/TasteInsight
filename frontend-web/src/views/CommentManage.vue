@@ -10,8 +10,9 @@
       <div class="admin-comment-layout">
         <!-- 左侧：菜品列表 -->
         <div class="admin-dish-picker">
+          <div class="admin-filters">
           <!-- 搜索栏 -->
-          <div class="mb-4">
+          <div>
             <div class="relative">
               <AppIcon class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" icon="carbon:search"></AppIcon>
               <input
@@ -36,7 +37,7 @@
           <!-- 筛选区域 -->
           <div
             v-if="canViewCanteens"
-            class="admin-toolbar mb-3"
+            class="admin-toolbar"
           >
             <div class="flex items-center gap-3">
               <span class="text-sm font-medium text-gray-600 whitespace-nowrap">所属食堂</span>
@@ -71,9 +72,8 @@
               </div>
             </div>
 
-            <div class="flex justify-end">
+            <div v-if="selectedCanteenId || selectedWindowId || searchQuery" class="flex justify-end">
               <button
-                v-if="selectedCanteenId || selectedWindowId || searchQuery"
                 @click="resetFilters"
                 class="text-gray-500 hover:text-tsinghua-purple flex items-center gap-1 hover:bg-gray-200/50 transition-colors admin-button"
               >
@@ -81,6 +81,7 @@
                 重置筛选
               </button>
             </div>
+          </div>
           </div>
 
           <div class="admin-dish-list">
@@ -122,45 +123,9 @@
             </button>
           </div>
 
-          <!-- 紧凑型分页 -->
-          <div v-if="totalDishes > 0" class="mt-4 pt-4 border-t border-gray-200">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <div class="text-gray-500 text-xs whitespace-nowrap flex-shrink-0">
-                共 {{ totalDishes }} 条
-              </div>
-              <div class="flex flex-wrap items-center gap-1 flex-1 justify-end min-w-0">
-                <button
-                  class="border text-gray-500 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0 admin-button admin-button-compact"
-                  :disabled="dishPage === 1"
-                  @click="handleDishPageChange(dishPage - 1)"
-                >
-                  上一页
-                </button>
-                <div class="flex flex-wrap items-center gap-1">
-                  <button
-                    v-for="page in getDishPaginationPages()"
-                    :key="page"
-                    class="border min-w-[28px] text-center flex-shrink-0 admin-button admin-button-compact"
-                    :class="
-                      page === dishPage
-                        ? 'bg-tsinghua-purple text-white border-tsinghua-purple'
-                        : 'text-gray-500 hover:bg-gray-100'
-                    "
-                    @click="handleDishPageChange(page)"
-                  >
-                    {{ page }}
-                  </button>
-                </div>
-                <button
-                  class="border text-gray-500 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0 admin-button admin-button-compact"
-                  :disabled="dishPage === getDishTotalPages()"
-                  @click="handleDishPageChange(dishPage + 1)"
-                >
-                  下一页
-                </button>
-              </div>
-            </div>
-          </div>
+          <Pagination v-if="totalDishes > 0" class="mt-4" label="菜品分页"
+            :current-page="dishPage" :page-size="dishPageSize" :total="totalDishes"
+            :show-jump="false" :disabled="isLoadingDishes" @page-change="handleDishPageChange" />
         </div>
 
         <!-- 右侧：评价和评论列表（帖子式展示） -->
@@ -475,7 +440,8 @@ import { useBatchSelection } from '@/composables/useBatchSelection'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
 import { authSessionVersion, getAuthSessionVersion } from '@/utils/auth-session'
 import type { Dish, Review, Comment } from '@/types/api'
-import { showAlert, showConfirmDanger } from '@/composables/useModal'
+import { showConfirmDanger } from '@/composables/useModal'
+import { useNotification } from '@/composables/useNotification'
 
 const PAGE_STATE_KEY = 'comment-manage'
 
@@ -489,6 +455,7 @@ export default defineComponent({
     BatchActionBar,
   },
   setup() {
+    const notify = useNotification()
     const route = useRoute()
     const authStore = useAuthStore()
     const sessionVersion = getAuthSessionVersion()
@@ -692,7 +659,7 @@ export default defineComponent({
         }
       } catch (error) {
         console.error('加载菜品列表失败:', error)
-        showAlert('加载菜品列表失败，请刷新重试')
+        notify.error('加载菜品列表失败，请刷新重试')
         dishes.value = []
         totalDishes.value = 0
       } finally {
@@ -750,7 +717,7 @@ export default defineComponent({
       } catch (error) {
         if (!ownsRequest()) return false
         console.error('加载评价列表失败:', error)
-        showAlert('加载评价列表失败，请重试')
+        notify.error('加载评价列表失败，请重试')
         reviews.value = []
         totalReviews.value = 0
       } finally {
@@ -793,7 +760,7 @@ export default defineComponent({
         if (!ownsRequest()) return
         state.error = true
         console.error('加载评论列表失败:', error)
-        showAlert('加载评论列表失败，请重试')
+        notify.error('加载评论列表失败，请重试')
       } finally {
         if (ownsRequest()) state.loading = false
       }
@@ -864,7 +831,7 @@ export default defineComponent({
     const handleDeleteReview = async (review: Review) => {
       if (isBatchDeleting.value) return
       if (!authStore.hasPermission('review:delete')) {
-        showAlert('您没有权限删除评价')
+        notify.error('您没有权限删除评价')
         return
       }
 
@@ -879,16 +846,16 @@ export default defineComponent({
       try {
         const response = await reviewApi.deleteReview(review.id)
         if (response.code === 200) {
-          showAlert('删除成功')
+          notify.success('删除成功')
           loadReviews().then(loaded => {
             if (loaded) loadCommentsForReviews()
           })
         } else {
-          showAlert(response.message || '删除失败')
+          notify.error(response.message || '删除失败')
         }
       } catch (error) {
         console.error('删除评价失败:', error)
-        showAlert('删除评价失败，请重试')
+        notify.error('删除评价失败，请重试')
       }
     }
 
@@ -896,7 +863,7 @@ export default defineComponent({
     const handleDeleteComment = async (comment: Comment) => {
       if (isBatchDeleting.value) return
       if (!authStore.hasPermission('comment:delete')) {
-        showAlert('您没有权限删除评论')
+        notify.error('您没有权限删除评论')
         return
       }
 
@@ -911,14 +878,14 @@ export default defineComponent({
       try {
         const response = await reviewApi.deleteComment(comment.id)
         if (response.code === 200) {
-          showAlert('删除成功')
+          notify.success('删除成功')
           loadCommentsForReviews() // 重新加载评论列表
         } else {
-          showAlert(response.message || '删除失败')
+          notify.error(response.message || '删除失败')
         }
       } catch (error) {
         console.error('删除评论失败:', error)
-        showAlert('删除评论失败，请重试')
+        notify.error('删除评论失败，请重试')
       }
     }
 
@@ -944,11 +911,11 @@ export default defineComponent({
         if (response.code !== 200) throw new Error(response.message || '批量删除失败')
         reviewSelection.clear()
         commentSelection.clear()
-        showAlert(`已删除 ${response.data.deletedCount} 条评价`)
+        notify.success(`已删除 ${response.data.deletedCount} 条评价`)
         const loaded = await loadReviews(true)
         if (loaded) await loadCommentsForReviews()
       } catch (error) {
-        if (ownsOperation()) showAlert(error instanceof Error ? error.message : '批量删除失败，请重试')
+        if (ownsOperation()) notify.error(error instanceof Error ? error.message : '批量删除失败，请重试')
       } finally {
         isBatchDeleting.value = false
       }
@@ -975,10 +942,10 @@ export default defineComponent({
         if (!ownsOperation()) return
         if (response.code !== 200) throw new Error(response.message || '批量删除失败')
         commentSelection.clear()
-        showAlert(`已删除 ${response.data.deletedCount} 条评论`)
+        notify.success(`已删除 ${response.data.deletedCount} 条评论`)
         await loadCommentsForReviews()
       } catch (error) {
-        if (ownsOperation()) showAlert(error instanceof Error ? error.message : '批量删除失败，请重试')
+        if (ownsOperation()) notify.error(error instanceof Error ? error.message : '批量删除失败，请重试')
       } finally {
         isBatchDeleting.value = false
       }
@@ -997,25 +964,6 @@ export default defineComponent({
       loadReviews().then(loaded => {
         if (loaded) loadCommentsForReviews()
       })
-    }
-
-    // 获取菜品分页总页数
-    const getDishTotalPages = (): number => {
-      return Math.ceil(totalDishes.value / dishPageSize.value)
-    }
-
-    // 获取菜品分页页码数组
-    const getDishPaginationPages = (): number[] => {
-      const pages: number[] = []
-      const totalPages = getDishTotalPages()
-      const start = Math.max(1, dishPage.value - 2)
-      const end = Math.min(totalPages, start + 4)
-
-      for (let i = start; i <= end; i++) {
-        pages.push(i)
-      }
-
-      return pages
     }
 
     // 搜索防抖
@@ -1167,8 +1115,6 @@ export default defineComponent({
       handleImageKeyDown,
       previousImage,
       nextImage,
-      getDishTotalPages,
-      getDishPaginationPages,
       // 筛选相关
       selectedCanteenId,
       selectedWindowId,

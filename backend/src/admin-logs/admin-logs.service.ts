@@ -4,6 +4,7 @@ import { PrismaService } from '@/prisma.service';
 import { AdminLogQueryDto } from './dto/admin-log-query.dto';
 import { AdminLogListResponseDto } from './dto/admin-log-response.dto';
 import type { AdminInfo } from '@/auth/decorators/current-admin.decorator';
+import { selfAndDescendantAdminIds } from '@/auth/admin-hierarchy';
 
 @Injectable()
 export class AdminLogsService {
@@ -31,31 +32,29 @@ export class AdminLogsService {
           }
         : {}),
     };
-    let where = queryFilters;
-    if (admin.role !== 'superadmin') {
-      const directSubAdmins = await this.prisma.admin.findMany({
-        where: { createdBy: admin.id },
-        select: { id: true },
-      });
-      const allowedAdminIds = [
-        admin.id,
-        ...directSubAdmins.map((item) => item.id),
-      ];
-      where = {
-        AND: [{ adminId: { in: allowedAdminIds } }, queryFilters],
-      };
-    }
+    const [total, logs] = await this.prisma.$transaction(
+      async (tx) => {
+        let where = queryFilters;
+        if (admin.role !== 'superadmin') {
+          const allowedAdminIds = await selfAndDescendantAdminIds(tx, admin.id);
+          where = {
+            AND: [{ adminId: { in: allowedAdminIds } }, queryFilters],
+          };
+        }
 
-    const [total, logs] = await Promise.all([
-      this.prisma.operationLog.count({ where }),
-      this.prisma.operationLog.findMany({
-        where,
-        include: { admin: { select: { username: true } } },
-        orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-    ]);
+        return Promise.all([
+          tx.operationLog.count({ where }),
+          tx.operationLog.findMany({
+            where,
+            include: { admin: { select: { username: true } } },
+            orderBy: { createdAt: 'desc' },
+            skip: (page - 1) * pageSize,
+            take: pageSize,
+          }),
+        ]);
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
 
     return {
       code: 200,

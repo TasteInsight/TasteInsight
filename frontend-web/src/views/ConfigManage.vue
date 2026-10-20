@@ -1,13 +1,13 @@
 <template>
-  <div class="admin-page config-page">
+  <div class="admin-page">
     <div class="admin-panel config-panel">
       <Header title="系统配置管理" :description="configDescription" header-icon="carbon:settings" />
-      <nav class="settings-nav" aria-label="系统配置分区">
+      <nav class="admin-tabs" aria-label="系统配置分区">
         <button
           type="button"
-          class="settings-nav-button"
-          :class="{ 'is-active': activeView === 'settings' }"
+          class="admin-tab"
           :aria-pressed="activeView === 'settings'"
+          v-if="canViewConfig"
           @click="showModerationView('settings')"
         >
           审核设置
@@ -15,8 +15,7 @@
         <button
           v-if="canManageGlobalModeration"
           type="button"
-          class="settings-nav-button"
-          :class="{ 'is-active': activeView === 'tasks' }"
+          class="admin-tab"
           :aria-pressed="activeView === 'tasks'"
           @click="showModerationView('tasks')"
         >
@@ -24,15 +23,14 @@
         </button>
         <button
           type="button"
-          class="settings-nav-button"
-          :class="{ 'is-active': activeView === 'maintenance' }"
+          class="admin-tab"
           :aria-pressed="activeView === 'maintenance'"
           @click="showModerationView('maintenance')"
         >
           系统维护
         </button>
       </nav>
-      <div v-show="activeView === 'settings'">
+      <div v-if="canViewConfig" v-show="activeView === 'settings'">
         <ContentModerationSettings
           ref="moderationSettings"
           v-if="canManageGlobalModeration"
@@ -142,13 +140,6 @@
                   <AppIcon class="iconify animate-spin" icon="carbon:circle-dash"></AppIcon>
                   <span>保存中...</span>
                 </div>
-                <div
-                  v-else-if="reviewSaveSuccess"
-                  class="flex items-center gap-2 text-sm text-green-600"
-                >
-                  <AppIcon class="iconify" icon="carbon:checkmark-filled"></AppIcon>
-                  <span>保存成功</span>
-                </div>
               </div>
 
               <div
@@ -200,13 +191,6 @@
                   <AppIcon class="iconify animate-spin" icon="carbon:circle-dash"></AppIcon>
                   <span>保存中...</span>
                 </div>
-                <div
-                  v-else-if="commentSaveSuccess"
-                  class="flex items-center gap-2 text-sm text-green-600"
-                >
-                  <AppIcon class="iconify" icon="carbon:checkmark-filled"></AppIcon>
-                  <span>保存成功</span>
-                </div>
               </div>
 
               <div
@@ -252,7 +236,7 @@
                   <span v-if="item.saving" class="text-sm text-gray-600" role="status"
                     >保存中…</span
                   >
-                  <span v-else-if="item.saved" class="text-sm text-green-700" role="status"
+                  <span v-else-if="item.saved" class="admin-field-success" role="status"
                     >保存成功</span
                   >
                 </div>
@@ -264,7 +248,7 @@
                 </p>
               </div>
             </template>
-            <p v-if="loadError" class="pt-4 text-sm text-red-700" role="alert">
+            <p v-if="loadError" class="pt-4 text-sm text-red-700 admin-field-error" role="alert">
               配置加载失败，请刷新页面重试
             </p>
           </div>
@@ -466,7 +450,8 @@ import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import ContentModerationSettings from '@/components/ContentModerationSettings.vue'
 import ContentModerationTasks from '@/components/ContentModerationTasks.vue'
-import { showAlert, showConfirm } from '@/composables/useModal'
+import { showConfirm } from '@/composables/useModal'
+import { useNotification } from '@/composables/useNotification'
 
 export default {
   name: 'ConfigManage',
@@ -487,6 +472,7 @@ export default {
     return leave
   },
   setup() {
+    const notify = useNotification()
     const authStore = useAuthStore()
     const loading = ref(true)
     const unifiedModerationEnabled = ref(false)
@@ -494,16 +480,15 @@ export default {
     const moderationPolicyState = ref('loading')
     const moderationPolicyError = computed(() => moderationPolicyState.value === 'error')
     const moderationDirty = ref(false)
-    const activeView = ref('settings')
+    const canViewConfig = computed(() => authStore.hasPermission('config:view'))
+    const activeView = ref(canViewConfig.value ? 'settings' : 'maintenance')
     const tasksVisited = ref(false)
     const showModerationView = (view) => {
       activeView.value = view
       if (view === 'tasks') tasksVisited.value = true
     }
     const reviewSaving = ref(false)
-    const reviewSaveSuccess = ref(false)
     const commentSaving = ref(false)
-    const commentSaveSuccess = ref(false)
     const reviewAutoApprove = ref(true)
     const commentAutoApprove = ref(true)
     const communityConfigs = ref([
@@ -704,7 +689,7 @@ export default {
         if (request !== configRequest) return
         console.error('加载配置失败:', error)
         loadError.value = true
-        showAlert('加载配置失败，请刷新重试')
+        notify.error('加载配置失败，请刷新重试')
       } finally {
         if (request === configRequest) loading.value = false
       }
@@ -732,8 +717,9 @@ export default {
         })
         if (response.code !== 200) throw new Error(response.message || '保存配置失败')
         item.saved = true
+        notify.success('审核规则已保存')
       } catch (error) {
-        showAlert(error instanceof Error ? error.message : '保存配置失败，请重试')
+        notify.error(error instanceof Error ? error.message : '保存配置失败，请重试')
         await loadConfig()
       } finally {
         item.saving = false
@@ -743,7 +729,7 @@ export default {
     // 处理评价自动审核配置变更
     const handleReviewAutoApproveChange = async () => {
       if (!authStore.hasPermission('config:edit')) {
-        showAlert('您没有编辑配置的权限')
+        notify.error('您没有编辑配置的权限')
         reviewAutoApprove.value = !reviewAutoApprove.value // 恢复原值
         return
       }
@@ -759,7 +745,6 @@ export default {
       }
 
       reviewSaving.value = true
-      reviewSaveSuccess.value = false
 
       try {
         let response
@@ -778,17 +763,13 @@ export default {
         }
 
         if (response.code === 200) {
-          reviewSaveSuccess.value = true
-          // 3秒后隐藏成功提示
-          setTimeout(() => {
-            reviewSaveSuccess.value = false
-          }, 3000)
+          notify.success('审核规则已保存')
         } else {
           throw new Error(response.message || '保存配置失败')
         }
       } catch (error) {
         console.error('保存配置失败:', error)
-        showAlert(error instanceof Error ? error.message : '保存配置失败，请重试')
+        notify.error(error instanceof Error ? error.message : '保存配置失败，请重试')
         // 恢复原值
         await loadConfig()
       } finally {
@@ -799,7 +780,7 @@ export default {
     // 处理评论自动审核配置变更
     const handleCommentAutoApproveChange = async () => {
       if (!authStore.hasPermission('config:edit')) {
-        showAlert('您没有编辑配置的权限')
+        notify.error('您没有编辑配置的权限')
         commentAutoApprove.value = !commentAutoApprove.value // 恢复原值
         return
       }
@@ -815,7 +796,6 @@ export default {
       }
 
       commentSaving.value = true
-      commentSaveSuccess.value = false
 
       try {
         let response
@@ -834,17 +814,13 @@ export default {
         }
 
         if (response.code === 200) {
-          commentSaveSuccess.value = true
-          // 3秒后隐藏成功提示
-          setTimeout(() => {
-            commentSaveSuccess.value = false
-          }, 3000)
+          notify.success('审核规则已保存')
         } else {
           throw new Error(response.message || '保存配置失败')
         }
       } catch (error) {
         console.error('保存配置失败:', error)
-        showAlert(error instanceof Error ? error.message : '保存配置失败，请重试')
+        notify.error(error instanceof Error ? error.message : '保存配置失败，请重试')
         // 恢复原值
         await loadConfig()
       } finally {
@@ -875,7 +851,7 @@ export default {
     // 处理按食堂批量刷新菜品嵌入向量
     const handleRefreshCanteenEmbeddings = async () => {
       if (!authStore.hasPermission('dish:edit')) {
-        showAlert('您没有刷新嵌入向量的权限')
+        notify.error('您没有刷新嵌入向量的权限')
         return
       }
 
@@ -883,7 +859,7 @@ export default {
       const canteenIdToRefresh = selectedCanteenId.value
 
       if (!canteenIdToRefresh) {
-        showAlert('请选择要刷新的食堂')
+        notify.info('请选择要刷新的食堂')
         return
       }
 
@@ -913,7 +889,7 @@ export default {
             console.log('同步模式，任务已完成')
             currentJobId.value = null
             embeddingRefreshing.value = false
-            showAlert('刷新任务已提交（同步模式）')
+            notify.success('刷新任务已提交（同步模式）')
             // 3秒后隐藏成功提示
             setTimeout(() => {
               embeddingRefreshSuccess.value = false
@@ -926,7 +902,7 @@ export default {
         console.error('刷新嵌入向量失败:', error)
         embeddingRefreshing.value = false
         currentJobId.value = null
-        showAlert(error instanceof Error ? error.message : '刷新嵌入向量失败，请重试')
+        notify.error(error instanceof Error ? error.message : '刷新嵌入向量失败，请重试')
       }
     }
 
@@ -1009,13 +985,13 @@ export default {
       try {
         const response = await dishApi.cancelEmbeddingJob(currentJobId.value)
         if (response.code === 200 && response.data?.success) {
-          showAlert('任务已取消')
+          notify.success('任务已取消')
           stopPolling()
         } else {
           // 检查是否是因为任务已完成或已失败
           const message = response.message || ''
           if (message.includes('已完成') || message.includes('已失败')) {
-            showAlert(message.includes('已完成') ? '任务已完成，无需取消' : '任务已失败')
+            notify.error(message.includes('已完成') ? '任务已完成，无需取消' : '任务已失败')
             // 停止轮询定时器，但保留进度显示
             if (pollingIntervalRef.value) {
               clearTimeout(pollingIntervalRef.value)
@@ -1027,12 +1003,12 @@ export default {
             // 获取并显示最新完成状态
             await fetchAndUpdateJobStatus(currentJobId.value)
           } else {
-            showAlert(message || '取消任务失败')
+            notify.error(message || '取消任务失败')
           }
         }
       } catch (error) {
         console.error('取消任务失败:', error)
-        showAlert('取消任务失败，请重试')
+        notify.error('取消任务失败，请重试')
       } finally {
         cancelling.value = false
       }
@@ -1110,9 +1086,9 @@ export default {
             embeddingRefreshSuccess.value = false
 
             if (mappedStatus === 'completed') {
-              showAlert('嵌入向量刷新完成')
+              notify.success('嵌入向量刷新完成')
             } else {
-              showAlert(
+              notify.error(
                 `嵌入向量刷新失败: ${normalizedStatus.failedReason || normalizedStatus.message || '未知错误'}`,
               )
             }
@@ -1129,7 +1105,7 @@ export default {
           console.warn('任务不存在:', jobId)
           stopPolling()
           jobStatus.value = null
-          showAlert('任务不存在或已过期')
+          notify.error('任务不存在或已过期')
         } else {
           // 其他错误情况
           console.warn('获取任务状态异常:', response)
@@ -1142,7 +1118,7 @@ export default {
         }
         // 如果连续失败，停止轮询
         stopPolling()
-        showAlert('获取任务状态失败，请刷新页面查看')
+        notify.error('获取任务状态失败，请刷新页面查看')
       }
     }
 
@@ -1175,7 +1151,8 @@ export default {
     const activateView = () => {
       if (viewActive) return
       viewActive = true
-      loadConfig()
+      if (canViewConfig.value) loadConfig()
+      else loading.value = false
       loadCanteenList()
     }
 
@@ -1193,6 +1170,7 @@ export default {
     })
 
     return {
+      canViewConfig,
       isGlobalAdmin,
       canManageGlobalModeration,
       activeView,
@@ -1207,9 +1185,7 @@ export default {
       loading,
       loadError,
       reviewSaving,
-      reviewSaveSuccess,
       commentSaving,
-      commentSaveSuccess,
       reviewAutoApprove,
       commentAutoApprove,
       reviewRequiresApproval,
@@ -1248,42 +1224,6 @@ export default {
 </script>
 
 <style scoped>
-.container-shadow {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-</style>
-
-<style scoped>
-.config-page {
-  max-width: 1040px;
-}
-.config-panel {
-  padding: 24px 32px;
-}
-.settings-nav {
-  display: flex;
-  gap: 8px;
-  padding-top: 8px;
-  border-bottom: 1px solid #e5e7eb;
-}
-.settings-nav-button {
-  min-height: 44px;
-  padding: 12px 16px;
-  border-bottom: 2px solid transparent;
-  color: #4b5563;
-  font-size: 14px;
-  font-weight: 600;
-  transition:
-    color 150ms,
-    border-color 150ms;
-}
-.settings-nav-button:hover,
-.settings-nav-button.is-active {
-  color: #660874;
-}
-.settings-nav-button.is-active {
-  border-bottom-color: #660874;
-}
 .config-panel :deep(.settings-section) {
   min-width: 0;
   padding-block: 28px;
@@ -1340,15 +1280,6 @@ export default {
   overflow-wrap: anywhere;
 }
 @media (max-width: 640px) {
-  .config-panel {
-    padding: 16px;
-  }
-  .settings-nav {
-    gap: 4px;
-  }
-  .settings-nav-button {
-    padding-inline: 12px;
-  }
   .config-panel :deep(.settings-section) {
     padding-block: 24px;
   }

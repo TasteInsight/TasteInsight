@@ -192,7 +192,7 @@
                   </tbody>
                 </table>
               </div>
-              <div class="mt-4 text-gray-500 text-sm flex items-center justify-between">
+              <div class="mt-4 text-gray-500 text-sm flex flex-wrap items-center justify-between gap-3">
                 <p>共解析{{ parsedData.length }}条数据，{{ validCount }}条有效，{{ warningCount }}条警告，{{ invalidCount }}条无效</p>
                 <button 
                   v-if="parsedData.length > 0"
@@ -206,7 +206,7 @@
             </div>
             
             <!-- 提交按钮 -->
-            <div class="flex space-x-4" v-if="parsedData.length > 0">
+            <div class="admin-actions" v-if="parsedData.length > 0">
               <button 
                 class="transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed admin-button admin-button-primary"
                 :disabled="validCount + warningCount === 0 || isSubmitting || !authStore.hasPermission('dish:create')"
@@ -255,7 +255,9 @@ import { dishApi } from '@/api/modules/dish'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import type { BatchParsedDish } from '@/types/api'
 import Header from '@/components/Layout/Header.vue'
-import { showAlert, showConfirm } from '@/composables/useModal'
+import { showConfirm } from '@/composables/useModal'
+import { useNotification } from '@/composables/useNotification'
+const notify = useNotification()
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploadedFile = ref<File | null>(null)
@@ -279,7 +281,7 @@ const authStore = useAuthStore()
 
     const downloadTemplate = () => {
       // TODO: 实现模板下载功能
-      showAlert('模板下载功能开发中...')
+      notify.info('模板下载功能开发中...')
     }
 
     const triggerFileInput = () => {
@@ -295,13 +297,13 @@ const authStore = useAuthStore()
       const hasValidMime = !file.type || validTypes.includes(file.type)
       const hasValidExtension = /\.(xlsx|xls)$/i.test(file.name)
       if (!hasValidMime || !hasValidExtension) {
-        showAlert('请上传 Excel 文件（.xlsx 或 .xls 格式）')
+        notify.info('请上传 Excel 文件（.xlsx 或 .xls 格式）')
         return
       }
       
       // 验证文件大小（10MB）
       if (file.size > 10 * 1024 * 1024) {
-        showAlert('文件大小不能超过 10MB')
+        notify.info('文件大小不能超过 10MB')
         return
       }
       
@@ -321,7 +323,7 @@ const authStore = useAuthStore()
           }))
           
           if (parsedData.value.length === 0) {
-            showAlert('解析完成，但未找到有效数据')
+            notify.success('解析完成，但未找到有效数据')
           }
         } else {
           throw new Error(response.message || '解析文件失败')
@@ -329,7 +331,7 @@ const authStore = useAuthStore()
       } catch (error) {
         console.error('解析文件失败:', error)
         parseError.value = error instanceof Error ? error.message : '解析文件失败，请检查文件格式'
-        showAlert(parseError.value)
+        notify.error(parseError.value)
         parsedData.value = []
       } finally {
         isParsing.value = false
@@ -353,7 +355,7 @@ const authStore = useAuthStore()
     
     const submitBatchData = async () => {
       if (!authStore.hasPermission('dish:create')) {
-        showAlert('您没有权限创建菜品')
+        notify.error('您没有权限创建菜品')
         return
       }
 
@@ -362,7 +364,7 @@ const authStore = useAuthStore()
       )
       
       if (validItems.length === 0) {
-        showAlert('没有可导入的有效数据')
+        notify.info('没有可导入的有效数据')
         return
       }
       
@@ -401,7 +403,8 @@ const authStore = useAuthStore()
           }
           
           message += '\n新菜提交待审核；匹配的既有菜品按编辑权限更新。'
-          showAlert(message)
+          if (failCount > 0) notify.error(message)
+          else notify.success(message)
           
           // 重置数据
           resetBatchData()
@@ -410,7 +413,7 @@ const authStore = useAuthStore()
         }
       } catch (error) {
         console.error('导入失败:', error)
-        showAlert(error instanceof Error ? error.message : '导入失败，请重试')
+        notify.error(error instanceof Error ? error.message : '导入失败，请重试')
       } finally {
         isSubmitting.value = false
       }
@@ -428,7 +431,7 @@ const authStore = useAuthStore()
     const exportErrorList = () => {
       const errorItems = parsedData.value.filter((item: BatchParsedDish) => item.status === 'invalid')
       if (errorItems.length === 0) {
-        showAlert('没有错误数据可导出')
+        notify.error('没有错误数据可导出')
         return
       }
       

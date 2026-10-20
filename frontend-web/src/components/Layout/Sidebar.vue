@@ -96,7 +96,7 @@
         <span>新闻管理</span>
       </router-link>
       <router-link
-        v-permission="'admin:view'"
+        v-permission="'log:view'"
         to="/log-view"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/log-view' }"
@@ -150,7 +150,7 @@
         <span>社区内容管理</span>
       </router-link>
       <router-link
-        v-permission="'config:view'"
+        v-permission="['config:view', 'dish:edit']"
         to="/config-manage"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/config-manage' }"
@@ -159,7 +159,7 @@
         <span>系统配置</span>
       </router-link>
       <router-link
-        v-permission="'experiment:view'"
+        v-if="authStore.user?.scope === 'GLOBAL'" v-permission="'experiment:view'"
         to="/experiment-manage"
         class="sidebar-btn w-full py-3 px-6 text-left flex items-center space-x-3 text-lg font-medium"
         :class="{ active: $route.path === '/experiment-manage' || $route.path.startsWith('/experiment-manage/') }"
@@ -388,7 +388,7 @@
               </li>
             </ul>
           </div>
-          <p v-if="passwordError" class="text-sm text-red-500 flex items-center gap-1">
+          <p v-if="passwordError" class="text-sm text-red-500 flex items-center gap-1 admin-field-error">
             <AppIcon class="iconify" icon="carbon:warning"></AppIcon>
             {{ passwordError }}
           </p>
@@ -420,9 +420,9 @@ import { ref, reactive, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import { permissionApi } from '@/api/modules/permission'
-import { showConfirm, showAlert } from '@/composables/useModal'
+import { showConfirm } from '@/composables/useModal'
+import { notify } from '@/composables/useNotification'
 import { hasGlobalPermission } from '@/router/access'
-import { campusPermissionGroups } from '@/config/campus-permissions'
 import AdminDialog from '@/components/Common/AdminDialog.vue'
 
 export default {
@@ -471,82 +471,7 @@ export default {
       special: /[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(passwordForm.newPassword),
     }))
 
-    // 权限分组定义（与 UserManage 保持一致）
-    const permissionGroups = [
-      ...campusPermissionGroups,
-      {
-        id: 'dishes',
-        name: '菜品管理',
-        permissions: [
-          { id: 'dish:view', label: '浏览菜品列表' },
-          { id: 'dish:create', label: '新建菜品' },
-          { id: 'dish:edit', label: '编辑菜品' },
-          { id: 'dish:delete', label: '删除菜品' },
-        ],
-      },
-      {
-        id: 'canteen',
-        name: '食堂与窗口管理',
-        permissions: [
-          { id: 'canteen:view', label: '浏览食堂/窗口' },
-          { id: 'canteen:create', label: '创建食堂/窗口' },
-          { id: 'canteen:edit', label: '编辑食堂/窗口' },
-          { id: 'canteen:delete', label: '删除食堂/窗口' },
-        ],
-      },
-      {
-        id: 'review',
-        name: '内容审核',
-        permissions: [
-          { id: 'review:approve', label: '审核评价' },
-          { id: 'review:delete', label: '删除评价' },
-          { id: 'comment:approve', label: '审核评论' },
-          { id: 'comment:delete', label: '删除评论' },
-          { id: 'report:handle', label: '处理举报' },
-          { id: 'upload:approve', label: '审核菜品上传' },
-        ],
-      },
-      {
-        id: 'news',
-        name: '新闻管理',
-        permissions: [
-          { id: 'news:view', label: '浏览新闻' },
-          { id: 'news:create', label: '创建新闻' },
-          { id: 'news:edit', label: '编辑新闻' },
-          { id: 'news:publish', label: '发布新闻' },
-          { id: 'news:revoke', label: '撤销新闻' },
-          { id: 'news:delete', label: '删除新闻' },
-        ],
-      },
-      {
-        id: 'admin',
-        name: '子管理员管理',
-        permissions: [
-          { id: 'admin:view', label: '浏览子管理员' },
-          { id: 'admin:create', label: '创建子管理员' },
-          { id: 'admin:edit', label: '编辑子管理员' },
-          { id: 'admin:delete', label: '删除子管理员' },
-        ],
-      },
-      {
-        id: 'config',
-        name: '配置管理',
-        permissions: [
-          { id: 'config:view', label: '查看配置' },
-          { id: 'config:edit', label: '编辑配置' },
-        ],
-      },
-      {
-        id: 'experiment',
-        name: '推荐管理',
-        permissions: [
-          { id: 'experiment:view', label: '浏览实验' },
-          { id: 'experiment:create', label: '创建实验' },
-          { id: 'experiment:edit', label: '编辑实验' },
-          { id: 'experiment:delete', label: '删除实验' },
-        ],
-      },
-    ]
+    const permissionGroups = computed(() => authStore.authorization.groups)
 
     // 检查是否拥有某个权限
     const hasPermission = (permissionId) => {
@@ -668,8 +593,10 @@ export default {
         )
         
         if (response.code === 200) {
-          showAlert('密码修改成功！请使用新密码重新登录。')
           closeChangePasswordModal()
+          authStore.logout()
+          router.push('/login')
+          notify.success('密码修改成功，请使用新密码重新登录。')
         } else {
           passwordError.value = response.message || '密码修改失败'
         }
@@ -706,6 +633,7 @@ export default {
     })
 
     return {
+      authStore,
       formatAdminScope,
       mobileMenuOpen,
       showAddSubmenu,

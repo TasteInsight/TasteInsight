@@ -1,6 +1,8 @@
+vi.mock('@/composables/useNotification', () => ({ useNotification: () => ({ success: mocks.showAlertMock, error: mocks.showAlertMock, info: mocks.showAlertMock }), notify: { success: mocks.showAlertMock, error: mocks.showAlertMock, info: mocks.showAlertMock } }))
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { defineComponent, nextTick } from 'vue'
+import { invalidateAuthSession } from '@/utils/auth-session'
 
 const mocks = vi.hoisted(() => ({
   routerPush: vi.fn(),
@@ -40,6 +42,13 @@ const flushAll = async () => {
   await nextTick()
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (error: Error) => void
+  const promise = new Promise<T>((done, fail) => { resolve = done; reject = fail })
+  return { promise, resolve, reject }
+}
+
 const baseMountOptions = {
   global: {
     stubs: {
@@ -57,6 +66,58 @@ describe('views/ViewDishDetail', () => {
 
     vi.spyOn(window, 'open').mockImplementation(() => null as any)
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
+  })
+
+  it.each([
+    ['authorization changes', 'resolve'],
+    ['authorization changes', 'reject'],
+    ['unmount', 'resolve'],
+    ['unmount', 'reject'],
+  ])('ignores a late dish %s / %s completion', async (lifecycle, completion) => {
+    const pending = deferred<any>()
+    mocks.dishApi.getDishById.mockImplementationOnce(() => pending.promise)
+    mocks.dishApi.getDishReviews.mockResolvedValueOnce({ code: 200, data: {} })
+    const wrapper = mount(ViewDishDetail, baseMountOptions)
+    const state = wrapper.vm
+    await flushAll()
+    if (lifecycle === 'unmount') wrapper.unmount()
+    else invalidateAuthSession()
+    try {
+      if (completion === 'reject') pending.reject(new Error('登录会话已变更，请重试'))
+      else pending.resolve({ code: 200, data: { name: 'stale dish', subDishId: ['sub'] } })
+      await flushPromises()
+      expect(state.dishData.name).toBe('')
+      expect(state.isLoading).toBe(true)
+      expect(mocks.dishApi.getDishById).toHaveBeenCalledTimes(1)
+      expect(mocks.showAlertMock).not.toHaveBeenCalled()
+      expect(mocks.routerPush).not.toHaveBeenCalled()
+    } finally {
+      if (lifecycle !== 'unmount') wrapper.unmount()
+    }
+  })
+
+  it.each(['authorization changes', 'unmount'])('ignores late sub-dish results after %s', async lifecycle => {
+    const pending = deferred<any>()
+    mocks.dishApi.getDishById
+      .mockResolvedValueOnce({ code: 200, data: { name: 'current dish', subDishId: ['sub'] } })
+      .mockImplementationOnce(() => pending.promise)
+    mocks.dishApi.getDishReviews.mockResolvedValueOnce({ code: 200, data: {} })
+    const wrapper = mount(ViewDishDetail, baseMountOptions)
+    const state = wrapper.vm
+    await flushAll()
+    expect(mocks.dishApi.getDishById).toHaveBeenCalledWith('sub')
+    if (lifecycle === 'unmount') wrapper.unmount()
+    else invalidateAuthSession()
+    try {
+      pending.resolve({ code: 200, data: { id: 'sub', name: 'stale sub-dish' } })
+      await flushPromises()
+      expect(state.dishData.subItems).toEqual([])
+      expect(state.isLoading).toBe(true)
+      expect(mocks.showAlertMock).not.toHaveBeenCalled()
+      expect(mocks.routerPush).not.toHaveBeenCalled()
+    } finally {
+      if (lifecycle !== 'unmount') wrapper.unmount()
+    }
   })
 
   it('loads dish + reviews on mount; maps dish fields; loads sub-dishes via allSettled', async () => {

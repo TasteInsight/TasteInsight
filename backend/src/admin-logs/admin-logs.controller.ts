@@ -22,7 +22,7 @@ export class AdminLogsController {
   constructor(private readonly adminLogsService: AdminLogsService) {}
 
   @Get()
-  @RequirePermissions('admin:view')
+  @RequirePermissions('log:view')
   @HttpCode(HttpStatus.OK)
   findAll(@Query() query: AdminLogQueryDto, @CurrentAdmin() admin: AdminInfo) {
     return this.adminLogsService.findAll(query, admin);

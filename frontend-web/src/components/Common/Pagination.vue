@@ -1,55 +1,32 @@
 <template>
-  <nav class="admin-pagination" aria-label="分页">
+  <nav class="admin-pagination" :aria-label="label">
     <div class="text-gray-500 text-sm">
       显示 {{ startIndex }}-{{ endIndex }} 条，共 {{ total }} 条记录
     </div>
-    <div class="admin-pagination-controls">
-      <button
-        class="border text-gray-500 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed admin-button admin-button-compact"
-        :disabled="currentPage === 1"
-        @click="$emit('page-change', currentPage - 1)"
-      >
+    <div class="admin-pagination-controls" role="group" aria-label="分页操作">
+      <button type="button" class="admin-button admin-button-compact admin-button-secondary"
+        :disabled="disabled || total === 0 || currentPage <= 1" @click="$emit('page-change', currentPage - 1)">
         上一页
       </button>
-      <button
-        v-for="page in pages"
-        :key="page"
-        :aria-current="page === currentPage ? 'page' : undefined"
-        :aria-label="`第 ${page} 页`"
-        class="border admin-button admin-button-compact"
-        :class="
-          page === currentPage ? 'bg-tsinghua-purple text-white' : 'text-gray-500 hover:bg-gray-100'
-        "
-        @click="$emit('page-change', page)"
-      >
+      <button v-for="page in pages" :key="page" type="button"
+        :aria-current="page === currentPage ? 'page' : undefined" :aria-label="`第 ${page} 页`"
+        :disabled="disabled" class="admin-button admin-button-compact admin-page-number"
+        :class="page === currentPage ? 'admin-button-primary' : 'admin-button-secondary'"
+        @click="$emit('page-change', page)">
         {{ page }}
       </button>
-      <button
-        class="border text-gray-500 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed admin-button admin-button-compact"
-        :disabled="currentPage === totalPages"
-        @click="$emit('page-change', currentPage + 1)"
-      >
+      <button type="button" class="admin-button admin-button-compact admin-button-secondary"
+        :disabled="disabled || total === 0 || currentPage >= totalPages" @click="$emit('page-change', currentPage + 1)">
         下一页
       </button>
-      <div class="flex items-center space-x-1 ml-2 pl-2 border-l border-gray-300">
-        <span class="text-sm text-gray-500">跳转到</span>
-        <input
-          type="number"
-          :min="1"
-          :max="totalPages"
-          v-model.number="inputPage"
-          @keyup.enter="handleJumpToPage"
-          class="w-16 text-center admin-input"
-          placeholder="页码"
-          aria-label="跳转页码"
-        />
-        <span class="text-sm text-gray-500">页</span>
-        <button
-          class="transition duration-200 admin-button admin-button-compact admin-button-primary"
-          @click="handleJumpToPage"
-        >
-          确定
-        </button>
+      <div v-if="showJump" class="admin-pagination-jump">
+        <span>跳转到</span>
+        <input type="number" :min="1" :max="totalPages" :disabled="disabled || total === 0"
+          v-model.number="inputPage" @keyup.enter="handleJumpToPage"
+          class="admin-input" placeholder="页码" aria-label="跳转页码" />
+        <span>页</span>
+        <button type="button" class="admin-button admin-button-compact admin-button-primary"
+          :disabled="disabled || total === 0" @click="handleJumpToPage">确定</button>
       </div>
     </div>
   </nav>
@@ -61,6 +38,9 @@ import { computed, ref, watch } from 'vue'
 export default {
   name: 'Pagination',
   props: {
+    label: { type: String, default: '分页' },
+    showJump: { type: Boolean, default: true },
+    disabled: { type: Boolean, default: false },
     currentPage: {
       type: Number,
       default: 1,
@@ -78,9 +58,9 @@ export default {
   setup(props, { emit }) {
     const inputPage = ref(props.currentPage)
 
-    const totalPages = computed(() => Math.ceil(props.total / props.pageSize))
+    const totalPages = computed(() => Math.max(1, Math.ceil(props.total / props.pageSize)))
 
-    const startIndex = computed(() => (props.currentPage - 1) * props.pageSize + 1)
+    const startIndex = computed(() => props.total === 0 ? 0 : (props.currentPage - 1) * props.pageSize + 1)
 
     const endIndex = computed(() => {
       const end = props.currentPage * props.pageSize
@@ -88,6 +68,7 @@ export default {
     })
 
     const pages = computed(() => {
+      if (props.total === 0) return []
       const pages = []
       const start = Math.max(1, props.currentPage - 2)
       const end = Math.min(totalPages.value, start + 4)
@@ -100,12 +81,11 @@ export default {
     })
 
     const handleJumpToPage = () => {
-      let page = inputPage.value
-      if (!page || isNaN(page) || page < 1) {
-        page = 1
-      } else if (page > totalPages.value) {
-        page = totalPages.value
-      }
+      if (props.disabled || props.total === 0) return
+      const requestedPage = Math.trunc(Number(inputPage.value))
+      const page = Number.isFinite(requestedPage)
+        ? Math.min(totalPages.value, Math.max(1, requestedPage))
+        : 1
       inputPage.value = page
       emit('page-change', page)
     }

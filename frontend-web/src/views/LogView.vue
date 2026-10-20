@@ -3,13 +3,13 @@
     <div class="admin-panel">
       <Header
         title="操作日志"
-        description="查看系统操作日志，包括管理员操作记录和详细信息"
+        description="查看自己与所有层级下属管理员的操作记录；超级管理员可查看全部记录"
         header-icon="carbon:document-view"
       />
 
       <!-- 筛选区域 -->
-      <form class="my-6 flex flex-wrap items-end gap-3" @submit.prevent="applyFilters">
-        <label class="min-w-[168px] flex-1 admin-label">
+      <form class="my-6 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-[repeat(4,minmax(0,1fr))_auto] items-end gap-3" @submit.prevent="applyFilters">
+        <label class="min-w-0 admin-label">
           管理员
           <input
             type="text"
@@ -19,7 +19,7 @@
           />
         </label>
 
-        <label class="min-w-[168px] flex-1 admin-label">
+        <label class="min-w-0 admin-label">
           操作类型
           <span class="relative block mt-1.5">
             <select
@@ -27,17 +27,12 @@
               class="w-full bg-white transition-all cursor-pointer hover:border-gray-400 admin-input"
             >
               <option value="">全部操作</option>
-              <option value="create">创建</option>
-              <option value="update">更新</option>
-              <option value="delete">删除</option>
-              <option value="view">查看</option>
-              <option value="approve">审核通过</option>
-              <option value="reject">审核拒绝</option>
+              <option v-for="(label, action) in actionLabels" :key="action" :value="action">{{ label }}</option>
             </select>
           </span>
         </label>
 
-        <label class="min-w-[168px] flex-1 admin-label">
+        <label class="min-w-0 admin-label">
           开始日期
           <input
             type="date"
@@ -46,7 +41,7 @@
           />
         </label>
 
-        <label class="min-w-[168px] flex-1 admin-label">
+        <label class="min-w-0 admin-label">
           结束日期
           <input
             type="date"
@@ -56,7 +51,7 @@
           />
         </label>
 
-        <div class="ml-auto flex items-center gap-3">
+        <div class="flex items-center justify-end gap-3 sm:col-span-2 xl:col-span-1">
           <button
             type="button"
             class="text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 hover:bg-gray-200/50 transition-colors admin-button"
@@ -87,7 +82,7 @@
           </thead>
           <tbody class="divide-y divide-gray-200">
             <tr v-for="log in logs" :key="log.id" class="hover:bg-gray-50">
-              <td class="py-4 px-6 text-sm">
+              <td class="py-4 px-6 text-sm admin-cell-numeric">
                 <div>{{ formatDateTime(log.createdAt) }}</div>
               </td>
               <td class="py-4 px-6">
@@ -95,13 +90,13 @@
                 <div class="text-xs text-gray-500">{{ log.adminId }}</div>
               </td>
               <td class="py-4 px-6">
-                <span class="px-2 py-1 text-xs rounded-full" :class="getActionClass(log.action)">
+                  <span class="inline-block whitespace-nowrap px-2 py-1 text-xs rounded-full" :class="getActionClass(log.action)">
                   {{ getActionLabel(log.action) }}
                 </span>
               </td>
               <td class="py-4 px-6 text-sm">{{ log.targetType || '-' }}</td>
               <td class="py-4 px-6 text-sm text-gray-500">{{ log.targetId || '-' }}</td>
-              <td class="py-4 px-6 text-sm text-gray-500">
+              <td class="py-4 px-6 text-sm" :class="log.result === 'success' ? 'text-green-800' : 'text-red-800'">
                 {{ log.result === 'success' ? '成功' : '失败' }}
               </td>
               <td class="py-4 px-6 text-center">
@@ -138,36 +133,15 @@
         <p class="mt-4 text-gray-500">加载中...</p>
       </div>
 
-      <!-- 分页 -->
-      <div v-if="totalPages > 1" class="flex justify-center gap-2 mt-6">
-        <button
-          @click="changePage(currentPage - 1)"
-          :disabled="currentPage === 1"
-          class="border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed admin-button"
-        >
-          上一页
-        </button>
-        <button
-          v-for="page in totalPages"
-          :key="page"
-          @click="changePage(page)"
-          class="border transition admin-button"
-          :class="
-            currentPage === page
-              ? 'bg-tsinghua-purple text-white border-tsinghua-purple'
-              : 'border-gray-300 hover:bg-gray-50'
-          "
-        >
-          {{ page }}
-        </button>
-        <button
-          @click="changePage(currentPage + 1)"
-          :disabled="currentPage === totalPages"
-          class="border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed admin-button"
-        >
-          下一页
-        </button>
-      </div>
+      <Pagination
+        v-if="totalPages > 1"
+        class="mt-6"
+        :current-page="currentPage"
+        :page-size="pageSize"
+        :total="total"
+        @page-change="changePage"
+      />
+
     </div>
   </div>
 
@@ -179,17 +153,17 @@
     @close="closeLogDetail"
   >
     <div
-      class="max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto admin-dialog-panel"
+      class="max-w-2xl w-full mx-4 max-h-[80dvh] overflow-hidden flex flex-col admin-dialog-panel"
       @click.stop
     >
-      <div class="flex justify-between items-center admin-dialog-header">
+      <div class="flex justify-between items-center shrink-0 admin-dialog-header">
         <h3 class="text-lg font-medium">日志详情</h3>
         <button class="text-gray-400 hover:text-gray-600 admin-icon-button" aria-label="关闭日志详情" @click="closeLogDetail">
           <AppIcon class="iconify text-2xl" icon="carbon:close"></AppIcon>
         </button>
       </div>
 
-      <div class="space-y-4 admin-dialog-body">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 min-h-0 overflow-y-auto break-words admin-dialog-body">
         <div>
           <label class="block font-medium text-gray-600 mb-1 admin-label">时间</label>
           <p class="text-sm text-gray-800">{{ formatDateTime(selectedLog.createdAt) }}</p>
@@ -224,7 +198,7 @@
           </p>
         </div>
 
-        <div v-if="selectedLog.details">
+        <div v-if="selectedLog.details" class="min-w-0 sm:col-span-2">
           <label class="block font-medium text-gray-600 mb-1 admin-label">详细信息</label>
           <pre class="text-sm text-gray-800 bg-gray-50 p-3 rounded border overflow-auto">{{
             formatDetails(selectedLog.details)
@@ -240,21 +214,25 @@ import { ref, reactive, onMounted, onActivated } from 'vue'
 import { logApi } from '@/api/modules/log'
 import Header from '@/components/Layout/Header.vue'
 import AdminDialog from '@/components/Common/AdminDialog.vue'
-import { showAlert } from '@/composables/useModal'
+import Pagination from '@/components/Common/Pagination.vue'
+import { useNotification } from '@/composables/useNotification'
 
 export default {
   name: 'LogView',
   components: {
     Header,
     AdminDialog,
+    Pagination,
   },
   setup() {
+    const notify = useNotification()
     const loading = ref(false)
     const logs = ref([])
     const selectedLog = ref(null)
     const currentPage = ref(1)
     const pageSize = ref(20)
     const totalPages = ref(1)
+    const total = ref(0)
 
     const filters = reactive({
       adminId: '',
@@ -311,12 +289,13 @@ export default {
         if (response.code === 200 && response.data) {
           logs.value = response.data.items || []
           totalPages.value = response.data.meta?.totalPages || 1
+          total.value = response.data.meta?.total ?? 0
         } else {
           throw new Error(response.message || '获取日志列表失败')
         }
       } catch (error) {
         console.error('加载日志列表失败:', error)
-        showAlert('加载日志列表失败，请刷新重试')
+        notify.error('加载日志列表失败，请刷新重试')
         logs.value = []
       } finally {
         loading.value = false
@@ -373,25 +352,26 @@ export default {
 
     const formatDetails = (details) => JSON.stringify(details, null, 2)
 
-    // 获取操作标签
-    const getActionLabel = (action) => {
-      const actionMap = {
-        create: '创建',
-        update: '更新',
-        delete: '删除',
-        view: '查看',
-        approve: '审核通过',
-        reject: '审核拒绝',
-        login: '登录',
-        logout: '退出',
-      }
-      return actionMap[action] || action
+    const actionLabels = {
+      create: '创建', update: '更新', delete: '删除', view: '查看',
+      approve: '审核通过', reject: '审核拒绝', access_denied: '权限拒绝',
+      publish: '发布', revoke: '撤回', enable: '启用', disable: '停用', complete: '完成',
+      'admin:create': '创建管理员', 'admin:permissions': '调整管理员授权',
+      'admin:handover': '移交下属', 'admin:retire': '停用管理员',
+      'admin:password:reset': '重置密码', 'admin:password:change': '修改密码',
+      login: '登录', logout: '退出',
     }
+    const getActionLabel = (action) => actionLabels[action] || action
 
     // 获取操作样式类
     const getActionClass = (action) => {
       const classMap = {
         create: 'bg-green-100 text-green-800',
+        'admin:create': 'bg-green-100 text-green-800',
+        'admin:permissions': 'bg-purple-100 text-purple-800',
+        'admin:handover': 'bg-purple-100 text-purple-800',
+        'admin:retire': 'bg-gray-100 text-gray-800',
+        access_denied: 'bg-red-100 text-red-800',
         update: 'bg-blue-100 text-blue-800',
         delete: 'bg-red-100 text-red-800',
         view: 'bg-gray-100 text-gray-800',
@@ -418,6 +398,8 @@ export default {
       filters,
       currentPage,
       totalPages,
+      total,
+      pageSize,
       loadLogs,
       applyFilters,
       resetFilters,
@@ -427,6 +409,7 @@ export default {
       formatDateTime,
       formatLocalDateBoundary,
       formatDetails,
+      actionLabels,
       getActionLabel,
       getActionClass,
     }
