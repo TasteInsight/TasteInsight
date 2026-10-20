@@ -470,30 +470,18 @@ describe('views/CommentManage', () => {
     wrapper.unmount()
   })
 
-  it('dish pagination helpers compute pages window', async () => {
-    const wrapper = shallowMount(CommentManage, {
-      global: { stubs: { Header: true, Pagination: true } },
-    })
-
-    // wait onMounted async setters, otherwise they may overwrite our manual values
+  it('uses the shared pagination component for the dish picker', async () => {
+    const wrapper = shallowMount(CommentManage, { global: { stubs: { Header: true, Pagination: true } } })
     await flushAll()
-
     wrapper.vm.totalDishes = 97
     wrapper.vm.dishPageSize = 10
     wrapper.vm.dishPage = 6
     await nextTick()
-
-    expect(wrapper.vm.getDishTotalPages()).toBe(10)
-    expect(wrapper.vm.getDishPaginationPages()).toEqual([4, 5, 6, 7, 8])
-
-    wrapper.vm.dishPage = 1
-    await nextTick()
-    expect(wrapper.vm.getDishPaginationPages()).toEqual([1, 2, 3, 4, 5])
-
-    wrapper.vm.dishPage = 10
-    await nextTick()
-    expect(wrapper.vm.getDishPaginationPages()).toEqual([8, 9, 10])
-
+    const pagination = wrapper.findAllComponents({ name: 'Pagination' }).find(component => component.props('label') === '菜品分页')!
+    expect(pagination.props()).toMatchObject({ total: 97, pageSize: 10, currentPage: 6, showJump: false })
+    pagination.vm.$emit('page-change', 7)
+    await flushAll()
+    expect(mocks.dishApiMock.getDishes).toHaveBeenCalledWith(expect.objectContaining({ page: 7, pageSize: 10 }))
     wrapper.unmount()
   })
 

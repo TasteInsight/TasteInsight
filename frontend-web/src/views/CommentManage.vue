@@ -122,45 +122,9 @@
             </button>
           </div>
 
-          <!-- 紧凑型分页 -->
-          <div v-if="totalDishes > 0" class="mt-4 pt-4 border-t border-gray-200">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <div class="text-gray-500 text-xs whitespace-nowrap flex-shrink-0">
-                共 {{ totalDishes }} 条
-              </div>
-              <div class="flex flex-wrap items-center gap-1 flex-1 justify-end min-w-0">
-                <button
-                  class="border text-gray-500 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0 admin-button admin-button-compact"
-                  :disabled="dishPage === 1"
-                  @click="handleDishPageChange(dishPage - 1)"
-                >
-                  上一页
-                </button>
-                <div class="flex flex-wrap items-center gap-1">
-                  <button
-                    v-for="page in getDishPaginationPages()"
-                    :key="page"
-                    class="border min-w-[28px] text-center flex-shrink-0 admin-button admin-button-compact"
-                    :class="
-                      page === dishPage
-                        ? 'bg-tsinghua-purple text-white border-tsinghua-purple'
-                        : 'text-gray-500 hover:bg-gray-100'
-                    "
-                    @click="handleDishPageChange(page)"
-                  >
-                    {{ page }}
-                  </button>
-                </div>
-                <button
-                  class="border text-gray-500 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap flex-shrink-0 admin-button admin-button-compact"
-                  :disabled="dishPage === getDishTotalPages()"
-                  @click="handleDishPageChange(dishPage + 1)"
-                >
-                  下一页
-                </button>
-              </div>
-            </div>
-          </div>
+          <Pagination v-if="totalDishes > 0" class="mt-4" label="菜品分页"
+            :current-page="dishPage" :page-size="dishPageSize" :total="totalDishes"
+            :show-jump="false" :disabled="isLoadingDishes" @page-change="handleDishPageChange" />
         </div>
 
         <!-- 右侧：评价和评论列表（帖子式展示） -->
@@ -1001,25 +965,6 @@ export default defineComponent({
       })
     }
 
-    // 获取菜品分页总页数
-    const getDishTotalPages = (): number => {
-      return Math.ceil(totalDishes.value / dishPageSize.value)
-    }
-
-    // 获取菜品分页页码数组
-    const getDishPaginationPages = (): number[] => {
-      const pages: number[] = []
-      const totalPages = getDishTotalPages()
-      const start = Math.max(1, dishPage.value - 2)
-      const end = Math.min(totalPages, start + 4)
-
-      for (let i = start; i <= end; i++) {
-        pages.push(i)
-      }
-
-      return pages
-    }
-
     // 搜索防抖
     let searchTimeout: ReturnType<typeof setTimeout> | null = null
     const handleSearchChange = () => {
@@ -1169,8 +1114,6 @@ export default defineComponent({
       handleImageKeyDown,
       previousImage,
       nextImage,
-      getDishTotalPages,
-      getDishPaginationPages,
       // 筛选相关
       selectedCanteenId,
       selectedWindowId,

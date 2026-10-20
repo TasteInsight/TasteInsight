@@ -136,33 +136,14 @@
         </div>
       </li>
     </ul>
-    <nav
-      v-if="meta && meta.totalPages > 1"
-      aria-label="审核待办分页"
-      class="mt-5 flex flex-wrap items-center gap-3"
-    >
-      <button
-        type="button"
-        class="admin-button admin-button-secondary"
-        :disabled="loading || !!deciding || page <= 1"
-        @click="goPage(page - 1)"
-      >
-        上一页
-      </button>
-      <span class="text-sm text-gray-600">第 {{ page }} / {{ meta.totalPages }} 页</span>
-      <button
-        type="button"
-        class="admin-button admin-button-secondary"
-        :disabled="loading || !!deciding || page >= meta.totalPages"
-        @click="goPage(page + 1)"
-      >
-        下一页
-      </button>
-    </nav>
+    <Pagination v-if="meta && meta.totalPages > 1" class="mt-5" label="审核待办分页"
+      :current-page="page" :page-size="meta.pageSize" :total="meta.total"
+      :disabled="loading || !!deciding" @page-change="goPage" />
   </section>
 </template>
 
 <script setup lang="ts">
+import Pagination from '@/components/Common/Pagination.vue'
 import { useNotification } from '@/composables/useNotification'
 import { nextTick, onMounted, ref } from 'vue'
 import {

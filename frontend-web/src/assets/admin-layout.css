@@ -328,15 +328,40 @@
 
 .admin-pagination-controls {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 8px;
+  width: max-content;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 4px 2px;
+  white-space: nowrap;
+  overscroll-behavior-x: contain;
 }
 
-.admin-pagination button,
-.admin-pagination input {
+.admin-pagination :is(button, input) {
+  flex-shrink: 0;
+  height: 36px;
   min-height: 36px;
+  padding-block: 0;
+  font-size: 14px;
+  line-height: 22px;
 }
+.admin-pagination button { padding-inline: 10px; }
+.admin-pagination .admin-page-number { min-width: 36px; }
+.admin-pagination-jump {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 6px;
+  margin-left: 4px;
+  padding-left: 12px;
+  border-left: 1px solid #d1d5db;
+  color: #667085;
+  font-size: 14px;
+}
+.admin-pagination-jump input { width: 48px; padding-inline: 4px; text-align: center; font-variant-numeric: tabular-nums; }
 
 .admin-comment-layout {
   display: grid;

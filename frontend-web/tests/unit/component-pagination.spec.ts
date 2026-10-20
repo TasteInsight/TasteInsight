@@ -97,7 +97,7 @@ describe('components/Common/Pagination', () => {
       .find((b) => b.text().trim() === '2')
 
     expect(page2, 'page 2 button exists').toBeTruthy()
-    expect(page2!.classes()).toContain('bg-tsinghua-purple')
+    expect(page2!.classes()).toContain('admin-button-primary')
   })
 
   it('jump sanitizes invalid input and clamps to totalPages', async () => {
@@ -150,6 +150,23 @@ describe('components/Common/Pagination', () => {
     await wrapper.findAll('button')[wrapper.findAll('button').length - 1]!.trigger('click')
 
     expect(wrapper.emitted('page-change')?.[wrapper.emitted('page-change')!.length - 1]).toEqual([1])
+  })
+
+  it('supports compact contexts and accessible pagination names', () => {
+    const wrapper = mount(Pagination, { props: { total: 50, showJump: false, label: '菜品分页' } })
+    expect(wrapper.get('nav').attributes('aria-label')).toBe('菜品分页')
+    expect(wrapper.find('input').exists()).toBe(false)
+    expect(wrapper.text()).toContain('下一页')
+  })
+
+  it('disables every navigation control while the owning task is busy', async () => {
+    const wrapper = mount(Pagination, { props: { total: 50, disabled: true } })
+    for (const button of wrapper.findAll('button')) {
+      expect(button.attributes('disabled')).toBeDefined()
+      await button.trigger('click')
+    }
+    await wrapper.get('input').trigger('keyup.enter')
+    expect(wrapper.emitted('page-change')).toBeUndefined()
   })
 
   it('syncs inputPage when currentPage prop changes', async () => {

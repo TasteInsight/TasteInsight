@@ -455,31 +455,10 @@
               </div>
             </div>
 
-            <!-- 分页 -->
-            <div
-              v-if="reviewsData.meta && reviewsData.meta.totalPages > 1"
-              class="flex justify-center mt-6"
-            >
-              <div class="flex items-center gap-2">
-                <button
-                  @click="changeReviewPage(currentReviewPage - 1)"
-                  :disabled="currentReviewPage <= 1"
-                  class="border hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed admin-button"
-                >
-                  上一页
-                </button>
-                <span class="px-4 py-2 text-sm text-gray-600">
-                  第 {{ currentReviewPage }} / {{ reviewsData.meta.totalPages }} 页
-                </span>
-                <button
-                  @click="changeReviewPage(currentReviewPage + 1)"
-                  :disabled="currentReviewPage >= reviewsData.meta.totalPages"
-                  class="border hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed admin-button"
-                >
-                  下一页
-                </button>
-              </div>
-            </div>
+            <Pagination v-if="reviewsData.meta && reviewsData.meta.totalPages > 1"
+              class="mt-6" label="菜品评价分页" :current-page="currentReviewPage"
+              :page-size="reviewPageSize" :total="reviewsData.meta.total"
+              :disabled="isLoadingReviews" @page-change="changeReviewPage" />
           </div>
 
           <div v-else class="admin-state">暂无评论</div>
@@ -494,6 +473,7 @@ import { reactive, ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { dishApi } from '@/api/modules/dish'
 import Header from '@/components/Layout/Header.vue'
+import Pagination from '@/components/Common/Pagination.vue'
 import AdminImage from '@/components/Common/AdminImage.vue'
 import { useNotification } from '@/composables/useNotification'
 import { getAuthSessionVersion } from '@/utils/auth-session'
@@ -502,6 +482,7 @@ export default {
   name: 'ViewDishDetail',
   components: {
     AdminImage,
+    Pagination,
     Header,
   },
   setup() {
@@ -758,6 +739,7 @@ export default {
       isLoadingReviews,
       reviewStatusFilter,
       currentReviewPage,
+      reviewPageSize,
       selectedImage,
       dishImage,
       allergensText,
