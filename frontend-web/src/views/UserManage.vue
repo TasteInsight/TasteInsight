@@ -387,40 +387,31 @@
             <div>
               <!-- 权限配置 -->
               <div class="mb-6">
-                <div class="flex justify-between items-center mb-2">
-                  <label class="block text-gray-700 font-medium admin-label">权限配置</label>
-                  <button
-                    type="button"
-                    class="flex items-center transition-colors admin-button"
-                    :class="isAllPermissionsSelected ? 'text-red-500 hover:text-red-700' : 'text-tsinghua-purple hover:text-tsinghua-dark'"
-                    @click="toggleAllPermissions"
-                  >
-                    <AppIcon class="iconify mr-1" :icon="isAllPermissionsSelected ? 'carbon:checkbox-checked-filled' : 'carbon:checkbox'"></AppIcon>
-                    {{ isAllPermissionsSelected ? '取消全选' : '全部全选' }}
-                  </button>
+                <div class="admin-permission-heading">
+                  <h3 class="font-medium text-gray-700">权限配置</h3>
+                  <div class="admin-permission-selection" data-permission-selection="all">
+                    <label class="admin-permission-select">
+                      <input type="checkbox" aria-label="全选可分配权限" aria-describedby="permission-selection-count"
+                        :checked="isAllPermissionsSelected" :indeterminate="isSomePermissionsSelected"
+                        :disabled="assignablePermissionIds.length === 0" @change="toggleAllPermissions" />
+                      <span>全选可分配权限</span>
+                    </label>
+                    <span id="permission-selection-count" class="admin-permission-count" aria-live="polite">已选 {{ selectedPermissionCount }} / {{ assignablePermissionIds.length }} 项</span>
+                  </div>
                 </div>
 
                 <div class="space-y-4 max-h-[500px] overflow-y-auto border rounded-lg p-4">
-                  <div
-                    v-for="permissionGroup in permissionGroups"
-                    :key="permissionGroup.id"
-                    class="mb-4"
-                  >
-                    <div class="flex items-center justify-between mb-3 bg-gray-50 p-2 rounded">
-                      <div class="flex items-center gap-2">
-                        <div class="w-1 h-5 bg-tsinghua-purple rounded-full"></div>
-                        <h4 class="text-sm font-medium text-gray-800">{{ permissionGroup.name }}</h4>
-                      </div>
-                      <button
-                        type="button"
-                        class="transition-colors flex items-center gap-1 admin-button"
-                        :class="isGroupSelected(permissionGroup) ? 'text-red-500 hover:bg-red-50' : 'text-tsinghua-purple hover:bg-purple-50'"
-                        @click="toggleGroupPermissions(permissionGroup)"
-                        :title="isGroupSelected(permissionGroup) ? '取消全选该组' : '全选该组'"
-                      >
-                        <AppIcon class="iconify" :icon="isGroupSelected(permissionGroup) ? 'carbon:checkbox-checked-filled' : 'carbon:checkbox'"></AppIcon>
-                        {{ isGroupSelected(permissionGroup) ? '取消全选' : '全选' }}
-                      </button>
+                  <div v-for="permissionGroup in permissionGroups" :key="permissionGroup.id"
+                    role="group" :aria-label="permissionGroup.name">
+                    <div class="admin-permission-group-heading">
+                      <label class="admin-permission-select">
+                        <input type="checkbox" :aria-label="`全选${permissionGroup.name}权限`"
+                          :aria-describedby="`permission-count-${permissionGroup.id}`"
+                          :checked="isGroupSelected(permissionGroup)" :indeterminate="isGroupPartiallySelected(permissionGroup)"
+                          @change="toggleGroupPermissions(permissionGroup)" />
+                        <span class="font-medium">{{ permissionGroup.name }}</span>
+                      </label>
+                      <span :id="`permission-count-${permissionGroup.id}`" class="admin-permission-count">{{ selectedGroupPermissionCount(permissionGroup) }} / {{ permissionGroup.permissions.length }}</span>
                     </div>
 
                     <div class="grid grid-cols-1 gap-2 ml-3">
@@ -434,7 +425,7 @@
                           :id="permission.id"
                           :checked="isPermissionChecked(permission.id)"
                           @change="togglePermission(permission.id)"
-                          class="w-4 h-4 text-tsinghua-purple border-gray-300 rounded focus:ring-tsinghua-purple"
+                          class="admin-permission-checkbox"
                         />
                         <label :for="permission.id" class="text-gray-700 cursor-pointer admin-label">
                           {{ permission.label }}
@@ -1139,16 +1130,18 @@ export default {
       return formData.permissions.includes(permissionId)
     }
 
-    // 检查是否全选了某组权限
-    const isGroupSelected = (group) => {
-      return group.permissions.every(p => formData.permissions.includes(p.id))
+    const selectedGroupPermissionCount = group => group.permissions.filter(
+      permission => formData.permissions.includes(permission.id),
+    ).length
+    const isGroupSelected = group => selectedGroupPermissionCount(group) === group.permissions.length
+    const isGroupPartiallySelected = group => {
+      const selected = selectedGroupPermissionCount(group)
+      return selected > 0 && selected < group.permissions.length
     }
-
-    // 检查是否全选了所有权限（只计算当前用户拥有的权限）
-    const isAllPermissionsSelected = computed(() => {
-      const allPermissions = permissionGroups.value.flatMap((g) => g.permissions.map((p) => p.id))
-      return allPermissions.every(p => formData.permissions.includes(p)) && allPermissions.length > 0
-    })
+    const assignablePermissionIds = computed(() => permissionGroups.value.flatMap(group => group.permissions.map(permission => permission.id)))
+    const selectedPermissionCount = computed(() => assignablePermissionIds.value.filter(permission => formData.permissions.includes(permission)).length)
+    const isAllPermissionsSelected = computed(() => assignablePermissionIds.value.length > 0 && selectedPermissionCount.value === assignablePermissionIds.value.length)
+    const isSomePermissionsSelected = computed(() => selectedPermissionCount.value > 0 && !isAllPermissionsSelected.value)
 
     const removePermissionDependents = (selected, removed) => selected.filter(permission =>
       !getPermissionClosure([permission]).some(dependency => removed.includes(dependency)))
@@ -1481,6 +1474,11 @@ export default {
       isGroupSelected,
       toggleGroupPermissions,
       isAllPermissionsSelected,
+      isSomePermissionsSelected,
+      assignablePermissionIds,
+      selectedPermissionCount,
+      selectedGroupPermissionCount,
+      isGroupPartiallySelected,
       submitForm,
       changePage,
       handleFilterChange,

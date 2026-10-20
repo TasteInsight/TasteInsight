@@ -300,6 +300,22 @@
   max-height: calc(90dvh - 88px);
 }
 
+.admin-permission-heading,
+.admin-permission-selection,
+.admin-permission-group-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+.admin-permission-heading { flex-wrap: wrap; margin-bottom: 12px; }
+.admin-permission-selection { flex-wrap: wrap; }
+.admin-permission-group-heading { padding: 4px 12px; margin-bottom: 8px; border-radius: 8px; background: #f9fafb; }
+.admin-permission-select { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; cursor: pointer; font-size: 14px; }
+.admin-permission-select input,
+.admin-permission-checkbox { width: 16px; height: 16px; flex-shrink: 0; accent-color: #660874; cursor: pointer; }
+.admin-permission-count { flex-shrink: 0; color: #667085; font-size: 13px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
 .admin-pagination {
   display: flex;
   flex-wrap: wrap;

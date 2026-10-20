@@ -98,6 +98,34 @@ describe('views/UserManage', () => {
     } finally { wrapper.unmount() }
   })
 
+  it('reflects partial selections in native group and global checkboxes and counts', async () => {
+    const wrapper = mount(UserManage, { global: { stubs: { Header: true } } })
+    try {
+      await flushPromises()
+      await wrapper.vm.editAdmin({ id: 'partial', username: 'staff', role: 'admin', scope: 'GLOBAL', canteenIds: [], permissions: ['dish:view'] })
+      await nextTick()
+      const global = wrapper.get('input[aria-label="全选可分配权限"]')
+      const group = wrapper.get('input[aria-label="全选菜品管理权限"]')
+      expect((global.element as HTMLInputElement).indeterminate).toBe(true)
+      expect((group.element as HTMLInputElement).indeterminate).toBe(true)
+      expect(wrapper.get('[data-permission-selection="all"]').text()).toContain('已选 1 / 5 项')
+      await global.setValue(true)
+      expect((global.element as HTMLInputElement).checked).toBe(true)
+      expect((global.element as HTMLInputElement).indeterminate).toBe(false)
+      expect(wrapper.get('[data-permission-selection="all"]').text()).toContain('已选 5 / 5 项')
+      await wrapper.get('input[id="canteen:view"]').setValue(false)
+      expect(wrapper.vm.formData.permissions).toEqual(expect.arrayContaining(['admin:view', 'dish:view']))
+      expect(wrapper.vm.formData.permissions).toHaveLength(2)
+      expect((group.element as HTMLInputElement).indeterminate).toBe(true)
+      expect(wrapper.get('[data-permission-selection="all"]').text()).toContain('已选 2 / 5 项')
+      await global.setValue(true)
+      await global.setValue(false)
+      expect((group.element as HTMLInputElement).checked).toBe(false)
+      expect((group.element as HTMLInputElement).indeterminate).toBe(false)
+      expect(wrapper.get('[data-permission-selection="all"]').text()).toContain('已选 0 / 5 项')
+    } finally { wrapper.unmount() }
+  })
+
   it('opens a handover before retiring a manager and submits the selected replacement atomically', async () => {
     const source = { id: 'old', username: '原负责人', scope: 'GLOBAL', directReportCount: 2 }
     const replacement = { id: 'new', username: '新负责人', scope: 'GLOBAL', managerId: 'root' }
