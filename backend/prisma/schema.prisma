@@ -205,6 +205,8 @@ model Admin {
   id       String         @id @default(cuid())
   username String         @unique
   password String // 应该存储哈希后的密码
+  sessionVersion Int @default(0)
+  mustChangePassword Boolean @default(false)
   role     String         @default("admin")
   scope    AdminScope     @default(CANTEENS)
   canteens AdminCanteen[]
@@ -212,6 +214,11 @@ model Admin {
   createdBy String? // 创建者ID
   creator   Admin?  @relation("AdminHierarchy", fields: [createdBy], references: [id])
   subAdmins Admin[] @relation("AdminHierarchy")
+
+  managerId String? // 当前上级ID
+  hierarchyVersion Int @default(0)
+  manager Admin? @relation("AdminReporting", fields: [managerId], references: [id])
+  reports Admin[] @relation("AdminReporting")
 
   // 权限
   permissions AdminPermission[]
@@ -230,6 +237,8 @@ model Admin {
   updatedAt DateTime @updatedAt
 
   @@index([deletedAt])
+  @@index([createdBy])
+  @@index([managerId])
   @@map("admins")
 }
 

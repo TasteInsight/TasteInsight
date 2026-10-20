@@ -3,6 +3,7 @@ import { AdminAdminsService } from './admin-admins.service';
 import { PrismaService } from '@/prisma.service';
 import {
   NotFoundException,
+  UnauthorizedException,
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
@@ -22,6 +23,7 @@ const mockPrismaService = {
     create: jest.fn(),
     delete: jest.fn(),
     update: jest.fn(),
+    updateMany: jest.fn().mockResolvedValue({ count: 1 }),
   },
   adminPermission: {
     deleteMany: jest.fn(),
@@ -31,7 +33,12 @@ const mockPrismaService = {
     findUnique: jest.fn(),
     findMany: jest.fn(),
   },
-  $queryRaw: jest.fn(),
+  operationLog: { create: jest.fn() },
+  $queryRaw: jest
+    .fn()
+    .mockImplementation(async (sql) =>
+      sql?.text?.includes('WITH RECURSIVE') ? [{ id: sql.values[0] }] : [],
+    ),
   $transaction: jest.fn((callback) =>
     callback({
       ...mockPrismaService,
@@ -40,6 +47,9 @@ const mockPrismaService = {
         findUnique: jest.fn(async ({ where }) => ({
           id: where.id,
           role: 'superadmin',
+          createdBy: 'creator-id',
+          managerId: 'creator-id',
+          sessionVersion: 0,
           scope: 'GLOBAL',
           canteens: [],
           permissions: [],
@@ -60,6 +70,7 @@ describe('AdminAdminsService', () => {
       where.id.in.map((id) => ({ id })),
     );
     mockPrismaService.admin.findMany.mockResolvedValue([]);
+    mockPrismaService.admin.count.mockResolvedValue(0);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -76,6 +87,97 @@ describe('AdminAdminsService', () => {
     expect(service).toBeDefined();
   });
 
+  it.each([
+    'create',
+    'remove',
+    'updatePermissions',
+    'handover',
+    'changeSubAdminPassword',
+    'changeOwnPassword',
+  ])(
+    'rejects %s from a session revoked after its authentication guard',
+    async (action) => {
+      const actor = {
+        id: 'actor',
+        role: 'superadmin',
+        managerId: 'parent',
+        createdBy: 'parent',
+        scope: 'GLOBAL',
+        canteens: [],
+        permissions: [],
+        deletedAt: null,
+        sessionVersion: 1,
+        password: 'hash',
+      };
+      prisma.admin.findUnique.mockResolvedValue(actor);
+      if (action !== 'changeOwnPassword')
+        prisma.$transaction.mockImplementationOnce((callback) =>
+          callback({
+            ...prisma,
+            admin: {
+              ...prisma.admin,
+              findUnique: jest.fn(async ({ where }) => ({
+                ...actor,
+                id: where.id,
+              })),
+            },
+          }),
+        );
+      const grant = {
+        scope: 'GLOBAL' as const,
+        canteenIds: [],
+        permissions: ['log:view'],
+      };
+      const operations = {
+        create: () =>
+          service.create(
+            'actor',
+            'superadmin',
+            grant,
+            [],
+            { ...grant, username: 'new', password: 'Personal123!' },
+            0,
+          ),
+        remove: () => service.remove('actor', 'superadmin', 'target', 0),
+        updatePermissions: () =>
+          service.updatePermissions(
+            'actor',
+            'superadmin',
+            grant,
+            [],
+            'target',
+            grant,
+            0,
+          ),
+        handover: () =>
+          service.handover(
+            'actor',
+            'target',
+            { newManagerId: 'replacement' },
+            0,
+          ),
+        changeSubAdminPassword: () =>
+          service.changeSubAdminPassword(
+            'actor',
+            'superadmin',
+            'target',
+            { newPassword: 'Personal123!' },
+            0,
+          ),
+        changeOwnPassword: () =>
+          service.changeOwnPassword(
+            'actor',
+            { currentPassword: 'Before123!', newPassword: 'Personal123!' },
+            0,
+          ),
+      };
+      await expect(operations[action]()).rejects.toThrow(UnauthorizedException);
+      expect(prisma.admin.create).not.toHaveBeenCalled();
+      expect(prisma.admin.update).not.toHaveBeenCalled();
+      expect(prisma.admin.updateMany).not.toHaveBeenCalled();
+    },
+  );
+
   describe('findAll', () => {
     it('should return list of admins for superadmin', async () => {
       const mockAdmins = [
@@ -87,6 +189,7 @@ describe('AdminAdminsService', () => {
           canteenIds: ['c1'],
           canteens: [{ canteenId: 'c1', canteen: { id: 'c1', name: 'c1' } }],
           createdBy: 'superadmin-id',
+          managerId: 'superadmin-id',
           permissions: [{ permission: 'read' }],
           canteen: { id: 'c1', name: 'Canteen 1' },
           createdAt: new Date(),
@@ -109,7 +212,10 @@ describe('AdminAdminsService', () => {
       // superadmin should see all admins with createdBy not null
       expect(prisma.admin.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { createdBy: { not: null }, deletedAt: null },
+          where: {
+            managerId: { not: null },
+            OR: [{ deletedAt: null }, { reports: { some: {} } }],
+          },
         }),
       );
     });
@@ -124,6 +230,7 @@ describe('AdminAdminsService', () => {
           username: 'subadmin',
           role: 'admin',
           createdBy: 'admin-1',
+          managerId: 'admin-1',
           permissions: [],
           canteen: null,
           createdAt: new Date(),
@@ -138,7 +245,10 @@ describe('AdminAdminsService', () => {
       expect(result.code).toBe(200);
       expect(prisma.admin.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { createdBy: 'admin-1', deletedAt: null },
+          where: {
+            managerId: 'admin-1',
+            OR: [{ deletedAt: null }, { reports: { some: {} } }],
+          },
         }),
       );
     });
@@ -171,6 +281,7 @@ describe('AdminAdminsService', () => {
           },
         ],
         createdBy: 'creator-id',
+        managerId: 'creator-id',
         permissions: [{ permission: 'dish:view' }],
         canteen: { id: 'canteen-1', name: 'Test' },
         createdAt: new Date(),
@@ -183,6 +294,7 @@ describe('AdminAdminsService', () => {
         { scope: 'GLOBAL', canteenIds: [] },
         [],
         createDto,
+        0,
       );
 
       expect(result.code).toBe(200);
@@ -204,6 +316,7 @@ describe('AdminAdminsService', () => {
           { scope: 'GLOBAL', canteenIds: [] },
           [],
           createDto,
+          0,
         ),
       ).rejects.toThrow(BadRequestException);
     });
@@ -226,6 +339,7 @@ describe('AdminAdminsService', () => {
           },
         ],
         createdBy: 'creator-id',
+        managerId: 'creator-id',
         permissions: [],
         canteen: { id: 'creator-canteen', name: 'Creator Canteen' },
         createdAt: new Date(),
@@ -242,6 +356,7 @@ describe('AdminAdminsService', () => {
           scope: 'CANTEENS' as const,
           canteenIds: ['creator-canteen'],
         },
+        0,
       );
 
       expect(prisma.admin.create).toHaveBeenCalledWith(
@@ -266,6 +381,7 @@ describe('AdminAdminsService', () => {
             scope: 'GLOBAL' as const,
             canteenIds: [],
           } as any,
+          0,
         ),
       ).rejects.toThrow(ForbiddenException);
     });
@@ -282,6 +398,7 @@ describe('AdminAdminsService', () => {
             scope: 'CANTEENS' as const,
             canteenIds: ['other-canteen'],
           },
+          0,
         ),
       ).rejects.toThrow(ForbiddenException);
     });
@@ -294,6 +411,7 @@ describe('AdminAdminsService', () => {
           { scope: 'GLOBAL', canteenIds: [] },
           [],
           { ...createDto, permissions: ['unknown:permission'] },
+          0,
         ),
       ).rejects.toThrow(BadRequestException);
 
@@ -304,6 +422,7 @@ describe('AdminAdminsService', () => {
           { scope: 'GLOBAL', canteenIds: [] },
           [],
           { ...createDto, permissions: ['comment:delete'] },
+          0,
         ),
       ).rejects.toThrow('所授权限缺少依赖');
 
@@ -314,6 +433,7 @@ describe('AdminAdminsService', () => {
           { scope: 'GLOBAL', canteenIds: [] },
           ['dish:view'],
           { ...createDto, permissions: ['news:view'] },
+          0,
         ),
       ).rejects.toThrow(ForbiddenException);
     });
@@ -337,12 +457,14 @@ describe('AdminAdminsService', () => {
                 [],
                 'retired',
                 { scope: 'GLOBAL', canteenIds: [], permissions: ['dish:view'] },
+                0,
               )
             : service.changeSubAdminPassword(
                 'creator',
                 'superadmin',
                 'retired',
                 { newPassword: 'Password123!' },
+                0,
               );
         await expect(action).rejects.toThrow(NotFoundException);
         expect(prisma.admin.update).not.toHaveBeenCalled();
@@ -357,6 +479,7 @@ describe('AdminAdminsService', () => {
         id: 'target-admin',
         role: 'admin',
         createdBy: 'other-admin',
+        managerId: 'other-admin',
       });
       prisma.admin.delete.mockResolvedValue({});
 
@@ -364,12 +487,13 @@ describe('AdminAdminsService', () => {
         'superadmin-id',
         'superadmin',
         'target-admin',
+        0,
       );
 
       expect(result.code).toBe(200);
-      expect(prisma.admin.update).toHaveBeenCalledWith({
-        where: { id: 'target-admin' },
-        data: { deletedAt: expect.any(Date) },
+      expect(prisma.admin.updateMany).toHaveBeenCalledWith({
+        where: { id: 'target-admin', deletedAt: null },
+        data: { deletedAt: expect.any(Date), sessionVersion: { increment: 1 } },
       });
       expect(prisma.admin.delete).not.toHaveBeenCalled();
     });
@@ -382,10 +506,16 @@ describe('AdminAdminsService', () => {
         id: 'target-admin',
         role: 'admin',
         createdBy: 'admin-1',
+        managerId: 'admin-1',
       });
       prisma.admin.delete.mockResolvedValue({});
 
-      const result = await service.remove('admin-1', 'admin', 'target-admin');
+      const result = await service.remove(
+        'admin-1',
+        'admin',
+        'target-admin',
+        0,
+      );
 
       expect(result.code).toBe(200);
     });
@@ -394,7 +524,7 @@ describe('AdminAdminsService', () => {
       prisma.admin.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.remove('admin-1', 'admin', 'unknown'),
+        service.remove('admin-1', 'admin', 'unknown', 0),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -406,10 +536,11 @@ describe('AdminAdminsService', () => {
         id: 'admin-1',
         role: 'admin',
         createdBy: null,
+        managerId: null,
       });
 
       await expect(
-        service.remove('other-admin', 'admin', 'admin-1'),
+        service.remove('other-admin', 'admin', 'admin-1', 0),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -421,10 +552,11 @@ describe('AdminAdminsService', () => {
         id: 'target-admin',
         role: 'admin',
         createdBy: 'other-admin',
+        managerId: 'other-admin',
       });
 
       await expect(
-        service.remove('admin-1', 'admin', 'target-admin'),
+        service.remove('admin-1', 'admin', 'target-admin', 0),
       ).rejects.toThrow(ForbiddenException);
     });
   });
@@ -434,6 +566,7 @@ describe('AdminAdminsService', () => {
     async (action) => {
       const actor = {
         id: 'actor',
+        sessionVersion: 0,
         role: 'admin',
         scope: 'GLOBAL',
         canteens: [],
@@ -443,6 +576,7 @@ describe('AdminAdminsService', () => {
       prisma.admin.findUnique.mockResolvedValue({
         id: 'target',
         createdBy: actor.id,
+        managerId: actor.id,
       });
       prisma.$transaction.mockImplementationOnce((callback) =>
         callback({
@@ -473,6 +607,7 @@ describe('AdminAdminsService', () => {
               { scope: 'GLOBAL', canteenIds: [] },
               previousPermissions,
               { ...requested, username: 'new', password: 'Password123!' },
+              0,
             )
           : service.updatePermissions(
               'actor',
@@ -481,6 +616,7 @@ describe('AdminAdminsService', () => {
               previousPermissions,
               'target',
               requested,
+              0,
             );
       await expect(operation).rejects.toThrow(ForbiddenException);
       expect(prisma.admin.create).not.toHaveBeenCalled();
@@ -492,7 +628,8 @@ describe('AdminAdminsService', () => {
     prisma.admin.findUnique.mockResolvedValue({
       id: 'leaf',
       createdBy: 'parent',
-      creator: { scope: 'CANTEENS', canteens: [{ id: 'c1' }] },
+      managerId: 'parent',
+      manager: { scope: 'CANTEENS', canteens: [{ id: 'c1' }] },
     });
     await expect(
       service.updatePermissions(
@@ -502,6 +639,7 @@ describe('AdminAdminsService', () => {
         [],
         'leaf',
         { scope: 'CANTEENS', canteenIds: ['c2'], permissions: ['dish:view'] },
+        0,
       ),
     ).rejects.toThrow(ForbiddenException);
     expect(prisma.admin.update).not.toHaveBeenCalled();
@@ -513,6 +651,7 @@ describe('AdminAdminsService', () => {
         id: 'target-admin',
         role: 'admin',
         createdBy: 'other-admin',
+        managerId: 'other-admin',
         scope: 'GLOBAL' as const,
         canteenIds: [],
         canteens: [],
@@ -527,6 +666,7 @@ describe('AdminAdminsService', () => {
         [],
         'target-admin',
         { scope: 'GLOBAL', canteenIds: [], permissions: ['dish:view'] },
+        0,
       );
 
       expect(result.code).toBe(200);
@@ -543,6 +683,7 @@ describe('AdminAdminsService', () => {
           ['dish:view'],
           'unknown',
           { scope: 'GLOBAL', canteenIds: [], permissions: ['dish:view'] },
+          0,
         ),
       ).rejects.toThrow(NotFoundException);
     });
@@ -552,6 +693,7 @@ describe('AdminAdminsService', () => {
         id: 'target-admin',
         role: 'admin',
         createdBy: 'other-admin',
+        managerId: 'other-admin',
         scope: 'GLOBAL' as const,
         canteenIds: [],
         canteens: [],
@@ -565,6 +707,7 @@ describe('AdminAdminsService', () => {
           ['dish:view'],
           'target-admin',
           { scope: 'GLOBAL', canteenIds: [], permissions: ['dish:view'] },
+          0,
         ),
       ).rejects.toThrow(ForbiddenException);
     });
@@ -574,6 +717,7 @@ describe('AdminAdminsService', () => {
         id: 'target-admin',
         role: 'superadmin',
         createdBy: null,
+        managerId: null,
         scope: 'GLOBAL' as const,
         canteenIds: [],
         canteens: [],
@@ -587,6 +731,7 @@ describe('AdminAdminsService', () => {
           [],
           'target-admin',
           { scope: 'GLOBAL', canteenIds: [], permissions: ['dish:view'] },
+          0,
         ),
       ).rejects.toThrow(ForbiddenException);
     });
@@ -596,6 +741,7 @@ describe('AdminAdminsService', () => {
         id: 'target-admin',
         role: 'admin',
         createdBy: 'admin-1',
+        managerId: 'admin-1',
         scope: 'CANTEENS' as const,
         canteenIds: ['canteen-1'],
         canteens: [
@@ -618,6 +764,7 @@ describe('AdminAdminsService', () => {
             scope: 'GLOBAL' as const,
             canteenIds: [],
           },
+          0,
         ),
       ).rejects.toThrow(ForbiddenException);
     });
@@ -627,6 +774,7 @@ describe('AdminAdminsService', () => {
         id: 'target-admin',
         role: 'admin',
         createdBy: 'admin-1',
+        managerId: 'admin-1',
         scope: 'GLOBAL' as const,
         canteenIds: [],
         canteens: [],
@@ -640,6 +788,7 @@ describe('AdminAdminsService', () => {
           ['admin:edit', 'dish:view'],
           'target-admin',
           { scope: 'GLOBAL', canteenIds: [], permissions: ['news:view'] },
+          0,
         ),
       ).rejects.toThrow(ForbiddenException);
 
@@ -651,6 +800,7 @@ describe('AdminAdminsService', () => {
           ['admin:edit', 'comment:delete'],
           'target-admin',
           { scope: 'GLOBAL', canteenIds: [], permissions: ['comment:delete'] },
+          0,
         ),
       ).rejects.toThrow('所授权限缺少依赖');
       expect(prisma.$transaction).not.toHaveBeenCalled();
@@ -662,29 +812,46 @@ describe('AdminAdminsService', () => {
       prisma.admin.findUnique.mockResolvedValue({
         id: 'admin-1',
         password: 'old-hashed-password',
+        sessionVersion: 0,
       });
       (bcrypt.compare as jest.Mock)
         .mockResolvedValueOnce(true) // current password matches
         .mockResolvedValueOnce(false); // new password is different
       prisma.admin.update.mockResolvedValue({});
 
-      const result = await service.changeOwnPassword('admin-1', {
-        currentPassword: 'OldPassword123!',
-        newPassword: 'NewPassword123!',
-      });
+      const result = await service.changeOwnPassword(
+        'admin-1',
+        {
+          currentPassword: 'OldPassword123!',
+          newPassword: 'NewPassword123!',
+        },
+        0,
+      );
 
       expect(result.code).toBe(200);
-      expect(prisma.admin.update).toHaveBeenCalled();
+      expect(prisma.admin.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: {
+            password: 'hashed-password',
+            sessionVersion: { increment: 1 },
+            mustChangePassword: false,
+          },
+        }),
+      );
     });
 
     it('should throw NotFoundException if admin not found', async () => {
       prisma.admin.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.changeOwnPassword('unknown', {
-          currentPassword: 'old',
-          newPassword: 'new',
-        }),
+        service.changeOwnPassword(
+          'unknown',
+          {
+            currentPassword: 'old',
+            newPassword: 'new',
+          },
+          0,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -692,14 +859,19 @@ describe('AdminAdminsService', () => {
       prisma.admin.findUnique.mockResolvedValue({
         id: 'admin-1',
         password: 'old-hashed-password',
+        sessionVersion: 0,
       });
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
       await expect(
-        service.changeOwnPassword('admin-1', {
-          currentPassword: 'wrong-password',
-          newPassword: 'NewPassword123!',
-        }),
+        service.changeOwnPassword(
+          'admin-1',
+          {
+            currentPassword: 'wrong-password',
+            newPassword: 'NewPassword123!',
+          },
+          0,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -707,16 +879,21 @@ describe('AdminAdminsService', () => {
       prisma.admin.findUnique.mockResolvedValue({
         id: 'admin-1',
         password: 'old-hashed-password',
+        sessionVersion: 0,
       });
       (bcrypt.compare as jest.Mock)
         .mockResolvedValueOnce(true) // current password matches
         .mockResolvedValueOnce(true); // new password same as old
 
       await expect(
-        service.changeOwnPassword('admin-1', {
-          currentPassword: 'OldPassword123!',
-          newPassword: 'OldPassword123!',
-        }),
+        service.changeOwnPassword(
+          'admin-1',
+          {
+            currentPassword: 'OldPassword123!',
+            newPassword: 'OldPassword123!',
+          },
+          0,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -730,6 +907,7 @@ describe('AdminAdminsService', () => {
         id: 'target-admin',
         role: 'admin',
         createdBy: 'other-admin',
+        managerId: 'other-admin',
       });
       prisma.admin.update.mockResolvedValue({});
 
@@ -738,6 +916,7 @@ describe('AdminAdminsService', () => {
         'superadmin',
         'target-admin',
         { newPassword: 'NewPassword123!' },
+        0,
       );
 
       expect(result.code).toBe(200);
@@ -751,6 +930,7 @@ describe('AdminAdminsService', () => {
         id: 'target-admin',
         role: 'admin',
         createdBy: 'admin-1',
+        managerId: 'admin-1',
       });
       prisma.admin.update.mockResolvedValue({});
 
@@ -759,6 +939,7 @@ describe('AdminAdminsService', () => {
         'admin',
         'target-admin',
         { newPassword: 'NewPassword123!' },
+        0,
       );
 
       expect(result.code).toBe(200);
@@ -768,9 +949,15 @@ describe('AdminAdminsService', () => {
       prisma.admin.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.changeSubAdminPassword('admin-1', 'admin', 'unknown', {
-          newPassword: 'NewPassword123!',
-        }),
+        service.changeSubAdminPassword(
+          'admin-1',
+          'admin',
+          'unknown',
+          {
+            newPassword: 'NewPassword123!',
+          },
+          0,
+        ),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -782,12 +969,19 @@ describe('AdminAdminsService', () => {
         id: 'target-admin',
         role: 'admin',
         createdBy: 'other-admin',
+        managerId: 'other-admin',
       });
 
       await expect(
-        service.changeSubAdminPassword('admin-1', 'admin', 'target-admin', {
-          newPassword: 'NewPassword123!',
-        }),
+        service.changeSubAdminPassword(
+          'admin-1',
+          'admin',
+          'target-admin',
+          {
+            newPassword: 'NewPassword123!',
+          },
+          0,
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -799,6 +993,7 @@ describe('AdminAdminsService', () => {
         id: 'target-admin',
         role: 'admin',
         createdBy: null,
+        managerId: null,
       });
 
       await expect(
@@ -807,6 +1002,7 @@ describe('AdminAdminsService', () => {
           'superadmin',
           'target-admin',
           { newPassword: 'NewPassword123!' },
+          0,
         ),
       ).rejects.toThrow(ForbiddenException);
     });

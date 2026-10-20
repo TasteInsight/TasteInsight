@@ -16,6 +16,7 @@ import {
 import { AdminAdminsService } from './admin-admins.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { UpdatePermissionsDto } from './dto/update-permissions.dto';
+import { HandoverAdminDto } from './dto/handover-admin.dto';
 import {
   ChangeOwnPasswordDto,
   ChangeSubAdminPasswordDto,
@@ -24,13 +25,15 @@ import { AdminAuthGuard } from '@/auth/guards/admin-auth.guard';
 import { PermissionsGuard } from '@/auth/guards/permissions.guard';
 import { RequirePermissions } from '@/auth/decorators/permissions.decorator';
 import { Request } from 'express';
+import { AuditInTransaction } from '@/admin-logs/admin-audit';
 
 interface AdminRequest extends Request {
-  admin: AdminInfo;
+  admin: AdminInfo & { sessionVersion: number };
 }
 
 @Controller('admin/admins')
 @UseGuards(AdminAuthGuard, PermissionsGuard)
+@AuditInTransaction()
 export class AdminAdminsController {
   constructor(private readonly adminAdminsService: AdminAdminsService) {}
 
@@ -63,6 +66,7 @@ export class AdminAdminsController {
       req.admin,
       req.admin.permissions,
       createAdminDto,
+      req.admin.sessionVersion,
     );
   }
 
@@ -70,7 +74,12 @@ export class AdminAdminsController {
   @RequirePermissions('admin:delete')
   @HttpCode(HttpStatus.OK)
   async remove(@Req() req: AdminRequest, @Param('id') id: string) {
-    return this.adminAdminsService.remove(req.admin.id, req.admin.role, id);
+    return this.adminAdminsService.remove(
+      req.admin.id,
+      req.admin.role,
+      id,
+      req.admin.sessionVersion,
+    );
   }
 
   @Put(':id/permissions')
@@ -88,6 +97,23 @@ export class AdminAdminsController {
       req.admin.permissions,
       id,
       updatePermissionsDto,
+      req.admin.sessionVersion,
+    );
+  }
+
+  @Post(':id/handover')
+  @RequirePermissions('admin:edit')
+  @HttpCode(HttpStatus.OK)
+  async handover(
+    @Req() req: AdminRequest,
+    @Param('id') id: string,
+    @Body() dto: HandoverAdminDto,
+  ) {
+    return this.adminAdminsService.handover(
+      req.admin.id,
+      id,
+      dto,
+      req.admin.sessionVersion,
     );
   }
 
@@ -104,6 +130,7 @@ export class AdminAdminsController {
     return this.adminAdminsService.changeOwnPassword(
       req.admin.id,
       changePasswordDto,
+      req.admin.sessionVersion,
     );
   }
 
@@ -124,6 +151,7 @@ export class AdminAdminsController {
       req.admin.role,
       id,
       changePasswordDto,
+      req.admin.sessionVersion,
     );
   }
 }

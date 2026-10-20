@@ -79,15 +79,15 @@ describe('AdminOperationLogInterceptor', () => {
   });
 
   it.each([
-    ['publishNews', 'update'],
-    ['revokeUpload', 'update'],
+    ['publishNews', 'publish'],
+    ['revokeUpload', 'revoke'],
     ['handleReport', 'update'],
-    ['enableExperiment', 'update'],
-    ['disableExperiment', 'update'],
-    ['completeExperiment', 'update'],
+    ['enableExperiment', 'enable'],
+    ['disableExperiment', 'disable'],
+    ['completeExperiment', 'complete'],
     ['refreshDishEmbedding', 'update'],
-    ['changeOwnPassword', 'update'],
-    ['updatePermissions', 'update'],
+    ['changeOwnPassword', 'password'],
+    ['updatePermissions', 'permissions'],
     ['confirmBatchImport', 'create'],
   ])('normalizes %s to %s', async (handlerName, expectedAction) => {
     await lastValueFrom(

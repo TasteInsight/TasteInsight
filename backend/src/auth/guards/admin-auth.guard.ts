@@ -60,6 +60,10 @@ export class AdminAuthGuard implements CanActivate {
         throw new UnauthorizedException('管理员不存在');
       }
 
+      if (payload.sessionVersion !== admin.sessionVersion) {
+        throw new UnauthorizedException('登录会话已失效，请重新登录');
+      }
+
       // 将管理员信息附加到请求对象
       request['admin'] = {
         id: admin.id,
@@ -68,7 +72,20 @@ export class AdminAuthGuard implements CanActivate {
         scope: admin.scope,
         canteenIds: admin.canteens.map((canteen) => canteen.canteenId),
         permissions: admin.permissions.map((p) => p.permission),
+        sessionVersion: admin.sessionVersion,
+        mustChangePassword: admin.mustChangePassword,
       };
+      if (
+        admin.mustChangePassword &&
+        !['/auth/admin/session', '/admin/admins/me/password'].includes(
+          request.path,
+        )
+      ) {
+        throw new ForbiddenException({
+          code: 'ADMIN_PASSWORD_CHANGE_REQUIRED',
+          message: '请先修改初始密码',
+        });
+      }
     } catch (error) {
       const errorName = (error as Error)?.name ?? 'UnknownError';
 

@@ -54,6 +54,7 @@ export const COMMENT_PERMISSIONS = [
 
 // 配置管理权限
 export const CONFIG_PERMISSIONS = ['config:view', 'config:edit'] as const;
+export const LOG_PERMISSIONS = ['log:view'] as const;
 
 export const STUDENT_PERMISSIONS = ['student:review'] as const;
 export const POST_PERMISSIONS = [
@@ -87,6 +88,107 @@ export const ALL_PERMISSIONS: string[] = [
   ...STUDENT_PERMISSIONS,
   ...POST_PERMISSIONS,
   ...EXPERIMENT_PERMISSIONS,
+  ...LOG_PERMISSIONS,
+];
+
+export const GLOBAL_ONLY_PERMISSIONS: readonly string[] = [
+  ...STUDENT_PERMISSIONS,
+  ...POST_PERMISSIONS,
+  ...EXPERIMENT_PERMISSIONS,
+];
+
+export const PERMISSION_GROUPS = [
+  {
+    id: 'dishes',
+    name: '菜品管理',
+    permissions: [
+      { id: 'dish:view', label: '浏览菜品列表' },
+      { id: 'dish:create', label: '新建菜品' },
+      { id: 'dish:edit', label: '编辑菜品与刷新推荐数据' },
+      { id: 'dish:delete', label: '删除菜品' },
+    ],
+  },
+  {
+    id: 'canteen',
+    name: '食堂与窗口管理',
+    permissions: [
+      { id: 'canteen:view', label: '浏览食堂/窗口' },
+      { id: 'canteen:create', label: '创建食堂/窗口' },
+      { id: 'canteen:edit', label: '编辑食堂/窗口' },
+      { id: 'canteen:delete', label: '删除食堂/窗口' },
+    ],
+  },
+  {
+    id: 'review',
+    name: '内容审核',
+    permissions: [
+      { id: 'review:approve', label: '审核评价' },
+      { id: 'review:delete', label: '删除评价' },
+      { id: 'comment:approve', label: '审核评论' },
+      { id: 'comment:delete', label: '删除评论' },
+      { id: 'report:handle', label: '处理举报' },
+      { id: 'upload:approve', label: '审核菜品上传' },
+    ],
+  },
+  {
+    id: 'news',
+    name: '新闻管理',
+    permissions: [
+      { id: 'news:view', label: '浏览新闻' },
+      { id: 'news:create', label: '创建新闻与管理来源' },
+      { id: 'news:edit', label: '编辑新闻' },
+      { id: 'news:publish', label: '发布新闻' },
+      { id: 'news:revoke', label: '撤回新闻' },
+      { id: 'news:delete', label: '删除新闻' },
+    ],
+  },
+  {
+    id: 'admin',
+    name: '子管理员管理',
+    permissions: [
+      { id: 'admin:view', label: '浏览子管理员' },
+      { id: 'admin:create', label: '创建子管理员' },
+      { id: 'admin:edit', label: '编辑子管理员' },
+      { id: 'admin:delete', label: '停用子管理员' },
+    ],
+  },
+  {
+    id: 'log',
+    name: '操作日志',
+    permissions: [{ id: 'log:view', label: '查看自己与所有下属的操作日志' }],
+  },
+  {
+    id: 'config',
+    name: '配置管理',
+    permissions: [
+      { id: 'config:view', label: '查看配置' },
+      { id: 'config:edit', label: '编辑配置' },
+    ],
+  },
+  {
+    id: 'student',
+    name: '学生身份认证（全局）',
+    permissions: [{ id: 'student:review', label: '审核与撤销学生认证' }],
+  },
+  {
+    id: 'post',
+    name: '社区管理（全局）',
+    permissions: [
+      { id: 'post:view', label: '查看帖子与回复' },
+      { id: 'post:approve', label: '审核帖子与回复' },
+      { id: 'post:delete', label: '删除帖子与回复' },
+    ],
+  },
+  {
+    id: 'experiment',
+    name: '推荐实验（全局）',
+    permissions: [
+      { id: 'experiment:view', label: '浏览实验' },
+      { id: 'experiment:create', label: '创建实验' },
+      { id: 'experiment:edit', label: '编辑实验' },
+      { id: 'experiment:delete', label: '删除实验' },
+    ],
+  },
 ];
 
 /**

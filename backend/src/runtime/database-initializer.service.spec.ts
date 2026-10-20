@@ -40,6 +40,7 @@ describe('database initialization ownership', () => {
       scope: 'GLOBAL',
       username: settings.INITIAL_ADMIN_USERNAME,
       role: 'superadmin',
+      mustChangePassword: true,
     });
     expect(data.password).not.toBe(settings.INITIAL_ADMIN_PASSWORD);
     await expect(

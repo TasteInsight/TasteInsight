@@ -139,6 +139,10 @@ async function main() {
         adminId: adminManager.id,
         permission: 'admin:delete',
       },
+      {
+        adminId: adminManager.id,
+        permission: 'log:view',
+      },
     ],
   });
   console.log(`Added all admin management permissions to adminmanager`);
@@ -151,6 +155,7 @@ async function main() {
       password: subAdminPassword,
       role: 'admin',
       scope: 'GLOBAL',
+      managerId: adminManager.id,
       createdBy: adminManager.id,
     },
   });

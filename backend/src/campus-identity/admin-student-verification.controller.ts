@@ -19,6 +19,7 @@ import { PermissionsGuard } from '@/auth/guards/permissions.guard';
 import { RequirePermissions } from '@/auth/decorators/permissions.decorator';
 import { CampusIdentityService } from './campus-identity.service';
 import { StudentDecisionDto } from './dto/student-verification.dto';
+import { AuditInTransaction } from '@/admin-logs/admin-audit';
 
 @Controller('admin/student-verifications')
 @UseGuards(AdminAuthGuard, PermissionsGuard)
@@ -51,6 +52,7 @@ export class AdminStudentVerificationController {
   }
 
   @Post(':userId/decision')
+  @AuditInTransaction()
   @HttpCode(200)
   async decide(
     @Request() req,

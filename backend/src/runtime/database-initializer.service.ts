@@ -36,6 +36,7 @@ export class DatabaseInitializer {
         username,
         password: await bcrypt.hash(password, 10),
         role: 'superadmin',
+        mustChangePassword: true,
         scope: 'GLOBAL',
       },
     });

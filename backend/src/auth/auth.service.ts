@@ -8,8 +8,13 @@ import { PrismaService } from '@/prisma.service';
 import { UserProfileService } from '@/user-profile/user-profile.service';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import type { Admin, User } from '@prisma/client';
-import { ALL_PERMISSIONS } from './permissions.constants';
+import type { Admin, User, Prisma } from '@prisma/client';
+import {
+  ALL_PERMISSIONS,
+  PERMISSION_GROUPS,
+  PERMISSION_DEPENDENCIES,
+  GLOBAL_ONLY_PERMISSIONS,
+} from './permissions.constants';
 import {
   UserIdentityService,
   type WechatPlatform,
@@ -36,6 +41,7 @@ export class AuthService {
   private async _generateTokens(payload: {
     sub: string;
     type: 'user' | 'admin';
+    sessionVersion?: number;
   }) {
     const accessTokenSecret = this.configService.get<string>('JWT_SECRET');
     const refreshTokenSecret =
@@ -140,77 +146,118 @@ export class AuthService {
       throw new UnauthorizedException('用户名或密码错误');
     }
 
-    const {
-      password,
-      permissions: permissionsRelation,
-      canteens,
-      ...adminData
-    } = admin;
-    const isPasswordMatching = await bcrypt.compare(pass, password);
-
-    if (!isPasswordMatching) {
+    if (!(await bcrypt.compare(pass, admin.password))) {
       throw new UnauthorizedException('用户名或密码错误');
     }
 
-    const tokens = await this._generateTokens({ sub: admin.id, type: 'admin' });
-
-    // 提取权限字符串数组
-    let permissions = permissionsRelation.map((p) => p.permission);
-
-    // 超级管理员返回所有权限
-    if (admin.role === 'superadmin') {
-      permissions = [...ALL_PERMISSIONS];
-    }
+    const tokens = await this._generateTokens({
+      sub: admin.id,
+      type: 'admin',
+      sessionVersion: admin.sessionVersion,
+    });
 
     return {
       code: 200,
       message: '登录成功',
-      data: {
-        token: {
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
-        },
-        admin: {
-          ...adminData,
-          canteens: canteens.map((entry) => entry.canteen),
-          canteenIds: canteens.map((entry) => entry.canteen.id),
-        },
-        permissions,
+      data: { token: tokens, ...this.adminSessionData(admin) },
+    };
+  }
+
+  private authorizationCatalog() {
+    return {
+      groups: PERMISSION_GROUPS,
+      dependencies: PERMISSION_DEPENDENCIES,
+      globalOnly: GLOBAL_ONLY_PERMISSIONS,
+    };
+  }
+
+  async getAdminSession(id: string) {
+    const admin = await this.prisma.admin.findUnique({
+      where: { id, deletedAt: null },
+      include: {
+        permissions: true,
+        canteens: { select: { canteen: { select: { id: true, name: true } } } },
       },
+    });
+    if (!admin) throw new UnauthorizedException('管理员不存在');
+    return {
+      code: 200,
+      message: 'success',
+      data: this.adminSessionData(admin),
+    };
+  }
+
+  private adminSessionData(
+    admin: Prisma.AdminGetPayload<{
+      include: {
+        permissions: true;
+        canteens: { select: { canteen: { select: { id: true; name: true } } } };
+      };
+    }>,
+  ) {
+    const { permissions, canteens } = admin;
+    const profile = {
+      id: admin.id,
+      username: admin.username,
+      role: admin.role,
+      scope: admin.scope,
+      createdBy: admin.createdBy,
+      managerId: admin.managerId,
+      hierarchyVersion: admin.hierarchyVersion,
+      createdAt: admin.createdAt,
+      updatedAt: admin.updatedAt,
+      mustChangePassword: admin.mustChangePassword,
+    };
+    return {
+      admin: {
+        ...profile,
+        canteens: canteens.map((entry) => entry.canteen),
+        canteenIds: canteens.map((entry) => entry.canteen.id),
+      },
+      permissions:
+        admin.role === 'superadmin'
+          ? [...ALL_PERMISSIONS]
+          : permissions.map((item) => item.permission),
+      authorization: this.authorizationCatalog(),
     };
   }
 
   // --- 功能3: 刷新Token ---
-  async refreshToken(userId: string, userType: 'user' | 'admin') {
-    // Guard 只证明 token 有效；签发新 token 前仍需确认账号存在。
-    let userData;
-    if (userType === 'user') {
-      userData = await this.validateUser(userId);
-    } else {
-      userData = await this.validateAdmin(userId);
-    }
-
-    if (!userData) {
-      throw new UnauthorizedException('用户不存在或已被删除');
-    }
-
-    if (userType === 'user') {
-      userData = (await this.userProfileService.getUserProfile(userId)).data;
-    }
-
-    const tokens = await this._generateTokens({ sub: userId, type: userType });
-
-    return {
-      code: 200,
-      message: '刷新成功',
-      data: {
-        token: {
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
+  async refreshToken(
+    userId: string,
+    userType: 'user' | 'admin',
+    sessionVersion?: number,
+  ) {
+    if (userType === 'admin') {
+      const admin = await this.prisma.admin.findUnique({
+        where: { id: userId, deletedAt: null },
+        include: {
+          permissions: true,
+          canteens: {
+            select: { canteen: { select: { id: true, name: true } } },
+          },
         },
-        user: userData,
-      },
-    };
+      });
+      if (!admin || sessionVersion !== admin.sessionVersion) {
+        throw new UnauthorizedException('登录会话已失效，请重新登录');
+      }
+      const token = await this._generateTokens({
+        sub: userId,
+        type: 'admin',
+        sessionVersion,
+      });
+      const session = this.adminSessionData(admin);
+      return {
+        code: 200,
+        message: '刷新成功',
+        data: { token, user: session.admin, ...session },
+      };
+    }
+    const user = await this.validateUser(userId);
+    if (!user) throw new UnauthorizedException('用户不存在或已被删除');
+    const profile = (await this.userProfileService.getUserProfile(userId)).data;
+    const token = await this._generateTokens({ sub: userId, type: 'user' });
+    return { code: 200, message: '刷新成功', data: { token, user: profile } };
   }
 
   // --- 辅助方法：验证用户 ---

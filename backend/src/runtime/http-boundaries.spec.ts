@@ -28,7 +28,12 @@ const refreshSecret = 'http-boundary-refresh-secret';
 const jwt = new JwtService();
 const token = (type: 'user' | 'admin', tokenUse = 'access') =>
   `Bearer ${jwt.sign(
-    { sub: `${type}-account`, type, tokenUse },
+    {
+      sub: `${type}-account`,
+      type,
+      tokenUse,
+      ...(type === 'admin' ? { sessionVersion: 0 } : {}),
+    },
     { secret: tokenUse === 'refresh' ? refreshSecret : accessSecret },
   )}`;
 
@@ -95,6 +100,7 @@ async function createHttpApplication(root: Type<unknown>) {
         id: 'admin-account',
         username: 'admin',
         role: 'superadmin',
+        sessionVersion: 0,
         scope: 'GLOBAL' as const,
         canteenIds: [],
         canteens: [],
@@ -284,6 +290,7 @@ describe.each([
         expect(fixture.auth.refreshToken).toHaveBeenCalledWith(
           `${type}-account`,
           type,
+          type === 'admin' ? 0 : undefined,
         );
       } else {
         expect(fixture.auth.refreshToken).not.toHaveBeenCalled();

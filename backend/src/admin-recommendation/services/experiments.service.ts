@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Logger,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { ExperimentService } from '@/recommendation/services/experiment.service';
 import {
@@ -85,7 +90,7 @@ export class ExperimentsService {
     // 验证分组比例之和为 1
     const totalRatio = data.groups.reduce((sum, g) => sum + g.ratio, 0);
     if (Math.abs(totalRatio - 1) > 0.01) {
-      throw new Error('分组占比之和必须为 1');
+      throw new BadRequestException('分组占比之和必须为 1');
     }
 
     // 验证分组名称不重复
@@ -94,7 +99,7 @@ export class ExperimentsService {
       (name, index) => groupNames.indexOf(name) !== index,
     );
     if (duplicateNames.length > 0) {
-      throw new Error(
+      throw new BadRequestException(
         `分组名称重复: ${[...new Set(duplicateNames)].join(', ')}`,
       );
     }
@@ -142,7 +147,7 @@ export class ExperimentsService {
       // 验证分组比例之和为 1
       const totalRatio = data.groups.reduce((sum, g) => sum + g.ratio, 0);
       if (Math.abs(totalRatio - 1) > 0.01) {
-        throw new Error('分组占比之和必须为 1');
+        throw new BadRequestException('分组占比之和必须为 1');
       }
 
       // 验证分组名称不重复
@@ -151,7 +156,7 @@ export class ExperimentsService {
         (name, index) => groupNames.indexOf(name) !== index,
       );
       if (duplicateNames.length > 0) {
-        throw new Error(
+        throw new BadRequestException(
           `分组名称重复: ${[...new Set(duplicateNames)].join(', ')}`,
         );
       }

@@ -8,7 +8,10 @@ import { ConfigService } from '@nestjs/config';
 import request from 'supertest';
 import { AppModule } from '@/app.module';
 import { PrismaService } from '@/prisma.service';
-import { ALL_PERMISSIONS } from '@/auth/permissions.constants';
+import {
+  ALL_PERMISSIONS,
+  GLOBAL_ONLY_PERMISSIONS,
+} from '@/auth/permissions.constants';
 
 jest.setTimeout(30000);
 
@@ -25,7 +28,9 @@ describe('multi-canteen administrator boundaries (PostgreSQL)', () => {
   const dishes: string[] = [];
   const admins: string[] = [];
   const news: string[] = [];
-  const permissions = [...ALL_PERMISSIONS];
+  const permissions = ALL_PERMISSIONS.filter(
+    (permission) => !GLOBAL_ONLY_PERMISSIONS.includes(permission),
+  );
   const auth = (
     method: 'get' | 'post' | 'put' | 'delete',
     path: string,
@@ -105,6 +110,7 @@ describe('multi-canteen administrator boundaries (PostgreSQL)', () => {
         role: 'admin',
         scope: 'CANTEENS',
         createdBy: root.id,
+        managerId: root.id,
         canteens: {
           create: canteens.slice(0, 2).map((canteenId) => ({ canteenId })),
         },
@@ -116,11 +122,17 @@ describe('multi-canteen administrator boundaries (PostgreSQL)', () => {
     managerId = manager.id;
     admins.push(manager.id);
     globalToken = jwt.sign(
-      { sub: rootId, type: 'admin', tokenUse: 'access' },
+      { sub: rootId, type: 'admin', sessionVersion: 0, tokenUse: 'access' },
       { secret },
     );
     managerToken = jwt.sign(
-      { sub: managerId, type: 'admin', tokenUse: 'access', scope: 'GLOBAL' },
+      {
+        sub: managerId,
+        type: 'admin',
+        sessionVersion: 0,
+        tokenUse: 'access',
+        scope: 'GLOBAL',
+      },
       { secret },
     );
     for (const canteenId of canteens) {
@@ -225,12 +237,15 @@ describe('multi-canteen administrator boundaries (PostgreSQL)', () => {
         },
       });
       admins.push(actor.id);
-      const token = app
-        .get(JwtService)
-        .sign(
-          { sub: actor.id, type: 'admin', tokenUse: 'access' },
-          { secret: app.get(ConfigService).get<string>('JWT_SECRET') },
-        );
+      const token = app.get(JwtService).sign(
+        {
+          sub: actor.id,
+          type: 'admin',
+          sessionVersion: 0,
+          tokenUse: 'access',
+        },
+        { secret: app.get(ConfigService).get<string>('JWT_SECRET') },
+      );
       await auth('get', '/admin/canteens', token).expect(403);
       const response = await auth(
         'get',
@@ -400,6 +415,7 @@ describe('multi-canteen administrator boundaries (PostgreSQL)', () => {
         role: 'admin',
         scope: 'CANTEENS',
         createdBy: rootId,
+        managerId: rootId,
         canteens: {
           create: canteens.slice(0, 2).map((canteenId) => ({ canteenId })),
         },
@@ -412,7 +428,7 @@ describe('multi-canteen administrator boundaries (PostgreSQL)', () => {
     const token = app
       .get(JwtService)
       .sign(
-        { sub: actor.id, type: 'admin', tokenUse: 'access' },
+        { sub: actor.id, type: 'admin', sessionVersion: 0, tokenUse: 'access' },
         { secret: app.get(ConfigService).get<string>('JWT_SECRET') },
       );
     let pending!: Promise<request.Response>;
@@ -460,6 +476,7 @@ describe('multi-canteen administrator boundaries (PostgreSQL)', () => {
           role: 'admin',
           scope: 'CANTEENS',
           createdBy: rootId,
+          managerId: rootId,
           canteens: { create: [{ canteenId: canteens[0] }] },
           permissions: {
             create: [
@@ -480,17 +497,21 @@ describe('multi-canteen administrator boundaries (PostgreSQL)', () => {
           role: 'admin',
           scope: 'CANTEENS',
           createdBy: actor.id,
+          managerId: actor.id,
           canteens: { create: [{ canteenId: canteens[0] }] },
           permissions: { create: [{ permission: 'dish:view' }] },
         },
       });
       admins.push(target.id);
-      const token = app
-        .get(JwtService)
-        .sign(
-          { sub: actor.id, type: 'admin', tokenUse: 'access' },
-          { secret: app.get(ConfigService).get<string>('JWT_SECRET') },
-        );
+      const token = app.get(JwtService).sign(
+        {
+          sub: actor.id,
+          type: 'admin',
+          sessionVersion: 0,
+          tokenUse: 'access',
+        },
+        { secret: app.get(ConfigService).get<string>('JWT_SECRET') },
+      );
       const username = `${prefix}-n-${admins.length}`;
       let pending!: Promise<request.Response>;
       await db.$transaction(async (tx) => {
@@ -544,6 +565,7 @@ describe('multi-canteen administrator boundaries (PostgreSQL)', () => {
           password: 'unused',
           scope: 'GLOBAL',
           createdBy: admin.id,
+          managerId: admin.id,
           permissions: { create: [{ permission: 'dish:view' }] },
         },
       });
@@ -551,12 +573,15 @@ describe('multi-canteen administrator boundaries (PostgreSQL)', () => {
       targets.push(child);
     }
     const tokens = superadmins.map((admin) =>
-      app
-        .get(JwtService)
-        .sign(
-          { sub: admin.id, type: 'admin', tokenUse: 'access' },
-          { secret: app.get(ConfigService).get<string>('JWT_SECRET') },
-        ),
+      app.get(JwtService).sign(
+        {
+          sub: admin.id,
+          type: 'admin',
+          sessionVersion: 0,
+          tokenUse: 'access',
+        },
+        { secret: app.get(ConfigService).get<string>('JWT_SECRET') },
+      ),
     );
     const pending: Promise<request.Response>[] = [];
     await db.$transaction(async (tx) => {
@@ -603,10 +628,14 @@ describe('multi-canteen administrator boundaries (PostgreSQL)', () => {
       .expect(201);
     const childId = response.body.data.id;
     admins.push(childId);
+    await db.admin.update({
+      where: { id: childId },
+      data: { mustChangePassword: false },
+    });
     const jwt = app.get(JwtService),
       secret = app.get(ConfigService).get<string>('JWT_SECRET');
     const childToken = jwt.sign(
-      { sub: childId, type: 'admin', tokenUse: 'access' },
+      { sub: childId, type: 'admin', sessionVersion: 0, tokenUse: 'access' },
       { secret },
     );
     const grandchild = await auth('post', '/admin/admins', childToken)
@@ -617,6 +646,10 @@ describe('multi-canteen administrator boundaries (PostgreSQL)', () => {
       })
       .expect(201);
     admins.push(grandchild.body.data.id);
+    await db.admin.update({
+      where: { id: grandchild.body.data.id },
+      data: { mustChangePassword: false },
+    });
     await auth(
       'put',
       `/admin/admins/${grandchild.body.data.id}/permissions`,
@@ -625,7 +658,12 @@ describe('multi-canteen administrator boundaries (PostgreSQL)', () => {
       .send(grant('CANTEENS', [canteens[2]]))
       .expect(403);
     const grandchildToken = jwt.sign(
-      { sub: grandchild.body.data.id, type: 'admin', tokenUse: 'access' },
+      {
+        sub: grandchild.body.data.id,
+        type: 'admin',
+        sessionVersion: 0,
+        tokenUse: 'access',
+      },
       { secret },
     );
     await auth('get', `/admin/dishes/${dishes[1]}`, grandchildToken).expect(

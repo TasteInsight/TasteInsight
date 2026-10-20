@@ -40,6 +40,8 @@ export class RefreshAuthGuard implements CanActivate {
         payload.sub.length === 0 ||
         payload.tokenUse !== 'refresh' ||
         !['user', 'admin'].includes(payload.type) ||
+        (payload.type === 'admin' &&
+          !Number.isInteger(payload.sessionVersion)) ||
         (realm !== undefined && realm !== 'combined' && payload.type !== realm)
       ) {
         throw new UnauthorizedException();

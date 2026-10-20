@@ -8,6 +8,9 @@ export class AdminDto {
   canteenIds: string[];
   canteens: { id: string; name: string }[];
   createdBy: string | null;
+  managerId: string | null;
+  deletedAt?: Date | null;
+  directReportCount?: number;
   permissions: string[];
   createdAt: Date;
   updatedAt: Date;

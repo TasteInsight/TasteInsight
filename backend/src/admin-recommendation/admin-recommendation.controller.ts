@@ -66,26 +66,7 @@ export class AdminRecommendationController {
   @RequirePermissions('experiment:create')
   @HttpCode(HttpStatus.CREATED)
   async createExperiment(@Body() data: CreateExperimentDto) {
-    try {
-      return await this.experimentsService.createExperiment(data);
-    } catch (error) {
-      // 如果是验证错误，返回更详细的信息
-      if (error.response && error.response.message) {
-        const messages = Array.isArray(error.response.message)
-          ? error.response.message.join(', ')
-          : error.response.message;
-        return {
-          code: 400,
-          message: `验证失败: ${messages}`,
-          data: null,
-        };
-      }
-      return {
-        code: 400,
-        message: error.message || '创建实验失败',
-        data: null,
-      };
-    }
+    return await this.experimentsService.createExperiment(data);
   }
 
   /**
@@ -97,15 +78,7 @@ export class AdminRecommendationController {
     @Param('id') id: string,
     @Body() data: UpdateExperimentDto,
   ) {
-    try {
-      return await this.experimentsService.updateExperiment(id, data);
-    } catch (error) {
-      return {
-        code: 400,
-        message: error.message,
-        data: null,
-      };
-    }
+    return await this.experimentsService.updateExperiment(id, data);
   }
 
   /**
@@ -114,15 +87,7 @@ export class AdminRecommendationController {
   @Delete('experiments/:id')
   @RequirePermissions('experiment:delete')
   async deleteExperiment(@Param('id') id: string) {
-    try {
-      return await this.experimentsService.deleteExperiment(id);
-    } catch (error) {
-      return {
-        code: 400,
-        message: error.message,
-        data: null,
-      };
-    }
+    return await this.experimentsService.deleteExperiment(id);
   }
 
   /**
@@ -131,15 +96,7 @@ export class AdminRecommendationController {
   @Post('experiments/:id/enable')
   @RequirePermissions('experiment:edit')
   async enableExperiment(@Param('id') id: string) {
-    try {
-      return await this.experimentsService.enableExperiment(id);
-    } catch (error) {
-      return {
-        code: 400,
-        message: error.message,
-        data: null,
-      };
-    }
+    return await this.experimentsService.enableExperiment(id);
   }
 
   /**
@@ -148,15 +105,7 @@ export class AdminRecommendationController {
   @Post('experiments/:id/disable')
   @RequirePermissions('experiment:edit')
   async disableExperiment(@Param('id') id: string) {
-    try {
-      return await this.experimentsService.disableExperiment(id);
-    } catch (error) {
-      return {
-        code: 400,
-        message: error.message,
-        data: null,
-      };
-    }
+    return await this.experimentsService.disableExperiment(id);
   }
 
   /**
@@ -165,15 +114,7 @@ export class AdminRecommendationController {
   @Post('experiments/:id/complete')
   @RequirePermissions('experiment:edit')
   async completeExperiment(@Param('id') id: string) {
-    try {
-      return await this.experimentsService.completeExperiment(id);
-    } catch (error) {
-      return {
-        code: 400,
-        message: error.message,
-        data: null,
-      };
-    }
+    return await this.experimentsService.completeExperiment(id);
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -191,14 +132,6 @@ export class AdminRecommendationController {
   @Get('recall-quality/evaluate')
   @RequirePermissions('experiment:view')
   async evaluateRecallQuality(@Query() query: RecallQualityQueryDto) {
-    try {
-      return await this.recallQualityService.evaluateRecallQuality(query);
-    } catch (error) {
-      return {
-        code: 500,
-        message: error.message,
-        data: null,
-      };
-    }
+    return await this.recallQualityService.evaluateRecallQuality(query);
   }
 }

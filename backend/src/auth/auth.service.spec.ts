@@ -269,17 +269,21 @@ describe('AuthService', () => {
       const mockAdmin = {
         id: 'admin-1',
         username: 'admin',
+        sessionVersion: 0,
+        permissions: [],
+        canteens: [],
       };
       prisma.admin.findUnique.mockResolvedValue(mockAdmin);
 
-      const result = await service.refreshToken('admin-1', 'admin');
+      const result = await service.refreshToken('admin-1', 'admin', 0);
 
       expect(result.code).toBe(200);
       expect(result.data.token.accessToken).toBe('mock-token');
-      expect(prisma.admin.findUnique).toHaveBeenCalledWith({
-        where: { id: 'admin-1', deletedAt: null },
-        omit: { password: true },
-      });
+      expect(prisma.admin.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'admin-1', deletedAt: null },
+        }),
+      );
       expect(result.data.user).not.toHaveProperty('password');
     });
 
@@ -318,14 +322,21 @@ describe('AuthService', () => {
       await expect(
         service.refreshToken('retired-admin', 'admin'),
       ).rejects.toThrow(UnauthorizedException);
-      expect(prisma.admin.findUnique).toHaveBeenCalledWith({
-        where: { id: 'retired-admin', deletedAt: null },
-        omit: { password: true },
-      });
+      expect(prisma.admin.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'retired-admin', deletedAt: null },
+        }),
+      );
       expect(jwtService.signAsync).not.toHaveBeenCalled();
     });
     it('should return admin if found', async () => {
-      const mockAdmin = { id: 'admin-1', username: 'admin' };
+      const mockAdmin = {
+        id: 'admin-1',
+        username: 'admin',
+        sessionVersion: 0,
+        permissions: [],
+        canteens: [],
+      };
       prisma.admin.findUnique.mockResolvedValue(mockAdmin);
 
       const result = await service.validateAdmin('admin-1');

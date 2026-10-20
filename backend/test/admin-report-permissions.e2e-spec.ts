@@ -74,7 +74,7 @@ describe('reported content deletion permissions (PostgreSQL and HTTP)', () => {
       });
       adminIds.push(admin.id);
       const token = jwt.sign(
-        { sub: admin.id, type: 'admin', tokenUse: 'access' },
+        { sub: admin.id, type: 'admin', sessionVersion: 0, tokenUse: 'access' },
         { secret: accessSecret },
       );
       if (role === 'admin') {

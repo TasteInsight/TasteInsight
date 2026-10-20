@@ -52,6 +52,11 @@ describe('AdminAdminsController (e2e)', () => {
       })
       .expect(201);
     createdAdminIds.push(manager.body.data.id);
+    // This suite exercises delegated account management after password setup.
+    await prisma.admin.update({
+      where: { id: manager.body.data.id },
+      data: { mustChangePassword: false },
+    });
 
     // Login as a manager able to delegate the permissions used by this suite.
     const adminManagerLogin = await request(app.getHttpServer())
