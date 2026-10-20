@@ -5,6 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
+import { Prisma } from '@prisma/client';
 import { ExperimentService } from '@/recommendation/services/experiment.service';
 import {
   CreateExperimentDto,
@@ -177,81 +178,83 @@ export class ExperimentsService {
     }
 
     // 使用事务更新实验和分组
-    const experiment = await this.prisma.$transaction(async (tx) => {
-      // 更新实验基本信息
-      const updatedExp = await tx.experiment.update({
-        where: { id },
-        data: updateData,
-      });
-
-      // 如果提供了 groups，则增量更新分组
-      if (groups && groups.length > 0) {
-        // 获取现有分组ID列表
-        const existingGroups = await tx.experimentGroupItem.findMany({
-          where: { experimentId: id },
-          select: { id: true },
+    const experiment = await this.prisma
+      .$transaction(async (tx) => {
+        // 更新实验基本信息
+        const updatedExp = await tx.experiment.update({
+          where: { id },
+          data: updateData,
         });
-        const existingGroupIds = new Set(existingGroups.map((g) => g.id));
 
-        // 分类处理：有id的更新，没id的新增
-        const groupsToUpdate = groups.filter(
-          (g) => g.id && existingGroupIds.has(g.id),
-        );
-        const groupsToCreate = groups.filter((g) => !g.id);
-
-        // 计算需要删除的分组（现有的但不在新列表中的）
-        const newGroupIds = new Set(
-          groups.filter((g) => g.id).map((g) => g.id),
-        );
-        const groupIdsToDelete = [...existingGroupIds].filter(
-          (id) => !newGroupIds.has(id),
-        );
-
-        // 1. 删除被移除的分组
-        if (groupIdsToDelete.length > 0) {
-          await tx.experimentGroupItem.deleteMany({
-            where: { id: { in: groupIdsToDelete } },
+        // 如果提供了 groups，则增量更新分组
+        if (groups && groups.length > 0) {
+          // 获取现有分组ID列表
+          const existingGroups = await tx.experimentGroupItem.findMany({
+            where: { experimentId: id },
+            select: { id: true },
           });
-          this.logger.log(
-            `Deleted ${groupIdsToDelete.length} groups from experiment ${id}`,
+          const existingGroupIds = new Set(existingGroups.map((g) => g.id));
+
+          // 分类处理：有id的更新，没id的新增
+          const groupsToUpdate = groups.filter(
+            (g) => g.id && existingGroupIds.has(g.id),
           );
+          const groupsToCreate = groups.filter((g) => !g.id);
+
+          // 计算需要删除的分组（现有的但不在新列表中的）
+          const newGroupIds = new Set(
+            groups.filter((g) => g.id).map((g) => g.id),
+          );
+          const groupIdsToDelete = [...existingGroupIds].filter(
+            (id) => !newGroupIds.has(id),
+          );
+
+          // 1. 删除被移除的分组
+          if (groupIdsToDelete.length > 0) {
+            await tx.experimentGroupItem.deleteMany({
+              where: { id: { in: groupIdsToDelete } },
+            });
+            this.logger.log(
+              `Deleted ${groupIdsToDelete.length} groups from experiment ${id}`,
+            );
+          }
+
+          // 2. 更新现有分组
+          for (const g of groupsToUpdate) {
+            await tx.experimentGroupItem.update({
+              where: { id: g.id },
+              data: {
+                name: g.name,
+                ratio: g.ratio,
+                config: g.config as any,
+              },
+            });
+          }
+          if (groupsToUpdate.length > 0) {
+            this.logger.log(
+              `Updated ${groupsToUpdate.length} groups in experiment ${id}`,
+            );
+          }
+
+          // 3. 创建新分组
+          if (groupsToCreate.length > 0) {
+            await tx.experimentGroupItem.createMany({
+              data: groupsToCreate.map((g) => ({
+                experimentId: id,
+                name: g.name,
+                ratio: g.ratio,
+                config: g.config as any,
+              })),
+            });
+            this.logger.log(
+              `Created ${groupsToCreate.length} new groups in experiment ${id}`,
+            );
+          }
         }
 
-        // 2. 更新现有分组
-        for (const g of groupsToUpdate) {
-          await tx.experimentGroupItem.update({
-            where: { id: g.id },
-            data: {
-              name: g.name,
-              ratio: g.ratio,
-              config: g.config as any,
-            },
-          });
-        }
-        if (groupsToUpdate.length > 0) {
-          this.logger.log(
-            `Updated ${groupsToUpdate.length} groups in experiment ${id}`,
-          );
-        }
-
-        // 3. 创建新分组
-        if (groupsToCreate.length > 0) {
-          await tx.experimentGroupItem.createMany({
-            data: groupsToCreate.map((g) => ({
-              experimentId: id,
-              name: g.name,
-              ratio: g.ratio,
-              config: g.config as any,
-            })),
-          });
-          this.logger.log(
-            `Created ${groupsToCreate.length} new groups in experiment ${id}`,
-          );
-        }
-      }
-
-      return updatedExp;
-    });
+        return updatedExp;
+      })
+      .catch((error: unknown) => this.handleMutationError(error));
 
     // 刷新活跃实验列表
     await this.experimentService.refreshActiveExperiments();
@@ -270,9 +273,11 @@ export class ExperimentsService {
    * 删除实验
    */
   async deleteExperiment(id: string): Promise<SuccessResponseDto> {
-    const experiment = await this.prisma.experiment.delete({
-      where: { id },
-    });
+    const experiment = await this.prisma.experiment
+      .delete({
+        where: { id },
+      })
+      .catch((error: unknown) => this.handleMutationError(error));
 
     // 刷新活跃实验列表
     await this.experimentService.refreshActiveExperiments();
@@ -291,10 +296,12 @@ export class ExperimentsService {
    * 启用实验
    */
   async enableExperiment(id: string): Promise<SuccessResponseDto> {
-    const experiment = await this.prisma.experiment.update({
-      where: { id },
-      data: { status: 'running' },
-    });
+    const experiment = await this.prisma.experiment
+      .update({
+        where: { id },
+        data: { status: 'running' },
+      })
+      .catch((error: unknown) => this.handleMutationError(error));
 
     // 刷新活跃实验列表
     await this.experimentService.refreshActiveExperiments();
@@ -313,10 +320,12 @@ export class ExperimentsService {
    * 禁用实验
    */
   async disableExperiment(id: string): Promise<SuccessResponseDto> {
-    const experiment = await this.prisma.experiment.update({
-      where: { id },
-      data: { status: 'paused' },
-    });
+    const experiment = await this.prisma.experiment
+      .update({
+        where: { id },
+        data: { status: 'paused' },
+      })
+      .catch((error: unknown) => this.handleMutationError(error));
 
     // 刷新活跃实验列表
     await this.experimentService.refreshActiveExperiments();
@@ -335,10 +344,12 @@ export class ExperimentsService {
    * 完成实验
    */
   async completeExperiment(id: string): Promise<SuccessResponseDto> {
-    const experiment = await this.prisma.experiment.update({
-      where: { id },
-      data: { status: 'completed' },
-    });
+    const experiment = await this.prisma.experiment
+      .update({
+        where: { id },
+        data: { status: 'completed' },
+      })
+      .catch((error: unknown) => this.handleMutationError(error));
 
     // 刷新活跃实验列表
     await this.experimentService.refreshActiveExperiments();
@@ -383,6 +394,16 @@ export class ExperimentsService {
         },
       },
     };
+  }
+
+  private handleMutationError(error: unknown): never {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2025'
+    ) {
+      throw new NotFoundException('Experiment not found');
+    }
+    throw error;
   }
 
   private mapToExperimentDto(experiment: any): ExperimentDto {

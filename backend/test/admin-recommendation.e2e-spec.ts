@@ -269,13 +269,7 @@ describe('AdminRecommendationController (e2e)', () => {
         .delete('/admin/experiments/non-existent-id')
         .set('Authorization', `Bearer ${superAdminToken}`);
 
-      // The API returns 200 with error code in body or 404/400 status
-      if (res.status === 200) {
-        // Check for error in response body
-        expect(res.body.code).not.toBe(200);
-      } else {
-        expect([400, 404]).toContain(res.status);
-      }
+      expect(res.status).toBe(404);
     });
   });
 
@@ -354,12 +348,7 @@ describe('AdminRecommendationController (e2e)', () => {
         .post('/admin/experiments/non-existent-id/enable')
         .set('Authorization', `Bearer ${superAdminToken}`);
 
-      // Should return error response for non-existent experiment
-      if (res.status === 200) {
-        expect(res.body.code).not.toBe(200);
-      } else {
-        expect([200, 201, 400, 404]).toContain(res.status);
-      }
+      expect(res.status).toBe(404);
     });
 
     it('should handle disabling non-existent experiment', async () => {
@@ -367,11 +356,7 @@ describe('AdminRecommendationController (e2e)', () => {
         .post('/admin/experiments/non-existent-id/disable')
         .set('Authorization', `Bearer ${superAdminToken}`);
 
-      if (res.status === 200) {
-        expect(res.body.code).not.toBe(200);
-      } else {
-        expect([200, 201, 400, 404]).toContain(res.status);
-      }
+      expect(res.status).toBe(404);
     });
 
     it('should handle completing non-existent experiment', async () => {
@@ -379,11 +364,7 @@ describe('AdminRecommendationController (e2e)', () => {
         .post('/admin/experiments/non-existent-id/complete')
         .set('Authorization', `Bearer ${superAdminToken}`);
 
-      if (res.status === 200) {
-        expect(res.body.code).not.toBe(200);
-      } else {
-        expect([200, 201, 400, 404]).toContain(res.status);
-      }
+      expect(res.status).toBe(404);
     });
 
     it('should handle updating non-existent experiment', async () => {
@@ -392,11 +373,7 @@ describe('AdminRecommendationController (e2e)', () => {
         .set('Authorization', `Bearer ${superAdminToken}`)
         .send({ name: 'Updated Name' });
 
-      if (res.status === 200) {
-        expect(res.body.code).not.toBe(200);
-      } else {
-        expect([400, 404]).toContain(res.status);
-      }
+      expect(res.status).toBe(404);
     });
   });
 
