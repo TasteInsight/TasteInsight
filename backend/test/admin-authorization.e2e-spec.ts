@@ -141,6 +141,85 @@ describe('administrator authorization lifecycle (PostgreSQL)', () => {
     await app?.close();
   });
 
+  it.each([
+    ['permissions', 'admin:permissions'],
+    ['password', 'admin:password:reset'],
+    ['handover', 'admin:handover'],
+  ])(
+    'filters successful and failed %s operations under the same action',
+    async (operation, action) => {
+      const actor = await account(
+        `audit-${operation}`,
+        [
+          'admin:view',
+          'admin:create',
+          'admin:edit',
+          'admin:delete',
+          'canteen:view',
+          'log:view',
+        ],
+        root.id,
+      );
+      const target = await account(
+        `audit-target-${operation}`,
+        ['log:view'],
+        actor.id,
+      );
+      let validBody: Record<string, unknown>;
+      let invalidBody: Record<string, unknown>;
+      if (operation === 'permissions') {
+        validBody = {
+          scope: 'GLOBAL',
+          canteenIds: [],
+          permissions: ['log:view'],
+        };
+        invalidBody = { ...validBody, permissions: ['log:view', 'log:view'] };
+      } else if (operation === 'password') {
+        validBody = { newPassword: 'Configured@123!' };
+        invalidBody = { newPassword: 'short' };
+      } else {
+        const recipient = await account(
+          'audit-recipient',
+          ['log:view'],
+          actor.id,
+        );
+        await account('audit-report', ['log:view'], target.id);
+        validBody = { newManagerId: recipient.id };
+        invalidBody = { newManagerId: target.id };
+      }
+      const method = operation === 'handover' ? 'post' : 'put';
+      const path = `/admin/admins/${target.id}/${operation}`;
+      await request(app.getHttpServer())
+        [method](path)
+        .set(auth(actor.token))
+        .send(validBody)
+        .expect(200);
+      await request(app.getHttpServer())
+        [method](path)
+        .set(auth(actor.token))
+        .send(invalidBody)
+        .expect(400);
+      const logs = await request(app.getHttpServer())
+        .get('/admin/logs')
+        .set(auth(actor.token))
+        .query({ action, adminId: actor.id })
+        .expect(200);
+      expect(logs.body.data.meta.total).toBe(2);
+      expect(logs.body.data.items.map((item) => item.result).sort()).toEqual([
+        'failure',
+        'success',
+      ]);
+      expect(
+        logs.body.data.items.every(
+          (item) => item.action === action && item.targetId === target.id,
+        ),
+      ).toBe(true);
+      expect(JSON.stringify(logs.body.data.items)).not.toContain(
+        'Configured@123!',
+      );
+    },
+  );
+
   it('persists renamed roles in lists, sessions and audit records without expanding grants', async () => {
     const target = await account('role-label', ['log:view'], root.id);
     await request(app.getHttpServer())
@@ -354,7 +433,11 @@ describe('administrator authorization lifecycle (PostgreSQL)', () => {
     });
     expect(
       await db.operationLog.count({
-        where: { action: 'admin:retire', targetId: manager.id },
+        where: {
+          action: 'admin:retire',
+          targetId: manager.id,
+          result: 'success',
+        },
       }),
     ).toBe(1);
   });
@@ -439,7 +522,11 @@ describe('administrator authorization lifecycle (PostgreSQL)', () => {
       })
       .expect(200);
     const log = await db.operationLog.findFirstOrThrow({
-      where: { action: 'admin:handover', targetId: previous.id },
+      where: {
+        action: 'admin:handover',
+        targetId: previous.id,
+        result: 'success',
+      },
     });
     expect(log.details).toMatchObject({
       previousManagerId: previous.id,
@@ -512,6 +599,7 @@ describe('administrator authorization lifecycle (PostgreSQL)', () => {
         where: {
           action: 'admin:handover',
           targetId: { in: [manager.id, source.id] },
+          result: 'success',
         },
       }),
     ).toBe(0);

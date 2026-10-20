@@ -42,9 +42,14 @@ export class AdminOperationLogInterceptor implements NestInterceptor {
       return next.handle();
     }
 
+    const transactionAudit = this.reflector.getAllAndOverride<{
+      action?: string;
+    }>(AUDIT_IN_TRANSACTION, [context.getHandler(), context.getClass()]);
     const baseLog = {
       adminId: request.admin!.id!,
-      action: this.normalizeAction(context.getHandler().name, request.method),
+      action:
+        transactionAudit?.action ??
+        this.normalizeAction(context.getHandler().name, request.method),
       targetType: context.getClass().name,
       details: {
         method: request.method,
@@ -55,13 +60,7 @@ export class AdminOperationLogInterceptor implements NestInterceptor {
 
     return next.handle().pipe(
       mergeMap(async (response) => {
-        if (
-          this.reflector.getAllAndOverride(AUDIT_IN_TRANSACTION, [
-            context.getHandler(),
-            context.getClass(),
-          ])
-        )
-          return response;
+        if (transactionAudit) return response;
         request.operationLogAttempted = true;
         const responseId = this.getResponseId(response);
         await this.persistLog({

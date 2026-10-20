@@ -2,7 +2,16 @@ import { SetMetadata } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
 export const AUDIT_IN_TRANSACTION = 'audit-in-transaction';
-export const AuditInTransaction = () => SetMetadata(AUDIT_IN_TRANSACTION, true);
+export const ADMIN_AUDIT_ACTIONS = {
+  create: 'admin:create',
+  retire: 'admin:retire',
+  permissions: 'admin:permissions',
+  handover: 'admin:handover',
+  changePassword: 'admin:password:change',
+  resetPassword: 'admin:password:reset',
+} as const;
+export const AuditInTransaction = (action?: string) =>
+  SetMetadata(AUDIT_IN_TRANSACTION, { action });
 
 export function grantSnapshot(admin: {
   scope: string;

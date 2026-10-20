@@ -1,4 +1,8 @@
-import { grantSnapshot, logAdminChange } from '@/admin-logs/admin-audit';
+import {
+  ADMIN_AUDIT_ACTIONS,
+  grantSnapshot,
+  logAdminChange,
+} from '@/admin-logs/admin-audit';
 import { AdminCanteenScope, isGlobalScope } from '@/auth/admin-scope';
 import {
   lockAdminHierarchy,
@@ -373,9 +377,15 @@ export class AdminAdminsService {
           },
         });
         await bumpAdminHierarchyVersions(tx, [creatorId]);
-        await logAdminChange(tx, creatorId, 'admin:create', created.id, {
-          after: { scope, canteenIds, permissions, role: finalRole },
-        });
+        await logAdminChange(
+          tx,
+          creatorId,
+          ADMIN_AUDIT_ACTIONS.create,
+          created.id,
+          {
+            after: { scope, canteenIds, permissions, role: finalRole },
+          },
+        );
         return created;
       });
 
@@ -466,9 +476,15 @@ export class AdminAdminsService {
         data: { deletedAt: new Date(), sessionVersion: { increment: 1 } },
       });
       await bumpAdminHierarchyVersions(tx, [target.managerId]);
-      await logAdminChange(tx, operatorId, 'admin:retire', targetId, {
-        affectedAdminIds: [targetId],
-      });
+      await logAdminChange(
+        tx,
+        operatorId,
+        ADMIN_AUDIT_ACTIONS.retire,
+        targetId,
+        {
+          affectedAdminIds: [targetId],
+        },
+      );
     });
 
     return {
@@ -557,21 +573,33 @@ export class AdminAdminsService {
         data: { managerId: newManagerId },
       });
       await bumpAdminHierarchyVersions(tx, [sourceId, newManagerId]);
-      await logAdminChange(tx, operatorId, 'admin:handover', sourceId, {
-        previousManagerId: sourceId,
-        newManagerId,
-        directReportIds: reportIds,
-        affectedAdminIds: descendants.filter((id) => id !== sourceId),
-        retireSource,
-      });
+      await logAdminChange(
+        tx,
+        operatorId,
+        ADMIN_AUDIT_ACTIONS.handover,
+        sourceId,
+        {
+          previousManagerId: sourceId,
+          newManagerId,
+          directReportIds: reportIds,
+          affectedAdminIds: descendants.filter((id) => id !== sourceId),
+          retireSource,
+        },
+      );
       if (retireSource && !source.deletedAt) {
         await tx.admin.update({
           where: { id: sourceId },
           data: { deletedAt: new Date(), sessionVersion: { increment: 1 } },
         });
-        await logAdminChange(tx, operatorId, 'admin:retire', sourceId, {
-          affectedAdminIds: [sourceId],
-        });
+        await logAdminChange(
+          tx,
+          operatorId,
+          ADMIN_AUDIT_ACTIONS.retire,
+          sourceId,
+          {
+            affectedAdminIds: [sourceId],
+          },
+        );
       }
     });
     return { code: 200, message: '移交成功', data: null };
@@ -706,11 +734,17 @@ export class AdminAdminsService {
           permission,
         })),
       });
-      await logAdminChange(tx, operatorId, 'admin:permissions', targetId, {
-        before,
-        after: { scope, canteenIds, permissions, role: role ?? target.role },
-        affectedAdminIds: await selfAndDescendantAdminIds(tx, targetId),
-      });
+      await logAdminChange(
+        tx,
+        operatorId,
+        ADMIN_AUDIT_ACTIONS.permissions,
+        targetId,
+        {
+          before,
+          after: { scope, canteenIds, permissions, role: role ?? target.role },
+          affectedAdminIds: await selfAndDescendantAdminIds(tx, targetId),
+        },
+      );
     });
 
     return {
@@ -777,7 +811,13 @@ export class AdminAdminsService {
         },
       });
       if (!changed.count) throw new ConflictException('密码已更新，请重新登录');
-      await logAdminChange(tx, adminId, 'admin:password:change', adminId, {});
+      await logAdminChange(
+        tx,
+        adminId,
+        ADMIN_AUDIT_ACTIONS.changePassword,
+        adminId,
+        {},
+      );
     });
 
     return {
@@ -854,7 +894,7 @@ export class AdminAdminsService {
       await logAdminChange(
         tx,
         operatorId,
-        'admin:password:reset',
+        ADMIN_AUDIT_ACTIONS.resetPassword,
         targetId,
         {},
       );
