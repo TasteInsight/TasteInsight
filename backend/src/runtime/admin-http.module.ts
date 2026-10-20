@@ -1,7 +1,8 @@
 import { ModerationAdminController } from '@/content-moderation/moderation-admin.controller';
 import { ModerationProcessingModule } from '@/content-moderation/moderation-processing.module';
 import { Module } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
+import { AdminAuditExceptionFilter } from '@/admin-logs/admin-audit-exception.filter';
 import { AuthModule } from '@/auth/auth.module';
 import { AdminAuthController } from '@/auth/admin-auth.controller';
 import { AdminStudentVerificationController } from '@/campus-identity/admin-student-verification.controller';
@@ -51,6 +52,7 @@ import { AdminUploadController } from '@/upload/upload.controller';
   ],
   providers: [
     { provide: APP_INTERCEPTOR, useClass: AdminOperationLogInterceptor },
+    { provide: APP_FILTER, useClass: AdminAuditExceptionFilter },
   ],
 })
 export class AdminFeaturesHttpModule {}
