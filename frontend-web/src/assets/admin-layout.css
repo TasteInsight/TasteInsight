@@ -131,6 +131,10 @@
   border-bottom: 1px solid #e5e7eb;
 }
 
+.admin-page-header + .admin-tabs {
+  margin-top: 16px;
+}
+
 .admin-tab-list {
   flex-shrink: 0;
 }

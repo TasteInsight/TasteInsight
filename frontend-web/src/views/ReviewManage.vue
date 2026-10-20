@@ -5,7 +5,6 @@
         title="评价和评论审核"
         description="审核用户提交的评价和评论"
         header-icon="carbon:task-approved"
-        :show-border="false"
       />
 
       <nav class="admin-tabs mb-6" aria-label="评价和评论审核视图">

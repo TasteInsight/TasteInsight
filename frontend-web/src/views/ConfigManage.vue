@@ -1,7 +1,7 @@
 <template>
   <div class="admin-page">
     <div class="admin-panel config-panel">
-      <Header title="系统配置管理" :description="configDescription" header-icon="carbon:settings" :show-border="false" />
+      <Header title="系统配置管理" :description="configDescription" header-icon="carbon:settings" />
       <nav class="admin-tabs" aria-label="系统配置分区">
         <button
           type="button"

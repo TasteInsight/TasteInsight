@@ -607,7 +607,7 @@ onBeforeUnmount(() => {
   --source-text: #1f2937;
   --source-muted: #667085;
   --source-line: #e5e7eb;
-  padding-top: 28px;
+  padding-top: 24px;
   color: var(--source-text);
 }
 .news-sources ::selection {
@@ -1135,9 +1135,6 @@ onBeforeUnmount(() => {
   }
 }
 @media (max-width: 600px) {
-  .news-sources {
-    padding-top: 24px;
-  }
   .sources-heading {
     align-items: flex-start;
     gap: 16px;
