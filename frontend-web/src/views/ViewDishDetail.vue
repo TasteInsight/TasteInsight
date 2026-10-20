@@ -492,6 +492,7 @@ export default {
     const dishId = route.params.id
     const sessionVersion = getAuthSessionVersion()
     let mounted = true
+    const ownsView = () => mounted && sessionVersion === getAuthSessionVersion()
     let reviewRequest = 0
     const isLoading = ref(false)
     const isLoadingReviews = ref(false)
@@ -569,6 +570,7 @@ export default {
       isLoading.value = true
       try {
         const response = await dishApi.getDishById(dishId)
+        if (!ownsView()) return
 
         if (response.code === 200 && response.data) {
           const dish = response.data
@@ -614,11 +616,12 @@ export default {
           throw new Error(response.message || '获取菜品信息失败')
         }
       } catch (error) {
+        if (!ownsView()) return
         console.error('获取菜品信息失败:', error)
         notify.error('获取菜品信息失败，请重试')
         router.push('/modify-dish')
       } finally {
-        isLoading.value = false
+        if (ownsView()) isLoading.value = false
       }
     }
 
@@ -631,6 +634,7 @@ export default {
       try {
         const subDishPromises = subDishIds.map((id) => dishApi.getDishById(id))
         const responses = await Promise.allSettled(subDishPromises)
+        if (!ownsView()) return
         dishData.subItems = responses
           .filter(
             (result) =>
@@ -642,6 +646,7 @@ export default {
             price: result.value.data.price || 0,
           }))
       } catch (error) {
+        if (!ownsView()) return
         console.error('加载子项列表失败:', error)
         dishData.subItems = []
       }
@@ -650,7 +655,7 @@ export default {
     // 加载评论列表
     const loadReviews = async () => {
       const request = ++reviewRequest
-      const ownsRequest = () => mounted && request === reviewRequest && sessionVersion === getAuthSessionVersion()
+      const ownsRequest = () => ownsView() && request === reviewRequest
       isLoadingReviews.value = true
       try {
         const params = {
