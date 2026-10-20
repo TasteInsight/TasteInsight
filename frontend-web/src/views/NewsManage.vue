@@ -1361,7 +1361,7 @@ export default {
 .news-service-link svg { width: 14px; height: 14px; }
 .news-service-link:hover { color: #660874; text-decoration: underline; text-underline-offset: 4px; }
 .news-service-link:focus-visible { outline: 2px solid #660874; outline-offset: 4px; border-radius: 4px; }
-.news-status-button:focus-visible { outline: 2px solid #660874; outline-offset: 4px; border-radius: 4px; }
+.news-status-button:focus-visible { outline: 2px solid #660874; outline-offset: -2px; border-radius: 4px; }
 .news-content-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-top: 24px; }
 .news-status-filter { display: flex; align-items: center; gap: 4px; padding: 4px; background: #f3f4f6; border-radius: 8px; }
 .news-status-button { min-height: 34px; padding: 6px 16px; border: 1px solid transparent; border-radius: 6px; color: #4b5563; font-size: 13px; line-height: 20px; font-weight: 500; }

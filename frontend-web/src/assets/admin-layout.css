@@ -411,6 +411,10 @@
   outline-offset: 3px;
 }
 
+:is(.admin-app, .admin-dialog) .admin-tab:focus-visible {
+  outline-offset: -2px;
+}
+
 .admin-sidebar :is(button, a):focus-visible {
   outline-color: white;
   outline-offset: -3px;
