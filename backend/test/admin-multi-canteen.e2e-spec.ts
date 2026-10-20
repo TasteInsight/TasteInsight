@@ -49,11 +49,11 @@ describe('multi-canteen administrator boundaries (PostgreSQL)', () => {
     for (let i = 0; i < 100; i++) {
       const rows = await db.$queryRaw<
         { count: bigint }[]
-      >`SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock' AND query LIKE '%FROM admins WHERE id%FOR UPDATE%'`;
+      >`SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock' AND (query LIKE '%FROM admins WHERE id%FOR UPDATE%' OR query LIKE '%tasteinsight.admin-hierarchy%')`;
       if (Number(rows[0].count) >= expected) return;
       await new Promise((resolve) => setTimeout(resolve, 20));
     }
-    throw new Error('Authorization request did not reach the row lock');
+    throw new Error('Authorization request did not reach its transaction lock');
   }
 
   beforeAll(async () => {
