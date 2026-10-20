@@ -141,6 +141,114 @@ describe('administrator authorization lifecycle (PostgreSQL)', () => {
     await app?.close();
   });
 
+  it('persists renamed roles in lists, sessions and audit records without expanding grants', async () => {
+    const target = await account('role-label', ['log:view'], root.id);
+    await request(app.getHttpServer())
+      .put(`/admin/admins/${target.id}/permissions`)
+      .set(auth(root.token))
+      .send({
+        permissions: ['log:view'],
+        scope: 'GLOBAL',
+        canteenIds: [],
+        role: '  运营专员  ',
+      })
+      .expect(200);
+    expect(
+      (await db.admin.findUniqueOrThrow({ where: { id: target.id } })).role,
+    ).toBe('运营专员');
+    const list = await request(app.getHttpServer())
+      .get('/admin/admins?pageSize=100')
+      .set(auth(root.token))
+      .expect(200);
+    expect(
+      list.body.data.items.find((item) => item.id === target.id).role,
+    ).toBe('运营专员');
+    const session = await request(app.getHttpServer())
+      .get('/auth/admin/session')
+      .set(auth(target.token))
+      .expect(200);
+    expect(session.body.data.admin.role).toBe('运营专员');
+    expect(session.body.data.permissions).toEqual(['log:view']);
+    const log = await db.operationLog.findFirstOrThrow({
+      where: {
+        targetId: target.id,
+        action: 'admin:permissions',
+        result: 'success',
+      },
+    });
+    expect(log.details).toMatchObject({
+      before: { role: 'admin' },
+      after: { role: '运营专员' },
+    });
+    await request(app.getHttpServer())
+      .get('/admin/admins')
+      .set(auth(target.token))
+      .expect(403);
+  });
+
+  it.each(['superadmin', 'super_admin'])(
+    'rejects reserved role name %s without changing the account',
+    async (role) => {
+      const target = await account('reserved-' + role, ['log:view'], root.id);
+      await request(app.getHttpServer())
+        .put(`/admin/admins/${target.id}/permissions`)
+        .set(auth(root.token))
+        .send({
+          permissions: ['log:view'],
+          scope: 'GLOBAL',
+          canteenIds: [],
+          role,
+        })
+        .expect(400);
+      expect(
+        (await db.admin.findUniqueOrThrow({ where: { id: target.id } })).role,
+      ).toBe('admin');
+    },
+  );
+
+  it.each(['superadmin', 'super_admin'])(
+    'rejects creating a system role through a custom name: %s',
+    async (role) => {
+      const username = `${prefix}-reserved`;
+      await request(app.getHttpServer())
+        .post('/admin/admins')
+        .set(auth(root.token))
+        .send({
+          username,
+          password,
+          scope: 'GLOBAL',
+          canteenIds: [],
+          permissions: ['log:view'],
+          role,
+        })
+        .expect(400);
+      expect(await db.admin.count({ where: { username } })).toBe(0);
+    },
+  );
+
+  it('preserves omitted role names and allows revoking every permission', async () => {
+    const target = await account('role-clear', ['log:view'], root.id);
+    const child = await account('role-clear-child', ['log:view'], target.id);
+    await db.admin.update({
+      where: { id: target.id },
+      data: { role: '日志专员' },
+    });
+    await request(app.getHttpServer())
+      .put(`/admin/admins/${target.id}/permissions`)
+      .set(auth(root.token))
+      .send({ permissions: [], scope: 'GLOBAL', canteenIds: [] })
+      .expect(200);
+    const saved = await db.admin.findUniqueOrThrow({
+      where: { id: target.id },
+      include: { permissions: true },
+    });
+    expect(saved.role).toBe('日志专员');
+    expect(saved.permissions).toEqual([]);
+    expect(
+      await db.adminPermission.count({ where: { adminId: child.id } }),
+    ).toBe(0);
+  });
+
   it('allows log-only readers to see their full tree through retired nodes and excludes unrelated admins', async () => {
     const manager = await account('logs', ['log:view'], root.id);
     const child = await account('child', [], manager.id);

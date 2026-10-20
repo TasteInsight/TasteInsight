@@ -371,4 +371,6 @@ pnpm run lint
 
 回归测试位于 `src/auth/admin-scope.spec.ts`、`src/admin-dishes/embedding-scope.spec.ts` 和 `test/admin-multi-canteen.e2e-spec.ts`；集成测试在独立 `_test` 数据库中运行，包含历史字段迁移、两个允许食堂与一个越界食堂、并发授权及下级撤权。
 
+管理员账号的 `role` 保存角色名称，普通角色名称与显式权限分别维护。创建和更新均拒绝系统保留标识 `superadmin`、`super_admin`。`PUT /admin/admins/:id/permissions` 可携带 `role`：省略时保留原名称，空白名称使用默认 `admin`，修改名称与权限在同一事务中保存并审计。已有账号可提交空权限列表撤销全部授权，并同步收窄下属；新建账号至少分配一项权限。
+
 管理员授权升级依次执行 `20261020000100_admin_authorization_and_sessions` 和 `20261020000200_admin_reporting_lines` 迁移。现有创建关系初始化为当前管理关系，后续交接独立维护。升级会沿当前管理链收回历史超额授权、收窄食堂范围并补齐权限依赖约束；独立根账号保留原授权，账号状态及创建记录保留。迁移为现有 `admin:view` 账号补齐 `log:view`，收回食堂范围账号的全局能力，并要求存量有效账号重新登录及设置个人密码。执行方式沿用部署流程中的 `prisma migrate deploy`。

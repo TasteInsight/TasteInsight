@@ -77,11 +77,13 @@ export const permissionApi = {
     permissions: string[],
     scope: 'GLOBAL' | 'CANTEENS',
     canteenIds: string[],
+    role?: string,
   ): Promise<ApiResponse<void>> {
     return await request.put<ApiResponse<void>>(`/admin/admins/${adminId}/permissions`, {
       permissions,
       scope,
       canteenIds,
+      ...(role === undefined ? {} : { role }),
     })
   },
 

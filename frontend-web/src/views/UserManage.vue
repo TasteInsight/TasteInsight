@@ -28,7 +28,7 @@
             <input
               type="text"
               v-model="searchQuery"
-              placeholder="搜索用户名、角色（权限组合）..."
+              placeholder="搜索用户名、角色名称..."
               class="w-full pl-10 pr-10 admin-input"
             />
             <button
@@ -80,7 +80,7 @@
             <thead class="bg-gray-50">
               <tr>
                 <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">用户名</th>
-                <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">角色（权限组合）</th>
+                <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">角色名称</th>
                 <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">管理范围</th>
                 <th class="py-3 px-6 text-left text-sm font-medium text-gray-500">创建时间</th>
                 <th class="py-3 px-6 text-center text-sm font-medium text-gray-500">操作</th>
@@ -99,6 +99,7 @@
                   >
                     {{ getRoleLabel(admin.role) }}
                   </span>
+                  <p class="mt-2 text-xs text-gray-500">{{ admin.role === 'superadmin' ? '系统全部权限' : `${admin.permissions?.length || 0} 项权限` }}</p>
                 </td>
                 <td class="py-4 px-6 text-sm">{{ formatAdminScope(admin) }}</td>
                 <td class="py-4 px-6 text-sm text-gray-500">{{ formatDate(admin.createdAt) }}</td>
@@ -257,8 +258,9 @@
               <!-- 角色 -->
               <div class="mb-6">
                 <label class="block text-gray-700 font-medium mb-2 admin-label">
-                  角色（权限组合）
+                  角色名称
                 </label>
+                <p class="mb-3 text-sm text-gray-500">预设用于填充权限，实际授权以勾选项和管理范围为准。</p>
                 <div class="grid grid-cols-2 gap-3">
                   <div
                     v-for="role in roles"
@@ -307,7 +309,7 @@
                       </div>
                     </div>
                   </div>
-                  <!-- 不选择角色选项 -->
+                  <!-- 普通管理员选项 -->
                   <div
                     @click="selectRole('')"
                     class="p-3 border rounded-lg cursor-pointer transition"
@@ -325,8 +327,8 @@
                         class="text-tsinghua-purple"
                       />
                       <div>
-                        <div class="font-medium text-sm">不选择角色</div>
-                        <div class="text-xs text-gray-500">仅手动选择权限，不设置角色</div>
+                        <div class="font-medium text-sm">普通管理员</div>
+                        <div class="text-xs text-gray-500">使用默认名称，手动配置权限</div>
                       </div>
                     </div>
                   </div>
@@ -761,7 +763,7 @@ export default {
         filtered = filtered.filter(
           (admin) =>
             admin.username.toLowerCase().includes(query) ||
-            (admin.role && admin.role.toLowerCase().includes(query)),
+            getRoleLabel(admin.role).toLowerCase().includes(query),
         )
       }
 
@@ -810,7 +812,8 @@ export default {
 
     // 获取角色标签
     const getRoleLabel = (role) => {
-      if (!role) return '未设置'
+      if (!role || role === 'admin') return '普通管理员'
+      if (role === 'superadmin') return '系统超级管理员'
       const roleObj = roles.find((r) => r.value === role)
       return roleObj ? roleObj.label : role
     }
@@ -866,7 +869,7 @@ export default {
       formData.username = admin.username || ''
       
       // 判断是否为预设角色
-      if (admin.role) {
+      if (admin.role && admin.role !== 'admin') {
         const presetRoleValues = roles.map(r => r.value)
         const isPresetRole = presetRoleValues.includes(admin.role)
         
@@ -1037,7 +1040,7 @@ export default {
         formData.permissions = getDefaultPermissionsByRole(role)
         formData.customRole = ''
       } else {
-        // 不选择角色，不清空权限，让用户手动选择
+        // 普通管理员，不清空权限，让用户手动选择
         formData.customRole = ''
       }
     }
@@ -1177,6 +1180,7 @@ export default {
 
     // 提交表单
     const submitForm = async () => {
+      const finalRole = formData.role === 'custom' ? (formData.customRole.trim() || 'admin') : (formData.role || 'admin')
       // 清除之前的错误
       errors.username = ''
       errors.password = ''
@@ -1232,7 +1236,12 @@ export default {
         }
       }
 
-      // 验证自定义角色（如果选择了自定义角色，则验证名称长度）
+      if (['superadmin', 'super_admin'].includes(finalRole)) {
+        errors.customRole = '该角色名称由系统保留，请选择其他名称'
+        hasError = true
+      }
+
+      // 验证自定义角色名称长度
       if (formData.role === 'custom' && formData.customRole && formData.customRole.trim()) {
         if (formData.customRole.trim().length > 50) {
           errors.customRole = '自定义角色名称不能超过50个字符'
@@ -1258,6 +1267,7 @@ export default {
             formData.permissions,
             formData.scope,
             formData.scope === 'GLOBAL' ? [] : formData.canteenIds,
+            finalRole,
           )
 
           if (response.code === 200) {
@@ -1269,11 +1279,6 @@ export default {
           }
         } else {
           // 创建新管理员
-          // 确定最终角色：自定义角色使用输入的名称，否则使用选择的角色
-          const finalRole = formData.role === 'custom' 
-            ? (formData.customRole.trim() || 'admin')
-            : (formData.role || 'admin')
-          
           const createData = {
             username: formData.username.trim(),
             password: formData.password.trim(),

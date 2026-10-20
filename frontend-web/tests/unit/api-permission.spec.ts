@@ -49,6 +49,15 @@ describe('api/permissionApi', () => {
     })
   })
 
+  it('includes the edited role name in the permission update', async () => {
+    putMock.mockResolvedValueOnce({ code: 200 })
+    const { permissionApi } = await import('@/api/modules/permission')
+    await permissionApi.updateAdminPermissions('a1', ['log:view'], 'GLOBAL', [], '运营专员')
+    expect(putMock).toHaveBeenCalledWith('/admin/admins/a1/permissions', {
+      permissions: ['log:view'], scope: 'GLOBAL', canteenIds: [], role: '运营专员',
+    })
+  })
+
   it('createAdmin posts to /admin/admins', async () => {
     postMock.mockResolvedValueOnce({ code: 200 })
 

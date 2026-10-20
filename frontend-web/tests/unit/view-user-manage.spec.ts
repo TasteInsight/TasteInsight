@@ -83,6 +83,21 @@ describe('views/UserManage', () => {
     vi.useRealTimers()
   })
 
+  it('saves role names and displays ordinary administrators without a custom technical label', async () => {
+    const wrapper = shallowMount(UserManage)
+    try {
+      await flushPromises()
+      await wrapper.vm.editAdmin({ id: 'role-account', username: 'staff', role: 'admin', scope: 'GLOBAL', canteenIds: [], permissions: ['dish:view'] })
+      expect(wrapper.vm.getRoleLabel('admin')).toBe('普通管理员')
+      expect(wrapper.vm.formData.role).toBe('')
+      wrapper.vm.formData.role = 'custom'
+      wrapper.vm.formData.customRole = '  运营专员  '
+      mocks.permissionApiMock.updateAdminPermissions.mockResolvedValueOnce({ code: 200 })
+      await wrapper.vm.submitForm()
+      expect(mocks.permissionApiMock.updateAdminPermissions).toHaveBeenCalledWith('role-account', ['dish:view'], 'GLOBAL', [], '运营专员')
+    } finally { wrapper.unmount() }
+  })
+
   it('opens a handover before retiring a manager and submits the selected replacement atomically', async () => {
     const source = { id: 'old', username: '原负责人', scope: 'GLOBAL', directReportCount: 2 }
     const replacement = { id: 'new', username: '新负责人', scope: 'GLOBAL', managerId: 'root' }
@@ -440,7 +455,7 @@ describe('views/UserManage', () => {
     wrapper.vm.formData.canteenIds = ['c1']
     wrapper.vm.formData.permissions = ['dish:view']
     await wrapper.vm.submitForm()
-    expect(mocks.permissionApiMock.updateAdminPermissions).toHaveBeenCalledWith(9, ['dish:view'], 'CANTEENS', ['c1'])
+    expect(mocks.permissionApiMock.updateAdminPermissions).toHaveBeenCalledWith(9, ['dish:view'], 'CANTEENS', ['c1'], 'admin')
 
     // delete confirm false
     mocks.showConfirmDangerMock.mockResolvedValueOnce(false)

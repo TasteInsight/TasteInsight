@@ -40,6 +40,14 @@ const ALL_PERMISSION_SET = new Set(ALL_PERMISSIONS);
 export class AdminAdminsService {
   constructor(private prisma: PrismaService) {}
 
+  private normalizeRoleName(role?: string): string {
+    const name = role?.trim() || 'admin';
+    if (['superadmin', 'super_admin'].includes(name)) {
+      throw new BadRequestException('该角色名称由系统保留，请选择其他名称');
+    }
+    return name;
+  }
+
   private validatePermissionScope(
     scope: 'GLOBAL' | 'CANTEENS',
     permissions: readonly string[],
@@ -61,10 +69,6 @@ export class AdminAdminsService {
     operatorPermissions: readonly string[],
     requestedPermissions: readonly string[],
   ): void {
-    if (requestedPermissions.length === 0) {
-      throw new BadRequestException('权限列表不能为空');
-    }
-
     const duplicatePermissions = requestedPermissions.filter(
       (permission, index) => requestedPermissions.indexOf(permission) !== index,
     );
@@ -309,6 +313,11 @@ export class AdminAdminsService {
     const { username, password, scope, canteenIds, permissions, role } =
       createAdminDto;
 
+    if (permissions.length === 0) {
+      throw new BadRequestException('权限列表不能为空');
+    }
+    const finalRole = this.normalizeRoleName(role);
+
     this.validatePermissionGrant(creatorRole, creatorPermissions, permissions);
 
     await this.validateScopeGrant(creatorScope, { scope, canteenIds });
@@ -316,11 +325,6 @@ export class AdminAdminsService {
 
     // 加密密码
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // 确定角色：如果提供了 role 则使用，否则默认为 'admin'
-    // 不允许创建 superadmin 角色的子管理员
-    const finalRole =
-      role && !['superadmin', 'super_admin'].includes(role) ? role : 'admin';
 
     // 创建管理员及其权限，通过捕获数据库唯一约束错误来处理竞态条件
     try {
@@ -586,6 +590,10 @@ export class AdminAdminsService {
     authenticatedSessionVersion: number,
   ): Promise<{ code: number; message: string; data: null }> {
     const { permissions, scope, canteenIds } = updatePermissionsDto;
+    const role =
+      updatePermissionsDto.role === undefined
+        ? undefined
+        : this.normalizeRoleName(updatePermissionsDto.role);
     this.validatePermissionScope(scope, permissions);
 
     // 查找目标管理员
@@ -667,11 +675,12 @@ export class AdminAdminsService {
         parent.permissions.map((item) => item.permission),
         permissions,
       );
-      const before = grantSnapshot(target);
+      const before = { ...grantSnapshot(target), role: target.role };
       await tx.admin.update({
         where: { id: targetId },
         data: {
           scope,
+          ...(role === undefined ? {} : { role }),
           canteens: {
             deleteMany: {},
             create: canteenIds.map((canteenId) => ({ canteenId })),
@@ -699,7 +708,7 @@ export class AdminAdminsService {
       });
       await logAdminChange(tx, operatorId, 'admin:permissions', targetId, {
         before,
-        after: { scope, canteenIds, permissions },
+        after: { scope, canteenIds, permissions, role: role ?? target.role },
         affectedAdminIds: await selfAndDescendantAdminIds(tx, targetId),
       });
     });

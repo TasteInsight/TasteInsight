@@ -467,6 +467,7 @@ export interface CreateAdminRequest {
  * 更新管理员权限请求
  */
 export interface UpdateAdminPermissionsRequest {
+  role?: string
   scope: 'GLOBAL' | 'CANTEENS'
   canteenIds: string[]
   permissions: string[]
