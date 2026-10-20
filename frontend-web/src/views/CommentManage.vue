@@ -10,8 +10,9 @@
       <div class="admin-comment-layout">
         <!-- 左侧：菜品列表 -->
         <div class="admin-dish-picker">
+          <div class="admin-filters">
           <!-- 搜索栏 -->
-          <div class="mb-4">
+          <div>
             <div class="relative">
               <AppIcon class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" icon="carbon:search"></AppIcon>
               <input
@@ -36,7 +37,7 @@
           <!-- 筛选区域 -->
           <div
             v-if="canViewCanteens"
-            class="admin-toolbar mb-3"
+            class="admin-toolbar"
           >
             <div class="flex items-center gap-3">
               <span class="text-sm font-medium text-gray-600 whitespace-nowrap">所属食堂</span>
@@ -71,9 +72,8 @@
               </div>
             </div>
 
-            <div class="flex justify-end">
+            <div v-if="selectedCanteenId || selectedWindowId || searchQuery" class="flex justify-end">
               <button
-                v-if="selectedCanteenId || selectedWindowId || searchQuery"
                 @click="resetFilters"
                 class="text-gray-500 hover:text-tsinghua-purple flex items-center gap-1 hover:bg-gray-200/50 transition-colors admin-button"
               >
@@ -81,6 +81,7 @@
                 重置筛选
               </button>
             </div>
+          </div>
           </div>
 
           <div class="admin-dish-list">

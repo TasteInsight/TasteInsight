@@ -8,7 +8,7 @@
       />
 
       <!-- 筛选区域 -->
-      <div class="mb-6 mt-6">
+      <div class="mt-6 admin-filters">
         <div class="admin-toolbar">
           <div class="flex items-center gap-3">
             <span class="text-sm font-medium text-gray-600">处理状态</span>
@@ -44,9 +44,8 @@
             </div>
           </div>
 
-          <div class="ml-auto flex items-center">
+          <div v-if="statusFilter || targetTypeFilter" class="ml-auto flex items-center">
             <button
-              v-if="statusFilter || targetTypeFilter"
               @click="statusFilter = ''; targetTypeFilter = ''; handleFilterChange()"
               class="text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 hover:bg-gray-200/50 transition-colors admin-button"
             >

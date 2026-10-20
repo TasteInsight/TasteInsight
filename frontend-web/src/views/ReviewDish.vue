@@ -8,7 +8,7 @@
       />
 
       <!-- 搜索和筛选区域 -->
-      <div class="mt-6 mb-6 space-y-4">
+      <div class="mt-6 admin-filters">
         <!-- 搜索栏 -->
         <div class="relative">
           <AppIcon class="iconify absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" icon="carbon:search"></AppIcon>
@@ -62,9 +62,8 @@
             </div>
           </div>
 
-          <div class="ml-auto flex items-center">
+          <div v-if="statusFilter || canteenFilter || searchQuery" class="ml-auto flex items-center">
             <button
-              v-if="statusFilter || canteenFilter || searchQuery"
               @click="statusFilter = ''; canteenFilter = ''; searchQuery = ''"
               class="text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 hover:bg-gray-200/50 transition-colors admin-button"
             >

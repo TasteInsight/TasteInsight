@@ -8,7 +8,7 @@
       />
 
       <!-- 搜索和筛选区域 -->
-      <div class="mt-6 mb-6 space-y-4">
+      <div class="mt-6 admin-filters">
         <SearchBar
           v-model="searchQuery"
           placeholder="搜索菜品名称、标签..."
@@ -49,9 +49,8 @@
             </div>
           </div>
 
-          <div class="ml-auto flex items-center">
+          <div v-if="selectedCanteenId || searchQuery" class="ml-auto flex items-center">
             <button
-              v-if="selectedCanteenId || searchQuery"
               @click="resetFilters"
               class="text-gray-500 hover:text-tsinghua-purple flex items-center gap-1.5 hover:bg-gray-200/50 transition-colors admin-button"
             >
