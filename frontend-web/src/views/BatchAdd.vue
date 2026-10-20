@@ -192,7 +192,7 @@
                   </tbody>
                 </table>
               </div>
-              <div class="mt-4 text-gray-500 text-sm flex items-center justify-between">
+              <div class="mt-4 text-gray-500 text-sm flex flex-wrap items-center justify-between gap-3">
                 <p>共解析{{ parsedData.length }}条数据，{{ validCount }}条有效，{{ warningCount }}条警告，{{ invalidCount }}条无效</p>
                 <button 
                   v-if="parsedData.length > 0"
@@ -206,7 +206,7 @@
             </div>
             
             <!-- 提交按钮 -->
-            <div class="flex space-x-4" v-if="parsedData.length > 0">
+            <div class="admin-actions" v-if="parsedData.length > 0">
               <button 
                 class="transition duration-200 flex items-center disabled:opacity-50 disabled:cursor-not-allowed admin-button admin-button-primary"
                 :disabled="validCount + warningCount === 0 || isSubmitting || !authStore.hasPermission('dish:create')"

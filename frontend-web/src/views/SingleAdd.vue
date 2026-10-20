@@ -260,7 +260,7 @@
           <div>
             <!-- 菜品子项（可选） -->
             <div class="mb-6">
-              <div class="flex justify-between items-center mb-2">
+              <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
                 <label class="block text-gray-700 font-medium admin-label">
                   菜品子项
                   <span class="text-sm text-gray-500 font-normal ml-1"
@@ -282,9 +282,9 @@
                 <div
                   v-for="(item, index) in formData.subItems"
                   :key="index"
-                  class="flex items-center justify-between p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                  class="flex flex-wrap items-center justify-between gap-3 p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
                 >
-                  <div class="flex-1">
+                  <div class="w-full min-w-0 sm:w-auto sm:flex-1">
                     <input
                       type="text"
                       v-model="item.name"
@@ -294,7 +294,7 @@
                       :disabled="Boolean(item.uploadId) || item.isSubmitting || isSubmitting"
                     />
                   </div>
-                  <div class="flex items-center gap-2 ml-4">
+                  <div class="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       class="transition duration-200 flex items-center admin-button admin-button-primary"

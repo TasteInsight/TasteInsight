@@ -253,7 +253,7 @@
           <div>
             <!-- 菜品子项（仅父菜品显示） -->
             <div v-if="!isSubDish" class="mb-6">
-              <div class="flex justify-between items-center mb-2">
+              <div class="flex flex-wrap justify-between items-center gap-2 mb-2">
                 <label class="block text-gray-700 font-medium admin-label">
                   菜品子项
                   <span class="text-sm text-gray-500 font-normal ml-1">（点击子项可进入编辑）</span>
@@ -273,15 +273,15 @@
                 <div
                   v-for="(subDish, index) in subDishes"
                   :key="subDish.id || index"
-                  class="flex items-center justify-between p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
+                  class="flex flex-wrap items-center justify-between gap-3 p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
                   @click="editSubDish(subDish.id)"
                 >
-                  <div class="flex items-center flex-1">
+                  <div class="flex min-w-0 flex-wrap items-center flex-1 gap-2">
                     <AppIcon
                       class="iconify text-tsinghua-purple mr-2"
                       icon="carbon:dot-mark"
                     ></AppIcon>
-                    <span class="text-gray-700 font-medium">{{
+                    <span class="min-w-0 break-words text-gray-700 font-medium">{{
                       subDish.name || '未命名子项'
                     }}</span>
                     <span class="ml-3 text-sm text-gray-500">¥{{ subDish.price || 0 }}</span>

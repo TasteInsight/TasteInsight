@@ -490,9 +490,9 @@
 
           <!-- 实验分组 -->
           <div class="border border-gray-200 rounded-lg p-6">
-            <div class="flex justify-between items-center mb-4">
-              <div class="flex items-center gap-4">
-                <h3 class="text-lg font-semibold text-gray-800">实验分组</h3>
+            <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+              <div class="flex min-w-0 flex-wrap items-center gap-3">
+                <h3 class="shrink-0 text-lg font-semibold text-gray-800">实验分组</h3>
                 <span 
                   v-if="formData.groups.length > 0"
                   class="text-sm px-2 py-1 rounded"
@@ -502,7 +502,7 @@
                   <span v-if="!groupRatioStatus.isValid">(应为1.00)</span>
                 </span>
               </div>
-              <div class="flex gap-2">
+              <div class="flex flex-wrap gap-2">
                 <button
                   v-if="formData.groups.length >= 2"
                   type="button"
@@ -539,7 +539,7 @@
                     <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
                   </button>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label class="block font-medium text-gray-600 mb-1 admin-label">
                       分组名称 <span class="text-red-500">*</span>
