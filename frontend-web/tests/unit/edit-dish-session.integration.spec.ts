@@ -1,3 +1,4 @@
+vi.mock('@/composables/useNotification', () => ({ useNotification: () => ({ success: mocks.showAlert, error: mocks.showAlert, info: mocks.showAlert }), notify: { success: mocks.showAlert, error: mocks.showAlert, info: mocks.showAlert } }))
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { defineComponent, nextTick } from 'vue'

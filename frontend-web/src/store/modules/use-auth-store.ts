@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authApi } from '@/api/modules/auth'
-import type { LoginCredentials, Admin } from '@/types/api'
+import type { LoginCredentials, Admin, AdminSession, AuthorizationCatalog } from '@/types/api'
 import { getAuthSessionVersion, invalidateAuthSession } from '@/utils/auth-session'
 
 const parseStoredValue = <T>(
@@ -85,11 +85,69 @@ export const useAuthStore = defineStore('auth', () => {
     )
 
   const permissions = ref<string[]>(getPermissions())
+  const authorization = ref<AuthorizationCatalog>({ groups: [], dependencies: {}, globalOnly: [] })
+  const authorizationRevision = ref(0)
+  let pendingSession: Promise<void> | null = null
+
+  const authorizationFingerprint = (admin: Admin | null, granted: string[]) =>
+    JSON.stringify([
+      admin?.id,
+      admin?.managerId,
+      admin?.hierarchyVersion,
+      admin?.role,
+      admin?.scope,
+      [...(admin?.canteenIds || [])].sort(),
+      [...granted].sort(),
+      admin?.mustChangePassword,
+    ])
+
+  const applyAuthorization = (session: AdminSession) => {
+    const before = authorizationFingerprint(user.value, permissions.value)
+    const after = authorizationFingerprint(session.admin, session.permissions)
+    if (user.value && before !== after) {
+      invalidateAuthSession()
+      authorizationRevision.value += 1
+    }
+    user.value = session.admin
+    permissions.value = session.permissions
+    authorization.value = session.authorization
+    const storage = sessionStorage.getItem('admin_token') ? sessionStorage : localStorage
+    storage.setItem('admin_user', JSON.stringify(session.admin))
+    storage.setItem('admin_permissions', JSON.stringify(session.permissions))
+  }
+
+  const refreshSession = (): Promise<void> => {
+    if (pendingSession) return pendingSession
+    const version = getAuthSessionVersion()
+    const requestedToken = token.value
+    const actorId = user.value?.id
+    const promise = authApi
+      .getSession()
+      .then((response) => {
+        if (version !== getAuthSessionVersion()) throw new Error('登录会话已变更，请重试')
+        if (response.code !== 200) throw new Error(response.message || '读取当前权限失败')
+        applyAuthorization(response.data)
+      })
+      .catch(async (error) => {
+        if (!token.value || token.value === requestedToken || user.value?.id !== actorId)
+          throw error
+        const refreshedVersion = getAuthSessionVersion()
+        const response = await authApi.getSession()
+        if (refreshedVersion !== getAuthSessionVersion()) throw new Error('登录会话已变更，请重试')
+        if (response.code !== 200) throw new Error(response.message || '读取当前权限失败')
+        applyAuthorization(response.data)
+      })
+      .finally(() => {
+        if (pendingSession === promise) pendingSession = null
+      })
+    pendingSession = promise
+    return promise
+  }
 
   // 检查是否拥有特定权限
   const hasPermission = (permission: string): boolean => {
     if (!user.value) return false
-    
+
     // 只检查后端返回的权限列表
     const perms = permissions.value
     return perms.includes(permission)
@@ -98,10 +156,10 @@ export const useAuthStore = defineStore('auth', () => {
   // 检查是否拥有任一权限
   const hasAnyPermission = (permissionList: string[]): boolean => {
     if (!user.value) return false
-    
+
     // 只检查后端返回的权限列表
     const perms = permissions.value
-    return permissionList.some(p => perms.includes(p))
+    return permissionList.some((p) => perms.includes(p))
   }
 
   const login = async (credentials: LoginCredentials & { remember?: boolean }) => {
@@ -120,6 +178,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (response.code === 200 && response.data) {
         const { token: tokenInfo, admin, permissions: userPermissions } = response.data
+        authorization.value = response.data.authorization
 
         // 保存 token 和用户信息
         token.value = tokenInfo.accessToken
@@ -173,6 +232,9 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     permissions.value = []
     isAuthenticated.value = false
+    authorization.value = { groups: [], dependencies: {}, globalOnly: [] }
+    pendingSession = null
+    authorizationRevision.value += 1
 
     clearStoredAuth()
   }
@@ -184,9 +246,13 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     isLoggedIn,
     permissions,
+    authorization,
+    authorizationRevision,
+    applyAuthorization,
+    refreshSession,
     login,
     logout,
     hasPermission,
-    hasAnyPermission
+    hasAnyPermission,
   }
 })

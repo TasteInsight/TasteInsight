@@ -111,7 +111,7 @@
                 }"
                 placeholder="例如：水煮肉片"
               />
-              <p v-if="errors.name" class="mt-1 text-xs text-red-500 flex items-center">
+              <p v-if="errors.name" class="mt-1 text-xs text-red-500 flex items-center admin-field-error">
                 <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                 {{ errors.name }}
               </p>
@@ -132,7 +132,7 @@
                 step="0.01"
                 min="0"
               />
-              <p v-if="errors.price" class="mt-1 text-xs text-red-500 flex items-center">
+              <p v-if="errors.price" class="mt-1 text-xs text-red-500 flex items-center admin-field-error">
                 <AppIcon class="iconify mr-1 text-xs" icon="carbon:warning"></AppIcon>
                 {{ errors.price }}
               </p>
@@ -523,7 +523,8 @@ import { dishApi } from '@/api/modules/dish'
 import { reviewApi } from '@/api/modules/review'
 import Header from '@/components/Layout/Header.vue'
 import AdminImage from '@/components/Common/AdminImage.vue'
-import { showAlert, showConfirm } from '@/composables/useModal'
+import { showConfirm } from '@/composables/useModal'
+import { useNotification } from '@/composables/useNotification'
 import { createDishForm, getCompositionSubItem, getDishCompositionVersion } from '@/composables/dish-composition'
 import { authSessionVersion, getAuthSessionVersion } from '@/utils/auth-session'
 
@@ -534,6 +535,7 @@ export default {
     Header,
   },
   setup() {
+    const notify = useNotification()
     const router = useRouter()
     const route = useRoute()
     const authStore = useAuthStore()
@@ -626,7 +628,7 @@ export default {
         formData.tags.push(tag)
         newTag.value = ''
       } else if (formData.tags.includes(tag)) {
-        showAlert('该TAG已存在')
+        notify.info('该TAG已存在')
       }
     }
 
@@ -640,7 +642,7 @@ export default {
         Array.from(files).forEach((file) => {
           // 验证文件大小
           if (file.size > 10 * 1024 * 1024) {
-            showAlert(`图片 ${file.name} 大小超过10MB，已跳过`)
+            notify.info(`图片 ${file.name} 大小超过10MB，已跳过`)
             return
           }
 
@@ -673,7 +675,7 @@ export default {
     const submitForm = async () => {
       if (!isCurrent() || isExpiredComposition || isSubmitted.value || isSubmitting.value) return
       if (!authStore.hasPermission('dish:create')) {
-        showAlert('您没有权限创建菜品')
+        notify.error('您没有权限创建菜品')
         return
       }
 
@@ -703,7 +705,7 @@ export default {
       }
 
       if (!parentDishId.value && !parentUploadId.value) {
-        showAlert('缺少父菜品ID，无法创建子项')
+        notify.error('缺少父菜品ID，无法创建子项')
         return
       }
 
@@ -756,7 +758,7 @@ export default {
           } catch (error) {
             if (!isCurrent()) return
             console.error('图片上传失败:', error)
-            showAlert('图片上传失败，请重试')
+            notify.error('图片上传失败，请重试')
             return
           }
         }
@@ -842,7 +844,7 @@ export default {
             compositionItem.uploadId = response.data.id
           }
           if (!isCurrent()) return
-          showAlert('子项已提交审核！')
+          notify.success('子项已提交审核！')
           goBack()
         } else {
           throw new Error(response.message || '创建子项失败')
@@ -850,7 +852,7 @@ export default {
       } catch (error) {
         if (!isCurrent()) return
         console.error('创建子项失败:', error)
-        showAlert(error instanceof Error ? error.message : '创建子项失败，请重试')
+        notify.error(error instanceof Error ? error.message : '创建子项失败，请重试')
       } finally {
         if (ownsDraft()) isSubmitting.value = false
       }

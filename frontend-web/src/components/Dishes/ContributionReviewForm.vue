@@ -25,7 +25,7 @@
                 {{ window.floor?.name || window.floor?.level || '' }} · {{ window.name }}
               </option>
             </select>
-            <p v-if="windowsError" role="alert" class="text-sm text-red-700 mt-1">
+            <p v-if="windowsError" role="alert" class="text-sm text-red-700 mt-1 admin-field-error">
               {{ windowsError }} <button type="button" class="underline admin-button" @click="loadWindows">重试窗口列表</button>
             </p>
             <p v-else class="text-sm text-gray-600 mt-1">{{ selectedWindow?.floor?.name || floorLabel(upload) || '未填写楼层' }} · 编号 {{ selectedWindow?.number || upload.windowNumber || '未填写' }}</p>
@@ -93,7 +93,7 @@
         </div>
       </div>
     </fieldset>
-    <p v-if="error" role="alert" class="text-sm text-red-700">{{ error }}</p>
+    <p v-if="error" role="alert" class="text-sm text-red-700 admin-field-error">{{ error }}</p>
     <p v-if="uploading" role="status" class="text-sm text-gray-600">正在上传图片…</p>
     <div class="flex flex-wrap gap-3 admin-actions">
       <button type="submit" :disabled="busy || uploading" class="disabled:opacity-50 admin-button admin-button-primary">{{ busy ? '保存中…' : '保存修改' }}</button>

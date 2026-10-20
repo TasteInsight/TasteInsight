@@ -1,3 +1,4 @@
+vi.mock('@/composables/useNotification', () => ({ useNotification: () => ({ success: mocks.showAlertMock, error: mocks.showAlertMock, info: mocks.showAlertMock }), notify: { success: mocks.showAlertMock, error: mocks.showAlertMock, info: mocks.showAlertMock } }))
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { DOMWrapper, mount, flushPromises, shallowMount } from '@vue/test-utils'
 import { nextTick } from 'vue'
@@ -24,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   permissionApiMock: {
     getAdmins: vi.fn(),
     deleteAdmin: vi.fn(),
+    handoverAdmin: vi.fn(),
     createAdmin: vi.fn(),
     updateAdminPermissions: vi.fn(),
   },
@@ -38,9 +40,7 @@ vi.mock('vue-router', () => ({
   useRouter: () => mocks.routerMock,
 }))
 
-vi.mock('@/store/modules/use-auth-store', () => ({
-  useAuthStore: () => mocks.authStoreMock,
-}))
+vi.mock('@/store/modules/use-auth-store', async () => { const { authorization } = await import('../fixtures/authorization'); return { useAuthStore: () => Object.assign(mocks.authStoreMock, { authorization }) } })
 
 vi.mock('@/api/modules/permission', () => ({
   permissionApi: mocks.permissionApiMock,
@@ -81,6 +81,59 @@ describe('views/UserManage', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('opens a handover before retiring a manager and submits the selected replacement atomically', async () => {
+    const source = { id: 'old', username: '原负责人', scope: 'GLOBAL', directReportCount: 2 }
+    const replacement = { id: 'new', username: '新负责人', scope: 'GLOBAL', managerId: 'root' }
+    const descendant = { id: 'child', username: '下属', scope: 'GLOBAL', managerId: 'old' }
+    mocks.permissionApiMock.getAdmins.mockResolvedValue({ code: 200, data: { items: [source, replacement, descendant], meta: { totalPages: 1 } } })
+    mocks.permissionApiMock.handoverAdmin.mockResolvedValue({ code: 200 })
+    const wrapper = mount(UserManage, { global: { stubs: { Header: true, AdminDialog: { template: '<div><slot /></div>' } } } })
+    try {
+      await flushPromises()
+      await wrapper.vm.deleteAdmin(source)
+      await flushPromises()
+      expect(mocks.permissionApiMock.deleteAdmin).not.toHaveBeenCalled()
+      expect(wrapper.vm.handoverRetireSource).toBe(true)
+      const select = wrapper.get('#handover-manager')
+      expect(select.findAll('option').map(option => option.text())).toEqual(['请选择新负责人', '新负责人 · 全局范围'])
+      await select.setValue('new')
+      expect(wrapper.text()).toContain('确认移交并停用')
+      await wrapper.vm.submitHandover()
+      expect(mocks.permissionApiMock.handoverAdmin).toHaveBeenCalledWith('old', 'new', true)
+      expect(wrapper.vm.handoverTarget).toBeNull()
+    } finally { wrapper.unmount() }
+  })
+
+  it('keeps the handover open with the server validation error and supports transfer without retirement', async () => {
+    const wrapper = shallowMount(UserManage)
+    try {
+      await flushPromises()
+      await wrapper.vm.openHandover({ id: 'old', username: '原负责人' })
+      wrapper.vm.handoverManagerId = 'new'
+      mocks.permissionApiMock.handoverAdmin.mockRejectedValue(new Error('新负责人的权限须覆盖下属的现有权限'))
+      await wrapper.vm.submitHandover()
+      expect(mocks.permissionApiMock.handoverAdmin).toHaveBeenCalledWith('old', 'new', false)
+      expect(wrapper.vm.handoverTarget?.id).toBe('old')
+      expect(wrapper.vm.handoverError).toContain('新负责人的权限须覆盖')
+      expect(wrapper.vm.handoverSubmitting).toBe(false)
+    } finally { wrapper.unmount() }
+  })
+
+  it('keeps paginated replacement loading from reopening a cancelled handover', async () => {
+    const wrapper = shallowMount(UserManage)
+    try {
+      await flushPromises()
+      let resolve!: (value: unknown) => void
+      mocks.permissionApiMock.getAdmins.mockImplementationOnce(() => new Promise(done => { resolve = done }))
+      const pending = wrapper.vm.openHandover({ id: 'old', username: '原负责人' })
+      wrapper.vm.closeHandover()
+      resolve({ code: 200, data: { items: [{ id: 'new', username: '新负责人' }], meta: { totalPages: 1 } } })
+      await pending
+      expect(wrapper.vm.handoverTarget).toBeNull()
+      expect(wrapper.vm.handoverCandidates).toEqual([])
+    } finally { wrapper.unmount() }
   })
 
   it('creates an account with two selected canteens from the native multi-select controls', async () => {
@@ -213,7 +266,7 @@ describe('views/UserManage', () => {
 
     expect(wrapper.vm.viewMode).toBe('edit')
     expect(wrapper.vm.editingAdmin).toBe(null)
-    expect(wrapper.vm.formData.password).toBe('Tsinghua@2025')
+    expect(wrapper.vm.formData.password).toHaveLength(16)
 
     wrapper.unmount()
   })
@@ -430,10 +483,8 @@ describe('views/UserManage', () => {
     await nextTick()
     expect(wrapper.vm.passwordStrengthClass).toBe('bg-green-500')
 
-    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0)
-    wrapper.vm.generatePassword()
-    expect(wrapper.vm.formData.password).toHaveLength(12)
-    randomSpy.mockRestore()
+        wrapper.vm.generatePassword()
+    expect(wrapper.vm.formData.password).toHaveLength(16)
 
     // selectRole: selecting same role again cancels
     wrapper.vm.formData.permissions = ['dish:view']

@@ -19,7 +19,7 @@
                   {{ canteen }}
                 </option>
               </select>
-              <p v-if="errors.canteen" class="text-red-500 text-sm mt-1">{{ errors.canteen }}</p>
+              <p v-if="errors.canteen" class="text-red-500 text-sm mt-1 admin-field-error">{{ errors.canteen }}</p>
             </div>
             <div>
               <label class="block text-sm text-gray-600 mb-1">楼层</label>
@@ -33,7 +33,7 @@
                   {{ floor }}
                 </option>
               </select>
-              <p v-if="errors.floor" class="text-red-500 text-sm mt-1">{{ errors.floor }}</p>
+              <p v-if="errors.floor" class="text-red-500 text-sm mt-1 admin-field-error">{{ errors.floor }}</p>
             </div>
           </div>
         </div>
@@ -48,7 +48,7 @@
             :class="{ 'border-red-500': errors.window }"
             placeholder="例如：川湘风味"
           />
-          <p v-if="errors.window" class="text-red-500 text-sm mt-1">{{ errors.window }}</p>
+          <p v-if="errors.window" class="text-red-500 text-sm mt-1 admin-field-error">{{ errors.window }}</p>
         </div>
 
         <!-- 菜品名称 -->
@@ -61,7 +61,7 @@
             :class="{ 'border-red-500': errors.name }"
             placeholder="例如：水煮肉片"
           />
-          <p v-if="errors.name" class="text-red-500 text-sm mt-1">{{ errors.name }}</p>
+          <p v-if="errors.name" class="text-red-500 text-sm mt-1 admin-field-error">{{ errors.name }}</p>
         </div>
 
         <!-- 菜品图片上传 -->
@@ -97,7 +97,7 @@
               @change="handleFileSelect"
             />
           </div>
-          <p v-if="errors.image" class="text-red-500 text-sm mt-1">{{ errors.image }}</p>
+          <p v-if="errors.image" class="text-red-500 text-sm mt-1 admin-field-error">{{ errors.image }}</p>
         </div>
       </div>
 

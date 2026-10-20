@@ -475,7 +475,8 @@ import { useBatchSelection } from '@/composables/useBatchSelection'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
 import { authSessionVersion, getAuthSessionVersion } from '@/utils/auth-session'
 import type { Dish, Review, Comment } from '@/types/api'
-import { showAlert, showConfirmDanger } from '@/composables/useModal'
+import { showConfirmDanger } from '@/composables/useModal'
+import { useNotification } from '@/composables/useNotification'
 
 const PAGE_STATE_KEY = 'comment-manage'
 
@@ -489,6 +490,7 @@ export default defineComponent({
     BatchActionBar,
   },
   setup() {
+    const notify = useNotification()
     const route = useRoute()
     const authStore = useAuthStore()
     const sessionVersion = getAuthSessionVersion()
@@ -692,7 +694,7 @@ export default defineComponent({
         }
       } catch (error) {
         console.error('加载菜品列表失败:', error)
-        showAlert('加载菜品列表失败，请刷新重试')
+        notify.error('加载菜品列表失败，请刷新重试')
         dishes.value = []
         totalDishes.value = 0
       } finally {
@@ -750,7 +752,7 @@ export default defineComponent({
       } catch (error) {
         if (!ownsRequest()) return false
         console.error('加载评价列表失败:', error)
-        showAlert('加载评价列表失败，请重试')
+        notify.error('加载评价列表失败，请重试')
         reviews.value = []
         totalReviews.value = 0
       } finally {
@@ -793,7 +795,7 @@ export default defineComponent({
         if (!ownsRequest()) return
         state.error = true
         console.error('加载评论列表失败:', error)
-        showAlert('加载评论列表失败，请重试')
+        notify.error('加载评论列表失败，请重试')
       } finally {
         if (ownsRequest()) state.loading = false
       }
@@ -864,7 +866,7 @@ export default defineComponent({
     const handleDeleteReview = async (review: Review) => {
       if (isBatchDeleting.value) return
       if (!authStore.hasPermission('review:delete')) {
-        showAlert('您没有权限删除评价')
+        notify.error('您没有权限删除评价')
         return
       }
 
@@ -879,16 +881,16 @@ export default defineComponent({
       try {
         const response = await reviewApi.deleteReview(review.id)
         if (response.code === 200) {
-          showAlert('删除成功')
+          notify.success('删除成功')
           loadReviews().then(loaded => {
             if (loaded) loadCommentsForReviews()
           })
         } else {
-          showAlert(response.message || '删除失败')
+          notify.error(response.message || '删除失败')
         }
       } catch (error) {
         console.error('删除评价失败:', error)
-        showAlert('删除评价失败，请重试')
+        notify.error('删除评价失败，请重试')
       }
     }
 
@@ -896,7 +898,7 @@ export default defineComponent({
     const handleDeleteComment = async (comment: Comment) => {
       if (isBatchDeleting.value) return
       if (!authStore.hasPermission('comment:delete')) {
-        showAlert('您没有权限删除评论')
+        notify.error('您没有权限删除评论')
         return
       }
 
@@ -911,14 +913,14 @@ export default defineComponent({
       try {
         const response = await reviewApi.deleteComment(comment.id)
         if (response.code === 200) {
-          showAlert('删除成功')
+          notify.success('删除成功')
           loadCommentsForReviews() // 重新加载评论列表
         } else {
-          showAlert(response.message || '删除失败')
+          notify.error(response.message || '删除失败')
         }
       } catch (error) {
         console.error('删除评论失败:', error)
-        showAlert('删除评论失败，请重试')
+        notify.error('删除评论失败，请重试')
       }
     }
 
@@ -944,11 +946,11 @@ export default defineComponent({
         if (response.code !== 200) throw new Error(response.message || '批量删除失败')
         reviewSelection.clear()
         commentSelection.clear()
-        showAlert(`已删除 ${response.data.deletedCount} 条评价`)
+        notify.success(`已删除 ${response.data.deletedCount} 条评价`)
         const loaded = await loadReviews(true)
         if (loaded) await loadCommentsForReviews()
       } catch (error) {
-        if (ownsOperation()) showAlert(error instanceof Error ? error.message : '批量删除失败，请重试')
+        if (ownsOperation()) notify.error(error instanceof Error ? error.message : '批量删除失败，请重试')
       } finally {
         isBatchDeleting.value = false
       }
@@ -975,10 +977,10 @@ export default defineComponent({
         if (!ownsOperation()) return
         if (response.code !== 200) throw new Error(response.message || '批量删除失败')
         commentSelection.clear()
-        showAlert(`已删除 ${response.data.deletedCount} 条评论`)
+        notify.success(`已删除 ${response.data.deletedCount} 条评论`)
         await loadCommentsForReviews()
       } catch (error) {
-        if (ownsOperation()) showAlert(error instanceof Error ? error.message : '批量删除失败，请重试')
+        if (ownsOperation()) notify.error(error instanceof Error ? error.message : '批量删除失败，请重试')
       } finally {
         isBatchDeleting.value = false
       }

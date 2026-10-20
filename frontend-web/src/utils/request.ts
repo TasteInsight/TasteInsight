@@ -117,6 +117,7 @@ const refreshSession = async (session: RefreshSession): Promise<string> => {
     session.store.refreshToken = tokenInfo.refreshToken
     session.storage.setItem('admin_token', tokenInfo.accessToken)
     session.storage.setItem('admin_refresh_token', tokenInfo.refreshToken)
+    if (response.data.data.admin) session.store.applyAuthorization(response.data.data)
     return tokenInfo.accessToken
   } catch (error) {
     if (!ownsSession(session)) throw new Error('登录会话已变更，请重试')
@@ -198,6 +199,11 @@ service.interceptors.response.use(
 
       // 403 无权限
       if (status === 403) {
+        if (data?.code === 'ADMIN_PASSWORD_CHANGE_REQUIRED') {
+          const store = getAuthStore()
+          if (store.user) store.user.mustChangePassword = true
+          window.location.href = '/change-password'
+        }
         return Promise.reject(new Error('无权限访问该资源'))
       }
 

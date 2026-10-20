@@ -185,7 +185,7 @@ import Header from '@/components/Layout/Header.vue'
 import AdminImage from '@/components/Common/AdminImage.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
-import { showAlert } from '@/composables/useModal'
+import { useNotification } from '@/composables/useNotification'
 import { contributionLocation } from '@/components/Dishes/contribution-fields'
 import type { Canteen, GetPendingParams } from '@/types/api'
 import type { ContributionStatus, DishContribution } from '@/types/dish-contribution'
@@ -215,9 +215,10 @@ export default defineComponent({
     Pagination,
   },
   setup() {
+    const notify = useNotification()
     const router = useRouter()
     const authStore = useAuthStore()
-    
+
     // 默认状态定义
     const defaultState = {
       searchQuery: '',
@@ -225,7 +226,7 @@ export default defineComponent({
       canteenFilter: '',
       currentPage: 1,
     }
-    
+
     // 从缓存恢复状态
     const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
     const searchQuery = ref(restoredState.searchQuery)
@@ -236,7 +237,7 @@ export default defineComponent({
     const isLoading = ref(false)
     const loadError = ref('')
     const totalDishes = ref(0)
-    
+
     // 保存页面状态
     const saveState = () => {
       savePageState(PAGE_STATE_KEY, {
@@ -278,7 +279,7 @@ export default defineComponent({
 
     const reviewDish = (dish: Pick<ReviewRow, 'id'>) => {
       if (!authStore.hasPermission('upload:approve')) {
-        showAlert('您没有权限审核菜品')
+        notify.error('您没有权限审核菜品')
         return
       }
       // 保存当前状态后再跳转

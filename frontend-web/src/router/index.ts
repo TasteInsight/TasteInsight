@@ -1,9 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/store/modules/use-auth-store'
-import { getFirstAccessibleRoute } from './access'
+import { getFirstAccessibleRoute, canAccessRoute } from './access'
 import MainLayout from '@/components/Layout/MainLayout.vue'
 import { isDishCompositionRoute, resetDishComposition } from '@/composables/dish-composition'
+import { notify } from '@/composables/useNotification'
 
+const ChangePassword = () => import('@/views/ChangePassword.vue')
 const Login = () => import('@/views/Login.vue')
 const Forbidden = () => import('@/views/Forbidden.vue')
 const SingleAdd = () => import('@/views/SingleAdd.vue')
@@ -27,6 +29,7 @@ const StudentVerificationManage = () => import('@/views/StudentVerificationManag
 const CommunityManage = () => import('@/views/CommunityManage.vue')
 
 const routes = [
+  { path: '/change-password', name: 'ChangePassword', component: ChangePassword, meta: { requiresAuth: true } },
   {
     path: '/login',
     name: 'Login',
@@ -124,7 +127,7 @@ const routes = [
         path: 'log-view',
         name: 'LogView',
         component: LogView,
-        meta: { requiresAuth: true, requiredPermission: 'admin:view', keepAlive: true },
+        meta: { requiresAuth: true, requiredPermission: 'log:view', keepAlive: true },
       },
       {
         path: 'report-manage',
@@ -169,13 +172,13 @@ const routes = [
         path: 'config-manage',
         name: 'ConfigManage',
         component: ConfigManage,
-        meta: { requiresAuth: true, requiredPermission: 'config:view', keepAlive: true },
+        meta: { requiresAuth: true, requiredPermissions: ['config:view', 'dish:edit'], keepAlive: true },
       },
       {
         path: 'experiment-manage',
         name: 'ExperimentManage',
         component: ExperimentManage,
-        meta: { requiresAuth: true, requiredPermission: 'experiment:view', keepAlive: true },
+        meta: { requiresAuth: true, requiredPermission: 'experiment:view', globalOnly: true, keepAlive: true },
       },
     ],
   },
@@ -193,23 +196,23 @@ router.afterEach((to, _from, failure) => {
 export { getFirstAccessibleRoute }
 
 // 路由守卫
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const authStore = useAuthStore()
 
   // 检查路由是否需要认证
   if (to.meta.requiresAuth) {
     if (authStore.isLoggedIn) {
+      try { await authStore.refreshSession() }
+      catch (error) {
+        if (authStore.isLoggedIn) notify.error(error instanceof Error ? error.message : '读取当前权限失败，请重试')
+        next(false); return
+      }
+      if (authStore.user?.mustChangePassword) {
+        if (to.path === '/change-password') next(); else next('/change-password'); return
+      }
+      if (to.path === '/change-password') { next(getFirstAccessibleRoute(authStore)); return }
       // 检查是否有访问该路由的权限
-      const requiredPermission = to.meta.requiredPermission as string | undefined
-      const requiredPermissions = to.meta.requiredPermissions as string[] | undefined
-      const lacksRequiredPermission =
-        Boolean(requiredPermission) && !authStore.hasPermission(requiredPermission as string)
-      const lacksAnyRequiredPermission =
-        Array.isArray(requiredPermissions) &&
-        requiredPermissions.length > 0 &&
-        !requiredPermissions.some((permission) => authStore.hasPermission(permission))
-      const lacksGlobalScope = to.meta.globalOnly && authStore.user?.scope !== 'GLOBAL'
-      if (lacksRequiredPermission || lacksAnyRequiredPermission || lacksGlobalScope) {
+      if (!canAccessRoute(to.meta, authStore)) {
         // 没有权限，跳转到第一个有权限的页面
         const firstRoute = getFirstAccessibleRoute(authStore)
         next(firstRoute)

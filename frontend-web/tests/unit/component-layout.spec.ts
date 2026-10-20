@@ -1,3 +1,4 @@
+vi.mock('@/composables/useNotification', () => ({ useNotification: () => ({ success: mocks.showAlertMock, error: mocks.showAlertMock, info: mocks.showAlertMock }), notify: { success: mocks.showAlertMock, error: mocks.showAlertMock, info: mocks.showAlertMock } }))
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { DOMWrapper, mount, flushPromises } from '@vue/test-utils'
 import { defineComponent, nextTick } from 'vue'
@@ -38,9 +39,7 @@ vi.mock('vue-router', () => ({
   useRoute: () => routeMock,
 }))
 
-vi.mock('@/store/modules/use-auth-store', () => ({
-  useAuthStore: () => authStoreMock,
-}))
+vi.mock('@/store/modules/use-auth-store', async () => { const { authorization } = await import('../fixtures/authorization'); return { useAuthStore: () => Object.assign(authStoreMock, { authorization }) } })
 
 vi.mock('@/api/modules/permission', () => ({
   permissionApi: mocks.permissionApiMock,
@@ -211,9 +210,9 @@ describe('components/Layout', () => {
     expect(removeSpy).toHaveBeenCalled()
   })
 
-  it('Sidebar renders the operation log entry for an admin:view user', async () => {
+  it('Sidebar renders the operation log entry for a log:view user', async () => {
     routeMock.path = '/log-view'
-    authStoreMock.permissions = ['admin:view']
+    authStoreMock.permissions = ['log:view']
     authStoreMock.hasPermission = vi.fn((id: string) => authStoreMock.permissions.includes(id))
     authStoreMock.hasAnyPermission = vi.fn((ids: string[]) =>
       ids.some((id) => authStoreMock.permissions.includes(id)),
@@ -789,7 +788,7 @@ describe('components/Layout', () => {
     await flushPromises()
 
     expect(mocks.permissionApiMock.changeOwnPassword).toHaveBeenCalledWith('OldPass1!', 'ABCDef12!')
-    expect(mocks.showAlertMock).toHaveBeenCalledWith('密码修改成功！请使用新密码重新登录。')
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('密码修改成功，请使用新密码重新登录。')
     expect(wrapper.vm.showChangePasswordModal).toBe(false)
 
     wrapper.unmount()

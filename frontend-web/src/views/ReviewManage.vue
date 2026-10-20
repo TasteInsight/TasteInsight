@@ -750,7 +750,7 @@ import AdminDialog from '@/components/Common/AdminDialog.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
 import type { PendingReview, PendingComment } from '@/types/api'
-import { showAlert } from '@/composables/useModal'
+import { useNotification } from '@/composables/useNotification'
 
 const PAGE_STATE_KEY = 'review-manage'
 
@@ -763,17 +763,18 @@ export default defineComponent({
     Pagination,
   },
   setup() {
+    const notify = useNotification()
     const authStore = useAuthStore()
     const canReview = authStore.hasPermission('review:approve')
     const canComment = authStore.hasPermission('comment:approve')
-    
+
     // 默认状态定义
     const defaultState = {
       activeTab: 'reviews',
       currentPageReviews: 1,
       currentPageComments: 1,
     }
-    
+
     // 从缓存恢复状态
     const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
     const restoredTab = restoredState.activeTab as 'reviews' | 'comments'
@@ -784,7 +785,7 @@ export default defineComponent({
           ? 'reviews'
           : 'comments',
     )
-    
+
     // 评价相关
     const reviews = ref<PendingReview[]>([])
     const isLoadingReviews = ref(false)
@@ -793,13 +794,13 @@ export default defineComponent({
     const selectedReview = ref<PendingReview | null>(null)
     const isRejectReviewModalOpen = ref(false)
     const rejectReviewReason = ref('')
-    
+
     // 评论相关
     const comments = ref<PendingComment[]>([])
     const isLoadingComments = ref(false)
     const currentPageComments = ref(restoredState.currentPageComments)
     const totalComments = ref(0)
-    
+
     // 保存页面状态
     const saveState = () => {
       savePageState(PAGE_STATE_KEY, {
@@ -811,7 +812,7 @@ export default defineComponent({
     const selectedComment = ref<PendingComment | null>(null)
     const isRejectCommentModalOpen = ref(false)
     const rejectCommentReason = ref('')
-    
+
     // 通用
     const pageSize = ref(20)
     const isSubmitting = ref(false)
@@ -878,7 +879,7 @@ export default defineComponent({
         }
       } catch (error) {
         console.error('加载评价列表失败:', error)
-        showAlert('加载评价列表失败，请刷新重试')
+        notify.error('加载评价列表失败，请刷新重试')
         reviews.value = []
         totalReviews.value = 0
       } finally {
@@ -904,7 +905,7 @@ export default defineComponent({
         }
       } catch (error) {
         console.error('加载评论列表失败:', error)
-        showAlert('加载评论列表失败，请刷新重试')
+        notify.error('加载评论列表失败，请刷新重试')
         comments.value = []
         totalComments.value = 0
       } finally {
@@ -945,7 +946,7 @@ export default defineComponent({
 
     const handleApproveReview = async () => {
       if (!authStore.hasPermission('review:approve')) {
-        showAlert('您没有权限审核评价')
+        notify.error('您没有权限审核评价')
         return
       }
 
@@ -955,15 +956,15 @@ export default defineComponent({
       try {
         const response = await reviewApi.approveReview(selectedReview.value.id, { expectedUpdatedAt: selectedReview.value.updatedAt })
         if (response.code === 200) {
-          showAlert('审核通过')
+          notify.success('审核通过')
           await loadReviews()
           closeReviewDetail()
         } else {
-          showAlert(response.message || '审核失败')
+          notify.error(response.message || '审核失败')
         }
       } catch (error) {
         console.error('审核评价失败:', error)
-        showAlert(error instanceof Error ? error.message : '审核评价失败，请重试')
+        notify.error(error instanceof Error ? error.message : '审核评价失败，请重试')
       } finally {
         isSubmitting.value = false
       }
@@ -971,12 +972,12 @@ export default defineComponent({
 
     const handleRejectReview = async () => {
       if (!authStore.hasPermission('review:approve')) {
-        showAlert('您没有权限审核评价')
+        notify.error('您没有权限审核评价')
         return
       }
 
       if (!selectedReview.value || !rejectReviewReason.value.trim()) {
-        showAlert('请填写拒绝原因')
+        notify.info('请填写拒绝原因')
         return
       }
 
@@ -987,16 +988,16 @@ export default defineComponent({
           expectedUpdatedAt: selectedReview.value.updatedAt,
         })
         if (response.code === 200) {
-          showAlert('已拒绝')
+          notify.success('已拒绝')
           await loadReviews()
           closeRejectReviewModal()
           closeReviewDetail()
         } else {
-          showAlert(response.message || '拒绝失败')
+          notify.error(response.message || '拒绝失败')
         }
       } catch (error) {
         console.error('拒绝评价失败:', error)
-        showAlert(error instanceof Error ? error.message : '拒绝评价失败，请重试')
+        notify.error(error instanceof Error ? error.message : '拒绝评价失败，请重试')
       } finally {
         isSubmitting.value = false
       }
@@ -1023,7 +1024,7 @@ export default defineComponent({
 
     const handleApproveComment = async () => {
       if (!authStore.hasPermission('comment:approve')) {
-        showAlert('您没有权限审核评论')
+        notify.error('您没有权限审核评论')
         return
       }
 
@@ -1033,15 +1034,15 @@ export default defineComponent({
       try {
         const response = await reviewApi.approveComment(selectedComment.value.id)
         if (response.code === 200) {
-          showAlert('审核通过')
+          notify.success('审核通过')
           await loadComments()
           closeCommentDetail()
         } else {
-          showAlert(response.message || '审核失败')
+          notify.error(response.message || '审核失败')
         }
       } catch (error) {
         console.error('审核评论失败:', error)
-        showAlert('审核评论失败，请重试')
+        notify.error('审核评论失败，请重试')
       } finally {
         isSubmitting.value = false
       }
@@ -1049,12 +1050,12 @@ export default defineComponent({
 
     const handleRejectComment = async () => {
       if (!authStore.hasPermission('comment:approve')) {
-        showAlert('您没有权限审核评论')
+        notify.error('您没有权限审核评论')
         return
       }
 
       if (!selectedComment.value || !rejectCommentReason.value.trim()) {
-        showAlert('请填写拒绝原因')
+        notify.info('请填写拒绝原因')
         return
       }
 
@@ -1062,16 +1063,16 @@ export default defineComponent({
       try {
         const response = await reviewApi.rejectComment(selectedComment.value.id, rejectCommentReason.value)
         if (response.code === 200) {
-          showAlert('已拒绝')
+          notify.success('已拒绝')
           await loadComments()
           closeRejectCommentModal()
           closeCommentDetail()
         } else {
-          showAlert(response.message || '拒绝失败')
+          notify.error(response.message || '拒绝失败')
         }
       } catch (error) {
         console.error('拒绝评论失败:', error)
-        showAlert('拒绝评论失败，请重试')
+        notify.error('拒绝评论失败，请重试')
       } finally {
         isSubmitting.value = false
       }

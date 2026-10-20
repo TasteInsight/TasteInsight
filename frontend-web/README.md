@@ -143,6 +143,7 @@ frontend-web/
 | `post:delete` | 删除帖子与帖子回复 |
 | `report:handle` | 处理举报 |
 | `admin:view` | 查看管理员 |
+| `log:view` | 查看自己和所有层级下属的操作日志 |
 | `admin:create`、`admin:edit`、`admin:delete` | 管理管理员 |
 | `news:view` | 查看新闻 |
 | `news:create`、`news:edit`、`news:delete` | 管理新闻 |
@@ -273,3 +274,7 @@ ESLint 配置使用原生 ESM，支持现有 JavaScript 与 TypeScript Vue 组�
 ## 许可证
 
 MIT License
+
+网页在登录、页面导航、令牌刷新和窗口重新获得焦点时同步当前授权。授权变化会更新菜单并清理旧范围的页面缓存。成功、错误与信息通知共用 Vue Sonner；长通知保留关闭操作，确认对话框按请求顺序展示，账号切换会清理待处理提示。
+
+人员管理支持选择新负责人移交下属，可同时停用原负责人。移交保留下属账号、现有授权及原创建记录；接收方的权限与食堂范围须覆盖待移交账号。独立停用入口会引导有下属的账号先完成交接。

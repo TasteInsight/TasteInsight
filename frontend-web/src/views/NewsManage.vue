@@ -558,7 +558,8 @@ import Pagination from '@/components/Common/Pagination.vue'
 import BatchActionBar from '@/components/Common/BatchActionBar.vue'
 import { useBatchSelection } from '@/composables/useBatchSelection'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
-import { showAlert, showConfirm, showConfirmDanger } from '@/composables/useModal'
+import { showConfirm, showConfirmDanger } from '@/composables/useModal'
+import { useNotification } from '@/composables/useNotification'
 import { sanitizeRichHtml } from '@/utils/sanitize-rich-html'
 import { authSessionVersion, getAuthSessionVersion } from '@/utils/auth-session'
 
@@ -575,6 +576,7 @@ export default {
     NewsSources,
   },
   setup() {
+    const notify = useNotification()
     const route = useRoute()
     const activeSection = ref('content')
     const sourcesConfigured = ref(false)
@@ -629,7 +631,7 @@ export default {
       endDate: '',
       page: 1,
     }
-    
+
     // 从缓存恢复状态
     const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
     const currentStatus = ref(restoredState.currentStatus) // 默认显示已发布
@@ -637,7 +639,7 @@ export default {
     const canteenFilter = ref(restoredState.canteenFilter)
     const startDate = ref(restoredState.startDate)
     const endDate = ref(restoredState.endDate)
-    
+
     // 保存页面状态
     const saveState = () => {
       savePageState(PAGE_STATE_KEY, {
@@ -677,7 +679,7 @@ export default {
             async customUpload(file, insertFn) {
               if (!ownsEditor(version) || isSubmitting.value) return
               if (file.size > 10 * 1024 * 1024) {
-                showAlert('图片大小不能超过10MB')
+                notify.info('图片大小不能超过10MB')
                 return
               }
               const body = new FormData()
@@ -696,7 +698,7 @@ export default {
               } catch (error) {
                 if (!ownsEditor(version)) return
                 console.error('上传错误:', error)
-                showAlert('图片上传出错: ' + (error instanceof Error ? error.message : '未知错误'))
+                notify.error('图片上传出错: ' + (error instanceof Error ? error.message : '未知错误'))
               } finally {
                 if (ownsEditor(version)) pendingImageUploads.value -= 1
               }
@@ -852,7 +854,7 @@ export default {
         pagination.total = 0
         pagination.totalPages = 0
         console.error('加载新闻列表失败:', error)
-        showAlert(error instanceof Error ? error.message : '加载新闻列表失败，请重试')
+        notify.error(error instanceof Error ? error.message : '加载新闻列表失败，请重试')
       } finally {
         if (ownsRequest()) isLoading.value = false
       }
@@ -930,10 +932,10 @@ export default {
         if (!ownsOperation()) return
         if (response.code !== 200) throw new Error(response.message || '批量删除失败')
         newsSelection.clear()
-        showAlert(`已删除 ${response.data.deletedCount} 条新闻`)
+        notify.success(`已删除 ${response.data.deletedCount} 条新闻`)
         await loadNews(true)
       } catch (error) {
-        if (ownsOperation()) showAlert(error instanceof Error ? error.message : '批量删除失败，请重试')
+        if (ownsOperation()) notify.error(error instanceof Error ? error.message : '批量删除失败，请重试')
       } finally {
         isBatchDeleting.value = false
       }
@@ -996,7 +998,7 @@ export default {
     const openCreateModal = () => {
       if (!ownsView()) return
       if (!authStore.hasPermission('news:create')) {
-        showAlert('您没有权限创建新闻')
+        notify.error('您没有权限创建新闻')
         return
       }
       resetForm()
@@ -1015,7 +1017,7 @@ export default {
     const editNews = (news) => {
       if (!ownsView()) return
       if (!authStore.hasPermission('news:edit')) {
-        showAlert('您没有权限编辑新闻')
+        notify.error('您没有权限编辑新闻')
         return
       }
       resetForm()
@@ -1051,32 +1053,32 @@ export default {
     const submitForm = async (targetStatus) => {
       if (!ownsView() || (!editorRef.value && !preserveImportedContent.value) || isSubmitting.value) return
       if (pendingImageUploads.value > 0) {
-        showAlert('图片正在上传，请稍后保存')
+        notify.info('图片正在上传，请稍后保存')
         return
       }
       // 清除之前的错误
       errors.title = ''
       errors.summary = ''
       errors.content = ''
-      
+
       // 表单验证
       let hasError = false
-      
+
       if (!newsForm.title || !newsForm.title.trim()) {
         errors.title = '请输入标题'
         hasError = true
       }
-      
+
       if (!newsForm.summary || !newsForm.summary.trim()) {
         errors.summary = '请输入摘要'
         hasError = true
       }
-      
+
       if (!valueHtml.value || !valueHtml.value.trim()) {
         errors.content = '请输入内容'
         hasError = true
       }
-      
+
       if (hasError) {
         return
       }
@@ -1106,6 +1108,7 @@ export default {
           throw new Error(response.message || '保存失败')
         }
 
+        let publicationError = ''
         let message = operation.id ? '新闻更新成功！' : '新闻草稿创建成功！'
         if (targetStatus === 'published') {
           try {
@@ -1118,11 +1121,12 @@ export default {
           } catch (publishError) {
             if (!ownsEditor(operation.version)) return
             console.error('发布失败:', publishError)
-            message = '新闻已保存，但发布失败，请在列表中手动发布'
+            publicationError = '新闻已保存，发布失败，请在列表中重试发布'
           }
         }
 
-        showAlert(message)
+        if (publicationError) notify.error(publicationError)
+        else notify.success(message)
         if (!operation.id && targetStatus === 'draft') {
           currentStatus.value = 'draft'
           pagination.page = 1
@@ -1133,7 +1137,7 @@ export default {
       } catch (error) {
         if (!ownsEditor(operation.version)) return
         console.error('提交失败:', error)
-        showAlert(error instanceof Error ? error.message : '操作失败，请重试')
+        notify.error(error instanceof Error ? error.message : '操作失败，请重试')
       } finally {
         if (activeSubmission === operation) {
           activeSubmission = null
@@ -1148,7 +1152,7 @@ export default {
       const version = viewVersion
       if (!ownsView(version)) return
       if (!authStore.hasPermission('news:publish')) {
-        showAlert('您没有权限发布新闻')
+        notify.error('您没有权限发布新闻')
         return
       }
       const confirmed = await showConfirm('确定要发布这条新闻吗？')
@@ -1157,7 +1161,7 @@ export default {
         const response = await newsApi.publishNews(id)
         if (!ownsView(version)) return
         if (response.code === 200) {
-          showAlert('发布成功')
+          notify.success('发布成功')
           loadNews()
         } else {
           throw new Error(response.message || '发布失败')
@@ -1165,7 +1169,7 @@ export default {
       } catch (error) {
         if (!ownsView(version)) return
         console.error('发布失败:', error)
-        showAlert(error instanceof Error ? error.message : '发布失败，请重试')
+        notify.error(error instanceof Error ? error.message : '发布失败，请重试')
       }
     }
 
@@ -1174,7 +1178,7 @@ export default {
       const version = viewVersion
       if (!ownsView(version)) return
       if (!authStore.hasPermission('news:revoke')) {
-        showAlert('您没有权限撤回新闻')
+        notify.error('您没有权限撤回新闻')
         return
       }
       const confirmed = await showConfirm('确定要撤回这条新闻吗？撤回后将变为草稿状态。')
@@ -1183,7 +1187,7 @@ export default {
         const response = await newsApi.revokeNews(id)
         if (!ownsView(version)) return
         if (response.code === 200) {
-          showAlert('撤回成功，已移至草稿箱')
+          notify.success('撤回成功，已移至草稿箱')
           loadNews()
         } else {
           throw new Error(response.message || '撤回失败')
@@ -1191,7 +1195,7 @@ export default {
       } catch (error) {
         if (!ownsView(version)) return
         console.error('撤回失败:', error)
-        showAlert(error instanceof Error ? error.message : '撤回失败，请重试')
+        notify.error(error instanceof Error ? error.message : '撤回失败，请重试')
       }
     }
 
@@ -1200,7 +1204,7 @@ export default {
       const version = viewVersion
       if (!ownsView(version)) return
       if (!authStore.hasPermission('news:delete')) {
-        showAlert('您没有权限删除新闻')
+        notify.error('您没有权限删除新闻')
         return
       }
       const confirmed = await showConfirm('确定要删除这条新闻吗？')
@@ -1209,7 +1213,7 @@ export default {
         const response = await newsApi.deleteNews(newsId)
         if (!ownsView(version)) return
         if (response.code === 200 || response.code === 201) {
-          showAlert('新闻删除成功！')
+          notify.success('新闻删除成功！')
           loadNews()
         } else {
           throw new Error(response.message || '删除失败')
@@ -1217,7 +1221,7 @@ export default {
       } catch (error) {
         if (!ownsView(version)) return
         console.error('删除失败:', error)
-        showAlert(error instanceof Error ? error.message : '删除失败，请重试')
+        notify.error(error instanceof Error ? error.message : '删除失败，请重试')
       }
     }
 

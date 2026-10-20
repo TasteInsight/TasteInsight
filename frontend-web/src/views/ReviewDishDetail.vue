@@ -140,7 +140,7 @@
           <label for="reject-reason" class="block font-medium mb-2 admin-label">拒绝原因</label>
           <textarea id="reject-reason" v-model="rejectReason" :disabled="isSubmitting" :aria-invalid="!!rejectError" :aria-describedby="rejectError ? 'reject-error' : 'reject-help'" rows="4" class="w-full admin-textarea" />
           <p id="reject-help" class="text-sm text-gray-600 mt-2">请说明需要核实或补充的内容，提交人可修改后重新提交。</p>
-          <p v-if="rejectError" id="reject-error" role="alert" class="text-sm text-red-700 mt-2">{{ rejectError }}</p>
+          <p v-if="rejectError" id="reject-error" role="alert" class="text-sm text-red-700 mt-2 admin-field-error">{{ rejectError }}</p>
         </div>
         <div class="admin-dialog-footer">
           <button type="button" :disabled="isSubmitting" class="border hover:bg-gray-100 disabled:opacity-50 admin-button" @click="closeRejectModal">取消</button>

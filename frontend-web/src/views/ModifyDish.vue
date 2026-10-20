@@ -195,7 +195,8 @@ import BatchActionBar from '@/components/Common/BatchActionBar.vue'
 import { useBatchSelection } from '@/composables/useBatchSelection'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
 import { authSessionVersion, getAuthSessionVersion } from '@/utils/auth-session'
-import { showAlert, showConfirmDanger } from '@/composables/useModal'
+import { showConfirmDanger } from '@/composables/useModal'
+import { useNotification } from '@/composables/useNotification'
 
 const PAGE_STATE_KEY = 'modify-dish'
 
@@ -209,6 +210,7 @@ export default {
     BatchActionBar,
   },
   setup() {
+    const notify = useNotification()
     const router = useRouter()
     const route = useRoute()
     useDishStore()
@@ -219,7 +221,7 @@ export default {
     let dishRequest = 0
     const ownsView = (version = viewVersion) => viewActive &&
       viewSession === getAuthSessionVersion() && version === viewVersion
-    
+
     // 默认状态定义
     const defaultState = {
       searchQuery: '',
@@ -227,10 +229,10 @@ export default {
       selectedCanteenId: '',
       selectedWindowId: '',
     }
-    
+
     // 从缓存恢复状态
     const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
-    
+
     const searchQuery = ref(restoredState.searchQuery)
     const showFilter = ref(false)
     const currentPage = ref(restoredState.currentPage)
@@ -238,7 +240,7 @@ export default {
     const isLoading = ref(false)
     const dishes = ref([])
     const totalDishes = ref(0)
-    
+
     // 筛选相关
     const canteens = ref([])
     const windows = ref([])
@@ -246,7 +248,7 @@ export default {
     const selectedWindowId = ref(restoredState.selectedWindowId)
     const listContext = computed(() => [searchQuery.value, selectedCanteenId.value,
       selectedWindowId.value, currentPage.value, pageSize.value])
-    
+
     // 保存页面状态
     const saveState = () => {
       savePageState(PAGE_STATE_KEY, {
@@ -273,7 +275,7 @@ export default {
     const handleCanteenChange = async () => {
       selectedWindowId.value = '' // 重置窗口选择
       windows.value = [] // 清空窗口列表
-      
+
       // 重新加载菜品
       currentPage.value = 1
       saveState() // 保存状态
@@ -314,7 +316,7 @@ export default {
           keyword: searchQuery.value || undefined,
           status: undefined, // 获取所有状态的菜品
         }
-        
+
         // 添加筛选参数
         if (selectedCanteenId.value) {
           params.canteenId = selectedCanteenId.value
@@ -409,10 +411,10 @@ export default {
         if (!ownsOperation()) return
         if (response.code !== 200) throw new Error(response.message || '批量删除失败')
         dishSelection.clear()
-        showAlert(`已删除 ${response.data.deletedCount} 条菜品`)
+        notify.success(`已删除 ${response.data.deletedCount} 条菜品`)
         await loadDishes(true)
       } catch (error) {
-        if (ownsOperation()) showAlert(error instanceof Error ? error.message : '批量删除失败，请重试')
+        if (ownsOperation()) notify.error(error instanceof Error ? error.message : '批量删除失败，请重试')
       } finally {
         isBatchDeleting.value = false
       }
@@ -427,7 +429,7 @@ export default {
 
     const editDish = (dish) => {
       if (!authStore.hasPermission('dish:edit')) {
-        showAlert('您没有权限编辑菜品')
+        notify.error('您没有权限编辑菜品')
         return
       }
       // 保存当前状态后再跳转
@@ -457,7 +459,7 @@ export default {
 
     onMounted(() => {
       loadCanteens()
-      
+
       // 恢复状态后，如果有选中的食堂，需要加载窗口列表
       if (selectedCanteenId.value) {
         canteenApi.getWindows(selectedCanteenId.value, { page: 1, pageSize: 100 })
@@ -470,7 +472,7 @@ export default {
             console.error('加载窗口列表失败:', err)
           })
       }
-      
+
       loadDishes()
     })
 

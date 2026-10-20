@@ -3,7 +3,7 @@
     <div class="admin-panel">
       <Header
         title="操作日志"
-        description="查看系统操作日志，包括管理员操作记录和详细信息"
+        description="查看自己与所有层级下属管理员的操作记录；超级管理员可查看全部记录"
         header-icon="carbon:document-view"
       />
 
@@ -27,12 +27,7 @@
               class="w-full bg-white transition-all cursor-pointer hover:border-gray-400 admin-input"
             >
               <option value="">全部操作</option>
-              <option value="create">创建</option>
-              <option value="update">更新</option>
-              <option value="delete">删除</option>
-              <option value="view">查看</option>
-              <option value="approve">审核通过</option>
-              <option value="reject">审核拒绝</option>
+              <option v-for="(label, action) in actionLabels" :key="action" :value="action">{{ label }}</option>
             </select>
           </span>
         </label>
@@ -240,7 +235,7 @@ import { ref, reactive, onMounted, onActivated } from 'vue'
 import { logApi } from '@/api/modules/log'
 import Header from '@/components/Layout/Header.vue'
 import AdminDialog from '@/components/Common/AdminDialog.vue'
-import { showAlert } from '@/composables/useModal'
+import { useNotification } from '@/composables/useNotification'
 
 export default {
   name: 'LogView',
@@ -249,6 +244,7 @@ export default {
     AdminDialog,
   },
   setup() {
+    const notify = useNotification()
     const loading = ref(false)
     const logs = ref([])
     const selectedLog = ref(null)
@@ -316,7 +312,7 @@ export default {
         }
       } catch (error) {
         console.error('加载日志列表失败:', error)
-        showAlert('加载日志列表失败，请刷新重试')
+        notify.error('加载日志列表失败，请刷新重试')
         logs.value = []
       } finally {
         loading.value = false
@@ -373,25 +369,26 @@ export default {
 
     const formatDetails = (details) => JSON.stringify(details, null, 2)
 
-    // 获取操作标签
-    const getActionLabel = (action) => {
-      const actionMap = {
-        create: '创建',
-        update: '更新',
-        delete: '删除',
-        view: '查看',
-        approve: '审核通过',
-        reject: '审核拒绝',
-        login: '登录',
-        logout: '退出',
-      }
-      return actionMap[action] || action
+    const actionLabels = {
+      create: '创建', update: '更新', delete: '删除', view: '查看',
+      approve: '审核通过', reject: '审核拒绝', access_denied: '权限拒绝',
+      publish: '发布', revoke: '撤回', enable: '启用', disable: '停用', complete: '完成',
+      'admin:create': '创建管理员', 'admin:permissions': '调整管理员授权',
+      'admin:handover': '移交下属', 'admin:retire': '停用管理员',
+      'admin:password:reset': '重置密码', 'admin:password:change': '修改密码',
+      login: '登录', logout: '退出',
     }
+    const getActionLabel = (action) => actionLabels[action] || action
 
     // 获取操作样式类
     const getActionClass = (action) => {
       const classMap = {
         create: 'bg-green-100 text-green-800',
+        'admin:create': 'bg-green-100 text-green-800',
+        'admin:permissions': 'bg-purple-100 text-purple-800',
+        'admin:handover': 'bg-purple-100 text-purple-800',
+        'admin:retire': 'bg-gray-100 text-gray-800',
+        access_denied: 'bg-red-100 text-red-800',
         update: 'bg-blue-100 text-blue-800',
         delete: 'bg-red-100 text-red-800',
         view: 'bg-gray-100 text-gray-800',
@@ -427,6 +424,7 @@ export default {
       formatDateTime,
       formatLocalDateBoundary,
       formatDetails,
+      actionLabels,
       getActionLabel,
       getActionClass,
     }

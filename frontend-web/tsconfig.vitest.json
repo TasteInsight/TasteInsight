@@ -1,6 +1,6 @@
 {
   "extends": "./tsconfig.app.json",
-  "include": ["env.d.ts", "src/**/*", "tests/**/*.ts", "tailwind.config.ts"],
+  "include": ["../backend/src/auth/permissions.constants.ts", "env.d.ts", "src/**/*", "tests/**/*.ts", "tailwind.config.ts"],
   "exclude": [],
   "compilerOptions": {
     "types": ["vite/client", "node", "vitest/globals"],

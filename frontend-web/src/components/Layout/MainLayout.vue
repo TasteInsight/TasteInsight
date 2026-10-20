@@ -6,7 +6,7 @@
     <main id="admin-main" class="admin-main admin-focus-target" tabindex="-1">
       <router-view v-slot="{ Component }">
         <template v-if="$route.meta.keepAlive">
-          <keep-alive>
+          <keep-alive :key="authStore.authorizationRevision">
             <component :is="Component" :key="viewKey" />
           </keep-alive>
         </template>
@@ -20,15 +20,18 @@
 
 <script>
 import Sidebar from './Sidebar.vue'
+import { useAuthStore } from '@/store/modules/use-auth-store'
 
 export default {
   name: 'MainLayout',
+  setup() { return { authStore: useAuthStore() } },
   components: {
     Sidebar,
   },
   computed: {
     viewKey() {
-      return this.$route.name === 'AddSubDish' ? this.$route.fullPath : this.$route.path
+      const path = this.$route.name === 'AddSubDish' ? this.$route.fullPath : this.$route.path
+      return `${this.authStore.authorizationRevision}:${path}`
     },
   },
 }

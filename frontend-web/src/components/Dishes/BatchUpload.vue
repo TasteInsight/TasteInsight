@@ -69,7 +69,7 @@
         <AppIcon class="iconify mr-1" icon="carbon:checkmark-filled"></AppIcon>
         已上传文件: {{ uploadedFile.name }}
       </p>
-      <p v-if="uploadError" class="mt-2 text-red-600 flex items-center">
+      <p v-if="uploadError" class="mt-2 text-red-600 flex items-center admin-field-error">
         <AppIcon class="iconify mr-1" icon="carbon:warning"></AppIcon>
         {{ uploadError }}
       </p>
@@ -139,7 +139,7 @@
 
 <script>
 import { ref, computed } from 'vue'
-import { showAlert } from '@/composables/useModal'
+import { useNotification } from '@/composables/useNotification'
 
 export default {
   name: 'BatchUpload',
@@ -151,6 +151,7 @@ export default {
   },
   emits: ['submit', 'cancel'],
   setup(props, { emit }) {
+    const notify = useNotification()
     const fileInput = ref(null)
     const uploadedFile = ref(null)
     const isDragging = ref(false)
@@ -224,7 +225,7 @@ export default {
       // 模拟下载模板文件
       console.log('下载模板文件...')
       // 这里应该调用API下载模板
-      showAlert('模板下载功能开发中...')
+      notify.info('模板下载功能开发中...')
     }
 
     const triggerFileInput = () => {
@@ -286,7 +287,7 @@ export default {
       const validItems = parsedData.value.filter((item) => item.status === '有效')
 
       if (validItems.length === 0) {
-        showAlert('没有有效数据可导入')
+        notify.info('没有有效数据可导入')
         return
       }
 

@@ -1,10 +1,13 @@
 import request from '@/utils/request'
-import type { LoginCredentials, AdminLoginResponse, TokenInfo, ApiResponse } from '@/types/api'
+import type { LoginCredentials, AdminLoginResponse, AdminSession, TokenInfo, ApiResponse } from '@/types/api'
 
 /**
  * 认证相关 API
  */
 export const authApi = {
+  getSession(): Promise<ApiResponse<AdminSession>> {
+    return request.get('/auth/admin/session')
+  },
   /**
    * 管理员登录
    * @param credentials 登录凭证

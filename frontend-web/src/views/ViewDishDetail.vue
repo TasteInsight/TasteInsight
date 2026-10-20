@@ -499,7 +499,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { dishApi } from '@/api/modules/dish'
 import Header from '@/components/Layout/Header.vue'
 import AdminImage from '@/components/Common/AdminImage.vue'
-import { showAlert } from '@/composables/useModal'
+import { useNotification } from '@/composables/useNotification'
 import { getAuthSessionVersion } from '@/utils/auth-session'
 
 export default {
@@ -509,6 +509,7 @@ export default {
     Header,
   },
   setup() {
+    const notify = useNotification()
     const router = useRouter()
     const route = useRoute()
     const dishId = route.params.id
@@ -637,7 +638,7 @@ export default {
         }
       } catch (error) {
         console.error('获取菜品信息失败:', error)
-        showAlert('获取菜品信息失败，请重试')
+        notify.error('获取菜品信息失败，请重试')
         router.push('/modify-dish')
       } finally {
         isLoading.value = false

@@ -117,7 +117,7 @@
                 placeholder="说明未通过审核的原因"
               />
             </label>
-            <p v-if="actionError" role="alert" class="admin-error">{{ actionError }}</p>
+            <p v-if="actionError" role="alert" class="admin-error admin-field-error">{{ actionError }}</p>
             <div class="admin-actions">
               <button
                 v-if="needsRefresh"

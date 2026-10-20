@@ -388,7 +388,8 @@ import AdminImage from '@/components/Common/AdminImage.vue'
 import AdminDialog from '@/components/Common/AdminDialog.vue'
 import Pagination from '@/components/Common/Pagination.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
-import { showAlert, showConfirm } from '@/composables/useModal'
+import { showConfirm } from '@/composables/useModal'
+import { useNotification } from '@/composables/useNotification'
 import { getAuthSessionVersion } from '@/utils/auth-session'
 
 const PAGE_STATE_KEY = 'report-manage'
@@ -408,13 +409,14 @@ export default defineComponent({
     Pagination,
   },
   setup() {
+    const notify = useNotification()
     const authStore = useAuthStore()
     const reports = ref<Report[]>([])
     const isLoading = ref(false)
     const isHandling = ref(false)
     const pageSize = ref(20)
     const totalReports = ref(0)
-    
+
     // 默认状态定义
     const defaultState: {
       currentPage: number
@@ -425,7 +427,7 @@ export default defineComponent({
       statusFilter: '',
       targetTypeFilter: '',
     }
-    
+
     // 从缓存恢复状态
     const restoredState = restorePageState(PAGE_STATE_KEY, defaultState)
     const currentPage = ref(restoredState.currentPage)
@@ -440,7 +442,7 @@ export default defineComponent({
       authStore.hasPermission('report:handle') && canAccessTargetType(report.targetType)
     const canDeleteContent = (report: Report) =>
       canHandleReport(report) && authStore.hasPermission(reportTargets[report.targetType].deletePermission)
-    
+
     // 保存页面状态
     const saveState = () => {
       savePageState(PAGE_STATE_KEY, {
@@ -515,7 +517,7 @@ export default defineComponent({
         }
       } catch (error) {
         console.error('加载举报列表失败:', error)
-        showAlert('加载举报列表失败，请刷新重试')
+        notify.error('加载举报列表失败，请刷新重试')
         reports.value = []
         totalReports.value = 0
       } finally {
@@ -538,13 +540,13 @@ export default defineComponent({
     const handleReport = async (report: Report, action: 'delete_content' | 'reject_report') => {
       if (isHandling.value || report.status !== 'pending') return
       if (!canHandleReport(report)) {
-        showAlert('您没有权限处理举报')
+        notify.error('您没有权限处理举报')
         return
       }
       const deleting = action === 'delete_content'
       const target = reportTargets[report.targetType]
       if (deleting && !canDeleteContent(report)) {
-        showAlert(`您没有权限删除${target.label}`)
+        notify.error(`您没有权限删除${target.label}`)
         return
       }
       if (deleting && (!report.targetContent || report.targetContent.isDeleted)) return
@@ -558,7 +560,7 @@ export default defineComponent({
         )
         if (!confirmed || sessionVersion !== getAuthSessionVersion()) return
         if (!canHandleReport(report) || (deleting && !canDeleteContent(report))) {
-          showAlert('权限已变更，请刷新后重试')
+          notify.info('权限已变更，请刷新后重试')
           return
         }
         const requestData: ReportHandleRequest = deleting
@@ -568,7 +570,7 @@ export default defineComponent({
         if (sessionVersion !== getAuthSessionVersion()) return
 
         if (response.code === 200) {
-          showAlert(deleting ? '删除成功' : '处理成功')
+          notify.success(deleting ? '删除成功' : '处理成功')
           await loadReports()
           // 如果详情对话框打开，更新选中的举报信息
           if (selectedReport.value && selectedReport.value.id === report.id) {
@@ -581,12 +583,12 @@ export default defineComponent({
             }
           }
         } else {
-          showAlert(response.message || (deleting ? '删除失败' : '处理失败'))
+          notify.error(response.message || (deleting ? '删除失败' : '处理失败'))
         }
       } catch (error) {
         if (sessionVersion !== getAuthSessionVersion()) return
         console.error('处理举报失败:', error)
-        showAlert(deleting ? `删除${target.label}失败，请重试` : '处理举报失败，请重试')
+        notify.error(deleting ? `删除${target.label}失败，请重试` : '处理举报失败，请重试')
       } finally {
         isHandling.value = false
       }

@@ -81,7 +81,19 @@ export interface TokenInfo {
 /**
  * 管理员登录响应
  */
-export interface AdminLoginResponse {
+export interface AuthorizationCatalog {
+  groups: { id: string; name: string; permissions: { id: string; label: string }[] }[]
+  dependencies: Record<string, readonly string[]>
+  globalOnly: readonly string[]
+}
+
+export interface AdminSession {
+  admin: Admin
+  permissions: string[]
+  authorization: AuthorizationCatalog
+}
+
+export interface AdminLoginResponse extends AdminSession {
   token: TokenInfo
   admin: Admin
   permissions: string[]
@@ -420,10 +432,15 @@ export interface Admin {
   id: string
   username: string
   role: string
+  mustChangePassword?: boolean
   scope: 'GLOBAL' | 'CANTEENS'
   canteenIds: string[]
   canteens: { id: string; name: string }[]
   createdBy?: string | null
+  managerId?: string | null
+  hierarchyVersion?: number
+  deletedAt?: string | null
+  directReportCount?: number
   createdAt: string
 }
 

@@ -1,3 +1,5 @@
+import { notify } from '@/composables/useNotification'
+vi.mock('@/composables/useNotification', () => { const notify = { success: vi.fn(), error: vi.fn(), info: vi.fn() }; return { useNotification: () => notify, notify } })
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import Settings from '@/components/ContentModerationSettings.vue'
@@ -136,7 +138,7 @@ describe('内容审核待办', () => {
     await wrapper.get('form').trigger('submit')
     await flushPromises()
     expect(api.decide).toHaveBeenCalledWith('t1', { approved: false, reason: '请修改昵称' })
-    expect(wrapper.text()).toContain('已拒绝该内容')
+    expect(notify.success).toHaveBeenCalledWith('已拒绝该内容')
   })
   it('requests failed tasks and keeps decision input after a failed submission', async () => {
     const wrapper = mount(Tasks, { props: { canEdit: true } })

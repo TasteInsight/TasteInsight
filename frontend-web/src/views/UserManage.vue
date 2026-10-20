@@ -90,6 +90,8 @@
               <tr v-for="admin in filteredAdmins" :key="admin.id" class="hover:bg-gray-50">
                 <td class="py-4 px-6">
                   <div class="font-medium">{{ admin.username }}</div>
+                  <div v-if="admin.deletedAt" class="text-xs text-amber-700 mt-1">已停用 · 下属待移交</div>
+                  <div v-if="admin.directReportCount" class="text-xs text-gray-500 mt-1">直属下属 {{ admin.directReportCount }} 人</div>
                 </td>
                 <td class="py-4 px-6">
                   <span
@@ -103,6 +105,12 @@
                 <td class="py-4 px-6 text-center" @click.stop>
                   <div class="flex items-center justify-center gap-2">
                     <button
+                      v-if="admin.directReportCount && authStore.hasPermission('admin:edit')"
+                      class="text-tsinghua-purple hover:bg-purple-50 admin-button"
+                      @click.stop="openHandover(admin)"
+                    ><AppIcon class="iconify" icon="carbon:user-follow"></AppIcon>移交下属</button>
+                    <button
+                      v-if="!admin.deletedAt"
                       class="rounded-full hover:bg-gray-200 admin-icon-button"
                       :class="authStore.hasPermission('admin:edit') ? 'text-tsinghua-purple' : 'text-gray-400 cursor-not-allowed'"
                       @click.stop="!authStore.hasPermission('admin:edit') ? null : editAdmin(admin)"
@@ -111,6 +119,7 @@
                       <AppIcon class="iconify" icon="carbon:edit"></AppIcon>
                     </button>
                     <button
+                      v-if="!admin.deletedAt"
                       class="rounded-full hover:bg-gray-200 admin-icon-button"
                       :class="authStore.hasPermission('admin:edit') ? 'text-orange-500' : 'text-gray-400 cursor-not-allowed'"
                       @click.stop="!authStore.hasPermission('admin:edit') ? null : openResetPasswordModal(admin)"
@@ -119,10 +128,11 @@
                       <AppIcon class="iconify" icon="carbon:password"></AppIcon>
                     </button>
                     <button
+                      v-if="!admin.deletedAt"
                       class="rounded-full hover:bg-gray-200 admin-icon-button"
                       :class="authStore.hasPermission('admin:delete') ? 'text-red-500' : 'text-gray-400 cursor-not-allowed'"
                       @click.stop="!authStore.hasPermission('admin:delete') ? null : deleteAdmin(admin)"
-                      :title="!authStore.hasPermission('admin:delete') ? '无权限删除' : '删除'"
+                      :title="!authStore.hasPermission('admin:delete') ? '缺少停用权限' : '停用管理员'"
                     >
                       <AppIcon class="iconify" icon="carbon:trash-can"></AppIcon>
                     </button>
@@ -387,7 +397,7 @@
                 </fieldset>
                 <p v-if="errors.scope" class="mt-1 text-sm text-red-500">{{ errors.scope }}</p>
                 <p class="mt-2 text-sm text-gray-500">
-                  操作权限单独分配。指定食堂范围至少选择一个食堂；学生身份审核与社区管理仅限全局范围。
+                  操作权限单独分配。指定食堂范围至少选择一个食堂；学生身份审核、社区管理和推荐实验仅限全局范围。
                 </p>
                 <p v-if="editingAdmin" class="mt-1 text-sm text-gray-500">缩小范围会同步收窄其下级账号的食堂范围。</p>
               </div>
@@ -480,6 +490,36 @@
         </form>
       </div>
     </div>
+
+    <AdminDialog v-if="handoverTarget" :open="!!handoverTarget" label="移交下属" @close="closeHandover">
+      <div class="w-full max-w-md mx-4 admin-dialog-panel" @click.stop>
+        <div class="admin-dialog-header">
+          <h3 class="text-lg font-semibold text-gray-800">移交 {{ handoverTarget.username }} 的下属</h3>
+          <button type="button" class="admin-icon-button text-gray-500 hover:text-gray-700" aria-label="关闭移交下属" :disabled="handoverSubmitting" @click="closeHandover">
+            <AppIcon class="iconify text-xl" icon="carbon:close"></AppIcon>
+          </button>
+        </div>
+        <form class="space-y-4 admin-dialog-body" @submit.prevent="submitHandover">
+          <p class="text-sm text-gray-600">直属下属连同各自的管理层级一起移交，现有账号、权限和创建记录保留。新负责人的权限及食堂范围须覆盖待移交账号。</p>
+          <div>
+            <label for="handover-manager" class="block mb-2 admin-label">新负责人</label>
+            <select id="handover-manager" v-model="handoverManagerId" class="w-full admin-input" :disabled="handoverLoading || handoverSubmitting" required @change="handoverError = ''">
+              <option value="">{{ handoverLoading ? '加载负责人...' : '请选择新负责人' }}</option>
+              <option v-for="candidate in handoverCandidates" :key="candidate.id" :value="candidate.id">{{ candidate.username }} · {{ formatAdminScope(candidate) }}</option>
+            </select>
+          </div>
+          <label v-if="!handoverTarget.deletedAt && authStore.hasPermission('admin:delete')" class="flex items-center gap-2 text-sm text-gray-700">
+            <input v-model="handoverRetireSource" type="checkbox" :disabled="handoverSubmitting" class="accent-tsinghua-purple" />
+            移交完成后停用原负责人账号
+          </label>
+          <p v-if="handoverError" class="admin-field-error" role="alert">{{ handoverError }}</p>
+          <div class="flex justify-end gap-3 admin-actions">
+            <button type="button" class="admin-button border border-gray-300" :disabled="handoverSubmitting" @click="closeHandover">取消</button>
+            <button type="submit" class="admin-button admin-button-primary" :disabled="handoverLoading || handoverSubmitting || !handoverManagerId">{{ handoverSubmitting ? '移交中...' : handoverRetireSource ? '确认移交并停用' : '确认移交' }}</button>
+          </div>
+        </form>
+      </div>
+    </AdminDialog>
 
     <!-- 重置子管理员密码的弹窗 -->
     <AdminDialog
@@ -591,15 +631,16 @@
 
 <script>
 import { formatAdminScope } from '@/utils/admin-scope'
-import { reactive, ref, computed, onMounted, onActivated } from 'vue'
+import { reactive, ref, computed, watch, onMounted, onActivated } from 'vue'
 import { permissionApi } from '@/api/modules/permission'
 import { canteenApi } from '@/api/modules/canteen'
-import { campusPermissionGroups, campusGlobalPermissions } from '@/config/campus-permissions'
+import { generateAdminPassword } from '@/utils/admin-password'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import AdminDialog from '@/components/Common/AdminDialog.vue'
 import { savePageState, restorePageState } from '@/utils/page-state-cache'
-import { showAlert, showConfirmDanger } from '@/composables/useModal'
+import { showConfirmDanger } from '@/composables/useModal'
+import { useNotification } from '@/composables/useNotification'
 
 const PAGE_STATE_KEY = 'user-manage'
 
@@ -610,6 +651,7 @@ export default {
     AdminDialog,
   },
   setup() {
+    const notify = useNotification()
     const authStore = useAuthStore()
     const isSubmitting = ref(false)
     const loading = ref(false)
@@ -617,6 +659,13 @@ export default {
     const editingAdmin = ref(null) // 当前编辑的管理员
     const adminList = ref([]) // 子管理员列表
     const canteenList = ref([]) // 食堂列表
+    const handoverTarget = ref(null)
+    const handoverManagerId = ref('')
+    const handoverRetireSource = ref(false)
+    const handoverCandidates = ref([])
+    const handoverLoading = ref(false)
+    const handoverSubmitting = ref(false)
+    const handoverError = ref('')
     
     // 重置子管理员密码相关状态
     const showResetPasswordModal = ref(false)
@@ -689,7 +738,7 @@ export default {
     })
 
     const roles = [
-      { value: 'super_admin', label: '超级管理员', desc: '系统所有权限' },
+      { value: 'full_access', label: '全部可分配权限', desc: '按当前管理范围分配权限' },
       { value: 'canteen_manager', label: '食堂主管', desc: '管理多个食堂' },
       { value: 'restaurant_manager', label: '餐厅经理', desc: '单个食堂管理' },
       { value: 'kitchen_operator', label: '后厨操作员', desc: '菜品与库存管理' },
@@ -697,156 +746,24 @@ export default {
       { value: 'auditor', label: '内容审核员', desc: '审核评价、评论和处理举报' },
     ]
 
-    // 所有权限组定义
-    const allPermissionGroups = [
-      ...campusPermissionGroups,
-      {
-        id: 'dishes',
-        name: '菜品管理',
-        permissions: [
-          { id: 'dish:view', label: '浏览菜品列表' },
-          { id: 'dish:create', label: '新建菜品' },
-          { id: 'dish:edit', label: '编辑菜品' },
-          { id: 'dish:delete', label: '删除菜品' },
-        ],
-      },
-      {
-        id: 'canteen',
-        name: '食堂与窗口管理',
-        permissions: [
-          { id: 'canteen:view', label: '浏览食堂/窗口' },
-          { id: 'canteen:create', label: '创建食堂/窗口' },
-          { id: 'canteen:edit', label: '编辑食堂/窗口' },
-          { id: 'canteen:delete', label: '删除食堂/窗口' },
-        ],
-      },
-      {
-        id: 'review',
-        name: '评价和评论审核',
-        permissions: [
-          { id: 'review:approve', label: '审核评价' },
-          { id: 'review:delete', label: '删除评价' },
-          { id: 'comment:approve', label: '审核评论' },
-          { id: 'comment:delete', label: '删除评论' },
-          { id: 'report:handle', label: '处理举报' },
-          { id: 'upload:approve', label: '审核菜品上传' },
-        ],
-      },
-      // {
-      //   id: 'log',
-      //   name: '操作日志',
-      //   permissions: [
-      //     { id: 'log:view', label: '浏览日志' },
-      //   ],
-      // },
-      // {
-      //   id: 'log',
-      //   name: '操作日志',
-      //   permissions: [
-      //     { id: 'log:view', label: '浏览日志' },
-      //   ],
-      // },
-      {
-        id: 'news',
-        name: '新闻管理',
-        permissions: [
-          { id: 'news:view', label: '浏览新闻' },
-          { id: 'news:create', label: '创建新闻' },
-          { id: 'news:edit', label: '编辑新闻' },
-          { id: 'news:publish', label: '发布新闻' },
-          { id: 'news:revoke', label: '撤销新闻' },
-          { id: 'news:delete', label: '删除新闻' },
-        ],
-      },
-      // {
-      //   id: 'log',
-      //   name: '操作日志',
-      //   permissions: [
-      //     { id: 'log:view', label: '浏览日志' },
-      //   ],
-      // },
-      {
-        id: 'admin',
-        name: '子管理员管理',
-        permissions: [
-          { id: 'admin:view', label: '浏览子管理员' },
-          { id: 'admin:create', label: '创建子管理员' },
-          { id: 'admin:edit', label: '编辑子管理员' },
-          { id: 'admin:delete', label: '删除子管理员' },
-        ],
-      },
-      {
-        id: 'config',
-        name: '配置管理',
-        permissions: [
-          { id: 'config:view', label: '查看配置' },
-          { id: 'config:edit', label: '编辑配置' },
-        ],
-      },
-      {
-        id: 'experiment',
-        name: '推荐管理',
-        permissions: [
-          { id: 'experiment:view', label: '浏览实验' },
-          { id: 'experiment:create', label: '创建实验' },
-          { id: 'experiment:edit', label: '编辑实验' },
-          { id: 'experiment:delete', label: '删除实验' },
-        ],
-      },
-    ]
+    const allPermissionGroups = computed(() => authStore.authorization.groups)
+    const permissionGroups = computed(() => allPermissionGroups.value
+      .map(group => ({ ...group, permissions: group.permissions.filter(permission =>
+        authStore.permissions.includes(permission.id) &&
+        (formData.scope === 'GLOBAL' || !authStore.authorization.globalOnly.includes(permission.id)),
+      ) }))
+      .filter(group => group.permissions.length > 0))
 
-    // 过滤后的权限组：只显示当前用户拥有的权限
-    // 后端已为 superadmin 返回所有权限，前端只需检查权限列表
-    const permissionGroups = computed(() => {
-      const currentUserPermissions = authStore.permissions || []
-      
-      // 只显示当前用户拥有的权限
-      return allPermissionGroups
-        .filter(group => authStore.user?.scope === 'GLOBAL' || !campusPermissionGroups.some(campusGroup => campusGroup.id === group.id))
-        .map(group => ({
-          ...group,
-          permissions: group.permissions.filter(permission => 
-            currentUserPermissions.includes(permission.id)
-          )
-        }))
-        .filter(group => group.permissions.length > 0) // 过滤掉空权限组
+    watch(() => formData.scope, scope => {
+      if (scope === 'CANTEENS') formData.permissions = formData.permissions.filter(permission => !authStore.authorization.globalOnly.includes(permission))
     })
-
-    // 权限依赖关系配置
-    const permissionDependencies = {
-      'dish:create': ['canteen:view'],
-      'dish:edit': ['dish:view', 'canteen:view'],
-      'dish:delete': ['dish:view'],
-      'canteen:create': ['canteen:view'],
-      'canteen:edit': ['canteen:view'],
-      'canteen:delete': ['canteen:view'],
-      'review:approve': ['dish:view', 'canteen:view'], // 审核评价可能需要查看菜品和食堂
-      'review:delete': ['review:approve'], // 删除评价需要审核权限
-      'comment:approve': ['dish:view', 'canteen:view'], // 审核评论可能需要查看菜品和食堂
-      'comment:delete': ['comment:approve'], // 删除评论需要审核权限
-      'upload:approve': ['dish:view', 'canteen:view'], // 审核上传需要查看菜品
-      'news:create': ['news:view'],
-      'news:edit': ['news:view'],
-      'news:publish': ['news:view'],
-      'news:revoke': ['news:view'],
-      'news:delete': ['news:view'],
-      'admin:create': ['admin:view', 'canteen:view'], // 创建管理员可能需要分配食堂
-      'admin:edit': ['admin:view'],
-      'admin:delete': ['admin:view'],
-      'config:edit': ['config:view'], // 编辑配置需要查看权限
-      'post:approve': ['post:view'],
-      'post:delete': ['post:view'],
-      'experiment:create': ['experiment:view'],
-      'experiment:edit': ['experiment:view'],
-      'experiment:delete': ['experiment:view'],
-    }
 
     const getPermissionClosure = (permissionIds) => {
       const resolved = new Set()
       const visit = (permissionId) => {
         if (resolved.has(permissionId)) return
         resolved.add(permissionId)
-        ;(permissionDependencies[permissionId] || []).forEach(visit)
+        ;(authStore.authorization.dependencies[permissionId] || []).forEach(visit)
       }
 
       permissionIds.forEach(visit)
@@ -946,7 +863,7 @@ export default {
         }
       } catch (error) {
         console.error('加载子管理员列表失败:', error)
-        showAlert('加载子管理员列表失败，请刷新重试')
+        notify.error('加载子管理员列表失败，请刷新重试')
         adminList.value = []
       } finally {
         loading.value = false
@@ -1003,11 +920,20 @@ export default {
       viewMode.value = 'edit'
     }
 
-    // 删除管理员
+    // 停用选中的管理员账号
     const deleteAdmin = async (admin) => {
+      if (admin.directReportCount) {
+        if (!authStore.hasPermission('admin:edit')) {
+          notify.error('该账号有下属，请由具备人员编辑权限的管理员完成移交后停用')
+          return
+        }
+        await openHandover(admin, true)
+        return
+      }
       const confirmed = await showConfirmDanger(
-        `确定要删除子管理员"${admin.username}"吗？此操作不可恢复！`,
-        '确认删除'
+        `确定停用管理员“${admin.username}”吗？该账号的登录权限立即失效，下属账号继续有效，历史操作记录保留。`,
+        '确认停用',
+        '确认停用'
       )
       if (!confirmed) {
         return
@@ -1016,14 +942,78 @@ export default {
       try {
         const response = await permissionApi.deleteAdmin(admin.id)
         if (response.code === 200) {
-          showAlert('删除成功！')
+          notify.success('管理员已停用')
           loadAdmins()
         } else {
           throw new Error(response.message || '删除失败')
         }
       } catch (error) {
-        console.error('删除子管理员失败:', error)
-        showAlert(error instanceof Error ? error.message : '删除子管理员失败，请重试')
+        console.error('停用子管理员失败:', error)
+        notify.error(error instanceof Error ? error.message : '停用子管理员失败，请重试')
+      }
+    }
+
+    const closeHandover = () => {
+      if (handoverSubmitting.value) return
+      handoverTarget.value = null
+      handoverError.value = ''
+    }
+
+    const openHandover = async (admin, retireSource = false) => {
+      handoverTarget.value = admin
+      const target = handoverTarget.value
+      handoverManagerId.value = ''
+      handoverRetireSource.value = retireSource
+      handoverError.value = ''
+      handoverCandidates.value = []
+      handoverLoading.value = true
+      try {
+        const candidates = []
+        let page = 1
+        let pages = 1
+        do {
+          const response = await permissionApi.getAdmins({ page, pageSize: 100 })
+          if (response.code !== 200 || !response.data) throw new Error(response.message || '加载负责人失败')
+          candidates.push(...response.data.items)
+          pages = response.data.meta.totalPages
+          page += 1
+        } while (page <= pages)
+        if (handoverTarget.value !== target) return
+        const byId = new Map(candidates.map(candidate => [candidate.id, candidate]))
+        const outsideSource = candidate => {
+          const visited = new Set()
+          let current = candidate
+          while (current && !visited.has(current.id)) {
+            if (current.id === admin.id) return false
+            visited.add(current.id)
+            current = byId.get(current.managerId)
+          }
+          return true
+        }
+        const self = authStore.user
+        handoverCandidates.value = [...(self?.id ? [self] : []), ...candidates]
+          .filter((candidate, index, list) => !candidate.deletedAt && outsideSource(candidate) && list.findIndex(item => item.id === candidate.id) === index)
+      } catch (error) {
+        if (handoverTarget.value === target) handoverError.value = error instanceof Error ? error.message : '加载负责人失败'
+      } finally {
+        if (handoverTarget.value === target) handoverLoading.value = false
+      }
+    }
+
+    const submitHandover = async () => {
+      if (!handoverTarget.value || !handoverManagerId.value || handoverSubmitting.value) return
+      handoverSubmitting.value = true
+      handoverError.value = ''
+      try {
+        const response = await permissionApi.handoverAdmin(handoverTarget.value.id, handoverManagerId.value, handoverRetireSource.value)
+        if (response.code !== 200) throw new Error(response.message || '移交失败')
+        notify.success(handoverRetireSource.value ? '下属已移交，原负责人已停用' : '下属已移交')
+        handoverTarget.value = null
+        await loadAdmins()
+      } catch (error) {
+        handoverError.value = error instanceof Error ? error.message : '移交失败，请重试'
+      } finally {
+        handoverSubmitting.value = false
       }
     }
 
@@ -1037,7 +1027,7 @@ export default {
     // 重置表单
     const resetForm = () => {
       formData.username = ''
-      formData.password = 'Tsinghua@2025'
+      formData.password = generateAdminPassword()
       formData.role = ''
       formData.customRole = ''
       formData.scope = authStore.user?.scope || 'CANTEENS'
@@ -1045,30 +1035,7 @@ export default {
       formData.permissions = []
     }
 
-    // 生成随机密码
-    const generatePassword = () => {
-      // 使用更安全、常用的特殊字符，确保生成的密码符合后端验证规则
-      const lowercase = 'abcdefghijklmnopqrstuvwxyz'
-      const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-      const numbers = '0123456789'
-      const specialChars = '!@#$%^&*()_+-=?'
-      const allChars = lowercase + uppercase + numbers + specialChars
-      
-      let password = ''
-      // 确保至少包含一个小写字母、大写字母、数字和特殊字符
-      password += lowercase.charAt(Math.floor(Math.random() * lowercase.length))
-      password += uppercase.charAt(Math.floor(Math.random() * uppercase.length))
-      password += numbers.charAt(Math.floor(Math.random() * numbers.length))
-      password += specialChars.charAt(Math.floor(Math.random() * specialChars.length))
-      
-      // 填充剩余长度（至少12位）
-      for (let i = password.length; i < 12; i++) {
-        password += allChars.charAt(Math.floor(Math.random() * allChars.length))
-      }
-      
-      // 打乱字符顺序
-      formData.password = password.split('').sort(() => Math.random() - 0.5).join('')
-    }
+    const generatePassword = () => { formData.password = generateAdminPassword() }
 
     // 选择角色
     const selectRole = (role) => {
@@ -1099,7 +1066,7 @@ export default {
       const currentUserPermissions = authStore.permissions || []
       
       const permissionMap = {
-        super_admin: allPermissionGroups
+        full_access: permissionGroups.value
           .flatMap((g) => g.permissions.map((p) => p.id))
           .filter(p => currentUserPermissions.includes(p)),
         canteen_manager: [
@@ -1162,7 +1129,7 @@ export default {
       const index = formData.permissions.indexOf(permissionId)
       if (index > -1) {
         // 取消选中
-        formData.permissions.splice(index, 1)
+        formData.permissions = removePermissionDependents(formData.permissions, [permissionId])
       } else {
         const permissionsToAdd = getPermissionClosure([permissionId])
         const unavailableDependencies = permissionsToAdd.filter(
@@ -1198,21 +1165,18 @@ export default {
       return allPermissions.every(p => formData.permissions.includes(p)) && allPermissions.length > 0
     })
 
-    // 切换某组权限全选/取消
-    const toggleGroupPermissions = (group) => {
-      const allGroupPermissions = group.permissions.map(p => p.id)
-      const isSelected = isGroupSelected(group)
+    const removePermissionDependents = (selected, removed) => selected.filter(permission =>
+      !getPermissionClosure([permission]).some(dependency => removed.includes(dependency)))
 
-      if (isSelected) {
-        // 取消全选：移除该组所有权限
-        formData.permissions = formData.permissions.filter(p => !allGroupPermissions.includes(p))
+    const toggleGroupPermissions = group => {
+      const ids = group.permissions.map(permission => permission.id)
+      if (isGroupSelected(group)) {
+        formData.permissions = removePermissionDependents(formData.permissions, ids)
       } else {
-        // 全选：添加该组未选中的权限
-        allGroupPermissions.forEach(p => {
-          if (!formData.permissions.includes(p)) {
-            formData.permissions.push(p)
-          }
-        })
+        const closure = getPermissionClosure([...formData.permissions, ...ids])
+        const unavailable = closure.filter(permission => !authStore.permissions.includes(permission))
+        if (unavailable.length) { errors.permissions = `缺少依赖权限，无法分配：${unavailable.join(', ')}`; return }
+        formData.permissions = closure
       }
     }
 
@@ -1225,7 +1189,7 @@ export default {
         formData.permissions = []
       } else {
         // 全选：添加所有当前用户拥有的权限
-        formData.permissions = [...allPermissions]
+        formData.permissions = getPermissionClosure(allPermissions)
       }
     }
 
@@ -1267,8 +1231,8 @@ export default {
       const currentUserPermissions = authStore.permissions || []
       
       if (formData.permissions && formData.permissions.length > 0) {
-        if ((formData.scope !== 'GLOBAL') && formData.permissions.some(permission => campusGlobalPermissions.includes(permission))) {
-          errors.permissions = '学生身份审核与社区管理权限仅可分配给全局管理范围，请调整范围或取消相关权限'
+        if ((formData.scope !== 'GLOBAL') && formData.permissions.some(permission => authStore.authorization.globalOnly.includes(permission))) {
+          errors.permissions = '学生身份审核、社区管理和推荐实验权限仅可分配给全局管理范围，请调整范围或取消相关权限'
           hasError = true
         }
         const invalidPermissions = formData.permissions.filter(p => !currentUserPermissions.includes(p))
@@ -1315,7 +1279,7 @@ export default {
           )
 
           if (response.code === 200) {
-            showAlert('权限配置已更新！')
+            notify.success('权限配置已更新！')
             await loadAdmins()
             backToList()
           } else {
@@ -1340,7 +1304,7 @@ export default {
           const response = await permissionApi.createAdmin(createData)
 
           if (response.code === 200 && response.data) {
-            showAlert('子管理员创建成功！')
+            notify.success('子管理员创建成功！')
             await loadAdmins()
             backToList()
           } else {
@@ -1349,7 +1313,7 @@ export default {
         }
       } catch (error) {
         console.error('保存失败:', error)
-        showAlert(error instanceof Error ? error.message : '保存失败，请重试')
+        notify.error(error instanceof Error ? error.message : '保存失败，请重试')
       } finally {
         isSubmitting.value = false
       }
@@ -1428,31 +1392,7 @@ export default {
       resetPasswordError.value = ''
     }
 
-    const generateResetPassword = () => {
-      // 生成随机密码
-      const lowercase = 'abcdefghijklmnopqrstuvwxyz'
-      const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-      const numbers = '0123456789'
-      const specialChars = '!@#$%^&*()_+-=?'
-      const allChars = lowercase + uppercase + numbers + specialChars
-      
-      let password = ''
-      // 确保至少包含一个小写字母、大写字母、数字和特殊字符
-      password += lowercase.charAt(Math.floor(Math.random() * lowercase.length))
-      password += uppercase.charAt(Math.floor(Math.random() * uppercase.length))
-      password += numbers.charAt(Math.floor(Math.random() * numbers.length))
-      password += specialChars.charAt(Math.floor(Math.random() * specialChars.length))
-      
-      // 填充剩余长度（至少12位）
-      for (let i = password.length; i < 12; i++) {
-        password += allChars.charAt(Math.floor(Math.random() * allChars.length))
-      }
-      
-      // 打乱字符顺序
-      const shuffledPassword = password.split('').sort(() => Math.random() - 0.5).join('')
-      resetPasswordForm.newPassword = shuffledPassword
-      resetPasswordForm.confirmPassword = shuffledPassword
-    }
+    const generateResetPassword = () => { const password = generateAdminPassword(); resetPasswordForm.newPassword = password; resetPasswordForm.confirmPassword = password }
 
     const handleResetPassword = async () => {
       resetPasswordError.value = ''
@@ -1487,7 +1427,7 @@ export default {
         )
         
         if (response.code === 200) {
-          showAlert(`${resetPasswordTarget.value.username} 的密码已重置成功！`)
+          notify.success(`${resetPasswordTarget.value.username} 的密码已重置成功！`)
           closeResetPasswordModal()
         } else {
           resetPasswordError.value = response.message || '密码重置失败'
@@ -1533,6 +1473,16 @@ export default {
       createNewAdmin,
       editAdmin,
       deleteAdmin,
+      openHandover,
+      closeHandover,
+      submitHandover,
+      handoverTarget,
+      handoverManagerId,
+      handoverRetireSource,
+      handoverCandidates,
+      handoverLoading,
+      handoverSubmitting,
+      handoverError,
       backToList,
       generatePassword,
       selectRole,

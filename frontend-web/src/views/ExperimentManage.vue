@@ -703,7 +703,8 @@ import { experimentApi } from '@/api/modules/experiment'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import AdminDialog from '@/components/Common/AdminDialog.vue'
-import { showAlert, showConfirmDanger } from '@/composables/useModal'
+import { showConfirmDanger } from '@/composables/useModal'
+import { useNotification } from '@/composables/useNotification'
 import type {
   Experiment,
   CreateExperimentRequest,
@@ -718,6 +719,7 @@ export default {
     AdminDialog,
   },
   setup() {
+    const notify = useNotification()
     const authStore = useAuthStore()
     type ViewMode = 'list' | 'detail' | 'edit' | 'groupDetail'
     const loading = ref(false)
@@ -851,11 +853,11 @@ export default {
             console.warn('实验列表数据格式异常:', data)
           }
         } else {
-          await showAlert(response.message || '加载实验列表失败', '错误')
+          await notify.error(response.message || '加载实验列表失败', '错误')
         }
       } catch (error) {
         console.error('加载实验列表失败:', error)
-        await showAlert('加载实验列表失败，请稍后重试', '错误')
+        await notify.error('加载实验列表失败，请稍后重试', '错误')
       } finally {
         loading.value = false
       }
@@ -869,11 +871,11 @@ export default {
         if (response.code === 200) {
           currentExperiment.value = response.data
         } else {
-          await showAlert(response.message || '加载实验详情失败', '错误')
+          await notify.error(response.message || '加载实验详情失败', '错误')
         }
       } catch (error) {
         console.error('加载实验详情失败:', error)
-        await showAlert('加载实验详情失败，请稍后重试', '错误')
+        await notify.error('加载实验详情失败，请稍后重试', '错误')
       } finally {
         loading.value = false
       }
@@ -970,7 +972,7 @@ export default {
     // 查看实验详情
     const viewExperiment = async (experiment: Experiment) => {
       if (!experiment.id) {
-        await showAlert('无效的实验数据', '错误')
+        await notify.error('无效的实验数据', '错误')
         return
       }
       await loadExperimentDetail(experiment.id)
@@ -987,7 +989,7 @@ export default {
     // 编辑实验
     const editExperiment = async (experiment: Experiment) => {
       if (!experiment.id) {
-        await showAlert('无效的实验数据', '错误')
+        await notify.error('无效的实验数据', '错误')
         return
       }
       await loadExperimentDetail(experiment.id)
@@ -1021,7 +1023,7 @@ export default {
     // 删除实验
     const deleteExperiment = async (experiment: Experiment) => {
       if (!experiment.id) {
-        await showAlert('无效的实验数据，无法删除', '错误')
+        await notify.error('无效的实验数据，无法删除', '错误')
         return
       }
       const confirmed = await showConfirmDanger(
@@ -1033,14 +1035,14 @@ export default {
       try {
         const response = await experimentApi.deleteExperiment(experiment.id)
         if (response.code === 200) {
-          await showAlert('实验已删除', '成功')
+          await notify.success('实验已删除', '成功')
           await loadExperiments()
         } else {
-          await showAlert(response.message || '删除实验失败', '错误')
+          await notify.error(response.message || '删除实验失败', '错误')
         }
       } catch (error) {
         console.error('删除实验失败:', error)
-        await showAlert('删除实验失败，请稍后重试', '错误')
+        await notify.error('删除实验失败，请稍后重试', '错误')
       }
     }
 
@@ -1049,14 +1051,14 @@ export default {
       try {
         const response = await experimentApi.enableExperiment(experiment.id)
         if (response.code === 200) {
-          await showAlert('实验已启用', '成功')
+          await notify.success('实验已启用', '成功')
           await loadExperimentDetail(experiment.id)
         } else {
-          await showAlert(response.message || '启用实验失败', '错误')
+          await notify.error(response.message || '启用实验失败', '错误')
         }
       } catch (error) {
         console.error('启用实验失败:', error)
-        await showAlert('启用实验失败，请稍后重试', '错误')
+        await notify.error('启用实验失败，请稍后重试', '错误')
       }
     }
 
@@ -1068,14 +1070,14 @@ export default {
       try {
         const response = await experimentApi.disableExperiment(experiment.id)
         if (response.code === 200) {
-          await showAlert('实验已暂停', '成功')
+          await notify.success('实验已暂停', '成功')
           await loadExperimentDetail(experiment.id)
         } else {
-          await showAlert(response.message || '暂停实验失败', '错误')
+          await notify.error(response.message || '暂停实验失败', '错误')
         }
       } catch (error) {
         console.error('暂停实验失败:', error)
-        await showAlert('暂停实验失败，请稍后重试', '错误')
+        await notify.error('暂停实验失败，请稍后重试', '错误')
       }
     }
 
@@ -1090,14 +1092,14 @@ export default {
       try {
         const response = await experimentApi.completeExperiment(experiment.id)
         if (response.code === 200) {
-          await showAlert('实验已完成', '成功')
+          await notify.success('实验已完成', '成功')
           await loadExperimentDetail(experiment.id)
         } else {
-          await showAlert(response.message || '完成实验失败', '错误')
+          await notify.error(response.message || '完成实验失败', '错误')
         }
       } catch (error) {
         console.error('完成实验失败:', error)
-        await showAlert('完成实验失败，请稍后重试', '错误')
+        await notify.error('完成实验失败，请稍后重试', '错误')
       }
     }
 
@@ -1145,14 +1147,14 @@ export default {
         }
         const response = await experimentApi.updateExperiment(currentExperiment.value.id, updateData)
         if (response.code === 200) {
-          await showAlert('分组已删除', '成功')
+          await notify.success('分组已删除', '成功')
           await loadExperimentDetail(currentExperiment.value.id)
         } else {
-          await showAlert(response.message || '删除分组失败', '错误')
+          await notify.error(response.message || '删除分组失败', '错误')
         }
       } catch (error) {
         console.error('删除分组失败:', error)
-        await showAlert('删除分组失败，请稍后重试', '错误')
+        await notify.error('删除分组失败，请稍后重试', '错误')
       }
     }
 
@@ -1243,7 +1245,7 @@ export default {
         // 验证召回配额总和
         const total = Object.values(recallQuota).reduce((sum, val) => sum + val, 0)
         if (Math.abs(total - 1) > 0.01) {
-          await showAlert(`召回配额总和应为1，当前为${total.toFixed(2)}`, '错误')
+          await notify.error(`召回配额总和应为1，当前为${total.toFixed(2)}`, '错误')
           return
         }
         config.recallQuota = recallQuota
@@ -1254,7 +1256,7 @@ export default {
         // 表单中编辑，更新 formData.groups
         formData.groups[editingGroupIndex.value].config = Object.keys(config).length > 0 ? config : undefined
         closeGroupConfigModal()
-        await showAlert('分组配置已保存', '成功')
+        await notify.success('分组配置已保存', '成功')
       } else if (viewMode.value === 'detail' && currentExperiment.value) {
         // 详情页编辑，需要调用API更新
         try {
@@ -1268,15 +1270,15 @@ export default {
           }
           const response = await experimentApi.updateExperiment(currentExperiment.value.id, updateData)
           if (response.code === 200) {
-            await showAlert('分组配置已更新', '成功')
+            await notify.success('分组配置已更新', '成功')
             await loadExperimentDetail(currentExperiment.value.id)
             closeGroupConfigModal()
           } else {
-            await showAlert(response.message || '更新分组配置失败', '错误')
+            await notify.error(response.message || '更新分组配置失败', '错误')
           }
         } catch (error) {
           console.error('更新分组配置失败:', error)
-          await showAlert('更新分组配置失败，请稍后重试', '错误')
+          await notify.error('更新分组配置失败，请稍后重试', '错误')
         }
       }
     }
@@ -1365,7 +1367,7 @@ export default {
 
       // 如果有验证错误，显示所有错误并返回
       if (validationErrors.length > 0) {
-        await showAlert(validationErrors.join('\n'), '表单验证失败')
+        await notify.error(validationErrors.join('\n'), '表单验证失败')
         return
       }
 
@@ -1383,11 +1385,11 @@ export default {
           }
           const response = await experimentApi.updateExperiment(editingExperiment.value.id, updateData)
           if (response.code === 200) {
-            await showAlert('实验已更新', '成功')
+            await notify.success('实验已更新', '成功')
             await loadExperiments()
             viewMode.value = 'list'
           } else {
-            await showAlert(response.message || '更新实验失败', '错误')
+            await notify.error(response.message || '更新实验失败', '错误')
           }
         } else {
           // 创建实验 - 构建请求数据
@@ -1412,11 +1414,11 @@ export default {
 
           const response = await experimentApi.createExperiment(createData)
           if (response.code === 200 || response.code === 201) {
-            await showAlert('实验已创建', '成功')
+            await notify.success('实验已创建', '成功')
             await loadExperiments()
             viewMode.value = 'list'
           } else {
-            await showAlert(response.message || '创建实验失败', '错误')
+            await notify.error(response.message || '创建实验失败', '错误')
           }
         }
       } catch (error: any) {
@@ -1425,7 +1427,7 @@ export default {
         if (Array.isArray(errorMessage)) {
           errorMessage = errorMessage.join('; ')
         }
-        await showAlert(errorMessage, '错误')
+        await notify.error(errorMessage, '错误')
       } finally {
         isSubmitting.value = false
       }

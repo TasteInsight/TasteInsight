@@ -1,6 +1,19 @@
 export interface PermissionChecker {
   hasPermission(permission: string): boolean
-  user?: { scope?: 'GLOBAL' | 'CANTEENS' } | null
+  user?: { scope?: 'GLOBAL' | 'CANTEENS'; mustChangePassword?: boolean } | null
+}
+
+export function canAccessRoute(
+  meta: { requiredPermission?: unknown; requiredPermissions?: unknown; globalOnly?: unknown },
+  store: PermissionChecker,
+) {
+  return (
+    (!meta.requiredPermission || store.hasPermission(meta.requiredPermission as string)) &&
+    (!Array.isArray(meta.requiredPermissions) ||
+      !meta.requiredPermissions.length ||
+      meta.requiredPermissions.some((permission) => store.hasPermission(permission))) &&
+    (!meta.globalOnly || store.user?.scope === 'GLOBAL')
+  )
 }
 
 export function hasGlobalPermission(authStore: PermissionChecker, permission: string): boolean {
@@ -9,12 +22,15 @@ export function hasGlobalPermission(authStore: PermissionChecker, permission: st
 
 // 根据权限获取第一个可访问的页面
 export function getFirstAccessibleRoute(authStore: PermissionChecker): string {
+  if (authStore.user && 'mustChangePassword' in authStore.user && authStore.user.mustChangePassword)
+    return '/change-password'
   const routePriority = [
     { path: '/single-add', permissions: ['dish:create'] },
     { path: '/modify-dish', permissions: ['dish:view'] },
     { path: '/review-dish', permissions: ['upload:approve'] },
     { path: '/add-canteen', permissions: ['canteen:view'] },
     { path: '/user-manage', permissions: ['admin:view'] },
+    { path: '/log-view', permissions: ['log:view'] },
     { path: '/news-manage', permissions: ['news:view'] },
     { path: '/report-manage', permissions: ['report:handle'] },
     {
@@ -25,8 +41,8 @@ export function getFirstAccessibleRoute(authStore: PermissionChecker): string {
     { path: '/review-manage', permissions: ['review:approve', 'comment:approve'] },
     { path: '/student-verification-manage', permissions: ['student:review'], globalOnly: true },
     { path: '/community-manage', permissions: ['post:view'], globalOnly: true },
-    { path: '/config-manage', permissions: ['config:view'] },
-    { path: '/experiment-manage', permissions: ['experiment:view'] },
+    { path: '/config-manage', permissions: ['config:view', 'dish:edit'] },
+    { path: '/experiment-manage', permissions: ['experiment:view'], globalOnly: true },
   ]
 
   for (const route of routePriority) {

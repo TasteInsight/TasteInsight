@@ -1,3 +1,5 @@
+import { notify } from '@/composables/useNotification'
+vi.mock('@/composables/useNotification', () => { const notify = { success: vi.fn(), error: vi.fn(), info: vi.fn() }; return { useNotification: () => notify, notify } })
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import NewsSources from '../../src/components/News/NewsSources.vue'
@@ -73,7 +75,7 @@ describe('news source workspace', () => {
       keyword: '',
     })
     expect(w.find('form').exists()).toBe(false)
-    expect(w.get('[role=status]').text()).toContain('存为草稿')
+    expect(notify.success).toHaveBeenCalledWith(expect.stringContaining('存为草稿'))
     w.unmount()
   })
   it('restores publication mode while editing and saves an explicit selection', async () => {
