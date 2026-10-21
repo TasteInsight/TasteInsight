@@ -343,9 +343,8 @@ export function validateEnvironment(
   };
   if (servesApi || runsBackground) {
     const storage = storageConfiguration((key) => environment[key]);
-    const legacyS3 = storage.instances.s3;
-    if (legacyS3?.type === 's3')
-      validated.S3_FORCE_PATH_STYLE = legacyS3.forcePathStyle;
+    const s3 = storage.instances.s3;
+    if (s3?.type === 's3') validated.S3_FORCE_PATH_STYLE = s3.forcePathStyle;
   }
 
   if (servesApi) {

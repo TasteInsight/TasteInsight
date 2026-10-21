@@ -10,7 +10,7 @@ import { ContributionImageCleanup } from './contribution-image-cleanup.service';
 import { StorageStrategy } from './strategies/storage.strategy';
 import { StorageService } from './storage.service';
 
-describe.each(['local', 'oss', 's3', 'aws-main', 'cos-cn'])(
+describe.each(['local', 's3', 'aws-main', 'cos-cn'])(
   '%s storage lifecycle',
   (storageId) => {
     let module: TestingModule;
@@ -86,10 +86,6 @@ describe.each(['local', 'oss', 's3', 'aws-main', 'cos-cn'])(
                 S3_BUCKET: cloud.bucket,
                 S3_ACCESS_KEY_ID: cloud.accessKeyId,
                 S3_SECRET_ACCESS_KEY: cloud.secretAccessKey,
-                OSS_REGION: 'oss-cn-shanghai',
-                OSS_BUCKET: 'legacy-photos',
-                OSS_ACCESS_KEY_ID: 'fixture-key',
-                OSS_ACCESS_KEY_SECRET: 'fixture-secret',
                 UPLOAD_STORAGE_INSTANCES: JSON.stringify({
                   'aws-main': { ...cloud, bucket: 'aws-photos' },
                   'cos-cn': cloud,
@@ -289,7 +285,7 @@ describe.each(['local', 'oss', 's3', 'aws-main', 'cos-cn'])(
       },
     );
 
-    it.each(['oss', 's3', 'aws-main', 'cos-cn'])(
+    it.each(['s3', 'aws-main', 'cos-cn'])(
       'reads the recorded %s backend independently of the new upload default',
       async (recordedType) => {
         const recorded = stores.find((store) => store.id === recordedType)!;

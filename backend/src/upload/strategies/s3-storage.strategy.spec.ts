@@ -227,7 +227,7 @@ describe('S3 storage protocol', () => {
     }
   });
 
-  it('sends the private object ACL required by legacy OSS buckets', async () => {
+  it('sends an explicitly configured private object ACL', async () => {
     const storage = new S3StorageStrategy(
       config({ privateObjectAcl: 'private' }),
     );

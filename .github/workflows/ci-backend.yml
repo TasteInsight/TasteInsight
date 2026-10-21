@@ -203,7 +203,7 @@ jobs:
           AI_API_KEY: ci-ai-api-key-placeholder
           AI_MODEL: model-placeholder
           # Upload
-          UPLOAD_STORAGE_TYPE: local
+          UPLOAD_DEFAULT_STORAGE_ID: local
           UPLOAD_LOCAL_PATH: ./uploads
           UPLOAD_BASE_URL: http://localhost:3000/images
           UPLOAD_MAX_FILE_SIZE: 10485760

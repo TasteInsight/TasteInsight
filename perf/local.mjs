@@ -155,7 +155,7 @@ export async function runLocal(env, workload = run) {
       ADMIN_APP_URL: config.adminBaseUrl,
       ENABLE_MOCK_AUTH: "false",
       EXTERNAL_EMBEDDING_SERVICE_ENABLED: "false",
-      UPLOAD_STORAGE_TYPE: "local",
+      UPLOAD_DEFAULT_STORAGE_ID: "local",
       UPLOAD_LOCAL_PATH: resolve(work, "uploads"),
     };
     await command(

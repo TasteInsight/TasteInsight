@@ -97,23 +97,28 @@ describe('role-owned environment validation', () => {
     },
   );
 
-  it.each(['oss', 's3'])(
-    'worker validates %s storage used by cleanup while migration ignores it',
-    (storageId) => {
-      expect(() =>
-        validateEnvironment(
-          { ...background, UPLOAD_STORAGE_TYPE: storageId },
-          'worker',
-        ),
-      ).toThrow(storageId === 'oss' ? 'OSS_REGION' : 'S3_ENDPOINT');
-      expect(() =>
-        validateEnvironment(
-          { ...database, UPLOAD_STORAGE_TYPE: storageId },
-          'migrate',
-        ),
-      ).not.toThrow();
-    },
-  );
+  it('worker validates storage instances used by cleanup while migration ignores them', () => {
+    const storage = {
+      UPLOAD_DEFAULT_STORAGE_ID: 'cos-main',
+      UPLOAD_STORAGE_INSTANCES: JSON.stringify({ 'cos-main': { type: 's3' } }),
+    };
+    expect(() =>
+      validateEnvironment({ ...background, ...storage }, 'worker'),
+    ).toThrow('UPLOAD_STORAGE_INSTANCES');
+    expect(() =>
+      validateEnvironment({ ...database, ...storage }, 'migrate'),
+    ).not.toThrow();
+  });
+
+  it('worker validates generic S3 configuration while migration ignores it', () => {
+    const storage = { UPLOAD_DEFAULT_STORAGE_ID: 's3' };
+    expect(() =>
+      validateEnvironment({ ...background, ...storage }, 'worker'),
+    ).toThrow('S3_ENDPOINT');
+    expect(() =>
+      validateEnvironment({ ...database, ...storage }, 'migrate'),
+    ).not.toThrow();
+  });
 
   it('migration ignores queue, recommendation and delivery tuning', () => {
     expect(() =>

@@ -134,7 +134,7 @@ describe('runtime configuration composition', () => {
       expect(
         config.get('UPLOAD_BASE_URL', 'https://api.example.test/images'),
       ).toBe('https://api.example.test/images');
-      expect(config.get('UPLOAD_STORAGE_TYPE', 'local')).toBe('local');
+      expect(config.get('UPLOAD_DEFAULT_STORAGE_ID', 'local')).toBe('local');
       expect(config.get('EMBEDDING_SERVICE_BATCH_SIZE')).toBe(50);
       expect(config.get('REDIS_REC_DB')).toBe(1);
     } finally {

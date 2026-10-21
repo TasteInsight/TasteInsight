@@ -41,47 +41,38 @@ describe('storage instance configuration', () => {
     expect(result.instances['aws-main']).toEqual(aws);
     expect(result.instances['cos-main']).toEqual(cloud);
   });
-  it('maps existing OSS credentials and retains its private object ACL', () => {
+  it('keeps the local directory configuration independently of cloud instances', () => {
     const result = read({
-      UPLOAD_STORAGE_TYPE: 'oss',
-      OSS_REGION: 'oss-cn-shanghai',
-      OSS_BUCKET: 'legacy-photos',
-      OSS_ACCESS_KEY_ID: 'legacy-key',
-      OSS_ACCESS_KEY_SECRET: 'legacy-secret',
-      OSS_CUSTOM_DOMAIN: 'https://images.example.test/media/',
+      UPLOAD_LOCAL_PATH: '/srv/uploads',
+      UPLOAD_BASE_URL: 'https://images.example.test',
+      UPLOAD_DEFAULT_STORAGE_ID: 'cos-main',
+      UPLOAD_STORAGE_INSTANCES: JSON.stringify({ 'cos-main': cloud }),
     });
-    expect(result.defaultId).toBe('oss');
-    expect(result.instances.oss).toEqual({
-      type: 's3',
-      endpoint: 'https://s3.oss-cn-shanghai.aliyuncs.com',
-      region: 'cn-shanghai',
-      bucket: 'legacy-photos',
-      accessKeyId: 'legacy-key',
-      secretAccessKey: 'legacy-secret',
-      publicBaseUrl: 'https://images.example.test/media/',
-      privateObjectAcl: 'private',
+    expect(result.instances.local).toEqual({
+      type: 'local',
+      path: '/srv/uploads',
+      publicBaseUrl: 'https://images.example.test',
     });
+    expect(result.instances['cos-main']).toEqual(cloud);
   });
-  it('retains complete legacy S3 configuration for historical records', () => {
-    expect(
-      read({
-        S3_ENDPOINT: cloud.endpoint,
-        S3_REGION: cloud.region,
-        S3_BUCKET: cloud.bucket,
-        S3_ACCESS_KEY_ID: cloud.accessKeyId,
-        S3_SECRET_ACCESS_KEY: cloud.secretAccessKey,
-        S3_FORCE_PATH_STYLE: 'false',
-      }).instances.s3,
-    ).toEqual({ ...cloud, forcePathStyle: false });
+  it('configures the default S3 instance from generic protocol settings', () => {
+    const result = read({
+      UPLOAD_DEFAULT_STORAGE_ID: 's3',
+      S3_ENDPOINT: cloud.endpoint,
+      S3_REGION: cloud.region,
+      S3_BUCKET: cloud.bucket,
+      S3_ACCESS_KEY_ID: cloud.accessKeyId,
+      S3_SECRET_ACCESS_KEY: cloud.secretAccessKey,
+      S3_FORCE_PATH_STYLE: 'false',
+    });
+    expect(result.defaultId).toBe('s3');
+    expect(result.instances.s3).toEqual({ ...cloud, forcePathStyle: false });
   });
-  it.each(['local', 'oss', 's3'])(
-    'reserves legacy ID %s instead of retargeting existing records',
-    (id) => {
-      expect(() =>
-        read({ UPLOAD_STORAGE_INSTANCES: JSON.stringify({ [id]: cloud }) }),
-      ).toThrow('reserved');
-    },
-  );
+  it.each(['local', 's3'])('reserves built-in instance ID %s', (id) => {
+    expect(() =>
+      read({ UPLOAD_STORAGE_INSTANCES: JSON.stringify({ [id]: cloud }) }),
+    ).toThrow('reserved');
+  });
   it('rejects unknown defaults and malformed profiles without exposing secrets', () => {
     expect(() => read({ UPLOAD_DEFAULT_STORAGE_ID: 'missing' })).toThrow(
       'UPLOAD_DEFAULT_STORAGE_ID',

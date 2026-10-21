@@ -96,17 +96,7 @@ export function storageConfiguration(
     if (!value?.trim()) throw new Error(`${key} is required`);
     return value;
   };
-  const explicitDefault = get('UPLOAD_DEFAULT_STORAGE_ID');
-  const defaultKey =
-    explicitDefault == null
-      ? 'UPLOAD_STORAGE_TYPE'
-      : 'UPLOAD_DEFAULT_STORAGE_ID';
-  const defaultId = setting(defaultKey, 'local')!;
-  if (
-    defaultKey === 'UPLOAD_STORAGE_TYPE' &&
-    !['local', 'oss', 's3'].includes(defaultId)
-  )
-    throw new Error('UPLOAD_STORAGE_TYPE must be local, oss or s3');
+  const defaultId = setting('UPLOAD_DEFAULT_STORAGE_ID', 'local')!;
   const instances: Record<string, StorageInstanceConfiguration> = {
     local: {
       type: 'local',
@@ -116,12 +106,6 @@ export function storageConfiguration(
         `${setting('APP_URL', 'http://localhost:3000')}/images`,
     },
   };
-  const ossKeys = [
-    'OSS_REGION',
-    'OSS_ACCESS_KEY_ID',
-    'OSS_ACCESS_KEY_SECRET',
-    'OSS_BUCKET',
-  ];
   const s3Keys = [
     'S3_ENDPOINT',
     'S3_REGION',
@@ -129,27 +113,12 @@ export function storageConfiguration(
     'S3_ACCESS_KEY_ID',
     'S3_SECRET_ACCESS_KEY',
   ];
-  if (defaultId === 'oss') ossKeys.forEach(required);
   if (defaultId === 's3') s3Keys.forEach(required);
-  const complete = (keys: string[]) =>
-    keys.every(
+  if (
+    s3Keys.every(
       (key) => typeof get(key) === 'string' && (get(key) as string).trim(),
-    );
-  if (complete(ossKeys)) {
-    const region = required('OSS_REGION').replace(/^oss-/, '');
-    const publicBaseUrl = setting('OSS_CUSTOM_DOMAIN');
-    instances.oss = {
-      type: 's3',
-      endpoint: `https://s3.oss-${region}.aliyuncs.com`,
-      region,
-      bucket: required('OSS_BUCKET'),
-      accessKeyId: required('OSS_ACCESS_KEY_ID'),
-      secretAccessKey: required('OSS_ACCESS_KEY_SECRET'),
-      privateObjectAcl: 'private',
-      ...(publicBaseUrl ? { publicBaseUrl } : {}),
-    };
-  }
-  if (complete(s3Keys)) {
+    )
+  ) {
     for (const key of ['S3_ENDPOINT', 'S3_PUBLIC_BASE_URL']) {
       const value = setting(key);
       if (value && !storageUrl(value))
@@ -190,9 +159,9 @@ export function storageConfiguration(
         throw new Error(
           'UPLOAD_STORAGE_INSTANCES IDs must use 1-64 letters, numbers, hyphens or underscores, starting with a letter or number',
         );
-      if (['local', 'oss', 's3'].includes(id))
+      if (['local', 's3'].includes(id))
         throw new Error(
-          'UPLOAD_STORAGE_INSTANCES IDs local, oss and s3 are reserved for legacy configuration',
+          'UPLOAD_STORAGE_INSTANCES IDs local and s3 are reserved for environment configuration',
         );
       if (!validateInstance(value))
         throw new Error(
@@ -203,7 +172,7 @@ export function storageConfiguration(
   }
   if (!Object.hasOwn(instances, defaultId))
     throw new Error(
-      `${defaultKey} must identify a configured storage instance`,
+      `UPLOAD_DEFAULT_STORAGE_ID must identify a configured storage instance`,
     );
   return { defaultId, instances };
 }
