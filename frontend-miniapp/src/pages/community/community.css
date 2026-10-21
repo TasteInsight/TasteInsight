@@ -1,7 +1,7 @@
 .campus-page {
   box-sizing: border-box;
+  width: 100%;
   max-width: 720px;
-  min-height: 100%;
   margin: 0 auto;
   padding: 24px 20px calc(32px + env(safe-area-inset-bottom));
   background: #fff;

@@ -1,5 +1,5 @@
 <template>
-  <view class="campus-page" :aria-busy="loading || submitting">
+  <view class="campus-page page-content" :aria-busy="loading || submitting">
     <view class="campus-heading"
       ><button class="campus-button" :disabled="submitting || loading || closing" @click="leave">
         取消</button

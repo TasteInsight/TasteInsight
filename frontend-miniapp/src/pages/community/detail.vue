@@ -1,5 +1,5 @@
 <template>
-  <view class="campus-page post-detail" :aria-busy="loading">
+  <view class="campus-page page-content post-detail" :aria-busy="loading">
     <template v-if="loading && !post"
       ><view class="campus-skeleton"
         ><view class="campus-skeleton-line" /><view class="campus-skeleton-line" /><view
