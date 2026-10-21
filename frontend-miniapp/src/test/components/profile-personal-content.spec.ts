@@ -1,4 +1,4 @@
-import { flushPromises, shallowMount } from '@vue/test-utils';
+import { flushPromises, mount, shallowMount } from '@vue/test-utils';
 import { reactive } from 'vue';
 import ProfilePlans from '@/pages/profile/components/ProfilePlans.vue';
 import ProfileBioEditor from '@/pages/profile/components/ProfileBioEditor.vue';
@@ -220,10 +220,60 @@ test('settings retain all administrative destinations including logout, privacy 
   expect(uni.navigateTo).toHaveBeenCalledWith(
     expect.objectContaining({ url: '/pages/settings/about' })
   );
+  const reports = wrapper.findAll('.settings-menu').find(item => item.text() === '我的举报')!;
+  const groups = wrapper.findAll('.settings-section');
+  expect(groups.at(-1)!.text()).toBe('反馈与举报我的举报');
+  expect(groups.find(group => group.text().startsWith('关于'))!.text()).not.toContain('我的举报');
+  await reports.trigger('click');
+  expect(uni.navigateTo).toHaveBeenCalledWith(
+    expect.objectContaining({ url: '/pages/profile/my-reports/index' })
+  );
   user.isLoggedIn = false;
   user.userInfo = null;
   await flushPromises();
   expect(wrapper.findAll('.settings-menu')).toHaveLength(2);
+  expect(wrapper.text()).not.toContain('我的举报');
+  expect(wrapper.text()).not.toContain('反馈与举报');
   expect(wrapper.text()).toContain('隐私');
   expect(wrapper.text()).not.toContain('退出登录');
+});
+
+test('saved current and historical plans retain offline status, cents, units and incomplete dish semantics', async () => {
+  const dish = {
+    id: 'dish',
+    name: '番茄炒蛋',
+    images: [],
+    price: 10.01,
+    priceUnit: '元/100g',
+    status: 'offline',
+    averageRating: 0,
+    calories: 0,
+    protein: null,
+  };
+  const plan = {
+    id: 'current',
+    startDate: '2099-10-10',
+    endDate: '2099-10-10',
+    mealTime: 'lunch',
+    dishes: [dish],
+    dishesReady: true,
+  };
+  plans.currentPlans = [plan];
+  plans.historyPlans = [
+    { ...plan, id: 'history', dishes: [{ ...dish }], isExpired: true },
+    { ...plan, id: 'missing', dishes: [], dishesReady: false },
+  ];
+  const wrapper = mount(ProfilePlans);
+  wrappers.push(wrapper);
+  expect(wrapper.findAll('.dish-card__price').map(item => item.text())).toEqual([
+    '¥10.01/100g',
+    '¥10.01/100g',
+  ]);
+  expect(wrapper.findAll('.tag-badge--neutral')).toHaveLength(2);
+  expect(wrapper.text()).toContain('菜品资料尚未完整载入');
+  expect(wrapper.text()).not.toContain('¥0.00');
+  plans.currentPlans[0].dishes[0] = { ...dish, status: 'online', price: 0, priceUnit: null };
+  await flushPromises();
+  expect(wrapper.findAll('.dish-card__price')[0].text()).toBe('¥0.00');
+  expect(wrapper.findAll('.tag-badge--neutral')).toHaveLength(1);
 });

@@ -137,6 +137,12 @@ export class MealPlansService {
                 images: true,
                 price: true,
                 priceUnit: true,
+                status: true,
+                calories: true,
+                protein: true,
+                carbohydrate: true,
+                fat: true,
+
                 canteenName: true,
                 windowName: true,
               },
@@ -165,20 +171,37 @@ export class MealPlansService {
     dto: CreateMealPlanDto,
   ): Promise<MealPlanResponseDto> {
     validateMealRange(dto.startDate, dto.endDate);
-    if (dto.isPublic) await this.assertStudent(this.prisma, userId);
-    const mealPlan = await this.prisma.mealPlan.create({
-      data: {
-        startDate: storedMealDate(dto.startDate),
-        endDate: storedMealDate(dto.endDate),
-        mealTime: dto.mealTime,
-        isPublic: dto.isPublic ?? false,
-        userId,
-        dishes: {
-          create: [...new Set(dto.dishes)].map((dishId) => ({ dishId })),
-        },
-      },
-      include: planInclude,
-    });
+    const dishIds = [...new Set(dto.dishes)];
+    let mealPlan: SavedPlan;
+    try {
+      mealPlan = await this.prisma.$transaction(async (tx) => {
+        if (dto.isPublic) await this.assertStudent(tx, userId);
+        return tx.mealPlan.create({
+          data: {
+            startDate: storedMealDate(dto.startDate),
+            endDate: storedMealDate(dto.endDate),
+            mealTime: dto.mealTime,
+            isPublic: dto.isPublic ?? false,
+            userId,
+            dishes: {
+              create: dishIds.map((dishId) => ({ dishId })),
+            },
+          },
+          include: planInclude,
+        });
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2003' &&
+        error.meta?.constraint === 'meal_plan_dishes_dishId_fkey'
+      ) {
+        throw new BadRequestException(
+          '部分菜品已删除，请重新选择菜品后保存规划',
+        );
+      }
+      throw error;
+    }
     return {
       code: 201,
       message: '规划计划保存成功',

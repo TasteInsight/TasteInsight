@@ -71,6 +71,11 @@ export type ContentSegment =
 // Component data structures
 export interface ComponentDishCard {
   dish: {
+    status?: string;
+    calories?: number | null;
+    protein?: number | null;
+    carbohydrate?: number | null;
+    fat?: number | null;
     name: string;
     image: string;
     rating: string;

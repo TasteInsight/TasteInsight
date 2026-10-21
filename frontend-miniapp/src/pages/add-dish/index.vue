@@ -246,6 +246,14 @@
       </button>
       <template v-if="optionalExpanded">
         <view class="form-section">
+          <text class="section-title">每份营养信息（选填）</text>
+          <view v-for="field in nutritionFields" :id="`field-${field.key}`" :key="field.key" class="form-field">
+            <label :for="`dish-${field.key}`" class="field-label">{{ field.label }}</label>
+            <input :id="`dish-${field.key}`" v-model="formData[field.key]" type="digit" class="form-input" :aria-label="field.label" placeholder="未提供" :disabled="formLocked" />
+            <text v-if="fieldErrors[field.key]" class="field-error">{{ fieldErrors[field.key] }}</text>
+          </view>
+        </view>
+        <view class="form-section">
           <label for="dish-description" class="field-label">菜品介绍</label>
           <textarea
             id="dish-description"
@@ -419,7 +427,7 @@ import EmptyState from '@/components/EmptyState.vue';
 import { openLogin } from '@/utils/login-navigation';
 import { onMounted, ref, onUnmounted, nextTick } from 'vue';
 import { onBackPress, onHide } from '@dcloudio/uni-app';
-import { useAddDish } from './composables/use-add-dish';
+import { nutritionFields, useAddDish } from './composables/use-add-dish';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { useSheetKeyboard } from '@/pages/dish/composables/use-sheet-keyboard';
 import AddDishSkeleton from '@/components/skeleton/AddDishSkeleton.vue';
@@ -545,6 +553,7 @@ const handleSubmit = async () => {
   }
   const field = Object.keys(fieldErrors.value)[0];
   if (field) {
+    if (nutritionFields.some(item => item.key === field)) optionalExpanded.value = true;
     await nextTick();
     uni.pageScrollTo({ selector: '#field-' + field, duration: 200 });
   }

@@ -70,6 +70,22 @@ beforeEach(() => {
   setActivePinia(createPinia());
   mockRequest.mockReset().mockImplementation(options => {
     requests.push(options);
+    if (options.url.endsWith('/dishes/by-ids'))
+      Promise.resolve().then(() =>
+        options.success(
+          ok({
+            items: options.data.ids.map((id: string) => ({
+              id,
+              name: id,
+              price: 8,
+              status: 'online',
+              availableMealTime: ['lunch'],
+              images: [],
+              averageRating: 0,
+            })),
+          })
+        )
+      );
     return { abort: jest.fn() };
   });
   (mockInterceptor as jest.Mock).mockResolvedValue(null);
@@ -725,6 +741,212 @@ describe('chat page operation ownership', () => {
     return readCard();
   };
 
+  test.each(['legacy', 'current'])(
+    'saves %s cards with IDs and strips obsolete confirmation fields',
+    async generation => {
+      const source = await streamedPlan();
+      source.constraints = { totalBudget: 18, allowCrossCanteen: true };
+      if (generation === 'current') {
+        source.confirmAction.body.source = 'ai';
+        source.confirmAction.body.constraints = source.constraints;
+      }
+      const pending = useChatStore().applyMealPlan(source);
+      await flushPromises();
+      expect(mealRequest().data).toEqual({
+        startDate: '2026-10-03',
+        endDate: '2026-10-03',
+        mealTime: 'lunch',
+        dishes: ['dish'],
+      });
+      mealRequest().success(ok({ id: 'committed' }));
+      await expect(pending).resolves.toBe(true);
+    }
+  );
+
+  test.each([
+    ['increase', 12, '上涨'],
+    ['decrease', 6, '下降'],
+    ['unit-change', 8, '计价方式由'],
+    ['offline', 8, '已下架'],
+    ['meal-time', 8, '该餐次暂停供应'],
+    ['supply-dates', 8, '部分日期暂停供应'],
+  ])(
+    'persists %s notices and current dish data after a single successful save',
+    async (change, price, expected) => {
+      const source = await streamedPlan();
+      source.previewData = {
+        ...source.confirmAction.body,
+        dishes: [
+          {
+            id: 'dish',
+            name: '菜品',
+            price: 8,
+            priceUnit: change === 'unit-change' ? '斤' : undefined,
+            status: 'online',
+            availableMealTime: ['lunch'],
+          },
+        ],
+      };
+      mockRequest.mockImplementationOnce(options => {
+        requests.push(options);
+        Promise.resolve().then(() =>
+          options.success(
+            ok({
+              items: [
+                {
+                  id: 'dish',
+                  name: '菜品',
+                  price,
+                  priceUnit: change === 'unit-change' ? '100g' : undefined,
+                  status: change === 'offline' ? 'offline' : 'online',
+                  availableMealTime: change === 'meal-time' ? ['dinner'] : ['lunch'],
+                  availableDates:
+                    change === 'supply-dates'
+                      ? [{ startDate: '2099-10-04', endDate: '2099-10-04' }]
+                      : undefined,
+                },
+              ],
+            })
+          )
+        );
+        return { abort: jest.fn() };
+      });
+      const pending = useChatStore().applyMealPlan(source);
+      await flushPromises();
+      expect(mealRequest().data.dishes).toEqual(['dish']);
+      mealRequest().success(ok({ id: 'saved' }));
+      await expect(pending).resolves.toBe(true);
+      expect(source.changeNotices.map((notice: any) => notice.message).join(' ')).toContain(
+        expected
+      );
+      expect(source.previewData.dishes[0].price).toBe(price);
+      expect(storedCard().changeNotices).toEqual(source.changeNotices);
+      expect(storedCard().previewData).toEqual(source.previewData);
+      expect(uni.showModal).not.toHaveBeenCalled();
+      await useChatStore().applyMealPlan(source);
+      expect(requests.filter(item => item.url.endsWith('/dishes/by-ids'))).toHaveLength(1);
+      expect(requests.filter(item => item.url.endsWith('/meal-plans'))).toHaveLength(1);
+    }
+  );
+
+  test('a metadata read failure still saves the original IDs and provides an informational card notice', async () => {
+    const source = await streamedPlan();
+    mockRequest.mockImplementationOnce(options => {
+      requests.push(options);
+      Promise.resolve().then(() => options.fail({ errMsg: 'network unavailable' }));
+      return { abort: jest.fn() };
+    });
+    const pending = useChatStore().applyMealPlan(source);
+    await flushPromises();
+    expect(mealRequest().data.dishes).toEqual(['dish']);
+    mealRequest().success(ok({ id: 'saved' }));
+    await expect(pending).resolves.toBe(true);
+    expect(
+      storedCard()
+        .changeNotices.map((notice: any) => notice.message)
+        .join(' ')
+    ).toContain('最新信息暂时无法读取');
+    expect(storedCard().appliedStatus).toBe('success');
+  });
+
+  test('account change while current metadata is pending prevents issuing a save', async () => {
+    const source = await streamedPlan();
+    mockRequest.mockImplementationOnce(options => {
+      requests.push(options);
+      return { abort: jest.fn() };
+    });
+    const pending = useChatStore().applyMealPlan(source);
+    await flushPromises();
+    const details = requests.find(item => item.url.endsWith('/dishes/by-ids'));
+    await useUserStore().loginAction('B');
+    details.success(ok({ items: [{ id: 'dish', price: 12, status: 'offline' }] }));
+    await expect(pending).resolves.toBe(false);
+    expect(mealRequest()).toBeUndefined();
+    expect(source).not.toHaveProperty('appliedStatus');
+  });
+
+  test('only a missing dish prevents saving and keeps the original draft for retry', async () => {
+    const source = await streamedPlan();
+    mockRequest.mockImplementationOnce(options => {
+      requests.push(options);
+      Promise.resolve().then(() => options.success(ok({ items: [] })));
+      return { abort: jest.fn() };
+    });
+    await expect(useChatStore().applyMealPlan(source)).rejects.toThrow('部分菜品已删除');
+    expect(mealRequest()).toBeUndefined();
+    expect(source.appliedStatus).toBe('failed');
+  });
+
+  test.each(['metadata lookup', 'save race'])(
+    'the page shows an actionable deleted-dish error after %s',
+    async phase => {
+      const vm = await page();
+      const plan = await streamedPlan();
+      if (phase === 'metadata lookup') {
+        mockRequest.mockImplementationOnce(options => {
+          requests.push(options);
+          Promise.resolve().then(() => options.success(ok({ items: [] })));
+          return { abort: jest.fn() };
+        });
+      }
+      const pending = vm.handleApplyPlan(plan);
+      await flushPromises();
+      if (phase === 'save race') {
+        mealRequest().success({
+          statusCode: 400,
+          data: { code: 400, message: '部分菜品已删除，请重新选择菜品后保存规划' },
+        });
+      } else {
+        expect(mealRequest()).toBeUndefined();
+      }
+      await pending;
+      expect(uni.showToast).toHaveBeenCalledWith({
+        title: '部分菜品已删除，请重新选择菜品后保存规划',
+        icon: 'none',
+      });
+      expect(uni.hideLoading).toHaveBeenCalledTimes(1);
+      expect(plan.appliedStatus).toBe('failed');
+      expect(streamAIChat).not.toHaveBeenCalled();
+    }
+  );
+
+  test.each([
+    ['metadata lookup', 'history selection'],
+    ['metadata lookup', 'disposal'],
+    ['save race', 'history selection'],
+    ['save race', 'disposal'],
+  ])('a late deleted-dish error from %s stays silent after %s', async (phase, change) => {
+    const vm = await page();
+    const plan = await streamedPlan();
+    if (phase === 'metadata lookup') {
+      mockRequest.mockImplementationOnce(options => {
+        requests.push(options);
+        return { abort: jest.fn() };
+      });
+    }
+    const pending = vm.handleApplyPlan(plan);
+    await flushPromises();
+    const pendingRequest =
+      phase === 'save race'
+        ? mealRequest()
+        : [...requests].reverse().find(item => item.url.endsWith('/dishes/by-ids'));
+    if (change === 'disposal') wrappers[0].unmount();
+    else await vm.handleLoadHistory('first');
+    const hidden = (uni.hideLoading as jest.Mock).mock.calls.length;
+    pendingRequest.success(
+      phase === 'save race'
+        ? {
+            statusCode: 400,
+            data: { code: 400, message: '部分菜品已删除，请重新选择菜品后保存规划' },
+          }
+        : ok({ items: [] })
+    );
+    await pending;
+    expect(uni.showToast).not.toHaveBeenCalled();
+    expect(uni.hideLoading).toHaveBeenCalledTimes(hidden);
+    if (phase === 'metadata lookup') expect(mealRequest()).toBeUndefined();
+  });
+
   test.each(['disposal', 'history selection'])(
     'a real streamed plan commits to its account history after %s without stale UI effects',
     async change => {
@@ -936,21 +1158,32 @@ describe('chat page operation ownership', () => {
     expect((streamAIChat as jest.Mock).mock.calls[0][0]).toBe('A-session');
   });
 
-  test('a current failed plan retains retry feedback and never schedules a follow-up', async () => {
-    const vm = await page();
-    const plan = await streamedPlan();
-    const pending = vm.handleApplyPlan(plan);
-    await flushPromises();
-    mealRequest().success({ statusCode: 500, data: { code: 500, message: 'failure' } });
-    await pending;
-    jest.advanceTimersByTime(500);
-    await flushPromises();
-    expect(plan).toHaveProperty('appliedStatus', 'failed');
-    expect(storedCard().appliedStatus).toBe('failed');
-    expect(uni.showToast).toHaveBeenCalledWith({ title: '加入失败，请重试', icon: 'none' });
-    expect(uni.$emit).not.toHaveBeenCalled();
-    expect(streamAIChat).not.toHaveBeenCalled();
-  });
+  test.each(['server', 'network'])(
+    'a current %s failure has friendly feedback and never schedules a follow-up',
+    async failure => {
+      const vm = await page();
+      const plan = await streamedPlan();
+      const pending = vm.handleApplyPlan(plan);
+      await flushPromises();
+      if (failure === 'server')
+        mealRequest().success({
+          statusCode: 500,
+          data: { code: 500, message: 'DATABASE internal connection details' },
+        });
+      else mealRequest().fail({ errMsg: 'request:fail internal socket details' });
+      await pending;
+      jest.advanceTimersByTime(500);
+      await flushPromises();
+      expect(plan).toHaveProperty('appliedStatus', 'failed');
+      expect(storedCard().appliedStatus).toBe('failed');
+      expect(uni.showToast).toHaveBeenCalledWith({
+        title: '网络开小差了，请稍后再试',
+        icon: 'none',
+      });
+      expect(uni.$emit).not.toHaveBeenCalled();
+      expect(streamAIChat).not.toHaveBeenCalled();
+    }
+  );
 
   test('a failed archived plan can be reloaded and successfully retried', async () => {
     const vm = await page();

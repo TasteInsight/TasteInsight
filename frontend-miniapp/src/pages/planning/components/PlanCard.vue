@@ -37,11 +37,18 @@
         @error="failedImages[dish.images[0]] = true"
       />
       <view class="meal-card-copy"
-        ><text class="meal-card-name">{{ dish.name }}</text
+        ><view class="meal-card-name-row"
+          ><text class="meal-card-name">{{ dish.name }}</text
+          ><TagBadge v-if="dish.status === 'offline'" label="已下架" tone="neutral" /></view
         ><text class="meal-card-location"
           >{{ dish.canteenName || '食堂信息暂缺'
           }}{{ dish.windowName ? ' / ' + dish.windowName : '' }}</text
-        ><view class="meal-card-meta"
+        ><text
+          v-for="notice in mealPlanDishNotices(dish, plan)"
+          :key="notice"
+          class="meal-card-supply"
+          >{{ notice }}</text
+        ><DishNutrition :dish="dish" /><view class="meal-card-meta"
           ><text class="meal-card-price"
             >¥{{ dish.price }}{{ priceUnitSuffix(dish.priceUnit) }}</text
           ><text
@@ -92,7 +99,10 @@ import dayjs from 'dayjs';
 import UiIcon from '@/components/UiIcon.vue';
 import IconButton from '@/components/IconButton.vue';
 import { campusToday, coversDate, planDateKey } from '../utils/meal-plan-date';
+import DishNutrition from '@/components/DishNutrition.vue';
+import TagBadge from '@/components/TagBadge.vue';
 import { priceUnitSuffix } from '@/utils/price-display';
+import { mealPlanDishNotices } from '@/utils/meal-plan-changes';
 
 const props = withDefaults(
   defineProps<{
@@ -131,6 +141,19 @@ const dateText = computed(() => {
 </script>
 
 <style scoped>
+.meal-card-name-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.meal-card-supply {
+  display: block;
+  margin-top: 4px;
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.6;
+}
 .meal-card {
   width: 100%;
   box-sizing: border-box;

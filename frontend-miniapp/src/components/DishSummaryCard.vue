@@ -4,21 +4,25 @@
     hover-class="list-row-pressed"
     role="button"
     tabindex="0"
-    :aria-label="`查看${dish.name}`"
+    :aria-label="`查看${dish.name}${dish.status === 'offline' ? '，已下架' : ''}`"
     @click="selectDish"
     @keydown="handleKeydown"
     @keyup="handleKeyup"
     @blur="clearPress"
   >
     <view class="dish-card__body">
-      <text class="dish-card__name">{{ dish.name }}</text>
+      <view class="dish-card__heading">
+        <text class="dish-card__name">{{ dish.name }}</text>
+        <TagBadge v-if="dish.status === 'offline'" label="已下架" tone="neutral" />
+      </view>
       <text class="dish-card__location">{{ location }}</text>
       <view v-if="dish.tags?.length" class="dish-card__tags">
         <TagBadge v-for="tag in dish.tags.slice(0, 2)" :key="tag" :label="tag" />
       </view>
+      <DishNutrition :dish="dish" />
       <view class="dish-card__footer">
         <text class="dish-card__price"
-          >¥{{ dish.price.toFixed(1)
+          >¥{{ dish.price.toFixed(2)
           }}<text v-if="priceUnitSuffix(dish.priceUnit)" class="dish-card__unit">{{
             priceUnitSuffix(dish.priceUnit)
           }}</text></text
@@ -57,6 +61,7 @@ import type { Dish } from '@/types/api';
 import { useButtonActivation } from '@/composables/use-button-activation';
 import { priceUnitSuffix } from '@/utils/price-display';
 import TagBadge from './TagBadge.vue';
+import DishNutrition from './DishNutrition.vue';
 
 const props = defineProps<{ dish: Dish }>();
 const emit = defineEmits<{ (event: 'select', id: string): void }>();
@@ -121,7 +126,16 @@ const {
   flex: 1;
   min-width: 0;
 }
+.dish-card__heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.dish-card__heading .tag-badge {
+  flex-shrink: 0;
+}
 .dish-card__name {
+  min-width: 0;
   display: -webkit-box;
   overflow: hidden;
   -webkit-box-orient: vertical;

@@ -13,6 +13,7 @@ import {
   HttpStatus,
   UseInterceptors,
   UploadedFile,
+  StreamableFile,
 } from '@nestjs/common';
 import { AdminDishesService } from './admin-dishes.service';
 import { BatchDeleteDto } from '@/common/dto/batch-delete.dto';
@@ -128,6 +129,15 @@ export class AdminDishesController {
     @CurrentAdmin() admin: AdminInfo,
   ) {
     return this.adminDishesService.deleteAdminDish(id, admin);
+  }
+
+  @Get('batch/template')
+  @RequirePermissions('dish:create')
+  downloadBatchTemplate() {
+    return new StreamableFile(this.adminDishesService.createBatchTemplate(), {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      disposition: 'attachment; filename="dish-import-template.xlsx"',
+    });
   }
 
   @Post('batch/parse')

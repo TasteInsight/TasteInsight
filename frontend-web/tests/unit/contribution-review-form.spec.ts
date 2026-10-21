@@ -99,3 +99,24 @@ describe('ContributionReviewForm', () => {
     wrapper.unmount()
   })
 })
+
+it('edits nutrition with zero and explicit clearing while leaving omitted values untouched', async () => {
+  mocks.getWindows.mockResolvedValue({ code: 200, data: { items: [] } })
+  const wrapper = mount(ContributionReviewForm, { props: { upload: { ...upload, calories: 100, protein: 12.5, carbohydrate: null, fat: 4 }, busy: false } })
+  await flushPromises()
+  await wrapper.get('#upload-calories').setValue('0')
+  await wrapper.get('#upload-protein').setValue('')
+  await wrapper.get('form').trigger('submit')
+  expect(wrapper.emitted('save')).toEqual([[{ calories: 0, protein: null }]])
+  wrapper.unmount()
+})
+
+it('rejects negative nutrition before emitting an edit', async () => {
+  mocks.getWindows.mockResolvedValue({ code: 200, data: { items: [] } })
+  const wrapper = renderForm()
+  await wrapper.get('#upload-fat').setValue('-1')
+  await wrapper.get('form').trigger('submit')
+  expect(wrapper.emitted('save')).toBeUndefined()
+  expect(wrapper.text()).toContain('营养信息请填写大于等于 0 的有效数值')
+  wrapper.unmount()
+})

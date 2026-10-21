@@ -1,4 +1,6 @@
 import { config } from '@vue/test-utils';
+import { createPinia, setActivePinia } from 'pinia';
+beforeEach(() => setActivePinia(createPinia()));
 
 // Vite injects this value for real builds. Jest does not load Vite mode files,
 // so tests use the committed development endpoint unless a test overrides it.

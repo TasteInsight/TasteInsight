@@ -38,6 +38,11 @@ export class AdminDishDto {
   tags: string[];
   price: number;
   priceUnit: string | null;
+  calories: number | null;
+  protein: number | null;
+  carbohydrate: number | null;
+  fat: number | null;
+
   description: string | null;
   images: string[];
   parentDishId?: string;
@@ -161,6 +166,26 @@ export class AdminCreateDishDto {
   priceUnit?: string;
 
   @IsOptional()
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(0)
+  calories?: number | null;
+
+  @IsOptional()
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(0)
+  protein?: number | null;
+
+  @IsOptional()
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(0)
+  carbohydrate?: number | null;
+
+  @IsOptional()
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(0)
+  fat?: number | null;
+
+  @IsOptional()
   @IsString()
   description?: string;
 
@@ -270,6 +295,26 @@ export class AdminUpdateDishDto {
   @IsOptional()
   @IsString()
   priceUnit?: string;
+
+  @IsOptional()
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(0)
+  calories?: number | null;
+
+  @IsOptional()
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(0)
+  protein?: number | null;
+
+  @IsOptional()
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(0)
+  carbohydrate?: number | null;
+
+  @IsOptional()
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(0)
+  fat?: number | null;
 
   @IsOptional()
   @IsString()

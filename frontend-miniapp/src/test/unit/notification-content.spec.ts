@@ -77,3 +77,10 @@ test('compact dates retain time and include the year for older notifications', (
   expect(formatNotificationDate('2026-10-09T08:10:00', now)).toBe('10/9 08:10');
   expect(formatNotificationDate('2025-10-12T08:10:00', now)).toBe('2025/10/12 08:10');
 });
+
+ test('report results always open the owned result record even after content deletion', () => {
+  const report = item({ type: 'report_handled', actor: null, targetType: 'report', targetId: 'report / 1', dishId: null });
+  expect(notificationDestination(report)).toEqual({ url: '/pages/profile/my-reports/index?id=report%20%2F%201' });
+  expect(notificationTitle(report)).toBe('举报处理结果已更新');
+  expect(notificationText(report)).toContain('查看处理详情');
+ });

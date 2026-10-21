@@ -67,6 +67,11 @@ const groups = [
       { label: '关于食鉴', path: '/pages/settings/about', icon: 'info' },
     ],
   },
+  {
+    title: '反馈与举报',
+    signedIn: true,
+    items: [{ label: '我的举报', path: '/pages/profile/my-reports/index', icon: 'shield' }],
+  },
 ] as const;
 const menuGroups = groups.map(group => ({
   ...group,

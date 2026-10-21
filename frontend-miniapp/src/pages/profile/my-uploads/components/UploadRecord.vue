@@ -10,6 +10,7 @@
           </view>
         </view>
         <text class="upload-location">{{ location }}</text>
+        <DishNutrition :dish="item" />
         <text class="upload-meta"
           >{{ item.kind === 'update' ? '补充资料' : '新增菜品' }} ·
           {{ formatDate(item.createdAt) }}</text
@@ -67,6 +68,7 @@
 import { computed, ref, watch } from 'vue';
 import dayjs from 'dayjs';
 import UiIcon from '@/components/UiIcon.vue';
+import DishNutrition from '@/components/DishNutrition.vue';
 import type { UiIconName, UiIconTone } from '@/components/UiIcon.vue';
 import { priceUnitSuffix } from '@/utils/price-display';
 import type { MyUploadItem, DishContributionStatus } from '@/types/api';

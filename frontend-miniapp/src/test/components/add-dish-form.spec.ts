@@ -209,3 +209,15 @@ it('keeps tag and allergen input, selection, icon removal and disabled behavior 
   expect((wrapper.vm as any).formData.allergens).toContain('芒果');
   wrapper.unmount();
 });
+
+it('shows optional per-serving nutrition controls and opens them for validation errors', async () => {
+  const wrapper = shallowMount(AddDishPage);
+  await flushPromises();
+  Object.assign((wrapper.vm as any).formData, { name: '豆腐', price: 8, canteenName: '食堂', availableMealTime: ['lunch'], calories: -1 });
+  await wrapper.get('.submit-button').trigger('tap');
+  await flushPromises();
+  expect(wrapper.get('#field-calories').text()).toContain('应为 0 或正数');
+  expect(wrapper.get('#dish-protein').attributes('placeholder')).toBe('未提供');
+  expect(uniMock.pageScrollTo).toHaveBeenCalledWith({ selector: '#field-calories', duration: 200 });
+  wrapper.unmount();
+});

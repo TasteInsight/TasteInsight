@@ -411,7 +411,7 @@ const fetchRecommendations = async (
     // 按照推荐顺序排序
     const sortedDishes = dishIds
       .map(id => fullDishes.find(dish => dish.id === id))
-      .filter((dish): dish is Dish => dish != null);
+      .filter((dish): dish is Dish => dish?.status === 'online');
 
     // 检查是否有菜品缺失（竞态条件：菜品在两次调用之间被删除或下线）
     const missingCount = dishIds.length - sortedDishes.length;

@@ -22,7 +22,8 @@
         <view class="meal-detail-summary"
           ><text class="meal-detail-date">{{ dateText }}</text
           ><text>{{ mealTimeText }}</text
-          ><text v-if="plan.dishesReady" class="meal-detail-price">所列单价合计 ¥{{ totalPrice.toFixed(2) }}</text
+          ><text v-if="plan.dishesReady" class="meal-detail-price"
+            >所列单价合计 ¥{{ totalPrice.toFixed(2) }}</text
           ><text v-else class="meal-detail-price">菜品资料尚未完整载入</text></view
         >
         <view class="meal-detail-list"
@@ -42,11 +43,18 @@
               @error="failedImages[dish.images[0]] = true"
             />
             <view class="meal-detail-copy"
-              ><text class="meal-detail-name">{{ dish.name }}</text
+              ><view class="meal-detail-name-row"
+                ><text class="meal-detail-name">{{ dish.name }}</text
+                ><TagBadge v-if="dish.status === 'offline'" label="已下架" tone="neutral" /></view
               ><text class="meal-detail-location"
                 >{{ dish.canteenName || '食堂信息暂缺'
                 }}{{ dish.windowName ? ' / ' + dish.windowName : '' }}</text
-              ><text class="meal-detail-price"
+              ><text
+                v-for="notice in mealPlanDishNotices(dish, plan)"
+                :key="notice"
+                class="meal-detail-supply"
+                >{{ notice }}</text
+              ><DishNutrition :dish="dish" /><text class="meal-detail-price"
                 >¥{{ dish.price }}{{ priceUnitSuffix(dish.priceUnit) }}</text
               ></view
             >
@@ -66,7 +74,10 @@
 import { computed, ref } from 'vue';
 import type { EnrichedMealPlan } from '@/store/modules/use-plan-store';
 import dayjs from 'dayjs';
+import DishNutrition from '@/components/DishNutrition.vue';
+import TagBadge from '@/components/TagBadge.vue';
 import { priceUnitSuffix } from '@/utils/price-display';
+import { mealPlanDishNotices } from '@/utils/meal-plan-changes';
 
 const props = defineProps<{ visible: boolean; plan: EnrichedMealPlan | null }>();
 const emit = defineEmits<{ close: [] }>();
@@ -89,6 +100,19 @@ const handleClose = () => emit('close');
 </script>
 
 <style scoped>
+.meal-detail-name-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.meal-detail-supply {
+  display: block;
+  margin-top: 4px;
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.6;
+}
 .meal-detail-overlay {
   position: fixed;
   inset: 0;

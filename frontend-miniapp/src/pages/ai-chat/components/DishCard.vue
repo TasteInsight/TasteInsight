@@ -13,7 +13,7 @@
       <view class="dish-recommendation-info">
         <view class="dish-recommendation-heading"
           ><text class="dish-recommendation-name">{{ dish.dish.name }}</text
-          ><view
+          ><TagBadge v-if="dish.dish.status === 'offline'" label="已下架" tone="neutral" /><view
             class="dish-recommendation-rating"
             :class="{ 'dish-recommendation-rating-rated': numericRating > 0 }"
             ><image
@@ -39,6 +39,7 @@
         @error="failedImage = dish.dish.image"
       />
     </view>
+    <DishNutrition :dish="dish.dish" />
     <text v-if="dish.recommendReason" class="dish-recommendation-reason">{{
       dish.recommendReason
     }}</text>
@@ -47,6 +48,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import TagBadge from '@/components/TagBadge.vue';
+import DishNutrition from '@/components/DishNutrition.vue';
 import type { ComponentDishCard } from '@/types/api';
 const props = defineProps<{ dish: ComponentDishCard }>();
 const failedImage = ref('');

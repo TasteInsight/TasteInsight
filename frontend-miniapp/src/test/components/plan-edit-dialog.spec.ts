@@ -3,6 +3,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import PlanEditDialog from '@/components/meal-plan/PlanEditDialog.vue';
 import { getDishes } from '@/api/modules/dish';
 import { getWindowList, getCanteenList } from '@/api/modules/canteen';
+import { useUserStore } from '@/store/modules/use-user-store';
 
 const mockCanteenStore = {
   canteenList: [{ id: 'c1', name: '第一食堂' }],
@@ -266,5 +267,85 @@ test('dish selection hides missing and failed photos and displays a new image re
   expect(wrapper.get('image.plan-result-image').attributes('src')).toBe(
     'https://images.test/current.jpg'
   );
+  wrapper.unmount();
+});
+
+test('selected and searched plan dishes follow viewer nutrition preferences and keep measured zero', async () => {
+  setActivePinia(createPinia());
+  const store = useUserStore();
+  store.userInfo = {
+    settings: { displaySettings: { showCalories: false, showNutrition: true } },
+  } as any;
+  const dishes = [
+    { id: 'measured', name: '豆腐', images: [], price: 5, calories: 0, protein: 0, carbohydrate: 25.5, fat: null },
+    { id: 'missing', name: '时蔬', images: [], price: 3, calories: null, protein: null },
+  ];
+  (getDishes as jest.Mock).mockResolvedValue({ code: 200, data: { items: dishes, meta: { page: 1, totalPages: 1 } } });
+  const wrapper = mount(PlanEditDialog, { props: { visible: true, plan: null } });
+  await flushPromises();
+  await wrapper.get('.plan-search-input').setValue('豆腐');
+  await wrapper.get('.plan-search-button').trigger('tap');
+  await flushPromises();
+  expect(getDishes).toHaveBeenLastCalledWith(expect.objectContaining({ search: { keyword: '豆腐' } }));
+  const candidates = wrapper.findAll('.plan-result');
+  await candidates[0].trigger('tap');
+  await candidates[1].trigger('tap');
+  const selected = wrapper.findAll('.plan-selected-dish');
+  for (const rows of [candidates, selected]) {
+    expect(rows[0].text()).toContain('热量 0 kcal');
+    expect(rows[0].text()).not.toContain('蛋白质');
+    expect(rows[1].find('.dish-nutrition').exists()).toBe(false);
+  }
+
+  store.token = 'signed-in';
+  await wrapper.vm.$nextTick();
+  for (const rows of [candidates, selected]) {
+    expect(rows[0].text()).not.toContain('kcal');
+    expect(rows[0].text()).toContain('蛋白质 0 g');
+    expect(rows[0].text()).toContain('碳水化合物 25.5 g');
+    expect(rows[0].text()).not.toContain('脂肪');
+  }
+  store.userInfo!.settings!.displaySettings = { showCalories: true, showNutrition: true };
+  await wrapper.vm.$nextTick();
+  for (const rows of [candidates, selected]) {
+    expect(rows[0].text()).toContain('热量 0 kcal');
+    expect(rows[0].text()).toContain('蛋白质 0 g');
+  }
+  store.userInfo!.settings!.displaySettings = { showCalories: true, showNutrition: false };
+  await wrapper.vm.$nextTick();
+  for (const rows of [candidates, selected]) {
+    expect(rows[0].text()).toContain('热量 0 kcal');
+    expect(rows[0].text()).not.toContain('蛋白质');
+  }
+  store.userInfo!.settings!.displaySettings = { showCalories: false, showNutrition: false };
+  await wrapper.vm.$nextTick();
+  expect(wrapper.find('.dish-nutrition').exists()).toBe(false);
+  await wrapper.get('[data-testid="plan-save"]').trigger('tap');
+  expect(wrapper.emitted('submit')![0][0]).toEqual(expect.objectContaining({ dishes: ['measured', 'missing'] }));
+  expect(getDishes).toHaveBeenCalledTimes(1);
+  wrapper.unmount();
+});
+
+test.each(['edit', 'quick-add'])('initial %s plan dishes display supplied nutrition before opening search', async entry => {
+  setActivePinia(createPinia());
+  const store = useUserStore();
+  store.token = 'signed-in';
+  store.userInfo = { settings: { displaySettings: { showCalories: true, showNutrition: true } } } as any;
+  const dish = { id: 'initial', name: '豆腐', images: [], price: 5, calories: 0, protein: 18.25, carbohydrate: null, fat: 7.5 } as any;
+  const wrapper = mount(PlanEditDialog, {
+    props: {
+      visible: true,
+      plan: entry === 'edit' ? { id: 'plan', startDate: '2026-10-20', endDate: '2026-10-20', mealTime: 'lunch', dishes: [dish] } as any : null,
+      initialDishes: entry === 'quick-add' ? [dish] : undefined,
+    },
+  });
+  await flushPromises();
+  const row = wrapper.get('.plan-selected-dish');
+  expect(row.text()).toContain('热量 0 kcal');
+  expect(row.text()).toContain('蛋白质 18.25 g');
+  expect(row.text()).toContain('脂肪 7.5 g');
+  expect(row.text()).not.toContain('碳水化合物');
+  expect(wrapper.find('.plan-result').exists()).toBe(false);
+  expect(getDishes).not.toHaveBeenCalled();
   wrapper.unmount();
 });

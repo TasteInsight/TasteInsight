@@ -84,6 +84,7 @@ describe('DishSearchTool', () => {
 
       expect(mockDishesService.getDishes).toHaveBeenCalledWith(
         expect.objectContaining({
+          filter: { status: 'online' },
           search: {
             keyword: '鸡丁',
             fields: ['name', 'tags', 'ingredients'],
@@ -93,6 +94,17 @@ describe('DishSearchTool', () => {
         'test-user',
       );
       expect(result).toEqual(mockDishItems);
+    });
+
+    it('searches offline dishes only when explicitly requested', async () => {
+      await tool.execute({ keyword: '', status: 'offline' }, mockContext);
+      expect(mockDishesService.getDishes.mock.calls[0][0].filter).toEqual({
+        status: 'offline',
+      });
+      expect(tool.getDefinition().parameters.properties.status).toMatchObject({
+        enum: ['online', 'offline'],
+        default: 'online',
+      });
     });
 
     it('should search dishes with canteen filter', async () => {

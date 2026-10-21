@@ -19,7 +19,7 @@ export class DishRecommendationTool implements BaseTool {
     return {
       name: 'recommend_dishes',
       description:
-        '按真实菜品数据和已保存偏好推荐某个餐次的候选菜品；自动排除已保存过敏原和忌口。' +
+        '按真实在售菜品数据和已保存偏好推荐某个餐次的候选菜品；自动排除已保存过敏原和忌口。' +
         '\nscene 默认 guess_like（猜你喜欢）；查找相似菜品或替代品时使用 similar 并提供真实 triggerDishId，今日推荐使用 today。excludeDishIds 用于换一批候选或排除已选菜品；similar 自动排除来源菜品。' +
         '\n未限定食堂时返回多个食堂的备选菜品，按食堂分组；不同食堂是互相替代的用餐地点，不能合并成一顿饭。' +
         '\n组合中的配菜不足时，使用返回的 canteenId 再查询该食堂。用户已指定食堂时仅查询该食堂。' +
@@ -59,6 +59,17 @@ export class DishRecommendationTool implements BaseTool {
             enum: ['breakfast', 'lunch', 'dinner', 'nightsnack'],
             description:
               '必填。餐次：breakfast(早餐), lunch(午餐), dinner(晚餐), nightsnack(夜宵)。根据用户描述选择对应的英文值。',
+          },
+          startDate: {
+            type: 'string',
+            pattern: '^\\d{4}-\\d{2}-\\d{2}$',
+            description: '可选。计划开始日期 YYYY-MM-DD；省略时按今天推荐。',
+          },
+          endDate: {
+            type: 'string',
+            pattern: '^\\d{4}-\\d{2}-\\d{2}$',
+            description:
+              '可选。计划结束日期 YYYY-MM-DD；所选菜品须在整个日期区间内供应。',
           },
           canteenId: {
             type: 'string',
@@ -158,6 +169,8 @@ export class DishRecommendationTool implements BaseTool {
       excludeDishIds,
       mealTime,
       canteenId,
+      startDate,
+      endDate,
       priceMin,
       priceMax,
       limit = 5,
@@ -216,6 +229,8 @@ export class DishRecommendationTool implements BaseTool {
     // Build filter
     const filter: any = {
       mealTime: [mealTime],
+      ...(startDate !== undefined ? { startDate } : {}),
+      ...(endDate !== undefined ? { endDate } : {}),
     };
     if (excludeDishIds?.length) {
       filter.excludeDishIds = excludeDishIds;
@@ -302,6 +317,6 @@ export class DishRecommendationTool implements BaseTool {
       context.userId,
     );
 
-    return dishesResult.data.items;
+    return dishesResult.data.items.filter((dish) => dish.status === 'online');
   }
 }

@@ -85,6 +85,7 @@ describe('ContentDisplayTool', () => {
       const mockDishes = [
         {
           id: 'dish-1',
+          status: 'online',
           name: '宫保鸡丁',
           images: ['https://example.com/dish1.jpg'],
           averageRating: 4.5,
@@ -94,6 +95,7 @@ describe('ContentDisplayTool', () => {
         },
         {
           id: 'dish-2',
+          status: 'online',
           name: '鱼香肉丝',
           images: [],
           averageRating: null,
@@ -136,6 +138,54 @@ describe('ContentDisplayTool', () => {
             params: { id: 'dish-1' },
           },
         });
+      });
+
+      it('preserves offline status for an explicit historical dish result', async () => {
+        mockDishesService.getDishesByIds.mockResolvedValue({
+          data: { items: [{ ...mockDishes[0], status: 'offline' }] },
+        });
+        const result = await tool.execute(
+          { type: 'dish', ids: ['dish-1'], includeOffline: true },
+          mockContext,
+        );
+        expect(result[0].dish.status).toBe('offline');
+      });
+
+      it('excludes dishes taken offline before the final default display read', async () => {
+        mockDishesService.getDishesByIds.mockResolvedValue({
+          data: {
+            items: [mockDishes[0], { ...mockDishes[1], status: 'offline' }],
+          },
+        });
+        const result = await tool.execute(
+          { type: 'dish', ids: ['dish-1', 'dish-2'] },
+          mockContext,
+        );
+        expect(result.map((card) => card.dish.id)).toEqual(['dish-1']);
+      });
+
+      it('exposes an explicit boolean offline scope in the validated display contract', async () => {
+        const registry = new ToolRegistryService();
+        registry.registerTool(tool);
+        expect(
+          tool.getDefinition().parameters.properties.includeOffline,
+        ).toMatchObject({ type: 'boolean', default: false });
+        mockDishesService.getDishesByIds.mockResolvedValue({
+          data: { items: [{ ...mockDishes[0], status: 'offline' }] },
+        });
+        const result = await registry.executeTool(
+          'display_content',
+          { type: 'dish', ids: ['dish-1'], includeOffline: true },
+          mockContext,
+        );
+        expect(result[0].dish.status).toBe('offline');
+        await expect(
+          registry.executeTool(
+            'display_content',
+            { type: 'dish', ids: ['dish-1'], includeOffline: 'true' },
+            mockContext,
+          ),
+        ).rejects.toThrow('工具参数无效');
       });
 
       it('should handle dishes with no images', async () => {
@@ -301,7 +351,10 @@ describe('ContentDisplayTool', () => {
             }),
           ]),
         );
-        expect(result[0].confirmAction).toEqual(mealPlanData.confirmAction);
+        expect(result[0].confirmAction).toEqual({
+          ...mealPlanData.confirmAction,
+          body,
+        });
       });
 
       it.each([

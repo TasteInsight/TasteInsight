@@ -113,6 +113,7 @@ const recommendationResponse = (items: any[] = []) => ({
 });
 const dish = (id = 'dish') => ({
   id,
+  status: 'online',
   name: `菜品 ${id}`,
   price: 8,
   images: [],
@@ -730,7 +731,7 @@ describe('dish detail and discussions', () => {
       code: 200,
       data: { ...dish(), parentDishId: 'parent' },
     });
-    (getDishById as jest.Mock).mockResolvedValueOnce({ code: 200, data: dish('parent') });
+    (getDishesByIds as jest.Mock).mockResolvedValueOnce({ code: 200, data: { items: [dish('parent')] } });
     await detail.fetchDishDetail('dish');
     const pending = deferred();
     (getDishById as jest.Mock).mockReturnValueOnce(pending.promise);
@@ -876,12 +877,10 @@ describe('dish detail and discussions', () => {
         ...dish(),
         ...(relation === 'parent' ? { parentDishId: 'related' } : { subDishId: ['related'] }),
       };
-      (getDishById as jest.Mock).mockImplementation((id: string) => {
-        if (id === 'dish') return Promise.resolve({ code: 200, data: currentDish });
-        return failRelation
-          ? Promise.reject(new Error('请求超时，请重试'))
-          : Promise.resolve({ code: 200, data: dish('related') });
-      });
+      (getDishById as jest.Mock).mockResolvedValue({ code: 200, data: currentDish });
+      (getDishesByIds as jest.Mock).mockImplementation(() => failRelation
+        ? Promise.reject(new Error('请求超时，请重试'))
+        : Promise.resolve({ code: 200, data: { items: [dish('related')] } }));
       const wrapper = mountPage(DishPage);
       (wrapper.vm as any).dishId = 'dish';
       if (phase === 'cached') {
@@ -915,8 +914,8 @@ describe('dish detail and discussions', () => {
             ...dish(),
             ...(relation === 'parent' ? { parentDishId: 'related' } : { subDishId: ['related'] }),
           },
-        })
-        .mockResolvedValueOnce({ code: 503, message: '关联菜品读取失败，请重试' });
+        });
+      (getDishesByIds as jest.Mock).mockResolvedValueOnce({ code: 503, message: '关联菜品读取失败，请重试' });
       expect(await detail.fetchDishDetail('dish')).toBe(false);
       expect(detail.error.value).toContain('关联菜品读取失败');
     }

@@ -621,6 +621,11 @@ export class AdminUploadsService {
       name: upload.name,
       tags: upload.tags,
       price: upload.price,
+      calories: upload.calories ?? null,
+      protein: upload.protein ?? null,
+      carbohydrate: upload.carbohydrate ?? null,
+      fat: upload.fat ?? null,
+
       priceUnit: upload.priceUnit,
       description: upload.description,
       images:

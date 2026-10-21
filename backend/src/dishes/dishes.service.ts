@@ -162,8 +162,13 @@ export class DishesService {
     // 构建 where 条件 - 使用数组来确保类型正确
     const andConditions: Prisma.DishWhereInput[] = [];
 
-    // 状态筛选：默认只显示 online 的菜品
-    if (!userId || !filter.includeOffline) {
+    // 游客仅可查看在售菜品；登录用户可显式筛选状态。
+    if (!userId) {
+      andConditions.push({ status: 'online' });
+    }
+    if (filter.status) {
+      andConditions.push({ status: filter.status });
+    } else if (userId && !filter.includeOffline) {
       andConditions.push({ status: 'online' });
     }
 

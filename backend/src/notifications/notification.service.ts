@@ -17,6 +17,7 @@ export type NotificationTarget =
   | 'postComment'
   | 'dining_invite'
   | 'dish'
+  | 'report'
   | 'dish_upload'
   | 'week_collection';
 export type NotificationType =
@@ -28,7 +29,8 @@ export type NotificationType =
   | 'dining_cancelled'
   | 'new_dish'
   | 'price_change'
-  | 'weekly_recommendation';
+  | 'weekly_recommendation'
+  | 'report_handled';
 // Review results are transactional service messages for the contributor.
 export type UploadResultNotificationType =
   | 'upload_approved'
@@ -51,7 +53,14 @@ const scopeWhere = (scope: NotificationScope) =>
   scope === 'service'
     ? {
         targetType: {
-          in: ['review', 'comment', 'dish', 'week_collection', 'dish_upload'],
+          in: [
+            'review',
+            'comment',
+            'dish',
+            'week_collection',
+            'dish_upload',
+            'report',
+          ],
         },
       }
     : {};
@@ -89,6 +98,16 @@ export class NotificationService {
     tx: Prisma.TransactionClient,
     event: Pick<Notification, 'userId' | 'type' | 'targetType' | 'targetId'>,
   ): Promise<boolean> {
+    if (event.targetType === 'report') {
+      return !!(await tx.report.findFirst({
+        where: {
+          id: event.targetId,
+          reporterId: event.userId,
+          status: { in: ['approved', 'rejected'] },
+        },
+        select: { id: true },
+      }));
+    }
     if (event.targetType === 'dish_upload') {
       return !!(await tx.dishUpload.findFirst({
         where: { id: event.targetId, userId: event.userId },

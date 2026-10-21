@@ -4,6 +4,7 @@ import { mount, shallowMount } from '@vue/test-utils'
 
 const mocks = vi.hoisted(() => ({
   dishApiMock: {
+    downloadBatchTemplate: vi.fn(),
     parseBatchExcel: vi.fn(),
     confirmBatchImport: vi.fn(),
   },
@@ -45,16 +46,35 @@ describe('views/BatchAdd', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
-  it('downloadTemplate alerts (placeholder)', async () => {
-    const wrapper = shallowMount(BatchAdd, {
-      global: { stubs: { Header: true } },
-    })
+  it('downloads the returned workbook with an xlsx filename and releases the URL', async () => {
+    const workbook = new Blob(['workbook'], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    mocks.dishApiMock.downloadBatchTemplate.mockResolvedValue(workbook)
+    const createObjectURL = vi.fn(() => 'blob:template')
+    const revokeObjectURL = vi.fn()
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL })
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const wrapper = shallowMount(BatchAdd, { global: { stubs: { Header: true } } })
+    await wrapper.vm.downloadTemplate()
+    expect(mocks.dishApiMock.downloadBatchTemplate).toHaveBeenCalledTimes(1)
+    expect(createObjectURL).toHaveBeenCalledWith(workbook)
+    const link = click.mock.instances[0] as HTMLAnchorElement
+    expect(link.download).toBe('菜品批量导入模板.xlsx')
+    expect(link.href).toBe('blob:template')
+    expect(link.isConnected).toBe(false)
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:template')
+    wrapper.unmount()
+  })
 
-    wrapper.vm.downloadTemplate()
-    expect(mocks.showAlertMock).toHaveBeenCalledWith('模板下载功能开发中...')
-
+  it('reports download failure and allows retry', async () => {
+    mocks.dishApiMock.downloadBatchTemplate.mockRejectedValueOnce(new Error('网络连接失败'))
+    const wrapper = shallowMount(BatchAdd, { global: { stubs: { Header: true } } })
+    await wrapper.vm.downloadTemplate()
+    expect(mocks.showAlertMock).toHaveBeenCalledWith('网络连接失败')
+    expect(wrapper.get('button').attributes('disabled')).toBeUndefined()
     wrapper.unmount()
   })
 

@@ -1,4 +1,4 @@
-import { shallowMount } from '@vue/test-utils';
+import { mount, shallowMount } from '@vue/test-utils';
 import { ref } from 'vue';
 import { onShow, onPullDownRefresh } from '@dcloudio/uni-app';
 import ReviewsPage from '@/pages/profile/my-reviews/index.vue';
@@ -59,6 +59,54 @@ it.each([
     await (onPullDownRefresh as jest.Mock).mock.calls[0][0]();
     expect(uni.showToast).not.toHaveBeenCalledWith(expect.objectContaining({ title: '刷新成功' }));
     expect(uni.stopPullDownRefresh).toHaveBeenCalled();
+    wrapper.unmount();
+  }
+);
+
+it.each([
+  [FavoritesPage, useFavorites, 'favoriteItems'],
+  [HistoryPage, useHistory, 'historyItems'],
+] as const)(
+  'preserves source price, unit and status through the personal list projection',
+  async (Page, useList, itemsKey) => {
+    const items = ref([
+      {
+        dishId: 'd',
+        dishName: '菜品',
+        dishImages: [],
+        dishPrice: 10.01,
+        priceUnit: '元/100g',
+        status: 'offline',
+        calories: 0,
+        protein: null,
+        canteenName: '食堂',
+        windowName: '窗口',
+        tags: [],
+        averageRating: 0,
+      },
+    ]);
+    (useList as jest.Mock).mockReturnValue({
+      isLoggedIn: ref(true),
+      [itemsKey]: items,
+      loading: ref(false),
+      initialized: ref(true),
+      error: ref(null),
+      hasMore: ref(false),
+      refresh: jest.fn(),
+      loadMore: jest.fn(),
+      retry: jest.fn(),
+      removeFavorite: jest.fn(),
+      removingIds: ref([]),
+    });
+    const wrapper = mount(Page as any);
+    expect(wrapper.get('.dish-card__price').text()).toBe('¥10.01/100g');
+    expect(wrapper.get('.tag-badge--neutral').text()).toBe('已下架');
+    expect(wrapper.text()).toContain('热量 0 kcal');
+    expect(wrapper.text()).not.toContain('蛋白质');
+    items.value = [{ ...items.value[0], dishPrice: 0, priceUnit: null as any, status: 'online' }];
+    await wrapper.vm.$nextTick();
+    expect(wrapper.get('.dish-card__price').text()).toBe('¥0.00');
+    expect(wrapper.find('.tag-badge--neutral').exists()).toBe(false);
     wrapper.unmount();
   }
 );

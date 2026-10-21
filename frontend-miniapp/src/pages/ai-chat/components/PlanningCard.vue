@@ -33,19 +33,46 @@
       </button>
     </view>
 
+    <text v-if="collapsed && changeSummary" class="planning-change-summary" role="status">{{
+      changeSummary
+    }}</text>
+
     <template v-if="!collapsed">
       <text v-if="plan.summary" class="planning-summary">{{ plan.summary }}</text>
 
       <view v-if="preview?.dishes?.length">
         <view v-for="dish in preview.dishes" :key="dish.id" class="planning-dish">
           <view class="planning-dish-info">
-            <text class="planning-dish-name">{{ dish.name }}</text>
+            <view class="planning-dish-heading">
+              <text class="planning-dish-name">{{ dish.name }}</text>
+              <TagBadge
+                v-if="dishStatusLabel(dish)"
+                :label="dishStatusLabel(dish)"
+                tone="neutral"
+              />
+            </view>
             <text class="planning-dish-location">{{ dish.canteenName }}</text>
+            <text
+              v-for="notice in dishSupplyNotices(dish)"
+              :key="notice"
+              class="planning-dish-supply"
+              >{{ notice }}</text
+            >
+            <DishNutrition :dish="dish" />
             <view class="planning-dish-details">
-              <text class="planning-dish-price"
-                >¥{{ Number(dish.price || 0).toFixed(1)
-                }}{{ priceUnitSuffix(dish.priceUnit) }}</text
-              >
+              <view class="planning-dish-price-group">
+                <text class="planning-dish-price"
+                  >¥{{ Number(dish.price || 0).toFixed(2)
+                  }}{{ priceUnitSuffix(dish.priceUnit) }}</text
+                >
+                <text
+                  v-for="notice in priceChanges(dish.id)"
+                  :key="notice.kind"
+                  class="planning-price-change"
+                  >{{ notice.unitChanged ? '计价方式更新 · ' : '' }}原
+                  {{ notice.previousPriceLabel }}</text
+                >
+              </view>
               <text
                 v-if="typeof dish.averageRating === 'number'"
                 class="planning-dish-rating"
@@ -67,7 +94,14 @@
       </view>
 
       <view class="planning-card-footer">
-        <text class="planning-price-total">所列单价合计：¥{{ totalPrice.toFixed(1) }}</text>
+        <text
+          v-for="notice in generalNotices"
+          :key="notice.kind"
+          class="planning-dish-supply"
+          role="status"
+          >{{ notice.message }}</text
+        >
+        <text class="planning-price-total">所列单价合计：¥{{ totalPrice.toFixed(2) }}</text>
         <view class="planning-card-actions">
           <button
             class="planning-card-apply"
@@ -94,8 +128,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import dayjs from 'dayjs';
-import type { ComponentMealPlanDraft } from '@/types/api';
+import type { ComponentMealPlanDraft, Dish, MealPlanChangeNotice } from '@/types/api';
+import DishNutrition from '@/components/DishNutrition.vue';
+import TagBadge from '@/components/TagBadge.vue';
 import { priceUnitSuffix } from '@/utils/price-display';
+import { mealPlanDishNotices } from '@/utils/meal-plan-changes';
 
 const props = defineProps<{
   plan: ComponentMealPlanDraft & { appliedStatus?: 'success' | 'failed' };
@@ -146,6 +183,43 @@ const appliedButtonText = computed(() => {
 
 const preview = computed(() => props.plan.previewData);
 
+const priceChanges = (dishId: string) =>
+  (props.plan.changeNotices || []).filter(
+    (notice): notice is Extract<MealPlanChangeNotice, { kind: 'price' }> =>
+      notice.kind === 'price' && notice.dishId === dishId
+  );
+const generalNotices = computed(() =>
+  (props.plan.changeNotices || []).filter(notice => !notice.dishId)
+);
+const dishStatusLabel = (dish: Dish) =>
+  dish.status === 'offline'
+    ? '已下架'
+    : props.plan.changeNotices?.find(
+        notice => notice.kind === 'status' && notice.dishId === dish.id
+      )?.message || '';
+const dishSupplyNotices = (dish: Dish) => [
+  ...new Set([
+    ...mealPlanDishNotices(dish, preview.value),
+    ...(props.plan.changeNotices || [])
+      .filter(notice => notice.kind === 'supply' && notice.dishId === dish.id)
+      .map(notice => notice.message),
+  ]),
+];
+const changeSummary = computed(() => {
+  const names = new Map((preview.value?.dishes || []).map(dish => [dish.id, dish.name]));
+  const groups = new Map<string, string[]>();
+  for (const notice of props.plan.changeNotices || []) {
+    const name = notice.dishId ? names.get(notice.dishId) || '' : '';
+    const messages = groups.get(name) || [];
+    messages.push(notice.message);
+    groups.set(name, messages);
+  }
+  return Array.from(
+    groups,
+    ([name, messages]) => `${name ? name + '：' : ''}${messages.join('，')}`
+  ).join('；');
+});
+
 const mealTimeMap: Record<string, string> = {
   breakfast: '早餐',
   lunch: '午餐',
@@ -187,6 +261,36 @@ const handleApply = () => {
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   background: #fff;
+}
+.planning-change-summary {
+  display: block;
+  margin-top: 10px;
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.planning-dish-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.planning-dish-price-group {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+.planning-price-change,
+.planning-dish-supply {
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.planning-dish-supply {
+  display: block;
+  margin-top: 4px;
 }
 .planning-summary {
   display: block;

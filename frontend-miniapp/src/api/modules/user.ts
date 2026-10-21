@@ -125,6 +125,9 @@ export const withdrawMyUpload = (id: string, revision: number): Promise<ApiRespo
     url: `/user/uploads/${encodeURIComponent(id)}/withdraw`, method: 'POST', data: { revision },
   });
 
+export const getMyReport = (id: string): Promise<ApiResponse<Report>> =>
+  request<Report>({ url: `/user/reports/${encodeURIComponent(id)}`, method: 'GET' });
+
 /**
  * 获取我的举报
  */

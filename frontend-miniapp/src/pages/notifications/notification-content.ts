@@ -11,6 +11,7 @@ const systemPresentation: Partial<
   new_dish: { title: '食堂上新', icon: 'plus' },
   price_change: { title: '菜品价格更新', icon: 'info' },
   weekly_recommendation: { title: '本周推荐已更新', icon: 'calendar' },
+  report_handled: { title: '举报处理结果已更新', icon: 'shield' },
   upload_approved: { title: '菜品资料已采纳', icon: 'shield' },
   upload_rejected: { title: '菜品资料未通过', icon: 'edit' },
   upload_revoked: { title: '菜品资料已退回', icon: 'history' },
@@ -57,6 +58,8 @@ export function notificationText(item: InboxNotification): string {
       return '关注的菜品价格有更新';
     case 'weekly_recommendation':
       return '本周推荐已更新';
+    case 'report_handled':
+      return '你提交的举报已有处理结果，查看处理详情';
     case 'upload_approved':
       return '你提交的菜品资料已采纳';
     case 'upload_rejected':
@@ -70,6 +73,7 @@ export function notificationDestination(
   item: InboxNotification
 ): { url: string; tab?: boolean } | null {
   const id = encodeURIComponent(item.targetId);
+  if (item.targetType === 'report') return { url: `/pages/profile/my-reports/index?id=${id}` };
   if (item.targetType === 'dish_upload') return { url: `/pages/profile/my-uploads/index?id=${id}` };
   if (item.targetType === 'dish') return { url: `/pages/dish/index?id=${id}` };
   if (item.targetType === 'week_collection')

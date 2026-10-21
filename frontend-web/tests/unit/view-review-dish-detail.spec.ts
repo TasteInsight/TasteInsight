@@ -69,6 +69,53 @@ describe('views/ReviewDishDetail contribution moderation', () => {
     wrapper.unmount()
   })
 
+  it('shows pending admin nutrition through editing and approves the saved revision', async () => {
+    const upload = { ...contribution, uploaderType: 'admin', adminId: 'admin', calories: 0, protein: 12.5, carbohydrate: null }
+    mocks.reviewApi.getPendingUploadById.mockResolvedValueOnce({ code: 200, data: upload })
+    const wrapper = mountPage()
+    await flushPromises()
+    const nutrition = () => wrapper.get('[aria-labelledby="upload-nutrition-title"]')
+    expect(nutrition().text()).toContain('每份营养信息')
+    expect(nutrition().get('[data-nutrition-field="calories"]').text()).toContain('热量（kcal）0')
+    expect(nutrition().get('[data-nutrition-field="protein"]').text()).toContain('蛋白质（g）12.5')
+    expect(nutrition().find('[data-nutrition-field="carbohydrate"]').exists()).toBe(false)
+    expect(nutrition().find('[data-nutrition-field="fat"]').exists()).toBe(false)
+    await clickButton(wrapper, '编辑资料')
+    expect(wrapper.find('[aria-labelledby="upload-nutrition-title"]').exists()).toBe(false)
+    expect(wrapper.get('#upload-calories').element).toHaveProperty('value', '0')
+    expect(wrapper.get('#upload-protein').element).toHaveProperty('value', '12.5')
+    await wrapper.get('#upload-price-unit').setValue('元/斤')
+    mocks.reviewApi.updateUpload.mockResolvedValueOnce({ code: 200, data: { ...upload, priceUnit: '元/斤', revision: 4 } })
+    await wrapper.get('form[data-testid="contribution-edit"]').trigger('submit')
+    await flushPromises()
+    expect(mocks.reviewApi.updateUpload).toHaveBeenCalledWith('u1', { revision: 3, priceUnit: '元/斤' })
+    expect(nutrition().get('[data-nutrition-field="calories"]').text()).toContain('热量（kcal）0')
+    mocks.reviewApi.approveUpload.mockResolvedValueOnce({ code: 200 })
+    await clickButton(wrapper, '通过审核')
+    expect(mocks.reviewApi.approveUpload).toHaveBeenCalledWith('u1', { revision: 4 })
+    expect(mocks.routerReplace).toHaveBeenCalledWith({ name: 'ReviewDish' })
+  })
+
+  it('renders each supplied nutrition dimension with its per-serving unit', async () => {
+    mocks.reviewApi.getPendingUploadById.mockResolvedValueOnce({ code: 200, data: {
+      ...contribution, uploaderType: 'admin', calories: 210, protein: 0, carbohydrate: 25.5, fat: 8,
+    } })
+    const wrapper = mountPage()
+    await flushPromises()
+    expect(wrapper.findAll('[data-nutrition-field]').map(row => row.text())).toEqual([
+      '热量（kcal）210', '蛋白质（g）0', '碳水化合物（g）25.5', '脂肪（g）8',
+    ])
+  })
+
+  it.each([{}, { calories: null, protein: null, carbohydrate: null, fat: null }])('omits absent upload nutrition while preserving contribution details: %o', async nutrition => {
+    mocks.reviewApi.getPendingUploadById.mockResolvedValueOnce({ code: 200, data: { ...contribution, ...nutrition } })
+    const wrapper = mountPage()
+    await flushPromises()
+    expect(wrapper.find('[aria-labelledby="upload-nutrition-title"]').exists()).toBe(false)
+    expect(wrapper.text()).toContain('提交资料')
+    expect(wrapper.get('[data-field="saltiness"]').text()).toContain('2')
+  })
+
   it('keeps load failures on the page with retry instead of navigating away', async () => {
     mocks.reviewApi.getPendingUploadById.mockRejectedValueOnce(new Error('网络连接失败'))
     const wrapper = mountPage()
@@ -104,7 +151,7 @@ describe('views/ReviewDishDetail contribution moderation', () => {
     await flushPromises()
     expect(wrapper.get('#merge-dish').element).toHaveProperty('value', '')
     await wrapper.get('#merge-dish').setValue('d1')
-    expect(wrapper.findAll('[data-comparison]')).toHaveLength(15)
+    expect(wrapper.findAll('[data-comparison]')).toHaveLength(19)
     expect(wrapper.findAll('col')).toHaveLength(4)
     expect((wrapper.get('col').element as HTMLTableColElement).style.width).toBe('4rem')
     expect(wrapper.text()).not.toContain('图片将追加')
@@ -312,4 +359,26 @@ describe('views/ReviewDishDetail contribution moderation', () => {
     expect(wrapper.findAll('button').some(button => button.text() === '通过审核')).toBe(true)
     wrapper.unmount()
   })
+  it('compares and explicitly selects nullable nutrition fields when merging a user upload', async () => {
+    mocks.reviewApi.getPendingUploadById.mockResolvedValueOnce({ code: 200, data: {
+      ...contribution, calories: 0, protein: null,
+      duplicateCandidates: [{ ...originalDish, calories: 200, protein: 20 }],
+    } })
+    const wrapper = mountPage()
+    await flushPromises()
+    await wrapper.get('#merge-dish').setValue('d1')
+    const calories = wrapper.get('[data-comparison="calories"]')
+    expect(calories.text()).toContain('热量（kcal）')
+    expect(calories.findAll('td').map(cell => cell.text())).toEqual(['', '200', '0'])
+    const protein = wrapper.get('[data-comparison="protein"]')
+    expect(protein.findAll('td').map(cell => cell.text())).toEqual(['', '20', '未填写'])
+    await wrapper.get('input[value="calories"]').setValue(true)
+    await wrapper.get('input[value="protein"]').setValue(true)
+    mocks.reviewApi.approveUpload.mockResolvedValueOnce({ code: 200 })
+    await clickButton(wrapper, '通过并归并')
+    expect(mocks.reviewApi.approveUpload).toHaveBeenCalledWith('u1', {
+      revision: 3, mergeDishId: 'd1', mergeDishUpdatedAt: originalDish.updatedAt, mergeFields: ['calories', 'protein'],
+    })
+  })
+
 })

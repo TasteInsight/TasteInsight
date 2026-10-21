@@ -90,12 +90,15 @@ test('agreement is unchecked initially and the consent control gates login', asy
   wrapper.unmount();
 });
 
-test('opening a policy does not implicitly grant consent', async () => {
+test.each([
+  ['《隐私政策》', 'privacy'],
+  ['《用户协议》', 'user'],
+])('opening %s does not implicitly grant consent', async (label, type) => {
   const wrapper = mountForm();
   await flushPromises();
-  const policy = wrapper.findAll('text, span').find(node => node.text() === '《隐私政策》')!;
+  const policy = wrapper.findAll('text, span').find(node => node.text() === label)!;
   await policy.trigger('click');
-  expect(uni.navigateTo).toHaveBeenCalledWith({ url: '/pages/settings/privacy?type=privacy' });
+  expect(uni.navigateTo).toHaveBeenCalledWith({ url: `/pages/settings/privacy?type=${type}` });
   await wrapper.get('.login-button').trigger('click');
   expect(mockWechatLogin).not.toHaveBeenCalled();
   wrapper.unmount();

@@ -16,6 +16,11 @@ export const CONTRIBUTION_FIELDS = [
   'sweetness',
   'saltiness',
   'oiliness',
+  'calories',
+  'protein',
+  'carbohydrate',
+  'fat',
+
   'windowId',
   'windowName',
   'windowNumber',
@@ -30,6 +35,11 @@ const dishFields = [
   'floorName',
 ];
 const nullableFields = new Set([
+  'calories',
+  'protein',
+  'carbohydrate',
+  'fat',
+
   'priceUnit',
   'description',
   'windowId',
@@ -270,6 +280,11 @@ export async function prepareContribution(
     sweetness: source.sweetness ?? 0,
     saltiness: source.saltiness ?? 0,
     oiliness: source.oiliness ?? 0,
+    calories: source.calories ?? null,
+    protein: source.protein ?? null,
+    carbohydrate: source.carbohydrate ?? null,
+    fat: source.fat ?? null,
+
     canteenId: canteen.id,
     canteenName: canteen.name,
     windowId: window?.id ?? null,

@@ -22,6 +22,26 @@ import { CONTRIBUTION_FIELDS } from '../contribution-fields';
 
 export class UploadDishDto {
   @IsOptional()
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(0)
+  calories?: number | null;
+
+  @IsOptional()
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(0)
+  protein?: number | null;
+
+  @IsOptional()
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(0)
+  carbohydrate?: number | null;
+
+  @IsOptional()
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(0)
+  fat?: number | null;
+
+  @IsOptional()
   @IsUUID()
   clientRequestId?: string;
 

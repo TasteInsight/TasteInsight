@@ -118,6 +118,22 @@ describe('views/EditDish', () => {
     ;(globalThis as any).FileReader = originalFileReader
   })
 
+  it('loads, edits and clears per-serving nutrition through the actual form', async () => {
+    mocks.dishApiMock.getDishById.mockResolvedValue({ code: 200, data: {
+      id: 'd1', name: '菜品', canteenId: 'c1', windowId: 'w1', price: 12,
+      calories: 320, protein: 0, carbohydrate: null, fat: 8.5,
+    } })
+    const wrapper = mount(EditDish, { global: { stubs: { Header: true }, directives: { permission: () => undefined } } })
+    await flushAll()
+    expect((wrapper.get('input[name="protein"]').element as HTMLInputElement).value).toBe('0')
+    expect((wrapper.get('input[name="calories"]').element as HTMLInputElement).value).toBe('320')
+    await wrapper.get('input[name="calories"]').setValue('')
+    await wrapper.get('input[name="carbohydrate"]').setValue('25.5')
+    await wrapper.vm.submitForm()
+    expect(mocks.dishApiMock.updateDish).toHaveBeenCalledWith('d1', expect.objectContaining({ calories: null, protein: 0, carbohydrate: 25.5, fat: 8.5 }))
+    wrapper.unmount()
+  })
+
   it('keeps delete confirmation open while deletion is pending and permits cancel afterward', async () => {
     const wrapper = mount(EditDish, {
       global: { stubs: { Header: true }, directives: { permission: () => undefined } },

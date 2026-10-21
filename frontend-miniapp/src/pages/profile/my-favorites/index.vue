@@ -44,6 +44,13 @@
             name: item.dishName,
             images: item.dishImages,
             price: item.dishPrice,
+            priceUnit: item.priceUnit,
+            status: item.status,
+            calories: item.calories,
+            protein: item.protein,
+            carbohydrate: item.carbohydrate,
+            fat: item.fat,
+
             canteenName: item.canteenName,
             windowName: item.windowName,
             tags: item.tags,

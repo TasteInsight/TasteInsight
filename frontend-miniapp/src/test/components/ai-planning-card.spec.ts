@@ -1,6 +1,7 @@
 jest.mock('@dcloudio/uni-app', () => ({ onShow: jest.fn() }));
 import { mount, shallowMount } from '@vue/test-utils';
 import { ref } from 'vue';
+import { mealPlanChanges } from '@/utils/meal-plan-changes';
 import PlanningCard from '@/pages/ai-chat/components/PlanningCard.vue';
 import ChatPage from '@/pages/ai-chat/index.vue';
 import { useChat } from '@/pages/ai-chat/composables/use-chat';
@@ -39,8 +40,8 @@ test.each([
     const wrapper = mount(PlanningCard, { props: { plan } });
     await toggle(wrapper).trigger('click');
     expect(wrapper.findAll('.planning-dish-price').map(price => price.text())).toEqual([
-      `¥0.0${suffix}`,
-      `¥15.0${suffix}`,
+      `¥0.00${suffix}`,
+      `¥15.00${suffix}`,
     ]);
     expect(plan.previewData.dishes.map((dish: any) => dish.priceUnit)).toEqual([
       priceUnit,
@@ -223,4 +224,49 @@ test('real chat rendering isolates collapse across sessions and replacement mess
   wrapper.unmount();
   jest.clearAllTimers();
   jest.useRealTimers();
+});
+
+test('change notices remain readable on a saved collapsed card and current data is shown on expansion', async () => {
+  const plan = {
+    ...makePlan(),
+    appliedStatus: 'success',
+    changeNotices: [
+      {
+        kind: 'price' as const,
+        dishId: 'rice',
+        message: '单价由 ¥12.00 下降至 ¥10.00',
+        previousPriceLabel: '¥12.00',
+        unitChanged: false,
+      },
+      { kind: 'status' as const, dishId: 'rice', message: '已下架' },
+    ],
+  };
+  plan.previewData.dishes[0].price = 10;
+  plan.previewData.dishes[0].status = 'offline';
+  const wrapper = mount(PlanningCard, { props: { plan } });
+  expect(wrapper.get('[role="status"]').text()).toContain('下降至 ¥10.00');
+  expect(wrapper.text()).toContain('已下架');
+  await toggle(wrapper).trigger('click');
+  expect(wrapper.get('.planning-dish-price').text()).toBe('¥10.00');
+  expect(apply(wrapper).attributes('disabled')).toBeDefined();
+  expect(wrapper.findAll('.tag-badge').map(badge => badge.text())).toEqual(['已下架']);
+  expect(wrapper.find('.planning-change-summary').exists()).toBe(false);
+  expect(wrapper.get('.planning-price-change').text()).toBe('原 ¥12.00');
+  expect(wrapper.text().split('已下架')).toHaveLength(2);
+  wrapper.unmount();
+});
+
+test('a one-cent increase remains readable in the current price, total, and original price', async () => {
+  const plan = makePlan();
+  const current = { ...plan.previewData.dishes[0], price: 10.01, priceUnit: '份' };
+  plan.previewData.dishes = [current];
+  plan.appliedStatus = 'success';
+  plan.changeNotices = mealPlanChanges([{ ...current, price: 10 }], [current], plan.previewData);
+  const wrapper = mount(PlanningCard, { props: { plan } });
+  expect(wrapper.get('[role="status"]').text()).toContain('上涨至 ¥10.01/份');
+  await toggle(wrapper).trigger('click');
+  expect(wrapper.get('.planning-dish-price').text()).toBe('¥10.01/份');
+  expect(wrapper.get('.planning-price-total').text()).toBe('所列单价合计：¥10.01');
+  expect(wrapper.get('.planning-price-change').text()).toBe('原 ¥10.00/份');
+  wrapper.unmount();
 });

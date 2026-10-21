@@ -140,6 +140,11 @@ export interface AvailableDate {
  * 菜品信息
  */
 export interface Dish {
+  calories?: number | null
+  protein?: number | null
+  carbohydrate?: number | null
+  fat?: number | null
+
   id: string
   name: string
   tags?: string[]
@@ -183,6 +188,11 @@ export interface DishUpload extends Omit<Dish, 'status' | 'parentDishId' | 'subD
  * 创建菜品请求
  */
 export interface DishCreateRequest {
+  calories?: number | null
+  protein?: number | null
+  carbohydrate?: number | null
+  fat?: number | null
+
   name: string
   tags?: string[]
   price: number
@@ -211,6 +221,11 @@ export interface DishCreateRequest {
  * 更新菜品请求
  */
 export interface DishUpdateRequest {
+  calories?: number | null
+  protein?: number | null
+  carbohydrate?: number | null
+  fat?: number | null
+
   name?: string
   tags?: string[]
   price?: number

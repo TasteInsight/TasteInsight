@@ -1,6 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@/prisma.service';
 import { Prisma } from '@prisma/client';
+import { supplyDatesCover } from '@/dishes/dish-availability';
+import {
+  campusDate,
+  mealDate,
+  validateMealRange,
+} from '@/common/utils/campus-date';
 import { v4 as uuidv4 } from 'uuid';
 import { createHash } from 'crypto';
 import {
@@ -358,6 +364,8 @@ export class RecommendationService {
         id: { notIn: Array.from(seenDishIds) },
       });
     }
+
+    await this.appendSupplyDateFilter(filterConditions, dto.filter);
 
     // 3. 动态计算需要召回的候选数量
     // 基础策略：每次至少召回 pageSize * 3 的候选，确保有足够的多样性
@@ -2639,6 +2647,33 @@ export class RecommendationService {
     return allScoredDishes;
   }
 
+  private supplyRange(filter: RecommendationRequestDto['filter']) {
+    const start = mealDate(filter.startDate ?? filter.endDate ?? campusDate());
+    const end = mealDate(filter.endDate ?? start);
+    validateMealRange(start, end);
+    return { start, end };
+  }
+
+  private async appendSupplyDateFilter(
+    conditions: Prisma.DishWhereInput[],
+    filter: RecommendationRequestDto['filter'],
+  ): Promise<void> {
+    const { start, end } = this.supplyRange(filter);
+    // 在各路召回和分页前统一排除日期失效的限期供应菜品。
+    const limited = await this.prisma.dish.findMany({
+      where: {
+        AND: conditions,
+        NOT: { availableDates: { equals: Prisma.AnyNull } },
+      },
+      select: { id: true, availableDates: true },
+    });
+    const unavailable = limited.filter(
+      (dish) => !supplyDatesCover(dish.availableDates, start, end),
+    );
+    if (unavailable.length)
+      conditions.push({ id: { notIn: unavailable.map((dish) => dish.id) } });
+  }
+
   private async filterCurrentScoredDishes(
     candidates: ScoredDish[],
     userId?: string,
@@ -2662,7 +2697,12 @@ export class RecommendationService {
       },
       include: { canteen: true, window: true },
     });
-    const current = new Map(dishes.map((dish) => [dish.id, dish]));
+    const { start, end } = this.supplyRange(filter);
+    const current = new Map(
+      dishes
+        .filter((dish) => supplyDatesCover(dish.availableDates, start, end))
+        .map((dish) => [dish.id, dish]),
+    );
     return candidates
       .filter((item) => current.has(item.dish.id))
       .map((item) => ({ ...item, dish: current.get(item.dish.id)! }));

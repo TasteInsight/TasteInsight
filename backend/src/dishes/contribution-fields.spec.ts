@@ -132,3 +132,58 @@ describe('Contribution managed image identity', () => {
     ).toBe(false);
   });
 });
+
+describe('Contribution nutrition contract', () => {
+  const tx = {
+    canteen: {
+      findUnique: jest.fn().mockResolvedValue({ id: 'c', name: '食堂' }),
+    },
+  } as any;
+  const target = {
+    id: 'd',
+    name: '菜',
+    canteenId: 'c',
+    price: 8,
+    status: 'online',
+    availableMealTime: ['lunch'],
+    calories: 200,
+    protein: 20,
+    carbohydrate: null,
+    fat: 10,
+  } as any;
+  it('preserves omitted existing values and publishes only explicitly selected nullable changes', async () => {
+    const draft = await prepareContribution(
+      tx,
+      { changedFields: ['protein', 'fat'], protein: 0, fat: null },
+      target,
+    );
+    expect(draft).toMatchObject({
+      calories: 200,
+      protein: 0,
+      carbohydrate: null,
+      fat: null,
+    });
+    expect(changedDishData(draft, target, draft.changedFields)).toEqual({
+      protein: 0,
+      fat: null,
+    });
+    const snapshot = contributionSnapshot(target);
+    expect(snapshot).toMatchObject({
+      calories: 200,
+      protein: 20,
+      carbohydrate: null,
+      fat: 10,
+    });
+    expect(() =>
+      assertBaseline({ ...target, protein: 21 }, snapshot, ['protein']),
+    ).toThrow();
+    expect(requestFingerprint({ protein: 0 })).not.toBe(
+      requestFingerprint({ protein: null }),
+    );
+  });
+  it('requires an explicit value for a selected nutrition field', async () => {
+    await expect(
+      prepareContribution(tx, { changedFields: ['protein'] }, target),
+    ).rejects.toThrow('缺少补全字段');
+  });
+});

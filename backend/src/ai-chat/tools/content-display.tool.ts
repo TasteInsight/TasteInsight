@@ -26,8 +26,9 @@ export class ContentDisplayTool implements BaseTool {
       description:
         '向用户展示内容卡片（如菜品、食堂信息）。' +
         '\n使用场景：当你需要通过可视化卡片展示菜品或食堂时调用。' +
-        '\n根据已查询的ID重新读取真实信息，必须显式传递参数。' +
-        '\n必须基于之前查询工具（如get_canteen_info、search_dishes等）返回的结果，提取其中的id字段组成ids数组。' +
+        '\n根据已查询的ID重新读取真实信息，必须显式传递参数。dish 默认仅展示本次重读仍在售的菜品。' +
+        '\n用户明确查询已下架菜品或查看本人浏览历史、收藏时，dish 设置 includeOffline=true，保留真实供应状态；历史和收藏记录使用 dishId 字段作为菜品ID。includeOffline 仅作用于 dish。' +
+        '\n必须基于之前查询工具（如get_canteen_info、search_dishes等）返回的结果，提取其中的 id 字段（历史和收藏为 dishId）组成 ids 数组。' +
         '\n示例：如果get_canteen_info返回了[{id:"c1",name:"紫荆园"},{id:"c2",name:"桃李园"}]，' +
         '则应调用display_content时传递 {type:"canteen", ids:["c1","c2"]}。' +
         '\nmeal_plan 必须传入 create_meal_plan 返回的完整草稿，保留 previewData、confirmAction 和可选 constraints；本工具会重新校验供应、食堂和预算，不接受手写菜品详情或不一致的确认信息。',
@@ -52,6 +53,12 @@ export class ContentDisplayTool implements BaseTool {
             description:
               '【必填for dish/canteen】从查询工具返回结果中提取的id字段组成的数组。例如：["id1","id2","id3"]',
           },
+          includeOffline: {
+            type: 'boolean',
+            default: false,
+            description:
+              '仅用于 dish。默认 false，仅展示当前在售菜品；用户明确查询下架菜品或查看本人浏览历史、收藏时设置 true，展示结果保留真实状态。',
+          },
           data: {
             type: 'object',
             description: '【仅for meal_plan】复杂的膳食计划数据对象',
@@ -63,7 +70,7 @@ export class ContentDisplayTool implements BaseTool {
   }
 
   async execute(params: any, context: ToolContext): Promise<any> {
-    const { type, ids, data } = params;
+    const { type, ids, data, includeOffline = false } = params;
 
     if (!type) {
       throw new Error(
@@ -77,7 +84,7 @@ export class ContentDisplayTool implements BaseTool {
           '缺少或无效的参数 "ids"（类型为 "dish"）。请提供从搜索结果中获取的菜品ID数组。',
         );
       }
-      return this.getDishCards(ids, context.userId);
+      return this.getDishCards(ids, context.userId, includeOffline);
     } else if (type === 'canteen') {
       if (!ids || !Array.isArray(ids) || ids.length === 0) {
         throw new Error(
@@ -104,12 +111,15 @@ export class ContentDisplayTool implements BaseTool {
   private async getDishCards(
     ids: string[],
     userId: string,
+    includeOffline: boolean,
   ): Promise<ComponentDishCard[]> {
     const cards: ComponentDishCard[] = [];
 
     // 使用批量获取方法，一次查询获取所有菜品
     const result = await this.dishesService.getDishesByIds(ids, userId);
-    const dishes = result.data.items;
+    const dishes = result.data.items.filter(
+      (dish) => includeOffline || dish.status === 'online',
+    );
 
     for (const dish of dishes) {
       const rating =
@@ -120,6 +130,12 @@ export class ContentDisplayTool implements BaseTool {
       cards.push({
         dish: {
           id: dish.id,
+          status: dish.status,
+          calories: dish.calories,
+          protein: dish.protein,
+          carbohydrate: dish.carbohydrate,
+          fat: dish.fat,
+
           name: dish.name,
           image: dish.images?.[0] || '',
           rating,

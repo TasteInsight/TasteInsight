@@ -43,8 +43,9 @@ test('renders dishes from the notified weekly collection without synthesized ent
           canteenName: '紫荆园',
           windowName: '二层',
           images: [],
-          price: 12,
-          priceUnit: '份',
+          price: 10.01,
+          priceUnit: '元/100g',
+          status: 'online',
         },
       ],
     },
@@ -53,6 +54,8 @@ test('renders dishes from the notified weekly collection without synthesized ent
   expect(getWeeklyNotificationCollection).toHaveBeenCalledWith('2026-10-05');
   expect(wrapper.findAll('.weekly-dish')).toHaveLength(1);
   expect(wrapper.text()).toContain('清蒸鱼');
+  expect(wrapper.get('.dish-card__price').text()).toBe('¥10.01/100g');
+  expect(wrapper.find('.tag-badge--neutral').exists()).toBe(false);
   await wrapper.get('.weekly-dish').trigger('click');
   expect(uni.navigateTo).toHaveBeenCalledWith({ url: '/pages/dish/index?id=real' });
 });

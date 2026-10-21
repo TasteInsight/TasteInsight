@@ -74,3 +74,10 @@ test('highlighting leaves the record content and actions unchanged', async () =>
   expect(wrapper.classes()).not.toContain('upload-focused');
   wrapper.unmount();
 });
+
+test('forwards recorded nutrition to the shared display component without losing zero', () => {
+  const nutrition = { calories: 0, protein: 12.5, carbohydrate: null, fat: 4 };
+  const wrapper = shallowMount(UploadRecord, { props: { item: { ...item, ...nutrition } } });
+  expect(wrapper.getComponent({ name: 'DishNutrition' }).props('dish')).toMatchObject(nutrition);
+  wrapper.unmount();
+});

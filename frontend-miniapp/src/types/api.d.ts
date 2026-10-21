@@ -256,6 +256,11 @@ export enum Status {
  * Dish
  */
 export interface Dish {
+  calories?: number | null;
+  protein?: number | null;
+  carbohydrate?: number | null;
+  fat?: number | null;
+
   /**
    * 过敏原
    */
@@ -312,6 +317,7 @@ export interface Dish {
    * 价格
    */
   price: number;
+  priceUnit?: string | null;
   /**
    * 评价数量
    */
@@ -414,6 +420,13 @@ export interface Favorite {
   dishName: string;
   dishImages: string[];
   dishPrice: number;
+  priceUnit?: string | null;
+  status?: Status;
+  calories?: number | null;
+  protein?: number | null;
+  carbohydrate?: number | null;
+  fat?: number | null;
+
   canteenName: string;
   windowName: string;
   tags: string[];
@@ -427,7 +440,7 @@ export interface Report {
   id: string;
   reporterId: string;
   reporterNickname: string;
-  targetType: 'review' | 'comment';
+  targetType: 'review' | 'comment' | 'post' | 'postComment';
   targetId: string;
   type: string;
   reason: string;
@@ -602,6 +615,11 @@ export interface GetDishesRequest {
  * 用户上传菜品请求
  */
 export interface DishUserCreateRequest {
+  calories?: number | null;
+  protein?: number | null;
+  carbohydrate?: number | null;
+  fat?: number | null;
+
   clientRequestId?: string;
   targetDishId?: string;
   targetDishUpdatedAt?: string;
@@ -637,6 +655,11 @@ export interface DishUserCreateRequest {
  * 管理员创建菜品请求
  */
 export interface DishCreateRequest {
+  calories?: number | null;
+  protein?: number | null;
+  carbohydrate?: number | null;
+  fat?: number | null;
+
   name: string;
   tags?: string[];
   price: number;
@@ -663,6 +686,11 @@ export interface DishCreateRequest {
  * 管理员更新菜品请求
  */
 export interface DishUpdateRequest {
+  calories?: number | null;
+  protein?: number | null;
+  carbohydrate?: number | null;
+  fat?: number | null;
+
   name?: string;
   tags?: string[];
   price?: number;
@@ -778,6 +806,11 @@ export interface ReportHandleRequest {
 /**
  * 饮食计划请求
  */
+export interface MealPlanConstraints {
+  totalBudget?: number;
+  allowCrossCanteen?: boolean;
+}
+
 export interface MealPlanRequest {
   startDate?: string;
   endDate?: string;
@@ -882,6 +915,7 @@ export interface DishUploadData {
 export type DishContributionStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn';
 export type DishContributionField = 'name' | 'tags' | 'price' | 'priceUnit' | 'description' | 'images'
   | 'ingredients' | 'allergens' | 'spicyLevel' | 'sweetness' | 'saltiness' | 'oiliness'
+  | 'calories' | 'protein' | 'carbohydrate' | 'fat'
   | 'windowId' | 'windowName' | 'windowNumber' | 'availableMealTime' | 'availableDates';
 
 /**
@@ -909,6 +943,11 @@ export interface MyReviewItem extends Review {
  * 我的上传列表项
  */
 export interface MyUploadItem {
+  calories?: number | null;
+  protein?: number | null;
+  carbohydrate?: number | null;
+  fat?: number | null;
+
   id: string;
   name: string;
   canteenName: string;
@@ -949,6 +988,13 @@ export interface BrowseHistoryItem {
   dishName: string;
   dishImages: string[];
   dishPrice: number;
+  priceUnit?: string | null;
+  status?: Status;
+  calories?: number | null;
+  protein?: number | null;
+  carbohydrate?: number | null;
+  fat?: number | null;
+
   canteenName: string;
   windowName: string;
   tags: string[];
@@ -1141,6 +1187,11 @@ export interface LinkAction {
 // 卡片组件定义
 export interface ComponentDishCard {
   dish: {
+    status?: string;
+    calories?: number | null;
+    protein?: number | null;
+    carbohydrate?: number | null;
+    fat?: number | null;
     name: string;
     image: string;
     rating: string;
@@ -1178,7 +1229,20 @@ export interface ComponentMealPlanDraftPreviewData {
   dishes: Dish[];
 }
 
+export type MealPlanChangeNotice =
+  | {
+      kind: 'price';
+      dishId: string;
+      message: string;
+      previousPriceLabel: string;
+      unitChanged: boolean;
+    }
+  | { kind: 'status' | 'supply'; dishId: string; message: string }
+  | { kind: 'budget' | 'metadata'; message: string; dishId?: undefined };
+
 export interface ComponentMealPlanDraft {
+  changeNotices?: MealPlanChangeNotice[];
+  constraints?: MealPlanConstraints;
   summary?: string;
   previewData?: ComponentMealPlanDraftPreviewData;
   confirmAction?: {

@@ -3,11 +3,12 @@ import { useDishDetail } from '@/pages/dish/composables/use-dish-detail';
 import { useReview } from '@/pages/dish/composables/use-review';
 import { useComment } from '@/pages/dish/composables/use-comment';
 import { useUserStore } from '@/store/modules/use-user-store';
-import { getDishById } from '@/api/modules/dish';
+import { getDishById, getDishesByIds } from '@/api/modules/dish';
 
 // Mock APIs
 jest.mock('@/api/modules/dish', () => ({
   getDishById: jest.fn(),
+  getDishesByIds: jest.fn(),
   favoriteDish: jest.fn(),
   unfavoriteDish: jest.fn(),
 }));
@@ -158,9 +159,8 @@ describe('useDishDetail', () => {
         .mockResolvedValueOnce({
           code: 200,
           data: { id: 'd1', subDishId: ['s1'], parentDishId: 'p1' },
-        })
-        .mockResolvedValueOnce({ code: 200, data: { id: 's1' } })
-        .mockResolvedValueOnce({ code: 200, data: { id: 'p1' } });
+        });
+      (getDishesByIds as jest.Mock).mockImplementation(async (ids: string[]) => ({ code: 200, data: { items: ids.map(id => ({ id })) } }));
 
       const { fetchDishDetail, dish, subDishes, parentDish } = useDishDetail();
       await fetchDishDetail('d1');
@@ -168,6 +168,10 @@ describe('useDishDetail', () => {
       expect(dish.value?.id).toBe('d1');
       expect(subDishes.value[0].id).toBe('s1');
       expect(parentDish.value?.id).toBe('p1');
+      expect(getDishById).toHaveBeenCalledTimes(1);
+      expect(getDishById).toHaveBeenCalledWith('d1');
+      expect(getDishesByIds).toHaveBeenCalledWith(['s1']);
+      expect(getDishesByIds).toHaveBeenCalledWith(['p1']);
     });
 
     it('sets error on non-200 response', async () => {

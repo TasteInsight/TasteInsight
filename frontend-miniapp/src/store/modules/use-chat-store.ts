@@ -8,9 +8,12 @@ import {
   deleteAISession,
 } from '@/api/modules/ai';
 import { createMealPlan } from '@/api/modules/meal-plan';
+import { getDishesByIds } from '@/api/modules/dish';
+import { mealPlanChanges } from '@/utils/meal-plan-changes';
 import { USE_MOCK } from '../../mock/mock-adapter';
 import type {
   ChatRequest,
+  MealPlanChangeNotice,
   RecommendFeedbackRequest,
   ComponentDishCard,
   ComponentMealPlanDraft,
@@ -347,6 +350,8 @@ export const useChatStore = defineStore('ai-chat', () => {
         const block = target[message]?.content[segment];
         if (block?.type === 'card_plan' && block.data[card]) {
           block.data[card].appliedStatus = status;
+          block.data[card].previewData = plan.previewData;
+          block.data[card].changeNotices = plan.changeNotices;
         }
       };
       if (sessionId.value === conversation) {
@@ -367,8 +372,36 @@ export const useChatStore = defineStore('ai-chat', () => {
       if (!startDate || !endDate || !mealTime || !Array.isArray(dishes) || dishes.length === 0) {
         throw new Error('后端未返回可直接应用的规划参数（confirmAction.body）');
       }
-      await createMealPlan({ startDate, endDate, mealTime, dishes });
+      const response = await getDishesByIds(dishes).catch(() => undefined);
       if (!ownsAccount()) return false;
+      const schedule = { startDate, endDate, mealTime };
+      let currentPreview = plan.previewData;
+      let changeNotices: MealPlanChangeNotice[] = [
+        { kind: 'metadata', message: '菜品最新信息暂时无法读取，可在我的规划中查看' },
+      ];
+      if (response?.code === 200 && response.data) {
+        const currentById = new Map(response.data.items.map(dish => [dish.id, dish]));
+        if (dishes.some(id => !currentById.has(id))) {
+          throw new Error('部分菜品已删除，请重新选择菜品后保存规划');
+        }
+        const currentDishes = dishes.map(id => currentById.get(id)!);
+        changeNotices = mealPlanChanges(
+          plan.previewData?.dishes || [],
+          currentDishes,
+          schedule,
+          plan.constraints
+        );
+        currentPreview = { ...schedule, dishes: currentDishes };
+      }
+      await createMealPlan({
+        startDate,
+        endDate,
+        mealTime,
+        dishes,
+      });
+      if (!ownsAccount()) return false;
+      plan.changeNotices = changeNotices;
+      plan.previewData = currentPreview;
       recordStatus('success');
       try {
         uni.$emit('meal-plan:changed');

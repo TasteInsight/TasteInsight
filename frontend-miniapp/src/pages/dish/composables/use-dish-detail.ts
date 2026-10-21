@@ -1,5 +1,5 @@
 import { ref, computed, watch, getCurrentScope, onScopeDispose } from 'vue';
-import { getDishById, favoriteDish, unfavoriteDish } from '@/api/modules/dish';
+import { getDishById, getDishesByIds, favoriteDish, unfavoriteDish } from '@/api/modules/dish';
 import { useUserStore } from '@/store/modules/use-user-store';
 import type { Dish } from '@/types/api';
 import { useReview } from './use-review';
@@ -137,12 +137,17 @@ export function useDishDetail() {
 
     subDishesLoading.value = true;
     try {
-      const promises = ids.map((id: string) => getDishById(id));
-      const results = await Promise.all(promises);
-      if (!isCurrent()) return false;
-      const failed = results.find(result => result.code !== 200 || !result.data);
-      if (failed) throw new Error(failed.message || '相关规格加载失败，请重试');
-      subDishes.value = results.map(result => result.data!);
+      const loaded: Dish[] = [];
+      for (let offset = 0; offset < ids.length; offset += 200) {
+        const response = await getDishesByIds(ids.slice(offset, offset + 200));
+        if (!isCurrent()) return false;
+        if (response.code !== 200 || !response.data)
+          throw new Error(response.message || '相关规格加载失败，请重试');
+        loaded.push(...response.data.items);
+      }
+      const byId = new Map(loaded.map(item => [item.id, item]));
+      if (ids.some(id => !byId.has(id))) throw new Error('相关规格加载失败，请重试');
+      subDishes.value = ids.map(id => byId.get(id)!);
       return true;
     } catch (err) {
       if (!isCurrent()) return false;
@@ -166,11 +171,13 @@ export function useDishDetail() {
 
     parentDishLoading.value = true;
     try {
-      const response = await getDishById(parentId);
+      const response = await getDishesByIds([parentId]);
       if (!isCurrent()) return false;
       if (response.code !== 200 || !response.data)
         throw new Error(response.message || '所属菜品加载失败，请重试');
-      parentDish.value = response.data;
+      const parent = response.data.items.find(item => item.id === parentId);
+      if (!parent) throw new Error('所属菜品加载失败，请重试');
+      parentDish.value = parent;
       return true;
     } catch (err) {
       if (!isCurrent()) return false;

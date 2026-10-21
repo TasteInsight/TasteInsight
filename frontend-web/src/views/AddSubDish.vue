@@ -465,6 +465,8 @@
               </div>
             </div>
 
+            <NutritionFields :values="formData" />
+
             <!-- 过敏原 -->
             <div class="mb-6">
               <label class="block text-gray-700 font-medium mb-2 admin-label">过敏原</label>
@@ -523,6 +525,8 @@ import { dishApi } from '@/api/modules/dish'
 import { reviewApi } from '@/api/modules/review'
 import Header from '@/components/Layout/Header.vue'
 import AdminImage from '@/components/Common/AdminImage.vue'
+import NutritionFields from '@/components/Dishes/NutritionFields.vue'
+import { nutritionPayload } from '@/utils/nutrition'
 import { showConfirm } from '@/composables/useModal'
 import { useNotification } from '@/composables/useNotification'
 import { createDishForm, getCompositionSubItem, getDishCompositionVersion } from '@/composables/dish-composition'
@@ -532,6 +536,7 @@ export default {
   name: 'AddSubDish',
   components: {
     AdminImage,
+    NutritionFields,
     Header,
   },
   setup() {
@@ -720,6 +725,14 @@ export default {
         }
       }
       
+      let nutrition
+      try {
+        nutrition = nutritionPayload(formData)
+      } catch (error) {
+        notify.error(error.message)
+        return
+      }
+
       if (hasError) {
         return
       }
@@ -809,6 +822,7 @@ export default {
           windowName: formData.windowName,
           windowNumber: formData.windowNumber || formData.windowName,
           price: dishPrice,
+          ...nutrition,
           description: formData.description || undefined,
           images: imageUrls.length > 0 ? imageUrls : undefined,
           tags: tags,

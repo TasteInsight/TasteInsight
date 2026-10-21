@@ -1,5 +1,5 @@
 import { flushPromises, shallowMount } from '@vue/test-utils';
-import { reactive } from 'vue';
+import { reactive, nextTick } from 'vue';
 import { onLoad, onShow, onPullDownRefresh } from '@dcloudio/uni-app';
 import Page from '@/pages/profile/public.vue';
 import { getPublicProfile, getPublicMealPlans, getPosts } from '@/api/modules/social';
@@ -50,7 +50,9 @@ beforeEach(() => {
 });
 afterEach(() => wrappers.splice(0).forEach(wrapper => wrapper.unmount()));
 async function page(id = 'A') {
-  const wrapper = shallowMount(Page);
+  const wrapper = shallowMount(Page, {
+    global: { stubs: { DishNutrition: false, TagBadge: false } },
+  });
   wrappers.push(wrapper);
   (onLoad as jest.Mock).mock.calls.slice(-1)[0][0]({ id });
   (onShow as jest.Mock).mock.calls.slice(-1)[0][0]();
@@ -281,4 +283,78 @@ test('each plan dish supports keyboard navigation with its encoded ID and clears
   await press(dishes[1], ' ');
   expect(uni.navigateTo).toHaveBeenCalledTimes(2);
   expect(uni.navigateTo).toHaveBeenLastCalledWith({ url: '/pages/dish/index?id=dish-two' });
+});
+
+test('another profile public plans honor viewer nutrition preferences, missing values and measured zero', async () => {
+  const plan = publicPlan('nutrition');
+  (getPublicMealPlans as jest.Mock).mockResolvedValue({
+    code: 200,
+    data: {
+      items: [
+        {
+          ...plan,
+          dishes: [
+            { ...plan.dishes[0], calories: 0, protein: 12.5, carbohydrate: null },
+            { ...plan.dishes[0], id: 'missing-nutrition', name: '清炒时蔬' },
+          ],
+        },
+      ],
+    },
+  });
+  user.isLoggedIn = false;
+  user.userInfo.settings = { displaySettings: { showCalories: false, showNutrition: true } };
+  const wrapper = await page('B');
+  await wrapper.findAll('[role="tab"]')[1].trigger('click');
+  await flushPromises();
+  const dishes = wrapper.findAll('.public-dish');
+  expect(getPublicMealPlans).toHaveBeenLastCalledWith('B', { page: 1, pageSize: 20 });
+  expect(dishes[0].text()).toContain('热量 0 kcal');
+  expect(dishes[0].text()).not.toContain('蛋白质');
+  expect(dishes[1].find('.dish-nutrition').exists()).toBe(false);
+
+  user.isLoggedIn = true;
+  await nextTick();
+  expect(dishes[0].text()).not.toContain('kcal');
+  expect(dishes[0].text()).toContain('蛋白质 12.5 g');
+  expect(dishes[0].text()).not.toMatch(/碳水化合物|脂肪/);
+
+  user.userInfo.settings.displaySettings = { showCalories: true, showNutrition: true };
+  await nextTick();
+  expect(dishes[0].text()).toContain('热量 0 kcal');
+  expect(dishes[0].text()).toContain('蛋白质 12.5 g');
+
+  user.userInfo.settings.displaySettings = { showCalories: true, showNutrition: false };
+  await nextTick();
+  expect(dishes[0].text()).toContain('热量 0 kcal');
+  expect(dishes[0].text()).not.toContain('蛋白质');
+
+  user.userInfo.settings.displaySettings = { showCalories: false, showNutrition: false };
+  await nextTick();
+  expect(wrapper.find('.dish-nutrition').exists()).toBe(false);
+  expect(dishes[0].text()).toContain('番茄炒蛋');
+  expect(dishes[1].text()).toContain('清炒时蔬');
+  expect(getPublicMealPlans).toHaveBeenCalledTimes(1);
+  expect(user.updateProfileAction).not.toHaveBeenCalled();
+});
+
+test('public plans distinguish the actual offline status without hiding saved dishes', async () => {
+  const plan = publicPlan('status');
+  Object.assign(plan.dishes[0], {
+    price: 10.01,
+    priceUnit: '元/100g',
+    status: 'offline',
+    calories: 0,
+    protein: null,
+  });
+  (getPublicMealPlans as jest.Mock).mockResolvedValue({ code: 200, data: { items: [plan] } });
+  const wrapper = await page('B');
+  await wrapper.findAll('[role="tab"]')[1].trigger('click');
+  await flushPromises();
+  expect(wrapper.get('.public-dish .tag-badge--neutral').text()).toBe('已下架');
+  expect(wrapper.findAll('.public-dish')).toHaveLength(1);
+  expect(wrapper.text()).toContain('热量 0 kcal');
+  expect(wrapper.text()).not.toContain('蛋白质');
+  Object.assign((wrapper.vm as any).plans[0].dishes[0], { status: 'online' });
+  await nextTick();
+  expect(wrapper.find('.tag-badge--neutral').exists()).toBe(false);
 });

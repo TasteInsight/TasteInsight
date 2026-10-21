@@ -104,6 +104,11 @@ export class DishUploadDto {
   name: string;
   tags: string[];
   price: number;
+  calories?: number | null;
+  protein?: number | null;
+  carbohydrate?: number | null;
+  fat?: number | null;
+
   priceUnit: string | null;
   description: string | null;
   images: string[];

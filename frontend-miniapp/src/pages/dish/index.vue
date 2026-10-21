@@ -66,6 +66,7 @@
             <TagBadge :label="tag" />
           </button>
         </view>
+        <DishNutrition :dish="dish" />
         <view class="rating-overview" :class="{ 'rating-overview-empty': !displayReviewCount }">
           <view class="rating-total"
             ><text class="rating-average">{{
@@ -321,6 +322,7 @@
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue';
 import { requireStudent } from '@/utils/student-access';
+import DishNutrition from '@/components/DishNutrition.vue';
 import { priceUnitSuffix } from '@/utils/price-display';
 import { ref, computed, nextTick, watch, onScopeDispose } from 'vue';
 import { onLoad, onBackPress, onPullDownRefresh, onReachBottom, onHide } from '@dcloudio/uni-app';
