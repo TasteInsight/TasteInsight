@@ -3,8 +3,9 @@ import { useChatStore, type PreferenceDraftCard } from '@/store/modules/use-chat
 import { useUserStore } from '@/store/modules/use-user-store';
 import { getAISuggestions } from '@/api/modules/ai';
 import type { AIScene } from '@/types/api';
+import type { TextStreamTransport } from '@/utils/text-stream';
 
-export function useChat() {
+export function useChat(transport?: TextStreamTransport) {
   const chatStore = useChatStore();
   const userStore = useUserStore();
   const openingSuggestions = ref<string[]>([]);
@@ -168,7 +169,7 @@ export function useChat() {
     const isCurrent = beginOperation();
     isSending.value = true;
     try {
-      const accepted = await chatStore.sendChatMessage(text);
+      const accepted = await chatStore.sendChatMessage(text, transport);
       if (!accepted || !isCurrent() || !chatStore.sessionId) return false;
       initialError.value = '';
       return true;
@@ -252,6 +253,7 @@ export function useChat() {
     onScopeDispose(() => {
       disposed = true;
       invalidateOperation();
+      chatStore.abortChat(false);
     });
   }
 

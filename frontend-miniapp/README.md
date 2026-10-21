@@ -264,6 +264,8 @@ VITE_API_BASE_URL=http://10.0.2.2:3001 pnpm build:app
 
 使用 HBuilderX 5.26 导入生成的 `dist/build/app/` 目录，选择“运行到手机或模拟器”的 Android 标准基座。资源目录已由项目 CLI 编译；Android SDK、模拟器与基座是本地运行所需的独立工具。真机联调使用可访问宿主机的局域网地址，设备上的 `localhost` 不指向开发电脑。
 
+Android AI 对话通过 [renderjs](https://uniapp.dcloud.net.cn/tutorial/renderjs.html) 在页面 WebView 中使用 Fetch / ReadableStream 读取增量文本。各端共用 [eventsource-parser](https://github.com/rexxars/eventsource-parser) 解析 SSE，并复用登录刷新和会话取消逻辑。连接及读取闲置超时为 60 秒，每次收到数据后重新计时。HTTP 401 允许刷新凭据后重试一次，其余错误交给页面显示；停止回复会取消请求。此实现随 App 资源构建，无额外原生插件。H5 直接复用同一 Fetch 传输层；iOS 使用原生 XHR，小程序使用 `uni.request` 分块能力。
+
 `build:app` 生成运行资源，不生成独立签名 APK。正式 App 发行还需配置应用标识、签名与原生能力。原生微信登录使用 App OAuth，后端配置 `WECHAT_APP_APPID` / `WECHAT_APP_SECRET`，客户端配置对应开放平台应用和原生登录能力；跨端 UnionID 关联还需 `WECHAT_OPEN_PLATFORM_ID`。正式登录需使用匹配签名的安装包与真实微信账号验收。
 
 ## 测试

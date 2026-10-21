@@ -1,5 +1,8 @@
 <template>
   <view class="ai-chat-page page-viewport">
+    <!-- #ifdef APP-PLUS -->
+    <AppTextStream v-if="useAndroidStream" ref="appTextStream" />
+    <!-- #endif -->
     <view v-if="isLoggedIn" class="ai-chat-toolbar">
       <button
         class="chat-button chat-toolbar-action chat-toolbar-new"
@@ -349,7 +352,16 @@ import WindowCard from './components/WindowCard.vue';
 import InputBar from './components/InputBar.vue';
 import SuggestionChips from './components/SuggestionChips.vue';
 import type { ComponentMealPlanDraft, AIScene } from '@/types/api';
-
+import type { TextStreamTransport } from '@/utils/text-stream';
+// #ifdef APP-PLUS
+import AppTextStream from '@/components/AppTextStream.vue';
+const appTextStream = ref<InstanceType<typeof AppTextStream> | null>(null);
+const useAndroidStream = typeof plus !== 'undefined' && plus.os.name === 'Android';
+// #endif
+let transport: TextStreamTransport | undefined;
+// #ifdef APP-PLUS
+if (useAndroidStream) transport = options => appTextStream.value!.start(options);
+// #endif
 const {
   isLoggedIn,
   messages,
@@ -371,7 +383,7 @@ const {
   dismissPreferences,
   deleteSession,
   stopStreaming,
-} = useChat();
+} = useChat(transport);
 onShow(() => {
   if (isLoggedIn.value && !currentSessionId.value && !isInitializing.value) void init();
 });

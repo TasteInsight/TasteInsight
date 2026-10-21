@@ -1,9 +1,12 @@
 // @/api/modules/ai.ts
 import request from '@/utils/request';
+import { createParser, type EventSourceMessage } from 'eventsource-parser';
 import config from '@/config';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { expireSession, refreshAccessToken } from '@/utils/auth-session';
 import { createHttpError } from '@/utils/user-friendly-error';
+import type { TextStreamTransport } from '@/utils/text-stream';
+import { fetchTextStream } from '@/utils/fetch-text-stream';
 import type {
   RecommendFeedbackRequest,
   CreateAISessionRequest,
@@ -93,62 +96,25 @@ export const deleteAISession = (sessionId: string): Promise<ApiResponse<null>> =
   });
 };
 
-// ==================== 核心逻辑抽离：解析 SSE 字符串 ====================
-
-/**
- * 解析单行 SSE 字符串
- * 处理粘包、多行 event/data 的情况
- */
-function parseSSEEventString(evtString: string, callbacks: AIStreamCallbacks) {
-  // 有些 evtString 可能包含多个 data: 行，或者 event: 行
-  // 标准 SSE 格式是以 \n\n 分隔事件，这里的 evtString 应该是已经被 \n\n 切分过的一个完整块（或者不完整的块，但在外部处理了）
-  // 简单起见，这里假设 evtString 是一个或多个以 \n 分隔的行
-
-  let eventName: string | undefined;
-  let dataLines: string[] = [];
-  const lines = evtString.split(/\r?\n/);
-
-  for (const line of lines) {
-    if (!line || line.startsWith(':')) continue;
-
-    const separatorIndex = line.indexOf(':');
-    const field = separatorIndex === -1 ? line : line.slice(0, separatorIndex);
-    let value = separatorIndex === -1 ? '' : line.slice(separatorIndex + 1);
-    // SSE 规范只移除冒号后的一个可选空格；其余空白属于数据本身。
-    if (value.startsWith(' ')) value = value.slice(1);
-
-    if (field === 'event') {
-      eventName = value;
-      callbacks.onEvent?.(eventName);
-    } else if (field === 'data') {
-      dataLines.push(value);
-    }
+function dispatchAIEvent(event: EventSourceMessage, callbacks: AIStreamCallbacks) {
+  callbacks.onEvent?.(event.event || 'message');
+  let json: any;
+  try {
+    json = JSON.parse(event.data);
+  } catch {
+    // text_chunk 的正文为纯文本。
   }
-
-  if (dataLines.length > 0) {
-    const dataStr = dataLines.join('\n');
-    let json: any;
-    try {
-      json = JSON.parse(dataStr);
-    } catch (e) {
-      // ignore non-json data (e.g. simple text)
-    }
-
-    if (eventName === 'error') {
-      const message =
-        (json && typeof json.error === 'string' && json.error) ||
-        (json && typeof json.message === 'string' && json.message) ||
-        dataStr ||
-        'AI 流式请求失败';
-      callbacks.onError?.(new Error(message));
-      return;
-    }
-
-    callbacks.onMessage?.(dataStr);
-    if (json !== undefined) {
-      callbacks.onJSON?.(json);
-    }
+  if (event.event === 'error') {
+    const message =
+      (json && typeof json.error === 'string' && json.error) ||
+      (json && typeof json.message === 'string' && json.message) ||
+      event.data ||
+      'AI 流式请求失败';
+    callbacks.onError?.(new Error(message));
+    return;
   }
+  callbacks.onMessage?.(event.data);
+  if (json !== undefined) callbacks.onJSON?.(json);
 }
 
 type StreamDecoder = {
@@ -253,24 +219,23 @@ function createUtf8StreamDecoder(): StreamDecoder {
   return { decode, flush };
 }
 
-// ==================== HTTP Chunked 实现 (UniApp/小程序/App通用) ====================
-
 /**
- * HTTP Chunked 流式对话
- * 适用于：微信小程序、UniApp (Android/iOS App)、H5 (uni.request 内部封装了 xhr/fetch)
+ * SSE 解析与鉴权共用同一流程；传输层负责交付增量文本和 HTTP 状态。
  */
 export const streamAIChat = (
   sessionId: string,
   payload: ChatRequest,
-  callbacks: AIStreamCallbacks = {}
+  callbacks: AIStreamCallbacks = {},
+  transport?: TextStreamTransport
 ) => {
+  const streamTransport = transport ?? (config.platform === 'h5' ? fetchTextStream : undefined);
   const url = `${config.baseUrl}/ai/sessions/${sessionId}/chat/stream`;
   const userStore = useUserStore();
   const sessionVersion = userStore.sessionVersion;
   let isAborted = false;
   let terminalState: 'pending' | 'error' | 'complete' = 'pending';
   let activeAttempt: object | null = null;
-  let requestTask: UniApp.RequestTask | undefined;
+  let requestTask: Pick<UniApp.RequestTask, 'abort'> | undefined;
   const isCurrentStream = () =>
     !isAborted && terminalState === 'pending' && userStore.sessionVersion === sessionVersion;
 
@@ -333,7 +298,86 @@ export const streamAIChat = (
             };
           })()
         : createUtf8StreamDecoder();
-    let buffer = '';
+    const parser = createParser({ onEvent: event => dispatchAIEvent(event, guardedCallbacks) });
+    const consumeChunk = (data: ArrayBuffer | string) => {
+      if (!isCurrentAttempt() || !data) return;
+      parser.feed(typeof data === 'string' ? data : streamDecoder.decode(data));
+    };
+    const acceptResponse = (statusCode: number, data?: unknown) => {
+      if (!isCurrentAttempt()) return false;
+      if (statusCode === 401) {
+        if (retried || deliveredEvent) {
+          failAuthentication(createHttpError(401));
+        } else {
+          // 401 在业务处理前被拒绝；仅此情形允许轮换凭据后重试一次。
+          activeAttempt = null;
+          void recoverAuthentication(accessToken);
+        }
+        return false;
+      }
+      if (statusCode < 200 || statusCode >= 300) {
+        finishWithError(createHttpError(statusCode, data));
+        return false;
+      }
+      return true;
+    };
+    const failAttempt = (error: unknown) => {
+      if (isCurrentAttempt()) finishWithError(error);
+    };
+    const completeAttempt = () => {
+      if (!isCurrentAttempt()) return;
+      parser.feed(streamDecoder.flush());
+      parser.reset();
+      if (!isCurrentAttempt()) return;
+      terminalState = 'complete';
+      callbacks.onComplete?.();
+    };
+
+    if (streamTransport) {
+      requestTask = streamTransport({
+        url,
+        header,
+        body: JSON.stringify(payload),
+        onStatus: acceptResponse,
+        onText: consumeChunk,
+        onError: failAttempt,
+        onComplete: completeAttempt,
+      });
+      return;
+    }
+
+    // #ifdef APP-PLUS
+    const NativeRequest = typeof plus === 'undefined' ? undefined : plus.net?.XMLHttpRequest;
+    if (NativeRequest) {
+      const xhr = new NativeRequest();
+      requestTask = xhr;
+      let receivedLength = 0;
+      const readResponse = () => {
+        if (!isCurrentAttempt() || !xhr.status || xhr.status < 200 || xhr.status >= 300) return;
+        const text = xhr.responseText || '';
+        const chunk = text.slice(receivedLength);
+        receivedLength = text.length;
+        consumeChunk(chunk);
+      };
+      xhr.open('POST', url);
+      xhr.responseType = 'text';
+      xhr.timeout = 60000;
+      for (const [name, value] of Object.entries(header)) xhr.setRequestHeader(name, value);
+      xhr.onreadystatechange = () => {
+        if (xhr.readyState === 3) readResponse();
+      };
+      xhr.onprogress = readResponse;
+      xhr.onload = () => {
+        if (!acceptResponse(xhr.status || 0, xhr.responseText)) return;
+        readResponse();
+        completeAttempt();
+      };
+      xhr.onerror = () => failAttempt(new Error('网络连接异常，请稍后重试'));
+      xhr.ontimeout = () => failAttempt(new Error('请求超时，请重试'));
+      xhr.send(JSON.stringify(payload));
+      return;
+    }
+    // #endif
 
     const task = uni.request({
       url,
@@ -344,44 +388,17 @@ export const streamAIChat = (
       responseType: 'arraybuffer',
       timeout: 60000,
       success: res => {
-        if (!isCurrentAttempt()) return;
-        if (res.statusCode === 401) {
-          if (retried || deliveredEvent) {
-            failAuthentication(createHttpError(401));
-          } else {
-            // 401 在业务处理前被拒绝；仅此情形允许轮换凭据后重试一次。
-            activeAttempt = null;
-            void recoverAuthentication(accessToken);
-          }
-        } else if (res.statusCode < 200 || res.statusCode >= 300) {
-          finishWithError(createHttpError(res.statusCode, res.data));
-        }
+        acceptResponse(res.statusCode, res.data);
       },
-      fail: error => {
-        if (isCurrentAttempt()) finishWithError(error);
-      },
-      complete: () => {
-        if (!isCurrentAttempt()) return;
-        buffer += streamDecoder.flush();
-        for (const event of buffer.split('\n\n')) {
-          if (event.trim()) parseSSEEventString(event, guardedCallbacks);
-        }
-        if (!isCurrentAttempt()) return;
-        terminalState = 'complete';
-        callbacks.onComplete?.();
-      },
+      fail: failAttempt,
+      complete: completeAttempt,
     }) as UniApp.RequestTask & {
       onChunkReceived(callback: (response: { data: ArrayBuffer | string }) => void): void;
     };
     requestTask = task;
 
     task.onChunkReceived(response => {
-      if (!isCurrentAttempt() || !response?.data) return;
-      buffer +=
-        typeof response.data === 'string' ? response.data : streamDecoder.decode(response.data);
-      const events = buffer.split('\n\n');
-      buffer = events.pop() || '';
-      for (const event of events) parseSSEEventString(event, guardedCallbacks);
+      if (response?.data) consumeChunk(response.data);
     });
   }
 
