@@ -8,6 +8,37 @@ describe('OSS SDK contract', () => {
     originalname: 'image.png',
   } as Express.Multer.File;
   afterEach(() => jest.restoreAllMocks());
+  it('reads historical OSS objects while new uploads use another provider', async () => {
+    const get = jest
+      .spyOn(OSS.prototype, 'get')
+      .mockResolvedValue({ content: file.buffer } as never);
+    const storage = new OssStorageStrategy(
+      new ConfigService({
+        UPLOAD_STORAGE_TYPE: 'local',
+        OSS_REGION: 'oss-cn-shanghai',
+        OSS_ACCESS_KEY_ID: 'fixture-key',
+        OSS_ACCESS_KEY_SECRET: 'fixture-secret',
+        OSS_BUCKET: 'photos',
+      }),
+    );
+    const key = 'moderation-private/00000000-0000-4000-8000-000000000000.png';
+    await expect(storage.read(key)).resolves.toEqual(file.buffer);
+    expect(get).toHaveBeenCalledWith(key);
+  });
+
+  it('reports missing credentials when the historical OSS backend is read', async () => {
+    const get = jest.spyOn(OSS.prototype, 'get');
+    const storage = new OssStorageStrategy(
+      new ConfigService({ UPLOAD_STORAGE_TYPE: 'local' }),
+    );
+    await expect(
+      storage.read(
+        'moderation-private/00000000-0000-4000-8000-000000000000.png',
+      ),
+    ).rejects.toThrow('OSS_REGION');
+    expect(get).not.toHaveBeenCalled();
+  });
+
   it.each([false, true])(
     'preserves upload, private read and deletion (private: %s)',
     async (privateFile) => {

@@ -1,5 +1,3 @@
-export const STORAGE_STRATEGY = Symbol('STORAGE_STRATEGY');
-
 export interface UploadResult {
   url: string;
   filename: string;

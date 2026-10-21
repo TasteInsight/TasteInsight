@@ -1,5 +1,5 @@
 import { canonicalModerationImageUrl } from './moderation-image-url';
-import { Inject, Optional } from '@nestjs/common';
+import { Optional } from '@nestjs/common';
 import { ModerationSettingsService } from '@/content-moderation/moderation-settings.service';
 import { ModerationAssetsService } from '@/content-moderation/moderation-assets.service';
 import {
@@ -8,11 +8,7 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import {
-  STORAGE_STRATEGY,
-  type StorageStrategy,
-} from './strategies/storage.strategy';
+import { StorageService } from './storage.service';
 import { UploadResponseDto } from './dto/upload.dto';
 import sharp from 'sharp';
 import { PrismaService } from '@/prisma.service';
@@ -24,12 +20,11 @@ export class UploadService {
   private readonly logger = new Logger(UploadService.name);
 
   get storageType(): string {
-    return this.configService.get<string>('UPLOAD_STORAGE_TYPE', 'local');
+    return this.storage.type;
   }
 
   constructor(
-    private configService: ConfigService,
-    @Inject(STORAGE_STRATEGY) private readonly strategy: StorageStrategy,
+    private readonly storage: StorageService,
     private readonly prisma: PrismaService,
     @Optional() private readonly moderationSettings?: ModerationSettingsService,
     @Optional() private readonly moderationAssets?: ModerationAssetsService,
@@ -72,11 +67,13 @@ export class UploadService {
       throw new BadRequestException('请上传完整的 JPEG、PNG、GIF 或 WebP 图片');
     }
 
+    const storageType = this.storageType;
+    const strategy = this.storage.forType(storageType);
     const policy = userId ? await this.moderationSettings?.policy() : undefined;
     const result =
       policy?.enabled && userId
         ? await this.moderationAssets!.stage(file, userId, animated)
-        : await this.strategy.upload(file);
+        : await strategy.upload(file);
     if (contributionUserId) {
       try {
         await this.prisma.contributionImage.create({
@@ -84,15 +81,12 @@ export class UploadService {
             userId: contributionUserId,
             url: canonicalModerationImageUrl(result.url),
             storageKey: result.filename,
-            storageType: this.configService.get<string>(
-              'UPLOAD_STORAGE_TYPE',
-              'local',
-            ),
+            storageType,
             expiresAt: new Date(Date.now() + CONTRIBUTION_IMAGE_TTL_MS),
           },
         });
       } catch (error) {
-        await this.strategy
+        await strategy
           .remove(result.filename)
           .catch(() =>
             this.logger.error(
@@ -113,13 +107,10 @@ export class UploadService {
     storageType: string,
     storageKey: string,
   ): Promise<void> {
-    if (
-      storageType !==
-      this.configService.get<string>('UPLOAD_STORAGE_TYPE', 'local')
-    ) {
+    if (storageType !== this.storageType) {
       throw new Error('Image storage configuration changed');
     }
-    await this.strategy.remove(storageKey);
+    await this.storage.forType(storageType).remove(storageKey);
   }
 
   private async compressImage(image: sharp.Sharp): Promise<Buffer> {

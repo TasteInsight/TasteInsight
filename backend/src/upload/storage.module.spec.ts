@@ -10,7 +10,7 @@ import { ContributionImageCleanup } from './contribution-image-cleanup.service';
 import { LocalStorageStrategy } from './strategies/local-storage.strategy';
 import { OssStorageStrategy } from './strategies/oss-storage.strategy';
 import { S3StorageStrategy } from './strategies/s3-storage.strategy';
-import { STORAGE_STRATEGY } from './strategies/storage.strategy';
+import { StorageService } from './storage.service';
 
 describe.each(['local', 'oss', 's3'])('%s storage lifecycle', (storageType) => {
   let module: TestingModule;
@@ -119,7 +119,7 @@ describe.each(['local', 'oss', 's3'])('%s storage lifecycle', (storageType) => {
   });
 
   it('shares one selected adapter across uploads and moderation', async () => {
-    expect(module.get(STORAGE_STRATEGY)).toBe(selected);
+    expect(module.get(StorageService).forType()).toBe(selected);
     const response = await upload.uploadFile(
       await imageFile(),
       'student',
@@ -238,19 +238,69 @@ describe.each(['local', 'oss', 's3'])('%s storage lifecycle', (storageType) => {
     },
   );
 
-  it('refuses to read or delete an object belonging to another configured store', async () => {
+  it.each([false, true])(
+    'reads historical local images after changing the upload store (approved: %s)',
+    async (approved) => {
+      const historicalKey =
+        '.moderation/00000000-0000-4000-8000-000000000000.png';
+      prisma.contentModerationAsset.findUnique.mockResolvedValue({
+        ...asset,
+        approved,
+        storageType: 'local',
+        storageKey: historicalKey,
+      });
+      stores[0].read.mockResolvedValue(Buffer.from('historical-local-image'));
+      const signed = new URL(assets.preview(asset.id));
+      await expect(
+        assets.read(
+          asset.id,
+          approved ? undefined : signed.searchParams.get('expires')!,
+          approved ? undefined : signed.searchParams.get('signature')!,
+        ),
+      ).resolves.toMatchObject({
+        buffer: Buffer.from('historical-local-image'),
+      });
+      expect(stores[0].read).toHaveBeenCalledWith(historicalKey);
+      for (const other of stores.slice(1))
+        expect(other.read).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['oss', 's3'])(
+    'reads the recorded %s backend independently of the new upload default',
+    async (recordedType) => {
+      const recorded = stores[recordedType === 'oss' ? 1 : 2];
+      const storageKey =
+        'moderation-private/00000000-0000-4000-8000-000000000000.png';
+      prisma.contentModerationAsset.findUnique.mockResolvedValue({
+        ...asset,
+        approved: true,
+        storageType: recordedType,
+        storageKey,
+      });
+      recorded.read.mockResolvedValue(Buffer.from('historical-cloud-image'));
+      await expect(assets.read(asset.id)).resolves.toMatchObject({
+        buffer: Buffer.from('historical-cloud-image'),
+      });
+      expect(recorded.read).toHaveBeenCalledWith(storageKey);
+      for (const other of stores.filter((store) => store !== recorded))
+        expect(other.read).not.toHaveBeenCalled();
+    },
+  );
+
+  it('refuses cleanup of a different store and rejects unknown persisted types', async () => {
     const otherStorage = storageType === 's3' ? 'oss' : 's3';
-    prisma.contentModerationAsset.findUnique.mockResolvedValue({
-      ...asset,
-      approved: true,
-      storageType: otherStorage,
-    });
-    await expect(assets.read(asset.id)).rejects.toThrow(
-      'Image storage configuration changed',
-    );
     await expect(
       upload.removeContributionImage(otherStorage, key),
     ).rejects.toThrow('Image storage configuration changed');
+    prisma.contentModerationAsset.findUnique.mockResolvedValue({
+      ...asset,
+      approved: true,
+      storageType: 'unknown',
+    });
+    await expect(assets.read(asset.id)).rejects.toThrow(
+      'Unsupported image storage type',
+    );
     expect(selected.read).not.toHaveBeenCalled();
     expect(selected.remove).not.toHaveBeenCalled();
   });

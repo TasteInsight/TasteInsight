@@ -1,12 +1,9 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { LocalStorageStrategy } from './strategies/local-storage.strategy';
 import { OssStorageStrategy } from './strategies/oss-storage.strategy';
 import { S3StorageStrategy } from './strategies/s3-storage.strategy';
-import {
-  STORAGE_STRATEGY,
-  StorageStrategy,
-} from './strategies/storage.strategy';
+import { StorageService } from './storage.service';
 
 @Module({
   imports: [ConfigModule],
@@ -14,31 +11,8 @@ import {
     LocalStorageStrategy,
     OssStorageStrategy,
     S3StorageStrategy,
-    {
-      provide: STORAGE_STRATEGY,
-      inject: [
-        ConfigService,
-        LocalStorageStrategy,
-        OssStorageStrategy,
-        S3StorageStrategy,
-      ],
-      useFactory: (
-        config: ConfigService,
-        local: LocalStorageStrategy,
-        oss: OssStorageStrategy,
-        s3: S3StorageStrategy,
-      ): StorageStrategy => {
-        switch (config.get<string>('UPLOAD_STORAGE_TYPE', 'local')) {
-          case 'oss':
-            return oss;
-          case 's3':
-            return s3;
-          default:
-            return local;
-        }
-      },
-    },
+    StorageService,
   ],
-  exports: [STORAGE_STRATEGY],
+  exports: [StorageService],
 })
 export class StorageModule {}

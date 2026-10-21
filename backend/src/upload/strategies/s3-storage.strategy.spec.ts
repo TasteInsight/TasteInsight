@@ -183,6 +183,36 @@ describe('S3 storage protocol', () => {
     }
   });
 
+  it('reads historical S3 bytes when another provider handles new uploads', async () => {
+    const original = new S3StorageStrategy(config());
+    const result = await original.upload(file, true);
+    const historical = new S3StorageStrategy(
+      config({ UPLOAD_STORAGE_TYPE: 'local', S3_FORCE_PATH_STYLE: 'true' }),
+    );
+    try {
+      await expect(historical.read(result.filename)).resolves.toEqual(
+        file.buffer,
+      );
+      await historical.remove(result.filename);
+      expect(objects.size).toBe(0);
+    } finally {
+      original.onModuleDestroy();
+      historical.onModuleDestroy();
+    }
+  });
+
+  it('reports missing credentials when a historical S3 backend is actually read', async () => {
+    const storage = new S3StorageStrategy(
+      config({ UPLOAD_STORAGE_TYPE: 'local', S3_ACCESS_KEY_ID: undefined }),
+    );
+    await expect(
+      storage.read(
+        'moderation-private/00000000-0000-4000-8000-000000000000.png',
+      ),
+    ).rejects.toThrow('S3_ACCESS_KEY_ID');
+    expect(requests).toHaveLength(0);
+  });
+
   it('propagates write and delete failures to the caller for rollback and retry', async () => {
     const storage = new S3StorageStrategy(config());
     failPut = true;

@@ -11,56 +11,39 @@ import { randomUUID } from 'crypto';
 
 @Injectable()
 export class OssStorageStrategy implements StorageStrategy {
-  private client: OSS;
+  private client?: OSS;
   private readonly logger = new Logger(OssStorageStrategy.name);
 
-  constructor(private configService: ConfigService) {
-    const storageType = this.configService.get<string>('UPLOAD_STORAGE_TYPE');
+  constructor(private readonly configService: ConfigService) {
+    if (configService.get<string>('UPLOAD_STORAGE_TYPE') === 'oss')
+      this.getClient();
+  }
 
-    if (storageType === 'oss') {
-      const region = this.configService.get<string>('OSS_REGION');
-      const accessKeyId = this.configService.get<string>('OSS_ACCESS_KEY_ID');
-      const accessKeySecret = this.configService.get<string>(
-        'OSS_ACCESS_KEY_SECRET',
-      );
-      const bucket = this.configService.get<string>('OSS_BUCKET');
-
-      if (!region || !accessKeyId || !accessKeySecret || !bucket) {
-        this.logger.error(
-          'OSS configuration is missing, but storage type is set to OSS.',
-        );
-        throw new InternalServerErrorException(
-          'OSS is not properly configured',
-        );
-      } else {
-        this.client = new OSS({
-          region,
-          accessKeyId,
-          accessKeySecret,
-          bucket,
-          secure: true,
-        });
-      }
+  private getClient(): OSS {
+    if (!this.client) {
+      this.client = new OSS({
+        region: this.configService.getOrThrow<string>('OSS_REGION'),
+        accessKeyId: this.configService.getOrThrow<string>('OSS_ACCESS_KEY_ID'),
+        accessKeySecret: this.configService.getOrThrow<string>(
+          'OSS_ACCESS_KEY_SECRET',
+        ),
+        bucket: this.configService.getOrThrow<string>('OSS_BUCKET'),
+        secure: true,
+      });
     }
+    return this.client;
   }
 
   async upload(
     file: Express.Multer.File,
     privateFile = false,
   ): Promise<UploadResult> {
-    if (!this.client) {
-      this.logger.error(
-        'OSS client is not initialized. Check your configuration.',
-      );
-      throw new InternalServerErrorException('OSS client is not initialized');
-    }
-
     const fileExt = path.extname(file.originalname);
     // 使用 randomUUID 生成唯一文件名，并存放在 images 目录下
     const fileName = `${privateFile ? 'moderation-private' : 'images'}/${randomUUID()}${fileExt}`;
 
     try {
-      const result = await this.client.put(
+      const result = await this.getClient().put(
         fileName,
         file.buffer,
         privateFile
@@ -96,19 +79,18 @@ export class OssStorageStrategy implements StorageStrategy {
       )
     )
       throw new Error('Invalid managed image key');
-    const result = await this.client.get(storageKey);
+    const result = await this.getClient().get(storageKey);
     return result.content as Buffer;
   }
 
   async remove(storageKey: string): Promise<void> {
     if (
-      !this.client ||
       !/^(?:images|moderation-private)\/[0-9a-f-]{36}\.(jpg|png|gif|webp)$/.test(
         storageKey,
       )
     ) {
       throw new Error('Invalid managed OSS image key');
     }
-    await this.client.delete(storageKey);
+    await this.getClient().delete(storageKey);
   }
 }

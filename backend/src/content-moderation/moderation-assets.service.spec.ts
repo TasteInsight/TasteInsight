@@ -23,7 +23,7 @@ describe('moderation assets', () => {
         MODERATION_PUBLIC_BASE_URL: 'https://api.example.com/api/v1',
         MODERATION_MEDIA_SECRET: 'fixture-long-enough-for-valid-signatures',
       }),
-      local as never,
+      { type: 'local', forType: () => local } as never,
     );
     prisma.contentModerationAsset.findUnique.mockResolvedValue({
       id: 'asset123456789012345',
@@ -68,7 +68,7 @@ describe('moderation assets', () => {
         MODERATION_PUBLIC_BASE_URL: 'https://API.EXAMPLE.COM:443/api/v1/',
         MODERATION_MEDIA_SECRET: 'fixture-long-enough-for-valid-signatures',
       }),
-      local as never,
+      { type: 'local', forType: () => local } as never,
     );
     const preview = normalized.preview('asset123456789012345');
     const canonical = new URL(preview).origin + new URL(preview).pathname;

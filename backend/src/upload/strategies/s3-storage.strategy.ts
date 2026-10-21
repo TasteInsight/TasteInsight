@@ -1,3 +1,4 @@
+import { booleanSetting } from '@/common/utils/boolean-setting';
 import {
   Injectable,
   InternalServerErrorException,
@@ -17,18 +18,26 @@ import { StorageStrategy, UploadResult } from './storage.strategy';
 
 @Injectable()
 export class S3StorageStrategy implements StorageStrategy, OnModuleDestroy {
-  private readonly client?: S3Client;
-  private readonly bucket?: string;
-  private readonly objectBaseUrl?: string;
+  private client?: S3Client;
+  private bucket?: string;
+  private objectBaseUrl?: string;
   private readonly logger = new Logger(S3StorageStrategy.name);
 
   constructor(private readonly config: ConfigService) {
-    if (config.get<string>('UPLOAD_STORAGE_TYPE') !== 's3') return;
+    if (config.get<string>('UPLOAD_STORAGE_TYPE') === 's3') this.getClient();
+  }
+
+  private getClient(): S3Client {
+    if (this.client) return this.client;
+    const config = this.config;
     const endpoint = config.getOrThrow<string>('S3_ENDPOINT');
     const region = config.getOrThrow<string>('S3_REGION');
     this.bucket = config.getOrThrow<string>('S3_BUCKET');
-    const forcePathStyle = config.get<boolean>('S3_FORCE_PATH_STYLE', false);
-    this.client = new S3Client({
+    const forcePathStyle = booleanSetting(
+      config.get('S3_FORCE_PATH_STYLE'),
+      'S3_FORCE_PATH_STYLE',
+    );
+    const client = new S3Client({
       endpoint,
       region,
       forcePathStyle,
@@ -41,7 +50,7 @@ export class S3StorageStrategy implements StorageStrategy, OnModuleDestroy {
       requestChecksumCalculation: 'WHEN_REQUIRED',
       responseChecksumValidation: 'WHEN_REQUIRED',
     });
-    this.objectBaseUrl = this.client.config
+    this.objectBaseUrl = client.config
       .endpointProvider({
         Bucket: this.bucket,
         Region: region,
@@ -52,6 +61,8 @@ export class S3StorageStrategy implements StorageStrategy, OnModuleDestroy {
         Accelerate: false,
       })
       .url.href.replace(/\/$/, '');
+    this.client = client;
+    return client;
   }
 
   async upload(
@@ -59,13 +70,14 @@ export class S3StorageStrategy implements StorageStrategy, OnModuleDestroy {
     privateFile = false,
   ): Promise<UploadResult> {
     const filename = `${privateFile ? 'moderation-private' : 'images'}/${randomUUID()}${path.extname(file.originalname)}`;
+    const client = this.getClient();
     const publicBaseUrl = this.config.get<string>('S3_PUBLIC_BASE_URL');
     const baseUrl = (
       !privateFile && publicBaseUrl ? publicBaseUrl : this.objectBaseUrl
     )!.replace(/\/$/, '');
     try {
       // Bucket policy grants anonymous reads only to images/*; staged objects remain private.
-      await this.client!.send(
+      await client.send(
         new PutObjectCommand({
           Bucket: this.bucket,
           Key: filename,
@@ -88,7 +100,8 @@ export class S3StorageStrategy implements StorageStrategy, OnModuleDestroy {
     ) {
       throw new Error('Invalid managed image key');
     }
-    const result = await this.client!.send(
+    const client = this.getClient();
+    const result = await client.send(
       new GetObjectCommand({ Bucket: this.bucket, Key: storageKey }),
     );
     return Buffer.from(await result.Body!.transformToByteArray());
@@ -102,7 +115,8 @@ export class S3StorageStrategy implements StorageStrategy, OnModuleDestroy {
     ) {
       throw new Error('Invalid managed S3 image key');
     }
-    await this.client!.send(
+    const client = this.getClient();
+    await client.send(
       new DeleteObjectCommand({ Bucket: this.bucket, Key: storageKey }),
     );
   }

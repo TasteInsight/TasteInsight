@@ -21,8 +21,7 @@ describe('temporary contribution media', () => {
     });
     prisma.contributionImage.create.mockResolvedValue({ id: 'image' });
     service = new UploadService(
-      { get: () => 'local' } as any,
-      local as any,
+      { type: 'local', forType: () => local } as any,
       prisma as any,
     );
   });

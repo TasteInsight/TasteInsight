@@ -2,24 +2,20 @@ import { canonicalModerationImageUrl } from '@/upload/moderation-image-url';
 import {
   BadRequestException,
   Injectable,
-  Inject,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ContentModerationAsset, Prisma } from '@prisma/client';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { PrismaService } from '@/prisma.service';
-import {
-  STORAGE_STRATEGY,
-  type StorageStrategy,
-} from '@/upload/strategies/storage.strategy';
+import { StorageService } from '@/upload/storage.service';
 
 @Injectable()
 export class ModerationAssetsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
-    @Inject(STORAGE_STRATEGY) private readonly storage: StorageStrategy,
+    private readonly storage: StorageService,
   ) {}
 
   private base() {
@@ -53,8 +49,9 @@ export class ModerationAssetsService {
   }
 
   async stage(file: Express.Multer.File, userId: string, animated = false) {
-    const storageType = this.config.get<string>('UPLOAD_STORAGE_TYPE', 'local');
-    const result = await this.storage.upload(file, true);
+    const storageType = this.storage.type;
+    const strategy = this.storage.forType(storageType);
+    const result = await strategy.upload(file, true);
     try {
       const asset = await this.prisma.contentModerationAsset.create({
         data: {
@@ -67,7 +64,7 @@ export class ModerationAssetsService {
       });
       return { url: this.preview(asset.id), filename: result.filename };
     } catch (error) {
-      await this.storage.remove(result.filename).catch(() => undefined);
+      await strategy.remove(result.filename).catch(() => undefined);
       throw error;
     }
   }
@@ -150,12 +147,7 @@ export class ModerationAssetsService {
       )
         throw new NotFoundException('图片尚未公开');
     }
-    if (
-      asset.storageType !==
-      this.config.get<string>('UPLOAD_STORAGE_TYPE', 'local')
-    ) {
-      throw new Error('Image storage configuration changed');
-    }
-    return { asset, buffer: await this.storage.read(asset.storageKey) };
+    const strategy = this.storage.forType(asset.storageType);
+    return { asset, buffer: await strategy.read(asset.storageKey) };
   }
 }
