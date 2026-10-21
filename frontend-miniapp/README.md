@@ -9,18 +9,22 @@ TasteInsight 小程序是基于 **UniApp** + **Vue 3** 构建的跨平台应用�
 - **状态管理**: Pinia 2
 - **样式**: TailwindCSS + CSS
 - **国际化**: Vue I18n
-- **Markdown 渲染**: markdown-it + mp-html
-- **单元测试**: Jest 29 + @vue/test-utils
+- **Markdown**: markdown-it + markdown-it-cjk-friendly 3.0.0；AI 回复使用原生 rich-text 渲染
+- **新闻富文本**: mp-html
+- **SSE 解析**: eventsource-parser 4.1.2
+- **单元测试**: Jest 29.7 + @vue/test-utils + @vue/vue3-jest 29.2.6
 - **E2E 测试**: Playwright
 - **负载测试**: k6（统一 API 压测）
 - **语言**: TypeScript 7.0.2；Vue SFC 检查使用官方 TypeScript 6 兼容 API
-- **包管理器**: pnpm
+- **包管理器**: pnpm 11.21.0（由 `packageManager` 固定）
 
 ## 发布构建与依赖维护
 
-开发环境使用 Node.js 22.12 及以上版本。`pnpm type-check` 先通过 TypeScript 7 检查独立 TS 模块，再通过 `vue-tsc` 检查 Vue 模板、脚本及测试。依赖按照 [TypeScript 官方并存方案](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/#running-side-by-side-with-typescript-6-0) 配置：`@typescript/native` 提供 7.0.2 的 `tsc`，`typescript` 别名指向官方 `@typescript/typescript6`，供 Vue 和 Jest 调用 JS 编译器 API。
+开发环境使用 Node.js 22.13 及以上版本，与 pnpm 11.21.0 的运行要求一致。`pnpm type-check` 先通过 TypeScript 7 检查独立 TS 模块，再通过 `vue-tsc` 3.3 检查 Vue 模板、脚本及测试。依赖按照 [TypeScript 官方并存方案](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/#running-side-by-side-with-typescript-6-0) 配置：`@typescript/native` 提供 7.0.2 的 `tsc`，`typescript` 别名指向官方 `@typescript/typescript6`，供 Vue 和 Jest 调用 JS 编译器 API。具体依赖版本以 `package.json` 和 `pnpm-lock.yaml` 为准。
 
 `@vue/vue3-jest@29.2.6` 的模板转换误将编译参数包在 `tsconfig` 字段中，导致 TypeScript 6 忽略 CommonJS 配置。`patches/` 中的 pnpm 补丁将已解析的参数直接传给 `transpileModule`。升级转换器时复核上游修复并移除对应补丁。
+
+SSE 事件由 `eventsource-parser` 处理分块边界。AI Markdown 在 `markdown-it` 上注册 `markdown-it-cjk-friendly`，支持中文标点紧邻加粗、斜体分隔符的内容，例如 `**推荐菜品：**根据口味选择`。`jest.config.js` 通过 Babel 转换这些 ESM 依赖；`vite.config.ts` 从 Markdown 依赖所属包解析路径，以支持 pnpm 的依赖布局。升级解析器时同步验证 SSE 分块、停止后重发、中文 Markdown 和三端构建。
 
 本地 Mock 路由和夹具仅在 `mock` 模式加载，首个请求等待路由注册完成。H5、小程序和 App 的正式构建使用真实 API，构建器会移除 Mock 路由及其数据依赖。
 
@@ -208,8 +212,10 @@ App/H5 主导航为首页、校园、规划、问 AI、我的；校园页内部�
 
 ### 安装依赖
 
+在 `frontend-miniapp` 目录使用固定版本的 pnpm 安装锁文件中的依赖：
+
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 ```
 
 CLI 项目使用 `package.json` 和锁文件中的编译器。HBuilderX 的安装或更新不会替换项目依赖；Android 标准运行基座应与项目编译器保持 5.26 对齐。升级编译器时需同步整组 DCloud 编译器包及配套 Vite、`@dcloudio/types`，单独版本管理的 `@dcloudio/uni-ui` 不使用编译器版本号。
@@ -358,7 +364,11 @@ Mock 数据位于 `src/mock/` 目录：
 ## 类型检查
 
 ```bash
+# TypeScript 7 核心模块检查，以及 Vue 模板、脚本和测试的完整检查
 pnpm type-check
+
+# 仅检查独立 TypeScript 模块
+pnpm type-check:ts
 ```
 
 ## 代码规范
