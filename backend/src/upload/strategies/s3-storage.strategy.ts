@@ -1,11 +1,5 @@
-import { booleanSetting } from '@/common/utils/boolean-setting';
-import {
-  Injectable,
-  InternalServerErrorException,
-  Logger,
-  OnModuleDestroy,
-} from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { S3StorageConfiguration } from '../storage.config';
+import { InternalServerErrorException, Logger } from '@nestjs/common';
 import {
   DeleteObjectCommand,
   GetObjectCommand,
@@ -16,35 +10,24 @@ import { randomUUID } from 'crypto';
 import * as path from 'path';
 import { StorageStrategy, UploadResult } from './storage.strategy';
 
-@Injectable()
-export class S3StorageStrategy implements StorageStrategy, OnModuleDestroy {
+export class S3StorageStrategy implements StorageStrategy {
   private client?: S3Client;
-  private bucket?: string;
   private objectBaseUrl?: string;
   private readonly logger = new Logger(S3StorageStrategy.name);
 
-  constructor(private readonly config: ConfigService) {
-    if (config.get<string>('UPLOAD_STORAGE_TYPE') === 's3') this.getClient();
-  }
+  constructor(private readonly config: S3StorageConfiguration) {}
 
   private getClient(): S3Client {
     if (this.client) return this.client;
-    const config = this.config;
-    const endpoint = config.getOrThrow<string>('S3_ENDPOINT');
-    const region = config.getOrThrow<string>('S3_REGION');
-    this.bucket = config.getOrThrow<string>('S3_BUCKET');
-    const forcePathStyle = booleanSetting(
-      config.get('S3_FORCE_PATH_STYLE'),
-      'S3_FORCE_PATH_STYLE',
-    );
+    const { endpoint, region, forcePathStyle = false } = this.config;
     const client = new S3Client({
       endpoint,
       region,
       forcePathStyle,
       credentials: {
-        accessKeyId: config.getOrThrow<string>('S3_ACCESS_KEY_ID'),
-        secretAccessKey: config.getOrThrow<string>('S3_SECRET_ACCESS_KEY'),
-        sessionToken: config.get<string>('S3_SESSION_TOKEN') || undefined,
+        accessKeyId: this.config.accessKeyId,
+        secretAccessKey: this.config.secretAccessKey,
+        sessionToken: this.config.sessionToken,
       },
       // Optional AWS checksum extensions are not implemented by every S3 service.
       requestChecksumCalculation: 'WHEN_REQUIRED',
@@ -52,7 +35,7 @@ export class S3StorageStrategy implements StorageStrategy, OnModuleDestroy {
     });
     this.objectBaseUrl = client.config
       .endpointProvider({
-        Bucket: this.bucket,
+        Bucket: this.config.bucket,
         Region: region,
         Endpoint: endpoint,
         ForcePathStyle: forcePathStyle,
@@ -71,7 +54,7 @@ export class S3StorageStrategy implements StorageStrategy, OnModuleDestroy {
   ): Promise<UploadResult> {
     const filename = `${privateFile ? 'moderation-private' : 'images'}/${randomUUID()}${path.extname(file.originalname)}`;
     const client = this.getClient();
-    const publicBaseUrl = this.config.get<string>('S3_PUBLIC_BASE_URL');
+    const publicBaseUrl = this.config.publicBaseUrl;
     const baseUrl = (
       !privateFile && publicBaseUrl ? publicBaseUrl : this.objectBaseUrl
     )!.replace(/\/$/, '');
@@ -79,10 +62,11 @@ export class S3StorageStrategy implements StorageStrategy, OnModuleDestroy {
       // Bucket policy grants anonymous reads only to images/*; staged objects remain private.
       await client.send(
         new PutObjectCommand({
-          Bucket: this.bucket,
+          Bucket: this.config.bucket,
           Key: filename,
           Body: file.buffer,
           ContentType: file.mimetype,
+          ACL: privateFile ? this.config.privateObjectAcl : undefined,
         }),
       );
       return { filename, url: `${baseUrl}/${filename}` };
@@ -102,7 +86,7 @@ export class S3StorageStrategy implements StorageStrategy, OnModuleDestroy {
     }
     const client = this.getClient();
     const result = await client.send(
-      new GetObjectCommand({ Bucket: this.bucket, Key: storageKey }),
+      new GetObjectCommand({ Bucket: this.config.bucket, Key: storageKey }),
     );
     return Buffer.from(await result.Body!.transformToByteArray());
   }
@@ -117,11 +101,11 @@ export class S3StorageStrategy implements StorageStrategy, OnModuleDestroy {
     }
     const client = this.getClient();
     await client.send(
-      new DeleteObjectCommand({ Bucket: this.bucket, Key: storageKey }),
+      new DeleteObjectCommand({ Bucket: this.config.bucket, Key: storageKey }),
     );
   }
 
-  onModuleDestroy(): void {
+  destroy(): void {
     this.client?.destroy();
   }
 }

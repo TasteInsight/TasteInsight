@@ -19,8 +19,8 @@ import { CONTRIBUTION_IMAGE_TTL_MS } from './contribution-images';
 export class UploadService {
   private readonly logger = new Logger(UploadService.name);
 
-  get storageType(): string {
-    return this.storage.type;
+  get storageIds(): string[] {
+    return this.storage.ids;
   }
 
   constructor(
@@ -67,8 +67,8 @@ export class UploadService {
       throw new BadRequestException('请上传完整的 JPEG、PNG、GIF 或 WebP 图片');
     }
 
-    const storageType = this.storageType;
-    const strategy = this.storage.forType(storageType);
+    const storageId = this.storage.defaultId;
+    const strategy = this.storage.forId(storageId);
     const policy = userId ? await this.moderationSettings?.policy() : undefined;
     const result =
       policy?.enabled && userId
@@ -81,7 +81,7 @@ export class UploadService {
             userId: contributionUserId,
             url: canonicalModerationImageUrl(result.url),
             storageKey: result.filename,
-            storageType,
+            storageId,
             expiresAt: new Date(Date.now() + CONTRIBUTION_IMAGE_TTL_MS),
           },
         });
@@ -104,13 +104,10 @@ export class UploadService {
   }
 
   async removeContributionImage(
-    storageType: string,
+    storageId: string,
     storageKey: string,
   ): Promise<void> {
-    if (storageType !== this.storageType) {
-      throw new Error('Image storage configuration changed');
-    }
-    await this.storage.forType(storageType).remove(storageKey);
+    await this.storage.forId(storageId).remove(storageKey);
   }
 
   private async compressImage(image: sharp.Sharp): Promise<Buffer> {

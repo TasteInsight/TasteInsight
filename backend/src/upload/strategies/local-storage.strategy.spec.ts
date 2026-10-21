@@ -1,4 +1,3 @@
-import { ConfigService } from '@nestjs/config';
 import { mkdtemp, readFile, rm } from 'fs/promises';
 import { tmpdir } from 'os';
 import * as path from 'path';
@@ -13,12 +12,11 @@ describe('local storage bytes', () => {
   } as Express.Multer.File;
   beforeEach(async () => {
     directory = await mkdtemp(path.join(tmpdir(), 'tasteinsight-storage-'));
-    storage = new LocalStorageStrategy(
-      new ConfigService({
-        UPLOAD_LOCAL_PATH: directory,
-        UPLOAD_BASE_URL: 'https://images.example.test/media/',
-      }),
-    );
+    storage = new LocalStorageStrategy({
+      type: 'local',
+      path: directory,
+      publicBaseUrl: 'https://images.example.test/media/',
+    });
   });
   afterEach(async () => {
     await rm(directory, { recursive: true, force: true });

@@ -21,7 +21,7 @@ describe('temporary contribution media', () => {
     });
     prisma.contributionImage.create.mockResolvedValue({ id: 'image' });
     service = new UploadService(
-      { type: 'local', forType: () => local } as any,
+      { defaultId: 'local', forId: () => local } as any,
       prisma as any,
     );
   });
@@ -46,7 +46,7 @@ describe('temporary contribution media', () => {
         userId: 'student',
         url: 'https://media.test/a.jpg',
         storageKey: 'a.jpg',
-        storageType: 'local',
+        storageId: 'local',
         expiresAt: expect.any(Date),
       }),
     });

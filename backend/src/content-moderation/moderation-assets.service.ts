@@ -49,14 +49,14 @@ export class ModerationAssetsService {
   }
 
   async stage(file: Express.Multer.File, userId: string, animated = false) {
-    const storageType = this.storage.type;
-    const strategy = this.storage.forType(storageType);
+    const storageId = this.storage.defaultId;
+    const strategy = this.storage.forId(storageId);
     const result = await strategy.upload(file, true);
     try {
       const asset = await this.prisma.contentModerationAsset.create({
         data: {
           userId,
-          storageType,
+          storageId,
           storageKey: result.filename,
           mimeType: file.mimetype,
           animated,
@@ -85,7 +85,7 @@ export class ModerationAssetsService {
       // Pin contribution uploads by immutable object identity before a different
       // UGC entry point can reference them. This also races safely with cleanup.
       const ledger = await tx.contributionImage.findFirst({
-        where: { storageKey: asset.storageKey, storageType: asset.storageType },
+        where: { storageKey: asset.storageKey, storageId: asset.storageId },
       });
       if (ledger) {
         const pinned = await tx.contributionImage.updateMany({
@@ -147,7 +147,7 @@ export class ModerationAssetsService {
       )
         throw new NotFoundException('图片尚未公开');
     }
-    const strategy = this.storage.forType(asset.storageType);
+    const strategy = this.storage.forId(asset.storageId);
     return { asset, buffer: await strategy.read(asset.storageKey) };
   }
 }

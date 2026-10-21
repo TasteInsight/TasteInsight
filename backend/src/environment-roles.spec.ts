@@ -99,16 +99,16 @@ describe('role-owned environment validation', () => {
 
   it.each(['oss', 's3'])(
     'worker validates %s storage used by cleanup while migration ignores it',
-    (storageType) => {
+    (storageId) => {
       expect(() =>
         validateEnvironment(
-          { ...background, UPLOAD_STORAGE_TYPE: storageType },
+          { ...background, UPLOAD_STORAGE_TYPE: storageId },
           'worker',
         ),
-      ).toThrow(storageType === 'oss' ? 'OSS_REGION' : 'S3_ENDPOINT');
+      ).toThrow(storageId === 'oss' ? 'OSS_REGION' : 'S3_ENDPOINT');
       expect(() =>
         validateEnvironment(
-          { ...database, UPLOAD_STORAGE_TYPE: storageType },
+          { ...database, UPLOAD_STORAGE_TYPE: storageId },
           'migrate',
         ),
       ).not.toThrow();

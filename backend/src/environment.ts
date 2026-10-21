@@ -1,3 +1,4 @@
+import { storageConfiguration } from './upload/storage.config';
 import { booleanSetting } from './common/utils/boolean-setting';
 import {
   CAMPUS_OAUTH_REQUIRED_KEYS,
@@ -341,54 +342,12 @@ export function validateEnvironment(
     IMPORT_DATA,
   };
   if (servesApi || runsBackground) {
-    const storage = stringSetting(
-      environment.UPLOAD_STORAGE_TYPE,
-      'UPLOAD_STORAGE_TYPE',
-      'local',
-    );
-    if (!['local', 'oss', 's3'].includes(storage))
-      throw new Error('UPLOAD_STORAGE_TYPE must be local, oss or s3');
-    if (storage === 'oss')
-      for (const key of [
-        'OSS_REGION',
-        'OSS_ACCESS_KEY_ID',
-        'OSS_ACCESS_KEY_SECRET',
-        'OSS_BUCKET',
-      ])
-        required(key);
-    if (storage === 's3') {
-      for (const key of [
-        'S3_ENDPOINT',
-        'S3_REGION',
-        'S3_BUCKET',
-        'S3_ACCESS_KEY_ID',
-        'S3_SECRET_ACCESS_KEY',
-      ])
-        required(key);
-      for (const key of ['S3_ENDPOINT', 'S3_PUBLIC_BASE_URL']) {
-        if (key === 'S3_PUBLIC_BASE_URL' && !configured(key)) continue;
-        try {
-          const url = new URL(required(key));
-          if (
-            !['http:', 'https:'].includes(url.protocol) ||
-            url.username ||
-            url.password ||
-            url.search ||
-            url.hash
-          )
-            throw new Error();
-        } catch {
-          throw new Error(
-            `${key} must be an http(s) URL without credentials, query or fragments`,
-          );
-        }
-      }
-      validated.S3_FORCE_PATH_STYLE = booleanSetting(
-        environment.S3_FORCE_PATH_STYLE,
-        'S3_FORCE_PATH_STYLE',
-      );
-    }
+    const storage = storageConfiguration((key) => environment[key]);
+    const legacyS3 = storage.instances.s3;
+    if (legacyS3?.type === 's3')
+      validated.S3_FORCE_PATH_STYLE = legacyS3.forcePathStyle;
   }
+
   if (servesApi) {
     validated.UPLOAD_MAX_FILE_SIZE = integerSetting(
       environment.UPLOAD_MAX_FILE_SIZE,

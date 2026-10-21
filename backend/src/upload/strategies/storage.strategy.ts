@@ -4,6 +4,7 @@ export interface UploadResult {
 }
 
 export interface StorageStrategy {
+  destroy?(): void;
   upload(
     file: Express.Multer.File,
     privateFile?: boolean,

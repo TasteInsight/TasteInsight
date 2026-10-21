@@ -1,4 +1,6 @@
 import { ConfigService } from '@nestjs/config';
+import { S3StorageConfiguration } from '../storage.config';
+import { StorageService } from '../storage.service';
 import { S3Client } from '@aws-sdk/client-s3';
 import { Agent, createServer, Server } from 'http';
 import { AddressInfo, createConnection } from 'net';
@@ -14,18 +16,19 @@ describe('S3 storage protocol', () => {
     headers: import('http').IncomingHttpHeaders;
   }[] = [];
   let failPut = false;
-  const config = (extra: Record<string, unknown> = {}) =>
-    new ConfigService({
-      UPLOAD_STORAGE_TYPE: 's3',
-      S3_ENDPOINT: endpoint,
-      S3_REGION: 'ap-guangzhou',
-      S3_BUCKET: 'photos-1250000000',
-      S3_ACCESS_KEY_ID: 'fixture-key',
-      S3_SECRET_ACCESS_KEY: 'fixture-secret',
-      S3_SESSION_TOKEN: 'fixture-session',
-      S3_FORCE_PATH_STYLE: true,
-      ...extra,
-    });
+  const config = (
+    extra: Partial<S3StorageConfiguration> = {},
+  ): S3StorageConfiguration => ({
+    type: 's3',
+    endpoint,
+    region: 'ap-guangzhou',
+    bucket: 'photos-1250000000',
+    accessKeyId: 'fixture-key',
+    secretAccessKey: 'fixture-secret',
+    sessionToken: 'fixture-session',
+    forcePathStyle: true,
+    ...extra,
+  });
   const file = {
     buffer: Buffer.from('normalized-image-bytes'),
     originalname: 'image.png',
@@ -107,7 +110,7 @@ describe('S3 storage protocol', () => {
 
   it('round-trips staged private bytes and keeps the object off the public CDN', async () => {
     const storage = new S3StorageStrategy(
-      config({ S3_PUBLIC_BASE_URL: 'https://cdn.example.test/media/' }),
+      config({ publicBaseUrl: 'https://cdn.example.test/media/' }),
     );
     const result = await storage.upload(file, true);
     expect(result.filename).toMatch(/^moderation-private\/[0-9a-f-]{36}\.png$/);
@@ -119,7 +122,7 @@ describe('S3 storage protocol', () => {
 
   it('uses a public URL prefix without changing the upload endpoint', async () => {
     const result = await new S3StorageStrategy(
-      config({ S3_PUBLIC_BASE_URL: 'https://cdn.example.test/media/' }),
+      config({ publicBaseUrl: 'https://cdn.example.test/media/' }),
     ).upload(file);
     expect(result.url).toBe(
       `https://cdn.example.test/media/${result.filename}`,
@@ -133,8 +136,8 @@ describe('S3 storage protocol', () => {
       .mockResolvedValueOnce({} as never);
     const result = await new S3StorageStrategy(
       config({
-        S3_ENDPOINT: 'https://cos.ap-guangzhou.myqcloud.com',
-        S3_FORCE_PATH_STYLE: undefined,
+        endpoint: 'https://cos.ap-guangzhou.myqcloud.com',
+        forcePathStyle: undefined,
       }),
     ).upload(file);
     expect(result.url).toBe(
@@ -163,8 +166,8 @@ describe('S3 storage protocol', () => {
     });
     const storage = new S3StorageStrategy(
       config({
-        S3_ENDPOINT: `http://cos.ap-guangzhou.myqcloud.com:${port}`,
-        S3_FORCE_PATH_STYLE: false,
+        endpoint: `http://cos.ap-guangzhou.myqcloud.com:${port}`,
+        forcePathStyle: false,
       }),
     );
     try {
@@ -178,39 +181,63 @@ describe('S3 storage protocol', () => {
         `http://${requests[0].headers.host}/${result.filename}`,
       );
     } finally {
-      storage.onModuleDestroy();
+      storage.destroy();
       agent.destroy();
     }
   });
 
-  it('reads historical S3 bytes when another provider handles new uploads', async () => {
-    const original = new S3StorageStrategy(config());
-    const result = await original.upload(file, true);
-    const historical = new S3StorageStrategy(
-      config({ UPLOAD_STORAGE_TYPE: 'local', S3_FORCE_PATH_STYLE: 'true' }),
-    );
+  it('reads and deletes identical keys in separate buckets using each record instance ID', async () => {
+    const key = 'moderation-private/00000000-0000-4000-8000-000000000000.png';
+    objects.set(`/aws-photos/${key}`, Buffer.from('aws-image'));
+    objects.set(`/cos-photos/${key}`, Buffer.from('cos-image'));
+    const values = {
+      UPLOAD_DEFAULT_STORAGE_ID: 'cos-main',
+      UPLOAD_STORAGE_INSTANCES: JSON.stringify({
+        'aws-main': config({ bucket: 'aws-photos' }),
+        'cos-main': config({ bucket: 'cos-photos' }),
+      }),
+    };
+    const storage = new StorageService(new ConfigService(values));
     try {
-      await expect(historical.read(result.filename)).resolves.toEqual(
-        file.buffer,
+      expect(storage.forId()).toBe(storage.forId('cos-main'));
+      expect(storage.forId('aws-main')).not.toBe(storage.forId('cos-main'));
+      await expect(storage.forId('aws-main').read(key)).resolves.toEqual(
+        Buffer.from('aws-image'),
       );
-      await historical.remove(result.filename);
-      expect(objects.size).toBe(0);
+      await expect(storage.forId('cos-main').read(key)).resolves.toEqual(
+        Buffer.from('cos-image'),
+      );
+      await storage.forId('aws-main').remove(key);
+      expect(objects.has(`/aws-photos/${key}`)).toBe(false);
+      expect(objects.get(`/cos-photos/${key}`)).toEqual(
+        Buffer.from('cos-image'),
+      );
+      const nextDefault = new StorageService(
+        new ConfigService({ ...values, UPLOAD_DEFAULT_STORAGE_ID: 'aws-main' }),
+      );
+      try {
+        await expect(nextDefault.forId('cos-main').read(key)).resolves.toEqual(
+          Buffer.from('cos-image'),
+        );
+      } finally {
+        nextDefault.onModuleDestroy();
+      }
     } finally {
-      original.onModuleDestroy();
-      historical.onModuleDestroy();
+      storage.onModuleDestroy();
     }
   });
 
-  it('reports missing credentials when a historical S3 backend is actually read', async () => {
+  it('sends the private object ACL required by legacy OSS buckets', async () => {
     const storage = new S3StorageStrategy(
-      config({ UPLOAD_STORAGE_TYPE: 'local', S3_ACCESS_KEY_ID: undefined }),
+      config({ privateObjectAcl: 'private' }),
     );
-    await expect(
-      storage.read(
-        'moderation-private/00000000-0000-4000-8000-000000000000.png',
-      ),
-    ).rejects.toThrow('S3_ACCESS_KEY_ID');
-    expect(requests).toHaveLength(0);
+    try {
+      const result = await storage.upload(file, true);
+      expect(requests[0].headers['x-amz-acl']).toBe('private');
+      await storage.remove(result.filename);
+    } finally {
+      storage.destroy();
+    }
   });
 
   it('propagates write and delete failures to the caller for rollback and retry', async () => {

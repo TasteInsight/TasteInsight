@@ -50,7 +50,7 @@ export class ContributionImageCleanup implements OnModuleInit, OnModuleDestroy {
   private async cleanup(now: Date): Promise<void> {
     const due = await this.prisma.contributionImage.findMany({
       where: {
-        storageType: this.upload.storageType,
+        storageId: { in: this.upload.storageIds },
         uploadId: null,
         expiresAt: { lte: now },
       },
@@ -66,7 +66,7 @@ export class ContributionImageCleanup implements OnModuleInit, OnModuleDestroy {
       if (!expired.count) continue;
       try {
         await this.upload.removeContributionImage(
-          image.storageType,
+          image.storageId,
           image.storageKey,
         );
         // Retain the tombstone so saved drafts cannot reuse an expired URL.

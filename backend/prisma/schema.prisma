@@ -515,7 +515,7 @@ model ContributionImage {
   userId      String
   url         String    @unique
   storageKey  String
-  storageType String
+  storageId   String @map("storageType")
   uploadId    String?
   createdAt   DateTime  @default(now())
   expiresAt   DateTime?
@@ -1227,7 +1227,7 @@ model ContentModerationTask {
 model ContentModerationAsset {
   id          String   @id @default(cuid())
   userId      String
-  storageType String
+  storageId   String @map("storageType")
   storageKey  String
   mimeType    String
   animated    Boolean  @default(false)
