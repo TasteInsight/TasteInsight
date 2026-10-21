@@ -97,18 +97,26 @@ describe('role-owned environment validation', () => {
     },
   );
 
-  it('worker validates storage used by contribution cleanup while migration ignores it', () => {
+  it('worker validates storage instances used by cleanup while migration ignores them', () => {
+    const storage = {
+      UPLOAD_DEFAULT_STORAGE_ID: 'cos-main',
+      UPLOAD_STORAGE_INSTANCES: JSON.stringify({ 'cos-main': { type: 's3' } }),
+    };
     expect(() =>
-      validateEnvironment(
-        { ...background, UPLOAD_STORAGE_TYPE: 'oss' },
-        'worker',
-      ),
-    ).toThrow('OSS_REGION');
+      validateEnvironment({ ...background, ...storage }, 'worker'),
+    ).toThrow('UPLOAD_STORAGE_INSTANCES');
     expect(() =>
-      validateEnvironment(
-        { ...database, UPLOAD_STORAGE_TYPE: 'oss' },
-        'migrate',
-      ),
+      validateEnvironment({ ...database, ...storage }, 'migrate'),
+    ).not.toThrow();
+  });
+
+  it('worker validates generic S3 configuration while migration ignores it', () => {
+    const storage = { UPLOAD_DEFAULT_STORAGE_ID: 's3' };
+    expect(() =>
+      validateEnvironment({ ...background, ...storage }, 'worker'),
+    ).toThrow('S3_ENDPOINT');
+    expect(() =>
+      validateEnvironment({ ...database, ...storage }, 'migrate'),
     ).not.toThrow();
   });
 

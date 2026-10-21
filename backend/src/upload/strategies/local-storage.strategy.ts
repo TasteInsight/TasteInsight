@@ -1,50 +1,31 @@
-import { Injectable } from '@nestjs/common';
 import { StorageStrategy, UploadResult } from './storage.strategy';
 import * as fs from 'fs';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
-import { ConfigService } from '@nestjs/config';
+import { LocalStorageConfiguration } from '../storage.config';
 
-@Injectable()
 export class LocalStorageStrategy implements StorageStrategy {
-  private readonly uploadPath: string;
-  private readonly baseUrl: string;
-
-  constructor(private configService: ConfigService) {
-    this.uploadPath = this.configService.get<string>(
-      'UPLOAD_LOCAL_PATH',
-      './uploads',
-    );
-    const appUrl = this.configService.get<string>(
-      'APP_URL',
-      'http://localhost:3000',
-    );
-    // 如果没有配置 UPLOAD_BASE_URL，则默认使用 ${APP_URL}/images 路径
-    this.baseUrl = this.configService.get<string>(
-      'UPLOAD_BASE_URL',
-      `${appUrl}/images`,
-    );
-  }
+  constructor(private readonly config: LocalStorageConfiguration) {}
 
   async upload(
     file: Express.Multer.File,
     privateFile = false,
   ): Promise<UploadResult> {
-    await fs.promises.mkdir(this.uploadPath, { recursive: true });
+    await fs.promises.mkdir(this.config.path, { recursive: true });
     const fileExt = path.extname(file.originalname);
     const fileName = `${privateFile ? '.moderation/' : ''}${randomUUID()}${fileExt}`;
     if (privateFile)
-      await fs.promises.mkdir(path.join(this.uploadPath, '.moderation'), {
+      await fs.promises.mkdir(path.join(this.config.path, '.moderation'), {
         recursive: true,
       });
-    const filePath = path.join(this.uploadPath, fileName);
+    const filePath = path.join(this.config.path, fileName);
 
     await fs.promises.writeFile(filePath, file.buffer);
 
     // 处理 URL 拼接，避免双斜杠等问题
-    const url = this.baseUrl.endsWith('/')
-      ? `${this.baseUrl}${fileName}`
-      : `${this.baseUrl}/${fileName}`;
+    const url = this.config.publicBaseUrl.endsWith('/')
+      ? `${this.config.publicBaseUrl}${fileName}`
+      : `${this.config.publicBaseUrl}/${fileName}`;
 
     return { url, filename: fileName };
   }
@@ -52,7 +33,7 @@ export class LocalStorageStrategy implements StorageStrategy {
   async read(storageKey: string): Promise<Buffer> {
     if (!/^\.moderation\/[0-9a-f-]{36}\.(jpg|png|gif|webp)$/.test(storageKey))
       throw new Error('Invalid managed image key');
-    return fs.promises.readFile(path.join(this.uploadPath, storageKey));
+    return fs.promises.readFile(path.join(this.config.path, storageKey));
   }
 
   async remove(storageKey: string): Promise<void> {
@@ -62,7 +43,7 @@ export class LocalStorageStrategy implements StorageStrategy {
       throw new Error('Invalid managed image key');
     }
     try {
-      await fs.promises.unlink(path.join(this.uploadPath, storageKey));
+      await fs.promises.unlink(path.join(this.config.path, storageKey));
     } catch (error) {
       if (error.code !== 'ENOENT') throw error;
     }

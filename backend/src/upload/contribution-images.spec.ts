@@ -32,7 +32,7 @@ describe('contribution asset ownership and cleanup', () => {
   });
   it('does not delete bytes if a submission bound the image before cleanup', async () => {
     model.findMany.mockResolvedValue([
-      { id: 'managed', storageType: 'local', storageKey: 'owned.jpg' },
+      { id: 'managed', storageId: 'local', storageKey: 'owned.jpg' },
     ]);
     model.updateMany.mockResolvedValue({ count: 0 });
     const removeContributionImage = jest.fn();
@@ -46,7 +46,7 @@ describe('contribution asset ownership and cleanup', () => {
   });
   it('retains an expired tombstone and retries failed file deletion', async () => {
     model.findMany.mockResolvedValue([
-      { id: 'managed', storageType: 'local', storageKey: 'owned.jpg' },
+      { id: 'managed', storageId: 'local', storageKey: 'owned.jpg' },
     ]);
     model.updateMany.mockResolvedValue({ count: 1 });
     const removeContributionImage = jest
@@ -70,17 +70,19 @@ describe('contribution asset ownership and cleanup', () => {
     );
   });
 
-  it('only scans the configured storage so an old store cannot starve current images', async () => {
+  it('scans configured instance IDs so removed instances cannot starve active images', async () => {
     model.findMany.mockResolvedValue([]);
     const cleanup = new ContributionImageCleanup(
       tx,
-      { storageType: 'oss' } as any,
+      { storageIds: ['oss', 'cos-main'] } as any,
       {} as any,
     );
     await cleanup.tick();
     expect(model.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ storageType: 'oss' }),
+        where: expect.objectContaining({
+          storageId: { in: ['oss', 'cos-main'] },
+        }),
       }),
     );
   });

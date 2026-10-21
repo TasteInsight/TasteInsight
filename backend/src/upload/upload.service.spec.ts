@@ -32,9 +32,7 @@ describe('UploadService', () => {
       filename: 'proof.png',
     });
     service = new UploadService(
-      { get: () => 'local' } as any,
-      local as any,
-      oss as any,
+      { defaultId: 'local', forId: () => local } as any,
       {} as any,
     );
   });
@@ -242,9 +240,7 @@ describe('UploadService', () => {
 
   it('applies the same image normalization before OSS storage', async () => {
     const svc = new UploadService(
-      { get: () => 'oss' } as any,
-      local as any,
-      oss as any,
+      { defaultId: 'oss', forId: () => oss } as any,
       {} as any,
     );
     await svc.uploadFile(await imageFile());

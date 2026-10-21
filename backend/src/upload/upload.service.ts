@@ -8,10 +8,7 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { StorageStrategy } from './strategies/storage.strategy';
-import { LocalStorageStrategy } from './strategies/local-storage.strategy';
-import { OssStorageStrategy } from './strategies/oss-storage.strategy';
+import { StorageService } from './storage.service';
 import { UploadResponseDto } from './dto/upload.dto';
 import sharp from 'sharp';
 import { PrismaService } from '@/prisma.service';
@@ -20,32 +17,18 @@ import { CONTRIBUTION_IMAGE_TTL_MS } from './contribution-images';
 
 @Injectable()
 export class UploadService {
-  private strategy: StorageStrategy;
   private readonly logger = new Logger(UploadService.name);
 
-  get storageType(): string {
-    return this.configService.get<string>('UPLOAD_STORAGE_TYPE', 'local');
+  get storageIds(): string[] {
+    return this.storage.ids;
   }
 
   constructor(
-    private configService: ConfigService,
-    private localStorageStrategy: LocalStorageStrategy,
-    private ossStorageStrategy: OssStorageStrategy,
+    private readonly storage: StorageService,
     private readonly prisma: PrismaService,
     @Optional() private readonly moderationSettings?: ModerationSettingsService,
     @Optional() private readonly moderationAssets?: ModerationAssetsService,
-  ) {
-    const storageType = this.configService.get<string>(
-      'UPLOAD_STORAGE_TYPE',
-      'local',
-    );
-
-    if (storageType === 'oss') {
-      this.strategy = this.ossStorageStrategy;
-    } else {
-      this.strategy = this.localStorageStrategy;
-    }
-  }
+  ) {}
 
   async uploadFile(
     file: Express.Multer.File,
@@ -84,11 +67,13 @@ export class UploadService {
       throw new BadRequestException('请上传完整的 JPEG、PNG、GIF 或 WebP 图片');
     }
 
+    const storageId = this.storage.defaultId;
+    const strategy = this.storage.forId(storageId);
     const policy = userId ? await this.moderationSettings?.policy() : undefined;
     const result =
       policy?.enabled && userId
         ? await this.moderationAssets!.stage(file, userId, animated)
-        : await this.strategy.upload(file);
+        : await strategy.upload(file);
     if (contributionUserId) {
       try {
         await this.prisma.contributionImage.create({
@@ -96,15 +81,12 @@ export class UploadService {
             userId: contributionUserId,
             url: canonicalModerationImageUrl(result.url),
             storageKey: result.filename,
-            storageType: this.configService.get<string>(
-              'UPLOAD_STORAGE_TYPE',
-              'local',
-            ),
+            storageId,
             expiresAt: new Date(Date.now() + CONTRIBUTION_IMAGE_TTL_MS),
           },
         });
       } catch (error) {
-        await this.strategy
+        await strategy
           .remove(result.filename)
           .catch(() =>
             this.logger.error(
@@ -122,16 +104,10 @@ export class UploadService {
   }
 
   async removeContributionImage(
-    storageType: string,
+    storageId: string,
     storageKey: string,
   ): Promise<void> {
-    if (
-      storageType !==
-      this.configService.get<string>('UPLOAD_STORAGE_TYPE', 'local')
-    ) {
-      throw new Error('Image storage configuration changed');
-    }
-    await this.strategy.remove(storageKey);
+    await this.storage.forId(storageId).remove(storageKey);
   }
 
   private async compressImage(image: sharp.Sharp): Promise<Buffer> {

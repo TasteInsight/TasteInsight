@@ -23,14 +23,13 @@ describe('moderation assets', () => {
         MODERATION_PUBLIC_BASE_URL: 'https://api.example.com/api/v1',
         MODERATION_MEDIA_SECRET: 'fixture-long-enough-for-valid-signatures',
       }),
-      local as never,
-      {} as never,
+      { defaultId: 'local', forId: () => local } as never,
     );
     prisma.contentModerationAsset.findUnique.mockResolvedValue({
       id: 'asset123456789012345',
       userId: 'author',
       approved: false,
-      storageType: 'local',
+      storageId: 'local',
       storageKey: '.moderation/image.png',
     });
     local.read.mockResolvedValue(Buffer.from('image'));
@@ -69,8 +68,7 @@ describe('moderation assets', () => {
         MODERATION_PUBLIC_BASE_URL: 'https://API.EXAMPLE.COM:443/api/v1/',
         MODERATION_MEDIA_SECRET: 'fixture-long-enough-for-valid-signatures',
       }),
-      local as never,
-      {} as never,
+      { defaultId: 'local', forId: () => local } as never,
     );
     const preview = normalized.preview('asset123456789012345');
     const canonical = new URL(preview).origin + new URL(preview).pathname;
@@ -79,7 +77,7 @@ describe('moderation assets', () => {
   it('allows public access only after explicit content approval', async () => {
     prisma.contentModerationAsset.findUnique.mockResolvedValue({
       approved: true,
-      storageType: 'local',
+      storageId: 'local',
       storageKey: '.moderation/image.png',
     });
     await expect(service.read('asset123456789012345')).resolves.toBeDefined();

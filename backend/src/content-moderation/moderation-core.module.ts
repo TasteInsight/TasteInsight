@@ -1,21 +1,18 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { LocalStorageStrategy } from '@/upload/strategies/local-storage.strategy';
-import { OssStorageStrategy } from '@/upload/strategies/oss-storage.strategy';
+import { StorageModule } from '@/upload/storage.module';
 import { ModerationProviderService } from './providers/moderation-provider.service';
 import { ModerationSettingsService } from './moderation-settings.service';
 import { ModerationSubmissionService } from './moderation-submission.service';
 import { ModerationAssetsService } from './moderation-assets.service';
 
 @Module({
-  imports: [ConfigModule],
+  imports: [ConfigModule, StorageModule],
   providers: [
     ModerationProviderService,
     ModerationSettingsService,
     ModerationSubmissionService,
     ModerationAssetsService,
-    LocalStorageStrategy,
-    OssStorageStrategy,
   ],
   exports: [
     ModerationProviderService,

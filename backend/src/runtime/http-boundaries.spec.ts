@@ -12,8 +12,6 @@ import { AuthService } from '@/auth/auth.service';
 import { AdminDishesService } from '@/admin-dishes/admin-dishes.service';
 import { AdminUploadsService } from '@/admin-uploads/admin-uploads.service';
 import { UploadService } from '@/upload/upload.service';
-import { LocalStorageStrategy } from '@/upload/strategies/local-storage.strategy';
-import { OssStorageStrategy } from '@/upload/strategies/oss-storage.strategy';
 import { RecommendationCacheService } from '@/recommendation/services/cache.service';
 import { EmbeddingService } from '@/recommendation/services/embedding.service';
 import { DISH_SYNC_QUEUE } from '@/dish-sync-queue/dish-sync.constants';
@@ -139,10 +137,6 @@ async function createHttpApplication(root: Type<unknown>) {
     .useValue(dishUploads)
     .overrideProvider(UploadService)
     .useValue(upload)
-    .overrideProvider(LocalStorageStrategy)
-    .useValue({})
-    .overrideProvider(OssStorageStrategy)
-    .useValue({})
     .overrideProvider(RecommendationCacheService)
     .useValue({})
     .overrideProvider(EmbeddingService)

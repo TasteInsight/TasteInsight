@@ -21,7 +21,7 @@ describe('validateEnvironment', () => {
     (value) => {
       const environment = {
         NODE_ENV: value,
-        UPLOAD_STORAGE_TYPE: value,
+        UPLOAD_DEFAULT_STORAGE_ID: value,
         CORS_ALLOWED_ORIGINS: value,
         APP_URL: value,
       };
@@ -31,7 +31,7 @@ describe('validateEnvironment', () => {
       expect(corsOrigins(environment)).toEqual([]);
     },
   );
-  it.each(['NODE_ENV', 'UPLOAD_STORAGE_TYPE'])(
+  it.each(['NODE_ENV', 'UPLOAD_DEFAULT_STORAGE_ID'])(
     'rejects an empty %s instead of using a default',
     (key) => {
       expect(() => validateEnvironment({ [key]: '' })).toThrow(key);
@@ -69,7 +69,7 @@ describe('validateEnvironment', () => {
   });
   it.each([
     { key: 'NODE_ENV', value: ['production'] },
-    { key: 'UPLOAD_STORAGE_TYPE', value: ['oss'] },
+    { key: 'UPLOAD_DEFAULT_STORAGE_ID', value: ['s3'] },
     { key: 'CORS_ALLOWED_ORIGINS', value: ['https://portal.example.org'] },
     { key: 'APP_URL', value: ['https://api.example.org'] },
   ])('rejects a non-string $key before coercion', ({ key, value }) => {
@@ -126,7 +126,7 @@ describe('validateEnvironment', () => {
     ['RUN_SEED', '1'],
     ['IMPORT_DATA', 'yes'],
     ['PORT', '65536'],
-    ['UPLOAD_STORAGE_TYPE', 'invalid'],
+    ['UPLOAD_DEFAULT_STORAGE_ID', 'invalid'],
   ])('rejects invalid production %s', (key, value) => {
     expect(() => validateEnvironment({ ...production, [key]: value })).toThrow(
       key,
@@ -140,14 +140,6 @@ describe('validateEnvironment', () => {
         INITIAL_ADMIN_PASSWORD: 'dedicated-bootstrap-password',
       }),
     ).toMatchObject({ NODE_ENV: 'production' });
-  });
-  it('checks OSS configuration only when the OSS strategy consumes it', () => {
-    expect(() =>
-      validateEnvironment({ UPLOAD_STORAGE_TYPE: 'local' }),
-    ).not.toThrow();
-    expect(() => validateEnvironment({ UPLOAD_STORAGE_TYPE: 'oss' })).toThrow(
-      'OSS_REGION',
-    );
   });
   it('does not reject a long secret merely containing example', () => {
     expect(() =>
@@ -300,5 +292,73 @@ describe('identity integration configuration', () => {
     expect(() =>
       validateEnvironment({ CAMPUS_EMAIL_DOMAINS: '*.tsinghua.edu.cn' }),
     ).toThrow('CAMPUS_EMAIL_DOMAINS');
+  });
+});
+
+describe('S3 environment', () => {
+  const s3 = {
+    UPLOAD_DEFAULT_STORAGE_ID: 's3',
+    S3_ENDPOINT: 'https://cos.ap-guangzhou.myqcloud.com',
+    S3_REGION: 'ap-guangzhou',
+    S3_BUCKET: 'photos-1250000000',
+    S3_ACCESS_KEY_ID: 'fixture-key',
+    S3_SECRET_ACCESS_KEY: 'fixture-secret',
+  };
+  it.each([
+    'S3_ENDPOINT',
+    'S3_REGION',
+    'S3_BUCKET',
+    'S3_ACCESS_KEY_ID',
+    'S3_SECRET_ACCESS_KEY',
+  ])('requires %s only for S3', (key) => {
+    expect(() => validateEnvironment({ ...s3, [key]: '' })).toThrow(key);
+    expect(() =>
+      validateEnvironment({ UPLOAD_DEFAULT_STORAGE_ID: 'local', [key]: '' }),
+    ).not.toThrow();
+  });
+  it.each(['S3_ENDPOINT', 'S3_PUBLIC_BASE_URL'])(
+    'validates %s without echoing credentials',
+    (key) => {
+      for (const value of [
+        'file:///tmp/objects',
+        'https://private:secret@example.test',
+        'https://example.test?key=secret',
+        'https://example.test/#secret',
+      ]) {
+        expect(() => validateEnvironment({ ...s3, [key]: value })).toThrow(key);
+        try {
+          validateEnvironment({ ...s3, [key]: value });
+        } catch (error) {
+          expect(String(error)).not.toContain('secret');
+        }
+      }
+    },
+  );
+  it.each([undefined, '', 'false', false])(
+    'uses virtual-hosted addressing for %s',
+    (value) => {
+      expect(
+        validateEnvironment({ ...s3, S3_FORCE_PATH_STYLE: value })
+          .S3_FORCE_PATH_STYLE,
+      ).toBe(false);
+    },
+  );
+  it.each(['true', true])('parses path-style addressing for %s', (value) => {
+    expect(
+      validateEnvironment({ ...s3, S3_FORCE_PATH_STYLE: value })
+        .S3_FORCE_PATH_STYLE,
+    ).toBe(true);
+  });
+  it('accepts endpoint paths and public URL prefixes for compatible providers', () => {
+    expect(() =>
+      validateEnvironment({
+        ...s3,
+        S3_ENDPOINT: 'http://127.0.0.1:9000/storage/s3',
+        S3_PUBLIC_BASE_URL: 'https://cdn.example.test/media/',
+      }),
+    ).not.toThrow();
+    expect(() =>
+      validateEnvironment({ ...s3, S3_FORCE_PATH_STYLE: 'yes' }),
+    ).toThrow('S3_FORCE_PATH_STYLE');
   });
 });

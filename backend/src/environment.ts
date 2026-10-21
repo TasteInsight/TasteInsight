@@ -1,3 +1,5 @@
+import { storageConfiguration } from './upload/storage.config';
+import { booleanSetting } from './common/utils/boolean-setting';
 import {
   CAMPUS_OAUTH_REQUIRED_KEYS,
   configuredLoginMethods,
@@ -38,13 +40,6 @@ function integerSetting(
   }
 
   return parsed;
-}
-
-export function booleanSetting(value: unknown, key: string): boolean {
-  if (value === undefined || value === '') return false;
-  if (value === true || value === 'true') return true;
-  if (value === false || value === 'false') return false;
-  throw new Error(`${key} must be true or false`);
 }
 
 export function mockAuthEnabled(environment: Record<string, unknown>): boolean {
@@ -347,22 +342,11 @@ export function validateEnvironment(
     IMPORT_DATA,
   };
   if (servesApi || runsBackground) {
-    const storage = stringSetting(
-      environment.UPLOAD_STORAGE_TYPE,
-      'UPLOAD_STORAGE_TYPE',
-      'local',
-    );
-    if (!['local', 'oss'].includes(storage))
-      throw new Error('UPLOAD_STORAGE_TYPE must be local or oss');
-    if (storage === 'oss')
-      for (const key of [
-        'OSS_REGION',
-        'OSS_ACCESS_KEY_ID',
-        'OSS_ACCESS_KEY_SECRET',
-        'OSS_BUCKET',
-      ])
-        required(key);
+    const storage = storageConfiguration((key) => environment[key]);
+    const s3 = storage.instances.s3;
+    if (s3?.type === 's3') validated.S3_FORCE_PATH_STYLE = s3.forcePathStyle;
   }
+
   if (servesApi) {
     validated.UPLOAD_MAX_FILE_SIZE = integerSetting(
       environment.UPLOAD_MAX_FILE_SIZE,
