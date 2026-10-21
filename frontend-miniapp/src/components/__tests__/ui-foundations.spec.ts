@@ -22,8 +22,8 @@ describe('shared UI foundations', () => {
 
   it('ships every declared icon tone as a transparent 3x raster from a matching line source', () => {
     const iconDirectory = path.resolve(__dirname, '../../static/icons/ui');
-    const component = readFileSync(path.resolve(__dirname, '../UiIcon.vue'), 'utf8');
-    const iconDeclaration = component.split('export type UiIconName =')[1].split(';')[0];
+    const iconTypes = readFileSync(path.resolve(__dirname, '../../types/ui-icon.ts'), 'utf8');
+    const iconDeclaration = iconTypes.split('export type UiIconName =')[1].split(';')[0];
     const names = Array.from(iconDeclaration.matchAll(/'([^']+)'/g), match => match[1]);
     const tones = ['muted', 'primary', 'inverse', 'danger'];
 

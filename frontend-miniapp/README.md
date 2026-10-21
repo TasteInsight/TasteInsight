@@ -10,13 +10,17 @@ TasteInsight 小程序是基于 **UniApp** + **Vue 3** 构建的跨平台应用�
 - **样式**: TailwindCSS + CSS
 - **国际化**: Vue I18n
 - **Markdown 渲染**: markdown-it + mp-html
-- **单元测试**: Jest 27 + @vue/test-utils
+- **单元测试**: Jest 29 + @vue/test-utils
 - **E2E 测试**: Playwright
 - **负载测试**: k6（统一 API 压测）
-- **语言**: TypeScript 4.9
+- **语言**: TypeScript 7.0.2；Vue SFC 检查使用官方 TypeScript 6 兼容 API
 - **包管理器**: pnpm
 
 ## 发布构建与依赖维护
+
+开发环境使用 Node.js 22.12 及以上版本。`pnpm type-check` 先通过 TypeScript 7 检查独立 TS 模块，再通过 `vue-tsc` 检查 Vue 模板、脚本及测试。依赖按照 [TypeScript 官方并存方案](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/#running-side-by-side-with-typescript-6-0) 配置：`@typescript/native` 提供 7.0.2 的 `tsc`，`typescript` 别名指向官方 `@typescript/typescript6`，供 Vue 和 Jest 调用 JS 编译器 API。
+
+`@vue/vue3-jest@29.2.6` 的模板转换误将编译参数包在 `tsconfig` 字段中，导致 TypeScript 6 忽略 CommonJS 配置。`patches/` 中的 pnpm 补丁将已解析的参数直接传给 `transpileModule`。升级转换器时复核上游修复并移除对应补丁。
 
 本地 Mock 路由和夹具仅在 `mock` 模式加载，首个请求等待路由注册完成。H5、小程序和 App 的正式构建使用真实 API，构建器会移除 Mock 路由及其数据依赖。
 

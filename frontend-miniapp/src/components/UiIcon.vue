@@ -8,34 +8,9 @@
   />
 </template>
 
-<script lang="ts">
-export type UiIconName =
-  | 'user'
-  | 'bell'
-  | 'settings'
-  | 'edit'
-  | 'bookmark'
-  | 'history'
-  | 'star'
-  | 'shield'
-  | 'eye'
-  | 'eye-off'
-  | 'chevron-right'
-  | 'chevron-down'
-  | 'plus'
-  | 'close'
-  | 'trash'
-  | 'calendar'
-  | 'chat'
-  | 'users'
-  | 'search'
-  | 'info'
-  | 'logout';
-
-export type UiIconTone = 'muted' | 'primary' | 'inverse' | 'danger';
-</script>
-
 <script setup lang="ts">
+import type { UiIconName, UiIconTone } from '@/types/ui-icon';
+
 withDefaults(defineProps<{ name: UiIconName; size?: number; tone?: UiIconTone }>(), {
   size: 20,
   tone: 'muted',
