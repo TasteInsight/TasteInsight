@@ -106,6 +106,8 @@ it('preserves display and notification controls without unsupported support rout
     readFileSync(resolve(__dirname, '../../pages/settings', file), 'utf8');
   expect(source('components/display.vue')).toContain('showCalories');
   expect(source('components/display.vue')).toContain('showNutrition');
+  expect(source('components/display.vue')).not.toContain('待接入');
+  expect(source('components/display.vue')).toContain('每份热量');
   const notifications = source('components/notifications.vue');
   for (const key of [
     'newDishAlert',

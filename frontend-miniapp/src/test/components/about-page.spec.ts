@@ -42,23 +42,33 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-it('keeps the configured version and labels the privacy-only destination accurately', async () => {
+it('keeps the configured version and opens both agreement documents', async () => {
   const wrapper = setup();
   const manifest = readFileSync(resolve(__dirname, '../../manifest.json'), 'utf8');
   const version = manifest.match(/"versionName"\s*:\s*"([^"]+)"/)![1];
   expect(wrapper.text()).toContain(`Version ${version}`);
   expect(wrapper.text()).not.toContain('彩蛋');
-  expect(wrapper.text()).not.toContain('用户协议');
+  const agreement = wrapper.findAll('button').find(button => button.text() === '用户协议')!;
+  await agreement.trigger('click');
+  expect(uni.navigateTo).toHaveBeenCalledWith({ url: '/pages/settings/privacy?type=user' });
 
   const privacy = wrapper.findAll('button').find(button => button.text() === '隐私政策')!;
   await privacy.trigger('click');
   expect(uni.navigateTo).toHaveBeenCalledWith({ url: '/pages/settings/privacy' });
 });
 
-it('describes the cross-platform app and implemented planning views without unsupported contacts or claims', () => {
+it('describes the cross-platform app and keeps implemented features available in a compact disclosure', async () => {
   const wrapper = setup();
   expect(wrapper.get('.about-description').text()).toContain('菜品点评与推荐应用');
-  expect(wrapper.text()).toContain('按日、周、月查看饮食规划');
+  const features = wrapper.findAll('button').find(button => button.text() === '主要功能')!;
+  expect(features.attributes('aria-expanded')).toBe('false');
+  expect(wrapper.find('.about-features').exists()).toBe(false);
+  await features.trigger('click');
+  expect(features.attributes('aria-expanded')).toBe('true');
+  expect(wrapper.get('.about-features').text()).toContain('按日、周、月查看饮食规划');
+  expect(wrapper.findAll('.about-feature')).toHaveLength(5);
+  await features.trigger('click');
+  expect(wrapper.find('.about-features').exists()).toBe(false);
   expect(wrapper.text()).not.toMatch(
     /小程序|feedback@tasteinsight\.com|tasteinsight_official|微信公众号|TasteInsight Team|由热爱技术的开发者创建|Copyright|2024/
   );
@@ -185,6 +195,12 @@ it('keeps project feedback and open-source license details operable by keyboard'
   expect(uni.setClipboardData).toHaveBeenCalledWith(
     expect.objectContaining({ data: 'https://github.com/TasteInsight/TasteInsight/issues' })
   );
+
+  const features = wrapper.findAll('button').find(button => button.text() === '主要功能')!;
+  await features.trigger('keydown', { key: 'Enter' });
+  await features.trigger('keyup', { key: 'Enter' });
+  expect(features.attributes('aria-expanded')).toBe('true');
+  expect(wrapper.findAll('.about-feature')).toHaveLength(5);
 
   const technical = wrapper.findAll('button').find(button => button.text().includes('技术与开源'))!;
   await technical.trigger('keydown', { key: ' ' });
