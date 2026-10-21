@@ -7,6 +7,7 @@
 import { computed } from 'vue';
 // @ts-ignore - markdown-it 缺少类型定义，但功能正常
 import MarkdownIt from 'markdown-it';
+import markdownItCjkFriendly from 'markdown-it-cjk-friendly';
 
 const props = defineProps<{
   content: string;
@@ -18,7 +19,7 @@ const md = new MarkdownIt({
   linkify: true, // 自动将 URL 转换为链接
   breaks: true, // 将换行符转换为 <br>
   typographer: true, // 启用一些语言中立的替换和引号美化
-});
+}).use(markdownItCjkFriendly);
 
 // 为原生富文本节点添加类名，同时保留 markdown-it 生成的属性。
 const renderToken = md.renderer.renderToken.bind(md.renderer);
