@@ -412,6 +412,11 @@ export class AdminDishesService {
       name: createDto.name,
       tags: createDto.tags || [],
       price: createDto.price,
+      calories: createDto.calories ?? null,
+      protein: createDto.protein ?? null,
+      carbohydrate: createDto.carbohydrate ?? null,
+      fat: createDto.fat ?? null,
+
       priceUnit: createDto.priceUnit,
       description: createDto.description || '',
       images: createDto.images || [],
@@ -512,6 +517,13 @@ export class AdminDishesService {
     if (updateDto.name !== undefined) updateData.name = updateDto.name;
     if (updateDto.tags !== undefined) updateData.tags = updateDto.tags;
     if (updateDto.price !== undefined) updateData.price = updateDto.price;
+    if (updateDto.calories !== undefined)
+      updateData.calories = updateDto.calories;
+    if (updateDto.protein !== undefined) updateData.protein = updateDto.protein;
+    if (updateDto.carbohydrate !== undefined)
+      updateData.carbohydrate = updateDto.carbohydrate;
+    if (updateDto.fat !== undefined) updateData.fat = updateDto.fat;
+
     if (updateDto.priceUnit !== undefined)
       updateData.priceUnit = updateDto.priceUnit;
     if (updateDto.description !== undefined)
@@ -872,6 +884,90 @@ export class AdminDishesService {
     };
   }
 
+  createBatchTemplate(): Buffer {
+    const workbook = XLSX.utils.book_new();
+    const data = XLSX.utils.aoa_to_sheet([
+      [
+        '食堂',
+        '楼层',
+        '窗口',
+        '窗口编号',
+        '菜品名',
+        '菜品子项',
+        '价格',
+        '供应时间',
+        '供应时段',
+        '菜品描述',
+        'Tags',
+        '主辅料',
+        '过敏原',
+      ],
+      [
+        '示例食堂',
+        '一层',
+        '示例窗口',
+        '01',
+        '番茄炒蛋',
+        '',
+        '8元/份',
+        '常年供应',
+        '午餐,晚餐',
+        '番茄与鸡蛋炒制',
+        '家常菜',
+        '番茄,鸡蛋',
+        '蛋',
+      ],
+    ]);
+    data['!cols'] = [18, 12, 18, 12, 20, 24, 14, 24, 20, 36, 24, 24, 24].map(
+      (wch) => ({ wch }),
+    );
+    XLSX.utils.book_append_sheet(workbook, data, '菜品导入');
+    const instructions = XLSX.utils.aoa_to_sheet([
+      ['项目', '填写说明'],
+      [
+        '导入范围',
+        '仅解析第一张工作表“菜品导入”；保留首行列名，从第二行填写数据。',
+      ],
+      [
+        '示例行',
+        '第二行为填写示例，请替换为实际菜品或删除后填写；上传后核对解析预览再确认导入。',
+      ],
+      ['必填字段', '食堂、窗口、菜品名、价格'],
+      [
+        '食堂',
+        '填写管理范围内的食堂名称。自动创建未知食堂需要全局管理范围及“创建食堂/窗口”权限；权限不足时请使用已有食堂或联系具备权限的管理员。',
+      ],
+      ['楼层', '选填，填写楼层名称。'],
+      [
+        '窗口',
+        '必填，填写窗口名称。自动创建未知窗口需要“创建食堂/窗口”权限；权限不足时请使用已有窗口或联系具备权限的管理员。',
+      ],
+      ['窗口编号', '选填，按文本填写以保留前导零；留空时导入自动生成。'],
+      ['菜品名', '必填，填写菜品名称。'],
+      ['菜品子项', '选填，用英文逗号分隔多个子项名称。'],
+      [
+        '价格',
+        '必填，填写数字或含单位的价格，例如 8、8元、8元/份；纯数字默认单位为元。',
+      ],
+      ['供应时间', '选填，填写供应时间描述，例如常年供应。'],
+      [
+        '供应时段',
+        '选填，用英文逗号分隔，例如早餐、午餐、晚餐、夜宵中的适用时段。',
+      ],
+      ['菜品描述', '选填，填写菜品介绍。'],
+      ['Tags', '选填，用英文逗号分隔多个标签。'],
+      ['主辅料', '选填，用英文逗号分隔多种食材。'],
+      ['过敏原', '选填，用英文逗号分隔多种过敏原；请按已核实的信息填写。'],
+      [
+        '导入确认',
+        '新菜提交待审核；匹配的既有菜品按编辑权限更新。预览中的警告数据也可提交，请先核对提示。',
+      ],
+    ]);
+    instructions['!cols'] = [{ wch: 18 }, { wch: 110 }];
+    XLSX.utils.book_append_sheet(workbook, instructions, '填写说明');
+    return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+  }
+
   /**
    * 批量解析 Excel 文件
    */
@@ -1104,6 +1200,11 @@ export class AdminDishesService {
       name: dish.name,
       tags: dish.tags,
       price: dish.price,
+      calories: dish.calories ?? null,
+      protein: dish.protein ?? null,
+      carbohydrate: dish.carbohydrate ?? null,
+      fat: dish.fat ?? null,
+
       priceUnit: dish.priceUnit,
       description: dish.description,
       images: dish.images,
@@ -1147,6 +1248,11 @@ export class AdminDishesService {
       name: dishUpload.name,
       tags: dishUpload.tags,
       price: dishUpload.price,
+      calories: dishUpload.calories ?? null,
+      protein: dishUpload.protein ?? null,
+      carbohydrate: dishUpload.carbohydrate ?? null,
+      fat: dishUpload.fat ?? null,
+
       priceUnit: dishUpload.priceUnit,
       description: dishUpload.description,
       images: dishUpload.images,

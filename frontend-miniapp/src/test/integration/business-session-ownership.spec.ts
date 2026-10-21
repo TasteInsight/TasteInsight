@@ -462,7 +462,7 @@ describe('real home recommendation writer', () => {
     await flushPromises();
     latest('/recommend').success(success({ requestId: 'cached-recommendation', items: [{ id: 'cached-dish' }], meta }));
     await flushPromises();
-    latest('/dishes/by-ids').success(success({ items: [{ id: 'cached-dish', name: 'cached dish' }], meta }));
+    latest('/dishes/by-ids').success(success({ items: [{ id: 'cached-dish', name: 'cached dish', status: 'online' }], meta }));
     await flushPromises();
     return wrapper;
   }
@@ -604,7 +604,7 @@ describe('real home recommendation writer', () => {
     expect(error).toBeTruthy();
 
     oldStage.success(success(phase === 'details'
-      ? { items: [{ id: 'previous-dish' }], meta }
+      ? { items: [{ id: 'previous-dish', status: 'online' }], meta }
       : { requestId: 'previous-recommendation', items: [{ id: 'previous-dish' }], meta }));
     await previous;
     await flushPromises();
@@ -657,7 +657,7 @@ describe('real home recommendation writer', () => {
 
     latest('/recommend').success(success({ requestId: 'current-recommendation', items: [{ id: 'current-dish' }], meta }));
     await flushPromises();
-    latest('/dishes/by-ids').success(success({ items: [{ id: 'current-dish' }], meta }));
+    latest('/dishes/by-ids').success(success({ items: [{ id: 'current-dish', status: 'online' }], meta }));
     await current;
     expect(useDishesStore().loading).toBe(false);
     expect(vm.recommendError).toBeNull();
@@ -752,7 +752,7 @@ describe('real home recommendation writer', () => {
     expect(latest('/recommend').header.Authorization).toBe('Bearer B-access');
     latest('/recommend').success(success({ requestId: 'signed-in', items: [{ id: 'member-dish' }], meta }));
     await flushPromises();
-    latest('/dishes/by-ids').success(success({ items: [{ id: 'member-dish' }], meta }));
+    latest('/dishes/by-ids').success(success({ items: [{ id: 'member-dish', status: 'online' }], meta }));
     await flushPromises();
     guest.success(success({ items: [{ id: 'guest-dish' }], meta }));
     await flushPromises();
@@ -824,7 +824,7 @@ describe('real home recommendation writer', () => {
     await useUserStore().loginAction('B');
     const current = (wrapper.vm as any).fetchRecommendations({ reset: true });
     await flushPromises();
-    oldStage.success(success(phase === 'details' ? { items: [{ id: 'A-dish' }], meta } : { requestId: 'A-recommendation', items: [{ id: 'A-dish' }], meta }));
+    oldStage.success(success(phase === 'details' ? { items: [{ id: 'A-dish', status: 'online' }], meta } : { requestId: 'A-recommendation', items: [{ id: 'A-dish' }], meta }));
     await flushPromises();
     const dishes = useDishesStore();
     expect(dishes.loading).toBe(true);

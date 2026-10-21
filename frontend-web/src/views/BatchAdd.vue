@@ -28,8 +28,9 @@
               <button 
                 class="transition duration-200 flex items-center admin-button admin-button-primary"
                 @click="downloadTemplate"
+                :disabled="isDownloading"
               >
-                <AppIcon class="iconify mr-1" icon="carbon:download"></AppIcon>下载Excel模板
+                <AppIcon class="iconify mr-1" icon="carbon:download"></AppIcon>{{ isDownloading ? '下载中...' : '下载Excel模板' }}
               </button>
             </div>
             
@@ -262,6 +263,7 @@ const notify = useNotification()
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploadedFile = ref<File | null>(null)
 const parsedData = ref<BatchParsedDish[]>([])
+const isDownloading = ref(false)
 const isParsing = ref(false)
 const isSubmitting = ref(false)
 const parseError = ref<string | null>(null)
@@ -279,9 +281,23 @@ const authStore = useAuthStore()
       parsedData.value.filter((item: BatchParsedDish) => item.status === 'invalid').length
     )
 
-    const downloadTemplate = () => {
-      // TODO: 实现模板下载功能
-      notify.info('模板下载功能开发中...')
+    const downloadTemplate = async () => {
+      isDownloading.value = true
+      try {
+        const workbook = await dishApi.downloadBatchTemplate()
+        const url = URL.createObjectURL(workbook)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = '菜品批量导入模板.xlsx'
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        URL.revokeObjectURL(url)
+      } catch (error) {
+        notify.error(error instanceof Error ? error.message : '模板下载失败，请重试')
+      } finally {
+        isDownloading.value = false
+      }
     }
 
     const triggerFileInput = () => {

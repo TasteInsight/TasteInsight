@@ -5,7 +5,7 @@
       <view class="settings-row">
         <view
           ><text class="settings-label">显示卡路里</text
-          ><text class="settings-hint">热量数据待接入</text></view
+          ><text class="settings-hint">显示已提供的每份热量</text></view
         >
         <switch
           :checked="form.showCalories"
@@ -18,7 +18,7 @@
       <view class="settings-row">
         <view
           ><text class="settings-label">显示营养信息</text
-          ><text class="settings-hint">营养数据待接入</text></view
+          ><text class="settings-hint">显示已提供的蛋白质、碳水化合物和脂肪</text></view
         >
         <switch
           :checked="form.showNutrition"

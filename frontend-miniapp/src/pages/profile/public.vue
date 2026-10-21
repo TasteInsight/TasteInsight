@@ -126,8 +126,11 @@
               mode="aspectFill"
               @error="failedImages[dish.images[0]] = true"
             /><view class="public-dish-text"
-              ><text>{{ dish.name }}</text
-              ><text class="campus-hint">{{ dish.canteenName }} · {{ dish.windowName }}</text></view
+              ><view class="public-dish-heading"
+                ><text class="public-dish-name">{{ dish.name }}</text
+                ><TagBadge v-if="dish.status === 'offline'" label="已下架" tone="neutral" /></view
+              ><text class="campus-hint">{{ dish.canteenName }} · {{ dish.windowName }}</text
+              ><DishNutrition :dish="dish" /></view
             ><UiIcon name="chevron-right" :size="16" /></button
         ></view>
         <view v-if="plansError" class="campus-error error-feedback" role="alert"
@@ -169,6 +172,8 @@ import { onLoad, onShow, onHide, onPullDownRefresh, onReachBottom } from '@dclou
 import UserAvatar from '@/components/UserAvatar.vue';
 import UiIcon from '@/components/UiIcon.vue';
 import EmptyState from '@/components/EmptyState.vue';
+import DishNutrition from '@/components/DishNutrition.vue';
+import TagBadge from '@/components/TagBadge.vue';
 import PostCard from '@/pages/community/components/PostCard.vue';
 import {
   getPublicProfile,
@@ -432,6 +437,17 @@ onReachBottom(() => {
   width: 52px;
   height: 52px;
   border-radius: 8px;
+  flex-shrink: 0;
+}
+.public-dish-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.public-dish-name {
+  min-width: 0;
+}
+.public-dish-heading .tag-badge {
   flex-shrink: 0;
 }
 .public-dish-text {

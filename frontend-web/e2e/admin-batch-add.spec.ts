@@ -50,18 +50,15 @@ test.describe('Admin Batch Add Dish', () => {
     const downloadButton = page.locator('button:has-text("下载Excel模板")');
     await expect(downloadButton).toBeVisible();
     
-    await downloadButton.click();
-    
-    // Note: Template download might show an alert if not implemented
-    // We'll handle both cases
-    await page.waitForTimeout(1000);
-    
-    // Check if alert appeared (functionality not implemented)
-    const alertVisible = await page.locator('text=模板下载功能开发中').isVisible().catch(() => false);
-    if (alertVisible) {
-      // Template download not implemented yet, which is expected
-      await expect(page.locator('text=模板下载功能开发中')).toBeVisible();
-    }
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      downloadButton.click(),
+    ]);
+    expect(download.suggestedFilename()).toBe('菜品批量导入模板.xlsx');
+    expect(await download.failure()).toBeNull();
+    const downloadedPath = await download.path();
+    expect(downloadedPath).toBeTruthy();
+    expect(fs.readFileSync(downloadedPath!).subarray(0, 2).toString()).toBe('PK');
   });
 
   test('should show file upload area', async ({ page }) => {

@@ -533,3 +533,39 @@ test('restores text drafts with the current authorized remote image preview', as
   expect(restored.formData.description).toBe('保存的文字');
   expect(restored.formData.images).toEqual([freshPreview]);
 });
+
+test('normalizes optional nutrition, preserves zero, and rejects nonfinite or negative input', async () => {
+  const form = state();
+  await form.initialize();
+  valid(form);
+  for (const value of [-1, 'Infinity', 'NaN']) {
+    form.formData.calories = value;
+    expect(await form.submitForm()).toBe(false);
+    expect(form.fieldErrors.value.calories).toBeTruthy();
+  }
+  Object.assign(form.formData, { calories: '0', protein: '12.5', carbohydrate: '', fat: ' ' });
+  expect(await form.submitForm()).toBe(true);
+  expect(uploadDish).toHaveBeenCalledWith(expect.objectContaining({ calories: 0, protein: 12.5, carbohydrate: null, fat: null }));
+});
+
+test('uses changedFields for nutrition clearing and preserves untouched nutrition during target editing', async () => {
+  (getDishById as jest.Mock).mockResolvedValue({ code: 200, data: { ...target, calories: 200, protein: 0, carbohydrate: 30, fat: null } });
+  const form = state();
+  await form.initialize({ targetDishId: 'dish' });
+  expect(form.formData).toMatchObject({ calories: 200, protein: 0, carbohydrate: 30, fat: '' });
+  form.formData.calories = '';
+  form.formData.carbohydrate = '30';
+  expect(await form.submitForm()).toBe(true);
+  expect(uploadDish).toHaveBeenCalledWith(expect.objectContaining({ changedFields: ['calories'], calories: null, protein: 0, carbohydrate: 30 }));
+});
+
+test('restores nutrition in a rejected upload and resubmits the same record with its revision', async () => {
+  (getMyUpload as jest.Mock).mockResolvedValue({ code: 200, data: { ...target, id: 'upload', status: 'rejected', revision: 7, calories: 0, protein: 16.5, carbohydrate: null, fat: 4, rejectReason: '核对分量' } });
+  (updateMyUpload as jest.Mock).mockResolvedValue({ code: 200, data: { id: 'upload' } });
+  const form = state();
+  await form.initialize({ uploadId: 'upload' });
+  expect(form.formData.calories).toBe(0);
+  form.formData.protein = '18.5';
+  expect(await form.submitForm()).toBe(true);
+  expect(updateMyUpload).toHaveBeenCalledWith('upload', expect.objectContaining({ revision: 7, calories: 0, protein: 18.5, carbohydrate: null, fat: 4 }));
+});

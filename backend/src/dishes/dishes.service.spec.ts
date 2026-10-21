@@ -205,6 +205,52 @@ describe('DishesService', () => {
       expect(result.data.items).toHaveLength(1);
     });
 
+    it('filters explicit offline status before pagination and count', async () => {
+      await service.getDishes(
+        {
+          ...baseQuery,
+          filter: { status: 'offline' },
+          pagination: { page: 2, pageSize: 1 },
+        } as any,
+        'user-1',
+      );
+      const query = prisma.dish.findMany.mock.calls[0][0];
+      expect(query.where.AND).toContainEqual({ status: 'offline' });
+      expect(query.where.AND).not.toContainEqual({ status: 'online' });
+      expect(query).toMatchObject({ skip: 1, take: 1 });
+      expect(prisma.dish.count).toHaveBeenCalledWith({ where: query.where });
+    });
+
+    it('preserves includeOffline while an explicit status takes precedence', async () => {
+      await service.getDishes(
+        { ...baseQuery, filter: { includeOffline: true } } as any,
+        'user-1',
+      );
+      expect(
+        prisma.dish.findMany.mock.calls[0][0].where.AND ?? [],
+      ).not.toContainEqual({ status: 'online' });
+      await service.getDishes(
+        {
+          ...baseQuery,
+          filter: { includeOffline: true, status: 'offline' },
+        } as any,
+        'user-1',
+      );
+      expect(prisma.dish.findMany.mock.calls[1][0].where.AND).toContainEqual({
+        status: 'offline',
+      });
+    });
+
+    it('keeps guest searches within online dishes even with an explicit offline filter', async () => {
+      await service.getDishes({
+        ...baseQuery,
+        filter: { status: 'offline', includeOffline: true },
+      } as any);
+      expect(prisma.dish.findMany.mock.calls[0][0].where.AND).toEqual(
+        expect.arrayContaining([{ status: 'online' }, { status: 'offline' }]),
+      );
+    });
+
     it('should filter by keyword', async () => {
       await service.getDishes(
         { ...baseQuery, search: { keyword: 'test' } } as any,

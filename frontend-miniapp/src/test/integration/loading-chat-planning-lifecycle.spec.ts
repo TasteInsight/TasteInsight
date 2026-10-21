@@ -11,7 +11,7 @@ import { usePlanStore } from '@/store/modules/use-plan-store';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { createAISession, deleteAISession, getAISuggestions, streamAIChat } from '@/api/modules/ai';
 import { createMealPlan, getMealPlans, updateMealPlan } from '@/api/modules/meal-plan';
-import { getDishById, getDishes } from '@/api/modules/dish';
+import { getDishesByIds, getDishes } from '@/api/modules/dish';
 import { getCanteenList } from '@/api/modules/canteen';
 
 jest.mock('@dcloudio/uni-app', () => ({
@@ -61,7 +61,7 @@ beforeEach(() => {
   (getAISuggestions as jest.Mock).mockResolvedValue(ok({ suggestions: [] }));
   (streamAIChat as jest.Mock).mockReturnValue({ close: jest.fn() });
   (getMealPlans as jest.Mock).mockResolvedValue(ok({ items: [] }));
-  (getDishById as jest.Mock).mockImplementation(id => Promise.resolve(ok(dish(id))));
+  (getDishesByIds as jest.Mock).mockImplementation((ids: string[]) => Promise.resolve(ok({ items: ids.map(id => dish(id)) })));
   (getDishes as jest.Mock).mockResolvedValue(ok({ items: [], meta: { page: 1, totalPages: 1 } }));
   (getCanteenList as jest.Mock).mockResolvedValue(ok({ items: [], meta: { page: 1, totalPages: 1 } }));
 });
@@ -428,9 +428,7 @@ describe('planning loading lifecycle', () => {
     const second = deferred();
     const complete = { ...plan(), dishes: ['first', 'second'] };
     (getMealPlans as jest.Mock).mockResolvedValueOnce(ok({ items: [complete] }));
-    (getDishById as jest.Mock)
-      .mockResolvedValueOnce(ok(dish('first', 7)))
-      .mockReturnValueOnce(second.promise);
+    (getDishesByIds as jest.Mock).mockReturnValueOnce(second.promise);
     const wrapper = planningPage(true, true);
     await flushPromises();
     expectBlankPlans(wrapper);
@@ -438,7 +436,7 @@ describe('planning loading lifecycle', () => {
     expect(wrapper.find('.meal-card-total').exists()).toBe(false);
     expect(updateMealPlan).not.toHaveBeenCalled();
     expect(usePlanStore().selectedPlan).toBeNull();
-    second.resolve(ok(dish('second', 8)));
+    second.resolve(ok({ items: [dish('first', 7), dish('second', 8)] }));
     await flushPromises();
     expect(wrapper.findAll('.meal-card-dish').length).toBe(2);
     expect(wrapper.text()).toContain('单价合计 ¥15.00');
@@ -455,9 +453,8 @@ describe('planning loading lifecycle', () => {
   test.each(['network failure', 'deleted dish'])('a required lookup %s fails initialization without losing authoritative IDs, then retries the complete list', async outcome => {
     const complete = { ...plan(), dishes: ['first', 'second'] };
     (getMealPlans as jest.Mock).mockResolvedValueOnce(ok({ items: [complete] }));
-    (getDishById as jest.Mock)
-      .mockResolvedValueOnce(ok(dish('first')))
-      .mockRejectedValueOnce(new Error(outcome === 'deleted dish' ? '菜品不存在' : '菜品读取超时'));
+    if (outcome === 'deleted dish') (getDishesByIds as jest.Mock).mockResolvedValueOnce(ok({ items: [dish('first')] }));
+    else (getDishesByIds as jest.Mock).mockRejectedValueOnce(new Error('菜品读取超时'));
     const wrapper = planningPage(true, true);
     await flushPromises();
     expect(usePlanStore().initialized).toBe(false);
@@ -486,9 +483,7 @@ describe('planning loading lifecycle', () => {
     (editor.vm as any).formData.mealTime = 'dinner';
     const unavailable = deferred();
     (getMealPlans as jest.Mock).mockResolvedValueOnce(ok({ items: [{ ...plan(), dishes: ['dish', 'new-dish'] }] }));
-    (getDishById as jest.Mock)
-      .mockResolvedValueOnce(ok(dish('dish', 99)))
-      .mockReturnValueOnce(unavailable.promise);
+    (getDishesByIds as jest.Mock).mockReturnValueOnce(unavailable.promise);
     const pending = (wrapper.vm as any).refreshPlans();
     await flushPromises();
     expect(store.currentPlans[0].dishes.map(item => item.id)).toEqual(['dish']);
@@ -513,12 +508,12 @@ describe('planning loading lifecycle', () => {
     (getMealPlans as jest.Mock)
       .mockResolvedValueOnce(ok({ items: [original] }))
       .mockResolvedValueOnce(ok({ items: [updated] }));
-    (getDishById as jest.Mock).mockReturnValueOnce(lookup.promise);
+    (getDishesByIds as jest.Mock).mockReturnValueOnce(lookup.promise);
     const pending = store.fetchPlans();
     await flushPromises();
     (updateMealPlan as jest.Mock).mockResolvedValueOnce(ok(updated));
     await store.updatePlan(original.id, { ...updated, dishes: [...updated.dishes] } as any);
-    if (outcome === 'success') lookup.resolve(ok(dish('dish', 1)));
+    if (outcome === 'success') lookup.resolve(ok({ items: [dish('dish', 1)] }));
     else lookup.reject(new Error('旧菜品读取失败'));
     await pending;
     expect(getMealPlans).toHaveBeenCalledTimes(3);
@@ -530,14 +525,14 @@ describe('planning loading lifecycle', () => {
   test('a superseded detail response cannot replace the newer complete plan prices', async () => {
     const lookup = deferred();
     (getMealPlans as jest.Mock).mockResolvedValue(ok({ items: [plan()] }));
-    (getDishById as jest.Mock)
+    (getDishesByIds as jest.Mock)
       .mockReturnValueOnce(lookup.promise)
-      .mockResolvedValueOnce(ok(dish('dish', 20)));
+      .mockResolvedValueOnce(ok({ items: [dish('dish', 20)] }));
     const store = usePlanStore();
     const old = store.fetchPlans();
     await flushPromises();
     await store.fetchPlans();
-    lookup.resolve(ok(dish('dish', 1)));
+    lookup.resolve(ok({ items: [dish('dish', 1)] }));
     await old;
     expect(store.currentPlans[0].dishes[0].price).toBe(20);
   });
@@ -550,7 +545,7 @@ describe('planning loading lifecycle', () => {
     const vm = wrapper.vm as any;
     const store = usePlanStore();
     const payload = { startDate: written.startDate, endDate: written.endDate, mealTime: written.mealTime, dishes: ['missing'] };
-    (getDishById as jest.Mock).mockRejectedValueOnce(new Error('菜品资料读取失败'));
+    (getDishesByIds as jest.Mock).mockRejectedValueOnce(new Error('菜品资料读取失败'));
     if (action === 'create') {
       (createMealPlan as jest.Mock).mockResolvedValueOnce(ok(written));
       vm.createNewPlan();
@@ -583,6 +578,22 @@ describe('planning loading lifecycle', () => {
     expect((wrapper.findAllComponents(PlanEditDialog)[0].vm as any).formData.dishes).toEqual(['missing']);
   });
 
+  test('account switch during a large hydration stops later batches and discards private plan data', async () => {
+    const ids = Array.from({ length: 201 }, (_, index) => `dish-${index}`);
+    const first = deferred();
+    (getMealPlans as jest.Mock).mockResolvedValueOnce(ok({ items: [{ ...plan(), dishes: ids }] }));
+    (getDishesByIds as jest.Mock).mockReturnValueOnce(first.promise);
+    const store = usePlanStore();
+    const pending = store.fetchPlans();
+    await flushPromises();
+    useUserStore().logoutAction();
+    first.resolve(ok({ items: ids.slice(0, 200).map(id => dish(id)) }));
+    await pending;
+    expect(getDishesByIds).toHaveBeenCalledTimes(1);
+    expect(store.allPlans).toEqual([]);
+    expect(store.enrichedPlans).toEqual([]);
+  });
+
   test('authoritative recovery clears a committed write readback error that arrived while the read was pending', async () => {
     (getMealPlans as jest.Mock).mockResolvedValueOnce(ok({ items: [plan()] }));
     const store = usePlanStore();
@@ -591,7 +602,7 @@ describe('planning loading lifecycle', () => {
     const readback = deferred();
     const recovery = deferred();
     (updateMealPlan as jest.Mock).mockResolvedValueOnce(ok(written));
-    (getDishById as jest.Mock)
+    (getDishesByIds as jest.Mock)
       .mockReturnValueOnce(readback.promise)
       .mockReturnValueOnce(recovery.promise);
     const saving = store.updatePlan(written.id, written as any);
@@ -603,7 +614,7 @@ describe('planning loading lifecycle', () => {
     await saving;
     expect(store.error).toContain('规划已保存');
     expect(store.currentPlans[0].dishesReady).toBe(false);
-    recovery.resolve(ok(dish('written-dish')));
+    recovery.resolve(ok({ items: [dish('written-dish')] }));
     await refreshing;
     expect(store.error).toBeNull();
     expect(store.currentPlans[0].dishesReady).toBe(true);

@@ -55,6 +55,12 @@ describe('CreateMealPlanTool meal constraints', () => {
       draft.confirmAction.body.dishes,
     );
     expect(draft.confirmAction.body.dishes).toEqual(['main', 'side']);
+    expect(draft.confirmAction.body).not.toHaveProperty('source');
+    expect(draft.confirmAction.body).not.toHaveProperty('constraints');
+    expect(draft.previewData.dishes[0]).toMatchObject({
+      status: 'online',
+      availableMealTime: ['lunch'],
+    });
     await expect(
       tool.execute({ ...params, totalBudget: 20 }, context),
     ).resolves.toMatchObject({ previewData: { mealTime: 'lunch' } });
@@ -131,6 +137,26 @@ describe('CreateMealPlanTool meal constraints', () => {
       await expect(tool.execute(params, context)).rejects.toThrow('忌口');
     },
   );
+
+  it('requires continuous supply across the full draft interval', async () => {
+    dishes.getDishesByIds.mockResolvedValue({
+      data: {
+        items: [
+          {
+            ...main,
+            availableDates: [
+              { startDate: '2026-10-01', endDate: '2026-10-05' },
+              { startDate: '2026-10-07', endDate: '2026-10-10' },
+            ],
+          },
+          side,
+        ],
+      },
+    });
+    await expect(
+      tool.execute({ ...params, endDate: '2026-10-07' }, context),
+    ).rejects.toThrow('供应');
+  });
 
   it.each([
     { startDate: '2026-02-31', endDate: '2026-03-03' },

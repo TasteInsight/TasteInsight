@@ -94,7 +94,7 @@
                 ><text class="plan-hint"
                   >{{ dish.canteenName || '食堂信息暂缺'
                   }}{{ dish.windowName ? ' / ' + dish.windowName : '' }}</text
-                ></view
+                ><DishNutrition :dish="dish" /></view
               >
               <button
                 class="plan-button plan-remove"
@@ -234,7 +234,7 @@
                   }}{{ dish.windowName ? ' / ' + dish.windowName : '' }}</text
                 ><text class="plan-hint"
                   >¥{{ dish.price }}{{ priceUnitSuffix(dish.priceUnit) }}</text
-                ></view
+                ><DishNutrition :dish="dish" /></view
               >
               <text class="plan-result-action">{{
                 isDishSelected(dish.id) ? '已添加' : '添加'
@@ -285,6 +285,7 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onScopeDispose } from 'vue';
 import UiPicker from '@/components/UiPicker.vue';
+import DishNutrition from '@/components/DishNutrition.vue';
 import { useCanteenStore } from '@/store/modules/use-canteen-store';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { getWindowList, getCanteenList } from '@/api/modules/canteen';

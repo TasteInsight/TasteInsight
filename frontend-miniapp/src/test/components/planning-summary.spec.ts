@@ -22,15 +22,36 @@ const plan = {
   dishesReady: true,
 } as any;
 
-test.each([['份', '/份'], ['元/份', '/份'], ['元', ''], [null, '']])('planning views normalize historical unit %p without changing stored dishes', (priceUnit, suffix) => {
-  const dishes = [0, 15].map(price => ({ ...plan.dishes[0], id: String(price), price, priceUnit }));
-  for (const [component, selector] of [[PlanCard, '.meal-card-price'], [PlanDetailDialog, '.meal-detail-copy .meal-detail-price']] as const) {
-    const wrapper = mount(component as any, { props: { visible: true, plan: { ...plan, dishes } } });
-    expect(wrapper.findAll(selector).map(price => price.text())).toEqual([`¥0${suffix}`, `¥15${suffix}`]);
-    expect(dishes.map(dish => dish.priceUnit)).toEqual([priceUnit, priceUnit]);
-    wrapper.unmount();
+test.each([
+  ['份', '/份'],
+  ['元/份', '/份'],
+  ['元', ''],
+  [null, ''],
+])(
+  'planning views normalize historical unit %p without changing stored dishes',
+  (priceUnit, suffix) => {
+    const dishes = [0, 15].map(price => ({
+      ...plan.dishes[0],
+      id: String(price),
+      price,
+      priceUnit,
+    }));
+    for (const [component, selector] of [
+      [PlanCard, '.meal-card-price'],
+      [PlanDetailDialog, '.meal-detail-copy .meal-detail-price'],
+    ] as const) {
+      const wrapper = mount(component as any, {
+        props: { visible: true, plan: { ...plan, dishes } },
+      });
+      expect(wrapper.findAll(selector).map(price => price.text())).toEqual([
+        `¥0${suffix}`,
+        `¥15${suffix}`,
+      ]);
+      expect(dishes.map(dish => dish.priceUnit)).toEqual([priceUnit, priceUnit]);
+      wrapper.unmount();
+    }
   }
-});
+);
 
 test('plan cards retain the date range and mark-eaten action without opening details', async () => {
   const wrapper = mount(PlanCard, { props: { plan, today: '2099-10-03' } });
@@ -106,6 +127,23 @@ test.each([
     expect(wrapper.get('.meal-card-image, .meal-detail-image').attributes('src')).toBe(
       'https://images.test/current.jpg'
     );
+    wrapper.unmount();
+  }
+);
+
+test.each([PlanCard, PlanDetailDialog])(
+  'saved planning views identify offline dishes using current metadata',
+  component => {
+    const wrapper = mount(component as any, {
+      props: {
+        visible: true,
+        plan: { ...plan, dishes: [{ ...plan.dishes[0], status: 'offline' }] },
+      },
+    });
+    expect(wrapper.text()).toContain('已下架');
+    expect(wrapper.findAll('.tag-badge').map(badge => badge.text())).toEqual(['已下架']);
+    expect(wrapper.text().split('已下架')).toHaveLength(2);
+    expect(wrapper.text()).toContain(plan.dishes[0].name);
     wrapper.unmount();
   }
 );

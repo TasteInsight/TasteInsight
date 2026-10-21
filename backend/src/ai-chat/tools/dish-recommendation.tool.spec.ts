@@ -16,7 +16,7 @@ describe('DishRecommendationTool', () => {
     };
     dishes = {
       getDishesByIds: jest.fn().mockResolvedValue({
-        data: { items: [{ id: 'main', canteenId: 'c1' }] },
+        data: { items: [{ id: 'main', canteenId: 'c1', status: 'online' }] },
       }),
     };
     canteens = { resolveCanteenId: jest.fn().mockResolvedValue('c1') };
@@ -29,7 +29,7 @@ describe('DishRecommendationTool', () => {
         { mealTime: 'lunch', priceMax: 20, avoidIngredients: ['香菜'] },
         context,
       ),
-    ).resolves.toEqual([{ id: 'main', canteenId: 'c1' }]);
+    ).resolves.toEqual([{ id: 'main', canteenId: 'c1', status: 'online' }]);
     expect(recommendation.getRecommendations).toHaveBeenCalledWith(
       'u1',
       expect.objectContaining({
@@ -43,6 +43,32 @@ describe('DishRecommendationTool', () => {
         userContext: { diversifyCanteens: true },
       }),
     );
+  });
+
+  it('excludes a candidate taken offline between recommendation and hydration', async () => {
+    dishes.getDishesByIds.mockResolvedValue({
+      data: {
+        items: [
+          { id: 'main', status: 'offline' },
+          { id: 'available', status: 'online' },
+        ],
+      },
+    });
+    await expect(tool.execute({ mealTime: 'lunch' }, context)).resolves.toEqual(
+      [{ id: 'available', status: 'online' }],
+    );
+  });
+
+  it('passes a planned supply interval through the unified recommendation filter', async () => {
+    await tool.execute(
+      { mealTime: 'lunch', startDate: '2099-10-05', endDate: '2099-10-07' },
+      context,
+    );
+    expect(recommendation.getRecommendations.mock.calls[0][1].filter).toEqual({
+      mealTime: ['lunch'],
+      startDate: '2099-10-05',
+      endDate: '2099-10-07',
+    });
   });
 
   it('keeps an explicit canteen constraint instead of adding other venues', async () => {
@@ -73,7 +99,7 @@ describe('DishRecommendationTool', () => {
   it('uses the existing today scene without changing candidate hydration', async () => {
     await expect(
       tool.execute({ mealTime: 'dinner', scene: 'today', limit: 3 }, context),
-    ).resolves.toEqual([{ id: 'main', canteenId: 'c1' }]);
+    ).resolves.toEqual([{ id: 'main', canteenId: 'c1', status: 'online' }]);
     expect(recommendation.getRecommendations).toHaveBeenCalledWith(
       'u1',
       expect.objectContaining({
@@ -101,7 +127,7 @@ describe('DishRecommendationTool', () => {
         },
         context,
       ),
-    ).resolves.toEqual([{ id: 'main', canteenId: 'c1' }]);
+    ).resolves.toEqual([{ id: 'main', canteenId: 'c1', status: 'online' }]);
     expect(dishes.getDishesByIds).toHaveBeenNthCalledWith(1, ['source'], 'u1');
     expect(dishes.getDishesByIds).toHaveBeenNthCalledWith(2, ['main'], 'u1');
     expect(recommendation.getRecommendations).toHaveBeenCalledWith(

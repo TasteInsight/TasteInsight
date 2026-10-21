@@ -299,6 +299,13 @@ export class UserProfileService {
               name: true,
               images: true,
               price: true,
+              priceUnit: true,
+              status: true,
+              calories: true,
+              protein: true,
+              carbohydrate: true,
+              fat: true,
+
               windowName: true,
               tags: true,
               averageRating: true,
@@ -347,6 +354,13 @@ export class UserProfileService {
               name: true,
               images: true,
               price: true,
+              priceUnit: true,
+              status: true,
+              calories: true,
+              protein: true,
+              carbohydrate: true,
+              fat: true,
+
               windowName: true,
               tags: true,
               averageRating: true,
@@ -537,7 +551,7 @@ export class UserProfileService {
         where: { reporterId: userId },
         skip,
         take: pageSize,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         include: {
           reporter: { select: { id: true, nickname: true, avatar: true } },
         },
@@ -751,6 +765,13 @@ export class UserProfileService {
       dishName: favorite.dish.name,
       dishImages: favorite.dish.images,
       dishPrice: favorite.dish.price,
+      priceUnit: favorite.dish.priceUnit,
+      status: favorite.dish.status,
+      calories: favorite.dish.calories ?? null,
+      protein: favorite.dish.protein ?? null,
+      carbohydrate: favorite.dish.carbohydrate ?? null,
+      fat: favorite.dish.fat ?? null,
+
       canteenName: favorite.dish.canteen.name,
       windowName: favorite.dish.windowName,
       tags: favorite.dish.tags,
@@ -768,6 +789,13 @@ export class UserProfileService {
       dishName: history.dish.name,
       dishImages: history.dish.images,
       dishPrice: history.dish.price,
+      priceUnit: history.dish.priceUnit,
+      status: history.dish.status,
+      calories: history.dish.calories ?? null,
+      protein: history.dish.protein ?? null,
+      carbohydrate: history.dish.carbohydrate ?? null,
+      fat: history.dish.fat ?? null,
+
       canteenName: history.dish.canteen.name,
       windowName: history.dish.windowName,
       tags: history.dish.tags,
@@ -777,6 +805,11 @@ export class UserProfileService {
 
   private mapToUserUploadDto(upload: DishUpload): UserUploadData {
     return {
+      calories: upload.calories ?? null,
+      protein: upload.protein ?? null,
+      carbohydrate: upload.carbohydrate ?? null,
+      fat: upload.fat ?? null,
+
       id: upload.id,
       name: upload.name,
       images:
@@ -792,6 +825,21 @@ export class UserProfileService {
       approvedDishId: upload.approvedDishId ?? null,
       revision: upload.revision ?? 1,
       createdAt: upload.createdAt.toISOString(),
+    };
+  }
+
+  async getMyReport(userId: string, id: string) {
+    const report = await this.prisma.report.findFirst({
+      where: { id, reporterId: userId },
+      include: {
+        reporter: { select: { id: true, nickname: true, avatar: true } },
+      },
+    });
+    if (!report) throw new NotFoundException('举报记录不存在');
+    return {
+      code: 200,
+      message: 'success',
+      data: this.mapToUserReportDto(report),
     };
   }
 

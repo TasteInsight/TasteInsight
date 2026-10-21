@@ -341,6 +341,8 @@ onScopeDispose(() => {
 
 <style scoped>
 .dining-page {
+  box-sizing: border-box;
+  width: 100%;
   max-width: 680px;
   margin: 0 auto;
   padding: 4px 20px calc(24px + env(safe-area-inset-bottom));

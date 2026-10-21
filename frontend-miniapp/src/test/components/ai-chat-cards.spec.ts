@@ -31,7 +31,7 @@ test('planning card exposes units and list-price meaning without invented or fai
   const pictured = wrapper.findAll('.planning-dish')[1];
   expect(pictured.element.firstElementChild?.classList.contains('planning-dish-info')).toBe(true);
   expect(pictured.element.lastElementChild?.classList.contains('planning-dish-image')).toBe(true);
-  expect(wrapper.text()).toContain('¥12.0/份');
+  expect(wrapper.text()).toContain('¥12.00/份');
   expect(wrapper.text()).toContain('所列单价合计');
   expect(wrapper.text()).toContain('暂无评分');
   await wrapper.get('.planning-dish-image').trigger('error');
@@ -82,7 +82,9 @@ test('dish imagery is right of the details, disappears on error and accepts a ne
   await wrapper.get('.dish-recommendation-image').trigger('error');
   expect(wrapper.find('.dish-recommendation-image').exists()).toBe(false);
   await wrapper.setProps({ dish: { dish: { ...dish.dish, image: 'https://images.test/b.jpg' } } });
-  expect(wrapper.get('.dish-recommendation-image').attributes('src')).toBe('https://images.test/b.jpg');
+  expect(wrapper.get('.dish-recommendation-image').attributes('src')).toBe(
+    'https://images.test/b.jpg'
+  );
   wrapper.unmount();
 });
 
@@ -110,3 +112,21 @@ test.each([
     wrapper.unmount();
   }
 );
+
+test('explicit offline search cards show a compact neutral status badge', async () => {
+  const dish = {
+    dish: {
+      id: 'a',
+      name: '回锅肉',
+      rating: '4.0',
+      image: '',
+      tags: [],
+      status: 'offline' as const,
+    },
+  };
+  const wrapper = mount(DishCard, { props: { dish } });
+  expect(wrapper.get('.tag-badge--neutral').text()).toBe('已下架');
+  await wrapper.setProps({ dish: { dish: { ...dish.dish, status: 'online' } } });
+  expect(wrapper.text()).not.toContain('已下架');
+  wrapper.unmount();
+});

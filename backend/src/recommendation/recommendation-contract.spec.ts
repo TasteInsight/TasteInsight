@@ -275,7 +275,11 @@ describe('Recommendation candidate contracts', () => {
       { AND: expect.arrayContaining(hardFilters) },
     );
     expect(prisma.favoriteDish.findMany).toHaveBeenCalledTimes(3);
-    expect(prisma.dish.findMany).toHaveBeenCalledTimes(3);
+    expect(
+      prisma.dish.findMany.mock.calls.filter(
+        ([query]) => !query.select?.availableDates,
+      ),
+    ).toHaveLength(3);
     for (const [query] of prisma.dish.findMany.mock.calls) {
       expect(query.where.AND).toEqual(expect.arrayContaining(hardFilters));
       expect(query.distinct).toBeUndefined();
@@ -318,7 +322,9 @@ describe('Recommendation candidate contracts', () => {
       for (const query of queries) {
         expect(query.where.AND).toEqual(expect.arrayContaining(hardFilters));
       }
-      expect(queries.filter((query) => query.select)).toHaveLength(2);
+      expect(
+        queries.filter((query) => query.select && !query.select.availableDates),
+      ).toHaveLength(2);
       expect(queries.some((query) => query.distinct)).toBe(!hasCanteen);
       expect(queries.some((query) => query.orderBy?.createdAt === 'desc')).toBe(
         true,

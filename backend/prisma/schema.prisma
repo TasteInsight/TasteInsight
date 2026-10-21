@@ -368,6 +368,12 @@ model Dish {
   description String?
   images      String[]
 
+  // 每份营养信息：热量 kcal，其余 g
+  calories     Float?
+  protein      Float?
+  carbohydrate Float?
+  fat          Float?
+
   // 菜品层级关系
   parentDishId     String?
   parentDish       Dish?        @relation("DishHierarchy", fields: [parentDishId], references: [id])
@@ -446,6 +452,13 @@ model DishUpload {
   priceUnit   String?
   description String?
   images      String[]
+
+  // 每份营养信息：热量 kcal，其余 g
+  calories     Float?
+  protein      Float?
+  carbohydrate Float?
+  fat          Float?
+
   ingredients String[]
   allergens   String[]
 
@@ -755,13 +768,13 @@ model Report {
 
   // 关联到具体目标（可选，用于方便查询）
   reviewId      String?
-  review        Review?      @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  review        Review?      @relation(fields: [reviewId], references: [id], onDelete: SetNull)
   commentId     String?
-  comment       Comment?     @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  comment       Comment?     @relation(fields: [commentId], references: [id], onDelete: SetNull)
   postId        String?
-  post          Post?        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post          Post?        @relation(fields: [postId], references: [id], onDelete: SetNull)
   postCommentId String?
-  postComment   PostComment? @relation(fields: [postCommentId], references: [id], onDelete: Cascade)
+  postComment   PostComment? @relation(fields: [postCommentId], references: [id], onDelete: SetNull)
 
   type   String // inappropriate, spam, false_info, other
   reason String

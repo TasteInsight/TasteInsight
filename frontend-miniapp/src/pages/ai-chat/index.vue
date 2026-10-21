@@ -351,6 +351,7 @@
 </template>
 <script setup lang="ts">
 import { openLogin } from '@/utils/login-navigation';
+import { toUserFriendlyErrorMessage } from '@/utils/user-friendly-error';
 import EmptyState from '@/components/EmptyState.vue';
 import { ref, watch, nextTick, onScopeDispose } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
@@ -633,7 +634,7 @@ const handleApplyPlan = async (
   } catch (error) {
     if (!isCurrent()) return;
     releaseApplyLoading();
-    uni.showToast({ title: '加入失败，请重试', icon: 'none' });
+    uni.showToast({ title: toUserFriendlyErrorMessage(error), icon: 'none' });
     console.error(error);
   }
 };

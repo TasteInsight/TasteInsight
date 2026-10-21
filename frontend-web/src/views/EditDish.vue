@@ -518,6 +518,8 @@
               </div>
             </div>
 
+            <NutritionFields :values="formData" />
+
             <!-- 过敏原 -->
             <div class="mb-6">
               <label class="block text-gray-700 font-medium mb-2 admin-label">过敏原</label>
@@ -629,6 +631,8 @@ import { useDishStore } from '@/store/modules/use-dish-store'
 import { useAuthStore } from '@/store/modules/use-auth-store'
 import Header from '@/components/Layout/Header.vue'
 import AdminImage from '@/components/Common/AdminImage.vue'
+import NutritionFields from '@/components/Dishes/NutritionFields.vue'
+import { nutritionPayload } from '@/utils/nutrition'
 import AdminDialog from '@/components/Common/AdminDialog.vue'
 import { showConfirm } from '@/composables/useModal'
 import { useNotification } from '@/composables/useNotification'
@@ -638,6 +642,7 @@ export default {
   name: 'EditDish',
   components: {
     AdminImage,
+    NutritionFields,
     Header,
     AdminDialog,
   },
@@ -680,6 +685,11 @@ export default {
       windowNumber: '',
       name: '',
       price: 0,
+      calories: null,
+      protein: null,
+      carbohydrate: null,
+      fat: null,
+
       description: '',
       allergens: '',
       ingredients: '',
@@ -818,6 +828,11 @@ export default {
       formData.windowNumber = dish.windowNumber || ''
 
       formData.name = dish.name || ''
+      formData.calories = dish.calories ?? null
+      formData.protein = dish.protein ?? null
+      formData.carbohydrate = dish.carbohydrate ?? null
+      formData.fat = dish.fat ?? null
+
       formData.description = dish.description || ''
 
       // 判断是否为子项
@@ -1102,6 +1117,14 @@ export default {
         // 如果都没有，使用默认值0
       }
       
+      let nutrition
+      try {
+        nutrition = nutritionPayload(formData)
+      } catch (error) {
+        notify.error(error.message)
+        return
+      }
+
       if (hasError) {
         return
       }
@@ -1206,6 +1229,7 @@ export default {
           windowName: draft.windowName,
           windowNumber: draft.windowNumber || draft.windowName, // 如果没有编号，使用窗口名称
           price: dishPrice,
+          ...nutrition,
           description: draft.description,
           images: imageUrls,
           tags: tags,

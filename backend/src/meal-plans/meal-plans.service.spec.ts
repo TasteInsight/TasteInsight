@@ -1,11 +1,19 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { MealPlansService } from './meal-plans.service';
 import { PrismaService } from '@/prisma.service';
-import { NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  NotFoundException,
+  ForbiddenException,
+  ConflictException,
+} from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 const mockPrismaService = {
   $transaction: jest.fn(async (operation: any) => operation(mockPrismaService)),
   $queryRaw: jest.fn(),
+  dish: { findMany: jest.fn() },
+  user: { findUnique: jest.fn() },
+  userPreference: { findUnique: jest.fn() },
   diningInvite: { count: jest.fn().mockResolvedValue(0) },
   mealPlanCompletion: { deleteMany: jest.fn(), upsert: jest.fn() },
   mealPlan: {
@@ -23,6 +31,9 @@ describe('MealPlansService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockPrismaService.$transaction.mockImplementation(async (operation: any) =>
+      operation(mockPrismaService),
+    );
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -85,6 +96,55 @@ describe('MealPlansService', () => {
 
       expect(result.code).toBe(201);
       expect(result.message).toBe('规划计划保存成功');
+    });
+  });
+
+  describe('confirmation by dish ID', () => {
+    const dto = {
+      startDate: '2099-10-05',
+      endDate: '2099-10-05',
+      mealTime: 'lunch',
+      dishes: ['d1'],
+    } as any;
+    it('uses current dish associations without locking supply or preferences', async () => {
+      prisma.mealPlan.create.mockResolvedValue({
+        id: 'saved',
+        userId: 'u1',
+        startDate: new Date('2099-10-05'),
+        endDate: new Date('2099-10-05'),
+        mealTime: 'lunch',
+        dishes: [{ dishId: 'd1' }],
+        createdAt: new Date(),
+      });
+      const result = await service.createMealPlan('u1', dto);
+      expect(result.data.dishes).toEqual(['d1']);
+      expect(
+        prisma.mealPlan.create.mock.calls[0][0].data.dishes.create,
+      ).toEqual([{ dishId: 'd1' }]);
+      expect(prisma.$queryRaw).not.toHaveBeenCalled();
+      expect(prisma.userPreference.findUnique).not.toHaveBeenCalled();
+    });
+    it('reports a truly deleted dish through the relation constraint', async () => {
+      prisma.mealPlan.create.mockRejectedValueOnce(
+        new Prisma.PrismaClientKnownRequestError('missing connected dish', {
+          code: 'P2003',
+          meta: { constraint: 'meal_plan_dishes_dishId_fkey' },
+          clientVersion: 'test',
+        }),
+      );
+      await expect(service.createMealPlan('u1', dto)).rejects.toThrow(
+        '部分菜品已删除',
+      );
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    });
+    it('propagates transaction errors once', async () => {
+      const error = new Prisma.PrismaClientKnownRequestError(
+        'transaction failed',
+        { code: 'P2034', clientVersion: 'test' },
+      );
+      prisma.$transaction.mockRejectedValueOnce(error);
+      await expect(service.createMealPlan('u1', dto)).rejects.toBe(error);
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     });
   });
 

@@ -1,4 +1,8 @@
-<template><DiningInvites :active="visible" :invite-id="inviteId" ref="panel" /></template>
+<template>
+  <view class="page-content page-state-layout">
+    <DiningInvites :active="visible" :invite-id="inviteId" ref="panel" />
+  </view>
+</template>
 <script setup lang="ts">
 import { ref } from 'vue';
 import { onLoad, onShow, onHide, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';

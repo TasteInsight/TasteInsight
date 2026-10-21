@@ -24,7 +24,7 @@ jest.mock('@/api/modules/meal-plan', () => ({
 }));
 
 jest.mock('@/api/modules/dish', () => ({
-  getDishById: jest.fn(),
+  getDishesByIds: jest.fn(),
   getDishes: jest.fn(),
   favoriteDish: jest.fn(),
   unfavoriteDish: jest.fn(),
@@ -40,7 +40,7 @@ describe('usePlanStore integration', () => {
 
   it('fetchPlans: should load plans and enrich dishes', async () => {
     const { getMealPlans } = require('@/api/modules/meal-plan');
-    const { getDishById } = require('@/api/modules/dish');
+    const { getDishesByIds } = require('@/api/modules/dish');
     const { usePlanStore } = require('@/store/modules/use-plan-store');
 
     (getMealPlans as jest.Mock).mockResolvedValue({
@@ -58,9 +58,23 @@ describe('usePlanStore integration', () => {
       },
     });
 
-    (getDishById as jest.Mock)
-      .mockResolvedValueOnce({ code: 200, data: { id: 'd1', name: 'Dish 1' } })
-      .mockResolvedValueOnce({ code: 200, data: { id: 'd2', name: 'Dish 2' } });
+    (getDishesByIds as jest.Mock).mockResolvedValueOnce({
+      code: 200,
+      data: {
+        items: [
+          {
+            id: 'd1',
+            name: 'Dish 1',
+            price: 10.01,
+            priceUnit: '元/100g',
+            status: 'offline',
+            calories: 0,
+            protein: null,
+          },
+          { id: 'd2', name: 'Dish 2' },
+        ],
+      },
+    });
 
     const store = usePlanStore();
     await store.fetchPlans();
@@ -68,12 +82,19 @@ describe('usePlanStore integration', () => {
     expect(store.allPlans.length).toBe(1);
     expect(store.enrichedPlans.length).toBe(1);
     expect(store.enrichedPlans[0].dishes.map((d: any) => d.id)).toEqual(['d1', 'd2']);
+    expect(store.enrichedPlans[0].dishes[0]).toMatchObject({
+      price: 10.01,
+      priceUnit: '元/100g',
+      status: 'offline',
+      calories: 0,
+      protein: null,
+    });
     expect(store.error).toBe(null);
   });
 
   it('createPlan: should prepend plan and enrich new dishes', async () => {
     const { createMealPlan } = require('@/api/modules/meal-plan');
-    const { getDishById } = require('@/api/modules/dish');
+    const { getDishesByIds } = require('@/api/modules/dish');
     const { usePlanStore } = require('@/store/modules/use-plan-store');
 
     (createMealPlan as jest.Mock).mockResolvedValue({
@@ -87,9 +108,9 @@ describe('usePlanStore integration', () => {
       },
     });
 
-    (getDishById as jest.Mock).mockResolvedValueOnce({
+    (getDishesByIds as jest.Mock).mockResolvedValueOnce({
       code: 200,
-      data: { id: 'd3', name: 'Dish 3' },
+      data: { items: [{ id: 'd3', name: 'Dish 3' }] },
     });
 
     const store = usePlanStore();

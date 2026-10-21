@@ -15,6 +15,11 @@ export class DishDto {
   name: string;
   tags: string[];
   price: number;
+  calories: number | null;
+  protein: number | null;
+  carbohydrate: number | null;
+  fat: number | null;
+
   priceUnit?: string;
   description?: string;
   images: string[];
@@ -47,6 +52,11 @@ export class DishDto {
     dto.name = entity.name;
     dto.tags = entity.tags ?? [];
     dto.price = entity.price;
+    dto.calories = entity.calories ?? null;
+    dto.protein = entity.protein ?? null;
+    dto.carbohydrate = entity.carbohydrate ?? null;
+    dto.fat = entity.fat ?? null;
+
     dto.priceUnit = entity.priceUnit;
     dto.description = entity.description;
     dto.images = entity.images ?? [];

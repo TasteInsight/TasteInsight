@@ -118,6 +118,7 @@ describe('review mutation consistency (PostgreSQL)', () => {
   afterAll(async () => {
     try {
       if (db) {
+        await db.report.deleteMany({ where: { reporterId: { in: userIds } } });
         await db.dish.deleteMany({ where: { id: { in: dishIds } } });
         if (admin.id) await db.admin.delete({ where: { id: admin.id } });
         await db.user.deleteMany({ where: { id: { in: userIds } } });

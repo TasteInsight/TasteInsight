@@ -21,7 +21,17 @@ import {
   type DraftImage,
 } from './draft-images';
 
-type FormData = Omit<DishUserCreateRequest, 'price'> & {
+export const nutritionFields = [
+  { key: 'calories', label: '热量（kcal）' },
+  { key: 'protein', label: '蛋白质（g）' },
+  { key: 'carbohydrate', label: '碳水化合物（g）' },
+  { key: 'fat', label: '脂肪（g）' },
+] as const;
+type NutritionField = typeof nutritionFields[number]['key'];
+const nutritionValue = (value: unknown): number | null =>
+  value == null || String(value).trim() === '' ? null : Number(value);
+type FormData = Omit<DishUserCreateRequest, 'price' | NutritionField> &
+  Record<NutritionField, number | string | null> & {
   name: string;
   floor: string;
   price: number | string;
@@ -53,6 +63,7 @@ const fields: DishContributionField[] = [
   'sweetness',
   'saltiness',
   'oiliness',
+  ...nutritionFields.map(field => field.key),
   'windowId',
   'windowName',
   'windowNumber',
@@ -67,6 +78,10 @@ const requestId = () =>
   });
 const blankForm = (): FormData => ({
   name: '',
+  calories: '',
+  protein: '',
+  carbohydrate: '',
+  fat: '',
   price: '',
   priceUnit: '',
   description: '',
@@ -196,6 +211,11 @@ export function useAddDish() {
       errors.price = '请输入菜品价格';
     else if (!Number.isFinite(Number(formData.price)) || Number(formData.price) < 0)
       errors.price = '价格应为 0 或正数';
+    for (const { key, label } of nutritionFields) {
+      const value = nutritionValue(formData[key]);
+      if (value !== null && (!Number.isFinite(value) || value < 0))
+        errors[key] = `${label}应为 0 或正数`;
+    }
     if (!formData.canteenName.trim()) errors.canteen = '请选择所在食堂';
     if (!formData.availableMealTime.length) errors.availableMealTime = '请选择至少一个供应时段';
     return errors;
@@ -572,6 +592,7 @@ export function useAddDish() {
         draft[field] !== undefined
       )
         (payload as any)[field] = draft[field];
+    for (const { key } of nutritionFields) payload[key] = nutritionValue(draft[key]);
     if (!draft.windowId) {
       payload.windowId = undefined;
       payload.windowName = undefined;
@@ -585,9 +606,11 @@ export function useAddDish() {
           !equivalent(
             field === 'price'
               ? Number(draft.price)
-              : field === 'name'
-                ? draft.name.trim()
-                : draft[field],
+              : nutritionFields.some(item => item.key === field)
+                ? nutritionValue(draft[field])
+                : field === 'name'
+                  ? draft.name.trim()
+                  : draft[field],
             formBaseline![field],
             field
           )

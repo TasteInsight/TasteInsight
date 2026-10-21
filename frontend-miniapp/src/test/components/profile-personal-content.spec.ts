@@ -1,4 +1,4 @@
-import { flushPromises, shallowMount } from '@vue/test-utils';
+import { flushPromises, mount, shallowMount } from '@vue/test-utils';
 import { reactive } from 'vue';
 import ProfilePlans from '@/pages/profile/components/ProfilePlans.vue';
 import ProfileBioEditor from '@/pages/profile/components/ProfileBioEditor.vue';
@@ -211,19 +211,145 @@ test('compact profile header preserves biography and verified identity through o
   expect(uni.navigateTo).not.toHaveBeenCalled();
 });
 
-test('settings retain all administrative destinations including logout, privacy and about', async () => {
+test('settings group account, food, app and public information while keeping reports at the bottom', async () => {
   const wrapper = mountPage(SettingsPage);
-  expect(wrapper.text()).toMatch(/账号与校园身份/);
-  expect(wrapper.text()).toMatch(/退出登录/);
-  const about = wrapper.findAll('.settings-menu').find(item => item.text() === '关于食鉴')!;
-  await about.trigger('click');
-  expect(uni.navigateTo).toHaveBeenCalledWith(
-    expect.objectContaining({ url: '/pages/settings/about' })
-  );
+  expect(wrapper.findAll('.group-title').map(item => item.text())).toEqual([
+    '账号与身份',
+    '饮食与推荐',
+    '应用偏好',
+    '关于',
+    '反馈与举报',
+  ]);
+  expect(wrapper.text()).toContain('退出登录');
+  const destinations = [
+    ['个人信息', '/pages/settings/components/personal'],
+    ['账号与校园身份', '/pages/profile/identity'],
+    ['过敏原', '/pages/settings/components/allergens'],
+    ['饮食偏好', '/pages/settings/components/preferences'],
+    ['显示设置', '/pages/settings/components/display'],
+    ['通知设置', '/pages/settings/components/notifications'],
+    ['关于食鉴', '/pages/settings/about'],
+    ['我的举报', '/pages/profile/my-reports/index'],
+  ];
+  for (const [label, path] of destinations) {
+    await wrapper
+      .findAll('.settings-menu')
+      .find(item => item.text() === label)!
+      .trigger('click');
+    expect(uni.navigateTo).toHaveBeenLastCalledWith(expect.objectContaining({ url: path }));
+  }
+  const groups = wrapper.findAll('.settings-section');
+  expect(groups.at(-1)!.text()).toContain('我的举报');
+  expect(groups.at(-1)!.text()).toContain('项目反馈');
+  expect(groups.find(group => group.text().startsWith('关于'))!.text()).not.toContain('我的举报');
+});
+
+test('guests can reach agreements through about and use feedback while private destinations follow login state', async () => {
+  const wrapper = mountPage(SettingsPage);
   user.isLoggedIn = false;
   user.userInfo = null;
   await flushPromises();
-  expect(wrapper.findAll('.settings-menu')).toHaveLength(2);
-  expect(wrapper.text()).toContain('隐私');
+  expect(wrapper.findAll('.settings-menu').map(item => item.text())).toEqual([
+    '登录',
+    '关于食鉴',
+    '项目反馈复制链接',
+  ]);
+  expect(wrapper.text()).not.toContain('我的举报');
   expect(wrapper.text()).not.toContain('退出登录');
+  expect(wrapper.text()).not.toContain('账号与身份');
+  const about = wrapper.findAll('.settings-menu').find(item => item.text() === '关于食鉴')!;
+  await about.trigger('click');
+  expect(uni.navigateTo).toHaveBeenLastCalledWith(
+    expect.objectContaining({ url: '/pages/settings/about' })
+  );
+  user.isLoggedIn = true;
+  await flushPromises();
+  expect(wrapper.text()).toContain('我的举报');
+  expect(wrapper.text()).toContain('账号与校园身份');
+  expect(wrapper.findAll('.settings-menu').some(item => item.text() === '登录')).toBe(false);
+});
+
+test.each(['click', 'Enter', ' '])(
+  'guest settings opens the existing login flow using %s',
+  async action => {
+    user.isLoggedIn = false;
+    const wrapper = mountPage(SettingsPage);
+    const login = wrapper.findAll('.settings-menu').find(item => item.text() === '登录')!;
+    expect(login.classes()).toEqual(
+      expect.arrayContaining(['settings-button', 'settings-menu', 'list-row-action'])
+    );
+    if (action === 'click') await login.trigger('click');
+    else {
+      await login.trigger('keydown', { key: action });
+      await login.trigger('keyup', { key: action });
+    }
+    expect(uni.navigateTo).toHaveBeenCalledTimes(1);
+    expect(uni.navigateTo).toHaveBeenCalledWith(
+      expect.objectContaining({ url: '/pages/login/index' })
+    );
+    (uni.navigateTo as jest.Mock).mock.calls[0][0].complete();
+  }
+);
+
+test.each(['Enter', ' '])(
+  'project feedback copies its declared link using %s and reports clipboard failure',
+  async key => {
+    Object.assign(uni, { setClipboardData: jest.fn() });
+    user.isLoggedIn = false;
+    const wrapper = mountPage(SettingsPage);
+    const feedback = wrapper
+      .findAll('.settings-menu')
+      .find(item => item.text() === '项目反馈复制链接')!;
+    await feedback.trigger('keydown', { key });
+    await feedback.trigger('keyup', { key });
+    expect(uni.setClipboardData).toHaveBeenCalledTimes(1);
+    expect(uni.setClipboardData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: 'https://github.com/TasteInsight/TasteInsight/issues',
+      })
+    );
+    expect(uni.navigateTo).not.toHaveBeenCalled();
+    (uni.setClipboardData as jest.Mock).mock.calls[0][0].fail();
+    expect(uni.showToast).toHaveBeenCalledWith({ title: '复制失败，请重试', icon: 'none' });
+  }
+);
+
+test('saved current and historical plans retain offline status, cents, units and incomplete dish semantics', async () => {
+  const dish = {
+    id: 'dish',
+    name: '番茄炒蛋',
+    images: [],
+    price: 10.01,
+    priceUnit: '元/100g',
+    status: 'offline',
+    averageRating: 0,
+    calories: 0,
+    protein: null,
+  };
+  const plan = {
+    id: 'current',
+    startDate: '2099-10-10',
+    endDate: '2099-10-10',
+    mealTime: 'lunch',
+    dishes: [dish],
+    dishesReady: true,
+  };
+  plans.currentPlans = [plan];
+  plans.historyPlans = [
+    { ...plan, id: 'history', dishes: [{ ...dish }], isExpired: true },
+    { ...plan, id: 'missing', dishes: [], dishesReady: false },
+  ];
+  const wrapper = mount(ProfilePlans);
+  wrappers.push(wrapper);
+  expect(wrapper.findAll('.dish-card__price').map(item => item.text())).toEqual([
+    '¥10.01/100g',
+    '¥10.01/100g',
+  ]);
+  expect(wrapper.findAll('.tag-badge--neutral')).toHaveLength(2);
+  expect(wrapper.text()).toContain('菜品资料尚未完整载入');
+  expect(wrapper.text()).not.toContain('¥0.00');
+  plans.currentPlans[0].dishes[0] = { ...dish, status: 'online', price: 0, priceUnit: null };
+  await flushPromises();
+  expect(wrapper.findAll('.dish-card__price')[0].text()).toBe('¥0.00');
+  expect(wrapper.findAll('.tag-badge--neutral')).toHaveLength(1);
 });

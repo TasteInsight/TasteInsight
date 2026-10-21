@@ -31,6 +31,7 @@ const mockPrismaService = {
     count: jest.fn(),
   },
   report: {
+    findFirst: jest.fn(),
     findMany: jest.fn(),
     count: jest.fn(),
   },
@@ -57,6 +58,35 @@ describe('UserProfileService', () => {
 
     service = module.get<UserProfileService>(UserProfileService);
     prisma = mockPrismaService;
+  });
+
+  it('queries a report detail only within the current reporter account', async () => {
+    prisma.report.findFirst.mockResolvedValue(null);
+    await expect(
+      service.getMyReport('other-user', 'private-report'),
+    ).rejects.toThrow(NotFoundException);
+    expect(prisma.report.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'private-report', reporterId: 'other-user' },
+      }),
+    );
+    prisma.report.findFirst.mockResolvedValue({
+      id: 'private-report',
+      reporterId: 'owner',
+      reporter: { id: 'owner', nickname: '同学' },
+      status: 'approved',
+      handleResult: '内容已删除',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      handledAt: new Date(),
+    });
+    expect((await service.getMyReport('owner', 'private-report')).data).toEqual(
+      expect.objectContaining({
+        status: 'approved',
+        handleResult: '内容已删除',
+        handledAt: expect.any(String),
+      }),
+    );
   });
 
   it('should be defined', () => {

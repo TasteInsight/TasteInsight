@@ -135,6 +135,7 @@ function fixture() {
     }),
   };
   const notifications = {
+    create: jest.fn(),
     withdraw: jest.fn(),
     withdrawThread: jest.fn(),
   };

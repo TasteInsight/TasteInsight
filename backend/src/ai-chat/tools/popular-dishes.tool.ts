@@ -19,7 +19,7 @@ export class PopularDishesTool implements BaseTool {
     return {
       name: 'get_popular_dishes',
       description:
-        '获取热门菜品。当用户询问"推荐一些热门菜"、"大家都在吃什么"或"排行榜"时使用。支持按评分或评论数排序。',
+        '获取在售热门菜品。当用户询问"推荐一些热门菜"、"大家都在吃什么"或"排行榜"时使用。支持按评分或评论数排序。',
       parameters: {
         type: 'object',
         properties: {

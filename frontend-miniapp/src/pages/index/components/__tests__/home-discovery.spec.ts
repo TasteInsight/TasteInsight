@@ -36,14 +36,14 @@ jest.mock('@/api/modules/dish', () => ({
   getDishes: jest.fn().mockResolvedValue({
     code: 200,
     data: {
-      items: [{ id: 'dish-1', name: '宫保鸡丁', price: 15, images: [], averageRating: 4.5 }],
+      items: [{ id: 'dish-1', name: '宫保鸡丁', price: 15, status: 'online', images: [], averageRating: 4.5 }],
       meta: { page: 1, totalPages: 1 },
     },
   }),
   getDishesByIds: jest.fn().mockResolvedValue({
     code: 200,
     data: {
-      items: [{ id: 'dish-1', name: '宫保鸡丁', price: 15, images: [], averageRating: 4.5 }],
+      items: [{ id: 'dish-1', name: '宫保鸡丁', price: 15, status: 'online', images: [], averageRating: 4.5 }],
     },
   }),
 }));
@@ -203,7 +203,7 @@ describe('home discovery connections', () => {
     });
     (getDishesByIds as jest.Mock).mockResolvedValueOnce({
       code: 200,
-      data: { items: [{ id: 'dish-2', name: '米饭', price: 3, images: [], averageRating: 0 }] },
+      data: { items: [{ id: 'dish-2', name: '米饭', price: 3, status: 'online', images: [], averageRating: 0 }] },
     });
     await wrapper
       .findAll('button')

@@ -10,11 +10,18 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
+import { Type } from 'class-transformer';
+import { IsInt, Max, Min } from 'class-validator';
 import { AuthGuard } from '@/auth/guards/auth.guard';
 import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 import { UserProfileService } from './user-profile.service';
 import { StudentGuard } from '@/auth/guards/student.guard';
 import { UpdateUploadDto, UploadRevisionDto } from './dto/update-upload.dto';
+
+export class ReportQueryDto {
+  @Type(() => Number) @IsInt() @Min(1) page = 1;
+  @Type(() => Number) @IsInt() @Min(1) @Max(50) pageSize = 20;
+}
 
 @Controller('user')
 @UseGuards(AuthGuard)
@@ -104,11 +111,16 @@ export class UserProfileController {
   }
 
   @Get('reports')
-  getMyReports(
-    @Request() req: any,
-    @Query('page') page: number = 1,
-    @Query('pageSize') pageSize: number = 20,
-  ) {
-    return this.userService.getMyReports(req.user.sub, page, pageSize);
+  getMyReports(@Request() req: any, @Query() query: ReportQueryDto) {
+    return this.userService.getMyReports(
+      req.user.sub,
+      query.page,
+      query.pageSize,
+    );
+  }
+
+  @Get('reports/:id')
+  getMyReport(@Request() req: any, @Param('id') id: string) {
+    return this.userService.getMyReport(req.user.sub, id);
   }
 }

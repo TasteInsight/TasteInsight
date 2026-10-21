@@ -69,10 +69,10 @@ onPullDownRefresh(async () => {
 </script>
 <style scoped>
 .campus-hub {
-  min-height: 100%;
   background: #fff;
 }
 .campus-sections {
+  width: 100%;
   position: sticky;
   top: var(--window-top, 0px);
   z-index: 2;

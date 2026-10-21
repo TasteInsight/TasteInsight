@@ -54,6 +54,8 @@ beforeEach(() => {
       options.success(ok({ items: initialPlans }));
     } else if (path === '/canteens') {
       options.success(ok({ items: [], meta: { page: 1, totalPages: 1 } }));
+    } else if (path === '/dishes/by-ids' && options.method === 'POST') {
+      options.success(ok({ items: options.data.ids.map((id: string) => ({ id, name: 'rice' })) }));
     } else if (path === '/dishes/selected') {
       options.success(ok({ id: 'selected', name: 'rice' }));
     }

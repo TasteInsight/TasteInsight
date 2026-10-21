@@ -11,6 +11,11 @@ export const createDishForm = () => ({
   windowNumber: '',
   name: '',
   price: 0,
+  calories: null as number | null | string,
+  protein: null as number | null | string,
+  carbohydrate: null as number | null | string,
+  fat: null as number | null | string,
+
   description: '',
   allergens: '',
   ingredients: '',

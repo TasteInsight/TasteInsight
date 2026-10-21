@@ -728,7 +728,7 @@ describe('AI Chat (e2e)', () => {
       {
         mealTime: 'dinner',
         totalBudget: 17,
-        message: '所选菜品当前不供应该餐次。请重新查询可供应的菜品。',
+        message: '所选菜品在规划日期或餐次内无法完整供应。请重新选择菜品。',
       },
     ])('should enforce meal constraints: %j', async (constraints) => {
       const toolRegistry = app.get(ToolRegistryService);

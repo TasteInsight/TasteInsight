@@ -16,7 +16,7 @@ export class DishSearchTool implements BaseTool {
     return {
       name: 'search_dishes',
       description:
-        '搜索菜品。可以通过关键词搜索菜品名称、标签、食材等。支持过滤条件如食堂、价格范围等。',
+        '搜索菜品。可以通过关键词搜索菜品名称、标签、食材等。支持过滤条件如食堂、价格范围等。默认查询在售菜品；仅在用户明确询问已下架菜品时设置 status="offline"，结果中的 status 表示供应状态。',
       parameters: {
         type: 'object',
         properties: {
@@ -24,6 +24,13 @@ export class DishSearchTool implements BaseTool {
             type: 'string',
             maxLength: 2000,
             description: '搜索关键词，可以是菜品名称、标签、食材等',
+          },
+          status: {
+            type: 'string',
+            enum: ['online', 'offline'],
+            default: 'online',
+            description:
+              '菜品状态。默认 online（在售）；仅在用户明确查询已下架菜品时选择 offline，并在回复中标明已下架；这些下架结果的卡片使用 display_content，设置 includeOffline=true。',
           },
           canteenId: {
             type: 'string',
@@ -135,6 +142,7 @@ export class DishSearchTool implements BaseTool {
   async execute(params: any, context: ToolContext): Promise<any[]> {
     const {
       keyword,
+      status = 'online',
       canteenId,
       priceMin,
       priceMax,
@@ -162,7 +170,7 @@ export class DishSearchTool implements BaseTool {
     }
 
     // Build filter
-    const filter: any = {};
+    const filter: any = { status };
     // Resolve canteen ID if necessary
     if (canteenId) {
       const resolvedId = await this.canteensService.resolveCanteenId(canteenId);

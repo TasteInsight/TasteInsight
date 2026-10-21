@@ -15,7 +15,7 @@ import {
   ArrayMaxSize,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { MealTime, DishSortField } from '@/common/enums';
+import { MealTime, DishSortField, DishStatus } from '@/common/enums';
 import { IsValidRange } from '@/common/validators/range.validator';
 
 // 评分范围
@@ -134,6 +134,12 @@ export class FilterDto {
   oiliness?: FlavorRangeDto;
 }
 
+export class DishListFilterDto extends FilterDto {
+  @IsOptional()
+  @IsEnum(DishStatus)
+  status?: DishStatus;
+}
+
 // 搜索条件
 export class SearchDto {
   @IsString()
@@ -181,8 +187,8 @@ export class GetDishesDto {
   @IsDefined()
   @IsObject()
   @ValidateNested()
-  @Type(() => FilterDto)
-  filter: FilterDto;
+  @Type(() => DishListFilterDto)
+  filter: DishListFilterDto;
 
   @IsDefined()
   @IsObject()

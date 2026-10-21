@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { BaseTool, ToolDefinition, ToolContext } from './base-tool.interface';
 import { DishesService } from '@/dishes/dishes.service';
 import { RecommendationService } from '@/recommendation/recommendation.service';
+import { assertMealPlanDishes } from '@/meal-plans/meal-plan-validation';
 
 /**
  * 创建用餐计划工具
@@ -145,51 +146,22 @@ export class CreateMealPlanTool implements BaseTool {
     if (dishes.length !== selectedIds.length) {
       throw new Error('部分指定菜品不存在。请重新查询菜品后创建计划。');
     }
-    if (
-      dishes.some(
-        (dish) =>
-          dish.status !== 'online' ||
-          !dish.availableMealTime.includes(mealTime),
-      )
-    ) {
-      throw new Error('所选菜品当前不供应该餐次。请重新查询可供应的菜品。');
-    }
-    if (
-      allowCrossCanteen !== true &&
-      new Set(dishes.map((dish) => dish.canteenId)).size > 1
-    ) {
-      throw new Error(
-        '一顿饭的菜品必须来自同一个食堂。请将不同食堂的备选方案分别创建计划。',
-      );
-    }
     const features = await this.recommendationService.getUserFeaturesWithCache(
       context.userId,
     );
-    if (
-      dishes.some(
-        (dish) =>
-          dish.allergens.some((allergen) =>
-            features.allergens.includes(allergen),
-          ) ||
-          dish.ingredients.some((ingredient) =>
-            features.preferences?.avoidIngredients.includes(ingredient),
-          ),
-      )
-    ) {
-      throw new Error('所选菜品包含已保存的过敏原或忌口食材。请选择其他菜品。');
-    }
-    const totalPrice = dishes.reduce(
-      (sum, dish) => sum + Math.round(dish.price * 100),
-      0,
+    const constraints = {
+      ...(totalBudget !== undefined ? { totalBudget } : {}),
+      ...(allowCrossCanteen === true ? { allowCrossCanteen: true } : {}),
+    };
+    assertMealPlanDishes(
+      dishes,
+      { startDate, endDate, mealTime },
+      {
+        allergens: features.allergens,
+        avoidIngredients: features.preferences?.avoidIngredients ?? [],
+      },
+      constraints,
     );
-    if (
-      totalBudget !== undefined &&
-      totalPrice > Math.round(totalBudget * 100)
-    ) {
-      throw new Error(
-        `所选菜品总价${(totalPrice / 100).toFixed(2)}元，超过整餐预算${totalBudget}元。请重新搭配。`,
-      );
-    }
 
     // 生成或使用提供的摘要
     const finalSummary =
@@ -205,6 +177,11 @@ export class CreateMealPlanTool implements BaseTool {
         dishes: dishes.map((dish) => ({
           id: dish.id,
           name: dish.name,
+          calories: dish.calories,
+          protein: dish.protein,
+          carbohydrate: dish.carbohydrate,
+          fat: dish.fat,
+
           images: dish.images || [],
           canteenId: dish.canteenId,
           canteenName: dish.canteenName,
@@ -213,6 +190,9 @@ export class CreateMealPlanTool implements BaseTool {
           price: dish.price,
           priceUnit: dish.priceUnit,
           averageRating: dish.averageRating,
+          status: dish.status,
+          availableMealTime: dish.availableMealTime,
+          availableDates: dish.availableDates,
           allergens: dish.allergens || [],
           tags: dish.tags || [],
         })),

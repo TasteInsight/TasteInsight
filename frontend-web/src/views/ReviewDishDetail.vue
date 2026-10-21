@@ -39,6 +39,16 @@
         <p v-if="dishData.rejectReason" class="p-4 bg-red-50 rounded-lg text-sm text-red-700">拒绝原因：{{ dishData.rejectReason }}</p>
         <button v-if="dishData.approvedDishId" type="button" class="text-tsinghua-purple hover:underline admin-button" @click="router.push(`/view-dish/${dishData.approvedDishId}`)">查看已采纳菜品</button>
 
+        <section v-if="providedNutritionFields.length && !editing" aria-labelledby="upload-nutrition-title" class="border-t pt-5">
+          <h3 id="upload-nutrition-title" class="font-medium text-lg mb-3">每份营养信息</h3>
+          <dl class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-3 text-sm">
+            <div v-for="field in providedNutritionFields" :key="field.key" :data-nutrition-field="field.key" class="flex items-baseline gap-3">
+              <dt class="shrink-0 text-gray-600">{{ field.label }}</dt>
+              <dd class="min-w-0 break-words tabular-nums">{{ field.value }}</dd>
+            </div>
+          </dl>
+        </section>
+
         <section aria-labelledby="contribution-content-title">
           <div class="flex flex-wrap justify-between items-center gap-3 border-t pt-5 mb-4">
             <h3 id="contribution-content-title" class="font-medium text-lg">提交资料</h3>
@@ -162,6 +172,7 @@ import AdminImage from '@/components/Common/AdminImage.vue'
 import AdminDialog from '@/components/Common/AdminDialog.vue'
 import ContributionReviewForm from '@/components/Dishes/ContributionReviewForm.vue'
 import { contributionFields, contributionTasteFields, contributionLocation, formatContributionField, formatContributionPrice } from '@/components/Dishes/contribution-fields'
+import { nutritionFields } from '@/utils/nutrition'
 import type { ApiResponse } from '@/types/api'
 import type { ContributionApprovalRequest, ContributionField, ContributionFields, ContributionStatus, DishContribution } from '@/types/dish-contribution'
 
@@ -194,7 +205,10 @@ const comparisonDish = computed(() => {
 const comparisonFields = computed(() => mergeDishId.value ? contributionFields : contributionFields.filter(field => dishData.value?.changedFields?.includes(field.key)))
 const hasImageChanges = computed(() => (mergeDishId.value ? mergeFields.value : dishData.value?.changedFields || []).includes('images'))
 const contributionKind = computed(() => dishData.value?.kind === 'update' ? '补充资料' : dishData.value?.targetDishId ? '归并菜品' : '新增菜品')
-const detailFields = contributionFields.filter(field => !['name', 'price', 'priceUnit', 'images', ...contributionTasteFields.map(taste => taste.key)].includes(field.key))
+const detailFields = contributionFields.filter(field => !['name', 'price', 'priceUnit', 'images', ...contributionTasteFields.map(taste => taste.key), ...nutritionFields.map(field => field.key)].includes(field.key))
+const providedNutritionFields = computed(() => nutritionFields
+  .map(field => ({ ...field, value: dishData.value?.[field.key] }))
+  .filter(field => field.value !== null && field.value !== undefined))
 const providedDetailFields = computed(() => detailFields.filter(field => hasFieldContent(field.key)))
 const missingDetailFields = computed(() => detailFields.filter(field => !hasFieldContent(field.key)))
 const providedTasteFields = computed(() => contributionTasteFields.filter(field => (dishData.value?.[field.key] ?? 0) > 0))

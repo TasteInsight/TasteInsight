@@ -43,6 +43,7 @@ const mockDishReviewStatsService = {
   recomputeBatch: jest.fn(),
 };
 const mockNotifications = {
+  create: jest.fn(),
   withdrawThread: jest.fn(),
   withdraw: jest.fn(),
 };
@@ -73,6 +74,54 @@ describe('AdminReportsService', () => {
     service = module.get<AdminReportsService>(AdminReportsService);
     prisma = mockPrismaService;
     dishReviewStatsService = mockDishReviewStatsService;
+  });
+
+  it.each(['delete_content', 'warn_user', 'reject_report'] as const)(
+    'notifies the reporter transactionally for %s',
+    async (action) => {
+      prisma.report.findUnique.mockResolvedValue({
+        id: 'report-notice',
+        reporterId: 'reporter',
+        status: 'pending',
+        targetType: 'post',
+        targetId: 'removed-post',
+        postId: 'removed-post',
+      });
+      await service.handleReport('report-notice', { action }, {
+        id: 'admin',
+        role: 'superadmin',
+        scope: 'GLOBAL',
+        permissions: [],
+        canteenIds: [],
+      } as any);
+      expect(mockNotifications.create).toHaveBeenCalledWith(prisma, {
+        userId: 'reporter',
+        actorId: null,
+        type: 'report_handled',
+        targetType: 'report',
+        targetId: 'report-notice',
+        dedupeKey: 'report_handled:report-notice',
+      });
+    },
+  );
+
+  it('does not notify when another handler won the status update', async () => {
+    prisma.report.findUnique.mockResolvedValue({
+      id: 'race',
+      reporterId: 'user',
+      status: 'pending',
+    });
+    prisma.report.updateMany.mockResolvedValueOnce({ count: 0 });
+    await expect(
+      service.handleReport('race', { action: 'reject_report' }, {
+        id: 'admin',
+        role: 'superadmin',
+        scope: 'GLOBAL',
+        permissions: [],
+        canteenIds: [],
+      } as any),
+    ).rejects.toThrow(BadRequestException);
+    expect(mockNotifications.create).not.toHaveBeenCalled();
   });
 
   it('should be defined', () => {

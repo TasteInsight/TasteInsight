@@ -9,7 +9,7 @@ import {
   deleteMealPlan,
   setMealPlanCompletion,
 } from '@/api/modules/meal-plan';
-import { getDishById } from '@/api/modules/dish';
+import { getDishesByIds } from '@/api/modules/dish';
 import type { MealPlan, MealPlanRequest, Dish } from '@/types/api';
 import dayjs from 'dayjs';
 import { campusToday, planDateKey, coversDate } from '@/pages/planning/utils/meal-plan-date';
@@ -146,7 +146,7 @@ export const usePlanStore = defineStore('plan', () => {
           // 读取期间已完成写入时，重新读取权威列表，避免旧快照覆盖成功保存。
           if (revision !== writeRevision) continue;
           const plans = response.data.items || [];
-          const details = await loadDishDetails(plans);
+          const details = await loadDishDetails(plans, isCurrent);
           if (!isCurrent()) return;
           if (revision !== writeRevision) continue;
           dishMap.value = { ...dishMap.value, ...details };
@@ -168,21 +168,32 @@ export const usePlanStore = defineStore('plan', () => {
   };
 
   // 批量获取菜品详情
-  const loadDishDetails = async (plans: MealPlan[]): Promise<Record<string, Dish>> => {
+  const loadDishDetails = async (
+    plans: MealPlan[],
+    isCurrent: () => boolean
+  ): Promise<Record<string, Dish>> => {
     const dishIds = new Set<string>();
     plans.forEach(plan => {
       plan.dishes.forEach(id => dishIds.add(id));
     });
 
     const ids = Array.from(dishIds);
-    const results = await Promise.all(ids.map(id => getDishById(id)));
     const details: Record<string, Dish> = {};
-    results.forEach((result, index) => {
-      if (result.code !== 200 || !result.data || result.data.id !== ids[index]) {
-        throw new Error(result.message || '规划菜品资料暂时无法读取，请重试。');
+    for (let offset = 0; offset < ids.length; offset += 200) {
+      if (!isCurrent()) return {};
+      const batch = ids.slice(offset, offset + 200);
+      const response = await getDishesByIds(batch);
+      if (!isCurrent()) return {};
+      if (response.code !== 200 || !response.data) {
+        throw new Error(response.message || '规划菜品资料暂时无法读取，请重试。');
       }
-      details[ids[index]] = result.data;
-    });
+      response.data.items.forEach(dish => {
+        details[dish.id] = dish;
+      });
+      if (batch.some(id => !details[id])) {
+        throw new Error('规划菜品资料暂时无法读取，请重试。');
+      }
+    }
     return details;
   };
 
@@ -191,7 +202,7 @@ export const usePlanStore = defineStore('plan', () => {
       userStore.sessionVersion === sessionVersion &&
       allPlans.value.some(saved => toRaw(saved) === toRaw(plan));
     try {
-      const details = await loadDishDetails([plan]);
+      const details = await loadDishDetails([plan], isCurrent);
       if (!isCurrent()) return;
       dishMap.value = { ...dishMap.value, ...details };
     } catch (err) {

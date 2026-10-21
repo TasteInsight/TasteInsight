@@ -27,6 +27,14 @@ describe('api/dishApi', () => {
     patchMock.mockReset()
   })
 
+  it('downloads the template as a binary blob', async () => {
+    const workbook = new Blob(['xlsx'])
+    getMock.mockResolvedValueOnce(workbook)
+    const { dishApi } = await import('@/api/modules/dish')
+    expect(await dishApi.downloadBatchTemplate()).toBe(workbook)
+    expect(getMock).toHaveBeenCalledWith('/admin/dishes/batch/template', { responseType: 'blob' })
+  })
+
   it('getDishById uses direct endpoint when available', async () => {
     getMock.mockResolvedValueOnce({ code: 200, data: { id: '1', name: 'X' } })
 

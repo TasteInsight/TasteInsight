@@ -17,10 +17,14 @@
     background: #f8f9fa;
   }
 }
-.list-row-action.list-row-pressed:not([disabled])::before,
 .list-row-action:not([disabled]):active::before {
   background: #f1f3f5;
 }
+/* #ifndef H5 */
+.list-row-action.list-row-pressed:not([disabled])::before {
+  background: #f1f3f5;
+}
+/* #endif */
 .list-row-action:focus-visible {
   outline: none;
 }

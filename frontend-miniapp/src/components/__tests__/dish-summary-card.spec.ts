@@ -1,5 +1,6 @@
 import { mount } from '@vue/test-utils';
 import DishSummaryCard from '@/components/DishSummaryCard.vue';
+import CanteenDishCard from '@/pages/canteen/components/CanteenDishCard.vue';
 import RecommendItem from '@/pages/index/components/RecommendItem.vue';
 import DishResultItem from '@/pages/search/components/DishResultItem.vue';
 import type { Dish } from '@/types/api';
@@ -21,15 +22,31 @@ const dish = (overrides: Partial<Dish> = {}): Dish =>
 beforeEach(() => jest.clearAllMocks());
 
 describe('DishSummaryCard', () => {
-  test.each([['份', '/份'], ['元/份', '/份'], ['元', ''], [null, '']])('normalizes historical price unit %p without changing the dish', (priceUnit, suffix) => {
-    for (const price of [0, 15]) {
+  test.each([
+    ['份', '/份'],
+    ['元/份', '/份'],
+    ['元/100g', '/100g'],
+    ['元', ''],
+    [null, ''],
+  ])('normalizes historical price unit %p without changing the dish', (priceUnit, suffix) => {
+    for (const price of [0, 10.01, 15]) {
       const original = dish({ price, priceUnit });
       const wrapper = mount(DishSummaryCard, { props: { dish: original } });
-      expect(wrapper.get('.dish-card__price').text()).toBe(`¥${price.toFixed(1)}${suffix}`);
+      expect(wrapper.get('.dish-card__price').text()).toBe(`¥${price.toFixed(2)}${suffix}`);
       expect(original.priceUnit).toBe(priceUnit);
       wrapper.unmount();
     }
   });
+  test('shows one neutral offline label beside the name and removes it when online', async () => {
+    const wrapper = mount(DishSummaryCard, { props: { dish: dish({ status: 'offline' as any }) } });
+    expect(wrapper.get('.dish-card__heading .tag-badge--neutral').text()).toBe('已下架');
+    expect(wrapper.get('button').attributes('aria-label')).toBe('查看宫保鸡丁，已下架');
+    expect(wrapper.text().match(/已下架/g)).toHaveLength(1);
+    await wrapper.setProps({ dish: dish({ status: 'online' as any }) });
+    expect(wrapper.find('.tag-badge--neutral').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
   test('emits the selected dish without owning page navigation', async () => {
     const wrapper = mount(DishSummaryCard, { props: { dish: dish() } });
     await wrapper.get('button').trigger('click');
@@ -83,14 +100,22 @@ describe('DishSummaryCard', () => {
   test.each([RecommendItem, DishResultItem])(
     'keeps summary and one navigation consistent for each entry point',
     async Component => {
-      const wrapper = mount(Component, { props: { dish: dish() } });
+      const wrapper = mount(Component, {
+        props: { dish: dish({ price: 10.01, priceUnit: '元/100g', status: 'offline' as any }) },
+      });
       expect(wrapper.text()).toContain('第一食堂 · 二层家常菜窗口');
-      expect(wrapper.text()).toContain('¥15.0');
+      expect(wrapper.get('.dish-card__price').text()).toBe('¥10.01/100g');
+      expect(wrapper.get('.tag-badge--neutral').text()).toBe('已下架');
       expect(wrapper.text()).toContain('4.5 分');
       expect(wrapper.text()).toContain('12 条评价');
       await wrapper.get('button').trigger('click');
       expect(uni.navigateTo).toHaveBeenCalledTimes(1);
       expect(uni.navigateTo).toHaveBeenCalledWith({ url: '/pages/dish/index?id=dish-1' });
+      await wrapper.setProps({
+        dish: dish({ price: 0, priceUnit: null, status: 'online' as any }),
+      });
+      expect(wrapper.get('.dish-card__price').text()).toBe('¥0.00');
+      expect(wrapper.find('.tag-badge--neutral').exists()).toBe(false);
       wrapper.unmount();
     }
   );
@@ -134,7 +159,18 @@ describe('DishSummaryCard', () => {
     expect(wrapper.get('button').attributes('aria-label')).toBe(`查看${name}`);
     expect(wrapper.get('.dish-card__name').text()).toBe(name);
     expect(wrapper.get('.dish-card__location').text()).toContain('二层家常菜窗口');
-    expect(wrapper.get('.dish-card__price').text()).toBe('¥15.0/份');
+    expect(wrapper.get('.dish-card__price').text()).toBe('¥15.00/份');
     wrapper.unmount();
   });
+});
+
+test('canteen and window cards forward the full summary and selected ID', async () => {
+  const wrapper = mount(CanteenDishCard, {
+    props: { dish: dish({ price: 10.01, priceUnit: '元/100g', status: 'offline' as any }) },
+  });
+  expect(wrapper.get('.dish-card__price').text()).toBe('¥10.01/100g');
+  expect(wrapper.get('.tag-badge--neutral').text()).toBe('已下架');
+  await wrapper.get('button').trigger('click');
+  expect(wrapper.emitted('click')).toEqual([['dish-1']]);
+  wrapper.unmount();
 });

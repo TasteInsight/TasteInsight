@@ -65,6 +65,15 @@
             </div>
           </fieldset>
           <fieldset>
+            <legend class="text-sm font-medium mb-2">每份营养信息（选填）</legend>
+            <div class="grid grid-cols-2 gap-3">
+              <div v-for="field in nutritionFields" :key="field.key">
+                <label :for="`upload-${field.key}`" class="block mb-1 admin-label">{{ field.label }}</label>
+                <input :id="`upload-${field.key}`" v-model.number="draft[field.key]" type="number" min="0" step="any" class="review-input admin-input" placeholder="未提供" />
+              </div>
+            </div>
+          </fieldset>
+          <fieldset>
             <legend class="text-sm font-medium mb-2">供应时段</legend>
             <div class="flex flex-wrap gap-4">
               <label v-for="(label, value) in mealTimeLabels" :key="value" class="flex items-center gap-2 text-sm">
@@ -103,6 +112,7 @@
 </template>
 
 <script setup lang="ts">
+import { nutritionFields, nutritionPayload } from '@/utils/nutrition'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { canteenApi } from '@/api/modules/canteen'
 import { dishApi } from '@/api/modules/dish'
@@ -115,6 +125,10 @@ const props = defineProps<{ upload: DishContribution; busy: boolean }>()
 const emit = defineEmits<{ save: [changes: Partial<ContributionFields>]; cancel: [] }>()
 const listFields = [{ key: 'tags', label: '标签' }, { key: 'ingredients', label: '原辅料' }, { key: 'allergens', label: '过敏原' }] as const
 const draft = reactive({
+  calories: props.upload.calories ?? '' as number | '',
+  protein: props.upload.protein ?? '' as number | '',
+  carbohydrate: props.upload.carbohydrate ?? '' as number | '',
+  fat: props.upload.fat ?? '' as number | '',
   name: props.upload.name, price: props.upload.price as number | '', priceUnit: props.upload.priceUnit || '',
   description: props.upload.description || '', windowId: props.upload.windowId || null,
   images: [...(props.upload.images || [])], availableMealTime: [...(props.upload.availableMealTime || [])],
@@ -125,7 +139,7 @@ const draft = reactive({
 const lists = reactive({ tags: (props.upload.tags || []).join('、'), ingredients: (props.upload.ingredients || []).join('、'), allergens: (props.upload.allergens || []).join('、') })
 const splitList = (value: string) => [...new Set(value.split(/[、,，\n]/).map(item => item.trim()).filter(Boolean))]
 const content = (): ContributionFields => ({
-  ...draft, name: draft.name.trim(), price: Number(draft.price), priceUnit: draft.priceUnit.trim(), description: draft.description.trim(),
+  ...draft, ...nutritionPayload(draft), name: draft.name.trim(), price: Number(draft.price), priceUnit: draft.priceUnit.trim(), description: draft.description.trim(),
   images: [...draft.images], availableMealTime: [...draft.availableMealTime], availableDates: draft.availableDates.map(range => ({ ...range })),
   tags: splitList(lists.tags), ingredients: splitList(lists.ingredients), allergens: splitList(lists.allergens),
 })
@@ -175,6 +189,7 @@ function submit() {
   if (!draft.name.trim()) { error.value = '请填写菜品名称'; return }
   if (draft.price === '' || !Number.isFinite(Number(draft.price)) || Number(draft.price) < 0) { error.value = '请填写有效价格，免费菜品可填写 0'; return }
   if (draft.availableDates.some(range => !range.startDate || !range.endDate || range.startDate > range.endDate)) { error.value = '请填写有效的供应日期段'; return }
+  try { nutritionPayload(draft) } catch (failure) { error.value = (failure as Error).message; return }
   const next = content()
   const changes = Object.fromEntries(contributionFields.filter(({ key }) => JSON.stringify(next[key]) !== JSON.stringify(baseline[key])).map(({ key }) => [key, next[key]])) as Partial<ContributionFields>
   if (!Object.keys(changes).length) { emit('cancel'); return }

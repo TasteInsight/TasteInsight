@@ -57,6 +57,8 @@ beforeEach(() => {
     const path = new URL(options.url).pathname;
     if (autoProfiles && path === '/user/profile' && options.method === 'GET') {
       options.success(ok(profile(useUserStore().userInfo?.id)));
+    } else if (path === '/dishes/by-ids' && options.method === 'POST') {
+      options.success(ok({ items: options.data.ids.map((id: string) => ({ id, name: 'rice' })) }));
     } else if (path === '/dishes/selected') {
       options.success(ok({ id: 'selected', name: 'rice' }));
     } else if (path === '/canteens' || (path === '/meal-plans' && options.method === 'GET')) {

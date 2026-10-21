@@ -16,7 +16,8 @@ export interface InboxNotification {
     | 'weekly_recommendation'
     | 'upload_approved'
     | 'upload_rejected'
-    | 'upload_revoked';
+    | 'upload_revoked'
+    | 'report_handled';
   actor: { id: string; nickname: string; avatar: string } | null;
   targetType:
     | 'review'
@@ -26,7 +27,8 @@ export interface InboxNotification {
     | 'dining_invite'
     | 'dish'
     | 'week_collection'
-    | 'dish_upload';
+    | 'dish_upload'
+    | 'report';
   targetId: string;
   subject?: string | null;
   rootId: string | null;

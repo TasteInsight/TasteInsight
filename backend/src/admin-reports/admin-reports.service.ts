@@ -358,6 +358,14 @@ export class AdminReportsService {
           });
         }
       }
+      await this.notifications.create(tx, {
+        userId: report.reporterId,
+        actorId: null,
+        type: 'report_handled',
+        targetType: 'report',
+        targetId: report.id,
+        dedupeKey: `report_handled:${report.id}`,
+      });
     });
     if (reviewAuthorId)
       this.embeddingQueueService?.scheduleRefreshUser(reviewAuthorId);

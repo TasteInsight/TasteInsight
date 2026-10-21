@@ -1,5 +1,11 @@
 import request from '@/utils/request';
-import type { ApiResponse, PaginatedData, PaginationParams, ReportRequest } from '@/types/api';
+import type {
+  ApiResponse,
+  PaginatedData,
+  PaginationParams,
+  ReportRequest,
+  Dish,
+} from '@/types/api';
 
 export interface PublicProfile {
   id: string;
@@ -41,7 +47,12 @@ export interface PublicMealPlan {
     name: string;
     images: string[];
     price: number;
-    priceUnit?: string;
+    priceUnit: string | null;
+    status: Dish['status'];
+    calories?: number | null;
+    protein?: number | null;
+    carbohydrate?: number | null;
+    fat?: number | null;
     canteenName: string;
     windowName: string;
   }[];

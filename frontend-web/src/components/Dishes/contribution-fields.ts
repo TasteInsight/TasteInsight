@@ -1,3 +1,4 @@
+import { nutritionFields } from '@/utils/nutrition'
 import type { ContributionField, ContributionFields, ContributionLocation, MealTime } from '@/types/dish-contribution'
 
 export const contributionTasteFields = [
@@ -18,6 +19,7 @@ export const contributionFields: { key: ContributionField; label: string }[] = [
   { key: 'ingredients', label: '原辅料' },
   { key: 'allergens', label: '过敏原' },
   ...contributionTasteFields,
+  ...nutritionFields,
   { key: 'availableMealTime', label: '供应时段' },
   { key: 'availableDates', label: '供应日期段' },
 ]

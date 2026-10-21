@@ -20,6 +20,10 @@ import type {
  * 菜品相关 API
  */
 export const dishApi = {
+  async downloadBatchTemplate(): Promise<Blob> {
+    return request.get('/admin/dishes/batch/template', { responseType: 'blob' })
+  },
+
   /**
    * 管理端获取菜品列表
    * @param params 查询参数

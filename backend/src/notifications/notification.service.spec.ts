@@ -33,6 +33,35 @@ describe('NotificationService', () => {
     );
     expect(tx.notificationOutbox.create).not.toHaveBeenCalled();
   });
+  it('delivers owned report results as service messages independently of social preferences', async () => {
+    tx.report = { findFirst: jest.fn().mockResolvedValue({ id: 'report' }) };
+    tx.userSetting.findUnique.mockResolvedValue({
+      reviewReplyAlert: false,
+      postReplyAlert: false,
+    });
+    const reportEvent = {
+      ...event,
+      actorId: null,
+      type: 'report_handled' as const,
+      targetType: 'report' as const,
+      targetId: 'report',
+      dedupeKey: 'report_handled:report',
+    };
+    await service.create(tx, reportEvent);
+    expect(tx.report.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: 'report',
+        reporterId: 'author',
+        status: { in: ['approved', 'rejected'] },
+      },
+      select: { id: true },
+    });
+    expect(tx.notification.createMany).toHaveBeenCalledTimes(1);
+    tx.report.findFirst.mockResolvedValue(null);
+    await service.create(tx, reportEvent);
+    expect(tx.notification.createMany).toHaveBeenCalledTimes(1);
+  });
+
   it('does not notify an actor about their own action', async () => {
     await service.create(tx, { ...event, userId: 'reader' });
     expect(tx.notification.createMany).not.toHaveBeenCalled();
@@ -86,7 +115,14 @@ describe('NotificationService', () => {
     await service.unreadCount('author', 'service');
     await service.read('author', undefined, 'service');
     const targetType = {
-      in: ['review', 'comment', 'dish', 'week_collection', 'dish_upload'],
+      in: [
+        'review',
+        'comment',
+        'dish',
+        'week_collection',
+        'dish_upload',
+        'report',
+      ],
     };
     expect(tx.notification.findMany).toHaveBeenCalledWith(
       expect.objectContaining({

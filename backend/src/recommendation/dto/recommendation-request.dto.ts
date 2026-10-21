@@ -15,6 +15,7 @@ import {
   IsNotEmpty,
   ArrayMaxSize,
   ArrayUnique,
+  IsDateString,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { RecommendationScene } from '../constants/recommendation.constants';
@@ -29,6 +30,14 @@ import { PartialType } from '@nestjs/swagger';
  * 推荐过滤条件
  */
 export class RecommendationFilterDto extends FilterDto {
+  @IsOptional()
+  @IsDateString({ strict: true })
+  startDate?: string;
+
+  @IsOptional()
+  @IsDateString({ strict: true })
+  endDate?: string;
+
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(100)

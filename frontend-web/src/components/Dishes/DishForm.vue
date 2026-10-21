@@ -182,6 +182,9 @@
           </div>
         </div>
 
+        <NutritionFields :values="formData" />
+        <p v-if="errors.nutrition" class="text-red-500 text-sm admin-field-error">{{ errors.nutrition }}</p>
+
         <!-- 供应时间 -->
         <div class="mb-6">
           <label class="block text-gray-700 font-medium mb-2">供应时间</label>
@@ -241,10 +244,12 @@
 <script>
 import { ref, reactive, watch } from 'vue'
 import AdminImage from '@/components/Common/AdminImage.vue'
+import NutritionFields from './NutritionFields.vue'
+import { nutritionPayload } from '@/utils/nutrition'
 
 export default {
   name: 'DishForm',
-  components: { AdminImage },
+  components: { AdminImage, NutritionFields },
   props: {
     dish: {
       type: Object,
@@ -289,6 +294,11 @@ export default {
       floor: '',
       window: '',
       name: '',
+      calories: null,
+      protein: null,
+      carbohydrate: null,
+      fat: null,
+
       image: null,
       subItems: [{ name: '', price: '' }],
       cuisine: '',
@@ -313,6 +323,12 @@ export default {
     // 验证表单
     const validateForm = () => {
       const newErrors = {}
+      try {
+        nutritionPayload(formData)
+      } catch (error) {
+        newErrors.nutrition = error.message
+      }
+      delete errors.nutrition
 
       if (!formData.canteen) newErrors.canteen = '请选择食堂'
       if (!formData.floor) newErrors.floor = '请选择楼层'
@@ -389,7 +405,7 @@ export default {
     const handleSubmit = () => {
       if (validateForm()) {
         // 使用深拷贝防止修改原始formData
-        const payload = JSON.parse(JSON.stringify(formData))
+        const payload = { ...JSON.parse(JSON.stringify(formData)), ...nutritionPayload(formData) }
         if (payload && Object.prototype.hasOwnProperty.call(payload, 'floor')) {
           delete payload.floor
         }
@@ -403,6 +419,11 @@ export default {
         floor: '',
         window: '',
         name: '',
+        calories: null,
+        protein: null,
+        carbohydrate: null,
+        fat: null,
+
         image: null,
         subItems: [{ name: '', price: '' }],
         cuisine: '',
@@ -429,7 +450,7 @@ export default {
       () => props.dish,
       (newDish) => {
         if (newDish) {
-          Object.assign(formData, newDish)
+          Object.assign(formData, newDish, nutritionPayload(newDish))
           if (newDish.image) {
             previewImage.value = newDish.image
           }

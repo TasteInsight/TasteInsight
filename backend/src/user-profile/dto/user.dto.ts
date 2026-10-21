@@ -38,6 +38,13 @@ export class UserFavoriteData {
   dishName: string;
   dishImages: string[];
   dishPrice: number;
+  priceUnit: string | null;
+  status: string;
+  calories?: number | null;
+  protein?: number | null;
+  carbohydrate?: number | null;
+  fat?: number | null;
+
   canteenName: string;
   windowName: string;
   tags: string[];
@@ -49,12 +56,24 @@ export class UserHistoryData {
   dishName: string;
   dishImages: string[];
   dishPrice: number;
+  priceUnit: string | null;
+  status: string;
+  calories?: number | null;
+  protein?: number | null;
+  carbohydrate?: number | null;
+  fat?: number | null;
+
   canteenName: string;
   windowName: string;
   tags: string[];
   averageRating: number;
 }
 export class UserUploadData {
+  calories: number | null;
+  protein: number | null;
+  carbohydrate: number | null;
+  fat: number | null;
+
   id: string;
   name: string;
   images: string[];

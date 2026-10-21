@@ -21,7 +21,7 @@ const createMealPlan = mealPlanModule.createMealPlan as jest.Mock;
 const updateMealPlan = mealPlanModule.updateMealPlan as jest.Mock;
 const deleteMealPlan = mealPlanModule.deleteMealPlan as jest.Mock;
 const setMealPlanCompletion = mealPlanModule.setMealPlanCompletion as jest.Mock;
-const getDishById = dishModule.getDishById as jest.Mock;
+const getDishesByIds = dishModule.getDishesByIds as jest.Mock;
 import { usePlanStore } from '@/store/modules/use-plan-store';
 
 describe('store/modules/use-plan-store', () => {
@@ -51,12 +51,13 @@ describe('store/modules/use-plan-store', () => {
       },
     ];
     (getMealPlans as jest.Mock).mockResolvedValue({ code: 200, data: { items: mealPlans } });
-    (getDishById as jest.Mock).mockResolvedValue({ code: 200, data: { id: 'd1', name: 'D' } });
+    (getDishesByIds as jest.Mock).mockResolvedValue({ code: 200, data: { items: [{ id: 'd1', name: 'D' }] } });
 
     const store = usePlanStore();
 
     await store.fetchPlans();
 
+    expect(dishModule.getDishById).not.toHaveBeenCalled();
     expect(store.allPlans.length).toBe(1);
     expect(store.enrichedPlans[0].dishes[0].id).toBe('d1');
   });
@@ -72,7 +73,7 @@ describe('store/modules/use-plan-store', () => {
       },
     ];
     (getMealPlans as jest.Mock).mockResolvedValue({ code: 200, data: { items: mealPlans } });
-    (getDishById as jest.Mock).mockRejectedValue(new Error('fail'));
+    (getDishesByIds as jest.Mock).mockRejectedValue(new Error('fail'));
 
     const consoleErr = jest.spyOn(console, 'error').mockImplementation(() => {});
     const store = usePlanStore();
@@ -95,7 +96,7 @@ describe('store/modules/use-plan-store', () => {
       mealTime: 'breakfast',
     };
     (createMealPlan as jest.Mock).mockResolvedValue({ code: 201, data: newPlan });
-    (getDishById as jest.Mock).mockResolvedValue({ code: 200, data: { id: 'd2', name: 'DD' } });
+    (getDishesByIds as jest.Mock).mockResolvedValue({ code: 200, data: { items: [{ id: 'd2', name: 'DD' }] } });
 
     const store = usePlanStore();
 
@@ -126,7 +127,7 @@ describe('store/modules/use-plan-store', () => {
     };
 
     (updateMealPlan as jest.Mock).mockResolvedValue({ code: 200, data: updated });
-    (getDishById as jest.Mock).mockResolvedValue({ code: 200, data: { id: 'dX', name: 'D' } });
+    (getDishesByIds as jest.Mock).mockResolvedValue({ code: 200, data: { items: [{ id: 'dX', name: 'D' }] } });
 
     const store = usePlanStore();
     store.allPlans = [existing as any];
@@ -206,7 +207,7 @@ describe('store/modules/use-plan-store', () => {
     const future = new Date(Date.now() + 86400000).toISOString();
 
     jest.doMock('@/api/modules/dish', () => ({
-      getDishById: (id: string) => Promise.resolve({ code: 200, data: { id, name: 'D' } }),
+      getDishesByIds: (ids: string[]) => Promise.resolve({ code: 200, data: { items: ids.map(id => ({ id, name: 'D' })) } }),
     }));
     jest.doMock('@/api/modules/meal-plan', () => ({
       getMealPlans: () => Promise.resolve({ code: 200, data: { items: [] } }),
@@ -227,6 +228,32 @@ describe('store/modules/use-plan-store', () => {
     expect(store.getPlanById('h1')?.id).toBe('h1');
   });
 
+  test('hydration deduplicates IDs, respects the 200-ID API limit and preserves server plan order', async () => {
+    const ids = Array.from({ length: 201 }, (_, index) => `dish-${index}`);
+    getMealPlans.mockResolvedValue({ code: 200, data: { items: [
+      { id: 'long', dishes: [...ids, ids[0]], startDate: '2099-01-01', endDate: '2099-01-01', mealTime: 'lunch' },
+    ] } });
+    getDishesByIds.mockImplementation(async (batch: string[]) => ({ code: 200, data: {
+      items: [...batch].reverse().map(id => ({ id, name: id })),
+    } }));
+    const store = usePlanStore();
+    await store.fetchPlans();
+    expect(getDishesByIds.mock.calls.map(([batch]) => batch.length)).toEqual([200, 1]);
+    expect(store.enrichedPlans[0].dishes.map(dish => dish.id)).toEqual([...ids, ids[0]]);
+    expect(dishModule.getDishById).not.toHaveBeenCalled();
+  });
+
+  test('a missing batch member remains a recoverable lookup failure', async () => {
+    getMealPlans.mockResolvedValue({ code: 200, data: { items: [
+      { id: 'missing', dishes: ['present', 'deleted'], startDate: '2099-01-01', endDate: '2099-01-01', mealTime: 'lunch' },
+    ] } });
+    getDishesByIds.mockResolvedValue({ code: 200, data: { items: [{ id: 'present' }] } });
+    const store = usePlanStore();
+    await expect(store.fetchPlans()).rejects.toThrow('重试');
+    expect(store.initialized).toBe(false);
+    expect(store.allPlans).toEqual([]);
+  });
+
   test('fetchPlans returns early when there are no dish ids', async () => {
     const mealPlans = [
       {
@@ -242,7 +269,7 @@ describe('store/modules/use-plan-store', () => {
     const store = usePlanStore();
     await store.fetchPlans();
 
-    expect(getDishById).not.toHaveBeenCalled();
+    expect(getDishesByIds).not.toHaveBeenCalled();
     expect(store.allPlans[0].dishes.length).toBe(0);
   });
 
@@ -257,7 +284,7 @@ describe('store/modules/use-plan-store', () => {
       },
     ];
     (getMealPlans as jest.Mock).mockResolvedValue({ code: 200, data: { items: mealPlans } });
-    (getDishById as jest.Mock).mockResolvedValue({ code: 404, data: null });
+    (getDishesByIds as jest.Mock).mockResolvedValue({ code: 404, data: null });
 
     const store = usePlanStore();
     await expect(store.fetchPlans()).rejects.toThrow('规划菜品资料暂时无法读取');

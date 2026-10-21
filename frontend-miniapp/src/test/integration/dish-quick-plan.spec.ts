@@ -68,7 +68,9 @@ beforeEach(() => {
     requests.push(options);
     const path = new URL(options.url).pathname;
     if (path === '/canteens') options.success(ok({ items: [], meta: { page: 1, totalPages: 1 } }));
-    if (path.startsWith('/dishes/')) options.success(ok(dish(path.split('/').pop())));
+    if (path === '/dishes/by-ids' && options.method === 'POST') {
+      options.success(ok({ items: options.data.ids.map((id: string) => dish(id)) }));
+    } else if (path.startsWith('/dishes/')) options.success(ok(dish(path.split('/').pop())));
     return { abort: jest.fn() };
   });
   mockDetail = {
