@@ -302,3 +302,71 @@ describe('identity integration configuration', () => {
     ).toThrow('CAMPUS_EMAIL_DOMAINS');
   });
 });
+
+describe('S3 environment', () => {
+  const s3 = {
+    UPLOAD_STORAGE_TYPE: 's3',
+    S3_ENDPOINT: 'https://cos.ap-guangzhou.myqcloud.com',
+    S3_REGION: 'ap-guangzhou',
+    S3_BUCKET: 'photos-1250000000',
+    S3_ACCESS_KEY_ID: 'fixture-key',
+    S3_SECRET_ACCESS_KEY: 'fixture-secret',
+  };
+  it.each([
+    'S3_ENDPOINT',
+    'S3_REGION',
+    'S3_BUCKET',
+    'S3_ACCESS_KEY_ID',
+    'S3_SECRET_ACCESS_KEY',
+  ])('requires %s only for S3', (key) => {
+    expect(() => validateEnvironment({ ...s3, [key]: '' })).toThrow(key);
+    expect(() =>
+      validateEnvironment({ UPLOAD_STORAGE_TYPE: 'local', [key]: '' }),
+    ).not.toThrow();
+  });
+  it.each(['S3_ENDPOINT', 'S3_PUBLIC_BASE_URL'])(
+    'validates %s without echoing credentials',
+    (key) => {
+      for (const value of [
+        'file:///tmp/objects',
+        'https://private:secret@example.test',
+        'https://example.test?key=secret',
+        'https://example.test/#secret',
+      ]) {
+        expect(() => validateEnvironment({ ...s3, [key]: value })).toThrow(key);
+        try {
+          validateEnvironment({ ...s3, [key]: value });
+        } catch (error) {
+          expect(String(error)).not.toContain('secret');
+        }
+      }
+    },
+  );
+  it.each([undefined, '', 'false', false])(
+    'uses virtual-hosted addressing for %s',
+    (value) => {
+      expect(
+        validateEnvironment({ ...s3, S3_FORCE_PATH_STYLE: value })
+          .S3_FORCE_PATH_STYLE,
+      ).toBe(false);
+    },
+  );
+  it.each(['true', true])('parses path-style addressing for %s', (value) => {
+    expect(
+      validateEnvironment({ ...s3, S3_FORCE_PATH_STYLE: value })
+        .S3_FORCE_PATH_STYLE,
+    ).toBe(true);
+  });
+  it('accepts endpoint paths and public URL prefixes for compatible providers', () => {
+    expect(() =>
+      validateEnvironment({
+        ...s3,
+        S3_ENDPOINT: 'http://127.0.0.1:9000/storage/s3',
+        S3_PUBLIC_BASE_URL: 'https://cdn.example.test/media/',
+      }),
+    ).not.toThrow();
+    expect(() =>
+      validateEnvironment({ ...s3, S3_FORCE_PATH_STYLE: 'yes' }),
+    ).toThrow('S3_FORCE_PATH_STYLE');
+  });
+});

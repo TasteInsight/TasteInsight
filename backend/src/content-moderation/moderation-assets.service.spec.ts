@@ -24,7 +24,6 @@ describe('moderation assets', () => {
         MODERATION_MEDIA_SECRET: 'fixture-long-enough-for-valid-signatures',
       }),
       local as never,
-      {} as never,
     );
     prisma.contentModerationAsset.findUnique.mockResolvedValue({
       id: 'asset123456789012345',
@@ -70,7 +69,6 @@ describe('moderation assets', () => {
         MODERATION_MEDIA_SECRET: 'fixture-long-enough-for-valid-signatures',
       }),
       local as never,
-      {} as never,
     );
     const preview = normalized.preview('asset123456789012345');
     const canonical = new URL(preview).origin + new URL(preview).pathname;

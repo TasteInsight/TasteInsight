@@ -20,12 +20,11 @@ describe('temporary contribution media', () => {
       expiresAt: new Date(Date.now() + 86400000),
     });
     prisma.contributionImage.create.mockResolvedValue({ id: 'image' });
-    service = Reflect.construct(UploadService, [
-      { get: () => 'local' },
-      local,
-      {},
-      prisma,
-    ]);
+    service = new UploadService(
+      { get: () => 'local' } as any,
+      local as any,
+      prisma as any,
+    );
   });
   async function file() {
     const buffer = await sharp({

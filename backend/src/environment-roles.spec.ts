@@ -97,20 +97,23 @@ describe('role-owned environment validation', () => {
     },
   );
 
-  it('worker validates storage used by contribution cleanup while migration ignores it', () => {
-    expect(() =>
-      validateEnvironment(
-        { ...background, UPLOAD_STORAGE_TYPE: 'oss' },
-        'worker',
-      ),
-    ).toThrow('OSS_REGION');
-    expect(() =>
-      validateEnvironment(
-        { ...database, UPLOAD_STORAGE_TYPE: 'oss' },
-        'migrate',
-      ),
-    ).not.toThrow();
-  });
+  it.each(['oss', 's3'])(
+    'worker validates %s storage used by cleanup while migration ignores it',
+    (storageType) => {
+      expect(() =>
+        validateEnvironment(
+          { ...background, UPLOAD_STORAGE_TYPE: storageType },
+          'worker',
+        ),
+      ).toThrow(storageType === 'oss' ? 'OSS_REGION' : 'S3_ENDPOINT');
+      expect(() =>
+        validateEnvironment(
+          { ...database, UPLOAD_STORAGE_TYPE: storageType },
+          'migrate',
+        ),
+      ).not.toThrow();
+    },
+  );
 
   it('migration ignores queue, recommendation and delivery tuning', () => {
     expect(() =>

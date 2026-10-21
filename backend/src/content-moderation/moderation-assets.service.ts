@@ -2,22 +2,24 @@ import { canonicalModerationImageUrl } from '@/upload/moderation-image-url';
 import {
   BadRequestException,
   Injectable,
+  Inject,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ContentModerationAsset, Prisma } from '@prisma/client';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { PrismaService } from '@/prisma.service';
-import { LocalStorageStrategy } from '@/upload/strategies/local-storage.strategy';
-import { OssStorageStrategy } from '@/upload/strategies/oss-storage.strategy';
+import {
+  STORAGE_STRATEGY,
+  type StorageStrategy,
+} from '@/upload/strategies/storage.strategy';
 
 @Injectable()
 export class ModerationAssetsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
-    private readonly local: LocalStorageStrategy,
-    private readonly oss: OssStorageStrategy,
+    @Inject(STORAGE_STRATEGY) private readonly storage: StorageStrategy,
   ) {}
 
   private base() {
@@ -52,8 +54,7 @@ export class ModerationAssetsService {
 
   async stage(file: Express.Multer.File, userId: string, animated = false) {
     const storageType = this.config.get<string>('UPLOAD_STORAGE_TYPE', 'local');
-    const strategy = storageType === 'oss' ? this.oss : this.local;
-    const result = await strategy.upload(file, true);
+    const result = await this.storage.upload(file, true);
     try {
       const asset = await this.prisma.contentModerationAsset.create({
         data: {
@@ -66,7 +67,7 @@ export class ModerationAssetsService {
       });
       return { url: this.preview(asset.id), filename: result.filename };
     } catch (error) {
-      await strategy.remove(result.filename).catch(() => undefined);
+      await this.storage.remove(result.filename).catch(() => undefined);
       throw error;
     }
   }
@@ -149,7 +150,12 @@ export class ModerationAssetsService {
       )
         throw new NotFoundException('图片尚未公开');
     }
-    const strategy = asset.storageType === 'oss' ? this.oss : this.local;
-    return { asset, buffer: await strategy.read(asset.storageKey) };
+    if (
+      asset.storageType !==
+      this.config.get<string>('UPLOAD_STORAGE_TYPE', 'local')
+    ) {
+      throw new Error('Image storage configuration changed');
+    }
+    return { asset, buffer: await this.storage.read(asset.storageKey) };
   }
 }

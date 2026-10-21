@@ -34,7 +34,6 @@ describe('UploadService', () => {
     service = new UploadService(
       { get: () => 'local' } as any,
       local as any,
-      oss as any,
       {} as any,
     );
   });
@@ -243,7 +242,6 @@ describe('UploadService', () => {
   it('applies the same image normalization before OSS storage', async () => {
     const svc = new UploadService(
       { get: () => 'oss' } as any,
-      local as any,
       oss as any,
       {} as any,
     );

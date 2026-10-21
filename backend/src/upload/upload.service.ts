@@ -1,5 +1,5 @@
 import { canonicalModerationImageUrl } from './moderation-image-url';
-import { Optional } from '@nestjs/common';
+import { Inject, Optional } from '@nestjs/common';
 import { ModerationSettingsService } from '@/content-moderation/moderation-settings.service';
 import { ModerationAssetsService } from '@/content-moderation/moderation-assets.service';
 import {
@@ -9,9 +9,10 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { StorageStrategy } from './strategies/storage.strategy';
-import { LocalStorageStrategy } from './strategies/local-storage.strategy';
-import { OssStorageStrategy } from './strategies/oss-storage.strategy';
+import {
+  STORAGE_STRATEGY,
+  type StorageStrategy,
+} from './strategies/storage.strategy';
 import { UploadResponseDto } from './dto/upload.dto';
 import sharp from 'sharp';
 import { PrismaService } from '@/prisma.service';
@@ -20,7 +21,6 @@ import { CONTRIBUTION_IMAGE_TTL_MS } from './contribution-images';
 
 @Injectable()
 export class UploadService {
-  private strategy: StorageStrategy;
   private readonly logger = new Logger(UploadService.name);
 
   get storageType(): string {
@@ -29,23 +29,11 @@ export class UploadService {
 
   constructor(
     private configService: ConfigService,
-    private localStorageStrategy: LocalStorageStrategy,
-    private ossStorageStrategy: OssStorageStrategy,
+    @Inject(STORAGE_STRATEGY) private readonly strategy: StorageStrategy,
     private readonly prisma: PrismaService,
     @Optional() private readonly moderationSettings?: ModerationSettingsService,
     @Optional() private readonly moderationAssets?: ModerationAssetsService,
-  ) {
-    const storageType = this.configService.get<string>(
-      'UPLOAD_STORAGE_TYPE',
-      'local',
-    );
-
-    if (storageType === 'oss') {
-      this.strategy = this.ossStorageStrategy;
-    } else {
-      this.strategy = this.localStorageStrategy;
-    }
-  }
+  ) {}
 
   async uploadFile(
     file: Express.Multer.File,

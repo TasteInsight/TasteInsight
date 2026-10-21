@@ -43,7 +43,7 @@
 | **数据库** | PostgreSQL 15 + Redis 7 |
 | **任务队列** | BullMQ |
 | **AI 服务** | OpenAI API + Python 嵌入服务 |
-| **对象存储** | 阿里云 OSS |
+| **对象存储** | 本地文件、阿里云 OSS、S3 兼容存储（含腾讯云 COS） |
 | **容器化** | Docker + Docker Compose |
 
 ## 📁 项目结构

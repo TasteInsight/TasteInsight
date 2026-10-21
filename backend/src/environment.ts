@@ -352,8 +352,8 @@ export function validateEnvironment(
       'UPLOAD_STORAGE_TYPE',
       'local',
     );
-    if (!['local', 'oss'].includes(storage))
-      throw new Error('UPLOAD_STORAGE_TYPE must be local or oss');
+    if (!['local', 'oss', 's3'].includes(storage))
+      throw new Error('UPLOAD_STORAGE_TYPE must be local, oss or s3');
     if (storage === 'oss')
       for (const key of [
         'OSS_REGION',
@@ -362,6 +362,38 @@ export function validateEnvironment(
         'OSS_BUCKET',
       ])
         required(key);
+    if (storage === 's3') {
+      for (const key of [
+        'S3_ENDPOINT',
+        'S3_REGION',
+        'S3_BUCKET',
+        'S3_ACCESS_KEY_ID',
+        'S3_SECRET_ACCESS_KEY',
+      ])
+        required(key);
+      for (const key of ['S3_ENDPOINT', 'S3_PUBLIC_BASE_URL']) {
+        if (key === 'S3_PUBLIC_BASE_URL' && !configured(key)) continue;
+        try {
+          const url = new URL(required(key));
+          if (
+            !['http:', 'https:'].includes(url.protocol) ||
+            url.username ||
+            url.password ||
+            url.search ||
+            url.hash
+          )
+            throw new Error();
+        } catch {
+          throw new Error(
+            `${key} must be an http(s) URL without credentials, query or fragments`,
+          );
+        }
+      }
+      validated.S3_FORCE_PATH_STYLE = booleanSetting(
+        environment.S3_FORCE_PATH_STYLE,
+        'S3_FORCE_PATH_STYLE',
+      );
+    }
   }
   if (servesApi) {
     validated.UPLOAD_MAX_FILE_SIZE = integerSetting(
