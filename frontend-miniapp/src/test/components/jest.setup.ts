@@ -58,6 +58,9 @@ const RichTextStub = {
 
 config.global.stubs = {
   ...(config.global.stubs || {}),
+  AsyncState: false,
+  LoginGate: false,
+  EmptyState: false,
   view: ViewStub,
   text: TextStub,
   image: ImageStub,

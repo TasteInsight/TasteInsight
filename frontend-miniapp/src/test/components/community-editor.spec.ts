@@ -331,3 +331,42 @@ test('leaving a directly opened editor falls back to the campus tab', async () =
   expect(openCampus).toHaveBeenCalledWith();
   expect(uni.redirectTo).not.toHaveBeenCalled();
 });
+
+test('initial editor reads show a shared loading state and retry without presenting an editable draft', async () => {
+  let finish!: (value: unknown) => void;
+  (getPost as jest.Mock).mockReturnValueOnce(
+    new Promise(resolve => {
+      finish = resolve;
+    })
+  );
+  const wrapper = await editor({ id: 'old' });
+  expect(wrapper.classes()).toEqual(expect.arrayContaining(['page-content', 'page-state-layout']));
+  expect(wrapper.text()).toContain('正在加载动态');
+  expect(wrapper.find('.campus-skeleton').exists()).toBe(false);
+  expect(wrapper.find('textarea').exists()).toBe(false);
+  finish({ code: 500, message: '读取失败', data: { userId: 'A' } });
+  await flushPromises();
+  expect(wrapper.text()).toContain('读取失败');
+  (getPost as jest.Mock).mockResolvedValueOnce({ code: 200, data: originalPost });
+  await wrapper.get('.error-feedback__action').trigger('click');
+  await flushPromises();
+  expect(wrapper.get('textarea').element.value).toBe(originalPost.content);
+  expect(getPost).toHaveBeenCalledTimes(2);
+});
+
+test('failed editor submission retains draft and photos without exposing initialization retry', async () => {
+  (getPost as jest.Mock).mockResolvedValueOnce({ code: 200, data: originalPost });
+  (updatePost as jest.Mock).mockRejectedValueOnce(new Error('保存失败'));
+  const wrapper = await editor({ id: 'old' });
+  await wrapper.get('textarea').setValue('保留这份草稿');
+  await wrapper.get('.campus-primary').trigger('click');
+  await flushPromises();
+  expect(wrapper.get('[role="alert"]').text()).toContain('保存失败');
+  expect(wrapper.find('.error-feedback__action').exists()).toBe(false);
+  expect(wrapper.get('textarea').element.value).toBe('保留这份草稿');
+  expect(wrapper.get('.editor-images .editor-preview image').attributes('src')).toBe(
+    originalPost.images[0]
+  );
+  expect(getPost).toHaveBeenCalledTimes(1);
+  expect(storage.get('community-draft:A:old')).toContain('保留这份草稿');
+});

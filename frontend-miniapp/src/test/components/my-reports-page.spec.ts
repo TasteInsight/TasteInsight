@@ -24,7 +24,11 @@ const item = (id: string, patch = {}) => ({
 });
 const mounts: any[] = [];
 const mountPage = () => {
-  const wrapper = shallowMount(MyReportsPage, { global: { stubs: { ReportRecord: false } } });
+  const wrapper = shallowMount(MyReportsPage, {
+    global: {
+      stubs: { ReportRecord: false, LoginGate: false, AsyncState: false, EmptyState: false },
+    },
+  });
   mounts.push(wrapper);
   return wrapper;
 };
@@ -95,4 +99,28 @@ test('list errors provide a working retry and pull refresh always stops the spin
   expect(wrapper.find('.error-feedback').exists()).toBe(false);
   await (onPullDownRefresh as jest.Mock).mock.calls[0][0]();
   expect((global as any).uni.stopPullDownRefresh).toHaveBeenCalled();
+});
+
+test('an empty refresh shows loading feedback and guest access uses the shared login gate', async () => {
+  const wrapper = mountPage();
+  await (onShow as jest.Mock).mock.calls[0][0]();
+  await flushPromises();
+  expect(wrapper.text()).toContain('暂无举报记录');
+  let finish!: (value: unknown) => void;
+  (getMyReports as jest.Mock).mockReturnValueOnce(
+    new Promise(resolve => {
+      finish = resolve;
+    })
+  );
+  const refresh = (onShow as jest.Mock).mock.calls[0][0]();
+  await flushPromises();
+  expect(wrapper.text()).toContain('正在加载…');
+  expect(wrapper.text()).not.toContain('暂无举报记录');
+  finish({ code: 200, data: { items: [], meta: { totalPages: 1 } } });
+  await refresh;
+  await flushPromises();
+  mockUser.isLoggedIn = false;
+  await flushPromises();
+  expect(wrapper.text()).toContain('登录后查看举报记录');
+  expect(wrapper.findComponent({ name: 'AsyncState' }).exists()).toBe(false);
 });

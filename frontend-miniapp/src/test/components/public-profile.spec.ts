@@ -51,7 +51,9 @@ beforeEach(() => {
 afterEach(() => wrappers.splice(0).forEach(wrapper => wrapper.unmount()));
 async function page(id = 'A') {
   const wrapper = shallowMount(Page, {
-    global: { stubs: { DishNutrition: false, TagBadge: false } },
+    global: {
+      stubs: { DishNutrition: false, TagBadge: false, AsyncState: false, EmptyState: false },
+    },
   });
   wrappers.push(wrapper);
   (onLoad as jest.Mock).mock.calls.slice(-1)[0][0]({ id });
@@ -194,7 +196,7 @@ test('public content tabs are focusable and keyboard activation fires once per p
 test('profile retry is keyboard accessible and keeps the profile request argument', async () => {
   (getPublicProfile as jest.Mock).mockRejectedValueOnce(new Error('主页读取失败'));
   const wrapper = await page('B');
-  const retry = wrapper.get('.campus-error button');
+  const retry = wrapper.get('.error-feedback button');
   expect(retry.attributes('tabindex')).toBe('0');
   expect(retry.attributes('role')).toBe('button');
   await press(retry, ' ');
@@ -225,7 +227,7 @@ test('post pagination ignores disabled presses and keyboard retry requests the f
     code: 200,
     data: { items: [{ id: 'next' }], meta: { page: 2, totalPages: 2 } },
   });
-  const retry = wrapper.get('.campus-error button');
+  const retry = wrapper.get('.error-feedback button');
   expect(retry.attributes('tabindex')).toBe('0');
   await press(retry, ' ');
   expect(getPosts).toHaveBeenCalledTimes(3);
@@ -254,7 +256,7 @@ test('plan pagination and retry preserve page arguments and disabled keyboard se
   pending.reject(new Error('计划追加失败'));
   await flushPromises();
   (getPublicMealPlans as jest.Mock).mockResolvedValueOnce({ code: 200, data: { items: [] } });
-  const retry = wrapper.get('.campus-error button');
+  const retry = wrapper.get('.error-feedback button');
   expect(retry.attributes('tabindex')).toBe('0');
   await press(retry);
   expect(getPublicMealPlans).toHaveBeenCalledTimes(3);
@@ -357,4 +359,21 @@ test('public plans distinguish the actual offline status without hiding saved di
   Object.assign((wrapper.vm as any).plans[0].dishes[0], { status: 'online' });
   await nextTick();
   expect(wrapper.find('.tag-badge--neutral').exists()).toBe(false);
+});
+
+test('public profile and its posts expose first loading feedback', async () => {
+  const pendingProfile = deferred();
+  const pendingPosts = deferred();
+  (getPublicProfile as jest.Mock).mockReturnValueOnce(pendingProfile.promise);
+  (getPosts as jest.Mock).mockReturnValueOnce(pendingPosts.promise);
+  const wrapper = await page('B');
+  expect(wrapper.text()).toContain('正在加载主页…');
+  pendingProfile.resolve({ code: 200, data: { id: 'B', nickname: '同学B' } });
+  await flushPromises();
+  expect(wrapper.find('.public-header').exists()).toBe(true);
+  expect(wrapper.text()).toContain('正在加载动态…');
+  expect(wrapper.findAll('[role="status"]')).toHaveLength(1);
+  expect(wrapper.text()).not.toContain('还没有公开动态');
+  pendingPosts.resolve({ code: 200, data: { items: [], meta: { page: 1, totalPages: 0 } } });
+  await flushPromises();
 });

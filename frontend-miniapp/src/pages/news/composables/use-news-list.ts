@@ -1,4 +1,4 @@
-import { ref, onMounted, reactive, getCurrentScope, onScopeDispose } from 'vue';
+import { computed, ref, onMounted, reactive, getCurrentScope, onScopeDispose, watch } from 'vue';
 import { getNewsList } from '@/api/modules/news';
 import type { News } from '@/types/api';
 
@@ -6,7 +6,7 @@ import type { News } from '@/types/api';
  * 获取并管理新闻列表数据的组合式函数 (模拟 usePagination 逻辑)
  * @param {object} initialParams - 初始查询参数
  */
-export function useNewsList(initialParams = {}) {
+export function useNewsList(initialParams = {}, isActive: () => boolean = () => true) {
   const list = ref<News[]>([]); // 新闻列表数据
   const loading = ref(false); // 是否正在加载
   const initialized = ref(false);
@@ -15,6 +15,9 @@ export function useNewsList(initialParams = {}) {
   const error = ref('');
   let disposed = false;
   let failedReset = true;
+  let mounted = false;
+  const attempted = ref(false);
+  const needsInitialLoad = computed(() => !attempted.value);
   if (getCurrentScope())
     onScopeDispose(() => {
       disposed = true;
@@ -30,6 +33,7 @@ export function useNewsList(initialParams = {}) {
 
   const loadData = async (reset = false): Promise<boolean> => {
     if (disposed || loading.value || (!reset && finished.value)) return false;
+    attempted.value = true;
     const page = reset ? 1 : meta.page;
     isRefreshing.value = reset;
     error.value = '';
@@ -60,11 +64,11 @@ export function useNewsList(initialParams = {}) {
         return true;
       } else {
         console.error('获取新闻列表失败:', res.message);
-        error.value = '公告加载失败，请重试';
+        error.value = '新闻加载失败，请重试';
       }
     } catch (cause) {
       console.error('API请求错误:', cause);
-      if (!disposed) error.value = '公告加载失败，请重试';
+      if (!disposed) error.value = '新闻加载失败，请重试';
     } finally {
       loading.value = false;
       isRefreshing.value = false; // 结束刷新
@@ -75,15 +79,20 @@ export function useNewsList(initialParams = {}) {
   const refresh = () => loadData(true);
   const loadMore = () => loadData(false);
 
-  // 组件挂载时自动加载数据
+  const loadInitial = () => {
+    if (mounted && isActive() && needsInitialLoad.value) void refresh();
+  };
   onMounted(() => {
-    refresh();
+    mounted = true;
+    loadInitial();
   });
+  watch(isActive, loadInitial);
 
   return {
     list,
     loading,
     initialized,
+    needsInitialLoad,
     finished,
     isRefreshing,
     error,

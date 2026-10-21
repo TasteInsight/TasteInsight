@@ -1,5 +1,6 @@
 import { mount, shallowMount } from '@vue/test-utils';
 import { ref } from 'vue';
+import { useUserStore } from '@/store/modules/use-user-store';
 import { onShow, onPullDownRefresh } from '@dcloudio/uni-app';
 import ReviewsPage from '@/pages/profile/my-reviews/index.vue';
 import FavoritesPage from '@/pages/profile/my-favorites/index.vue';
@@ -8,6 +9,7 @@ import { useMyReviews } from '@/pages/profile/my-reviews/composables/use-my-revi
 import { useFavorites } from '@/pages/profile/my-favorites/composables/use-favorites';
 import { useHistory } from '@/pages/profile/history/composables/use-history';
 
+jest.mock('@/store/modules/use-user-store', () => ({ useUserStore: jest.fn() }));
 jest.mock('@dcloudio/uni-app', () => ({
   onShow: jest.fn(),
   onPullDownRefresh: jest.fn(),
@@ -23,6 +25,7 @@ jest.mock('@/pages/profile/history/composables/use-history', () => ({ useHistory
 
 beforeEach(() => {
   jest.clearAllMocks();
+  (useUserStore as unknown as jest.Mock).mockReturnValue({ isLoggedIn: true });
   Object.assign(uni, { showToast: jest.fn(), stopPullDownRefresh: jest.fn() });
 });
 
@@ -38,6 +41,7 @@ it.each([
       isLoggedIn: ref(true),
       [itemsKey]: ref([{ id: 'r', dishId: 'd', dishName: '菜品', rating: 4, content: '评价内容' }]),
       loading: ref(false),
+      initialized: ref(true),
       error: ref('网络错误'),
       hasMore: ref(true),
       refresh,
@@ -47,7 +51,9 @@ it.each([
       removingIds: ref([]),
     };
     (useList as jest.Mock).mockReturnValue(state);
-    const wrapper = shallowMount(Page as any);
+    const wrapper = shallowMount(Page as any, {
+      global: { stubs: { LoginGate: false, AsyncState: false, EmptyState: false } },
+    });
     expect(refresh).not.toHaveBeenCalled();
     const show = (onShow as jest.Mock).mock.calls[0][0];
     await show();
@@ -60,6 +66,44 @@ it.each([
     expect(uni.showToast).not.toHaveBeenCalledWith(expect.objectContaining({ title: '刷新成功' }));
     expect(uni.stopPullDownRefresh).toHaveBeenCalled();
     wrapper.unmount();
+  }
+);
+
+it.each([
+  ['reviews', ReviewsPage, useMyReviews, 'reviews', '暂无评价'],
+  ['favorites', FavoritesPage, useFavorites, 'favoriteItems', '暂无收藏'],
+  ['history', HistoryPage, useHistory, 'historyItems', '暂无浏览历史'],
+] as const)(
+  '%s gives loading precedence during an empty refresh and gates guest access',
+  async (_name, Page, useList, itemsKey, emptyTitle) => {
+    const state = {
+      [itemsKey]: ref([]),
+      loading: ref(true),
+      initialized: ref(true),
+      error: ref(''),
+      hasMore: ref(false),
+      refresh: jest.fn(),
+      loadMore: jest.fn(),
+      retry: jest.fn(),
+      removeFavorite: jest.fn(),
+      removingIds: ref([]),
+    };
+    (useList as jest.Mock).mockReturnValue(state);
+    const options = {
+      global: { stubs: { LoginGate: false, AsyncState: false, EmptyState: false } },
+    };
+    const wrapper = shallowMount(Page as any, options);
+    expect(wrapper.text()).toContain('正在加载…');
+    expect(wrapper.text()).not.toContain(emptyTitle);
+    state.loading.value = false;
+    await wrapper.vm.$nextTick();
+    expect(wrapper.text()).toContain(emptyTitle);
+    wrapper.unmount();
+    (useUserStore as unknown as jest.Mock).mockReturnValue({ isLoggedIn: false });
+    const guest = shallowMount(Page as any, options);
+    expect(guest.text()).toContain('登录后查看个人记录');
+    expect(guest.find('.dish-list-content').exists()).toBe(false);
+    guest.unmount();
   }
 );
 

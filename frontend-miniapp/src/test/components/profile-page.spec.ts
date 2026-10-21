@@ -68,7 +68,15 @@ beforeEach(() => {
 afterEach(() => wrappers.splice(0).forEach(wrapper => wrapper.unmount()));
 function mountPage() {
   const wrapper = shallowMount(ProfilePage, {
-    global: { stubs: { IconButton: false, ProfileActionsSheet: false, UserHeader: false } },
+    global: {
+      stubs: {
+        IconButton: false,
+        ProfileActionsSheet: false,
+        UserHeader: false,
+        AsyncState: false,
+        EmptyState: false,
+      },
+    },
   });
   wrappers.push(wrapper);
   return wrapper;
@@ -115,7 +123,8 @@ test('keeps the tools and content tabs visible while an unread profile loads wit
   expect(wrapper.findComponent(UserHeader).exists()).toBe(false);
   expect(wrapper.findAll('[role="tab"]')).toHaveLength(3);
   expect(wrapper.find('[aria-label="设置"]').exists()).toBe(true);
-  expect(wrapper.findComponent(EmptyState).exists()).toBe(false);
+  expect(wrapper.text()).toContain('正在加载个人资料…');
+  expect(wrapper.text()).not.toContain('还没有动态');
   expect(wrapper.find('.campus-skeleton').exists()).toBe(false);
   expect(getPosts).not.toHaveBeenCalled();
   user.userInfo = { id: 'A', nickname: '已读取昵称' };
@@ -386,4 +395,16 @@ test('the page back handler closes the local menu without leaving a back interce
   await flushPromises();
   expect(wrapper.findComponent(ProfileActionsSheet).exists()).toBe(false);
   expect(back()).toBe(false);
+});
+
+test('owned posts show first loading feedback and preserve tabs', async () => {
+  const pending = deferred();
+  (getPosts as jest.Mock).mockReturnValueOnce(pending.promise);
+  const wrapper = mountPage();
+  await show();
+  expect(wrapper.text()).toContain('正在加载动态…');
+  expect(wrapper.findAll('[role="tab"]')).toHaveLength(3);
+  expect(wrapper.text()).not.toContain('还没有动态');
+  pending.resolve(pageResult());
+  await flushPromises();
 });

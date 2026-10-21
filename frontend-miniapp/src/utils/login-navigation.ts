@@ -1,3 +1,5 @@
+import { useUserStore } from '@/store/modules/use-user-store';
+
 const loginPath = '/pages/login/index';
 let opening = false;
 const pages = () => (typeof getCurrentPages === 'function' ? getCurrentPages() : []);
@@ -12,6 +14,12 @@ export function openLogin(): void {
       opening = false;
     },
   });
+}
+
+export function requireLogin(): boolean {
+  if (useUserStore().isLoggedIn) return true;
+  openLogin();
+  return false;
 }
 
 export function returnFromLogin(): void {

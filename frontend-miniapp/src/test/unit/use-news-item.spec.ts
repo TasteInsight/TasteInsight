@@ -36,6 +36,6 @@ describe('useNewsItem', () => {
     expect(getNewsTagText(newsWithCanteen)).toBe('Canteen A');
 
     const newsWithoutCanteen = {} as any;
-    expect(getNewsTagText(newsWithoutCanteen)).toBe('全校公告');
+    expect(getNewsTagText(newsWithoutCanteen)).toBe('校园新闻');
   });
 });

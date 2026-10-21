@@ -306,7 +306,7 @@ describe('canteen and window card consumers', () => {
     const loadMoreDishes = jest.fn();
     const dishes = ref([dish]);
     (useCanteenData as jest.Mock).mockReturnValue({
-      canteenInfo: ref(null),
+      canteenInfo: ref({ id: 'canteen-1', name: '食堂' }),
       loading: ref(false),
       error: ref(''),
       windows: ref([]),
@@ -344,7 +344,7 @@ describe('canteen and window card consumers', () => {
     const loadMoreDishes = jest.fn();
     const dishes = ref([dish]);
     (useWindowData as jest.Mock).mockReturnValue({
-      windowInfo: ref(null),
+      windowInfo: ref({ id: 'window-1', name: '窗口' }),
       headerLoading: ref(false),
       headerError: ref(''),
       retryDishes: jest.fn(),

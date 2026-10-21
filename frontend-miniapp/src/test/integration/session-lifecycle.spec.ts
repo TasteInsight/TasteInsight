@@ -446,6 +446,24 @@ describe('chat session ownership', () => {
     streams[0].callbacks.onComplete();
     expect(store.aiLoading).toBe(true);
   });
+
+  test('cancelling a pending submission lets only its replacement send after shared session creation', async () => {
+    const creation = defer();
+    (createAISession as jest.Mock).mockReturnValueOnce(creation.promise);
+    const store = useChatStore();
+    const first = store.sendChatMessage('cancelled prompt');
+    store.abortChat(false);
+    const second = store.sendChatMessage('current prompt');
+    expect(createAISession).toHaveBeenCalledTimes(1);
+    creation.resolve({ code: 200, data: { sessionId: 'A-session' } });
+    expect(await first).toBe(false);
+    expect(await second).toBe(true);
+    expect(streamAIChat).toHaveBeenCalledTimes(1);
+    expect((streamAIChat as jest.Mock).mock.calls[0][1].message).toBe('current prompt');
+    expect(
+      store.messages.filter(message => message.type === 'user').map(message => message.content)
+    ).toEqual([[{ type: 'text', text: 'current prompt' }]]);
+  });
 });
 
 describe('chat consumer operation ownership', () => {
@@ -560,6 +578,19 @@ describe('chat consumer operation ownership', () => {
     creation.resolve({ code: 200, data: { sessionId: 'A-session' } });
     await pending;
     expect(getAISuggestions).not.toHaveBeenCalled();
+  });
+
+  test('disposing the consumer while a send awaits session creation prevents messages and transport startup', async () => {
+    const creation = defer();
+    (createAISession as jest.Mock).mockReturnValueOnce(creation.promise);
+    const chat = consumer();
+    const pending = chat.sendMessage('prompt from the closed page');
+    scopes[0].stop();
+    creation.resolve({ code: 200, data: { sessionId: 'A-session' } });
+    expect(await pending).toBe(false);
+    expect(streamAIChat).not.toHaveBeenCalled();
+    expect(chat.messages.value).toEqual([]);
+    expect(chat.aiLoading.value).toBe(false);
   });
 
   test('a disposed consumer cannot begin sending with the next account conversation', async () => {

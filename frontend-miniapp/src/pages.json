@@ -11,7 +11,6 @@
     {
       "path": "pages/index/index",
       "style": {
-        "mp-weixin": { "navigationBarTitleText": "" },
         "navigationBarTitleText": "食鉴",
         "navigationBarBackgroundColor": "#FFFFFF",
         "enablePullDownRefresh": true
@@ -62,7 +61,6 @@
     {
       "path": "pages/news/index",
       "style": {
-        "mp-weixin": { "navigationBarTitleText": "" },
         "navigationBarTitleText": "新闻",
         "enablePullDownRefresh": true
       }
@@ -76,7 +74,6 @@
     {
       "path": "pages/planning/index",
       "style": {
-        "mp-weixin": { "navigationBarTitleText": "" },
         "navigationBarTitleText": "规划",
         "enablePullDownRefresh": true
       }
@@ -84,10 +81,6 @@
     {
       "path": "pages/ai-chat/index",
       "style": {
-        "mp-weixin": { "navigationBarTitleText": "" },
-        // #ifdef H5 || APP-PLUS
-        "navigationStyle": "custom",
-        // #endif
         // #ifdef APP-PLUS
         "app-plus": {
           "softinputMode": "adjustResize"
@@ -99,7 +92,6 @@
     {
       "path": "pages/profile/index",
       "style": {
-        "mp-weixin": { "navigationBarTitleText": "" },
         "navigationBarTitleText": "我的",
         "enablePullDownRefresh": true
       }

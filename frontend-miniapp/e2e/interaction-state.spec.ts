@@ -56,8 +56,8 @@ for (const viewport of [
         json(route, { items: [], meta: { page: 1, totalPages: 0 } })
       );
       await gotoUniPage(page, '/pages/news/index');
-      await expect(page.getByText('暂无公告', { exact: true })).toBeVisible();
-      const empty = page.locator('.empty-state');
+      await expect(page.getByText('暂无新闻', { exact: true })).toBeVisible();
+      const empty = page.locator('.page-state-region');
       const box = await empty.boundingBox();
       expect(box!.height).toBeGreaterThan(viewport.height - 160);
       const geometry = await empty.evaluate(element => {
@@ -86,7 +86,7 @@ for (const viewport of [
         json(route, { items: [], meta: { page: 1, totalPages: 0 } })
       );
       await gotoUniPage(page, '/pages/index/index');
-      const state = page.locator('.empty-state');
+      const state = page.locator('.page-state-region');
       await expect(state).toContainText('暂无推荐菜品');
       const result = await state.evaluate(element => {
         const root = element.getBoundingClientRect();

@@ -1,25 +1,12 @@
 <template>
   <view class="campus-page public-profile page-content page-state-layout" :aria-busy="loading">
-    <view
-      v-if="error"
-      :class="{ 'page-state-region': !profile }"
-      class="campus-error error-feedback"
-      role="alert"
-      ><text class="error-feedback__message">{{ error }}</text
-      ><button
-        class="error-feedback__action"
-        hover-class="error-feedback__action--pressed"
-        role="button"
-        :tabindex="loading ? -1 : 0"
-        :disabled="loading"
-        @click="profileRetryButton.activate"
-        @keydown="profileRetryButton.handleKeydown"
-        @keyup="profileRetryButton.handleKeyup"
-        @blur="profileRetryButton.clearPress"
-      >
-        重新加载
-      </button></view
-    >
+    <AsyncState
+      :loading="loading"
+      :has-content="!!profile"
+      :error="error"
+      loading-title="正在加载主页…"
+      @retry="loadProfile"
+    />
     <template v-if="profile">
       <view class="public-header"
         ><UserAvatar :src="profile.avatar" :size="64" :label="profile.nickname" /><view
@@ -59,31 +46,19 @@
         </button></view
       >
       <template v-if="tab === 'posts'">
-        <EmptyState
-          class="page-state-region"
-          v-if="postsReady && !posts.length && !postsError"
-          title="还没有公开动态"
-          icon="chat"
+        <AsyncState
+          :loading="postsLoading"
+          :initialized="postsReady"
+          :has-content="!!posts.length"
+          :error="postsError"
+          loading-title="正在加载动态…"
+          empty-title="还没有公开动态"
+          empty-icon="chat"
+          @retry="retryPosts"
         />
         <PostCard v-for="post in posts" :key="post.id" :post="post" />
-        <view v-if="postsError" class="campus-error error-feedback" role="alert"
-          ><text class="error-feedback__message">{{ postsError }}</text
-          ><button
-            class="error-feedback__action"
-            hover-class="error-feedback__action--pressed"
-            role="button"
-            :tabindex="postsLoading ? -1 : 0"
-            :disabled="postsLoading"
-            @click="postsRetryButton.activate"
-            @keydown="postsRetryButton.handleKeydown"
-            @keyup="postsRetryButton.handleKeyup"
-            @blur="postsRetryButton.clearPress"
-          >
-            重试
-          </button></view
-        >
         <button
-          v-else-if="postsMore && posts.length"
+          v-if="postsMore && posts.length && !postsError"
           class="campus-button campus-more"
           role="button"
           :tabindex="postsLoading ? -1 : 0"
@@ -93,15 +68,19 @@
           @keyup="postsMoreButton.handleKeyup"
           @blur="postsMoreButton.clearPress"
         >
-          {{ postsLoading ? '加载中…' : '加载更多动态' }}
+          加载更多动态
         </button>
       </template>
       <template v-else>
-        <EmptyState
-          class="page-state-region"
-          v-if="plansReady && !plans.length && !plansError"
-          title="还没有公开计划"
-          icon="calendar"
+        <AsyncState
+          :loading="plansLoading"
+          :initialized="plansReady"
+          :has-content="!!plans.length"
+          :error="plansError"
+          loading-title="正在加载计划…"
+          empty-title="还没有公开计划"
+          empty-icon="calendar"
+          @retry="loadPlans(plansFailedAppend)"
         />
         <view v-for="plan in plans" :key="plan.id" class="public-plan"
           ><view class="public-plan-heading"
@@ -133,24 +112,8 @@
               ><DishNutrition :dish="dish" /></view
             ><UiIcon name="chevron-right" :size="16" /></button
         ></view>
-        <view v-if="plansError" class="campus-error error-feedback" role="alert"
-          ><text class="error-feedback__message">{{ plansError }}</text
-          ><button
-            class="error-feedback__action"
-            hover-class="error-feedback__action--pressed"
-            role="button"
-            :tabindex="plansLoading ? -1 : 0"
-            :disabled="plansLoading"
-            @click="plansRetryButton.activate"
-            @keydown="plansRetryButton.handleKeydown"
-            @keyup="plansRetryButton.handleKeyup"
-            @blur="plansRetryButton.clearPress"
-          >
-            重试
-          </button></view
-        >
         <button
-          v-else-if="plansMore && plans.length"
+          v-if="plansMore && plans.length && !plansError"
           class="campus-button campus-more"
           role="button"
           :tabindex="plansLoading ? -1 : 0"
@@ -160,7 +123,7 @@
           @keyup="plansMoreButton.handleKeyup"
           @blur="plansMoreButton.clearPress"
         >
-          {{ plansLoading ? '加载中…' : '加载更多安排' }}
+          加载更多安排
         </button>
       </template>
     </template>
@@ -171,9 +134,9 @@ import { computed, nextTick, onScopeDispose, ref, watch } from 'vue';
 import { onLoad, onShow, onHide, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import UserAvatar from '@/components/UserAvatar.vue';
 import UiIcon from '@/components/UiIcon.vue';
-import EmptyState from '@/components/EmptyState.vue';
 import DishNutrition from '@/components/DishNutrition.vue';
 import TagBadge from '@/components/TagBadge.vue';
+import AsyncState from '@/components/AsyncState.vue';
 import PostCard from '@/pages/community/components/PostCard.vue';
 import {
   getPublicProfile,
@@ -235,6 +198,7 @@ async function loadProfile() {
     if (!current() || request !== profileRequest) return;
     if (response.code !== 200) throw new Error(response.message || '主页加载失败');
     profile.value = response.data;
+    loading.value = false;
     if (tab.value === 'posts') await loadPosts();
     else await loadPlans();
   } catch (cause) {
@@ -282,31 +246,13 @@ function setTab(value: 'posts' | 'plans') {
 function openDish(dishId: string) {
   uni.navigateTo({ url: `/pages/dish/index?id=${encodeURIComponent(dishId)}` });
 }
-const profileRetryButton = useButtonActivation(
-  () => {
-    void loadProfile();
-  },
-  () => loading.value
-);
 const postsTabButton = useButtonActivation(() => setTab('posts'));
 const plansTabButton = useButtonActivation(() => setTab('plans'));
-const postsRetryButton = useButtonActivation(
-  () => {
-    void retryPosts();
-  },
-  () => postsLoading.value
-);
 const postsMoreButton = useButtonActivation(
   () => {
     void loadPosts(true);
   },
   () => postsLoading.value
-);
-const plansRetryButton = useButtonActivation(
-  () => {
-    void loadPlans(plansFailedAppend);
-  },
-  () => plansLoading.value
 );
 const plansMoreButton = useButtonActivation(
   () => {

@@ -6,6 +6,7 @@ import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { createRequire } from 'module';
 import SettingsPage from '@/pages/settings/components/SettingsPage.vue';
+import AsyncState from '@/components/AsyncState.vue';
 
 const { Button: UniButton } = require('@dcloudio/uni-h5');
 const requireH5 = createRequire(require.resolve('@dcloudio/uni-h5'));
@@ -47,23 +48,28 @@ const normalizeNativeEvent = new Function(
   'isPlainObject',
   normalizationSource + '\nreturn $nne;'
 )(normalizeTarget, extend, isPlainObject);
-const { descriptor } = parse(
-  readFileSync(require.resolve('../../pages/settings/components/SettingsPage.vue'), 'utf8')
-);
-const template = descriptor
-  .template!.content.replace(/<(\/?)button\b/g, '<$1UniButton')
-  .replace(/@(keydown|keyup)="([^"]+)"/g, (_match, event, expression: string) => {
-    const handler = expression.includes('$event')
-      ? expression.replace(/\$event/g, '$nne($event)[0]')
-      : expression + '($nne($event)[0])';
-    return '@' + event + '="' + handler + '"';
+function h5Component(component: any, source: string) {
+  const { descriptor } = parse(readFileSync(require.resolve(source), 'utf8'));
+  const template = descriptor
+    .template!.content.replace(/<(\/?)button\b/g, '<$1UniButton')
+    .replace(/@(keydown|keyup)="([^"]+)"/g, (_match, event, expression: string) => {
+      const handler = expression.includes('$event')
+        ? expression.replace(/\$event/g, '$nne($event)[0]')
+        : expression + '($nne($event)[0])';
+      return '@' + event + '="' + handler + '"';
+    });
+  const render = Vue.compile(template, {
+    mode: 'function',
+    prefixIdentifiers: true,
+    bindingMetadata: compileScript(descriptor, { id: 'settings-keyboard-test' }).bindings,
   });
-const render = Vue.compile(template, {
-  mode: 'function',
-  prefixIdentifiers: true,
-  bindingMetadata: compileScript(descriptor, { id: 'settings-keyboard-test' }).bindings,
-});
-const H5SettingsPage = { ...SettingsPage, render } as unknown as typeof SettingsPage;
+  return { ...component, render };
+}
+const H5SettingsPage = h5Component(
+  SettingsPage,
+  '../../pages/settings/components/SettingsPage.vue'
+);
+const H5AsyncState = h5Component(AsyncState, '../../components/AsyncState.vue');
 const props = {
   loading: false,
   initialized: true,
@@ -81,6 +87,7 @@ function page(overrides: Partial<typeof props> = {}) {
     props: { ...props, ...overrides },
     global: {
       components: { UniButton },
+      stubs: { AsyncState: H5AsyncState },
       plugins: [
         {
           install(app: Vue.App) {
@@ -173,7 +180,8 @@ it('does not save when a held key is released after saving starts', async () => 
 
 it('keeps the read-error retry action keyboard accessible', () => {
   const wrapper = page({ initialized: false, loadError: '网络失败' });
-  const button = wrapper.get('.settings-load-error uni-button').element as HTMLElement;
+  const button = wrapper.get('.settings-load-state.error-feedback uni-button')
+    .element as HTMLElement;
   expect(button.getAttribute('role')).toBe('button');
   expect(button.tabIndex).toBe(0);
   keyEvent(button, 'keydown', 'Enter');

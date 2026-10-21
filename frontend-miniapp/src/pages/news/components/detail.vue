@@ -1,16 +1,19 @@
 <template>
   <view class="page-content news-detail page-state-layout">
     <view class="news-article page-state-content">
-      <EmptyState
-        v-if="loading && !initialized && !error"
-        class="page-state-region"
-        title="正在加载公告…"
-        loading
+      <AsyncState
+        :loading="loading"
+        :initialized="initialized"
+        :has-content="!!newsDetail.id"
+        :error="notFound ? '新闻不存在或已下架' : error"
+        loading-title="正在加载新闻…"
+        :retry-text="notFound ? '返回新闻列表' : '重新加载'"
+        @retry="notFound ? backToNews() : retry()"
       />
       <view v-if="initialized && newsDetail.id">
         <view class="article-title">{{ newsDetail.title }}</view>
         <view class="article-meta">
-          <text>{{ newsDetail.canteenName || '全校公告' }}</text>
+          <text>{{ newsDetail.canteenName || '校园新闻' }}</text>
           <text>{{ newsDetail.publishedAt ? formatTime(newsDetail.publishedAt) : '' }}</text>
         </view>
         <view v-if="newsDetail.sourceName" class="article-source"
@@ -38,32 +41,6 @@
           查看微信原文
         </button>
       </view>
-
-      <view
-        v-if="error || notFound"
-        class="article-state error-feedback"
-        :class="{ 'page-state-region': !newsDetail.id }"
-        role="alert"
-      >
-        <text class="error-feedback__message">{{ notFound ? '公告不存在或已下架' : error }}</text>
-        <button
-          v-if="!notFound"
-          class="error-feedback__action"
-          hover-class="error-feedback__action--pressed"
-          :disabled="loading"
-          @click="retry"
-        >
-          重试
-        </button>
-        <button
-          v-else
-          class="error-feedback__action"
-          hover-class="error-feedback__action--pressed"
-          @click="backToNews"
-        >
-          返回公告列表
-        </button>
-      </view>
     </view>
   </view>
 </template>
@@ -71,7 +48,7 @@
 <script setup lang="ts">
 import MpHtml from 'mp-html/dist/uni-app/components/mp-html/mp-html.vue';
 import { openNewsOriginal, originalArticleUrl } from '@/utils/news-original';
-import EmptyState from '@/components/EmptyState.vue';
+import AsyncState from '@/components/AsyncState.vue';
 import config from '@/config';
 import { openCampus } from '@/utils/campus-navigation';
 import { useNewsDetail } from '../composables/use-news-detail';
@@ -99,7 +76,7 @@ initDetailPage();
 .news-article {
   box-sizing: border-box;
   width: 100%;
-  max-width: 760px;
+  max-width: var(--page-content-width);
   margin: 0 auto;
   padding: 24px 20px 40px;
 }

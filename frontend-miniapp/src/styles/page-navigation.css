@@ -1,15 +1,10 @@
 /* #ifdef H5 */
-.uni-page-head,
-/* #endif */
-.page-navigation-bar {
+.uni-page-head {
   border-bottom: 0;
   box-shadow: none;
 }
 
-/* #ifdef H5 */
-.uni-page-head__title,
-/* #endif */
-.page-navigation-title {
+.uni-page-head__title {
   font-family: var(--page-title-font-family);
   font-size: var(--page-title-font-size) !important;
   font-weight: var(--page-title-font-weight);
@@ -17,3 +12,4 @@
   color: var(--page-title-color);
   text-align: center;
 }
+/* #endif */

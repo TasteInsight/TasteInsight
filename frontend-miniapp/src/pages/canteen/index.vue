@@ -29,24 +29,21 @@
       </view>
 
       <view class="dish-list-heading"><text class="dish-list-title">菜品</text></view>
-      <view class="dish-list-content page-state-content" :aria-busy="dishesLoading">
-        <view v-if="dishesLoading && dishes.length" class="dish-list-state">正在更新菜品…</view>
-
-        <view
-          v-if="dishesError"
-          :class="{ 'page-state-region': !dishes.length }"
-          class="error-feedback"
-          role="alert"
-        >
-          <text class="error-feedback__message">{{ dishesError }}</text>
-          <button
-            class="error-feedback__action"
-            hover-class="error-feedback__action--pressed"
-            @click="retryDishes"
-          >
-            重新加载
-          </button>
-        </view>
+      <view
+        class="dish-list-content page-state-content"
+        :aria-busy="dishesLoading || dishesLoadingMore"
+      >
+        <AsyncState
+          v-if="canteenInfo && !error"
+          :loading="dishesLoading"
+          :initialized="dishesInitialized"
+          :has-content="!!dishes.length"
+          :error="dishErrorIsAppend ? '' : dishesError"
+          loading-title="正在加载菜品…"
+          empty-title="暂无菜品信息"
+          empty-icon="search"
+          @retry="retryDishes"
+        />
 
         <view v-if="dishes.length > 0">
           <CanteenDishCard
@@ -56,29 +53,22 @@
             @click="goToDishDetail"
           />
 
-          <!-- 上拉加载更多：底部提示/动画 -->
+          <AsyncState
+            :loading="dishesLoadingMore"
+            has-content
+            :error="dishErrorIsAppend ? dishesError : ''"
+            refreshing-title="正在加载更多…"
+            @retry="retryDishes"
+          />
           <view class="dish-list-footer">
-            <template v-if="dishesLoadingMore">
-              <view
-                class="w-4 h-4 mr-2 rounded-full border-2 border-gray-300 border-t-gray-500 animate-spin"
-              ></view>
-              <text>加载中...</text>
-            </template>
-            <template v-else-if="hasMore && !dishesError && !dishesLoading">
+            <template v-if="hasMore && !dishesError && !dishesLoading && !dishesLoadingMore">
               <button class="dish-list-action" @click="loadMoreDishes">加载更多</button>
             </template>
-            <template v-else-if="!hasMore && !dishesError && !dishesLoading">
+            <template v-else-if="!hasMore && !dishesError && !dishesLoading && !dishesLoadingMore">
               <text>没有更多了</text>
             </template>
           </view>
         </view>
-
-        <EmptyState
-          class="page-state-region"
-          v-else-if="dishesInitialized && !dishesLoading && !dishesError && !error"
-          title="暂无菜品信息"
-          icon="search"
-        />
       </view>
     </template>
 
@@ -108,12 +98,13 @@ import {
 } from '@dcloudio/uni-app';
 import { useCanteenData } from './composables/use-canteen-data';
 import SearchBar from '@/components/SearchBar.vue';
-import EmptyState from '@/components/EmptyState.vue';
+import AsyncState from '@/components/AsyncState.vue';
 import CanteenFilterBar from './components/CanteenFilterBar.vue';
 import CanteenHeader from './components/CanteenHeader.vue';
 import CanteenDishCard from './components/CanteenDishCard.vue';
 import CanteenWindowList from './components/CanteenWindowList.vue';
 import type { GetDishesRequest } from '@/types/api';
+import { useSessionRefresh } from '@/composables/use-session-refresh';
 
 const {
   canteenInfo,
@@ -124,6 +115,7 @@ const {
   dishesInitialized,
   dishesLoading,
   dishesError,
+  dishErrorIsAppend,
   dishesLoadingMore,
   hasMore,
   beginOperation,
@@ -188,6 +180,7 @@ const handleFilterChange = (filter: GetDishesRequest['filter']) => {
 };
 
 const retryCanteen = () => init(currentCanteenId.value, currentFilter.value);
+useSessionRefresh(retryCanteen, () => !!currentCanteenId.value);
 onShow(() => {
   void refreshPreferredSort();
 });

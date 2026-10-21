@@ -30,52 +30,38 @@
       >
       <IconButton name="edit" label="发动态" title="发动态" @click="compose" />
     </view>
-    <template v-if="loading && !posts.length"
-      ><view v-for="item in 3" :key="item" class="campus-skeleton" aria-hidden="true"
-        ><view class="campus-skeleton-line" /><view class="campus-skeleton-line" /><view
-          class="campus-skeleton-line" /></view
-    ></template>
-    <EmptyState
-      class="page-state-region"
-      v-else-if="initialized && !posts.length && !error"
-      :title="mine ? '还没有发布动态' : '还没有校园动态'"
-      icon="chat"
-    />
-    <PostCard v-for="post in posts" :key="post.id" :post="post" />
-    <view
-      v-if="error"
-      :class="{ 'page-state-region': !posts.length }"
-      class="campus-error error-feedback"
-      role="alert"
-      ><text class="error-feedback__message">{{ error }}</text
-      ><button
-        class="error-feedback__action"
-        hover-class="error-feedback__action--pressed"
-        @click="retry"
+    <LoginGate :required="mine" title="登录后查看我的动态" icon="chat">
+      <AsyncState
+        :loading="loading"
+        :initialized="initialized"
+        :has-content="posts.length > 0"
+        :error="error"
+        loading-title="正在加载动态…"
+        :empty-title="mine ? '还没有发布动态' : '还没有校园动态'"
+        empty-icon="chat"
+        @retry="retry"
+      />
+      <PostCard v-for="post in posts" :key="post.id" :post="post" />
+      <button
+        v-if="!error && hasMore && posts.length"
+        class="campus-button campus-more"
+        :disabled="loading"
+        @click="load(true)"
       >
-        重新加载
-      </button></view
-    >
-    <button
-      v-else-if="hasMore && posts.length"
-      class="campus-button campus-more"
-      :disabled="loading"
-      @click="load(true)"
-    >
-      {{ loading ? '加载中…' : '加载更多' }}
-    </button>
+        {{ loading ? '加载中…' : '加载更多' }}
+      </button>
+    </LoginGate>
   </view>
 </template>
 <script setup lang="ts">
-import { openLogin } from '@/utils/login-navigation';
-
-import { nextTick, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { requireStudent } from '@/utils/student-access';
 import { usePostFeed } from '../composables/use-post-feed';
 import PostCard from './PostCard.vue';
 import IconButton from '@/components/IconButton.vue';
-import EmptyState from '@/components/EmptyState.vue';
+import AsyncState from '@/components/AsyncState.vue';
+import LoginGate from '@/components/LoginGate.vue';
 import { useButtonActivation } from '@/composables/use-button-activation';
 const props = withDefaults(defineProps<{ active?: boolean }>(), { active: true });
 const user = useUserStore();
@@ -87,40 +73,33 @@ const { posts, loading, initialized, error, hasMore, load, retry, reset, invalid
   () => ({ mine: mine.value })
 );
 function switchFeed(value: boolean) {
-  if (value && !user.isLoggedIn) {
-    openLogin();
-    return;
-  }
   if (mine.value === value) return;
   mine.value = value;
   reset();
-  void load();
+  if (props.active) void load();
 }
 function compose() {
   if (requireStudent()) uni.navigateTo({ url: '/pages/community/editor' });
 }
-watch(
-  () => user.sessionVersion,
-  session => {
-    mine.value = false;
-    void nextTick(() => {
-      if (props.active && session === user.sessionVersion) void load();
-    });
-  },
-  { flush: 'sync' }
-);
+function loadInitial() {
+  if (props.active && !initialized.value && !loading.value) void load();
+}
+watch(() => [user.sessionVersion, user.isLoggedIn], loadInitial, { flush: 'post' });
 watch(
   () => props.active,
   active => {
-    if (active) void load();
+    if (active) loadInitial();
     else invalidate();
   },
   { immediate: true, flush: 'sync' }
 );
 defineExpose({
-  refresh: () => load(),
+  needsInitialLoad: computed(() => !initialized.value),
+  refresh: () => {
+    if (props.active && !loading.value) return load();
+  },
   loadMore: () => {
-    if (!error.value) return load(true);
+    if (props.active && !error.value) return load(true);
   },
 });
 </script>

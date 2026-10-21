@@ -1,45 +1,38 @@
 <template>
-  <view class="ai-chat-page">
-    <view v-if="!isLoggedIn" class="page-state-region">
-      <EmptyState title="登录后使用 AI 助手" icon="chat" action-text="登录" @action="openLogin" />
-    </view>
-    <template v-else>
-      <view
-        class="ai-chat-toolbar page-navigation-bar"
-        :class="{ 'ai-chat-toolbar-native': hasNativeTitle }"
+  <view class="ai-chat-page page-viewport">
+    <view v-if="isLoggedIn" class="ai-chat-toolbar">
+      <button
+        class="chat-button chat-toolbar-action chat-toolbar-new"
+        hover-class="chat-control-pressed"
+        :hover-stay-time="80"
+        role="button"
+        tabindex="0"
+        aria-label="新对话"
+        @click="handleNewChat"
+        @keydown="handleActionKeydown"
+        @keyup="handleActionKeyup($event, handleNewChat)"
+        @blur="keyPressed = false"
       >
-        <button
-          class="chat-button chat-toolbar-action chat-toolbar-new"
-          hover-class="chat-control-pressed"
-          :hover-stay-time="80"
-          role="button"
-          tabindex="0"
-          aria-label="新对话"
-          @click="handleNewChat"
-          @keydown="handleActionKeydown"
-          @keyup="handleActionKeyup($event, handleNewChat)"
-          @blur="keyPressed = false"
-        >
-          <image class="chat-tool-icon" src="/static/icons/chat-new.png" aria-hidden="true" />
-          <text>新对话</text>
-        </button>
-        <text v-if="!hasNativeTitle" class="ai-chat-title page-navigation-title">AI 助手</text>
-        <button
-          class="chat-button chat-toolbar-action chat-toolbar-history"
-          hover-class="chat-control-pressed"
-          :hover-stay-time="80"
-          role="button"
-          tabindex="0"
-          aria-label="历史对话"
-          @click="openHistory"
-          @keydown="handleActionKeydown"
-          @keyup="handleActionKeyup($event, openHistory)"
-          @blur="keyPressed = false"
-        >
-          <image class="chat-tool-icon" src="/static/icons/history.png" aria-hidden="true" />
-          <text>历史</text>
-        </button>
-      </view>
+        <image class="chat-tool-icon" src="/static/icons/chat-new.png" aria-hidden="true" />
+        <text>新对话</text>
+      </button>
+      <button
+        class="chat-button chat-toolbar-action chat-toolbar-history"
+        hover-class="chat-control-pressed"
+        :hover-stay-time="80"
+        role="button"
+        tabindex="0"
+        aria-label="历史对话"
+        @click="openHistory"
+        @keydown="handleActionKeydown"
+        @keyup="handleActionKeyup($event, openHistory)"
+        @blur="keyPressed = false"
+      >
+        <image class="chat-tool-icon" src="/static/icons/history.png" aria-hidden="true" />
+        <text>历史</text>
+      </button>
+    </view>
+    <LoginGate title="登录后使用 AI 助手" icon="chat">
       <scroll-view
         ref="messageScroller"
         scroll-y
@@ -54,34 +47,25 @@
         @keydown="handleReadingKeydown"
       >
         <view class="ai-chat-transcript" :class="{ 'chat-transcript-state': !messages.length }">
-          <view v-if="initialError" class="error-feedback page-state-region" role="alert">
-            <text class="error-feedback__title">连接暂时不可用</text
-            ><text class="error-feedback__message">{{ initialError }}</text>
-            <button
-              class="error-feedback__action"
-              hover-class="error-feedback__action--pressed"
-              :hover-stay-time="80"
-              role="button"
-              tabindex="0"
-              @click="retryConnection"
-              @keydown="handleActionKeydown"
-              @keyup="handleActionKeyup($event, retryConnection)"
-              @blur="keyPressed = false"
-            >
-              重试连接
-            </button>
-          </view>
-          <EmptyState
-            v-else-if="isInitialLoading && !messages.length"
-            class="page-state-region"
-            title="正在连接 AI 助手…"
-            loading
-          />
-          <view v-else-if="messages.length === 0" class="chat-state page-state-region">
-            <text class="chat-state-title">今天想吃什么？</text
-            ><text class="chat-state-description">告诉我你的口味，或选择下方的问题开始。</text>
-          </view>
-          <template v-else>
+          <AsyncState
+            :loading="isInitialLoading"
+            :initialized="!isInitialLoading && !isInitializing"
+            :has-content="!!messages.length"
+            :error="initialError"
+            error-title="连接暂时不可用"
+            loading-title="正在连接 AI 助手…"
+            empty-title="今天想吃什么？"
+            retry-text="重试连接"
+            @retry="retryConnection"
+          >
+            <template #empty>
+              <view class="chat-state">
+                <text class="chat-state-title">今天想吃什么？</text>
+                <text class="chat-state-description">告诉我你的口味，或选择下方的问题开始。</text>
+              </view>
+            </template>
+          </AsyncState>
+          <template v-if="messages.length">
             <view
               v-for="message in messages"
               :key="message.id"
@@ -346,13 +330,13 @@
           >
         </view>
       </view>
-    </template>
+    </LoginGate>
   </view>
 </template>
 <script setup lang="ts">
-import { openLogin } from '@/utils/login-navigation';
 import { toUserFriendlyErrorMessage } from '@/utils/user-friendly-error';
-import EmptyState from '@/components/EmptyState.vue';
+import AsyncState from '@/components/AsyncState.vue';
+import LoginGate from '@/components/LoginGate.vue';
 import { ref, watch, nextTick, onScopeDispose } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { useChat } from './composables/use-chat';
@@ -365,6 +349,7 @@ import WindowCard from './components/WindowCard.vue';
 import InputBar from './components/InputBar.vue';
 import SuggestionChips from './components/SuggestionChips.vue';
 import type { ComponentMealPlanDraft, AIScene } from '@/types/api';
+
 const {
   isLoggedIn,
   messages,
@@ -418,10 +403,6 @@ const sceneLabelMap: Record<string, string> = {
   dish_critic: '菜品点评',
   meal_planner: '餐单规划',
 };
-let hasNativeTitle = false;
-// #ifdef MP-WEIXIN
-hasNativeTitle = true;
-// #endif
 const keyPressed = ref(false);
 const handleActionKeydown = (event: KeyboardEvent) => {
   if (event.key === 'Enter' || event.key === ' ') {
@@ -677,37 +658,20 @@ const deliveryFor = (message: { type: string; deliveryStatus?: string }) =>
 }
 .ai-chat-page {
   --chat-accent: #660874;
-  display: flex;
-  flex-direction: column;
   position: relative;
-  width: 100%;
-  height: calc(100vh - var(--window-top, 0px) - var(--window-bottom, 0px));
-  height: calc(100dvh - var(--window-top, 0px) - var(--window-bottom, 0px));
-  box-sizing: border-box;
-  overflow: hidden;
-  background: #fff;
-  color: #1f2937;
-  font-family: system-ui, sans-serif;
 }
 .ai-chat-toolbar {
-  --navigation-inset-top: max(var(--status-bar-height, 0px), env(safe-area-inset-top, 0px));
   flex-shrink: 0;
   width: 100%;
-  max-width: 760px;
+  max-width: var(--page-content-width);
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: 1fr 1fr;
   align-items: center;
   gap: 8px;
-  height: calc(var(--page-navigation-height) + var(--navigation-inset-top));
   box-sizing: border-box;
-  padding: var(--navigation-inset-top) 20px 0;
-  background: #fff;
-}
-.ai-chat-toolbar-native {
-  grid-template-columns: 1fr 1fr;
-  height: auto;
   padding: 6px 20px 12px;
+  background: #fff;
 }
 .chat-tool-icon {
   width: 22px;
@@ -817,7 +781,7 @@ const deliveryFor = (message: { type: string; deliveryStatus?: string }) =>
   padding: 24px 20px 8px;
   box-sizing: border-box;
   width: 100%;
-  max-width: 760px;
+  max-width: var(--page-content-width);
   margin: 0 auto;
 }
 .chat-message {
@@ -937,7 +901,7 @@ const deliveryFor = (message: { type: string; deliveryStatus?: string }) =>
   flex-shrink: 0;
   box-sizing: border-box;
   width: 100%;
-  max-width: 760px;
+  max-width: var(--page-content-width);
   margin: 0 auto;
   padding: 12px 20px 20px;
   background: #fff;

@@ -1,7 +1,7 @@
 .campus-page {
   box-sizing: border-box;
   width: 100%;
-  max-width: 720px;
+  max-width: var(--page-content-width);
   margin: 0 auto;
   padding: 24px 20px calc(32px + env(safe-area-inset-bottom));
   background: #fff;
@@ -61,19 +61,6 @@
   font-size: 14px;
   line-height: 1.6;
 }
-.campus-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 48px 16px;
-  text-align: center;
-  line-height: 1.7;
-}
-.campus-empty .iconfont {
-  color: #667085;
-  font-size: 32px;
-}
 .campus-tabs {
   display: flex;
   gap: 24px;
@@ -104,23 +91,6 @@
 .campus-more {
   display: flex;
   margin: 16px auto 0;
-}
-.campus-skeleton {
-  padding: 24px 0;
-  border-bottom: 1px solid #e5e7eb;
-}
-.campus-skeleton-line {
-  width: 100%;
-  height: 16px;
-  margin: 12px 0;
-  border-radius: 4px;
-  background: #f4f4f5;
-}
-.campus-skeleton-line:first-child {
-  width: 35%;
-}
-.campus-skeleton-line:last-child {
-  width: 70%;
 }
 @media (max-width: 360px) {
   .campus-page {

@@ -17,16 +17,24 @@
         {{ item.label }}
       </button>
     </view>
-    <view :key="section" class="campus-panel page-state-content">
-      <PostFeed v-if="section === 'posts'" ref="panel" :active="visible" />
-      <DiningInvites v-else-if="section === 'dining'" ref="panel" :active="visible" />
-      <NewsFeed v-else ref="panel" />
+    <view v-if="visited.posts" v-show="section === 'posts'" class="campus-panel page-state-content">
+      <PostFeed ref="postsPanel" :active="visible && section === 'posts'" />
+    </view>
+    <view
+      v-if="visited.dining"
+      v-show="section === 'dining'"
+      class="campus-panel page-state-content"
+    >
+      <DiningInvites ref="diningPanel" :active="visible && section === 'dining'" />
+    </view>
+    <view v-if="visited.news" v-show="section === 'news'" class="campus-panel page-state-content">
+      <NewsFeed ref="newsPanel" :active="visible && section === 'news'" />
     </view>
   </view>
 </template>
 <script setup lang="ts">
-import { ref } from 'vue';
-import { onShow, onHide, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
+import { computed, nextTick, reactive, ref } from 'vue';
+import { onShow, onHide, onPageScroll, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app';
 import PostFeed from './components/PostFeed.vue';
 import DiningInvites from '../planning/components/DiningInvites.vue';
 import NewsFeed from '../news/components/NewsFeed.vue';
@@ -35,7 +43,50 @@ import { useButtonActivation } from '@/composables/use-button-activation';
 
 const section = ref<CampusSection>('posts');
 const visible = ref(false);
-const panel = ref<{ refresh: () => unknown; loadMore: () => unknown } | null>(null);
+const visited = reactive<Record<CampusSection, boolean>>({
+  posts: true,
+  dining: false,
+  news: false,
+});
+type CampusPanel = {
+  needsInitialLoad: boolean;
+  refresh: () => unknown;
+  loadMore: () => unknown;
+};
+const postsPanel = ref<CampusPanel | null>(null);
+const diningPanel = ref<CampusPanel | null>(null);
+const newsPanel = ref<CampusPanel | null>(null);
+const panel = computed(
+  () =>
+    ({ posts: postsPanel.value, dining: diningPanel.value, news: newsPanel.value })[section.value]
+);
+const scrollPositions: Record<CampusSection, number> = { posts: 0, dining: 0, news: 0 };
+const dirtySections = new Set<CampusSection>();
+let scrollTop = 0;
+let activationVersion = 0;
+async function refreshCurrentSection() {
+  if (!dirtySections.has(section.value)) return;
+  const target = section.value;
+  const activation = activationVersion;
+  const needsInitialLoad = panel.value?.needsInitialLoad;
+  await nextTick();
+  if (!visible.value || activation !== activationVersion) return;
+  if (!needsInitialLoad) await panel.value?.refresh();
+  if (visible.value && activation === activationVersion) dirtySections.delete(target);
+}
+function selectSection(value: CampusSection) {
+  if (section.value === value) return;
+  activationVersion += 1;
+  scrollPositions[section.value] = scrollTop;
+  section.value = value;
+  visited[value] = true;
+  void nextTick(() => {
+    if (!visible.value || section.value !== value) return;
+    scrollTop = scrollPositions[value];
+    uni.pageScrollTo({ scrollTop, duration: 0 });
+  });
+  void refreshCurrentSection();
+}
 const sections = (
   [
     { key: 'posts', label: '动态' },
@@ -44,17 +95,24 @@ const sections = (
   ] as { key: CampusSection; label: string }[]
 ).map(item => ({
   ...item,
-  ...useButtonActivation(() => {
-    section.value = item.key;
-  }),
+  ...useButtonActivation(() => selectSection(item.key)),
 }));
 onShow(() => {
   const requested = takeCampusSection();
-  if (requested) section.value = requested;
+  const switchingSection = requested && requested !== section.value;
+  if (requested) selectSection(requested);
   visible.value = true;
+  if (!switchingSection) void refreshCurrentSection();
 });
 onHide(() => {
   visible.value = false;
+  activationVersion += 1;
+  sections.forEach(item => {
+    if (visited[item.key]) dirtySections.add(item.key);
+  });
+});
+onPageScroll(event => {
+  if (visible.value) scrollTop = event.scrollTop;
 });
 onReachBottom(() => {
   void panel.value?.loadMore();
@@ -79,7 +137,8 @@ onPullDownRefresh(async () => {
   display: flex;
   gap: 24px;
   padding: 0 20px;
-  max-width: 720px;
+  width: 100%;
+  max-width: var(--page-content-width);
   box-sizing: border-box;
   margin: 0 auto;
   background: #fff;

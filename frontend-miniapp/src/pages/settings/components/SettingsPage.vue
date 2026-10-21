@@ -1,46 +1,23 @@
 <template>
   <view class="page-content settings-page settings-form-page page-state-layout">
-    <EmptyState
-      v-if="!user.isLoggedIn"
-      class="page-state-region"
-      title="登录后管理个人设置"
-      icon="settings"
-      action-text="登录"
-      @action="openLogin"
-    />
-    <view v-else class="settings-form-body page-state-content" :aria-busy="loading">
-      <view
-        v-if="!initialized && !loading && loadError"
-        class="settings-load-error error-feedback page-state-region"
-        role="alert"
-      >
-        <text class="error-feedback__title">资料未能加载</text>
-        <text class="error-feedback__message">{{ loadError }}</text>
-        <button
-          class="error-feedback__action"
-          hover-class="error-feedback__action--pressed"
-          :disabled="loading"
-          @click="retryButton.activate"
-          @keydown="retryButton.handleKeydown"
-          @keyup="retryButton.handleKeyup"
-          @blur="retryButton.clearPress"
-          role="button"
-          tabindex="0"
-        >
-          重新加载
-        </button>
+    <LoginGate title="登录后管理个人设置" icon="settings">
+      <view class="settings-form-body page-state-content" :aria-busy="loading">
+        <AsyncState
+          class="settings-load-state"
+          :loading="loading"
+          :initialized="initialized"
+          :has-content="initialized"
+          :error="loadError"
+          error-title="资料未能加载"
+          loading-title="正在加载设置…"
+          @retry="emit('retry')"
+        />
+        <template v-if="initialized">
+          <view v-if="restoredDraft" class="settings-note">已恢复未保存的修改</view>
+          <slot />
+        </template>
       </view>
-      <EmptyState
-        v-if="loading && !initialized"
-        class="page-state-region"
-        title="正在加载设置…"
-        loading
-      />
-      <template v-if="initialized">
-        <view v-if="restoredDraft" class="settings-note">已恢复未保存的修改</view>
-        <slot />
-      </template>
-    </view>
+    </LoginGate>
     <view v-if="user.isLoggedIn && initialized" class="settings-save-bar">
       <button
         class="settings-button settings-button--primary"
@@ -62,8 +39,8 @@
 
 <script setup lang="ts">
 import { useUserStore } from '@/store/modules/use-user-store';
-import { openLogin } from '@/utils/login-navigation';
-import EmptyState from '@/components/EmptyState.vue';
+import AsyncState from '@/components/AsyncState.vue';
+import LoginGate from '@/components/LoginGate.vue';
 import { useButtonActivation } from '@/composables/use-button-activation';
 
 const user = useUserStore();
@@ -77,10 +54,6 @@ const props = defineProps<{
   restoredDraft: boolean;
 }>();
 const emit = defineEmits<{ (e: 'retry'): void; (e: 'save'): void }>();
-const retryButton = useButtonActivation(
-  () => emit('retry'),
-  () => props.loading
-);
 const saveButton = useButtonActivation(
   () => emit('save'),
   () => !props.canSave

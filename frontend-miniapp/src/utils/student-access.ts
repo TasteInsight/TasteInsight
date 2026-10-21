@@ -1,12 +1,9 @@
-import { openLogin } from '@/utils/login-navigation';
+import { requireLogin } from '@/utils/login-navigation';
 import { useUserStore } from '@/store/modules/use-user-store';
 
 export function requireStudent(): boolean {
+  if (!requireLogin()) return false;
   const user = useUserStore();
-  if (!user.isLoggedIn) {
-    openLogin();
-    return false;
-  }
   if (user.userInfo?.capabilities?.canContribute) return true;
   uni.showModal({
     title: '完成校园身份认证',

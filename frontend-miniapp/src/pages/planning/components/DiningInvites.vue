@@ -1,162 +1,143 @@
 <template>
   <view class="dining-page page-state-content" :aria-busy="loading">
-    <EmptyState
-      class="page-state-region"
-      v-if="!user.isLoggedIn"
-      title="登录后查看约饭邀请"
-      icon="users"
-      action-text="登录"
-      @action="login"
-    />
-    <view v-if="user.isLoggedIn" class="dining-tabs" role="tablist" aria-label="约饭邀请">
-      <button
-        class="dining-button dining-tab"
-        :class="{ 'dining-selected': !mine }"
-        role="tab"
-        tabindex="0"
-        :aria-selected="!mine"
-        @click="squareAction.activate"
-        @keydown="squareAction.handleKeydown"
-        @keyup="squareAction.handleKeyup"
-        @blur="squareAction.clearPress"
-      >
-        广场
-      </button>
-      <button
-        class="dining-button dining-tab"
-        :class="{ 'dining-selected': mine }"
-        role="tab"
-        tabindex="0"
-        :aria-selected="mine"
-        @click="mineAction.activate"
-        @keydown="mineAction.handleKeydown"
-        @keyup="mineAction.handleKeyup"
-        @blur="mineAction.clearPress"
-      >
-        我的
-      </button>
-    </view>
-    <button v-if="user.isLoggedIn && !canContribute" class="dining-access" @click="verifyIdentity">
-      <UiIcon name="shield" :size="16" /><text>认证后可参与约饭</text
-      ><UiIcon name="chevron-right" :size="16" />
-    </button>
-    <view
-      v-if="error"
-      :class="{ 'page-state-region': !items.length }"
-      class="dining-error error-feedback"
-      role="alert"
-      ><text class="error-feedback__message">{{ error }}</text
-      ><button
-        class="error-feedback__action"
-        hover-class="error-feedback__action--pressed"
-        @click="load(failedAppend)"
-      >
-        重新加载
-      </button></view
-    >
-    <view v-if="loading && !items.length" class="dining-loading" role="status">正在加载邀请…</view>
-    <EmptyState
-      class="page-state-region"
-      v-else-if="initialized && !items.length && !error"
-      :title="mine ? '还没有邀请或申请' : '暂时没有可加入的邀请'"
-      icon="users"
-    />
-    <view v-for="invite in items" :key="invite.id" class="dining-invite">
-      <view class="dining-invite-heading"
-        ><text class="dining-host">{{ invite.host.nickname }}</text
-        ><text class="dining-state">{{ statusLabels[invite.status] }}</text></view
-      >
-      <text class="dining-meal"
-        >{{ invite.date }} {{ mealNames[invite.mealTime] }} {{ timeText(invite.startsAt) }}</text
-      >
-      <text class="dining-hint">{{ invite.canteen.name }}</text>
-      <text class="dining-hint"
-        >{{ invite.acceptedCount + 1 }} / {{ invite.capacity }} 人（包括发起人）</text
-      >
-      <view v-if="invite.host.id === ownerId" class="dining-applications">
-        <text v-if="!invite.applications?.length" class="dining-hint">暂未收到申请</text>
-        <view
-          v-for="application in invite.applications"
-          :key="application.id"
-          class="dining-application"
+    <LoginGate title="登录后查看约饭邀请" icon="users">
+      <view class="dining-tabs" role="tablist" aria-label="约饭邀请">
+        <button
+          class="dining-button dining-tab"
+          :class="{ 'dining-selected': !mine }"
+          role="tab"
+          tabindex="0"
+          :aria-selected="!mine"
+          @click="squareAction.activate"
+          @keydown="squareAction.handleKeydown"
+          @keyup="squareAction.handleKeyup"
+          @blur="squareAction.clearPress"
         >
+          广场
+        </button>
+        <button
+          class="dining-button dining-tab"
+          :class="{ 'dining-selected': mine }"
+          role="tab"
+          tabindex="0"
+          :aria-selected="mine"
+          @click="mineAction.activate"
+          @keydown="mineAction.handleKeydown"
+          @keyup="mineAction.handleKeyup"
+          @blur="mineAction.clearPress"
+        >
+          我的
+        </button>
+      </view>
+      <button v-if="!canContribute" class="dining-access" @click="verifyIdentity">
+        <UiIcon name="shield" :size="16" /><text>认证后可参与约饭</text
+        ><UiIcon name="chevron-right" :size="16" />
+      </button>
+      <AsyncState
+        :loading="loading"
+        :initialized="initialized"
+        :has-content="items.length > 0"
+        :error="error"
+        loading-title="正在加载邀请…"
+        :empty-title="mine ? '还没有邀请或申请' : '暂时没有可加入的邀请'"
+        empty-icon="users"
+        @retry="load(failedAppend)"
+      />
+      <view v-for="invite in items" :key="invite.id" class="dining-invite">
+        <view class="dining-invite-heading"
+          ><text class="dining-host">{{ invite.host.nickname }}</text
+          ><text class="dining-state">{{ statusLabels[invite.status] }}</text></view
+        >
+        <text class="dining-meal"
+          >{{ invite.date }} {{ mealNames[invite.mealTime] }} {{ timeText(invite.startsAt) }}</text
+        >
+        <text class="dining-hint">{{ invite.canteen.name }}</text>
+        <text class="dining-hint"
+          >{{ invite.acceptedCount + 1 }} / {{ invite.capacity }} 人（包括发起人）</text
+        >
+        <view v-if="invite.host.id === ownerId" class="dining-applications">
+          <text v-if="!invite.applications?.length" class="dining-hint">暂未收到申请</text>
           <view
-            ><text>{{ application.user.nickname }}</text
-            ><text class="dining-hint">{{ applicationLabels[application.status] }}</text></view
+            v-for="application in invite.applications"
+            :key="application.id"
+            class="dining-application"
           >
-          <view
-            v-if="application.status === 'pending' && ['open', 'full'].includes(invite.status)"
-            class="dining-actions"
-          >
-            <button
-              class="dining-button"
-              :disabled="!!busy[invite.id] || !canContribute"
-              @click="decide(invite, application.id, 'reject')"
+            <view
+              ><text>{{ application.user.nickname }}</text
+              ><text class="dining-hint">{{ applicationLabels[application.status] }}</text></view
             >
-              拒绝
-            </button>
-            <button
-              class="dining-button dining-primary"
-              :disabled="!!busy[invite.id] || !canContribute || invite.status === 'full'"
-              @click="decide(invite, application.id, 'accept')"
+            <view
+              v-if="application.status === 'pending' && ['open', 'full'].includes(invite.status)"
+              class="dining-actions"
             >
-              接受
-            </button>
+              <button
+                class="dining-button"
+                :disabled="!!busy[invite.id] || !canContribute"
+                @click="decide(invite, application.id, 'reject')"
+              >
+                拒绝
+              </button>
+              <button
+                class="dining-button dining-primary"
+                :disabled="!!busy[invite.id] || !canContribute || invite.status === 'full'"
+                @click="decide(invite, application.id, 'accept')"
+              >
+                接受
+              </button>
+            </view>
           </view>
+          <button
+            v-if="['open', 'full'].includes(invite.status)"
+            class="dining-button dining-cancel"
+            :disabled="!!busy[invite.id]"
+            @click="cancel(invite)"
+          >
+            取消本次邀请
+          </button>
         </view>
-        <button
-          v-if="['open', 'full'].includes(invite.status)"
-          class="dining-button dining-cancel"
-          :disabled="!!busy[invite.id]"
-          @click="cancel(invite)"
-        >
-          取消本次邀请
-        </button>
+        <view v-else class="dining-actions dining-join">
+          <text v-if="invite.myApplication" class="dining-hint">{{
+            applicationLabels[invite.myApplication.status]
+          }}</text>
+          <button
+            v-if="
+              invite.myApplication &&
+              ['pending', 'accepted'].includes(invite.myApplication.status) &&
+              ['open', 'full'].includes(invite.status)
+            "
+            class="dining-button"
+            :disabled="!!busy[invite.id]"
+            @click="run(invite, () => withdrawDiningApplication(invite.id))"
+          >
+            {{ invite.myApplication.status === 'accepted' ? '退出本次同行' : '撤回申请' }}
+          </button>
+          <button
+            v-else-if="
+              (!invite.myApplication || invite.myApplication.status === 'withdrawn') &&
+              invite.status === 'open'
+            "
+            class="dining-button dining-primary"
+            :disabled="!!busy[invite.id] || !canContribute"
+            @click="run(invite, () => applyDiningInvite(invite.id))"
+          >
+            {{ busy[invite.id] ? '提交中…' : '申请一起吃' }}
+          </button>
+        </view>
       </view>
-      <view v-else class="dining-actions dining-join">
-        <text v-if="invite.myApplication" class="dining-hint">{{
-          applicationLabels[invite.myApplication.status]
-        }}</text>
-        <button
-          v-if="
-            invite.myApplication &&
-            ['pending', 'accepted'].includes(invite.myApplication.status) &&
-            ['open', 'full'].includes(invite.status)
-          "
-          class="dining-button"
-          :disabled="!!busy[invite.id]"
-          @click="run(invite, () => withdrawDiningApplication(invite.id))"
-        >
-          {{ invite.myApplication.status === 'accepted' ? '退出本次同行' : '撤回申请' }}
-        </button>
-        <button
-          v-else-if="
-            (!invite.myApplication || invite.myApplication.status === 'withdrawn') &&
-            invite.status === 'open'
-          "
-          class="dining-button dining-primary"
-          :disabled="!!busy[invite.id] || !canContribute"
-          @click="run(invite, () => applyDiningInvite(invite.id))"
-        >
-          {{ busy[invite.id] ? '提交中…' : '申请一起吃' }}
-        </button>
-      </view>
-    </view>
-    <button
-      v-if="!error && page < totalPages"
-      class="dining-button dining-more"
-      :disabled="loading"
-      @click="load(true)"
-    >
-      {{ loading ? '加载中…' : '加载更多' }}
-    </button>
+      <button
+        v-if="!error && items.length && page < totalPages"
+        class="dining-button dining-more"
+        :disabled="loading"
+        @click="load(true)"
+      >
+        {{ loading ? '加载中…' : '加载更多' }}
+      </button>
+    </LoginGate>
   </view>
 </template>
 
 <script setup lang="ts">
-import { openLogin } from '@/utils/login-navigation';
-
-import { computed, nextTick, onScopeDispose, ref, watch } from 'vue';
+import { computed, onScopeDispose, ref, watch } from 'vue';
 import { useUserStore } from '@/store/modules/use-user-store';
 import {
   getDiningInvites,
@@ -168,7 +149,8 @@ import {
   type DiningInvite,
 } from '@/api/modules/meal-plan';
 import type { ApiResponse } from '@/types/api';
-import EmptyState from '@/components/EmptyState.vue';
+import AsyncState from '@/components/AsyncState.vue';
+import LoginGate from '@/components/LoginGate.vue';
 import UiIcon from '@/components/UiIcon.vue';
 import { useButtonActivation } from '@/composables/use-button-activation';
 
@@ -218,7 +200,8 @@ const capture = () => {
     tab === mine.value;
 };
 async function load(append = false) {
-  if (!visible || !user.isLoggedIn) return;
+  if (disposed || !visible || !user.isLoggedIn) return;
+  if (append && (loading.value || page.value >= totalPages.value)) return;
   const current = capture();
   const request = ++version;
   const revision = writeRevision;
@@ -243,6 +226,7 @@ async function load(append = false) {
     page.value = response.data.meta.page;
     totalPages.value = response.data.meta.totalPages;
     initialized.value = true;
+    failedAppend.value = false;
   } catch (cause) {
     if (current() && request === version) {
       failedAppend.value = append;
@@ -252,12 +236,26 @@ async function load(append = false) {
     if (current() && request === version) loading.value = false;
   }
 }
+function reset() {
+  version += 1;
+  items.value = [];
+  busy.value = {};
+  initialized.value = false;
+  loading.value = false;
+  error.value = '';
+  page.value = 1;
+  totalPages.value = 1;
+  failedAppend.value = false;
+}
+function loadInitial() {
+  if (!initialized.value && !loading.value) void load(false);
+}
 function switchTab(value: boolean) {
+  if (mine.value === value && !detailId.value) return;
   visibilityVersion += 1;
   mine.value = value;
   detailId.value = '';
-  items.value = [];
-  initialized.value = false;
+  reset();
   void load(false);
 }
 async function run(invite: DiningInvite, operation: () => Promise<ApiResponse<DiningInvite>>) {
@@ -270,6 +268,7 @@ async function run(invite: DiningInvite, operation: () => Promise<ApiResponse<Di
     if (disposed || accountSession !== user.sessionVersion) return;
     writeRevision += 1;
     if (!current()) {
+      initialized.value = false;
       if (visible) void load(false);
       return;
     }
@@ -300,38 +299,31 @@ async function cancel(invite: DiningInvite) {
 }
 watch(
   () => [props.active, props.inviteId] as const,
-  ([active, inviteId]) => {
+  ([active, inviteId], previous) => {
     visible = active;
     version += 1;
     visibilityVersion += 1;
     busy.value = {};
     loading.value = false;
-    detailId.value = inviteId;
-    if (active) void load(false);
+    if (previous && inviteId !== previous[1]) {
+      detailId.value = inviteId;
+      reset();
+    }
+    if (active) loadInitial();
   },
   { immediate: true, flush: 'sync' }
 );
-watch(
-  () => [user.sessionVersion, user.isLoggedIn],
-  () => {
-    version += 1;
-    items.value = [];
-    busy.value = {};
-    initialized.value = false;
-    loading.value = false;
-    error.value = '';
-    void nextTick(() => {
-      if (visible && user.isLoggedIn) void load(false);
-    });
-  },
-  { flush: 'sync' }
-);
-const login = () => openLogin();
+watch(() => [user.sessionVersion, user.isLoggedIn], reset, { flush: 'sync' });
+watch(() => [user.sessionVersion, user.isLoggedIn], loadInitial, { flush: 'post' });
 const verifyIdentity = () => uni.navigateTo({ url: '/pages/profile/identity' });
 defineExpose({
-  refresh: () => load(false),
+  needsInitialLoad: computed(() => !initialized.value),
+  refresh: () => {
+    if (!loading.value) return load(false);
+  },
   loadMore: () => {
-    if (!loading.value && !error.value && page.value < totalPages.value) return load(true);
+    if (items.value.length && !loading.value && !error.value && page.value < totalPages.value)
+      return load(true);
   },
 });
 onScopeDispose(() => {
@@ -343,7 +335,7 @@ onScopeDispose(() => {
 .dining-page {
   box-sizing: border-box;
   width: 100%;
-  max-width: 680px;
+  max-width: var(--page-content-width);
   margin: 0 auto;
   padding: 4px 20px calc(24px + env(safe-area-inset-bottom));
   background: #fff;
@@ -474,14 +466,6 @@ onScopeDispose(() => {
 .dining-cancel {
   margin-top: 12px;
   color: #b42318;
-}
-.dining-loading {
-  padding: 40px 0;
-  text-align: center;
-  font-size: 15px;
-}
-.dining-empty .dining-hint {
-  margin-top: 10px;
 }
 .dining-more {
   margin: 16px auto;

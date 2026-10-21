@@ -29,27 +29,14 @@
         />
       </view>
     </view>
-    <view
-      v-if="error"
-      :class="{ 'page-state-region': !userInfo }"
-      class="profile-error error-feedback"
-      role="alert"
-    >
-      <text class="error-feedback__message">{{ error }}</text
-      ><button
-        class="error-feedback__action"
-        hover-class="error-feedback__action--pressed"
-        :disabled="loading"
-        @click="profileRetryButton.activate"
-        @keydown="profileRetryButton.handleKeydown"
-        @keyup="profileRetryButton.handleKeyup"
-        @blur="profileRetryButton.clearPress"
-        role="button"
-        :tabindex="loading ? -1 : 0"
-      >
-        重新加载
-      </button>
-    </view>
+    <AsyncState
+      v-if="isLoggedIn"
+      :loading="loading"
+      :has-content="!!userInfo"
+      :error="error"
+      loading-title="正在加载个人资料…"
+      @retry="refreshPage"
+    />
     <ProfileBioEditor v-if="editingBio && userInfo" ref="bioEditor" @close="editingBio = false" />
     <template v-if="isLoggedIn && (!error || userInfo)">
       <view class="profile-utilities" aria-label="个人记录">
@@ -148,37 +135,21 @@
         class="profile-content page-state-content"
         :aria-busy="postsLoading"
       >
-        <EmptyState
-          class="page-state-region"
-          v-if="postsReady && !posts.length && !postsError"
-          title="还没有动态"
-          icon="chat"
+        <AsyncState
+          :loading="postsLoading"
+          :initialized="postsReady"
+          :has-content="!!posts.length"
+          :error="postsError"
+          loading-title="正在加载动态…"
+          empty-title="还没有动态"
+          empty-icon="chat"
+          @retry="retryPosts"
         />
         <view v-if="posts.length" class="profile-post-grid">
           <ProfilePostCard v-for="post in posts" :key="post.id" :post="post" />
         </view>
-        <view
-          v-if="postsError"
-          :class="{ 'page-state-region': !posts.length }"
-          class="profile-error error-feedback"
-          role="alert"
-          ><text class="error-feedback__message">{{ postsError }}</text
-          ><button
-            class="error-feedback__action"
-            hover-class="error-feedback__action--pressed"
-            :disabled="postsLoading"
-            @click="postsRetryButton.activate"
-            @keydown="postsRetryButton.handleKeydown"
-            @keyup="postsRetryButton.handleKeyup"
-            @blur="postsRetryButton.clearPress"
-            role="button"
-            :tabindex="postsLoading ? -1 : 0"
-          >
-            重试
-          </button></view
-        >
         <button
-          v-else-if="posts.length && postsMore"
+          v-if="posts.length && postsMore && !postsError"
           class="profile-button profile-more"
           :disabled="postsLoading"
           @click="postsMoreButton.activate"
@@ -188,7 +159,7 @@
           role="button"
           :tabindex="postsLoading ? -1 : 0"
         >
-          {{ postsLoading ? '加载中…' : '加载更多' }}
+          加载更多
         </button>
       </view>
       <!-- #endif -->
@@ -197,13 +168,17 @@
         class="profile-content page-state-content"
         :aria-busy="reviewsLoading"
       >
-        <EmptyState
-          class="page-state-region"
-          v-if="reviewsReady && !reviews.length && !reviewsError"
-          title="还没有评价"
-          icon="star"
-          action-text="去选菜"
+        <AsyncState
+          :loading="reviewsLoading"
+          :initialized="reviewsReady"
+          :has-content="!!reviews.length"
+          :error="reviewsError"
+          loading-title="正在加载评价…"
+          empty-title="还没有评价"
+          empty-icon="star"
+          empty-action-text="去选菜"
           @action="openHome"
+          @retry="retryReviews"
         />
         <ReviewCard
           v-for="review in reviews"
@@ -211,28 +186,8 @@
           :review="review"
           @click="openDish(review.dishId)"
         />
-        <view
-          v-if="reviewsError"
-          :class="{ 'page-state-region': !reviews.length }"
-          class="profile-error error-feedback"
-          role="alert"
-          ><text class="error-feedback__message">{{ reviewsError }}</text
-          ><button
-            class="error-feedback__action"
-            hover-class="error-feedback__action--pressed"
-            :disabled="reviewsLoading"
-            @click="reviewsRetryButton.activate"
-            @keydown="reviewsRetryButton.handleKeydown"
-            @keyup="reviewsRetryButton.handleKeyup"
-            @blur="reviewsRetryButton.clearPress"
-            role="button"
-            :tabindex="reviewsLoading ? -1 : 0"
-          >
-            重试
-          </button></view
-        >
         <button
-          v-else-if="reviews.length && reviewsMore"
+          v-if="reviews.length && reviewsMore && !reviewsError"
           class="profile-button profile-more"
           :disabled="reviewsLoading"
           @click="reviewsMoreButton.activate"
@@ -242,7 +197,7 @@
           role="button"
           :tabindex="reviewsLoading ? -1 : 0"
         >
-          {{ reviewsLoading ? '加载中…' : '加载更多' }}
+          加载更多
         </button>
       </view>
       <ProfilePlans
@@ -271,7 +226,7 @@ import { onShow, onHide, onPullDownRefresh, onReachBottom, onBackPress } from '@
 import UiIcon from '@/components/UiIcon.vue';
 import IconButton from '@/components/IconButton.vue';
 import { useButtonActivation } from '@/composables/use-button-activation';
-import EmptyState from '@/components/EmptyState.vue';
+import AsyncState from '@/components/AsyncState.vue';
 import UserHeader from './components/UserHeader.vue';
 import ProfileBioEditor from './components/ProfileBioEditor.vue';
 import ProfilePlans from './components/ProfilePlans.vue';
@@ -298,7 +253,11 @@ const {
   invalidate: invalidateProfile,
 } = useProfile();
 type ProfileTab = 'posts' | 'reviews' | 'plans';
-const activeTab = ref<ProfileTab>('reviews');
+let initialTab: ProfileTab = 'reviews';
+// #ifndef MP-WEIXIN
+initialTab = 'posts';
+// #endif
+const activeTab = ref<ProfileTab>(initialTab);
 const editingBio = ref(false);
 const bioEditor = ref<InstanceType<typeof ProfileBioEditor> | null>(null);
 const plansPane = ref<InstanceType<typeof ProfilePlans> | null>(null);
@@ -322,7 +281,6 @@ const {
   invalidate: invalidateReviews,
 } = useMyReviews();
 // #ifndef MP-WEIXIN
-activeTab.value = 'posts';
 const {
   posts,
   loading: postsLoading,
@@ -339,12 +297,6 @@ function compose() {
 const postsTabButton = useButtonActivation(() => {
   void setTab('posts');
 });
-const postsRetryButton = useButtonActivation(
-  () => {
-    void retryPosts();
-  },
-  () => postsLoading.value
-);
 const postsMoreButton = useButtonActivation(
   () => {
     void loadPosts(true);
@@ -522,24 +474,12 @@ const openHome = () => uni.switchTab({ url: '/pages/index/index' });
 const favoritesButton = useButtonActivation(() => navigateTo('/pages/profile/my-favorites/index'));
 const historyButton = useButtonActivation(() => navigateTo('/pages/profile/history/index'));
 const uploadsButton = useButtonActivation(() => navigateTo('/pages/profile/my-uploads/index'));
-const profileRetryButton = useButtonActivation(
-  () => {
-    void refreshPage();
-  },
-  () => loading.value
-);
 const reviewsTabButton = useButtonActivation(() => {
   void setTab('reviews');
 });
 const plansTabButton = useButtonActivation(() => {
   void setTab('plans');
 });
-const reviewsRetryButton = useButtonActivation(
-  () => {
-    void retryReviews();
-  },
-  () => reviewsLoading.value
-);
 const reviewsMoreButton = useButtonActivation(
   () => {
     void loadMoreReviews();
@@ -550,8 +490,6 @@ const reviewsMoreButton = useButtonActivation(
 <style scoped>
 .profile-page {
   box-sizing: border-box;
-  max-width: 680px;
-  margin: 0 auto;
   padding: 8px 20px 32px;
   background: #fff;
   color: #1f2937;

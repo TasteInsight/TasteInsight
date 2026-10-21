@@ -60,6 +60,9 @@ const scoped = <T>(fn: () => T): T => {
 };
 beforeEach(() => {
   jest.clearAllMocks();
+  [getCommentsByReview, createComment, deleteComment, reportComment, reportReview].forEach(api =>
+    (api as jest.Mock).mockReset()
+  );
   mockSession.sessionVersion++;
 });
 afterEach(() => scopes.splice(0).forEach(scope => scope.stop()));
@@ -247,12 +250,16 @@ it('locks a reply request and does not clear a reopened panel draft', async () =
   const pending = panel.submitReply();
   expect(await panel.submitReply()).toBe(false);
   expect(createComment).toHaveBeenCalledTimes(1);
+  expect(panel.submitting.value).toBe(true);
+  expect(panel.replyContent.value).toBe('First');
+  expect(added).not.toHaveBeenCalled();
   panel.resetPanel();
   panel.replyContent.value = 'New draft';
   resolve({ code: 201 });
   expect(await pending).toBe(false);
   expect(panel.replyContent.value).toBe('New draft');
   expect(added).not.toHaveBeenCalled();
+  expect(getCommentsByReview).not.toHaveBeenCalled();
 });
 
 it('ignores a reply after an account switch', async () => {

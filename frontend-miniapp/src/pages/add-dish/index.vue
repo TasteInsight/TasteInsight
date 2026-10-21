@@ -30,7 +30,7 @@
         重新加载
       </button>
     </view>
-    <AddDishSkeleton v-else-if="initializing" />
+    <AsyncState v-else-if="initializing" loading loading-title="正在加载菜品资料…" />
     <template v-else>
       <view v-if="submitted" class="submission-success" role="status">
         <text class="success-title">{{ targetDishId ? '建议已提交' : '申请已提交' }}</text>
@@ -430,7 +430,7 @@ import { onBackPress, onHide } from '@dcloudio/uni-app';
 import { nutritionFields, useAddDish } from './composables/use-add-dish';
 import { useUserStore } from '@/store/modules/use-user-store';
 import { useSheetKeyboard } from '@/pages/dish/composables/use-sheet-keyboard';
-import AddDishSkeleton from '@/components/skeleton/AddDishSkeleton.vue';
+import AsyncState from '@/components/AsyncState.vue';
 import UiIcon from '@/components/UiIcon.vue';
 
 const {
